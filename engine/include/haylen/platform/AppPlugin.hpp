@@ -22,8 +22,8 @@ struct AppPlugin {
     // Whether the native part of the plugin runs on this platform.
     bool native = false;
 
-    // Reads the version and the parameter defaults of `plugins/<id>/plugin.json` in the package and applies the values of `app.json` over them. Throws `std::runtime_error` when the manifest is missing, is not JSON or has no version.
-    [[nodiscard]] static AppPlugin read(const io::Package& package, std::string_view id, const core::Json& values);
+    // Reads the version and the parameter defaults of `plugins/<id>/plugin.json` in the package and applies the `parameters` that `app.json` gives the plugin over them. Throws `std::runtime_error` when the manifest is missing, is not JSON or has no version.
+    [[nodiscard]] static AppPlugin read(const io::Package& package, std::string_view id, const core::Json& parameters);
 };
 
 } // namespace haylen::platform

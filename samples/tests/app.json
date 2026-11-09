@@ -59,9 +59,11 @@
     },
     "plugins": {
         "native-demo": {
-            "greeting": "Hello from app.json",
-            "bannerColor": "#1D3557",
-            "urlScheme": "haylendemo"
+            "parameters": {
+                "greeting": "Hello from app.json",
+                "bannerColor": "#1D3557",
+                "urlScheme": "haylendemo"
+            }
         },
         "native-sample": {},
         "native-test": {},

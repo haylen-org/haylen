@@ -133,7 +133,7 @@ std::vector<ApplePlugins::Declaration> ApplePlugins::readDeclarations() {
         }
         const core::Json platforms = manifest.value("platforms", core::Json::array());
         const bool supported = std::ranges::find(platforms, core::Json(getDestination())) != platforms.end();
-        declarations.push_back({.identifier = identifier, .className = apple.at("class").get<std::string>(), .config = AppPlugin::read(*package, identifier, config.plugins.at(identifier)).config, .supported = supported});
+        declarations.push_back({.identifier = identifier, .className = apple.at("class").get<std::string>(), .config = AppPlugin::read(*package, identifier, config.plugins.at(identifier).parameters).config, .supported = supported});
     }
     return declarations;
 }

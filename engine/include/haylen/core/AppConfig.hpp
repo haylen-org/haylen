@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <map>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -170,13 +171,23 @@ struct AppConfig {
     // The native libraries the app ships by name, which `haylen.py` builds and places in the package of each platform. The engine keeps the section as `app.json` wrote it.
     Json native = Json::object();
 
-    // The plugins the app uses by id, each with the values of its parameters as `app.json` wrote them. Every id names the folder `plugins/<id>` of the package, which holds its `plugin.json` and its Lua modules.
-    Json plugins = Json::object();
+    // A plugin that the app uses: where `haylen.py` takes it from, an empty `path` and `git` meaning the folder `plugins/<id>` of the app, and the values of its parameters as `app.json` wrote them. The package always holds the plugin at `plugins/<id>`, with its `plugin.json` and its Lua modules, wherever it comes from.
+    struct Plugin {
+        std::string path;
+        std::string git;
+        std::string ref;
+        Json parameters = Json::object();
+
+        friend bool operator==(const Plugin&, const Plugin&) = default;
+    };
+
+    // The plugins the app uses by id.
+    std::map<std::string, Plugin> plugins;
 
     // Reads every present field and validates it. Throws `std::invalid_argument` with the offending field on bad values.
     [[nodiscard]] static AppConfig fromJson(const Json& document);
 
-    // Reads `app.json` of the package like `fromJson` and also checks that the package holds `plugins/<id>/plugin.json` for every plugin the app lists.
+    // Reads `app.json` of the package like `fromJson` and also checks that the package holds `plugins/<id>/plugin.json` for every plugin the app lists, which a folder that the player runs directly lacks for a plugin that `app.json` references elsewhere.
     [[nodiscard]] static AppConfig fromPackage(const io::Package& package);
     [[nodiscard]] Json toJson() const;
 
@@ -194,6 +205,8 @@ struct AppConfig {
     static void requireNonNegative(double value, const char* key);
     [[nodiscard]] static math::Color readColor(const Json& object, const char* key, const char* name);
     static void readPlugins(const Json& section, AppConfig& config);
+    [[nodiscard]] static Plugin readPlugin(const std::string& id, const Json& entry);
+    static void readPluginText(const Json& entry, const std::string& id, const char* key, std::string& target);
     [[nodiscard]] static std::vector<gpu::Device::Api> readGraphicsApis(const Json& value);
     static void expandGroups(const io::Package& package, Content& content);
     [[nodiscard]] static bool isContentPattern(std::string_view pattern) noexcept;

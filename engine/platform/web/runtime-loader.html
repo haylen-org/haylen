@@ -16,7 +16,7 @@
             Module.addRunDependency("haylen-plugins");
             (async () => {
                 for (const { plugin, load } of loaded) {
-                    await load(Module.haylen.createPluginContext(plugin.id, plugin.config));
+                    await load(Module.haylen.createPluginContext(plugin.id, plugin.parameters));
                 }
                 Module.removeRunDependency("haylen-plugins");
             })();

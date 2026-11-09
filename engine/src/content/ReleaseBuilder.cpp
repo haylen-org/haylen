@@ -131,7 +131,7 @@ std::vector<ContentBuilder::Input> ReleaseBuilder::listFiles(const io::Package& 
     } else {
         paths = app.list(io::Path::kSourceDirectory);
         paths.emplace_back(io::Path::kAppConfigFile);
-        for (const auto& [id, values] : config.plugins.items()) {
+        for (const auto& [id, plugin] : config.plugins) {
             paths.push_back(io::Path::plugin(id, io::Path::kPluginManifestFile));
             std::vector<std::string> sources = app.list(io::Path::plugin(id, io::Path::kSourceDirectory));
             paths.insert(paths.end(), std::make_move_iterator(sources.begin()), std::make_move_iterator(sources.end()));

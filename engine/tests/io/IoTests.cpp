@@ -71,7 +71,7 @@ class PackageTest : public ::testing::TestWithParam<std::string> {
   protected:
     std::unique_ptr<Package> makePackage() {
         const std::map<std::string, std::string> files = {
-            {"app.json", R"({"plugins": {"ads": {"testMode": true}}})"}, {"source/main.lua", "print('hi')"}, {"content/maps/island.tmj", "{\"width\": 2}"}, {"content/audio/hit.ogg", "OggS"}, {"plugins/ads/plugin.json", R"({"id": "ads", "version": "1.0.0"})"}, {"plugins/ads/source/init.lua", "return {}"},
+            {"app.json", R"({"plugins": {"ads": {"parameters": {"testMode": true}}}})"}, {"source/main.lua", "print('hi')"}, {"content/maps/island.tmj", "{\"width\": 2}"}, {"content/audio/hit.ogg", "OggS"}, {"plugins/ads/plugin.json", R"({"id": "ads", "version": "1.0.0"})"}, {"plugins/ads/source/init.lua", "return {}"},
         };
 
         if (GetParam() == "directory") {
@@ -173,7 +173,7 @@ TEST_P(PackageTest, ReadsFilesInRanges) {
 
 TEST_P(PackageTest, CarriesThePluginsOfTheApp) {
     const std::unique_ptr<Package> package = makePackage();
-    EXPECT_EQ(core::AppConfig::fromPackage(*package).plugins.at("ads").at("testMode"), true);
+    EXPECT_EQ(core::AppConfig::fromPackage(*package).plugins.at("ads").parameters.at("testMode"), true);
     EXPECT_EQ(package->list(Path::kPluginsDirectory), (std::vector<std::string>{"plugins/ads/plugin.json", "plugins/ads/source/init.lua"}));
     EXPECT_EQ(package->readText(Path::plugin("ads", "source/init.lua")), "return {}");
     EXPECT_EQ(package->listAssets("").size(), 2U) << "The files of plugins are no assets.";

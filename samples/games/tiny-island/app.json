@@ -21,7 +21,9 @@
     "clearColor": "#FF2FB3C4",
     "plugins": {
         "sign-in": {
-            "clientId": ""
+            "parameters": {
+                "clientId": ""
+            }
         }
     }
 }

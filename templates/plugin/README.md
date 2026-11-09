@@ -18,6 +18,8 @@ The command `plugin add` copies the plugin into `plugins/{{ID}}/` of the app and
 }
 ```
 
+With `--reference`, the app keeps the plugin where it is and `app.json` names its folder, such as `"{{ID}}": {"path": "../{{ID}}"}`.
+
 ## Platforms
 
 | Platform | Native part | Setup |

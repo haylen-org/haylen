@@ -191,6 +191,8 @@ FORMAT_SKIPPED_FOLDERS = {".cxx", ".gradle", "build", "_deps"}
 PACKAGE_FOLDERS = ("source", "content")
 # The CMake file that tells haylen_add_app the Apple parts of the plugins of a C++ app, and the kinds of source files it compiles.
 CPP_PLUGINS_FILE = "haylen-plugins.cmake"
+# The CMake file that tells haylen_add_app the folder of every plugin of a C++ app, which `app.json` may reference anywhere.
+CPP_PLUGIN_FOLDERS_FILE = "haylen-plugin-folders.cmake"
 CPP_APPLE_PLUGIN_SOURCES = {".swift", ".m", ".mm", ".c", ".cpp"}
 # The list of the web parts of the plugins of an app, which the page reads next to it.
 WEB_PLUGINS_FILE = "plugins.json"
@@ -2093,7 +2095,8 @@ class App:
         self.native = [NativeLibrary.parse(folder, name, entry, folder / "app.json") for name, entry in native.items()]
 
         # The native library of a plugin joins the ones of `app.json`, so every platform builds and places it the same way.
-        self.plugins, self.plugin_values = load_app_plugins(folder, document.get("plugins", {}), platform)
+        self.plugins, self.plugin_values = load_app_plugins(folder, read_plugin_references(folder, document.get("plugins", {})), platform)
+        self.layout = PackageLayout(folder, {plugin.id: plugin.folder for plugin in self.plugins})
         for plugin in self.plugins:
             if plugin.native is None:
                 continue
@@ -2121,41 +2124,103 @@ class App:
         return parts[0] * 1_000_000 + parts[1] * 1_000 + parts[2]
 
 
-def package_files(folder: Path) -> list[Path]:
-    """Lists the files of the package of an app folder: `app.json`, `source`, `content` and, for every plugin that `app.json` lists, its `plugin.json` and its `source` folder."""
-    plugins = json.loads((folder / "app.json").read_text(encoding="utf-8")).get("plugins", {})
-    if not isinstance(plugins, dict):
-        raise BuildError(f'The "plugins" section of `{shown_path(folder / "app.json")}` must map plugin ids to objects of parameter values.')
+@dataclasses.dataclass(frozen=True)
+class PackageLayout:
+    """Where the files of the package of an app lie on disk. The package holds `app.json`, `source` and `content` of the app folder, and `plugins/<id>/plugin.json` and `plugins/<id>/source` of every plugin that `app.json` lists, wherever the plugin folder is, so the runtime never resolves a reference."""
 
-    roots = [folder / name for name in PACKAGE_FOLDERS]
-    manifests = []
-    for identifier in plugins:
-        manifest = folder / "plugins" / identifier / "plugin.json"
-        if not manifest.is_file():
-            raise BuildError(f'The file `{shown_path(folder / "app.json")}` lists the plugin "{identifier}", whose `{shown_path(manifest)}` does not exist. Add the plugin with "{TOOL} plugin add <plugin folder or repository> --app {shown_path(folder)}".')
-        manifests.append(manifest)
-        roots.append(manifest.parent / "source")
-    return [folder / "app.json", *sorted([*manifests, *(path for root in roots for path in root.rglob("*") if path.is_file() and path.name != ".DS_Store")])]
+    folder: Path
+    plugins: dict[str, Path]
+
+    @staticmethod
+    def of(folder: Path) -> "PackageLayout":
+        """Reads the layout of an app folder from its `app.json`, resolving the folder of every plugin, and fails with every problem of the plugins."""
+        where = shown_path(folder / "app.json")
+        section = json.loads((folder / "app.json").read_text(encoding="utf-8")).get("plugins", {})
+        plugins: dict[str, Path] = {}
+        problems: list[str] = []
+        for reference in read_plugin_references(folder, section):
+            try:
+                plugins[reference.id] = plugin_folder(folder, reference)
+            except BuildError as error:
+                problems.append(str(error))
+        if problems:
+            raise BuildError("\n".join([f"The plugins of `{where}` have these problems:", *(f"  {line}" for problem in problems for line in problem.splitlines())]))
+        return PackageLayout(folder, plugins)
+
+    @property
+    def roots(self) -> list[tuple[str, Path]]:
+        """The package path of every file and folder of the package with where it lies on disk."""
+        roots = [("app.json", self.folder / "app.json"), *((name, self.folder / name) for name in PACKAGE_FOLDERS)]
+        for identifier, plugin in self.plugins.items():
+            roots += [(f"plugins/{identifier}/plugin.json", plugin / "plugin.json"), (f"plugins/{identifier}/source", plugin / "source")]
+        return roots
+
+    def files(self) -> dict[str, Path]:
+        """Every file of the package by its package path, in the order of the paths, leaving out the files that Finder adds."""
+        found: dict[str, Path] = {}
+        for prefix, root in self.roots:
+            if root.is_file():
+                found[prefix] = root
+                continue
+            for path in root.rglob("*") if root.is_dir() else []:
+                if path.is_file() and path.name != ".DS_Store":
+                    found[f"{prefix}/{path.relative_to(root).as_posix()}"] = path
+        return dict(sorted(found.items()))
+
+    def to_disk(self, path: str) -> Path:
+        """Returns where a package path lies on disk. A path outside the plugins names a file of the app folder."""
+        for prefix, root in self.roots:
+            if path == prefix:
+                return root
+            if path.startswith(f"{prefix}/"):
+                return root / path[len(prefix) + 1 :]
+        return self.folder / path
+
+    def to_package(self, file: Path) -> str | None:
+        """Returns the package path of a file on disk, or nothing for a file outside the package. The plugins come first, since a plugin folder may lie inside the app folder."""
+        resolved = file.resolve()
+        for prefix, root in sorted(self.roots, key=lambda entry: len(entry[1].resolve().parts), reverse=True):
+            with contextlib.suppress(ValueError):
+                relative = resolved.relative_to(root.resolve()).as_posix()
+                return prefix if relative == "." else f"{prefix}/{relative}"
+        return None
 
 
 def copy_package(app: App, destination: Path) -> list[str]:
     """Copies the package of an app into a folder and returns the copied paths, relative to it."""
-    copied: list[str] = []
-    for path in package_files(app.folder):
-        relative = path.relative_to(app.folder).as_posix()
+    files = app.layout.files()
+    for relative, path in files.items():
         target = destination / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, target)
-        copied.append(relative)
-    return copied
+    return list(files)
 
 
-def package_folder(folder: Path, output: Path) -> None:
-    files = package_files(folder)
+def stage_package(app: App) -> Path:
+    """Brings the staged copy of the package of an app in its build folder up to date and returns it, copying the files that changed and deleting the ones that left. The player and the content tool read a package folder, which holds every plugin at `plugins/<id>/` only in this copy."""
+    staged = app.build_folder / "package"
+    files = app.layout.files()
+    for relative, path in files.items():
+        target = staged / relative
+        status = path.stat()
+        if target.is_file() and target.stat().st_size == status.st_size and target.stat().st_mtime_ns == status.st_mtime_ns:
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, target)
+
+    for path in sorted(staged.rglob("*"), reverse=True):
+        if path.is_dir() and not any(path.iterdir()):
+            path.rmdir()
+        elif not path.is_dir() and path.relative_to(staged).as_posix() not in files:
+            path.unlink()
+    return staged
+
+
+def package_folder(layout: PackageLayout, output: Path) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
-        for path in files:
-            archive.write(path, path.relative_to(folder).as_posix())
+        for relative, path in layout.files().items():
+            archive.write(path, relative)
 
 
 # Native libraries: what the `native` section of `app.json` lists, prebuilt or built from a CMake project, placed where each platform package loads it.
@@ -2437,6 +2502,129 @@ APPLE_ENTITLEMENTS = {
 }
 # The keys of a privacy manifest that the `privacy` section of a plugin may give.
 PRIVACY_KEYS = {"NSPrivacyTracking", "NSPrivacyTrackingDomains", "NSPrivacyCollectedDataTypes", "NSPrivacyAccessedAPITypes"}
+# The keys of the entry of a plugin in `app.json`: where the plugin comes from and the values of its parameters.
+PLUGIN_ENTRY_KEYS = ("path", "git", "ref", "parameters")
+# The checkouts of the plugin repositories that apps reference, one per address and ref.
+PLUGIN_REPOSITORIES_DIR = BUILD_ROOT / "plugin-repositories"
+# A full commit, the one ref whose checkout never changes, and the addresses that git reaches over a network, which a local repository path is not.
+GIT_COMMIT = re.compile(r"[0-9a-f]{40}")
+GIT_REMOTE = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://.+|[A-Za-z0-9._-]+@[A-Za-z0-9.-]+:.+")
+
+
+@dataclasses.dataclass(frozen=True)
+class PluginReference:
+    """A plugin that `app.json` lists, with where it comes from and the values of its parameters. Without `path` and `git` it is `plugins/<id>/` of the app. A `path` is absolute or relative to the app folder, and `git` is a repository at `ref`, a branch, tag or commit, `HEAD` when left out, which `haylen.py` fetches into a cache under `build/`."""
+
+    id: str
+    path: str | None
+    git: str | None
+    ref: str | None
+    parameters: dict
+
+    @staticmethod
+    def parse(identifier: str, entry: object) -> "PluginReference":
+        """Reads the entry of a plugin in `app.json` and fails with every problem it has."""
+        key = f"plugins.{identifier}"
+        if not PLUGIN_ID.fullmatch(identifier):
+            raise BuildError(f'The key "{key}" must be the id of a plugin in "dash-case", such as "camera-scanner".')
+        if not isinstance(entry, dict):
+            raise BuildError(f'The key "{key}" must be an object with the optional keys {quoted_names(PLUGIN_ENTRY_KEYS)}, such as {{"path": "../plugins/{identifier}", "parameters": {{}}}}.')
+
+        problems = [f'The key "{key}.{name}" is not a key of a plugin entry, which takes {quoted_names(PLUGIN_ENTRY_KEYS)}.' for name in entry if name not in PLUGIN_ENTRY_KEYS]
+        for name in ("path", "git", "ref"):
+            if name in entry and (not isinstance(entry[name], str) or not entry[name]):
+                problems.append(f'The key "{key}.{name}" must be a text.')
+        if "path" in entry and "git" in entry:
+            problems.append(f'The key "{key}" names both a "path" and a "git" repository. Keep the one that the plugin comes from.')
+        if "ref" in entry and "git" not in entry:
+            problems.append(f'The key "{key}.ref" picks a branch, tag or commit of a git repository, so it needs "git".')
+        parameters = entry.get("parameters", {})
+        if not isinstance(parameters, dict):
+            problems.append(f'The key "{key}.parameters" must be an object of parameter values.')
+        if problems:
+            raise BuildError("\n".join(problems))
+        return PluginReference(identifier, entry.get("path"), entry.get("git"), entry.get("ref"), parameters)
+
+    @property
+    def is_reference(self) -> bool:
+        return self.path is not None or self.git is not None
+
+    def source(self, app: Path) -> str:
+        """Names where the plugin comes from, for the messages and the plugin list."""
+        if self.git is not None:
+            return f'`{self.git}` at "{self.ref or "HEAD"}"'
+        if self.path is not None:
+            return f"`{shown_path(self.folder(app))}`"
+        return f"`{shown_path(app / 'plugins' / self.id)}`"
+
+    def folder(self, app: Path) -> Path:
+        """Returns the plugin folder, fetching a repository first. A local repository path, like `path`, is absolute or relative to the app folder."""
+        if self.git is not None:
+            address = self.git if GIT_REMOTE.fullmatch(self.git) else str((app / Path(self.git).expanduser()).resolve())
+            return fetch_plugin_repository(address, self.ref or "HEAD")
+        if self.path is not None:
+            return (app / Path(self.path).expanduser()).resolve()
+        return app / "plugins" / self.id
+
+
+def read_plugin_references(folder: Path, section: object) -> list[PluginReference]:
+    """Reads the plugins that the `plugins` section of `app.json` lists, in its order, and fails with every problem of their entries."""
+    where = shown_path(folder / "app.json")
+    if not isinstance(section, dict):
+        raise BuildError(f'The key "plugins" of `{where}` must map plugin ids to their entries, such as {{"camera": {{"path": "../plugins/camera"}}}}.')
+    references: list[PluginReference] = []
+    problems: list[str] = []
+    for identifier, entry in section.items():
+        try:
+            references.append(PluginReference.parse(identifier, entry))
+        except BuildError as error:
+            problems.append(str(error))
+    if problems:
+        raise BuildError("\n".join([f"The plugins of `{where}` have these problems:", *(f"  {line}" for problem in problems for line in problem.splitlines())]))
+    return references
+
+
+def plugin_folder(app: Path, reference: PluginReference) -> Path:
+    """Resolves the folder of a plugin that `app.json` lists and checks that it holds the plugin of that id. A referenced plugin never has a copy in `plugins/<id>/` of the app too, which a player that runs the folder directly would take."""
+    copy = app / "plugins" / reference.id
+    names_the_copy = reference.path is not None and reference.folder(app) == copy.resolve()
+    if reference.is_reference and copy.exists() and not names_the_copy:
+        raise BuildError(f'The plugin "{reference.id}" comes from {reference.source(app)}, while the app folder also holds `{shown_path(copy)}`. Delete that folder, or leave "path" and "git" out of "plugins.{reference.id}" to use it.')
+
+    folder = reference.folder(app)
+    manifest = folder / "plugin.json"
+    if not manifest.is_file() and reference.is_reference:
+        raise BuildError(f'The key "plugins.{reference.id}" names {reference.source(app)}, which holds no "plugin.json" at its root.')
+    if not manifest.is_file():
+        raise BuildError(f'The key "plugins.{reference.id}" names no plugin of the app, because `{shown_path(manifest)}` does not exist. Add the plugin with "{TOOL} plugin add <plugin folder or repository> --app {shown_path(app)}".')
+    try:
+        document = json.loads(manifest.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        raise BuildError(f"The file `{shown_path(manifest)}` is not valid JSON: {error}.") from error
+    identifier = document.get("id") if isinstance(document, dict) else None
+    if identifier != reference.id:
+        raise BuildError(f'The key "plugins.{reference.id}" names the plugin `{shown_path(folder)}`, whose "plugin.json" has the id "{identifier}". List the plugin under the id of its "plugin.json".')
+    return folder
+
+
+@functools.cache
+def fetch_plugin_repository(address: str, ref: str) -> Path:
+    """Fetches a plugin repository at a branch, tag or commit into its checkout under `build/`, keyed by the address and the ref, once per command, and returns the checkout. A checkout of a full commit is fetched once, since a commit never changes."""
+    checkout = PLUGIN_REPOSITORIES_DIR / hashlib.sha256(f"{address}\n{ref}".encode()).hexdigest()[:16]
+    if GIT_COMMIT.fullmatch(ref) and (checkout / ".git").is_dir() and capture(["git", "-C", checkout, "rev-parse", "HEAD"]).strip() == ref:
+        return checkout
+
+    terminal.step(f'Fetching the plugin repository `{address}` at "{ref}"')
+    try:
+        if not (checkout / ".git").is_dir():
+            checkout.mkdir(parents=True, exist_ok=True)
+            run(["git", "init", "--quiet", checkout])
+        run(["git", "-C", checkout, "fetch", "--quiet", "--depth", "1", address, ref])
+        run(["git", "-C", checkout, "checkout", "--quiet", "--force", "FETCH_HEAD"])
+        run(["git", "-C", checkout, "clean", "--quiet", "-ffdx"])
+    except BuildError as error:
+        raise BuildError(f'The plugin repository `{address}` cannot be fetched at "{ref}". Check the address in "git" and the branch, tag or commit in "ref".', error.details) from error
+    return checkout
 
 
 @dataclasses.dataclass(frozen=True, eq=False)
@@ -2560,8 +2748,6 @@ class PluginManifestCheck:
         self.check_keys("", self.manifest, PLUGIN_KEYS, {"id", "name", "version", "description", "platforms"})
         if "id" in self.manifest and (not isinstance(self.identifier, str) or not PLUGIN_ID.fullmatch(self.identifier)):
             self.report("id", 'must be in "dash-case", such as "camera-scanner".')
-        elif "id" in self.manifest and self.identifier != self.folder.name:
-            self.report("id", f'must match the name of the plugin folder, "{self.folder.name}".')
         for key in ("name", "description"):
             if key in self.manifest and (not isinstance(self.manifest[key], str) or not self.manifest[key]):
                 self.report(key, "must be a text.")
@@ -2796,12 +2982,9 @@ class PluginManifestCheck:
             self.report("native.platforms", "must list platforms of the plugin.")
 
 
-def parameter_values(folder: Path, plugin: Plugin, given: object, platform: str) -> tuple[dict, list[str]]:
+def parameter_values(folder: Path, plugin: Plugin, given: dict, platform: str) -> tuple[dict, list[str]]:
     """Checks the values that `app.json` gives a plugin to build for a platform and returns them with the defaults applied, together with every problem and its key. A parameter applies to the platforms it lists, or else to every platform of the plugin."""
-    key = f"plugins.{plugin.id}"
-    if not isinstance(given, dict):
-        return {}, [f'The key "{key}" must be an object of parameter values.']
-
+    key = f"plugins.{plugin.id}.parameters"
     problems = [f'The key "{key}.{name}" is no parameter of the plugin "{plugin.id}".' for name in given if name not in plugin.parameters]
     values = {}
     for name, parameter in plugin.parameters.items():
@@ -2843,30 +3026,24 @@ def plugin_order(plugins: dict[str, Plugin]) -> list[Plugin]:
     return ordered
 
 
-def load_app_plugins(folder: Path, section: object, platform: str) -> tuple[list[Plugin], dict[str, dict]]:
-    """Loads the plugins that `app.json` lists from `plugins/` of the app and checks the values it gives them to build for a platform. Returns the plugins in load order and their values with the defaults applied, or fails with every problem."""
-    where = shown_path(folder / "app.json")
-    if not isinstance(section, dict):
-        raise BuildError(f'The key "plugins" of `{where}` must map plugin ids to objects of parameter values.')
-
+def load_app_plugins(folder: Path, references: list[PluginReference], platform: str) -> tuple[list[Plugin], dict[str, dict]]:
+    """Loads the plugins that `app.json` lists from wherever each one comes from and checks the values it gives them to build for a platform. Returns the plugins in load order and their values with the defaults applied, or fails with every problem."""
     problems: list[str] = []
     plugins: dict[str, Plugin] = {}
-    for identifier in section:
-        if not (folder / "plugins" / identifier / "plugin.json").is_file():
-            problems.append(f'The key "plugins.{identifier}" names no plugin of the app, because `{shown_path(folder / "plugins" / identifier / "plugin.json")}` does not exist. Add the plugin with "{TOOL} plugin add <plugin folder or repository> --app {shown_path(folder)}".')
-            continue
+    for reference in references:
         try:
-            plugins[identifier] = Plugin.load(folder / "plugins" / identifier)
+            plugins[reference.id] = Plugin.load(plugin_folder(folder, reference))
         except BuildError as error:
             problems.append(str(error))
 
+    listed = {reference.id: reference for reference in references}
     values: dict[str, dict] = {}
     for plugin in plugins.values():
-        problems += [f'The plugin "{plugin.id}" requires the plugin "{required}", which "app.json" does not list.' for required in plugin.requires if required not in section]
-        values[plugin.id], found = parameter_values(folder, plugin, section[plugin.id], platform)
+        problems += [f'The plugin "{plugin.id}" requires the plugin "{required}", which "app.json" does not list.' for required in plugin.requires if required not in listed]
+        values[plugin.id], found = parameter_values(folder, plugin, listed[plugin.id].parameters, platform)
         problems += found
     if problems:
-        raise BuildError("\n".join([f'The plugins of `{where}` cannot build for "{platform}":', *(f"  {line}" for problem in problems for line in problem.splitlines())]))
+        raise BuildError("\n".join([f'The plugins of `{shown_path(folder / "app.json")}` cannot build for "{platform}":', *(f"  {line}" for problem in problems for line in problem.splitlines())]))
     return plugin_order(plugins), values
 
 
@@ -3931,7 +4108,7 @@ def android_plugin_files(app: App, plugin: Plugin) -> list[tuple[Path, str]]:
 
 def write_android_plugins(app: App, assets: Path) -> None:
     """Writes `haylen-plugins.json` into the assets of an Android project: the id, version and parameter values of every plugin with an Android part, in load order, from which the runtime loads their classes when the process starts. The runtime never reads `app.json` or a `plugin.json` for them, which a protected release keeps inside its encrypted app domain."""
-    plugins = [{"id": plugin.id, "version": plugin.version, "config": app.plugin_values[plugin.id]} for plugin in app.plugins if "android" in plugin.manifest]
+    plugins = [{"id": plugin.id, "version": plugin.version, "parameters": app.plugin_values[plugin.id]} for plugin in app.plugins if "android" in plugin.manifest]
     write_if_changed(assets / ANDROID_PLUGINS_FILE, json.dumps({"plugins": plugins}, indent=4) + "\n")
 
 
@@ -4431,7 +4608,7 @@ def write_web_plugins(app: App, site: Path) -> list[dict]:
             continue
         shutil.copytree(plugin.folder / "web", site / "plugins" / plugin.id, ignore=COPY_IGNORED)
         module = Path(plugin.manifest["web"]["module"]).relative_to("web").as_posix()
-        entries.append({"id": plugin.id, "version": plugin.version, "module": f"plugins/{plugin.id}/{module}", "config": app.plugin_values[plugin.id]})
+        entries.append({"id": plugin.id, "version": plugin.version, "module": f"plugins/{plugin.id}/{module}", "parameters": app.plugin_values[plugin.id]})
     return entries
 
 
@@ -4444,7 +4621,7 @@ def write_web_settings(app: App, site: Path, release: list[str] | None) -> None:
     """Writes the splash logo, the web modules of the plugins and `config.json` with the files of the protected release that download before the app starts, or `app.zip` in development, and the sizes that let the loader show progress when the server sends no length."""
     downloads = [f"app/{name}" for name in release] if release is not None else ["app.zip"]
     if release is None:
-        package_folder(app.folder, site / "app.zip")
+        package_folder(app.layout, site / "app.zip")
     logo = app.splash_logo or ENGINE_LOGO
     logo_name = f"splash{logo.suffix.lower()}"
     shutil.copy2(logo, site / logo_name)
@@ -4552,7 +4729,7 @@ def start_web_development(app: App, site: Path) -> DevelopmentServer:
     """Starts the development server of a site that `prepare_web` made and writes its entry into `config.json`, so the page runs the app in development and connects to it. The manifest of the server holds the files of `app.zip`, so a page that loads late gets only what changed since."""
     with zipfile.ZipFile(site / "app.zip") as archive:
         manifest = {name: hashlib.sha256(archive.read(name)).hexdigest() for name in archive.namelist()}
-    development = DevelopmentServer(app.folder, manifest)
+    development = DevelopmentServer(app.layout, manifest)
     config = json.loads((site / "config.json").read_text(encoding="utf-8"))
     config["development"] = {"path": DEVELOPMENT_PATH, "token": development.token}
     (site / "config.json").write_text(json.dumps(config, indent=4) + "\n", encoding="utf-8")
@@ -4752,8 +4929,8 @@ def run_session(app: App, package: Path, args: argparse.Namespace, device: str |
         with RunSession() as session:
             yield session
         return
-    manifest = DevelopmentServer.hash_files(package, [path.relative_to(package).as_posix() for path in sorted(package.rglob("*")) if path.is_file()])
-    development = DevelopmentServer(app.folder, manifest)
+    manifest = DevelopmentServer.hash_files({path.relative_to(package).as_posix(): path for path in sorted(package.rglob("*")) if path.is_file()})
+    development = DevelopmentServer(app.layout, manifest)
     listen, address = development_address(args.platform, args.host, args.port, development.token)
     handler = type("Handler", (DevelopmentHandler,), {"development": development})
     try:
@@ -4856,10 +5033,10 @@ def serve_app(app: Path, args: argparse.Namespace) -> None:
     compile_app_shaders(app)
     info = App(app, host_name())
     archive = info.build_folder / "served" / "app.zip"
-    package_folder(app, archive)
+    package_folder(info.layout, archive)
     with zipfile.ZipFile(archive) as opened:
         manifest = {name: hashlib.sha256(opened.read(name)).hexdigest() for name in opened.namelist()}
-    development = DevelopmentServer(app, manifest)
+    development = DevelopmentServer(info.layout, manifest)
 
     listen = "0.0.0.0" if args.host == "127.0.0.1" else args.host
     try:
@@ -5420,7 +5597,7 @@ def command_run(args: argparse.Namespace) -> None:
         return
     compile_app_shaders(app)
     if args.platform is None:
-        # The player of this machine runs the package folder in development mode, which reloads edited files, while changed shaders compile again in the background.
+        # The player of this machine runs the staged package in development mode, where the development server pushes every file saved in the app or its plugins, while changed shaders compile again in the background.
         info = App(app, host_name())
         build = build_options(host_name(), args.engine_config, "haylen", args.jobs)
         command_build(build)
@@ -5429,9 +5606,10 @@ def command_run(args: argparse.Namespace) -> None:
         shutil.rmtree(native, ignore_errors=True)
         native_options = ["--native", native] if prepare_host_native(info, native, args.jobs) else []
         args.config = "Debug"
-        with run_session(info, app, args) as session:
+        package = stage_package(info)
+        with run_session(info, package, args) as session:
             session.show(run_rows(info, f"{host_device().name}, in the player", args, session))
-            session.follow([build_dir(build.platform, build.config) / "bin" / "haylen" / executable_name("haylen"), *session.arguments, *native_options, app])
+            session.follow([build_dir(build.platform, build.config) / "bin" / "haylen" / executable_name("haylen"), *session.arguments, *native_options, package])
         return
 
     target = RUN_TARGETS[args.platform]
@@ -5646,52 +5824,66 @@ def is_git_repository(value: str) -> bool:
     return "://" in value or value.startswith("git@") or value.endswith(".git")
 
 
+def app_relative(app: Path, path: Path) -> str:
+    """Writes a path for `app.json` relative to the app folder, so the app and its plugins move together between machines, or absolute on another drive of Windows, which no relative path reaches."""
+    try:
+        return Path(os.path.relpath(path, app)).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
 def command_plugin_add(args: argparse.Namespace) -> None:
-    """Copies a plugin folder, or the root of a git repository at a branch, tag or commit, into `plugins/` of an app, replacing an earlier copy, and lists it in `app.json` with the defaults of its parameters and an empty text for every required one."""
+    """Copies a plugin folder, or the root of a git repository at a branch, tag or commit, into `plugins/` of an app, replacing an earlier copy, or with "--reference" lists the folder or the repository as where the plugin comes from, deleting an earlier copy. Lists the plugin in `app.json` with the defaults of its parameters and an empty text for every required one."""
     app = resolve_app(args.app)
-    with tempfile.TemporaryDirectory() as scratch:
-        if is_git_repository(args.plugin):
-            # Fetching one ref by name works for branches, tags and commits alike, and the checkout takes the name of the plugin id like any plugin folder.
-            checkout = Path(scratch) / "checkout"
-            run(["git", "init", "--quiet", checkout])
-            run(["git", "-C", checkout, "fetch", "--quiet", "--depth", "1", args.plugin, args.ref or "HEAD"])
-            run(["git", "-C", checkout, "checkout", "--quiet", "FETCH_HEAD"])
-            if not (checkout / "plugin.json").is_file():
-                raise BuildError(f'The repository `{args.plugin}` is not a plugin, because it holds no "plugin.json" at its root.')
-            identifier = json.loads((checkout / "plugin.json").read_text(encoding="utf-8")).get("id")
-            source = checkout.rename(Path(scratch) / identifier) if isinstance(identifier, str) and PLUGIN_ID.fullmatch(identifier) else checkout
-        elif args.ref:
-            raise BuildError('The option "--ref" picks a branch, tag or commit of a git repository, and a plugin folder has none. Leave the option out for a folder.')
-        else:
-            source = Path(args.plugin).expanduser().resolve()
+    repository = is_git_repository(args.plugin)
+    if args.ref and not repository:
+        raise BuildError('The option "--ref" picks a branch, tag or commit of a git repository, and a plugin folder has none. Leave the option out for a folder.')
+
+    local = None if repository and GIT_REMOTE.fullmatch(args.plugin) else Path(args.plugin).expanduser().resolve()
+    if repository:
+        source = fetch_plugin_repository(args.plugin if local is None else str(local), args.ref or "HEAD")
+        origin = {"git": args.plugin if local is None else app_relative(app, local), **({"ref": args.ref} if args.ref else {})}
+        if not (source / "plugin.json").is_file():
+            raise BuildError(f'The repository `{args.plugin}` is not a plugin, because it holds no "plugin.json" at its root.')
+    else:
+        source = local
+        origin = {"path": app_relative(app, local)}
         if not (source / "plugin.json").is_file():
             raise BuildError(f'The path `{shown_path(source)}` is not a plugin folder, because it holds no "plugin.json".')
-        plugin = Plugin.load(source)
-        target = app / "plugins" / plugin.id
-        if source != target:
-            shutil.rmtree(target, ignore_errors=True)
-            shutil.copytree(source, target, symlinks=True, ignore=COPY_IGNORED)
+    plugin = Plugin.load(source)
+
+    copy = app / "plugins" / plugin.id
+    if args.reference and copy.exists() and copy.resolve() != source:
+        shutil.rmtree(copy)
+        terminal.info(f"Deleted the copy `{shown_path(copy)}`, since the app now references the plugin.")
+        if not any(copy.parent.iterdir()):
+            copy.parent.rmdir()
+    if not args.reference and source != copy:
+        shutil.rmtree(copy, ignore_errors=True)
+        shutil.copytree(source, copy, symlinks=True, ignore=COPY_IGNORED)
 
     document = json.loads((app / "app.json").read_text(encoding="utf-8"))
     listed = document.setdefault("plugins", {})
-    values = listed.setdefault(plugin.id, {})
+    earlier = listed.get(plugin.id)
+    values = dict(earlier["parameters"]) if isinstance(earlier, dict) and isinstance(earlier.get("parameters"), dict) else {}
     for name, parameter in plugin.parameters.items():
         if name not in values and ("default" in parameter or parameter.get("required")):
             values[name] = parameter.get("default", "")
+    listed[plugin.id] = {**(origin if args.reference else {}), **({"parameters": values} if values else {})}
     write_app_json(app, document)
 
-    terminal.success(f'Added the plugin "{plugin.id}" {plugin.version} to `{shown_path(app)}`.')
+    where = f" from {PluginReference.parse(plugin.id, listed[plugin.id]).source(app)}" if args.reference else ""
+    terminal.success(f'Added the plugin "{plugin.id}" {plugin.version} to `{shown_path(app)}`{where}.')
     missing = [name for name, value in values.items() if value == "" and plugin.parameters.get(name, {}).get("required")]
     if missing:
-        names = quoted_names(missing)
-        terminal.warning(f'Fill in {names} under "plugins.{plugin.id}" of `{shown_path(app / "app.json")}` before the app builds.')
+        terminal.warning(f'Fill in {quoted_names(missing)} under "plugins.{plugin.id}.parameters" of `{shown_path(app / "app.json")}` before the app builds.')
     for required in plugin.requires:
         if required not in listed:
             terminal.warning(f'The plugin "{plugin.id}" requires the plugin "{required}", which the app does not list yet. Add it with "{TOOL} plugin add" and its folder or repository.')
 
 
 def command_plugin_remove(args: argparse.Namespace) -> None:
-    """Deletes a plugin from `plugins/` of an app and from its `app.json`."""
+    """Deletes a plugin from `app.json` of an app, with its copy in `plugins/` when it has one, while a folder or a repository that the app references stays as it is."""
     app = resolve_app(args.app)
     folder = app / "plugins" / args.id
     document = json.loads((app / "app.json").read_text(encoding="utf-8"))
@@ -5710,31 +5902,31 @@ def command_plugin_remove(args: argparse.Namespace) -> None:
     terminal.success(f'Removed the plugin "{args.id}" from `{shown_path(app)}`.')
 
 
-def plugin_status(app: Path, identifier: str, listed: dict) -> list[str]:
-    """Describes a plugin of an app in one line, followed by the problems that keep it from building for any of its platforms."""
-    folder = app / "plugins" / identifier
-    if not (folder / "plugin.json").is_file():
-        return [f'{identifier:<24} Missing, because "app.json" lists it and `{shown_path(folder / "plugin.json")}` does not exist.']
+def plugin_status(app: Path, identifier: str, listed: dict[str, PluginReference]) -> list[str]:
+    """Describes a plugin of an app in one line, followed by where it comes from and the problems that keep it from building for any of its platforms."""
+    reference = listed.get(identifier, PluginReference(identifier, None, None, None, {}))
+    source = f"    From {reference.source(app)}."
     try:
-        plugin = Plugin.load(folder)
+        plugin = Plugin.load(plugin_folder(app, reference))
     except BuildError as error:
-        return [f"{identifier:<24} Invalid", *(f"    {line}" for line in str(error).splitlines())]
+        return [f"{identifier:<24} Cannot load", source, *(f"    {line}" for line in str(error).splitlines())]
 
     problems: list[str] = []
     status = 'Not in "app.json", so no build carries it.'
     if identifier in listed:
         problems += [f'The plugin "{identifier}" requires the plugin "{required}", which "app.json" does not list.' for required in plugin.requires if required not in listed]
         for platform in plugin.manifest["platforms"]:
-            problems += [problem for problem in parameter_values(app, plugin, listed[identifier], platform)[1] if problem not in problems]
+            problems += [problem for problem in parameter_values(app, plugin, reference.parameters, platform)[1] if problem not in problems]
         status = f"Problems: {len(problems)}" if problems else "Ready"
 
-    return [f"{identifier:<24} {plugin.version:<10} {', '.join(plugin.manifest['platforms']):<48} {status}", *(f"    {problem}" for problem in problems)]
+    return [f"{identifier:<24} {plugin.version:<10} {', '.join(plugin.manifest['platforms']):<48} {status}", source, *(f"    {problem}" for problem in problems)]
 
 
 def command_plugin_list(args: argparse.Namespace) -> None:
-    """Lists the plugins of an app with the problems that keep each one from building."""
+    """Lists the plugins of an app with where each one comes from and the problems that keep it from building."""
     app = resolve_app(args.app)
-    listed = json.loads((app / "app.json").read_text(encoding="utf-8")).get("plugins", {})
+    section = json.loads((app / "app.json").read_text(encoding="utf-8")).get("plugins", {})
+    listed = {reference.id: reference for reference in read_plugin_references(app, section)}
     folders = sorted(path.name for path in (app / "plugins").iterdir() if path.is_dir()) if (app / "plugins").is_dir() else []
     identifiers = [*listed, *(name for name in folders if name not in listed)]
     if not identifiers:
@@ -5908,6 +6100,16 @@ def command_plugin_new(args: argparse.Namespace) -> None:
 CPP_RUN_PLATFORMS = [host_name(), "web", *(name for name in APPLE_NATIVE_SLICES if name != "macos"), "android"]
 
 
+def cpp_plugin_options(project: Path, directory: Path) -> list[str]:
+    """Writes the folder of every plugin of a C++ app, wherever `app.json` takes it from, into a file of a build folder from which `haylen_add_app` places the plugins in the package of the app, and returns the option that names the file."""
+    layout = PackageLayout.of(project)
+    folders = directory / CPP_PLUGIN_FOLDERS_FILE
+    lines = ["# Written by haylen.py from the plugins of app.json, so haylen_add_app finds each plugin folder."]
+    lines += [f"set(HAYLEN_PLUGIN_FOLDER_{identifier} {cmake_text(folder.as_posix())})" for identifier, folder in layout.plugins.items()]
+    write_if_changed(folders, "\n".join(lines) + "\n")
+    return [f"-DHAYLEN_PLUGIN_FOLDERS_FILE={folders.as_posix()}"]
+
+
 def cpp_engine_options() -> list[str]:
     """The options that hand a C++ app project the engine of this checkout, which the project adds from "HAYLEN_ENGINE_SOURCE", with the compiler of its shaders and the dependency cache of the engine builds, instead of a download of every dependency into the folder of the project."""
     return [f"-DHAYLEN_ENGINE_SOURCE={ENGINE_DIR.as_posix()}", f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DCPM_SOURCE_CACHE={cpm_cache()}"]
@@ -5923,7 +6125,7 @@ def run_cpp_app(project: Path, args: argparse.Namespace) -> None:
     folder = CPP_BUILDS_DIR / build_folder_name(project)
 
     if args.platform == "web":
-        site = bundle_web(project, target, args.config, folder, args.jobs, cpp_release_options(args))
+        site = bundle_web(project, target, args.config, folder, args.jobs, [*cpp_plugin_options(project, folder), *cpp_release_options(args)])
         if args.config == "Release":
             stop_on_release_problems(cpp_release_problems(cpp_release_app(folder / f"web-{args.config.lower()}", target), site, "app"))
         if not args.build_only:
@@ -5943,7 +6145,7 @@ def run_cpp_app(project: Path, args: argparse.Namespace) -> None:
 
 def build_cpp_desktop(project: Path, target: str, directory: Path, args: argparse.Namespace) -> Path:
     """Builds the target of a C++ app project for this machine in a build folder and returns its executable, after inspecting a Release build for anything a release never holds. On macOS the app takes the Apple parts of its plugins."""
-    command = ["cmake", "-S", project, "-B", directory, *cpp_engine_options(), f"-DCMAKE_BUILD_TYPE={args.config}", *cpp_release_options(args)]
+    command = ["cmake", "-S", project, "-B", directory, *cpp_engine_options(), *cpp_plugin_options(project, directory), f"-DCMAKE_BUILD_TYPE={args.config}", *cpp_release_options(args)]
     if host_name() != "windows" or shutil.which("ninja"):
         command += ["-G", "Ninja"]
     if host_name() == "macos":
@@ -6014,7 +6216,7 @@ def run_cpp_apple(project: Path, target: str, folder: Path, args: argparse.Names
     arch = "arm64" if device or host_arch() == "arm64" else "x86_64"
     directory = folder / f"{args.platform}-{args.config.lower()}"
     generator = "Ninja" if args.platform == "catalyst" else "Xcode"
-    command = ["cmake", "-S", project, "-B", directory, "-G", generator, *cpp_engine_options(), f"-DCMAKE_BUILD_TYPE={args.config}", *apple_slice_options(APPLE_NATIVE_SLICES[args.platform], arch), *cpp_release_options(args)]
+    command = ["cmake", "-S", project, "-B", directory, "-G", generator, *cpp_engine_options(), *cpp_plugin_options(project, directory), f"-DCMAKE_BUILD_TYPE={args.config}", *apple_slice_options(APPLE_NATIVE_SLICES[args.platform], arch), *cpp_release_options(args)]
     if device:
         command.append(f"-DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM={apple_team()}")
     terminal.step(f'Building the target "{target}" for "{args.platform}" in `{shown_path(directory)}`')
@@ -6246,7 +6448,7 @@ def run_cpp_android(project: Path, target: str, folder: Path, args: argparse.Nam
     abi = android_device_abi(device)
     directory = folder / f"android-{abi}-{args.config.lower()}"
     terminal.step(f'Building the target "{target}" for "{abi}" in `{shown_path(directory)}`')
-    run(["cmake", "-S", project, "-B", directory, "-G", "Ninja", *cpp_engine_options(), f"-DCMAKE_BUILD_TYPE={args.config}", *android_options(abi), *cpp_release_options(args)])
+    run(["cmake", "-S", project, "-B", directory, "-G", "Ninja", *cpp_engine_options(), *cpp_plugin_options(project, directory), f"-DCMAKE_BUILD_TYPE={args.config}", *android_options(abi), *cpp_release_options(args)])
     run(["cmake", "--build", directory, "--target", target, "--parallel", str(args.jobs)])
 
     # The activity, the bridge and the other Java classes come from the `haylen` library of the artifacts, while the app brings the engine in its own library, and a release build brings the part of its protected release that ships.
@@ -6351,7 +6553,7 @@ def build_release(app: App, profile: str, config: str, jobs: int, previous: str 
     folder = release_folder(app, profile)
     staging = folder.with_name(f"{profile}.new")
     shutil.rmtree(staging, ignore_errors=True)
-    command = [tool, "build", app.folder, "--keys", keys, "--profile", profile, "--build", str(app.version_code), "--output", staging, "--cache", app.build_folder / "content-cache"]
+    command = [tool, "build", stage_package(app), "--keys", keys, "--profile", profile, "--build", str(app.version_code), "--output", staging, "--cache", app.build_folder / "content-cache"]
     if previous:
         command += ["--previous", Path(previous).resolve()]
     elif (folder / "app.hmanifest").is_file():
@@ -6371,7 +6573,7 @@ def build_release(app: App, profile: str, config: str, jobs: int, previous: str 
     packs = release_packs_folder(app, profile)
     shutil.rmtree(shipped, ignore_errors=True)
     shutil.rmtree(packs, ignore_errors=True)
-    command = [tool, "stage", folder, "--keys", keys, "--output", shipped, "--app", app.folder, "--packs", packs]
+    command = [tool, "stage", folder, "--keys", keys, "--output", shipped, "--app", stage_package(app), "--packs", packs]
     run(command if app.content_server else [*command, "--ship-deferred"])
     warn_store_size(shipped, profile)
     return shipped
@@ -6428,9 +6630,9 @@ def secret_forms(secret: bytes) -> list[bytes]:
 def release_problems(app: App, entries: list[tuple[str, int, Callable[[], bytes]]], release: str, secrets: dict[str, bytes]) -> list[str]:
     """Lists what a built release holds that it never may: Lua text, the index of a development package, a file of the package as it is, files in its release folder other than the manifests and shards, symbol files and a key of the app in any form. Each entry is a path inside the built app with its size and the function that reads it. The splash logo is the one file of the package that platforms show on their own."""
     package: dict[tuple[int, str], str] = {}
-    for path in package_files(app.folder):
+    for relative, path in app.layout.files().items():
         if path != app.splash_logo and path.stat().st_size >= RELEASE_MATCH_MINIMUM:
-            package[(path.stat().st_size, file_hash(path))] = path.relative_to(app.folder).as_posix()
+            package[(path.stat().st_size, file_hash(path))] = relative
     sizes = {size for size, _ in package}
     problems: list[str] = []
     released = False
@@ -6504,7 +6706,7 @@ def command_content_publish(args: argparse.Namespace) -> None:
     # The first generation of a channel keeps the shards of the release that ships with the app, so installed apps download only what changed.
     release = release_folder(app, CONTENT_PROFILES[args.platform])
     shipped = ["--release", release] if (release / "content.hmanifest").is_file() else []
-    run([tool, "publish", app.folder, "--keys", keys, "--profile", CONTENT_PROFILES[args.platform], "--build", str(app.version_code), "--channel", args.channel, "--output", Path(args.output).resolve(), "--cache", app.build_folder / "content-cache", *shipped])
+    run([tool, "publish", stage_package(app), "--keys", keys, "--profile", CONTENT_PROFILES[args.platform], "--build", str(app.version_code), "--channel", args.channel, "--output", Path(args.output).resolve(), "--cache", app.build_folder / "content-cache", *shipped])
 
 
 # Steam: the depots of a release for SteamPipe, which delivers the app with its protected content and the packs of the app as depots of their own, so a Steam app needs no content server of its own.
@@ -6615,7 +6817,7 @@ def command_package(args: argparse.Namespace) -> None:
     app = resolve_app(args.app)
     compile_app_shaders(app)
     output = Path(args.output).resolve()
-    package_folder(app, output)
+    package_folder(PackageLayout.of(app), output)
     terminal.success(f"Packaged `{shown_path(app)}` into `{shown_path(output)}`.")
 
 
@@ -6883,8 +7085,8 @@ def debug_source_paths(value, convert: Callable[[str], str]):
 class DebugRelay:
     """Carries the messages of the Debug Adapter Protocol between one editor, which attaches to a TCP port of this machine, and the app that connected last to the development server, whose engine runs the debugger. The paths of the editor become package paths, such as `source/main.lua`, and back. The relay keeps the requests that configure the debugger and sends them again to an app that connects later, such as one that restarted, answering none of them twice, and holds the requests of the editor while no app is connected."""
 
-    def __init__(self, folder: Path, port: int) -> None:
-        self.folder = folder.resolve()
+    def __init__(self, layout: PackageLayout, port: int) -> None:
+        self.layout = layout
         try:
             self.listener = socket.create_server(("127.0.0.1", port))
         except OSError as error:
@@ -6944,12 +7146,10 @@ class DebugRelay:
         terminal.info("The editor left the debugger.")
 
     def to_package(self, path: str) -> str:
-        with contextlib.suppress(ValueError):
-            return Path(path).resolve().relative_to(self.folder).as_posix()
-        return path
+        return self.layout.to_package(Path(path)) or path
 
     def to_editor(self, path: str) -> str:
-        return path if Path(path).is_absolute() else str(self.folder / path)
+        return path if Path(path).is_absolute() else str(self.layout.to_disk(path))
 
     def replay_request(self, command: str, arguments: dict | None = None) -> dict:
         self.replayed += 1
@@ -7015,8 +7215,11 @@ class DebugRelay:
 class DevelopmentServer:
     """Watches the package of an app in development and pushes every file the developer saves to every connected app, such as browser tabs, as a JSON message of the batch followed by the bytes of each file. A connection needs the token of the run, the shaders compile again as their sources change, and an app that connects late catches up: a fresh page gets the files that changed since the package it loaded was made, an app of an earlier run of the server gets every file, and an app that only lost its connection gets what changed since the package was made again."""
 
-    def __init__(self, folder: Path, manifest: dict[str, str]) -> None:
-        self.folder = folder
+    def __init__(self, layout: PackageLayout, manifest: dict[str, str]) -> None:
+        self.folder = layout.folder
+        self.layout = layout
+        self.layout_stamp = (self.folder / "app.json").stat().st_mtime_ns
+        self.layout_problem = ""
         self.manifest = manifest
         self.session = os.urandom(8).hex()
         # A token of hexadecimal digits, which a person also types on the remote of a TV.
@@ -7032,7 +7235,7 @@ class DevelopmentServer:
 
     def listen_debugger(self, port: int) -> int:
         """Lets an editor attach to the debugger of the apps on the port of this machine, and returns the port."""
-        self.debugger = DebugRelay(self.folder, port)
+        self.debugger = DebugRelay(self.layout, port)
         self.debugger.start()
         return self.debugger.port
 
@@ -7041,27 +7244,40 @@ class DevelopmentServer:
             self.debugger.close()
 
     @staticmethod
-    def hash_files(folder: Path, paths) -> dict[str, str]:
-        return {path: hashlib.sha256((folder / path).read_bytes()).hexdigest() for path in paths}
+    def hash_files(files: dict[str, Path]) -> dict[str, str]:
+        """Hashes files by their package paths."""
+        return {path: hashlib.sha256(file.read_bytes()).hexdigest() for path, file in files.items()}
+
+    def refresh_layout(self) -> None:
+        """Reads the layout of the package again once `app.json` changed, so the plugins that the app lists while it runs are watched too, wherever they come from. While the plugins of `app.json` have a problem, which the terminal shows once, the server keeps watching the layout before it."""
+        stamp = (self.folder / "app.json").stat().st_mtime_ns
+        if stamp == self.layout_stamp:
+            return
+        self.layout_stamp = stamp
+        try:
+            layout = PackageLayout.of(self.folder)
+        except (BuildError, json.JSONDecodeError) as error:
+            if str(error) != self.layout_problem:
+                terminal.error(str(error))
+            self.layout_problem = str(error)
+            return
+        self.layout_problem = ""
+        self.layout = layout
+        if self.debugger is not None:
+            self.debugger.layout = layout
 
     def snapshot(self) -> dict[str, tuple[int, int]]:
         """Records the time and size of every watched file of the package."""
         found: dict[str, tuple[int, int]] = {}
-        roots = [self.folder / "app.json", self.folder / "source", self.folder / "content"]
-        plugins = self.folder / "plugins"
-        if plugins.is_dir():
-            for plugin in plugins.iterdir():
-                roots += [plugin / "plugin.json", plugin / "source"]
-        for root in roots:
-            for path in [root] if root.is_file() else root.rglob("*") if root.is_dir() else []:
-                relative = path.relative_to(self.folder).as_posix()
-                if path.is_file() and development_watched(relative):
-                    stat = path.stat()
-                    found[relative] = (stat.st_mtime_ns, stat.st_size)
+        for relative, path in self.layout.files().items():
+            if development_watched(relative):
+                stat = path.stat()
+                found[relative] = (stat.st_mtime_ns, stat.st_size)
         return found
 
     def scan(self) -> tuple[list[str], list[str]]:
         """Returns the files that changed and the files that went away since the last scan, leaving the files that are still being written for the next scan."""
+        self.refresh_layout()
         current = self.snapshot()
         changed = sorted(path for path, stamp in current.items() if self.files.get(path) != stamp)
         removed = sorted(path for path in self.files if path not in current)
@@ -7081,9 +7297,9 @@ class DevelopmentServer:
         """Reads the files of a batch, leaving out the files that are larger than the engine accepts, which the developer then ships with the build."""
         files, contents = [], []
         for path in changed:
-            content = (self.folder / path).read_bytes()
+            content = self.layout.to_disk(path).read_bytes()
             if len(content) > DEVELOPMENT_MAX_FILE:
-                terminal.error(f"The file `{shown_path(self.folder / path)}` is larger than the {DEVELOPMENT_MAX_FILE} bytes that the development server pushes, so the running app keeps its old version until the app runs again.")
+                terminal.error(f"The file `{shown_path(self.layout.to_disk(path))}` is larger than the {DEVELOPMENT_MAX_FILE} bytes that the development server pushes, so the running app keeps its old version until the app runs again.")
                 continue
             files.append({"path": path, "size": len(content)})
             contents.append(content)
@@ -7093,7 +7309,7 @@ class DevelopmentServer:
         """Returns the batch that brings an app that just connected up to date, or nothing when it is up to date."""
         if hello.get("session") == self.session and hello.get("revision") == self.revision:
             return None
-        current = self.hash_files(self.folder, self.files)
+        current = self.hash_files({path: self.layout.to_disk(path) for path in self.files})
         if hello.get("session") not in ("", self.session):
             return self.batch(sorted(current), [])
         changed = sorted(path for path, digest in current.items() if self.manifest.get(path) != digest)
@@ -7382,12 +7598,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     plugin = commands.add_parser("plugin", parents=[common], help="Add plugins to an app, remove them, list them or create a plugin.")
     actions = plugin.add_subparsers(dest="action", required=True, metavar="action")
-    add_plugin = actions.add_parser("add", parents=[common], help='Copy a plugin folder or a plugin repository into "plugins" of an app and list it in "app.json".')
+    add_plugin = actions.add_parser("add", parents=[common], help='Copy a plugin folder or a plugin repository into "plugins" of an app, or reference it, and list it in "app.json".')
     add_plugin.add_argument("plugin", help="A plugin folder, or the git repository of a plugin, such as https://github.com/haylen-org/<plugin>.git.")
     add_plugin.add_argument("--ref", help="Branch, tag or commit of the repository, its default branch otherwise.")
+    add_plugin.add_argument("--reference", action="store_true", help='List the folder or the repository in "app.json" as where the plugin comes from, instead of copying it into the app.')
     add_plugin.add_argument("--app", default=".", help="The app folder, the current folder by default.")
     add_plugin.set_defaults(handler=command_plugin_add)
-    remove_plugin = actions.add_parser("remove", parents=[common], help='Delete a plugin from "plugins" of an app and from its "app.json".')
+    remove_plugin = actions.add_parser("remove", parents=[common], help='Delete a plugin from "app.json" of an app, with its copy in "plugins".')
     remove_plugin.add_argument("id", help="Id of the plugin.")
     remove_plugin.add_argument("--app", default=".", help="The app folder, the current folder by default.")
     remove_plugin.set_defaults(handler=command_plugin_remove)

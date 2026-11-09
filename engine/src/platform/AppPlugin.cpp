@@ -7,7 +7,7 @@
 
 namespace haylen::platform {
 
-AppPlugin AppPlugin::read(const io::Package& package, std::string_view id, const core::Json& values) {
+AppPlugin AppPlugin::read(const io::Package& package, std::string_view id, const core::Json& parameters) {
     const std::string path = io::Path::plugin(id, io::Path::kPluginManifestFile);
     const core::Json manifest = core::Json::parse(package.readText(path), nullptr, false);
     if (!manifest.is_object()) {
@@ -18,12 +18,12 @@ AppPlugin AppPlugin::read(const io::Package& package, std::string_view id, const
         throw std::runtime_error("The file \"" + path + "\" of the package has no version.");
     }
 
-    AppPlugin plugin{.id = std::string(id), .version = version->get<std::string>(), .config = values};
-    const auto parameters = manifest.find("parameters");
-    if (parameters == manifest.end() || !parameters->is_object()) {
+    AppPlugin plugin{.id = std::string(id), .version = version->get<std::string>(), .config = parameters};
+    const auto declared = manifest.find("parameters");
+    if (declared == manifest.end() || !declared->is_object()) {
         return plugin;
     }
-    for (const auto& [name, parameter] : parameters->items()) {
+    for (const auto& [name, parameter] : declared->items()) {
         if (parameter.is_object() && parameter.contains("default") && !plugin.config.contains(name)) {
             plugin.config[name] = parameter.at("default");
         }

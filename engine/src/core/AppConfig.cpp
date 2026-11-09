@@ -221,15 +221,51 @@ void AppConfig::readPlugins(const Json& section, AppConfig& config) {
     if (!section.is_object()) {
         throw std::invalid_argument("The \"plugins\" section of \"app.json\" must be an object of plugins by id.");
     }
-    for (const auto& [id, values] : section.items()) {
+    for (const auto& [id, entry] : section.items()) {
         if (!isPluginId(id)) {
             throw std::invalid_argument("The plugin id \"" + id + "\" in \"app.json\" is not in \"dash-case\", such as \"cloud-analytics\".");
         }
-        if (!values.is_object()) {
-            throw std::invalid_argument("The plugin \"" + id + "\" in \"app.json\" must have an object of parameter values.");
-        }
+        config.plugins[id] = readPlugin(id, entry);
     }
-    config.plugins = section;
+}
+
+AppConfig::Plugin AppConfig::readPlugin(const std::string& id, const Json& entry) {
+    if (!entry.is_object()) {
+        throw std::invalid_argument("The plugin \"" + id + "\" in \"app.json\" must be an object with the optional keys \"path\", \"git\", \"ref\" and \"parameters\".");
+    }
+    JsonValidator::requireKnownKeys(entry, {"path", "git", "ref", "parameters"}, "the plugin \"" + id + "\" of \"app.json\"");
+
+    Plugin plugin;
+    readPluginText(entry, id, "path", plugin.path);
+    readPluginText(entry, id, "git", plugin.git);
+    readPluginText(entry, id, "ref", plugin.ref);
+    if (!plugin.path.empty() && !plugin.git.empty()) {
+        throw std::invalid_argument("The plugin \"" + id + "\" in \"app.json\" names both a \"path\" and a \"git\" repository. Keep the one that the plugin comes from.");
+    }
+    if (!plugin.ref.empty() && plugin.git.empty()) {
+        throw std::invalid_argument("The \"ref\" of the plugin \"" + id + "\" in \"app.json\" picks a branch, tag or commit of a git repository, so it needs \"git\".");
+    }
+
+    const auto parameters = entry.find("parameters");
+    if (parameters == entry.end()) {
+        return plugin;
+    }
+    if (!parameters->is_object()) {
+        throw std::invalid_argument("The \"parameters\" of the plugin \"" + id + "\" in \"app.json\" must be an object of parameter values.");
+    }
+    plugin.parameters = *parameters;
+    return plugin;
+}
+
+void AppConfig::readPluginText(const Json& entry, const std::string& id, const char* key, std::string& target) {
+    const auto found = entry.find(key);
+    if (found == entry.end()) {
+        return;
+    }
+    if (!found->is_string() || found->get_ref<const std::string&>().empty()) {
+        throw std::invalid_argument("The \"" + std::string(key) + "\" of the plugin \"" + id + "\" in \"app.json\" must be a text.");
+    }
+    target = found->get<std::string>();
 }
 
 bool AppConfig::isContentPattern(std::string_view pattern) noexcept {
@@ -269,11 +305,17 @@ void AppConfig::expandGroups(const io::Package& package, Content& content) {
 AppConfig AppConfig::fromPackage(const io::Package& package) {
     AppConfig config = fromJson(Json::parse(package.readText(io::Path::kAppConfigFile)));
     expandGroups(package, config.content);
-    for (const auto& [id, values] : config.plugins.items()) {
+    for (const auto& [id, plugin] : config.plugins) {
         const std::string manifest = io::Path::plugin(id, io::Path::kPluginManifestFile);
-        if (!package.exists(manifest)) {
-            throw std::invalid_argument("The plugin \"" + id + "\" in \"app.json\" has no \"" + manifest + "\" in the package.");
+        if (package.exists(manifest)) {
+            continue;
         }
+
+        // The package holds a referenced plugin only when `haylen.py` made it, so a folder that the player runs directly lacks it.
+        if (!plugin.path.empty() || !plugin.git.empty()) {
+            throw std::invalid_argument("The plugin \"" + id + "\" in \"app.json\" comes from a \"path\" or a \"git\" repository, so the package has no \"" + manifest + "\". Run the app with \"haylen run\", which places every plugin in the package wherever it comes from.");
+        }
+        throw std::invalid_argument("The plugin \"" + id + "\" in \"app.json\" has no \"" + manifest + "\" in the package.");
     }
     return config;
 }
@@ -608,8 +650,25 @@ Json AppConfig::toJson() const {
     if (content.updates) {
         contentJson["updates"] = {{"baseUrl", content.updates->baseUrl}, {"channel", content.updates->channel}, {"enabled", content.updates->enabled}};
     }
+
+    Json pluginsJson = Json::object();
+    for (const auto& [id, plugin] : plugins) {
+        Json written = {{"parameters", plugin.parameters}};
+        if (!plugin.path.empty()) {
+            written["path"] = plugin.path;
+        }
+
+        if (!plugin.git.empty()) {
+            written["git"] = plugin.git;
+        }
+
+        if (!plugin.ref.empty()) {
+            written["ref"] = plugin.ref;
+        }
+        pluginsJson[id] = std::move(written);
+    }
     return {
-        {"name", name}, {"identifier", identifier}, {"version", version}, {"description", description}, {"company", company}, {"copyright", copyright}, {"website", website}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", graphics::Viewport::scalingPolicyName(scaling)}}}, {"orientation", platform::Window::orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", splashJson}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", audio::Session::categoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}, {"background", audioSession.background}, {"latency", audio::OutputSettings::latencyName(audioOutput.latency)}, {"limiter", audioOutput.limiter}}}, {"input", {{"mouseAsTouch", input.mouseAsTouch}, {"touchAsMouse", input.touchAsMouse}, {"scrollSpeed", JsonNumber::fromFloat(input.scrollSpeed)}}}, {"ui", {{"scaleMode", std::string(ui::Scaling::modeName(uiScaling.mode))}, {"scale", JsonNumber::fromFloat(uiScaling.factor)}}}, {"debug", debugJson}, {"content", contentJson}, {"autoload", autoloads}, {"native", native}, {"plugins", plugins},
+        {"name", name}, {"identifier", identifier}, {"version", version}, {"description", description}, {"company", company}, {"copyright", copyright}, {"website", website}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", graphics::Viewport::scalingPolicyName(scaling)}}}, {"orientation", platform::Window::orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", splashJson}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", audio::Session::categoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}, {"background", audioSession.background}, {"latency", audio::OutputSettings::latencyName(audioOutput.latency)}, {"limiter", audioOutput.limiter}}}, {"input", {{"mouseAsTouch", input.mouseAsTouch}, {"touchAsMouse", input.touchAsMouse}, {"scrollSpeed", JsonNumber::fromFloat(input.scrollSpeed)}}}, {"ui", {{"scaleMode", std::string(ui::Scaling::modeName(uiScaling.mode))}, {"scale", JsonNumber::fromFloat(uiScaling.factor)}}}, {"debug", debugJson}, {"content", contentJson}, {"autoload", autoloads}, {"native", native}, {"plugins", pluginsJson},
     };
 }
 

@@ -116,7 +116,7 @@ var Module = {
             (async () => {
                 for (const { plugin, load } of plugins) {
                     try {
-                        await load(Module.haylen.createPluginContext(plugin.id, plugin.config));
+                        await load(Module.haylen.createPluginContext(plugin.id, plugin.parameters));
                     } catch (error) {
                         fail("The plugin \"" + plugin.id + "\" could not be loaded.", String(error.message || error));
                         return;

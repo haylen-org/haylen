@@ -165,7 +165,7 @@ A C++ app is a CMake project, so compare these files with the C++ reference as w
 
 ## Plugins
 
-A plugin lives in `plugins/<id>/` of the app, or in a repository of its own. Compare it with the reference plugin made with the same id and features:
+A plugin lives in `plugins/<id>/` of the app, in a folder anywhere on disk or in a repository of its own, which `app.json` references. Compare it with the reference plugin made with the same id and features:
 
 ```sh
 diff -ru /tmp/reference-plugin ~/apps/my-game/plugins/my-plugin
@@ -181,7 +181,28 @@ diff -ru /tmp/reference-plugin ~/apps/my-game/plugins/my-plugin
 | `native/` | `CMakeLists.txt` and the init function of the desktop library. | Keep your code. |
 | `.gitignore`, `.editorconfig`, `.clang-format` | Diff them. | Take the reference. |
 
-Then list the plugins of the app, which reports each problem that keeps one from building:
+### The plugins of app.json
+
+Every entry of the `plugins` section of `app.json` is an object whose parameter values sit under `parameters`, next to the optional `path`, `git` and `ref` that say where the plugin comes from, as [app.json](../platform/plugins.md#appjson) describes. An entry that holds its values directly fails with `The key "plugins.<id>.<name>" is not a key of a plugin entry`, so move the values into `parameters`:
+
+```json
+{
+    "plugins": {
+        "ads": {"parameters": {"iosAppId": "ios-app-1234", "testMode": true}}
+    }
+}
+```
+
+A plugin that the app keeps as a copy in `plugins/<id>/`, but that lives in a folder or a repository of its own, can become a reference instead, so the app follows the plugin without copying it again. Run `haylen plugin add` with the folder or the repository and `--reference`, which writes the entry with the values that the app gives and deletes the copy:
+
+```sh
+haylen plugin add ~/plugins/my-plugin --reference --app ~/apps/my-game
+haylen plugin add https://github.com/haylen-org/share.git --ref 1.0.0 --reference --app ~/apps/my-game
+```
+
+An app with a web project of its own takes `loader.js` of the reference, which hands each plugin module the `parameters` of its entry in `config.json`.
+
+Then list the plugins of the app, which reports each problem that keeps one from building and where each plugin comes from:
 
 ```sh
 haylen plugin list --app ~/apps/my-game

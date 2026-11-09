@@ -54,8 +54,8 @@ final class HaylenPlugins {
                 continue;
             }
             JSONObject entry = declared.get(id);
-            JSONObject config = entry != null ? entry.optJSONObject("config") : null;
-            HaylenPluginContext context = new HaylenPluginContext(id, application, config != null ? config : new JSONObject());
+            JSONObject parameters = entry != null ? entry.optJSONObject("parameters") : null;
+            HaylenPluginContext context = new HaylenPluginContext(id, application, parameters != null ? parameters : new JSONObject());
             try {
                 plugin.onLoad(context);
             } catch (Exception error) {

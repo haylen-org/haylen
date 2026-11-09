@@ -1,5 +1,5 @@
 # Builds the protected release of an app package with the content tool and lays out what ships with the app, for haylen_add_app with HAYLEN_PROTECTED_RELEASE.
-# Reads TOOL, PACKAGE, IDENTIFIER, KEYS, PROFILE, BUILD, RELEASE, PREVIOUS, CACHE, SHIPPED, PACKS, SERVER, SHARD_TARGET, BOOT and STAMP. PREVIOUS names the folder of the last release that shipped, or is empty. SHARD_TARGET is the size in bytes that the shards aim for, or empty for the default of the content tool. BOOT is empty except for web pages, which download the manifests and the app domain it holds before the app starts and stream the rest of RELEASE.
+# Reads TOOL, ENTRIES, PATHS, PACKAGE, IDENTIFIER, KEYS, PROFILE, BUILD, RELEASE, PREVIOUS, CACHE, SHIPPED, PACKS, SERVER, SHARD_TARGET, BOOT and STAMP. ENTRIES are the entries of the package, separated by "|", which PATHS name on disk in the same order, and PACKAGE is the folder that they are staged in, since the plugins of the package may lie anywhere. PREVIOUS names the folder of the last release that shipped, or is empty. SHARD_TARGET is the size in bytes that the shards aim for, or empty for the default of the content tool. BOOT is empty except for web pages, which download the manifests and the app domain it holds before the app starts and stream the rest of RELEASE.
 
 # The keys of an app are created once on the machine of its developer, while continuous integration receives them and never creates them, since every release of an app needs the same keys.
 if(NOT EXISTS "${KEYS}/keys.json")
@@ -9,6 +9,18 @@ if(NOT EXISTS "${KEYS}/keys.json")
   execute_process(COMMAND "${TOOL}" keys create "${KEYS}" --identifier "${IDENTIFIER}" COMMAND_ERROR_IS_FATAL ANY)
   message(WARNING "Created the keys of the protected releases of \"${IDENTIFIER}\" in \"${KEYS}\". Back up this folder, since every release of the app needs its keys, and give continuous integration a copy through \"HAYLEN_KEYS_DIR\".")
 endif()
+
+# The content tool reads a package folder, which holds every plugin at `plugins/<id>` only in this copy.
+file(REMOVE_RECURSE "${PACKAGE}")
+string(REPLACE "|" ";" entries "${ENTRIES}")
+string(REPLACE "|" ";" paths "${PATHS}")
+foreach(entry path IN ZIP_LISTS entries paths)
+  if(NOT EXISTS "${path}")
+    continue()
+  endif()
+  get_filename_component(parent "${PACKAGE}/${entry}" DIRECTORY)
+  file(COPY "${path}" DESTINATION "${parent}" PATTERN ".DS_Store" EXCLUDE)
+endforeach()
 
 # A new release reuses the shards of the one before it, the one that shipped when PREVIOUS names it, so an unchanged asset keeps its shard byte for byte.
 set(staging "${RELEASE}.new")

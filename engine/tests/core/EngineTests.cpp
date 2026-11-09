@@ -335,25 +335,40 @@ TEST(AppConfigTest, DeliversThePreloadGroupsThatRulesName) {
 }
 
 TEST(AppConfigTest, ReadsThePluginsOfTheApp) {
-    const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({"plugins": {"ads": {"testMode": true, "placements": ["top"]}, "cloud-analytics": {}}})"));
-    EXPECT_EQ(config.plugins.size(), 2U);
-    EXPECT_EQ(config.plugins.at("ads").at("testMode"), true);
-    EXPECT_EQ(config.plugins.at("cloud-analytics"), core::Json::object());
+    const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({"plugins": {"ads": {"parameters": {"testMode": true, "placements": ["top"]}}, "camera": {"path": "../plugins/camera"}, "share": {"git": "https://example.com/share.git", "ref": "1.0.0"}, "cloud-analytics": {}}})"));
+    EXPECT_EQ(config.plugins.size(), 4U);
+    EXPECT_EQ(config.plugins.at("ads").parameters.at("testMode"), true);
+    EXPECT_EQ(config.plugins.at("camera").path, "../plugins/camera");
+    EXPECT_EQ(config.plugins.at("camera").parameters, core::Json::object());
+    EXPECT_EQ(config.plugins.at("share").git, "https://example.com/share.git");
+    EXPECT_EQ(config.plugins.at("share").ref, "1.0.0");
+    EXPECT_TRUE(config.plugins.at("cloud-analytics").path.empty() && config.plugins.at("cloud-analytics").git.empty());
     EXPECT_EQ(core::AppConfig::fromJson(config.toJson()).plugins, config.plugins);
     EXPECT_TRUE(core::AppConfig::fromJson(core::Json::object()).plugins.empty());
 
-    // The section is an object of parameter objects, keyed by ids in `dash-case`, which also keeps every id inside the plugins folder of the package.
+    // The section is an object of plugin entries, keyed by ids in `dash-case`, which also keeps every id inside the plugins folder of the package.
     for (const char* document : {R"({"plugins": ["ads"]})", R"({"plugins": {"ads": true}})", R"({"plugins": {"Ads": {}}})", R"({"plugins": {"a--ds": {}}})", R"({"plugins": {"ads-": {}}})", R"({"plugins": {"2d-kit": {}}})", R"({"plugins": {"../ads": {}}})", R"({"plugins": {"": {}}})"}) {
         EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(document)), std::invalid_argument) << document;
     }
-    try {
-        (void)core::AppConfig::fromJson(core::Json::parse(R"({"plugins": {"ads": []}})"));
-        FAIL() << "A plugin needs an object of parameter values.";
-    } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "The plugin \"ads\" in \"app.json\" must have an object of parameter values.");
-    }
+    // clang-format off
+    const auto failure = [](const char* document) {
+        try {
+            (void)core::AppConfig::fromJson(core::Json::parse(document));
+        } catch (const std::invalid_argument& error) {
+            return std::string(error.what());
+        }
+        return std::string();
+    };
+    // clang-format on
+    EXPECT_EQ(failure(R"({"plugins": {"ads": []}})"), "The plugin \"ads\" in \"app.json\" must be an object with the optional keys \"path\", \"git\", \"ref\" and \"parameters\".");
+    EXPECT_EQ(failure(R"({"plugins": {"ads": {"testMode": true}}})"), "Unknown key \"testMode\" in the plugin \"ads\" of \"app.json\".");
+    EXPECT_EQ(failure(R"({"plugins": {"ads": {"path": 3}}})"), "The \"path\" of the plugin \"ads\" in \"app.json\" must be a text.");
+    EXPECT_EQ(failure(R"({"plugins": {"ads": {"git": ""}}})"), "The \"git\" of the plugin \"ads\" in \"app.json\" must be a text.");
+    EXPECT_EQ(failure(R"({"plugins": {"ads": {"path": "../ads", "git": "https://example.com/ads.git"}}})"), "The plugin \"ads\" in \"app.json\" names both a \"path\" and a \"git\" repository. Keep the one that the plugin comes from.");
+    EXPECT_EQ(failure(R"({"plugins": {"ads": {"ref": "main"}}})"), "The \"ref\" of the plugin \"ads\" in \"app.json\" picks a branch, tag or commit of a git repository, so it needs \"git\".");
+    EXPECT_EQ(failure(R"({"plugins": {"ads": {"parameters": []}}})"), "The \"parameters\" of the plugin \"ads\" in \"app.json\" must be an object of parameter values.");
 
-    // Every plugin of `app.json` has its manifest in the package.
+    // Every plugin of `app.json` has its manifest in the package, which only `haylen.py` makes for a plugin that `app.json` references elsewhere.
     io::MemoryPackage package("app", {{"app.json", test::TestFiles::bytes(R"({"plugins": {"ads": {}}})")}});
     try {
         (void)core::AppConfig::fromPackage(package);
@@ -363,6 +378,16 @@ TEST(AppConfigTest, ReadsThePluginsOfTheApp) {
     }
     package.setFile("plugins/ads/plugin.json", test::TestFiles::bytes(R"({"id": "ads"})"));
     EXPECT_EQ(core::AppConfig::fromPackage(package).plugins.size(), 1U);
+
+    package.setFile("app.json", test::TestFiles::bytes(R"({"plugins": {"ads": {}, "camera": {"path": "../plugins/camera"}}})"));
+    try {
+        (void)core::AppConfig::fromPackage(package);
+        FAIL() << "A folder package lacks a referenced plugin.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_STREQ(error.what(), "The plugin \"camera\" in \"app.json\" comes from a \"path\" or a \"git\" repository, so the package has no \"plugins/camera/plugin.json\". Run the app with \"haylen run\", which places every plugin in the package wherever it comes from.");
+    }
+    package.setFile("plugins/camera/plugin.json", test::TestFiles::bytes(R"({"id": "camera"})"));
+    EXPECT_EQ(core::AppConfig::fromPackage(package).plugins.size(), 2U);
 }
 
 TEST(PluginRegistryTest, FindsPluginsByTypeAndName) {

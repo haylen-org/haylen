@@ -1009,8 +1009,8 @@ std::vector<platform::AppPlugin> Engine::getAppPlugins() const {
     const EngineState& current = *state;
     const std::vector<std::string> loaded = getNativePlugins();
     std::vector<platform::AppPlugin> all;
-    for (const auto& [id, values] : current.config.plugins.items()) {
-        platform::AppPlugin plugin = platform::AppPlugin::read(*current.package, id, values);
+    for (const auto& [id, entry] : current.config.plugins) {
+        platform::AppPlugin plugin = platform::AppPlugin::read(*current.package, id, entry.parameters);
         plugin.native = std::ranges::binary_search(loaded, id);
         all.push_back(std::move(plugin));
     }

@@ -23,9 +23,9 @@ A plugin is a folder with three kinds of content:
 
 A plugin needs only the folders of the platforms it supports. The paths in `plugin.json` are relative to the plugin folder and stay inside it, and `haylen.py` checks that each one exists.
 
-An app lists the plugins it uses in its `app.json`. Then `haylen.py` checks them, puts their Lua code into the package, and brings their native parts into the project of each platform through its generated folder `haylen/`. So an app still never compiles the engine.
+An app lists the plugins it uses in its `app.json`, each from its folder `plugins/<id>/`, from a folder anywhere on disk or from a git repository. Then `haylen.py` finds and checks them, puts their Lua code into the package, and brings their native parts into the project of each platform through its generated folder `haylen/`. So an app still never compiles the engine.
 
-These plugins are distributable folders. They are not the engine plugins of `haylen::plugins`, which are the C++ subsystems that make up the engine. Plugins that bring third-party SDKs, such as ads, analytics, crash reporting, sign-in or purchases, live in their own repositories under [haylen-org](https://github.com/haylen-org). Apps add them with `haylen.py plugin add` and the address of the repository. The engine repository holds no third-party SDK. Instead, [the demo plugin of the test project](#demo-plugin) uses every capability of a plugin, built on the APIs of each platform alone.
+These plugins are distributable folders. They are not the engine plugins of `haylen::plugins`, which are the C++ subsystems that make up the engine. Plugins that bring third-party SDKs, such as ads, analytics, crash reporting, sign-in or purchases, live in their own repositories under [haylen-org](https://github.com/haylen-org). Apps add them with `haylen.py plugin add` and the address of the repository, or reference the repository in `app.json`. The engine repository holds no third-party SDK. Instead, [the demo plugin of the test project](#demo-plugin) uses every capability of a plugin, built on the APIs of each platform alone.
 
 ## Make a plugin
 
@@ -96,15 +96,16 @@ The usage descriptions are parameters of the plugin: `cameraUsage`, `microphoneU
 haylen plugin list
 haylen plugin add ads --app ~/apps/my-game
 haylen plugin add https://example.com/plugins/ads.git --ref 1.2.0 --app ~/apps/my-game
+haylen plugin add ~/plugins/camera --reference --app ~/apps/my-game
 haylen plugin list --app ~/apps/my-game
 haylen plugin remove ads --app ~/apps/my-game
 ```
 
 | Command | What it does |
 | --- | --- |
-| `plugin add <folder\|repository> [--ref] [--app]` | Copies a plugin into `plugins/<id>/` of the app, replacing an earlier copy, without its git history and build outputs. The source is a plugin folder, or the root of a plugin repository at the branch, tag or commit that `--ref` names, the default branch otherwise. The copy keeps the `.gitignore`, `.editorconfig` and `.clang-format` of the plugin, which never reach the package. It lists the plugin in `app.json`, with the default of every parameter that has one and an empty text for every required parameter, which the developer fills in. It keeps the values that the app already gives, and names the plugins it requires that the app does not list yet. |
-| `plugin remove <id> [--app]` | Deletes `plugins/<id>/` of the app and its entry in `app.json`. |
-| `plugin list [--app]` | Lists the plugins of the app with their version, their platforms and their status. The status is `ok`, the problems that keep a plugin from building for any of its platforms, or a folder that `app.json` does not list. |
+| `plugin add <folder\|repository> [--ref] [--reference] [--app]` | Copies a plugin into `plugins/<id>/` of the app, replacing an earlier copy, without its git history and build outputs. The source is a plugin folder, or the root of a plugin repository at the branch, tag or commit that `--ref` names, the default branch otherwise. The copy keeps the `.gitignore`, `.editorconfig` and `.clang-format` of the plugin, which never reach the package. With `--reference`, it copies nothing and lists the folder as `path` or the repository as `git` and `ref` instead, as [references](#references) describes, and it deletes an earlier copy. It lists the plugin in `app.json`, with the default of every parameter that has one and an empty text for every required parameter, which the developer fills in. It keeps the values that the app already gives, and names the plugins it requires that the app does not list yet. |
+| `plugin remove <id> [--app]` | Deletes the entry of the plugin in `app.json` and its copy in `plugins/<id>/` of the app, while a folder or a repository that the app references stays as it is. |
+| `plugin list [--app]` | Lists the plugins of the app with their version, their platforms, their status and where each one comes from. The status is `Ready`, the problems that keep a plugin from building for any of its platforms, or a folder that `app.json` does not list. |
 | `plugin new <folder> [--id] [--with <features>]` | Makes a plugin, as [create it](#create-it) describes, with the features that `--with` names, separated by commas or given one per `--with`. The option `--id` defaults to the folder name, and it must match it. |
 
 The option `--app` takes an app folder or a sample path from `samples/`, and it defaults to the current folder. The option `--ref` with a plugin folder fails with `The option "--ref" picks a branch, tag or commit of a git repository, and a plugin folder has none. Leave the option out for a folder.`.
@@ -146,7 +147,7 @@ The manifest says what the plugin is, which values the app gives it, and what ea
 
 | Key | Required | Value |
 | --- | --- | --- |
-| `id` | Yes | The id in dash-case, which is the name of the plugin folder. |
+| `id` | Yes | The id in dash-case, which is the key of the plugin in the `plugins` of `app.json` and the name of its folder in the package. |
 | `name` | Yes | The name that people read. |
 | `version` | Yes | One to three numbers separated by dots, such as `1.2.0`. |
 | `description` | Yes | What the plugin does, in one sentence. |
@@ -250,9 +251,13 @@ The library takes the id of the plugin as its name. Its init function takes the 
 
 ### Validation
 
-Before `run` builds for a platform, `haylen.py` loads every plugin that `app.json` lists from `plugins/` of the app. It checks each `plugin.json` against this format, and the values of the app against its parameters for that platform. The player of this machine checks them for this desktop. The tool fails with every problem at once, each with its file and its key. These are the problems:
+Before `run` builds for a platform, `haylen.py` loads every plugin that `app.json` lists from where its entry takes it. It checks each `plugin.json` against this format, and the values of the app against its parameters for that platform. The player of this machine checks them for this desktop. The tool fails with every problem at once, each with its file and its key. These are the problems:
 
-- an id whose folder has no `plugin.json`;
+- an entry with an unknown key, a `path`, `git` or `ref` that is no text, `parameters` that are no object, both a `path` and a `git` repository, or a `ref` without `git`;
+- an id whose folder, or the folder or repository that its entry names, has no `plugin.json`;
+- a `plugin.json` whose `id` differs from the key of its entry;
+- a referenced plugin whose app still holds a copy in `plugins/<id>/`;
+- a repository that git cannot fetch at its `ref`;
 - any problem of a `plugin.json`;
 - a plugin that `requires` another one that `app.json` does not list;
 - a value for a parameter that the plugin does not declare;
@@ -273,20 +278,44 @@ Plugins load in the order of `app.json`, except that every plugin loads after th
 ```json
 {
     "plugins": {
-        "ads": {"iosAppId": "ios-app-1234", "androidAppId": "android-app-1234", "testMode": true},
-        "cloud": {"servicesPlist": "platform/cloud/Services-Info.plist", "servicesJson": "platform/cloud/services.json"},
-        "cloud-analytics": {}
+        "ads": {"parameters": {"iosAppId": "ios-app-1234", "androidAppId": "android-app-1234", "testMode": true}},
+        "cloud": {"parameters": {"servicesPlist": "platform/cloud/Services-Info.plist", "servicesJson": "platform/cloud/services.json"}},
+        "cloud-analytics": {},
+        "camera": {"path": "../plugins/camera", "parameters": {"cameraUsage": "Scans codes."}},
+        "share": {"git": "https://github.com/haylen-org/share.git", "ref": "1.0.0"}
     }
 }
 ```
 
-The key `plugins` maps the id of every plugin that the app uses to the values of its parameters. Each id names the folder `plugins/<id>/` of the app. The values are plain JSON values, and a parameter that the app leaves out takes its default. The README of every plugin lists its parameters.
+The key `plugins` maps the id of every plugin that the app uses to its entry, an object with four optional keys:
+
+| Key | Value |
+| --- | --- |
+| `path` | The folder of the plugin, absolute or relative to the app folder. |
+| `git` | The address of the git repository of the plugin, which holds `plugin.json` at its root. A local repository is a path, absolute or relative to the app folder. |
+| `ref` | The branch, tag or commit of `git`, `HEAD` of the repository when it is left out. |
+| `parameters` | The values of the parameters of the plugin. |
+
+An entry without `path` and `git` is the folder `plugins/<id>/` of the app. The `id` of the `plugin.json` equals the key of its entry. The values of `parameters` are plain JSON values, and a parameter that the app leaves out takes its default. The README of every plugin lists its parameters.
 
 A `file` parameter is a path relative to the app folder. Files such as `Services-Info.plist` and `services.json` belong outside `source/` and `content/`, for example under `platform/`. So they never ship in the package, and `haylen.py` brings them into the projects that need them.
 
+### References
+
+A plugin that lives outside the app, such as one that several apps share or one that its author works on next to an app, stays where it is. The entry of `app.json` names its folder with `path`, or its repository with `git` and `ref`. The command `plugin add` with `--reference` writes such an entry, with the path relative to the app folder:
+
+```sh
+haylen plugin add ../plugins/camera --reference
+haylen plugin add https://github.com/haylen-org/share.git --ref 1.0.0 --reference
+```
+
+Every command of `haylen.py` resolves the references before it builds. It fetches each repository at its `ref` into `build/plugin-repositories/`, in a checkout of its own for each address and ref, once per command. So a branch follows the repository, a tag stays as it was tagged, and the checkout of a full commit never fetches again. A reference and a copy of the same plugin in `plugins/<id>/` of the app stop the build, since a player that runs the folder directly would take the copy.
+
 ### The package
 
-For every plugin that `app.json` lists, the package carries `plugins/<id>/plugin.json` and `plugins/<id>/source/`, next to `app.json`, `source/` and `content/`. The command `haylen.py package`, the package copies of the Apple and Android projects, the Android package index and the `app.zip` of the web all hold them. Nothing else of a plugin folder ships in the package: its native parts reach the platform projects, and its README stays behind.
+For every plugin that `app.json` lists, the package carries `plugins/<id>/plugin.json` and `plugins/<id>/source/`, next to `app.json`, `source/` and `content/`, wherever the plugin comes from. So the runtime never resolves a reference. The command `haylen.py package`, the package copies of the Apple and Android projects, the Android package index and the `app.zip` of the web all hold them. Nothing else of a plugin folder ships in the package: its native parts reach the platform projects, and its README stays behind.
+
+The command `run` on this machine runs the player on a copy of the package in the build folder of the app, which it brings up to date before each run. Its development server watches the folders of the referenced plugins too, and it pushes their saved files under `plugins/<id>/`, as [hot reload](../tools/distribution.md#run) does for the files of the app. A player that runs an app folder directly, such as `haylen --dev <folder>`, finds no referenced plugin there and stops with `The plugin "camera" in "app.json" comes from a "path" or a "git" repository, so the package has no "plugins/camera/plugin.json". Run the app with "haylen run", which places every plugin in the package wherever it comes from.`.
 
 ### What each project receives
 
@@ -313,9 +342,9 @@ The manifest of every module merges into the app, with its permissions, its `dev
 
 #### Web
 
-The tool `haylen.py` copies the `web/` folder of every plugin with a web part to `plugins/<id>/` of the site. It lists `{id, version, module, config}` in `config.json`, where `module` is the path of its module in the site and `config` holds the values of its parameters with the defaults applied.
+The tool `haylen.py` copies the `web/` folder of every plugin with a web part to `plugins/<id>/` of the site. It lists `{id, version, module, parameters}` in `config.json`, where `module` is the path of its module in the site and `parameters` holds the values of its parameters with the defaults applied.
 
-The loader imports every module while the runtime downloads. Once the runtime exists, and before the app starts, it calls the default export of each module, `load(context)`, in load order. It passes the context that `Module.haylen.createPluginContext(id, config)` of the runtime makes, and it waits for the promise that `load` may return. A module that fails to import, or a `load` that fails, keeps the app from starting and shows the error on the loading page. A page served with `Cross-Origin-Opener-Policy: same-origin` cuts the popups of screens off from the app. The command `check --coop same-origin` reports that for the plugins whose modules register screens.
+The loader imports every module while the runtime downloads. Once the runtime exists, and before the app starts, it calls the default export of each module, `load(context)`, in load order. It passes the context that `Module.haylen.createPluginContext(id, config)` of the runtime makes with the `parameters` of the plugin as its `config`, and it waits for the promise that `load` may return. A module that fails to import, or a `load` that fails, keeps the app from starting and shows the error on the loading page. A page served with `Cross-Origin-Opener-Policy: same-origin` cuts the popups of screens off from the app. The command `check --coop same-origin` reports that for the plugins whose modules register screens.
 
 #### Native libraries
 
@@ -323,7 +352,7 @@ The [`native` section](#the-native-section) of a plugin joins the native librari
 
 #### C++ apps
 
-C++ apps take plugins the same way, with the parts assembled where their builds need them. The function `haylen_add_app` puts `plugins/<id>/plugin.json` and `plugins/<id>/source/` of every plugin that `app.json` lists into the package of every platform, and `run` brings the native parts:
+C++ apps take plugins the same way, with the parts assembled where their builds need them. The command `run` resolves the plugins of `app.json` and writes the folder of each one into `haylen-plugin-folders.cmake` of the build folder, which it names to CMake with `HAYLEN_PLUGIN_FOLDERS_FILE`. The function `haylen_add_app` puts `plugin.json` and `source/` of every plugin from that folder into the package of every platform at `plugins/<id>/`, and a protected release builds from a copy of the package with every plugin in place. A build without that file takes each plugin from `plugins/<id>/` of the app, and stops at a reference with a sentence that says to build with `haylen run`. The command `run` also brings the native parts:
 
 - **Android.** The library of the app goes into the Android project of the app. The command `run` prepares that project like the project of a Lua app, with the modules, the Gradle plugins, the placeholders and `haylen-plugins.json` of the plugins.
 - **Web.** The command `run` copies the `web/` folder of every plugin with a web part to `plugins/<id>/` of the site, and lists them in `plugins.json` next to the page. The script of the page imports the modules and calls `load(context)` of each one in load order before the app starts, as the loader of the web template does.
@@ -1611,7 +1640,7 @@ A plugin lives in a repository of its own, so many apps share it. Plugins that b
 2. **Write the README.** The `README.md` documents the complete Lua API with examples, the setup on each platform and every parameter.
 3. **Declare what the SDK needs.** The `plugin.json` declares the SDK and what it needs from the project: its Swift package pinned to one exact version and its frameworks, its Gradle dependencies, the usage descriptions, entitlements, manifest entries and privacy declarations. Parameters carry the keys of the app, such as `iosAppId` and `androidAppId`. Every native handler checks its [requirements](#requirements) before it calls the SDK.
 4. **Raise the version.** The `version` of `plugin.json` tells apps which release they hold, and `handle.version` and `platform.plugins()` report it while the app runs.
-5. **Tag a release.** Apps add the plugin with `haylen plugin add <repository> --ref <tag>`. The command copies the root of the repository at that tag, without its git history and its build outputs. Running it again with a new tag replaces the copy and keeps the values that the app gives.
+5. **Tag a release.** Apps add the plugin with `haylen plugin add <repository> --ref <tag>`, or reference the repository at the tag with `--reference`. The command copies the root of the repository at that tag, without its git history and its build outputs. Running it again with a new tag replaces the copy and keeps the values that the app gives.
 
 ```sh
 haylen plugin add https://example.com/plugins/store.git --ref 2.1.0 --app ~/apps/my-game

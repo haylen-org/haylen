@@ -91,7 +91,7 @@ Runs an app. First it compiles the shaders of the app whose sources changed, as 
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `--platform` | none | `macos`, `catalyst`, `ios`, `ios-simulator`, `tvos`, `tvos-simulator`, `visionos`, `visionos-simulator`, `android`, `web`, `windows` or `linux`. Without it, the desktop player runs the app folder in development mode. |
+| `--platform` | none | `macos`, `catalyst`, `ios`, `ios-simulator`, `tvos`, `tvos-simulator`, `visionos`, `visionos-simulator`, `android`, `web`, `windows` or `linux`. Without it, the desktop player runs the package of the app in development mode, from a copy in the build folder of the app that holds every plugin at `plugins/<id>/` wherever `app.json` takes it from. |
 | `--device` | see below | The identifier or name of a simulator or Apple device, or the serial of an Android device, which [devices](#devices) lists. |
 | `--build-only` | off | Builds and checks the app for the platform without launching it, which needs no device, simulator or server. Continuous integration builds the apps of every platform this way. A build-only Android run packs the native libraries of every ABI. |
 | `--host` | `127.0.0.1` | The address that the local web server listens on, and the development server of a Debug run on a device, a simulator or this Mac. The address of this machine on the network lets phones and other computers open the page, which then runs without sound, because browsers offer `AudioWorklet` only to pages served over https or from localhost. Apple devices reach the development server on every address of this machine unless this option names one. |
@@ -272,18 +272,19 @@ The option `--template` generates the `App.xcodeproj` of the Apple template of t
 haylen plugin list
 haylen plugin add ~/plugins/camera-scanner --app ~/apps/my-game
 haylen plugin add https://github.com/haylen-org/background-assets.git --ref main --app ~/apps/my-game
+haylen plugin add ~/plugins/camera-scanner --reference --app ~/apps/my-game
 haylen plugin remove camera-scanner --app ~/apps/my-game
 haylen plugin new ~/plugins/my-plugin --with camera,microphone
 ```
 
 | Command | What it does |
 | --- | --- |
-| `plugin add <folder or repository> [--ref <ref>] [--app <app>]` | Copies a plugin folder, or the root of a plugin repository at the branch, tag or commit that `--ref` names, into `plugins/<id>/` of the app. It lists the plugin in the `plugins` section of `app.json`, with the defaults of its parameters and an empty text for each required one. |
-| `plugin remove <id> [--app <app>]` | Deletes the plugin from `plugins/` and from `app.json`. |
-| `plugin list [--app <app>]` | Lists the plugins of the app with their versions, platforms and the problems that keep them from building. |
+| `plugin add <folder or repository> [--ref <ref>] [--reference] [--app <app>]` | Copies a plugin folder, or the root of a plugin repository at the branch, tag or commit that `--ref` names, into `plugins/<id>/` of the app, or with `--reference` lists the folder or the repository in `app.json` where it is. It lists the plugin in the `plugins` section of `app.json`, with the defaults of its parameters and an empty text for each required one. |
+| `plugin remove <id> [--app <app>]` | Deletes the plugin from `app.json` and its copy from `plugins/`. |
+| `plugin list [--app <app>]` | Lists the plugins of the app with their versions, platforms, where each one comes from and the problems that keep them from building. |
 | `plugin new <folder> [--id <id>] [--with <features>]` | Creates a plugin from `templates/plugin/`, with the camera, microphone, location or banner features of `templates/plugin-features/` that `--with` names. |
 
-The option `--app` is the current folder by default. The [plugin guide](../platform/plugins.md) describes these commands in depth, the `plugins` section of `app.json`, the checks that `run` makes before it builds and the format of a plugin.
+The option `--app` is the current folder by default. The [plugin guide](../platform/plugins.md) describes these commands in depth, the `plugins` section of `app.json` with the folders and repositories that it references, the checks that `run` makes before it builds and the format of a plugin.
 
 ### package
 

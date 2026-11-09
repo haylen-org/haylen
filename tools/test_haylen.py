@@ -1297,7 +1297,7 @@ class RunCppTest(unittest.TestCase):
         (self.scratch / "ios-simulator-debug" / "bin" / "game" / "package.txt").write_text(str(self.scratch / "package"))
         args = haylen.build_parser().parse_args(["run", "project", "--platform", "ios-simulator"])
         simulator = {"udid": "id", "name": "Phone", "state": "Booted"}
-        with mock.patch.object(haylen, "require_host"), mock.patch.object(haylen, "run"), mock.patch.object(haylen, "ensure_shaderc", return_value="shaderc"), mock.patch.object(haylen, "App"), mock.patch.object(haylen, "write_cpp_apple_parts", return_value=False), mock.patch.object(haylen, "apple_simulator", return_value=simulator), mock.patch.object(haylen, "launch_apple", autospec=True) as launch:
+        with mock.patch.object(haylen, "require_host"), mock.patch.object(haylen, "run"), mock.patch.object(haylen, "ensure_shaderc", return_value="shaderc"), mock.patch.object(haylen, "cpp_plugin_options", return_value=[]), mock.patch.object(haylen, "App"), mock.patch.object(haylen, "write_cpp_apple_parts", return_value=False), mock.patch.object(haylen, "apple_simulator", return_value=simulator), mock.patch.object(haylen, "launch_apple", autospec=True) as launch:
             haylen.run_cpp_apple(self.scratch / "project", "game", self.scratch, args)
         self.assertEqual(launch.call_args.args[3], simulator)
         self.assertEqual(launch.call_args.args[4].arguments, [])
@@ -1424,6 +1424,7 @@ class RunCppTest(unittest.TestCase):
             mock.patch.object(haylen, "run"),
             mock.patch.object(haylen, "ensure_shaderc", return_value="shaderc"),
             mock.patch.object(haylen, "android_options", return_value=[]),
+            mock.patch.object(haylen, "cpp_plugin_options", return_value=[]),
             mock.patch.object(haylen, "App"),
             mock.patch.object(haylen, "ensure_artifacts"),
             mock.patch.object(haylen, "project_root", return_value=self.scratch / "root"),
@@ -1473,6 +1474,250 @@ class RunCppTest(unittest.TestCase):
         other = "linux" if haylen.host_name() != "linux" else "windows"
         with self.assertRaisesRegex(haylen.BuildError, f'A C\\+\\+ app runs on .* and not on "{other}".'):
             haylen.run_cpp_app(app, haylen.build_parser().parse_args(["run", str(app), "--platform", other]))
+
+
+class PluginReferenceTest(unittest.TestCase):
+    """The plugins of `app.json` come from the app folder, from a folder anywhere on disk or from a git repository at a ref, and every package and build holds them at `plugins/<id>/` the same way."""
+
+    def setUp(self):
+        self.scratch = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, self.scratch)
+        self.app = self.scratch / "app"
+        (self.app / "source").mkdir(parents=True)
+        (self.app / "source" / "main.lua").write_text("print(1)")
+        quiet = haylen.Terminal(io.StringIO(), io.StringIO(), {})
+        quiet.log = self.scratch / "haylen.log"
+        for patch in (mock.patch.object(haylen, "PLUGIN_REPOSITORIES_DIR", self.scratch / "repositories"), mock.patch.object(haylen, "APPS_DIR", self.scratch / "apps"), mock.patch.object(haylen, "terminal", quiet)):
+            patch.start()
+            self.addCleanup(patch.stop)
+        haylen.fetch_plugin_repository.cache_clear()
+        self.addCleanup(haylen.fetch_plugin_repository.cache_clear)
+
+    def write_plugin(self, folder, identifier, parameters=None):
+        (folder / "source").mkdir(parents=True, exist_ok=True)
+        (folder / "plugin.json").write_text(json.dumps({"id": identifier, "name": "Reference", "version": "1.0.0", "description": "Tests references.", "platforms": ["web", "linux"], "parameters": parameters or {}}))
+        (folder / "source" / "init.lua").write_text(f"return '{identifier}'")
+        (folder / "README.md").write_text("Never in the package.")
+        return folder
+
+    def write_app(self, plugins):
+        (self.app / "app.json").write_text(json.dumps({"name": "References", "identifier": "com.haylen.references", "version": "1.0.0", "plugins": plugins}))
+
+    def git(self, repository, *arguments):
+        identity = ["-c", "user.name=Haylen", "-c", "user.email=tests@haylen.dev", "-c", "commit.gpgsign=false", "-c", "tag.gpgsign=false"]
+        return subprocess.run(["git", "-C", str(repository), *identity, *arguments], check=True, capture_output=True, text=True).stdout.strip()
+
+    def make_repository(self, identifier):
+        repository = self.write_plugin(self.scratch / f"{identifier}-repository", identifier)
+        self.git(repository, "init", "--quiet", "--initial-branch", "main")
+        self.git(repository, "add", ".")
+        self.git(repository, "commit", "--quiet", "-m", "First")
+        self.git(repository, "tag", "1.0.0")
+        return repository
+
+    def failure(self, platform="web"):
+        with self.assertRaises(haylen.BuildError) as raised:
+            haylen.App(self.app, platform)
+        return str(raised.exception)
+
+    def test_plugins_come_from_the_app_a_folder_anywhere_and_a_git_repository_at_a_ref(self):
+        self.write_plugin(self.app / "plugins" / "local", "local", {"greeting": {"type": "string", "default": "Hi", "description": "Greets."}})
+        far = self.write_plugin(self.scratch / "elsewhere" / "far-plugin", "far")
+        absolute = self.write_plugin(self.scratch / "absolute", "absolute")
+        repository = self.make_repository("remote")
+        self.write_app({"local": {"parameters": {"greeting": "Hello"}}, "far": {"path": "../elsewhere/far-plugin"}, "absolute": {"path": str(absolute)}, "remote": {"git": "../remote-repository", "ref": "1.0.0"}})
+
+        app = haylen.App(self.app, "web")
+        folders = {plugin.id: plugin.folder for plugin in app.plugins}
+        self.assertEqual(folders["local"], self.app / "plugins" / "local")
+        self.assertEqual(folders["far"], far)
+        self.assertEqual(folders["absolute"], absolute)
+        self.assertTrue(folders["remote"].is_relative_to(self.scratch / "repositories"), "A repository is fetched into the cache under build.")
+        self.assertEqual(app.plugin_values["local"], {"greeting": "Hello"})
+        files = app.layout.files()
+        self.assertEqual(list(files), ["app.json", "plugins/absolute/plugin.json", "plugins/absolute/source/init.lua", "plugins/far/plugin.json", "plugins/far/source/init.lua", "plugins/local/plugin.json", "plugins/local/source/init.lua", "plugins/remote/plugin.json", "plugins/remote/source/init.lua", "source/main.lua"])
+        self.assertEqual(files["plugins/far/source/init.lua"], far / "source" / "init.lua")
+        self.assertEqual(files["plugins/remote/source/init.lua"].read_text(), "return 'remote'")
+
+        # A branch follows the repository each time a command runs, and the checkout of a full commit never fetches again.
+        (repository / "source" / "init.lua").write_text("return 'moved'")
+        self.git(repository, "commit", "--quiet", "-am", "Moved")
+        commit = self.git(repository, "rev-parse", "HEAD")
+        self.write_app({"remote": {"git": str(repository), "ref": "main"}})
+        haylen.fetch_plugin_repository.cache_clear()
+        self.assertEqual(haylen.App(self.app, "web").layout.files()["plugins/remote/source/init.lua"].read_text(), "return 'moved'")
+        self.write_app({"remote": {"git": str(repository), "ref": commit}})
+        haylen.App(self.app, "web")
+        haylen.fetch_plugin_repository.cache_clear()
+        with mock.patch.object(haylen, "run", side_effect=AssertionError("The checkout of a commit fetched again.")):
+            self.assertEqual(haylen.App(self.app, "web").layout.files()["plugins/remote/source/init.lua"].read_text(), "return 'moved'")
+
+    def test_every_problem_of_the_entries_names_its_key(self):
+        with self.assertRaises(haylen.BuildError) as raised:
+            haylen.read_plugin_references(self.app, {"Camera": {}, "ads": [], "maps": {"path": "../maps", "git": "https://example.com/maps.git"}, "share": {"ref": "main"}, "cloud": {"greeting": "Hi", "path": 3, "parameters": []}})
+        message = str(raised.exception)
+        for sentence in (
+            'The key "plugins.Camera" must be the id of a plugin in "dash-case", such as "camera-scanner".',
+            'The key "plugins.ads" must be an object with the optional keys "path", "git", "ref", "parameters", such as {"path": "../plugins/ads", "parameters": {}}.',
+            'The key "plugins.maps" names both a "path" and a "git" repository. Keep the one that the plugin comes from.',
+            'The key "plugins.share.ref" picks a branch, tag or commit of a git repository, so it needs "git".',
+            'The key "plugins.cloud.greeting" is not a key of a plugin entry, which takes "path", "git", "ref", "parameters".',
+            'The key "plugins.cloud.path" must be a text.',
+            'The key "plugins.cloud.parameters" must be an object of parameter values.',
+        ):
+            self.assertIn(sentence, message)
+        with self.assertRaisesRegex(haylen.BuildError, 'The key "plugins" of .* must map plugin ids to their entries'):
+            haylen.read_plugin_references(self.app, ["ads"])
+
+    def test_a_plugin_that_cannot_be_resolved_stops_the_build_with_its_reason(self):
+        self.write_plugin(self.scratch / "misnamed", "other")
+        self.write_plugin(self.app / "plugins" / "copied", "copied")
+        self.write_plugin(self.scratch / "copied", "copied")
+        repository = self.make_repository("remote")
+        self.write_app({"missing": {}, "absent": {"path": "../absent"}, "misnamed": {"path": "../misnamed"}, "copied": {"path": "../copied"}, "remote": {"git": str(repository), "ref": "2.0.0"}})
+        message = self.failure()
+        self.assertIn('The key "plugins.missing" names no plugin of the app, because', message)
+        self.assertIn('The key "plugins.absent" names `', message)
+        self.assertIn('which holds no "plugin.json" at its root.', message)
+        self.assertIn('whose "plugin.json" has the id "other". List the plugin under the id of its "plugin.json".', message)
+        self.assertIn('The plugin "copied" comes from `', message)
+        self.assertIn('Delete that folder, or leave "path" and "git" out of "plugins.copied" to use it.', message)
+        self.assertIn(f'The plugin repository `{repository}` cannot be fetched at "2.0.0". Check the address in "git" and the branch, tag or commit in "ref".', message)
+
+        # A path that names the copy in the app folder is that copy, not a second one.
+        self.write_app({"copied": {"path": "plugins/copied"}})
+        self.assertEqual(haylen.App(self.app, "web").plugins[0].folder, self.app / "plugins" / "copied")
+
+    def test_the_values_of_parameters_come_from_parameters(self):
+        self.write_plugin(self.app / "plugins" / "ads", "ads", {"appId": {"type": "string", "required": True, "description": "Names the app."}})
+        self.write_app({"ads": {"parameters": {"appId": "", "testMode": True}}})
+        message = self.failure()
+        self.assertIn('The key "plugins.ads.parameters.testMode" is no parameter of the plugin "ads".', message)
+        self.assertIn('The key "plugins.ads.parameters.appId" needs a value to build for "web". Names the app.', message)
+
+    def test_the_package_holds_every_plugin_at_its_id_wherever_it_comes_from(self):
+        far = self.write_plugin(self.scratch / "far-plugin", "far")
+        self.write_app({"far": {"path": "../far-plugin"}})
+        app = haylen.App(self.app, "web")
+        archive = self.scratch / "app.zip"
+        haylen.package_folder(app.layout, archive)
+        with zipfile.ZipFile(archive) as opened:
+            self.assertEqual(sorted(opened.namelist()), ["app.json", "plugins/far/plugin.json", "plugins/far/source/init.lua", "source/main.lua"])
+        copied = self.scratch / "copy"
+        self.assertEqual(haylen.copy_package(app, copied), ["app.json", "plugins/far/plugin.json", "plugins/far/source/init.lua", "source/main.lua"])
+        self.assertEqual((copied / "plugins" / "far" / "source" / "init.lua").read_text(), "return 'far'")
+
+        # The staged package follows the app and its plugins, and loses what they lost.
+        staged = haylen.stage_package(app)
+        self.assertEqual(staged, app.build_folder / "package")
+        (far / "source" / "extra.lua").write_text("return 1")
+        haylen.stage_package(app)
+        self.assertTrue((staged / "plugins" / "far" / "source" / "extra.lua").is_file())
+        (far / "source" / "extra.lua").unlink()
+        (far / "source" / "init.lua").write_text("return 'edited'")
+        os.utime(far / "source" / "init.lua", ns=(0, 5_000_000_000))
+        haylen.stage_package(app)
+        self.assertFalse((staged / "plugins" / "far" / "source" / "extra.lua").exists())
+        self.assertEqual((staged / "plugins" / "far" / "source" / "init.lua").read_text(), "return 'edited'")
+        self.assertEqual(sorted(path.relative_to(staged).as_posix() for path in staged.rglob("*") if path.is_file()), ["app.json", "plugins/far/plugin.json", "plugins/far/source/init.lua", "source/main.lua"])
+
+    def test_the_development_server_watches_referenced_folders_and_pushes_their_files_under_their_ids(self):
+        far = self.write_plugin(self.scratch / "far-plugin", "far")
+        self.write_app({})
+        server = haylen.DevelopmentServer(haylen.PackageLayout.of(self.app), {})
+        self.write_app({"far": {"path": "../far-plugin"}})
+        os.utime(self.app / "app.json", ns=(0, 5_000_000_000))
+        changed, removed = server.scan()
+        self.assertEqual((changed, removed), (["app.json", "plugins/far/plugin.json", "plugins/far/source/init.lua"], []))
+
+        (far / "source" / "init.lua").write_text("return 'saved'")
+        os.utime(far / "source" / "init.lua", ns=(0, 9_000_000_000))
+        changed, _ = server.scan()
+        self.assertEqual(changed, ["plugins/far/source/init.lua"])
+        message, contents = server.batch(changed, [])
+        self.assertEqual((message["files"], contents), ([{"path": "plugins/far/source/init.lua", "size": 14}], [b"return 'saved'"]))
+
+        # The debugger shows the files of a plugin where they lie, and the app names them by their package paths.
+        relay = haylen.DebugRelay(server.layout, 0)
+        self.addCleanup(relay.close)
+        self.assertEqual(relay.to_package(str(far / "source" / "init.lua")), "plugins/far/source/init.lua")
+        self.assertEqual(relay.to_editor("plugins/far/source/init.lua"), str(far / "source" / "init.lua"))
+        self.assertEqual(relay.to_editor("source/main.lua"), str(self.app / "source" / "main.lua"))
+
+    def test_the_player_of_this_machine_runs_the_staged_package(self):
+        self.write_plugin(self.scratch / "far-plugin", "far")
+        self.write_app({"far": {"path": "../far-plugin"}})
+        session = mock.Mock(arguments=["--dev-server", "ws://127.0.0.1:8000"])
+        packages = []
+
+        @contextlib.contextmanager
+        def started(app, package, args, device=None):
+            packages.append(package)
+            yield session
+
+        patches = [mock.patch.object(haylen, "compile_app_shaders"), mock.patch.object(haylen, "command_build"), mock.patch.object(haylen, "prepare_host_native", return_value=False), mock.patch.object(haylen, "run_session", started), mock.patch.object(haylen, "run_rows", return_value=[])]
+        with contextlib.ExitStack() as stack:
+            for patch in patches:
+                stack.enter_context(patch)
+            haylen.command_run(haylen.build_parser().parse_args(["run", str(self.app)]))
+        staged = haylen.App(self.app, haylen.host_name()).build_folder / "package"
+        self.assertEqual(packages, [staged])
+        self.assertEqual(session.follow.call_args.args[0][-1], staged)
+        self.assertTrue((staged / "plugins" / "far" / "plugin.json").is_file())
+
+    def test_plugin_add_references_a_folder_or_a_repository_and_plugin_list_names_the_source(self):
+        far = self.write_plugin(self.scratch / "far-plugin", "far", {"greeting": {"type": "string", "default": "Hi", "description": "Greets."}})
+        self.write_plugin(self.app / "plugins" / "far", "far")
+        repository = self.make_repository("remote")
+        self.write_app({"far": {"parameters": {"greeting": "Hello"}}})
+        haylen.command_plugin_add(haylen.build_parser().parse_args(["plugin", "add", str(far), "--reference", "--app", str(self.app)]))
+        haylen.command_plugin_add(haylen.build_parser().parse_args(["plugin", "add", "file://" + str(repository), "--ref", "1.0.0", "--reference", "--app", str(self.app)]))
+        listed = json.loads((self.app / "app.json").read_text())["plugins"]
+        self.assertEqual(listed["far"], {"path": "../far-plugin", "parameters": {"greeting": "Hello"}}, "A reference keeps the values that the app gives.")
+        self.assertEqual(listed["remote"], {"git": "file://" + str(repository), "ref": "1.0.0"})
+        self.assertFalse((self.app / "plugins").exists(), "A reference deletes the copy that a player would take.")
+
+        output = io.StringIO()
+        listing = haylen.Terminal(output, io.StringIO(), {})
+        listing.log = self.scratch / "haylen.log"
+        with mock.patch.object(haylen, "terminal", listing):
+            haylen.command_plugin_list(haylen.build_parser().parse_args(["plugin", "list", "--app", str(self.app)]))
+        self.assertIn(f"From {far}.", output.getvalue())
+        self.assertIn(f'From file://{repository} at "1.0.0".', output.getvalue())
+
+        # A copy takes the place of a reference again.
+        haylen.command_plugin_add(haylen.build_parser().parse_args(["plugin", "add", str(far), "--app", str(self.app)]))
+        self.assertEqual(json.loads((self.app / "app.json").read_text())["plugins"]["far"], {"parameters": {"greeting": "Hello"}})
+        self.assertTrue((self.app / "plugins" / "far" / "plugin.json").is_file())
+
+    def test_cpp_apps_take_the_folders_of_their_plugins_from_haylen_py(self):
+        far = self.write_plugin(self.scratch / "far-plugin", "far")
+        self.write_plugin(self.app / "plugins" / "local", "local")
+        self.write_app({"local": {}, "far": {"path": "../far-plugin"}})
+        build = self.scratch / "build"
+        options = haylen.cpp_plugin_options(self.app, build)
+        folders = build / haylen.CPP_PLUGIN_FOLDERS_FILE
+        self.assertEqual(options, [f"-DHAYLEN_PLUGIN_FOLDERS_FILE={folders.as_posix()}"])
+        self.assertIn(f"set(HAYLEN_PLUGIN_FOLDER_far [[{far.as_posix()}]])", folders.read_text())
+        if shutil.which("cmake") is None:
+            self.skipTest('The command "cmake" runs the part of "haylen_add_app" that reads the folders.')
+
+        # The CMake of haylen_add_app places each plugin at its id, and without the folders of haylen.py it refuses a reference.
+        script = self.scratch / "entries.cmake"
+        script.write_text(f'include("{(haylen.ENGINE_DIR / "cmake" / "haylen-app.cmake").as_posix()}")\nhaylen_read_package_entries("${{PACKAGE}}" entries paths)\nforeach(entry path IN ZIP_LISTS entries paths)\n  message("${{entry}}=${{path}}")\nendforeach()\n')
+        listed = subprocess.run(["cmake", f"-DPACKAGE={self.app.as_posix()}", f"-DHAYLEN_PLUGIN_FOLDERS_FILE={folders.as_posix()}", "-P", str(script)], capture_output=True, text=True, check=True).stderr.splitlines()
+        self.assertEqual(listed, [f"app.json={(self.app / 'app.json').as_posix()}", f"source={(self.app / 'source').as_posix()}", f"content={(self.app / 'content').as_posix()}", f"plugins/far/plugin.json={(far / 'plugin.json').as_posix()}", f"plugins/far/source={(far / 'source').as_posix()}", f"plugins/local/plugin.json={(self.app / 'plugins' / 'local' / 'plugin.json').as_posix()}", f"plugins/local/source={(self.app / 'plugins' / 'local' / 'source').as_posix()}"])
+        refused = subprocess.run(["cmake", f"-DPACKAGE={self.app.as_posix()}", "-P", str(script)], capture_output=True, text=True)
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn('which haylen.py resolves. Build the app with "haylen run"', " ".join(refused.stderr.split()), "CMake wraps the lines of its errors.")
+
+        # The desktop builds link every entry from where it lies, so a saved file of a referenced plugin shows without a build.
+        entries = [line.split("=", 1) for line in listed]
+        linked = self.scratch / "linked"
+        subprocess.run(["cmake", f"-DDESTINATION={linked.as_posix()}", f"-DENTRIES={'|'.join(entry for entry, _ in entries)}", f"-DPATHS={'|'.join(path for _, path in entries)}", "-P", str(haylen.ENGINE_DIR / "cmake" / "haylen-link-content.cmake")], capture_output=True, check=True)
+        self.assertEqual((linked / "plugins" / "far" / "source").resolve(), far / "source")
+        self.assertEqual((linked / "plugins" / "far" / "plugin.json").read_text(), (far / "plugin.json").read_text())
+        self.assertFalse((linked / "content").exists(), "An entry that the app lacks stays out.")
 
 
 class CommandNamesTest(unittest.TestCase):
@@ -2323,7 +2568,7 @@ class AndroidPluginsTest(unittest.TestCase):
         app = mock.Mock(plugins=[accounts, sounds, store], plugin_values={"accounts": {"server": "accounts.example.com"}, "sounds": {}, "store": {"sandbox": True}})
         haylen.write_android_plugins(app, assets)
         written = json.loads((assets / haylen.ANDROID_PLUGINS_FILE).read_text())
-        self.assertEqual(written, {"plugins": [{"id": "accounts", "version": "2.0.0", "config": {"server": "accounts.example.com"}}, {"id": "store", "version": "1.1.0", "config": {"sandbox": True}}]})
+        self.assertEqual(written, {"plugins": [{"id": "accounts", "version": "2.0.0", "parameters": {"server": "accounts.example.com"}}, {"id": "store", "version": "1.1.0", "parameters": {"sandbox": True}}]})
 
 
     def test_a_plugin_that_delivers_packs_turns_the_named_packs_into_asset_packs_of_google_play(self):
@@ -2645,6 +2890,7 @@ class CppReleaseTest(unittest.TestCase):
         scratch = Path(tempfile.mkdtemp()).resolve()
         self.addCleanup(shutil.rmtree, scratch)
         app = mock.Mock(folder=scratch / "game", build_folder=scratch / "build", version_code=7, content_server=None, content_packs=[])
+        app.layout = haylen.PackageLayout(app.folder, {})
         local = haylen.release_folder(app, "desktop")
         local.mkdir(parents=True)
         (local / "app.hmanifest").write_bytes(b"")
@@ -2777,7 +3023,8 @@ class DevelopmentServerTest(unittest.TestCase):
         for path, text in {"app.json": "{}", "source/main.lua": "print(1)", "source/level.lua": "return {}", "content/data.json": "{}"}.items():
             (self.folder / path).parent.mkdir(parents=True, exist_ok=True)
             (self.folder / path).write_text(text)
-        self.manifest = haylen.DevelopmentServer.hash_files(self.folder, ["app.json", "source/main.lua", "source/level.lua", "content/data.json"])
+        self.layout = haylen.PackageLayout(self.folder, {})
+        self.manifest = haylen.DevelopmentServer.hash_files({path: self.folder / path for path in ("app.json", "source/main.lua", "source/level.lua", "content/data.json")})
         quiet = mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {}))
         quiet.start()
         self.addCleanup(quiet.stop)
@@ -2811,7 +3058,7 @@ class DevelopmentServerTest(unittest.TestCase):
             self.assertFalse(haylen.development_watched(path), path)
 
     def test_the_watcher_sends_saved_files_and_leaves_editor_files(self):
-        server = haylen.DevelopmentServer(self.folder, self.manifest)
+        server = haylen.DevelopmentServer(self.layout, self.manifest)
         self.write("source/level.lua", "return {edited = true}")
         self.write("source/.level.lua.swp", "swap")
         self.write("content/new.json", "[]")
@@ -2820,7 +3067,7 @@ class DevelopmentServerTest(unittest.TestCase):
         self.assertEqual(server.scan(), ([], []))
 
     def test_late_apps_catch_up(self):
-        server = haylen.DevelopmentServer(self.folder, self.manifest)
+        server = haylen.DevelopmentServer(self.layout, self.manifest)
         self.write("source/level.lua", "return {edited = true}")
         (self.folder / "content" / "data.json").unlink()
         server.scan()
@@ -2833,7 +3080,7 @@ class DevelopmentServerTest(unittest.TestCase):
         self.assertIsNone(server.catch_up({"type": "hello", "session": server.session, "revision": server.revision}))
 
     def test_console_lines_reach_every_app_and_their_results_print(self):
-        server = haylen.DevelopmentServer(self.folder, self.manifest)
+        server = haylen.DevelopmentServer(self.layout, self.manifest)
         sent = []
         client = mock.Mock(send=lambda opcode, payload: sent.append((opcode, json.loads(payload))) or True)
         self.assertEqual(server.send_line("gold 50"), 0)
@@ -2852,7 +3099,7 @@ class DevelopmentServerTest(unittest.TestCase):
         self.assertIn("There is no command.", output.getvalue())
 
     def test_the_console_keys_send_what_changed_and_restart_the_apps(self):
-        server = haylen.DevelopmentServer(self.folder, self.manifest)
+        server = haylen.DevelopmentServer(self.layout, self.manifest)
         sent = []
         client = mock.Mock(send=lambda opcode, payload: sent.append(json.loads(payload)) or True, send_batch=mock.Mock(return_value=True))
         server.clients.append(client)
@@ -2881,7 +3128,7 @@ class DevelopmentServerTest(unittest.TestCase):
         self.assertTrue(session.quitting.is_set())
         self.assertIn("\x1b[2J", output.getvalue())
         self.assertIn("Quit", output.getvalue())
-        self.assertEqual(list(haylen.RunSession(haylen.DevelopmentServer(self.folder, self.manifest), []).keys), ["r", "R", "d", "c", "q", "h"])
+        self.assertEqual(list(haylen.RunSession(haylen.DevelopmentServer(self.layout, self.manifest), []).keys), ["r", "R", "d", "c", "q", "h"])
 
     def test_the_log_of_android_shows_the_lines_of_the_engine_as_it_wrote_them_and_the_tag_of_the_others(self):
         self.assertEqual(haylen.android_log_line("I/haylen  : [12:00:01] [info] The app draws through \"vulkan\"."), "[12:00:01] [info] The app draws through \"vulkan\".")
@@ -2903,7 +3150,7 @@ class DevelopmentServerTest(unittest.TestCase):
             haylen.RunSession().follow([sys.executable, "-c", "raise SystemExit(3)"])
 
     def test_an_app_whose_connection_resets_leaves_and_the_server_goes_on(self):
-        server = haylen.DevelopmentServer(self.folder, self.manifest)
+        server = haylen.DevelopmentServer(self.layout, self.manifest)
         hello = json.dumps({"type": "hello", "session": server.session, "revision": server.revision}).encode()
 
         class Resetting(io.BytesIO):
@@ -2921,7 +3168,7 @@ class DevelopmentServerTest(unittest.TestCase):
         self.assertIn("An app left the development server.", output.getvalue())
 
     def test_connections_need_the_token_and_receive_every_batch(self):
-        server = haylen.DevelopmentServer(self.folder, self.manifest)
+        server = haylen.DevelopmentServer(self.layout, self.manifest)
         handler = functools.partial(type("Handler", (haylen.WebHandler,), {"development": server, "log_message": lambda *arguments: None}), directory=self.scratch.name)
         web = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
         threading.Thread(target=web.serve_forever, daemon=True).start()
@@ -2960,9 +3207,9 @@ class DevelopmentServerTest(unittest.TestCase):
     def test_only_development_runs_tell_the_page_to_connect(self):
         site = Path(self.scratch.name) / "site"
         site.mkdir()
-        haylen.package_folder(self.folder, site / "app.zip")
+        haylen.package_folder(self.layout, site / "app.zip")
         (site / "config.json").write_text(json.dumps({"name": "App"}))
-        app = mock.Mock(folder=self.folder)
+        app = mock.Mock(folder=self.folder, layout=self.layout)
         development = haylen.start_web_development(app, site)
         config = json.loads((site / "config.json").read_text())
         self.assertEqual(config["development"], {"path": haylen.DEVELOPMENT_PATH, "token": development.token})
@@ -2981,7 +3228,7 @@ class DevelopmentServerTest(unittest.TestCase):
         shipped = Path(self.scratch.name) / "shipped"
         shutil.copytree(self.folder, shipped)
         self.write("source/level.lua", "return {edited = true}")
-        app = mock.Mock(folder=self.folder)
+        app = mock.Mock(folder=self.folder, layout=self.layout)
         with haylen.run_session(app, shipped, mock.Mock(config="Release", platform="ios-simulator")) as session:
             self.assertEqual(session.arguments, [])
             self.assertIsNone(session.development)
@@ -3046,7 +3293,7 @@ class DebugRelayTest(unittest.TestCase):
         self.assertEqual(haylen.debug_source_paths(frames, lambda path: "/app/" + path)["body"]["stackFrames"][0]["source"]["path"], "/app/source/main.lua")
 
     def test_the_relay_holds_requests_until_an_app_connects_and_configures_every_app_that_connects_later(self):
-        relay = haylen.DebugRelay(self.folder, 0)
+        relay = haylen.DebugRelay(haylen.PackageLayout(self.folder, {}), 0)
         relay.start()
         self.addCleanup(relay.close)
         editor = socket.create_connection(("127.0.0.1", relay.port), timeout=5)
@@ -3104,8 +3351,8 @@ class PackageServerTest(unittest.TestCase):
         (folder / "app.json").write_text("{}")
         (folder / "source" / "main.lua").write_text("print(1)")
         archive = Path(self.scratch.name) / "app.zip"
-        haylen.package_folder(folder, archive)
-        development = haylen.DevelopmentServer(folder, {})
+        haylen.package_folder(haylen.PackageLayout(folder, {}), archive)
+        development = haylen.DevelopmentServer(haylen.PackageLayout(folder, {}), {})
         handler = type("Handler", (haylen.PackageHandler,), {"development": development, "archive": archive, "development_address": "ws://192.168.1.20:8000/haylen/development?token=0123456789ab"})
         server = haylen.LocalServer(("127.0.0.1", 0), handler)
         threading.Thread(target=server.serve_forever, daemon=True).start()

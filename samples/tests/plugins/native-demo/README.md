@@ -13,7 +13,7 @@ The command `plugin add` copies the plugin into `plugins/native-demo/` of the ap
 ```json
 {
     "plugins": {
-        "native-demo": {"greeting": "Hello from the native demo", "bannerColor": "#264653", "tickInterval": 1, "urlScheme": "haylendemo", "cameraUsage": "The Native Demo plugin asks for the camera to show how a plugin requests a permission."}
+        "native-demo": {"parameters": {"greeting": "Hello from the native demo", "bannerColor": "#264653", "tickInterval": 1, "urlScheme": "haylendemo", "cameraUsage": "The Native Demo plugin asks for the camera to show how a plugin requests a permission."}}
     }
 }
 ```

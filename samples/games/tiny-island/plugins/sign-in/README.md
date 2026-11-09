@@ -9,7 +9,7 @@ Both platforms sign in with the web client id that the identity service of the a
 ```json
 {
     "plugins": {
-        "sign-in": {"clientId": "1234567890-abc.apps.example.com"}
+        "sign-in": {"parameters": {"clientId": "1234567890-abc.apps.example.com"}}
     }
 }
 ```
