@@ -991,7 +991,7 @@ build/apps/my-game-1a2b3c4d/installed/linux/
 
 #### Links on Windows and Linux
 
-An app opens from a link of a URL scheme that the `desktop` section of its plugins declares, as the [plugin guide](../platform/plugins.md#the-desktop-section) describes. Windows and Linux start a new process of the app for every link, with the link after the option `--link`. That process hands the link to the instance of the app that runs already and ends, so the app that runs hears the link as [`linkOpened`](../lua-api/events.md#app-and-plugins), and a process without a running instance plays the app with the link.
+An app opens from a link of a URL scheme that the `desktop` section of its plugins declares, as the [plugin guide](../platform/plugins.md#the-desktop-section) describes. Windows and Linux start a new process of the app for every link, with the link after the option `--link`. That process hands the link to the instance of the app that runs already and ends, so the app that runs hears the link as [`linkOpened`](../lua-api/events.md#app-and-plugins), and a process without a running instance plays the app with the link. The shell of Windows reads a link as an address before it starts the app, so a link without a path gains a slash before its query, and `my-game://open?level=3` reaches the app as `my-game://open/?level=3`. An app therefore reads the parts of its links, such as the host and the query, instead of comparing their text.
 
 | Platform | How the scheme reaches the system | How the link reaches the running app |
 | --- | --- | --- |
