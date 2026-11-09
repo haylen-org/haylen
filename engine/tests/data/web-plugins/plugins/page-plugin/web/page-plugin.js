@@ -1,4 +1,4 @@
-// Web part of the plugin of the plugin check, which answers with what the context of a web module gives a plugin: the features of the permissions policy that the page lacks, the failure of an error of the page, and the failure of a permission whose request ended without a prompt.
+// Web part of the plugin of the plugin check, which answers with what the context of a web module gives a plugin: the features of the permissions policy that the page lacks, the failure of an error of the page, the failure of a permission whose request ended without a prompt and the failure of a permission that the plugin never registered.
 export default function load(context) {
     context.register("check", (params) => {
         try {
@@ -18,6 +18,11 @@ export default function load(context) {
     context.registerPermission({ name: "unprompted", capability: "the unprompted capability", state: () => "prompt", request: () => "prompt" });
     context.register("useUnprompted", async () => {
         await context.requirePermission("unprompted");
+        return { used: true };
+    });
+
+    context.register("useUnregistered", async () => {
+        await context.requirePermission("unregistered");
         return { used: true };
     });
 }

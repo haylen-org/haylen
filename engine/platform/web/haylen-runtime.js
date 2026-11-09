@@ -1110,11 +1110,11 @@ Module.haylen = Module.haylen || {};
         plugin.permissions.set(spec.name, permission);
     };
 
-    // Asks for the permission where the page does not hold it, and fails with the code `denied` when the person refused it or the browser did not show its prompt, or `unsupported` with what the page lacks, as plugins expect before they use a capability. A state that the browser tells nothing of lets the use try.
+    // Asks for the permission where the page does not hold it, and fails with the code `denied` when the person refused it or the browser did not show its prompt, or `unsupported` with what the page lacks or for a name that the plugin did not register, as plugins expect before they use a capability. A state that the browser tells nothing of lets the use try.
     const requirePermission = async (id, plugin, name) => {
         const permission = plugin.permissions.get(name);
         if (!permission) {
-            throw new TypeError("The plugin \"" + id + "\" requires the permission \"" + name + "\", which it did not register with \"registerPermission\".");
+            throw Object.assign(new Error("The plugin \"" + id + "\" requires the permission \"" + name + "\", which it did not register with \"registerPermission\"."), { code: "unsupported" });
         }
         const answer = await requestPluginPermission(permission, "The plugin \"" + id + "\"", id);
         if (answer.state === "denied" || answer.state === "prompt") {

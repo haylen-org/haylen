@@ -19,4 +19,9 @@ function plugin.useUnprompted()
     return handle:call('useUnprompted')
 end
 
+-- Returns a platform call that fails, because the web part requires the permission `unregistered`, which it never registered.
+function plugin.useUnregistered()
+    return handle:call('useUnregistered')
+end
+
 return plugin

@@ -294,6 +294,7 @@ The context that the web module of a plugin receives answers what the page offer
 3. The page must lack `camera` alone, and the check fails when it also counts `web-share` as missing.
 4. The plugin throws the `DOMException` `NotAllowedError`, whose call must fail with the code `exception` and `NotAllowedError` in `data.type`.
 5. The plugin requires a permission whose request ends in `prompt`, as in a browser that asks only during a tap, and the call must fail with the code `denied` and the sentence that says the system did not show its prompt.
+6. The plugin requires a permission that it never registered, and the call must fail with the code `unsupported` and the sentence of Apple platforms, which names the plugin and the permission.
 
 ## The memory check of the web
 
