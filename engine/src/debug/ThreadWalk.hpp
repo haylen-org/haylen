@@ -14,6 +14,20 @@ class ThreadWalk final {
     static void run(lua_State* L, const std::function<void(lua_State* thread)>& visit);
 
   private:
+    // Stops the collector while it lives and restarts it once it ends, also when the walk fails, unless it stood still before.
+    class CollectorHold final {
+      public:
+        explicit CollectorHold(lua_State* L);
+        ~CollectorHold();
+
+        CollectorHold(const CollectorHold&) = delete;
+        CollectorHold& operator=(const CollectorHold&) = delete;
+
+      private:
+        lua_State* state;
+        bool running;
+    };
+
     ThreadWalk(lua_State* L, int workIndex) noexcept : state(L), work(workIndex) {}
 
     void enqueue(int index);

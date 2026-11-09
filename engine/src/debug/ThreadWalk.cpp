@@ -2,9 +2,18 @@
 
 namespace haylen::debug {
 
-void ThreadWalk::run(lua_State* L, const std::function<void(lua_State* thread)>& visit) {
-    const bool collecting = lua_gc(L, LUA_GCISRUNNING) != 0;
+ThreadWalk::CollectorHold::CollectorHold(lua_State* L) : state(L), running(lua_gc(L, LUA_GCISRUNNING) != 0) {
     lua_gc(L, LUA_GCSTOP);
+}
+
+ThreadWalk::CollectorHold::~CollectorHold() {
+    if (running) {
+        lua_gc(state, LUA_GCRESTART);
+    }
+}
+
+void ThreadWalk::run(lua_State* L, const std::function<void(lua_State* thread)>& visit) {
+    const CollectorHold hold(L);
     lua_newtable(L);
     ThreadWalk walk(L, lua_gettop(L));
     walk.seen.insert(lua_topointer(L, walk.work));
@@ -41,9 +50,6 @@ void ThreadWalk::run(lua_State* L, const std::function<void(lua_State* thread)>&
         lua_settop(L, value - 1);
     }
     lua_pop(L, 1);
-    if (collecting) {
-        lua_gc(L, LUA_GCRESTART);
-    }
 }
 
 void ThreadWalk::enqueue(int index) {

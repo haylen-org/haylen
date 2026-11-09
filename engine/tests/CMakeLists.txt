@@ -121,6 +121,7 @@ set(HAYLEN_TEST_SOURCES
   debug/HotReloadTests.cpp
   debug/InspectorTests.cpp
   debug/StatsTests.cpp
+  debug/ThreadWalkTests.cpp
   debug/TraceRecorderTests.cpp
   gpu/DeviceFactoryTests.cpp
   gpu/direct3d/CompileQueueTests.cpp
