@@ -116,6 +116,7 @@ set(HAYLEN_TEST_SOURCES
   debug/DebuggerConnectionTests.cpp
   debug/DebuggerTests.cpp
   debug/DrawingTests.cpp
+  debug/EvaluationTests.cpp
   debug/HotReloadTests.cpp
   debug/InspectorTests.cpp
   debug/StatsTests.cpp

@@ -36,6 +36,12 @@ class Evaluation final {
     // The time the evaluation that runs must end by. Evaluations run on the frame thread one at a time.
     static inline std::chrono::steady_clock::time_point deadline;
     static inline std::chrono::milliseconds allowed{0};
+    static inline bool running = false;
+
+    // The hook of the code that started the evaluation, which the coroutines that the evaluation created take once it ended.
+    static inline lua_Hook appHook = nullptr;
+    static inline int appMask = 0;
+    static inline int appCount = 0;
 };
 
 } // namespace haylen::debug

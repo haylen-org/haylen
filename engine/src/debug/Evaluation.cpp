@@ -23,9 +23,14 @@ Evaluation::Result Evaluation::run(lua_State* L, int environment, std::string_vi
 
     deadline = std::chrono::steady_clock::now() + limit;
     allowed = limit;
+    appHook = lua_gethook(L);
+    appMask = lua_gethookmask(L);
+    appCount = lua_gethookcount(L);
     lua_sethook(thread, &onCount, LUA_MASKCOUNT, kCheckInstructions);
+    running = true;
     int results = 0;
     const int status = lua_resume(thread, L, 0, &results);
+    running = false;
     if (status == LUA_YIELD) {
         (void)lua_closethread(thread, L);
         lua_settop(L, threadIndex - 1);
@@ -52,7 +57,12 @@ std::string Evaluation::describeError(lua_State* L, int index) {
     return std::string("(error object is a ") + luaL_typename(L, index) + " value)";
 }
 
+// A coroutine that the evaluation created, such as a task that it spawned, inherited its hook and runs on after it as code of the app, so it takes the hook that the app had instead of the time bound of the evaluation.
 void Evaluation::onCount(lua_State* L, lua_Debug*) {
+    if (!running) {
+        lua_sethook(L, appHook, appMask, appCount);
+        return;
+    }
     if (std::chrono::steady_clock::now() > deadline) {
         luaL_error(L, "The evaluation ran longer than %d ms, so it stopped.", static_cast<int>(allowed.count()));
     }
