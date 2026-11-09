@@ -7,6 +7,7 @@
 #include <span>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "gpu/opengl/Context.hpp"
@@ -18,6 +19,35 @@ namespace haylen::gpu::opengl {
 
 class OpenGlDeviceTest : public OpenGlTest {
   protected:
+    // A drawable of the context that writes into a log, which the drawables of a test share, when the device makes it current and swaps it.
+    class RecordedDrawable final : public GlContext {
+      public:
+        RecordedDrawable(GlContext& drawable, std::string label, std::vector<std::string>& entries) : inner(drawable), name(std::move(label)), log(entries) {}
+
+        void makeCurrent() override {
+            inner.makeCurrent();
+            log.push_back(name + " current");
+        }
+
+        void swapBuffers() override {
+            inner.swapBuffers();
+            log.push_back(name + " swap");
+        }
+
+        void setSwapInterval(int value) override {
+            inner.setSwapInterval(value);
+        }
+
+        [[nodiscard]] void* getProcAddress(const char* symbol) override {
+            return inner.getProcAddress(symbol);
+        }
+
+      private:
+        GlContext& inner;
+        std::string name;
+        std::vector<std::string>& log;
+    };
+
     static constexpr Gl::Enum kResetNotificationStrategy = 0x8256;
     static constexpr Gl::Int kLoseContextOnReset = 0x8252;
     static constexpr Gl::Enum kTexture2D = 0x0DE1;
@@ -169,6 +199,39 @@ TEST_P(OpenGlDeviceTest, DrawsOffscreenWhileTheSurfaceIsAway) {
     drawFrame();
     device->attachSurface(context->getSurface());
     drawFrame();
+}
+
+// Some drivers, such as the software rasterizer of Mesa, keep the back buffer of a drawable only while it is current, so the device swaps the window before a pass into another drawable leaves it, and refuses a pass that comes back to a surface it presented.
+TEST_P(OpenGlDeviceTest, PresentsADrawableBeforeAPassLeavesIt) {
+    std::unique_ptr<GlContext> board;
+    try {
+        board = context->makeDrawable(16, 16);
+    } catch (const std::runtime_error& error) {
+        GTEST_SKIP() << error.what();
+    }
+    std::vector<std::string> log;
+    RecordedDrawable window(*context, "window", log);
+    RecordedDrawable side(*board, "board", log);
+    Surface surface = context->getSurface();
+    surface.gl = &window;
+    device.reset();
+    device = Device::create(GetParam(), surface, {.validation = true});
+    Surface added = surface;
+    added.gl = &side;
+    added.width = 16;
+    added.height = 16;
+    const int number = device->addSurface(added);
+
+    log.clear();
+    device->beginPass({});
+    device->endPass();
+    device->beginPass({.surface = number});
+    device->endPass();
+    EXPECT_THROW(device->beginPass({.load = Device::Load::Keep}), std::logic_error);
+    device->commit();
+    EXPECT_EQ(log, (std::vector<std::string>{"window swap", "board current", "board swap", "window current"}));
+    device->removeSurface(number);
+    device.reset();
 }
 
 INSTANTIATE_TEST_SUITE_P(Flavours, OpenGlDeviceTest, ::testing::Values(Device::Api::OpenGl, Device::Api::OpenGlEs), OpenGlTest::getFlavourName);

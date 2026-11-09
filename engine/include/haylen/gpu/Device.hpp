@@ -513,7 +513,7 @@ class Device {
         std::uint8_t clearStencil = 0;
     };
 
-    // A pass draws into the swapchain of a surface when it names no attachment, the window for the surface 0 or a surface that `addSurface` made, clearing its color, depth and stencil as its loads say. A swapchain pass that keeps the contents keeps the depth, the stencil and multisampled color only when it directly follows the swapchain pass of the same surface whose contents it keeps, and otherwise keeps only the color of one sample.
+    // A pass draws into the swapchain of a surface when it names no attachment, the window for the surface 0 or a surface that `addSurface` made, clearing its color, depth and stencil as its loads say. The swapchain passes of a frame into one surface follow one another, since a device may present a surface once a pass into another surface leaves it. A swapchain pass that keeps the contents keeps the depth, the stencil and multisampled color only when it directly follows the swapchain pass of the same surface whose contents it keeps, and otherwise keeps only the color of one sample.
     struct PassDesc {
         std::span<const ColorAttachment> colors;
         std::optional<DepthStencilAttachment> depthStencil;

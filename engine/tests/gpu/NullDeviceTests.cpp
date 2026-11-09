@@ -314,6 +314,30 @@ TEST_F(NullDeviceTest, TakesTheSurfaceInTurnBetweenFrames) {
     device.commit();
 }
 
+// A device may present a surface once a pass into another surface leaves it, so the passes of a frame into one surface follow one another, with offscreen passes between them.
+TEST_F(NullDeviceTest, KeepsThePassesOfAFrameIntoOneSurfaceTogether) {
+    NullDevice device;
+    const int board = device.addSurface({.width = 8, .height = 8});
+    const Device::Image target = device.makeImage({.width = 4, .height = 4, .kind = Device::ImageKind::RenderTarget, .label = "target"});
+    const std::array<Device::ColorAttachment, 1> attachments{{{.image = target}}};
+    device.beginPass({});
+    device.endPass();
+    device.beginPass({.colors = attachments});
+    device.endPass();
+    device.beginPass({.load = Device::Load::Keep});
+    device.endPass();
+    device.beginPass({.surface = board});
+    device.endPass();
+    EXPECT_THROW(device.beginPass({.load = Device::Load::Keep}), std::logic_error);
+    device.commit();
+
+    device.beginPass({.surface = board});
+    device.endPass();
+    device.beginPass({});
+    device.endPass();
+    device.commit();
+}
+
 // A read copies a whole render target of one sample, between passes.
 TEST_F(NullDeviceTest, ReadsWholeRenderTargetsOfOneSample) {
     NullDevice device;

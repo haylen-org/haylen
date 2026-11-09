@@ -487,6 +487,25 @@ void NullDevice::recordPass(bool swapchain, int surface, Load load, math::Color 
     record.draws = 0;
 }
 
+// A device may present a surface once a pass into another surface leaves it, so the swapchain passes of a frame into one surface follow one another.
+void NullDevice::requireFollowingPasses(int surface) const {
+    bool left = false;
+    for (std::size_t index = recordedPasses; index > 0; --index) {
+        const PassRecord& record = currentFrame.passes[index - 1];
+        if (!record.swapchain) {
+            continue;
+        }
+        if (record.surface != surface) {
+            left = true;
+            continue;
+        }
+        if (left) {
+            throw std::logic_error(std::format("A swapchain pass drew into the surface {} after a pass into another surface left it, but the passes of a frame into one surface follow one another.", surface));
+        }
+        return;
+    }
+}
+
 void NullDevice::beginPass(const PassDesc& desc) {
     if (pass) {
         throw std::logic_error("A pass began while another pass was open.");
@@ -497,6 +516,7 @@ void NullDevice::beginPass(const PassDesc& desc) {
         if (desc.surface != 0 && !addedSurfaces.contains(desc.surface)) {
             throw std::logic_error(std::format("A swapchain pass drew into the surface {}, which the device does not have.", desc.surface));
         }
+        requireFollowingPasses(desc.surface);
         opened.targets.swapchain = true;
     } else {
         if (desc.surface != 0) {

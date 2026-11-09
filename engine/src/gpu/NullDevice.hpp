@@ -208,6 +208,7 @@ class NullDevice final : public Device {
     void requirePass(std::string_view call) const;
     void requireNoPass(std::string_view call) const;
     void recordPass(bool swapchain, int surface, Load load, math::Color clear);
+    void requireFollowingPasses(int surface) const;
     static void checkSurface(const Surface& surface, int maxSampleCount);
 
     std::unordered_map<std::uint32_t, BufferState> buffers;

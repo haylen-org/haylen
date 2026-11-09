@@ -638,12 +638,16 @@ void Device::beginPass(const PassDesc& desc) {
     if (pass.open) {
         throw std::logic_error("A pass began while another pass was open.");
     }
+    const bool swapchain = desc.colors.empty() && !desc.depthStencil;
+    if (swapchain) {
+        requireUnpresented(desc.surface);
+    }
     beginFrame();
     timer.beginPass();
     pass = {.open = true};
     applied = nullptr;
 
-    if (desc.colors.empty() && !desc.depthStencil) {
+    if (swapchain) {
         beginSwapchainPass(desc);
     } else {
         beginOffscreenPass(desc);
@@ -671,6 +675,7 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
             pass.skipped = true;
             return;
         }
+        leaveDrawable(0);
         makeDrawableCurrent(0, *surfaceContext);
         pass.width = surfaceWidth;
         pass.height = surfaceHeight;
@@ -680,6 +685,7 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
             pass.skipped = true;
             return;
         }
+        leaveDrawable(desc.surface);
         makeDrawableCurrent(desc.surface, *drawable.context);
         pass.width = drawable.width;
         pass.height = drawable.height;
@@ -1018,16 +1024,13 @@ void Device::commit() {
     }
     beginFrame();
     timer.endFrame();
-    for (std::size_t index = 0; index < drawables.size(); ++index) {
-        Drawable& drawable = drawables[index];
-        if (drawable.drawn) {
-            presentDrawable(static_cast<int>(index) + 1, *drawable.context);
-            drawable.drawn = false;
-        }
+    presentCurrentDrawable();
+    for (Drawable& drawable : drawables) {
+        drawable.drawn = false;
+        drawable.presented = false;
     }
-    if (drewSwapchain) {
-        presentDrawable(0, *surfaceContext);
-    }
+    drewSwapchain = false;
+    presentedSwapchain = false;
     if (surfaceAttached) {
         makeDrawableCurrent(0, *surfaceContext);
     }
@@ -1039,7 +1042,6 @@ void Device::commit() {
 
     ++frameIndex;
     frameStarted = false;
-    drewSwapchain = false;
 }
 
 void Device::checkLost() {
@@ -1148,6 +1150,37 @@ void Device::makeDrawableCurrent(int number, GlContext& drawable) {
     if (currentSurface != number) {
         drawable.makeCurrent();
         currentSurface = number;
+    }
+}
+
+// Some drivers, such as the software rasterizer of Mesa, keep the back buffer of a drawable only while it is current, so a pass into another drawable presents the drawable it leaves. The swapchain passes of a frame into one surface therefore follow one another.
+void Device::requireUnpresented(int surface) {
+    const bool presented = surface == 0 ? presentedSwapchain : requireDrawable(surface).presented;
+    if (presented) {
+        throw std::logic_error(std::format("A swapchain pass drew into the surface {} after a pass into another surface presented it, so the passes of a frame into one surface follow one another.", surface));
+    }
+}
+
+void Device::leaveDrawable(int next) {
+    if (currentSurface != next) {
+        presentCurrentDrawable();
+    }
+}
+
+void Device::presentCurrentDrawable() {
+    if (currentSurface == 0 && drewSwapchain) {
+        presentDrawable(0, *surfaceContext);
+        drewSwapchain = false;
+        presentedSwapchain = true;
+        return;
+    }
+    if (currentSurface > 0) {
+        Drawable& drawable = requireDrawable(currentSurface);
+        if (drawable.drawn) {
+            presentDrawable(currentSurface, *drawable.context);
+            drawable.drawn = false;
+            drawable.presented = true;
+        }
     }
 }
 
