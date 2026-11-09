@@ -24,8 +24,10 @@ class Placement::Placer final {
             spacing = std::max(spacing, kind.spacing);
         }
         const float reach = bound * 2.0F + spacing;
+
+        // A cell spans at least the longer side divided by the most cells on a side, so even a long thin area keeps the grid within its bound of cells.
         const math::Rect& area = options.area;
-        const float least = std::sqrt(area.width * area.height / static_cast<float>(kMaxCells));
+        const float least = std::max(area.width, area.height) / static_cast<float>(kMaxSide);
         cell = std::max({reach, least, 1.0e-3F});
         columns = std::max(1, static_cast<int>(std::ceil(area.width / cell)));
         rows = std::max(1, static_cast<int>(std::ceil(area.height / cell)));

@@ -88,8 +88,8 @@ class Placement final {
   private:
     class Placer;
 
-    // A grid of this many cells at most holds the placed entities.
-    static constexpr std::size_t kMaxCells = 1U << 22U;
+    // A grid of at most this many cells on each side holds the placed entities.
+    static constexpr int kMaxSide = 2048;
 
     static void validate(const Options& options);
     static void validateShape(const Shape& shape);

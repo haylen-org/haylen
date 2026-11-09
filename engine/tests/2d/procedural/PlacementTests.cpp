@@ -4,6 +4,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -13,6 +14,7 @@
 #include "haylen/math/Math.hpp"
 #include "haylen/math/Random.hpp"
 #include "haylen/math/Segment.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::procedural2d {
@@ -107,6 +109,19 @@ TEST_F(PlacementTest, KeepsTheWiderGapBetweenKindsOfDifferentSizes) {
         }
     }
     EXPECT_EQ(tooClose, 0U);
+}
+
+// A long thin map holds its entities in a grid of a bounded count of cells, not in one cell per stretch of the size of an entity along its length.
+TEST_F(PlacementTest, BoundsTheGridOfALongThinMap) {
+    Placement::Options options{.area = {0.0F, 0.0F, 1.0e8F, 4.0F}};
+    options.kinds.push_back({.count = 1, .footprint = {.radius = 1.0F}});
+    math::Random random(1);
+    const test::AllocationTracker tracker;
+    const Placement::Result result = Placement::place(options, random);
+    EXPECT_EQ(result.entities.size(), 1U);
+
+    // The grid holds at most 2048 by 2048 cells of one entity index each.
+    EXPECT_LE(tracker.getLargest(), std::size_t{2048} * 2048 * sizeof(std::uint32_t));
 }
 
 // Long thin planks stack row over row, which only their real rectangles allow, and turned rectangles and triangles never overlap one another or the forbidden polygon.
