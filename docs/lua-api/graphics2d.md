@@ -2602,7 +2602,7 @@ These errors come from strokes:
 | `The points are a list of numbers, and entry <index> is not a number.` | An entry of the list is not a number. The same message names the `widths` or the `dashes`. |
 | `A stroke has one width for each of its <count> points, or none.` | The `widths` have another count. |
 | `A stroke has one color for each of its <count> points, or none.` | The `colors` have another count. |
-| `A stroke needs widths and a texture length of zero or more and a miter limit of 1 or more.` | A width or the texture length is negative, or the miter limit is under 1. |
+| `A stroke needs finite widths and a texture length of zero or more and a miter limit of 1 or more.` | A width is negative or infinite, the texture length is negative, or the miter limit is under 1. |
 | `A dash pattern needs lengths of zero or more that add up to more than zero, and a finite offset.` | The pattern has no length. |
 | `A dash pattern makes more than 65536 dashes along the stroke.` | The pattern cuts the stroke too finely. |
 

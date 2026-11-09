@@ -3,6 +3,7 @@
 #include <array>
 #include <cmath>
 #include <functional>
+#include <limits>
 #include <stdexcept>
 #include <vector>
 
@@ -200,6 +201,7 @@ TEST_F(StrokeBuilderTest, RejectsStrokesThatCannotDraw) {
     const std::array<float, 1> oneWidth{2.0F};
     EXPECT_THROW(build(line, {.widths = oneWidth}), std::invalid_argument);
     EXPECT_THROW(build(line, {.width = -1.0F}), std::invalid_argument);
+    EXPECT_THROW(build(line, {.width = std::numeric_limits<float>::infinity()}), std::invalid_argument);
     EXPECT_THROW(build(line, {.miterLimit = 0.5F}), std::invalid_argument);
     const std::array<float, 2> nothing{0.0F, 0.0F};
     EXPECT_THROW(build(line, {.dashes = nothing}), std::invalid_argument);

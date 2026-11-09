@@ -15,9 +15,10 @@ void StrokeBuilder::validate(std::span<const math::Vec2> points, const Stroke& s
     if (!stroke.colors.empty() && stroke.colors.size() != points.size()) {
         throw std::invalid_argument("A stroke has one color for each of its " + std::to_string(points.size()) + " points, or none.");
     }
-    const bool measured = stroke.width >= 0.0F && std::ranges::all_of(stroke.widths, [](float width) { return width >= 0.0F; }) && stroke.textureLength >= 0.0F && stroke.miterLimit >= 1.0F;
+    const auto isWidth = [](float width) { return width >= 0.0F && std::isfinite(width); };
+    const bool measured = isWidth(stroke.width) && std::ranges::all_of(stroke.widths, isWidth) && stroke.textureLength >= 0.0F && stroke.miterLimit >= 1.0F;
     if (!measured) {
-        throw std::invalid_argument("A stroke needs widths and a texture length of zero or more and a miter limit of 1 or more.");
+        throw std::invalid_argument("A stroke needs finite widths and a texture length of zero or more and a miter limit of 1 or more.");
     }
     float period = 0.0F;
     for (const float length : stroke.dashes) {
@@ -45,8 +46,13 @@ int StrokeBuilder::arcSteps(float angle, float half) const noexcept {
     if (radius <= tolerance) {
         return 1;
     }
+    // A radius so wide that its curve rounds to a straight line takes no finite step, and then the most steps.
     const float step = 2.0F * std::acos(1.0F - tolerance / radius);
-    return std::clamp(static_cast<int>(std::ceil(std::fabs(angle) / step)), 1, kMaxArcSteps);
+    const float steps = std::ceil(std::fabs(angle) / step);
+    if (!(steps < static_cast<float>(kMaxArcSteps))) {
+        return kMaxArcSteps;
+    }
+    return std::max(static_cast<int>(steps), 1);
 }
 
 void StrokeBuilder::build(std::span<const math::Vec2> points, const Stroke& stroke, float pixelSize, math::Vec2 textureSize, bool flippedRows) {
