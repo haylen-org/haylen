@@ -113,6 +113,7 @@ void Shader::replace(const Shader& fresh) {
     target.uniforms = source.uniforms;
     target.textures = source.textures;
     target.sources = source.sources;
+    target.modules = source.modules;
     target.programs = source.programs;
     ++target.version;
 }

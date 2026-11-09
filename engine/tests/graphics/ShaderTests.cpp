@@ -338,6 +338,23 @@ TEST_F(ShaderTest, DecodesTheSpirvModulesAndTheirDescriptorSets) {
     EXPECT_NE(parseError({{"/sources/0", "AwIjBwAAAQA="}, {program + "/targets/spirv", spirv}}), "");
 }
 
+// A shader that reloads takes the SPIR-V modules of its new package, so the next program runs the edited code.
+TEST_F(ShaderTest, ReplacesTheSpirvModulesWhenItReloads) {
+    const std::string program = "/programs/sprite";
+    core::Json document = core::Json::parse(kSmallShader);
+    document["sources"].push_back("AwIjBwAAAQA=");
+    document[core::Json::json_pointer(program + "/targets/spirv")] = core::Json::parse(R"({"vertex": {"source": 1, "entry": "main"}, "fragment": {"source": 1, "entry": "main"},
+        "blocks": {"1": {"set": 0, "binding": 1}}, "textures": {"1": {"set": 1, "binding": 1}}, "samplers": {"1": {"set": 1, "binding": 65}}})");
+    graphics::Shader shader = graphics::Shader::parse(test::TestFiles::bytes(document.dump()));
+    document["sources"][1] = "AwIjBwAAAQAAAAAA";
+    shader.replace(graphics::Shader::parse(test::TestFiles::bytes(document.dump())));
+
+    gpu::NullDevice vulkan(gpu::Device::Language::Spirv);
+    const gpu::NullDevice::ProgramRecord& record = vulkan.getProgramRecord(shader.getResource()->getProgram(vulkan, "sprite").program);
+    EXPECT_EQ(record.vertexBytes, 12U);
+    EXPECT_EQ(record.fragmentBytes, 12U);
+}
+
 // The target of a port holds the code that the shader tool of the port wrote as Base64 text of bytes in any count, with the descriptor set and the binding of every slot, which reach the device of the port as they are.
 TEST_F(ShaderTest, DecodesTheCodeOfAPortAndItsBindings) {
     const std::string program = "/programs/sprite";
