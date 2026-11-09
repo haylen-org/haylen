@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <string>
 
+#include "haylen/core/Utf8.hpp"
 #include "haylen/platform/Event.hpp"
 #include "platform/NativeWindow.hpp"
 #include "platform/Player.hpp"
@@ -27,6 +28,15 @@ void AppleTextInput::edit(const Field& field) {
 
 void AppleTextInput::finish() {
     [editor finish];
+}
+
+NSString* AppleTextInput::toNSString(std::string_view text) {
+    std::string valid;
+    valid.reserve(text.size());
+    for (std::size_t offset = 0; offset < text.size();) {
+        core::Utf8::append(valid, core::Utf8::decode(text, offset));
+    }
+    return [[NSString alloc] initWithBytes:valid.data() length:valid.size() encoding:NSUTF8StringEncoding];
 }
 
 int AppleTextInput::toCodePoints(NSString* text, NSUInteger offset) {

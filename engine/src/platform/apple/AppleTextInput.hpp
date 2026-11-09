@@ -5,6 +5,7 @@
 #include <TargetConditionals.h>
 
 #include <cstdint>
+#include <string_view>
 
 #include "haylen/platform/TextInput.hpp"
 
@@ -26,6 +27,9 @@ class AppleTextInput final : public TextInput {
     }
     void edit(const Field& field) override;
     void finish() override;
+
+    // The text of a field may hold bytes that are not UTF-8, such as those of a Lua string, which Foundation refuses, so they become U+FFFD the way the engine decodes them, which keeps the offsets of the selection in code points.
+    [[nodiscard]] static NSString* toNSString(std::string_view text);
 
     // Converts between the UTF-16 offsets of Foundation and the code points of the engine.
     [[nodiscard]] static int toCodePoints(NSString* text, NSUInteger offset);

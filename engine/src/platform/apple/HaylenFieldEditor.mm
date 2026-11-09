@@ -80,7 +80,7 @@ using haylen::platform::TextInput;
         field = value.id;
         revision = value.revision;
         applying = YES;
-        NSString* text = [NSString stringWithUTF8String:value.text.c_str()];
+        NSString* text = AppleTextInput::toNSString(value.text);
         self.string = text;
         const NSUInteger start = AppleTextInput::toUtf16(text, value.selectionStart);
         self.selectedRange = NSMakeRange(start, AppleTextInput::toUtf16(text, value.selectionEnd) - start);
