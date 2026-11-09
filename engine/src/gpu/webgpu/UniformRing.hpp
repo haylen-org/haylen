@@ -7,13 +7,17 @@
 #include <span>
 #include <vector>
 
+#include "haylen/gpu/Device.hpp"
+
 namespace haylen::gpu::webgpu {
 
 // The uniforms of the draws of a frame, which go into memory of the CPU at the offsets that dynamic bindings reach and into uniform buffers of the GPU with one queue write per buffer when the frame is submitted. WebGPU orders queue writes with submissions, so the writes of a frame never touch what an earlier frame still reads, and the buffers serve every frame. The buffers are chunks of a fixed size, so the bind groups of earlier draws keep pointing at their buffer when a frame needs more room.
 class UniformRing final {
   public:
-    // The bytes of each chunk, which hold the largest uniform blocks of a program several times over.
+    // The bytes of each chunk, and the largest uniform block that a chunk takes. A chunk holds every block of a program and one more at their largest, with the padding of the largest alignment of WebGPU before each, so the blocks that move on to a new chunk always fit.
     static constexpr std::size_t kChunkSize = std::size_t{1} << 20;
+    static constexpr std::size_t kMaxBlockSize = std::size_t{64} << 10;
+    static_assert((Device::kMaxBlocks + 1) * (kMaxBlockSize + 256) <= kChunkSize);
 
     UniformRing(WGPUDevice owner, std::uint32_t offsetAlignment);
     UniformRing(const UniformRing&) = delete;

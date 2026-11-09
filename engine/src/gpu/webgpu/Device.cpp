@@ -792,7 +792,7 @@ void Device::applyUniforms(int slot, std::span<const std::byte> data) {
     if (pass == nullptr) {
         return;
     }
-    if (data.size() > connection->getLimits().maxUniformBufferBindingSize) {
+    if (data.size() > std::min<std::uint64_t>(connection->getLimits().maxUniformBufferBindingSize, UniformRing::kMaxBlockSize)) {
         throw std::logic_error(std::format("A uniform block of {} bytes is larger than WebGPU binds.", data.size()));
     }
     if (!ring.fits(data.size())) {
