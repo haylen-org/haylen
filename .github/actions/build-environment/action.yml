@@ -51,40 +51,76 @@ runs:
       shell: bash
       run: pip install ninja
 
-    # Objects of one version of Emscripten never mix with another, so its version keys the compiler cache, and every build compiles with every processor of the runner. The pins of the tools in "haylen.py" key their caches.
-    - name: Read the pins of the tools and the processors of the runner
+    # Objects of one version of Emscripten never mix with another, so its version keys the compiler cache, and every build compiles with every processor of the runner.
+    - name: Read the version of Emscripten and the processors of the runner
       id: machine
       shell: bash
       run: |
         echo "emscripten=$(python -c 'import haylen; print(haylen.EMSDK_VERSION)')" >> "$GITHUB_OUTPUT"
-        echo "xcodegen=$(python -c 'import haylen; print(haylen.XCODEGEN_VERSION + "-" + haylen.XCODEGEN_SHA256)')" >> "$GITHUB_OUTPUT"
         echo "JOBS=$(python -c 'import os; print(os.cpu_count())')" >> "$GITHUB_ENV"
 
-    - name: Restore the sources of the dependencies
-      uses: ./.github/actions/pinned-cache
-      with:
-        name: cpm-${{ runner.os }}-
-        key: cpm-${{ runner.os }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake', 'engine/cmake/patches/**') }}
-        path: .cache/cpm
-        save: ${{ inputs.save-sources }}
+    # The sources of the dependencies and the tools that the builds download come from the releases of their projects, so each one keeps a cache whose name every copy shares and whose key ends with what pins it. One job of each cache saves it, in the runs of the default branch, once the job succeeds with a key that no cache holds yet. Each cache step keeps an id of its own, since the steps of an action that a job uses twice would share the state that saves them.
+    - name: Name the pinned caches
+      id: pins
+      shell: bash
+      run: |
+        system="${{ runner.os }}-${{ runner.arch }}"
+        echo "default-branch=${{ github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}" >> "$GITHUB_OUTPUT"
+        echo "sources-name=cpm-${{ runner.os }}-" >> "$GITHUB_OUTPUT"
+        echo "sources-key=cpm-${{ runner.os }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake', 'engine/cmake/patches/**') }}" >> "$GITHUB_OUTPUT"
+        echo "shader-compiler-name=tool-shader-compiler-$system-" >> "$GITHUB_OUTPUT"
+        echo "shader-compiler-key=tool-shader-compiler-$system-${{ hashFiles('engine/cmake/haylen-shader-compiler.json', 'engine/cmake/haylen-shader-compiler.cmake') }}" >> "$GITHUB_OUTPUT"
+        echo "xcodegen-name=tool-xcodegen-$system-" >> "$GITHUB_OUTPUT"
+        echo "xcodegen-key=tool-xcodegen-$system-$(python -c 'import haylen; print(haylen.XCODEGEN_VERSION + "-" + haylen.XCODEGEN_SHA256)')" >> "$GITHUB_OUTPUT"
+        echo "emscripten-name=tool-emscripten-$system-" >> "$GITHUB_OUTPUT"
+        echo "emscripten-key=tool-emscripten-$system-${{ steps.machine.outputs.emscripten }}" >> "$GITHUB_OUTPUT"
+        echo "ccache-name=tool-ccache-$system-" >> "$GITHUB_OUTPUT"
+        echo "ccache-key=tool-ccache-$system-${{ inputs.ccache-version }}-${{ inputs.ccache-sha256 }}" >> "$GITHUB_OUTPUT"
 
-    # The tools come from the releases of their projects, which the runs would otherwise download again each time.
-    - name: Restore the shader compiler
-      uses: ./.github/actions/pinned-cache
+    - name: Restore and save the sources of the dependencies
+      id: sources
+      if: inputs.save-sources == 'true' && steps.pins.outputs.default-branch == 'true'
+      uses: actions/cache@v6
       with:
-        name: tool-shader-compiler-${{ runner.os }}-${{ runner.arch }}-
-        key: tool-shader-compiler-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('engine/cmake/haylen-shader-compiler.json', 'engine/cmake/haylen-shader-compiler.cmake') }}
+        path: .cache/cpm
+        key: ${{ steps.pins.outputs.sources-key }}
+
+    - name: Restore the sources of the dependencies
+      if: steps.sources.outcome == 'skipped'
+      uses: actions/cache/restore@v6
+      with:
+        path: .cache/cpm
+        key: ${{ steps.pins.outputs.sources-key }}
+
+    - name: Restore and save the shader compiler
+      id: shader-compiler
+      if: contains(inputs.save-tools, 'shader-compiler') && steps.pins.outputs.default-branch == 'true'
+      uses: actions/cache@v6
+      with:
         path: .tools/haylen-shaderc-*
-        save: ${{ contains(inputs.save-tools, 'shader-compiler') }}
+        key: ${{ steps.pins.outputs.shader-compiler-key }}
+
+    - name: Restore the shader compiler
+      if: steps.shader-compiler.outcome == 'skipped'
+      uses: actions/cache/restore@v6
+      with:
+        path: .tools/haylen-shaderc-*
+        key: ${{ steps.pins.outputs.shader-compiler-key }}
+
+    - name: Restore and save XcodeGen
+      id: xcodegen
+      if: inputs.xcodegen == 'true' && contains(inputs.save-tools, 'xcodegen') && steps.pins.outputs.default-branch == 'true'
+      uses: actions/cache@v6
+      with:
+        path: .tools/xcodegen-*
+        key: ${{ steps.pins.outputs.xcodegen-key }}
 
     - name: Restore XcodeGen
-      if: inputs.xcodegen == 'true'
-      uses: ./.github/actions/pinned-cache
+      if: inputs.xcodegen == 'true' && steps.xcodegen.outcome == 'skipped'
+      uses: actions/cache/restore@v6
       with:
-        name: tool-xcodegen-${{ runner.os }}-${{ runner.arch }}-
-        key: tool-xcodegen-${{ runner.os }}-${{ runner.arch }}-${{ steps.machine.outputs.xcodegen }}
         path: .tools/xcodegen-*
-        save: ${{ contains(inputs.save-tools, 'xcodegen') }}
+        key: ${{ steps.pins.outputs.xcodegen-key }}
 
     # The SDK keeps the libraries it builds in a folder of its own, outside the cache, so the cache holds only what the SDK downloads: the SDK itself and its ports.
     - name: Keep the libraries that Emscripten builds out of its SDK
@@ -92,16 +128,24 @@ runs:
       shell: bash
       run: echo "EM_CACHE=${{ github.workspace }}/.cache/emscripten" >> "$GITHUB_ENV"
 
-    - name: Restore the Emscripten SDK and its ports
-      if: inputs.emscripten == 'true'
-      uses: ./.github/actions/pinned-cache
+    - name: Restore and save the Emscripten SDK and its ports
+      id: emscripten
+      if: inputs.emscripten == 'true' && contains(inputs.save-tools, 'emscripten') && steps.pins.outputs.default-branch == 'true'
+      uses: actions/cache@v6
       with:
-        name: tool-emscripten-${{ runner.os }}-${{ runner.arch }}-
-        key: tool-emscripten-${{ runner.os }}-${{ runner.arch }}-${{ steps.machine.outputs.emscripten }}
         path: |
           .tools/emsdk
           .cache/emscripten/ports
-        save: ${{ contains(inputs.save-tools, 'emscripten') }}
+        key: ${{ steps.pins.outputs.emscripten-key }}
+
+    - name: Restore the Emscripten SDK and its ports
+      if: inputs.emscripten == 'true' && steps.emscripten.outcome == 'skipped'
+      uses: actions/cache/restore@v6
+      with:
+        path: |
+          .tools/emsdk
+          .cache/emscripten/ports
+        key: ${{ steps.pins.outputs.emscripten-key }}
 
     - name: Install ccache on macOS
       if: inputs.cache != '' && runner.os == 'macOS'
@@ -110,14 +154,20 @@ runs:
         HOMEBREW_NO_AUTO_UPDATE: "1"
       run: brew install ccache
 
-    - name: Restore ccache on Windows
-      if: inputs.cache != '' && runner.os == 'Windows'
-      uses: ./.github/actions/pinned-cache
+    - name: Restore and save ccache on Windows
+      id: ccache
+      if: inputs.cache != '' && runner.os == 'Windows' && contains(inputs.save-tools, 'ccache') && steps.pins.outputs.default-branch == 'true'
+      uses: actions/cache@v6
       with:
-        name: tool-ccache-${{ runner.os }}-${{ runner.arch }}-
-        key: tool-ccache-${{ runner.os }}-${{ runner.arch }}-${{ inputs.ccache-version }}-${{ inputs.ccache-sha256 }}
         path: .tools/ccache-${{ inputs.ccache-version }}-windows-x86_64
-        save: ${{ contains(inputs.save-tools, 'ccache') }}
+        key: ${{ steps.pins.outputs.ccache-key }}
+
+    - name: Restore ccache on Windows
+      if: inputs.cache != '' && runner.os == 'Windows' && steps.ccache.outcome == 'skipped'
+      uses: actions/cache/restore@v6
+      with:
+        path: .tools/ccache-${{ inputs.ccache-version }}-windows-x86_64
+        key: ${{ steps.pins.outputs.ccache-key }}
 
     - name: Install ccache on Windows
       if: inputs.cache != '' && runner.os == 'Windows'
@@ -134,6 +184,26 @@ runs:
           Expand-Archive $archive -DestinationPath .tools
         }
         (Resolve-Path $folder).Path | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+    # A cache that this job saves under a new key replaces the copies of earlier keys, which hold what an earlier pin named, so the repository keeps one copy of each cache.
+    - name: Delete the copies of earlier keys of the caches that this job saves
+      if: steps.pins.outputs.default-branch == 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPLACED: |
+          ${{ steps.sources.outcome == 'success' && steps.sources.outputs.cache-hit != 'true' && format('{0} {1}', steps.pins.outputs.sources-name, steps.pins.outputs.sources-key) || '' }}
+          ${{ steps.shader-compiler.outcome == 'success' && steps.shader-compiler.outputs.cache-hit != 'true' && format('{0} {1}', steps.pins.outputs.shader-compiler-name, steps.pins.outputs.shader-compiler-key) || '' }}
+          ${{ steps.xcodegen.outcome == 'success' && steps.xcodegen.outputs.cache-hit != 'true' && format('{0} {1}', steps.pins.outputs.xcodegen-name, steps.pins.outputs.xcodegen-key) || '' }}
+          ${{ steps.emscripten.outcome == 'success' && steps.emscripten.outputs.cache-hit != 'true' && format('{0} {1}', steps.pins.outputs.emscripten-name, steps.pins.outputs.emscripten-key) || '' }}
+          ${{ steps.ccache.outcome == 'success' && steps.ccache.outputs.cache-hit != 'true' && format('{0} {1}', steps.pins.outputs.ccache-name, steps.pins.outputs.ccache-key) || '' }}
+      run: |
+        while read -r name key; do
+          if [ -z "$name" ]; then
+            continue
+          fi
+          gh cache list --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF" --key "$name" --limit 100 --json id,key --jq ".[] | select(.key != \"$key\") | .id" | while read -r id; do gh cache delete "$id" --repo "$GITHUB_REPOSITORY"; done
+        done <<< "$REPLACED"
 
     # The name of the cache ends with the run that saves it, so a run restores the newest cache of its name. The objects take the level of compression that keeps them about a seventh smaller than the default at a small cost on each compile that misses.
     - name: Name the compiler cache
