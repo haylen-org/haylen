@@ -81,8 +81,13 @@ end
 function Displays:request()
     self:spawn(function()
         local state, message = system.requestPermission('screens'):await()
-        self:set('answer', {text = state == 'granted' and string.format('The app sees %d displays.', #display.list()) or message or string.format('The permission "screens" is "%s".', state)})
+        self:set('answer', {text = state == 'granted' and string.format('The app sees %s.', Displays.count(#display.list(), 'display')) or message or string.format('The permission "screens" is "%s".', state)})
     end)
+end
+
+-- A count with its noun, such as "1 mode" or "2 modes".
+function Displays.count(number, noun)
+    return string.format('%d %s%s', number, noun, number == 1 and '' or 's')
 end
 
 -- The displays fit the play area with their places on the desktop, or side by side on platforms whose displays have points of their own.
@@ -113,12 +118,14 @@ function Displays:draw(area)
         local shows = shown.id == current
         graphics2d.drawRect({x, y, width, height}, shows and '#FF26324A' or Test.surface)
         graphics2d.drawRectOutline({x, y, width, height}, shows and 3 or 1.5, shown.primary and Test.accent or Test.line)
+        -- The captions sit inside the work area, so its outline never crosses them.
         local work = shown.workArea
-        graphics2d.drawRectOutline({x + (work.x - shown.bounds.x) * fit, y + (work.y - shown.bounds.y) * fit, work.width * fit, work.height * fit}, 1, Test.muted)
-        Test.caption(shown.name ~= '' and shown.name or shown.id, x + 12, y + 10, {size = 22, color = Test.ink, maxWidth = width - 24})
-        Test.caption(string.format('%g by %g points at %gx, %g Hz, %d modes', shown.bounds.width, shown.bounds.height, shown.scale, shown.refreshRate, #shown.modes), x + 12, y + 40, {maxWidth = width - 24})
+        local workTop, workHeight = y + (work.y - shown.bounds.y) * fit, work.height * fit
+        graphics2d.drawRectOutline({x + (work.x - shown.bounds.x) * fit, workTop, work.width * fit, workHeight}, 1, Test.muted)
+        Test.caption(shown.name ~= '' and shown.name or shown.id, x + 12, workTop + 10, {size = 22, color = Test.ink, maxWidth = width - 24})
+        Test.caption(string.format('%g by %g points at %gx, %g Hz, %s', shown.bounds.width, shown.bounds.height, shown.scale, shown.refreshRate, Displays.count(#shown.modes, 'mode')), x + 12, workTop + 40, {maxWidth = width - 24})
         if shows then
-            Test.caption('The window is here', x + 12, y + height - 34, {color = Test.green})
+            Test.caption('The window is here', x + 12, workTop + workHeight - 34, {color = Test.green})
         end
     end
 
@@ -130,7 +137,7 @@ end
 function Displays:update(dt)
     Displays.super.update(self, dt)
     local current = display.current()
-    self:status(string.format('%d displays, the window is on "%s"%s.', #display.list(), current.name ~= '' and current.name or current.id, window.fullscreen() and ' in fullscreen' or ''))
+    self:status(string.format('%s, the window is on "%s"%s.', Displays.count(#display.list(), 'display'), current.name ~= '' and current.name or current.id, window.fullscreen() and ' in fullscreen' or ''))
 end
 
 return Displays
