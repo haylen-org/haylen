@@ -62,6 +62,29 @@ TEST(CollectionsLuaTest, PoolsRecycleObjects) {
     EXPECT_NE(fixture.lua("collections.newPool({create = function() end}):acquire()").find("returned \"nil\""), std::string::npos);
 }
 
+// The reset hook receives every value that the acquire passed on a stack that grows for them, and more values than a stack holds fail with an error.
+TEST(CollectionsLuaTest, PassesManyValuesToTheResetHook) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        pool = require('haylen.collections').newPool({
+            create = function() return {} end,
+            reset = function(object, ...) received = select('#', ...) .. ' ' .. select(-1, ...) end,
+        })
+        function acquireMany(count)
+            local values = {}
+            for index = 1, count do
+                values[index] = index
+            end
+            return select(2, pcall(pool.acquire, pool, table.unpack(values)))
+        end
+    )");
+    // clang-format on
+    fixture.runLua("acquireMany(5000)");
+    EXPECT_EQ(fixture.lua("return received"), "5000 5000");
+    EXPECT_NE(fixture.lua("return acquireMany(600000)").find("too many values to deliver"), std::string::npos);
+}
+
 TEST(CollectionsLuaTest, RingBuffersKeepTheNewestValues) {
     test::EngineFixture fixture;
     fixture.runLua("collections = require('haylen.collections') history = collections.newRingBuffer(3)");

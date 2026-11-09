@@ -27,6 +27,7 @@ template <> struct Type<core::CollectionsLua::ValueBuffer> {
 namespace haylen::core {
 
 void CollectionsLua::callHook(lua_State* L, const char* name, int object, int first, int count) {
+    luaL_checkstack(L, count + 2, "too many values to deliver");
     if (!lua::Userdata::pushFunction(L, 1, name)) {
         return;
     }
