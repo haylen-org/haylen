@@ -166,6 +166,7 @@ class NodeTree final : public std::enable_shared_from_this<NodeTree> {
     void link(std::int32_t index, std::int32_t parent);
     void unlink(std::int32_t index) noexcept;
     void release(std::int32_t index);
+    [[nodiscard]] bool holds(std::size_t slot, std::uint32_t generation) const noexcept;
     void touch(std::uint32_t index) noexcept;
     void setContent(std::uint32_t index, NodeContent content);
     void setParent(std::uint32_t index, std::int32_t parent);

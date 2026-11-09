@@ -437,25 +437,29 @@ void NodeTree::unlink(std::int32_t index) noexcept {
     detail.next = kNone;
 }
 
-// Children go first, and a listener that adds a child to a node on its way out sees that child go too.
+// Children go first, and a listener that adds a child to a node on its way out sees that child go too. A listener may destroy this node itself, and its slot may then hold a node added since, which stays.
 void NodeTree::release(std::int32_t index) {
     const auto slot = static_cast<std::size_t>(index);
-    while (details[slot].firstChild != kNone) {
+    const std::uint32_t generation = details[slot].generation;
+    while (holds(slot, generation) && details[slot].firstChild != kNone) {
         release(details[slot].firstChild);
     }
-    const std::uint32_t generation = details[slot].generation;
+    if (!holds(slot, generation)) {
+        return;
+    }
+
     const Node node = handle(index);
     destroyed.emit(node);
-    if (const auto watched = watchers.find(node.getKey()); watched != watchers.end() && slots[slot].alive && details[slot].generation == generation) {
+    if (const auto watched = watchers.find(node.getKey()); watched != watchers.end() && holds(slot, generation)) {
         const std::unique_ptr<core::Signal<const Node&>> watcher = std::move(watched->second);
         watchers.erase(watched);
         watcher->emit(node);
     }
-    if (!slots[slot].alive || details[slot].generation != generation) {
-        return;
-    }
-    while (details[slot].firstChild != kNone) {
+    while (holds(slot, generation) && details[slot].firstChild != kNone) {
         release(details[slot].firstChild);
+    }
+    if (!holds(slot, generation)) {
+        return;
     }
 
     unlink(index);
@@ -468,6 +472,10 @@ void NodeTree::release(std::int32_t index) {
     --count;
     orderChanged = true;
     pending = true;
+}
+
+bool NodeTree::holds(std::size_t slot, std::uint32_t generation) const noexcept {
+    return slots[slot].alive && details[slot].generation == generation;
 }
 
 void NodeTree::touch(std::uint32_t index) noexcept {

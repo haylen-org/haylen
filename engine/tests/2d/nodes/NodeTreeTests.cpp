@@ -126,6 +126,25 @@ TEST_F(NodeTreeTest, InvalidatesHandlesOfDestroyedNodesAndOfGoneTrees) {
     }
 }
 
+TEST_F(NodeTreeTest, KeepsANodeThatTakesTheSlotOfANodeThatAListenerDestroyed) {
+    const std::shared_ptr<NodeTree> tree = NodeTree::create();
+    Node parent = tree->add({.name = "parent"});
+    const Node child = parent.add({.name = "child"});
+    Node fresh;
+    // clang-format off
+    (void)tree->onDestroyed(child, [&parent, &fresh, &tree](const Node&) {
+        parent.destroy();
+        fresh = tree->add({.name = "fresh"});
+    });
+    // clang-format on
+    parent.destroy();
+
+    EXPECT_FALSE(child.isValid());
+    EXPECT_TRUE(fresh.isValid());
+    EXPECT_EQ(fresh.getName(), "fresh");
+    EXPECT_EQ(tree->size(), 1U);
+}
+
 TEST_F(NodeTreeTest, MovesManyNodesFromBuffersAndUpdatesLargeTreesInParallel) {
     test::EngineFixture fixture;
     const std::shared_ptr<NodeTree> tree = NodeTree::create();
