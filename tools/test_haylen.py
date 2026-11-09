@@ -24,6 +24,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import textwrap
 import threading
 import time
 import tokenize
@@ -898,6 +899,24 @@ class QuietCommandTest(unittest.TestCase):
         haylen.run([sys.executable, "-c", "print('compiled')"])
         self.assertFalse(self.terminal.log.exists())
         self.assertIn("$ ", self.stdout.getvalue())
+
+    def test_the_output_of_a_tool_reads_as_utf_8_in_a_locale_of_another_encoding(self):
+        # The tools write UTF-8, while a Python outside its UTF-8 mode decodes the output of a command in the encoding of the locale, such as the code page of Windows, unless it is told otherwise.
+        # The tools write UTF-8, while a Python outside its UTF-8 mode decodes the output of a command in the encoding of the locale, such as the code page of Windows, unless it is told otherwise.
+        script = textwrap.dedent("""
+            import locale, sys
+            try:
+                locale.setlocale(locale.LC_CTYPE, "en_US.ISO8859-1")
+            except locale.Error:
+                sys.exit(3)
+            sys.path.insert(0, sys.argv[1])
+            import haylen
+            print(ascii(haylen.capture([sys.executable, "-c", "import sys; sys.stdout.buffer.write(chr(233).encode())"])))
+        """)
+        child = subprocess.run([sys.executable, "-c", script, str(haylen.ROOT)], env={**os.environ, "PYTHONUTF8": "0"}, capture_output=True, text=True)
+        if child.returncode == 3:
+            self.skipTest("This machine has no locale of Latin-1.")
+        self.assertEqual(child.stdout.strip(), ascii("é"), child.stderr)
 
 
 class AppArgumentTest(unittest.TestCase):

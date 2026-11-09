@@ -542,7 +542,7 @@ def capture(command: list, *, cwd: Path = ROOT) -> str:
     """Runs a command quietly and returns its standard output, and stops with its error output when it fails."""
     parts = [str(part) for part in command]
     try:
-        return subprocess.run(parts, cwd=cwd, check=True, capture_output=True, text=True).stdout
+        return subprocess.run(parts, cwd=cwd, check=True, capture_output=True, text=True, encoding="utf-8", errors="replace").stdout
     except FileNotFoundError as error:
         raise BuildError(missing_command(parts[0])) from error
     except subprocess.CalledProcessError as error:
@@ -3261,7 +3261,7 @@ def compile_shader(source: Path, output: Path) -> None:
     if len(declared) != 1 or declared[0][1] != "haylen_vs":
         raise BuildError(f'The shader `{shown_path(source)}` must declare exactly one "@program" whose vertex shader is "haylen_vs" from "haylen/material.glsl".')
     variants = [part for program, defines in SHADER_PROGRAMS.items() for part in ("--variant", f"{program}={','.join(defines)}")]
-    compiled = subprocess.run([str(part) for part in [ensure_shaderc(), source.resolve(), "--output", output.resolve(), "--include", SHADER_LIBRARY_DIR, *variants]], capture_output=True, text=True)
+    compiled = subprocess.run([str(part) for part in [ensure_shaderc(), source.resolve(), "--output", output.resolve(), "--include", SHADER_LIBRARY_DIR, *variants]], capture_output=True, text=True, encoding="utf-8", errors="replace")
     if compiled.returncode != 0:
         raise BuildError(f"The shader `{shown_path(source)}` does not compile, and the Haylen shader compiler names the lines below.", f"{compiled.stdout}{compiled.stderr}".strip())
     terminal.success(f"Compiled `{shown_path(source)}` into `{shown_path(output)}`.")
@@ -4003,7 +4003,7 @@ def relay_unified_log(stream: subprocess.Popen, errors: list[str]) -> None:
 def unified_log(executable: str, prefix: list) -> Iterator[list[str]]:
     """Relays what the engine of an app process writes to the unified log, where it logs on iOS, tvOS and Mac Catalyst, while the block runs, and yields the list of the errors it logged, which fills as they arrive. The prefix runs `log` inside a simulator."""
     predicate = f'process == "{executable}" AND category == "{APPLE_LOG_CATEGORY}"'
-    stream = subprocess.Popen([str(part) for part in [*prefix, "log", "stream", "--style", "ndjson", "--level", "debug", "--predicate", predicate]], stdout=subprocess.PIPE, text=True)
+    stream = subprocess.Popen([str(part) for part in [*prefix, "log", "stream", "--style", "ndjson", "--level", "debug", "--predicate", predicate]], stdout=subprocess.PIPE, text=True, encoding="utf-8", errors="replace")
     # The stream names its filter on the first line and delivers events from then on, so the app starts after that line.
     stream.stdout.readline()
     errors: list[str] = []
@@ -4589,7 +4589,7 @@ ANDROID_PROCESS_POLL_SECONDS = 1.0
 
 def android_pid(device: str, package: str) -> str:
     """The process of an app on a device, or an empty text when it runs none."""
-    return subprocess.run([str(adb()), "-s", device, "shell", "pidof", package], capture_output=True, text=True, check=False).stdout.strip()
+    return subprocess.run([str(adb()), "-s", device, "shell", "pidof", package], capture_output=True, text=True, encoding="utf-8", errors="replace", check=False).stdout.strip()
 
 
 def android_log_line(line: str) -> str | None:
