@@ -665,6 +665,8 @@ function(haylen_add_release target package entries paths apple_project web_shell
   target_sources(${target} PRIVATE "${bootstrap}")
 
   if(APPLE)
+    # The executable leaves its symbols before the bundle is signed, like everything the bundle holds.
+    haylen_harden_release(${target} "${folder}")
     # The release goes into the bundle before the bundle is signed, at the resources of the bundle, where macOS and Mac Catalyst keep them in Contents.
     set(destination "$<TARGET_BUNDLE_DIR:${target}>/app")
     if(HAYLEN_PLATFORM STREQUAL "macos" OR CMAKE_CXX_COMPILER_TARGET MATCHES "-macabi$")
@@ -690,13 +692,21 @@ function(haylen_add_release target package entries paths apple_project web_shell
     haylen_copy_release(${target} "${folder}/shipped" "$<TARGET_FILE_DIR:${target}>/app")
     haylen_setup_windows_app(${target})
   endif()
-  haylen_harden_release(${target} "${folder}")
+  if(NOT APPLE)
+    haylen_harden_release(${target} "${folder}")
+  endif()
 endfunction()
 
 # Builds a release without the symbols of the app, which stay in the build folder of its release for crash reports: a dSYM on Apple platforms, the symbol map of Emscripten, the PDB of the public symbols on Windows and a debug file that the stripped binary names elsewhere.
 function(haylen_harden_release target folder)
   if(APPLE)
-    set_target_properties(${target} PROPERTIES XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT dwarf-with-dsym XCODE_ATTRIBUTE_DEAD_CODE_STRIPPING YES XCODE_ATTRIBUTE_DEPLOYMENT_POSTPROCESSING YES XCODE_ATTRIBUTE_STRIP_INSTALLED_PRODUCT YES XCODE_ATTRIBUTE_STRIP_STYLE all)
+    # The Xcode generator and the others link and strip alike, as Xcode strips the Release builds of the Apple template.
+    target_link_options(${target} PRIVATE "LINKER:-dead_strip")
+    add_custom_command(TARGET ${target} POST_BUILD
+      COMMAND xcrun dsymutil "$<TARGET_FILE:${target}>" -o "${folder}/$<TARGET_BUNDLE_DIR_NAME:${target}>.dSYM"
+      COMMAND xcrun strip "$<TARGET_FILE:${target}>"
+      VERBATIM
+    )
   elseif(EMSCRIPTEN)
     # Emscripten minifies the runtime it links, and the workers next to the page go through the terser it ships.
     target_link_options(${target} PRIVATE --emit-symbol-map)

@@ -219,7 +219,7 @@ An app with a content server in `app.json` ships only what its required content 
 
 - Android and Linux link with `--gc-sections` and ship stripped. The symbols stay in a `.debug` file in `haylen-release/<target>/`, which the binary names in its debug link.
 - Windows links with `/DEBUG /OPT:REF /OPT:ICF` and keeps the PDB of the public symbols in that folder.
-- Apple platforms keep a dSYM and strip the app as they build it.
+- Apple platforms link with dead code stripping, with the Xcode generator and every other generator alike. The executable leaves its symbols in a dSYM, `<target>.app.dSYM` in `haylen-release/<target>/`, and ships stripped, before the bundle is signed.
 - The web keeps the symbol map of Emscripten in that folder, and minifies the workers next to the page.
 - The Android library exports only the entry points of Java and GameActivity.
 
