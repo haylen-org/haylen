@@ -87,13 +87,10 @@ Device::Device(ComPtr<IDXGIFactory6> dxgiFactory, ComPtr<IDXGIAdapter1> card, co
 }
 
 Device::~Device() {
-    if (queue != nullptr && idleFence != nullptr && fenceEvent != nullptr) {
+    if (queue != nullptr && idleFence != nullptr && fenceEvent.IsValid()) {
         waitIdle();
     }
     chains.clear();
-    if (fenceEvent != nullptr) {
-        CloseHandle(fenceEvent);
-    }
 }
 
 void Device::createDevice(bool validation) {
@@ -111,8 +108,8 @@ void Device::createDevice(bool validation) {
     queue->SetName(L"haylen-queue");
     HResult::check(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(fence.GetAddressOf())), "create the fence of the frames");
     HResult::check(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(idleFence.GetAddressOf())), "create the fence that waits for the GPU to finish");
-    fenceEvent = CreateEventW(nullptr, FALSE, FALSE, nullptr);
-    if (fenceEvent == nullptr) {
+    fenceEvent.Attach(CreateEventW(nullptr, FALSE, FALSE, nullptr));
+    if (!fenceEvent.IsValid()) {
         throw std::runtime_error("The graphics device could not create the event that waits for the GPU.");
     }
 
@@ -252,16 +249,16 @@ void Device::waitFor(std::uint64_t value) {
     if (fence->GetCompletedValue() >= value) {
         return;
     }
-    if (SUCCEEDED(fence->SetEventOnCompletion(value, fenceEvent))) {
-        WaitForSingleObject(fenceEvent, INFINITE);
+    if (SUCCEEDED(fence->SetEventOnCompletion(value, fenceEvent.Get()))) {
+        WaitForSingleObject(fenceEvent.Get(), INFINITE);
     }
 }
 
 // The fence of the frames advances only with commits, which readbacks and released objects count on, so waiting for the queue to drain signals a fence of its own.
 void Device::waitIdle() {
     ++idleValue;
-    if (SUCCEEDED(queue->Signal(idleFence.Get(), idleValue)) && idleFence->GetCompletedValue() < idleValue && SUCCEEDED(idleFence->SetEventOnCompletion(idleValue, fenceEvent))) {
-        WaitForSingleObject(fenceEvent, INFINITE);
+    if (SUCCEEDED(queue->Signal(idleFence.Get(), idleValue)) && idleFence->GetCompletedValue() < idleValue && SUCCEEDED(idleFence->SetEventOnCompletion(idleValue, fenceEvent.Get()))) {
+        WaitForSingleObject(fenceEvent.Get(), INFINITE);
     }
     release(fence->GetCompletedValue());
 }
@@ -300,9 +297,9 @@ void Device::openFrame() {
     release(fence->GetCompletedValue());
     timer->collect(frameIndex);
 
-    frame.commands->Reset();
-    frame.transfers->Reset();
-    commands->Reset(frame.commands.Get(), nullptr);
+    checkFrame(frame.commands->Reset(), "reuse the command memory of a frame");
+    checkFrame(frame.transfers->Reset(), "reuse the transfer memory of a frame");
+    checkFrame(commands->Reset(frame.commands.Get(), nullptr), "start the commands of a frame");
     frameOpen = true;
     transfersOpen = false;
     bound = {};
@@ -315,7 +312,7 @@ void Device::openFrame() {
 ID3D12GraphicsCommandList4& Device::getTransferList() {
     openFrame();
     if (!transfersOpen) {
-        transfers->Reset(frames[frameIndex].transfers.Get(), nullptr);
+        checkFrame(transfers->Reset(frames[frameIndex].transfers.Get(), nullptr), "start the transfers of a frame");
         transfersOpen = true;
     }
     return *transfers.Get();
@@ -1000,17 +997,14 @@ void Device::applyBindings(const Bindings& bindings) {
         }
     }
 
-    // A heap that grows replaces the heaps of the list, which drops every table set so far, so the tables are set again in the new heap.
-    if (!applyTables(pipeline, bindings)) {
-        retire(textureTables->grow());
+    // A heap that runs out of room is replaced, which drops every table that the list set in its heaps, so the tables go into the new heaps again, and a new heap always has room for the tables of one draw.
+    for (DescriptorRing* full = applyTables(pipeline, bindings); full != nullptr; full = applyTables(pipeline, bindings)) {
+        retire(full->grow());
         setHeaps();
-        if (!applyTables(pipeline, bindings)) {
-            throw std::runtime_error("The textures of one draw take more descriptors than a heap of Direct3D 12 holds.");
-        }
     }
 }
 
-bool Device::applyTables(const PipelineRecord& pipeline, const Bindings& bindings) {
+DescriptorRing* Device::applyTables(const PipelineRecord& pipeline, const Bindings& bindings) {
     std::array<D3D12_CPU_DESCRIPTOR_HANDLE, DescriptorRing::kMaxTable> handles{};
     for (std::size_t stage = 0; stage < 2; ++stage) {
         const RootSignatures::Table& textures = pipeline.layout.textures[stage];
@@ -1018,7 +1012,7 @@ bool Device::applyTables(const PipelineRecord& pipeline, const Bindings& binding
             handles[index] = images.get(bindings.textures[static_cast<std::size_t>(textures.slots[index])].id).view;
         }
         if (textures.parameter >= 0 && !applyTable(stage, textures.parameter, std::span(handles).first(textures.slots.size()))) {
-            return false;
+            return textureTables.get();
         }
 
         const RootSignatures::Table& samplersOfStage = pipeline.layout.samplers[stage];
@@ -1026,10 +1020,10 @@ bool Device::applyTables(const PipelineRecord& pipeline, const Bindings& binding
             handles[index] = samplers.get(bindings.samplers[static_cast<std::size_t>(samplersOfStage.slots[index])].id);
         }
         if (samplersOfStage.parameter >= 0 && !applyTable(2 + stage, samplersOfStage.parameter, std::span(handles).first(samplersOfStage.slots.size()))) {
-            return false;
+            return samplerTables.get();
         }
     }
-    return true;
+    return nullptr;
 }
 
 bool Device::applyTable(std::size_t table, int parameter, std::span<const D3D12_CPU_DESCRIPTOR_HANDLE> handles) {
@@ -1145,15 +1139,9 @@ void Device::commit() {
 
     // The transfer list runs before the passes, which read what it copied.
     if (transfersOpen) {
-        ID3D12CommandList* list = transfers.Get();
-        if (SUCCEEDED(transfers->Close())) {
-            queue->ExecuteCommandLists(1, &list);
-        }
+        submit(*transfers.Get());
     }
-    ID3D12CommandList* list = commands.Get();
-    if (SUCCEEDED(commands->Close())) {
-        queue->ExecuteCommandLists(1, &list);
-    }
+    submit(*commands.Get());
     for (const std::unique_ptr<SurfaceChain>& chain : chains) {
         if (chain == nullptr || !chain->presentPending) {
             continue;
@@ -1165,8 +1153,13 @@ void Device::commit() {
         }
     }
 
-    ++fenceValue;
-    queue->Signal(fence.Get(), fenceValue);
+    // A value that the queue never signals would hold every later wait, so the frames count only the values the queue took.
+    const HRESULT signaled = queue->Signal(fence.Get(), fenceValue + 1);
+    if (FAILED(signaled)) {
+        loseDevice(signaled);
+    } else {
+        ++fenceValue;
+    }
     frames[frameIndex].fence = fenceValue;
     uploads->endFrame(fenceValue);
     textureTables->endFrame(fenceValue);
@@ -1179,6 +1172,25 @@ void Device::commit() {
         loseDevice(device->GetDeviceRemovedReason());
     }
     drainMessages();
+}
+
+// A list that fails to close holds commands that the GPU cannot run, so the device stops as lost instead of submitting it.
+void Device::submit(ID3D12GraphicsCommandList& list) {
+    const HRESULT closed = list.Close();
+    if (FAILED(closed)) {
+        loseDevice(closed);
+        return;
+    }
+    ID3D12CommandList* submitted = &list;
+    queue->ExecuteCommandLists(1, &submitted);
+}
+
+// A failure of the work of a frame throws, and one that says the GPU stopped working also loses the device, so the platform replaces it.
+void Device::checkFrame(HRESULT result, std::string_view action) {
+    if (HResult::isDeviceLoss(result)) {
+        loseDevice(result);
+    }
+    HResult::check(result, action);
 }
 
 void Device::drainMessages() {

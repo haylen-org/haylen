@@ -3,6 +3,7 @@
 #include <d3d12.h>
 #include <dxgi1_6.h>
 #include <wrl/client.h>
+#include <wrl/wrappers/corewrappers.h>
 
 #include <array>
 #include <cstddef>
@@ -216,6 +217,8 @@ class Device final : public gpu::Device {
     void createDevice(bool validation);
     void readCapabilities();
     void openFrame();
+    void checkFrame(HRESULT result, std::string_view action);
+    void submit(ID3D12GraphicsCommandList& list);
     [[nodiscard]] ID3D12GraphicsCommandList4& getTransferList();
     void waitFor(std::uint64_t value);
     void waitIdle();
@@ -239,7 +242,7 @@ class Device final : public gpu::Device {
     void makeTextureView(ImageRecord& image);
     void stagePixels(const ImageRecord& image, std::span<const std::span<const std::byte>> levels);
     [[nodiscard]] Microsoft::WRL::ComPtr<ID3D12Resource> makeBufferResource(D3D12_HEAP_TYPE heap, UINT64 size, D3D12_RESOURCE_STATES state, std::string_view label);
-    [[nodiscard]] bool applyTables(const PipelineRecord& pipeline, const Bindings& bindings);
+    [[nodiscard]] DescriptorRing* applyTables(const PipelineRecord& pipeline, const Bindings& bindings);
     [[nodiscard]] bool applyTable(std::size_t table, int parameter, std::span<const D3D12_CPU_DESCRIPTOR_HANDLE> handles);
     void drainMessages();
     static D3D12_RESOURCE_BARRIER makeTransition(ID3D12Resource* resource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after, UINT subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES) noexcept;
@@ -254,7 +257,7 @@ class Device final : public gpu::Device {
     Microsoft::WRL::ComPtr<ID3D12CommandQueue> queue;
     Microsoft::WRL::ComPtr<ID3D12Fence> fence;
     Microsoft::WRL::ComPtr<ID3D12Fence> idleFence;
-    HANDLE fenceEvent = nullptr;
+    Microsoft::WRL::Wrappers::Event fenceEvent;
     std::uint64_t fenceValue = 0;
     std::uint64_t idleValue = 0;
     Microsoft::WRL::ComPtr<ID3D12InfoQueue> infoQueue;

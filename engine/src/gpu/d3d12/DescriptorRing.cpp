@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <format>
-#include <stdexcept>
 #include <utility>
 
 #include "gpu/direct3d/HResult.hpp"
@@ -66,9 +65,6 @@ std::optional<D3D12_GPU_DESCRIPTOR_HANDLE> DescriptorRing::write(std::span<const
 }
 
 Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> DescriptorRing::grow() {
-    if (capacity >= largest) {
-        throw std::runtime_error(std::format("The draws of one frame bind more than the {} descriptors that a heap of Direct3D 12 holds.", largest));
-    }
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> old = heap;
     make(std::min(capacity * 2, largest));
     return old;

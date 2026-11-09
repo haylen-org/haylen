@@ -13,7 +13,7 @@
 
 namespace haylen::gpu::d3d12 {
 
-// A heap of descriptors that shaders read, which hands each frame the tables of its draws one after another and takes them back once the GPU finished the frame. A frame copies the descriptors of a table once, and every later table of the same descriptors in that frame reads the first one, so redundant bindings cost no copies and the small heap of samplers lasts. A heap that runs out of room is replaced by one twice as large while the frames in flight keep reading the old one.
+// A heap of descriptors that shaders read, which hands each frame the tables of its draws one after another and takes them back once the GPU finished the frame. A frame copies the descriptors of a table once, and every later table of the same descriptors in that frame reads the first one, so redundant bindings cost no copies and the small heap of samplers lasts. A heap that runs out of room is replaced by one twice as large, or by a fresh one once it is as large as Direct3D 12 allows, while the frames in flight keep reading the old one.
 class DescriptorRing final {
   public:
     static constexpr std::size_t kMaxTable = 32;
@@ -23,7 +23,7 @@ class DescriptorRing final {
     // The table holding copies of the descriptors, or nothing when the heap has no room for it until it grows.
     [[nodiscard]] std::optional<D3D12_GPU_DESCRIPTOR_HANDLE> write(std::span<const D3D12_CPU_DESCRIPTOR_HANDLE> sources);
 
-    // Makes a heap twice as large and returns the old one, which lives until the frames in flight finished. Throws `std::runtime_error` when the heap is already as large as Direct3D 12 allows.
+    // Makes a heap twice as large, or a fresh one of the same size once the heap is as large as Direct3D 12 allows, and returns the old one, which lives until the frames in flight finished.
     [[nodiscard]] Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> grow();
 
     // Closes the tables of the frame that the fence value marks, and frees the tables of the frames the GPU finished.

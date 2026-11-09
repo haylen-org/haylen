@@ -89,12 +89,12 @@ Every buffer, image, sampler, shader, pipeline and pass takes the label the engi
 
 ## Lost devices
 
-A device is lost when the GPU is removed or reset, or when its driver fails or updates. The device notices it when it presents a frame or checks the GPU at the end of each frame, and it logs the reason that Windows gives. The platform then makes a new device and starts the app again. A lost device never blocks: every wait for the GPU ends at once.
+A device is lost when the GPU is removed or reset, or when its driver fails or updates. The device notices it when it presents a frame or checks the GPU at the end of each frame, and it logs the reason that Windows gives. A Direct3D 12 command list that fails to close, or a queue that refuses to signal the end of a frame, loses the device the same way, since the GPU cannot run that frame. The platform then makes a new device and starts the app again. A lost device never blocks: every wait for the GPU ends at once.
 
 ## Limits
 
 - Dynamic images take their pixels for their first mip level, every layer at once.
 - A multisampled attachment resolves into the first mip level and the first layer of its resolve image.
 - A readback copies the first mip level and the first layer of a render target of one sample.
-- The heap of samplers that shaders read holds 2048 descriptors, the most that Direct3D 12 allows, and a frame reuses the table of each set of samplers it binds, so a frame runs out of room only if it binds more than 2048 different samplers.
+- The heap of samplers that shaders read holds 2048 descriptors, the most that Direct3D 12 allows, and a frame reuses the table of each set of samplers it binds. A frame that binds more different samplers than the heap holds goes on in a fresh heap, while the GPU reads the old one until it finished the frames that used it. A heap of textures that runs out of room makes way for one twice as large the same way.
 - Each image of the Direct3D 12 device has memory of its own, so making many images in one frame costs more than making buffers. Small buffers share large blocks, so GPU debuggers show them under the name of their block rather than their own label.
