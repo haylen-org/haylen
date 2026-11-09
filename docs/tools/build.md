@@ -246,7 +246,7 @@ The script `haylen.py` sets these cache variables for you. A project that adds t
 | `HAYLEN_BUILD_SDK` | off | Merges the engine into the SDK that `cmake --install --component haylen-sdk` installs. |
 | `HAYLEN_BUILD_FRAMEWORK` | off | On Apple platforms, with `HAYLEN_BUILD_SDK`, merges the SDK and the player into the `libhaylen.a` of one slice of `Haylen.xcframework`, which the `haylen-framework` component installs. |
 | `HAYLEN_ENABLE_COVERAGE` | off | Instruments the engine and the tests with LLVM coverage. It needs Clang. |
-| `HAYLEN_SANITIZERS` | `OFF` | The sanitizers of desktop builds that do not use MSVC: `OFF`, `ADDRESS` for AddressSanitizer and UndefinedBehaviorSanitizer on the targets of the engine, or `THREAD` for ThreadSanitizer on every C and C++ target of the build, dependencies included. |
+| `HAYLEN_SANITIZERS` | `OFF` | The sanitizers of desktop builds that do not use MSVC: `OFF`, `ADDRESS` for AddressSanitizer and UndefinedBehaviorSanitizer on the targets of the engine and AddressSanitizer on the libraries it compiles from the sources of the dependencies that read the bytes of apps, or `THREAD` for ThreadSanitizer on every C and C++ target of the build, dependencies included. |
 | `HAYLEN_BUILD_FUZZERS` | off | Builds the fuzzers `haylen-content-fuzzer`, `haylen-image-fuzzer`, `haylen-input-fuzzer`, `haylen-messagepack-fuzzer`, `haylen-placeholder-fuzzer` and `haylen-vector-image-fuzzer`, and instruments every target for libFuzzer and AddressSanitizer. It needs a Clang that links libFuzzer, which Apple Clang does not ship. |
 
 The workspace `CMakeLists.txt` at the root of the repository is the project `haylen-workspace`. It adds `engine/` and turns the player, the tests, the benchmarks and the content tool on. The options of apps, such as `HAYLEN_PROTECTED_RELEASE`, belong to [`haylen_add_app`](embedding.md#haylen_add_app).
@@ -406,6 +406,10 @@ NanoSVG hides the shapes whose `display` is `none`, but draws those whose `visib
 #### nanosvg-bounding-box-gradients.patch
 
 A gradient of SVG lays itself out in the bounding box of its shape, unless it sets `gradientUnits="userSpaceOnUse"`. There a coordinate without a unit, such as `x2="1"`, is a fraction of the box. NanoSVG reads such a coordinate as a length of the document. So a gradient from `0` to `1` shrinks to one unit at the corner of the document, and the shape takes the color of one end of the gradient. The patch reads the coordinates, percentages and radii of these gradients in a unit square. Then it stretches that square over the bounding box of the shape after the `gradientTransform`, as SVG defines it. So a radial gradient on a wide shape becomes an ellipse.
+
+#### nanosvg-style-bounds.patch
+
+NanoSVG reads a style, such as the attribute `style` or the rules of a `<style>` element, one declaration at a time between semicolons, and trims the spaces at its ends. A declaration that holds nothing but spaces, such as the rule `.empty { }`, ended one byte past its text, so NanoSVG read memory after the end of the style, which the fuzzer of the vector images found. The patch trims each declaration and each name inside its own bytes.
 
 ### Choices that need no patch
 

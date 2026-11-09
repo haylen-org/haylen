@@ -112,6 +112,17 @@ TEST_F(VectorImageTest, LeavesOutTheShapesThatAreHidden) {
     }
 }
 
+TEST_F(VectorImageTest, ReadsStylesWithEmptyDeclarations) {
+    const Image raster = parse(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="20" height="10">
+        <style>.blank{ } .red{ ; fill: #FF0000 ; }</style>
+        <rect x="0" y="0" width="10" height="10" class="blank red"/>
+        <rect x="10" y="0" width="10" height="10" style=" ; fill : #00FF00 ;; "/>
+    </svg>)svg")
+                             .rasterize(1.0F);
+    EXPECT_EQ(raster.getPixel(5, 5), math::Color::fromHex(0xFF0000FFU));
+    EXPECT_EQ(raster.getPixel(15, 5), math::Color::fromHex(0x00FF00FFU));
+}
+
 TEST_F(VectorImageTest, RejectsDocumentsWithoutASize) {
     try {
         (void)parse("not an svg document");

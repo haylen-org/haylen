@@ -383,7 +383,7 @@ The option `--sanitizers` builds the tests with sanitizers in a tree of its own,
 
 | Value | Sanitizers | What they instrument |
 | --- | --- | --- |
-| `address` | AddressSanitizer and UndefinedBehaviorSanitizer | The engine libraries, the tests and the other targets of the engine, which catch memory errors and undefined behavior in the code of the engine. |
+| `address` | AddressSanitizer and UndefinedBehaviorSanitizer | The engine libraries, the tests and the other targets of the engine, which catch memory errors and undefined behavior in the code of the engine. AddressSanitizer also checks the libraries that the engine compiles from the sources of the dependencies it hands the bytes of apps: NanoSVG, HarfBuzz, SheenBidi, libunibreak, Monocypher and miniaudio. |
 | `thread` | ThreadSanitizer | Every C and C++ target of the build, dependencies included, because ThreadSanitizer sees only the synchronization of the code it instruments, such as the atomics with which libuv wakes its event loop. OpenSSL builds with its own scripts and stays uninstrumented. |
 
 AddressSanitizer and ThreadSanitizer fail the test whose process raised a report. UndefinedBehaviorSanitizer prints its reports and lets the test go on. ThreadSanitizer runs the tests several times slower, and `TSAN_OPTIONS`, such as `TSAN_OPTIONS=halt_on_error=1`, tunes it. ThreadSanitizer cannot follow the `_longjmp` with which a yield of Lua jumps back, so those builds tell Varn to keep the yields of Lua as exceptions.

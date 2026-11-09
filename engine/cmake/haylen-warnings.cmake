@@ -46,6 +46,15 @@ function(haylen_enable_warnings target)
   endif()
 endfunction()
 
+# Checks the memory of libraries that the engine compiles from the sources of a dependency and hands the bytes of apps, such as SVG documents, fonts and sounds, with AddressSanitizer, so a test of the engine fails on a read past their buffers too. Their warnings and UndefinedBehaviorSanitizer stay off, since only their projects can act on them.
+function(haylen_check_dependency_memory)
+  if(HAYLEN_SANITIZERS STREQUAL "ADDRESS" AND HAYLEN_DESKTOP AND NOT MSVC)
+    foreach(target IN LISTS ARGN)
+      target_compile_options(${target} PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+    endforeach()
+  endif()
+endfunction()
+
 # Builds the targets of a dependency without warnings. Its project gives its own code the warning flags of that project, and only that project can act on what they find, so those flags give way to the switch that turns warnings off, while the targets of the engine keep theirs.
 function(haylen_disable_warnings)
   foreach(target IN LISTS ARGN)
