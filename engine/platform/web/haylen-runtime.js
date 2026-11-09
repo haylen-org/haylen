@@ -903,10 +903,10 @@ Module.haylen = Module.haylen || {};
 
     const hasApi = (path) => path.split(".").reduce((value, part) => (value === undefined || value === null ? undefined : value[part]), globalThis) != null;
 
-    // Browsers that do not tell the policy of the page, such as Firefox and Safari, leave the error of the API to tell instead.
+    // Browsers that do not tell the policy of the page, such as Firefox and Safari, and a policy that does not govern the feature, which then allows it nowhere, leave the error of the API to tell instead.
     const allowsFeature = (feature) => {
         const policy = document.permissionsPolicy || document.featurePolicy;
-        return !policy || policy.allowsFeature(feature);
+        return !policy || !policy.features().includes(feature) || policy.allowsFeature(feature);
     };
 
     // A page inside a frame gets a feature from the `allow` attribute of its frame, and a page on its own from the `Permissions-Policy` header it comes with.

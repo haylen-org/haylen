@@ -134,7 +134,7 @@ jobs:
       - name: Build the prebuilt player for WebGPU and WebGL2
         if: matrix.web
         run: python haylen.py --verbose engine --platform web --jobs ${{ env.JOBS }}
-      - name: Check the error screen, the wake lock and the memory of pages on WebGPU in the headless Chrome of the runner
+      - name: Check the error screen, the wake lock, the requirements and the memory of pages on WebGPU in the headless Chrome of the runner
         if: matrix.web
         run: python haylen.py --verbose test --platform web --graphics-api webGpu --jobs ${{ env.JOBS }}
       - uses: ./.github/actions/compiler-cache
@@ -293,7 +293,7 @@ jobs:
       - uses: ./.github/actions/desktop-artifacts
       - name: Build the prebuilt player for WebGPU and WebGL2
         run: python haylen.py --verbose engine --platform web --jobs ${{ env.JOBS }}
-      - name: Check the error screen, the wake lock and the memory of pages on WebGL2 in the headless Chrome of the runner
+      - name: Check the error screen, the wake lock, the requirements and the memory of pages on WebGL2 in the headless Chrome of the runner
         run: python haylen.py --verbose test --platform web --graphics-api webGl2 --jobs ${{ env.JOBS }}
       - uses: ./.github/actions/compiler-cache
         if: always()

@@ -1,0 +1,12 @@
+{
+    "id": "page-needs",
+    "name": "Page Needs",
+    "version": "1.0.0",
+    "description": "Checks features of the permissions policy of the page for the requirement check of the web.",
+    "platforms": ["web"],
+    "requires": [],
+    "parameters": {},
+    "web": {
+        "module": "web/page-needs.js"
+    }
+}

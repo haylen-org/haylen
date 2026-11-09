@@ -870,6 +870,10 @@ WEB_WAKE_LOCK_STEPS = {
     "missing": ["ready", "warned", "runs on"],
 }
 WEB_WAKE_LOCK_BROWSERS = {"granted": "grants the wake lock", "refused": "refuses the wake lock", "missing": "has no Screen Wake Lock API"}
+# The requirement check of the web: an app whose plugin requires a feature that the permissions policy of the page refuses and one that the policy does not govern, whose page a headless browser opens with that policy. The page must lack the refused feature alone, since a feature that the policy does not govern is left to the error of its API.
+WEB_REQUIREMENTS_APP = ENGINE_DIR / "tests" / "data" / "web-requirements"
+WEB_REQUIREMENTS_DRIVER = ENGINE_DIR / "tests" / "web" / "requirement-check.mjs"
+WEB_REQUIREMENTS_STEPS = ["checked", "lacks only the governed feature"]
 # The error screen check of the web: an app that stops with an error at a key, whose page a headless browser opens three times on WebGPU and three times on WebGL2, since a restart makes a new GPU device. One lets the page write the clipboard, where the copy of the error screen puts its report, and the app draws again after the key R and after a click on the restart button. The others refuse the write or lack the clipboard API, which warns in the log, leaves the clipboard alone and still restarts the app.
 WEB_ERROR_SCREEN_APP = ENGINE_DIR / "tests" / "data" / "web-error-screen"
 WEB_ERROR_SCREEN_DRIVER = ENGINE_DIR / "tests" / "web" / "error-screen-check.mjs"
@@ -901,7 +905,7 @@ def free_port() -> int:
 
 
 def command_test_web(args: argparse.Namespace) -> None:
-    """Runs the error screen check, the wake lock check and the memory check of the web in headless browsers, whose pages draw through the graphics API that "--graphics-api" names, or the error screen check on each one and the other checks through the first that starts."""
+    """Runs the error screen check, the wake lock check, the requirement check and the memory check of the web in headless browsers, whose pages draw through the graphics API that "--graphics-api" names, or the error screen check on each one and the other checks through the first that starts."""
     if args.graphics_api is not None and args.graphics_api not in WEB_GRAPHICS_APIS:
         raise BuildError(f'The checks of the web draw through "{WEB_GRAPHICS_APIS[0]}" or "{WEB_GRAPHICS_APIS[1]}", not "{args.graphics_api}".')
     args.config = "Release"
@@ -911,6 +915,7 @@ def command_test_web(args: argparse.Namespace) -> None:
     ensure_artifacts(target.artifacts, args.engine_config, args.jobs)
     check_web_error_screen(args, target)
     check_web_wake_lock(args, target)
+    check_web_requirements(args, target)
     check_web_memory_pages(args, target)
 
 
@@ -964,6 +969,21 @@ def check_web_wake_lock(args: argparse.Namespace, target) -> None:
         server.shutdown()
         server.server_close()
     terminal.success("The page took the wake lock while the app kept the screen on, gave it up when it hid, took it again when it showed and released it when the app let the screen sleep, and a browser that refused it or lacked it only warned.")
+
+
+def check_web_requirements(args: argparse.Namespace, target) -> None:
+    """Builds the site of the requirement check app, opens it in a headless browser whose permissions policy governs only the feature that it refuses, and stops when the page lacks another feature or reports an error."""
+    site = target.prepare(App(WEB_REQUIREMENTS_APP, target.plugins), args)
+    server = serve_site(site)
+    try:
+        with headless_browser([], "the requirement check of the web") as debugging:
+            terminal.step("Running the requirement check of the web in a headless browser whose permissions policy governs one feature")
+            report = json.loads(capture([emsdk_node(), WEB_REQUIREMENTS_DRIVER, str(debugging), f"http://127.0.0.1:{server.server_address[1]}/{web_page_query(args)}"]))
+        check_web_page_steps(report, WEB_REQUIREMENTS_STEPS, "The page of the requirement check")
+    finally:
+        server.shutdown()
+        server.server_close()
+    terminal.success("The page lacked the feature that its permissions policy refused, and left the feature that the policy does not govern to the error of its API.")
 
 
 def check_web_page_steps(report: dict, steps: list[str], page: str) -> None:
