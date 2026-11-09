@@ -419,8 +419,15 @@ class SkeletonData::Reader final {
             for (const core::Json& member : key.value("order", core::Json::array())) {
                 order.order.push_back(slot(member.is_string() ? member.get<std::string>() : std::string(), "A draw order key" + in));
             }
-            if (order.order.size() != data.slots.size()) {
+            std::vector<bool> listed(data.slots.size());
+            for (const std::size_t slot : order.order) {
+                listed[slot] = true;
+            }
+            if (order.order.size() != data.slots.size() || std::ranges::find(listed, false) != listed.end()) {
                 throw std::invalid_argument("Every draw order key" + in + " lists every slot once.");
+            }
+            if (!animation.drawOrder.empty() && order.time < animation.drawOrder.back().time) {
+                throw std::invalid_argument("The draw order keys" + in + " must follow each other in time.");
             }
             animation.drawOrder.push_back(std::move(order));
         }

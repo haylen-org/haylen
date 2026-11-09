@@ -242,6 +242,8 @@ TEST_F(SkeletonTest, ExplainsBadFiles) {
     EXPECT_EQ(error(R"({"bones": [{"name": "root"}], "animations": {"walk": {"bones": {"root": {"rotate": [{"time": 1}, {"time": 0}]}}}}})"), "The keys of the rotate of the bone \"root\" in the animation \"walk\" must follow each other in time.");
     EXPECT_EQ(error(R"({"bones": [{"name": "root"}], "slots": [{"name": "a", "bone": "root"}], "skins": {"default": {"a": {"x": {"frame": "missing"}}}}})"), "The frame \"missing\" of the attachment \"x\" of the slot \"a\" does not exist in the atlas of the skeleton.");
     EXPECT_EQ(error(R"({"bones": []})"), "A skeleton needs at least one bone.");
+    EXPECT_EQ(error(R"({"bones": [{"name": "root"}], "slots": [{"name": "a", "bone": "root"}, {"name": "b", "bone": "root"}], "animations": {"swap": {"drawOrder": [{"order": ["a", "a"]}]}}})"), "Every draw order key in the animation \"swap\" lists every slot once.");
+    EXPECT_EQ(error(R"({"bones": [{"name": "root"}], "slots": [{"name": "a", "bone": "root"}], "animations": {"swap": {"drawOrder": [{"time": 1, "order": ["a"]}, {"time": 0, "order": ["a"]}]}}})"), "The draw order keys in the animation \"swap\" must follow each other in time.");
     EXPECT_EQ(error(R"({"bones": [{"name": "root"}], "slots": [{"name": "glow", "bone": "root", "blend": "softLight"}]})"), "The slot \"glow\" has the blend mode \"softLight\", which mixes with what lies below and blends groups alone.");
 }
 

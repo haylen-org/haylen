@@ -348,6 +348,7 @@ Errors name the part at fault, such as these:
 - `The slot "<name>" starts with the attachment "<attachment>", which no skin has.`
 - `The frame "cape" of the attachment "cape" of the slot "cape" does not exist in the atlas of the skeleton.`
 - `The keys of the rotate of the bone "root" in the animation "walk" must follow each other in time.`
+- `Every draw order key in the animation "walk" lists every slot once.` and `The draw order keys in the animation "walk" must follow each other in time.`
 - `The bone "<name>" in the animation "<animation>" has the unknown timeline "<timeline>". Bones take "rotate", "translate" and "scale".`, and the same for slots, which take `"attachment"` and `"color"`.
 - A key of the wrong type raises an error such as `The key "<key>" of the bone "<name>" must be a number.`
 
