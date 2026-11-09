@@ -39,6 +39,35 @@ void main() {
 }
 @end
 
+// The same triangles, moved by a block of the vertex stage and tinted by a block of the fragment stage, so each draw reads a block of each stage.
+@vs moved_vs
+layout(binding=0) uniform move_params {
+    vec4 move;
+};
+
+in vec3 position;
+in vec4 color0;
+out vec4 color;
+
+void main() {
+    color = color0;
+    gl_Position = vec4(position.xy + move.xy, position.z, 1.0);
+}
+@end
+
+@fs tinted_fs
+layout(binding=1) uniform tint_params {
+    vec4 shade;
+};
+
+in vec4 color;
+out vec4 frag_color;
+
+void main() {
+    frag_color = color * shade;
+}
+@end
+
 // One triangle that covers the viewport in one color at one depth, without a vertex buffer.
 @vs plane_vs
 layout(binding=0) uniform plane_params {
@@ -186,6 +215,7 @@ void main() {
 
 @program color color_vs color_fs
 @program instanced instanced_vs color_fs
+@program tinted moved_vs tinted_fs
 @program plane plane_vs plane_fs
 @program textured fullscreen_vs textured_fs
 @program array fullscreen_vs array_fs

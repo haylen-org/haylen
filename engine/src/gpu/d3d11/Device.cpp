@@ -92,8 +92,8 @@ void Device::createDevice(bool validation) {
 
     D3D11_FEATURE_DATA_D3D11_OPTIONS options{};
     device->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS, &options, sizeof(options));
-    if (options.ConstantBufferOffsetting == FALSE || options.DiscardAPIsSeenByDriver == FALSE) {
-        throw std::runtime_error("The driver of the GPU lacks the constant buffer offsets of Direct3D 11.1.");
+    if (options.ConstantBufferOffsetting == FALSE || options.MapNoOverwriteOnDynamicConstantBuffer == FALSE || options.DiscardAPIsSeenByDriver == FALSE) {
+        throw std::runtime_error("The driver of the GPU lacks the constant buffer offsets of Direct3D 11.1 and the maps of constant buffers that do not wait.");
     }
 
     static_cast<void>(context.As(&annotation));
@@ -351,7 +351,7 @@ std::vector<Device::Register> Device::readRegisters(std::span<const SamplerBindi
 gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
     ProgramRecord record;
     for (const BlockBinding& block : desc.blocks) {
-        if (block.slot < 0 || block.slot >= static_cast<int>(kMaxBlocks) || block.size == 0 || block.binding < 0 || block.binding >= D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT) {
+        if (block.slot < 0 || block.slot >= static_cast<int>(kMaxBlocks) || block.size == 0 || block.size > kMaxBlockSize || block.binding < 0 || block.binding >= D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT) {
             throw std::logic_error(std::format("The program \"{}\" has a uniform block at slot {} that the device cannot bind.", desc.label, block.slot));
         }
         record.blocks[static_cast<std::size_t>(block.slot)] = Register{.slot = block.slot, .stage = block.stage == Stage::Vertex ? 0U : 1U, .number = static_cast<UINT>(block.binding), .size = block.size};
@@ -714,7 +714,8 @@ Device::Attachment& Device::getAttachment(ImageRecord& image, int mipLevel, int 
         }
     }
 
-    Attachment& attachment = image.attachments.emplace_back(Attachment{.mipLevel = mipLevel, .layer = layer});
+    // The view joins the attachments of the image only once it exists, so a view that fails to be made leaves nothing behind.
+    Attachment attachment{.mipLevel = mipLevel, .layer = layer};
     const auto mip = static_cast<UINT>(mipLevel);
     const auto slice = static_cast<UINT>(layer);
     const bool multisampled = image.sampleCount > 1;
@@ -734,7 +735,7 @@ Device::Attachment& Device::getAttachment(ImageRecord& image, int mipLevel, int 
             }
         }
         HResult::check(device->CreateDepthStencilView(image.resource.Get(), &view, attachment.depth.GetAddressOf()), "create the depth stencil view of a pass");
-        return attachment;
+        return image.attachments.emplace_back(std::move(attachment));
     }
 
     D3D11_RENDER_TARGET_VIEW_DESC view{};
@@ -759,7 +760,7 @@ Device::Attachment& Device::getAttachment(ImageRecord& image, int mipLevel, int 
         break;
     }
     HResult::check(device->CreateRenderTargetView(image.resource.Get(), &view, attachment.color.GetAddressOf()), "create the render target view of a pass");
-    return attachment;
+    return image.attachments.emplace_back(std::move(attachment));
 }
 
 void Device::applyViewport(const math::Rect& pixels) {
@@ -779,6 +780,7 @@ void Device::applyScissor(const math::Rect& pixels) {
 }
 
 void Device::applyPipeline(Pipeline pipeline) {
+    blocksApplied = {};
     if (skipping || bound.pipeline == pipeline.id) {
         return;
     }
@@ -885,7 +887,7 @@ void Device::applySamplers(const PipelineRecord& pipeline, const Bindings& bindi
     }
 }
 
-// Each draw reads its uniforms from its own window of the ring, which Direct3D 11.1 binds by its offset in constants of 16 bytes, a multiple of 16 constants.
+// Each draw reads its uniforms from its own window of the ring.
 void Device::applyUniforms(int slot, std::span<const std::byte> data) {
     if (skipping) {
         return;
@@ -895,20 +897,45 @@ void Device::applyUniforms(int slot, std::span<const std::byte> data) {
     if (!known || data.size() != pipeline.blocks[static_cast<std::size_t>(slot)]->size) {
         throw std::logic_error(std::format("The program has no uniform block of {} bytes at slot {}.", data.size(), slot));
     }
-    const Register& block = *pipeline.blocks[static_cast<std::size_t>(slot)];
+    const auto index = static_cast<std::size_t>(slot);
+    blockBytes[index].assign(data.begin(), data.end());
+    blocksApplied[index] = true;
 
-    const std::optional<UINT> offset = uniforms->write(*context.Get(), data);
-    if (!offset) {
+    const std::optional<DynamicRing::Piece> piece = uniforms->write(*context.Get(), data);
+    if (!piece) {
         loseDevice(DXGI_ERROR_DEVICE_REMOVED);
         return;
     }
+    bindBlock(*pipeline.blocks[index], piece->offset);
+    if (piece->restarted) {
+        rewriteBlocks(pipeline, index);
+    }
+}
+
+// Direct3D 11.1 binds a window of the ring by its offset in constants of 16 bytes, a multiple of 16 constants.
+void Device::bindBlock(const Register& block, UINT offset) {
     ID3D11Buffer* buffer = uniforms->get();
-    const UINT first = *offset / 16;
+    const UINT first = offset / 16;
     const UINT count = (block.size + kUniformAlignment - 1) / kUniformAlignment * (kUniformAlignment / 16);
     if (block.stage == 0) {
         context->VSSetConstantBuffers1(block.number, 1, &buffer, &first, &count);
     } else {
         context->PSSetConstantBuffers1(block.number, 1, &buffer, &first, &count);
+    }
+}
+
+// A ring that started over hands the GPU a fresh copy of its buffer, which lacks the other blocks that the next draw reads, so they go into it again.
+void Device::rewriteBlocks(const PipelineRecord& pipeline, std::size_t written) {
+    for (std::size_t index = 0; index < kMaxBlocks; ++index) {
+        if (index == written || !blocksApplied[index]) {
+            continue;
+        }
+        const std::optional<DynamicRing::Piece> piece = uniforms->write(*context.Get(), blockBytes[index]);
+        if (!piece) {
+            loseDevice(DXGI_ERROR_DEVICE_REMOVED);
+            return;
+        }
+        bindBlock(*pipeline.blocks[index], piece->offset);
     }
 }
 

@@ -97,6 +97,8 @@ class Device final : public gpu::Device {
   private:
     static constexpr UINT kUniformRingSize = 4U << 20U;
     static constexpr UINT kUniformAlignment = 256;
+    static constexpr UINT kMaxBlockSize = D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 16;
+    static_assert(kUniformRingSize >= kMaxBlocks * kMaxBlockSize, "The ring of uniforms holds every block of a pipeline at once.");
 
     // A dynamic buffer remembers the frame that wrote it last, since the first write of a frame hands the GPU a fresh copy of it.
     struct BufferRecord {
@@ -232,6 +234,8 @@ class Device final : public gpu::Device {
     [[nodiscard]] static std::vector<D3D11_SUBRESOURCE_DATA> describeLevels(const ImageDesc& desc);
     [[nodiscard]] static std::vector<Register> readRegisters(std::span<const TextureBinding> textures);
     [[nodiscard]] static std::vector<Register> readRegisters(std::span<const SamplerBinding> samplersOfProgram);
+    void bindBlock(const Register& block, UINT offset);
+    void rewriteBlocks(const PipelineRecord& pipeline, std::size_t written);
     void applyTextures(const PipelineRecord& pipeline, const Bindings& bindings);
     void applySamplers(const PipelineRecord& pipeline, const Bindings& bindings);
     void drainMessages();
@@ -258,6 +262,9 @@ class Device final : public gpu::Device {
     direct3d::Slots<PipelineRecord> pipelines{"pipeline"};
 
     std::unique_ptr<DynamicRing> uniforms;
+    // The bytes of the uniform blocks applied since the pipeline, which the blocks take again when the ring starts over.
+    std::array<std::vector<std::byte>, kMaxBlocks> blockBytes;
+    std::array<bool, kMaxBlocks> blocksApplied{};
     std::unique_ptr<FrameTimer> timer;
     std::array<Microsoft::WRL::ComPtr<ID3D11Query>, kFramesInFlight> frameFinished;
     std::array<bool, kFramesInFlight> frameSubmitted{};

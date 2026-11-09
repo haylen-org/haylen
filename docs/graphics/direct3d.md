@@ -23,7 +23,7 @@ Both devices run on Windows 10 version 1903 and later, the oldest version that t
 | Need | Direct3D 11 | Direct3D 12 |
 | --- | --- | --- |
 | GPU | Feature level 11_0 or later. | Feature level 11_0 or later. |
-| Runtime | Direct3D 11.1 with constant buffer offsets, which every driver of Windows 10 has. | Root signatures of version 1.1 and render passes, which Windows 10 version 1809 and later have. |
+| Runtime | Direct3D 11.1 with constant buffer offsets and constant buffers that map without waiting, which every driver of Windows 10 has. | Root signatures of version 1.1 and render passes, which Windows 10 version 1809 and later have. |
 | Shader compiler | `d3dcompiler_47.dll`, which Windows ships in its system folder. | The same compiler. |
 | Transparent windows | `dcomp.dll`, which Windows ships in its system folder. | The same library. |
 
@@ -45,7 +45,7 @@ Images rest in the state that shaders read. A pass moves its attachments into th
 
 ## How the Direct3D 11 device draws a frame
 
-The Direct3D 11 device draws on the immediate context. It writes uniforms into one large dynamic buffer and binds a window of that buffer to each draw, which Direct3D 11.1 allows. Each piece of data goes after the previous one without waiting for the GPU, and when the buffer is full the driver hands the device a fresh copy while the GPU keeps reading the old one. A dynamic buffer holds in a frame only what that frame wrote into it, so the first write of a frame asks the driver for a fresh copy of the buffer and the CPU writes straight into it, while the GPU keeps reading the copy of the frame before.
+The Direct3D 11 device draws on the immediate context. It writes uniforms into one large dynamic buffer and binds a window of that buffer to each draw, which Direct3D 11.1 allows. Each piece of data goes after the previous one without waiting for the GPU, and when the buffer is full the driver hands the device a fresh copy while the GPU keeps reading the old one. The fresh copy lacks the blocks that the pipeline applied before, which its next draws still read, so the device keeps the bytes of each block it applied since the pipeline and writes them into the fresh copy again. A uniform block holds at most 64 kilobytes, the largest constant buffer of Direct3D 11, so the buffer always holds every block of a pipeline. A dynamic buffer holds in a frame only what that frame wrote into it, so the first write of a frame asks the driver for a fresh copy of the buffer and the CPU writes straight into it, while the GPU keeps reading the copy of the frame before.
 
 The device remembers what the context holds: the pipeline, the shaders, the states, the buffers, the textures and the samplers. A call that would set what the context already holds is skipped. Event queries keep the CPU at most two frames ahead of the GPU.
 

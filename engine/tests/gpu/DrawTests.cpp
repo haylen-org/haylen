@@ -205,6 +205,39 @@ TEST_P(GpuDrawTest, AppliesUniformsPerDraw) {
     device().destroy(pipeline);
 }
 
+// A uniform block keeps its values for the draws of its pipeline while the blocks applied after it fill more upload memory than any device keeps at once.
+TEST_P(GpuDrawTest, KeepsUniformBlocksWhileLaterBlocksFillTheUploadMemory) {
+    static constexpr int kLaterBlocks = 20000;
+    const Device::Pipeline pipeline = makeColorPipeline("tinted");
+    const std::array<Vertex, 3> corner{{
+        {-1.0F, 0.5F, 0.0F, {1.0F, 1.0F, 1.0F, 1.0F}},
+        {-0.5F, 0.5F, 0.0F, {1.0F, 1.0F, 1.0F, 1.0F}},
+        {-1.0F, 1.0F, 0.0F, {1.0F, 1.0F, 1.0F, 1.0F}},
+    }};
+    const Device::Buffer vertices = makeVertices(corner);
+    const std::array<float, 4> move{1.5F, -1.5F, 0.0F, 0.0F};
+    const std::array<float, 4> red{1.0F, 0.0F, 0.0F, 1.0F};
+    const std::array<float, 4> green{0.0F, 1.0F, 0.0F, 1.0F};
+
+    beginPass();
+    device().applyPipeline(pipeline);
+    Device::Bindings bindings;
+    bindings.vertexBuffers[0] = vertices;
+    device().applyBindings(bindings);
+    device().applyUniforms(0, std::as_bytes(std::span(move)));
+    for (int index = 0; index < kLaterBlocks; ++index) {
+        device().applyUniforms(1, std::as_bytes(std::span(red)));
+    }
+    device().applyUniforms(1, std::as_bytes(std::span(green)));
+    device().draw(0, 3, 1);
+    const Pixels pixels = finish();
+
+    EXPECT_TRUE(isNear(pixels.at(6, 7), {0.0F, 1.0F, 0.0F, 1.0F}));
+    EXPECT_TRUE(isNear(pixels.at(0, 1), math::Color::black()));
+    device().destroy(vertices);
+    device().destroy(pipeline);
+}
+
 // A line across the middle of the target lights the pixels it passes.
 TEST_P(GpuDrawTest, DrawsLines) {
     const Device::Pipeline pipeline = makeColorPipeline("color", Device::Primitive::Lines);
