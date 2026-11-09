@@ -102,6 +102,9 @@ TEST(Particles2DLuaTest, ReadsAndReturnsEveryOption) {
     EXPECT_NE(fixture.lua("full:configure({turbulence = {strenght = 1}})").find("Unknown option \"strenght\""), std::string::npos);
     EXPECT_NE(fixture.lua("full:configure({collision = {type = 'sticky'}})").find("unknown value 'sticky'"), std::string::npos);
     EXPECT_NE(fixture.lua("full:configure({subEmitters = {{trigger = 'death'}}})").find("needs a \"ParticleEffect\" or an options table"), std::string::npos);
+    EXPECT_NE(fixture.lua("local first = {} first.subEmitters = {{effect = {subEmitters = {{effect = first}}}}} full:configure(first)").find("A sub-emitter cannot take as its effect an options table that holds it."), std::string::npos);
+    EXPECT_NE(fixture.lua("local looped = {} looped.subEmitters = {{effect = {}, overrides = looped}} full:configure(looped)").find("A sub-emitter cannot take as its overrides an options table that holds it."), std::string::npos);
+    EXPECT_EQ(fixture.lua("local shared = spark.config full:configure({subEmitters = {{effect = shared}, {effect = shared}}}) return #full.config.subEmitters"), "2");
     EXPECT_NE(fixture.lua("full:configure({frameGrid = {columns = 2, rows = 1}, frames = {{0, 0, 1, 1}}})").find("either frames or a frame grid"), std::string::npos);
 }
 

@@ -50,6 +50,12 @@ class Particles2DLua final {
     static void pushImageShape(lua_State* L, std::shared_ptr<ImageShape> shape);
 
   private:
+    // An options table that is being read, with the table that holds it, so a table that holds itself as the effect of a sub-emitter fails instead of being read forever.
+    struct OpenTable {
+        const void* table = nullptr;
+        const OpenTable* outer = nullptr;
+    };
+
     static constexpr std::array<std::string_view, 71> kConfigFields{
         "texture", "frames", "frameGrid", "frameMode", "frameRate", "rate", "rateOverDistance", "bursts", "delay", "duration", "loop", "prewarm", "maxParticles", "lifetime", "speed", "speedCurve", "direction", "directionMode", "spread", "inheritVelocity", "gravity", "radialAcceleration", "tangentialAcceleration", "damping", "turbulence", "attractors", "collision", "bounds", "boundsMode", "startSize", "endSize", "endSizeScale", "sizeCurve", "aspect", "stretch", "rotation", "rotationStep", "tilt", "alignToVelocity", "spin", "spinCurve", "colors", "colorTimes", "colorBlend", "tints", "tintMode", "shape", "shapeSize", "shapeAngle", "shapeArc", "shapePoints", "shapeThickness", "shapeImage", "colorFromImage", "localSpace", "pixelSnap", "particleOrder", "subEmitters", "trail", "light", "particleLights", "layer", "depth", "sortOffset", "visibility", "blend", "material", "emission", "unshaded", "lightMask", "distortion",
     };
@@ -68,14 +74,15 @@ class Particles2DLua final {
     static constexpr std::array<std::string_view, 7> kTrailOptionFields{"lifetime", "minDistance", "maxPoints", "widthStart", "widthEnd", "colors", "texture"};
     static constexpr std::array<std::string_view, 9> kTrailOrderFields{"layer", "depth", "sortOffset", "visibility", "blend", "material", "emission", "unshaded", "lightMask"};
 
-    [[nodiscard]] static EmitterConfig readConfig(lua_State* L, int index, EmitterConfig config, lua::Table::FieldNames extraFields);
-    static void readKey(lua_State* L, std::string_view key, EmitterConfig& config);
+    [[nodiscard]] static EmitterConfig readConfig(lua_State* L, int index, EmitterConfig config, lua::Table::FieldNames extraFields, const OpenTable* outer = nullptr);
+    static void readKey(lua_State* L, std::string_view key, EmitterConfig& config, const OpenTable& open);
     static void readSimulation(lua_State* L, std::string_view key, EmitterConfig& config);
     static void readLook(lua_State* L, std::string_view key, EmitterConfig& config);
     static void readBursts(lua_State* L, std::vector<EmitterConfig::Burst>& bursts);
     static void readAttractors(lua_State* L, std::vector<EmitterConfig::Attractor>& attractors);
     static void readCollision(lua_State* L, EmitterConfig::Collision& collision);
-    static void readSubEmitters(lua_State* L, std::vector<EmitterConfig::SubEmitter>& subEmitters);
+    static void readSubEmitters(lua_State* L, std::vector<EmitterConfig::SubEmitter>& subEmitters, const OpenTable& open);
+    [[nodiscard]] static bool isOpen(lua_State* L, int index, const OpenTable& open);
     static void readLight(lua_State* L, EmitterConfig& config);
     static void readParticleLights(lua_State* L, EmitterConfig& config);
     static void readTrail(lua_State* L, EmitterConfig::ParticleTrail& trail);

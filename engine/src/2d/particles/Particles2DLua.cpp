@@ -121,13 +121,14 @@ template <> struct Converter<particles2d::EmitterConfig::CountRange> {
 namespace haylen::particles2d {
 
 // Applies the keys present in the table on top of the given configuration, in one pass over the table.
-EmitterConfig Particles2DLua::readConfig(lua_State* L, int index, EmitterConfig config, lua::Table::FieldNames extraFields) {
+EmitterConfig Particles2DLua::readConfig(lua_State* L, int index, EmitterConfig config, lua::Table::FieldNames extraFields, const OpenTable* outer) {
     luaL_checktype(L, index, LUA_TTABLE);
-    lua::Table::readFields(L, index, kConfigFields, {extraFields}, [L, &config](std::string_view key) { readKey(L, key, config); });
+    const OpenTable open{.table = lua_topointer(L, index), .outer = outer};
+    lua::Table::readFields(L, index, kConfigFields, {extraFields}, [L, &config, &open](std::string_view key) { readKey(L, key, config, open); });
     return config;
 }
 
-void Particles2DLua::readKey(lua_State* L, std::string_view key, EmitterConfig& config) {
+void Particles2DLua::readKey(lua_State* L, std::string_view key, EmitterConfig& config, const OpenTable& open) {
     graphics2d::DrawOrder& order = config.order;
     if (key == "layer") {
         lua::Table::readValue(L, key, order.layer);
@@ -150,7 +151,7 @@ void Particles2DLua::readKey(lua_State* L, std::string_view key, EmitterConfig& 
     } else if (key == "distortion") {
         lua::Table::readValue(L, key, order.distortion);
     } else if (key == "subEmitters") {
-        readSubEmitters(L, config.subEmitters);
+        readSubEmitters(L, config.subEmitters, open);
     } else if (key == "light") {
         readLight(L, config);
     } else if (key == "particleLights") {
@@ -382,7 +383,7 @@ void Particles2DLua::readCollision(lua_State* L, EmitterConfig::Collision& colli
 }
 
 // Each sub-emitter takes a `ParticleEffect` or an options table as its effect, with overrides on top of an effect.
-void Particles2DLua::readSubEmitters(lua_State* L, std::vector<EmitterConfig::SubEmitter>& subEmitters) {
+void Particles2DLua::readSubEmitters(lua_State* L, std::vector<EmitterConfig::SubEmitter>& subEmitters, const OpenTable& open) {
     luaL_checktype(L, -1, LUA_TTABLE);
     const int list = lua_gettop(L);
     subEmitters.clear();
@@ -399,14 +400,20 @@ void Particles2DLua::readSubEmitters(lua_State* L, std::vector<EmitterConfig::Su
             }
             sub.config = std::make_shared<EmitterConfig>((*effect).config);
         } else if (lua_istable(L, -1)) {
-            sub.config = std::make_shared<EmitterConfig>(readConfig(L, lua_gettop(L), {}, {}));
+            if (isOpen(L, -1, open)) {
+                luaL_error(L, "A sub-emitter cannot take as its effect an options table that holds it.");
+            }
+            sub.config = std::make_shared<EmitterConfig>(readConfig(L, lua_gettop(L), {}, {}, &open));
         } else {
             luaL_error(L, "A sub-emitter needs a \"ParticleEffect\" or an options table in \"effect\".");
         }
         lua_pop(L, 1);
         lua_getfield(L, table, "overrides");
         if (!lua_isnil(L, -1)) {
-            *sub.config = readConfig(L, lua_gettop(L), *sub.config, {});
+            if (isOpen(L, -1, open)) {
+                luaL_error(L, "A sub-emitter cannot take as its overrides an options table that holds it.");
+            }
+            *sub.config = readConfig(L, lua_gettop(L), *sub.config, {}, &open);
         }
         lua_pop(L, 1);
         lua::Table::readField(L, table, "trigger", sub.trigger);
@@ -418,6 +425,16 @@ void Particles2DLua::readSubEmitters(lua_State* L, std::vector<EmitterConfig::Su
         subEmitters.push_back(std::move(sub));
         lua_pop(L, 1);
     }
+}
+
+bool Particles2DLua::isOpen(lua_State* L, int index, const OpenTable& open) {
+    const void* table = lua_topointer(L, index);
+    for (const OpenTable* reading = &open; reading != nullptr; reading = reading->outer) {
+        if (reading->table == table) {
+            return true;
+        }
+    }
+    return false;
 }
 
 // The value `false` removes the light.

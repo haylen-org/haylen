@@ -196,7 +196,7 @@ The `subEmitters` key takes a list of sub-emitters. Each spawns the particles of
 | `inheritVelocity` | number | `0` | The share of the velocity of the particle that the spawned particles take. |
 | `inheritColor` | boolean | `false` | Tints the spawned particles with the color the particle had. |
 
-A composite effect in `effect` raises `A sub-emitter needs an effect of one emitter, not a composite effect.`, and any other value raises `A sub-emitter needs a "ParticleEffect" or an options table in "effect".`
+A composite effect in `effect` raises `A sub-emitter needs an effect of one emitter, not a composite effect.`, and any other value raises `A sub-emitter needs a "ParticleEffect" or an options table in "effect".` An options table that holds itself, as the `effect` or the `overrides` of one of its sub-emitters at any depth, raises `A sub-emitter cannot take as its effect an options table that holds it.`, or the same sentence with `overrides`.
 
 ### Trails and lights
 
