@@ -253,7 +253,7 @@ TEST_F(NullDeviceTest, FiltersOnlyTheFormatsTheDeviceFilters) {
     device.commit();
 }
 
-// A frame writes each part of a dynamic buffer once and before a pass binds it, and an indexed draw reads only the indices its buffer holds.
+// A frame writes each part of a dynamic buffer once, at an offset that is a multiple of four, and before a pass binds it, and an indexed draw reads only the indices its buffer holds.
 TEST_F(NullDeviceTest, WritesBuffersBeforeTheirPassesAndDrawsWithinTheirIndices) {
     NullDevice device;
     const Device::Buffer vertices = device.makeBuffer({.size = 64, .usage = Device::Usage::Dynamic, .label = "vertices"});
@@ -261,6 +261,7 @@ TEST_F(NullDeviceTest, WritesBuffersBeforeTheirPassesAndDrawsWithinTheirIndices)
     device.writeBuffer(vertices, 0, pixels);
     device.writeBuffer(vertices, 16, pixels);
     EXPECT_THROW(device.writeBuffer(vertices, 8, pixels), std::logic_error);
+    EXPECT_THROW(device.writeBuffer(vertices, 34, std::span<const std::byte>(pixels).first(4)), std::logic_error);
 
     const Device::Program program = device.makeProgram({.label = "empty"});
     const std::array<Device::VertexBufferLayout, 1> layouts{{{.stride = 8}}};

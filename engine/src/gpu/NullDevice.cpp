@@ -369,6 +369,9 @@ void NullDevice::writeBuffer(Buffer buffer, std::size_t offset, std::span<const 
     if (state.usage != Usage::Dynamic) {
         throw std::logic_error("Only a dynamic buffer takes new contents.");
     }
+    if (offset % 4 != 0) {
+        throw std::logic_error(std::format("A buffer takes new contents at offsets that are multiples of four bytes, not at {}.", offset));
+    }
     if (offset + data.size() > state.size) {
         throw std::logic_error(std::format("The buffer of {} bytes cannot take {} bytes at {}.", state.size, data.size(), offset));
     }
