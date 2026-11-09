@@ -1,6 +1,7 @@
 #include "haylen/2d/animation/SkeletonData.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <map>
 #include <numbers>
 #include <stdexcept>
@@ -87,6 +88,19 @@ class SkeletonData::Reader final {
             throw std::invalid_argument("The key \"" + std::string(key) + "\" of " + where + " must be a list of numbers.");
         }
         return found->get<std::vector<float>>();
+    }
+
+    // Vertex indices are whole numbers from 0 up, so none truncates or wraps into another vertex.
+    [[nodiscard]] static std::vector<std::uint32_t> indices(const core::Json& object, const char* key, const std::string& where) {
+        const auto found = object.find(key);
+        if (found == object.end()) {
+            return {};
+        }
+        const auto index = [](const core::Json& value) { return value.is_number_unsigned() && std::in_range<std::uint32_t>(value.get<std::uint64_t>()); };
+        if (!found->is_array() || !std::ranges::all_of(*found, index)) {
+            throw std::invalid_argument("The key \"" + std::string(key) + "\" of " + where + " must be a list of whole numbers from 0 to 4294967295.");
+        }
+        return found->get<std::vector<std::uint32_t>>();
     }
 
     [[nodiscard]] std::size_t bone(const std::string& name, const std::string& where) const {
@@ -228,9 +242,7 @@ class SkeletonData::Reader final {
     // A mesh has its vertices in the space of its bone, or the weights of each vertex, the bones that move it with its place in the space of each.
     void readMesh(Attachment& attachment, const core::Json& entry, const std::string& where) const {
         attachment.uvs = pairs(numbers(entry, "uvs", where), where);
-        for (const float index : numbers(entry, "triangles", where)) {
-            attachment.triangles.push_back(static_cast<std::uint32_t>(index));
-        }
+        attachment.triangles = indices(entry, "triangles", where);
         if (const auto weights = entry.find("weights"); weights != entry.end()) {
             attachment.influenceStarts.push_back(0);
             for (const core::Json& vertex : *weights) {

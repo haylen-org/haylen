@@ -241,6 +241,11 @@ TEST_F(SkeletonTest, ExplainsBadFiles) {
     EXPECT_EQ(error(R"({"bones": [{"name": "root"}], "animations": {"walk": {"bones": {"root": {"spin": []}}}}})"), "The bone \"root\" in the animation \"walk\" has the unknown timeline \"spin\". Bones take \"rotate\", \"translate\" and \"scale\".");
     EXPECT_EQ(error(R"({"bones": [{"name": "root"}], "animations": {"walk": {"bones": {"root": {"rotate": [{"time": 1}, {"time": 0}]}}}}})"), "The keys of the rotate of the bone \"root\" in the animation \"walk\" must follow each other in time.");
     EXPECT_EQ(error(R"({"bones": [{"name": "root"}], "slots": [{"name": "a", "bone": "root"}], "skins": {"default": {"a": {"x": {"frame": "missing"}}}}})"), "The frame \"missing\" of the attachment \"x\" of the slot \"a\" does not exist in the atlas of the skeleton.");
+    for (const char* triangles : {"[-1, 1, 2]", "[0, 1, 2.5]", "[0, 1, 4294967296]"}) {
+        const std::string mesh = R"({"bones": [{"name": "root"}], "slots": [{"name": "cape", "bone": "root"}], "skins": {"default": {"cape": {"cape": {"type": "mesh", "vertices": [0, 0, 10, 0, 10, 10], "uvs": [0, 0, 1, 0, 1, 1], "triangles": )" + std::string(triangles) + "}}}}}";
+        EXPECT_NE(error(mesh.c_str()).find("The key \"triangles\" of "), std::string::npos) << triangles;
+        EXPECT_NE(error(mesh.c_str()).find(" must be a list of whole numbers from 0 to 4294967295."), std::string::npos) << triangles;
+    }
     EXPECT_EQ(error(R"({"bones": []})"), "A skeleton needs at least one bone.");
     EXPECT_EQ(error(R"({"bones": [{"name": "root"}], "slots": [{"name": "a", "bone": "root"}, {"name": "b", "bone": "root"}], "animations": {"swap": {"drawOrder": [{"order": ["a", "a"]}]}}})"), "Every draw order key in the animation \"swap\" lists every slot once.");
     EXPECT_EQ(error(R"({"bones": [{"name": "root"}], "slots": [{"name": "a", "bone": "root"}], "animations": {"swap": {"drawOrder": [{"time": 1, "order": ["a"]}, {"time": 0, "order": ["a"]}]}}})"), "The draw order keys in the animation \"swap\" must follow each other in time.");

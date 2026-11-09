@@ -347,6 +347,7 @@ Errors name the part at fault, such as these:
 - `The slot "<name>" has the unknown blend mode "<blend>".` and `The slot "<name>" has the blend mode "<blend>", which mixes with what lies below and blends groups alone.`
 - `The slot "<name>" starts with the attachment "<attachment>", which no skin has.`
 - `The frame "cape" of the attachment "cape" of the slot "cape" does not exist in the atlas of the skeleton.`
+- `The key "triangles" of the attachment "cape" of the slot "cape" must be a list of whole numbers from 0 to 4294967295.`
 - `The keys of the rotate of the bone "root" in the animation "walk" must follow each other in time.`
 - `Every draw order key in the animation "walk" lists every slot once.` and `The draw order keys in the animation "walk" must follow each other in time.`
 - `The bone "<name>" in the animation "<animation>" has the unknown timeline "<timeline>". Bones take "rotate", "translate" and "scale".`, and the same for slots, which take `"attachment"` and `"color"`.
