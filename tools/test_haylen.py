@@ -3831,6 +3831,13 @@ class DevelopmentServerTest(unittest.TestCase):
             self.assertEqual(haylen.development_address("tvos", "10.0.0.5", 9000, "token"), ("10.0.0.5", f"ws://10.0.0.5:9000{haylen.DEVELOPMENT_PATH}?token=token"))
             self.assertEqual(haylen.development_address("macos", "0.0.0.0", 9000, "token")[1], f"ws://127.0.0.1:9000{haylen.DEVELOPMENT_PATH}?token=token")
 
+    def test_a_device_run_on_a_machine_without_a_network_stops_with_what_to_do(self):
+        probe = mock.MagicMock()
+        probe.__enter__.return_value.connect.side_effect = OSError(51, "Network is unreachable")
+        with mock.patch.object(haylen.socket, "socket", return_value=probe):
+            with self.assertRaisesRegex(haylen.BuildError, 'no address on a network that devices reach: Network is unreachable. Join a network, or name the address with "--host".'):
+                haylen.development_address("ios", "127.0.0.1", 9000, "token")
+
     def test_only_debug_launches_connect_to_a_server_that_knows_the_shipped_package(self):
         shipped = Path(self.scratch.name) / "shipped"
         shutil.copytree(self.folder, shipped)

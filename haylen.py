@@ -4952,9 +4952,12 @@ ANDROID_DEVELOPMENT_EXTRA = "dev.haylen.developmentServer"
 
 
 def lan_address() -> str:
-    """Returns the address of this machine on the network that reaches other networks, which devices on the same network connect to. Connecting a UDP socket sends nothing."""
+    """Returns the address of this machine on the network that reaches other networks, which devices on the same network connect to, and stops when this machine is on no such network. Connecting a UDP socket sends nothing."""
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
-        probe.connect(("192.0.2.1", 9))
+        try:
+            probe.connect(("192.0.2.1", 9))
+        except OSError as error:
+            raise BuildError(f'This machine has no address on a network that devices reach: {error.strerror}. Join a network, or name the address with "--host".') from error
         return probe.getsockname()[0]
 
 
@@ -5478,10 +5481,7 @@ def serve_app(app: Path, args: argparse.Namespace) -> None:
     development = DevelopmentServer(info.layout, manifest)
 
     listen = "0.0.0.0" if args.host == "127.0.0.1" else args.host
-    try:
-        reached = lan_address() if listen == "0.0.0.0" else listen
-    except OSError as error:
-        raise BuildError(f'This machine has no address on a network that devices reach: {error.strerror}. Join a network, or name the address with "--host".') from error
+    reached = lan_address() if listen == "0.0.0.0" else listen
     address = f"http://{reached}:{args.port}/haylen/{development.token}/app.zip"
     handler = type("Handler", (PackageHandler,), {"development": development, "archive": archive, "development_address": f"ws://{reached}:{args.port}{DEVELOPMENT_PATH}?token={development.token}"})
     try:
