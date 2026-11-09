@@ -90,8 +90,9 @@ std::unique_ptr<TrueTypeFont::Face> TrueTypeFont::open(std::vector<std::uint8_t>
     auto opened = std::make_unique<Face>();
     auto bytes = std::make_unique<std::vector<std::uint8_t>>(std::move(ttf));
     opened->ttf = *bytes;
+    const auto* const contents = reinterpret_cast<const char*>(bytes->data());
     const auto length = static_cast<unsigned int>(bytes->size());
-    opened->blob.reset(hb_blob_create(reinterpret_cast<const char*>(bytes->data()), length, HB_MEMORY_MODE_READONLY, bytes.release(), &Face::release));
+    opened->blob.reset(hb_blob_create(contents, length, HB_MEMORY_MODE_READONLY, bytes.release(), &Face::release));
     if (hb_blob_get_length(opened->blob.get()) != length) {
         throw std::bad_alloc();
     }
