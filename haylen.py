@@ -835,15 +835,22 @@ def cmake_cache_value(directory: Path, name: str) -> str:
 def ensure_configured(args: argparse.Namespace) -> Path:
     """Configures the build tree when it was never configured, its configure failed or it is stale."""
     directory = build_dir(args.platform, args.config, args.sanitizers)
-    if not is_configured(directory) or is_stale_tree(directory, args):
+    if is_stale_tree(directory, args):
         command_configure(args)
     return directory
 
 
+def is_current_tree(directory: Path) -> bool:
+    """Tells whether CMake configured and generated a build tree for the shader compiler of the current pin, so a tree that an older pin configured configures again instead of compiling the shaders with the compiler of that pin."""
+    if not is_configured(directory):
+        return False
+    compiler = cmake_cache_entry(directory, "HAYLEN_SHADERC")
+    return compiler is not None and Path(compiler) == ensure_shaderc()
+
+
 def is_stale_tree(directory: Path, args: argparse.Namespace) -> bool:
     """Tells whether a build tree was configured for another shader compiler or Python that runs haylen.py, or holds no value for one of them, or another version of Emscripten configured a web tree."""
-    compiler = cmake_cache_entry(directory, "HAYLEN_SHADERC")
-    if compiler is None or Path(compiler) != ensure_shaderc():
+    if not is_current_tree(directory):
         return True
     if cmake_cache_entry(directory, "Python3_EXECUTABLE") != python_executable():
         return True
@@ -1203,7 +1210,7 @@ def command_test_gpu_web(args: argparse.Namespace) -> None:
     """Builds the GPU tests for the browser and runs them in a page of a headless browser, on every device of the build or on the one that "--graphics-api" names, and stops when a test fails or the page does not finish."""
     api = args.graphics_api
     directory = BUILD_ROOT / f"web-gpu-tests-{args.config.lower()}"
-    if not is_configured(directory) or is_stale_web_tree(directory):
+    if not is_current_tree(directory) or is_stale_web_tree(directory):
         terminal.step(f"Configuring the GPU tests of the web in `{shown_path(directory)}`")
         configure_web_tree([ensure_emsdk(), "cmake", "-S", ROOT, "-B", directory, "-G", "Ninja", f"-DCMAKE_BUILD_TYPE={args.config}", f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DPython3_EXECUTABLE={python_executable()}", "-DHAYLEN_BUILD_TESTS=ON", "-DHAYLEN_BUILD_PLAYER=OFF", "-DHAYLEN_BUILD_SDK=OFF", "-DHAYLEN_BUILD_TOOLS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF"], directory)
     terminal.step(f"Building the GPU tests of the web in `{shown_path(directory)}`")
@@ -1412,7 +1419,7 @@ def command_test_gpu_android(args: argparse.Namespace) -> None:
     api = args.graphics_api
     abi = android_test_abi(args.device)
     directory = BUILD_ROOT / f"android-gpu-tests-{abi}-{args.config.lower()}"
-    if not is_configured(directory):
+    if not is_current_tree(directory):
         terminal.step(f"Configuring the GPU tests of Android in `{shown_path(directory)}`")
         configure_tree(android_gpu_tests_configure_command(directory, abi, args.config), directory)
     terminal.step(f"Building the GPU test app of Android in `{shown_path(directory)}`")
@@ -1485,7 +1492,7 @@ def command_test_gpu_apple(args: argparse.Namespace) -> None:
     require_host("apple")
     api = args.graphics_api
     directory = BUILD_ROOT / f"{args.platform}-gpu-tests-{args.config.lower()}"
-    if not is_configured(directory):
+    if not is_current_tree(directory):
         terminal.step(f"Configuring the GPU tests of \"{args.platform}\" in `{shown_path(directory)}`")
         configure_tree(apple_gpu_tests_configure_command(directory, args.platform, args.config), directory)
     terminal.step(f"Building the GPU tests of \"{args.platform}\" in `{shown_path(directory)}`")
@@ -1534,7 +1541,7 @@ def command_test_gpu_apple_device(args: argparse.Namespace) -> None:
         raise BuildError(f'Name the device with "--device". {DEVICES_HINT}')
     api = args.graphics_api
     directory = BUILD_ROOT / f"{args.platform}-gpu-tests-{args.config.lower()}"
-    if not is_configured(directory):
+    if not is_current_tree(directory):
         terminal.step(f"Configuring the GPU tests of \"{args.platform}\" in `{shown_path(directory)}`")
         configure_tree(apple_device_gpu_tests_configure_command(directory, args.platform, args.config), directory)
     terminal.step(f"Building the GPU test app of \"{args.platform}\" in `{shown_path(directory)}`")
@@ -1938,7 +1945,7 @@ def build_apple_artifacts(config: str, jobs: int, slices: list[str], current: li
         archives: list[Path] = []
         for arch in APPLE_SLICES[slice_name]:
             directory = ENGINE_BUILDS_DIR / f"apple-{slice_name}-{arch}-{config.lower()}"
-            if not is_configured(directory):
+            if not is_current_tree(directory):
                 configure_tree(["cmake", "-S", ENGINE_DIR, "-B", directory, "-G", "Ninja", f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DCMAKE_BUILD_TYPE={config}", "-DHAYLEN_BUILD_SDK=ON", "-DHAYLEN_BUILD_FRAMEWORK=ON", "-DHAYLEN_BUILD_PLAYER=OFF", "-DHAYLEN_BUILD_TESTS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF", *apple_slice_options(slice_name, arch)], directory)
             run(["cmake", "--build", directory, "--target", "haylen-framework", "--parallel", str(jobs)])
             run(["cmake", "--install", directory, "--component", "haylen-framework", "--prefix", directory / "framework"])

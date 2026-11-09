@@ -974,7 +974,7 @@ class ArtifactsTest(unittest.TestCase):
     def test_the_framework_joins_the_slices_built_now_and_the_current_ones_and_is_signed(self):
         manifest = {"platforms": {"apple": {"config": "Release", "slices": {"ios": "current", "tvos": "old"}}}}
         commands = []
-        with tempfile.TemporaryDirectory() as folder, mock.patch.object(haylen, "ENGINE_BUILDS_DIR", Path(folder)), mock.patch.object(haylen, "ARTIFACTS_DIR", Path(folder) / "artifacts"), mock.patch.object(haylen, "read_manifest", return_value=manifest), mock.patch.object(haylen, "write_manifest") as written, mock.patch.object(haylen, "engine_sources_hash", return_value="current"), mock.patch.object(haylen, "require_host"), mock.patch.object(haylen, "is_configured", return_value=True), mock.patch.object(haylen, "shutil") as files, mock.patch.object(haylen, "run", side_effect=lambda command, **_: commands.append([str(part) for part in command])), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+        with tempfile.TemporaryDirectory() as folder, mock.patch.object(haylen, "ENGINE_BUILDS_DIR", Path(folder)), mock.patch.object(haylen, "ARTIFACTS_DIR", Path(folder) / "artifacts"), mock.patch.object(haylen, "read_manifest", return_value=manifest), mock.patch.object(haylen, "write_manifest") as written, mock.patch.object(haylen, "engine_sources_hash", return_value="current"), mock.patch.object(haylen, "require_host"), mock.patch.object(haylen, "is_current_tree", return_value=True), mock.patch.object(haylen, "shutil") as files, mock.patch.object(haylen, "run", side_effect=lambda command, **_: commands.append([str(part) for part in command])), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
             haylen.build_artifacts("apple", "Release", 4, ["ios-simulator"])
             expected = [str(haylen.apple_slice_library(name, "Release")) for name in ("ios", "ios-simulator")]
         created = next(command for command in commands if command[:2] == ["xcodebuild", "-create-xcframework"])
@@ -2165,6 +2165,20 @@ class ShaderCompilerTest(unittest.TestCase):
             (tree / "CMakeCache.txt").write_text(f"HAYLEN_SHADERC:FILEPATH={compiler.as_posix()}\n")
             haylen.ensure_configured(arguments)
             self.assertEqual(configure.call_count, 3)
+
+    def test_a_new_pin_of_the_compiler_configures_the_trees_of_the_apple_slices_again(self):
+        compiler = self.scratch / "tools" / "haylen-shaderc-new" / "haylen-shaderc"
+        tree = self.scratch / "engine" / "apple-ios-arm64-release"
+        tree.mkdir(parents=True)
+        (tree / haylen.CONFIGURED_MARKER).write_text("")
+        (tree / "CMakeCache.txt").write_text(f"HAYLEN_SHADERC:FILEPATH={(self.scratch / 'tools' / 'haylen-shaderc-old' / 'haylen-shaderc').as_posix()}\n")
+        configured = []
+        with mock.patch.object(haylen, "ENGINE_BUILDS_DIR", self.scratch / "engine"), mock.patch.object(haylen, "ARTIFACTS_DIR", self.scratch / "artifacts"), mock.patch.object(haylen, "ensure_shaderc", return_value=compiler), mock.patch.object(haylen, "require_host"), mock.patch.object(haylen, "shutil"), mock.patch.object(haylen, "run"), mock.patch.object(haylen, "configure_tree", side_effect=lambda command, directory, *_: configured.append(directory)):
+            haylen.build_apple_artifacts("Release", 4, ["ios"], [])
+            self.assertEqual(configured, [tree])
+            (tree / "CMakeCache.txt").write_text(f"HAYLEN_SHADERC:FILEPATH={compiler.as_posix()}\n")
+            haylen.build_apple_artifacts("Release", 4, ["ios"], [])
+        self.assertEqual(configured, [tree])
 
     def test_a_tree_whose_configure_failed_configures_again(self):
         compiler = self.scratch / "tools" / "haylen-shaderc"
