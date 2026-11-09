@@ -6235,6 +6235,12 @@ def command_plugin_add(args: argparse.Namespace) -> None:
             raise BuildError(f'The path `{shown_path(source)}` is not a plugin folder, because it holds no "plugin.json".')
     plugin = Plugin.load(source)
 
+    # The entries that the app lists already must be valid before anything changes, since the entry of this plugin keeps its values.
+    document = json.loads((app / "app.json").read_text(encoding="utf-8"))
+    listed = document.setdefault("plugins", {})
+    earlier = {reference.id: reference for reference in read_plugin_references(app, listed)}.get(plugin.id)
+    values = dict(earlier.parameters) if earlier is not None else {}
+
     copy = app / "plugins" / plugin.id
     if args.reference and copy.exists() and copy.resolve() != source:
         shutil.rmtree(copy)
@@ -6245,10 +6251,6 @@ def command_plugin_add(args: argparse.Namespace) -> None:
         shutil.rmtree(copy, ignore_errors=True)
         shutil.copytree(source, copy, symlinks=True, ignore=COPY_IGNORED)
 
-    document = json.loads((app / "app.json").read_text(encoding="utf-8"))
-    listed = document.setdefault("plugins", {})
-    earlier = listed.get(plugin.id)
-    values = dict(earlier["parameters"]) if isinstance(earlier, dict) and isinstance(earlier.get("parameters"), dict) else {}
     for name, parameter in plugin.parameters.items():
         if name not in values and ("default" in parameter or parameter.get("required")):
             values[name] = parameter.get("default", "")

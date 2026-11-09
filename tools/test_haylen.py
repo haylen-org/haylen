@@ -1765,6 +1765,17 @@ class PluginReferenceTest(unittest.TestCase):
         self.assertEqual(json.loads((self.app / "app.json").read_text())["plugins"]["far"], {"parameters": {"greeting": "Hello"}})
         self.assertTrue((self.app / "plugins" / "far" / "plugin.json").is_file())
 
+    def test_plugin_add_refuses_an_entry_whose_values_lie_outside_its_parameters(self):
+        far = self.write_plugin(self.scratch / "far-plugin", "far", {"prefetchPacks": {"type": "array", "default": [], "description": "Packs."}})
+        self.write_app({"far": {"prefetchPacks": ["intro"]}})
+        written = (self.app / "app.json").read_text()
+        for options in (["--reference"], []):
+            with self.subTest(options=options):
+                with self.assertRaisesRegex(haylen.BuildError, 'The key "plugins.far.prefetchPacks" is not a key of a plugin entry'):
+                    haylen.command_plugin_add(haylen.build_parser().parse_args(["plugin", "add", str(far), *options, "--app", str(self.app)]))
+                self.assertEqual((self.app / "app.json").read_text(), written, "The values of the app stay where they are.")
+                self.assertFalse((self.app / "plugins").exists())
+
     def test_cpp_apps_take_the_folders_of_their_plugins_from_haylen_py(self):
         far = self.write_plugin(self.scratch / "far-plugin", "far")
         self.write_plugin(self.app / "plugins" / "local", "local")
