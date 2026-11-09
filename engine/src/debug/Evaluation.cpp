@@ -42,6 +42,10 @@ Evaluation::Result Evaluation::run(lua_State* L, int environment, std::string_vi
         return failed;
     }
 
+    if (lua_checkstack(L, results) == 0) {
+        lua_settop(L, threadIndex - 1);
+        return {.error = "The evaluation returned more values than the stack holds."};
+    }
     lua_xmove(thread, L, results);
     lua_remove(L, threadIndex);
     return {.ok = true, .count = results};

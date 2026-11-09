@@ -44,4 +44,16 @@ TEST_F(EvaluationTest, LeavesTheTimeLimitToTheEvaluationAndNotToTheCoroutinesItC
     EXPECT_EQ(lua_tointeger(task, -1), 5000050000);
 }
 
+// The results move onto a stack that grows for them, however many the evaluation returns.
+TEST_F(EvaluationTest, ReturnsMoreValuesThanTheStackOfTheCallerHeld) {
+    lua_State* L = state.get();
+    lua_pushglobaltable(L);
+    const Evaluation::Result result = Evaluation::run(L, -1, "table.unpack({}, 1, 5000)", std::chrono::milliseconds(1000));
+
+    ASSERT_TRUE(result.ok) << result.error;
+    EXPECT_EQ(result.count, 5000);
+    EXPECT_EQ(lua_gettop(L), 5001);
+    lua_settop(L, 0);
+}
+
 } // namespace haylen::debug
