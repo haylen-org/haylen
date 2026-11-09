@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <limits>
 #include <string>
 
 namespace haylen::localization {
@@ -31,8 +32,8 @@ PluralRules::Operands PluralRules::operandsOf(double count) noexcept {
     operands.n = std::fabs(count);
     operands.i = static_cast<std::uint64_t>(std::min(operands.n, 1.0e18));
 
-    // The fraction digits come from the shortest form of the count with up to six decimals, as text would show it.
-    std::array<char, 64> digits{};
+    // The fraction digits come from the shortest form of the count with up to six decimals, as text would show it. The text holds every digit of the largest count, so its decimal point is always there.
+    std::array<char, std::numeric_limits<double>::max_exponent10 + 10> digits{};
     std::snprintf(digits.data(), digits.size(), "%.6f", operands.n);
     const std::string_view text(digits.data());
     std::string fraction(text.substr(text.find('.') + 1));

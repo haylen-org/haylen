@@ -44,6 +44,11 @@ TEST_F(PluralRulesTest, PicksTheCategoriesOfEachLanguage) {
     EXPECT_EQ(categories("xx", {1}), "other");
 }
 
+TEST_F(PluralRulesTest, PicksTheCategoryOfCountsWithMoreDigitsThanAnyNumberType) {
+    EXPECT_EQ(categories("en", {1e62, 1.2345e70, 1e300}), "other other other");
+    EXPECT_EQ(categories("en", {1e62}, true), "other");
+}
+
 TEST_F(PluralRulesTest, PicksOrdinalCategories) {
     EXPECT_EQ(categories("en", {1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 101}, true), "one two few other other other other one two few one");
     EXPECT_EQ(categories("fr", {1, 2}, true), "one other");
