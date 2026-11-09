@@ -102,6 +102,7 @@ TEST_F(DecisionLuaTest, ReadsDeepTreesAndRejectsDescriptionsThatContainThemselve
     // A description may appear twice in a tree as long as it does not contain itself.
     EXPECT_EQ(lua("local shared = ai.succeeder(ai.action(function() return false end)) return ai.newBehaviorTree(ai.sequence({shared, ai.inverter(shared)})):tick(0)"), "failure");
     EXPECT_NE(lua("local loop = ai.sequence({}) loop.children[1] = ai.inverter(loop) ai.newBehaviorTree(loop)").find("A behavior tree description contains itself."), std::string::npos);
+    EXPECT_NE(lua("local node = ai.action(function() end) for level = 1, 200000 do node = ai.inverter(node) end ai.newBehaviorTree(node)").find("A behavior tree nests deeper than 256 levels."), std::string::npos);
 }
 
 TEST_F(DecisionLuaTest, ChoosesByUtility) {

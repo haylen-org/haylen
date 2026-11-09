@@ -187,8 +187,11 @@ std::string BehaviorTreeLua::listKinds() {
     return list;
 }
 
-BehaviorTree::Node BehaviorTreeLua::readNode(lua_State* L, int index, int leavesIndex, int pathIndex, Scripted& self) {
+BehaviorTree::Node BehaviorTreeLua::readNode(lua_State* L, int index, int leavesIndex, int pathIndex, Scripted& self, int depth) {
     luaL_checktype(L, index, LUA_TTABLE);
+    if (depth > kMaxDepth) {
+        luaL_error(L, "A behavior tree nests deeper than %d levels.", kMaxDepth);
+    }
     luaL_checkstack(L, 4, "behavior tree too deep");
     const int description = lua_absindex(L, index);
     lua_pushvalue(L, description);
@@ -217,7 +220,7 @@ BehaviorTree::Node BehaviorTreeLua::readNode(lua_State* L, int index, int leaves
         const lua_Integer count = luaL_len(L, -1);
         for (lua_Integer child = 1; child <= count; ++child) {
             lua_rawgeti(L, -1, child);
-            node.children.push_back(readNode(L, -1, leavesIndex, pathIndex, self));
+            node.children.push_back(readNode(L, -1, leavesIndex, pathIndex, self, depth + 1));
             lua_pop(L, 1);
         }
         lua_pushvalue(L, description);
@@ -259,7 +262,7 @@ int BehaviorTreeLua::newTree(lua_State* L) {
     lua::Userdata::setField(L, tree, "leaves", -1);
     const int leaves = lua_gettop(L);
     lua_newtable(L);
-    self.tree.emplace(readNode(L, 1, leaves, lua_gettop(L), self));
+    self.tree.emplace(readNode(L, 1, leaves, lua_gettop(L), self, 1));
     lua_settop(L, tree);
     return 1;
 }

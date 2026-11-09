@@ -491,6 +491,7 @@ A description that breaks the rules raises one of these errors, and no tree is b
 - A decorator without exactly one child raises `A behavior tree decorator needs exactly one child.`.
 - A parallel node with a wrong count raises `A parallel node needs between one success and as many successes as it has children.`.
 - A description that contains itself raises `A behavior tree description contains itself.`.
+- A description that nests deeper than 256 levels raises `A behavior tree nests deeper than 256 levels.`.
 
 ```lua
 local ai = require('haylen.ai')
@@ -935,6 +936,7 @@ print(threat:cellCenter(0, 0)) -- 20.0 20.0
 | `A behavior tree decorator needs exactly one child.` | A decorator description has no child or several. |
 | `A parallel node needs between one success and as many successes as it has children.` | The `successes` of `ai.parallel`, or the `count` of a parallel description, is below 1 or above the number of children. |
 | `A behavior tree description contains itself.` | A description holds itself among its children, at any depth. |
+| `A behavior tree nests deeper than 256 levels.` | A description has more than 256 levels of nodes from the root to a leaf. |
 | `A behavior tree action returned the unknown status "<name>".` | An action returned a string other than the three statuses. |
 | `A behavior tree action must return a status name, a boolean or nothing.` | An action returned a value of another type. |
 | `The behavior tree is already ticking.` | A leaf called `tick` on its own tree. |
