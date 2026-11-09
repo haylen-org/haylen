@@ -9,7 +9,7 @@
 
 namespace haylen::ui {
 
-// A row of buttons at the end of a form, such as cancel and save.
+// A row of buttons at the end of a form, such as cancel and save, which stack across the width of the form when they do not fit in one row.
 class SettingsActions final : public Component {
   public:
     [[nodiscard]] std::string_view getKind() const noexcept override {
@@ -23,6 +23,9 @@ class SettingsActions final : public Component {
     void readProperties(PropertyReader&) override {}
     [[nodiscard]] math::Vec2 measureContent(Context& context, float availableWidth) override;
     void render(Context& context, const math::Rect& bounds) override;
+
+  private:
+    [[nodiscard]] bool isStacked(Context& context, float width);
 };
 
 } // namespace haylen::ui

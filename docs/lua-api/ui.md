@@ -1505,7 +1505,7 @@ ui.mount(ui.settingsRow{
 
 ### ui.settingsActions(properties)
 
-Settings actions are a row of buttons at the end of a form, such as cancel and save, lined up to the end edge. It holds any number of children and has no properties of its own.
+Settings actions are a row of buttons at the end of a form, such as cancel and save, lined up to the end edge. When the buttons do not fit in one row, they stack across the width of the form, with the last one, usually the main action, on top. It holds any number of children and has no properties of its own.
 
 ```lua
 local ui = require('haylen.ui')
@@ -1530,6 +1530,7 @@ A dialog is a modal window over the whole screen, with a title, a message, optio
 - Pressing a button closes the dialog and reports `answer`, with the button id as `button`.
 - Escape or the east gamepad button closes a dismissible dialog and reports `dismiss`.
 - A dialog that the player closed shows again when `set` sets `open = true`.
+- The buttons line up in one row at the end of the dialog while they fit its width. When they do not fit, as on a phone in portrait, they stack across the whole width, with the last button, usually the main answer, on top and the first one at the bottom. A label too long for the width wraps, and its button grows taller.
 - A dialog stays inside the screen. When its title, message and children are taller than it, they scroll above the buttons, beside a [scroll bar](#scroll-bars) at the edge of the dialog. The padding of the dialog holds the lane of the bar.
 - One dialog shows at a time. A dialog that opens while another one shows waits until that one closes.
 - A dialog closes when its node stops drawing, because it, a node around it or its GUI was hidden. It shows again once it draws while `open` is still `true`. The popups of menu buttons, popovers, combos, color fields and context menus close the same way.

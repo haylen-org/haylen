@@ -2348,7 +2348,7 @@ Ferramentas de desenvolvimento:
 Correções:
 
 - [ ] Depois do splash, todo app dá uma piscada: achar a causa na engine e corrigir em todas as plataformas, com teste.
-- [ ] Diálogo com muitos botões: os botões passam da borda do diálogo e o primeiro fica cortado (visto no app de exemplo de transporte). Os botões de um diálogo nunca passam da borda: quebram de linha ou empilham quando não cabem, como nos apps bem desenhados, com teste e captura antes e depois.
+- [x] Diálogo com muitos botões: os botões passam da borda do diálogo e o primeiro fica cortado (visto no app de exemplo de transporte). Os botões de um diálogo nunca passam da borda: quebram de linha ou empilham quando não cabem, como nos apps bem desenhados, com teste e captura antes e depois. Feito: a causa estava na engine, que alinhava os botões numa linha só a partir da borda final sem medir a largura. Agora os botões de `ui.dialog` e de `ui.settingsActions` ficam numa linha enquanto cabem e, quando não cabem, empilham na largura toda com o principal em cima. Todos os diálogos dos exemplos e do projeto de testes usam o componente, então todos herdam a regra. Testes de layout, e capturas antes e depois do diálogo de segurança do app de transporte na largura de celular no WebGPU, no WebGL2, no simulador do iOS e no emulador Android.
 
 #### AT. Documentação
 

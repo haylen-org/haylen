@@ -633,6 +633,28 @@ TEST_F(ComponentTest, CentersTheActionsOfASettingsFormOnOneLine) {
     EXPECT_LT(getBounds(*gui, "defaults").height, getBounds(*gui, "save").height);
 }
 
+// Actions that do not fit in one row stack across the width of the form, with the main action on top.
+TEST_F(ComponentTest, StacksTheActionsOfANarrowSettingsForm) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "settingsForm", "id": "form", "width": 240, "children": [
+        {"kind": "settingsActions", "children": [{"kind": "button", "id": "defaults", "text": "Restore the defaults", "variant": "link"}, {"kind": "button", "id": "cancel", "text": "Cancel"}, {"kind": "button", "id": "save", "text": "Save the settings", "variant": "primary"}]}
+    ]}]})");
+    // clang-format on
+    frames();
+    const math::Rect form = getBounds(*gui, "form");
+    const math::Rect save = getBounds(*gui, "save");
+    const math::Rect cancel = getBounds(*gui, "cancel");
+    const math::Rect defaults = getBounds(*gui, "defaults");
+    EXPECT_LT(save.getBottom(), cancel.y);
+    EXPECT_LT(cancel.getBottom(), defaults.y);
+    for (const math::Rect& action : {save, cancel, defaults}) {
+        EXPECT_EQ(action.x, save.x);
+        EXPECT_EQ(action.width, save.width);
+        EXPECT_GE(action.x, form.x);
+        EXPECT_LE(action.getRight(), form.getRight());
+    }
+}
+
 // Only the rows in view draw their content, while every row still takes the focus and the pointer.
 TEST_F(ComponentTest, DrawsOnlyTheRowsOfAScrolledListInView) {
     // clang-format off

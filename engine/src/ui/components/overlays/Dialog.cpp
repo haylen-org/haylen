@@ -184,17 +184,46 @@ float Dialog::getContentHeight(Context& context, float width) {
     if (buttons.empty()) {
         return body;
     }
-    return body + (body > 0.0F ? context.getMetric(Theme::Metric::ItemSpacing) : 0.0F) + context.getMetric(Theme::Metric::ControlHeight);
+    return body + (body > 0.0F ? context.getMetric(Theme::Metric::ItemSpacing) : 0.0F) + getButtonsHeight(context, width);
+}
+
+// The answers line up in one row while they fit the width, and otherwise stack across it.
+bool Dialog::isStacked(Context& context, float width) const {
+    const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
+    float row = 0.0F;
+    for (const Answer& button : buttons) {
+        row += Widgets::measureButton(context, context.getText(button.text), false, button.variant, {}).x + (row > 0.0F ? spacing : 0.0F);
+    }
+    return row > width;
+}
+
+// A stacked answer takes at least the height of a control, and grows when its label wraps across the width.
+float Dialog::getStackedButtonHeight(Context& context, const Answer& button, float width) {
+    const float measured = Widgets::measureButton(context, context.getText(button.text), false, button.variant, {}, width).y;
+    return std::max(measured, context.getMetric(Theme::Metric::ControlHeight));
+}
+
+float Dialog::getButtonsHeight(Context& context, float width) const {
+    if (!isStacked(context, width)) {
+        return context.getMetric(Theme::Metric::ControlHeight);
+    }
+    const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
+    float height = 0.0F;
+    for (const Answer& button : buttons) {
+        height += getStackedButtonHeight(context, button, width) + (height > 0.0F ? spacing : 0.0F);
+    }
+    return height;
 }
 
 void Dialog::drawContent(Context& context, const math::Rect& frame, const math::Insets& padding) {
     const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
-    const float height = context.getMetric(Theme::Metric::ControlHeight);
+    const float controlHeight = context.getMetric(Theme::Metric::ControlHeight);
     const math::Rect inner = frame.inset(padding);
+    const float buttonsHeight = buttons.empty() ? 0.0F : getButtonsHeight(context, inner.width);
 
     // The title, the message and the children scroll in the room the buttons leave, across the whole width inside the frame, so the scroll bar keeps to the edge of the dialog while the content keeps its padding.
     const math::Insets edge = Surfaces::getFrame(context, Theme::Surface::Dialog);
-    const math::Rect body = math::Rect::fromMinMax({frame.x + edge.left, inner.y}, {frame.getRight() - edge.right, std::max(inner.y, inner.getBottom() - (buttons.empty() ? 0.0F : height + spacing))});
+    const math::Rect body = math::Rect::fromMinMax({frame.x + edge.left, inner.y}, {frame.getRight() - edge.right, std::max(inner.y, inner.getBottom() - (buttons.empty() ? 0.0F : buttonsHeight + spacing))});
     if (!body.isEmpty()) {
         ImGui::SetCursorScreenPos(ImGuiConverter::toImVec2(body.getMin()));
         if (context.getBackend().beginChild("##body", body.getSize(), ImGuiChildFlags_NavFlattened, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
@@ -203,21 +232,31 @@ void Dialog::drawContent(Context& context, const math::Rect& frame, const math::
         ImGui::EndChild();
     }
 
-    // Buttons line up at the bottom end, the right or the left of a right-to-left UI, and the last one, usually the main answer, starts with the navigation focus.
+    // Buttons line up at the bottom end, the right or the left of a right-to-left UI, or stack across the width when they do not fit in one row, with the last one, usually the main answer, on top. That one starts with the navigation focus.
+    const bool stacked = isStacked(context, inner.width);
     float x = inner.getRight();
+    float y = inner.getBottom() - buttonsHeight;
     for (auto button = buttons.rbegin(); button != buttons.rend(); ++button) {
         const std::string_view text = context.getText(button->text);
-        const math::Vec2 size = Widgets::measureButton(context, text, false, button->variant, {});
-        x -= size.x;
+        math::Rect place;
+        if (stacked) {
+            const float height = getStackedButtonHeight(context, *button, inner.width);
+            place = {inner.x, y, inner.width, height};
+            y += height + spacing;
+        } else {
+            const float width = Widgets::measureButton(context, text, false, button->variant, {}).x;
+            x -= width;
+            place = context.mirror({x, inner.getBottom() - controlHeight, width, controlHeight}, inner);
+            x -= spacing;
+        }
+
         ImGui::PushID(button->id.c_str());
-        const math::Rect place = context.mirror({x, inner.getBottom() - height, size.x, height}, inner);
         const bool pressed = Widgets::button(context, place, text, nullptr, button->variant, false, {}, {});
         context.getAccessibility().addPart(ImGui::GetItemID(), place, platform::AccessibilityElement::Role::Button, text, 0);
         if (button == buttons.rbegin() && ImGui::IsWindowAppearing()) {
             Widgets::focusItem(context);
         }
         ImGui::PopID();
-        x -= spacing;
         if (pressed && open) {
             open = false;
             context.emit(*this, "answer", {{"button", button->id}});
