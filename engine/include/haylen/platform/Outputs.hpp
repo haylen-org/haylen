@@ -44,6 +44,9 @@ class Outputs final {
     // Reads the report of the output with the number again, as the platform announced with `Event::Type::OutputChanged`.
     void refresh(std::uint32_t number);
 
+    // Ends the outputs whose display the displays no longer list, which publishes `outputClosed` with the ending `disconnected`.
+    void followDisplays();
+
     // Publishes an event of the pointer over an output.
     void receiveInput(const Event& event);
 
@@ -59,6 +62,7 @@ class Outputs final {
     graphics::Device& graphics;
     core::EventBus& events;
     std::vector<std::shared_ptr<Output>> outputs;
+    std::vector<std::shared_ptr<Output>> snapshot;
     std::uint32_t nextId = 1;
 };
 

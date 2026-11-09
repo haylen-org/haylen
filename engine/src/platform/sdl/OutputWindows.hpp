@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <string>
 #include <vector>
 
 #include <SDL3/SDL_events.h>
@@ -19,7 +18,7 @@ namespace haylen::platform::sdl {
 
 class Window;
 
-// The windows of the outputs of the app on the other displays of a desktop, which SDL opens there for the graphics API of the window of the app, with the context of the window of the app drawing into them under OpenGL. Each one covers its display or sits in the middle of it, follows its size and its scale, ends when the person closes it or its display disconnects, and hands the pointer over it to its output. A window that ended hides until the output closes, so the GPU device lets go of its swapchain before the window goes. Everything runs on the main thread, which is the frame thread of SDL.
+// The windows of the outputs of the app on the other displays of a desktop, which SDL opens there for the graphics API of the window of the app, with the context of the window of the app drawing into them under OpenGL. Each one covers its display or sits in the middle of it, follows its size and its scale, ends when the person closes it, and hands the pointer over it to its output. A window that ended hides until the output closes, so the GPU device lets go of its swapchain before the window goes. Everything runs on the main thread, which is the frame thread of SDL.
 class OutputWindows final {
   public:
     OutputWindows() = default;
@@ -35,13 +34,12 @@ class OutputWindows final {
     // Whether a window of an output holds the keyboard, which the window of the app then does not lose to another app.
     [[nodiscard]] bool holdsFocus() const noexcept;
 
-    // Takes the events of the windows of outputs, which belong to their outputs, and returns whether the event was one of them. A display that disconnects ends the outputs on it, and the event goes on to the app.
+    // Takes the events of the windows of outputs, which belong to their outputs, and returns whether the event was one of them.
     [[nodiscard]] bool handle(const SDL_Event& event);
 
   private:
     struct Entry {
         std::uint32_t number = 0;
-        std::string display;
         SDL_Window* window = nullptr;
         SDL_MetalView view = nullptr;
         std::unique_ptr<GlContext> gl;

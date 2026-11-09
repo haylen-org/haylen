@@ -663,6 +663,7 @@ void Engine::dispatchEvent(const platform::Event& event) {
         }
         case platform::Event::Type::DisplaysChanged:
             current.displays->refresh();
+            current.outputs->followDisplays();
             break;
         case platform::Event::Type::NetworkChanged: {
             // The first report publishes the state the app starts in, and later reports publish only changes.

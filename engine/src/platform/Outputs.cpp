@@ -78,6 +78,17 @@ void Outputs::refresh(std::uint32_t number) {
     show(*output, *report.surface, report.scale);
 }
 
+// A display leaves the list when the platform no longer shows the desktop on it, whether it was unplugged or turned off, so its output ends however the platform reported the change. The loop walks a snapshot, since each ending shortens the list and runs the listeners of the app.
+void Outputs::followDisplays() {
+    snapshot.assign(outputs.begin(), outputs.end());
+    for (const std::shared_ptr<Output>& output : snapshot) {
+        if (output->state != Output::State::Closed && displays.find(output->displayId) == nullptr) {
+            end(*output, Output::Ending::Disconnected, {});
+        }
+    }
+    snapshot.clear();
+}
+
 // A GPU device that draws into no surface beyond the window ends the output, since nothing can show it.
 void Outputs::show(Output& output, const gpu::Surface& surface, float scale) {
     gpu::Device& gpu = graphics.getGpu();

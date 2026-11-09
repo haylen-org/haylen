@@ -22,7 +22,7 @@ OutputWindows::~OutputWindows() {
 // A window that SDL or the graphics API cannot open on the display ends the output with the reason. A window of the size of `options` in points comes as large on the desktops whose window coordinates are pixels.
 void OutputWindows::open(std::uint32_t number, const Display& display, const Output::Options& options, const Window& main) {
     const SDL_DisplayID target = Window::findDisplay(display);
-    Entry& entry = entries.emplace_back(Entry{.number = number, .display = display.id});
+    Entry& entry = entries.emplace_back(Entry{.number = number});
     SDL_WindowFlags flags = SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
     if (!options.fullscreen) {
         flags |= SDL_WINDOW_RESIZABLE;
@@ -141,17 +141,6 @@ void OutputWindows::end(Entry& entry, Output::Ending ending) {
 }
 
 bool OutputWindows::handle(const SDL_Event& event) {
-    if (event.type == SDL_EVENT_DISPLAY_REMOVED) {
-        const std::vector<Display> displays = Host::readDisplays();
-        for (Entry& entry : entries) {
-            const bool connected = std::ranges::find(displays, entry.display, &Display::id) != displays.end();
-            if (!connected && entry.window != nullptr && !entry.report.ending) {
-                end(entry, Output::Ending::Disconnected);
-            }
-        }
-        return false;
-    }
-
     if (event.type >= SDL_EVENT_WINDOW_FIRST && event.type <= SDL_EVENT_WINDOW_LAST) {
         Entry* entry = findWindow(event.window.windowID);
         if (entry != nullptr && !entry->report.ending) {

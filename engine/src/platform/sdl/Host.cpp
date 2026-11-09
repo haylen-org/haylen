@@ -293,12 +293,8 @@ void Host::closeWindow() {
     runtime.close();
 }
 
-std::vector<Display> Host::getDisplays() const {
-    return readDisplays();
-}
-
 // A Wayland session keeps its outputs to the compositor, where SDL reads them, while the services read the displays of every other desktop with the ids and work areas of its own system.
-std::vector<Display> Host::readDisplays() {
+std::vector<Display> Host::getDisplays() const {
     if (WaylandDisplays::isSession()) {
         return WaylandDisplays::read();
     }

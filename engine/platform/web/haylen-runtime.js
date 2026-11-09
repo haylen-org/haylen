@@ -1331,7 +1331,6 @@ Module.haylen = Module.haylen || {};
             pageScreens.ids.set(details.currentScreen, screenId(window.screen));
             pageScreens.details = details;
             details.addEventListener("screenschange", displaysChanged);
-            details.addEventListener("screenschange", outputScreensChanged);
             details.addEventListener("currentscreenchange", displaysChanged);
             displaysChanged();
         }
@@ -1374,7 +1373,7 @@ Module.haylen = Module.haylen || {};
         const canvas = page.createElement("canvas");
         canvas.style.cssText = "display:block;width:100vw;height:100vh;touch-action:none";
         page.body.appendChild(canvas);
-        const output = { window: opened, canvas: canvas, screen: target };
+        const output = { window: opened, canvas: canvas };
         pageOutputs.set(number, output);
 
         const report = () => {
@@ -1404,13 +1403,6 @@ Module.haylen = Module.haylen || {};
         if (output !== undefined) {
             pageOutputs.delete(number);
             output.window.close();
-        }
-    };
-    const outputScreensChanged = () => {
-        for (const [number, output] of pageOutputs) {
-            if (!pageScreens.details.screens.includes(output.screen)) {
-                endOutput(number, outputEndings.disconnected, "");
-            }
         }
     };
 

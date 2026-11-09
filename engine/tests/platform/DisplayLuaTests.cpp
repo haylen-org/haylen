@@ -168,6 +168,21 @@ TEST_F(DisplayLuaTest, ShowsAnOutputOnAnotherDisplay) {
     EXPECT_TRUE(fixture.engine().getOutputs().getAll().empty());
 }
 
+// A display that leaves the list ends its output whatever the platform reported, such as a monitor turned off that SDL still lists as connected.
+TEST_F(DisplayLuaTest, EndsTheOutputOfADisplayThatLeaves) {
+    test::EngineFixture fixture;
+    showOutput(fixture, 1280, 1024);
+    fixture.frames(1);
+    fixture.runLua("heard = {} events.on('displayDisconnected', function(info) heard[#heard + 1] = 'displayDisconnected ' .. info.display end)");
+    fixture.host().setDisplays({twoDisplays().front()});
+    fixture.engine().handleEvent({.type = Event::Type::DisplaysChanged});
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return output.state .. ' ' .. output.ending .. ' ' .. table.concat(heard, ', ')"), "closed disconnected displayDisconnected side-id, outputClosed disconnected");
+    EXPECT_EQ(fixture.host().getClosedOutputs(), (std::vector<std::uint32_t>{1}));
+    EXPECT_EQ(fixture.host().getSurfacesAtClose(), (std::vector<std::size_t>{0}));
+    EXPECT_TRUE(fixture.engine().getOutputs().getAll().empty());
+}
+
 TEST_F(DisplayLuaTest, PresentsOutputsWithoutAllocating) {
     test::EngineFixture fixture;
     showOutput(fixture, 1280, 1024);
