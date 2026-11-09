@@ -2462,6 +2462,33 @@ target_link_libraries(app PRIVATE runtime)
         self.assertIn((self.scratch / "engine" / "platform" / "web" / "haylen-runtime.js").as_posix(), link.split(" | ", 1)[-1])
         self.assertIn((self.scratch / "varn-dataview.js").as_posix(), link.split(" | ", 1)[-1])
 
+    def test_a_web_app_links_again_when_a_file_of_its_package_changes(self):
+        if shutil.which("cmake") is None or shutil.which("ninja") is None:
+            self.skipTest('The commands "cmake" and "ninja" configure the project of the app.')
+        source = self.scratch / "project"
+        (source / "source").mkdir(parents=True)
+        (source / "app.json").write_text('{"name": "Probe", "identifier": "com.haylen.probe", "version": "1.0.0"}')
+        (source / "source" / "main.lua").write_text("print('Hello.')\n")
+        (source / "main.cpp").write_text("int main() { return 0; }\n")
+        player = self.scratch / "engine" / "src" / "platform" / "LuaPlayer.cpp"
+        player.parent.mkdir(parents=True)
+        player.write_text("")
+        # The project stands for a C++ web app on any machine and only configures, since only Emscripten links it.
+        (source / "CMakeLists.txt").write_text(f"""cmake_minimum_required(VERSION 3.28)
+project(probe LANGUAGES C CXX)
+set(APPLE FALSE)
+set(EMSCRIPTEN TRUE)
+set(HAYLEN_ENGINE_DIR "{(self.scratch / 'engine').as_posix()}")
+include("{(haylen.ENGINE_DIR / 'cmake' / 'haylen-app.cmake').as_posix()}")
+add_library(runtime INTERFACE)
+add_library(haylen::runtime ALIAS runtime)
+haylen_add_app(main CPP SOURCES main.cpp PACKAGE "${{CMAKE_CURRENT_SOURCE_DIR}}")
+""")
+        subprocess.run(["cmake", "-G", "Ninja", "-S", str(source), "-B", str(self.scratch / "build")], capture_output=True, check=True)
+        link = next(line for line in (self.scratch / "build" / "build.ninja").read_text().splitlines() if line.startswith("build bin/main/main.html"))
+        self.assertIn((source / "source" / "main.lua").as_posix(), link.split(" | ", 1)[-1])
+        self.assertIn((source / "app.json").as_posix(), link.split(" | ", 1)[-1])
+
 
 class AndroidKeyTest(unittest.TestCase):
     def setUp(self):
