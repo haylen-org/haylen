@@ -357,6 +357,13 @@ Permission::Answer Services::vibrate(float) {
     return AppleSystem::vibrate();
 }
 
+// LaunchServices and UIKit hand the links to the app that runs, whose delegates report them.
+bool Services::forwardLink(std::string_view, std::string_view) {
+    return false;
+}
+
+void Services::listenForLinks(std::string_view) {}
+
 // A Mac app keeps running its frames in the background, so its sound plays on.
 void Services::setBackgroundAudio([[maybe_unused]] bool value) {
 #if !TARGET_OS_OSX

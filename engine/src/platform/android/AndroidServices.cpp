@@ -22,6 +22,7 @@
 #include "platform/AccessibilityRelay.hpp"
 #include "platform/BridgeRelay.hpp"
 #include "platform/DialogRelay.hpp"
+#include "platform/LinkRelay.hpp"
 #include "platform/MemoryWarning.hpp"
 #include "platform/NativeHost.hpp"
 #include "platform/NativeWindow.hpp"
@@ -216,6 +217,13 @@ Permission::Answer Services::vibrate(float seconds) {
     return JavaBridge::vibrate(std::max<std::int64_t>(1, std::lround(seconds * 1000.0F)));
 }
 
+// Android hands the links to the activity that runs, which reports them.
+bool Services::forwardLink(std::string_view, std::string_view) {
+    return false;
+}
+
+void Services::listenForLinks(std::string_view) {}
+
 // The process keeps running in the background with the frames of the runtime, and the media session keeps it in the foreground while what plays shows as playing, so Android never freezes it.
 void Services::setBackgroundAudio(bool value) {
     JavaBridge::setBackgroundAudio(value);
@@ -329,6 +337,10 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeSafeArea(JNIEnv*, jc
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeTelevision(JNIEnv*, jclass, jboolean television) {
     haylen::platform::AndroidActivity::setTelevision(television == JNI_TRUE);
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeLink(JNIEnv* env, jclass, jbyteArray url) {
+    haylen::platform::LinkRelay::receive(haylen::platform::JavaBridge::toString(*env, url));
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeLowMemory(JNIEnv*, jclass, jboolean critical) {

@@ -191,6 +191,9 @@ SDL_AppResult Runtime::initialize(int argc, char* argv[]) {
         Services::reportError(lua::Error(error.what()).toJson());
         return SDL_APP_FAILURE;
     }
+    if (Player::isLaunchForwarded()) {
+        return SDL_APP_SUCCESS;
+    }
     const core::AppConfig& config = Player::getOpeningConfig();
     highDpi = config.window.highDpi;
     transparent = config.window.transparent;

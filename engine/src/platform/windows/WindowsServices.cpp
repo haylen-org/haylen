@@ -23,6 +23,7 @@
 #include "platform/windows/WindowsAccessibility.hpp"
 #include "platform/windows/WindowsDesktop.hpp"
 #include "platform/windows/WindowsDialogs.hpp"
+#include "platform/windows/WindowsLinks.hpp"
 #include "platform/windows/WindowsMediaSession.hpp"
 #include "platform/windows/WindowsMemory.hpp"
 #include "platform/windows/WindowsNetwork.hpp"
@@ -213,6 +214,14 @@ std::string Services::explainBlockedSocket(std::intptr_t) {
 
 Permission::Answer Services::vibrate(float) {
     return {.state = Permission::State::Unsupported, .message = "Windows gives apps no vibration motor."};
+}
+
+bool Services::forwardLink(std::string_view identifier, std::string_view url) {
+    return WindowsLinks::forward(identifier, url);
+}
+
+void Services::listenForLinks(std::string_view identifier) {
+    WindowsLinks::listen(identifier);
 }
 
 // A minimized window keeps running its frames, so its sound plays on.

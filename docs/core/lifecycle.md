@@ -79,6 +79,7 @@ The engine names every moment of the system, of the app and of its screen with o
 | The app stops, because it quit, the person closed it or the system ends the process while it runs. | `appQuitRequested` where the platform asks first, then `appStopping` | `haylen.quit()` ends it from the app. |
 | The app starts again after the system ended it in the background. | `appStarted` | [`storage.resumeState()`](../lua-api/storage.md#resume-state) |
 | Another app of the process launched it. | `appStarted` | [`haylen.launched()`](../lua-api/haylen.md#haylenlaunched) |
+| A link opened the app, such as one of a URL scheme that its plugins declare. | `linkOpened` | The link comes as `url`. |
 | The system is short of memory. | `appLowMemory` with `'warning'` or `'critical'` | [`assets`](../lua-api/assets.md) holds only what something holds. |
 | The light or dark colors of the system change. | `systemThemeChanged` | [`system.theme()`](../lua-api/system.md#systemtheme) |
 | The battery changes. | `batteryChanged` | [`system.battery()`](../lua-api/system.md#systembattery) |
@@ -93,7 +94,7 @@ The engine names every moment of the system, of the app and of its screen with o
 | A display connects, disconnects or changes. | `displayConnected`, `displayDisconnected`, `displayChanged` | [`haylen.display`](../lua-api/display.md) |
 | The on-screen keyboard shows or hides. | `keyboardShown`, `keyboardHidden` | The frame of the keyboard comes with `keyboardShown`. |
 
-The language that the person picks in the settings belongs to [`haylen.localization`](../lua-api/localization.md). Links and notifications that open the app reach the plugins that declare them, as the [plugin guide](../platform/plugins.md#links-and-notifications) describes. Some apps keep playing their sound in the background, such as a music player, which the [audio guide](../audio/audio.md#playing-in-the-background) describes with what each platform allows.
+The language that the person picks in the settings belongs to [`haylen.localization`](../lua-api/localization.md). Links that open the app reach it as `linkOpened`, and the native parts of the plugins that declare them also receive them, as the [plugin guide](../platform/plugins.md#links-and-notifications) describes, together with the taps of notifications. Some apps keep playing their sound in the background, such as a music player, which the [audio guide](../audio/audio.md#playing-in-the-background) describes with what each platform allows.
 
 ## App states
 
@@ -264,6 +265,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `appBackground` | The window minimized into the Dock. The app comes back when the window is restored. |
 | `appLowMemory` | The memory pressure of the system, which a dispatch source follows, at the warning and at the critical level, as `'warning'` and `'critical'`. |
 | `appQuitRequested` | The close button of the window, Quit in the menu, Command+Q, the Dock and logging out, as the [desktop guide](../platform/desktop.md#menus-and-quitting) describes. |
+| `linkOpened` | The links of the schemes of `CFBundleURLTypes`, which the application delegate receives, for an app bundle. The desktop player has no bundle, so no scheme opens it. |
 | `windowResized`, `windowFocusGained`, `windowFocusLost`, `windowFullscreenChanged` | The window, resized by the player or the app, its key state and its full screen mode. |
 | `windowOrientationChanged`, `windowFoldChanged` | Never, because a desktop window counts as landscape and no Mac folds. |
 | `windowSafeAreaChanged` | The camera housing of a Mac with a notch, for a full screen or borderless window that reaches it, the native views of plugins and the simulation. |
@@ -286,6 +288,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `appBackground` | The window minimized into the taskbar. The app comes back when the window is restored. |
 | `appLowMemory` | The memory resource notification of the system, once each time the available memory falls below its low threshold, as `'warning'`, since Windows tells no critical level. |
 | `appQuitRequested` | The close button of the window and Alt+F4. |
+| `linkOpened` | The links of the schemes that the installer or `run` registers, which a new process of the app hands to the one that runs through its named pipe, as [links on Windows and Linux](../tools/distribution.md#links-on-windows-and-linux) describes. |
 | `windowResized`, `windowFocusGained`, `windowFocusLost`, `windowFullscreenChanged` | The window, resized by the player or the app, its focus and its full screen mode. |
 | `windowOrientationChanged`, `windowFoldChanged` | Never, because a desktop window counts as landscape and Windows offers desktop apps no API for the fold of a device. |
 | `windowSafeAreaChanged` | Only the native views of plugins and the simulation, because nothing of the system covers a window. |
@@ -308,6 +311,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `appBackground` | The window minimized, which X11 reports as hidden. The app comes back when the window is restored. |
 | `appLowMemory` | The memory monitor of GIO, from GLib 2.64 on, whose low and medium levels arrive as `'warning'` and whose critical level as `'critical'`. |
 | `appQuitRequested` | The close button of the window and the close shortcut of the window manager, usually Alt+F4. |
+| `linkOpened` | The links of the schemes of the desktop entry, which a new process of the app hands to the one that runs through the session bus, as [links on Windows and Linux](../tools/distribution.md#links-on-windows-and-linux) describes. |
 | `windowResized`, `windowFocusGained`, `windowFocusLost`, `windowFullscreenChanged` | The window, resized by the player or the app, its focus and its full screen mode. |
 | `windowOrientationChanged`, `windowFoldChanged` | Never, because a desktop window counts as landscape and Linux desktops report no folds to windows. |
 | `windowSafeAreaChanged` | Only the native views of plugins and the simulation, because nothing of the system covers a window. |
@@ -330,6 +334,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `appBackground` | The scene in the background, such as after Home, another app or the lock of the device. |
 | `appLowMemory` | The memory warnings of UIKit. |
 | `appQuitRequested` | Never, because iOS apps never quit on request: the system ends them in the background. |
+| `linkOpened` | The links of the schemes of `CFBundleURLTypes` and the universal links, which the scene of the app receives. |
 | `windowResized` | The view of the app, such as a rotation or a new size of an iPad window. |
 | `windowFocusGained`, `windowFocusLost` | The scene becoming and resigning active. |
 | `windowFullscreenChanged` | Never, because the app always fills its window. |
@@ -355,6 +360,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `appBackground` | The scene in the background, such as after the TV button or another app. |
 | `appLowMemory` | The memory warnings of UIKit. |
 | `appQuitRequested` | Never, because tvOS apps never quit on request. |
+| `linkOpened` | The links of the schemes of `CFBundleURLTypes`, which the scene of the app receives. |
 | `windowResized` | The view of the app. |
 | `windowFocusGained`, `windowFocusLost` | The scene becoming and resigning active. |
 | `windowFullscreenChanged`, `windowOrientationChanged`, `windowFoldChanged` | Never, because the app always fills the TV in landscape. |
@@ -378,6 +384,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `appBackground` | The scene in the background, such as a minimized window. |
 | `appLowMemory` | The memory warnings of UIKit. |
 | `appQuitRequested` | Never, because Mac Catalyst ends the app on Quit and Command+Q without asking it. The engine then stops the app through its [lifecycle](#start-frames-and-stop). |
+| `linkOpened` | The links of the schemes of `CFBundleURLTypes` and the universal links, which the scene of the app receives. |
 | `windowResized` | The window, resized by the player. |
 | `windowFocusGained`, `windowFocusLost` | The scene becoming and resigning active. |
 | `windowFullscreenChanged`, `windowOrientationChanged`, `windowFoldChanged` | Never, because the engine runs the window as the iPad window it is, which counts as landscape. |
@@ -401,6 +408,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `appBackground` | The activity paused, in the background and under every activity over the app, such as a document picker or a screen of a plugin. |
 | `appLowMemory` | The trim memory callbacks of the activity, at every level but the one that only says the interface is hidden. The levels at which Android ends processes soon, a running app on a device that is about to end background processes and a cached app that is next to end, arrive as `'critical'`, and the others as `'warning'`. Android 14 and later send only the level of the background. |
 | `appQuitRequested` | Never from the system, because back on the root screen and the recent apps close the activity, which stops the app through the [lifecycle](#start-frames-and-stop). |
+| `linkOpened` | The links that `HaylenLinkActivity` receives through the intent filters that plugins declare on it, the App Links among them. |
 | `windowResized` | The surface of the activity, such as a rotation, the split screen or a foldable that folds. |
 | `windowFocusGained`, `windowFocusLost` | The window of the activity gaining and losing the focus. |
 | `windowFullscreenChanged` | Never, because the app always fills its window. |
@@ -426,6 +434,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `appBackground` | A hidden tab, through `visibilitychange`, and `Module.haylen.pause()` of the page. |
 | `appLowMemory` | Never, because browsers tell pages nothing about memory pressure. |
 | `appQuitRequested` | Never, because a page that closes cannot wait for the app. |
+| `linkOpened` | Never, because a page is the link that opened it, whose address the web parts of plugins read. |
 | `windowResized` | The size of the canvas, which a `ResizeObserver` follows. |
 | `windowFocusGained`, `windowFocusLost` | The window of the page gaining and losing the focus. |
 | `windowFullscreenChanged` | The Fullscreen API. |

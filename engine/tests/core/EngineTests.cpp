@@ -29,6 +29,7 @@
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/Plugin.hpp"
 #include "haylen/storage/UserStorage.hpp"
+#include "platform/LinkRelay.hpp"
 #include "platform/NativeViews.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/AllocationTracker.hpp"
@@ -730,6 +731,17 @@ TEST(EngineTest, ReportsLowMemoryToTheApp) {
     EXPECT_EQ(warnings, (std::vector<platform::Event::MemoryLevel>{platform::Event::MemoryLevel::Warning, platform::Event::MemoryLevel::Critical}));
     EXPECT_EQ(fixture.lua("return table.concat(levels, ', ')"), "app warning, scene warning, app critical, scene critical");
     EXPECT_EQ(assets.releaseUnused(), 0U) << "The warning already pruned the entries of released assets.";
+}
+
+TEST(EngineTest, PublishesTheLinksThatOpenTheApp) {
+    // The link that launched the process waits until the main script of the app listens.
+    platform::LinkRelay::receive("island://open?map=harbor");
+    test::EngineFixture fixture({{"source/main.lua", "links = {} require('haylen.events').on('linkOpened', function(link) links[#links + 1] = link.url end)"}});
+    fixture.frames(1);
+    platform::LinkRelay::receive("island://open?map=cave");
+    platform::LinkRelay::receive("island://open?map=peak");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return table.concat(links, ', ')"), "island://open?map=harbor, island://open?map=cave, island://open?map=peak");
 }
 
 TEST(EngineTest, ReportsErrorsAndKeepsRendering) {

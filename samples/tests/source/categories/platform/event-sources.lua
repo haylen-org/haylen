@@ -2,7 +2,7 @@
 local sources = {}
 
 sources.events = {
-    'appActive', 'appInactive', 'appBackground', 'appLowMemory', 'appQuitRequested',
+    'appActive', 'appInactive', 'appBackground', 'appLowMemory', 'appQuitRequested', 'linkOpened',
     'windowResized', 'windowFocusGained', 'windowFocusLost', 'windowFullscreenChanged', 'windowOrientationChanged', 'windowFoldChanged', 'windowSafeAreaChanged', 'windowMoved', 'windowDisplayChanged',
     'displayConnected', 'displayDisconnected', 'displayChanged',
     'keyboardShown', 'keyboardHidden', 'networkOnline', 'networkOffline',
@@ -52,7 +52,7 @@ sources.never = {
     },
     web = {
         appLowMemory = 'Browsers tell pages nothing about memory pressure.', appQuitRequested = 'A page that closes cannot wait for the app.',
-        windowMoved = 'A page has no place on a desktop.', powerSavingChanged = 'Browsers tell pages nothing about the power saving mode.',
+        windowMoved = 'A page has no place on a desktop.', linkOpened = 'A page is the link that opened it.', powerSavingChanged = 'Browsers tell pages nothing about the power saving mode.',
         audioInterrupted = 'Browsers suspend the audio of the page without telling it why.', audioResumed = 'Browsers suspend the audio of the page without telling it why.',
         audioRouteChanged = 'The audio of the page follows the browser without telling the page.',
     },

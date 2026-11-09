@@ -16,6 +16,7 @@ class LifecycleEvent final {
     static constexpr std::string_view kAppStopping = "appStopping";
     static constexpr std::string_view kAppError = "appError";
     static constexpr std::string_view kAppRecovered = "appRecovered";
+    static constexpr std::string_view kLinkOpened = "linkOpened";
 
     static constexpr std::string_view kPaused = "paused";
     static constexpr std::string_view kUnpaused = "unpaused";

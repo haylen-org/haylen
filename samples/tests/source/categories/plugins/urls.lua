@@ -1,4 +1,4 @@
--- Links with the scheme of the plugin open the app, and the native part sends each one as `urlOpened`, retained, so the link that launched the app and the links that arrived while this test was closed wait for its listener.
+-- Links with the scheme of the plugin open the app. The engine publishes each one as `linkOpened` on every platform but the web, and the native part of the plugin sends each one as `urlOpened`, retained, so the link that launched the app and the links that arrived while this test was closed wait for its listener.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
@@ -8,6 +8,7 @@ local demo = require('native-demo')
 local Urls = haylen.class('Urls', DemoTest)
 
 Urls.code = [[
+events.on('linkOpened', function(link) print(link.url) end, {owner = self})
 demo.onUrlOpened(function(link)
   print(link.url)  -- Such as "haylendemo://hello".
 end)]]
@@ -21,6 +22,8 @@ Urls.ways = {
     tvos = {'Run this in a terminal of the computer that runs the simulator.', 'xcrun simctl openurl booted %s://hello'},
     macos = {'Run this in a terminal.', 'open %s://hello'},
     android = {'Run this in a terminal of the computer that the device is connected to.', 'adb shell am start -a android.intent.action.VIEW -d %s://hello'},
+    windows = {'Run this in a command prompt once "haylen run" registered the scheme.', 'start "" %s://hello'},
+    linux = {'Run this in a terminal once "haylen run" registered the scheme.', 'xdg-open %s://hello'},
     web = {'Add this to the end of the address of this page and press Enter.', '#hello'},
 }
 
@@ -31,7 +34,7 @@ function Urls:enter()
         hint = 'Open a link with the scheme of the plugin while the app runs, or to launch it.',
         checksTitle = 'Opened links',
         controls = {
-            ui.label{text = string.format('The plugin declares "%s://" in "CFBundleURLTypes" on Apple platforms and in an intent filter of the link activity on Android. The web stands in with the hash of the page address.', scheme), color = 'textMuted', font = 'caption'},
+            ui.label{text = string.format('The plugin declares "%s://" in "CFBundleURLTypes" on Apple platforms, in an intent filter of the link activity on Android and in "desktop.urlSchemes" for the registry of Windows and the desktop entry of Linux. The web stands in with the hash of the page address.', scheme), color = 'textMuted', font = 'caption'},
         },
         showcase = {
             ui.card{grow = 1, align = 'stretch', gap = 16, justify = 'center',
@@ -42,15 +45,22 @@ function Urls:enter()
             },
         },
     }
+    self:listen('linkOpened', function(link)
+        self:record(link.url, 'the engine')
+    end)
+    self:showLinks()
     if not self.native then
         return
     end
 
     self.connection = demo.onUrlOpened(function(payload)
-        local received = Urls.received
-        received[#received + 1] = {url = payload.url, frame = haylen.frameIndex()}
-        self:showLinks()
+        self:record(payload.url, 'the native part')
     end)
+end
+
+function Urls:record(url, source)
+    local received = Urls.received
+    received[#received + 1] = {url = url, source = source, frame = haylen.frameIndex()}
     self:showLinks()
 end
 
@@ -68,9 +78,9 @@ function Urls:showLinks()
         return
     end
     local opened = #received == 1 and 'A link opened the app' or string.format('%d links opened the app', #received)
-    self.results:set('opened', 'pass', 'A link opens the app', opened .. ', which the native part sent as "urlOpened".')
+    self.results:set('opened', 'pass', 'A link opens the app', opened .. ', which the engine published as "linkOpened" and the native part sent as "urlOpened".')
     for index, entry in ipairs(received) do
-        self.results:set(index, 'info', string.format('Link %d', index), string.format('The link "%s" arrived at frame %d.', entry.url, entry.frame))
+        self.results:set(index, 'info', string.format('Link %d', index), string.format('The link "%s" came from %s at frame %d.', entry.url, entry.source, entry.frame))
     end
 end
 

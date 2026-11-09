@@ -157,6 +157,7 @@ The manifest says what the plugin is, which values the app gives it, and what ea
 | `apple` | No | The [Apple part](#the-apple-section), which needs one of `ios`, `catalyst`, `tvos`, `visionos` and `macos` in `platforms`. |
 | `android` | No | The [Android part](#the-android-section), which needs `android` in `platforms`. |
 | `web` | No | The [web part](#the-web-section), which needs `web` in `platforms`. |
+| `desktop` | No | The [desktop part](#the-desktop-section), the URL schemes of the links that open the app on Windows and Linux, which needs `windows` or `linux` in `platforms`. |
 | `native` | No | A [native library](#the-native-section), with the rules of the `native` section of `app.json`. |
 
 A platform without its part runs the Lua API of the plugin alone. There, calls to the native side fail with the code `noHandler`.
@@ -233,6 +234,20 @@ The file `haylen/project.yml` defines a target for each platform, such as `Downl
 | Key | Value |
 | --- | --- |
 | `module` | The ES module in the `web` folder that the loader imports, such as `web/ads.js`. Its default export is `load(context)`, and it may import the other modules of the folder with relative paths. |
+
+### The desktop section
+
+Windows and Linux open an app from a link of a URL scheme that the app registers with the system. The `desktop` section names those schemes, and the projects of Windows and Linux register them, as the [distribution guide](../tools/distribution.md#links-on-windows-and-linux) describes. Each link reaches the app as the event [`linkOpened`](../lua-api/events.md#app-and-plugins), the event that every platform but the web publishes, so the Lua API of a plugin hears links on the desktops without a native part.
+
+| Key | Value |
+| --- | --- |
+| `urlSchemes` | The schemes, such as `["camera-scanner"]`, or a string parameter that holds one, such as `["${scheme}"]`. |
+
+```json
+{
+    "desktop": {"urlSchemes": ["${scheme}"]}
+}
+```
 
 ### The native section
 

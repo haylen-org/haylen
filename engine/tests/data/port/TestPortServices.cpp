@@ -141,6 +141,13 @@ Permission::Answer Services::vibrate(float) {
     return {.state = Permission::State::Unsupported, .message = "The test port has no vibration motor."};
 }
 
+// The test port opens no links.
+bool Services::forwardLink(std::string_view, std::string_view) {
+    return false;
+}
+
+void Services::listenForLinks(std::string_view) {}
+
 void Services::setBackgroundAudio(bool) {}
 
 void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>&) {}

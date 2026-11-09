@@ -3,6 +3,7 @@
 #if TARGET_OS_OSX
 #include <cstdlib>
 
+#include "platform/LinkRelay.hpp"
 #include "platform/NativeWindow.hpp"
 #include "platform/Player.hpp"
 #import "platform/apple/AppleAccessibility.hpp"
@@ -113,7 +114,11 @@ using haylen::platform::sdl::Runtime;
     return YES;
 }
 
+// Every link reaches the app as `linkOpened` and the plugins in their delegate.
 - (void)application:(NSApplication*)application openURLs:(NSArray<NSURL*>*)urls {
+    for (NSURL* url in urls) {
+        haylen::platform::LinkRelay::receive(url.absoluteString.UTF8String);
+    }
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin application:application openURLs:urls];
     }

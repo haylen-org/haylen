@@ -39,6 +39,9 @@
     "web": {
         "module": "web/native-demo.js"
     },
+    "desktop": {
+        "urlSchemes": ["${urlScheme}"]
+    },
     "native": {
         "cmake": "native",
         "platforms": ["macos", "windows", "linux"]

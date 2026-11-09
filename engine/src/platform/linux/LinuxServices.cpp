@@ -18,6 +18,7 @@
 #include "platform/linux/LinuxDesktop.hpp"
 #include "platform/linux/LinuxDialogs.hpp"
 #include "platform/linux/LinuxGlib.hpp"
+#include "platform/linux/LinuxLinks.hpp"
 #include "platform/linux/LinuxMonitors.hpp"
 #include "platform/linux/LinuxSettings.hpp"
 #include "platform/linux/LinuxSystem.hpp"
@@ -198,6 +199,14 @@ Permission::Answer Services::vibrate(float) {
 }
 
 // The now-playing controls of Linux desktops listen on the session bus for players that serve MPRIS, which the engine does not serve, as the reference of `haylen.system` explains.
+bool Services::forwardLink(std::string_view identifier, std::string_view url) {
+    return LinuxLinks::forward(identifier, url);
+}
+
+void Services::listenForLinks(std::string_view identifier) {
+    LinuxLinks::listen(identifier);
+}
+
 // A minimized window keeps running its frames, so its sound plays on.
 void Services::setBackgroundAudio(bool) {}
 

@@ -933,7 +933,8 @@ The file `CMakeLists.txt` of `platform/windows` or `platform/linux` includes `ha
 | `HaylenBootstrap.cpp` | The bootstrap of the app, which `haylen_app` compiles. In the Release configuration the content tool writes it from the key folder of the app. In the Debug configuration it holds only a check that stops a build where `NDEBUG` is defined, since the project then holds the development package. |
 | `native/` | The [native libraries](#native-libraries) of the app for this machine. |
 | `HaylenApp.h` | On Windows, the values of `app.json` as strings of the resource script and the version as four numbers, which `resources/app.rc` includes. |
-| `app.desktop`, `app.metainfo.xml` | On Linux, the desktop entry and the AppStream metainfo of the project, completed with the values of `app.json`, as [linux](#linux) describes. |
+| `app.desktop`, `app.metainfo.xml` | On Linux, the desktop entry and the AppStream metainfo of the project, completed with the values of `app.json` and the URL schemes of its plugins, as [linux](#linux) describes. |
+| `links.iss` | On Windows, for an app whose plugins declare URL schemes, the registry entries that the installer adds for them, which `haylen.cmake` hands to CPack in `CPACK_INNOSETUP_EXTRA_SCRIPTS`. |
 
 The function `haylen_app(<target>)` gives the target:
 
@@ -959,6 +960,15 @@ build/apps/my-game-1a2b3c4d/installed/linux/
   share/metainfo/         The AppStream metainfo.
   share/icons/hicolor/    The icons.
 ```
+
+#### Links on Windows and Linux
+
+An app opens from a link of a URL scheme that the `desktop` section of its plugins declares, as the [plugin guide](../platform/plugins.md#the-desktop-section) describes. Windows and Linux start a new process of the app for every link, with the link after the option `--link`. That process hands the link to the instance of the app that runs already and ends, so the app that runs hears the link as [`linkOpened`](../lua-api/events.md#app-and-plugins), and a process without a running instance plays the app with the link.
+
+| Platform | How the scheme reaches the system | How the link reaches the running app |
+| --- | --- | --- |
+| Windows | The installer registers each scheme under `Software\Classes` of the person, or of every user for an install for every user, with the command `"<app>.exe" --link "%1"`, and removes it with the app. The command `run` registers the same keys under `HKEY_CURRENT_USER` for the installed app of the build folder, so links work while the app is being made. | The named pipe of the app in the session of the person, `\\.\pipe\haylen-links-<identifier>-<session>`, which the first instance of the app serves. |
+| Linux | The desktop entry lists each scheme as `x-scheme-handler/<scheme>` in `MimeType` and starts `<app> --link %u`, which a package installs. The command `run` writes the entry into `~/.local/share/applications` for the installed app of the build folder and makes the app the handler of each scheme with `xdg-mime`. | The method `Open` of `org.freedesktop.Application` on the session bus, under the name of the identifier of the app and its object path, such as `/com/haylen/runner`, which GIO reaches. Without GIO or a session bus every process keeps its own link. |
 
 A project of the developer that replaces the copy of the template builds in a new tree, since a build tree belongs to one project. The project also builds without haylen.py once `prepare` wrote its folder `haylen/`, from an IDE or from a terminal:
 

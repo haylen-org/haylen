@@ -265,6 +265,45 @@ class BackgroundAudioTest(unittest.TestCase):
         self.assertIn('haylen.getProperty("engineLibraries")', (haylen.COMMON_TEMPLATE / "platform" / "android" / "app" / "build.gradle.kts").read_text(encoding="utf-8"))
 
 
+class DesktopLinkTest(unittest.TestCase):
+    def setUp(self):
+        scratch = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, scratch)
+        self.root = scratch / "links"
+        self.root.mkdir()
+        self.manifest = {"id": "links", "name": "Links", "version": "1.0.0", "description": "Opens the app from links.", "platforms": ["windows", "linux"], "parameters": {"scheme": {"type": "string", "default": "island-links", "description": "The scheme."}}, "desktop": {"urlSchemes": ["${scheme}", "island"]}}
+
+    def app(self) -> mock.Mock:
+        plugin = haylen.Plugin(self.root, self.manifest, None)
+        app = mock.Mock(plugins=[plugin], plugin_values={"links": {"scheme": "island-links"}}, executable="tiny-island", identifier="com.haylen.tinyisland")
+        app.name = 'Tiny "Island"'
+        return app
+
+    def test_plugins_declare_the_url_schemes_of_their_links_on_the_desktops(self):
+        self.assertEqual(haylen.PluginManifestCheck.problems_of(self.root, self.manifest), [])
+        self.assertEqual(haylen.desktop_url_schemes(self.app(), "linux"), ["island-links", "island"])
+        self.manifest["desktop"] = {"urlSchemes": ["1island"], "schemes": []}
+        self.assertEqual(haylen.PluginManifestCheck.problems_of(self.root, self.manifest), ['The key "desktop.schemes" is not a key of "plugin.json".', 'The key "desktop.urlSchemes" must list the URL schemes of the links that open the app, such as "camera-scanner", or name a string parameter that holds one, such as "${scheme}".'])
+
+    def test_the_installer_of_windows_registers_each_scheme_with_the_executable_and_the_link(self):
+        script = haylen.windows_link_script(self.app(), ["island"])
+        self.assertIn('Root: HKA; Subkey: "Software\\Classes\\island"; ValueType: string; ValueName: ""; ValueData: "URL:Tiny ""Island"""; Flags: uninsdeletekey', script)
+        self.assertIn('Subkey: "Software\\Classes\\island\\shell\\open\\command"; ValueType: string; ValueName: ""; ValueData: """{app}\\tiny-island.exe"" --link ""%1"""', script)
+
+    def test_the_desktop_entry_of_linux_takes_the_links_of_its_schemes(self):
+        app = self.app()
+        app.description = "An island."
+        resources = self.root / "linux" / "resources"
+        resources.mkdir(parents=True)
+        (resources / "app.desktop").write_text("[Desktop Entry]\nType=Application\n")
+        (resources / "app.metainfo.xml").write_text("<component/>")
+        with mock.patch.object(haylen, "complete_metainfo", return_value=""), mock.patch.object(haylen, "appstream_elements", return_value=[]):
+            haylen.write_linux_entries(app, self.root / "linux", self.root / "generated")
+        entry = (self.root / "generated" / "app.desktop").read_text(encoding="utf-8").splitlines()
+        self.assertIn("Exec=tiny-island --link %u", entry)
+        self.assertIn("MimeType=x-scheme-handler/island-links;x-scheme-handler/island;", entry)
+
+
 class SplashTest(unittest.TestCase):
     def test_the_dark_background_becomes_the_dark_appearance_and_the_night_resources(self):
         colorset = haylen.apple_colorset((16, 20, 24, 255), (0, 0, 0, 255))

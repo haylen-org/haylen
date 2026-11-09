@@ -24,6 +24,7 @@
 #include "haylen/platform/Window.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
 #include "lua/Environment.hpp"
+#include "platform/LinkRelay.hpp"
 #include "platform/ScreenRelay.hpp"
 #include "platform/native/NativeApi.hpp"
 #include "plugins/BuiltInPlugins.hpp"
@@ -344,6 +345,7 @@ void Engine::frame(double frameSeconds) {
             current.system->pump();
             current.motion->pump();
             current.mediaSession->pump();
+            publishLinks();
             current.accessibility->pump();
             current.tweens.setReducedMotion(current.accessibility->getSettings().reducedMotion);
             current.dialogs->pump();
@@ -805,6 +807,17 @@ void Engine::applyCover() {
     }
     applyStateMute();
     refreshForegroundState();
+}
+
+// The links that opened the app wait until it started, so the listeners of its main script hear the link that launched it.
+void Engine::publishLinks() {
+    EngineState& current = *state;
+    if (current.applicationPending) {
+        return;
+    }
+    for (std::string& url : platform::LinkRelay::take()) {
+        current.events.emit(LifecycleEvent::kLinkOpened, {{"url", std::move(url)}});
+    }
 }
 
 // An app that plays in the background keeps its output there only while a voice plays, so a platform that runs such apps, as iOS does, suspends the app once its sound ended or paused, and a voice that starts again, such as from the controls of the lock screen, brings the output back.

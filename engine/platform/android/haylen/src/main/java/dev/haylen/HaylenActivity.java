@@ -105,6 +105,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         pendingLink = null;
         if (link != null && savedInstanceState == null) {
             setIntent(link);
+            reportLink(link);
         }
         nativeTelevision(isTelevision(this));
         nativeDensity(getResources().getDisplayMetrics().density);
@@ -600,7 +601,15 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     // A link or a notification that reaches the running app, which becomes the intent of the activity before the plugins hear of it.
     void receiveIntent(Intent intent) {
         setIntent(intent);
+        reportLink(intent);
         HaylenPlugins.newIntent(intent);
+    }
+
+    // A link that opens the app reaches it as `linkOpened`, while the other intents, such as the taps of notifications, reach only the plugins.
+    private static void reportLink(Intent intent) {
+        if (Intent.ACTION_VIEW.equals(intent.getAction()) && intent.getData() != null) {
+            nativeLink(intent.getData().toString().getBytes(StandardCharsets.UTF_8));
+        }
     }
 
     HaylenOverlayLayer overlays() {
@@ -713,6 +722,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     private static native void nativeTelevision(boolean television);
 
     private static native void nativeLowMemory(boolean critical);
+    private static native void nativeLink(byte[] url);
 
     private static native void nativeKeyboard(int x, int y, int width, int height);
 

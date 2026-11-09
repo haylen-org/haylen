@@ -2466,9 +2466,12 @@ def prepare_host_native(app: App, folder: Path, jobs: int) -> list[Path]:
 # Plugins: folders under `plugins/` of an app that give Lua a capability implemented natively on each platform, which `haylen.py` validates, packages and assembles into the platform projects.
 
 PLUGIN_PLATFORMS = ("ios", "catalyst", "tvos", "visionos", "macos", "android", "web", "windows", "linux")
-PLUGIN_KEYS = {"id", "name", "version", "description", "platforms", "requires", "parameters", "apple", "android", "web", "native"}
+PLUGIN_KEYS = {"id", "name", "version", "description", "platforms", "requires", "parameters", "apple", "android", "web", "desktop", "native"}
 PLUGIN_ID = re.compile(r"[a-z][a-z0-9]*(-[a-z0-9]+)*")
 PARAMETER_NAME = re.compile(r"[a-z][A-Za-z0-9]*")
+# The schemes of the links that open an app, as RFC 3986 spells a scheme, and the desktops whose projects register them.
+URL_SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*")
+DESKTOP_LINK_PLATFORMS = ("windows", "linux")
 # A `${name}` in the `apple` and `android` sections names a parameter, while shell expansions such as `${BUILD_DIR%/Build/*}` are no references and stay as they are.
 PARAMETER_REFERENCE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 # Each parameter type with the words that describe its values and the check of a value.
@@ -2698,6 +2701,7 @@ class PluginManifestCheck:
         check.check_apple()
         check.check_android()
         check.check_web()
+        check.check_desktop()
         check.check_native()
         return check.problems
 
@@ -2975,6 +2979,18 @@ class PluginManifestCheck:
             self.report("web.module", 'must be an ES module in the "web" folder of the plugin, such as "web/camera-scanner.js".')
         elif "module" in web:
             self.check_path("web.module", module, "file")
+
+    def check_desktop(self) -> None:
+        desktop = self.manifest.get("desktop")
+        if "desktop" not in self.manifest or not self.is_object("desktop", desktop, "must be an object with the URL schemes of the plugin on Windows and Linux."):
+            return
+        if not any(platform in self.platforms for platform in DESKTOP_LINK_PLATFORMS):
+            self.report("desktop", 'needs "windows" or "linux" in "platforms".')
+        self.check_keys("desktop", desktop, {"urlSchemes"}, {"urlSchemes"})
+        schemes = desktop.get("urlSchemes")
+        if "urlSchemes" in desktop and not (isinstance(schemes, list) and schemes and all(isinstance(scheme, str) and (URL_SCHEME.fullmatch(scheme) or PARAMETER_REFERENCE.fullmatch(scheme)) for scheme in schemes)):
+            self.report("desktop.urlSchemes", 'must list the URL schemes of the links that open the app, such as "camera-scanner", or name a string parameter that holds one, such as "${scheme}".')
+        self.check_references("desktop", desktop)
 
     def check_native(self) -> None:
         if "native" not in self.manifest or not isinstance(self.identifier, str) or not PLUGIN_ID.fullmatch(self.identifier):
@@ -5225,8 +5241,77 @@ def appstream_elements(app: App) -> list[xml.etree.ElementTree.Element]:
     return elements
 
 
+def desktop_url_schemes(app: App, platform: str) -> list[str]:
+    """The URL schemes of the links that open an app on Windows or Linux, which the `desktop` sections of its plugins declare, each once."""
+    schemes: list[str] = []
+    for plugin in app.plugins:
+        desktop = plugin_section(app, plugin, "desktop", (platform,)) if plugin.supports(platform) else None
+        if desktop is None:
+            continue
+        for scheme in desktop.get("urlSchemes", []):
+            if not isinstance(scheme, str) or not URL_SCHEME.fullmatch(scheme):
+                raise BuildError(f'The plugin "{plugin.id}" gives the URL scheme "{scheme}", which is no scheme of a link. Give its parameter a scheme such as "camera-scanner".')
+            if scheme not in schemes:
+                schemes.append(scheme)
+    return schemes
+
+
+def inno_text(value: str) -> str:
+    """Escapes a value of an Inno Setup script, whose strings double their quotes and whose braces start constants."""
+    return value.replace('"', '""').replace("{", "{{")
+
+
+def windows_link_script(app: App, schemes: list[str]) -> str:
+    """Writes the `[Registry]` section of the installer of Windows that registers the URL schemes among the classes of the registry of the person, or of every user for an install for them, and removes them with the app. Windows then starts the app with the link after `--link`."""
+    executable = f"{{app}}\\{inno_text(app.executable)}.exe"
+    lines = ["; Written by haylen.py from the URL schemes of the plugins of app.json, which the installer registers with the app.", "[Registry]"]
+    for scheme in schemes:
+        key = f"Software\\Classes\\{scheme}"
+        lines += [
+            f'Root: HKA; Subkey: "{key}"; ValueType: string; ValueName: ""; ValueData: "URL:{inno_text(app.name)}"; Flags: uninsdeletekey',
+            f'Root: HKA; Subkey: "{key}"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""',
+            f'Root: HKA; Subkey: "{key}\\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{executable},0"',
+            f'Root: HKA; Subkey: "{key}\\shell\\open\\command"; ValueType: string; ValueName: ""; ValueData: """{executable}"" --link ""%1"""',
+        ]
+    return "\n".join(lines) + "\n"
+
+
+def register_windows_links(app: App, executable: Path) -> None:
+    """Registers the URL schemes of a Windows app that `run` installed among the classes of the registry of the person, pointing at its executable as the installer does, so links reach the app while it is being made."""
+    import winreg
+
+    for scheme in desktop_url_schemes(app, "windows"):
+        terminal.step(f'Registering the links of "{scheme}" for `{shown_path(executable)}`')
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, f"Software\\Classes\\{scheme}") as key:
+            winreg.SetValueEx(key, "", 0, winreg.REG_SZ, f"URL:{app.name}")
+            winreg.SetValueEx(key, "URL Protocol", 0, winreg.REG_SZ, "")
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, f"Software\\Classes\\{scheme}\\shell\\open\\command") as key:
+            winreg.SetValueEx(key, "", 0, winreg.REG_SZ, f'"{executable}" --link "%1"')
+
+
+def register_linux_links(app: App, folder: Path) -> None:
+    """Registers the URL schemes of a Linux app that `run` installed with a desktop entry of the person in `~/.local/share/applications`, whose executable is the installed one, and makes the app the handler of each scheme with `xdg-mime`, as a package does once it installs, so links reach the app while it is being made."""
+    schemes = desktop_url_schemes(app, "linux")
+    if not schemes:
+        return
+    name = f"{app.identifier}.desktop"
+    installed = (folder / "share" / "applications" / name).read_text(encoding="utf-8")
+    executable = folder / "bin" / app.executable
+    entry = re.sub(r"^Exec=.*$", f"Exec={executable} --link %u", installed, flags=re.MULTILINE)
+    applications = Path.home() / ".local" / "share" / "applications"
+    applications.mkdir(parents=True, exist_ok=True)
+    shown = ", ".join(f'"{scheme}"' for scheme in schemes)
+    terminal.step(f"Registering the links of {shown} for `{shown_path(executable)}`")
+    write_if_changed(applications / name, entry)
+    if shutil.which("xdg-mime") is None:
+        terminal.warning('The links reach the app once the desktop reads its entry, since "xdg-mime" is missing to make it their handler.')
+        return
+    for scheme in schemes:
+        run(["xdg-mime", "default", name, f"x-scheme-handler/{scheme}"])
+
+
 def write_linux_entries(app: App, root: Path, generated: Path) -> None:
-    """Writes `app.desktop` and `app.metainfo.xml`, the desktop entry and the AppStream metainfo of the project completed with the name, the description, the executable, the icon, the window class, the publisher and the website of `app.json`."""
+    """Writes `app.desktop` and `app.metainfo.xml`, the desktop entry and the AppStream metainfo of the project completed with the name, the description, the executable, the icon, the window class, the publisher and the website of `app.json`, and with the URL schemes of its plugins, whose links the desktop hands to the executable after `--link`."""
     warnings: list[str] = []
     entry = root / "resources" / "app.desktop"
     metainfo = root / "resources" / "app.metainfo.xml"
@@ -5234,6 +5319,9 @@ def write_linux_entries(app: App, root: Path, generated: Path) -> None:
         if not path.is_file():
             raise BuildError(f'The Linux project `{shown_path(root)}` has no `{shown_path(path)}`, which haylen.py completes with the values of "app.json". Restore it from the template, which "{TOOL} platform diff {shown_path(app.folder)} linux" shows.')
     keys = {"Name": app.name, "Comment": app.description, "Exec": app.executable, "Icon": app.identifier, "StartupWMClass": app.identifier}
+    schemes = desktop_url_schemes(app, "linux")
+    if schemes:
+        keys |= {"Exec": f"{app.executable} --link %u", "MimeType": "".join(f"x-scheme-handler/{scheme};" for scheme in schemes)}
     write_if_changed(generated / "app.desktop", complete_desktop_entry(entry.read_text(encoding="utf-8"), keys, shown_path(entry), warnings))
     write_if_changed(generated / "app.metainfo.xml", complete_metainfo(metainfo.read_text(encoding="utf-8"), appstream_elements(app), shown_path(metainfo), warnings))
     for warning in warnings:
@@ -5262,6 +5350,10 @@ def prepare_desktop(app: App, args: argparse.Namespace) -> Path:
     values = {"HAYLEN_APP_NAME": app.name, "HAYLEN_APP_IDENTIFIER": app.identifier, "HAYLEN_APP_VERSION": app.version, "HAYLEN_APP_DESCRIPTION": app.description, "HAYLEN_APP_COMPANY": app.company, "HAYLEN_APP_COPYRIGHT": app.copyright, "HAYLEN_APP_WEBSITE": app.website, "HAYLEN_APP_EXECUTABLE": app.executable}
     if args.platform == "windows":
         write_windows_resources(app, generated)
+        schemes = desktop_url_schemes(app, "windows")
+        if schemes:
+            write_if_changed(generated / "links.iss", windows_link_script(app, schemes))
+            values["CPACK_INNOSETUP_EXTRA_SCRIPTS"] = (generated / "links.iss").as_posix()
     else:
         write_linux_entries(app, root, generated)
         values |= {"HAYLEN_DESKTOP_ENTRY": (generated / "app.desktop").as_posix(), "HAYLEN_METAINFO": (generated / "app.metainfo.xml").as_posix()}
@@ -5369,6 +5461,10 @@ def run_desktop(app: App, root: Path, args: argparse.Namespace) -> None:
     if args.build_only:
         return
     executable = desktop_folder(app, args.platform) / DESKTOP_LAYOUTS[args.platform][1].format(executable=app.executable)
+    if args.platform == "windows":
+        register_windows_links(app, executable)
+    else:
+        register_linux_links(app, desktop_folder(app, args.platform))
     with run_session(app, root / GENERATED_FOLDER / "app", args) as session:
         session.show(run_rows(app, host_device().name, args, session))
         session.follow([executable, *session.arguments], cwd=executable.parent)

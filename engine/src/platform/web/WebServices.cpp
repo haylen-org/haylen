@@ -319,6 +319,13 @@ Permission::Answer Services::vibrate(float seconds) {
     }
 }
 
+// A page is the link that opened it, and no other link reaches it.
+bool Services::forwardLink(std::string_view, std::string_view) {
+    return false;
+}
+
+void Services::listenForLinks(std::string_view) {}
+
 // A hidden page keeps running the frames of the app from timers, which browsers do not slow down while the page plays sound.
 void Services::setBackgroundAudio(bool) {}
 

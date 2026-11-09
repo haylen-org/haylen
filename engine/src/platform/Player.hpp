@@ -50,8 +50,9 @@ class Player final {
 
     explicit Player(std::unique_ptr<NativeHost> nativeHost);
 
-    // Creates the player of the process for the command line with the host of the platform layer.
+    // Creates the player of the process for the command line with the host of the platform layer. A process that a link launched, with `--link`, hands the link to the instance of the app that runs already where the platform starts a process for every link, and then plays nothing, as `isLaunchForwarded` tells.
     static void create(int argc, char* argv[], std::unique_ptr<NativeHost> nativeHost);
+    [[nodiscard]] static bool isLaunchForwarded() noexcept;
 
     // The configuration of the app that the window opens for.
     [[nodiscard]] static const core::AppConfig& getOpeningConfig() noexcept;
@@ -166,6 +167,7 @@ class Player final {
         std::string developmentServer;
         std::vector<std::string> nativeFolders;
         std::string graphicsApi;
+        std::string link;
     };
 
     // What outlives every player of the process: the player that plays, which the frame thread creates when the platform layer asks for the app and destroys when its window closes, the events other threads queue for it and the status the process exits with. It is never destroyed, because an exit() on another thread, such as the one the iOS simulator calls on a background queue when its render server dies, runs the destructors of static objects while the frame thread still plays the app.
@@ -175,6 +177,7 @@ class Player final {
         std::vector<Event> posted;
         int backPresses = 0;
         int exitStatus = 0;
+        bool launchForwarded = false;
         std::atomic<bool> backHeld = false;
         std::atomic<bool> backSwallowed = false;
     };

@@ -1,6 +1,7 @@
 #import "platform/sdl/apple/HaylenSceneDelegate.h"
 
 #if !TARGET_OS_OSX
+#include "platform/LinkRelay.hpp"
 #include "platform/NativeWindow.hpp"
 #import "platform/apple/AppleBackgroundAudio.hpp"
 #import "platform/apple/AppleNotifications.hpp"
@@ -135,14 +136,21 @@ using haylen::platform::NativeWindow;
     ApplePlugins::closeCovers();
 }
 
-// SDL turns the links that open the app into dropped files, which the engine does not read, so only the plugins receive them.
+// SDL turns the links that open the app into dropped files, which the engine does not read, so the scene delegate reports each link as `linkOpened`, and the plugins receive them in their delegate.
 - (void)scene:(UIScene*)scene openURLContexts:(NSSet<UIOpenURLContext*>*)URLContexts {
+    for (UIOpenURLContext* context in URLContexts) {
+        haylen::platform::LinkRelay::receive(context.URL.absoluteString.UTF8String);
+    }
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin scene:scene openURLContexts:URLContexts];
     }
 }
 
+// A universal link arrives as an activity that browses its web page.
 - (void)scene:(UIScene*)scene continueUserActivity:(NSUserActivity*)userActivity {
+    if ([userActivity.activityType isEqualToString:NSUserActivityTypeBrowsingWeb] && userActivity.webpageURL != nil) {
+        haylen::platform::LinkRelay::receive(userActivity.webpageURL.absoluteString.UTF8String);
+    }
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin scene:scene continueUserActivity:userActivity];
     }
