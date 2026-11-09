@@ -22,6 +22,7 @@
 #include "platform/Player.hpp"
 #include "platform/Services.hpp"
 #include "platform/sdl/Host.hpp"
+#include "platform/sdl/WaylandDisplays.hpp"
 
 #if defined(__APPLE__)
 #include <TargetConditionals.h>
@@ -228,18 +229,22 @@ SDL_AppResult Runtime::start() {
 #endif
     Player::initialize();
     started = true;
-    if (!Services::hasDesktop()) {
+    if (!isHiddenUntilComplete()) {
         window.show();
     }
     return closing ? SDL_APP_SUCCESS : SDL_APP_CONTINUE;
 }
 
-// A desktop window, which no launch screen covers, stays hidden until the app drew its first complete frame, so it never shows empty. The windows of phones, televisions and pages show at once under the splash screen of their platform.
 void Runtime::endSplashScreen(float fadeOutSeconds) {
-    if (Services::hasDesktop()) {
+    if (isHiddenUntilComplete()) {
         window.show();
     }
     Services::endSplashScreen(fadeOutSeconds);
+}
+
+// A desktop window, which no launch screen covers, stays hidden until the app drew its first complete frame, so it never shows empty. The windows of phones, televisions and pages show at once under the splash screen of their platform. A Wayland window shows at once too, since Wayland takes the frames of a window only once it shows and maps it with the first frame it takes, so it shows nothing before.
+bool Runtime::isHiddenUntilComplete() noexcept {
+    return Services::hasDesktop() && !WaylandDisplays::isSession();
 }
 
 // Each graphics API in the order of the app opens a window with what it draws through and starts its device, and the first that starts keeps the window. The reasons of the ones that failed reach the log, so a machine that falls back says why. The services of the platform place the window where `app.json` puts it on the desktop, since they know the desktop points of each monitor.

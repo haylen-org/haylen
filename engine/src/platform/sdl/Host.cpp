@@ -15,6 +15,7 @@
 
 #include "haylen/core/Log.hpp"
 #include "platform/sdl/Runtime.hpp"
+#include "platform/sdl/WaylandDisplays.hpp"
 
 #if defined(__APPLE__)
 #include <TargetConditionals.h>
@@ -290,6 +291,25 @@ bool Host::prepareGpuDevice() {
 
 void Host::closeWindow() {
     runtime.close();
+}
+
+std::vector<Display> Host::getDisplays() const {
+    return readDisplays();
+}
+
+// A Wayland session keeps its outputs to the compositor, where SDL reads them, while the services read the displays of every other desktop with the ids and work areas of its own system.
+std::vector<Display> Host::readDisplays() {
+    if (WaylandDisplays::isSession()) {
+        return WaylandDisplays::read();
+    }
+    return Services::getDisplays();
+}
+
+std::string Host::getDisplayId() const {
+    if (WaylandDisplays::isSession()) {
+        return WaylandDisplays::findWindowDisplay(runtime.getWindow().get());
+    }
+    return NativeHost::getDisplayId();
 }
 
 void Host::endSplashScreen(float fadeOutSeconds) {

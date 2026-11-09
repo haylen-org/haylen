@@ -125,6 +125,7 @@ class Runtime final {
     static void onQuit(void* state, SDL_AppResult result);
     static void describeApp(const core::AppConfig& config);
     [[nodiscard]] static gpu::DeviceFactory::Options getDeviceOptions() noexcept;
+    [[nodiscard]] static bool isHiddenUntilComplete() noexcept;
 
     SDL_AppResult initialize(int argc, char* argv[]);
     [[nodiscard]] SDL_AppResult start();

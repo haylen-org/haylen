@@ -40,6 +40,11 @@ class Host final : public platform::NativeHost {
     [[nodiscard]] std::unique_ptr<gpu::Device> createGpuDevice() override;
     [[nodiscard]] bool prepareGpuDevice() override;
     void closeWindow() override;
+    [[nodiscard]] std::vector<Display> getDisplays() const override;
+    [[nodiscard]] std::string getDisplayId() const override;
+
+    // The displays of the session, which SDL reads on Wayland and the services read on every other desktop.
+    [[nodiscard]] static std::vector<Display> readDisplays();
     void endSplashScreen(float fadeOutSeconds) override;
     [[nodiscard]] bool canHaltFrames() const noexcept override;
     [[nodiscard]] bool pumpHaltedEvents() override;

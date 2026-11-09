@@ -9,6 +9,8 @@
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_properties.h>
 
+#include "platform/sdl/WaylandDisplays.hpp"
+
 #if defined(__APPLE__)
 #include <TargetConditionals.h>
 #endif
@@ -267,8 +269,11 @@ gpu::Surface Window::describe([[maybe_unused]] SDL_Window* described, SDL_MetalV
 #endif
 }
 
-// SDL counts the desktop of macOS in points, like the engine, and the desktops of Windows and X11 in pixels, which are desktop points times the scale of the primary display.
+// SDL counts the desktop of macOS in points, like the engine, and the desktops of Windows and X11 in pixels, which are desktop points times the scale of the primary display. A Wayland session names its displays after their outputs.
 SDL_DisplayID Window::findDisplay(const Display& display) {
+    if (WaylandDisplays::isSession()) {
+        return WaylandDisplays::find(display);
+    }
 #if defined(__APPLE__)
     const float units = 1.0F;
 #else

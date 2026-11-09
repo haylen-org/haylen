@@ -10,7 +10,7 @@
 #include <SDL3/SDL_properties.h>
 
 #include "platform/Player.hpp"
-#include "platform/Services.hpp"
+#include "platform/sdl/Host.hpp"
 #include "platform/sdl/Window.hpp"
 
 namespace haylen::platform::sdl {
@@ -142,7 +142,7 @@ void OutputWindows::end(Entry& entry, Output::Ending ending) {
 
 bool OutputWindows::handle(const SDL_Event& event) {
     if (event.type == SDL_EVENT_DISPLAY_REMOVED) {
-        const std::vector<Display> displays = Services::getDisplays();
+        const std::vector<Display> displays = Host::readDisplays();
         for (Entry& entry : entries) {
             const bool connected = std::ranges::find(displays, entry.display, &Display::id) != displays.end();
             if (!connected && entry.window != nullptr && !entry.report.ending) {

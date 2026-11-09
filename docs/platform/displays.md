@@ -23,7 +23,7 @@ The place of a display in the list changes as other displays connect and disconn
 | --- | --- | --- |
 | macOS | The vendor, the model and the serial number of the monitor, such as `0610-a052-00000000`. Two monitors that report the same ones count up with `-2`, `-3` in the order of the screens. | Yes. |
 | Windows | The device path of the monitor in the display configuration of Windows, which names the monitor and the port it is on. | Yes. |
-| Linux | The name of the connector of RandR, such as `DP-1` or `HDMI-1`. | Yes, while the monitor stays on its connector. |
+| Linux | The name of the connector of RandR, such as `DP-1` or `HDMI-1`, or the name of the Wayland output in a Wayland session without X11. | Yes, while the monitor stays on its connector. |
 | iOS and iPadOS | `main` for the built-in screen, and `external-1`, `external-2` and on for the other screens in the order the app first sees them. | Only `main`. |
 | tvOS | `main`, the TV. | Yes. |
 | visionOS | `main`, the window of the app, since visionOS has no screens. | Yes. |
@@ -42,7 +42,7 @@ The work area leaves out what the system keeps for itself: the taskbar of Window
 | --- | --- | --- |
 | macOS | The screens of AppKit and the displays of Core Graphics. | The most frames per second of the screen, and every mode that the desktop can run in, the ones of low resolution included. |
 | Windows | The monitors of the desktop and the display configuration, which gives the friendly name and the device path. | The rate of the current mode, and every mode in true color. |
-| Linux | The monitors of RandR through X11, and their first output. Wayland sessions read them through XWayland. | The rate of the mode of the output, and its modes. |
+| Linux | The monitors of RandR through X11, and their first output, also through XWayland in a Wayland session. A Wayland session without X11 reads the outputs that the compositor announces through SDL. | The rate of the mode of the output, and its modes. |
 | iOS and iPadOS | The screen of the device, and the screen of every scene of the app, such as the scene that UIKit connects for an external display, or a window that Stage Manager moved to an external display. | The most frames per second of the screen, and the sizes of its modes. |
 | tvOS | The TV. | The most frames per second of the screen. tvOS lists no modes. |
 | visionOS | The window of the app in the space around the person, with its size in points, the scale of its traits and its safe area as the work area, since visionOS shows apps in windows and has no screens. | None, since visionOS tells neither. |
