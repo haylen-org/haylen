@@ -1445,8 +1445,10 @@ class RunCppTest(unittest.TestCase):
         build = self.scratch / "build"
         fragment = build / haylen.CPP_PLUGINS_FILE
         build.mkdir()
-        packages = build / "haylen-packages" / "Products"
-        built = (packages / "HaylenPackages.framework", packages, [packages / "Lens_Lens.bundle"])
+        products = build / "haylen-packages" / "derived" / "Build" / "Products"
+        packages = products / "Debug-iphonesimulator"
+        frameworks = packages / "PackageFrameworks"
+        built = haylen.SwiftPackages(frameworks / "HaylenPackages.framework", [packages / "Lens_Lens.bundle"], packages, [build / "maps" / "LensObjC.modulemap"], [build / "lens" / "include"])
         with mock.patch.object(haylen, "build_swift_packages", return_value=built) as swift:
             self.assertTrue(haylen.write_cpp_apple_parts(app, "ios-simulator", build, fragment, "Debug", 4))
         self.assertEqual(swift.call_args.args[:3], ({"Lens": {"url": "https://example.com/lens-kit.git", "exactVersion": "2.1.0", "products": ["Lens"]}}, "ios-simulator", "Debug"))
@@ -1456,9 +1458,11 @@ class RunCppTest(unittest.TestCase):
         self.assertIn('registerLinked("codec"', (build / "haylen-plugins" / "HaylenNativeSymbols.mm").read_text(), "The static native libraries register their symbols for haylen.native.")
         self.assertIn("set(HAYLEN_PLUGIN_FRAMEWORKS [==[AVFoundation]==])", text)
         self.assertIn(f"set(HAYLEN_PLUGIN_BUNDLES [==[{(copied / 'resources' / 'camera.bundle').as_posix()};{(packages / 'Lens_Lens.bundle').as_posix()}]==])", text)
-        self.assertIn(f"set(HAYLEN_PLUGIN_LIBRARIES [==[{(plugin / 'Vendor.framework').as_posix()};{(self.scratch / 'libcodec.a').as_posix()};{(packages / 'HaylenPackages.framework').as_posix()}]==])", text)
-        self.assertIn(f"set(HAYLEN_PLUGIN_EMBEDDED [==[{(plugin / 'Vendor.framework').as_posix()};{(self.scratch / 'Effects.framework').as_posix()};{(packages / 'HaylenPackages.framework').as_posix()}]==])", text)
+        self.assertIn(f"set(HAYLEN_PLUGIN_LIBRARIES [==[{(plugin / 'Vendor.framework').as_posix()};{(self.scratch / 'libcodec.a').as_posix()};{(frameworks / 'HaylenPackages.framework').as_posix()}]==])", text)
+        self.assertIn(f"set(HAYLEN_PLUGIN_EMBEDDED [==[{(plugin / 'Vendor.framework').as_posix()};{(self.scratch / 'Effects.framework').as_posix()};{(frameworks / 'HaylenPackages.framework').as_posix()}]==])", text)
         self.assertIn(f"set(HAYLEN_PLUGIN_MODULES [==[{packages.as_posix()}]==])", text)
+        self.assertIn(f"set(HAYLEN_PLUGIN_MODULE_MAPS [==[{(build / 'maps' / 'LensObjC.modulemap').as_posix()}]==])", text, "The Swift sources import the C-family modules of the packages through their module maps.")
+        self.assertIn(f"set(HAYLEN_PLUGIN_HEADERS [==[{(build / 'lens' / 'include').as_posix()}]==])", text)
         self.assertIn(f"set(HAYLEN_PLUGIN_SCRIPTS [==[{(copied / 'scripts' / '0.sh').as_posix()}]==])", text)
         self.assertIn("echo stamped", (copied / "scripts" / "0.sh").read_text())
         self.assertIn("<string>group.com.haylen.camera</string>", text, "The Info.plist keys name the identity of the app as Xcode would.")
@@ -1483,6 +1487,30 @@ class RunCppTest(unittest.TestCase):
         self.assertIn('.product(name: "LensUI", package: "lens-kit")', manifest)
         self.assertIn('.product(name: "Maps", package: "maps")', manifest)
         self.assertTrue((self.scratch / "Sources" / "HaylenPackages" / "HaylenPackages.swift").is_file())
+
+    def test_swift_sources_of_cpp_apps_find_the_c_family_modules_that_the_packages_compiled(self):
+        derived = self.scratch / "derived"
+        built = derived / "Build" / "Products" / "Debug-iphonesimulator"
+        generated = derived / "Build" / "Intermediates.noindex" / "GeneratedModuleMaps-iphonesimulator"
+        checkouts = derived / "SourcePackages" / "checkouts"
+        for name in ("Core.o", "Promises.o", "Utilities.o", "Utilities.swiftmodule", "HaylenPackages.o", "HaylenPackages.swiftmodule"):
+            (built / name).mkdir(parents=True)
+        for folder in ("kit/Sources/Core/Public/Core", "kit/Sources/Utilities", "kit/Tests/CoreTests", "promises/Sources/Promises/include", "promises/Sources/Unused/include"):
+            (checkouts / folder).mkdir(parents=True)
+        for package in ("kit", "promises"):
+            (checkouts / package / "Package.swift").write_text("")
+        (checkouts / "promises" / "Sources" / "Promises" / "include" / "module.modulemap").write_text("module Promises {}")
+        generated.mkdir(parents=True)
+        for name in ("Core", "Utilities", "HaylenPackages"):
+            (generated / f"{name}.modulemap").write_text("")
+        manifests = {
+            "kit": {"targets": [{"name": "Core", "path": "Sources/Core", "publicHeadersPath": "Public"}, {"name": "Utilities"}, {"name": "CoreTests", "path": "Tests/CoreTests"}]},
+            "promises": {"targets": [{"name": "Promises"}, {"name": "Unused"}]},
+        }
+        with mock.patch.object(haylen, "capture", side_effect=lambda command: json.dumps(manifests[Path(command[command.index("--package-path") + 1]).name])):
+            module_maps, headers = haylen.swift_package_clang_modules(derived, built, generated, self.scratch / "manifests")
+        self.assertEqual(module_maps, [generated / "Core.modulemap", checkouts / "promises" / "Sources" / "Promises" / "include" / "module.modulemap"], "A target keeps its own module map, and Swift targets and targets that the packages did not compile give none.")
+        self.assertEqual(headers, [checkouts / "kit" / "Sources" / "Core" / "Public", checkouts / "promises" / "Sources" / "Promises" / "include"])
 
     def test_plugins_that_ship_the_same_framework_stop_the_build_of_a_cpp_app(self):
         manifests = []

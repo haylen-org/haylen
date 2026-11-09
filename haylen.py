@@ -6674,15 +6674,63 @@ def write_swift_packages(packages: dict[str, dict], folder: Path) -> None:
     write_if_changed(folder / "Sources" / SWIFT_PACKAGES_PRODUCT / f"{SWIFT_PACKAGES_PRODUCT}.swift", "// The products of the packages link into this framework, and the plugins import their modules themselves.\n")
 
 
-def build_swift_packages(packages: dict[str, dict], slice_name: str, config: str, folder: Path, jobs: int) -> tuple[Path, Path, list[Path]]:
-    """Builds the Swift packages of the plugins of a C++ app for one slice with `xcodebuild`, since CMake builds no Swift package, and returns the dynamic framework that holds their products, the folder of the modules that the Swift sources of the plugins import and the resource bundles of the packages."""
+@dataclasses.dataclass(frozen=True)
+class SwiftPackages:
+    """The Swift packages of the plugins of a C++ app built for one slice: the dynamic framework that holds their targets, the resource bundles, and what a Swift source that imports their products needs, as Xcode gives it to a target that links them: the folder of their Swift modules, and the module map and the public header folder of each of their C-family targets."""
+
+    framework: Path
+    bundles: list[Path]
+    modules: Path
+    module_maps: list[Path]
+    headers: list[Path]
+
+
+# The folders that Swift Package Manager takes the sources of a target from when its manifest names no "path".
+SWIFT_PACKAGE_SOURCE_FOLDERS = ("Sources", "Source", "src", "srcs")
+
+
+def build_swift_packages(packages: dict[str, dict], slice_name: str, config: str, folder: Path, jobs: int) -> SwiftPackages:
+    """Builds the Swift packages of the plugins of a C++ app for one slice with `xcodebuild`, since CMake builds no Swift package."""
     write_swift_packages(packages, folder / "package")
     destination, suffix = SWIFT_PACKAGE_DESTINATIONS[slice_name]
     derived = folder / "derived"
     terminal.step(f'Building the Swift packages of the plugins for "{slice_name}"')
     run(["xcodebuild", "-scheme", SWIFT_PACKAGES_PRODUCT, "-destination", destination, "-configuration", config, "-derivedDataPath", derived, "-jobs", str(jobs), "build", "CODE_SIGNING_ALLOWED=NO"], cwd=folder / "package")
+
     built = derived / "Build" / "Products" / f"{config}{suffix}"
-    return built / "PackageFrameworks" / f"{SWIFT_PACKAGES_PRODUCT}.framework", built, sorted(built.glob("*.bundle"))
+    module_maps, headers = swift_package_clang_modules(derived, built, derived / "Build" / "Intermediates.noindex" / f"GeneratedModuleMaps{suffix}", folder / "manifests")
+    return SwiftPackages(built / "PackageFrameworks" / f"{SWIFT_PACKAGES_PRODUCT}.framework", sorted(built.glob("*.bundle")), built, module_maps, headers)
+
+
+def swift_package_clang_modules(derived: Path, built: Path, generated: Path, scratch: Path) -> tuple[list[Path], list[Path]]:
+    """Returns the module map and the public header folder of every C-family target that the build of the Swift packages compiled, whose objects it leaves next to the Swift modules of the Swift targets. A target keeps its own `module.modulemap` in its header folder, or else takes the one that Xcode generates, as Xcode gives them to a target that links the packages."""
+    compiled = {path.stem for path in built.glob("*.o")} - {path.stem for path in built.glob("*.swiftmodule")}
+    module_maps: list[Path] = []
+    headers: list[Path] = []
+    for checkout in sorted(path for path in (derived / "SourcePackages" / "checkouts").iterdir() if (path / "Package.swift").is_file()):
+        manifest = json.loads(capture(["xcrun", "swift", "package", "--package-path", checkout, "--scratch-path", scratch / checkout.name, "dump-package"]))
+        for target in manifest["targets"]:
+            if target["name"] not in compiled:
+                continue
+            include = swift_package_target_folder(checkout, target) / (target.get("publicHeadersPath") or "include")
+            own = include / "module.modulemap"
+            if own.is_file():
+                module_maps.append(own)
+            elif (generated / f"{target['name']}.modulemap").is_file():
+                module_maps.append(generated / f"{target['name']}.modulemap")
+
+            if include.is_dir():
+                headers.append(include)
+    return module_maps, headers
+
+
+def swift_package_target_folder(checkout: Path, target: dict) -> Path:
+    """The folder of the sources of a target of a Swift package: the "path" of its manifest, or else its name in the first source folder of the package that holds it."""
+    folders = [checkout / target["path"]] if target.get("path") else [checkout / folder / target["name"] for folder in SWIFT_PACKAGE_SOURCE_FOLDERS]
+    found = next((folder for folder in folders if folder.is_dir()), None)
+    if found is None:
+        raise BuildError(f'The target "{target["name"]}" of the Swift package `{shown_path(checkout)}` has no folder of sources, although the build of the packages compiled it.')
+    return found
 
 
 def cmake_list(name: str, values: list) -> str:
@@ -6769,13 +6817,12 @@ def write_cpp_apple_parts(app: App, platform: str, directory: Path, fragment: Pa
 
     # Resource bundles are folders, which the app copies whole after its link, like the resource bundles of the Swift packages.
     bundles = [resource for resource in resources if resource.is_dir()]
-    modules: list[Path] = []
-    if packages:
-        framework, products, package_bundles = build_swift_packages(packages, slice_name, config, directory / "haylen-packages", jobs)
-        linked.append(framework)
-        embedded.append(framework)
-        modules.append(products)
-        bundles += package_bundles
+
+    swift_packages = build_swift_packages(packages, slice_name, config, directory / "haylen-packages", jobs) if packages else None
+    if swift_packages:
+        linked.append(swift_packages.framework)
+        embedded.append(swift_packages.framework)
+        bundles += swift_packages.bundles
 
     # The keys of the plugins go inside the dictionary of the Info.plist of the engine, which a property list of their own carries, with the background mode of the audio that plays in the background, whose modes the plugins may add to.
     background = {"UIBackgroundModes": ["audio"]} if app.background_audio and target_platform in {"ios", "tvos", "visionos"} else {}
@@ -6794,7 +6841,9 @@ def write_cpp_apple_parts(app: App, platform: str, directory: Path, fragment: Pa
         cmake_list("HAYLEN_PLUGIN_FRAMEWORKS", frameworks),
         cmake_list("HAYLEN_PLUGIN_LIBRARIES", [path.as_posix() for path in linked]),
         cmake_list("HAYLEN_PLUGIN_EMBEDDED", [path.as_posix() for path in embedded]),
-        cmake_list("HAYLEN_PLUGIN_MODULES", [path.as_posix() for path in modules]),
+        cmake_list("HAYLEN_PLUGIN_MODULES", [swift_packages.modules.as_posix()] if swift_packages else []),
+        cmake_list("HAYLEN_PLUGIN_MODULE_MAPS", [path.as_posix() for path in swift_packages.module_maps] if swift_packages else []),
+        cmake_list("HAYLEN_PLUGIN_HEADERS", [path.as_posix() for path in swift_packages.headers] if swift_packages else []),
         cmake_list("HAYLEN_PLUGIN_SCRIPTS", [path.as_posix() for path in scripts]),
         cmake_list("HAYLEN_PLUGIN_EXTENSIONS", list(extensions)),
         *extension_lines,
