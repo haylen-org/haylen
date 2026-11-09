@@ -21,10 +21,6 @@ class DebugOutput final {
     // Logs the errors OpenGL holds as errors of the step, where the context has no debug output.
     void checkErrors(std::string_view step) const;
 
-    [[nodiscard]] bool isLabeling() const noexcept {
-        return messages;
-    }
-
   private:
     static void receive(Gl::Enum source, Gl::Enum type, Gl::Uint id, Gl::Enum severity, Gl::Sizei length, const char* message, const void* user);
 

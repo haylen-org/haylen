@@ -266,10 +266,6 @@ class Gl final {
     // Loads every entry point of the flavour from the context, which must be current, and throws `std::runtime_error` when the context is older than the flavour needs or lacks one of them.
     void load(GlContext& context, Device::Api flavour);
 
-    [[nodiscard]] Device::Api getFlavour() const noexcept {
-        return api;
-    }
-
     [[nodiscard]] const Features& getFeatures() const noexcept {
         return features;
     }

@@ -104,10 +104,6 @@ class StateCache final {
         return program;
     }
 
-    [[nodiscard]] Gl::Uint getDrawFramebuffer() const noexcept {
-        return drawFramebuffer;
-    }
-
   private:
     struct Unit {
         Gl::Enum target = Gl::kTexture2d;

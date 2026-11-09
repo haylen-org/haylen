@@ -57,9 +57,6 @@ class CameraRig final {
     [[nodiscard]] std::span<const Zone> getZones() const noexcept {
         return zones;
     }
-    [[nodiscard]] std::span<const math::Vec2> getRail() const noexcept {
-        return rail;
-    }
     [[nodiscard]] const Options& getOptions() const noexcept {
         return options;
     }

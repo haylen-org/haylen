@@ -22,10 +22,6 @@ class DynamicRing final {
         return buffer.Get();
     }
 
-    [[nodiscard]] UINT getAlignment() const noexcept {
-        return alignment;
-    }
-
   private:
     void make(UINT bytes);
 
