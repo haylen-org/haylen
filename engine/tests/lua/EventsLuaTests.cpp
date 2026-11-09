@@ -66,6 +66,24 @@ TEST(SignalLuaTest, ConnectsWithPriorityOnceOwnersAndDeferral) {
     EXPECT_EQ(fixture.lua("return table.concat(calls, ' ')"), "first:8 normal:8");
 }
 
+// The values of a deferred call reach the listener on a stack that grows for them, however many the emit passed, also when a coroutine emitted them and the stack of the main thread is small.
+TEST(SignalLuaTest, DeliversADeferredCallWithManyValues) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        local burst = require('haylen.signal').new('burst')
+        burst:connect(function(...) received = select('#', ...) .. ' ' .. select(-1, ...) end, {deferred = true})
+        local values = {}
+        for index = 1, 100000 do
+            values[index] = index
+        end
+        coroutine.wrap(function() burst:emit(table.unpack(values)) end)()
+    )");
+    // clang-format on
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return received"), "100000 100000");
+}
+
 TEST(EventsLuaTest, PublishesAndSubscribesByName) {
     test::EngineFixture fixture;
     // clang-format off

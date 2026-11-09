@@ -108,6 +108,7 @@ Connection SignalLua::connect(lua_State* L, int signal, int function, int option
             queue.post([weak = std::weak_ptr<lua::Owners::Function>(callback), held = once ? callback : nullptr, packed, count = arguments.count] {
                 const std::shared_ptr<lua::Owners::Function> listener = weak.lock();
                 lua_State* main = packed->getState();
+                luaL_checkstack(main, count + 2, "too many values to deliver");
                 if (!listener || !listener->push(main)) {
                     return;
                 }
