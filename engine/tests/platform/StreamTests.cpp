@@ -15,6 +15,7 @@
 #include "haylen/platform/PluginStreams.hpp"
 #include "haylen/platform/VideoStream.hpp"
 #include "plugins/PlatformPlugin.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::platform {
@@ -116,6 +117,15 @@ TEST_F(VideoStreamTest, ReachesTheTextureAtTheStartOfTheNextFrame) {
 
     fixture.frames(1);
     EXPECT_EQ(fixture.host().getGpu().getLastFrame().imageWrites, 0);
+}
+
+TEST_F(VideoStreamTest, KeepsWatchedStreamsCurrentWithoutAllocating) {
+    test::EngineFixture fixture;
+    fixture.engine().getPlugin<plugins::PlatformPlugin>().watch(PluginStreams::openVideo("stream-tests", "allocations", VideoStream::Format::Rgba8, 0, 0));
+    fixture.frames(3);
+    const test::AllocationTracker tracker;
+    fixture.frames(5);
+    EXPECT_EQ(tracker.getTotal(), 0U);
 }
 
 TEST(PluginStreamsTest, OpensEachStreamOnceByPluginAndName) {

@@ -24,6 +24,7 @@ void PlatformPlugin::stop(core::Engine& engine) {
         stream->detach();
     }
     videoStreams.clear();
+    updating.clear();
 }
 
 void PlatformPlugin::installLua(core::Engine&, lua_State* L) {
@@ -34,10 +35,11 @@ void PlatformPlugin::installLua(core::Engine&, lua_State* L) {
 
 // The listeners of a frame may start watching more streams, which wait for the next frame.
 void PlatformPlugin::beginFrame(core::Engine& engine, float) {
-    const std::vector<std::shared_ptr<platform::VideoStream>> snapshot = videoStreams;
-    for (const std::shared_ptr<platform::VideoStream>& stream : snapshot) {
+    updating.assign(videoStreams.begin(), videoStreams.end());
+    for (const std::shared_ptr<platform::VideoStream>& stream : updating) {
         stream->update(engine.getGraphics());
     }
+    updating.clear();
 }
 
 void PlatformPlugin::watch(std::shared_ptr<platform::VideoStream> stream) {

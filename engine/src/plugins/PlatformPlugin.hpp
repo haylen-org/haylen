@@ -24,6 +24,9 @@ class PlatformPlugin final : public Plugin {
 
   private:
     std::vector<std::shared_ptr<platform::VideoStream>> videoStreams;
+
+    // The streams that the frame updates, kept between frames so the snapshot never allocates again.
+    std::vector<std::shared_ptr<platform::VideoStream>> updating;
 };
 
 } // namespace haylen::plugins
