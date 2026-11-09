@@ -1,5 +1,6 @@
 #include "haylen/2d/graphics/PixelCanvas.hpp"
 
+#include <format>
 #include <stdexcept>
 
 #include "haylen/graphics/Device.hpp"
@@ -9,6 +10,12 @@ namespace haylen::graphics2d {
 PixelCanvas::PixelCanvas(graphics::Device& device, int width, int height, Options value) : size{static_cast<float>(width), static_cast<float>(height)}, options(value) {
     if (width < 1 || height < 1) {
         throw std::invalid_argument("A pixel canvas needs a width and a height of one pixel or more.");
+    }
+
+    // The image keeps a border of one pixel on each side, which the largest texture of the device holds too.
+    const int largest = device.getMaxTextureSize() - 2;
+    if (width > largest || height > largest) {
+        throw std::invalid_argument(std::format("A pixel canvas has at most {} pixels on a side on this device, and {} by {} pixels is larger.", largest, width, height));
     }
     target = device.createRenderTarget(width + 2, height + 2);
 }

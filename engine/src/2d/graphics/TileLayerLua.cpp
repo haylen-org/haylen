@@ -41,7 +41,7 @@ TileLayer& TileLayerLua::check(lua_State* L) {
 // Defines a frame with `defineFrame(id, {texture = 1, source = rect, offsetX = 0, offsetY = 0, width, height})`.
 int TileLayerLua::defineFrame(lua_State* L) {
     TileLayer& layer = check(L);
-    const auto id = static_cast<int>(luaL_checkinteger(L, 2));
+    const auto id = lua::Stack::read<int>(L, 2);
     luaL_checktype(L, 3, LUA_TTABLE);
     lua::Table::checkFields(L, 3, {kFrameFields});
     lua_Integer texture = 1;
@@ -59,18 +59,18 @@ int TileLayerLua::defineFrame(lua_State* L) {
 }
 
 int TileLayerLua::setCell(lua_State* L) {
-    check(L).setCell(static_cast<int>(luaL_checkinteger(L, 2)), static_cast<int>(luaL_checkinteger(L, 3)), static_cast<int>(luaL_checkinteger(L, 4)));
+    check(L).setCell(lua::Stack::read<int>(L, 2), lua::Stack::read<int>(L, 3), lua::Stack::read<int>(L, 4));
     return 0;
 }
 
 int TileLayerLua::setCells(lua_State* L) {
     const core::FloatBuffer& buffer = lua::Userdata::check<core::FloatBuffer>(L, 5);
-    check(L).setCells(static_cast<int>(luaL_checkinteger(L, 2)), static_cast<int>(luaL_checkinteger(L, 3)), static_cast<int>(luaL_checkinteger(L, 4)), buffer.getValues());
+    check(L).setCells(lua::Stack::read<int>(L, 2), lua::Stack::read<int>(L, 3), lua::Stack::read<int>(L, 4), buffer.getValues());
     return 0;
 }
 
 int TileLayerLua::cell(lua_State* L) {
-    lua_pushinteger(L, check(L).getCell(static_cast<int>(luaL_checkinteger(L, 2)), static_cast<int>(luaL_checkinteger(L, 3))));
+    lua_pushinteger(L, check(L).getCell(lua::Stack::read<int>(L, 2), lua::Stack::read<int>(L, 3)));
     return 1;
 }
 

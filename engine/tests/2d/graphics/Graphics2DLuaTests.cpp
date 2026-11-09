@@ -592,6 +592,8 @@ TEST_F(Graphics2DLuaTest, DirectsCamerasThroughZonesAndRailsAndScrollsPixelCanva
     EXPECT_NE(lua("rig:setRail({1, 2})").find("A camera rail needs two points or more"), std::string::npos);
     EXPECT_NE(lua("rig.blendTime = -1").find("A camera rig needs a blend time of zero or more and a positive zoom."), std::string::npos);
     EXPECT_NE(lua("graphics2d.newPixelCanvas(0, 90)").find("A pixel canvas needs a width and a height of one pixel or more."), std::string::npos);
+    EXPECT_NE(lua("graphics2d.newPixelCanvas(2147483647, 90)").find("A pixel canvas has at most"), std::string::npos);
+    EXPECT_NE(lua("graphics2d.newPixelCanvas(4294967312, 90)").find("integer out of range"), std::string::npos);
     EXPECT_NE(lua("graphics2d.newPixelCanvas(10, 10, {crisp = true})").find("Unknown option \"crisp\"."), std::string::npos);
 }
 

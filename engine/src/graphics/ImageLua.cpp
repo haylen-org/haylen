@@ -49,8 +49,8 @@ Image::Area ImageLua::readArea(lua_State* L, int index, const Image& image) {
 }
 
 int ImageLua::create(lua_State* L) {
-    const auto columns = static_cast<int>(luaL_checkinteger(L, 1));
-    const auto rows = static_cast<int>(luaL_checkinteger(L, 2));
+    const auto columns = lua::Stack::read<int>(L, 1);
+    const auto rows = lua::Stack::read<int>(L, 2);
     if (columns < 1 || rows < 1) {
         throw std::invalid_argument("An image needs a width and a height of one pixel or more.");
     }
@@ -104,12 +104,12 @@ int ImageLua::decodeAsync(lua_State* L) {
 }
 
 int ImageLua::pixel(lua_State* L) {
-    lua::Stack::push(L, lua::Userdata::check<Image>(L, 1).getPixel(static_cast<int>(luaL_checkinteger(L, 2)), static_cast<int>(luaL_checkinteger(L, 3))));
+    lua::Stack::push(L, lua::Userdata::check<Image>(L, 1).getPixel(lua::Stack::read<int>(L, 2), lua::Stack::read<int>(L, 3)));
     return 1;
 }
 
 int ImageLua::setPixel(lua_State* L) {
-    checkWritable(L, 1).setPixel(static_cast<int>(luaL_checkinteger(L, 2)), static_cast<int>(luaL_checkinteger(L, 3)), lua::Stack::read<math::Color>(L, 4));
+    checkWritable(L, 1).setPixel(lua::Stack::read<int>(L, 2), lua::Stack::read<int>(L, 3), lua::Stack::read<math::Color>(L, 4));
     return 0;
 }
 
@@ -210,7 +210,7 @@ int ImageLua::blit(lua_State* L) {
         lua_pop(L, 1);
         lua::Table::readField(L, 5, "blend", blend);
     }
-    image.blit(*source, from, static_cast<int>(luaL_checkinteger(L, 3)), static_cast<int>(luaL_checkinteger(L, 4)), blend ? Image::BlitMode::Blend : Image::BlitMode::Replace);
+    image.blit(*source, from, lua::Stack::read<int>(L, 3), lua::Stack::read<int>(L, 4), blend ? Image::BlitMode::Blend : Image::BlitMode::Replace);
     return 0;
 }
 
@@ -228,8 +228,8 @@ int ImageLua::blitAsync(lua_State* L) {
         lua_pop(L, 1);
         lua::Table::readField(L, 5, "blend", blend);
     }
-    const auto x = static_cast<int>(luaL_checkinteger(L, 3));
-    const auto y = static_cast<int>(luaL_checkinteger(L, 4));
+    const auto x = lua::Stack::read<int>(L, 3);
+    const auto y = lua::Stack::read<int>(L, 4);
     core::Engine& engine = lua::Runtime::getEngine(L);
     auto promise = std::make_shared<varn::async::Promise>(engine.getScriptRuntime());
     // clang-format off
@@ -419,7 +419,7 @@ int ImageLua::tint(lua_State* L) {
 }
 
 int ImageLua::pixelate(lua_State* L) {
-    ImageFilters::pixelate(checkWritable(L, 1), static_cast<int>(luaL_checkinteger(L, 2)));
+    ImageFilters::pixelate(checkWritable(L, 1), lua::Stack::read<int>(L, 2));
     return 0;
 }
 
@@ -518,7 +518,7 @@ int ImageLua::applyAsync(lua_State* L) {
 }
 
 int ImageLua::decodePlaceholder(lua_State* L) {
-    push(L, ImagePlaceholder::decode(lua::Stack::read<std::string_view>(L, 1), static_cast<int>(luaL_checkinteger(L, 2)), static_cast<int>(luaL_checkinteger(L, 3))));
+    push(L, ImagePlaceholder::decode(lua::Stack::read<std::string_view>(L, 1), lua::Stack::read<int>(L, 2), lua::Stack::read<int>(L, 3)));
     return 1;
 }
 

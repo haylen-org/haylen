@@ -59,8 +59,8 @@ int MeshLua::create(lua_State* L) {
 
 int MeshLua::createGrid(lua_State* L) {
     graphics::Texture texture = lua_isnil(L, 1) ? graphics::Texture{} : lua::Stack::read<graphics::Texture>(L, 1);
-    const auto columns = static_cast<int>(luaL_checkinteger(L, 2));
-    const auto rows = static_cast<int>(luaL_checkinteger(L, 3));
+    const auto columns = lua::Stack::read<int>(L, 2);
+    const auto rows = lua::Stack::read<int>(L, 3);
     math::Rect area{0.0F, 0.0F, texture.isValid() ? texture.getSize().x : 1.0F, texture.isValid() ? texture.getSize().y : 1.0F};
     std::optional<math::Rect> source;
     if (!lua_isnoneornil(L, 4)) {

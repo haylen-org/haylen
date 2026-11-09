@@ -21,7 +21,7 @@ int PixelCanvasLua::create(lua_State* L) {
         lua::Table::checkFields(L, 3, {kOptionFields});
         lua::Table::readField(L, 3, "smooth", options.smooth);
     }
-    lua::Userdata::emplace<PixelCanvas>(L, std::make_shared<PixelCanvas>(lua::Runtime::getEngine(L).getGraphics(), static_cast<int>(luaL_checkinteger(L, 1)), static_cast<int>(luaL_checkinteger(L, 2)), options));
+    lua::Userdata::emplace<PixelCanvas>(L, std::make_shared<PixelCanvas>(lua::Runtime::getEngine(L).getGraphics(), lua::Stack::read<int>(L, 1), lua::Stack::read<int>(L, 2), options));
     return 1;
 }
 

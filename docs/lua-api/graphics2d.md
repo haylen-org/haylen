@@ -1208,7 +1208,7 @@ A `PixelCanvas` renders pixel art at a low resolution and draws it scaled up, sc
 
 ### graphics2d.newPixelCanvas(width, height, options)
 
-Returns a new `PixelCanvas` of `width` by `height` pixels. The option `smooth`, `true` by default, shifts the image by the part of a pixel that the camera lies between. A size under one pixel raises `A pixel canvas needs a width and a height of one pixel or more.`.
+Returns a new `PixelCanvas` of `width` by `height` pixels. The option `smooth`, `true` by default, shifts the image by the part of a pixel that the camera lies between. A size under one pixel raises `A pixel canvas needs a width and a height of one pixel or more.`, a side longer than the largest texture of the device less a border of one pixel on each side raises `A pixel canvas has at most <largest> pixels on a side on this device, and <width> by <height> pixels is larger.`, and a size that is not a 32-bit integer raises a `bad argument` error that ends with `integer out of range`.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -4060,6 +4060,7 @@ These messages come from the functions and methods of the module, besides the er
 | `The camera zone "<name>" needs a positive zoom.` | The zoom of a zone is not positive. |
 | `A camera rail needs two points or more, or none to take it away.` | The rail of a rig has one point. |
 | `A pixel canvas needs a width and a height of one pixel or more.` | The size of `graphics2d.newPixelCanvas` is under one pixel. |
+| `A pixel canvas has at most <largest> pixels on a side on this device, and <width> by <height> pixels is larger.` | A side of `graphics2d.newPixelCanvas` with its border is longer than the largest texture of the device. |
 | `A parallax layer needs a texture to draw.` | A parallax layer has no texture. |
 | `A parallax layer needs a positive size to repeat.` | A repeated parallax layer has no size. |
 | `A parallax layer needs a finite position and scroll.` | The position or scroll of a parallax layer is not finite. |
