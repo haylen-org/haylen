@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 
 #include "haylen/math/Math.hpp"
 
@@ -190,19 +191,23 @@ float Easing::apply(Type curve, float t, float first, float second) noexcept {
     }
 }
 
+// The counts run in 64 bits, so no count of steps overflows, and a progress that is not a number has no step.
 float Easing::steps(float t, int count, StepPosition position) noexcept {
+    if (std::isnan(t)) {
+        return t;
+    }
     t = Math::saturate(t);
-    const int stepCount = std::max(count, 1);
-    auto step = static_cast<int>(std::floor(t * static_cast<float>(stepCount)));
+    const std::int64_t stepCount = std::max(count, 1);
+    auto step = static_cast<std::int64_t>(std::floor(t * static_cast<float>(stepCount)));
     if (position == StepPosition::Start || position == StepPosition::Both) {
         ++step;
     }
 
-    int jumps = stepCount;
+    std::int64_t jumps = stepCount;
     if (position == StepPosition::Both) {
         jumps = stepCount + 1;
     } else if (position == StepPosition::None) {
-        jumps = std::max(stepCount - 1, 1);
+        jumps = std::max<std::int64_t>(stepCount - 1, 1);
     }
     return std::clamp(static_cast<float>(step) / static_cast<float>(jumps), 0.0F, 1.0F);
 }

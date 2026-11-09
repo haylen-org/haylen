@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <limits>
 #include <span>
 #include <stdexcept>
@@ -146,6 +147,21 @@ TEST(NoiseTest, IsDeterministicAndBounded) {
     EXPECT_NE(Noise2D(1).simplex(0.3F, 0.7F), Noise2D(2).simplex(0.3F, 0.7F));
 }
 
+// The lattice of the noise repeats every 256 units, so a coordinate far beyond the range of an integer still lands on its cell, and one that is not a number gives no number.
+TEST(NoiseTest, SamplesCoordinatesOfAnySize) {
+    const Noise2D noise(12);
+    EXPECT_EQ(noise.perlin(1e10F, 0.5F), noise.perlin(0.0F, 0.5F));
+    EXPECT_EQ(noise.perlin(-1e10F, 0.5F), noise.perlin(0.0F, 0.5F));
+    EXPECT_TRUE(std::isnan(noise.perlin(std::numeric_limits<float>::quiet_NaN(), 0.5F)));
+    EXPECT_TRUE(std::isnan(noise.simplex(std::numeric_limits<float>::infinity(), 0.5F)));
+    EXPECT_TRUE(std::isfinite(noise.worley(1e30F, -1e30F).nearest));
+}
+
+TEST(EasingTest, StepsOfAProgressThatIsNotANumberAreNotANumber) {
+    EXPECT_TRUE(std::isnan(Easing::steps(std::numeric_limits<float>::quiet_NaN(), 4, Easing::StepPosition::End)));
+    EXPECT_EQ(Easing::steps(1.0F, std::numeric_limits<int>::max(), Easing::StepPosition::Both), 1.0F);
+}
+
 TEST(GeometryTest, CirclesAndSegments) {
     const Circle circle{Vec2{}, 5.0F};
     EXPECT_TRUE(circle.contains(Vec2(3.0F, 4.0F)));
@@ -231,6 +247,19 @@ TEST(GeometryTest, TriangulatesConcavePolygonsInEitherWinding) {
     std::reverse(arrow.begin(), arrow.end());
     EXPECT_EQ(Geometry::triangulate(arrow).size(), 9U);
     EXPECT_TRUE(Geometry::triangulate(std::span<const Vec2>(arrow.data(), 2)).empty());
+}
+
+TEST(PoissonDiskTest, RefusesAnAreaWithEdgesThatAreNotFinite) {
+    Random random(5);
+    const float infinity = std::numeric_limits<float>::infinity();
+    for (const Rect area : {Rect{-infinity, 0.0F, 100.0F, 100.0F}, Rect{0.0F, 0.0F, 100.0F, std::numeric_limits<float>::quiet_NaN()}}) {
+        try {
+            (void)PoissonDisk::sample({.area = area, .minimumDistance = 10.0F}, random);
+            ADD_FAILURE() << "An area without finite edges must be refused.";
+        } catch (const std::invalid_argument& error) {
+            EXPECT_STREQ(error.what(), "Poisson sampling needs an area whose edges are finite.");
+        }
+    }
 }
 
 TEST(PoissonDiskTest, KeepsMinimumDistanceAndPredicate) {

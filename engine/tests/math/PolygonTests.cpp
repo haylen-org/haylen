@@ -207,6 +207,11 @@ TEST(SplineTest, CatmullRomPassesThroughItsPoints) {
     EXPECT_NEAR(Vec2::distance(loop.getPoint(1.0F), loop.getPoint(0.0F)), 0.0F, 1e-3F);
 }
 
+TEST(SplineTest, AParameterThatIsNotANumberGivesAPointThatIsNotANumber) {
+    const Spline spline({{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}});
+    EXPECT_TRUE(std::isnan(spline.getPoint(std::numeric_limits<float>::quiet_NaN()).x));
+}
+
 TEST(SplineTest, SamplesEvenlyByDistance) {
     const Spline curve({{0.0F, 0.0F}, {50.0F, 80.0F}, {150.0F, -40.0F}, {200.0F, 30.0F}}, Spline::Kind::Bezier);
     const std::vector<Vec2> points = curve.sampleByDistance(10.0F);

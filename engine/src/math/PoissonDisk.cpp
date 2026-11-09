@@ -86,6 +86,9 @@ std::vector<Vec2> PoissonDisk::sample(const Options& options, Random& random) {
     if (!std::isfinite(options.minimumDistance) || !std::isfinite(largest)) {
         throw std::invalid_argument("Poisson distances must be finite.");
     }
+    if (!std::isfinite(options.area.x) || !std::isfinite(options.area.y) || !std::isfinite(options.area.getRight()) || !std::isfinite(options.area.getBottom())) {
+        throw std::invalid_argument("Poisson sampling needs an area whose edges are finite.");
+    }
     if (largest < options.minimumDistance) {
         throw std::invalid_argument("A varying Poisson distance needs a maximum distance of at least the minimum distance.");
     }

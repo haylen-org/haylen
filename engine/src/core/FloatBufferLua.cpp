@@ -18,7 +18,9 @@ std::size_t FloatBufferLua::checkPosition(lua_State* L, const FloatBuffer& buffe
     int isInteger = 0;
     const lua_Integer position = lua_tointegerx(L, index, &isInteger);
     if (isInteger == 0 || position < 1 || static_cast<std::size_t>(position - 1) + count > buffer.size()) {
-        luaL_error(L, "Float buffer positions %I to %I fall outside its size of %I.", position, position + static_cast<lua_Integer>(count) - 1, static_cast<lua_Integer>(buffer.size()));
+        // The last position follows the integer arithmetic of Lua, which wraps around, so a range that starts near the largest integer never overflows.
+        const auto last = static_cast<lua_Integer>(static_cast<lua_Unsigned>(position) + count - 1);
+        luaL_error(L, "Float buffer positions %I to %I fall outside its size of %I.", position, last, static_cast<lua_Integer>(buffer.size()));
     }
     return static_cast<std::size_t>(position - 1);
 }

@@ -69,6 +69,7 @@ class Noise2D final {
 
   private:
     [[nodiscard]] std::uint8_t hash(int x, int y) const noexcept;
+    [[nodiscard]] static int cellOf(float floored) noexcept;
     [[nodiscard]] static float fade(float t) noexcept;
     [[nodiscard]] static float gradientDot(std::uint8_t cornerHash, float x, float y) noexcept;
 

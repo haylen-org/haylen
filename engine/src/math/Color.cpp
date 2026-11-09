@@ -5,6 +5,7 @@
 #include <charconv>
 #include <cmath>
 #include <cstdio>
+#include <limits>
 
 namespace haylen::math {
 
@@ -40,6 +41,12 @@ std::string Color::toHex() const {
 Color Color::fromHsv(float hue, float saturation, float value, float alpha) noexcept {
     const float wrapped = hue - std::floor(hue);
     const float sector = wrapped * 6.0F;
+
+    // A hue that is not finite has no sector, so the channels of its color are not numbers either.
+    if (!std::isfinite(sector)) {
+        const float unknown = std::numeric_limits<float>::quiet_NaN();
+        return {unknown, unknown, unknown, alpha};
+    }
     const float fraction = sector - std::floor(sector);
     const float p = value * (1.0F - saturation);
     const float q = value * (1.0F - saturation * fraction);

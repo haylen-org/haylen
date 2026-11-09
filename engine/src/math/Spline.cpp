@@ -126,7 +126,9 @@ void Spline::measure() {
 Vec2 Spline::getPoint(float t) const noexcept {
     const float wrapped = closed ? t - std::floor(t) : std::clamp(t, 0.0F, 1.0F);
     const float scaled = wrapped * static_cast<float>(segmentCount);
-    const std::size_t segment = std::min(static_cast<std::size_t>(scaled), segmentCount - 1);
+
+    // A parameter that is not a number lands in the first segment, whose point is not a number either.
+    const std::size_t segment = scaled > 0.0F ? std::min(static_cast<std::size_t>(scaled), segmentCount - 1) : 0;
     return evaluate(segment, scaled - static_cast<float>(segment));
 }
 

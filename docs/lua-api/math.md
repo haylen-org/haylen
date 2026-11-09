@@ -1422,7 +1422,7 @@ print(copy:nextFloat() == random:nextFloat()) -- true
 
 ## Noise2D
 
-A `Noise2D` is seeded gradient noise, made with `m.noise`. Noise gives values that change smoothly from one point to the next, without the jumps of random numbers, which suits terrain, clouds, wind and wobble. The methods `noise:perlin`, `noise:simplex` and `noise:fractal` return values from `-1` to `1`. The method `noise:worley` returns distances and a region value, and `noise:warp` returns a point. Features of the noise lie about one unit apart, so scale world coordinates down before sampling, such as `x / 200`.
+A `Noise2D` is seeded gradient noise, made with `m.noise`. Noise gives values that change smoothly from one point to the next, without the jumps of random numbers, which suits terrain, clouds, wind and wobble. The methods `noise:perlin`, `noise:simplex` and `noise:fractal` return values from `-1` to `1`. The method `noise:worley` returns distances and a region value, and `noise:warp` returns a point. Features of the noise lie about one unit apart, so scale world coordinates down before sampling, such as `x / 200`. The noise repeats every 256 units, so coordinates of any size sample it. At a coordinate that is infinite or not a number, `noise:perlin`, `noise:simplex` and `noise:fractal` return a value that is not a number.
 
 ### m.noise(seed)
 
@@ -1715,6 +1715,7 @@ These errors come from wrong options:
 
 - An unknown key raises `Unknown option "<key>".`
 - A distance that is infinite or not a number raises `Poisson distances must be finite.`
+- An `area` with an edge that is infinite or not a number raises `Poisson sampling needs an area whose edges are finite.`
 - A `distance` function without a `maximumDistance` of at least `minimumDistance` raises `A varying Poisson distance needs a maximum distance of at least the minimum distance.`
 - An attempt count outside `1` to `1000` raises `Poisson sampling needs between 1 and 1000 attempts.`
 - A minimum distance so small that the sampling grid of the area would need more than 16777216 cells raises `The minimum distance is too small for the area, whose sampling grid would need more than 16777216 cells.`
@@ -2639,6 +2640,7 @@ These messages come from the functions and methods of the module. Messages that 
 | `The option "octaves" must be a whole number from 1 to 16.` | The `octaves` of a noise grid are out of range. |
 | `The buffer of "into" holds <size> floats, fewer than the <count> samples of the grid.` | The `into` buffer of a noise grid is too small. |
 | `Poisson distances must be finite.` | A distance of `m.poissonDisk` is infinite or not a number. |
+| `Poisson sampling needs an area whose edges are finite.` | The `area` of `m.poissonDisk` has an edge that is infinite or not a number. |
 | `A varying Poisson distance needs a maximum distance of at least the minimum distance.` | A `distance` function comes without a valid `maximumDistance`. |
 | `Poisson sampling needs between 1 and 1000 attempts.` | The `attempts` of `m.poissonDisk` are out of range. |
 | `The minimum distance is too small for the area, whose sampling grid would need more than 16777216 cells.` | The area of `m.poissonDisk` is too large for its distance. |

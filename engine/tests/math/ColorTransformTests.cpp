@@ -1,5 +1,8 @@
 #include <gtest/gtest.h>
 
+#include <cmath>
+#include <limits>
+
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/math/Transform2D.hpp"
@@ -43,6 +46,14 @@ TEST(ColorTest, ConvertsEveryHueSector) {
         EXPECT_FLOAT_EQ(color.a, 0.25F);
         EXPECT_FLOAT_EQ(std::max({color.r, color.g, color.b}), 1.0F);
         EXPECT_NEAR(color.toHsv().hue, hue, 1e-5F) << sector;
+    }
+}
+
+TEST(ColorTest, AHueThatIsNotFiniteGivesChannelsThatAreNotNumbers) {
+    for (const float hue : {std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity()}) {
+        const Color color = Color::fromHsv(hue, 1.0F, 1.0F, 0.5F);
+        EXPECT_TRUE(std::isnan(color.r) && std::isnan(color.g) && std::isnan(color.b));
+        EXPECT_EQ(color.a, 0.5F);
     }
 }
 

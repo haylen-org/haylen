@@ -41,6 +41,7 @@ TEST(FloatBufferLuaTest, ReadsAndWritesFromLua) {
     EXPECT_EQ(fixture.lua("return require('haylen.collections').newFloatBuffer(2, 3)[2]"), "3.0");
 
     EXPECT_NE(fixture.lua("return buffer[0]").find("positions 0 to 0 fall outside its size of 6"), std::string::npos);
+    EXPECT_NE(fixture.lua("return buffer:get(math.maxinteger, 2)").find("positions 9223372036854775807 to -9223372036854775808 fall outside its size of 6"), std::string::npos);
     EXPECT_NE(fixture.lua("buffer[7] = 1").find("positions 7 to 7 fall outside"), std::string::npos);
     EXPECT_NE(fixture.lua("return buffer[1.5]").find("fall outside"), std::string::npos);
     EXPECT_NE(fixture.lua("buffer:set(5, 1, 2, 3)").find("positions 5 to 7 fall outside"), std::string::npos);

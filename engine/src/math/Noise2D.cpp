@@ -37,11 +37,17 @@ std::uint8_t Noise2D::hash(int x, int y) const noexcept {
     return permutation[permutation[ix] + iy];
 }
 
+// The lattice repeats every 256 cells, so a cell wraps into that period before it becomes an integer, which keeps coordinates of any size in range. A coordinate that is not finite hashes the first cell, and its sample is not a number either.
+int Noise2D::cellOf(float floored) noexcept {
+    const float wrapped = std::fmod(floored, 256.0F);
+    return std::isfinite(wrapped) ? static_cast<int>(wrapped) : 0;
+}
+
 float Noise2D::perlin(float x, float y) const noexcept {
     const float floorX = std::floor(x);
     const float floorY = std::floor(y);
-    const int cellX = static_cast<int>(floorX);
-    const int cellY = static_cast<int>(floorY);
+    const int cellX = cellOf(floorX);
+    const int cellY = cellOf(floorY);
     const float localX = x - floorX;
     const float localY = y - floorY;
 
@@ -60,11 +66,13 @@ float Noise2D::simplex(float x, float y) const noexcept {
     constexpr float kUnskew = 0.21132486540F;
 
     const float skew = (x + y) * kSkew;
-    const int i = static_cast<int>(std::floor(x + skew));
-    const int j = static_cast<int>(std::floor(y + skew));
-    const float unskew = static_cast<float>(i + j) * kUnskew;
-    const float x0 = x - (static_cast<float>(i) - unskew);
-    const float y0 = y - (static_cast<float>(j) - unskew);
+    const float floorI = std::floor(x + skew);
+    const float floorJ = std::floor(y + skew);
+    const int i = cellOf(floorI);
+    const int j = cellOf(floorJ);
+    const float unskew = (floorI + floorJ) * kUnskew;
+    const float x0 = x - (floorI - unskew);
+    const float y0 = y - (floorJ - unskew);
 
     const int i1 = x0 > y0 ? 1 : 0;
     const int j1 = x0 > y0 ? 0 : 1;
@@ -106,8 +114,8 @@ float Noise2D::fractal(float x, float y, int octaves, float lacunarity, float ga
 Noise2D::Cellular Noise2D::worley(float x, float y) const noexcept {
     const float floorX = std::floor(x);
     const float floorY = std::floor(y);
-    const int cellX = static_cast<int>(floorX);
-    const int cellY = static_cast<int>(floorY);
+    const int cellX = cellOf(floorX);
+    const int cellY = cellOf(floorY);
 
     Cellular result{.nearest = 1e9F, .second = 1e9F};
     for (int offsetY = -1; offsetY <= 1; ++offsetY) {
@@ -116,8 +124,8 @@ Noise2D::Cellular Noise2D::worley(float x, float y) const noexcept {
             const int row = cellY + offsetY;
             const std::uint8_t first = hash(column, row);
             const std::uint8_t second = hash(column + 101, row + 57);
-            const float featureX = static_cast<float>(column) + (static_cast<float>(first) + 0.5F) / 256.0F;
-            const float featureY = static_cast<float>(row) + (static_cast<float>(second) + 0.5F) / 256.0F;
+            const float featureX = floorX + static_cast<float>(offsetX) + (static_cast<float>(first) + 0.5F) / 256.0F;
+            const float featureY = floorY + static_cast<float>(offsetY) + (static_cast<float>(second) + 0.5F) / 256.0F;
             const float distance = std::hypot(featureX - x, featureY - y);
 
             if (distance < result.nearest) {
