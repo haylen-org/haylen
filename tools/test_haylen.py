@@ -1708,14 +1708,84 @@ class PluginReferenceTest(unittest.TestCase):
         with mock.patch.object(haylen, "run", side_effect=AssertionError("The checkout of a commit fetched again.")):
             self.assertEqual(haylen.App(self.app, "web").layout.files()["plugins/remote/source/init.lua"].read_text(), "return 'moved'")
 
+    def make_folders_repository(self):
+        """A repository that holds two plugins in folders of its own, and a folder that leads outside it through a symbolic link."""
+        repository = self.scratch / "plugins-repository"
+        self.write_plugin(repository / "camera", "camera", {"lens": {"type": "string", "default": "wide", "description": "Picks the lens."}})
+        self.write_plugin(repository / "share", "share")
+        self.write_plugin(self.scratch / "outside", "outside")
+        (repository / "outside").symlink_to(self.scratch / "outside")
+        self.git(repository, "init", "--quiet", "--initial-branch", "main")
+        self.git(repository, "add", ".")
+        self.git(repository, "commit", "--quiet", "-m", "First")
+        return repository
+
+    def test_plugins_come_from_folders_of_a_git_repository(self):
+        repository = self.make_folders_repository()
+        self.write_app({"camera": {"git": "../plugins-repository", "ref": "main", "path": "camera"}, "share": {"git": str(repository), "path": "share/"}})
+
+        app = haylen.App(self.app, "web")
+        folders = {plugin.id: plugin.folder for plugin in app.plugins}
+        checkout = folders["camera"].parent
+        self.assertTrue(checkout.is_relative_to(self.scratch / "repositories"), "A repository is fetched into the cache under build.")
+        self.assertEqual(folders, {"camera": checkout / "camera", "share": folders["share"].parent / "share"})
+        self.assertEqual(app.plugin_values["camera"], {"lens": "wide"})
+        files = app.layout.files()
+        self.assertEqual(list(files), ["app.json", "plugins/camera/plugin.json", "plugins/camera/source/init.lua", "plugins/share/plugin.json", "plugins/share/source/init.lua", "source/main.lua"])
+        self.assertEqual(files["plugins/share/source/init.lua"].read_text(), "return 'share'")
+
+        # The development server pushes the plugins of the folders of a repository under their ids, and C++ apps take the same folders.
+        server = haylen.DevelopmentServer(haylen.PackageLayout.of(self.app), {})
+        self.assertEqual(sorted(server.layout.plugins), ["camera", "share"])
+        build = self.scratch / "build"
+        haylen.cpp_plugin_options(self.app, build)
+        self.assertIn(f"set(HAYLEN_PLUGIN_FOLDER_camera [[{(checkout / 'camera').as_posix()}]])", (build / haylen.CPP_PLUGIN_FOLDERS_FILE).read_text())
+
+        output = io.StringIO()
+        listing = haylen.Terminal(output, io.StringIO(), {})
+        listing.log = self.scratch / "haylen.log"
+        with mock.patch.object(haylen, "terminal", listing):
+            haylen.command_plugin_list(haylen.build_parser().parse_args(["plugin", "list", "--app", str(self.app)]))
+        self.assertIn('From the folder "camera" of ../plugins-repository at "main".', output.getvalue())
+
+        # A folder that the repository lacks has no plugin, and one that leads outside the repository through a symbolic link is refused.
+        self.write_app({"camera": {"git": str(repository), "path": "lens"}, "outside": {"git": str(repository), "path": "outside"}})
+        message = self.failure()
+        self.assertIn(f'The key "plugins.camera" names the folder "lens" of `{repository}` at "HEAD", which holds no "plugin.json" at its root.', message)
+        self.assertIn('The key "plugins.outside.path" names the folder "outside" of a git repository, which leads outside the repository. Name a folder inside it, relative to its root, such as "camera".', message)
+
+    def test_plugin_add_takes_a_folder_of_a_repository_as_a_copy_or_a_reference(self):
+        repository = self.make_folders_repository()
+        self.write_app({})
+        haylen.command_plugin_add(haylen.build_parser().parse_args(["plugin", "add", "file://" + str(repository), "--ref", "main", "--path", "camera", "--app", str(self.app)]))
+        haylen.command_plugin_add(haylen.build_parser().parse_args(["plugin", "add", "file://" + str(repository), "--path", "share", "--reference", "--app", str(self.app)]))
+        listed = json.loads((self.app / "app.json").read_text())["plugins"]
+        self.assertEqual(listed["share"], {"git": "file://" + str(repository), "path": "share"})
+        self.assertEqual((self.app / "plugins" / "camera" / "source" / "init.lua").read_text(), "return 'camera'")
+        self.assertFalse((self.app / "plugins" / "share").exists())
+
+        for path, sentence in (
+            ("outside", 'The option "--path" names the folder "outside" of a git repository, which leads outside the repository.'),
+            ("../camera", 'The option "--path" names the folder "../camera" of a git repository, which leads outside the repository.'),
+            ("lens", f'The folder "lens" of the repository `file://{repository}` is not a plugin, because it holds no "plugin.json".'),
+        ):
+            with self.subTest(path=path), self.assertRaises(haylen.BuildError) as raised:
+                haylen.command_plugin_add(haylen.build_parser().parse_args(["plugin", "add", "file://" + str(repository), "--path", path, "--reference", "--app", str(self.app)]))
+            self.assertIn(sentence, str(raised.exception))
+        with self.assertRaisesRegex(haylen.BuildError, 'holds no "plugin.json" at its root. Name the plugin folder inside it with "--path", such as "--path camera".'):
+            haylen.command_plugin_add(haylen.build_parser().parse_args(["plugin", "add", "file://" + str(repository), "--app", str(self.app)]))
+        with self.assertRaisesRegex(haylen.BuildError, 'The option "--path" names the plugin folder inside a git repository, and a plugin folder is no repository.'):
+            haylen.command_plugin_add(haylen.build_parser().parse_args(["plugin", "add", str(repository / "camera"), "--path", "camera", "--app", str(self.app)]))
+
     def test_every_problem_of_the_entries_names_its_key(self):
         with self.assertRaises(haylen.BuildError) as raised:
-            haylen.read_plugin_references(self.app, {"Camera": {}, "ads": [], "maps": {"path": "../maps", "git": "https://example.com/maps.git"}, "share": {"ref": "main"}, "cloud": {"greeting": "Hi", "path": 3, "parameters": []}})
+            haylen.read_plugin_references(self.app, {"Camera": {}, "ads": [], "maps": {"path": "../maps", "git": "https://example.com/maps.git"}, "charts": {"path": "/charts", "git": "https://example.com/charts.git"}, "share": {"ref": "main"}, "cloud": {"greeting": "Hi", "path": 3, "parameters": []}})
         message = str(raised.exception)
         for sentence in (
             'The key "plugins.Camera" must be the id of a plugin in "dash-case", such as "camera-scanner".',
             'The key "plugins.ads" must be an object with the optional keys "path", "git", "ref", "parameters", such as {"path": "../plugins/ads", "parameters": {}}.',
-            'The key "plugins.maps" names both a "path" and a "git" repository. Keep the one that the plugin comes from.',
+            'The key "plugins.maps.path" names the folder "../maps" of a git repository, which leads outside the repository. Name a folder inside it, relative to its root, such as "camera".',
+            'The key "plugins.charts.path" names the folder "/charts" of a git repository, which leads outside the repository.',
             'The key "plugins.share.ref" picks a branch, tag or commit of a git repository, so it needs "git".',
             'The key "plugins.cloud.greeting" is not a key of a plugin entry, which takes "path", "git", "ref", "parameters".',
             'The key "plugins.cloud.path" must be a text.',

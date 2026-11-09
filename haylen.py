@@ -39,7 +39,7 @@ import webbrowser
 import xml.etree.ElementTree
 import zipfile
 from collections.abc import Mapping
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Callable, Iterator, TextIO
 
 # The tool stops here on an older Python, so the rest of the file keeps to the grammar that Python reads far enough to run this check.
@@ -2583,7 +2583,7 @@ GIT_REMOTE = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://.+|[A-Za-z0-9._-]+@[A-Za-z0-
 
 @dataclasses.dataclass(frozen=True)
 class PluginReference:
-    """A plugin that `app.json` lists, with where it comes from and the values of its parameters. Without `path` and `git` it is `plugins/<id>/` of the app. A `path` is absolute or relative to the app folder, and `git` is a repository at `ref`, a branch, tag or commit, `HEAD` when left out, which `haylen.py` fetches into a cache under `build/`."""
+    """A plugin that `app.json` lists, with where it comes from and the values of its parameters. Without `path` and `git` it is `plugins/<id>/` of the app. A `path` alone is absolute or relative to the app folder. A `git` is a repository at `ref`, a branch, tag or commit, `HEAD` when left out, which `haylen.py` fetches into a cache under `build/`, and a `path` next to it names the plugin folder inside the repository, relative to its root."""
 
     id: str
     path: str | None
@@ -2604,8 +2604,8 @@ class PluginReference:
         for name in ("path", "git", "ref"):
             if name in entry and (not isinstance(entry[name], str) or not entry[name]):
                 problems.append(f'The key "{key}.{name}" must be a text.')
-        if "path" in entry and "git" in entry:
-            problems.append(f'The key "{key}" names both a "path" and a "git" repository. Keep the one that the plugin comes from.')
+        if isinstance(entry.get("path"), str) and "git" in entry and leaves_repository(entry["path"]):
+            problems.append(repository_folder_problem(f'key "{key}.path"', entry["path"]))
         if "ref" in entry and "git" not in entry:
             problems.append(f'The key "{key}.ref" picks a branch, tag or commit of a git repository, so it needs "git".')
         parameters = entry.get("parameters", {})
@@ -2621,6 +2621,8 @@ class PluginReference:
 
     def source(self, app: Path) -> str:
         """Names where the plugin comes from, for the messages and the plugin list."""
+        if self.git is not None and self.path is not None:
+            return f'the folder "{self.path}" of `{self.git}` at "{self.ref or "HEAD"}"'
         if self.git is not None:
             return f'`{self.git}` at "{self.ref or "HEAD"}"'
         if self.path is not None:
@@ -2628,13 +2630,35 @@ class PluginReference:
         return f"`{shown_path(app / 'plugins' / self.id)}`"
 
     def folder(self, app: Path) -> Path:
-        """Returns the plugin folder, fetching a repository first. A local repository path, like `path`, is absolute or relative to the app folder."""
+        """Returns the plugin folder, fetching a repository first. A local repository path, like a `path` without `git`, is absolute or relative to the app folder."""
         if self.git is not None:
             address = self.git if GIT_REMOTE.fullmatch(self.git) else str((app / Path(self.git).expanduser()).resolve())
-            return fetch_plugin_repository(address, self.ref or "HEAD")
+            checkout = fetch_plugin_repository(address, self.ref or "HEAD")
+            return repository_folder(checkout, self.path, f'key "plugins.{self.id}.path"')
         if self.path is not None:
             return (app / Path(self.path).expanduser()).resolve()
         return app / "plugins" / self.id
+
+
+def leaves_repository(path: str) -> bool:
+    """Tells a folder of a repository that names no place inside it from its text alone: an absolute path, in the form of any system, or one that climbs with `..`."""
+    windows = PureWindowsPath(path)
+    return bool(windows.anchor) or ".." in windows.parts
+
+
+def repository_folder_problem(where: str, path: str) -> str:
+    """The sentence that refuses a folder of a repository that leads outside it, for the key or the option `where`."""
+    return f'The {where} names the folder "{path}" of a git repository, which leads outside the repository. Name a folder inside it, relative to its root, such as "camera".'
+
+
+def repository_folder(checkout: Path, path: str | None, where: str) -> Path:
+    """Returns the plugin folder that `path` names inside the checkout of a repository, or the checkout without one. A folder that leads outside the repository, through an absolute path, `..` or a symbolic link, stops with a sentence that names the key or the option `where`."""
+    if path is None:
+        return checkout
+    folder = (checkout / path).resolve()
+    if leaves_repository(path) or not folder.is_relative_to(checkout.resolve()):
+        raise BuildError(repository_folder_problem(where, path))
+    return folder
 
 
 def read_plugin_references(folder: Path, section: object) -> list[PluginReference]:
@@ -2657,7 +2681,7 @@ def read_plugin_references(folder: Path, section: object) -> list[PluginReferenc
 def plugin_folder(app: Path, reference: PluginReference) -> Path:
     """Resolves the folder of a plugin that `app.json` lists and checks that it holds the plugin of that id. A referenced plugin never has a copy in `plugins/<id>/` of the app too, which a player that runs the folder directly would take."""
     copy = app / "plugins" / reference.id
-    names_the_copy = reference.path is not None and reference.folder(app) == copy.resolve()
+    names_the_copy = reference.path is not None and reference.git is None and reference.folder(app) == copy.resolve()
     if reference.is_reference and copy.exists() and not names_the_copy:
         raise BuildError(f'The plugin "{reference.id}" comes from {reference.source(app)}, while the app folder also holds `{shown_path(copy)}`. Delete that folder, or leave "path" and "git" out of "plugins.{reference.id}" to use it.')
 
@@ -6277,7 +6301,7 @@ def write_app_json(folder: Path, document: dict) -> None:
 
 
 def is_git_repository(value: str) -> bool:
-    """Tells a git repository address, such as `https://github.com/haylen-org/<plugin>.git` or `git@github.com:haylen-org/<plugin>.git`, from a folder path."""
+    """Tells a git repository address, such as `https://example.com/plugins.git` or `git@example.com:plugins.git`, from a folder path."""
     return "://" in value or value.startswith("git@") or value.endswith(".git")
 
 
@@ -6290,18 +6314,23 @@ def app_relative(app: Path, path: Path) -> str:
 
 
 def command_plugin_add(args: argparse.Namespace) -> None:
-    """Copies a plugin folder, or the root of a git repository at a branch, tag or commit, into `plugins/` of an app, replacing an earlier copy, or with "--reference" lists the folder or the repository as where the plugin comes from, deleting an earlier copy. Lists the plugin in `app.json` with the defaults of its parameters and an empty text for every required one."""
+    """Copies a plugin folder, or the root or a folder of a git repository at a branch, tag or commit, into `plugins/` of an app, replacing an earlier copy, or with "--reference" lists the folder or the repository as where the plugin comes from, deleting an earlier copy. Lists the plugin in `app.json` with the defaults of its parameters and an empty text for every required one."""
     app = resolve_app(args.app)
     repository = is_git_repository(args.plugin)
     if args.ref and not repository:
         raise BuildError('The option "--ref" picks a branch, tag or commit of a git repository, and a plugin folder has none. Leave the option out for a folder.')
+    if args.path and not repository:
+        raise BuildError('The option "--path" names the plugin folder inside a git repository, and a plugin folder is no repository. Name the plugin folder itself instead.')
 
     local = None if repository and GIT_REMOTE.fullmatch(args.plugin) else Path(args.plugin).expanduser().resolve()
     if repository:
-        source = fetch_plugin_repository(args.plugin if local is None else str(local), args.ref or "HEAD")
-        origin = {"git": args.plugin if local is None else app_relative(app, local), **({"ref": args.ref} if args.ref else {})}
+        checkout = fetch_plugin_repository(args.plugin if local is None else str(local), args.ref or "HEAD")
+        source = repository_folder(checkout, args.path, 'option "--path"')
+        origin = {"git": args.plugin if local is None else app_relative(app, local), **({"ref": args.ref} if args.ref else {}), **({"path": args.path} if args.path else {})}
+        if args.path and not (source / "plugin.json").is_file():
+            raise BuildError(f'The folder "{args.path}" of the repository `{args.plugin}` is not a plugin, because it holds no "plugin.json".')
         if not (source / "plugin.json").is_file():
-            raise BuildError(f'The repository `{args.plugin}` is not a plugin, because it holds no "plugin.json" at its root.')
+            raise BuildError(f'The repository `{args.plugin}` holds no "plugin.json" at its root. Name the plugin folder inside it with "--path", such as "--path camera".')
     else:
         source = local
         origin = {"path": app_relative(app, local)}
@@ -8125,8 +8154,9 @@ def build_parser() -> argparse.ArgumentParser:
     plugin = commands.add_parser("plugin", parents=[common], help="Add plugins to an app, remove them, list them or create a plugin.")
     actions = plugin.add_subparsers(dest="action", required=True, metavar="action")
     add_plugin = actions.add_parser("add", parents=[common], help='Copy a plugin folder or a plugin repository into "plugins" of an app, or reference it, and list it in "app.json".')
-    add_plugin.add_argument("plugin", help="A plugin folder, or the git repository of a plugin, such as https://github.com/haylen-org/<plugin>.git.")
+    add_plugin.add_argument("plugin", help='A plugin folder, or a git repository that holds a plugin at its root or in the folder that "--path" names, such as https://example.com/plugins.git.')
     add_plugin.add_argument("--ref", help="Branch, tag or commit of the repository, its default branch otherwise.")
+    add_plugin.add_argument("--path", help="The plugin folder inside the repository, relative to its root, such as camera, for a repository that holds plugins in folders.")
     add_plugin.add_argument("--reference", action="store_true", help='List the folder or the repository in "app.json" as where the plugin comes from, instead of copying it into the app.')
     add_plugin.add_argument("--app", default=".", help="The app folder, the current folder by default.")
     add_plugin.set_defaults(handler=command_plugin_add)

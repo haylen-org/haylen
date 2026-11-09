@@ -183,7 +183,7 @@ A C++ app is a CMake project, so compare these files with the C++ reference as w
 
 ## Plugins
 
-A plugin lives in `plugins/<id>/` of the app, in a folder anywhere on disk or in a repository of its own, which `app.json` references. Compare it with the reference plugin made with the same id and features:
+A plugin lives in `plugins/<id>/` of the app, in a folder anywhere on disk or in a git repository, at its root or in a folder of it, which `app.json` references. Compare it with the reference plugin made with the same id and features:
 
 ```sh
 diff -ru /tmp/reference-plugin ~/apps/my-game/plugins/my-plugin
@@ -215,8 +215,10 @@ A plugin that the app keeps as a copy in `plugins/<id>/`, but that lives in a fo
 
 ```sh
 haylen plugin add ~/plugins/my-plugin --reference --app ~/apps/my-game
-haylen plugin add https://github.com/haylen-org/share.git --ref 1.0.0 --reference --app ~/apps/my-game
+haylen plugin add https://example.com/plugins.git --ref 1.0.0 --path share --reference --app ~/apps/my-game
 ```
+
+A repository that holds several plugins, one in each folder, takes `--path` with the folder of the plugin, which the entry keeps as `path` next to `git` and `ref`.
 
 An app with a web project of its own takes `loader.js` of the reference, which hands each plugin module the `parameters` of its entry in `config.json`.
 

@@ -23,7 +23,7 @@ A plugin is a folder with three kinds of content:
 
 A plugin needs only the folders of the platforms it supports. The paths in `plugin.json` are relative to the plugin folder and stay inside it, and `haylen.py` checks that each one exists.
 
-An app lists the plugins it uses in its `app.json`, each from its folder `plugins/<id>/`, from a folder anywhere on disk or from a git repository. Then `haylen.py` finds and checks them, puts their Lua code into the package, and brings their native parts into the project of each platform through its generated folder `haylen/`. So an app still never compiles the engine.
+An app lists the plugins it uses in its `app.json`, each from its folder `plugins/<id>/`, from a folder anywhere on disk or from a git repository, at its root or in a folder of it. Then `haylen.py` finds and checks them, puts their Lua code into the package, and brings their native parts into the project of each platform through its generated folder `haylen/`. So an app still never compiles the engine.
 
 These plugins are distributable folders. They are not the engine plugins of `haylen::plugins`, which are the C++ subsystems that make up the engine. Plugins that bring third-party SDKs, such as ads, analytics, crash reporting, sign-in or purchases, live in their own repositories under [haylen-org](https://github.com/haylen-org). Apps add them with `haylen.py plugin add` and the address of the repository, or reference the repository in `app.json`. The engine repository holds no third-party SDK. Instead, [the demo plugin of the test project](#demo-plugin) uses every capability of a plugin, built on the APIs of each platform alone.
 
@@ -97,6 +97,7 @@ The usage descriptions are parameters of the plugin: `cameraUsage`, `microphoneU
 haylen plugin list
 haylen plugin add ads --app ~/apps/my-game
 haylen plugin add https://example.com/plugins/ads.git --ref 1.2.0 --app ~/apps/my-game
+haylen plugin add https://example.com/plugins.git --ref main --path share --app ~/apps/my-game
 haylen plugin add ~/plugins/camera --reference --app ~/apps/my-game
 haylen plugin list --app ~/apps/my-game
 haylen plugin remove ads --app ~/apps/my-game
@@ -104,12 +105,12 @@ haylen plugin remove ads --app ~/apps/my-game
 
 | Command | What it does |
 | --- | --- |
-| `plugin add <folder\|repository> [--ref] [--reference] [--app]` | Copies a plugin into `plugins/<id>/` of the app, replacing an earlier copy, without its git history and build outputs. The source is a plugin folder, or the root of a plugin repository at the branch, tag or commit that `--ref` names, the default branch otherwise. The copy keeps the `.gitignore`, `.editorconfig` and `.clang-format` of the plugin, which never reach the package. With `--reference`, it copies nothing and lists the folder as `path` or the repository as `git` and `ref` instead, as [references](#references) describes, and it deletes an earlier copy. It lists the plugin in `app.json`, with the default of every parameter that has one and an empty text for every required parameter, which the developer fills in. It keeps the values that the app already gives under `parameters`, and names the plugins it requires that the app does not list yet. An entry of `app.json` with a problem, such as a value outside `parameters`, stops it before it changes anything, with the error that every command gives for that entry. |
+| `plugin add <folder\|repository> [--ref] [--path] [--reference] [--app]` | Copies a plugin into `plugins/<id>/` of the app, replacing an earlier copy, without its git history and build outputs. The source is a plugin folder, or a plugin repository at the branch, tag or commit that `--ref` names, the default branch otherwise. The plugin lies at the root of the repository, or in the folder inside it that `--path` names, such as `share`. The copy keeps the `.gitignore`, `.editorconfig` and `.clang-format` of the plugin, which never reach the package. With `--reference`, it copies nothing and lists the folder as `path`, or the repository as `git`, `ref` and `path`, instead, as [references](#references) describes, and it deletes an earlier copy. It lists the plugin in `app.json`, with the default of every parameter that has one and an empty text for every required parameter, which the developer fills in. It keeps the values that the app already gives under `parameters`, and names the plugins it requires that the app does not list yet. An entry of `app.json` with a problem, such as a value outside `parameters`, stops it before it changes anything, with the error that every command gives for that entry. |
 | `plugin remove <id> [--app]` | Deletes the entry of the plugin in `app.json` and its copy in `plugins/<id>/` of the app, while a folder or a repository that the app references stays as it is. |
 | `plugin list [--app]` | Lists the plugins of the app with their version, their platforms, their status and where each one comes from. The status is `Ready`, the problems that keep a plugin from building for any of its platforms, or a folder that `app.json` does not list. |
 | `plugin new <folder> [--id] [--with <features>]` | Makes a plugin, as [create it](#create-it) describes, with the features that `--with` names, separated by commas or given one per `--with`. The option `--id` defaults to the folder name, and it must match it. |
 
-The option `--app` takes an app folder or a sample path from `samples/`, and it defaults to the current folder. The option `--ref` with a plugin folder fails with `The option "--ref" picks a branch, tag or commit of a git repository, and a plugin folder has none. Leave the option out for a folder.`.
+The option `--app` takes an app folder or a sample path from `samples/`, and it defaults to the current folder. The option `--ref` with a plugin folder fails with `The option "--ref" picks a branch, tag or commit of a git repository, and a plugin folder has none. Leave the option out for a folder.`. The option `--path` with a plugin folder fails the same way, and a folder of `--path` that leads outside the repository, as an absolute path, through `..` or through a symbolic link, fails with `The option "--path" names the folder "../share" of a git repository, which leads outside the repository. Name a folder inside it, relative to its root, such as "camera".`.
 
 ## plugin.json
 
@@ -271,8 +272,9 @@ The library takes the id of the plugin as its name. Its init function takes the 
 
 Before `run` builds for a platform, `haylen.py` loads every plugin that `app.json` lists from where its entry takes it. It checks each `plugin.json` against this format, and the values of the app against its parameters for that platform. The player of this machine checks them for this desktop. The tool fails with every problem at once, each with its file and its key. These are the problems:
 
-- an entry with an unknown key, a `path`, `git` or `ref` that is no text, `parameters` that are no object, both a `path` and a `git` repository, or a `ref` without `git`;
-- an id whose folder, or the folder or repository that its entry names, has no `plugin.json`;
+- an entry with an unknown key, a `path`, `git` or `ref` that is no text, `parameters` that are no object, or a `ref` without `git`;
+- a `path` next to `git` that leads outside the repository, as an absolute path, through `..` or through a symbolic link;
+- an id whose folder, or the folder, repository or folder of a repository that its entry names, has no `plugin.json`;
 - a `plugin.json` whose `id` differs from the key of its entry;
 - a referenced plugin whose app still holds a copy in `plugins/<id>/`;
 - a repository that git cannot fetch at its `ref`;
@@ -301,7 +303,7 @@ Plugins load in the order of `app.json`, except that every plugin loads after th
         "cloud": {"parameters": {"servicesPlist": "platform/cloud/Services-Info.plist", "servicesJson": "platform/cloud/services.json"}},
         "cloud-analytics": {},
         "camera": {"path": "../plugins/camera", "parameters": {"cameraUsage": "Scans codes."}},
-        "share": {"git": "https://github.com/haylen-org/share.git", "ref": "1.0.0"}
+        "share": {"git": "https://example.com/plugins.git", "ref": "1.0.0", "path": "share"}
     }
 }
 ```
@@ -310,8 +312,8 @@ The key `plugins` maps the id of every plugin that the app uses to its entry, an
 
 | Key | Value |
 | --- | --- |
-| `path` | The folder of the plugin, absolute or relative to the app folder. |
-| `git` | The address of the git repository of the plugin, which holds `plugin.json` at its root. A local repository is a path, absolute or relative to the app folder. |
+| `path` | The folder of the plugin, absolute or relative to the app folder. Next to `git`, it is the folder of the plugin inside the repository, relative to its root, which never leads outside the repository. |
+| `git` | The address of the git repository of the plugin, which holds `plugin.json` at its root, or in the folder that `path` names. A local repository is a path, absolute or relative to the app folder. |
 | `ref` | The branch, tag or commit of `git`, `HEAD` of the repository when it is left out. |
 | `parameters` | The values of the parameters of the plugin. |
 
@@ -321,11 +323,11 @@ A `file` parameter is a path relative to the app folder. Files such as `Services
 
 ### References
 
-A plugin that lives outside the app, such as one that several apps share or one that its author works on next to an app, stays where it is. The entry of `app.json` names its folder with `path`, or its repository with `git` and `ref`. The command `plugin add` with `--reference` writes such an entry, with the path relative to the app folder:
+A plugin that lives outside the app, such as one that several apps share or one that its author works on next to an app, stays where it is. The entry of `app.json` names its folder with `path`, or its repository with `git` and `ref`. A repository that holds several plugins, one in each folder, adds `path` with the folder of the plugin, so the repository has one checkout for all of them. The command `plugin add` with `--reference` writes such an entry, with the path relative to the app folder:
 
 ```sh
 haylen plugin add ../plugins/camera --reference
-haylen plugin add https://github.com/haylen-org/share.git --ref 1.0.0 --reference
+haylen plugin add https://example.com/plugins.git --ref 1.0.0 --path share --reference
 ```
 
 Every command of `haylen.py` resolves the references before it builds. It fetches each repository at its `ref` into `build/plugin-repositories/`, in a checkout of its own for each address and ref, once per command. So a branch follows the repository, a tag stays as it was tagged, and the checkout of a full commit never fetches again. A reference and a copy of the same plugin in `plugins/<id>/` of the app stop the build, since a player that runs the folder directly would take the copy.
@@ -1765,7 +1767,7 @@ A plugin lives in a repository of its own, so many apps share it. Plugins that b
 2. **Write the README.** The `README.md` documents the complete Lua API with examples, the setup on each platform and every parameter.
 3. **Declare what the SDK needs.** The `plugin.json` declares the SDK and what it needs from the project: its Swift package pinned to one exact version and its frameworks, its Gradle dependencies, the usage descriptions, entitlements, manifest entries and privacy declarations. Parameters carry the keys of the app, such as `iosAppId` and `androidAppId`. Every native handler checks its [requirements](#requirements) before it calls the SDK.
 4. **Raise the version.** The `version` of `plugin.json` tells apps which release they hold, and `handle.version` and `platform.plugins()` report it while the app runs.
-5. **Tag a release.** Apps add the plugin with `haylen plugin add <repository> --ref <tag>`, or reference the repository at the tag with `--reference`. The command copies the root of the repository at that tag, without its git history and its build outputs. Running it again with a new tag replaces the copy and keeps the values that the app gives.
+5. **Tag a release.** Apps add the plugin with `haylen plugin add <repository> --ref <tag>`, or reference the repository at the tag with `--reference`. The command copies the root of the repository at that tag, or the folder of the plugin that `--path` names in a repository of several plugins, without its git history and its build outputs. Running it again with a new tag replaces the copy and keeps the values that the app gives.
 
 ```sh
 haylen plugin add https://example.com/plugins/store.git --ref 2.1.0 --app ~/apps/my-game
