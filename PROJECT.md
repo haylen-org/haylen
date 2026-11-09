@@ -2322,6 +2322,35 @@ Código e revisão geral:
 - [ ] O `AGENTS.md` com tudo o que for relevante do projeto que mudar nesta rodada.
 - [ ] Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado.
 
+#### BB. Pedidos de 9 de novembro: a engine sem APIs de sistema, ciclo de vida, localização, depuração e correções
+
+Pedido do dono de 09/11/2026: continuar tudo o que faltava do grupo BA e resolver os pontos abaixo, com as mesmas regras de sempre (sem gambiarras, sem caminhos de reserva, sem código legado, código limpo e legível em inglês, comentários raros, frases sem ponto e vírgula, um arquivo por classe, helpers para o que se repete, tudo testado em todas as plataformas e documentado).
+
+A engine sem APIs de sistema:
+
+- [ ] A Haylen é só a engine: ela guarda o que todo app precisa para rodar (a janela e as telas, o desenho, a entrada de teclado, mouse, toque, controles e controles remotos, o texto com o teclado do sistema e a área de transferência que a edição usa, a saída de áudio com a sessão de áudio, o vídeo, os arquivos, o armazenamento, a rede, o ciclo de vida, a localização de idioma, a área segura e a acessibilidade). Tudo o que fala com recursos opcionais do aparelho ou do sistema sai da engine e vira plugin: localização (GPS), câmera, microfone, sensores de movimento do aparelho, bluetooth, notificações, vibração, diálogos nativos e seletores de arquivo e de fotos, abrir links e compartilhar, e as permissões de cada um deles, que passam a ser pedidas pelo próprio plugin pelo contrato comum de estados (`granted`, `prompt`, `denied`, `unknown`, `unsupported`). A engine fica só com as permissões que ela mesma usa (a rede local do servidor de desenvolvimento e as telas externas). Remover da engine, dos templates, das referências, dos testes do projeto de testes e dos docs tudo o que sair, sem nomes antigos, e documentar a fronteira no `AGENTS.md`.
+- [ ] Os plugins que nascem dessa separação ficam na pasta de plugins comuns do dono, fora deste repositório, cada um com o formato atual, o README no padrão da Haylen e testado em todas as plataformas que declara, e só são publicados com o aval do dono.
+- [ ] Um sistema de plugins mais robusto: o `app.json` referencia um plugin pela pasta do projeto (`plugins/<id>/`), por um caminho em qualquer outro lugar do disco ou por um repositório git com uma referência, e o `haylen.py` resolve, valida e leva cada um para o build de todas as plataformas da mesma forma.
+
+Ciclo de vida:
+
+- [ ] Revisar o ciclo de vida inteiro em todas as plataformas e expor tudo para o app em C++ e em Lua: o do sistema (memória baixa, mudança de idioma, de fuso, de tema claro e escuro, de rede, de bateria e de economia de energia onde o sistema informa), o do app (primeiro plano, segundo plano, inativo, suspenso, encerrando, aberto por link) e o da tela (visível, escondida, coberta por interface nativa, mudança de tamanho, de orientação e de tela). Apps que tocam áudio em segundo plano, como um player de música, continuam funcionando quando o app declara isso, com o modo de áudio de fundo de cada plataforma, o controle pela tela de bloqueio e pelos fones onde o sistema oferece, e a documentação diz o que cada plataforma permite.
+
+Localização de idioma:
+
+- [ ] Um sistema de internacionalização nativo na engine: textos por idioma, escolha automática pelo idioma do sistema ou manual pelo app, em todas as plataformas, aceitando códigos com ou sem região e com traço ou sublinhado (`en`, `en-US`, `en_US`, `pt`, `pt-BR`, `pt_BR`), com idioma de reserva quando o escolhido não existe e, sem reserva, o primeiro da lista. Revisar o que já existe em `haylen::localization` e `haylen.localization` e completar o que faltar, com testes e documentação.
+
+Ferramentas de desenvolvimento:
+
+- [ ] O console aberto pela tecla `d` do terminal e o inspector: hoje travam, misturam a saída, não explicam os comandos, o inspector não funciona, o toque não funciona e a janela não arrasta. Pesquisar como as ferramentas de desenvolvimento das engines maduras funcionam e manter só o que for útil no dia a dia e funcionar em todas as plataformas, ou remover. O que ficar precisa ser claro, bonito e documentado.
+- [ ] A linha cinza de progresso do `haylen.py` corta o fim do texto: o corte com reticências fica no meio da frase, como nas ferramentas maduras, para o começo e o fim continuarem visíveis.
+- [ ] O `haylen.py` e as ferramentas em Python seguem o melhor ferramental de Python: Ruff para formatar e verificar o código, uv para as dependências e para rodar, arquivos `__init__.py` vazios e nada de `TYPE_CHECKING`.
+
+Correções:
+
+- [ ] Depois do splash, todo app dá uma piscada: achar a causa na engine e corrigir em todas as plataformas, com teste.
+- [ ] Diálogo com muitos botões: os botões passam da borda do diálogo e o primeiro fica cortado (visto no app de exemplo de transporte). Os botões de um diálogo nunca passam da borda: quebram de linha ou empilham quando não cabem, como nos apps bem desenhados, com teste e captura antes e depois.
+
 #### AT. Documentação
 
 - [x] Documentação organizada por módulo da engine (núcleo, gráficos, 2D com cada módulo, UI, áudio, input, plataforma, rede, conteúdo, ferramentas), com um índice claro. Os guias ficam numa pasta por módulo (`docs/core`, `docs/graphics`, `docs/2d`, `docs/ui`, `docs/audio`, `docs/input`, `docs/platform`, `docs/network`, `docs/content`, `docs/tools`), o índice único é `docs/README.md` com os guias e as referências de cada módulo, cada módulo 2D ganhou o seu guia (nós, animação, luz, navegação, espacial e geração procedural), e um verificador de links não acha nenhum link quebrado.
