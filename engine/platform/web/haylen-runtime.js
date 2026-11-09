@@ -2625,9 +2625,10 @@ Module.haylen = Module.haylen || {};
             unlockAudio();
         });
         window.addEventListener("focus", reportTimeZone);
-        // A browser that freezes a hidden page, as Chromium does with the Page Lifecycle API, may discard it without another event, so the files become durable before it freezes too.
+        // A browser that freezes a hidden page, as Chromium does with the Page Lifecycle API, may discard it without another event, so the files become durable before it freezes too, and a page that resumes takes the state that its visibility tells.
         window.addEventListener("pagehide", () => Module._haylen_web_page_hidden());
         document.addEventListener("freeze", () => Module._haylen_web_page_hidden());
+        document.addEventListener("resume", () => Module._haylen_web_visibility(document.visibilityState === "visible" ? 1 : 0));
         window.addEventListener("online", reportNetwork);
         window.addEventListener("offline", reportNetwork);
         reportNetwork();
