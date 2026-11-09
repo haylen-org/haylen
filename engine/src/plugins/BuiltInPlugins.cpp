@@ -47,7 +47,6 @@ void BuiltInPlugins::registerAll(PluginRegistry& registry, platform::Host& host)
     registry.add(std::make_unique<Particles2DPlugin>());
     registry.add(std::make_unique<AudioPlugin>());
     registry.add(std::make_unique<VideoPlugin>(host));
-    registry.add(std::make_unique<Physics2DPlugin>());
     registry.add(std::make_unique<TiledPlugin>());
     registry.add(std::make_unique<Nodes2DPlugin>());
     registry.add(std::make_unique<Spatial2DPlugin>());
@@ -59,6 +58,7 @@ void BuiltInPlugins::registerAll(PluginRegistry& registry, platform::Host& host)
     registry.add(std::make_unique<DebugPlugin>(host.getDevelopmentSession()));
     registry.add(std::make_unique<HotReloadPlugin>(host.getDevelopmentSession()));
     registry.add(std::make_unique<DebuggerPlugin>(host.getDevelopmentSession()));
+    registry.add(std::make_unique<Physics2DPlugin>());
     registry.add(std::make_unique<UiPlugin>());
     registry.add(std::make_unique<ReturnHoldPlugin>(host));
     registry.add(std::make_unique<NetPlugin>(host.getNetworkRequirement(), host.getBlockedReason()));
