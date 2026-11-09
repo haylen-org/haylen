@@ -1,6 +1,7 @@
 #include "haylen/2d/nodes/NodeSerializer.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <exception>
 #include <stdexcept>
 #include <utility>
@@ -41,6 +42,19 @@ float NodeSerializer::number(const core::Json& object, std::string_view key, flo
         throw std::invalid_argument(describe(node, part, key) + " must be a number.");
     }
     return found->get<float>();
+}
+
+// A whole number that a field of the type `int` holds, such as a layer, so a fraction never truncates and no number wraps.
+int NodeSerializer::integer(const core::Json& object, std::string_view key, int fallback, std::string_view node, std::string_view part) {
+    const auto found = object.find(key);
+    if (found == object.end()) {
+        return fallback;
+    }
+    const bool fits = found->is_number_unsigned() ? std::in_range<int>(found->get<std::uint64_t>()) : found->is_number_integer() && std::in_range<int>(found->get<std::int64_t>());
+    if (!fits) {
+        throw std::invalid_argument(describe(node, part, key) + " must be an integer from -2147483648 to 2147483647.");
+    }
+    return found->get<int>();
 }
 
 bool NodeSerializer::flag(const core::Json& object, std::string_view key, bool fallback, std::string_view node, std::string_view part) {
@@ -147,7 +161,7 @@ NodeProperties NodeSerializer::readProperties(const core::Json& description, con
         .scale = {number(description, "scaleX", 1.0F, path), number(description, "scaleY", 1.0F, path)},
         .color = color(description, "color", math::Color::white(), path),
         .visible = flag(description, "visible", true, path),
-        .layer = static_cast<int>(number(description, "layer", 0.0F, path)),
+        .layer = integer(description, "layer", 0, path),
         .depth = number(description, "depth", 0.0F, path),
         .sortOffset = number(description, "sortOffset", 0.0F, path),
     };
@@ -178,7 +192,7 @@ NodeContent NodeSerializer::readContent(const core::Json& description, const std
             .rotation = number(*found, "rotation", 0.0F, path, "sprite"),
             .color = color(*found, "color", math::Color::white(), path, "sprite"),
             .flip = {.horizontal = flag(*found, "flipHorizontal", false, path, "sprite"), .vertical = flag(*found, "flipVertical", false, path, "sprite")},
-            .order = {.layer = static_cast<int>(number(*found, "layer", 0.0F, path, "sprite"))},
+            .order = {.layer = integer(*found, "layer", 0, path, "sprite")},
         };
         const graphics::Texture::Options options = textureOptions(*found, path, "sprite");
         if (!resolve) {
@@ -216,7 +230,7 @@ NodeContent NodeSerializer::readContent(const core::Json& description, const std
             style.align = *alignment;
         }
         const std::string font = text(*found, "font", path, "text");
-        NodeContent::Text block{.content = text(*found, "text", path, "text"), .style = style, .order = {.layer = static_cast<int>(number(*found, "layer", 0.0F, path, "text"))}};
+        NodeContent::Text block{.content = text(*found, "text", path, "text"), .style = style, .order = {.layer = integer(*found, "layer", 0, path, "text")}};
         if (!resolve) {
             return {};
         }
@@ -236,7 +250,7 @@ NodeContent NodeSerializer::readContent(const core::Json& description, const std
             .pivot = {number(*found, "pivotX", 0.5F, path, "frame"), number(*found, "pivotY", 0.5F, path, "frame")},
             .color = color(*found, "color", math::Color::white(), path, "frame"),
             .borderScale = number(*found, "borderScale", 1.0F, path, "frame"),
-            .order = {.layer = static_cast<int>(number(*found, "layer", 0.0F, path, "frame"))},
+            .order = {.layer = integer(*found, "layer", 0, path, "frame")},
         };
         const math::Rect source = rect(*found, "source", path, "frame");
         graphics2d::NineSlice::Fill fill = graphics2d::NineSlice::Fill::Stretch;

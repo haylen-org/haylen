@@ -59,6 +59,7 @@ class NodeSerializer final {
     static void requireKeys(const core::Json& object, std::string_view node, std::string_view part, std::initializer_list<std::span<const std::string_view>> allowed);
     [[nodiscard]] static std::string describe(std::string_view node, std::string_view part, std::string_view key);
     [[nodiscard]] static float number(const core::Json& object, std::string_view key, float fallback, std::string_view node, std::string_view part = {});
+    [[nodiscard]] static int integer(const core::Json& object, std::string_view key, int fallback, std::string_view node, std::string_view part = {});
     [[nodiscard]] static bool flag(const core::Json& object, std::string_view key, bool fallback, std::string_view node, std::string_view part = {});
     [[nodiscard]] static std::string text(const core::Json& object, std::string_view key, std::string_view node, std::string_view part = {});
     [[nodiscard]] static math::Color color(const core::Json& object, std::string_view key, math::Color fallback, std::string_view node, std::string_view part = {});

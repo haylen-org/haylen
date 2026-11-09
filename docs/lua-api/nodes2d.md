@@ -112,7 +112,7 @@ Every error names the node by its path of names, written here as `<path>`, and t
 
 - `The description of the node "<path>" must be an object.` and `The sprite of the node "<path>" must be an object.`, with `text` and `frame` in place of `sprite`.
 - `The key "<key>" of the node "<path>" is unknown.`
-- `The key "<key>" of the node "<path>" must be <kind>.` for a value of the wrong type, where `<kind>` is `a number`, `true or false`, `a string`, `a color such as "#FFFFFFFF"`, `a list of two numbers` or `a list of four numbers: x, y, width and height`.
+- `The key "<key>" of the node "<path>" must be <kind>.` for a value of the wrong type, where `<kind>` is `a number`, `an integer from -2147483648 to 2147483647` for a `layer`, `true or false`, `a string`, `a color such as "#FFFFFFFF"`, `a list of two numbers` or `a list of four numbers: x, y, width and height`.
 - `The key "filter" of the sprite of the node "<path>" must be "nearest" or "linear".` and `The key "wrap" of the sprite of the node "<path>" must be "clamp", "repeat" or "mirror".`, the same for frames.
 - `The key "children" of the node "<path>" must be a list of descriptions.`
 - `The node "<path>" shows more than one of "sprite", "text", "frame" and "particles".`

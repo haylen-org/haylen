@@ -294,6 +294,8 @@ TEST_F(NodeSerializerTest, NamesTheNodeAndTheKeyOfBadDescriptions) {
     // clang-format on
     EXPECT_EQ(message(R"({"name": "tank", "children": [{"name": "turret", "speed": 4}]})"), "The key \"speed\" of the node \"tank/turret\" is unknown.");
     EXPECT_EQ(message(R"({"name": "tank", "x": "left"})"), "The key \"x\" of the node \"tank\" must be a number.");
+    EXPECT_EQ(message(R"({"name": "tank", "layer": 1e20})"), "The key \"layer\" of the node \"tank\" must be an integer from -2147483648 to 2147483647.");
+    EXPECT_EQ(message(R"({"name": "tank", "sprite": {"texture": "a.png", "layer": 2.5}})"), "The key \"layer\" of the sprite of the node \"tank\" must be an integer from -2147483648 to 2147483647.");
     EXPECT_EQ(message(R"({"name": "tank", "sprite": {"texture": "a.png", "color": 3}})"), "The key \"color\" of the sprite of the node \"tank\" must be a color such as \"#FFFFFFFF\".");
     EXPECT_EQ(message(R"({"name": "tank", "sprite": {}})"), "The sprite of the node \"tank\" needs the path of its texture.");
     EXPECT_EQ(message(R"({"name": "tank", "sprite": {"texture": "a.png"}, "particles": "fire.particles"})"), "The node \"tank\" shows more than one of \"sprite\", \"text\", \"frame\" and \"particles\".");
