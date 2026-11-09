@@ -72,6 +72,8 @@ TEST_F(TextLuaTest, InspectsFontsAndBuildsFamilies) {
     EXPECT_EQ(lua("local glyph = font:glyph('A') return tostring(glyph.visible) .. ' ' .. tostring(glyph.advance > 0) .. ' ' .. glyph.page .. ' ' .. tostring(font:page(1).width >= 512)"), "true true 1 true");
     EXPECT_EQ(lua("local shaped = font:shape('AV', {size = 96}) return font:toDistance(4, 32) == 2 * font:toDistance(2, 32) and #shaped == 2 and shaped[2].cluster == 2 and shaped[1].advance <= font:glyph('A').advance * 2"), "true");
     EXPECT_NE(lua("font:glyph('AB')").find("expected one character or a code point"), std::string::npos);
+    EXPECT_NE(lua("font:hasGlyph(-2147483648)").find("expected a code point from 0 to 0x10FFFF"), std::string::npos);
+    EXPECT_NE(lua("font:glyph(0x110000)").find("expected a code point from 0 to 0x10FFFF"), std::string::npos);
     EXPECT_NE(lua("font:page(2)").find("page out of range"), std::string::npos);
 
     lua("pixel = assets.font('fonts/pixel.fnt') grid = graphics.newGridFont(assets.texture('images/coin.png'), {characters = 'ABCDEFGH', cellWidth = 8, cellHeight = 8, spacing = {0, 0}})");

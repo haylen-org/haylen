@@ -36,7 +36,9 @@ std::shared_ptr<text::FontFamily> FontLua::readFamily(lua_State* L, int index) {
 
 char32_t FontLua::readCharacter(lua_State* L, int index) {
     if (lua_type(L, index) == LUA_TNUMBER) {
-        return static_cast<char32_t>(luaL_checkinteger(L, index));
+        const lua_Integer codePoint = luaL_checkinteger(L, index);
+        luaL_argcheck(L, codePoint >= 0 && codePoint <= 0x10FFFF, index, "expected a code point from 0 to 0x10FFFF");
+        return static_cast<char32_t>(codePoint);
     }
     const std::u32string decoded = core::Utf8::decode(lua::Stack::read<std::string_view>(L, index));
     luaL_argcheck(L, decoded.size() == 1, index, "expected one character or a code point");

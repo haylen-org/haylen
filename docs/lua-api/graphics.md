@@ -825,7 +825,7 @@ scene.push({
 
 ### font:hasGlyph(character)
 
-Returns whether the font has a glyph for `character`, given as a string of one character or as a code point. A longer string raises a `bad argument` error that ends with `expected one character or a code point`.
+Returns whether the font has a glyph for `character`, given as a string of one character or as a code point. A longer string raises a `bad argument` error that ends with `expected one character or a code point`, and a number outside the code points of Unicode raises one that ends with `expected a code point from 0 to 0x10FFFF`.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
