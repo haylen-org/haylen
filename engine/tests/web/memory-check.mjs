@@ -5,7 +5,8 @@ const target = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank
 const socket = new WebSocket(target.webSocketDebuggerUrl);
 const pending = new Map();
 const sessions = new Set([""]);
-const requests = new Set();
+// The requests that run, by the id that the browser gives each one across the page and its workers, with the bytes that their data brought so far.
+const requests = new Map();
 const result = { receivedBytes: 0, peakWasmBytes: 0, buffersAfterCollection: 0, downloadedMedium: false, finished: false, failure: null, log: [] };
 let id = 0;
 
@@ -32,12 +33,16 @@ socket.onmessage = (event) => {
     } else if (message.method === "Target.attachedToTarget") {
         follow(message.params.sessionId);
     } else if (message.method === "Network.requestWillBeSent") {
-        requests.add(`${message.sessionId ?? ""}:${message.params.requestId}`);
+        requests.set(message.params.requestId, 0);
+    } else if (message.method === "Network.dataReceived") {
+        requests.set(message.params.requestId, (requests.get(message.params.requestId) ?? 0) + message.params.encodedDataLength);
     } else if (message.method === "Network.loadingFinished") {
-        requests.delete(`${message.sessionId ?? ""}:${message.params.requestId}`);
+        requests.delete(message.params.requestId);
         result.receivedBytes += message.params.encodedDataLength;
     } else if (message.method === "Network.loadingFailed") {
-        requests.delete(`${message.sessionId ?? ""}:${message.params.requestId}`);
+        // The browser may report a request whose whole body the page read as cancelled, so the bytes that its data brought still count.
+        result.receivedBytes += requests.get(message.params.requestId) ?? 0;
+        requests.delete(message.params.requestId);
     } else if (message.method === "Runtime.consoleAPICalled") {
         const text = message.params.args.map((arg) => arg.value ?? arg.description).join(" ");
         result.log.push(text);
@@ -69,7 +74,7 @@ while (!result.finished && !result.failure && Date.now() < deadline) {
     await new Promise((resolve) => setTimeout(resolve, 250));
 }
 
-// The page may log that the download ended before the debugging protocol reports the end of its last requests, which a worker made, so the received bytes count once no request runs.
+// The page may log that the download ended before the debugging protocol reports the end of its last requests, so the received bytes count once no request runs.
 const settled = Date.now() + 10000;
 while (result.finished && requests.size > 0 && Date.now() < settled) {
     await new Promise((resolve) => setTimeout(resolve, 100));
