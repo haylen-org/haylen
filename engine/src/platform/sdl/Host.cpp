@@ -133,8 +133,13 @@ void Host::setFullscreen(bool value, std::function<void(Permission::Answer answe
 #endif
 }
 
-// Leaving fullscreen forgets the exclusive mode, so a fullscreen that the system starts covers the display at the mode of the desktop, and restores the style of the window, which may have lost its decorations or its fixed size. A window that leaves only on its way to fullscreen on another display keeps both.
+// Leaving fullscreen forgets the exclusive mode, so a fullscreen that the system starts covers the display at the mode of the desktop, and restores the style of the window, which may have lost its decorations or its fixed size. A window that leaves only on its way to fullscreen on another display keeps both, and covers that display once it left.
 void Host::followFullscreen(bool entered) {
+    if (!entered && fullscreenRequest.isLeaving()) {
+        coverDisplay(fullscreenRequest.takeDestination());
+        return;
+    }
+
     if (!entered && !fullscreenRequest.isEntering()) {
         SDL_SetWindowFullscreenMode(runtime.getWindow().get(), nullptr);
         applyStyle();
@@ -173,7 +178,7 @@ std::optional<SDL_DisplayMode> Host::findMode(SDL_DisplayID display, const Displ
     return found;
 }
 
-// A fullscreen window leaves fullscreen before it moves, and the move ends before the window covers the display, so the fullscreen lands on the display that the app chose.
+// A fullscreen window leaves fullscreen before it moves, and covers the display that the app chose once SDL reports that it left, so the frame thread never waits for the animation of the system. A hidden window takes its fullscreen only when it shows, so it moves at once.
 void Host::enterDesktopFullscreen(const FullscreenTarget& target, std::function<void(Permission::Answer answer)> callback) {
     SDL_Window* window = runtime.getWindow().get();
     const SDL_DisplayID display = sdl::Window::findDisplay(target.display);
@@ -189,17 +194,31 @@ void Host::enterDesktopFullscreen(const FullscreenTarget& target, std::function<
         return;
     }
 
-    fullscreenRequest.begin(true, std::move(callback));
-    if (isFullscreen()) {
-        SDL_SetWindowFullscreen(window, false);
-        SDL_SyncWindow(window);
+    FullscreenRequest::Destination destination{.display = display, .mode = exclusive, .displayId = target.display.id};
+    const bool hidden = (SDL_GetWindowFlags(window) & SDL_WINDOW_HIDDEN) != 0U;
+    if (!isFullscreen() || hidden) {
+        fullscreenRequest.begin(true, std::move(callback));
+        coverDisplay(destination);
+        return;
     }
-    if (SDL_GetDisplayForWindow(window) != display) {
-        SDL_SetWindowPosition(window, static_cast<int>(SDL_WINDOWPOS_CENTERED_DISPLAY(display)), static_cast<int>(SDL_WINDOWPOS_CENTERED_DISPLAY(display)));
-        SDL_SyncWindow(window);
+
+    fullscreenRequest.beginLeaving(std::move(destination), std::move(callback));
+    if (!SDL_SetWindowFullscreen(window, false)) {
+        fullscreenRequest.fail({.state = Permission::State::Unsupported, .message = "The window could not leave fullscreen to cover the display \"" + target.display.id + "\". " + SDL_GetError()});
     }
-    if (!SDL_SetWindowFullscreenMode(window, exclusive ? &*exclusive : nullptr) || !SDL_SetWindowFullscreen(window, true)) {
-        fullscreenRequest.fail({.state = Permission::State::Unsupported, .message = "The window could not go fullscreen on the display \"" + target.display.id + "\". " + SDL_GetError()});
+}
+
+// SDL keeps the display of a move that the system has not finished for the fullscreen that follows it, so the window covers the display it moves to.
+void Host::coverDisplay(const FullscreenRequest::Destination& destination) {
+    SDL_Window* window = runtime.getWindow().get();
+    if (SDL_GetDisplayForWindow(window) != destination.display) {
+        const int centered = static_cast<int>(SDL_WINDOWPOS_CENTERED_DISPLAY(destination.display));
+        SDL_SetWindowPosition(window, centered, centered);
+    }
+
+    const SDL_DisplayMode* mode = destination.mode ? &*destination.mode : nullptr;
+    if (!SDL_SetWindowFullscreenMode(window, mode) || !SDL_SetWindowFullscreen(window, true)) {
+        fullscreenRequest.fail({.state = Permission::State::Unsupported, .message = "The window could not go fullscreen on the display \"" + destination.displayId + "\". " + SDL_GetError()});
         return;
     }
     fullscreenRequest.reach(isFullscreen());

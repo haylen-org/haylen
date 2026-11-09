@@ -71,7 +71,7 @@ events.on('displayDisconnected', describe)
 
 ## The window on a display
 
-On a desktop the window moves among the displays. The function `window.place` puts it on a display by its id or its number, and `window.setFullscreen(true, {display = id})` covers a display at the mode that the desktop runs in. A mode of the display makes the fullscreen exclusive: the display runs in that mode, such as a lower resolution or another refresh rate, while the window holds it, and goes back to its own mode when the window leaves fullscreen. A window that moves to a display of another scale keeps its size in points, and its framebuffer follows the scale.
+On a desktop the window moves among the displays. The function `window.place` puts it on a display by its id or its number, and `window.setFullscreen(true, {display = id})` covers a display at the mode that the desktop runs in. A mode of the display makes the fullscreen exclusive: the display runs in that mode, such as a lower resolution or another refresh rate, while the window holds it, and goes back to its own mode when the window leaves fullscreen. A window that already covers a display first leaves fullscreen, then moves and covers the new display, and the promise resolves once it covers it, while the frames go on during the animation of the system. A window that moves to a display of another scale keeps its size in points, and its framebuffer follows the scale.
 
 | Platform | Placement | Fullscreen on a display | Exclusive mode |
 | --- | --- | --- | --- |

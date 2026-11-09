@@ -68,6 +68,7 @@ class Host final : public platform::NativeHost {
     [[nodiscard]] static SDL_SystemCursor toSystemCursor(Cursor cursor) noexcept;
     [[nodiscard]] static std::optional<SDL_DisplayMode> findMode(SDL_DisplayID display, const Display::Mode& mode);
     void enterDesktopFullscreen(const FullscreenTarget& target, std::function<void(Permission::Answer answer)> callback);
+    void coverDisplay(const FullscreenRequest::Destination& destination);
 
     Runtime& runtime;
     FullscreenRequest fullscreenRequest;

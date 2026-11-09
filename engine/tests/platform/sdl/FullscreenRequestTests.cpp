@@ -51,6 +51,41 @@ TEST_F(FullscreenRequestTest, DeniesTheRequestThatANewerOneReplaces) {
     EXPECT_EQ(answers[1].state, Permission::State::Granted);
 }
 
+TEST_F(FullscreenRequestTest, CoversAnotherDisplayOnlyAfterTheWindowLeftTheFullscreenItHolds) {
+    FullscreenRequest request;
+    request.beginLeaving({.display = 7, .displayId = "second"}, record());
+    EXPECT_TRUE(request.isLeaving());
+    EXPECT_TRUE(request.isEntering());
+
+    request.reach(true);
+    EXPECT_TRUE(answers.empty());
+
+    const FullscreenRequest::Destination destination = request.takeDestination();
+    EXPECT_EQ(destination.display, 7U);
+    EXPECT_EQ(destination.displayId, "second");
+    EXPECT_FALSE(request.isLeaving());
+    EXPECT_TRUE(request.isPending());
+
+    request.reach(true);
+    ASSERT_EQ(answers.size(), 1U);
+    EXPECT_EQ(answers[0].state, Permission::State::Granted);
+}
+
+TEST_F(FullscreenRequestTest, ForgetsTheDestinationOfARequestThatEnds) {
+    FullscreenRequest request;
+    request.beginLeaving({.display = 7, .displayId = "second"}, record());
+    request.begin(false, record());
+    ASSERT_EQ(answers.size(), 1U);
+    EXPECT_EQ(answers[0].state, Permission::State::Denied);
+    EXPECT_FALSE(request.isLeaving());
+
+    request.beginLeaving({.display = 7, .displayId = "second"}, record());
+    request.fail({.state = Permission::State::Unsupported, .message = "The window could not leave fullscreen."});
+    ASSERT_EQ(answers.size(), 3U);
+    EXPECT_EQ(answers[2].state, Permission::State::Unsupported);
+    EXPECT_FALSE(request.isLeaving());
+}
+
 TEST_F(FullscreenRequestTest, AnswersAFailureOfTheSystem) {
     FullscreenRequest request;
     request.begin(true, record());
