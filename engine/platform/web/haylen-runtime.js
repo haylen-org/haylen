@@ -245,10 +245,10 @@ Module.haylen = Module.haylen || {};
     // The abort controllers of the calls that wait for their handler, so a cancel reaches the handler and its late answer is dropped.
     const pending = new Map();
 
-    // An error with a code keeps its code and data, and any other error fails with the code `exception` and its name in `data.type`, as on the other platforms.
+    // An error whose code is a text keeps its code and data, and any other error fails with the code `exception` and its name in `data.type`, as on the other platforms. A `DOMException` carries a number as its code, a legacy of the DOM that names no failure.
     const describeFailure = function (error) {
         const message = String(error && error.message ? error.message : error);
-        if (error && error.code !== undefined) {
+        if (error && typeof error.code === "string") {
             return { message, code: error.code, data: error.data };
         }
         return { message, code: "exception", data: { type: error && error.name ? error.name : typeof error } };

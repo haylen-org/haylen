@@ -1,0 +1,8 @@
+{
+    "name": "Web Plugins",
+    "identifier": "com.haylen.webplugins",
+    "version": "1.0.0",
+    "plugins": {
+        "page-plugin": {}
+    }
+}

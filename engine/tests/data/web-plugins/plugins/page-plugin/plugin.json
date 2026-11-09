@@ -1,0 +1,12 @@
+{
+    "id": "page-plugin",
+    "name": "Page Plugin",
+    "version": "1.0.0",
+    "description": "Answers the plugin check of the web with what the context of a web module gives a plugin.",
+    "platforms": ["web"],
+    "requires": [],
+    "parameters": {},
+    "web": {
+        "module": "web/page-plugin.js"
+    }
+}

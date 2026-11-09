@@ -1,8 +1,0 @@
-{
-    "name": "Web Requirements",
-    "identifier": "com.haylen.webrequirements",
-    "version": "1.0.0",
-    "plugins": {
-        "page-needs": {}
-    }
-}
