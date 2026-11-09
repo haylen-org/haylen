@@ -26,6 +26,7 @@
 #include "io/OverlayPackage.hpp"
 #include "platform/DevelopmentSession.hpp"
 #include "platform/GraphicsApiOrder.hpp"
+#include "platform/LaunchOptions.hpp"
 #include "platform/LinkRelay.hpp"
 #include "platform/MemoryWarning.hpp"
 #include "platform/Services.hpp"
@@ -58,7 +59,7 @@ void Player::create(int argc, char* argv[], std::unique_ptr<NativeHost> nativeHo
     Process& process = getProcess();
     process.current = std::make_unique<Player>(std::move(nativeHost));
     Player& runtime = *process.current;
-    LaunchOptions options = parseLaunchOptions(argc, argv);
+    LaunchOptions options = LaunchOptions::parse(argc, argv);
 #if defined(__ANDROID__)
     // Android starts apps without a command line, and a debuggable app takes the development server from the intent that launched it.
     if (std::string server = JavaBridge::getDevelopmentServer(); !server.empty()) {
@@ -260,29 +261,6 @@ Player::Process& Player::getProcess() noexcept {
 
 Player& Player::getCurrent() noexcept {
     return *getProcess().current;
-}
-
-// Options other than --dev, --dev-server, --native, --graphics-api and --link come from the system, such as the ones Xcode passes to the macOS apps it launches, and are left to it.
-Player::LaunchOptions Player::parseLaunchOptions(int argc, char* argv[]) {
-    LaunchOptions options;
-    for (int index = 1; index < argc; ++index) {
-        const std::string_view argument = argv[index];
-        if (argument == "--dev") {
-            options.development = true;
-        } else if (argument == "--dev-server" && index + 1 < argc) {
-            options.development = true;
-            options.developmentServer = argv[++index];
-        } else if (argument == "--native" && index + 1 < argc) {
-            options.nativeFolders.emplace_back(argv[++index]);
-        } else if (argument == "--graphics-api" && index + 1 < argc) {
-            options.graphicsApi = argv[++index];
-        } else if (argument == "--link" && index + 1 < argc) {
-            options.link = argv[++index];
-        } else if (!argument.starts_with('-') && options.package.empty()) {
-            options.package = argument;
-        }
-    }
-    return options;
 }
 
 // Reads the package configuration and creates the application, turning any failure into an app that shows the error. A package that opened stays with the failed app, so a restart tries it again, and an app in development restarts as soon as its files change.

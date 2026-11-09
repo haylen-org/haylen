@@ -160,16 +160,6 @@ class Player final {
         std::unique_ptr<DevelopmentSession> development;
     };
 
-    // The package to play, or none for the bundled one, whether it plays in development, which only --dev turns on and shipped apps never pass, the address of the development server that --dev-server gives, the folders where native.load looks first, such as the one haylen.py builds the libraries of an app into, and the graphics API that --graphics-api names, which the web page passes the same way.
-    struct LaunchOptions {
-        std::string package;
-        bool development = false;
-        std::string developmentServer;
-        std::vector<std::string> nativeFolders;
-        std::string graphicsApi;
-        std::string link;
-    };
-
     // What outlives every player of the process: the player that plays, which the frame thread creates when the platform layer asks for the app and destroys when its window closes, the events other threads queue for it and the status the process exits with. It is never destroyed, because an exit() on another thread, such as the one the iOS simulator calls on a background queue when its render server dies, runs the destructors of static objects while the frame thread still plays the app.
     struct Process {
         std::unique_ptr<Player> current;
@@ -184,7 +174,6 @@ class Player final {
 
     [[nodiscard]] static Process& getProcess() noexcept;
     [[nodiscard]] static Player& getCurrent() noexcept;
-    [[nodiscard]] static LaunchOptions parseLaunchOptions(int argc, char* argv[]);
     [[nodiscard]] App load(const std::function<std::shared_ptr<io::Package>()>& open);
     [[nodiscard]] std::vector<gpu::Device::Api> resolveGraphicsApis(std::string_view requested, std::span<const gpu::Device::Api> configured);
     [[nodiscard]] static std::vector<Event> takePostedEvents();

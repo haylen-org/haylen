@@ -183,6 +183,7 @@ set(HAYLEN_TEST_SOURCES
   platform/FoldTests.cpp
   platform/GraphicsApiOrderTests.cpp
   platform/HeadlessPlayerTests.cpp
+  platform/LaunchOptionsTests.cpp
   platform/LinuxFilePatternTests.cpp
   platform/LinuxSystemReaderTests.cpp
   platform/MediaSessionTests.cpp

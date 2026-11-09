@@ -534,6 +534,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/platform/ScreenRelay.cpp
   src/platform/Screens.cpp
   src/platform/StreamsLua.cpp
+  src/platform/LaunchOptions.cpp
   src/platform/LinkRelay.cpp
   src/platform/MediaSession.cpp
   src/platform/System.cpp
