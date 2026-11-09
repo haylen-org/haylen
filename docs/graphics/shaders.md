@@ -387,7 +387,23 @@ Reading a file of the shader samples took about 2 ms in a Release build, 7 ms fo
 | WebGPU (Chrome) | Under 0.1 ms on the frame thread, since the browser compiles in its GPU process | Under 0.1 ms | Under 0.6 ms |
 | WebGL2 (Chrome on Metal) | 15 to 60 ms, compiled and linked on the frame thread when the program is made | The same | None, since WebGL2 links the program with its state |
 
-Metal compiles the source of a program when the program is made, and seven programs made one after another wait 2.3 seconds in all. So the engine starts compiling every source of the language of the GPU device on the I/O pool as soon as a `.shader` file is read, on whatever thread reads it. The renderer does the same for its own programs when it starts, and makes each one the first time a draw needs it. The system compiles the requests side by side and keeps each result, so a program made while its sources still compile waits only for what is left. Making the seven programs right after their files were read takes 315 ms. The compile overlaps whatever the app does until its first draw, such as the rest of its loading.
+Metal compiles the source of a program when the program is made, and seven programs made one after another wait 2.3 seconds in all. So the engine starts compiling every source of the language of the GPU device on the I/O pool as soon as a `.shader` file is read, on whatever thread reads it. The renderer prepares its own programs the same way when it starts, and makes each one the first time a draw needs it. The system compiles the requests side by side and keeps each result, so a program made while its sources still compile waits only for what is left. Making the seven programs right after their files were read takes 315 ms. The compile overlaps whatever the app does until its first draw, such as the rest of its loading.
+
+The programs of the renderer itself never compile on Apple platforms. The Apple build of the engine precompiles their Metal code with the Metal toolchain of Xcode into Metal libraries, for the kind of device and the minimum system version of the build, and the Metal device loads each library in place. A library matches its source by the SHA-256 of the source, so a source that changed never loads an older library. These are the costs of the 34 Metal sources of the renderer on an Apple M5 Pro while the compiler cache of Metal is empty, as it is when an app first opens after it is installed. The launches of Tiny Island give the median of five:
+
+| Measure | Compiled from source | Precompiled library |
+| --- | --- | --- |
+| Making the 34 libraries one after another on macOS | 5.5 to 6.1 s | 0.24 ms |
+| Making them side by side on macOS | 0.89 to 1.0 s | Under 1 ms |
+| Making them side by side in the iOS simulator | 2.4 to 2.8 s | Under 1 ms |
+| First frame of Tiny Island on macOS | 656 ms | 489 ms |
+| Time its first frames wait for programs | 72 ms | 0.1 ms |
+| First frame that draws with every program | 1691 ms | 1542 ms |
+| First frame when the cache holds the earlier runs | 184 ms | 186 ms |
+
+Metal still turns each library into the code of the GPU when the renderer makes a pipeline, and caches that code too, so on the Mac a first launch keeps about 300 ms more than later ones. The cores of the Mac compile side by side and hide most of the cost of the sources. A device with fewer and slower cores, such as the A10X of the first Apple TV 4K or an older iPhone, compiles each source several times slower, which the libraries take out of its first launch. The libraries add about 290 KB to each Apple slice of the engine.
+
+The `.shader` files of an app still compile on the device. They are content of its package, which a protected release ships only encrypted and content updates replace, so the Metal device compiles them from their source on the I/O pool, as the paragraphs above explain.
 
 A scene that loads its shaders in its `load` hook, with `assets.load`, `assets.loadAsync` or a [preload group](../lua-api/assets.md#preload-groups), lets them compile while it loads and its transition plays. On WebGL2 a program compiles when the first draw needs it, 15 to 60 ms each in Chrome and 224 ms for the 13 shaders of the test project. So a scene with many materials draws them once while it loads, such as behind its transition, to compile them before it shows.
 

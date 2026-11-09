@@ -63,7 +63,7 @@ A device makes five kinds of objects. Each `make` method returns a small handle,
 
 A device makes the native state object of a pipeline once, in `makePipeline`, and never makes one while it draws. A pipeline that draws into the swapchain takes the formats and the sample count of the swapchain, so the renderer never needs to know them.
 
-Programs that the API compiles when they are made, such as Metal and Direct3D, start compiling early through `prepareProgram`. The engine calls it as soon as it knows a program, from any thread, and `makeProgram` later takes the result or waits only for what is left.
+Programs that the API compiles when they are made, such as Metal and Direct3D, start compiling early through `prepareProgram`. The engine calls it as soon as it knows a program, from any thread, and `makeProgram` later takes the result or waits only for what is left. The Metal device loads the programs of the renderer from the Metal libraries that the Apple build precompiled, and compiles only the source of the other programs, such as the shaders of the app.
 
 ```cpp
 const gpu::Device::Buffer quad = device.makeBuffer({.data = std::as_bytes(std::span(vertices)), .label = "quad"});

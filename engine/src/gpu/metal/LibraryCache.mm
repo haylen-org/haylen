@@ -1,7 +1,9 @@
 #include "gpu/metal/LibraryCache.hpp"
 
+#include <string>
 #include <utility>
 
+#include "gpu/metal/PrecompiledLibraries.hpp"
 #include "haylen/core/JobSystem.hpp"
 
 namespace haylen::gpu::metal {
@@ -41,12 +43,21 @@ void LibraryCache::compile(id<MTLDevice> metal, std::string_view source, Entry& 
 
     id<MTLLibrary> library = nil;
     std::string error;
+    const PrecompiledLibraries::Library* precompiled = PrecompiledLibraries::find(source);
     @autoreleasepool {
-        NSString* text = [[NSString alloc] initWithBytes:source.data() length:source.size() encoding:NSUTF8StringEncoding];
         NSError* failure = nil;
-        library = [metal newLibraryWithSource:text options:nil error:&failure];
+        if (precompiled != nullptr) {
+            // The library is static data of the build, so Metal reads it in place.
+            dispatch_data_t code = dispatch_data_create(precompiled->code.data(), precompiled->code.size(), nil, ^{});
+            library = [metal newLibraryWithData:code error:&failure];
+        } else {
+            NSString* text = [[NSString alloc] initWithBytes:source.data() length:source.size() encoding:NSUTF8StringEncoding];
+            library = [metal newLibraryWithSource:text options:nil error:&failure];
+        }
+
         if (library == nil) {
-            error = failure == nil ? "The compiler gave no reason." : failure.localizedDescription.UTF8String;
+            const std::string reason = failure == nil ? "Metal gave no reason." : failure.localizedDescription.UTF8String;
+            error = precompiled == nullptr ? reason : "Metal does not load the library that the build precompiled from it. " + reason;
         }
     }
 

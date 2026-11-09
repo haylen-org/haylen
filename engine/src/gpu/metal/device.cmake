@@ -10,6 +10,10 @@ set(haylen_gpu_metal_sources
   "${CMAKE_CURRENT_LIST_DIR}/UploadRing.mm"
 )
 set_source_files_properties(${haylen_gpu_metal_sources} PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
-target_sources(haylen-gpu PRIVATE ${haylen_gpu_metal_sources})
+target_sources(haylen-gpu PRIVATE ${haylen_gpu_metal_sources} "${CMAKE_CURRENT_LIST_DIR}/PrecompiledLibraries.cpp")
 target_link_libraries(haylen-gpu PRIVATE "-framework Foundation" "-framework Metal" "-framework QuartzCore")
 target_compile_definitions(haylen-gpu PUBLIC HAYLEN_GPU_METAL)
+
+# The programs of the renderer load from libraries that the build precompiles for the kind of device it builds for.
+include(haylen-metal-libraries)
+haylen_precompile_metal_libraries(haylen-gpu SHADERS haylen-engine)

@@ -730,7 +730,7 @@ gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
     return {native->samplers.add(sampler)};
 }
 
-// The stages compile through the library cache, where a program that `prepareProgram` announced finds them compiled or compiling on the I/O pool.
+// The stages come from the library cache, where a program that `prepareProgram` announced finds its libraries made or in the making on the I/O pool.
 gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
     if (desc.vertex.source.empty() || desc.fragment.source.empty()) {
         throw std::logic_error(std::format("The program \"{}\" has no Metal code.", desc.label));

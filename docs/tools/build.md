@@ -69,15 +69,15 @@ What each platform needs on top of that:
 
 | Platform | `--platform` | Host | Graphics APIs | Generator | Also install |
 | --- | --- | --- | --- | --- | --- |
-| macOS | `macos` | macOS | Metal | Ninja, or Xcode with `--xcode` | The Xcode Command Line Tools, or Xcode for `--xcode`. |
+| macOS | `macos` | macOS | Metal | Ninja, or Xcode with `--xcode` | Xcode with its Metal toolchain (`xcodebuild -downloadComponent MetalToolchain`). |
 | Windows | `windows` | Windows | Direct3D 12, Direct3D 11, Vulkan, OpenGL | Ninja when it is on `PATH`, otherwise the default of CMake (Visual Studio) | Visual Studio with the C++ workload. Run Ninja builds from a developer command prompt, so MSVC is on `PATH`. |
 | Linux | `linux` | Linux | Vulkan, OpenGL | Ninja | GCC or Clang and the development packages of X11, Xi, Xcursor, Xext, Xrandr, OpenGL, EGL, Wayland, xkbcommon, D-Bus, IBus and udev, such as `libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev libegl-dev libwayland-dev libxkbcommon-dev libdbus-1-dev libibus-1.0-dev libudev-dev` on Debian and Ubuntu. SDL builds its Wayland support, the input methods of IBus and Fcitx and the hotplug of controllers through udev with them. |
-| iOS | `ios` | macOS | Metal | Xcode | Xcode. Apps also need XcodeGen to generate the Apple project again. |
-| tvOS | `tvos` | macOS | Metal | Xcode | Xcode, and the tvOS simulator runtime (`xcodebuild -downloadPlatform tvOS`) to run apps on it. |
+| iOS | `ios` | macOS | Metal | Xcode | Xcode with its Metal toolchain. Apps also need XcodeGen to generate the Apple project again. |
+| tvOS | `tvos` | macOS | Metal | Xcode | Xcode with its Metal toolchain, and the tvOS simulator runtime (`xcodebuild -downloadPlatform tvOS`) to run apps on it. |
 | Android | `android` | any | Vulkan, OpenGL ES 3 | Ninja | The Android SDK with NDK `30.0.16248370`, CMake `4.1.2`, platform 37.2 and platform-tools, and JDK 17 or newer. |
 | Web | `web` | any | WebGPU, WebGL2 | Ninja through `emcmake` | `git`, and a browser with WebGPU or WebGL2 to run it. |
 
-The script refuses to configure macOS, iOS, tvOS, Linux and Windows builds on any other host. Android and web builds work from every host.
+The script refuses to configure macOS, iOS, tvOS, Linux and Windows builds on any other host. Android and web builds work from every host. Apple builds of the engine precompile the shaders of the renderer with the Metal toolchain, a component of Xcode that Xcode downloads apart, so the configuration of an Apple build stops with the command that installs it when it is missing.
 
 ### Tools that haylen.py brings
 
@@ -302,6 +302,8 @@ The shaders of the engine live in `engine/shaders`, in the Haylen shader languag
 | The API `port` of a port | The languages that its `SHADER_LANGUAGES` names, and the `port` target that its `SHADER_COMMAND` writes into each package after `haylen-shaderc`, as the [guide to ports](../platform/ports.md#shaders) explains. |
 
 The programs that draw into lit canvases compile a second time with `HAYLEN_LIT`. Every compile includes `engine/shaders/include`, the shader library that the shaders of apps include too, as the [shader guide](../graphics/shaders.md) explains.
+
+Apple builds also precompile the Metal code of these packages. The function `haylen_precompile_metal_libraries` of `engine/cmake/haylen-metal-libraries.cmake` compiles each Metal source of the language of the build with `xcrun metal` into a Metal library, for the kind of device of the build at its minimum system version, and on iOS, tvOS and visionOS also for the simulator. The libraries go into `haylen-gpu`, keyed by the SHA-256 of their source, and the Metal device loads the programs of the renderer from them, as [load time](../graphics/shaders.md#load-time) explains. A shader package that changes compiles its libraries again with it.
 
 ## Dependencies
 

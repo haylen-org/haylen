@@ -17,7 +17,7 @@ else()
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/haylen-shader-compiler.json")
 endif()
 
-# Compiles a source of the Haylen shader language into a shader package with the code of the shader languages that the build draws with, and embeds the package in the target as the static method `SYMBOL` of `haylen::core::EmbeddedFiles`. Each variant names a program and its defines, as `name=DEFINE,DEFINE`. The shader command of a port with a device of its own then writes the code of that device into the package.
+# Compiles a source of the Haylen shader language into a shader package with the code of the shader languages that the build draws with, and embeds the package in the target as the static method `SYMBOL` of `haylen::core::EmbeddedFiles`, listing it in the property `HAYLEN_SHADER_PACKAGES` of the target. Each variant names a program and its defines, as `name=DEFINE,DEFINE`. The shader command of a port with a device of its own then writes the code of that device into the package.
 function(haylen_compile_shader target)
   cmake_parse_arguments(PARSE_ARGV 1 SHADER "" "SOURCE;SYMBOL" "VARIANTS")
   get_filename_component(name "${SHADER_SOURCE}" NAME_WE)
@@ -44,4 +44,5 @@ function(haylen_compile_shader target)
     VERBATIM
   )
   haylen_embed_file(${target} "${output}" ${SHADER_SYMBOL})
+  set_property(TARGET ${target} APPEND PROPERTY HAYLEN_SHADER_PACKAGES "${output}")
 endfunction()

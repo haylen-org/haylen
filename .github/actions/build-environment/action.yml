@@ -147,6 +147,12 @@ runs:
           .cache/emscripten/ports
         key: ${{ steps.pins.outputs.emscripten-key }}
 
+    # Apple builds of the engine precompile the shaders of the renderer with the Metal toolchain, a component of Xcode that a runner image may lack.
+    - name: Install the Metal toolchain
+      if: runner.os == 'macOS'
+      shell: bash
+      run: xcrun -sdk macosx metal --version > /dev/null 2>&1 || xcodebuild -downloadComponent MetalToolchain
+
     - name: Install ccache on macOS
       if: inputs.cache != '' && runner.os == 'macOS'
       shell: bash
