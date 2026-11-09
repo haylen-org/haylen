@@ -2285,7 +2285,7 @@ Atualização de projetos:
 
 Plugins de terceiros:
 
-- [ ] Os plugins de SDKs de terceiros do dono, que vivem fora deste repositório, revisados um a um pelo formato atual dos plugins e pelo guia `docs/tools/upgrading.md`, com o SDK na última versão, funcionando em todas as plataformas que declaram, com README no padrão da Haylen, e publicados cada um no seu próprio repositório em `haylen-org` só quando estiverem prontos e com o aval do dono. Nada deles entra neste repositório.
+- [x] Os plugins de SDKs de terceiros do dono e os plugins das capacidades de sistema, revisados um a um pelo formato atual dos plugins e pelo guia `docs/tools/upgrading.md`, com o SDK na última versão, funcionando em todas as plataformas que declaram, com README no padrão da Haylen, e publicados juntos, uma pasta por plugin, no repositório irmão dos plugins com o aval do dono. Nada deles entra neste repositório. Feito: os 21 plugins e os dois apps de laboratório estão no repositório irmão, num commit só, conferido sem segredos; cada um rodou nos simuladores, no emulador ou na web nas plataformas que declara, passou no `haylen check` e, nas plataformas da Apple, também num app C++; a Haylen ganhou as referências a uma pasta de um repositório git (`git`, `ref` e `path`) e as correções que a revisão achou. Ficam para um aparelho de verdade ou uma conta real: entrega de push, anúncios, compras, projetos reais do Firebase, entrega de pacotes pelas lojas e os sensores, a câmera, o Bluetooth e as notificações do Windows.
 
 Integração contínua e GitHub:
 
