@@ -12,6 +12,7 @@
 #include <Poco/Net/WebSocket.h>
 
 #include <algorithm>
+#include <chrono>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -20,15 +21,17 @@
 
 #include "haylen/core/Json.hpp"
 #include "haylen/core/Log.hpp"
+#include "platform/ConsoleRelay.hpp"
 #include "platform/DevelopmentSession.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "platform/headless/HeadlessPlayer.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/EventLoop.hpp"
 #include "support/TemporaryDirectory.hpp"
 
 namespace haylen::platform {
 
-// A development server that pushes one batch to every app that says hello, with a module, an asset and a path outside the package, restarts the app once it reports the batch, as the developer asks with R, and keeps the messages the app sends.
+// A development server that pushes a line of the console, a request for the commands and then one batch to every app that says hello, with a module, an asset and a path outside the package, restarts the app once it reports the batch, as the developer asks with R, and keeps the messages the app sends.
 class PushingServer final {
   public:
     PushingServer() : listener(Poco::Net::SocketAddress("127.0.0.1", 0)), server(new Factory(*this), listener, new Poco::Net::HTTPServerParams()) {
@@ -82,6 +85,9 @@ class PushingServer final {
       private:
         // Messages of the wrong shape come first, and the app drops them without stopping.
         static void push(Poco::Net::WebSocket& socket) {
+            for (const std::string console : {R"({"type": "console", "id": 1, "line": "help"})", R"({"type": "consoleCommands"})"}) {
+                socket.sendFrame(console.data(), static_cast<int>(console.size()), Poco::Net::WebSocket::FRAME_TEXT);
+            }
             for (const std::string malformed : {R"({"type": 1})", R"({"type": "files", "files": [1]})", R"({"type": "files", "files": [], "removed": [2]})", R"({"type": "files", "files": [], "revision": "one"})", R"({"type": "shaderError", "path": 3})"}) {
                 socket.sendFrame(malformed.data(), static_cast<int>(malformed.size()), Poco::Net::WebSocket::FRAME_TEXT);
             }
@@ -195,6 +201,30 @@ TEST(DevelopmentConnectionTest, PlaysALaunchedAppInDevelopmentWithTheServerItNam
     EXPECT_EQ(HeadlessPlayer::run({.package = launcher.getPath(), .frames = 600}), 7);
     const std::vector<core::Json> messages = server.getMessages();
     EXPECT_TRUE(std::ranges::any_of(messages, [](const core::Json& message) { return message.at("type") == "hello"; }));
+}
+
+// A line of the console that the server sends just before the session ends, such as the session of a launched app that quits in the frame the line arrives, never answers into the connection that is gone.
+TEST(DevelopmentConnectionTest, WithdrawsTheConsoleLinesOfASessionThatEnds) {
+    PushingServer server;
+    const test::TemporaryDirectory directory;
+    HeadlessHost host(directory.getPath());
+    (void)ConsoleRelay::take();
+    (void)ConsoleRelay::takeCommandRequests();
+
+    // The batch of files follows the messages of the console, so its changes tell that they arrived.
+    auto session = std::make_unique<DevelopmentSession>(host, std::nullopt, server.getUrl());
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    bool arrived = false;
+    while (!arrived && std::chrono::steady_clock::now() < deadline) {
+        session->pump();
+        arrived = !session->takeChanges().empty();
+        test::EventLoop::yield();
+    }
+    ASSERT_TRUE(arrived);
+
+    session.reset();
+    EXPECT_TRUE(ConsoleRelay::take().empty());
+    EXPECT_TRUE(ConsoleRelay::takeCommandRequests().empty());
 }
 
 // A server outside the device is on the local network, which a platform such as Android 17 lets the app reach only once the person grants it, so the session asks first and says why it never connects when the person refuses, instead of waiting for packets the platform drops.

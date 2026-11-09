@@ -21,6 +21,7 @@ class DevelopmentSession;
 class DevelopmentConnection final {
   public:
     DevelopmentConnection(std::string url, DevelopmentSession& owner, net::WebSocket::BlockedReason blockedReason);
+    ~DevelopmentConnection();
 
     // Keeps the connection from connecting, and returns what lets it connect, with no refusal, or keeps it away for good with the sentence that says why, from any thread.
     [[nodiscard]] std::function<void(std::optional<std::string> refusal)> hold();

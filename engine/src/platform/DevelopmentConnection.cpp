@@ -19,6 +19,11 @@ namespace haylen::platform {
 
 DevelopmentConnection::DevelopmentConnection(std::string url, DevelopmentSession& owner, net::WebSocket::BlockedReason blockedReason) : session(owner), address(std::move(url)), explainBlocked(std::move(blockedReason)) {}
 
+// The lines that the server sent and no frame ran yet would answer into the socket that goes away here.
+DevelopmentConnection::~DevelopmentConnection() {
+    ConsoleRelay::withdraw(this);
+}
+
 std::function<void(std::optional<std::string>)> DevelopmentConnection::hold() {
     gate = std::make_shared<Gate>();
     // clang-format off
@@ -171,7 +176,7 @@ void DevelopmentConnection::submitLine(const core::Json& message) {
         if (socket->getState() == net::WebSocket::State::Open) {
             socket->send(core::Json{{"type", "consoleResult"}, {"id", id}, {"ok", result.ok}, {"output", result.output}}.dump());
         }
-    });
+    }, this);
     // clang-format on
 }
 
@@ -182,7 +187,7 @@ void DevelopmentConnection::listCommands() {
         if (socket->getState() == net::WebSocket::State::Open) {
             socket->send(core::Json{{"type", "consoleCommands"}, {"commands", commands}}.dump());
         }
-    });
+    }, this);
     // clang-format on
 }
 
