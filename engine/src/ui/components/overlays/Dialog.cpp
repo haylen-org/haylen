@@ -55,13 +55,16 @@ void Dialog::render(Context& context, const math::Rect&) {
         return;
     }
 
-    // A dialog keeps a margin inside the display, and its content scrolls when it is taller than that.
+    // A dialog keeps a margin inside the display, and its content scrolls only when it is taller than that, which the sizes of the dialog decide rather than its edges, whose fractions round differently.
     const math::Rect display = context.getBackend().getLiftedDisplayRect();
     const float margin = context.getMetric(Theme::Metric::PanelPadding);
     const math::Insets padding = getContentPadding(context);
     const float width = std::min(context.getMetric(Theme::Metric::DialogWidth), display.width - margin * 2.0F);
     const float inner = width - padding.getHorizontal();
-    const float height = std::min(getContentHeight(context, inner) + padding.getVertical(), std::max(0.0F, display.height - margin * 2.0F));
+    const float content = getContentHeight(context, inner) + padding.getVertical();
+    const float room = std::max(0.0F, display.height - margin * 2.0F);
+    const bool overflowing = content > room;
+    const float height = overflowing ? room : content;
     ImGui::SetNextWindowPos(ImGuiConverter::toImVec2(display.getCenter()), ImGuiCond_Always, {0.5F, 0.5F});
     ImGui::SetNextWindowSize({width, height});
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * shown);
@@ -84,7 +87,7 @@ void Dialog::render(Context& context, const math::Rect&) {
     const float radius = context.getMetric(Theme::Metric::PanelRadius);
     Surfaces::drawShadow(context, frame, radius);
     Surfaces::draw(context, Theme::Surface::Dialog, frame, context.getColor(Theme::Color::Panel), context.getColor(Theme::Color::Border), radius);
-    drawContent(context, frame, padding);
+    drawContent(context, frame, padding, overflowing);
 
     if (open && dismissible && context.getFocus().answerCancel(ImGui::GetCurrentWindow())) {
         open = false;
@@ -215,7 +218,7 @@ float Dialog::getButtonsHeight(Context& context, float width) const {
     return height;
 }
 
-void Dialog::drawContent(Context& context, const math::Rect& frame, const math::Insets& padding) {
+void Dialog::drawContent(Context& context, const math::Rect& frame, const math::Insets& padding, bool overflowing) {
     const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
     const float controlHeight = context.getMetric(Theme::Metric::ControlHeight);
     const math::Rect inner = frame.inset(padding);
@@ -227,7 +230,7 @@ void Dialog::drawContent(Context& context, const math::Rect& frame, const math::
     if (!body.isEmpty()) {
         ImGui::SetCursorScreenPos(ImGuiConverter::toImVec2(body.getMin()));
         if (context.getBackend().beginChild("##body", body.getSize(), ImGuiChildFlags_NavFlattened, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
-            drawBody(context, body, inner);
+            drawBody(context, body, inner, overflowing);
         }
         ImGui::EndChild();
     }
@@ -265,10 +268,9 @@ void Dialog::drawContent(Context& context, const math::Rect& frame, const math::
 }
 
 // The content keeps the padding of the dialog, and while it is taller than the body it gives up the part of the lane of the scroll bar that its padding leaves, and draws only outside the lane.
-void Dialog::drawBody(Context& context, const math::Rect& body, const math::Rect& inner) {
+void Dialog::drawBody(Context& context, const math::Rect& body, const math::Rect& inner, bool overflowing) {
     const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
     const math::Rect padded{inner.x, body.y, inner.width, body.height};
-    const bool overflowing = getBodyHeight(context, inner.width) > body.height;
     const math::Rect column = overflowing ? Scrollbar::getContentBox(context, body, padded, false) : padded;
     if (overflowing) {
         const double maximum = std::max(0.0F, getBodyHeight(context, column.width) - body.height);

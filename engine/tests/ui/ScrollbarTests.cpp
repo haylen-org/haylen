@@ -515,6 +515,23 @@ TEST_F(ScrollbarTest, ScrollsTheBodyOfATallDialogBesideItsBar) {
     }
 }
 
+// A dialog whose content fits the screen draws no bar at any spacing of its theme, whose fractions its sizes add up and subtract in different orders.
+TEST_F(ScrollbarTest, DrawsNoBarBesideTheBodyOfADialogThatFits) {
+    for (int tenths = 100; tenths < 160; ++tenths) {
+        const std::string spacing = std::to_string(tenths / 10) + "." + std::to_string(tenths % 10);
+        SCOPED_TRACE(spacing);
+        // clang-format off
+        auto gui = mount(R"({"kind": "column", "style": {"colors": {"scrollbar": "#FF00FF", "scrollbarHover": "#FF00FF"}, "metrics": {"itemSpacing": )" + spacing + R"(, "panelPadding": )" + spacing + R"(}, "fonts": {"body": {"size": 21.3}, "heading": {"size": 27.7}}}, "children": [
+            {"kind": "dialog", "id": "safety", "open": true, "title": "Safety", "message": "Share where you are with the people you trust, or call for help at once.", "buttons": [{"id": "close", "text": "Close"}, {"id": "help", "text": "Call for help"}]}
+        ]})");
+        // clang-format on
+        frames(2);
+        EXPECT_FALSE(findDrawn(kBarColor, getBounds(*gui, "safety")).has_value());
+        getUi().unmount(*gui);
+        frames(2);
+    }
+}
+
 TEST_F(ScrollbarTest, KeepsTheGapInImmediateWindowsAndTheirChildren) {
     // clang-format off
     getFixture().runLua(R"(
