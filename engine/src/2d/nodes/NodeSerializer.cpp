@@ -1,6 +1,7 @@
 #include "haylen/2d/nodes/NodeSerializer.hpp"
 
 #include <algorithm>
+#include <exception>
 #include <stdexcept>
 #include <utility>
 
@@ -273,13 +274,26 @@ Node NodeSerializer::load(NodeTree& tree, const Node& parent, const core::Json& 
     return loadNode(tree, parent, description, text(description, "name", "", ""), assets);
 }
 
+// A node whose children fail to load goes with them, so a load that fails leaves nothing in the tree. The node goes outside the handler, since its listeners may run Lua.
 Node NodeSerializer::loadNode(NodeTree& tree, const Node& parent, const core::Json& description, const std::string& path, const Assets& assets) {
     const NodeProperties properties = readProperties(description, path, assets);
-    const Node node = parent.isValid() ? tree.add(parent, properties) : tree.add(properties);
-    if (const auto children = description.find("children"); children != description.end()) {
+    Node node = parent.isValid() ? tree.add(parent, properties) : tree.add(properties);
+    const auto children = description.find("children");
+    if (children == description.end()) {
+        return node;
+    }
+
+    std::exception_ptr failure;
+    try {
         for (const core::Json& child : *children) {
             (void)loadNode(tree, node, child, path + "/" + text(child, "name", path, {}), assets);
         }
+    } catch (...) {
+        failure = std::current_exception();
+    }
+    if (failure) {
+        node.destroy();
+        std::rethrow_exception(failure);
     }
     return node;
 }

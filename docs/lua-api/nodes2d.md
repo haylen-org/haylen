@@ -181,7 +181,7 @@ print(unit.data.health, tree.size)
 
 ### tree:instantiate(prefab, overrides, parent)
 
-Builds the subtree of a [`Prefab`](#prefab) and returns its root. The node goes under `parent`, a `Node` of the tree, or at the root without one. The optional table `overrides` takes the keys of a [description](#descriptions) and replaces those keys of the root description, such as its place and its name. Overrides that are not a table of keys raise `The overrides of a prefab must be an object of the keys of a description.`. The assets of the description load through `haylen.assets` and its cache.
+Builds the subtree of a [`Prefab`](#prefab) and returns its root. The node goes under `parent`, a `Node` of the tree, or at the root without one. The optional table `overrides` takes the keys of a [description](#descriptions) and replaces those keys of the root description, such as its place and its name. Overrides that are not a table of keys raise `The overrides of a prefab must be an object of the keys of a description.`. The assets of the description load through `haylen.assets` and its cache. An asset that fails to load raises its error and leaves none of the subtree in the tree.
 
 ```lua
 local assets = require('haylen.assets')
@@ -196,7 +196,7 @@ end
 
 ### tree:load(description, parent)
 
-Builds the node of a [description](#descriptions) table and its descendants under `parent`, or at the root without one, and returns it. It reopens what `nodes2d.save` wrote.
+Builds the node of a [description](#descriptions) table and its descendants under `parent`, or at the root without one, and returns it. It reopens what `nodes2d.save` wrote. An asset that fails to load raises its error and leaves none of the subtree in the tree.
 
 ```lua
 local nodes2d = require('haylen.nodes2d')

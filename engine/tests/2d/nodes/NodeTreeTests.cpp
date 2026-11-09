@@ -325,6 +325,7 @@ TEST_F(Nodes2DLuaTest, BuildsDrawsAndDestroysTreesFromLua) {
     EXPECT_EQ(fixture.lua("local tank = tree:instantiate(assets.load('units/tank.prefab'), {x = 40}) return tank.name .. ' ' .. tank.x .. ' ' .. tank:find('turret').x"), "tank 40.0 8.0");
     EXPECT_EQ(fixture.lua("local saved = nodes2d.save(tree:find('tank')) return saved.sprite.texture .. ' ' .. saved.children[1].name"), "units/tank.png turret");
     EXPECT_EQ(fixture.lua("local copy = tree:load({name = 'copy', children = {{name = 'part'}}}) return copy:find('part').path"), "copy/part");
+    EXPECT_EQ(fixture.lua("local size = tree.size local ok = pcall(tree.load, tree, {name = 'broken', children = {{name = 'part'}, {name = 'bad', sprite = {texture = 'units/missing.png'}}}}) return tostring(ok) .. ' ' .. tostring(tree.size == size)"), "false true");
 
     // Destroyed listeners run before the nodes go, and the node handles turn invalid.
     // clang-format off
