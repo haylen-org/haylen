@@ -207,7 +207,8 @@ TEST(RendererTest, RejectsInvalidUse) {
     graphics2d::Camera shapeless;
     shapeless.viewport = math::Rect{0.0F, 0.0F, std::nanf(""), 10.0F};
     EXPECT_THROW(renderer.beginWorld(shapeless), std::invalid_argument);
-    EXPECT_THROW(renderer.drawMesh(texture, std::vector<graphics2d::MeshVertex>(1), std::vector<std::uint32_t>{3}), std::out_of_range);
+    EXPECT_THROW(renderer.drawMesh(texture, std::vector<graphics2d::MeshVertex>(1), std::vector<std::uint32_t>{0, 0, 3}), std::invalid_argument);
+    EXPECT_THROW(renderer.drawMesh(texture, std::vector<graphics2d::MeshVertex>(4), std::vector<std::uint32_t>{0, 1, 2, 3}), std::invalid_argument);
     EXPECT_THROW(renderer.drawLight({}), std::logic_error);
     EXPECT_THROW(renderer.popClip(), std::logic_error);
     EXPECT_THROW(renderer.beginScreen({.ambientLight = math::Color::white()}), std::invalid_argument);

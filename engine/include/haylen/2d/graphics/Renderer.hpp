@@ -191,7 +191,7 @@ class Renderer final {
     void drawText(text::FontFamily& family, std::string_view content, math::Vec2 position, const text::Style& style = {}, const DrawOrder& order = {});
     // Draws rich text with the top-left of its block at the position, scaled from that corner and with its colors multiplied by the tint. A y-sorted canvas sorts it by the bottom of the block.
     void drawRichText(text::RichText& richText, math::Vec2 position, const DrawOrder& order = {}, math::Vec2 scale = {1.0F, 1.0F}, math::Color tint = math::Color::white());
-    // Draws triangles of a texture, or of white without one, whose outline, the edges that only one triangle holds, fades over one pixel of the destination like the edges of every other shape, unless `fadeEdges` is off, which suits triangles that already fade their own edges or that meet other meshes edge to edge.
+    // Draws triangles of a texture, or of white without one, whose outline, the edges that only one triangle holds, fades over one pixel of the destination like the edges of every other shape, unless `fadeEdges` is off, which suits triangles that already fade their own edges or that meet other meshes edge to edge. Throws `std::invalid_argument` for a count of indices that is not a multiple of three or an index past the last vertex.
     void drawMesh(const graphics::Texture& texture, std::span<const MeshVertex> vertices, std::span<const std::uint32_t> indices, const DrawOrder& order = {}, bool fadeEdges = true);
 
     // Draws a kept mesh with its vertices placed by the transform.

@@ -48,8 +48,10 @@ class Mesh final {
     // Returns the rectangle around every vertex.
     [[nodiscard]] math::Rect getBounds() const noexcept;
 
+    // Throws `std::invalid_argument` for a count of indices that is not a multiple of three or an index past the last of the vertices.
+    static void checkIndices(std::size_t vertexCount, std::span<const std::uint32_t> triangles);
+
   private:
-    void checkIndices() const;
     void checkPairs(std::size_t count, std::size_t first) const;
 
     graphics::Texture texture;

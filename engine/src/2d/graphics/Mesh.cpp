@@ -8,7 +8,7 @@
 namespace haylen::graphics2d {
 
 Mesh::Mesh(graphics::Texture image, std::vector<MeshVertex> points, std::vector<std::uint32_t> triangles) : texture(std::move(image)), vertices(std::move(points)), indices(std::move(triangles)) {
-    checkIndices();
+    checkIndices(vertices.size(), indices);
 }
 
 Mesh Mesh::grid(graphics::Texture image, int columns, int rows, const math::Rect& area, std::optional<math::Rect> source) {
@@ -37,11 +37,11 @@ Mesh Mesh::grid(graphics::Texture image, int columns, int rows, const math::Rect
     return {std::move(image), std::move(points), std::move(triangles)};
 }
 
-void Mesh::checkIndices() const {
-    if (indices.size() % 3 != 0) {
-        throw std::invalid_argument("A mesh lists its triangles as three indices each, and " + std::to_string(indices.size()) + " is not a multiple of three.");
+void Mesh::checkIndices(std::size_t vertexCount, std::span<const std::uint32_t> triangles) {
+    if (triangles.size() % 3 != 0) {
+        throw std::invalid_argument("A mesh lists its triangles as three indices each, and " + std::to_string(triangles.size()) + " is not a multiple of three.");
     }
-    if (std::ranges::any_of(indices, [this](std::uint32_t index) { return index >= vertices.size(); })) {
+    if (std::ranges::any_of(triangles, [vertexCount](std::uint32_t index) { return index >= vertexCount; })) {
         throw std::invalid_argument("Mesh index refers to a vertex that does not exist.");
     }
 }
@@ -49,7 +49,7 @@ void Mesh::checkIndices() const {
 void Mesh::setIndices(std::vector<std::uint32_t> value) {
     std::swap(indices, value);
     try {
-        checkIndices();
+        checkIndices(vertices.size(), indices);
     } catch (...) {
         std::swap(indices, value);
         throw;

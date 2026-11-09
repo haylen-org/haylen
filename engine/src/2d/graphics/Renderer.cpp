@@ -477,11 +477,7 @@ void Renderer::drawRichText(text::RichText& richText, math::Vec2 position, const
 }
 
 void Renderer::drawMesh(const graphics::Texture& texture, std::span<const MeshVertex> vertices, std::span<const std::uint32_t> indices, const DrawOrder& order, bool fadeEdges) {
-    for (const std::uint32_t index : indices) {
-        if (index >= vertices.size()) {
-            throw std::out_of_range("Mesh index refers to a vertex that does not exist.");
-        }
-    }
+    Mesh::checkIndices(vertices.size(), indices);
     addMesh(texture, vertices, indices, order, nullptr, fadeEdges);
 }
 
