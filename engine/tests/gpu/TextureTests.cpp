@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstring>
 #include <span>
+#include <stdexcept>
 #include <string_view>
 #include <vector>
 
@@ -310,6 +311,14 @@ TEST_P(GpuTextureTest, SamplesTheNewPixelsOfDynamicImagesEachFrame) {
         device().writeImages(writes);
         EXPECT_TRUE(isNear(sample("textured", texture, sampler, {0.0F, 0.0F, 0.0F, 1.0F}).at(0, 0), color)) << color.toHex();
     }
+}
+
+// Only a dynamic image takes new pixels, so a write into a render target is refused.
+TEST_P(GpuTextureTest, RefusesNewPixelsForImagesThatAreNotDynamic) {
+    const Device::Image target = makeTarget(2, 2);
+    const std::array<std::byte, 16> texels{};
+    const std::array<Device::ImageWrite, 1> writes{{{.image = target, .pixels = texels}}};
+    EXPECT_THROW(device().writeImages(writes), std::logic_error);
 }
 
 // Every color format that the device samples reads back the color that a write of a dynamic image of the format gave it, which reaches the image the way the glyph atlases of text do.

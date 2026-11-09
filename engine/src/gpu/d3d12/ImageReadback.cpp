@@ -12,7 +12,7 @@ ImageReadback::ImageReadback(Microsoft::WRL::ComPtr<ID3D12Resource> copy, Micros
 
 // A removed device reports every fence value as passed, and its buffers then refuse to map.
 std::optional<std::vector<std::uint8_t>> ImageReadback::poll() {
-    if (fence->GetCompletedValue() < value) {
+    if (delivered || fence->GetCompletedValue() < value) {
         return std::nullopt;
     }
 
@@ -31,6 +31,7 @@ std::optional<std::vector<std::uint8_t>> ImageReadback::poll() {
     }
     const D3D12_RANGE nothing{.Begin = 0, .End = 0};
     buffer->Unmap(0, &nothing);
+    delivered = true;
     return pixels;
 }
 

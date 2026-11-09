@@ -339,7 +339,7 @@ TEST_F(NullDeviceTest, KeepsThePassesOfAFrameIntoOneSurfaceTogether) {
     device.commit();
 }
 
-// A read copies a whole render target of one sample, between passes.
+// A read copies a whole render target of one sample, between passes, and hands its pixels over once.
 TEST_F(NullDeviceTest, ReadsWholeRenderTargetsOfOneSample) {
     NullDevice device;
     const Device::Image target = device.makeImage({.width = 4, .height = 2, .kind = Device::ImageKind::RenderTarget, .label = "target"});
@@ -349,6 +349,7 @@ TEST_F(NullDeviceTest, ReadsWholeRenderTargetsOfOneSample) {
     const std::unique_ptr<Device::Readback> copy = device.readImage(target, 4, 2);
     EXPECT_FALSE(copy->poll().has_value());
     EXPECT_EQ(copy->poll()->size(), 4U * 2U * 4U);
+    EXPECT_FALSE(copy->poll().has_value());
 }
 
 } // namespace haylen::gpu

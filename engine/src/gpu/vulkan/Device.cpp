@@ -920,6 +920,9 @@ gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
     if (program == nullptr || program->destroyed) {
         throw std::logic_error(std::format("The program {} of the pipeline \"{}\" does not exist.", desc.program.id, desc.label));
     }
+    if (desc.colors.size() > kMaxColorTargets || desc.buffers.size() > kMaxVertexBuffers || desc.attributes.size() > kMaxAttributes) {
+        throw std::logic_error(std::format("The pipeline \"{}\" draws into at most {} color targets from at most {} vertex buffers with {} attributes.", desc.label, kMaxColorTargets, kMaxVertexBuffers, kMaxAttributes));
+    }
 
     auto record = std::make_unique<PipelineRecord>(PipelineRecord{.program = desc.program.id, .layout = program->layout, .indexType = desc.indexType, .bufferCount = static_cast<std::uint32_t>(desc.buffers.size()), .generation = swapchainTarget.generation});
     if (desc.swapchain) {
@@ -1161,6 +1164,9 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
     sourceBuffers.clear();
     for (const ImageWrite& write : writes) {
         const ImageRecord& record = requireImage(write.image);
+        if (record.kind != ImageKind::Dynamic) {
+            throw std::logic_error(std::format("The image {} is not dynamic, so it takes no new pixels.", write.image.id));
+        }
         const bool volume = record.type == TextureType::Volume;
         const std::size_t bytes = std::size_t{static_cast<std::uint32_t>(record.width)} * static_cast<std::uint32_t>(record.height) * static_cast<std::uint32_t>(record.layers) * ImageInfo::getBytesPerPixel(record.pixelFormat);
         if (write.pixels.size() != bytes) {
@@ -1189,17 +1195,17 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
     vk.vkCmdPipelineBarrier(commands, VK_PIPELINE_STAGE_TRANSFER_BIT, restStages, 0, 0, nullptr, 0, nullptr, static_cast<std::uint32_t>(imageBarriers.size()), imageBarriers.data());
 }
 
-// A swapchain pass that keeps the contents of the swapchain pass right before it goes on drawing in the same rendering, so its depth, stencil and multisampled color stay. Labels name the commands inside the rendering of their pass.
+// A swapchain pass that keeps the contents of the swapchain pass right before it goes on drawing in the same rendering, so its depth, stencil and multisampled color stay. Labels name the commands inside the rendering of their pass. The pass opens once its rendering began, so a pass that fails to begin leaves no pass open.
 void Device::beginPass(const PassDesc& desc) {
     if (pass.open) {
         throw std::logic_error("A pass is already open. Call \"endPass\" before \"beginPass\".");
     }
-    pass.open = true;
     pass.skipped = false;
     pass.labeled = false;
     pass.transitionCount = 0;
     if (!ensureFrame()) {
         pass.skipped = true;
+        pass.open = true;
         return;
     }
     resetDrawState();
@@ -1216,6 +1222,7 @@ void Device::beginPass(const PassDesc& desc) {
         beginOffscreenPass(desc);
     }
     swapchainRendering = false;
+    pass.open = true;
     if (pass.skipped) {
         return;
     }
@@ -1279,6 +1286,9 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
 }
 
 void Device::beginOffscreenPass(const PassDesc& desc) {
+    if (desc.colors.size() > kMaxColorTargets) {
+        throw std::logic_error(std::format("A pass draws into at most {} color attachments.", kMaxColorTargets));
+    }
     PassTarget target{.colorCount = static_cast<std::uint32_t>(desc.colors.size())};
     for (std::size_t index = 0; index < desc.colors.size(); ++index) {
         const ColorAttachment& attachment = desc.colors[index];

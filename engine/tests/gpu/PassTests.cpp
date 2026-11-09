@@ -2,7 +2,9 @@
 
 #include <array>
 #include <cstddef>
+#include <memory>
 #include <span>
+#include <stdexcept>
 
 #include "gpu/support/GpuFixture.hpp"
 
@@ -186,6 +188,38 @@ TEST_P(GpuPassTest, DrawsIntoMipLevelsAndLayers) {
     }
     device().destroy(sampler);
     device().destroy(pipeline);
+}
+
+// A pass that fails to begin, into an image that is not a render target or into more targets than a pass holds, leaves no pass open, so the next pass draws.
+TEST_P(GpuPassTest, OpensNoPassWhenAPassFailsToBegin) {
+    const Device::Image dynamic = makeImage({.width = kSize, .height = kSize, .kind = Device::ImageKind::Dynamic, .label = "haylen-test-dynamic"});
+    const std::array<Device::ColorAttachment, 1> notTarget{{{.image = dynamic}}};
+    EXPECT_THROW(device().beginPass({.colors = notTarget}), std::logic_error);
+
+    std::array<Device::ColorAttachment, Device::kMaxColorTargets + 1> tooMany{};
+    for (Device::ColorAttachment& color : tooMany) {
+        color.image = makeTarget(kSize, kSize);
+    }
+    EXPECT_THROW(device().beginPass({.colors = tooMany}), std::logic_error);
+
+    const math::Color color{0.0F, 1.0F, 0.0F, 1.0F};
+    EXPECT_TRUE(isNear(clearAndRead(color, 2, 2).at(1, 1), color));
+}
+
+// A readback copies only a region inside its render target, and hands its pixels over once.
+TEST_P(GpuPassTest, ReadsBackRegionsOfTheTargetOnce) {
+    const Device::Image target = makeTarget(kSize, kSize);
+    EXPECT_THROW((void)device().readImage(target, kSize + 1, kSize), std::logic_error);
+    EXPECT_THROW((void)device().readImage(target, kSize, 0), std::logic_error);
+
+    const std::array<Device::ColorAttachment, 1> colors{{{.image = target, .clear = math::Color::white()}}};
+    device().beginPass({.colors = colors});
+    device().endPass();
+    device().commit();
+    const std::unique_ptr<Device::Readback> copy = device().readImage(target, kSize, kSize);
+    EXPECT_EQ(finishCopy(*copy).size(), static_cast<std::size_t>(kSize * kSize * 4));
+    device().commit();
+    EXPECT_FALSE(copy->poll().has_value());
 }
 
 INSTANTIATE_TEST_SUITE_P(Devices, GpuPassTest, ::testing::ValuesIn(test::GpuFixture::getTestedApis()), test::GpuFixture::nameApi);

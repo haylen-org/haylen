@@ -32,6 +32,7 @@ class ImageReadback final : public gpu::Device::Readback {
     std::shared_ptr<std::atomic<bool>> done = std::make_shared<std::atomic<bool>>(false);
     gpu::Device::PixelFormat format = gpu::Device::PixelFormat::Rgba8;
     std::size_t pixelCount = 0;
+    bool delivered = false;
 };
 
 } // namespace haylen::gpu::metal

@@ -607,23 +607,24 @@ void Device::setViewportAndScissor(int width, int height) {
     context->RSSetScissorRects(1, &scissor);
 }
 
+// The pass opens once its attachments are bound, so a pass that fails to begin leaves no pass open.
 void Device::beginPass(const PassDesc& desc) {
     if (passOpen) {
         throw std::logic_error("A pass began while another pass was open.");
     }
     openFrame();
-    passOpen = true;
     pass = {};
-    if (annotation != nullptr && !desc.label.empty()) {
-        annotation->BeginEvent(markerText.convert(desc.label));
-        pass.labeled = true;
-    }
     unbindTextures();
-
     if (desc.colors.empty() && !desc.depthStencil) {
         beginSwapchainPass(desc);
     } else {
         beginOffscreenPass(desc);
+    }
+
+    passOpen = true;
+    if (annotation != nullptr && !desc.label.empty()) {
+        annotation->BeginEvent(markerText.convert(desc.label));
+        pass.labeled = true;
     }
 }
 
@@ -1070,6 +1071,9 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
     const ImageRecord& record = images.get(image.id);
     if (record.kind != ImageKind::RenderTarget || record.sampleCount > 1 || record.type == TextureType::Volume) {
         throw std::logic_error("Only a render target of one sample can be read.");
+    }
+    if (width <= 0 || height <= 0 || width > record.width || height > record.height) {
+        throw std::logic_error(std::format("A region of {}x{} pixels does not fit the render target of {}x{}.", width, height, record.width, record.height));
     }
     openFrame();
 

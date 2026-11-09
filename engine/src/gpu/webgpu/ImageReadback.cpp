@@ -58,6 +58,7 @@ void ImageReadback::receiveMapping(WGPUMapAsyncStatus status, WGPUStringView, vo
 std::optional<std::vector<std::uint8_t>> ImageReadback::poll() {
     switch (state) {
     case State::Mapping:
+    case State::Delivered:
         return std::nullopt;
     case State::Failed:
         throw std::runtime_error("The GPU could not hand over the pixels of a render target.");
@@ -74,6 +75,7 @@ std::optional<std::vector<std::uint8_t>> ImageReadback::poll() {
         convertRow(source, std::span<std::uint8_t>(pixels).subspan(static_cast<std::size_t>(row) * targetRow, targetRow));
     }
     wgpuBufferUnmap(buffer);
+    state = State::Delivered;
     return pixels;
 }
 

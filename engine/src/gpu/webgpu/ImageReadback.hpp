@@ -23,11 +23,12 @@ class ImageReadback final : public Device::Readback {
     [[nodiscard]] std::optional<std::vector<std::uint8_t>> poll() override;
 
   private:
-    // Where the mapping stands, which its callback sets.
+    // Where the mapping stands, which its callback sets, and whether `poll` handed the pixels over.
     enum class State : std::uint8_t {
         Mapping,
         Mapped,
         Failed,
+        Delivered,
     };
 
     static constexpr std::uint32_t kRowAlignment = 256;

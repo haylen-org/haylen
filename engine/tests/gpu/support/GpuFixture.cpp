@@ -143,24 +143,27 @@ void GpuFixture::drawPlane(math::Color color, float depth) {
 
 GpuFixture::Pixels GpuFixture::read(gpu::Device::Image image, int width, int height) {
     const std::unique_ptr<gpu::Device::Readback> copy = made->readImage(image, width, height);
+    Pixels read{.width = width, .height = height, .bytes = finishCopy(*copy)};
+
+    // A device whose render targets start at their bottom row hands that row first.
+    if (!made->getCapabilities().originTopLeft) {
+        const std::size_t row = static_cast<std::size_t>(width) * 4;
+        for (int top = 0, bottom = height - 1; top < bottom; ++top, --bottom) {
+            std::swap_ranges(read.bytes.begin() + static_cast<std::ptrdiff_t>(row * static_cast<std::size_t>(top)), read.bytes.begin() + static_cast<std::ptrdiff_t>(row * static_cast<std::size_t>(top + 1)), read.bytes.begin() + static_cast<std::ptrdiff_t>(row * static_cast<std::size_t>(bottom)));
+        }
+    }
+    return read;
+}
+
+std::vector<std::uint8_t> GpuFixture::finishCopy(gpu::Device::Readback& copy) {
     const auto deadline = std::chrono::steady_clock::now() + kReadTimeout;
     while (std::chrono::steady_clock::now() < deadline) {
-        std::optional<std::vector<std::uint8_t>> pixels = copy->poll();
-        if (!pixels) {
-            made->commit();
-            EventLoop::yield();
-            continue;
+        std::optional<std::vector<std::uint8_t>> pixels = copy.poll();
+        if (pixels) {
+            return std::move(*pixels);
         }
-
-        // A device whose render targets start at their bottom row hands that row first.
-        Pixels read{.width = width, .height = height, .bytes = std::move(*pixels)};
-        if (!made->getCapabilities().originTopLeft) {
-            const std::size_t row = static_cast<std::size_t>(width) * 4;
-            for (int top = 0, bottom = height - 1; top < bottom; ++top, --bottom) {
-                std::swap_ranges(read.bytes.begin() + static_cast<std::ptrdiff_t>(row * static_cast<std::size_t>(top)), read.bytes.begin() + static_cast<std::ptrdiff_t>(row * static_cast<std::size_t>(top + 1)), read.bytes.begin() + static_cast<std::ptrdiff_t>(row * static_cast<std::size_t>(bottom)));
-            }
-        }
-        return read;
+        made->commit();
+        EventLoop::yield();
     }
     throw std::runtime_error(std::format("The copy of a render target did not finish within {} seconds.", kReadTimeout.count()));
 }

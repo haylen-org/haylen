@@ -633,7 +633,7 @@ Gl::Uint Device::getSingleFramebuffer(Image image, std::string_view label) {
     return framebuffers.get(key, label);
 }
 
-// Each pass starts with the viewport on all of its attachments, no scissor, no stencil reference and a transparent blend color, as the passes of every device do.
+// Each pass starts with the viewport on all of its attachments, no scissor, no stencil reference and a transparent blend color, as the passes of every device do. The pass opens once its framebuffer is bound, so a pass that fails to begin leaves no pass open.
 void Device::beginPass(const PassDesc& desc) {
     if (pass.open) {
         throw std::logic_error("A pass began while another pass was open.");
@@ -643,15 +643,15 @@ void Device::beginPass(const PassDesc& desc) {
         requireUnpresented(desc.surface);
     }
     beginFrame();
-    timer.beginPass();
-    pass = {.open = true};
+    pass = {};
     applied = nullptr;
-
     if (swapchain) {
         beginSwapchainPass(desc);
     } else {
         beginOffscreenPass(desc);
     }
+
+    pass.open = true;
     if (pass.skipped) {
         return;
     }
@@ -690,6 +690,7 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
         pass.width = drawable.width;
         pass.height = drawable.height;
     }
+    timer.beginPass();
     state.bindDrawFramebuffer(0);
     state.setFramebufferSrgb(false);
 
@@ -747,6 +748,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
     }
 
     pass.framebuffer = framebuffers.get(key, desc.label);
+    timer.beginPass();
     state.bindDrawFramebuffer(pass.framebuffer);
     state.setFramebufferSrgb(srgb);
     loadAttachments();

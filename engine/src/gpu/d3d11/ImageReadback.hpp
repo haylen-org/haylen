@@ -25,6 +25,7 @@ class ImageReadback final : public Device::Readback {
     Device::PixelFormat format = Device::PixelFormat::Rgba8;
     int width = 0;
     int height = 0;
+    bool delivered = false;
 };
 
 } // namespace haylen::gpu::d3d11

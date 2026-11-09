@@ -81,6 +81,7 @@ class GpuFixture : public ::testing::TestWithParam<gpu::Device::Api> {
 
     // Commits empty frames until the copy of the render target, which a committed frame rendered, finishes on the GPU.
     [[nodiscard]] Pixels read(gpu::Device::Image image, int width, int height);
+    [[nodiscard]] std::vector<std::uint8_t> finishCopy(gpu::Device::Readback& copy);
 
     // Draws one pass that clears a render target of one color and the size, and reads it back.
     [[nodiscard]] Pixels clearAndRead(math::Color color, int width, int height);

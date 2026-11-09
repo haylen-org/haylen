@@ -198,6 +198,7 @@ class NullDevice final : public Device {
       private:
         std::size_t size = 0;
         bool started = false;
+        bool delivered = false;
     };
 
     [[nodiscard]] static bool isPowerOfTwo(int value) noexcept;

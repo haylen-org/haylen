@@ -10,7 +10,7 @@
 namespace haylen::gpu {
 
 std::optional<std::vector<std::uint8_t>> NullDevice::NullReadback::poll() {
-    if (!std::exchange(started, true)) {
+    if (!std::exchange(started, true) || std::exchange(delivered, true)) {
         return std::nullopt;
     }
     return std::vector<std::uint8_t>(size, 0);

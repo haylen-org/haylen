@@ -11,7 +11,7 @@ namespace haylen::gpu::d3d11 {
 ImageReadback::ImageReadback(Microsoft::WRL::ComPtr<ID3D11DeviceContext> owner, Microsoft::WRL::ComPtr<ID3D11Texture2D> copy, Microsoft::WRL::ComPtr<ID3D11Query> finished, Device::PixelFormat pixelFormat, int imageWidth, int imageHeight) : context(std::move(owner)), staging(std::move(copy)), done(std::move(finished)), format(pixelFormat), width(imageWidth), height(imageHeight) {}
 
 std::optional<std::vector<std::uint8_t>> ImageReadback::poll() {
-    if (context->GetData(done.Get(), nullptr, 0, D3D11_ASYNC_GETDATA_DONOTFLUSH) == S_FALSE) {
+    if (delivered || context->GetData(done.Get(), nullptr, 0, D3D11_ASYNC_GETDATA_DONOTFLUSH) == S_FALSE) {
         return std::nullopt;
     }
 
@@ -31,6 +31,7 @@ std::optional<std::vector<std::uint8_t>> ImageReadback::poll() {
         direct3d::PixelConverter::convertRow(format, {source, rowBytes}, std::span(pixels).subspan(static_cast<std::size_t>(row) * static_cast<std::size_t>(width) * 4, static_cast<std::size_t>(width) * 4));
     }
     context->Unmap(staging.Get(), 0);
+    delivered = true;
     return pixels;
 }
 

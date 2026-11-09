@@ -569,7 +569,7 @@ class Device {
         std::string missing;
     };
 
-    // A copy of the pixels of a render target to memory the CPU reads, which `poll` hands over once the GPU finished it, as RGBA8 whatever the format of the image, four bytes a pixel from the first row the device stores. A multisampled image is read through its resolve image.
+    // A copy of the pixels of a render target to memory the CPU reads, which `poll` hands over once the GPU finished it, and never again, as RGBA8 whatever the format of the image, four bytes a pixel from the first row the device stores. A multisampled image is read through its resolve image.
     class Readback {
       public:
         virtual ~Readback() = default;

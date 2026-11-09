@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <stdexcept>
 #include <vector>
 
 #include "gpu/support/GpuFixture.hpp"
@@ -236,6 +237,16 @@ TEST_P(GpuDrawTest, KeepsUniformBlocksWhileLaterBlocksFillTheUploadMemory) {
     EXPECT_TRUE(isNear(pixels.at(0, 1), math::Color::black()));
     device().destroy(vertices);
     device().destroy(pipeline);
+}
+
+// A pipeline takes no more color targets and vertex buffers than the contract holds.
+TEST_P(GpuDrawTest, RefusesPipelinesBeyondTheLimitsOfTheContract) {
+    const std::array<Device::ColorTarget, Device::kMaxColorTargets + 1> colors{};
+    EXPECT_THROW((void)device().makePipeline({.program = program("plane"), .colors = colors, .label = "haylen-test-colors"}), std::logic_error);
+
+    const std::array<Device::VertexBufferLayout, Device::kMaxVertexBuffers + 1> buffers{};
+    const std::array<Device::ColorTarget, 1> color{};
+    EXPECT_THROW((void)device().makePipeline({.program = program("plane"), .buffers = buffers, .colors = color, .label = "haylen-test-buffers"}), std::logic_error);
 }
 
 // A line across the middle of the target lights the pixels it passes.

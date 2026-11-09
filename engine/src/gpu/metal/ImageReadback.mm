@@ -33,9 +33,10 @@ ImageReadback::ImageReadback(id<MTLCommandQueue> queue, id<MTLTexture> texture, 
 }
 
 std::optional<std::vector<std::uint8_t>> ImageReadback::poll() {
-    if (!done->load(std::memory_order_acquire)) {
+    if (delivered || !done->load(std::memory_order_acquire)) {
         return std::nullopt;
     }
+    delivered = true;
     std::vector<std::uint8_t> pixels(pixelCount * 4U);
     const auto* source = static_cast<const std::byte*>(buffer.contents);
     if (format == gpu::Device::PixelFormat::Rgba8 || format == gpu::Device::PixelFormat::Rgba8Srgb) {

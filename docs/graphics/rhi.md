@@ -72,7 +72,7 @@ const gpu::Device::Image target = device.makeImage({.width = 256, .height = 256,
 
 ## Passes and draws
 
-A pass draws into attachments. A `PassDesc` that names color attachments draws offscreen, into up to four render targets at a mip level and layer of each, with an optional depth stencil image. A `PassDesc` that names no attachment draws into the swapchain of the window. Each attachment says how it loads, with `Clear`, `Keep` or `DontCare`, and how it stores, with `Store` or `Discard`. Tile GPUs skip memory traffic for `DontCare` and `Discard`. A multisampled color attachment resolves into its `resolve` image when the pass ends.
+A pass draws into attachments. A `PassDesc` that names color attachments draws offscreen, into up to four render targets at a mip level and layer of each, with an optional depth stencil image. A `PassDesc` that names no attachment draws into the swapchain of the window. Each attachment says how it loads, with `Clear`, `Keep` or `DontCare`, and how it stores, with `Store` or `Discard`. Tile GPUs skip memory traffic for `DontCare` and `Discard`. A multisampled color attachment resolves into its `resolve` image when the pass ends. A pass that cannot begin, such as one into an image that is not a render target, throws `std::logic_error` and leaves no pass open, so the next pass begins as usual.
 
 Inside a pass the renderer calls, in this order for each draw:
 
@@ -96,7 +96,7 @@ Each device moves this data through upload memory of its own for each frame in f
 
 ## Reading pixels back
 
-`readImage(image, width, height)` starts copying the first mip level and layer of a render target after the frame that drew it was committed. It returns a `Readback`, whose `poll` gives nothing until the GPU finished the copy and then hands over four bytes a pixel, red, green, blue and alpha, whatever the format. The rows start with the first row that the device stores, which `Capabilities::originTopLeft` names. No device waits for the GPU to finish a copy. The [rendering guide](rendering.md#reading-pixels-back) shows how each API copies.
+`readImage(image, width, height)` starts copying the first mip level and layer of a render target after the frame that drew it was committed. Every device refuses a size larger than the render target. It returns a `Readback`, whose `poll` gives nothing until the GPU finished the copy, then hands over four bytes a pixel, red, green, blue and alpha, whatever the format, and gives nothing again after that. The rows start with the first row that the device stores, which `Capabilities::originTopLeft` names. No device waits for the GPU to finish a copy. The [rendering guide](rendering.md#reading-pixels-back) shows how each API copies.
 
 ## Frames in flight and lifetimes
 
@@ -205,6 +205,7 @@ A frame capture records every command of the device during some frames into a fi
 - A texture slot that filters never takes a format the device cannot filter, and a pass never samples its own attachment.
 - Dynamic buffers and images take their data before the passes that read them, once a frame.
 - Debug groups close inside the pass that opened them, and the surface goes and comes back in turn.
+- A readback hands its pixels over once.
 - The swapchain passes of a frame into one surface follow one another.
 - Pools hold at most the sizes that `NullDevice.hpp` declares, so a leak of GPU objects fails a test.
 - A capture begins and ends in turn outside a pass, only on a device that a test made with a capture tool.

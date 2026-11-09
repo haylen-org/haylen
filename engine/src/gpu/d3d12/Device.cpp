@@ -745,22 +745,23 @@ void Device::setViewportAndScissor(int width, int height) {
     commands->RSSetScissorRects(1, &scissor);
 }
 
+// The pass opens once its render pass began, so a pass that fails to begin leaves no pass open, and its label names the commands inside the render pass.
 void Device::beginPass(const PassDesc& desc) {
     if (passOpen) {
         throw std::logic_error("A pass began while another pass was open.");
     }
     openFrame();
-    passOpen = true;
     pass.endBarrierCount = 0;
-    pass.labeled = !desc.label.empty();
-    if (pass.labeled) {
-        pushDebugGroup(desc.label);
-    }
-
     if (desc.colors.empty() && !desc.depthStencil) {
         beginSwapchainPass(desc);
     } else {
         beginOffscreenPass(desc);
+    }
+
+    passOpen = true;
+    pass.labeled = !desc.label.empty();
+    if (pass.labeled) {
+        pushDebugGroup(desc.label);
     }
 }
 
@@ -1086,14 +1087,14 @@ void Device::endPass() {
     if (!passOpen) {
         throw std::logic_error("A pass ended while no pass was open.");
     }
+    if (pass.labeled) {
+        popDebugGroup();
+    }
     if (!skipping) {
         commands->EndRenderPass();
         if (pass.endBarrierCount > 0) {
             commands->ResourceBarrier(pass.endBarrierCount, pass.endBarriers.data());
         }
-    }
-    if (pass.labeled) {
-        popDebugGroup();
     }
     passOpen = false;
     skipping = false;
@@ -1228,6 +1229,9 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
     const ImageRecord& record = images.get(image.id);
     if (record.kind != ImageKind::RenderTarget || record.sampleCount > 1 || record.type == TextureType::Volume) {
         throw std::logic_error("Only a render target of one sample can be read.");
+    }
+    if (width <= 0 || height <= 0 || width > record.width || height > record.height) {
+        throw std::logic_error(std::format("A region of {}x{} pixels does not fit the render target of {}x{}.", width, height, record.width, record.height));
     }
 
     const UINT rowBytes = static_cast<UINT>(width) * static_cast<UINT>(Formats::getBytesPerPixel(record.format));

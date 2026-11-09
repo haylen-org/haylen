@@ -410,6 +410,9 @@ gpu::Device::PipelineDesc Device::SwapchainPipeline::describe() const noexcept {
 // A pipeline of the swapchain draws into its color format, its depth and stencil format and its sample count, keeping the depth and stencil tests the description asks for, or none.
 WGPURenderPipeline Device::createPipeline(const PipelineDesc& desc) {
     const ProgramRecord& program = programs.get(desc.program.id);
+    if (desc.colors.size() > kMaxColorTargets || desc.buffers.size() > kMaxVertexBuffers) {
+        throw std::logic_error(std::format("The pipeline \"{}\" draws into at most {} color targets from at most {} vertex buffers.", desc.label, kMaxColorTargets, kMaxVertexBuffers));
+    }
 
     std::array<std::vector<WGPUVertexAttribute>, kMaxVertexBuffers> attributes;
     for (const VertexAttribute& attribute : desc.attributes) {
@@ -688,12 +691,18 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
 }
 
 void Device::beginOffscreenPass(const PassDesc& desc) {
+    if (desc.colors.size() > kMaxColorTargets) {
+        throw std::logic_error(std::format("A pass draws into at most {} color attachments.", kMaxColorTargets));
+    }
     std::array<WGPURenderPassColorAttachment, kMaxColorTargets> colors{};
     passWidth = 0;
     passHeight = 0;
     for (std::size_t index = 0; index < desc.colors.size(); ++index) {
         const ColorAttachment& attachment = desc.colors[index];
         ImageRecord& image = images.get(attachment.image.id);
+        if (image.kind != ImageKind::RenderTarget) {
+            throw std::logic_error("A pass draws only into render targets.");
+        }
         colors[index] = WGPU_RENDER_PASS_COLOR_ATTACHMENT_INIT;
         colors[index].view = getAttachmentView(image, attachment.mipLevel, attachment.layer);
         colors[index].depthSlice = image.type == TextureType::Volume ? static_cast<std::uint32_t>(attachment.layer) : WGPU_DEPTH_SLICE_UNDEFINED;
@@ -711,6 +720,9 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
     if (desc.depthStencil) {
         const DepthStencilAttachment& attachment = *desc.depthStencil;
         ImageRecord& image = images.get(attachment.image.id);
+        if (image.kind != ImageKind::DepthStencil) {
+            throw std::logic_error("A pass takes only a depth stencil image as its depth and stencil attachment.");
+        }
         depth.view = getAttachmentView(image, 0, 0);
         depth.depthLoadOp = Conversion::toLoad(attachment.depthLoad);
         depth.depthStoreOp = Conversion::toStore(attachment.depthStore);
@@ -1075,6 +1087,9 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
     const ImageRecord& record = images.get(image.id);
     if (record.kind != ImageKind::RenderTarget || record.sampleCount != 1) {
         throw std::logic_error(std::format("The image {} is not a render target of one sample, whose pixels can be read back.", image.id));
+    }
+    if (width <= 0 || height <= 0 || width > record.width || height > record.height) {
+        throw std::logic_error(std::format("A region of {}x{} pixels does not fit the render target of {}x{}.", width, height, record.width, record.height));
     }
     return std::make_unique<ImageReadback>(device, queue, record.texture, record.format, width, height);
 }
