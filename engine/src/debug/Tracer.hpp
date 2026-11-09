@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "debug/Breakpoints.hpp"
+#include "haylen/lua/Reference.hpp"
 
 namespace haylen::debug {
 
@@ -143,6 +144,9 @@ class Tracer final {
     Step step = Step::None;
     lua_State* stepThread = nullptr;
     int stepDepth = 0;
+
+    // Holds the coroutine of the step, so the collector never frees a coroutine that a step waits for, such as one that yields and is dropped.
+    lua::Reference stepAnchor;
 };
 
 } // namespace haylen::debug

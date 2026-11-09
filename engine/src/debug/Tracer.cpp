@@ -32,6 +32,7 @@ void Tracer::detach() noexcept {
     hooked = false;
     step = Step::None;
     stepThread = nullptr;
+    stepAnchor.reset();
 }
 
 void Tracer::setErrorsWatched(bool value) {
@@ -42,6 +43,12 @@ void Tracer::setStep(Step value, lua_State* thread, int level) {
     step = value;
     stepThread = thread;
     stepDepth = thread != nullptr ? getDepth(thread) - level : 0;
+    stepAnchor.reset();
+    if (thread != nullptr) {
+        lua_pushthread(thread);
+        stepAnchor = lua::Reference(thread, -1);
+        lua_pop(thread, 1);
+    }
 }
 
 // A coroutine that stops being watched drops its hook at its next event, so ending a watch costs no walk of the heap, while starting one does.
@@ -176,6 +183,7 @@ void Tracer::leave(lua_State* L, lua_Debug*) {
         if (step != Step::None && L == stepThread && L != main) {
             step = Step::Pause;
             stepThread = nullptr;
+            stepAnchor.reset();
         }
         return;
     }

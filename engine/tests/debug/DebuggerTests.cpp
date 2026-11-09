@@ -78,7 +78,14 @@ end
         return {{"source", {{"path", "source/mod.lua"}}}, {"breakpoints", std::move(list)}};
     }
 
-    test::EngineFixture fixture{{{"source/mod.lua", kModule}, {"source/task.lua", kTask}}};
+    static constexpr const char* kGenerator = R"(return function()
+    local value = 1
+    coroutine.yield(value)
+    value = value + 1
+end
+)";
+
+    test::EngineFixture fixture{{{"source/mod.lua", kModule}, {"source/task.lua", kTask}, {"source/generator.lua", kGenerator}}};
     test::DebugClient client{fixture.host()};
 };
 
@@ -280,6 +287,19 @@ TEST_F(DebuggerStepTest, PausesInACoroutineThatWaitedBeforeTheDebuggerWatched) {
     lua_pop(L, 1);
     EXPECT_EQ(client.getResponse(frames).at("body").at("stackFrames").at(0).at("line"), 5);
     EXPECT_EQ(fixture.lua("return resumed"), "1");
+}
+
+// A step into a coroutine that yields waits for it to go on, and a coroutine that the app drops meanwhile stays whole while the lines of the app ask whether the step is done.
+TEST_F(DebuggerStepTest, StepsInAtTheYieldOfACoroutineThatTheAppThenDrops) {
+    client.connect(fixture.lua());
+    client.request("setBreakpoints", {{"source", {{"path", "source/generator.lua"}}}, {"breakpoints", {{{"line", 3}}}}});
+    client.getDebugger().update(fixture.lua());
+    client.then([](test::DebugClient& debug) { debug.request("stepIn"); });
+
+    EXPECT_EQ(run(fixture.lua(), "generator = coroutine.wrap(require('generator')) generator()"), "");
+    EXPECT_EQ(run(fixture.lua(), "generator = nil collectgarbage() collectgarbage() result = 0 for index = 1, 3 do result = result + index end"), "");
+    EXPECT_EQ(fixture.lua("return result"), "6");
+    EXPECT_EQ(client.getEvents("stopped").size(), 1U);
 }
 
 TEST_F(DebuggerErrorTest, HaltsWhereAnUncaughtErrorRisesBeforeItsStackUnwinds) {
