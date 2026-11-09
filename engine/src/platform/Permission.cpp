@@ -6,20 +6,8 @@
 
 namespace haylen::platform {
 
-const std::array<std::pair<std::string_view, Permission::Kind>, 11> Permission::kKindNames{{
-    {"camera", Kind::Camera},
-    {"microphone", Kind::Microphone},
-    {"location", Kind::Location},
-    {"preciseLocation", Kind::PreciseLocation},
-    {"backgroundLocation", Kind::BackgroundLocation},
-    {"notifications", Kind::Notifications},
-    {"photos", Kind::Photos},
-    {"clipboard", Kind::Clipboard},
-    {"motion", Kind::Motion},
-    {"screens", Kind::Screens},
-    {"localNetwork", Kind::LocalNetwork},
-}};
-const std::array<std::string_view, 11> Permission::kKindDescriptions{"the camera", "the microphone", "the location", "the precise location", "the location in the background", "notifications", "the photos", "the clipboard", "the motion sensors", "every screen", "the local network"};
+const std::array<std::pair<std::string_view, Permission::Kind>, 3> Permission::kKindNames{{{"motion", Kind::Motion}, {"screens", Kind::Screens}, {"localNetwork", Kind::LocalNetwork}}};
+const std::array<std::string_view, 3> Permission::kKindDescriptions{"the motion sensors", "every screen", "the local network"};
 const std::array<std::pair<std::string_view, Permission::State>, 5> Permission::kStateNames{{{"granted", State::Granted}, {"prompt", State::Prompt}, {"denied", State::Denied}, {"unknown", State::Unknown}, {"unsupported", State::Unsupported}}};
 
 // A field of the wrong type reads as missing, and an answer that is no object fails as unsupported, so a broken answer of native code fails the request instead of the engine.
@@ -80,7 +68,31 @@ std::string_view Permission::describe(Kind value) noexcept {
 }
 
 std::string Permission::refusal(Kind value) {
-    return std::format("The person has not allowed {}. Ask for it with \"system.requestPermission('{}')\", which shows the prompt of the system while the system still asks, or the person allows it in the settings of the system.", describe(value), kindName(value));
+    return refusal(describe(value), kindName(value));
+}
+
+std::string Permission::refusal(std::string_view capability, std::string_view name) {
+    return std::format("The person has not allowed {}. Ask for it with \"system.requestPermission('{}')\", which shows the prompt of the system while the system still asks, or the person allows it in the settings of the system.", capability, name);
+}
+
+std::string Permission::unknown(std::string_view name) {
+    std::string kinds;
+    for (std::size_t index = 0; index < kKindNames.size(); ++index) {
+        const std::string_view separator = index == 0 ? "" : index + 1 == kKindNames.size() ? " and " : ", ";
+        kinds += std::format("{}\"{}\"", separator, kKindNames[index].first);
+    }
+    return std::format("The permission \"{}\" is neither one of the engine, which are {}, nor one that a plugin of the app declares. A plugin declares the permissions it owns in the \"permissions\" of its \"plugin.json\".", name, kinds);
+}
+
+bool Permission::isPluginName(std::string_view name) noexcept {
+    if (name.empty() || name.front() < 'a' || name.front() > 'z' || kindFromName(name)) {
+        return false;
+    }
+    // clang-format off
+    return std::ranges::all_of(name, [](char character) {
+        return (character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z') || (character >= '0' && character <= '9');
+    });
+    // clang-format on
 }
 
 } // namespace haylen::platform

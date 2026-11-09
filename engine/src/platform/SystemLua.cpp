@@ -14,7 +14,6 @@
 #include "haylen/core/Json.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/lua/Binding.hpp"
-#include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/JsonConverter.hpp"
 #include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Runtime.hpp"
@@ -24,19 +23,6 @@
 #include "haylen/platform/Permission.hpp"
 #include "haylen/platform/System.hpp"
 #include "platform/AnswerLua.hpp"
-
-namespace haylen::lua {
-
-template <> struct EnumNames<platform::Permission::Kind> {
-    static std::optional<platform::Permission::Kind> fromName(std::string_view name) {
-        return platform::Permission::kindFromName(name);
-    }
-    static std::string_view name(platform::Permission::Kind value) {
-        return platform::Permission::kindName(value);
-    }
-};
-
-} // namespace haylen::lua
 
 namespace haylen::platform {
 
@@ -109,19 +95,19 @@ int SystemLua::setClipboard(lua_State* L) {
 // Returns a promise that resolves on a later frame with the name of the state, as `requestPermission` does, without asking the person.
 int SystemLua::permission(lua_State* L) {
     core::Engine& engine = lua::Runtime::getEngine(L);
-    const auto kind = lua::Stack::read<Permission::Kind>(L, 1);
+    const auto name = lua::Stack::read<std::string_view>(L, 1);
     const lua::Promise promise(engine);
-    engine.getSystem().checkPermission(kind, [&engine, promise](Permission::Answer answer) { AnswerLua::settlePermission(engine, promise, answer); });
+    engine.getSystem().checkPermission(name, [&engine, promise](Permission::Answer answer) { AnswerLua::settlePermission(engine, promise, answer); });
     promise.push(L);
     return 1;
 }
 
-// Returns a promise that resolves on a later frame with the name of the state the person left.
+// Returns a promise that resolves on a later frame with the name of the state the person left. A permission of a plugin is answered by the native part of the plugin that declares it.
 int SystemLua::requestPermission(lua_State* L) {
     core::Engine& engine = lua::Runtime::getEngine(L);
-    const auto kind = lua::Stack::read<Permission::Kind>(L, 1);
+    const auto name = lua::Stack::read<std::string_view>(L, 1);
     const lua::Promise promise(engine);
-    engine.getSystem().requestPermission(kind, [&engine, promise](Permission::Answer answer) { AnswerLua::settlePermission(engine, promise, answer); });
+    engine.getSystem().requestPermission(name, [&engine, promise](Permission::Answer answer) { AnswerLua::settlePermission(engine, promise, answer); });
     promise.push(L);
     return 1;
 }

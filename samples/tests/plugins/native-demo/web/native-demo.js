@@ -1,4 +1,5 @@
 // Web part of the Native Demo plugin, built on the DOM alone, with the simulations of SDKs in `simulations.js`. The page imports this module before the runtime starts and calls its `load` function with the context of the plugin.
+import registerPermissions from "./permissions.js";
 import simulate from "./simulations.js";
 
 const language = "JavaScript";
@@ -269,6 +270,7 @@ const pickFile = () =>
     });
 
 export default function load(context) {
+    registerPermissions(context);
     const video = { stream: context.videoStream("island"), canvas: null, timer: null, frame: 0 };
     const tone = { stream: context.audioStream("tone", { sampleRate: 44100, channels: 1 }), timer: null };
     let bursts = null;

@@ -903,11 +903,11 @@ elseif(APPLE)
     src/platform/apple/HaylenDialog.mm
     src/platform/apple/HaylenDisplaySceneDelegate.mm
     src/platform/apple/HaylenFieldEditor.mm
-    src/platform/apple/HaylenLocationAuthorization.mm
     src/platform/apple/HaylenOverlay.mm
     src/platform/apple/HaylenOverlayItem.mm
     src/platform/apple/HaylenOutputView.mm
     src/platform/apple/HaylenOverlayLayer.mm
+    src/platform/apple/HaylenPermission.mm
     src/platform/apple/HaylenPlacement.mm
     src/platform/apple/HaylenPluginContext.mm
     src/platform/apple/HaylenRequirement.mm
@@ -933,7 +933,7 @@ elseif(APPLE)
   list(APPEND HAYLEN_RUNTIME_SOURCES ${HAYLEN_APPLE_SOURCES})
   set_source_files_properties(${HAYLEN_APPLE_SOURCES} PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
 elseif(WIN32)
-  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/windows/WindowsAccessibility.cpp src/platform/windows/WindowsAccessibilityElement.cpp src/platform/windows/WindowsAccessibilityRoot.cpp src/platform/windows/WindowsAccessibilityTree.cpp src/platform/windows/WindowsDesktop.cpp src/platform/windows/WindowsDialogs.cpp src/platform/windows/WindowsLinks.cpp src/platform/windows/WindowsMediaSession.cpp src/platform/windows/WindowsMemory.cpp src/platform/windows/WindowsNetwork.cpp src/platform/windows/WindowsServices.cpp src/platform/windows/WindowsSettings.cpp src/platform/windows/WindowsSystem.cpp src/platform/windows/WindowsPackageStream.cpp src/platform/windows/WindowsPermissions.cpp src/platform/windows/WindowsText.cpp src/platform/windows/WindowsVideoDecoder.cpp)
+  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/windows/WindowsAccessibility.cpp src/platform/windows/WindowsAccessibilityElement.cpp src/platform/windows/WindowsAccessibilityRoot.cpp src/platform/windows/WindowsAccessibilityTree.cpp src/platform/windows/WindowsDesktop.cpp src/platform/windows/WindowsDialogs.cpp src/platform/windows/WindowsLinks.cpp src/platform/windows/WindowsMediaSession.cpp src/platform/windows/WindowsMemory.cpp src/platform/windows/WindowsNetwork.cpp src/platform/windows/WindowsServices.cpp src/platform/windows/WindowsSettings.cpp src/platform/windows/WindowsSystem.cpp src/platform/windows/WindowsPackageStream.cpp src/platform/windows/WindowsText.cpp src/platform/windows/WindowsVideoDecoder.cpp)
 elseif(ANDROID)
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/android/AndroidActivity.cpp src/platform/android/AndroidAssetPackage.cpp src/platform/android/AndroidAssetReader.cpp src/platform/android/AndroidDisplays.cpp src/platform/android/AndroidEglContext.cpp src/platform/android/AndroidGamepads.cpp src/platform/android/AndroidGraphics.cpp src/platform/android/AndroidHost.cpp src/platform/android/AndroidInputEvents.cpp src/platform/android/AndroidKeys.cpp src/platform/android/AndroidMessageQueue.cpp src/platform/android/AndroidMotion.cpp src/platform/android/AndroidMouseWheel.cpp src/platform/android/AndroidOutputs.cpp src/platform/android/AndroidRuntime.cpp src/platform/android/AndroidServices.cpp src/platform/android/AndroidStreams.cpp src/platform/android/AndroidTextInput.cpp src/platform/android/AndroidVideoDecoder.cpp src/platform/android/AndroidWindow.cpp src/platform/android/JavaBridge.cpp)
 elseif(EMSCRIPTEN)

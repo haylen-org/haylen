@@ -1010,16 +1010,21 @@ class PluginTemplateTest(unittest.TestCase):
             manifest = json.loads((folder / "plugin.json").read_text())
             self.assertEqual(manifest["apple"]["frameworks"], ["AVFoundation.framework", "CoreLocation.framework"])
             self.assertEqual(set(manifest["parameters"]), {"cameraUsage", "locationUsage", "microphoneUsage", "macDevices"})
+            self.assertEqual(manifest["permissions"], ["camera", "location", "microphone"])
             self.assertEqual(manifest["parameters"]["macDevices"]["platforms"], ["macos"])
             self.assertEqual(set(manifest["apple"]["entitlements"].values()), {"${macDevices}"})
 
-            # The shared parts come once, before the features that need them, the Android hooks hold the lines of the features, and the features ask for their permissions through the engine.
+            # The shared parts come once, before the features that need them, the Android hooks hold the lines of the features, and the features register the permissions they own and ask for them through their context.
             kotlin = (folder / "android" / "src" / "main" / "kotlin" / "com" / "haylen" / "plugins" / "devicekit" / "DeviceKitPlugin.kt").read_text()
             imports = [line for line in kotlin.splitlines() if line.startswith("import ")]
             self.assertEqual(imports, sorted(imports))
             self.assertIn("    override fun onActivityDestroyed(activity: HaylenActivity) {\n        banner.activityDestroyed()\n    }", kotlin)
             self.assertIn("camera = DeviceKitCamera(context)", kotlin)
-            self.assertIn('context.requirePermission("camera", reply)', (folder / "android" / "src" / "main" / "kotlin" / "com" / "haylen" / "plugins" / "devicekit" / "DeviceKitCamera.kt").read_text())
+            camera = (folder / "android" / "src" / "main" / "kotlin" / "com" / "haylen" / "plugins" / "devicekit" / "DeviceKitCamera.kt").read_text()
+            self.assertIn('context.registerPermission(HaylenPermission("camera", "the camera", Manifest.permission.CAMERA))', camera)
+            self.assertIn('context.requirePermission("camera", reply)', camera)
+            self.assertIn("context.register(permission())", (folder / "apple" / "DeviceKitLocation.swift").read_text())
+            self.assertIn('name: "microphone"', (folder / "web" / "microphone.js").read_text())
             self.assertIn('<uses-permission android:name="android.permission.CAMERA" />', (folder / "android" / "src" / "main" / "AndroidManifest.xml").read_text())
 
             swift = (folder / "apple" / "DeviceKitPlugin.swift").read_text()
@@ -1050,6 +1055,37 @@ class PluginTemplateTest(unittest.TestCase):
         sources = haylen.format_sources()
         self.assertNotIn(haylen.PLUGIN_TEMPLATE / "native" / "{{NAME}}.c", sources)
         self.assertIn(haylen.ROOT / "templates" / "cpp" / "src" / "App.cpp", sources)
+
+
+class PluginPermissionsTest(unittest.TestCase):
+    @staticmethod
+    def manifest(identifier: str, permissions: object) -> dict:
+        return {"id": identifier, "name": identifier.title(), "version": "1.0.0", "description": "A plugin.", "platforms": ["android"], "permissions": permissions}
+
+    def test_a_plugin_declares_its_own_permissions_in_camel_case(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            folder = Path(scratch) / "lens"
+            self.assertEqual(haylen.PluginManifestCheck.problems_of(folder, self.manifest("lens", ["camera", "backgroundLocation"])), [])
+            message = 'The key "permissions" must list the names of the permissions that the plugin owns in "camelCase", such as "camera".'
+            for permissions in ("camera", ["front-camera"], ["Camera"], [3]):
+                self.assertEqual(haylen.PluginManifestCheck.problems_of(folder, self.manifest("lens", permissions)), [message], permissions)
+            self.assertEqual(haylen.PluginManifestCheck.problems_of(folder, self.manifest("lens", ["camera", "camera", "screens", "localNetwork"])), [
+                'The key "permissions" names "camera" more than once.',
+                'The key "permissions" names "screens", which is a permission of the engine.',
+                'The key "permissions" names "localNetwork", which is a permission of the engine.',
+            ])
+
+    def test_one_plugin_of_an_app_owns_each_permission(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            app = Path(scratch)
+            for identifier in ("lens", "scanner"):
+                (app / "plugins" / identifier).mkdir(parents=True)
+                (app / "plugins" / identifier / "plugin.json").write_text(json.dumps(self.manifest(identifier, ["camera"])))
+            plugins, _ = haylen.load_app_plugins(app, [haylen.PluginReference.parse("lens", {})], "android")
+            self.assertEqual([plugin.permissions for plugin in plugins], [["camera"]])
+            with self.assertRaises(haylen.BuildError) as raised:
+                haylen.load_app_plugins(app, [haylen.PluginReference.parse(identifier, {}) for identifier in ("lens", "scanner")], "android")
+            self.assertIn('The plugins "lens", "scanner" declare the permission "camera", which one plugin of an app owns.', str(raised.exception))
 
 
 class AndroidGpuTestsTest(unittest.TestCase):

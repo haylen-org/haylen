@@ -180,7 +180,7 @@ final class NativeDemoDevice: NSObject, CLLocationManagerDelegate {
         }
     }
 
-    // The location needs the permission of the engine while the app is in use, then asks for one fix of Core Location.
+    // The location needs the permission `location` that the plugin owns, the location while the app is in use, then asks for one fix of Core Location.
     private func registerLocation() {
         context.register("location") { [unowned self] (_: Empty) async throws -> Place in
             try await self.context.requirePermission("location")

@@ -49,6 +49,7 @@ class NativeDemoPlugin : HaylenPlugin() {
 
     override fun onLoad(context: HaylenPluginContext) {
         this.context = context
+        NativeDemoPermissions.register(context)
         device = NativeDemoDevice(context)
         device.register()
         NativeDemoStore(context).register()
@@ -309,7 +310,7 @@ class NativeDemoPlugin : HaylenPlugin() {
         }
     }
 
-    // The notification comes after its seconds through an alarm, whether the app runs, waits in the background or was closed, once the app holds the permission for notifications, which the engine asks for.
+    // The notification comes after its seconds through an alarm, whether the app runs, waits in the background or was closed, once the app holds the permission `notifications` that the plugin owns.
     private fun registerNotifications() {
         context.register("notify") { params, reply ->
             val json = params as JSONObject

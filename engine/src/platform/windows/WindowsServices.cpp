@@ -27,7 +27,6 @@
 #include "platform/windows/WindowsMediaSession.hpp"
 #include "platform/windows/WindowsMemory.hpp"
 #include "platform/windows/WindowsNetwork.hpp"
-#include "platform/windows/WindowsPermissions.hpp"
 #include "platform/windows/WindowsSystem.hpp"
 #include "platform/windows/WindowsVideoDecoder.hpp"
 
@@ -200,12 +199,13 @@ void Services::openUrl(const std::string& url, std::function<void(Permission::An
     WindowsSystem::openUrl(url, std::move(callback));
 }
 
-void Services::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
-    WindowsPermissions::check(kind, std::move(callback));
+// Windows gates none of the permissions of the engine, the motion of controllers, every screen and the local network, for a desktop app.
+void Services::checkPermission(Permission::Kind, std::function<void(Permission::Answer answer)> callback) {
+    callback({.state = Permission::State::Granted});
 }
 
-void Services::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
-    WindowsPermissions::request(kind, std::move(callback));
+void Services::requestPermission(Permission::Kind, std::function<void(Permission::Answer answer)> callback) {
+    callback({.state = Permission::State::Granted});
 }
 
 std::string Services::explainBlockedSocket(std::intptr_t) {

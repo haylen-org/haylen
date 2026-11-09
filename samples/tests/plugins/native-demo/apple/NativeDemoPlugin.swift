@@ -150,9 +150,11 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
     private var tone: NativeDemoTone?
     private var device: NativeDemoDevice?
     private let store = NativeDemoStore()
+    private let permissions = NativeDemoPermissions()
 
     func load(with context: HaylenPluginContext) {
         self.context = context
+        permissions.register(context)
         let device = NativeDemoDevice(context: context)
         device.register()
         self.device = device
@@ -483,7 +485,7 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
         }
     }
 
-    // The notifications need the permission of the engine, which shows the prompt of the system the first time.
+    // The notifications need the permission `notifications` that the plugin owns, which shows the prompt of the system the first time.
     private func registerNotifications(_ context: HaylenPluginContext) {
         // The notification comes after the seconds pass, whether the app runs, waits in the background or was closed.
         context.register("notify") { (params: Notify) async throws -> Scheduled in

@@ -1,6 +1,6 @@
 ### plugin.locate()
 
-Asks for one fix of the location and gives `{latitude, longitude, accuracy}`, with the accuracy in meters. The call asks for the permission `location` of `system.requestPermission` where the app does not hold it yet, which is the location while the app is in use at the precision the person allows, and the fix is precise only while the app holds `preciseLocation`. It fails with the code `denied` when the person refused the location, with a message that says how to ask again, with `locationUnknown` when the device finds no fix, and with `unsupported` on a device whose location is off and on the desktop library.
+Asks for one fix of the location and gives `{latitude, longitude, accuracy}`, with the accuracy in meters. The call asks for the permission `location` that the plugin owns, which apps ask for with `system.requestPermission`, where the app does not hold it yet, which is the location while the app is in use at the precision the person allows. It fails with the code `denied` when the person refused the location, with a message that says how to ask again, with `locationUnknown` when the device finds no fix, and with `unsupported` on a device whose location is off and on the desktop library.
 
 ```lua
 local async = require('async')

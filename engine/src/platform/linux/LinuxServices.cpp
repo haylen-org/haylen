@@ -181,13 +181,13 @@ void Services::openUrl(const std::string& url, std::function<void(Permission::An
     LinuxSystem::openUrl(url, std::move(callback));
 }
 
-void Services::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
-    callback(LinuxSystem::answerPermission(kind));
+// Linux gates none of the permissions of the engine, the motion of controllers, every screen and the local network, for an app outside a sandbox.
+void Services::checkPermission(Permission::Kind, std::function<void(Permission::Answer answer)> callback) {
+    callback({.state = Permission::State::Granted});
 }
 
-// Nothing of Linux shows a prompt the engine can ask for, so a request answers what a check does.
-void Services::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
-    callback(LinuxSystem::answerPermission(kind));
+void Services::requestPermission(Permission::Kind, std::function<void(Permission::Answer answer)> callback) {
+    callback({.state = Permission::State::Granted});
 }
 
 std::string Services::explainBlockedSocket(std::intptr_t) {

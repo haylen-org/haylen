@@ -40,7 +40,7 @@ import java.nio.ByteOrder
 import kotlin.math.sqrt
 import org.json.JSONObject
 
-// The device simulations of the demo on Android, which stand in for the SDKs of cameras, maps and sharing with the APIs of the platform alone: the camera of Camera2 into the video stream `camera` with photos as JPEG bytes, the microphone of `AudioRecord` into the audio stream `microphone` with its level, the location of `LocationManager`, a drawn map over the app, the share sheet and other apps through their intents. The plugin asks for the permissions through the engine, as `system.requestPermission` does.
+// The device simulations of the demo on Android, which stand in for the SDKs of cameras, maps and sharing with the APIs of the platform alone: the camera of Camera2 into the video stream `camera` with photos as JPEG bytes, the microphone of `AudioRecord` into the audio stream `microphone` with its level, the location of `LocationManager`, a drawn map over the app, the share sheet and other apps through their intents. The plugin asks for the permissions it owns through its context, as `system.requestPermission` does.
 class NativeDemoDevice(private val context: HaylenPluginContext) {
     private var camera: Camera? = null
     private var microphone: Microphone? = null

@@ -1,7 +1,32 @@
 // The camera of the {{TITLE}} plugin on the web: `getUserMedia` into the video stream `camera`, and photos as JPEG bytes, once the page holds the permission `camera`, which the browser offers only to secure pages.
 const failure = (message, code) => Object.assign(new Error(message), { code });
 
+// The page asks for the camera by opening it, and closes it at once.
+const requestCamera = async () => {
+    try {
+        const media = await navigator.mediaDevices.getUserMedia({ video: true });
+        media.getTracks().forEach((track) => track.stop());
+        return "granted";
+    } catch (error) {
+        if (error.name === "NotAllowedError") {
+            return "denied";
+        }
+        if (error.name === "NotFoundError" || error.name === "OverconstrainedError") {
+            return { state: "unsupported", message: "The device has no camera." };
+        }
+        return "unknown";
+    }
+};
+
 export default function registerCamera(context) {
+    context.registerPermission({
+        name: "camera",
+        capability: "the camera",
+        needs: { secureContext: true, api: "navigator.mediaDevices.getUserMedia", permissionsPolicy: "camera" },
+        query: "camera",
+        request: requestCamera,
+    });
+
     const stream = context.videoStream("camera");
     let media = null;
     let video = null;

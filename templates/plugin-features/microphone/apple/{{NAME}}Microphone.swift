@@ -18,6 +18,10 @@ final class {{NAME}}Microphone {
     #endif
 
     func register(_ context: HaylenPluginContext) {
+        #if !os(tvOS)
+        context.register(Self.permission())
+        #endif
+
         context.register("startMicrophone") { [unowned self] (_: Empty) async throws -> Started in
             #if os(tvOS)
             throw HaylenFailure("Apple TV gives apps no microphone.", code: "unsupported")
@@ -38,6 +42,32 @@ final class {{NAME}}Microphone {
             return Empty()
         }
     }
+
+    #if !os(tvOS)
+    // The permission `microphone` that the plugin owns, which AVFoundation reads and asks for once the `Info.plist` gives the text of its prompt.
+    private static func permission() -> HaylenPermission {
+        HaylenPermission(name: "microphone", capability: "the microphone", requirements: [.usageDescription("NSMicrophoneUsageDescription")], state: { answer in
+            answer(state(of: AVCaptureDevice.authorizationStatus(for: .audio)), nil)
+        }, request: { answer in
+            AVCaptureDevice.requestAccess(for: .audio) { granted in
+                answer(granted ? .granted : .denied, nil)
+            }
+        })
+    }
+
+    private static func state(of status: AVAuthorizationStatus) -> HaylenPermission.State {
+        switch status {
+        case .notDetermined:
+            return .prompt
+        case .authorized:
+            return .granted
+        case .denied, .restricted:
+            return .denied
+        @unknown default:
+            return .unknown
+        }
+    }
+    #endif
 }
 
 #if !os(tvOS)

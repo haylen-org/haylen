@@ -766,7 +766,7 @@ The bridge to the native code of the plugin "platform-sample", what the window a
 | `PLT-007` | Launching apps | A small app package that the test writes into its storage and launches in place of the project, whose quit starts the project again. |  |
 | `PLT-008` | Displays | Every display where it sits with its id, scale, rate and modes, the window moved to another display, fullscreen on it and in its lowest mode, and the events of the displays. |  |
 | `PLT-009` | Second display | A scoreboard on a display other than the one of the window, drawn into the target of an output every frame, with its preview, its events and the clicks on its window. |  |
-| `PLT-010` | Permissions | The state of every permission of "haylen.system" on this platform, a request for each one, and the errors of a clipboard and motion sensors that the person refused. |  |
+| `PLT-010` | Permissions | The state of every permission of the engine on this platform, a request for each one, and the errors of a clipboard and motion sensors that the person refused. |  |
 | `PLT-011` | Frame rate | The app aiming for every refresh of the display or for 120, 60, 30 or 24 frames per second, with the frames it played in the last second, a ball that swings by the real time and a mark for each frame. |  |
 
 #### Plugins (PLG)
@@ -785,7 +785,7 @@ Every capability of native plugins through the plugin "native-demo", written wit
 | `PLG-008` | Covering native UI | A native screen over the whole app, which halts the app until it closes. | windows, linux, headless |
 | `PLG-009` | Native screen | A screen of the plugin whose answer reaches the call, and after a restart the next app as "screenRestored". | headless |
 | `PLG-010` | Native result | The file picker of the platform, which answers with the name of the picked file. | tvos, windows, linux, headless |
-| `PLG-011` | Permissions | The camera and notifications that the app asks for through "haylen.system", the camera of the plugin that follows the answer, and a local notification whose tap reaches the app, even from a closed app. | tvos, windows, linux, headless |
+| `PLG-011` | Permissions | The camera, the microphone, the location and notifications that the demo plugin owns, which the app asks for through "haylen.system", the camera of the plugin that follows the answer, and a local notification whose tap reaches the app, even from a closed app. | tvos, windows, linux, headless |
 | `PLG-012` | Requirements | A call whose native part needs what the project of the app lacks, which fails with the code "unsupported" and lists what is missing and how to add it. | windows, linux, headless |
 | `PLG-013` | Opened URLs | Links with the scheme of the plugin that open the app, before or after it started. | windows, linux, headless |
 | `PLG-014` | App errors | An error of the app that the native part keeps and sends back to the next app. | headless |

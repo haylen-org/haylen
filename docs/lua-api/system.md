@@ -1,6 +1,6 @@
 # 📖 `haylen.system`
 
-The module `haylen.system` tells what the device and its operating system are, and follows the theme, the battery, the power saving mode and the time zone of the system. It also offers services that every system has. It opens a url with the app that handles it, reads and writes the clipboard, vibrates the device, and checks and asks for the [permissions](#permissions) that a system grants while the app runs, with one vocabulary of states on every platform. It shows what the app plays in the now-playing controls of the system, whose media keys and buttons reach the app. Use it to pick the language of a first launch, to match the colors of the app to the system, to do less work on a low battery or while the system saves power, and for links to web pages, stores and mail. Native message boxes and file pickers live in [`haylen.dialogs`](dialogs.md), and the methods of the app and its plugins live in [`haylen.platform`](platform.md).
+The module `haylen.system` tells what the device and its operating system are, and follows the theme, the battery, the power saving mode and the time zone of the system. It also offers services that every system has. It opens a url with the app that handles it, reads and writes the clipboard, vibrates the device, and checks and asks for the [permissions](#permissions) that a system grants while the app runs, those of the engine and those of the plugins of the app, with one vocabulary of states on every platform. It shows what the app plays in the now-playing controls of the system, whose media keys and buttons reach the app. Use it to pick the language of a first launch, to match the colors of the app to the system, to do less work on a low battery or while the system saves power, and for links to web pages, stores and mail. Native message boxes and file pickers live in [`haylen.dialogs`](dialogs.md), and the methods of the app and its plugins live in [`haylen.platform`](platform.md).
 
 ```lua
 local system = require('haylen.system')
@@ -128,7 +128,7 @@ end)
 
 ### system.clipboard()
 
-Reads the text on the clipboard of the system. It returns a Varn promise that resolves on a later frame with the text, or with an empty string when the clipboard holds no text. Some systems ask the person before an app reads text that another app wrote, and the promise waits for the answer. A refusal rejects with a [failure](#failures) of the code `'denied'`, and the permission [`'clipboard'`](#permissions) tells beforehand what the platform does. The engine keeps up to 64 KiB of clipboard text on macOS, Windows, Linux and the Apple TV.
+Reads the text on the clipboard of the system. It returns a Varn promise that resolves on a later frame with the text, or with an empty string when the clipboard holds no text. Some systems ask the person before an app reads text that another app wrote, and the promise waits for the answer. A refusal rejects with a [failure](#failures) of the code `'denied'` and the sentence that says why, since the clipboard has no permission of its own to check beforehand. The engine keeps up to 64 KiB of clipboard text on macOS, Windows, Linux and the Apple TV.
 
 - iOS, iPadOS and visionOS ask the person whether the app may paste, or show their notice that the app pasted, as the settings of the app say.
 - macOS 15.4 and later follow the setting of the pasteboard for the app, which may ask the person.
@@ -194,7 +194,7 @@ onHit()
 
 ### system.permission(name)
 
-Reads the state of the [permission](#permissions) `name`, as far as the platform tells it, without asking the person. It returns a Varn promise that resolves on a later frame with the state, since some platforms, such as browsers, tell it only asynchronously. A name that is not a permission raises a bad argument error.
+Reads the state of the [permission](#permissions) `name`, as far as the platform tells it, without asking the person. It returns a Varn promise that resolves on a later frame with the state, since some platforms, such as browsers, tell it only asynchronously. A name that is neither a permission of the engine nor one that a plugin of the app declares raises an error, such as `The permission "bluetooth" is neither one of the engine, which are "motion", "screens" and "localNetwork", nor one that a plugin of the app declares. A plugin declares the permissions it owns in the "permissions" of its "plugin.json".`.
 
 | State | Meaning |
 | --- | --- |
@@ -203,16 +203,16 @@ Reads the state of the [permission](#permissions) `name`, as far as the platform
 | `'denied'` | The person refused it, or the system no longer asks. A request then answers `'denied'` at once, and the person allows it in the settings of the system. |
 | `'unknown'` | The platform does not tell the app until it tries, as Apple platforms do for the local network, and asks the person at the first use. |
 
-A platform that has no such capability rejects with a [failure](#failures) of the code `'unsupported'` and the reason, such as `Browsers have no photo library.`.
+A platform that has no such capability rejects with a [failure](#failures) of the code `'unsupported'` and the reason, such as `The browser cannot list every screen.`.
 
 ```lua
 local async = require('async')
 local system = require('haylen.system')
 
 async.spawn(function()
-    local state, reason = system.permission('camera'):await()
+    local state, reason = system.permission('screens'):await()
     if state == 'prompt' then
-        print('The app explains why it wants the camera before it asks.')
+        print('The app explains why it wants every screen before it asks.')
     elseif not state then
         print(reason)
     end
@@ -223,7 +223,7 @@ end)
 
 Asks the person for the [permission](#permissions) `name` with the prompt of the system, where the platform has one, and returns a Varn promise that resolves on a later frame with the state that the person left: `'granted'`, `'denied'`, `'unknown'`, or `'prompt'` when the system did not ask, such as Safari, which asks only during a tap or a click. A permission that the app holds already answers `'granted'` at once, without a prompt, and so does a platform that never asks.
 
-The engine first checks what the project of the app must declare for the permission: the usage description of the `Info.plist` on Apple platforms and the permission of the manifest on Android. Without it the request shows no prompt, logs once with the tag `haylen` what is missing and how to add it, and rejects with a [failure](#failures) of the code `'unsupported'`, whose `data.missing` lists what is missing as `{kind, name, file, snippet}`, as the [plugin guide](../platform/plugins.md#requirements) describes. A platform without the capability rejects with the same code and its reason. The app asked, so a rejection that nothing awaits never stops it.
+The engine, or the plugin that owns the permission, first checks what the project of the app must declare for it: the usage description of the `Info.plist` on Apple platforms and the permission of the manifest on Android. Without it the request shows no prompt, logs once with the tag `haylen` what is missing and how to add it, and rejects with a [failure](#failures) of the code `'unsupported'`, whose `data.missing` lists what is missing as `{kind, name, file, snippet}`, as the [plugin guide](../platform/plugins.md#requirements) describes. A platform without the capability rejects with the same code and its reason. The app asked, so a rejection that nothing awaits never stops it.
 
 ```lua
 local async = require('async')
@@ -324,52 +324,46 @@ end)
 
 ## Permissions
 
-A capability that at least one platform gates behind a permission, a prompt or a policy has a permission of `haylen.system`, so an app checks it with [`system.permission`](#systempermissionname) and asks for it with [`system.requestPermission`](#systemrequestpermissionname) the same way everywhere. A platform that never asks answers `'granted'`. The engine itself uses the clipboard, the motion sensors of [`input.startMotion`](input.md#inputstartmotionoptions) and the local network, while the camera, the microphone, the location, notifications and the photos serve the native plugins, which ask for them through their context before they use them, as the [plugin guide](../platform/plugins.md#permissions) describes.
+A capability that at least one platform gates behind a permission, a prompt or a policy has a permission, so an app checks it with [`system.permission`](#systempermissionname) and asks for it with [`system.requestPermission`](#systemrequestpermissionname) the same way everywhere. A platform that never asks answers `'granted'`. The engine owns only the permissions that it uses itself.
 
 | Name | What it gives the app |
 | --- | --- |
-| `'camera'` | The camera. |
-| `'microphone'` | The microphone. |
-| `'location'` | The location while the app is in use, at the precision the person allows. |
-| `'preciseLocation'` | The exact location, which a person may withhold while they allow an approximate one. |
-| `'backgroundLocation'` | The location while the app is in the background. |
-| `'notifications'` | The notifications that the app shows. |
-| `'photos'` | The library of photos and videos of the device. The file pickers of [`haylen.dialogs`](dialogs.md) need no permission. |
-| `'clipboard'` | A read of text that another app put on the clipboard. |
 | `'motion'` | The motion sensors of the device. |
 | `'screens'` | Every screen of the device, with where it sits, for windows and outputs on other screens. |
 | `'localNetwork'` | The devices of the local network, such as a development server on the computer of the developer, a game on the same Wi-Fi or a device of the home. |
 
-These tables tell what each platform answers and when it asks the person.
+Every other permission belongs to a plugin of the app, such as `'camera'`, `'location'` or `'notifications'`. A plugin declares the permissions it owns in the `permissions` of its `plugin.json`, and one plugin of an app owns each name, as the [plugin guide](../platform/plugins.md#permissions) describes. For such a name the engine calls the native part of the plugin through the bridge: `<id>.permission` reads the state and `<id>.requestPermission` asks, both with the parameters `{name}`, and the answer settles the promise like the answer of a permission of the engine. A plugin without a native part on this platform rejects with the code `'unsupported'` and the sentence `The plugin "<id>" that owns the permission "<name>" offers no part on this platform.`, and a native part without the handler rejects with `The plugin "<id>" that owns the permission "<name>" offers no part on this platform that answers it.`. Any other failure of the native part rejects with the code `'unsupported'` and the sentence `The plugin "<id>" failed to answer the permission "<name>".` followed by its message. The reference of each plugin tells what each platform answers for its permissions.
+
+```lua
+local async = require('async')
+local system = require('haylen.system')
+
+-- The plugin "camera" of the app declares the permission "camera" in its "plugin.json".
+async.spawn(function()
+    local state, message, failure = system.requestPermission('camera'):await()
+    if failure then
+        print(failure.code, message)
+    elseif state ~= 'granted' then
+        print('The app shows the scanner once the person allows the camera.')
+    end
+end)
+```
+
+These tables tell what each platform answers for the permissions of the engine and when it asks the person.
 
 | Name | iOS, iPadOS, Mac Catalyst, visionOS and macOS | tvOS |
 | --- | --- | --- |
-| `'camera'`, `'microphone'` | The state of AVFoundation, and its prompt with `NSCameraUsageDescription` or `NSMicrophoneUsageDescription`. | The same from tvOS 17. Earlier versions answer `'unsupported'`. |
-| `'location'` | Core Location while the app is in use, and its prompt with `NSLocationWhenInUseUsageDescription`, or `NSLocationUsageDescription` on macOS. | The same. |
-| `'preciseLocation'` | `'granted'` with full accuracy and `'denied'` with reduced accuracy. A request first asks for the location, whose prompt has the switch of the precision, and otherwise asks for full accuracy for a while, with the text of the key `preciseLocation` of `NSLocationTemporaryUsageDescriptionDictionary`. | The same. |
-| `'backgroundLocation'` | The authorization always, with `NSLocationAlwaysAndWhenInUseUsageDescription`. It answers `'prompt'` while the location is allowed in use until the engine asked once, since the system shows that prompt once. macOS answers like `'location'`, and visionOS `'unsupported'`. | `'unsupported'`. |
-| `'notifications'` | UserNotifications, which the engine loads at run time, with alerts, sounds and badges. A Mac process without a bundle, such as the desktop player, answers `'unsupported'`. | Badges alone. |
-| `'photos'` | Photos, which the engine loads at run time, to read and write, with `NSPhotoLibraryUsageDescription`. A selection of photos that the person limited counts as `'granted'`. | The same. |
-| `'clipboard'` | `'unknown'` on iOS, iPadOS, Mac Catalyst and visionOS, which ask at each paste from another app. macOS 15.4 and later follow the setting of the pasteboard, `'prompt'` while it asks, and earlier versions answer `'granted'`. | `'granted'`, since the clipboard stays inside the app. |
 | `'motion'` | Core Motion, which asks from version 27.2 with `NSMotionUsageDescription`, and `'granted'` on earlier versions and on macOS. | `'granted'`. |
 | `'screens'` | `'granted'`. | `'granted'`. |
 | `'localNetwork'` | `'unknown'`, since the system asks the person the first time the app reaches the local network, with `NSLocalNetworkUsageDescription`, and tells the app nothing of it. | `'unknown'`. |
 
 | Name | Android | Web | Windows | Linux |
 | --- | --- | --- | --- | --- |
-| `'camera'` | `android.permission.CAMERA`. | The Permissions API, and `getUserMedia` for the prompt, whose tracks stop at once. A device without a camera answers `'unsupported'`. | The privacy setting of the camera, through `AppCapability`. | `'granted'`. |
-| `'microphone'` | `android.permission.RECORD_AUDIO`. | The same as the camera. | The privacy setting of the microphone. | `'granted'`. |
-| `'location'` | `ACCESS_COARSE_LOCATION`, with `ACCESS_FINE_LOCATION` in the same prompt where the manifest declares it. | The Permissions API, and `getCurrentPosition` for the prompt. | The privacy setting of the location. | `'unknown'`, since the location service of the desktop asks on its own. |
-| `'preciseLocation'` | `ACCESS_FINE_LOCATION`, whose prompt turns an approximate location into an exact one. | The same as `'location'`, since browsers ask for no precision. | The same as `'location'`. | `'unknown'`. |
-| `'backgroundLocation'` | `ACCESS_BACKGROUND_LOCATION` from Android 10, which the request asks for after the location. Earlier versions answer like `'location'`. | `'unsupported'`, since a page reads the location only while it shows. | The same as `'location'`. | `'unknown'`. |
-| `'notifications'` | `POST_NOTIFICATIONS` from Android 13. Earlier versions answer whether the notifications of the app are on, without a prompt. | The Notification API. | `'unknown'`, since the person turns them off in the settings, which the app cannot read. | `'unknown'`. |
-| `'photos'` | `READ_MEDIA_IMAGES` and `READ_MEDIA_VIDEO` from Android 13, `READ_MEDIA_VISUAL_USER_SELECTED` from Android 14 for a selection where the manifest declares it, and `READ_EXTERNAL_STORAGE` before. | `'unsupported'`, since browsers have no photo library. | `'granted'`. | `'granted'`. |
-| `'clipboard'` | `'granted'`. | The state of `clipboard-read` in Chromium, which asks at the first read, and `'unknown'` in Safari and Firefox, which show a paste control at each read. | `'granted'`. | `'granted'`. |
 | `'motion'` | `'granted'`. | The prompt of Safari during a tap or a click, which the page keeps until it loads again, the states of `accelerometer` and `gyroscope` in Chromium, and `'granted'` elsewhere. | `'granted'`. | `'granted'`. |
 | `'screens'` | `'granted'`. | The Window Management API, with the prompt of `getScreenDetails`. A browser without it answers `'unsupported'`. | `'granted'`. | `'granted'`. |
 | `'localNetwork'` | `ACCESS_LOCAL_NETWORK` for an app that targets Android 17, on Android 17 or later. Older systems and older targets answer `'granted'`. | The state of `local-network-access` in Chromium, where a request answers `'unknown'` while the browser would ask at the first access, and `'granted'` elsewhere. | `'granted'`. | `'granted'`. |
 
-On Android a permission is `'denied'` once the engine asked for it before and Android no longer explains why the app wants it, which it does after a person refused twice. Browsers need a secure context, served over https or from localhost, for the camera, the microphone, the location, notifications, the clipboard, the motion sensors and every screen, and a page in a frame needs the feature in the `allow` attribute of its frame. Without them the call rejects with the code `'unsupported'` and `data.missing`.
+On Android a permission is `'denied'` once the engine asked for it before and Android no longer explains why the app wants it, which it does after a person refused twice. Browsers need a secure context, served over https or from localhost, for the motion sensors and every screen, and a page in a frame needs the feature in the `allow` attribute of its frame. Without them the call rejects with the code `'unsupported'` and `data.missing`.
 
 ## Failures
 
@@ -461,8 +455,9 @@ The function `engine.getSystem()` returns the `haylen::platform::System` of the 
 | `readClipboard(callback)` | Reads the text on the clipboard for the app and calls back at a later frame with an `Answer` and the text. |
 | `setClipboard(text, callback)` | Puts the text on the clipboard and calls back at a later frame with an `Answer`. |
 | `vibrate(seconds, callback)` | Vibrates the device and calls back at a later frame with an `Answer`. |
-| `checkPermission(kind, callback)` | Reads the state of a `Permission::Kind` and calls back at a later frame with an `Answer`, whose state is `Unsupported` with the reason where the platform has no such capability. |
-| `requestPermission(kind, callback)` | Asks the person and calls back at a later frame with an `Answer`, whose `missing` lists what the project of the app lacks. |
+| `checkPermission(kind, callback)` | Reads the state of a `Permission::Kind` of the engine, `Motion`, `Screens` or `LocalNetwork`, and calls back at a later frame with an `Answer`, whose state is `Unsupported` with the reason where the platform has no such capability. |
+| `requestPermission(kind, callback)` | Asks the person for a permission of the engine and calls back at a later frame with an `Answer`, whose `missing` lists what the project of the app lacks. |
+| `checkPermission(name, callback)`, `requestPermission(name, callback)` | The same by the name of `system.permission`, for a permission of the engine or one that a plugin of the app declares, which the bridge asks the native part of the plugin for. They throw `std::invalid_argument` for a name that nobody owns, and `std::runtime_error` when the plugins of the app cannot be read. |
 
 The functions `openUrl` and `vibrate` throw `std::invalid_argument` for the values that Lua rejects. The function `graphics::Device::getAdapterName()` names the GPU on its own.
 

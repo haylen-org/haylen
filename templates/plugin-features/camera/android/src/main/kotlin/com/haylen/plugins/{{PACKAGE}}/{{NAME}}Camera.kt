@@ -1,5 +1,6 @@
 package com.haylen.plugins.{{PACKAGE}}
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
@@ -17,6 +18,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
 import dev.haylen.HaylenBridge
+import dev.haylen.HaylenPermission
 import dev.haylen.HaylenPluginContext
 import dev.haylen.HaylenVideoStream
 import java.io.ByteArrayOutputStream
@@ -29,6 +31,8 @@ class {{NAME}}Camera(private val context: HaylenPluginContext) {
     private var capture: Capture? = null
 
     fun register() {
+        context.registerPermission(HaylenPermission("camera", "the camera", Manifest.permission.CAMERA))
+
         context.register("startCamera") { params, reply ->
             val facing = (params as? JSONObject)?.optString("facing", "back") ?: "back"
             if (!context.application().packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {

@@ -86,7 +86,7 @@ The option `--with` starts a plugin with working code for a common kind of nativ
 | `location` | `locate`, `watchLocation`, `stopWatchingLocation` and `onLocated`. One fix of Core Location, `LocationManager` and `navigator.geolocation`, and every change while the app watches, as [batched events](platform-bridge.md#batched-events). |
 | `banner` | `showBanner`, `hideBanner` and `onBannerTapped`. A native bar with a text and a button, which the [overlay](#apple-overlays) places over the app at its top or bottom edge. Its button sends an event. |
 
-The features that need a permission ask for it through `context.requirePermission`, as [permissions](#permissions) describes, and fail with the code `denied` when the person refused it.
+The features that need a permission declare it in `permissions` of `plugin.json`, register it on every platform and ask for it through `context.requirePermission`, as [permissions](#permissions) describes, so they fail with the code `denied` when the person refused it.
 
 The usage descriptions are parameters of the plugin: `cameraUsage`, `microphoneUsage` and `locationUsage`. The parameter `macDevices` signs the macOS app with the entitlements of the hardened runtime. The desktop library answers the methods of every feature with the code `unsupported`, since the desktops lack the devices of phones, tablets and browsers. Apple TV has no camera, gives apps no microphone and gives one fix of the location without updates, so it answers those calls with the same code.
 
@@ -122,6 +122,7 @@ The manifest says what the plugin is, which values the app gives it, and what ea
     "description": "Banner, interstitial, rewarded and app open ads with consent.",
     "platforms": ["ios", "android", "web"],
     "requires": [],
+    "permissions": ["tracking"],
     "parameters": {
         "iosAppId": {"type": "string", "platforms": ["ios"], "required": true, "description": "App id of the iOS app in the ads service."},
         "androidAppId": {"type": "string", "platforms": ["android"], "required": true, "description": "App id of the Android app in the ads service."},
@@ -153,6 +154,7 @@ The manifest says what the plugin is, which values the app gives it, and what ea
 | `description` | Yes | What the plugin does, in one sentence. |
 | `platforms` | Yes | The platforms that the plugin supports, each once: `ios`, `catalyst`, `tvos`, `visionos`, `macos`, `android`, `web`, `windows` and `linux`. The Apple part compiles only into the targets and destinations that they allow. |
 | `requires` | No | The ids of other plugins that the app must list as well, such as `cloud` for `cloud-analytics`. |
+| `permissions` | No | The names of the [permissions](#permissions) that the plugin owns, in camelCase, such as `camera`. A name is never one of the permissions of the engine, `motion`, `screens` and `localNetwork`, and no two plugins of an app declare the same name. |
 | `parameters` | No | The values that an app gives the plugin in `app.json`, by name in camelCase. |
 | `apple` | No | The [Apple part](#the-apple-section), which needs one of `ios`, `catalyst`, `tvos`, `visionos` and `macos` in `platforms`. |
 | `android` | No | The [Android part](#the-android-section), which needs `android` in `platforms`. |
@@ -275,6 +277,7 @@ Before `run` builds for a platform, `haylen.py` loads every plugin that `app.jso
 - a repository that git cannot fetch at its `ref`;
 - any problem of a `plugin.json`;
 - a plugin that `requires` another one that `app.json` does not list;
+- a permission that two plugins of the app declare;
 - a value for a parameter that the plugin does not declare;
 - a value of the wrong type;
 - a required parameter without a value for the platform, which includes the empty text that `plugin add` writes;
@@ -1000,35 +1003,130 @@ The plugin "contacts" needs the API "navigator.contacts", which the page lacks, 
 
 ## Permissions
 
-A plugin asks for no permission of its own. The camera, the microphone, the location, notifications, the photos and every other capability that a platform gates are the [permissions of `haylen.system`](../lua-api/system.md#permissions), with one vocabulary of states on every platform. So the app checks and asks for them with `system.permission` and `system.requestPermission`, and the native part of the plugin asks for the permission it needs through its context, before it uses the capability, where the app does not hold it yet. The engine checks the usage description of the `Info.plist` and the permission of the Android manifest first, shows the prompt of the system, and on Android asks through a launcher of the Activity Result API of its own, under the key `haylen.permissions`.
+The engine owns only the permissions that it uses itself, `motion`, `screens` and `localNetwork`. Every other capability that a platform gates, such as the camera, the microphone, the location or notifications, is a permission of the plugin that serves it. The plugin declares the names it owns in `permissions` of its `plugin.json`, in camelCase. The app checks and asks for them with `system.permission` and `system.requestPermission`, with the one vocabulary of states of the [permissions of `haylen.system`](../lua-api/system.md#permissions), as it does for the permissions of the engine.
 
-| Language | Call | What it does |
+```json
+{
+    "id": "camera",
+    "name": "Camera",
+    "version": "1.0.0",
+    "description": "The camera into a video stream.",
+    "platforms": ["ios", "android", "web"],
+    "permissions": ["camera"]
+}
+```
+
+The tool `haylen.py` checks that every name is camelCase and is no permission of the engine, and that no two plugins of an app declare the same name. The engine checks the same again when it reads the plugins of the package, and fails with a sentence that names the plugins and the permission.
+
+For a name that a plugin declares, the engine calls the native part of the plugin through the bridge. The method `<id>.permission` reads the state without asking, and `<id>.requestPermission` asks the person. Both take the parameters `{"name": "<permission>"}` and answer `{"state", "message", "missing"}`, where `state` is `granted`, `prompt`, `denied`, `unknown` or `unsupported`, and `message` and `missing` matter only for `unsupported`. A plugin without a native part on the platform, or a native part without the handler, answers `unsupported` with a sentence that says so.
+
+On Apple platforms, Android and the web the runtime answers those two methods itself, for the permissions that the native part registered with its context. So a plugin writes only how its permission reads its state and how it asks. The runtime checks the requirements of the permission first, such as the usage description of the `Info.plist` or the permission of the Android manifest, and answers `unsupported` with `data.missing` where the project lacks one, as [requirements](#requirements) describes. A request whose state is not `prompt` answers that state without showing a prompt. On the web a request also asks while the state is `unknown`, since many browsers tell nothing before they ask. A name that the plugin declares and does not register on a platform answers `unsupported` there.
+
+| Language | Register | Ask before a use |
 | --- | --- | --- |
-| Swift | `try await context.requirePermission("camera")` | Returns once the app holds the permission, or throws a `HaylenFailure` with the code `denied` or `unsupported`. |
-| Objective-C | `[context requirePermission:@"camera" completion:^(NSError* error) { ... }]` | Calls back on the main thread with `nil`, or with an error whose user info holds `message`, `code` and `data`. |
-| Kotlin and Java | `context.requirePermission("camera", reply) { ... }` | Runs the block on the main thread once the app holds the permission, or fails `reply`. A block that throws fails `reply` with the error. |
-| JavaScript | `await context.requirePermission("camera")` | Resolves once the page holds the permission, or rejects with an error whose `code` is `denied` or `unsupported`. |
+| Swift | `context.register(HaylenPermission(name:capability:requirements:state:request:))` | `try await context.requirePermission("camera")` |
+| Objective-C | `[context registerPermission:[[HaylenPermission alloc] initWithName:... capability:... requirements:... state:... request:...]]` | `[context requirePermission:@"camera" completion:^(NSError* error) { ... }]` |
+| Kotlin and Java | `context.registerPermission(HaylenPermission("camera", "the camera", Manifest.permission.CAMERA))` | `context.requirePermission("camera", reply) { ... }` |
+| JavaScript | `context.registerPermission({name, capability, needs, query, state, request})` | `await context.requirePermission("camera")` |
+| C and C++ | `api->registerHandler("<id>.permission", ...)` and `api->registerHandler("<id>.requestPermission", ...)` | The library checks the state itself before a use. |
 
-A refusal fails with the code `denied` and the same sentence on every platform, which names the capability and how to ask for it again, such as `The person has not allowed the camera. Ask for it with "system.requestPermission('camera')", which shows the prompt of the system while the system still asks, or the person allows it in the settings of the system.`. A project that lacks the requirement fails with `unsupported` and `data.missing`, as [requirements](#requirements) describes, and a platform without the capability fails with `unsupported` and the reason. A permission whose platform tells nothing until the app tries, `unknown`, lets the plugin go on. The manifest of the Android module of the plugin declares the permissions it needs, and the `infoPlist` of its `apple` section gives the usage descriptions.
+The function `requirePermission` asks for a permission that the plugin registered, where the app does not hold it yet, and lets the plugin go on once the app holds it, or while the platform tells nothing until the app tries, `unknown`. A refusal fails with the code `denied` and the same sentence on every platform, which names the capability and how to ask for it again, such as `The person has not allowed the camera. Ask for it with "system.requestPermission('camera')", which shows the prompt of the system while the system still asks, or the person allows it in the settings of the system.`. A project that lacks the requirement fails with `unsupported` and `data.missing`, and a platform without the capability fails with `unsupported` and the reason. A name that the plugin did not register fails with `unsupported` on Apple platforms and the web, and throws an `IllegalArgumentException` on Android.
+
+### Apple permissions
+
+A `HaylenPermission` of `haylen/platform/apple/HaylenPermission.h`, which `HaylenPlugin.h` imports, holds the name, the capability in words for the sentences of answers, the requirements that the project needs before the system shows the prompt, and two blocks. The `state` block reads the state, and the `request` block shows the prompt. Both run on the main thread and call their answer once, from any thread, with a `HaylenPermission.State` and, for `unsupported`, the sentence that says why. An answer that comes twice is logged as an error, and the first one stands.
 
 ```swift
+import AVFoundation
+
+let camera = HaylenPermission(name: "camera", capability: "the camera", requirements: [.usageDescription("NSCameraUsageDescription")], state: { answer in
+    switch AVCaptureDevice.authorizationStatus(for: .video) {
+    case .notDetermined: answer(.prompt, nil)
+    case .authorized: answer(.granted, nil)
+    default: answer(.denied, nil)
+    }
+}, request: { answer in
+    AVCaptureDevice.requestAccess(for: .video) { granted in answer(granted ? .granted : .denied, nil) }
+})
+context.register(camera)
+
 context.register("startCamera") { (_: Empty) async throws -> Started in
     try await context.requirePermission("camera")
     return try self.startCapture()
 }
 ```
 
+### Android permissions
+
+A `HaylenPermission` of the `haylen` library is a set of permissions of the manifest that the engine asks for with the prompt of the system, through its launcher `haylen.permissions` of the Activity Result API. The constructor takes the name, the capability in words and the permissions of the manifest. A subclass overrides what differs from the default:
+
+| Method | Default | Meaning |
+| --- | --- | --- |
+| `required(context)` | The permissions of the constructor. | The permissions of the manifest that it needs on the Android that runs, empty where Android asks for nothing, such as notifications before Android 13. |
+| `requested(context, requirements)` | `required(context)` | What the prompt asks for, such as the precise location next to the approximate one where the manifest declares it, so the prompt offers the choice. |
+| `isGranted(context)` | Whether the app holds every permission of `required`. | Whether the app holds it, such as the location at any precision. |
+| `stateWithoutPrompt(context)` | `"granted"` | The state where `required` is empty, such as whether the notifications of the app are on before Android 13. |
+| `prerequisite()` | `null` | A permission that the person must grant first, which Android asks for in a prompt of its own, such as the location before the location in the background. |
+
+The engine checks that the merged manifest declares the permissions of `required`, queues the prompts so one shows at a time, and remembers which permissions it asked for across launches, so a permission that Android no longer prompts for answers `denied`. A name that the context registered twice throws an `IllegalArgumentException`.
+
 ```kotlin
-context.register("startCamera") { _, reply ->
-    context.requirePermission("camera", reply) { reply.success(startCapture()) }
+override fun onLoad(context: HaylenPluginContext) {
+    context.registerPermission(HaylenPermission("camera", "the camera", Manifest.permission.CAMERA))
+    context.register("startCamera") { _, reply ->
+        context.requirePermission("camera", reply) { reply.success(startCapture()) }
+    }
 }
 ```
 
+### Web permissions
+
+The web module registers a permission with an object. Its `needs` names what the page needs, in the form of [web requirements](#web-requirements), which the runtime checks first. Its `query` names the permission of the Permissions API that tells the state, where the browser knows it, and a name that the browser does not know answers `unknown`. A `state` function tells the state in place of `query`. The `request` function shows the prompt of the browser. The functions `state` and `request` may be async, and they answer the name of a state, or `{state, message}` for `unsupported` with the reason. The keys are checked, and an unknown key throws a `TypeError`.
+
 ```js
-context.register("startCamera", async () => {
-    await context.requirePermission("camera");
-    return startCapture();
-});
+export default function load(context) {
+    context.registerPermission({
+        name: "camera",
+        capability: "the camera",
+        needs: { secureContext: true, api: "navigator.mediaDevices.getUserMedia", permissionsPolicy: "camera" },
+        query: "camera",
+        request: async () => {
+            try {
+                const media = await navigator.mediaDevices.getUserMedia({ video: true });
+                media.getTracks().forEach((track) => track.stop());
+                return "granted";
+            } catch (error) {
+                return error.name === "NotAllowedError" ? "denied" : { state: "unsupported", message: "The device has no camera." };
+            }
+        },
+    });
+
+    context.register("startCamera", async () => {
+        await context.requirePermission("camera");
+        return startCapture();
+    });
+}
+```
+
+### Desktop permissions
+
+A [desktop library](#the-desktop-part) has no context, so it registers the handlers `<id>.permission` and `<id>.requestPermission` itself and resolves them with the JSON of the answer. A library whose platform gates nothing answers `granted`.
+
+```c
+static void my_plugin_permission(void* user, uint64_t call, const char* method, const char* paramsJson, const HaylenNativeBuffer* buffers, size_t bufferCount) {
+    my_plugin_api->resolve(call, 1, "{\"state\": \"granted\"}", NULL, 0);
+}
+
+MY_PLUGIN_EXPORT int my_plugin_haylen_init(const HaylenNativeApi* api) {
+    if (api->version != HAYLEN_NATIVE_API_VERSION) {
+        return 1;
+    }
+    my_plugin_api = api;
+    api->registerHandler("my-plugin.permission", my_plugin_permission, NULL, NULL);
+    api->registerHandler("my-plugin.requestPermission", my_plugin_permission, NULL, NULL);
+    api->registerPlugin("my-plugin");
+    return 0;
+}
 ```
 
 ## The Apple part
@@ -1125,6 +1223,8 @@ The same plugin in Objective-C:
 | `emit:payload:`, `emitRetained:payload:`, `emit:payload:retain:batched:` | Send the event `<id>.<event>`. The form `emitRetained:payload:` sends it retained, and `emit:payload:retain:batched:` sends it retained, batched or both. A payload is `nil` or any value that `NSJSONSerialization` accepts, with `NSData` values that cross as bytes. |
 | `overlay` | The overlay that places native views of the plugin over the app, as [Apple overlays](#apple-overlays) describes. |
 | `requirements` | The `HaylenRequirements` of the plugin, as [Apple requirements](#apple-requirements) describes. |
+| `registerPermission:` | Registers a `HaylenPermission` that the plugin declares, so the runtime answers `<id>.permission` and `<id>.requestPermission` for it, as [Apple permissions](#apple-permissions) describes. Swift calls it `register(_:)`. A name that the plugin registered before keeps its first permission, and the log names the mistake. |
+| `requirePermission:completion:` | Asks for a permission that the plugin registered before the plugin uses it, as [permissions](#permissions) describes, and calls back on the main thread with `nil`, or with an error whose user info holds `message`, `code` and `data`. |
 | `coverApp`, `uncoverApp` | Cover the app while native UI of the plugin covers it, and end the cover, as [covering the app](#covering-the-app) describes. The covers of a plugin end when the window of the app goes away. An `uncoverApp` without a cover of the plugin is logged as an error. |
 | `viewController`, `windowScene` | The topmost view controller that the window of the app presents, or the root view controller while nothing is presented, and the window scene of the app, on iOS, tvOS and Mac Catalyst. SDKs that present UI or need a scene take them. Both are `nil` until the scene connects. |
 | `window` | The window of the app on macOS, `nil` until the app finished launching. |
@@ -1246,6 +1346,7 @@ The file `engine/platform/apple/HaylenBridgeAsync.swift` adds Swift helpers on t
 | `try context.emit(event, payload, retain: false, batched: false)` | Sends `<id>.<event>` with an `Encodable` payload, retained when `retain` is `true` and batched when `batched` is `true`. It throws the error of the encoder when the payload does not encode. |
 | `context.registerScreen(name) { (params: Params, screen: HaylenScreen) in ... }` | Opens the screen `<id>.<name>` with a handler on the main actor, whose `Params` decode from the parameters of the app with `JSONDecoder`. A thrown `HaylenFailure` fails the screen with its code and data, and any other error fails it with the code `exception`. |
 | `try screen.finish(encoding: result)` | Ends a screen with an `Encodable` result. It throws the error of the encoder when the result does not encode. |
+| `try await context.requirePermission(name)` | Asks for a permission that the plugin registered, and throws a `HaylenFailure` with the code `denied` or `unsupported`, whose data lists in `missing` what the project lacks. |
 | `try context.require(.usageDescription("NSCameraUsageDescription"), ...)` | Throws a `HaylenFailure` with the code `unsupported` and `data.missing` when the project lacks any of the [requirements](#apple-requirements), after it logged each missing one once. A handler that lets it through fails its call with it. |
 | `HaylenBridge.register(method) { ... }`, `try HaylenBridge.emit(event, payload, retain: false, batched: false)` | The same for handlers and events outside plugins, without the prefix. |
 
@@ -1410,6 +1511,8 @@ public final class ShareSheetPlugin extends HaylenPlugin {
 | `emit(event, payload)`, `emitRetained(event, payload)`, `emit(event, payload, retain, batched)` | Send the event `<id>.<event>`. The form `emitRetained` sends it retained, and the last form sends it retained, batched or both. The payload is converted like the value of `reply.success`, with `byte[]` and `ByteBuffer` values as bytes. |
 | `overlay()` | The overlay that places native views of the plugin over the app, as [Android overlays](#android-overlays) describes. |
 | `requirements()` | The `HaylenRequirements` of the plugin, as [Android requirements](#android-requirements) describes. |
+| `registerPermission(permission)` | Registers a `HaylenPermission` that the plugin declares, so the engine answers `<id>.permission` and `<id>.requestPermission` for it, as [Android permissions](#android-permissions) describes. |
+| `requirePermission(name, reply, granted)` | Runs `granted` on the main thread once the app holds a permission that the plugin registered, after it asked the person where needed, or fails `reply` with the code `denied` or `unsupported`. A `granted` that throws fails `reply` with the error. |
 | `coverApp()`, `uncoverApp()` | Cover the app while native UI of the plugin covers it, and end the cover, as [covering the app](#covering-the-app) describes. The covers of a plugin end with the activity. An `uncoverApp` without a cover of the plugin is logged as an error, and a `coverApp` while no activity exists is logged as a warning and covers nothing. |
 | `runOnMainThread(task)` | Runs the task at once on the main thread, and posts it there from any other thread. Use it for callbacks of SDKs that arrive on threads of their own. |
 
@@ -1450,7 +1553,7 @@ The activity is a `ComponentActivity`. So plugins start activities for a result,
 
 Sometimes the activity is gone by the time the other activity returns, after the activity was recreated or the process ended while the other app showed. Then Android keeps the result, and delivers it to the launcher with the same key of the new activity once that one starts. No call of the app waits for it then, and no app of the new process listens yet. So a plugin that reports such a result to the app sends it retained, which waits for the first listener.
 
-The activity registers launchers of its own, under keys that start with `haylen.`, for the [dialogs](../lua-api/dialogs.md) of the engine, the [permissions](#permissions) and the [screens](#android-screens) of plugins. So plugins keep their keys out of that prefix, and ask for the permissions of `haylen.system` through `context.requirePermission` instead of a launcher of their own.
+The activity registers launchers of its own, under keys that start with `haylen.`, for the [dialogs](../lua-api/dialogs.md) of the engine, the [permissions](#permissions) and the [screens](#android-screens) of plugins. So plugins keep their keys out of that prefix, and register the permissions they own with `context.registerPermission`, which the launcher of the engine asks for, instead of a launcher of their own.
 
 ```kotlin
 override fun onActivityCreated(activity: HaylenActivity, savedInstanceState: Bundle?) {
@@ -1553,6 +1656,8 @@ The web module of a plugin exports `default function load(context)`. The loader 
 | `context.coverApp()`, `context.uncoverApp()` | Cover the app while native UI shows, and end the cover. |
 | `context.onAppError(listener)` | Calls `listener(error)` with the report of every error that stops the app. |
 | `context.require(needs)` | Throws an error with the code `unsupported` and `data.missing` when the page lacks a secure context, an API or a feature of the permissions policy that `needs` names, as [web requirements](#web-requirements) describes. |
+| `context.registerPermission(permission)` | Registers a permission that the plugin declares, so the runtime answers `<id>.permission` and `<id>.requestPermission` for it, as [web permissions](#web-permissions) describes. It throws for a permission that it registered before or a key it does not know. |
+| `context.requirePermission(name)` | Resolves once the page holds a permission that the plugin registered, or rejects with an error whose `code` is `denied` or `unsupported`. |
 
 A module may register, emit, cover and place elements from `load` already. The runtime keeps the events until the first app starts, and the covers and reservations until the WebAssembly runtime is ready.
 
@@ -1612,7 +1717,7 @@ The overlay places the element again whenever the canvas, the page or the elemen
 
 The desktop part of a plugin is a C or C++ library in `native/`, which the [`native` section](#the-native-section) of `plugin.json` names. The desktop player and the Windows and Linux apps load it. They have no registry of plugin classes, so the library is the native part there. The Lua API loads it with `native.load(id, {init = '<id with underscores>_haylen_init'})`, which hands the init function the [C interface of the engine](../lua-api/native.md#the-c-interface-of-the-engine). Through that interface the library:
 
-- registers the methods of the plugin with `registerHandler`, whose handlers run on the frame thread, and answers them from any thread with `resolve`;
+- registers the methods of the plugin with `registerHandler`, whose handlers run on the frame thread, and answers them from any thread with `resolve`, among them `<id>.permission` and `<id>.requestPermission` for the [permissions](#desktop-permissions) the plugin owns;
 - sends events with `emit`;
 - declares itself the native part of the plugin with `registerPlugin`, which turns `handle.native` on;
 - hears the errors of the app with `registerErrorHandler`;
@@ -1758,7 +1863,7 @@ A cancelled picker answers `nil`.
 
 ### Permissions and notifications
 
-The app asks for the camera and for notifications through `system.requestPermission`, and the plugin asks for the permission that a call needs through `context.requirePermission`, as [permissions](#permissions) describes, so `startCamera` and `notify` fail with the code `denied` once the person refused.
+The plugin owns the permissions `camera`, `microphone`, `location` and `notifications`, which its `plugin.json` declares and its native part registers on Apple platforms, Android and the web, as [permissions](#permissions) describes. The app asks for them through `system.requestPermission`, which reaches the plugin, and the plugin asks for the permission that a call needs through `context.requirePermission`, so `startCamera` and `notify` fail with the code `denied` once the person refused.
 
 - **Apple platforms.** The camera prompt shows the `NSCameraUsageDescription` that the `infoPlist` of `plugin.json` gives, and tvOS has no camera before tvOS 17. The call `notify(seconds)` schedules a local notification of the plugin. It shows while the app is in front too, since the plugin class answers `userNotificationCenter(_:willPresent:withCompletionHandler:)` for its own notifications. Its tap reaches `userNotificationCenter(_:didReceive:withCompletionHandler:)` of the plugin class, which adopts `HaylenNotificationPlugin`, through the delegate of the notification center that the runtime sets because the plugin links UserNotifications. That works also when the tap launches the closed app. The plugin sends the tap as `notificationOpened`, retained, so it waits for the listener of the Permissions test of the sample.
 - **Android.** The manifest of the module declares `android.permission.CAMERA` and `android.permission.POST_NOTIFICATIONS`. Before Android 13 notifications need no permission, so the permission tells whether the person left them on. The method `notify` sets an alarm, which starts the process when it was closed. The receiver of the alarm, `NativeDemoNotifier`, posts the notification through `NotificationManagerCompat` on a channel of its own. The tap starts `HaylenLinkActivity`, and the plugin sends `notificationOpened` from `onActivityCreated` or `onNewIntent`.

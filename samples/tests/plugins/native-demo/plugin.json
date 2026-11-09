@@ -5,6 +5,7 @@
     "description": "Exercises every capability of native plugins and simulates the SDKs of cameras, maps, stores, ads and sign-in with the APIs of each platform alone.",
     "platforms": ["ios", "catalyst", "tvos", "visionos", "macos", "android", "web", "windows", "linux"],
     "requires": [],
+    "permissions": ["camera", "microphone", "location", "notifications"],
     "parameters": {
         "greeting": {"type": "string", "default": "Hello from the native demo", "description": "Text of the native banner."},
         "bannerColor": {"type": "string", "default": "#264653", "description": "Background of the native banner and the native screen, as \"#RRGGBB\"."},

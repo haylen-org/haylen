@@ -67,19 +67,6 @@ void LinuxSystem::openUrl(const std::string& url, std::function<void(Permission:
     // clang-format on
 }
 
-// Linux gates no device of an app outside a sandbox, while the location comes from a service whose agent may ask the person, and the notification server may hide the notifications of an app, neither telling the app before it tries.
-Permission::Answer LinuxSystem::answerPermission(Permission::Kind kind) {
-    switch (kind) {
-    case Permission::Kind::Location:
-    case Permission::Kind::PreciseLocation:
-    case Permission::Kind::BackgroundLocation:
-    case Permission::Kind::Notifications:
-        return {.state = Permission::State::Unknown};
-    default:
-        return {.state = Permission::State::Granted};
-    }
-}
-
 void LinuxSystem::watchBattery() {
     NativeHost::getSystemState().setBattery(LinuxSystemReader::readBattery(kPowerSupplies));
     // clang-format off

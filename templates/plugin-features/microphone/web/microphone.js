@@ -1,7 +1,32 @@
 // The microphone of the {{TITLE}} plugin on the web: `getUserMedia` into the audio stream `microphone`, through an audio worklet whose blocks of samples reach the page, once the page holds the permission `microphone`, which the browser offers only to secure pages.
 const failure = (message, code) => Object.assign(new Error(message), { code });
 
+// The page asks for the microphone by opening it, and closes it at once.
+const requestMicrophone = async () => {
+    try {
+        const media = await navigator.mediaDevices.getUserMedia({ audio: true });
+        media.getTracks().forEach((track) => track.stop());
+        return "granted";
+    } catch (error) {
+        if (error.name === "NotAllowedError") {
+            return "denied";
+        }
+        if (error.name === "NotFoundError" || error.name === "OverconstrainedError") {
+            return { state: "unsupported", message: "The device has no microphone." };
+        }
+        return "unknown";
+    }
+};
+
 export default function registerMicrophone(context) {
+    context.registerPermission({
+        name: "microphone",
+        capability: "the microphone",
+        needs: { secureContext: true, api: "navigator.mediaDevices.getUserMedia", permissionsPolicy: "microphone" },
+        query: "microphone",
+        request: requestMicrophone,
+    });
+
     let recording = null;
 
     const stop = () => {

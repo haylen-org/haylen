@@ -202,6 +202,35 @@ haylen plugin add https://github.com/haylen-org/share.git --ref 1.0.0 --referenc
 
 An app with a web project of its own takes `loader.js` of the reference, which hands each plugin module the `parameters` of its entry in `config.json`.
 
+### The permissions of plugins
+
+A plugin that asks for a permission of a capability it serves, such as `camera`, `microphone`, `location`, `preciseLocation`, `backgroundLocation`, `notifications` or `photos`, owns that permission. It declares the names in `permissions` of its `plugin.json`, registers each one with the context of every native part, and keeps calling `requirePermission` before it uses the capability, as the [permissions](../platform/plugins.md#permissions) section describes. A name that the plugin does not register fails `requirePermission`.
+
+```json
+{
+    "permissions": ["camera"]
+}
+```
+
+```swift
+context.register(HaylenPermission(name: "camera", capability: "the camera", requirements: [.usageDescription("NSCameraUsageDescription")], state: { answer in
+    let status = AVCaptureDevice.authorizationStatus(for: .video)
+    answer(status == .authorized ? .granted : status == .notDetermined ? .prompt : .denied, nil)
+}, request: { answer in
+    AVCaptureDevice.requestAccess(for: .video) { granted in answer(granted ? .granted : .denied, nil) }
+}))
+```
+
+```kotlin
+context.registerPermission(HaylenPermission("camera", "the camera", Manifest.permission.CAMERA))
+```
+
+```js
+context.registerPermission({ name: "camera", capability: "the camera", needs: { secureContext: true }, query: "camera", request: () => askForCamera() });
+```
+
+The app keeps calling `system.permission` and `system.requestPermission` with the same names once a plugin of the app declares them. A name that no plugin of the app declares raises an error that says so. The clipboard has no permission, so a read that the person refuses fails with the code `denied`. The library of photos has no permission in the engine, and the photo picker of the system, which a dialogs plugin offers, needs none.
+
 Then list the plugins of the app, which reports each problem that keeps one from building and where each plugin comes from:
 
 ```sh

@@ -7,7 +7,9 @@ import android.util.Log;
 import androidx.activity.result.contract.ActivityResultContract;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.json.JSONObject;
 
 // What a plugin reaches the app through, one per plugin. Methods and events take the id of the plugin in front of their names, as the Lua handle of the plugin expects.
@@ -20,6 +22,7 @@ public final class HaylenPluginContext {
     private final HaylenOverlay overlay;
     private final HaylenRequirements requirements;
     private final List<String> methods = new ArrayList<>();
+    private final Map<String, HaylenPermission> permissions = new HashMap<>();
     private int covers;
 
     HaylenPluginContext(String id, Application application, JSONObject config) {
@@ -111,12 +114,29 @@ public final class HaylenPluginContext {
         return requirements;
     }
 
-    // Runs `granted` on the main thread once the app holds the permission `name` of `system.permission`, such as `camera`, after it asked the person where the app does not hold it yet, as `system.requestPermission` does. A permission that the person refused fails the call with the code `denied` and the sentence that names it and how to ask again, a manifest that lacks it fails the call with the code `unsupported` and the missing lines in `data.missing`, and a `granted` that throws, a `HaylenBridge.Failure` among them, fails the call with its error. A platform that tells nothing until the app tries, which Android does only while no activity exists, runs `granted` too. Throws an `IllegalArgumentException` for a name that `haylen.system` does not know.
-    public void requirePermission(String name, HaylenBridge.Reply reply, Runnable granted) {
-        if (!HaylenPermissions.isKnown(name)) {
-            throw new IllegalArgumentException("The permission \"" + name + "\" is not one of \"haylen.system\".");
+    // Registers a permission that the plugin declares in the `permissions` of its `plugin.json`, so the engine answers `<id>.permission` and `<id>.requestPermission`, which `system.permission` and `system.requestPermission` call, for it. Throws an `IllegalArgumentException` for a name that the plugin registered before.
+    public void registerPermission(HaylenPermission permission) {
+        boolean first;
+        synchronized (permissions) {
+            if (permissions.containsKey(permission.getName())) {
+                throw new IllegalArgumentException("The plugin \"" + id + "\" registered the permission \"" + permission.getName() + "\" twice.");
+            }
+            first = permissions.isEmpty();
+            permissions.put(permission.getName(), permission);
         }
-        runOnMainThread(() -> HaylenPermissions.ask(name, application, requirements, (state, message, missing) -> {
+        if (first) {
+            register("permission", (params, reply) -> answerPermission(params, reply, false));
+            register("requestPermission", (params, reply) -> answerPermission(params, reply, true));
+        }
+    }
+
+    // Runs `granted` on the main thread once the app holds the permission `name` that the plugin registered, such as `camera`, after it asked the person where the app does not hold it yet, as `system.requestPermission` does. A permission that the person refused fails the call with the code `denied` and the sentence that names it and how to ask again, a manifest that lacks it fails the call with the code `unsupported` and the missing lines in `data.missing`, and a `granted` that throws, a `HaylenBridge.Failure` among them, fails the call with its error. A platform that tells nothing until the app tries, which Android does only while no activity exists, runs `granted` too. Throws an `IllegalArgumentException` for a name that the plugin did not register.
+    public void requirePermission(String name, HaylenBridge.Reply reply, Runnable granted) {
+        HaylenPermission permission = findPermission(name);
+        if (permission == null) {
+            throw new IllegalArgumentException("The plugin \"" + id + "\" requires the permission \"" + name + "\", which it did not register with \"registerPermission\".");
+        }
+        runOnMainThread(() -> HaylenPermissions.ask(permission, application, requirements, (state, message, missing) -> {
             if (state.equals("granted") || state.equals("unknown")) {
                 try {
                     granted.run();
@@ -126,7 +146,7 @@ public final class HaylenPluginContext {
             } else if (state.equals("unsupported")) {
                 reply.failure(message, "unsupported", missing.isEmpty() ? null : Collections.singletonMap("missing", missing));
             } else {
-                reply.failure(HaylenPermissions.refusal(name), "denied", null);
+                reply.failure(HaylenPermissions.refusal(permission), "denied", null);
             }
         }));
     }
@@ -156,6 +176,28 @@ public final class HaylenPluginContext {
             task.run();
         } else {
             mainThread.post(task);
+        }
+    }
+
+    // A name that the plugin did not register on this platform answers `unsupported`, as a platform without the capability does.
+    private void answerPermission(Object params, HaylenBridge.Reply reply, boolean asking) {
+        String name = params instanceof JSONObject object ? object.optString("name") : "";
+        HaylenPermission permission = findPermission(name);
+        if (permission == null) {
+            reply.success(HaylenPermissions.toJson("unsupported", "The plugin \"" + id + "\" registers no permission \"" + name + "\" on Android.", Collections.emptyList()));
+            return;
+        }
+        HaylenPermissions.Answer answer = (state, message, missing) -> reply.success(HaylenPermissions.toJson(state, message, missing));
+        if (asking) {
+            HaylenPermissions.ask(permission, application, requirements, answer);
+        } else {
+            HaylenPermissions.check(permission, application, requirements, answer);
+        }
+    }
+
+    private HaylenPermission findPermission(String name) {
+        synchronized (permissions) {
+            return permissions.get(name);
         }
     }
 

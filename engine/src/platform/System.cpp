@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cmath>
 #include <ctime>
+#include <format>
+#include <optional>
 #include <stdexcept>
 #include <string>
 
@@ -14,7 +16,7 @@ namespace haylen::platform {
 
 const std::array<std::pair<std::string_view, Theme>, 2> System::kThemeNames{{{"light", Theme::Light}, {"dark", Theme::Dark}}};
 
-System::System(Host& owner, core::EventBus& bus, std::string gpuName) : host(owner), events(bus), info(owner.getSystemInfo()), theme(owner.getTheme()), battery(owner.getBattery()), powerSaving(owner.getPowerSaving()), timeZone(owner.getTimeZone()) {
+System::System(Host& owner, Bridge& channel, core::EventBus& bus, std::string gpuName, std::function<std::vector<AppPlugin>()> plugins) : host(owner), bridge(channel), events(bus), appPlugins(std::move(plugins)), info(owner.getSystemInfo()), theme(owner.getTheme()), battery(owner.getBattery()), powerSaving(owner.getPowerSaving()), timeZone(owner.getTimeZone()) {
     info.gpuName = std::move(gpuName);
 }
 
@@ -63,6 +65,54 @@ void System::checkPermission(Permission::Kind kind, std::function<void(Permissio
 
 void System::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
     host.requestPermission(kind, awaitAnswer(std::move(callback)));
+}
+
+void System::checkPermission(std::string_view name, std::function<void(Permission::Answer answer)> callback) {
+    if (const std::optional<Permission::Kind> kind = Permission::kindFromName(name)) {
+        checkPermission(*kind, std::move(callback));
+        return;
+    }
+    askPlugin(name, "permission", std::move(callback));
+}
+
+void System::requestPermission(std::string_view name, std::function<void(Permission::Answer answer)> callback) {
+    if (const std::optional<Permission::Kind> kind = Permission::kindFromName(name)) {
+        requestPermission(*kind, std::move(callback));
+        return;
+    }
+    askPlugin(name, "requestPermission", std::move(callback));
+}
+
+// The bridge answers on a later frame, on the frame thread, so the answer of the plugin reaches the callback as the answers of the host do.
+void System::askPlugin(std::string_view name, std::string_view method, std::function<void(Permission::Answer answer)> callback) {
+    const std::vector<AppPlugin> plugins = appPlugins();
+    const auto owner = std::ranges::find_if(plugins, [name](const AppPlugin& plugin) { return std::ranges::find(plugin.permissions, name) != plugin.permissions.end(); });
+    if (owner == plugins.end()) {
+        throw std::invalid_argument(Permission::unknown(name));
+    }
+
+    std::function<void(Permission::Answer)> answer = awaitAnswer(std::move(callback));
+    if (!owner->native) {
+        answer({.state = Permission::State::Unsupported, .message = std::format("The plugin \"{}\" that owns the permission \"{}\" offers no part on this platform.", owner->id, name)});
+        return;
+    }
+
+    const Bridge::Payload params{.json = {{"name", std::string(name)}}};
+    // clang-format off
+    bridge.call(owner->id + "." + std::string(method), params, [plugin = owner->id, permission = std::string(name), answer = std::move(answer)](const Bridge::Result& result) {
+        answer(readPluginAnswer(plugin, permission, result));
+    });
+    // clang-format on
+}
+
+Permission::Answer System::readPluginAnswer(const std::string& plugin, const std::string& name, const Bridge::Result& result) {
+    if (result.ok) {
+        return Permission::Answer::fromJson(result.value.json);
+    }
+    if (result.error.code == "noHandler") {
+        return {.state = Permission::State::Unsupported, .message = std::format("The plugin \"{}\" that owns the permission \"{}\" offers no part on this platform that answers it.", plugin, name)};
+    }
+    return {.state = Permission::State::Unsupported, .message = std::format("The plugin \"{}\" failed to answer the permission \"{}\". {}", plugin, name, result.error.message)};
 }
 
 // The platform answers during the call.

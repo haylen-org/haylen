@@ -1,4 +1,4 @@
--- The state of every permission of `haylen.system` as this platform tells it, a request for each one with the answer of the person, and what a use of a refused capability answers: a read of the clipboard and a start of the motion sensors. The states come again whenever the app comes back to the foreground, since the person may change them in the settings of the system meanwhile.
+-- The state of every permission of the engine as this platform tells it, a request for each one with the answer of the person, and what a use of a refused capability answers: a read of the clipboard and a start of the motion sensors. The permissions of plugins, such as the camera, belong to the plugins that own them. The states come again whenever the app comes back to the foreground, since the person may change them in the settings of the system meanwhile.
 local haylen = require('haylen')
 local input = require('haylen.input')
 local system = require('haylen.system')
@@ -8,10 +8,7 @@ local Test = require('harness.test')
 
 local Permissions = haylen.class('Permissions', Test)
 
-Permissions.kinds = {
-    {'camera', 'Camera'}, {'microphone', 'Microphone'}, {'location', 'Location'}, {'preciseLocation', 'Precise location'}, {'backgroundLocation', 'Location in the background'}, {'notifications', 'Notifications'},
-    {'photos', 'Photos'}, {'clipboard', 'Clipboard'}, {'motion', 'Motion sensors'}, {'screens', 'Every screen'}, {'localNetwork', 'Local network'},
-}
+Permissions.kinds = {{'motion', 'Motion sensors'}, {'screens', 'Every screen'}, {'localNetwork', 'Local network'}}
 
 -- The words and the tone of each state.
 Permissions.states = {
@@ -36,7 +33,7 @@ function Permissions:enter()
     end)
     self:frame{
         hint = 'Ask for a permission and answer the prompt of the system. Refuse one, then use it, to see the error that names it and how to ask again.',
-        focus = 'ask-camera',
+        focus = 'ask-screens',
         controls = {
             ui.button{id = 'check', text = 'Check every permission', variant = 'primary', onClick = function() self:checkAll() end},
             ui.button{id = 'paste', text = 'Read the clipboard', onClick = function() self:paste() end},
@@ -53,7 +50,7 @@ function Permissions:enter()
                 ui.scroll{grow = 1, height = 0, focusable = false, ui.list{id = 'answers', items = {}}},
             },
         }},
-        code = "local state = system.permission('camera'):await()\nif state == 'prompt' then\n  state = system.requestPermission('camera'):await()\nend\nlocal text, message, failure = system.clipboard():await()\nprint(failure and failure.code, message)",
+        code = "local state = system.permission('localNetwork'):await()\nif state == 'prompt' then\n  state = system.requestPermission('localNetwork'):await()\nend\nlocal text, message, failure = system.clipboard():await()\nprint(failure and failure.code, message)",
     }
     self:checkAll()
 end
@@ -97,7 +94,7 @@ function Permissions:ask(kind)
     end)
 end
 
--- A clipboard that the person refused answers "denied" with the sentence that names it and how to ask again.
+-- A clipboard that the person refused answers "denied" with the sentence of its own failure.
 function Permissions:paste()
     self:spawn(function()
         local text, message, failure = system.clipboard():await()

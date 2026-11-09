@@ -24,6 +24,10 @@ final class {{NAME}}Camera {
     #endif
 
     func register(_ context: HaylenPluginContext) {
+        #if !os(tvOS)
+        context.register(Self.permission())
+        #endif
+
         context.register("startCamera") { [unowned self] (params: Facing) async throws -> Started in
             #if os(tvOS)
             throw HaylenFailure("Apple TV has no camera.", code: "unsupported")
@@ -63,6 +67,32 @@ final class {{NAME}}Camera {
             #endif
         }
     }
+
+    #if !os(tvOS)
+    // The permission `camera` that the plugin owns, which AVFoundation reads and asks for once the `Info.plist` gives the text of its prompt.
+    private static func permission() -> HaylenPermission {
+        HaylenPermission(name: "camera", capability: "the camera", requirements: [.usageDescription("NSCameraUsageDescription")], state: { answer in
+            answer(state(of: AVCaptureDevice.authorizationStatus(for: .video)), nil)
+        }, request: { answer in
+            AVCaptureDevice.requestAccess(for: .video) { granted in
+                answer(granted ? .granted : .denied, nil)
+            }
+        })
+    }
+
+    private static func state(of status: AVAuthorizationStatus) -> HaylenPermission.State {
+        switch status {
+        case .notDetermined:
+            return .prompt
+        case .authorized:
+            return .granted
+        case .denied, .restricted:
+            return .denied
+        @unknown default:
+            return .unknown
+        }
+    }
+    #endif
 }
 
 #if !os(tvOS)

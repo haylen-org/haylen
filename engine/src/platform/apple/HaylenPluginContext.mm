@@ -3,7 +3,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <exception>
-#include <optional>
 #include <stdexcept>
 #include <utility>
 
@@ -13,10 +12,10 @@
 #include "platform/NativeHost.hpp"
 #include "platform/NativeWindow.hpp"
 #import "platform/apple/AppleBridge.hpp"
-#import "platform/apple/ApplePermissions.hpp"
 #import "platform/apple/AppleScreens.hpp"
 #import "platform/apple/HaylenAudioStream+Runtime.h"
 #import "platform/apple/HaylenOverlay+Runtime.h"
+#import "platform/apple/HaylenPermission+Runtime.h"
 #import "platform/apple/HaylenRequirements+Runtime.h"
 #import "platform/apple/HaylenVideoStream+Runtime.h"
 
@@ -26,7 +25,6 @@
 
 using haylen::core::Log;
 using haylen::platform::AppleBridge;
-using haylen::platform::ApplePermissions;
 using haylen::platform::AppleScreens;
 using haylen::platform::AudioStream;
 using haylen::platform::NativeHost;
@@ -45,6 +43,7 @@ using haylen::platform::VideoStream;
 
 @implementation HaylenPluginContext {
     NSInteger covers;
+    NSMutableDictionary<NSString*, HaylenPermission*>* permissions;
 }
 
 - (instancetype)initWithIdentifier:(NSString*)plugin config:(NSDictionary<NSString*, id>*)values {
@@ -53,6 +52,7 @@ using haylen::platform::VideoStream;
     self.config = values;
     self.overlay = [[HaylenOverlay alloc] initWithIdentifier:plugin];
     self.requirements = [[HaylenRequirements alloc] initWithOwner:[NSString stringWithFormat:@"The plugin \"%@\"", plugin]];
+    permissions = [NSMutableDictionary dictionary];
     return self;
 }
 
@@ -155,46 +155,76 @@ using haylen::platform::VideoStream;
     }
 }
 
-// The request runs on the main thread, where the permissions of Apple platforms live, and so does the completion. A permission that the platform tells nothing of until the app tries, such as the local network, lets the plugin go on.
+- (void)registerPermission:(HaylenPermission*)permission {
+    BOOL first = NO;
+    @synchronized(self) {
+        if (permissions[permission.name] != nil) {
+            Log::error("The plugin \"{}\" registered the permission \"{}\" twice, and the first one stays.", self.identifier.UTF8String, permission.name.UTF8String);
+            return;
+        }
+        first = permissions.count == 0;
+        permissions[permission.name] = permission;
+    }
+    if (first) {
+        [self registerPermissionHandler:@"permission" asking:NO];
+        [self registerPermissionHandler:@"requestPermission" asking:YES];
+    }
+}
+
+// The handlers answer `{"name": ...}` with the answer of the permission, and a name that the plugin did not register on this platform answers `unsupported`.
+- (void)registerPermissionHandler:(NSString*)method asking:(BOOL)asking {
+    __weak HaylenPluginContext* weakSelf = self;
+    // clang-format off
+    [self registerHandler:method handler:^(id params, HaylenReply reply) {
+        HaylenPluginContext* context = weakSelf;
+        id name = [params isKindOfClass:NSDictionary.class] ? params[@"name"] : nil;
+        HaylenPermission* permission = [name isKindOfClass:NSString.class] ? [context findPermission:name] : nil;
+        if (permission == nil) {
+            reply(YES, @{@"state" : @"unsupported", @"message" : [NSString stringWithFormat:@"The plugin \"%@\" registers no permission \"%@\" on this platform.", context.identifier, name]});
+            return;
+        }
+        [permission answerAsking:asking requirements:context.requirements completion:^(NSDictionary<NSString*, id>* answer) { reply(YES, answer); }];
+    }];
+    // clang-format on
+}
+
+- (nullable HaylenPermission*)findPermission:(NSString*)name {
+    @synchronized(self) {
+        return permissions[name];
+    }
+}
+
+// A permission that the system tells nothing of until the app tries lets the plugin go on, and the completion runs on the main thread.
 - (void)requirePermission:(NSString*)name completion:(void (^)(NSError* _Nullable error))completion {
-    const std::optional<Permission::Kind> kind = Permission::kindFromName(name.UTF8String);
-    if (!kind) {
-        NSString* message = [NSString stringWithFormat:@"The plugin \"%@\" asks for the permission \"%@\", which \"system.permission\" does not name.", self.identifier, name];
+    HaylenPermission* permission = [self findPermission:name];
+    if (permission == nil) {
+        NSString* message = [NSString stringWithFormat:@"The plugin \"%@\" requires the permission \"%@\", which it did not register with \"registerPermission\".", self.identifier, name];
         completion([NSError errorWithDomain:@"HaylenPermissions" code:0 userInfo:@{NSLocalizedDescriptionKey : message, @"message" : message, @"code" : @"unsupported"}]);
         return;
     }
 
-    const Permission::Kind asked = *kind;
     // clang-format off
-    dispatch_block_t request = ^{
-        ApplePermissions::request(asked, [completion, asked](Permission::Answer answer) {
-            dispatch_async(dispatch_get_main_queue(), ^{ completion([HaylenPluginContext failureOf:answer kind:asked]); });
-        });
-    };
+    [permission answerAsking:YES requirements:self.requirements completion:^(NSDictionary<NSString*, id>* answer) {
+        NSError* failure = [HaylenPluginContext failureOf:answer permission:permission];
+        dispatch_async(dispatch_get_main_queue(), ^{ completion(failure); });
+    }];
     // clang-format on
-    if (NSThread.isMainThread) {
-        request();
-    } else {
-        dispatch_async(dispatch_get_main_queue(), request);
-    }
 }
 
-+ (nullable NSError*)failureOf:(const Permission::Answer&)answer kind:(Permission::Kind)kind {
-    if (answer.state == Permission::State::Granted || answer.state == Permission::State::Unknown) {
++ (nullable NSError*)failureOf:(NSDictionary<NSString*, id>*)answer permission:(HaylenPermission*)permission {
+    NSString* state = answer[@"state"];
+    if ([state isEqualToString:@"granted"] || [state isEqualToString:@"unknown"]) {
         return nil;
     }
-    if (answer.state != Permission::State::Unsupported) {
-        NSString* message = @(Permission::refusal(kind).c_str());
+    if (![state isEqualToString:@"unsupported"]) {
+        NSString* message = @(Permission::refusal(permission.capability.UTF8String, permission.name.UTF8String).c_str());
         return [NSError errorWithDomain:@"HaylenPermissions" code:0 userInfo:@{NSLocalizedDescriptionKey : message, @"message" : message, @"code" : @"denied"}];
     }
 
-    NSString* message = @(answer.message.c_str());
+    NSString* message = answer[@"message"];
     NSMutableDictionary<NSString*, id>* failure = [NSMutableDictionary dictionaryWithDictionary:@{NSLocalizedDescriptionKey : message, @"message" : message, @"code" : @"unsupported"}];
-    if (!answer.missing.empty()) {
-        NSMutableArray<NSDictionary<NSString*, NSString*>*>* missing = [NSMutableArray array];
-        for (const Permission::Requirement& requirement : answer.missing) {
-            [missing addObject:@{@"kind" : @(requirement.kind.c_str()), @"name" : @(requirement.name.c_str()), @"file" : @(requirement.file.c_str()), @"snippet" : @(requirement.snippet.c_str())}];
-        }
+    NSArray* missing = answer[@"missing"];
+    if (missing.count > 0) {
         failure[@"data"] = @{@"missing" : missing};
     }
     return [NSError errorWithDomain:@"HaylenPermissions" code:0 userInfo:failure];

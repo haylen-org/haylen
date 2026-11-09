@@ -2466,12 +2466,15 @@ def prepare_host_native(app: App, folder: Path, jobs: int) -> list[Path]:
 # Plugins: folders under `plugins/` of an app that give Lua a capability implemented natively on each platform, which `haylen.py` validates, packages and assembles into the platform projects.
 
 PLUGIN_PLATFORMS = ("ios", "catalyst", "tvos", "visionos", "macos", "android", "web", "windows", "linux")
-PLUGIN_KEYS = {"id", "name", "version", "description", "platforms", "requires", "parameters", "apple", "android", "web", "desktop", "native"}
+PLUGIN_KEYS = {"id", "name", "version", "description", "platforms", "requires", "permissions", "parameters", "apple", "android", "web", "desktop", "native"}
 PLUGIN_ID = re.compile(r"[a-z][a-z0-9]*(-[a-z0-9]+)*")
 PARAMETER_NAME = re.compile(r"[a-z][A-Za-z0-9]*")
 # The schemes of the links that open an app, as RFC 3986 spells a scheme, and the desktops whose projects register them.
 URL_SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*")
 DESKTOP_LINK_PLATFORMS = ("windows", "linux")
+# The permissions of `system.permission` that the engine owns, which no plugin declares, since the plugins own every other permission.
+ENGINE_PERMISSIONS = ("motion", "screens", "localNetwork")
+PERMISSION_NAME = re.compile(r"[a-z][A-Za-z0-9]*")
 # A `${name}` in the `apple` and `android` sections names a parameter, while shell expansions such as `${BUILD_DIR%/Build/*}` are no references and stay as they are.
 PARAMETER_REFERENCE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 # Each parameter type with the words that describe its values and the check of a value.
@@ -2657,6 +2660,10 @@ class Plugin:
         return self.manifest.get("requires", [])
 
     @property
+    def permissions(self) -> list[str]:
+        return self.manifest.get("permissions", [])
+
+    @property
     def parameters(self) -> dict[str, dict]:
         return self.manifest.get("parameters", {})
 
@@ -2697,6 +2704,7 @@ class PluginManifestCheck:
             return ['The file "plugin.json" must hold an object.']
         check = PluginManifestCheck(folder, manifest)
         check.check_identity()
+        check.check_permissions()
         check.check_parameters()
         check.check_apple()
         check.check_android()
@@ -2772,6 +2780,16 @@ class PluginManifestCheck:
         requires = self.manifest.get("requires", [])
         if not isinstance(requires, list) or not all(isinstance(required, str) and PLUGIN_ID.fullmatch(required) and required != self.identifier for required in requires):
             self.report("requires", "must list the ids of other plugins that the app needs as well.")
+
+    def check_permissions(self) -> None:
+        permissions = self.manifest.get("permissions", [])
+        if not isinstance(permissions, list) or not all(isinstance(name, str) and PERMISSION_NAME.fullmatch(name) for name in permissions):
+            self.report("permissions", 'must list the names of the permissions that the plugin owns in "camelCase", such as "camera".')
+            return
+        for name in sorted({name for name in permissions if permissions.count(name) > 1}):
+            self.report("permissions", f'names "{name}" more than once.')
+        for name in (name for name in permissions if name in ENGINE_PERMISSIONS):
+            self.report("permissions", f'names "{name}", which is a permission of the engine.')
 
     def check_parameters(self) -> None:
         declared = self.manifest.get("parameters", {})
@@ -3059,6 +3077,7 @@ def load_app_plugins(folder: Path, references: list[PluginReference], platform: 
             problems.append(str(error))
 
     listed = {reference.id: reference for reference in references}
+    problems += permission_conflicts(list(plugins.values()))
     values: dict[str, dict] = {}
     for plugin in plugins.values():
         problems += [f'The plugin "{plugin.id}" requires the plugin "{required}", which "app.json" does not list.' for required in plugin.requires if required not in listed]
@@ -3067,6 +3086,15 @@ def load_app_plugins(folder: Path, references: list[PluginReference], platform: 
     if problems:
         raise BuildError("\n".join([f'The plugins of `{shown_path(folder / "app.json")}` cannot build for "{platform}":', *(f"  {line}" for problem in problems for line in problem.splitlines())]))
     return plugin_order(plugins), values
+
+
+def permission_conflicts(plugins: list[Plugin]) -> list[str]:
+    """Names each permission that more than one plugin of an app declares, since one plugin owns each permission of `system.permission`."""
+    owners: dict[str, list[str]] = {}
+    for plugin in plugins:
+        for name in plugin.permissions:
+            owners.setdefault(name, []).append(plugin.id)
+    return [f'The plugins {quoted_names(ids)} declare the permission "{name}", which one plugin of an app owns.' for name, ids in owners.items() if len(ids) > 1]
 
 
 def parameter_text(value: object) -> str:

@@ -12,19 +12,10 @@
 
 namespace haylen::platform {
 
-// A capability that a platform may gate behind a permission, a prompt or a policy, such as the camera or the local network, and what the platform tells of it. Every platform answers every kind with a state of one vocabulary, so an app runs the same flow everywhere.
+// A capability that a platform may gate behind a permission, a prompt or a policy, such as the local network, and what the platform tells of it. Every permission answers with a state of one vocabulary, so an app runs the same flow everywhere. The kinds are the permissions that the engine uses itself, which the host answers, while every other permission belongs to the plugin of the app that declares it in the `permissions` of its `plugin.json`, which answers it through the bridge.
 class Permission final {
   public:
-    // The location is the one while the app is in use, at the precision the person allows. The precise location is the exact one, which a person may withhold while they allow an approximate one, and the background location is the one while the app is in the background.
     enum class Kind : std::uint8_t {
-        Camera,
-        Microphone,
-        Location,
-        PreciseLocation,
-        BackgroundLocation,
-        Notifications,
-        Photos,
-        Clipboard,
         Motion,
         Screens,
         LocalNetwork,
@@ -68,15 +59,22 @@ class Permission final {
     // What the kind gives the app in words, such as `the camera`, for the sentences of answers.
     [[nodiscard]] static std::string_view describe(Kind value) noexcept;
 
-    // The sentence of a use of the capability that the person refused, which names it and how to ask for it again.
+    // The sentence of a use of the capability that the person refused, which names it and how to ask for it again, for a kind of the engine or for the capability and the name of a permission of a plugin, such as `the camera` and `camera`.
     [[nodiscard]] static std::string refusal(Kind value);
+    [[nodiscard]] static std::string refusal(std::string_view capability, std::string_view name);
+
+    // The sentence of a name that neither the engine nor a plugin of the app owns, which names the permissions of the engine and where a plugin declares its own.
+    [[nodiscard]] static std::string unknown(std::string_view name);
+
+    // Whether the name can name a permission of a plugin: a `camelCase` word of letters and digits that starts with a lowercase letter and is no kind of the engine.
+    [[nodiscard]] static bool isPluginName(std::string_view name) noexcept;
 
   private:
     // Returns the text of a key of a JSON object, or an empty text when it holds something else.
     [[nodiscard]] static std::string readText(const core::Json& object, const char* key);
 
-    static const std::array<std::pair<std::string_view, Kind>, 11> kKindNames;
-    static const std::array<std::string_view, 11> kKindDescriptions;
+    static const std::array<std::pair<std::string_view, Kind>, 3> kKindNames;
+    static const std::array<std::string_view, 3> kKindDescriptions;
     static const std::array<std::pair<std::string_view, State>, 5> kStateNames;
 };
 

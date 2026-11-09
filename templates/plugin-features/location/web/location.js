@@ -5,7 +5,21 @@ const place = (position) => ({ latitude: position.coords.latitude, longitude: po
 
 const failed = (error) => failure(`The location is unknown: ${error.message}`, "locationUnknown");
 
+// A fix that may come from the cache asks the person, and a fix that does not come in time leaves the state unknown, since the person may still answer.
+const kRequestMilliseconds = 30000;
+const requestLocation = () => new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(() => resolve("granted"), (error) => resolve(error.code === error.PERMISSION_DENIED ? "denied" : "unknown"), { maximumAge: Infinity, timeout: kRequestMilliseconds });
+});
+
 export default function registerLocation(context) {
+    context.registerPermission({
+        name: "location",
+        capability: "the location",
+        needs: { secureContext: true, api: "navigator.geolocation", permissionsPolicy: "geolocation" },
+        query: "geolocation",
+        request: requestLocation,
+    });
+
     let watch = null;
 
     const stopWatching = () => {

@@ -300,7 +300,7 @@ class Engine final {
     // The screen edges that native views of plugins reserve, such as a banner ad, as the largest reservation on each edge in framebuffer pixels. The safe area of the viewport grows on each edge to cover them, so UI anchored to the safe area moves out of their way. The engine takes them at the start of every frame.
     [[nodiscard]] const math::Insets& getReservedInsets() const noexcept;
 
-    // The plugins that app.json lists, in the order of their ids, with the version and parameter defaults of their plugin.json and whether their native part runs on this platform. Throws std::runtime_error when a plugin.json of the package cannot be read.
+    // The plugins that app.json lists, in the order of their ids, with the version, the permissions and the parameter defaults of their plugin.json and whether their native part runs on this platform. Throws std::runtime_error when a plugin.json of the package cannot be read or two plugins declare the same permission.
     [[nodiscard]] std::vector<platform::AppPlugin> getAppPlugins() const;
 
     // The ids of the plugins whose native part runs, which the platform loaded or a native library of the app declared, in order.

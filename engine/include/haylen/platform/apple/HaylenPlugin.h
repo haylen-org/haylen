@@ -12,6 +12,7 @@
 
 #import "haylen/platform/apple/HaylenAudioStream.h"
 #import "haylen/platform/apple/HaylenBridge.h"
+#import "haylen/platform/apple/HaylenPermission.h"
 #import "haylen/platform/apple/HaylenRequirements.h"
 #import "haylen/platform/apple/HaylenScreen.h"
 #import "haylen/platform/apple/HaylenVideoStream.h"
@@ -80,7 +81,7 @@ NS_SWIFT_NAME(HaylenOverlay.Item)
 
 @end
 
-// What the runtime gives the native part of a plugin, once per plugin: its id, its parameters from `app.json` with the defaults of `plugin.json`, its overlay, the requirements it checks in the project of the app and the app's window. Methods, events, screens and streams take the id of the plugin in front of their names, so `registerHandler:@"show"` answers `<id>.show`. Registering, emitting, covering, checking requirements and opening streams work from any thread, while the window, the view controller and the overlay belong to the main thread.
+// What the runtime gives the native part of a plugin, once per plugin: its id, its parameters from `app.json` with the defaults of `plugin.json`, its overlay, the requirements it checks in the project of the app, the permissions it owns and the app's window. Methods, events, screens and streams take the id of the plugin in front of their names, so `registerHandler:@"show"` answers `<id>.show`. Registering, emitting, covering, checking requirements and opening streams work from any thread, while the window, the view controller and the overlay belong to the main thread.
 @interface HaylenPluginContext : NSObject
 
 @property(nonatomic, readonly, copy) NSString* identifier;
@@ -115,7 +116,10 @@ NS_SWIFT_NAME(HaylenOverlay.Item)
 - (void)emitRetained:(NSString*)event payload:(nullable id)payload;
 - (void)emit:(NSString*)event payload:(nullable id)payload retain:(BOOL)retain batched:(BOOL)batched;
 
-// Asks for the permission `name` of `system.permission`, such as `camera`, where the app does not hold it yet, before the plugin uses the capability. The completion runs on the main thread with `nil` once the app holds it, or with an error whose user info holds the failure that a handler replies with: `message`, the code `denied` when the person refused it or `unsupported` with the reason, and `data`, whose `missing` lists the requirements the project lacks.
+// Registers a permission that the plugin declares in the `permissions` of its `plugin.json`, so the runtime answers `<id>.permission` and `<id>.requestPermission`, which `system.permission` and `system.requestPermission` call, for it. A name that the plugin registered before keeps its first permission, and the log names the mistake.
+- (void)registerPermission:(HaylenPermission*)permission NS_SWIFT_NAME(register(_:));
+
+// Asks for the permission `name` that the plugin registered, such as `camera`, where the app does not hold it yet, before the plugin uses the capability. The completion runs on the main thread with `nil` once the app holds it or the system tells nothing until the app tries, or with an error whose user info holds the failure that a handler replies with: `message`, the code `denied` with the sentence that names the capability and how to ask again when the person refused it, or `unsupported` with the reason, and `data`, whose `missing` lists the requirements the project lacks. A name that the plugin did not register fails with the code `unsupported`.
 - (void)requirePermission:(NSString*)name completion:(void (^)(NSError* _Nullable error))completion NS_SWIFT_DISABLE_ASYNC;
 
 // Native UI that covers the app, such as a full screen ad or a sign-in sheet, covers it while it shows, which halts and mutes the app. Covers are counted, and the covers of a plugin end when the window of the app goes away.

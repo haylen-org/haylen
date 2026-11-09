@@ -2,6 +2,7 @@ package com.haylen.plugins.{{PACKAGE}}
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
@@ -11,7 +12,9 @@ import android.os.Looper
 import androidx.core.content.ContextCompat
 import androidx.core.location.LocationManagerCompat
 import dev.haylen.HaylenBridge
+import dev.haylen.HaylenPermission
 import dev.haylen.HaylenPluginContext
+import dev.haylen.HaylenRequirements
 import org.json.JSONObject
 
 // The location of the {{TITLE}} plugin on Android: one fix of `LocationManager`, from the GPS where it is on and the person allowed the precise location, and from the network otherwise, or every change while the app watches, sent batched as the event `located`, after the person allowed the location.
@@ -19,6 +22,8 @@ class {{NAME}}Location(private val context: HaylenPluginContext) {
     private var watcher: LocationListener? = null
 
     fun register() {
+        context.registerPermission(LocationPermission())
+
         context.register("locate") { _, reply ->
             context.requirePermission("location", reply) { locate(reply) }
         }
@@ -78,4 +83,17 @@ class {{NAME}}Location(private val context: HaylenPluginContext) {
     }
 
     private fun place(location: Location): JSONObject = JSONObject().put("latitude", location.latitude).put("longitude", location.longitude).put("accuracy", location.accuracy.toDouble())
+}
+
+// The permission `location` that the plugin owns, the location while the app is in use at the precision the person allows: the prompt offers the precise location next to the approximate one where the manifest declares it, and either one counts as granted.
+private class LocationPermission : HaylenPermission("location", "the location", Manifest.permission.ACCESS_COARSE_LOCATION) {
+    override fun requested(context: Context, requirements: HaylenRequirements): Array<String> {
+        val precise = requirements.hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+        return if (precise) arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION) else required(context)
+    }
+
+    override fun isGranted(context: Context): Boolean {
+        val approximate = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        return approximate || ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    }
 }

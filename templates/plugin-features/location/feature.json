@@ -44,6 +44,9 @@
         ]
     },
     "plugin": {
+        "permissions": [
+            "location"
+        ],
         "parameters": {
             "locationUsage": {
                 "type": "string",

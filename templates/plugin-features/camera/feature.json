@@ -41,6 +41,9 @@
         ]
     },
     "plugin": {
+        "permissions": [
+            "camera"
+        ],
         "parameters": {
             "cameraUsage": {
                 "type": "string",

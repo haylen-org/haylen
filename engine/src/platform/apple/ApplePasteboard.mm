@@ -24,7 +24,7 @@ void ApplePasteboard::read(std::function<void(Permission::Answer answer, std::st
         NSString* text = holdsText ? pasteboard.string : nil;
 #endif
         if (holdsText && text == nil) {
-            callback({.state = Permission::State::Denied, .message = Permission::refusal(Permission::Kind::Clipboard)}, {});
+            callback({.state = Permission::State::Denied, .message = "The person has not allowed the app to read the clipboard. The system asks at the next read, or the person allows it in the settings of the system."}, {});
             return;
         }
         callback({.state = Permission::State::Granted}, text != nil ? std::string(text.UTF8String) : std::string());

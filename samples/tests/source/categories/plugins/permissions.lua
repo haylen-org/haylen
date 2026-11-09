@@ -1,4 +1,4 @@
--- The app asks the person for the camera and for notifications through `haylen.system`, with the prompts of the system, and the plugin uses them: its camera starts or fails with the code "denied" and the sentence that says how to ask again, and it schedules a local notification, whose tap reaches the app as `notificationOpened`. The native part sends `notificationOpened` retained, so a tap that launched the closed app waits for the listener of this test.
+-- The app asks the person for the permissions that the demo plugin owns, the camera, the microphone, the location and notifications, through `haylen.system`, which the native part of the plugin answers with the prompts of the system, and the plugin uses them: its camera starts or fails with the code "denied" and the sentence that says how to ask again, and it schedules a local notification, whose tap reaches the app as `notificationOpened`. The native part sends `notificationOpened` retained, so a tap that launched the closed app waits for the listener of this test.
 local haylen = require('haylen')
 local system = require('haylen.system')
 local ui = require('haylen.ui')
@@ -18,6 +18,9 @@ end)]]
 
 Permissions.notifySeconds = 5
 
+-- The permissions that the demo plugin declares in the "permissions" of its "plugin.json".
+Permissions.kinds = {'camera', 'microphone', 'location', 'notifications'}
+
 -- The taps outlive the scene, because a retained event reaches only the listener that connects first.
 Permissions.opened = {}
 
@@ -27,14 +30,20 @@ function Permissions:enter()
         focus = 'camera',
         controls = {
             ui.button{id = 'camera', text = 'Ask for the camera', variant = 'primary', onClick = function() self:ask('camera') end},
+            ui.button{id = 'microphone', text = 'Ask for the microphone', onClick = function() self:ask('microphone') end},
+            ui.button{id = 'location', text = 'Ask for the location', onClick = function() self:ask('location') end},
             ui.button{id = 'notifications', text = 'Ask for notifications', onClick = function() self:ask('notifications') end},
             ui.button{id = 'start', text = 'Start the camera', onClick = function() self:startCamera() end},
             ui.button{id = 'notify', text = string.format('Notify in %d seconds', Permissions.notifySeconds), onClick = function() self:notify() end},
-            ui.label{text = 'Apple platforms show the prompt with the usage description of "plugin.json", and Android asks for the permissions of the manifest of the plugin. The plugin asks for a permission the app does not hold yet before it uses it. The tap on the notification reaches the app whether it runs, waits in the background or was closed.', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'The plugin declares these permissions in its "plugin.json" and registers them on each platform. Apple platforms show the prompt with the usage description of "plugin.json", and Android asks for the permissions of the manifest of the plugin. The plugin asks for a permission the app does not hold yet before it uses it. The tap on the notification reaches the app whether it runs, waits in the background or was closed.', color = 'textMuted', font = 'caption'},
         },
         showcase = {
             ui.row{gap = 16, align = 'stretch',
                 Permissions.card('camera', 'plugins/camera.svg', 'Camera'),
+                Permissions.card('microphone', 'plugins/microphone.svg', 'Microphone'),
+            },
+            ui.row{gap = 16, align = 'stretch',
+                Permissions.card('location', 'plugins/map.svg', 'Location'),
                 Permissions.card('notifications', 'plugins/bell.svg', 'Notifications'),
             },
             ui.card{grow = 1, align = 'stretch', gap = 16, justify = 'center',
@@ -48,7 +57,7 @@ function Permissions:enter()
         return
     end
     self:spawn(function()
-        for _, kind in ipairs({'camera', 'notifications'}) do
+        for _, kind in ipairs(Permissions.kinds) do
             self:show(kind, system.permission(kind):await())
         end
     end)

@@ -84,7 +84,7 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
             }
         });
     // clang-format on
-    current.system = std::make_unique<platform::System>(host, current.events, current.graphics->getAdapterName());
+    current.system = std::make_unique<platform::System>(host, *current.platform, current.events, current.graphics->getAdapterName(), [this] { return getAppPlugins(); });
     current.motion = std::make_unique<input::MotionSensors>(host);
     current.displays = std::make_unique<platform::Displays>(host, current.events);
     current.outputs = std::make_unique<platform::Outputs>(host, *current.displays, *current.graphics, current.events);
@@ -1021,11 +1021,9 @@ const math::Insets& Engine::getReservedInsets() const noexcept {
 std::vector<platform::AppPlugin> Engine::getAppPlugins() const {
     const EngineState& current = *state;
     const std::vector<std::string> loaded = getNativePlugins();
-    std::vector<platform::AppPlugin> all;
-    for (const auto& [id, entry] : current.config.plugins) {
-        platform::AppPlugin plugin = platform::AppPlugin::read(*current.package, id, entry.parameters);
-        plugin.native = std::ranges::binary_search(loaded, id);
-        all.push_back(std::move(plugin));
+    std::vector<platform::AppPlugin> all = platform::AppPlugin::readAll(*current.package, current.config.plugins);
+    for (platform::AppPlugin& plugin : all) {
+        plugin.native = std::ranges::binary_search(loaded, plugin.id);
     }
     return all;
 }

@@ -39,6 +39,9 @@
         ]
     },
     "plugin": {
+        "permissions": [
+            "microphone"
+        ],
         "parameters": {
             "microphoneUsage": {
                 "type": "string",

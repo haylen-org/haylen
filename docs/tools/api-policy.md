@@ -71,6 +71,7 @@ Each platform decides on its own when a person grants a capability, such as the 
 - A requirement that the app must declare, such as a manifest permission or a usage text, is checked first. When it is missing, the call logs once what is missing and how to add it, then fails with `unsupported` and `data.missing`.
 - The use of a capability that was refused or revoked fails with its own clear error, which names the capability and how to ask for it again. It never waits silently or returns empty data.
 - The reference page of each gated capability lists what every platform answers and when it asks the person, so the behavior is predictable on all of them.
+- The engine owns only the permissions that it uses itself, `motion`, `screens` and `localNetwork`. Every other permission belongs to the plugin that serves the capability, which declares it in the `permissions` of its `plugin.json` and registers it with the context of each native part. The engine reaches it through the methods `<id>.permission` and `<id>.requestPermission` of the plugin, so the app checks and asks for it with the same two functions and the same states, as the [plugin guide](../platform/plugins.md#permissions) describes.
 
 ### Value types
 
