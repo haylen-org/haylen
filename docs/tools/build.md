@@ -42,7 +42,7 @@ The option `--version` prints `Haylen` and the version that `engine/VERSION` hol
 
 ### What the commands print
 
-Each step prints a title after `==>`. Successes, warnings after `Warning:` and errors after `Error:` follow. The tools that a command runs, such as CMake, Ninja, `xcodebuild` and Gradle, write their whole output to the log of the command in `build/logs`, such as `build/logs/run.log`. Every run of a command starts its log again. Meanwhile a terminal shows the latest line of the tool in place under the step.
+Each step prints a title after `==>`. Successes, warnings after `Warning:` and errors after `Error:` follow. The tools that a command runs, such as CMake, Ninja, `xcodebuild` and Gradle, write their whole output to the log of the command in `build/logs`, such as `build/logs/run.log`. Every run of a command starts its log again. Meanwhile a terminal shows the latest line of the tool in place under the step, in a dim color. A line longer than the terminal is wide loses its middle to an ellipsis, so its start and its end, such as the file that the tool works on, stay visible.
 
 When a tool fails, the command prints its last 60 lines and the path of the log. Add `--verbose`, before or after the command, to see the commands after `$` and the whole output of every tool instead. Some output always prints, because you read it: the log of the app that runs, the results of tests and benchmarks and the coverage report. While an app runs, `run` shows its summary and the keys that act on it, as [run](distribution.md#run) describes.
 

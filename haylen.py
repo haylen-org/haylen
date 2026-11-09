@@ -30,6 +30,7 @@ import tempfile
 import textwrap
 import threading
 import time
+import unicodedata
 import urllib.parse
 import urllib.request
 import webbrowser
@@ -270,6 +271,9 @@ class Terminal:
     # A soft teal of the 256 colors that every terminal with escape sequences shows, which sets reserved expressions apart from the prose without drawing the eye to them.
     EXPRESSION = "38;5;73"
     LINK = "4"
+    # The escape sequences of colors and of the cursor that tools print, which take no columns of the line.
+    ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]|\x1b[@-Z\\-_]")
+    ELLIPSIS = "\u2026"
     # The console mode of Windows that shows escape sequences, which consoles leave off for older programs.
     VIRTUAL_TERMINAL_PROCESSING = 0x0004
 
@@ -368,11 +372,44 @@ class Terminal:
         if self.stdout_color:
             print("\x1b[2J\x1b[3J\x1b[H", end="", file=self.stdout, flush=True)
 
+    @staticmethod
+    def columns(character: str) -> int:
+        """The columns of a terminal that a character takes: none for a mark that combines with the character before it, two for a wide character of East Asian scripts and one for any other."""
+        if unicodedata.combining(character):
+            return 0
+        return 2 if unicodedata.east_asian_width(character) in "WF" else 1
+
+    @staticmethod
+    def shorten(text: str, width: int) -> str:
+        """Fits a line into a number of columns by turning its middle into an ellipsis, so its start and its end, such as the file that a tool works on, stay visible."""
+        if sum(map(Terminal.columns, text)) <= width:
+            return text
+        if width < 1:
+            return ""
+        room = width - 1
+        head = ""
+        head_width = 0
+        for character in text:
+            if head_width + Terminal.columns(character) > (room + 1) // 2:
+                break
+            head += character
+            head_width += Terminal.columns(character)
+
+        tail = ""
+        tail_width = 0
+        for character in reversed(text):
+            if tail_width + Terminal.columns(character) > room - head_width:
+                break
+            tail = character + tail
+            tail_width += Terminal.columns(character)
+        return f"{head}{Terminal.ELLIPSIS}{tail}"
+
     def progress(self, line: str) -> None:
-        """Shows the latest line of a quiet tool in place on a terminal with color, cut to the width of the terminal, and nothing elsewhere."""
+        """Shows the latest line of a quiet tool in place on a terminal with color, without the colors of the tool and shortened in its middle to the width of the terminal, and nothing elsewhere."""
         if self.stdout_color:
             width = shutil.get_terminal_size().columns - 1
-            print(f"\r\x1b[2K{Terminal.paint(line.strip()[:width], True, Terminal.COMMAND)}", end="", file=self.stdout, flush=True)
+            text = Terminal.ESCAPE.sub("", line).expandtabs().strip()
+            print(f"\r\x1b[2K{Terminal.paint(Terminal.shorten(text, width), True, Terminal.COMMAND)}", end="", file=self.stdout, flush=True)
 
     def end_progress(self) -> None:
         if self.stdout_color:

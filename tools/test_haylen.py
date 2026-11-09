@@ -737,6 +737,15 @@ class TerminalTest(unittest.TestCase):
         self.assertEqual(stdout.getvalue(), f"\x1b[2m$ {expected}\x1b[0m\n")
         self.assertIn("my app", expected)
 
+    def test_a_long_progress_line_loses_its_middle_and_keeps_its_start_and_end(self):
+        stdout = io.StringIO()
+        line = "\x1b[1;32m[ 42%]\x1b[0m Building CXX object engine/src/2d/graphics/Renderer.cpp.o"
+        with mock.patch.object(haylen.shutil, "get_terminal_size", return_value=os.terminal_size((31, 24))):
+            haylen.Terminal(stdout, io.StringIO(), {"FORCE_COLOR": "1"}).progress(line)
+        self.assertEqual(stdout.getvalue(), "\r\x1b[2K\x1b[2m[ 42%] Building\u2026Renderer.cpp.o\x1b[0m")
+        self.assertEqual(haylen.Terminal.shorten("Compiling", 9), "Compiling")
+        self.assertEqual(haylen.Terminal.shorten("\u6f22\u5b57\u6f22\u5b57\u6f22\u5b57", 7), "\u6f22\u2026\u6f22\u5b57")
+
     def test_an_expected_error_stops_without_a_traceback(self):
         stderr = io.StringIO()
         with mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), stderr, {})), mock.patch.object(sys, "argv", ["haylen.py", "run"]):
