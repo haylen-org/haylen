@@ -6,10 +6,12 @@
 
 namespace haylen::platform {
 
-// Carries the links that open the app, such as one of a URL scheme that its plugins declare, from the platform to the engine, which publishes each one as `linkOpened`. Links belong to the process, so the link that launched the app, or one that arrives while no app runs, waits for the next app. Platforms report links from any thread.
+// Carries the links that open the app, such as one of a URL scheme that its plugins declare, from the platform to the engine, which publishes each one as `linkOpened`. Links belong to the process, so the link that launched the app, or one that arrives while no app runs, waits for the next app, and one that arrives while a launched app plays waits for the app that launched it. Platforms report links from any thread.
 class LinkRelay final {
   public:
     static void receive(std::string url);
+
+    [[nodiscard]] static bool hasLinks();
 
     // Hands over the links that arrived since the last call, in order, which the engine does on the frame thread.
     [[nodiscard]] static std::vector<std::string> take();

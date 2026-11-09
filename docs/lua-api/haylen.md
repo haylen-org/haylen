@@ -673,6 +673,8 @@ When the launched app quits, this app starts again from its own package. The lau
 
 Apple Vision Pro has the holds of a keyboard and a gamepad, since a pinch there acts as one finger. The launched app hears the keys, buttons and fingers of the hold as always, so a short press does what the app does with it. A panel at the top of the screen fills its bar while the hold lasts, and the release that ends the hold never reaches the app that starts again. A launched app can launch another app in turn.
 
+The links that open the process, such as those of a URL scheme that the plugins of this app declare, belong to this app, since the system knows only its schemes. A link that arrives while a launched app plays ends that app, and every app it launched, and this app hears the link as [`linkOpened`](events.md#app-and-plugins) once it starts again. So an app that opens other apps from links, such as from a QR code that the camera of the system reads, takes the next link while it plays one.
+
 The table `options` is optional.
 
 | Option | Type | Default | Meaning |

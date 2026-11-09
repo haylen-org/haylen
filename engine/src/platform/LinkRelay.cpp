@@ -12,6 +12,11 @@ void LinkRelay::receive(std::string url) {
     links.push_back(std::move(url));
 }
 
+bool LinkRelay::hasLinks() {
+    const std::scoped_lock lock(mutex);
+    return !links.empty();
+}
+
 std::vector<std::string> LinkRelay::take() {
     const std::scoped_lock lock(mutex);
     return std::exchange(links, {});

@@ -810,12 +810,20 @@ void Engine::applyCover() {
     refreshForegroundState();
 }
 
-// The links that opened the app wait until it started, so the listeners of its main script hear the link that launched it.
+// The links that opened the app wait until it started, so the listeners of its main script hear the link that launched it. The schemes of the links are those of the app that the process installed, so a link ends a launched app, and the app that launched it hears the link once it starts again.
 void Engine::publishLinks() {
     EngineState& current = *state;
     if (current.applicationPending) {
         return;
     }
+
+    if (isLaunched()) {
+        if (platform::LinkRelay::hasLinks()) {
+            quit();
+        }
+        return;
+    }
+
     for (std::string& url : platform::LinkRelay::take()) {
         current.events.emit(LifecycleEvent::kLinkOpened, {{"url", std::move(url)}});
     }

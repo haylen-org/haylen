@@ -761,6 +761,20 @@ TEST(EngineTest, PublishesTheLinksThatOpenTheApp) {
     EXPECT_EQ(fixture.lua("return table.concat(links, ', ')"), "island://open?map=harbor, island://open?map=cave, island://open?map=peak");
 }
 
+// The schemes of the links belong to the app that the process installed, so a link ends a launched app and waits for the app that launched it.
+TEST(EngineTest, EndsALaunchedAppForTheLinksOfTheAppThatLaunchedIt) {
+    test::EngineFixture fixture({{"source/main.lua", "links = 0 require('haylen.events').on('linkOpened', function() links = links + 1 end)"}});
+    fixture.host().setLaunched(true);
+    fixture.frames(1);
+    EXPECT_TRUE(fixture.engine().isRunning());
+
+    platform::LinkRelay::receive("island://open?map=cave");
+    fixture.frames(1);
+    EXPECT_FALSE(fixture.engine().isRunning());
+    EXPECT_EQ(fixture.lua("return links"), "0");
+    EXPECT_EQ(platform::LinkRelay::take(), std::vector<std::string>{"island://open?map=cave"});
+}
+
 // No frame is complete before the engine rendered one, so a splash screen never ends over a window that holds nothing yet.
 TEST(EngineTest, CompletesNoFrameBeforeItRenderedOne) {
     test::EngineFixture fixture;
