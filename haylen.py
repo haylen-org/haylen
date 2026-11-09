@@ -8226,7 +8226,10 @@ def command_clean(_: argparse.Namespace) -> None:
         terminal.success("The build folder is already clean.")
         return
 
-    shutil.rmtree(BUILD_ROOT, ignore_errors=True)
+    try:
+        shutil.rmtree(BUILD_ROOT)
+    except OSError as error:
+        raise BuildError(f'The build folder could not be removed, since `{shown_path(Path(error.filename))}` stays: {error.strerror}. Close what uses it, such as a running app or an editor, and clean again.') from error
     terminal.success("Cleaned the build folder.")
 
 

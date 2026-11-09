@@ -1396,6 +1396,22 @@ class CleanTest(unittest.TestCase):
                 self.assertFalse(build.exists())
                 self.assertEqual(output.getvalue().strip(), message)
 
+    @unittest.skipIf(os.name == "nt" or os.geteuid() == 0, "Only a POSIX user who is not root keeps the files of a read-only folder.")
+    def test_a_build_folder_that_stays_is_an_error_and_not_a_clean(self):
+        scratch = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, scratch)
+        locked = Path(scratch) / "build" / "apps"
+        locked.mkdir(parents=True)
+        (locked / "app.log").write_text("")
+        # A folder whose files cannot go, as a running app or an editor keeps them on Windows, holds the build folder in place.
+        locked.chmod(0o500)
+        self.addCleanup(locked.chmod, 0o700)
+        output = io.StringIO()
+        with mock.patch.object(haylen, "BUILD_ROOT", Path(scratch) / "build"), mock.patch.object(haylen, "terminal", haylen.Terminal(output, io.StringIO(), {})):
+            with self.assertRaisesRegex(haylen.BuildError, "could not be removed"):
+                haylen.command_clean(argparse.Namespace())
+        self.assertEqual(output.getvalue(), "")
+
 
 class PythonVersionTest(unittest.TestCase):
     def test_an_older_python_stops_with_the_version_it_needs(self):
