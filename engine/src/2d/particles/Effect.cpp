@@ -1,10 +1,12 @@
 #include "haylen/2d/particles/Effect.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <limits>
 #include <memory>
 #include <optional>
 #include <stdexcept>
+#include <utility>
 
 #include "haylen/2d/particles/ImageShape.hpp"
 #include "haylen/graphics/BlendMode.hpp"
@@ -56,6 +58,15 @@ std::size_t Effect::readCount(const core::Json& value, std::string_view name) {
         throw std::invalid_argument("The particle effect value \"" + std::string(name) + "\" needs an integer of at least 0.");
     }
     return value.get<std::size_t>();
+}
+
+// A whole number that a field of the type `int` holds, such as a layer, so a fraction never truncates and no number wraps.
+int Effect::readInteger(const core::Json& value, std::string_view key) {
+    const bool fits = value.is_number_unsigned() ? std::in_range<int>(value.get<std::uint64_t>()) : value.is_number_integer() && std::in_range<int>(value.get<std::int64_t>());
+    if (!fits) {
+        throw std::invalid_argument("The particle effect value \"" + std::string(key) + "\" needs an integer from -2147483648 to 2147483647.");
+    }
+    return value.get<int>();
 }
 
 EmitterConfig::CountRange Effect::readCountRange(const core::Json& value, std::string_view key) {
@@ -126,7 +137,7 @@ math::EasingCurve Effect::readCurve(const core::Json& value, std::string_view ke
         if (!position) {
             throw std::invalid_argument("The step position of the particle effect value \"" + std::string(key) + "\" must be \"start\", \"end\", \"both\" or \"none\".");
         }
-        return math::EasingCurve::steps(static_cast<int>(readCount(curve.at("steps"), "steps")), *position);
+        return math::EasingCurve::steps(readInteger(curve.at("steps"), "steps"), *position);
     }
     if (curve.contains("cubicBezier")) {
         const core::Json& handles = curve.at("cubicBezier");
@@ -217,7 +228,11 @@ Effect::Part Effect::readPart(const core::Json& entry, std::string_view path, Co
         part.config.delay += readNumber(entry.at("delay"), "delay");
     }
     if (entry.contains("layerOffset")) {
-        part.config.order.layer += static_cast<int>(readNumber(entry.at("layerOffset"), "layerOffset"));
+        const std::int64_t layer = std::int64_t{part.config.order.layer} + readInteger(entry.at("layerOffset"), "layerOffset");
+        if (!std::in_range<int>(layer)) {
+            throw std::invalid_argument("The emitter \"" + part.name + "\" of the composite particle effect \"" + std::string(path) + "\" lands on a layer outside -2147483648 to 2147483647.");
+        }
+        part.config.order.layer = static_cast<int>(layer);
     }
     return part;
 }
@@ -603,7 +618,7 @@ void Effect::readShape(const std::string& key, const core::Json& value, std::str
 void Effect::readOrder(const std::string& key, const core::Json& value, EmitterConfig& config) {
     graphics2d::DrawOrder& order = config.order;
     if (key == "layer") {
-        order.layer = static_cast<int>(readNumber(value, key));
+        order.layer = readInteger(value, key);
     } else if (key == "depth") {
         order.depth = readNumber(value, key);
     } else if (key == "sortOffset") {

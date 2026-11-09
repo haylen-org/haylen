@@ -99,6 +99,7 @@ struct Effect {
     [[nodiscard]] static math::Vec2 readVec2(const core::Json& value, std::string_view key);
     [[nodiscard]] static math::Rect readRect(const core::Json& value, std::string_view key);
     [[nodiscard]] static std::size_t readCount(const core::Json& value, std::string_view name);
+    [[nodiscard]] static int readInteger(const core::Json& value, std::string_view key);
     [[nodiscard]] static EmitterConfig::CountRange readCountRange(const core::Json& value, std::string_view key);
     [[nodiscard]] static math::Color readColor(const core::Json& value);
     [[nodiscard]] static std::vector<math::Color> readColors(const core::Json& value, std::string_view key);

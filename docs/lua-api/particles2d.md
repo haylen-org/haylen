@@ -90,7 +90,7 @@ The function `particles2d.newEmitter`, its overrides table and `emitter:configur
 | --- | --- | --- | --- |
 | `rate` | number | `20` | Particles spawned per second while emitting, a finite number of at least 0. Fractions carry over between frames. |
 | `rateOverDistance` | number | `0` | Particles spawned per unit the emitter moves, added to the rate, so fast trails leave no gaps. The particles of the rate and of the distance spread along the path the emitter moved in the frame. |
-| `bursts` | table | none | A list of `{time = seconds, count = n or {min, max}, cycles = 1, interval = 0, probability = 1}`. A burst fires when the emission cycle reaches its time and repeats `cycles` times, `interval` seconds apart. Each time it picks a count in its range and fires with its probability. |
+| `bursts` | table | none | A list of `{time = seconds, count = n or {min, max}, cycles = 1, interval = 0, probability = 1}`. A burst fires when the emission cycle reaches its time and repeats `cycles` times, from `1` to `65536`, `interval` seconds apart. Each time it picks a count in its range and fires with its probability. |
 | `delay` | number | `0` | Seconds before the emission cycle starts, so the parts of a group start in sequence. |
 | `duration` | number | `0` | The length of the emission cycle in seconds, a finite number of at least 0. With 0 the emitter emits until the app stops it, and each burst fires once. |
 | `loop` | boolean | `false` | Starts the cycle again when it ends. It needs a duration of at least 0.001 seconds. A frame longer than the cycle runs every loop it spans and fires the average count of the bursts of each. Without `loop`, the emitter stops emitting at the end of the cycle. |
@@ -227,7 +227,7 @@ Unknown keys raise `Unknown option "<key>".`, and an unknown name raises an erro
 - `Particle durations must be finite and not negative, and prewarm times must be from 0 to 60 seconds.`
 - `A looping particle emitter needs a duration of at least 0.001 seconds.`
 - `A particle delay and a rate over distance must be finite and not negative.`
-- `A particle burst needs at least one cycle, an interval of at least 0, a count range whose minimum is at most its maximum and a probability from 0 to 1.`
+- `A particle burst needs from 1 to 65536 cycles, an interval of at least 0, a count range whose minimum is at most its maximum and a probability from 0 to 1.`
 - `Particle bursts need a time inside the emission cycle.`, for every firing of the cycles of a burst.
 - `Particle turbulence needs a finite strength and speed and a positive frequency.`
 - `A particle attractor needs a finite strength and a radius and a kill radius of at least 0.`
@@ -237,7 +237,7 @@ Unknown keys raise `Unknown option "<key>".`, and an unknown name raises an erro
 - `Particle bounds need a positive width and height.`
 - `A particle sub-emitter needs an effect, a count range whose minimum is at most its maximum, a finite rate of at least 0 and a probability from 0 to 1.`
 - `A particle emitter takes either frames or a frame grid, not both.`
-- `A particle frame grid needs at least one column and one row and a count of at most its cells.`
+- `A particle frame grid needs at least one column and one row, at most 65536 cells and a count of at most its cells.`
 - `A particle frame rate must be positive and finite.`
 - `Particle color times need one time from 0 to 1 for each color, in growing order.`
 - `A particle end size scale, stretch, rotation step and pixel snap must be at least 0, and an aspect must be positive.`
@@ -398,6 +398,8 @@ Loading a file can raise these errors, besides the [errors of emitter options](#
 - `The particle effect value "<name>" names the unknown curve "<value>".`
 - `The particle color "<text>" is not a "#RRGGBB" or "#AARRGGBB" color.`
 - `The particle effect value "<name>" needs an integer of at least 0.`, for a count.
+- `The particle effect value "<name>" needs an integer from -2147483648 to 2147483647.`, for a `layer`, a `layerOffset` or the `steps` of a curve.
+- `The emitter "<name>" of the composite particle effect "<path>" lands on a layer outside -2147483648 to 2147483647.`, for a `layerOffset` that takes the layer of the emitter past that range.
 - `The particle effect "<path>" needs a texture.`
 - `The particle effect "<path>" refers to itself through "<path>".`, for effects that name each other in a loop.
 - `The particle effect "<path>" refers to the composite effect "<path>", where it needs an effect of one emitter.`

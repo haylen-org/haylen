@@ -717,6 +717,24 @@ TEST_F(ParticlesTest, LivingParticlesSpreadTheBirthsOfTheirSubEmittersOverTheSte
     EXPECT_EQ(drawFrame({&rocket}).sprites, 7U);
 }
 
+// A rate that no step can fire as a whole number of births still fires no more than the sub-emitter holds.
+TEST_F(ParticlesTest, LivingParticlesFireNoMoreThanTheirSubEmitterHolds) {
+    using Trigger = EmitterConfig::SubEmitter::Trigger;
+    const auto spark = std::make_shared<EmitterConfig>(EmitterConfig{.texture = texture(), .rate = 0.0F, .maxParticles = 4, .lifetime = {10.0F, 10.0F}});
+    Emitter living({.texture = texture(), .rate = 0.0F, .lifetime = {10.0F, 10.0F}, .subEmitters = {{.config = spark, .trigger = Trigger::Alive, .rate = 1e30F}}});
+    living.burst(1);
+    living.update(0.1F);
+
+    EXPECT_EQ(drawFrame({&living}).sprites, 5U);
+}
+
+TEST_F(ParticlesTest, BoundsTheCyclesOfABurstAndTheCellsOfAFrameGrid) {
+    EXPECT_THROW(Emitter({.texture = texture(), .bursts = {{.time = 0.0F, .count = {1, 1}, .cycles = 65537}}}), std::invalid_argument);
+    EXPECT_NO_THROW(Emitter({.texture = texture(), .bursts = {{.time = 0.0F, .count = {1, 1}, .cycles = 65536}}}));
+    EXPECT_THROW(Emitter({.texture = texture(), .frameGrid = {.columns = 65536, .rows = 2}}), std::invalid_argument);
+    EXPECT_THROW(Emitter({.texture = texture(), .frameGrid = {.columns = 65536, .rows = 65536, .count = 1}}), std::invalid_argument);
+}
+
 TEST_F(ParticlesTest, LightsDrawOnlyInLitCanvases) {
     Emitter fire({.texture = texture(), .rate = 0.0F, .lifetime = {1.0F, 1.0F}, .light = EmitterConfig::Light{.radius = 200.0F, .flicker = {.speed = 8.0F, .amount = 0.2F}}, .particleLights = EmitterConfig::ParticleLights{.max = 4}});
     fire.burst(10);
@@ -882,6 +900,9 @@ TEST(EffectTest, LoadsEffectFilesAsAssets) {
         {"content/effects/broken.particles", R"({"texture": "../images/spark.png", "sped": 3})"},
         {"content/effects/negative.particles", R"({"texture": "../images/spark.png", "bursts": [{"time": 0, "count": -1}]})"},
         {"content/effects/unbounded.particles", R"({"texture": "../images/spark.png", "maxParticles": -1})"},
+        {"content/effects/high.particles", R"({"texture": "../images/spark.png", "layer": 1e20})"},
+        {"content/effects/half.particles", R"({"texture": "../images/spark.png", "layer": 2.5})"},
+        {"content/effects/stacked.particles", R"({"emitters": [{"name": "top", "texture": "../images/spark.png", "layer": 2147483647, "layerOffset": 1}]})"},
         {"content/effects/mode.particles", R"({"texture": "../images/spark.png", "boundsMode": "bounce"})"},
         {"content/effects/overlay.particles", R"({"texture": "../images/spark.png", "blend": "overlay"})"},
         {"content/effects/curve.particles", R"({"texture": "../images/spark.png", "sizeCurve": "wobble"})"},
@@ -974,6 +995,9 @@ TEST(EffectTest, LoadsEffectFilesAsAssets) {
     EXPECT_EQ(failure("effects/broken.particles"), "The particle effect \"effects/broken.particles\" has the unknown option \"sped\".");
     EXPECT_EQ(failure("effects/negative.particles"), "The particle effect value \"count\" needs an integer of at least 0.");
     EXPECT_EQ(failure("effects/unbounded.particles"), "The particle effect value \"maxParticles\" needs an integer of at least 0.");
+    EXPECT_EQ(failure("effects/high.particles"), "The particle effect value \"layer\" needs an integer from -2147483648 to 2147483647.");
+    EXPECT_EQ(failure("effects/half.particles"), "The particle effect value \"layer\" needs an integer from -2147483648 to 2147483647.");
+    EXPECT_EQ(failure("effects/stacked.particles"), "The emitter \"top\" of the composite particle effect \"effects/stacked.particles\" lands on a layer outside -2147483648 to 2147483647.");
     EXPECT_EQ(failure("effects/mode.particles"), "The particle effect value \"boundsMode\" must be \"kill\" or \"wrap\", not \"bounce\".");
     EXPECT_EQ(failure("effects/overlay.particles"), "The particle effect value \"blend\" must be \"alpha\", \"additive\", \"multiply\", \"screen\", \"premultiplied\" or \"opaque\", not \"overlay\".");
     EXPECT_EQ(failure("effects/curve.particles"), "The particle effect value \"sizeCurve\" names the unknown curve \"wobble\".");

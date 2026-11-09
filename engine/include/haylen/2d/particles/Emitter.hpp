@@ -151,6 +151,8 @@ class Emitter final {
     static constexpr float kMaxPrewarm = 60.0F;
     static constexpr float kMinimumCycle = 0.001F;
     static constexpr std::size_t kMaxParticles = 1000000;
+    static constexpr int kMaxBurstCycles = 65536;
+    static constexpr std::int64_t kMaxFrames = 65536;
     static constexpr std::size_t kMaxTrailLength = 64;
     static constexpr std::size_t kMaxTrailPoints = 1000000;
     static constexpr std::size_t kMaxParticleLights = 1024;

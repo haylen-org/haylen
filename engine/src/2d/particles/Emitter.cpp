@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <optional>
 #include <stdexcept>
@@ -50,8 +51,8 @@ void Emitter::validate(const EmitterConfig& settings) {
 
 void Emitter::validateBursts(const EmitterConfig& settings) {
     for (const EmitterConfig::Burst& planned : settings.bursts) {
-        if (planned.cycles < 1 || !(planned.interval >= 0.0F && std::isfinite(planned.interval)) || planned.count.min > planned.count.max || !(planned.probability >= 0.0F && planned.probability <= 1.0F)) {
-            throw std::invalid_argument("A particle burst needs at least one cycle, an interval of at least 0, a count range whose minimum is at most its maximum and a probability from 0 to 1.");
+        if (planned.cycles < 1 || planned.cycles > kMaxBurstCycles || !(planned.interval >= 0.0F && std::isfinite(planned.interval)) || planned.count.min > planned.count.max || !(planned.probability >= 0.0F && planned.probability <= 1.0F)) {
+            throw std::invalid_argument("A particle burst needs from 1 to 65536 cycles, an interval of at least 0, a count range whose minimum is at most its maximum and a probability from 0 to 1.");
         }
         const float last = planned.time + planned.interval * static_cast<float>(planned.cycles - 1);
         if (!(planned.time >= 0.0F && std::isfinite(last)) || (settings.duration > 0.0F && last > settings.duration)) {
@@ -95,8 +96,8 @@ void Emitter::validateLook(const EmitterConfig& settings) {
         throw std::invalid_argument("A particle emitter takes either frames or a frame grid, not both.");
     }
     const EmitterConfig::FrameGrid& grid = settings.frameGrid;
-    if ((grid.columns > 0 || grid.rows > 0) && (grid.columns < 1 || grid.rows < 1 || grid.count < 0 || grid.count > grid.columns * grid.rows)) {
-        throw std::invalid_argument("A particle frame grid needs at least one column and one row and a count of at most its cells.");
+    if ((grid.columns > 0 || grid.rows > 0) && (grid.columns < 1 || grid.rows < 1 || grid.count < 0 || std::int64_t{grid.columns} * grid.rows > kMaxFrames || grid.count > grid.columns * grid.rows)) {
+        throw std::invalid_argument("A particle frame grid needs at least one column and one row, at most 65536 cells and a count of at most its cells.");
     }
     if (!(settings.frameRate > 0.0F && std::isfinite(settings.frameRate))) {
         throw std::invalid_argument("A particle frame rate must be positive and finite.");
@@ -752,8 +753,11 @@ void Emitter::runTriggers(float deltaSeconds) {
             }
         } else if (entry.trigger == Trigger::Alive) {
             // The firings of a step spread over it along the way each particle went, so a fast particle leaves a stream instead of a clump every frame.
+            // A child holds at most its own particles, so the firings of a step never go beyond them, as the emission of the rate does not.
+            const std::size_t capacity = children[sub]->config.maxParticles;
             for (std::size_t index = 0; index < getCount(); ++index) {
-                const auto times = static_cast<std::size_t>(entry.rate * deltaSeconds + random.nextFloat());
+                const double due = static_cast<double>(entry.rate) * deltaSeconds + random.nextFloat();
+                const std::size_t times = due < static_cast<double>(capacity) ? static_cast<std::size_t>(due) : capacity;
                 for (std::size_t repeat = 0; repeat < times; ++repeat) {
                     trigger(sub, index, deltaSeconds * static_cast<float>(times - 1 - repeat) / static_cast<float>(times));
                 }
