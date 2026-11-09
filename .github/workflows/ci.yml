@@ -65,6 +65,7 @@ jobs:
         with:
           packages: ${{ env.LINUX_PACKAGES }} ${{ env.MESA_PACKAGES }}
           save-sources: "true"
+          save-tools: shader-compiler ccache
           cache: desktop
           cache-size: ${{ matrix.cache-size }}
       - name: Install the Graphics Tools of Windows, whose debug layer validates Direct3D
@@ -125,6 +126,7 @@ jobs:
           cache: port-sdk
           cache-size: ${{ matrix.cache-size }}
           emscripten: ${{ matrix.web == true }}
+          save-tools: ${{ matrix.web && 'emscripten' || '' }}
       - name: Build the engine with the test port and play its app on it
         run: python haylen.py --verbose test --port --config Debug --jobs ${{ env.JOBS }}
       - name: Build the SDK and a project that finds it with "find_package"
@@ -150,6 +152,7 @@ jobs:
         with:
           cache: macos-intel
           cache-size: 900M
+          save-tools: shader-compiler
       - name: Show the displays of the runner and whether they support Metal
         run: system_profiler SPDisplaysDataType
       - name: Run the engine tests
@@ -227,6 +230,7 @@ jobs:
       - uses: ./.github/actions/build-environment
         with:
           packages: ninja-build
+          emscripten: "true"
       - name: Run the GPU tests on WebGPU in the headless Chrome of the runner
         run: python haylen.py --verbose test --gpu --platform web --graphics-api webGpu --jobs ${{ env.JOBS }}
       - name: Run the GPU tests on WebGL2 in the headless Chrome of the runner
@@ -285,6 +289,7 @@ jobs:
           cache: web
           cache-size: 800M
           emscripten: "true"
+          save-tools: emscripten
       - uses: ./.github/actions/desktop-artifacts
       - name: Build the prebuilt player for WebGPU and WebGL2
         run: python haylen.py --verbose engine --platform web --jobs ${{ env.JOBS }}
@@ -402,6 +407,8 @@ jobs:
         with:
           cache: apple-${{ matrix.cache }}
           cache-size: 600M
+          xcodegen: ${{ matrix.family == 'iOS' }}
+          save-tools: ${{ matrix.family == 'iOS' && 'xcodegen' || '' }}
       - name: Build the slices of "Haylen.xcframework"
         run: python haylen.py --verbose engine --platform apple --slices ${{ matrix.slices }} --jobs ${{ env.JOBS }}
       - name: Create the starter app

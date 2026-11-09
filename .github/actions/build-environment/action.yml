@@ -1,5 +1,5 @@
 name: Build environment
-description: Installs what a job of the workflow builds the engine with, restores the sources of the dependencies, and compiles through the cache of compiled objects that the last run of the job saved.
+description: Installs what a job of the workflow builds the engine with, restores the sources of the dependencies and the tools that the builds download, and compiles through the cache of compiled objects that the last run of the job saved.
 
 inputs:
   packages:
@@ -8,6 +8,12 @@ inputs:
   save-sources:
     description: Whether the job saves the sources of the dependencies that its builds fetch, which the desktop job of each system does, while the other jobs of the system only read them.
     default: "false"
+  save-tools:
+    description: The tools whose caches the job saves, from "shader-compiler", "xcodegen", "emscripten" and "ccache", one job for each tool and system, while the other jobs that use them only read them.
+    default: ""
+  xcodegen:
+    description: Whether the job generates Xcode projects with XcodeGen.
+    default: "false"
   cache:
     description: The name of the compiler cache, which the system, the processor and, for builds with Emscripten, its version complete. A job that compiles the same build trees as another reads its cache, and a job without one compiles without a cache. A job that saves the cache ends with the action "compiler-cache".
     default: ""
@@ -15,8 +21,14 @@ inputs:
     description: The largest size of the compiler cache, above every object that one run of the job compiles, since a smaller cache drops what the next run needs.
     default: ""
   emscripten:
-    description: Whether the job compiles with Emscripten, whose version then keys the compiler cache.
+    description: Whether the job compiles with Emscripten, whose version then keys the compiler cache and the cache of the SDK.
     default: "false"
+  ccache-version:
+    description: The release of ccache that the jobs of Windows install, its newest one.
+    default: "4.14.3"
+  ccache-sha256:
+    description: The SHA-256 of the archive of that release for x86-64 Windows, which the download must match.
+    default: "c845c3d65be81954c75659145a522a793a27586bf940c5dcfe18af33fa1a67dd"
 
 runs:
   using: composite
@@ -39,27 +51,57 @@ runs:
       shell: bash
       run: pip install ninja
 
-    # Objects of one version of Emscripten never mix with another, so its version keys the compiler cache, and every build compiles with every processor of the runner.
-    - name: Read the version of Emscripten and the processors of the runner
+    # Objects of one version of Emscripten never mix with another, so its version keys the compiler cache, and every build compiles with every processor of the runner. The pins of the tools in "haylen.py" key their caches.
+    - name: Read the pins of the tools and the processors of the runner
       id: machine
       shell: bash
       run: |
         echo "emscripten=$(python -c 'import haylen; print(haylen.EMSDK_VERSION)')" >> "$GITHUB_OUTPUT"
+        echo "xcodegen=$(python -c 'import haylen; print(haylen.XCODEGEN_VERSION + "-" + haylen.XCODEGEN_SHA256)')" >> "$GITHUB_OUTPUT"
         echo "JOBS=$(python -c 'import os; print(os.cpu_count())')" >> "$GITHUB_ENV"
 
-    - name: Restore and save the sources of the dependencies
-      if: inputs.save-sources == 'true'
-      uses: actions/cache@v6
-      with:
-        path: .cache/cpm
-        key: cpm-${{ runner.os }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake', 'engine/cmake/patches/**') }}
-
     - name: Restore the sources of the dependencies
-      if: inputs.save-sources != 'true'
-      uses: actions/cache/restore@v6
+      uses: ./.github/actions/pinned-cache
       with:
-        path: .cache/cpm
+        name: cpm-${{ runner.os }}-
         key: cpm-${{ runner.os }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake', 'engine/cmake/patches/**') }}
+        path: .cache/cpm
+        save: ${{ inputs.save-sources }}
+
+    # The tools come from the releases of their projects, which the runs would otherwise download again each time.
+    - name: Restore the shader compiler
+      uses: ./.github/actions/pinned-cache
+      with:
+        name: tool-shader-compiler-${{ runner.os }}-${{ runner.arch }}-
+        key: tool-shader-compiler-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('engine/cmake/haylen-shader-compiler.json', 'engine/cmake/haylen-shader-compiler.cmake') }}
+        path: .tools/haylen-shaderc-*
+        save: ${{ contains(inputs.save-tools, 'shader-compiler') }}
+
+    - name: Restore XcodeGen
+      if: inputs.xcodegen == 'true'
+      uses: ./.github/actions/pinned-cache
+      with:
+        name: tool-xcodegen-${{ runner.os }}-${{ runner.arch }}-
+        key: tool-xcodegen-${{ runner.os }}-${{ runner.arch }}-${{ steps.machine.outputs.xcodegen }}
+        path: .tools/xcodegen-*
+        save: ${{ contains(inputs.save-tools, 'xcodegen') }}
+
+    # The SDK keeps the libraries it builds in a folder of its own, outside the cache, so the cache holds only what the SDK downloads: the SDK itself and its ports.
+    - name: Keep the libraries that Emscripten builds out of its SDK
+      if: inputs.emscripten == 'true'
+      shell: bash
+      run: echo "EM_CACHE=${{ github.workspace }}/.cache/emscripten" >> "$GITHUB_ENV"
+
+    - name: Restore the Emscripten SDK and its ports
+      if: inputs.emscripten == 'true'
+      uses: ./.github/actions/pinned-cache
+      with:
+        name: tool-emscripten-${{ runner.os }}-${{ runner.arch }}-
+        key: tool-emscripten-${{ runner.os }}-${{ runner.arch }}-${{ steps.machine.outputs.emscripten }}
+        path: |
+          .tools/emsdk
+          .cache/emscripten/ports
+        save: ${{ contains(inputs.save-tools, 'emscripten') }}
 
     - name: Install ccache on macOS
       if: inputs.cache != '' && runner.os == 'macOS'
@@ -68,10 +110,30 @@ runs:
         HOMEBREW_NO_AUTO_UPDATE: "1"
       run: brew install ccache
 
+    - name: Restore ccache on Windows
+      if: inputs.cache != '' && runner.os == 'Windows'
+      uses: ./.github/actions/pinned-cache
+      with:
+        name: tool-ccache-${{ runner.os }}-${{ runner.arch }}-
+        key: tool-ccache-${{ runner.os }}-${{ runner.arch }}-${{ inputs.ccache-version }}-${{ inputs.ccache-sha256 }}
+        path: .tools/ccache-${{ inputs.ccache-version }}-windows-x86_64
+        save: ${{ contains(inputs.save-tools, 'ccache') }}
+
     - name: Install ccache on Windows
       if: inputs.cache != '' && runner.os == 'Windows'
-      shell: bash
-      run: choco install ccache --no-progress
+      shell: pwsh
+      env:
+        VERSION: ${{ inputs.ccache-version }}
+        SHA256: ${{ inputs.ccache-sha256 }}
+      run: |
+        $folder = ".tools/ccache-$env:VERSION-windows-x86_64"
+        if (-not (Test-Path "$folder/ccache.exe")) {
+          $archive = "$env:RUNNER_TEMP/ccache.zip"
+          Invoke-WebRequest "https://github.com/ccache/ccache/releases/download/v$env:VERSION/ccache-$env:VERSION-windows-x86_64.zip" -OutFile $archive
+          if ((Get-FileHash $archive -Algorithm SHA256).Hash -ne $env:SHA256) { throw "The archive of ccache $env:VERSION does not match its pinned SHA-256 $env:SHA256." }
+          Expand-Archive $archive -DestinationPath .tools
+        }
+        (Resolve-Path $folder).Path | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
     # The name of the cache ends with the run that saves it, so a run restores the newest cache of its name. The objects take the level of compression that keeps them about a seventh smaller than the default at a small cost on each compile that misses.
     - name: Name the compiler cache
