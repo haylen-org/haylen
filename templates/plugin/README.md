@@ -4,21 +4,27 @@ A Haylen plugin that echoes messages through the native code of every platform. 
 
 ## Installation
 
+The command `plugin add` copies the plugin into `plugins/{{ID}}/` of the app:
+
 ```sh
-haylen plugin add path/to/{{ID}} --app my-game
+haylen plugin add path/to/{{ID}} --app my-app
 ```
 
-The command `plugin add` copies the plugin into `plugins/{{ID}}/` of the app and lists it in the `plugins` section of its `app.json`:
+With `--reference`, the app keeps the plugin where it is, so apps that share the plugin follow its folder:
+
+```sh
+haylen plugin add path/to/{{ID}} --reference --app my-app
+```
+
+Both list the plugin in the `plugins` section of `app.json`. The values of its [parameters](#parameters) go under `parameters`, and a reference also names the folder of the plugin in `path`, relative to the app:
 
 ```json
 {
     "plugins": {
-        "{{ID}}": {}
+        "{{ID}}": {"path": "../{{ID}}", "parameters": {}}
     }
 }
 ```
-
-With `--reference`, the app keeps the plugin where it is and `app.json` names its folder, such as `"{{ID}}": {"path": "../{{ID}}"}`.
 
 ## Platforms
 

@@ -59,7 +59,8 @@ local plugin = {}
 
 local kDesktops = {macos = true, windows = true, linux = true}
 
--- Apple platforms, Android and the web load their native parts before any Lua runs. The desktops run the C library of native/.
+-- Apple platforms, Android and the web load their native parts before any Lua runs. The desktops run the C library of native/, once per process.
+-- Handlers that Lua registers with platform.registerHandler end with each app, so they never go behind this check.
 if not handle.native and kDesktops[haylen.platform] then
     native.load('my-plugin', {init = 'my_plugin_haylen_init'})
 end
@@ -601,6 +602,8 @@ The field `handle.native` and the `native` field of `platform.plugins()` come fr
 - On Apple platforms, the plugins whose class the runtime created.
 - On Android, the plugins whose class the engine library created and loaded.
 - On the desktops, the plugins whose native library declared itself their native part with `registerPlugin(id)` of [`HaylenNativeApi`](../lua-api/native.md#the-c-interface-of-the-engine).
+
+The native part belongs to the process, so `handle.native` stays `true` for every app that the process runs after it. A handler that Lua registers with [`platform.registerHandler`](../lua-api/platform.md#platformregisterhandlermethod-handler) belongs to the app instead, and it ends when the app ends or restarts. So the Lua API of a plugin registers its Lua handlers again in every app, and never behind the check of `handle.native` that loads the library of a desktop once.
 
 ## Plugin screens
 

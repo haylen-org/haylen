@@ -119,7 +119,7 @@ Desktop builds and tests often have no native code for a method. These functions
 
 Answers the method named `method` with the Lua function `handler(params)`, which returns the result. The function runs during the `platform.call` that asks for it, so it must return at once. Its result must convert to JSON. Bytes of the parameters arrive as strings, and strings of the result that `platform.bytes` marks cross as bytes.
 
-An error raised inside the handler fails the call with the error message and its stack trace. It does not stop the app. A new handler replaces an earlier engine handler of the same method, and an engine handler goes before every native handler. An empty method name raises `A platform handler needs a method name and a function.`, and a `handler` that is not a function raises a bad argument error.
+An error raised inside the handler fails the call with the error message and its stack trace. It does not stop the app. A new handler replaces an earlier engine handler of the same method, and an engine handler goes before every native handler. The handler belongs to the app, so it ends when the app ends or restarts, while native handlers and the `native` field of a [plugin handle](#appplugin) belong to the process. So every app registers its Lua handlers again, and a plugin never registers them behind a check of `native`, which stays `true` after the first app. An empty method name raises `A platform handler needs a method name and a function.`, and a `handler` that is not a function raises a bad argument error.
 
 ```lua
 local async = require('async')
