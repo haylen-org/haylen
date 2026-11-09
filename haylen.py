@@ -7876,8 +7876,11 @@ class DevelopmentServer:
         return {path: hashlib.sha256(file.read_bytes()).hexdigest() for path, file in files.items()}
 
     def refresh_layout(self) -> None:
-        """Reads the layout of the package again once `app.json` changed, so the plugins that the app lists while it runs are watched too, wherever they come from. While the plugins of `app.json` have a problem, which the terminal shows once, the server keeps watching the layout before it."""
-        stamp = (self.folder / "app.json").stat().st_mtime_ns
+        """Reads the layout of the package again once `app.json` changed, so the plugins that the app lists while it runs are watched too, wherever they come from. While the plugins of `app.json` have a problem, which the terminal shows once, the server keeps watching the layout before it, as it does while an editor that saves `app.json` holds no file there."""
+        try:
+            stamp = (self.folder / "app.json").stat().st_mtime_ns
+        except FileNotFoundError:
+            return
         if stamp == self.layout_stamp:
             return
         self.layout_stamp = stamp
@@ -7894,10 +7897,12 @@ class DevelopmentServer:
             self.debugger.layout = layout
 
     def snapshot(self) -> dict[str, tuple[int, int]]:
-        """Records the time and size of every watched file of the package."""
+        """Records the time and size of every watched file of the package. A file that goes away while the package is listed, such as the scratch file of an editor, is no file of the snapshot."""
         found: dict[str, tuple[int, int]] = {}
         for relative, path in self.layout.files().items():
-            if development_watched(relative):
+            if not development_watched(relative):
+                continue
+            with contextlib.suppress(FileNotFoundError):
                 stat = path.stat()
                 found[relative] = (stat.st_mtime_ns, stat.st_size)
         return found
@@ -7921,10 +7926,13 @@ class DevelopmentServer:
         return changed, removed
 
     def batch(self, changed: list[str], removed: list[str]) -> tuple[dict, list[bytes]]:
-        """Reads the files of a batch, leaving out the files that are larger than the engine accepts, which the developer then ships with the build."""
+        """Reads the files of a batch, leaving out the files that are larger than the engine accepts, which the developer then ships with the build, and the files that went away since the scan, which the next scan names as removed."""
         files, contents = [], []
         for path in changed:
-            content = self.layout.to_disk(path).read_bytes()
+            try:
+                content = self.layout.to_disk(path).read_bytes()
+            except FileNotFoundError:
+                continue
             if len(content) > DEVELOPMENT_MAX_FILE:
                 terminal.error(f"The file `{shown_path(self.layout.to_disk(path))}` is larger than the {DEVELOPMENT_MAX_FILE} bytes that the development server pushes, so the running app keeps its old version until the app runs again.")
                 continue

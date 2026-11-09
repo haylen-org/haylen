@@ -3543,6 +3543,24 @@ class DevelopmentServerTest(unittest.TestCase):
         self.assertEqual(server.scan(), (["content/new.json", "source/level.lua"], ["content/data.json"]))
         self.assertEqual(server.scan(), ([], []))
 
+    def test_a_file_that_goes_away_while_the_watcher_reads_it_keeps_the_watcher_running(self):
+        server = haylen.DevelopmentServer(self.layout, self.manifest)
+        # An editor or a tool deletes its scratch file between the listing of the package and the read of the file.
+        listed = {**self.layout.files(), "content/scratch.png": self.folder / "content" / "scratch.png"}
+        with mock.patch.object(haylen.PackageLayout, "files", return_value=listed):
+            self.assertEqual(server.scan(), ([], []))
+        # An editor that saves "app.json" may move the file aside before it writes the new one.
+        (self.folder / "app.json").rename(self.folder / "app.json~")
+        self.assertEqual(server.scan(), ([], ["app.json"]))
+        (self.folder / "app.json~").rename(self.folder / "app.json")
+        self.assertEqual(server.scan(), (["app.json"], []))
+        self.write("content/sprite.png", "sprite")
+        self.assertEqual(server.scan(), (["content/sprite.png"], []))
+        (self.folder / "content" / "sprite.png").unlink()
+        message, contents = server.batch(["content/sprite.png"], [])
+        self.assertEqual((message["files"], contents), ([], []))
+        self.assertEqual(server.scan(), ([], ["content/sprite.png"]))
+
     def test_late_apps_catch_up(self):
         server = haylen.DevelopmentServer(self.layout, self.manifest)
         self.write("source/level.lua", "return {edited = true}")
