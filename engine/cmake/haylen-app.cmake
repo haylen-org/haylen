@@ -48,6 +48,8 @@ function(haylen_link_runtime_platform target scope)
       "--pre-js=${HAYLEN_VARN_DATAVIEW_SCRIPT}"
       "--pre-js=${HAYLEN_ENGINE_DIR}/platform/web/haylen-runtime.js"
     )
+    # The scripts go into the script of every app that links the runtime, so a change to them links the app again even when no library changed.
+    set_property(TARGET ${target} APPEND PROPERTY INTERFACE_LINK_DEPENDS "${HAYLEN_VARN_DATAVIEW_SCRIPT}" "${HAYLEN_ENGINE_DIR}/platform/web/haylen-runtime.js")
   else()
     # The window services of X11 call Xlib, its shape extension and RandR, while SDL loads the libraries of X11 and Wayland when the app starts.
     find_package(X11 REQUIRED)
@@ -87,7 +89,7 @@ function(haylen_setup_web_page target shell)
   endif()
   set_target_properties(${target} PROPERTIES SUFFIX ".html")
   target_link_options(${target} PRIVATE "--shell-file=${shell}")
-  set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS "${shell}" "${HAYLEN_VARN_DATAVIEW_SCRIPT}" "${HAYLEN_ENGINE_DIR}/platform/web/haylen-runtime.js" "${HAYLEN_ENGINE_DIR}/platform/web/haylen-audio-worklet.js")
+  set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS "${shell}" "${HAYLEN_ENGINE_DIR}/platform/web/haylen-audio-worklet.js")
 
   # The WebGPU and WebGL2 bundle of haylen.py run builds its page from the same shell, so the shell travels with the build output, next to the engine logo that the default shell shows as its icon.
   # The runtime loads the processor of its audio output and the worker of its content store from next to its script, so both travel with the build output too.

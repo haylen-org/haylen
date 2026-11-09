@@ -2194,6 +2194,30 @@ class EmscriptenTest(unittest.TestCase):
         (tree / "CMakeCache.txt").write_text("HAYLEN_SHADERC:FILEPATH=haylen-shaderc\n")
         self.assertFalse(haylen.is_stale_web_tree(tree))
 
+    def test_a_web_app_links_again_when_the_scripts_of_the_runtime_change(self):
+        if shutil.which("cmake") is None or shutil.which("ninja") is None:
+            self.skipTest('The commands "cmake" and "ninja" configure the project that links the runtime.')
+        source = self.scratch / "project"
+        source.mkdir()
+        (source / "main.c").write_text("int main(void) { return 0; }\n")
+        # The project stands for a web app on any machine, so it leaves the Apple branch of the runtime aside, and it only configures, since only Emscripten links it.
+        (source / "CMakeLists.txt").write_text(f"""cmake_minimum_required(VERSION 3.28)
+project(probe LANGUAGES C)
+set(APPLE FALSE)
+set(HAYLEN_PLATFORM web)
+set(HAYLEN_ENGINE_DIR "{(self.scratch / 'engine').as_posix()}")
+set(HAYLEN_VARN_DATAVIEW_SCRIPT "{(self.scratch / 'varn-dataview.js').as_posix()}")
+include("{(haylen.ENGINE_DIR / 'cmake' / 'haylen-app.cmake').as_posix()}")
+add_library(runtime INTERFACE)
+haylen_link_runtime_platform(runtime INTERFACE)
+add_executable(app main.c)
+target_link_libraries(app PRIVATE runtime)
+""")
+        subprocess.run(["cmake", "-G", "Ninja", "-S", str(source), "-B", str(self.scratch / "build")], capture_output=True, check=True)
+        link = next(line for line in (self.scratch / "build" / "build.ninja").read_text().splitlines() if line.startswith("build app"))
+        self.assertIn((self.scratch / "engine" / "platform" / "web" / "haylen-runtime.js").as_posix(), link.split(" | ", 1)[-1])
+        self.assertIn((self.scratch / "varn-dataview.js").as_posix(), link.split(" | ", 1)[-1])
+
 
 class AndroidKeyTest(unittest.TestCase):
     def setUp(self):
