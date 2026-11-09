@@ -7067,15 +7067,14 @@ def run_cpp_android(project: Path, target: str, folder: Path, args: argparse.Nam
         launch_android(app, root, apk, args, device, session)
 
 
-def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int, options: list[str] | None = None) -> Path:
+def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int, options: list[str]) -> Path:
     """Builds a CMake web target in a build folder and bundles it into its web folder with the web parts of the plugins of its app, whose page draws through WebGPU or WebGL2, whichever starts first, and returns that folder. A protected release goes into `app/` of the site, where its content streams by range."""
     output = folder / "web"
     shutil.rmtree(output, ignore_errors=True)
     output.mkdir(parents=True)
     directory = folder / f"web-{config.lower()}"
     terminal.step(f'Building the target "{target}" for "web" in `{shown_path(directory)}`')
-    if options is not None or not is_configured(directory) or is_stale_web_tree(directory):
-        configure_web_tree([ensure_emsdk(), "cmake", "-S", source, "-B", directory, "-G", "Ninja", *cpp_engine_options(), f"-DCMAKE_BUILD_TYPE={config}", *(options or [])], directory)
+    configure_web_tree([ensure_emsdk(), "cmake", "-S", source, "-B", directory, "-G", "Ninja", *cpp_engine_options(), f"-DCMAKE_BUILD_TYPE={config}", *options], directory)
     run(["cmake", "--build", directory, "--target", target, "--parallel", str(jobs)])
     built = directory / "bin" / target
     for suffix in (".js", ".wasm", ".data"):
