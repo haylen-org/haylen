@@ -10,6 +10,8 @@
 #include <unistd.h>
 #endif
 
+#include <array>
+#include <cstddef>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -57,6 +59,19 @@ class CrashGuardTest : public ::testing::Test {
 
     static void exitWithTheFaultAddress(int, siginfo_t* info, void*) {
         _exit(info->si_addr == faultAddress ? kForwarded : kForwardedWithoutTheCrash);
+    }
+
+    static void exitAfterTheCrash(int, siginfo_t*, void*) {
+        _exit(kForwarded);
+    }
+
+    static int overflowTheStack(int depth) {
+        std::array<volatile char, 4096> frame{};
+        frame[0] = static_cast<char>(depth);
+        if (depth < 0) {
+            return 0;
+        }
+        return overflowTheStack(depth + 1) + frame[static_cast<std::size_t>(depth) % frame.size()];
     }
 
     static void reportLaterAndExit(int signal, siginfo_t* info, void* context) {
@@ -143,6 +158,22 @@ TEST_F(CrashGuardTest, WritesTheReportWhenAHandlerInstalledLaterHandsTheCrashOn)
     }, testing::ExitedWithCode(kForwarded), "");
     // clang-format on
     EXPECT_EQ(readReport(report).at("reason"), "abort");
+}
+
+// The thread that installs the guard plays the frames, and a stack overflow there leaves no stack for a handler but its alternate one.
+TEST_F(CrashGuardTest, ReportsAStackOverflow) {
+    GTEST_FLAG_SET(death_test_style, "fast");
+    const std::filesystem::path report = directory.getPath() / "crash-report.json";
+    // clang-format off
+    EXPECT_EXIT({
+        installPreviousHandler(&exitAfterTheCrash);
+        CrashGuard::install();
+        CrashGuard::setReport(report);
+        overflowTheStack(0);
+    }, testing::ExitedWithCode(kForwarded), "");
+    // clang-format on
+    const std::string reason = readReport(report).at("reason");
+    EXPECT_TRUE(reason == "segmentationFault" || reason == "busError") << reason;
 }
 #endif
 

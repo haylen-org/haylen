@@ -20,7 +20,7 @@ class CrashGuard final {
     static constexpr std::size_t kContextSize = 32768;
     static constexpr std::size_t kPathSize = 4096;
 
-    // Installs the handlers once per process. Every platform runtime calls it as the process starts, before the native parts of plugins load, so a crash reporter that a plugin installs finds the guard and hands each crash on to it.
+    // Installs the handlers once per process. Every platform runtime calls it as the process starts, before the native parts of plugins load, so a crash reporter that a plugin installs finds the guard and hands each crash on to it. The calling thread, the one that plays the frames, gets a stack of its own for the handlers when it has none, so a stack overflow there is reported too.
     static void install();
 
     // Points the handlers at the report file of the app that plays, replacing the file of an earlier app of the process. A path longer than `kPathSize` turns the reports off.
@@ -53,12 +53,15 @@ class CrashGuard final {
     static ExceptionFilter previousFilter;
 #elif !defined(__EMSCRIPTEN__)
     static constexpr std::array<int, 6> kSignals{SIGSEGV, SIGBUS, SIGILL, SIGFPE, SIGABRT, SIGTRAP};
+    static constexpr std::size_t kAlternateStackSize = 262144;
 
+    static void prepareAlternateStack();
     static void handleSignal(int signal, siginfo_t* info, void* context);
     static void forwardSignal(int signal, siginfo_t* info, void* context);
     [[nodiscard]] static std::string_view describeSignal(int signal) noexcept;
 
     static std::array<struct sigaction, kSignals.size()>& previousActions;
+    static std::array<std::byte, kAlternateStackSize>& alternateStack;
 #endif
 
     static std::array<Context, 2>& contexts;
