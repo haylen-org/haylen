@@ -13,10 +13,17 @@ import dev.haylen.HaylenRequirements
 // The permissions that the demo owns on Android, which the engine asks the person for through the permissions of the manifest of the plugin: the camera, the microphone, the location while the app is in use and the notifications.
 object NativeDemoPermissions {
     fun register(context: HaylenPluginContext) {
-        context.registerPermission(HaylenPermission("camera", "the camera", Manifest.permission.CAMERA))
-        context.registerPermission(HaylenPermission("microphone", "the microphone", Manifest.permission.RECORD_AUDIO))
+        context.registerPermission(Device("camera", "the camera", Manifest.permission.CAMERA, PackageManager.FEATURE_CAMERA_ANY, "This device has no camera."))
+        context.registerPermission(Device("microphone", "the microphone", Manifest.permission.RECORD_AUDIO, PackageManager.FEATURE_MICROPHONE, "This device has no microphone."))
         context.registerPermission(Location())
         context.registerPermission(Notifications())
+    }
+
+    // A device without the hardware, such as a TV without a camera or a microphone, answers unsupported with the reason instead of a prompt.
+    private class Device(name: String, capability: String, permission: String, private val feature: String, private val lacking: String) : HaylenPermission(name, capability, permission) {
+        override fun unsupportedReason(context: Context): String? {
+            return if (context.packageManager.hasSystemFeature(feature)) null else lacking
+        }
     }
 
     // The prompt offers the precise location next to the approximate one where the manifest declares it, and either one counts as granted.

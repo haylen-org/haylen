@@ -1065,13 +1065,14 @@ A `HaylenPermission` of the `haylen` library is a set of permissions of the mani
 
 | Method | Default | Meaning |
 | --- | --- | --- |
+| `unsupportedReason(context)` | `null` | The sentence that says why the device lacks the capability, such as `This device has no camera.` on a TV, or `null` where it has it. A permission with a reason answers `unsupported` with that sentence and never shows a prompt. |
 | `required(context)` | The permissions of the constructor. | The permissions of the manifest that it needs on the Android that runs, empty where Android asks for nothing, such as notifications before Android 13. |
 | `requested(context, requirements)` | `required(context)` | What the prompt asks for, such as the precise location next to the approximate one where the manifest declares it, so the prompt offers the choice. |
 | `isGranted(context)` | Whether the app holds every permission of `required`. | Whether the app holds it, such as the location at any precision. |
-| `stateWithoutPrompt(context)` | `"granted"` | The state where `required` is empty, such as whether the notifications of the app are on before Android 13. |
+| `stateWithoutPrompt(context)` | `"granted"` | The state where `required` is empty, `"granted"` or `"denied"`, such as whether the notifications of the app are on before Android 13. |
 | `prerequisite()` | `null` | A permission that the person must grant first, which Android asks for in a prompt of its own, such as the location before the location in the background. |
 
-The engine checks that the merged manifest declares the permissions of `required`, queues the prompts so one shows at a time, and remembers which permissions it asked for across launches, so a permission that Android no longer prompts for answers `denied`. A name that the context registered twice throws an `IllegalArgumentException`.
+The engine checks that the merged manifest declares the permissions of `required`, then asks `unsupportedReason`, queues the prompts so one shows at a time, and remembers which permissions it asked for across launches, so a permission that Android no longer prompts for answers `denied`. A name that the context registered twice throws an `IllegalArgumentException`.
 
 ```kotlin
 override fun onLoad(context: HaylenPluginContext) {
@@ -1869,7 +1870,7 @@ A cancelled picker answers `nil`.
 The plugin owns the permissions `camera`, `microphone`, `location` and `notifications`, which its `plugin.json` declares and its native part registers on Apple platforms, Android and the web, as [permissions](#permissions) describes. The app asks for them through `system.requestPermission`, which reaches the plugin, and the plugin asks for the permission that a call needs through `context.requirePermission`, so `startCamera` and `notify` fail with the code `denied` once the person refused.
 
 - **Apple platforms.** The camera prompt shows the `NSCameraUsageDescription` that the `infoPlist` of `plugin.json` gives, and tvOS has no camera before tvOS 17. The call `notify(seconds)` schedules a local notification of the plugin. It shows while the app is in front too, since the plugin class answers `userNotificationCenter(_:willPresent:withCompletionHandler:)` for its own notifications. Its tap reaches `userNotificationCenter(_:didReceive:withCompletionHandler:)` of the plugin class, which adopts `HaylenNotificationPlugin`, through the delegate of the notification center that the runtime sets because the plugin links UserNotifications. That works also when the tap launches the closed app. The plugin sends the tap as `notificationOpened`, retained, so it waits for the listener of the Permissions test of the sample.
-- **Android.** The manifest of the module declares `android.permission.CAMERA` and `android.permission.POST_NOTIFICATIONS`. Before Android 13 notifications need no permission, so the permission tells whether the person left them on. The method `notify` sets an alarm, which starts the process when it was closed. The receiver of the alarm, `NativeDemoNotifier`, posts the notification through `NotificationManagerCompat` on a channel of its own. The tap starts `HaylenLinkActivity`, and the plugin sends `notificationOpened` from `onActivityCreated` or `onNewIntent`.
+- **Android.** The manifest of the module declares `android.permission.CAMERA` and `android.permission.POST_NOTIFICATIONS`. A device without a camera or a microphone, such as a TV, answers those permissions with `unsupported` and the sentence of `unsupportedReason`, so `startCamera` fails with that sentence instead of a prompt. Before Android 13 notifications need no permission, so the permission tells whether the person left them on. The method `notify` sets an alarm, which starts the process when it was closed. The receiver of the alarm, `NativeDemoNotifier`, posts the notification through `NotificationManagerCompat` on a channel of its own. The tap starts `HaylenLinkActivity`, and the plugin sends `notificationOpened` from `onActivityCreated` or `onNewIntent`.
 
 ### Requirements of the demo
 

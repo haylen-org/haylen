@@ -31,13 +31,10 @@ class {{NAME}}Camera(private val context: HaylenPluginContext) {
     private var capture: Capture? = null
 
     fun register() {
-        context.registerPermission(HaylenPermission("camera", "the camera", Manifest.permission.CAMERA))
+        context.registerPermission(CameraPermission())
 
         context.register("startCamera") { params, reply ->
             val facing = (params as? JSONObject)?.optString("facing", "back") ?: "back"
-            if (!context.application().packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
-                throw HaylenBridge.Failure("This device has no camera.", "unsupported", null)
-            }
             context.requirePermission("camera", reply) {
                 val stream = context.openVideoStream("camera", Capture.WIDTH, Capture.HEIGHT, HaylenVideoStream.Format.RGBA8)
                 capture?.stop()
@@ -164,5 +161,12 @@ class {{NAME}}Camera(private val context: HaylenPluginContext) {
             const val WIDTH = 640
             const val HEIGHT = 480
         }
+    }
+}
+
+// The permission `camera` that the plugin owns, which a device without a camera, such as a TV, answers with `unsupported` and the reason instead of a prompt.
+private class CameraPermission : HaylenPermission("camera", "the camera", Manifest.permission.CAMERA) {
+    override fun unsupportedReason(context: Context): String? {
+        return if (context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) null else "This device has no camera."
     }
 }

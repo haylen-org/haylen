@@ -85,29 +85,21 @@ final class HaylenPermissions {
         return activity == null || ofEngine(new String(kind, StandardCharsets.UTF_8)).isGranted(activity);
     }
 
-    // Runs on the main thread. A permission that needs no prompt on this version of Android answers its state at once.
+    // Runs on the main thread. A permission that the project or the device cannot serve answers `unsupported` with the reason, and one that needs no prompt on this version of Android answers its state at once.
     static void check(HaylenPermission permission, Context context, HaylenRequirements requirements, Answer answer) {
-        String[] required = permission.required(context);
-        if (required.length == 0) {
-            answer.answer(permission.stateWithoutPrompt(context), "", Collections.emptyList());
+        if (reportUnsupported(permission, context, requirements, answer)) {
             return;
         }
-        if (permission.isGranted(context)) {
-            answer.answer("granted", "", Collections.emptyList());
-            return;
-        }
-        if (!reportMissing(permission, context, requirements, answer)) {
-            answer.answer(isRefused(permission, required, context) ? "denied" : "prompt", "", Collections.emptyList());
-        }
+        answerState(permission, context, answer);
     }
 
     // Runs on the main thread. A permission with a prerequisite that the app does not hold asks for the prerequisite first, which Android shows in a prompt of its own.
     static void ask(HaylenPermission permission, Context context, HaylenRequirements requirements, Answer answer) {
-        if (permission.required(context).length == 0 || permission.isGranted(context)) {
-            check(permission, context, requirements, answer);
+        if (reportUnsupported(permission, context, requirements, answer)) {
             return;
         }
-        if (reportMissing(permission, context, requirements, answer)) {
+        if (permission.required(context).length == 0 || permission.isGranted(context)) {
+            answerState(permission, context, answer);
             return;
         }
 
@@ -122,6 +114,32 @@ final class HaylenPermissions {
         if (queue.size() == 1) {
             queue.peek().run();
         }
+    }
+
+    private static void answerState(HaylenPermission permission, Context context, Answer answer) {
+        String[] required = permission.required(context);
+        if (required.length == 0) {
+            answer.answer(permission.stateWithoutPrompt(context), "", Collections.emptyList());
+            return;
+        }
+        if (permission.isGranted(context)) {
+            answer.answer("granted", "", Collections.emptyList());
+            return;
+        }
+        answer.answer(isRefused(permission, required, context) ? "denied" : "prompt", "", Collections.emptyList());
+    }
+
+    // A manifest that lacks a permission comes first, since the developer fixes it on every device, and then a device without the capability.
+    private static boolean reportUnsupported(HaylenPermission permission, Context context, HaylenRequirements requirements, Answer answer) {
+        if (reportMissing(permission, context, requirements, answer)) {
+            return true;
+        }
+        String reason = permission.unsupportedReason(context);
+        if (reason == null) {
+            return false;
+        }
+        answer.answer("unsupported", reason, Collections.emptyList());
+        return true;
     }
 
     // The sentence of a use of the capability that the person refused, the same on every platform.

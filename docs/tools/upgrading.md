@@ -225,6 +225,16 @@ context.register(HaylenPermission(name: "camera", capability: "the camera", requ
 context.registerPermission(HaylenPermission("camera", "the camera", Manifest.permission.CAMERA))
 ```
 
+An Android part that fails a call on a device without the capability, such as a check of `hasSystemFeature` before `requirePermission`, moves that check into `unsupportedReason` of its `HaylenPermission`. The permission then answers `unsupported` with the reason, both to `system.permission` and to `requirePermission`:
+
+```kotlin
+private class CameraPermission : HaylenPermission("camera", "the camera", Manifest.permission.CAMERA) {
+    override fun unsupportedReason(context: Context): String? {
+        return if (context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) null else "This device has no camera."
+    }
+}
+```
+
 ```js
 context.registerPermission({ name: "camera", capability: "the camera", needs: { secureContext: true }, query: "camera", request: () => askForCamera() });
 ```

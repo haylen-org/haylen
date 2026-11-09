@@ -2,6 +2,7 @@ package com.haylen.plugins.{{PACKAGE}}
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.pm.PackageManager
 import android.media.AudioFormat
 import android.media.AudioRecord
@@ -17,12 +18,9 @@ class {{NAME}}Microphone(private val context: HaylenPluginContext) {
     private var recording: Recording? = null
 
     fun register() {
-        context.registerPermission(HaylenPermission("microphone", "the microphone", Manifest.permission.RECORD_AUDIO))
+        context.registerPermission(MicrophonePermission())
 
         context.register("startMicrophone") { _, reply ->
-            if (!context.application().packageManager.hasSystemFeature(PackageManager.FEATURE_MICROPHONE)) {
-                throw HaylenBridge.Failure("This device has no microphone.", "unsupported", null)
-            }
             context.requirePermission("microphone", reply) {
                 recording?.stop()
                 recording = null
@@ -79,5 +77,12 @@ class {{NAME}}Microphone(private val context: HaylenPluginContext) {
                 return null
             }
         }
+    }
+}
+
+// The permission `microphone` that the plugin owns, which a device without a microphone, such as a TV, answers with `unsupported` and the reason instead of a prompt.
+private class MicrophonePermission : HaylenPermission("microphone", "the microphone", Manifest.permission.RECORD_AUDIO) {
+    override fun unsupportedReason(context: Context): String? {
+        return if (context.packageManager.hasSystemFeature(PackageManager.FEATURE_MICROPHONE)) null else "This device has no microphone."
     }
 }

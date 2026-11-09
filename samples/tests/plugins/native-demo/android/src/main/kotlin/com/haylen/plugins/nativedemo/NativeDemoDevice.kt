@@ -71,9 +71,6 @@ class NativeDemoDevice(private val context: HaylenPluginContext) {
     private fun registerCamera() {
         context.register("startCamera") { params, reply ->
             val facing = (params as? JSONObject)?.optString("facing", "back") ?: "back"
-            if (!context.application().packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
-                throw HaylenBridge.Failure("This device has no camera.", "unsupported", null)
-            }
             context.requirePermission("camera", reply) {
                 val stream = context.openVideoStream("camera", Camera.WIDTH, Camera.HEIGHT, HaylenVideoStream.Format.RGBA8)
                 camera?.stop()
@@ -102,9 +99,6 @@ class NativeDemoDevice(private val context: HaylenPluginContext) {
 
     private fun registerMicrophone() {
         context.register("startMicrophone") { _, reply ->
-            if (!context.application().packageManager.hasSystemFeature(PackageManager.FEATURE_MICROPHONE)) {
-                throw HaylenBridge.Failure("This device has no microphone.", "unsupported", null)
-            }
             context.requirePermission("microphone", reply) {
                 microphone?.stop()
                 microphone = null
