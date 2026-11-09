@@ -187,7 +187,7 @@ void ReleasePackage::recover() {
     if (!store) {
         return;
     }
-    StoreState state = store->getState();
+    const StoreState state = store->getState();
     for (const Digest& id : {state.active, state.previous}) {
         if (id.isZero()) {
             break;
@@ -220,10 +220,14 @@ void ReleasePackage::recover() {
 
     // The content that failed never plays again, so the store moves on to what plays now.
     core::Log::warning("The content \"{}\" that the app played last cannot play again, so it falls back to earlier content: {}", recovery->failed.toHex(), recovery->reason);
-    state.active = content == bundled ? Digest() : content->manifest->getId();
-    state.previous = Digest();
+    const Digest active = content == bundled ? Digest() : content->manifest->getId();
     try {
-        store->commit(state);
+        // clang-format off
+        store->commit([&active](StoreState& next) {
+            next.active = active;
+            next.previous = Digest();
+        });
+        // clang-format on
     } catch (const Error& error) {
         core::Log::warning("The content store could not record the fallback: {}", error.what());
     }

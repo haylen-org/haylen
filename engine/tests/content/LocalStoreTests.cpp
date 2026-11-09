@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_set>
@@ -54,6 +55,11 @@ class LocalStoreTest : public ::testing::Test {
             live.insert(idOf(records[index]));
         }
         return live;
+    }
+
+    // What a collection retains whatever state the store holds.
+    [[nodiscard]] static std::function<LocalStore::Retained(const StoreState&)> retaining(LocalStore::Retained retained) {
+        return [retained = std::move(retained)](const StoreState&) { return retained; };
     }
 
     // A sealed record of random bytes, as a download brings it.
@@ -123,12 +129,13 @@ TEST_F(LocalStoreTest, KeepsTheEarlierStateWhenTheNewestSlotTears) {
     const Digest later = Digest::of(test::TestFiles::bytes("later"));
     {
         const std::unique_ptr<LocalStore> store = open();
-        StoreState state = store->getState();
-        state.active = earlier;
-        state.acceptedGeneration = 4;
-        store->commit(state);
-        state.active = later;
-        store->commit(state);
+        // clang-format off
+        store->commit([&earlier](StoreState& state) {
+            state.active = earlier;
+            state.acceptedGeneration = 4;
+        });
+        // clang-format on
+        store->commit([&later](StoreState& state) { state.active = later; });
         EXPECT_EQ(store->getState().active, later);
     }
 
@@ -223,10 +230,12 @@ TEST_F(LocalStoreTest, ForgetsWhatARemovedSegmentHeldBeforeItWritesTheSegmentAga
 TEST_F(LocalStoreTest, StartsANewBuildFromTheContentItShipsAndKeepsTheGenerationItAccepted) {
     {
         const std::unique_ptr<LocalStore> store = open();
-        StoreState state = store->getState();
-        state.active = Digest::of(test::TestFiles::bytes("update"));
-        state.acceptedGeneration = 9;
-        store->commit(state);
+        // clang-format off
+        store->commit([](StoreState& state) {
+            state.active = Digest::of(test::TestFiles::bytes("update"));
+            state.acceptedGeneration = 9;
+        });
+        // clang-format on
     }
 
     const std::unique_ptr<LocalStore> store = open(kAppBuild + 1);
@@ -238,9 +247,7 @@ TEST_F(LocalStoreTest, StartsANewBuildFromTheContentItShipsAndKeepsTheGeneration
 TEST_F(LocalStoreTest, OpensEmptyForAnotherApp) {
     {
         const std::unique_ptr<LocalStore> store = open();
-        StoreState state = store->getState();
-        state.acceptedGeneration = 9;
-        store->commit(state);
+        store->commit([](StoreState& state) { state.acceptedGeneration = 9; });
     }
     const LocalStore store(std::make_unique<FolderStoreFiles>(folder.getPath()), Manifest::identifyApplication("com.haylen.other"), kAppBuild);
     EXPECT_EQ(store.getState().acceptedGeneration, 0U);
@@ -257,15 +264,15 @@ TEST_F(LocalStoreTest, CollectsDeadRecordsAndMovesTheLiveRecordsOfMostlyDeadSegm
     }
     EXPECT_EQ(countSegments(), 3U);
     const Digest manifest = Digest::of(test::TestFiles::bytes("kept"));
-    store->writeManifest(manifest, test::TestFiles::bytes("manifest"));
-    store->writeManifest(Digest::of(test::TestFiles::bytes("dropped")), test::TestFiles::bytes("manifest"));
+    store->commit(manifest, test::TestFiles::bytes("manifest"), [](StoreState&) {});
+    store->commit(Digest::of(test::TestFiles::bytes("dropped")), test::TestFiles::bytes("manifest"), [](StoreState&) {});
 
     // The first segment keeps all of its records, the second one of four and the third none.
     std::unordered_set<Digest, Digest::Hash> live;
     for (const std::size_t index : {0U, 1U, 2U, 3U, 5U}) {
         live.insert(idOf(records[index]));
     }
-    const LocalStore::Collection collection = store->collect(live, {manifest}, {}, std::atomic<bool>(false));
+    const LocalStore::Collection collection = store->collect(retaining({.records = live, .manifests = {manifest}}), std::atomic<bool>(false));
 
     EXPECT_EQ(collection.removedRecords, 7U);
     EXPECT_EQ(collection.movedRecords, 1U);
@@ -289,7 +296,7 @@ TEST_F(LocalStoreTest, MovesNoRecordsWithoutRoomForThem) {
     std::unique_ptr<LocalStore> store;
     const std::vector<std::vector<std::uint8_t>> records = fillSegments(store, LocalStore::kSafetyMargin);
     const std::unordered_set<Digest, Digest::Hash> live = keepSomeRecords(records);
-    const LocalStore::Collection collection = store->collect(live, {}, {}, std::atomic<bool>(false));
+    const LocalStore::Collection collection = store->collect(retaining({.records = live}), std::atomic<bool>(false));
 
     // The segment without live records goes, while the mostly dead one stays, since moving its record needs room the device lacks.
     EXPECT_EQ(collection.movedRecords, 0U);
@@ -306,7 +313,7 @@ TEST_F(LocalStoreTest, StopsACollectionAndLeavesTheStoreAsItWas) {
     const std::vector<std::vector<std::uint8_t>> records = fillSegments(store, std::uint64_t{1} << 40);
     const StoreState before = store->getState();
     try {
-        (void)store->collect(keepSomeRecords(records), {}, {}, std::atomic<bool>(true));
+        (void)store->collect(retaining({.records = keepSomeRecords(records)}), std::atomic<bool>(true));
         FAIL() << "A stopped collection never switches to a new state.";
     } catch (const Error& error) {
         EXPECT_EQ(error.getCode(), Error::Code::UpdateInterrupted);
@@ -337,14 +344,14 @@ TEST_F(LocalStoreTest, KeepsEveryRecordWhenACollectionLosesPower) {
         for (const std::vector<std::uint8_t>& record : records) {
             store.addRecord(key.getId(), record);
         }
-        store.commit(store.getState());
+        store.commit([](StoreState&) {});
         const StoreState before = store.getState();
         if (duringMove) {
             crashing.crashOnAppend(0);
         } else {
             crashing.crashOnWrite("state-");
         }
-        EXPECT_THROW((void)store.collect(keepSomeRecords(records), {}, {}, std::atomic<bool>(false)), Error);
+        EXPECT_THROW((void)store.collect(retaining({.records = keepSomeRecords(records)}), std::atomic<bool>(false)), Error);
         EXPECT_TRUE(crashing.hasCrashed());
 
         const std::unique_ptr<LocalStore> reopened = open();

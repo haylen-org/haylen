@@ -70,6 +70,8 @@ class Updater final {
     void requestKey(std::uint64_t generation, const Digest& manifest, std::vector<std::uint8_t> bytes, const Digest& key, std::function<void(std::optional<UpdateOffer>, std::optional<Error>)> done);
     void commit(const UpdateOffer& offer, std::function<void(std::optional<Error>)> done) const;
     static void markPending(LocalStore& store, const UpdateOffer& offer);
+    [[nodiscard]] static LocalStore::Retained retain(const ReleasePackage& releasePackage, const StoreState& state);
+    static void retain(const ReleasePackage::Content& content, LocalStore::Retained& retained);
     [[nodiscard]] static std::uint64_t getRequiredSpace(const UpdateOffer& offer) noexcept;
     [[nodiscard]] static bool isPacked(std::string_view path, const core::AppConfig::Content& rules) noexcept;
 

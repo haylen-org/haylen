@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <chrono>
 #include <format>
-#include <set>
 #include <unordered_set>
 #include <utility>
 
@@ -237,13 +236,13 @@ void Updater::install(const UpdateOffer& offer, std::function<void(const Downloa
 // The store keeps the manifest of an install and names it as pending before the first record arrives, so the records of an install that a restart interrupts stay for the next attempt.
 void Updater::markPending(LocalStore& store, const UpdateOffer& offer) {
     const Digest id = offer.content->manifest->getId();
-    StoreState state = store.getState();
-    if (state.pending == id || state.active == id) {
-        return;
-    }
-    store.writeManifest(id, *offer.manifest);
-    state.pending = id;
-    store.commit(std::move(state));
+    // clang-format off
+    store.commit(id, *offer.manifest, [&id](StoreState& state) {
+        if (state.active != id) {
+            state.pending = id;
+        }
+    });
+    // clang-format on
 }
 
 void Updater::commit(const UpdateOffer& offer, std::function<void(std::optional<Error>)> done) const {
@@ -253,17 +252,16 @@ void Updater::commit(const UpdateOffer& offer, std::function<void(std::optional<
         std::optional<Error> failure;
         try {
             const Digest id = offer.content->manifest->getId();
-            store->writeManifest(id, *offer.manifest);
-            StoreState state = store->getState();
-            if (state.active != id) {
-                state.previous = state.active;
-                state.active = id;
-            }
-            state.pending = Digest();
-            state.channel = channelName;
-            state.acceptedGeneration = offer.generation;
-            state.acceptedManifest = id;
-            store->commit(std::move(state));
+            store->commit(id, *offer.manifest, [&id, &channelName, &offer](StoreState& state) {
+                if (state.active != id) {
+                    state.previous = state.active;
+                    state.active = id;
+                }
+                state.pending = Digest();
+                state.channel = channelName;
+                state.acceptedGeneration = offer.generation;
+                state.acceptedManifest = id;
+            });
         } catch (const Error& error) {
             failure = error;
         }
@@ -291,30 +289,8 @@ void Updater::collect(std::function<void(Collection, std::optional<Error>)> done
         Collection collection;
         std::optional<Error> failure;
         try {
-            const std::shared_ptr<LocalStore>& store = releasePackage->getStore();
-            const StoreState state = store->getState();
-            std::unordered_set<Digest, Digest::Hash> live;
-            std::set<Digest> manifests;
-            std::set<Digest> shards;
-            const auto keep = [&live, &shards](const ReleasePackage::Content& content) {
-                for (std::uint64_t index = 0; index < content.catalog->getChunkCount(); ++index) {
-                    live.insert(content.catalog->getChunk(index).storedId);
-                }
-                for (const ShardReference& shard : content.manifest->getEnvelope().shards) {
-                    shards.insert(shard.shardId);
-                }
-            };
-            keep(*releasePackage->getBundledContent());
-            for (const Digest& id : {state.active, state.previous, state.pending}) {
-                if (id.isZero()) {
-                    continue;
-                }
-                if (std::optional<std::vector<std::uint8_t>> bytes = store->readManifest(id)) {
-                    keep(*releasePackage->load(std::move(*bytes)));
-                    manifests.insert(id);
-                }
-            }
-            const LocalStore::Collection collected = store->collect(live, manifests, shards, *stop);
+            // The collection reads the state under the lock of the store, so an install that names its content as pending keeps its records.
+            const LocalStore::Collection collected = releasePackage->getStore()->collect([&releasePackage](const StoreState& state) { return retain(*releasePackage, state); }, *stop);
             collection = {.removedRecords = collected.removedRecords, .freedBytes = collected.freedBytes};
         } catch (const Error& error) {
             failure = error;
@@ -326,6 +302,33 @@ void Updater::collect(std::function<void(Collection, std::optional<Error>)> done
         });
     });
     // clang-format on
+}
+
+// What the store keeps: the content that ships with the app, and the active, previous and pending content that the state names.
+LocalStore::Retained Updater::retain(const ReleasePackage& releasePackage, const StoreState& state) {
+    LocalStore::Retained retained;
+    retain(*releasePackage.getBundledContent(), retained);
+    for (const Digest& id : {state.active, state.previous, state.pending}) {
+        if (id.isZero()) {
+            continue;
+        }
+        std::optional<std::vector<std::uint8_t>> bytes = releasePackage.getStore()->readManifest(id);
+        if (!bytes) {
+            continue;
+        }
+        retain(*releasePackage.load(std::move(*bytes)), retained);
+        retained.manifests.insert(id);
+    }
+    return retained;
+}
+
+void Updater::retain(const ReleasePackage::Content& content, LocalStore::Retained& retained) {
+    for (std::uint64_t index = 0; index < content.catalog->getChunkCount(); ++index) {
+        retained.records.insert(content.catalog->getChunk(index).storedId);
+    }
+    for (const ShardReference& shard : content.manifest->getEnvelope().shards) {
+        retained.shards.insert(shard.shardId);
+    }
 }
 
 } // namespace haylen::content

@@ -52,13 +52,23 @@ class LocalStore final {
         std::uint64_t freedBytes = 0;
     };
 
+    // What a collection keeps: the live records, the manifests and the shards whose indexes and staged records stay.
+    struct Retained {
+        std::unordered_set<Digest, Digest::Hash> records;
+        std::set<Digest> manifests;
+        std::set<Digest> shards;
+    };
+
     // Opens the store in its files: the newest whole state, the records its journal lists in segments that still hold them, and nothing that a crash or an earlier collection left behind. A store of another app opens empty, and a new build of the app starts again from the content it ships with, keeping the records and the generation it accepted.
     LocalStore(std::unique_ptr<StoreFiles> storeFiles, const Digest& application, std::uint64_t appBuild, std::uint64_t segmentTarget = kSegmentTarget);
 
     [[nodiscard]] StoreState getState() const;
 
-    // Makes the records added so far durable, then writes the state into the slot that does not hold the current one.
-    void commit(StoreState next);
+    // Makes the records added so far durable, then applies the change to the current state and writes it into the slot that does not hold the current one, as one step that no other commit or collection comes between.
+    void commit(const std::function<void(StoreState&)>& change);
+
+    // Writes the manifest and commits the change as one step, so a collection never meets the manifest without the state that names it.
+    void commit(const Digest& manifestId, std::span<const std::uint8_t> manifest, const std::function<void(StoreState&)>& change);
 
     // Whether the store holds a record that can be read now.
     [[nodiscard]] bool contains(const Digest& storedId) const;
@@ -83,7 +93,6 @@ class LocalStore final {
     void flush();
 
     [[nodiscard]] std::optional<std::vector<std::uint8_t>> readManifest(const Digest& id) const;
-    void writeManifest(const Digest& id, std::span<const std::uint8_t> bytes);
     [[nodiscard]] std::optional<std::vector<std::uint8_t>> readShardIndex(const Digest& shard) const;
     void writeShardIndex(const Digest& shard, std::span<const std::uint8_t> bytes);
 
@@ -95,8 +104,8 @@ class LocalStore final {
     [[nodiscard]] std::vector<PartialRecord> listPartials() const;
     void removePartial(const Digest& shard, std::uint64_t recordOffset);
 
-    // Removes the records outside the live set, and the manifests, shard indexes and staged records that are no longer kept, and moves the live records of segments that are mostly dead into new ones, without ever touching what the live set uses. It moves records only when the device has room for them and its margin, and otherwise removes only the segments that hold no live record. The new journal becomes active with a new state, so a collection that a crash interrupts leaves the store as it was, and one that `stop` ends before it switches throws `UpdateInterrupted` and leaves the store as it was too.
-    Collection collect(const std::unordered_set<Digest, Digest::Hash>& liveRecords, const std::set<Digest>& keptManifests, const std::set<Digest>& keptShards, const std::atomic<bool>& stop);
+    // Asks what the current state retains and removes the records outside it, and the manifests, shard indexes and staged records that are no longer kept, as one step that no commit comes between, and moves the live records of segments that are mostly dead into new ones, without ever touching what the live set uses. It moves records only when the device has room for them and its margin, and otherwise removes only the segments that hold no live record. The new journal becomes active with a new state, so a collection that a crash interrupts leaves the store as it was, and one that `stop` ends before it switches throws `UpdateInterrupted` and leaves the store as it was too.
+    Collection collect(const std::function<Retained(const StoreState&)>& retain, const std::atomic<bool>& stop);
 
     // Forgets the records whose segment the platform deleted or cut short while the app ran, as iOS and tvOS may do with the caches of an app they suspended, and returns how many it forgot, which downloads bring back.
     std::size_t forgetLostRecords();
@@ -124,6 +133,7 @@ class LocalStore final {
     std::size_t eraseLostRecords();
     void removeLeftovers();
     void writeState(StoreState next);
+    void commitLocked(const std::function<void(StoreState&)>& change);
     Location appendRecord(const Digest& keyId, std::span<const std::uint8_t> record);
     [[nodiscard]] std::vector<StoreFiles::Range> getRanges(const std::vector<Digest>& storedIds) const;
 

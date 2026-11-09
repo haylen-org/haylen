@@ -133,9 +133,21 @@ StoreState LocalStore::getState() const {
     return state;
 }
 
-void LocalStore::commit(StoreState next) {
+void LocalStore::commit(const std::function<void(StoreState&)>& change) {
     std::scoped_lock write(writeMutex);
+    commitLocked(change);
+}
+
+void LocalStore::commit(const Digest& manifestId, std::span<const std::uint8_t> manifest, const std::function<void(StoreState&)>& change) {
+    std::scoped_lock write(writeMutex);
+    files->write(std::format("{}/{}.hmanifest", kManifestFolder, manifestId.toHex()), manifest);
+    commitLocked(change);
+}
+
+void LocalStore::commitLocked(const std::function<void(StoreState&)>& change) {
     flush();
+    StoreState next = state;
+    change(next);
     writeState(std::move(next));
 }
 
@@ -257,11 +269,6 @@ std::optional<std::vector<std::uint8_t>> LocalStore::readManifest(const Digest& 
     return files->read(std::format("{}/{}.hmanifest", kManifestFolder, id.toHex()));
 }
 
-void LocalStore::writeManifest(const Digest& id, std::span<const std::uint8_t> bytes) {
-    std::scoped_lock write(writeMutex);
-    files->write(std::format("{}/{}.hmanifest", kManifestFolder, id.toHex()), bytes);
-}
-
 std::optional<std::vector<std::uint8_t>> LocalStore::readShardIndex(const Digest& shard) const {
     return files->read(std::format("{}/{}.hidx", kIndexFolder, shard.toHex()));
 }
@@ -308,9 +315,10 @@ void LocalStore::removePartial(const Digest& shard, std::uint64_t recordOffset) 
     files->remove(getPartialName(shard, recordOffset));
 }
 
-LocalStore::Collection LocalStore::collect(const std::unordered_set<Digest, Digest::Hash>& liveRecords, const std::set<Digest>& keptManifests, const std::set<Digest>& keptShards, const std::atomic<bool>& stop) {
+LocalStore::Collection LocalStore::collect(const std::function<Retained(const StoreState&)>& retain, const std::atomic<bool>& stop) {
     std::scoped_lock write(writeMutex);
     flush();
+    const Retained retained = retain(state);
     Collection collection;
 
     // The live bytes of every segment decide which segments stay as they are, which move their live records and which go.
@@ -318,7 +326,7 @@ LocalStore::Collection LocalStore::collect(const std::unordered_set<Digest, Dige
     std::map<std::uint32_t, std::uint64_t> live;
     std::set<std::uint32_t> unreadable;
     for (const auto& [storedId, location] : records) {
-        if (!liveRecords.contains(storedId)) {
+        if (!retained.records.contains(storedId)) {
             ++collection.removedRecords;
             continue;
         }
@@ -398,14 +406,14 @@ LocalStore::Collection LocalStore::collect(const std::unordered_set<Digest, Dige
     }
     for (const std::string& name : files->list(std::string(kManifestFolder))) {
         const std::optional<Digest> id = Digest::fromHex(name.substr(0, name.find('.')));
-        if (!id || !keptManifests.contains(*id)) {
+        if (!id || !retained.manifests.contains(*id)) {
             files->remove(std::string(kManifestFolder) + "/" + name);
         }
     }
     for (const std::string& folder : {std::string(kIndexFolder), std::string(kStagingFolder)}) {
         for (const std::string& name : files->list(folder)) {
             const std::optional<Digest> shard = Digest::fromHex(name.substr(0, Digest::kSize * 2));
-            if (!shard || !keptShards.contains(*shard)) {
+            if (!shard || !retained.shards.contains(*shard)) {
                 files->remove(folder + "/" + name);
             }
         }

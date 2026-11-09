@@ -27,6 +27,7 @@
 #include "support/BrowserStoreFiles.hpp"
 #include "support/ContentServer.hpp"
 #include "support/CrashingStoreFiles.hpp"
+#include "support/GatedManifestStoreFiles.hpp"
 #include "support/GatedStoreFiles.hpp"
 #include "support/LimitedStoreFiles.hpp"
 #include "support/QuotaStoreFiles.hpp"
@@ -718,6 +719,42 @@ TEST_F(UpdaterTest, CollectsWhatNoRetainedContentUses) {
     const std::unique_ptr<Client> restarted = connect();
     EXPECT_EQ(readText(*restarted->package, "content/data/config.json"), R"({"level": 4})");
     EXPECT_EQ(restarted->package->read("content/maps/level.tmj"), makeUpdate(4).at("content/maps/level.tmj"));
+}
+
+// A collection decides what it keeps from the state it reads under the lock of the store, so an install that starts while a collection runs never loses its records to it.
+TEST_F(UpdaterTest, KeepsTheRecordsOfAnInstallThatStartsWhileACollectionRuns) {
+    publish(makeUpdate(2));
+    {
+        const std::unique_ptr<Client> client = connect();
+        ASSERT_FALSE(install(*client, requireOffer(*client)));
+    }
+
+    publish(makeUpdate(3));
+    {
+        auto files = std::make_unique<test::GatedManifestStoreFiles>(store.getPath());
+        test::GatedManifestStoreFiles& gate = *files;
+        const auto client = std::make_unique<Client>(*this, std::move(files));
+        const UpdateOffer offer = requireOffer(*client);
+
+        // The collection waits for the device while it reads the manifests of the state, and the install starts meanwhile.
+        gate.close();
+        std::optional<std::optional<Error>> collected;
+        client->updater->collect([&collected](Updater::Collection, std::optional<Error> error) { collected.emplace(std::move(error)); });
+        ASSERT_TRUE(runtime.pumpUntil([&gate] { return gate.isHolding(); }));
+        std::optional<std::optional<Error>> installed;
+        client->updater->install(offer, {}, [&installed](std::optional<Error> error) { installed.emplace(std::move(error)); });
+        (void)runtime.pumpUntil([&installed] { return installed.has_value(); }, std::chrono::seconds(2));
+
+        gate.open();
+        ASSERT_TRUE(runtime.pumpUntil([&collected, &installed] { return collected.has_value() && installed.has_value(); }, std::chrono::seconds(20)));
+        EXPECT_FALSE(*collected);
+        EXPECT_FALSE(*installed);
+    }
+
+    const std::unique_ptr<Client> restarted = connect();
+    EXPECT_FALSE(restarted->package->takeRecovery());
+    EXPECT_EQ(readText(*restarted->package, "content/data/config.json"), R"({"level": 3})");
+    EXPECT_EQ(restarted->package->read("content/maps/level.tmj"), makeUpdate(3).at("content/maps/level.tmj"));
 }
 
 } // namespace haylen::content

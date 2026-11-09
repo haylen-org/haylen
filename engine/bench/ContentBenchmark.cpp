@@ -392,7 +392,7 @@ class ContentBenchmark final {
         for (const std::vector<std::uint8_t>& record : records) {
             store.addRecord(keyId, record);
         }
-        store.commit(store.getState());
+        store.commit([](content::StoreState&) {});
     }
 };
 
