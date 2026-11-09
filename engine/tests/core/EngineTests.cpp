@@ -265,6 +265,23 @@ TEST(AppConfigTest, RejectsInvalidValues) {
     }
 }
 
+TEST(AppConfigTest, RefusesNumbersThatTheirFieldsCannotHold) {
+    for (const char* document : {R"({"window": {"width": 800.5}})", R"({"window": {"height": 1e20}})", R"({"window": {"frameRate": -1e300}})", R"({"window": {"sampleCount": 4294967300}})"}) {
+        try {
+            (void)core::AppConfig::fromJson(core::Json::parse(document));
+            ADD_FAILURE() << "A number that its field cannot hold must be refused: " << document;
+        } catch (const std::invalid_argument& error) {
+            EXPECT_TRUE(std::string_view(error.what()).ends_with("in \"app.json\" must be a whole number from -2147483648 to 2147483647.")) << error.what();
+        }
+    }
+    try {
+        (void)core::AppConfig::fromJson(core::Json::parse(R"({"splash": {"duration": 1e300}})"));
+        FAIL() << "A number beyond the range of a float must be refused.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_STREQ(error.what(), "The value of \"duration\" in \"app.json\" must be a number from -3.40282e+38 to 3.40282e+38.");
+    }
+}
+
 // An app asks for the GPU that uses the least power of a machine that has two, and draws on the most powerful one otherwise.
 TEST(AppConfigTest, ReadsWhetherTheAppWantsTheGpuOfLowPower) {
     EXPECT_FALSE(core::AppConfig::fromJson(core::Json::object()).window.lowPowerGpu);

@@ -885,6 +885,8 @@ The engine checks `app.json` before any Lua runs. A package whose `app.json` fai
 | --- | --- |
 | `Unknown key "<key>" in "app.json".` | The file has a field that the engine does not know. A field of a section names its section, such as `Unknown key "widht" in the "window" section of "app.json".` |
 | `The value of "<key>" in "app.json" has the wrong type.` | A value is not of the type that the tables above give. |
+| `The value of "<key>" in "app.json" must be a whole number from <minimum> to <maximum>.` | A whole number, such as `window.width` or `window.frameRate`, has a fraction, such as `800.5`, or lies outside the numbers it can hold, such as `1e20`. |
+| `The value of "<key>" in "app.json" must be a number from <minimum> to <maximum>.` | A number with a fraction, such as `splash.duration`, lies outside the numbers it can hold. |
 | `The value of "<key>" in "app.json" must be positive.` | One of `window.width`, `window.height`, `window.sampleCount`, `design.width`, `design.height`, `fixedRate` and `maxFrameTime` is `0` or less. |
 | `The value of "<key>" in "app.json" must be a number of at least 0.` | The `splash.duration` or `splash.fadeOut` is negative or not finite. |
 | `The "<key>" value "<value>" in "app.json" is not a color such as "#RRGGBB" or "#AARRGGBB".` | The `clearColor`, `window.statusBarColor`, `splash.background` or `splash.darkBackground` is not a color. |

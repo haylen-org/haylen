@@ -2,10 +2,14 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
+#include <format>
+#include <limits>
 #include <map>
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 #include "content/format/Manifest.hpp"
@@ -164,12 +168,26 @@ std::string_view AppConfig::reloadName(Debug::Reload value) noexcept {
     return std::ranges::find(kReloadNames, value, &std::pair<std::string_view, Debug::Reload>::second)->first;
 }
 
+// A number reaches a field only when the field holds it as it is, so a fraction never truncates into a whole number and no number falls outside its type.
 template <typename T> void AppConfig::readValue(const Json& object, const char* key, T& target) {
     if (!object.contains(key)) {
         return;
     }
+    const Json& value = object.at(key);
+    if constexpr (std::is_integral_v<T> && !std::is_same_v<T, bool>) {
+        const bool fits = value.is_number_unsigned() ? std::in_range<T>(value.get<std::uint64_t>()) : value.is_number_integer() && std::in_range<T>(value.get<std::int64_t>());
+        if (!fits) {
+            throw std::invalid_argument(std::format("The value of \"{}\" in \"app.json\" must be a whole number from {} to {}.", key, std::numeric_limits<T>::min(), std::numeric_limits<T>::max()));
+        }
+    }
+    if constexpr (std::is_floating_point_v<T>) {
+        const bool fits = value.is_number() && std::isfinite(value.get<double>()) && std::abs(value.get<double>()) <= std::numeric_limits<T>::max();
+        if (!fits) {
+            throw std::invalid_argument(std::format("The value of \"{}\" in \"app.json\" must be a number from {:g} to {:g}.", key, std::numeric_limits<T>::lowest(), std::numeric_limits<T>::max()));
+        }
+    }
     try {
-        target = object.at(key).get<T>();
+        target = value.get<T>();
     } catch (const Json::exception&) {
         throw std::invalid_argument(std::string("The value of \"") + key + "\" in \"app.json\" has the wrong type.");
     }
