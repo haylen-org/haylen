@@ -14,4 +14,9 @@ function plugin.fail()
     return handle:call('fail')
 end
 
+-- Returns a platform call that fails, because the web part requires the permission `unprompted`, whose request ends without a prompt.
+function plugin.useUnprompted()
+    return handle:call('useUnprompted')
+end
+
 return plugin

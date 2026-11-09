@@ -972,8 +972,13 @@ Module.haylen = Module.haylen || {};
         localNetwork: { capability: "the local network", query: "local-network-access", unnamed: "granted", request: () => requestLocalNetwork() },
     };
 
-    // The sentence of a use of a capability that the person refused, the same as the one of the engine.
-    const permissionRefusal = (permission, name) => "The person has not allowed " + permission.capability + ". Ask for it with \"system.requestPermission('" + name + "')\", which shows the prompt of the system while the system still asks, or the person allows it in the settings of the system.";
+    // The sentence of a use of a capability that a request did not allow, the same as the one of the engine: after `prompt`, where the browser did not show its prompt, it says that the app may ask again later, and after `denied` it names how to ask for it again.
+    const permissionRefusal = (permission, name, answered) => {
+        if (answered === "prompt") {
+            return "The system did not show its prompt for " + permission.capability + ", so the app does not hold it yet. Ask for it again later with \"system.requestPermission('" + name + "')\".";
+        }
+        return "The person has not allowed " + permission.capability + ". Ask for it with \"system.requestPermission('" + name + "')\", which shows the prompt of the system while the system still asks, or the person allows it in the settings of the system.";
+    };
 
     // Answers the state of a name of the Permissions API, or nothing for a name that the browser does not know.
     const queryPermission = async (name) => {
@@ -1105,7 +1110,7 @@ Module.haylen = Module.haylen || {};
         plugin.permissions.set(spec.name, permission);
     };
 
-    // Asks for the permission where the page does not hold it, and fails with the code `denied` when the person refused it, or `unsupported` with what the page lacks, as plugins expect before they use a capability. A state that the browser tells nothing of lets the use try.
+    // Asks for the permission where the page does not hold it, and fails with the code `denied` when the person refused it or the browser did not show its prompt, or `unsupported` with what the page lacks, as plugins expect before they use a capability. A state that the browser tells nothing of lets the use try.
     const requirePermission = async (id, plugin, name) => {
         const permission = plugin.permissions.get(name);
         if (!permission) {
@@ -1113,7 +1118,7 @@ Module.haylen = Module.haylen || {};
         }
         const answer = await requestPluginPermission(permission, "The plugin \"" + id + "\"", id);
         if (answer.state === "denied" || answer.state === "prompt") {
-            throw Object.assign(new Error(permissionRefusal(permission, name)), { code: "denied" });
+            throw Object.assign(new Error(permissionRefusal(permission, name, answer.state)), { code: "denied" });
         }
         if (answer.state === "unsupported") {
             throw Object.assign(new Error(answer.message), { code: "unsupported", data: answer.missing ? { missing: answer.missing } : undefined });

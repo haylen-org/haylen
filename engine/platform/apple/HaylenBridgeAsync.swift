@@ -90,7 +90,7 @@ extension HaylenPluginContext {
         }
     }
 
-    // Asks for the permission `name` that the plugin registered with `register(_:)`, such as "camera", where the app does not hold it yet, before the plugin uses the capability. Throws a `HaylenFailure` with the code `denied` when the person refused it, or `unsupported` with the reason, whose data lists in `missing` what the project lacks.
+    // Asks for the permission `name` that the plugin registered with `register(_:)`, such as "camera", where the app does not hold it yet, before the plugin uses the capability. Throws a `HaylenFailure` with the code `denied` when the person refused it or the system did not show its prompt, or `unsupported` with the reason, whose data lists in `missing` what the project lacks.
     func requirePermission(_ name: String) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
             requirePermission(name) { error in

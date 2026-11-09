@@ -130,7 +130,7 @@ public final class HaylenPluginContext {
         }
     }
 
-    // Runs `granted` on the main thread once the app holds the permission `name` that the plugin registered, such as `camera`, after it asked the person where the app does not hold it yet, as `system.requestPermission` does. A permission that the person refused fails the call with the code `denied` and the sentence that names it and how to ask again, a manifest that lacks it fails the call with the code `unsupported` and the missing lines in `data.missing`, and a `granted` that throws, a `HaylenBridge.Failure` among them, fails the call with its error. A platform that tells nothing until the app tries, which Android does only while no activity exists, runs `granted` too. Throws an `IllegalArgumentException` for a name that the plugin did not register.
+    // Runs `granted` on the main thread once the app holds the permission `name` that the plugin registered, such as `camera`, after it asked the person where the app does not hold it yet, as `system.requestPermission` does. A permission that the person refused, or whose request ended without the prompt of the system, fails the call with the code `denied` and the sentence that says so and how to ask again, a manifest that lacks it fails the call with the code `unsupported` and the missing lines in `data.missing`, and a `granted` that throws, a `HaylenBridge.Failure` among them, fails the call with its error. A platform that tells nothing until the app tries, which Android does only while no activity exists, runs `granted` too. Throws an `IllegalArgumentException` for a name that the plugin did not register.
     public void requirePermission(String name, HaylenBridge.Reply reply, Runnable granted) {
         HaylenPermission permission = findPermission(name);
         if (permission == null) {
@@ -146,7 +146,7 @@ public final class HaylenPluginContext {
             } else if (state.equals("unsupported")) {
                 reply.failure(message, "unsupported", missing.isEmpty() ? null : Collections.singletonMap("missing", missing));
             } else {
-                reply.failure(HaylenPermissions.refusal(permission), "denied", null);
+                reply.failure(HaylenPermissions.refusal(permission, state), "denied", null);
             }
         }));
     }

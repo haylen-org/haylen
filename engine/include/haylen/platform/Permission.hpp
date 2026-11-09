@@ -55,8 +55,8 @@ class Permission final {
     [[nodiscard]] static std::string_view stateName(State value) noexcept;
     [[nodiscard]] static std::optional<State> stateFromName(std::string_view name) noexcept;
 
-    // The sentence of a use of the capability that the person refused, which names it and how to ask for it again, for the capability and the name of a permission, such as `the camera` and `camera`.
-    [[nodiscard]] static std::string refusal(std::string_view capability, std::string_view name);
+    // The sentence of a use of the capability that a request did not allow, for the state the request ended in and the capability and the name of a permission, such as `the camera` and `camera`. After `Denied` it names how to ask for it again, and after `Prompt`, where the system did not show its prompt, it says that the app may ask again later.
+    [[nodiscard]] static std::string refusal(State answered, std::string_view capability, std::string_view name);
 
     // The sentence of a name that neither the engine nor a plugin of the app owns, which names the permissions of the engine and where a plugin declares its own.
     [[nodiscard]] static std::string unknown(std::string_view name);

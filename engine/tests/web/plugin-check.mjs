@@ -1,4 +1,4 @@
-// Opens the page of the plugin check in a headless browser over its debugging protocol, with a permissions policy that governs only the feature "camera" and refuses it, and prints what happened as JSON. The plugin of the app requires "camera" and "web-share", and the check expects the page to lack "camera" alone, since a feature that the policy of the browser does not govern is left to the error of its API. Then the plugin throws an error of the page, which must fail its call with the code "exception" and the name of the error in "data.type".
+// Opens the page of the plugin check in a headless browser over its debugging protocol, with a permissions policy that governs only the feature "camera" and refuses it, and prints what happened as JSON. The plugin of the app requires "camera" and "web-share", and the check expects the page to lack "camera" alone, since a feature that the policy of the browser does not govern is left to the error of its API. Then the plugin throws an error of the page, which must fail its call with the code "exception" and the name of the error in "data.type", and requires a permission whose request ends in "prompt", which must fail with the code "denied" and the sentence that says the system did not show its prompt.
 // Run it with Node: node plugin-check.mjs <debugging port> <page address>
 const [port, url] = process.argv.slice(2);
 const version = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json();
@@ -74,5 +74,6 @@ if (await step("checked", "The plugin check found these features missing:", 60))
     await step("lacks only the governed feature", "The plugin check found these features missing: camera.", 1);
 }
 await step("fails an error of the page as an exception", 'The error of the page failed with the code "exception" and the type "NotAllowedError".', 10);
+await step("fails a use without a prompt as denied", 'The use without a prompt failed with the code "denied": The system did not show its prompt for the unprompted capability, so the app does not hold it yet. Ask for it again later with "system.requestPermission(\'unprompted\')".', 10);
 console.log(JSON.stringify(result));
 process.exit(0);

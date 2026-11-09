@@ -874,10 +874,10 @@ WEB_WAKE_LOCK_STEPS = {
     "missing": ["ready", "warned", "runs on"],
 }
 WEB_WAKE_LOCK_BROWSERS = {"granted": "grants the wake lock", "refused": "refuses the wake lock", "missing": "has no Screen Wake Lock API"}
-# The plugin check of the web: an app whose plugin requires a feature that the permissions policy of the page refuses and one that the policy does not govern, whose page a headless browser opens with that policy. The page must lack the refused feature alone, since a feature that the policy does not govern is left to the error of its API. The plugin also throws an error of the page, whose numeric code is no code of a failure, so its call must fail with the code "exception".
+# The plugin check of the web: an app whose plugin requires a feature that the permissions policy of the page refuses and one that the policy does not govern, whose page a headless browser opens with that policy. The page must lack the refused feature alone, since a feature that the policy does not govern is left to the error of its API. The plugin also throws an error of the page, whose numeric code is no code of a failure, so its call must fail with the code "exception", and requires a permission whose request ends without a prompt, which must fail with the code "denied" and the sentence that says so.
 WEB_PLUGINS_APP = ENGINE_DIR / "tests" / "data" / "web-plugins"
 WEB_PLUGINS_DRIVER = ENGINE_DIR / "tests" / "web" / "plugin-check.mjs"
-WEB_PLUGINS_STEPS = ["checked", "lacks only the governed feature", "fails an error of the page as an exception"]
+WEB_PLUGINS_STEPS = ["checked", "lacks only the governed feature", "fails an error of the page as an exception", "fails a use without a prompt as denied"]
 # The error screen check of the web: an app that stops with an error at a key, whose page a headless browser opens three times on WebGPU and three times on WebGL2, since a restart makes a new GPU device. One lets the page write the clipboard, where the copy of the error screen puts its report, and the app draws again after the key R and after a click on the restart button. The others refuse the write or lack the clipboard API, which warns in the log, leaves the clipboard alone and still restarts the app.
 WEB_ERROR_SCREEN_APP = ENGINE_DIR / "tests" / "data" / "web-error-screen"
 WEB_ERROR_SCREEN_DRIVER = ENGINE_DIR / "tests" / "web" / "error-screen-check.mjs"
@@ -976,7 +976,7 @@ def check_web_wake_lock(args: argparse.Namespace, target) -> None:
 
 
 def check_web_plugins(args: argparse.Namespace, target) -> None:
-    """Builds the site of the plugin check app, opens it in a headless browser whose permissions policy governs only the feature that it refuses, and stops when the page lacks another feature, fails the error of the page with another code or reports an error."""
+    """Builds the site of the plugin check app, opens it in a headless browser whose permissions policy governs only the feature that it refuses, and stops when the page lacks another feature, fails the error of the page or the use without a prompt with another code or sentence, or reports an error."""
     site = target.prepare(App(WEB_PLUGINS_APP, target.plugins), args)
     server = serve_site(site)
     try:
@@ -987,7 +987,7 @@ def check_web_plugins(args: argparse.Namespace, target) -> None:
     finally:
         server.shutdown()
         server.server_close()
-    terminal.success("The page lacked the feature that its permissions policy refused, left the feature that the policy does not govern to the error of its API, and failed the error of the page with the code \"exception\".")
+    terminal.success("The page lacked the feature that its permissions policy refused, left the feature that the policy does not govern to the error of its API, failed the error of the page with the code \"exception\" and the use without a prompt with the code \"denied\".")
 
 
 def check_web_page_steps(report: dict, steps: list[str], page: str) -> None:

@@ -217,7 +217,8 @@ using haylen::platform::VideoStream;
         return nil;
     }
     if (![state isEqualToString:@"unsupported"]) {
-        NSString* message = @(Permission::refusal(permission.capability.UTF8String, permission.name.UTF8String).c_str());
+        const Permission::State answered = [state isEqualToString:@"prompt"] ? Permission::State::Prompt : Permission::State::Denied;
+        NSString* message = @(Permission::refusal(answered, permission.capability.UTF8String, permission.name.UTF8String).c_str());
         return [NSError errorWithDomain:@"HaylenPermissions" code:0 userInfo:@{NSLocalizedDescriptionKey : message, @"message" : message, @"code" : @"denied"}];
     }
 

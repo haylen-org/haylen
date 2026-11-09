@@ -142,8 +142,11 @@ final class HaylenPermissions {
         return true;
     }
 
-    // The sentence of a use of the capability that the person refused, the same on every platform.
-    static String refusal(HaylenPermission permission) {
+    // The sentence of a use of the capability that a request did not allow, the same on every platform: after `prompt`, where the system did not show its prompt, it says that the app may ask again later, and after `denied` it names how to ask for it again.
+    static String refusal(HaylenPermission permission, String answered) {
+        if (answered.equals("prompt")) {
+            return "The system did not show its prompt for " + permission.getCapability() + ", so the app does not hold it yet. Ask for it again later with \"system.requestPermission('" + permission.getName() + "')\".";
+        }
         return "The person has not allowed " + permission.getCapability() + ". Ask for it with \"system.requestPermission('" + permission.getName() + "')\", which shows the prompt of the system while the system still asks, or the person allows it in the settings of the system.";
     }
 

@@ -62,7 +62,10 @@ std::optional<Permission::State> Permission::stateFromName(std::string_view name
     return found != kStateNames.end() ? std::optional(found->second) : std::nullopt;
 }
 
-std::string Permission::refusal(std::string_view capability, std::string_view name) {
+std::string Permission::refusal(State answered, std::string_view capability, std::string_view name) {
+    if (answered == State::Prompt) {
+        return std::format("The system did not show its prompt for {}, so the app does not hold it yet. Ask for it again later with \"system.requestPermission('{}')\".", capability, name);
+    }
     return std::format("The person has not allowed {}. Ask for it with \"system.requestPermission('{}')\", which shows the prompt of the system while the system still asks, or the person allows it in the settings of the system.", capability, name);
 }
 
