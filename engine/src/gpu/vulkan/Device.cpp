@@ -1767,4 +1767,33 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
     return std::make_unique<ImageReadback>(readbacks.start({.image = record.image, .layout = record.restLayout, .width = width, .height = height, .format = record.pixelFormat}));
 }
 
+// RenderDoc names a Vulkan device by the dispatch table of its instance.
+void* Device::getRenderDocDevice() const noexcept {
+    return *reinterpret_cast<void**>(instance->getHandle());
+}
+
+gpu::Device::CaptureSupport Device::getCaptureSupport() const {
+    if (!renderDoc) {
+        return {.tool = CaptureTool::None, .missing = std::string(renderdoc::Capturer::kMissing)};
+    }
+    return {.tool = CaptureTool::RenderDoc, .missing = {}};
+}
+
+void Device::beginCapture(const std::filesystem::path& path) {
+    if (pass.open) {
+        throw std::logic_error("A capture began while a pass was open.");
+    }
+    if (!renderDoc) {
+        throw std::logic_error(std::string(renderdoc::Capturer::kMissing));
+    }
+    renderDoc->begin(getRenderDocDevice(), path);
+}
+
+std::filesystem::path Device::endCapture() {
+    if (!renderDoc) {
+        throw std::logic_error("A capture ended while none records.");
+    }
+    return renderDoc->end(getRenderDocDevice());
+}
+
 } // namespace haylen::gpu::vulkan

@@ -190,4 +190,16 @@ std::unique_ptr<gpu::Device::Readback> OffscreenSwapchain::readImage(Image image
     return device->readImage(image, width, height);
 }
 
+gpu::Device::CaptureSupport OffscreenSwapchain::getCaptureSupport() const {
+    return device->getCaptureSupport();
+}
+
+void OffscreenSwapchain::beginCapture(const std::filesystem::path& path) {
+    device->beginCapture(path);
+}
+
+std::filesystem::path OffscreenSwapchain::endCapture() {
+    return device->endCapture();
+}
+
 } // namespace haylen::bench

@@ -7,6 +7,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <span>
@@ -20,6 +21,7 @@
 #include "gpu/direct3d/DebugMessages.hpp"
 #include "gpu/direct3d/Slots.hpp"
 #include "gpu/direct3d/WideText.hpp"
+#include "gpu/renderdoc/Capturer.hpp"
 #include "haylen/gpu/Device.hpp"
 
 namespace haylen::gpu::direct3d {
@@ -87,6 +89,10 @@ class Device final : public gpu::Device {
     void removeSurface(int number) override;
 
     [[nodiscard]] std::unique_ptr<Readback> readImage(Image image, int width, int height) override;
+
+    [[nodiscard]] CaptureSupport getCaptureSupport() const override;
+    void beginCapture(const std::filesystem::path& path) override;
+    [[nodiscard]] std::filesystem::path endCapture() override;
 
   private:
     static constexpr UINT kUniformRingSize = 4U << 20U;
@@ -235,6 +241,8 @@ class Device final : public gpu::Device {
     Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter;
     Microsoft::WRL::ComPtr<ID3D11Device1> device;
     Microsoft::WRL::ComPtr<ID3D11DeviceContext1> context;
+    // The in-application API of RenderDoc when RenderDoc launched the app, which captures its frames.
+    std::unique_ptr<renderdoc::Capturer> renderDoc = renderdoc::Capturer::find();
     Microsoft::WRL::ComPtr<ID3DUserDefinedAnnotation> annotation;
     Microsoft::WRL::ComPtr<ID3D11InfoQueue> infoQueue;
     std::unique_ptr<direct3d::DebugMessages> messages;

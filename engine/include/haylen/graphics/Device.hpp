@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -32,6 +33,9 @@ class Device final {
   public:
     // Receives the pixels of a render target, or the reason they could not be read.
     using ReadCallback = std::function<void(std::optional<Image> image, const std::string& error)>;
+
+    // Receives the path of the file that the capture tool of the GPU device wrote, or the reason the capture failed.
+    using CaptureCallback = std::function<void(std::optional<std::filesystem::path> path, const std::string& error)>;
 
     // How many objects of one kind the GPU context holds, out of the room it preallocated for them.
     struct Pool {
@@ -98,6 +102,19 @@ class Device final {
 
     // Returns how many reads have not reached their callback yet.
     [[nodiscard]] std::size_t getPendingReadCount() const noexcept;
+
+    // The tool of the graphics API that captures the frames of the GPU device, such as the frame capture of Metal or RenderDoc, or none with what is missing and how to get it.
+    [[nodiscard]] gpu::Device::CaptureSupport getCaptureSupport() const;
+
+    // Records every command of the GPU device into a capture of its capture tool from now until the number of frames was submitted, at the path without its extension, which the tool adds, and hands the path of the file to the callback on the frame thread once the last of them was submitted. Throws `std::invalid_argument` for fewer than one frame, `std::logic_error` while another capture records, and `std::runtime_error` when the device has no capture tool, with what is missing, or the tool refuses to start.
+    void captureFrames(int frames, const std::filesystem::path& path, CaptureCallback done);
+    [[nodiscard]] bool isCapturing() const noexcept;
+
+    // Counts the frame of a capture that records and ends the capture after its last frame. The engine calls it once per frame, after the frame was submitted.
+    void processCapture();
+
+    // Ends the capture that records and drops its callback, which never runs, such as when the app stops.
+    void cancelCapture() noexcept;
 
     [[nodiscard]] gpu::Device& getGpu() noexcept;
 

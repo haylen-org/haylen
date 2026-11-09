@@ -3994,17 +3994,18 @@ def simulator_line(identifier: str, line: str) -> str | None:
 
 
 def launch_apple(app: App, bundle: Path, args: argparse.Namespace, simulator: dict | None, session: RunSession) -> None:
-    """Launches an app bundle on this Mac, a simulator or a device with the arguments of the session and streams its output until it ends or the session quits. The engine writes to the standard output on macOS and to the unified log elsewhere, which simulators and Mac Catalyst stream next to the output of the process."""
+    """Launches an app bundle on this Mac, a simulator or a device with the arguments of the session and streams its output until it ends or the session quits. The engine writes to the standard output on macOS and to the unified log elsewhere, which simulators and Mac Catalyst stream next to the output of the process. A development launch starts the app with the frame capture of Metal, which simulators take through variables that start with `SIMCTL_CHILD_`."""
     desktop = args.platform in {"macos", "catalyst"}
     info = plistlib.loads((bundle / "Contents" / "Info.plist" if desktop else bundle / "Info.plist").read_bytes())
     executable, identifier = info["CFBundleExecutable"], info["CFBundleIdentifier"]
+    environment = METAL_CAPTURE_ENVIRONMENT if session.development is not None else {}
     if args.platform == "macos":
         session.show(run_rows(app, "This Mac", args, session))
-        session.follow([bundle / "Contents" / "MacOS" / executable, *session.arguments])
+        session.follow([bundle / "Contents" / "MacOS" / executable, *session.arguments], environment=environment)
     elif args.platform == "catalyst":
         with unified_log(executable, []):
             session.show(run_rows(app, "This Mac, with Mac Catalyst", args, session))
-            session.follow([bundle / "Contents" / "MacOS" / executable, *session.arguments])
+            session.follow([bundle / "Contents" / "MacOS" / executable, *session.arguments], environment=environment)
     elif simulator:
         udid = simulator["udid"]
         terminal.step(f'Installing the app on the simulator "{simulator["name"]}"')
@@ -4014,7 +4015,7 @@ def launch_apple(app: App, bundle: Path, args: argparse.Namespace, simulator: di
         run(["xcrun", "simctl", "install", udid, bundle])
         with unified_log(executable, ["xcrun", "simctl", "spawn", udid]):
             session.show(run_rows(app, f'{simulator["name"]}, simulator', args, session), lambda: subprocess.run(["xcrun", "simctl", "terminate", udid, identifier], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False))
-            session.follow(["xcrun", "simctl", "launch", "--console-pty", "--terminate-running-process", udid, identifier, *session.arguments], line=functools.partial(simulator_line, identifier))
+            session.follow(["xcrun", "simctl", "launch", "--console-pty", "--terminate-running-process", udid, identifier, *session.arguments], line=functools.partial(simulator_line, identifier), environment={f"SIMCTL_CHILD_{name}": value for name, value in environment.items()})
     else:
         if not args.device:
             raise BuildError(f'Name the device with "--device". {DEVICES_HINT}')
@@ -4023,7 +4024,8 @@ def launch_apple(app: App, bundle: Path, args: argparse.Namespace, simulator: di
         run(["xcrun", "devicectl", "device", "install", "app", "--device", args.device, bundle])
         # The launch ends the app when it stops, as Ctrl+C does.
         session.show(run_rows(app, f"{name}, device", args, session), lambda: session.process.send_signal(signal.SIGINT))
-        session.follow(["xcrun", "devicectl", "device", "process", "launch", "--console", "--device", args.device, identifier, *session.arguments])
+        variables = ["--environment-variables", json.dumps(environment)] if environment else []
+        session.follow(["xcrun", "devicectl", "device", "process", "launch", "--console", "--device", args.device, *variables, identifier, *session.arguments])
 
 
 def apple_product(app: App, platform: str, config: str) -> Path:
@@ -4933,6 +4935,9 @@ def development_address(platform_name: str, host: str, port: int, token: str) ->
     return listen, f"ws://{reached}:{port}{DEVELOPMENT_PATH}?token={token}"
 
 
+# The variable that a development launch of an Apple app starts it with, which turns on the frame capture of Metal from the start of the process, as GPU captures of the developer console need.
+METAL_CAPTURE_ENVIRONMENT = {"MTL_CAPTURE_ENABLED": "1"}
+
 # The keys of a running app with what each does, in the order that its list shows them. The keys of the development server work only in development.
 RUN_KEYS = {
     "r": "Reload what changed",
@@ -4941,13 +4946,14 @@ RUN_KEYS = {
     "s": "Show the statistics of the app, compact, full or off in turn",
     "i": "Show or hide the inspector of the app",
     "p": "Turn the debug drawings of the app on or off",
+    "g": "Capture a frame of the GPU",
     "c": "Clear the screen",
     "q": "Quit",
     "h": "List the keys",
 }
-DEVELOPMENT_KEYS = ("r", "R", "d", "s", "i", "p")
-# The lines of the developer console that the keys of the statistics, the inspector and the drawings run.
-KEY_LINES = {"s": "stats", "i": "inspector", "p": "draw"}
+DEVELOPMENT_KEYS = ("r", "R", "d", "s", "i", "p", "g")
+# The lines of the developer console that the keys of the statistics, the inspector, the drawings and the GPU capture run.
+KEY_LINES = {"s": "stats", "i": "inspector", "p": "draw", "g": "gpuCapture"}
 CONSOLE_PROMPT = "> "
 CONSOLE_HINT = 'The console runs each line in the app. Type "help" to list the commands. Tab completes, the arrows go through the lines typed before, and Escape goes back to the keys.'
 
@@ -5141,7 +5147,7 @@ class ConsoleLine:
 
 
 class RunSession:
-    """What the terminal shows and takes while an app runs: the summary of the app, its device and its configuration, then its log and the keys that reload it, restart it, open its developer console, show its statistics, its inspector and its debug drawings, clear the screen, quit and list the keys. The console takes the keys while it is open, with a line at the bottom of the terminal that the log never mixes with, and Escape gives them back. A run without a development server, such as a release, offers only the keys that need none."""
+    """What the terminal shows and takes while an app runs: the summary of the app, its device and its configuration, then its log and the keys that reload it, restart it, open its developer console, show its statistics, its inspector and its debug drawings, capture a frame of its GPU, clear the screen, quit and list the keys. The console takes the keys while it is open, with a line at the bottom of the terminal that the log never mixes with, and Escape gives them back. A run without a development server, such as a release, offers only the keys that need none."""
 
     def __init__(self, development: DevelopmentServer | None = None, arguments: list[str] | None = None) -> None:
         self.development = development
@@ -5255,13 +5261,13 @@ class RunSession:
         elif self.process is not None:
             self.process.terminate()
 
-    def follow(self, command: list, cwd: Path = ROOT, line: Callable[[str], str | None] | None = None) -> None:
-        """Streams the output of the process that runs the app, or that relays its log, until it ends, passing each line of its standard output and its standard error through the function of the line when one is given, which leaves out a line by returning nothing. The lines print through the terminal, so they go above the line of the console. It stops with an error when the process fails, unless the developer quit."""
+    def follow(self, command: list, cwd: Path = ROOT, line: Callable[[str], str | None] | None = None, environment: Mapping[str, str] | None = None) -> None:
+        """Streams the output of the process that runs the app, or that relays its log, until it ends, passing each line of its standard output and its standard error through the function of the line when one is given, which leaves out a line by returning nothing, with the variables of the environment added to those of this process. The lines print through the terminal, so they go above the line of the console. It stops with an error when the process fails, unless the developer quit."""
         parts = [str(part) for part in command]
         if terminal.verbose:
             terminal.command(parts)
         try:
-            self.process = subprocess.Popen(parts, cwd=cwd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace")
+            self.process = subprocess.Popen(parts, cwd=cwd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace", env={**os.environ, **environment} if environment else None)
         except FileNotFoundError as error:
             raise BuildError(missing_command(parts[0])) from error
         if self.quitting.is_set():
@@ -5306,6 +5312,12 @@ class DevelopmentHandler(http.server.BaseHTTPRequestHandler):
             return
         self.development.accept(self)
 
+    def do_POST(self) -> None:
+        if urllib.parse.urlsplit(self.path).path != GPU_CAPTURE_PATH:
+            self.send_error(404, "The development server only serves its development path.")
+            return
+        self.development.answer_gpu_capture(self)
+
     def log_message(self, format: str, *arguments) -> None:
         pass
 
@@ -5331,6 +5343,7 @@ def run_session(app: App, package: Path, args: argparse.Namespace, device: str |
     except BuildError:
         server.server_close()
         raise
+    development.advertise(listen, args.port)
     stop = threading.Event()
     threading.Thread(target=development.watch, args=(stop,), daemon=True).start()
     if device is not None:
@@ -5358,6 +5371,7 @@ def run_web(app: App, site: Path, args: argparse.Namespace) -> None:
     stop = threading.Event()
     if development is not None:
         development.listen_debugger(args.debugger_port)
+        development.advertise(args.host, args.port)
         threading.Thread(target=development.watch, args=(stop,), daemon=True).start()
     try:
         with RunSession(development) as session:
@@ -5408,6 +5422,12 @@ class PackageHandler(http.server.BaseHTTPRequestHandler):
             shutil.copyfileobj(stream, self.wfile)
         terminal.info("A player downloaded the app.")
 
+    def do_POST(self) -> None:
+        if urllib.parse.urlsplit(self.path).path != GPU_CAPTURE_PATH:
+            self.send_error(404, "The server only serves the zip of the app and its development path.")
+            return
+        self.development.answer_gpu_capture(self)
+
     def log_message(self, format: str, *arguments) -> None:
         pass
 
@@ -5440,6 +5460,7 @@ def serve_app(app: Path, args: argparse.Namespace) -> None:
 
     stop = threading.Event()
     threading.Thread(target=development.watch, args=(stop,), daemon=True).start()
+    development.advertise(listen, args.port)
     try:
         with server, RunSession(development) as session:
             rows = [("App", f'{info.name} ("{info.identifier}")'), ("Address", f"`{address}`"), ("Hot reload", "Every file saved in the app reloads in the players that play it")]
@@ -5448,6 +5469,7 @@ def serve_app(app: Path, args: argparse.Namespace) -> None:
                 server.serve_forever()
     finally:
         stop.set()
+        development.close()
 
 
 # Windows and Linux: the CMake project of `platform/windows` or `platform/linux` includes `haylen/haylen.cmake`, which brings the SDK of the desktop artifacts, the package, the native libraries and the values of `app.json`, and haylen.py builds it in place and installs the app into the build folder of the app.
@@ -6080,7 +6102,7 @@ def command_run(args: argparse.Namespace) -> None:
         package = stage_package(info)
         with run_session(info, package, args) as session:
             session.show(run_rows(info, f"{host_device().name}, in the player", args, session))
-            session.follow([build_dir(build.platform, build.config) / "bin" / "haylen" / executable_name("haylen"), *session.arguments, *native_options, package])
+            session.follow([build_dir(build.platform, build.config) / "bin" / "haylen" / executable_name("haylen"), *session.arguments, *native_options, package], environment=METAL_CAPTURE_ENVIRONMENT if host_name() == "macos" else None)
         return
 
     target = RUN_TARGETS[args.platform]
@@ -7386,6 +7408,12 @@ class WebHandler(http.server.SimpleHTTPRequestHandler):
             return
         super().do_GET()
 
+    def do_POST(self) -> None:
+        if self.development is None or urllib.parse.urlsplit(self.path).path != GPU_CAPTURE_PATH:
+            self.send_error(404, "The server takes no requests at this path.")
+            return
+        self.development.answer_gpu_capture(self)
+
     def end_headers(self) -> None:
         if self.coop != "off":
             self.send_header("Cross-Origin-Opener-Policy", self.coop)
@@ -7496,6 +7524,12 @@ def serve(directory: Path, host: str, port: int, coep: str = "off", coop: str = 
 # The development server: the page of `run --platform web` connects to it over a WebSocket on the same port as the site, and it pushes every file of the package that the developer saves, so the app reloads it in place.
 
 DEVELOPMENT_PATH = "/haylen/development"
+# The path of the server that asks the connected apps for a GPU capture, which the command "capture" reaches from another terminal through the file of the build folder of the app that names the server of its run.
+GPU_CAPTURE_PATH = "/haylen/development/gpu-capture"
+DEVELOPMENT_RECORD = "development.json"
+# How long the apps take to answer a line of the developer console, and to end a GPU capture once they started it, since a capture tool takes seconds to write a capture of many frames.
+CONSOLE_ANSWER_SECONDS = 10
+GPU_CAPTURE_SECONDS = 120
 WEBSOCKET_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 # The largest file the server pushes, which is the largest message the WebSocket of the engine accepts by default.
 DEVELOPMENT_MAX_FILE = 16 * 1024 * 1024
@@ -7779,6 +7813,12 @@ class DevelopmentServer:
         # The commands of the developer console of the apps, which the console completes from.
         self.commands: list[dict] = []
         self.debugger: DebugRelay | None = None
+        # The answers of the apps that a GPU capture waits for: the results of its console line by the id of the line, and the capture reports by app while a capture waits for them.
+        self.answers = threading.Condition()
+        self.awaited: dict[int, list[tuple[DevelopmentClient, dict]]] = {}
+        self.gpu_reports: dict[DevelopmentClient, dict] | None = None
+        self.capturing = threading.Lock()
+        self.record: Path | None = None
 
     def listen_debugger(self, port: int) -> int:
         """Lets an editor attach to the debugger of the apps on the port of this machine, and returns the port."""
@@ -7789,6 +7829,16 @@ class DevelopmentServer:
     def close(self) -> None:
         if self.debugger is not None:
             self.debugger.close()
+        if self.record is not None:
+            self.record.unlink(missing_ok=True)
+
+    def advertise(self, host: str, port: int) -> None:
+        """Writes the address and the token of the server into the build folder of the app, readable by its owner alone, so the command "capture" of another terminal reaches the run, and the server removes the file when it closes."""
+        reached = "127.0.0.1" if host in ("0.0.0.0", "") else host
+        self.record = APPS_DIR / build_folder_name(self.folder) / DEVELOPMENT_RECORD
+        self.record.parent.mkdir(parents=True, exist_ok=True)
+        self.record.write_text(json.dumps({"address": f"http://{reached}:{port}", "token": self.token}) + "\n", encoding="utf-8")
+        self.record.chmod(0o600)
 
     @staticmethod
     def hash_files(files: dict[str, Path]) -> dict[str, str]:
@@ -7916,8 +7966,20 @@ class DevelopmentServer:
             return
         terminal.info("Restarting the app.")
 
-    def report(self, message: dict) -> None:
-        """Prints what a batch did in an app."""
+    def report(self, client: DevelopmentClient, message: dict) -> None:
+        """Prints what a batch did in an app, or the GPU capture that it ended, which a capture that waits for the app receives too."""
+        if "gpuCapture" in message:
+            capture = message["gpuCapture"] if isinstance(message["gpuCapture"], dict) else {}
+            if capture.get("ok"):
+                frames = capture.get("frames", 1)
+                terminal.success(f'The app wrote the GPU capture of {frames} {"frame" if frames == 1 else "frames"} with "{capture.get("tool", "")}" to `{capture.get("path", "")}`.')
+            else:
+                terminal.error(f"The GPU capture of the app failed: {capture.get('error', '')}")
+            with self.answers:
+                if self.gpu_reports is not None:
+                    self.gpu_reports[client] = capture
+                    self.answers.notify_all()
+            return
         if message.get("restarted"):
             terminal.info(f"The app restarts: {message.get('reason', '')}")
         elif message.get("modules"):
@@ -7991,13 +8053,67 @@ class DevelopmentServer:
         """Asks every connected app for the commands of its developer console, which it answers with a message of their names, how to type them, their help and the kinds of their arguments."""
         self.send_all(json.dumps({"type": "consoleCommands"}).encode())
 
+    def capture_gpu(self, frames: int) -> list[dict]:
+        """Asks every connected app for a GPU capture of its next frames through its developer console, and returns what each app answered: `{"ok": True, "path", "tool", "frames"}` once its capture ended, or `{"ok": False, "error"}`. Each wait has its bound, and an app that does not answer within it counts as failed."""
+        if not self.capturing.acquire(blocking=False):
+            raise BuildError("Another GPU capture of the apps is running. Capture again once it ends.")
+        try:
+            with self.lock:
+                self.lines += 1
+                number = self.lines
+            with self.answers:
+                self.awaited[number] = []
+                self.gpu_reports = {}
+            reached = self.send_all(json.dumps({"type": "console", "id": number, "line": f"gpuCapture {frames}"}).encode())
+            with self.answers:
+                self.answers.wait_for(lambda: len(self.awaited[number]) >= reached, timeout=CONSOLE_ANSWER_SECONDS)
+                answers = self.awaited.pop(number)
+                started = [client for client, answer in answers if answer.get("ok")]
+                self.answers.wait_for(lambda: all(client in self.gpu_reports for client in started), timeout=GPU_CAPTURE_SECONDS)
+                reports, self.gpu_reports = self.gpu_reports, None
+        finally:
+            self.capturing.release()
+        results = [{"ok": False, "error": str(answer.get("output", ""))} for _, answer in answers if not answer.get("ok")]
+        results += [{"ok": False, "error": f"The app did not answer the developer console within {CONSOLE_ANSWER_SECONDS} seconds."}] * (reached - len(answers))
+        for client in started:
+            results.append(reports.get(client, {"ok": False, "error": f"The app did not end its GPU capture within {GPU_CAPTURE_SECONDS} seconds."}))
+        return results
+
+    def answer_gpu_capture(self, handler: http.server.BaseHTTPRequestHandler) -> None:
+        """Answers the request of the command "capture" with what every connected app captured, as JSON. A request without the token of the run is refused."""
+        query = urllib.parse.parse_qs(urllib.parse.urlsplit(handler.path).query)
+        if query.get("token") != [self.token]:
+            self.answer_json(handler, 403, {"error": "The development server needs the token of this run."})
+            return
+        try:
+            request = json.loads(handler.rfile.read(int(handler.headers.get("Content-Length", 0))) or b"{}")
+        except ValueError:
+            request = None
+        frames = request.get("frames", 1) if isinstance(request, dict) else None
+        if not isinstance(frames, int) or isinstance(frames, bool) or frames < 1:
+            self.answer_json(handler, 400, {"error": "A GPU capture records a whole number of frames, at least 1."})
+            return
+        try:
+            self.answer_json(handler, 200, {"results": self.capture_gpu(frames)})
+        except BuildError as error:
+            self.answer_json(handler, 409, {"error": str(error)})
+
+    @staticmethod
+    def answer_json(handler: http.server.BaseHTTPRequestHandler, status: int, value: dict) -> None:
+        body = json.dumps(value).encode()
+        handler.send_response(status)
+        handler.send_header("Content-Type", "application/json")
+        handler.send_header("Content-Length", str(len(body)))
+        handler.end_headers()
+        handler.wfile.write(body)
+
     def receive(self, client: DevelopmentClient, message: dict) -> None:
         if message.get("type") == "debug":
             if self.debugger is not None:
                 self.debugger.from_app(client, message.get("message"))
             return
         if message.get("type") == "report":
-            self.report(message)
+            self.report(client, message)
             return
         if message.get("type") == "consoleResult":
             output = str(message.get("output", ""))
@@ -8005,6 +8121,10 @@ class DevelopmentServer:
                 terminal.error(output or "The line failed.")
             elif output:
                 terminal.info(output)
+            with self.answers:
+                if message.get("id") in self.awaited:
+                    self.awaited[message["id"]].append((client, message))
+                    self.answers.notify_all()
             return
         if message.get("type") == "consoleCommands":
             commands = message.get("commands")
@@ -8021,6 +8141,43 @@ class DevelopmentServer:
             client.send_batch(*update)
         if self.debugger is not None:
             self.debugger.app_connected(client)
+
+
+def positive_frames(text: str) -> int:
+    """Reads the number of frames of a capture, which is a whole number of at least 1."""
+    if not text.isdigit() or int(text) < 1:
+        raise argparse.ArgumentTypeError(f'"{text}" is no number of frames. Name at least 1 frame.')
+    return int(text)
+
+
+def command_capture(args: argparse.Namespace) -> None:
+    """Asks the app that a run of "run" or "serve" plays in development, in another terminal, for a GPU capture of its next frames, and prints the path of each capture file, which the apps write into their storage."""
+    app = resolve_lua_app(args.app)
+    record = APPS_DIR / build_folder_name(app) / DEVELOPMENT_RECORD
+    if not record.is_file():
+        raise BuildError(f'No run of the app `{shown_path(app)}` serves its development server. Run it with "{TOOL} run {shown_path(app)}" and capture while it runs.')
+    server = json.loads(record.read_text(encoding="utf-8"))
+    request = urllib.request.Request(f"{server['address']}{GPU_CAPTURE_PATH}?token={server['token']}", data=json.dumps({"frames": args.frames}).encode(), headers={"Content-Type": "application/json"}, method="POST")
+    terminal.step(f"Capturing the next {args.frames} {'frame' if args.frames == 1 else 'frames'} of the GPU in the running app")
+    # The server is on this machine, so no proxy of the environment stands between them.
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    try:
+        with opener.open(request, timeout=CONSOLE_ANSWER_SECONDS + GPU_CAPTURE_SECONDS + 5) as response:
+            results = json.loads(response.read())["results"]
+    except urllib.error.HTTPError as error:
+        raise BuildError(json.loads(error.read() or b"{}").get("error", f"The development server refused the capture with the status {error.code}.")) from error
+    except OSError as error:
+        raise BuildError(f'The development server of the app at `{server["address"]}` does not answer, so its run has ended. Run the app with "{TOOL} run {shown_path(app)}" and capture while it runs.') from error
+    if not results:
+        raise BuildError('No app is connected to the development server of the run. Wait until the app connects, which its log says, and capture again.')
+    for result in results:
+        if result.get("ok"):
+            frames = result.get("frames", 1)
+            terminal.success(f'The app wrote the GPU capture of {frames} {"frame" if frames == 1 else "frames"} with "{result.get("tool", "")}" to `{result.get("path", "")}`.')
+        else:
+            terminal.error(result.get("error", "The GPU capture failed."))
+    if not any(result.get("ok") for result in results):
+        raise BuildError("No app wrote a GPU capture, and the errors above say why.")
 
 
 def command_serve(args: argparse.Namespace) -> None:
@@ -8115,6 +8272,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     devices = commands.add_parser("devices", parents=[common], help="List the simulators, emulators and devices of every platform on this machine, with the identifier that \"--device\" takes.")
     devices.set_defaults(handler=command_devices)
+
+    capture = commands.add_parser("capture", parents=[common], help=f'Capture the next frames of the GPU in a Lua app that "{TOOL} run" or "{TOOL} serve" plays in development, with the capture tool of its graphics API, and print the path of the capture file.')
+    add_app_argument(capture)
+    capture.add_argument("--frames", type=positive_frames, default=1, help="Frames that the capture records, 1 by default.")
+    capture.set_defaults(handler=command_capture)
 
     prepare = commands.add_parser("prepare", parents=[common], help='Write the folder "haylen" of the project of a platform, or the site or folder of the app, and nothing else.')
     add_app_argument(prepare)

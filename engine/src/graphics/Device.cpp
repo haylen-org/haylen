@@ -8,6 +8,7 @@
 #include "graphics/DeviceState.hpp"
 #include "graphics/TextureResource.hpp"
 #include "haylen/core/JobSystem.hpp"
+#include "haylen/core/Log.hpp"
 #include "haylen/gpu/Device.hpp"
 
 namespace haylen::graphics {
@@ -33,6 +34,7 @@ Device::Device(std::unique_ptr<gpu::Device> device) : state(std::make_unique<Dev
 }
 
 Device::~Device() {
+    cancelCapture();
     state->white = {};
     state->graveyard->collect(*state->gpu);
     state->graveyard.reset();
@@ -158,6 +160,59 @@ void Device::cancelReads() noexcept {
 
 std::size_t Device::getPendingReadCount() const noexcept {
     return state->reads.size();
+}
+
+gpu::Device::CaptureSupport Device::getCaptureSupport() const {
+    return state->gpu->getCaptureSupport();
+}
+
+void Device::captureFrames(int frames, const std::filesystem::path& path, CaptureCallback done) {
+    if (frames < 1) {
+        throw std::invalid_argument("A capture records at least 1 frame.");
+    }
+    if (state->capture) {
+        throw std::logic_error("A GPU capture is already recording. Wait for it to end before capturing again.");
+    }
+    gpu::Device::CaptureSupport support = state->gpu->getCaptureSupport();
+    if (support.tool == gpu::Device::CaptureTool::None) {
+        throw std::runtime_error(std::move(support.missing));
+    }
+    state->gpu->beginCapture(path);
+    state->capture = DeviceState::PendingCapture{.framesLeft = frames, .done = std::move(done)};
+}
+
+bool Device::isCapturing() const noexcept {
+    return state->capture.has_value();
+}
+
+// The callback runs once the capture is over, so it may start another one.
+void Device::processCapture() {
+    if (!state->capture || --state->capture->framesLeft > 0) {
+        return;
+    }
+    CaptureCallback done = std::move(state->capture->done);
+    state->capture.reset();
+
+    std::filesystem::path path;
+    try {
+        path = state->gpu->endCapture();
+    } catch (const std::exception& error) {
+        done(std::nullopt, error.what());
+        return;
+    }
+    done(std::move(path), {});
+}
+
+void Device::cancelCapture() noexcept {
+    if (!state->capture) {
+        return;
+    }
+    state->capture.reset();
+    try {
+        static_cast<void>(state->gpu->endCapture());
+    } catch (const std::exception& error) {
+        core::Log::warning("The GPU capture that the app stopped during failed to end: {}", error.what());
+    }
 }
 
 Texture Device::createDynamicTexture(const Image& image, Texture::Options options) {

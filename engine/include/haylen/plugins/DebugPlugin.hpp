@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <deque>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -26,11 +27,16 @@
 #include "haylen/debug/Stats.hpp"
 #include "haylen/debug/StatsDisplay.hpp"
 #include "haylen/debug/TraceRecorder.hpp"
+#include "haylen/graphics/Device.hpp"
 #include "haylen/input/Key.hpp"
 #include "haylen/plugins/Plugin.hpp"
 
 namespace haylen::debug {
 class InspectorWindow;
+}
+
+namespace haylen::platform {
+class DevelopmentSession;
 }
 
 namespace haylen::plugins {
@@ -49,12 +55,13 @@ class DebugPlugin final : public Plugin {
     static constexpr std::size_t kReportLogLines = 20;
     static constexpr std::size_t kReportTextSize = 256;
     static constexpr std::string_view kCrashReportFile = "crash-report.json";
+    static constexpr std::string_view kGpuCaptureFolder = "gpu-captures";
 
     // Draws a drawing into the open canvas, whose kind the renderer tells.
     using Drawer = std::function<void(graphics2d::Renderer& renderer)>;
 
-    // A development run turns the console on whatever `app.json` says, and offers the command `lua`.
-    explicit DebugPlugin(bool developmentRun);
+    // A development run, which has the development session of the process, turns the console on whatever `app.json` says, offers the command `lua` and reports its GPU captures to the development server.
+    explicit DebugPlugin(platform::DevelopmentSession* developmentSession);
     ~DebugPlugin() override;
 
     DebugPlugin(const DebugPlugin&) = delete;
@@ -132,6 +139,9 @@ class DebugPlugin final : public Plugin {
     [[nodiscard]] bool isTracing() const noexcept {
         return tracing;
     }
+
+    // Records the next frames of the GPU device into a capture of the capture tool of its graphics API, in the folder `gpu-captures` of the storage of the app under the time it started, and hands the path of its file to the callback, or the reason it failed. The end of the capture also reaches the log and, in development, the development server. Throws like `graphics::Device::captureFrames`.
+    void captureGpu(int frames, graphics::Device::CaptureCallback done);
 
     // Adds a breadcrumb that the report of a crash carries, and publishes `breadcrumbAdded` for the plugins that forward breadcrumbs to their services.
     void addBreadcrumb(std::string message, core::Json data);
@@ -216,6 +226,8 @@ class DebugPlugin final : public Plugin {
     void publishCrashContext(core::Engine& engine);
     [[nodiscard]] static std::string cut(std::string_view text);
     [[nodiscard]] static std::string runLua(core::Engine& engine, const std::string& chunk);
+    [[nodiscard]] static std::string makeCaptureName();
+    void reportCapture(int frames, const std::optional<std::filesystem::path>& path, const std::string& error);
 
     // Draws the drawings that are on into the canvas that is about to close.
     void drawOverlay(core::Engine& engine, graphics2d::Renderer& renderer);
@@ -231,6 +243,7 @@ class DebugPlugin final : public Plugin {
     std::vector<std::shared_ptr<DrawerEntry>> drawerSnapshot;
     std::set<std::string, std::less<>> drawings;
     core::Engine* owner = nullptr;
+    platform::DevelopmentSession* session = nullptr;
     graphics2d::Renderer::Stats lastRendering;
     std::uint64_t listener = 0;
     std::uint64_t overlay = 0;

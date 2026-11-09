@@ -117,6 +117,7 @@ set(HAYLEN_TEST_SOURCES
   debug/DebuggerTests.cpp
   debug/DrawingTests.cpp
   debug/EvaluationTests.cpp
+  debug/GpuCaptureTests.cpp
   debug/HotReloadTests.cpp
   debug/InspectorTests.cpp
   debug/StatsTests.cpp

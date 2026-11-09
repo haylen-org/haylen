@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <span>
@@ -63,6 +64,21 @@ class Device {
         {"webGl2", Api::WebGl2},
         {"webGpu", Api::WebGpu},
         {"port", Api::Port},
+    }};
+
+    // The tool of a graphics API that records the commands of frames into a capture file, which its debugger opens: the frame capture of Metal, which writes a `.gputrace` document, RenderDoc, which writes an `.rdc` file, and PIX, which writes a `.wpix` file.
+    enum class CaptureTool : std::uint8_t {
+        None,
+        MetalFrameCapture,
+        RenderDoc,
+        Pix,
+    };
+
+    static constexpr std::array<std::pair<std::string_view, CaptureTool>, 4> kCaptureToolNames{{
+        {"none", CaptureTool::None},
+        {"metalFrameCapture", CaptureTool::MetalFrameCapture},
+        {"renderDoc", CaptureTool::RenderDoc},
+        {"pix", CaptureTool::Pix},
     }};
 
     // The formats of images. The depth formats belong to depth and stencil attachments, and a device that lacks `Depth24Stencil8` gives `Depth32FloatStencil8` its place.
@@ -547,6 +563,12 @@ class Device {
         int size = 0;
     };
 
+    // The tool that captures the frames of the device, which the process loads before the device exists, or `CaptureTool::None` with the sentence that says what is missing and how to get it.
+    struct CaptureSupport {
+        CaptureTool tool = CaptureTool::None;
+        std::string missing;
+    };
+
     // A copy of the pixels of a render target to memory the CPU reads, which `poll` hands over once the GPU finished it, as RGBA8 whatever the format of the image, four bytes a pixel from the first row the device stores. A multisampled image is read through its resolve image.
     class Readback {
       public:
@@ -631,6 +653,14 @@ class Device {
 
     // Starts copying the pixels of the first mip level and layer of a render target, which must come after the frame that renders it was committed.
     [[nodiscard]] virtual std::unique_ptr<Readback> readImage(Image image, int width, int height) = 0;
+
+    [[nodiscard]] virtual CaptureSupport getCaptureSupport() const = 0;
+
+    // Starts recording every command of the device into a capture of its capture tool, between frames, at a path without its extension, which the tool adds. Throws `std::logic_error` without a capture tool or while a capture records, and `std::runtime_error` when the tool refuses to start.
+    virtual void beginCapture(const std::filesystem::path& path) = 0;
+
+    // Ends the capture after the commit of the last frame it records, and returns the path of the file that the tool wrote. Throws `std::logic_error` when no capture records, and `std::runtime_error` when the tool wrote no file.
+    [[nodiscard]] virtual std::filesystem::path endCapture() = 0;
 };
 
 } // namespace haylen::gpu

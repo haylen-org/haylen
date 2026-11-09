@@ -1,5 +1,6 @@
 # The device of Direct3D 11, which "haylen-gpu" compiles when "HAYLEN_GRAPHICS_APIS" names "direct3D11".
 include("${CMAKE_CURRENT_LIST_DIR}/../direct3d/direct3d.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/../renderdoc/renderdoc.cmake")
 
 target_sources(haylen-gpu PRIVATE
   "${CMAKE_CURRENT_LIST_DIR}/Device.cpp"

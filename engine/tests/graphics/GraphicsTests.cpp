@@ -3,7 +3,9 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -270,6 +272,46 @@ TEST(DeviceTest, ReadsRenderTargetsAndCapturesTheScreenInLaterFrames) {
     device.readTarget(target, [](std::optional<graphics::Image>, const std::string&) { FAIL() << "A cancelled read reached its callback."; });
     device.cancelReads();
     fixture.frames(2);
+}
+
+TEST(DeviceTest, CapturesTheFramesItIsAskedForAndEndsACaptureThatStops) {
+    auto made = std::make_unique<gpu::NullDevice>(gpu::Device::Language::None, gpu::NullDevice::getDefaultCapabilities(), gpu::Device::Api::None, gpu::Device::CaptureTool::RenderDoc);
+    gpu::NullDevice& gpu = *made;
+    graphics::Device device(std::move(made));
+    EXPECT_EQ(device.getCaptureSupport().tool, gpu::Device::CaptureTool::RenderDoc);
+
+    std::optional<std::filesystem::path> written;
+    device.captureFrames(2, "captures/first", [&written](std::optional<std::filesystem::path> path, const std::string&) { written = std::move(path); });
+    EXPECT_TRUE(device.isCapturing());
+    EXPECT_THROW(device.captureFrames(1, "captures/second", [](std::optional<std::filesystem::path>, const std::string&) {}), std::logic_error);
+    gpu.commit();
+    device.processCapture();
+    EXPECT_FALSE(written.has_value());
+    gpu.commit();
+    device.processCapture();
+    EXPECT_EQ(written, std::filesystem::path("captures/first.capture"));
+    EXPECT_FALSE(device.isCapturing());
+    EXPECT_EQ(gpu.getCapturedFrames(), std::vector<std::uint64_t>{2});
+    EXPECT_THROW(device.captureFrames(0, "captures/none", [](std::optional<std::filesystem::path>, const std::string&) {}), std::invalid_argument);
+
+    device.captureFrames(5, "captures/stopped", [](std::optional<std::filesystem::path>, const std::string&) { FAIL() << "A capture that stopped reached its callback."; });
+    gpu.commit();
+    device.cancelCapture();
+    EXPECT_FALSE(device.isCapturing());
+    EXPECT_EQ(gpu.getCapturedFrames(), (std::vector<std::uint64_t>{2, 1}));
+    device.processCapture();
+}
+
+TEST(DeviceTest, RefusesACaptureWithoutACaptureTool) {
+    graphics::Device device(std::make_unique<gpu::NullDevice>());
+    EXPECT_EQ(device.getCaptureSupport().tool, gpu::Device::CaptureTool::None);
+    try {
+        device.captureFrames(1, "captures/frame", [](std::optional<std::filesystem::path>, const std::string&) {});
+        FAIL() << "A device without a capture tool started a capture.";
+    } catch (const std::runtime_error& error) {
+        EXPECT_EQ(error.what(), gpu::NullDevice::kMissingCaptureTool);
+    }
+    EXPECT_FALSE(device.isCapturing());
 }
 
 TEST(DeviceTest, CreatesReplacesAndReleasesResources) {

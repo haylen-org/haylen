@@ -1,4 +1,5 @@
 # The Vulkan device of Windows, Linux and Android. It opens the Vulkan loader of the system at run time through volk, so no Vulkan SDK is needed to build or run the engine, and allocates its memory through the Vulkan Memory Allocator.
+include("${CMAKE_CURRENT_LIST_DIR}/../renderdoc/renderdoc.cmake")
 target_sources(haylen-gpu PRIVATE
   "${CMAKE_CURRENT_LIST_DIR}/Context.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/Conversions.cpp"

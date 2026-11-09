@@ -9,8 +9,10 @@
 #include <chrono>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <format>
 #include <mutex>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
@@ -32,6 +34,8 @@ namespace haylen::gpu::metal {
 
 // The Metal objects of the device and the state of the frame and the pass that record.
 struct Device::Native {
+    static constexpr std::string_view kMissingCaptureTool = "Metal writes GPU traces only for an app that starts with the environment variable \"MTL_CAPTURE_ENABLED\" set to 1 or the key \"MetalCaptureEnabled\" set to true in its \"Info.plist\". The Debug runs of \"haylen run\" start the app with the variable, so run the app with it, or set one of them.";
+
     // Uniform blocks take the buffer indices from 0 of each stage, so vertex buffers take the ones after them.
     static constexpr NSUInteger kFirstVertexBuffer = kMaxBlocks;
 
@@ -199,6 +203,9 @@ struct Device::Native {
     id<MTLBuffer> indexBuffer = nil;
     NSUInteger indexOffset = 0;
     std::vector<std::uint32_t> debugGroups;
+
+    // The file of the capture that records, which Metal writes once it stops.
+    std::optional<std::filesystem::path> capturePath;
 };
 
 Device::Native::Native(id<MTLDevice> metal, int swapchainSamples, bool debug) : device(metal), capabilities(describe(metal)), labels(debug), unifiedMemory(metal.hasUnifiedMemory), swapchain(metal, graveyard, swapchainSamples, hasTileMemory(metal)), libraries(metal) {
@@ -1406,6 +1413,52 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
         throw std::logic_error(std::format("The render target of {}x{} pixels has no {}x{} pixels to read.", entry.width, entry.height, width, height));
     }
     return std::make_unique<ImageReadback>(native->queue, entry.texture, entry.format, width, height);
+}
+
+gpu::Device::CaptureSupport Device::getCaptureSupport() const {
+    if (![[MTLCaptureManager sharedCaptureManager] supportsDestination:MTLCaptureDestinationGPUTraceDocument]) {
+        return {.tool = CaptureTool::None, .missing = std::string(Native::kMissingCaptureTool)};
+    }
+    return {.tool = CaptureTool::MetalFrameCapture, .missing = {}};
+}
+
+// The capture covers every command queue of the device, and its document must not exist yet.
+void Device::beginCapture(const std::filesystem::path& path) {
+    if (native->passOpen) {
+        throw std::logic_error("A capture began while a pass was open.");
+    }
+    if (native->capturePath) {
+        throw std::logic_error("A capture began while another one records.");
+    }
+    MTLCaptureManager* manager = [MTLCaptureManager sharedCaptureManager];
+    if (![manager supportsDestination:MTLCaptureDestinationGPUTraceDocument]) {
+        throw std::logic_error(std::string(Native::kMissingCaptureTool));
+    }
+
+    std::filesystem::path document = path;
+    document += ".gputrace";
+    MTLCaptureDescriptor* descriptor = [MTLCaptureDescriptor new];
+    descriptor.captureObject = native->device;
+    descriptor.destination = MTLCaptureDestinationGPUTraceDocument;
+    descriptor.outputURL = [NSURL fileURLWithPath:Native::toText(document.string())];
+    NSError* error = nil;
+    if (![manager startCaptureWithDescriptor:descriptor error:&error]) {
+        throw std::runtime_error(std::format("Metal did not start the capture: {}", error == nil ? "it gave no reason." : error.localizedDescription.UTF8String));
+    }
+    native->capturePath = std::move(document);
+}
+
+std::filesystem::path Device::endCapture() {
+    if (!native->capturePath) {
+        throw std::logic_error("A capture ended while none records.");
+    }
+    [[MTLCaptureManager sharedCaptureManager] stopCapture];
+    std::filesystem::path document = *std::exchange(native->capturePath, std::nullopt);
+    std::error_code error;
+    if (!std::filesystem::exists(document, error)) {
+        throw std::runtime_error(std::format("Metal wrote no GPU trace at \"{}\".", document.string()));
+    }
+    return document;
 }
 
 } // namespace haylen::gpu::metal

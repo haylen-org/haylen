@@ -1,6 +1,6 @@
 # 📖 `haylen.debug`
 
-The module `haylen.debug` holds the tools that measure and inspect a running app: the debug statistics, the debug drawings, object counts, monitors, the frame profiler, the recent log, traces, breadcrumbs with the report of the last native crash, the developer console, the inspector and the breakpoints of the debugger. Use it to find where frame time goes, to see what the app draws and simulates, and to show performance numbers in your own debug tools. The [Lua guide](../core/lua.md#errors-and-stack-traces) explains the error screen, and the [architecture guide](../core/architecture.md#the-frame) explains the frame that the profiler measures.
+The module `haylen.debug` holds the tools that measure and inspect a running app: the debug statistics, the debug drawings, object counts, monitors, the frame profiler, the recent log, traces, GPU captures, breadcrumbs with the report of the last native crash, the developer console, the inspector and the breakpoints of the debugger. Use it to find where frame time goes, to see what the app draws and simulates, and to show performance numbers in your own debug tools. The [Lua guide](../core/lua.md#errors-and-stack-traces) explains the error screen, and the [architecture guide](../core/architecture.md#the-frame) explains the frame that the profiler measures.
 
 ```lua
 local debug = require('haylen.debug')
@@ -571,6 +571,63 @@ async.spawn(function()
 end)
 ```
 
+## GPU captures
+
+A GPU capture records every command that the GPU device of the app runs during a few frames into a file of the capture tool of its graphics API. The debugger of that tool opens the file and replays each draw with its pipeline, its bindings and its textures. So a frame that draws wrong on one device is captured there and studied on a computer. The capture tool must be in the app before its GPU device starts, which the [capture tools section of the RHI guide](../graphics/rhi.md#frame-captures) explains for each graphics API:
+
+| Graphics API | Capture tool | File |
+| --- | --- | --- |
+| Metal | The frame capture of Metal, which the Debug runs of `haylen run` turn on and Xcode opens. | `.gputrace` |
+| Direct3D 12 | PIX when PIX launched the app for a GPU capture, or else RenderDoc when RenderDoc launched the app. | `.wpix` or `.rdc` |
+| Direct3D 11, Vulkan, OpenGL and OpenGL ES | RenderDoc when RenderDoc launched the app. | `.rdc` |
+| WebGPU and WebGL2 | None, since browsers give a page no capture tool. | None |
+
+Captures go to the folder `gpu-captures` of the [storage folder](storage.md#the-storage-folder) of the app, named after the time they started, such as `gpu-captures/2026-11-03-14-05-09-123.gputrace`. RenderDoc adds the number of the first frame it captured to the name, such as `2026-11-03-14-05-09-123_frame482.rdc`. A capture starts at once and ends after the given number of frames was submitted, so it records the rest of the frame that asked for it and the frames after it. Each capture that ends writes its path into the log, and a development run reports it to the development server, whose terminal prints it.
+
+Besides this function, the console command `gpuCapture`, the key `g` of [`haylen run`](../tools/distribution.md#while-the-app-runs) and the command [`haylen capture`](../tools/distribution.md#capture) ask the app for a capture.
+
+### debug.gpuCaptureTool()
+
+Returns the capture tool of the GPU device: `'metalFrameCapture'`, `'renderDoc'`, `'pix'` or `'none'` when the device has none.
+
+```lua
+local debug = require('haylen.debug')
+
+print(debug.gpuCaptureTool())
+```
+
+### debug.captureGpuAsync(options)
+
+Captures the next frames of the GPU. It returns a promise that resolves with `{path, tool, frames}` once the capture tool wrote the file: its absolute path, the name of the tool and the number of frames. The table `options` is optional:
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `frames` | integer | `1` | The number of frames that the capture records. Fewer than 1 raises `A GPU capture records at least 1 frame.`. |
+
+The promise rejects with a table that holds the message in `error` and a `code`, which `await` returns as its third value:
+
+| Code | When |
+| --- | --- |
+| `unsupported` | The GPU device has no capture tool. The message says what is missing and how to get it, such as `RenderDoc is not loaded into the app. Launch the app from RenderDoc, through its "Launch Application" panel or "renderdoccmd capture", which loads it before the graphics API starts, and capture again.` |
+| `busy` | A capture records already, with `A GPU capture is already recording. Wait for it to end before capturing again.`. |
+| `failed` | The capture tool refused to start or wrote no file, with its reason, which the log shows too. |
+
+An unknown option raises `Unknown option "<key>".`.
+
+```lua
+local async = require('async')
+local debug = require('haylen.debug')
+
+async.spawn(function()
+    local capture, message, failure = debug.captureGpuAsync({frames = 2}):await()
+    if capture then
+        print('Captured ' .. capture.frames .. ' frames with ' .. capture.tool .. ' into ' .. capture.path)
+    else
+        print('No capture (' .. failure.code .. '): ' .. message)
+    end
+end)
+```
+
 ## Crashes and breadcrumbs
 
 A breadcrumb is a step of the app that a crash report shows, such as opening a screen or buying an item, with data of the app. The engine keeps the last 100 breadcrumbs. Each one publishes the event `breadcrumbAdded`, so a plugin of crash reports or analytics forwards it to its service. The engine itself sends nothing anywhere.
@@ -646,6 +703,7 @@ The engine registers these commands:
 | `inspector [boolean]` | Shows or hides the [inspector](#inspector) window, or switches it when the line leaves the state out. |
 | `inspect [word]` | Lists the values at a path of the inspector, such as `inspect watched.player`, or its roots. |
 | `set <word> <text>` | Sets the number, boolean or string at a path of the inspector, such as `set watched.player.speed 300`. |
+| `gpuCapture [integer]` | Captures the next frames of the GPU, 1 unless the line names more, with the capture tool of the graphics API, as [GPU captures](#gpu-captures) describes, and prints the path of the file once it ends. |
 | `lua <text>` | Runs Lua code and prints what it returns, such as `lua player.speed`, only in development runs. |
 
 ### debug.addCommand(name, fn, options)

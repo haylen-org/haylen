@@ -5,6 +5,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <map>
 #include <memory>
 #include <optional>
@@ -84,7 +85,13 @@ class Device final : public gpu::Device {
 
     [[nodiscard]] std::unique_ptr<Readback> readImage(Image image, int width, int height) override;
 
+    [[nodiscard]] CaptureSupport getCaptureSupport() const override;
+    void beginCapture(const std::filesystem::path& path) override;
+    [[nodiscard]] std::filesystem::path endCapture() override;
+
   private:
+    static constexpr std::string_view kMissingCaptureTool = "Browsers give a page no capture tool for WebGPU, so the engine cannot capture its frames. Capture them on a desktop, where RenderDoc captures Vulkan and Direct3D and Metal captures its own.";
+
     struct BufferRecord {
         WGPUBuffer buffer = nullptr;
         std::size_t size = 0;

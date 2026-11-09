@@ -1279,4 +1279,38 @@ void Device::removeSurface(int number) {
     chains[static_cast<std::size_t>(number)].reset();
 }
 
+gpu::Device::CaptureSupport Device::getCaptureSupport() const {
+    if (pix) {
+        return {.tool = CaptureTool::Pix, .missing = {}};
+    }
+    if (renderDoc) {
+        return {.tool = CaptureTool::RenderDoc, .missing = {}};
+    }
+    return {.tool = CaptureTool::None, .missing = std::string(kMissingCaptureTool)};
+}
+
+void Device::beginCapture(const std::filesystem::path& path) {
+    if (passOpen) {
+        throw std::logic_error("A capture began while a pass was open.");
+    }
+    if (pix) {
+        pix->begin(path);
+        return;
+    }
+    if (!renderDoc) {
+        throw std::logic_error(std::string(kMissingCaptureTool));
+    }
+    renderDoc->begin(device.Get(), path);
+}
+
+std::filesystem::path Device::endCapture() {
+    if (pix) {
+        return pix->end();
+    }
+    if (!renderDoc) {
+        throw std::logic_error("A capture ended while none records.");
+    }
+    return renderDoc->end(device.Get());
+}
+
 } // namespace haylen::gpu::d3d12

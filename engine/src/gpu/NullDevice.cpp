@@ -799,4 +799,34 @@ std::unique_ptr<Device::Readback> NullDevice::readImage(Image image, int width, 
     return std::make_unique<NullReadback>(static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4);
 }
 
+Device::CaptureSupport NullDevice::getCaptureSupport() const {
+    if (captureTool == CaptureTool::None) {
+        return {.tool = CaptureTool::None, .missing = std::string(kMissingCaptureTool)};
+    }
+    return {.tool = captureTool, .missing = {}};
+}
+
+void NullDevice::beginCapture(const std::filesystem::path& path) {
+    requireNoPass("beginCapture");
+    if (captureTool == CaptureTool::None) {
+        throw std::logic_error("A capture began on a device without a capture tool.");
+    }
+    if (capturePath) {
+        throw std::logic_error("A capture began while another one records.");
+    }
+    capturePath = path;
+    captureFrame = frame;
+}
+
+std::filesystem::path NullDevice::endCapture() {
+    requireNoPass("endCapture");
+    if (!capturePath) {
+        throw std::logic_error("A capture ended while none records.");
+    }
+    capturedFrames.push_back(frame - captureFrame);
+    std::filesystem::path written = *std::exchange(capturePath, std::nullopt);
+    written += ".capture";
+    return written;
+}
+
 } // namespace haylen::gpu

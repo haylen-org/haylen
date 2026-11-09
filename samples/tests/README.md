@@ -689,6 +689,7 @@ Hot reload while the project runs in development, with "haylen run samples/tests
 | `DEV-010` | Crashes and breadcrumbs | Breadcrumbs with their event, the report of the native crash that ended the last run and a button that crashes the app. |  |
 | `DEV-011` | Inspector | A watched table and camera listed and edited through the inspector, an edit that a setter refuses and the inspector window. |  |
 | `DEV-012` | Debugger | A counter whose function takes a breakpoint of an attached editor and a button that halts the app with `debug.breakpoint`. |  |
+| `DEV-013` | GPU captures | The capture tool of the graphics API and buttons that capture the next frames of the GPU into user storage, with the path of each capture or the reason a platform has no capture tool. |  |
 
 #### Files and storage (FIL)
 

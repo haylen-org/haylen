@@ -380,6 +380,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/debug/DebugWindow.cpp
   src/debug/Debugger.cpp
   src/debug/Evaluation.cpp
+  src/debug/GpuCaptureLua.cpp
   src/debug/HaltedStack.cpp
   src/debug/Inspector.cpp
   src/debug/InspectorLua.cpp

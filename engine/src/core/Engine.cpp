@@ -278,6 +278,7 @@ void Engine::stop() {
     current.screenCaptures.clear();
     current.capturingScreen.clear();
     current.graphics->cancelReads();
+    current.graphics->cancelCapture();
 
     const std::vector<plugins::Plugin*> started = std::exchange(current.startedPlugins, {});
     for (auto plugin = started.rbegin(); plugin != started.rend(); ++plugin) {
@@ -515,6 +516,11 @@ void Engine::render(std::size_t plugins) {
     try {
         const debug::ProfileScope scope(profiler, "submit");
         current.renderer->endFrame(current.host.isFrameTransparent());
+    } catch (const std::exception& exception) {
+        reportError(exception);
+    }
+    try {
+        current.graphics->processCapture();
     } catch (const std::exception& exception) {
         reportError(exception);
     }

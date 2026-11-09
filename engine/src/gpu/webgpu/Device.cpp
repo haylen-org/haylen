@@ -1079,4 +1079,16 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
     return std::make_unique<ImageReadback>(device, queue, record.texture, record.format, width, height);
 }
 
+gpu::Device::CaptureSupport Device::getCaptureSupport() const {
+    return {.tool = CaptureTool::None, .missing = std::string(kMissingCaptureTool)};
+}
+
+void Device::beginCapture(const std::filesystem::path&) {
+    throw std::logic_error(std::string(kMissingCaptureTool));
+}
+
+std::filesystem::path Device::endCapture() {
+    throw std::logic_error("A capture ended while none records.");
+}
+
 } // namespace haylen::gpu::webgpu

@@ -1095,4 +1095,28 @@ void Device::removeSurface(int number) {
     chains[static_cast<std::size_t>(number)].reset();
 }
 
+gpu::Device::CaptureSupport Device::getCaptureSupport() const {
+    if (!renderDoc) {
+        return {.tool = CaptureTool::None, .missing = std::string(renderdoc::Capturer::kMissing)};
+    }
+    return {.tool = CaptureTool::RenderDoc, .missing = {}};
+}
+
+void Device::beginCapture(const std::filesystem::path& path) {
+    if (passOpen) {
+        throw std::logic_error("A capture began while a pass was open.");
+    }
+    if (!renderDoc) {
+        throw std::logic_error(std::string(renderdoc::Capturer::kMissing));
+    }
+    renderDoc->begin(device.Get(), path);
+}
+
+std::filesystem::path Device::endCapture() {
+    if (!renderDoc) {
+        throw std::logic_error("A capture ended while none records.");
+    }
+    return renderDoc->end(device.Get());
+}
+
 } // namespace haylen::gpu::d3d11

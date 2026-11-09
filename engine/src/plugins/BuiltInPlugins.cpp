@@ -56,7 +56,7 @@ void BuiltInPlugins::registerAll(PluginRegistry& registry, platform::Host& host)
     registry.add(std::make_unique<LocalizationPlugin>());
     registry.add(std::make_unique<ConversationPlugin>());
     registry.add(std::make_unique<StoragePlugin>());
-    registry.add(std::make_unique<DebugPlugin>(host.getDevelopmentSession() != nullptr));
+    registry.add(std::make_unique<DebugPlugin>(host.getDevelopmentSession()));
     registry.add(std::make_unique<HotReloadPlugin>(host.getDevelopmentSession()));
     registry.add(std::make_unique<DebuggerPlugin>(host.getDevelopmentSession()));
     registry.add(std::make_unique<UiPlugin>());

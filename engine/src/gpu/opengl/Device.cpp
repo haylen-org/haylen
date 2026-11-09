@@ -1193,4 +1193,42 @@ void Device::presentDrawable(int number, GlContext& drawable) {
     drawable.swapBuffers();
 }
 
+// RenderDoc names an OpenGL device by its context, which the platform made, so a capture covers every context of the app.
+gpu::Device::CaptureSupport Device::getCaptureSupport() const {
+#if defined(__EMSCRIPTEN__)
+    return {.tool = CaptureTool::None, .missing = std::string(kMissingWebCaptureTool)};
+#else
+    if (!renderDoc) {
+        return {.tool = CaptureTool::None, .missing = std::string(renderdoc::Capturer::kMissing)};
+    }
+    return {.tool = CaptureTool::RenderDoc, .missing = {}};
+#endif
+}
+
+void Device::beginCapture(const std::filesystem::path& path) {
+    if (pass.open) {
+        throw std::logic_error("A capture began while a pass was open.");
+    }
+#if defined(__EMSCRIPTEN__)
+    static_cast<void>(path);
+    throw std::logic_error(std::string(kMissingWebCaptureTool));
+#else
+    if (!renderDoc) {
+        throw std::logic_error(std::string(renderdoc::Capturer::kMissing));
+    }
+    renderDoc->begin(nullptr, path);
+#endif
+}
+
+std::filesystem::path Device::endCapture() {
+#if defined(__EMSCRIPTEN__)
+    throw std::logic_error("A capture ended while none records.");
+#else
+    if (!renderDoc) {
+        throw std::logic_error("A capture ended while none records.");
+    }
+    return renderDoc->end(nullptr);
+#endif
+}
+
 } // namespace haylen::gpu::opengl

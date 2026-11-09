@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <span>
@@ -21,6 +22,9 @@
 #include "gpu/opengl/ShaderProgram.hpp"
 #include "gpu/opengl/UploadRing.hpp"
 #include "gpu/opengl/VertexArray.hpp"
+#if !defined(__EMSCRIPTEN__)
+#include "gpu/renderdoc/Capturer.hpp"
+#endif
 #include "haylen/gpu/Device.hpp"
 
 namespace haylen::gpu::opengl {
@@ -85,7 +89,13 @@ class Device final : public gpu::Device {
 
     [[nodiscard]] std::unique_ptr<Readback> readImage(Image image, int width, int height) override;
 
+    [[nodiscard]] CaptureSupport getCaptureSupport() const override;
+    void beginCapture(const std::filesystem::path& path) override;
+    [[nodiscard]] std::filesystem::path endCapture() override;
+
   private:
+    static constexpr std::string_view kMissingWebCaptureTool = "Browsers give a page no capture tool for WebGL 2, so the engine cannot capture its frames. Capture them on a desktop, where RenderDoc captures OpenGL, Vulkan and Direct3D and Metal captures its own.";
+
     struct BufferRecord {
         Gl::Uint name = 0;
         std::size_t size = 0;
@@ -226,6 +236,10 @@ class Device final : public gpu::Device {
     bool presentedSwapchain = false;
     bool lost = false;
     PassState pass;
+#if !defined(__EMSCRIPTEN__)
+    // The in-application API of RenderDoc when RenderDoc launched the app, which captures its frames.
+    std::unique_ptr<renderdoc::Capturer> renderDoc = renderdoc::Capturer::find();
+#endif
     PipelineRecord* applied = nullptr;
     int indexOffset = 0;
     float maxAnisotropy = 1.0F;

@@ -148,6 +148,7 @@ Each step of `run` prints one short line. Once the app runs, `run` prints a summ
   s  Show the statistics of the app, compact, full or off in turn
   i  Show or hide the inspector of the app
   p  Turn the debug drawings of the app on or off
+  g  Capture a frame of the GPU
   c  Clear the screen
   q  Quit
   h  List the keys
@@ -161,11 +162,12 @@ Each step of `run` prints one short line. Once the app runs, `run` prints a summ
 | `s` | Moves the [statistics](../lua-api/debug.md#statistics) of every connected app to the next mode: the compact numbers in a corner, then the statistics window, then nothing. It runs the console command `stats`. |
 | `i` | Shows or hides the [inspector](../lua-api/debug.md#inspector) of every connected app, a window that lists and edits the values of its scenes, its autoloads, its watched values and its globals. It runs the console command `inspector`. |
 | `p` | Turns the [debug drawings](../lua-api/debug.md#drawings) of every connected app on or off, such as the shapes of physics and the bounds of sprites. It runs the console command `draw`. |
+| `g` | Asks every connected app for a capture of its next frame with the capture tool of its graphics API, through the console command `gpuCapture`, and the terminal prints the path of each capture file once the app wrote it, as [GPU captures](../lua-api/debug.md#gpu-captures) describes. |
 | `c` | Clears the screen and its scrollback. |
 | `q` | Quits the app and ends the command: it terminates the app on a simulator or on Android, stops the server of a web page and ends the process of the app elsewhere. |
 | `h` | Lists the keys again. |
 
-A key acts at once, without Enter, in an interactive terminal. The keys `r`, `R`, `d`, `s`, `i` and `p` need the development server, so the Release configuration and C++ apps offer only `c`, `q` and `h`. They reach the app wherever it runs, so a phone, a TV or a browser shows its statistics, its inspector and its drawings without a keyboard. The terminal prints the answer of each app, such as `The statistics are "compact".`. The web platform shows the address of the page and the folder of the site in place of the device. Without an interactive terminal, such as in continuous integration, the summary still prints and no key is read. So a run whose output goes to a file streams the log of the app there too. A signal that ends the command, `SIGTERM`, `SIGHUP` or `SIGALRM`, such as the one of a bound on its time, stops the app as the key `q` does before the command ends, so no app runs on without its log.
+A key acts at once, without Enter, in an interactive terminal. The keys `r`, `R`, `d`, `s`, `i`, `p` and `g` need the development server, so the Release configuration and C++ apps offer only `c`, `q` and `h`. They reach the app wherever it runs, so a phone, a TV or a browser shows its statistics, its inspector and its drawings and captures its GPU frames without a keyboard. The terminal prints the answer of each app, such as `The statistics are "compact".`. The web platform shows the address of the page and the folder of the site in place of the device. Without an interactive terminal, such as in continuous integration, the summary still prints and no key is read. So a run whose output goes to a file streams the log of the app there too. A signal that ends the command, `SIGTERM`, `SIGHUP` or `SIGALRM`, such as the one of a bound on its time, stops the app as the key `q` does before the command ends, so no app runs on without its log.
 
 ##### The developer console
 
@@ -238,6 +240,28 @@ Pixel_10a     emulator-5554                         android          Android 16 
 ```
 
 The simulators come from `xcrun simctl`, the Apple devices from `xcrun devicectl` and the Android devices from `adb`. A `--device` that names nothing of the list stops `run` with an error that points to this command.
+
+### capture
+
+```sh
+haylen capture ~/apps/my-game
+haylen capture ~/apps/my-game --frames 3
+```
+
+Captures the next frames of the GPU in a Lua app that `run` or `serve` plays in development, from another terminal, with the capture tool of its graphics API, and prints the path of each capture file, as [GPU captures](../lua-api/debug.md#gpu-captures) describes. It does what the key `g` of [while the app runs](#while-the-app-runs) does, for a run whose terminal takes no keys, such as one that a script started.
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `--frames` | `1` | The number of frames that the capture records. |
+
+The development server of a run writes its address and the token of the run into `development.json` of the build folder of the app, readable by its owner alone, and removes it when the run ends. The command reads that file and asks the server, which sends the console line `gpuCapture` to every connected app and waits for each app to end its capture, at most 120 seconds. An app without a capture tool answers with what it lacks, such as `RenderDoc is not loaded into the app.`, and the command fails when no app wrote a capture. Without a running development server of the app, the command stops with an error that says to run the app first.
+
+```text
+==> Capturing the next 1 frame of the GPU in the running app
+The app wrote the GPU capture of 1 frame with "metalFrameCapture" to /Users/ana/Library/Application Support/com.example.mygame/gpu-captures/2026-11-03-14-05-09-123.gputrace.
+```
+
+The file stays on the device that captured it. On this Mac and in the simulators the path is a path of this Mac. On a phone or a TV, Xcode downloads the container of the app from its devices window, and `adb exec-out run-as <identifier> cat <path>` copies the file out of a debuggable Android app.
 
 ### prepare
 
@@ -1221,7 +1245,9 @@ The command `run` without `--platform`, and with any other platform in the Debug
 | The player, `ios-simulator`, `tvos-simulator`, `visionos-simulator`, `macos`, `catalyst`, `windows`, `linux` | The simulator and this machine share the loopback address of this machine. The address follows the arguments of `xcrun simctl launch` or of the executable. |
 | `ios`, `tvos`, `visionos` | The device reaches this machine over the network. So the server listens on every address of this machine, or on the one that `--host` names, and the app connects to the address of this machine on the network, which `xcrun devicectl device process launch` passes. The device and this machine must share a network, and the first connection asks the person on the device for access to the local network. |
 
-While the development server of `run` runs in an interactive terminal, with the web platform or any other, the keys of [while the app runs](#while-the-app-runs) reload and restart the connected apps, open their developer console and show their statistics, inspector and debug drawings.
+These launches start the player of macOS and the apps of Apple platforms with the environment variable `MTL_CAPTURE_ENABLED` set to 1, which turns on the frame capture of Metal for [GPU captures](../lua-api/debug.md#gpu-captures): a simulator takes it as `SIMCTL_CHILD_MTL_CAPTURE_ENABLED` and a device through `--environment-variables` of `xcrun devicectl`. Metal reads it as the process starts, so an app that Xcode launches takes the key `MetalCaptureEnabled` of its `Info.plist` instead.
+
+While the development server of `run` runs in an interactive terminal, with the web platform or any other, the keys of [while the app runs](#while-the-app-runs) reload and restart the connected apps, open their developer console, show their statistics, inspector and debug drawings and capture their GPU frames, and the command [`capture`](#capture) of another terminal captures them too.
 
 An app that stops or restarts leaves the server, which says so and keeps serving the apps that connect next.
 

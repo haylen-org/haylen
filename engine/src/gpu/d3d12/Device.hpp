@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <deque>
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <span>
@@ -20,11 +21,13 @@
 #include "gpu/d3d12/DescriptorHeap.hpp"
 #include "gpu/d3d12/DescriptorRing.hpp"
 #include "gpu/d3d12/FrameTimer.hpp"
+#include "gpu/d3d12/PixCapturer.hpp"
 #include "gpu/d3d12/RootSignatures.hpp"
 #include "gpu/d3d12/UploadAllocator.hpp"
 #include "gpu/direct3d/DebugMessages.hpp"
 #include "gpu/direct3d/Slots.hpp"
 #include "gpu/direct3d/Swapchain.hpp"
+#include "gpu/renderdoc/Capturer.hpp"
 #include "haylen/gpu/Device.hpp"
 
 namespace haylen::gpu::direct3d {
@@ -92,7 +95,13 @@ class Device final : public gpu::Device {
 
     [[nodiscard]] std::unique_ptr<Readback> readImage(Image image, int width, int height) override;
 
+    [[nodiscard]] CaptureSupport getCaptureSupport() const override;
+    void beginCapture(const std::filesystem::path& path) override;
+    [[nodiscard]] std::filesystem::path endCapture() override;
+
   private:
+    static constexpr std::string_view kMissingCaptureTool = "Neither PIX nor RenderDoc is loaded into the app. Launch the app from PIX for a GPU capture, or from RenderDoc through its \"Launch Application\" panel or \"renderdoccmd capture\", which load them before the graphics API starts, and capture again.";
+
     static constexpr UINT kTextureHeapSize = 16 * 1024;
     static constexpr UINT kUniformAlignment = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
     static constexpr D3D12_RESOURCE_STATES kShaderResource = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
@@ -239,6 +248,9 @@ class Device final : public gpu::Device {
     Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
     Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter;
     Microsoft::WRL::ComPtr<ID3D12Device> device;
+    // The capturers of PIX and RenderDoc when either one launched the app, which capture its frames, PIX first.
+    std::unique_ptr<PixCapturer> pix = PixCapturer::find();
+    std::unique_ptr<renderdoc::Capturer> renderDoc = renderdoc::Capturer::find();
     Microsoft::WRL::ComPtr<ID3D12CommandQueue> queue;
     Microsoft::WRL::ComPtr<ID3D12Fence> fence;
     Microsoft::WRL::ComPtr<ID3D12Fence> idleFence;

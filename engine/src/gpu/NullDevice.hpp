@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <span>
@@ -58,8 +59,10 @@ class NullDevice final : public Device {
         int bufferWrites = 0;
     };
 
-    // A device that runs a shader language asks every program for code in it, which tests use to see what a package lacks, the capabilities say what the engine may use, and the API is the one it reports, such as the API of a port that runs the engine on it before its own device draws.
-    explicit NullDevice(Language runs = Language::None, const Capabilities& capabilities = getDefaultCapabilities(), Api reported = Api::None) noexcept : language(runs), api(reported), features(capabilities) {}
+    static constexpr std::string_view kMissingCaptureTool = "The headless host draws nothing, so no capture tool records its frames. Capture on a platform whose graphics API has one, such as Metal on macOS or Vulkan and Direct3D under RenderDoc.";
+
+    // A device that runs a shader language asks every program for code in it, which tests use to see what a package lacks, the capabilities say what the engine may use, and the API is the one it reports, such as the API of a port that runs the engine on it before its own device draws. A device with a capture tool records when captures begin and end, and returns the path a capture would have with the extension `.capture`, without writing it.
+    explicit NullDevice(Language runs = Language::None, const Capabilities& capabilities = getDefaultCapabilities(), Api reported = Api::None, CaptureTool capture = CaptureTool::None) noexcept : language(runs), api(reported), features(capabilities), captureTool(capture) {}
 
     // The capabilities of a device that renders every color format, blends into all but the 32-bit floats, and resolves multisampled render targets, but blends every color of a pipeline alike, as OpenGL ES does.
     [[nodiscard]] static Capabilities getDefaultCapabilities() noexcept;
@@ -117,6 +120,15 @@ class NullDevice final : public Device {
     }
 
     [[nodiscard]] std::unique_ptr<Readback> readImage(Image image, int width, int height) override;
+
+    [[nodiscard]] CaptureSupport getCaptureSupport() const override;
+    void beginCapture(const std::filesystem::path& path) override;
+    [[nodiscard]] std::filesystem::path endCapture() override;
+
+    // The frames that each capture recorded, which the device counts by the commits between its beginning and its end.
+    [[nodiscard]] const std::vector<std::uint64_t>& getCapturedFrames() const noexcept {
+        return capturedFrames;
+    }
 
     // What the frame committed last did, and how many programs were prepared ahead of being made.
     [[nodiscard]] const FrameRecord& getLastFrame() const noexcept {
@@ -232,6 +244,12 @@ class NullDevice final : public Device {
     std::vector<bool> debugGroups;
 
     bool lost = false;
+
+    // The capture tool the device reports, the path of the capture that records and the frame it began at.
+    CaptureTool captureTool = CaptureTool::None;
+    std::optional<std::filesystem::path> capturePath;
+    std::uint64_t captureFrame = 0;
+    std::vector<std::uint64_t> capturedFrames;
 
     // The surface the swapchain passes draw into, which a headless window has from the start, and the surfaces beyond it by their numbers.
     bool surfaceAttached = true;

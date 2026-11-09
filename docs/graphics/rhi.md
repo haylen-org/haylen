@@ -179,6 +179,22 @@ Each device turns the messages of its API into lines of the engine log, errors a
 
 For profiling, `getGpuFrameSeconds()` returns the time the GPU took for the last frame it finished, where `Capabilities::gpuTiming` is true, and `getPools()` reports how many objects of each kind exist. The debug overlay and [`debug.stats()`](../lua-api/debug.md) show both.
 
+## Frame captures
+
+A frame capture records every command of the device during some frames into a file that the debugger of a capture tool opens, which replays each pass and draw with its pipeline, bindings, buffers and images. Each device names its tool with `getCaptureSupport()`, which returns `{tool, missing}`: the `gpu::Device::CaptureTool` it captures with, from the one table `gpu::Device::kCaptureToolNames`, or `None` with the sentence that says what is missing and how to get it. A capture tool hooks the graphics API before the device exists, so a device finds its tool when it starts and never loads one itself.
+
+| Device | Capture tool | What the app needs |
+| --- | --- | --- |
+| Metal | The frame capture of Metal, through `MTLCaptureManager`, into a `.gputrace` document that Xcode opens. | The environment variable `MTL_CAPTURE_ENABLED` set to 1 when the process starts, or the key `MetalCaptureEnabled` of the `Info.plist`. Metal reads them as it loads, before any code of the app runs, so the Debug runs of `haylen run` start the player of macOS and Apple apps with the variable, while shipped apps run without the capture layer, which costs time on every call. |
+| Direct3D 12 | The programmatic capture of PIX, into a `.wpix` file, or else RenderDoc. | PIX launched the app for a GPU capture, which loads `WinPixGpuCapturer.dll`, or RenderDoc launched it. |
+| Direct3D 11, Vulkan, OpenGL and OpenGL ES | The in-application API of RenderDoc, into an `.rdc` file. | RenderDoc launched the app, through its "Launch Application" panel or `renderdoccmd capture`, which loads `renderdoc.dll` on Windows, `librenderdoc.so` on Linux and its layer `libVkLayer_GLES_RenderDoc.so` on Android. |
+| WebGPU and WebGL2 | None. | Browsers give a page no capture tool, so the device always reports `None`. |
+| The null device | None, unless a test makes it with a tool, which records when captures begin and end without writing a file. | Nothing. |
+
+`beginCapture(path)` starts a capture between passes, at a path without its extension, which the tool adds, and `endCapture()` ends it after the commit of the last frame and returns the path of the file. RenderDoc adds the number of the first frame to the name, such as `_frame482.rdc`. A capture outside a pass that began while another one records, or without a tool, throws `std::logic_error`, and a tool that refuses or writes no file throws `std::runtime_error` with its reason.
+
+`graphics::Device::captureFrames` counts the frames: it begins a capture at once and ends it after the given number of frames was submitted, then hands the path to its callback on the frame thread. An app that stops during a capture ends it and drops its callback. The [debug reference](../lua-api/debug.md#gpu-captures) shows how apps, the developer console and `haylen capture` ask for one, and where the files go.
+
 ## The rules of the null device
 
 `gpu::NullDevice` in `engine/src/gpu/NullDevice.hpp` is the device of the headless host. It draws nothing, and it throws `std::logic_error` on every call that breaks the contract, in every build, so the engine tests fail on a renderer that a real device would reject. In short, it checks that:
@@ -191,6 +207,7 @@ For profiling, `getGpuFrameSeconds()` returns the time the GPU took for the last
 - Debug groups close inside the pass that opened them, and the surface goes and comes back in turn.
 - The swapchain passes of a frame into one surface follow one another.
 - Pools hold at most the sizes that `NullDevice.hpp` declares, so a leak of GPU objects fails a test.
+- A capture begins and ends in turn outside a pass, only on a device that a test made with a capture tool.
 
 The [testing guide](../tools/testing.md#the-headless-host) lists every check and how tests read what a frame did.
 
@@ -225,6 +242,7 @@ The matrix lists what each device reports. "From the GPU" means that the device 
 | Multisampled render targets | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
 | GPU timing | Yes | Yes | Where the queue writes timestamps | Yes | With `GL_EXT_disjoint_timer_query` | With `EXT_disjoint_timer_query_webgl2` | With the feature `timestamp-query` |
 | First row | Top | Top | Top | Bottom | Bottom | Bottom | Top |
+| Frame capture | The frame capture of Metal in the Debug runs of `haylen run` | PIX or RenderDoc on Direct3D 12, RenderDoc on Direct3D 11, when one launched the app | RenderDoc when it launched the app | RenderDoc when it launched the app | RenderDoc when it launched the app | No | No |
 | Vertical sync off | On macOS and Mac Catalyst | Yes, with tearing where the display allows it | Mailbox or immediate where the surface offers them | Swap interval 0 | Swap interval 0 | The swap interval that SDL hands the page | No, the browser paces the canvas |
 
 The device pages explain each value: [Metal](metal.md#capabilities), [Direct3D](direct3d.md#capabilities), [Vulkan](vulkan.md#capabilities), [OpenGL](opengl.md#capabilities) and [WebGPU](webgpu.md#capabilities).

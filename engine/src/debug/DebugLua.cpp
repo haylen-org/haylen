@@ -12,6 +12,7 @@
 #include "debug/ConsoleLua.hpp"
 #include "debug/CrashLua.hpp"
 #include "debug/Debugger.hpp"
+#include "debug/GpuCaptureLua.hpp"
 #include "debug/InspectorLua.hpp"
 #include "debug/TraceLua.hpp"
 #include "haylen/core/Engine.hpp"
@@ -471,6 +472,7 @@ int DebugLua::open(lua_State* L) {
     lua::Binding::newModule(L, functions);
     ConsoleLua::addFunctions(L);
     TraceLua::addFunctions(L);
+    GpuCaptureLua::addFunctions(L);
     CrashLua::addFunctions(L);
     InspectorLua::addFunctions(L);
     return 1;

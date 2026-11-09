@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <span>
 #include <unordered_map>
 #include <vector>
@@ -45,6 +46,14 @@ struct DeviceState {
     };
 
     std::vector<PendingRead> reads;
+
+    // The capture that records, with the frames it still records and the callback that receives its file.
+    struct PendingCapture {
+        int framesLeft = 0;
+        Device::CaptureCallback done;
+    };
+
+    std::optional<PendingCapture> capture;
 
     // Returns the sampler that every texture with the options shares, creating it on first use.
     [[nodiscard]] gpu::Device::Sampler getSampler(Texture::Options options);

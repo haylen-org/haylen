@@ -16,6 +16,11 @@ target_sources(haylen-gpu PRIVATE
   "${CMAKE_CURRENT_LIST_DIR}/VertexArray.cpp"
 )
 
+# Desktops and Android capture the frames of OpenGL through RenderDoc, while browsers offer no capture tool to the page.
+if(NOT EMSCRIPTEN)
+  include("${CMAKE_CURRENT_LIST_DIR}/../renderdoc/renderdoc.cmake")
+endif()
+
 foreach(api IN ITEMS openGl openGlEs webGl2)
   if(api IN_LIST HAYLEN_GRAPHICS_APIS)
     string(TOUPPER "${api}" definition)

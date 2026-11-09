@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <span>
@@ -15,6 +16,7 @@
 #include <vk_mem_alloc.h>
 
 #include "gpu/DeviceFactory.hpp"
+#include "gpu/renderdoc/Capturer.hpp"
 #include "gpu/vulkan/DescriptorCache.hpp"
 #include "gpu/vulkan/HandlePool.hpp"
 #include "gpu/vulkan/LayoutCache.hpp"
@@ -102,6 +104,10 @@ class Device final : public gpu::Device {
     void removeSurface(int number) override;
 
     [[nodiscard]] std::unique_ptr<Readback> readImage(Image image, int width, int height) override;
+
+    [[nodiscard]] CaptureSupport getCaptureSupport() const override;
+    void beginCapture(const std::filesystem::path& path) override;
+    [[nodiscard]] std::filesystem::path endCapture() override;
 
     // Whether the device draws its passes with dynamic rendering rather than render passes.
     [[nodiscard]] bool isRenderingDynamically() const noexcept {
@@ -288,6 +294,7 @@ class Device final : public gpu::Device {
     };
 
     void createFrames();
+    [[nodiscard]] void* getRenderDocDevice() const noexcept;
     void fillCapabilities();
     void readDriverIssues();
     void shutdown() noexcept;
@@ -336,6 +343,8 @@ class Device final : public gpu::Device {
     [[nodiscard]] UploadRing::Allocation allocateUniform(std::size_t index, VkDeviceSize size);
 
     std::unique_ptr<Instance> instance;
+    // The in-application API of RenderDoc when RenderDoc launched the app, which captures its frames.
+    std::unique_ptr<renderdoc::Capturer> renderDoc = renderdoc::Capturer::find();
 
     // The swapchains of the surfaces at their numbers, the window at 0, with an empty place for a surface that went away.
     std::vector<std::unique_ptr<SurfaceChain>> chains;

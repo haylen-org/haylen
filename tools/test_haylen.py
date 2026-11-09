@@ -3520,6 +3520,99 @@ class DevelopmentServerTest(unittest.TestCase):
         with mock.patch.object(reader, "waiting", return_value=False):
             self.assertEqual(reader.name("\x1b"), "Escape")
 
+    def answering_app(self, server, answer, report):
+        """An app that answers the console line of a capture with its result and then with the report of its capture, from another thread as a connection does."""
+        sent = []
+
+        def answer_line(app, message):
+            server.receive(app, {"type": "consoleResult", "id": message["id"], **answer})
+            if report is not None:
+                server.receive(app, {"type": "report", "gpuCapture": report})
+
+        def send(opcode, payload):
+            message = json.loads(payload)
+            sent.append(message)
+            threading.Thread(target=answer_line, args=(app, message)).start()
+            return True
+
+        app = mock.Mock(send=send)
+        return app, sent
+
+    def test_the_key_g_asks_the_apps_for_a_gpu_capture_and_its_report_prints(self):
+        server = haylen.DevelopmentServer(self.layout, self.manifest)
+        sent = []
+        client = mock.Mock(send=lambda opcode, payload: sent.append(json.loads(payload)) or True)
+        server.clients.append(client)
+        output = io.StringIO()
+        with mock.patch.object(haylen, "terminal", haylen.Terminal(output, output, {})):
+            haylen.RunSession(server, []).press("g")
+            server.receive(client, {"type": "report", "gpuCapture": {"ok": True, "path": "/captures/one.gputrace", "tool": "metalFrameCapture", "frames": 1}})
+            server.receive(client, {"type": "report", "gpuCapture": {"ok": False, "error": "RenderDoc wrote no capture."}})
+        self.assertEqual(sent, [{"type": "console", "id": 1, "line": "gpuCapture"}])
+        self.assertIn('The app wrote the GPU capture of 1 frame with "metalFrameCapture" to /captures/one.gputrace.', output.getvalue())
+        self.assertIn("The GPU capture of the app failed: RenderDoc wrote no capture.", output.getvalue())
+
+    def test_a_gpu_capture_waits_for_every_app_and_returns_what_each_one_wrote(self):
+        server = haylen.DevelopmentServer(self.layout, self.manifest)
+        self.assertEqual(server.capture_gpu(1), [])
+        written = {"ok": True, "path": "/captures/two.rdc", "tool": "renderDoc", "frames": 2}
+        capturing, sent = self.answering_app(server, {"ok": True, "output": "Capturing the next 2 frames."}, written)
+        refusing, _ = self.answering_app(server, {"ok": False, "output": "RenderDoc is not loaded into the app."}, None)
+        server.clients += [capturing, refusing]
+        results = server.capture_gpu(2)
+        self.assertEqual(sent, [{"type": "console", "id": 2, "line": "gpuCapture 2"}])
+        self.assertCountEqual(results, [written, {"ok": False, "error": "RenderDoc is not loaded into the app."}])
+        self.assertEqual(server.awaited, {})
+        self.assertIsNone(server.gpu_reports)
+
+    def test_the_capture_command_reaches_the_run_through_the_file_of_its_server_and_its_token(self):
+        server = haylen.DevelopmentServer(self.layout, self.manifest)
+        written = {"ok": True, "path": "/captures/one.gputrace", "tool": "metalFrameCapture", "frames": 1}
+        app, _ = self.answering_app(server, {"ok": True, "output": "Capturing the next frame."}, written)
+        server.clients.append(app)
+        handler = type("Handler", (haylen.DevelopmentHandler,), {"development": server})
+        web = haylen.LocalServer(("127.0.0.1", 0), handler)
+        threading.Thread(target=web.serve_forever, daemon=True).start()
+        self.addCleanup(web.server_close)
+        self.addCleanup(web.shutdown)
+        port = web.server_address[1]
+        apps = Path(self.scratch.name) / "apps"
+        output = io.StringIO()
+        arguments = argparse.Namespace(app=str(self.folder), frames=1)
+        with mock.patch.object(haylen, "APPS_DIR", apps), mock.patch.object(haylen, "resolve_lua_app", return_value=self.folder), mock.patch.object(haylen, "terminal", haylen.Terminal(output, output, {})):
+            with self.assertRaisesRegex(haylen.BuildError, "No run of the app"):
+                haylen.command_capture(arguments)
+            server.advertise("0.0.0.0", port)
+            record = apps / haylen.build_folder_name(self.folder) / haylen.DEVELOPMENT_RECORD
+            self.assertEqual(record.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(json.loads(record.read_text())["address"], f"http://127.0.0.1:{port}")
+            haylen.command_capture(arguments)
+            self.assertIn('The app wrote the GPU capture of 1 frame with "metalFrameCapture" to /captures/one.gputrace.', output.getvalue())
+
+            for token, body, status in (("wrong", b"{}", 403), (server.token, b'{"frames": 0}', 400)):
+                connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+                connection.request("POST", f"{haylen.GPU_CAPTURE_PATH}?token={token}", body=body)
+                self.assertEqual(connection.getresponse().status, status)
+                connection.close()
+
+            server.close()
+            self.assertFalse(record.exists())
+            with self.assertRaisesRegex(haylen.BuildError, "No run of the app"):
+                haylen.command_capture(arguments)
+
+    def test_a_development_launch_starts_apple_apps_with_the_frame_capture_of_metal(self):
+        bundle = Path(self.scratch.name) / "Game.app"
+        bundle.mkdir()
+        (bundle / "Info.plist").write_bytes(plistlib.dumps({"CFBundleExecutable": "Game", "CFBundleIdentifier": "com.haylen.game"}))
+        simulator = {"udid": "SIMULATOR", "name": "iPhone 17e", "state": "Booted"}
+        for development, simulated, device in ((haylen.DevelopmentServer(self.layout, self.manifest), {"SIMCTL_CHILD_MTL_CAPTURE_ENABLED": "1"}, ["--environment-variables", '{"MTL_CAPTURE_ENABLED": "1"}']), (None, {}, [])):
+            session = haylen.RunSession(development, [])
+            with mock.patch.object(haylen, "run"), mock.patch.object(haylen, "unified_log", return_value=contextlib.nullcontext()), mock.patch.object(haylen, "run_rows", return_value=[]), mock.patch.object(haylen, "apple_device_name", return_value="iPhone"), mock.patch.object(session, "show"), mock.patch.object(session, "follow") as follow:
+                haylen.launch_apple(mock.Mock(), bundle, argparse.Namespace(platform="ios-simulator", device=None), simulator, session)
+                self.assertEqual(follow.call_args.kwargs["environment"], simulated)
+                haylen.launch_apple(mock.Mock(), bundle, argparse.Namespace(platform="ios", device="DEVICE"), None, session)
+                self.assertEqual(follow.call_args.args[0], ["xcrun", "devicectl", "device", "process", "launch", "--console", "--device", "DEVICE", *device, "com.haylen.game"])
+
     def test_the_console_keys_send_what_changed_and_restart_the_apps(self):
         server = haylen.DevelopmentServer(self.layout, self.manifest)
         sent = []
@@ -3542,7 +3635,7 @@ class DevelopmentServerTest(unittest.TestCase):
             session = haylen.RunSession()
             self.assertEqual(list(session.keys), ["c", "q", "h"])
             session.show([("App", "Demo")], stop)
-            for key in "rRdsipx":
+            for key in "rRdsipgx":
                 session.press(key)
             session.press("c")
             session.press("q")
@@ -3550,7 +3643,7 @@ class DevelopmentServerTest(unittest.TestCase):
         self.assertTrue(session.quitting.is_set())
         self.assertIn("\x1b[2J", output.getvalue())
         self.assertIn("Quit", output.getvalue())
-        self.assertEqual(list(haylen.RunSession(haylen.DevelopmentServer(self.layout, self.manifest), []).keys), ["r", "R", "d", "s", "i", "p", "c", "q", "h"])
+        self.assertEqual(list(haylen.RunSession(haylen.DevelopmentServer(self.layout, self.manifest), []).keys), ["r", "R", "d", "s", "i", "p", "g", "c", "q", "h"])
 
     def test_the_log_of_android_shows_the_lines_of_the_engine_as_it_wrote_them_and_the_tag_of_the_others(self):
         self.assertEqual(haylen.android_log_line("I/haylen  : [12:00:01] [info] The app draws through \"vulkan\"."), "[12:00:01] [info] The app draws through \"vulkan\".")

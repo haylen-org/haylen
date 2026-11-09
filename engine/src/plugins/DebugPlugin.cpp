@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdint>
+#include <filesystem>
 #include <format>
 #include <stdexcept>
 #include <utility>
@@ -26,10 +28,11 @@
 #include "haylen/storage/UserStorage.hpp"
 #include "platform/ConsoleRelay.hpp"
 #include "platform/CrashGuard.hpp"
+#include "platform/DevelopmentSession.hpp"
 
 namespace haylen::plugins {
 
-DebugPlugin::DebugPlugin(bool developmentRun) : inspectorWindow(std::make_unique<debug::InspectorWindow>()), development(developmentRun) {}
+DebugPlugin::DebugPlugin(platform::DevelopmentSession* developmentSession) : session(developmentSession), inspectorWindow(std::make_unique<debug::InspectorWindow>()), development(developmentSession != nullptr) {}
 
 DebugPlugin::~DebugPlugin() = default;
 
@@ -363,6 +366,48 @@ core::Json DebugPlugin::describeCommands() const {
     return commands;
 }
 
+void DebugPlugin::captureGpu(int frames, graphics::Device::CaptureCallback done) {
+    graphics::Device& graphics = owner->getGraphics();
+    const std::filesystem::path folder = owner->getStorage().getRoot() / kGpuCaptureFolder;
+    if (graphics.getCaptureSupport().tool != gpu::Device::CaptureTool::None) {
+        std::filesystem::create_directories(folder);
+    }
+    // clang-format off
+    graphics.captureFrames(frames, folder / makeCaptureName(), [this, frames, done = std::move(done)](std::optional<std::filesystem::path> path, const std::string& error) {
+        reportCapture(frames, path, error);
+        done(std::move(path), error);
+    });
+    // clang-format on
+}
+
+// A capture is named after the time it started, in UTC to the millisecond, so the names sort in the order the captures were made.
+std::string DebugPlugin::makeCaptureName() {
+    const auto now = std::chrono::floor<std::chrono::milliseconds>(std::chrono::system_clock::now());
+    const auto day = std::chrono::floor<std::chrono::days>(now);
+    const std::chrono::year_month_day date{day};
+    const std::int64_t milliseconds = (now - day).count();
+    return std::format("{:04}-{:02}-{:02}-{:02}-{:02}-{:02}-{:03}", static_cast<int>(date.year()), static_cast<unsigned>(date.month()), static_cast<unsigned>(date.day()), milliseconds / 3600000, milliseconds / 60000 % 60, milliseconds / 1000 % 60, milliseconds % 1000);
+}
+
+void DebugPlugin::reportCapture(int frames, const std::optional<std::filesystem::path>& path, const std::string& error) {
+    if (!path) {
+        const std::string line = std::format("The GPU capture failed: {}", error);
+        core::Log::warning("{}", line);
+        if (session != nullptr) {
+            session->report({{"gpuCapture", {{"ok", false}, {"error", error}}}});
+        }
+        return;
+    }
+    const std::u8string text = path->u8string();
+    const std::string shown(text.begin(), text.end());
+    const std::string_view tool = gpu::Device::kCaptureToolNames[static_cast<std::size_t>(owner->getGraphics().getCaptureSupport().tool)].first;
+    const std::string line = std::format("The GPU capture of {} {} is in \"{}\".", frames, frames == 1 ? "frame" : "frames", shown);
+    core::Log::info("{}", line);
+    if (session != nullptr) {
+        session->report({{"gpuCapture", {{"ok", true}, {"path", shown}, {"tool", tool}, {"frames", frames}}}});
+    }
+}
+
 void DebugPlugin::startTrace(std::optional<int> frames, std::size_t capacity) {
     if (tracing) {
         throw std::logic_error("A trace is already recording. Stop it with \"debug.stopTraceAsync\" before starting another.");
@@ -451,6 +496,12 @@ void DebugPlugin::addBuiltInCommands(core::Engine& engine) {
     builtInCommands.push_back(console.addCommand({.name = "inspector", .help = "Shows or hides the inspector, or switches it when the line leaves the state out.", .parameters = {{.kind = Kind::Boolean, .optional = true}}, .handler = [this](const core::Json& arguments) {
         setInspectorVisible(arguments.empty() ? !inspectorVisible : arguments[0].get<bool>());
         return std::string(inspectorVisible ? "The inspector shows." : "The inspector is hidden.");
+    }}));
+    builtInCommands.push_back(console.addCommand({.name = "gpuCapture", .help = "Captures the next frames of the GPU, 1 unless the line names more, with the capture tool of the graphics API, and prints the path of the file once it ends.", .parameters = {{.kind = Kind::Integer, .optional = true}}, .handler = [this, &engine](const core::Json& arguments) {
+        const int frames = arguments.empty() ? 1 : arguments[0].get<int>();
+        captureGpu(frames, [](std::optional<std::filesystem::path>, const std::string&) {});
+        const std::string_view tool = gpu::Device::kCaptureToolNames[static_cast<std::size_t>(engine.getGraphics().getCaptureSupport().tool)].first;
+        return std::format("Capturing the next {} {} with \"{}\".", frames, frames == 1 ? "frame" : "frames", tool);
     }}));
     if (development) {
         builtInCommands.push_back(console.addCommand({.name = "lua", .help = "Runs Lua code and prints what it returns, in development runs only.", .parameters = {{.kind = Kind::Text}}, .handler = [&engine](const core::Json& arguments) {
