@@ -292,6 +292,27 @@ TEST_F(FontFileTest, RejectsTablesOutsideTheFile) {
     EXPECT_THROW(TrueTypeFont(device, data), std::runtime_error);
 }
 
+// A glyph header whose box ends before it starts would give the glyph a negative size in the atlas, so the font refuses the glyph.
+TEST_F(FontFileTest, RejectsGlyphsWhoseBoxEndsBeforeItStarts) {
+    test::EngineFixture fixture;
+    std::vector<std::uint8_t> data = read("crimson-text-regular.ttf");
+    const stbtt_fontinfo info = open(data);
+    const int glyph = stbtt_FindGlyphIndex(&info, 'A');
+    ASSERT_EQ(info.indexToLocFormat, 0);
+    const std::size_t loca = static_cast<std::size_t>(info.loca) + static_cast<std::size_t>(glyph) * 2;
+    const std::size_t header = static_cast<std::size_t>(info.glyf) + (static_cast<std::size_t>(data[loca]) << 8U | data[loca + 1]) * 2;
+
+    // The header holds the count of contours and then the left, bottom, right and top of the box, which trade places.
+    std::swap_ranges(data.begin() + static_cast<std::ptrdiff_t>(header + 2), data.begin() + static_cast<std::ptrdiff_t>(header + 6), data.begin() + static_cast<std::ptrdiff_t>(header + 6));
+    TrueTypeFont font(fixture.engine().getGraphics(), data);
+    try {
+        (void)font.getGlyph(static_cast<std::uint32_t>(glyph));
+        FAIL() << "A glyph whose box ends before it starts must be refused.";
+    } catch (const std::runtime_error& error) {
+        EXPECT_EQ(std::string(error.what()), "The glyph " + std::to_string(glyph) + " of the font has a box that ends before it starts.");
+    }
+}
+
 // A CFF charstring may draw lines before its first move, which start a contour at the origin. The one of the ampersand becomes two lines of 500 units that the end of the charstring closes into a triangle.
 TEST_F(FontFileTest, ReadsOutlinesThatDrawBeforeTheirFirstMove) {
     std::vector<std::uint8_t> data = read("fira-sans-regular.otf");

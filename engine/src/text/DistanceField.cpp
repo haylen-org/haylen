@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <stdexcept>
+#include <string>
 #include <utility>
 
 #include <core/ShapeDistanceFinder.h>
@@ -69,6 +71,9 @@ std::optional<DistanceField> DistanceField::measure(const stbtt_fontinfo& font, 
     int right = 0;
     int bottom = 0;
     stbtt_GetGlyphBitmapBox(&font, glyph, scale, scale, &left, &top, &right, &bottom);
+    if (right < left || bottom < top) {
+        throw std::runtime_error("The glyph " + std::to_string(glyph) + " of the font has a box that ends before it starts.");
+    }
     if (left == right || top == bottom) {
         return std::nullopt;
     }
