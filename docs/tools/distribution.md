@@ -309,7 +309,7 @@ haylen plugin new ~/plugins/my-plugin --with camera,microphone
 
 | Command | What it does |
 | --- | --- |
-| `plugin add <folder or repository> [--ref <ref>] [--reference] [--app <app>]` | Copies a plugin folder, or the root of a plugin repository at the branch, tag or commit that `--ref` names, into `plugins/<id>/` of the app, or with `--reference` lists the folder or the repository in `app.json` where it is. It lists the plugin in the `plugins` section of `app.json`, with the defaults of its parameters and an empty text for each required one. |
+| `plugin add <folder or repository> [--ref <ref>] [--path <folder>] [--reference] [--app <app>]` | Copies a plugin folder, or the root of a plugin repository or the folder inside it that `--path` names, at the branch, tag or commit that `--ref` names, into `plugins/<id>/` of the app, or with `--reference` lists the folder or the repository in `app.json` where it is. It lists the plugin in the `plugins` section of `app.json` with an empty text for each required parameter, while every other parameter takes the default of `plugin.json`. |
 | `plugin remove <id> [--app <app>]` | Deletes the plugin from `app.json` and its copy from `plugins/`. |
 | `plugin list [--app <app>]` | Lists the plugins of the app with their versions, platforms, where each one comes from and the problems that keep them from building. |
 | `plugin new <folder> [--id <id>] [--with <features>]` | Creates a plugin from `templates/plugin/`, with the camera, microphone, location or banner features of `templates/plugin-features/` that `--with` names. |

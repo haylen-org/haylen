@@ -6314,7 +6314,7 @@ def app_relative(app: Path, path: Path) -> str:
 
 
 def command_plugin_add(args: argparse.Namespace) -> None:
-    """Copies a plugin folder, or the root or a folder of a git repository at a branch, tag or commit, into `plugins/` of an app, replacing an earlier copy, or with "--reference" lists the folder or the repository as where the plugin comes from, deleting an earlier copy. Lists the plugin in `app.json` with the defaults of its parameters and an empty text for every required one."""
+    """Copies a plugin folder, or the root or a folder of a git repository at a branch, tag or commit, into `plugins/` of an app, replacing an earlier copy, or with "--reference" lists the folder or the repository as where the plugin comes from, deleting an earlier copy. Lists the plugin in `app.json` with the values that the app gives and an empty text for every required parameter, while every other parameter takes the default of `plugin.json`."""
     app = resolve_app(args.app)
     repository = is_git_repository(args.plugin)
     if args.ref and not repository:
@@ -6354,9 +6354,10 @@ def command_plugin_add(args: argparse.Namespace) -> None:
         shutil.rmtree(copy, ignore_errors=True)
         shutil.copytree(source, copy, symlinks=True, ignore=COPY_IGNORED)
 
+    # The defaults stay in "plugin.json", so a newer version of the plugin brings its own, and only a required parameter gets the empty text that the developer fills in.
     for name, parameter in plugin.parameters.items():
-        if name not in values and ("default" in parameter or parameter.get("required")):
-            values[name] = parameter.get("default", "")
+        if name not in values and parameter.get("required"):
+            values[name] = ""
     listed[plugin.id] = {**(origin if args.reference else {}), **({"parameters": values} if values else {})}
     write_app_json(app, document)
 

@@ -8,12 +8,12 @@ A Haylen plugin that exercises every capability of native plugins with the APIs 
 haylen plugin add samples/tests/plugins/native-demo --app my-app
 ```
 
-The command `plugin add` copies the plugin into `plugins/native-demo/` of the app and lists it in the `plugins` section of its `app.json` with the defaults of its parameters:
+The command `plugin add` copies the plugin into `plugins/native-demo/` of the app and lists it in the `plugins` section of its `app.json`. Every [parameter](#parameters) that the entry leaves out takes its default, and the values of the app go under `parameters`:
 
 ```json
 {
     "plugins": {
-        "native-demo": {"parameters": {"greeting": "Hello from the native demo", "bannerColor": "#264653", "tickInterval": 1, "urlScheme": "haylendemo", "cameraUsage": "The Native Demo plugin asks for the camera to show how a plugin requests a permission."}}
+        "native-demo": {"parameters": {"greeting": "Hello from my app", "tickInterval": 0.5}}
     }
 }
 ```

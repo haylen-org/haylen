@@ -1916,6 +1916,39 @@ class PluginReferenceTest(unittest.TestCase):
         self.assertEqual(json.loads((self.app / "app.json").read_text())["plugins"]["far"], {"parameters": {"greeting": "Hello"}})
         self.assertTrue((self.app / "plugins" / "far" / "plugin.json").is_file())
 
+    def test_plugin_add_writes_no_default_and_every_project_takes_the_defaults_of_the_plugin(self):
+        parameters = {"lens": {"type": "string", "default": "wide", "description": "Picks the lens."}, "testMode": {"type": "boolean", "default": False, "description": "Tests."}, "appId": {"type": "string", "required": True, "description": "Names the app."}}
+        far = self.write_plugin(self.scratch / "far-plugin", "far", parameters)
+        manifest = json.loads((far / "plugin.json").read_text())
+        manifest["platforms"] = ["ios", "android", "web"]
+        manifest["apple"] = {"infoPlist": {"FarLens": "${lens}", "FarTestMode": "${testMode}", "FarAppId": "${appId}"}}
+        manifest["android"] = {"module": "android", "placeholders": {"farLens": "${lens}"}}
+        manifest["web"] = {"module": "web/far.js"}
+        (far / "plugin.json").write_text(json.dumps(manifest))
+        for path in ("android/build.gradle.kts", "android/src/main/AndroidManifest.xml", "web/far.js"):
+            (far / path).parent.mkdir(parents=True, exist_ok=True)
+            (far / path).write_text("")
+        self.write_app({})
+
+        # Only the values of the app and the empty text of a required parameter reach "app.json", so a newer version of the plugin brings its own defaults.
+        haylen.command_plugin_add(haylen.build_parser().parse_args(["plugin", "add", str(far), "--reference", "--app", str(self.app)]))
+        self.assertEqual(json.loads((self.app / "app.json").read_text())["plugins"]["far"], {"path": "../far-plugin", "parameters": {"appId": ""}})
+        self.write_app({"far": {"path": "../far-plugin", "parameters": {"appId": "app-1234"}}})
+        manifest["parameters"]["lens"]["default"] = "tele"
+        (far / "plugin.json").write_text(json.dumps(manifest))
+        values = {"lens": "tele", "testMode": False, "appId": "app-1234"}
+
+        # The projects of Lua and C++ apps take the same values: the Info.plist keys of Apple platforms, the placeholders and the plugin list of Android, and the config of the web.
+        apple = haylen.App(self.app, "ios")
+        self.assertEqual(apple.plugin_values["far"], values)
+        self.assertEqual(haylen.apple_plugin_keys(apple, ("ios",), "infoPlist", {}, {}, '"Info.plist"'), {"FarLens": "tele", "FarTestMode": False, "FarAppId": "app-1234"})
+        android = haylen.App(self.app, "android")
+        root = self.scratch / "android"
+        self.assertEqual(haylen.prepare_android_plugins(android, root)["placeholder.farLens"], "tele")
+        haylen.write_android_plugins(android, root / "assets")
+        self.assertEqual(json.loads((root / "assets" / haylen.ANDROID_PLUGINS_FILE).read_text())["plugins"][0]["parameters"], values)
+        self.assertEqual(haylen.write_web_plugins(haylen.App(self.app, "web"), self.scratch / "site")[0]["parameters"], values)
+
     def test_plugin_add_refuses_an_entry_whose_values_lie_outside_its_parameters(self):
         far = self.write_plugin(self.scratch / "far-plugin", "far", {"prefetchPacks": {"type": "array", "default": [], "description": "Packs."}})
         self.write_app({"far": {"prefetchPacks": ["intro"]}})
