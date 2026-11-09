@@ -43,7 +43,13 @@ class Expression final {
         core::Json value;
         std::size_t left = 0;
         std::size_t right = 0;
+
+        // The levels of terms that the evaluation of this term goes through, itself included.
+        std::size_t depth = 1;
     };
+
+    // Terms and parentheses nest at most this deep, so neither reading nor evaluating an expression runs out of the native stack.
+    static constexpr std::size_t kMaxDepth = 200;
 
     // Reads one expression from the text, keeping the position of the next character.
     class Reader final {
@@ -62,6 +68,7 @@ class Expression final {
         [[nodiscard]] std::size_t readUnary();
         [[nodiscard]] std::size_t readPrimary();
         [[nodiscard]] std::size_t add(Term term);
+        void enterLevel();
         [[nodiscard]] std::size_t binary(std::string operation, std::size_t left, std::size_t right);
         [[nodiscard]] bool takeWord(std::string_view word);
         [[nodiscard]] bool takeSymbol(std::string_view symbol);
@@ -71,6 +78,7 @@ class Expression final {
         std::string_view text;
         std::vector<Term>& terms;
         std::size_t position = 0;
+        std::size_t nesting = 0;
     };
 
     [[nodiscard]] core::Json evaluate(std::size_t index, const Lookup& lookup) const;

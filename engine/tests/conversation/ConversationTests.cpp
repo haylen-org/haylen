@@ -106,6 +106,27 @@ TEST(ExpressionTest, ReadsAndComputesIntegersAsLuaDoes) {
     EXPECT_EQ(Expression::parse("99999999999999999999").evaluate(lookup), 1e20);
 }
 
+// Reading and evaluating recurse through the levels of an expression, so a deeper one is refused instead of running out of the native stack.
+TEST(ExpressionTest, RefusesExpressionsThatNestTooDeeply) {
+    const std::string parentheses = std::string(100000, '(') + "1" + std::string(100000, ')');
+    std::string negations;
+    std::string chain = "1";
+    for (int index = 0; index < 100000; ++index) {
+        negations += "not ";
+        chain += " + 1";
+    }
+    negations += "true";
+    for (const std::string& text : {parentheses, negations, chain}) {
+        try {
+            (void)Expression::parse(text);
+            ADD_FAILURE() << "An expression nested too deeply was read.";
+        } catch (const std::invalid_argument& error) {
+            EXPECT_NE(std::string(error.what()).find("nests deeper than 200 levels"), std::string::npos);
+        }
+    }
+    EXPECT_EQ(Expression::parse(std::string(150, '(') + "1" + std::string(150, ')')).evaluate([](std::string_view) { return core::Json(); }), 1);
+}
+
 TEST_F(ConversationTest, NamesTheNodeAndTheFieldOfAMistake) {
     EXPECT_EQ(refusal(R"({"nodes": {}})"), "A conversation is an object with \"nodes\", an object of at least one node by name.");
     EXPECT_EQ(refusal(R"({"nodes": {"a": {"next": "b"}}})"), "The node \"a\" leads to the node \"b\", which the conversation does not have.");

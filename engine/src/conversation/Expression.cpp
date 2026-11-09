@@ -129,7 +129,10 @@ std::size_t Expression::Reader::readAnd() {
 
 std::size_t Expression::Reader::readNot() {
     if (takeWord("not")) {
-        return add({.kind = Kind::Not, .operation = {}, .value = {}, .left = readNot(), .right = 0});
+        enterLevel();
+        const std::size_t operand = readNot();
+        --nesting;
+        return add({.kind = Kind::Not, .operation = {}, .value = {}, .left = operand, .right = 0});
     }
     return readComparison();
 }
@@ -172,7 +175,10 @@ std::size_t Expression::Reader::readProduct() {
 
 std::size_t Expression::Reader::readUnary() {
     if (takeSymbol("-")) {
-        return add({.kind = Kind::Negate, .operation = {}, .value = {}, .left = readUnary(), .right = 0});
+        enterLevel();
+        const std::size_t operand = readUnary();
+        --nesting;
+        return add({.kind = Kind::Negate, .operation = {}, .value = {}, .left = operand, .right = 0});
     }
     return readPrimary();
 }
@@ -183,10 +189,12 @@ std::size_t Expression::Reader::readPrimary() {
         throw fail("ends where a value belongs");
     }
     if (takeSymbol("(")) {
+        enterLevel();
         const std::size_t inner = readOr();
         if (!takeSymbol(")")) {
             throw fail("misses a closing parenthesis");
         }
+        --nesting;
         return inner;
     }
 
@@ -236,8 +244,23 @@ std::size_t Expression::Reader::readPrimary() {
 }
 
 std::size_t Expression::Reader::add(Term term) {
+    if (term.kind == Kind::Not || term.kind == Kind::Negate) {
+        term.depth = terms[term.left].depth + 1;
+    } else if (term.kind == Kind::Binary) {
+        term.depth = std::max(terms[term.left].depth, terms[term.right].depth) + 1;
+    }
+    if (term.depth > kMaxDepth) {
+        throw fail(std::format("nests deeper than {} levels", kMaxDepth));
+    }
     terms.push_back(std::move(term));
     return terms.size() - 1;
+}
+
+void Expression::Reader::enterLevel() {
+    ++nesting;
+    if (nesting > kMaxDepth) {
+        throw fail(std::format("nests deeper than {} levels", kMaxDepth));
+    }
 }
 
 std::size_t Expression::Reader::binary(std::string operation, std::size_t left, std::size_t right) {
