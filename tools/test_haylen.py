@@ -1270,6 +1270,17 @@ class UiTestsTest(unittest.TestCase):
                 with self.assertRaisesRegex(haylen.BuildError, "has no UI tests"):
                     haylen.command_test(haylen.build_parser().parse_args(["test", "--ui", scratch, "--platform", "ios-simulator"]))
 
+    def test_the_ui_tests_build_the_app_with_every_option_of_run(self):
+        built: list[argparse.Namespace] = []
+        with tempfile.TemporaryDirectory() as scratch, mock.patch.object(haylen, "require_host"), mock.patch.object(haylen, "command_run", side_effect=lambda args: built.append(args)), mock.patch.object(haylen, "App", side_effect=StopIteration):
+            (Path(scratch) / "app.json").write_text("{}", encoding="utf-8")
+            (Path(scratch) / "ui-tests").mkdir()
+            (Path(scratch) / "ui-tests" / "AppTests.swift").write_text("", encoding="utf-8")
+            with self.assertRaises(StopIteration):
+                haylen.command_test(haylen.build_parser().parse_args(["test", "--ui", scratch, "--platform", "ios-simulator", "--device", "SIMULATOR-ID", "--jobs", "4"]))
+            expected = haylen.build_parser().parse_args(["run", str(Path(scratch).resolve()), "--platform", "ios-simulator", "--device", "SIMULATOR-ID", "--engine-config", "Debug", "--build-only", "--jobs", "4"])
+        self.assertEqual(vars(built[0]), vars(expected))
+
     def test_the_unified_log_keeps_the_errors_it_relays(self):
         events = [json.dumps({"messageType": "Default", "eventMessage": "Started."}), json.dumps({"messageType": "Error", "eventMessage": "The view parted."}), "Filtering the log data."]
         errors: list[str] = []

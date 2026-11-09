@@ -1580,7 +1580,11 @@ def command_test_ui(args: argparse.Namespace) -> None:
     tests = folder / UI_TEST_FOLDER
     if not any(tests.glob("*.swift")):
         raise BuildError(f"The app `{shown_path(folder)}` has no UI tests. Write them in Swift in `{shown_path(tests)}`, as \"{TOOL} test --ui\" describes in the docs of testing.")
-    command_run(argparse.Namespace(app=str(folder), platform=args.platform, device=args.device, config="Debug", engine_config=args.config, build_only=True, jobs=args.jobs, previous_release=None))
+    # The build reads the options of "run" with their defaults, so it takes every option that "run" has.
+    arguments = ["run", str(folder), "--platform", args.platform, "--engine-config", args.config, "--build-only", "--jobs", str(args.jobs)]
+    if args.device:
+        arguments += ["--device", args.device]
+    command_run(build_parser().parse_args(arguments))
 
     app = App(folder, RUN_TARGETS[args.platform].plugins)
     bundle = apple_product(app, args.platform, "Debug")
