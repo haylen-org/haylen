@@ -761,6 +761,10 @@ TEST_F(NetLuaTest, TalksThroughWebSocketsFromLua) {
     EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {protocol = 'x'})").find("Unknown option \"protocol\""), std::string::npos);
     EXPECT_NE(fixture.lua("net.connectWebSocket('ftp://nowhere')").find("\"ws://\" or \"wss://\""), std::string::npos);
     EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {maxMessageSize = 0})").find("maximum message size between 1 and 2147483647 bytes"), std::string::npos);
+    for (const std::string protocol : {"chat\\r\\nX-Injected: 1", "chat json", "", "chat/2"}) {
+        EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {protocols = {'" + protocol + "'}})").find("is not a token"), std::string::npos) << protocol;
+    }
+    EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {protocols = {'chat', 'json', 'chat'}})").find("The WebSocket subprotocol \"chat\" is listed twice."), std::string::npos);
     EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "'):close(4294968296)").find("integer out of range"), std::string::npos);
     EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {reconnect = {initialDelay = 0 / 0}})").find("finite delays"), std::string::npos);
 }

@@ -126,8 +126,10 @@ class WebSocket final {
     static constexpr float kMaxConnectTimeout = 3600.0F;
     static constexpr std::size_t kMaxPingPayload = 125;
     static constexpr int kAbnormalClosure = 1006;
+    static constexpr std::string_view kSeparators = "()<>@,;:\\\"/[]?={}";
 
     [[nodiscard]] static double getSteadySeconds();
+    [[nodiscard]] static bool isToken(std::string_view text) noexcept;
 
     void connect();
     [[nodiscard]] bool canReconnect() const noexcept;

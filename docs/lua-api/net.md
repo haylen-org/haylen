@@ -14,7 +14,7 @@ Starts connecting to `url` in the background and returns a [`WebSocket`](#websoc
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `protocols` | list of strings | none | The subprotocols, names of message formats that the app and the server agree on, which the socket offers in the header `Sec-WebSocket-Protocol`. The property [`socket.protocol`](#socketprotocol) tells which one the server picked. |
+| `protocols` | list of strings | none | The subprotocols, names of message formats that the app and the server agree on, which the socket offers in the header `Sec-WebSocket-Protocol`. Each one is a token of HTTP, one or more visible ASCII characters other than `( ) < > @ , ; : \ " / [ ] ? = { }`, and appears once. The property [`socket.protocol`](#socketprotocol) tells which one the server picked. |
 | `maxMessageSize` | integer | `16777216` | The largest message in bytes that the socket accepts from the server, from `1` to `2147483647`, which is 16 MiB by default. On native builds a larger message reports `error` with `The server sent a WebSocket message larger than the maximum of <size> bytes.` and ends the connection with code `1009`. In the browser the limits of the browser apply instead. |
 | `connectTimeout` | number | `10` | The seconds an attempt may take to open, above `0` and at most `3600`. An attempt that has not opened in time fails with code `1006` on every platform. A socket that reconnects gives every attempt this time. |
 | `owner` | table or userdata | none | An object, such as a scene, whose end closes the socket with code `1000`, as [subscription scopes](../core/lifecycle.md#subscription-scopes) describe. |
@@ -375,6 +375,8 @@ These messages are raised by the functions and methods.
 | Message | Cause |
 | --- | --- |
 | `The WebSocket address "<url>" must start with "ws://" or "wss://".` | The address of `net.connectWebSocket` has another scheme. |
+| `The WebSocket subprotocol "<name>" is not a token, which is one or more visible ASCII characters other than ( ) < > @ , ; : \ " / [ ] ? = { }.` | A name of the option `protocols` is empty or holds a space, a line break, a separator or a character outside ASCII. |
+| `The WebSocket subprotocol "<name>" is listed twice.` | The option `protocols` names a subprotocol twice. |
 | `A WebSocket needs a maximum message size between 1 and 2147483647 bytes.` | The option `maxMessageSize` is `0` or above `2147483647`. |
 | `A WebSocket needs a connect timeout above 0 and at most 3600 seconds.` | The option `connectTimeout` is not above `0` and at most `3600`. |
 | `WebSocket reconnection needs finite delays from zero up with the maximum at least the initial one, a finite multiplier of at least 1, a jitter between 0 and 1 and a maximum of attempts of at least 0.` | A key of `reconnect` is out of its range or is not a finite number. |

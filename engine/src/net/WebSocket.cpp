@@ -37,9 +37,23 @@ double WebSocket::getSteadySeconds() {
     return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
+// A subprotocol is a token of HTTP, so it never breaks the header that offers it.
+bool WebSocket::isToken(std::string_view text) noexcept {
+    const auto visible = [](char character) { return character > ' ' && character < '\x7F' && kSeparators.find(character) == std::string_view::npos; };
+    return !text.empty() && std::ranges::all_of(text, visible);
+}
+
 WebSocket::WebSocket(std::string address, Options options) : url(std::move(address)), protocols(std::move(options.protocols)), maxMessageSize(options.maxMessageSize), connectTimeout(options.connectTimeout), reconnect(options.reconnect), failureHint(std::move(options.failureHint)), blockedReason(std::move(options.blockedReason)), clock(options.clock ? std::move(options.clock) : Clock(&getSteadySeconds)), random(options.seed != 0 ? options.seed : std::random_device{}()), inbox(std::make_shared<Inbox>()) {
     if (!url.starts_with("ws://") && !url.starts_with("wss://")) {
         throw std::invalid_argument("The WebSocket address \"" + url + "\" must start with \"ws://\" or \"wss://\".");
+    }
+    for (auto protocol = protocols.begin(); protocol != protocols.end(); ++protocol) {
+        if (!isToken(*protocol)) {
+            throw std::invalid_argument("The WebSocket subprotocol \"" + *protocol + "\" is not a token, which is one or more visible ASCII characters other than ( ) < > @ , ; : \\ \" / [ ] ? = { }.");
+        }
+        if (std::find(protocols.begin(), protocol, *protocol) != protocol) {
+            throw std::invalid_argument("The WebSocket subprotocol \"" + *protocol + "\" is listed twice.");
+        }
     }
     if (maxMessageSize == 0 || !std::in_range<int>(maxMessageSize)) {
         throw std::invalid_argument("A WebSocket needs a maximum message size between 1 and 2147483647 bytes.");
