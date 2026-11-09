@@ -434,7 +434,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `appBackground` | A hidden tab, through `visibilitychange`, and `Module.haylen.pause()` of the page. |
 | `appLowMemory` | Never, because browsers tell pages nothing about memory pressure. |
 | `appQuitRequested` | Never, because a page that closes cannot wait for the app. |
-| `linkOpened` | Never, because a page is the link that opened it, whose address the web parts of plugins read. |
+| `linkOpened` | The links that the page or the web module of a plugin hands over with `openLink` of the [runtime API](../tools/build.md#runtime-api), such as a link of the scheme of a plugin that the hash of the page address stands in for, since a page is the link that opened it. |
 | `windowResized` | The size of the canvas, which a `ResizeObserver` follows. |
 | `windowFocusGained`, `windowFocusLost` | The window of the page gaining and losing the focus. |
 | `windowFullscreenChanged` | The Fullscreen API. |

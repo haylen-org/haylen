@@ -242,6 +242,11 @@ Module.haylen = Module.haylen || {};
         sendEvent(event, encoded.json, encoded.buffers, flags);
     };
 
+    // Hands the app a link that opened the page, such as a link of a URL scheme of a plugin that the address of the page stands in for. The app hears it as `linkOpened`, as a link reaches the app on the other platforms, so a link that arrives while a launched app plays ends that app and reaches the app that launched it.
+    haylen.openLink = function (url) {
+        whenRuntimeReady(() => callEngine("haylen_web_open_link", null, ["string"], [String(url)]));
+    };
+
     // The abort controllers of the calls that wait for their handler, so a cancel reaches the handler and its late answer is dropped.
     const pending = new Map();
 
@@ -1144,6 +1149,9 @@ Module.haylen = Module.haylen || {};
             restoredScreen: takeRestoredScreen(id),
             emit(event, payload, options) {
                 haylen.emit(id + "." + event, payload, options);
+            },
+            openLink(url) {
+                haylen.openLink(url);
             },
             videoStream(name) {
                 return openVideoStream(id, name);

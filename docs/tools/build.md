@@ -507,6 +507,7 @@ The file `engine/platform/web/haylen-runtime.js` is linked with `--pre-js`. It f
 | `setPaused(paused)`, `pause()`, `resume()` | Pause or resume the app. A paused app keeps its last frame and sees the pause as a suspend. |
 | `paused()` | Returns whether the app is paused. |
 | `register(method, handler)`, `unregister(method)`, `emit(event, payload, options)` | The handlers and events of the platform bridge, with `options.retain` to keep an event for the first listener, as the [platform bridge guide](../platform/platform-bridge.md#web) describes. |
+| `openLink(url)` | Hands the app a link that opened the page, such as a link of a URL scheme of a plugin that the address of the page stands in for. The app hears it as [`linkOpened`](../lua-api/events.md#app-and-plugins), the link that started the page once `source/main.lua` ran, and a link that arrives while an app that the app launched plays ends that app, as on the other platforms. |
 | `createPluginContext(id, config)` | The context of the web module of a plugin, as the [plugin guide](../platform/plugins.md#web-modules) describes. |
 | `nativePlugins()` | Returns the ids of the plugins that have a web module. |
 

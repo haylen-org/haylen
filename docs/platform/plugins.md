@@ -241,7 +241,7 @@ The file `haylen/project.yml` defines a target for each platform, such as `Downl
 
 ### The desktop section
 
-Windows and Linux open an app from a link of a URL scheme that the app registers with the system. The `desktop` section names those schemes, and the projects of Windows and Linux register them, as the [distribution guide](../tools/distribution.md#links-on-windows-and-linux) describes. Each link reaches the app as the event [`linkOpened`](../lua-api/events.md#app-and-plugins), the event that every platform but the web publishes, so the Lua API of a plugin hears links on the desktops without a native part.
+Windows and Linux open an app from a link of a URL scheme that the app registers with the system. The `desktop` section names those schemes, and the projects of Windows and Linux register them, as the [distribution guide](../tools/distribution.md#links-on-windows-and-linux) describes. Each link reaches the app as the event [`linkOpened`](../lua-api/events.md#app-and-plugins), so the Lua API of a plugin hears links on the desktops without a native part. A page is the link that opened it, so the web module of a plugin reads the links of its scheme from the address of the page, such as from its hash, and hands each one to the app with `context.openLink(url)`, which the app hears as `linkOpened` too.
 
 | Key | Value |
 | --- | --- |

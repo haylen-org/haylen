@@ -32,6 +32,7 @@
 #include "platform/BridgeRelay.hpp"
 #include "platform/ConsoleRelay.hpp"
 #include "platform/DevelopmentSession.hpp"
+#include "platform/LinkRelay.hpp"
 #include "platform/NativeHost.hpp"
 #include "platform/Player.hpp"
 #include "platform/ScreenRelay.hpp"
@@ -440,6 +441,10 @@ EMSCRIPTEN_KEEPALIVE const char* haylen_web_last_error() {
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_resolve(double call, int ok, const char* json, const std::uint32_t* buffers, int count) {
     haylen::platform::WebEntry::guard("haylen_web_resolve", [&] { haylen::platform::WebPage::resolve(call, ok != 0, json, buffers, count); });
+}
+
+EMSCRIPTEN_KEEPALIVE void haylen_web_open_link(const char* url) {
+    haylen::platform::WebEntry::guard("haylen_web_open_link", [&] { haylen::platform::LinkRelay::receive(url); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_emit(const char* event, const char* json, const std::uint32_t* buffers, int count, int flags) {
