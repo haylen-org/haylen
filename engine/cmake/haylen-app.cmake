@@ -340,10 +340,14 @@ function(haylen_add_apple_plugins target)
 
   # The build scripts read the build settings of Xcode, which the Xcode generator gives every script, and which haylen_add_app gives the scripts of other generators.
   # Other generators build only the bundles of macOS and Mac Catalyst, whose paths the settings give relative to the folder of the bundle, as Xcode does.
-  set(environment "")
+  # BUILD_DIR names the products folder of the derived data of the Swift packages, which holds their checkouts in SourcePackages next to Build, as the derived data of a Lua app does.
+  set(settings "")
+  if(HAYLEN_PLUGIN_PACKAGES_BUILD_DIR)
+    list(APPEND settings "BUILD_DIR=${HAYLEN_PLUGIN_PACKAGES_BUILD_DIR}")
+  endif()
   if(NOT CMAKE_GENERATOR STREQUAL "Xcode")
     set(bundle "$<TARGET_BUNDLE_DIR_NAME:${target}>")
-    set(environment "${CMAKE_COMMAND}" -E env
+    list(APPEND settings
       "TARGET_BUILD_DIR=$<PATH:GET_PARENT_PATH,$<TARGET_BUNDLE_DIR:${target}>>"
       "BUILT_PRODUCTS_DIR=$<PATH:GET_PARENT_PATH,$<TARGET_BUNDLE_DIR:${target}>>"
       "WRAPPER_NAME=${bundle}"
@@ -365,6 +369,10 @@ function(haylen_add_apple_plugins target)
       "CODE_SIGNING_ALLOWED=YES"
       "EXPANDED_CODE_SIGN_IDENTITY=-"
     )
+  endif()
+  set(environment "")
+  if(settings)
+    set(environment "${CMAKE_COMMAND}" -E env ${settings})
   endif()
   foreach(script IN LISTS HAYLEN_PLUGIN_SCRIPTS)
     add_custom_command(TARGET ${target} POST_BUILD COMMAND ${environment} /bin/sh "${script}" WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}" VERBATIM)

@@ -6698,7 +6698,7 @@ def write_swift_packages(packages: dict[str, dict], folder: Path) -> None:
 
 @dataclasses.dataclass(frozen=True)
 class SwiftPackages:
-    """The Swift packages of the plugins of a C++ app built for one slice: the dynamic framework that holds their targets, the binary frameworks that their products bring, which the app links itself, the resource bundles, and what a Swift source that imports their products needs, as Xcode gives it to a target that links them: the folder of their Swift modules, and the module map and the public header folder of each of their C-family targets."""
+    """The Swift packages of the plugins of a C++ app built for one slice: the dynamic framework that holds their targets, the binary frameworks that their products bring, which the app links itself, the resource bundles, and what a Swift source that imports their products needs, as Xcode gives it to a target that links them: the folder of their Swift modules, and the module map and the public header folder of each of their C-family targets. The folder `products` is the `Build/Products` folder of their derived data, which holds the checkouts in `SourcePackages` next to `Build`."""
 
     framework: Path
     binaries: list[Path]
@@ -6706,6 +6706,7 @@ class SwiftPackages:
     modules: Path
     module_maps: list[Path]
     headers: list[Path]
+    products: Path
 
 
 # The folders that Swift Package Manager takes the sources of a target from when its manifest names no "path".
@@ -6724,7 +6725,7 @@ def build_swift_packages(packages: dict[str, dict], slice_name: str, config: str
     frameworks = built / "PackageFrameworks"
     binaries = sorted(path for path in frameworks.glob("*.framework") if path.stem != SWIFT_PACKAGES_PRODUCT)
     module_maps, headers = swift_package_clang_modules(derived, built, derived / "Build" / "Intermediates.noindex" / f"GeneratedModuleMaps{suffix}", folder / "manifests")
-    return SwiftPackages(frameworks / f"{SWIFT_PACKAGES_PRODUCT}.framework", binaries, sorted(built.glob("*.bundle")), built, module_maps, headers)
+    return SwiftPackages(frameworks / f"{SWIFT_PACKAGES_PRODUCT}.framework", binaries, sorted(built.glob("*.bundle")), built, module_maps, headers, derived / "Build" / "Products")
 
 
 def swift_package_clang_modules(derived: Path, built: Path, generated: Path, scratch: Path) -> tuple[list[Path], list[Path]]:
@@ -6871,6 +6872,7 @@ def write_cpp_apple_parts(app: App, platform: str, directory: Path, fragment: Pa
         cmake_list("HAYLEN_PLUGIN_MODULES", [swift_packages.modules.as_posix()] if swift_packages else []),
         cmake_list("HAYLEN_PLUGIN_MODULE_MAPS", [path.as_posix() for path in swift_packages.module_maps] if swift_packages else []),
         cmake_list("HAYLEN_PLUGIN_HEADERS", [path.as_posix() for path in swift_packages.headers] if swift_packages else []),
+        cmake_path("HAYLEN_PLUGIN_PACKAGES_BUILD_DIR", swift_packages.products if swift_packages else None),
         cmake_list("HAYLEN_PLUGIN_SCRIPTS", [path.as_posix() for path in scripts]),
         cmake_list("HAYLEN_PLUGIN_EXTENSIONS", list(extensions)),
         *extension_lines,

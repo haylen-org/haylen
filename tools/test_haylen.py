@@ -1448,7 +1448,7 @@ class RunCppTest(unittest.TestCase):
         products = build / "haylen-packages" / "derived" / "Build" / "Products"
         packages = products / "Debug-iphonesimulator"
         frameworks = packages / "PackageFrameworks"
-        built = haylen.SwiftPackages(frameworks / "HaylenPackages.framework", [frameworks / "LensCore.framework", frameworks / "LensVideo.framework"], [packages / "Lens_Lens.bundle"], packages, [build / "maps" / "LensObjC.modulemap"], [build / "lens" / "include"])
+        built = haylen.SwiftPackages(frameworks / "HaylenPackages.framework", [frameworks / "LensCore.framework", frameworks / "LensVideo.framework"], [packages / "Lens_Lens.bundle"], packages, [build / "maps" / "LensObjC.modulemap"], [build / "lens" / "include"], products)
         with mock.patch.object(haylen, "build_swift_packages", return_value=built) as swift, mock.patch.object(haylen, "apple_binary_is_dynamic", side_effect=lambda binary: binary.name == "LensVideo"):
             self.assertTrue(haylen.write_cpp_apple_parts(app, "ios-simulator", build, fragment, "Debug", 4))
         self.assertEqual(swift.call_args.args[:3], ({"Lens": {"url": "https://example.com/lens-kit.git", "exactVersion": "2.1.0", "products": ["Lens"]}}, "ios-simulator", "Debug"))
@@ -1463,6 +1463,7 @@ class RunCppTest(unittest.TestCase):
         self.assertIn(f"set(HAYLEN_PLUGIN_MODULES [==[{packages.as_posix()}]==])", text)
         self.assertIn(f"set(HAYLEN_PLUGIN_MODULE_MAPS [==[{(build / 'maps' / 'LensObjC.modulemap').as_posix()}]==])", text, "The Swift sources import the C-family modules of the packages through their module maps.")
         self.assertIn(f"set(HAYLEN_PLUGIN_HEADERS [==[{(build / 'lens' / 'include').as_posix()}]==])", text)
+        self.assertIn(f"set(HAYLEN_PLUGIN_PACKAGES_BUILD_DIR [==[{products.as_posix()}]==])", text, "The build scripts reach the checkouts of the packages from the products folder of their derived data.")
         self.assertIn(f"set(HAYLEN_PLUGIN_SCRIPTS [==[{(copied / 'scripts' / '0.sh').as_posix()}]==])", text)
         self.assertIn("echo stamped", (copied / "scripts" / "0.sh").read_text())
         self.assertIn("<string>group.com.haylen.camera</string>", text, "The Info.plist keys name the identity of the app as Xcode would.")
