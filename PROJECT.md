@@ -2344,7 +2344,6 @@ Ferramentas de desenvolvimento:
 
 - [ ] O console aberto pela tecla `d` do terminal e o inspector: hoje travam, misturam a saída, não explicam os comandos, o inspector não funciona, o toque não funciona e a janela não arrasta. Pesquisar como as ferramentas de desenvolvimento das engines maduras funcionam e manter só o que for útil no dia a dia e funcionar em todas as plataformas, ou remover. O que ficar precisa ser claro, bonito e documentado.
 - [x] A linha cinza de progresso do `haylen.py` corta o fim do texto: o corte com reticências fica no meio da frase, como nas ferramentas maduras, para o começo e o fim continuarem visíveis. Feito: `Terminal.shorten` troca o meio da linha por reticências contando as colunas de cada caractere (largos do leste asiático e marcas combinantes), a linha de progresso tira as cores e os tabs da ferramenta antes de medir, nenhuma outra saída do `haylen.py` ou das ferramentas corta texto no fim, e o teste `TerminalTest` de `tools/test_haylen.py` verifica o corte, documentado em `docs/tools/build.md`.
-- [ ] O `haylen.py` e as ferramentas em Python seguem o melhor ferramental de Python: Ruff para formatar e verificar o código, uv para as dependências e para rodar, arquivos `__init__.py` vazios e nada de `TYPE_CHECKING`.
 
 Correções:
 
