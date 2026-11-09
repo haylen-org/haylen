@@ -1459,7 +1459,7 @@ print(moisture)
 
 ### noise:fractal(x, y, octaves, lacunarity, gain)
 
-Returns several layers of simplex noise added together, kept from `-1` to `1`. Each layer adds finer detail, like the small bumps on a large hill. The number of layers is `octaves`, `4` by default. Each layer has `lacunarity` times the frequency of the one before, `2` by default, and `gain` times its strength, `0.5` by default.
+Returns several layers of simplex noise added together, kept from `-1` to `1`. Each layer adds finer detail, like the small bumps on a large hill. The number of layers is `octaves`, a whole number from `1` to `16`, `4` by default, and another count raises `The octaves must be a whole number from 1 to 16.`. Each layer has `lacunarity` times the frequency of the one before, `2` by default, and `gain` times its strength, `0.5` by default.
 
 ```lua
 local m = require('haylen.math')
@@ -1489,7 +1489,7 @@ print(nearest, crack, cell)
 
 ### noise:warp(x, y, amplitude, frequency, octaves)
 
-Moves the point by fractal noise and returns the new `x` and `y`. The noise is sampled at `frequency` times the point, `1` by default, with `octaves` layers, `3` by default, and it moves the point by up to `amplitude` on each axis. Sampling any noise at the moved point bends its patterns into swirls, which suits coastlines, marble and smoke.
+Moves the point by fractal noise and returns the new `x` and `y`. The noise is sampled at `frequency` times the point, `1` by default, with `octaves` layers, from `1` to `16` like those of `noise:fractal` and `3` by default, and it moves the point by up to `amplitude` on each axis. Sampling any noise at the moved point bends its patterns into swirls, which suits coastlines, marble and smoke.
 
 ```lua
 local m = require('haylen.math')

@@ -149,6 +149,14 @@ TEST_F(MathLuaTest, SamplesGridsOfNoiseInOneCall) {
     EXPECT_NE(lua("m.noise():sampleGridAsync({columns = 2, rows = 2, into = require('haylen.collections').newFloatBuffer(8)})").find("Unknown option \"into\"."), std::string::npos);
 }
 
+TEST_F(MathLuaTest, BoundsTheOctavesOfNoise) {
+    EXPECT_EQ(lua("local n = m.noise(3) local x, y = n:warp(1, 2, 4, 1, 16) return type(n:fractal(0.5, 0.25, 16)) .. ' ' .. type(x)"), "number number");
+    for (const std::string call : {"fractal(0.5, 0.25, 17)", "fractal(0.5, 0.25, 0)", "warp(1, 2, 4, 1, 17)", "warp(1, 2, 4, 1, 1000000000)"}) {
+        EXPECT_NE(lua("m.noise(3):" + call).find("The octaves must be a whole number from 1 to 16."), std::string::npos) << call;
+    }
+    EXPECT_NE(lua("m.noise(3):warp(1, 2, 4, 1, 2^32 + 3)").find("error: "), std::string::npos);
+}
+
 TEST_F(MathLuaTest, ProvidesScalarHelpers) {
     EXPECT_EQ(lua("return m.ease('linear', 0.25) .. ' ' .. m.ease('quadIn', 0.5)"), "0.25 0.25");
     EXPECT_NE(lua("return m.ease('bouncy', 0.5)").find("error: "), std::string::npos);

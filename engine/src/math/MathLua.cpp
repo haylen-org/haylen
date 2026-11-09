@@ -1,6 +1,8 @@
 #include "math/MathLua.hpp"
 
 #include <algorithm>
+#include <format>
+#include <stdexcept>
 
 #include "core/FloatBufferLua.hpp"
 #include "haylen/core/Engine.hpp"
@@ -341,7 +343,7 @@ float MathLua::noiseSimplex(Noise2D& self, float x, float y) {
 }
 
 float MathLua::noiseFractal(Noise2D& self, float x, float y, std::optional<int> octaves, std::optional<float> lacunarity, std::optional<float> gain) {
-    return self.fractal(x, y, octaves.value_or(4), lacunarity.value_or(2.0F), gain.value_or(0.5F));
+    return self.fractal(x, y, checkOctaves(octaves.value_or(4)), lacunarity.value_or(2.0F), gain.value_or(0.5F));
 }
 
 int MathLua::noiseWorley(lua_State* L) {
@@ -354,10 +356,19 @@ int MathLua::noiseWorley(lua_State* L) {
 
 int MathLua::noiseWarp(lua_State* L) {
     const Noise2D& noise = lua::Userdata::check<Noise2D>(L, 1);
-    const Vec2 warped = noise.warp(lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4), static_cast<float>(luaL_optnumber(L, 5, 1.0)), static_cast<int>(luaL_optinteger(L, 6, 3)));
+    const int octaves = checkOctaves(lua::Stack::read<std::optional<int>>(L, 6).value_or(3));
+    const Vec2 warped = noise.warp(lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4), static_cast<float>(luaL_optnumber(L, 5, 1.0)), octaves);
     lua::Stack::push(L, warped.x);
     lua::Stack::push(L, warped.y);
     return 2;
+}
+
+// Every octave samples the noise once more, so a bound keeps one call within a frame.
+int MathLua::checkOctaves(int octaves) {
+    if (octaves < 1 || octaves > kMaxOctaves) {
+        throw std::invalid_argument(std::format("The octaves must be a whole number from 1 to {}.", kMaxOctaves));
+    }
+    return octaves;
 }
 
 // A grid needs its columns and rows, and its other options take the defaults of `Noise2D::Grid`.
@@ -401,8 +412,8 @@ Noise2D::Grid MathLua::readGrid(lua_State* L, bool intoAllowed, std::shared_ptr<
     }
     lua_pop(L, 1);
     lua::Table::readField(L, 2, "octaves", grid.octaves);
-    if (grid.octaves < 1 || grid.octaves > 16) {
-        luaL_error(L, "The option \"octaves\" must be a whole number from 1 to 16.");
+    if (grid.octaves < 1 || grid.octaves > kMaxOctaves) {
+        luaL_error(L, "The option \"octaves\" must be a whole number from 1 to %d.", kMaxOctaves);
     }
     lua::Table::readField(L, 2, "lacunarity", grid.lacunarity);
     lua::Table::readField(L, 2, "gain", grid.gain);

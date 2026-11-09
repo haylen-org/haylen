@@ -30,6 +30,7 @@ class MathLua final {
     static constexpr std::array<std::string_view, 10> kGridFields{"kind", "columns", "rows", "x", "y", "step", "octaves", "lacunarity", "gain", "into"};
     static constexpr std::size_t kMaxGridSide = 16384;
     static constexpr std::size_t kMaxGridSamples = std::size_t{1} << 24U;
+    static constexpr int kMaxOctaves = 16;
     static constexpr std::size_t kGridGrain = 4096;
     static constexpr std::array<std::string_view, 8> kPoissonFields{"area", "minimumDistance", "maximumDistance", "attempts", "random", "seed", "accept", "distance"};
 
@@ -92,6 +93,7 @@ class MathLua final {
     [[nodiscard]] static float noiseFractal(Noise2D& self, float x, float y, std::optional<int> octaves, std::optional<float> lacunarity, std::optional<float> gain);
     static int noiseWorley(lua_State* L);
     static int noiseWarp(lua_State* L);
+    [[nodiscard]] static int checkOctaves(int octaves);
 
     // Reads the grid of `sampleGrid` from the options at index 2, and the buffer of `into` when `into` is allowed and given.
     [[nodiscard]] static Noise2D::Grid readGrid(lua_State* L, bool intoAllowed, std::shared_ptr<core::FloatBuffer>& into);
