@@ -1128,7 +1128,7 @@ void Device::destroy(Pipeline pipeline) noexcept {
     forgetProgramUse(record->program, nextSerial);
 }
 
-// The first write of a frame moves a dynamic buffer to its next copy, which the GPU finished reading, since a frame in flight reads every other copy at most.
+// The first write of a frame moves a dynamic buffer to its next copy, which the GPU finished reading once the frame waited for the fence of the frame before the last, since a frame in flight reads every other copy at most.
 void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) {
     BufferRecord& record = requireBuffer(buffer);
     if (record.usage != Usage::Dynamic) {
@@ -1136,6 +1136,9 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
     }
     if (offset + data.size() > record.size) {
         throw std::out_of_range(std::format("A write of {} bytes at {} goes past the end of the buffer of {} bytes.", data.size(), offset, record.size));
+    }
+    if (!ensureFrame()) {
+        return;
     }
     if (record.writtenSerial != nextSerial) {
         record.writtenSerial = nextSerial;
