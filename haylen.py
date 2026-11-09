@@ -31,6 +31,7 @@ import textwrap
 import threading
 import time
 import unicodedata
+import urllib.error
 import urllib.parse
 import urllib.request
 import webbrowser
@@ -544,10 +545,15 @@ def engine_version() -> str:
 
 
 def download(url: str, target: Path, sha256: str | None = None) -> None:
-    """Downloads a file and, when a hash is pinned, deletes the download and fails unless its SHA-256 matches."""
+    """Downloads a file, failing with the reason and keeping nothing when the server or the network refuses it, and, when a hash is pinned, deletes the download and fails unless its SHA-256 matches."""
     target.parent.mkdir(parents=True, exist_ok=True)
     terminal.step(f"Downloading `{url}`")
-    urllib.request.urlretrieve(url, target)
+    try:
+        urllib.request.urlretrieve(url, target)
+    except OSError as error:
+        target.unlink(missing_ok=True)
+        reason = error.reason if isinstance(error, urllib.error.URLError) and not isinstance(error, urllib.error.HTTPError) else error
+        raise BuildError(f'The download of `{url}` failed with "{reason}". Check the network of this machine and try again.') from None
     if sha256 and hashlib.sha256(target.read_bytes()).hexdigest() != sha256:
         target.unlink()
         raise BuildError(f'The download of `{url}` does not match its pinned SHA-256 "{sha256}", so it was deleted. Try again, and if it still differs, the file on the server changed.')

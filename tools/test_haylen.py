@@ -2027,6 +2027,18 @@ class XcodeGenTest(unittest.TestCase):
         self.assertEqual(installed.read_text(), "pinned")
 
 
+class DownloadTest(unittest.TestCase):
+    def test_a_download_that_the_server_refuses_fails_with_its_reason_and_keeps_nothing(self):
+        scratch = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, scratch)
+        target = scratch / "tools" / "archive.zip"
+        url = (scratch / "missing.zip").as_uri()
+        with mock.patch.object(haylen, "terminal"), self.assertRaises(haylen.BuildError) as raised:
+            haylen.download(url, target)
+        self.assertIn(f"The download of `{url}` failed with", str(raised.exception))
+        self.assertFalse(target.exists())
+
+
 class AppImageToolsTest(unittest.TestCase):
     def test_a_new_pin_of_patchelf_downloads_its_own_release(self):
         scratch = Path(tempfile.mkdtemp())
