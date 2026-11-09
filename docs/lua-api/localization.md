@@ -404,7 +404,7 @@ Writes a moment in Unix seconds, such as the value of `os.time()`, as a date, a 
 
 The languages `en`, `en-GB`, `es`, `pt`, `fr`, `de`, `it`, `nl`, `sv`, `da`, `nb`, `fi`, `pl`, `cs`, `ru`, `uk`, `tr`, `ja`, `zh` and `ko` write the names of months and days. The other languages write every style with numbers. The clock of a language has 12 or 24 hours, such as `2:05 PM` in English and `14:05` in British English. With `date = false` and no `time`, the result is an empty string.
 
-Another date style raises `The date of a date format must be "short", "medium", "long", "full" or false.`. An offset beyond 18 hours raises `A time zone offset runs from -1080 to 1080 minutes.`.
+Another date style raises `The date of a date format must be "short", "medium", "long", "full" or false.`. An offset beyond 18 hours raises `A time zone offset runs from -1080 to 1080 minutes.`. A moment that is not finite or lies beyond the range of 64-bit integers raises `A moment to format is a finite number of seconds within the range of 64-bit integers.`. Without `timeZoneOffset`, a moment that the system cannot convert to the time zone of the device raises `The system cannot express the moment <seconds> in the time zone of the device. Pass a "timeZoneOffset" to format it.`. Windows converts no moment before 1970 this way.
 
 ```lua
 local localization = require('haylen.localization')

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <ctime>
 #include <format>
+#include <limits>
 #include <stdexcept>
 
 #include "localization/LocaleData.hpp"
@@ -49,15 +50,24 @@ DateFormat::Fields DateFormat::toFields(std::int64_t seconds, std::optional<int>
         if (*timeZoneOffset < -kMaxOffsetMinutes || *timeZoneOffset > kMaxOffsetMinutes) {
             throw std::invalid_argument("A time zone offset runs from -1080 to 1080 minutes.");
         }
-        return fromUtc(seconds + static_cast<std::int64_t>(*timeZoneOffset) * 60);
+        const std::int64_t shift = static_cast<std::int64_t>(*timeZoneOffset) * 60;
+        if ((shift > 0 && seconds > std::numeric_limits<std::int64_t>::max() - shift) || (shift < 0 && seconds < std::numeric_limits<std::int64_t>::min() - shift)) {
+            throw std::invalid_argument("The moment is too far from 1970 to shift by the time zone offset.");
+        }
+        return fromUtc(seconds + shift);
     }
+
+    // The system converts only the moments that its own time type and calendar hold, such as none before 1970 on Windows.
     const auto moment = static_cast<std::time_t>(seconds);
     std::tm local{};
 #if defined(_WIN32)
-    localtime_s(&local, &moment);
+    const bool converted = localtime_s(&local, &moment) == 0;
 #else
-    localtime_r(&moment, &local);
+    const bool converted = localtime_r(&moment, &local) != nullptr;
 #endif
+    if (!converted) {
+        throw std::invalid_argument(std::format("The system cannot express the moment {} in the time zone of the device. Pass a \"timeZoneOffset\" to format it.", seconds));
+    }
     return {.year = local.tm_year + 1900, .month = local.tm_mon + 1, .day = local.tm_mday, .hour = local.tm_hour, .minute = local.tm_min, .weekday = local.tm_wday};
 }
 

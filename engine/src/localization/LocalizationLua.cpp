@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -155,7 +156,11 @@ int LocalizationLua::formatNumber(lua_State* L) {
 
 // Writes a moment in Unix seconds with `formatDate(seconds[, {date = 'medium', time = false, timeZoneOffset, language}])`, where `date = false` leaves the date out.
 int LocalizationLua::formatDate(lua_State* L) {
-    const auto seconds = static_cast<std::int64_t>(luaL_checknumber(L, 1));
+    const double moment = luaL_checknumber(L, 1);
+    if (!(moment >= -0x1p63 && moment < 0x1p63)) {
+        throw std::invalid_argument("A moment to format is a finite number of seconds within the range of 64-bit integers.");
+    }
+    const auto seconds = static_cast<std::int64_t>(moment);
     DateFormat::Options options;
     if (!lua_isnoneornil(L, 2)) {
         luaL_checktype(L, 2, LUA_TTABLE);

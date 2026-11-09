@@ -148,6 +148,11 @@ TEST(LocalizationFormatLuaTest, FormatsAndPicksPluralFormsFromLua) {
     EXPECT_NE(fixture.lua("localization.formatNumber(0 / 0)").find("A number to format must be finite."), std::string::npos);
     EXPECT_NE(fixture.lua("localization.formatDate(0, {date = 'tiny'})").find("The date of a date format must be \"short\", \"medium\", \"long\", \"full\" or false."), std::string::npos);
     EXPECT_NE(fixture.lua("localization.formatDate(0, {timeZoneOffset = 5000})").find("A time zone offset runs from -1080 to 1080 minutes."), std::string::npos);
+    for (const char* moment : {"0/0", "math.huge", "-math.huge", "1e300"}) {
+        EXPECT_NE(fixture.lua(std::string("localization.formatDate(") + moment + ")").find("A moment to format is a finite number of seconds within the range of 64-bit integers."), std::string::npos) << moment;
+    }
+    EXPECT_NE(fixture.lua("localization.formatDate(math.maxinteger - 1023, {timeZoneOffset = 60})").find("The moment is too far from 1970 to shift by the time zone offset."), std::string::npos);
+    EXPECT_NE(fixture.lua("localization.formatDate(9e18)").find("The system cannot express the moment 9000000000000000000 in the time zone of the device."), std::string::npos);
     EXPECT_NE(fixture.lua("localization.formatList({'a'}, {type = 'xor'})").find("The type of a list must be \"and\" or \"or\"."), std::string::npos);
 }
 

@@ -36,7 +36,7 @@ class DateFormat final {
         int weekday = 4;
     };
 
-    // Throws `std::invalid_argument` for an offset beyond 18 hours.
+    // Throws `std::invalid_argument` for an offset beyond 18 hours, or for a moment that the offset or the time zone of the device cannot express.
     [[nodiscard]] static std::string format(std::string_view language, std::int64_t seconds, const Options& options);
 
     // The fields of the moment at the offset in minutes from UTC, or in the time zone of the device without one.
