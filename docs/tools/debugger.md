@@ -66,7 +66,7 @@ The development server takes one editor at a time and turns away another one whi
 
 ## Breakpoints
 
-A breakpoint halts the app before its line runs. Lines in the files of `source/` and in the Lua modules of plugins take breakpoints, and the editor shows the file and the line where the app halted.
+A breakpoint halts the app before its line runs. Lines in the files of `source/` and in the Lua modules of plugins take breakpoints, and the editor shows the file and the line where the app halted. A line goes from 1 to 1048576, and the editor shows a breakpoint on another line as unverified with the reason `The line of a breakpoint is a whole number from 1 to 1048576.`.
 
 Every breakpoint can also have:
 

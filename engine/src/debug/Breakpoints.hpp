@@ -14,6 +14,9 @@ namespace haylen::debug {
 // The breakpoints of the Lua debugger, indexed by the package path of their file and their line, so the hooks find out at once whether a function or a line holds one. A breakpoint stops only when its condition holds and its count of hits passes, and a log point writes its message instead of stopping.
 class Breakpoints final {
   public:
+    // The hooks keep a count for every line up to the highest one that holds a breakpoint, so a line beyond this bound, which no source reaches, holds none.
+    static constexpr int kMaxLine = 1 << 20;
+
     // When a breakpoint stops by the count of its hits: always, at the hit of the count, from that hit on, after it or at every multiple of it.
     struct HitCondition {
         enum class Operator : std::uint8_t {

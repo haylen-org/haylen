@@ -459,6 +459,17 @@ TEST_F(DebuggerTest, AnswersAMalformedRequestWithAnErrorThatNamesTheField) {
     EXPECT_EQ(client.getResponse(set).at("body").at("breakpoints").at(0).at("verified"), true);
 }
 
+TEST_F(DebuggerTest, RefusesABreakpointBeyondTheLastLineASourceReaches) {
+    client.connect(fixture.lua());
+    const int set = client.request("setBreakpoints", breakpoints({{{"line", 1048577}}, {{"line", 3}}}));
+    client.getDebugger().update(fixture.lua());
+
+    const core::Json results = client.getResponse(set).at("body").at("breakpoints");
+    EXPECT_EQ(results.at(0).at("verified"), false);
+    EXPECT_EQ(results.at(0).at("message"), "The line of a breakpoint is a whole number from 1 to 1048576.");
+    EXPECT_EQ(results.at(1).at("verified"), true);
+}
+
 // A web page cannot halt, so it keeps the log points and says why the other breakpoints never take effect.
 TEST_F(DebuggerWebTest, KeepsOnlyTheLogPointsOnAPageThatCannotHalt) {
     fixture.host().setHaltable(false);

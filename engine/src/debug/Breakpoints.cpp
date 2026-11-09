@@ -1,6 +1,7 @@
 #include "debug/Breakpoints.hpp"
 
 #include <charconv>
+#include <format>
 #include <utility>
 
 namespace haylen::debug {
@@ -78,8 +79,8 @@ std::vector<Breakpoints::Result> Breakpoints::set(const std::string& path, const
             results.push_back({.id = id, .line = request.line, .message = "The hit count \"" + request.hitCondition + "\" is not a count, which is a whole number alone or after \"==\", \">=\", \">\" or \"%\"."});
             continue;
         }
-        if (request.line <= 0) {
-            results.push_back({.id = id, .line = request.line, .message = "The line of a breakpoint starts from 1."});
+        if (request.line <= 0 || request.line > kMaxLine) {
+            results.push_back({.id = id, .line = request.line, .message = std::format("The line of a breakpoint is a whole number from 1 to {}.", kMaxLine)});
             continue;
         }
         file.lines[request.line] = Breakpoint{.id = id, .line = request.line, .condition = request.condition, .hit = *hit, .logMessage = request.logMessage};
