@@ -34,6 +34,9 @@ class WindowsDesktop final {
   private:
     static constexpr UINT kStartDragMessage = WM_APP + 1;
 
+    // The power setting `GUID_POWER_SAVING_STATUS`, which tells whether the battery saver is on.
+    static constexpr GUID kPowerSavingStatus{0xe00958c0, 0xc213, 0x4ace, {0xac, 0x77, 0xfe, 0xcc, 0xed, 0x2e, 0xee, 0xa5}};
+
     struct DisplayList {
         std::vector<Display> displays;
         float desktopScale = 1.0F;

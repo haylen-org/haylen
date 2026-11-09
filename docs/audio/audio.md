@@ -531,6 +531,52 @@ On Android the activity turns the audio focus into those platform events. A loss
 
 When the app goes to the background, the engine stops the audio output. It starts the output again when the app comes back, unless an interruption still holds it. On the web, a page that pauses the app with `Module.haylen.pause()` suspends the output the same way. The app stays suspended until the page resumes it and the tab shows.
 
+### Playing in the background
+
+A music player, a radio, a podcast app or a meditation app keeps playing when the person leaves it. The key `audio.background` of `app.json` declares it, together with the `'playback'` session, which is the only one that iOS and tvOS play in the background:
+
+```json
+{
+    "name": "Night Radio",
+    "identifier": "com.haylen.nightradio",
+    "audio": {"iosSession": "playback", "background": true},
+    "lifecycle": {"pauseOnBackground": false}
+}
+```
+
+The engine then keeps the output running in the background while a voice plays, and stops it once no voice plays there, so the system may suspend an app whose sound ended or paused. A voice that starts again in the background, such as from the play button of the lock screen, brings the output back. The rest of the app follows the [lifecycle options](../core/lifecycle.md#halting-the-app): with `pauseOnBackground` left at `true`, scenes, timers and tweens stand still while the sound plays on, and the app still hears the [`mediaCommand` events](../lua-api/system.md#events) of the controls of the system. A player that moves to the next track in the background sets `pauseOnBackground` to `false`, so its timers and the end of each track keep running there. An app that mutes itself with `muteOnFocusLoss` is muted in the background as well. The function [`audio.setBackground`](../lua-api/audio.md#audiosetbackgroundenabled) turns the background off and on again while the app runs, such as for a game whose radio alone plays on there.
+
+The tools bring what each platform needs into the project of the app, from `app.json`, as [`haylen.py prepare`](../tools/distribution.md) writes it:
+
+| Platform | What the app plays in the background |
+| --- | --- |
+| iOS, iPadOS, tvOS and visionOS | The mode `audio` of `UIBackgroundModes` in the `Info.plist`, which `haylen.py` adds. While the session plays, UIKit lets the app run, and the engine runs its frames ten times a second from a timer, since the display link stops there. Once the sound stops, UIKit suspends the app, and the controls of the lock screen wake it again. A project without the mode logs once what it lacks, and the sound stops when the app leaves. |
+| Mac Catalyst and macOS | Nothing more. A Mac app keeps running in the background and plays on. |
+| Android | The library `haylen-playback`, which `haylen.py` adds to the project, with the foreground service `dev.haylen.HaylenPlaybackService` of the type `mediaPlayback` and the permissions `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_MEDIA_PLAYBACK`. While the app shows what it plays as playing with [`system.setNowPlaying`](../lua-api/system.md#systemsetnowplayinginfo), the service keeps the app in the foreground with the media notification, so Android neither freezes nor ends it, and the app keeps the audio focus. Without now-playing information Android freezes the app about a minute after it left, which stops the sound. Android lets an app start the service only while it is in the foreground or right after a command of its media session, and a refusal logs a warning. Google Play asks apps with a foreground service to declare its type in the Play Console. |
+| Windows and Linux | Nothing more. A minimized window keeps running and plays on. |
+| Web | Nothing more. A hidden tab keeps running the app from timers, which browsers do not slow down while the page plays sound. Safari on iPhones and iPads suspends the page when the browser leaves the screen, which stops its sound, and a browser that freezes or discards a hidden tab stops it as well. |
+
+```lua
+local assets = require('haylen.assets')
+local audio = require('haylen.audio')
+local events = require('haylen.events')
+local system = require('haylen.system')
+
+local voice = audio.playMusic(assets.load('music/harbor.ogg', 'sound', {stream = true}))
+system.setNowPlaying({title = 'Harbor at dawn', artist = 'The island band', duration = 184, playing = true})
+
+events.on('appBackground', function()
+    print('The radio plays on while the app is away.')
+end)
+
+events.on('mediaCommand', function(event)
+    if event.command == 'pause' then
+        audio.pause(voice)
+        system.setNowPlaying({title = 'Harbor at dawn', artist = 'The island band', duration = 184, position = audio.cursor(voice), playing = false})
+    end
+end)
+```
+
 ### The browser
 
 On the web, the engine plays through an audio output of its own, which is the only output that miniaudio has there. It works like this:

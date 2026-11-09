@@ -89,6 +89,9 @@ class JavaBridge final {
 
     // Hands the media session of the activity what plays, as the JSON of `{title, artist, album, duration, position, playing, commands}` with the bytes of its artwork, or an empty JSON to leave the controls.
     static void updateMediaSession(std::string_view infoJson, std::span<const std::byte> artwork);
+
+    // Tells the media session whether the app plays audio in the background, which keeps it in the foreground while what plays shows as playing.
+    static void setBackgroundAudio(bool value);
     static void rumbleGamepad(std::int32_t device, float low, float high, std::int64_t milliseconds);
 
     // The clipboard of the system, which the frame thread reads and writes. A write answers unsupported while no activity exists or when Java fails.
@@ -187,6 +190,7 @@ class JavaBridge final {
     static jmethodID announceMethod;
     static jclass mediaSessionClass;
     static jmethodID updateMediaSessionMethod;
+    static jmethodID setBackgroundAudioMethod;
     static jclass outputsClass;
     static jmethodID openOutputMethod;
     static jmethodID closeOutputMethod;

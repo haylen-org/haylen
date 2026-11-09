@@ -65,6 +65,7 @@
 
 -keep class dev.haylen.HaylenMediaSession {
     static void update(byte[], byte[]);
+    static void setBackground(boolean);
 }
 
 # The HTTP transport of Varn resolves its Kotlin classes, their fields and methods by name.

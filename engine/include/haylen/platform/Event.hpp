@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -60,9 +61,17 @@ struct Event {
         Momentum,
     };
 
+    // How short of memory the device is, as `LowMemory` reports it: a warning that the app should free what it can rebuild, or a critical level at which the system ends apps soon.
+    enum class MemoryLevel : std::uint8_t {
+        Warning,
+        Critical,
+    };
+
     static constexpr std::array<std::pair<std::string_view, Type>, 30> kTypeNames{{
         {"keyDown", Type::KeyDown}, {"keyUp", Type::KeyUp}, {"character", Type::Character}, {"mouseDown", Type::MouseDown}, {"mouseUp", Type::MouseUp}, {"mouseMove", Type::MouseMove}, {"mouseScroll", Type::MouseScroll}, {"mouseEnter", Type::MouseEnter}, {"mouseLeave", Type::MouseLeave}, {"touchBegan", Type::TouchBegan}, {"touchMoved", Type::TouchMoved}, {"touchEnded", Type::TouchEnded}, {"touchCancelled", Type::TouchCancelled}, {"resized", Type::Resized}, {"suspended", Type::Suspended}, {"resumed", Type::Resumed}, {"focusGained", Type::FocusGained}, {"focusLost", Type::FocusLost}, {"quitRequested", Type::QuitRequested}, {"lowMemory", Type::LowMemory}, {"textEdited", Type::TextEdited}, {"textAction", Type::TextAction}, {"keyboardChanged", Type::KeyboardChanged}, {"networkChanged", Type::NetworkChanged}, {"interruptionBegan", Type::InterruptionBegan}, {"interruptionEnded", Type::InterruptionEnded}, {"windowMoved", Type::WindowMoved}, {"displaysChanged", Type::DisplaysChanged}, {"outputChanged", Type::OutputChanged}, {"audioServicesReset", Type::AudioServicesReset},
     }};
+
+    static constexpr std::array<std::pair<std::string_view, MemoryLevel>, 2> kMemoryLevelNames{{{"warning", MemoryLevel::Warning}, {"critical", MemoryLevel::Critical}}};
 
     static constexpr std::size_t kMaxTouchPoints = 10;
 
@@ -95,8 +104,15 @@ struct Event {
     // Whether the device reaches the network, as `NetworkChanged` reports it.
     bool online = false;
 
+    // How short of memory the device is, as `LowMemory` reports it.
+    MemoryLevel memoryLevel = MemoryLevel::Warning;
+
     // The output whose report changed, or that the pointer of the event is over, or 0 for the window of the app. The position of a pointer over an output is in its points.
     std::uint32_t output = 0;
+
+    [[nodiscard]] static std::string_view memoryLevelName(MemoryLevel value) noexcept {
+        return std::ranges::find(kMemoryLevelNames, value, &std::pair<std::string_view, MemoryLevel>::second)->first;
+    }
 
     // Returns whether the event is player input: keys, text, mouse buttons, movement and scrolling, touches and the edits of native text fields.
     [[nodiscard]] bool isInput() const noexcept {

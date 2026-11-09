@@ -114,6 +114,12 @@ class Host : public Window {
     [[nodiscard]] virtual Theme getTheme() const = 0;
     [[nodiscard]] virtual Battery getBattery() const = 0;
 
+    // Whether the power saving mode of the system is on, such as the low power mode of Apple platforms or the battery saver of Android and Windows, or empty where the platform does not tell, which the engine reads once per frame.
+    [[nodiscard]] virtual std::optional<bool> getPowerSaving() const = 0;
+
+    // The IANA name of the time zone of the device, such as `America/Sao_Paulo`, or an empty text where the platform does not tell, which the engine reads once per frame.
+    [[nodiscard]] virtual std::string getTimeZone() const = 0;
+
     // The accessibility settings as the platform last reported them, which the engine reads once per frame to publish `accessibilitySettingsChanged`.
     [[nodiscard]] virtual AccessibilitySettings getAccessibilitySettings() const = 0;
 
@@ -125,6 +131,9 @@ class Host : public Window {
 
     // Opens a decoder of the video file that the reader reads, which the engine calls on a worker of the I/O pool, so several may open at once. Returns null where the platform has no decoder of video files, and throws `std::runtime_error` for a file the platform cannot decode.
     [[nodiscard]] virtual std::unique_ptr<VideoDecoder> openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) = 0;
+
+    // Tells the platform whether the app plays audio in the background, as `audio.background` of `app.json` declares, when an app starts. The platform then keeps running the frames of the app in the background while the system lets it, and on Android keeps the app in the foreground with its media notification while what plays shows as playing. A project of the app that lacks what the platform needs for it, such as the mode `audio` of `UIBackgroundModes`, logs once what is missing and how to add it.
+    virtual void setBackgroundAudio(bool value) = 0;
 
     // Shows what the app plays in the now-playing and lock-screen controls of the system, or takes the app out of them with nothing, where the platform has such controls. The platform sends the commands of the controls, the media keys and headset buttons through `MediaSession::receive`.
     virtual void setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) = 0;

@@ -282,7 +282,6 @@ SystemInfo Services::getSystemInfo() {
         .memoryBytes = details.value("memoryBytes", std::uint64_t{0}),
         .locale = details.value("locale", std::string()),
         .languages = details.at("languages").get<std::vector<std::string>>(),
-        .timeZone = details.value("timeZone", std::string()),
     };
 }
 
@@ -319,6 +318,9 @@ Permission::Answer Services::vibrate(float seconds) {
         return {.state = Permission::State::Unsupported, .message = "The browser has no Vibration API."};
     }
 }
+
+// A hidden page keeps running the frames of the app from timers, which browsers do not slow down while the page plays sound.
+void Services::setBackgroundAudio(bool) {}
 
 void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {
     if (!value) {

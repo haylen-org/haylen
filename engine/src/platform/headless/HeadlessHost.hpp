@@ -336,6 +336,12 @@ class HeadlessHost final : public Host {
     [[nodiscard]] Battery getBattery() const override {
         return systemState.getBattery();
     }
+    [[nodiscard]] std::optional<bool> getPowerSaving() const override {
+        return systemState.getPowerSaving();
+    }
+    [[nodiscard]] std::string getTimeZone() const override {
+        return systemState.getTimeZone();
+    }
     [[nodiscard]] AccessibilitySettings getAccessibilitySettings() const override {
         return systemState.getAccessibility();
     }
@@ -344,6 +350,9 @@ class HeadlessHost final : public Host {
     }
     void updateAccessibility(std::span<const AccessibilityElement> elements, std::uint64_t focused) override {
         accessibilityTrees.push_back({.elements = {elements.begin(), elements.end()}, .focused = focused});
+    }
+    void setBackgroundAudio(bool value) override {
+        backgroundAudio = value;
     }
     void setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) override {
         nowPlaying = value;
@@ -505,12 +514,18 @@ class HeadlessHost final : public Host {
         systemInfo = std::move(value);
     }
 
-    // Change the theme, the battery and the accessibility settings from any thread, the way platform services report them. The engine publishes the change at its next frame.
+    // Change the theme, the battery, the power saving, the time zone and the accessibility settings from any thread, the way platform services report them. The engine publishes the change at its next frame.
     void setTheme(Theme value) {
         systemState.setTheme(value);
     }
     void setBattery(const Battery& value) {
         systemState.setBattery(value);
+    }
+    void setPowerSaving(std::optional<bool> value) {
+        systemState.setPowerSaving(value);
+    }
+    void setTimeZone(std::string value) {
+        systemState.setTimeZone(std::move(value));
     }
     void setAccessibilitySettings(const AccessibilitySettings& value) {
         systemState.setAccessibility(value);
@@ -525,6 +540,11 @@ class HeadlessHost final : public Host {
     // Whether the headless platform wants the tree of accessible elements, as a platform does while a screen reader runs.
     void setAccessibilityTreeWanted(bool value) noexcept {
         accessibilityWanted = value;
+    }
+
+    // Whether the app that started last plays audio in the background, as it told the platform.
+    [[nodiscard]] bool isBackgroundAudio() const noexcept {
+        return backgroundAudio;
     }
 
     // What the engine shows in the now-playing controls of the headless platform, or nothing.
@@ -717,6 +737,7 @@ class HeadlessHost final : public Host {
     std::vector<AccessibilityTree> accessibilityTrees;
     std::vector<Announcement> announcements;
     std::optional<MediaSession::NowPlaying> nowPlaying;
+    bool backgroundAudio = false;
     bool accessibilityWanted = false;
     VideoOpener videoOpener;
     std::vector<DialogCall> dialogCalls;

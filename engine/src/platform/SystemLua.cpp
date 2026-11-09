@@ -55,6 +55,28 @@ int SystemLua::battery(lua_State* L) {
     return 1;
 }
 
+// Returns whether the power saving mode of the system is on, or nil where the platform does not tell.
+int SystemLua::powerSaving(lua_State* L) {
+    const std::optional<bool> enabled = lua::Runtime::getEngine(L).getSystem().getPowerSaving();
+    if (!enabled) {
+        lua_pushnil(L);
+        return 1;
+    }
+    lua::Stack::push(L, *enabled);
+    return 1;
+}
+
+// Returns the IANA name of the time zone, or nil where the platform does not tell.
+int SystemLua::timeZone(lua_State* L) {
+    const std::string& zone = lua::Runtime::getEngine(L).getSystem().getTimeZone();
+    if (zone.empty()) {
+        lua_pushnil(L);
+        return 1;
+    }
+    lua::Stack::push(L, zone);
+    return 1;
+}
+
 // Returns a promise that resolves on a later frame once an app took the url.
 int SystemLua::openUrl(lua_State* L) {
     core::Engine& engine = lua::Runtime::getEngine(L);
@@ -165,7 +187,7 @@ int SystemLua::clearNowPlaying(lua_State* L) {
 
 int SystemLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"info", &info}, {"theme", &theme}, {"battery", &battery}, {"openUrl", &lua::Binding::native<&openUrl>}, {"clipboard", &lua::Binding::native<&clipboard>}, {"setClipboard", &lua::Binding::native<&setClipboard>}, {"vibrate", &lua::Binding::native<&vibrate>}, {"permission", &lua::Binding::native<&permission>}, {"requestPermission", &lua::Binding::native<&requestPermission>}, {"setNowPlaying", &lua::Binding::native<&setNowPlaying>}, {"clearNowPlaying", &lua::Binding::native<&clearNowPlaying>}, {nullptr, nullptr},
+        {"info", &info}, {"theme", &theme}, {"battery", &battery}, {"powerSaving", &powerSaving}, {"timeZone", &timeZone}, {"openUrl", &lua::Binding::native<&openUrl>}, {"clipboard", &lua::Binding::native<&clipboard>}, {"setClipboard", &lua::Binding::native<&setClipboard>}, {"vibrate", &lua::Binding::native<&vibrate>}, {"permission", &lua::Binding::native<&permission>}, {"requestPermission", &lua::Binding::native<&requestPermission>}, {"setNowPlaying", &lua::Binding::native<&setNowPlaying>}, {"clearNowPlaying", &lua::Binding::native<&clearNowPlaying>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

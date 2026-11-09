@@ -1,12 +1,12 @@
 # 📖 `haylen.system`
 
-The module `haylen.system` tells what the device and its operating system are, and follows the theme and the battery of the system. It also offers services that every system has. It opens a url with the app that handles it, reads and writes the clipboard, vibrates the device, and checks and asks for the [permissions](#permissions) that a system grants while the app runs, with one vocabulary of states on every platform. It shows what the app plays in the now-playing controls of the system, whose media keys and buttons reach the app. Use it to pick the language of a first launch, to match the colors of the app to the system, to do less work on a low battery, and for links to web pages, stores and mail. Native message boxes and file pickers live in [`haylen.dialogs`](dialogs.md), and the methods of the app and its plugins live in [`haylen.platform`](platform.md).
+The module `haylen.system` tells what the device and its operating system are, and follows the theme, the battery, the power saving mode and the time zone of the system. It also offers services that every system has. It opens a url with the app that handles it, reads and writes the clipboard, vibrates the device, and checks and asks for the [permissions](#permissions) that a system grants while the app runs, with one vocabulary of states on every platform. It shows what the app plays in the now-playing controls of the system, whose media keys and buttons reach the app. Use it to pick the language of a first launch, to match the colors of the app to the system, to do less work on a low battery or while the system saves power, and for links to web pages, stores and mail. Native message boxes and file pickers live in [`haylen.dialogs`](dialogs.md), and the methods of the app and its plugins live in [`haylen.platform`](platform.md).
 
 ```lua
 local system = require('haylen.system')
 ```
 
-The platform reads what the device is once, when the first app of the process starts. It reads the theme and the battery whenever the system reports a change. The engine publishes each change once, at the start of the next frame, as the [events](#events) `systemThemeChanged` and `batteryChanged`.
+The platform reads what the device is once, when the first app of the process starts. It reads the theme, the battery, the power saving mode and the time zone whenever the system reports a change. The engine publishes each change once, at the start of the next frame, as the [events](#events) `systemThemeChanged`, `batteryChanged`, `powerSavingChanged` and `timeZoneChanged`.
 
 ## Functions
 
@@ -29,7 +29,6 @@ Returns a new table that describes the device. A value that the platform does no
 | `gpuName` | string or `nil` | The GPU that the graphics device of the engine runs on, as its graphics API names it. That is the Metal device, the adapter of Direct3D 11, the `GL_RENDERER` string of OpenGL, or on WebGL 2 the renderer that `WEBGL_debug_renderer_info` unmasks where the browser offers it. On WebGPU it is the adapter info, whose description the vendor and the architecture replace where the browser leaves it empty. |
 | `locale` | string or `nil` | The language of the user as a BCP 47 tag, such as `'pt-BR'`. |
 | `languages` | table | Every language that the user prefers, most preferred first, as BCP 47 tags. It is empty where the platform does not report them. |
-| `timeZone` | string or `nil` | The IANA name of the time zone, such as `'America/Sao_Paulo'`. |
 
 ```lua
 local localization = require('haylen.localization')
@@ -74,6 +73,39 @@ local battery = system.battery()
 if battery.state == 'discharging' and battery.level and battery.level < 0.2 then
     print('The battery is low, so the app draws fewer particles.')
 end
+```
+
+### system.powerSaving()
+
+Returns `true` while the power saving mode of the system is on, such as the low power mode of Apple platforms, the battery saver of Android and Windows or the power saver profile of Linux, `false` while it is off, and `nil` where the platform does not tell, as the [platforms](#platforms) section lists. The event `powerSavingChanged` reports every change. An app that saves power too draws fewer effects, lowers its frame rate with [`window.setFrameRate`](window.md#windowsetframerateframespersecond) or pauses work that can wait.
+
+```lua
+local events = require('haylen.events')
+local system = require('haylen.system')
+local window = require('haylen.window')
+
+local function follow(enabled)
+    window.setFrameRate(enabled and 30 or 0)
+end
+
+follow(system.powerSaving())
+events.on('powerSavingChanged', function(change)
+    follow(change.enabled)
+end)
+```
+
+### system.timeZone()
+
+Returns the IANA name of the time zone of the device, such as `'America/Sao_Paulo'`, or `nil` where the platform does not tell it. The event `timeZoneChanged` reports every change, such as a traveler who lands in another zone, and the local times that [`localization.formatDate`](localization.md) writes follow the new zone from that event on.
+
+```lua
+local events = require('haylen.events')
+local system = require('haylen.system')
+
+print('The clock of the app runs in ' .. (system.timeZone() or 'an unknown zone') .. '.')
+events.on('timeZoneChanged', function(change)
+    print('The device moved to ' .. change.timeZone .. '.')
+end)
 ```
 
 ### system.openUrl(url)
@@ -278,6 +310,8 @@ The engine publishes these changes on [`haylen.events`](events.md#engine-events)
 | --- | --- | --- |
 | `systemThemeChanged` | The system switched between light and dark colors. | `{theme}`, which is `'light'` or `'dark'`. |
 | `batteryChanged` | The level, the charging or the state of the battery changed. | The table that `system.battery()` returns. |
+| `powerSavingChanged` | The power saving mode of the system turned on or off. | `{enabled}`, the boolean that `system.powerSaving()` returns. |
+| `timeZoneChanged` | The time zone of the device changed. | `{timeZone}`, the IANA name that `system.timeZone()` returns. |
 | `mediaCommand` | A control of the system, a media key or a headset button asked the app to change what plays. It comes only once the app showed what plays with [`system.setNowPlaying`](#systemsetnowplayinginfo). | `{command}`, one of the names of `commands`, with `position` in seconds for `'seek'`. |
 
 ```lua
@@ -373,14 +407,25 @@ This table tells where each platform reads the theme, the battery and what the d
 | Windows | The app theme of the personalization settings, with every change. | The power status of the system, with every change that Windows announces, `'none'` on desktops without a battery. | The version of the kernel, the model and the maker of the computer and the processor from the registry, the cores, the memory, the languages of the user and the time zone. The ICU of Windows 10 1903 and later gives the IANA name of the time zone. |
 | Linux | The color scheme of the settings portal of the desktop, with every change, through GIO, which the engine loads at run time. Without GIO or the portal the theme stays `'light'` and never changes. | The first battery among the power supplies of the system, read when the app starts and every 30 seconds, `'none'` without one. | The distribution of `os-release` with the release of the kernel, the model and the maker of the computer, the processor, which ARM processors often leave out, the cores, the memory, the languages of `LANGUAGE` and `LANG`, and the time zone of `TZ` or `/etc/localtime`. |
 
+This table tells where each platform reads the power saving mode and the time zone.
+
+| Platform | Power saving | Time zone |
+| --- | --- | --- |
+| macOS, iOS, iPadOS and Mac Catalyst | The low power mode of `NSProcessInfo`, with every change. | The time zone of the system, with every change. |
+| tvOS | `false`, since a TV has no low power mode. | The time zone of the system, with every change. |
+| Android | The battery saver of the power manager, with every change while the activity lives. | The default time zone, and the broadcast of every change while the activity lives. |
+| Web | `nil`, since browsers tell pages nothing about it. | The time zone of `Intl`, which the page reads again each time it becomes visible or its window takes the focus, since browsers announce no change. |
+| Windows | The battery saver of the power status, which Windows 11 calls the energy saver, with every change. | The time zone of the system turned into its IANA name by the ICU of Windows, with every time change that the window hears. |
+| Linux | The power saver profile of the power profile monitor of GIO, from GLib 2.70 on, with every change, and `nil` without it. | The zone of `TZ`, which stays for the process, or else the zone that `/etc/localtime` links to, with every change of the link that GIO sees. |
+
 This table tells where each platform shows what plays, and which keys and buttons reach the app.
 
 | Platform | Controls | Media keys and buttons |
 | --- | --- | --- |
-| iOS and iPadOS | The lock screen, the control center and the Dynamic Island, through the info center and the remote commands of MediaPlayer, which the engine loads at run time. The lock screen shows an app whose audio session plays. So an app that plays in the background sets `audio.iosSession` of `app.json` to `playback`. | Headsets, CarPlay and the other accessories. |
+| iOS and iPadOS | The lock screen, the control center and the Dynamic Island, through the info center and the remote commands of MediaPlayer, which the engine loads at run time. The lock screen shows an app whose audio session plays. So an app that plays in the background sets `audio.iosSession` of `app.json` to `playback` and `audio.background` to `true`, as the [audio guide](../audio/audio.md#playing-in-the-background) describes. | Headsets, CarPlay and the other accessories. |
 | tvOS | The now-playing screen of the Apple TV. | The play and pause button of the Siri Remote and of other remotes. |
 | macOS and Mac Catalyst | The now-playing item of the control center and of the menu bar, with the playback state that the media keys follow. | The media keys of the keyboard and the buttons of headsets. |
-| Android | The media notification of the shade and the lock screen, of a media session. Android 13 and later draw the controls from the commands. The notifications of a media session need no permission. The notification channel takes its name from the string `haylen_media_channel` of the resources of the app, `Playback` by default. | Headsets, Bluetooth devices and the media buttons of TV remotes. The button that toggles reaches the app as `'togglePlayPause'`. |
+| Android | The media notification of the shade and the lock screen, of a media session. Android 13 and later draw the controls from the commands. The notifications of a media session need no permission. The notification channel takes its name from the string `haylen_media_channel` of the resources of the app, `Playback` by default. In an app that [plays in the background](../audio/audio.md#playing-in-the-background), the notification of what plays keeps the app in the foreground while it shows as playing. | Headsets, Bluetooth devices and the media buttons of TV remotes. The button that toggles reaches the app as `'togglePlayPause'`. |
 | Web | The media hub of the browser and the lock screen of phones, through the Media Session API. The browser shows them only while the page plays sound. | The media keys of the keyboard and of headsets. A browser that lacks an action leaves it out. |
 | Windows | The media flyout of the volume and of the lock screen, through the transport controls of the window of the app. | The media keys of the keyboard and of headsets. |
 | Linux | None. Linux desktops show the players that serve the MPRIS interface on the session bus, which the engine does not serve. So `setNowPlaying` changes nothing there. | None. |
@@ -409,6 +454,8 @@ The function `engine.getSystem()` returns the `haylen::platform::System` of the 
 | `getInfo()` | The `haylen::platform::SystemInfo`. Its enums `Os` and `DeviceKind` name the operating system and the kind of device. Its empty strings and zeros are the values that the platform does not report. |
 | `getTheme()` | The `haylen::platform::Theme`, `Light` or `Dark`. |
 | `getBattery()` | The `haylen::platform::Battery`, with its optional `level`, `charging` and `State`. |
+| `getPowerSaving()` | A `std::optional<bool>`, empty where the platform does not tell. |
+| `getTimeZone()` | The IANA name of the time zone, empty where the platform does not tell. |
 | `openUrl(url, callback)` | Opens the url and calls back on the frame thread, at a later frame, with a `haylen::platform::Permission::Answer`, whose state is `Granted`, or `Denied` or `Unsupported` with the sentence in `message`. |
 | `getClipboard()` | The text on the clipboard for a paste of the person into a field of the UI. |
 | `readClipboard(callback)` | Reads the text on the clipboard for the app and calls back at a later frame with an `Answer` and the text. |

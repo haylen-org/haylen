@@ -8,7 +8,7 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.LifecycleOwner;
 
-// Holds the audio focus while the activity is resumed, as an observer of its lifecycle. When another app takes it, such as a phone call or an alarm, the app is interrupted: the engine makes it inactive until the focus comes back. A request that the system delays or refuses, such as during a call, interrupts the app as well, and a delayed one ends the interruption once the system grants it. A lasting loss, such as music that the player starts in another app, keeps the app interrupted until it comes back to the foreground. A loss that lets the app play quieter needs nothing, since the system lowers the volume itself.
+// Holds the audio focus while the activity is resumed, and in the background while the app plays there, as an observer of its lifecycle. When another app takes it, such as a phone call or an alarm, the app is interrupted: the engine makes it inactive until the focus comes back. A request that the system delays or refuses, such as during a call, interrupts the app as well, and a delayed one ends the interruption once the system grants it. A lasting loss, such as music that the player starts in another app, keeps the app interrupted until it comes back to the foreground. A loss that lets the app play quieter needs nothing, since the system lowers the volume itself.
 final class HaylenAudioFocus implements AudioManager.OnAudioFocusChangeListener, DefaultLifecycleObserver {
     private final AudioManager manager;
     private final AudioFocusRequest request;
@@ -26,9 +26,12 @@ final class HaylenAudioFocus implements AudioManager.OnAudioFocusChangeListener,
         setInterrupted(manager.requestAudioFocus(request) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED);
     }
 
+    // An app that plays in the background keeps the focus there while it plays, so another app that takes it interrupts the sound.
     @Override
     public void onPause(@NonNull LifecycleOwner owner) {
-        manager.abandonAudioFocusRequest(request);
+        if (!HaylenMediaSession.isPlayingInBackground()) {
+            manager.abandonAudioFocusRequest(request);
+        }
     }
 
     @Override

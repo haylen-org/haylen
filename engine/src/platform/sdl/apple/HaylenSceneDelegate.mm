@@ -2,6 +2,7 @@
 
 #if !TARGET_OS_OSX
 #include "platform/NativeWindow.hpp"
+#import "platform/apple/AppleBackgroundAudio.hpp"
 #import "platform/apple/AppleNotifications.hpp"
 #import "platform/apple/AppleOrientation.hpp"
 #import "platform/apple/ApplePlugins.hpp"
@@ -10,7 +11,9 @@
 #import "platform/apple/HaylenDisplaySceneDelegate.h"
 #import "platform/apple/HaylenOverlayLayer.h"
 #import "platform/apple/HaylenScreenSceneDelegate.h"
+#include "platform/sdl/Runtime.hpp"
 
+using haylen::platform::AppleBackgroundAudio;
 using haylen::platform::AppleNotifications;
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
 using haylen::platform::AppleOrientation;
@@ -180,17 +183,24 @@ using haylen::platform::NativeWindow;
     if (!holdsApp) {
         return;
     }
+    AppleBackgroundAudio::enterForeground();
     [super sceneWillEnterForeground:scene];
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin sceneWillEnterForeground:scene];
     }
 }
 
+// The frames of an app that plays audio in the background go on there from a timer, after the app heard that it went there.
 - (void)sceneDidEnterBackground:(UIScene*)scene {
     if (!holdsApp) {
         return;
     }
     [super sceneDidEnterBackground:scene];
+    AppleBackgroundAudio::enterBackground(^{
+      if (haylen::platform::sdl::Runtime* runtime = haylen::platform::sdl::Runtime::find()) {
+          runtime->playBackgroundFrame();
+      }
+    });
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin sceneDidEnterBackground:scene];
     }

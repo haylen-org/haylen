@@ -98,6 +98,11 @@ class Runtime final {
     // Processes the events of the platform while the debugger halts the frame thread and returns whether the person or the system asks the app to quit.
     [[nodiscard]] bool pumpHaltedEvents();
 
+#if defined(__APPLE__) && !TARGET_OS_OSX
+    // Runs one frame from a timer of the platform while the display link of UIKit stops in the background, for an app that plays audio there.
+    void playBackgroundFrame();
+#endif
+
   private:
     // The highest number of iterations per second while the window shows nothing, minimized or hidden, which the display no longer paces, so the app keeps running timers and network callbacks without spending a core.
     static constexpr int kHiddenRate = 60;

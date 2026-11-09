@@ -95,11 +95,17 @@ TEST(BridgeRelayTest, ForwardsNativeRepliesToTheAttachedBridge) {
     EXPECT_EQ(events.back(), 6);
 }
 
-TEST(MemoryWarningTest, HandsEachWarningOverOnce) {
+TEST(MemoryWarningTest, HandsEachWarningOverOnceWithTheHighestLevel) {
     EXPECT_FALSE(MemoryWarning::take());
-    MemoryWarning::raise();
-    MemoryWarning::raise();
-    EXPECT_TRUE(MemoryWarning::take());
+    MemoryWarning::raise(Event::MemoryLevel::Warning);
+    MemoryWarning::raise(Event::MemoryLevel::Warning);
+    EXPECT_EQ(MemoryWarning::take(), Event::MemoryLevel::Warning);
+    EXPECT_FALSE(MemoryWarning::take());
+
+    // A warning that comes after a critical level before the frame keeps the frame critical.
+    MemoryWarning::raise(Event::MemoryLevel::Critical);
+    MemoryWarning::raise(Event::MemoryLevel::Warning);
+    EXPECT_EQ(MemoryWarning::take(), Event::MemoryLevel::Critical);
     EXPECT_FALSE(MemoryWarning::take());
 }
 

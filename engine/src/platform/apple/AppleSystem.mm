@@ -50,7 +50,6 @@ SystemInfo AppleSystem::getInfo() {
     for (NSString* language in NSLocale.preferredLanguages) {
         info.languages.emplace_back(language.UTF8String);
     }
-    info.timeZone = NSTimeZone.localTimeZone.name.UTF8String;
     return info;
 }
 

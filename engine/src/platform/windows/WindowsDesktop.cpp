@@ -212,9 +212,11 @@ void WindowsDesktop::startDrag() {
     PostMessageW(getWindow(), kStartDragMessage, 0, 0);
 }
 
+// The battery saver announces itself as a power setting, which reaches only the windows that register for it, for as long as the window lives.
 void WindowsDesktop::watch() {
     const HWND window = getWindow();
     sdlProcedure = reinterpret_cast<WNDPROC>(SetWindowLongPtrW(window, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&windowProcedure)));
+    RegisterPowerSettingNotification(window, &kPowerSavingStatus, DEVICE_NOTIFY_WINDOW_HANDLE);
 }
 
 void WindowsDesktop::update() {
@@ -297,9 +299,12 @@ LRESULT CALLBACK WindowsDesktop::windowProcedure(HWND window, UINT message, WPAR
         }
         break;
     case WM_POWERBROADCAST:
-        if (wParam == PBT_APMPOWERSTATUSCHANGE) {
-            WindowsSystem::reportBattery();
+        if (wParam == PBT_APMPOWERSTATUSCHANGE || wParam == PBT_POWERSETTINGCHANGE) {
+            WindowsSystem::reportPowerStatus();
         }
+        break;
+    case WM_TIMECHANGE:
+        WindowsSystem::reportTimeZone();
         break;
     default:
         break;

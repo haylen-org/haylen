@@ -594,6 +594,10 @@ void InputLua::pushEvent(lua_State* L, const platform::Event& event) {
         lua::Stack::push(L, event.online);
         lua_setfield(L, -2, "online");
         return;
+    case platform::Event::Type::LowMemory:
+        lua::Stack::push(L, platform::Event::memoryLevelName(event.memoryLevel));
+        lua_setfield(L, -2, "level");
+        return;
     default:
         return;
     }

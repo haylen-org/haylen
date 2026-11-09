@@ -141,6 +141,8 @@ Permission::Answer Services::vibrate(float) {
     return {.state = Permission::State::Unsupported, .message = "The test port has no vibration motor."};
 }
 
+void Services::setBackgroundAudio(bool) {}
+
 void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>&) {}
 
 bool Services::isAccessibilityTreeWanted() {

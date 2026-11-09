@@ -24,6 +24,8 @@
 #include "platform/windows/WindowsDesktop.hpp"
 #include "platform/windows/WindowsDialogs.hpp"
 #include "platform/windows/WindowsMediaSession.hpp"
+#include "platform/windows/WindowsMemory.hpp"
+#include "platform/windows/WindowsNetwork.hpp"
 #include "platform/windows/WindowsPermissions.hpp"
 #include "platform/windows/WindowsSystem.hpp"
 #include "platform/windows/WindowsVideoDecoder.hpp"
@@ -37,7 +39,9 @@ std::string_view Services::getName() noexcept {
 void Services::initialize() {
     WindowsSystem::reportTheme();
     WindowsSystem::reportAccessibility();
-    WindowsSystem::reportBattery();
+    WindowsSystem::reportPowerStatus();
+    WindowsSystem::reportTimeZone();
+    WindowsMemory::observe();
 }
 
 void Services::shutdown() noexcept {
@@ -135,6 +139,7 @@ void Services::startWindowDrag() {
 
 void Services::watchWindow() {
     WindowsDesktop::watch();
+    WindowsNetwork::observe();
 }
 
 void Services::updateWindow() {
@@ -209,6 +214,9 @@ std::string Services::explainBlockedSocket(std::intptr_t) {
 Permission::Answer Services::vibrate(float) {
     return {.state = Permission::State::Unsupported, .message = "Windows gives apps no vibration motor."};
 }
+
+// A minimized window keeps running its frames, so its sound plays on.
+void Services::setBackgroundAudio(bool) {}
 
 void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {
     WindowsMediaSession::update(value);

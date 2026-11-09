@@ -67,6 +67,34 @@ scene.push({
 
 An app can launch another app package with [`haylen.launch(path, options)`](../lua-api/haylen.md#haylenlaunchpath-options), such as one that it downloaded. Once the frame ends, the app stops the way a restart does, and the launched package starts with a new engine. The launched app may stop through `haylen.quit()`, through the Close button of its error screen, through the back button at its root on Android and Apple TV, or through a hold of Escape, of play and pause of a TV remote, of the back button of Android or a gamepad, or of three still fingers, which the launched app cannot take, as [`haylen.launch`](../lua-api/haylen.md#haylenlaunchpath-options) lists. Then the launcher starts again from its own package, as a new run of the whole start. The function [`haylen.launched()`](../lua-api/haylen.md#haylenlaunched) tells an app which way it started. A launched app plays in development when the app that launches it names a development server, such as the one that [`haylen serve`](../tools/distribution.md#serving-an-app) runs for an app, and the launcher keeps its own development session for its return.
 
+## The whole lifecycle
+
+The engine names every moment of the system, of the app and of its screen with one vocabulary of events, on every platform that reports it. The [events by platform](#events-by-platform) say where each one comes from and where it never fires.
+
+| Moment | What the app hears | What it reads |
+| --- | --- | --- |
+| The app comes to the foreground with the focus. | `appActive` | `haylen.appState()` is `'active'`. |
+| The app stays visible but loses the focus, the system interrupts it or native UI covers it. | `appInactive` | `'inactive'`, and `haylen.appCovered()` for a cover. |
+| The app goes to the background, which on phones, tablets, TVs and in browsers is the last moment before the system may suspend or end it without another word. | `appBackground` | `'background'`, and `haylen.halted()`. |
+| The app stops, because it quit, the person closed it or the system ends the process while it runs. | `appQuitRequested` where the platform asks first, then `appStopping` | `haylen.quit()` ends it from the app. |
+| The app starts again after the system ended it in the background. | `appStarted` | [`storage.resumeState()`](../lua-api/storage.md#resume-state) |
+| Another app of the process launched it. | `appStarted` | [`haylen.launched()`](../lua-api/haylen.md#haylenlaunched) |
+| The system is short of memory. | `appLowMemory` with `'warning'` or `'critical'` | [`assets`](../lua-api/assets.md) holds only what something holds. |
+| The light or dark colors of the system change. | `systemThemeChanged` | [`system.theme()`](../lua-api/system.md#systemtheme) |
+| The battery changes. | `batteryChanged` | [`system.battery()`](../lua-api/system.md#systembattery) |
+| The power saving mode of the system turns on or off. | `powerSavingChanged` | [`system.powerSaving()`](../lua-api/system.md#systempowersaving) |
+| The time zone changes. | `timeZoneChanged` | [`system.timeZone()`](../lua-api/system.md#systemtimezone) |
+| The network comes or goes. | `networkOnline`, `networkOffline` | [`haylen.networkState()`](../lua-api/haylen.md#haylennetworkstate) |
+| The accessibility settings change. | `accessibilitySettingsChanged` | [`accessibility.settings()`](../lua-api/accessibility.md#accessibilitysettings) |
+| The system takes the audio and gives it back, or the output moves. | `audioInterrupted`, `audioResumed`, `audioRouteChanged` | [`audio.interrupted()`](../lua-api/audio.md#audiointerrupted) |
+| The controls of the lock screen, a headset or the media keys ask for a change of what plays. | `mediaCommand` | [`system.setNowPlaying`](../lua-api/system.md#systemsetnowplayinginfo) shows what plays. |
+| The window shows or hides. | `appActive` and `appBackground` | `'background'` while it hides. |
+| The window changes size, orientation, fold, safe area or display. | `windowResized`, `windowOrientationChanged`, `windowFoldChanged`, `windowSafeAreaChanged`, `windowDisplayChanged` | [`haylen.window`](../lua-api/window.md) and [`haylen.viewport`](../lua-api/viewport.md) |
+| A display connects, disconnects or changes. | `displayConnected`, `displayDisconnected`, `displayChanged` | [`haylen.display`](../lua-api/display.md) |
+| The on-screen keyboard shows or hides. | `keyboardShown`, `keyboardHidden` | The frame of the keyboard comes with `keyboardShown`. |
+
+The language that the person picks in the settings belongs to [`haylen.localization`](../lua-api/localization.md). Links and notifications that open the app reach the plugins that declare them, as the [plugin guide](../platform/plugins.md#links-and-notifications) describes. Some apps keep playing their sound in the background, such as a music player, which the [audio guide](../audio/audio.md#playing-in-the-background) describes with what each platform allows.
+
 ## App states
 
 The platform moves the app between three states. The function `haylen.appState()` returns the current one, and each change publishes an event.
@@ -80,7 +108,7 @@ The platform moves the app between three states. The function `haylen.appState()
 Each platform tells the engine about these changes in its own way.
 
 - **iOS, iPadOS, tvOS and Mac Catalyst.** The scene of the app tells the engine. A scene that resigns active makes the app `'inactive'`, such as under the app switcher, Control Center, the Notification Center, a phone call or Siri, or behind another app in front of a Mac Catalyst window. A scene in the background makes it `'background'`, and a scene that becomes active again makes it `'active'`.
-- **The web.** The page tells the engine. The window of the page losing the focus makes the app `'inactive'`. The focus moving between the canvas and other elements of the page, such as the buttons of a plugin dialog, changes nothing. A hidden tab (`visibilitychange`) sends the app to `'background'`, and a visible one brings it back. A page that goes away (`pagehide`) starts saving the files of [`haylen.storage`](../lua-api/storage.md) once more. IndexedDB finishes that save when the browser lets it, since a page cannot hold its unload back. So the `appBackground` of the hidden tab before is what makes the files durable.
+- **The web.** The page tells the engine. The window of the page losing the focus makes the app `'inactive'`. The focus moving between the canvas and other elements of the page, such as the buttons of a plugin dialog, changes nothing. A hidden tab (`visibilitychange`) sends the app to `'background'`, and a visible one brings it back. A page that goes away (`pagehide`), or that the browser freezes in the background (`freeze`, which Chromium sends before it may discard the page), starts saving the files of [`haylen.storage`](../lua-api/storage.md) once more. IndexedDB finishes that save when the browser lets it, since a page cannot hold its unload back. So the `appBackground` of the hidden tab before is what makes the files durable.
 - **Android.** The window of the activity losing the focus to a dialog, a message or the notification shade makes the app `'inactive'`. That also holds when the app comes back from the background while such UI still has the focus. An Android app also holds the audio focus while it is in the foreground. Another app that takes the audio focus, for a phone call or an alarm, interrupts the app. The app then stays `'inactive'` until the focus comes back, even when its window has the focus. An app that comes to the foreground during a call waits, interrupted, until the system grants it the focus. A lasting loss, such as music that the player starts in another app, keeps the app interrupted until it comes back to the foreground.
 
 The [events by platform](#events-by-platform) list where every event comes from.
@@ -90,7 +118,7 @@ The [events by platform](#events-by-platform) list where every event comes from.
 The engine takes care of what every app needs when the state changes.
 
 - **Leaving `'active'`** releases every held key, mouse button and touch, and every virtual button and stick of the on-screen controls. So nothing stays pressed when the player comes back. The window losing the focus releases them too, also in an app that something else made `'inactive'` before, since their releases go to the window that takes the focus.
-- **Going to `'background'`** stops rendering, so the app does no GPU work, and it suspends the audio device. Once the listeners of `appBackground` have run, the files of [`haylen.storage`](../lua-api/storage.md) become durable, and preferences with unsaved changes are saved, including what those listeners changed. That matters because the platform may end an app in the background without warning. An app saves its own progress in a listener of `appBackground`. The [resume state](../lua-api/storage.md#resume-state) that it keeps with `storage.setResumeState` reaches the disk at the same moment, so a launch after the system ended the app finds where the player was.
+- **Going to `'background'`** stops rendering, so the app does no GPU work, and it suspends the audio device, unless the app [plays in the background](../audio/audio.md#playing-in-the-background). Once the listeners of `appBackground` have run, the files of [`haylen.storage`](../lua-api/storage.md) become durable, and preferences with unsaved changes are saved, including what those listeners changed. That matters because the platform may end an app in the background without warning. An app saves its own progress in a listener of `appBackground`. The [resume state](../lua-api/storage.md#resume-state) that it keeps with `storage.setResumeState` reaches the disk at the same moment, so a launch after the system ended the app finds where the player was.
 - **Coming back from `'background'`** resumes the audio. The first frame after a halt takes no time, so timers, tweens and physics do not jump by the time the app was away.
 - **An interruption of the audio by the system**, such as a phone call, an alarm, Siri or another Android app that takes the audio focus, pauses every voice and publishes `audioInterrupted`. Its end resumes them and publishes `audioResumed` once the app is active. A change of the audio output publishes `audioRouteChanged`, as the [audio guide](../audio/audio.md#sessions-and-interruptions) explains.
 
@@ -166,11 +194,11 @@ The [screens](../lua-api/platform.md#screens) of plugins follow the same rules o
 
 The engine publishes other moments of the app and the device as events too.
 
-- **Low memory.** A warning of the system publishes `appLowMemory`, after the engine has dropped every asset that nothing holds anymore. That is the moment to unload preload groups and caches that the app can rebuild.
+- **Low memory.** A warning of the system publishes `appLowMemory` with its `level`, after the engine has dropped every asset that nothing holds anymore. That is the moment to unload preload groups and caches that the app can rebuild. The level `'warning'` asks the app to free what it can, and `'critical'` says that the system is about to end apps, so the app also saves its progress. A platform that tells no level, such as iOS, sends `'warning'`.
 - **Quit requests.** A request to close the window publishes `appQuitRequested`. It also comes from Quit in the menu of a Mac app, Command+Q and the Dock, as the [desktop guide](../platform/desktop.md#menus-and-quitting) describes. The function `haylen.quit()` ends the app.
 - **The on-screen keyboard.** The events `keyboardShown` and `keyboardHidden` follow it. The UI already avoids it by lifting the focused text field above it, as the [text input guide](../ui/text-input.md) explains.
-- **The network.** The events `networkOnline` and `networkOffline` follow the network where browsers, Android and Apple platforms, macOS included, report it. The first report publishes the state that the app starts in, usually on its first frame, and later reports publish each change. The function `haylen.networkState()` returns the last state at any time.
-- **Theme and battery.** The events `systemThemeChanged` and `batteryChanged` follow the light or dark colors of the system and the battery, once per change, as [`haylen.system`](../lua-api/system.md#events) describes.
+- **The network.** The events `networkOnline` and `networkOffline` follow the network on every platform: browsers, Android, Apple platforms, Windows and Linux. The first report publishes the state that the app starts in, usually on its first frame, and later reports publish each change. The function `haylen.networkState()` returns the last state at any time.
+- **Theme, battery, power saving and time zone.** The events `systemThemeChanged`, `batteryChanged`, `powerSavingChanged` and `timeZoneChanged` follow the light or dark colors of the system, the battery, the power saving mode of the system, such as the low power mode of an iPhone, and the time zone of the device, once per change, as [`haylen.system`](../lua-api/system.md#events) describes. An app that sees power saving turn on does less work, such as fewer particles or a lower frame rate, and the local times of [`haylen.localization`](../lua-api/localization.md) follow a new time zone from the event on.
 - **Accessibility.** The event `accessibilitySettingsChanged` follows the text scale, reduced motion, contrast, transparency and screen reader of the system, as [`haylen.accessibility`](../lua-api/accessibility.md#events) describes.
 - **Orientation and folds.** The event `windowOrientationChanged` follows the screen, whose orientation `window.orientation()` reads and `window.lockOrientation` locks, as [`haylen.window`](../lua-api/window.md) describes. The event `windowFoldChanged` follows the fold of foldable and dual-screen devices, its posture and the segments of the window on each side of it, as [folds and dual screens](../lua-api/window.md#folds-and-dual-screens) describes.
 - **The safe area.** The event `windowSafeAreaChanged` follows the safe area of [`haylen.viewport`](../lua-api/viewport.md#viewportsaferect). It is the safe area of the device, widened edge by edge by the edges that native views of plugins reserve, such as a banner at the bottom. So UI anchored to the safe area moves out of their way on its own.
@@ -234,7 +262,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | --- | --- |
 | `appActive`, `appInactive` | The window becoming and stopping being the key window, such as when another app or window comes to the front or the app hides with Command+H. |
 | `appBackground` | The window minimized into the Dock. The app comes back when the window is restored. |
-| `appLowMemory` | The memory pressure of the system, which a dispatch source follows, at the warning and at the critical level. |
+| `appLowMemory` | The memory pressure of the system, which a dispatch source follows, at the warning and at the critical level, as `'warning'` and `'critical'`. |
 | `appQuitRequested` | The close button of the window, Quit in the menu, Command+Q, the Dock and logging out, as the [desktop guide](../platform/desktop.md#menus-and-quitting) describes. |
 | `windowResized`, `windowFocusGained`, `windowFocusLost`, `windowFullscreenChanged` | The window, resized by the player or the app, its key state and its full screen mode. |
 | `windowOrientationChanged`, `windowFoldChanged` | Never, because a desktop window counts as landscape and no Mac folds. |
@@ -246,6 +274,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `audioInterrupted`, `audioResumed` | Never, because macOS does not interrupt the audio of apps. |
 | `audioRouteChanged` | A change of the default output device of Core Audio, such as headphones plugged in. |
 | `systemThemeChanged`, `batteryChanged` | The appearance of the app and the power sources of the Mac, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
+| `powerSavingChanged`, `timeZoneChanged` | The low power mode of `NSProcessInfo` and the time zone of the system, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
 | `accessibilitySettingsChanged` | The display options of the accessibility settings and the state of VoiceOver, as [`haylen.accessibility`](../lua-api/accessibility.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | The gamepad API of SDL, which reads GameController and HID controllers. |
 
@@ -255,7 +284,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | --- | --- |
 | `appActive`, `appInactive` | The window gaining and losing the keyboard focus. |
 | `appBackground` | The window minimized into the taskbar. The app comes back when the window is restored. |
-| `appLowMemory` | Never, because the engine follows no memory notification of Windows. |
+| `appLowMemory` | The memory resource notification of the system, once each time the available memory falls below its low threshold, as `'warning'`, since Windows tells no critical level. |
 | `appQuitRequested` | The close button of the window and Alt+F4. |
 | `windowResized`, `windowFocusGained`, `windowFocusLost`, `windowFullscreenChanged` | The window, resized by the player or the app, its focus and its full screen mode. |
 | `windowOrientationChanged`, `windowFoldChanged` | Never, because a desktop window counts as landscape and Windows offers desktop apps no API for the fold of a device. |
@@ -263,10 +292,11 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `windowMoved` | The moves of the window, through the messages of the window. |
 | `displayConnected`, `displayDisconnected`, `displayChanged`, `windowDisplayChanged` | The changes of the displays, their settings and the work area, through the messages of the window, and the monitor of the window. |
 | `keyboardShown`, `keyboardHidden` | Never, because the engine follows no keyboard on the screen on Windows. |
-| `networkOnline`, `networkOffline` | Never, because the engine follows no network state on Windows, and `haylen.networkState()` stays `'unknown'`. |
+| `networkOnline`, `networkOffline` | The network list manager, which tells whether any network gives the device IPv4 or IPv6 connectivity. |
 | `audioInterrupted`, `audioResumed` | Never, because Windows does not interrupt the audio of apps. |
 | `audioRouteChanged` | A change of the default output device of WASAPI. |
 | `systemThemeChanged`, `batteryChanged` | The app theme of the personalization settings and the power status of the system, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
+| `powerSavingChanged`, `timeZoneChanged` | The battery saver of the power status and the time changes that the window hears, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
 | `accessibilitySettingsChanged` | The accessibility settings and the transparency effects of the personalization settings, as [`haylen.accessibility`](../lua-api/accessibility.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | The gamepad API of SDL, which reads XInput, Windows.Gaming.Input, raw input and HID controllers. |
 
@@ -276,7 +306,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | --- | --- |
 | `appActive`, `appInactive` | The window gaining and losing the keyboard focus. |
 | `appBackground` | The window minimized, which X11 reports as hidden. The app comes back when the window is restored. |
-| `appLowMemory` | Never, because the engine follows no memory pressure of Linux. |
+| `appLowMemory` | The memory monitor of GIO, from GLib 2.64 on, whose low and medium levels arrive as `'warning'` and whose critical level as `'critical'`. |
 | `appQuitRequested` | The close button of the window and the close shortcut of the window manager, usually Alt+F4. |
 | `windowResized`, `windowFocusGained`, `windowFocusLost`, `windowFullscreenChanged` | The window, resized by the player or the app, its focus and its full screen mode. |
 | `windowOrientationChanged`, `windowFoldChanged` | Never, because a desktop window counts as landscape and Linux desktops report no folds to windows. |
@@ -284,10 +314,11 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `windowMoved` | The moves of the window, through X11. |
 | `displayConnected`, `displayDisconnected`, `displayChanged`, `windowDisplayChanged` | The changes of the monitors of RandR and the work area, through X11, and the monitor that holds most of the window. |
 | `keyboardShown`, `keyboardHidden` | Never, because the engine follows no keyboard on the screen on Linux. |
-| `networkOnline`, `networkOffline` | Never, because the engine follows no network state on Linux, and `haylen.networkState()` stays `'unknown'`. |
+| `networkOnline`, `networkOffline` | The network monitor of GIO. Without GIO, `haylen.networkState()` stays `'unknown'`. |
 | `audioInterrupted`, `audioResumed` | Never, because Linux does not interrupt the audio of apps. |
 | `audioRouteChanged` | A stream that PulseAudio, or PipeWire through it, moves to another output. |
 | `systemThemeChanged`, `batteryChanged` | The color scheme of the settings portal and the power supplies of the system, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
+| `powerSavingChanged`, `timeZoneChanged` | The power profile monitor of GIO, from GLib 2.70 on, and the link `/etc/localtime`, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
 | `accessibilitySettingsChanged` | The appearance settings of the settings portal and the text scaling factor of the GNOME interface settings, as [`haylen.accessibility`](../lua-api/accessibility.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | The gamepad API of SDL, which reads the event devices under `/dev/input` and HID controllers. |
 
@@ -312,6 +343,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `audioInterrupted`, `audioResumed` | The interruptions of the audio session, such as a phone call, an alarm or Siri. |
 | `audioRouteChanged` | The route changes of the audio session, such as headphones unplugged. |
 | `systemThemeChanged`, `batteryChanged` | The trait collection of the app and the battery of the device, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
+| `powerSavingChanged`, `timeZoneChanged` | The low power mode of `NSProcessInfo` and the time zone of the system. |
 | `accessibilitySettingsChanged` | The settings of `UIAccessibility` and the preferred content size of the app, as [`haylen.accessibility`](../lua-api/accessibility.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | GameController. |
 
@@ -334,6 +366,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `audioInterrupted`, `audioResumed` | The interruptions of the audio session. |
 | `audioRouteChanged` | The route changes of the audio session. |
 | `systemThemeChanged`, `batteryChanged` | The trait collection of the app. `batteryChanged` never fires, since a TV runs on mains power. |
+| `powerSavingChanged`, `timeZoneChanged` | The time zone of the system. `powerSavingChanged` never fires, since a TV has no low power mode. |
 | `accessibilitySettingsChanged` | The settings of `UIAccessibility` and the preferred content size of the app, as [`haylen.accessibility`](../lua-api/accessibility.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | GameController, the Siri Remote included. |
 
@@ -356,6 +389,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `audioInterrupted`, `audioResumed` | The interruptions of the audio session, which the Mac rarely sends. |
 | `audioRouteChanged` | The route changes of the audio session. |
 | `systemThemeChanged`, `batteryChanged` | The trait collection of the app and the power sources of the Mac, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
+| `powerSavingChanged`, `timeZoneChanged` | The low power mode of `NSProcessInfo` and the time zone of the system. |
 | `accessibilitySettingsChanged` | The settings of `UIAccessibility` and the preferred content size of the app, as [`haylen.accessibility`](../lua-api/accessibility.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | GameController. |
 
@@ -365,7 +399,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | --- | --- |
 | `appActive`, `appInactive` | The window of the activity gaining and losing the focus, such as under a dialog, a message, the notification shade or a permission prompt, and the audio focus taken by another app. |
 | `appBackground` | The activity paused, in the background and under every activity over the app, such as a document picker or a screen of a plugin. |
-| `appLowMemory` | The trim memory callbacks of the activity, at every level but the one that only says the interface is hidden. |
+| `appLowMemory` | The trim memory callbacks of the activity, at every level but the one that only says the interface is hidden. The levels at which Android ends processes soon, a running app on a device that is about to end background processes and a cached app that is next to end, arrive as `'critical'`, and the others as `'warning'`. Android 14 and later send only the level of the background. |
 | `appQuitRequested` | Never from the system, because back on the root screen and the recent apps close the activity, which stops the app through the [lifecycle](#start-frames-and-stop). |
 | `windowResized` | The surface of the activity, such as a rotation, the split screen or a foldable that folds. |
 | `windowFocusGained`, `windowFocusLost` | The window of the activity gaining and losing the focus. |
@@ -380,6 +414,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `audioInterrupted`, `audioResumed` | The audio focus, which another app takes for a call, an alarm or its own sound. |
 | `audioRouteChanged` | The AAudio stream that the system moves to another output. |
 | `systemThemeChanged`, `batteryChanged` | The night mode of the configuration and the battery broadcast, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
+| `powerSavingChanged`, `timeZoneChanged` | The battery saver of the power manager and the broadcast of a new time zone, heard while the activity lives. |
 | `accessibilitySettingsChanged` | The font scale of the configuration, the animator duration scale, the contrast of the UI mode and touch exploration, as [`haylen.accessibility`](../lua-api/accessibility.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | The input devices that Android adds and removes, with the name of each controller, and a controller whose first event comes before Android tells of it. The remote of an Android TV reports the directional pad as keys, so it is no gamepad. |
 
@@ -404,6 +439,8 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `audioInterrupted`, `audioResumed` | Never, because browsers suspend the audio of the page without telling it why. The runtime resumes it at the next tap, click or key, as the [audio guide](../audio/audio.md#sessions-and-interruptions) describes. |
 | `audioRouteChanged` | Never, because the audio output of the page follows the output of the browser without telling the page. |
 | `systemThemeChanged`, `batteryChanged` | The `prefers-color-scheme` media query and the Battery Status API, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
+| `powerSavingChanged` | Never, because browsers tell pages nothing about the power saving mode of the system. |
+| `timeZoneChanged` | The time zone of `Intl`, which the page reads again each time it becomes visible or its window takes the focus, since browsers announce no change of the zone. |
 | `accessibilitySettingsChanged` | The media queries of reduced motion, contrast and transparency and the default font size of the browser, as [`haylen.accessibility`](../lua-api/accessibility.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | The gamepad API of SDL, which reads the Gamepad API of the browser, once a button of the gamepad is pressed. |
 
@@ -786,6 +823,9 @@ C++ code sees the same lifecycle through the engine.
 | `Engine::getReservedInsets()` | Returns the edges that native views reserve, in framebuffer pixels. |
 | `Engine::setPaused`, `Engine::isPaused` and the signal `pausedChanged` | Control the pause. |
 | `Engine::setLifecycle` | Changes the lifecycle options. |
+| `Engine::setBackgroundAudio`, `Engine::isBackgroundAudio` | Turn the sound that plays in the background off and on, as `audio.setBackground` does. |
+| The signal `lowMemory` | Follows the memory warnings with their `platform::Event::MemoryLevel`. |
+| `platform::System::getPowerSaving()`, `getTimeZone()` | The power saving mode and the time zone, as `haylen.system` reads them. |
 | `TimerScheduler::Options` | Gives a timer a process mode and `unscaled`. |
 | `setProcessMode`, `setUnscaledTime` and `setFixedStep` of a tween | Give a tween its process mode, its clock and its step. |
 | `Engine::getEvents()` | The event bus. `core::LifecycleEvent` names every engine event. |

@@ -6,7 +6,7 @@ sources.events = {
     'windowResized', 'windowFocusGained', 'windowFocusLost', 'windowFullscreenChanged', 'windowOrientationChanged', 'windowFoldChanged', 'windowSafeAreaChanged', 'windowMoved', 'windowDisplayChanged',
     'displayConnected', 'displayDisconnected', 'displayChanged',
     'keyboardShown', 'keyboardHidden', 'networkOnline', 'networkOffline',
-    'audioInterrupted', 'audioResumed', 'audioRouteChanged', 'systemThemeChanged', 'batteryChanged', 'gamepadConnected', 'gamepadDisconnected',
+    'audioInterrupted', 'audioResumed', 'audioRouteChanged', 'systemThemeChanged', 'batteryChanged', 'powerSavingChanged', 'timeZoneChanged', 'gamepadConnected', 'gamepadDisconnected',
 }
 
 local kDesktopFold = 'A window of a desktop counts as landscape and reports no fold.'
@@ -22,13 +22,11 @@ sources.never = {
         audioInterrupted = 'macOS does not interrupt the audio of apps.', audioResumed = 'macOS does not interrupt the audio of apps.',
     },
     windows = {
-        appLowMemory = 'The engine follows no memory notification of Windows.', windowOrientationChanged = kDesktopFold, windowFoldChanged = kDesktopFold,
-        keyboardShown = kNoKeyboard, keyboardHidden = kNoKeyboard, networkOnline = 'The engine follows no network state on Windows.', networkOffline = 'The engine follows no network state on Windows.',
+        windowOrientationChanged = kDesktopFold, windowFoldChanged = kDesktopFold, keyboardShown = kNoKeyboard, keyboardHidden = kNoKeyboard,
         audioInterrupted = 'Windows does not interrupt the audio of apps.', audioResumed = 'Windows does not interrupt the audio of apps.',
     },
     linux = {
-        appLowMemory = 'The engine follows no memory pressure of Linux.', windowOrientationChanged = kDesktopFold, windowFoldChanged = kDesktopFold,
-        keyboardShown = kNoKeyboard, keyboardHidden = kNoKeyboard, networkOnline = 'The engine follows no network state on Linux.', networkOffline = 'The engine follows no network state on Linux.',
+        windowOrientationChanged = kDesktopFold, windowFoldChanged = kDesktopFold, keyboardShown = kNoKeyboard, keyboardHidden = kNoKeyboard,
         audioInterrupted = 'Linux does not interrupt the audio of apps.', audioResumed = 'Linux does not interrupt the audio of apps.',
     },
     ios = {
@@ -40,6 +38,7 @@ sources.never = {
         windowFoldChanged = 'The app always fills the TV in landscape.', windowMoved = kNoDesktop,
         windowDisplayChanged = kOneTv, displayConnected = kOneTv, displayDisconnected = kOneTv, displayChanged = kOneTv,
         keyboardShown = 'The keyboard of tvOS is a screen of the system over the app.', keyboardHidden = 'The keyboard of tvOS is a screen of the system over the app.', batteryChanged = 'A TV runs on mains power.',
+        powerSavingChanged = 'A TV has no low power mode.',
     },
     catalyst = {
         appQuitRequested = 'Mac Catalyst ends the app on Quit without asking it.', windowFullscreenChanged = 'The window runs as the iPad window it is.', windowOrientationChanged = 'The window runs as the iPad window it is.',
@@ -53,7 +52,7 @@ sources.never = {
     },
     web = {
         appLowMemory = 'Browsers tell pages nothing about memory pressure.', appQuitRequested = 'A page that closes cannot wait for the app.',
-        windowMoved = 'A page has no place on a desktop.',
+        windowMoved = 'A page has no place on a desktop.', powerSavingChanged = 'Browsers tell pages nothing about the power saving mode.',
         audioInterrupted = 'Browsers suspend the audio of the page without telling it why.', audioResumed = 'Browsers suspend the audio of the page without telling it why.',
         audioRouteChanged = 'The audio of the page follows the browser without telling the page.',
     },

@@ -124,6 +124,8 @@ class AudioLua final {
     static int outputLatency(lua_State* L);
     static int outputMuted(lua_State* L);
     static int restartOutput(lua_State* L);
+    static int setBackground(lua_State* L);
+    static int background(lua_State* L);
 
     static int soundChannels(lua_State* L);
     static int soundSampleRate(lua_State* L);

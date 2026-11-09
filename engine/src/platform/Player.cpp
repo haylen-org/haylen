@@ -333,8 +333,8 @@ void Player::frame(double seconds) {
     }
     runtime.host->setBackHeld(getProcess().backHeld.load());
     Services::updateWindow();
-    if (MemoryWarning::take()) {
-        runtime.engine->handleEvent({.type = Event::Type::LowMemory});
+    if (const std::optional<Event::MemoryLevel> level = MemoryWarning::take()) {
+        runtime.engine->handleEvent({.type = Event::Type::LowMemory, .memoryLevel = *level});
     }
     for (Event& event : takePostedEvents()) {
 #if defined(__ANDROID__)

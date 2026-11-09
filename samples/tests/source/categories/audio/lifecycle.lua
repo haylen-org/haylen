@@ -28,7 +28,7 @@ local kEvents = {
 }
 local kOrder = {'audioInterrupted', 'audioResumed', 'audioRouteChanged', 'appActive', 'appInactive', 'appBackground'}
 local kNotes = {
-    'Background: the engine stops the output and every voice keeps its place. The output starts again when the app comes back, unless an interruption still holds it.',
+    'Background: an app that does not play in the background stops its output there, and every voice keeps its place. The output starts again when the app comes back, unless an interruption still holds it. An app that plays in the background keeps its output while a voice plays.',
     'Interruption: a phone call, an alarm, a voice assistant or another app that takes the audio focus pauses every voice and sends "audioInterrupted". The event "audioResumed" follows once it ends and the app is active again.',
     'Route change: unplugging headphones sends "audioRouteChanged", where a music player would pause.',
     'Web: the browser keeps the sound silent until the first click, tap or key on the page, and a hidden tab goes to the background.',
@@ -36,6 +36,7 @@ local kNotes = {
 
 function Lifecycle:enter()
     self.saved = haylen.lifecycle()
+    self.savedBackground = audio.background()
     self.clock = 0
     self.counts = {}
     self.log = EventLog({
@@ -62,6 +63,7 @@ function Lifecycle:enter()
         ui.toggle{id = 'mute', text = 'Mute while not active', checked = self.saved.muteOnFocusLoss, onChange = function(event) haylen.setLifecycle({muteOnFocusLoss = event.checked}) end},
         ui.toggle{id = 'halt', text = 'Halt while not active', checked = self.saved.pauseOnFocusLoss, onChange = function(event) haylen.setLifecycle({pauseOnFocusLoss = event.checked}) end},
         ui.toggle{id = 'background', text = 'Halt in the background', checked = self.saved.pauseOnBackground, onChange = function(event) haylen.setLifecycle({pauseOnBackground = event.checked}) end},
+        ui.toggle{id = 'playOn', text = 'Play in the background', checked = self.savedBackground, onChange = function(event) audio.setBackground(event.checked) end},
     }
     for _, note in ipairs(kNotes) do
         controls[#controls + 1] = ui.label{text = note, color = 'textMuted', font = 'caption'}
@@ -72,6 +74,7 @@ end
 function Lifecycle:exit()
     Lifecycle.super.exit(self)
     haylen.setLifecycle(self.saved)
+    audio.setBackground(self.savedBackground)
     audio.stopMusic(0.3)
 end
 

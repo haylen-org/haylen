@@ -63,9 +63,6 @@ struct SystemInfo {
     std::string locale;
     std::vector<std::string> languages;
 
-    // The IANA name of the time zone, such as `America/Sao_Paulo`.
-    std::string timeZone;
-
     // The info as `haylen.system` reports it, with the enums as their names and every value the platform left empty left out, except the list of languages.
     [[nodiscard]] core::Json toJson() const;
 

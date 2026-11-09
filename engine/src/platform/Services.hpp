@@ -138,6 +138,9 @@ class Services final {
     // Vibrates the device for the given seconds, as `Host::vibrate` describes.
     [[nodiscard]] static Permission::Answer vibrate(float seconds);
 
+    // Keeps the frames of an app that plays audio in the background running there, as `Host::setBackgroundAudio` describes. Desktops and the web keep running every app in the background, so they need nothing.
+    static void setBackgroundAudio(bool value);
+
     // Shows what the app plays in the now-playing and lock-screen controls of the platform, or takes the app out of them, as `Host::setNowPlaying` describes. Linux has no such controls the engine reaches and ignores it.
     static void setNowPlaying(const std::optional<MediaSession::NowPlaying>& value);
 

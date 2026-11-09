@@ -690,15 +690,20 @@ TEST(EngineTest, ReportsLowMemoryToTheApp) {
     (void)assets.load("json", "dropped.json");
     EXPECT_EQ(assets.getCachedCount(), 1U);
 
-    int warnings = 0;
-    const core::ScopedConnection lowMemory = fixture.engine().lowMemory.connect([&] { ++warnings; });
-    fixture.runLua("warnings = 0 require('haylen.scene').push({event = function(_, event) if event.type == 'lowMemory' then warnings = warnings + 1 end end})");
+    std::vector<platform::Event::MemoryLevel> warnings;
+    const core::ScopedConnection lowMemory = fixture.engine().lowMemory.connect([&](platform::Event::MemoryLevel level) { warnings.push_back(level); });
+    // clang-format off
+    fixture.runLua(R"(
+        levels = {}
+        require('haylen.scene').push({event = function(_, event) if event.type == 'lowMemory' then levels[#levels + 1] = 'scene ' .. event.level end end})
+        require('haylen.events').on('appLowMemory', function(data) levels[#levels + 1] = 'app ' .. data.level end)
+    )");
+    // clang-format on
     fixture.frames(1);
-    platform::Event event;
-    event.type = platform::Event::Type::LowMemory;
-    fixture.engine().handleEvent(event);
-    EXPECT_EQ(warnings, 1);
-    EXPECT_EQ(fixture.lua("return warnings"), "1");
+    fixture.engine().handleEvent({.type = platform::Event::Type::LowMemory, .memoryLevel = platform::Event::MemoryLevel::Warning});
+    fixture.engine().handleEvent({.type = platform::Event::Type::LowMemory, .memoryLevel = platform::Event::MemoryLevel::Critical});
+    EXPECT_EQ(warnings, (std::vector<platform::Event::MemoryLevel>{platform::Event::MemoryLevel::Warning, platform::Event::MemoryLevel::Critical}));
+    EXPECT_EQ(fixture.lua("return table.concat(levels, ', ')"), "app warning, scene warning, app critical, scene critical");
     EXPECT_EQ(assets.releaseUnused(), 0U) << "The warning already pruned the entries of released assets.";
 }
 

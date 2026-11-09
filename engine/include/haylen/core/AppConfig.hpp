@@ -153,7 +153,7 @@ struct AppConfig {
     Splash splash{};
     Lifecycle lifecycle{};
 
-    // How the app shares sound with the system and other apps, from the `audio` object with `iosSession` and `mixWithOthers`, and how its output plays, with `latency` and `limiter`.
+    // How the app shares sound with the system and other apps, from the `audio` object with `iosSession`, `mixWithOthers` and `background`, and how its output plays, with `latency` and `limiter`.
     audio::Session audioSession{};
     audio::OutputSettings audioOutput{};
     Input input{};

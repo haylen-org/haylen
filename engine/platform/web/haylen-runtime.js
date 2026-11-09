@@ -7,7 +7,7 @@ Module.haylen = Module.haylen || {};
     const handlers = new Map();
     const levels = ["debug", "info", "warning", "error"];
 
-    // The system services of the engine: what the browser tells about the device, its color scheme, its accessibility preferences and its battery, a url opened in a new tab and the vibration of phones whose browser offers it. The details of `navigator.userAgentData` and the battery arrive asynchronously, so the page reads them before the runtime starts.
+    // The system services of the engine: what the browser tells about the device, its color scheme, its accessibility preferences, its battery and its time zone, a url opened in a new tab and the vibration of phones whose browser offers it. The details of `navigator.userAgentData` and the battery arrive asynchronously, so the page reads them before the runtime starts.
     const device = {
         details: {},
         battery: null,
@@ -38,12 +38,16 @@ Module.haylen = Module.haylen || {};
             memoryBytes: memory ? Math.round(memory * 1073741824) : undefined,
             locale: navigator.language || undefined,
             languages: [...(navigator.languages || [])],
-            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || undefined,
         });
     };
 
     const reportTheme = () => {
         Module._haylen_web_theme(device.darkScheme.matches ? 1 : 0);
+    };
+
+    // Browsers announce no change of the time zone, so the page reads it again whenever the person comes back to it, which is when the system may have changed it.
+    const reportTimeZone = () => {
+        callEngine("haylen_web_time_zone", null, ["string"], [Intl.DateTimeFormat().resolvedOptions().timeZone || ""]);
     };
 
     // The text scale is the default font size of the browser, which the user sets in its preferences, over the usual 16 pixels. Browsers without the media queries of reduced transparency report no preference.
@@ -2601,7 +2605,7 @@ Module.haylen = Module.haylen || {};
         }
     });
 
-    // A hidden page sends the app to the background, a page that goes away makes the user data durable, and the network state, the color scheme, the accessibility preferences and the battery reach the app when it starts and whenever they change.
+    // A hidden page sends the app to the background, a page that goes away makes the user data durable, and the network state, the time zone, the color scheme, the accessibility preferences and the battery reach the app when it starts and whenever they change.
     Module.postRun.push(function () {
         Module.canvas.addEventListener("pointerup", focusTapped, true);
         document.addEventListener("selectionchange", () => {
@@ -2614,13 +2618,20 @@ Module.haylen = Module.haylen || {};
             window.visualViewport.addEventListener("scroll", reportKeyboard);
         }
         document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "visible") {
+                reportTimeZone();
+            }
             Module._haylen_web_visibility(document.visibilityState === "visible" ? 1 : 0);
             unlockAudio();
         });
+        window.addEventListener("focus", reportTimeZone);
+        // A browser that freezes a hidden page, as Chromium does with the Page Lifecycle API, may discard it without another event, so the files become durable before it freezes too.
         window.addEventListener("pagehide", () => Module._haylen_web_page_hidden());
+        document.addEventListener("freeze", () => Module._haylen_web_page_hidden());
         window.addEventListener("online", reportNetwork);
         window.addEventListener("offline", reportNetwork);
         reportNetwork();
+        reportTimeZone();
         reportTheme();
         device.darkScheme.addEventListener("change", reportTheme);
         reportAccessibility();

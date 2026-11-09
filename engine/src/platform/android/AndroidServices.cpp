@@ -216,6 +216,11 @@ Permission::Answer Services::vibrate(float seconds) {
     return JavaBridge::vibrate(std::max<std::int64_t>(1, std::lround(seconds * 1000.0F)));
 }
 
+// The process keeps running in the background with the frames of the runtime, and the media session keeps it in the foreground while what plays shows as playing, so Android never freezes it.
+void Services::setBackgroundAudio(bool value) {
+    JavaBridge::setBackgroundAudio(value);
+}
+
 void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {
     if (!value) {
         JavaBridge::updateMediaSession({}, {});
@@ -326,8 +331,8 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeTelevision(JNIEnv*, 
     haylen::platform::AndroidActivity::setTelevision(television == JNI_TRUE);
 }
 
-JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeLowMemory(JNIEnv*, jclass) {
-    haylen::platform::MemoryWarning::raise();
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeLowMemory(JNIEnv*, jclass, jboolean critical) {
+    haylen::platform::MemoryWarning::raise(critical == JNI_TRUE ? haylen::platform::Event::MemoryLevel::Critical : haylen::platform::Event::MemoryLevel::Warning);
 }
 
 JNIEXPORT jfloat JNICALL Java_dev_haylen_HaylenSplash_nativeFadeOut(JNIEnv*, jclass) {
@@ -444,6 +449,14 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenMediaSession_nativeCommand(JNIEnv*,
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenBattery_nativeBattery(JNIEnv*, jclass, jboolean present, jint level, jint scale, jint status) {
     haylen::platform::NativeHost::getSystemState().setBattery(haylen::platform::AndroidBatteryStatus::toBattery(present == JNI_TRUE, level, scale, status));
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenPowerSaving_nativePowerSaving(JNIEnv*, jclass, jboolean enabled) {
+    haylen::platform::NativeHost::getSystemState().setPowerSaving(enabled == JNI_TRUE);
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenTimeZone_nativeTimeZone(JNIEnv* env, jclass, jbyteArray zone) {
+    haylen::platform::NativeHost::getSystemState().setTimeZone(haylen::platform::JavaBridge::toString(*env, zone));
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenDialogs_nativeButton(JNIEnv*, jclass, jlong id, jint button) {

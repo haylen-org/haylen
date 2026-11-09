@@ -160,6 +160,7 @@ These options start the values of [`haylen.lifecycle()`](#haylenlifecycle), and 
 | --- | --- | --- | --- |
 | `audio.iosSession` | string | `"ambient"` | The category of the audio session on iOS and tvOS: `"ambient"`, `"soloAmbient"` or `"playback"`, as the [audio guide](../audio/audio.md#sessions-and-interruptions) describes. |
 | `audio.mixWithOthers` | boolean | `false` | Lets the `"playback"` session play along with other apps. The other sessions refuse `true`. |
+| `audio.background` | boolean | `false` | Keeps the sound playing while the app is in the background, such as the music of a player, as the [audio guide](../audio/audio.md#playing-in-the-background) describes. It needs the `"playback"` session, and the tools add the background mode of Apple platforms and the playback service of Android to the project. |
 | `audio.latency` | string | `"balanced"` | How the output trades latency for power: `"low"`, `"balanced"` or `"powerSaving"`, as [`audio.outputLatency`](audio.md#audiooutputlatency) describes. |
 | `audio.limiter` | boolean | `true` | Puts a [limiter](audio.md#limiter) on the `master` bus, so the mix never clips. |
 
@@ -462,9 +463,9 @@ haylen.setLifecycle({pauseOnFocusLoss = false, muteOnFocusLoss = false})
 
 ### haylen.networkState()
 
-Returns whether the device reaches the network, as the platform last reported it: `'online'`, `'offline'`, or `'unknown'` until a report arrives. Browsers, Android and Apple platforms, macOS included, report the network from the start, usually by the first frame. Then they publish every change as the events `networkOnline` and `networkOffline` of [`haylen.events`](events.md#engine-events).
+Returns whether the device reaches the network, as the platform last reported it: `'online'`, `'offline'`, or `'unknown'` until a report arrives. Browsers, Android, Apple platforms, Windows and Linux report the network from the start, usually by the first frame. Then they publish every change as the events `networkOnline` and `networkOffline` of [`haylen.events`](events.md#engine-events). The [lifecycle guide](../core/lifecycle.md#events-by-platform) lists where each platform reads it.
 
-On Windows, on Linux and on the headless host nothing reports the network, so the state stays `'unknown'`. It also stays `'unknown'` in an Android app without the permission `android.permission.ACCESS_NETWORK_STATE`, as [Android permissions](system.md#android-permissions) describes.
+On the headless host nothing reports the network, so the state stays `'unknown'`. It also stays `'unknown'` on a Linux desktop without GIO, and in an Android app without the permission `android.permission.ACCESS_NETWORK_STATE`, as [Android permissions](system.md#android-permissions) describes.
 
 ```lua
 local events = require('haylen.events')
@@ -871,6 +872,7 @@ The engine checks `app.json` before any Lua runs. A package whose `app.json` fai
 | `The orientation "<value>" in "app.json" is unknown. It is "landscape", "portrait" or "any".` | The orientation has another value. |
 | `The "audio.iosSession" value "<value>" in "app.json" is unknown. It is "ambient", "soloAmbient" or "playback".` | The audio session has another value. |
 | `The "audio.mixWithOthers" option in "app.json" needs the "iosSession" value "playback".` | The option `mixWithOthers` is `true` with another session. |
+| `The "audio.background" option in "app.json" needs the "iosSession" value "playback", the only session that iOS and tvOS play in the background.` | The option `background` is `true` with another session. |
 | `The "audio.latency" value "<value>" in "app.json" is unknown. It is "low", "balanced" or "powerSaving".` | The latency has another value. |
 | `The "input.scrollSpeed" value in "app.json" must be a positive number.` | The scroll speed is not a positive finite number. |
 | `The "ui.scaleMode" value "<value>" in "app.json" is unknown. It is "design" or "physical".` | The scale mode has another value. |

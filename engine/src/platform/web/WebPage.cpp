@@ -302,6 +302,10 @@ void WebPage::setTheme(bool dark) {
     NativeHost::getSystemState().setTheme(dark ? Theme::Dark : Theme::Light);
 }
 
+void WebPage::setTimeZone(const char* zone) {
+    NativeHost::getSystemState().setTimeZone(zone);
+}
+
 // A full battery on mains power does not charge, as on the other platforms.
 void WebPage::setBattery(double level, bool charging, bool full) {
     Battery battery{.level = static_cast<float>(level)};
@@ -552,6 +556,10 @@ EMSCRIPTEN_KEEPALIVE void haylen_web_accessibility(double textScale, int reduced
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_battery(double level, int charging, int full) {
     haylen::platform::WebEntry::guard("haylen_web_battery", [&] { haylen::platform::WebPage::setBattery(level, charging != 0, full != 0); });
+}
+
+EMSCRIPTEN_KEEPALIVE void haylen_web_time_zone(const char* zone) {
+    haylen::platform::WebEntry::guard("haylen_web_time_zone", [&] { haylen::platform::WebPage::setTimeZone(zone); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_resolve_dialog(double id, const char* json) {

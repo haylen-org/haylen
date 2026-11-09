@@ -302,12 +302,24 @@ Battery NativeHost::getBattery() const {
     return getSystemState().getBattery();
 }
 
+std::optional<bool> NativeHost::getPowerSaving() const {
+    return getSystemState().getPowerSaving();
+}
+
+std::string NativeHost::getTimeZone() const {
+    return getSystemState().getTimeZone();
+}
+
 AccessibilitySettings NativeHost::getAccessibilitySettings() const {
     return getSystemState().getAccessibility();
 }
 
 void NativeHost::openUrl(std::string_view url, std::function<void(Permission::Answer answer)> callback) {
     Services::openUrl(std::string(url), std::move(callback));
+}
+
+void NativeHost::setBackgroundAudio(bool value) {
+    Services::setBackgroundAudio(value);
 }
 
 void NativeHost::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {

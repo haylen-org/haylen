@@ -524,7 +524,7 @@ build/artifacts/
   apple/haylen-frameworks.json  The system frameworks that the engine needs on iOS, Mac Catalyst, tvOS, visionOS and macOS, which haylen.py links into Apple projects.
   apple/PrivacyInfo.xcprivacy   The APIs with required reasons that the engine calls, which haylen.py merges into the privacy manifest of Apple apps.
   apple/HaylenBridgeAsync.swift The Swift helpers of the bridge and of plugin contexts, which haylen.py writes into the haylen/ folder of Apple projects.
-  android/maven/                Maven repository with dev.haylen:haylen, the Android library with the player, and dev.haylen:haylen-plugins, haylen-links and haylen-coroutines.
+  android/maven/                Maven repository with dev.haylen:haylen, the Android library with the player, and dev.haylen:haylen-plugins, haylen-links, haylen-playback and haylen-coroutines.
   android/sdk/<abi>/            The SDK of the engine for each Android ABI, which links the release libraries of apps.
   web/player/                   haylen.js and haylen.wasm of the player, which draws through WebGPU or WebGL2, haylen-audio-worklet.js, the processor of its audio output, and haylen-content-store.js, the worker of its content store.
   web/sdk/                      The SDK of the engine for the web, which links the release runtime of each app.
@@ -588,7 +588,8 @@ The folder `engine/platform/android` is a Gradle project with four modules. The 
 - `HaylenActivity`, a `GameActivity` of the AndroidX games libraries and so an `AppCompatActivity`. It draws the app in a `SurfaceView` of an ordinary view hierarchy and installs the splash screen. It hides the system bars, apart from the status bar that the app shows, and reports the safe area, the on-screen keyboard and the orientation of the screen. It forwards low-memory warnings. It takes the back button through an `OnBackPressedCallback` while the app captures it, and hands its events to the plugins.
 - `HaylenLinkActivity`, which hands the links and notifications of the app to the activity.
 - `HaylenEditText`, the hidden field that edits the focused text field of the UI.
-- `HaylenAudioFocus`, which holds the audio focus in the foreground, `HaylenNetwork`, which follows the network while the app holds the permission `ACCESS_NETWORK_STATE`, `HaylenBattery`, which follows the battery, and `HaylenAccessibility`, which follows the accessibility settings.
+- `HaylenAudioFocus`, which holds the audio focus in the foreground and while the app plays in the background, `HaylenNetwork`, which follows the network while the app holds the permission `ACCESS_NETWORK_STATE`, `HaylenBattery`, `HaylenPowerSaving` and `HaylenTimeZone`, which follow the battery, the battery saver and the time zone, and `HaylenAccessibility`, which follows the accessibility settings.
+- `HaylenMediaSession`, the now-playing controls with their media notification, and `HaylenPlaybackService`, the foreground service that keeps an app that plays in the background in the foreground while it plays.
 - `HaylenAccessibilityTree`, which serves the elements of the UI to TalkBack and the other accessibility services, and `HaylenDialogs` with the native dialogs.
 - `HaylenBridge` for the platform bridge, and the host of the Android parts of [plugins](../platform/plugins.md#the-android-part): `HaylenPluginProvider`, which loads them when the process starts, `HaylenPlugin`, `HaylenPluginContext`, `HaylenRequirements`, `HaylenOverlay` with its `HaylenPlacement`, the screens of plugins with `HaylenScreens` and `HaylenScreen`, and the streams `HaylenVideoStream` and `HaylenAudioStream`.
 - The splash themes, the R8 rules for the classes that C++ calls by name, and the Kotlin HTTP transport of Varn.
@@ -597,6 +598,7 @@ The manifest of `haylen` declares only the OpenGL ES 3 requirement, with no perm
 
 - `haylen-plugins` holds only a manifest, which declares `HaylenPluginProvider` for the modules of plugins.
 - `haylen-links` holds only a manifest, which declares the exported `HaylenLinkActivity` for plugins of links and notifications.
+- `haylen-playback` holds only a manifest, which declares `HaylenPlaybackService` with the type `mediaPlayback` and the permissions `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, for the apps whose `app.json` sets `audio.background`, as the [audio guide](../audio/audio.md#playing-in-the-background) describes. The command `haylen.py prepare` names it in `engineLibraries` of `haylen/haylen.properties`, from which the app module of the template depends on it.
 - `haylen-coroutines` holds `HaylenCoroutines` and `registerSuspend`, with `kotlinx-coroutines-android`, as the [plugin guide](../platform/plugins.md#engine-libraries) describes.
 
 The library packages the player, which the CMake project of the engine builds with `HAYLEN_BUILD_PLAYER` as the shared library `libhaylen.so`. It covers arm64-v8a, armeabi-v7a, for the 32-bit Android TV devices still in use, and x86_64, for emulators, from Android 8.1 (API 27) on. The NDK r30 links the arm64-v8a and x86_64 libraries with 16 KB page alignment, which Android 15 devices with 16 KB pages need, and `ANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES` makes it explicit. 32-bit ARM has no 16 KB pages and keeps 4 KB alignment.
@@ -608,7 +610,7 @@ The command `haylen engine --platform android` builds the libraries in these ste
 1. It builds the player and the SDK of the engine for each ABI in `build/engine/android-<abi>-<config>`, one ABI after the other with the jobs of `--jobs`. So the compilers stay within those jobs, and the configures never write into the shared CPM sources at the same time.
 2. It gathers the libraries in `build/engine/android-<config>/jniLibs`, and installs the SDK of each ABI into `build/artifacts/android/sdk/<abi>`, which links the release libraries of apps.
 3. It runs Gradle with `-PhaylenNativeLibraries` for the libraries, `-PhaylenVarnSourceDir` for the folder where CPM placed Varn and `-PhaylenMavenDir` for the Maven repository. The task `copyVarnTransport` copies `VarnHttp.kt` of Varn into the module, because the engine links Varn into the player library and only the Kotlin HTTP transport of the Android library of Varn runs in the app.
-4. It runs the task `publishReleasePublicationToArtifactsRepository` of every module. That publishes `dev.haylen:haylen`, `dev.haylen:haylen-plugins`, `dev.haylen:haylen-links` and `dev.haylen:haylen-coroutines` at the engine version, with their POMs, to `build/artifacts/android/maven`.
+4. It runs the task `publishReleasePublicationToArtifactsRepository` of every module. That publishes `dev.haylen:haylen`, `dev.haylen:haylen-plugins`, `dev.haylen:haylen-links`, `dev.haylen:haylen-playback` and `dev.haylen:haylen-coroutines` at the engine version, with their POMs, to `build/artifacts/android/maven`.
 
 The POM of `haylen` lists the dependencies of the library, which Gradle brings into every app:
 

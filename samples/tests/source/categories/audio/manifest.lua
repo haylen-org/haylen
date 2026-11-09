@@ -15,5 +15,6 @@ return {
         {code = 'AUD-009', title = 'Loudness and output', description = 'Thirty explosions with the limiter of the master bus on and off, its threshold and the gain it takes away, and the state and latency of the output with the unlock of a browser.', module = 'output'},
         {code = 'AUD-010', title = 'Now playing', description = 'A track in the now-playing controls of the system with its artwork, length and position, whose commands from the controls, media keys, headsets and remotes change what plays.', module = 'now-playing'},
         {code = 'AUD-011', title = 'Seeking a long track', description = 'A streamed Ogg Vorbis track of two and a half minutes that jumps to its end, back to its start, ten seconds either way and anywhere at once, with the time each jump took until the sound played on.', module = 'seeking'},
+        {code = 'AUD-012', title = 'Playing in the background', description = 'A playlist of streamed tracks that plays on, track after track, while the app is in the background, with the now-playing controls of the system and how far the music went while the app was away.', module = 'background'},
     },
 }

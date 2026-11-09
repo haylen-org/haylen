@@ -31,7 +31,6 @@ SystemInfo WindowsSystem::getInfo() {
         .memoryBytes = getMemory(),
         .locale = getLocale(),
         .languages = getLanguages(),
-        .timeZone = getTimeZone(),
     };
 }
 
@@ -51,11 +50,18 @@ void WindowsSystem::reportAccessibility() {
     NativeHost::getSystemState().setAccessibility(WindowsSettings::readAccessibility());
 }
 
-void WindowsSystem::reportBattery() {
+// The status flag tells whether the battery saver, which Windows 11 calls the energy saver, is on.
+void WindowsSystem::reportPowerStatus() {
     SYSTEM_POWER_STATUS status{};
-    if (GetSystemPowerStatus(&status)) {
-        NativeHost::getSystemState().setBattery(WindowsPowerStatus::toBattery(status.ACLineStatus, status.BatteryFlag, status.BatteryLifePercent));
+    if (!GetSystemPowerStatus(&status)) {
+        return;
     }
+    NativeHost::getSystemState().setBattery(WindowsPowerStatus::toBattery(status.ACLineStatus, status.BatteryFlag, status.BatteryLifePercent));
+    NativeHost::getSystemState().setPowerSaving(status.SystemStatusFlag == kPowerSaverOn);
+}
+
+void WindowsSystem::reportTimeZone() {
+    NativeHost::getSystemState().setTimeZone(getTimeZone());
 }
 
 // Reads the real version from `ntdll`, because `GetVersionEx` reports an older one to applications without a compatibility manifest.
@@ -97,11 +103,11 @@ std::vector<std::string> WindowsSystem::getLanguages() {
     return languages;
 }
 
-// Windows names its time zones in its own way, and the ICU that ships with Windows 10 1903 and later turns them into IANA names.
+// Windows names its time zones in its own way, and the ICU that ships with Windows 10 1903 and later turns them into IANA names. The library stays loaded for the process, since every change of the zone reads it again.
 std::string WindowsSystem::getTimeZone() {
     using TimeZoneForWindowsId = std::int32_t(__cdecl*)(const wchar_t* windowsId, std::int32_t length, const char* region, wchar_t* id, std::int32_t capacity, int* status);
     DYNAMIC_TIME_ZONE_INFORMATION zone{};
-    const HMODULE icu = LoadLibraryExW(L"icu.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+    static const HMODULE icu = LoadLibraryExW(L"icu.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
     if (icu == nullptr || GetDynamicTimeZoneInformation(&zone) == TIME_ZONE_ID_INVALID) {
         return {};
     }

@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <limits>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -32,7 +33,7 @@ class SystemTest : public ::testing::Test {
 
     // An iPad that tells everything about itself.
     [[nodiscard]] static SystemInfo makeTablet() {
-        return {.os = SystemInfo::Os::IpadOs, .osVersion = "17.5", .deviceModel = "iPad14,1", .manufacturer = "Apple", .deviceKind = SystemInfo::DeviceKind::Tablet, .cpuName = "Apple M2", .cpuCores = 8, .architecture = SystemInfo::Architecture::Arm, .bits = 32, .memoryBytes = 8589934592, .gpuName = "Reported by the platform", .locale = "pt-BR", .languages = {"pt-BR", "en"}, .timeZone = "America/Sao_Paulo"};
+        return {.os = SystemInfo::Os::IpadOs, .osVersion = "17.5", .deviceModel = "iPad14,1", .manufacturer = "Apple", .deviceKind = SystemInfo::DeviceKind::Tablet, .cpuName = "Apple M2", .cpuCores = 8, .architecture = SystemInfo::Architecture::Arm, .bits = 32, .memoryBytes = 8589934592, .gpuName = "Reported by the platform", .locale = "pt-BR", .languages = {"pt-BR", "en"}};
     }
 };
 
@@ -66,7 +67,7 @@ TEST_F(SystemTest, WritesOnlyWhatThePlatformReportsAsJson) {
     EXPECT_EQ(SystemInfo{}.toJson(), (core::Json{{"os", "macOs"}, {"deviceKind", "desktop"}, {"architecture", architecture}, {"bits", bits}, {"languages", core::Json::array()}}));
 
     SystemInfo tablet = makeTablet();
-    EXPECT_EQ(tablet.toJson(), (core::Json{{"os", "ipadOs"}, {"osVersion", "17.5"}, {"deviceModel", "iPad14,1"}, {"manufacturer", "Apple"}, {"deviceKind", "tablet"}, {"cpuName", "Apple M2"}, {"cpuCores", 8}, {"architecture", "arm"}, {"bits", 32}, {"memoryBytes", 8589934592}, {"gpuName", "Reported by the platform"}, {"locale", "pt-BR"}, {"languages", {"pt-BR", "en"}}, {"timeZone", "America/Sao_Paulo"}}));
+    EXPECT_EQ(tablet.toJson(), (core::Json{{"os", "ipadOs"}, {"osVersion", "17.5"}, {"deviceModel", "iPad14,1"}, {"manufacturer", "Apple"}, {"deviceKind", "tablet"}, {"cpuName", "Apple M2"}, {"cpuCores", 8}, {"architecture", "arm"}, {"bits", 32}, {"memoryBytes", 8589934592}, {"gpuName", "Reported by the platform"}, {"locale", "pt-BR"}, {"languages", {"pt-BR", "en"}}}));
     EXPECT_EQ(SystemInfo::osName(SystemInfo::Os::TvOs), "tvOs");
     EXPECT_EQ(SystemInfo::deviceKindName(SystemInfo::DeviceKind::Tv), "tv");
     EXPECT_EQ(SystemInfo::architectureName(SystemInfo::Architecture::X64), "x64");
@@ -108,6 +109,32 @@ TEST_F(SystemTest, PublishesEveryChangeOfThemeAndBatteryOnce) {
     fixture.frames(1);
     EXPECT_TRUE(restarted.empty());
     EXPECT_EQ(fixture.engine().getSystem().getBattery(), (Battery{.charging = true, .state = Battery::State::Charging}));
+}
+
+TEST_F(SystemTest, PublishesEveryChangeOfPowerSavingAndTimeZoneOnce) {
+    test::EngineFixture fixture;
+    std::vector<std::string> log;
+    for (const std::string_view name : {core::LifecycleEvent::kPowerSavingChanged, core::LifecycleEvent::kTimeZoneChanged}) {
+        fixture.engine().getEvents().on(name, [&log, name](core::EventBus::Event& event) { log.push_back(std::string(name) + " " + event.getData().dump()); });
+    }
+    System& system = fixture.engine().getSystem();
+    EXPECT_EQ(system.getPowerSaving(), std::nullopt);
+    EXPECT_EQ(system.getTimeZone(), "");
+
+    fixture.host().setPowerSaving(true);
+    fixture.host().setTimeZone("Europe/Lisbon");
+    fixture.frames(2);
+    fixture.host().setPowerSaving(false);
+    fixture.host().setTimeZone("Europe/Lisbon");
+    fixture.frames(1);
+    EXPECT_EQ(log, (std::vector<std::string>{R"(powerSavingChanged {"enabled":true})", R"(timeZoneChanged {"timeZone":"Europe/Lisbon"})", R"(powerSavingChanged {"enabled":false})"}));
+    EXPECT_EQ(system.getPowerSaving(), false);
+    EXPECT_EQ(system.getTimeZone(), "Europe/Lisbon");
+
+    // A new app starts with what the platform reported last, without an event.
+    fixture.restart();
+    EXPECT_EQ(fixture.engine().getSystem().getTimeZone(), "Europe/Lisbon");
+    EXPECT_EQ(fixture.engine().getSystem().getPowerSaving(), false);
 }
 
 TEST_F(SystemTest, KeepsTheLastReportOfEveryThread) {
@@ -231,7 +258,7 @@ TEST(SystemLuaTest, ReportsTheInfoThemeAndBattery) {
     EXPECT_EQ(fixture.lua("return system.theme()"), "light");
     EXPECT_EQ(fixture.lua("local battery = system.battery() return tostring(battery.level) .. ' ' .. tostring(battery.charging) .. ' ' .. battery.state"), "nil false unknown");
 
-    fixture.host().setSystemInfo({.os = SystemInfo::Os::Android, .osVersion = "16", .deviceModel = "Phone 9", .manufacturer = "Maker", .deviceKind = SystemInfo::DeviceKind::Phone, .cpuName = "Chip G4", .cpuCores = 8, .architecture = SystemInfo::Architecture::Arm64, .memoryBytes = 12884901888, .locale = "pt-BR", .languages = {"pt-BR", "en-US"}, .timeZone = "America/Sao_Paulo"});
+    fixture.host().setSystemInfo({.os = SystemInfo::Os::Android, .osVersion = "16", .deviceModel = "Phone 9", .manufacturer = "Maker", .deviceKind = SystemInfo::DeviceKind::Phone, .cpuName = "Chip G4", .cpuCores = 8, .architecture = SystemInfo::Architecture::Arm64, .memoryBytes = 12884901888, .locale = "pt-BR", .languages = {"pt-BR", "en-US"}});
     fixture.restart();
     // clang-format off
     fixture.runLua(R"(
@@ -241,15 +268,24 @@ TEST(SystemLuaTest, ReportsTheInfoThemeAndBattery) {
         events.on('systemThemeChanged', function(data) heard[#heard + 1] = data.theme end)
         events.on('batteryChanged', function(data) heard[#heard + 1] = data.state .. ' ' .. tostring(data.level) end)
         local info = system.info()
-        summary = table.concat({info.os, info.osVersion, info.deviceModel, info.manufacturer, info.deviceKind, info.cpuName, info.cpuCores, info.architecture, info.bits, info.memoryBytes, info.locale, table.concat(info.languages, ','), info.timeZone}, '|')
+        summary = table.concat({info.os, info.osVersion, info.deviceModel, info.manufacturer, info.deviceKind, info.cpuName, info.cpuCores, info.architecture, info.bits, info.memoryBytes, info.locale, table.concat(info.languages, ',')}, '|')
     )");
     // clang-format on
-    EXPECT_EQ(fixture.lua("return summary"), "android|16|Phone 9|Maker|phone|Chip G4|8|arm64|64|12884901888|pt-BR|pt-BR,en-US|America/Sao_Paulo");
+    EXPECT_EQ(fixture.lua("return summary"), "android|16|Phone 9|Maker|phone|Chip G4|8|arm64|64|12884901888|pt-BR|pt-BR,en-US");
 
     fixture.host().setTheme(Theme::Dark);
     fixture.host().setBattery({.level = 0.5F, .charging = true, .state = Battery::State::Charging});
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return table.concat(heard, ', ')"), "dark, charging 0.5");
+
+    // The power saving mode and the time zone stay nil until the platform tells them.
+    EXPECT_EQ(fixture.lua("return tostring(system.powerSaving()) .. ' ' .. tostring(system.timeZone())"), "nil nil");
+    fixture.runLua("events.on('powerSavingChanged', function(data) heard[#heard + 1] = 'saving ' .. tostring(data.enabled) end) events.on('timeZoneChanged', function(data) heard[#heard + 1] = data.timeZone end)");
+    fixture.host().setPowerSaving(true);
+    fixture.host().setTimeZone("Asia/Tokyo");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return table.concat(heard, ', ')"), "dark, charging 0.5, saving true, Asia/Tokyo");
+    EXPECT_EQ(fixture.lua("return tostring(system.powerSaving()) .. ' ' .. system.timeZone()"), "true Asia/Tokyo");
     EXPECT_EQ(fixture.lua("local battery = system.battery() return system.theme() .. ' ' .. battery.level .. ' ' .. tostring(battery.charging) .. ' ' .. battery.state"), "dark 0.5 true charging");
 }
 

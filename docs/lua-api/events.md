@@ -200,7 +200,7 @@ A scene that C++ code pushed arrives as `false` in the fields `scene`, `from` an
 | `appActive` | The app came back to the foreground with the focus. | None. |
 | `appInactive` | The app is still visible but does not have the focus. The window lost the focus, the system interrupted the app, such as with a phone call or another app that took the audio focus on Android, or native UI of a plugin covers the app, as [`haylen.appCovered()`](haylen.md#haylenappcovered) tells. | None. |
 | `appBackground` | The app went to the background. Right after the listeners run, the engine makes the files of `haylen.storage` durable and saves the unsaved changes of `haylen.preferences`. | None. |
-| `appLowMemory` | The platform is short of memory. The engine has already dropped the assets that nothing holds. | None. |
+| `appLowMemory` | The platform is short of memory. The engine has already dropped the assets that nothing holds. | `{level}`, `'warning'` when the app frees what it can rebuild, or `'critical'` when the system is about to end apps, as the [lifecycle guide](../core/lifecycle.md#memory-quitting-and-device-changes) describes. |
 | `appQuitRequested` | The player asked to close the window, or to quit the app through its menu, Command+Q or the Dock on macOS. | None. |
 | `appStopping` | The app is about to stop, before the scenes leave and the autoloads stop. | None. |
 | `appError` | An error stopped the app and the error screen shows. Queued. | The report `{message, file, line, traceback, frames}` of the error, which the web page also receives in `onError`, as [errors and stack traces](../core/lua.md#errors-and-stack-traces) describes. |
@@ -300,6 +300,8 @@ end)
 | `audioUnlocked` | A browser let the audio play after the first interaction with the page. | None. |
 | `systemThemeChanged` | The system switched between light and dark colors, as [`system.theme()`](system.md#systemtheme) reports them. | `{theme}`, `'light'` or `'dark'`. |
 | `batteryChanged` | The level, the charging or the state of the battery changed, as [`system.battery()`](system.md#systembattery) reports it. | `{level, charging, state}`, without `level` when the platform does not know it. |
+| `powerSavingChanged` | The power saving mode of the system turned on or off, as [`system.powerSaving()`](system.md#systempowersaving) reports it. | `{enabled}` |
+| `timeZoneChanged` | The time zone of the device changed, as [`system.timeZone()`](system.md#systemtimezone) reports it. | `{timeZone}`, the IANA name of the zone. |
 | `mediaCommand` | A now-playing control of the system, a media key or a headset button asked the app to change what it plays, as [`system.setNowPlaying`](system.md#systemsetnowplayinginfo) describes. | `{command, position}`, where `position` in seconds comes only with the command `'seek'`. |
 | `accessibilitySettingsChanged` | The text scale, reduced motion, high contrast, reduced transparency or screen reader of the system changed, as [`accessibility.settings()`](accessibility.md#accessibilitysettings) reports them. | `{textScale, reducedMotion, highContrast, reducedTransparency, screenReader}` |
 | `saveSlotWritten` | The function `storage.writeSlot()` or `storage.writeSlotAsync()` of [`haylen.storage`](storage.md) wrote a slot. A cloud save plugin uploads it. | `{slot, revision, version}` |

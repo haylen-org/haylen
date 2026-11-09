@@ -49,7 +49,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.TimeZone;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -76,6 +75,8 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
 
     private final HaylenSplash splash = new HaylenSplash(this);
     private final HaylenBattery battery = new HaylenBattery(this);
+    private final HaylenPowerSaving powerSaving = new HaylenPowerSaving(this);
+    private final HaylenTimeZone timeZone = new HaylenTimeZone(this);
     private final HaylenAccessibility accessibility = new HaylenAccessibility(this);
     private HaylenAccessibilityTree accessibilityTree;
     private HaylenRequirements requirements;
@@ -110,6 +111,8 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         nativeOrientation(getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT);
         nativeTheme(isDark(getResources().getConfiguration()));
         battery.register();
+        powerSaving.register();
+        timeZone.register();
         accessibility.register();
         accessibilityTree.reportWanted();
         fold = new HaylenFold(this);
@@ -315,6 +318,8 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         HaylenDialogs.activityDestroyed();
         splash.dismiss();
         battery.unregister();
+        powerSaving.unregister();
+        timeZone.unregister();
         accessibility.unregister();
         accessibilityTree.detach();
         HaylenMediaSession.release();
@@ -329,12 +334,13 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         HaylenBridge.detach(this);
     }
 
-    // Hiding the interface is the only trim level that says nothing about memory pressure.
+    // Hiding the interface is the only trim level that says nothing about memory pressure. The levels at which the system ends processes soon are critical, a running app whose device is about to end background processes and a cached app that comes first in the list of those that end. Android 14 and later send only the levels of the hidden interface and of the background, and earlier versions send every level.
     @Override
+    @SuppressWarnings("deprecation")
     public void onTrimMemory(int level) {
         super.onTrimMemory(level);
         if (level != TRIM_MEMORY_UI_HIDDEN) {
-            nativeLowMemory();
+            nativeLowMemory(level == TRIM_MEMORY_RUNNING_CRITICAL || level >= TRIM_MEMORY_COMPLETE);
         }
         HaylenPlugins.trimMemory(level);
     }
@@ -437,7 +443,6 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         info.put("tablet", activity.getResources().getConfiguration().smallestScreenWidthDp >= 600);
         info.put("locale", Locale.getDefault().toLanguageTag());
         info.put("languages", languages);
-        info.put("timeZone", TimeZone.getDefault().getID());
         return new JSONObject(info).toString().getBytes(StandardCharsets.UTF_8);
     }
 
@@ -707,7 +712,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
 
     private static native void nativeTelevision(boolean television);
 
-    private static native void nativeLowMemory();
+    private static native void nativeLowMemory(boolean critical);
 
     private static native void nativeKeyboard(int x, int y, int width, int height);
 

@@ -275,6 +275,15 @@ SDL_AppResult Runtime::iterate() {
     return closing ? SDL_APP_SUCCESS : SDL_APP_CONTINUE;
 }
 
+#if defined(__APPLE__) && !TARGET_OS_OSX
+void Runtime::playBackgroundFrame() {
+    if (!started || closing) {
+        return;
+    }
+    Player::frame(timer.next(SDL_GetTicksNS()));
+}
+#endif
+
 // A device that stopped working, after a reset of the GPU, the removal of the adapter or a lost context, gives way to a new one, which the app starts again on once the graphics API prepared it. A device gets one replacement, and a replacement that stops working too shows a GPU that keeps no device for the app, which then ends with the reason.
 void Runtime::recover() {
     const gpu::Device* device = Player::getGpuDevice();

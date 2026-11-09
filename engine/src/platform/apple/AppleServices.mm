@@ -22,6 +22,7 @@
 #include "platform/NativeWindow.hpp"
 #include "platform/Player.hpp"
 #import "platform/apple/AppleAccessibility.hpp"
+#import "platform/apple/AppleBackgroundAudio.hpp"
 #import "platform/apple/AppleBattery.hpp"
 #import "platform/apple/AppleBridge.hpp"
 #import "platform/apple/AppleCutouts.hpp"
@@ -36,12 +37,14 @@
 #import "platform/apple/AppleOrientation.hpp"
 #import "platform/apple/ApplePermissions.hpp"
 #import "platform/apple/ApplePlugins.hpp"
+#import "platform/apple/ApplePowerSaving.hpp"
 #import "platform/apple/AppleScreens.hpp"
 #import "platform/apple/AppleSplash.hpp"
 #import "platform/apple/AppleStatusBar.hpp"
 #import "platform/apple/AppleSystem.hpp"
 #import "platform/apple/AppleSystemGestures.hpp"
 #import "platform/apple/AppleTextInput.hpp"
+#import "platform/apple/AppleTimeZone.hpp"
 #import "platform/apple/AppleVideoDecoder.hpp"
 #import "platform/apple/CatalystWindow.hpp"
 #import "platform/apple/HaylenAccessibilityView.h"
@@ -61,14 +64,17 @@ std::string_view Services::getName() noexcept {
 void Services::initialize() {
     AppleNetwork::observe();
     AppleBattery::observe();
+    ApplePowerSaving::observe();
+    AppleTimeZone::observe();
     AppleAccessibility::observe();
 #if TARGET_OS_OSX
-    // AppKit sends apps no memory warnings, so the runtime follows the memory pressure of the system.
+    // AppKit sends apps no memory warnings, so the runtime follows the memory pressure of the system with its level.
     static dispatch_source_t pressure = dispatch_source_create(DISPATCH_SOURCE_TYPE_MEMORYPRESSURE, 0, DISPATCH_MEMORYPRESSURE_WARN | DISPATCH_MEMORYPRESSURE_CRITICAL, dispatch_get_main_queue());
-    dispatch_source_set_event_handler(pressure, ^{ MemoryWarning::raise(); });
+    dispatch_source_set_event_handler(pressure, ^{ MemoryWarning::raise((dispatch_source_get_data(pressure) & DISPATCH_MEMORYPRESSURE_CRITICAL) != 0 ? Event::MemoryLevel::Critical : Event::MemoryLevel::Warning); });
     dispatch_resume(pressure);
 #else
-    [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidReceiveMemoryWarningNotification object:nil queue:nil usingBlock:^(NSNotification*) { MemoryWarning::raise(); }];
+    // The memory warnings of UIKit tell no level.
+    [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidReceiveMemoryWarningNotification object:nil queue:nil usingBlock:^(NSNotification*) { MemoryWarning::raise(Event::MemoryLevel::Warning); }];
     [NSNotificationCenter.defaultCenter addObserverForName:AVAudioSessionMediaServicesWereResetNotification object:nil queue:nil usingBlock:^(NSNotification*) { Player::postEvent({.type = Event::Type::AudioServicesReset}); }];
 #endif
 #if !TARGET_OS_OSX
@@ -349,6 +355,13 @@ std::string Services::explainBlockedSocket(std::intptr_t) {
 
 Permission::Answer Services::vibrate(float) {
     return AppleSystem::vibrate();
+}
+
+// A Mac app keeps running its frames in the background, so its sound plays on.
+void Services::setBackgroundAudio([[maybe_unused]] bool value) {
+#if !TARGET_OS_OSX
+    AppleBackgroundAudio::setEnabled(value);
+#endif
 }
 
 void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {

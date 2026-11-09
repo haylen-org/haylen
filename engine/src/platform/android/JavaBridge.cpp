@@ -61,6 +61,7 @@ jmethodID JavaBridge::updateAccessibilityMethod = nullptr;
 jmethodID JavaBridge::announceMethod = nullptr;
 jclass JavaBridge::mediaSessionClass = nullptr;
 jmethodID JavaBridge::updateMediaSessionMethod = nullptr;
+jmethodID JavaBridge::setBackgroundAudioMethod = nullptr;
 std::atomic<bool> JavaBridge::accessibilityWanted{false};
 std::mutex& JavaBridge::urlMutex = *new std::mutex();
 std::unordered_map<std::int64_t, JavaBridge::PendingUrl>& JavaBridge::urlCallbacks = *new std::unordered_map<std::int64_t, PendingUrl>();
@@ -117,13 +118,14 @@ jint JavaBridge::load(JavaVM* vm) {
     updateAccessibilityMethod = findMethod(*env, accessibilityClass, "update", "([B)V");
     announceMethod = findMethod(*env, accessibilityClass, "announce", "([BZ)V");
     updateMediaSessionMethod = findMethod(*env, mediaSessionClass, "update", "([B[B)V");
+    setBackgroundAudioMethod = findMethod(*env, mediaSessionClass, "setBackground", "(Z)V");
     permissionStateMethod = findMethod(*env, permissionsClass, "state", "(J[B)V");
     permissionHeldMethod = findMethod(*env, permissionsClass, "isHeld", "([B)Z");
     openOutputMethod = findMethod(*env, outputsClass, "open", "(II[B)V");
     closeOutputMethod = findMethod(*env, outputsClass, "close", "(I)V");
     requestPermissionMethod = findMethod(*env, permissionsClass, "request", "(J[B)V");
     const jmethodID idsMethod = findMethod(*env, pluginsClass, "ids", "()[B");
-    for (const jmethodID method : {dispatchMethod, cancelMethod, setAppRunningMethod, reportErrorMethod, editMethod, finishMethod, lockOrientationMethod, setStatusBarMethod, setSystemGesturesMethod, keepScreenOnMethod, captureBackMethod, systemInfoMethod, openUrlMethod, vibrateMethod, rumbleGamepadMethod, setClipboardMethod, clipboardMethod, networkRequirementMethod, packageNameMethod, developmentServerMethod, showDialogMethod, cancelDialogMethod, openScreenMethod, cancelScreenMethod, updateAccessibilityMethod, announceMethod, updateMediaSessionMethod, permissionStateMethod, permissionHeldMethod, requestPermissionMethod, openOutputMethod, closeOutputMethod, idsMethod}) {
+    for (const jmethodID method : {dispatchMethod, cancelMethod, setAppRunningMethod, reportErrorMethod, editMethod, finishMethod, lockOrientationMethod, setStatusBarMethod, setSystemGesturesMethod, keepScreenOnMethod, captureBackMethod, systemInfoMethod, openUrlMethod, vibrateMethod, rumbleGamepadMethod, setClipboardMethod, clipboardMethod, networkRequirementMethod, packageNameMethod, developmentServerMethod, showDialogMethod, cancelDialogMethod, openScreenMethod, cancelScreenMethod, updateAccessibilityMethod, announceMethod, updateMediaSessionMethod, setBackgroundAudioMethod, permissionStateMethod, permissionHeldMethod, requestPermissionMethod, openOutputMethod, closeOutputMethod, idsMethod}) {
         if (method == nullptr) {
             return JNI_ERR;
         }
@@ -406,6 +408,12 @@ void JavaBridge::updateMediaSession(std::string_view infoJson, std::span<const s
         env.CallStaticVoidMethod(mediaSessionClass, updateMediaSessionMethod, info.get(), bytes.get());
     }
     clearException(env, "dev.haylen.HaylenMediaSession.update");
+}
+
+void JavaBridge::setBackgroundAudio(bool value) {
+    JNIEnv& env = getEnv();
+    env.CallStaticVoidMethod(mediaSessionClass, setBackgroundAudioMethod, value ? JNI_TRUE : JNI_FALSE);
+    clearException(env, "dev.haylen.HaylenMediaSession.setBackground");
 }
 
 void JavaBridge::showDialog(std::uint64_t id, std::string_view requestJson, std::span<const std::uint8_t> data) {

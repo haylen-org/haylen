@@ -128,7 +128,7 @@ ANDROID_RELEASE_LIBRARY = "haylen-app"
 # The file in the assets of an Android project that names the plugins whose classes the runtime loads, written by `prepare`.
 ANDROID_PLUGINS_FILE = "haylen-plugins.json"
 # The Android libraries that `haylen.py engine` publishes as `dev.haylen:<module>`, each a module of the Gradle project of the engine.
-ANDROID_LIBRARIES = ("haylen", "haylen-plugins", "haylen-links", "haylen-coroutines")
+ANDROID_LIBRARIES = ("haylen", "haylen-plugins", "haylen-links", "haylen-playback", "haylen-coroutines")
 # The host tool that builds, verifies, inspects, compares and publishes the protected releases of apps with the format library of the engine, which the desktop artifacts carry.
 CONTENT_TOOL = "haylen-content"
 # The variable that names the folder of the key folders of apps, as continuous integration gives it, instead of the configuration folder of the user.
@@ -1895,7 +1895,7 @@ def build_android_players(config: str, jobs: int) -> Path:
 
 
 def build_android_artifacts(config: str, jobs: int) -> None:
-    """Packages the players of every ABI with the Java side into the `haylen` Android library, together with the Kotlin transport of Varn from where CPM placed it for the native build, and publishes it with the libraries that only some apps add, `haylen-plugins`, `haylen-links` and `haylen-coroutines`, to the local Maven repository of the artifacts."""
+    """Packages the players of every ABI with the Java side into the `haylen` Android library, together with the Kotlin transport of Varn from where CPM placed it for the native build, and publishes it with the libraries that only some apps add, `haylen-plugins`, `haylen-links`, `haylen-playback` and `haylen-coroutines`, to the local Maven repository of the artifacts."""
     libraries = build_android_players(config, jobs)
     varn = cmake_cache_value(ENGINE_BUILDS_DIR / f"android-{ANDROID_ABIS[0]}-{config.lower()}", "varn_SOURCE_DIR")
     maven = ARTIFACTS_DIR / "android" / "maven"
@@ -2069,6 +2069,9 @@ class App:
         self.status_bar: str = window.get("statusBar", "hidden")
         if self.status_bar not in STATUS_BARS:
             raise BuildError(f'The "window.statusBar" of `{where}` must be "hidden", "auto", "light" or "dark".')
+        # An app that plays audio in the background gets the background mode of Apple platforms and the playback service of Android.
+        audio = document.get("audio", {})
+        self.background_audio: bool = audio.get("background", False) is True if isinstance(audio, dict) else False
         splash = document.get("splash", {})
         self.background = parse_color(splash.get("background", document.get("clearColor", "#00000000" if self.transparent else "#FF000000")))
         self.dark_background = parse_color(splash["darkBackground"]) if "darkBackground" in splash else None
@@ -3195,10 +3198,11 @@ def read_plist(path: Path) -> dict:
 
 
 def write_apple_plists(app: App, root: Path, generated: Path) -> None:
-    """Writes `haylen/<platform>/Info.plist` for each target template: the `Info.plist` of the developer, completed with the orientations, the status bar the app launches with and the Dock setting of `app.json`, the refresh rates above 60 hertz that iPhones allow only with `CADisableMinimumFrameDurationOnPhone`, and the `infoPlist` keys of the plugins, where the values of the developer win."""
+    """Writes `haylen/<platform>/Info.plist` for each target template: the `Info.plist` of the developer, completed with the orientations, the status bar the app launches with, the background mode of the audio that plays in the background and the Dock setting of `app.json`, the refresh rates above 60 hertz that iPhones allow only with `CADisableMinimumFrameDurationOnPhone`, and the `infoPlist` keys of the plugins, where the values of the developer win."""
     phone, pad = IOS_ORIENTATIONS
     status_bar = {"UIStatusBarHidden": True} if app.status_bar == "hidden" else {"UIStatusBarHidden": False, "UIStatusBarStyle": IOS_STATUS_BAR_STYLES[app.status_bar]}
-    fills = {"ios": {"UISupportedInterfaceOrientations": phone, "UISupportedInterfaceOrientations~ipad": pad, "CADisableMinimumFrameDurationOnPhone": True, **status_bar}, "tvos": {}, "visionos": {}, "macos": {} if app.show_in_taskbar else {"LSUIElement": True}}
+    background = {"UIBackgroundModes": ["audio"]} if app.background_audio else {}
+    fills = {"ios": {"UISupportedInterfaceOrientations": phone, "UISupportedInterfaceOrientations~ipad": pad, "CADisableMinimumFrameDurationOnPhone": True, **status_bar, **background}, "tvos": {**background}, "visionos": {**background}, "macos": {} if app.show_in_taskbar else {"LSUIElement": True}}
     warnings: list[str] = []
     for template, (folder, platforms, _) in APPLE_TEMPLATES.items():
         own = root / folder / "Info.plist"
@@ -3814,6 +3818,8 @@ def check_apple(app: App, root: Path, args: argparse.Namespace) -> list[Requirem
     if folder != "macos" and "UIApplicationSceneManifest" not in info:
         missing.append(Requirement('Haylen needs "UIApplicationSceneManifest" in the "Info.plist" of the app, which the built app lacks, since the runtime draws in the window of a scene.', f'Add to `{shown_path(root / folder / "Info.plist")}`:', plist_snippet("UIApplicationSceneManifest", {"UIApplicationSupportsMultipleScenes": folder == "ios"})))
     need_privacy("Haylen", engine_privacy())
+    if app.background_audio and folder in {"ios", "tvos", "visionos"} and args.platform != "catalyst":
+        need_plist('The audio that plays in the background, which "audio.background" of "app.json" declares,', "UIBackgroundModes", ["audio"])
 
     for plugin in app.plugins:
         apple = plugin_section(app, plugin, "apple", (plugin_platform,))
@@ -3948,7 +3954,7 @@ def write_android_splash(app: App, resources: Path) -> None:
 
 
 def prepare_android(app: App, root: Path, library: str, config: str, jobs: int, release: Path | None = None, packs_folder: Path | None = None) -> None:
-    """Writes the folder `haylen/` of an Android project: `haylen.properties` with the identity, version, orientation and status bar of the app, the native library its activity loads, the engine repository and version, the plugins and the build folder, in `assets/app` the files of a protected release or else the package with its index, in `asset-packs` the asset packs of the release, the splash resources in `res`, the native libraries in `jniLibs` and the plugin modules in `plugins`. The named packs of a release, whose shards wait in `packs_folder`, become asset packs that Google Play delivers after the install when a plugin delivers them."""
+    """Writes the folder `haylen/` of an Android project: `haylen.properties` with the identity, version, orientation and status bar of the app, the native library its activity loads, the engine repository and version, the engine libraries that the features of `app.json` need, the plugins and the build folder, in `assets/app` the files of a protected release or else the package with its index, in `asset-packs` the asset packs of the release, the splash resources in `res`, the native libraries in `jniLibs` and the plugin modules in `plugins`. The named packs of a release, whose shards wait in `packs_folder`, become asset packs that Google Play delivers after the install when a plugin delivers them."""
     generated = root / GENERATED_FOLDER
     terminal.step(f"Preparing the Android project `{shown_path(root)}`")
     for name in ("assets", "res", "jniLibs", "plugins", "asset-packs"):
@@ -3983,6 +3989,7 @@ def prepare_android(app: App, root: Path, library: str, config: str, jobs: int, 
         "library": library,
         "buildDirectory": (app.build_folder / "gradle").as_posix(),
         "assetPacks": ",".join(f"{name}={GENERATED_FOLDER}/asset-packs/{name}" for name in packs),
+        "engineLibraries": "haylen-playback" if app.background_audio else "",
         **prepare_android_plugins(app, root),
     }
     lines = ["# Written by haylen.py from app.json and the plugins of the app. The Gradle scripts of the project read it."]
@@ -4303,6 +4310,8 @@ def check_android(app: App, root: Path, args: argparse.Namespace) -> list[Requir
         missing.append(Requirement(f'{owner} needs the {tag} "{name}", which the merged manifest of the built app lacks.', modules))
 
     need("Haylen", "activity", "dev.haylen.HaylenActivity")
+    if app.background_audio and "dev.haylen.HaylenPlaybackService" not in merged.get("service", set()):
+        missing.append(Requirement('The audio that plays in the background, which "audio.background" of "app.json" declares, needs the service "dev.haylen.HaylenPlaybackService", which the merged manifest of the built app lacks.', f'Keep the engine libraries of "{GENERATED_FOLDER}/haylen.properties" in `{shown_path(root / "app" / "build.gradle.kts")}`, as the template does.'))
     if any("android" in plugin.manifest for plugin in app.plugins):
         need("Haylen", "provider", "dev.haylen.HaylenPluginProvider")
     for library in app.native:
@@ -6162,8 +6171,9 @@ def write_cpp_apple_parts(app: App, platform: str, directory: Path, fragment: Pa
         modules.append(products)
         bundles += package_bundles
 
-    # The keys of the plugins go inside the dictionary of the Info.plist of the engine, which a property list of their own carries.
-    keys = expand_app_settings(apple_plugin_keys(app, (target_platform,), "infoPlist", {}, {}, '"Info.plist"'), settings)
+    # The keys of the plugins go inside the dictionary of the Info.plist of the engine, which a property list of their own carries, with the background mode of the audio that plays in the background, whose modes the plugins may add to.
+    background = {"UIBackgroundModes": ["audio"]} if app.background_audio and target_platform in {"ios", "tvos", "visionos"} else {}
+    keys = expand_app_settings(apple_plugin_keys(app, (target_platform,), "infoPlist", background, {}, '"Info.plist"'), settings)
     entries = plistlib.dumps(keys, sort_keys=True).decode().split("<dict>", 1)[1].rsplit("</dict>", 1)[0].strip("\n") if keys else ""
     entitlements = expand_app_settings(apple_plugin_keys(app, (target_platform,), "entitlements", {}, {}, "entitlements"), settings)
     if entitlements:

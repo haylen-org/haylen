@@ -393,6 +393,7 @@ Music, effects, buses, filters, positional sound, interruptions and many voices 
 | `AUD-009` | Loudness and output | Thirty explosions with the limiter of the master bus on and off, its threshold and the gain it takes away, and the state and latency of the output with the unlock of a browser. |  |
 | `AUD-010` | Now playing | A track in the now-playing controls of the system with its artwork, length and position, whose commands from the controls, media keys, headsets and remotes change what plays. |  |
 | `AUD-011` | Seeking a long track | A streamed Ogg Vorbis track of two and a half minutes that jumps to its end, back to its start, ten seconds either way and anywhere at once, with the time each jump took until the sound played on. |  |
+| `AUD-012` | Playing in the background | A playlist of streamed tracks that plays on, track after track, while the app is in the background, with the now-playing controls of the system and how far the music went while the app was away. |  |
 
 #### Components (CMP)
 
@@ -759,7 +760,7 @@ The bridge to the native code of the plugin "platform-sample", what the window a
 | `PLT-001` | Native events | The ticks of a native ticker and an event sent from Lua through the plugin "platform-sample", next to the events of the platform. |  |
 | `PLT-002` | Custom handler | The method "platform-sample.echo", answered by Java, Objective-C or JavaScript, and its failure without a text. |  |
 | `PLT-003` | Window and device | Platform, graphics API, safe area, orientation, pointer, fullscreen, keeping the screen on, the on-screen keyboard and the network. |  |
-| `PLT-004` | System | What "haylen.system" tells about the device, its theme and battery with their changes, an address to open and a vibration. |  |
+| `PLT-004` | System | What "haylen.system" tells about the device, its theme, battery, power saving and time zone with their changes, an address to open and a vibration. |  |
 | `PLT-005` | Dialogs | A native message, the pickers of files, of a place to save and of a folder, and a message that the app gives up. |  |
 | `PLT-006` | Event checklist | Every event that comes from the platform, marked live as it fires, and the events this platform never sends with the reason. |  |
 | `PLT-007` | Launching apps | A small app package that the test writes into its storage and launches in place of the project, whose quit starts the project again. |  |

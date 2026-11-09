@@ -227,6 +227,44 @@ class StatusBarTest(unittest.TestCase):
         self.assertTrue(self.launch({})["CADisableMinimumFrameDurationOnPhone"])
 
 
+class BackgroundAudioTest(unittest.TestCase):
+    def write_app(self, folder: Path, audio: dict) -> Path:
+        shutil.copytree(haylen.COMMON_TEMPLATE / "content", folder / "content")
+        document = json.loads((haylen.COMMON_TEMPLATE / "app.json").read_text(encoding="utf-8"))
+        (folder / "app.json").write_text(json.dumps({**document, "audio": audio}), encoding="utf-8")
+        return folder
+
+    def test_apple_apps_that_play_in_the_background_get_the_audio_background_mode(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            app = self.write_app(Path(scratch) / "app", {"iosSession": "playback", "background": True})
+            root = Path(scratch) / "apple"
+            for folder, _, _ in haylen.APPLE_TEMPLATES.values():
+                (root / folder).mkdir(parents=True, exist_ok=True)
+                (root / folder / "Info.plist").write_bytes(plistlib.dumps({"UIBackgroundModes": ["fetch"]} if folder == "ios" else {}))
+            generated = Path(scratch) / "generated"
+            haylen.write_apple_plists(haylen.App(app, "ios"), root, generated)
+            plists = {folder: plistlib.loads((generated / folder / "Info.plist").read_bytes()) for folder in ("ios", "tvos", "visionos", "macos")}
+        # The modes of the developer stay, the mode of the audio joins them, and a Mac app needs none.
+        self.assertEqual(plists["ios"]["UIBackgroundModes"], ["fetch", "audio"])
+        self.assertEqual(plists["tvos"]["UIBackgroundModes"], ["audio"])
+        self.assertEqual(plists["visionos"]["UIBackgroundModes"], ["audio"])
+        self.assertNotIn("UIBackgroundModes", plists["macos"])
+
+    def test_android_apps_that_play_in_the_background_depend_on_the_playback_library(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            values = {}
+            for name, audio in (("radio", {"iosSession": "playback", "background": True}), ("game", {})):
+                app = self.write_app(Path(scratch) / name, audio)
+                root = Path(scratch) / f"{name}-android"
+                with mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+                    haylen.prepare_android(haylen.App(app, "android"), root, "haylen", "Debug", 1)
+                values[name] = (root / "haylen" / "haylen.properties").read_text(encoding="utf-8").splitlines()
+        self.assertIn("engineLibraries=haylen-playback", values["radio"])
+        self.assertIn("engineLibraries=", values["game"])
+        self.assertIn("haylen-playback", haylen.ANDROID_LIBRARIES)
+        self.assertIn('haylen.getProperty("engineLibraries")', (haylen.COMMON_TEMPLATE / "platform" / "android" / "app" / "build.gradle.kts").read_text(encoding="utf-8"))
+
+
 class SplashTest(unittest.TestCase):
     def test_the_dark_background_becomes_the_dark_appearance_and_the_night_resources(self):
         colorset = haylen.apple_colorset((16, 20, 24, 255), (0, 0, 0, 255))

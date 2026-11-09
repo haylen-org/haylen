@@ -29,5 +29,5 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-@HAYLEN_PLUGIN_KEYS@</dict>
+@HAYLEN_BACKGROUND_MODES@@HAYLEN_PLUGIN_KEYS@</dict>
 </plist>

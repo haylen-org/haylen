@@ -12,15 +12,18 @@ import android.media.MediaMetadata;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
 import android.os.Build;
+import android.util.Log;
 import android.view.KeyEvent;
+import androidx.core.content.ContextCompat;
 import java.nio.charset.StandardCharsets;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-// The now-playing controls of Android: a media session, which headsets, Bluetooth devices and TV remotes send their media buttons to, and the media notification that shows it in the shade and on the lock screen, where Android 13 and later draw its controls from the playback state. Notifications of a media session need no permission. The commands reach the engine with the order of `MediaSession::Command`.
+// The now-playing controls of Android: a media session, which headsets, Bluetooth devices and TV remotes send their media buttons to, and the media notification that shows it in the shade and on the lock screen, where Android 13 and later draw its controls from the playback state. Notifications of a media session need no permission. The commands reach the engine with the order of `MediaSession::Command`. While an app that plays in the background shows what it plays as playing, `HaylenPlaybackService` keeps it in the foreground with the same notification, so Android neither freezes nor ends it there.
 final class HaylenMediaSession extends MediaSession.Callback {
+    static final int NOTIFICATION = 0x4d454449;
+    private static final String TAG = "haylen";
     private static final String CHANNEL = "haylen.media";
-    private static final int NOTIFICATION = 0x4d454449;
     private static final long[] ACTIONS = {PlaybackState.ACTION_PLAY, PlaybackState.ACTION_PAUSE, PlaybackState.ACTION_PLAY_PAUSE, PlaybackState.ACTION_STOP, PlaybackState.ACTION_SKIP_TO_NEXT, PlaybackState.ACTION_SKIP_TO_PREVIOUS, PlaybackState.ACTION_SEEK_TO};
     private static final int PLAY = 0;
     private static final int PAUSE = 1;
@@ -31,6 +34,14 @@ final class HaylenMediaSession extends MediaSession.Callback {
     private static final int SEEK = 6;
 
     private static HaylenMediaSession current;
+
+    // Whether the app plays in the background, as `audio.background` of `app.json` declares and the project of the app allows, which the frame thread sets when an app starts.
+    private static volatile boolean background;
+
+    // The notification shown last, which the service shows while it runs, whether it shows what plays as playing, and whether the service keeps the app in the foreground, all on the UI thread.
+    private static Notification shown;
+    private static boolean playing;
+    private static boolean foreground;
 
     private final HaylenActivity activity;
     private final MediaSession session;
@@ -64,11 +75,53 @@ final class HaylenMediaSession extends MediaSession.Callback {
         });
     }
 
+    // Called from the frame thread of the engine when an app starts and whenever it turns the background on or off, and the service follows at once. Without the service and its permissions in the merged manifest, which the library `haylen-playback` brings, the app plays in the background only until Android freezes it, which the log tells once.
+    static void setBackground(boolean value) {
+        HaylenActivity activity = HaylenBridge.activity();
+        if (activity == null) {
+            background = false;
+            return;
+        }
+        background = value && isDeclared(activity);
+        activity.runOnUiThread(() -> {
+            if (current != null) {
+                current.follow();
+            }
+        });
+    }
+
+    private static boolean isDeclared(HaylenActivity activity) {
+        HaylenRequirements requirements = new HaylenRequirements(activity, "The audio that plays in the background");
+        try {
+            requirements.require(HaylenRequirements.Requirement.service(HaylenPlaybackService.class.getName()), HaylenRequirements.Requirement.permission("android.permission.FOREGROUND_SERVICE"), HaylenRequirements.Requirement.permission("android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"));
+            return true;
+        } catch (HaylenBridge.Failure missing) {
+            return false;
+        }
+    }
+
+    // The service shows the notification shown last while it runs.
+    static Notification notification() {
+        return shown;
+    }
+
+    // Whether the service should keep the app in the foreground, which it no longer should once the app paused or left the controls before the service started.
+    static boolean isPlayingInBackground() {
+        return foreground;
+    }
+
+    // Whether the controls show what the app plays.
+    static boolean isShowing() {
+        return current != null;
+    }
+
     // Leaves the controls when the app takes itself out of them or the activity ends.
     static void release() {
         if (current == null) {
             return;
         }
+        playing = false;
+        current.follow();
         current.activity.getSystemService(NotificationManager.class).cancel(NOTIFICATION);
         current.session.release();
         current = null;
@@ -114,7 +167,30 @@ final class HaylenMediaSession extends MediaSession.Callback {
         if (art != null) {
             builder.setLargeIcon(art);
         }
-        manager.notify(NOTIFICATION, builder.build());
+        shown = builder.build();
+        playing = info.optBoolean("playing");
+        manager.notify(NOTIFICATION, shown);
+        follow();
+    }
+
+    // Starts the service when what plays starts playing in an app that plays in the background, and stops it when it pauses, which leaves the notification in the shade. Android lets an app start it only from the foreground or right after a command of its media session, and a refusal leaves the sound to stop once Android freezes the app in the background.
+    private void follow() {
+        boolean wanted = background && playing;
+        if (wanted == foreground) {
+            return;
+        }
+        foreground = wanted;
+        Intent service = new Intent(activity, HaylenPlaybackService.class);
+        if (!wanted) {
+            activity.stopService(service);
+            return;
+        }
+        try {
+            ContextCompat.startForegroundService(activity, service);
+        } catch (IllegalStateException refused) {
+            foreground = false;
+            Log.w(TAG, "Android did not let the app keep its sound playing in the background, because it started playing while the app was in the background: " + refused.getMessage());
+        }
     }
 
     @Override

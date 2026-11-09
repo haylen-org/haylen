@@ -10,7 +10,7 @@ const std::array<std::pair<std::string_view, SystemInfo::Architecture>, 6> Syste
 
 core::Json SystemInfo::toJson() const {
     core::Json json{{"os", osName(os)}, {"deviceKind", deviceKindName(deviceKind)}, {"architecture", architectureName(architecture)}, {"bits", bits}, {"languages", languages}};
-    const std::array<std::pair<const char*, const std::string*>, 7> texts{{{"osVersion", &osVersion}, {"deviceModel", &deviceModel}, {"manufacturer", &manufacturer}, {"cpuName", &cpuName}, {"gpuName", &gpuName}, {"locale", &locale}, {"timeZone", &timeZone}}};
+    const std::array<std::pair<const char*, const std::string*>, 6> texts{{{"osVersion", &osVersion}, {"deviceModel", &deviceModel}, {"manufacturer", &manufacturer}, {"cpuName", &cpuName}, {"gpuName", &gpuName}, {"locale", &locale}}};
     for (const auto& [key, text] : texts) {
         if (!text->empty()) {
             json[key] = *text;

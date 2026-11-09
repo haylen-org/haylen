@@ -21,7 +21,6 @@
 namespace haylen::platform {
 
 SystemInfo LinuxSystem::getInfo() {
-    std::error_code error;
     const long pages = sysconf(_SC_PHYS_PAGES);
     const long pageSize = sysconf(_SC_PAGESIZE);
     return {
@@ -35,8 +34,16 @@ SystemInfo LinuxSystem::getInfo() {
         .memoryBytes = pages > 0 && pageSize > 0 ? static_cast<std::uint64_t>(pages) * static_cast<std::uint64_t>(pageSize) : 0,
         .locale = LinuxSystemReader::toLanguageTag(getVariable("LANG")),
         .languages = LinuxSystemReader::readLanguages(getVariable("LANGUAGE"), getVariable("LANG")),
-        .timeZone = LinuxSystemReader::readTimeZone(getVariable("TZ"), std::filesystem::read_symlink("/etc/localtime", error).string()),
     };
+}
+
+bool LinuxSystem::isTimeZoneFixed() {
+    return !getVariable("TZ").empty();
+}
+
+void LinuxSystem::reportTimeZone() {
+    std::error_code error;
+    NativeHost::getSystemState().setTimeZone(LinuxSystemReader::readTimeZone(getVariable("TZ"), std::filesystem::read_symlink(kLocalTime, error).string()));
 }
 
 // Starts `xdg-open` without blocking the frame thread, and a helper thread waits for it to tell whether an application took the url.

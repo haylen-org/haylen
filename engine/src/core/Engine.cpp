@@ -61,6 +61,7 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     audioSetup.session = current.config.audioSession;
     audioSetup.latency = current.config.audioOutput.latency;
     current.audio = std::make_unique<audio::Mixer>(audioSetup, *current.jobs);
+    host.setBackgroundAudio(current.backgroundAudio);
     if (current.config.audioOutput.limiter) {
         current.audio->addBusEffect("master", std::make_shared<audio::Limiter>(audio::Limiter::Settings{}));
     }
@@ -381,6 +382,7 @@ void Engine::frame(double frameSeconds) {
             current.scenes->update(current.clock);
         }
         current.audio->update(static_cast<float>(current.clock.getUnscaledDelta()));
+        followBackgroundPlayback();
     } catch (const std::exception& exception) {
         reportError(exception);
     }
@@ -678,8 +680,8 @@ void Engine::dispatchEvent(const platform::Event& event) {
             break;
         case platform::Event::Type::LowMemory:
             current.assets->releaseUnused();
-            lowMemory.emit();
-            current.events.emit(LifecycleEvent::kAppLowMemory);
+            lowMemory.emit(event.memoryLevel);
+            current.events.emit(LifecycleEvent::kAppLowMemory, {{"level", platform::Event::memoryLevelName(event.memoryLevel)}});
             break;
         default:
             break;
@@ -726,14 +728,15 @@ void Engine::setAppState(AppState value) {
     const bool wasHalted = isHalted();
     current.appState = value;
 
-    // Leaving the foreground releases held input, including on-screen controls, and suspends audio, and coming back skips the time the app was away. The platform may have dropped the surface of an app in the background, so a covered app draws its frame again when it comes back.
+    // Leaving the foreground releases held input, including on-screen controls, and suspends audio unless the app plays in the background, and coming back skips the time the app was away. The platform may have dropped the surface of an app in the background, so a covered app draws its frame again when it comes back.
     if (value != AppState::Active) {
         releaseHeldInput();
     }
-    if (value == AppState::Background) {
+    if (value == AppState::Background && !current.backgroundAudio) {
         current.audio->suspend();
     }
     if (previous == AppState::Background) {
+        current.backgroundSilent = false;
         current.audio->resume();
         current.clock.skipNextDelta();
         current.coveredFrameDrawn = false;
@@ -804,6 +807,24 @@ void Engine::applyCover() {
     refreshForegroundState();
 }
 
+// An app that plays in the background keeps its output there only while a voice plays, so a platform that runs such apps, as iOS does, suspends the app once its sound ended or paused, and a voice that starts again, such as from the controls of the lock screen, brings the output back.
+void Engine::followBackgroundPlayback() {
+    EngineState& current = *state;
+    if (current.appState != AppState::Background || !current.backgroundAudio) {
+        return;
+    }
+    const bool silent = !current.audio->isPlaying();
+    if (silent == current.backgroundSilent) {
+        return;
+    }
+    current.backgroundSilent = silent;
+    if (silent) {
+        current.audio->suspend();
+        return;
+    }
+    current.audio->resume();
+}
+
 void Engine::applyStateMute() {
     EngineState& current = *state;
     const bool mute = current.covered || (current.lifecycle.muteOnFocusLoss && current.appState != AppState::Active);
@@ -856,6 +877,30 @@ void Engine::setLifecycle(const AppConfig::Lifecycle& value) {
         current.clock.skipNextDelta();
     }
     applyStateMute();
+}
+
+// The output of an app in the background follows the change at once: it stops when the sound may no longer play there, and plays again in the next frame when a voice plays.
+void Engine::setBackgroundAudio(bool value) {
+    EngineState& current = *state;
+    if (value && !current.config.audioSession.background) {
+        throw std::invalid_argument("The app plays in the background only when \"audio.background\" of \"app.json\" is true, which brings the settings of each platform that it needs.");
+    }
+    if (value == current.backgroundAudio) {
+        return;
+    }
+    current.backgroundAudio = value;
+    current.host.setBackgroundAudio(value);
+    if (current.appState != AppState::Background) {
+        return;
+    }
+    current.backgroundSilent = value;
+    if (!value) {
+        current.audio->suspend();
+    }
+}
+
+bool Engine::isBackgroundAudio() const noexcept {
+    return state->backgroundAudio;
 }
 
 void Engine::setScaling(graphics::Viewport::ScalingPolicy value) {

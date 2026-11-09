@@ -8,7 +8,7 @@
 namespace haylen::platform {
 
 TEST(AndroidDeviceInfoTest, ReadsWhatTheJavaSideTells) {
-    const SystemInfo info = AndroidDeviceInfo::toSystemInfo(R"({"osVersion": "16", "deviceModel": "Phone 9", "manufacturer": "Maker", "cpuName": "Chip G4", "cpuCores": 8, "memoryBytes": 12884901888, "television": false, "tablet": false, "locale": "pt-BR", "languages": ["pt-BR", "en-US"], "timeZone": "America/Sao_Paulo"})");
+    const SystemInfo info = AndroidDeviceInfo::toSystemInfo(R"({"osVersion": "16", "deviceModel": "Phone 9", "manufacturer": "Maker", "cpuName": "Chip G4", "cpuCores": 8, "memoryBytes": 12884901888, "television": false, "tablet": false, "locale": "pt-BR", "languages": ["pt-BR", "en-US"]})");
     EXPECT_EQ(info.os, SystemInfo::Os::Android);
     EXPECT_EQ(info.deviceKind, SystemInfo::DeviceKind::Phone);
     EXPECT_EQ(info.osVersion, "16");
@@ -19,7 +19,6 @@ TEST(AndroidDeviceInfoTest, ReadsWhatTheJavaSideTells) {
     EXPECT_EQ(info.memoryBytes, 12884901888U);
     EXPECT_EQ(info.locale, "pt-BR");
     EXPECT_EQ(info.languages, (std::vector<std::string>{"pt-BR", "en-US"}));
-    EXPECT_EQ(info.timeZone, "America/Sao_Paulo");
 }
 
 TEST(AndroidDeviceInfoTest, TellsTheKindOfDeviceAndLeavesTheRestUnknown) {

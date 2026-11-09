@@ -815,7 +815,7 @@ The hook `event` of the top scene receives one table for every platform event, a
 | `'suspended'`, `'resumed'` | No other fields. The app went to the background or came back. |
 | `'focusGained'`, `'focusLost'` | No other fields. |
 | `'quitRequested'` | No other fields. The player asked to close the window, or to quit the app through its menu, Command+Q or the Dock on macOS. |
-| `'lowMemory'` | No other fields. The platform is short of memory. |
+| `'lowMemory'` | The field `level` is `'warning'` or `'critical'`. The platform is short of memory. |
 | `'textEdited'` | The field `field` is the id of the text field, `text` what its native field holds now, and `selectionStart` and `selectionEnd` the selection. The fields `compositionStart` and `compositionEnd` exist only while an input method composes. The UI applies the edits of its own fields, and the app applies those of [`input.editText`](input.md#inputedittextoptions). |
 | `'textAction'` | The field `field` is the id of the text field, and `action` is `'submit'`, `'next'`, `'cancel'` or `'dismissed'`. The UI applies the actions of its own fields. |
 | `'keyboardChanged'` | The field `frame` is the rectangle that the on-screen keyboard covers, empty while it is hidden. |

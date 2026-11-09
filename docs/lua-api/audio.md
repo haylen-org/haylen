@@ -919,6 +919,30 @@ local audio = require('haylen.audio')
 audio.restartOutput()
 ```
 
+### audio.setBackground(enabled)
+
+Turns on or off whether the sound keeps playing while the app is in the background, as the [audio guide](../audio/audio.md#playing-in-the-background) describes. It starts as `audio.background` of `app.json` sets it, and only an app that declares `"background": true` there may turn it on, since the settings that each platform needs come from that declaration. Turning it on in another app raises `The app plays in the background only when "audio.background" of "app.json" is true, which brings the settings of each platform that it needs.`. An app in the background follows the change at once. Its output stops when the sound may no longer play there, and plays again when a voice plays.
+
+```lua
+local audio = require('haylen.audio')
+local events = require('haylen.events')
+
+-- The radio of the game plays on in the background, and the rest of its sound stops there.
+events.on('radioOpened', function() audio.setBackground(true) end)
+events.on('radioClosed', function() audio.setBackground(false) end)
+print(audio.background())
+```
+
+### audio.background()
+
+Returns whether the sound keeps playing while the app is in the background, as `audio.background` of `app.json` and [`audio.setBackground`](#audiosetbackgroundenabled) set it.
+
+```lua
+local audio = require('haylen.audio')
+
+print(audio.background() and 'The music plays on in the background.' or 'The music stops in the background.')
+```
+
 ### audio.interrupted()
 
 Returns `true` while the system holds the audio, such as during a phone call, an alarm or Siri, or while another Android app has the audio focus. The engine pauses every voice meanwhile and publishes the [events](#events). An interruption that ends while the system still refuses the audio ends all the same, and the app goes on without an output, as `audio.outputAvailable()` tells.

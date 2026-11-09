@@ -21,6 +21,9 @@ struct Session {
     // Lets the playback category play along with the audio of other apps. Ambient always mixes and solo ambient never does, so only playback accepts it.
     bool mixWithOthers = false;
 
+    // Keeps the output playing while the app is in the background, such as the music of a player, which only the playback category can do on iOS and tvOS. The rest of the app halts there as its lifecycle options decide.
+    bool background = false;
+
     [[nodiscard]] static std::optional<Category> categoryFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view categoryName(Category value) noexcept;
 

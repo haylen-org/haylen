@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <ctime>
 #include <stdexcept>
 #include <string>
 
@@ -13,7 +14,7 @@ namespace haylen::platform {
 
 const std::array<std::pair<std::string_view, Theme>, 2> System::kThemeNames{{{"light", Theme::Light}, {"dark", Theme::Dark}}};
 
-System::System(Host& owner, core::EventBus& bus, std::string gpuName) : host(owner), events(bus), info(owner.getSystemInfo()), theme(owner.getTheme()), battery(owner.getBattery()) {
+System::System(Host& owner, core::EventBus& bus, std::string gpuName) : host(owner), events(bus), info(owner.getSystemInfo()), theme(owner.getTheme()), battery(owner.getBattery()), powerSaving(owner.getPowerSaving()), timeZone(owner.getTimeZone()) {
     info.gpuName = std::move(gpuName);
 }
 
@@ -27,6 +28,14 @@ Theme System::getTheme() const noexcept {
 
 const Battery& System::getBattery() const noexcept {
     return battery;
+}
+
+std::optional<bool> System::getPowerSaving() const noexcept {
+    return powerSaving;
+}
+
+const std::string& System::getTimeZone() const noexcept {
+    return timeZone;
 }
 
 void System::openUrl(std::string_view url, std::function<void(Permission::Answer answer)> callback) {
@@ -133,16 +142,38 @@ void System::pump() {
         pending.erase(found);
         callback(std::move(reply.answer), std::move(reply.text));
     }
+    publishChanges();
+}
 
+void System::publishChanges() {
     const Theme reportedTheme = host.getTheme();
     if (reportedTheme != theme) {
         theme = reportedTheme;
         events.emit(core::LifecycleEvent::kSystemThemeChanged, {{"theme", themeName(theme)}});
     }
+
     const Battery reportedBattery = host.getBattery();
     if (reportedBattery != battery) {
         battery = reportedBattery;
         events.emit(core::LifecycleEvent::kBatteryChanged, battery.toJson());
+    }
+
+    const std::optional<bool> reportedPowerSaving = host.getPowerSaving();
+    if (reportedPowerSaving != powerSaving) {
+        powerSaving = reportedPowerSaving;
+        events.emit(core::LifecycleEvent::kPowerSavingChanged, {{"enabled", powerSaving.has_value() ? core::Json(*powerSaving) : core::Json()}});
+    }
+
+    std::string reportedTimeZone = host.getTimeZone();
+    if (reportedTimeZone != timeZone) {
+        // The C library keeps the zone it read first, so the local times of the app follow a new one only once it reads the zone again.
+        timeZone = std::move(reportedTimeZone);
+#if defined(_WIN32)
+        _tzset();
+#else
+        tzset();
+#endif
+        events.emit(core::LifecycleEvent::kTimeZoneChanged, {{"timeZone", timeZone}});
     }
 }
 

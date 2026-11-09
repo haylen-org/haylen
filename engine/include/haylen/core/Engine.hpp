@@ -19,6 +19,7 @@
 #include "haylen/lua/Error.hpp"
 #include "haylen/math/Insets.hpp"
 #include "haylen/platform/AppPlugin.hpp"
+#include "haylen/platform/Event.hpp"
 #include "haylen/plugins/PluginRegistry.hpp"
 
 struct lua_State;
@@ -38,7 +39,6 @@ class MediaSession;
 class Screens;
 class System;
 class Window;
-struct Event;
 } // namespace haylen::platform
 
 namespace haylen::assets {
@@ -277,6 +277,10 @@ class Engine final {
     [[nodiscard]] const AppConfig::Lifecycle& getLifecycle() const noexcept;
     void setLifecycle(const AppConfig::Lifecycle& value);
 
+    // Whether the output keeps playing while the app is in the background, which `audio.background` of `app.json` turns on when the app starts. Only an app that declares it there may turn it on, since the platform settings it needs come from the declaration, and turning it on in another app throws `std::invalid_argument`.
+    void setBackgroundAudio(bool value);
+    [[nodiscard]] bool isBackgroundAudio() const noexcept;
+
     // Change how the design space maps onto the screen while the app runs, starting from the design section of app.json. The viewport follows at once, and the UI, cameras and pointer input with it.
     void setScaling(graphics::Viewport::ScalingPolicy value);
     void setDesignSize(math::Vec2 value);
@@ -317,8 +321,8 @@ class Engine final {
     Signal<> resized;
     Signal<> quitRequested;
 
-    // Fires when the platform reports memory pressure. Assets live only while something holds them, so this is when the app unloads preload groups and drops what it can rebuild.
-    Signal<> lowMemory;
+    // Fires when the platform reports memory pressure, with its level. Assets live only while something holds them, so this is when the app unloads preload groups and drops what it can rebuild.
+    Signal<platform::Event::MemoryLevel> lowMemory;
 
   private:
     // Holds the one engine of the process while it lives, because the GPU device, the renderer and the interface keep state of the process that one engine at a time owns.
@@ -359,6 +363,7 @@ class Engine final {
     [[nodiscard]] AppState getForegroundState() const noexcept;
     void applyCover();
     void applyStateMute();
+    void followBackgroundPlayback();
     void remapViewport();
     [[nodiscard]] math::Vec2 getOrientedDesignSize(math::Vec2 framebuffer) const noexcept;
     [[nodiscard]] math::Insets getSafeAreaInsets() const;

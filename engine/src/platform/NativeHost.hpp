@@ -84,6 +84,9 @@ class NativeHost : public Host {
     [[nodiscard]] SystemInfo getSystemInfo() const override;
     [[nodiscard]] Theme getTheme() const override;
     [[nodiscard]] Battery getBattery() const override;
+    [[nodiscard]] std::optional<bool> getPowerSaving() const override;
+    void setBackgroundAudio(bool value) override;
+    [[nodiscard]] std::string getTimeZone() const override;
     [[nodiscard]] AccessibilitySettings getAccessibilitySettings() const override;
     [[nodiscard]] bool isAccessibilityTreeWanted() const override;
     void updateAccessibility(std::span<const AccessibilityElement> elements, std::uint64_t focused) override;

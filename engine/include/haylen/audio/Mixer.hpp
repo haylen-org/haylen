@@ -203,6 +203,9 @@ class Mixer final {
     void stopAll(float fadeOutSeconds = 0.0F);
     [[nodiscard]] std::size_t getVoiceCount() const noexcept;
 
+    // Whether any voice plays now, which a voice that is paused, stopped or finished does not.
+    [[nodiscard]] bool isPlaying() const noexcept;
+
     // Pauses every voice that exists now for the reason, and resumes the voices that the reason holds. Voices started later play.
     void pauseAll(PauseReason reason = PauseReason::App);
     void resumeAll(PauseReason reason = PauseReason::App);
@@ -252,7 +255,7 @@ class Mixer final {
     void setSpatialization(const Spatialization& value);
     [[nodiscard]] const Spatialization& getSpatialization() const noexcept;
 
-    // Stops the output while the app is in the background.
+    // Stops the output while the app is in the background, unless the app plays in the background, and then whenever no voice plays there.
     void suspend();
     void resume();
 

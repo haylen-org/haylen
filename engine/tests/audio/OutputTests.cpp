@@ -219,6 +219,49 @@ TEST_F(AudioOutputTest, ReportsTheStateAndTheLatencyOfTheOutput) {
     EXPECT_EQ(mixer.getOutputLatency(), 0.0F);
 }
 
+TEST_F(AudioOutputTest, PlaysInTheBackgroundOnlyForAnAppThatDeclaresIt) {
+    accepting = true;
+    test::EngineFixture fixture({{"app.json", R"({"name": "Night Radio", "identifier": "com.haylen.radio", "audio": {"iosSession": "playback", "background": true}})"}}, nullptr, {.audioOutput = &kBackend});
+    EXPECT_TRUE(fixture.host().isBackgroundAudio());
+    ASSERT_TRUE(fixture.frameUntil([&fixture] { return !fixture.engine().getAudio().isOutputOpening(); }));
+    Mixer& radio = fixture.engine().getAudio();
+
+    // In the background the output runs only while a voice plays, so the system may suspend an app whose sound ended, and a voice that starts there brings the output back.
+    fixture.engine().handleEvent({.type = platform::Event::Type::Suspended});
+    fixture.frames(1);
+    EXPECT_EQ(radio.getOutputState(), Mixer::OutputState::Suspended);
+    radio.play(makeTone(toFrames(5.0F)));
+    fixture.frames(1);
+    EXPECT_EQ(radio.getOutputState(), Mixer::OutputState::Running);
+
+    // The app turns it off and on again while it runs, and the output follows at once.
+    fixture.runLua("audio = require('haylen.audio')");
+    EXPECT_EQ(fixture.lua("return audio.background()"), "true");
+    fixture.runLua("audio.setBackground(false)");
+    EXPECT_EQ(radio.getOutputState(), Mixer::OutputState::Suspended);
+    EXPECT_FALSE(fixture.host().isBackgroundAudio());
+    fixture.runLua("audio.setBackground(true)");
+    fixture.frames(1);
+    EXPECT_EQ(radio.getOutputState(), Mixer::OutputState::Running);
+    EXPECT_TRUE(fixture.host().isBackgroundAudio());
+    fixture.engine().handleEvent({.type = platform::Event::Type::Resumed});
+    fixture.frames(1);
+    EXPECT_EQ(radio.getOutputState(), Mixer::OutputState::Running);
+
+    // An app that does not declare it stops its output in the background whatever plays.
+    const std::string_view game = R"({"name": "Tiny Island", "identifier": "com.haylen.tinyisland"})";
+    fixture.package().setFile("app.json", std::vector<std::uint8_t>(game.begin(), game.end()));
+    fixture.restart();
+    EXPECT_FALSE(fixture.host().isBackgroundAudio());
+    ASSERT_TRUE(fixture.frameUntil([&fixture] { return !fixture.engine().getAudio().isOutputOpening(); }));
+    Mixer& island = fixture.engine().getAudio();
+    island.play(makeTone(toFrames(5.0F)));
+    fixture.engine().handleEvent({.type = platform::Event::Type::Suspended});
+    fixture.frames(1);
+    EXPECT_EQ(island.getOutputState(), Mixer::OutputState::Suspended);
+    EXPECT_NE(fixture.lua("require('haylen.audio').setBackground(true)").find(R"(The app plays in the background only when "audio.background" of "app.json" is true, which brings the settings of each platform that it needs.)"), std::string::npos);
+}
+
 TEST_F(AudioOutputTest, PublishesTheUnlockOfTheOutput) {
     accepting = true;
     locked = true;

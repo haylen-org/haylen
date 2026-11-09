@@ -342,6 +342,10 @@ std::size_t Mixer::getVoiceCount() const noexcept {
     return state->voices.size();
 }
 
+bool Mixer::isPlaying() const noexcept {
+    return std::ranges::any_of(state->voices, [](const std::unique_ptr<MixerState::Voice>& voice) { return ma_sound_is_playing(&voice->handle) == MA_TRUE; });
+}
+
 void Mixer::pauseAll(PauseReason reason) {
     const std::uint8_t hold = MixerState::toHold(reason);
     for (const std::unique_ptr<MixerState::Voice>& voice : state->voices) {

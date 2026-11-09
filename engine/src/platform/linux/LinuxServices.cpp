@@ -18,6 +18,7 @@
 #include "platform/linux/LinuxDesktop.hpp"
 #include "platform/linux/LinuxDialogs.hpp"
 #include "platform/linux/LinuxGlib.hpp"
+#include "platform/linux/LinuxMonitors.hpp"
 #include "platform/linux/LinuxSettings.hpp"
 #include "platform/linux/LinuxSystem.hpp"
 
@@ -30,6 +31,7 @@ std::string_view Services::getName() noexcept {
 void Services::initialize() {
     LinuxSystem::watchBattery();
     LinuxSettings::observe();
+    LinuxMonitors::observe();
     LinuxAccessibility::start();
 }
 
@@ -196,6 +198,9 @@ Permission::Answer Services::vibrate(float) {
 }
 
 // The now-playing controls of Linux desktops listen on the session bus for players that serve MPRIS, which the engine does not serve, as the reference of `haylen.system` explains.
+// A minimized window keeps running its frames, so its sound plays on.
+void Services::setBackgroundAudio(bool) {}
+
 void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>&) {}
 
 bool Services::isAccessibilityTreeWanted() {

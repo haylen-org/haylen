@@ -26,7 +26,6 @@ SystemInfo AndroidDeviceInfo::toSystemInfo(std::string_view json) {
     info.memoryBytes = device.value("memoryBytes", std::uint64_t{0});
     info.locale = device.value("locale", "");
     info.languages = device.value("languages", std::vector<std::string>());
-    info.timeZone = device.value("timeZone", "");
     return info;
 }
 

@@ -39,7 +39,7 @@ function NowPlaying:enter()
         controls = {
             ui.button{id = 'start', text = 'Play and show it in the controls', variant = 'primary', onClick = function() self:start() end},
             ui.button{id = 'clear', text = 'Leave the controls', onClick = function() self:leave() end},
-            ui.label{text = 'iOS shows the lock screen only for an audio session that plays, which this test project leaves as ambient. Linux has no controls the engine reaches.', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'iOS shows the lock screen for an audio session "playback" that plays, which this test project has. Linux has no controls the engine reaches.', color = 'textMuted', font = 'caption'},
         },
         code = NowPlaying.code,
     }
