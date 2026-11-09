@@ -18,7 +18,7 @@ end]]
 BestMatch.hint = 'Use the first language of the device, type any tag and press Enter, or pick a row of the table to switch to its match.'
 BestMatch.tags = {'pt-BR', 'pt-PT', 'pt', 'PT_br', 'es-MX', 'es-419', 'en-GB', 'EN-us', 'ja-JP', 'fr-FR', 'zh-Hans-CN', 'en-US-u-mu-celsius'}
 
--- Tells how a tag matched: the same tag, a shorter tag, another region of the same language or nothing.
+-- Tells how a tag matched: the same tag, a shorter tag, the language with a region, another region of the same language or nothing.
 function BestMatch.reason(tag, match)
     if match == nil then
         return 'No language of the app'
@@ -29,6 +29,9 @@ function BestMatch.reason(tag, match)
     end
     if canonical:sub(1, #match + 1) == match .. '-' then
         return 'A shorter tag'
+    end
+    if not canonical:find('-', 1, true) then
+        return 'The language with a region'
     end
     return 'Another region of the language'
 end

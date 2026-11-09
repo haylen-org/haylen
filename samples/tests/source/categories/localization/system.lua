@@ -40,6 +40,7 @@ function SystemLanguage:content()
         },
         ui.panel{grow = 1, align = 'stretch', gap = 12,
             ui.sectionTitle{text = 'Events'},
+            ui.label{id = 'quiet', text = 'No language changed since the test opened. Pick a language above, follow the system again or change the languages of the device.', color = 'textMuted'},
             ui.scroll{grow = 1, height = 0, ui.list{id = 'events', items = {}}},
         },
     }
@@ -67,7 +68,21 @@ function SystemLanguage:hear(line)
     self.heardCount = self.heardCount + 1
     table.insert(self.heard, 1, {id = 'event-' .. self.heardCount, text = line})
     self.heard[SystemLanguage.maxEvents + 1] = nil
+    self:set('quiet', {visible = false})
     self:set('events', {items = self.heard})
+end
+
+-- Names each language that the device prefers with the language of the app it finds, such as "en-BR" finding "en".
+function SystemLanguage.describeDevice(languages)
+    if #languages == 0 then
+        return 'The platform does not report the languages of the device, so the fallback language shows.'
+    end
+    local parts = {}
+    for index, tag in ipairs(languages) do
+        local match = localization.findBestMatch(tag)
+        parts[index] = string.format('"%s", which finds %s', tag, match and '"' .. match .. '"' or 'nothing')
+    end
+    return 'The device prefers ' .. table.concat(parts, ', then ') .. '.'
 end
 
 -- Tells whether the language follows the device or the choice of the app, and what the device prefers.
@@ -75,9 +90,7 @@ function SystemLanguage:describe()
     local current = localization.language()
     local mode = localization.followingSystem() and 'The language follows the system and is "%s".' or 'The app chose the language, which is "%s".'
     self:set('mode', {text = string.format(mode, current)})
-    local languages = system.languages()
-    local device = #languages > 0 and string.format('The device prefers "%s".', table.concat(languages, '", "')) or 'The platform does not report the languages of the device, so the fallback language shows.'
-    self:set('device', {text = device})
+    self:set('device', {text = SystemLanguage.describeDevice(system.languages())})
     self:set('fallback', {text = string.format('The fallback language is "%s", and the app has "%s".', localization.fallback(), table.concat(localization.languages(), '", "'))})
 end
 
