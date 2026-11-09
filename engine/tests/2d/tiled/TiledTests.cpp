@@ -1108,6 +1108,9 @@ TEST_F(TiledLuaTest, ExposesMapTilesetLayerAndPropertyDetails) {
 
     EXPECT_EQ(fixture.lua("return tostring(map:layer('things').indexDrawOrder) .. ' ' .. #map:layer('ground').chunks .. ' ' .. map:layer('sky').imageSize.x .. ' ' .. map:layer('sky').transparentColor:toHex() .. ' ' .. tostring(map:layer('things').objects[1].propertyTypes.hp)"), "false 0 8.0 #FFFF00FF nil");
     EXPECT_EQ(fixture.lua("local chunks = endless:layer('ground').chunks return #chunks .. ' ' .. chunks[1].x .. ',' .. chunks[1].y .. ' ' .. chunks[1].width .. 'x' .. chunks[1].height .. ' ' .. table.concat(chunks[1].gids, ',') .. ' ' .. chunks[2].gids[4]"), "2 -2,0 2x2 1,2,3,4 8");
+    // A column beyond the cells of a map is an error instead of the column it wraps to.
+    EXPECT_NE(fixture.lua("endless:removeChunk('ground', -2 + 2^32, 0)").find("integer out of range"), std::string::npos);
+    EXPECT_EQ(fixture.lua("return #endless:layer('ground').chunks"), "2");
     // An infinite layer without chunks holds no cells, though its file gave it a size.
     EXPECT_EQ(fixture.lua("endless:removeChunk('ground', -2, 0) endless:removeChunk('ground', 0, 0) endless:draw() return endless:tile('ground', 1, 1) .. ' ' .. #endless:layer('ground').chunks .. ' ' .. tostring(endless:layer('ground').infinite) .. ' ' .. tostring(map:layer('ground').infinite)"), "0 0 true false");
     EXPECT_NE(fixture.lua("endless:setTile('ground', 1, 1, 2)").find("outside every chunk"), std::string::npos);

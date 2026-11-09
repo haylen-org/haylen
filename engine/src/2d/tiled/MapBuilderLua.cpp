@@ -191,7 +191,7 @@ int MapBuilderLua::removeLayer(lua_State* L) {
 int MapBuilderLua::fill(lua_State* L) {
     MapRenderer& renderer = lua::Userdata::check<MapRenderer>(L, 1);
     const spatial2d::CellGrid& grid = lua::Userdata::check<spatial2d::CellGrid>(L, 3);
-    renderer.fill(lua::Stack::read<std::string_view>(L, 2), grid, static_cast<std::uint32_t>(luaL_optinteger(L, 4, 1)), static_cast<int>(luaL_optinteger(L, 5, 0)), static_cast<int>(luaL_optinteger(L, 6, 0)));
+    renderer.fill(lua::Stack::read<std::string_view>(L, 2), grid, lua::Stack::read<std::optional<std::uint32_t>>(L, 4).value_or(1), lua::Stack::read<std::optional<int>>(L, 5).value_or(0), lua::Stack::read<std::optional<int>>(L, 6).value_or(0));
     return 0;
 }
 
@@ -214,19 +214,19 @@ int MapBuilderLua::automap(lua_State* L) {
 }
 
 int MapBuilderLua::paintTerrain(lua_State* L) {
-    lua::Userdata::check<MapRenderer>(L, 1).paintTerrain(lua::Stack::read<std::string_view>(L, 2), lua::Stack::read<std::string_view>(L, 3), static_cast<int>(luaL_checkinteger(L, 4)), static_cast<int>(luaL_checkinteger(L, 5)), static_cast<int>(luaL_checkinteger(L, 6)));
+    lua::Userdata::check<MapRenderer>(L, 1).paintTerrain(lua::Stack::read<std::string_view>(L, 2), lua::Stack::read<std::string_view>(L, 3), lua::Stack::read<int>(L, 4), lua::Stack::read<int>(L, 5), lua::Stack::read<int>(L, 6));
     return 0;
 }
 
 int MapBuilderLua::setChunk(lua_State* L) {
     MapRenderer& renderer = lua::Userdata::check<MapRenderer>(L, 1);
     const spatial2d::CellGrid& grid = lua::Userdata::check<spatial2d::CellGrid>(L, 5);
-    renderer.setChunk(lua::Stack::read<std::string_view>(L, 2), static_cast<int>(luaL_checkinteger(L, 3)), static_cast<int>(luaL_checkinteger(L, 4)), grid, static_cast<std::uint32_t>(luaL_optinteger(L, 6, 1)));
+    renderer.setChunk(lua::Stack::read<std::string_view>(L, 2), lua::Stack::read<int>(L, 3), lua::Stack::read<int>(L, 4), grid, lua::Stack::read<std::optional<std::uint32_t>>(L, 6).value_or(1));
     return 0;
 }
 
 int MapBuilderLua::removeChunk(lua_State* L) {
-    lua::Userdata::check<MapRenderer>(L, 1).removeChunk(lua::Stack::read<std::string_view>(L, 2), static_cast<int>(luaL_checkinteger(L, 3)), static_cast<int>(luaL_checkinteger(L, 4)));
+    lua::Userdata::check<MapRenderer>(L, 1).removeChunk(lua::Stack::read<std::string_view>(L, 2), lua::Stack::read<int>(L, 3), lua::Stack::read<int>(L, 4));
     return 0;
 }
 
