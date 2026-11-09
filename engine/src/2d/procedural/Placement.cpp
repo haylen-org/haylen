@@ -16,10 +16,14 @@ namespace haylen::procedural2d {
 class Placement::Placer final {
   public:
     Placer(const Options& placement, math::Random& generator) : options(placement), random(generator) {
-        float reach = 0.0F;
+        // Two entities of any kinds can only come too close while their anchors lie within the largest bound twice and the widest gap, which a cell spans, so a try only measures against the cells around it.
+        float bound = 0.0F;
+        float spacing = 0.0F;
         for (const Kind& kind : options.kinds) {
-            reach = std::max(reach, getBound(kind.footprint) * 2.0F + kind.spacing);
+            bound = std::max(bound, getBound(kind.footprint));
+            spacing = std::max(spacing, kind.spacing);
         }
+        const float reach = bound * 2.0F + spacing;
         const math::Rect& area = options.area;
         const float least = std::sqrt(area.width * area.height / static_cast<float>(kMaxCells));
         cell = std::max({reach, least, 1.0e-3F});

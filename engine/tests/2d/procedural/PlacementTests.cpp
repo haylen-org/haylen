@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
@@ -83,6 +84,29 @@ TEST_F(PlacementTest, KeepsEveryFootprintApartAndInsideTheArea) {
     const Placement::Result repeated = Placement::place(options, again);
     ASSERT_EQ(repeated.entities.size(), result.entities.size());
     EXPECT_EQ(repeated.entities.back().position, result.entities.back().position);
+}
+
+// A large kind without a gap and a small kind with a wide one keep the wider gap from each other, which reaches farther than either kind reaches from its own kind.
+TEST_F(PlacementTest, KeepsTheWiderGapBetweenKindsOfDifferentSizes) {
+    Placement::Options options{.area = {0.0F, 0.0F, 1000.0F, 21.0F}, .order = Placement::Order::Listed};
+    options.kinds.push_back({.count = 30, .footprint = {.radius = 10.0F}});
+    options.kinds.push_back({.count = 200, .footprint = {.radius = 0.1F}, .spacing = 15.0F});
+    math::Random random(5);
+    const Placement::Result result = Placement::place(options, random);
+    ASSERT_GT(result.entities.size(), 40U);
+
+    std::size_t tooClose = 0;
+    for (std::size_t first = 0; first < result.entities.size(); ++first) {
+        const Placement::Kind& kind = options.kinds[result.entities[first].kind];
+        for (std::size_t second = first + 1; second < result.entities.size(); ++second) {
+            const Placement::Kind& otherKind = options.kinds[result.entities[second].kind];
+            const float distance = math::Vec2::distance(result.entities[first].position, result.entities[second].position);
+            if (distance < kind.footprint.radius + otherKind.footprint.radius + std::max(kind.spacing, otherKind.spacing)) {
+                ++tooClose;
+            }
+        }
+    }
+    EXPECT_EQ(tooClose, 0U);
 }
 
 // Long thin planks stack row over row, which only their real rectangles allow, and turned rectangles and triangles never overlap one another or the forbidden polygon.
