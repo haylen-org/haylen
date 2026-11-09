@@ -2,6 +2,7 @@
 
 #include <lua.hpp>
 
+#include <array>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -22,8 +23,11 @@ namespace haylen::lua {
 // Prepares the Lua state of an engine for app scripts.
 class Environment final {
   public:
-    // Binds the Lua state to the engine and makes `require` load modules from the package instead of the host file system: the modules of the app from its source folder, and the modules of every plugin that `app.json` lists from `plugins/<id>/source`. The failures of `async` tasks and `ffi` callbacks reach the error screen. App code loads chunks only as text, has no `string.dump`, and cannot reach the protected metatables of the engine, the upvalues, locals and internal functions of native functions or the user values of userdata through the debug library.
+    // Binds the Lua state to the engine and makes `require` load modules from the package instead of the host file system: the modules of the app from its source folder, and the modules of every plugin that `app.json` lists from `plugins/<id>/source`. The failures of `async` tasks and `ffi` callbacks reach the error screen. App code loads chunks only as text, has no `string.dump` and no `package.loadlib`, and cannot reach the protected metatables of the engine, the upvalues, locals and internal functions of native functions or the user values of userdata through the debug library.
     static void install(core::Engine& engine, lua_State* L);
+
+    // Takes the modules that reach native code and other programs, `ffi`, `process` and `haylen.native`, and the functions `io.popen` and `os.execute` out of the Lua state, so requiring one of those modules raises an error that says the app has no native access.
+    static void withholdNativeAccess(lua_State* L);
 
     // Throws `std::runtime_error`, naming both files, when a module of the app has the name of a plugin module, which `require` would never load.
     static void checkModules(core::Engine& engine);
@@ -34,6 +38,7 @@ class Environment final {
   private:
     static constexpr int kLoadMode = 3;
     static constexpr int kLoadFileMode = 2;
+    static constexpr std::array<const char*, 3> kNativeModules{"ffi", "process", "haylen.native"};
 
     [[nodiscard]] static std::string modulePath(std::string_view name);
     [[nodiscard]] static std::vector<std::string> getCandidates(const core::AppConfig& config, std::string_view name);
@@ -55,6 +60,7 @@ class Environment final {
     static int finishDoFile(lua_State* L, int status, lua_KContext context);
     static void wrapLoader(lua_State* L, const char* name, int modeIndex);
     static void restrictLoading(lua_State* L);
+    static int refuseNativeModule(lua_State* L);
 
     // Calls the original function of the debug library, held as the first upvalue, with the arguments of the call.
     static int callOriginal(lua_State* L);

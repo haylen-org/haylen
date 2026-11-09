@@ -115,6 +115,12 @@ class NativeHost : public Host {
     void setLaunched(bool value) noexcept {
         launched = value;
     }
+    [[nodiscard]] bool hasNativeAccess() const noexcept override {
+        return nativeAccess;
+    }
+    void setNativeAccess(bool value) noexcept {
+        nativeAccess = value;
+    }
     [[nodiscard]] bool isBackHeld() const noexcept override {
         return backHeld;
     }
@@ -181,6 +187,7 @@ class NativeHost : public Host {
     std::unordered_map<std::uint32_t, OutputReport> refusedOutputs;
     std::unique_ptr<DevelopmentSession> developmentSession;
     bool launched = false;
+    bool nativeAccess = true;
     bool backHeld = false;
     std::uint64_t keyboardRevision = 0;
     WindowStyle style;

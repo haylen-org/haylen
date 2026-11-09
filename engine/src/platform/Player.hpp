@@ -158,6 +158,7 @@ class Player final {
     struct Launcher {
         std::shared_ptr<io::Package> package;
         std::unique_ptr<DevelopmentSession> development;
+        bool nativeAccess = true;
     };
 
     // What outlives every player of the process: the player that plays, which the frame thread creates when the platform layer asks for the app and destroys when its window closes, the events other threads queue for it and the status the process exits with. It is never destroyed, because an exit() on another thread, such as the one the iOS simulator calls on a background queue when its render server dies, runs the destructors of static objects while the frame thread still plays the app.

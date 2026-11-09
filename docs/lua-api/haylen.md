@@ -678,6 +678,9 @@ The table `options` is optional.
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `developmentServer` | string | none | The `ws://` or `wss://` address of a development server, with its token, which plays the launched app in development. The server sends the files saved on the machine of the developer, which [hot reload](../core/lua.md#hot-reload) applies in place, and the keys of the run restart the app and reach its developer console. An app without it plays as it is. |
+| `nativeAccess` | boolean | `true` | Whether the launched app reaches native code. With `false` the launched app has no `ffi`, `process` or [`haylen.native`](native.md) module, as a global or through `require`, and no `io.popen` or `os.execute`, so it reaches the system only through the modules of the engine and the plugins of this app. Use it for apps that come from addresses that people give. |
+
+An app launched without native access passes that limit on: every app it launches has no native access either, whatever its options say. Requiring one of those modules there raises `The app that launched this app gave it no native access, so the module "ffi" is not available.`, with the name of the module. The app that launched it keeps its own native access for its return.
 
 Each app plays with its own development session. A launched app that names a server plays in development even when the app that launched it ships as a release, and an app that names none plays without the files that a development server sends to the app that launched it. The app that launched it starts again with its own session, or with none.
 
@@ -709,6 +712,14 @@ local storage = require('haylen.storage')
 
 -- Plays a downloaded package in development, connected to the server that "haylen serve" runs for the app on the computer of the developer.
 haylen.launch(storage.root() .. '/demo.zip', {developmentServer = 'ws://192.168.0.10:8000/haylen/development?token=3f9a1c2b7d4e'})
+```
+
+```lua
+local haylen = require('haylen')
+local storage = require('haylen.storage')
+
+-- Plays a package downloaded from an address that a person typed, which reaches the system only through the engine.
+haylen.launch(storage.root() .. '/downloaded.zip', {nativeAccess = false})
 ```
 
 ### haylen.launched()

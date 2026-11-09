@@ -247,10 +247,11 @@ class Engine final {
     void requestRestart() noexcept;
     [[nodiscard]] bool isRestartRequested() const noexcept;
 
-    // The app that `requestLaunch` runs: the package at a path, a folder or a zip file, and the address of the development server that plays it in development with hot reload, or an empty text for an app that plays as it is.
+    // The app that `requestLaunch` runs: the package at a path, a folder or a zip file, the address of the development server that plays it in development with hot reload, or an empty text for an app that plays as it is, and whether it reaches native code. Without native access the app and every app it launches in turn have no `ffi`, `process` or `haylen.native` module and no `io.popen` or `os.execute`, so it reaches the system only through the engine and the plugins of the process.
     struct Launch {
         std::filesystem::path package;
         std::string developmentServer;
+        bool nativeAccess = true;
     };
 
     // Asks the runtime to run an app in place of this app once this frame ends, and to start this app again when that app quits. Throws `std::invalid_argument` when nothing is at the path or the development server is not a "ws://" or "wss://" address.

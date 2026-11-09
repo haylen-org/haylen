@@ -114,7 +114,7 @@ local config = require('config')
 print('The game starts in the ' .. config.startLevel .. ' with ' .. config.lives .. ' lives.')
 ```
 
-A missing module raises `no file 'source/scenes/missing.lua' or 'source/scenes/missing/init.lua' in the app package`. The fields `package.path` and `package.cpath` are empty, so nothing ever loads from the file system of the computer. An app therefore behaves the same from a folder, a zip file or the browser.
+A missing module raises `no file 'source/scenes/missing.lua' or 'source/scenes/missing/init.lua' in the app package`. The fields `package.path` and `package.cpath` are empty, and the function `package.loadlib` does not exist, so nothing ever loads from the file system of the computer. Native libraries load through [`haylen.native`](../lua-api/native.md). An app therefore behaves the same from a folder, a zip file or the browser.
 
 The first time `require` loads a module, it returns a second value. For a module of the package that value is the path of its file. When `require` is the last argument of another call, wrap it in parentheses, as in `scene.push((require('scenes.level')))`. Otherwise the path becomes an extra argument of that call.
 

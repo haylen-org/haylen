@@ -247,6 +247,42 @@ void Environment::restrictLoading(lua_State* L) {
     lua_pushnil(L);
     lua_setfield(L, -2, "dump");
     lua_pop(L, 1);
+
+    // Native libraries load only through `haylen.native`, which finds them where the app ships them.
+    lua_getglobal(L, "package");
+    lua_pushnil(L);
+    lua_setfield(L, -2, "loadlib");
+    lua_pop(L, 1);
+}
+
+int Environment::refuseNativeModule(lua_State* L) {
+    return luaL_error(L, "The app that launched this app gave it no native access, so the module \"%s\" is not available.", luaL_checkstring(L, 1));
+}
+
+// Varn also makes each of its modules a global, so the global of a module goes with it.
+void Environment::withholdNativeAccess(lua_State* L) {
+    lua_getglobal(L, "package");
+    lua_getfield(L, -1, "loaded");
+    lua_getfield(L, -2, "preload");
+    for (const char* name : kNativeModules) {
+        lua_pushnil(L);
+        lua_setfield(L, -3, name);
+        lua_pushcfunction(L, &refuseNativeModule);
+        lua_setfield(L, -2, name);
+        lua_pushnil(L);
+        lua_setglobal(L, name);
+    }
+    lua_pop(L, 3);
+
+    // These functions run other programs, as `process` does.
+    lua_getglobal(L, "io");
+    lua_pushnil(L);
+    lua_setfield(L, -2, "popen");
+    lua_pop(L, 1);
+    lua_getglobal(L, "os");
+    lua_pushnil(L);
+    lua_setfield(L, -2, "execute");
+    lua_pop(L, 1);
 }
 
 int Environment::callOriginal(lua_State* L) {

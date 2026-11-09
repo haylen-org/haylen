@@ -415,6 +415,12 @@ class HeadlessHost final : public Host {
     void setLaunched(bool value) noexcept {
         launched = value;
     }
+    [[nodiscard]] bool hasNativeAccess() const noexcept override {
+        return nativeAccess;
+    }
+    void setNativeAccess(bool value) noexcept {
+        nativeAccess = value;
+    }
     [[nodiscard]] bool isBackHeld() const noexcept override {
         return backHeld;
     }
@@ -692,6 +698,7 @@ class HeadlessHost final : public Host {
     bool finishingHalts = false;
     int haltedPumps = 0;
     bool launched = false;
+    bool nativeAccess = true;
     bool backHeld = false;
     const audio::OutputBackend* audioOutput = nullptr;
     Permission::Answer clipboardAnswer{.state = Permission::State::Granted};

@@ -382,10 +382,11 @@ void Player::enableDevelopment(std::optional<std::filesystem::path> folder, std:
 #endif
 }
 
-// The app that launches keeps its package and its development session for its return, and the launched app opens like any package, in development with a session of its own when it names a development server, and with the error screen when it cannot open.
+// The app that launches keeps its package, its development session and its native access for its return, and the launched app opens like any package, in development with a session of its own when it names a development server, with native access only when both apps have it, and with the error screen when it cannot open.
 void Player::launchPackage(const core::Engine::Launch& request) {
-    launchers.push_back({.package = package, .development = host->exchangeDevelopmentSession(nullptr)});
+    launchers.push_back({.package = package, .development = host->exchangeDevelopmentSession(nullptr), .nativeAccess = host->hasNativeAccess()});
     host->setLaunched(true);
+    host->setNativeAccess(host->hasNativeAccess() && request.nativeAccess);
     if (!request.developmentServer.empty()) {
         enableDevelopment(std::nullopt, request.developmentServer);
     }
@@ -397,6 +398,7 @@ void Player::returnToLauncher() {
     Launcher launcher = std::move(launchers.back());
     launchers.pop_back();
     host->setLaunched(!launchers.empty());
+    host->setNativeAccess(launcher.nativeAccess);
     // A hold of back that left the launched app ends with a release, which the app that starts again never hears.
     if (getProcess().backHeld.load()) {
         getProcess().backSwallowed.store(true);

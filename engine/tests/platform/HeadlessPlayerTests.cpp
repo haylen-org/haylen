@@ -71,4 +71,61 @@ TEST_F(HeadlessPlayerTest, StartsTheLauncherAgainWhenTheAppItLaunchedQuits) {
     // clang-format on
 }
 
+// An app launched without native access has none of the modules and functions that reach native code and other programs but keeps every module of the engine, an app it launches with native access has none either, and the app that launched it keeps them.
+TEST_F(HeadlessPlayerTest, LaunchesAnAppWithoutNativeAccess) {
+    // The two apps share preferences of their own, which no other test that runs at the same time writes.
+    app.write("app.json", R"({"name": "Player Test", "identifier": "com.haylen.nativeaccess"})");
+    test::TemporaryDirectory guest;
+    guest.write("app.json", R"({"name": "Guest", "identifier": "com.haylen.nativeaccess"})");
+    const std::string path = guest.getPath().generic_string();
+    // clang-format off
+    guest.write("source/main.lua", R"(
+        local haylen = require('haylen')
+        local preferences = require('haylen.preferences')
+        local withheld = {ffi = true, process = true, ['haylen.native'] = true}
+        local function lacksNativeAccess()
+            local loaded, message = pcall(require, 'ffi')
+            local refused = not loaded and message:find('The app that launched this app gave it no native access, so the module "ffi" is not available.', 1, true) ~= nil
+            return refused and not pcall(require, 'process') and not pcall(require, 'haylen.native') and ffi == nil and process == nil and io.popen == nil and os.execute == nil
+        end
+        local function keepsEngineModules()
+            for name in pairs(package.preload) do
+                if not withheld[name] and not pcall(require, name) then
+                    return false
+                end
+            end
+            return pcall(require, 'http') and pcall(require, 'fs')
+        end
+        local stage = preferences.get('stage')
+        if stage == 'guest' then
+            preferences.set('guest', lacksNativeAccess() and keepsEngineModules())
+            preferences.set('stage', 'nested')
+            preferences.save()
+            haylen.launch(')" + path + R"(', {nativeAccess = true})
+        elseif stage == 'nested' then
+            preferences.set('nested', lacksNativeAccess())
+            preferences.set('stage', 'done')
+            preferences.save()
+            haylen.quit()
+        else
+            haylen.quit()
+        end
+    )");
+    EXPECT_EQ(play(R"(
+        local haylen = require('haylen')
+        local preferences = require('haylen.preferences')
+        if preferences.get('stage') == 'done' then
+            local passed = preferences.get('guest', false) and preferences.get('nested', false) and pcall(require, 'ffi') and ffi ~= nil and io.popen ~= nil
+            preferences.clear()
+            preferences.save()
+            haylen.quit({status = passed and 5 or 1})
+        else
+            preferences.set('stage', 'guest')
+            preferences.save()
+            haylen.launch(')" + path + R"(', {nativeAccess = false})
+        end
+    )", 240), 5);
+    // clang-format on
+}
+
 } // namespace haylen::platform

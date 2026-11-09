@@ -30,7 +30,7 @@ class CoreLua final {
     };
 
     static constexpr std::array<std::string_view, 1> kQuitFields{"status"};
-    static constexpr std::array<std::string_view, 1> kLaunchFields{"developmentServer"};
+    static constexpr std::array<std::string_view, 2> kLaunchFields{"developmentServer", "nativeAccess"};
     static constexpr std::array<std::string_view, 3> kLifecycleFields{"pauseOnBackground", "pauseOnFocusLoss", "muteOnFocusLoss"};
 
     [[nodiscard]] static std::string joinArguments(lua_State* L);

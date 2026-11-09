@@ -39,6 +39,7 @@ class HeadlessPlayer final {
     struct Launcher {
         std::shared_ptr<io::Package> package;
         std::unique_ptr<DevelopmentSession> development;
+        bool nativeAccess = true;
     };
 
     static int play(const Options& options);

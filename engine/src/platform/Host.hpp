@@ -179,6 +179,9 @@ class Host : public Window {
     // Whether the app that plays was launched by another app of the process, which starts again when it quits.
     [[nodiscard]] virtual bool isLaunched() const noexcept = 0;
 
+    // Whether the app that plays may reach native code and other programs through the `ffi`, `process` and `haylen.native` modules and the functions `io.popen` and `os.execute`, which an app launched without native access, and every app it launches, may not.
+    [[nodiscard]] virtual bool hasNativeAccess() const noexcept = 0;
+
     // Whether the person holds the back button of the platform down, such as the back button or gesture of Android, which apps hear only as presses.
     [[nodiscard]] virtual bool isBackHeld() const noexcept = 0;
 };

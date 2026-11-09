@@ -253,6 +253,7 @@ TEST(EnvironmentTest, LoadsChunksOnlyAsText) {
     EXPECT_EQ(fixture.lua("return select(2, load(bytecode))"), "attempt to load a binary chunk (mode is 't')");
     EXPECT_NE(fixture.lua("return load(bytecode, 'bytes', 'b')").find("bad argument #3 to 'load' (chunks load only as text, so the mode is 't')"), std::string::npos);
     EXPECT_EQ(fixture.lua("return type(string.dump) .. ' ' .. type(('').dump)"), "nil nil");
+    EXPECT_EQ(fixture.lua("return type(package.loadlib)"), "nil");
 
     EXPECT_EQ(fixture.lua("return loadfile(folder .. '/text.lua')() + dofile(folder .. '/text.lua')"), "14");
     EXPECT_NE(fixture.lua("return select(2, loadfile(folder .. '/binary.lua'))").find("attempt to load a binary chunk (mode is 't')"), std::string::npos);

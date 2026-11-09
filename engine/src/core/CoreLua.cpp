@@ -106,13 +106,14 @@ int CoreLua::rootQuit(lua_State* L) {
     return 0;
 }
 
-// Runs the app package at a path of the file system with `haylen.launch(path, options)` once this frame ends, in development when the option `developmentServer` names the server that sends its saved files, and the app that launched it starts again when it quits.
+// Runs the app package at a path of the file system with `haylen.launch(path, options)` once this frame ends, in development when the option `developmentServer` names the server that sends its saved files, without native code when `nativeAccess` is false, and the app that launched it starts again when it quits.
 int CoreLua::rootLaunch(lua_State* L) {
     Engine::Launch launch{.package = lua::Stack::read<std::string_view>(L, 1)};
     if (!lua_isnoneornil(L, 2)) {
         luaL_checktype(L, 2, LUA_TTABLE);
         lua::Table::checkFields(L, 2, {kLaunchFields});
         lua::Table::readField(L, 2, "developmentServer", launch.developmentServer);
+        lua::Table::readField(L, 2, "nativeAccess", launch.nativeAccess);
     }
     lua::Runtime::getEngine(L).requestLaunch(std::move(launch));
     return 0;

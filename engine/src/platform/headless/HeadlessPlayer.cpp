@@ -61,7 +61,7 @@ int HeadlessPlayer::play(const Options& options) {
     std::shared_ptr<io::Package> playing = package;
     std::unique_ptr<core::Engine> engine = launch(host, playing);
 
-    // An app that another app launched starts that app again when it quits, with the development session of that app, the way the player does.
+    // An app that another app launched starts that app again when it quits, with the development session and the native access of that app, the way the player does.
     std::vector<Launcher> launchers;
     long long frame = 0;
     auto next = std::chrono::steady_clock::now();
@@ -70,6 +70,7 @@ int HeadlessPlayer::play(const Options& options) {
             Launcher launcher = std::move(launchers.back());
             launchers.pop_back();
             host.setLaunched(!launchers.empty());
+            host.setNativeAccess(launcher.nativeAccess);
             engine.reset();
             (void)host.exchangeDevelopmentSession(std::move(launcher.development));
             playing = std::move(launcher.package);
@@ -86,8 +87,9 @@ int HeadlessPlayer::play(const Options& options) {
             engine.reset();
             engine = launch(host, playing);
         } else if (const std::optional<core::Engine::Launch> request = engine->getLaunchRequest()) {
-            launchers.push_back({.package = playing, .development = host.exchangeDevelopmentSession(nullptr)});
+            launchers.push_back({.package = playing, .development = host.exchangeDevelopmentSession(nullptr), .nativeAccess = host.hasNativeAccess()});
             host.setLaunched(true);
+            host.setNativeAccess(host.hasNativeAccess() && request->nativeAccess);
             engine.reset();
             playing = io::Package::open(request->package);
             if (!request->developmentServer.empty()) {

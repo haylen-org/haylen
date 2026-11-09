@@ -192,6 +192,9 @@ void Engine::start() {
             plugin->installLua(*this, getLuaState());
             current.events.emit(LifecycleEvent::kPluginStarted, {{"name", std::string(plugin->getName())}});
         }
+        if (!current.host.hasNativeAccess()) {
+            lua::Environment::withholdNativeAccess(getLuaState());
+        }
         lua::Environment::checkModules(*this);
         if (isStartHeld()) {
             current.applicationPending = true;
