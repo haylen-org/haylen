@@ -1448,8 +1448,8 @@ class RunCppTest(unittest.TestCase):
         products = build / "haylen-packages" / "derived" / "Build" / "Products"
         packages = products / "Debug-iphonesimulator"
         frameworks = packages / "PackageFrameworks"
-        built = haylen.SwiftPackages(frameworks / "HaylenPackages.framework", [packages / "Lens_Lens.bundle"], packages, [build / "maps" / "LensObjC.modulemap"], [build / "lens" / "include"])
-        with mock.patch.object(haylen, "build_swift_packages", return_value=built) as swift:
+        built = haylen.SwiftPackages(frameworks / "HaylenPackages.framework", [frameworks / "LensCore.framework", frameworks / "LensVideo.framework"], [packages / "Lens_Lens.bundle"], packages, [build / "maps" / "LensObjC.modulemap"], [build / "lens" / "include"])
+        with mock.patch.object(haylen, "build_swift_packages", return_value=built) as swift, mock.patch.object(haylen, "apple_binary_is_dynamic", side_effect=lambda binary: binary.name == "LensVideo"):
             self.assertTrue(haylen.write_cpp_apple_parts(app, "ios-simulator", build, fragment, "Debug", 4))
         self.assertEqual(swift.call_args.args[:3], ({"Lens": {"url": "https://example.com/lens-kit.git", "exactVersion": "2.1.0", "products": ["Lens"]}}, "ios-simulator", "Debug"))
         text = fragment.read_text()
@@ -1458,8 +1458,8 @@ class RunCppTest(unittest.TestCase):
         self.assertIn('registerLinked("codec"', (build / "haylen-plugins" / "HaylenNativeSymbols.mm").read_text(), "The static native libraries register their symbols for haylen.native.")
         self.assertIn("set(HAYLEN_PLUGIN_FRAMEWORKS [==[AVFoundation]==])", text)
         self.assertIn(f"set(HAYLEN_PLUGIN_BUNDLES [==[{(copied / 'resources' / 'camera.bundle').as_posix()};{(packages / 'Lens_Lens.bundle').as_posix()}]==])", text)
-        self.assertIn(f"set(HAYLEN_PLUGIN_LIBRARIES [==[{(plugin / 'Vendor.framework').as_posix()};{(self.scratch / 'libcodec.a').as_posix()};{(frameworks / 'HaylenPackages.framework').as_posix()}]==])", text)
-        self.assertIn(f"set(HAYLEN_PLUGIN_EMBEDDED [==[{(plugin / 'Vendor.framework').as_posix()};{(self.scratch / 'Effects.framework').as_posix()};{(frameworks / 'HaylenPackages.framework').as_posix()}]==])", text)
+        self.assertIn(f"set(HAYLEN_PLUGIN_LIBRARIES [==[{(plugin / 'Vendor.framework').as_posix()};{(self.scratch / 'libcodec.a').as_posix()};{(frameworks / 'HaylenPackages.framework').as_posix()};{(frameworks / 'LensCore.framework').as_posix()};{(frameworks / 'LensVideo.framework').as_posix()}]==])", text, "The app links the binary frameworks of the packages after their framework, which exports none of their symbols.")
+        self.assertIn(f"set(HAYLEN_PLUGIN_EMBEDDED [==[{(plugin / 'Vendor.framework').as_posix()};{(self.scratch / 'Effects.framework').as_posix()};{(frameworks / 'HaylenPackages.framework').as_posix()};{(frameworks / 'LensVideo.framework').as_posix()}]==])", text, "The app embeds only the dynamic binary frameworks of the packages.")
         self.assertIn(f"set(HAYLEN_PLUGIN_MODULES [==[{packages.as_posix()}]==])", text)
         self.assertIn(f"set(HAYLEN_PLUGIN_MODULE_MAPS [==[{(build / 'maps' / 'LensObjC.modulemap').as_posix()}]==])", text, "The Swift sources import the C-family modules of the packages through their module maps.")
         self.assertIn(f"set(HAYLEN_PLUGIN_HEADERS [==[{(build / 'lens' / 'include').as_posix()}]==])", text)
@@ -1476,7 +1476,7 @@ class RunCppTest(unittest.TestCase):
         info = haylen.read_plist(copied / "extensions" / "Downloads" / "Info.plist")
         self.assertEqual(info["EXAppExtensionAttributes"], {"EXExtensionPointIdentifier": "com.apple.background-asset-downloader-extension"})
         self.assertEqual(info["CFBundleIdentifier"], "com.haylen.camera.downloads")
-        with mock.patch.object(haylen, "build_swift_packages", return_value=built):
+        with mock.patch.object(haylen, "build_swift_packages", return_value=built), mock.patch.object(haylen, "apple_binary_is_dynamic", side_effect=lambda binary: binary.name == "LensVideo"):
             self.assertFalse(haylen.write_cpp_apple_parts(app, "ios-simulator", build, fragment, "Debug", 4))
 
     def test_the_swift_packages_of_cpp_apps_join_one_dynamic_framework(self):
@@ -1511,6 +1511,21 @@ class RunCppTest(unittest.TestCase):
             module_maps, headers = haylen.swift_package_clang_modules(derived, built, generated, self.scratch / "manifests")
         self.assertEqual(module_maps, [generated / "Core.modulemap", checkouts / "promises" / "Sources" / "Promises" / "include" / "module.modulemap"], "A target keeps its own module map, and Swift targets and targets that the packages did not compile give none.")
         self.assertEqual(headers, [checkouts / "kit" / "Sources" / "Core" / "Public", checkouts / "promises" / "Sources" / "Promises" / "include"])
+
+    def test_the_binary_frameworks_of_packages_are_static_or_dynamic_by_their_header(self):
+        archive = self.scratch / "Archive"
+        archive.write_bytes(b"!<arch>\n" + bytes(64))
+        thin = self.scratch / "Thin"
+        thin.write_bytes((0xFEEDFACF).to_bytes(4, "little") + bytes(8) + (6).to_bytes(4, "little") + bytes(16))
+        universal = self.scratch / "Universal"
+        universal.write_bytes((0xCAFEBABE).to_bytes(4, "big") + (1).to_bytes(4, "big") + bytes(8) + (64).to_bytes(4, "big") + bytes(44) + b"!<arch>\n" + bytes(8))
+        self.assertFalse(haylen.apple_binary_is_dynamic(archive))
+        self.assertTrue(haylen.apple_binary_is_dynamic(thin))
+        self.assertFalse(haylen.apple_binary_is_dynamic(universal), "A universal file is what its first architecture is.")
+        text = self.scratch / "Text"
+        text.write_text("Not a library at all.")
+        with self.assertRaisesRegex(haylen.BuildError, "is neither a static archive nor a Mach-O library"):
+            haylen.apple_binary_is_dynamic(text)
 
     def test_plugins_that_ship_the_same_framework_stop_the_build_of_a_cpp_app(self):
         manifests = []

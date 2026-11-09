@@ -4037,6 +4037,28 @@ def apple_objc_classes(listing: str) -> set[str]:
     return {parts[1] for line in listing.splitlines() if len(parts := line.split()) == 2 and re.fullmatch(r"[0-9a-f]+", parts[0])}
 
 
+# The magic numbers of universal files, of 32-bit and of 64-bit offsets, and of Mach-O files, of 32-bit and of 64-bit code, and the file type of a dynamic library.
+MACH_O_UNIVERSAL_MAGICS = {0xCAFEBABE: 4, 0xCAFEBABF: 8}
+MACH_O_MAGICS = {0xFEEDFACE, 0xFEEDFACF}
+MACH_O_DYLIB = 6
+
+
+def apple_binary_is_dynamic(binary: Path) -> bool:
+    """Tells a dynamic library from a static archive by the header of the file, or of the first architecture of a universal file."""
+    with binary.open("rb") as file:
+        header = file.read(16)
+        universal = MACH_O_UNIVERSAL_MAGICS.get(int.from_bytes(header[:4], "big"))
+        if universal:
+            file.seek(16)
+            file.seek(int.from_bytes(file.read(universal), "big"))
+            header = file.read(16)
+    if header.startswith(b"!<arch>\n"):
+        return False
+    if int.from_bytes(header[:4], "little") not in MACH_O_MAGICS:
+        raise BuildError(f"The file `{shown_path(binary)}` is neither a static archive nor a Mach-O library.")
+    return int.from_bytes(header[12:16], "little") == MACH_O_DYLIB
+
+
 def apple_linked(executable: Path) -> set[str]:
     """Lists the system frameworks and libraries that the code of an app links, such as `Metal.framework` and `libz.tbd`."""
     linked = set()
@@ -6676,9 +6698,10 @@ def write_swift_packages(packages: dict[str, dict], folder: Path) -> None:
 
 @dataclasses.dataclass(frozen=True)
 class SwiftPackages:
-    """The Swift packages of the plugins of a C++ app built for one slice: the dynamic framework that holds their targets, the resource bundles, and what a Swift source that imports their products needs, as Xcode gives it to a target that links them: the folder of their Swift modules, and the module map and the public header folder of each of their C-family targets."""
+    """The Swift packages of the plugins of a C++ app built for one slice: the dynamic framework that holds their targets, the binary frameworks that their products bring, which the app links itself, the resource bundles, and what a Swift source that imports their products needs, as Xcode gives it to a target that links them: the folder of their Swift modules, and the module map and the public header folder of each of their C-family targets."""
 
     framework: Path
+    binaries: list[Path]
     bundles: list[Path]
     modules: Path
     module_maps: list[Path]
@@ -6698,8 +6721,10 @@ def build_swift_packages(packages: dict[str, dict], slice_name: str, config: str
     run(["xcodebuild", "-scheme", SWIFT_PACKAGES_PRODUCT, "-destination", destination, "-configuration", config, "-derivedDataPath", derived, "-jobs", str(jobs), "build", "CODE_SIGNING_ALLOWED=NO"], cwd=folder / "package")
 
     built = derived / "Build" / "Products" / f"{config}{suffix}"
+    frameworks = built / "PackageFrameworks"
+    binaries = sorted(path for path in frameworks.glob("*.framework") if path.stem != SWIFT_PACKAGES_PRODUCT)
     module_maps, headers = swift_package_clang_modules(derived, built, derived / "Build" / "Intermediates.noindex" / f"GeneratedModuleMaps{suffix}", folder / "manifests")
-    return SwiftPackages(built / "PackageFrameworks" / f"{SWIFT_PACKAGES_PRODUCT}.framework", sorted(built.glob("*.bundle")), built, module_maps, headers)
+    return SwiftPackages(frameworks / f"{SWIFT_PACKAGES_PRODUCT}.framework", binaries, sorted(built.glob("*.bundle")), built, module_maps, headers)
 
 
 def swift_package_clang_modules(derived: Path, built: Path, generated: Path, scratch: Path) -> tuple[list[Path], list[Path]]:
@@ -6818,10 +6843,12 @@ def write_cpp_apple_parts(app: App, platform: str, directory: Path, fragment: Pa
     # Resource bundles are folders, which the app copies whole after its link, like the resource bundles of the Swift packages.
     bundles = [resource for resource in resources if resource.is_dir()]
 
+    # The app links the framework of the Swift packages before their binary frameworks, so it takes from the binary frameworks only what the framework lacks, as an Xcode project links the products of packages.
     swift_packages = build_swift_packages(packages, slice_name, config, directory / "haylen-packages", jobs) if packages else None
     if swift_packages:
-        linked.append(swift_packages.framework)
-        embedded.append(swift_packages.framework)
+        dynamic = [binary for binary in swift_packages.binaries if apple_binary_is_dynamic(binary / binary.stem)]
+        linked += [swift_packages.framework, *swift_packages.binaries]
+        embedded += [swift_packages.framework, *dynamic]
         bundles += swift_packages.bundles
 
     # The keys of the plugins go inside the dictionary of the Info.plist of the engine, which a property list of their own carries, with the background mode of the audio that plays in the background, whose modes the plugins may add to.

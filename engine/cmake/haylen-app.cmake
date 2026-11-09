@@ -270,6 +270,18 @@ function(haylen_add_apple_plugins target)
   endforeach()
   target_compile_options(${target} PRIVATE ${search})
 
+  # The Swift objects of the plugins and of the frameworks they link name the libraries of the Swift toolchain that they need, such as those that run Swift code on older systems. The C++ driver that links the app does not search the folder of those libraries, so the app names it for its platform, as Xcode does for a target with Swift code.
+  if(CMAKE_Swift_COMPILER)
+    set(swift_platform "$(PLATFORM_NAME)")
+    if(CMAKE_CXX_COMPILER_TARGET MATCHES "-macabi$")
+      set(swift_platform "maccatalyst")
+    elseif(NOT CMAKE_GENERATOR STREQUAL "Xcode")
+      set(swift_platform "macosx")
+    endif()
+    cmake_path(GET CMAKE_Swift_COMPILER PARENT_PATH swift_tools)
+    target_link_options(${target} PRIVATE "-L${swift_tools}/../lib/swift/${swift_platform}")
+  endif()
+
   # The Swift sources compile into a library of their own, which takes the header folders of the app without the options and definitions that its C and C++ libraries give their users, which Swift does not read. The app links the whole library, so the runtime finds every plugin class by its name.
   if(swift)
     if(NOT CMAKE_Swift_COMPILER)
