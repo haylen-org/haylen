@@ -347,7 +347,7 @@ std::unique_ptr<VideoDecoder> NativeHost::openVideo(std::shared_ptr<io::PackageR
 }
 
 void NativeHost::guardCrashes(const std::filesystem::path& report) {
-    CrashGuard::install(report);
+    CrashGuard::setReport(report);
 }
 
 void NativeHost::setCrashContext(std::string_view json) {

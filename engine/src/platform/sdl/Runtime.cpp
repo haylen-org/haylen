@@ -19,6 +19,7 @@
 #include "gpu/DeviceFactory.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/lua/Error.hpp"
+#include "platform/CrashGuard.hpp"
 #include "platform/Player.hpp"
 #include "platform/Services.hpp"
 #include "platform/sdl/Host.hpp"
@@ -45,6 +46,7 @@
 namespace haylen::platform::sdl {
 
 int Runtime::run(int argc, char* argv[]) {
+    CrashGuard::install();
 #if defined(__APPLE__)
     AppleApplication::prepare();
 #endif

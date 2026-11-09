@@ -504,6 +504,16 @@ Every error that stops the app, the one its error screen shows, reaches the nati
 | Android | The method `onAppError(JSONObject)` of the plugin class, on the main thread. |
 | Native library | The handler that it gives `registerErrorHandler` of [`HaylenNativeApi`](../lua-api/native.md#the-c-interface-of-the-engine), as JSON text on the frame thread. This is how the native part of a plugin hears errors on the desktops. |
 
+### Native crashes
+
+The engine catches native crashes itself and writes a report that the next start of the app reads, as the [debug reference](../lua-api/debug.md#crashes-and-breadcrumbs) describes. It handles the fatal signals on macOS, iOS, iPadOS, tvOS, Mac Catalyst, Linux and Android, and the unhandled exceptions on Windows. A crash reporter of a plugin receives every crash too, whichever of the two installs its handlers first.
+
+On every platform but Android, the platform runtime installs the handlers of the engine as the process starts, before the native parts of plugins load. A crash reporter that a plugin starts later keeps them as the handlers that were there before it, as crash reporters do. So the reporter receives each crash first and hands it on to the engine.
+
+On Android, the Java parts of plugins load before the library of the engine, so a reporter may install its handlers first. The engine keeps them and hands each crash on to them once it wrote its report. The handler receives the signal information and the context of the crash itself, so the reporter records the real crash, with the address of the fault and the stack where it happened. A signal that was ignored before the engine stays ignored, and a signal without a handler ends the process with its default action. On Windows, the filter of unhandled exceptions that was there before the engine decides in the same way what happens to each exception.
+
+A reporter that installed its handlers before the engine and later checks whether they still come first finds the handlers of the engine, and it may log that as a conflict. The crash still reaches it with everything it records. A reporter that listens on the Mach exception ports of Apple platforms sees each crash before any signal handler, so the engine is never in its way.
+
 ### Retained and batched events
 
 A plugin sends an event retained when it may come before the app listens, such as the deep link or the notification that opened the app, or a purchase that finished while it was closed. It sends events batched when it reports something many times per frame, such as a sensor, the location or the progress of a download. The [platform bridge guide](platform-bridge.md#retained-events) explains both, and its table shows how each plugin context sends them.

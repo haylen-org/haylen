@@ -632,7 +632,7 @@ end)
 
 A breadcrumb is a step of the app that a crash report shows, such as opening a screen or buying an item, with data of the app. The engine keeps the last 100 breadcrumbs. Each one publishes the event `breadcrumbAdded`, so a plugin of crash reports or analytics forwards it to its service. The engine itself sends nothing anywhere.
 
-The engine captures native crashes, which no Lua error handler sees, such as a fault in a plugin, a driver or the engine. It catches fatal signals on macOS, iOS, iPadOS, tvOS, Mac Catalyst, Linux and Android, and unhandled exceptions on Windows. The crash writes a small report into the user storage of the app, then goes on to the system and the crash handlers that were there before. So the crash reporters of the system and of plugins still receive it.
+The engine captures native crashes, which no Lua error handler sees, such as a fault in a plugin, a driver or the engine. It catches fatal signals on macOS, iOS, iPadOS, tvOS, Mac Catalyst, Linux and Android, and unhandled exceptions on Windows. The crash writes a small report into the user storage of the app, then goes on to the crash handler that was there before, with the information of the crash itself, or to the system. So the crash reporters of the system and of plugins still receive it, as the [plugin guide](../platform/plugins.md#native-crashes) explains.
 
 The report holds the reason of the crash, the last 30 breadcrumbs, the last 20 log lines, and the name, identifier and version of the app. The engine prepares it at the end of each frame that added a breadcrumb or logged a line, so the crash writes text that exists already. The next start of the app reads it once with `debug.lastCrash()`.
 

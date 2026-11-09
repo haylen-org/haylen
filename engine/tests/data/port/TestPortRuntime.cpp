@@ -6,11 +6,13 @@
 #include "TestPortHost.hpp"
 #include "gpu/DeviceFactory.hpp"
 #include "haylen/core/Log.hpp"
+#include "platform/CrashGuard.hpp"
 #include "platform/Player.hpp"
 
 namespace haylen::platform {
 
 int TestPortRuntime::run(int argc, char* argv[]) {
+    CrashGuard::install();
     TestPortRuntime runtime;
     Player::create(argc, argv, std::make_unique<TestPortHost>(runtime));
     NativeWindow::install(&runtime.window);

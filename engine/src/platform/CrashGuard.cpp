@@ -25,20 +25,25 @@ std::atomic<int> CrashGuard::published = 0;
 std::atomic<bool> CrashGuard::installed = false;
 std::atomic<bool> CrashGuard::crashing = false;
 
-#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+#if defined(_WIN32)
+CrashGuard::ExceptionFilter CrashGuard::previousFilter = nullptr;
+#elif !defined(__EMSCRIPTEN__)
 std::array<struct sigaction, CrashGuard::kSignals.size()>& CrashGuard::previousActions = *new std::array<struct sigaction, CrashGuard::kSignals.size()>{};
 #endif
 
-void CrashGuard::install(const std::filesystem::path& report) {
+void CrashGuard::install() {
+    if (!installed.exchange(true)) {
+        installHandlers();
+    }
+}
+
+void CrashGuard::setReport(const std::filesystem::path& report) {
     const std::filesystem::path::string_type& native = report.native();
     path.fill({});
     if (native.size() >= kPathSize) {
         return;
     }
     std::ranges::copy(native, path.begin());
-    if (!installed.exchange(true)) {
-        installHandlers();
-    }
 }
 
 // Only the frame thread publishes, so it writes the context that the handler does not read and then switches the two.
@@ -101,12 +106,17 @@ void CrashGuard::writeAll(int descriptor, std::string_view text) noexcept {
 #if defined(_WIN32)
 
 void CrashGuard::installHandlers() {
-    SetUnhandledExceptionFilter(&handleException);
+    previousFilter = SetUnhandledExceptionFilter(&handleException);
 }
 
+// The filter that was there before decides what happens to the exception, and without one the system handles it.
 long __stdcall CrashGuard::handleException(_EXCEPTION_POINTERS* info) {
     if (!crashing.exchange(true)) {
         writeReport(describeException(info->ExceptionRecord->ExceptionCode));
+    }
+
+    if (previousFilter != nullptr) {
+        return previousFilter(info);
     }
     return EXCEPTION_CONTINUE_SEARCH;
 }
@@ -140,14 +150,33 @@ void CrashGuard::installHandlers() {
     }
 }
 
-// The handler that was there before takes the signal again once the report is written, and the default one ends the process.
-void CrashGuard::handleSignal(int signal, siginfo_t*, void*) {
+void CrashGuard::handleSignal(int signal, siginfo_t* info, void* context) {
     if (!crashing.exchange(true)) {
         writeReport(describeSignal(signal));
     }
+    forwardSignal(signal, info, context);
+}
+
+// The action that was there before takes the signal back, so a fault that happens again once the handler returns reaches it as it would without the guard. Its handler receives the signal information and the context of the crash itself, an ignored signal stays ignored, and the default action ends the process.
+void CrashGuard::forwardSignal(int signal, siginfo_t* info, void* context) {
     const auto found = std::ranges::find(kSignals, signal);
-    sigaction(signal, &previousActions[static_cast<std::size_t>(found - kSignals.begin())], nullptr);
-    raise(signal);
+    const struct sigaction& previous = previousActions[static_cast<std::size_t>(found - kSignals.begin())];
+    sigaction(signal, &previous, nullptr);
+
+    if (previous.sa_handler == SIG_IGN) {
+        return;
+    }
+
+    if (previous.sa_handler == SIG_DFL) {
+        raise(signal);
+        return;
+    }
+
+    if ((previous.sa_flags & SA_SIGINFO) != 0) {
+        previous.sa_sigaction(signal, info, context);
+        return;
+    }
+    previous.sa_handler(signal);
 }
 
 std::string_view CrashGuard::describeSignal(int signal) noexcept {

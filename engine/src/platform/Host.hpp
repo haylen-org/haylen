@@ -154,7 +154,7 @@ class Host : public Window {
     // Dismisses a screen that the app gave up, where the platform can, which still ends it through `ScreenRelay::finish` once it is gone.
     virtual void cancelScreen(std::uint64_t id) = 0;
 
-    // Captures the native crashes of the process from now on into the report file, replacing the file of an earlier app of the process, where the platform catches them.
+    // Captures the native crashes of the process from now on into the report file, replacing the file of an earlier app of the process, where the platform catches them. The platform runtime installs the handlers as the process starts, so this only names the file.
     virtual void guardCrashes(const std::filesystem::path& report) = 0;
 
     // Publishes the JSON object that the report of a crash carries as its context.

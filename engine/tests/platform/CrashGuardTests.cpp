@@ -1,5 +1,16 @@
 #include <gtest/gtest.h>
 
+#if defined(_WIN32)
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#elif !defined(__EMSCRIPTEN__)
+#include <signal.h>
+#include <sys/mman.h>
+#include <unistd.h>
+#endif
+
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -17,14 +28,52 @@ namespace haylen::platform {
 
 class CrashGuardTest : public ::testing::Test {
   protected:
+    static constexpr int kForwarded = 3;
+    static constexpr int kForwardedWithoutTheCrash = 4;
+
     void TearDown() override {
-        CrashGuard::install({});
+        CrashGuard::setReport({});
     }
 
     [[nodiscard]] static core::Json readReport(const std::filesystem::path& file) {
         std::ifstream stream(file, std::ios::binary);
         return core::Json::parse(std::string(std::istreambuf_iterator<char>(stream), {}));
     }
+
+#if defined(_WIN32)
+    static long __stdcall exitFromThePreviousFilter(_EXCEPTION_POINTERS* info) {
+        _exit(info->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION ? kForwarded : kForwardedWithoutTheCrash);
+    }
+#elif !defined(__EMSCRIPTEN__)
+    // The fault of a page without access arrives as a segmentation fault on Linux and as a bus error on Apple platforms.
+    static void installPreviousHandler(void (*handler)(int, siginfo_t*, void*)) {
+        struct sigaction action{};
+        action.sa_sigaction = handler;
+        action.sa_flags = SA_SIGINFO;
+        sigemptyset(&action.sa_mask);
+        sigaction(SIGSEGV, &action, nullptr);
+        sigaction(SIGBUS, &action, nullptr);
+    }
+
+    static void exitWithTheFaultAddress(int, siginfo_t* info, void*) {
+        _exit(info->si_addr == faultAddress ? kForwarded : kForwardedWithoutTheCrash);
+    }
+
+    static void reportLaterAndExit(int signal, siginfo_t* info, void* context) {
+        guardAction.sa_sigaction(signal, info, context);
+        _exit(kForwarded);
+    }
+
+    static void touchAPageWithoutAccess() {
+        void* page = mmap(nullptr, static_cast<std::size_t>(sysconf(_SC_PAGESIZE)), PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0);
+        ASSERT_NE(page, MAP_FAILED);
+        faultAddress = page;
+        *static_cast<volatile int*>(page) = 1;
+    }
+
+    static inline void* faultAddress = nullptr;
+    static inline struct sigaction guardAction{};
+#endif
 
     test::TemporaryDirectory directory;
 };
@@ -34,7 +83,7 @@ TEST_F(CrashGuardTest, WritesTheReasonAndTheLastPublishedContext) {
     CrashGuard::writeReport("segmentationFault");
     EXPECT_FALSE(std::filesystem::exists(report)) << "Nothing is written before the guard knows its file.";
 
-    CrashGuard::install(report);
+    CrashGuard::setReport(report);
     CrashGuard::setContext(R"({"breadcrumbs":[{"message":"Opened the shop."}]})");
     CrashGuard::setContext(R"({"breadcrumbs":[{"message":"Bought a sword."}]})");
     CrashGuard::writeReport("segmentationFault");
@@ -46,6 +95,56 @@ TEST_F(CrashGuardTest, WritesTheReasonAndTheLastPublishedContext) {
     CrashGuard::writeReport("abort");
     EXPECT_EQ(readReport(report), (core::Json{{"reason", "abort"}, {"context", core::Json::object()}}));
 }
+
+#if defined(_WIN32)
+TEST_F(CrashGuardTest, HandsAnExceptionToTheFilterThatWasThereBefore) {
+    // clang-format off
+    EXPECT_EXIT({
+        SetUnhandledExceptionFilter(&exitFromThePreviousFilter);
+        CrashGuard::install();
+        EXCEPTION_RECORD record{.ExceptionCode = EXCEPTION_ACCESS_VIOLATION};
+        CONTEXT context{};
+        EXCEPTION_POINTERS pointers{.ExceptionRecord = &record, .ContextRecord = &context};
+        UnhandledExceptionFilter(&pointers);
+    }, testing::ExitedWithCode(kForwarded), "");
+    // clang-format on
+}
+#elif !defined(__EMSCRIPTEN__)
+// A crash reporter that a plugin installed before the guard receives the fault itself, with its address, not a signal that the guard raised again.
+TEST_F(CrashGuardTest, HandsAFaultWithItsInformationToTheHandlerThatWasThereBefore) {
+    GTEST_FLAG_SET(death_test_style, "fast");
+    const std::filesystem::path report = directory.getPath() / "crash-report.json";
+    // clang-format off
+    EXPECT_EXIT({
+        installPreviousHandler(&exitWithTheFaultAddress);
+        CrashGuard::install();
+        CrashGuard::setReport(report);
+        touchAPageWithoutAccess();
+    }, testing::ExitedWithCode(kForwarded), "");
+    // clang-format on
+    const std::string reason = readReport(report).at("reason");
+    EXPECT_TRUE(reason == "segmentationFault" || reason == "busError") << reason;
+}
+
+// A crash reporter that a plugin installs after the guard sees the crash first and hands it on to the guard, which writes its report.
+TEST_F(CrashGuardTest, WritesTheReportWhenAHandlerInstalledLaterHandsTheCrashOn) {
+    GTEST_FLAG_SET(death_test_style, "fast");
+    const std::filesystem::path report = directory.getPath() / "crash-report.json";
+    // clang-format off
+    EXPECT_EXIT({
+        CrashGuard::install();
+        CrashGuard::setReport(report);
+        struct sigaction action{};
+        action.sa_sigaction = &reportLaterAndExit;
+        action.sa_flags = SA_SIGINFO;
+        sigemptyset(&action.sa_mask);
+        sigaction(SIGABRT, &action, &guardAction);
+        raise(SIGABRT);
+    }, testing::ExitedWithCode(kForwarded), "");
+    // clang-format on
+    EXPECT_EQ(readReport(report).at("reason"), "abort");
+}
+#endif
 
 TEST(CrashLuaTest, HandsTheReportOfALastCrashToTheNextStartAndKeepsBreadcrumbs) {
     test::EngineFixture fixture;

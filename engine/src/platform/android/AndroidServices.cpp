@@ -19,6 +19,7 @@
 #include "haylen/io/Package.hpp"
 #include "platform/AccessibilityRelay.hpp"
 #include "platform/BridgeRelay.hpp"
+#include "platform/CrashGuard.hpp"
 #include "platform/LinkRelay.hpp"
 #include "platform/MemoryWarning.hpp"
 #include "platform/NativeHost.hpp"
@@ -262,6 +263,7 @@ HaylenNativeWindow Services::getNativeWindow() {
 extern "C" {
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*) {
+    haylen::platform::CrashGuard::install();
     return haylen::platform::JavaBridge::load(vm);
 }
 
