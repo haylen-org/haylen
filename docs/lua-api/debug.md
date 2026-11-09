@@ -16,9 +16,9 @@ The engine shows its statistics in one of three modes:
 | --- | --- |
 | `'off'` | Nothing. Every app starts this way, unless `app.json` picks another mode. |
 | `'compact'` | One line for each [compact item](#compact-items) that is on, in the bottom left corner of the safe area. By default those are the frame rate, the draw calls and the geometry. The 2D renderer draws the lines above everything else, scene transitions and the error screen included, so they work in every app, with or without UI. The numbers change four times per second, so they stay readable, and the frames in between allocate nothing. |
-| `'full'` | The debug overlay, a window drawn over the app. Its close button turns the statistics off. |
+| `'full'` | The statistics window, drawn over the app. Its close button turns the statistics off. |
 
-The overlay shows:
+The statistics window shows:
 
 - The frame rate, the fastest, slowest and one percent low frame times, the fixed steps of the frame and a graph of recent frame times.
 - The budget of the poll of the event loop, whether work ran and what it waits for.
@@ -30,7 +30,7 @@ The overlay shows:
 - The reads and downloads of the [content](content.md#contentstats), the object counts, and the signals and event listeners with their emissions.
 - Warnings about listeners whose owner is gone, the monitors with their graphs, and the recent log.
 
-The key F3 cycles through `off`, `compact` and `full`. So it also opens the overlay, where the player ticks what the drawings and the compact mode show. The function `debug.setToggleKey` picks another key, and `debug.setStatsMode` picks a mode from Lua. The setting `"debug": {"stats": "compact"}` in `app.json` starts the app in a mode, as the [Lua guide](../core/lua.md#appjson) lists. The statistics describe the frame before, because the renderer knows its numbers only once it has submitted a frame.
+The key F3 cycles through `off`, `compact` and `full`, and so does the key `s` in the terminal of `haylen run`, which reaches a phone or a TV too. So they also open the statistics window, where the player ticks what the drawings and the compact mode show. The window moves by its title bar and resizes by its corner, with the mouse or a finger, stays inside the safe area, and scrolls under a finger that drags its content. The function `debug.setToggleKey` picks another key, and `debug.setStatsMode` picks a mode from Lua. The setting `"debug": {"stats": "compact"}` in `app.json` starts the app in a mode, as the [Lua guide](../core/lua.md#appjson) lists. The statistics describe the frame before, because the renderer knows its numbers only once it has submitted a frame.
 
 ### Compact items
 
@@ -47,7 +47,7 @@ The compact mode shows one line for each item that is on, in this order:
 | `'particles'` | The live particles. |
 | `'audio'` | The voices that play. |
 
-The first three are on, unless the list `"debug": {"statsItems": ["frameRate", "physics"]}` of `app.json` picks others. The checkboxes of the overlay and the functions below change them while the app runs.
+The first three are on, unless the list `"debug": {"statsItems": ["frameRate", "physics"]}` of `app.json` picks others. The checkboxes of the statistics window and the functions below change them while the app runs.
 
 ### debug.setStatsMode(mode)
 
@@ -180,7 +180,7 @@ Drawings show what the app draws and simulates. They draw over every canvas that
 | `'bounds'` | An outline around every sprite, sprite of a batch, nine-slice piece and baked batch, named after the path of the texture that the assets loaded it from, and a fainter outline around every text block, in every canvas. |
 | Any other name | The drawers that the app or a plugin adds with [`debug.addDrawer`](#debugadddrawername-fn-options). |
 
-The key F4 turns every drawing off while any is on, and otherwise turns on every drawing that the engine and the app know. The function `debug.setDrawKey` picks another key, and `debug.setDrawing` switches one drawing from Lua. The setting `"debug": {"drawings": ["physics", "bounds"]}` in `app.json` starts the app with drawings on, as the [Lua guide](../core/lua.md#appjson) lists. When an app gives both shortcuts the same key, the key of the statistics wins.
+The key F4 turns every drawing off while any is on, and otherwise turns on every drawing that the engine and the app know, and so does the key `p` in the terminal of `haylen run`. The function `debug.setDrawKey` picks another key, and `debug.setDrawing` switches one drawing from Lua. The setting `"debug": {"drawings": ["physics", "bounds"]}` in `app.json` starts the app with drawings on, as the [Lua guide](../core/lua.md#appjson) lists. When an app gives both shortcuts the same key, the key of the statistics wins.
 
 ### debug.setDrawing(name, enabled)
 
@@ -309,11 +309,11 @@ end
 
 ## Monitors
 
-A monitor is a function that the engine calls once per frame to sample a number the app cares about, such as the enemies alive or the size of a queue. The full overlay shows every monitor with its value and a graph of its last 240 samples, and `debug.monitors()` returns them.
+A monitor is a function that the engine calls once per frame to sample a number the app cares about, such as the enemies alive or the size of a queue. The statistics window shows every monitor with its value and a graph of its last 240 samples, and `debug.monitors()` returns them.
 
 ### debug.addMonitor(name, fn, options)
 
-Adds a monitor named `name`, which calls `fn` once per frame and shows the number it returns in the full overlay. It returns the [`Connection`](signal.md#connection) of the monitor. A monitor with the same name is replaced, which ends the connection of the old one. The method `connection:disconnect()` removes the monitor. While `connection.blocked` is `true`, the monitor keeps its value and history without calling `fn`.
+Adds a monitor named `name`, which calls `fn` once per frame and shows the number it returns in the statistics window. It returns the [`Connection`](signal.md#connection) of the monitor. A monitor with the same name is replaced, which ends the connection of the old one. The method `connection:disconnect()` removes the monitor. While `connection.blocked` is `true`, the monitor keeps its value and history without calling `fn`.
 
 The argument `options` is an optional table. Its `owner`, a table or a userdata such as a scene, removes the monitor when the owner ends, as the [owners of `haylen.events`](events.md#owners) describe. The owner keeps `fn`, so `fn` may refer to the owner without keeping it alive. Without an `owner`, the monitor takes the default owner.
 
@@ -625,27 +625,27 @@ end
 
 The developer console runs commands that the engine, plugins and the app register, typed as one line, such as `gold 50` or `say "Hello there"`. Spaces separate the words, double quotes keep spaces inside one word, and a backslash keeps the next character as it is. Each command declares the kinds of its arguments, and the console checks and converts them before the command runs. So a command receives integers, numbers, booleans and strings, never text it has to parse.
 
-The console window lists the output, the line being typed, the commands as buttons and the history, with Tab for completion and the arrows for the history. It opens with the grave accent key, which `debug.setConsoleKey` changes, with a touch of four fingers at once, or with `debug.setConsoleVisible(true)`. A command without arguments runs from its button. A command with arguments puts its name on the line, where the on-screen keyboard of a phone or a TV types the rest. The window works with a gamepad or a remote through the navigation of the interface. Nothing of the console runs while it is closed.
+The lines come from outside the app, so a phone, a TV and a browser take them the same way a desktop does:
 
-The console is on in development runs, and `"debug": {"console": true}` in `app.json` turns it on in any other run. While it is off, it neither opens nor runs lines from outside the app, but the app still registers and runs its own commands with `debug.runCommand`. Lines also arrive from outside the app:
-
-- In a Debug run of `haylen run`, in the player, on a device, a simulator, an emulator or the browser, the key `d` asks the terminal for a line, which goes to the connected apps through the development server, and their results print there, as [while the app runs](../tools/distribution.md#while-the-app-runs) describes.
+- In a Debug run of `haylen run`, the key `d` opens the console in the terminal, with a line at the bottom that the log of the app never mixes with. Each line runs in every connected app, and the result prints above the line. Tab completes the names of the commands and the values of boolean arguments, the arrows go through the lines typed before, and Escape goes back to the keys of the run, as [the developer console](../tools/distribution.md#the-developer-console) of the run describes.
 - A web page runs a line with `Module.haylen.console(line)`, as the [runtime API](../tools/build.md#runtime-api) describes.
+- The app runs a line with [`debug.runCommand`](#debugruncommandline), such as from a cheat menu of its own.
+
+The console takes lines from outside the app in development runs, and `"debug": {"console": true}` in `app.json` turns that on in any other run. While it is off, a line from outside fails with an error, but the app still registers and runs its own commands with `debug.runCommand`.
 
 The engine registers these commands:
 
 | Command | Meaning |
 | --- | --- |
-| `help [word]` | Lists the commands with how to type them, or shows one. |
-| `clear` | Clears the output of the console. |
-| `stats <word>` | Shows the statistics as `off`, `compact` or `full`. |
-| `draw <word> [boolean]` | Turns a [debug drawing](#drawings) on or off, or switches it when the line leaves the state out. |
-| `timeScale [number]` | Shows the time scale, or sets it. |
+| `help [word]` | Lists the commands with how to type them and what they do, or shows one. |
+| `stats [word]` | Shows the [statistics](#statistics) as `off`, `compact` or `full`, or moves them to the next mode when the line leaves the mode out, as F3 does. |
+| `draw [word] [boolean]` | Turns a [debug drawing](#drawings) on or off, or switches it when the line leaves the state out. Without a name, it switches every drawing, as F4 does. |
+| `timeScale [number]` | Shows the time scale, or sets it, such as `timeScale 0.25` for slow motion. |
 | `pause [boolean]` | Pauses the app or resumes it, or switches when the line leaves the state out. |
 | `restart` | Restarts the app. |
-| `inspect [word]` | Lists the values at a path of the [inspector](#inspector), such as `inspect watched.player`, or its roots. |
+| `inspector [boolean]` | Shows or hides the [inspector](#inspector) window, or switches it when the line leaves the state out. |
+| `inspect [word]` | Lists the values at a path of the inspector, such as `inspect watched.player`, or its roots. |
 | `set <word> <text>` | Sets the number, boolean or string at a path of the inspector, such as `set watched.player.speed 300`. |
-| `inspector [boolean]` | Shows or hides the inspector window, or switches it when the line leaves the state out. |
 | `lua <text>` | Runs Lua code and prints what it returns, such as `lua player.speed`, only in development runs. |
 
 ### debug.addCommand(name, fn, options)
@@ -654,7 +654,7 @@ Adds a command to the console and returns its [`Connection`](signal.md#connectio
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `help` | string | `''` | The text that `help` and the window show next to the command. |
+| `help` | string | `''` | The text that the command `help` shows next to the command. |
 | `args` | list of strings | `{}` | The kinds of the arguments: `'integer'`, `'number'`, `'string'` for one word, `'boolean'` for `true` or `false`, and `'text'` for the rest of the line as it was typed, which comes last. A `?` after a kind, such as `'integer?'`, makes the argument optional, and optional arguments come last. |
 | `owner` | table or userdata | the default owner | Removes the command when the owner ends, as the [owners of `haylen.events`](events.md#owners) describe. |
 
@@ -666,7 +666,7 @@ The function raises these errors:
 - A required argument after an optional one raises `The command "<name>" has a required argument after an optional one. Put the optional arguments last.`.
 - An unknown option raises `Unknown option "<key>".`.
 
-A command fails without stopping the app in these cases, and the console prints the message:
+A command fails without stopping the app in these cases, and the line answers with the message:
 
 - An error that `fn` raises fails the command with its message.
 - A value of another type fails it with `A console command returns a string, a number or nothing.`.
@@ -700,7 +700,7 @@ debug.removeCommand('gold')
 
 ### debug.runCommand(line)
 
-Runs a line as the console does, prints it and its output in the console, and records it in the history. It returns whether it worked and what it printed. A line that names no command returns `false` and `There is no command "silver". Type "help" to list the commands.`. A quote that is not closed returns `false` and `The line has a quote that is not closed.`. The app runs its commands this way whether the console is on or off, such as from a cheat menu of its own.
+Runs a line as the console does. It returns whether it worked and what the command printed. A line that names no command returns `false` and `There is no command "silver". Type "help" to list the commands.`. A quote that is not closed returns `false` and `The line has a quote that is not closed.`. The app runs its commands this way whether the console is on or off, such as from a cheat menu of its own.
 
 ```lua
 local debug = require('haylen.debug')
@@ -721,77 +721,14 @@ for _, command in ipairs(debug.commands()) do
 end
 ```
 
-### debug.completeCommand(line)
-
-Returns the lines that complete a partial line: the names of the commands that start with its only word, each followed by a space when the command takes arguments, and `true` and `false` for a boolean argument.
-
-```lua
-local debug = require('haylen.debug')
-
-print(table.concat(debug.completeCommand('ti'), ', '))
-```
-
-### debug.commandHistory()
-
-Returns the last 100 lines that ran, oldest first, without repeating a line that ran twice in a row.
-
-```lua
-local debug = require('haylen.debug')
-
-local history = debug.commandHistory()
-print(history[#history])
-```
-
-### debug.setConsoleVisible(visible)
-
-Opens or closes the console window. Opening it while the console is off raises `The console is off outside development runs. Set "debug.console" to true in "app.json" to turn it on.`.
-
-```lua
-local debug = require('haylen.debug')
-
-if debug.consoleEnabled() then
-    debug.setConsoleVisible(true)
-end
-```
-
-### debug.consoleVisible()
-
-Returns whether the console window shows.
-
-```lua
-local debug = require('haylen.debug')
-
-print(debug.consoleVisible())
-```
-
 ### debug.consoleEnabled()
 
-Returns whether the console is on, which a development run or `debug.console` in `app.json` decides.
+Returns whether the console takes lines from outside the app and the inspector opens, which a development run or `debug.console` in `app.json` decides.
 
 ```lua
 local debug = require('haylen.debug')
 
 print(debug.consoleEnabled())
-```
-
-### debug.setConsoleKey(key)
-
-Picks the [key](input.md#key-names) that opens and closes the console, or turns the shortcut off with `nil`. It is `'graveAccent'` by default.
-
-```lua
-local debug = require('haylen.debug')
-
-debug.setConsoleKey('f1')
-```
-
-### debug.consoleKey()
-
-Returns the key that opens the console, or `nil` when the shortcut is off.
-
-```lua
-local debug = require('haylen.debug')
-
-print(debug.consoleKey()) -- graveAccent
 ```
 
 ## Inspector
@@ -805,9 +742,11 @@ The inspector lists the values of the running app by paths of keys from its root
 | `autoloads` | The tables of the [autoloads](haylen.md#haylenautoloads) by name. |
 | `globals` | The global table. |
 
-A table lists its keys, at most 200 of them, in order, integer keys first. An object of a bound type, such as a camera, a sprite or a body, lists the properties that its type declares, which the engine records for every type, those of plugins too. A path joins keys with dots, such as `watched.player.items.2`, where a key that reads as an integer names the item of a sequence. Numbers, booleans and strings are editable. An edit goes through the same setter that Lua uses, with its checks, so `set watched.camera.minZoom -1` fails with the error of the camera.
+A table lists its keys, at most 200 of them, in order, integer keys first, and describes itself by how many values it holds, such as `3 values`, after its `name` when it holds a string under that key, such as `play, 6 values` for a scene. An object of a bound type, such as a camera, a sprite or a body, lists the properties that its type declares, which the engine records for every type, those of plugins too. A path joins keys with dots, such as `watched.player.items.2`, where a key that reads as an integer names the item of a sequence. Numbers, booleans and strings are editable. An edit goes through the same setter that Lua uses, with its checks, so `set watched.camera.minZoom -1` fails with the error of the camera.
 
-The inspector window shows the roots as a tree whose open nodes refresh four times per second, with fields that edit a value when Enter confirms it. It opens with `debug.setInspectorVisible(true)` or the console command `inspector`. It follows the console: it is on in development runs and with `"debug": {"console": true}` in `app.json`. The console commands `inspect` and `set` reach the same values from the terminal of `haylen run` on a phone or a TV, or from a web page through `Module.haylen.console(line)`. That is how a desktop inspects a device. Nothing of the inspector runs while its window is closed. The inspector does not pick objects on the screen or move them with handles yet.
+The inspector window shows the roots as rows of a table, with the scenes open. A tap or a click on the name of a row opens the values it holds below it. A boolean shows a check box, and a number or a string shows a field, which sets the value once Enter confirms it or the field lets go of the focus. An edit that the setter refuses shows its error at the top of the window. The open rows read their values again four times per second, so the window follows the app as it runs.
+
+The window opens with F2, which `debug.setInspectorKey` changes, with the key `i` in the terminal of `haylen run`, which reaches a phone or a TV too, with the console command `inspector` or with `debug.setInspectorVisible(true)`. It moves by its title bar and resizes by its corner, with the mouse or a finger, stays inside the safe area, and scrolls under a finger that drags its rows. It follows the console: it is on in development runs and with `"debug": {"console": true}` in `app.json`. The console commands `inspect` and `set` reach the same values as text. Nothing of the inspector runs while its window is closed. The inspector does not pick objects on the screen or move them with handles.
 
 ### debug.watch(name, value)
 
@@ -883,6 +822,26 @@ local debug = require('haylen.debug')
 print(debug.inspectorVisible())
 ```
 
+### debug.setInspectorKey(key)
+
+Picks the [key](input.md#key-names) that shows and hides the inspector, or turns the shortcut off with `nil`. It is `'f2'` by default. An unknown name raises an error that ends with `(unknown value '<name>')`.
+
+```lua
+local debug = require('haylen.debug')
+
+debug.setInspectorKey('f6')
+```
+
+### debug.inspectorKey()
+
+Returns the key that shows the inspector, or `nil` when the shortcut is off.
+
+```lua
+local debug = require('haylen.debug')
+
+print(debug.inspectorKey()) -- f2
+```
+
 ## Debugger
 
 An editor attaches to the debugger of an app in development with the Debug Adapter Protocol, as the [debugger guide](../tools/debugger.md) explains, and sets its breakpoints there. The app can also halt itself.
@@ -924,7 +883,7 @@ end)
 
 | Message | Raised by |
 | --- | --- |
-| An error that ends with `(unknown value '<name>')` | `debug.setStatsMode`, `debug.setStatsItem` and `debug.statsItem` with an unknown name, and `debug.setToggleKey`, `debug.setDrawKey` and `debug.setConsoleKey` with an unknown key. |
+| An error that ends with `(unknown value '<name>')` | `debug.setStatsMode`, `debug.setStatsItem` and `debug.statsItem` with an unknown name, and `debug.setToggleKey`, `debug.setDrawKey` and `debug.setInspectorKey` with an unknown key. |
 | `a drawing needs a name` | `debug.addDrawer` with an empty name, inside a bad argument error. |
 | `An owner must be a table or a userdata, not <type>.` | `debug.addDrawer`, `debug.addMonitor` and `debug.addCommand` with an owner of another type. |
 | `Unknown option "<key>".` | Every function that takes options, with an unknown key. |
@@ -934,7 +893,7 @@ end)
 | `A trace is already recording. Stop it with "debug.stopTraceAsync" before starting another.` | `debug.startTrace` while a trace records. |
 | `A trace records at least 1 frame.`, `A trace holds at least 1 span.` | `debug.startTrace` with `frames` or `capacity` below 1. |
 | `No trace is recording. Start one with "debug.startTrace".` | `debug.stopTraceAsync` without a trace. |
-| `The console is off outside development runs. Set "debug.console" to true in "app.json" to turn it on.` | `debug.setConsoleVisible(true)` while the console is off, and lines from outside the app. |
+| `The console is off outside development runs. Set "debug.console" to true in "app.json" to turn it on.` | A line from outside the app while the console is off. |
 | `The inspector is off outside development runs. Set "debug.console" to true in "app.json" to turn it on.` | `debug.setInspectorVisible(true)` while the console is off. |
 | The messages of [`debug.addCommand`](#debugaddcommandname-fn-options) and [`debug.runCommand`](#debugruncommandline) | The console. |
 | The messages of [`debug.inspect`](#debuginspectpath) | The inspector. |

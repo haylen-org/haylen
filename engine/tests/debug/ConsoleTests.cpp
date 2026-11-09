@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <cstddef>
+#include <algorithm>
 #include <format>
 #include <stdexcept>
 #include <string>
@@ -9,7 +9,6 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/FrameClock.hpp"
 #include "haylen/debug/Console.hpp"
-#include "haylen/platform/Event.hpp"
 #include "haylen/plugins/DebugPlugin.hpp"
 #include "platform/ConsoleRelay.hpp"
 #include "support/EngineFixture.hpp"
@@ -72,37 +71,15 @@ TEST_F(ConsoleTest, FailsWithTheErrorOfAHandlerAndRemovesCommandsWithTheirConnec
     const Console::Result failed = console.run("broken");
     EXPECT_FALSE(failed.ok);
     EXPECT_EQ(failed.output, "The shop is closed.");
-    EXPECT_EQ(console.getOutput()[console.getOutput().size() - 1].kind, Console::Line::Kind::Error);
 
     broken.setBlocked(true);
     EXPECT_FALSE(console.run("broken").ok);
     broken.disconnect();
     EXPECT_FALSE(console.hasCommand("broken"));
-    EXPECT_EQ(console.run("help").output, "gold <integer> [word]  Adds gold.\nhelp [word]  Lists the commands, or shows how to type one.");
+    EXPECT_EQ(console.run("help").output, "gold <integer> [word]  Adds gold.\nhelp [word]            Lists the commands, or shows how to type one.");
     EXPECT_EQ(console.run("help gold").output, "gold <integer> [word]\nAdds gold.");
     EXPECT_TRUE(console.removeCommand("gold"));
     EXPECT_FALSE(gold.isConnected());
-}
-
-TEST_F(ConsoleTest, KeepsABoundedHistoryAndCompletesLines) {
-    (void)console.run("gold 1");
-    (void)console.run("gold 1");
-    (void)console.run("help");
-    ASSERT_EQ(console.getHistory().size(), 2U);
-    EXPECT_EQ(console.getHistory()[0], "gold 1");
-    for (std::size_t index = 0; index < Console::kHistorySize + 5; ++index) {
-        (void)console.run(std::format("gold {}", index));
-    }
-    EXPECT_EQ(console.getHistory().size(), Console::kHistorySize);
-    EXPECT_EQ(console.getHistory().back(), std::format("gold {}", Console::kHistorySize + 4));
-
-    const core::Connection god = console.addCommand({.name = "god", .help = "Turns damage off.", .parameters = {{.kind = Console::Kind::Boolean}}, .handler = [](const core::Json&) { return std::string(); }});
-    EXPECT_EQ(console.complete("g"), (std::vector<std::string>{"god ", "gold "}));
-    EXPECT_EQ(console.complete(""), (std::vector<std::string>{"god ", "gold ", "help "}));
-    EXPECT_EQ(console.complete("god "), (std::vector<std::string>{"god false", "god true"}));
-    EXPECT_EQ(console.complete("god t"), std::vector<std::string>{"god true"});
-    EXPECT_TRUE(console.complete("gold 5").empty());
-    EXPECT_TRUE(console.complete("god \"t").empty());
 }
 
 TEST(ConsoleLuaTest, RunsTheCommandsOfLuaUntilTheirOwnerEnds) {
@@ -124,8 +101,6 @@ TEST(ConsoleLuaTest, RunsTheCommandsOfLuaUntilTheirOwnerEnds) {
     EXPECT_EQ(fixture.lua("local ok, output = debugging.runCommand('gold x') return tostring(ok) .. ' ' .. output"), "false The command \"gold\" needs an integer as its first argument, not \"x\". Type it as \"gold <integer> [word]\".");
     EXPECT_NE(fixture.lua("local ok, output = debugging.runCommand('crash') return output").find("The shop is closed."), std::string::npos);
     EXPECT_EQ(fixture.lua("local ok, output = debugging.runCommand('table') return output"), "A console command returns a string, a number or nothing.");
-    EXPECT_EQ(fixture.lua("return debugging.completeCommand('go')[1]"), "gold ");
-    EXPECT_EQ(fixture.lua("local list = debugging.commandHistory() return #list .. ' ' .. list[1]"), "4 gold 50 quest");
     EXPECT_EQ(fixture.lua("for _, command in ipairs(debugging.commands()) do if command.name == 'gold' then return command.usage .. ' ' .. command.help end end"), "gold <integer> [word] Adds gold.");
     EXPECT_NE(fixture.lua("debugging.addCommand('x', print, {args = {'colour'}})").find("The argument kind \"colour\" is unknown."), std::string::npos);
     EXPECT_NE(fixture.lua("debugging.addCommand('x', print, {sound = true})").find("Unknown option \"sound\"."), std::string::npos);
@@ -135,51 +110,55 @@ TEST(ConsoleLuaTest, RunsTheCommandsOfLuaUntilTheirOwnerEnds) {
     EXPECT_EQ(fixture.lua("local ok, output = debugging.runCommand('gold 1') return output"), "There is no command \"gold\". Type \"help\" to list the commands.");
 }
 
-TEST(ConsoleLuaTest, OpensOnlyInDevelopmentOrWhenTheAppTurnsItOn) {
+TEST(ConsoleLuaTest, RunsLinesFromOutsideOnlyInDevelopmentOrWhenTheAppTurnsItOn) {
     {
         test::EngineFixture fixture;
         plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
         EXPECT_FALSE(plugin.isConsoleEnabled());
-        EXPECT_NE(fixture.lua("require('haylen.debug').setConsoleVisible(true)").find("The console is off outside development runs."), std::string::npos);
         EXPECT_FALSE(plugin.getConsole().hasCommand("lua"));
 
         std::string answer;
+        core::Json commands;
         platform::ConsoleRelay::submit("help", [&answer](const Console::Result& result) { answer = result.output; });
+        platform::ConsoleRelay::requestCommands([&commands](const core::Json& list) { commands = list; });
         fixture.frames(1);
         EXPECT_EQ(answer, "The console is off outside development runs. Set \"debug.console\" to true in \"app.json\" to turn it on.");
+        EXPECT_EQ(commands, core::Json::array());
         EXPECT_EQ(fixture.lua("local ok, output = require('haylen.debug').runCommand('timeScale 0.5') return output"), "The time scale is 0.5.");
         EXPECT_DOUBLE_EQ(fixture.engine().getClock().getTimeScale(), 0.5);
     }
     {
         test::EngineFixture fixture({{"app.json", R"({"name": "Console", "identifier": "com.haylen.console", "debug": {"console": true}})"}});
-        plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
         std::string answer;
+        core::Json commands;
         platform::ConsoleRelay::submit("pause true", [&answer](const Console::Result& result) { answer = result.output; });
+        platform::ConsoleRelay::requestCommands([&commands](const core::Json& list) { commands = list; });
         fixture.frames(1);
         EXPECT_EQ(answer, "The app is paused.");
         EXPECT_TRUE(fixture.engine().isPaused());
 
-        platform::Event touch;
-        touch.type = platform::Event::Type::TouchBegan;
-        touch.touchCount = plugins::DebugPlugin::kConsoleTouches;
-        fixture.engine().handleEvent(touch);
-        EXPECT_TRUE(plugin.isConsoleVisible());
-        fixture.frames(2);
-        platform::Event key;
-        key.type = platform::Event::Type::KeyDown;
-        key.key = input::Key::GraveAccent;
-        fixture.engine().handleEvent(key);
-        EXPECT_FALSE(plugin.isConsoleVisible());
-        EXPECT_FALSE(plugin.getConsole().hasCommand("lua"));
+        const auto draw = std::ranges::find(commands, "draw", [](const core::Json& command) { return command.at("name").get<std::string>(); });
+        ASSERT_NE(draw, commands.end());
+        EXPECT_EQ(draw->at("usage"), "draw [word] [boolean]");
+        EXPECT_EQ(draw->at("arguments"), (core::Json{"string?", "boolean?"}));
     }
-    {
-        test::EngineFixture fixture({}, nullptr, {.development = true});
-        fixture.runLua("player = {speed = 220}");
-        EXPECT_EQ(fixture.lua("local ok, output = require('haylen.debug').runCommand('lua player.speed * 2') return output"), "440");
-        EXPECT_EQ(fixture.lua("require('haylen.debug').runCommand('lua player.speed = 300') return player.speed"), "300");
-        EXPECT_EQ(fixture.lua("local ok, output = require('haylen.debug').runCommand('lua (') return tostring(ok)"), "false");
-        EXPECT_EQ(fixture.lua("local ok, output = require('haylen.debug').runCommand('draw physics') return output"), "The drawing \"physics\" is on.");
-    }
+}
+
+TEST(ConsoleLuaTest, CyclesTheStatisticsAndSwitchesEveryDrawingWithoutArguments) {
+    test::EngineFixture fixture({}, nullptr, {.development = true});
+    plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
+    fixture.runLua("player = {speed = 220} debugging = require('haylen.debug')");
+    EXPECT_EQ(fixture.lua("local ok, output = debugging.runCommand('lua player.speed * 2') return output"), "440");
+    EXPECT_EQ(fixture.lua("debugging.runCommand('lua player.speed = 300') return player.speed"), "300");
+    EXPECT_EQ(fixture.lua("local ok, output = debugging.runCommand('lua (') return tostring(ok)"), "false");
+
+    EXPECT_EQ(fixture.lua("local ok, output = debugging.runCommand('stats') return output"), "The statistics are \"compact\".");
+    EXPECT_EQ(fixture.lua("local ok, output = debugging.runCommand('stats') return output"), "The statistics are \"full\".");
+    EXPECT_EQ(fixture.lua("local ok, output = debugging.runCommand('stats') return output"), "The statistics are \"off\".");
+    EXPECT_EQ(fixture.lua("local ok, output = debugging.runCommand('draw physics') return output"), "The drawing \"physics\" is on.");
+    EXPECT_EQ(fixture.lua("local ok, output = debugging.runCommand('draw') return output"), "The drawings are off.");
+    EXPECT_EQ(fixture.lua("local ok, output = debugging.runCommand('draw') return output"), "The drawings are on.");
+    EXPECT_TRUE(plugin.isDrawing("bounds"));
 }
 
 } // namespace haylen::debug

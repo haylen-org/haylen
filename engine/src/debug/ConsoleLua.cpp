@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <format>
 #include <memory>
-#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -34,8 +33,8 @@ Console::Parameter ConsoleLua::readParameter(lua_State* L, int index) {
     if (optional) {
         name.remove_suffix(1);
     }
-    const auto found = std::ranges::find(kKinds, name, &std::pair<std::string_view, Console::Kind>::first);
-    if (found == kKinds.end()) {
+    const auto found = std::ranges::find(Console::kKindNames, name, &std::pair<std::string_view, Console::Kind>::first);
+    if (found == Console::kKindNames.end()) {
         throw std::invalid_argument(std::format("The argument kind \"{}\" is unknown. It is \"integer\", \"number\", \"string\", \"boolean\" or \"text\", with \"?\" after it for an optional argument.", name));
     }
     return {.kind = found->second, .optional = optional};
@@ -128,50 +127,14 @@ int ConsoleLua::commands(lua_State* L) {
     return 1;
 }
 
-int ConsoleLua::completeCommand(lua_State* L) {
-    lua::Stack::push(L, getConsole(L).complete(lua::Stack::read<std::string_view>(L, 1)));
-    return 1;
-}
-
-int ConsoleLua::commandHistory(lua_State* L) {
-    const core::RingBuffer<std::string>& history = getConsole(L).getHistory();
-    lua_createtable(L, static_cast<int>(history.size()), 0);
-    for (std::size_t index = 0; index < history.size(); ++index) {
-        lua::Stack::push(L, history[index]);
-        lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
-    }
-    return 1;
-}
-
-int ConsoleLua::setConsoleVisible(lua_State* L) {
-    lua::Runtime::getEngine(L).getPlugin<plugins::DebugPlugin>().setConsoleVisible(lua::Stack::read<bool>(L, 1));
-    return 0;
-}
-
-int ConsoleLua::consoleVisible(lua_State* L) {
-    lua::Stack::push(L, lua::Runtime::getEngine(L).getPlugin<plugins::DebugPlugin>().isConsoleVisible());
-    return 1;
-}
-
 int ConsoleLua::consoleEnabled(lua_State* L) {
     lua::Stack::push(L, lua::Runtime::getEngine(L).getPlugin<plugins::DebugPlugin>().isConsoleEnabled());
     return 1;
 }
 
-// Picks the key that opens the console with `setConsoleKey(name)`, or turns the shortcut off with `nil`.
-int ConsoleLua::setConsoleKey(lua_State* L) {
-    lua::Runtime::getEngine(L).getPlugin<plugins::DebugPlugin>().setConsoleKey(lua_isnoneornil(L, 1) ? std::nullopt : std::optional<input::Key>(lua::Stack::read<input::Key>(L, 1)));
-    return 0;
-}
-
-int ConsoleLua::consoleKey(lua_State* L) {
-    lua::Stack::push(L, lua::Runtime::getEngine(L).getPlugin<plugins::DebugPlugin>().getConsoleKey());
-    return 1;
-}
-
 void ConsoleLua::addFunctions(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"addCommand", &lua::Binding::native<&addCommand>}, {"removeCommand", &lua::Binding::native<&removeCommand>}, {"runCommand", &lua::Binding::native<&runCommand>}, {"commands", &lua::Binding::native<&commands>}, {"completeCommand", &lua::Binding::native<&completeCommand>}, {"commandHistory", &lua::Binding::native<&commandHistory>}, {"setConsoleVisible", &lua::Binding::native<&setConsoleVisible>}, {"consoleVisible", &lua::Binding::native<&consoleVisible>}, {"consoleEnabled", &lua::Binding::native<&consoleEnabled>}, {"setConsoleKey", &lua::Binding::native<&setConsoleKey>}, {"consoleKey", &lua::Binding::native<&consoleKey>}, {nullptr, nullptr},
+        {"addCommand", &lua::Binding::native<&addCommand>}, {"removeCommand", &lua::Binding::native<&removeCommand>}, {"runCommand", &lua::Binding::native<&runCommand>}, {"commands", &lua::Binding::native<&commands>}, {"consoleEnabled", &lua::Binding::native<&consoleEnabled>}, {nullptr, nullptr},
     };
     luaL_setfuncs(L, functions, 0);
 }

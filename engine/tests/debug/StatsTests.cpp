@@ -475,7 +475,7 @@ TEST(StatsTest, DrawsEverySectionOfTheOverlay) {
 
     // The closed sections open as a click on their headers would open them.
     fixture.engine().getPlugin<plugins::UiPlugin>().getBackend().makeCurrent();
-    ImGuiWindow* window = ImGui::FindWindowByName("Haylen debug");
+    ImGuiWindow* window = ImGui::FindWindowByName("Statistics");
     ASSERT_NE(window, nullptr);
     window->StateStorage.SetInt(window->GetID("Content"), 1);
     window->StateStorage.SetInt(window->GetID("Objects"), 1);

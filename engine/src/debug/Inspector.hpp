@@ -37,6 +37,9 @@ class Inspector final {
     // Exposes a value under `watched` without keeping it alive, or removes it with `nil`.
     static void watch(lua_State* L, std::string_view name, int index);
 
+    // Joins keys into a path such as `watched.player.speed`.
+    [[nodiscard]] static std::string joinPath(std::span<const std::string> path);
+
   private:
     static constexpr std::string_view kRoots[] = {"watched", "scenes", "autoloads", "globals"};
 
@@ -50,7 +53,7 @@ class Inspector final {
     [[nodiscard]] static Entry describe(lua_State* L, std::string key, int index, bool editable);
     [[nodiscard]] static std::string describeValue(lua_State* L, int index);
     [[nodiscard]] static std::string describeKey(lua_State* L, int index);
-    [[nodiscard]] static std::string joinPath(std::span<const std::string> path);
+    [[nodiscard]] static std::string describeTable(lua_State* L, int index);
 };
 
 } // namespace haylen::debug

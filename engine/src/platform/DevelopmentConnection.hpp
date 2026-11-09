@@ -58,6 +58,7 @@ class DevelopmentConnection final {
     void sendHello();
     void receive(std::string_view data, bool binary);
     void submitLine(const core::Json& message);
+    void listCommands();
     void apply();
 
     DevelopmentSession& session;

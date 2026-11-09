@@ -3,96 +3,142 @@
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
 
+#include <algorithm>
 #include <exception>
+#include <utility>
+
+#include "debug/DebugWindow.hpp"
+#include "haylen/ui/Backend.hpp"
 
 namespace haylen::debug {
 
-bool InspectorWindow::draw(lua_State* L, double now) {
+bool InspectorWindow::draw(lua_State* L, ui::Backend& backend, double now) {
+    const math::Rect safe = backend.getSafeRect();
+    const float width = std::min(kWidth, safe.width - DebugWindow::kMargin * 2.0F);
+    const math::Rect initial{safe.x + safe.width - width - DebugWindow::kMargin, safe.y + DebugWindow::kMargin, width, safe.height - DebugWindow::kMargin * 2.0F};
     bool open = true;
-    if (!ImGui::Begin("Inspector", &open)) {
-        ImGui::End();
-        return open;
-    }
-    if (!failure.empty()) {
-        ImGui::TextColored({1.0F, 0.45F, 0.4F, 1.0F}, "%s", failure.c_str());
-    }
-    if (expired) {
-        for (auto& kept : snapshots) {
-            kept.second.time = -1.0;
+    if (DebugWindow::begin("Inspector", &open, backend, initial)) {
+        if (!failure.empty()) {
+            ImGui::PushStyleColor(ImGuiCol_Text, DebugWindow::kErrorColor);
+            ImGui::TextWrapped("%s", failure.c_str());
+            ImGui::PopStyleColor();
         }
-        expired = false;
+        if (std::exchange(expired, false)) {
+            for (auto& [key, snapshot] : snapshots) {
+                snapshot.time = -1.0;
+            }
+        }
+
+        constexpr ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_Resizable;
+        if (ImGui::BeginTable("##values", 2, flags)) {
+            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch, 1.4F);
+            ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 1.0F);
+            std::vector<std::string> path;
+            drawRows(L, path, now);
+            ImGui::EndTable();
+        }
     }
-    std::vector<std::string> path;
-    drawNode(L, path, now);
-    ImGui::End();
+    DebugWindow::end();
+
     if (!open) {
-        snapshots.clear();
-        edits.clear();
-        failure.clear();
-        activeField.clear();
+        reset();
     }
     return open;
 }
 
-void InspectorWindow::drawNode(lua_State* L, std::vector<std::string>& path, double now) {
+void InspectorWindow::reset() {
+    snapshots.clear();
+    edits.clear();
+    failure.clear();
+    activeField.clear();
+}
+
+// Each value is a row whose name opens the values it holds in the rows below it, one level deeper.
+void InspectorWindow::drawRows(lua_State* L, std::vector<std::string>& path, double now) {
     const Snapshot& snapshot = snapshotOf(L, path, now);
     if (!snapshot.error.empty()) {
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
         ImGui::TextDisabled("%s", snapshot.error.c_str());
         return;
     }
+    if (snapshot.entries.empty()) {
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+        ImGui::TextDisabled("%s", "Empty");
+        return;
+    }
+
     for (const Inspector::Entry& entry : snapshot.entries) {
         path.push_back(entry.key);
         ImGui::PushID(entry.key.c_str());
-        if (entry.expandable) {
-            if (ImGui::TreeNode("##node", "%s  %s %s", entry.key.c_str(), entry.type.c_str(), entry.value.c_str())) {
-                drawNode(L, path, now);
-                ImGui::TreePop();
-            }
-        } else {
-            drawField(L, path, entry);
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+        if (path.size() == 1 && entry.key == kOpenRoot) {
+            ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+        }
+        const ImGuiTreeNodeFlags kind = entry.expandable ? ImGuiTreeNodeFlags_None : ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+        const bool opened = ImGui::TreeNodeEx("##row", kind | ImGuiTreeNodeFlags_SpanAvailWidth, "%s", entry.key.c_str());
+        ImGui::TableNextColumn();
+        drawValue(L, path, entry);
+
+        if (opened && entry.expandable) {
+            drawRows(L, path, now);
+            ImGui::TreePop();
         }
         ImGui::PopID();
         path.pop_back();
     }
 }
 
-// A field shows the value it read until the player edits it, and Enter sends the edit through the setter of the value.
-void InspectorWindow::drawField(lua_State* L, const std::vector<std::string>& path, const Inspector::Entry& entry) {
-    ImGui::Bullet();
-    ImGui::SameLine();
-    ImGui::TextUnformatted(entry.key.c_str());
-    ImGui::SameLine();
+// A boolean shows a check box and a number or a string a field, while every other value shows what it holds, or its type when it tells nothing more, such as an object of a bound type.
+void InspectorWindow::drawValue(lua_State* L, const std::vector<std::string>& path, const Inspector::Entry& entry) {
     if (!entry.editable) {
-        ImGui::TextDisabled("%s %s", entry.type.c_str(), entry.value.c_str());
+        ImGui::TextDisabled("%s", entry.value.empty() ? entry.type.c_str() : entry.value.c_str());
         return;
     }
-    const std::string key = joinPath(path);
+    if (entry.type == "boolean") {
+        bool checked = entry.value == "true";
+        if (ImGui::Checkbox("##value", &checked)) {
+            edit(L, path, checked ? "true" : "false");
+        }
+        return;
+    }
+    drawField(L, path, entry);
+}
+
+// A field shows the value it read until the player edits it, and the edit goes through the setter of the value once Enter confirms it or the field lets go of the focus.
+void InspectorWindow::drawField(lua_State* L, const std::vector<std::string>& path, const Inspector::Entry& entry) {
+    const std::string key = Inspector::joinPath(path);
     std::string& text = edits[key];
     if (activeField != key) {
         text = entry.value;
     }
-    ImGui::SetNextItemWidth(220.0F);
-    const bool entered = ImGui::InputText("##value", &text, ImGuiInputTextFlags_EnterReturnsTrue);
+    ImGui::SetNextItemWidth(-1.0F);
+    ImGui::InputText("##value", &text);
     if (ImGui::IsItemActive()) {
         activeField = key;
     } else if (activeField == key) {
         activeField.clear();
     }
-    if (entered) {
-        try {
-            Inspector::set(L, path, text);
-            failure.clear();
-        } catch (const std::exception& error) {
-            failure = error.what();
-        }
-        expired = true;
+
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+        edit(L, path, text);
     }
-    ImGui::SameLine();
-    ImGui::TextDisabled("%s", entry.type.c_str());
+}
+
+void InspectorWindow::edit(lua_State* L, const std::vector<std::string>& path, std::string_view text) {
+    try {
+        Inspector::set(L, path, text);
+        failure.clear();
+    } catch (const std::exception& error) {
+        failure = error.what();
+    }
+    expired = true;
 }
 
 const InspectorWindow::Snapshot& InspectorWindow::snapshotOf(lua_State* L, const std::vector<std::string>& path, double now) {
-    Snapshot& snapshot = snapshots[joinPath(path)];
+    Snapshot& snapshot = snapshots[Inspector::joinPath(path)];
     if (snapshot.time >= 0.0 && now - snapshot.time < kRefreshSeconds) {
         return snapshot;
     }
@@ -105,14 +151,6 @@ const InspectorWindow::Snapshot& InspectorWindow::snapshotOf(lua_State* L, const
         snapshot.error = error.what();
     }
     return snapshot;
-}
-
-std::string InspectorWindow::joinPath(const std::vector<std::string>& path) {
-    std::string joined;
-    for (const std::string& key : path) {
-        joined += joined.empty() ? key : "." + key;
-    }
-    return joined;
 }
 
 } // namespace haylen::debug

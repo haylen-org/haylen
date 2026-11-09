@@ -3166,24 +3166,82 @@ class DevelopmentServerTest(unittest.TestCase):
         self.assertEqual([file["path"] for file in foreign["files"]], ["app.json", "source/level.lua", "source/main.lua"])
         self.assertIsNone(server.catch_up({"type": "hello", "session": server.session, "revision": server.revision}))
 
-    def test_console_lines_reach_every_app_and_their_results_print(self):
+    def test_the_console_runs_its_lines_in_every_app_and_keeps_its_line_under_their_results(self):
         server = haylen.DevelopmentServer(self.layout, self.manifest)
         sent = []
-        client = mock.Mock(send=lambda opcode, payload: sent.append((opcode, json.loads(payload))) or True)
-        self.assertEqual(server.send_line("gold 50"), 0)
-        server.clients.append(client)
-        session = haylen.RunSession(server, [])
-        for line in ("gold 50", "", "  help  "):
-            session.reader = mock.Mock(line=mock.Mock(return_value=line))
-            session.press("d")
-        self.assertEqual(session.reader.line.call_args.args, (haylen.CONSOLE_PROMPT,))
-        self.assertEqual(sent, [(haylen.WEBSOCKET_TEXT, {"type": "console", "id": 2, "line": "gold 50"}), (haylen.WEBSOCKET_TEXT, {"type": "console", "id": 3, "line": "help"})])
+        client = mock.Mock(send=lambda opcode, payload: sent.append(json.loads(payload)) or True)
         output = io.StringIO()
         with mock.patch.object(haylen, "terminal", haylen.Terminal(output, output, {})):
-            server.receive(client, {"type": "consoleResult", "id": 2, "ok": True, "output": "Gold 50"})
+            self.assertEqual(server.send_line("gold 50"), 0)
+            server.clients.append(client)
+            session = haylen.RunSession(server, [])
+            session.press("d")
+            for key in [*"gold 55", "Backspace", "0", "Enter", "Enter", *"  help ", "Enter"]:
+                session.press(key)
+            self.assertTrue(output.getvalue().endswith("\r\x1b[2K" + haylen.CONSOLE_PROMPT))
+            server.receive(client, {"type": "consoleResult", "id": 2, "ok": True, "output": 'Gold 50, the "shop" pays.'})
             server.receive(client, {"type": "consoleResult", "id": 3, "ok": False, "output": "There is no command."})
-        self.assertIn("Gold 50", output.getvalue())
-        self.assertIn("There is no command.", output.getvalue())
+            session.press("Escape")
+            session.press("q")
+        self.assertEqual([message for message in sent if message["type"] == "console"], [{"type": "console", "id": 2, "line": "gold 50"}, {"type": "console", "id": 3, "line": "help"}])
+        self.assertEqual(sum(message["type"] == "consoleCommands" for message in sent), 3)
+        printed = output.getvalue()
+        self.assertIn(haylen.CONSOLE_HINT.split(".")[0], printed)
+        self.assertIn('\r\x1b[2KGold 50, the "shop" pays.\n\r\x1b[2K> ', printed)
+        self.assertIn("Error: There is no command.", printed)
+        self.assertTrue(printed.endswith("\r\x1b[2K"))
+        self.assertFalse(session.typing)
+        self.assertTrue(session.quitting.is_set())
+
+    def test_the_line_of_the_console_edits_recalls_and_completes_from_the_commands_of_the_app(self):
+        line = haylen.ConsoleLine()
+        line.commands = [{"name": "god", "arguments": ["boolean"]}, {"name": "gold", "arguments": ["integer"]}, {"name": "help", "arguments": ["string?"]}]
+        for key in "gd":
+            line.edit(key)
+        line.edit("Left")
+        line.edit("o")
+        self.assertEqual((line.text, line.cursor), ("god", 2))
+        line.edit("End")
+        self.assertEqual(line.edit("Enter"), "god")
+        self.assertEqual(line.edit("Enter"), "")
+        line.edit("x")
+        line.edit("Up")
+        self.assertEqual(line.text, "god")
+        line.edit("Down")
+        self.assertEqual(line.text, "x")
+        line.edit("ClearLine")
+
+        line.edit("g")
+        self.assertEqual(line.complete(), ["god", "gold"])
+        self.assertEqual(line.text, "go")
+        line.edit("d")
+        self.assertEqual(line.complete(), [])
+        self.assertEqual(line.text, "god ")
+        line.edit("t")
+        line.complete()
+        self.assertEqual(line.text, "god true ")
+        line.replace("gold ")
+        self.assertEqual(line.complete(), [])
+        self.assertEqual(line.text, "gold ")
+
+    def test_the_keys_of_the_tools_run_their_lines_in_the_apps(self):
+        server = haylen.DevelopmentServer(self.layout, self.manifest)
+        sent = []
+        server.clients.append(mock.Mock(send=lambda opcode, payload: sent.append(json.loads(payload)) or True))
+        session = haylen.RunSession(server, [])
+        with mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+            for key in "sip":
+                session.press(key)
+        self.assertEqual([message["line"] for message in sent], ["stats", "inspector", "draw"])
+
+    def test_the_reader_names_the_keys_that_edit(self):
+        reader = haylen.KeyReader(io.StringIO())
+        self.assertEqual([reader.name(character) for character in ("a", "\r", "\t", "\x7f", "\x15", "\x02")], ["a", "Enter", "Tab", "Backspace", "ClearLine", ""])
+        with mock.patch.object(reader, "waiting", return_value=True), mock.patch.object(reader, "character", side_effect=["[", "A", "[", "3", "~"]):
+            self.assertEqual(reader.name("\x1b"), "Up")
+            self.assertEqual(reader.name("\x1b"), "Delete")
+        with mock.patch.object(reader, "waiting", return_value=False):
+            self.assertEqual(reader.name("\x1b"), "Escape")
 
     def test_the_console_keys_send_what_changed_and_restart_the_apps(self):
         server = haylen.DevelopmentServer(self.layout, self.manifest)
@@ -3207,7 +3265,7 @@ class DevelopmentServerTest(unittest.TestCase):
             session = haylen.RunSession()
             self.assertEqual(list(session.keys), ["c", "q", "h"])
             session.show([("App", "Demo")], stop)
-            for key in "rRdx":
+            for key in "rRdsipx":
                 session.press(key)
             session.press("c")
             session.press("q")
@@ -3215,7 +3273,7 @@ class DevelopmentServerTest(unittest.TestCase):
         self.assertTrue(session.quitting.is_set())
         self.assertIn("\x1b[2J", output.getvalue())
         self.assertIn("Quit", output.getvalue())
-        self.assertEqual(list(haylen.RunSession(haylen.DevelopmentServer(self.layout, self.manifest), []).keys), ["r", "R", "d", "c", "q", "h"])
+        self.assertEqual(list(haylen.RunSession(haylen.DevelopmentServer(self.layout, self.manifest), []).keys), ["r", "R", "d", "s", "i", "p", "c", "q", "h"])
 
     def test_the_log_of_android_shows_the_lines_of_the_engine_as_it_wrote_them_and_the_tag_of_the_others(self):
         self.assertEqual(haylen.android_log_line("I/haylen  : [12:00:01] [info] The app draws through \"vulkan\"."), "[12:00:01] [info] The app draws through \"vulkan\".")

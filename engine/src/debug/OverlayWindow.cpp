@@ -7,6 +7,7 @@
 #include <string>
 
 #include "core/SignalLua.hpp"
+#include "debug/DebugWindow.hpp"
 #include "haylen/content/ContentManager.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Scene.hpp"
@@ -14,6 +15,7 @@
 #include "haylen/debug/Profiler.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/plugins/DebugPlugin.hpp"
+#include "haylen/ui/Backend.hpp"
 
 namespace haylen::debug {
 
@@ -268,10 +270,12 @@ void OverlayWindow::drawLog(const std::vector<LogLine>& log) {
     ImGui::EndChild();
 }
 
-bool OverlayWindow::draw(core::Engine& engine, const Stats& stats, const std::vector<std::shared_ptr<Monitor>>& monitors, const std::vector<LogLine>& log) {
+bool OverlayWindow::draw(core::Engine& engine, ui::Backend& backend, const Stats& stats, const std::vector<std::shared_ptr<Monitor>>& monitors, const std::vector<LogLine>& log) {
+    const math::Rect safe = backend.getSafeRect();
+    const math::Rect initial{safe.x + DebugWindow::kMargin, safe.y + DebugWindow::kMargin, std::min(kWidth, safe.width - DebugWindow::kMargin * 2.0F), std::min(kHeight, safe.height - DebugWindow::kMargin * 2.0F)};
     bool open = true;
-    if (!ImGui::Begin("Haylen debug", &open)) {
-        ImGui::End();
+    if (!DebugWindow::begin("Statistics", &open, backend, initial)) {
+        DebugWindow::end();
         return open;
     }
 
@@ -319,7 +323,7 @@ bool OverlayWindow::draw(core::Engine& engine, const Stats& stats, const std::ve
     if (ImGui::CollapsingHeader("Log", ImGuiTreeNodeFlags_DefaultOpen)) {
         drawLog(log);
     }
-    ImGui::End();
+    DebugWindow::end();
     return open;
 }
 

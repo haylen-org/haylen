@@ -1,14 +1,11 @@
 #include "haylen/plugins/DebugPlugin.hpp"
 
-#include <imgui.h>
-
 #include <algorithm>
 #include <chrono>
 #include <format>
 #include <stdexcept>
 #include <utility>
 
-#include "debug/ConsoleWindow.hpp"
 #include "debug/DebugLua.hpp"
 #include "debug/Inspector.hpp"
 #include "debug/InspectorWindow.hpp"
@@ -32,7 +29,7 @@
 
 namespace haylen::plugins {
 
-DebugPlugin::DebugPlugin(bool developmentRun) : consoleWindow(std::make_unique<debug::ConsoleWindow>()), inspectorWindow(std::make_unique<debug::InspectorWindow>()), development(developmentRun) {}
+DebugPlugin::DebugPlugin(bool developmentRun) : inspectorWindow(std::make_unique<debug::InspectorWindow>()), development(developmentRun) {}
 
 DebugPlugin::~DebugPlugin() = default;
 
@@ -65,7 +62,6 @@ void DebugPlugin::stop(core::Engine& engine) {
             console.removeCommand(name);
         }
     }
-    consoleVisible = false;
     inspectorVisible = false;
     detachTrace();
     trace.reset();
@@ -142,7 +138,6 @@ void DebugPlugin::drawOverlay(core::Engine& engine, graphics2d::Renderer& render
     }
 }
 
-// Every drawing turns off while any is on, and otherwise every drawing the engine and the app know turns on.
 void DebugPlugin::toggleDrawings() {
     if (!drawings.empty()) {
         drawings.clear();
@@ -280,22 +275,25 @@ std::vector<std::shared_ptr<debug::Monitor>> DebugPlugin::getMonitors() const {
 }
 
 void DebugPlugin::event(core::Engine&, const platform::Event& event) {
-    const bool consoleKeyDown = event.type == platform::Event::Type::KeyDown && !event.repeat && consoleKey && event.key == *consoleKey;
-    const bool consoleTouch = event.type == platform::Event::Type::TouchBegan && event.touchCount == kConsoleTouches;
-    if (consoleEnabled && (consoleKeyDown || consoleTouch)) {
-        setConsoleVisible(!consoleVisible);
-        return;
-    }
     if (event.type != platform::Event::Type::KeyDown || event.repeat) {
         return;
     }
-    // The key of the statistics wins when the app gives both the same key.
-    if (!toggleKey || event.key != *toggleKey) {
-        if (drawKey && event.key == *drawKey) {
-            toggleDrawings();
-        }
+
+    // The key of the statistics wins when the app gives two tools the same key, and the key of the inspector comes next.
+    if (toggleKey && event.key == *toggleKey) {
+        cycleStatsMode();
         return;
     }
+    if (consoleEnabled && inspectorKey && event.key == *inspectorKey) {
+        setInspectorVisible(!inspectorVisible);
+        return;
+    }
+    if (drawKey && event.key == *drawKey) {
+        toggleDrawings();
+    }
+}
+
+void DebugPlugin::cycleStatsMode() noexcept {
     switch (statsMode) {
     case debug::StatsDisplay::Mode::Off:
         statsMode = debug::StatsDisplay::Mode::Compact;
@@ -310,35 +308,18 @@ void DebugPlugin::event(core::Engine&, const platform::Event& event) {
 }
 
 void DebugPlugin::renderUi(core::Engine& engine, const core::SceneView& view) {
-    if (!view.current || (statsMode != debug::StatsDisplay::Mode::Full && !consoleVisible && !inspectorVisible)) {
+    if (!view.current || (statsMode != debug::StatsDisplay::Mode::Full && !inspectorVisible)) {
         return;
     }
     ui::Backend& backend = engine.getPlugin<UiPlugin>().getBackend();
     backend.makeCurrent();
-    const math::Rect safe = backend.getSafeRect();
 
-    if (statsMode == debug::StatsDisplay::Mode::Full) {
-        ImGui::SetNextWindowPos({safe.x + 16.0F, safe.y + 16.0F}, ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize({720.0F, std::min(860.0F, safe.height - 32.0F)}, ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowBgAlpha(0.9F);
-        if (!debug::OverlayWindow::draw(engine, captureStats(engine), getMonitors(), getRecentLog())) {
-            statsMode = debug::StatsDisplay::Mode::Off;
-        }
+    if (statsMode == debug::StatsDisplay::Mode::Full && !debug::OverlayWindow::draw(engine, backend, captureStats(engine), getMonitors(), getRecentLog())) {
+        statsMode = debug::StatsDisplay::Mode::Off;
     }
-
-    if (consoleVisible) {
-        ImGui::SetNextWindowPos({safe.x + 16.0F, safe.y + safe.height * 0.4F}, ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize({std::min(900.0F, safe.width - 32.0F), safe.height * 0.6F - 16.0F}, ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowBgAlpha(0.92F);
-        consoleVisible = consoleWindow->draw(console);
-    }
-
     if (inspectorVisible) {
-        ImGui::SetNextWindowPos({safe.x + safe.width - std::min(560.0F, safe.width - 32.0F) - 16.0F, safe.y + 16.0F}, ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize({std::min(560.0F, safe.width - 32.0F), safe.height * 0.6F}, ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowBgAlpha(0.92F);
         const double now = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
-        inspectorVisible = inspectorWindow->draw(engine.getLuaState(), now);
+        inspectorVisible = inspectorWindow->draw(engine.getLuaState(), backend, now);
     }
 }
 
@@ -347,16 +328,6 @@ void DebugPlugin::setInspectorVisible(bool value) {
         throw std::logic_error("The inspector is off outside development runs. Set \"debug.console\" to true in \"app.json\" to turn it on.");
     }
     inspectorVisible = value;
-}
-
-void DebugPlugin::setConsoleVisible(bool value) {
-    if (value && !consoleEnabled) {
-        throw std::logic_error("The console is off outside development runs. Set \"debug.console\" to true in \"app.json\" to turn it on.");
-    }
-    if (value && !consoleVisible) {
-        consoleWindow->focusLine();
-    }
-    consoleVisible = value;
 }
 
 // A trace of a number of frames stops at the start of the next frame, since the profiler records the end of the last one after the plugins end their frame.
@@ -375,6 +346,21 @@ void DebugPlugin::runRelayedLines() {
         }
         request.reply(console.run(request.line));
     }
+    for (const platform::ConsoleRelay::ListReply& reply : platform::ConsoleRelay::takeCommandRequests()) {
+        reply(consoleEnabled ? describeCommands() : core::Json::array());
+    }
+}
+
+core::Json DebugPlugin::describeCommands() const {
+    core::Json commands = core::Json::array();
+    for (const debug::Console::Command* command : console.getCommands()) {
+        core::Json arguments = core::Json::array();
+        for (const debug::Console::Parameter& parameter : command->parameters) {
+            arguments.push_back(std::string(debug::Console::kindName(parameter.kind)) + (parameter.optional ? "?" : ""));
+        }
+        commands.push_back({{"name", command->name}, {"usage", debug::Console::describeUsage(*command)}, {"help", command->help}, {"arguments", std::move(arguments)}});
+    }
+    return commands;
 }
 
 void DebugPlugin::startTrace(std::optional<int> frames, std::size_t capacity) {
@@ -412,11 +398,11 @@ void DebugPlugin::detachTrace() {
 void DebugPlugin::addBuiltInCommands(core::Engine& engine) {
     using Kind = debug::Console::Kind;
     // clang-format off
-    builtInCommands.push_back(console.addCommand({.name = "clear", .help = "Clears the output of the console.", .parameters = {}, .handler = [this](const core::Json&) {
-        console.clearOutput();
-        return std::string();
-    }}));
-    builtInCommands.push_back(console.addCommand({.name = "stats", .help = "Shows the statistics as \"off\", \"compact\" or \"full\".", .parameters = {{.kind = Kind::String}}, .handler = [this](const core::Json& arguments) {
+    builtInCommands.push_back(console.addCommand({.name = "stats", .help = "Shows the statistics as \"off\", \"compact\" or \"full\", or moves them to the next mode when the line leaves the mode out.", .parameters = {{.kind = Kind::String, .optional = true}}, .handler = [this](const core::Json& arguments) {
+        if (arguments.empty()) {
+            cycleStatsMode();
+            return std::format("The statistics are \"{}\".", debug::StatsDisplay::modeName(statsMode));
+        }
         const std::string& name = arguments[0].get_ref<const std::string&>();
         const std::optional<debug::StatsDisplay::Mode> mode = debug::StatsDisplay::modeFromName(name);
         if (!mode) {
@@ -425,7 +411,11 @@ void DebugPlugin::addBuiltInCommands(core::Engine& engine) {
         statsMode = *mode;
         return std::format("The statistics are \"{}\".", name);
     }}));
-    builtInCommands.push_back(console.addCommand({.name = "draw", .help = "Turns a debug drawing on or off, or the other way when the line leaves the state out.", .parameters = {{.kind = Kind::String}, {.kind = Kind::Boolean, .optional = true}}, .handler = [this](const core::Json& arguments) {
+    builtInCommands.push_back(console.addCommand({.name = "draw", .help = "Turns a debug drawing on or off, or switches it when the line leaves the state out, and switches every drawing when the line names none.", .parameters = {{.kind = Kind::String, .optional = true}, {.kind = Kind::Boolean, .optional = true}}, .handler = [this](const core::Json& arguments) {
+        if (arguments.empty()) {
+            toggleDrawings();
+            return std::string(drawings.empty() ? "The drawings are off." : "The drawings are on.");
+        }
         const std::string& name = arguments[0].get_ref<const std::string&>();
         const bool enabled = arguments.size() > 1 ? arguments[1].get<bool>() : !isDrawing(name);
         setDrawing(name, enabled);

@@ -30,13 +30,12 @@
 #include "haylen/plugins/Plugin.hpp"
 
 namespace haylen::debug {
-class ConsoleWindow;
 class InspectorWindow;
-} // namespace haylen::debug
+}
 
 namespace haylen::plugins {
 
-// Shows the debug statistics and the debug drawings and exposes them to Lua as `haylen.debug`. Compact mode draws the main numbers in a corner with the renderer, and full mode shows the overlay window with frame times, profiler scopes, the scenes, the drawings, rendering, memory, GPU pools, counters, object counts, signals and event listeners, monitors and recent log lines. A key cycles through `off`, `compact` and `full`, F3 unless the app picks another, and `app.json` picks the mode the app starts with. Drawings draw over every canvas the app draws, by name: `physics` shows the bodies, shapes, joints and contacts of every physics world, `bounds` outlines the sprites and text blocks and names each sprite after its texture, and drawers that apps and plugins add show anything else. Another key, F4 unless the app picks another, turns every drawing on or off, and `app.json` names the drawings the app starts with. The developer console runs the commands of the engine and the app, opened by the grave accent key or a touch of four fingers, and takes lines from the development server and the web page, in development runs and wherever `app.json` turns it on. The inspector next to it lists and edits the values of the app, the scenes and the autoloads, and the console reaches it from a desktop or a page with `inspect` and `set`.
+// Shows the debug statistics and the debug drawings and exposes them to Lua as `haylen.debug`. Compact mode draws the main numbers in a corner with the renderer, and full mode shows the statistics window with frame times, profiler scopes, the scenes, the drawings, rendering, memory, GPU pools, counters, object counts, signals and event listeners, monitors and recent log lines. A key cycles through `off`, `compact` and `full`, F3 unless the app picks another, and `app.json` picks the mode the app starts with. Drawings draw over every canvas the app draws, by name: `physics` shows the bodies, shapes, joints and contacts of every physics world, `bounds` outlines the sprites and text blocks and names each sprite after its texture, and drawers that apps and plugins add show anything else. Another key, F4 unless the app picks another, turns every drawing on or off, and `app.json` names the drawings the app starts with. The developer console runs the commands of the engine and the app, from the lines that the terminal of the development server and the web page send, in development runs and wherever `app.json` turns it on. The inspector window lists and edits the values of the scenes, the autoloads, the watched values and the globals, opened by F2 unless the app picks another key, by the terminal or by the console.
 class DebugPlugin final : public Plugin {
   public:
     static constexpr std::size_t kLogLines = 200;
@@ -45,7 +44,6 @@ class DebugPlugin final : public Plugin {
     static constexpr std::string_view kBoundsDrawing = "bounds";
     static constexpr float kBoundsLabelSize = 12.0F;
     static constexpr math::Color kBoundsColor = math::Color{1.0F, 0.62F, 0.18F, 1.0F};
-    static constexpr std::size_t kConsoleTouches = 4;
     static constexpr std::size_t kBreadcrumbs = 100;
     static constexpr std::size_t kReportBreadcrumbs = 30;
     static constexpr std::size_t kReportLogLines = 20;
@@ -150,26 +148,26 @@ class DebugPlugin final : public Plugin {
         return console;
     }
 
-    // Whether the console opens and runs the lines of the development server and the web page, which a development run and the setting `debug.console` of `app.json` allow. The app runs its own commands either way.
+    // Whether the console runs the lines of the development server and the web page and the inspector opens, which a development run and the setting `debug.console` of `app.json` allow. The app runs its own commands either way.
     [[nodiscard]] bool isConsoleEnabled() const noexcept {
         return consoleEnabled;
     }
-    void setConsoleVisible(bool value);
-    [[nodiscard]] bool isConsoleVisible() const noexcept {
-        return consoleVisible;
-    }
-    // Shows the inspector, which the console allows, so a development run or `debug.console` of `app.json` turns it on.
     void setInspectorVisible(bool value);
     [[nodiscard]] bool isInspectorVisible() const noexcept {
         return inspectorVisible;
     }
+    void setInspectorKey(std::optional<input::Key> value) noexcept {
+        inspectorKey = value;
+    }
+    [[nodiscard]] std::optional<input::Key> getInspectorKey() const noexcept {
+        return inspectorKey;
+    }
 
-    void setConsoleKey(std::optional<input::Key> value) noexcept {
-        consoleKey = value;
-    }
-    [[nodiscard]] std::optional<input::Key> getConsoleKey() const noexcept {
-        return consoleKey;
-    }
+    // Moves the statistics to the next mode, from `off` to `compact` to `full` and back to `off`, as their key does.
+    void cycleStatsMode() noexcept;
+
+    // Turns every drawing off while any is on, and otherwise turns on every drawing the engine and the app know, as the key of the drawings does.
+    void toggleDrawings();
 
   private:
     // A registered monitor and the link of its connection, which ends once the monitor is removed or replaced.
@@ -212,6 +210,7 @@ class DebugPlugin final : public Plugin {
     void record(core::Log::Level level, std::string_view line);
     void addBuiltInCommands(core::Engine& engine);
     void runRelayedLines();
+    [[nodiscard]] core::Json describeCommands() const;
     void detachTrace();
     void readLastCrash(core::Engine& engine);
     void publishCrashContext(core::Engine& engine);
@@ -220,7 +219,6 @@ class DebugPlugin final : public Plugin {
 
     // Draws the drawings that are on into the canvas that is about to close.
     void drawOverlay(core::Engine& engine, graphics2d::Renderer& renderer);
-    void toggleDrawings();
 
     // Removes the entries that match, ending their connections.
     bool removeMonitors(const std::function<bool(const MonitorEntry&)>& matches);
@@ -241,10 +239,9 @@ class DebugPlugin final : public Plugin {
     debug::StatsDisplay::Mode statsMode = debug::StatsDisplay::Mode::Off;
     debug::StatsDisplay statsDisplay;
     debug::Console console;
-    std::unique_ptr<debug::ConsoleWindow> consoleWindow;
     std::unique_ptr<debug::InspectorWindow> inspectorWindow;
     std::vector<core::Connection> builtInCommands;
-    std::optional<input::Key> consoleKey = input::Key::GraveAccent;
+    std::optional<input::Key> inspectorKey = input::Key::F2;
     core::RingBuffer<debug::Breadcrumb> breadcrumbs{kBreadcrumbs};
     core::Json lastCrash;
     std::atomic<bool> logChanged = false;
@@ -256,7 +253,6 @@ class DebugPlugin final : public Plugin {
     bool objectEvents = false;
     bool development = false;
     bool consoleEnabled = false;
-    bool consoleVisible = false;
     bool inspectorVisible = false;
 };
 

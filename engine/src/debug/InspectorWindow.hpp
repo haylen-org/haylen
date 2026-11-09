@@ -2,21 +2,28 @@
 
 #include <map>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "debug/Inspector.hpp"
 
 struct lua_State;
 
+namespace haylen::ui {
+class Backend;
+}
+
 namespace haylen::debug {
 
-// Draws the inspector with ImGui: a tree of the roots of `Inspector` whose open nodes refresh a few times per second, with fields that edit numbers, booleans and strings in place. Nothing runs while the window is closed.
+// Draws the inspector with ImGui: a table of the roots of `Inspector` whose rows open into the values they hold, with a check box for each boolean and a field for each number and string, which edit the value in place. The open rows refresh a few times per second, and nothing runs while the window is closed.
 class InspectorWindow final {
   public:
     static constexpr double kRefreshSeconds = 0.25;
+    static constexpr float kWidth = 460.0F;
+    static constexpr std::string_view kOpenRoot = "scenes";
 
     // Draws the window and returns `false` once the player closed it.
-    bool draw(lua_State* L, double now);
+    bool draw(lua_State* L, ui::Backend& backend, double now);
 
   private:
     struct Snapshot {
@@ -25,10 +32,12 @@ class InspectorWindow final {
         std::string error;
     };
 
-    void drawNode(lua_State* L, std::vector<std::string>& path, double now);
+    void drawRows(lua_State* L, std::vector<std::string>& path, double now);
+    void drawValue(lua_State* L, const std::vector<std::string>& path, const Inspector::Entry& entry);
     void drawField(lua_State* L, const std::vector<std::string>& path, const Inspector::Entry& entry);
+    void edit(lua_State* L, const std::vector<std::string>& path, std::string_view text);
     [[nodiscard]] const Snapshot& snapshotOf(lua_State* L, const std::vector<std::string>& path, double now);
-    [[nodiscard]] static std::string joinPath(const std::vector<std::string>& path);
+    void reset();
 
     std::map<std::string, Snapshot> snapshots;
     std::map<std::string, std::string> edits;

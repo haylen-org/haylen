@@ -683,7 +683,7 @@ Hot reload while the project runs in development, with "haylen run samples/tests
 | `DEV-005` | Resume after a fix | An error in an update that saving the fix resumes from, with the state of the test kept. |  |
 | `DEV-006` | Assets | JSON and the texts of a language that reload in place, with the asset events of each save. |  |
 | `DEV-007` | Errors and recovery | Errors of scene hooks, tasks, timers, tweens, signals, events, native events, platform answers, asset loads, sockets and buttons on the error screen with their stack, and the return to the app. |  |
-| `DEV-008` | Developer console | Commands of the test with typed arguments, lines run from code with their results and errors, completions and the console window. |  |
+| `DEV-008` | Developer console | Commands of the test with typed arguments, lines run from code with their results and errors, and the list of commands that the console of the terminal completes from. |  |
 | `DEV-009` | Profiler traces | A trace of 60 frames with the scopes of the frame, the jobs of the workers, the read, decode and create steps of an asset load and the time of the GPU, written to user storage and counted by kind. |  |
 | `DEV-010` | Crashes and breadcrumbs | Breadcrumbs with their event, the report of the native crash that ended the last run and a button that crashes the app. |  |
 | `DEV-011` | Inspector | A watched table and camera listed and edited through the inspector, an edit that a setter refuses and the inspector window. |  |

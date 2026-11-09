@@ -23,7 +23,7 @@ function Inspector:enter()
     debugging.watch('player', self.player)
     debugging.watch('camera', self.lens)
     self:frame{
-        hint = 'Open the inspector and edit "watched.player.speed", or type "inspect watched.player" in the console.',
+        hint = 'Open the inspector with F2, the key "i" of "haylen run" or the button, and edit "watched.player.speed".',
         code = Inspector.code,
         content = {ui.row{wrap = true, grow = 1, gap = 24, alignItems = 'stretch',
             ui.panel{width = 600, grow = 1, gap = 12,

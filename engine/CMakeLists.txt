@@ -355,9 +355,9 @@ set(HAYLEN_ENGINE_SOURCES
   src/debug/Breakpoints.cpp
   src/debug/Console.cpp
   src/debug/ConsoleLua.cpp
-  src/debug/ConsoleWindow.cpp
   src/debug/CrashLua.cpp
   src/debug/DebugLua.cpp
+  src/debug/DebugWindow.cpp
   src/debug/Debugger.cpp
   src/debug/Evaluation.cpp
   src/debug/HaltedStack.cpp

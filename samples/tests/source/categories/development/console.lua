@@ -1,4 +1,4 @@
--- Developer console: commands of the test with typed arguments that end with it, lines run from code with their results, completions and the history, and the console window that the grave accent key, a touch of four fingers or the button opens. The log shows each line run as a console does, the line in the accent color and its result under it.
+-- Developer console: commands of the test with typed arguments that end with it, lines run from code with their results, and the list of commands with how to type them, which the console of the terminal of "haylen run" completes from. The log shows each line run as a console does, the line in the accent color and its result under it.
 local debugging = require('haylen.debug')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
@@ -21,7 +21,7 @@ debugging.addCommand('gold', function(amount)
     return 'Gold ' .. player.gold
 end, {help = 'Adds gold to the player.', args = {'integer'}, owner = self})
 local ok, output = debugging.runCommand('gold 50')
-print(table.concat(debugging.completeCommand('go'), ', ')) debugging.setConsoleVisible(true)]]
+for _, command in ipairs(debugging.commands()) do print(command.usage) end]]
 
 function Console:enter()
     self.gold = 0
@@ -49,14 +49,13 @@ function Console:enter()
     end
 
     self:frame{
-        hint = 'Open the console with the grave accent key, four fingers or the button, and type "gold 50", "god true" or "help".',
+        hint = 'Press "d" in the terminal of "haylen run" to open the console, and type "gold 50", "god true" or "help".',
         code = Console.code,
         content = {ui.row{wrap = true, grow = 1, gap = 24, alignItems = 'stretch',
             ui.panel{width = 520, grow = 1, gap = 12,
                 ui.label{text = 'The player', font = 'caption', color = 'textMuted'},
                 ui.label{id = 'state', text = self:describe(), font = 'heading'},
-                ui.button{id = 'open', text = 'Open the console', align = 'stretch', variant = 'primary', onClick = function() self:open() end},
-                ui.button{id = 'run', text = 'Run "gold 10" from code', align = 'stretch', onClick = function() self:run('gold 10') end},
+                ui.button{id = 'run', text = 'Run "gold 10" from code', align = 'stretch', variant = 'primary', onClick = function() self:run('gold 10') end},
                 ui.button{id = 'wrong', text = 'Run "gold ten" from code', align = 'stretch', onClick = function() self:run('gold ten') end},
                 ui.sectionTitle{text = 'Commands of the test', margin = {8, 0, 0, 0}},
                 ui.table{columns = {{text = 'Command', width = 150}, {text = 'Argument', width = 160}, {text = 'Help'}}, rows = rows, style = {metrics = {listRowHeight = 44}}},
@@ -67,16 +66,13 @@ function Console:enter()
     self:run('gold 50')
     self:run('god true')
     self:run('say Hello there')
-    local completions = {}
-    for index, completion in ipairs(debugging.completeCommand('go')) do
-        completions[index] = '"' .. completion:gsub('%s+$', '') .. '"'
+    local usages = {}
+    for _, command in ipairs(debugging.commands()) do
+        if command.name:sub(1, 2) == 'go' then
+            usages[#usages + 1] = '"' .. command.usage .. '"'
+        end
     end
-    self.console:add('Completions of "go"', table.concat(completions, ' and '))
-end
-
-function Console:exit()
-    debugging.setConsoleVisible(false)
-    Console.super.exit(self)
+    self.console:add('The commands that start with "go"', table.concat(usages, ' and '))
 end
 
 function Console:describe()
@@ -86,14 +82,6 @@ end
 function Console:run(line)
     local ok, output = debugging.runCommand(line)
     self.console:add('> ' .. line, ok and (output ~= '' and output or 'Ran without output.') or ('Refused: ' .. output), not ok and 'danger' or nil)
-end
-
-function Console:open()
-    if not debugging.consoleEnabled() then
-        self.console:add('The console is off', 'The app runs outside development without "debug.console" in "app.json".', 'danger')
-        return
-    end
-    debugging.setConsoleVisible(true)
 end
 
 return Console

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import codecs
 import collections
 import contextlib
 import copy
@@ -288,6 +289,9 @@ class Terminal:
         # Whether the tools print their whole output in the terminal, which "--verbose" turns on, and the log that keeps it otherwise.
         self.verbose = False
         self.log = LOGS_DIR / "haylen.log"
+        # The line that the developer types in the console of a running app, which the terminal keeps at the bottom while it prints, and the lock that keeps the prints of every thread whole.
+        self.prompt: Callable[[], str] | None = None
+        self.lock = threading.RLock()
 
     @staticmethod
     def shows_color(stream: TextIO, environment: Mapping[str, str]) -> bool:
@@ -336,44 +340,50 @@ class Terminal:
         return subprocess.list2cmdline(parts) if os.name == "nt" else shlex.join(parts)
 
     def step(self, title: str) -> None:
-        print(f"{Terminal.paint('==>', self.stdout_color, Terminal.MARKER)} {Terminal.render(title, self.stdout_color, Terminal.STEP)}", file=self.stdout, flush=True)
+        self.write(f"{Terminal.paint('==>', self.stdout_color, Terminal.MARKER)} {Terminal.render(title, self.stdout_color, Terminal.STEP)}")
 
     def command(self, parts: list[str]) -> None:
-        print(Terminal.paint(f"$ {Terminal.command_line(parts)}", self.stdout_color, Terminal.COMMAND), file=self.stdout, flush=True)
+        self.write(Terminal.paint(f"$ {Terminal.command_line(parts)}", self.stdout_color, Terminal.COMMAND))
 
     def heading(self, text: str) -> None:
-        print(Terminal.paint(text, self.stdout_color, Terminal.EMPHASIS), file=self.stdout, flush=True)
+        self.write(Terminal.paint(text, self.stdout_color, Terminal.EMPHASIS))
 
     def rows(self, rows: list[tuple[str, str]], keys: bool = False) -> None:
         """Prints rows of a name and a text with the names aligned, such as the summary of a running app with dim labels, or its keys in the color of reserved expressions."""
         width = max(len(name) for name, _ in rows)
         style = Terminal.EXPRESSION if keys else Terminal.LABEL
         for name, text in rows:
-            print(f"  {Terminal.paint(name.ljust(width), self.stdout_color, style)}  {Terminal.render(text, self.stdout_color)}", file=self.stdout, flush=True)
+            self.write(f"  {Terminal.paint(name.ljust(width), self.stdout_color, style)}  {Terminal.render(text, self.stdout_color)}")
 
     def info(self, message: str) -> None:
-        print(Terminal.render(message, self.stdout_color), file=self.stdout, flush=True)
+        self.write(Terminal.render(message, self.stdout_color))
+
+    def note(self, message: str) -> None:
+        """Prints a message that guides the developer in a dim color."""
+        self.write(Terminal.render(message, self.stdout_color, Terminal.LABEL))
 
     def success(self, message: str) -> None:
-        print(Terminal.render(message, self.stdout_color, Terminal.SUCCESS), file=self.stdout, flush=True)
+        self.write(Terminal.render(message, self.stdout_color, Terminal.SUCCESS))
 
     def warning(self, message: str, *notes: str) -> None:
         """Prints a warning with the notes that tell what to do about it, each on a line of its own."""
         lines = [f"{Terminal.paint('Warning:', self.stderr_color, Terminal.WARNING)} {Terminal.render(message, self.stderr_color)}"]
         lines += [f"  {Terminal.render(note, self.stderr_color)}" for note in notes]
-        print("\n".join(lines), file=self.stderr, flush=True)
+        self.write("\n".join(lines), error=True)
 
     def error(self, message: str, details: str = "") -> None:
         """Prints an error with its cause and what to do in one block, followed by the output of the tool that failed, as it is."""
         lines = [f"{Terminal.paint('Error:', self.stderr_color, Terminal.ERROR)} {Terminal.render(message, self.stderr_color, Terminal.EMPHASIS)}"]
         if details:
             lines.append(Terminal.paint(details, self.stderr_color, Terminal.COMMAND))
-        print("\n".join(lines), file=self.stderr, flush=True)
+        self.write("\n".join(lines), error=True)
 
     def clear(self) -> None:
         """Clears the screen and the scrollback of a terminal, and nothing elsewhere."""
         if self.stdout_color:
-            print("\x1b[2J\x1b[3J\x1b[H", end="", file=self.stdout, flush=True)
+            with self.lock:
+                print("\x1b[2J\x1b[3J\x1b[H", end="", file=self.stdout, flush=True)
+                self.draw_prompt()
 
     @staticmethod
     def columns(character: str) -> int:
@@ -420,7 +430,29 @@ class Terminal:
 
     def verbatim(self, text: str, error: bool = False) -> None:
         """Prints text that must stay as it is, such as a snippet to copy or a diff."""
-        print(text, file=self.stderr if error else self.stdout, flush=True)
+        self.write(text, error)
+
+    def write(self, text: str, error: bool = False) -> None:
+        """Prints a line from any thread. While the developer types in a console, the line goes above the line being typed, which stays at the bottom, so the two never mix."""
+        with self.lock:
+            if self.prompt is not None:
+                print("\r\x1b[2K", end="", file=self.stdout, flush=True)
+            print(text, file=self.stderr if error else self.stdout, flush=True)
+            self.draw_prompt()
+
+    def show_prompt(self, prompt: Callable[[], str] | None) -> None:
+        """Keeps the line that a console draws at the bottom of the terminal, or takes it away with nothing."""
+        with self.lock:
+            if self.prompt is not None and prompt is None:
+                print("\r\x1b[2K", end="", file=self.stdout, flush=True)
+            self.prompt = prompt
+            self.draw_prompt()
+
+    def draw_prompt(self) -> None:
+        """Draws the line of a console again, such as after a key edited it."""
+        with self.lock:
+            if self.prompt is not None:
+                print(f"\r\x1b[2K{self.prompt()}", end="", file=self.stdout, flush=True)
 
 
 terminal = Terminal(sys.stdout, sys.stderr, os.environ)
@@ -4807,17 +4839,37 @@ def development_address(platform_name: str, host: str, port: int, token: str) ->
 
 
 # The keys of a running app with what each does, in the order that its list shows them. The keys of the development server work only in development.
-RUN_KEYS = {"r": "Reload what changed", "R": "Restart the app", "d": "Run a command in the developer console", "c": "Clear the screen", "q": "Quit", "h": "List the keys"}
-DEVELOPMENT_KEYS = ("r", "R", "d")
-CONSOLE_PROMPT = "Console> "
+RUN_KEYS = {
+    "r": "Reload what changed",
+    "R": "Restart the app",
+    "d": "Open the developer console, which runs commands in the app",
+    "s": "Show the statistics of the app, compact, full or off in turn",
+    "i": "Show or hide the inspector of the app",
+    "p": "Turn the debug drawings of the app on or off",
+    "c": "Clear the screen",
+    "q": "Quit",
+    "h": "List the keys",
+}
+DEVELOPMENT_KEYS = ("r", "R", "d", "s", "i", "p")
+# The lines of the developer console that the keys of the statistics, the inspector and the drawings run.
+KEY_LINES = {"s": "stats", "i": "inspector", "p": "draw"}
+CONSOLE_PROMPT = "> "
+CONSOLE_HINT = 'The console runs each line in the app. Type "help" to list the commands. Tab completes, the arrows go through the lines typed before, and Escape goes back to the keys.'
 
 
 class KeyReader:
-    """Reads the keys that the developer presses in an interactive terminal one at a time and without echo, and a whole line when the session asks for one, and leaves the terminal as it found it when it closes."""
+    """Reads the keys that the developer presses in an interactive terminal one at a time and without echo, and leaves the terminal as it found it when it closes. A key is one character that it types, or the name of a key that edits, such as "Left", "Backspace" or "Enter"."""
+
+    # How long an Escape waits for the rest of the sequence of an arrow or another key that edits, which the terminal sends at once.
+    SEQUENCE_SECONDS = 0.05
+    SEQUENCES = {"A": "Up", "B": "Down", "C": "Right", "D": "Left", "H": "Home", "F": "End", "1~": "Home", "7~": "Home", "4~": "End", "8~": "End", "3~": "Delete"}
+    WINDOWS_KEYS = {"H": "Up", "P": "Down", "M": "Right", "K": "Left", "G": "Home", "O": "End", "S": "Delete"}
+    CONTROLS = {"\r": "Enter", "\n": "Enter", "\t": "Tab", "\x7f": "Backspace", "\x08": "Backspace", "\x01": "Home", "\x05": "End", "\x15": "ClearLine"}
 
     def __init__(self, stream: TextIO) -> None:
         self.stream = stream
         self.saved: list | None = None
+        self.decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
 
     def open(self) -> None:
         if os.name == "nt":
@@ -4837,26 +4889,164 @@ class KeyReader:
         self.saved = None
 
     def key(self) -> str:
-        """Waits for the next key, and returns an empty text when the input ends."""
+        """Waits for the next key that it knows, and returns an empty text when the input ends."""
+        while True:
+            character = self.character()
+            if not character:
+                return ""
+            key = self.name(character)
+            if key:
+                return key
+
+    def name(self, character: str) -> str:
+        if character in KeyReader.CONTROLS:
+            return KeyReader.CONTROLS[character]
+        if os.name == "nt" and character in ("\x00", "\xe0"):
+            return KeyReader.WINDOWS_KEYS.get(self.character(), "")
+        if character == "\x1b":
+            return self.sequence()
+        return character if character.isprintable() else ""
+
+    def sequence(self) -> str:
+        """Reads what follows an Escape: nothing for the key Escape itself, or the rest of the sequence of a key such as an arrow."""
+        if os.name == "nt" or not self.waiting():
+            return "Escape"
+        if self.character() not in ("[", "O"):
+            return ""
+        body = ""
+        while True:
+            character = self.character()
+            if not character or "@" <= character <= "~":
+                break
+            body += character
+        return KeyReader.SEQUENCES.get(body + character, "")
+
+    def waiting(self) -> bool:
+        import select
+
+        return bool(select.select([self.stream.fileno()], [], [], KeyReader.SEQUENCE_SECONDS)[0])
+
+    def character(self) -> str:
+        """Reads one character, gathering the bytes of a character that UTF-8 writes in several, and returns an empty text when the input ends."""
         if os.name == "nt":
             import msvcrt
 
             return msvcrt.getwch()
-        return os.read(self.stream.fileno(), 1).decode(errors="replace")
+        while True:
+            data = os.read(self.stream.fileno(), 1)
+            if not data:
+                return ""
+            character = self.decoder.decode(data)
+            if character:
+                return character
 
-    def line(self, prompt: str) -> str:
-        """Reads a line with the echo and the editing of the terminal, and returns an empty text when the input ends."""
-        self.close()
-        try:
-            return input(prompt)
-        except EOFError:
-            return ""
-        finally:
-            self.open()
+
+class ConsoleLine:
+    """The line that the developer types in the developer console of a running app: its text with the cursor, the lines typed before in this run, which the arrows bring back, and completions from the commands of the app."""
+
+    HISTORY = 100
+
+    def __init__(self) -> None:
+        self.text = ""
+        self.cursor = 0
+        self.history: list[str] = []
+        # How many lines back the arrows went, and the line being typed before they went back.
+        self.recalled = 0
+        self.draft = ""
+        # The commands of the app as `{name, usage, help, arguments}`, which it sends as the console opens and after every line.
+        self.commands: list[dict] = []
+
+    def edit(self, key: str) -> str | None:
+        """Applies a key that edits the line, and returns the line once Enter confirms it."""
+        if key == "Enter":
+            return self.take()
+        if key == "Backspace" and self.cursor > 0:
+            self.text = self.text[: self.cursor - 1] + self.text[self.cursor :]
+            self.cursor -= 1
+        elif key == "Delete":
+            self.text = self.text[: self.cursor] + self.text[self.cursor + 1 :]
+        elif key == "Left":
+            self.cursor = max(0, self.cursor - 1)
+        elif key == "Right":
+            self.cursor = min(len(self.text), self.cursor + 1)
+        elif key == "Home":
+            self.cursor = 0
+        elif key == "End":
+            self.cursor = len(self.text)
+        elif key == "ClearLine":
+            self.replace("")
+        elif key in ("Up", "Down"):
+            self.recall(1 if key == "Up" else -1)
+        elif len(key) == 1:
+            self.text = self.text[: self.cursor] + key + self.text[self.cursor :]
+            self.cursor += 1
+        return None
+
+    def replace(self, text: str) -> None:
+        self.text = text
+        self.cursor = len(text)
+
+    def take(self) -> str:
+        line = self.text.strip()
+        if line and (not self.history or self.history[-1] != line):
+            self.history = [*self.history, line][-ConsoleLine.HISTORY :]
+        self.recalled = 0
+        self.replace("")
+        return line
+
+    def recall(self, steps: int) -> None:
+        recalled = min(max(self.recalled + steps, 0), len(self.history))
+        if recalled == self.recalled:
+            return
+        if self.recalled == 0:
+            self.draft = self.text
+        self.recalled = recalled
+        self.replace(self.history[-recalled] if recalled else self.draft)
+
+    def complete(self) -> list[str]:
+        """Completes the word before the cursor: the name of a command as the first word, and "true" or "false" for a boolean argument. One candidate completes the word, and several complete what they start with and come back to be listed."""
+        before = self.text[: self.cursor]
+        words = before.split()
+        typing = bool(before) and not before[-1].isspace()
+        word = words[-1] if typing else ""
+        position = len(words) - 1 if typing else len(words)
+        if position == 0:
+            candidates = [command["name"] for command in self.commands if command["name"].startswith(word)]
+        else:
+            command = next((command for command in self.commands if command["name"] == words[0]), None)
+            arguments = command["arguments"] if command else []
+            boolean = position - 1 < len(arguments) and arguments[position - 1].rstrip("?") == "boolean"
+            candidates = [value for value in ("false", "true") if boolean and value.startswith(word)]
+        if not candidates:
+            return []
+
+        completed = candidates[0] + " " if len(candidates) == 1 else ConsoleLine.shared_start(candidates)
+        self.text = before[: len(before) - len(word)] + completed + self.text[self.cursor :]
+        self.cursor = len(before) - len(word) + len(completed)
+        return candidates if len(candidates) > 1 else []
+
+    @staticmethod
+    def shared_start(words: list[str]) -> str:
+        """The longest start that every word shares."""
+        shared = words[0]
+        for word in words[1:]:
+            length = 0
+            while length < min(len(shared), len(word)) and shared[length] == word[length]:
+                length += 1
+            shared = shared[:length]
+        return shared
+
+    def render(self, color: bool) -> str:
+        """Draws the prompt and the part of the line around the cursor that fits the terminal, and puts the cursor in its place."""
+        room = max(shutil.get_terminal_size().columns - len(CONSOLE_PROMPT) - 1, 1)
+        start = max(0, self.cursor - room)
+        shown = self.text[start : start + room]
+        back = len(shown) - (self.cursor - start)
+        return Terminal.paint(CONSOLE_PROMPT, color, Terminal.EXPRESSION) + shown + (f"\x1b[{back}D" if back > 0 else "")
 
 
 class RunSession:
-    """What the terminal shows and takes while an app runs: the summary of the app, its device and its configuration, then its log and the keys that reload it, restart it, run a line in its developer console, clear the screen, quit and list the keys. A run without a development server, such as a release, offers only the keys that need none."""
+    """What the terminal shows and takes while an app runs: the summary of the app, its device and its configuration, then its log and the keys that reload it, restart it, open its developer console, show its statistics, its inspector and its debug drawings, clear the screen, quit and list the keys. The console takes the keys while it is open, with a line at the bottom of the terminal that the log never mixes with, and Escape gives them back. A run without a development server, such as a release, offers only the keys that need none."""
 
     def __init__(self, development: DevelopmentServer | None = None, arguments: list[str] | None = None) -> None:
         self.development = development
@@ -4867,11 +5057,14 @@ class RunSession:
         self.stop: Callable[[], None] | None = None
         self.process: subprocess.Popen | None = None
         self.quitting = threading.Event()
+        self.console = ConsoleLine()
+        self.typing = False
 
     def __enter__(self) -> "RunSession":
         return self
 
     def __exit__(self, *_) -> None:
+        terminal.show_prompt(None)
         if self.reader is not None:
             self.reader.close()
 
@@ -4883,6 +5076,7 @@ class RunSession:
         terminal.verbatim("")
         self.list_keys()
         if self.reader is not None:
+            Terminal.enable_escapes(terminal.stdout)
             self.reader.open()
             threading.Thread(target=self.take_keys, daemon=True).start()
 
@@ -4895,7 +5089,10 @@ class RunSession:
             self.press(key)
 
     def press(self, key: str) -> None:
-        """Does what a key asks, and leaves every other key alone, such as the keys of the arrows."""
+        """Does what a key asks, and leaves every other key alone, such as the keys of the arrows. While the console is open, every key edits its line."""
+        if self.typing:
+            self.type(key)
+            return
         if key not in self.keys:
             return
         if key == "r":
@@ -4903,7 +5100,9 @@ class RunSession:
         elif key == "R":
             self.development.restart()
         elif key == "d":
-            self.run_line()
+            self.open_console()
+        elif key in KEY_LINES:
+            self.development.send_line(KEY_LINES[key])
         elif key == "c":
             terminal.clear()
         elif key == "q":
@@ -4911,10 +5110,38 @@ class RunSession:
         else:
             self.list_keys()
 
-    def run_line(self) -> None:
-        line = self.reader.line(CONSOLE_PROMPT).strip() if self.reader is not None else ""
-        if line:
-            self.development.send_line(line)
+    def open_console(self) -> None:
+        self.typing = True
+        self.console.commands = self.development.commands
+        terminal.note(CONSOLE_HINT)
+        terminal.show_prompt(lambda: self.console.render(terminal.stdout_color))
+        self.development.request_commands()
+
+    def close_console(self) -> None:
+        self.typing = False
+        self.console.replace("")
+        terminal.show_prompt(None)
+
+    def type(self, key: str) -> None:
+        """Edits the line of the console with a key: Enter runs the line in every connected app, Tab completes it, and Escape closes the console."""
+        if key == "Escape":
+            self.close_console()
+            return
+        self.console.commands = self.development.commands
+        if key == "Tab":
+            candidates = self.console.complete()
+            if candidates:
+                terminal.note("  ".join(candidates))
+            terminal.draw_prompt()
+            return
+
+        line = self.console.edit(key)
+        if not line:
+            terminal.draw_prompt()
+            return
+        terminal.write(Terminal.paint(CONSOLE_PROMPT, terminal.stdout_color, Terminal.EXPRESSION) + line)
+        self.development.send_line(line)
+        self.development.request_commands()
 
     def quit(self) -> None:
         self.quitting.set()
@@ -4924,21 +5151,20 @@ class RunSession:
             self.process.terminate()
 
     def follow(self, command: list, cwd: Path = ROOT, line: Callable[[str], str | None] | None = None) -> None:
-        """Streams the output of the process that runs the app, or that relays its log, until it ends, passing each line through the function of the line when one is given, which leaves out a line by returning nothing. It stops with an error when the process fails, unless the developer quit."""
+        """Streams the output of the process that runs the app, or that relays its log, until it ends, passing each line of its standard output and its standard error through the function of the line when one is given, which leaves out a line by returning nothing. The lines print through the terminal, so they go above the line of the console. It stops with an error when the process fails, unless the developer quit."""
         parts = [str(part) for part in command]
         if terminal.verbose:
             terminal.command(parts)
         try:
-            self.process = subprocess.Popen(parts, cwd=cwd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE if line else None, text=True, encoding="utf-8", errors="replace")
+            self.process = subprocess.Popen(parts, cwd=cwd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace")
         except FileNotFoundError as error:
             raise BuildError(missing_command(parts[0])) from error
         if self.quitting.is_set():
             self.process.terminate()
-        if line is not None:
-            for text in self.process.stdout:
-                shown = line(text.rstrip("\n"))
-                if shown is not None:
-                    terminal.verbatim(shown)
+        errors = threading.Thread(target=RunSession.relay, args=(self.process.stderr, line, True), daemon=True)
+        errors.start()
+        RunSession.relay(self.process.stdout, line, False)
+        errors.join()
         code = self.process.wait()
         if self.quitting.is_set() or code == 0:
             return
@@ -4946,6 +5172,13 @@ class RunSession:
         if code < 0:
             raise BuildError(f'The command "{name}" was stopped by the signal {-code}.')
         raise BuildError(f'The command "{name}" failed with exit code {code}, and its output above shows why.')
+
+    @staticmethod
+    def relay(stream: TextIO, line: Callable[[str], str | None] | None, error: bool) -> None:
+        for text in stream:
+            shown = line(text.rstrip("\n")) if line is not None else text.rstrip("\n")
+            if shown is not None:
+                terminal.verbatim(shown, error)
 
 
 def run_rows(app: App, device: str, args: argparse.Namespace, session: RunSession) -> list[tuple[str, str]]:
@@ -7361,6 +7594,8 @@ class DevelopmentServer:
         self.scanning = threading.Lock()
         self.files = self.snapshot()
         self.lines = 0
+        # The commands of the developer console of the apps, which the console completes from.
+        self.commands: list[dict] = []
         self.debugger: DebugRelay | None = None
 
     def listen_debugger(self, port: int) -> int:
@@ -7570,6 +7805,10 @@ class DevelopmentServer:
             terminal.warning("No app is connected to the development server, so the line ran nowhere.")
         return reached
 
+    def request_commands(self) -> None:
+        """Asks every connected app for the commands of its developer console, which it answers with a message of their names, how to type them, their help and the kinds of their arguments."""
+        self.send_all(json.dumps({"type": "consoleCommands"}).encode())
+
     def receive(self, client: DevelopmentClient, message: dict) -> None:
         if message.get("type") == "debug":
             if self.debugger is not None:
@@ -7580,10 +7819,15 @@ class DevelopmentServer:
             return
         if message.get("type") == "consoleResult":
             output = str(message.get("output", ""))
-            if message.get("ok"):
-                terminal.success(output or "The line ran.")
-            else:
+            if not message.get("ok"):
                 terminal.error(output or "The line failed.")
+            elif output:
+                terminal.info(output)
+            return
+        if message.get("type") == "consoleCommands":
+            commands = message.get("commands")
+            if isinstance(commands, list):
+                self.commands = [command for command in commands if isinstance(command, dict) and isinstance(command.get("name"), str) and isinstance(command.get("arguments"), list)]
             return
         if message.get("type") != "hello":
             return

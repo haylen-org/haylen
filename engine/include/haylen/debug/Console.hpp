@@ -1,25 +1,23 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "haylen/core/Connection.hpp"
 #include "haylen/core/Json.hpp"
-#include "haylen/core/RingBuffer.hpp"
 
 namespace haylen::debug {
 
-// Runs the commands that the engine, plugins and the app register, from a line of text such as `gold 50` or `say "Hello there"`. Each command declares the kinds of its arguments, which the console checks and converts before the handler runs, and it keeps the history of the lines it ran, the output it printed and completions for a partial line. The console only runs what it is given, so the overlay, the development server and the web page share it.
+// Runs the commands that the engine, plugins and the app register, from a line of text such as `gold 50` or `say "Hello there"`. Each command declares the kinds of its arguments, which the console checks and converts before the handler runs. The console only runs what it is given, so the terminal of the development server, the web page and the app share it.
 class Console final {
   public:
-    static constexpr std::size_t kHistorySize = 100;
-    static constexpr std::size_t kOutputLines = 300;
-
     // The kind of an argument. A `Text` argument takes the rest of the line as it was typed, so it comes last.
     enum class Kind : std::uint8_t {
         Integer,
@@ -28,6 +26,8 @@ class Console final {
         Boolean,
         Text,
     };
+
+    static constexpr std::array<std::pair<std::string_view, Kind>, 5> kKindNames{{{"integer", Kind::Integer}, {"number", Kind::Number}, {"string", Kind::String}, {"boolean", Kind::Boolean}, {"text", Kind::Text}}};
 
     struct Parameter {
         Kind kind = Kind::String;
@@ -49,17 +49,6 @@ class Console final {
         std::string output;
     };
 
-    struct Line {
-        enum class Kind : std::uint8_t {
-            Input,
-            Output,
-            Error,
-        };
-
-        Kind kind = Kind::Output;
-        std::string text;
-    };
-
     Console();
 
     // Adds a command, replacing the one with the same name. Disconnecting the connection removes it.
@@ -70,25 +59,11 @@ class Console final {
     // The registered commands in order of name.
     [[nodiscard]] std::vector<const Command*> getCommands() const;
 
-    // Runs one line, records it in the history and prints the line and its output.
+    // Runs one line and returns whether it worked and what it printed.
     Result run(std::string_view line);
 
-    // Returns the lines that complete a partial line: the names of the commands that start with its only word, and `true` and `false` for a boolean argument.
-    [[nodiscard]] std::vector<std::string> complete(std::string_view line) const;
-
-    // The lines that ran, oldest first, without repeating a line that ran twice in a row.
-    [[nodiscard]] const core::RingBuffer<std::string>& getHistory() const noexcept {
-        return history;
-    }
-    [[nodiscard]] const core::RingBuffer<Line>& getOutput() const noexcept {
-        return output;
-    }
-    void clearOutput() noexcept {
-        output.clear();
-    }
-
-    // Prints a line to the output, such as a log line that the console shows.
-    void print(Line::Kind kind, std::string_view text);
+    // The name of a kind of argument, such as `integer`.
+    [[nodiscard]] static std::string_view kindName(Kind kind) noexcept;
 
     // Describes how a command is typed, such as `gold <integer> [string]`.
     [[nodiscard]] static std::string describeUsage(const Command& command);
@@ -125,11 +100,8 @@ class Console final {
 
     [[nodiscard]] std::shared_ptr<Entry> find(std::string_view name) const;
     [[nodiscard]] std::string help(const core::Json& arguments) const;
-    Result execute(std::string_view line);
 
     std::vector<std::shared_ptr<Entry>> entries;
-    core::RingBuffer<std::string> history{kHistorySize};
-    core::RingBuffer<Line> output{kOutputLines};
     core::Connection helpCommand;
 };
 

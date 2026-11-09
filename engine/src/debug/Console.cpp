@@ -73,28 +73,13 @@ std::vector<const Console::Command*> Console::getCommands() const {
     return commands;
 }
 
-Console::Result Console::run(std::string_view line) {
-    const std::size_t first = line.find_first_not_of(" \t");
-    if (first == std::string_view::npos) {
-        return {.ok = true, .output = {}};
-    }
-    const std::string_view trimmed = line.substr(first, line.find_last_not_of(" \t") - first + 1);
-    if (history.empty() || history.back() != trimmed) {
-        history.push(std::string(trimmed));
-    }
-    print(Line::Kind::Input, trimmed);
-
-    Result result = execute(trimmed);
-    if (!result.output.empty()) {
-        print(result.ok ? Line::Kind::Output : Line::Kind::Error, result.output);
-    }
-    return result;
-}
-
 // The handler may remove its own command, so the entry stays alive until it returns.
-Console::Result Console::execute(std::string_view line) {
+Console::Result Console::run(std::string_view line) {
     try {
         const std::vector<Token> tokens = split(line);
+        if (tokens.empty()) {
+            return {.ok = true, .output = {}};
+        }
         const std::shared_ptr<Entry> entry = find(tokens.front().text);
         if (!entry || entry->blocked) {
             return {.ok = false, .output = std::format("There is no command \"{}\". Type \"help\" to list the commands.", tokens.front().text)};
@@ -103,15 +88,6 @@ Console::Result Console::execute(std::string_view line) {
         return {.ok = true, .output = entry->command.handler(arguments)};
     } catch (const std::exception& error) {
         return {.ok = false, .output = error.what()};
-    }
-}
-
-void Console::print(Line::Kind kind, std::string_view text) {
-    std::size_t start = 0;
-    while (start <= text.size()) {
-        const std::size_t end = std::min(text.find('\n', start), text.size());
-        output.push({.kind = kind, .text = std::string(text.substr(start, end - start))});
-        start = end + 1;
     }
 }
 
@@ -197,40 +173,6 @@ core::Json Console::readArgument(const Command& command, std::size_t index, cons
     throw std::invalid_argument(std::format("The command \"{}\" needs {} as its {} argument, not \"{}\". Type it as \"{}\".", command.name, describeKind(parameter.kind), describePosition(index), text, describeUsage(command)));
 }
 
-std::vector<std::string> Console::complete(std::string_view line) const {
-    std::vector<std::string> candidates;
-    std::vector<Token> tokens;
-    try {
-        tokens = split(line);
-    } catch (const std::invalid_argument&) {
-        return candidates;
-    }
-    const bool open = !line.empty() && line.back() != ' ' && line.back() != '\t';
-    if (tokens.empty() || (tokens.size() == 1 && open)) {
-        const std::string_view prefix = tokens.empty() ? std::string_view() : std::string_view(tokens.front().text);
-        for (const std::shared_ptr<Entry>& entry : entries) {
-            if (entry->command.name.starts_with(prefix)) {
-                candidates.push_back(entry->command.name + (entry->command.parameters.empty() ? "" : " "));
-            }
-        }
-        return candidates;
-    }
-
-    const std::shared_ptr<Entry> entry = find(tokens.front().text);
-    const std::size_t index = tokens.size() - (open ? 2 : 1);
-    if (!entry || index >= entry->command.parameters.size() || entry->command.parameters[index].kind != Kind::Boolean) {
-        return candidates;
-    }
-    const std::string_view typed = open ? std::string_view(tokens.back().text) : std::string_view();
-    const std::string_view kept = line.substr(0, open ? tokens.back().start : line.size());
-    for (const std::string_view value : {std::string_view("false"), std::string_view("true")}) {
-        if (value.starts_with(typed)) {
-            candidates.push_back(std::string(kept) + std::string(value));
-        }
-    }
-    return candidates;
-}
-
 std::string Console::describeUsage(const Command& command) {
     std::string usage = command.name;
     for (const Parameter& parameter : command.parameters) {
@@ -238,6 +180,10 @@ std::string Console::describeUsage(const Command& command) {
         usage += parameter.optional ? std::format(" [{}]", kind) : std::format(" <{}>", kind);
     }
     return usage;
+}
+
+std::string_view Console::kindName(Kind kind) noexcept {
+    return std::ranges::find(kKindNames, kind, &std::pair<std::string_view, Kind>::second)->first;
 }
 
 std::string_view Console::describeKind(Kind kind) noexcept {
@@ -270,9 +216,15 @@ std::string Console::help(const core::Json& arguments) const {
         }
         return std::format("{}\n{}", describeUsage(entry->command), entry->command.help);
     }
+
+    // The usages line up in a column, so the help of every command starts at the same place.
+    std::size_t width = 0;
+    for (const std::shared_ptr<Entry>& entry : entries) {
+        width = std::max(width, describeUsage(entry->command).size());
+    }
     std::string text;
     for (const std::shared_ptr<Entry>& entry : entries) {
-        text += std::format("{}{}  {}", text.empty() ? "" : "\n", describeUsage(entry->command), entry->command.help);
+        text += std::format("{}{:<{}}  {}", text.empty() ? "" : "\n", describeUsage(entry->command), width, entry->command.help);
     }
     return text;
 }

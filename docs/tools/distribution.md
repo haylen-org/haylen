@@ -144,7 +144,10 @@ Each step of `run` prints one short line. Once the app runs, `run` prints a summ
 
   r  Reload what changed
   R  Restart the app
-  d  Run a command in the developer console
+  d  Open the developer console, which runs commands in the app
+  s  Show the statistics of the app, compact, full or off in turn
+  i  Show or hide the inspector of the app
+  p  Turn the debug drawings of the app on or off
   c  Clear the screen
   q  Quit
   h  List the keys
@@ -154,12 +157,37 @@ Each step of `run` prints one short line. Once the app runs, `run` prints a summ
 | --- | --- |
 | `r` | Sends the files saved since the last batch at once, for a save that the development server has not seen yet. |
 | `R` | Restarts every connected app from its package with a fresh Lua state, which the app reports back. |
-| `d` | Asks for a line with the prompt `Console>` and runs it as a command of the [developer console](../lua-api/debug.md#console) of every connected app, such as `gold 50`, and the terminal prints the result of each app. So you run commands on a phone or a TV from the computer. An empty line runs nothing. |
+| `d` | Opens the [developer console](../lua-api/debug.md#console), as the next section describes. |
+| `s` | Moves the [statistics](../lua-api/debug.md#statistics) of every connected app to the next mode: the compact numbers in a corner, then the statistics window, then nothing. It runs the console command `stats`. |
+| `i` | Shows or hides the [inspector](../lua-api/debug.md#inspector) of every connected app, a window that lists and edits the values of its scenes, its autoloads, its watched values and its globals. It runs the console command `inspector`. |
+| `p` | Turns the [debug drawings](../lua-api/debug.md#drawings) of every connected app on or off, such as the shapes of physics and the bounds of sprites. It runs the console command `draw`. |
 | `c` | Clears the screen and its scrollback. |
 | `q` | Quits the app and ends the command: it terminates the app on a simulator or on Android, stops the server of a web page and ends the process of the app elsewhere. |
 | `h` | Lists the keys again. |
 
-A key acts at once, without Enter, in an interactive terminal. The keys `r`, `R` and `d` need the development server, so the Release configuration and C++ apps offer only `c`, `q` and `h`. The web platform shows the address of the page and the folder of the site in place of the device. Without an interactive terminal, such as in continuous integration, the summary still prints and no key is read.
+A key acts at once, without Enter, in an interactive terminal. The keys `r`, `R`, `d`, `s`, `i` and `p` need the development server, so the Release configuration and C++ apps offer only `c`, `q` and `h`. They reach the app wherever it runs, so a phone, a TV or a browser shows its statistics, its inspector and its drawings without a keyboard. The terminal prints the answer of each app, such as `The statistics are "compact".`. The web platform shows the address of the page and the folder of the site in place of the device. Without an interactive terminal, such as in continuous integration, the summary still prints and no key is read.
+
+##### The developer console
+
+The key `d` opens the developer console of the running app in the terminal. A line with the prompt `>` stays at the bottom of the terminal, and the log of the app prints above it, so the two never mix. The console takes every key until Escape gives the keys back to the run.
+
+```text
+The console runs each line in the app. Type "help" to list the commands. Tab completes, the arrows go through the lines typed before, and Escape goes back to the keys.
+> timeScale 0.25
+The time scale is 0.25.
+>
+```
+
+| Key | What it does in the console |
+| --- | --- |
+| Enter | Runs the line in every connected app. The answer of each app prints above the line, and an error prints after `Error:`. An empty line runs nothing. |
+| Tab | Completes the word before the cursor: the name of a command, or `true` and `false` for a boolean argument. When several commands start the same way, it completes what they share and lists them. |
+| Up and Down | Go through the lines typed before in this run. |
+| Left, Right, Home and End | Move the cursor. Ctrl+A and Ctrl+E also go to the start and the end. |
+| Backspace and Delete | Remove the character before or after the cursor. Ctrl+U removes the whole line. |
+| Escape | Closes the console and gives the keys back to the run. |
+
+Type `help` to list the commands of the app, with how to type each one and what it does. The [console reference](../lua-api/debug.md#console) lists the commands of the engine, such as `timeScale 0.25`, `pause`, `restart`, `inspect watched.player` and `lua player.speed`, and shows how an app adds its own, such as `gold 50`. The console asks the app for its commands as it opens and after every line, so the completions follow the commands that the app adds and removes as it runs.
 
 #### Running a C++ app
 
@@ -1166,7 +1194,7 @@ The command `run` without `--platform`, and with any other platform in the Debug
 | The player, `ios-simulator`, `tvos-simulator`, `visionos-simulator`, `macos`, `catalyst`, `windows`, `linux` | The simulator and this machine share the loopback address of this machine. The address follows the arguments of `xcrun simctl launch` or of the executable. |
 | `ios`, `tvos`, `visionos` | The device reaches this machine over the network. So the server listens on every address of this machine, or on the one that `--host` names, and the app connects to the address of this machine on the network, which `xcrun devicectl device process launch` passes. The device and this machine must share a network, and the first connection asks the person on the device for access to the local network. |
 
-While the development server of `run` runs in an interactive terminal, with the web platform or any other, the keys of [while the app runs](#while-the-app-runs) reload, restart and reach the developer console of the connected apps.
+While the development server of `run` runs in an interactive terminal, with the web platform or any other, the keys of [while the app runs](#while-the-app-runs) reload and restart the connected apps, open their developer console and show their statistics, inspector and debug drawings.
 
 An app that stops or restarts leaves the server, which says so and keeps serving the apps that connect next.
 

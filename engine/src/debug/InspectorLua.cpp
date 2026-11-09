@@ -2,6 +2,7 @@
 
 #include <lua.hpp>
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -10,6 +11,7 @@
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
+#include "haylen/lua/TypeConverter.hpp"
 #include "haylen/plugins/DebugPlugin.hpp"
 
 namespace haylen::debug {
@@ -62,9 +64,20 @@ int InspectorLua::inspectorVisible(lua_State* L) {
     return 1;
 }
 
+// Picks the key that shows and hides the inspector with `setInspectorKey(name)`, or turns the shortcut off with `nil`.
+int InspectorLua::setInspectorKey(lua_State* L) {
+    lua::Runtime::getEngine(L).getPlugin<plugins::DebugPlugin>().setInspectorKey(lua_isnoneornil(L, 1) ? std::nullopt : std::optional<input::Key>(lua::Stack::read<input::Key>(L, 1)));
+    return 0;
+}
+
+int InspectorLua::inspectorKey(lua_State* L) {
+    lua::Stack::push(L, lua::Runtime::getEngine(L).getPlugin<plugins::DebugPlugin>().getInspectorKey());
+    return 1;
+}
+
 void InspectorLua::addFunctions(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"watch", &lua::Binding::native<&watch>}, {"unwatch", &lua::Binding::native<&unwatch>}, {"inspect", &lua::Binding::native<&inspect>}, {"setInspectorVisible", &lua::Binding::native<&setInspectorVisible>}, {"inspectorVisible", &lua::Binding::native<&inspectorVisible>}, {nullptr, nullptr},
+        {"watch", &lua::Binding::native<&watch>}, {"unwatch", &lua::Binding::native<&unwatch>}, {"inspect", &lua::Binding::native<&inspect>}, {"setInspectorVisible", &lua::Binding::native<&setInspectorVisible>}, {"inspectorVisible", &lua::Binding::native<&inspectorVisible>}, {"setInspectorKey", &lua::Binding::native<&setInspectorKey>}, {"inspectorKey", &lua::Binding::native<&inspectorKey>}, {nullptr, nullptr},
     };
     luaL_setfuncs(L, functions, 0);
 }

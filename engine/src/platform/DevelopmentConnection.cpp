@@ -144,6 +144,10 @@ void DevelopmentConnection::receive(std::string_view data, bool binary) {
         submitLine(message);
         return;
     }
+    if (type == "consoleCommands") {
+        listCommands();
+        return;
+    }
     if (type == "restart") {
         session.requestRestart();
         return;
@@ -166,6 +170,17 @@ void DevelopmentConnection::submitLine(const core::Json& message) {
     ConsoleRelay::submit(readText(message, "line"), [this, id = std::move(id)](const debug::Console::Result& result) {
         if (socket->getState() == net::WebSocket::State::Open) {
             socket->send(core::Json{{"type", "consoleResult"}, {"id", id}, {"ok", result.ok}, {"output", result.output}}.dump());
+        }
+    });
+    // clang-format on
+}
+
+// The terminal completes the lines the developer types from the commands of the app, which it asks for as its console opens and after every line.
+void DevelopmentConnection::listCommands() {
+    // clang-format off
+    ConsoleRelay::requestCommands([this](const core::Json& commands) {
+        if (socket->getState() == net::WebSocket::State::Open) {
+            socket->send(core::Json{{"type", "consoleCommands"}, {"commands", commands}}.dump());
         }
     });
     // clang-format on

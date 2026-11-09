@@ -49,7 +49,7 @@ This table names the main classes of each folder. The headers of a folder list a
 | `net` | `WebSocket`, with the Poco transport of native builds and the browser transport of the web build. |
 | `conversation` | `Conversation`, the graph of a branching conversation read from `.conversation` files, `ConversationState`, one walk through it with its variables, visits, choices and saves, and `Expression`, the conditions and assignments of its steps. |
 | `localization` | The `Catalog` of translated text, `PluralRules`, `NumberFormat`, `DateFormat` and `ListFormat`. |
-| `debug` | `Profiler` with `ProfileScope` and `ProfileSample`, `TraceRecorder` with `TraceSpan`, the `LogLine` records of the debug overlay, the `Stats` snapshot, the `StatsDisplay` that draws the compact statistics, `Monitor`, `Console`, `Breadcrumb`, and `ObjectCounter` with `TrackedObject` and `TrackedCount`, which count the objects of every type. |
+| `debug` | `Profiler` with `ProfileScope` and `ProfileSample`, `TraceRecorder` with `TraceSpan`, the `LogLine` records of the statistics window, the `Stats` snapshot, the `StatsDisplay` that draws the compact statistics, `Monitor`, `Console`, `Breadcrumb`, and `ObjectCounter` with `TrackedObject` and `TrackedCount`, which count the objects of every type. |
 | `lua` | The public C++ toolkit for Lua bindings, which the engine and the projects that extend it use, and `lua::Application`. |
 | `2d/graphics` | `Renderer`, with its text and rich text drawing, vector images, captures, image blends and canvas overlays. `Sprite`, `SpriteBatch` with the `PartColors` of recolored sprites, and `StaticSpriteBatch`. `TileLayer`, which bakes grids of cells by chunks. `Stroke` with the private `StrokeBuilder`, `Mesh`, `Shape`, `Material`, `DrawOrder`, and groups and masks that render into pooled images. `Camera`, `CameraRig`, `PixelCanvas`, `Parallax`, `NineSlice`, `PostProcess` and `ImageBlend`. `SceneTransition`, the built-in scene transition effects. The private `VectorAtlas` keeps the rasters of vector images in shared pages. |
 | `2d/animation`, `2d/particles`, `2d/lighting` | `Animation`, `Animator`, `SpriteAtlas` with the frame data of `SpriteFrame`, `AtlasBuilder`, which packs atlases at run time, `AnimatedBatch`, `StateGraph` with `StateGraphPlayer`, `Chain`, and the skeletons of `SkeletonData`, `SkeletonAnimation` and `Skeleton`. The particle `Emitter`, `System`, `Effect`, `Trail`, `Ribbon` and `ImageShape`. `Light` with `LightFlicker`, and `Occluder`. |
@@ -86,7 +86,7 @@ The folder `engine/src/platform/` holds the boundary with the operating system. 
 | `DialogRelay` and `DialogsLua` | Carry the answers of native dialogs and bind them to Lua. |
 | `AccessibilityRelay` | Carries the actions of screen readers. |
 | `ScreenRelay` | Keeps the screen of a plugin that shows and carries the ends of screens. |
-| `ConsoleRelay` | Carries the lines of the developer console that come from the development server or the web page. |
+| `ConsoleRelay` | Carries the lines of the developer console that come from the development server or the web page, and the requests of the terminal for its commands. |
 | `CrashGuard` | Captures the native crashes of the process into a report that the next start reads. |
 | `DevelopmentSession` and `DevelopmentConnection` | Hold the state of [development](#development-and-hot-reload). |
 | `NativeViews` | The edges that native views of plugins reserve and the covers of the app. |

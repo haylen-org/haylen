@@ -31,9 +31,15 @@ std::vector<std::string> Inspector::splitPath(std::string_view path) {
 std::vector<Inspector::Entry> Inspector::list(lua_State* L, std::span<const std::string> path) {
     std::vector<Entry> entries;
     if (path.empty()) {
-        for (const std::string_view root : kRoots) {
-            entries.push_back({.key = std::string(root), .type = "table", .value = {}, .editable = false, .expandable = true});
-        }
+        // clang-format off
+        lua::Runtime::protectedRun(L, [&entries](lua_State* state) {
+            for (const std::string_view root : kRoots) {
+                pushRoot(state, root);
+                entries.push_back(describe(state, std::string(root), lua_gettop(state), false));
+                lua_pop(state, 1);
+            }
+        });
+        // clang-format on
         return entries;
     }
 
@@ -235,7 +241,7 @@ std::string Inspector::describeValue(lua_State* L, int index) {
         break;
     }
     case LUA_TTABLE:
-        text = std::format("{} items", lua_rawlen(L, index));
+        text = describeTable(L, index);
         break;
     case LUA_TNIL:
         text = "nil";
@@ -244,6 +250,36 @@ std::string Inspector::describeValue(lua_State* L, int index) {
         break;
     }
     return text;
+}
+
+// Counts the values of a table up to the most that a listing shows, since a table that is not a sequence has no length.
+std::string Inspector::describeTable(lua_State* L, int index) {
+    const int table = lua_absindex(L, index);
+    std::size_t count = 0;
+    lua_pushnil(L);
+    while (lua_next(L, table) != 0) {
+        lua_pop(L, 1);
+        if (++count > kMaxEntries) {
+            lua_pop(L, 1);
+            return std::format("More than {} values", kMaxEntries);
+        }
+    }
+    if (count == 0) {
+        return "Empty";
+    }
+    const std::string values = count == 1 ? "1 value" : std::format("{} values", count);
+
+    // A table with a name, such as a scene or an object of the app, shows it before its count.
+    lua_pushliteral(L, "name");
+    if (lua_rawget(L, table) != LUA_TSTRING) {
+        lua_pop(L, 1);
+        return values;
+    }
+    std::size_t length = 0;
+    const char* characters = lua_tolstring(L, -1, &length);
+    std::string named = std::format("{}, {}", std::string_view(characters, std::min(length, kMaxValueText)), values);
+    lua_pop(L, 1);
+    return named;
 }
 
 // Keys are read without converting them in place, which would break the traversal of the table.

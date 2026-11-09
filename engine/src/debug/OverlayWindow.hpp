@@ -28,6 +28,10 @@ namespace haylen::plugins {
 class DebugPlugin;
 }
 
+namespace haylen::ui {
+class Backend;
+}
+
 namespace haylen::debug {
 
 class Profiler;
@@ -35,8 +39,11 @@ class Profiler;
 // Draws the full debug overlay window with ImGui: frame times, profiler scopes, the scenes on the stack, the debug drawings, the items of the compact statistics, rendering, memory, GPU pools, counters, the reads and downloads of the content, object counts, signals and event listeners, monitors and the recent log.
 class OverlayWindow final {
   public:
+    static constexpr float kWidth = 720.0F;
+    static constexpr float kHeight = 860.0F;
+
     // Draws the window and returns `false` once the player closed it.
-    static bool draw(core::Engine& engine, const Stats& stats, const std::vector<std::shared_ptr<Monitor>>& monitors, const std::vector<LogLine>& log);
+    static bool draw(core::Engine& engine, ui::Backend& backend, const Stats& stats, const std::vector<std::shared_ptr<Monitor>>& monitors, const std::vector<LogLine>& log);
 
   private:
     [[nodiscard]] static ImVec4 getLevelColor(core::Log::Level level) noexcept;
