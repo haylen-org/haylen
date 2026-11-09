@@ -170,6 +170,26 @@ TEST_F(ConversationTest, PicksTheSameVariantsForTheSameSeedAndStopsLoops) {
     EXPECT_THROW(loop.start("nowhere"), std::invalid_argument);
 }
 
+// A listener may advance the state, and the commands of the steps it runs reach the app after the ones that waited before them.
+TEST_F(ConversationTest, DeliversCommandsInOrderWhenAListenerAdvances) {
+    ConversationState state(read(R"({"nodes": {"a": {"steps": [{"command": "first"}, {"command": "second"}, {"text": "x"}, {"command": "third"}, {"text": "y"}]}}})"), core::Json(), 1);
+    state.start("a");
+    std::vector<std::string> heard;
+    // clang-format off
+    const core::Connection listening = state.commanded.connect([&heard, &state](std::string_view name, const core::Json&) {
+        heard.emplace_back(name);
+        if (name == "first") {
+            state.advance();
+            state.deliverCommands();
+        }
+    });
+    // clang-format on
+    state.deliverCommands();
+
+    EXPECT_EQ(heard, (std::vector<std::string>{"first", "second", "third"}));
+    EXPECT_EQ(state.getLine()->text, "y");
+}
+
 TEST_F(ConversationTest, SavesAndRestoresWhereItStood) {
     const std::shared_ptr<const Conversation> smith = read(kSmith);
     ConversationState state(smith, core::Json(), 11);

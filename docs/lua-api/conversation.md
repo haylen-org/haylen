@@ -469,7 +469,7 @@ storage.writeSlot('slot-1', {conversation = state:save()}, {place = 'Forge'})
 
 Calls `listener` for every command that the walk runs, and returns a [`Connection`](signal.md#connection) of `haylen.signal`. The only event is `'command'`, which the [events](#events) section describes. Its method `disconnect()` stops the listener.
 
-A listener runs at the end of the call that ran the command, such as `state:advance()`, so the walk already stands at its next line or choices, and the listener may call `advance` or `choose` itself. Commands wait until something listens, so the commands that ran before the first listener reach it during the call to `on`. An error raised in a listener is raised by the call that delivered the command.
+A listener runs at the end of the call that ran the command, such as `state:advance()`, so the walk already stands at its next line or choices, and the listener may call `advance` or `choose` itself. The commands of the steps that such a call runs reach the listeners after the commands that already waited, so every command arrives in the order the walk ran it. Commands wait until something listens, so the commands that ran before the first listener reach it during the call to `on`. An error raised in a listener is raised by the call that delivered the command.
 
 The table `options` may hold an `owner`, a table or a userdata such as a scene, and the listener ends with it, as [subscription scopes](../core/lifecycle.md#subscription-scopes) describe. Without an `owner`, a listener that a module adds at its top level in development belongs to that module, so a [reload](hotReload.md) of the module ends it.
 

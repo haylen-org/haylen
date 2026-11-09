@@ -148,13 +148,23 @@ std::string_view ConversationState::getNodeName() const noexcept {
     return conversation->getNode(node).name;
 }
 
+// A listener that advances the state adds the commands of the steps it ran behind the ones that wait, so the delivery that runs already takes them in order.
 void ConversationState::deliverCommands() {
-    if (commanded.empty() || commands.empty()) {
+    if (delivering || commanded.empty()) {
         return;
     }
-    for (const Command& command : std::exchange(commands, {})) {
-        commanded.emit(command.name, command.arguments);
+    delivering = true;
+    try {
+        while (!commands.empty()) {
+            const Command command = std::move(commands.front());
+            commands.erase(commands.begin());
+            commanded.emit(command.name, command.arguments);
+        }
+    } catch (...) {
+        delivering = false;
+        throw;
     }
+    delivering = false;
 }
 
 core::Json ConversationState::save() const {

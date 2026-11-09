@@ -102,6 +102,7 @@ class ConversationState final {
     std::size_t step = 0;
     bool started = false;
     bool finished = false;
+    bool delivering = false;
 };
 
 } // namespace haylen::conversation
