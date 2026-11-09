@@ -1059,9 +1059,10 @@ The named packs of `content.delivery` become asset packs of Google Play when a p
 
 Without such a plugin, the named packs stay for the content server. The bundle of `:app:bundleRelease` carries those packs. The command `run` installs it with bundletool in the local testing mode of Google Play, signed with the upload key of the project, so the library of Play delivers each pack from the device as the store would. The check of the Release build stops when the bundle lacks a shard of a pack.
 
-On iOS and tvOS the named packs become asset packs of Background Assets, which the App Store hosts. That happens when a plugin of the app declares `assetPacks` in the `apple` section of its `plugin.json`, such as the `background-assets` plugin of [haylen-org](https://github.com/haylen-org/background-assets):
+On iOS, tvOS, visionOS and macOS the named packs become asset packs of Background Assets, which the App Store hosts. That happens when a plugin of the app declares `assetPacks` in the `apple` section of its `plugin.json`, such as the `background-assets` plugin of [haylen-org](https://github.com/haylen-org/background-assets):
 
 - `prepare` and `run` in the Release configuration pack each named pack with `xcrun ba-package` into `build/apps/<app>-<hash>/release/apple.asset-packs/<pack>.aar`, with the shards of the pack in a folder named after it.
+- Each archive serves the platforms of the plugin among iOS, tvOS, visionOS and macOS.
 - Packs that the plugin lists in `prefetch` download with the install and every update, and the others when the app asks for them.
 - The developer uploads those archives to App Store Connect with the app.
 - Only one plugin of the app may deliver packs from the App Store.

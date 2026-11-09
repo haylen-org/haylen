@@ -2805,7 +2805,7 @@ class AndroidPluginsTest(unittest.TestCase):
         for pack in ("chapter-2", "intro.music"):
             (scratch / "release" / "apple.packs" / pack).mkdir(parents=True)
             (scratch / "release" / "apple.packs" / pack / f"{pack}.hpak").write_bytes(b"s")
-        assets = haylen.Plugin(scratch, {"id": "assets", "version": "1.0.0", "platforms": ["ios", "tvos"], "apple": {"assetPacks": {"prefetch": "${prefetchPacks}"}}}, None)
+        assets = haylen.Plugin(scratch, {"id": "assets", "version": "1.0.0", "platforms": ["ios", "tvos", "visionos"], "apple": {"assetPacks": {"prefetch": "${prefetchPacks}"}}}, None)
         app = mock.Mock(plugins=[assets], plugin_values={"assets": {"prefetchPacks": ["intro.music"]}}, content_packs=["chapter-2", "intro.music"], build_folder=scratch)
         manifests = {}
         def package(command, **_):
@@ -2817,7 +2817,7 @@ class AndroidPluginsTest(unittest.TestCase):
         self.assertEqual(manifests["chapter-2"]["downloadPolicy"], {"onDemand": {}})
         self.assertEqual(manifests["intro.music"]["downloadPolicy"], {"prefetch": {"installationEventTypes": ["firstInstallation", "subsequentUpdate"]}})
         self.assertEqual(manifests["intro.music"]["fileSelectors"], [{"directorySource": "intro.music", "directoryDestination": "intro.music"}])
-        self.assertEqual(manifests["intro.music"]["platforms"], ["iOS", "tvOS"])
+        self.assertEqual(manifests["intro.music"]["platforms"], ["iOS", "tvOS", "visionOS"])
         self.assertEqual((haylen.apple_asset_packs_folder(app) / manifests["intro.music"]["sourceRoot"]).resolve(), scratch / "release" / "apple.packs")
         self.assertEqual(sorted(path.name for path in haylen.apple_asset_packs_folder(app).iterdir()), ["chapter-2.aar", "intro.music.aar"], "The manifests of the tool leave once the archives exist.")
         app.plugin_values["assets"]["prefetchPacks"] = ["chapter-3"]

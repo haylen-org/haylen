@@ -3826,7 +3826,7 @@ def write_apple_asset_packs(app: App, packs: Path) -> list[Path]:
     if unknown:
         raise BuildError(f'The plugin "{plugin.id}" downloads with the install the packs {quoted_names(unknown)}, which "content.delivery" of "app.json" does not name. List only the packs of the app.')
 
-    platforms = [name for platform, name in (("ios", "iOS"), ("tvos", "tvOS"), ("macos", "macOS")) if plugin.supports(platform)]
+    platforms = [name for platform, name in (("ios", "iOS"), ("tvos", "tvOS"), ("visionos", "visionOS"), ("macos", "macOS")) if plugin.supports(platform)]
     output.mkdir(parents=True)
     archives = []
     for folder in folders:
