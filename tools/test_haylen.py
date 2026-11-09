@@ -18,6 +18,7 @@ import plistlib
 import re
 import shlex
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -3304,6 +3305,27 @@ class DevelopmentServerTest(unittest.TestCase):
         self.assertTrue(session.quitting.is_set())
         with self.assertRaisesRegex(haylen.BuildError, "failed with exit code 3"):
             haylen.RunSession().follow([sys.executable, "-c", "raise SystemExit(3)"])
+
+    @unittest.skipIf(os.name == "nt", "Windows ends a process that a signal reaches, so a command there has no signal to stop with.")
+    def test_a_run_that_a_signal_ends_stops_the_app_it_follows(self):
+        previous = {name: signal.getsignal(getattr(signal, name)) for name in haylen.TERMINATING_SIGNALS}
+        self.addCleanup(lambda: [signal.signal(getattr(signal, name), handler) for name, handler in previous.items()])
+        haylen.Terminated.install()
+
+        # The app prints a line and runs on, and the signal comes as a bound on the time of the run would send it.
+        def line(text):
+            os.kill(os.getpid(), signal.SIGALRM)
+            return text
+
+        stop = mock.Mock()
+        with mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})), self.assertRaises(haylen.Terminated) as ended:
+            with haylen.RunSession() as session:
+                session.show([("App", "Demo")], stop)
+                stop.side_effect = lambda: session.process.terminate()
+                session.follow([sys.executable, "-c", "import time; print('Ready.', flush=True); time.sleep(30)"], line=line)
+        self.assertEqual(ended.exception.number, signal.SIGALRM)
+        stop.assert_called_once_with()
+        self.assertIsNotNone(session.process.poll(), "The app ends with the run.")
 
     def test_an_app_whose_connection_resets_leaves_and_the_server_goes_on(self):
         server = haylen.DevelopmentServer(self.layout, self.manifest)

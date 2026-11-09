@@ -247,6 +247,10 @@ IOS_ORIENTATIONS = (["UIInterfaceOrientationPortrait", "UIInterfaceOrientationLa
 # The engine writes to the unified log of Apple platforms under the bundle identifier of the app as the subsystem and this category.
 APPLE_LOG_CATEGORY = "haylen"
 LOG_STREAM_GRACE_SECONDS = 1.0
+# How long a run that a signal or an error ends waits for the process that it follows to end once it stopped the app, before it kills that process.
+RUN_STOP_SECONDS = 10
+# The signals that end a command without Ctrl+C, such as the one of a bound on its time, which the systems that have them deliver to the command alone, so the command stops what it started itself.
+TERMINATING_SIGNALS = ("SIGTERM", "SIGHUP", "SIGALRM")
 
 MIME_TYPES = {".wasm": "application/wasm", ".js": "text/javascript", ".mjs": "text/javascript", ".json": "application/json", ".zip": "application/zip", ".html": "text/html", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".data": "application/octet-stream"}
 
@@ -5083,10 +5087,20 @@ class RunSession:
     def __enter__(self) -> "RunSession":
         return self
 
-    def __exit__(self, *_) -> None:
+    def __exit__(self, failure: type[BaseException] | None, *_) -> None:
         terminal.show_prompt(None)
         if self.reader is not None:
             self.reader.close()
+
+        # A session that a signal or an error ends stops the app it follows, which would otherwise run on with no one to relay its log.
+        if failure is None or self.process is None or self.process.poll() is not None:
+            return
+        self.quit()
+        try:
+            self.process.wait(RUN_STOP_SECONDS)
+        except subprocess.TimeoutExpired:
+            self.process.kill()
+            self.process.wait()
 
     def show(self, rows: list[tuple[str, str]], stop: Callable[[], None] | None = None) -> None:
         """Prints the summary of the running app with its keys, and takes the keys from then on. Quitting calls the stop of the platform, or else ends the process that the session follows."""
@@ -8157,7 +8171,26 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+class Terminated(BaseException):
+    """A signal of `TERMINATING_SIGNALS` that ends the command. It unwinds the command like Ctrl+C, so the processes, servers and apps that the command started stop with it."""
+
+    def __init__(self, number: int) -> None:
+        super().__init__(number)
+        self.number = number
+
+    @staticmethod
+    def install() -> None:
+        for name in TERMINATING_SIGNALS:
+            if hasattr(signal, name):
+                signal.signal(getattr(signal, name), Terminated.handle)
+
+    @staticmethod
+    def handle(number: int, _frame: object) -> None:
+        raise Terminated(number)
+
+
 def main() -> None:
+    Terminated.install()
     args = build_parser().parse_args()
     terminal.verbose = args.verbose
     terminal.log = LOGS_DIR / f"{args.command}.log"
@@ -8171,6 +8204,8 @@ def main() -> None:
         raise SystemExit(1) from None
     except KeyboardInterrupt:
         raise SystemExit(130) from None
+    except Terminated as ended:
+        raise SystemExit(128 + ended.number) from None
 
 
 if __name__ == "__main__":
