@@ -11,7 +11,8 @@ namespace haylen::gpu::vulkan {
 // The records of the objects of one kind behind the ids of their handles. An id holds the slot of its record and the generation of that slot, so the id of a destroyed object never finds the record that takes its slot later, and no id is 0.
 template <typename Record> class HandlePool final {
   public:
-    [[nodiscard]] std::uint32_t add(std::unique_ptr<Record> record) {
+    // Takes the record only once it has a slot, so a caller whose record finds no room still holds it and releases its objects.
+    [[nodiscard]] std::uint32_t add(std::unique_ptr<Record>&& record) {
         std::uint32_t index = 0;
         if (free.empty()) {
             if (slots.size() >= kMaxSlots) {
