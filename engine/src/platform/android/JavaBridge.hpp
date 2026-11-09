@@ -70,12 +70,6 @@ class JavaBridge final {
     // The WebSocket address of the development server that the intent of a debuggable app names, which `haylen.py run` launches it with, or an empty text.
     [[nodiscard]] static std::string getDevelopmentServer();
 
-    // Opens the url with the app that handles it on the main thread, and `answerUrl` hands the callback whether one took it, as an answer that names the url when none did.
-    static void openUrl(std::string_view url, std::function<void(Permission::Answer answer)> callback);
-    static void answerUrl(std::int64_t request, bool opened);
-
-    [[nodiscard]] static Permission::Answer vibrate(std::int64_t milliseconds);
-
     // The check of a permission and the request for it, from any thread, which Java answers on the main thread through `answerPermission` with the JSON of `Permission::Answer::fromJson`. A call that Java never took fails at once.
     static void checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
     static void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
@@ -168,8 +162,6 @@ class JavaBridge final {
     static jmethodID keepScreenOnMethod;
     static jmethodID captureBackMethod;
     static jmethodID systemInfoMethod;
-    static jmethodID openUrlMethod;
-    static jmethodID vibrateMethod;
     static jmethodID rumbleGamepadMethod;
     static jmethodID setClipboardMethod;
     static jmethodID clipboardMethod;
@@ -195,17 +187,6 @@ class JavaBridge final {
     static jmethodID permissionHeldMethod;
     static jmethodID requestPermissionMethod;
     static std::atomic<bool> accessibilityWanted;
-
-    // A url that waits for the answer of Java, with the callback that hears it.
-    struct PendingUrl {
-        std::string url;
-        std::function<void(Permission::Answer)> callback;
-    };
-
-    // The urls that wait for the answer of Java, by request.
-    static std::mutex& urlMutex;
-    static std::unordered_map<std::int64_t, PendingUrl>& urlCallbacks;
-    static std::int64_t nextUrl;
 
     // The callbacks of the checks and the requests of permissions that wait for the answer of Java, by request.
     static std::mutex& permissionMutex;

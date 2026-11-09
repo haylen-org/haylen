@@ -196,10 +196,6 @@ SystemInfo Services::getSystemInfo() {
     return WindowsSystem::getInfo();
 }
 
-void Services::openUrl(const std::string& url, std::function<void(Permission::Answer answer)> callback) {
-    WindowsSystem::openUrl(url, std::move(callback));
-}
-
 // Windows gates none of the permissions of the engine, the motion of controllers, every screen and the local network, for a desktop app.
 void Services::checkPermission(Permission::Kind, std::function<void(Permission::Answer answer)> callback) {
     callback({.state = Permission::State::Granted});
@@ -211,10 +207,6 @@ void Services::requestPermission(Permission::Kind, std::function<void(Permission
 
 std::string Services::explainBlockedSocket(std::intptr_t) {
     return {};
-}
-
-Permission::Answer Services::vibrate(float) {
-    return {.state = Permission::State::Unsupported, .message = "Windows gives apps no vibration motor."};
 }
 
 bool Services::forwardLink(std::string_view identifier, std::string_view url) {

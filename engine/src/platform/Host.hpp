@@ -134,12 +134,6 @@ class Host : public Window {
     // Asks the screen reader to say a text, after what it says now or interrupting it, where the platform has a screen reader.
     virtual void announce(std::string_view text, bool interrupt) = 0;
 
-    // Opens the url with the app the system picks for it. The callback runs exactly once, on any thread and possibly after the engine that asked is gone, with `Granted` once an app took the url, `Unsupported` when no app opens it or `Denied` when the platform refused it, such as a browser that blocks a tab without a recent input of the person.
-    virtual void openUrl(std::string_view url, std::function<void(Permission::Answer answer)> callback) = 0;
-
-    // Vibrates the device for the given seconds and answers `Granted`, or `Denied` or `Unsupported` with the sentence that says why, such as a device without a motor or an Android app without the permission `VIBRATE`.
-    [[nodiscard]] virtual Permission::Answer vibrate(float seconds) = 0;
-
     // Runs the low and the high frequency motors of a gamepad, each from 0 to 1, for the seconds, where the gamepad and the platform rumble, and does nothing elsewhere. Zero intensities stop the gamepad.
     virtual void rumbleGamepad(std::size_t index, float low, float high, float seconds) = 0;
 

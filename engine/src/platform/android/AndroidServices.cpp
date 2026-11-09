@@ -7,7 +7,6 @@
 
 #include <algorithm>
 #include <array>
-#include <cmath>
 #include <cstdint>
 #include <span>
 #include <string>
@@ -189,10 +188,6 @@ SystemInfo Services::getSystemInfo() {
     return AndroidDeviceInfo::toSystemInfo(JavaBridge::getSystemInfo());
 }
 
-void Services::openUrl(const std::string& url, std::function<void(Permission::Answer answer)> callback) {
-    JavaBridge::openUrl(url, std::move(callback));
-}
-
 void Services::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
     JavaBridge::checkPermission(kind, std::move(callback));
 }
@@ -209,11 +204,6 @@ std::string Services::explainBlockedSocket(std::intptr_t socket) {
         return {};
     }
     return "Android blocked the connection, because the app may not reach the local network without the permission \"android.permission.ACCESS_LOCAL_NETWORK\". Ask the person for it with \"system.requestPermission('localNetwork')\".";
-}
-
-// A vibration of Android lasts at least a millisecond.
-Permission::Answer Services::vibrate(float seconds) {
-    return JavaBridge::vibrate(std::max<std::int64_t>(1, std::lround(seconds * 1000.0F)));
 }
 
 // Android hands the links to the activity that runs, which reports them.
@@ -400,10 +390,6 @@ JNIEXPORT jboolean JNICALL Java_dev_haylen_HaylenActivity_nativeBackHeld(JNIEnv*
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenPermissions_nativeAnswered(JNIEnv* env, jclass, jlong request, jbyteArray answer) {
     haylen::platform::JavaBridge::answerPermission(request, haylen::platform::JavaBridge::toString(*env, answer));
-}
-
-JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeUrlOpened(JNIEnv*, jclass, jlong request, jboolean opened) {
-    haylen::platform::JavaBridge::answerUrl(request, opened == JNI_TRUE);
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeTheme(JNIEnv*, jclass, jboolean dark) {

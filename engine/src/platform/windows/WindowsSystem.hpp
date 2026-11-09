@@ -1,20 +1,17 @@
 #pragma once
 
 #include <cstdint>
-#include <functional>
 #include <string>
 #include <vector>
 
-#include "haylen/platform/Permission.hpp"
 #include "haylen/platform/SystemInfo.hpp"
 
 namespace haylen::platform {
 
-// The system of Windows as the engine sees it: what the device is, the app theme of the personalization settings, the preferred languages of the display, the accessibility settings, the power status, the time zone and opening urls with the app that handles them.
+// The system of Windows as the engine sees it: what the device is, the app theme of the personalization settings, the preferred languages of the display, the accessibility settings, the power status and the time zone.
 class WindowsSystem final {
   public:
     [[nodiscard]] static SystemInfo getInfo();
-    static void openUrl(const std::string& url, std::function<void(Permission::Answer answer)> callback);
 
     // Reports the theme, the languages of the display, the accessibility settings, the battery with the battery saver and the time zone to the engine, which the services do when the app starts and the window whenever Windows tells it that they changed.
     static void reportTheme();

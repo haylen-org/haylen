@@ -2,16 +2,12 @@
 
 #include <TargetConditionals.h>
 
-#if TARGET_OS_OSX
-#import <AppKit/AppKit.h>
-#else
+#if !TARGET_OS_OSX
 #import <UIKit/UIKit.h>
 #endif
 
 #include <sys/sysctl.h>
 
-#include <format>
-#include <utility>
 #include <vector>
 
 namespace haylen::platform {
@@ -47,46 +43,6 @@ SystemInfo AppleSystem::getInfo() {
     info.cpuCores = static_cast<int>(NSProcessInfo.processInfo.processorCount);
     info.memoryBytes = NSProcessInfo.processInfo.physicalMemory;
     return info;
-}
-
-void AppleSystem::openUrl(const std::string& url, std::function<void(Permission::Answer answer)> callback) {
-    NSString* text = [[NSString alloc] initWithBytes:url.data() length:url.size() encoding:NSUTF8StringEncoding];
-    NSURL* address = text != nil ? [NSURL URLWithString:text] : nil;
-    if (address == nil) {
-        callback({.state = Permission::State::Unsupported, .message = std::format("The text \"{}\" is not a url.", url)});
-        return;
-    }
-#if TARGET_OS_OSX
-    callback(answerOpened([NSWorkspace.sharedWorkspace openURL:address], url));
-#else
-    __block std::function<void(Permission::Answer)> done = std::move(callback);
-    [UIApplication.sharedApplication openURL:address options:@{} completionHandler:^(BOOL opened) { done(answerOpened(opened, url)); }];
-#endif
-}
-
-Permission::Answer AppleSystem::answerOpened(bool opened, const std::string& url) {
-    if (opened) {
-        return {.state = Permission::State::Granted};
-    }
-    return {.state = Permission::State::Unsupported, .message = std::format("No app on this device opens \"{}\".", url)};
-}
-
-// An iPhone plays an impact on its haptic engine, whatever the length of the vibration, and the other devices have no motor that apps reach.
-Permission::Answer AppleSystem::vibrate() {
-#if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
-    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPhone) {
-        UIImpactFeedbackGenerator* generator = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
-        [generator impactOccurred];
-        return {.state = Permission::State::Granted};
-    }
-    return {.state = Permission::State::Unsupported, .message = "An iPad has no vibration motor."};
-#elif TARGET_OS_TV
-    return {.state = Permission::State::Unsupported, .message = "An Apple TV has no vibration motor."};
-#elif TARGET_OS_VISION
-    return {.state = Permission::State::Unsupported, .message = "Apple Vision Pro has no vibration motor."};
-#else
-    return {.state = Permission::State::Unsupported, .message = "A Mac has no vibration motor."};
-#endif
 }
 
 std::string AppleSystem::readSysctl(const char* name) {

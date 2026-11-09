@@ -1,18 +1,13 @@
 #include "platform/linux/LinuxSystem.hpp"
 
-#include <spawn.h>
 #include <sys/utsname.h>
-#include <sys/wait.h>
 #include <unistd.h>
 
-#include <array>
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
-#include <format>
 #include <system_error>
 #include <thread>
-#include <utility>
 
 #include "platform/NativeHost.hpp"
 #include "platform/SystemState.hpp"
@@ -42,27 +37,6 @@ bool LinuxSystem::isTimeZoneFixed() {
 void LinuxSystem::reportTimeZone() {
     std::error_code error;
     NativeHost::getSystemState().setTimeZone(LinuxSystemReader::readTimeZone(getVariable("TZ"), std::filesystem::read_symlink(kLocalTime, error).string()));
-}
-
-// Starts `xdg-open` without blocking the frame thread, and a helper thread waits for it to tell whether an application took the url.
-void LinuxSystem::openUrl(const std::string& url, std::function<void(Permission::Answer answer)> callback) {
-    pid_t child = 0;
-    const std::array<char*, 3> arguments{const_cast<char*>("xdg-open"), const_cast<char*>(url.c_str()), nullptr};
-    if (posix_spawnp(&child, "xdg-open", nullptr, nullptr, arguments.data(), environ) != 0) {
-        callback({.state = Permission::State::Unsupported, .message = "The url cannot open, because the command \"xdg-open\" of the desktop is missing."});
-        return;
-    }
-    // clang-format off
-    std::thread([child, url, done = std::move(callback)] {
-        int status = 0;
-        const bool exited = waitpid(child, &status, 0) == child;
-        if (exited && WIFEXITED(status) && WEXITSTATUS(status) == 0) {
-            done({.state = Permission::State::Granted});
-            return;
-        }
-        done({.state = Permission::State::Unsupported, .message = std::format("No app on this device opens \"{}\".", url)});
-    }).detach();
-    // clang-format on
 }
 
 void LinuxSystem::reportLanguages() {

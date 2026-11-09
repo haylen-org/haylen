@@ -1,4 +1,4 @@
--- What `haylen.system` tells about the device, its theme, its battery, its power saving mode, its time zone and its languages with their changes as they happen, and an address to open and a vibration to play, with the answer of the address and the frames it took.
+-- What `haylen.system` tells about the device, its theme, its battery, its power saving mode, its time zone and its languages with their changes as they happen, and the clipboard of the system, with the answer of each copy and read and the frames it took.
 local haylen = require('haylen')
 local system = require('haylen.system')
 local ui = require('haylen.ui')
@@ -78,12 +78,11 @@ function System:enter()
     end
     self:frame{
         hint = 'Switch the system between light and dark, plug the charger in, turn power saving on, or change the time zone or the languages of the device, and the change arrives as an event.',
-        focus = 'open',
+        focus = 'copy',
         controls = {
-            ui.button{id = 'open', text = 'Open "example.com"', variant = 'primary', onClick = function() self:open('https://example.com') end},
-            ui.button{id = 'openNothing', text = 'Open an address no app takes', onClick = function() self:open('haylen-tests-nothing://open') end},
-            ui.button{id = 'vibrate', text = 'Vibrate for 80 ms', onClick = function() self:vibrate() end},
-            ui.label{text = haylen.platform == 'android' and 'On an emulator, "adb shell cmd uimode night yes" switches the theme, and "adb shell dumpsys battery set level 37" changes the battery.' or 'Android phones and phone browsers vibrate, iPhones play a haptic impact and the other devices answer why they cannot.', color = 'textMuted', font = 'caption'},
+            ui.button{id = 'copy', text = 'Copy the device', variant = 'primary', onClick = function() self:copy() end},
+            ui.button{id = 'paste', text = 'Read the clipboard', onClick = function() self:paste() end},
+            ui.label{text = haylen.platform == 'android' and 'On an emulator, "adb shell cmd uimode night yes" switches the theme, and "adb shell dumpsys battery set level 37" changes the battery.' or 'A browser copies and reads only shortly after a click or a key, and some platforms ask the person before an app reads the clipboard.', color = 'textMuted', font = 'caption'},
         },
         content = {ui.row{grow = 1, gap = 24, align = 'stretch',
             ui.panel{grow = 1, align = 'stretch', gap = 12,
@@ -94,12 +93,12 @@ function System:enter()
                 ui.sectionTitle{text = 'Events and answers'},
                 ui.column{id = 'eventsEmpty', grow = 1, gap = 16, justify = 'center', align = 'stretch',
                     ui.icon{image = 'plugins/bell.svg', size = 96, color = 'textMuted', align = 'center'},
-                    ui.label{text = 'Nothing yet. Open an address, or switch the theme of the system, to see the answer arrive.', color = 'textMuted', textAlign = 'center', align = 'center', maxWidth = 440},
+                    ui.label{text = 'Nothing yet. Copy the device, or switch the theme of the system, to see the answer arrive.', color = 'textMuted', textAlign = 'center', align = 'center', maxWidth = 440},
                 },
                 ui.scroll{id = 'eventsScroll', grow = 1, height = 0, focusable = false, visible = false, ui.list{id = 'events', items = {}}},
             },
         }},
-        code = "local info = system.info()\nprint(info.os, info.deviceModel, info.cpuCores)\nprint(system.theme(), system.battery().level, system.powerSaving(), system.timeZone())\nprint(table.concat(system.languages(), ', '))\nlocal _, message = system.openUrl('https://example.com'):await()\nlocal _, why = system.vibrate(0.08):await()",
+        code = "local info = system.info()\nprint(info.os, info.deviceModel, info.cpuCores)\nprint(system.theme(), system.battery().level, system.powerSaving(), system.timeZone())\nprint(table.concat(system.languages(), ', '))\nlocal _, message = system.setClipboard(info.deviceModel):await()\nlocal text = system.clipboard():await()",
     }
     self:showValues()
 end
@@ -113,30 +112,35 @@ function System:record(text, detail)
     self:set('eventsScroll', {visible = true})
 end
 
--- Opens an address in a task of the scene, which waits for the answer and ends with the scene.
-function System:open(url)
+-- Copies the model and the system of the device in a task of the scene, which waits for the answer and ends with the scene.
+function System:copy()
+    local summary = string.format('%s, %s', self.device.deviceModel or 'Unknown model', self.device.os)
     local frame = haylen.frameIndex()
-    self:record('Opening an address', '"' .. url .. '"')
+    self:record('Copying the device', '"' .. summary .. '"')
     self:spawn(function()
-        local _, message, failure = system.openUrl(url):await()
+        local _, message, failure = system.setClipboard(summary):await()
         local frames = haylen.frameIndex() - frame
         if failure then
-            self:record(string.format('The address failed with "%s"', failure.code), string.format('%s It answered after %d frames.', message, frames))
+            self:record(string.format('The copy failed with "%s"', failure.code), string.format('%s It answered after %d frames.', message, frames))
             return
         end
-        self:record('An app took the address', string.format('"%s" answered after %d frames.', url, frames))
+        self:record('The clipboard took the text', string.format('It answered after %d frames.', frames))
     end)
 end
 
--- A device without a motor answers "unsupported" with the reason, and a browser refuses a vibration before the first input of the person.
-function System:vibrate()
+-- A platform that asks the person before an app reads the clipboard answers "denied" with the sentence of its own failure.
+function System:paste()
     self:spawn(function()
-        local _, message, failure = system.vibrate(0.08):await()
+        local text, message, failure = system.clipboard():await()
         if failure then
-            self:record(string.format('The vibration failed with "%s"', failure.code), message)
+            self:record(string.format('The read failed with "%s"', failure.code), message)
             return
         end
-        self:record('Vibrating', 'The call "system.vibrate(0.08)" vibrated for 80 ms.')
+        if #text == 0 then
+            self:record('The clipboard was read', 'It holds no text.')
+            return
+        end
+        self:record('The clipboard was read', string.format('It holds %d bytes of text.', #text))
     end)
 end
 

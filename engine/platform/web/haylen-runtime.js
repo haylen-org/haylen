@@ -7,7 +7,7 @@ Module.haylen = Module.haylen || {};
     const handlers = new Map();
     const levels = ["debug", "info", "warning", "error"];
 
-    // The system services of the engine: what the browser tells about the device, its color scheme, its accessibility preferences, its battery and its time zone, a url opened in a new tab and the vibration of phones whose browser offers it. The details of `navigator.userAgentData` and the battery arrive asynchronously, so the page reads them before the runtime starts.
+    // The system services of the engine: what the browser tells about the device, its color scheme, its accessibility preferences, its battery and its time zone. The details of `navigator.userAgentData` and the battery arrive asynchronously, so the page reads them before the runtime starts.
     const device = {
         details: {},
         battery: null,
@@ -73,23 +73,6 @@ Module.haylen = Module.haylen || {};
         const battery = device.battery;
         const full = battery.level >= 1 && battery.chargingTime === 0;
         Module._haylen_web_battery(battery.level, battery.charging ? 1 : 0, full ? 1 : 0);
-    };
-
-    haylen.openUrl = function (url) {
-        const opened = window.open(url, "_blank");
-        if (!opened) {
-            return false;
-        }
-        opened.opener = null;
-        return true;
-    };
-
-    // Answers 0 without the Vibration API, 1 once the device vibrates and 2 when the browser refused, as it does before the first input of the person.
-    haylen.vibrate = function (seconds) {
-        if (!navigator.vibrate) {
-            return 0;
-        }
-        return navigator.vibrate(Math.max(1, Math.round(seconds * 1000))) ? 1 : 2;
     };
 
     // The now-playing controls of the browser through the Media Session API, whose actions the media keys of keyboards and headsets send too. The commands reach the engine in the order of `MediaSession::Command`, and the play and pause actions send the toggle of an app that offers only the toggle, since browsers have no toggle action.

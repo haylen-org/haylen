@@ -80,9 +80,4 @@ void HeadlessHost::dispatchPlatformCall(std::uint64_t id, std::string_view metho
     platformCalls.push_back({.id = id, .method = std::string(method), .paramsJson = std::string(paramsJson), .buffers = {buffers.begin(), buffers.end()}, .views = {views.begin(), views.end()}});
 }
 
-void HeadlessHost::openUrl(std::string_view url, std::function<void(Permission::Answer answer)> callback) {
-    openedUrls.emplace_back(url);
-    callback(urlAnswer);
-}
-
 } // namespace haylen::platform

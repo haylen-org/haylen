@@ -4,11 +4,8 @@
 #define NOMINMAX
 #include <windows.h>
 
-#include <shellapi.h>
-
 #include <array>
 #include <cstddef>
-#include <format>
 #include <string_view>
 
 #include "platform/NativeHost.hpp"
@@ -30,14 +27,6 @@ SystemInfo WindowsSystem::getInfo() {
         .cpuCores = static_cast<int>(GetActiveProcessorCount(ALL_PROCESSOR_GROUPS)),
         .memoryBytes = getMemory(),
     };
-}
-
-void WindowsSystem::openUrl(const std::string& url, std::function<void(Permission::Answer answer)> callback) {
-    if (reinterpret_cast<INT_PTR>(ShellExecuteW(nullptr, L"open", WindowsText::toWide(url).c_str(), nullptr, nullptr, SW_SHOWNORMAL)) > 32) {
-        callback({.state = Permission::State::Granted});
-        return;
-    }
-    callback({.state = Permission::State::Unsupported, .message = std::format("No app on this device opens \"{}\".", url)});
 }
 
 void WindowsSystem::reportTheme() {

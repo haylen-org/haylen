@@ -11,7 +11,7 @@ The bridge carries two things:
 
 Parameters, results and events carry byte buffers next to their JSON, such as images and audio, which never turn into text, and data views, memory that the app and native code share without a copy. Every result and every event reaches the app on the frame thread, at the start of a frame. Plugins also open screens through the bridge: native UI that covers the app until it ends with one result.
 
-The bridge covers what the engine does not wrap, such as sign-in, purchases, sharing, deep links or system settings. The engine wraps some services itself, and they never go through the bridge: what the device is, opening urls and vibrating in [`haylen.system`](../lua-api/system.md), and native dialogs in [`haylen.dialogs`](../lua-api/dialogs.md). The bridge has no methods of its own, so every method name and event name is a contract between an app and its native code.
+The bridge covers what the engine does not wrap, such as sign-in, purchases, sharing, opening links, vibrating or system settings. The engine wraps some services itself, and they never go through the bridge: what the device is and the clipboard in [`haylen.system`](../lua-api/system.md), and native dialogs in [`haylen.dialogs`](../lua-api/dialogs.md). The bridge has no methods of its own, so every method name and event name is a contract between an app and its native code.
 
 ```lua
 local async = require('async')

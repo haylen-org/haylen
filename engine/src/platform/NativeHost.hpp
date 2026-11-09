@@ -95,8 +95,6 @@ class NativeHost : public Host {
     void setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) override;
     void announce(std::string_view text, bool interrupt) override;
     [[nodiscard]] std::unique_ptr<VideoDecoder> openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) override;
-    void openUrl(std::string_view url, std::function<void(Permission::Answer answer)> callback) override;
-    [[nodiscard]] Permission::Answer vibrate(float seconds) override;
     void guardCrashes(const std::filesystem::path& report) override;
     void setCrashContext(std::string_view json) override;
     void checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) override;

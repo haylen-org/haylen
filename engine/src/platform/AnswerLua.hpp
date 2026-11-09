@@ -22,7 +22,7 @@ class AnswerLua final {
     // Resolves with the name of the state, and rejects an answer of `unsupported`.
     static void settlePermission(core::Engine& engine, const lua::Promise& promise, const Permission::Answer& answer);
 
-    // Resolves with the value on `granted`, or with nothing without one, and rejects anything else, which the engine logs once per sentence, so a call whose promise nothing awaits, such as a vibration on a device without a motor, still tells the developer why.
+    // Resolves with the value on `granted`, or with nothing without one, and rejects anything else, which the engine logs once per sentence, so a call whose promise nothing awaits, such as a copy to the clipboard that a browser refused, still tells the developer why.
     static void settle(core::Engine& engine, const lua::Promise& promise, const Permission::Answer& answer, std::optional<std::string> value = std::nullopt);
 
   private:

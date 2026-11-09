@@ -364,11 +364,6 @@ class HeadlessHost final : public Host {
     [[nodiscard]] std::unique_ptr<VideoDecoder> openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) override {
         return videoOpener ? videoOpener(std::move(file), path) : nullptr;
     }
-    void openUrl(std::string_view url, std::function<void(Permission::Answer answer)> callback) override;
-    [[nodiscard]] Permission::Answer vibrate(float seconds) override {
-        vibrations.push_back(seconds);
-        return vibrationAnswer;
-    }
     void rumbleGamepad(std::size_t index, float low, float high, float seconds) override {
         rumbles.push_back({.index = index, .low = low, .high = high, .seconds = seconds});
     }
@@ -561,17 +556,9 @@ class HeadlessHost final : public Host {
         return announcements;
     }
 
-    // How the headless system answers the urls the engine opens, at once.
-    void setUrlAnswer(Permission::Answer value) {
-        urlAnswer = std::move(value);
-    }
-
     // The answer of every write and read of the clipboard, which a browser or the person may refuse on a real device.
     void setClipboardAnswer(Permission::Answer value) {
         clipboardAnswer = std::move(value);
-    }
-    void setVibrationAnswer(Permission::Answer value) {
-        vibrationAnswer = std::move(value);
     }
 
     // The answer of every check of a permission and of every request for one, which the platform and the person give on a real device.
@@ -653,14 +640,8 @@ class HeadlessHost final : public Host {
         return errorReports;
     }
 
-    [[nodiscard]] const std::vector<std::string>& getOpenedUrls() const noexcept {
-        return openedUrls;
-    }
     [[nodiscard]] const std::vector<Rumble>& getRumbles() const noexcept {
         return rumbles;
-    }
-    [[nodiscard]] const std::vector<float>& getVibrations() const noexcept {
-        return vibrations;
     }
     [[nodiscard]] const std::vector<DialogCall>& getDialogRequests() const noexcept {
         return dialogCalls;
@@ -704,8 +685,6 @@ class HeadlessHost final : public Host {
     std::vector<core::Json> errorReports;
     SystemInfo systemInfo;
     SystemState systemState;
-    std::vector<std::string> openedUrls;
-    std::vector<float> vibrations;
     std::vector<Rumble> rumbles;
     std::string networkRequirement;
     Permission::Answer permissionState{.state = Permission::State::Granted};
@@ -736,9 +715,7 @@ class HeadlessHost final : public Host {
     bool launched = false;
     bool backHeld = false;
     const audio::OutputBackend* audioOutput = nullptr;
-    Permission::Answer urlAnswer{.state = Permission::State::Granted};
     Permission::Answer clipboardAnswer{.state = Permission::State::Granted};
-    Permission::Answer vibrationAnswer{.state = Permission::State::Granted};
 
     // The headless desktop is one 1920 by 1080 display at 60 frames per second whose work area leaves a 40 point taskbar at the bottom, with the window at the top left corner of it.
     std::vector<Display> displays{{.id = "headless", .name = "headless", .bounds = {0.0F, 0.0F, 1920.0F, 1080.0F}, .workArea = {0.0F, 0.0F, 1920.0F, 1040.0F}, .scale = 1.0F, .refreshRate = 60.0F, .primary = true, .modes = {{.width = 1920, .height = 1080, .refreshRate = 60.0F, .scale = 1.0F}, {.width = 1280, .height = 720, .refreshRate = 60.0F, .scale = 1.0F}}}};

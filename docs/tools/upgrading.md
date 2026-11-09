@@ -291,6 +291,35 @@ scene.push({
 
 The app keeps checking and asking for the permission with `system.permission('motion')` and `system.requestPermission('motion')`, which the plugin answers now. An `Info.plist` of the Apple project that holds its own `NSMotionUsageDescription` keeps it, since the value of the developer wins over the `motionUsage` of the plugin.
 
+### Opening links and vibrating
+
+The engine opens no urls and vibrates nothing. The plugin `links` opens a url, and the plugin `haptics` vibrates the device and plays the feedback of its haptic engine. List them in `app.json` with the folder or the repository where they live:
+
+```json
+{
+    "plugins": {
+        "links": {"path": "../plugins/links"},
+        "haptics": {"path": "../plugins/haptics"}
+    }
+}
+```
+
+Then replace `system.openUrl(url)` with `links.open(url)` and `system.vibrate(seconds)` with `haptics.vibrate(seconds)`. Both return a platform call, whose `await` gives `true`, or `nil` and an error whose `code` is `unsupported` or `denied` and whose `message` says why. So a check of the third value that `await` returned, the failure of `haylen.system`, becomes a check of the second one. A refusal that nothing awaits is logged once and never stops the app, as before.
+
+```lua
+local async = require('async')
+local haptics = require('haptics')
+local links = require('links')
+
+async.spawn(function()
+    local opened, err = links.open('https://example.com'):await()
+    print(opened and 'Opened.' or err.message)
+end)
+haptics.vibrate(0.08)
+```
+
+On Android the permission `android.permission.VIBRATE` comes with the manifest of the `haptics` module. The manifest of the template keeps it for the rumble of gamepads.
+
 ## Verify
 
 An upgrade is done when every platform of the app builds, runs and passes its checks:

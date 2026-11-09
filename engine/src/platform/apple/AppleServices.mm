@@ -339,10 +339,6 @@ SystemInfo Services::getSystemInfo() {
     return AppleSystem::getInfo();
 }
 
-void Services::openUrl(const std::string& url, std::function<void(Permission::Answer answer)> callback) {
-    AppleSystem::openUrl(url, std::move(callback));
-}
-
 void Services::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
     ApplePermissions::check(kind, std::move(callback));
 }
@@ -353,10 +349,6 @@ void Services::requestPermission(Permission::Kind kind, std::function<void(Permi
 
 std::string Services::explainBlockedSocket(std::intptr_t) {
     return {};
-}
-
-Permission::Answer Services::vibrate(float) {
-    return AppleSystem::vibrate();
 }
 
 // LaunchServices and UIKit hand the links to the app that runs, whose delegates report them.

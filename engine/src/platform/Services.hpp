@@ -125,18 +125,12 @@ class Services final {
     // What the device and its operating system are, read once per process. The graphics device names the GPU, so `gpuName` stays empty.
     [[nodiscard]] static SystemInfo getSystemInfo();
 
-    // Opens the url with the app the system picks for it, as `Host::openUrl` describes.
-    static void openUrl(const std::string& url, std::function<void(Permission::Answer answer)> callback);
-
     // The state of a permission and the request for it, as `Host::checkPermission` and `Host::requestPermission` describe.
     static void checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
     static void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
 
     // Explains, from any thread, why the platform blocked the connection of the socket with the descriptor, or answers an empty text, as `Host::BlockedReason` describes.
     [[nodiscard]] static std::string explainBlockedSocket(std::intptr_t socket);
-
-    // Vibrates the device for the given seconds, as `Host::vibrate` describes.
-    [[nodiscard]] static Permission::Answer vibrate(float seconds);
 
     // Hands a link that launched a new process of the app, with `--link` on the command line, to the instance of the app with the identifier that runs already, and returns whether it took the link, so the new process ends. Windows and Linux start a new process for every link, while the other platforms hand links to the running app themselves and answer `false`.
     [[nodiscard]] static bool forwardLink(std::string_view identifier, std::string_view url);

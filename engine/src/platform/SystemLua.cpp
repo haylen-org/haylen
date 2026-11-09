@@ -68,16 +68,6 @@ int SystemLua::timeZone(lua_State* L) {
     return 1;
 }
 
-// Returns a promise that resolves on a later frame once an app took the url.
-int SystemLua::openUrl(lua_State* L) {
-    core::Engine& engine = lua::Runtime::getEngine(L);
-    const auto url = lua::Stack::read<std::string_view>(L, 1);
-    const lua::Promise promise(engine);
-    engine.getSystem().openUrl(url, [&engine, promise](Permission::Answer answer) { AnswerLua::settle(engine, promise, answer); });
-    promise.push(L);
-    return 1;
-}
-
 // Returns a promise that resolves on a later frame with the text on the clipboard.
 int SystemLua::clipboard(lua_State* L) {
     core::Engine& engine = lua::Runtime::getEngine(L);
@@ -113,16 +103,6 @@ int SystemLua::requestPermission(lua_State* L) {
     const auto name = lua::Stack::read<std::string_view>(L, 1);
     const lua::Promise promise(engine);
     engine.getSystem().requestPermission(name, [&engine, promise](Permission::Answer answer) { AnswerLua::settlePermission(engine, promise, answer); });
-    promise.push(L);
-    return 1;
-}
-
-// Returns a promise that resolves on a later frame once the device vibrated.
-int SystemLua::vibrate(lua_State* L) {
-    core::Engine& engine = lua::Runtime::getEngine(L);
-    const auto seconds = lua::Stack::read<float>(L, 1);
-    const lua::Promise promise(engine);
-    engine.getSystem().vibrate(seconds, [&engine, promise](Permission::Answer answer) { AnswerLua::settle(engine, promise, answer); });
     promise.push(L);
     return 1;
 }
@@ -178,7 +158,7 @@ int SystemLua::clearNowPlaying(lua_State* L) {
 
 int SystemLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"info", &info}, {"theme", &theme}, {"battery", &battery}, {"powerSaving", &powerSaving}, {"timeZone", &timeZone}, {"languages", &languages}, {"openUrl", &lua::Binding::native<&openUrl>}, {"clipboard", &lua::Binding::native<&clipboard>}, {"setClipboard", &lua::Binding::native<&setClipboard>}, {"vibrate", &lua::Binding::native<&vibrate>}, {"permission", &lua::Binding::native<&permission>}, {"requestPermission", &lua::Binding::native<&requestPermission>}, {"setNowPlaying", &lua::Binding::native<&setNowPlaying>}, {"clearNowPlaying", &lua::Binding::native<&clearNowPlaying>}, {nullptr, nullptr},
+        {"info", &info}, {"theme", &theme}, {"battery", &battery}, {"powerSaving", &powerSaving}, {"timeZone", &timeZone}, {"languages", &languages}, {"clipboard", &lua::Binding::native<&clipboard>}, {"setClipboard", &lua::Binding::native<&setClipboard>}, {"permission", &lua::Binding::native<&permission>}, {"requestPermission", &lua::Binding::native<&requestPermission>}, {"setNowPlaying", &lua::Binding::native<&setNowPlaying>}, {"clearNowPlaying", &lua::Binding::native<&clearNowPlaying>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

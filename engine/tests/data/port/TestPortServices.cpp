@@ -120,10 +120,6 @@ SystemInfo Services::getSystemInfo() {
     return {.os = SystemInfo::Os::Port, .osVersion = "1.0", .deviceModel = "Test port", .deviceKind = SystemInfo::DeviceKind::Tv};
 }
 
-void Services::openUrl(const std::string& url, std::function<void(Permission::Answer answer)> callback) {
-    callback({.state = Permission::State::Unsupported, .message = "No app on the test port opens \"" + url + "\"."});
-}
-
 // This platform asks the person for none of the permissions of `Permission::Kind`, so the app always holds them.
 void Services::checkPermission(Permission::Kind, std::function<void(Permission::Answer answer)> callback) {
     callback({.state = Permission::State::Granted});
@@ -135,10 +131,6 @@ void Services::requestPermission(Permission::Kind, std::function<void(Permission
 
 std::string Services::explainBlockedSocket(std::intptr_t) {
     return {};
-}
-
-Permission::Answer Services::vibrate(float) {
-    return {.state = Permission::State::Unsupported, .message = "The test port has no vibration motor."};
 }
 
 // The test port opens no links.

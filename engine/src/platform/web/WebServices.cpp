@@ -99,20 +99,12 @@ EM_JS(char*, haylen_js_languages, (), {
     return stringToNewUTF8(Module.haylen.languages());
 });
 
-EM_JS(int, haylen_js_open_url, (const char* url), {
-    return Module.haylen.openUrl(UTF8ToString(url)) ? 1 : 0;
-});
-
 EM_JS(void, haylen_js_update_accessibility, (const char* tree), {
     Module.haylen.accessibility.update(UTF8ToString(tree));
 });
 
 EM_JS(void, haylen_js_announce, (const char* text, int interrupt), {
     Module.haylen.accessibility.announce(UTF8ToString(text), interrupt > 0);
-});
-
-EM_JS(int, haylen_js_vibrate, (float seconds), {
-    return Module.haylen.vibrate(seconds);
 });
 
 EM_JS(void, haylen_js_now_playing, (const char* json, const uint8_t* artwork, int size), {
@@ -291,15 +283,6 @@ SystemInfo Services::getSystemInfo() {
     };
 }
 
-// The page opens the url in a new tab at once, so the answer comes during the call. A browser that blocks the tab tells only that it did.
-void Services::openUrl(const std::string& url, std::function<void(Permission::Answer answer)> callback) {
-    if (haylen_js_open_url(url.c_str()) != 0) {
-        callback({.state = Permission::State::Granted});
-        return;
-    }
-    callback({.state = Permission::State::Denied, .message = "The browser blocked the new tab, because it opens one only shortly after an input of the person, such as a click or a key."});
-}
-
 // The browser tells the state of most permissions through the Permissions API, and asks the person through the API of each capability.
 void Services::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
     WebPage::checkPermission(kind, std::move(callback));
@@ -311,18 +294,6 @@ void Services::requestPermission(Permission::Kind kind, std::function<void(Permi
 
 std::string Services::explainBlockedSocket(std::intptr_t) {
     return {};
-}
-
-// The page answers 0 without the Vibration API, 1 once the device vibrates and 2 when the browser refused, as it does before the first input of the person.
-Permission::Answer Services::vibrate(float seconds) {
-    switch (haylen_js_vibrate(seconds)) {
-    case 1:
-        return {.state = Permission::State::Granted};
-    case 2:
-        return {.state = Permission::State::Denied, .message = "The browser vibrates only after an input of the person, such as a tap."};
-    default:
-        return {.state = Permission::State::Unsupported, .message = "The browser has no Vibration API."};
-    }
 }
 
 // A page is the link that opened it, and no other link reaches it.

@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 
 #include <functional>
-#include <limits>
 #include <map>
 #include <optional>
 #include <stdexcept>
@@ -187,22 +186,6 @@ TEST_F(SystemTest, KeepsTheLastReportOfEveryThread) {
     EXPECT_TRUE(state.getBattery().level.has_value());
 }
 
-TEST_F(SystemTest, OpensUrlsWithAnAnswerOnALaterFrame) {
-    test::EngineFixture fixture;
-    System& system = fixture.engine().getSystem();
-    std::vector<Permission::State> answers;
-    const auto record = [&answers](Permission::Answer answer) { answers.push_back(answer.state); };
-    system.openUrl("https://example.com", record);
-    fixture.host().setUrlAnswer({.state = Permission::State::Unsupported, .message = "No app opens the url."});
-    system.openUrl("mailto:island@example.com", record);
-    EXPECT_TRUE(answers.empty());
-
-    fixture.frames(1);
-    EXPECT_EQ(answers, (std::vector<Permission::State>{Permission::State::Granted, Permission::State::Unsupported}));
-    EXPECT_EQ(fixture.host().getOpenedUrls(), (std::vector<std::string>{"https://example.com", "mailto:island@example.com"}));
-    EXPECT_THROW(system.openUrl("", record), std::invalid_argument);
-}
-
 TEST_F(SystemTest, WritesAndReadsTheClipboardWithAnswersOnALaterFrame) {
     test::EngineFixture fixture;
     System& system = fixture.engine().getSystem();
@@ -346,22 +329,6 @@ TEST_F(SystemTest, ReadsTheAnswersOfNativeCode) {
     EXPECT_FALSE(Permission::Answer::fromJson(core::Json::array()).message.empty());
 }
 
-TEST_F(SystemTest, VibratesForAPositiveNumberOfSecondsWithAnAnswerOnALaterFrame) {
-    test::EngineFixture fixture;
-    System& system = fixture.engine().getSystem();
-    std::vector<Permission::State> answers;
-    system.vibrate(0.25F, [&answers](Permission::Answer answer) { answers.push_back(answer.state); });
-    EXPECT_EQ(fixture.host().getVibrations(), (std::vector<float>{0.25F}));
-    EXPECT_TRUE(answers.empty());
-    fixture.frames(1);
-    EXPECT_EQ(answers, (std::vector<Permission::State>{Permission::State::Granted}));
-
-    for (const float seconds : {0.0F, -1.0F, std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity()}) {
-        EXPECT_THROW(system.vibrate(seconds, {}), std::invalid_argument);
-    }
-    EXPECT_EQ(fixture.host().getVibrations().size(), 1U);
-}
-
 // Platforms report their tags as they write them, and the engine keeps the canonical form of each once, leaves out what is no tag and publishes only a list that changed.
 TEST_F(SystemTest, PublishesTheLanguagesOfTheSystemInTheirCanonicalForm) {
     test::EngineFixture fixture;
@@ -427,42 +394,6 @@ TEST(SystemLuaTest, ReportsTheInfoThemeAndBattery) {
     EXPECT_EQ(fixture.lua("local battery = system.battery() return system.theme() .. ' ' .. battery.level .. ' ' .. tostring(battery.charging) .. ' ' .. battery.state"), "dark 0.5 true charging");
 }
 
-TEST(SystemLuaTest, OpensUrlsAndVibratesOrSaysWhyNot) {
-    test::EngineFixture fixture;
-    // clang-format off
-    fixture.runLua(R"(
-        system = require('haylen.system')
-        async = require('async')
-        answers = {}
-        function remember(promise)
-            async.spawn(function()
-                local _, message, failure = promise:await()
-                answers[#answers + 1] = failure and (failure.code .. ': ' .. message) or 'done'
-            end)
-        end
-    )");
-    // clang-format on
-    fixture.runLua("remember(system.openUrl('https://example.com'))");
-    fixture.host().setUrlAnswer({.state = Permission::State::Denied, .message = "The browser blocked the new tab."});
-    fixture.runLua("remember(system.openUrl('island://settings'))");
-    fixture.runLua("remember(system.vibrate(0.25))");
-    fixture.host().setVibrationAnswer({.state = Permission::State::Unsupported, .message = "This device has no vibration motor."});
-    fixture.runLua("remember(system.vibrate(0.5)) system.vibrate(0.5)");
-    EXPECT_EQ(fixture.lua("return #answers"), "0");
-    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #answers") == "4"; }));
-    EXPECT_EQ(fixture.lua("return table.concat(answers, ' | ')"), "done | denied: The browser blocked the new tab. | done | unsupported: This device has no vibration motor.");
-    EXPECT_EQ(fixture.host().getOpenedUrls(), (std::vector<std::string>{"https://example.com", "island://settings"}));
-    EXPECT_EQ(fixture.host().getVibrations(), (std::vector<float>{0.25F, 0.5F, 0.5F}));
-
-    // A refusal that nothing awaits never stops the app.
-    fixture.frames(2);
-    EXPECT_EQ(fixture.engine().getError(), nullptr);
-    EXPECT_NE(fixture.lua("system.openUrl('')").find("Opening a url needs a url."), std::string::npos);
-    EXPECT_NE(fixture.lua("system.openUrl()").find("string expected"), std::string::npos);
-    EXPECT_NE(fixture.lua("system.vibrate(0)").find("A vibration lasts a positive number of seconds."), std::string::npos);
-    EXPECT_NE(fixture.lua("system.vibrate('long')").find("number expected"), std::string::npos);
-}
-
 TEST(SystemLuaTest, WritesAndReadsTheClipboardOrSaysWhyNot) {
     test::EngineFixture fixture;
     // clang-format off
@@ -481,10 +412,14 @@ TEST(SystemLuaTest, WritesAndReadsTheClipboardOrSaysWhyNot) {
     fixture.runLua("remember(system.setClipboard('Island seed: 184467')) remember(system.clipboard())");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #answers") == "2"; }));
     fixture.host().setClipboardAnswer({.state = Permission::State::Denied, .message = "The person has not allowed the app to read the clipboard."});
-    fixture.runLua("remember(system.setClipboard('Refused')) remember(system.clipboard())");
+    fixture.runLua("remember(system.setClipboard('Refused')) remember(system.clipboard()) system.setClipboard('Unheard')");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #answers") == "4"; }));
     EXPECT_EQ(fixture.lua("return answers[1] .. ' | ' .. answers[2]"), "nil | Island seed: 184467");
     EXPECT_EQ(fixture.lua("return answers[4]"), "denied: The person has not allowed the app to read the clipboard.");
+
+    // A refusal that nothing awaits never stops the app.
+    fixture.frames(2);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
     EXPECT_NE(fixture.lua("system.setClipboard()").find("string expected"), std::string::npos);
 }
 

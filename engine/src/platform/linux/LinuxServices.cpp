@@ -178,10 +178,6 @@ SystemInfo Services::getSystemInfo() {
     return LinuxSystem::getInfo();
 }
 
-void Services::openUrl(const std::string& url, std::function<void(Permission::Answer answer)> callback) {
-    LinuxSystem::openUrl(url, std::move(callback));
-}
-
 // Linux gates none of the permissions of the engine, the motion of controllers, every screen and the local network, for an app outside a sandbox.
 void Services::checkPermission(Permission::Kind, std::function<void(Permission::Answer answer)> callback) {
     callback({.state = Permission::State::Granted});
@@ -195,11 +191,6 @@ std::string Services::explainBlockedSocket(std::intptr_t) {
     return {};
 }
 
-Permission::Answer Services::vibrate(float) {
-    return {.state = Permission::State::Unsupported, .message = "Linux gives apps no vibration motor."};
-}
-
-// The now-playing controls of Linux desktops listen on the session bus for players that serve MPRIS, which the engine does not serve, as the reference of `haylen.system` explains.
 bool Services::forwardLink(std::string_view identifier, std::string_view url) {
     return LinuxLinks::forward(identifier, url);
 }
@@ -211,6 +202,7 @@ void Services::listenForLinks(std::string_view identifier) {
 // A minimized window keeps running its frames, so its sound plays on.
 void Services::setBackgroundAudio(bool) {}
 
+// The now-playing controls of Linux desktops listen on the session bus for players that serve MPRIS, which the engine does not serve, as the reference of `haylen.system` explains.
 void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>&) {}
 
 bool Services::isAccessibilityTreeWanted() {

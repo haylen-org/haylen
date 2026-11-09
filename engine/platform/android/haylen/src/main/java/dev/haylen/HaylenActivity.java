@@ -15,7 +15,6 @@ import android.content.res.Configuration;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.hardware.input.InputManager;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.CombinedVibration;
@@ -440,33 +439,14 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         return new JSONObject(info).toString().getBytes(StandardCharsets.UTF_8);
     }
 
-    // Called from the frame thread of the engine, which hears through `nativeUrlOpened` with the same request whether an app took the url.
-    static void openUrl(long request, byte[] url) {
-        HaylenActivity activity = HaylenBridge.activity();
-        if (activity == null) {
-            nativeUrlOpened(request, false);
-            return;
-        }
-        String address = new String(url, StandardCharsets.UTF_8);
-        activity.runOnUiThread(() -> {
-            try {
-                activity.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(address)));
-                nativeUrlOpened(request, true);
-            } catch (RuntimeException error) {
-                // No app takes the url, or Android refuses it, such as a file url that would leave the app.
-                nativeUrlOpened(request, false);
-            }
-        });
-    }
-
     // Called from the frame thread of the engine, which puts text on the clipboard of the system and hears the JSON of the answer, unsupported while no activity exists.
     static byte[] setClipboard(byte[] text) {
         HaylenActivity activity = HaylenBridge.activity();
         if (activity == null) {
-            return answer("unsupported", "The clipboard is out of reach while the app has no activity.", null);
+            return answer("unsupported", "The clipboard is out of reach while the app has no activity.");
         }
         activity.getSystemService(ClipboardManager.class).setPrimaryClip(ClipData.newPlainText("text", new String(text, StandardCharsets.UTF_8)));
-        return answer("granted", "", null);
+        return answer("granted", "");
     }
 
     // Called from the frame thread of the engine, which reads the text on the clipboard of the system, empty when it holds none or Android keeps it from an app without the focus.
@@ -477,31 +457,11 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         return text.toString().getBytes(StandardCharsets.UTF_8);
     }
 
-    // Called from the frame thread of the engine, which hears the JSON of the answer. A device without a vibrator answers unsupported, and so does an app without the permission `VIBRATE`, with what it lacks, which the log tells once.
-    static byte[] vibrate(long milliseconds) {
-        HaylenActivity activity = HaylenBridge.activity();
-        if (activity == null) {
-            return answer("unsupported", "The device vibrates only while the app has an activity.", null);
-        }
-        HaylenRequirements.Requirement requirement = HaylenRequirements.Requirement.permission(Manifest.permission.VIBRATE);
-        if (!activity.requirements.isGranted(requirement.name())) {
-            activity.requirements.report(requirement, Log.WARN, "\"system.vibrate\" fails with the code \"unsupported\"");
-            return answer("unsupported", "The engine needs " + requirement.description() + ", which the app lacks. " + requirement.instructions(), requirement);
-        }
-        Vibrator vibrator = activity.getSystemService(Vibrator.class);
-        if (vibrator == null || !vibrator.hasVibrator()) {
-            return answer("unsupported", "This device has no vibration motor.", null);
-        }
-        vibrator.vibrate(VibrationEffect.createOneShot(milliseconds, VibrationEffect.DEFAULT_AMPLITUDE));
-        return answer("granted", "", null);
-    }
-
-    // The JSON of `Permission::Answer::fromJson`, with the requirement the app lacks, if any.
-    private static byte[] answer(String state, String message, HaylenRequirements.Requirement missing) {
+    // The JSON of `Permission::Answer::fromJson`.
+    private static byte[] answer(String state, String message) {
         Map<String, Object> answer = new HashMap<>();
         answer.put("state", state);
         answer.put("message", message);
-        answer.put("missing", missing != null ? new JSONArray().put(new JSONObject(missing.toMap())) : new JSONArray());
         return new JSONObject(answer).toString().getBytes(StandardCharsets.UTF_8);
     }
 
@@ -731,7 +691,6 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     // Tells the engine whether back is down, and returns on a release whether the engine took the whole hold, so the press goes nowhere else.
     private static native boolean nativeBackHeld(boolean pressed);
 
-    private static native void nativeUrlOpened(long request, boolean opened);
 
     private static native void nativeTheme(boolean dark);
 

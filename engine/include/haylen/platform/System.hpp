@@ -53,9 +53,6 @@ class System final {
     // The languages the person prefers on the system, most preferred first, in the canonical form of BCP 47, such as `pt-BR`. The list is empty where the platform tells none.
     [[nodiscard]] const std::vector<std::string>& getLanguages() const noexcept;
 
-    // Opens the url with the app the system picks for it, such as the browser for a web page, and calls back at a later pump with `Granted` once an app took it, `Unsupported` when no app opens it or `Denied` when the platform refused it, such as a browser that opens a tab only shortly after an input of the person. Throws `std::invalid_argument` for an empty url.
-    void openUrl(std::string_view url, std::function<void(Permission::Answer answer)> callback);
-
     // The text on the clipboard for a paste of the person into a field of the UI, or an empty string when it holds no text.
     [[nodiscard]] std::string getClipboard() const;
 
@@ -74,9 +71,6 @@ class System final {
     // Reads or asks for a permission by its name: a kind of the engine, or a permission that a plugin of the app declares in its `plugin.json`, which the bridge asks the native part of the plugin for through `<id>.permission` and `<id>.requestPermission` with `{"name": name}`, and whose answer comes at a later frame. A plugin without a native part on this platform, or one that does not answer the method, answers `Unsupported` with the reason. Throws `std::invalid_argument` for a name that neither the engine nor a plugin of the app owns, and `std::runtime_error` when the plugins of the app cannot be read.
     void checkPermission(std::string_view name, std::function<void(Permission::Answer answer)> callback);
     void requestPermission(std::string_view name, std::function<void(Permission::Answer answer)> callback);
-
-    // Vibrates the device for the given seconds and calls back at a later pump with `Granted` once it vibrated, or with `Denied` or `Unsupported` and the sentence that says why, such as a device without a motor. Throws `std::invalid_argument` unless the seconds are positive.
-    void vibrate(float seconds, std::function<void(Permission::Answer answer)> callback);
 
     // Runs the low and the high frequency motors of a gamepad, each from 0 to 1, for the seconds, where the gamepad and the platform rumble. Throws `std::invalid_argument` for a gamepad outside `input::Input::kMaxGamepads`, an intensity outside 0 to 1 or seconds that are not positive.
     void rumbleGamepad(std::size_t index, float low, float high, float seconds);

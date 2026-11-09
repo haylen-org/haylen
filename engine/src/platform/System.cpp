@@ -46,13 +46,6 @@ const std::vector<std::string>& System::getLanguages() const noexcept {
     return languages;
 }
 
-void System::openUrl(std::string_view url, std::function<void(Permission::Answer answer)> callback) {
-    if (url.empty()) {
-        throw std::invalid_argument("Opening a url needs a url.");
-    }
-    host.openUrl(url, awaitAnswer(std::move(callback)));
-}
-
 std::string System::getClipboard() const {
     return host.getClipboard();
 }
@@ -119,14 +112,6 @@ Permission::Answer System::readPluginAnswer(const std::string& plugin, const std
         return {.state = Permission::State::Unsupported, .message = std::format("The plugin \"{}\" that owns the permission \"{}\" offers no part on this platform that answers it.", plugin, name)};
     }
     return {.state = Permission::State::Unsupported, .message = std::format("The plugin \"{}\" failed to answer the permission \"{}\". {}", plugin, name, result.error.message)};
-}
-
-// The platform answers during the call.
-void System::vibrate(float seconds, std::function<void(Permission::Answer answer)> callback) {
-    if (!std::isfinite(seconds) || seconds <= 0.0F) {
-        throw std::invalid_argument("A vibration lasts a positive number of seconds.");
-    }
-    awaitAnswer(std::move(callback))(host.vibrate(seconds));
 }
 
 // The platform may answer during the call, and the answer waits for the next pump like any other. A call without a callback, such as a copy of the UI, keeps none.

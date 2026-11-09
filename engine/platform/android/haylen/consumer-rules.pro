@@ -28,8 +28,6 @@
     static void keepScreenOn(boolean);
     static void captureBack(boolean);
     static byte[] systemInfo();
-    static void openUrl(long, byte[]);
-    static byte[] vibrate(long);
     static void rumbleGamepad(int, float, float, long);
     static byte[] setClipboard(byte[]);
     static byte[] clipboard();

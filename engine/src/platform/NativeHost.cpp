@@ -322,20 +322,12 @@ AccessibilitySettings NativeHost::getAccessibilitySettings() const {
     return getSystemState().getAccessibility();
 }
 
-void NativeHost::openUrl(std::string_view url, std::function<void(Permission::Answer answer)> callback) {
-    Services::openUrl(std::string(url), std::move(callback));
-}
-
 void NativeHost::setBackgroundAudio(bool value) {
     Services::setBackgroundAudio(value);
 }
 
 void NativeHost::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {
     Services::setNowPlaying(value);
-}
-
-Permission::Answer NativeHost::vibrate(float seconds) {
-    return Services::vibrate(seconds);
 }
 
 bool NativeHost::isAccessibilityTreeWanted() const {

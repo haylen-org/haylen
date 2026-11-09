@@ -1,6 +1,6 @@
 # 📖 `haylen.system`
 
-The module `haylen.system` tells what the device and its operating system are, and follows the theme, the battery, the power saving mode, the time zone and the languages of the system. It also offers services that every system has. It opens a url with the app that handles it, reads and writes the clipboard, vibrates the device, and checks and asks for the [permissions](#permissions) that a system grants while the app runs, those of the engine and those of the plugins of the app, with one vocabulary of states on every platform. It shows what the app plays in the now-playing controls of the system, whose media keys and buttons reach the app. Use it to know the languages the person prefers, to match the colors of the app to the system, to do less work on a low battery or while the system saves power, and for links to web pages, stores and mail. Native message boxes and file pickers live in [`haylen.dialogs`](dialogs.md), and the methods of the app and its plugins live in [`haylen.platform`](platform.md).
+The module `haylen.system` tells what the device and its operating system are, and follows the theme, the battery, the power saving mode, the time zone and the languages of the system. It also offers services that every system has. It reads and writes the clipboard, and checks and asks for the [permissions](#permissions) that a system grants while the app runs, those of the engine and those of the plugins of the app, with one vocabulary of states on every platform. It shows what the app plays in the now-playing controls of the system, whose media keys and buttons reach the app. Use it to know the languages the person prefers, to match the colors of the app to the system, and to do less work on a low battery or while the system saves power. Optional capabilities of the device, such as opening links or vibrating, live in plugins. Native message boxes and file pickers live in [`haylen.dialogs`](dialogs.md), and the methods of the app and its plugins live in [`haylen.platform`](platform.md).
 
 ```lua
 local system = require('haylen.system')
@@ -113,24 +113,6 @@ events.on('timeZoneChanged', function(change)
 end)
 ```
 
-### system.openUrl(url)
-
-Opens `url` with the app that the system picks for it: the browser for a web page, the store for a store link or the mail app for a `mailto:` link. It returns a Varn promise that resolves on a later frame, with nothing once an app took the url. A url that is not a string raises a bad argument error, and an empty url raises `Opening a url needs a url.`.
-
-The promise rejects with a [failure](#failures) of the code `'unsupported'` when no app on the device opens the url, such as an unknown scheme, and of the code `'denied'` when the browser blocked the new tab, which it does without an input of the person shortly before, such as a click or a key. Every platform opens urls: macOS through the workspace, iOS, iPadOS, Mac Catalyst and tvOS through the application, Android with a view intent, Windows through the shell, Linux with `xdg-open` and the web in a new tab.
-
-```lua
-local async = require('async')
-local system = require('haylen.system')
-
-async.spawn(function()
-    local _, message = system.openUrl('https://example.com/tiny-island'):await()
-    if message then
-        print(message)
-    end
-end)
-```
-
 ### system.clipboard()
 
 Reads the text on the clipboard of the system. It returns a Varn promise that resolves on a later frame with the text, or with an empty string when the clipboard holds no text. Some systems ask the person before an app reads text that another app wrote, and the promise waits for the answer. A refusal rejects with a [failure](#failures) of the code `'denied'` and the sentence that says why, since the clipboard has no permission of its own to check beforehand. The engine keeps up to 64 KiB of clipboard text on macOS, Windows, Linux and the Apple TV.
@@ -174,27 +156,6 @@ async.spawn(function()
         print('The seed shows on the screen instead, because ' .. message)
     end
 end)
-```
-
-### system.vibrate(seconds)
-
-Vibrates the device for `seconds`. It returns a Varn promise that resolves on a later frame, with nothing once the device vibrated. A number that is not positive raises `A vibration lasts a positive number of seconds.`.
-
-- Android phones, and the browsers of phones with the Vibration API, vibrate for the time given.
-- iPhones play a medium impact on their haptic engine, whatever the time.
-- The other devices have no motor that apps reach, so the promise rejects with a [failure](#failures) of the code `'unsupported'` and the reason, such as `A Mac has no vibration motor.`.
-- A browser vibrates only after an input of the person, such as a tap, and rejects with the code `'denied'` before.
-
-On Android the app needs the permission `android.permission.VIBRATE`, which the manifest of the Android template declares. Without it the promise rejects with the code `'unsupported'` and `data.missing`, as [Android permissions](#android-permissions) describes. A vibration often plays on its own, such as on every hit, so the engine logs each reason of a refusal once and a rejection that nothing awaits never stops the app.
-
-```lua
-local system = require('haylen.system')
-
-local function onHit()
-    system.vibrate(0.08)
-end
-
-onHit()
 ```
 
 ### system.permission(name)
@@ -435,7 +396,7 @@ The engine library of Android declares no permission, so the manifest of the app
 
 | Permission | Feature | Without it |
 | --- | --- | --- |
-| `android.permission.VIBRATE` | `system.vibrate`. | It rejects with the code `'unsupported'` and `data.missing`, which the log tells once as a warning. |
+| `android.permission.VIBRATE` | The rumble of gamepads, [`input.rumble`](input.md#inputrumbleindex-options). | The gamepad never rumbles, which the log tells once as a warning. |
 | `android.permission.ACCESS_NETWORK_STATE` | The network state of [`haylen.networkState()`](haylen.md#haylennetworkstate) and the events `networkOnline` and `networkOffline` of [`haylen.events`](events.md#engine-events), which the platform reports as `networkChanged`. | The engine never follows the network. The state stays `'unknown'` and the events never fire, which the log tells once at the info level. |
 | `android.permission.INTERNET` | Network access: the `http` and `socket` modules of Varn and [`haylen.net`](net.md). | Connections fail. The `error` events of `haylen.net` sockets end with a sentence that names the missing permission and how to add it, while Varn reports what the system tells it. |
 | `android.permission.ACCESS_LOCAL_NETWORK` | Reaching the devices of the local network from Android 17, for an app that targets it. The person grants it at run time, so the app asks with [`system.requestPermission('localNetwork')`](#systemrequestpermissionname), and the development session of a debug build asks by itself before it reaches a development server outside the device. | The request fails with the code `'unsupported'`. Android drops the packets of a connection to the local network, so `haylen.net` sockets and connects of the `socket` module fail at once with a sentence that names the permission, the requests of the `http` module that fail end with a sentence that says that access to the local network is not granted, and the development session says why it does not connect. |
@@ -454,21 +415,19 @@ The function `engine.getSystem()` returns the `haylen::platform::System` of the 
 | `getPowerSaving()` | A `std::optional<bool>`, empty where the platform does not tell. |
 | `getTimeZone()` | The IANA name of the time zone, empty where the platform does not tell. |
 | `getLanguages()` | The languages that the person prefers, most preferred first, in their canonical form. |
-| `openUrl(url, callback)` | Opens the url and calls back on the frame thread, at a later frame, with a `haylen::platform::Permission::Answer`, whose state is `Granted`, or `Denied` or `Unsupported` with the sentence in `message`. |
 | `getClipboard()` | The text on the clipboard for a paste of the person into a field of the UI. |
-| `readClipboard(callback)` | Reads the text on the clipboard for the app and calls back at a later frame with an `Answer` and the text. |
+| `readClipboard(callback)` | Reads the text on the clipboard for the app and calls back on the frame thread, at a later frame, with a `haylen::platform::Permission::Answer` and the text. The state of the answer is `Granted`, or `Denied` or `Unsupported` with the sentence in `message`. |
 | `setClipboard(text, callback)` | Puts the text on the clipboard and calls back at a later frame with an `Answer`. |
-| `vibrate(seconds, callback)` | Vibrates the device and calls back at a later frame with an `Answer`. |
 | `checkPermission(kind, callback)` | Reads the state of a `Permission::Kind` of the engine, `Screens` or `LocalNetwork`, and calls back at a later frame with an `Answer`, whose state is `Unsupported` with the reason where the platform has no such capability. |
 | `requestPermission(kind, callback)` | Asks the person for a permission of the engine and calls back at a later frame with an `Answer`, whose `missing` lists what the project of the app lacks. |
 | `checkPermission(name, callback)`, `requestPermission(name, callback)` | The same by the name of `system.permission`, for a permission of the engine or one that a plugin of the app declares, which the bridge asks the native part of the plugin for. They throw `std::invalid_argument` for a name that nobody owns, and `std::runtime_error` when the plugins of the app cannot be read. |
 
-The functions `openUrl` and `vibrate` throw `std::invalid_argument` for the values that Lua rejects. The function `graphics::Device::getAdapterName()` names the GPU on its own.
+The function `graphics::Device::getAdapterName()` names the GPU on its own.
 
 ```cpp
 const haylen::platform::SystemInfo& info = engine.getSystem().getInfo();
 haylen::core::Log::info("Running on {} with {} cores", haylen::platform::SystemInfo::osName(info.os), info.cpuCores);
-engine.getSystem().openUrl("https://example.com", [](haylen::platform::Permission::Answer answer) {
-    haylen::core::Log::info("The page {}", answer.state == haylen::platform::Permission::State::Granted ? "opened" : answer.message);
+engine.getSystem().setClipboard(info.deviceModel, [](haylen::platform::Permission::Answer answer) {
+    haylen::core::Log::info("The copy {}", answer.state == haylen::platform::Permission::State::Granted ? "landed" : answer.message);
 });
 ```
