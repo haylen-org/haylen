@@ -1,6 +1,9 @@
 #include "debug/Debugger.hpp"
 
 #include <algorithm>
+#include <cstdint>
+#include <format>
+#include <stdexcept>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -38,7 +41,10 @@ void Debugger::detach() noexcept {
 
 // A message that is no request of the protocol reaches nothing, since the client only ever sends requests.
 void Debugger::receive(core::Json message) {
-    if (!message.is_object() || message.value("type", "") != "request" || !message.contains("command") || !message.at("command").is_string()) {
+    const bool request = message.is_object() && message.contains("type") && message.at("type") == "request";
+    const bool named = request && message.contains("command") && message.at("command").is_string();
+    const bool numbered = request && (!message.contains("seq") || message.at("seq").is_number_integer());
+    if (!named || !numbered) {
         core::Log::warning("The debugger received a message that is no request of the Debug Adapter Protocol.");
         return;
     }
@@ -137,7 +143,17 @@ void Debugger::halt(const Tracer::Halt& value) {
     }
 }
 
+// A request whose fields have other types than the protocol gives them fails with a message that names the field, and nothing of it takes effect.
 void Debugger::handle(const core::Json& request, lua_State* L) {
+    try {
+        const core::Json arguments = readObject(request, "arguments");
+        dispatch(request, arguments, L);
+    } catch (const std::invalid_argument& error) {
+        fail(request, error.what());
+    }
+}
+
+void Debugger::dispatch(const core::Json& request, const core::Json& arguments, lua_State* L) {
     const std::string command = request.at("command").get<std::string>();
     if (command == "initialize") {
         respond(request, getCapabilities());
@@ -153,9 +169,9 @@ void Debugger::handle(const core::Json& request, lua_State* L) {
         reset();
         respond(request);
     } else if (command == "setBreakpoints") {
-        setBreakpoints(request, L);
+        setBreakpoints(request, arguments, L);
     } else if (command == "setExceptionBreakpoints") {
-        setExceptionBreakpoints(request, L);
+        setExceptionBreakpoints(request, arguments, L);
     } else if (command == "threads") {
         respond(request, {{"threads", {{{"id", kThreadId}, {"name", "Lua"}}}}});
     } else if (command == "stackTrace") {
@@ -163,11 +179,11 @@ void Debugger::handle(const core::Json& request, lua_State* L) {
             fail(request, "The app runs, so it has no stack to show. Pause it first.");
             return;
         }
-        respond(request, stack->getFrames(readInt(request, "startFrame", 0), readInt(request, "levels", 0)));
+        respond(request, stack->getFrames(readInt(arguments, "startFrame", 0), readInt(arguments, "levels", 0)));
     } else if (command == "scopes" || command == "variables") {
         core::Json body;
         if (isHalted()) {
-            body = command == "scopes" ? stack->getScopes(readInt(request, "frameId", 0)) : stack->getVariables(readInt(request, "variablesReference", 0), readInt(request, "start", 0), readInt(request, "count", 0));
+            body = command == "scopes" ? stack->getScopes(readInt(arguments, "frameId", 0)) : stack->getVariables(readInt(arguments, "variablesReference", 0), readInt(arguments, "start", 0), readInt(arguments, "count", 0));
         }
         if (body.is_null()) {
             fail(request, isHalted() ? "The frame or the variable no longer exists." : "The app runs, so it has no values to show. Pause it first.");
@@ -175,7 +191,7 @@ void Debugger::handle(const core::Json& request, lua_State* L) {
         }
         respond(request, std::move(body));
     } else if (command == "evaluate") {
-        evaluate(request, L);
+        evaluate(request, arguments, L);
     } else if (command == "continue") {
         resume(request, Resume::Continue);
     } else if (command == "next") {
@@ -202,10 +218,8 @@ core::Json Debugger::getCapabilities() const {
 }
 
 // The development server turns the paths of the client into package paths, such as `source/main.lua`, which name the chunks of the app.
-void Debugger::setBreakpoints(const core::Json& request, lua_State* L) {
-    const core::Json arguments = request.value("arguments", core::Json::object());
-    const core::Json source = arguments.value("source", core::Json::object());
-    const std::string path = source.value("path", "");
+void Debugger::setBreakpoints(const core::Json& request, const core::Json& arguments, lua_State* L) {
+    const std::string path = readText(readObject(arguments, "source"), "path");
     if (path.empty()) {
         fail(request, "The breakpoints name no source path.");
         return;
@@ -214,10 +228,13 @@ void Debugger::setBreakpoints(const core::Json& request, lua_State* L) {
     const bool halts = host.canHaltFrames();
     std::vector<Breakpoints::Request> requests;
     std::vector<std::size_t> kept;
-    const core::Json asked = arguments.value("breakpoints", core::Json::array());
+    const core::Json asked = readArray(arguments, "breakpoints");
     for (std::size_t index = 0; index < asked.size(); ++index) {
         const core::Json& item = asked[index];
-        Breakpoints::Request entry{.line = item.value("line", 0), .condition = item.value("condition", ""), .hitCondition = item.value("hitCondition", ""), .logMessage = item.value("logMessage", "")};
+        if (!item.is_object()) {
+            throw std::invalid_argument("Every item of the field \"breakpoints\" of the request must be an object.");
+        }
+        Breakpoints::Request entry{.line = readInt(item, "line", 0), .condition = readText(item, "condition"), .hitCondition = readText(item, "hitCondition"), .logMessage = readText(item, "logMessage")};
         if (!halts && entry.logMessage.empty()) {
             continue;
         }
@@ -238,7 +255,7 @@ void Debugger::setBreakpoints(const core::Json& request, lua_State* L) {
             breakpoints.push_back(std::move(item));
             continue;
         }
-        breakpoints.push_back({{"verified", false}, {"line", asked[index].value("line", 0)}, {"message", "A web page cannot halt, since it runs the app on the thread that delivers every message, so only log points work there."}});
+        breakpoints.push_back({{"verified", false}, {"line", readInt(asked[index], "line", 0)}, {"message", "A web page cannot halt, since it runs the app on the thread that delivers every message, so only log points work there."}});
     }
     if (state != nullptr) {
         tracer.refresh(L);
@@ -246,8 +263,8 @@ void Debugger::setBreakpoints(const core::Json& request, lua_State* L) {
     respond(request, {{"breakpoints", std::move(breakpoints)}});
 }
 
-void Debugger::setExceptionBreakpoints(const core::Json& request, lua_State* L) {
-    const core::Json filters = request.value("arguments", core::Json::object()).value("filters", core::Json::array());
+void Debugger::setExceptionBreakpoints(const core::Json& request, const core::Json& arguments, lua_State* L) {
+    const core::Json filters = readArray(arguments, "filters");
     tracer.setErrorsWatched(host.canHaltFrames() && std::find(filters.begin(), filters.end(), core::Json(kErrorFilter)) != filters.end());
     if (state != nullptr) {
         tracer.refresh(L);
@@ -256,14 +273,14 @@ void Debugger::setExceptionBreakpoints(const core::Json& request, lua_State* L) 
 }
 
 // An evaluation while the app runs sees the globals, and one in a frame of a halt sees that frame. Values that hold more values open in the client only during a halt, whose view keeps them.
-void Debugger::evaluate(const core::Json& request, lua_State* L) {
+void Debugger::evaluate(const core::Json& request, const core::Json& arguments, lua_State* L) {
     if (state == nullptr) {
         fail(request, "No app runs, so nothing can be evaluated.");
         return;
     }
-    const std::string expression = readText(request, "expression");
+    const std::string expression = readText(arguments, "expression");
     const int top = lua_gettop(L);
-    const int frameId = readInt(request, "frameId", 0);
+    const int frameId = readInt(arguments, "frameId", 0);
     if (isHalted() && frameId > 0) {
         if (!stack->pushEnvironment(frameId)) {
             fail(request, "The frame no longer exists.");
@@ -333,16 +350,49 @@ void Debugger::sendEvent(const std::string& event, core::Json body) {
     send({{"seq", ++sequence}, {"type", "event"}, {"event", event}, {"body", std::move(body)}});
 }
 
-int Debugger::readInt(const core::Json& request, const char* key, int fallback) {
-    const core::Json arguments = request.value("arguments", core::Json::object());
-    const auto found = arguments.find(key);
-    return found != arguments.end() && found->is_number_integer() ? found->get<int>() : fallback;
+core::Json Debugger::readObject(const core::Json& object, const char* key) {
+    const auto found = object.find(key);
+    if (found == object.end()) {
+        return core::Json::object();
+    }
+    if (!found->is_object()) {
+        throw std::invalid_argument(std::format("The field \"{}\" of the request must be an object.", key));
+    }
+    return *found;
 }
 
-std::string Debugger::readText(const core::Json& request, const char* key) {
-    const core::Json arguments = request.value("arguments", core::Json::object());
-    const auto found = arguments.find(key);
-    return found != arguments.end() && found->is_string() ? found->get<std::string>() : std::string();
+core::Json Debugger::readArray(const core::Json& object, const char* key) {
+    const auto found = object.find(key);
+    if (found == object.end()) {
+        return core::Json::array();
+    }
+    if (!found->is_array()) {
+        throw std::invalid_argument(std::format("The field \"{}\" of the request must be an array.", key));
+    }
+    return *found;
+}
+
+int Debugger::readInt(const core::Json& object, const char* key, int fallback) {
+    const auto found = object.find(key);
+    if (found == object.end()) {
+        return fallback;
+    }
+    const bool fits = found->is_number_unsigned() ? std::in_range<int>(found->get<std::uint64_t>()) : found->is_number_integer() && std::in_range<int>(found->get<std::int64_t>());
+    if (!fits) {
+        throw std::invalid_argument(std::format("The field \"{}\" of the request must be an integer of 32 bits.", key));
+    }
+    return found->get<int>();
+}
+
+std::string Debugger::readText(const core::Json& object, const char* key) {
+    const auto found = object.find(key);
+    if (found == object.end()) {
+        return {};
+    }
+    if (!found->is_string()) {
+        throw std::invalid_argument(std::format("The field \"{}\" of the request must be a string.", key));
+    }
+    return found->get<std::string>();
 }
 
 } // namespace haylen::debug

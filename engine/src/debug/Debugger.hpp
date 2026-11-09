@@ -91,20 +91,23 @@ class Debugger final {
     };
 
     void handle(const core::Json& request, lua_State* L);
+    void dispatch(const core::Json& request, const core::Json& arguments, lua_State* L);
     void respond(const core::Json& request, core::Json body = core::Json::object());
     void fail(const core::Json& request, const std::string& message);
     void sendEvent(const std::string& event, core::Json body = core::Json::object());
 
     [[nodiscard]] core::Json getCapabilities() const;
-    void setBreakpoints(const core::Json& request, lua_State* L);
-    void setExceptionBreakpoints(const core::Json& request, lua_State* L);
-    void evaluate(const core::Json& request, lua_State* L);
+    void setBreakpoints(const core::Json& request, const core::Json& arguments, lua_State* L);
+    void setExceptionBreakpoints(const core::Json& request, const core::Json& arguments, lua_State* L);
+    void evaluate(const core::Json& request, const core::Json& arguments, lua_State* L);
     void resume(const core::Json& request, Resume value);
     void pause(const core::Json& request, lua_State* L);
 
-    // Reads a field of the arguments of a request, or the fallback when it is missing or of another type.
-    [[nodiscard]] static int readInt(const core::Json& request, const char* key, int fallback);
-    [[nodiscard]] static std::string readText(const core::Json& request, const char* key);
+    // Reads a field of an object of a request, or an empty value or the fallback when it is missing. A field of another type than the protocol gives it throws `std::invalid_argument` with a message that names it, which fails the request.
+    [[nodiscard]] static core::Json readObject(const core::Json& object, const char* key);
+    [[nodiscard]] static core::Json readArray(const core::Json& object, const char* key);
+    [[nodiscard]] static int readInt(const core::Json& object, const char* key, int fallback);
+    [[nodiscard]] static std::string readText(const core::Json& object, const char* key);
 
     platform::Host& host;
     Send send;

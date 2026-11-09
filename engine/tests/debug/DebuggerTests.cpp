@@ -443,6 +443,22 @@ TEST_F(DebuggerTest, KeepsTheBreakpointsWhenTheAppRestarts) {
     EXPECT_EQ(client.getEvents("stopped").size(), 1U);
 }
 
+// A request with a field of another type than the protocol gives it fails with a message that names the field, and the debugger goes on serving the requests after it.
+TEST_F(DebuggerTest, AnswersAMalformedRequestWithAnErrorThatNamesTheField) {
+    client.connect(fixture.lua());
+    const int line = client.request("setBreakpoints", breakpoints({{{"line", "3"}}}));
+    const int arguments = client.request("setExceptionBreakpoints", {{"filters", "uncaught"}});
+    const int wide = client.request("setBreakpoints", breakpoints({{{"line", 4294967301LL}}}));
+    const int set = client.request("setBreakpoints", breakpoints({{{"line", 3}}}));
+    client.getDebugger().update(fixture.lua());
+
+    EXPECT_FALSE(client.getResponse(line).at("success").get<bool>());
+    EXPECT_EQ(client.getResponse(line).at("message"), "The field \"line\" of the request must be an integer of 32 bits.");
+    EXPECT_EQ(client.getResponse(arguments).at("message"), "The field \"filters\" of the request must be an array.");
+    EXPECT_EQ(client.getResponse(wide).at("message"), "The field \"line\" of the request must be an integer of 32 bits.");
+    EXPECT_EQ(client.getResponse(set).at("body").at("breakpoints").at(0).at("verified"), true);
+}
+
 // A web page cannot halt, so it keeps the log points and says why the other breakpoints never take effect.
 TEST_F(DebuggerWebTest, KeepsOnlyTheLogPointsOnAPageThatCannotHalt) {
     fixture.host().setHaltable(false);

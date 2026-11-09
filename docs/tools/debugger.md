@@ -10,6 +10,8 @@ The engine runs the debugger itself, inside the development session of the app. 
 editor ── TCP port 4711 ── haylen.py run ── development connection ── app
 ```
 
+The app answers a request whose field has another type than the protocol gives it with an error that names the field, such as `The field "line" of the request must be an integer of 32 bits.`, and nothing of that request takes effect.
+
 The same path reaches every platform: the desktop player, the iOS, tvOS and visionOS simulators, Mac Catalyst, the Android emulator through the `adb reverse` that the development server already sets up, iPhones, iPads, Apple TVs and Android devices on your network, and the web page. So you never forward a port yourself.
 
 Only an app in development has a debugger. That is an app that `haylen.py run` starts in the `Debug` configuration, which passes `--dev-server`, or a web page that `run --platform web` serves. An app built from the templates without `haylen.py run`, a shipped app and a protected release never run in development, so their Lua has no hooks and no port listens for an editor.
