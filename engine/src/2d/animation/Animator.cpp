@@ -67,6 +67,9 @@ void Animator::seek(float value) {
     if (current.empty()) {
         return;
     }
+    if (!std::isfinite(value)) {
+        throw std::invalid_argument("An animator seeks only to a finite time.");
+    }
     time = value;
     frame = getAnimation(current).frameAt(time);
 }
@@ -128,7 +131,11 @@ void Animator::advance(const Animation& active, float amount) {
     }
 
     const float previous = time;
-    time += amount * speed;
+    const float next = time + amount * speed;
+    if (!std::isfinite(next)) {
+        throw std::invalid_argument("An animator advances only to a finite time, so its speed and its steps are finite numbers.");
+    }
+    time = next;
     const float cycle = active.getCycleDuration();
     if (time < previous) {
         const std::size_t shown = active.frameAt(time);

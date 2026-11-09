@@ -510,7 +510,7 @@ scene.push({
 
 ### animator:seek(time)
 
-Moves the current animation to `time` and shows the frame there. The time is in seconds, or in ticks for an animation that counts ticks. It calls none of `onFrame`, `onEvent` and `onComplete`. Use it when a character switches to another animation and keeps its step, such as when it turns around. Before the first `play`, it does nothing. A `time` that is not a number raises an argument error.
+Moves the current animation to `time` and shows the frame there. The time is in seconds, or in ticks for an animation that counts ticks. It calls none of `onFrame`, `onEvent` and `onComplete`. Use it when a character switches to another animation and keeps its step, such as when it turns around. Before the first `play`, it does nothing. A `time` that is not a number raises an argument error, and an infinite or undefined time raises `An animator seeks only to a finite time.`
 
 ```lua
 local animation2d = require('haylen.animation2d')
@@ -557,7 +557,7 @@ animator:clearQueue()
 
 ### animator:update(dt)
 
-Advances the current animation by `dt` seconds times `speed`. It calls `onFrame` and `onEvent` for every frame it enters, in order, even the frames a long update passes, and `onComplete`, and starts the next queued animation when the current pass ends. The events of the first frame run with the first update after an animation starts. A looping animation that a single update moves more than two cycles reports only the frames of its last two cycles. A callback that plays another animation stops the reports of the old one. Errors raised by the callbacks propagate out of `update`. An animation that counts ticks raises `The animation "<name>" counts ticks, so it advances with "step".`
+Advances the current animation by `dt` seconds times `speed`. It calls `onFrame` and `onEvent` for every frame it enters, in order, even the frames a long update passes, and `onComplete`, and starts the next queued animation when the current pass ends. The events of the first frame run with the first update after an animation starts. A looping animation that a single update moves more than two cycles reports only the frames of its last two cycles. A callback that plays another animation stops the reports of the old one. Errors raised by the callbacks propagate out of `update`. An animation that counts ticks raises `The animation "<name>" counts ticks, so it advances with "step".`, and an update or a `speed` that takes the time past every finite number raises `An animator advances only to a finite time, so its speed and its steps are finite numbers.`
 
 ### animator:step(ticks)
 

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -176,6 +177,20 @@ TEST_F(AnimatorTest, StopsTheStepWhenACallbackReplacesTheAnimation) {
     animator.update(0.35F);
     EXPECT_EQ(events, (std::vector<std::string>{"run:1", "run:2", "run:3"}));
     EXPECT_LT(animator.getFrame(), 2U);
+}
+
+TEST_F(AnimatorTest, RefusesTimesThatAreNotFinite) {
+    test::EngineFixture fixture;
+    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 16));
+    animation2d::Animator animator;
+    animator.add("run", makeStrip(texture, animation2d::Animation::Loop::Loop));
+    animator.play("run");
+
+    EXPECT_THROW(animator.update(std::numeric_limits<float>::infinity()), std::invalid_argument);
+    EXPECT_THROW(animator.seek(std::numeric_limits<float>::infinity()), std::invalid_argument);
+    animator.speed = std::numeric_limits<float>::infinity();
+    EXPECT_THROW(animator.update(0.1F), std::invalid_argument);
+    EXPECT_EQ(animator.getTime(), 0.0F);
 }
 
 TEST_F(AnimatorTest, QueuesAnimationsAfterTheCurrentPass) {
