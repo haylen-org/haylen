@@ -13,7 +13,7 @@ return {
         {code = 'PLT-007', title = 'Launching apps', description = 'A small app package that the test writes into its storage and launches in place of the project, whose quit starts the project again.', module = 'launching'},
         {code = 'PLT-008', title = 'Displays', description = 'Every display where it sits with its id, scale, rate and modes, the window moved to another display, fullscreen on it and in its lowest mode, and the events of the displays.', module = 'displays'},
         {code = 'PLT-009', title = 'Second display', description = 'A scoreboard on a display other than the one of the window, drawn into the target of an output every frame, with its preview, its events and the clicks on its window.', module = 'second-display'},
-        {code = 'PLT-010', title = 'Permissions', description = 'The state of every permission of the engine on this platform, a request for each one, and the errors of a clipboard and motion sensors that the person refused.', module = 'permissions'},
+        {code = 'PLT-010', title = 'Permissions', description = 'The state of every permission of the engine on this platform, a request for each one, and the error of a clipboard that the person refused.', module = 'permissions'},
         {code = 'PLT-011', title = 'Frame rate', description = 'The app aiming for every refresh of the display or for 120, 60, 30 or 24 frames per second, with the frames it played in the last second, a ball that swings by the real time and a mark for each frame.', module = 'frame-rate'},
     },
 }

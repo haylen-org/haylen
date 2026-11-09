@@ -26,7 +26,7 @@ class VirtualInput;
 // Maps named gameplay actions to devices in definition order. Buttons report edges, axes report [-1, 1] and vectors report a length up to 1.
 class ActionMap final {
   public:
-    // One physical or virtual input written as `key:w`, `mouse:left`, `button:south`, `axis:leftY-`, `stick:left`, `tilt:x+`, `stick:tilt`, `virtual:attack` or `virtualStick:move`. The tilt reads how far the device or a gamepad leans, as `Input::getTilt` measures it, one direction of one axis at a time or as a whole stick.
+    // One physical or virtual input written as `key:w`, `mouse:left`, `button:south`, `axis:leftY-`, `stick:left`, `tilt:x+`, `stick:tilt`, `virtual:attack` or `virtualStick:move`. The tilt reads how far a gamepad leans, as `Input::getGamepadTilt` measures it, one direction of one axis at a time or as a whole stick.
     struct Binding {
         enum class Source : std::uint8_t {
             Key,
@@ -85,7 +85,7 @@ class ActionMap final {
         static const std::array<std::pair<std::string_view, Type>, 3> kTypeNames;
     };
 
-    // The devices whose bindings a map reads: the keyboard, the mouse, every gamepad, one gamepad or none, the motion of the device, and the virtual controls, whose names the prefix goes in front of, so `virtual:jump` reads the virtual button `p2.jump` in a map with the prefix `p2.`. The tilt bindings read the device while `motion` holds and the gamepads that the map reads.
+    // The devices whose bindings a map reads: the keyboard, the mouse, every gamepad, one gamepad or none, and the virtual controls, whose names the prefix goes in front of, so `virtual:jump` reads the virtual button `p2.jump` in a map with the prefix `p2.`. The tilt bindings read the gamepads that the map reads.
     struct Devices {
         enum class Gamepads : std::uint8_t {
             Every,
@@ -97,7 +97,6 @@ class ActionMap final {
         bool mouse = true;
         Gamepads gamepads = Gamepads::Every;
         std::size_t gamepad = 0;
-        bool motion = true;
         bool virtualControls = true;
         std::string virtualPrefix;
 

@@ -4,8 +4,6 @@
 #include <cmath>
 #include <limits>
 
-#include "platform/MotionFrame.hpp"
-
 namespace haylen::platform::sdl {
 
 Gamepads::~Gamepads() {
@@ -59,7 +57,7 @@ void Gamepads::rumble(std::size_t slot, float low, float high, float seconds) co
     SDL_RumbleGamepad(pad, strength(low), strength(high), static_cast<Uint32>(std::max(milliseconds, 0.0)));
 }
 
-void Gamepads::setMotion(input::MotionSensors::Sensors sensors) {
+void Gamepads::setMotion(input::GamepadMotion::Sensors sensors) {
     motion = sensors;
     for (SDL_Gamepad* pad : opened) {
         applyMotion(pad);
@@ -133,8 +131,12 @@ void Gamepads::readMotion(SDL_Gamepad* pad, input::GamepadState& state) {
             continue;
         }
         state.motion.sensors.set(slot);
-        (sensor == input::MotionSensor::Accelerometer ? state.motion.acceleration : state.motion.rotationRate) = MotionFrame::fromGamepadAxes(values);
+        (sensor == input::MotionSensor::Accelerometer ? state.motion.acceleration : state.motion.rotationRate) = toFlatAxes(values);
     }
+}
+
+std::array<float, 3> Gamepads::toFlatAxes(const std::array<float, 3>& value) noexcept {
+    return {value[0], -value[2], value[1]};
 }
 
 // The fingers of every touchpad of the controller fill the slots in order, as many as fit.

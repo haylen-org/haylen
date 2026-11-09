@@ -31,7 +31,7 @@ class ActionMapLua final {
   private:
     using Operation = int (*)(lua_State*, ActionMap&, int);
 
-    static constexpr std::array<std::string_view, 6> kDeviceOptions{"keyboard", "mouse", "gamepad", "motion", "virtual", "virtualPrefix"};
+    static constexpr std::array<std::string_view, 5> kDeviceOptions{"keyboard", "mouse", "gamepad", "virtual", "virtualPrefix"};
     static constexpr std::array<std::string_view, 1> kMapOptions{"actions"};
 
     // Runs an operation on the map of the method call, whose arguments follow the map, or on the default map of the module function.

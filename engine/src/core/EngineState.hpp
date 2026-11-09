@@ -29,10 +29,10 @@
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/input/ActionMaps.hpp"
 #include "haylen/input/AppTextField.hpp"
+#include "haylen/input/GamepadMotion.hpp"
 #include "haylen/input/GamepadState.hpp"
 #include "haylen/input/GestureRecognizer.hpp"
 #include "haylen/input/Input.hpp"
-#include "haylen/input/MotionSensors.hpp"
 #include "haylen/input/PointerEmulation.hpp"
 #include "haylen/input/VirtualInput.hpp"
 #include "haylen/io/Package.hpp"
@@ -82,7 +82,7 @@ struct EngineState {
     debug::Profiler profiler;
     std::unique_ptr<platform::Bridge> platform;
     std::unique_ptr<platform::System> system;
-    std::unique_ptr<input::MotionSensors> motion;
+    std::unique_ptr<input::GamepadMotion> gamepadMotion;
     std::unique_ptr<platform::Displays> displays;
     std::unique_ptr<platform::Outputs> outputs;
     std::unique_ptr<platform::MediaSession> mediaSession;

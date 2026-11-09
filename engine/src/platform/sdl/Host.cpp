@@ -25,10 +25,8 @@
 #endif
 #if defined(__APPLE__) && !TARGET_OS_OSX
 #include "platform/apple/AppleGamepads.hpp"
-#include "platform/apple/AppleMotion.hpp"
 #include "platform/apple/AppleOutputs.hpp"
 #elif defined(__EMSCRIPTEN__)
-#include "platform/web/WebMotion.hpp"
 #include "platform/web/WebOutputs.hpp"
 #include "platform/web/WebPage.hpp"
 #endif
@@ -328,39 +326,7 @@ void Host::rumbleGamepad(std::size_t index, float low, float high, float seconds
 #endif
 }
 
-// Phones, tablets and TVs of Apple read the motion of the device through Core Motion, browsers through the motion events of the page, and computers through the sensors of SDL.
-input::MotionSensors::Support Host::getMotionSupport() {
-#if defined(__APPLE__) && !TARGET_OS_OSX
-    return AppleMotion::getSupport();
-#elif defined(__EMSCRIPTEN__)
-    return WebMotion::getSupport();
-#else
-    return sensors.getSupport();
-#endif
-}
-
-// Browsers and SDL read each sensor at the rate of its hardware.
-void Host::setMotion(input::MotionSensors::Sensors value, [[maybe_unused]] float rate) {
-#if defined(__APPLE__) && !TARGET_OS_OSX
-    AppleMotion::set(value, rate);
-#elif defined(__EMSCRIPTEN__)
-    WebMotion::set(value);
-#else
-    sensors.set(value);
-#endif
-}
-
-void Host::readMotion(input::MotionState& state) {
-#if defined(__APPLE__) && !TARGET_OS_OSX
-    AppleMotion::read(state);
-#elif defined(__EMSCRIPTEN__)
-    WebMotion::read(state);
-#else
-    sensors.read(state, runtime.getWindow().get());
-#endif
-}
-
-void Host::setGamepadMotion(input::MotionSensors::Sensors value) {
+void Host::setGamepadMotion(input::GamepadMotion::Sensors value) {
 #if defined(__APPLE__) && !TARGET_OS_OSX
     AppleGamepads::setMotion(value);
 #else

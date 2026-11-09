@@ -237,6 +237,60 @@ Then list the plugins of the app, which reports each problem that keeps one from
 haylen plugin list --app ~/apps/my-game
 ```
 
+### The motion sensors of the device
+
+The accelerometer, the gyroscope and the attitude of phones and tablets belong to the `motion` plugin, which owns the permission `motion`. The engine keeps the motion sensors of gamepads. Add the plugin to the app with `haylen plugin add`, from its folder or its repository, and give it the text of the prompt of iOS in its parameter `motionUsage`:
+
+```sh
+haylen plugin add ~/plugins/motion --reference --app ~/apps/my-game
+```
+
+```json
+{
+    "plugins": {
+        "motion": {"path": "../plugins/motion", "parameters": {"motionUsage": "Tilt the phone to roll the ball."}}
+    }
+}
+```
+
+Then replace each call of `haylen.input` with the call of the plugin, which takes the same sensors, axes and units:
+
+| Before | After |
+| --- | --- |
+| `input.startMotion({sensors, rate, owner})` | `motion.start({sensors, rate, owner})`, whose `await` gives `{sensors}` once they run, or `nil` and the error with the code `unsupported`, `denied`, `failed` or `cancelled`. |
+| `request:stop()` of a `MotionRequest` | `motion.stop()`. A new `motion.start` replaces what runs. |
+| `input.motionSensors()` | `motion.sensors()` |
+| `input.acceleration()`, `input.rotationRate()`, `input.attitude()` | `motion.acceleration()`, `motion.rotationRate()`, `motion.attitude()` |
+| `input.tilt()`, `input.calibrateTilt()`, `input.resetTilt()` | `motion.tilt()`, `motion.calibrateTilt()`, `motion.resetTilt()` |
+| `input.startMotion({device = false, gamepads = true, sensors, owner})` | `input.startGamepadMotion({sensors, owner})`, which returns a `GamepadMotionRequest` that runs at once. |
+| The option `motion` of `input.newActionMap` and of `map.devices` | Leave it out. The tilt bindings read the gamepads of the map. |
+
+The bindings `tilt:` and `stick:tilt` of the action map read the tilt of gamepads. A game that also rolls with the tilt of the phone binds a virtual stick next to them and sets it from the plugin every frame:
+
+```lua
+local input = require('haylen.input')
+local motion = require('motion')
+local scene = require('haylen.scene')
+
+input.loadActions({actions = {
+    {name = 'roll', type = 'vector', bindings = {'stick:left', 'stick:tilt', 'virtualStick:tilt'}},
+}})
+
+scene.push({
+    enter = function(self)
+        motion.start({sensors = {'accelerometer'}, owner = self})
+    end,
+    update = function(self, dt)
+        input.setVirtualStick('tilt', motion.tilt())
+        local x, y = input.vector('roll')
+        self.x = (self.x or 0) + x * 400 * dt
+        self.y = (self.y or 0) + y * 400 * dt
+    end,
+})
+```
+
+The app keeps checking and asking for the permission with `system.permission('motion')` and `system.requestPermission('motion')`, which the plugin answers now. An `Info.plist` of the Apple project that holds its own `NSMotionUsageDescription` keeps it, since the value of the developer wins over the `motionUsage` of the plugin.
+
 ## Verify
 
 An upgrade is done when every platform of the app builds, runs and passes its checks:

@@ -199,7 +199,7 @@ onHit()
 
 ### system.permission(name)
 
-Reads the state of the [permission](#permissions) `name`, as far as the platform tells it, without asking the person. It returns a Varn promise that resolves on a later frame with the state, since some platforms, such as browsers, tell it only asynchronously. A name that is neither a permission of the engine nor one that a plugin of the app declares raises an error, such as `The permission "bluetooth" is neither one of the engine, which are "motion", "screens" and "localNetwork", nor one that a plugin of the app declares. A plugin declares the permissions it owns in the "permissions" of its "plugin.json".`.
+Reads the state of the [permission](#permissions) `name`, as far as the platform tells it, without asking the person. It returns a Varn promise that resolves on a later frame with the state, since some platforms, such as browsers, tell it only asynchronously. A name that is neither a permission of the engine nor one that a plugin of the app declares raises an error, such as `The permission "bluetooth" is neither one of the engine, which are "screens" and "localNetwork", nor one that a plugin of the app declares. A plugin declares the permissions it owns in the "permissions" of its "plugin.json".`.
 
 | State | Meaning |
 | --- | --- |
@@ -334,11 +334,10 @@ A capability that at least one platform gates behind a permission, a prompt or a
 
 | Name | What it gives the app |
 | --- | --- |
-| `'motion'` | The motion sensors of the device. |
 | `'screens'` | Every screen of the device, with where it sits, for windows and outputs on other screens. |
 | `'localNetwork'` | The devices of the local network, such as a development server on the computer of the developer, a game on the same Wi-Fi or a device of the home. |
 
-Every other permission belongs to a plugin of the app, such as `'camera'`, `'location'` or `'notifications'`. A plugin declares the permissions it owns in the `permissions` of its `plugin.json`, and one plugin of an app owns each name, as the [plugin guide](../platform/plugins.md#permissions) describes. For such a name the engine calls the native part of the plugin through the bridge: `<id>.permission` reads the state and `<id>.requestPermission` asks, both with the parameters `{name}`, and the answer settles the promise like the answer of a permission of the engine. A plugin without a native part on this platform rejects with the code `'unsupported'` and the sentence `The plugin "<id>" that owns the permission "<name>" offers no part on this platform.`, and a native part without the handler rejects with `The plugin "<id>" that owns the permission "<name>" offers no part on this platform that answers it.`. Any other failure of the native part rejects with the code `'unsupported'` and the sentence `The plugin "<id>" failed to answer the permission "<name>".` followed by its message. The reference of each plugin tells what each platform answers for its permissions.
+Every other permission belongs to a plugin of the app, such as `'camera'`, `'location'`, `'motion'` or `'notifications'`. A plugin declares the permissions it owns in the `permissions` of its `plugin.json`, and one plugin of an app owns each name, as the [plugin guide](../platform/plugins.md#permissions) describes. For such a name the engine calls the native part of the plugin through the bridge: `<id>.permission` reads the state and `<id>.requestPermission` asks, both with the parameters `{name}`, and the answer settles the promise like the answer of a permission of the engine. A plugin without a native part on this platform rejects with the code `'unsupported'` and the sentence `The plugin "<id>" that owns the permission "<name>" offers no part on this platform.`, and a native part without the handler rejects with `The plugin "<id>" that owns the permission "<name>" offers no part on this platform that answers it.`. Any other failure of the native part rejects with the code `'unsupported'` and the sentence `The plugin "<id>" failed to answer the permission "<name>".` followed by its message. The reference of each plugin tells what each platform answers for its permissions.
 
 ```lua
 local async = require('async')
@@ -359,17 +358,15 @@ These tables tell what each platform answers for the permissions of the engine a
 
 | Name | iOS, iPadOS, Mac Catalyst, visionOS and macOS | tvOS |
 | --- | --- | --- |
-| `'motion'` | Core Motion, which asks from version 27.2 with `NSMotionUsageDescription`, and `'granted'` on earlier versions and on macOS. | `'granted'`. |
 | `'screens'` | `'granted'`. | `'granted'`. |
 | `'localNetwork'` | `'unknown'`, since the system asks the person the first time the app reaches the local network, with `NSLocalNetworkUsageDescription`, and tells the app nothing of it. | `'unknown'`. |
 
 | Name | Android | Web | Windows | Linux |
 | --- | --- | --- | --- | --- |
-| `'motion'` | `'granted'`. | The prompt of Safari during a tap or a click, which the page keeps until it loads again, the states of `accelerometer` and `gyroscope` in Chromium, and `'granted'` elsewhere. | `'granted'`. | `'granted'`. |
 | `'screens'` | `'granted'`. | The Window Management API, with the prompt of `getScreenDetails`. A browser without it answers `'unsupported'`. | `'granted'`. | `'granted'`. |
 | `'localNetwork'` | `ACCESS_LOCAL_NETWORK` for an app that targets Android 17, on Android 17 or later. Older systems and older targets answer `'granted'`. | The state of `local-network-access` in Chromium, where a request answers `'unknown'` while the browser would ask at the first access, and `'granted'` elsewhere. | `'granted'`. | `'granted'`. |
 
-On Android a permission is `'denied'` once the engine asked for it before and Android no longer explains why the app wants it, which it does after a person refused twice. Browsers need a secure context, served over https or from localhost, for the motion sensors and every screen, and a page in a frame needs the feature in the `allow` attribute of its frame. Without them the call rejects with the code `'unsupported'` and `data.missing`.
+On Android a permission is `'denied'` once the engine asked for it before and Android no longer explains why the app wants it, which it does after a person refused twice. Browsers need a secure context, served over https or from localhost, for every screen, and a page in a frame needs the feature in the `allow` attribute of its frame. Without them the call rejects with the code `'unsupported'` and `data.missing`.
 
 ## Failures
 
@@ -462,7 +459,7 @@ The function `engine.getSystem()` returns the `haylen::platform::System` of the 
 | `readClipboard(callback)` | Reads the text on the clipboard for the app and calls back at a later frame with an `Answer` and the text. |
 | `setClipboard(text, callback)` | Puts the text on the clipboard and calls back at a later frame with an `Answer`. |
 | `vibrate(seconds, callback)` | Vibrates the device and calls back at a later frame with an `Answer`. |
-| `checkPermission(kind, callback)` | Reads the state of a `Permission::Kind` of the engine, `Motion`, `Screens` or `LocalNetwork`, and calls back at a later frame with an `Answer`, whose state is `Unsupported` with the reason where the platform has no such capability. |
+| `checkPermission(kind, callback)` | Reads the state of a `Permission::Kind` of the engine, `Screens` or `LocalNetwork`, and calls back at a later frame with an `Answer`, whose state is `Unsupported` with the reason where the platform has no such capability. |
 | `requestPermission(kind, callback)` | Asks the person for a permission of the engine and calls back at a later frame with an `Answer`, whose `missing` lists what the project of the app lacks. |
 | `checkPermission(name, callback)`, `requestPermission(name, callback)` | The same by the name of `system.permission`, for a permission of the engine or one that a plugin of the app declares, which the bridge asks the native part of the plugin for. They throw `std::invalid_argument` for a name that nobody owns, and `std::runtime_error` when the plugins of the app cannot be read. |
 

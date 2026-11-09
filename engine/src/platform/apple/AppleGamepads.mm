@@ -32,7 +32,7 @@ namespace haylen::platform {
 
 GamepadSlots AppleGamepads::slots;
 std::vector<const void*> AppleGamepads::connected;
-input::MotionSensors::Sensors AppleGamepads::motion;
+input::GamepadMotion::Sensors AppleGamepads::motion;
 char AppleGamepads::engineKey = 0;
 char AppleGamepads::playerKey = 0;
 
@@ -127,7 +127,7 @@ void AppleGamepads::rumble(std::size_t slot, float low, float high, float second
     }
 }
 
-void AppleGamepads::setMotion(input::MotionSensors::Sensors sensors) {
+void AppleGamepads::setMotion(input::GamepadMotion::Sensors sensors) {
     motion = sensors;
 }
 

@@ -154,7 +154,7 @@ The manifest says what the plugin is, which values the app gives it, and what ea
 | `description` | Yes | What the plugin does, in one sentence. |
 | `platforms` | Yes | The platforms that the plugin supports, each once: `ios`, `catalyst`, `tvos`, `visionos`, `macos`, `android`, `web`, `windows` and `linux`. The Apple part compiles only into the targets and destinations that they allow. |
 | `requires` | No | The ids of other plugins that the app must list as well, such as `cloud` for `cloud-analytics`. |
-| `permissions` | No | The names of the [permissions](#permissions) that the plugin owns, in camelCase, such as `camera`. A name is never one of the permissions of the engine, `motion`, `screens` and `localNetwork`, and no two plugins of an app declare the same name. |
+| `permissions` | No | The names of the [permissions](#permissions) that the plugin owns, in camelCase, such as `camera`. A name is never one of the permissions of the engine, `screens` and `localNetwork`, and no two plugins of an app declare the same name. |
 | `parameters` | No | The values that an app gives the plugin in `app.json`, by name in camelCase. |
 | `apple` | No | The [Apple part](#the-apple-section), which needs one of `ios`, `catalyst`, `tvos`, `visionos` and `macos` in `platforms`. |
 | `android` | No | The [Android part](#the-android-section), which needs `android` in `platforms`. |
@@ -1003,7 +1003,7 @@ The plugin "contacts" needs the API "navigator.contacts", which the page lacks, 
 
 ## Permissions
 
-The engine owns only the permissions that it uses itself, `motion`, `screens` and `localNetwork`. Every other capability that a platform gates, such as the camera, the microphone, the location or notifications, is a permission of the plugin that serves it. The plugin declares the names it owns in `permissions` of its `plugin.json`, in camelCase. The app checks and asks for them with `system.permission` and `system.requestPermission`, with the one vocabulary of states of the [permissions of `haylen.system`](../lua-api/system.md#permissions), as it does for the permissions of the engine.
+The engine owns only the permissions that it uses itself, `screens` and `localNetwork`. Every other capability that a platform gates, such as the camera, the microphone, the location, the motion sensors or notifications, is a permission of the plugin that serves it. The plugin declares the names it owns in `permissions` of its `plugin.json`, in camelCase. The app checks and asks for them with `system.permission` and `system.requestPermission`, with the one vocabulary of states of the [permissions of `haylen.system`](../lua-api/system.md#permissions), as it does for the permissions of the engine.
 
 ```json
 {

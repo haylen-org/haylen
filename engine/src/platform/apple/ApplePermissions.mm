@@ -8,22 +8,11 @@
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
 #import "platform/apple/AppleOutputs.hpp"
 #endif
-#if !TARGET_OS_OSX
-#import "platform/apple/AppleMotion.hpp"
-#endif
 
 namespace haylen::platform {
 
 void ApplePermissions::check(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
     switch (kind) {
-    case Permission::Kind::Motion:
-        // A Mac reads the motion of controllers alone, which needs no permission, while Core Motion asks for the motion of the device from version 27.2.
-#if TARGET_OS_OSX
-        callback({.state = Permission::State::Granted});
-#else
-        callback({.state = AppleMotion::getPermission()});
-#endif
-        return;
     case Permission::Kind::Screens:
         callback({.state = Permission::State::Granted});
         return;
@@ -36,13 +25,6 @@ void ApplePermissions::check(Permission::Kind kind, std::function<void(Permissio
 
 void ApplePermissions::request(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
     switch (kind) {
-    case Permission::Kind::Motion:
-#if TARGET_OS_OSX
-        check(kind, std::move(callback));
-#else
-        AppleMotion::authorize(std::move(callback));
-#endif
-        return;
     case Permission::Kind::Screens:
         // An iPhone or an iPad of iOS 27 and later mirrors an external display until the app registers the scene accessory that connects the scene of that display, which needs no answer of the person.
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST

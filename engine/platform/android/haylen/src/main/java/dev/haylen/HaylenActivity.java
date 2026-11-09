@@ -570,12 +570,6 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         return ("The app lacks " + internet.description() + ", which network access needs on Android. " + internet.instructions()).getBytes(StandardCharsets.UTF_8);
     }
 
-    // Called from the frame thread of the engine when the app first reads the motion sensors, with the name of the package of the app, which the sensor manager of the native runtime takes.
-    static byte[] packageName() {
-        HaylenActivity activity = HaylenBridge.activity();
-        return activity == null ? new byte[0] : activity.getPackageName().getBytes(StandardCharsets.UTF_8);
-    }
-
     // Called from the frame thread of the engine when an app starts, with the WebSocket address of the development server that `haylen.py run` launches the app with, or nothing. Only a debuggable app reads it, so an app that ships never runs in development.
     static byte[] developmentServer() {
         HaylenActivity activity = HaylenBridge.activity();

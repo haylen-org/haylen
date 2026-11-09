@@ -163,7 +163,7 @@ TEST_F(GamepadsTest, ReadsTheSensorsAndTheTouchpadOfAControllerThatHasThem) {
     EXPECT_FALSE(states[0].motionSensors.test(static_cast<std::size_t>(input::MotionSensor::Attitude)));
     EXPECT_TRUE(states[0].motion.sensors.none());
 
-    input::MotionSensors::Sensors wanted;
+    input::GamepadMotion::Sensors wanted;
     wanted.set(static_cast<std::size_t>(input::MotionSensor::Accelerometer));
     gamepads.setMotion(wanted);
     SDL_SendJoystickVirtualSensorData(joystick, SDL_SENSOR_ACCEL, 2, gravity.data(), static_cast<int>(gravity.size()));

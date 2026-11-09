@@ -2505,7 +2505,7 @@ PARAMETER_NAME = re.compile(r"[a-z][A-Za-z0-9]*")
 URL_SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*")
 DESKTOP_LINK_PLATFORMS = ("windows", "linux")
 # The permissions of `system.permission` that the engine owns, which no plugin declares, since the plugins own every other permission.
-ENGINE_PERMISSIONS = ("motion", "screens", "localNetwork")
+ENGINE_PERMISSIONS = ("screens", "localNetwork")
 PERMISSION_NAME = re.compile(r"[a-z][A-Za-z0-9]*")
 # A `${name}` in the `apple` and `android` sections names a parameter, while shell expansions such as `${BUILD_DIR%/Build/*}` are no references and stay as they are.
 PARAMETER_REFERENCE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")

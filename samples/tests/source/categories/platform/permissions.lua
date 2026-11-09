@@ -1,6 +1,5 @@
--- The state of every permission of the engine as this platform tells it, a request for each one with the answer of the person, and what a use of a refused capability answers: a read of the clipboard and a start of the motion sensors. The permissions of plugins, such as the camera, belong to the plugins that own them. The states come again whenever the app comes back to the foreground, since the person may change them in the settings of the system meanwhile.
+-- The state of every permission of the engine as this platform tells it, a request for each one with the answer of the person, and what a read of a clipboard that the person refused answers. The permissions of plugins, such as the camera and the motion sensors, belong to the plugins that own them. The states come again whenever the app comes back to the foreground, since the person may change them in the settings of the system meanwhile.
 local haylen = require('haylen')
-local input = require('haylen.input')
 local system = require('haylen.system')
 local ui = require('haylen.ui')
 
@@ -8,7 +7,7 @@ local Test = require('harness.test')
 
 local Permissions = haylen.class('Permissions', Test)
 
-Permissions.kinds = {{'motion', 'Motion sensors'}, {'screens', 'Every screen'}, {'localNetwork', 'Local network'}}
+Permissions.kinds = {{'screens', 'Every screen'}, {'localNetwork', 'Local network'}}
 
 -- The words and the tone of each state.
 Permissions.states = {
@@ -32,12 +31,11 @@ function Permissions:enter()
         self:checkAll()
     end)
     self:frame{
-        hint = 'Ask for a permission and answer the prompt of the system. Refuse one, then use it, to see the error that names it and how to ask again.',
+        hint = 'Ask for a permission and answer the prompt of the system. Refuse a read of the clipboard to see the error that says why.',
         focus = 'ask-screens',
         controls = {
             ui.button{id = 'check', text = 'Check every permission', variant = 'primary', onClick = function() self:checkAll() end},
             ui.button{id = 'paste', text = 'Read the clipboard', onClick = function() self:paste() end},
-            ui.button{id = 'motion', text = 'Start the motion sensors', onClick = function() self:startMotion() end},
             ui.label{text = 'A platform that never asks answers "granted", one that asks at the first use answers "unknown", and one without the capability answers "unsupported" with the reason.', color = 'textMuted', font = 'caption'},
         },
         content = {ui.row{grow = 1, gap = 24, align = 'stretch',
@@ -103,19 +101,6 @@ function Permissions:paste()
             return
         end
         self:record('The clipboard was read', #text == 0 and 'It holds no text.' or string.format('It holds %d bytes of text.', #text))
-    end)
-end
-
--- The motion sensors ask through the permission "motion", and a refusal fails the start with the same sentence.
-function Permissions:startMotion()
-    self:spawn(function()
-        local request, failure = input.startMotion({owner = self}):await()
-        if failure then
-            self:record(string.format('The motion sensors failed with "%s"', failure.code), failure.message)
-            return
-        end
-        self:record('The motion sensors run', 'The tilt and the acceleration arrive until the test ends.')
-        request:stop()
     end)
 end
 

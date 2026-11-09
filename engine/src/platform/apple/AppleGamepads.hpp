@@ -5,8 +5,8 @@
 #include <span>
 #include <vector>
 
+#include "haylen/input/GamepadMotion.hpp"
 #include "haylen/input/GamepadState.hpp"
-#include "haylen/input/MotionSensors.hpp"
 #include "platform/GamepadSlots.hpp"
 
 namespace haylen::platform {
@@ -20,14 +20,14 @@ class AppleGamepads final {
     static void rumble(std::size_t slot, float low, float high, float seconds);
 
     // Runs the motion sensors of the controllers that have them while the set holds any, which also reaches the controllers that connect later.
-    static void setMotion(input::MotionSensors::Sensors sensors);
+    static void setMotion(input::GamepadMotion::Sensors sensors);
 
   private:
     static constexpr double kStandardGravity = 9.80665;
 
     static GamepadSlots slots;
     static std::vector<const void*> connected;
-    static input::MotionSensors::Sensors motion;
+    static input::GamepadMotion::Sensors motion;
 
     [[nodiscard]] static GCController* find(NSArray<GCController*>* controllers, const void* identity);
     static void read(GCExtendedGamepad* pad, input::GamepadState& state);

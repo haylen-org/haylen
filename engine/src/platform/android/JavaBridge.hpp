@@ -67,9 +67,6 @@ class JavaBridge final {
     // The sentence that engine-owned network errors end with while the app does not declare the permission `INTERNET`, or an empty text.
     [[nodiscard]] static std::string getNetworkRequirement();
 
-    // The name of the package of the app, which the sensor manager of the native runtime takes.
-    [[nodiscard]] static std::string getPackageName();
-
     // The WebSocket address of the development server that the intent of a debuggable app names, which `haylen.py run` launches it with, or an empty text.
     [[nodiscard]] static std::string getDevelopmentServer();
 
@@ -177,7 +174,6 @@ class JavaBridge final {
     static jmethodID setClipboardMethod;
     static jmethodID clipboardMethod;
     static jmethodID networkRequirementMethod;
-    static jmethodID packageNameMethod;
     static jmethodID developmentServerMethod;
     static jclass dialogsClass;
     static jmethodID showDialogMethod;

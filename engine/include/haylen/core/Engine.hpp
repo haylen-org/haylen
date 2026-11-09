@@ -73,9 +73,9 @@ namespace haylen::input {
 class ActionMap;
 class ActionMaps;
 class AppTextField;
+class GamepadMotion;
 class GestureRecognizer;
 class Input;
-class MotionSensors;
 class PointerEmulation;
 class VirtualInput;
 } // namespace haylen::input
@@ -181,7 +181,7 @@ class Engine final {
     [[nodiscard]] input::ActionMap& getActions() noexcept;
     [[nodiscard]] input::ActionMaps& getActionMaps() noexcept;
     [[nodiscard]] input::VirtualInput& getVirtualInput() noexcept;
-    [[nodiscard]] input::MotionSensors& getMotionSensors() noexcept;
+    [[nodiscard]] input::GamepadMotion& getGamepadMotion() noexcept;
     [[nodiscard]] input::PointerEmulation& getPointerEmulation() noexcept;
     [[nodiscard]] input::AppTextField& getAppTextField() noexcept;
     [[nodiscard]] SceneManager& getScenes() noexcept;

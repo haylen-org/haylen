@@ -19,7 +19,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-// Reads and asks for the permissions of `system.permission`: the ones of the engine, `motion`, `screens` and `localNetwork`, through `state` and `request`, and the ones that plugins register through `HaylenPluginContext`. Each permission is a `HaylenPermission`, a set of permissions of the manifest for the version of Android that runs, which the engine asks for with the prompt of the system through one launcher of the Activity Result API, registered under the key `haylen.permissions` in `onCreate` of every activity, before it starts. Requests wait in a queue and show one at a time. A permission that the app does not hold counts as denied once the engine asked for it and Android no longer shows its prompt, which Android tells by no longer asking for a rationale, and the engine remembers which permissions it asked for across launches.
+// Reads and asks for the permissions of `system.permission`: the ones of the engine, `screens` and `localNetwork`, through `state` and `request`, and the ones that plugins register through `HaylenPluginContext`. Each permission is a `HaylenPermission`, a set of permissions of the manifest for the version of Android that runs, which the engine asks for with the prompt of the system through one launcher of the Activity Result API, registered under the key `haylen.permissions` in `onCreate` of every activity, before it starts. Requests wait in a queue and show one at a time. A permission that the app does not hold counts as denied once the engine asked for it and Android no longer shows its prompt, which Android tells by no longer asking for a rationale, and the engine remembers which permissions it asked for across launches.
 final class HaylenPermissions {
     // What a check or a request answers: the name of the state, the sentence of an unsupported answer and the requirements the project lacks.
     interface Answer {
@@ -42,7 +42,7 @@ final class HaylenPermissions {
     private static final String PREFERENCES = "haylen.permissions";
     private static final Handler mainThread = new Handler(Looper.getMainLooper());
     private static final ArrayDeque<Runnable> queue = new ArrayDeque<>();
-    private static final List<HaylenPermission> engine = List.of(new HaylenPermission("motion", "the motion sensors"), new HaylenPermission("screens", "every screen"), new LocalNetwork());
+    private static final List<HaylenPermission> engine = List.of(new HaylenPermission("screens", "every screen"), new LocalNetwork());
     private static ActivityResultLauncher<String[]> launcher;
     private static Runnable settle;
 

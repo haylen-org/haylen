@@ -300,17 +300,7 @@ class HeadlessHost final : public Host {
         return statusBar == StatusBar::Hidden ? 0.0F : statusBarHeight;
     }
     void pollGamepads(std::span<input::GamepadState> states) override;
-    [[nodiscard]] input::MotionSensors::Support getMotionSupport() override {
-        return motionSupport;
-    }
-    void setMotion(input::MotionSensors::Sensors sensors, float rate) override {
-        motionSensors = sensors;
-        motionRate = rate;
-    }
-    void readMotion(input::MotionState& state) override {
-        state = motionReadings;
-    }
-    void setGamepadMotion(input::MotionSensors::Sensors sensors) override {
+    void setGamepadMotion(input::GamepadMotion::Sensors sensors) override {
         gamepadMotion = sensors;
     }
     void dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView> views) override;
@@ -601,24 +591,8 @@ class HeadlessHost final : public Host {
         return permissionRequests;
     }
 
-    // The motion sensors of the headless device, which has none until a test gives it some.
-    void setMotionSupport(input::MotionSensors::Support value) {
-        motionSupport = std::move(value);
-    }
-
-    // The readings that the sensors of the headless device deliver while they run, the way a fake sensor would.
-    void setMotionReadings(const input::MotionState& value) noexcept {
-        motionReadings = value;
-    }
-
-    // The sensors and the rate that run now on the headless device and on its gamepads, and how often an app asked to run them.
-    [[nodiscard]] input::MotionSensors::Sensors getMotionSensors() const noexcept {
-        return motionSensors;
-    }
-    [[nodiscard]] float getMotionRate() const noexcept {
-        return motionRate;
-    }
-    [[nodiscard]] input::MotionSensors::Sensors getGamepadMotion() const noexcept {
+    // The motion sensors that run now on the gamepads of the headless host.
+    [[nodiscard]] input::GamepadMotion::Sensors getGamepadMotion() const noexcept {
         return gamepadMotion;
     }
 
@@ -739,11 +713,7 @@ class HeadlessHost final : public Host {
     std::vector<Permission::Kind> permissionRequests;
     std::vector<std::function<void(Permission::Answer)>> heldPermissionAnswers;
     bool permissionAnswersHeld = false;
-    input::MotionSensors::Support motionSupport{.reason = "The headless platform has no motion sensors."};
-    input::MotionState motionReadings;
-    input::MotionSensors::Sensors motionSensors;
-    float motionRate = 0.0F;
-    input::MotionSensors::Sensors gamepadMotion;
+    input::GamepadMotion::Sensors gamepadMotion;
     std::string blockedReason;
     std::vector<AccessibilityTree> accessibilityTrees;
     std::vector<Announcement> announcements;

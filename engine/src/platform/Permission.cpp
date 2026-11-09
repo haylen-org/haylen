@@ -6,8 +6,7 @@
 
 namespace haylen::platform {
 
-const std::array<std::pair<std::string_view, Permission::Kind>, 3> Permission::kKindNames{{{"motion", Kind::Motion}, {"screens", Kind::Screens}, {"localNetwork", Kind::LocalNetwork}}};
-const std::array<std::string_view, 3> Permission::kKindDescriptions{"the motion sensors", "every screen", "the local network"};
+const std::array<std::pair<std::string_view, Permission::Kind>, 2> Permission::kKindNames{{{"screens", Kind::Screens}, {"localNetwork", Kind::LocalNetwork}}};
 const std::array<std::pair<std::string_view, Permission::State>, 5> Permission::kStateNames{{{"granted", State::Granted}, {"prompt", State::Prompt}, {"denied", State::Denied}, {"unknown", State::Unknown}, {"unsupported", State::Unsupported}}};
 
 // A field of the wrong type reads as missing, and an answer that is no object fails as unsupported, so a broken answer of native code fails the request instead of the engine.
@@ -61,14 +60,6 @@ std::string_view Permission::stateName(State value) noexcept {
 std::optional<Permission::State> Permission::stateFromName(std::string_view name) noexcept {
     const auto found = std::ranges::find(kStateNames, name, &std::pair<std::string_view, State>::first);
     return found != kStateNames.end() ? std::optional(found->second) : std::nullopt;
-}
-
-std::string_view Permission::describe(Kind value) noexcept {
-    return kKindDescriptions[static_cast<std::size_t>(value)];
-}
-
-std::string Permission::refusal(Kind value) {
-    return refusal(describe(value), kindName(value));
 }
 
 std::string Permission::refusal(std::string_view capability, std::string_view name) {

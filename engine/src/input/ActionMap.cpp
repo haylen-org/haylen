@@ -393,16 +393,16 @@ math::Vec2 ActionMap::getBindingVector(const Binding& binding, const Input& inpu
     return strongestStick;
 }
 
-// The device and every gamepad the map reads lean on their own, and the one that leans the most moves the tilt.
+// Every gamepad the map reads leans on its own, and the one that leans the most moves the tilt.
 math::Vec2 ActionMap::getTilt(const Input& input) const noexcept {
-    math::Vec2 strongest = devices.motion ? input.getTilt() : math::Vec2{};
     if (devices.gamepads == Devices::Gamepads::One) {
-        const math::Vec2 tilt = input.getGamepadTilt(devices.gamepad);
-        return tilt.getLengthSquared() > strongest.getLengthSquared() ? tilt : strongest;
+        return input.getGamepadTilt(devices.gamepad);
     }
     if (devices.gamepads == Devices::Gamepads::None) {
-        return strongest;
+        return {};
     }
+
+    math::Vec2 strongest;
     for (std::size_t index = 0; index < Input::kMaxGamepads; ++index) {
         const math::Vec2 tilt = input.getGamepadTilt(index);
         if (tilt.getLengthSquared() > strongest.getLengthSquared()) {

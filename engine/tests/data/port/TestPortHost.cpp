@@ -92,15 +92,7 @@ void TestPortHost::pollGamepads(std::span<input::GamepadState>) {}
 
 void TestPortHost::rumbleGamepad(std::size_t, float, float, float) {}
 
-input::MotionSensors::Support TestPortHost::getMotionSupport() {
-    return {.reason = "The test port has no motion sensors."};
-}
-
-void TestPortHost::setMotion(input::MotionSensors::Sensors, float) {}
-
-void TestPortHost::readMotion(input::MotionState&) {}
-
-void TestPortHost::setGamepadMotion(input::MotionSensors::Sensors) {}
+void TestPortHost::setGamepadMotion(input::GamepadMotion::Sensors) {}
 
 void TestPortHost::requestWindowClose() {
     runtime.requestClose();

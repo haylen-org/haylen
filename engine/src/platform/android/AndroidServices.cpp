@@ -37,7 +37,6 @@
 #include "platform/android/AndroidDisplays.hpp"
 #include "platform/android/AndroidGamepads.hpp"
 #include "platform/android/AndroidKeys.hpp"
-#include "platform/android/AndroidMotion.hpp"
 #include "platform/android/AndroidMouseWheel.hpp"
 #include "platform/android/AndroidOutputs.hpp"
 #include "platform/android/AndroidTextInput.hpp"
@@ -429,10 +428,6 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenAccessibilityTree_nativePerform(JNI
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenDisplays_nativeDisplays(JNIEnv* env, jclass, jbyteArray json, jint windowDisplay) {
     haylen::platform::AndroidDisplays::receive(haylen::platform::JavaBridge::toString(*env, json), windowDisplay);
-}
-
-JNIEXPORT void JNICALL Java_dev_haylen_HaylenDisplays_nativeRotation(JNIEnv*, jclass, jint quarterTurns) {
-    haylen::platform::AndroidMotion::setQuarterTurns(quarterTurns);
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenOutputs_nativeSurface(JNIEnv* env, jclass, jint number, jobject surface, jint width, jint height, jfloat density) {

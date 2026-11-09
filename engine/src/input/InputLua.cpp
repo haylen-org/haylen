@@ -29,8 +29,8 @@
 #include "haylen/platform/TextInput.hpp"
 #include "input/ActionMapLua.hpp"
 #include "input/CommandBufferLua.hpp"
+#include "input/GamepadMotionLua.hpp"
 #include "input/InputRecordingLua.hpp"
-#include "input/MotionSensorsLua.hpp"
 
 namespace haylen::input {
 
@@ -476,7 +476,7 @@ int InputLua::open(lua_State* L) {
     ActionMapLua::addFunctions(L);
     CommandBufferLua::addFunctions(L);
     InputRecordingLua::addFunctions(L);
-    MotionSensorsLua::addFunctions(L);
+    GamepadMotionLua::addFunctions(L);
     return 1;
 }
 
@@ -484,7 +484,7 @@ void InputLua::install(lua_State* L) {
     ActionMapLua::install(L);
     CommandBufferLua::install(L);
     InputRecordingLua::install(L);
-    MotionSensorsLua::install(L);
+    GamepadMotionLua::install(L);
     lua::Binding::preload(L, "haylen.input", &open);
 }
 

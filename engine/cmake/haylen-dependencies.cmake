@@ -77,18 +77,12 @@ if(MSVC AND TARGET Poco::Foundation)
   target_compile_definitions(${poco_foundation} PUBLIC POCO_NO_AUTOMATIC_LIBS)
 endif()
 
-# SDL opens the window, runs the frames and reads the input and the controllers of every platform but Android and the platforms of ports, which bring their own platform layer. It builds as a static library with its video, event and gamepad subsystems alone, plus its sensors on computers, since the engine plays sound through miniaudio and draws through its own devices, and it rumbles controllers through their gamepads without its haptic subsystem. Linux builds keep X11, Wayland and udev, whose libraries SDL loads when the app starts, and Apple builds keep Metal, which the window hands to the Metal device.
+# SDL opens the window, runs the frames and reads the input and the controllers of every platform but Android and the platforms of ports, which bring their own platform layer. It builds as a static library with its video, event and gamepad subsystems alone, whose gamepads read their own motion sensors, since the engine plays sound through miniaudio and draws through its own devices, and it rumbles controllers through their gamepads without its haptic subsystem. Linux builds keep X11, Wayland and udev, whose libraries SDL loads when the app starts, and Apple builds keep Metal, which the window hands to the Metal device.
 set(haylen_sdl_options
   "SDL_SHARED OFF" "SDL_STATIC ON" "SDL_TEST_LIBRARY OFF" "SDL_TESTS OFF" "SDL_EXAMPLES OFF" "SDL_INSTALL OFF" "SDL_UNINSTALL OFF"
-  "SDL_AUDIO OFF" "SDL_GPU OFF" "SDL_RENDER OFF" "SDL_CAMERA OFF" "SDL_HAPTIC OFF" "SDL_HIDAPI_LIBUSB OFF" "SDL_POWER OFF" "SDL_DIALOG OFF" "SDL_TRAY OFF"
+  "SDL_AUDIO OFF" "SDL_GPU OFF" "SDL_RENDER OFF" "SDL_CAMERA OFF" "SDL_SENSOR OFF" "SDL_HAPTIC OFF" "SDL_HIDAPI_LIBUSB OFF" "SDL_POWER OFF" "SDL_DIALOG OFF" "SDL_TRAY OFF"
   "SDL_OFFSCREEN OFF" "SDL_DUMMYVIDEO OFF" "SDL_KMSDRM OFF" "SDL_RPI OFF" "SDL_ROCKCHIP OFF" "SDL_VIVANTE OFF" "SDL_LIBURING OFF" "SDL_PIPEWIRE OFF" "SDL_OPENVR OFF"
 )
-# Computers read their motion sensors, such as those of Windows tablets, through the sensors of SDL, while the engine reads the motion of phones, tablets, TVs and browsers itself, so only the SDL of computers keeps its sensors.
-if(HAYLEN_PLATFORM MATCHES "^(windows|macos|linux)$")
-  list(APPEND haylen_sdl_options "SDL_SENSOR ON")
-else()
-  list(APPEND haylen_sdl_options "SDL_SENSOR OFF")
-endif()
 # Apple platforms draw through Metal alone, so their SDL carries neither OpenGL nor Vulkan, and UIKit apps read their controllers through GameController, so their SDL reads none.
 if(APPLE)
   list(APPEND haylen_sdl_options "SDL_OPENGL OFF" "SDL_OPENGLES OFF" "SDL_VULKAN OFF")

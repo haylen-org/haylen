@@ -32,11 +32,10 @@ template <bool (ActionMap::*Read)(std::string_view) const noexcept> int ActionMa
     return 1;
 }
 
-// Reads `{keyboard, mouse, gamepad, motion, virtual, virtualPrefix}`, where `gamepad` is an index from 1, `false` for none, or left out for every gamepad.
+// Reads `{keyboard, mouse, gamepad, virtual, virtualPrefix}`, where `gamepad` is an index from 1, `false` for none, or left out for every gamepad.
 void ActionMapLua::readDevices(lua_State* L, int index, ActionMap::Devices& devices) {
     lua::Table::readField(L, index, "keyboard", devices.keyboard);
     lua::Table::readField(L, index, "mouse", devices.mouse);
-    lua::Table::readField(L, index, "motion", devices.motion);
     lua::Table::readField(L, index, "virtual", devices.virtualControls);
     lua::Table::readField(L, index, "virtualPrefix", devices.virtualPrefix);
 
@@ -56,13 +55,11 @@ void ActionMapLua::readDevices(lua_State* L, int index, ActionMap::Devices& devi
 }
 
 void ActionMapLua::pushDevices(lua_State* L, const ActionMap::Devices& devices) {
-    lua_createtable(L, 0, 6);
+    lua_createtable(L, 0, 5);
     lua::Stack::push(L, devices.keyboard);
     lua_setfield(L, -2, "keyboard");
     lua::Stack::push(L, devices.mouse);
     lua_setfield(L, -2, "mouse");
-    lua::Stack::push(L, devices.motion);
-    lua_setfield(L, -2, "motion");
     lua::Stack::push(L, devices.virtualControls);
     lua_setfield(L, -2, "virtual");
     lua::Stack::push(L, devices.virtualPrefix);
@@ -162,7 +159,7 @@ int ActionMapLua::stepButtons(lua_State* L, ActionMap& map, int first) {
     return 1;
 }
 
-// Creates a map with `newActionMap({keyboard, mouse, gamepad, motion, virtual, virtualPrefix, actions})`, which reads every device by default and loads the document or file of `actions` when it is given.
+// Creates a map with `newActionMap({keyboard, mouse, gamepad, virtual, virtualPrefix, actions})`, which reads every device by default and loads the document or file of `actions` when it is given.
 int ActionMapLua::newActionMap(lua_State* L) {
     ActionMap::Devices devices;
     if (!lua_isnoneornil(L, 1)) {

@@ -296,16 +296,15 @@ TEST_F(SystemTest, AsksThePluginThatOwnsAPermissionThroughTheBridge) {
 }
 
 TEST_F(SystemTest, NamesThePermissionsOfTheEngineAndHowToAskAgain) {
-    for (const std::string_view name : {"motion", "screens", "localNetwork"}) {
+    for (const std::string_view name : {"screens", "localNetwork"}) {
         const std::optional<Permission::Kind> kind = Permission::kindFromName(name);
         ASSERT_TRUE(kind.has_value()) << name;
         EXPECT_EQ(Permission::kindName(*kind), name);
     }
     EXPECT_FALSE(Permission::kindFromName("camera").has_value());
     EXPECT_EQ(Permission::stateFromName("unsupported"), Permission::State::Unsupported);
-    EXPECT_EQ(Permission::refusal(Permission::Kind::LocalNetwork), "The person has not allowed the local network. Ask for it with \"system.requestPermission('localNetwork')\", which shows the prompt of the system while the system still asks, or the person allows it in the settings of the system.");
     EXPECT_EQ(Permission::refusal("the precise location", "preciseLocation"), "The person has not allowed the precise location. Ask for it with \"system.requestPermission('preciseLocation')\", which shows the prompt of the system while the system still asks, or the person allows it in the settings of the system.");
-    EXPECT_EQ(Permission::unknown("bluetooth"), "The permission \"bluetooth\" is neither one of the engine, which are \"motion\", \"screens\" and \"localNetwork\", nor one that a plugin of the app declares. A plugin declares the permissions it owns in the \"permissions\" of its \"plugin.json\".");
+    EXPECT_EQ(Permission::unknown("bluetooth"), "The permission \"bluetooth\" is neither one of the engine, which are \"screens\" and \"localNetwork\", nor one that a plugin of the app declares. A plugin declares the permissions it owns in the \"permissions\" of its \"plugin.json\".");
 
     EXPECT_TRUE(Permission::isPluginName("backgroundLocation"));
     EXPECT_TRUE(Permission::isPluginName("bluetooth2"));

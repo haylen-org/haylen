@@ -16,7 +16,6 @@ namespace haylen::platform {
 class Permission final {
   public:
     enum class Kind : std::uint8_t {
-        Motion,
         Screens,
         LocalNetwork,
     };
@@ -56,11 +55,7 @@ class Permission final {
     [[nodiscard]] static std::string_view stateName(State value) noexcept;
     [[nodiscard]] static std::optional<State> stateFromName(std::string_view name) noexcept;
 
-    // What the kind gives the app in words, such as `the camera`, for the sentences of answers.
-    [[nodiscard]] static std::string_view describe(Kind value) noexcept;
-
-    // The sentence of a use of the capability that the person refused, which names it and how to ask for it again, for a kind of the engine or for the capability and the name of a permission of a plugin, such as `the camera` and `camera`.
-    [[nodiscard]] static std::string refusal(Kind value);
+    // The sentence of a use of the capability that the person refused, which names it and how to ask for it again, for the capability and the name of a permission, such as `the camera` and `camera`.
     [[nodiscard]] static std::string refusal(std::string_view capability, std::string_view name);
 
     // The sentence of a name that neither the engine nor a plugin of the app owns, which names the permissions of the engine and where a plugin declares its own.
@@ -73,8 +68,7 @@ class Permission final {
     // Returns the text of a key of a JSON object, or an empty text when it holds something else.
     [[nodiscard]] static std::string readText(const core::Json& object, const char* key);
 
-    static const std::array<std::pair<std::string_view, Kind>, 3> kKindNames;
-    static const std::array<std::string_view, 3> kKindDescriptions;
+    static const std::array<std::pair<std::string_view, Kind>, 2> kKindNames;
     static const std::array<std::pair<std::string_view, State>, 5> kStateNames;
 };
 

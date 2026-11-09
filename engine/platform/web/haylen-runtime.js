@@ -1205,7 +1205,6 @@ Module.haylen = Module.haylen || {};
 
     // The permissions of the engine in `system.permission`. Each one names the capability in words, what the page needs for it, the name of the Permissions API that tells its state, where the browser knows it, and how the page asks for it, which answers `{state, message, missing}`. A name that the Permissions API does not know answers the state of `unnamed`. The permissions of plugins take the same shape through `context.registerPermission`.
     const permissions = {
-        motion: { capability: "the motion sensors", needs: { secureContext: true, permissionsPolicy: ["accelerometer", "gyroscope"] }, unavailable: () => (typeof DeviceMotionEvent === "undefined" ? "The browser reads no motion sensors." : null), check: () => checkMotion(), request: () => requestMotion() },
         screens: { capability: "every screen", needs: { secureContext: true, permissionsPolicy: "window-management" }, unavailable: () => (typeof window.getScreenDetails !== "function" ? "The browser cannot list every screen." : null), query: "window-management", unnamed: "unknown", request: () => seeEveryScreen().then(() => ({ state: "granted" }), (error) => (error.name === "NotAllowedError" ? { state: "denied" } : { state: "unsupported", message: "The browser cannot list every screen: " + error.message })) },
         localNetwork: { capability: "the local network", query: "local-network-access", unnamed: "granted", request: () => requestLocalNetwork() },
     };
@@ -1256,20 +1255,6 @@ Module.haylen = Module.haylen || {};
         const current = await checkPermission(permission, owner, key);
         return current.state === "prompt" || current.state === "unknown" ? permission.request() : current;
     };
-
-    // Safari asks for the motion sensors through `DeviceMotionEvent.requestPermission`, whose answer the page keeps until it loads again, and Chromium tells the state of the accelerometer and the gyroscope, while a browser that knows neither name gives the sensors to every page.
-    const checkMotion = async () => {
-        if (haylen.motion.gated) {
-            return { state: haylen.motion.permission() };
-        }
-        const states = (await Promise.all([queryPermission("accelerometer"), queryPermission("gyroscope")])).filter((state) => state !== null);
-        if (states.includes("denied")) {
-            return { state: "denied" };
-        }
-        return { state: states.every((state) => state === "granted") ? "granted" : "prompt" };
-    };
-
-    const requestMotion = () => (haylen.motion.gated ? haylen.motion.request() : checkMotion());
 
     // Chromium asks for the local network at the first access to it, which a page cannot ask for before, so a state that would prompt answers unknown.
     const requestLocalNetwork = async () => {
@@ -1475,75 +1460,6 @@ Module.haylen = Module.haylen || {};
         stats.audio = audio.stats();
         notify("onStats", stats);
     };
-
-    // The motion of the device from the motion and orientation events of the page, which the runtime listens to only while the engine runs its sensors. Safari asks the person first, only during a tap or a click, and until the page loads again, while the other browsers ask nothing. The values hold the acceleration with gravity, the rotation rate around x, y and z in degrees per second, which browsers name alpha, beta and gamma, and the angles alpha, beta and gamma of the attitude.
-    haylen.motion = (function () {
-        const values = new Float32Array(9);
-        const gated = typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function";
-        let permission = gated ? "prompt" : "granted";
-        let listening = 0;
-        let delivered = 0;
-        const onMotion = (event) => {
-            const acceleration = event.accelerationIncludingGravity;
-            if (acceleration && acceleration.x !== null && acceleration.y !== null && acceleration.z !== null) {
-                values.set([acceleration.x, acceleration.y, acceleration.z], 0);
-                delivered |= 1;
-            }
-            const rate = event.rotationRate;
-            if (rate && rate.alpha !== null && rate.beta !== null && rate.gamma !== null) {
-                values.set([rate.alpha, rate.beta, rate.gamma], 3);
-                delivered |= 2;
-            }
-        };
-        const onOrientation = (event) => {
-            if (event.alpha !== null && event.beta !== null && event.gamma !== null) {
-                values.set([event.alpha, event.beta, event.gamma], 6);
-                delivered |= 4;
-            }
-        };
-        // The angle of the screen grows as the device turns counterclockwise, which older Safari reports as `window.orientation`, with -90 for a clockwise turn.
-        const quarterTurns = () => {
-            const angle = screen.orientation ? screen.orientation.angle : Number(window.orientation) || 0;
-            return ((Math.round(angle / 90) % 4) + 4) % 4;
-        };
-        return {
-            // Answers the sensors whose events the browser has, and 8 outside a secure context, where browsers fire none.
-            support: () => {
-                if (!window.isSecureContext) {
-                    return 8;
-                }
-                return (typeof DeviceMotionEvent !== "undefined" ? 3 : 0) | (typeof DeviceOrientationEvent !== "undefined" ? 4 : 0);
-            },
-            gated,
-            // Answers `granted` when the page may read the sensors, `prompt` before Safari asked in this visit and `denied` after the person refused.
-            permission: () => permission,
-            // Safari shows its prompt only during a tap or a click, and a request outside one leaves the person unasked, which answers `prompt` with the reason.
-            request: () => DeviceMotionEvent.requestPermission().then(
-                (state) => {
-                    permission = state === "granted" ? "granted" : "denied";
-                    return { state: permission };
-                },
-                (error) => ({ state: "prompt", message: error && error.name === "NotAllowedError" ? "The browser asks for the motion sensors only during a tap or a click, so ask from one." : "The browser did not ask for the motion sensors." }),
-            ),
-            set: (sensors) => {
-                const motion = (sensors & 3) !== 0;
-                const orientation = (sensors & 4) !== 0;
-                if (motion !== ((listening & 3) !== 0)) {
-                    (motion ? window.addEventListener : window.removeEventListener).call(window, "devicemotion", onMotion);
-                }
-                if (orientation !== ((listening & 4) !== 0)) {
-                    (orientation ? window.addEventListener : window.removeEventListener).call(window, "deviceorientation", onOrientation);
-                }
-                listening = sensors;
-                delivered &= sensors;
-            },
-            // Writes the newest values and answers the sensors that delivered them, with the quarter turns of the screen above the lowest byte.
-            read: (pointer) => {
-                Module.HEAPF32.set(values, pointer >> 2);
-                return (delivered & listening) | (quarterTurns() << 8);
-            },
-        };
-    })();
 
     haylen.canvasSelector = function () {
         if (!(Module.canvas instanceof HTMLCanvasElement) || !Module.canvas.id) {

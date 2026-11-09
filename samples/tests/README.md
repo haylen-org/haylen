@@ -425,7 +425,7 @@ Signals, the event bus, owners that end their listeners, scene scopes, the engin
 
 #### Input (INP)
 
-The keyboard, the mouse, touches, gestures, gamepads, motion sensors, the action map, remapping, touch controls and a hero that every device moves. The tests are in `source/categories/input/`.
+The keyboard, the mouse, touches, gestures, gamepads with their motion sensors, the action map, remapping, touch controls and a hero that every device moves. The tests are in `source/categories/input/`.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
@@ -442,7 +442,7 @@ The keyboard, the mouse, touches, gestures, gamepads, motion sensors, the action
 | `INP-011` | Players | A seat for the keyboard and touch and one for each of eight gamepads, each with an action map that reads only its own devices, joined with the start button of its gamepad. |  |
 | `INP-012` | Commands | A command buffer that types runs, a jump attack and specials from keys, gamepads and touch buttons that a sliding thumb presses in turn, with the kept command, its age, the facing and a freeze like hit stop. |  |
 | `INP-013` | Replay | A run recorded on fixed steps with the state of its random generator and replayed in place of the devices, with a hash of every step that shows the replay matches. |  |
-| `INP-014` | Motion | A ball that rolls with the tilt of the device or of a gamepad through the action map, the raw readings of the accelerometer, the gyroscope and the attitude, the touchpad of a gamepad, and the reason of the platform for every sensor that does not run. |  |
+| `INP-014` | Gamepad motion | A ball that rolls with the tilt of a gamepad through the action map, the raw readings of the accelerometer, the gyroscope and the attitude of a gamepad, and the fingers on its touchpads. |  |
 
 #### Physics (PHY)
 
@@ -767,7 +767,7 @@ The bridge to the native code of the plugin "platform-sample", what the window a
 | `PLT-007` | Launching apps | A small app package that the test writes into its storage and launches in place of the project, whose quit starts the project again. |  |
 | `PLT-008` | Displays | Every display where it sits with its id, scale, rate and modes, the window moved to another display, fullscreen on it and in its lowest mode, and the events of the displays. |  |
 | `PLT-009` | Second display | A scoreboard on a display other than the one of the window, drawn into the target of an output every frame, with its preview, its events and the clicks on its window. |  |
-| `PLT-010` | Permissions | The state of every permission of the engine on this platform, a request for each one, and the errors of a clipboard and motion sensors that the person refused. |  |
+| `PLT-010` | Permissions | The state of every permission of the engine on this platform, a request for each one, and the error of a clipboard that the person refused. |  |
 | `PLT-011` | Frame rate | The app aiming for every refresh of the display or for 120, 60, 30 or 24 frames per second, with the frames it played in the last second, a ball that swings by the real time and a mark for each frame. |  |
 
 #### Plugins (PLG)

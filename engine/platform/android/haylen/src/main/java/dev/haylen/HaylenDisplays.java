@@ -15,7 +15,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-// Tells the engine the displays of the device through the display manager, which reports when a display connects, disconnects or changes, such as an external display, a cast screen or a secondary screen, which display shows the activity, and how far that display turned from its natural orientation, which the motion sensors follow. Each display has its own points from its top left corner, in density-independent pixels.
+// Tells the engine the displays of the device through the display manager, which reports when a display connects, disconnects or changes, such as an external display, a cast screen or a secondary screen, and which display shows the activity. Each display has its own points from its top left corner, in density-independent pixels.
 final class HaylenDisplays implements DisplayManager.DisplayListener {
     private final Activity activity;
     private final DisplayManager manager;
@@ -62,7 +62,6 @@ final class HaylenDisplays implements DisplayManager.DisplayListener {
                 list.put(describe(display));
             }
             nativeDisplays(list.toString().getBytes(StandardCharsets.UTF_8), getActivityDisplay().getDisplayId());
-            nativeRotation(getActivityDisplay().getRotation());
         } catch (JSONException exception) {
             throw new IllegalStateException("The displays could not be described.", exception);
         }
@@ -105,6 +104,4 @@ final class HaylenDisplays implements DisplayManager.DisplayListener {
     }
 
     private static native void nativeDisplays(byte[] json, int windowDisplay);
-
-    private static native void nativeRotation(int quarterTurns);
 }
