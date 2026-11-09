@@ -6,9 +6,9 @@ namespace haylen::platform {
 UIView* AppleSplash::view = nil;
 
 // The system of visionOS shows no launch screen, so nothing covers its window.
-void AppleSplash::cover(UIWindow* window) {
+void AppleSplash::cover(UIView* content) {
 #if TARGET_OS_VISION
-    static_cast<void>(window);
+    static_cast<void>(content);
 #else
     NSString* name = [NSBundle.mainBundle objectForInfoDictionaryKey:@"UILaunchStoryboardName"];
     if (name == nil || [NSBundle.mainBundle pathForResource:name ofType:@"storyboardc"] == nil) {
@@ -16,9 +16,9 @@ void AppleSplash::cover(UIWindow* window) {
     }
     UIViewController* launch = [[UIStoryboard storyboardWithName:name bundle:nil] instantiateInitialViewController];
     view = launch.view;
-    view.frame = window.bounds;
+    view.frame = content.bounds;
     view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    [window addSubview:view];
+    [content addSubview:view];
 #endif
 }
 

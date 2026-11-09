@@ -85,10 +85,15 @@ graphics::Texture ImageLibrary::getTexture(std::string_view path, graphics::Text
         return requireTexture(path);
     }
     if (!isVector(path) && !isNamed(path)) {
-        return requestFile(path, filter).texture;
+        const graphics::Texture& texture = requestFile(path, filter).texture;
+        if (!texture.isValid()) {
+            waitedFrame = frame;
+        }
+        return texture;
     }
     Vector& vector = requestVector(path);
     if (!vector.image.isValid()) {
+        waitedFrame = frame;
         return {};
     }
 
@@ -100,6 +105,7 @@ graphics::Texture ImageLibrary::getTexture(std::string_view path, graphics::Text
     }
     requestRaster(std::string(path), vector, step);
     if (vector.rasters.empty()) {
+        waitedFrame = frame;
         return {};
     }
 
@@ -117,10 +123,18 @@ math::Vec2 ImageLibrary::getSize(std::string_view path, graphics::Texture::Filte
     }
     if (!isVector(path) && !isNamed(path)) {
         const graphics::Texture& texture = requestFile(path, filter).texture;
-        return texture.isValid() ? texture.getSize() : math::Vec2{};
+        if (!texture.isValid()) {
+            waitedFrame = frame;
+            return {};
+        }
+        return texture.getSize();
     }
     const Vector& vector = requestVector(path);
-    return vector.image.isValid() ? vector.image.getSize() : math::Vec2{};
+    if (!vector.image.isValid()) {
+        waitedFrame = frame;
+        return {};
+    }
+    return vector.image.getSize();
 }
 
 void ImageLibrary::beginFrame() {

@@ -366,8 +366,8 @@ void Player::frame(double seconds) {
     for (int press = takeBackPresses(); press > 0 && runtime.engine->isRunning(); --press) {
         runtime.pressBack();
     }
-    runtime.engine->frame(seconds);
     runtime.endSplashScreenWhenDue();
+    runtime.engine->frame(seconds);
 #if defined(__ANDROID__)
     runtime.reportBackCapture();
 #endif
@@ -422,9 +422,9 @@ void Player::returnToLauncher() {
     replace(load([&launcher] { return std::move(launcher.package); }));
 }
 
-// The launch screen of the platform stays until the app drew its first frame and the splash of app.json lasted its duration since the launch.
+// The launch screen of the platform stays until the app drew its first complete frame and the splash of app.json lasted its duration since the launch. It ends as the next frame starts, which leaves the GPU a whole frame to present the complete one, so a window that shows at that moment never shows the frame before it.
 void Player::endSplashScreenWhenDue() {
-    if (splashEnded) {
+    if (splashEnded || !engine->isFrameComplete()) {
         return;
     }
     const core::AppConfig::Splash& splash = engine->getConfig().splash;
@@ -432,7 +432,7 @@ void Player::endSplashScreenWhenDue() {
         return;
     }
     splashEnded = true;
-    Services::endSplashScreen(splash.fadeOut);
+    host->endSplashScreen(splash.fadeOut);
 }
 
 bool Player::isBackCaptured() {

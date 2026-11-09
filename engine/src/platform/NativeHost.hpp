@@ -154,6 +154,9 @@ class NativeHost : public Host {
     // Closes the window at once, without asking the app, which ends the process of desktop apps.
     virtual void closeWindow() = 0;
 
+    // Takes the splash screen of the platform away over the seconds, once the app drew its first complete frame, and shows a window that opened hidden until then.
+    virtual void endSplashScreen(float fadeOutSeconds) = 0;
+
     // Prepares the GPU device of the next app and returns whether `createGpuDevice` creates it now. A graphics API whose device the platform hands over in a later turn of its event loop, as WebGPU does in browsers, answers false until the device is ready, while the platform layer keeps running its frames.
     [[nodiscard]] virtual bool prepareGpuDevice() = 0;
 

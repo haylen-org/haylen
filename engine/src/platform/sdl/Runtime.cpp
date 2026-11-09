@@ -228,8 +228,18 @@ SDL_AppResult Runtime::start() {
 #endif
     Player::initialize();
     started = true;
-    window.show();
+    if (!Services::hasDesktop()) {
+        window.show();
+    }
     return closing ? SDL_APP_SUCCESS : SDL_APP_CONTINUE;
+}
+
+// A desktop window, which no launch screen covers, stays hidden until the app drew its first complete frame, so it never shows empty. The windows of phones, televisions and pages show at once under the splash screen of their platform.
+void Runtime::endSplashScreen(float fadeOutSeconds) {
+    if (Services::hasDesktop()) {
+        window.show();
+    }
+    Services::endSplashScreen(fadeOutSeconds);
 }
 
 // Each graphics API in the order of the app opens a window with what it draws through and starts its device, and the first that starts keeps the window. The reasons of the ones that failed reach the log, so a machine that falls back says why. The services of the platform place the window where `app.json` puts it on the desktop, since they know the desktop points of each monitor.

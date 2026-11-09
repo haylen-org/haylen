@@ -744,6 +744,14 @@ TEST(EngineTest, PublishesTheLinksThatOpenTheApp) {
     EXPECT_EQ(fixture.lua("return table.concat(links, ', ')"), "island://open?map=harbor, island://open?map=cave, island://open?map=peak");
 }
 
+// No frame is complete before the engine rendered one, so a splash screen never ends over a window that holds nothing yet.
+TEST(EngineTest, CompletesNoFrameBeforeItRenderedOne) {
+    test::EngineFixture fixture;
+    EXPECT_FALSE(fixture.engine().isFrameComplete());
+    fixture.frames(1);
+    EXPECT_TRUE(fixture.engine().isFrameComplete());
+}
+
 TEST(EngineTest, ReportsErrorsAndKeepsRendering) {
     std::vector<std::string> log;
     auto scene = std::make_shared<test::RecordingScene>("main", log);

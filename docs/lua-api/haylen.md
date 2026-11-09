@@ -141,7 +141,7 @@ The splash screen is the launch screen that iOS, tvOS, Mac Catalyst and Android 
 | `splash.logo` | string | The Haylen symbol, `''` in `haylen.config` | The image of the launch screen, relative to `content/`, such as `"ui/splash.png"`. |
 | `splash.background` | string | The value of `clearColor` | The background color of the launch screen. |
 | `splash.darkBackground` | string | The value of `splash.background`, absent in `haylen.config` | The background color of the launch screen while the system uses dark colors. |
-| `splash.duration` | number | `0` | The least seconds that the launch screen stays from the launch. It always lasts until the first frame of the app. |
+| `splash.duration` | number | `0` | The least seconds that the launch screen stays from the launch. It always lasts until the first complete frame of the app, as the [distribution guide](../tools/distribution.md#splash-screens) explains. |
 | `splash.fadeOut` | number | `0.25` | The seconds that the launch screen takes to fade out into the app. |
 
 #### Lifecycle

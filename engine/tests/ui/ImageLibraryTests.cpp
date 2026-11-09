@@ -92,6 +92,15 @@ TEST_F(ImageLibraryTest, ShowsSvgDocumentsAtTheSizeTheyGiveThemselves) {
     EXPECT_EQ(getEngine().getError(), nullptr);
 }
 
+// A frame that leaves the place of a picture empty while it loads is not complete, and the first complete frame shows the picture.
+TEST_F(ImageLibraryTest, CompletesTheFrameOnceEveryPictureItShowsArrived) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "image", "id": "square", "image": "icons/square.svg", "width": 64, "height": 64}]})");
+    frames(1);
+    EXPECT_FALSE(getEngine().isFrameComplete());
+    ASSERT_TRUE(getFixture().frameUntil([&] { return getEngine().isFrameComplete(); }));
+    EXPECT_TRUE(getContext().getImage("icons/square.svg", {64.0F, 64.0F}).isValid());
+}
+
 TEST_F(ImageLibraryTest, RastersSvgDocumentsForThePixelsTheyCover) {
     const auto raster = [&](math::Vec2 size) { return getContext().getImage("icons/badge.svg", size); };
     ASSERT_TRUE(getFixture().frameUntil([&] { return raster({96.0F, 48.0F}).isValid(); }));

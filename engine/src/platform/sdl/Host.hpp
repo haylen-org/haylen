@@ -47,6 +47,7 @@ class Host final : public platform::NativeHost {
     [[nodiscard]] std::unique_ptr<gpu::Device> createGpuDevice() override;
     [[nodiscard]] bool prepareGpuDevice() override;
     void closeWindow() override;
+    void endSplashScreen(float fadeOutSeconds) override;
     [[nodiscard]] bool canHaltFrames() const noexcept override;
     [[nodiscard]] bool pumpHaltedEvents() override;
     void pollGamepads(std::span<input::GamepadState> gamepads) override;

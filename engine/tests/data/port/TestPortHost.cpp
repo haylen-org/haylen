@@ -79,6 +79,10 @@ void TestPortHost::closeWindow() {
     runtime.close();
 }
 
+void TestPortHost::endSplashScreen(float fadeOutSeconds) {
+    Services::endSplashScreen(fadeOutSeconds);
+}
+
 // The window of the test port has no events of its own, so a halt keeps nothing of the platform waiting.
 bool TestPortHost::pumpHaltedEvents() {
     return false;

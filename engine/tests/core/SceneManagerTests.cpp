@@ -29,6 +29,7 @@
 #include "support/EngineFixture.hpp"
 #include "support/RecordingEffect.hpp"
 #include "support/RecordingScene.hpp"
+#include "support/TestApplication.hpp"
 #include "support/TestFiles.hpp"
 
 namespace haylen::core {
@@ -696,6 +697,21 @@ TEST(SceneManagerTest, FailedLoadsAfterTheCurrentSceneLeftGoToTheErrorHandler) {
     EXPECT_EQ(outcomes, std::vector<SceneManager::Outcome>{SceneManager::Outcome::Failed});
     EXPECT_EQ(scenes.getTop(), fallback.get());
     EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
+// The first scene that loads without a loading view leaves nothing of the app on the screen, so a splash screen stays over those frames until it entered.
+TEST(SceneManagerTest, LeavesTheFrameIncompleteWhileTheFirstSceneLoads) {
+    std::optional<SceneLoad::Deferral> reading;
+    auto first = std::make_shared<LoadScene>([&](SceneLoad& load) { reading.emplace(load.defer()); });
+    test::EngineFixture fixture({}, std::make_unique<test::TestApplication>([&](Engine& engine) { engine.getScenes().push(first); }));
+    fixture.frames(2);
+    EXPECT_EQ(first->getState(), Scene::State::Loading);
+    EXPECT_FALSE(fixture.engine().isFrameComplete());
+
+    reading->complete();
+    fixture.frames(1);
+    EXPECT_EQ(first->getState(), Scene::State::Active);
+    EXPECT_TRUE(fixture.engine().isFrameComplete());
 }
 
 TEST(SceneManagerTest, QueuesChangesInRequestOrder) {

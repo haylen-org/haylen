@@ -294,6 +294,10 @@ void Host::closeWindow() {
     runtime.close();
 }
 
+void Host::endSplashScreen(float fadeOutSeconds) {
+    runtime.endSplashScreen(fadeOutSeconds);
+}
+
 // A web page runs the app on the thread of the browser that delivers every message, which only goes on once the frame returns.
 bool Host::canHaltFrames() const noexcept {
 #if defined(__EMSCRIPTEN__)

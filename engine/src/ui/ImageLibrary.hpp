@@ -44,6 +44,11 @@ class ImageLibrary final {
     // The natural size of a picture, the pixels of an image file or the size an SVG document gives itself, which is zero while it loads. Throws once the picture failed to load.
     [[nodiscard]] math::Vec2 getSize(std::string_view path, graphics::Texture::Filter filter);
 
+    // Whether the UI asked in this frame for a picture that had nothing to draw yet, because it still loads. An SVG document that draws with a raster of another scale until the raster of its scale arrives counts as drawn.
+    [[nodiscard]] bool isWaiting() const noexcept {
+        return waitedFrame == frame;
+    }
+
     // Counts the frames that tell which rasters were drawn lately, and releases the rasters drawn longest ago while the rasters pass the budget, keeping those of this frame and the one before.
     void beginFrame();
 
@@ -98,6 +103,7 @@ class ImageLibrary final {
     std::size_t rasterBudget;
     std::size_t rasterBytes = 0;
     std::uint64_t frame = 1;
+    std::uint64_t waitedFrame = 0;
 };
 
 } // namespace haylen::ui

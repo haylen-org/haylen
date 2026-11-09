@@ -393,6 +393,7 @@ void Engine::frame(double frameSeconds) {
     if (!hidden && !current.hiddenByScreen && !(current.covered && current.coveredFrameDrawn)) {
         render(plugins);
         current.coveredFrameDrawn = current.covered;
+        current.frameComplete = checkFrameComplete();
     }
 
     // Deferred signal slots and queued events run last, after everything the frame did.
@@ -1064,6 +1065,29 @@ bool Engine::isBackCaptured() const {
         }
     }
     return false;
+}
+
+bool Engine::isFrameComplete() const noexcept {
+    return state->frameComplete;
+}
+
+// The first scene that loads without a loading view leaves the screen to the clear color until it enters.
+bool Engine::checkFrameComplete() const {
+    const EngineState& current = *state;
+    if (current.errorScreen || current.applicationPending) {
+        return true;
+    }
+
+    const SceneManager& scenes = *current.scenes;
+    if (scenes.empty() && scenes.isTransitioning() && !scenes.isLoadingViewShown()) {
+        return false;
+    }
+    for (std::size_t index = 0; index < current.plugins.size(); ++index) {
+        if (!current.plugins[index].isFrameComplete()) {
+            return false;
+        }
+    }
+    return true;
 }
 
 Engine::PhaseScope::PhaseScope(Engine& owner, Phase value) noexcept : engine(owner), previous(owner.state->phase), exceptions(std::uncaught_exceptions()) {

@@ -311,6 +311,9 @@ class Engine final {
     [[nodiscard]] bool canBackLeaveApp() const noexcept;
     [[nodiscard]] bool isBackCaptured() const;
 
+    // Whether the frame that rendered last drew the app complete, which no frame did before the first one rendered: the error screen or the update screen, or the app with its first scene loaded and nothing that a plugin draws still loading. A frame that renders nothing, such as one of an app in the background or covered by native UI, leaves the answer of the frame before. The platform shows the app for the first time with such a frame, so a splash screen hands over to the first real frame of the app.
+    [[nodiscard]] bool isFrameComplete() const noexcept;
+
     // The color that the engine paints behind the status bar while it shows, over everything the app drew there, or none to leave what the app drew. Only the visible area of the viewport takes it, so the clear color shows where letterbox bars cover the top of the screen.
     void setStatusBarColor(std::optional<math::Color> value) noexcept;
     [[nodiscard]] std::optional<math::Color> getStatusBarColor() const noexcept;
@@ -355,6 +358,7 @@ class Engine final {
     [[nodiscard]] Json toDesignJson(const math::Rect& pixels) const;
     void dispatchEvent(const platform::Event& event);
     void render(std::size_t plugins);
+    [[nodiscard]] bool checkFrameComplete() const;
     void paintStatusBar(math::Color color);
     void renderScenes(std::size_t plugins);
     void setAppState(AppState value);

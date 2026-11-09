@@ -135,6 +135,7 @@ void UiPlugin::beginFrame(core::Engine& engine, float) {
     const auto delta = static_cast<float>(engine.getClock().getUnscaledDelta());
     elapsed += delta;
     drawBegun = false;
+    guiAppeared = false;
     navigation.update(engine.getActions(), engine.getInput(), engine.getVirtualInput(), engine.isHalted() || engine.getScenes().isInputBlocked(), focus.getOwner() == ui::FocusNavigator::Owner::PlayArea);
     const graphics::Viewport& viewport = engine.getViewport();
     const math::Vec2 pixelsPerUnit = viewport.getPixelsPerUnit();
@@ -314,6 +315,9 @@ void UiPlugin::beginWindow(const char* name, ImGuiWindowFlags flags) {
 void UiPlugin::drawGuis() {
     ui::Backend& drawing = getBackend();
     for (const Mounted* entry : drawnGuis) {
+        if (entry->gui->getRoot().getDrawnFrame() == 0) {
+            guiAppeared = true;
+        }
         ImGui::PushID(entry->gui.get());
         entry->gui->draw(*context, entry->gui->getPlacement() == ui::Placement::Safe ? drawing.getLiftedSafeRect() : drawing.getLiftedDisplayRect());
         ImGui::PopID();
@@ -699,6 +703,11 @@ std::shared_ptr<text::FontFamily> UiPlugin::getFontFamily(core::Engine& engine, 
 // Back closes an open popup or dialog, which the UI does itself.
 bool UiPlugin::isCapturingBack() const {
     return backend && backend->getImGuiContext()->OpenPopupStack.Size > 0;
+}
+
+// A GUI lays out as it draws for the first time, so the code of the app that places the world around its nodes finds their bounds only from the next frame. A picture that is still loading leaves its place empty.
+bool UiPlugin::isFrameComplete() const {
+    return !guiAppeared && !(images && images->isWaiting());
 }
 
 bool UiPlugin::isUsingPointer() const {

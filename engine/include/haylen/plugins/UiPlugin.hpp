@@ -54,6 +54,7 @@ class UiPlugin final : public Plugin {
     void renderUi(core::Engine& engine, const core::SceneView& view) override;
     void installLua(core::Engine& engine, lua_State* L) override;
     [[nodiscard]] bool isCapturingBack() const override;
+    [[nodiscard]] bool isFrameComplete() const override;
 
     // Builds a theme that `loadTheme` read from a changed file again on its base, and applies it when it is the current theme.
     void packageChanged(core::Engine& engine, std::span<const std::string> paths) override;
@@ -216,6 +217,7 @@ class UiPlugin final : public Plugin {
     // The points per UI unit the ImGui style took its scroll bar gap at, so a change of scale styles it again.
     float styledPoints = 0.0F;
     bool drawBegun = false;
+    bool guiAppeared = false;
     core::Engine* owner = nullptr;
 };
 

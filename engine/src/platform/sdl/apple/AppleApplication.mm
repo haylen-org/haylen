@@ -61,7 +61,7 @@ void AppleApplication::prepareWindow([[maybe_unused]] const core::AppConfig& con
 #endif
 }
 
-// The window that SDL opened lies under the overlay of the plugins and the elements of screen readers, and under the launch screen until the splash ends. The view controller of SDL answers UIKit with the status bar and the orientations of the app, and the plugins hear the scene connect once the window of the app is in it.
+// The view of the app holds the overlay of the plugins and the elements of screen readers, and above them the launch screen until the splash ends. The view controller of SDL answers UIKit with the status bar and the orientations of the app, and the plugins hear the scene connect once the window of the app is in it.
 void AppleApplication::finishLaunching(Runtime&) {
     UIWindow* window = (__bridge UIWindow*)NativeWindow::getHandle();
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
@@ -70,7 +70,7 @@ void AppleApplication::finishLaunching(Runtime&) {
     UIView* content = window.rootViewController.view;
     [HaylenAccessibilityView.shared attachToView:content];
     [HaylenOverlayLayer.shared attachToView:content];
-    AppleSplash::cover(window);
+    AppleSplash::cover(content);
     AppleTheme::observe(window);
     [static_cast<HaylenSceneDelegate*>(window.windowScene.delegate) connectPlugins];
 }

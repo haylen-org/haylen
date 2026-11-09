@@ -43,6 +43,9 @@ class Plugin {
     // Whether the plugin takes the next press of the back button of the platform, such as the UI while a popup is open, so the press never leaves the app.
     [[nodiscard]] virtual bool isCapturingBack() const;
 
+    // Whether the frame that just rendered drew everything the plugin had to draw, with nothing of it still loading, such as the UI while a picture it shows has not arrived. The engine asks it after each frame that renders, and the platform shows the app for the first time with such a frame.
+    [[nodiscard]] virtual bool isFrameComplete() const;
+
     // Hears the package paths that changed while the app runs in development, after the assets read from them reloaded, so a plugin rebuilds what it built from files outside the asset cache.
     virtual void packageChanged(core::Engine& engine, std::span<const std::string> paths);
 };

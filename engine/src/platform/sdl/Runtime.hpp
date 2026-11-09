@@ -77,6 +77,7 @@ class Runtime final {
     // Hands over the GPU device that started with the window, or creates another one for the window, as an app that replaces the last one asks for it. Another one needs its graphics API prepared first, which `prepareDevice` reports.
     [[nodiscard]] std::unique_ptr<gpu::Device> createDevice();
     [[nodiscard]] bool prepareDevice();
+    void endSplashScreen(float fadeOutSeconds);
 
     // Ends the frames at the next iteration, which closes the window and ends the process of desktop apps.
     void close() noexcept {

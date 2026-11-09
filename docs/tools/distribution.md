@@ -1101,7 +1101,7 @@ The object `splash` of `app.json` sets the launch screen of every platform:
 | `duration` | `0` | The least time in seconds that the launch screen stays from the launch of the app. It always stays until the app drew its first frame. |
 | `fadeOut` | `0.25` | The seconds the launch screen takes to fade out into the app. |
 
-The runtime ends the launch screen after the first frame that the app drew once the `duration` passed since the runtime started. The platform then fades it out over `fadeOut` seconds. The project changes the rest:
+The runtime ends the launch screen once the app drew its first complete frame and the `duration` passed since the runtime started. It ends it as the next frame starts, so the GPU had a whole frame to put the complete one on the screen. The platform then fades it out over `fadeOut` seconds. A frame is complete when it shows the app as it is meant to look: the first scene has loaded, or its loading view shows, every picture of the UI has arrived, and every GUI drew once before, so the code that places the world around the nodes of a GUI has their bounds. The error screen and the update screen of content are complete too. So the splash goes straight to the first real frame of the app, with no empty frame and no picture that pops in after it. The project changes the rest:
 
 - The `LaunchScreen.storyboard` of the iOS and tvOS targets of the Apple project, whose layout belongs to the developer.
 - The theme `Theme.Haylen.Splash` that the manifest of the Android project names, which a theme of the project may replace.
@@ -1111,11 +1111,12 @@ The app icons live in the asset catalogs of the Apple project and the launcher r
 
 | Platform | Launch screen |
 | --- | --- |
-| iOS, iPadOS, Mac Catalyst | `ios/LaunchScreen.storyboard`: the image `splash-logo` centered in the safe area over the color `splash-background`, both from the asset catalog. Auto Layout keeps the logo square, at most 200 points and at most half of the safe area in each direction, so it fits every device, orientation and iPad window size. The system takes the launch screen away as soon as the window of the app shows. So `AppleSplash` covers the window with the same storyboard, which `UILaunchStoryboardName` of the `Info.plist` names, until the runtime ends the splash and fades it out. |
-| tvOS | `tvos/LaunchScreen.storyboard` with the same layout and a logo of at most 360 points, kept over the window the same way. |
+| iOS, iPadOS, Mac Catalyst | `ios/LaunchScreen.storyboard`: the image `splash-logo` centered in the safe area over the color `splash-background`, both from the asset catalog. Auto Layout keeps the logo square, at most 200 points and at most half of the safe area in each direction, so it fits every device, orientation and iPad window size. The system takes the launch screen away as soon as the window of the app shows. So `AppleSplash` covers the view of the app with the same storyboard, which `UILaunchStoryboardName` of the `Info.plist` names, until the runtime ends the splash and fades it out. The cover lies inside that view, because UIKit puts the view of the root view controller above every other view of the window when the window first shows. |
+| tvOS | `tvos/LaunchScreen.storyboard` with the same layout and a logo of at most 360 points, kept over the view of the app the same way. |
 | visionOS | None. The system opens the window of the app without a launch screen, so the splash of `app.json` does not show there. |
 | Android | The SplashScreen API of `androidx.core:core-splashscreen`, with the theme `Theme.Haylen.Splash` of the manifest showing `haylen_splash_icon` over `haylen_splash_background`, then `Theme.Haylen`, whose window background has the same color. The system splash screen ends with the first frame of the activity window, while the Android runtime draws only once the activity resumed and its surface exists. So `HaylenSplash` covers the surface of the app from that first frame with a view of the same background and icon. It stays until the runtime ends the splash through `nativeFramePresented`, and then fades out over the seconds of `nativeFadeOut`. No black frame shows in between. The icon insets the logo so it fits the circle that Android masks it with, in every orientation, on phones, tablets and TVs. |
 | Web | The page shows the logo over the background with the progress bar and its percentage, until the runtime ends the splash through `Module.haylen.onSplashEnded`, which fades it out. |
+| macOS, Windows, Linux | None. The window opens hidden and shows with the first complete frame, so it never shows empty. |
 
 The script `haylen.py` writes the splash into each project:
 
