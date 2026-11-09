@@ -21,6 +21,8 @@ permissions:
 
 env:
   CPM_SOURCE_CACHE: ${{ github.workspace }}/.cache/cpm
+  # The Debug trees keep only the file and line of each instruction, which stack traces and sanitizer reports read, so one build of every job fits in the caches of the repository.
+  HAYLEN_DEBUG_INFO: LINES
   # The development packages that the engine builds against on Linux: Ninja, the X11, Wayland and input libraries that SDL compiles against and loads when the app starts, and the headers of EGL and OpenGL.
   LINUX_PACKAGES: ninja-build libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev libgl1-mesa-dev libegl-dev libwayland-dev libxkbcommon-dev libdecor-0-dev libdbus-1-dev libibus-1.0-dev libudev-dev
   # Mesa lavapipe for Vulkan with its validation layers, and Mesa llvmpipe for OpenGL through EGL, which draw the GPU tests of Linux without a GPU.
@@ -441,8 +443,6 @@ jobs:
       - uses: ./.github/actions/build-environment
         with:
           packages: ${{ env.LINUX_PACKAGES }} dpkg-dev desktop-file-utils
-          cache: desktop-apps
-          cache-size: 600M
       - uses: ./.github/actions/desktop-artifacts
       - name: Install CMake with the AppImage generator of CPack
         if: runner.os == 'Linux'
@@ -460,10 +460,6 @@ jobs:
       - name: Validate the desktop entry
         if: runner.os == 'Linux'
         run: desktop-file-validate build/apps/starter-*/installed/linux/share/applications/*.desktop
-      - uses: ./.github/actions/compiler-cache
-        if: always()
-        with:
-          job-status: ${{ job.status }}
 
   # The Debug build of the C++ template compiles the engine with the app, and the Release build ships its protected release with the content tool of the desktop artifacts, each in a job of its own.
   cpp-apps:

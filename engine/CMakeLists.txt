@@ -30,6 +30,26 @@ option(HAYLEN_BUILD_FUZZERS "Build the fuzzer of the content formats with the te
 set(HAYLEN_SANITIZERS "OFF" CACHE STRING "Sanitizers of desktop builds without MSVC: OFF, ADDRESS for AddressSanitizer and UndefinedBehaviorSanitizer, or THREAD for ThreadSanitizer.")
 set_property(CACHE HAYLEN_SANITIZERS PROPERTY STRINGS OFF ADDRESS THREAD)
 set(HAYLEN_SHADERC "" CACHE FILEPATH "Path to a build of the Haylen shader compiler haylen-shaderc, or empty for the pinned compiler that the build downloads or builds.")
+if(DEFINED ENV{HAYLEN_DEBUG_INFO})
+  set(haylen_debug_info "$ENV{HAYLEN_DEBUG_INFO}")
+else()
+  set(haylen_debug_info "FULL")
+endif()
+set(HAYLEN_DEBUG_INFO "${haylen_debug_info}" CACHE STRING "The debug information of the Debug and RelWithDebInfo configurations: FULL, or LINES for the file and line of each instruction alone. The variable HAYLEN_DEBUG_INFO of the environment names it for every build tree.")
+set_property(CACHE HAYLEN_DEBUG_INFO PROPERTY STRINGS FULL LINES)
+
+# The file and line of each instruction are what stack traces and sanitizer reports read, in objects about a third of the size of those that describe the code fully for a debugger, as continuous integration builds them for its compiler caches. MSVC has no format with lines alone, so its objects carry no debug information then.
+if(HAYLEN_DEBUG_INFO STREQUAL "LINES")
+  if(MSVC)
+    set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "")
+  elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    add_compile_options("$<$<CONFIG:Debug,RelWithDebInfo>:-g1>")
+  else()
+    add_compile_options("$<$<CONFIG:Debug,RelWithDebInfo>:-gline-tables-only>")
+  endif()
+elseif(NOT HAYLEN_DEBUG_INFO STREQUAL "FULL")
+  message(FATAL_ERROR "The option \"HAYLEN_DEBUG_INFO\" is \"FULL\" or \"LINES\", not \"${HAYLEN_DEBUG_INFO}\".")
+endif()
 
 list(APPEND CMAKE_MODULE_PATH "${HAYLEN_CMAKE_DIR}")
 
