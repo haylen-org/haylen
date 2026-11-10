@@ -114,16 +114,16 @@ function GamepadMotion:findGamepad()
     return nil
 end
 
--- Draws one line of readings with its title.
-function GamepadMotion:drawReading(title, text, x, y, color)
-    Test.caption(title, x, y, {size = 20})
-    graphics2d.drawText(nil, text, x, y + 26, {size = 24, color = color or Test.ink, layer = 2})
+-- Draws one line of readings with its title, both wrapping at the width of the panel.
+function GamepadMotion:drawReading(title, text, x, y, width, color)
+    Test.caption(title, x, y, {size = 20, maxWidth = width})
+    graphics2d.drawText(nil, text, x, y + 26, {size = 24, color = color or Test.ink, maxWidth = width, layer = 2})
 end
 
-function GamepadMotion:drawReadings(x, y)
+function GamepadMotion:drawReadings(x, y, width)
     local gamepad = self:findGamepad()
     if not gamepad then
-        self:drawReading('Gamepads', 'No gamepad with motion sensors is connected.', x, y, Test.muted)
+        self:drawReading('Gamepads', 'No gamepad with motion sensors is connected.', x, y, width, Test.muted)
         return
     end
 
@@ -131,17 +131,17 @@ function GamepadMotion:drawReadings(x, y)
     local rx, ry, rz = input.gamepadRotationRate(gamepad)
     local qx, qy, qz, qw = input.gamepadAttitude(gamepad)
     local tiltX, tiltY = input.gamepadTilt(gamepad)
-    self:drawReading(string.format('Gamepad %d, %s', gamepad, input.gamepadName(gamepad)), table.concat(input.gamepadSensors(gamepad), ', '), x, y, Test.warm)
-    self:drawReading('Acceleration with gravity, meters per second squared', string.format('%6.2f  %6.2f  %6.2f', ax, ay, az), x, y + 70)
-    self:drawReading('Rotation rate, radians per second', string.format('%6.2f  %6.2f  %6.2f', rx, ry, rz), x, y + 140)
-    self:drawReading('Attitude quaternion', string.format('%5.2f  %5.2f  %5.2f  %5.2f', qx, qy, qz, qw), x, y + 210)
-    self:drawReading('Tilt', string.format('%5.2f  %5.2f', tiltX, tiltY), x, y + 280, Test.green)
+    self:drawReading(string.format('Gamepad %d, %s', gamepad, input.gamepadName(gamepad)), table.concat(input.gamepadSensors(gamepad), ', '), x, y, width, Test.warm)
+    self:drawReading('Acceleration with gravity, meters per second squared', string.format('%6.2f  %6.2f  %6.2f', ax, ay, az), x, y + 70, width)
+    self:drawReading('Rotation rate, radians per second', string.format('%6.2f  %6.2f  %6.2f', rx, ry, rz), x, y + 140, width)
+    self:drawReading('Attitude quaternion', string.format('%5.2f  %5.2f  %5.2f  %5.2f', qx, qy, qz, qw), x, y + 210, width)
+    self:drawReading('Tilt', string.format('%5.2f  %5.2f', tiltX, tiltY), x, y + 280, width, Test.green)
 
     local touched = {}
     for _, finger in ipairs(input.gamepadTouches(gamepad)) do
         touched[#touched + 1] = string.format('%.2f, %.2f', finger.x, finger.y)
     end
-    self:drawReading('Fingers on its touchpads', #touched > 0 and table.concat(touched, '   ') or 'None', x, y + 350, Test.warm)
+    self:drawReading('Fingers on its touchpads', #touched > 0 and table.concat(touched, '   ') or 'None', x, y + 350, width, Test.warm)
 end
 
 function GamepadMotion:draw(area)
@@ -161,7 +161,7 @@ function GamepadMotion:draw(area)
     graphics2d.drawCircle(centerX + ball.x, centerY + ball.y, kRadius, Test.warm, {layer = 4})
     graphics2d.drawCircle(centerX + ball.x - 10, centerY + ball.y - 10, kRadius * 0.3, '#66FFFFFF', {layer = 5})
 
-    self:drawReadings(tray[1] + tray[3] + margin, margin)
+    self:drawReadings(tray[1] + tray[3] + margin, margin, panel - margin)
 end
 
 return GamepadMotion

@@ -153,9 +153,15 @@ function Mouse:update(dt)
     self:status(string.format('The mouse is at %.0f, %.0f design units and %.0f, %.0f pixels, %s the window, and it moved %.1f, %.1f this frame.%s', mouseX, mouseY, fx, fy, input.mouseInside() and 'inside' or 'outside', self.deltaX, self.deltaY, input.pointerCaptured() and ' The interface holds it.' or ''))
 end
 
--- Draws the mouse seen from above: a shaded body on its shadow whose two buttons light while held and flash on a press or a release, the wheel between them, which turns with the vertical total and leans with the horizontal one, and the movement of the frame from the dot in its middle, ten times longer.
-function Mouse:drawMouse(left, top)
-    local width, height = kMouse[1], kMouse[2]
+-- Draws the mouse seen from above: a shaded body on its shadow whose two buttons light while held and flash on a press or a release, the wheel between them, which turns with the vertical total and leans with the horizontal one, and the movement of the frame from the dot in its middle, ten times longer. The body gets shorter when the caption and the wheel totals under it would otherwise pass `bottom`.
+function Mouse:drawMouse(left, top, bottom)
+    local width = kMouse[1]
+    local text = 'Move the mouse: a green line from the dot shows the movement of each frame, ten times longer.'
+    local caption = {size = 20, color = Test.muted, maxWidth = width + 20, layer = 2}
+    local totals = {size = 22, color = Test.ink, layer = 2}
+    local _, captionHeight = graphics2d.measureText(nil, text, caption)
+    local _, totalsHeight = graphics2d.measureText(nil, 'Wheel total', totals)
+    local height = math.min(kMouse[2], bottom - top - 20 - captionHeight - 12 - totalsHeight)
     local split = height * 0.42
     local round = width / 2
     local corners = {round, round, round * 0.9, round * 0.9}
@@ -185,17 +191,14 @@ function Mouse:drawMouse(left, top)
     graphics2d.drawRing(cx, cy, 16, 2, '#40FFFFFF', {layer = 2})
     graphics2d.drawCircle(cx, cy, 6, Test.green, {layer = 2})
     graphics2d.drawLine(cx, cy, cx + self.deltaX * 10, cy + self.deltaY * 10, 5, Test.green, {layer = 3})
-    local text = 'Move the mouse: a green line from the dot shows the movement of each frame, ten times longer.'
-    local caption = {size = 20, color = Test.muted, maxWidth = width + 20, layer = 2}
     graphics2d.drawText(nil, text, left, top + height + 20, caption)
-    local _, captionHeight = graphics2d.measureText(nil, text, caption)
-    graphics2d.drawText(nil, string.format('Wheel total %.1f, %.1f', self.scrollX, self.scrollY), left, top + height + 32 + captionHeight, {size = 22, color = Test.ink, layer = 2})
+    graphics2d.drawText(nil, string.format('Wheel total %.1f, %.1f', self.scrollX, self.scrollY), left, top + height + 32 + captionHeight, totals)
 end
 
 function Mouse:draw(area)
     local margin = 24
     graphics2d.drawText(nil, 'The mouse', margin, 30, {size = 24, color = Test.muted, anchor = {0, 0.5}, layer = 2})
-    self:drawMouse(margin, 72)
+    self:drawMouse(margin, 72, area.height - margin)
     graphics2d.drawText(nil, 'Hover a card for its cursor', self.zones[1].rect[1], 30, {size = 24, color = Test.muted, anchor = {0, 0.5}, layer = 2})
     for _, zone in ipairs(self.zones) do
         local hovered = zone.name == self.cursor and zone.name ~= 'default'
