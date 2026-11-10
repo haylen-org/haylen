@@ -38,7 +38,7 @@ function Simulations:enter()
             ui.stack{id = 'room', grow = 1, align = 'stretch',
                 ui.stack{id = 'screen', aspectRatio = visible.width / visible.height, align = 'stretch', margin = {56, 72}, ui.stack{id = 'safe', align = 'stretch', self:hud()}},
             },
-            ui.card{width = 560, gap = 16, align = 'start', children = self:controls()},
+            ui.card{width = 560, align = 'stretch', ui.scroll{grow = 1, height = 0, ui.column{gap = 16, children = self:controls()}}},
         }},
     }
     self:refresh()
@@ -52,7 +52,7 @@ function Simulations:hud()
             ui.progress{value = 0.7, tone = 'success', width = 180},
         },
         ui.image{image = 'interface/images/island-map.png', anchor = 'topRight', anchorTo = 'parent', margin = 12, width = 150, height = 94, fit = 'cover', radius = 10},
-        ui.row{anchor = 'bottomRight', anchorTo = 'parent', margin = 12, gap = 8, ui.chip{text = 'Jump', selected = true}, ui.chip{text = 'Attack'}},
+        ui.row{anchor = 'bottomRight', anchorTo = 'parent', margin = 12, gap = 8, ui.chip{text = 'Jump'}, ui.chip{text = 'Attack'}},
     }
 end
 
