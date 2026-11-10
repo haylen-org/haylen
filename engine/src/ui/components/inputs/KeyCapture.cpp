@@ -136,8 +136,8 @@ void KeyCapture::render(Context& context, const math::Rect& bounds) {
     if (capturing) {
         ImGui::SetActiveID(itemId, ImGui::GetCurrentWindow());
         ImGui::SetActiveIdUsingAllKeyboardKeys();
-        for (const ImGuiKey key : {ImGuiKey_GamepadFaceDown, ImGuiKey_GamepadFaceRight, ImGuiKey_GamepadDpadLeft, ImGuiKey_GamepadDpadRight, ImGuiKey_GamepadDpadUp, ImGuiKey_GamepadDpadDown, ImGuiKey_MouseLeft}) {
-            ImGui::SetKeyOwner(key, itemId);
+        for (const ImGuiKey held : {ImGuiKey_GamepadFaceDown, ImGuiKey_GamepadFaceRight, ImGuiKey_GamepadDpadLeft, ImGuiKey_GamepadDpadRight, ImGuiKey_GamepadDpadUp, ImGuiKey_GamepadDpadDown, ImGuiKey_MouseLeft}) {
+            ImGui::SetKeyOwner(held, itemId);
         }
         if (context.getFrame() > startedFrame) {
             if (const std::optional<std::string> binding = listen(context.getInput())) {
@@ -175,9 +175,9 @@ void KeyCapture::start(const input::Input& devices, std::uint64_t frame) {
 // Returns the first binding the devices pressed this frame, with sticks and triggers counting once they travel well away from where they rested when listening started.
 std::optional<std::string> KeyCapture::listen(const input::Input& devices) const {
     for (std::size_t code = 0; code < input::Controls::kKeyCount; ++code) {
-        const auto key = static_cast<input::Key>(code);
-        if (devices.isKeyPressed(key) && input::Controls::keyName(key) != "unknown") {
-            return "key:" + std::string(input::Controls::keyName(key));
+        const auto pressed = static_cast<input::Key>(code);
+        if (devices.isKeyPressed(pressed) && input::Controls::keyName(pressed) != "unknown") {
+            return "key:" + std::string(input::Controls::keyName(pressed));
         }
     }
     for (const input::MouseButton button : {input::MouseButton::Left, input::MouseButton::Right, input::MouseButton::Middle}) {

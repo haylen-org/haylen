@@ -58,7 +58,7 @@ bool Host::isFullscreen() const noexcept {
 }
 
 // Desktops open a window of SDL on the display of the output, iPhones and iPads show it in the scene of an external display, a page opens a window of the browser on the screen of the output, and the other platforms end it with the reason.
-void Host::openOutput(std::uint32_t number, std::string_view display, const Output::Options& options) {
+void Host::openOutput(std::uint32_t number, [[maybe_unused]] std::string_view display, [[maybe_unused]] const Output::Options& options) {
 #if defined(__EMSCRIPTEN__)
     if (runtime.getWindow().getApi() != gpu::Device::Api::WebGpu) {
         refuseOutput(number, "A WebGL2 context draws only into its own canvas, so the page shows outputs on other screens only through WebGPU.");

@@ -52,8 +52,8 @@ Collection::Collection() : layout(std::make_unique<LinearLayout>()), sizes(std::
 Collection::~Collection() = default;
 
 void Collection::readProperties(PropertyReader& reader) {
-    for (const std::string_view key : {"axis", "layout", "lanes", "minCellSize", "cellAspect", "gap", "padding", "types", "placeholder"}) {
-        layoutDirty = layoutDirty || reader.has(key);
+    for (const std::string_view property : {"axis", "layout", "lanes", "minCellSize", "cellAspect", "gap", "padding", "types", "placeholder"}) {
+        layoutDirty = layoutDirty || reader.has(property);
     }
     typesChanged = typesChanged || reader.has("types") || reader.has("placeholder") || reader.has("layout");
     reader.readChoice<Axis>("axis", axis, kAxes);
