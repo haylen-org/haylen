@@ -224,6 +224,7 @@ class Device final : public gpu::Device {
     void openEncoder();
     void beginSwapchainPass(const PassDesc& desc);
     [[nodiscard]] Swapchain& requireSwapchain(int surface);
+    [[nodiscard]] std::unique_ptr<Swapchain>& requireAddedSurface(int surface);
     void beginOffscreenPass(const PassDesc& desc);
     void carryUniforms() noexcept;
     void bindBlocks(const ProgramRecord& program);

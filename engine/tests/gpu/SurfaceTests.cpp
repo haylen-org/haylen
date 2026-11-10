@@ -94,6 +94,10 @@ TEST_P(GpuSurfaceTest, DrawsIntoSurfacesBeyondTheWindow) {
     device().removeSurface(side);
     device().commit();
     EXPECT_FALSE(device().isLost());
+
+    // Only a surface that "addSurface" made and that is still there goes away, never the window, which is the surface 0.
+    EXPECT_THROW(device().removeSurface(board), std::logic_error);
+    EXPECT_THROW(device().removeSurface(0), std::logic_error);
 }
 
 // A drawable of fewer pixels than its window, as when the app caps its pixel density, takes the passes of each frame, which the system or the device stretches over the window, and follows the window as it resizes, scaled and not, with the validation of its API watching.

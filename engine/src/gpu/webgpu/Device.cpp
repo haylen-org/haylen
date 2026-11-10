@@ -1076,10 +1076,14 @@ int Device::addSurface(const Surface& surface) {
 }
 
 Swapchain& Device::requireSwapchain(int surface) {
+    return *requireAddedSurface(surface);
+}
+
+std::unique_ptr<Swapchain>& Device::requireAddedSurface(int surface) {
     if (surface < 1 || static_cast<std::size_t>(surface) > surfaces.size() || surfaces[static_cast<std::size_t>(surface - 1)] == nullptr) {
         throw std::logic_error(std::format("The device has no surface {}.", surface));
     }
-    return *surfaces[static_cast<std::size_t>(surface - 1)];
+    return surfaces[static_cast<std::size_t>(surface - 1)];
 }
 
 void Device::resizeSurface(int surface, const Surface::Size& size) {
@@ -1087,8 +1091,7 @@ void Device::resizeSurface(int surface, const Surface::Size& size) {
 }
 
 void Device::removeSurface(int surface) {
-    requireSwapchain(surface);
-    surfaces[static_cast<std::size_t>(surface - 1)].reset();
+    requireAddedSurface(surface).reset();
 }
 
 std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width, int height) {

@@ -143,6 +143,7 @@ struct Device::Native {
 
     [[nodiscard]] BufferEntry& requireBuffer(Buffer buffer);
     [[nodiscard]] Swapchain& requireSwapchain(int surface);
+    [[nodiscard]] std::unique_ptr<Swapchain>& requireAddedSurface(int surface);
     [[nodiscard]] ImageEntry& requireImage(Image image);
     [[nodiscard]] ProgramEntry& requireProgram(Program program);
     [[nodiscard]] id<MTLBlitCommandEncoder> getTransferBlit();
@@ -334,10 +335,14 @@ Swapchain& Device::Native::requireSwapchain(int surface) {
     if (surface == 0) {
         return swapchain;
     }
-    if (surface < 0 || static_cast<std::size_t>(surface) > surfaces.size() || surfaces[static_cast<std::size_t>(surface - 1)] == nullptr) {
+    return *requireAddedSurface(surface);
+}
+
+std::unique_ptr<Swapchain>& Device::Native::requireAddedSurface(int surface) {
+    if (surface < 1 || static_cast<std::size_t>(surface) > surfaces.size() || surfaces[static_cast<std::size_t>(surface - 1)] == nullptr) {
         throw std::logic_error(std::format("The device has no surface {}.", surface));
     }
-    return *surfaces[static_cast<std::size_t>(surface - 1)];
+    return surfaces[static_cast<std::size_t>(surface - 1)];
 }
 
 Device::Native::BufferEntry& Device::Native::requireBuffer(Buffer buffer) {
@@ -1400,8 +1405,7 @@ void Device::resizeSurface(int surface, const Surface::Size& size) {
 }
 
 void Device::removeSurface(int surface) {
-    (void)native->requireSwapchain(surface);
-    native->surfaces[static_cast<std::size_t>(surface - 1)].reset();
+    native->requireAddedSurface(surface).reset();
 }
 
 std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width, int height) {
