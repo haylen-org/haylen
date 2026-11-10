@@ -46,8 +46,8 @@ function Permissions:enter()
                 Permissions.card('location', 'plugins/map.svg', 'Location'),
                 Permissions.card('notifications', 'plugins/bell.svg', 'Notifications'),
             },
-            ui.card{grow = 1, align = 'stretch', gap = 16, justify = 'center',
-                ui.icon{image = 'plugins/bell.svg', size = 96, color = 'textMuted', align = 'center'},
+            ui.card{grow = 1, align = 'stretch', gap = 12, justify = 'center',
+                ui.icon{image = 'plugins/bell.svg', size = 64, color = 'textMuted', align = 'center'},
                 ui.label{text = 'Local notification', font = 'heading', textAlign = 'center', align = 'stretch'},
                 ui.label{id = 'notification', text = string.format('Notify in %d seconds, then tap the notification, even after closing the app.', Permissions.notifySeconds), color = 'textMuted', textAlign = 'center', align = 'stretch'},
             },
@@ -71,8 +71,8 @@ end
 
 -- A card with the state of one permission, which the answer of its prompt changes.
 function Permissions.card(kind, icon, title)
-    return ui.card{grow = 1, align = 'stretch', gap = 12,
-        ui.row{gap = 16, ui.icon{image = icon, size = 56, color = 'accentText'}, ui.label{text = title, font = 'heading', grow = 1}},
+    return ui.card{grow = 1, align = 'stretch', gap = 8,
+        ui.row{gap = 16, ui.icon{image = icon, size = 44, color = 'accentText'}, ui.label{text = title, font = 'heading', grow = 1}},
         ui.statusIndicator{id = kind .. 'State', text = 'Checking', tone = 'neutral'},
     }
 end
