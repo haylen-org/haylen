@@ -28,6 +28,7 @@ class InputRecordingTest : public ::testing::Test {
         } catch (const std::invalid_argument& error) {
             return error.what();
         }
+
         return {};
     }
 };
@@ -39,6 +40,7 @@ TEST_F(InputRecordingTest, KeepsEveryStepThroughItsBytes) {
         recording.write(1, step % 7 == 0 ? 0b100U : 0U);
         recording.advance(step * 3U);
     }
+
     const std::vector<std::byte> bytes = recording.toBytes();
     const InputRecording loaded = InputRecording::fromBytes(bytes);
     EXPECT_EQ(loaded.getStepCount(), 10000U);
@@ -47,11 +49,13 @@ TEST_F(InputRecordingTest, KeepsEveryStepThroughItsBytes) {
     EXPECT_EQ(loaded.getHeader().identifier, "com.haylen.tests");
     EXPECT_EQ(loaded.getHeader().fixedRate, 30.0);
     EXPECT_EQ(loaded.getHeader().data, "seed");
+
     for (std::uint32_t step = 0; step < 10000; step += 13) {
         EXPECT_EQ(loaded.getMask(step, 0), recording.getMask(step, 0));
         EXPECT_EQ(loaded.getMask(step, 1), recording.getMask(step, 1));
         EXPECT_EQ(loaded.getHash(step), step * 3U);
     }
+
     EXPECT_EQ(loaded.toBytes(), bytes);
 
     // A button held for a long time costs one run, however many steps it lasts.
@@ -60,6 +64,7 @@ TEST_F(InputRecordingTest, KeepsEveryStepThroughItsBytes) {
         held.write(0, 1);
         held.advance();
     }
+
     EXPECT_LT(held.toBytes().size(), 64U);
     EXPECT_FALSE(held.getHash(0).has_value());
     EXPECT_THROW(held.write(1, 0), std::out_of_range);
@@ -72,12 +77,14 @@ TEST_F(InputRecordingTest, PlaysTheStepsBackAndSeeks) {
         recording->write(0, step);
         recording->advance();
     }
+
     InputPlayback playback(recording);
     std::vector<std::uint32_t> played;
     while (!playback.isFinished()) {
         played.push_back(playback.getMask(0));
         playback.advance();
     }
+
     EXPECT_EQ(played, (std::vector<std::uint32_t>{0, 1, 2, 3}));
     EXPECT_EQ(playback.getMask(0), 0U);
     playback.seek(2);
@@ -118,6 +125,7 @@ TEST_F(InputRecordingTest, RefusesMalformedBytes) {
             claimed.push_back(static_cast<std::byte>(rest != 0 ? low | 0x80U : low));
         } while (rest != 0);
     }
+
     const InputRecording huge = InputRecording::fromBytes(claimed);
     EXPECT_EQ(huge.getStepCount(), InputRecording::kMaxSteps);
     EXPECT_EQ(huge.getMask(InputRecording::kMaxSteps - 1, 0), 1U);

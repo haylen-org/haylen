@@ -44,6 +44,7 @@ class CommandBufferTest : public ::testing::Test {
         for (const Button button : buttons) {
             value |= 1U << button;
         }
+
         return value;
     }
 
@@ -101,6 +102,7 @@ TEST_F(CommandBufferTest, ExpiresByLifetimeExceptWhileFrozen) {
     for (int step = 0; step < 9; ++step) {
         buffer.update(0);
     }
+
     EXPECT_EQ(kept(buffer), "attack");
     buffer.update(0);
     EXPECT_EQ(kept(buffer), "none");
@@ -111,6 +113,7 @@ TEST_F(CommandBufferTest, ExpiresByLifetimeExceptWhileFrozen) {
     for (int step = 0; step < 20; ++step) {
         buffer.update(0);
     }
+
     EXPECT_EQ(kept(buffer), "attack");
     buffer.update(mask({Left}));
     EXPECT_EQ(kept(buffer), "left");
@@ -125,6 +128,7 @@ TEST_F(CommandBufferTest, ExpiresByLifetimeExceptWhileFrozen) {
     for (int step = 0; step < 50; ++step) {
         buffer.update(0);
     }
+
     const std::optional<std::size_t> special = buffer.findCommand("upSpecial");
     ASSERT_TRUE(special.has_value());
     EXPECT_EQ(buffer.peek(), special);
@@ -136,11 +140,13 @@ TEST_F(CommandBufferTest, ExpiresByLifetimeExceptWhileFrozen) {
 TEST_F(CommandBufferTest, ClearsTheHistoryUnlessTheCommandKeepsIt) {
     CommandBuffer clearing(makeOptions({{.name = "run", .steps = {CommandBuffer::kForward, CommandBuffer::kForward}, .maxTicks = 9U, .lifetime = 10U}}));
     CommandBuffer keeping(makeOptions({{.name = "run", .steps = {CommandBuffer::kForward, CommandBuffer::kForward}, .maxTicks = 9U, .lifetime = 10U, .clearsHistory = false}}));
+
     for (CommandBuffer* buffer : {&clearing, &keeping}) {
         tap(*buffer, {Right});
         tap(*buffer, {Right});
         buffer->update(mask({Right}));
     }
+
     EXPECT_EQ(kept(clearing), "right");
     EXPECT_EQ(kept(keeping), "run");
 }
@@ -193,6 +199,7 @@ TEST_F(CommandBufferTest, RejectsInvalidOptions) {
         } catch (const std::invalid_argument& error) {
             return std::string(error.what());
         }
+
         return std::string();
     };
     // clang-format on

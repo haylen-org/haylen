@@ -27,6 +27,7 @@ class PointerEmulationTest : public ::testing::Test {
         for (const platform::Event& event : events) {
             types.push_back(event.type);
         }
+
         return types;
     }
 

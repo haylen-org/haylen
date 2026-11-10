@@ -27,6 +27,7 @@ class GamepadMotionTest : public ::testing::Test {
         for (const MotionSensor sensor : list) {
             sensors.set(static_cast<std::size_t>(sensor));
         }
+
         return sensors;
     }
 
@@ -116,6 +117,7 @@ TEST_F(GamepadMotionTest, ReadTheTiltAsBindingsOfTheActionMap) {
     EXPECT_EQ(ActionMap::Binding::parse("tilt:x+")->toString(), "tilt:x+");
     EXPECT_EQ(ActionMap::Binding::parse("tilt:y-")->toString(), "tilt:y-");
     EXPECT_EQ(ActionMap::Binding::parse("stick:tilt")->toString(), "stick:tilt");
+
     for (const char* text : {"tilt:z+", "tilt:x", "tilt:xy+", "stick:middle"}) {
         EXPECT_FALSE(ActionMap::Binding::parse(text).has_value()) << text;
     }

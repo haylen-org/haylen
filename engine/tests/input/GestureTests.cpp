@@ -29,6 +29,7 @@ class GestureTest : public ::testing::Test {
         for (const auto& [id, position] : points) {
             event.touches[event.touchCount++] = {.id = id, .position = position, .changed = true};
         }
+
         input.handleEvent(event, viewport);
     }
 
@@ -47,6 +48,7 @@ class GestureTest : public ::testing::Test {
         for (const Gesture& gesture : gestures.getGestures()) {
             names.emplace_back(Gesture::typeName(gesture.type));
         }
+
         input.endFrame();
         return names;
     }
@@ -80,9 +82,11 @@ TEST_F(GestureTest, RecognizesTapsAndDoubleTaps) {
     touch(platform::Event::Type::TouchBegan, {{3, {300.0F, 300.0F}}});
     touch(platform::Event::Type::TouchEnded, {{3, {300.0F, 300.0F}}});
     EXPECT_EQ(frame(), Names{"tap"});
+
     for (int step = 0; step < 10; ++step) {
         frame();
     }
+
     touch(platform::Event::Type::TouchBegan, {{4, {300.0F, 300.0F}}});
     touch(platform::Event::Type::TouchEnded, {{4, {300.0F, 300.0F}}});
     EXPECT_EQ(frame(), Names{"tap"});
@@ -129,6 +133,7 @@ TEST_F(GestureTest, RecognizesLongPressesAndSwipes) {
             seen.push_back(name);
         }
     }
+
     EXPECT_EQ(seen, Names{"longPress"});
     touch(platform::Event::Type::TouchEnded, {{1, {100.0F, 100.0F}}});
     EXPECT_EQ(frame(), Names{});
@@ -142,9 +147,11 @@ TEST_F(GestureTest, RecognizesLongPressesAndSwipes) {
     EXPECT_EQ(first().delta, math::Vec2(200.0F, 20.0F));
 
     touch(platform::Event::Type::TouchBegan, {{3, {100.0F, 100.0F}}});
+
     for (int step = 0; step < 12; ++step) {
         frame();
     }
+
     touch(platform::Event::Type::TouchEnded, {{3, {400.0F, 100.0F}}});
     EXPECT_EQ(frame(), Names{});
 }
@@ -215,6 +222,7 @@ TEST(GestureLuaTest, ListsGesturesOfTheFrame) {
         for (const platform::TouchPoint& touch : touches) {
             event.touches[event.touchCount++] = touch;
         }
+
         fixture.engine().handleEvent(event);
         fixture.frames(1);
     };

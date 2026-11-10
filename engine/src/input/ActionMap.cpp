@@ -33,6 +33,7 @@ std::optional<ActionMap::Binding> ActionMap::Binding::parse(std::string_view tex
         if (!found) {
             return std::nullopt;
         }
+
         binding.source = Source::Key;
         binding.key = *found;
         return binding;
@@ -43,6 +44,7 @@ std::optional<ActionMap::Binding> ActionMap::Binding::parse(std::string_view tex
         if (!found) {
             return std::nullopt;
         }
+
         binding.source = Source::MouseButton;
         binding.mouseButton = *found;
         return binding;
@@ -53,6 +55,7 @@ std::optional<ActionMap::Binding> ActionMap::Binding::parse(std::string_view tex
         if (!found) {
             return std::nullopt;
         }
+
         binding.source = Source::GamepadButton;
         binding.gamepadButton = *found;
         return binding;
@@ -62,12 +65,14 @@ std::optional<ActionMap::Binding> ActionMap::Binding::parse(std::string_view tex
         if (value.empty() || (value.back() != '+' && value.back() != '-')) {
             return std::nullopt;
         }
+
         binding.direction = value.back() == '+' ? 1.0F : -1.0F;
         value.remove_suffix(1);
         const std::optional<GamepadAxis> found = Controls::gamepadAxisFromName(value);
         if (!found) {
             return std::nullopt;
         }
+
         binding.source = Source::GamepadAxis;
         binding.gamepadAxis = *found;
         return binding;
@@ -78,9 +83,11 @@ std::optional<ActionMap::Binding> ActionMap::Binding::parse(std::string_view tex
             binding.source = Source::TiltStick;
             return binding;
         }
+
         if (value != "left" && value != "right") {
             return std::nullopt;
         }
+
         binding.source = Source::GamepadStick;
         binding.rightStick = value == "right";
         return binding;
@@ -90,6 +97,7 @@ std::optional<ActionMap::Binding> ActionMap::Binding::parse(std::string_view tex
         if (value.size() != 2 || (value[0] != 'x' && value[0] != 'y') || (value[1] != '+' && value[1] != '-')) {
             return std::nullopt;
         }
+
         binding.source = Source::Tilt;
         binding.tiltY = value[0] == 'y';
         binding.direction = value[1] == '+' ? 1.0F : -1.0F;
@@ -101,6 +109,7 @@ std::optional<ActionMap::Binding> ActionMap::Binding::parse(std::string_view tex
         binding.name = std::string(value);
         return binding;
     }
+
     return std::nullopt;
 }
 
@@ -144,6 +153,7 @@ ActionMap::Action ActionMap::Action::fromJson(const core::Json& json) {
     if (nameField == json.end() || !nameField->is_string() || typeField == json.end() || !typeField->is_string()) {
         throw std::invalid_argument("An action needs a name and a type.");
     }
+
     const std::optional<Type> actionType = typeFromName(typeField->get<std::string>());
     if (!actionType) {
         throw std::invalid_argument("The type of an action must be \"button\", \"axis\" or \"vector\", not \"" + typeField->get<std::string>() + "\".");
@@ -154,6 +164,7 @@ ActionMap::Action ActionMap::Action::fromJson(const core::Json& json) {
         if (!bufferField->is_number() || !std::isfinite(bufferField->get<double>()) || bufferField->get<double>() < 0.0) {
             throw std::invalid_argument("The buffer of an action must be a number of seconds from 0.");
         }
+
         buffer = core::JsonNumber::toFloat(*bufferField);
     }
 
@@ -181,9 +192,11 @@ core::Json ActionMap::Action::toJson() const {
             json[field] = saveBindings(*list);
         }
     }
+
     if (buffer > 0.0F) {
         json["buffer"] = core::JsonNumber::fromFloat(buffer);
     }
+
     return json;
 }
 
@@ -197,6 +210,7 @@ std::vector<ActionMap::Binding> ActionMap::parseBindings(const core::Json& actio
     if (list == action.end()) {
         return bindings;
     }
+
     if (!isList(*list)) {
         throw std::invalid_argument(std::string("The \"") + field + "\" of an action must be a list of bindings.");
     }
@@ -207,8 +221,10 @@ std::vector<ActionMap::Binding> ActionMap::parseBindings(const core::Json& actio
         if (!binding) {
             throw std::invalid_argument("The input binding \"" + text + "\" is invalid. Use a binding such as \"key:space\", \"mouse:left\", \"button:south\", \"axis:leftX+\", \"stick:left\" or \"tilt:x+\".");
         }
+
         bindings.push_back(*binding);
     }
+
     return bindings;
 }
 
@@ -217,6 +233,7 @@ core::Json ActionMap::saveBindings(const std::vector<Binding>& list) {
     for (const Binding& binding : list) {
         saved.push_back(binding.toString());
     }
+
     return saved;
 }
 
@@ -235,6 +252,7 @@ void ActionMap::validate(const Action& action) {
     if (!vector) {
         return;
     }
+
     for (const Binding& binding : action.bindings) {
         if (binding.source != Binding::Source::GamepadStick && binding.source != Binding::Source::TiltStick && binding.source != Binding::Source::VirtualStick) {
             throw std::invalid_argument("The vector action \"" + action.name + "\" takes only sticks in \"bindings\", not \"" + binding.toString() + "\".");
@@ -253,11 +271,14 @@ void ActionMap::load(const core::Json& document) {
     for (const core::Json& entry : *list) {
         Action action = Action::fromJson(entry);
         validate(action);
+
         if (std::ranges::any_of(loaded, [&action](const State& state) { return state.action.name == action.name; })) {
             throw std::invalid_argument("The action name \"" + action.name + "\" is used by more than one action.");
         }
+
         loaded.push_back(State{.action = std::move(action)});
     }
+
     actions = std::move(loaded);
 }
 
@@ -266,6 +287,7 @@ core::Json ActionMap::save() const {
     for (const State& state : actions) {
         list.push_back(state.action.toJson());
     }
+
     return {{"actions", std::move(list)}};
 }
 
@@ -276,6 +298,7 @@ void ActionMap::define(Action action) {
         *existing = State{.action = std::move(action)};
         return;
     }
+
     actions.push_back(State{.action = std::move(action)});
 }
 
@@ -298,6 +321,7 @@ std::vector<std::string> ActionMap::getNames() const {
     for (const State& state : actions) {
         names.push_back(state.action.name);
     }
+
     return names;
 }
 
@@ -305,6 +329,7 @@ void ActionMap::setPressThreshold(float value) {
     if (!(value > 0.0F && value <= 1.0F)) {
         throw std::invalid_argument("The press threshold must be above 0 and at most 1.");
     }
+
     pressThreshold = value;
 }
 
@@ -312,6 +337,7 @@ void ActionMap::setDevices(Devices value) {
     if (value.gamepads == Devices::Gamepads::One && value.gamepad >= Input::kMaxGamepads) {
         throw std::invalid_argument("An action map reads one of the gamepads from 1 to " + std::to_string(Input::kMaxGamepads) + ".");
     }
+
     devices = std::move(value);
 }
 
@@ -320,6 +346,7 @@ std::string_view ActionMap::getVirtualName(const Binding& binding) const noexcep
     if (devices.virtualPrefix.empty()) {
         return binding.name;
     }
+
     virtualName.assign(devices.virtualPrefix).append(binding.name);
     return virtualName;
 }
@@ -339,6 +366,7 @@ float ActionMap::getBindingValue(const Binding& binding, const Input& input, con
         for (std::size_t index = 0; index < Input::kMaxGamepads; ++index) {
             strongestValue = std::max(strongestValue, read(index));
         }
+
         return strongestValue;
     };
     // clang-format on
@@ -370,12 +398,15 @@ math::Vec2 ActionMap::getBindingVector(const Binding& binding, const Input& inpu
     if (binding.source == Binding::Source::VirtualStick) {
         return devices.virtualControls ? virtualInput.getStick(getVirtualName(binding)) : math::Vec2{};
     }
+
     if (binding.source == Binding::Source::TiltStick) {
         return getTilt(input);
     }
+
     if (binding.source != Binding::Source::GamepadStick || devices.gamepads == Devices::Gamepads::None) {
         return {};
     }
+
     if (devices.gamepads == Devices::Gamepads::One) {
         return isStickCaptured(devices.gamepad, binding.rightStick) ? math::Vec2{} : input.getGamepadStick(devices.gamepad, binding.rightStick);
     }
@@ -385,11 +416,13 @@ math::Vec2 ActionMap::getBindingVector(const Binding& binding, const Input& inpu
         if (isStickCaptured(index, binding.rightStick)) {
             continue;
         }
+
         const math::Vec2 stick = input.getGamepadStick(index, binding.rightStick);
         if (stick.getLengthSquared() > strongestStick.getLengthSquared()) {
             strongestStick = stick;
         }
     }
+
     return strongestStick;
 }
 
@@ -398,6 +431,7 @@ math::Vec2 ActionMap::getTilt(const Input& input) const noexcept {
     if (devices.gamepads == Devices::Gamepads::One) {
         return input.getGamepadTilt(devices.gamepad);
     }
+
     if (devices.gamepads == Devices::Gamepads::None) {
         return {};
     }
@@ -409,6 +443,7 @@ math::Vec2 ActionMap::getTilt(const Input& input) const noexcept {
             strongest = tilt;
         }
     }
+
     return strongest;
 }
 
@@ -417,11 +452,13 @@ float ActionMap::getStrongest(const std::vector<Binding>& list, const Input& inp
     for (const Binding& binding : list) {
         result = std::max(result, getBindingValue(binding, input, virtualInput));
     }
+
     return result;
 }
 
 void ActionMap::update(const Input& input, const VirtualInput& virtualInput, bool blocked) {
     holdCaptured(input);
+
     for (State& state : actions) {
         const Action& action = state.action;
         const bool wasDown = state.down;
@@ -440,9 +477,11 @@ void ActionMap::update(const Input& input, const VirtualInput& virtualInput, boo
                 getStrongest(action.right, input, virtualInput) - getStrongest(action.left, input, virtualInput),
                 getStrongest(action.down, input, virtualInput) - getStrongest(action.up, input, virtualInput),
             };
+
             for (const Binding& binding : action.bindings) {
                 vector += getBindingVector(binding, input, virtualInput);
             }
+
             state.vector = vector.clampedLength(1.0F);
             state.value = state.vector.getLength();
             break;
@@ -473,16 +512,19 @@ void ActionMap::trackStepEdges(State& state, bool blocked) noexcept {
         state.buffered = false;
         return;
     }
+
     if (state.pressed) {
         if (state.releaseAfterPress) {
             state.pendingRelease = false;
             state.releaseAfterPress = false;
         }
+
         state.pendingPress = true;
         state.buffered = true;
         state.bufferStepped = false;
         state.bufferAge = 0.0F;
     }
+
     if (state.released) {
         state.pendingRelease = true;
         state.releaseAfterPress = state.pendingPress;
@@ -500,12 +542,14 @@ void ActionMap::beginStep(float stepSeconds) noexcept {
             state.stepReleased = state.pendingRelease;
             state.pendingRelease = false;
         }
+
         state.pendingPress = false;
 
         if (state.buffered && state.bufferStepped) {
             state.bufferAge += stepSeconds;
             state.buffered = state.bufferAge <= state.action.buffer + kBufferTolerance;
         }
+
         state.bufferStepped = state.buffered;
     }
 }
@@ -520,6 +564,7 @@ void ActionMap::holdCaptured(const Input& input) noexcept {
             capturedKeys.reset(code);
         }
     }
+
     for (std::size_t code = 0; code < Controls::kMouseButtonCount; ++code) {
         const auto button = static_cast<MouseButton>(code);
         if (input.isMousePressed(button)) {
@@ -528,6 +573,7 @@ void ActionMap::holdCaptured(const Input& input) noexcept {
             capturedMouseButtons.reset(code);
         }
     }
+
     for (std::size_t index = 0; index < Input::kMaxGamepads; ++index) {
         for (std::size_t code = 0; code < Controls::kGamepadButtonCount; ++code) {
             const auto button = static_cast<GamepadButton>(code);
@@ -537,6 +583,7 @@ void ActionMap::holdCaptured(const Input& input) noexcept {
                 capturedButtons[index].reset(code);
             }
         }
+
         for (std::size_t code = 0; code < Controls::kGamepadAxisCount; ++code) {
             const bool leaning = std::fabs(input.getGamepadAxis(index, static_cast<GamepadAxis>(code))) >= pressThreshold;
             if (leaning && !leaningAxes[index].test(code) && capture.axes.test(code)) {
@@ -544,6 +591,7 @@ void ActionMap::holdCaptured(const Input& input) noexcept {
             } else if (!leaning) {
                 capturedAxes[index].reset(code);
             }
+
             leaningAxes[index].set(code, leaning);
         }
     }

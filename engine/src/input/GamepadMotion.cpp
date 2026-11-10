@@ -15,6 +15,7 @@ GamepadMotion::~GamepadMotion() {
 
 void GamepadMotion::clear() {
     requests.clear();
+
     if (running.any()) {
         running.reset();
         host.setGamepadMotion({});

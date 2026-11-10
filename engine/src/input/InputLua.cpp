@@ -91,6 +91,7 @@ int InputLua::text(lua_State* L) {
     for (const char32_t codePoint : getInput(L).getText()) {
         core::Utf8::append(typed, codePoint);
     }
+
     lua::Stack::push(L, typed);
     return 1;
 }
@@ -186,6 +187,7 @@ int InputLua::touches(lua_State* L) {
         pushTouch(L, active[index]);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
@@ -195,6 +197,7 @@ int InputLua::findTouch(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     pushTouch(L, *found);
     return 1;
 }
@@ -222,6 +225,7 @@ int InputLua::gestures(lua_State* L) {
         lua_setfield(L, -2, "rotation");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
@@ -294,6 +298,7 @@ int InputLua::rumble(lua_State* L) {
         lua::Table::readField(L, 2, "high", high);
         lua::Table::readField(L, 2, "seconds", seconds);
     }
+
     lua::Runtime::getEngine(L).getSystem().rumbleGamepad(index, low, high, seconds);
     return 0;
 }
@@ -337,6 +342,7 @@ int InputLua::findGamepadPress(lua_State* L) {
             }
         }
     }
+
     lua_pushnil(L);
     return 1;
 }
@@ -371,6 +377,7 @@ template <typename Enum, std::size_t Size> void InputLua::readChoice(lua_State* 
         lua_pop(L, 1);
         return;
     }
+
     const std::string_view name = lua::Stack::read<std::string_view>(L, -1);
     const auto found = std::ranges::find(names, name, &std::pair<std::string_view, Enum>::first);
     if (found == names.end()) {
@@ -378,8 +385,10 @@ template <typename Enum, std::size_t Size> void InputLua::readChoice(lua_State* 
         for (std::size_t index = 0; index < Size; ++index) {
             expected += std::string(index == 0 ? "" : (index + 1 == Size ? " or " : ", ")) + "\"" + std::string(names[index].first) + "\"";
         }
+
         luaL_error(L, "The option \"%s\" of a text field must be %s.", field, expected.c_str());
     }
+
     target = found->second;
     lua_pop(L, 1);
 }
@@ -389,9 +398,11 @@ int InputLua::editText(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     lua::Table::checkFields(L, 1, {kTextFieldOptions});
     AppTextField::State state;
+
     if (lua_getfield(L, 1, "text") != LUA_TSTRING) {
         return luaL_error(L, "A text field needs its \"text\" as a string.");
     }
+
     state.text = lua::Stack::read<std::string>(L, -1);
     lua_pop(L, 1);
     // A selection with one end given is a caret there, and one with no end given is a caret at the end of the text.
@@ -560,6 +571,7 @@ void InputLua::pushEvent(lua_State* L, const platform::Event& event) {
             lua_setfield(L, -2, "changed");
             lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
         }
+
         lua_setfield(L, -2, "touches");
         break;
     case platform::Event::Type::TextEdited:
@@ -577,6 +589,7 @@ void InputLua::pushEvent(lua_State* L, const platform::Event& event) {
             lua::Stack::push(L, event.textEdit.compositionEnd);
             lua_setfield(L, -2, "compositionEnd");
         }
+
         return;
     case platform::Event::Type::TextAction:
         lua::Stack::push(L, event.textEdit.field);

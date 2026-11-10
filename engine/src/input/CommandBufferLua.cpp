@@ -19,11 +19,13 @@ std::optional<std::uint32_t> CommandBufferLua::readLifetime(lua_State* L, int in
     if (lua_isboolean(L, index) && lua_toboolean(L, index) == 0) {
         return std::nullopt;
     }
+
     int isInteger = 0;
     const lua_Integer steps = lua_tointegerx(L, index, &isInteger);
     if (isInteger == 0 || steps < 1 || steps > static_cast<lua_Integer>(std::numeric_limits<std::uint32_t>::max())) {
         luaL_error(L, "A command lasts a whole number of steps from 1, or false to last until it is consumed.");
     }
+
     return static_cast<std::uint32_t>(steps);
 }
 
@@ -33,11 +35,13 @@ std::size_t CommandBufferLua::readButton(lua_State* L, const CommandBuffer::Opti
     if (options.directions && (name == "forward" || name == "back")) {
         return name == "forward" ? CommandBuffer::kForward : CommandBuffer::kBack;
     }
+
     for (std::size_t button = 0; button < options.buttons.size(); ++button) {
         if (options.buttons[button] == name) {
             return button;
         }
     }
+
     luaL_error(L, "The command \"%s\" names the button \"%s\", which the buffer does not have.", command, std::string(name).c_str());
     return 0;
 }
@@ -53,8 +57,10 @@ int CommandBufferLua::newCommandBuffer(lua_State* L) {
     if (lua_getfield(L, 1, "lifetime") != LUA_TNIL) {
         lifetime = readLifetime(L, -1);
     }
+
     lua_pop(L, 1);
     options.lifetimes.assign(options.buttons.size(), lifetime);
+
     if (lua_getfield(L, 1, "lifetimes") != LUA_TNIL) {
         luaL_checktype(L, -1, LUA_TTABLE);
         lua_pushnil(L);
@@ -64,13 +70,16 @@ int CommandBufferLua::newCommandBuffer(lua_State* L) {
             while (found < options.buttons.size() && options.buttons[found] != button) {
                 ++found;
             }
+
             if (found == options.buttons.size()) {
                 return luaL_error(L, "The lifetimes name the button \"%s\", which the buffer does not have.", std::string(button).c_str());
             }
+
             options.lifetimes[found] = readLifetime(L, -1);
             lua_pop(L, 1);
         }
     }
+
     lua_pop(L, 1);
 
     if (lua_getfield(L, 1, "directions") != LUA_TNIL) {
@@ -82,9 +91,11 @@ int CommandBufferLua::newCommandBuffer(lua_State* L) {
         if (lua_type(L, -1) != LUA_TSTRING || lua_type(L, -2) != LUA_TSTRING) {
             return luaL_error(L, "The directions of a command buffer name the \"back\" and the \"forward\" buttons.");
         }
+
         options.directions = std::array<std::size_t, 2>{readButton(L, options, -2, "directions"), readButton(L, options, -1, "directions")};
         lua_pop(L, 2);
     }
+
     lua_pop(L, 1);
 
     if (lua_getfield(L, 1, "commands") != LUA_TNIL) {
@@ -106,6 +117,7 @@ int CommandBufferLua::newCommandBuffer(lua_State* L) {
             if (lua_getfield(L, table, "lifetime") != LUA_TNIL) {
                 command.lifetime = readLifetime(L, -1);
             }
+
             lua_pop(L, 1);
             if (lua_getfield(L, table, "steps") == LUA_TTABLE) {
                 const auto steps = static_cast<lua_Integer>(lua_rawlen(L, -1));
@@ -115,10 +127,12 @@ int CommandBufferLua::newCommandBuffer(lua_State* L) {
                     lua_pop(L, 1);
                 }
             }
+
             lua_pop(L, 2);
             options.commands.push_back(std::move(command));
         }
     }
+
     lua_pop(L, 1);
 
     CommandBuffer& buffer = lua::Userdata::emplace<CommandBuffer>(L, std::move(options));
@@ -128,6 +142,7 @@ int CommandBufferLua::newCommandBuffer(lua_State* L) {
         lua::Stack::push(L, buffer.getCommandName(command));
         lua_rawseti(L, -2, static_cast<lua_Integer>(command + 1));
     }
+
     lua::Userdata::setField(L, owner, "names", -1);
     lua_pop(L, 1);
     return 1;
@@ -139,6 +154,7 @@ template <void (CommandBuffer::*FromMask)(std::uint32_t) noexcept, void (Command
         (buffer.*FromMap)(*map);
         return 0;
     }
+
     const lua_Integer mask = luaL_checkinteger(L, 2);
     luaL_argcheck(L, mask >= 0 && mask <= static_cast<lua_Integer>(std::numeric_limits<std::uint32_t>::max()), 2, "the buttons of a step are an integer of 32 bits");
     (buffer.*FromMask)(static_cast<std::uint32_t>(mask));
@@ -151,6 +167,7 @@ std::size_t CommandBufferLua::checkCommand(lua_State* L, const CommandBuffer& bu
     if (!command) {
         luaL_error(L, "The command buffer has no command \"%s\".", std::string(name).c_str());
     }
+
     return *command;
 }
 
@@ -160,6 +177,7 @@ int CommandBufferLua::peek(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Userdata::pushField(L, 1, "names");
     lua_rawgeti(L, -1, static_cast<lua_Integer>(*kept + 1));
     return 1;
@@ -178,6 +196,7 @@ int CommandBufferLua::held(lua_State* L) {
     if (!button) {
         return luaL_error(L, "The command buffer has no button \"%s\".", std::string(name).c_str());
     }
+
     lua::Stack::push(L, buffer.isHeld(*button));
     return 1;
 }

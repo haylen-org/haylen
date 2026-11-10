@@ -17,6 +17,7 @@ std::shared_ptr<ActionMap> ActionMaps::create(const ActionMap::Devices& devices)
 void ActionMaps::setCapture(const ActionMap::Capture& value) noexcept {
     capture = value;
     defaultMap->setCapture(value);
+
     for (const std::weak_ptr<ActionMap>& map : created) {
         if (const std::shared_ptr<ActionMap> live = map.lock()) {
             live->setCapture(value);
@@ -27,6 +28,7 @@ void ActionMaps::setCapture(const ActionMap::Capture& value) noexcept {
 void ActionMaps::update(const Input& input, const VirtualInput& virtualInput, bool blocked) {
     std::erase_if(created, [](const std::weak_ptr<ActionMap>& map) { return map.expired(); });
     defaultMap->update(input, virtualInput, blocked);
+
     for (const std::weak_ptr<ActionMap>& map : created) {
         if (const std::shared_ptr<ActionMap> live = map.lock()) {
             live->update(input, virtualInput, blocked);
@@ -36,6 +38,7 @@ void ActionMaps::update(const Input& input, const VirtualInput& virtualInput, bo
 
 void ActionMaps::beginStep(float stepSeconds) noexcept {
     defaultMap->beginStep(stepSeconds);
+
     for (const std::weak_ptr<ActionMap>& map : created) {
         if (const std::shared_ptr<ActionMap> live = map.lock()) {
             live->beginStep(stepSeconds);

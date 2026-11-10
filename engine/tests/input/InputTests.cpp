@@ -477,6 +477,7 @@ TEST_F(ActionMapTest, BlockedInputHoldsEveryControlUntilItIsReleased) {
         for (const std::string& name : names) {
             result += (actions.*query)(name) ? '1' : '0';
         }
+
         return result;
     };
     // clang-format on
@@ -611,9 +612,11 @@ TEST_F(ActionMapTest, ConsumesEachPressOnceWithinItsBuffer) {
     actions.beginStep(kStep);
     actions.beginStep(kStep);
     EXPECT_FALSE(actions.consumePress("fire"));
+
     for (int step = 0; step < 5; ++step) {
         actions.beginStep(kStep);
     }
+
     EXPECT_TRUE(actions.consumePress("jump"));
     EXPECT_FALSE(actions.consumePress("jump"));
 
@@ -624,6 +627,7 @@ TEST_F(ActionMapTest, ConsumesEachPressOnceWithinItsBuffer) {
     for (int step = 0; step < 8; ++step) {
         actions.beginStep(kStep);
     }
+
     EXPECT_FALSE(actions.consumePress("jump"));
 
     // clang-format off
@@ -633,6 +637,7 @@ TEST_F(ActionMapTest, ConsumesEachPressOnceWithinItsBuffer) {
         } catch (const std::invalid_argument& error) {
             return std::string(error.what());
         }
+
         return std::string();
     };
     // clang-format on
@@ -646,9 +651,11 @@ TEST_F(ActionMapTest, EachMapReadsOnlyItsDevices) {
     const std::shared_ptr<ActionMap> keyboard = maps.create({.mouse = false, .gamepads = ActionMap::Devices::Gamepads::None, .virtualPrefix = "touch."});
     std::shared_ptr<ActionMap> second = maps.create({.keyboard = false, .mouse = false, .gamepads = ActionMap::Devices::Gamepads::One, .gamepad = 1, .virtualControls = false});
     const std::shared_ptr<ActionMap> eighth = maps.create({.keyboard = false, .gamepads = ActionMap::Devices::Gamepads::One, .gamepad = 7, .virtualControls = false});
+
     for (const auto& map : {maps.getDefault(), keyboard, second, eighth}) {
         map->load(document);
     }
+
     EXPECT_EQ(maps.size(), 4U);
 
     Input input;
@@ -714,6 +721,7 @@ TEST_F(ActionMapTest, RejectsInvalidDocuments) {
         } catch (const std::invalid_argument& error) {
             return std::string(error.what());
         }
+
         return std::string();
     };
     // clang-format on

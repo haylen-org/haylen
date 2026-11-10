@@ -20,6 +20,7 @@ void PointerEmulation::releaseAll() noexcept {
 // A press keeps the device it started as until it ends, also when the app changes the emulation meanwhile, so nothing stays held.
 std::span<const platform::Event> PointerEmulation::convert(const platform::Event& event) {
     count = 0;
+
     switch (event.type) {
     case platform::Event::Type::MouseDown:
     case platform::Event::Type::MouseUp:
@@ -27,6 +28,7 @@ std::span<const platform::Event> PointerEmulation::convert(const platform::Event
         if (mouseAsTouch || mouseFingerDown) {
             return convertMouse(event);
         }
+
         break;
     case platform::Event::Type::TouchBegan:
     case platform::Event::Type::TouchMoved:
@@ -35,6 +37,7 @@ std::span<const platform::Event> PointerEmulation::convert(const platform::Event
         if (touchAsMouse || mouseFinger) {
             return convertTouch(event);
         }
+
         break;
     default:
         break;
@@ -47,6 +50,7 @@ std::span<const platform::Event> PointerEmulation::convertMouse(const platform::
     if (event.type != platform::Event::Type::MouseMove && event.mouseButton != MouseButton::Left) {
         return {&event, 1};
     }
+
     platform::Event::Type type = platform::Event::Type::TouchMoved;
     if (event.type == platform::Event::Type::MouseDown) {
         type = platform::Event::Type::TouchBegan;
@@ -81,6 +85,7 @@ std::span<const platform::Event> PointerEmulation::convertTouch(const platform::
         const auto finger = std::ranges::find_if(points, [this](const platform::TouchPoint& point) { return point.changed && point.id == *mouseFinger; });
         if (finger != points.end() && event.type != platform::Event::Type::TouchBegan) {
             addMouse(platform::Event::Type::MouseMove, finger->position);
+
             if (event.type != platform::Event::Type::TouchMoved) {
                 addMouse(platform::Event::Type::MouseUp, finger->position);
                 addMouse(platform::Event::Type::MouseLeave, finger->position);
@@ -88,6 +93,7 @@ std::span<const platform::Event> PointerEmulation::convertTouch(const platform::
             }
         }
     }
+
     converted[count++] = event;
     return {converted.data(), count};
 }

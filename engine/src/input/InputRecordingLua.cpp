@@ -28,6 +28,7 @@ std::size_t InputRecordingLua::readPlayer(lua_State* L, int index, std::size_t p
     if (player < 1 || player > static_cast<lua_Integer>(players)) {
         luaL_error(L, "The input recording has players from 1 to %d.", static_cast<int>(players));
     }
+
     return static_cast<std::size_t>(player - 1);
 }
 
@@ -53,10 +54,12 @@ int InputRecordingLua::loadRecording(lua_State* L) {
     if (header.identifier != config.identifier) {
         return luaL_error(L, "The recording belongs to another app.");
     }
+
     if (std::fabs(header.fixedRate - config.fixedRate) > 1e-9) {
         const std::string message = std::format("The recording was made at {} fixed steps a second, and the app runs at {}.", header.fixedRate, config.fixedRate);
         return luaL_error(L, "%s", message.c_str());
     }
+
     lua::Userdata::emplace<InputRecording>(L, std::move(recording));
     return 1;
 }
@@ -84,6 +87,7 @@ int InputRecordingLua::write(lua_State* L) {
         luaL_argcheck(L, value >= 0 && value <= static_cast<lua_Integer>(std::numeric_limits<std::uint32_t>::max()), 3, "the buttons of a step are an integer of 32 bits");
         mask = static_cast<std::uint32_t>(value);
     }
+
     recording.write(player, mask);
     return 0;
 }
@@ -94,6 +98,7 @@ int InputRecordingLua::advance(lua_State* L) {
         recording.advance();
         return 0;
     }
+
     const lua_Integer hash = luaL_checkinteger(L, 2);
     luaL_argcheck(L, hash >= 0 && hash <= static_cast<lua_Integer>(std::numeric_limits<std::uint32_t>::max()), 2, "a step hash is an integer of 32 bits");
     recording.advance(static_cast<std::uint32_t>(hash));
@@ -138,6 +143,7 @@ int InputRecordingLua::hash(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua_pushinteger(L, static_cast<lua_Integer>(*value));
     return 1;
 }
@@ -153,6 +159,7 @@ int InputRecordingLua::seek(lua_State* L) {
     if (step < 0 || step > static_cast<lua_Integer>(playback.getRecording().getStepCount())) {
         return luaL_error(L, "The playback has steps from 0 to %d.", static_cast<int>(playback.getRecording().getStepCount()));
     }
+
     playback.seek(static_cast<std::uint32_t>(step));
     return 0;
 }

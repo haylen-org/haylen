@@ -48,9 +48,11 @@ void ActionMapLua::readDevices(lua_State* L, int index, ActionMap::Devices& devi
         if (isInteger == 0 || gamepad < 1 || gamepad > static_cast<lua_Integer>(Input::kMaxGamepads)) {
             luaL_error(L, "The \"gamepad\" of an action map must be an index from 1 to %d, or false for none.", static_cast<int>(Input::kMaxGamepads));
         }
+
         devices.gamepads = ActionMap::Devices::Gamepads::One;
         devices.gamepad = static_cast<std::size_t>(gamepad - 1);
     }
+
     lua_pop(L, 1);
 }
 
@@ -112,6 +114,7 @@ int ActionMapLua::definition(lua_State* L, ActionMap& map, int first) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::JsonConverter::push(L, found->toJson());
     return 1;
 }
@@ -150,11 +153,14 @@ int ActionMapLua::stepButtons(lua_State* L, ActionMap& map, int first) {
         if (name == nullptr) {
             return luaL_error(L, "The list of the buttons of a step holds action names, and entry %d is not one.", static_cast<int>(index));
         }
+
         if (map.isStepDown({name, length})) {
             mask |= 1U << static_cast<unsigned>(index - 1);
         }
+
         lua_pop(L, 1);
     }
+
     lua_pushinteger(L, static_cast<lua_Integer>(mask));
     return 1;
 }
@@ -167,11 +173,13 @@ int ActionMapLua::newActionMap(lua_State* L) {
         lua::Table::checkFields(L, 1, {kDeviceOptions, kMapOptions});
         readDevices(L, 1, devices);
     }
+
     core::Engine& engine = lua::Runtime::getEngine(L);
     std::shared_ptr<ActionMap> map = engine.getActionMaps().create(devices);
     if (!lua_isnoneornil(L, 1) && lua_getfield(L, 1, "actions") != LUA_TNIL) {
         load(L, *map, lua_gettop(L));
     }
+
     lua::Userdata::emplace<ActionMap>(L, std::move(map));
     return 1;
 }

@@ -24,6 +24,7 @@ template <typename Enum, std::size_t Size> std::optional<Enum> Controls::findInd
             return static_cast<Enum>(index);
         }
     }
+
     return std::nullopt;
 }
 
@@ -33,6 +34,7 @@ std::optional<Key> Controls::keyFromName(std::string_view name) noexcept {
             return key;
         }
     }
+
     return std::nullopt;
 }
 
@@ -42,6 +44,7 @@ std::string_view Controls::keyName(Key key) noexcept {
             return name;
         }
     }
+
     return "unknown";
 }
 

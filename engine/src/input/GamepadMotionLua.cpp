@@ -21,6 +21,7 @@ void GamepadMotionLua::Ownership::disconnect() {
     if (!connected) {
         return;
     }
+
     connected = false;
     motion.stop(id);
 }
@@ -40,6 +41,7 @@ void GamepadMotionLua::readSensors(lua_State* L, int index, GamepadMotion::Senso
         lua_pop(L, 1);
         return;
     }
+
     if (!lua_istable(L, -1)) {
         luaL_error(L, "The option \"sensors\" of the motion of gamepads must be a list of sensor names, such as {'accelerometer', 'gyroscope'}.");
     }
@@ -51,6 +53,7 @@ void GamepadMotionLua::readSensors(lua_State* L, int index, GamepadMotion::Senso
         sensors.set(static_cast<std::size_t>(lua::Stack::read<MotionSensor>(L, -1)));
         lua_pop(L, 1);
     }
+
     lua_pop(L, 1);
 }
 
@@ -69,6 +72,7 @@ int GamepadMotionLua::pushVector(lua_State* L, const std::array<float, 3>& value
     for (const float component : value) {
         lua::Stack::push(L, component);
     }
+
     return 3;
 }
 
@@ -88,6 +92,7 @@ int GamepadMotionLua::startGamepadMotion(lua_State* L) {
             lua_pop(L, 1);
         }
     }
+
     if (owner == 0) {
         owner = lua::Owners::pushDefault(L);
     }
@@ -97,6 +102,7 @@ int GamepadMotionLua::startGamepadMotion(lua_State* L) {
     if (owner != 0) {
         lua::Owners::add(L, owner, std::make_shared<Ownership>(motion, id));
     }
+
     lua::Userdata::emplace<Request>(L, Request{.id = id, .sensors = sensors});
     return 1;
 }
@@ -118,6 +124,7 @@ int GamepadMotionLua::gamepadAttitude(lua_State* L) {
     for (const float component : getInput(L).getGamepad(readGamepadIndex(L, 1)).motion.attitude) {
         lua::Stack::push(L, component);
     }
+
     return 4;
 }
 
@@ -138,6 +145,7 @@ int GamepadMotionLua::gamepadTouches(lua_State* L) {
         if (!finger.down) {
             continue;
         }
+
         lua_createtable(L, 0, 5);
         lua_pushinteger(L, static_cast<lua_Integer>(index + 1));
         lua_setfield(L, -2, "finger");
@@ -151,6 +159,7 @@ int GamepadMotionLua::gamepadTouches(lua_State* L) {
         lua_setfield(L, -2, "pressure");
         lua_rawseti(L, -2, slot++);
     }
+
     return 1;
 }
 

@@ -12,6 +12,7 @@ std::uint32_t InputPlayback::getMask(std::size_t player) const {
     if (player >= recording->getHeader().players) {
         throw std::out_of_range("The input recording has no player " + std::to_string(player + 1) + ".");
     }
+
     return isFinished() ? 0 : recording->getMask(step, player);
 }
 
@@ -29,6 +30,7 @@ void InputPlayback::seek(std::uint32_t value) {
     if (value > recording->getStepCount()) {
         throw std::out_of_range("The playback has steps from 0 to " + std::to_string(recording->getStepCount()) + ".");
     }
+
     step = value;
 }
 

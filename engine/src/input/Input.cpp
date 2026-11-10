@@ -24,6 +24,7 @@ float Input::applyDeadzone(float value, float threshold) noexcept {
     if (magnitude <= threshold) {
         return 0.0F;
     }
+
     return std::copysign((magnitude - threshold) / (1.0F - threshold), value);
 }
 
@@ -34,16 +35,20 @@ void Input::handleEvent(const platform::Event& event, const graphics::Viewport& 
             keysDown.set(keyIndex(event.key));
             keysPressed.set(keyIndex(event.key));
         }
+
         modifiers = event.modifiers;
+
         if (!event.repeat && !event.typedOnScreen) {
             lastDevice = InputDevice::KeyboardMouse;
         }
+
         break;
     case platform::Event::Type::KeyUp:
         if (keyIndex(event.key) < Controls::kKeyCount) {
             keysDown.reset(keyIndex(event.key));
             keysReleased.set(keyIndex(event.key));
         }
+
         modifiers = event.modifiers;
         break;
     case platform::Event::Type::Character:
@@ -72,6 +77,7 @@ void Input::handleEvent(const platform::Event& event, const graphics::Viewport& 
         } else if (mouseInside) {
             mouseDelta += mousePosition - previous;
         }
+
         mouseInside = true;
         break;
     }
@@ -111,6 +117,7 @@ void Input::handleTouches(const platform::Event& event, const graphics::Viewport
             if (found == touches.end()) {
                 touches.push_back({.id = point.id, .position = position, .startPosition = position, .previousPosition = position});
             }
+
             continue;
         }
 
@@ -131,6 +138,7 @@ void Input::handleTouches(const platform::Event& event, const graphics::Viewport
 void Input::updateGamepads(std::span<const GamepadState> states) {
     // The current states become the previous ones by swapping, and a name is copied only when the gamepad in a slot changes, so an ordinary frame copies no strings.
     previousGamepads.swap(gamepads);
+
     for (std::size_t index = 0; index < kMaxGamepads; ++index) {
         const GamepadState& source = index < states.size() ? states[index] : kDisconnectedGamepad;
         GamepadState& state = gamepads[index];
@@ -162,11 +170,13 @@ bool Input::hasGamepadPress(std::size_t index) const noexcept {
             return true;
         }
     }
+
     for (std::size_t slot = 0; slot < Controls::kGamepadAxisCount; ++slot) {
         if (std::fabs(state.axes[slot]) > deadzone && std::fabs(previous.axes[slot]) <= deadzone) {
             return true;
         }
     }
+
     return false;
 }
 
@@ -182,6 +192,7 @@ void Input::releaseAll() noexcept {
     mouseReleased |= mouseDown;
     mouseDown.reset();
     modifiers = {};
+
     for (Touch& touch : touches) {
         touch.phase = TouchPhase::Cancelled;
     }
@@ -189,6 +200,7 @@ void Input::releaseAll() noexcept {
 
 void Input::followViewport(const graphics::Viewport& previous, const graphics::Viewport& viewport) noexcept {
     mousePosition = viewport.toDesign(mouseFramebufferPosition);
+
     for (Touch& touch : touches) {
         for (math::Vec2* point : {&touch.position, &touch.startPosition, &touch.previousPosition}) {
             *point = viewport.toDesign(previous.toFramebuffer(*point));
@@ -206,6 +218,7 @@ void Input::endFrame() {
     mouseScroll = {};
 
     std::erase_if(touches, [](const Touch& touch) { return !touch.isActive(); });
+
     for (Touch& touch : touches) {
         touch.phase = TouchPhase::Stationary;
         touch.previousPosition = touch.position;
@@ -263,6 +276,7 @@ float Input::getGamepadAxis(std::size_t index, GamepadAxis axis) const noexcept 
     if (index >= kMaxGamepads) {
         return 0.0F;
     }
+
     return applyDeadzone(gamepads[index].axes[static_cast<std::size_t>(axis)], deadzone);
 }
 
@@ -280,6 +294,7 @@ math::Vec2 Input::getGamepadStick(std::size_t index, bool rightStick) const noex
     if (magnitude <= deadzone) {
         return {};
     }
+
     const float scaled = std::min(1.0F, (magnitude - deadzone) / (1.0F - deadzone));
     return raw / magnitude * scaled;
 }
@@ -295,6 +310,7 @@ math::Vec2 Input::getGamepadTilt(std::size_t index) const noexcept {
     if (length <= 0.0F) {
         return {};
     }
+
     return math::Vec2{-acceleration[0] / length, acceleration[1] / length}.clampedLength(1.0F);
 }
 
@@ -302,6 +318,7 @@ void Input::setGamepadDeadzone(float value) {
     if (!(value >= 0.0F && value < 1.0F)) {
         throw std::invalid_argument("The gamepad dead zone must be at least 0 and below 1.");
     }
+
     deadzone = value;
 }
 
@@ -309,6 +326,7 @@ void Input::setScrollSpeed(float value) {
     if (!(value > 0.0F && std::isfinite(value))) {
         throw std::invalid_argument("The scroll speed must be a positive number.");
     }
+
     scrollSpeed = value;
 }
 

@@ -37,6 +37,7 @@ void GestureRecognizer::update(const Input& input, float deltaSeconds) {
         if (touch.phase == TouchPhase::Ended) {
             finish(pointer);
         }
+
         pointers.erase(touch.id);
     }
 
@@ -48,6 +49,7 @@ void GestureRecognizer::update(const Input& input, float deltaSeconds) {
             mouse->duration += deltaSeconds;
         }
     }
+
     if (mouse) {
         if (input.isMouseReleased(MouseButton::Left)) {
             finish(*mouse);
@@ -70,6 +72,7 @@ void GestureRecognizer::finish(const Pointer& pointer) {
     if (pointer.shared) {
         return;
     }
+
     const math::Vec2 delta = pointer.position - pointer.start;
     const float moved = delta.getLength();
     if (!pointer.longPressed && pointer.duration <= settings.tapMaxDuration && moved <= settings.tapMaxMovement) {
@@ -81,8 +84,10 @@ void GestureRecognizer::finish(const Pointer& pointer) {
         } else {
             lastTap = std::pair{time, pointer.position};
         }
+
         return;
     }
+
     if (moved >= settings.swipeMinDistance && pointer.duration <= settings.swipeMaxDuration) {
         gestures.push_back({.type = Gesture::Type::Swipe, .position = pointer.position, .delta = delta});
     }
@@ -96,12 +101,14 @@ void GestureRecognizer::recognizePinch(const Input& input) {
             fingers.push_back(&touch);
         }
     }
+
     // Fingers that ever shared the screen belong to that gesture and never end as taps or swipes.
     if (fingers.size() > 1) {
         for (const Touch* finger : fingers) {
             pointers[finger->id].shared = true;
         }
     }
+
     if (fingers.size() != 2) {
         pinchStart.reset();
         return;
@@ -117,6 +124,7 @@ void GestureRecognizer::recognizePinch(const Input& input) {
     if (!pinchStart) {
         pinchStart = PinchStart{.spread = spread, .angle = angle, .center = center};
     }
+
     const bool moved = lead.phase == TouchPhase::Moved || other.phase == TouchPhase::Moved;
     if (moved && pinchStart->spread > 0.0F) {
         const float rotation = std::remainder(angle - pinchStart->angle, 2.0F * std::numbers::pi_v<float>);
