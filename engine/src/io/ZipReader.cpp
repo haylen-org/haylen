@@ -23,6 +23,7 @@ void ZipReader::open() {
     if (file == nullptr) {
         fail();
     }
+
     position = 0;
 }
 
@@ -53,8 +54,10 @@ std::size_t ZipReader::read(std::uint64_t offset, std::span<std::uint8_t> target
         if (received <= 0) {
             fail();
         }
+
         filled += static_cast<std::size_t>(received);
     }
+
     position += count;
     return count;
 }
@@ -63,10 +66,12 @@ void ZipReader::moveTo(std::uint64_t offset) {
     if (offset == position) {
         return;
     }
+
     if (zip_file_is_seekable(file) == 1) {
         if (zip_fseek(file, static_cast<zip_int64_t>(offset), SEEK_SET) != 0) {
             fail();
         }
+
         position = offset;
         return;
     }
@@ -83,6 +88,7 @@ void ZipReader::moveTo(std::uint64_t offset) {
         if (received <= 0) {
             fail();
         }
+
         position += static_cast<std::uint64_t>(received);
     }
 }

@@ -15,6 +15,7 @@ FileReader::FileReader(const std::filesystem::path& file, std::string fileName) 
 
     stream.open(file, std::ios::binary);
     size = std::filesystem::file_size(file, error);
+
     if (!stream || error) {
         throw std::runtime_error("The package file \"" + name + "\" could not be opened.");
     }
@@ -33,6 +34,7 @@ std::size_t FileReader::read(std::uint64_t offset, std::span<std::uint8_t> targe
     if (static_cast<std::size_t>(stream.gcount()) != count) {
         throw std::runtime_error("The package file \"" + name + "\" could not be read.");
     }
+
     return count;
 }
 

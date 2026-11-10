@@ -19,8 +19,10 @@ bool PackageWatcher::isWatched(std::string_view path) {
         if (segment.starts_with('.') || segment.starts_with('#') || segment.ends_with('~')) {
             return false;
         }
+
         start = end + 1;
     }
+
     const std::string_view extension = Path::extension(path);
     if (std::ranges::find(kBackupExtensions, extension) != kBackupExtensions.end()) {
         return false;
@@ -29,9 +31,11 @@ bool PackageWatcher::isWatched(std::string_view path) {
     if (path == Path::kAppConfigFile || Path::isInside(path, Path::kContentDirectory)) {
         return true;
     }
+
     if (Path::isInside(path, Path::kSourceDirectory)) {
         return extension == ".lua";
     }
+
     if (!Path::isInside(path, Path::kPluginsDirectory)) {
         return false;
     }
@@ -42,6 +46,7 @@ bool PackageWatcher::isWatched(std::string_view path) {
     if (slash == std::string_view::npos) {
         return false;
     }
+
     const std::string_view relative = inPlugin.substr(slash + 1);
     return relative == Path::kPluginManifestFile || (Path::isInside(relative, Path::kSourceDirectory) && extension == ".lua");
 }
@@ -53,6 +58,7 @@ PackageWatcher::Stamp PackageWatcher::stamp(const std::string& path) const {
     if (!error) {
         result.size = std::filesystem::file_size(file, error);
     }
+
     return error ? Stamp{} : result;
 }
 
@@ -65,10 +71,12 @@ std::map<std::string, PackageWatcher::Stamp> PackageWatcher::snapshot() const {
         if (!entry.is_regular_file(error)) {
             return;
         }
+
         std::string path = entry.path().lexically_relative(root).generic_string();
         if (!isWatched(path)) {
             return;
         }
+
         if (const Stamp current = stamp(path); current != Stamp{}) {
             found.emplace(std::move(path), current);
         }
@@ -82,6 +90,7 @@ std::map<std::string, PackageWatcher::Stamp> PackageWatcher::snapshot() const {
             if (error) {
                 break;
             }
+
             record(*iterator);
         }
     };
@@ -91,14 +100,17 @@ std::map<std::string, PackageWatcher::Stamp> PackageWatcher::snapshot() const {
     record(std::filesystem::directory_entry(root / Path::kAppConfigFile, error));
     recordFolder(root / Path::kSourceDirectory);
     recordFolder(root / Path::kContentDirectory);
+
     for (auto plugin = std::filesystem::directory_iterator(root / Path::kPluginsDirectory, options, error); plugin != std::filesystem::directory_iterator(); plugin.increment(error)) {
         if (error) {
             break;
         }
+
         const std::filesystem::path folder = plugin->path();
         record(std::filesystem::directory_entry(folder / Path::kPluginManifestFile, error));
         recordFolder(folder / Path::kSourceDirectory);
     }
+
     return found;
 }
 
@@ -112,11 +124,13 @@ std::vector<std::string> PackageWatcher::scan() {
             changed.push_back(path);
         }
     }
+
     for (const auto& [path, found] : files) {
         if (!current.contains(path)) {
             changed.push_back(path);
         }
     }
+
     if (changed.empty()) {
         return changed;
     }
@@ -130,11 +144,13 @@ std::vector<std::string> PackageWatcher::scan() {
         if (settled) {
             return false;
         }
+
         if (const auto previous = files.find(path); previous != files.end()) {
             current.insert_or_assign(path, previous->second);
         } else {
             current.erase(path);
         }
+
         return true;
     });
     // clang-format on

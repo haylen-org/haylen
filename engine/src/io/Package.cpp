@@ -20,6 +20,7 @@ std::unique_ptr<Package> Package::openDirectory(const std::filesystem::path& roo
     if (!std::filesystem::is_directory(root, error)) {
         throw std::runtime_error("The package folder \"" + root.generic_string() + "\" was not found.");
     }
+
     return std::make_unique<DirectoryPackage>(std::filesystem::canonical(root));
 }
 
@@ -40,6 +41,7 @@ std::unique_ptr<Package> Package::openZip(const std::filesystem::path& file) {
         zip_error_fini(&reason);
         throw std::runtime_error("The package archive \"" + file.filename().generic_string() + "\" is not a valid zip file, and the zip reader reported \"" + message + "\".");
     }
+
     return std::make_unique<ZipPackage>(std::make_shared<ZipArchive>(archive, std::vector<std::uint8_t>{}, file.filename().generic_string()));
 }
 
@@ -71,6 +73,7 @@ std::unique_ptr<Package> Package::open(const std::filesystem::path& path) {
     if (std::filesystem::is_directory(path, error)) {
         return openDirectory(path);
     }
+
     return openZip(path);
 }
 
@@ -141,6 +144,7 @@ std::vector<std::string> Package::listAssets(std::string_view directory) const {
     for (std::string& asset : assets) {
         asset.erase(0, root.size());
     }
+
     return assets;
 }
 

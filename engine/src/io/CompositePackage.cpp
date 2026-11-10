@@ -17,6 +17,7 @@ const Package& CompositePackage::find(std::string_view path) const {
             return *layer;
         }
     }
+
     throw std::runtime_error("The package file \"" + name + "/" + Path::normalize(path) + "\" was not found.");
 }
 
@@ -42,6 +43,7 @@ std::vector<std::string> CompositePackage::list(std::string_view directory) cons
         std::vector<std::string> listed = layer->list(directory);
         files.insert(files.end(), std::make_move_iterator(listed.begin()), std::make_move_iterator(listed.end()));
     }
+
     std::sort(files.begin(), files.end());
     files.erase(std::unique(files.begin(), files.end()), files.end());
     return files;

@@ -78,13 +78,16 @@ class PackageTest : public ::testing::TestWithParam<std::string> {
             for (const auto& [path, content] : files) {
                 directory.write(path, content);
             }
+
             return Package::open(directory.getPath());
         }
+
         if (GetParam() == "zip-file") {
             const std::vector<std::uint8_t> archive = makeZip(files);
             directory.write("app.zip", std::string(archive.begin(), archive.end()));
             return Package::open(directory.getPath() / "app.zip");
         }
+
         if (GetParam() == "zip-memory") {
             return Package::openZip(makeZip(files), "memory.zip");
         }
@@ -93,6 +96,7 @@ class PackageTest : public ::testing::TestWithParam<std::string> {
         for (const auto& [path, content] : files) {
             contents.emplace(path, test::TestFiles::bytes(content));
         }
+
         return std::make_unique<MemoryPackage>("memory", std::move(contents));
     }
 
@@ -104,10 +108,12 @@ class PackageTest : public ::testing::TestWithParam<std::string> {
         if (archive == nullptr) {
             throw std::runtime_error("Could not create a test zip archive.");
         }
+
         for (const auto& [name, content] : files) {
             zip_source_t* source = zip_source_buffer(archive, content.data(), content.size(), 0);
             zip_file_add(archive, name.c_str(), source, ZIP_FL_ENC_UTF_8);
         }
+
         zip_close(archive);
 
         std::ifstream stream(path, std::ios::binary);
@@ -123,6 +129,7 @@ class PackageTest : public ::testing::TestWithParam<std::string> {
         } catch (const std::exception& error) {
             return error.what();
         }
+
         return {};
     }
 
@@ -197,6 +204,7 @@ TEST_P(PackageTest, NamesItsFolderOnlyWhenItReadsAFolder) {
         EXPECT_EQ(package->getDirectory(), std::filesystem::canonical(directory.getPath()));
         return;
     }
+
     EXPECT_FALSE(package->getDirectory().has_value());
 }
 
@@ -331,6 +339,7 @@ TEST(PackageOpenTest, RefusesToListAFolderPartly) {
     // A user who reads every folder, such as the superuser, cannot meet the problem.
     std::error_code denied;
     const std::filesystem::directory_iterator probe(locked, denied);
+
     if (!denied) {
         std::filesystem::permissions(locked, std::filesystem::perms::owner_all);
         GTEST_SKIP() << "The user reads folders without permission.";
@@ -343,6 +352,7 @@ TEST(PackageOpenTest, RefusesToListAFolderPartly) {
     } catch (const std::runtime_error& error) {
         message = error.what();
     }
+
     std::filesystem::permissions(locked, std::filesystem::perms::owner_all);
     EXPECT_TRUE(message.starts_with("The package folder \"" + std::string(package->getName()) + "/content\" could not be listed")) << message;
     EXPECT_EQ(message.find(directory.getPath().generic_string()), std::string::npos) << "The message names the folder inside the package.";
@@ -353,6 +363,7 @@ TEST(PackageOpenTest, ReportsAFolderFileItCannotOpen) {
     directory.write("content/secret.json", "{}");
     const std::filesystem::path locked = directory.getPath() / "content" / "secret.json";
     std::filesystem::permissions(locked, std::filesystem::perms::none);
+
     if (std::ifstream(locked).is_open()) {
         std::filesystem::permissions(locked, std::filesystem::perms::owner_all);
         GTEST_SKIP() << "The user reads files without permission.";
@@ -365,6 +376,7 @@ TEST(PackageOpenTest, ReportsAFolderFileItCannotOpen) {
     } catch (const std::runtime_error& error) {
         message = error.what();
     }
+
     std::filesystem::permissions(locked, std::filesystem::perms::owner_all);
     EXPECT_EQ(message, "The package file \"" + std::string(package->getName()) + "/content/secret.json\" could not be opened.");
 }

@@ -12,6 +12,7 @@ void PackageReader::readExactly(std::uint64_t offset, std::span<std::uint8_t> ta
         if (count == 0) {
             throw std::runtime_error(std::format("A package file of {} bytes ended before the {} bytes asked for at offset {}.", getSize(), target.size(), offset));
         }
+
         filled += count;
     }
 }

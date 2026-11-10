@@ -24,6 +24,7 @@ std::uint64_t DirectoryPackage::getFileSize(std::string_view path) const {
     if (!std::filesystem::is_regular_file(file, error)) {
         throw std::runtime_error("The package file \"" + name + "/" + entry + "\" was not found.");
     }
+
     return std::filesystem::file_size(file);
 }
 
@@ -50,9 +51,11 @@ std::vector<std::string> DirectoryPackage::list(std::string_view directory) cons
             files.push_back(iterator->path().lexically_relative(root).generic_string());
         }
     }
+
     if (error) {
         throw std::runtime_error("The package folder \"" + (relative.empty() ? name : name + "/" + relative) + "\" could not be listed, and the file system reported \"" + error.message() + "\".");
     }
+
     std::sort(files.begin(), files.end());
     return files;
 }

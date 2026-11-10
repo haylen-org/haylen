@@ -48,6 +48,7 @@ MemoryPackage::Bytes MemoryPackage::find(std::string_view path) const {
     if (found == files.end()) {
         throw std::runtime_error("The package file \"" + name + "/" + entry + "\" was not found.");
     }
+
     return found->second;
 }
 
@@ -61,6 +62,7 @@ std::vector<std::string> MemoryPackage::list(std::string_view directory) const {
             paths.push_back(path);
         }
     }
+
     return paths;
 }
 

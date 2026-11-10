@@ -17,6 +17,7 @@ zip_stat_t ZipPackage::find(const std::string& entry) const {
     if (zip_stat(archive->get(), entry.c_str(), 0, &stat) != 0 || (stat.valid & ZIP_STAT_SIZE) == 0 || (stat.valid & ZIP_STAT_INDEX) == 0) {
         throw std::runtime_error("The package file \"" + archive->getName() + "/" + entry + "\" was not found.");
     }
+
     return stat;
 }
 
@@ -52,6 +53,7 @@ std::vector<std::string> ZipPackage::list(std::string_view directory) const {
             files.emplace_back(entryName);
         }
     }
+
     std::sort(files.begin(), files.end());
     return files;
 }

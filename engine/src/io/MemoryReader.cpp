@@ -11,6 +11,7 @@ std::size_t MemoryReader::read(std::uint64_t offset, std::span<std::uint8_t> tar
     if (offset >= bytes->size()) {
         return 0;
     }
+
     const auto start = static_cast<std::size_t>(offset);
     const std::size_t count = std::min(target.size(), bytes->size() - start);
     std::copy_n(bytes->begin() + static_cast<std::ptrdiff_t>(start), count, target.begin());

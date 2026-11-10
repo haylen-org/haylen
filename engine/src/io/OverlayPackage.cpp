@@ -50,9 +50,11 @@ std::unique_ptr<PackageReader> OverlayPackage::openReader(std::string_view path)
     if (!own) {
         return base->openReader(path);
     }
+
     if (*own == nullptr) {
         throw std::runtime_error("The package file \"" + std::string(getName()) + "/" + Path::normalize(path) + "\" was not found.");
     }
+
     return std::make_unique<MemoryReader>(*own);
 }
 
@@ -68,12 +70,14 @@ std::vector<std::string> OverlayPackage::list(std::string_view directory) const 
         if (!Path::isInside(path, prefix)) {
             continue;
         }
+
         if (bytes == nullptr) {
             std::erase(listed, path);
         } else if (std::ranges::find(listed, path) == listed.end()) {
             listed.push_back(path);
         }
     }
+
     std::ranges::sort(listed);
     return listed;
 }

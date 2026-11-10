@@ -23,10 +23,12 @@ std::string Path::normalize(std::string_view path) {
             if (segments.empty()) {
                 throw std::invalid_argument("The path \"" + std::string(path) + "\" must stay inside its root folder.");
             }
+
             segments.pop_back();
         } else if (!segment.empty() && segment != ".") {
             segments.push_back(segment);
         }
+
         start = end + 1;
     }
 
@@ -35,8 +37,10 @@ std::string Path::normalize(std::string_view path) {
         if (!normalized.empty()) {
             normalized.push_back('/');
         }
+
         normalized.append(segment);
     }
+
     return normalized;
 }
 
@@ -45,6 +49,7 @@ std::string Path::asset(std::string_view path) {
     if (relative.empty()) {
         throw std::invalid_argument("An asset path cannot be empty.");
     }
+
     return std::string(kContentDirectory) + "/" + relative;
 }
 
@@ -58,6 +63,7 @@ std::string_view Path::extension(std::string_view path) noexcept {
     if (dot == std::string_view::npos || (slash != std::string_view::npos && dot < slash)) {
         return {};
     }
+
     return path.substr(dot);
 }
 
@@ -70,6 +76,7 @@ std::string Path::join(std::string_view folder, std::string_view relative) {
     if (folder.empty()) {
         return normalize(relative);
     }
+
     return normalize(std::string(folder) + "/" + std::string(relative));
 }
 
@@ -81,32 +88,40 @@ bool Path::matches(std::string_view pattern, std::string_view path) noexcept {
     if (pattern.empty()) {
         return path.empty();
     }
+
     if (pattern.starts_with("**")) {
         // A `**/` also matches no folder at all, so `maps/**/a.tmj` matches `maps/a.tmj`.
         if (pattern.starts_with("**/") && matches(pattern.substr(3), path)) {
             return true;
         }
+
         for (std::size_t taken = 0; taken <= path.size(); ++taken) {
             if (matches(pattern.substr(2), path.substr(taken))) {
                 return true;
             }
         }
+
         return false;
     }
+
     if (pattern.front() == '*') {
         for (std::size_t taken = 0; taken <= path.size(); ++taken) {
             if (matches(pattern.substr(1), path.substr(taken))) {
                 return true;
             }
+
             if (taken < path.size() && path[taken] == '/') {
                 return false;
             }
         }
+
         return false;
     }
+
     if (path.empty() || (pattern.front() != path.front() && (pattern.front() != '?' || path.front() == '/'))) {
         return false;
     }
+
     return matches(pattern.substr(1), path.substr(1));
 }
 
