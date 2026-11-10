@@ -20,7 +20,7 @@ for index = 0, 8 do
     local column, row = spans[index % 3 + 1], spans[index // 3 + 1]
     pieces[index + 1] = {column[1], row[1], column[2], row[2]}
 end
-local frame = graphics2d.newNineSlice(assets.texture('nine-slice/pieces.png'), {pieces = pieces, fill = 'tile'})]]
+local frame = graphics2d.newNineSlice(assets.texture('nine-slice/pieces.png', {mipmaps = false}), {pieces = pieces, fill = 'tile'})]]
 
 function Pieces:enter()
     self:build('linear')
@@ -34,10 +34,10 @@ function Pieces:enter()
     }
 end
 
--- Cuts the sheet loaded with a filter into the nine pieces, stretched and tiled.
+-- Cuts the sheet loaded with a filter into the nine pieces, stretched and tiled. The sheet keeps no mipmaps, whose smaller copies would average the transparent gaps into the edges of the pieces, so each region is read on its own at every size.
 function Pieces:build(filter)
     self.filter = filter
-    self.texture = assets.texture('nine-slice/pieces.png', {filter = filter})
+    self.texture = assets.texture('nine-slice/pieces.png', {filter = filter, mipmaps = false})
     local spans = {{0, Pieces.border}, {Pieces.border + Pieces.gap, Pieces.middle}, {Pieces.border + Pieces.middle + Pieces.gap * 2, Pieces.border}}
     local pieces = {}
     for index = 0, 8 do

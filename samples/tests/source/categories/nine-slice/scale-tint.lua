@@ -86,7 +86,7 @@ function ScaleTint:draw(area)
     local panel = self:drawTinted(large, self.tint, self.scale)
     if panel[3] > 120 and panel[4] > 60 then
         graphics2d.drawText(nil, self.tint.text, panel[1] + panel[3] / 2, panel[2] + panel[4] / 2 - 18, {size = 34, color = ScaleTint.ink, anchor = {0.5, 0.5}, layer = 2})
-        graphics2d.drawText(nil, string.format('Borders at %.2f times their size', self.scale), panel[1] + panel[3] / 2, panel[2] + panel[4] / 2 + 22, {size = 20, color = ScaleTint.ink, anchor = {0.5, 0.5}, maxWidth = panel[3] - 20, layer = 2})
+        graphics2d.drawText(nil, string.format('Borders at %.2f times their size', self.scale), panel[1] + panel[3] / 2, panel[2] + panel[4] / 2 + 22, {size = 20, color = ScaleTint.ink, anchor = {0.5, 0.5}, maxWidth = panel[3] - 20, align = 'center', layer = 2})
     end
 
     local tints = #ScaleTint.tints - 1
