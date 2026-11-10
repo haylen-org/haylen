@@ -26,6 +26,7 @@ static void {{SYMBOL}}_echo(void* user, uint64_t call, const char* method, const
     if (api->version != HAYLEN_NATIVE_API_VERSION) {
         return 1;
     }
+
     {{SYMBOL}}_api = api;
     api->registerHandler("{{ID}}.echo", {{SYMBOL}}_echo, NULL, NULL);
     {{BLOCK:NATIVE_REGISTER}}

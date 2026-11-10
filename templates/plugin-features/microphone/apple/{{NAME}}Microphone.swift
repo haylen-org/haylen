@@ -96,10 +96,12 @@ final class {{NAME}}MicrophoneRecording: @unchecked Sendable {
         guard format.sampleRate > 0, format.channelCount > 0 else {
             throw HaylenFailure("This device has no microphone.", code: "unsupported")
         }
+
         sampleRate = Int(format.sampleRate)
         guard let opened = context.openAudioStream("microphone", sampleRate: sampleRate, channels: 1, format: .float32, capacity: sampleRate) else {
             throw HaylenFailure("The audio stream \"microphone\" did not open.", code: "streamFailed")
         }
+
         stream = opened
         engine.inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [stream] buffer, _ in
             if let samples = buffer.floatChannelData?[0] {

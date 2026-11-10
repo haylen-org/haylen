@@ -11,9 +11,11 @@ const requestCamera = async () => {
         if (error.name === "NotAllowedError") {
             return "denied";
         }
+
         if (error.name === "NotFoundError" || error.name === "OverconstrainedError") {
             return { state: "unsupported", message: "The device has no camera." };
         }
+
         return "unknown";
     }
 };
@@ -44,6 +46,7 @@ export default function registerCamera(context) {
         if (video && video.readyState >= video.HAVE_CURRENT_DATA) {
             stream.push(video);
         }
+
         frame = requestAnimationFrame(push);
     };
 
@@ -51,11 +54,13 @@ export default function registerCamera(context) {
         await context.requirePermission("camera");
         const facing = params.facing || "back";
         stop();
+
         try {
             media = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: facing === "front" ? "user" : "environment" } });
         } catch (error) {
             throw failure(`The camera did not start: ${error.message}`, "cameraFailed");
         }
+
         video = document.createElement("video");
         video.muted = true;
         video.playsInline = true;
@@ -74,6 +79,7 @@ export default function registerCamera(context) {
         if (!video) {
             throw failure('The camera is off. Call "startCamera" first.', "cameraOff");
         }
+
         const canvas = document.createElement("canvas");
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;

@@ -84,6 +84,7 @@ class App final : public haylen::core::Application {
         if (engine.getPlatformName() != "windows" && engine.getPlatformName() != "linux") {
             return;
         }
+
         Bridge& bridge = engine.getPlatform();
         // clang-format off
         bridge.registerHandler("app.greet", [&bridge, greetings = 0](const Bridge::Payload& params, const Bridge::Reply& reply) mutable {

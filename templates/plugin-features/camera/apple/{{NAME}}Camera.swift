@@ -36,6 +36,7 @@ final class {{NAME}}Camera {
             guard let stream = context.openVideoStream("camera", width: {{NAME}}CameraCapture.width, height: {{NAME}}CameraCapture.height, format: .BGRA8) else {
                 throw HaylenFailure("The video stream \"camera\" did not open.", code: "streamFailed")
             }
+
             self.capture?.stop()
             self.capture = try {{NAME}}CameraCapture(facing: params.facing, stream: stream)
             return Started(width: {{NAME}}CameraCapture.width, height: {{NAME}}CameraCapture.height, facing: params.facing)
@@ -59,10 +60,12 @@ final class {{NAME}}Camera {
                 reply(false, ["message": "The camera is off. Call \"startCamera\" first.", "code": "cameraOff"])
                 return
             }
+
             guard let photo = capture.photo() else {
                 reply(false, ["message": "The camera has no frame yet.", "code": "noFrame"])
                 return
             }
+
             reply(true, ["jpeg": photo.jpeg, "width": photo.width, "height": photo.height])
             #endif
         }
@@ -117,6 +120,7 @@ final class {{NAME}}CameraCapture: NSObject, AVCaptureVideoDataOutputSampleBuffe
         guard #available(visionOS 2.1, *) else {
             throw HaylenFailure("visionOS gives apps a camera from version 2.1.", code: "unsupported")
         }
+
         let device = AVCaptureDevice.default(for: .video)
         #else
         let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: facing == "front" ? .front : .back) ?? AVCaptureDevice.default(for: .video)
@@ -124,6 +128,7 @@ final class {{NAME}}CameraCapture: NSObject, AVCaptureVideoDataOutputSampleBuffe
         guard let device, let input = try? AVCaptureDeviceInput(device: device), session.canAddInput(input) else {
             throw HaylenFailure("This device has no camera.", code: "unsupported")
         }
+
         session.beginConfiguration()
         // The persona camera of visionOS chooses its own format.
         #if !os(visionOS)
@@ -137,6 +142,7 @@ final class {{NAME}}CameraCapture: NSObject, AVCaptureVideoDataOutputSampleBuffe
         guard session.canAddOutput(output) else {
             throw HaylenFailure("The camera cannot deliver frames to the app.", code: "unsupported")
         }
+
         session.addOutput(output)
         session.commitConfiguration()
         queue.async { [session] in
@@ -154,6 +160,7 @@ final class {{NAME}}CameraCapture: NSObject, AVCaptureVideoDataOutputSampleBuffe
         guard let buffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
             return
         }
+
         lock.lock()
         newest = buffer
         lock.unlock()
@@ -168,6 +175,7 @@ final class {{NAME}}CameraCapture: NSObject, AVCaptureVideoDataOutputSampleBuffe
         guard let buffer else {
             return nil
         }
+
         CVPixelBufferLockBaseAddress(buffer, .readOnly)
         defer { CVPixelBufferUnlockBaseAddress(buffer, .readOnly) }
         let width = CVPixelBufferGetWidth(buffer)
@@ -176,10 +184,12 @@ final class {{NAME}}CameraCapture: NSObject, AVCaptureVideoDataOutputSampleBuffe
         guard let context = CGContext(data: CVPixelBufferGetBaseAddress(buffer), width: width, height: height, bitsPerComponent: 8, bytesPerRow: CVPixelBufferGetBytesPerRow(buffer), space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: bitmap), let image = context.makeImage() else {
             return nil
         }
+
         let jpeg = NSMutableData()
         guard let destination = CGImageDestinationCreateWithData(jpeg as CFMutableData, "public.jpeg" as CFString, 1, nil) else {
             return nil
         }
+
         CGImageDestinationAddImage(destination, image, [kCGImageDestinationLossyCompressionQuality: 0.8] as CFDictionary)
         return CGImageDestinationFinalize(destination) ? (jpeg as Data, width, height) : nil
     }

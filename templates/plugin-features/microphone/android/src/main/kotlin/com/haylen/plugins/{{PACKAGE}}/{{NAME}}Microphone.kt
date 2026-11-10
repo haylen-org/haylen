@@ -53,6 +53,7 @@ class {{NAME}}Microphone(private val context: HaylenPluginContext) {
                         stream.push(block, frames)
                     }
                 }
+
                 record.stop()
                 record.release()
             }, "{{ID}}-microphone").start()
@@ -73,6 +74,7 @@ class {{NAME}}Microphone(private val context: HaylenPluginContext) {
                 if (record.state == AudioRecord.STATE_INITIALIZED) {
                     return record
                 }
+
                 record.release()
                 return null
             }

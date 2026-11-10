@@ -33,6 +33,7 @@ var Module = {
         if (adapter === null && document.createElement("canvas").getContext("webgl2") === null) {
             throw new Error("This browser supports neither WebGPU nor WebGL2. Update it or turn on hardware acceleration to run this app.");
         }
+
         const requested = new URLSearchParams(location.search).get("graphicsApi");
         if (requested) {
             Module.haylen.graphicsApi = requested;
@@ -57,27 +58,33 @@ var Module = {
                 if (!response.ok) {
                     throw new Error("The file \"" + file.url + "\" could not be downloaded: " + response.status + " " + response.statusText + ".");
                 }
+
                 const length = Number(response.headers.get("Content-Length"));
                 if (!response.headers.get("Content-Encoding") && length > 0) {
                     totals[index] = length;
                 }
+
                 const reader = response.body.getReader();
                 const chunks = [];
                 for (;;) {
                     const { done, value } = await reader.read();
+
                     if (done) {
                         break;
                     }
+
                     chunks.push(value);
                     received[index] += value.length;
                     update();
                 }
+
                 const bytes = new Uint8Array(received[index]);
                 let offset = 0;
                 for (const chunk of chunks) {
                     bytes.set(chunk, offset);
                     offset += chunk.length;
                 }
+
                 return bytes;
             })
         );
@@ -102,9 +109,11 @@ var Module = {
                 } catch (error) {
                     throw new Error("The plugin \"" + plugin.id + "\" could not be imported from \"" + plugin.module + "\": " + (error.message || error));
                 }
+
                 if (typeof module.default !== "function") {
                     throw new Error("The plugin \"" + plugin.id + "\" does not export \"load(context)\" as the default export of \"" + plugin.module + "\".");
                 }
+
                 return { plugin, load: module.default };
             })
         );
@@ -122,6 +131,7 @@ var Module = {
                         return;
                     }
                 }
+
                 Module.removeRunDependency("haylen-plugins");
             })();
         });
@@ -134,6 +144,7 @@ var Module = {
         fail("The app configuration could not be loaded.", String(error.message || error));
         return;
     }
+
     document.title = config.name;
     // The colors of `config.json` are `rgba(r, g, b, a)`, and the splash shows dark content over a background whose relative luminance passes one half.
     const isLightColor = (color) => {
@@ -151,12 +162,15 @@ var Module = {
         } else {
             document.body.style.background = background;
         }
+
         splash.classList.toggle("light", isLightColor(background));
     };
     updateTheme();
+
     if (config.splash.darkBackground) {
         matchMedia("(prefers-color-scheme: dark)").addEventListener("change", updateTheme);
     }
+
     // The logo of the splash is optional: a page without `#splash-logo` shows the bar, the percentage and the loading text alone. A page with it downloads and decodes the logo before anything else, so the splash shows it from its first paint, and the icon of the page takes the same download.
     const icon = document.querySelector("link[rel=icon]");
     if (logo === null) {
@@ -167,6 +181,7 @@ var Module = {
             if (!response.ok) {
                 throw new Error("The file \"" + config.splash.logo + "\" could not be downloaded: " + response.status + " " + response.statusText + ".");
             }
+
             const source = URL.createObjectURL(await response.blob());
             logo.alt = config.name;
             logo.src = source;
@@ -178,6 +193,7 @@ var Module = {
             return;
         }
     }
+
     splash.classList.remove("starting");
 
     if (typeof WebAssembly !== "object") {
@@ -196,6 +212,7 @@ var Module = {
     };
     Module.haylen.onError = (error) => {
         console.error(error.message + (error.traceback ? "\n" + error.traceback : ""));
+
         if (!started) {
             fail("The app could not start.", error.message + (error.traceback ? "\n\n" + error.traceback : ""));
         }
@@ -218,11 +235,13 @@ var Module = {
         } else {
             Module.haylen.packageData = packageFiles[0];
         }
+
         // A run of `haylen.py run --platform web` serves the page in development, connected to the server that pushes every saved file, while a site that `haylen.py prepare` makes has no such entry.
         if (config.development) {
             Module.haylen.development = true;
             Module.haylen.developmentServer = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + config.development.path + "?token=" + encodeURIComponent(config.development.token);
         }
+
         loadPlugins(plugins);
         await loadScript("haylen.js");
     } catch (error) {

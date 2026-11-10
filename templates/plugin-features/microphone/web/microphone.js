@@ -11,9 +11,11 @@ const requestMicrophone = async () => {
         if (error.name === "NotAllowedError") {
             return "denied";
         }
+
         if (error.name === "NotFoundError" || error.name === "OverconstrainedError") {
             return { state: "unsupported", message: "The device has no microphone." };
         }
+
         return "unknown";
     }
 };
@@ -45,6 +47,7 @@ export default function registerMicrophone(context) {
         } catch (error) {
             throw failure(`The microphone did not start: ${error.message}`, "microphoneFailed");
         }
+
         const audio = new AudioContext();
         await audio.audioWorklet.addModule(new URL("./microphone-worklet.js", import.meta.url));
         const stream = context.audioStream("microphone", { sampleRate: audio.sampleRate, channels: 1 });

@@ -9,6 +9,7 @@ export default function registerBanner(context) {
         if (params.anchor !== "top" && params.anchor !== "bottom") {
             throw failure(`The anchor of the banner is "top" or "bottom", not "${params.anchor}".`, "invalidAnchor");
         }
+
         const bar = document.createElement("div");
         bar.style.cssText = "display:flex;align-items:center;gap:12px;padding:0 8px 0 16px;border-radius:10px;color:#fff;font:600 16px system-ui,sans-serif;background:#5856d6;";
         const label = document.createElement("span");

@@ -50,6 +50,7 @@ class {{NAME}}Location(private val context: HaylenPluginContext) {
         if (locations == null || provider == null) {
             throw HaylenBridge.Failure("This device has no location turned on.", "unsupported", null)
         }
+
         return locations to provider
     }
 

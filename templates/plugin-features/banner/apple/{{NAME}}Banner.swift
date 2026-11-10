@@ -27,6 +27,7 @@ final class {{NAME}}Banner: NSObject {
             guard let anchor = ["top": HaylenPlacement.Anchor.top, "bottom": .bottom][params.anchor] else {
                 throw HaylenFailure("The anchor of the banner is \"top\" or \"bottom\", not \"\(params.anchor)\".", code: "invalidAnchor")
             }
+
             let placement = HaylenPlacement(anchor: anchor)
             placement.reserve = params.reserve
             placement.width = 360

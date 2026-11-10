@@ -92,6 +92,7 @@ final class {{NAME}}Location: NSObject, CLLocationManagerDelegate {
             if state == .prompt {
                 return
             }
+
             let answers = self.asking
             self.asking.removeAll()
             for answer in answers {
@@ -105,6 +106,7 @@ final class {{NAME}}Location: NSObject, CLLocationManagerDelegate {
             guard let location = locations.last else {
                 return
             }
+
             self.finish(.success(location))
             if self.watching {
                 for location in locations {

@@ -146,6 +146,7 @@ class {{NAME}}Camera(private val context: HaylenPluginContext) {
                     pixels.put(clamp(scaled + 1.596f * v)).put(clamp(scaled - 0.392f * u - 0.813f * v)).put(clamp(scaled + 2.017f * u)).put(255.toByte())
                 }
             }
+
             pixels.flip()
             synchronized(newest) {
                 pixels.get(newest)

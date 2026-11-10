@@ -5,6 +5,7 @@ class Microphone extends AudioWorkletProcessor {
         if (channel) {
             this.port.postMessage(channel.slice());
         }
+
         return true;
     }
 }
