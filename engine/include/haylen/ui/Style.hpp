@@ -69,7 +69,10 @@ class Style final {
         mutable std::optional<Theme::Image> image;
     };
 
+    static void readColors(Style& style, const core::Json& section, const std::string& subject, const std::string& inside);
+    static void readMetrics(Style& style, const core::Json& section, const std::string& subject, const std::string& inside);
     static void readFonts(Style& style, const core::Json& section, const std::string& subject, const std::string& inside);
+    static void readSurfaces(Style& style, const core::Json& section, const std::string& subject, const std::string& inside);
     static void readSounds(Style& style, const core::Json& section, const std::string& subject, const std::string& inside);
     [[nodiscard]] static const core::Json& readSection(const core::Json& value, const char* key, const std::string& subject);
 

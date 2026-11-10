@@ -6,6 +6,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <imgui.h>
@@ -92,10 +93,11 @@ Theme::Image Theme::readImage(const core::Json& value, const std::string& contex
 
     // An SVG document rasters while it draws, at the pixels its borders cover, so it loads no texture here.
     const std::string& path = value.at("image").get_ref<const std::string&>();
-    Image image;
-    const graphics::Texture texture = ImageLibrary::isVector(path) ? graphics::Texture{} : loadTexture(path, options);
+    const bool vector = ImageLibrary::isVector(path);
+    const graphics::Texture texture = vector ? graphics::Texture{} : loadTexture(path, options);
 
-    if (ImageLibrary::isVector(path)) {
+    Image image;
+    if (vector) {
         image.vector = path;
         image.whole = !value.contains("pieces") && !value.contains("source");
         image.borders = value.contains("slice") ? readInsets(value.at("slice"), "The slice of " + context) : math::Insets{};
@@ -326,7 +328,17 @@ Theme Theme::fromJson(const core::Json& document, const Theme& base, const Textu
         }
     }
 
-    for (const auto& [key, value] : readSection(document, "colors").items()) {
+    readColors(theme, readSection(document, "colors"));
+    readMetrics(theme, readSection(document, "metrics"));
+    readFontFiles(theme, readSection(document, "fontFiles"));
+    readFonts(theme, readSection(document, "fonts"));
+    readSurfaces(theme, readSection(document, "surfaces"), loadTexture);
+    readSounds(theme, readSection(document, "sounds"));
+    return theme;
+}
+
+void Theme::readColors(Theme& theme, const core::Json& section) {
+    for (const auto& [key, value] : section.items()) {
         const std::optional<Color> role = colorFromName(key);
         if (!role) {
             throw std::invalid_argument("The theme has no color role named \"" + key + "\".");
@@ -334,8 +346,10 @@ Theme Theme::fromJson(const core::Json& document, const Theme& base, const Textu
 
         theme.setColor(*role, readColor(value, "The theme color \"" + key + "\""));
     }
+}
 
-    for (const auto& [key, value] : readSection(document, "metrics").items()) {
+void Theme::readMetrics(Theme& theme, const core::Json& section) {
+    for (const auto& [key, value] : section.items()) {
         const std::optional<Metric> role = metricFromName(key);
         if (!role) {
             throw std::invalid_argument("The theme has no metric named \"" + key + "\".");
@@ -343,16 +357,20 @@ Theme Theme::fromJson(const core::Json& document, const Theme& base, const Textu
 
         theme.setMetric(*role, readNumber(value, "The theme metric \"" + key + "\""));
     }
+}
 
-    for (const auto& [key, value] : readSection(document, "fontFiles").items()) {
+void Theme::readFontFiles(Theme& theme, const core::Json& section) {
+    for (const auto& [key, value] : section.items()) {
         if (!value.is_string()) {
             throw std::invalid_argument("The theme font file \"" + key + "\" must be a path.");
         }
 
         theme.fontFiles[key] = value.get<std::string>();
     }
+}
 
-    for (const auto& [key, value] : readSection(document, "fonts").items()) {
+void Theme::readFonts(Theme& theme, const core::Json& section) {
+    for (const auto& [key, value] : section.items()) {
         const std::optional<Font> role = fontFromName(key);
         if (!role || !value.is_object()) {
             throw std::invalid_argument("The theme font \"" + key + "\" must be a known role with an object value.");
@@ -386,8 +404,10 @@ Theme Theme::fromJson(const core::Json& document, const Theme& base, const Textu
 
         theme.setFont(*role, std::move(style));
     }
+}
 
-    for (const auto& [key, value] : readSection(document, "surfaces").items()) {
+void Theme::readSurfaces(Theme& theme, const core::Json& section, const TextureLoader& loadTexture) {
+    for (const auto& [key, value] : section.items()) {
         const std::optional<Surface> role = surfaceFromName(key);
         if (!role) {
             throw std::invalid_argument("The theme has no surface named \"" + key + "\".");
@@ -404,8 +424,10 @@ Theme Theme::fromJson(const core::Json& document, const Theme& base, const Textu
 
         theme.setSurface(*role, readImage(value, "the theme surface \"" + key + "\"", loadTexture));
     }
+}
 
-    for (const auto& [key, value] : readSection(document, "sounds").items()) {
+void Theme::readSounds(Theme& theme, const core::Json& section) {
+    for (const auto& [key, value] : section.items()) {
         const std::optional<Sound> role = soundFromName(key);
         if (!role) {
             throw std::invalid_argument("The theme has no sound named \"" + key + "\".");
@@ -422,8 +444,6 @@ Theme Theme::fromJson(const core::Json& document, const Theme& base, const Textu
 
         theme.setSound(*role, readCue(value, "the theme sound \"" + key + "\""));
     }
-
-    return theme;
 }
 
 const Theme::Image* Theme::getSurface(Surface role) const noexcept {
@@ -485,6 +505,7 @@ void Theme::applyTo(ImGuiStyle& style, float pointsPerUnit) const {
     style.WindowBorderSize = getMetric(Metric::BorderWidth) * 0.5F;
     style.FrameBorderSize = 0.0F;
     style.InputTextCursorSize = getMetric(Metric::CaretWidth);
+
     // Windows keep their title bar for the title and the close button, as the windows of the UI do, and fold with a double press on it.
     style.WindowMenuButtonPosition = ImGuiDir_None;
 

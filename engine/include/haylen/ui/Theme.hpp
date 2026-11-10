@@ -280,11 +280,14 @@ class Theme final {
         return fonts[static_cast<std::size_t>(role)];
     }
     [[nodiscard]] const Image* getSurface(Surface role) const noexcept;
+
     // Returns the sound of an interaction, or null for an interaction that plays nothing, which is every interaction of the built-in themes.
     [[nodiscard]] const Cue* getSound(Sound role) const noexcept;
+
     [[nodiscard]] const std::map<std::string, std::string, std::less<>>& getFontFiles() const noexcept {
         return fontFiles;
     }
+
     // The name of the theme the UI draws with instead of this one while the system asks for higher contrast, or empty to keep this one.
     [[nodiscard]] const std::string& getHighContrast() const noexcept {
         return highContrast;
@@ -307,8 +310,10 @@ class Theme final {
     void setMetric(Metric role, float value);
     void setFont(Font role, FontStyle value);
     void setSurface(Surface role, std::optional<Image> value);
+
     // Throws `std::invalid_argument` for a cue without a sound file or a bus, or with a volume or an interval that is negative or not finite.
     void setSound(Sound role, std::optional<Cue> value);
+
     void setImageFilter(graphics::Texture::Filter value) noexcept {
         imageFilter = value;
     }
@@ -510,6 +515,12 @@ class Theme final {
     [[nodiscard]] static math::Rect readRect(const core::Json& value, const std::string& context);
     static void checkTiles(const Image& image, const std::string& context);
     [[nodiscard]] static const core::Json& readSection(const core::Json& document, const char* key);
+    static void readColors(Theme& theme, const core::Json& section);
+    static void readMetrics(Theme& theme, const core::Json& section);
+    static void readFontFiles(Theme& theme, const core::Json& section);
+    static void readFonts(Theme& theme, const core::Json& section);
+    static void readSurfaces(Theme& theme, const core::Json& section, const TextureLoader& loadTexture);
+    static void readSounds(Theme& theme, const core::Json& section);
 
     std::string name;
     std::string highContrast;

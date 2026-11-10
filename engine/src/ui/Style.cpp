@@ -34,7 +34,7 @@ Style::Color Style::readColor(const core::Json& value, const std::string& contex
     return *role;
 }
 
-// Every error starts with the property that holds the style, and its values follow the rules of theme files. Surfaces are read once their images arrive, since they load when they first draw.
+// Every error starts with the property that holds the style, and its values follow the rules of theme files.
 Style Style::fromJson(const core::Json& value, std::string_view path) {
     const std::string subject = PropertyReader::describeProperty(path);
     const std::string inside = "t" + subject.substr(1);
@@ -46,7 +46,16 @@ Style Style::fromJson(const core::Json& value, std::string_view path) {
     core::JsonValidator::requireKnownKeys(value, {"colors", "metrics", "fonts", "surfaces", "sounds"}, inside);
 
     Style style;
-    for (const auto& [key, color] : readSection(value, "colors", subject).items()) {
+    readColors(style, readSection(value, "colors", subject), subject, inside);
+    readMetrics(style, readSection(value, "metrics", subject), subject, inside);
+    readFonts(style, readSection(value, "fonts", subject), subject, inside);
+    readSurfaces(style, readSection(value, "surfaces", subject), subject, inside);
+    readSounds(style, readSection(value, "sounds", subject), subject, inside);
+    return style;
+}
+
+void Style::readColors(Style& style, const core::Json& section, const std::string& subject, const std::string& inside) {
+    for (const auto& [key, color] : section.items()) {
         const std::optional<Theme::Color> role = Theme::colorFromName(key);
         if (!role) {
             throw std::invalid_argument(subject + " has no color role named \"" + key + "\".");
@@ -54,8 +63,10 @@ Style Style::fromJson(const core::Json& value, std::string_view path) {
 
         style.colors[static_cast<std::size_t>(*role)] = readColor(color, "The color \"" + key + "\" of " + inside);
     }
+}
 
-    for (const auto& [key, metric] : readSection(value, "metrics", subject).items()) {
+void Style::readMetrics(Style& style, const core::Json& section, const std::string& subject, const std::string& inside) {
+    for (const auto& [key, metric] : section.items()) {
         const std::optional<Theme::Metric> role = Theme::metricFromName(key);
         if (!role) {
             throw std::invalid_argument(subject + " has no metric named \"" + key + "\".");
@@ -63,9 +74,11 @@ Style Style::fromJson(const core::Json& value, std::string_view path) {
 
         style.metrics[static_cast<std::size_t>(*role)] = Theme::readNumber(metric, "The metric \"" + key + "\" of " + inside);
     }
+}
 
-    readFonts(style, readSection(value, "fonts", subject), subject, inside);
-    for (const auto& [key, surface] : readSection(value, "surfaces", subject).items()) {
+// A surface is read whole once its image arrives, since images load when they first draw, so only its keys and the path of its image are checked here.
+void Style::readSurfaces(Style& style, const core::Json& section, const std::string& subject, const std::string& inside) {
+    for (const auto& [key, surface] : section.items()) {
         const std::optional<Theme::Surface> role = Theme::surfaceFromName(key);
         if (!role) {
             throw std::invalid_argument(subject + " has no surface named \"" + key + "\".");
@@ -83,9 +96,6 @@ Style Style::fromJson(const core::Json& value, std::string_view path) {
 
         style.surfaces[static_cast<std::size_t>(*role)] = std::move(entry);
     }
-
-    readSounds(style, readSection(value, "sounds", subject), subject, inside);
-    return style;
 }
 
 // A sound set to `false` plays nothing, whatever the theme gives the interaction.
