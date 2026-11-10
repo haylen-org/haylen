@@ -95,6 +95,7 @@ class DebuggingServer final {
                     server.receive(socket, core::Json::parse(std::string_view(frame.begin(), frame.size())));
                 }
             } catch (const Poco::Exception&) {}
+
             server.leave(socket);
         }
 

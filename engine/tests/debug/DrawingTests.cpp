@@ -26,8 +26,6 @@
 
 namespace haylen::debug {
 
-namespace {
-
 class DebugDrawingTest : public ::testing::Test {
   protected:
     [[nodiscard]] plugins::DebugPlugin& getPlugin() {
@@ -63,8 +61,6 @@ class DebugDrawingTest : public ::testing::Test {
 
     test::EngineFixture fixture{files()};
 };
-
-} // namespace
 
 TEST_F(DebugDrawingTest, RunsTheDrawersOfTheDrawingsThatAreOnInEveryCanvas) {
     plugins::DebugPlugin& plugin = getPlugin();

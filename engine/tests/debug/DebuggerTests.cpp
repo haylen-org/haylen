@@ -64,6 +64,13 @@ return function()
 end
 )";
 
+    static constexpr const char* kGenerator = R"(return function()
+    local value = 1
+    coroutine.yield(value)
+    value = value + 1
+end
+)";
+
     // Runs the source through the message handler of the engine and returns the message of its error, or an empty text.
     static std::string run(lua_State* L, const std::string& source) {
         try {
@@ -78,13 +85,6 @@ end
     static core::Json breakpoints(std::vector<core::Json> list) {
         return {{"source", {{"path", "source/mod.lua"}}}, {"breakpoints", std::move(list)}};
     }
-
-    static constexpr const char* kGenerator = R"(return function()
-    local value = 1
-    coroutine.yield(value)
-    value = value + 1
-end
-)";
 
     test::EngineFixture fixture{{{"source/mod.lua", kModule}, {"source/task.lua", kTask}, {"source/generator.lua", kGenerator}}};
     test::DebugClient client{fixture.host()};

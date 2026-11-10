@@ -465,6 +465,7 @@ TEST(ErrorTest, ReadsTheStackOfTasksFromTheirFrames) {
         EXPECT_EQ(frames.back().getLocation(), "test:1");
         EXPECT_EQ(frames.back().function, "function <test:1>");
     }
+
     {
         // A stack deeper than Varn lists keeps its innermost and its outermost frames around the line the protected calls show for the levels they skip.
         test::EngineFixture fixture;
@@ -817,7 +818,6 @@ TEST(ClassBuilderTest, RecordsTheNativePropertiesThatTweensAnimate) {
     lua_pop(L, 2);
 }
 
-// A binding tells which converter reads an argument, the way `intersects` tells a circle from a rectangle.
 // A finite number past the floats of the engine is an error wherever Lua hands it over, as an argument, an optional argument, an option or a field of a table, since converting it is undefined, while infinities convert as they are.
 TEST(ConverterTest, RefusesNumbersPastTheRangeOfFloats) {
     test::EngineFixture fixture;
@@ -865,6 +865,7 @@ TEST(ConverterTest, ReadsListsIntoTheStorageTheCallerKeeps) {
     lua_pop(L, 1);
 }
 
+// A binding tells which converter reads an argument, the way `intersects` tells a circle from a rectangle.
 TEST(ConverterTest, TellsWhichValuesEachConverterReads) {
     test::EngineFixture fixture;
     lua_State* L = fixture.lua();

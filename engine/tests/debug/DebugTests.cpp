@@ -40,6 +40,7 @@ TEST(ProfilerTest, AddsUpScopesPerFrame) {
         const ProfileScope scope(profiler, "physics");
         now = 0.006;
     }
+
     now = 0.007;
     profiler.endScope();
     profiler.beginScope("render");
@@ -69,6 +70,7 @@ TEST(ProfilerTest, ScopesCloseWhatTheyContain) {
         const ProfileScope outer(profiler, "outer");
         profiler.beginScope("left open");
     }
+
     EXPECT_EQ(profiler.getDepth(), 0U);
 
     // A scope that something else already closed ends quietly.
@@ -76,6 +78,7 @@ TEST(ProfilerTest, ScopesCloseWhatTheyContain) {
         const ProfileScope closed(profiler, "closed early");
         profiler.endScope();
     }
+
     EXPECT_EQ(profiler.getDepth(), 0U);
     profiler.endFrame();
     EXPECT_EQ(profiler.getLastFrame().size(), 3U);
@@ -197,6 +200,7 @@ TEST(LogTest, RemovingAListenerWaitsForTheLineItIsWriting) {
         const std::scoped_lock lock(mutex);
         released = true;
     }
+
     changed.notify_all();
     writer.join();
     remover.join();

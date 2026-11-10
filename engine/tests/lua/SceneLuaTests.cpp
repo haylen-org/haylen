@@ -165,6 +165,7 @@ TEST(SceneLuaTest, PlaysBuiltInEffectsWithBothScenesAlive) {
         end
     )");
     // clang-format on
+
     for (int frame = 0; frame < 24 * 6; ++frame) {
         fixture.frames(1, 0.1);
     }
@@ -361,6 +362,7 @@ TEST(SceneLuaTest, SpawnedTasksNeverResumeOnceTheirSceneUnloaded) {
         end})
     )");
     // clang-format on
+
     for (int step = 0; step < 5; ++step) {
         fixture.frames(1);
         std::this_thread::sleep_for(std::chrono::milliseconds(5));

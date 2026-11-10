@@ -67,6 +67,7 @@ TEST_F(ObjectCounterTest, CountsTrackedObjectsAndTheirMemory) {
         first.setBytes(40);
         EXPECT_EQ(counted("StatsTests.Thing").bytes, 40);
     }
+
     const ObjectCounter::Snapshot after = counted("StatsTests.Thing");
     EXPECT_EQ(after.created, 3U);
     EXPECT_EQ(after.destroyed, 3U);
@@ -80,6 +81,7 @@ TEST_F(ObjectCounterTest, CountsTrackedObjectsAndTheirMemory) {
         const TrackedCount copy(held);
         EXPECT_EQ(counted("StatsTests.Thing").alive, 8U);
     }
+
     EXPECT_EQ(counted("StatsTests.Thing").created, 17U);
     EXPECT_EQ(counted("StatsTests.Thing").alive, 0U);
     EXPECT_FALSE(ObjectCounter::find("StatsTests.Missing").has_value());
@@ -129,6 +131,7 @@ TEST_F(ObjectCounterTest, CountsEngineResources) {
         EXPECT_EQ(counted("RenderTarget").bytes, targets.bytes + 16 * 16 * 4);
         EXPECT_EQ(pool(device, "images").used, images.used + 2);
     }
+
     device.collectGarbage();
     EXPECT_EQ(counted("Texture").alive, textures.alive);
     EXPECT_EQ(counted("RenderTarget").bytes, targets.bytes);
@@ -145,6 +148,7 @@ TEST_F(ObjectCounterTest, CountsEngineResources) {
         EXPECT_EQ(counted("PhysicsBody").alive, bodies + 1);
         EXPECT_EQ(counted("PhysicsBody").destroyed, counted("PhysicsBody").created - counted("PhysicsBody").alive);
     }
+
     EXPECT_EQ(counted("PhysicsBody").alive, bodies);
 
     const std::uint64_t particles = counted("Particle").alive;
@@ -158,6 +162,7 @@ TEST_F(ObjectCounterTest, CountsEngineResources) {
         EXPECT_EQ(counted("Particle").alive, particles);
         emitter.burst(3);
     }
+
     EXPECT_EQ(counted("Particle").alive, particles);
     EXPECT_EQ(counted("ParticleEmitter").alive, emitters);
 

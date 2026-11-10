@@ -127,6 +127,7 @@ TEST(ConsoleLuaTest, RunsLinesFromOutsideOnlyInDevelopmentOrWhenTheAppTurnsItOn)
         EXPECT_EQ(fixture.lua("local ok, output = require('haylen.debug').runCommand('timeScale 0.5') return output"), "The time scale is 0.5.");
         EXPECT_DOUBLE_EQ(fixture.engine().getClock().getTimeScale(), 0.5);
     }
+
     {
         test::EngineFixture fixture({{"app.json", R"({"name": "Console", "identifier": "com.haylen.console", "debug": {"console": true}})"}});
         std::string answer;

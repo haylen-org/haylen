@@ -13,8 +13,6 @@ namespace haylen::debug {
 // Runs evaluations on a Lua state of its own, with the globals as their environment.
 class EvaluationTest : public ::testing::Test {
   protected:
-    std::unique_ptr<lua_State, decltype(&lua_close)> state{luaL_newstate(), &lua_close};
-
     void SetUp() override {
         luaL_openlibs(state.get());
     }
@@ -26,6 +24,8 @@ class EvaluationTest : public ::testing::Test {
         lua_settop(L, 0);
         return result;
     }
+
+    std::unique_ptr<lua_State, decltype(&lua_close)> state{luaL_newstate(), &lua_close};
 };
 
 // A task that an evaluation spawns, such as with the async library, waits and goes on long after the evaluation ended, as code of the app.

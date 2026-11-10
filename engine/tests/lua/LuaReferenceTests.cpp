@@ -119,6 +119,7 @@ class LuaReferenceTest : public ::testing::Test {
                 }
 
                 lua_pop(L, 1);
+
                 if (lua_getfield(L, -1, "__properties") == LUA_TTABLE) {
                     type.properties = getKeys(L, -1);
                 }
@@ -165,9 +166,13 @@ class LuaReferenceTest : public ::testing::Test {
         return text == name;
     }
 
+    static bool hasHeading(const Page& page, const std::string& name) {
+        return std::ranges::any_of(page.headings, [&name](const std::string& heading) { return isHeadingOf(heading, name); });
+    }
+
     static bool hasWord(const std::string& text, const std::string& word) {
+        const auto isName = [](char c) { return std::isalnum(static_cast<unsigned char>(c)) != 0 || c == '_'; };
         for (std::size_t at = text.find(word); at != std::string::npos; at = text.find(word, at + 1)) {
-            const auto isName = [](char c) { return std::isalnum(static_cast<unsigned char>(c)) != 0 || c == '_'; };
             const bool before = at == 0 || !isName(text[at - 1]);
             const bool after = at + word.size() == text.size() || !isName(text[at + word.size()]);
             if (before && after) {
@@ -223,7 +228,7 @@ TEST_F(LuaReferenceTest, EveryModuleAndEveryMemberHasItsPlaceInTheReference) {
 TEST_F(LuaReferenceTest, EveryBoundTypeWithItsMethodsAndPropertiesHasItsPlaceInTheReference) {
     std::vector<std::string> missing;
     for (const auto& [name, type] : getTypes(fixture.lua())) {
-        const auto page = std::ranges::find_if(pages, [&name](const auto& entry) { return std::ranges::any_of(entry.second.headings, [&name](const std::string& heading) { return isHeadingOf(heading, name); }); });
+        const auto page = std::ranges::find_if(pages, [&name](const auto& entry) { return hasHeading(entry.second, name); });
         if (page == pages.end()) {
             missing.push_back(name + " has no heading in the reference.");
             continue;

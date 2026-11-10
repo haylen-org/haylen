@@ -1,6 +1,11 @@
 #include <gtest/gtest.h>
 
+#include <cstdint>
+#include <map>
+#include <span>
 #include <string>
+#include <string_view>
+#include <vector>
 
 #include "core/EmbeddedFiles.hpp"
 #include "haylen/platform/Event.hpp"

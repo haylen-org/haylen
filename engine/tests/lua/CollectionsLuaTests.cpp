@@ -4,7 +4,7 @@
 
 #include "support/EngineFixture.hpp"
 
-namespace haylen {
+namespace haylen::core {
 
 TEST(CollectionsLuaTest, PoolsRecycleObjects) {
     test::EngineFixture fixture;
@@ -97,4 +97,4 @@ TEST(CollectionsLuaTest, RingBuffersKeepTheNewestValues) {
     EXPECT_NE(fixture.lua("collections.newRingBuffer(0)").find("capacity of at least one"), std::string::npos);
 }
 
-} // namespace haylen
+} // namespace haylen::core
