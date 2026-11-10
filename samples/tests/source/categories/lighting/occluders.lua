@@ -51,6 +51,8 @@ function Occluders:init(entry)
     self.stone = assets.texture(Room.floor, {filter = 'linear', wrap = 'repeat', mipmaps = true})
     self.plank = Occluders.plank()
     self.crateTexture = assets.texture(Room.tileset, {filter = 'linear'})
+    self.floorTop = self:findFloorTop()
+    self.ground = {vertices = {{}, {}, {}, {}}, indices = {1, 2, 3, 1, 3, 4}, edge = {0, 0, 0, 0}, stroke = {width = 6, color = '#FF1E1B33', layer = 2}}
     self.crates = {}
     for _, drop in ipairs(Occluders.drops) do
         self:drop(drop[1], drop[2])
@@ -108,6 +110,32 @@ function Occluders:drawBricks()
     graphics2d.draw(self.bricks, canvas.x, canvas.y, {source = {canvas.x * scale, canvas.y * scale, canvas.width * scale, canvas.height * scale}, width = canvas.width, height = canvas.height, pivotX = 0, pivotY = 0, color = '#FF9A90A0'})
 end
 
+-- Returns the height in the world of the top of the floor object of the map, where the stone ground meets the bricks.
+function Occluders:findFloorTop()
+    for _, object in ipairs(self.map:objects('walls')) do
+        if object.name == 'floor' then
+            local _, y = self.map:objectToWorld(object.x, object.y)
+            return y
+        end
+    end
+    error('The map of the walls has no object named "floor".')
+end
+
+-- Carries the stone of the floor under the walls to both edges of the canvas, so the ground outside the hall continues the floor instead of the bricks reaching below it.
+function Occluders:drawGround()
+    local canvas = graphics2d.canvasBounds()
+    local left, right, bottom = canvas.x, canvas.x + canvas.width, canvas.y + canvas.height
+    local corners = {{left, self.floorTop}, {right, self.floorTop}, {right, bottom}, {left, bottom}}
+    for index, corner in ipairs(corners) do
+        local vertex = self.ground.vertices[index]
+        vertex.x, vertex.y, vertex.u, vertex.v = corner[1], corner[2], corner[1] / Occluders.stoneTile, corner[2] / Occluders.stoneTile
+    end
+    graphics2d.drawMesh(self.stone, self.ground.vertices, self.ground.indices)
+    local edge = self.ground.edge
+    edge[1], edge[2], edge[3], edge[4] = left, self.floorTop, right, self.floorTop
+    graphics2d.drawStroke(edge, self.ground.stroke)
+end
+
 -- Returns a plank of wood seen from the side and lit from above, with a light top edge, its grain and a shaded bottom edge, which repeats along a stroke.
 function Occluders.plank()
     local image = graphics.newImage(64, 32, '#FFB0743F')
@@ -145,6 +173,7 @@ end
 
 function Occluders:draw(area)
     self:drawBricks()
+    self:drawGround()
     for _, wall in ipairs(self.walls) do
         self:drawWall(wall)
         graphics2d.drawOccluder(wall)
