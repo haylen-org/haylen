@@ -55,9 +55,11 @@ class EchoHandler final : public Poco::Net::HTTPRequestHandler {
             response.send();
             return;
         }
+
         if (request.get("Sec-WebSocket-Protocol", "").find("chat") != std::string::npos) {
             response.set("Sec-WebSocket-Protocol", "chat");
         }
+
         Poco::Net::WebSocket socket(request, response);
         Poco::Buffer<char> frame(0);
         while (true) {
@@ -66,10 +68,12 @@ class EchoHandler final : public Poco::Net::HTTPRequestHandler {
             const int length = socket.receiveFrame(frame, flags);
             const int opcode = flags & Poco::Net::WebSocket::FRAME_OP_BITMASK;
             const std::string text(frame.begin(), frame.size());
+
             if ((length == 0 && flags == 0) || opcode == Poco::Net::WebSocket::FRAME_OP_CLOSE) {
                 socket.shutdown(Poco::Net::WebSocket::WS_NORMAL_CLOSE, "");
                 return;
             }
+
             if (opcode == Poco::Net::WebSocket::FRAME_OP_PONG) {
                 send(socket, "pong " + text);
             } else if (opcode == Poco::Net::WebSocket::FRAME_OP_PING) {
@@ -156,16 +160,19 @@ class SilentServer final {
                 return;
             }
         }
+
         Poco::Net::StreamSocket peer = listener.acceptConnection();
         std::array<char, 1024> buffer{};
         while (!done) {
             if (!peer.poll(Poco::Timespan(0, kTickMicroseconds), Poco::Net::Socket::SELECT_READ)) {
                 continue;
             }
+
             if (peer.receiveBytes(buffer.data(), static_cast<int>(buffer.size())) == 0) {
                 hungUp = true;
                 return;
             }
+
             received = true;
         }
     }
@@ -210,6 +217,7 @@ class RawServer final {
             if (!listener.poll(Poco::Timespan(0, kTickMicroseconds), Poco::Net::Socket::SELECT_READ)) {
                 continue;
             }
+
             Poco::Net::StreamSocket peer = listener.acceptConnection();
 
             // A client that already gave up the connection ends the answer, since the tests check what the client saw.
@@ -263,12 +271,15 @@ class RawServer final {
             if (!isReadable(peer)) {
                 continue;
             }
+
             const int received = peer.receiveBytes(buffer.data(), static_cast<int>(buffer.size()));
             if (received <= 0) {
                 break;
             }
+
             request.append(buffer.data(), static_cast<std::size_t>(received));
         }
+
         return request;
     }
 
@@ -314,15 +325,18 @@ class FloodHandler final : public Poco::Net::HTTPRequestHandler {
         if (!receive()) {
             return;
         }
+
         const std::string flood(kMessageSize, 'f');
         for (int message = 0; message < kMessages; ++message) {
             socket.sendFrame(flood.data(), static_cast<int>(flood.size()), Poco::Net::WebSocket::FRAME_BINARY);
         }
+
         while (received < static_cast<std::size_t>(kMessages) * kMessageSize) {
             if (!receive()) {
                 return;
             }
         }
+
         const std::string done = "received " + std::to_string(received);
         socket.sendFrame(done.data(), static_cast<int>(done.size()), Poco::Net::WebSocket::FRAME_TEXT);
         (void)receive();
@@ -364,11 +378,14 @@ class WebSocketTest : public ::testing::Test {
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
         while (std::chrono::steady_clock::now() < deadline) {
             socket.pump();
+
             if (done()) {
                 return true;
             }
+
             std::this_thread::sleep_for(std::chrono::milliseconds(2));
         }
+
         return false;
     }
 
@@ -377,6 +394,7 @@ class WebSocketTest : public ::testing::Test {
         while (!done() && std::chrono::steady_clock::now() < deadline) {
             std::this_thread::sleep_for(std::chrono::milliseconds(2));
         }
+
         return done();
     }
 
@@ -521,10 +539,12 @@ TEST_F(WebSocketTest, ExplainsFailedTlsHandshakes) {
     ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getState() == WebSocket::State::Closed; }));
 
     ASSERT_EQ(failures.size(), 2U);
+
     for (const std::string& failure : failures) {
         EXPECT_TRUE(failure.starts_with("The WebSocket connection to \"" + url + "\" failed. The TLS handshake failed with \"")) << failure;
         EXPECT_TRUE(failure.ends_with("\".")) << failure;
     }
+
     EXPECT_EQ(closedCode, 1006);
 }
 
@@ -658,6 +678,7 @@ TEST_F(WebSocketTest, CountsTheBytesThatWaitToBeWritten) {
     for (int index = 0; index < 8; ++index) {
         socket.send(chunk);
     }
+
     EXPECT_GT(socket.getBufferedAmount(), 0U);
     ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getBufferedAmount() == 0 && echoed == 8 * chunk.size(); }));
 }
@@ -681,6 +702,7 @@ TEST_F(WebSocketTest, KeepsReadingWhileItWaitsToWrite) {
     for (int index = 0; index < FloodHandler::kMessages; ++index) {
         socket.sendBinary(message);
     }
+
     ASSERT_TRUE(pumpUntil(socket, [&] { return !report.empty(); })) << "Both sides waited for the other to read.";
     EXPECT_EQ(floods, FloodHandler::kMessages);
     EXPECT_EQ(report, "received " + std::to_string(static_cast<std::size_t>(FloodHandler::kMessages) * FloodHandler::kMessageSize));
@@ -758,6 +780,7 @@ TEST_F(NetLuaTest, TalksThroughWebSocketsFromLua) {
         fixture.frames(1);
         std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
+
     EXPECT_EQ(fixture.lua("return table.concat(log, ', ')"), "open chat, text hi, pong beat, binary 2, close 1000");
     EXPECT_EQ(fixture.lua("return net.openSocketCount()"), "0");
     EXPECT_EQ(fixture.engine().getError(), nullptr) << fixture.engine().getError()->what();
@@ -767,9 +790,11 @@ TEST_F(NetLuaTest, TalksThroughWebSocketsFromLua) {
     EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {protocol = 'x'})").find("Unknown option \"protocol\""), std::string::npos);
     EXPECT_NE(fixture.lua("net.connectWebSocket('ftp://nowhere')").find("\"ws://\" or \"wss://\""), std::string::npos);
     EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {maxMessageSize = 0})").find("maximum message size between 1 and 2147483647 bytes"), std::string::npos);
+
     for (const std::string protocol : {"chat\\r\\nX-Injected: 1", "chat json", "", "chat/2"}) {
         EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {protocols = {'" + protocol + "'}})").find("is not a token"), std::string::npos) << protocol;
     }
+
     EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {protocols = {'chat', 'json', 'chat'}})").find("The WebSocket subprotocol \"chat\" is listed twice."), std::string::npos);
     EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "'):close(4294968296)").find("integer out of range"), std::string::npos);
     EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {reconnect = {initialDelay = 0 / 0}})").find("finite delays"), std::string::npos);

@@ -67,6 +67,7 @@ bool PocoWebSocket::Workers::enter() {
     if (exiting) {
         return false;
     }
+
     ++active;
     return true;
 }
@@ -84,6 +85,7 @@ Poco::Net::Context::Ptr PocoWebSocket::Workers::getClientContext() {
     if (clientContext) {
         return clientContext;
     }
+
     // The context trusts the roots of the system, the trust store of POSIX systems or the root store of Windows.
     Poco::Net::Context::Ptr created = new Poco::Net::Context(Poco::Net::Context::TLS_CLIENT_USE, "", "", "", Poco::Net::Context::VERIFY_STRICT, 9, false, "DEFAULT@SECLEVEL=2");
     varn::tls::SystemTrust::install(created->sslContext());
@@ -161,6 +163,7 @@ void PocoWebSocket::wake(Connection& target) {
     if (std::exchange(target.wakePending, true)) {
         return;
     }
+
     target.poller.wakeUp();
 }
 
@@ -181,24 +184,31 @@ std::string PocoWebSocket::describe(const Connection& target, const Poco::Except
     if (dynamic_cast<const Poco::TimeoutException*>(&error) != nullptr) {
         return error.message();
     }
+
     if (dynamic_cast<const Poco::Net::ConnectionRefusedException*>(&error) != nullptr || error.code() == POCO_ECONNREFUSED) {
         return "The server refused the connection.";
     }
+
     if (dynamic_cast<const Poco::Net::DNSException*>(&error) != nullptr) {
         return "The host \"" + target.host + "\" was not found.";
     }
+
     if (dynamic_cast<const Poco::Net::ConnectionResetException*>(&error) != nullptr || error.code() == POCO_ECONNRESET) {
         return "The server reset the connection.";
     }
+
     if (error.code() == POCO_ENETUNREACH || error.code() == POCO_EHOSTUNREACH) {
         return "The host \"" + target.host + "\" is out of reach of this network.";
     }
+
     if (dynamic_cast<const Poco::Net::SSLException*>(&error) != nullptr) {
         return "The TLS handshake failed with \"" + error.displayText() + "\".";
     }
+
     if (dynamic_cast<const Poco::Net::WebSocketException*>(&error) != nullptr && error.code() != Poco::Net::WebSocket::WS_ERR_INCOMPLETE_FRAME) {
         return "The server did not accept the WebSocket and answered \"" + error.displayText() + "\".";
     }
+
     return "The network libraries reported \"" + error.displayText() + "\".";
 }
 
@@ -207,6 +217,7 @@ void PocoWebSocket::run(const std::shared_ptr<Connection>& target, Workers& work
     if (!address || !enter(*target, workers)) {
         return;
     }
+
     connectAndServe(*target, workers, *address);
     workers.leave();
 }
@@ -220,6 +231,7 @@ std::optional<Poco::Net::SocketAddress> PocoWebSocket::resolve(Connection& targe
     } catch (const std::exception& error) {
         fail(target, error.what());
     }
+
     return std::nullopt;
 }
 
@@ -244,6 +256,7 @@ void PocoWebSocket::connectAndServe(Connection& target, Workers& workers, const 
     } catch (const std::exception& error) {
         fail(target, error.what());
     }
+
     const std::scoped_lock lock(target.mutex);
     target.poller.clear();
 }
@@ -255,6 +268,7 @@ int PocoWebSocket::waitFor(Connection& target, const Poco::Net::Socket& socket, 
     } else {
         target.poller.add(socket, mode);
     }
+
     const auto left = std::max(std::chrono::duration_cast<std::chrono::microseconds>(deadline - std::chrono::steady_clock::now()), std::chrono::microseconds(0));
     const Poco::Net::PollSet::SocketModeMap ready = target.poller.poll(Poco::Timespan(left.count()));
     return ready.empty() ? 0 : ready.begin()->second;
@@ -263,6 +277,7 @@ int PocoWebSocket::waitFor(Connection& target, const Poco::Net::Socket& socket, 
 // A platform that drops the packets of a connection it blocks records why, so the wait checks that reason between short polls and fails at once with it instead of at the deadline.
 bool PocoWebSocket::connectSocket(Connection& target, Poco::Net::StreamSocket& socket, const Poco::Net::SocketAddress& address, std::chrono::steady_clock::time_point deadline) {
     socket.connectNB(address);
+
     while (!target.stopping) {
         const auto now = std::chrono::steady_clock::now();
         if (now >= deadline) {
@@ -270,15 +285,19 @@ bool PocoWebSocket::connectSocket(Connection& target, Poco::Net::StreamSocket& s
         }
 
         checkBlocked(target, socket);
+
         if (!waitFor(target, socket, Poco::Net::PollSet::POLL_WRITE, target.blockedReason ? std::min(deadline, now + kBlockedCheck) : deadline)) {
             continue;
         }
+
         const int error = socket.impl()->socketError();
         if (error != 0) {
             throw Poco::Net::NetException(Poco::Error::getMessage(error), address.toString(), error);
         }
+
         return true;
     }
+
     return false;
 }
 
@@ -286,6 +305,7 @@ void PocoWebSocket::checkBlocked(const Connection& target, const Poco::Net::Stre
     if (!target.blockedReason) {
         return;
     }
+
     if (std::string reason = target.blockedReason(static_cast<std::intptr_t>(socket.impl()->sockfd())); !reason.empty()) {
         throw std::runtime_error(reason);
     }
@@ -298,15 +318,19 @@ bool PocoWebSocket::completeHandshake(Connection& target, Poco::Net::SecureStrea
         if (result == 0) {
             throw Poco::Net::SSLConnectionUnexpectedlyClosedException();
         }
+
         if (result > 0) {
             socket.verifyPeerCertificate();
             return true;
         }
+
         if (std::chrono::steady_clock::now() >= deadline) {
             throw Poco::TimeoutException("The TLS handshake with \"" + target.host + "\" timed out.");
         }
+
         (void)waitFor(target, socket, result == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ ? Poco::Net::PollSet::POLL_READ : Poco::Net::PollSet::POLL_WRITE, deadline);
     }
+
     return false;
 }
 
@@ -315,6 +339,7 @@ Poco::Net::StreamSocket PocoWebSocket::createSocket(const Connection& target, Wo
     if (!target.secure) {
         return Poco::Net::StreamSocket(address.family());
     }
+
     Poco::Net::SecureStreamSocket socket(workers.getClientContext());
     socket.setPeerHostName(target.host);
     return socket;
@@ -326,6 +351,7 @@ std::unique_ptr<Poco::Net::WebSocket> PocoWebSocket::open(Connection& target, Wo
     if (!connectSocket(target, socket, address, deadline)) {
         return nullptr;
     }
+
     if (target.secure) {
         Poco::Net::SecureStreamSocket secure(socket);
         if (!completeHandshake(target, secure, deadline)) {
@@ -338,6 +364,7 @@ std::unique_ptr<Poco::Net::WebSocket> PocoWebSocket::open(Connection& target, Wo
     if (left <= std::chrono::microseconds(0)) {
         throw Poco::TimeoutException("The upgrade request to \"" + target.host + "\" timed out.");
     }
+
     const Poco::Timespan timeout(left);
     socket.setBlocking(true);
     socket.setSendTimeout(timeout);
@@ -350,8 +377,10 @@ std::unique_ptr<Poco::Net::WebSocket> PocoWebSocket::open(Connection& target, Wo
         for (const std::string& name : target.protocols) {
             list += (list.empty() ? "" : ", ") + name;
         }
+
         request.set("Sec-WebSocket-Protocol", list);
     }
+
     Poco::Net::HTTPResponse response;
     auto upgraded = std::make_unique<Poco::Net::WebSocket>(session, request, response);
 
@@ -367,11 +396,14 @@ bool PocoWebSocket::flush(Connection& target, Poco::Net::WebSocket& socket, std:
         if (socket.sendFrame(item.data.data(), static_cast<int>(item.data.size()), item.flags) < 0) {
             return false;
         }
+
         if (item.counted) {
             target.buffered.fetch_sub(item.data.size(), std::memory_order_relaxed);
         }
+
         queue.pop_front();
     }
+
     return true;
 }
 
@@ -392,6 +424,7 @@ void PocoWebSocket::refuseMessage(Connection& target, Poco::Net::WebSocket& sock
         queue.push_back(makeClose(Poco::Net::WebSocket::WS_PAYLOAD_TOO_BIG, ""));
         drain(target, socket, queue, std::chrono::steady_clock::now() + kCloseTimeout);
     }
+
     report(target, {.kind = Event::Kind::Failed, .text = "The server sent a WebSocket message larger than the maximum of " + std::to_string(target.maxMessageSize) + " bytes."});
     report(target, {.kind = Event::Kind::Closed, .code = Poco::Net::WebSocket::WS_PAYLOAD_TOO_BIG});
 }
@@ -410,15 +443,18 @@ void PocoWebSocket::serve(Connection& target, Poco::Net::WebSocket& socket) {
             const std::scoped_lock lock(target.mutex);
             std::ranges::move(target.outgoing, std::back_inserter(queue));
             target.outgoing.clear();
+
             if (target.closeRequest && !closing) {
                 queue.push_back(makeClose(target.closeRequest->first, target.closeRequest->second));
                 closing = true;
                 closeDeadline = std::chrono::steady_clock::now() + kCloseTimeout;
             }
+
             target.closeRequest.reset();
             target.wakePending = false;
         }
         const bool written = flush(target, socket, queue);
+
         if (closing && std::chrono::steady_clock::now() >= closeDeadline) {
             report(target, {.kind = Event::Kind::Closed, .code = kAbnormalClosure});
             return;
@@ -430,6 +466,7 @@ void PocoWebSocket::serve(Connection& target, Poco::Net::WebSocket& socket) {
         if (socket.available() == 0 && (waitFor(target, socket, mode, deadline) & (Poco::Net::PollSet::POLL_READ | Poco::Net::PollSet::POLL_ERROR)) == 0) {
             continue;
         }
+
         int flags = 0;
         int length = 0;
         frame.resize(0);
@@ -440,12 +477,15 @@ void PocoWebSocket::serve(Connection& target, Poco::Net::WebSocket& socket) {
             if (error.code() != Poco::Net::WebSocket::WS_ERR_PAYLOAD_TOO_BIG) {
                 throw;
             }
+
             refuseMessage(target, socket, queue, closing);
             return;
         }
+
         if (length < 0) {
             continue;
         }
+
         if (length == 0 && flags == 0) {
             report(target, {.kind = Event::Kind::Closed, .code = kAbnormalClosure});
             return;
@@ -474,6 +514,7 @@ void PocoWebSocket::serve(Connection& target, Poco::Net::WebSocket& socket) {
                 queue.push_back(makeClose(code == kNoStatus ? 1000 : code, ""));
                 drain(target, socket, queue, std::chrono::steady_clock::now() + kCloseTimeout);
             }
+
             report(target, {.kind = Event::Kind::Closed, .text = payload.size() > 2 ? payload.substr(2) : std::string{}, .code = code});
             return;
         }
@@ -484,6 +525,7 @@ void PocoWebSocket::serve(Connection& target, Poco::Net::WebSocket& socket) {
             refuseMessage(target, socket, queue, closing);
             return;
         }
+
         if ((flags & Poco::Net::WebSocket::FRAME_FLAG_FIN) != 0) {
             report(target, {.kind = Event::Kind::Received, .text = std::exchange(message, {}), .binary = messageBinary});
         }

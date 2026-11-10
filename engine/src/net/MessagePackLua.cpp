@@ -30,9 +30,11 @@ void MessagePackLua::embedBytes(core::Json& value, std::vector<std::vector<std::
         for (const std::byte byte : bytes) {
             binary.push_back(static_cast<std::uint8_t>(byte));
         }
+
         value = core::Json::binary(std::move(binary));
         return;
     }
+
     if (value.is_structured()) {
         for (core::Json& element : value) {
             embedBytes(element, buffers);

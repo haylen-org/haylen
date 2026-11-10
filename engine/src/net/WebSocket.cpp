@@ -47,24 +47,30 @@ WebSocket::WebSocket(std::string address, Options options) : url(std::move(addre
     if (!url.starts_with("ws://") && !url.starts_with("wss://")) {
         throw std::invalid_argument("The WebSocket address \"" + url + "\" must start with \"ws://\" or \"wss://\".");
     }
+
     for (auto offered = protocols.begin(); offered != protocols.end(); ++offered) {
         if (!isToken(*offered)) {
             throw std::invalid_argument("The WebSocket subprotocol \"" + *offered + "\" is not a token, which is one or more visible ASCII characters other than ( ) < > @ , ; : \\ \" / [ ] ? = { }.");
         }
+
         if (std::find(protocols.begin(), offered, *offered) != offered) {
             throw std::invalid_argument("The WebSocket subprotocol \"" + *offered + "\" is listed twice.");
         }
     }
+
     if (maxMessageSize == 0 || !std::in_range<int>(maxMessageSize)) {
         throw std::invalid_argument("A WebSocket needs a maximum message size between 1 and 2147483647 bytes.");
     }
+
     if (!(connectTimeout > 0.0F && connectTimeout <= kMaxConnectTimeout)) {
         throw std::invalid_argument("A WebSocket needs a connect timeout above 0 and at most 3600 seconds.");
     }
+
     const bool finite = std::isfinite(reconnect.initialDelay) && std::isfinite(reconnect.maxDelay) && std::isfinite(reconnect.multiplier) && std::isfinite(reconnect.jitter);
     if (!finite || reconnect.initialDelay < 0.0F || reconnect.maxDelay < reconnect.initialDelay || reconnect.multiplier < 1.0F || reconnect.jitter < 0.0F || reconnect.jitter > 1.0F || reconnect.maxAttempts < 0) {
         throw std::invalid_argument("WebSocket reconnection needs finite delays from zero up with the maximum at least the initial one, a finite multiplier of at least 1, a jitter between 0 and 1 and a maximum of attempts of at least 0.");
     }
+
     connect();
 }
 
@@ -85,6 +91,7 @@ void WebSocket::send(std::string_view text) {
     if (state != State::Open) {
         throw std::logic_error("The WebSocket to \"" + url + "\" is not open.");
     }
+
     transport->send(std::string(text), false);
 }
 
@@ -92,6 +99,7 @@ void WebSocket::sendBinary(std::span<const std::uint8_t> bytes) {
     if (state != State::Open) {
         throw std::logic_error("The WebSocket to \"" + url + "\" is not open.");
     }
+
     transport->send(std::string(bytes.begin(), bytes.end()), true);
 }
 
@@ -99,9 +107,11 @@ void WebSocket::ping(std::string_view payload) {
     if (payload.size() > kMaxPingPayload) {
         throw std::invalid_argument("A WebSocket ping carries at most 125 bytes.");
     }
+
     if (state != State::Open) {
         throw std::logic_error("The WebSocket to \"" + url + "\" is not open.");
     }
+
     transport->ping(std::string(payload));
 }
 
@@ -109,12 +119,15 @@ void WebSocket::close(int code, std::string_view reason) {
     if (code != 1000 && (code < 3000 || code > 4999)) {
         throw std::invalid_argument("A WebSocket closes with code 1000 or a code between 3000 and 4999.");
     }
+
     if (reason.size() > 123) {
         throw std::invalid_argument("A WebSocket close reason fits in 123 bytes.");
     }
+
     if (state == State::Closing || state == State::Closed) {
         return;
     }
+
     closeRequested = true;
     state = State::Closing;
 
@@ -124,6 +137,7 @@ void WebSocket::close(int code, std::string_view reason) {
         inbox->events.push_back({.kind = WebSocketTransport::Event::Kind::Closed, .text = std::string(reason), .code = code});
         return;
     }
+
     transport->close(code, std::string(reason));
 }
 
@@ -165,6 +179,7 @@ void WebSocket::pump() {
             if (closeRequested) {
                 break;
             }
+
             protocol = event.text;
             attempt = 0;
             connected = true;
@@ -185,6 +200,7 @@ void WebSocket::pump() {
             break;
         }
     }
+
     events.clear();
 }
 
@@ -192,6 +208,7 @@ void WebSocket::pump() {
 bool WebSocket::finishConnection(int code, std::string_view reason) {
     transport.reset();
     state = canReconnect() ? State::Reconnecting : State::Closed;
+
     if (std::exchange(connected, false)) {
         disconnected.emit(code, reason);
     }
@@ -200,10 +217,12 @@ bool WebSocket::finishConnection(int code, std::string_view reason) {
     if (state == State::Closing) {
         return false;
     }
+
     if (state == State::Reconnecting) {
         scheduleReconnect();
         return false;
     }
+
     closed.emit(code, reason);
     dropListeners();
     return true;
@@ -214,6 +233,7 @@ void WebSocket::checkConnectTimeout() {
     if (state != State::Connecting || !transport || clock() - attemptStartedAt < static_cast<double>(connectTimeout)) {
         return;
     }
+
     // The abandoned transport may still deliver into the inbox it was given, which a fresh inbox leaves behind.
     inbox = std::make_shared<Inbox>();
     transport.reset();
@@ -226,6 +246,7 @@ std::string WebSocket::describeFailure(const std::string& message) const {
     if (failureHint.empty()) {
         return message;
     }
+
     return message + (message.ends_with('.') ? " " : ". ") + failureHint;
 }
 

@@ -29,6 +29,7 @@ WebSocket::Reconnect NetLua::readReconnect(lua_State* L, int index) {
         reconnect.enabled = lua_toboolean(L, index) != 0;
         return reconnect;
     }
+
     luaL_checktype(L, index, LUA_TTABLE);
     lua::Table::checkFields(L, index, {kReconnectOptions});
     reconnect.enabled = true;
@@ -54,16 +55,19 @@ int NetLua::connectWebSocket(lua_State* L) {
         if (lua_getfield(L, 2, "reconnect") != LUA_TNIL) {
             options.reconnect = readReconnect(L, lua_gettop(L));
         }
+
         lua_pop(L, 1);
         if (lua_getfield(L, 2, "owner") != LUA_TNIL) {
             lua::Owners::checkOwner(L, -1);
             owner = lua_gettop(L);
         }
     }
+
     const std::shared_ptr<WebSocket> socket = lua::Runtime::getEngine(L).getPlugin<plugins::NetPlugin>().connectWebSocket(std::move(url), std::move(options));
     if (owner != 0) {
         lua::Owners::add(L, owner, std::make_shared<SocketLink>(socket));
     }
+
     lua::Userdata::emplace<WebSocket>(L, socket);
     return 1;
 }
@@ -109,9 +113,11 @@ int NetLua::on(lua_State* L) {
             owner = lua_gettop(L);
         }
     }
+
     if (owner == 0) {
         owner = lua::Owners::pushDefault(L);
     }
+
     const std::weak_ptr<const void> lifetime = owner != 0 ? lua::Owners::getLifetime(L, owner) : std::weak_ptr<const void>();
     auto function = std::make_shared<lua::Owners::Function>(L, 3, owner);
     lua_State* main = lua::Runtime::getMainThread(L);
@@ -190,9 +196,11 @@ int NetLua::on(lua_State* L) {
     } else {
         return luaL_error(L, "Unknown WebSocket event \"%s\". Sockets report \"open\", \"message\", \"pong\", \"disconnect\", \"reconnecting\", \"close\" and \"error\".", std::string(event).c_str());
     }
+
     if (owner != 0) {
         lua::Owners::add(L, owner, connection);
     }
+
     lua::Userdata::emplace<core::Connection>(L, std::move(connection));
     return 1;
 }

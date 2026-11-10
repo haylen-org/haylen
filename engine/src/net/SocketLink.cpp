@@ -6,6 +6,7 @@ void SocketLink::disconnect() {
     if (const std::shared_ptr<WebSocket> held = socket.lock()) {
         held->close();
     }
+
     socket.reset();
 }
 
