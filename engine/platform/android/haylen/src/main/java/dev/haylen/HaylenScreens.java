@@ -135,7 +135,7 @@ final class HaylenScreens {
     // The views of the parameters live until the opener returns, so a plugin keeps one longer with `retain`.
     static void open(long id, byte[] plugin, byte[] name, byte[] params, byte[][] buffers, long[] views, byte[] state, boolean opaque) {
         HaylenScreen screen = new HaylenScreen(id, text(plugin), text(name), text(state), opaque, false);
-        List<VarnDataView> held = HaylenPayload.adopt(views);
+        List<VarnDataView> held = HaylenPayload.share(views);
         mainThread.post(() -> {
             try {
                 show(screen, params, buffers, held);

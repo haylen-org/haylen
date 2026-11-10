@@ -116,6 +116,9 @@ class JavaBridge final {
     // Copies the buffers that Java hands over, each a byte array or a direct `ByteBuffer`, once.
     [[nodiscard]] static std::vector<std::vector<std::byte>> toBuffers(JNIEnv& env, jobjectArray buffers);
 
+    // Takes another reference to the view of a handle that the engine lends to Java, and hands it to Java.
+    [[nodiscard]] static jlong shareView(jlong handle) noexcept;
+
   private:
     [[nodiscard]] static JNIEnv& getEnv();
     static void detachThread(void* env);
@@ -123,7 +126,7 @@ class JavaBridge final {
     [[nodiscard]] static JavaLocalRef<jbyteArray> toBytes(JNIEnv& env, std::string_view text);
     [[nodiscard]] static JavaLocalRef<jobjectArray> toByteArrays(JNIEnv& env, std::span<const std::vector<std::byte>> buffers);
 
-    // Hands Java one reference to each view, as the handles that `VarnDataView.adopt` takes over.
+    // Lends Java the handle of each view, which stays alive until the call into Java returns, so Java takes references of its own through `shareView`.
     [[nodiscard]] static JavaLocalRef<jlongArray> toViewHandles(JNIEnv& env, std::span<const varn::dataview::DataView> views);
 
     // Returns the text of a byte array that a static method of Java returns, or `fallback` when the method threw.

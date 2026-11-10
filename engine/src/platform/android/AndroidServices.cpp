@@ -271,6 +271,10 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenBridge_nativeResolve(JNIEnv* env, j
     haylen::platform::BridgeRelay::resolve(static_cast<std::uint64_t>(call), ok == JNI_TRUE, haylen::platform::JavaBridge::toString(*env, result), haylen::platform::JavaBridge::toBuffers(*env, buffers));
 }
 
+JNIEXPORT jlong JNICALL Java_dev_haylen_HaylenPayload_nativeShare(JNIEnv*, jclass, jlong handle) {
+    return haylen::platform::JavaBridge::shareView(handle);
+}
+
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenBridge_nativeEmit(JNIEnv* env, jclass, jbyteArray event, jbyteArray payload, jobjectArray buffers, jboolean retain, jboolean batched) {
     haylen::platform::BridgeRelay::emit(haylen::platform::JavaBridge::toString(*env, event), haylen::platform::JavaBridge::toString(*env, payload), haylen::platform::JavaBridge::toBuffers(*env, buffers), {.retain = retain == JNI_TRUE, .batched = batched == JNI_TRUE});
 }

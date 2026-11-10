@@ -455,10 +455,15 @@ JavaLocalRef<jlongArray> JavaBridge::toViewHandles(JNIEnv& env, std::span<const 
         throw std::runtime_error("Java has no memory for a list of " + std::to_string(views.size()) + " data views.");
     }
     for (std::size_t index = 0; index < views.size(); ++index) {
-        const auto handle = static_cast<jlong>(reinterpret_cast<std::uintptr_t>(varn::dataview::DataView(views[index]).detach()));
+        const auto handle = static_cast<jlong>(reinterpret_cast<std::uintptr_t>(views[index].handle()));
         env.SetLongArrayRegion(handles.get(), static_cast<jsize>(index), 1, &handle);
     }
     return handles;
+}
+
+jlong JavaBridge::shareView(jlong handle) noexcept {
+    auto* lent = reinterpret_cast<varn_dataview*>(static_cast<std::uintptr_t>(handle));
+    return static_cast<jlong>(reinterpret_cast<std::uintptr_t>(varn::dataview::DataView::share(lent).detach()));
 }
 
 std::string JavaBridge::callText(JNIEnv& env, jclass owner, jmethodID method, std::string_view name, std::string_view fallback) {

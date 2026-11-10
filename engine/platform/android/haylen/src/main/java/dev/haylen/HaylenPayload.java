@@ -41,11 +41,11 @@ final class HaylenPayload {
         return restore(new JSONTokener(new String(json, StandardCharsets.UTF_8)).nextValue(), buffers, views);
     }
 
-    // Takes over the references that the engine hands to Java with a call or a screen, one for each view of its parameters.
-    static List<VarnDataView> adopt(long[] handles) {
+    // Takes a reference of its own to each view of the parameters of a call or a screen, which the engine keeps alive only until its call into Java returns.
+    static List<VarnDataView> share(long[] handles) {
         List<VarnDataView> views = new ArrayList<>(handles.length);
         for (long handle : handles) {
-            views.add(VarnDataView.adopt(handle));
+            views.add(VarnDataView.adopt(nativeShare(handle)));
         }
         return views;
     }
@@ -160,4 +160,6 @@ final class HaylenPayload {
         }
         throw new JSONException("The parameters name the data view " + id + ", which did not come with them.");
     }
+
+    private static native long nativeShare(long handle);
 }

@@ -167,10 +167,10 @@ public final class HaylenBridge {
         }
     }
 
-    // Called from the native frame thread for every call that no C++ handler answers, with the byte buffers of its parameters and a reference to each of its views. The parameters are parsed on the thread of the handler, so the frame thread only hands the call over.
+    // Called from the native frame thread for every call that no C++ handler answers, with the byte buffers of its parameters and the handles of its views, to which it takes references of its own before it returns. The parameters are parsed on the thread of the handler, so the frame thread only hands the call over.
     static void dispatch(long call, byte[] methodBytes, byte[] paramsBytes, byte[][] buffers, long[] views) {
         String method = new String(methodBytes, StandardCharsets.UTF_8);
-        PendingReply reply = new PendingReply(call, HaylenPayload.adopt(views));
+        PendingReply reply = new PendingReply(call, HaylenPayload.share(views));
         Registration registration = handlers.get(method);
         if (registration == null) {
             reply.failure("No native handler is registered for \"" + method + "\".", "noHandler", null);
