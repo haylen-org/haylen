@@ -274,10 +274,10 @@ function Test:log(format, ...)
     log.info(string.format('[%s] ' .. format, self.entry.code, ...))
 end
 
--- Draws a small caption, the way every test labels what it draws.
+-- Draws a small caption, the way every test labels what it draws. A caption with `wrap = false` stays on one line, which `minScale` shrinks to fit `maxWidth`.
 function Test.caption(text, x, y, options)
     options = options or {}
-    graphics2d.drawText(nil, text, x, y, {size = options.size or 19, color = options.color or Test.muted, anchor = options.anchor or {0, 0}, maxWidth = options.maxWidth or 0, layer = options.layer or 2})
+    graphics2d.drawText(nil, text, x, y, {size = options.size or 19, color = options.color or Test.muted, anchor = options.anchor or {0, 0}, maxWidth = options.maxWidth or 0, wrap = options.wrap, minScale = options.minScale, layer = options.layer or 2})
 end
 
 return Test
