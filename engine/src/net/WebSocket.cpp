@@ -47,12 +47,12 @@ WebSocket::WebSocket(std::string address, Options options) : url(std::move(addre
     if (!url.starts_with("ws://") && !url.starts_with("wss://")) {
         throw std::invalid_argument("The WebSocket address \"" + url + "\" must start with \"ws://\" or \"wss://\".");
     }
-    for (auto protocol = protocols.begin(); protocol != protocols.end(); ++protocol) {
-        if (!isToken(*protocol)) {
-            throw std::invalid_argument("The WebSocket subprotocol \"" + *protocol + "\" is not a token, which is one or more visible ASCII characters other than ( ) < > @ , ; : \\ \" / [ ] ? = { }.");
+    for (auto offered = protocols.begin(); offered != protocols.end(); ++offered) {
+        if (!isToken(*offered)) {
+            throw std::invalid_argument("The WebSocket subprotocol \"" + *offered + "\" is not a token, which is one or more visible ASCII characters other than ( ) < > @ , ; : \\ \" / [ ] ? = { }.");
         }
-        if (std::find(protocols.begin(), protocol, *protocol) != protocol) {
-            throw std::invalid_argument("The WebSocket subprotocol \"" + *protocol + "\" is listed twice.");
+        if (std::find(protocols.begin(), offered, *offered) != offered) {
+            throw std::invalid_argument("The WebSocket subprotocol \"" + *offered + "\" is listed twice.");
         }
     }
     if (maxMessageSize == 0 || !std::in_range<int>(maxMessageSize)) {

@@ -25,7 +25,7 @@ OffscreenSurface::OffscreenSurface(gpu::Device::Api api) {
 
 OffscreenSurface::~OffscreenSurface() = default;
 
-std::unique_ptr<gpu::GlContext> OffscreenSurface::makeDrawable(int width, int height) {
+std::unique_ptr<gpu::GlContext> OffscreenSurface::makeDrawable([[maybe_unused]] int width, [[maybe_unused]] int height) {
 #if defined(HAYLEN_GPU_OPENGL) || defined(HAYLEN_GPU_OPENGLES) || defined(HAYLEN_GPU_WEBGL2)
     if (context != nullptr) {
         return static_cast<OffscreenGlContext&>(*context).makeDrawable(width, height);

@@ -1397,7 +1397,7 @@ void Device::resizeSurface(int surface, int width, int height) {
 }
 
 void Device::removeSurface(int surface) {
-    native->requireSwapchain(surface);
+    (void)native->requireSwapchain(surface);
     native->surfaces[static_cast<std::size_t>(surface - 1)].reset();
 }
 

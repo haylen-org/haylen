@@ -168,9 +168,9 @@ void Animator::advance(const Animation& active, float amount) {
     const bool passEnded = cycle <= 0.0F || std::floor(time / cycle) > std::floor(previous / cycle);
     if (!pending.empty() && passEnded && plays == played) {
         std::deque<std::string> rest = std::move(pending);
-        const std::string next = std::move(rest.front());
+        const std::string queued = std::move(rest.front());
         rest.pop_front();
-        play(next, true);
+        play(queued, true);
         pending = std::move(rest);
     }
 }
