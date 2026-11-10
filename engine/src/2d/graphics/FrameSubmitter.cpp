@@ -329,18 +329,8 @@ void FrameSubmitter::upload() {
         state.ensureBuffer(state.instanceBuffer, state.instanceCapacity, total, sizeof(GpuInstance), false);
     }
 
-    // clang-format off
-    const auto write = [&](std::span<const GpuInstance> data, std::size_t offset) {
-        if (data.empty()) {
-            return;
-        }
-
-        state.getGpu().writeBuffer(state.instanceBuffer, offset * sizeof(GpuInstance), std::as_bytes(data));
-        state.stats.uploadedBytes += data.size_bytes();
-    };
-    // clang-format on
-    write(*source, 0);
-    write(state.splats, splatBase);
+    writeInstances(*source, 0);
+    writeInstances(state.splats, splatBase);
     writeBuffer(state.vertexBuffer, state.vertexCapacity, std::as_bytes(std::span(state.vertices)), sizeof(GpuVertex), false);
     writeBuffer(state.indexBuffer, state.indexCapacity, std::as_bytes(std::span(state.uploadIndices)), sizeof(std::uint32_t), true);
 
@@ -359,6 +349,15 @@ void FrameSubmitter::upload() {
     state.stats.instances = source->size();
     state.stats.vertices = state.vertices.size();
     state.stats.indices = state.uploadIndices.size();
+}
+
+void FrameSubmitter::writeInstances(std::span<const GpuInstance> data, std::size_t offset) {
+    if (data.empty()) {
+        return;
+    }
+
+    state.getGpu().writeBuffer(state.instanceBuffer, offset * sizeof(GpuInstance), std::as_bytes(data));
+    state.stats.uploadedBytes += data.size_bytes();
 }
 
 void FrameSubmitter::writeBuffer(gpu::Device::Buffer& buffer, std::size_t& capacity, std::span<const std::byte> data, std::size_t elementSize, bool indexBuffer) {
@@ -429,6 +428,7 @@ void FrameSubmitter::renderCanvasOffscreen(Canvas& canvas) {
     LitTargets& targets = state.litTargets[canvas.litIndex];
     const math::Rect full{0.0F, 0.0F, static_cast<float>(targets.scene.getWidth()), static_cast<float>(targets.scene.getHeight())};
     const math::Color clear = canvas.options.clear.value_or(canvas.kind == Canvas::Kind::Target ? math::Color::transparent() : state.clearColor).getPremultiplied();
+
     // The distortion map blurs by a deviation that grows with the bend distance, so the slope the composite bends the image along stays smooth and never folds the image into copies of itself, whatever the sharp edges of the textures of the distortion draws.
     if (canvas.distortEnd > canvas.distortBegin) {
         const PostProcess& post = canvas.options.postProcess ? *canvas.options.postProcess : kNoPostProcess;
@@ -790,14 +790,18 @@ math::Rect FrameSubmitter::getScissor(const Canvas& canvas, const math::Rect& cl
     return {scissor.x, scissor.y, std::max(0.0F, scissor.width), std::max(0.0F, scissor.height)};
 }
 
+// The clip 0 covers the whole pass.
+math::Rect FrameSubmitter::getClipScissor(const Canvas& canvas, std::uint32_t clip, const math::Rect& passRect) const noexcept {
+    return clip == 0 ? passRect : getScissor(canvas, state.clips[clip - 1U], passRect);
+}
+
 bool FrameSubmitter::showsPixels(const Canvas& canvas, std::uint32_t clip, const math::Rect& passRect) const noexcept {
-    const math::Rect scissor = clip == 0 ? passRect : getScissor(canvas, state.clips[clip - 1U], passRect);
+    const math::Rect scissor = getClipScissor(canvas, clip, passRect);
     return scissor.width > 0.0F && scissor.height > 0.0F;
 }
 
 void FrameSubmitter::applyClip(const Canvas& canvas, std::uint32_t clip, const math::Rect& passRect) {
-    const math::Rect scissor = clip == 0 ? passRect : getScissor(canvas, state.clips[clip - 1U], passRect);
-    state.getGpu().applyScissor(scissor);
+    state.getGpu().applyScissor(getClipScissor(canvas, clip, passRect));
 }
 
 void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::size_t end, graphics::PassTarget pass, const math::Rect& passRect) {
@@ -881,48 +885,57 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
             currentTexture = command.texture;
         }
 
-        gpu::Device::Bindings bindings;
-        if (command.program == Program::Mesh) {
-            bindings.vertexBuffers[0] = state.vertexBuffer;
-            bindings.indexBuffer = state.indexBuffer;
-        } else {
-            bindings.vertexBuffers[0] = state.quad;
-            bindings.vertexBuffers[1] = command.batch != nullptr ? command.batch->buffer : state.instanceBuffer;
-            bindings.vertexOffsets[1] = static_cast<int>(command.first * sizeof(GpuInstance));
-        }
-
-        const bool paired = command.program == Program::Recolor || command.program == Program::Effect || command.program == Program::Batch || command.program == Program::GradientText;
-        if (paired) {
-            bindings.vertexBuffers[2] = state.instanceBuffer;
-            bindings.vertexOffsets[2] = static_cast<int>((command.first + 1) * sizeof(GpuInstance));
-        }
-
-        if (command.program == Program::Recolor) {
-            bindings.textures[RendererState::kPartMask] = shade.partMask->image;
-        }
-
-        if (shade.material != nullptr) {
-            bindMaterial(bindings, shade, *command.texture, pass, command.program);
-        } else if (command.program == Program::Batch) {
-            bindBatch(bindings, shade, *command.texture, pass);
-        } else {
-            bindings.textures[RendererState::kSpriteTexture] = command.texture->image;
-            bindings.samplers[RendererState::kSpriteSampler] = command.texture->sampler;
-            if (pass == graphics::PassTarget::LitScene && command.program == Program::Sprite) {
-                bindings.textures[RendererState::kNormalTexture] = (shade.normalMap != nullptr ? shade.normalMap : state.white.getResource().get())->image;
-            }
-        }
-
+        const gpu::Device::Bindings bindings = makeBindings(command, shade, pass);
         state.getGpu().applyBindings(bindings);
 
         if (command.program == Program::Mesh) {
             state.getGpu().draw(static_cast<int>(command.first), static_cast<int>(command.count), 1);
         } else {
-            state.getGpu().draw(0, 4, static_cast<int>(paired ? command.count / 2 : command.count));
+            state.getGpu().draw(0, 4, static_cast<int>(isPaired(command.program) ? command.count / 2 : command.count));
         }
 
         ++state.stats.drawCalls;
     }
+}
+
+bool FrameSubmitter::isPaired(Program program) noexcept {
+    return program == Program::Recolor || program == Program::Effect || program == Program::Batch || program == Program::GradientText;
+}
+
+// A paired program reads the record after each instance through a second buffer of the same instances.
+gpu::Device::Bindings FrameSubmitter::makeBindings(const Command& command, const Shade& shade, graphics::PassTarget pass) {
+    gpu::Device::Bindings bindings;
+    if (command.program == Program::Mesh) {
+        bindings.vertexBuffers[0] = state.vertexBuffer;
+        bindings.indexBuffer = state.indexBuffer;
+    } else {
+        bindings.vertexBuffers[0] = state.quad;
+        bindings.vertexBuffers[1] = command.batch != nullptr ? command.batch->buffer : state.instanceBuffer;
+        bindings.vertexOffsets[1] = static_cast<int>(command.first * sizeof(GpuInstance));
+    }
+
+    if (isPaired(command.program)) {
+        bindings.vertexBuffers[2] = state.instanceBuffer;
+        bindings.vertexOffsets[2] = static_cast<int>((command.first + 1) * sizeof(GpuInstance));
+    }
+
+    if (command.program == Program::Recolor) {
+        bindings.textures[RendererState::kPartMask] = shade.partMask->image;
+    }
+
+    if (shade.material != nullptr) {
+        bindMaterial(bindings, shade, *command.texture, pass, command.program);
+    } else if (command.program == Program::Batch) {
+        bindBatch(bindings, shade, *command.texture, pass);
+    } else {
+        bindings.textures[RendererState::kSpriteTexture] = command.texture->image;
+        bindings.samplers[RendererState::kSpriteSampler] = command.texture->sampler;
+        if (pass == graphics::PassTarget::LitScene && command.program == Program::Sprite) {
+            bindings.textures[RendererState::kNormalTexture] = (shade.normalMap != nullptr ? shade.normalMap : state.white.getResource().get())->image;
+        }
+    }
+
+    return bindings;
 }
 
 void FrameSubmitter::drawImageBlend(const Command& command, const Matrix& matrix) {
@@ -1101,30 +1114,28 @@ void FrameSubmitter::bindBatch(gpu::Device::Bindings& bindings, const Shade& sha
 
 void FrameSubmitter::bindMaterial(gpu::Device::Bindings& bindings, const Shade& shade, const graphics::TextureResource& texture, graphics::PassTarget pass, Program program) {
     const graphics::ShaderResource::Compiled& made = state.getMaterialProgram(*shade.material, program, pass);
-    const std::vector<graphics::Shader::TextureSlot>& textures = shade.material->shader.getTextures();
-    // clang-format off
-    const auto textureAt = [&](int slot) -> const graphics::TextureResource& {
-        for (std::size_t index = 0; index < textures.size(); ++index) {
-            if (textures[index].slot == slot) {
-                return *state.shadeTextures[shade.textureBegin + index];
-            }
-        }
-
-        if (program == Program::Batch && slot >= RendererState::kBatchTextures) {
-            return *shade.batchTextures[static_cast<std::size_t>(slot - RendererState::kBatchTextures)];
-        }
-
-        return slot == 0 ? texture : *state.white.getResource();
-    };
-    // clang-format on
-
     for (const int slot : made.textures) {
-        bindings.textures[static_cast<std::size_t>(slot)] = textureAt(slot).image;
+        bindings.textures[static_cast<std::size_t>(slot)] = getMaterialTexture(shade, texture, program, slot).image;
     }
 
     for (const auto& [sampler, view] : made.samplers) {
-        bindings.samplers[static_cast<std::size_t>(sampler)] = textureAt(view).sampler;
+        bindings.samplers[static_cast<std::size_t>(sampler)] = getMaterialTexture(shade, texture, program, view).sampler;
     }
+}
+
+const graphics::TextureResource& FrameSubmitter::getMaterialTexture(const Shade& shade, const graphics::TextureResource& texture, Program program, int slot) const {
+    const std::vector<graphics::Shader::TextureSlot>& textures = shade.material->shader.getTextures();
+    for (std::size_t index = 0; index < textures.size(); ++index) {
+        if (textures[index].slot == slot) {
+            return *state.shadeTextures[shade.textureBegin + index];
+        }
+    }
+
+    if (program == Program::Batch && slot >= RendererState::kBatchTextures) {
+        return *shade.batchTextures[static_cast<std::size_t>(slot - RendererState::kBatchTextures)];
+    }
+
+    return slot == 0 ? texture : *state.white.getResource();
 }
 
 } // namespace haylen::graphics2d

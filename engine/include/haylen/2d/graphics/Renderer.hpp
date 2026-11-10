@@ -103,7 +103,6 @@ class Renderer final {
         bool debugDrawings = true;
     };
 
-    // How `drawMetaballs` shows the surface where its soft circles meet: the fill color, and an outline in the band of the field just above the threshold. The field adds up to 1 at the center of a lone circle, whose surface reaches the radius at the default threshold.
     // Whether the content of a mask draws inside its shape or outside it.
     enum class MaskMode : std::uint8_t {
         Inside,
@@ -125,6 +124,7 @@ class Renderer final {
         float bottom = 0.0F;
     };
 
+    // How `drawMetaballs` shows the surface where its soft circles meet: the fill color, and an outline in the band of the field just above the threshold. The field adds up to 1 at the center of a lone circle, whose surface reaches the radius at the default threshold.
     struct MetaballStyle {
         math::Color color = math::Color::white();
         math::Color outlineColor = math::Color::transparent();
@@ -181,16 +181,21 @@ class Renderer final {
     // Draws sprites that pick their texture by their data among up to `SpriteData::kMaxTextures` textures with the same filter, wrap and mipmaps, in one draw call, and hand the material of the order the numbers of their data, where sprites past the end of the data take the first texture and zeros. A batch with several textures draws without a part mask, a normal map or a distortion.
     void drawBatch(std::span<const graphics::Texture> textures, std::span<const SpriteInstance> sprites, std::span<const SpriteData> data, const DrawOrder& order = {}, std::span<const PartColors> partColors = {});
     void drawBatch(std::span<const graphics::Texture> textures, std::span<const float> values, const SpriteLayout& layout, const DrawOrder& order = {});
+
     // Draws a baked batch shifted by an offset in world units, which lets parallax layers reuse one batch. A baked batch takes no part mask.
     void drawStatic(const StaticSpriteBatch& batch, const DrawOrder& order = {}, math::Vec2 offset = {});
     void drawNineSlice(const NineSlice& slice, const math::Rect& area, math::Color color = math::Color::white(), const DrawOrder& order = {}, float borderScale = 1.0F);
+
     // Draws a vector image in the place, size and look of the sprite, whose texture and source come from the raster of the image at the scale it covers on the screen, made on the task pool and kept in the vector atlas of the renderer. A sprite without a size takes the size of the image. A vector image draws without a part mask.
     void drawVector(const graphics::VectorImage& image, const Sprite& sprite);
+
     // Draws plain text with a font alone or with a family and its fallbacks, turned and stretched by the style around the position, where its anchor lands.
     void drawText(text::Font& font, std::string_view content, math::Vec2 position, const text::Style& style = {}, const DrawOrder& order = {});
     void drawText(text::FontFamily& family, std::string_view content, math::Vec2 position, const text::Style& style = {}, const DrawOrder& order = {});
+
     // Draws rich text with the top-left of its block at the position, scaled from that corner and with its colors multiplied by the tint. A y-sorted canvas sorts it by the bottom of the block.
     void drawRichText(text::RichText& richText, math::Vec2 position, const DrawOrder& order = {}, math::Vec2 scale = {1.0F, 1.0F}, math::Color tint = math::Color::white());
+
     // Draws triangles of a texture, or of white without one, whose outline, the edges that only one triangle holds, fades over one pixel of the destination like the edges of every other shape, unless `fadeEdges` is off, which suits triangles that already fade their own edges or that meet other meshes edge to edge. Throws `std::invalid_argument` for a count of indices that is not a multiple of three or an index past the last vertex.
     void drawMesh(const graphics::Texture& texture, std::span<const MeshVertex> vertices, std::span<const std::uint32_t> indices, const DrawOrder& order = {}, bool fadeEdges = true);
 
@@ -315,6 +320,7 @@ class Renderer final {
     static constexpr float kMetaballReach = 1.8477591F;
 
     static void validatePostProcess(const CanvasOptions& options);
+    static void checkViewport(const Camera& camera);
 
     [[nodiscard]] static std::vector<std::uint8_t> radialFalloff(int size);
     [[nodiscard]] static std::vector<std::uint8_t> metaballKernel(int size);
@@ -338,6 +344,8 @@ class Renderer final {
 
     // Runs the overlays in the open canvas and closes it.
     void finishCanvas();
+    void drawFlash();
+    void runOverlays();
 
     // Adds `count` sprites of the textures, where `spriteAt` returns the sprite at an index from any worker thread, `partsAt` its part colors when the order recolors them, and `dataAt` its data when the sprites have any.
     template <typename SpriteAt, typename PartsAt, typename DataAt> void addBatch(std::span<const graphics::Texture> textures, std::size_t count, const DrawOrder& order, const SpriteAt& spriteAt, const PartsAt& partsAt, const DataAt& dataAt, bool hasData);

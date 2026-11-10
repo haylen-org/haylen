@@ -21,6 +21,9 @@ namespace haylen::graphics2d {
 debug::ObjectCounter& RendererState::bufferCounter = *new debug::ObjectCounter("RendererBuffers", debug::ObjectCounter::Kind::Native);
 
 std::uint64_t RendererState::submissions = 0;
+
+const std::array<std::span<const std::uint8_t> (*)(), 11> RendererState::kPackages{&core::EmbeddedFiles::getSpriteShader, &core::EmbeddedFiles::getTextShader, &core::EmbeddedFiles::getMeshShader, &core::EmbeddedFiles::getBlendShader, &core::EmbeddedFiles::getCompositeShader, &core::EmbeddedFiles::getLightShader, &core::EmbeddedFiles::getMetaballShader, &core::EmbeddedFiles::getRecolorShader, &core::EmbeddedFiles::getEffectShader, &core::EmbeddedFiles::getShapeShader, &core::EmbeddedFiles::getBackdropShader};
+
 const std::array<RendererState::ProgramSource, RendererState::kProgramCount> RendererState::kPrograms{{
     {.package = 0, .program = "sprite", .lit = "sprite_lit"},
     {.package = 1, .program = "text", .lit = "text_lit"},
@@ -179,18 +182,21 @@ math::Rect RendererState::getPassRect(const Canvas& canvas) const {
 }
 
 // The view takes canvas units to the units of the view size, which the pass stretches over its pixels.
-float RendererState::getPixelsPerUnit() {
+math::Vec2 RendererState::getAxisPixels() {
     const Canvas& canvas = getCanvas();
     const math::Vec2 pixels = getPassRect(canvas).getSize() / canvas.viewSize;
     const math::Transform2D& view = canvas.view;
-    return std::max(std::hypot(view.a, view.b) * pixels.x, std::hypot(view.c, view.d) * pixels.y);
+    return {std::hypot(view.a, view.b) * pixels.x, std::hypot(view.c, view.d) * pixels.y};
+}
+
+float RendererState::getPixelsPerUnit() {
+    const math::Vec2 axisPixels = getAxisPixels();
+    return std::max(axisPixels.x, axisPixels.y);
 }
 
 float RendererState::getPixelSize() {
-    const Canvas& canvas = getCanvas();
-    const math::Vec2 pixels = getPassRect(canvas).getSize() / canvas.viewSize;
-    const math::Transform2D& view = canvas.view;
-    return 1.0F / std::min(std::hypot(view.a, view.b) * pixels.x, std::hypot(view.c, view.d) * pixels.y);
+    const math::Vec2 axisPixels = getAxisPixels();
+    return 1.0F / std::min(axisPixels.x, axisPixels.y);
 }
 
 std::optional<TextPainter::PixelGrid> RendererState::getPixelGrid() {
@@ -240,6 +246,7 @@ void RendererState::openCanvas(Canvas next) {
     next.segmentEnd = segments.size();
     next.metaballBegin = metaballs.size();
     next.metaballEnd = metaballs.size();
+
     if (!openCaptures.empty() && next.kind != Canvas::Kind::Target) {
         next.capture = openCaptures.back() + 1;
     }
@@ -382,7 +389,7 @@ void RendererState::clearFades() noexcept {
     fadeClip.reset();
 }
 
-// An edge reaches into a clip when it covers one of its corners with less than all, and a draw without a clip takes every open edge. Draws one after the other that take the same edges share their fade, so they can share a draw call.
+// A draw without a clip takes every open edge. Draws one after the other that take the same edges share their fade, so they can share a draw call.
 std::uint32_t RendererState::getFade(std::uint32_t clip) {
     if (openFadeEdges.empty()) {
         return 0;
@@ -395,7 +402,7 @@ std::uint32_t RendererState::getFade(std::uint32_t clip) {
     const auto begin = static_cast<std::uint32_t>(fadeEdges.size());
     const math::Rect* area = clip == 0 ? nullptr : &clips[clip - 1U];
     for (const FadeEdge& edge : openFadeEdges) {
-        if (area == nullptr || std::min({edge.getCoverage(area->getMin()), edge.getCoverage(area->getMax()), edge.getCoverage({area->x, area->getBottom()}), edge.getCoverage({area->getRight(), area->y})}) < 1.0F) {
+        if (area == nullptr || reachesInto(edge, *area)) {
             fadeEdges.push_back(edge);
         }
     }
@@ -417,6 +424,12 @@ std::uint32_t RendererState::getFade(std::uint32_t clip) {
     fade = count == 0 ? 0U : static_cast<std::uint32_t>(fades.size());
     fadeClip = clip;
     return fade;
+}
+
+// An edge reaches into a clip when it covers one of its corners with less than all.
+bool RendererState::reachesInto(const FadeEdge& edge, const math::Rect& area) noexcept {
+    const float least = std::min({edge.getCoverage(area.getMin()), edge.getCoverage(area.getMax()), edge.getCoverage({area.x, area.getBottom()}), edge.getCoverage({area.getRight(), area.y})});
+    return least < 1.0F;
 }
 
 std::uint32_t RendererState::getShade(Program program, const DrawOrder& order, std::span<const graphics::Texture> textures) {
@@ -509,9 +522,8 @@ void RendererState::requireReadable(const graphics::TextureResource* texture) {
     }
 }
 
-DrawItem& RendererState::addItem(Program program, const DrawOrder& order, graphics::TextureResource* texture, float standingY, std::span<const graphics::Texture> textures) {
-    Canvas& current = getCanvas();
-
+// Throws when the order asks for something the program cannot draw.
+void RendererState::checkOrder(Program program, const DrawOrder& order, std::span<const graphics::Texture> textures, const Canvas& canvas) {
     if (order.material.isValid() && (program == Program::ImageBlend || program == Program::Backdrop || program == Program::Metaball)) {
         throw std::invalid_argument("Image blends and metaballs do not take a material.");
     }
@@ -520,7 +532,7 @@ DrawItem& RendererState::addItem(Program program, const DrawOrder& order, graphi
         throw std::invalid_argument(std::format("The blend mode \"{}\" mixes with what lies below, which only groups do. Draw inside \"beginGroup\" with that blend instead.", graphics::BlendMode::name(order.blend)));
     }
 
-    if (program == Program::Backdrop && current.isLit()) {
+    if (program == Program::Backdrop && canvas.isLit()) {
         throw std::invalid_argument("A group that blends with what lies below draws in a canvas without ambient light.");
     }
 
@@ -548,7 +560,10 @@ DrawItem& RendererState::addItem(Program program, const DrawOrder& order, graphi
     if (distorts && program != Program::Sprite && program != Program::Mesh && program != Program::Shape) {
         throw std::invalid_argument("Only sprites, sprite batches, nine-slices, shapes and meshes draw as distortion.");
     }
+}
 
+// Throws when a texture of the draw, its part mask or a texture of its material is the image its canvas draws into.
+void RendererState::requireReadableSources(Program program, const DrawOrder& order, const graphics::TextureResource* texture, std::span<const graphics::Texture> textures, const Canvas& canvas) {
     requireReadable(texture);
 
     for (const graphics::Texture& batchTexture : textures) {
@@ -559,12 +574,21 @@ DrawItem& RendererState::addItem(Program program, const DrawOrder& order, graphi
         requireReadable(order.partMask.getResource().get());
     }
 
-    if (order.material.isValid() && current.destination != nullptr) {
+    if (order.material.isValid() && canvas.destination != nullptr) {
         const MaterialResource& material = *order.material.getResource();
         for (const graphics::Shader::TextureSlot& slot : material.shader.getTextures()) {
             requireReadable(material.getTextureAt(slot.slot).getResource().get());
         }
     }
+}
+
+DrawItem& RendererState::addItem(Program program, const DrawOrder& order, graphics::TextureResource* texture, float standingY, std::span<const graphics::Texture> textures) {
+    Canvas& current = getCanvas();
+    checkOrder(program, order, textures, current);
+    requireReadableSources(program, order, texture, textures, current);
+
+    const bool distorts = order.distortion > 0.0F;
+    const std::uint32_t clip = clipStack.empty() ? 0U : clipStack.back();
 
     // The coverage of distortion draws adds up in the distortion map, whatever their blend.
     DrawItem item{
@@ -573,12 +597,13 @@ DrawItem& RendererState::addItem(Program program, const DrawOrder& order, graphi
         .sequence = sequence++,
         .program = program,
         .blend = distorts ? graphics::BlendMode::Type::Additive : order.blend,
-        .clip = clipStack.empty() ? 0U : clipStack.back(),
-        .fade = getFade(clipStack.empty() ? 0U : clipStack.back()),
+        .clip = clip,
+        .fade = getFade(clip),
         .shade = getShade(program, order, textures),
         .texture = texture,
         .distortion = distorts,
     };
+
     current.distorted = current.distorted || distorts;
     current.backdrop = current.backdrop || program == Program::Backdrop;
     items.push_back(item);
@@ -696,6 +721,7 @@ gpu::Device::Blend RendererState::blendState(graphics::BlendMode::Type mode) noe
     case Mode::Exclusion:
         return {};
     }
+
     return {};
 }
 
@@ -711,6 +737,7 @@ gpu::Device::Blend RendererState::lightBlend(std::uint8_t blend) noexcept {
     case lighting2d::Light::Blend::Max:
         return {.enabled = true, .sourceColor = Factor::One, .destinationColor = Factor::One, .colorOperation = gpu::Device::BlendOperation::Maximum};
     }
+
     return {};
 }
 
@@ -760,6 +787,7 @@ RendererState::Layout RendererState::describeLayout(Program program) {
     case Program::Text:
         break;
     }
+
     layout.buffers[0] = {.stride = kCorner};
     layout.buffers[1] = {.stride = kInstance, .perInstance = true};
     layout.bufferCount = 2;
@@ -901,6 +929,7 @@ const char* RendererState::materialProgramName(Program program, graphics::PassTa
     case Program::GradientText:
         break;
     }
+
     throw std::logic_error("Materials only replace the sprite, batch, text, mesh and shape programs.");
 }
 
@@ -952,7 +981,5 @@ void RendererState::ensureBuffer(gpu::Device::Buffer& buffer, std::size_t& capac
     capacity = grown;
     buffer = getGpu().makeBuffer({.size = capacity * elementSize, .usage = gpu::Device::Usage::Dynamic, .index = isIndexBuffer, .label = isIndexBuffer ? "haylen-index-buffer" : "haylen-vertex-buffer"});
 }
-
-const std::array<std::span<const std::uint8_t> (*)(), 11> RendererState::kPackages{&core::EmbeddedFiles::getSpriteShader, &core::EmbeddedFiles::getTextShader, &core::EmbeddedFiles::getMeshShader, &core::EmbeddedFiles::getBlendShader, &core::EmbeddedFiles::getCompositeShader, &core::EmbeddedFiles::getLightShader, &core::EmbeddedFiles::getMetaballShader, &core::EmbeddedFiles::getRecolorShader, &core::EmbeddedFiles::getEffectShader, &core::EmbeddedFiles::getShapeShader, &core::EmbeddedFiles::getBackdropShader};
 
 } // namespace haylen::graphics2d

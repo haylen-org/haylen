@@ -10,6 +10,7 @@
 
 #include "2d/graphics/Canvas.hpp"
 #include "2d/graphics/DrawItem.hpp"
+#include "2d/graphics/GpuInstance.hpp"
 #include "2d/graphics/LitTargets.hpp"
 #include "2d/graphics/Program.hpp"
 #include "graphics/PassTarget.hpp"
@@ -168,6 +169,7 @@ class FrameSubmitter final {
     void append(const DrawItem& item);
     void appendCanvas(const std::vector<std::uint32_t>& order, bool distortion, std::uint32_t& expected, bool& inOrder);
     void upload();
+    void writeInstances(std::span<const GpuInstance> data, std::size_t offset);
     void writeBuffer(gpu::Device::Buffer& buffer, std::size_t& capacity, std::span<const std::byte> data, std::size_t elementSize, bool indexBuffer);
 
     // Applies the values of a uniform block of the applied pipeline.
@@ -186,6 +188,7 @@ class FrameSubmitter final {
 
     // Draws the finished image of a composited canvas into the pass: the composite, or the last post-processing material over the image before it.
     void drawFinal(const Canvas& canvas, graphics::PassTarget pass);
+
     // The clear colors of color images are premultiplied by their alpha, like everything drawn into them.
     void beginOffscreenPass(const graphics::RenderTarget& renderTarget, std::optional<math::Color> clear);
     void beginLitPass(const LitTargets& targets, math::Color clear);
@@ -201,9 +204,12 @@ class FrameSubmitter final {
     void growChain(std::vector<std::array<graphics::RenderTarget, 2>>& chain, std::size_t levels, int width, int height);
     void drawPostMaterial(std::size_t shadeIndex, const graphics::Texture& image, graphics::PassTarget pass);
 
+    [[nodiscard]] math::Rect getClipScissor(const Canvas& canvas, std::uint32_t clip, const math::Rect& passRect) const noexcept;
     [[nodiscard]] bool showsPixels(const Canvas& canvas, std::uint32_t clip, const math::Rect& passRect) const noexcept;
     void applyClip(const Canvas& canvas, std::uint32_t clip, const math::Rect& passRect);
     void drawCommands(const Canvas& canvas, std::size_t begin, std::size_t end, graphics::PassTarget pass, const math::Rect& passRect);
+    [[nodiscard]] static bool isPaired(Program program) noexcept;
+    [[nodiscard]] gpu::Device::Bindings makeBindings(const Command& command, const Shade& shade, graphics::PassTarget pass);
     void drawImageBlend(const Command& command, const Matrix& matrix);
     void drawBackdrop(const Canvas& canvas, const Command& command, const Matrix& matrix, const math::Rect& passRect);
     void drawMetaball(const Command& command, const Matrix& matrix);
@@ -220,6 +226,9 @@ class FrameSubmitter final {
 
     // Binds the textures and samplers of a material program, where slot 0 takes the texture of the draw and the slots of the textures of a batch take the others.
     void bindMaterial(gpu::Device::Bindings& bindings, const Shade& shade, const graphics::TextureResource& texture, graphics::PassTarget pass, Program program);
+
+    // Returns the texture a slot of a material program takes: a texture of the material, a texture of the batch, the texture of the draw for slot 0 or white.
+    [[nodiscard]] const graphics::TextureResource& getMaterialTexture(const Shade& shade, const graphics::TextureResource& texture, Program program, int slot) const;
 
     RendererState& state;
     bool transparent = false;

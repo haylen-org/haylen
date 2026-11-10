@@ -39,10 +39,11 @@ namespace haylen::graphics2d {
 const Renderer::CanvasOptions Renderer::kDefaultCanvas{};
 const std::array<std::pair<std::string_view, Renderer::CanvasKind>, 3> Renderer::kCanvasKindNames{{{"world", CanvasKind::World}, {"screen", CanvasKind::Screen}, {"target", CanvasKind::Target}}};
 
+const Renderer::MetaballStyle Renderer::kDefaultMetaballs{};
+
 std::string_view Renderer::canvasKindName(CanvasKind value) noexcept {
     return std::ranges::find(kCanvasKindNames, value, &std::pair<std::string_view, CanvasKind>::second)->first;
 }
-const Renderer::MetaballStyle Renderer::kDefaultMetaballs{};
 
 std::vector<std::uint8_t> Renderer::radialFalloff(int size) {
     std::vector<std::uint8_t> pixels(static_cast<std::size_t>(size * size * 4), 255);
@@ -105,6 +106,12 @@ void Renderer::validatePostProcess(const CanvasOptions& options) {
     }
 }
 
+void Renderer::checkViewport(const Camera& camera) {
+    if (camera.viewport && !(camera.viewport->width > 0.0F && camera.viewport->height > 0.0F)) {
+        throw std::invalid_argument("A camera viewport needs a positive width and height.");
+    }
+}
+
 float Renderer::lowestPoint(std::span<const math::Vec2> points) noexcept {
     float lowest = points.front().y;
     for (const math::Vec2 point : points) {
@@ -132,6 +139,7 @@ Renderer::Renderer(graphics::Device& device, core::JobSystem& jobs) : state(std:
     state->lightFormat = capabilities.renderFormats[halfFloat] && capabilities.blendableFormats[halfFloat] ? gpu::Device::PixelFormat::Rgba16Float : device.getState().offscreenFormat;
 
     state->light = device.createTexture(graphics::Image(RendererState::kLightTextureSize, RendererState::kLightTextureSize, radialFalloff(RendererState::kLightTextureSize)), {.filter = graphics::Texture::Filter::Linear});
+
     // The metaball kernel keeps its exact values at every size of a splat, which the threshold of the field depends on.
     state->metaball = device.createTexture(graphics::Image(RendererState::kMetaballTextureSize, RendererState::kMetaballTextureSize, metaballKernel(RendererState::kMetaballTextureSize)), {.filter = graphics::Texture::Filter::Linear, .mipmaps = false});
 }
@@ -172,10 +180,7 @@ void Renderer::beginWorld(const Camera& camera, const CanvasOptions& options) {
     }
 
     validatePostProcess(options);
-
-    if (camera.viewport && !(camera.viewport->width > 0.0F && camera.viewport->height > 0.0F)) {
-        throw std::invalid_argument("A camera viewport needs a positive width and height.");
-    }
+    checkViewport(camera);
 
     const math::Rect area = camera.getViewRect(state->visibleRect);
     finishCanvas();
@@ -201,10 +206,7 @@ void Renderer::beginTarget(const graphics::RenderTarget& target, const Camera& c
     }
 
     validatePostProcess(options);
-
-    if (camera.viewport && !(camera.viewport->width > 0.0F && camera.viewport->height > 0.0F)) {
-        throw std::invalid_argument("A camera viewport needs a positive width and height.");
-    }
+    checkViewport(camera);
 
     const math::Rect whole{0.0F, 0.0F, target.getSize().x, target.getSize().y};
     const math::Rect area = camera.getViewRect(whole);
@@ -376,21 +378,17 @@ void Renderer::drawBatch(const graphics::Texture& texture, std::span<const float
 }
 
 void Renderer::drawBatch(std::span<const graphics::Texture> textures, std::span<const SpriteInstance> sprites, std::span<const SpriteData> data, const DrawOrder& order, std::span<const PartColors> partColors) {
-    // clang-format off
-    addBatch(textures, sprites.size(), order, [sprites](std::size_t index) -> const SpriteInstance& { return sprites[index]; }, [partColors](std::size_t index) {
-        return index < partColors.size() ? partColors[index] : PartColors{};
-    }, [data](std::size_t index) {
-        return index < data.size() ? data[index] : SpriteData{};
-    }, !data.empty());
-    // clang-format on
+    const auto spriteAt = [sprites](std::size_t index) -> const SpriteInstance& { return sprites[index]; };
+    const auto partsAt = [partColors](std::size_t index) { return index < partColors.size() ? partColors[index] : PartColors{}; };
+    const auto dataAt = [data](std::size_t index) { return index < data.size() ? data[index] : SpriteData{}; };
+    addBatch(textures, sprites.size(), order, spriteAt, partsAt, dataAt, !data.empty());
 }
 
 void Renderer::drawBatch(std::span<const graphics::Texture> textures, std::span<const float> values, const SpriteLayout& layout, const DrawOrder& order) {
-    // clang-format off
-    addBatch(textures, layout.getCount(values), order, [values, &layout](std::size_t index) { return layout.makeSprite(values, index); }, [](std::size_t) { return PartColors{}; }, [values, &layout](std::size_t index) {
-        return layout.makeData(values, index);
-    }, layout.hasData());
-    // clang-format on
+    const auto spriteAt = [values, &layout](std::size_t index) { return layout.makeSprite(values, index); };
+    const auto partsAt = [](std::size_t) { return PartColors{}; };
+    const auto dataAt = [values, &layout](std::size_t index) { return layout.makeData(values, index); };
+    addBatch(textures, layout.getCount(values), order, spriteAt, partsAt, dataAt, layout.hasData());
 }
 
 void Renderer::drawStatic(const StaticSpriteBatch& batch, const DrawOrder& order, math::Vec2 offset) {
@@ -847,18 +845,9 @@ const Renderer::CanvasOptions& Renderer::getCanvasOptions() const {
 }
 
 Renderer::CanvasKind Renderer::getCanvasKind() const {
-    switch (state->getCanvas().kind) {
-    case Canvas::Kind::World:
-        return CanvasKind::World;
-    case Canvas::Kind::Screen:
-        return CanvasKind::Screen;
-    case Canvas::Kind::Target:
-        break;
-    }
-    return CanvasKind::Target;
+    return state->getCanvas().kind;
 }
 
-// The flash of the camera covers what the canvas holds, then the overlays run on a copy of their list, so one may add or remove overlays, and the canvas closes even when one of them fails.
 std::optional<Renderer::MaskMode> Renderer::maskModeFromName(std::string_view name) noexcept {
     const auto found = std::ranges::find(kMaskModeNames, name, &std::pair<std::string_view, MaskMode>::first);
     return found != kMaskModeNames.end() ? std::optional<MaskMode>(found->second) : std::nullopt;
@@ -1037,44 +1026,56 @@ void Renderer::closeGroups() {
     }
 }
 
+// The flash of the camera covers what the canvas holds, then the overlays run, and the canvas closes even when one of them fails.
 void Renderer::finishCanvas() {
     if (state->canvasOpen) {
         closeGroups();
-    }
-
-    if (state->canvasOpen && state->canvases.back().flash.a > 0.0F) {
-        const math::Color flash = state->canvases.back().flash;
-        state->canvases.back().flash = math::Color::transparent();
-        state->clipStack.clear();
-        state->clearFades();
-        state->layerOffset = 0;
-        drawRect(getCanvasBounds().expanded(1.0F), flash, {.layer = std::numeric_limits<int>::max() / 2 - 1, .unshaded = true});
-    }
-
-    if (state->canvasOpen && !state->overlays.empty() && !state->drawingOverlays) {
-        std::vector<std::pair<std::uint64_t, CanvasOverlay>>& overlays = state->overlaySnapshot;
-        overlays = state->overlays;
-        state->clipStack.clear();
-        state->clearFades();
-        state->layerOffsets.clear();
-        state->layerOffset = 0;
-        state->drawingOverlays = true;
-        try {
-            for (const auto& [id, overlay] : overlays) {
-                overlay(*this);
-            }
-        } catch (...) {
-            overlays.clear();
-            state->drawingOverlays = false;
-            state->closeCanvas();
-            throw;
-        }
-
-        overlays.clear();
-        state->drawingOverlays = false;
+        drawFlash();
+        runOverlays();
     }
 
     state->closeCanvas();
+}
+
+void Renderer::drawFlash() {
+    const math::Color flash = state->canvases.back().flash;
+    if (!(flash.a > 0.0F)) {
+        return;
+    }
+
+    state->canvases.back().flash = math::Color::transparent();
+    state->clipStack.clear();
+    state->clearFades();
+    state->layerOffset = 0;
+    drawRect(getCanvasBounds().expanded(1.0F), flash, {.layer = std::numeric_limits<int>::max() / 2 - 1, .unshaded = true});
+}
+
+// The overlays run on a copy of their list, so one may add or remove overlays, and they never run inside each other.
+void Renderer::runOverlays() {
+    if (state->overlays.empty() || state->drawingOverlays) {
+        return;
+    }
+
+    std::vector<std::pair<std::uint64_t, CanvasOverlay>>& overlays = state->overlaySnapshot;
+    overlays = state->overlays;
+    state->clipStack.clear();
+    state->clearFades();
+    state->layerOffsets.clear();
+    state->layerOffset = 0;
+    state->drawingOverlays = true;
+    try {
+        for (const auto& [id, overlay] : overlays) {
+            overlay(*this);
+        }
+    } catch (...) {
+        overlays.clear();
+        state->drawingOverlays = false;
+        state->closeCanvas();
+        throw;
+    }
+
+    overlays.clear();
+    state->drawingOverlays = false;
 }
 
 void Renderer::drawBounds(text::Font& font, math::Color color, float labelSize) {
@@ -1236,7 +1237,6 @@ bool Renderer::isCapturing() const noexcept {
     return !state->openCaptures.empty();
 }
 
-// A failure on the way, such as a group left open that cannot close, still drops what the frame drew, so the next frame starts clean.
 void Renderer::present(const graphics::RenderTarget& target, int surface, math::Vec2 size, math::Color clear) {
     if (!target.isValid() || surface == 0) {
         throw std::invalid_argument("A presentation needs a valid render target and a surface beyond the window.");
@@ -1245,6 +1245,7 @@ void Renderer::present(const graphics::RenderTarget& target, int surface, math::
     state->presentations.push_back({.target = target, .surface = surface, .size = size, .clear = clear});
 }
 
+// A failure on the way, such as a group left open that cannot close, still drops what the frame drew, so the next frame starts clean.
 void Renderer::endFrame(bool transparent) {
     try {
         finishCanvas();

@@ -2,7 +2,6 @@
 
 #include <array>
 #include <cstddef>
-#include <cstdint>
 
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/graphics/RenderTarget.hpp"
@@ -20,11 +19,7 @@ namespace haylen::graphics2d {
 
 // One canvas of a frame, with the ranges of the draw items, commands, lights, occluder edges and metaballs that belong to it.
 struct Canvas {
-    enum class Kind : std::uint8_t {
-        World,
-        Screen,
-        Target,
-    };
+    using Kind = Renderer::CanvasKind;
 
     Kind kind = Kind::Screen;
     Renderer::CanvasOptions options{};

@@ -369,6 +369,11 @@ struct RendererState {
     [[nodiscard]] static gpu::Device::Blend lightBlend(std::uint8_t blend) noexcept;
     [[nodiscard]] static const char* materialProgramName(Program program, graphics::PassTarget target);
 
+    [[nodiscard]] math::Vec2 getAxisPixels();
+    [[nodiscard]] static bool reachesInto(const FadeEdge& edge, const math::Rect& area) noexcept;
+    static void checkOrder(Program program, const DrawOrder& order, std::span<const graphics::Texture> textures, const Canvas& canvas);
+    void requireReadableSources(Program program, const DrawOrder& order, const graphics::TextureResource* texture, std::span<const graphics::Texture> textures, const Canvas& canvas);
+
     // Returns the index of the shade of a draw, reusing the last shade when the draw shades the same way.
     [[nodiscard]] std::uint32_t getShade(Program program, const DrawOrder& order, std::span<const graphics::Texture> textures);
     [[nodiscard]] std::uint32_t pushShade(Shade shade, const Material& material);
