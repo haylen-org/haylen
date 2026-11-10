@@ -141,6 +141,15 @@ void UiLua::storeHandler(lua_State* L, int handlers, const std::string& id, cons
     lua_pop(L, 1);
 }
 
+// Stores every function of the table at the collected index, keyed by its event, as a handler of the node with the id.
+void UiLua::storeHandlers(lua_State* L, int handlers, const std::string& id, int collected) {
+    lua_pushnil(L);
+    while (lua_next(L, collected) != 0) {
+        storeHandler(L, handlers, id, lua::Stack::read<std::string>(L, -2), lua_gettop(L));
+        lua_pop(L, 1);
+    }
+}
+
 std::string UiLua::nextGeneratedId(lua_State* L) {
     pushRoot(L);
     lua_getfield(L, -1, "generated");
@@ -211,12 +220,7 @@ core::Json UiLua::convertNode(lua_State* L, int index, int handlers, std::size_t
             luaL_error(L, "A UI node with handlers needs a string id.");
         }
 
-        const std::string id = json["id"].get<std::string>();
-        lua_pushnil(L);
-        while (lua_next(L, collected) != 0) {
-            storeHandler(L, handlers, id, lua::Stack::read<std::string>(L, -2), lua_gettop(L));
-            lua_pop(L, 1);
-        }
+        storeHandlers(L, handlers, json["id"].get<std::string>(), collected);
     }
 
     lua_settop(L, base);
@@ -521,12 +525,7 @@ int UiLua::guiSet(lua_State* L) {
     const Component* node = self.find(id);
     self.set(id, convertProperties(L, 3, collected, node != nullptr && node->getKind() == "collection"));
 
-    lua_pushnil(L);
-    while (lua_next(L, collected) != 0) {
-        storeHandler(L, handlers, id, lua::Stack::read<std::string>(L, -2), lua_gettop(L));
-        lua_pop(L, 1);
-    }
-
+    storeHandlers(L, handlers, id, collected);
     listenToEvents(L, self, id, collected);
     return 0;
 }
@@ -640,8 +639,10 @@ int UiLua::guiHas(lua_State* L) {
 
 int UiLua::guiCommand(lua_State* L) {
     Gui& self = checkGui(L);
+    const auto id = lua::Stack::read<std::string_view>(L, 2);
+    const auto name = lua::Stack::read<std::string_view>(L, 3);
     const core::Json arguments = lua_isnoneornil(L, 4) ? core::Json::object() : lua::JsonConverter::read(L, 4);
-    self.command(getPlugin(L).getContext(), lua::Stack::read<std::string_view>(L, 2), lua::Stack::read<std::string_view>(L, 3), arguments);
+    self.command(getPlugin(L).getContext(), id, name, arguments);
     return 0;
 }
 
@@ -816,7 +817,8 @@ int UiLua::setImage(lua_State* L) {
     } else if (const auto* vector = lua::Userdata::test<graphics::VectorImage>(L, 2)) {
         library.setVector(name, *vector);
     } else if (const auto* image = lua::Userdata::test<graphics::Image>(L, 2)) {
-        library.setTexture(name, lua::Runtime::getEngine(L).getGraphics().createTexture(*image, {.filter = getPlugin(L).getTheme().getImageFilter()}));
+        const graphics::Texture::Filter filter = getPlugin(L).getTheme().getImageFilter();
+        library.setTexture(name, lua::Runtime::getEngine(L).getGraphics().createTexture(*image, {.filter = filter}));
     } else {
         library.setTexture(name, lua::Userdata::check<graphics::Texture>(L, 2));
     }
@@ -839,7 +841,9 @@ int UiLua::themeFont(lua_State* L) {
 
     plugins::UiPlugin& plugin = getPlugin(L);
     const Theme::FontStyle& style = plugin.getTheme().getFont(*role);
-    const text::Font& face = *plugin.getContext().getFontFamily(style.font)->select(style.bold, style.italic, false).font;
+    const std::shared_ptr<text::FontFamily> family = plugin.getContext().getFontFamily(style.font);
+    const text::Font& face = *family->select(style.bold, style.italic, false).font;
+
     lua_createtable(L, 0, 6);
     lua::Stack::push(L, style.font);
     lua_setfield(L, -2, "font");
@@ -946,16 +950,7 @@ int UiLua::onEvent(lua_State* L) {
 
     // clang-format off
     core::Connection connection = getPlugin(L).events.connect([function, main](Gui& gui, const Event& event) {
-        lua::Runtime::runReporting(main, [&] {
-            const lua::StackScope scope(main);
-
-            if (!function->push(main)) {
-                return;
-            }
-
-            pushEventTable(main, gui, event);
-            lua::Runtime::protectedCall(main, 1, 0);
-        });
+        callListener(main, *function, gui, event);
     }, std::move(options));
     // clang-format on
 
@@ -965,6 +960,21 @@ int UiLua::onEvent(lua_State* L) {
 
     lua::Userdata::emplace<core::Connection>(L, std::move(connection));
     return 1;
+}
+
+// A failure of the listener reaches the error screen instead of escaping into the signal that delivers the event.
+void UiLua::callListener(lua_State* L, const lua::Owners::Function& listener, Gui& gui, const Event& event) {
+    // clang-format off
+    lua::Runtime::runReporting(L, [&] {
+        const lua::StackScope scope(L);
+        if (!listener.push(L)) {
+            return;
+        }
+
+        pushEventTable(L, gui, event);
+        lua::Runtime::protectedCall(L, 1, 0);
+    });
+    // clang-format on
 }
 
 // Registers a font with `addFont(name, path)` from a TrueType file, or with `addFont(name, family)` from a `FontFamily` or a `Font`.

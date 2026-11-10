@@ -10,6 +10,7 @@
 
 #include "haylen/core/Json.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
+#include "lua/Owners.hpp"
 
 struct lua_State;
 
@@ -42,9 +43,12 @@ class UiLua final {
     static void pushRoot(lua_State* L);
     [[nodiscard]] static std::optional<std::string> handlerEvent(lua_State* L, int key, int value);
     static void storeHandler(lua_State* L, int handlers, const std::string& id, const std::string& event, int value);
+    static void storeHandlers(lua_State* L, int handlers, const std::string& id, int collected);
     [[nodiscard]] static std::string nextGeneratedId(lua_State* L);
+
     // Converts a node table, pulling its handlers into the handlers table at the given index. A handlers index of 0 converts the node of a collection template, which takes no handlers.
     [[nodiscard]] static core::Json convertNode(lua_State* L, int index, int handlers, std::size_t depth, std::size_t& count);
+
     [[nodiscard]] static core::Json convertTypes(lua_State* L, int index, std::size_t depth, std::size_t& count);
     [[nodiscard]] static core::Json convertProperties(lua_State* L, int index, int collected, bool collection);
     static void collectIds(const core::Json& node, std::vector<std::string>& ids);
@@ -53,6 +57,7 @@ class UiLua final {
     static void listenToHandlers(lua_State* L, Gui& gui, int handlers);
     static void listenToEvents(lua_State* L, Gui& gui, std::string_view id, int events);
     static void pushEventTable(lua_State* L, const Gui& gui, const Event& event);
+    static void callListener(lua_State* L, const lua::Owners::Function& listener, Gui& gui, const Event& event);
     static void pushGui(lua_State* L, const std::shared_ptr<Gui>& gui);
     static void pushGuiEvent(lua_State* L, const std::shared_ptr<Gui>& gui);
     [[nodiscard]] static Gui& checkGui(lua_State* L);
