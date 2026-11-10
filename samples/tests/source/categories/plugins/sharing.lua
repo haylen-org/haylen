@@ -18,7 +18,7 @@ Sharing.link = 'https://example.com/haylen'
 Sharing.apps = {
     {kind = 'settings', button = 'Open the settings', name = 'The settings of the app open', title = 'The settings of the app', icon = 'sprites/vector/gear.svg'},
     {kind = 'maps', button = 'Open a map', name = 'A map app opens at a place', title = 'A map app at a place', icon = 'plugins/map.svg'},
-    {kind = 'mail', button = 'Write an email', name = 'A new message of the mail app opens', title = 'A new message of the mail app', icon = 'platform/message.svg'},
+    {kind = 'mail', button = 'Write an email', name = 'A new message of the mail app opens', title = 'A new message of the mail app', icon = 'plugins/message.svg'},
 }
 
 function Sharing:enter()
