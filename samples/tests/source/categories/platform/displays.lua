@@ -90,6 +90,14 @@ function Displays.count(number, noun)
     return string.format('%d %s%s', number, noun, number == 1 and '' or 's')
 end
 
+-- The refresh rate of a display, which some platforms, such as browsers, never tell.
+function Displays.rate(refreshRate)
+    if refreshRate == 0 then
+        return 'unknown rate'
+    end
+    return string.format('%g Hz', refreshRate)
+end
+
 -- The displays fit the play area with their places on the desktop, or side by side on platforms whose displays have points of their own.
 function Displays:draw(area)
     local all = display.list()
@@ -124,7 +132,7 @@ function Displays:draw(area)
         local workWidth, workHeight = work.width * fit, work.height * fit
         graphics2d.drawRectOutline({workLeft, workTop, workWidth, workHeight}, 1, Test.muted)
         Test.caption(shown.name ~= '' and shown.name or shown.id, workLeft + 12, workTop + 10, {size = 22, color = Test.ink, maxWidth = workWidth - 24})
-        Test.caption(string.format('%g by %g points at %gx, %g Hz, %s', shown.bounds.width, shown.bounds.height, shown.scale, shown.refreshRate, Displays.count(#shown.modes, 'mode')), workLeft + 12, workTop + 40, {maxWidth = workWidth - 24})
+        Test.caption(string.format('%g by %g points at %gx, %s, %s', shown.bounds.width, shown.bounds.height, shown.scale, Displays.rate(shown.refreshRate), #shown.modes == 0 and 'no modes' or Displays.count(#shown.modes, 'mode')), workLeft + 12, workTop + 40, {maxWidth = workWidth - 24})
         if shows then
             Test.caption('The window is here', workLeft + 12, workTop + workHeight - 34, {color = Test.green, maxWidth = workWidth - 24})
         end
