@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -14,7 +16,7 @@ namespace haylen::graphics2d {
 class PolygonMesh;
 class StrokeBuilder;
 
-// The triangles of the fill and the stroke of a path, kept between draws in the units of the path. Each builds again only when the commands of the path, the size of a pixel or the look of its draw differ from its build before, so a path that draws again unchanged copies them and allocates nothing, also when its fill and its stroke draw at different scales. The vertices are white with the coverage of their point in their alpha, and the fill spans the texture coordinates over the bounds of the path, so a draw only tints and places them.
+// The triangles of the fill and the stroke of a path, kept between draws in the units of the path. It keeps a few builds of each, one for every size of a pixel, fill rule or look of a stroke that the path draws with, and builds again only the least recently drawn one when a draw matches none. So a path that draws again unchanged copies its triangles and allocates nothing, also when it draws at several scales, by both rules or with several strokes in every frame. The vertices are white with the coverage of their point in their alpha, and the fill spans the texture coordinates over the bounds of the path, so a draw only tints and places them.
 class PathTessellation final {
   public:
     struct Triangles {
@@ -32,14 +34,18 @@ class PathTessellation final {
     // The curves of a path stay within this share of a pixel of their lines.
     static constexpr float kFlatness = 0.25F;
 
+    // The builds of the fill and of the stroke that a path keeps.
+    static constexpr std::size_t kBuildsKept = 4;
+
     // The fill resolves its outlines on a grid of this many steps per pixel, and no coordinate of the grid passes the limit.
     static constexpr double kGridSteps = 64.0;
     static constexpr double kGridLimit = 1.0e15;
 
-    // What a fill or a stroke was built from: the revision of the commands, the size of a pixel and the outlines flattened for it.
+    // What a fill or a stroke was built from: the revision of the commands, the size of a pixel and the outlines flattened for it, with the draw that used it last.
     struct Build {
         std::uint64_t revision = 0;
         float pixel = 0.0F;
+        std::uint64_t used = 0;
         Path::Outlines outlines;
         Triangles triangles;
     };
@@ -57,24 +63,34 @@ class PathTessellation final {
         std::vector<float> dashes;
     };
 
+    struct FillBuild {
+        Build build;
+        Path::FillRule rule = Path::FillRule::NonZero;
+    };
+
+    struct StrokeBuild {
+        Build build;
+        StrokeLook look;
+    };
+
     // Takes a new revision when the commands of the path differ from the commands it keeps, which makes every build of an older revision stale.
     void update(const Path& path);
     [[nodiscard]] bool isCurrent(const Build& build, float pixel) const noexcept;
-    void buildFill(Path::FillRule rule, float pixel, PolygonMesh& polygons);
-    [[nodiscard]] bool isLook(const Stroke& stroke, math::Vec2 textureSize) const noexcept;
+    void buildFill(FillBuild& fill, float pixel, PolygonMesh& polygons);
+    void buildStroke(StrokeBuild& stroke, const Stroke& value, float pixel, math::Vec2 textureSize, StrokeBuilder& strokes);
+    [[nodiscard]] static bool isLook(const StrokeLook& look, const Stroke& stroke, math::Vec2 textureSize) noexcept;
 
     std::vector<Path::Verb> verbs;
     std::vector<math::Vec2> points;
     std::vector<Path::Arc> arcs;
     std::uint64_t revision = 0;
+    std::uint64_t draws = 0;
 
-    Build fill;
-    Path::FillRule fillRule = Path::FillRule::NonZero;
+    std::array<FillBuild, kBuildsKept> fillBuilds;
     std::vector<math::Vec2> simplePoints;
     std::vector<std::uint32_t> simpleCounts;
 
-    Build stroke;
-    StrokeLook look;
+    std::array<StrokeBuild, kBuildsKept> strokeBuilds;
 };
 
 } // namespace haylen::graphics2d

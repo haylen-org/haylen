@@ -301,7 +301,7 @@ TEST(PathDrawTest, TintsPlacesAndFlipsTheTrianglesOfAPath) {
     state.resetFrame();
 }
 
-// A path filled and stroked every frame, and one whose commands are given again every frame, draw without allocating once their storage has grown.
+// A path filled and stroked every frame, also at two scales, by both rules and with two strokes, and one whose commands are given again every frame, draw without allocating once their storage has grown.
 TEST(PathDrawTest, DrawsPathsEveryFrameWithoutAllocating) {
     test::EngineFixture fixture;
     Path kept;
@@ -317,6 +317,8 @@ TEST(PathDrawTest, DrawsPathsEveryFrameWithoutAllocating) {
         renderer.beginScreen();
         renderer.fillPath(kept, {.color = math::Color{0.2F, 0.6F, 1.0F, 1.0F}, .rule = Path::FillRule::EvenOdd});
         renderer.strokePath(kept, {.width = 3.0F, .join = Stroke::Join::Round, .dashes = dashes}, {}, math::Transform2D::compose({200.0F, 100.0F}, 0.3F, {1.5F, 1.5F}));
+        renderer.fillPath(kept, {.rule = Path::FillRule::NonZero}, {}, math::Transform2D::compose({300.0F, 100.0F}, 0.0F, {0.25F, 0.25F}));
+        renderer.strokePath(kept, {.width = 1.0F});
         rebuilt.clear();
         rebuilt.moveTo({10.0F, 10.0F});
         rebuilt.quadraticTo({40.0F, 60.0F}, {80.0F, 10.0F});

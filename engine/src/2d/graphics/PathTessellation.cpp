@@ -27,25 +27,36 @@ bool PathTessellation::isCurrent(const Build& build, float pixel) const noexcept
     return build.revision == revision && build.pixel == pixel;
 }
 
+// A draw that matches no build makes the build drawn longest ago again, where a build never made counts as the oldest.
 const PathTessellation::Triangles& PathTessellation::getFill(const Path& path, Path::FillRule rule, float pixel, PolygonMesh& polygons) {
     update(path);
-    if (isCurrent(fill, pixel) && fillRule == rule) {
-        return fill.triangles;
+    ++draws;
+    FillBuild* replaced = &fillBuilds.front();
+    for (FillBuild& kept : fillBuilds) {
+        if (isCurrent(kept.build, pixel) && kept.rule == rule) {
+            kept.build.used = draws;
+            return kept.build.triangles;
+        }
+        if (kept.build.used < replaced->build.used) {
+            replaced = &kept;
+        }
     }
 
-    fill.revision = 0;
-    path.flatten(pixel * kFlatness, fill.outlines);
-    buildFill(rule, pixel, polygons);
-    fill.revision = revision;
-    fill.pixel = pixel;
-    fillRule = rule;
-    return fill.triangles;
+    Build& build = replaced->build;
+    build.revision = 0;
+    path.flatten(pixel * kFlatness, build.outlines);
+    replaced->rule = rule;
+    buildFill(*replaced, pixel, polygons);
+    build.revision = revision;
+    build.pixel = pixel;
+    build.used = draws;
+    return build.triangles;
 }
 
 // Every outline fills as if it closes. The union of the outlines by the rule gives simple outlines and holes that touch at most at corners, whose edges all fade, on a grid fine enough that its steps never show.
-void PathTessellation::buildFill(Path::FillRule rule, float pixel, PolygonMesh& polygons) {
-    Triangles& triangles = fill.triangles;
-    const Path::Outlines& outlines = fill.outlines;
+void PathTessellation::buildFill(FillBuild& fill, float pixel, PolygonMesh& polygons) {
+    Triangles& triangles = fill.build.triangles;
+    const Path::Outlines& outlines = fill.build.outlines;
     triangles.vertices.clear();
     triangles.indices.clear();
     if (outlines.counts.empty()) {
@@ -72,7 +83,7 @@ void PathTessellation::buildFill(Path::FillRule rule, float pixel, PolygonMesh& 
     clipper.PreserveCollinear(false);
     clipper.AddSubject(subjects);
     Clipper2Lib::Paths64 solution;
-    if (!clipper.Execute(Clipper2Lib::ClipType::Union, rule == Path::FillRule::EvenOdd ? Clipper2Lib::FillRule::EvenOdd : Clipper2Lib::FillRule::NonZero, solution)) {
+    if (!clipper.Execute(Clipper2Lib::ClipType::Union, fill.rule == Path::FillRule::EvenOdd ? Clipper2Lib::FillRule::EvenOdd : Clipper2Lib::FillRule::NonZero, solution)) {
         throw std::runtime_error("The outlines of the path could not be resolved into a fill.");
     }
 
@@ -95,33 +106,51 @@ void PathTessellation::buildFill(Path::FillRule rule, float pixel, PolygonMesh& 
     }
 }
 
-bool PathTessellation::isLook(const Stroke& value, math::Vec2 textureSize) const noexcept {
+bool PathTessellation::isLook(const StrokeLook& look, const Stroke& value, math::Vec2 textureSize) noexcept {
     return value.width == look.width && value.join == look.join && value.cap == look.cap && value.miterLimit == look.miterLimit && value.textureMode == look.textureMode && value.textureLength == look.textureLength && textureSize == look.textureSize && value.dashOffset == look.dashOffset && std::ranges::equal(value.dashes, look.dashes);
 }
 
-// Every outline strokes on its own, white and with rows that start at the top, which the draw tints and flips for its texture.
 const PathTessellation::Triangles& PathTessellation::getStroke(const Path& path, const Stroke& value, float pixel, math::Vec2 textureSize, StrokeBuilder& strokes) {
     if (!value.widths.empty() || !value.colors.empty()) {
         throw std::invalid_argument("A stroke of a path takes one width and one color, without widths or colors for each point.");
     }
     update(path);
-    if (isCurrent(stroke, pixel) && isLook(value, textureSize)) {
-        return stroke.triangles;
+    ++draws;
+    StrokeBuild* replaced = &strokeBuilds.front();
+    for (StrokeBuild& kept : strokeBuilds) {
+        if (isCurrent(kept.build, pixel) && isLook(kept.look, value, textureSize)) {
+            kept.build.used = draws;
+            return kept.build.triangles;
+        }
+        if (kept.build.used < replaced->build.used) {
+            replaced = &kept;
+        }
     }
 
-    stroke.revision = 0;
-    path.flatten(pixel * kFlatness, stroke.outlines);
-    Triangles& triangles = stroke.triangles;
+    Build& build = replaced->build;
+    build.revision = 0;
+    path.flatten(pixel * kFlatness, build.outlines);
+    buildStroke(*replaced, value, pixel, textureSize, strokes);
+    build.revision = revision;
+    build.pixel = pixel;
+    build.used = draws;
+    return build.triangles;
+}
+
+// Every outline strokes on its own, white and with rows that start at the top, which the draw tints and flips for its texture.
+void PathTessellation::buildStroke(StrokeBuild& stroke, const Stroke& value, float pixel, math::Vec2 textureSize, StrokeBuilder& strokes) {
+    const Path::Outlines& outlines = stroke.build.outlines;
+    Triangles& triangles = stroke.build.triangles;
     triangles.vertices.clear();
     triangles.indices.clear();
     Stroke white = value;
     white.color = math::Color::white();
     white.texture = {};
     std::size_t first = 0;
-    for (std::size_t outline = 0; outline < stroke.outlines.counts.size(); ++outline) {
-        const std::uint32_t count = stroke.outlines.counts[outline];
-        white.closed = stroke.outlines.closed[outline] != 0;
-        strokes.build(std::span(stroke.outlines.points).subspan(first, count), white, pixel, textureSize, false);
+    for (std::size_t outline = 0; outline < outlines.counts.size(); ++outline) {
+        const std::uint32_t count = outlines.counts[outline];
+        white.closed = outlines.closed[outline] != 0;
+        strokes.build(std::span(outlines.points).subspan(first, count), white, pixel, textureSize, false);
         first += count;
 
         const auto base = static_cast<std::uint32_t>(triangles.vertices.size());
@@ -131,6 +160,7 @@ const PathTessellation::Triangles& PathTessellation::getStroke(const Path& path,
         }
     }
 
+    StrokeLook& look = stroke.look;
     look.width = value.width;
     look.join = value.join;
     look.cap = value.cap;
@@ -140,9 +170,6 @@ const PathTessellation::Triangles& PathTessellation::getStroke(const Path& path,
     look.textureSize = textureSize;
     look.dashOffset = value.dashOffset;
     look.dashes.assign(value.dashes.begin(), value.dashes.end());
-    stroke.revision = revision;
-    stroke.pixel = pixel;
-    return triangles;
 }
 
 } // namespace haylen::graphics2d
