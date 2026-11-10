@@ -65,6 +65,7 @@ CellularAutomaton::Options MapGeneratorsLua::readCaves(lua_State* L, int index) 
     if (lua_isnoneornil(L, index)) {
         return options;
     }
+
     luaL_checktype(L, index, LUA_TTABLE);
     lua::Table::checkFields(L, index, {kCaveFields});
     lua::Table::readField(L, index, "width", options.width);
@@ -82,6 +83,7 @@ DrunkardWalk::Options MapGeneratorsLua::readWalk(lua_State* L, int index) {
     if (lua_isnoneornil(L, index)) {
         return options;
     }
+
     luaL_checktype(L, index, LUA_TTABLE);
     lua::Table::checkFields(L, index, {kWalkFields});
     lua::Table::readField(L, index, "width", options.width);
@@ -97,6 +99,7 @@ Dungeon::Options MapGeneratorsLua::readDungeon(lua_State* L, int index) {
     if (lua_isnoneornil(L, index)) {
         return options;
     }
+
     luaL_checktype(L, index, LUA_TTABLE);
     lua::Table::checkFields(L, index, {kDungeonFields});
     lua::Table::readField(L, index, "method", options.method);
@@ -135,15 +138,19 @@ WaveFunctionCollapse::Rules MapGeneratorsLua::readRules(lua_State* L, int index)
                 lua_pop(L, 4);
             }
         }
+
         lua_pop(L, 1);
     }
+
     lua_pop(L, 1);
 
     std::vector<float> weights;
     lua::Table::readField(L, index, "weights", weights);
+
     for (std::size_t tile = 0; tile < weights.size(); ++tile) {
         rules->setWeight(tile, weights[tile]);
     }
+
     return std::move(*rules);
 }
 
@@ -156,6 +163,7 @@ WaveFunctionCollapse::Options MapGeneratorsLua::readCollapse(lua_State* L, int i
     if (lua_getfield(L, index, "fixed") != LUA_TNIL) {
         options.fixed = lua::Userdata::check<spatial2d::CellGrid>(L, -1);
     }
+
     lua_pop(L, 1);
     return options;
 }
@@ -180,6 +188,7 @@ void MapGeneratorsLua::pushDungeon(lua_State* L, Dungeon::Result result) {
         lua_setfield(L, -2, "height");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     lua_setfield(L, -2, "rooms");
 
     lua_createtable(L, static_cast<int>(result.connections.size()), 0);
@@ -191,6 +200,7 @@ void MapGeneratorsLua::pushDungeon(lua_State* L, Dungeon::Result result) {
         lua_rawseti(L, -2, 2);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     lua_setfield(L, -2, "connections");
 }
 
@@ -199,6 +209,7 @@ void MapGeneratorsLua::pushCollapse(lua_State* L, std::optional<spatial2d::CellG
         lua_pushnil(L);
         return;
     }
+
     lua::Userdata::emplace<spatial2d::CellGrid>(L, std::move(*tiles));
 }
 
@@ -231,6 +242,7 @@ int MapGeneratorsLua::cellularAutomatonStep(lua_State* L) {
         lua::Table::readField(L, 2, "survivalLimit", options.survivalLimit);
         lua::Table::readField(L, 2, "solidBorder", options.solidBorder);
     }
+
     lua::Userdata::emplace<spatial2d::CellGrid>(L, CellularAutomaton::step(grid, options));
     return 1;
 }
@@ -452,6 +464,7 @@ int MapGeneratorsLua::autotileWang(lua_State* L) {
         std::copy_n(wangId.begin(), std::min(wangId.size(), entry.wangId.size()), entry.wangId.begin());
         lua_pop(L, 1);
     }
+
     lua::Userdata::emplace<spatial2d::CellGrid>(L, Autotile::applyWang(colors, set, seed));
     return 1;
 }

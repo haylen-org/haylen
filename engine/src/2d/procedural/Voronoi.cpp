@@ -14,6 +14,7 @@ Voronoi::Voronoi(std::vector<math::Vec2> sites, const math::Rect& area) {
     if (!std::isfinite(area.getLeft()) || !std::isfinite(area.getTop()) || !std::isfinite(area.getRight()) || !std::isfinite(area.getBottom())) {
         throw std::invalid_argument("A Voronoi diagram needs a finite area.");
     }
+
     const Delaunay delaunay(std::move(sites));
     const std::vector<math::Vec2>& points = delaunay.getPoints();
     const std::vector<math::Vec2> corners{area.getMin(), {area.getRight(), area.getTop()}, area.getMax(), {area.getLeft(), area.getBottom()}};
@@ -33,6 +34,7 @@ Voronoi::Voronoi(std::vector<math::Vec2> sites, const math::Rect& area) {
                 break;
             }
         }
+
         cells[index] = std::move(cell);
     }
 }
@@ -48,13 +50,16 @@ std::vector<math::Vec2> Voronoi::clip(const std::vector<math::Vec2>& outline, ma
         const math::Vec2 to = outline[(index + 1) % outline.size()];
         const float fromSide = math::Vec2::dot(from - middle, normal);
         const float toSide = math::Vec2::dot(to - middle, normal);
+
         if (fromSide <= 0.0F) {
             result.push_back(from);
         }
+
         if ((fromSide <= 0.0F) != (toSide <= 0.0F)) {
             result.push_back(from + (to - from) * (fromSide / (fromSide - toSide)));
         }
     }
+
     return result.size() >= 3 ? result : std::vector<math::Vec2>{};
 }
 
@@ -68,6 +73,7 @@ std::vector<math::Vec2> Voronoi::relax(std::vector<math::Vec2> sites, const math
             }
         }
     }
+
     return sites;
 }
 

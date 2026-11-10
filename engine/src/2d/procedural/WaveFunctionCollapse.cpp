@@ -28,6 +28,7 @@ WaveFunctionCollapse::Rules::Rules(std::size_t tiles) : tileCount(tiles), weight
     if (tiles == 0) {
         throw std::invalid_argument("Wave function collapse needs at least one tile.");
     }
+
     for (std::vector<bool>& pairs : allowed) {
         pairs.assign(tiles * tiles, false);
     }
@@ -48,9 +49,11 @@ void WaveFunctionCollapse::Rules::allow(std::size_t first, std::size_t second, D
 
 void WaveFunctionCollapse::Rules::setWeight(std::size_t tile, float weight) {
     requireTile(tile);
+
     if (!(weight >= 0.0F)) {
         throw std::invalid_argument("Tile weights cannot be negative.");
     }
+
     weights[tile] = weight;
 }
 
@@ -79,11 +82,13 @@ WaveFunctionCollapse::Rules WaveFunctionCollapse::Rules::fromSample(const spatia
             if (x + 1 < width || periodic) {
                 rules.allow(tile, static_cast<std::size_t>(sample[{(x + 1) % width, y}]), Direction::Right);
             }
+
             if (y + 1 < height || periodic) {
                 rules.allow(tile, static_cast<std::size_t>(sample[{x, (y + 1) % height}]), Direction::Down);
             }
         }
     }
+
     return rules;
 }
 
@@ -97,6 +102,7 @@ class WaveFunctionCollapse::Solver final {
     Solver(const Rules& rules, const Options& settings) : options(settings), tileCount(rules.getTileCount()), cellCount(static_cast<std::size_t>(settings.width) * static_cast<std::size_t>(settings.height)) {
         for (std::size_t direction = 0; direction < 4; ++direction) {
             propagator[direction].resize(tileCount);
+
             for (std::size_t first = 0; first < tileCount; ++first) {
                 for (std::size_t second = 0; second < tileCount; ++second) {
                     if (rules.isAllowed(first, second, static_cast<Direction>(direction))) {
@@ -105,11 +111,13 @@ class WaveFunctionCollapse::Solver final {
                 }
             }
         }
+
         for (std::size_t tile = 0; tile < tileCount; ++tile) {
             const double weight = static_cast<double>(rules.getWeight(tile));
             weights.push_back(weight);
             weightLogWeights.push_back(weight > 0.0 ? weight * std::log(weight) : 0.0);
         }
+
         wave.resize(cellCount * tileCount);
         compatible.resize(cellCount * tileCount * 4);
         possibleCounts.resize(cellCount);
@@ -121,20 +129,25 @@ class WaveFunctionCollapse::Solver final {
     [[nodiscard]] std::optional<spatial2d::CellGrid> run(math::Random& random) {
         for (int attempt = 0; attempt < options.attempts; ++attempt) {
             reset(random);
+
             if (!constrain()) {
                 return std::nullopt;
             }
+
             while (true) {
                 const std::optional<std::size_t> cell = findLowestEntropy();
                 if (!cell) {
                     return toGrid();
                 }
+
                 collapse(*cell, random);
+
                 if (!propagate()) {
                     break;
                 }
             }
         }
+
         return std::nullopt;
     }
 
@@ -148,21 +161,25 @@ class WaveFunctionCollapse::Solver final {
 
     void reset(math::Random& random) {
         std::fill(wave.begin(), wave.end(), std::uint8_t{1});
+
         for (std::size_t cell = 0; cell < cellCount; ++cell) {
             for (std::size_t tile = 0; tile < tileCount; ++tile) {
                 for (std::size_t direction = 0; direction < 4; ++direction) {
                     compatible[(cell * tileCount + tile) * 4 + direction] = static_cast<std::int32_t>(propagator[(direction + 2) % 4][tile].size());
                 }
             }
+
             possibleCounts[cell] = tileCount;
             noise[cell] = static_cast<double>(random.nextFloat()) * 1e-6;
         }
+
         double total = 0.0;
         double totalLog = 0.0;
         for (std::size_t tile = 0; tile < tileCount; ++tile) {
             total += weights[tile];
             totalLog += weightLogWeights[tile];
         }
+
         std::fill(sumWeights.begin(), sumWeights.end(), total);
         std::fill(sumWeightLogWeights.begin(), sumWeightLogWeights.end(), totalLog);
         stack.clear();
@@ -185,12 +202,14 @@ class WaveFunctionCollapse::Solver final {
                 }
             }
         }
+
         if (options.fixed) {
             const std::span<const std::int32_t> fixed = options.fixed->getValues();
             for (std::size_t cell = 0; cell < cellCount; ++cell) {
                 if (fixed[cell] < 0) {
                     continue;
                 }
+
                 for (std::size_t tile = 0; tile < tileCount; ++tile) {
                     if (tile != static_cast<std::size_t>(fixed[cell])) {
                         ban(cell, tile);
@@ -198,6 +217,7 @@ class WaveFunctionCollapse::Solver final {
                 }
             }
         }
+
         return propagate() && !contradiction;
     }
 
@@ -206,16 +226,21 @@ class WaveFunctionCollapse::Solver final {
         if (possible == 0) {
             return;
         }
+
         possible = 0;
+
         for (std::size_t direction = 0; direction < 4; ++direction) {
             compatible[(cell * tileCount + tile) * 4 + direction] = 0;
         }
+
         stack.emplace_back(static_cast<std::uint32_t>(cell), static_cast<std::uint32_t>(tile));
         sumWeights[cell] -= weights[tile];
         sumWeightLogWeights[cell] -= weightLogWeights[tile];
+
         if (--possibleCounts[cell] == 0) {
             contradiction = true;
         }
+
         if (pending[cell] == 0) {
             pending[cell] = 1;
             changed.push_back(static_cast<std::uint32_t>(cell));
@@ -231,21 +256,25 @@ class WaveFunctionCollapse::Solver final {
         for (const std::uint32_t cell : changed) {
             pending[cell] = 0;
             ++versions[cell];
+
             if (possibleCounts[cell] > 1) {
                 heap.push_back({.entropy = std::log(sumWeights[cell]) - sumWeightLogWeights[cell] / sumWeights[cell] + noise[cell], .cell = cell, .version = versions[cell]});
                 std::push_heap(heap.begin(), heap.end(), &isLater);
             }
         }
+
         changed.clear();
 
         while (!heap.empty()) {
             std::pop_heap(heap.begin(), heap.end(), &isLater);
             const Candidate candidate = heap.back();
             heap.pop_back();
+
             if (candidate.version == versions[candidate.cell]) {
                 return candidate.cell;
             }
         }
+
         return std::nullopt;
     }
 
@@ -256,12 +285,14 @@ class WaveFunctionCollapse::Solver final {
             if (wave[cell * tileCount + tile] == 0) {
                 continue;
             }
+
             chosen = tile;
             target -= weights[tile];
             if (target < 0.0) {
                 break;
             }
         }
+
         for (std::size_t tile = 0; tile < tileCount; ++tile) {
             if (tile != chosen) {
                 ban(cell, tile);
@@ -295,6 +326,7 @@ class WaveFunctionCollapse::Solver final {
                 }
             }
         }
+
         return !contradiction;
     }
 
@@ -305,6 +337,7 @@ class WaveFunctionCollapse::Solver final {
             const auto tile = std::find(first, first + static_cast<std::ptrdiff_t>(tileCount), std::uint8_t{1}) - first;
             grid.set({static_cast<int>(cell % static_cast<std::size_t>(options.width)), static_cast<int>(cell / static_cast<std::size_t>(options.width))}, static_cast<std::int32_t>(tile));
         }
+
         return grid;
     }
 
@@ -335,9 +368,11 @@ std::optional<spatial2d::CellGrid> WaveFunctionCollapse::generate(const Rules& r
     if (options.width < 1 || options.height < 1) {
         throw std::invalid_argument("Wave function collapse needs at least one cell on each side.");
     }
+
     if (options.fixed && (options.fixed->getWidth() != options.width || options.fixed->getHeight() != options.height)) {
         throw std::invalid_argument("The fixed cells must match the size of the output.");
     }
+
     return Solver(rules, options).run(random);
 }
 
@@ -355,14 +390,17 @@ bool WaveFunctionCollapse::isValid(const spatial2d::CellGrid& tiles, const Rules
             if (tile < 0 || static_cast<std::size_t>(tile) >= rules.getTileCount()) {
                 return false;
             }
+
             if ((x + 1 < width || periodic) && !allows(tile, tiles[{(x + 1) % width, y}], Direction::Right)) {
                 return false;
             }
+
             if ((y + 1 < height || periodic) && !allows(tile, tiles[{x, (y + 1) % height}], Direction::Down)) {
                 return false;
             }
         }
     }
+
     return true;
 }
 

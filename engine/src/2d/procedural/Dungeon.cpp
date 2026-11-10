@@ -52,6 +52,7 @@ void Dungeon::connect(std::size_t first, std::size_t second, math::Random& rando
         carveLine(startX, startY, startX, endY, result.grid);
         carveLine(startX, endY, endX, endY, result.grid);
     }
+
     result.connections.emplace_back(first, second);
 }
 
@@ -105,6 +106,7 @@ std::vector<std::size_t> Dungeon::splitLeaf(const Leaf& leaf, const Options& opt
             }
         }
     }
+
     connect(closest.first, closest.second, random, result);
 
     rooms.insert(rooms.end(), others.begin(), others.end());
@@ -133,6 +135,7 @@ void Dungeon::placeRooms(const Options& options, math::Random& random, Result& r
     if (!joined.empty()) {
         joined.front() = true;
     }
+
     for (std::size_t added = 1; added < result.rooms.size(); ++added) {
         std::pair<std::size_t, std::size_t> closest{0, 0};
         long best = std::numeric_limits<long>::max();
@@ -141,6 +144,7 @@ void Dungeon::placeRooms(const Options& options, math::Random& random, Result& r
                 if (!joined[from] || joined[to]) {
                     continue;
                 }
+
                 const long dx = result.rooms[from].getCenterX() - result.rooms[to].getCenterX();
                 const long dy = result.rooms[from].getCenterY() - result.rooms[to].getCenterY();
                 if (dx * dx + dy * dy < best) {
@@ -149,6 +153,7 @@ void Dungeon::placeRooms(const Options& options, math::Random& random, Result& r
                 }
             }
         }
+
         joined[closest.second] = true;
         connect(closest.first, closest.second, random, result);
     }
@@ -158,6 +163,7 @@ Dungeon::Result Dungeon::generate(const Options& options, math::Random& random) 
     if (options.minimumRoomSize < 1 || options.maximumRoomSize < options.minimumRoomSize || options.padding < 0) {
         throw std::invalid_argument("Dungeon rooms need a positive minimum size, a maximum size of at least the minimum and a padding of at least zero.");
     }
+
     const int smallest = options.minimumRoomSize + options.padding * 2;
     if (options.width < smallest || options.height < smallest || (options.method == Method::Bsp && options.minimumLeafSize < smallest)) {
         throw std::invalid_argument("The dungeon and its leaves must fit the smallest room with its padding.");
@@ -169,6 +175,7 @@ Dungeon::Result Dungeon::generate(const Options& options, math::Random& random) 
     } else {
         placeRooms(options, random, result);
     }
+
     return result;
 }
 

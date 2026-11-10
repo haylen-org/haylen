@@ -35,10 +35,12 @@ class PlacementTest : public ::testing::Test {
             const math::Vec2 half = shape.size * 0.5F;
             local = {{-half.x, -half.y}, {half.x, -half.y}, {half.x, half.y}, {-half.x, half.y}};
         }
+
         std::vector<math::Vec2> placed;
         for (const math::Vec2 point : local) {
             placed.push_back(entity.position + turn(shape.center, entity.rotation) + turn(point, shape.rotation + entity.rotation));
         }
+
         return placed;
     }
 
@@ -51,6 +53,7 @@ class PlacementTest : public ::testing::Test {
                 }
             }
         }
+
         return math::Geometry::contains(lhs, rhs.front()) || math::Geometry::contains(rhs, lhs.front());
     }
 };
@@ -75,6 +78,7 @@ TEST_F(PlacementTest, KeepsEveryFootprintApartAndInsideTheArea) {
         EXPECT_GE(center.x - kind.footprint.radius, 0.0F);
         EXPECT_LE(center.y + kind.footprint.radius, 600.0F);
         EXPECT_GE(math::Vec2::distance(center, {400.0F, 300.0F}), 120.0F + kind.footprint.radius + kind.margin);
+
         for (std::size_t other = index + 1; other < result.entities.size(); ++other) {
             const Placement::Kind& otherKind = options.kinds[result.entities[other].kind];
             const math::Vec2 otherCenter = result.entities[other].position + otherKind.footprint.center;
@@ -108,6 +112,7 @@ TEST_F(PlacementTest, KeepsTheWiderGapBetweenKindsOfDifferentSizes) {
             }
         }
     }
+
     EXPECT_EQ(tooClose, 0U);
 }
 
@@ -146,10 +151,12 @@ TEST_F(PlacementTest, MeasuresTheRealShapesOfRectanglesAndPolygons) {
     for (const Placement::Entity& entity : result.entities) {
         placed.push_back(corners(options.kinds[entity.kind].footprint, entity));
         EXPECT_FALSE(overlaps(placed.back(), blocked));
+
         for (const math::Vec2 point : placed.back()) {
             EXPECT_TRUE(point.x >= 0.0F && point.x <= 600.0F && point.y >= 0.0F && point.y <= 400.0F);
         }
     }
+
     for (std::size_t first = 0; first < placed.size(); ++first) {
         for (std::size_t second = first + 1; second < placed.size(); ++second) {
             EXPECT_FALSE(overlaps(placed[first], placed[second])) << first << " " << second;

@@ -46,15 +46,19 @@ class Autotile final {
         if ((mask & 0x05U) == 0x05U) {
             result |= mask & 0x02U;
         }
+
         if ((mask & 0x14U) == 0x14U) {
             result |= mask & 0x08U;
         }
+
         if ((mask & 0x50U) == 0x50U) {
             result |= mask & 0x20U;
         }
+
         if ((mask & 0x41U) == 0x41U) {
             result |= mask & 0x80U;
         }
+
         return static_cast<std::uint8_t>(result);
     }
 
@@ -64,6 +68,7 @@ class Autotile final {
         for (unsigned mask = 0; mask < 256; ++mask) {
             indices[mask] = reduce(mask) == mask ? next++ : std::int8_t{-1};
         }
+
         return indices;
     }
 

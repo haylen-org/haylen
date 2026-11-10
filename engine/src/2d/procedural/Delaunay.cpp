@@ -17,6 +17,7 @@ class Delaunay::Builder final {
             xs[index] = static_cast<double>(sites[index].x);
             ys[index] = -static_cast<double>(sites[index].y);
         }
+
         const std::size_t maxTriangles = count > 2 ? count * 2 - 5 : 0;
         triangles.reserve(maxTriangles * 3);
         halfedges.reserve(maxTriangles * 3);
@@ -40,6 +41,7 @@ class Delaunay::Builder final {
             maxY = std::max(maxY, ys[index]);
             ids[index] = static_cast<std::uint32_t>(index);
         }
+
         const double middleX = (minX + maxX) / 2.0;
         const double middleY = (minY + maxY) / 2.0;
 
@@ -70,6 +72,7 @@ class Delaunay::Builder final {
             if (index == i0 || index == i1) {
                 continue;
             }
+
             const double radius = circumradius(i0, i1, index);
             if (radius < smallest) {
                 i2 = index;
@@ -81,9 +84,11 @@ class Delaunay::Builder final {
             buildLine();
             return;
         }
+
         if (orient(i0, i1, i2) < 0.0) {
             std::swap(i1, i2);
         }
+
         sweep(i0, i1, i2);
     }
 
@@ -147,6 +152,7 @@ class Delaunay::Builder final {
             const double along = xs[index] - xs[0];
             distances[index] = along != 0.0 ? along : ys[index] - ys[0];
         }
+
         sortByDistance();
         double previous = -std::numeric_limits<double>::infinity();
         for (const std::uint32_t id : ids) {
@@ -192,6 +198,7 @@ class Delaunay::Builder final {
                 if (edgeStack.empty()) {
                     break;
                 }
+
                 a = edgeStack.back();
                 edgeStack.pop_back();
                 continue;
@@ -210,6 +217,7 @@ class Delaunay::Builder final {
                 if (edgeStack.empty()) {
                     break;
                 }
+
                 a = edgeStack.back();
                 edgeStack.pop_back();
                 continue;
@@ -227,14 +235,17 @@ class Delaunay::Builder final {
                         hullTri[edge] = a;
                         break;
                     }
+
                     edge = hullPrev[edge];
                 } while (edge != hullStart);
             }
+
             link(a, hbl);
             link(opposite, halfedges[ar]);
             link(ar, static_cast<std::int32_t>(bl));
             edgeStack.push_back(b0 + (opposite + 1) % 3);
         }
+
         return ar;
     }
 
@@ -252,6 +263,7 @@ class Delaunay::Builder final {
         for (std::size_t index = 0; index < count; ++index) {
             distances[index] = distanceSquared(xs[index], ys[index], centerX, centerY);
         }
+
         sortByDistance();
 
         hullStart = i0;
@@ -278,8 +290,10 @@ class Delaunay::Builder final {
             if (k > 0 && std::fabs(x - previousX) <= kEpsilon && std::fabs(y - previousY) <= kEpsilon) {
                 continue;
             }
+
             previousX = x;
             previousY = y;
+
             if (i == i0 || i == i1 || i == i2) {
                 continue;
             }
@@ -294,6 +308,7 @@ class Delaunay::Builder final {
                     break;
                 }
             }
+
             start = hullPrev[start];
             std::size_t e = start;
             bool visible = true;
@@ -304,6 +319,7 @@ class Delaunay::Builder final {
                     break;
                 }
             }
+
             if (!visible) {
                 continue;
             }
@@ -372,6 +388,7 @@ Delaunay::Delaunay(std::vector<math::Vec2> sites) : points(std::move(sites)) {
     if (!std::ranges::all_of(points, [](math::Vec2 point) { return std::isfinite(point.x) && std::isfinite(point.y); })) {
         throw std::invalid_argument("A Delaunay triangulation needs finite points.");
     }
+
     Builder builder(points);
     builder.run();
     triangles = std::move(builder.triangles);
@@ -388,12 +405,14 @@ void Delaunay::collectNeighbors() {
         neighbors[from].push_back(to);
         neighbors[to].push_back(from);
     }
+
     if (triangles.empty()) {
         for (std::size_t index = 1; index < hull.size(); ++index) {
             neighbors[hull[index - 1]].push_back(hull[index]);
             neighbors[hull[index]].push_back(hull[index - 1]);
         }
     }
+
     for (std::vector<std::uint32_t>& list : neighbors) {
         std::sort(list.begin(), list.end());
         list.erase(std::unique(list.begin(), list.end()), list.end());
@@ -427,9 +446,11 @@ std::uint32_t Delaunay::findNearest(math::Vec2 position, std::uint32_t start) co
                 next = neighbor;
             }
         }
+
         if (next == current) {
             return current;
         }
+
         current = next;
     }
 }

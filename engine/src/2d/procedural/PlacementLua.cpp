@@ -51,6 +51,7 @@ Placement::Options PlacementLua::readOptions(lua_State* L, int index) {
         entry.footprint = readShape(L, lua_gettop(L));
         lua_pop(L, 2);
     }
+
     lua_pop(L, 1);
 
     if (lua_getfield(L, index, "forbidden") != LUA_TNIL) {
@@ -62,6 +63,7 @@ Placement::Options PlacementLua::readOptions(lua_State* L, int index) {
             lua_pop(L, 1);
         }
     }
+
     lua_pop(L, 1);
     return options;
 }
@@ -82,6 +84,7 @@ void PlacementLua::pushResult(lua_State* L, const Placement::Result& result) {
         lua_setfield(L, -2, "rotation");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     lua_setfield(L, -2, "entities");
 
     lua_createtable(L, static_cast<int>(result.missing.size()), 0);
@@ -89,6 +92,7 @@ void PlacementLua::pushResult(lua_State* L, const Placement::Result& result) {
         lua_pushinteger(L, static_cast<lua_Integer>(result.missing[kind]));
         lua_rawseti(L, -2, static_cast<lua_Integer>(kind + 1));
     }
+
     lua_setfield(L, -2, "missing");
 }
 

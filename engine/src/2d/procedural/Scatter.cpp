@@ -53,6 +53,7 @@ std::vector<math::Vec2> Scatter::placeRandom(const Region& region, const Options
             points.push_back(point);
         }
     }
+
     return points;
 }
 
@@ -63,6 +64,7 @@ std::vector<math::Vec2> Scatter::placeGrid(const Region& region, const Options& 
     if (!(columns > 0.0F && rows > 0.0F)) {
         return {};
     }
+
     requirePointCount(static_cast<double>(columns) * rows);
     const float reach = options.jitter * options.spacing * 0.5F;
 
@@ -76,6 +78,7 @@ std::vector<math::Vec2> Scatter::placeGrid(const Region& region, const Options& 
             }
         }
     }
+
     return points;
 }
 
@@ -86,6 +89,7 @@ std::vector<math::Vec2> Scatter::placePoisson(const Region& region, const Option
         poisson.maximumDistance = options.maximumSpacing;
         poisson.distance = [&](math::Vec2 point) { return math::Math::lerp(options.maximumSpacing, options.spacing, math::Math::saturate(options.densityMap(point))); };
     }
+
     return math::PoissonDisk::sample(poisson, random);
 }
 
@@ -105,9 +109,11 @@ std::vector<Scatter::Point> Scatter::generate(const Region& region, const Option
     if (!(options.density >= 0.0F) || !std::isfinite(options.density) || !(options.spacing > 0.0F) || !std::isfinite(options.spacing)) {
         throw std::invalid_argument("Scattering needs a finite density of at least zero and a finite positive spacing.");
     }
+
     if (options.method == Method::Poisson && options.densityMap && !(options.maximumSpacing >= options.spacing && std::isfinite(options.maximumSpacing))) {
         throw std::invalid_argument("Poisson scattering with a density map needs a finite \"maximumSpacing\" of at least the spacing.");
     }
+
     if (!options.layers.empty() && !options.biome) {
         throw std::invalid_argument("Scatter layers need a biome function.");
     }
@@ -116,6 +122,7 @@ std::vector<Scatter::Point> Scatter::generate(const Region& region, const Option
     if (!options.weights.empty()) {
         types.emplace(options.weights);
     }
+
     std::vector<math::WeightedChoice> layerTypes;
     for (const Layer& layer : options.layers) {
         layerTypes.emplace_back(layer.weights);
@@ -135,6 +142,7 @@ std::vector<Scatter::Point> Scatter::generate(const Region& region, const Option
             result.push_back({position, static_cast<std::uint32_t>(layerTypes[index].pick(random))});
         }
     }
+
     return result;
 }
 

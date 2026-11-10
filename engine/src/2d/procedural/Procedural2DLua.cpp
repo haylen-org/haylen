@@ -43,10 +43,12 @@ math::Random& Procedural2DLua::readGenerator(lua_State* L, int index, math::Rand
     if (lua_isnoneornil(L, index)) {
         return local;
     }
+
     const int options = lua_absindex(L, index);
     if (lua_getfield(L, options, "random") != LUA_TNIL) {
         return lua::Userdata::check<math::Random>(L, -1);
     }
+
     lua_pop(L, 1);
     lua_Integer seed = 0;
     lua::Table::readField(L, options, "seed", seed);
@@ -64,12 +66,14 @@ Region Procedural2DLua::readTiledObject(lua_State* L, int table) {
     lua::Table::readField(L, table, "height", object.size.y);
     lua::Table::readField(L, table, "rotation", object.rotation);
     lua::Table::readField(L, table, "points", object.points);
+
     for (int kind = 0; kind <= static_cast<int>(tiled::Object::Shape::Tile); ++kind) {
         if (tiled::Object::shapeName(static_cast<tiled::Object::Shape>(kind)) == shape) {
             object.shape = static_cast<tiled::Object::Shape>(kind);
             return Region::fromObject(object);
         }
     }
+
     throw std::invalid_argument("Unknown Tiled object shape \"" + shape + "\".");
 }
 
@@ -78,21 +82,25 @@ Region Procedural2DLua::readRegion(lua_State* L, int index) {
     if (const Region* region = lua::Userdata::test<Region>(L, table)) {
         return *region;
     }
+
     if (const math::Rect* rect = lua::Userdata::test<math::Rect>(L, table)) {
         return Region::rect(*rect);
     }
+
     luaL_checktype(L, table, LUA_TTABLE);
 
     if (lua_getfield(L, table, "shape") == LUA_TSTRING) {
         lua_pop(L, 1);
         return readTiledObject(L, table);
     }
+
     lua_pop(L, 1);
     if (lua_getfield(L, table, "polygon") != LUA_TNIL) {
         Region region = Region::polygon(math::PolygonLua::readShape(L, -1));
         lua_pop(L, 1);
         return region;
     }
+
     lua_pop(L, 1);
     if (lua_getfield(L, table, "radius") != LUA_TNIL) {
         lua_pop(L, 1);
@@ -105,6 +113,7 @@ Region Procedural2DLua::readRegion(lua_State* L, int index) {
         lua::Table::readField(L, table, "innerRadius", innerRadius);
         return Region::ring(center, innerRadius, radius);
     }
+
     lua_pop(L, 1);
     return Region::rect(lua::Stack::read<math::Rect>(L, table));
 }
@@ -160,16 +169,20 @@ Scatter::Options Procedural2DLua::readScatter(lua_State* L, int index, bool asyn
         if (type != LUA_TNIL && type != LUA_TFUNCTION && type != LUA_TTABLE) {
             throw std::invalid_argument(std::string("The \"") + field + "\" option takes a function or a noise table.");
         }
+
         if (type == LUA_TFUNCTION && asynchronous) {
             throw std::invalid_argument(std::string("Asynchronous scattering takes a noise table for \"") + field + "\" instead of a function.");
         }
+
         if (type == LUA_TFUNCTION) {
             *map = readCallback(L, -1);
             continue;
         }
+
         if (type == LUA_TTABLE) {
             *map = readNoise(L, lua_gettop(L), normalized);
         }
+
         lua_pop(L, 1);
     }
 
@@ -182,6 +195,7 @@ Scatter::Options Procedural2DLua::readScatter(lua_State* L, int index, bool asyn
             lua_pop(L, 1);
         }
     }
+
     lua_pop(L, 1);
 
     if (lua_getfield(L, index, "layers") != LUA_TNIL) {
@@ -198,6 +212,7 @@ Scatter::Options Procedural2DLua::readScatter(lua_State* L, int index, bool asyn
             lua_pop(L, 1);
         }
     }
+
     lua_pop(L, 1);
     return options;
 }
@@ -342,6 +357,7 @@ int Procedural2DLua::delaunayFindNearest(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     if (lua_isnoneornil(L, 3)) {
         lua::Stack::push(L, triangulation.findNearest(position) + 1);
         return 1;

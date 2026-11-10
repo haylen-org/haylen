@@ -54,6 +54,7 @@ class Procedural2DLua final {
                 promise.reject(result.error);
                 return;
             }
+
             // Every await of the promise pushes the result, so each one receives its own copy.
             auto value = std::make_shared<const Value>(std::move(*result.value));
             promise.resolveWith([push, value](lua_State* state) { push(state, *value); });
@@ -85,6 +86,7 @@ class Procedural2DLua final {
         if (!lua_isnil(L, -1)) {
             return;
         }
+
         lua_pop(L, 1);
         push();
         lua::Userdata::setField(L, 1, name, -1);

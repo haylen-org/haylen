@@ -18,10 +18,12 @@ std::uint8_t Autotile::getMask4(const spatial2d::CellGrid& terrain, spatial2d::C
     unsigned mask = 0;
     for (std::size_t side = 0; side < 4; ++side) {
         const spatial2d::Cell offset = kOffsets[side * 2];
+
         if (matches(terrain, {cell.x + offset.x, cell.y + offset.y}, value, edgesMatch)) {
             mask |= 1U << side;
         }
     }
+
     return static_cast<std::uint8_t>(mask);
 }
 
@@ -33,6 +35,7 @@ std::uint8_t Autotile::getMask8(const spatial2d::CellGrid& terrain, spatial2d::C
             mask |= 1U << bit;
         }
     }
+
     return reduce(mask);
 }
 
@@ -49,6 +52,7 @@ spatial2d::CellGrid Autotile::apply4(const spatial2d::CellGrid& terrain, std::in
             }
         }
     }
+
     return result;
 }
 
@@ -61,6 +65,7 @@ spatial2d::CellGrid Autotile::apply8(const spatial2d::CellGrid& terrain, std::in
             }
         }
     }
+
     return result;
 }
 
@@ -78,6 +83,7 @@ std::int32_t Autotile::pickWangTile(const tiled::WangSet& set, const std::array<
         for (std::size_t position = 0; position < wanted.size() && matching; ++position) {
             matching = wanted[position] == kAny || wanted[position] == tile.wangId[position];
         }
+
         if (!matching) {
             continue;
         }
@@ -89,6 +95,7 @@ std::int32_t Autotile::pickWangTile(const tiled::WangSet& set, const std::array<
             chosen = static_cast<std::int32_t>(tile.tileId);
         }
     }
+
     return chosen;
 }
 
@@ -121,14 +128,17 @@ spatial2d::CellGrid Autotile::applyWang(const spatial2d::CellGrid& colors, const
                 if (color == 0) {
                     continue;
                 }
+
                 wanted[0] = colorAt(colors, {x, y - 1}) == color ? color : std::uint8_t{0};
                 wanted[2] = colorAt(colors, {x + 1, y}) == color ? color : std::uint8_t{0};
                 wanted[4] = colorAt(colors, {x, y + 1}) == color ? color : std::uint8_t{0};
                 wanted[6] = colorAt(colors, {x - 1, y}) == color ? color : std::uint8_t{0};
             }
+
             result.set({x, y}, pickWangTile(set, wanted, x, y, seed));
         }
     }
+
     return result;
 }
 

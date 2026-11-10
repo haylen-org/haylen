@@ -33,6 +33,7 @@ spatial2d::CellGrid DrunkardWalk::generate(const Options& options, math::Random&
         walker.x = std::clamp(walker.x + move.x, 1, options.width - 2);
         walker.y = std::clamp(walker.y + move.y, 1, options.height - 2);
     }
+
     return grid;
 }
 

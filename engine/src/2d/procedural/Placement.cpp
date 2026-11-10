@@ -23,6 +23,7 @@ class Placement::Placer final {
             bound = std::max(bound, getBound(kind.footprint));
             spacing = std::max(spacing, kind.spacing);
         }
+
         const float reach = bound * 2.0F + spacing;
 
         // A cell spans at least the longer side divided by the most cells on a side, so even a long thin area keeps the grid within its bound of cells.
@@ -63,6 +64,7 @@ class Placement::Placer final {
             entities.push_back({.kind = kindIndex, .position = position, .rotation = angle});
             return true;
         }
+
         return false;
     }
 
@@ -92,6 +94,7 @@ class Placement::Placer final {
                 extent = std::max(extent, point.getLength());
             }
         }
+
         return shape.center.getLength() + extent;
     }
 
@@ -114,6 +117,7 @@ class Placement::Placer final {
         const float turned = shape.rotation + angle;
         if (shape.kind == Shape::Kind::Rectangle) {
             const math::Vec2 half = shape.size * 0.5F;
+
             for (const math::Vec2 corner : {math::Vec2{-half.x, -half.y}, math::Vec2{half.x, -half.y}, math::Vec2{half.x, half.y}, math::Vec2{-half.x, half.y}}) {
                 points.push_back(solid.center + turn(corner, turned));
             }
@@ -122,6 +126,7 @@ class Placement::Placer final {
                 points.push_back(solid.center + turn(point, turned));
             }
         }
+
         solid.count = static_cast<std::uint32_t>(points.size()) - solid.first;
         measure(solid);
         return solid;
@@ -133,6 +138,7 @@ class Placement::Placer final {
             solid.bound = math::Vec2::distance(solid.center, solid.anchor) + solid.radius;
             return;
         }
+
         solid.bound = 0.0F;
         for (const math::Vec2 point : getPoints(solid)) {
             solid.bound = std::max(solid.bound, math::Vec2::distance(point, solid.anchor));
@@ -154,6 +160,7 @@ class Placement::Placer final {
         if (!isInside(candidate)) {
             return false;
         }
+
         for (const Solid& area : forbidden) {
             if (!isApart(candidate, area, kind.margin)) {
                 return false;
@@ -172,6 +179,7 @@ class Placement::Placer final {
                 }
             }
         }
+
         return true;
     }
 
@@ -180,6 +188,7 @@ class Placement::Placer final {
         if (solid.circle) {
             return solid.center.x - solid.radius >= area.getLeft() && solid.center.x + solid.radius <= area.getRight() && solid.center.y - solid.radius >= area.getTop() && solid.center.y + solid.radius <= area.getBottom();
         }
+
         return std::ranges::all_of(getPoints(solid), [&area](math::Vec2 point) { return point.x >= area.getLeft() && point.x <= area.getRight() && point.y >= area.getTop() && point.y <= area.getBottom(); });
     }
 
@@ -188,9 +197,11 @@ class Placement::Placer final {
         if (math::Vec2::distance(first.anchor, second.anchor) >= first.bound + second.bound + gap) {
             return true;
         }
+
         if (first.circle && second.circle) {
             return math::Vec2::distance(first.center, second.center) >= first.radius + second.radius + gap;
         }
+
         if (first.circle || second.circle) {
             const Solid& round = first.circle ? first : second;
             const std::span<const math::Vec2> outline = getPoints(first.circle ? second : first);
@@ -202,6 +213,7 @@ class Placement::Placer final {
         if (math::Geometry::contains(lhs, rhs.front()) || math::Geometry::contains(rhs, lhs.front()) || crosses(lhs, rhs)) {
             return false;
         }
+
         return std::ranges::all_of(lhs, [&rhs, gap](math::Vec2 point) { return getDistance(rhs, point) >= gap; }) && std::ranges::all_of(rhs, [&lhs, gap](math::Vec2 point) { return getDistance(lhs, point) >= gap; });
     }
 
@@ -210,6 +222,7 @@ class Placement::Placer final {
         for (std::size_t index = 0; index < outline.size(); ++index) {
             nearest = std::min(nearest, math::Geometry::distanceToSegment({outline[index], outline[(index + 1) % outline.size()]}, point));
         }
+
         return nearest;
     }
 
@@ -222,6 +235,7 @@ class Placement::Placer final {
                 }
             }
         }
+
         return false;
     }
 
@@ -283,6 +297,7 @@ void Placement::validate(const Options& options) {
     if (!(area.width > 0.0F && area.height > 0.0F) || !std::isfinite(area.x) || !std::isfinite(area.y) || !std::isfinite(area.width) || !std::isfinite(area.height)) {
         throw std::invalid_argument("A placement needs a finite area with a positive width and height.");
     }
+
     if (options.attempts < 1) {
         throw std::invalid_argument("A placement needs at least one attempt for each entity.");
     }
@@ -290,14 +305,18 @@ void Placement::validate(const Options& options) {
     std::size_t total = 0;
     for (const Kind& kind : options.kinds) {
         validateShape(kind.footprint);
+
         if (!(kind.spacing >= 0.0F && kind.margin >= 0.0F) || !std::isfinite(kind.spacing) || !std::isfinite(kind.margin)) {
             throw std::invalid_argument("A placement kind needs a finite spacing and margin of zero or more.");
         }
+
         total += std::min(kind.count, kMaxEntities + 1);
     }
+
     if (total > kMaxEntities) {
         throw std::invalid_argument("A placement places at most 1048576 entities.");
     }
+
     for (const Shape& shape : options.forbidden) {
         validateShape(shape);
     }
@@ -312,17 +331,20 @@ Placement::Result Placement::place(const Options& options, math::Random& random)
     for (std::size_t kind = 0; kind < options.kinds.size(); ++kind) {
         order.insert(order.end(), options.kinds[kind].count, static_cast<std::uint32_t>(kind));
     }
+
     if (options.order == Order::Shuffled) {
         random.shuffle(std::span(order));
     }
 
     Placer placer(options, random);
     result.entities.reserve(order.size());
+
     for (const std::uint32_t kind : order) {
         if (!placer.place(kind, result.entities)) {
             ++result.missing[kind];
         }
     }
+
     return result;
 }
 

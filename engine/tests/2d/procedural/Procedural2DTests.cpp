@@ -30,6 +30,7 @@ class Procedural2DTest : public ::testing::Test {
                 floors.set({x, y}, grid[{x, y}] == 0 ? 1 : 0);
             }
         }
+
         spatial2d::CellGrid labels(grid.getWidth(), grid.getHeight());
         return spatial2d::ConnectedComponents::label(floors, {.background = 0}, labels);
     }
@@ -46,15 +47,18 @@ TEST_F(Procedural2DTest, ScatterCountsMatchTheAreaTimesTheDensity) {
         Region::ring({0.0F, 0.0F}, 200.0F, 400.0F),
         Region::polygon(std::vector<std::vector<math::Vec2>>{{{0.0F, 0.0F}, {800.0F, 0.0F}, {400.0F, 600.0F}}}),
     };
+
     for (const Region& region : regions) {
         math::Random random(4);
         const std::vector<Scatter::Point> points = Scatter::generate(region, {.density = 0.002F}, random);
         const float expected = region.getArea() * 0.002F;
         EXPECT_NEAR(static_cast<float>(points.size()), expected, 1.0F);
+
         for (const Scatter::Point& point : points) {
             EXPECT_TRUE(region.contains(point.position));
         }
     }
+
     EXPECT_NEAR(Region::ring({0.0F, 0.0F}, 200.0F, 400.0F).getArea(), math::Math::kPi * (160000.0F - 40000.0F), 1.0F);
     EXPECT_NEAR(regions[3].getArea(), 240000.0F, 1.0F);
 }
@@ -75,6 +79,7 @@ TEST_F(Procedural2DTest, RandomPolygonPointsAreUniform) {
         ASSERT_TRUE(region.contains(point));
         left += point.x < 100.0F ? 1 : 0;
     }
+
     EXPECT_NEAR(static_cast<float>(left) / 20000.0F, 10000.0F / 16400.0F, 0.02F);
     EXPECT_THROW((void)Region::polygon(std::vector<std::vector<math::Vec2>>{{{0.0F, 0.0F}, {1.0F, 1.0F}, {2.0F, 2.0F}}}), std::invalid_argument);
 }
@@ -89,8 +94,10 @@ TEST_F(Procedural2DTest, ScatterMethodsExclusionsAndWeights) {
 
     const std::vector<Scatter::Point> poisson = Scatter::generate(area, {.method = Scatter::Method::Poisson, .spacing = 30.0F, .exclusions = {Region::circle({200.0F, 200.0F}, 80.0F)}}, random);
     EXPECT_GT(poisson.size(), 50U);
+
     for (std::size_t first = 0; first < poisson.size(); ++first) {
         EXPECT_GE(math::Vec2::distance(poisson[first].position, {200.0F, 200.0F}), 80.0F);
+
         for (std::size_t second = first + 1; second < poisson.size(); ++second) {
             EXPECT_GE(math::Vec2::distance(poisson[first].position, poisson[second].position), 30.0F - 1e-3F);
         }
@@ -126,6 +133,7 @@ TEST_F(Procedural2DTest, ScatterRefusesSettingsThatNeverFinish) {
     } catch (const std::invalid_argument& error) {
         EXPECT_STREQ(error.what(), "Poisson scattering with a density map needs a finite \"maximumSpacing\" of at least the spacing.");
     }
+
     poisson.maximumSpacing = 20.0F;
     EXPECT_FALSE(Scatter::generate(area, poisson, random).empty());
 }
@@ -150,6 +158,7 @@ TEST_F(Procedural2DTest, BiomeLayersAndDensityMapsShapeTheScatter) {
     for (const Scatter::Point& point : Scatter::generate(area, dense, random)) {
         EXPECT_LT(point.position.x, 200.0F);
     }
+
     dense.method = Scatter::Method::Poisson;
     dense.spacing = 10.0F;
     dense.maximumSpacing = 40.0F;
@@ -193,6 +202,7 @@ TEST_F(Procedural2DTest, CavesAreDeterministicWithSolidBorders) {
         EXPECT_EQ((cave[{x, 0}]), CellularAutomaton::kWall);
         EXPECT_EQ((cave[{x, 31}]), CellularAutomaton::kWall);
     }
+
     const std::size_t floors = countValue(cave, CellularAutomaton::kFloor);
     EXPECT_GT(floors, 48U * 32U / 4U);
     EXPECT_LT(floors, 48U * 32U * 3U / 4U);
@@ -209,10 +219,12 @@ TEST_F(Procedural2DTest, DrunkardWalkOpensTheRequestedShare) {
     const spatial2d::CellGrid map = DrunkardWalk::generate({.width = 40, .height = 30, .coverage = 0.35F, .walkers = 3}, random);
     EXPECT_EQ(countValue(map, DrunkardWalk::kFloor), static_cast<std::size_t>(std::ceil(38.0F * 28.0F * 0.35F)));
     EXPECT_EQ(countFloorRegions(map), 1U);
+
     for (int y = 0; y < 30; ++y) {
         EXPECT_EQ((map[{0, y}]), DrunkardWalk::kWall);
         EXPECT_EQ((map[{39, y}]), DrunkardWalk::kWall);
     }
+
     EXPECT_THROW((void)DrunkardWalk::generate({.width = 2}, random), std::invalid_argument);
 }
 

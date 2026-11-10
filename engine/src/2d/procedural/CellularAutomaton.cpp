@@ -16,11 +16,13 @@ int CellularAutomaton::countWalls(const spatial2d::CellGrid& grid, spatial2d::Ce
             if (neighbor == cell) {
                 continue;
             }
+
             if (grid.contains(neighbor) ? grid[neighbor] == kWall : solidBorder) {
                 ++walls;
             }
         }
     }
+
     return walls;
 }
 
@@ -34,6 +36,7 @@ spatial2d::CellGrid CellularAutomaton::step(const spatial2d::CellGrid& grid, con
             next.set(cell, (options.solidBorder && isBorder(cell, grid.getWidth(), grid.getHeight())) || wall ? kWall : kFloor);
         }
     }
+
     return next;
 }
 
@@ -49,6 +52,7 @@ spatial2d::CellGrid CellularAutomaton::generate(const Options& options, math::Ra
     for (int iteration = 0; iteration < options.steps; ++iteration) {
         grid = step(grid, options);
     }
+
     return grid;
 }
 

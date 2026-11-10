@@ -20,6 +20,7 @@ Maze::Maze(int columns, int rows) : width(columns), height(rows) {
     if (columns < 1 || rows < 1 || (2 * std::int64_t{columns} + 1) * (2 * std::int64_t{rows} + 1) > std::numeric_limits<std::int32_t>::max()) {
         throw std::invalid_argument("A maze needs at least one cell on each side and a tile grid that fits in 32-bit cell indices.");
     }
+
     openings.assign(static_cast<std::size_t>(columns) * static_cast<std::size_t>(rows), 0);
 }
 
@@ -56,6 +57,7 @@ std::uint8_t Maze::getOpenings(int x, int y) const {
     if (!contains(x, y)) {
         throw std::out_of_range("The cell is outside the maze.");
     }
+
     return openings[indexOf(x, y)];
 }
 
@@ -65,6 +67,7 @@ void Maze::open(int x, int y, std::uint8_t side) {
     if (!contains(x, y) || !contains(nextX, nextY) || std::popcount(side) != 1 || side > kWest) {
         throw std::invalid_argument("Only walls between two cells of the maze can open.");
     }
+
     std::uint8_t& cell = openings[indexOf(x, y)];
     std::uint8_t& neighbor = openings[indexOf(nextX, nextY)];
     cell = static_cast<std::uint8_t>(cell | side);
@@ -76,6 +79,7 @@ std::size_t Maze::getPassageCount() const noexcept {
     for (const std::uint8_t cell : openings) {
         sides += static_cast<std::size_t>(std::popcount(cell));
     }
+
     return sides / 2;
 }
 
@@ -88,11 +92,13 @@ spatial2d::CellGrid Maze::toGrid() const {
             if ((cell & kEast) != 0) {
                 grid.set({x * 2 + 2, y * 2 + 1}, 0);
             }
+
             if ((cell & kSouth) != 0) {
                 grid.set({x * 2 + 1, y * 2 + 2}, 0);
             }
         }
     }
+
     return grid;
 }
 
@@ -118,6 +124,7 @@ void Maze::carveBacktracker(math::Random& random) {
             path.pop_back();
             continue;
         }
+
         const std::uint8_t side = choices[static_cast<std::size_t>(random.range(0, static_cast<int>(count) - 1))];
         open(x, y, side);
         visited[indexOf(x + stepX(side), y + stepY(side))] = true;
@@ -132,6 +139,7 @@ void Maze::carvePrim(math::Random& random) {
     // clang-format off
     const auto visit = [&](int x, int y) {
         visited[indexOf(x, y)] = true;
+
         for (const std::uint8_t side : kSides) {
             if (contains(x + stepX(side), y + stepY(side))) {
                 frontier.push_back({x, y, side});
@@ -164,11 +172,13 @@ void Maze::carveKruskal(math::Random& random) {
             if (x + 1 < width) {
                 walls.push_back({x, y, kEast});
             }
+
             if (y + 1 < height) {
                 walls.push_back({x, y, kSouth});
             }
         }
     }
+
     random.shuffle(std::span<Wall>(walls));
 
     spatial2d::UnionFind sets(openings.size());

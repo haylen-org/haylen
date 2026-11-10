@@ -25,6 +25,7 @@ class TilingTest : public ::testing::Test {
         for (std::size_t index = 0; index < count; ++index) {
             points.push_back({random.range(0.0F, 1000.0F), random.range(0.0F, 1000.0F)});
         }
+
         return points;
     }
 
@@ -35,6 +36,7 @@ class TilingTest : public ::testing::Test {
                 best = std::min(best, math::Vec2::distance(sites[first], sites[second]));
             }
         }
+
         return best;
     }
 };
@@ -64,6 +66,7 @@ TEST_F(TilingTest, DelaunayTrianglesHaveEmptyCircumcircles) {
         if (halfedges[edge] < 0) {
             continue;
         }
+
         const auto twin = static_cast<std::size_t>(halfedges[edge]);
         EXPECT_EQ(static_cast<std::size_t>(halfedges[twin]), edge);
         EXPECT_EQ(triangles[edge], triangles[twin - twin % 3 + (twin + 1) % 3]);
@@ -105,6 +108,7 @@ TEST_F(TilingTest, VoronoiCellsTileTheBoundsAroundTheirSites) {
         EXPECT_TRUE(math::Geometry::contains(cell, points[index]));
         total += math::Geometry::signedArea(cell);
     }
+
     EXPECT_NEAR(total, bounds.getArea(), 10.0F);
 
     // Lloyd relaxation spreads the points out, so the closest pair moves apart.
@@ -129,6 +133,7 @@ TEST_F(TilingTest, WaveFunctionCollapseFollowsTheRules) {
         rules.allow(1, 2, direction);
         rules.allow(2, 1, direction);
     }
+
     EXPECT_TRUE(rules.isAllowed(1, 0, WaveFunctionCollapse::Direction::Left));
     EXPECT_FALSE(rules.isAllowed(0, 2, WaveFunctionCollapse::Direction::Up));
 
@@ -166,6 +171,7 @@ TEST_F(TilingTest, WaveFunctionCollapseLearnsFromASample) {
             sample.set({x, y}, x % 3);
         }
     }
+
     const WaveFunctionCollapse::Rules rules = WaveFunctionCollapse::Rules::fromSample(sample, true);
     EXPECT_EQ(rules.getTileCount(), 3U);
     EXPECT_TRUE(rules.isAllowed(2, 0, WaveFunctionCollapse::Direction::Right));
@@ -180,6 +186,7 @@ TEST_F(TilingTest, WaveFunctionCollapseLearnsFromASample) {
     for (int x = 1; x < 12; ++x) {
         EXPECT_EQ((stripes[{x, 0}]), (stripes[{x - 1, 0}] + 1) % 3);
     }
+
     EXPECT_FALSE(WaveFunctionCollapse::isValid(sample, WaveFunctionCollapse::Rules(2)));
 
     spatial2d::CellGrid negative(1, 1, -1);
@@ -192,6 +199,7 @@ TEST_F(TilingTest, AutotileMasksFollowTheNeighbors) {
     for (const spatial2d::Cell cell : {spatial2d::Cell{1, 0}, spatial2d::Cell{0, 1}, spatial2d::Cell{1, 1}, spatial2d::Cell{2, 1}, spatial2d::Cell{1, 2}}) {
         terrain.set(cell, 1);
     }
+
     EXPECT_EQ(Autotile::getMask4(terrain, {1, 1}), 15);
     EXPECT_EQ(Autotile::getMask4(terrain, {1, 0}), 1 | 4);
     EXPECT_EQ(Autotile::getMask4(terrain, {1, 0}, false), 4);
@@ -211,6 +219,7 @@ TEST_F(TilingTest, AutotileMasksFollowTheNeighbors) {
             indices.insert(index);
         }
     }
+
     EXPECT_EQ(indices.size(), 47U);
     EXPECT_EQ(Autotile::getBlobIndex(0), 0);
     EXPECT_EQ(Autotile::getBlobIndex(255), 46);

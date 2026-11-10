@@ -28,6 +28,7 @@ Region Region::ring(math::Vec2 middle, float inner, float outer) {
     if (inner < 0.0F || inner > outer) {
         throw std::invalid_argument("A ring needs an inner radius between zero and its outer radius.");
     }
+
     Region region;
     region.kind = inner > 0.0F ? Kind::Ring : Kind::Circle;
     region.center = middle;
@@ -49,6 +50,7 @@ Region Region::polygon(std::span<const std::vector<math::Vec2>> outlines) {
         region.triangles.push_back({triangle[0], triangle[1], triangle[2]});
         region.cumulativeAreas.push_back(region.area);
     }
+
     if (region.triangles.empty()) {
         throw std::invalid_argument("A polygon region needs an outline with an area.");
     }
@@ -57,6 +59,7 @@ Region Region::polygon(std::span<const std::vector<math::Vec2>> outlines) {
     for (const std::vector<math::Vec2>& outline : region.shape) {
         corners.insert(corners.end(), outline.begin(), outline.end());
     }
+
     region.bounds = math::Geometry::bounds(corners);
     return region;
 }
@@ -71,16 +74,19 @@ Region Region::fromObject(const tiled::Object& object) {
         if (object.rotation == 0.0F) {
             return rect({object.position.x, object.position.y, width, height});
         }
+
         outline = {{0.0F, 0.0F}, {width, 0.0F}, {width, height}, {0.0F, height}};
         break;
     case tiled::Object::Shape::Ellipse:
         if (object.rotation == 0.0F && width == height) {
             return circle(object.position + math::Vec2{width, height} * 0.5F, width * 0.5F);
         }
+
         for (int segment = 0; segment < kEllipseSegments; ++segment) {
             const float angle = math::Math::kTau * static_cast<float>(segment) / static_cast<float>(kEllipseSegments);
             outline.push_back({width * 0.5F * (1.0F + std::cos(angle)), height * 0.5F * (1.0F + std::sin(angle))});
         }
+
         break;
     case tiled::Object::Shape::Polygon:
         outline = object.points;
@@ -93,6 +99,7 @@ Region Region::fromObject(const tiled::Object& object) {
     for (math::Vec2& point : outline) {
         point = object.position + point.rotated(object.rotation);
     }
+
     const std::vector<std::vector<math::Vec2>> outlines{std::move(outline)};
     return polygon(outlines);
 }
@@ -117,6 +124,7 @@ bool Region::contains(math::Vec2 point) const noexcept {
             inside = !inside;
         }
     }
+
     return inside;
 }
 
