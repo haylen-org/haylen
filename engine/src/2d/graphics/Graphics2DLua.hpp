@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string_view>
 #include <vector>
 
@@ -30,6 +31,10 @@ template <> struct EnumNames<graphics2d::Shape::Kind> {
 };
 
 } // namespace haylen::lua
+
+namespace haylen::core {
+class FloatBuffer;
+}
 
 namespace haylen::text {
 class Font;
@@ -60,6 +65,7 @@ class Graphics2DLua final {
     static constexpr std::array<std::string_view, 15> kVectorFields{"x", "y", "width", "height", "scaleX", "scaleY", "pivotX", "pivotY", "rotation", "tilt", "color", "flash", "flipHorizontal", "flipVertical", "flipDiagonal"};
 
     [[nodiscard]] static Renderer& getRenderer(lua_State* L);
+    [[nodiscard]] static PostProcess readPostProcess(lua_State* L, int post);
 
     // Kept from draw to draw on the frame thread, so the lists of points, colors, outlines, vertices and sprites that a frame draws allocate nothing once they have grown.
     inline static std::vector<math::Vec2> pointScratch;
@@ -95,6 +101,7 @@ class Graphics2DLua final {
     static int draw(lua_State* L);
     static int drawVector(lua_State* L);
     static int drawBatch(lua_State* L);
+    static int drawBufferBatch(lua_State* L, std::span<const graphics::Texture> textures, const core::FloatBuffer& buffer);
     static int drawStatic(lua_State* L);
     static int drawRect(lua_State* L);
     static int drawRectOutline(lua_State* L);

@@ -78,12 +78,12 @@ int MaterialLua::get(lua_State* L) {
     const std::string name = lua::Stack::read<std::string>(L, 2);
     if (material.getShader().findTexture(name) != nullptr) {
         const graphics::Texture texture = material.getTexture(name);
-        if (texture.isValid()) {
-            lua::Stack::push(L, texture);
-        } else {
+        if (!texture.isValid()) {
             lua_pushnil(L);
+            return 1;
         }
 
+        lua::Stack::push(L, texture);
         return 1;
     }
 
@@ -114,6 +114,7 @@ int MaterialLua::get(lua_State* L) {
     case Type::Mat4:
         break;
     }
+
     lua::Stack::push(L, values);
     return 1;
 }

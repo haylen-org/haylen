@@ -4,6 +4,7 @@
 #include <functional>
 #include <initializer_list>
 #include <memory>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -13,6 +14,7 @@
 #include "haylen/math/Color.hpp"
 #include "haylen/plugins/TextPlugin.hpp"
 #include "haylen/text/Effect.hpp"
+#include "haylen/text/Layout.hpp"
 #include "haylen/text/RichText.hpp"
 #include "haylen/text/RichTextOptions.hpp"
 #include "haylen/text/RichTextRegistry.hpp"
@@ -52,6 +54,9 @@ class RichTextLua final {
     static constexpr std::array<std::string_view, 2> kDrawFields{"scale", "tint"};
     static constexpr std::array<std::string_view, 1> kTintFields{"tint"};
 
+    // The names of the kinds of the boxes of a layout, in the order of `text::Layout::Box::Kind`.
+    static constexpr std::array<std::string_view, 6> kBoxKindNames{"background", "underline", "strike", "rule", "cellBackground", "cellBorder"};
+
     // Returns the rich text that the text plugin keeps for the markup of an immediate draw or measure with the options at the index.
     [[nodiscard]] static text::RichText& getDrawnText(lua_State* L, int options);
 
@@ -61,6 +66,15 @@ class RichTextLua final {
 
     // Runs a Lua effect on one glyph, which reads and writes the fields of a glyph table and reads the attributes of its tag.
     static void runEffect(const lua::Reference& function, text::Effect::Glyph& glyph, const text::Effect::Parameters& parameters);
+    static void pushEffectGlyph(lua_State* L, const text::Effect::Glyph& glyph);
+    static void pushEffectAttributes(lua_State* L, const text::Effect::Parameters& parameters);
+
+    static void pushGlyphs(lua_State* L, const text::Layout& frame);
+    static void pushBoxes(lua_State* L, const text::Layout& frame);
+    static void pushImages(lua_State* L, const text::Layout& frame);
+    static void pushAreas(lua_State* L, const std::vector<text::Layout::Area>& areas, const std::vector<std::string>& values, const char* key);
+    static void pushCharacters(lua_State* L, const text::Layout& frame);
+    static void pushLines(lua_State* L, const text::Layout& frame);
 
     static int update(lua_State* L);
     static int draw(lua_State* L);

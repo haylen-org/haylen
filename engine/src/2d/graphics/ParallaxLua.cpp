@@ -13,15 +13,17 @@
 namespace haylen::graphics2d {
 
 int ParallaxLua::offset(lua_State* L) {
-    const math::Vec2 shift = lua::Userdata::check<Parallax>(L, 1).getOffset(lua::Userdata::check<Camera>(L, 2));
+    const Parallax& layer = lua::Userdata::check<Parallax>(L, 1);
+    const math::Vec2 shift = layer.getOffset(lua::Userdata::check<Camera>(L, 2));
     lua::Stack::push(L, shift.x);
     lua::Stack::push(L, shift.y);
     return 2;
 }
 
 int ParallaxLua::draw(lua_State* L) {
-    core::Engine& engine = lua::Runtime::getEngine(L);
-    lua::Userdata::check<Parallax>(L, 1).draw(engine.getRenderer2D(), lua::Userdata::check<Camera>(L, 2), lua::TypeConverter::readDrawOrder(L, 3));
+    const Parallax& layer = lua::Userdata::check<Parallax>(L, 1);
+    const Camera& camera = lua::Userdata::check<Camera>(L, 2);
+    layer.draw(lua::Runtime::getEngine(L).getRenderer2D(), camera, lua::TypeConverter::readDrawOrder(L, 3));
     return 0;
 }
 

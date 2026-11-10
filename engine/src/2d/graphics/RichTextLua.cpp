@@ -2,6 +2,7 @@
 
 #include <lua.hpp>
 
+#include <array>
 #include <functional>
 #include <map>
 #include <memory>
@@ -145,43 +146,51 @@ int RichTextLua::measureRichText(lua_State* L) {
     return 2;
 }
 
-// The glyph table holds `index` and `character` counted from 1, `char`, `codePoint`, `x` and `y` on the baseline, `time`, `offsetX`, `offsetY`, `color` and `visible`, and the attributes of the tag come as the second argument, with numbers as numbers.
+// The glyph table holds `index` and `character` counted from 1, `char`, `codePoint`, `x` and `y` on the baseline, `time`, `offsetX`, `offsetY`, `color` and `visible`.
+void RichTextLua::pushEffectGlyph(lua_State* L, const text::Effect::Glyph& glyph) {
+    lua_createtable(L, 0, 12);
+    const std::array<std::pair<const char*, double>, 5> numbers{{{"x", glyph.position.x}, {"y", glyph.position.y}, {"time", glyph.time}, {"offsetX", glyph.offset.x}, {"offsetY", glyph.offset.y}}};
+    for (const auto& [name, value] : numbers) {
+        lua_pushnumber(L, value);
+        lua_setfield(L, -2, name);
+    }
+
+    lua_pushinteger(L, static_cast<lua_Integer>(glyph.index + 1));
+    lua_setfield(L, -2, "index");
+    lua_pushinteger(L, static_cast<lua_Integer>(glyph.character + 1));
+    lua_setfield(L, -2, "character");
+    std::string character;
+    core::Utf8::append(character, glyph.codePoint);
+    lua::Stack::push(L, character);
+    lua_setfield(L, -2, "char");
+    lua_pushinteger(L, static_cast<lua_Integer>(glyph.codePoint));
+    lua_setfield(L, -2, "codePoint");
+    lua::Stack::push(L, glyph.color);
+    lua_setfield(L, -2, "color");
+    lua::Stack::push(L, glyph.visible);
+    lua_setfield(L, -2, "visible");
+}
+
+// The attributes of the tag come with numbers as numbers.
+void RichTextLua::pushEffectAttributes(lua_State* L, const text::Effect::Parameters& parameters) {
+    lua_createtable(L, 0, static_cast<int>(parameters.getValues().size()));
+    for (const auto& [key, value] : parameters.getValues()) {
+        if (lua_stringtonumber(L, value.c_str()) == 0) {
+            lua::Stack::push(L, value);
+        }
+
+        lua_setfield(L, -2, key.c_str());
+    }
+}
+
+// The effect takes the glyph table and the attributes of its tag, and the glyph reads back the fields the effect may change.
 void RichTextLua::runEffect(const lua::Reference& function, text::Effect::Glyph& glyph, const text::Effect::Parameters& parameters) {
     // clang-format off
     lua::Runtime::protectedRun(function.getState(), [&](lua_State* L) {
         function.push(L);
-        lua_createtable(L, 0, 12);
+        pushEffectGlyph(L, glyph);
         const int table = lua_gettop(L);
-        const std::pair<const char*, double> numbers[] = {{"x", glyph.position.x}, {"y", glyph.position.y}, {"time", glyph.time}, {"offsetX", glyph.offset.x}, {"offsetY", glyph.offset.y}};
-        for (const auto& [name, value] : numbers) {
-            lua_pushnumber(L, value);
-            lua_setfield(L, table, name);
-        }
-
-        lua_pushinteger(L, static_cast<lua_Integer>(glyph.index + 1));
-        lua_setfield(L, table, "index");
-        lua_pushinteger(L, static_cast<lua_Integer>(glyph.character + 1));
-        lua_setfield(L, table, "character");
-        std::string character;
-        core::Utf8::append(character, glyph.codePoint);
-        lua::Stack::push(L, character);
-        lua_setfield(L, table, "char");
-        lua_pushinteger(L, static_cast<lua_Integer>(glyph.codePoint));
-        lua_setfield(L, table, "codePoint");
-        lua::Stack::push(L, glyph.color);
-        lua_setfield(L, table, "color");
-        lua::Stack::push(L, glyph.visible);
-        lua_setfield(L, table, "visible");
-
-        lua_createtable(L, 0, static_cast<int>(parameters.getValues().size()));
-        for (const auto& [key, value] : parameters.getValues()) {
-            if (lua_stringtonumber(L, value.c_str()) == 0) {
-                lua::Stack::push(L, value);
-            }
-
-            lua_setfield(L, -2, key.c_str());
-        }
-
+        pushEffectAttributes(L, parameters);
         lua_pushvalue(L, table);
         lua_insert(L, 1);
         lua_call(L, 2, 0);
@@ -285,7 +294,24 @@ int RichTextLua::frame(lua_State* L) {
     lua_setfield(L, -2, "size");
     lua::Stack::push(L, frame.lineCount);
     lua_setfield(L, -2, "lineCount");
+    pushGlyphs(L, frame);
+    lua_setfield(L, -2, "glyphs");
+    pushBoxes(L, frame);
+    lua_setfield(L, -2, "boxes");
+    pushImages(L, frame);
+    lua_setfield(L, -2, "images");
+    pushAreas(L, frame.links, richText.getDocument().links, "link");
+    lua_setfield(L, -2, "links");
+    pushAreas(L, frame.hints, richText.getDocument().hints, "hint");
+    lua_setfield(L, -2, "hints");
+    pushCharacters(L, frame);
+    lua_setfield(L, -2, "characters");
+    pushLines(L, frame);
+    lua_setfield(L, -2, "lines");
+    return 1;
+}
 
+void RichTextLua::pushGlyphs(lua_State* L, const text::Layout& frame) {
     lua_createtable(L, static_cast<int>(frame.glyphs.size()), 0);
     for (std::size_t index = 0; index < frame.glyphs.size(); ++index) {
         const text::Layout::Glyph& glyph = frame.glyphs[index];
@@ -313,6 +339,7 @@ int RichTextLua::frame(lua_State* L) {
         lua_setfield(L, -2, "syntheticBold");
         lua::Stack::push(L, look.skew != 0.0F);
         lua_setfield(L, -2, "syntheticItalic");
+
         if (glyph.image.isValid()) {
             lua::Stack::push(L, glyph.image);
             lua_setfield(L, -2, "image");
@@ -320,15 +347,14 @@ int RichTextLua::frame(lua_State* L) {
 
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+}
 
-    lua_setfield(L, -2, "glyphs");
-
-    constexpr std::array<std::string_view, 6> kKinds{"background", "underline", "strike", "rule", "cellBackground", "cellBorder"};
+void RichTextLua::pushBoxes(lua_State* L, const text::Layout& frame) {
     lua_createtable(L, static_cast<int>(frame.boxes.size()), 0);
     for (std::size_t index = 0; index < frame.boxes.size(); ++index) {
         const text::Layout::Box& box = frame.boxes[index];
         lua_createtable(L, 0, 4);
-        lua::Stack::push(L, kKinds[static_cast<std::size_t>(box.kind)]);
+        lua::Stack::push(L, kBoxKindNames[static_cast<std::size_t>(box.kind)]);
         lua_setfield(L, -2, "kind");
         lua::Stack::push(L, box.rect);
         lua_setfield(L, -2, "rect");
@@ -338,42 +364,37 @@ int RichTextLua::frame(lua_State* L) {
         lua_setfield(L, -2, "visible");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+}
 
-    lua_setfield(L, -2, "boxes");
-
+void RichTextLua::pushImages(lua_State* L, const text::Layout& frame) {
     lua_createtable(L, static_cast<int>(frame.images.size()), 0);
     for (std::size_t index = 0; index < frame.images.size(); ++index) {
+        const text::Layout::Image& image = frame.images[index];
         lua_createtable(L, 0, 3);
-        lua::Stack::push(L, frame.images[index].rect);
+        lua::Stack::push(L, image.rect);
         lua_setfield(L, -2, "rect");
-        lua::Stack::push(L, frame.images[index].texture);
+        lua::Stack::push(L, image.texture);
         lua_setfield(L, -2, "texture");
-        lua::Stack::push(L, frame.images[index].visible);
+        lua::Stack::push(L, image.visible);
         lua_setfield(L, -2, "visible");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+}
 
-    lua_setfield(L, -2, "images");
+void RichTextLua::pushAreas(lua_State* L, const std::vector<text::Layout::Area>& areas, const std::vector<std::string>& values, const char* key) {
+    lua_createtable(L, static_cast<int>(areas.size()), 0);
+    for (std::size_t index = 0; index < areas.size(); ++index) {
+        lua_createtable(L, 0, 2);
+        lua::Stack::push(L, areas[index].rect);
+        lua_setfield(L, -2, "rect");
+        lua::Stack::push(L, values[areas[index].index]);
+        lua_setfield(L, -2, key);
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
+    }
+}
 
-    // clang-format off
-    const auto pushAreas = [&](const std::vector<text::Layout::Area>& areas, const std::vector<std::string>& values, const char* key) {
-        lua_createtable(L, static_cast<int>(areas.size()), 0);
-        for (std::size_t index = 0; index < areas.size(); ++index) {
-            lua_createtable(L, 0, 2);
-            lua::Stack::push(L, areas[index].rect);
-            lua_setfield(L, -2, "rect");
-            lua::Stack::push(L, values[areas[index].index]);
-            lua_setfield(L, -2, key);
-            lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
-        }
-    };
-    // clang-format on
-    pushAreas(frame.links, richText.getDocument().links, "link");
-    lua_setfield(L, -2, "links");
-    pushAreas(frame.hints, richText.getDocument().hints, "hint");
-    lua_setfield(L, -2, "hints");
-
-    // Characters come in reading order with the code points of the text without markup they draw, counted from 1.
+// Characters come in reading order with the code points of the text without markup they draw, counted from 1.
+void RichTextLua::pushCharacters(lua_State* L, const text::Layout& frame) {
     lua_createtable(L, static_cast<int>(frame.characters.size()), 0);
     for (std::size_t index = 0; index < frame.characters.size(); ++index) {
         const text::Layout::Character& character = frame.characters[index];
@@ -388,9 +409,9 @@ int RichTextLua::frame(lua_State* L) {
         lua_setfield(L, -2, "rightToLeft");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+}
 
-    lua_setfield(L, -2, "characters");
-
+void RichTextLua::pushLines(lua_State* L, const text::Layout& frame) {
     lua_createtable(L, static_cast<int>(frame.lines.size()), 0);
     for (std::size_t index = 0; index < frame.lines.size(); ++index) {
         const text::Layout::Line& line = frame.lines[index];
@@ -403,9 +424,6 @@ int RichTextLua::frame(lua_State* L) {
         lua_setfield(L, -2, "rightToLeft");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
-
-    lua_setfield(L, -2, "lines");
-    return 1;
 }
 
 int RichTextLua::getMarkup(lua_State* L) {

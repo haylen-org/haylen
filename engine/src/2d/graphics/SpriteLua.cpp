@@ -11,51 +11,44 @@
 
 namespace haylen::graphics2d {
 
-int SpriteLua::getMaterial(lua_State* L) {
-    const Material& material = lua::Userdata::check<Sprite>(L, 1).order.material;
-    if (!material.isValid()) {
+template <typename Handle> int SpriteLua::pushHandle(lua_State* L, const Handle& handle) {
+    if (!handle.isValid()) {
         lua_pushnil(L);
         return 1;
     }
 
-    lua::Stack::push(L, material);
+    lua::Stack::push(L, handle);
     return 1;
 }
 
+template <typename Handle> Handle SpriteLua::readHandle(lua_State* L, int index) {
+    return lua_isnil(L, index) ? Handle{} : lua::Stack::read<Handle>(L, index);
+}
+
+int SpriteLua::getMaterial(lua_State* L) {
+    return pushHandle(L, lua::Userdata::check<Sprite>(L, 1).order.material);
+}
+
 int SpriteLua::setMaterial(lua_State* L) {
-    lua::Userdata::check<Sprite>(L, 1).order.material = lua_isnil(L, 3) ? Material{} : lua::Stack::read<Material>(L, 3);
+    lua::Userdata::check<Sprite>(L, 1).order.material = readHandle<Material>(L, 3);
     return 0;
 }
 
 int SpriteLua::getNormalMap(lua_State* L) {
-    const graphics::Texture& normalMap = lua::Userdata::check<Sprite>(L, 1).order.normalMap;
-    if (!normalMap.isValid()) {
-        lua_pushnil(L);
-        return 1;
-    }
-
-    lua::Stack::push(L, normalMap);
-    return 1;
+    return pushHandle(L, lua::Userdata::check<Sprite>(L, 1).order.normalMap);
 }
 
 int SpriteLua::setNormalMap(lua_State* L) {
-    lua::Userdata::check<Sprite>(L, 1).order.normalMap = lua_isnil(L, 3) ? graphics::Texture{} : lua::Stack::read<graphics::Texture>(L, 3);
+    lua::Userdata::check<Sprite>(L, 1).order.normalMap = readHandle<graphics::Texture>(L, 3);
     return 0;
 }
 
 int SpriteLua::getPartMask(lua_State* L) {
-    const graphics::Texture& partMask = lua::Userdata::check<Sprite>(L, 1).order.partMask;
-    if (!partMask.isValid()) {
-        lua_pushnil(L);
-        return 1;
-    }
-
-    lua::Stack::push(L, partMask);
-    return 1;
+    return pushHandle(L, lua::Userdata::check<Sprite>(L, 1).order.partMask);
 }
 
 int SpriteLua::setPartMask(lua_State* L) {
-    lua::Userdata::check<Sprite>(L, 1).order.partMask = lua_isnil(L, 3) ? graphics::Texture{} : lua::Stack::read<graphics::Texture>(L, 3);
+    lua::Userdata::check<Sprite>(L, 1).order.partMask = readHandle<graphics::Texture>(L, 3);
     return 0;
 }
 

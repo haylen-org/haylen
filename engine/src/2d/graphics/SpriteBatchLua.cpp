@@ -67,7 +67,8 @@ std::optional<SpriteData> SpriteBatchLua::readSpriteData(lua_State* L, int index
     if (texture != LUA_TNIL) {
         const lua_Integer number = luaL_checkinteger(L, -2);
         if (number < 1 || static_cast<std::size_t>(number) > textureCount) {
-            throw std::invalid_argument(std::format("A sprite draws from the texture {} of its batch, which has {}.", number, textureCount == 1 ? std::string("1 texture") : std::format("{} textures", textureCount)));
+            const std::string held = textureCount == 1 ? std::string("1 texture") : std::format("{} textures", textureCount);
+            throw std::invalid_argument(std::format("A sprite draws from the texture {} of its batch, which has {}.", number, held));
         }
 
         base.texture = static_cast<std::uint8_t>(number - 1);

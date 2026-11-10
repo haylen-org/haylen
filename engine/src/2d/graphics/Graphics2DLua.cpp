@@ -1,6 +1,7 @@
 #include "2d/graphics/Graphics2DLua.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <format>
 #include <memory>
@@ -72,49 +73,52 @@ Renderer::CanvasOptions Graphics2DLua::readCanvasOptions(lua_State* L, int index
     lua::Table::readField(L, table, "clear", options.clear);
     lua::Table::readField(L, table, "debugDrawings", options.debugDrawings);
 
-    lua_getfield(L, table, "postProcess");
-    if (!lua_isnil(L, -1)) {
-        luaL_checktype(L, -1, LUA_TTABLE);
-        const int post = lua_gettop(L);
-        lua::Table::checkFields(L, post, {kPostProcessFields});
-        PostProcess process;
-        lua::Table::readField(L, post, "tint", process.tint);
-        lua::Table::readField(L, post, "saturation", process.saturation);
-        lua::Table::readField(L, post, "brightness", process.brightness);
-        lua::Table::readField(L, post, "contrast", process.contrast);
-        lua::Table::readField(L, post, "vignetteStrength", process.vignetteStrength);
-        lua::Table::readField(L, post, "vignetteRadius", process.vignetteRadius);
-        lua::Table::readField(L, post, "vignetteSoftness", process.vignetteSoftness);
-        lua::Table::readField(L, post, "fade", process.fade);
-        lua::Table::readField(L, post, "distortion", process.distortion);
-        lua::Table::readField(L, post, "chromaticAberration", process.chromaticAberration);
-        lua::Table::readField(L, post, "pixelate", process.pixelate);
-        lua::Table::readField(L, post, "blur", process.blur);
-        lua::Table::readField(L, post, "bloomStrength", process.bloomStrength);
-        lua::Table::readField(L, post, "bloomThreshold", process.bloomThreshold);
-        lua::Table::readField(L, post, "bloomRadius", process.bloomRadius);
-        lua::Table::readField(L, post, "colorLut", process.colorLut);
-        lua::Table::readField(L, post, "colorLutStrength", process.colorLutStrength);
-        if (lua_getfield(L, post, "colorVision") != LUA_TNIL) {
-            const auto name = lua::Stack::read<std::string_view>(L, -1);
-            const auto found = std::ranges::find(PostProcess::kColorVisionNames, name, &std::pair<std::string_view, PostProcess::ColorVision>::first);
-            if (found == PostProcess::kColorVisionNames.end()) {
-                luaL_error(L, "The color vision \"%s\" is unknown. It is \"normal\", \"protanopia\", \"deuteranopia\" or \"tritanopia\".", std::string(name).c_str());
-            }
-
-            process.colorVision = found->second;
-        }
-
-        lua_pop(L, 1);
-        lua::Table::readField(L, post, "correctColorVision", process.correctColorVision);
-        lua::Table::readField(L, post, "grain", process.grain);
-        lua::Table::readField(L, post, "dither", process.dither);
-        lua::Table::readField(L, post, "materials", process.materials);
-        options.postProcess = process;
+    if (lua_getfield(L, table, "postProcess") != LUA_TNIL) {
+        options.postProcess = readPostProcess(L, lua_gettop(L));
     }
 
     lua_pop(L, 1);
     return options;
+}
+
+PostProcess Graphics2DLua::readPostProcess(lua_State* L, int post) {
+    luaL_checktype(L, post, LUA_TTABLE);
+    lua::Table::checkFields(L, post, {kPostProcessFields});
+    PostProcess process;
+    lua::Table::readField(L, post, "tint", process.tint);
+    lua::Table::readField(L, post, "saturation", process.saturation);
+    lua::Table::readField(L, post, "brightness", process.brightness);
+    lua::Table::readField(L, post, "contrast", process.contrast);
+    lua::Table::readField(L, post, "vignetteStrength", process.vignetteStrength);
+    lua::Table::readField(L, post, "vignetteRadius", process.vignetteRadius);
+    lua::Table::readField(L, post, "vignetteSoftness", process.vignetteSoftness);
+    lua::Table::readField(L, post, "fade", process.fade);
+    lua::Table::readField(L, post, "distortion", process.distortion);
+    lua::Table::readField(L, post, "chromaticAberration", process.chromaticAberration);
+    lua::Table::readField(L, post, "pixelate", process.pixelate);
+    lua::Table::readField(L, post, "blur", process.blur);
+    lua::Table::readField(L, post, "bloomStrength", process.bloomStrength);
+    lua::Table::readField(L, post, "bloomThreshold", process.bloomThreshold);
+    lua::Table::readField(L, post, "bloomRadius", process.bloomRadius);
+    lua::Table::readField(L, post, "colorLut", process.colorLut);
+    lua::Table::readField(L, post, "colorLutStrength", process.colorLutStrength);
+
+    if (lua_getfield(L, post, "colorVision") != LUA_TNIL) {
+        const auto name = lua::Stack::read<std::string_view>(L, -1);
+        const auto found = std::ranges::find(PostProcess::kColorVisionNames, name, &std::pair<std::string_view, PostProcess::ColorVision>::first);
+        if (found == PostProcess::kColorVisionNames.end()) {
+            luaL_error(L, "The color vision \"%s\" is unknown. It is \"normal\", \"protanopia\", \"deuteranopia\" or \"tritanopia\".", std::string(name).c_str());
+        }
+
+        process.colorVision = found->second;
+    }
+
+    lua_pop(L, 1);
+    lua::Table::readField(L, post, "correctColorVision", process.correctColorVision);
+    lua::Table::readField(L, post, "grain", process.grain);
+    lua::Table::readField(L, post, "dither", process.dither);
+    lua::Table::readField(L, post, "materials", process.materials);
+    return process;
 }
 
 void Graphics2DLua::assignFields(lua_State* L, int options) {
@@ -338,17 +342,7 @@ int Graphics2DLua::drawBatch(lua_State* L) {
     SpriteBatch::checkTextures(textures);
 
     if (const core::FloatBuffer* buffer = lua::Userdata::test<core::FloatBuffer>(L, 2)) {
-        luaL_checktype(L, 3, LUA_TTABLE);
-        const SpriteData data = SpriteBatchLua::readSpriteData(L, 3, textures.size()).value_or(SpriteData{});
-        const SpriteInstance sprite = lua::TypeConverter::readSpriteInstance(L, 3, textures[data.texture], {}, {SpriteBatchLua::kLayoutFields, SpriteBatchLua::kDataFields});
-        if (lua_getfield(L, 3, "fields") != LUA_TTABLE) {
-            return luaL_error(L, "A \"drawBatch\" call with a float buffer needs the fields each sprite takes, such as \"fields = {'x', 'y'}\".");
-        }
-
-        const SpriteLayout layout = SpriteBatchLua::readLayout(L, -1, sprite, data);
-        lua_pop(L, 1);
-        getRenderer(L).drawBatch(textures, buffer->getValues(), layout, lua::TypeConverter::readDrawOrder(L, 4));
-        return 0;
+        return drawBufferBatch(L, textures, *buffer);
     }
 
     luaL_checktype(L, 2, LUA_TTABLE);
@@ -377,6 +371,21 @@ int Graphics2DLua::drawBatch(lua_State* L) {
     }
 
     getRenderer(L).drawBatch(textures, sprites, data, lua::TypeConverter::readDrawOrder(L, 3), partColors);
+    return 0;
+}
+
+// The table at 3 is the template of every sprite, with the fields the buffer holds for each sprite.
+int Graphics2DLua::drawBufferBatch(lua_State* L, std::span<const graphics::Texture> textures, const core::FloatBuffer& buffer) {
+    luaL_checktype(L, 3, LUA_TTABLE);
+    const SpriteData data = SpriteBatchLua::readSpriteData(L, 3, textures.size()).value_or(SpriteData{});
+    const SpriteInstance sprite = lua::TypeConverter::readSpriteInstance(L, 3, textures[data.texture], {}, {SpriteBatchLua::kLayoutFields, SpriteBatchLua::kDataFields});
+    if (lua_getfield(L, 3, "fields") != LUA_TTABLE) {
+        return luaL_error(L, "A \"drawBatch\" call with a float buffer needs the fields each sprite takes, such as \"fields = {'x', 'y'}\".");
+    }
+
+    const SpriteLayout layout = SpriteBatchLua::readLayout(L, -1, sprite, data);
+    lua_pop(L, 1);
+    getRenderer(L).drawBatch(textures, buffer.getValues(), layout, lua::TypeConverter::readDrawOrder(L, 4));
     return 0;
 }
 
@@ -726,9 +735,20 @@ int Graphics2DLua::popLayerOffset(lua_State* L) {
 int Graphics2DLua::stats(lua_State* L) {
     const Renderer::Stats& current = getRenderer(L).getStats();
     lua_createtable(L, 0, 12);
-    const std::pair<const char*, std::size_t> values[] = {
-        {"canvases", current.canvases}, {"passes", current.passes}, {"drawCalls", current.drawCalls}, {"sprites", current.sprites}, {"instances", current.instances}, {"vertices", current.vertices}, {"indices", current.indices}, {"lights", current.lights}, {"occluders", current.occluders}, {"shadows", current.shadows}, {"textureSwitches", current.textureSwitches}, {"uploadedBytes", current.uploadedBytes},
-    };
+    const std::array<std::pair<const char*, std::size_t>, 12> values{{
+        {"canvases", current.canvases},
+        {"passes", current.passes},
+        {"drawCalls", current.drawCalls},
+        {"sprites", current.sprites},
+        {"instances", current.instances},
+        {"vertices", current.vertices},
+        {"indices", current.indices},
+        {"lights", current.lights},
+        {"occluders", current.occluders},
+        {"shadows", current.shadows},
+        {"textureSwitches", current.textureSwitches},
+        {"uploadedBytes", current.uploadedBytes},
+    }};
     for (const auto& [name, value] : values) {
         lua::Stack::push(L, value);
         lua_setfield(L, -2, name);
