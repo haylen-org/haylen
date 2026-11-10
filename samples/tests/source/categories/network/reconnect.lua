@@ -48,7 +48,7 @@ function Reconnect:enter()
                 },
                 ui.statusIndicator{id = 'state', text = 'Not started', tone = 'neutral'},
                 ui.sectionTitle{text = 'The option "reconnect"'},
-                ui.table{columns = {{text = 'Key', width = 220}, {text = 'Value'}}, rows = Reconnect.settingRows(), style = {fonts = {body = {font = 'monospace'}}, metrics = {listRowHeight = 40}}},
+                ui.table{columns = {{text = 'Key', width = 260}, {text = 'Value'}}, rows = Reconnect.settingRows(), style = {fonts = {body = {font = 'monospace'}}, metrics = {listRowHeight = 40}}},
             },
             ui.panel{grow = 1, align = 'stretch', gap = 12,
                 ui.sectionTitle{text = 'Waits before each attempt'},
