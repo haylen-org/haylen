@@ -45,7 +45,7 @@ function Seesaw:enter()
         code = Seesaw.code,
         hint = 'Drop weights on either end of the seesaw, or drag them where you like. Drop the catapult weight on the short end of its arm to throw the stone. R or the X button starts over.',
         controls = {
-            ui.label{text = 'Weight', font = 'heading'},
+            ui.label{text = 'Weight of the drops', font = 'caption', color = 'textMuted'},
             ui.radioGroup{id = 'mass', items = {{id = 'light', text = 'Light wood'}, {id = 'medium', text = 'Medium stone'}, {id = 'heavy', text = 'Heavy iron'}}, selected = 'medium', onChange = function(event) self.mass = event.value end},
             ui.button{id = 'left', text = 'Drop on the left end', onClick = function() self:drop(Seesaw.center - Seesaw.dropOffset, self.mass) end},
             ui.button{id = 'right', text = 'Drop on the right end', onClick = function() self:drop(Seesaw.center + Seesaw.dropOffset, self.mass) end},
