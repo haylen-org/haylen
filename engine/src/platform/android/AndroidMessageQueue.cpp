@@ -27,6 +27,7 @@ std::uint64_t AndroidMessageQueue::push(const Payload& payload) {
         if (count == items.size()) {
             grow();
         }
+
         sequence = ++pushed;
         wasEmpty = count == 0;
         items[(head + count) % items.size()] = {.sequence = sequence, .payload = payload};
@@ -36,6 +37,7 @@ std::uint64_t AndroidMessageQueue::push(const Payload& payload) {
         const std::uint64_t wake = 1;
         (void)write(descriptor, &wake, sizeof(wake));
     }
+
     return sequence;
 }
 
@@ -49,6 +51,7 @@ bool AndroidMessageQueue::pop(Message& message) {
     if (count == 0) {
         return false;
     }
+
     message = std::move(items[head]);
     head = (head + 1) % items.size();
     --count;
@@ -63,6 +66,7 @@ bool AndroidMessageQueue::isEnding() {
             return true;
         }
     }
+
     return false;
 }
 
@@ -84,6 +88,7 @@ void AndroidMessageQueue::grow() {
     for (std::size_t index = 0; index < count; ++index) {
         grown[index] = std::move(items[(head + index) % items.size()]);
     }
+
     items = std::move(grown);
     head = 0;
 }

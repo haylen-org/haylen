@@ -174,6 +174,7 @@ void WebPage::answerGatedCall(double id, const char* json) {
     if (found == gatedCalls.end()) {
         return;
     }
+
     const GatedCallback callback = std::move(found->second);
     gatedCalls.erase(found);
     const core::Json value = core::Json::parse(json, nullptr, false);
@@ -209,6 +210,7 @@ void WebPage::reportFrame(core::Engine& engine) {
     if (now - lastStats < kStatsInterval) {
         return;
     }
+
     lastStats = now;
     haylen_js_stats(getFrameStatistics(engine).dump().c_str());
 }
@@ -291,6 +293,7 @@ int WebPage::applyChanges() {
             session->addChanges(changed);
             return 1;
         }
+
         Player::restart();
         return 1;
     });
@@ -338,6 +341,7 @@ void WebPage::setBattery(double level, bool charging, bool full) {
     } else {
         battery.state = Battery::State::Discharging;
     }
+
     NativeHost::getSystemState().setBattery(battery);
 }
 
@@ -353,6 +357,7 @@ std::vector<std::vector<std::byte>> WebPage::readBuffers(const std::uint32_t* ta
         const auto* bytes = reinterpret_cast<const std::byte*>(static_cast<std::uintptr_t>(table[index * 2]));
         buffers.emplace_back(bytes, bytes + table[index * 2 + 1]);
     }
+
     return buffers;
 }
 
@@ -383,6 +388,7 @@ std::vector<std::uint32_t> WebPage::describeBuffers(std::span<const std::vector<
         table.push_back(static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(buffer.data())));
         table.push_back(static_cast<std::uint32_t>(buffer.size()));
     }
+
     return table;
 }
 
@@ -409,6 +415,7 @@ void* WebPage::openAudioStream(const char* plugin, const char* name, int sampleR
         if (sampleRate <= 0 || channels <= 0 || capacityFrames <= 0) {
             throw std::invalid_argument("An audio stream needs a sample rate, channels and room for at least one frame.");
         }
+
         return PluginStreams::openAudio(plugin, name, static_cast<std::uint32_t>(sampleRate), static_cast<std::uint32_t>(channels), AudioStream::Format::Float32, static_cast<std::size_t>(capacityFrames)).get();
     } catch (const std::exception& error) {
         lastError = error.what();
@@ -433,6 +440,7 @@ core::Json WebPage::getFrameStatistics(core::Engine& engine) {
     for (const debug::ProfileSample& sample : profiler.getLastFrame()) {
         scopes.push_back({{"name", sample.name}, {"milliseconds", sample.milliseconds}, {"calls", sample.calls}, {"depth", sample.depth}});
     }
+
     return {
         {"fps", profiler.getFramesPerSecond()}, {"frameMilliseconds", profiler.getLastFrameMilliseconds()}, {"averageMilliseconds", average}, {"drawCalls", render.drawCalls}, {"sprites", render.sprites}, {"vertices", render.vertices}, {"textureSwitches", render.textureSwitches}, {"uploadedBytes", render.uploadedBytes}, {"assets", engine.getAssets().getCachedCount()}, {"voices", engine.getAudio().getVoiceCount()}, {"scopes", std::move(scopes)},
     };

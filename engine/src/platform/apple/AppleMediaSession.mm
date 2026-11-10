@@ -53,6 +53,7 @@ bool AppleMediaSession::load() {
     if (library == nullptr) {
         library = dlopen("/System/Library/Frameworks/MediaPlayer.framework/MediaPlayer", RTLD_LAZY | RTLD_LOCAL);
     }
+
     return library != nullptr && NSClassFromString(@"MPNowPlayingInfoCenter") != nil;
 }
 
@@ -68,6 +69,7 @@ void AppleMediaSession::enableCommands(MediaSession::Commands commands) {
         {[center previousTrackCommand], MediaSession::Command::Previous},
         {[center changePlaybackPositionCommand], MediaSession::Command::Seek},
     }};
+
     for (const auto& [command, kind] : list) {
         id<HaylenRemoteCommand> remote = command;
         if (!registered) {
@@ -80,8 +82,10 @@ void AppleMediaSession::enableCommands(MediaSession::Commands commands) {
             }];
             // clang-format on
         }
+
         [remote setEnabled:(commands & MediaSession::bit(kind)) != 0];
     }
+
     registered = true;
 }
 
@@ -90,11 +94,14 @@ id AppleMediaSession::makeInfo(const MediaSession::NowPlaying& value) {
     info[@"title"] = [NSString stringWithUTF8String:value.title.c_str()];
     info[@"artist"] = [NSString stringWithUTF8String:value.artist.c_str()];
     info[@"albumTitle"] = [NSString stringWithUTF8String:value.album.c_str()];
+
     if (value.duration > 0.0) {
         info[@"playbackDuration"] = @(value.duration);
     }
+
     info[@"MPNowPlayingInfoPropertyElapsedPlaybackTime"] = @(value.position);
     info[@"MPNowPlayingInfoPropertyPlaybackRate"] = @(value.playing ? 1.0 : 0.0);
+
     if (!value.artwork.empty()) {
         NSData* data = [NSData dataWithBytes:value.artwork.data() length:value.artwork.size()];
 #if TARGET_OS_OSX
@@ -116,9 +123,11 @@ void AppleMediaSession::update(const std::optional<MediaSession::NowPlaying>& va
     if (!load()) {
         return;
     }
+
     id<HaylenNowPlayingInfoCenter> center = [(Class<HaylenNowPlayingInfoCenter>)NSClassFromString(@"MPNowPlayingInfoCenter") defaultCenter];
     enableCommands(value ? value->commands : 0);
     [center setNowPlayingInfo:value ? makeInfo(*value) : nil];
+
     if ([center respondsToSelector:@selector(setPlaybackState:)]) {
         [center setPlaybackState:!value ? 3 : value->playing ? 1 : 2];
     }

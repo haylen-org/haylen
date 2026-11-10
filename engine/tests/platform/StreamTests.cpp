@@ -34,6 +34,7 @@ class VideoStreamTest : public ::testing::Test {
                 pixel[3] = std::byte{255};
             }
         }
+
         return frame;
     }
 

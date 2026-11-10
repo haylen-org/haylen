@@ -12,13 +12,16 @@ const Display::Mode* Display::findMode(int width, int height, float rate) const 
         if (mode.width != width || mode.height != height) {
             continue;
         }
+
         if (rate > 0.0F && std::abs(mode.refreshRate - rate) <= kRateTolerance) {
             return &mode;
         }
+
         if (rate <= 0.0F && (found == nullptr || mode.refreshRate > found->refreshRate)) {
             found = &mode;
         }
     }
+
     return found;
 }
 
@@ -28,6 +31,7 @@ const Display& Display::findHolding(std::span<const Display> displays, const mat
     if (overlap(*largest) > 0.0F) {
         return *largest;
     }
+
     const auto primary = std::ranges::find_if(displays, &Display::primary);
     return primary != displays.end() ? *primary : displays.front();
 }

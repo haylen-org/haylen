@@ -41,12 +41,15 @@ struct NativeCallback::Closure {
         if (parameter.kind == Kind::Float) {
             return &ffi_type_float;
         }
+
         if (parameter.kind == Kind::Double) {
             return &ffi_type_double;
         }
+
         if (parameter.kind != Kind::Integer && parameter.kind != Kind::Boolean) {
             return &ffi_type_pointer;
         }
+
         switch (parameter.size) {
         case 1:
             return parameter.isSigned ? &ffi_type_sint8 : &ffi_type_uint8;
@@ -75,10 +78,12 @@ NativeCallback::NativeCallback(NativeSignature value, Thread mode, Link target) 
     if (ffi_prep_cif(&closure->cif, FFI_DEFAULT_ABI, static_cast<unsigned>(closure->types.size()), &ffi_type_void, closure->types.data()) != FFI_OK) {
         throw std::runtime_error("The native callback could not be prepared by libffi.");
     }
+
     closure->closure = static_cast<ffi_closure*>(ffi_closure_alloc(sizeof(ffi_closure), &address));
     if (closure->closure == nullptr) {
         throw std::bad_alloc();
     }
+
     if (ffi_prep_closure_loc(closure->closure, &closure->cif, &Closure::run, this, address) != FFI_OK) {
         ffi_closure_free(closure->closure);
         throw std::runtime_error("The native callback could not be created by libffi.");
@@ -145,11 +150,13 @@ std::vector<NativeCallback::Value> NativeCallback::read(void** arguments, std::s
             if (void* pointer = *static_cast<void* const*>(argument)) {
                 values[index] = pointer;
             }
+
             break;
         case Kind::Text:
             if (const char* text = *static_cast<const char* const*>(argument)) {
                 values[index] = std::string(text);
             }
+
             break;
         case Kind::Bytes: {
             const std::int64_t count = parameter.lengthParameter ? readInteger(arguments[*parameter.lengthParameter], parameters[*parameter.lengthParameter]) : static_cast<std::int64_t>(parameter.count);
@@ -157,13 +164,16 @@ std::vector<NativeCallback::Value> NativeCallback::read(void** arguments, std::s
                 failure = "The native callback received the negative length " + std::to_string(count) + " for \"" + parameter.name + "\".";
                 return {};
             }
+
             if (const auto* bytes = *static_cast<const char* const*>(argument)) {
                 values[index] = std::string(bytes, static_cast<std::size_t>(count) * parameter.size);
             }
+
             break;
         }
         }
     }
+
     return values;
 }
 
@@ -176,6 +186,7 @@ void NativeCallback::deliver(std::vector<Value> values, std::string failure) con
         } else if (owner) {
             owner->fail(link.id, failure);
         }
+
         return;
     }
 

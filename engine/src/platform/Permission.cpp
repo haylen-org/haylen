@@ -28,6 +28,7 @@ Permission::Answer Permission::Answer::fromJson(const core::Json& value) {
             }
         }
     }
+
     return answer;
 }
 
@@ -36,6 +37,7 @@ core::Json Permission::Answer::missingToJson() const {
     for (const Requirement& requirement : missing) {
         list.push_back({{"kind", requirement.kind}, {"name", requirement.name}, {"file", requirement.file}, {"snippet", requirement.snippet}});
     }
+
     return list;
 }
 
@@ -66,6 +68,7 @@ std::string Permission::refusal(State answered, std::string_view capability, std
     if (answered == State::Prompt) {
         return std::format("The system did not show its prompt for {}, so the app does not hold it yet. Ask for it again later with \"system.requestPermission('{}')\".", capability, name);
     }
+
     return std::format("The person has not allowed {}. Ask for it with \"system.requestPermission('{}')\", which shows the prompt of the system while the system still asks, or the person allows it in the settings of the system.", capability, name);
 }
 
@@ -75,6 +78,7 @@ std::string Permission::unknown(std::string_view name) {
         const std::string_view separator = index == 0 ? "" : index + 1 == kKindNames.size() ? " and " : ", ";
         kinds += std::format("{}\"{}\"", separator, kKindNames[index].first);
     }
+
     return std::format("The permission \"{}\" is neither one of the engine, which are {}, nor one that a plugin of the app declares. A plugin declares the permissions it owns in the \"permissions\" of its \"plugin.json\".", name, kinds);
 }
 
@@ -82,6 +86,7 @@ bool Permission::isPluginName(std::string_view name) noexcept {
     if (name.empty() || name.front() < 'a' || name.front() > 'z' || kindFromName(name)) {
         return false;
     }
+
     // clang-format off
     return std::ranges::all_of(name, [](char character) {
         return (character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z') || (character >= '0' && character <= '9');

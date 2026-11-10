@@ -55,6 +55,7 @@ class SwapchainPasses final {
                 passes.push_back(pass);
             }
         }
+
         return passes;
     }
 
@@ -63,6 +64,7 @@ class SwapchainPasses final {
         for (const gpu::NullDevice::PassRecord& pass : passes) {
             masks.insert(masks.end(), pass.masks.begin(), pass.masks.end());
         }
+
         return masks;
     }
 };
@@ -150,6 +152,7 @@ TEST_F(WindowConfigTest, ReadsTheSystemGesturesOfAppJson) {
     } catch (const std::invalid_argument& error) {
         EXPECT_STREQ(error.what(), R"(The "window.systemGestures" value "hidden" in "app.json" is unknown. It is "system", "deferred" or "autoHideIndicator".)");
     }
+
     for (const char* document : {R"({"window": {"systemGestures": ""}})", R"({"window": {"systemGestures": 1}})"}) {
         EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(document)), std::invalid_argument) << document;
     }
@@ -285,6 +288,7 @@ TEST(WindowEngineTest, KeepsTheAlphaOfOpaqueWindowsAtOne) {
     EXPECT_EQ(passes.front().clear.a, 0.0F);
     std::vector<gpu::Device::ColorMask> masks = SwapchainPasses::getMasks(passes);
     ASSERT_FALSE(masks.empty());
+
     for (const gpu::Device::ColorMask mask : masks) {
         EXPECT_EQ(mask, gpu::Device::ColorMask::All);
     }
@@ -296,6 +300,7 @@ TEST(WindowEngineTest, KeepsTheAlphaOfOpaqueWindowsAtOne) {
     EXPECT_EQ(passes.front().clear.a, 1.0F);
     masks = SwapchainPasses::getMasks(passes);
     ASSERT_GE(masks.size(), 3U);
+
     for (const gpu::Device::ColorMask mask : masks) {
         EXPECT_EQ(mask, gpu::Device::ColorMask::Rgb);
     }

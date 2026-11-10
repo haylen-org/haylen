@@ -42,14 +42,17 @@ bool DevelopmentConnection::isHeld() {
     if (!gate) {
         return false;
     }
+
     const std::scoped_lock lock(gate->mutex);
     if (!gate->answered) {
         return true;
     }
+
     if (gate->refusal && !refused) {
         core::Log::warning("The app does not connect to the development server at \"{}\". {}", address, *gate->refusal);
         refused = true;
     }
+
     return gate->refusal.has_value();
 }
 
@@ -63,6 +66,7 @@ bool DevelopmentConnection::isOnThisDevice() const {
     } else {
         host = host.substr(0, host.find(':'));
     }
+
     return host == "localhost" || host == "::1" || host.starts_with("127.");
 }
 
@@ -71,11 +75,13 @@ void DevelopmentConnection::pump() {
         open();
         return;
     }
+
     if (!held.empty() && !session.getDebugger().isHalted()) {
         for (const auto& [data, binary] : std::exchange(held, {})) {
             receive(data, binary);
         }
     }
+
     socket->pump();
 }
 
@@ -83,6 +89,7 @@ void DevelopmentConnection::open() {
     if (isHeld()) {
         return;
     }
+
     socket = std::make_unique<net::WebSocket>(address, net::WebSocket::Options{.reconnect = {.enabled = true, .maxDelay = kMaxReconnectDelay}, .blockedReason = explainBlocked});
     socket->opened.connect([this] { sendHello(); });
     socket->received.connect([this](std::string_view data, bool binary) { receive(data, binary); });
@@ -102,6 +109,7 @@ void DevelopmentConnection::report(const core::Json& value) {
     if (!socket || socket->getState() != net::WebSocket::State::Open) {
         return;
     }
+
     core::Json message = value;
     message["type"] = "report";
     message["revision"] = revision;
@@ -121,6 +129,7 @@ void DevelopmentConnection::receive(std::string_view data, bool binary) {
         held.emplace_back(data, true);
         return;
     }
+
     if (binary) {
         if (batch.is_object()) {
             contents.emplace_back(reinterpret_cast<const std::uint8_t*>(data.data()), reinterpret_cast<const std::uint8_t*>(data.data()) + data.size());
@@ -128,6 +137,7 @@ void DevelopmentConnection::receive(std::string_view data, bool binary) {
                 apply();
             }
         }
+
         return;
     }
 
@@ -137,32 +147,40 @@ void DevelopmentConnection::receive(std::string_view data, bool binary) {
         session.getDebugger().receive(message.at("message"));
         return;
     }
+
     if (halted) {
         held.emplace_back(data, false);
         return;
     }
+
     if (type == "shaderError") {
         core::Log::error("The shader \"{}\" did not compile: {}", readText(message, "path"), readText(message, "message"));
         return;
     }
+
     if (type == "console") {
         submitLine(message);
         return;
     }
+
     if (type == "consoleCommands") {
         listCommands();
         return;
     }
+
     if (type == "restart") {
         session.requestRestart();
         return;
     }
+
     if (type != "files" || !isBatch(message)) {
         core::Log::warning("The development server sent a message that this engine does not know.");
         return;
     }
+
     batch = message;
     contents.clear();
+
     if (batch.at("files").empty()) {
         apply();
     }
@@ -195,6 +213,7 @@ std::string DevelopmentConnection::readText(const core::Json& message, const cha
     if (!message.is_object()) {
         return {};
     }
+
     const auto found = message.find(key);
     return found != message.end() && found->is_string() ? found->get<std::string>() : std::string();
 }
@@ -205,10 +224,12 @@ bool DevelopmentConnection::isBatch(const core::Json& message) {
     if (files == message.end() || !files->is_array() || !std::ranges::all_of(*files, [](const core::Json& file) { return file.is_object() && file.contains("path") && file.at("path").is_string(); })) {
         return false;
     }
+
     const auto removed = message.find("removed");
     if (removed != message.end() && (!removed->is_array() || !std::ranges::all_of(*removed, &core::Json::is_string))) {
         return false;
     }
+
     const auto server = message.find("session");
     const auto number = message.find("revision");
     return (server == message.end() || server->is_string()) && (number == message.end() || number->is_number_integer());
@@ -228,6 +249,7 @@ void DevelopmentConnection::apply() {
             }
         } catch (const std::exception&) {
         }
+
         core::Log::warning("The development server sent the path \"{}\", which is not a file of the package, so it was refused.", path);
         return {};
     };
@@ -240,12 +262,14 @@ void DevelopmentConnection::apply() {
             overlay->setFile(path, std::move(contents[index]));
         }
     }
+
     for (const core::Json& removed : batch.value("removed", core::Json::array())) {
         const std::string path = accept(removed.get<std::string>());
         if (!path.empty() && overlay != nullptr) {
             overlay->removeFile(path);
         }
     }
+
     serverSession = batch.value("session", "");
     revision = batch.value("revision", std::int64_t{0});
     batch = nullptr;

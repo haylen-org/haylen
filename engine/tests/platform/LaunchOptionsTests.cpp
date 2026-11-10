@@ -18,6 +18,7 @@ class LaunchOptionsTest : public ::testing::Test {
         for (std::string& text : texts) {
             pointers.push_back(text.data());
         }
+
         return LaunchOptions::parse(static_cast<int>(pointers.size()), pointers.data());
     }
 };

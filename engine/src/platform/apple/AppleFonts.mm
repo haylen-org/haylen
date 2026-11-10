@@ -21,6 +21,7 @@ std::optional<SystemFont> AppleFonts::find(char32_t codePoint) {
         UniChar units[2];
         const bool pair = CFStringGetSurrogatePairForLongCharacter(static_cast<UTF32Char>(codePoint), units);
         const CFIndex length = pair ? 2 : 1;
+
         if (!pair) {
             units[0] = static_cast<UniChar>(codePoint);
         }
@@ -37,6 +38,7 @@ std::optional<SystemFont> AppleFonts::find(char32_t codePoint) {
             if (font == nil || !CTFontGetGlyphsForCharacters((__bridge CTFontRef)font, units, glyphs, length)) {
                 continue;
             }
+
             NSString* name = CFBridgingRelease(CTFontCopyPostScriptName((__bridge CTFontRef)font));
             if (name == nil || [name isEqualToString:@(kLastResort)] || !text::GlyphTables::isDrawable(copyTags((__bridge CTFontRef)font))) {
                 continue;
@@ -47,8 +49,10 @@ std::optional<SystemFont> AppleFonts::find(char32_t codePoint) {
             if (added) {
                 entry->second = static_cast<CTFontDescriptorRef>(CFRetain((__bridge CFTypeRef)descriptor));
             }
+
             return SystemFont{.name = entry->first};
         }
+
         return std::nullopt;
     }
 }
@@ -75,6 +79,7 @@ std::vector<std::uint8_t> AppleFonts::read(const SystemFont& font) {
                 tables.emplace_back(value, data);
             }
         }
+
         std::ranges::sort(tables, {}, &std::pair<std::uint32_t, NSData*>::first);
 
         constexpr std::size_t kHeader = 12;
@@ -84,6 +89,7 @@ std::vector<std::uint8_t> AppleFonts::read(const SystemFont& font) {
         for (const auto& [tag, data] : tables) {
             size += (data.length + 3) & ~std::size_t{3};
         }
+
         std::vector<std::uint8_t> bytes(size, 0);
 
         std::size_t power = 1;
@@ -92,6 +98,7 @@ std::vector<std::uint8_t> AppleFonts::read(const SystemFont& font) {
             power *= 2;
             ++exponent;
         }
+
         writeBigEndian(bytes, 0, compact ? 0x4F54544FU : 0x00010000U, 4);
         writeBigEndian(bytes, 4, static_cast<std::uint32_t>(tables.size()), 2);
         writeBigEndian(bytes, 6, static_cast<std::uint32_t>(power * kRecord), 2);
@@ -114,6 +121,7 @@ std::vector<std::uint8_t> AppleFonts::read(const SystemFont& font) {
             writeBigEndian(bytes, record + 12, static_cast<std::uint32_t>(data.length), 4);
             offset += (data.length + 3) & ~std::size_t{3};
         }
+
         return bytes;
     }
 }
@@ -125,9 +133,11 @@ std::vector<std::uint32_t> AppleFonts::copyTags(CTFontRef font) {
     if (available == nullptr) {
         return tags;
     }
+
     for (CFIndex index = 0; index < CFArrayGetCount(available); ++index) {
         tags.push_back(static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(CFArrayGetValueAtIndex(available, index))));
     }
+
     CFRelease(available);
     return tags;
 }

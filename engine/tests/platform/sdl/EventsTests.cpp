@@ -93,13 +93,16 @@ TEST_F(EventsTest, TypesEachKeyOnceIntoAFieldOfTheUi) {
         SDL_Event release = key;
         release.type = SDL_EVENT_KEY_UP;
         release.key.down = false;
+
         for (const SDL_Event& source : {key, input, release}) {
             for (const platform::Event& event : translate(source)) {
                 ui.getEngine().handleEvent(event);
             }
+
             ui.frames();
         }
     }
+
     EXPECT_EQ(ui.findLastEvent("change").value, (core::Json{{"value", "oi"}}));
 }
 
@@ -184,11 +187,13 @@ TEST_F(EventsTest, TranslatesTheWindowAndTheApp) {
     const std::vector<std::pair<SDL_EventType, platform::Event::Type>> mapping{
         {SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED, platform::Event::Type::Resized}, {SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED, platform::Event::Type::Resized}, {SDL_EVENT_WINDOW_METAL_VIEW_RESIZED, platform::Event::Type::Resized}, {SDL_EVENT_WINDOW_FOCUS_GAINED, platform::Event::Type::FocusGained}, {SDL_EVENT_WINDOW_FOCUS_LOST, platform::Event::Type::FocusLost}, {SDL_EVENT_WINDOW_MOUSE_ENTER, platform::Event::Type::MouseEnter}, {SDL_EVENT_WINDOW_MOUSE_LEAVE, platform::Event::Type::MouseLeave}, {SDL_EVENT_WINDOW_CLOSE_REQUESTED, platform::Event::Type::QuitRequested}, {SDL_EVENT_QUIT, platform::Event::Type::QuitRequested}, {SDL_EVENT_WILL_ENTER_BACKGROUND, platform::Event::Type::FocusLost}, {SDL_EVENT_DID_ENTER_BACKGROUND, platform::Event::Type::Suspended}, {SDL_EVENT_WILL_ENTER_FOREGROUND, platform::Event::Type::Resumed}, {SDL_EVENT_DID_ENTER_FOREGROUND, platform::Event::Type::FocusGained},
     };
+
     for (const auto& [source, expected] : mapping) {
         const std::vector<platform::Event> translated = translate(makeEvent(source));
         ASSERT_EQ(translated.size(), 1U) << source;
         EXPECT_EQ(translated[0].type, expected) << source;
     }
+
     EXPECT_TRUE(translate(makeEvent(SDL_EVENT_WINDOW_MOVED)).empty());
     EXPECT_TRUE(translate(makeEvent(SDL_EVENT_DROP_FILE)).empty());
 }

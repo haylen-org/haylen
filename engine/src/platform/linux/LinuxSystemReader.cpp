@@ -29,6 +29,7 @@ std::string LinuxSystemReader::readOsVersion(std::string_view osRelease, std::st
         if (line.starts_with('#') || equals == std::string_view::npos) {
             continue;
         }
+
         const std::string_view key = line.substr(0, equals);
         if (key == "PRETTY_NAME") {
             prettyName = unquote(line.substr(equals + 1));
@@ -41,6 +42,7 @@ std::string LinuxSystemReader::readOsVersion(std::string_view osRelease, std::st
     if (kernel.empty()) {
         return distribution;
     }
+
     const std::string release = "Linux " + std::string(kernel);
     return distribution.empty() ? release : distribution + " (" + release + ")";
 }
@@ -52,6 +54,7 @@ std::string LinuxSystemReader::readCpuName(std::string_view cpuInfo) {
             return std::string(trim(line.substr(colon + 1)));
         }
     }
+
     return {};
 }
 
@@ -62,6 +65,7 @@ Battery LinuxSystemReader::readBattery(const std::filesystem::path& powerSupplie
     for (std::filesystem::directory_iterator entry(powerSupplies, error); !error && entry != std::filesystem::directory_iterator(); entry.increment(error)) {
         supplies.push_back(entry->path());
     }
+
     std::ranges::sort(supplies);
 
     for (const std::filesystem::path& supply : supplies) {
@@ -69,6 +73,7 @@ Battery LinuxSystemReader::readBattery(const std::filesystem::path& powerSupplie
             return readSupply(supply);
         }
     }
+
     return {.state = Battery::State::None};
 }
 
@@ -77,6 +82,7 @@ std::string LinuxSystemReader::toLanguageTag(std::string_view locale) {
     if (tag == "C" || tag == "POSIX") {
         return {};
     }
+
     std::ranges::replace(tag, '_', '-');
     return tag;
 }
@@ -88,6 +94,7 @@ std::vector<std::string> LinuxSystemReader::readLanguages(std::string_view langu
     } else if (!messages.empty()) {
         locale = messages;
     }
+
     std::vector<std::string> tags;
     if (toLanguageTag(locale).empty()) {
         return tags;
@@ -98,6 +105,7 @@ std::vector<std::string> LinuxSystemReader::readLanguages(std::string_view langu
         addLanguage(tags, language.substr(start, end - start));
         start = end + 1;
     }
+
     addLanguage(tags, locale);
     return tags;
 }
@@ -107,12 +115,15 @@ std::string LinuxSystemReader::readTimeZone(std::string_view tz, std::string_vie
     if (tz.empty()) {
         return getZoneName(localTime);
     }
+
     if (tz.starts_with(':')) {
         tz.remove_prefix(1);
     }
+
     if (tz.find("zoneinfo/") != std::string_view::npos) {
         return getZoneName(tz);
     }
+
     return isZoneName(tz) ? std::string(tz) : std::string();
 }
 
@@ -123,6 +134,7 @@ std::vector<std::string_view> LinuxSystemReader::splitLines(std::string_view tex
         lines.push_back(trim(text.substr(start, end - start)));
         start = end + 1;
     }
+
     return lines;
 }
 
@@ -131,6 +143,7 @@ std::string_view LinuxSystemReader::trim(std::string_view text) {
     if (first == std::string_view::npos) {
         return {};
     }
+
     return text.substr(first, text.find_last_not_of(" \t\r\n") - first + 1);
 }
 
@@ -139,6 +152,7 @@ std::string LinuxSystemReader::unquote(std::string_view value) {
     if (value.size() < 2 || (value.front() != '"' && value.front() != '\'') || value.back() != value.front()) {
         return std::string(value);
     }
+
     const char quote = value.front();
     value = value.substr(1, value.size() - 2);
     std::string text;
@@ -146,8 +160,10 @@ std::string LinuxSystemReader::unquote(std::string_view value) {
         if (quote == '"' && value[index] == '\\' && index + 1 < value.size()) {
             ++index;
         }
+
         text += value[index];
     }
+
     return text;
 }
 
@@ -170,6 +186,7 @@ Battery LinuxSystemReader::readSupply(const std::filesystem::path& supply) {
     } else if (status == "Full" || status == "Not charging") {
         battery.state = Battery::State::Full;
     }
+
     return battery;
 }
 

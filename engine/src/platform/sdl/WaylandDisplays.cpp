@@ -28,6 +28,7 @@ std::vector<Display> WaylandDisplays::read() {
     for (int index = 0; index < count; ++index) {
         displays.push_back(describe(ids[index], primary));
     }
+
     SDL_free(ids);
     return displays;
 }
@@ -37,6 +38,7 @@ std::string WaylandDisplays::findWindowDisplay(SDL_Window* window) {
     if (display == 0) {
         throw std::runtime_error("SDL knows no display that shows the window. " + std::string(SDL_GetError()));
     }
+
     return getId(display);
 }
 
@@ -49,10 +51,13 @@ SDL_DisplayID WaylandDisplays::find(const Display& display) {
             found = ids[index];
         }
     }
+
     SDL_free(ids);
+
     if (found == 0) {
         throw std::runtime_error("SDL knows no display \"" + display.id + "\".");
     }
+
     return found;
 }
 
@@ -63,6 +68,7 @@ Display WaylandDisplays::describe(SDL_DisplayID id, SDL_DisplayID primary) {
     if (!SDL_GetDisplayBounds(id, &bounds) || !SDL_GetDisplayUsableBounds(id, &usable)) {
         throw std::runtime_error("SDL could not read the bounds of a display. " + std::string(SDL_GetError()));
     }
+
     const float scale = SDL_GetDisplayContentScale(id);
     Display display{
         .id = getId(id),
@@ -72,6 +78,7 @@ Display WaylandDisplays::describe(SDL_DisplayID id, SDL_DisplayID primary) {
         .scale = scale > 0.0F ? scale : 1.0F,
         .primary = id == primary,
     };
+
     if (const SDL_DisplayMode* current = SDL_GetCurrentDisplayMode(id)) {
         display.refreshRate = current->refresh_rate;
     }
@@ -85,6 +92,7 @@ Display WaylandDisplays::describe(SDL_DisplayID id, SDL_DisplayID primary) {
             display.modes.push_back(found);
         }
     }
+
     SDL_free(static_cast<void*>(modes));
     return display;
 }
@@ -95,6 +103,7 @@ std::string WaylandDisplays::getId(SDL_DisplayID id) {
     if (name == nullptr) {
         throw std::runtime_error("SDL could not read the name of a display. " + std::string(SDL_GetError()));
     }
+
     return name;
 }
 

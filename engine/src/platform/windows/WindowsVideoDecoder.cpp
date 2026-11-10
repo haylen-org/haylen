@@ -25,6 +25,7 @@ void WindowsVideoDecoder::enterThread() {
 WindowsVideoDecoder::WindowsVideoDecoder(std::shared_ptr<io::PackageReader> file, std::string_view filePath) : path(filePath) {
     enterThread();
     check(MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET), "Media Foundation did not start");
+
     try {
         ComPtr<IStream> stream;
         stream.Attach(new WindowsPackageStream(std::move(file)));
@@ -67,17 +68,20 @@ void WindowsVideoDecoder::chooseFormats() {
     if (SUCCEEDED(reader->GetPresentationAttribute(static_cast<DWORD>(MF_SOURCE_READER_MEDIASOURCE), MF_PD_DURATION, &duration)) && duration.vt == VT_UI8) {
         info.duration = static_cast<double>(duration.uhVal.QuadPart) / kUnitsPerSecond;
     }
+
     PropVariantClear(&duration);
 
     ComPtr<IMFMediaType> sound;
     check(MFCreateMediaType(&sound), "the format of its sound could not be made");
     sound->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
     sound->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_Float);
+
     if (FAILED(reader->SetCurrentMediaType(static_cast<DWORD>(MF_SOURCE_READER_FIRST_AUDIO_STREAM), nullptr, sound.Get()))) {
         reader->SetStreamSelection(static_cast<DWORD>(MF_SOURCE_READER_FIRST_AUDIO_STREAM), FALSE);
         soundEnded = true;
         return;
     }
+
     ComPtr<IMFMediaType> decoded;
     check(reader->GetCurrentMediaType(static_cast<DWORD>(MF_SOURCE_READER_FIRST_AUDIO_STREAM), &decoded), "the format of its sound is unknown");
     soundChannels = MFGetAttributeUINT32(decoded.Get(), MF_MT_AUDIO_NUM_CHANNELS, 0);
@@ -102,6 +106,7 @@ void WindowsVideoDecoder::readPictureFormat() {
 // A stride below zero means the rows come from the bottom up, and 32-bit RGB holds blue, green and red with an unused byte.
 VideoDecoder::Read WindowsVideoDecoder::readFrame(Frame& frame) {
     enterThread();
+
     while (true) {
         DWORD flags = 0;
         LONGLONG timestamp = 0;
@@ -110,16 +115,20 @@ VideoDecoder::Read WindowsVideoDecoder::readFrame(Frame& frame) {
         if ((flags & MF_SOURCE_READERF_ENDOFSTREAM) != 0) {
             return Read::End;
         }
+
         if ((flags & MF_SOURCE_READERF_CURRENTMEDIATYPECHANGED) != 0) {
             readPictureFormat();
         }
+
         if (!sample) {
             continue;
         }
+
         LONGLONG duration = 0;
         if (SUCCEEDED(sample->GetSampleDuration(&duration)) && static_cast<double>(timestamp + duration) / kUnitsPerSecond <= seekTarget) {
             continue;
         }
+
         ComPtr<IMFMediaBuffer> buffer;
         check(sample->ConvertToContiguousBuffer(&buffer), "its picture could not be read");
         BYTE* data = nullptr;
@@ -132,7 +141,9 @@ VideoDecoder::Read WindowsVideoDecoder::readFrame(Frame& frame) {
             buffer->Unlock();
             throw std::runtime_error("The video \"" + path + "\" gave a picture smaller than its size.");
         }
+
         frame.pixels.resize(width * height * 4U);
+
         for (std::size_t row = 0; row < height; ++row) {
             const std::size_t sourceRow = stride < 0 ? height - 1 - row : row;
             const BYTE* from = data + sourceRow * rowBytes;
@@ -144,6 +155,7 @@ VideoDecoder::Read WindowsVideoDecoder::readFrame(Frame& frame) {
                 to[3] = 255;
             }
         }
+
         buffer->Unlock();
         frame.width = info.width;
         frame.height = info.height;
@@ -154,6 +166,7 @@ VideoDecoder::Read WindowsVideoDecoder::readFrame(Frame& frame) {
 
 bool WindowsVideoDecoder::readAudio(std::vector<float>& samples, double until) {
     enterThread();
+
     while (!soundEnded && soundTime < until) {
         DWORD flags = 0;
         LONGLONG timestamp = 0;
@@ -163,9 +176,11 @@ bool WindowsVideoDecoder::readAudio(std::vector<float>& samples, double until) {
             soundEnded = true;
             break;
         }
+
         if (!sample) {
             continue;
         }
+
         ComPtr<IMFMediaBuffer> buffer;
         check(sample->ConvertToContiguousBuffer(&buffer), "its sound could not be read");
         BYTE* data = nullptr;
@@ -181,9 +196,11 @@ bool WindowsVideoDecoder::readAudio(std::vector<float>& samples, double until) {
                 samples.push_back(value);
             }
         }
+
         buffer->Unlock();
         soundTime = start + static_cast<double>(frames) / info.sampleRate;
     }
+
     return !soundEnded;
 }
 

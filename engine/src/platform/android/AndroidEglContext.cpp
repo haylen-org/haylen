@@ -17,6 +17,7 @@ AndroidEglContext::AndroidEglContext(int sampleCount, bool validation) : display
     if (display == EGL_NO_DISPLAY || eglInitialize(display, nullptr, nullptr) == EGL_FALSE) {
         throw std::runtime_error("EGL found no display to draw OpenGL ES on.");
     }
+
     config = chooseConfig(sampleCount);
     if (config == nullptr) {
         eglTerminate(display);
@@ -32,6 +33,7 @@ AndroidEglContext::AndroidEglContext(int sampleCount, bool validation) : display
         eglTerminate(display);
         throw std::runtime_error("EGL could not create a context of OpenGL ES " + std::to_string(version.major) + "." + std::to_string(version.minor) + ".");
     }
+
     makeCurrent();
 }
 
@@ -77,9 +79,11 @@ class AndroidEglContext::Drawable final : public gpu::GlContext {
 
 AndroidEglContext::~AndroidEglContext() {
     eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+
     if (surface != EGL_NO_SURFACE) {
         eglDestroySurface(display, surface);
     }
+
     eglDestroyContext(display, context);
     eglTerminate(display);
 }
@@ -88,6 +92,7 @@ void AndroidEglContext::makeCurrent() {
     if (eglMakeCurrent(display, surface, surface, context) == EGL_TRUE) {
         return;
     }
+
     lost = eglGetError() == EGL_CONTEXT_LOST;
     throw std::runtime_error("EGL could not make the context of OpenGL ES current.");
 }
@@ -110,11 +115,13 @@ void AndroidEglContext::attachWindow(ANativeWindow& window) {
     if (attached == &window) {
         return;
     }
+
     releaseWindow();
     surface = eglCreateWindowSurface(display, config, &window, nullptr);
     if (surface == EGL_NO_SURFACE) {
         throw std::runtime_error("EGL could not make a surface of the window of the activity.");
     }
+
     attached = &window;
     makeCurrent();
 }
@@ -128,6 +135,7 @@ void AndroidEglContext::releaseWindow() noexcept {
     if (surface == EGL_NO_SURFACE) {
         return;
     }
+
     eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, context);
     eglDestroySurface(display, surface);
     surface = EGL_NO_SURFACE;
@@ -140,9 +148,11 @@ std::vector<EGLint> AndroidEglContext::describeContext(const AndroidGlesVersion&
     if (hasExtension("EGL_EXT_create_context_robustness")) {
         attributes.insert(attributes.end(), {EGL_CONTEXT_OPENGL_RESET_NOTIFICATION_STRATEGY_EXT, EGL_LOSE_CONTEXT_ON_RESET_EXT});
     }
+
     if (validation && hasExtension("EGL_KHR_create_context")) {
         attributes.insert(attributes.end(), {EGL_CONTEXT_FLAGS_KHR, EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR});
     }
+
     attributes.push_back(EGL_NONE);
     return attributes;
 }
@@ -157,6 +167,7 @@ EGLConfig AndroidEglContext::chooseConfig(int sampleCount) const {
     if (eglChooseConfig(display, attributes.data(), nullptr, 0, &available) == EGL_FALSE || available <= 0) {
         return nullptr;
     }
+
     std::vector<EGLConfig> configs(static_cast<std::size_t>(available));
     eglChooseConfig(display, attributes.data(), configs.data(), available, &available);
     configs.resize(static_cast<std::size_t>(std::max(available, 0)));
@@ -165,6 +176,7 @@ EGLConfig AndroidEglContext::chooseConfig(int sampleCount) const {
     if (found != configs.end()) {
         return *found;
     }
+
     return configs.empty() ? nullptr : configs.front();
 }
 
@@ -183,6 +195,7 @@ bool AndroidEglContext::hasExtension(const char* name) const {
     if (extensions == nullptr) {
         return false;
     }
+
     const std::string_view list(extensions);
     const std::string_view wanted(name);
     for (std::size_t start = 0; start < list.size();) {
@@ -190,8 +203,10 @@ bool AndroidEglContext::hasExtension(const char* name) const {
         if (list.substr(start, end - start) == wanted) {
             return true;
         }
+
         start = end + 1;
     }
+
     return false;
 }
 

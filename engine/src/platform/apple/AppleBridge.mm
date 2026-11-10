@@ -59,6 +59,7 @@ void AppleBridge::dispatch(std::uint64_t call, std::string_view method, std::str
       if (cancel == nil) {
           return;
       }
+
       @synchronized([HaylenBridge class]) {
           if (getCalls()[key] != nil) {
               getCalls()[key] = [cancel copy];
@@ -92,6 +93,7 @@ void AppleBridge::emit(NSString* event, id payload, const Bridge::EmitOptions& o
             waiting.push_back({.event = event.UTF8String, .payload = std::move(*encoded), .options = options});
             return;
         }
+
         BridgeRelay::emit(event.UTF8String, encoded->json, std::move(encoded->buffers), options);
     }
 }
@@ -103,9 +105,11 @@ void AppleBridge::setAppRunning(bool value) {
         if (!running) {
             return;
         }
+
         for (WaitingEvent& entry : waiting) {
             BridgeRelay::emit(entry.event, entry.payload.json, std::move(entry.payload.buffers), entry.options);
         }
+
         waiting.clear();
     }
 }
@@ -125,6 +129,7 @@ std::optional<AppleBridge::Encoded> AppleBridge::encode(id value) {
     if (value == nil) {
         return Encoded{.json = "null"};
     }
+
     Encoded encoded;
     id prepared = prepare(value, encoded);
     @try {
@@ -132,6 +137,7 @@ std::optional<AppleBridge::Encoded> AppleBridge::encode(id value) {
         if (data == nil) {
             return std::nullopt;
         }
+
         encoded.json.assign(static_cast<const char*>(data.bytes), data.length);
         return encoded;
     } @catch (NSException*) {
@@ -146,27 +152,33 @@ id AppleBridge::prepare(id value, Encoded& encoded) {
         encoded.buffers.emplace_back(bytes, bytes + data.length);
         return @{@(core::JsonBytes::kKey) : @(encoded.buffers.size() - 1)};
     }
+
     if ([value isKindOfClass:VarnDataView.class]) {
         VarnDataView* view = value;
         encoded.views.push_back(varn::dataview::DataView::share(view.handle));
         return view.token;
     }
+
     if ([value isKindOfClass:NSDictionary.class]) {
         NSDictionary* source = value;
         NSMutableDictionary* object = [NSMutableDictionary dictionaryWithCapacity:source.count];
         for (id key in source) {
             object[key] = prepare(source[key], encoded);
         }
+
         return object;
     }
+
     if ([value isKindOfClass:NSArray.class]) {
         NSArray* source = value;
         NSMutableArray* array = [NSMutableArray arrayWithCapacity:source.count];
         for (id element in source) {
             [array addObject:prepare(element, encoded)];
         }
+
         return array;
     }
+
     return value;
 }
 
@@ -177,28 +189,35 @@ id AppleBridge::restore(id value, NSArray<NSData*>* buffers) {
         for (id element in value) {
             [array addObject:restore(element, buffers)];
         }
+
         return array;
     }
+
     if (![value isKindOfClass:NSDictionary.class]) {
         return value;
     }
+
     if ([VarnDataView isToken:value]) {
         VarnDataView* view = [VarnDataView viewWithToken:value];
         if (view == nil) {
             core::Log::error("A data view of the parameters was gone before native code received it.");
             return NSNull.null;
         }
+
         return view;
     }
+
     NSDictionary* source = value;
     id index = source.count == 1 ? source[@(core::JsonBytes::kKey)] : nil;
     if (index != nil && CFGetTypeID((__bridge CFTypeRef)index) == CFNumberGetTypeID() && !CFNumberIsFloatType((__bridge CFNumberRef)index) && [index longLongValue] >= 0 && [index unsignedLongLongValue] < buffers.count) {
         return buffers[[index unsignedIntegerValue]];
     }
+
     NSMutableDictionary* object = [NSMutableDictionary dictionaryWithCapacity:source.count];
     for (id key in source) {
         object[key] = restore(source[key], buffers);
     }
+
     return object;
 }
 
@@ -212,10 +231,12 @@ id AppleBridge::decode(std::string_view json, std::span<const std::vector<std::b
     if (parsed == nil) {
         return nil;
     }
+
     NSMutableArray<NSData*>* datas = [NSMutableArray arrayWithCapacity:buffers.size()];
     for (const std::vector<std::byte>& buffer : buffers) {
         [datas addObject:[NSData dataWithBytes:buffer.data() length:buffer.size()]];
     }
+
     return restore(parsed, datas);
 }
 
@@ -235,6 +256,7 @@ void AppleBridge::answer(std::uint64_t call, NSString* method, BOOL ok, id resul
         if (getCalls()[@(call)] == nil) {
             return;
         }
+
         [getCalls() removeObjectForKey:@(call)];
     }
 
@@ -243,18 +265,22 @@ void AppleBridge::answer(std::uint64_t call, NSString* method, BOOL ok, id resul
             fail(call, @{@"message" : result});
             return;
         }
+
         NSMutableDictionary* failure = [result isKindOfClass:NSDictionary.class] ? [result mutableCopy] : [NSMutableDictionary dictionary];
         if (![failure[@"message"] isKindOfClass:NSString.class]) {
             failure[@"message"] = [NSString stringWithFormat:@"The native handler for \"%@\" failed.", method];
         }
+
         fail(call, failure);
         return;
     }
+
     std::optional<Encoded> encoded = encode(result);
     if (!encoded) {
         fail(call, @{@"message" : [NSString stringWithFormat:@"The native handler for \"%@\" returned a value that is not JSON.", method]});
         return;
     }
+
     BridgeRelay::resolve(call, true, encoded->json, std::move(encoded->buffers));
 }
 

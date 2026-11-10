@@ -28,6 +28,7 @@ class GamepadsTest : public ::testing::Test {
         for (SDL_Joystick* joystick : joysticks) {
             SDL_CloseJoystick(joystick);
         }
+
         SDL_QuitSubSystem(SDL_INIT_GAMEPAD);
     }
 
@@ -50,6 +51,7 @@ class GamepadsTest : public ::testing::Test {
             desc.touchpads = &kTouchpad;
             desc.SetSensorsEnabled = &GamepadsTest::enableSensors;
         }
+
         SDL_Joystick* joystick = SDL_OpenJoystick(SDL_AttachVirtualJoystick(&desc));
         joysticks.push_back(joystick);
         return joystick;
@@ -67,6 +69,7 @@ class GamepadsTest : public ::testing::Test {
         while (SDL_PollEvent(&event)) {
             gamepads.handle(event);
         }
+
         gamepads.poll(states);
     }
 

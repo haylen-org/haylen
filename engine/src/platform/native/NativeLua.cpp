@@ -44,6 +44,7 @@ int NativeLua::load(lua_State* L) {
         if (address == nullptr) {
             throw std::runtime_error("The native library \"" + name + "\" has no function \"" + init + "\".");
         }
+
         const int code = reinterpret_cast<HaylenNativeInit>(address)(&NativeApi::get());
         if (code != 0) {
             throw std::runtime_error("The function \"" + init + "\" of the native library \"" + name + "\" failed with code " + std::to_string(code) + ".");
@@ -55,6 +56,7 @@ int NativeLua::load(lua_State* L) {
         lua_getfield(L, -1, "C");
         return 1;
     }
+
     lua_getfield(L, -1, "load");
     lua::Stack::push(L, library.path);
     lua_pushboolean(L, global ? 1 : 0);
@@ -70,6 +72,7 @@ int NativeLua::findSymbol(lua_State* L) {
     } else {
         lua_pushlightuserdata(L, address);
     }
+
     return 1;
 }
 
@@ -83,6 +86,7 @@ int NativeLua::callback(lua_State* L) {
         lua::Table::checkFields(L, 3, {kCallbackOptions});
         lua::Table::readField(L, 3, "thread", thread);
     }
+
     if (thread != "any" && thread != "frame") {
         throw std::invalid_argument("The thread of a native callback is \"any\" or \"frame\", not \"" + thread + "\".");
     }
@@ -97,6 +101,7 @@ int NativeLua::callback(lua_State* L) {
         plugin.getCallbacks()->remove(id);
         throw;
     }
+
     return 1;
 }
 
@@ -120,6 +125,7 @@ int NativeLua::freeCallback(lua_State* L) {
     if (storage == nullptr) {
         return 0;
     }
+
     lua::Runtime::getEngine(L).getPlugin<plugins::NativePlugin>().getCallbacks()->remove(storage->getId());
     NativeCallback::release(storage);
     storage.reset();

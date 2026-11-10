@@ -9,5 +9,6 @@ int main(int argc, char** argv) {
         std::fprintf(stderr, "Usage: \"haylen-headless <app folder or zip> [--frames <count>] [--dev]\".\n");
         return 2;
     }
+
     return haylen::platform::HeadlessPlayer::run(*options);
 }

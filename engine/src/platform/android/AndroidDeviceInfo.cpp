@@ -18,6 +18,7 @@ SystemInfo AndroidDeviceInfo::toSystemInfo(std::string_view json) {
     } else {
         info.deviceKind = device.value("tablet", false) ? SystemInfo::DeviceKind::Tablet : SystemInfo::DeviceKind::Phone;
     }
+
     info.osVersion = device.value("osVersion", "");
     info.deviceModel = device.value("deviceModel", "");
     info.manufacturer = device.value("manufacturer", "");

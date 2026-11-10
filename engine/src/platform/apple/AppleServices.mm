@@ -222,6 +222,7 @@ math::Insets Services::getSafeAreaInsets() {
     if (screen == nil || screen.safeAreaInsets.top <= 0.0) {
         return {};
     }
+
     const NSRect content = [window contentRectForFrameRect:window.frame];
     const CGFloat covered = NSMaxY(content) - (NSMaxY(screen.frame) - screen.safeAreaInsets.top);
     return {.top = static_cast<float>(std::clamp<CGFloat>(covered, 0.0, NSHeight(content))) * scale};
@@ -230,11 +231,13 @@ math::Insets Services::getSafeAreaInsets() {
     if (window == nil) {
         return {};
     }
+
     UIEdgeInsets insets = window.safeAreaInsets;
     // The controls of a window of iPadOS sit in its top corner, so the safe area starts below them.
     if (@available(iOS 26.0, tvOS 26.0, visionOS 26.0, *)) {
         insets = [window edgeInsetsForLayoutRegion:[UIViewLayoutRegion safeAreaLayoutRegionWithCornerAdaptation:UIViewLayoutRegionAdaptivityAxisVertical]];
     }
+
     return {.left = static_cast<float>(insets.left) * scale, .top = static_cast<float>(insets.top) * scale, .right = static_cast<float>(insets.right) * scale, .bottom = static_cast<float>(insets.bottom) * scale};
 #endif
 }
@@ -306,6 +309,7 @@ void Services::getCutouts(std::vector<math::Rect>& cutouts) {
     if (screen == nil || screen.safeAreaInsets.top <= 0.0) {
         return;
     }
+
     const NSRect left = screen.auxiliaryTopLeftArea;
     const NSRect right = screen.auxiliaryTopRightArea;
     const NSRect housing = NSMakeRect(NSMaxX(left), NSMaxY(screen.frame) - screen.safeAreaInsets.top, NSMinX(right) - NSMaxX(left), screen.safeAreaInsets.top);
@@ -314,6 +318,7 @@ void Services::getCutouts(std::vector<math::Rect>& cutouts) {
     if (NSIsEmptyRect(covered)) {
         return;
     }
+
     const float scale = NativeWindow::getScale();
     const auto x = static_cast<float>(NSMinX(covered) - NSMinX(content));
     const auto y = static_cast<float>(NSMaxY(content) - NSMaxY(covered));

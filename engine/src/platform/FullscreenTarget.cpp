@@ -22,8 +22,10 @@ FullscreenTarget FullscreenTarget::resolve(std::span<const Display> displays, st
             const std::string rate = wanted.refreshRate > 0.0F ? std::format(" at {} frames per second", wanted.refreshRate) : std::string();
             throw std::invalid_argument(std::format("The display \"{}\" has no mode of {} by {} pixels{}. The modes of \"display.list()\" are the ones it runs in.", id, wanted.width, wanted.height, rate));
         }
+
         target.mode = *mode;
     }
+
     return target;
 }
 

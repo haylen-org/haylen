@@ -26,9 +26,11 @@ void LinuxMonitors::observe() {
     if (library == nullptr || !LinuxGlib::find(library, connect, "g_signal_connect_data")) {
         return;
     }
+
     observeNetwork(library);
     observeMemory(library);
     observePowerSaver(library);
+
     if (!LinuxSystem::isTimeZoneFixed()) {
         observeTimeZone(library);
     }
@@ -38,6 +40,7 @@ void LinuxMonitors::observeNetwork(void* library) {
     if (!LinuxGlib::find(library, getNetworkMonitor, "g_network_monitor_get_default") || !LinuxGlib::find(library, isNetworkAvailable, "g_network_monitor_get_network_available")) {
         return;
     }
+
     void* monitor = getNetworkMonitor();
     connect(monitor, "network-changed", reinterpret_cast<Callback>(&networkChanged), nullptr, nullptr, kNoFlags);
     networkChanged(monitor, isNetworkAvailable(monitor), nullptr);
@@ -47,6 +50,7 @@ void LinuxMonitors::observeMemory(void* library) {
     if (!LinuxGlib::find(library, getMemoryMonitor, "g_memory_monitor_dup_default")) {
         return;
     }
+
     connect(getMemoryMonitor(), "low-memory-warning", reinterpret_cast<Callback>(&memoryWarned), nullptr, nullptr, kNoFlags);
 }
 
@@ -54,6 +58,7 @@ void LinuxMonitors::observePowerSaver(void* library) {
     if (!LinuxGlib::find(library, getPowerProfileMonitor, "g_power_profile_monitor_dup_default") || !LinuxGlib::find(library, isPowerSaverEnabled, "g_power_profile_monitor_get_power_saver_enabled")) {
         return;
     }
+
     void* monitor = getPowerProfileMonitor();
     connect(monitor, "notify::power-saver-enabled", reinterpret_cast<Callback>(&powerSaverChanged), nullptr, nullptr, kNoFlags);
     powerSaverChanged(monitor, nullptr, nullptr);
@@ -64,6 +69,7 @@ void LinuxMonitors::observeTimeZone(void* library) {
     if (!LinuxGlib::find(library, newFileForPath, "g_file_new_for_path") || !LinuxGlib::find(library, monitorFile, "g_file_monitor_file")) {
         return;
     }
+
     void* monitor = monitorFile(newFileForPath(LinuxSystem::kLocalTime), kNoFlags, nullptr, nullptr);
     if (monitor != nullptr) {
         connect(monitor, "changed", reinterpret_cast<Callback>(&localTimeChanged), nullptr, nullptr, kNoFlags);

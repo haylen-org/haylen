@@ -47,6 +47,7 @@ void WindowsSystem::reportPowerStatus() {
     if (!GetSystemPowerStatus(&status)) {
         return;
     }
+
     NativeHost::getSystemState().setBattery(WindowsPowerStatus::toBattery(status.ACLineStatus, status.BatteryFlag, status.BatteryLifePercent));
     NativeHost::getSystemState().setPowerSaving(status.SystemStatusFlag == kPowerSaverOn);
 }
@@ -64,6 +65,7 @@ std::string WindowsSystem::getSystemVersion() {
     if (readVersion == nullptr || readVersion(&info) != 0) {
         return {};
     }
+
     return std::to_string(info.dwMajorVersion) + "." + std::to_string(info.dwMinorVersion) + "." + std::to_string(info.dwBuildNumber);
 }
 
@@ -74,6 +76,7 @@ std::vector<std::string> WindowsSystem::getLanguages() {
     if (!GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &count, nullptr, &size)) {
         return {};
     }
+
     std::wstring buffer(size, L'\0');
     if (!GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &count, buffer.data(), &size)) {
         return {};
@@ -85,6 +88,7 @@ std::vector<std::string> WindowsSystem::getLanguages() {
         languages.push_back(WindowsText::toUtf8(std::wstring_view(buffer).substr(start, end - start)));
         start = end + 1;
     }
+
     return languages;
 }
 
@@ -96,6 +100,7 @@ std::string WindowsSystem::getTimeZone() {
     if (icu == nullptr || GetDynamicTimeZoneInformation(&zone) == TIME_ZONE_ID_INVALID) {
         return {};
     }
+
     const auto convert = reinterpret_cast<TimeZoneForWindowsId>(GetProcAddress(icu, "ucal_getTimeZoneIDForWindowsID"));
     if (convert == nullptr) {
         return {};
@@ -107,6 +112,7 @@ std::string WindowsSystem::getTimeZone() {
     if (status > 0 || length <= 0) {
         return {};
     }
+
     return WindowsText::toUtf8(std::wstring_view(id.data(), static_cast<std::size_t>(length)));
 }
 
@@ -122,6 +128,7 @@ std::string WindowsSystem::readMachineText(const wchar_t* key, const wchar_t* na
     if (RegGetValueW(HKEY_LOCAL_MACHINE, key, name, RRF_RT_REG_SZ, nullptr, nullptr, &size) != ERROR_SUCCESS) {
         return {};
     }
+
     std::wstring text(size / sizeof(wchar_t), L'\0');
     if (RegGetValueW(HKEY_LOCAL_MACHINE, key, name, RRF_RT_REG_SZ, nullptr, text.data(), &size) != ERROR_SUCCESS) {
         return {};
@@ -132,6 +139,7 @@ std::string WindowsSystem::readMachineText(const wchar_t* key, const wchar_t* na
     if (first == std::wstring_view::npos) {
         return {};
     }
+
     return WindowsText::toUtf8(value.substr(first, value.find_last_not_of(L' ') - first + 1));
 }
 

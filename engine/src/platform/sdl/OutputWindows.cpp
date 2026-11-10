@@ -27,6 +27,7 @@ void OutputWindows::open(std::uint32_t number, const Display& display, const Out
     if (!options.fullscreen) {
         flags |= SDL_WINDOW_RESIZABLE;
     }
+
     switch (main.getApi()) {
     case gpu::Device::Api::Metal:
         flags |= SDL_WINDOW_METAL;
@@ -51,6 +52,7 @@ void OutputWindows::open(std::uint32_t number, const Display& display, const Out
     SDL_SetNumberProperty(properties, SDL_PROP_WINDOW_CREATE_FLAGS_NUMBER, static_cast<std::int64_t>(flags));
     entry.window = SDL_CreateWindowWithProperties(properties);
     SDL_DestroyProperties(properties);
+
     if (entry.window == nullptr) {
         entry.report = {.ending = Output::Ending::Unsupported, .reason = "The window of the output could not open. " + std::string(SDL_GetError())};
         Player::postEvent({.type = platform::Event::Type::OutputChanged, .output = number});
@@ -61,12 +63,15 @@ void OutputWindows::open(std::uint32_t number, const Display& display, const Out
     if (units != 1.0F) {
         SDL_SetWindowSize(entry.window, static_cast<int>(std::lround(options.size.x * units)), static_cast<int>(std::lround(options.size.y * units)));
     }
+
     if (main.getApi() == gpu::Device::Api::Metal) {
         entry.view = SDL_Metal_CreateView(entry.window);
     }
+
     if (options.fullscreen) {
         SDL_SetWindowFullscreen(entry.window, true);
     }
+
     SDL_ShowWindow(entry.window);
 
     if (main.getGlContext() != nullptr) {
@@ -75,6 +80,7 @@ void OutputWindows::open(std::uint32_t number, const Display& display, const Out
     } else {
         entry.report.surface = Window::describe(entry.window, entry.view);
     }
+
     entry.report.surface->sampleCount = main.getSampleCount();
     entry.report.surface->vsync = main.isVsync();
     refresh(entry);
@@ -92,6 +98,7 @@ void OutputWindows::closeAll() noexcept {
     for (Entry& entry : entries) {
         destroy(entry);
     }
+
     entries.clear();
 }
 
@@ -117,10 +124,12 @@ OutputWindows::Entry* OutputWindows::findNumber(std::uint32_t number) noexcept {
 
 void OutputWindows::destroy(Entry& entry) noexcept {
     entry.gl.reset();
+
     if (entry.view != nullptr) {
         SDL_Metal_DestroyView(entry.view);
         entry.view = nullptr;
     }
+
     if (entry.window != nullptr) {
         SDL_DestroyWindow(entry.window);
         entry.window = nullptr;
@@ -149,6 +158,7 @@ bool OutputWindows::handle(const SDL_Event& event) {
         if (entry != nullptr && !entry->report.ending) {
             handleWindow(*entry, event);
         }
+
         return entry != nullptr;
     }
 
@@ -171,6 +181,7 @@ bool OutputWindows::handle(const SDL_Event& event) {
     if (entry != nullptr) {
         handlePointer(*entry, event);
     }
+
     return entry != nullptr;
 }
 

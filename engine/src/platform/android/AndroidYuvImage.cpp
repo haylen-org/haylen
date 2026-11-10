@@ -9,6 +9,7 @@ bool AndroidYuvImage::covers(const Plane& plane, int step) const noexcept {
     if (plane.data == nullptr || plane.rowStride <= 0 || plane.pixelStride <= 0) {
         return false;
     }
+
     const auto lastRow = static_cast<std::size_t>((top + height - 1) / step);
     const auto lastColumn = static_cast<std::size_t>((left + width - 1) / step);
     return lastRow * static_cast<std::size_t>(plane.rowStride) + lastColumn * static_cast<std::size_t>(plane.pixelStride) < plane.size;
@@ -19,6 +20,7 @@ void AndroidYuvImage::toRgba(std::vector<std::uint8_t>& pixels) const {
     if (width <= 0 || height <= 0 || left < 0 || top < 0 || !covers(planes[0], 1) || !covers(planes[1], 2) || !covers(planes[2], 2)) {
         throw std::invalid_argument("The picture of the video decoder is smaller than its size says.");
     }
+
     const Plane& luma = planes[0];
     const Plane& blue = planes[1];
     const Plane& red = planes[2];

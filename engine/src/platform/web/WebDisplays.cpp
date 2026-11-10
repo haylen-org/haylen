@@ -36,6 +36,7 @@ std::vector<Display> WebDisplays::getDisplays() {
             .primary = item.at("primary").get<bool>(),
         });
     }
+
     return displays;
 }
 

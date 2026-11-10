@@ -13,11 +13,13 @@ HRESULT STDMETHODCALLTYPE WindowsPackageStream::QueryInterface(REFIID id, void**
     if (object == nullptr) {
         return E_POINTER;
     }
+
     if (id == __uuidof(IUnknown) || id == __uuidof(ISequentialStream) || id == __uuidof(IStream)) {
         *object = static_cast<IStream*>(this);
         AddRef();
         return S_OK;
     }
+
     *object = nullptr;
     return E_NOINTERFACE;
 }
@@ -31,6 +33,7 @@ ULONG STDMETHODCALLTYPE WindowsPackageStream::Release() {
     if (left == 0) {
         delete this;
     }
+
     return left;
 }
 
@@ -39,9 +42,11 @@ HRESULT STDMETHODCALLTYPE WindowsPackageStream::Read(void* target, ULONG size, U
     try {
         const std::size_t count = file->read(position, std::span<std::uint8_t>(static_cast<std::uint8_t*>(target), size));
         position += count;
+
         if (read != nullptr) {
             *read = static_cast<ULONG>(count);
         }
+
         return count == size ? S_OK : S_FALSE;
     } catch (const std::exception&) {
         return STG_E_READFAULT;
@@ -62,14 +67,17 @@ HRESULT STDMETHODCALLTYPE WindowsPackageStream::Seek(LARGE_INTEGER move, DWORD o
     } else if (origin != STREAM_SEEK_SET) {
         return STG_E_INVALIDFUNCTION;
     }
+
     const std::int64_t target = base + move.QuadPart;
     if (target < 0) {
         return STG_E_INVALIDFUNCTION;
     }
+
     position = static_cast<std::uint64_t>(target);
     if (result != nullptr) {
         result->QuadPart = position;
     }
+
     return S_OK;
 }
 
@@ -101,6 +109,7 @@ HRESULT STDMETHODCALLTYPE WindowsPackageStream::Stat(STATSTG* stat, DWORD) {
     if (stat == nullptr) {
         return STG_E_INVALIDPOINTER;
     }
+
     *stat = {};
     stat->type = STGTY_STREAM;
     stat->cbSize.QuadPart = file->getSize();

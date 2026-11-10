@@ -45,6 +45,7 @@ void Displays::refresh() {
             events.emit(core::LifecycleEvent::kDisplayChanged, {{"display", display.id}, {"name", display.name}});
         }
     }
+
     refreshWindowDisplay();
 }
 

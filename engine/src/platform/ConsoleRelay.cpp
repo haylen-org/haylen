@@ -36,6 +36,7 @@ std::vector<ConsoleRelay::Request> ConsoleRelay::take() {
     for (PendingLine& line : lines) {
         requests.push_back(std::move(line.request));
     }
+
     return requests;
 }
 
@@ -51,6 +52,7 @@ std::vector<ConsoleRelay::ListReply> ConsoleRelay::takeCommandRequests() {
     for (PendingListing& listing : waiting) {
         replies.push_back(std::move(listing.reply));
     }
+
     return replies;
 }
 

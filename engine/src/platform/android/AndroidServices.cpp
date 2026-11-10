@@ -81,6 +81,7 @@ std::shared_ptr<io::Package> Services::openBundledPackage() {
     if (manifest != nullptr) {
         return content::ReleasePackage::openBundled(AndroidAssetPackage::openFlat(manager, "app"), content::Bootstrap::find(), [](std::string_view identifier) { return std::make_unique<content::FolderStoreFiles>(getContentStoreDirectory(identifier)); });
     }
+
     return AndroidAssetPackage::openIndexed(manager, "app");
 }
 
@@ -159,11 +160,13 @@ std::optional<Fold> Services::getFold() {
     if (fold) {
         fold->bounds = AndroidActivity::toFramebuffer(fold->bounds);
     }
+
     return fold;
 }
 
 void Services::getCutouts(std::vector<math::Rect>& cutouts) {
     AndroidActivity::getCutouts(cutouts);
+
     for (math::Rect& cutout : cutouts) {
         cutout = AndroidActivity::toFramebuffer(cutout);
     }
@@ -205,6 +208,7 @@ std::string Services::explainBlockedSocket(std::intptr_t socket) {
     if (readBlockedReason == nullptr || readBlockedReason(static_cast<int>(socket)) != ANDROID_NETWORK_BLOCKED_REASON_LNP) {
         return {};
     }
+
     return "Android blocked the connection, because the app may not reach the local network without the permission \"android.permission.ACCESS_LOCAL_NETWORK\". Ask the person for it with \"system.requestPermission('localNetwork')\".";
 }
 
@@ -225,6 +229,7 @@ void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>& valu
         JavaBridge::updateMediaSession({}, {});
         return;
     }
+
     JavaBridge::updateMediaSession(MediaSession::writeNowPlaying(*value), value->artwork);
 }
 
@@ -253,6 +258,7 @@ std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageRea
     if (!AndroidVideoDecoder::isAvailable()) {
         return nullptr;
     }
+
     return std::make_unique<AndroidVideoDecoder>(std::move(file), path);
 }
 
@@ -313,6 +319,7 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeCutouts(JNIEnv* env,
     for (std::size_t index = 0; index + 3 < values.size(); index += 4) {
         cutouts.push_back(haylen::math::Rect::fromMinMax({static_cast<float>(values[index]), static_cast<float>(values[index + 1])}, {static_cast<float>(values[index + 2]), static_cast<float>(values[index + 3])}));
     }
+
     haylen::platform::AndroidActivity::setCutouts(std::move(cutouts));
 }
 

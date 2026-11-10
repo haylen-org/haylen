@@ -47,6 +47,7 @@ void DisplayLua::pushDisplay(lua_State* L, const Display& display) {
         lua_setfield(L, -2, "scale");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     lua_setfield(L, -2, "modes");
 }
 
@@ -57,6 +58,7 @@ int DisplayLua::list(lua_State* L) {
         pushDisplay(L, all[index]);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 

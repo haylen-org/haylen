@@ -35,10 +35,13 @@ void NativeCallbacks::deliver(std::uint64_t id, const std::vector<NativeCallback
         if (lua_checkstack(L, static_cast<int>(values.size()) + 2) == 0) {
             throw std::runtime_error("A native callback has more arguments than the Lua stack holds.");
         }
+
         found->second.push(L);
+
         for (const NativeCallback::Value& value : values) {
             push(L, value);
         }
+
         lua::Runtime::protectedCall(L, static_cast<int>(values.size()), 0);
     });
     // clang-format on

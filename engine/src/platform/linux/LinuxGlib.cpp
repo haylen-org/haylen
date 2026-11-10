@@ -10,11 +10,13 @@ void* LinuxGlib::open() {
     if (opened) {
         return library;
     }
+
     opened = true;
     void* loaded = dlopen("libgio-2.0.so.0", RTLD_NOW | RTLD_LOCAL);
     if (loaded != nullptr && find(loaded, iterateContext, "g_main_context_iteration")) {
         library = loaded;
     }
+
     return library;
 }
 

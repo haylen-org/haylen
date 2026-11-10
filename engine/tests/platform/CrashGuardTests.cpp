@@ -78,9 +78,11 @@ class CrashGuardTest : public ::testing::Test {
     static int overflowTheStack(int depth) {
         std::array<volatile char, 4096> frame{};
         frame[0] = static_cast<char>(depth);
+
         if (depth < 0) {
             return 0;
         }
+
         return overflowTheStack(depth + 1) + frame[static_cast<std::size_t>(depth) % frame.size()];
     }
 

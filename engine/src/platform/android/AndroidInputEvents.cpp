@@ -29,6 +29,7 @@ void AndroidInputEvents::dispatchKey(const GameActivityKeyEvent& event) {
     if (const input::Key key = toKey(event.keyCode); key != input::Key::Unknown) {
         Player::handleEvent({.type = pressed ? Event::Type::KeyDown : Event::Type::KeyUp, .key = key, .repeat = repeat, .modifiers = modifiers});
     }
+
     if (pressed && typesCharacter(event)) {
         Player::handleEvent({.type = Event::Type::Character, .repeat = repeat, .modifiers = modifiers, .character = static_cast<char32_t>(event.unicodeChar)});
     }
@@ -38,6 +39,7 @@ void AndroidInputEvents::dispatchMotion(const GameActivityMotionEvent& event) {
     if (AndroidGamepads::handleMotion(event) || AndroidMouseWheel::handleEvent(event)) {
         return;
     }
+
     dispatchTouches(event);
 }
 
@@ -59,6 +61,7 @@ void AndroidInputEvents::dispatchTouches(const GameActivityMotionEvent& event) {
         const math::Vec2 position{GameActivityPointerAxes_getX(&pointer) * scale, GameActivityPointerAxes_getY(&pointer) * scale};
         touches.touches[index] = {.id = static_cast<std::uint64_t>(pointer.id), .position = position, .changed = !single || index == changedIndex};
     }
+
     Player::handleEvent(touches);
 }
 
@@ -71,12 +74,15 @@ input::Key AndroidInputEvents::toKey(std::int32_t code) noexcept {
     if (code >= AKEYCODE_A && code <= AKEYCODE_Z) {
         return static_cast<input::Key>(static_cast<int>(input::Key::A) + code - AKEYCODE_A);
     }
+
     if (code >= AKEYCODE_0 && code <= AKEYCODE_9) {
         return static_cast<input::Key>(static_cast<int>(input::Key::Digit0) + code - AKEYCODE_0);
     }
+
     if (code >= AKEYCODE_NUMPAD_0 && code <= AKEYCODE_NUMPAD_9) {
         return static_cast<input::Key>(static_cast<int>(input::Key::Keypad0) + code - AKEYCODE_NUMPAD_0);
     }
+
     if (code >= AKEYCODE_F1 && code <= AKEYCODE_F12) {
         return static_cast<input::Key>(static_cast<int>(input::Key::F1) + code - AKEYCODE_F1);
     }

@@ -31,9 +31,11 @@ std::shared_ptr<Output> Outputs::open(std::string_view display, const Output::Op
     if (displays.find(display) == nullptr) {
         throw std::invalid_argument("There is no display \"" + std::string(display) + "\" to open an output on. The function \"display.list()\" lists the displays.");
     }
+
     if (display == displays.getWindowDisplay().id) {
         throw std::invalid_argument("The display \"" + std::string(display) + "\" shows the window of the app, so it shows no output.");
     }
+
     if (std::ranges::any_of(outputs, [display](const std::shared_ptr<Output>& open) { return open->displayId == display; })) {
         throw std::invalid_argument("The display \"" + std::string(display) + "\" shows another output already.");
     }
@@ -48,6 +50,7 @@ void Outputs::close(Output& output) {
     if (output.state == Output::State::Closed) {
         return;
     }
+
     end(output, Output::Ending::App, {});
 }
 
@@ -66,15 +69,18 @@ void Outputs::refresh(std::uint32_t number) {
     if (output == nullptr) {
         return;
     }
+
     const Host::OutputReport report = host.getOutputReport(number);
     if (report.ending) {
         end(*output, *report.ending, report.reason);
         return;
     }
+
     if (!report.surface) {
         hide(*output);
         return;
     }
+
     show(*output, *report.surface, report.scale);
 }
 
@@ -86,6 +92,7 @@ void Outputs::followDisplays() {
             end(*output, Output::Ending::Disconnected, {});
         }
     }
+
     snapshot.clear();
 }
 
@@ -122,6 +129,7 @@ void Outputs::show(Output& output, const gpu::Surface& surface, float scale) {
 
 void Outputs::hide(Output& output) {
     releaseSurface(output);
+
     if (output.state != Output::State::Hidden) {
         output.state = Output::State::Hidden;
         events.emit(core::LifecycleEvent::kOutputHidden, {{"output", output.id}});
@@ -143,6 +151,7 @@ void Outputs::end(Output& output, Output::Ending ending, std::string_view reason
     output.state = Output::State::Closed;
     output.ending = ending;
     const std::string_view name = std::ranges::find(Output::kEndingNames, ending, &std::pair<std::string_view, Output::Ending>::second)->first;
+
     if (!reason.empty()) {
         core::Log::warning("The output {} on the display \"{}\" closed: {}", output.id, output.displayId, reason);
     }
@@ -154,6 +163,7 @@ void Outputs::end(Output& output, Output::Ending ending, std::string_view reason
     if (!reason.empty()) {
         described["reason"] = std::string(reason);
     }
+
     events.emit(core::LifecycleEvent::kOutputClosed, described);
 }
 
@@ -162,6 +172,7 @@ void Outputs::receiveInput(const Event& event) {
     if (find(event.output) == nullptr) {
         return;
     }
+
     const std::string_view type = std::ranges::find(Event::kTypeNames, event.type, &std::pair<std::string_view, Event::Type>::second)->first;
     core::Json described{{"output", event.output}, {"type", type}, {"x", core::JsonNumber::fromFloat(event.position.x)}, {"y", core::JsonNumber::fromFloat(event.position.y)}};
     switch (event.type) {
@@ -182,6 +193,7 @@ void Outputs::receiveInput(const Event& event) {
             const TouchPoint& touch = event.touches[index];
             touches.push_back({{"id", touch.id}, {"x", core::JsonNumber::fromFloat(touch.position.x)}, {"y", core::JsonNumber::fromFloat(touch.position.y)}, {"changed", touch.changed}});
         }
+
         described["touches"] = std::move(touches);
         break;
     }

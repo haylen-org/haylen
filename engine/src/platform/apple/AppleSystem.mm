@@ -50,10 +50,12 @@ std::string AppleSystem::readSysctl(const char* name) {
     if (sysctlbyname(name, nullptr, &size, nullptr, 0) != 0 || size == 0) {
         return {};
     }
+
     std::vector<char> value(size);
     if (sysctlbyname(name, value.data(), &size, nullptr, 0) != 0) {
         return {};
     }
+
     return std::string(value.data());
 }
 

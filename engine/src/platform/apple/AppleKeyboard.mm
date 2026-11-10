@@ -10,6 +10,7 @@ namespace haylen::platform {
 
 void AppleKeyboard::observe() {
     [NSNotificationCenter.defaultCenter addObserverForName:GCKeyboardDidConnectNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification* notification) { observeKeyboard(notification.object); }];
+
     if (GCKeyboard.coalescedKeyboard != nil) {
         observeKeyboard(GCKeyboard.coalescedKeyboard);
     }

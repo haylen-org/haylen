@@ -20,6 +20,7 @@ bool SurfaceCheck::check(const Sizes& sizes) {
     if (!parted || wasParted) {
         return false;
     }
+
     core::Log::error("The view of the app covers {} by {} points of its window of {} by {}, and its drawable has {} by {} pixels for {} by {} at a scale of {}.", sizes.view.x, sizes.view.y, sizes.window.x, sizes.window.y, sizes.drawable.x, sizes.drawable.y, toPixels(sizes.view, sizes.scale).x, toPixels(sizes.view, sizes.scale).y, sizes.scale);
     return true;
 }

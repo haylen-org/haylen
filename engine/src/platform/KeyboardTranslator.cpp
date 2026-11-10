@@ -42,6 +42,7 @@ std::vector<Event> KeyboardTranslator::translate(const Event& event) {
     for (std::size_t index = kept; index < committed.size(); ++index) {
         press(events, input::Key::Backspace);
     }
+
     for (const char32_t character : std::u32string_view(text).substr(kept)) {
         if (character == U'\n') {
             press(events, input::Key::Enter);
@@ -51,6 +52,7 @@ std::vector<Event> KeyboardTranslator::translate(const Event& event) {
             events.push_back({.type = Event::Type::Character, .typedOnScreen = true, .character = character});
         }
     }
+
     committed = std::move(text);
     return events;
 }

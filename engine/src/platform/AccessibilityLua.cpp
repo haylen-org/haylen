@@ -32,6 +32,7 @@ int AccessibilityLua::announce(lua_State* L) {
         lua::Table::checkFields(L, 2, {kAnnounceOptions});
         lua::Table::readField(L, 2, "interrupt", interrupt);
     }
+
     lua::Runtime::getEngine(L).getAccessibility().announce(text, interrupt);
     return 0;
 }
@@ -50,6 +51,7 @@ void AccessibilityLua::pushElement(lua_State* L, const AccessibilityElement& ele
         lua::Stack::push(L, *text);
         lua_setfield(L, -2, name);
     }
+
     const math::Rect bounds = math::Rect::fromMinMax(viewport.toDesign(element.bounds.getMin()), viewport.toDesign(element.bounds.getMax()));
     lua::Stack::push(L, bounds);
     lua_setfield(L, -2, "bounds");
@@ -57,6 +59,7 @@ void AccessibilityLua::pushElement(lua_State* L, const AccessibilityElement& ele
         lua::Stack::push(L, element.has(state));
         lua_setfield(L, -2, std::string(name).c_str());
     }
+
     lua_createtable(L, 4, 0);
     lua_Integer count = 0;
     for (const auto& [name, action] : AccessibilityElement::kActionNames) {
@@ -65,6 +68,7 @@ void AccessibilityLua::pushElement(lua_State* L, const AccessibilityElement& ele
             lua_rawseti(L, -2, ++count);
         }
     }
+
     lua_setfield(L, -2, "actions");
 }
 
@@ -76,6 +80,7 @@ int AccessibilityLua::elements(lua_State* L) {
         pushElement(L, tree[index]);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
@@ -86,6 +91,7 @@ int AccessibilityLua::focused(lua_State* L) {
     } else {
         lua::Stack::push(L, id);
     }
+
     return 1;
 }
 
@@ -97,6 +103,7 @@ int AccessibilityLua::perform(lua_State* L) {
     if (!action) {
         return luaL_error(L, "The accessibility action \"%s\" is unknown. It is \"focus\", \"activate\", \"increment\" or \"decrement\".", std::string(name).c_str());
     }
+
     lua::Runtime::getEngine(L).getAccessibility().perform({.element = id, .action = *action});
     return 0;
 }

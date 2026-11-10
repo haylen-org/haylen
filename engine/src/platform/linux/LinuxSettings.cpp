@@ -30,10 +30,12 @@ void LinuxSettings::observe() {
     if (library == nullptr || !load(library)) {
         return;
     }
+
     void* connection = busGetSync(kSessionBus, nullptr, nullptr);
     if (connection == nullptr) {
         return;
     }
+
     subscribe(connection, kPortal, kSettings, "SettingChanged", kPortalPath, nullptr, 0, settingChanged, nullptr, nullptr);
     read(connection, kAppearance, kColorScheme);
     read(connection, kAppearance, kContrast);
@@ -56,6 +58,7 @@ void LinuxSettings::read(void* connection, std::string_view space, std::string_v
     if (reply == nullptr) {
         return;
     }
+
     void* value = getChild(reply, 0);
     apply(space, key, value);
     unref(value);
@@ -70,6 +73,7 @@ void LinuxSettings::apply(std::string_view space, std::string_view key, void* va
         unref(value);
         value = inner;
     }
+
     const bool number = isOfType(value, "u") != 0;
     if (space == kAppearance && key == kColorScheme && number) {
         NativeHost::getSystemState().setTheme(getUint32(value) == kPreferDark ? Theme::Dark : Theme::Light);
@@ -83,6 +87,7 @@ void LinuxSettings::apply(std::string_view space, std::string_view key, void* va
         accessibility.textScale = static_cast<float>(getDouble(value));
         NativeHost::getSystemState().setAccessibility(accessibility);
     }
+
     unref(value);
 }
 

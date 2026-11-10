@@ -26,6 +26,7 @@ void ScreenRelay::abandon(std::uint64_t id) {
         showing->abandoned = true;
         return;
     }
+
     for (Ending& ending : endings) {
         if (ending.screen.id == id) {
             ending.screen.abandoned = true;
@@ -47,6 +48,7 @@ void ScreenRelay::finish(std::uint64_t id, bool ok, std::string_view resultJson,
     if (!showing || showing->id != id) {
         return;
     }
+
     endings.push_back({.screen = std::move(*showing), .result = std::move(result)});
     showing.reset();
 }
@@ -57,6 +59,7 @@ void ScreenRelay::restore(std::string plugin, std::string name, std::string_view
         core::Log::error("The platform restored a screen without its plugin, its name or valid JSON of its state, so its end was dropped.");
         return;
     }
+
     Bridge::Result result = Bridge::parseResult(ok, resultJson, std::move(buffers));
     const std::scoped_lock lock(mutex);
     endings.push_back({.screen = {.plugin = std::move(plugin), .name = std::move(name), .state = std::move(state)}, .result = std::move(result)});

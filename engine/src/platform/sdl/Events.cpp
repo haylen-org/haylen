@@ -17,6 +17,7 @@ void Events::translate(const SDL_Event& source, const Context& context, std::vec
         if (const std::optional<platform::Event> key = translateKey(source.key)) {
             events.push_back(*key);
         }
+
         return;
     case SDL_EVENT_TEXT_INPUT:
         appendText(source.text.text, context, events);
@@ -28,6 +29,7 @@ void Events::translate(const SDL_Event& source, const Context& context, std::vec
         if (!button) {
             return;
         }
+
         const platform::Event::Type type = source.type == SDL_EVENT_MOUSE_BUTTON_DOWN ? platform::Event::Type::MouseDown : platform::Event::Type::MouseUp;
         events.push_back({.type = type, .modifiers = held, .mouseButton = *button, .position = {source.button.x * context.density, source.button.y * context.density}});
         return;
@@ -46,6 +48,7 @@ void Events::translate(const SDL_Event& source, const Context& context, std::vec
         if (!kRemote) {
             appendTouch(source.tfinger, context, events);
         }
+
         return;
     case SDL_EVENT_QUIT:
         events.push_back({.type = platform::Event::Type::QuitRequested});
@@ -59,12 +62,15 @@ void Events::translate(const SDL_Event& source, const Context& context, std::vec
         events.push_back({.type = platform::Event::Type::DisplaysChanged});
         return;
     }
+
     if (source.type >= SDL_EVENT_WINDOW_FIRST && source.type <= SDL_EVENT_WINDOW_LAST) {
         if (const std::optional<platform::Event> window = translateWindow(source)) {
             events.push_back(*window);
         }
+
         return;
     }
+
     if (const std::optional<platform::Event> app = translateApp(source)) {
         events.push_back(*app);
     }
@@ -98,6 +104,7 @@ std::optional<platform::Event> Events::translateKey(const SDL_KeyboardEvent& sou
     if (key == input::Key::Unknown) {
         return std::nullopt;
     }
+
     return platform::Event{.type = type, .key = key, .repeat = source.repeat, .modifiers = toModifiers(source.mod)};
 }
 
@@ -124,12 +131,14 @@ std::optional<platform::Event> Events::translateWindow(const SDL_Event& source) 
         if (kAppStates) {
             return std::nullopt;
         }
+
         minimized = true;
         return platform::Event{.type = platform::Event::Type::Suspended};
     case SDL_EVENT_WINDOW_RESTORED:
         if (kAppStates || !minimized) {
             return std::nullopt;
         }
+
         minimized = false;
         return platform::Event{.type = platform::Event::Type::Resumed};
     default:
@@ -160,6 +169,7 @@ std::optional<platform::Event> Events::translateApp(const SDL_Event& source) noe
     if (type == appState) {
         return std::nullopt;
     }
+
     appState = type;
     return platform::Event{.type = type};
 }
@@ -184,8 +194,10 @@ void Events::appendTouch(const SDL_TouchFingerEvent& source, const Context& cont
         if (source.type != SDL_EVENT_FINGER_DOWN || fingerCount == fingers.size()) {
             return;
         }
+
         ++fingerCount;
     }
+
     *finger = {.id = source.fingerID, .position = position};
 
     platform::Event::Type type = platform::Event::Type::TouchMoved;
@@ -196,10 +208,12 @@ void Events::appendTouch(const SDL_TouchFingerEvent& source, const Context& cont
     } else if (source.type == SDL_EVENT_FINGER_CANCELED) {
         type = platform::Event::Type::TouchCancelled;
     }
+
     platform::Event event{.type = type, .modifiers = toModifiers(context.modifiers), .touchCount = fingerCount};
     for (std::size_t index = 0; index < fingerCount; ++index) {
         event.touches[index] = {.id = static_cast<std::uint64_t>(fingers[index].id), .position = fingers[index].position, .changed = &fingers[index] == finger};
     }
+
     events.push_back(event);
 
     if (type == platform::Event::Type::TouchEnded || type == platform::Event::Type::TouchCancelled) {

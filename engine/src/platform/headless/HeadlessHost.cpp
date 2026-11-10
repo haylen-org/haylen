@@ -29,6 +29,7 @@ void HeadlessHost::enterFullscreen(const Fullscreen& value, std::function<void(P
         fullscreen = true;
         fullscreenTarget = {.display = target.display.id, .mode = target.mode};
     }
+
     callback(windowAnswer);
 }
 
@@ -37,6 +38,7 @@ std::unique_ptr<gpu::Device> HeadlessHost::createGpuDevice() {
         gpu = nullptr;
         return gpuDeviceMaker();
     }
+
     auto device = std::make_unique<gpu::NullDevice>();
     gpu = device.get();
     followDrawable();
@@ -54,6 +56,7 @@ void HeadlessHost::setTransparent(bool value) {
     if (value && !transparencySupported) {
         throw std::logic_error("The window opened opaque, so it cannot turn transparent. Set \"window.transparent\" in \"app.json\" to open a window that can.");
     }
+
     transparent = value;
 }
 
@@ -71,10 +74,12 @@ void HeadlessHost::pollGamepads(std::span<input::GamepadState> states) {
 
 void HeadlessHost::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
     permissionRequests.push_back(kind);
+
     if (permissionAnswersHeld) {
         heldPermissionAnswers.push_back(std::move(callback));
         return;
     }
+
     callback(permissionAnswer);
 }
 

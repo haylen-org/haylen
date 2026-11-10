@@ -40,9 +40,11 @@ AppleVideoDecoder::AppleVideoDecoder(std::shared_ptr<io::PackageReader> file, st
                    dispatch_semaphore_signal(loaded);
                  }];
     dispatch_semaphore_wait(loaded, DISPATCH_TIME_FOREVER);
+
     if (failure != nil || pictures.count == 0) {
         throw std::runtime_error("The video \"" + path + "\" holds no picture that this platform plays" + (failure != nil ? ": " + std::string(failure.localizedDescription.UTF8String) : std::string()) + ".");
     }
+
     videoTrack = pictures.firstObject;
     audioTrack = sounds.firstObject;
     [asset loadValuesAsynchronouslyForKeys:@[ @"duration" ] completionHandler:^{ dispatch_semaphore_signal(loaded); }];
@@ -63,6 +65,7 @@ AppleVideoDecoder::AppleVideoDecoder(std::shared_ptr<io::PackageReader> file, st
             info.channels = std::min<std::uint32_t>(basic->mChannelsPerFrame, 2);
         }
     }
+
     startReading(0.0);
 }
 
@@ -78,6 +81,7 @@ void AppleVideoDecoder::startReading(double seconds) {
     if (reader == nil) {
         throw std::runtime_error("The video \"" + path + "\" could not be read: " + std::string(error.localizedDescription.UTF8String) + ".");
     }
+
     reader.timeRange = CMTimeRangeMake(CMTimeMakeWithSeconds(seconds, 90000), kCMTimePositiveInfinity);
     videoOutput = [AVAssetReaderTrackOutput assetReaderTrackOutputWithTrack:videoTrack outputSettings:@{(id)kCVPixelBufferPixelFormatTypeKey : @(kCVPixelFormatType_32BGRA)}];
     videoOutput.alwaysCopiesSampleData = NO;
@@ -89,9 +93,11 @@ void AppleVideoDecoder::startReading(double seconds) {
         audioOutput.alwaysCopiesSampleData = NO;
         [reader addOutput:audioOutput];
     }
+
     if (![reader startReading]) {
         failReading();
     }
+
     soundTime = seconds;
     soundEnded = info.channels == 0;
 }
@@ -109,15 +115,19 @@ VideoDecoder::Read AppleVideoDecoder::readFrame(Frame& frame) {
         if (sample != nullptr) {
             CFRelease(sample);
         }
+
         sample = [videoOutput copyNextSampleBuffer];
         if (sample == nullptr) {
             if (reader.status == AVAssetReaderStatusFailed) {
                 failReading();
             }
+
             return Read::End;
         }
+
         image = CMSampleBufferGetImageBuffer(sample);
     }
+
     CVPixelBufferLockBaseAddress(image, kCVPixelBufferLock_ReadOnly);
     const auto width = static_cast<int>(CVPixelBufferGetWidth(image));
     const auto height = static_cast<int>(CVPixelBufferGetHeight(image));
@@ -127,6 +137,7 @@ VideoDecoder::Read AppleVideoDecoder::readFrame(Frame& frame) {
     frame.height = height;
     frame.time = CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sample));
     frame.pixels.resize(static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4U);
+
     for (int row = 0; row < height; ++row) {
         const std::uint8_t* from = source + static_cast<std::size_t>(row) * stride;
         std::uint8_t* to = frame.pixels.data() + static_cast<std::size_t>(row) * static_cast<std::size_t>(width) * 4U;
@@ -137,6 +148,7 @@ VideoDecoder::Read AppleVideoDecoder::readFrame(Frame& frame) {
             to[3] = from[3];
         }
     }
+
     CVPixelBufferUnlockBaseAddress(image, kCVPixelBufferLock_ReadOnly);
     CFRelease(sample);
     return Read::Frame;
@@ -149,18 +161,22 @@ bool AppleVideoDecoder::readAudio(std::vector<float>& samples, double until) {
             if (reader.status == AVAssetReaderStatusFailed) {
                 failReading();
             }
+
             soundEnded = true;
             break;
         }
+
         if (CMBlockBufferRef block = CMSampleBufferGetDataBuffer(sample)) {
             const std::size_t length = CMBlockBufferGetDataLength(block);
             const std::size_t start = samples.size();
             samples.resize(start + length / sizeof(float));
             CMBlockBufferCopyDataBytes(block, 0, (samples.size() - start) * sizeof(float), samples.data() + start);
         }
+
         soundTime = CMTimeGetSeconds(CMTimeAdd(CMSampleBufferGetPresentationTimeStamp(sample), CMSampleBufferGetDuration(sample)));
         CFRelease(sample);
     }
+
     return !soundEnded;
 }
 

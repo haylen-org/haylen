@@ -53,6 +53,7 @@ TEST(LinuxSystemReaderTest, ReadsTheFirstBatteryOfTheSystem) {
         {"Not charging", {.level = 0.76F, .state = Battery::State::Full}},
         {"Unknown", {.level = 0.76F, .state = Battery::State::Unknown}},
     };
+
     for (const auto& [status, battery] : statuses) {
         supplies.write("BAT1/status", status + "\n");
         EXPECT_EQ(LinuxSystemReader::readBattery(supplies.getPath()), battery) << status;

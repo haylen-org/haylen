@@ -25,6 +25,7 @@ math::Insets NativeViews::getReservedInsets() const {
     for (const auto& [key, insets] : reservations) {
         largest = {.left = std::max(largest.left, insets.left), .top = std::max(largest.top, insets.top), .right = std::max(largest.right, insets.right), .bottom = std::max(largest.bottom, insets.bottom)};
     }
+
     return largest;
 }
 

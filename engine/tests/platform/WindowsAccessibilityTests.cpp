@@ -26,9 +26,11 @@ class WindowsAccessibilityTest : public ::testing::Test {
         std::vector<AccessibilityElement> elements{
             {.id = 1, .bounds = {0.0F, 0.0F, 400.0F, 300.0F}, .role = Role::Group, .label = "Settings"}, {.id = 2, .parent = 1, .bounds = {10.0F, 10.0F, 100.0F, 40.0F}, .role = Role::Button, .label = "Play", .actions = bits(AccessibilityElement::Focus | AccessibilityElement::Activate)}, {.id = 3, .parent = 1, .bounds = {10.0F, 60.0F, 100.0F, 40.0F}, .role = Role::CheckBox, .label = "Music", .states = bits(AccessibilityElement::Checked), .actions = bits(AccessibilityElement::Focus | AccessibilityElement::Activate)}, {.id = 4, .parent = 1, .bounds = {10.0F, 110.0F, 200.0F, 40.0F}, .role = Role::Slider, .label = "Volume", .value = "40", .actions = bits(AccessibilityElement::Focus | AccessibilityElement::Increment | AccessibilityElement::Decrement)}, {.id = 5, .bounds = {0.0F, 300.0F, 400.0F, 40.0F}, .role = Role::TextField, .label = "Name", .value = "Ana", .actions = bits(AccessibilityElement::Focus)},
         };
+
         if (!withSlider) {
             std::erase_if(elements, [](const AccessibilityElement& element) { return element.id == 4; });
         }
+
         return elements;
     }
 
@@ -55,6 +57,7 @@ class WindowsAccessibilityTest : public ::testing::Test {
         if (provider) {
             EXPECT_HRESULT_SUCCEEDED(provider.As(&found));
         }
+
         return found;
     }
 

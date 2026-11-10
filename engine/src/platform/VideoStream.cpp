@@ -16,6 +16,7 @@ VideoStream::VideoStream(Format value, int width, int height) : format(value) {
     if (width < 0 || height < 0) {
         throw std::invalid_argument("A video stream cannot open with a negative size.");
     }
+
     shown.width = width;
     shown.height = height;
 }
@@ -25,6 +26,7 @@ void VideoStream::push(const std::byte* pixels, int width, int height, std::size
     if (width <= 0 || height <= 0) {
         throw std::invalid_argument("A video frame needs a positive width and height.");
     }
+
     const std::size_t row = static_cast<std::size_t>(width) * 4;
     if (stride < row) {
         throw std::invalid_argument("The rows of a video frame are shorter than its width.");
@@ -36,6 +38,7 @@ void VideoStream::push(const std::byte* pixels, int width, int height, std::size
         frame = std::move(spare);
     }
     frame.pixels.resize(row * static_cast<std::size_t>(height));
+
     for (std::size_t line = 0; line < static_cast<std::size_t>(height); ++line) {
         const std::byte* source = pixels + line * stride;
         std::uint8_t* target = frame.pixels.data() + line * row;
@@ -43,6 +46,7 @@ void VideoStream::push(const std::byte* pixels, int width, int height, std::size
             std::memcpy(target, source, row);
             continue;
         }
+
         for (std::size_t offset = 0; offset < row; offset += 4) {
             target[offset] = std::to_integer<std::uint8_t>(source[offset + 2]);
             target[offset + 1] = std::to_integer<std::uint8_t>(source[offset + 1]);
@@ -50,6 +54,7 @@ void VideoStream::push(const std::byte* pixels, int width, int height, std::size
             target[offset + 3] = std::to_integer<std::uint8_t>(source[offset + 3]);
         }
     }
+
     frame.width = width;
     frame.height = height;
     frame.timestamp = timestamp;
@@ -66,6 +71,7 @@ bool VideoStream::update(graphics::Device& device) {
         if (!fresh) {
             return false;
         }
+
         std::swap(shown, latest);
         fresh = false;
     }
@@ -78,6 +84,7 @@ bool VideoStream::update(graphics::Device& device) {
     } else {
         device.updateTexture(texture, shown.pixels);
     }
+
     frameReceived.emit(shown.timestamp);
     return true;
 }
@@ -86,6 +93,7 @@ const graphics::Texture& VideoStream::getTexture(graphics::Device& device) {
     if (!texture.isValid()) {
         createTexture(device);
     }
+
     return texture;
 }
 
@@ -94,6 +102,7 @@ void VideoStream::createTexture(graphics::Device& device) {
         texture = device.createDynamicTexture(std::max(shown.width, 1), std::max(shown.height, 1), math::Color::transparent(), kTextureOptions);
         return;
     }
+
     texture = device.createDynamicTexture(graphics::Image(shown.width, shown.height, shown.pixels), kTextureOptions);
 }
 

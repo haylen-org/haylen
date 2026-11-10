@@ -37,6 +37,7 @@ TEST(KeyboardTranslatorTest, TypesWhatThePlainKeyboardCommits) {
                 typed += "<" + std::to_string(static_cast<int>(key.key)) + ">";
             }
         }
+
         return typed;
     };
     const auto edit = [](std::string text, int compositionStart = -1, int compositionEnd = -1) {
@@ -53,6 +54,7 @@ TEST(KeyboardTranslatorTest, TypesWhatThePlainKeyboardCommits) {
     EXPECT_EQ(describe(edit("hi their\n")), enter);
     EXPECT_EQ(describe(Event{.type = Event::Type::TextAction, .textAction = TextInput::Action::Submit}), enter);
     EXPECT_EQ(describe(Event{.type = Event::Type::TextAction, .textAction = TextInput::Action::Dismissed}), "");
+
     for (const Event& typed : keyboard.translate(edit("hi their!"))) {
         EXPECT_TRUE(typed.typedOnScreen);
     }
@@ -112,19 +114,23 @@ TEST(MemoryWarningTest, HandsEachWarningOverOnceWithTheHighestLevel) {
 TEST(ReportedStateTest, GivesANewAppTheStateThePlatformReportedLast) {
     ReportedState state;
     EXPECT_TRUE(state.getReplay().empty());
+
     for (const Event::Type type : {Event::Type::FocusLost, Event::Type::InterruptionBegan, Event::Type::Suspended}) {
         EXPECT_TRUE(state.record({.type = type}));
     }
+
     EXPECT_TRUE(state.record({.type = Event::Type::NetworkChanged, .online = false}));
     std::vector<Event::Type> replayed;
     for (const Event& event : state.getReplay()) {
         replayed.push_back(event.type);
     }
+
     EXPECT_EQ(replayed, (std::vector{Event::Type::NetworkChanged, Event::Type::FocusLost, Event::Type::InterruptionBegan, Event::Type::Suspended}));
 
     for (const Event::Type type : {Event::Type::FocusGained, Event::Type::InterruptionEnded, Event::Type::Resumed}) {
         EXPECT_TRUE(state.record({.type = type}));
     }
+
     ASSERT_EQ(state.getReplay().size(), 1U);
     EXPECT_FALSE(state.getReplay()[0].online);
 }
@@ -163,6 +169,7 @@ TEST(GamepadSlotsTest, KeepsEveryControllerInItsSlotWhileItStaysConnected) {
     for (std::size_t index = 3; index < pads.size(); ++index) {
         listed.push_back(pad(index));
     }
+
     slots.update(listed);
     EXPECT_EQ(slots.getController(0), pad(3));
     EXPECT_EQ(slots.getController(3), pad(4));
@@ -196,17 +203,21 @@ TEST(BridgeTest, KeepsTheMessageCodeAndDataOfEveryFailure) {
     for (int index = 0; index < 9; ++index) {
         calls.push_back(bridge.call("native.method", {.json = core::Json::object()}, [&results](Bridge::Result result) { results.push_back(std::move(result)); }));
     }
+
     const std::vector<std::string> payloads{"null", "42", "[1, 2]", R"({"code": 3})", R"({"message": 3})", "", R"("denied")", R"({"message": "no network", "code": "offline", "data": {"retry": 5}})", "{broken"};
     for (std::size_t index = 0; index < payloads.size(); ++index) {
         bridge.resolve(calls[index], false, payloads[index]);
     }
+
     bridge.pump();
 
     ASSERT_EQ(results.size(), payloads.size());
+
     for (std::size_t index = 0; index < 6; ++index) {
         EXPECT_FALSE(results[index].ok);
         EXPECT_EQ(results[index].error.message, "The native platform call failed without a message.") << payloads[index];
     }
+
     EXPECT_EQ(results[3].error.code, 3);
     EXPECT_EQ(results[6].error.message, "denied");
     EXPECT_TRUE(results[6].error.code.is_null());
@@ -378,6 +389,7 @@ TEST(BridgeTest, RetainsEventsUntilTheFirstListenerConnects) {
     for (int index = 0; index < 40; ++index) {
         bridge.emit("app.opened", std::to_string(index), {}, {.retain = true});
     }
+
     bridge.emit("app.opened", R"("plain")");
     bridge.emit("store.pending", R"({"id": 1})", {}, {.retain = true});
     bridge.pump();
@@ -579,8 +591,10 @@ TEST(BridgeTest, GathersTheBatchedEventsOfAFrameIntoOneList) {
         for (int index = 0; index < 3; ++index) {
             bridge.emit("gps.fix", std::to_string(frame * 3 + index), {}, {.retain = true, .batched = true});
         }
+
         bridge.pump();
     }
+
     bridge.emit("gps.fix", "99", {}, {.batched = true});
     bridge.pump();
     std::vector<core::Json> fixes;

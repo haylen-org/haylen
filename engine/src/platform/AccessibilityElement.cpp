@@ -17,6 +17,7 @@ std::string AccessibilityElement::writeTree(std::span<const AccessibilityElement
     for (const AccessibilityElement& element : elements) {
         tree["elements"].push_back(element.toJson());
     }
+
     return tree.dump(-1, ' ', false, core::Json::error_handler_t::replace);
 }
 

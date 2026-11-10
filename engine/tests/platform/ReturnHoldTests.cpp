@@ -28,6 +28,7 @@ class ReturnHoldTest : public ::testing::Test {
         for (float elapsed = 0.0F; elapsed < seconds; elapsed += kFrame) {
             completed = returnHold.update(kFrame, backHeld) || completed;
         }
+
         return completed;
     }
 
@@ -55,6 +56,7 @@ TEST_F(ReturnHoldTest, IgnoresShortPressesAndKeysThatAWindowStoppedHearing) {
         returnHold.handleEvent(key(Event::Type::KeyUp), 1.0F);
         EXPECT_FALSE(hold(0.1F));
     }
+
     returnHold.handleEvent(key(Event::Type::KeyDown), 1.0F);
     returnHold.handleEvent({.type = Event::Type::FocusLost}, 1.0F);
     EXPECT_FALSE(hold(ReturnHold::kSeconds * 2.0F));
@@ -77,6 +79,7 @@ TEST_F(ReturnHoldTest, CompletesOnlyForThreeFingersHeldStill) {
     for (std::uint64_t id = 1; id <= 2; ++id) {
         returnHold.handleEvent(touch(Event::Type::TouchBegan, id, {100.0F * static_cast<float>(id), 100.0F}), 2.0F);
     }
+
     EXPECT_FALSE(hold(ReturnHold::kSeconds * 2.0F));
 
     // A finger that travels past the slop at the scale of the screen turns the hold into a gesture of the app.

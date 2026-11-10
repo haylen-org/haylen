@@ -20,6 +20,7 @@ void AnswerLua::settlePermission(core::Engine& engine, const lua::Promise& promi
         promise.resolve(std::string(Permission::stateName(answer.state)));
         return;
     }
+
     reject(engine, promise, answer);
 }
 
@@ -28,9 +29,11 @@ void AnswerLua::settle(core::Engine& engine, const lua::Promise& promise, const 
         promise.resolve(value ? core::Json(std::move(*value)) : core::Json());
         return;
     }
+
     if (loggedRefusals.insert(answer.message).second) {
         core::Log::warning("{}", answer.message);
     }
+
     reject(engine, promise, answer);
 }
 
@@ -41,12 +44,14 @@ void AnswerLua::reject(core::Engine& engine, const lua::Promise& promise, const 
     lua_setfield(main, -2, "error");
     lua::Stack::push(main, answer.state == Permission::State::Denied ? "denied" : "unsupported");
     lua_setfield(main, -2, "code");
+
     if (!answer.missing.empty()) {
         lua_createtable(main, 0, 1);
         lua::JsonConverter::push(main, answer.missingToJson());
         lua_setfield(main, -2, "missing");
         lua_setfield(main, -2, "data");
     }
+
     promise.rejectHandledFailure(main);
 }
 

@@ -27,6 +27,7 @@ void StreamsLua::pushVideoStream(lua_State* L, const std::string& plugin, const 
         lua_pushnil(L);
         return;
     }
+
     lua::Runtime::getEngine(L).getPlugin<plugins::PlatformPlugin>().watch(stream);
     lua::Userdata::emplace<VideoStream>(L, std::move(stream));
 }
@@ -37,6 +38,7 @@ void StreamsLua::pushAudioStream(lua_State* L, const std::string& plugin, const 
         lua_pushnil(L);
         return;
     }
+
     lua::Userdata::emplace<AudioStream>(L, std::move(stream));
 }
 
@@ -72,6 +74,7 @@ int StreamsLua::on(lua_State* L) {
     if (event != "frame") {
         return luaL_error(L, "Unknown video stream event \"%s\". Video streams report \"frame\".", std::string(event).c_str());
     }
+
     luaL_checktype(L, 3, LUA_TFUNCTION);
     int owner = 0;
     if (!lua_isnoneornil(L, 4)) {
@@ -81,9 +84,11 @@ int StreamsLua::on(lua_State* L) {
             owner = lua_gettop(L);
         }
     }
+
     if (owner == 0) {
         owner = lua::Owners::pushDefault(L);
     }
+
     const std::weak_ptr<const void> lifetime = owner != 0 ? lua::Owners::getLifetime(L, owner) : std::weak_ptr<const void>();
     auto function = std::make_shared<lua::Owners::Function>(L, 3, owner);
     lua_State* main = lua::Runtime::getMainThread(L);
@@ -101,6 +106,7 @@ int StreamsLua::on(lua_State* L) {
     if (owner != 0) {
         lua::Owners::add(L, owner, connection);
     }
+
     lua::Userdata::emplace<core::Connection>(L, std::move(connection));
     return 1;
 }

@@ -55,6 +55,7 @@ WebStoreFiles* WebStoreFiles::active = nullptr;
 
 WebStoreFiles::WebStoreFiles() : metadata(std::filesystem::path(kRoot)), persistent(haylen_js_store_persistent() != 0) {
     active = this;
+
     if (const std::optional<std::vector<std::uint8_t>> bytes = metadata.read(std::string(kSizesFile))) {
         const core::Json sizes = core::Json::parse(*bytes);
         for (const auto& [name, size] : sizes.items()) {
@@ -90,6 +91,7 @@ void WebStoreFiles::write(const std::string& name, std::span<const std::uint8_t>
 std::uint64_t WebStoreFiles::append(const std::string& name, std::span<const std::uint8_t> bytes) {
     requireKept();
     haylen_js_store_append(name.c_str(), bytes.data(), static_cast<int>(bytes.size()));
+
     if (!isSegment(name)) {
         return metadata.append(name, bytes);
     }
@@ -105,6 +107,7 @@ std::uint64_t WebStoreFiles::append(const std::string& name, std::span<const std
 // The worker writes every change before the next one and flushes a segment when the store syncs it, so the records reach the disk before the state that names them, and a refused change surfaces at the next one.
 void WebStoreFiles::sync(const std::string& name) {
     requireKept();
+
     if (isSegment(name)) {
         haylen_js_store_flush(name.c_str());
     }
@@ -119,11 +122,14 @@ void WebStoreFiles::truncate(const std::string& name, std::uint64_t size) {
 void WebStoreFiles::remove(const std::string& name) {
     requireKept();
     haylen_js_store_remove(name.c_str());
+
     if (!isSegment(name)) {
         metadata.remove(name);
         return;
     }
+
     segmentSizes.erase(name);
+
     for (auto entry = resident.begin(); entry != resident.end();) {
         if (entry->first.first == name) {
             residentBytes -= entry->second.bytes.size();
@@ -139,6 +145,7 @@ std::uint64_t WebStoreFiles::getSize(const std::string& name) const {
     if (!isSegment(name)) {
         return metadata.getSize(name);
     }
+
     const auto found = segmentSizes.find(name);
     return found == segmentSizes.end() ? 0 : found->second;
 }
@@ -147,10 +154,12 @@ std::vector<std::string> WebStoreFiles::list(const std::string& folder) const {
     if (folder != kSegmentFolder) {
         return metadata.list(folder);
     }
+
     std::vector<std::string> names;
     for (const auto& [name, size] : segmentSizes) {
         names.push_back(name.substr(kSegmentFolder.size() + 1));
     }
+
     return names;
 }
 
@@ -159,10 +168,12 @@ void WebStoreFiles::readRange(const std::string& name, std::uint64_t offset, std
         metadata.readRange(name, offset, target);
         return;
     }
+
     const auto found = resident.find({name, offset});
     if (found == resident.end() || found->second.bytes.size() < target.size()) {
         throw content::Error(content::Error::Code::CacheCorrupt, "The content store did not read in the bytes " + std::to_string(offset) + " of \"" + name + "\" before they were read.");
     }
+
     found->second.lastUse = emscripten_get_now();
     found->second.appended = false;
     std::copy_n(found->second.bytes.begin(), target.size(), target.begin());
@@ -173,6 +184,7 @@ std::uint64_t WebStoreFiles::getAvailableSpace() const {
     if (!persistent) {
         return kMemoryRoom - std::min(onlyBytes, kMemoryRoom);
     }
+
     return static_cast<std::uint64_t>(haylen_js_store_available());
 }
 
@@ -180,18 +192,22 @@ bool WebStoreFiles::isResident(const std::string& name, std::uint64_t offset, st
     if (!isSegment(name)) {
         return true;
     }
+
     const auto found = resident.find({name, offset});
     return found != resident.end() && found->second.bytes.size() >= size;
 }
 
 void WebStoreFiles::load(std::vector<Range> ranges, std::function<void(bool)> done) {
     std::erase_if(ranges, [this](const Range& range) { return isResident(range.name, range.offset, range.size); });
+
     if (ranges.empty()) {
         done(true);
         return;
     }
+
     const std::uint32_t load = nextId++;
     loads.emplace(load, Load{.remaining = ranges.size(), .done = std::move(done)});
+
     for (Range& range : ranges) {
         const std::uint32_t request = nextId++;
         haylen_js_store_read(static_cast<int>(request), range.name.c_str(), static_cast<double>(range.offset), static_cast<double>(range.size));
@@ -221,6 +237,7 @@ void WebStoreFiles::refuse(bool quota, std::string message) {
     if (active == nullptr || active->refused) {
         return;
     }
+
     const content::Error::Code code = quota ? content::Error::Code::QuotaExceeded : content::Error::Code::PermissionDenied;
     const std::string reason = quota ? "The browser ran out of storage for this site, so the downloaded content stays as it was before the last change." : "The browser refused a change of the downloaded content, which stays as it was before that change.";
     active->refused.emplace(code, reason, content::Error::Details{.platformMessage = std::move(message)});
@@ -231,6 +248,7 @@ void WebStoreFiles::finishRequest(std::uint32_t request, std::span<const std::ui
     if (found == requests.end()) {
         return;
     }
+
     const Request finished = std::move(found->second);
     requests.erase(found);
     Load& load = loads.at(finished.load);
@@ -239,6 +257,7 @@ void WebStoreFiles::finishRequest(std::uint32_t request, std::span<const std::ui
     } else {
         load.ok = false;
     }
+
     if (--load.remaining == 0) {
         const std::function<void(bool)> done = std::move(load.done);
         const bool all = load.ok;
@@ -262,6 +281,7 @@ void WebStoreFiles::keep(const std::string& name, std::uint64_t offset, std::vec
         entry.only = true;
         onlyBytes += entry.bytes.size();
     }
+
     evict();
 }
 
@@ -276,9 +296,11 @@ void WebStoreFiles::evict() {
                 oldest = entry;
             }
         }
+
         if (oldest == resident.end()) {
             return;
         }
+
         residentBytes -= oldest->second.bytes.size();
         resident.erase(oldest);
     }

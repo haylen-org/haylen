@@ -32,11 +32,13 @@ NSString* AppleDisplays::getId(UIScreen* screen) {
     if (screen == UIScreen.mainScreen) {
         return @"main";
     }
+
     NSString* known = [ids objectForKey:screen];
     if (known == nil) {
         known = [NSString stringWithFormat:@"external-%lu", static_cast<unsigned long>(++counted)];
         [ids setObject:known forKey:screen];
     }
+
     return known;
 }
 
@@ -51,6 +53,7 @@ Display AppleDisplays::describe(UIScreen* screen) {
     if (window != nil && window.windowScene.screen == screen) {
         insets = window.safeAreaInsets;
     }
+
     const CGRect work = UIEdgeInsetsInsetRect(bounds, insets);
     const auto rate = static_cast<float>(screen.maximumFramesPerSecond);
     const auto scale = static_cast<float>(screen.scale);
@@ -80,6 +83,7 @@ std::vector<Display> AppleDisplays::getDisplays() {
     for (UIScreen* screen in screens) {
         displays.push_back(describe(screen));
     }
+
     return displays;
 }
 
@@ -101,6 +105,7 @@ void AppleDisplays::followWindow() {
     if (shown == windowDisplay) {
         return;
     }
+
     windowDisplay = std::move(shown);
     changed();
 }

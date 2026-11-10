@@ -59,10 +59,12 @@ std::unique_ptr<gpu::Device> Runtime::createDevice() {
     if (openedDevice != nullptr) {
         return std::move(openedDevice);
     }
+
     if (recovering) {
         recovering = false;
         window.renewGlContext();
     }
+
     return gpu::DeviceFactory::create(window.getApi(), window.getSurface(), getDeviceOptions());
 }
 
@@ -81,6 +83,7 @@ void Runtime::scroll(math::Vec2 value, bool precise, int modifiers) {
     if (running == nullptr || !running->started) {
         return;
     }
+
     const input::KeyModifiers held{.shift = (modifiers & 1) != 0, .control = (modifiers & 2) != 0, .alt = (modifiers & 4) != 0, .super = (modifiers & 8) != 0};
     running->post({.type = platform::Event::Type::MouseScroll, .modifiers = held, .scroll = value, .preciseScroll = precise});
 }
@@ -90,6 +93,7 @@ void Runtime::terminate() {
     if (Player::isHalted()) {
         return;
     }
+
     Player::handleEvent({.type = platform::Event::Type::QuitRequested});
     quit();
 }
@@ -115,15 +119,18 @@ SDL_AppResult Runtime::onIterate(void* state) {
     if (Player::isHalted()) {
         return SDL_APP_CONTINUE;
     }
+
     return static_cast<Runtime*>(state)->iterate();
 }
 
 // The filter runs as UIKit hands over the press, so a press of the back button that the system takes goes on to UIKit, which leaves the app.
 bool Runtime::onFilter(void* state, SDL_Event* event) {
     auto* runtime = static_cast<Runtime*>(state);
+
     if (!Events::isPlatformBack(*event)) {
         return true;
     }
+
     switch (Player::routeBack(event->type == SDL_EVENT_KEY_DOWN)) {
     case Player::Back::System:
         return false;
@@ -144,6 +151,7 @@ void Runtime::onQuit(void* state, SDL_AppResult) {
     if (Player::isHalted()) {
         return;
     }
+
     auto* runtime = static_cast<Runtime*>(state);
     runtime->quit();
     delete runtime;
@@ -196,17 +204,21 @@ SDL_AppResult Runtime::initialize(int argc, char* argv[]) {
         Services::reportError(lua::Error(error.what()).toJson());
         return SDL_APP_FAILURE;
     }
+
     if (Player::isLaunchForwarded()) {
         return SDL_APP_SUCCESS;
     }
+
     const core::AppConfig& config = Player::getOpeningConfig();
     window.setMaxPixelDensity(config.window.maxPixelDensity);
     transparent = config.window.transparent;
     describeApp(config);
+
     if (!SDL_Init(kSubsystems)) {
         core::Log::error("The window system could not start. {}", SDL_GetError());
         return SDL_APP_FAILURE;
     }
+
     postedType = SDL_RegisterEvents(1);
 
     // AppKit and UIKit lay out the views of the services over the window as soon as they create it, before the first frame initializes the app.
@@ -233,9 +245,11 @@ SDL_AppResult Runtime::start() {
 #endif
     Player::initialize();
     started = true;
+
     if (!isHiddenUntilComplete()) {
         window.show();
     }
+
     return closing ? SDL_APP_SUCCESS : SDL_APP_CONTINUE;
 }
 
@@ -243,6 +257,7 @@ void Runtime::endSplashScreen(float fadeOutSeconds) {
     if (isHiddenUntilComplete()) {
         window.show();
     }
+
     Services::endSplashScreen(fadeOutSeconds);
 }
 
@@ -262,12 +277,14 @@ bool Runtime::openWindow() {
         if (!gpu::DeviceFactory::prepare(api, getDeviceOptions())) {
             return false;
         }
+
         try {
             window.open(config.window, api);
             if (const std::optional<math::Rect> frame = Player::getOpeningFrame()) {
                 Services::setWindowFrame(*frame);
                 window.refresh();
             }
+
             openedDevice = gpu::DeviceFactory::create(api, window.getSurface(), getDeviceOptions());
             core::Log::info("The app draws through \"{}\".", gpu::DeviceFactory::getApiName(api));
             return true;
@@ -276,6 +293,7 @@ bool Runtime::openWindow() {
             window.close();
         }
     }
+
     throw std::runtime_error("No graphics API could start on this machine, so the app cannot open its window.");
 }
 
@@ -283,10 +301,12 @@ SDL_AppResult Runtime::iterate() {
     if (!started) {
         return start();
     }
+
     const std::uint64_t now = SDL_GetTicksNS();
     if (!closing && !frameRate.takeFrame(static_cast<double>(now) / 1.0e9)) {
         return SDL_APP_CONTINUE;
     }
+
     if (!closing) {
         recover();
         Player::frame(timer.next(now));
@@ -302,6 +322,7 @@ void Runtime::playBackgroundFrame() {
     if (!started || closing) {
         return;
     }
+
     Player::frame(timer.next(SDL_GetTicksNS()));
 }
 #endif
@@ -312,10 +333,12 @@ void Runtime::recover() {
     if (device == nullptr || !device->isLost()) {
         return;
     }
+
     if (const std::optional<std::string> failure = deviceRecovery.recordLoss(window.getApi())) {
         Player::fail(*failure);
         return;
     }
+
     recovering = true;
     Player::restart();
 }
@@ -328,31 +351,38 @@ SDL_AppResult Runtime::handle(const SDL_Event& event) {
     if (!started) {
         return SDL_APP_CONTINUE;
     }
+
     if (event.type == postedType) {
         Player::handleEvent(posted[postedRead++]);
+
         if (postedRead == posted.size()) {
             posted.clear();
             postedRead = 0;
         }
+
         return closing ? SDL_APP_SUCCESS : SDL_APP_CONTINUE;
     }
 
     if (outputs.handle(event)) {
         return SDL_APP_CONTINUE;
     }
+
     // The window of the app keeps the focus while the keyboard goes to the window of an output and back.
     if (event.type == SDL_EVENT_WINDOW_FOCUS_LOST && outputs.holdsFocus()) {
         focusInOutput = true;
         return SDL_APP_CONTINUE;
     }
+
     if (event.type == SDL_EVENT_WINDOW_FOCUS_GAINED && std::exchange(focusInOutput, false)) {
         return SDL_APP_CONTINUE;
     }
 
     followWindow(event);
+
     if (takes(event)) {
         deliver(event);
     }
+
     return closing ? SDL_APP_SUCCESS : SDL_APP_CONTINUE;
 }
 
@@ -365,8 +395,10 @@ void Runtime::deliver(const SDL_Event& event) {
 
     translated.clear();
     events.translate(event, getContext(), translated);
+
     for (const platform::Event& translatedEvent : translated) {
         Player::handleEvent(translatedEvent);
+
         if (translatedEvent.type == platform::Event::Type::QuitRequested) {
             closing = true;
         }
@@ -378,6 +410,7 @@ void Runtime::quit() noexcept {
         started = false;
         Player::cleanup();
     }
+
     host = nullptr;
     platform::NativeWindow::install(nullptr);
     openedDevice.reset();
@@ -440,6 +473,7 @@ void Runtime::followWindow(const SDL_Event& event) {
             hidden = nowHidden;
             updateCallbackRate();
         }
+
         return;
     }
     case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
@@ -463,6 +497,7 @@ void Runtime::setMaxPixelDensity(float cap) {
 
 void Runtime::followDrawable() {
     window.refresh();
+
     if (gpu::Device* device = Player::getGpuDevice()) {
         device->resizeSurface(window.getSurfaceSize());
     }

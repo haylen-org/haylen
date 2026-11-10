@@ -20,6 +20,7 @@ Fold::Posture Fold::getPosture() const noexcept {
     if (state != State::HalfOpened) {
         return Posture::Flat;
     }
+
     return axis == Axis::Horizontal ? Posture::Tabletop : Posture::Book;
 }
 
@@ -27,11 +28,13 @@ std::vector<math::Rect> Fold::getSegments(math::Vec2 size) const {
     if (!separating) {
         return {{0.0F, 0.0F, size.x, size.y}};
     }
+
     if (axis == Axis::Vertical) {
         const float start = std::clamp(bounds.getLeft(), 0.0F, size.x);
         const float end = std::clamp(bounds.getRight(), start, size.x);
         return {{0.0F, 0.0F, start, size.y}, {end, 0.0F, size.x - end, size.y}};
     }
+
     const float start = std::clamp(bounds.getTop(), 0.0F, size.y);
     const float end = std::clamp(bounds.getBottom(), start, size.y);
     return {{0.0F, 0.0F, size.x, start}, {0.0F, end, size.x, size.y - end}};

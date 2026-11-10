@@ -37,9 +37,11 @@ using haylen::platform::NativeWindow;
 - (BOOL)application:(UIApplication*)application willFinishLaunchingWithOptions:(NSDictionary<UIApplicationLaunchOptionsKey, id>*)launchOptions {
     ApplePlugins::load();
     AppleNotifications::observe(self);
+
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin application:application willFinishLaunchingWithOptions:launchOptions];
     }
+
     return YES;
 }
 
@@ -47,6 +49,7 @@ using haylen::platform::NativeWindow;
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin application:application didFinishLaunchingWithOptions:launchOptions];
     }
+
     return YES;
 }
 
@@ -87,16 +90,20 @@ using haylen::platform::NativeWindow;
         if ([session.role isEqualToString:UIWindowSceneSessionRoleApplication]) {
             [UIApplication.sharedApplication requestSceneSessionDestruction:session options:nil errorHandler:nil];
         }
+
         return;
     }
+
     holdsApp = YES;
     connectedScene = scene;
     connectedSession = session;
     connectionOptions = options;
+
     if (window == nil) {
         [super scene:scene willConnectToSession:session options:options];
         return;
     }
+
     window.windowScene = static_cast<UIWindowScene*>(scene);
     [window makeKeyAndVisible];
     [HaylenAccessibilityView.shared attachToView:window.rootViewController.view];
@@ -111,6 +118,7 @@ using haylen::platform::NativeWindow;
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(@selector(scene:willConnectToSession:options:))) {
         [plugin scene:scene willConnectToSession:connectedSession options:options];
     }
+
     connectedScene = nil;
     connectedSession = nil;
     connectionOptions = nil;
@@ -118,6 +126,7 @@ using haylen::platform::NativeWindow;
     if (options.URLContexts.count > 0) {
         [self scene:scene openURLContexts:options.URLContexts];
     }
+
     for (NSUserActivity* activity in options.userActivities) {
         [self scene:scene continueUserActivity:activity];
     }
@@ -132,6 +141,7 @@ using haylen::platform::NativeWindow;
     if (!holdsApp) {
         return;
     }
+
     [HaylenOverlayLayer.shared detach];
     ApplePlugins::closeCovers();
 }
@@ -141,6 +151,7 @@ using haylen::platform::NativeWindow;
     for (UIOpenURLContext* context in URLContexts) {
         haylen::platform::LinkRelay::receive(context.URL.absoluteString.UTF8String);
     }
+
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin scene:scene openURLContexts:URLContexts];
     }
@@ -151,6 +162,7 @@ using haylen::platform::NativeWindow;
     if ([userActivity.activityType isEqualToString:NSUserActivityTypeBrowsingWeb] && userActivity.webpageURL != nil) {
         haylen::platform::LinkRelay::receive(userActivity.webpageURL.absoluteString.UTF8String);
     }
+
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin scene:scene continueUserActivity:userActivity];
     }
@@ -171,7 +183,9 @@ using haylen::platform::NativeWindow;
     if (!holdsApp) {
         return;
     }
+
     [super sceneDidBecomeActive:scene];
+
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin sceneDidBecomeActive:scene];
     }
@@ -181,7 +195,9 @@ using haylen::platform::NativeWindow;
     if (!holdsApp) {
         return;
     }
+
     [super sceneWillResignActive:scene];
+
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin sceneWillResignActive:scene];
     }
@@ -191,8 +207,10 @@ using haylen::platform::NativeWindow;
     if (!holdsApp) {
         return;
     }
+
     AppleBackgroundAudio::enterForeground();
     [super sceneWillEnterForeground:scene];
+
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin sceneWillEnterForeground:scene];
     }
@@ -203,12 +221,14 @@ using haylen::platform::NativeWindow;
     if (!holdsApp) {
         return;
     }
+
     [super sceneDidEnterBackground:scene];
     AppleBackgroundAudio::enterBackground(^{
       if (haylen::platform::sdl::Runtime* runtime = haylen::platform::sdl::Runtime::find()) {
           runtime->playBackgroundFrame();
       }
     });
+
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin sceneDidEnterBackground:scene];
     }
@@ -231,6 +251,7 @@ using haylen::platform::NativeWindow;
     if (selector == @selector(application:didReceiveRemoteNotification:fetchCompletionHandler:)) {
         return HaylenSceneDelegate.fetchesRemoteNotifications;
     }
+
     return [super respondsToSelector:selector];
 }
 

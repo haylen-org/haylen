@@ -31,6 +31,7 @@ void FullscreenRequest::reach(bool fullscreen) {
     if (wanted != fullscreen || destination) {
         return;
     }
+
     settle({.state = Permission::State::Granted});
 }
 
@@ -42,6 +43,7 @@ void FullscreenRequest::settle(Permission::Answer answer) {
     if (!wanted) {
         return;
     }
+
     wanted.reset();
     destination.reset();
     const Callback callback = std::exchange(waiting, {});

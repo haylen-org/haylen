@@ -19,13 +19,16 @@ void GamepadSlots::update(std::span<const void* const> connected) {
         if (std::ranges::find(controllers, controller) != controllers.end()) {
             continue;
         }
+
         std::size_t slot = 0;
         while (slot < controllers.size() && (controllers[slot] != nullptr || freed.test(slot))) {
             ++slot;
         }
+
         if (slot == controllers.size()) {
             return;
         }
+
         controllers[slot] = controller;
     }
 }

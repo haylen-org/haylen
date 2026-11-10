@@ -41,6 +41,7 @@ ma_result BrowserAudioOutput::initContext(ma_context*, const ma_context_config*,
     if (haylen_js_audio_supported() == 0) {
         return MA_FAILED_TO_INIT_BACKEND;
     }
+
     callbacks->onDeviceInit = &initDevice;
     callbacks->onDeviceUninit = &uninitDevice;
     callbacks->onDeviceStart = &startDevice;

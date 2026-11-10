@@ -127,6 +127,7 @@ using haylen::platform::TextInput;
     if (@available(iOS 17.0, tvOS 17.0, *)) {
         view.inlinePredictionType = UITextInlinePredictionTypeNo;
     }
+
     if (@available(iOS 18.0, tvOS 18.0, *)) {
         view.mathExpressionCompletionType = UITextMathExpressionCompletionTypeNo;
     }
@@ -161,10 +162,13 @@ using haylen::platform::TextInput;
         [current resignFirstResponder];
         finishing = NO;
     }
+
     current = view;
+
     if (view.superview != host) {
         [host addSubview:view];
     }
+
     const CGRect frame = AppleTextInput::toPoints(value.bounds);
     view.frame = CGRectMake(frame.origin.x, frame.origin.y, std::max<CGFloat>(frame.size.width, 1.0), std::max<CGFloat>(frame.size.height, 1.0));
     maxLength = value.options.maxLength;
@@ -189,6 +193,7 @@ using haylen::platform::TextInput;
         if (start != nil && end != nil) {
             view.selectedTextRange = [view textRangeFromPosition:start toPosition:end];
         }
+
         applying = NO;
     }
     editing = YES;
@@ -217,6 +222,7 @@ using haylen::platform::TextInput;
     if (!editing || applying || current == nil) {
         return;
     }
+
     NSString* text = [HaylenTextEditor textOf:current];
     UITextRange* selected = current.selectedTextRange;
     const NSRange selection = selected != nil ? [HaylenTextEditor rangeOf:selected in:current] : NSMakeRange(text.length, 0);
@@ -229,6 +235,7 @@ using haylen::platform::TextInput;
     if (maxLength <= 0 || replacement.length == 0 || current.markedTextRange != nil) {
         return YES;
     }
+
     NSString* next = [text stringByReplacingCharactersInRange:range withString:replacement];
     return AppleTextInput::toCodePoints(next, next.length) <= maxLength;
 }
@@ -291,6 +298,7 @@ using haylen::platform::TextInput;
     if ([notification.name isEqualToString:UIKeyboardWillHideNotification] || host.window == nil) {
         return CGRectZero;
     }
+
     const CGRect screen = [notification.userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
     return CGRectIntersection([host convertRect:screen fromCoordinateSpace:host.window.windowScene.screen.coordinateSpace], host.bounds);
 #endif

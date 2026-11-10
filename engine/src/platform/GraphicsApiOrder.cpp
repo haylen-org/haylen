@@ -20,10 +20,12 @@ std::vector<gpu::Device::Api> GraphicsApiOrder::resolve(std::string_view request
     if (!api) {
         throw std::invalid_argument(std::format("The graphics API \"{}\" of \"--graphics-api\" is unknown. It is \"metal\", \"direct3D12\", \"direct3D11\", \"vulkan\", \"openGl\", \"openGlEs\", \"webGpu\", \"webGl2\" or \"port\".", requested));
     }
+
     const std::span<const gpu::Device::Api> compiled = gpu::DeviceFactory::getCompiledApis();
     if (std::ranges::find(compiled, *api) == compiled.end()) {
         core::Log::warning("This build has no device of the graphics API \"{}\" that \"--graphics-api\" asks for, so the app draws through another one.", requested);
     }
+
     return gpu::DeviceFactory::order(std::span(&*api, 1));
 }
 

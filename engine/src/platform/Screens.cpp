@@ -24,7 +24,9 @@ std::uint64_t Screens::open(std::string plugin, std::string screen, Bridge::Payl
     if (plugin.empty() || screen.empty()) {
         throw std::invalid_argument("A screen needs the id of its plugin and its name.");
     }
+
     core::JsonBytes::validate(params.json, params.buffers.size());
+
     if (options.timeout && options.timeout->count() <= 0) {
         throw std::invalid_argument("The timeout of a screen is a positive duration.");
     }
@@ -35,6 +37,7 @@ std::uint64_t Screens::open(std::string plugin, std::string screen, Bridge::Payl
         failed.emplace_back(std::move(callback), Bridge::Result{.error = {.message = std::format("The screen \"{}\" of \"{}\" cannot open while another screen shows or waits to show.", screen, plugin), .code = "busy"}});
         return id;
     }
+
     const core::Engine::AppState state = appState();
     if (state == core::Engine::AppState::Background) {
         failed.emplace_back(std::move(callback), backgroundFailure(plugin, screen));
@@ -45,6 +48,7 @@ std::uint64_t Screens::open(std::string plugin, std::string screen, Bridge::Payl
     if (options.timeout) {
         entry.deadline = std::chrono::steady_clock::now() + *options.timeout;
     }
+
     pending.emplace(id, std::move(entry));
     ScreenRequest request{.id = id, .plugin = std::move(plugin), .screen = std::move(screen), .params = std::move(params), .state = std::move(options.state), .opaque = options.opaque};
 
@@ -53,6 +57,7 @@ std::uint64_t Screens::open(std::string plugin, std::string screen, Bridge::Payl
         waiting = std::move(request);
         return id;
     }
+
     show(std::move(request));
     return id;
 }
@@ -71,12 +76,15 @@ void Screens::openWaiting() {
     if (!waiting) {
         return;
     }
+
     const core::Engine::AppState state = appState();
     if (state == core::Engine::AppState::Inactive) {
         return;
     }
+
     ScreenRequest request = std::move(*waiting);
     waiting.reset();
+
     if (state == core::Engine::AppState::Active) {
         show(std::move(request));
         return;
@@ -92,8 +100,10 @@ void Screens::present() {
     if (!requested) {
         return;
     }
+
     const ScreenRequest request = std::move(*requested);
     requested.reset();
+
     if (!NativeApi::openScreen(request)) {
         host.openScreen(request);
     }
@@ -104,6 +114,7 @@ bool Screens::cancel(std::uint64_t id) {
     if (found == pending.end()) {
         return false;
     }
+
     Pending entry = std::move(found->second);
     pending.erase(found);
 
@@ -118,12 +129,15 @@ void Screens::giveUp(std::uint64_t id, const Pending& entry) {
         waiting.reset();
         return;
     }
+
     if (requested && requested->id == id) {
         requested.reset();
         ScreenRelay::forget(id);
         return;
     }
+
     ScreenRelay::abandon(id);
+
     if (!NativeApi::cancelScreen(entry.plugin, entry.screen, id)) {
         host.cancelScreen(id);
     }
@@ -139,11 +153,14 @@ void Screens::pump() {
         if (found != pending.end()) {
             Callback callback = std::move(found->second.callback);
             pending.erase(found);
+
             if (callback) {
                 callback(std::move(ending.result));
             }
+
             continue;
         }
+
         if (ending.screen.abandoned) {
             continue;
         }
@@ -157,15 +174,18 @@ void Screens::pump() {
         } else {
             payload["error"] = {{"message", result.error.message}, {"code", result.error.code}, {"data", result.error.data}};
         }
+
         bridge.emit(screen.plugin + ".screenRestored", payload.dump(), std::move(result.value.buffers), {.retain = true});
     }
 
     openWaiting();
+
     for (auto& [callback, result] : std::exchange(failed, {})) {
         if (callback) {
             callback(std::move(result));
         }
     }
+
     expire();
 }
 
@@ -187,9 +207,11 @@ void Screens::expire() {
         if (found == pending.end()) {
             continue;
         }
+
         Pending entry = std::move(found->second);
         pending.erase(found);
         giveUp(id, entry);
+
         if (entry.callback) {
             entry.callback({.error = {.message = std::format("The screen \"{}\" of \"{}\" timed out.", entry.screen, entry.plugin), .code = "timeout"}});
         }

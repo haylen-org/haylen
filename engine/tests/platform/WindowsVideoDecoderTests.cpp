@@ -38,6 +38,7 @@ TEST_F(WindowsVideoDecoderTest, DecodesPicturesAndSoundOfAClip) {
         EXPECT_GT(frame.time, last);
         last = frame.time;
     }
+
     if (info.channels > 0) {
         std::vector<float> samples;
         decoder.readAudio(samples, 0.5);
@@ -47,6 +48,7 @@ TEST_F(WindowsVideoDecoderTest, DecodesPicturesAndSoundOfAClip) {
     decoder.seek(info.duration * 0.5);
     ASSERT_EQ(decoder.readFrame(frame), VideoDecoder::Read::Frame);
     EXPECT_GE(frame.time, info.duration * 0.5 - 0.5);
+
     while (decoder.readFrame(frame) == VideoDecoder::Read::Frame) {}
     EXPECT_EQ(decoder.readFrame(frame), VideoDecoder::Read::End);
 }

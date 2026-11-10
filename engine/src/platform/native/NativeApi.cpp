@@ -33,11 +33,13 @@ bool NativeApi::dispatch(std::uint64_t call, std::string_view method, std::strin
     if (!found) {
         return false;
     }
+
     std::vector<HaylenNativeBuffer> views;
     views.reserve(buffers.size());
     for (const std::vector<std::byte>& buffer : buffers) {
         views.push_back({.data = buffer.data(), .size = buffer.size()});
     }
+
     found->handler(found->user, call, std::string(method).c_str(), std::string(paramsJson).c_str(), views.data(), views.size());
     return true;
 }
@@ -47,9 +49,11 @@ bool NativeApi::cancel(std::uint64_t call, std::string_view method) {
     if (!found) {
         return false;
     }
+
     if (found->cancel != nullptr) {
         found->cancel(found->user, call);
     }
+
     return true;
 }
 
@@ -59,6 +63,7 @@ std::optional<NativeApi::Handler> NativeApi::find(std::string_view method) {
     if (found == handlers.end()) {
         return std::nullopt;
     }
+
     return found->second;
 }
 
@@ -68,11 +73,13 @@ bool NativeApi::openScreen(const ScreenRequest& request) {
     if (!found) {
         return false;
     }
+
     std::vector<HaylenNativeBuffer> views;
     views.reserve(request.params.buffers.size());
     for (const std::vector<std::byte>& buffer : request.params.buffers) {
         views.push_back({.data = buffer.data(), .size = buffer.size()});
     }
+
     found->open(found->user, request.id, request.params.json.dump().c_str(), views.data(), views.size());
     return true;
 }
@@ -82,9 +89,11 @@ bool NativeApi::cancelScreen(std::string_view plugin, std::string_view name, std
     if (!found) {
         return false;
     }
+
     if (found->cancel != nullptr) {
         found->cancel(found->user, screen);
     }
+
     return true;
 }
 
@@ -94,6 +103,7 @@ std::optional<NativeApi::ScreenHandler> NativeApi::findScreen(std::string_view p
     if (found == screens.end()) {
         return std::nullopt;
     }
+
     return found->second;
 }
 
@@ -139,6 +149,7 @@ template <typename Body> auto NativeApi::guard(const char* entry, Body&& body) n
     } catch (const std::exception& error) {
         core::Log::error("The native library call \"{}\" failed: {}", entry, error.what());
     }
+
     if constexpr (!std::is_void_v<decltype(body())>) {
         return {};
     }
@@ -151,6 +162,7 @@ std::vector<std::vector<std::byte>> NativeApi::copyBuffers(const HaylenNativeBuf
         const auto* bytes = static_cast<const std::byte*>(buffers[index].data);
         copies.emplace_back(bytes, bytes + buffers[index].size);
     }
+
     return copies;
 }
 
@@ -160,6 +172,7 @@ void NativeApi::emit(const char* event, const char* payloadJson, const HaylenNat
         if (event == nullptr || *event == '\0') {
             throw std::invalid_argument("An event needs a name.");
         }
+
         BridgeRelay::emit(event, payloadJson != nullptr ? payloadJson : "null", copyBuffers(buffers, bufferCount), {.retain = (flags & HAYLEN_NATIVE_EMIT_RETAIN) != 0, .batched = (flags & HAYLEN_NATIVE_EMIT_BATCHED) != 0});
     });
     // clang-format on
@@ -176,6 +189,7 @@ HaylenNativeVideoStream* NativeApi::openVideoStream(const char* plugin, const ch
         if (format != HAYLEN_NATIVE_PIXELS_RGBA8 && format != HAYLEN_NATIVE_PIXELS_BGRA8) {
             throw std::invalid_argument("A video stream takes the pixel format \"HAYLEN_NATIVE_PIXELS_RGBA8\" or \"HAYLEN_NATIVE_PIXELS_BGRA8\".");
         }
+
         const VideoStream::Format pixels = format == HAYLEN_NATIVE_PIXELS_RGBA8 ? VideoStream::Format::Rgba8 : VideoStream::Format::Bgra8;
         return reinterpret_cast<HaylenNativeVideoStream*>(PluginStreams::openVideo(plugin != nullptr ? plugin : "", name != nullptr ? name : "", pixels, width, height).get());
     });
@@ -188,6 +202,7 @@ void NativeApi::pushVideoFrame(HaylenNativeVideoStream* stream, const void* pixe
         if (stream == nullptr || pixels == nullptr || stride < 0) {
             throw std::invalid_argument("A video frame needs a stream, pixels and a stride of 0 or more.");
         }
+
         reinterpret_cast<VideoStream*>(stream)->push(static_cast<const std::byte*>(pixels), width, height, static_cast<std::size_t>(stride), timestamp);
     });
     // clang-format on
@@ -199,9 +214,11 @@ HaylenNativeAudioStream* NativeApi::openAudioStream(const char* plugin, const ch
         if (format != HAYLEN_NATIVE_SAMPLES_FLOAT32 && format != HAYLEN_NATIVE_SAMPLES_INT16) {
             throw std::invalid_argument("An audio stream takes the sample format \"HAYLEN_NATIVE_SAMPLES_FLOAT32\" or \"HAYLEN_NATIVE_SAMPLES_INT16\".");
         }
+
         if (sampleRate <= 0 || channels <= 0 || capacityFrames <= 0) {
             throw std::invalid_argument("An audio stream needs a sample rate, channels and room for at least one frame.");
         }
+
         const AudioStream::Format samples = format == HAYLEN_NATIVE_SAMPLES_FLOAT32 ? AudioStream::Format::Float32 : AudioStream::Format::Int16;
         return reinterpret_cast<HaylenNativeAudioStream*>(PluginStreams::openAudio(plugin != nullptr ? plugin : "", name != nullptr ? name : "", static_cast<std::uint32_t>(sampleRate), static_cast<std::uint32_t>(channels), samples, static_cast<std::size_t>(capacityFrames)).get());
     });
@@ -214,11 +231,13 @@ std::size_t NativeApi::pushAudioFrames(HaylenNativeAudioStream* stream, const vo
         if (stream == nullptr || (samples == nullptr && frames > 0)) {
             throw std::invalid_argument("Audio frames need a stream and samples.");
         }
+
         AudioStream& target = *reinterpret_cast<AudioStream*>(stream);
         const std::size_t count = frames * target.getChannels();
         if (target.getFormat() == AudioStream::Format::Float32) {
             return target.push(std::span(static_cast<const float*>(samples), count));
         }
+
         return target.push(std::span(static_cast<const std::int16_t*>(samples), count));
     });
     // clang-format on
@@ -229,11 +248,13 @@ void NativeApi::registerHandler(const char* method, HaylenNativeHandler handler,
         core::Log::error("A native library registered a handler without a method name.");
         return;
     }
+
     const std::scoped_lock lock(mutex);
     if (handler == nullptr) {
         handlers.erase(method);
         return;
     }
+
     handlers.insert_or_assign(method, Handler{.handler = handler, .cancel = canceller, .user = user});
 }
 
@@ -242,11 +263,13 @@ void NativeApi::registerScreen(const char* plugin, const char* name, HaylenNativ
         core::Log::error("A native library registered a screen without its plugin or its name.");
         return;
     }
+
     const std::scoped_lock lock(mutex);
     if (open == nullptr) {
         screens.erase(getScreenKey(plugin, name));
         return;
     }
+
     screens.insert_or_assign(getScreenKey(plugin, name), ScreenHandler{.open = open, .cancel = canceller, .user = user});
 }
 
@@ -259,6 +282,7 @@ int NativeApi::getWindow(HaylenNativeWindow* target) {
     if (target == nullptr || !window) {
         return 0;
     }
+
     *target = *window;
     return 1;
 }
@@ -284,6 +308,7 @@ void NativeApi::registerPlugin(const char* id) {
         core::Log::error("A native library declared the native part of a plugin without its id.");
         return;
     }
+
     const std::scoped_lock lock(mutex);
     plugins.emplace(id);
 }
@@ -293,6 +318,7 @@ void NativeApi::registerErrorHandler(HaylenNativeErrorHandler handler, void* use
         core::Log::error("A native library registered an error handler without a function.");
         return;
     }
+
     const ErrorHandler entry{.handler = handler, .user = user};
     const std::scoped_lock lock(mutex);
     if (std::ranges::find(errorHandlers, entry) == errorHandlers.end()) {

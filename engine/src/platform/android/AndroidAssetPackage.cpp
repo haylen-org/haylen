@@ -17,6 +17,7 @@ std::shared_ptr<AndroidAssetPackage> AndroidAssetPackage::openIndexed(AAssetMana
     if (index == nullptr) {
         throw std::runtime_error("The APK has no app package at \"" + folder + "\", or its \"haylen-package-index.json\" is missing.");
     }
+
     AndroidAssetReader reader(std::move(index));
     std::vector<std::uint8_t> bytes(static_cast<std::size_t>(reader.getSize()));
     reader.readExactly(0, bytes);
@@ -29,6 +30,7 @@ std::shared_ptr<AndroidAssetPackage> AndroidAssetPackage::openFlat(AAssetManager
     for (const char* name = AAssetDir_getNextFileName(directory.get()); name != nullptr; name = AAssetDir_getNextFileName(directory.get())) {
         names.emplace_back(name);
     }
+
     std::ranges::sort(names);
     return std::make_shared<AndroidAssetPackage>(manager, std::move(folder), std::move(names));
 }
@@ -53,6 +55,7 @@ std::vector<std::string> AndroidAssetPackage::list(std::string_view directory) c
             matches.push_back(file);
         }
     }
+
     return matches;
 }
 
@@ -66,6 +69,7 @@ AndroidAssetReader::Handle AndroidAssetPackage::requireAsset(std::string_view pa
     if (asset == nullptr) {
         throw std::runtime_error("The package file \"" + root + "/" + entry + "\" was not found.");
     }
+
     return asset;
 }
 

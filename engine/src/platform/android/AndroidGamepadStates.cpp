@@ -78,6 +78,7 @@ std::optional<std::size_t> AndroidGamepadStates::claim(std::int32_t device) {
             return index;
         }
     }
+
     for (std::size_t index = 0; index < devices.size(); ++index) {
         if (!devices[index]) {
             devices[index] = device;
@@ -86,6 +87,7 @@ std::optional<std::size_t> AndroidGamepadStates::claim(std::int32_t device) {
             return index;
         }
     }
+
     return std::nullopt;
 }
 

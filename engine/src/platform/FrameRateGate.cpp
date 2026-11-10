@@ -28,6 +28,7 @@ double FrameRateGate::getWaitSeconds(double now) const noexcept {
     if (target <= 0 || !due) {
         return 0.0;
     }
+
     return std::max(0.0, *due - kEarlyShare / static_cast<double>(target) - now);
 }
 

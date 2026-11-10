@@ -20,6 +20,7 @@ bool Bridge::Mailbox::post(std::function<void()> task) const {
     if (!target) {
         return false;
     }
+
     const std::scoped_lock lock(target->mutex);
     target->arrivals.emplace_back(std::move(task));
     return true;
@@ -43,6 +44,7 @@ void Bridge::registerHandler(std::string method, Handler handler) {
     if (method.empty() || !handler) {
         throw std::invalid_argument("A platform handler needs a method name and a function.");
     }
+
     handlers.insert_or_assign(std::move(method), std::move(handler));
 }
 
@@ -54,6 +56,7 @@ std::uint64_t Bridge::call(std::string_view method, const Payload& params, Callb
     if (method.empty()) {
         throw std::invalid_argument("A platform call needs a method name.");
     }
+
     core::JsonBytes::validate(params.json, params.buffers.size());
     const std::vector<varn::dataview::DataView> views = varn::dataview::DataViewJson::acquire(params.json);
     const std::uint64_t id = nextCallId.fetch_add(1);
@@ -61,6 +64,7 @@ std::uint64_t Bridge::call(std::string_view method, const Payload& params, Callb
     if (timeout) {
         entry.deadline = std::chrono::steady_clock::now() + *timeout;
     }
+
     pending.emplace(id, std::move(entry));
 
     // A handler that throws leaves no call behind, and its exception reaches the caller.
@@ -70,6 +74,7 @@ std::uint64_t Bridge::call(std::string_view method, const Payload& params, Callb
             if (std::optional<Error> error = result.ok ? attach(result.value) : std::nullopt) {
                 result = {.error = std::move(*error)};
             }
+
             if (const std::shared_ptr<Inbox> alive = shared.lock()) {
                 const std::scoped_lock lock(alive->mutex);
                 alive->arrivals.emplace_back(Completion{id, std::move(result)});
@@ -87,6 +92,7 @@ void Bridge::send(std::string_view method, const Payload& params) {
     if (method.empty()) {
         throw std::invalid_argument("A platform call needs a method name.");
     }
+
     core::JsonBytes::validate(params.json, params.buffers.size());
     start(nextCallId.fetch_add(1), method, params, varn::dataview::DataViewJson::acquire(params.json), [](const Result&) {});
 }
@@ -97,6 +103,7 @@ void Bridge::start(std::uint64_t id, std::string_view method, const Payload& par
         dispatcher(id, method, params.json.dump(), params.buffers, views);
         return;
     }
+
     const Handler handler = found->second;
     handler(params, std::move(reply));
 }
@@ -106,12 +113,14 @@ bool Bridge::cancel(std::uint64_t id) {
     if (found == pending.end()) {
         return false;
     }
+
     Pending entry = std::move(found->second);
     pending.erase(found);
 
     if (entry.native) {
         canceller(id, entry.method);
     }
+
     cancelled.emplace_back(std::move(entry.callback), Result{.error = {.message = std::format("The platform call \"{}\" was cancelled.", entry.method), .code = "cancelled"}});
     return true;
 }
@@ -121,6 +130,7 @@ core::Connection Bridge::on(const std::string& event, std::function<void(const P
     if (!signal) {
         signal = std::make_unique<core::Signal<const Payload&>>();
     }
+
     return signal->connect(std::move(listener), {.owner = std::move(owner)});
 }
 
@@ -136,12 +146,14 @@ void Bridge::emit(std::string_view event, std::string_view payloadJson, std::vec
         core::Log::error("The platform event \"{}\" carried invalid JSON and was dropped.", event);
         return;
     }
+
     try {
         core::JsonBytes::validate(payload, buffers.size());
     } catch (const std::invalid_argument& error) {
         core::Log::error("The platform event \"{}\" was dropped. {}", event, error.what());
         return;
     }
+
     Payload arrived{.json = std::move(payload), .buffers = std::move(buffers)};
     if (const std::optional<Error> error = attach(arrived)) {
         core::Log::error("The platform event \"{}\" was dropped. {}", event, error->message);
@@ -169,6 +181,7 @@ void Bridge::pump() {
     for (const auto& [name, payloads] : retained) {
         waiting.push_back(name);
     }
+
     for (const std::string& name : waiting) {
         deliverRetained(name);
     }
@@ -188,6 +201,7 @@ void Bridge::pump() {
             callback(std::move(result));
         }
     }
+
     expireCalls();
 }
 
@@ -197,8 +211,10 @@ void Bridge::complete(Completion& completion) {
     if (found == pending.end()) {
         return;
     }
+
     Callback callback = std::move(found->second.callback);
     pending.erase(found);
+
     if (callback) {
         callback(std::move(completion.result));
     }
@@ -212,11 +228,13 @@ void Bridge::deliver(NativeEvent& event) {
         signal.emit(event.payload);
         return;
     }
+
     if (event.options.retain) {
         std::deque<Payload>& payloads = retained[event.name];
         if (payloads.size() == kRetainedLimit) {
             payloads.pop_front();
         }
+
         payloads.push_back(std::move(event.payload));
     }
 }
@@ -242,6 +260,7 @@ std::vector<Bridge::Arrival> Bridge::gather(std::vector<Arrival> arrivals) {
             gathered.push_back(std::move(arrival));
             continue;
         }
+
         const auto [found, created] = batches.try_emplace(event->name, gathered.size());
         if (created) {
             gathered.emplace_back(NativeEvent{.name = event->name, .payload = {.json = core::Json::array()}, .options = event->options});
@@ -254,6 +273,7 @@ std::vector<Bridge::Arrival> Bridge::gather(std::vector<Arrival> arrivals) {
         std::ranges::move(event->payload.views, std::back_inserter(batch.payload.views));
         batch.options.retain = batch.options.retain || event->options.retain;
     }
+
     return gathered;
 }
 
@@ -268,6 +288,7 @@ void Bridge::deliverRetained(const std::string& name) {
     core::Signal<const Payload&>& signal = *found->second;
     const std::deque<Payload> payloads = std::move(queued->second);
     retained.erase(queued);
+
     for (const Payload& payload : payloads) {
         signal.emit(payload);
     }
@@ -291,11 +312,14 @@ void Bridge::expireCalls() {
         if (found == pending.end()) {
             continue;
         }
+
         Pending entry = std::move(found->second);
         pending.erase(found);
+
         if (entry.native) {
             canceller(id, entry.method);
         }
+
         if (entry.callback) {
             entry.callback({.error = {.message = std::format("The platform call \"{}\" timed out.", entry.method), .code = "timeout"}});
         }
@@ -312,15 +336,19 @@ Bridge::Error Bridge::readFailure(core::Json payload) {
     if (!payload.is_object()) {
         return error;
     }
+
     if (const auto message = payload.find("message"); message != payload.end() && message->is_string()) {
         error.message = message->get<std::string>();
     }
+
     if (const auto code = payload.find("code"); code != payload.end()) {
         error.code = std::move(*code);
     }
+
     if (const auto data = payload.find("data"); data != payload.end()) {
         error.data = std::move(*data);
     }
+
     return error;
 }
 
@@ -329,18 +357,22 @@ Bridge::Result Bridge::parseResult(bool ok, std::string_view json, std::vector<s
     if (parsed.is_discarded()) {
         return {.error = {.message = "The platform returned invalid JSON.", .code = "invalidJson"}};
     }
+
     if (!ok) {
         return {.error = readFailure(std::move(parsed))};
     }
+
     try {
         core::JsonBytes::validate(parsed, buffers.size());
     } catch (const std::invalid_argument& error) {
         return {.error = {.message = error.what(), .code = "invalidBytes"}};
     }
+
     Result result{.ok = true, .value = {.json = std::move(parsed), .buffers = std::move(buffers)}};
     if (std::optional<Error> error = attach(result.value)) {
         return {.error = std::move(*error)};
     }
+
     return result;
 }
 
@@ -350,6 +382,7 @@ std::optional<Bridge::Error> Bridge::attach(Payload& payload) {
     } catch (const std::invalid_argument& error) {
         return Error{.message = error.what(), .code = "invalidView"};
     }
+
     return std::nullopt;
 }
 

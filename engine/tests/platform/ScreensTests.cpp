@@ -41,6 +41,7 @@ class ScreensTest : public ::testing::Test {
         if (const std::optional<ScreenRelay::Screen> showing = ScreenRelay::getShowing()) {
             ScreenRelay::finish(showing->id, false, "null");
         }
+
         static_cast<void>(ScreenRelay::take());
     }
 
@@ -466,9 +467,11 @@ TEST_F(ScreensTest, TakesTheEndsOfScreensFromOtherThreads) {
         while (!done.load()) {
             fixture.frames(1);
         }
+
         native.join();
         fixture.frames(1);
     }
+
     EXPECT_EQ(answers, 20);
     EXPECT_FALSE(screens.isShowing());
     EXPECT_FALSE(fixture.engine().isAppCovered());

@@ -16,6 +16,7 @@ bool WindowsLinks::forward(std::string_view identifier, std::string_view url) {
     if (pipe == INVALID_HANDLE_VALUE && GetLastError() == ERROR_PIPE_BUSY && WaitNamedPipeW(name.c_str(), kBusyMilliseconds)) {
         pipe = CreateFileW(name.c_str(), GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
     }
+
     if (pipe == INVALID_HANDLE_VALUE) {
         return false;
     }
@@ -45,6 +46,7 @@ void WindowsLinks::serve(const std::wstring& name) {
         core::Log::warning("The app takes no links of later processes, because another instance of it takes them already.");
         return;
     }
+
     for (;;) {
         const bool connected = ConnectNamedPipe(pipe, nullptr) != FALSE || GetLastError() == ERROR_PIPE_CONNECTED;
         std::string url(kMaxLinkBytes, '\0');
@@ -57,10 +59,12 @@ void WindowsLinks::serve(const std::wstring& name) {
         HANDLE next = CreateNamedPipeW(name.c_str(), PIPE_ACCESS_INBOUND, kMode, PIPE_UNLIMITED_INSTANCES, 0, kMaxLinkBytes, 0, nullptr);
         DisconnectNamedPipe(pipe);
         CloseHandle(pipe);
+
         if (next == INVALID_HANDLE_VALUE) {
             core::Log::warning("The app takes no more links of later processes, because Windows refused the pipe for them.");
             return;
         }
+
         pipe = next;
     }
 }

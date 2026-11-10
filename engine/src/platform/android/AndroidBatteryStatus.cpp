@@ -14,6 +14,7 @@ Battery AndroidBatteryStatus::toBattery(bool present, int level, int scale, int 
     if (level >= 0 && scale > 0) {
         battery.level = std::clamp(static_cast<float>(level) / static_cast<float>(scale), 0.0F, 1.0F);
     }
+
     if (status == kCharging) {
         battery.charging = true;
         battery.state = Battery::State::Charging;
@@ -22,6 +23,7 @@ Battery AndroidBatteryStatus::toBattery(bool present, int level, int scale, int 
     } else if (status == kFull) {
         battery.state = Battery::State::Full;
     }
+
     return battery;
 }
 

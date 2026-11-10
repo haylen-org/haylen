@@ -15,6 +15,7 @@ unsigned long LinuxVisualColor::toChannel(float value, unsigned long mask) noexc
     if (mask == 0) {
         return 0;
     }
+
     const int shift = std::countr_zero(mask);
     const unsigned long largest = mask >> shift;
     const auto level = static_cast<unsigned long>(std::lround(std::clamp(value, 0.0F, 1.0F) * static_cast<float>(largest)));

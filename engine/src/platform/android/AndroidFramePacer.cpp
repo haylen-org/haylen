@@ -9,6 +9,7 @@ bool AndroidFramePacer::takeTick(double now) noexcept {
     if (!isTicking() || now < nextTick) {
         return false;
     }
+
     nextTick = now + kTickSeconds;
     return true;
 }
@@ -17,6 +18,7 @@ int AndroidFramePacer::getWaitMilliseconds(double now) const noexcept {
     if (!isTicking()) {
         return -1;
     }
+
     return std::max(0, static_cast<int>(std::ceil((nextTick - now) * 1000.0)));
 }
 

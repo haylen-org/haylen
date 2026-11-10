@@ -94,6 +94,7 @@ class HeadlessHost final : public Host {
             fullscreen = value;
             fullscreenTarget = {};
         }
+
         callback(windowAnswer);
     }
 
@@ -121,6 +122,7 @@ class HeadlessHost final : public Host {
         if (windowAnswer.state == Permission::State::Granted) {
             mouseLocked = value;
         }
+
         callback(windowAnswer);
     }
     void setKeyboardVisible(bool value) override {
@@ -131,6 +133,7 @@ class HeadlessHost final : public Host {
         if (clipboardAnswer.state == Permission::State::Granted) {
             clipboard = value;
         }
+
         callback(clipboardAnswer);
     }
     [[nodiscard]] std::string getClipboard() const override {
@@ -197,6 +200,7 @@ class HeadlessHost final : public Host {
         if (windowAnswer.state == Permission::State::Granted) {
             screenKeptOn = value;
         }
+
         callback(windowAnswer);
     }
     [[nodiscard]] int getFrameRate() const noexcept override {
@@ -378,11 +382,13 @@ class HeadlessHost final : public Host {
     // The headless platform has no font of the system until a test gives it one, which draws the code points the test names from a font file.
     [[nodiscard]] std::optional<SystemFont> findSystemFont(char32_t codePoint) override {
         ++systemFontLookups;
+
         for (const TestSystemFont& font : systemFonts) {
             if (font.codePoints.contains(codePoint)) {
                 return font.font;
             }
         }
+
         return std::nullopt;
     }
     [[nodiscard]] std::vector<std::uint8_t> readSystemFont(const SystemFont& font) override {

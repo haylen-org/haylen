@@ -34,12 +34,14 @@ void ApplePlugins::load() {
         if (!declaration.supported) {
             continue;
         }
+
         const char* name = declaration.className.c_str();
         Class type = NSClassFromString(@(name));
         if (type == nil) {
             core::Log::error("The class \"{}\" of the plugin \"{}\" is missing from the app, so the plugin runs without its native part. The project lacks the Apple sources of the plugin, which a target compiles when it names its template of \"haylen/project.yml\" in \"templates\" of \"project.yml\", or a Swift class of them names itself without \"@objc({})\".", name, declaration.identifier, name);
             continue;
         }
+
         if (![type conformsToProtocol:@protocol(HaylenPlugin)]) {
             core::Log::error("The class \"{}\" of the plugin \"{}\" does not conform to the \"HaylenPlugin\" protocol, so the plugin runs without its native part.", name, declaration.identifier);
             continue;
@@ -58,6 +60,7 @@ std::vector<std::string> ApplePlugins::getIds() {
     for (HaylenPluginContext* context in contexts) {
         ids.emplace_back(context.identifier.UTF8String);
     }
+
     return ids;
 }
 
@@ -68,6 +71,7 @@ NSArray<id<HaylenPlugin>>* ApplePlugins::getPlugins(SEL selector) {
             [found addObject:plugin];
         }
     }
+
     return found;
 }
 
@@ -90,6 +94,7 @@ void ApplePlugins::join(SEL selector, Done done, Ask ask) {
               if (answered) {
                   return;
               }
+
               answered = YES;
               answers |= answer;
               last = --pending == 0;
@@ -122,6 +127,7 @@ std::vector<ApplePlugins::Declaration> ApplePlugins::readDeclarations() {
     if (!std::filesystem::exists(resources / "app") && !std::filesystem::exists(resources / "app.zip")) {
         return {};
     }
+
     const std::shared_ptr<io::Package> package = Services::openBundledPackage();
     const core::AppConfig config = core::AppConfig::fromPackage(*package);
     std::vector<Declaration> declarations;
@@ -131,10 +137,12 @@ std::vector<ApplePlugins::Declaration> ApplePlugins::readDeclarations() {
         if (!apple.contains("class")) {
             continue;
         }
+
         const core::Json platforms = manifest.value("platforms", core::Json::array());
         const bool supported = std::ranges::find(platforms, core::Json(getDestination())) != platforms.end();
         declarations.push_back({.identifier = identifier, .className = apple.at("class").get<std::string>(), .config = AppPlugin::read(*package, identifier, config.plugins.at(identifier).parameters).config, .supported = supported});
     }
+
     return declarations;
 }
 

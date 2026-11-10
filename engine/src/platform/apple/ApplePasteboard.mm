@@ -27,6 +27,7 @@ void ApplePasteboard::read(std::function<void(Permission::Answer answer, std::st
             callback({.state = Permission::State::Denied, .message = "The person has not allowed the app to read the clipboard. The system asks at the next read, or the person allows it in the settings of the system."}, {});
             return;
         }
+
         callback({.state = Permission::State::Granted}, text != nil ? std::string(text.UTF8String) : std::string());
     });
     // clang-format on

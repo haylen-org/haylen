@@ -84,6 +84,7 @@ void AndroidHost::setFullscreen(bool value, std::function<void(Permission::Answe
         callback({.state = Permission::State::Unsupported, .message = "An Android app always covers its screen, so it never leaves fullscreen."});
         return;
     }
+
     callback({.state = Permission::State::Granted});
 }
 
@@ -92,6 +93,7 @@ void AndroidHost::setMouseLocked(bool value, std::function<void(Permission::Answ
         callback({.state = Permission::State::Unsupported, .message = "Android apps of the engine read the pointer as it moves on the screen and lock no pointer."});
         return;
     }
+
     callback({.state = Permission::State::Granted});
 }
 

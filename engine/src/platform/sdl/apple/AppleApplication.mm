@@ -83,6 +83,7 @@ void AppleApplication::checkSurface(SurfaceCheck& check) {
     if (![layer respondsToSelector:@selector(drawableSize)]) {
         return;
     }
+
     const CGSize windowSize = window.bounds.size;
     const CGSize viewSize = view.bounds.size;
     const CGSize drawable = [[layer valueForKey:@"drawableSize"] CGSizeValue];

@@ -64,6 +64,7 @@ void Host::openOutput(std::uint32_t number, [[maybe_unused]] std::string_view di
         refuseOutput(number, "A WebGL2 context draws only into its own canvas, so the page shows outputs on other screens only through WebGPU.");
         return;
     }
+
     WebOutputs::open(number, display, options, runtime.getWindow().getSampleCount());
 #elif defined(__APPLE__) && TARGET_OS_IOS && !TARGET_OS_MACCATALYST
     AppleOutputs::open(number, display, {.sampleCount = runtime.getWindow().getSampleCount(), .vsync = runtime.getWindow().isVsync()});
@@ -76,6 +77,7 @@ void Host::openOutput(std::uint32_t number, [[maybe_unused]] std::string_view di
         refuseOutput(number, "The display \"" + std::string(display) + "\" disconnected before its output opened.");
         return;
     }
+
     try {
         runtime.getOutputs().open(number, *found, options, runtime.getWindow());
     } catch (const std::runtime_error& error) {
@@ -124,10 +126,12 @@ void Host::setFullscreen(bool value, std::function<void(Permission::Answer answe
     }
 
     fullscreenRequest.begin(value, std::move(callback));
+
     if (!SDL_SetWindowFullscreen(runtime.getWindow().get(), value)) {
         fullscreenRequest.fail({.state = Permission::State::Unsupported, .message = std::format("The window could not {} fullscreen. {}", value ? "go" : "leave", SDL_GetError())});
         return;
     }
+
     fullscreenRequest.reach(isFullscreen());
 #endif
 }
@@ -143,6 +147,7 @@ void Host::followFullscreen(bool entered) {
         SDL_SetWindowFullscreenMode(runtime.getWindow().get(), nullptr);
         applyStyle();
     }
+
     fullscreenRequest.reach(entered);
 }
 
@@ -156,6 +161,7 @@ void Host::enterFullscreen(const Fullscreen& value, std::function<void(Permissio
         NativeHost::enterFullscreen(value, std::move(callback));
         return;
     }
+
     enterDesktopFullscreen(resolveFullscreen(value), std::move(callback));
 #endif
 }
@@ -173,6 +179,7 @@ std::optional<SDL_DisplayMode> Host::findMode(SDL_DisplayID display, const Displ
             found = candidate;
         }
     }
+
     SDL_free(static_cast<void*>(modes));
     return found;
 }
@@ -186,6 +193,7 @@ void Host::enterDesktopFullscreen(const FullscreenTarget& target, std::function<
         callback({.state = Permission::State::Unsupported, .message = std::format("SDL lists no fullscreen mode of {} by {} pixels at {} frames per second.", target.mode->width, target.mode->height, target.mode->refreshRate)});
         return;
     }
+
     const SDL_DisplayMode* current = SDL_GetWindowFullscreenMode(window);
     const bool sameMode = exclusive ? current != nullptr && current->w == exclusive->w && current->h == exclusive->h && current->refresh_rate == exclusive->refresh_rate && current->pixel_density == exclusive->pixel_density : current == nullptr;
     if (!fullscreenRequest.isPending() && isFullscreen() && sameMode && SDL_GetDisplayForWindow(window) == display) {
@@ -202,6 +210,7 @@ void Host::enterDesktopFullscreen(const FullscreenTarget& target, std::function<
     }
 
     fullscreenRequest.beginLeaving(std::move(destination), std::move(callback));
+
     if (!SDL_SetWindowFullscreen(window, false)) {
         fullscreenRequest.fail({.state = Permission::State::Unsupported, .message = "The window could not leave fullscreen to cover the display \"" + target.display.id + "\". " + SDL_GetError()});
     }
@@ -220,6 +229,7 @@ void Host::coverDisplay(const FullscreenRequest::Destination& destination) {
         fullscreenRequest.fail({.state = Permission::State::Unsupported, .message = "The window could not go fullscreen on the display \"" + destination.displayId + "\". " + SDL_GetError()});
         return;
     }
+
     fullscreenRequest.reach(isFullscreen());
 }
 
@@ -232,10 +242,12 @@ void Host::setCursor(Cursor value) {
         SDL_SetCursor(SDL_GetDefaultCursor());
         return;
     }
+
     SDL_Cursor*& cursor = cursors[static_cast<std::size_t>(value)];
     if (cursor == nullptr) {
         cursor = SDL_CreateSystemCursor(toSystemCursor(value));
     }
+
     SDL_SetCursor(cursor);
 }
 
@@ -244,6 +256,7 @@ void Host::setCursorVisible(bool value) {
         SDL_ShowCursor();
         return;
     }
+
     SDL_HideCursor();
 }
 
@@ -269,6 +282,7 @@ void Host::setClipboard(std::string_view value, std::function<void(Permission::A
         callback({.state = Permission::State::Unsupported, .message = std::format("The clipboard could not be written: {}", SDL_GetError())});
         return;
     }
+
     callback({.state = Permission::State::Granted});
 #endif
 }
@@ -326,6 +340,7 @@ std::vector<Display> Host::getDisplays() const {
     if (WaylandDisplays::isSession()) {
         return WaylandDisplays::read();
     }
+
     return Services::getDisplays();
 }
 
@@ -333,6 +348,7 @@ std::string Host::getDisplayId() const {
     if (WaylandDisplays::isSession()) {
         return WaylandDisplays::findWindowDisplay(runtime.getWindow().get());
     }
+
     return NativeHost::getDisplayId();
 }
 
@@ -405,6 +421,7 @@ void Host::setScreenSaverSuspended(bool value, std::function<void(Permission::An
         callback({.state = Permission::State::Unsupported, .message = std::format("The screen saver could not be {}. {}", value ? "kept away" : "let back", SDL_GetError())});
         return;
     }
+
     callback({.state = Permission::State::Granted});
 #endif
 }

@@ -32,6 +32,7 @@ void TextInput::edit(const Field& field) {
 
     editing = true;
     apply();
+
     if (!SDL_TextInputActive(handle)) {
         SDL_StartTextInput(handle);
     }
@@ -41,6 +42,7 @@ void TextInput::finish() {
     line.reset();
     cursor = 0;
     editing = false;
+
     if (SDL_Window* handle = window.get(); handle != nullptr) {
         SDL_StopTextInput(handle);
     }

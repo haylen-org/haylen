@@ -11,6 +11,7 @@ Window::StatusBar AppleStatusBar::get() {
     if (!current) {
         current = fromInfoPlist();
     }
+
     return *current;
 }
 
@@ -39,6 +40,7 @@ float AppleStatusBar::getHeight() {
     if (manager == nil || manager.isStatusBarHidden) {
         return 0.0F;
     }
+
     return static_cast<float>(manager.statusBarFrame.size.height) * NativeWindow::getScale();
 }
 
@@ -48,13 +50,16 @@ Window::StatusBar AppleStatusBar::fromInfoPlist() {
     if ([info[@"UIStatusBarHidden"] boolValue]) {
         return Window::StatusBar::Hidden;
     }
+
     NSString* style = info[@"UIStatusBarStyle"];
     if ([style isEqualToString:@"UIStatusBarStyleLightContent"]) {
         return Window::StatusBar::Light;
     }
+
     if ([style isEqualToString:@"UIStatusBarStyleDarkContent"]) {
         return Window::StatusBar::Dark;
     }
+
     return Window::StatusBar::Auto;
 }
 

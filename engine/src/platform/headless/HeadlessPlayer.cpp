@@ -31,6 +31,7 @@ std::optional<HeadlessPlayer::Options> HeadlessPlayer::parse(int argc, char** ar
             if (std::from_chars(count.data(), count.data() + count.size(), value).ptr != count.data() + count.size() || value <= 0) {
                 return std::nullopt;
             }
+
             options.frames = value;
         } else if (options.package.empty() && !argument.starts_with("--")) {
             options.package = argument;
@@ -38,9 +39,11 @@ std::optional<HeadlessPlayer::Options> HeadlessPlayer::parse(int argc, char** ar
             return std::nullopt;
         }
     }
+
     if (options.package.empty()) {
         return std::nullopt;
     }
+
     return options;
 }
 
@@ -61,6 +64,7 @@ int HeadlessPlayer::play(const Options& options) {
     if (options.development) {
         host.enableDevelopment(package->getDirectory());
     }
+
     std::shared_ptr<io::Package> playing = package;
     std::unique_ptr<core::Engine> engine = launch(host, playing);
 
@@ -73,13 +77,16 @@ int HeadlessPlayer::play(const Options& options) {
             engine.reset();
             engine = returnToLauncher(host, launchers, playing);
         }
+
         if (options.frames && frame >= *options.frames) {
             core::Log::error("The app did not quit within {} frames.", *options.frames);
             return 1;
         }
+
         if (engine->getError() != nullptr && !engine->isRecoverable()) {
             break;
         }
+
         if (engine->isRestartRequested()) {
             engine.reset();
             engine = launch(host, playing);
@@ -113,6 +120,7 @@ std::unique_ptr<core::Engine> HeadlessPlayer::launchPackage(HeadlessHost& host, 
             host.enableDevelopment(std::nullopt, request.developmentServer);
             playing = std::make_shared<io::OverlayPackage>(std::move(playing));
         }
+
         return launch(host, playing);
     } catch (const std::exception& error) {
         core::Log::error("The launched app could not start: {}", error.what());
@@ -139,6 +147,7 @@ std::unique_ptr<core::Engine> HeadlessPlayer::launch(HeadlessHost& host, const s
     if (DevelopmentSession* session = host.getDevelopmentSession()) {
         session->setOverlay(std::dynamic_pointer_cast<io::OverlayPackage>(package));
     }
+
     auto engine = std::make_unique<core::Engine>(host, package, std::move(config), std::move(application));
     engine->start();
     return engine;

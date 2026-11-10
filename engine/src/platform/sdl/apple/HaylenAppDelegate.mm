@@ -31,6 +31,7 @@ using haylen::platform::sdl::Runtime;
     [NSWorkspace.sharedWorkspace addObserver:self forKeyPath:@"voiceOverEnabled" options:NSKeyValueObservingOptionNew context:nil];
     ApplePlugins::load();
     AppleNotifications::observe(self);
+
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin applicationWillFinishLaunching:notification];
     }
@@ -41,6 +42,7 @@ using haylen::platform::sdl::Runtime;
         AppleAccessibility::report();
         return;
     }
+
     AppleTheme::report(NSApp.effectiveAppearance);
 }
 
@@ -50,6 +52,7 @@ using haylen::platform::sdl::Runtime;
     [HaylenAccessibilityView.shared attachToView:content];
     [HaylenOverlayLayer.shared attachToView:content];
     [NSApp activateIgnoringOtherApps:YES];
+
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin applicationDidFinishLaunching:notification];
     }
@@ -87,6 +90,7 @@ using haylen::platform::sdl::Runtime;
     for (NSMenu* menu in @[ appMenu, editMenu, windowMenu ]) {
         [mainMenu addItemWithTitle:menu.title action:nil keyEquivalent:@""].submenu = menu;
     }
+
     NSApp.mainMenu = mainMenu;
     NSApp.windowsMenu = windowMenu;
 
@@ -99,6 +103,7 @@ using haylen::platform::sdl::Runtime;
     if (Runtime* runtime = Runtime::find()) {
         runtime->terminate();
     }
+
     return NSTerminateNow;
 }
 
@@ -119,6 +124,7 @@ using haylen::platform::sdl::Runtime;
     for (NSURL* url in urls) {
         haylen::platform::LinkRelay::receive(url.absoluteString.UTF8String);
     }
+
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin application:application openURLs:urls];
     }

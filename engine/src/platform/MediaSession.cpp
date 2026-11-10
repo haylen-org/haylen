@@ -27,6 +27,7 @@ MediaSession::~MediaSession() {
     if (nowPlaying) {
         host.setNowPlaying(std::nullopt);
     }
+
     const std::scoped_lock lock(mutex);
     if (active == this) {
         active = nullptr;
@@ -37,6 +38,7 @@ void MediaSession::setNowPlaying(NowPlaying value) {
     if (!(value.duration >= 0.0) || !(value.position >= 0.0)) {
         throw std::invalid_argument("The duration and the position of what plays cannot be negative.");
     }
+
     nowPlaying = std::move(value);
     host.setNowPlaying(nowPlaying);
 }
@@ -61,6 +63,7 @@ void MediaSession::pump() {
         if (received.empty()) {
             return;
         }
+
         delivering.swap(received);
     }
     for (const Received& entry : delivering) {
@@ -68,8 +71,10 @@ void MediaSession::pump() {
         if (entry.command == Command::Seek) {
             payload["position"] = entry.position;
         }
+
         events.emit(core::LifecycleEvent::kMediaCommand, payload);
     }
+
     delivering.clear();
 }
 

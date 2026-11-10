@@ -81,6 +81,7 @@ jint JavaBridge::load(JavaVM* vm) {
     if (byteArrayClass == nullptr || bridgeClass == nullptr || pluginsClass == nullptr || editorClass == nullptr || activityClass == nullptr || screensClass == nullptr || accessibilityClass == nullptr || mediaSessionClass == nullptr || permissionsClass == nullptr || outputsClass == nullptr) {
         return JNI_ERR;
     }
+
     dispatchMethod = findMethod(*env, bridgeClass, "dispatch", "(J[B[B[[B[J)V");
     cancelMethod = findMethod(*env, bridgeClass, "cancel", "(J)V");
     setAppRunningMethod = findMethod(*env, bridgeClass, "setAppRunning", "(Z)V");
@@ -110,6 +111,7 @@ jint JavaBridge::load(JavaVM* vm) {
     closeOutputMethod = findMethod(*env, outputsClass, "close", "(I)V");
     requestPermissionMethod = findMethod(*env, permissionsClass, "request", "(J[B)V");
     const jmethodID idsMethod = findMethod(*env, pluginsClass, "ids", "()[B");
+
     for (const jmethodID method : {dispatchMethod, cancelMethod, setAppRunningMethod, reportErrorMethod, editMethod, finishMethod, lockOrientationMethod, setStatusBarMethod, setSystemGesturesMethod, keepScreenOnMethod, captureBackMethod, systemInfoMethod, rumbleGamepadMethod, setClipboardMethod, clipboardMethod, networkRequirementMethod, developmentServerMethod, openScreenMethod, cancelScreenMethod, updateAccessibilityMethod, announceMethod, updateMediaSessionMethod, setBackgroundAudioMethod, permissionStateMethod, permissionHeldMethod, requestPermissionMethod, openOutputMethod, closeOutputMethod, idsMethod}) {
         if (method == nullptr) {
             return JNI_ERR;
@@ -123,9 +125,11 @@ jint JavaBridge::load(JavaVM* vm) {
     }
 
     varn::http::client::AndroidHttpBridge::publish(vm);
+
     if (!varn::dataview::DataViewJni::publish(env)) {
         return JNI_ERR;
     }
+
     return JNI_VERSION_1_6;
 }
 
@@ -137,6 +141,7 @@ jclass JavaBridge::findClass(JNIEnv& env, const char* name) {
         core::Log::error("The Java class \"{}\" of the haylen library is missing, so the engine cannot start. Keep the classes of the library in the rules of R8.", name);
         return nullptr;
     }
+
     return static_cast<jclass>(env.NewGlobalRef(found.get()));
 }
 
@@ -147,6 +152,7 @@ jmethodID JavaBridge::findMethod(JNIEnv& env, jclass owner, const char* name, co
         env.ExceptionClear();
         core::Log::error("The static Java method \"{}\" of the haylen library is missing, so the engine cannot start. Keep the classes of the library in the rules of R8.", name);
     }
+
     return found;
 }
 
@@ -240,9 +246,11 @@ std::string JavaBridge::getSystemInfo() {
 Permission::Answer JavaBridge::setClipboard(std::string_view text) {
     JNIEnv& env = getEnv();
     const JavaLocalRef answer(env, static_cast<jbyteArray>(env.CallStaticObjectMethod(activityClass, setClipboardMethod, toBytes(env, text).get())));
+
     if (clearException(env, "dev.haylen.HaylenActivity.setClipboard")) {
         return {.state = Permission::State::Unsupported, .message = "The clipboard could not be written, because Java failed."};
     }
+
     return Permission::Answer::fromJson(core::Json::parse(toString(env, answer.get()), nullptr, false));
 }
 
@@ -265,6 +273,7 @@ std::string JavaBridge::getDevelopmentServer() {
 void JavaBridge::openOutput(std::uint32_t number, std::string_view display, std::string_view title) {
     JNIEnv& env = getEnv();
     env.CallStaticVoidMethod(outputsClass, openOutputMethod, static_cast<jint>(number), static_cast<jint>(std::stoi(std::string(display))), toBytes(env, title).get());
+
     if (clearException(env, "dev.haylen.HaylenOutputs.open")) {
         AndroidOutputs::receiveEnding(number, Output::Ending::Unsupported, "The activity could not open the presentation of the output.");
     }
@@ -301,6 +310,7 @@ void JavaBridge::callPermission(jmethodID method, std::string_view name, Permiss
     }
     JNIEnv& env = getEnv();
     env.CallStaticVoidMethod(permissionsClass, method, static_cast<jlong>(request), toBytes(env, Permission::kindName(kind)).get());
+
     if (clearException(env, name)) {
         answerPermission(request, core::Json{{"state", "unsupported"}, {"message", std::format("The permission \"{}\" could not be read, because Java failed.", Permission::kindName(kind))}}.dump());
     }
@@ -314,6 +324,7 @@ void JavaBridge::answerPermission(std::int64_t request, std::string_view answerJ
         if (found == permissionCallbacks.end()) {
             return;
         }
+
         callback = std::move(found->second);
         permissionCallbacks.erase(found);
     }
@@ -381,6 +392,7 @@ bool JavaBridge::clearException(JNIEnv& env, std::string_view method) {
     if (env.ExceptionCheck() == JNI_FALSE) {
         return false;
     }
+
     env.ExceptionDescribe();
     env.ExceptionClear();
     core::Log::error("The Java method \"{}\" threw an exception, whose stack logcat shows under the tag \"System.err\".", method);
@@ -401,6 +413,7 @@ std::vector<std::string> JavaBridge::toStrings(JNIEnv& env, jobjectArray texts) 
         const JavaLocalRef text(env, static_cast<jbyteArray>(env.GetObjectArrayElement(texts, index)));
         strings.push_back(toString(env, text.get()));
     }
+
     return strings;
 }
 
@@ -418,9 +431,11 @@ std::vector<std::vector<std::byte>> JavaBridge::toBuffers(JNIEnv& env, jobjectAr
             env.GetByteArrayRegion(array, 0, static_cast<jsize>(copy.size()), reinterpret_cast<jbyte*>(copy.data()));
             continue;
         }
+
         const auto* bytes = static_cast<const std::byte*>(env.GetDirectBufferAddress(buffer.get()));
         copy.assign(bytes, bytes + env.GetDirectBufferCapacity(buffer.get()));
     }
+
     return copies;
 }
 
@@ -431,6 +446,7 @@ JavaLocalRef<jbyteArray> JavaBridge::toBytes(JNIEnv& env, std::string_view text)
         clearException(env, "NewByteArray");
         throw std::runtime_error("Java has no memory for an array of " + std::to_string(text.size()) + " bytes.");
     }
+
     env.SetByteArrayRegion(bytes.get(), 0, static_cast<jsize>(text.size()), reinterpret_cast<const jbyte*>(text.data()));
     return bytes;
 }
@@ -441,10 +457,12 @@ JavaLocalRef<jobjectArray> JavaBridge::toByteArrays(JNIEnv& env, std::span<const
         clearException(env, "NewObjectArray");
         throw std::runtime_error("Java has no memory for a list of " + std::to_string(buffers.size()) + " buffers.");
     }
+
     for (std::size_t index = 0; index < buffers.size(); ++index) {
         const JavaLocalRef array = toBytes(env, std::string_view(reinterpret_cast<const char*>(buffers[index].data()), buffers[index].size()));
         env.SetObjectArrayElement(arrays.get(), static_cast<jsize>(index), array.get());
     }
+
     return arrays;
 }
 
@@ -454,10 +472,12 @@ JavaLocalRef<jlongArray> JavaBridge::toViewHandles(JNIEnv& env, std::span<const 
         clearException(env, "NewLongArray");
         throw std::runtime_error("Java has no memory for a list of " + std::to_string(views.size()) + " data views.");
     }
+
     for (std::size_t index = 0; index < views.size(); ++index) {
         const auto handle = static_cast<jlong>(reinterpret_cast<std::uintptr_t>(views[index].handle()));
         env.SetLongArrayRegion(handles.get(), static_cast<jsize>(index), 1, &handle);
     }
+
     return handles;
 }
 
@@ -468,9 +488,11 @@ jlong JavaBridge::shareView(jlong handle) noexcept {
 
 std::string JavaBridge::callText(JNIEnv& env, jclass owner, jmethodID method, std::string_view name, std::string_view fallback) {
     const JavaLocalRef bytes(env, static_cast<jbyteArray>(env.CallStaticObjectMethod(owner, method)));
+
     if (clearException(env, name)) {
         return std::string(fallback);
     }
+
     return toString(env, bytes.get());
 }
 
@@ -490,6 +512,7 @@ JNIEnv& JavaBridge::getEnv() {
     if (attached != JNI_OK) {
         throw std::runtime_error(std::format("Java could not attach this thread, which failed with the code {}, so the thread cannot call into Java.", attached));
     }
+
     pthread_setspecific(attachedThreads, env);
     return *env;
 }

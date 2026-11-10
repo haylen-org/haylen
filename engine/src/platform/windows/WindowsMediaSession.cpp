@@ -32,6 +32,7 @@ std::wstring WindowsMediaSession::toWide(const std::string& text) {
     if (text.empty()) {
         return {};
     }
+
     const int length = MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), nullptr, 0);
     std::wstring wide(static_cast<std::size_t>(length), L'\0');
     MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), wide.data(), length);
@@ -74,11 +75,13 @@ ISystemMediaTransportControls* WindowsMediaSession::getControls() {
     if (attempted) {
         return controls.Get();
     }
+
     attempted = true;
     const HRESULT started = RoInitialize(RO_INIT_SINGLETHREADED);
     if (FAILED(started) && started != RPC_E_CHANGED_MODE) {
         return nullptr;
     }
+
     ComPtr<ISystemMediaTransportControlsInterop> interop;
     const auto window = static_cast<HWND>(NativeWindow::getHandle());
     if (FAILED(RoGetActivationFactory(HStringReference(RuntimeClass_Windows_Media_SystemMediaTransportControls).Get(), IID_PPV_ARGS(&interop))) || FAILED(interop->GetForWindow(window, IID_PPV_ARGS(&controls)))) {
@@ -93,6 +96,7 @@ ISystemMediaTransportControls* WindowsMediaSession::getControls() {
         if (SUCCEEDED(event->get_Button(&button))) {
             receiveButton(button);
         }
+
         return S_OK;
     }).Get(), &token);
     ComPtr<ISystemMediaTransportControls2> seeking;
@@ -102,6 +106,7 @@ ISystemMediaTransportControls* WindowsMediaSession::getControls() {
             if ((offered.load() & MediaSession::bit(MediaSession::Command::Seek)) != 0 && SUCCEEDED(event->get_RequestedPlaybackPosition(&position))) {
                 MediaSession::receive(MediaSession::Command::Seek, static_cast<double>(position.Duration) / kUnitsPerSecond);
             }
+
             return S_OK;
         }).Get(), &token);
     }
@@ -114,16 +119,19 @@ void WindowsMediaSession::update(const std::optional<MediaSession::NowPlaying>& 
     if (found == nullptr) {
         return;
     }
+
     if (!value) {
         offered.store(0);
         ComPtr<ISystemMediaTransportControlsDisplayUpdater> updater;
         if (SUCCEEDED(found->get_DisplayUpdater(&updater))) {
             updater->ClearAll();
         }
+
         found->put_PlaybackStatus(ABI::Windows::Media::MediaPlaybackStatus_Closed);
         found->put_IsEnabled(false);
         return;
     }
+
     show(*found, *value);
 }
 
@@ -145,6 +153,7 @@ void WindowsMediaSession::show(ISystemMediaTransportControls& target, const Medi
     if (FAILED(target.get_DisplayUpdater(&updater)) || FAILED(updater->put_Type(ABI::Windows::Media::MediaPlaybackType_Music)) || FAILED(updater->get_MusicProperties(&music))) {
         return;
     }
+
     const std::wstring title = toWide(value.title);
     const std::wstring artist = toWide(value.artist);
     const std::wstring album = toWide(value.album);
@@ -154,6 +163,7 @@ void WindowsMediaSession::show(ISystemMediaTransportControls& target, const Medi
     if (SUCCEEDED(music.As(&albums))) {
         albums->put_AlbumTitle(HStringReference(album.c_str(), static_cast<unsigned int>(album.size())).Get());
     }
+
     showArtwork(*updater.Get(), value);
     updater->Update();
     showTimeline(target, value);
@@ -165,6 +175,7 @@ void WindowsMediaSession::showArtwork(ISystemMediaTransportControlsDisplayUpdate
         updater.put_Thumbnail(nullptr);
         return;
     }
+
     ComPtr<IStream> memory;
     memory.Attach(SHCreateMemStream(reinterpret_cast<const BYTE*>(value.artwork.data()), static_cast<UINT>(value.artwork.size())));
     ComPtr<ABI::Windows::Storage::Streams::IRandomAccessStream> stream;
@@ -182,6 +193,7 @@ void WindowsMediaSession::showTimeline(ISystemMediaTransportControls& target, co
     if (value.duration <= 0.0 || FAILED(target.QueryInterface(IID_PPV_ARGS(&seeking))) || FAILED(RoActivateInstance(HStringReference(RuntimeClass_Windows_Media_SystemMediaTransportControlsTimelineProperties).Get(), &created)) || FAILED(created.As(&timeline))) {
         return;
     }
+
     const auto units = [](double seconds) { return ABI::Windows::Foundation::TimeSpan{.Duration = std::llround(seconds * kUnitsPerSecond)}; };
     timeline->put_StartTime(units(0.0));
     timeline->put_MinSeekTime(units(0.0));

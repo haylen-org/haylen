@@ -51,9 +51,11 @@ void PlatformLua::pushCall(lua_State* L, const std::string& method, int paramsIn
         lua::Table::checkFields(L, optionsIndex, {kCallOptions});
         std::optional<double> seconds;
         lua::Table::readField(L, optionsIndex, "timeout", seconds);
+
         if (seconds && (!std::isfinite(*seconds) || *seconds <= 0.0)) {
             throw std::invalid_argument("The timeout of a platform call is a positive number of seconds.");
         }
+
         if (seconds) {
             timeout = std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(*seconds));
         }
@@ -73,6 +75,7 @@ void PlatformLua::Call::fail(Bridge::Error failure) {
         promise->rejectReported(error->message);
         return;
     }
+
     promise->reject(error->message);
 }
 
@@ -83,6 +86,7 @@ Bridge::Callback PlatformLua::settle(std::shared_ptr<Call> pending) {
             pending->fail(std::move(result.error));
             return;
         }
+
         pending->promise->resolveCustom([value = std::move(result.value)](lua_State* state) { pushPayload(state, value); });
     };
     // clang-format on
@@ -100,9 +104,11 @@ void PlatformLua::pushConnection(lua_State* L, const std::string& event, int lis
             owner = lua_gettop(L);
         }
     }
+
     if (owner == 0) {
         owner = lua::Owners::pushDefault(L);
     }
+
     const std::weak_ptr<const void> lifetime = owner != 0 ? lua::Owners::getLifetime(L, owner) : std::weak_ptr<const void>();
     auto function = std::make_shared<lua::Owners::Function>(L, listenerIndex, owner);
     lua_State* main = lua::Runtime::getMainThread(L);
@@ -120,6 +126,7 @@ void PlatformLua::pushConnection(lua_State* L, const std::string& event, int lis
     if (owner != 0) {
         lua::Owners::add(L, owner, connection);
     }
+
     lua::Userdata::emplace<core::Connection>(L, std::move(connection));
 }
 
@@ -146,6 +153,7 @@ int PlatformLua::finishAwait(lua_State* L, int, lua_KContext) {
     if (results < 2 || !lua_isnil(L, 2) || !pending->error) {
         return results;
     }
+
     lua_settop(L, 1);
     lua_pushnil(L);
     pushError(L, *pending->error);
@@ -205,6 +213,7 @@ int PlatformLua::emit(lua_State* L) {
         lua::Table::readField(L, 3, "retain", options.retain);
         lua::Table::readField(L, 3, "batched", options.batched);
     }
+
     lua::Runtime::getEngine(L).getPlatform().emit(event, payload, std::move(buffers), options);
     return 0;
 }
@@ -262,6 +271,7 @@ int PlatformLua::registerHandler(lua_State* L) {
         } catch (const std::exception& exception) {
             result = {.error = {.message = exception.what()}};
         }
+
         lua_settop(state, top);
         reply(std::move(result));
     });
@@ -288,6 +298,7 @@ int PlatformLua::plugins(lua_State* L) {
         lua_setfield(L, -2, "native");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
@@ -300,6 +311,7 @@ int PlatformLua::plugin(lua_State* L) {
             return 1;
         }
     }
+
     throw std::invalid_argument("The plugin \"" + id + "\" is not among the plugins of \"app.json\".");
 }
 
@@ -332,6 +344,7 @@ std::string PlatformLua::getPluginName(lua_State* L) {
     if (name.empty()) {
         throw std::invalid_argument("A method or event of the plugin \"" + id + "\" needs a name.");
     }
+
     return id + "." + name;
 }
 
@@ -379,8 +392,10 @@ int PlatformLua::concatError(lua_State* L) {
                 continue;
             }
         }
+
         luaL_tolstring(L, index, nullptr);
     }
+
     lua_concat(L, 2);
     return 1;
 }
@@ -404,6 +419,7 @@ int PlatformLua::openScreenOfPlugin(lua_State* L) {
     if (screen.empty()) {
         throw std::invalid_argument("A screen of the plugin \"" + id + "\" needs a name.");
     }
+
     Bridge::Payload params = readPayload(L, 3);
     Screens::Options options = readScreenOptions(L, 4);
 
@@ -421,16 +437,19 @@ Screens::Options PlatformLua::readScreenOptions(lua_State* L, int index) {
     if (lua_isnoneornil(L, index)) {
         return options;
     }
+
     luaL_checktype(L, index, LUA_TTABLE);
     lua::Table::checkFields(L, index, {kScreenOptions});
     lua::Table::readField(L, index, "opaque", options.opaque);
 
     std::optional<double> seconds;
     lua::Table::readField(L, index, "timeout", seconds);
+
     if (seconds) {
         if (!std::isfinite(*seconds) || *seconds <= 0.0) {
             throw std::invalid_argument("The timeout of a screen is a positive number of seconds.");
         }
+
         options.timeout = std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(*seconds));
     }
 
@@ -438,9 +457,11 @@ Screens::Options PlatformLua::readScreenOptions(lua_State* L, int index) {
     std::vector<std::vector<std::byte>> buffers;
     options.state = lua_isnil(L, -1) ? core::Json(nullptr) : lua::JsonConverter::read(L, -1, buffers);
     lua_pop(L, 1);
+
     if (!buffers.empty()) {
         throw std::invalid_argument("The state of a screen is JSON without bytes.");
     }
+
     return options;
 }
 

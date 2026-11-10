@@ -18,6 +18,7 @@ bool AndroidGraphicsApis::takeRenewal(gpu::Device::Api api) noexcept {
     if (lost != api) {
         return false;
     }
+
     lost.reset();
     return true;
 }

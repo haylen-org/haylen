@@ -34,6 +34,7 @@ bool AndroidVideoDecoder::load() noexcept {
     if (library == nullptr) {
         return false;
     }
+
     newSource = reinterpret_cast<decltype(newSource)>(dlsym(library, "AMediaDataSource_new"));
     setSourceData = reinterpret_cast<decltype(setSourceData)>(dlsym(library, "AMediaDataSource_setUserdata"));
     setSourceReadAt = reinterpret_cast<decltype(setSourceReadAt)>(dlsym(library, "AMediaDataSource_setReadAt"));
@@ -51,9 +52,11 @@ AndroidVideoDecoder::AndroidVideoDecoder(std::shared_ptr<io::PackageReader> read
     } catch (...) {
         release(sound);
         release(picture);
+
         if (images != nullptr) {
             AImageReader_delete(images);
         }
+
         throw;
     }
 }
@@ -63,6 +66,7 @@ void AndroidVideoDecoder::open() {
     if (pictureFormat == nullptr) {
         throw std::runtime_error("The video \"" + path + "\" holds no picture that this platform plays.");
     }
+
     std::int64_t duration = 0;
     AMediaFormat_getInt64(pictureFormat, AMEDIAFORMAT_KEY_DURATION, &duration);
     AMediaFormat_getInt32(pictureFormat, AMEDIAFORMAT_KEY_WIDTH, &info.width);
@@ -72,12 +76,14 @@ void AndroidVideoDecoder::open() {
         AMediaFormat_delete(pictureFormat);
         throw std::runtime_error("The video \"" + path + "\" needs an image reader that this device could not make.");
     }
+
     startCodec(picture, pictureFormat, true);
 
     AMediaFormat* soundFormat = openTrack(sound, "audio/");
     if (soundFormat == nullptr) {
         return;
     }
+
     std::int32_t rate = 0;
     std::int32_t channels = 0;
     AMediaFormat_getInt32(soundFormat, AMEDIAFORMAT_KEY_SAMPLE_RATE, &rate);
@@ -93,6 +99,7 @@ AndroidVideoDecoder::~AndroidVideoDecoder() {
     if (resampling) {
         ma_linear_resampler_uninit(&resampler, nullptr);
     }
+
     release(sound);
     release(picture);
     AImageReader_delete(images);
@@ -124,6 +131,7 @@ AMediaFormat* AndroidVideoDecoder::openTrack(Track& track, std::string_view pref
     if (setExtractorSource(track.extractor, track.source) != AMEDIA_OK) {
         throw std::runtime_error("The video \"" + path + "\" is no file that this platform plays.");
     }
+
     const std::size_t count = AMediaExtractor_getTrackCount(track.extractor);
     for (std::size_t index = 0; index < count; ++index) {
         AMediaFormat* format = AMediaExtractor_getTrackFormat(track.extractor, index);
@@ -132,8 +140,10 @@ AMediaFormat* AndroidVideoDecoder::openTrack(Track& track, std::string_view pref
             AMediaExtractor_selectTrack(track.extractor, index);
             return format;
         }
+
         AMediaFormat_delete(format);
     }
+
     return nullptr;
 }
 
@@ -148,8 +158,10 @@ void AndroidVideoDecoder::startCodec(Track& track, AMediaFormat* format, bool is
         AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_COLOR_FORMAT, kFlexibleYuv);
         AImageReader_getWindow(images, &window);
     }
+
     const bool started = track.codec != nullptr && AMediaCodec_configure(track.codec, format, window, nullptr, 0) == AMEDIA_OK && AMediaCodec_start(track.codec) == AMEDIA_OK;
     AMediaFormat_delete(format);
+
     if (!started) {
         throw std::runtime_error("The video \"" + path + "\" uses \"" + mime + "\", which no decoder of this device plays.");
     }
@@ -161,6 +173,7 @@ void AndroidVideoDecoder::feed(Track& track) {
         if (index < 0) {
             return;
         }
+
         std::size_t capacity = 0;
         std::uint8_t* buffer = AMediaCodec_getInputBuffer(track.codec, static_cast<std::size_t>(index), &capacity);
         const ssize_t size = AMediaExtractor_readSampleData(track.extractor, buffer, capacity);
@@ -169,6 +182,7 @@ void AndroidVideoDecoder::feed(Track& track) {
             track.inputEnded = true;
             return;
         }
+
         AMediaCodec_queueInputBuffer(track.codec, static_cast<std::size_t>(index), 0, static_cast<std::size_t>(size), static_cast<std::uint64_t>(AMediaExtractor_getSampleTime(track.extractor)), 0);
         AMediaExtractor_advance(track.extractor);
     }
@@ -181,8 +195,10 @@ void AndroidVideoDecoder::takeImage(Frame& frame) {
         if (waits >= kImagePatience) {
             fail("the decoder of its picture rendered no image");
         }
+
         std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
+
     AImageCropRect crop{};
     AImage_getCropRect(image, &crop);
     AndroidYuvImage yuv{.left = crop.left, .top = crop.top, .width = crop.right - crop.left, .height = crop.bottom - crop.top};
@@ -196,12 +212,14 @@ void AndroidVideoDecoder::takeImage(Frame& frame) {
         plane.data = data;
         plane.size = static_cast<std::size_t>(std::max(length, 0));
     }
+
     try {
         yuv.toRgba(frame.pixels);
     } catch (...) {
         AImage_delete(image);
         throw;
     }
+
     AImage_delete(image);
     frame.width = yuv.width;
     frame.height = yuv.height;
@@ -221,6 +239,7 @@ VideoDecoder::Read AndroidVideoDecoder::readFrame(Frame& frame) {
             waits += index == AMEDIACODEC_INFO_TRY_AGAIN_LATER ? 1 : 0;
             continue;
         }
+
         const bool last = (buffer.flags & AMEDIACODEC_BUFFER_FLAG_END_OF_STREAM) != 0;
         const double time = static_cast<double>(buffer.presentationTimeUs) / 1000000.0;
         if (buffer.size > 0 && time >= skipUntil) {
@@ -229,12 +248,15 @@ VideoDecoder::Read AndroidVideoDecoder::readFrame(Frame& frame) {
             frame.time = time;
             return Read::Frame;
         }
+
         AMediaCodec_releaseOutputBuffer(picture.codec, static_cast<std::size_t>(index), false);
+
         if (last) {
             picture.outputEnded = true;
             return Read::End;
         }
     }
+
     fail("the decoder of its picture gave nothing for three seconds");
 }
 
@@ -245,6 +267,7 @@ bool AndroidVideoDecoder::readAudio(std::vector<float>& samples, double until) {
         if (waits >= kPatience) {
             fail("the decoder of its sound gave nothing for three seconds");
         }
+
         feed(sound);
         AMediaCodecBufferInfo buffer{};
         const ssize_t index = AMediaCodec_dequeueOutputBuffer(sound.codec, &buffer, kWaitMicroseconds);
@@ -262,10 +285,12 @@ bool AndroidVideoDecoder::readAudio(std::vector<float>& samples, double until) {
             setSoundRate(static_cast<std::uint32_t>(std::max(rate, 1)));
             continue;
         }
+
         if (index < 0) {
             ++waits;
             continue;
         }
+
         waits = 0;
         std::size_t capacity = 0;
         const std::uint8_t* data = AMediaCodec_getOutputBuffer(sound.codec, static_cast<std::size_t>(index), &capacity) + buffer.offset;
@@ -286,11 +311,13 @@ bool AndroidVideoDecoder::readAudio(std::vector<float>& samples, double until) {
                 }
             }
         }
+
         appendSound(samples);
         soundTime = static_cast<double>(buffer.presentationTimeUs) / 1000000.0 + static_cast<double>(frames) / soundRate;
         sound.outputEnded = (buffer.flags & AMEDIACODEC_BUFFER_FLAG_END_OF_STREAM) != 0;
         AMediaCodec_releaseOutputBuffer(sound.codec, static_cast<std::size_t>(index), false);
     }
+
     return sound.codec != nullptr && !sound.outputEnded;
 }
 
@@ -300,14 +327,17 @@ void AndroidVideoDecoder::seek(double seconds) {
         if (track->codec == nullptr) {
             continue;
         }
+
         AMediaExtractor_seekTo(track->extractor, microseconds, AMEDIAEXTRACTOR_SEEK_PREVIOUS_SYNC);
         AMediaCodec_flush(track->codec);
         track->inputEnded = false;
         track->outputEnded = false;
     }
+
     if (resampling) {
         ma_linear_resampler_reset(&resampler);
     }
+
     skipUntil = seconds;
     soundTime = seconds;
 }
@@ -317,14 +347,18 @@ void AndroidVideoDecoder::setSoundRate(std::uint32_t rate) {
         ma_linear_resampler_uninit(&resampler, nullptr);
         resampling = false;
     }
+
     soundRate = rate;
+
     if (rate == info.sampleRate) {
         return;
     }
+
     const ma_linear_resampler_config config = ma_linear_resampler_config_init(ma_format_f32, info.channels, rate, info.sampleRate);
     if (ma_linear_resampler_init(&config, nullptr, &resampler) != MA_SUCCESS) {
         fail("its sound needs a resampler that could not start");
     }
+
     resampling = true;
 }
 
@@ -333,6 +367,7 @@ void AndroidVideoDecoder::appendSound(std::vector<float>& samples) {
         samples.insert(samples.end(), decodedSound.begin(), decodedSound.end());
         return;
     }
+
     ma_uint64 inputFrames = decodedSound.size() / info.channels;
     ma_uint64 outputFrames = 0;
     ma_linear_resampler_get_expected_output_frame_count(&resampler, inputFrames, &outputFrames);
@@ -347,10 +382,12 @@ void AndroidVideoDecoder::release(Track& track) noexcept {
         AMediaCodec_delete(track.codec);
         track.codec = nullptr;
     }
+
     if (track.extractor != nullptr) {
         AMediaExtractor_delete(track.extractor);
         track.extractor = nullptr;
     }
+
     if (track.source != nullptr) {
         deleteSource(track.source);
         track.source = nullptr;

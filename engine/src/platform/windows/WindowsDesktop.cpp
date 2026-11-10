@@ -75,6 +75,7 @@ void WindowsDesktop::setStyle(const WindowStyle& value) {
     const RECT frame = toOuterFrame(window, content);
     const UINT keep = IsIconic(window) != FALSE ? SWP_NOMOVE | SWP_NOSIZE : 0;
     SetWindowPos(window, value.alwaysOnTop ? HWND_TOPMOST : HWND_NOTOPMOST, frame.left, frame.top, frame.right - frame.left, frame.bottom - frame.top, SWP_NOACTIVATE | SWP_FRAMECHANGED | keep);
+
     if ((exStyle & kTaskbar) != (previousExStyle & kTaskbar) && IsWindowVisible(window)) {
         ShowWindow(window, SW_HIDE);
         ShowWindow(window, SW_SHOWNA);
@@ -106,6 +107,7 @@ WindowsDesktop::Identity WindowsDesktop::identify(std::wstring_view device) {
     if (GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &pathCount, &modeCount) != ERROR_SUCCESS) {
         return identity;
     }
+
     std::vector<DISPLAYCONFIG_PATH_INFO> paths(pathCount);
     std::vector<DISPLAYCONFIG_MODE_INFO> modes(modeCount);
     if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &pathCount, paths.data(), &modeCount, modes.data(), nullptr) != ERROR_SUCCESS) {
@@ -119,17 +121,21 @@ WindowsDesktop::Identity WindowsDesktop::identify(std::wstring_view device) {
         if (DisplayConfigGetDeviceInfo(&source.header) != ERROR_SUCCESS || device != source.viewGdiDeviceName) {
             continue;
         }
+
         DISPLAYCONFIG_TARGET_DEVICE_NAME target{};
         target.header = {.type = DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME, .size = static_cast<UINT32>(sizeof(target)), .adapterId = path.targetInfo.adapterId, .id = path.targetInfo.id};
         if (DisplayConfigGetDeviceInfo(&target.header) != ERROR_SUCCESS) {
             continue;
         }
+
         identity.id = WindowsText::toUtf8(target.monitorDevicePath);
         if (target.monitorFriendlyDeviceName[0] != L'\0') {
             identity.name = WindowsText::toUtf8(target.monitorFriendlyDeviceName);
         }
+
         return identity;
     }
+
     return identity;
 }
 
@@ -144,6 +150,7 @@ std::vector<Display::Mode> WindowsDesktop::getModes(const wchar_t* device, float
             modes.push_back(found);
         }
     }
+
     return modes;
 }
 
@@ -155,6 +162,7 @@ BOOL CALLBACK WindowsDesktop::addDisplay(HMONITOR monitor, HDC, LPRECT, LPARAM l
     if (GetMonitorInfoW(monitor, &info) == FALSE) {
         return TRUE;
     }
+
     DEVMODEW current{};
     current.dmSize = sizeof(current);
     const float rate = EnumDisplaySettingsW(info.szDevice, ENUM_CURRENT_SETTINGS, &current) != FALSE && current.dmDisplayFrequency > 1 ? static_cast<float>(current.dmDisplayFrequency) : 0.0F;
@@ -191,6 +199,7 @@ void WindowsDesktop::setPassthrough(Window::Passthrough mode, std::span<const ma
         clickThrough = false;
         return;
     }
+
     if ((exStyle & WS_EX_LAYERED) == 0) {
         SetWindowLongPtrW(window, GWL_EXSTYLE, exStyle | WS_EX_LAYERED);
         SetLayeredWindowAttributes(window, 0, 255, LWA_ALPHA);
@@ -201,6 +210,7 @@ void WindowsDesktop::setClickThrough(bool value) {
     if (value == clickThrough) {
         return;
     }
+
     clickThrough = value;
     const HWND window = getWindow();
     const LONG_PTR exStyle = GetWindowLongPtrW(window, GWL_EXSTYLE);
@@ -223,6 +233,7 @@ void WindowsDesktop::update() {
     if (passthrough == Window::Passthrough::Off) {
         return;
     }
+
     const HWND window = getWindow();
     POINT cursor{};
     GetCursorPos(&cursor);
@@ -255,6 +266,7 @@ void WindowsDesktop::followPointer(math::Vec2 pixel, bool inside) {
     } else if (!inside && pointerInside) {
         Player::handleEvent({.type = Event::Type::MouseLeave, .position = pixel});
     }
+
     pointer = pixel;
     pointerInside = inside;
 }
@@ -265,6 +277,7 @@ LRESULT CALLBACK WindowsDesktop::windowProcedure(HWND window, UINT message, WPAR
         if (GetAsyncKeyState(VK_LBUTTON) >= 0) {
             return 0;
         }
+
         ReleaseCapture();
         SendMessageW(window, WM_SYSCOMMAND, SC_MOVE | HTCAPTION, 0);
 
@@ -286,14 +299,17 @@ LRESULT CALLBACK WindowsDesktop::windowProcedure(HWND window, UINT message, WPAR
         if (wParam == SPI_SETWORKAREA) {
             Player::postEvent({.type = Event::Type::DisplaysChanged});
         }
+
         // Windows names the colors of the personalization settings, the app theme among them, as the immersive color set.
         if (lParam != 0 && std::wstring_view(reinterpret_cast<const wchar_t*>(lParam)) == L"ImmersiveColorSet") {
             WindowsSystem::reportTheme();
         }
+
         // Windows names the regional and language settings as the international settings.
         if (lParam != 0 && std::wstring_view(reinterpret_cast<const wchar_t*>(lParam)) == L"intl") {
             WindowsSystem::reportLanguages();
         }
+
         // The accessibility settings change with several of the settings that Windows announces, so every announcement reads them again.
         WindowsSystem::reportAccessibility();
         break;
@@ -301,11 +317,13 @@ LRESULT CALLBACK WindowsDesktop::windowProcedure(HWND window, UINT message, WPAR
         if (const std::optional<LRESULT> answered = WindowsAccessibility::answer(window, wParam, lParam)) {
             return *answered;
         }
+
         break;
     case WM_POWERBROADCAST:
         if (wParam == PBT_APMPOWERSTATUSCHANGE || wParam == PBT_POWERSETTINGCHANGE) {
             WindowsSystem::reportPowerStatus();
         }
+
         break;
     case WM_TIMECHANGE:
         WindowsSystem::reportTimeZone();

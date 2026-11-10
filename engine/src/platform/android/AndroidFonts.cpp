@@ -37,6 +37,7 @@ std::optional<SystemFont> AndroidFonts::find(char32_t codePoint) {
     if (path != nullptr) {
         found = SystemFont{.name = std::string(path) + "#" + std::to_string(face), .file = path, .face = face};
     }
+
     functions->close(font);
     return found;
 }
@@ -58,6 +59,7 @@ std::optional<AndroidFonts::Matcher> AndroidFonts::load() {
     if (!complete) {
         return std::nullopt;
     }
+
     return loading;
 }
 

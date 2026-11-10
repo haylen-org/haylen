@@ -10,6 +10,7 @@ AudioStream::AudioStream(std::uint32_t rate, std::uint32_t count, Format value, 
     if (sampleRate == 0 || channels == 0 || capacity == 0) {
         throw std::invalid_argument("An audio stream needs a sample rate, channels and room for at least one frame.");
     }
+
     ring.resize(capacity * channels);
     history.resize(capacity * channels);
 }
@@ -18,6 +19,7 @@ std::size_t AudioStream::push(std::span<const float> samples) {
     if (format != Format::Float32) {
         throw std::logic_error("This audio stream takes 16-bit samples.");
     }
+
     return write(samples);
 }
 
@@ -25,6 +27,7 @@ std::size_t AudioStream::push(std::span<const std::int16_t> samples) {
     if (format != Format::Int16) {
         throw std::logic_error("This audio stream takes float samples.");
     }
+
     return write(samples);
 }
 
@@ -33,6 +36,7 @@ template <typename Sample> std::size_t AudioStream::write(std::span<const Sample
     if (samples.size() % channels != 0) {
         throw std::invalid_argument("Audio samples come in whole frames, one sample for every channel.");
     }
+
     const std::size_t head = written.load(std::memory_order_relaxed);
     const std::size_t tail = consumed.load(std::memory_order_acquire);
     const std::size_t frames = std::min(samples.size() / channels, capacity - (head - tail));
@@ -47,6 +51,7 @@ template <typename Sample> std::size_t AudioStream::write(std::span<const Sample
             }
         }
     }
+
     written.store(head + frames, std::memory_order_release);
     started.store(true, std::memory_order_relaxed);
 
@@ -55,6 +60,7 @@ template <typename Sample> std::size_t AudioStream::write(std::span<const Sample
         const std::size_t offset = ((head + frame) % capacity) * channels;
         std::copy_n(ring.data() + offset, channels, history.data() + offset);
     }
+
     historyFrames = head + frames;
     return frames;
 }
@@ -68,6 +74,7 @@ void AudioStream::read(std::uint64_t token, std::span<float> output) noexcept {
         std::ranges::fill(output, 0.0F);
         return;
     }
+
     const std::size_t wanted = output.size() / channels;
     const std::size_t tail = consumed.load(std::memory_order_relaxed);
     const std::size_t head = written.load(std::memory_order_acquire);
@@ -75,8 +82,10 @@ void AudioStream::read(std::uint64_t token, std::span<float> output) noexcept {
     for (std::size_t frame = 0; frame < frames; ++frame) {
         std::copy_n(ring.data() + ((tail + frame) % capacity) * channels, channels, output.data() + frame * channels);
     }
+
     std::fill(output.begin() + static_cast<std::ptrdiff_t>(frames * channels), output.end(), 0.0F);
     consumed.store(tail + frames, std::memory_order_release);
+
     if (frames < wanted && started.load(std::memory_order_relaxed)) {
         underruns.fetch_add(1, std::memory_order_relaxed);
     }
@@ -89,6 +98,7 @@ std::size_t AudioStream::copyLatest(std::span<float> destination) const {
     for (std::size_t frame = 0; frame < frames; ++frame) {
         std::copy_n(history.data() + ((first + frame) % capacity) * channels, channels, destination.data() + frame * channels);
     }
+
     return frames * channels;
 }
 

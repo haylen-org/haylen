@@ -22,6 +22,7 @@ std::optional<SystemFont> WindowsFonts::find(char32_t codePoint) {
     if (FAILED(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory2), reinterpret_cast<IUnknown**>(factory.GetAddressOf())))) {
         return std::nullopt;
     }
+
     ComPtr<IDWriteFontFallback> fallback;
     ComPtr<IDWriteFontCollection> collection;
     if (FAILED(factory->GetSystemFontFallback(&fallback)) || FAILED(factory->GetSystemFontCollection(&collection))) {
@@ -35,6 +36,7 @@ std::optional<SystemFont> WindowsFonts::find(char32_t codePoint) {
     } else {
         text = {static_cast<wchar_t>(codePoint)};
     }
+
     wchar_t locale[LOCALE_NAME_MAX_LENGTH] = {};
     GetUserDefaultLocaleName(locale, LOCALE_NAME_MAX_LENGTH);
     WindowsFontText source(text, locale);
@@ -51,6 +53,7 @@ std::optional<SystemFont> WindowsFonts::find(char32_t codePoint) {
     if (FAILED(font->CreateFontFace(&face)) || FAILED(face->GetFiles(&files, &file)) || files != 1) {
         return std::nullopt;
     }
+
     const void* key = nullptr;
     UINT32 keySize = 0;
     ComPtr<IDWriteFontFileLoader> loader;
@@ -58,14 +61,17 @@ std::optional<SystemFont> WindowsFonts::find(char32_t codePoint) {
     if (FAILED(file->GetReferenceKey(&key, &keySize)) || FAILED(file->GetLoader(&loader)) || FAILED(loader.As(&local))) {
         return std::nullopt;
     }
+
     UINT32 pathLength = 0;
     if (FAILED(local->GetFilePathLengthFromKey(key, keySize, &pathLength))) {
         return std::nullopt;
     }
+
     std::wstring path(pathLength + 1, L'\0');
     if (FAILED(local->GetFilePathFromKey(key, keySize, path.data(), pathLength + 1))) {
         return std::nullopt;
     }
+
     path.resize(pathLength);
 
     const int index = static_cast<int>(face->GetIndex());

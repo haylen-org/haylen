@@ -60,8 +60,10 @@ std::shared_ptr<io::Package> Services::openBundledPackage() {
         if (std::filesystem::is_directory(directory / "packs")) {
             files = std::make_shared<io::CompositePackage>("app", std::vector<std::shared_ptr<const io::Package>>{files, io::Package::openDirectory(directory / "packs")});
         }
+
         return content::ReleasePackage::openBundled(std::move(files), bootstrap, [](std::string_view identifier) { return std::make_unique<content::FolderStoreFiles>(getContentStoreDirectory(identifier)); });
     }
+
     return io::Package::open(directory / "app.zip");
 }
 
@@ -69,10 +71,12 @@ std::filesystem::path Services::getUserDataDirectory(std::string_view identifier
     if (const char* data = std::getenv("XDG_DATA_HOME"); data != nullptr && *data != '\0') {
         return std::filesystem::path(data) / std::string(identifier);
     }
+
     const char* home = std::getenv("HOME");
     if (home == nullptr) {
         throw std::runtime_error("The home folder is unknown, so there is no place for user data.");
     }
+
     return std::filesystem::path(home) / ".local" / "share" / std::string(identifier);
 }
 
@@ -81,10 +85,12 @@ std::filesystem::path Services::getContentStoreDirectory(std::string_view identi
     if (const char* cache = std::getenv("XDG_CACHE_HOME"); cache != nullptr && *cache != '\0') {
         return std::filesystem::path(cache) / std::string(identifier) / "content";
     }
+
     const char* home = std::getenv("HOME");
     if (home == nullptr) {
         throw std::runtime_error("The home folder is unknown, so there is no place for downloaded content.");
     }
+
     return std::filesystem::path(home) / ".cache" / std::string(identifier) / "content";
 }
 

@@ -67,6 +67,7 @@ void SystemState::setLanguages(std::span<const std::string> value) {
             core::Log::warning("The system prefers the language \"{}\", which is no language tag, so the engine leaves it out.", reported);
             continue;
         }
+
         if (std::ranges::find(tags, *canonical) == tags.end()) {
             tags.push_back(std::move(*canonical));
         }
@@ -76,6 +77,7 @@ void SystemState::setLanguages(std::span<const std::string> value) {
     if (tags == languages) {
         return;
     }
+
     languages = std::move(tags);
     ++languagesRevision;
 }

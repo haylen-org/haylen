@@ -15,6 +15,7 @@ class Refreshes final {
             const double jitter = refresh % 2 == 0 ? 0.0005 : -0.0005;
             frames += gate.takeFrame(1.0 + refresh / hertz + jitter) ? 1 : 0;
         }
+
         return frames;
     }
 };

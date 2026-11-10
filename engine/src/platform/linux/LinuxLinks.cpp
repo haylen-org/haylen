@@ -33,6 +33,7 @@ bool LinuxLinks::forward(std::string_view identifier, std::string_view url) {
     if (connection == nullptr) {
         return false;
     }
+
     const std::string link(url);
     const std::array<const char*, 1> links{link.c_str()};
     const std::array<void*, 2> arguments{newStrings(links.data(), static_cast<std::ptrdiff_t>(links.size())), newParsed("@a{sv} {}")};
@@ -40,6 +41,7 @@ bool LinuxLinks::forward(std::string_view identifier, std::string_view url) {
     if (reply == nullptr) {
         return false;
     }
+
     unref(reply);
     return true;
 }
@@ -51,6 +53,7 @@ void LinuxLinks::listen(std::string_view identifier) {
         core::Log::info("The app takes no links of later processes, because the session has no bus that GIO reaches.");
         return;
     }
+
     void* node = parseNode(kIntrospection, nullptr);
     if (registerObject(connection, getPath(identifier).c_str(), findInterface(node, kInterface), &table, nullptr, nullptr, nullptr) == 0) {
         core::Log::warning("The app takes no links of later processes, because the session bus refused the object of the app.");
@@ -63,10 +66,12 @@ void LinuxLinks::listen(std::string_view identifier) {
         core::Log::warning("The app takes no links of later processes, because the session bus did not give it the name \"{}\".", identifier);
         return;
     }
+
     void* answer = getChild(reply, 0);
     const std::uint32_t owned = getUint32(answer);
     unref(answer);
     unref(reply);
+
     if (owned != kPrimaryOwner) {
         core::Log::warning("The app takes no links of later processes, because another instance of it owns the name \"{}\" on the session bus.", identifier);
     }
@@ -77,10 +82,12 @@ void* LinuxLinks::connect() {
     if (bus != nullptr) {
         return bus;
     }
+
     void* library = LinuxGlib::open();
     if (library == nullptr || !load(library)) {
         return nullptr;
     }
+
     bus = getBus(kSessionBus, nullptr, nullptr);
     return bus;
 }
@@ -105,8 +112,10 @@ void LinuxLinks::methodCalled(void*, const char*, const char*, const char*, cons
             LinkRelay::receive(getString(link, nullptr));
             unref(link);
         }
+
         unref(links);
     }
+
     returnValue(invocation, nullptr);
 }
 

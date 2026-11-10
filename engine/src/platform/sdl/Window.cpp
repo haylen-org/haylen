@@ -39,6 +39,7 @@ void Window::open(const core::AppConfig::Window& options, gpu::Device::Api value
     SDL_SetNumberProperty(properties, SDL_PROP_WINDOW_CREATE_FLAGS_NUMBER, static_cast<std::int64_t>(getFlags(options, api)));
     window = SDL_CreateWindowWithProperties(properties);
     SDL_DestroyProperties(properties);
+
     if (window == nullptr) {
         throw std::runtime_error("The window could not open. " + std::string(SDL_GetError()));
     }
@@ -55,6 +56,7 @@ void Window::open(const core::AppConfig::Window& options, gpu::Device::Api value
         close();
         throw;
     }
+
     readHandles();
     refresh();
     opened.store(true);
@@ -64,14 +66,17 @@ void Window::close() noexcept {
     if (window == nullptr) {
         return;
     }
+
     opened.store(false);
     handle.store(nullptr);
     display.store(nullptr);
     gl.reset();
+
     if (metalView != nullptr) {
         SDL_Metal_DestroyView(metalView);
         metalView = nullptr;
     }
+
     SDL_DestroyWindow(window);
     window = nullptr;
 }
@@ -162,18 +167,23 @@ SDL_WindowFlags Window::getFlags(const core::AppConfig::Window& options, gpu::De
     if (options.fullscreen) {
         flags |= SDL_WINDOW_FULLSCREEN;
     }
+
     if (options.resizable) {
         flags |= SDL_WINDOW_RESIZABLE;
     }
+
     if (!options.decorated) {
         flags |= SDL_WINDOW_BORDERLESS;
     }
+
     if (options.transparent) {
         flags |= SDL_WINDOW_TRANSPARENT;
     }
+
     if (options.alwaysOnTop) {
         flags |= SDL_WINDOW_ALWAYS_ON_TOP;
     }
+
     if (!options.focusable) {
         flags |= SDL_WINDOW_NOT_FOCUSABLE;
     }
@@ -195,6 +205,7 @@ SDL_WindowFlags Window::getFlags(const core::AppConfig::Window& options, gpu::De
 // The pixel format of a window of OpenGL is chosen before it opens: the version of the context, the samples of the window and the depth, stencil and alpha of its framebuffer, which the swapchain passes of the device draw into.
 void Window::describeGl(const core::AppConfig::Window& options, gpu::Device::Api api) {
     SDL_GL_ResetAttributes();
+
     if (api == gpu::Device::Api::OpenGl) {
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
@@ -206,6 +217,7 @@ void Window::describeGl(const core::AppConfig::Window& options, gpu::Device::Api
     } else {
         return;
     }
+
     // A robust context reports a reset of the GPU as a lost context, which the device answers with isLost.
 #if defined(NDEBUG)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_ROBUST_ACCESS_FLAG);
@@ -231,6 +243,7 @@ void Window::attachApi() {
         if (metalView == nullptr) {
             throw std::runtime_error("The window could not create its Metal layer. " + std::string(SDL_GetError()));
         }
+
         break;
     case gpu::Device::Api::OpenGl:
     case gpu::Device::Api::OpenGlEs:
@@ -263,6 +276,7 @@ gpu::Surface Window::getNativeSurface() const {
     if (gl != nullptr) {
         return {.kind = gpu::Surface::Kind::Gl, .gl = gl.get()};
     }
+
     return describe(window, metalView);
 }
 
@@ -282,6 +296,7 @@ gpu::Surface Window::describe([[maybe_unused]] SDL_Window* described, SDL_MetalV
     if (std::string_view(SDL_GetCurrentVideoDriver()) == "wayland") {
         return {.kind = gpu::Surface::Kind::Wayland, .window = SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, nullptr), .display = SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, nullptr)};
     }
+
     return {.kind = gpu::Surface::Kind::Xlib, .window = reinterpret_cast<void*>(static_cast<std::uintptr_t>(SDL_GetNumberProperty(properties, SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0))), .display = SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_X11_DISPLAY_POINTER, nullptr)};
 #else
     throw std::runtime_error("The window has no surface for the graphics API.");
@@ -304,6 +319,7 @@ SDL_DisplayID Window::findDisplay(const Display& display) {
     if (found == 0) {
         throw std::runtime_error("SDL knows no display at the place of the display \"" + display.id + "\". " + SDL_GetError());
     }
+
     return found;
 }
 

@@ -26,6 +26,7 @@ DevelopmentSession::DevelopmentSession(Host& host, std::optional<std::filesystem
         watcher = std::make_unique<io::PackageWatcher>(*folder);
         core::Log::info("Watching \"{}\" for changes.", folder->generic_string());
     }
+
     if (!server.empty()) {
         connection = std::make_unique<DevelopmentConnection>(std::move(server), *this, host.getBlockedReason());
         addReporter([target = connection.get()](const core::Json& value) { target->report(value); });
@@ -45,6 +46,7 @@ void DevelopmentSession::awaitLocalNetwork(Host& host) {
             release(std::nullopt);
             return;
         }
+
         release(answer.state == Permission::State::Unsupported ? answer.message : "The person did not grant the access to the local network that reaching it needs.");
     });
     // clang-format on
@@ -81,6 +83,7 @@ std::shared_ptr<DevelopmentSession::Scan> DevelopmentSession::beginScan() {
     if (watcher == nullptr || scanning.exchange(true, std::memory_order_acq_rel)) {
         return nullptr;
     }
+
     return std::make_shared<Scan>(*this);
 }
 

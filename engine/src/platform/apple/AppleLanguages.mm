@@ -20,6 +20,7 @@ void AppleLanguages::report() {
     for (NSString* language in NSLocale.preferredLanguages) {
         languages.emplace_back(language.UTF8String);
     }
+
     NativeHost::getSystemState().setLanguages(languages);
 }
 

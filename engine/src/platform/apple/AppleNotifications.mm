@@ -22,6 +22,7 @@ void AppleNotifications::observe(id delegate) {
     if (center == nil || ApplePlugins::getIds().empty()) {
         return;
     }
+
     [[center currentNotificationCenter] setDelegate:delegate];
 }
 

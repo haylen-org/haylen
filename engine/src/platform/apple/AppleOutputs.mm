@@ -27,6 +27,7 @@ void AppleOutputs::open(std::uint32_t number, std::string_view display, const gp
             entry.scene = static_cast<UIWindowScene*>(scene);
         }
     }
+
     if (entry.scene == nil) {
         entry.report = {.ending = Output::Ending::Unsupported, .reason = "UIKit shows an output only on an external display whose scene it connected, and the display \"" + std::string(display) + "\" has none."};
         announce(number);
@@ -55,6 +56,7 @@ void AppleOutputs::close(std::uint32_t number) {
     if (found == entries.end()) {
         return;
     }
+
     found->second.window.hidden = YES;
     entries.erase(found);
 }
@@ -70,6 +72,7 @@ void AppleOutputs::resize(std::uint32_t number) {
     if (found == entries.end() || !found->second.report.surface) {
         return;
     }
+
     Entry& entry = found->second;
     const CGFloat scale = entry.view.contentScaleFactor;
     const int width = static_cast<int>(std::lround(entry.view.bounds.size.width * scale));
@@ -77,6 +80,7 @@ void AppleOutputs::resize(std::uint32_t number) {
     if (width == entry.report.surface->size.width && height == entry.report.surface->size.height) {
         return;
     }
+
     entry.report.surface->size = {.width = width, .height = height, .windowWidth = width, .windowHeight = height};
     entry.report.scale = static_cast<float>(scale);
     announce(number);
@@ -89,6 +93,7 @@ void AppleOutputs::registerAccessory([[maybe_unused]] UIViewController* controll
         if (accessory != nil) {
             return;
         }
+
         UISceneConfiguration* configuration = [[UISceneConfiguration alloc] initWithName:@"HaylenDisplay" sessionRole:UIWindowSceneSessionRoleExternalDisplayNonInteractive];
         configuration.delegateClass = HaylenDisplaySceneDelegate.class;
         accessory = [controller registerSceneAccessory:[UISceneAccessory externalNonInteractiveSceneAccessoryWithConfiguration:configuration]];

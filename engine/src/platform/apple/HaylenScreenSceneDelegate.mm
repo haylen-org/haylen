@@ -16,10 +16,12 @@ using haylen::platform::AppleScreens;
             screen = AppleScreens::find([activity.userInfo[@"screen"] unsignedLongLongValue]);
         }
     }
+
     if (screen == nil) {
         [UIApplication.sharedApplication requestSceneSessionDestruction:session options:nil errorHandler:nil];
         return;
     }
+
     self.window = [screen windowForScene:static_cast<UIWindowScene*>(scene)];
     [self.window makeKeyAndVisible];
 }

@@ -17,6 +17,7 @@ std::optional<LRESULT> WindowsAccessibility::answer(HWND window, WPARAM wParam, 
     if (static_cast<long>(lParam) != static_cast<long>(UiaRootObjectId)) {
         return std::nullopt;
     }
+
     asked = true;
     return UiaReturnRawElementProvider(window, wParam, lParam, getTree(window).getRoot().Get());
 }
@@ -39,6 +40,7 @@ void WindowsAccessibility::release() noexcept {
     if (tree == nullptr) {
         return;
     }
+
     tree->disconnect();
     UiaReturnRawElementProvider(tree->getWindow(), 0, 0, nullptr);
     tree.reset();
@@ -49,6 +51,7 @@ WindowsAccessibilityTree& WindowsAccessibility::getTree(HWND window) {
     if (tree == nullptr) {
         tree = std::make_shared<WindowsAccessibilityTree>(window, [](const Accessibility::Request& request) { AccessibilityRelay::perform(request); });
     }
+
     return *tree;
 }
 

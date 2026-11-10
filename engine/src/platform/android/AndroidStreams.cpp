@@ -37,6 +37,7 @@ void AndroidStreams::pushBitmap(JNIEnv& env, jlong stream, jobject bitmap, jdoub
         raise(env, Failure{.javaClass = kIllegalArgument, .message = "A video frame takes a bitmap of the config \"ARGB_8888\"."});
         return;
     }
+
     if (target.getFormat() != VideoStream::Format::Rgba8) {
         raise(env, Failure{.javaClass = kIllegalState, .message = "A bitmap holds RGBA pixels, which a stream of the format \"BGRA8\" does not take. Open the stream with the format \"RGBA8\"."});
         return;
@@ -47,6 +48,7 @@ void AndroidStreams::pushBitmap(JNIEnv& env, jlong stream, jobject bitmap, jdoub
         raise(env, Failure{.javaClass = kIllegalState, .message = "The pixels of the bitmap could not be locked, as happens to a recycled bitmap."});
         return;
     }
+
     const std::optional<Failure> failure = attempt([&] { target.push(static_cast<const std::byte*>(pixels), static_cast<int>(info.width), static_cast<int>(info.height), info.stride, timestamp); });
     AndroidBitmap_unlockPixels(&env, bitmap);
     raise(env, failure);
@@ -61,6 +63,7 @@ jlong AndroidStreams::openAudio(JNIEnv& env, jbyteArray plugin, jbyteArray name,
         if (sampleRate <= 0 || channels <= 0 || capacity <= 0) {
             throw std::invalid_argument("An audio stream needs a sample rate, channels and room for at least one frame.");
         }
+
         stream = PluginStreams::openAudio(id, key, static_cast<std::uint32_t>(sampleRate), static_cast<std::uint32_t>(channels), format == 0 ? AudioStream::Format::Float32 : AudioStream::Format::Int16, static_cast<std::size_t>(capacity)).get();
     }));
     // clang-format on
@@ -87,6 +90,7 @@ void AndroidStreams::push(VideoStream& target, const std::byte* pixels, std::int
     if (stride < 0 || length < needed) {
         throw std::invalid_argument("The pixels of a video frame hold fewer bytes than its size and its stride need.");
     }
+
     target.push(pixels, width, height, static_cast<std::size_t>(stride), timestamp);
 }
 

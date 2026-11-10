@@ -13,6 +13,7 @@ core::Json Battery::toJson() const {
     if (level) {
         json["level"] = core::JsonNumber::fromFloat(*level);
     }
+
     return json;
 }
 

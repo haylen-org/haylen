@@ -16,6 +16,7 @@ void WindowsMemory::observe() {
     if (low == nullptr || high == nullptr) {
         return;
     }
+
     waitFor(low, &lowReached);
 }
 
@@ -34,6 +35,7 @@ void WindowsMemory::waitFor(HANDLE notification, WAITORTIMERCALLBACK callback) {
     if (wait != nullptr) {
         UnregisterWait(wait);
     }
+
     if (!RegisterWaitForSingleObject(&wait, notification, callback, nullptr, INFINITE, WT_EXECUTEONLYONCE)) {
         wait = nullptr;
     }

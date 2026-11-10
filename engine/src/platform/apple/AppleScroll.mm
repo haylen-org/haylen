@@ -13,11 +13,13 @@ void AppleScroll::watch(std::function<void(const Event&)> deliver) {
         if (event.window != (__bridge NSWindow*)NativeWindow::getHandle()) {
             return event;
         }
+
         const Event scroll = translate(event);
         const bool moved = scroll.scroll.x != 0.0F || scroll.scroll.y != 0.0F;
         if (moved || scroll.scrollPhase == Event::ScrollPhase::Began || scroll.scrollPhase == Event::ScrollPhase::Ended) {
             deliver(scroll);
         }
+
         return event;
     }];
     // clang-format on
@@ -35,15 +37,19 @@ Event::ScrollPhase AppleScroll::toPhase(NSEvent* event) {
     if (event.momentumPhase != NSEventPhaseNone) {
         return Event::ScrollPhase::Momentum;
     }
+
     if ((event.phase & (NSEventPhaseBegan | NSEventPhaseMayBegin)) != 0) {
         return Event::ScrollPhase::Began;
     }
+
     if ((event.phase & NSEventPhaseChanged) != 0) {
         return Event::ScrollPhase::Changed;
     }
+
     if ((event.phase & (NSEventPhaseEnded | NSEventPhaseCancelled)) != 0) {
         return Event::ScrollPhase::Ended;
     }
+
     return Event::ScrollPhase::None;
 }
 

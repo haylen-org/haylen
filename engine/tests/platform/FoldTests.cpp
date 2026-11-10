@@ -103,6 +103,7 @@ TEST(FoldSimulationTest, RejectsAnInvalidFoldInAppJson) {
     } catch (const std::invalid_argument& error) {
         EXPECT_EQ(std::string(error.what()), "The \"debug.fold\" in \"app.json\" is invalid. The axis of a simulated fold is \"vertical\" or \"horizontal\", not \"diagonal\".");
     }
+
     EXPECT_EQ(core::AppConfig::fromJson(core::Json::parse(R"({"debug": {"fold": "book"}})")).toJson()["debug"]["fold"], core::Json("book"));
 }
 

@@ -72,19 +72,23 @@ void Player::create(int argc, char* argv[], std::unique_ptr<NativeHost> nativeHo
         core::Log::warning("The release build of the app ignores \"--dev\" and \"--dev-server\", since a release never runs in development.");
         options.development = false;
     }
+
     if (!options.package.empty() && content::Bootstrap::find() != nullptr) {
         core::Log::warning("The release build of the app ignores the package \"{}\", since it plays only its own release.", options.package);
         options.package.clear();
     }
+
     for (const std::string& folder : options.nativeFolders) {
         NativeLibraries::addSearchFolder(folder);
     }
+
     if (options.development) {
         // A player that a development server feeds takes the saved files from the server alone, so a save never reloads twice.
         std::error_code error;
         const bool watched = options.developmentServer.empty() && !options.package.empty() && std::filesystem::is_directory(options.package, error);
         runtime.enableDevelopment(watched ? std::optional<std::filesystem::path>(options.package) : std::nullopt, options.developmentServer);
     }
+
     // clang-format off
     runtime.pending = runtime.load([&options] {
         return options.package.empty() ? Services::openBundledPackage() : std::shared_ptr<io::Package>(io::Package::open(options.package));
@@ -99,8 +103,10 @@ void Player::create(int argc, char* argv[], std::unique_ptr<NativeHost> nativeHo
             process.launchForwarded = true;
             return;
         }
+
         LinkRelay::receive(std::move(options.link));
     }
+
     Services::listenForLinks(identifier);
 
     // The window opens with its desktop options already in effect, so a frameless window never shows a title bar for its first frame. Whether it can be transparent lasts for the whole run.
@@ -131,6 +137,7 @@ std::optional<math::Rect> Player::getOpeningFrame() {
     if (!window.position || !Services::hasDesktop()) {
         return std::nullopt;
     }
+
     return window.position->resolve(getCurrent().host->getDisplays(), {static_cast<float>(window.width), static_cast<float>(window.height)});
 }
 
@@ -161,6 +168,7 @@ io::OverlayPackage& Player::getOverlay() {
     if (overlay == nullptr) {
         throw std::runtime_error("The app plays a protected release, whose files a page never edits.");
     }
+
     return *overlay;
 }
 
@@ -185,6 +193,7 @@ void Player::setPaused(bool value) {
     if (runtime.engine == nullptr) {
         return;
     }
+
     if (const std::optional<Event> event = runtime.reported.setPaused(value)) {
         runtime.engine->handleEvent(*event);
     }
@@ -200,6 +209,7 @@ void Player::handleEvent(const Event& event) {
         postEvent(event);
         return;
     }
+
     if (const std::unique_ptr<Player>& current = getProcess().current) {
         current->deliver(event);
     }
@@ -210,6 +220,7 @@ bool Player::isHalted() noexcept {
     if (current == nullptr) {
         return false;
     }
+
     const DevelopmentSession* session = current->host->getDevelopmentSession();
     return session != nullptr && session->getDebugger().isHalted();
 }
@@ -250,6 +261,7 @@ void Player::pressBack() {
         engine->quit();
         return;
     }
+
     deliver({.type = Event::Type::KeyDown, .key = input::Key::Escape});
     deliver({.type = Event::Type::KeyUp, .key = input::Key::Escape});
 }
@@ -273,12 +285,15 @@ Player::App Player::load(const std::function<std::shared_ptr<io::Package>()>& op
         app.application->configure(app.config);
     } catch (const std::exception& error) {
         core::Log::error("The app could not be loaded: {}", error.what());
+
         if (app.package == nullptr) {
             app.package = withOverlay(std::make_shared<io::MemoryPackage>("missing"));
         }
+
         app.config = {};
         app.application = std::make_unique<FailedApplication>(std::string("The app could not be loaded. ") + error.what());
     }
+
     return app;
 }
 
@@ -304,6 +319,7 @@ std::shared_ptr<io::Package> Player::withOverlay(std::shared_ptr<io::Package> so
     if (!overlaid || std::dynamic_pointer_cast<io::OverlayPackage>(source) || std::dynamic_pointer_cast<content::ReleasePackage>(source)) {
         return source;
     }
+
     return std::make_shared<io::OverlayPackage>(std::move(source));
 }
 
@@ -317,6 +333,7 @@ void Player::initialize() {
     if (!config.window.transparent) {
         Services::setWindowBackground(config.splash.background);
     }
+
     runtime.initialized = true;
     runtime.launch();
 }
@@ -326,17 +343,22 @@ void Player::frame(double seconds) {
     if (runtime.reported.isPaused()) {
         return;
     }
+
     if (runtime.waiting) {
         runtime.launchWhenReady();
     }
+
     if (runtime.engine == nullptr) {
         return;
     }
+
     runtime.host->setBackHeld(getProcess().backHeld.load());
     Services::updateWindow();
+
     if (const std::optional<Event::MemoryLevel> level = MemoryWarning::take()) {
         runtime.engine->handleEvent({.type = Event::Type::LowMemory, .memoryLevel = *level});
     }
+
     for (Event& event : takePostedEvents()) {
 #if defined(__ANDROID__)
         // The on-screen keyboard of Android arrives from the UI thread in window pixels.
@@ -349,6 +371,7 @@ void Player::frame(double seconds) {
     for (int press = takeBackPresses(); press > 0 && runtime.engine->isRunning(); --press) {
         runtime.pressBack();
     }
+
     runtime.endSplashScreenWhenDue();
     runtime.engine->frame(seconds);
 #if defined(__ANDROID__)
@@ -359,6 +382,7 @@ void Player::frame(double seconds) {
             runtime.returnToLauncher();
             return;
         }
+
         runtime.host->closeWindow();
         return;
     }
@@ -387,9 +411,11 @@ void Player::launchPackage(const core::Engine::Launch& request) {
     launchers.push_back({.package = package, .development = host->exchangeDevelopmentSession(nullptr), .nativeAccess = host->hasNativeAccess()});
     host->setLaunched(true);
     host->setNativeAccess(host->hasNativeAccess() && request.nativeAccess);
+
     if (!request.developmentServer.empty()) {
         enableDevelopment(std::nullopt, request.developmentServer);
     }
+
     replace(load([&request] { return std::shared_ptr<io::Package>(io::Package::open(request.package)); }));
 }
 
@@ -403,6 +429,7 @@ void Player::returnToLauncher() {
     if (getProcess().backHeld.load()) {
         getProcess().backSwallowed.store(true);
     }
+
     const std::unique_ptr<DevelopmentSession> ended = host->exchangeDevelopmentSession(std::move(launcher.development));
     replace(load([&launcher] { return std::move(launcher.package); }));
 }
@@ -412,10 +439,12 @@ void Player::endSplashScreenWhenDue() {
     if (splashEnded || !engine->isFrameComplete()) {
         return;
     }
+
     const core::AppConfig::Splash& splash = engine->getConfig().splash;
     if (std::chrono::steady_clock::now() - launched < std::chrono::duration<float>(splash.duration)) {
         return;
     }
+
     splashEnded = true;
     host->endSplashScreen(splash.fadeOut);
 }
@@ -430,6 +459,7 @@ gpu::Device* Player::getGpuDevice() noexcept {
     if (current == nullptr || current->engine == nullptr) {
         return nullptr;
     }
+
     return &current->engine->getGraphics().getGpu();
 }
 
@@ -439,18 +469,23 @@ Player::Back Player::routeBack(bool pressed) {
     if (runtime.engine == nullptr) {
         return Back::System;
     }
+
     if (pressed) {
         runtime.backCaptured = runtime.engine->isBackCaptured();
     }
+
     if (runtime.backCaptured) {
         return Back::App;
     }
+
     if (!runtime.host->isLaunched()) {
         return Back::System;
     }
+
     if (!pressed) {
         runtime.engine->quit();
     }
+
     return Back::Player;
 }
 
@@ -460,6 +495,7 @@ void Player::reportBackCapture() {
     if (captured == backReported) {
         return;
     }
+
     backReported = captured;
     JavaBridge::captureBack(captured);
 }
@@ -475,9 +511,11 @@ void Player::launch() {
     App app = std::exchange(pending, {});
     playing = app.playing;
     (void)reported.setPaused(false);
+
     if (DevelopmentSession* session = host->getDevelopmentSession()) {
         session->setOverlay(std::dynamic_pointer_cast<io::OverlayPackage>(app.package));
     }
+
     try {
         engine = std::make_unique<core::Engine>(*host, std::move(app.package), std::move(app.config), std::move(app.application));
     } catch (const std::exception& error) {
@@ -485,12 +523,14 @@ void Player::launch() {
         core::Log::error("The engine could not start: {}", error.what());
         Services::reportError(lua::Error(error.what()).toJson());
     }
+
     if (engine == nullptr) {
         leaveFailedStart();
         return;
     }
 
     engine->start();
+
     for (const Event& event : reported.getReplay()) {
         engine->handleEvent(event);
     }
@@ -521,6 +561,7 @@ void Player::launchWhenReady() {
     if (!host->prepareGpuDevice()) {
         return;
     }
+
     waiting = false;
     launch();
 }
@@ -567,6 +608,7 @@ void Player::deliver(const Event& event) {
         engine->handleEvent(event);
         return;
     }
+
     for (const Event& key : host->translateKeyboard(event)) {
         engine->handleEvent(key);
     }
@@ -575,9 +617,11 @@ void Player::deliver(const Event& event) {
 // The package of the last playing app stays around, so a restart after a stop brings that app back.
 void Player::replace(App app) {
     close();
+
     if (app.playing) {
         package = app.package;
     }
+
     pending = std::move(app);
 
     // Before the window opens, which on the web waits for the GPU device, the new app simply replaces the one waiting to start. Once it opened, the new app starts as soon as the platform can create its GPU device, which WebGPU hands over a few frames later in browsers, also after an app whose engine could not start, which the web page replaces this way.

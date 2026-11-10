@@ -26,8 +26,10 @@ std::size_t AndroidAssetReader::read(std::uint64_t offset, std::span<std::uint8_
         if (received <= 0) {
             throw std::runtime_error("An APK asset could not be read to the end.");
         }
+
         filled += static_cast<std::size_t>(received);
     }
+
     return count;
 }
 

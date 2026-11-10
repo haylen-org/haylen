@@ -31,6 +31,7 @@ void WindowsAccessibilityTree::update(std::span<const AccessibilityElement> tree
             indices.emplace(elements[index].id, index);
             children[elements[index].parent].push_back(elements[index].id);
         }
+
         structureChanged = children != childrenBefore;
         focusChanged = focusedElement != focused;
         focused = focusedElement;
@@ -55,12 +56,15 @@ void WindowsAccessibilityTree::update(std::span<const AccessibilityElement> tree
     if (UiaClientsAreListening() == FALSE) {
         return;
     }
+
     if (structureChanged) {
         UiaRaiseStructureChangedEvent(getRoot().Get(), StructureChangeType_ChildrenInvalidated, nullptr, 0);
     }
+
     for (const Change& change : changes) {
         raise(change);
     }
+
     if (focusChanged && find(focusedElement)) {
         UiaRaiseAutomationEvent(getProvider(focusedElement).Get(), UIA_AutomationFocusChangedEventId);
     }
@@ -70,6 +74,7 @@ void WindowsAccessibilityTree::announce(std::string_view text, bool interrupt) {
     if (UiaClientsAreListening() == FALSE) {
         return;
     }
+
     const std::wstring wide = toWide(text);
     BSTR displayString = SysAllocString(wide.c_str());
     BSTR activityId = SysAllocString(L"haylen.announcement");
@@ -87,6 +92,7 @@ Microsoft::WRL::ComPtr<WindowsAccessibilityRoot> WindowsAccessibilityTree::getRo
     if (!root) {
         root.Attach(new WindowsAccessibilityRoot(weak_from_this()));
     }
+
     return root;
 }
 
@@ -96,6 +102,7 @@ Microsoft::WRL::ComPtr<WindowsAccessibilityElement> WindowsAccessibilityTree::ge
     if (!provider) {
         provider.Attach(new WindowsAccessibilityElement(weak_from_this(), id));
     }
+
     return provider;
 }
 
@@ -105,6 +112,7 @@ std::optional<AccessibilityElement> WindowsAccessibilityTree::find(std::uint64_t
     if (found == indices.end()) {
         return std::nullopt;
     }
+
     return elements[found->second];
 }
 
@@ -130,11 +138,13 @@ std::uint64_t WindowsAccessibilityTree::findAtLocked(std::uint64_t parent, math:
     if (found == children.end()) {
         return parent;
     }
+
     for (auto child = found->second.rbegin(); child != found->second.rend(); ++child) {
         if (toScreenLocked(elements[indices.at(*child)].bounds).contains(point)) {
             return findAtLocked(*child, point);
         }
     }
+
     return parent;
 }
 
@@ -148,6 +158,7 @@ math::Rect WindowsAccessibilityTree::toScreenLocked(const math::Rect& bounds) co
     if (window != nullptr) {
         ClientToScreen(window, &origin);
     }
+
     return {static_cast<float>(origin.x) + bounds.x * scale, static_cast<float>(origin.y) + bounds.y * scale, bounds.width * scale, bounds.height * scale};
 }
 
@@ -170,6 +181,7 @@ std::wstring WindowsAccessibilityTree::toWide(std::string_view text) {
     if (text.empty()) {
         return {};
     }
+
     const int length = MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), nullptr, 0);
     std::wstring wide(static_cast<std::size_t>(length), L'\0');
     MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), wide.data(), length);
@@ -182,15 +194,19 @@ std::vector<WindowsAccessibilityTree::Change> WindowsAccessibilityTree::compare(
     if (before.label != after.label) {
         changes.push_back({.id = after.id, .property = UIA_NamePropertyId, .before = toWide(before.label), .after = toWide(after.label)});
     }
+
     if (before.value != after.value && WindowsAccessibilityElement::hasPattern(after, UIA_ValuePatternId)) {
         changes.push_back({.id = after.id, .property = UIA_ValueValuePropertyId, .before = toWide(before.value), .after = toWide(after.value)});
     }
+
     if (before.value != after.value && WindowsAccessibilityElement::hasRange(after)) {
         changes.push_back({.id = after.id, .property = UIA_RangeValueValuePropertyId, .numberBefore = WindowsAccessibilityElement::readNumber(before.value), .numberAfter = WindowsAccessibilityElement::readNumber(after.value)});
     }
+
     if (before.has(AccessibilityElement::Checked) != after.has(AccessibilityElement::Checked) && WindowsAccessibilityElement::hasPattern(after, UIA_TogglePatternId)) {
         changes.push_back({.id = after.id, .property = UIA_ToggleToggleStatePropertyId, .stateBefore = before.has(AccessibilityElement::Checked) ? ToggleState_On : ToggleState_Off, .stateAfter = after.has(AccessibilityElement::Checked) ? ToggleState_On : ToggleState_Off});
     }
+
     const bool selectedBefore = WindowsAccessibilityElement::isSelected(before);
     const bool selectedAfter = WindowsAccessibilityElement::isSelected(after);
     if (selectedBefore != selectedAfter && WindowsAccessibilityElement::hasPattern(after, UIA_SelectionItemPatternId)) {
@@ -200,12 +216,15 @@ std::vector<WindowsAccessibilityTree::Change> WindowsAccessibilityTree::compare(
             changes.push_back({.id = after.id, .event = UIA_SelectionItem_ElementSelectedEventId});
         }
     }
+
     if (before.has(AccessibilityElement::Expanded) != after.has(AccessibilityElement::Expanded) && WindowsAccessibilityElement::hasPattern(after, UIA_ExpandCollapsePatternId)) {
         changes.push_back({.id = after.id, .property = UIA_ExpandCollapseExpandCollapseStatePropertyId, .stateBefore = before.has(AccessibilityElement::Expanded) ? ExpandCollapseState_Expanded : ExpandCollapseState_Collapsed, .stateAfter = after.has(AccessibilityElement::Expanded) ? ExpandCollapseState_Expanded : ExpandCollapseState_Collapsed});
     }
+
     if (before.has(AccessibilityElement::Disabled) != after.has(AccessibilityElement::Disabled)) {
         changes.push_back({.id = after.id, .property = UIA_IsEnabledPropertyId, .flagBefore = before.has(AccessibilityElement::Disabled) ? FALSE : TRUE, .flagAfter = after.has(AccessibilityElement::Disabled) ? FALSE : TRUE});
     }
+
     return changes;
 }
 
@@ -214,6 +233,7 @@ void WindowsAccessibilityTree::raise(const Change& change) {
         UiaRaiseAutomationEvent(getProvider(change.id).Get(), change.event);
         return;
     }
+
     VARIANT before{};
     VARIANT after{};
     if (change.flagBefore) {
@@ -237,6 +257,7 @@ void WindowsAccessibilityTree::raise(const Change& change) {
         after.vt = VT_BSTR;
         after.bstrVal = SysAllocString(change.after.c_str());
     }
+
     UiaRaiseAutomationPropertyChangedEvent(getProvider(change.id).Get(), change.property, before, after);
     VariantClear(&before);
     VariantClear(&after);

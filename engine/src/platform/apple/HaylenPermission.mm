@@ -41,6 +41,7 @@
           answer(state, message);
           return;
       }
+
       [HaylenPermission runOnMainThread:^{ request(answer); }];
     };
 }
@@ -54,6 +55,7 @@
           haylen::core::Log::error("The permission \"{}\" answered more than once, while its blocks answer once.", name.UTF8String);
           return;
       }
+
       answer(state, message);
     };
 }
@@ -67,10 +69,12 @@
           completion(@{@"state" : @"unsupported", @"message" : [NSString stringWithFormat:@"The permission \"%@\" answered the state %ld, which is none of \"HaylenPermissionState\".", name, static_cast<long>(state)]});
           return;
       }
+
       if (state == HaylenPermissionStateUnsupported) {
           completion(@{@"state" : stateName, @"message" : message != nil ? message : @""});
           return;
       }
+
       completion(@{@"state" : stateName});
     };
 }
@@ -80,6 +84,7 @@
         work();
         return;
     }
+
     dispatch_async(dispatch_get_main_queue(), work);
 }
 

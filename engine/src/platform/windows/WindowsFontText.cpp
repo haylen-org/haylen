@@ -11,6 +11,7 @@ HRESULT STDMETHODCALLTYPE WindowsFontText::QueryInterface(REFIID id, void** obje
         *object = static_cast<IDWriteTextAnalysisSource*>(this);
         return S_OK;
     }
+
     *object = nullptr;
     return E_NOINTERFACE;
 }

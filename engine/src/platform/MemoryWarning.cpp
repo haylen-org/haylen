@@ -16,6 +16,7 @@ std::optional<Event::MemoryLevel> MemoryWarning::take() noexcept {
     if (value == kNone) {
         return std::nullopt;
     }
+
     return static_cast<Event::MemoryLevel>(value - 1);
 }
 

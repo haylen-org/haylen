@@ -53,6 +53,7 @@ void AndroidActivity::receiveFold(const FoldReport& report) {
         const math::Rect bounds = math::Rect::fromMinMax({static_cast<float>(report.left), static_cast<float>(report.top)}, {static_cast<float>(report.right), static_cast<float>(report.bottom)});
         value = Fold{.bounds = bounds, .axis = report.vertical ? Fold::Axis::Vertical : Fold::Axis::Horizontal, .state = report.halfOpened ? Fold::State::HalfOpened : Fold::State::Flat, .separating = report.separating, .occluding = report.occluding};
     }
+
     const std::scoped_lock lock(mutex);
     fold = value;
 }

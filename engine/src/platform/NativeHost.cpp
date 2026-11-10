@@ -35,6 +35,7 @@ void NativeHost::setKeyboardVisible(bool value) {
         input.finish();
         return;
     }
+
     keyboard.reset();
     const math::Rect corner{0.0F, 0.0F, 1.0F, 1.0F};
     input.edit({.id = TextInput::kKeyboardField, .revision = ++keyboardRevision, .bounds = corner, .caret = corner, .options = {.capitalization = TextInput::Capitalization::None}});
@@ -119,9 +120,11 @@ float NativeHost::getMaxPixelDensity() const noexcept {
 
 void NativeHost::setMaxPixelDensity(float value) {
     requireMaxPixelDensity(value);
+
     if (value == maxPixelDensity) {
         return;
     }
+
     maxPixelDensity = value;
     applyMaxPixelDensity(value);
 }
@@ -134,6 +137,7 @@ void NativeHost::setTransparent(bool value) {
     if (value && !canBeTransparent()) {
         throw std::logic_error("The window opened opaque, so it cannot turn transparent. Set \"window.transparent\" in \"app.json\" to open a window that can.");
     }
+
     style.transparent = value;
     applyStyle();
 }
@@ -213,6 +217,7 @@ void NativeHost::enterFullscreen(const Fullscreen& value, std::function<void(Per
         callback({.state = Permission::State::Unsupported, .message = "The window of this platform stays on the display that shows it, in the mode that the system picks."});
         return;
     }
+
     setFullscreen(true, std::move(callback));
 }
 

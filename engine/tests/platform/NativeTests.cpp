@@ -22,6 +22,7 @@ class NativeSignatureTest : public ::testing::Test {
         } catch (const std::invalid_argument& error) {
             return error.what();
         }
+
         return {};
     }
 };
@@ -161,6 +162,7 @@ TEST_F(NativeLibrariesTest, ListsEveryPlaceItSearched) {
         EXPECT_NE(std::string(error.what()).find("/nowhere/libnative_nowhere.so: not found"), std::string::npos);
         EXPECT_EQ(std::string(error.what()).find("linked into the app"), std::string::npos);
     }
+
     EXPECT_THROW((void)NativeLibraries::open(""), std::invalid_argument);
 }
 

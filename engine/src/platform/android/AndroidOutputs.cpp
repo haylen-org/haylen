@@ -34,6 +34,7 @@ void AndroidOutputs::close(std::uint32_t number) {
         if (found == entries.end()) {
             return;
         }
+
         Retired gone{.window = found->second.window, .drawable = std::move(found->second.drawable)};
         release(gone);
         entries.erase(found);
@@ -48,10 +49,12 @@ Host::OutputReport AndroidOutputs::getReport(std::uint32_t number, const Android
     if (found == entries.end()) {
         return {.ending = Output::Ending::App};
     }
+
     Entry& entry = found->second;
     if (entry.ending) {
         return {.ending = entry.ending, .reason = entry.reason};
     }
+
     if (entry.window == nullptr) {
         return {};
     }
@@ -80,6 +83,7 @@ void AndroidOutputs::endFrame() noexcept {
         for (Retired& retired : settled) {
             release(retired);
         }
+
         retiring.erase(settled.begin(), settled.end());
         releasedSequence = frameSequence;
     }
@@ -93,20 +97,25 @@ void AndroidOutputs::receiveSurface(std::uint32_t number, ANativeWindow* window,
         if (window != nullptr) {
             ANativeWindow_release(window);
         }
+
         return;
     }
+
     Entry& entry = found->second;
 
     if (window == nullptr) {
         if (entry.window == nullptr) {
             return;
         }
+
         retire(entry);
         const std::uint64_t sequence = retiredSequence;
         Player::postEvent({.type = Event::Type::OutputChanged, .output = number});
+
         if (!released.wait_for(lock, kReleaseTimeout, [sequence] { return releasedSequence >= sequence; })) {
             core::Log::warning("The output {} lost its window before a frame let go of it.", number);
         }
+
         return;
     }
 
@@ -115,6 +124,7 @@ void AndroidOutputs::receiveSurface(std::uint32_t number, ANativeWindow* window,
     } else if (entry.window != nullptr) {
         retire(entry);
     }
+
     entry.window = window;
     entry.width = width;
     entry.height = height;
@@ -128,6 +138,7 @@ void AndroidOutputs::receiveEnding(std::uint32_t number, Output::Ending ending, 
     if (found == entries.end() || found->second.ending) {
         return;
     }
+
     found->second.ending = ending;
     found->second.reason = std::move(reason);
     Player::postEvent({.type = Event::Type::OutputChanged, .output = number});
@@ -139,6 +150,7 @@ void AndroidOutputs::receiveTouch(std::uint32_t number, Event::Type type, std::s
     for (std::size_t index = 0; index < event.touchCount; ++index) {
         event.touches[index] = {.id = static_cast<std::uint64_t>(ids[index]), .position = {points[index * 2], points[index * 2 + 1]}, .changed = changed < 0 || static_cast<std::size_t>(changed) == index};
     }
+
     Player::postEvent(event);
 }
 
@@ -149,6 +161,7 @@ void AndroidOutputs::retire(Entry& entry) {
 
 void AndroidOutputs::release(Retired& retired) noexcept {
     retired.drawable.reset();
+
     if (retired.window != nullptr) {
         ANativeWindow_release(retired.window);
         retired.window = nullptr;

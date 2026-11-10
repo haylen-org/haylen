@@ -108,6 +108,7 @@ bool AndroidRuntime::onKey(GameActivity* gameActivity, const GameActivityKeyEven
     if (!runtime.keys.take(event->keyCode, action, AndroidInputEvents::wantsKey(*event))) {
         return false;
     }
+
     runtime.messages.push(*event);
     return true;
 }
@@ -124,6 +125,7 @@ void AndroidRuntime::onFrameCallback(std::int64_t frameNanoseconds, void* data) 
     if (runtime.stopping || !runtime.pacer.isDrawing()) {
         return;
     }
+
     runtime.requestFrame();
     const double now = static_cast<double>(frameNanoseconds) / 1.0e9;
     if (runtime.frameRate.takeFrame(now)) {
@@ -140,6 +142,7 @@ void AndroidRuntime::run() {
     if (postFrameCallback != nullptr) {
         choreographer = AChoreographer_getInstance();
     }
+
     setWindowFrameRate = reinterpret_cast<SetWindowFrameRate>(dlsym(RTLD_DEFAULT, "ANativeWindow_setFrameRate"));
 
     NativeWindow::install(&window);
@@ -165,10 +168,12 @@ void AndroidRuntime::loop() {
             ALooper_pollOnce(tick(), nullptr, nullptr, nullptr);
             continue;
         }
+
         const double now = getTime();
         if (pacer.isDrawing() && frameRate.takeFrame(now)) {
             drawFrame(now);
         }
+
         ALooper_pollOnce(pacer.isDrawing() ? static_cast<int>(std::ceil(frameRate.getWaitSeconds(getTime()) * 1000.0)) : tick(), nullptr, nullptr, nullptr);
     }
 }
@@ -179,6 +184,7 @@ void AndroidRuntime::handleMessages() {
     std::uint64_t handled = 0;
     while (messages.pop(message)) {
         handled = message.sequence;
+
         if (const auto* signal = std::get_if<AndroidMessageQueue::Signal>(&message.payload)) {
             handle(*signal);
         } else if (const auto* change = std::get_if<AndroidMessageQueue::Window>(&message.payload)) {
@@ -189,6 +195,7 @@ void AndroidRuntime::handleMessages() {
             AndroidInputEvents::dispatchKey(*key);
         }
     }
+
     messages.markHandled(handled);
 }
 
@@ -223,9 +230,11 @@ void AndroidRuntime::openWindow(const AndroidMessageQueue::Window& message) {
     const bool resized = window.getNative() == message.window;
     window.open(*message.window, message.width, message.height);
     pacer.setWindow(true);
+
     if (!resized) {
         voteFrameRate();
     }
+
     try {
         if (resized) {
             graphics.resizeWindow(Player::getGpuDevice());
@@ -238,6 +247,7 @@ void AndroidRuntime::openWindow(const AndroidMessageQueue::Window& message) {
         finishFrame();
         return;
     }
+
     Player::handleEvent({.type = Event::Type::Resized});
 }
 
@@ -251,6 +261,7 @@ void AndroidRuntime::requestFrame() {
     if (frameRequested || ended || !pacer.isDrawing()) {
         return;
     }
+
     postFrameCallback(choreographer, &onFrameCallback, this);
     frameRequested = true;
 }
@@ -280,12 +291,14 @@ void AndroidRuntime::voteFrameRate() {
             if (display.id != id) {
                 continue;
             }
+
             rate = display.refreshRate;
             for (const Display::Mode& mode : display.modes) {
                 rate = std::max(rate, mode.refreshRate);
             }
         }
     }
+
     if (setWindowFrameRate(nativeWindow, rate, ANATIVEWINDOW_FRAME_RATE_COMPATIBILITY_DEFAULT) != 0) {
         core::Log::warning("Android refused the frame rate {} of the window.", rate);
     }
@@ -296,11 +309,13 @@ void AndroidRuntime::drawFrame(double now) {
     if (ended) {
         return;
     }
+
     if (!started) {
         started = true;
         pacer.setStarted(true);
         Player::initialize();
     }
+
     replaceLostDevice();
     AndroidOutputs::beginFrame();
     Player::frame(pacer.takeElapsed(now));
@@ -318,6 +333,7 @@ int AndroidRuntime::tick() {
         AndroidOutputs::endFrame();
         finishFrame();
     }
+
     return pacer.getWaitMilliseconds(getTime());
 }
 
@@ -327,10 +343,12 @@ void AndroidRuntime::replaceLostDevice() {
     if (device == nullptr || !graphics.isLost(*device)) {
         return;
     }
+
     if (const std::optional<std::string> failure = deviceRecovery.recordLoss(device->getApi())) {
         Player::fail(*failure);
         return;
     }
+
     graphics.loseDevice(device->getApi());
     Player::restart();
 }
@@ -342,9 +360,11 @@ void AndroidRuntime::finishFrame() {
         quitOrdered = true;
         Player::handleEvent({.type = Event::Type::QuitRequested});
     }
+
     if (!quitOrdered || ended) {
         return;
     }
+
     end();
     GameActivity_finish(&activity);
 }
@@ -353,6 +373,7 @@ void AndroidRuntime::end() {
     if (ended) {
         return;
     }
+
     ended = true;
     pacer.setStarted(false);
     Player::cleanup();

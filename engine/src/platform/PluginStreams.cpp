@@ -12,6 +12,7 @@ std::string PluginStreams::makeKey(std::string_view plugin, std::string_view nam
     if (plugin.empty() || name.empty()) {
         throw std::invalid_argument("A stream needs the id of its plugin and a name.");
     }
+
     return std::string(plugin) + "." + std::string(name);
 }
 
@@ -22,8 +23,10 @@ std::shared_ptr<VideoStream> PluginStreams::openVideo(std::string_view plugin, s
         if (found->second->getFormat() != format) {
             throw std::invalid_argument("The video stream \"" + key + "\" is open with another format.");
         }
+
         return found->second;
     }
+
     auto stream = std::make_shared<VideoStream>(format, width, height);
     videos.emplace(std::move(key), stream);
     return stream;
@@ -44,8 +47,10 @@ std::shared_ptr<AudioStream> PluginStreams::openAudio(std::string_view plugin, s
         if (open.getSampleRate() != sampleRate || open.getChannels() != channels || open.getFormat() != format) {
             throw std::invalid_argument("The audio stream \"" + key + "\" is open with another sample rate, channel count or format.");
         }
+
         return found->second;
     }
+
     auto stream = std::make_shared<AudioStream>(sampleRate, channels, format, capacityFrames);
     audios.emplace(std::move(key), stream);
     return stream;

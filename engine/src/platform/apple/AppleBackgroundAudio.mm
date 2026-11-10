@@ -11,6 +11,7 @@ NSTimer* AppleBackgroundAudio::timer = nil;
 // An app that restarts in the background without background audio stops the frames that the app before it ran there.
 void AppleBackgroundAudio::setEnabled(bool value) {
     enabled = value;
+
     if (!value) {
         enterForeground();
     }
@@ -26,6 +27,7 @@ void AppleBackgroundAudio::enterBackground(void (^frame)()) {
     if (!enabled || timer != nil) {
         return;
     }
+
     timer = [NSTimer scheduledTimerWithTimeInterval:1.0 / kFramesPerSecond repeats:YES block:^(NSTimer*) { frame(); }];
 }
 

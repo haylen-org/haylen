@@ -42,6 +42,7 @@ void AppleDesktop::setStyle(const WindowStyle& value) {
         if (value.resizable) {
             mask |= NSWindowStyleMaskResizable;
         }
+
         if (mask != window.styleMask) {
             // A new style mask keeps the outer frame, so the content area goes back where it was.
             const NSRect content = [window contentRectForFrameRect:window.frame];
@@ -87,11 +88,13 @@ std::string AppleDesktop::getDisplayId(NSScreen* screen) {
         if (other == screen) {
             break;
         }
+
         const CGDirectDisplayID earlier = [other.deviceDescription[@"NSScreenNumber"] unsignedIntValue];
         if (CGDisplayVendorNumber(earlier) == CGDisplayVendorNumber(display) && CGDisplayModelNumber(earlier) == CGDisplayModelNumber(display) && CGDisplaySerialNumber(earlier) == CGDisplaySerialNumber(display)) {
             ++twins;
         }
     }
+
     return twins == 0 ? identity.UTF8String : [identity stringByAppendingFormat:@"-%lu", static_cast<unsigned long>(twins + 1)].UTF8String;
 }
 
@@ -105,14 +108,17 @@ std::vector<Display::Mode> AppleDesktop::getModes(CGDirectDisplayID display) {
         if (!CGDisplayModeIsUsableForDesktopGUI(mode)) {
             continue;
         }
+
         const Display::Mode found{.width = static_cast<int>(CGDisplayModeGetPixelWidth(mode)), .height = static_cast<int>(CGDisplayModeGetPixelHeight(mode)), .refreshRate = static_cast<float>(CGDisplayModeGetRefreshRate(mode)), .scale = static_cast<float>(CGDisplayModeGetPixelWidth(mode)) / static_cast<float>(CGDisplayModeGetWidth(mode))};
         if (std::ranges::find(modes, found) == modes.end()) {
             modes.push_back(found);
         }
     }
+
     if (all != nullptr) {
         CFRelease(all);
     }
+
     return modes;
 }
 
@@ -128,8 +134,10 @@ std::vector<Display> AppleDesktop::getDisplays() {
         for (Display::Mode& mode : modes) {
             mode.refreshRate = mode.refreshRate > 0.0F ? mode.refreshRate : rate;
         }
+
         displays.push_back({.id = getDisplayId(screen), .name = screen.localizedName.UTF8String, .bounds = toDesktop(screen.frame), .workArea = toDesktop(screen.visibleFrame), .scale = static_cast<float>(screen.backingScaleFactor), .refreshRate = rate, .primary = screen == screens.firstObject, .modes = std::move(modes)});
     }
+
     return displays;
 }
 
@@ -145,12 +153,14 @@ std::string AppleDesktop::getWindowDisplayId() {
             holding = screen;
         }
     }
+
     return getDisplayId(holding);
 }
 
 void AppleDesktop::setPassthrough(Window::Passthrough mode, std::span<const math::Polygon::Outline> value) {
     passthrough = mode;
     regions.assign(value.begin(), value.end());
+
     if (mode == Window::Passthrough::Off) {
         getWindow().ignoresMouseEvents = NO;
     }
@@ -161,6 +171,7 @@ void AppleDesktop::startDrag() {
     if (lastMouseDown == nil || (NSEvent.pressedMouseButtons & 1U) == 0) {
         return;
     }
+
     [getWindow() performWindowDragWithEvent:lastMouseDown];
     dragging = true;
 }
@@ -181,6 +192,7 @@ void AppleDesktop::watch() {
         } else {
             dragging = false;
         }
+
         return event;
     }];
     // clang-format on
@@ -220,6 +232,7 @@ void AppleDesktop::followPointer(math::Vec2 pixel, bool inside) {
     } else if (!inside && pointerInside) {
         Player::handleEvent({.type = Event::Type::MouseLeave, .position = pixel});
     }
+
     pointer = pixel;
     pointerInside = inside;
 }

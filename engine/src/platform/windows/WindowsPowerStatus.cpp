@@ -7,6 +7,7 @@ Battery WindowsPowerStatus::toBattery(std::uint8_t lineStatus, std::uint8_t flag
     if (flags == kUnknown) {
         return {};
     }
+
     if ((flags & kNoBattery) != 0) {
         return {.state = Battery::State::None};
     }
@@ -15,6 +16,7 @@ Battery WindowsPowerStatus::toBattery(std::uint8_t lineStatus, std::uint8_t flag
     if (percent <= 100) {
         battery.level = static_cast<float>(percent) / 100.0F;
     }
+
     if ((flags & kCharging) != 0) {
         battery.charging = true;
         battery.state = Battery::State::Charging;
@@ -23,6 +25,7 @@ Battery WindowsPowerStatus::toBattery(std::uint8_t lineStatus, std::uint8_t flag
     } else if (lineStatus == kOffline) {
         battery.state = Battery::State::Discharging;
     }
+
     return battery;
 }
 

@@ -28,6 +28,7 @@ using haylen::platform::VideoStream;
         Log::error("A video frame needs pixels, a width and a height that fit a 32-bit integer and a stride of 0 or more, so it was dropped.");
         return NO;
     }
+
     try {
         stream->push(static_cast<const std::byte*>(pixels), static_cast<int>(width), static_cast<int>(height), static_cast<std::size_t>(stride), timestamp);
         return YES;

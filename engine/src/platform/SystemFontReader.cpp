@@ -12,6 +12,7 @@ std::vector<std::uint8_t> SystemFontReader::read(const std::filesystem::path& fi
     if (!stream) {
         throw std::runtime_error("The system font \"" + file.string() + "\" cannot be read.");
     }
+
     return {std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
 }
 

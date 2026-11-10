@@ -118,6 +118,7 @@ TEST_F(NativeLuaTest, CallsValuesStructsTextAndBuffersOfALoadedLibrary) {
     for (const std::uint8_t value : std::array<std::uint8_t, 8>{250, 251, 252, 253, 254, 255, 0, 1}) {
         expected = (expected ^ value) * 16777619U;
     }
+
     EXPECT_EQ(fixture.lua("return checksum"), std::to_string(expected));
 }
 

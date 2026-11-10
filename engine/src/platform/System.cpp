@@ -71,6 +71,7 @@ void System::checkPermission(std::string_view name, std::function<void(Permissio
         checkPermission(*kind, std::move(callback));
         return;
     }
+
     askPlugin(name, "permission", std::move(callback));
 }
 
@@ -79,6 +80,7 @@ void System::requestPermission(std::string_view name, std::function<void(Permiss
         requestPermission(*kind, std::move(callback));
         return;
     }
+
     askPlugin(name, "requestPermission", std::move(callback));
 }
 
@@ -108,9 +110,11 @@ Permission::Answer System::readPluginAnswer(const std::string& plugin, const std
     if (result.ok) {
         return Permission::Answer::fromJson(result.value.json);
     }
+
     if (result.error.code == "noHandler") {
         return {.state = Permission::State::Unsupported, .message = std::format("The plugin \"{}\" that owns the permission \"{}\" offers no part on this platform that answers it.", plugin, name)};
     }
+
     return {.state = Permission::State::Unsupported, .message = std::format("The plugin \"{}\" failed to answer the permission \"{}\". {}", plugin, name, result.error.message)};
 }
 
@@ -120,6 +124,7 @@ System::Callback System::awaitReply(Callback callback) {
     if (callback) {
         pending.emplace(id, std::move(callback));
     }
+
     // clang-format off
     return [shared = std::weak_ptr<Inbox>(inbox), id](Permission::Answer answer, std::string text) {
         if (const std::shared_ptr<Inbox> alive = shared.lock()) {
@@ -149,12 +154,15 @@ void System::rumbleGamepad(std::size_t index, float low, float high, float secon
     if (index >= input::Input::kMaxGamepads) {
         throw std::invalid_argument("A rumble needs a gamepad from 1 to " + std::to_string(input::Input::kMaxGamepads) + ".");
     }
+
     if (!(low >= 0.0F && low <= 1.0F) || !(high >= 0.0F && high <= 1.0F)) {
         throw std::invalid_argument("The motors of a rumble run from 0 to 1.");
     }
+
     if (!std::isfinite(seconds) || seconds <= 0.0F) {
         throw std::invalid_argument("A rumble lasts a positive number of seconds.");
     }
+
     rumbling.set(index);
     host.rumbleGamepad(index, low, high, seconds);
 }
@@ -165,6 +173,7 @@ void System::stopRumbles() {
             host.rumbleGamepad(index, 0.0F, 0.0F, 0.0F);
         }
     }
+
     rumbling.reset();
 }
 
@@ -179,10 +188,12 @@ void System::pump() {
         if (found == pending.end()) {
             continue;
         }
+
         const Callback callback = std::move(found->second);
         pending.erase(found);
         callback(std::move(reply.answer), std::move(reply.text));
     }
+
     publishChanges();
 }
 
@@ -222,6 +233,7 @@ void System::publishChanges() {
     if (reportedRevision == languagesRevision) {
         return;
     }
+
     languagesRevision = reportedRevision;
     std::vector<std::string> reportedLanguages = host.getLanguages();
     if (reportedLanguages != languages) {

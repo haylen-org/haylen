@@ -15,6 +15,7 @@ void Accessibility::publish(std::span<const AccessibilityElement> tree, std::uin
     if (focusedElement == focused && std::ranges::equal(tree, elements)) {
         return;
     }
+
     elements.assign(tree.begin(), tree.end());
     focused = focusedElement;
     host.updateAccessibility(elements, focused);
@@ -24,6 +25,7 @@ void Accessibility::announce(std::string_view text, bool interrupt) {
     if (text.empty()) {
         throw std::invalid_argument("An announcement needs a text.");
     }
+
     host.announce(text, interrupt);
 }
 
@@ -44,6 +46,7 @@ void Accessibility::pump() {
         settings = reported;
         events.emit(core::LifecycleEvent::kAccessibilitySettingsChanged, settings.toJson());
     }
+
     treeWanted = host.isAccessibilityTreeWanted();
 }
 

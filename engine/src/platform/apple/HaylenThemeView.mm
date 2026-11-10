@@ -17,6 +17,7 @@ using haylen::platform::AppleTheme;
 #else
 - (void)traitCollectionDidChange:(UITraitCollection*)previousTraitCollection {
     [super traitCollectionDidChange:previousTraitCollection];
+
     if (previousTraitCollection == nil || previousTraitCollection.userInterfaceStyle != self.traitCollection.userInterfaceStyle) {
         AppleTheme::report(self.traitCollection);
     }

@@ -55,10 +55,12 @@ void WebOutputs::receiveCanvas(std::uint32_t number, int width, int height, floa
     if (found == entries.end() || found->second.report.ending) {
         return;
     }
+
     Entry& entry = found->second;
     if (!entry.report.surface) {
         haylen_js_name_output_canvas(static_cast<int>(number));
     }
+
     entry.report.surface = gpu::Surface{.kind = gpu::Surface::Kind::WebCanvas, .canvas = entry.canvas, .size = {.width = width, .height = height, .windowWidth = width, .windowHeight = height}, .sampleCount = entry.sampleCount};
     entry.report.scale = scale;
     Player::postEvent({.type = Event::Type::OutputChanged, .output = number});
@@ -69,6 +71,7 @@ void WebOutputs::receiveEnding(std::uint32_t number, Output::Ending ending, std:
     if (found == entries.end() || found->second.report.ending) {
         return;
     }
+
     found->second.report = {.ending = ending, .reason = std::move(reason)};
     Player::postEvent({.type = Event::Type::OutputChanged, .output = number});
 }

@@ -313,6 +313,7 @@ TEST(NativeViewsTest, TakesReservationsAndCoversFromOtherThreads) {
             views.coverApp();
             views.uncoverApp();
         }
+
         views.releaseInsets("banner");
         done.store(true);
     });
@@ -320,6 +321,7 @@ TEST(NativeViewsTest, TakesReservationsAndCoversFromOtherThreads) {
     while (!done.load()) {
         fixture.frames(1);
     }
+
     native.join();
     fixture.frames(1);
     EXPECT_FALSE(fixture.engine().isAppCovered());

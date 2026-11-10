@@ -22,6 +22,7 @@ IFACEMETHODIMP WindowsAccessibilityRoot::QueryInterface(REFIID interfaceId, void
         *object = nullptr;
         return E_NOINTERFACE;
     }
+
     AddRef();
     return S_OK;
 }
@@ -35,6 +36,7 @@ IFACEMETHODIMP_(ULONG) WindowsAccessibilityRoot::Release() {
     if (left == 0) {
         delete this;
     }
+
     return left;
 }
 
@@ -55,6 +57,7 @@ IFACEMETHODIMP WindowsAccessibilityRoot::GetPropertyValue(PROPERTYID property, V
         value->vt = VT_BSTR;
         value->bstrVal = SysAllocString(L"Haylen");
     }
+
     return S_OK;
 }
 
@@ -64,6 +67,7 @@ IFACEMETHODIMP WindowsAccessibilityRoot::get_HostRawElementProvider(IRawElementP
     if (owner == nullptr || owner->getWindow() == nullptr) {
         return S_OK;
     }
+
     return UiaHostProviderFromHwnd(owner->getWindow(), provider);
 }
 
@@ -73,10 +77,12 @@ IFACEMETHODIMP WindowsAccessibilityRoot::Navigate(NavigateDirection direction, I
     if (owner == nullptr || (direction != NavigateDirection_FirstChild && direction != NavigateDirection_LastChild)) {
         return S_OK;
     }
+
     const std::vector<std::uint64_t> top = owner->getChildren(0);
     if (!top.empty()) {
         *found = owner->getProvider(direction == NavigateDirection_FirstChild ? top.front() : top.back()).Detach();
     }
+
     return S_OK;
 }
 
@@ -111,10 +117,12 @@ IFACEMETHODIMP WindowsAccessibilityRoot::ElementProviderFromPoint(double x, doub
     if (owner == nullptr) {
         return S_OK;
     }
+
     const std::uint64_t element = owner->findAt({static_cast<float>(x), static_cast<float>(y)});
     if (element != 0) {
         *found = owner->getProvider(element).Detach();
     }
+
     return S_OK;
 }
 
@@ -125,6 +133,7 @@ IFACEMETHODIMP WindowsAccessibilityRoot::GetFocus(IRawElementProviderFragment** 
     if (focused != 0) {
         *found = owner->getProvider(focused).Detach();
     }
+
     return S_OK;
 }
 

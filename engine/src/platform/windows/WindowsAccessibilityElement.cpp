@@ -37,6 +37,7 @@ IFACEMETHODIMP WindowsAccessibilityElement::QueryInterface(REFIID interfaceId, v
         *object = nullptr;
         return E_NOINTERFACE;
     }
+
     AddRef();
     return S_OK;
 }
@@ -50,6 +51,7 @@ IFACEMETHODIMP_(ULONG) WindowsAccessibilityElement::Release() {
     if (left == 0) {
         delete this;
     }
+
     return left;
 }
 
@@ -64,10 +66,12 @@ IFACEMETHODIMP WindowsAccessibilityElement::GetPatternProvider(PATTERNID pattern
     if (!element) {
         return UIA_E_ELEMENTNOTAVAILABLE;
     }
+
     if (hasPattern(*element, pattern)) {
         *provider = static_cast<IRawElementProviderSimple*>(this);
         AddRef();
     }
+
     return S_OK;
 }
 
@@ -77,6 +81,7 @@ IFACEMETHODIMP WindowsAccessibilityElement::GetPropertyValue(PROPERTYID property
     if (!element) {
         return UIA_E_ELEMENTNOTAVAILABLE;
     }
+
     // clang-format off
     const auto text = [value](const std::string& source) {
         value->vt = VT_BSTR;
@@ -136,6 +141,7 @@ IFACEMETHODIMP WindowsAccessibilityElement::GetPropertyValue(PROPERTYID property
             value->vt = VT_BSTR;
             value->bstrVal = SysAllocString(L"Busy");
         }
+
         break;
     default:
         break;
@@ -156,12 +162,14 @@ IFACEMETHODIMP WindowsAccessibilityElement::Navigate(NavigateDirection direction
     if (!element) {
         return UIA_E_ELEMENTNOTAVAILABLE;
     }
+
     switch (direction) {
     case NavigateDirection_Parent:
         if (element->parent == 0 || !owner->find(element->parent)) {
             *found = owner->getRoot().Detach();
             return S_OK;
         }
+
         return returnFragment(element->parent, found);
     case NavigateDirection_FirstChild:
     case NavigateDirection_LastChild: {
@@ -169,6 +177,7 @@ IFACEMETHODIMP WindowsAccessibilityElement::Navigate(NavigateDirection direction
         if (descendants.empty()) {
             return S_OK;
         }
+
         return returnFragment(direction == NavigateDirection_FirstChild ? descendants.front() : descendants.back(), found);
     }
     case NavigateDirection_NextSibling:
@@ -178,9 +187,11 @@ IFACEMETHODIMP WindowsAccessibilityElement::Navigate(NavigateDirection direction
         if (position == siblings.end()) {
             return S_OK;
         }
+
         if (direction == NavigateDirection_NextSibling) {
             return position + 1 != siblings.end() ? returnFragment(*(position + 1), found) : S_OK;
         }
+
         return position != siblings.begin() ? returnFragment(*(position - 1), found) : S_OK;
     }
     }
@@ -195,10 +206,12 @@ IFACEMETHODIMP WindowsAccessibilityElement::GetRuntimeId(SAFEARRAY** runtimeId) 
     if (array == nullptr) {
         return E_OUTOFMEMORY;
     }
+
     for (LONG index = 0; index < static_cast<LONG>(parts.size()); ++index) {
         int part = parts[static_cast<std::size_t>(index)];
         SafeArrayPutElement(array, &index, &part);
     }
+
     *runtimeId = array;
     return S_OK;
 }
@@ -210,6 +223,7 @@ IFACEMETHODIMP WindowsAccessibilityElement::get_BoundingRectangle(UiaRect* recta
     if (!element) {
         return UIA_E_ELEMENTNOTAVAILABLE;
     }
+
     const math::Rect screen = owner->toScreen(element->bounds);
     *rectangle = {.left = screen.x, .top = screen.y, .width = screen.width, .height = screen.height};
     return S_OK;
@@ -230,6 +244,7 @@ IFACEMETHODIMP WindowsAccessibilityElement::get_FragmentRoot(IRawElementProvider
     if (owner == nullptr) {
         return UIA_E_ELEMENTNOTAVAILABLE;
     }
+
     *found = owner->getRoot().Detach();
     return S_OK;
 }
@@ -254,13 +269,16 @@ IFACEMETHODIMP WindowsAccessibilityElement::SetValue(double value) {
     if (!element) {
         return UIA_E_ELEMENTNOTAVAILABLE;
     }
+
     const double current = readNumber(element->value);
     if (value > current) {
         return perform(AccessibilityElement::Increment);
     }
+
     if (value < current) {
         return perform(AccessibilityElement::Decrement);
     }
+
     return S_OK;
 }
 
@@ -277,6 +295,7 @@ IFACEMETHODIMP WindowsAccessibilityElement::get_IsReadOnly(BOOL* readOnly) {
         *readOnly = TRUE;
         return UIA_E_ELEMENTNOTAVAILABLE;
     }
+
     const bool steps = hasRange(*element) && element->can(AccessibilityElement::Increment);
     const bool editable = element->role == AccessibilityElement::Role::TextField && !element->has(AccessibilityElement::Disabled);
     *readOnly = steps || editable ? FALSE : TRUE;
@@ -307,9 +326,11 @@ IFACEMETHODIMP WindowsAccessibilityElement::SetValue(LPCWSTR value) {
     if (!element) {
         return UIA_E_ELEMENTNOTAVAILABLE;
     }
+
     if (!hasRange(*element)) {
         return UIA_E_INVALIDOPERATION;
     }
+
     wchar_t* end = nullptr;
     const double number = std::wcstod(value, &end);
     return end != value ? SetValue(number) : E_INVALIDARG;
@@ -346,6 +367,7 @@ IFACEMETHODIMP WindowsAccessibilityElement::get_SelectionContainer(IRawElementPr
     if (element && owner->find(element->parent)) {
         *container = owner->getProvider(element->parent).Detach();
     }
+
     return S_OK;
 }
 
@@ -454,12 +476,15 @@ HRESULT WindowsAccessibilityElement::perform(AccessibilityElement::Action action
     if (!element) {
         return UIA_E_ELEMENTNOTAVAILABLE;
     }
+
     if (element->has(AccessibilityElement::Disabled)) {
         return UIA_E_ELEMENTNOTENABLED;
     }
+
     if (!element->can(action)) {
         return UIA_E_INVALIDOPERATION;
     }
+
     owner->perform(id, action);
     return S_OK;
 }
@@ -469,6 +494,7 @@ HRESULT WindowsAccessibilityElement::returnFragment(std::uint64_t element, IRawE
     if (owner == nullptr) {
         return UIA_E_ELEMENTNOTAVAILABLE;
     }
+
     *found = owner->getProvider(element).Detach();
     return S_OK;
 }

@@ -45,9 +45,11 @@ void CrashGuard::install() {
 void CrashGuard::setReport(const std::filesystem::path& report) {
     const std::filesystem::path::string_type& native = report.native();
     path.fill({});
+
     if (native.size() >= kPathSize) {
         return;
     }
+
     std::ranges::copy(native, path.begin());
 }
 
@@ -102,6 +104,7 @@ void CrashGuard::writeAll(int descriptor, std::string_view text) noexcept {
         if (written <= 0) {
             return;
         }
+
         text.remove_prefix(static_cast<std::size_t>(written));
     }
 }
@@ -123,6 +126,7 @@ long __stdcall CrashGuard::handleException(_EXCEPTION_POINTERS* info) {
     if (previousFilter != nullptr) {
         return previousFilter(info);
     }
+
     return EXCEPTION_CONTINUE_SEARCH;
 }
 
@@ -179,6 +183,7 @@ void CrashGuard::handleSignal(int signal, siginfo_t* info, void* context) {
     if (!crashing.exchange(true)) {
         writeReport(describeSignal(signal));
     }
+
     forwardSignal(signal, info, context);
 }
 
@@ -201,6 +206,7 @@ void CrashGuard::forwardSignal(int signal, siginfo_t* info, void* context) {
         previous.sa_sigaction(signal, info, context);
         return;
     }
+
     previous.sa_handler(signal);
 }
 

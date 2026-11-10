@@ -17,6 +17,7 @@ void AppleFold::attach([[maybe_unused]] UIView* view) {
         if (followed == view) {
             return;
         }
+
         followed = view;
         // clang-format off
         UIHingeInteraction* hinge = [[UIHingeInteraction alloc] initWithUpdateHandler:^(UIHingeInteraction*, UIHingeInteractionUpdate* update) {
@@ -39,6 +40,7 @@ void AppleFold::refresh([[maybe_unused]] UIView* view) {
             if (!region.active) {
                 continue;
             }
+
             const CGRect frame = region.frame;
             const math::Rect bounds{static_cast<float>(frame.origin.x), static_cast<float>(frame.origin.y), static_cast<float>(frame.size.width), static_cast<float>(frame.size.height)};
             const bool occluding = frame.size.width > 0.0 && frame.size.height > 0.0;

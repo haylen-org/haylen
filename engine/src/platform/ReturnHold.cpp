@@ -23,6 +23,7 @@ void ReturnHold::handleEvent(const Event& event, float pointScale) {
         } else if (event.key == input::Key::Pause) {
             pauseHeld = event.type == Event::Type::KeyDown;
         }
+
         return;
     case Event::Type::TouchBegan:
     case Event::Type::TouchMoved:
@@ -38,6 +39,7 @@ void ReturnHold::handleEvent(const Event& event, float pointScale) {
         if (!point.changed) {
             continue;
         }
+
         const auto found = std::ranges::find(fingers, point.id, &Finger::id);
         if (event.type == Event::Type::TouchBegan) {
             fingers.push_back({.id = point.id, .start = point.position});
@@ -58,9 +60,11 @@ bool ReturnHold::update(float seconds, bool backHeld) {
         completed = false;
         return false;
     }
+
     if (completed) {
         return false;
     }
+
     held += seconds;
     completed = held >= kSeconds;
     return completed;
@@ -70,6 +74,7 @@ float ReturnHold::getProgress() const noexcept {
     if (completed || held < kHintDelay) {
         return 0.0F;
     }
+
     return std::clamp((held - kHintDelay) / (kSeconds - kHintDelay), 0.0F, 1.0F);
 }
 

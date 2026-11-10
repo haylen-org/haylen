@@ -17,6 +17,7 @@ std::vector<std::string> PluginLoadOrder::read(const io::Package& package) {
     if (!app.is_object()) {
         throw std::runtime_error("The file \"app.json\" of the package is not a JSON object.");
     }
+
     const auto plugins = app.find("plugins");
     if (plugins == app.end() || !plugins->is_object()) {
         return {};
@@ -26,6 +27,7 @@ std::vector<std::string> PluginLoadOrder::read(const io::Package& package) {
     for (const auto& [id, values] : plugins->items()) {
         listed.push_back(id);
     }
+
     std::map<std::string, std::vector<std::string>> required;
     for (const std::string& id : listed) {
         const std::string path = io::Path::plugin(id, io::Path::kPluginManifestFile);
@@ -33,6 +35,7 @@ std::vector<std::string> PluginLoadOrder::read(const io::Package& package) {
         if (!manifest.is_object()) {
             throw std::runtime_error("The file \"" + path + "\" of the package is not a JSON object.");
         }
+
         std::vector<std::string>& dependencies = required[id];
         for (const core::Json& dependency : manifest.value("requires", core::Json::array())) {
             if (dependency.is_string() && std::ranges::find(listed, dependency.get<std::string>()) != listed.end()) {
@@ -46,6 +49,7 @@ std::vector<std::string> PluginLoadOrder::read(const io::Package& package) {
     for (const std::string& id : listed) {
         visit(id, required, visited, order);
     }
+
     return order;
 }
 
@@ -53,9 +57,11 @@ void PluginLoadOrder::visit(const std::string& id, const std::map<std::string, s
     if (!visited.insert(id).second) {
         return;
     }
+
     for (const std::string& dependency : required.at(id)) {
         visit(dependency, required, visited, order);
     }
+
     order.push_back(id);
 }
 

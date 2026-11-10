@@ -34,6 +34,7 @@ bool WindowLua::isRect(lua_State* L, int index) {
     if (lua::Userdata::test<math::Rect>(L, index) != nullptr) {
         return true;
     }
+
     lua_getfield(L, index, "x");
     lua_rawgeti(L, index, 1);
     const bool rect = !lua_isnil(L, -2) || lua_type(L, -1) == LUA_TNUMBER;
@@ -45,6 +46,7 @@ math::Polygon::Outline WindowLua::readRegion(lua_State* L, int index) {
     if (!lua::Userdata::test<math::Rect>(L, index) && !lua_istable(L, index)) {
         luaL_error(L, "A mouse passthrough region is a rectangle or a polygon, not a %s.", luaL_typename(L, index));
     }
+
     if (isRect(L, index)) {
         const math::Rect rect = lua::Stack::read<math::Rect>(L, index);
         return {rect.getMin(), {rect.getRight(), rect.y}, rect.getMax(), {rect.x, rect.getBottom()}};
@@ -54,6 +56,7 @@ math::Polygon::Outline WindowLua::readRegion(lua_State* L, int index) {
     if (count < 3) {
         luaL_error(L, "A mouse passthrough polygon needs at least three points.");
     }
+
     math::Polygon::Outline outline;
     outline.reserve(static_cast<std::size_t>(count));
     for (lua_Integer point = 1; point <= count; ++point) {
@@ -61,6 +64,7 @@ math::Polygon::Outline WindowLua::readRegion(lua_State* L, int index) {
         outline.push_back(lua::Stack::read<math::Vec2>(L, -1));
         lua_pop(L, 1);
     }
+
     return outline;
 }
 
@@ -96,6 +100,7 @@ Display::Mode WindowLua::readMode(lua_State* L, int index) {
     if (mode.width <= 0 || mode.height <= 0) {
         luaL_error(L, "A fullscreen mode needs a positive \"width\" and \"height\" in pixels.");
     }
+
     return mode;
 }
 
@@ -107,6 +112,7 @@ int WindowLua::setFullscreen(lua_State* L) {
         engine.getWindow().setFullscreen(enabled, awaitAnswer(L));
         return 1;
     }
+
     luaL_checktype(L, 2, LUA_TTABLE);
     lua::Table::checkFields(L, 2, {kFullscreenOptions});
     luaL_argcheck(L, enabled, 2, "options only go with true");
@@ -116,6 +122,7 @@ int WindowLua::setFullscreen(lua_State* L) {
     if (!lua_isnil(L, -1)) {
         target.mode = readMode(L, lua_gettop(L));
     }
+
     lua_pop(L, 1);
     // A display that is not connected or a mode that it does not list raises before the call waits for an answer.
     static_cast<void>(FullscreenTarget::resolve(engine.getDisplays().getAll(), engine.getWindow().getDisplayId(), target));
@@ -185,6 +192,7 @@ int WindowLua::fold(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua_createtable(L, 0, 5);
     lua::Stack::push(L, toDesign(engine.getViewport(), value->bounds));
     lua_setfield(L, -2, "bounds");
@@ -216,6 +224,7 @@ int WindowLua::segments(lua_State* L) {
         lua::Stack::push(L, toDesign(engine.getViewport(), areas[index]));
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
@@ -226,6 +235,7 @@ int WindowLua::foldSimulation(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::JsonConverter::push(L, simulation->toJson());
     return 1;
 }
@@ -237,6 +247,7 @@ int WindowLua::setFoldSimulation(lua_State* L) {
         engine.setFoldSimulation(std::nullopt);
         return 0;
     }
+
     engine.setFoldSimulation(FoldSimulation::fromJson(lua::JsonConverter::read(L, 1)));
     return 0;
 }
@@ -263,6 +274,7 @@ int WindowLua::statusBarColor(lua_State* L) {
     } else {
         lua_pushnil(L);
     }
+
     return 1;
 }
 
@@ -411,6 +423,7 @@ int WindowLua::setMousePassthrough(lua_State* L) {
         engine.getWindow().setMousePassthrough(lua_toboolean(L, 1) != 0 ? Window::Passthrough::Whole : Window::Passthrough::Off, {});
         return 0;
     }
+
     luaL_argexpected(L, lua_istable(L, 1), 1, "boolean or table of regions");
     const std::string_view units = lua_isnoneornil(L, 2) ? "design" : lua::Stack::read<std::string_view>(L, 2);
     luaL_argcheck(L, units == "design" || units == "pixels", 2, "'design' or 'pixels' expected");
@@ -422,6 +435,7 @@ int WindowLua::setMousePassthrough(lua_State* L) {
         regions.push_back(readRegion(L, lua_gettop(L)));
         lua_pop(L, 1);
     }
+
     if (units == "design") {
         const graphics::Viewport& viewport = engine.getViewport();
         for (math::Polygon::Outline& region : regions) {
@@ -430,6 +444,7 @@ int WindowLua::setMousePassthrough(lua_State* L) {
             }
         }
     }
+
     engine.getWindow().setMousePassthrough(Window::Passthrough::Regions, regions);
     return 0;
 }

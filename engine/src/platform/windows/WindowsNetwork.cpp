@@ -18,6 +18,7 @@ void WindowsNetwork::observe() {
     if (FAILED(started) && started != RPC_E_CHANGED_MODE) {
         return;
     }
+
     if (FAILED(CoCreateInstance(__uuidof(NetworkListManager), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&manager)))) {
         return;
     }
@@ -26,6 +27,7 @@ void WindowsNetwork::observe() {
     if (FAILED(manager.As(&container)) || FAILED(container->FindConnectionPoint(__uuidof(INetworkListManagerEvents), &point))) {
         return;
     }
+
     const ComPtr<WindowsNetwork> sink = Microsoft::WRL::Make<WindowsNetwork>();
     DWORD cookie = 0;
     if (FAILED(point->Advise(sink.Get(), &cookie))) {

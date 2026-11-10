@@ -87,9 +87,11 @@ using haylen::platform::VideoStream;
         if (format != HaylenVideoStreamFormatRGBA8 && format != HaylenVideoStreamFormatBGRA8) {
             throw std::invalid_argument("A video stream takes the format \"HaylenVideoStreamFormatRGBA8\" or \"HaylenVideoStreamFormatBGRA8\".");
         }
+
         if (!std::in_range<int>(width) || !std::in_range<int>(height)) {
             throw std::invalid_argument("The width and the height of a video stream fit a 32-bit integer.");
         }
+
         const VideoStream::Format pixels = format == HaylenVideoStreamFormatRGBA8 ? VideoStream::Format::Rgba8 : VideoStream::Format::Bgra8;
         return [[HaylenVideoStream alloc] initWithStream:PluginStreams::openVideo(self.identifier.UTF8String, name.UTF8String, pixels, static_cast<int>(width), static_cast<int>(height))];
     } catch (const std::exception& error) {
@@ -103,9 +105,11 @@ using haylen::platform::VideoStream;
         if (format != HaylenAudioStreamFormatFloat32 && format != HaylenAudioStreamFormatInt16) {
             throw std::invalid_argument("An audio stream takes the format \"HaylenAudioStreamFormatFloat32\" or \"HaylenAudioStreamFormatInt16\".");
         }
+
         if (sampleRate < 1 || channels < 1 || capacity < 1 || !std::in_range<std::uint32_t>(sampleRate) || !std::in_range<std::uint32_t>(channels)) {
             throw std::invalid_argument("An audio stream needs a sample rate, channels and room for at least one frame.");
         }
+
         const AudioStream::Format samples = format == HaylenAudioStreamFormatFloat32 ? AudioStream::Format::Float32 : AudioStream::Format::Int16;
         return [[HaylenAudioStream alloc] initWithStream:PluginStreams::openAudio(self.identifier.UTF8String, name.UTF8String, static_cast<std::uint32_t>(sampleRate), static_cast<std::uint32_t>(channels), samples, static_cast<std::size_t>(capacity))];
     } catch (const std::exception& error) {
@@ -139,6 +143,7 @@ using haylen::platform::VideoStream;
             Log::error("The plugin \"{}\" uncovered the app without covering it first.", self.identifier.UTF8String);
             return;
         }
+
         --covers;
     }
     NativeHost::getNativeViews().uncoverApp();
@@ -162,6 +167,7 @@ using haylen::platform::VideoStream;
             Log::error("The plugin \"{}\" registered the permission \"{}\" twice, and the first one stays.", self.identifier.UTF8String, permission.name.UTF8String);
             return;
         }
+
         first = permissions.count == 0;
         permissions[permission.name] = permission;
     }
@@ -183,6 +189,7 @@ using haylen::platform::VideoStream;
             reply(YES, @{@"state" : @"unsupported", @"message" : [NSString stringWithFormat:@"The plugin \"%@\" registers no permission \"%@\" on this platform.", context.identifier, name]});
             return;
         }
+
         [permission answerAsking:asking requirements:context.requirements completion:^(NSDictionary<NSString*, id>* answer) { reply(YES, answer); }];
     }];
     // clang-format on
@@ -216,6 +223,7 @@ using haylen::platform::VideoStream;
     if ([state isEqualToString:@"granted"] || [state isEqualToString:@"unknown"]) {
         return nil;
     }
+
     if (![state isEqualToString:@"unsupported"]) {
         const Permission::State answered = [state isEqualToString:@"prompt"] ? Permission::State::Prompt : Permission::State::Denied;
         NSString* message = @(Permission::refusal(answered, permission.capability.UTF8String, permission.name.UTF8String).c_str());
@@ -228,6 +236,7 @@ using haylen::platform::VideoStream;
     if (missing.count > 0) {
         failure[@"data"] = @{@"missing" : missing};
     }
+
     return [NSError errorWithDomain:@"HaylenPermissions" code:0 userInfo:failure];
 }
 

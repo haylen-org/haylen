@@ -30,6 +30,7 @@
         information.contentLength = static_cast<long long>(size);
         information.byteRangeAccessSupported = YES;
     }
+
     if (AVAssetResourceLoadingDataRequest* data = request.dataRequest) {
         const auto offset = static_cast<std::uint64_t>(std::max<long long>(data.requestedOffset, 0));
         const std::uint64_t end = data.requestsAllDataToEndOfResource ? size : std::min(size, offset + static_cast<std::uint64_t>(data.requestedLength));
@@ -39,6 +40,7 @@
                 const std::size_t read = file->read(at, std::span<std::uint8_t>(static_cast<std::uint8_t*>(piece.mutableBytes), piece.length));
                 piece.length = read;
                 [data respondWithData:piece];
+
                 if (read == 0) {
                     break;
                 }
@@ -48,6 +50,7 @@
             return YES;
         }
     }
+
     [request finishLoading];
     return YES;
 }

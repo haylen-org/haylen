@@ -291,6 +291,7 @@ TEST(PlatformLuaTest, ReceivesTheBatchedEventsOfAFrameAsOneList) {
     for (int index = 1; index <= 100; ++index) {
         fixture.engine().getPlatform().emit("gps.fix", core::Json{{"n", index}}.dump(), {}, {.batched = true});
     }
+
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return #lists .. ' ' .. #lists[2] .. ' ' .. lists[2][1].n .. ' ' .. lists[2][100].n"), "2 100 1 100");
 

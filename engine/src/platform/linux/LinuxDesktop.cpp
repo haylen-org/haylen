@@ -49,12 +49,14 @@ float LinuxDesktop::getDesktopScale(::Display* display) {
     if (database == nullptr) {
         return 1.0F;
     }
+
     float dpi = kStandardDpi;
     XrmValue value{};
     char* type = nullptr;
     if (XrmGetResource(database, "Xft.dpi", "Xft.Dpi", &type, &value) == True && type != nullptr && std::string_view(type) == "String") {
         dpi = std::strtof(value.addr, nullptr);
     }
+
     XrmDestroyDatabase(database);
     return dpi > 0.0F ? dpi / kStandardDpi : 1.0F;
 }
@@ -71,9 +73,11 @@ std::vector<long> LinuxDesktop::readCardinals(::Display* display, ::Window windo
         const auto* cardinals = reinterpret_cast<const long*>(data);
         values.assign(cardinals, cardinals + count);
     }
+
     if (data != nullptr) {
         XFree(data);
     }
+
     return values;
 }
 
@@ -86,6 +90,7 @@ math::Rect LinuxDesktop::readWorkArea(::Display* display, float scale) {
     if (areas.size() < (desktop + 1) * 4) {
         return {};
     }
+
     const long* area = areas.data() + desktop * 4;
     return {static_cast<float>(area[0]) / scale, static_cast<float>(area[1]) / scale, static_cast<float>(area[2]) / scale, static_cast<float>(area[3]) / scale};
 }
@@ -95,13 +100,16 @@ float LinuxDesktop::getRefreshRate(const XRRModeInfo& mode) {
     if (mode.hTotal == 0 || mode.vTotal == 0) {
         return 0.0F;
     }
+
     double rate = static_cast<double>(mode.dotClock) / (static_cast<double>(mode.hTotal) * static_cast<double>(mode.vTotal));
     if ((mode.modeFlags & RR_Interlace) != 0) {
         rate *= 2.0;
     }
+
     if ((mode.modeFlags & RR_DoubleScan) != 0) {
         rate /= 2.0;
     }
+
     return static_cast<float>(rate);
 }
 
@@ -111,6 +119,7 @@ void LinuxDesktop::describeOutput(::Display* display, XRRScreenResources* resour
     if (info == nullptr) {
         return;
     }
+
     described.id.assign(info->name, static_cast<std::size_t>(info->nameLen));
     RRMode current = None;
     if (XRRCrtcInfo* crtc = info->crtc != None ? XRRGetCrtcInfo(display, resources, info->crtc) : nullptr) {
@@ -124,15 +133,18 @@ void LinuxDesktop::describeOutput(::Display* display, XRRScreenResources* resour
             if (mode.id != info->modes[index]) {
                 continue;
             }
+
             const platform::Display::Mode found{.width = static_cast<int>(mode.width), .height = static_cast<int>(mode.height), .refreshRate = getRefreshRate(mode), .scale = described.scale};
             if (std::ranges::find(described.modes, found) == described.modes.end()) {
                 described.modes.push_back(found);
             }
+
             if (mode.id == current) {
                 described.refreshRate = found.refreshRate;
             }
         }
     }
+
     XRRFreeOutputInfo(info);
 }
 
@@ -153,13 +165,16 @@ std::vector<platform::Display> LinuxDesktop::readDisplays(::Display* display) {
         const math::Rect bounds = toPoints(info.x, info.y, info.width, info.height);
         platform::Display& added = displays.emplace_back(platform::Display{.id = name != nullptr ? name : "", .name = name != nullptr ? name : "", .bounds = bounds, .workArea = clip(bounds), .scale = scale, .primary = info.primary != 0});
         XFree(name);
+
         if (resources != nullptr && info.noutput > 0) {
             describeOutput(display, resources, info.outputs[0], added);
         }
     }
+
     if (infos != nullptr) {
         XRRFreeMonitors(infos);
     }
+
     if (resources != nullptr) {
         XRRFreeScreenResources(resources);
     }
@@ -170,6 +185,7 @@ std::vector<platform::Display> LinuxDesktop::readDisplays(::Display* display) {
         const math::Rect bounds = toPoints(0, 0, DisplayWidth(display, screen), DisplayHeight(display, screen));
         displays.push_back({.id = "screen", .name = "screen", .bounds = bounds, .workArea = clip(bounds), .scale = scale, .primary = true});
     }
+
     return displays;
 }
 
@@ -178,10 +194,12 @@ std::vector<platform::Display> LinuxDesktop::getDisplays() {
     if (::Display* display = getDisplay()) {
         return readDisplays(display);
     }
+
     ::Display* display = XOpenDisplay(nullptr);
     if (display == nullptr) {
         throw std::runtime_error("The X11 display could not be opened to read its displays.");
     }
+
     std::vector<platform::Display> displays = readDisplays(display);
     XCloseDisplay(display);
     return displays;
@@ -215,6 +233,7 @@ void LinuxDesktop::applySizeHints(::Display* display, ::Window window, int width
         hints.min_width = hints.max_width = width;
         hints.min_height = hints.max_height = height;
     }
+
     XSetWMNormalHints(display, window, &hints);
 }
 
@@ -224,11 +243,13 @@ void LinuxDesktop::setBackground(const math::Color& value) {
     if (display == nullptr) {
         return;
     }
+
     const ::Window window = getWindow();
     XWindowAttributes attributes{};
     if (XGetWindowAttributes(display, window, &attributes) == 0 || attributes.visual == nullptr || attributes.visual->c_class != TrueColor) {
         return;
     }
+
     const Visual& visual = *attributes.visual;
     XSetWindowBackground(display, window, LinuxVisualColor::toPixel(value, visual.red_mask, visual.green_mask, visual.blue_mask));
     XFlush(display);
@@ -241,6 +262,7 @@ void LinuxDesktop::setStyle(const WindowStyle& value) {
     if (display == nullptr) {
         return;
     }
+
     const ::Window window = getWindow();
     const Atom motif = XInternAtom(display, "_MOTIF_WM_HINTS", False);
     const std::array<long, 5> hints{kMotifDecorations, 0, value.decorated ? 1 : 0, 0, 0};
@@ -260,6 +282,7 @@ math::Rect LinuxDesktop::getFrame() {
     if (display == nullptr) {
         return {0.0F, 0.0F, pixels.x, pixels.y};
     }
+
     int x = 0;
     int y = 0;
     ::Window child = 0;
@@ -274,6 +297,7 @@ std::string LinuxDesktop::getTitle() {
     if (display == nullptr || XFetchName(display, getWindow(), &name) == 0 || name == nullptr) {
         return {};
     }
+
     std::string title(name);
     XFree(name);
     return title;
@@ -284,6 +308,7 @@ math::Vec2 LinuxDesktop::getOrigin() {
     if (display == nullptr) {
         return {};
     }
+
     int x = 0;
     int y = 0;
     ::Window child = 0;
@@ -296,6 +321,7 @@ void LinuxDesktop::setFrame(const math::Rect& value) {
     if (display == nullptr) {
         return;
     }
+
     const ::Window window = getWindow();
     const float scale = getDesktopScale(display);
     const auto width = static_cast<int>(std::lround(value.width * scale));
@@ -310,6 +336,7 @@ void LinuxDesktop::setPassthrough(Window::Passthrough mode, std::span<const math
     if (mode == passthrough && std::ranges::equal(value, regions)) {
         return;
     }
+
     passthrough = mode;
     regions.assign(value.begin(), value.end());
 
@@ -317,6 +344,7 @@ void LinuxDesktop::setPassthrough(Window::Passthrough mode, std::span<const math
     if (display == nullptr) {
         return;
     }
+
     const ::Window window = getWindow();
     if (mode == Window::Passthrough::Off) {
         XShapeCombineMask(display, window, ShapeInput, 0, 0, None, ShapeSet);
@@ -334,11 +362,13 @@ void LinuxDesktop::setPassthrough(Window::Passthrough mode, std::span<const math
             for (const math::Vec2 point : region) {
                 points.push_back({.x = static_cast<short>(std::lround(point.x / scale)), .y = static_cast<short>(std::lround(point.y / scale))});
             }
+
             Region polygon = XPolygonRegion(points.data(), static_cast<int>(points.size()), WindingRule);
             XUnionRegion(shape, polygon, shape);
             XDestroyRegion(polygon);
         }
     }
+
     XShapeCombineRegion(display, window, ShapeInput, 0, 0, shape, ShapeSet);
     XDestroyRegion(shape);
     XFlush(display);
@@ -350,6 +380,7 @@ void LinuxDesktop::startDrag() {
     if (display == nullptr) {
         return;
     }
+
     const ::Window window = getWindow();
     ::Window root = 0;
     ::Window child = 0;
@@ -384,11 +415,13 @@ void LinuxDesktop::watch() {
     if (getDisplay() == nullptr) {
         return;
     }
+
     watcher = XOpenDisplay(nullptr);
     if (watcher == nullptr) {
         core::Log::error("A second connection to the X11 display could not be opened, so the app will not hear window moves and display changes.");
         return;
     }
+
     const ::Window root = DefaultRootWindow(watcher);
     XSelectInput(watcher, getWindow(), StructureNotifyMask);
     XSelectInput(watcher, root, PropertyChangeMask);
@@ -397,6 +430,7 @@ void LinuxDesktop::watch() {
     if (XRRQueryExtension(watcher, &randrEvents, &errors) == True) {
         XRRSelectInput(watcher, root, RRScreenChangeNotifyMask | RRCrtcChangeNotifyMask | RROutputChangeNotifyMask);
     }
+
     XFlush(watcher);
 }
 
@@ -404,6 +438,7 @@ void LinuxDesktop::update() {
     if (dragging) {
         followDrag(getDisplay());
     }
+
     if (watcher != nullptr) {
         readEvents();
     }
@@ -421,6 +456,7 @@ void LinuxDesktop::followDrag(::Display* display) {
     if ((buttons & Button1Mask) != 0) {
         return;
     }
+
     dragging = false;
     Player::handleEvent({.type = Event::Type::MouseUp, .mouseButton = input::MouseButton::Left, .position = {static_cast<float>(x), static_cast<float>(y)}});
 }
@@ -433,6 +469,7 @@ void LinuxDesktop::readEvents() {
         if (randr) {
             XRRUpdateConfiguration(&event);
         }
+
         if (event.type == ConfigureNotify) {
             Player::handleEvent({.type = Event::Type::WindowMoved});
         } else if (randr || (event.type == PropertyNotify && event.xproperty.atom == workAreaAtom)) {

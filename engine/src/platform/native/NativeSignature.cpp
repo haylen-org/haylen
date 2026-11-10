@@ -21,40 +21,51 @@ NativeSignature NativeSignature::parse(std::string_view declaration) {
         if (!isQualifier(tokens[position])) {
             result.push_back(tokens[position]);
         }
+
         ++position;
     }
+
     if (result != std::vector<std::string>{"void"} || tokens[position] != "(") {
         throw std::invalid_argument("A native callback returns nothing, so its declaration is \"void\" and the parameters, such as \"void (int code, const char* text)\".");
     }
+
     ++position;
 
     NativeSignature signature;
     std::vector<std::string> lengthNames;
+
     if (tokens[position] == "void" && tokens[position + 1] == ")") {
         ++position;
     }
+
     while (tokens[position] != ")") {
         std::string lengthName;
         signature.parameters.push_back(parseParameter(tokens, position, lengthName));
         lengthNames.push_back(std::move(lengthName));
+
         if (tokens[position].empty()) {
             throw std::invalid_argument("The native callback declaration ends before the \")\" that closes its parameters.");
         }
+
         if (tokens[position] != "," && tokens[position] != ")") {
             throw std::invalid_argument("The native callback declaration has \"" + tokens[position] + "\" where a comma or \")\" belongs.");
         }
+
         if (tokens[position] == ",") {
             ++position;
         }
+
         if (tokens[position - 1] == "," && tokens[position] == ")") {
             throw std::invalid_argument("The native callback declaration has a comma without a parameter after it.");
         }
     }
+
     ++position;
 
     if (!tokens[position].empty()) {
         throw std::invalid_argument("The native callback declaration continues after its parameters with \"" + tokens[position] + "\".");
     }
+
     bindLengths(signature.parameters, lengthNames);
     return signature;
 }
@@ -69,20 +80,26 @@ std::vector<std::string> NativeSignature::tokenize(std::string_view declaration)
             ++index;
             continue;
         }
+
         if (std::isalnum(character) != 0 || character == '_') {
             const std::size_t start = index;
+
             while (index < declaration.size() && (std::isalnum(static_cast<unsigned char>(declaration[index])) != 0 || declaration[index] == '_')) {
                 ++index;
             }
+
             tokens.emplace_back(declaration.substr(start, index - start));
             continue;
         }
+
         if (std::string_view("()[]*,").find(declaration[index]) == std::string_view::npos) {
             throw std::invalid_argument("The native callback declaration has the unexpected character \"" + std::string(1, declaration[index]) + "\".");
         }
+
         tokens.emplace_back(1, declaration[index]);
         ++index;
     }
+
     tokens.emplace_back();
     return tokens;
 }
@@ -151,9 +168,11 @@ NativeSignature::BaseType NativeSignature::resolve(std::span<const std::string> 
     if (words.empty()) {
         throw std::invalid_argument("A parameter of the native callback declaration has no type.");
     }
+
     if (words.size() == 2 && (words[0] == "struct" || words[0] == "union")) {
         return {.isOpaque = true};
     }
+
     if (words.size() == 2 && words[0] == "enum") {
         return {.size = sizeof(int), .isSigned = true};
     }
@@ -162,12 +181,15 @@ NativeSignature::BaseType NativeSignature::resolve(std::span<const std::string> 
     for (std::size_t index = 1; index < words.size(); ++index) {
         name += " " + words[index];
     }
+
     if (const auto found = types.find(name); found != types.end()) {
         return found->second;
     }
+
     if (words.size() == 1 && !isTypeWord(words[0])) {
         return {.isOpaque = true};
     }
+
     throw std::invalid_argument("The native callback declaration has the unknown type \"" + name + "\".");
 }
 
@@ -180,6 +202,7 @@ NativeSignature::Parameter NativeSignature::parseParameter(std::span<const std::
         } else {
             words.push_back(tokens[position]);
         }
+
         ++position;
     }
 
@@ -200,6 +223,7 @@ NativeSignature::Parameter NativeSignature::parseParameter(std::span<const std::
             words.pop_back();
         }
     }
+
     const BaseType base = resolve(words);
     const std::string label = parameter.name.empty() ? "A parameter" : "The parameter \"" + parameter.name + "\"";
 
@@ -208,10 +232,13 @@ NativeSignature::Parameter NativeSignature::parseParameter(std::span<const std::
         if (bound.empty() || tokens[position + 2] != "]" || !(std::isdigit(static_cast<unsigned char>(bound.front())) != 0 || isIdentifier(bound))) {
             throw std::invalid_argument(label + " of the native callback declaration needs a count or the name of a length parameter between \"[\" and \"]\".");
         }
+
         position += 3;
+
         if (pointers == 0 && (base.isVoid || base.isOpaque)) {
             throw std::invalid_argument(label + " is a range of elements whose size the native callback declaration does not know. Use \"uint8_t\" or another C number type.");
         }
+
         parameter.kind = Parameter::Kind::Bytes;
         parameter.size = pointers > 0 ? sizeof(void*) : base.size;
         if (isIdentifier(bound)) {
@@ -219,6 +246,7 @@ NativeSignature::Parameter NativeSignature::parseParameter(std::span<const std::
         } else {
             parameter.count = std::stoul(bound);
         }
+
         return parameter;
     }
 
@@ -227,9 +255,11 @@ NativeSignature::Parameter NativeSignature::parseParameter(std::span<const std::
         parameter.size = sizeof(void*);
         return parameter;
     }
+
     if (base.isVoid || base.isOpaque) {
         throw std::invalid_argument(label + " of the native callback declaration is not a C number type, and a callback reads other values only through pointers.");
     }
+
     parameter.kind = base.kind;
     parameter.size = base.size;
     parameter.isSigned = base.isSigned;
@@ -242,10 +272,12 @@ void NativeSignature::bindLengths(std::vector<Parameter>& parameters, const std:
         if (lengthNames[index].empty()) {
             continue;
         }
+
         const auto found = std::ranges::find(parameters, lengthNames[index], &Parameter::name);
         if (found == parameters.end() || found->kind != Parameter::Kind::Integer) {
             throw std::invalid_argument("The length \"" + lengthNames[index] + "\" of the native callback parameter \"" + parameters[index].name + "\" must name an integer parameter.");
         }
+
         parameters[index].lengthParameter = static_cast<std::size_t>(found - parameters.begin());
     }
 }

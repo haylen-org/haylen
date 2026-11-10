@@ -36,14 +36,17 @@ using haylen::platform::AudioStream;
     if (frames <= 0) {
         return 0;
     }
+
     if (samples == nullptr) {
         haylen::core::Log::error("Audio frames need samples, so they were dropped.");
         return 0;
     }
+
     const std::size_t count = static_cast<std::size_t>(frames) * stream->getChannels();
     if (stream->getFormat() == AudioStream::Format::Float32) {
         return static_cast<NSInteger>(stream->push(std::span<const float>(static_cast<const float*>(samples), count)));
     }
+
     return static_cast<NSInteger>(stream->push(std::span<const std::int16_t>(static_cast<const std::int16_t*>(samples), count)));
 }
 

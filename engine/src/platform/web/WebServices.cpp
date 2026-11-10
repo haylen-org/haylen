@@ -67,9 +67,11 @@ EM_JS(int, haylen_js_fold, (float* values), {
     if (!fold) {
         return 0;
     }
+
     for (let index = 0; index < 8; ++index) {
         HEAPF32[(values >> 2) + index] = fold[index];
     }
+
     return 1;
 });
 
@@ -237,6 +239,7 @@ std::optional<Fold> Services::getFold() {
     if (haylen_js_fold(values.data()) == 0) {
         return std::nullopt;
     }
+
     return Fold{.bounds = math::Rect::fromMinMax({values[0], values[1]}, {values[2], values[3]}), .axis = values[4] != 0.0F ? Fold::Axis::Vertical : Fold::Axis::Horizontal, .state = values[5] != 0.0F ? Fold::State::HalfOpened : Fold::State::Flat, .separating = values[6] != 0.0F, .occluding = values[7] != 0.0F};
 }
 
@@ -303,6 +306,7 @@ void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>& valu
         haylen_js_now_playing(nullptr, nullptr, 0);
         return;
     }
+
     const std::string json = MediaSession::writeNowPlaying(*value);
     haylen_js_now_playing(json.c_str(), reinterpret_cast<const std::uint8_t*>(value->artwork.data()), static_cast<int>(value->artwork.size()));
 }

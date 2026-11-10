@@ -61,6 +61,7 @@ std::string LinuxSystem::getSystemVersion() {
     if (osRelease.empty()) {
         osRelease = LinuxSystemReader::readText("/usr/lib/os-release");
     }
+
     utsname kernel{};
     return LinuxSystemReader::readOsVersion(osRelease, uname(&kernel) == 0 ? kernel.release : "");
 }

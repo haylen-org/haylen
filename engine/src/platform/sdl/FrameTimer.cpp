@@ -10,6 +10,7 @@ double FrameTimer::next(std::uint64_t nanoseconds) noexcept {
         last = nanoseconds;
         return average;
     }
+
     const double seconds = std::clamp(static_cast<double>(nanoseconds - last) / 1e9, kMinSeconds, kMaxSeconds);
     last = nanoseconds;
 
@@ -17,6 +18,7 @@ double FrameTimer::next(std::uint64_t nanoseconds) noexcept {
         average = seconds;
         return average;
     }
+
     average += kSmoothing * (seconds - average);
     return average;
 }

@@ -17,6 +17,7 @@ bool AndroidMouseWheel::handleEvent(const GameActivityMotionEvent& event) {
     if ((event.action & AMOTION_EVENT_ACTION_MASK) != AMOTION_EVENT_ACTION_SCROLL || event.pointerCount < 1) {
         return false;
     }
+
     const GameActivityPointerAxes& axes = event.pointers[0];
     const float scale = NativeWindow::getScale();
     const math::Vec2 position{GameActivityPointerAxes_getAxisValue(&axes, AMOTION_EVENT_AXIS_X) * scale, GameActivityPointerAxes_getAxisValue(&axes, AMOTION_EVENT_AXIS_Y) * scale};

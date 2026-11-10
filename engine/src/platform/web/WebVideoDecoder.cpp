@@ -62,6 +62,7 @@ WebVideoDecoder::WebVideoDecoder(io::PackageReader& file, std::string_view fileP
         const std::size_t read = file.read(offset, piece);
         haylen_js_video_append(id, piece.data(), static_cast<int>(read));
     }
+
     const std::string extension = path.substr(path.find_last_of('.') + 1);
     const std::string type = extension == "webm" ? "video/webm" : (extension == "ogv" ? "video/ogg" : (extension == "mov" ? "video/quicktime" : "video/mp4"));
     haylen_js_video_open(id, type.c_str());
@@ -75,6 +76,7 @@ const VideoDecoder::Info& WebVideoDecoder::getInfo() const noexcept {
     if (info.width == 0 && error.empty()) {
         refresh();
     }
+
     return info;
 }
 
@@ -97,9 +99,11 @@ VideoDecoder::Read WebVideoDecoder::readFrame(Frame& frame) {
         refresh();
         throw std::runtime_error("The video \"" + path + "\" could not be played by the browser: " + error);
     }
+
     if (read != 1) {
         return read == 2 ? Read::End : Read::Waiting;
     }
+
     frame.width = info.width;
     frame.height = info.height;
     frame.time = getTime();
@@ -111,6 +115,7 @@ bool WebVideoDecoder::readAudio(std::vector<float>& samples, double) {
     while (true) {
         const int copied = haylen_js_video_take_sound(id, sound.data(), static_cast<int>(sound.size()));
         samples.insert(samples.end(), sound.begin(), sound.begin() + copied);
+
         if (copied < static_cast<int>(sound.size())) {
             return true;
         }

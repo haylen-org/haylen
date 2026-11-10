@@ -70,6 +70,7 @@ void LinuxAccessibility::start() {
     if (library == nullptr || !load(library)) {
         return;
     }
+
     node = parseNode(kIntrospection, nullptr);
     if (node != nullptr) {
         busGet(kSessionBus, nullptr, sessionReady, nullptr);
@@ -89,6 +90,7 @@ void LinuxAccessibility::sessionReady(void*, void* result, void*) {
     if (session == nullptr) {
         return;
     }
+
     subscribe(session, "org.a11y.Bus", "org.freedesktop.DBus.Properties", "PropertiesChanged", "/org/a11y/bus", "org.a11y.Status", 0, statusChanged, nullptr, nullptr);
     call(session, "org.a11y.Bus", "/org/a11y/bus", "org.freedesktop.DBus.Properties", "GetAll", newVariant("(s)", "org.a11y.Status"), "(a{sv})", 0, kTimeoutMilliseconds, nullptr, statusRead, nullptr);
     call(session, "org.a11y.Bus", "/org/a11y/bus", "org.a11y.Bus", "GetAddress", nullptr, "(s)", 0, kTimeoutMilliseconds, nullptr, addressRead, nullptr);
@@ -99,6 +101,7 @@ void LinuxAccessibility::statusRead(void* source, void* result, void*) {
     if (reply == nullptr) {
         return;
     }
+
     void* entries = getChild(reply, 0);
     applyStatus(entries);
     unref(entries);
@@ -126,6 +129,7 @@ void LinuxAccessibility::applyStatus(void* entries) {
             screenReader = getBoolean(value) != 0;
             LinuxSettings::setScreenReader(screenReader);
         }
+
         unref(value);
         unref(boxed);
         unref(key);
@@ -138,6 +142,7 @@ void LinuxAccessibility::addressRead(void* source, void* result, void*) {
     if (reply == nullptr) {
         return;
     }
+
     void* address = getChild(reply, 0);
     connect(getString(address, nullptr), kConnectionFlags, nullptr, nullptr, busReady, nullptr);
     unref(address);
@@ -150,6 +155,7 @@ void LinuxAccessibility::busReady(void*, void* result, void*) {
     if (bus == nullptr) {
         return;
     }
+
     uniqueName = getUniqueName(bus);
     registerSubtree(bus, kPrefix, &kSubtreeTable, kDispatchToUnenumerated, nullptr, nullptr, nullptr);
     registerObject(bus, kCachePath, lookupInterface(node, kCache), &kCacheTable, nullptr, nullptr, nullptr);
@@ -162,6 +168,7 @@ void LinuxAccessibility::embedded(void* source, void* result, void*) {
     if (reply == nullptr) {
         return;
     }
+
     void* reference = getChild(reply, 0);
     void* name = getChild(reference, 0);
     void* path = getChild(reference, 1);
@@ -186,6 +193,7 @@ void LinuxAccessibility::update(std::span<const AccessibilityElement> tree, std:
         indices.emplace(elements[index].id, index);
         children[elements[index].parent].push_back(elements[index].id);
     }
+
     focusedElement = focused;
 
     if (bus != nullptr) {
@@ -203,9 +211,11 @@ void LinuxAccessibility::announce(std::string_view text, bool interrupt) {
 
 void LinuxAccessibility::setActive(bool value) {
     active = value;
+
     if (bus == nullptr) {
         return;
     }
+
     const Object window{.kind = Object::Kind::Window};
     emit(window, kObjectEvents, "StateChanged", "active", value ? 1 : 0, 0, newVariant("i", 0));
     emit(window, kWindowEvents, value ? "Activate" : "Deactivate", "", 0, 0, newVariant("s", getName(window).c_str()));
@@ -221,11 +231,13 @@ void** LinuxAccessibility::introspect(void*, const char*, const char*, const cha
     if (object.kind == Object::Kind::None) {
         return nullptr;
     }
+
     const std::vector<const char*> interfaces = getInterfaces(object);
     auto** infos = static_cast<void**>(allocateZeroed((interfaces.size() + 1) * sizeof(void*)));
     for (std::size_t index = 0; index < interfaces.size(); ++index) {
         infos[index] = refInterface(lookupInterface(node, interfaces[index]));
     }
+
     return infos;
 }
 
@@ -235,6 +247,7 @@ const void* LinuxAccessibility::dispatch(void*, const char*, const char*, const 
     if (std::ranges::none_of(interfaces, [interface](const char* offered) { return std::strcmp(offered, interface) == 0; })) {
         return nullptr;
     }
+
     *out = nullptr;
     return &kInterfaceTable;
 }
@@ -253,6 +266,7 @@ void LinuxAccessibility::answer(void*, const char*, const char* path, const char
         returnError(invocation, "org.freedesktop.DBus.Error.UnknownObject", "The element is gone.");
         return;
     }
+
     if (std::strcmp(interface, kAccessible) == 0) {
         answerAccessible(object, method, parameters, invocation);
     } else if (std::strcmp(interface, kComponent) == 0) {
@@ -272,6 +286,7 @@ void LinuxAccessibility::answerAccessible(const Object& object, const char* meth
     if (name == "GetChildren" || name == "GetChildAtIndex") {
         asked = true;
     }
+
     if (name == "GetChildAtIndex") {
         int index = 0;
         unpack(parameters, "(i)", &index);
@@ -279,6 +294,7 @@ void LinuxAccessibility::answerAccessible(const Object& object, const char* meth
             returnValue(invocation, newVariant("(@(so))", index == 0 ? newReference({.kind = Object::Kind::Window}) : newVariant("(so)", "", kNullPath)));
             return;
         }
+
         const std::span<const std::uint64_t> found = getChildren(object);
         const bool inside = index >= 0 && static_cast<std::size_t>(index) < found.size();
         returnValue(invocation, newVariant("(@(so))", inside ? newReference({.kind = Object::Kind::Element, .id = found[static_cast<std::size_t>(index)]}) : newVariant("(so)", "", kNullPath)));
@@ -291,6 +307,7 @@ void LinuxAccessibility::answerAccessible(const Object& object, const char* meth
                 addToBuilder(builder, "@(so)", newReference({.kind = Object::Kind::Element, .id = child}));
             }
         }
+
         void* list = endBuilder(builder);
         unrefBuilder(builder);
         returnValue(invocation, newVariant("(@a(so))", list));
@@ -300,6 +317,7 @@ void LinuxAccessibility::answerAccessible(const Object& object, const char* meth
             const std::span<const std::uint64_t> siblings = getChildren(getParent(object));
             index = static_cast<int>(std::ranges::find(siblings, object.id) - siblings.begin());
         }
+
         returnValue(invocation, newVariant("(i)", object.kind == Object::Kind::Root ? -1 : index));
     } else if (name == "GetRelationSet") {
         void* builder = newBuilder("a(ua(so))");
@@ -331,6 +349,7 @@ void LinuxAccessibility::answerAccessible(const Object& object, const char* meth
         for (const char* offered : getInterfaces(object)) {
             addToBuilder(builder, "s", offered);
         }
+
         void* list = endBuilder(builder);
         unrefBuilder(builder);
         returnValue(invocation, newVariant("(@as)", list));
@@ -352,6 +371,7 @@ void LinuxAccessibility::answerComponent(const Object& object, const char* metho
             returnValue(invocation, newVariant("(b)", inside ? 1 : 0));
             return;
         }
+
         // The point moves into the coordinates of the window, where the elements lie.
         const math::Vec2 shift = getBounds(object, 1).getMin() - area.getMin();
         returnValue(invocation, newVariant("(@(so))", inside ? newReference(findAt(object, math::Vec2{static_cast<float>(x), static_cast<float>(y)} + shift)) : newVariant("(so)", "", kNullPath)));
@@ -365,6 +385,7 @@ void LinuxAccessibility::answerComponent(const Object& object, const char* metho
             returnValue(invocation, newVariant("(ii)", x, y));
             return;
         }
+
         returnValue(invocation, newVariant("((iiii))", x, y, static_cast<int>(std::lround(area.width)), static_cast<int>(std::lround(area.height))));
     } else if (name == "GetSize") {
         const math::Rect area = getBounds(object, 1);
@@ -379,6 +400,7 @@ void LinuxAccessibility::answerComponent(const Object& object, const char* metho
         if (focusable) {
             perform(object, AccessibilityElement::Focus);
         }
+
         returnValue(invocation, newVariant("(b)", focusable ? 1 : 0));
     } else if (name == "GetAlpha") {
         returnValue(invocation, newVariant("(d)", 1.0));
@@ -397,11 +419,13 @@ void LinuxAccessibility::answerAction(const Object& object, const char* method, 
         for (const AccessibilityElement::Action action : actions) {
             addToBuilder(builder, "(sss)", nameOf(action), "", "");
         }
+
         void* list = endBuilder(builder);
         unrefBuilder(builder);
         returnValue(invocation, newVariant("(@a(sss))", list));
         return;
     }
+
     int index = 0;
     unpack(parameters, "(i)", &index);
     const bool valid = index >= 0 && static_cast<std::size_t>(index) < actions.size();
@@ -409,6 +433,7 @@ void LinuxAccessibility::answerAction(const Object& object, const char* method, 
         if (valid) {
             perform(object, actions[static_cast<std::size_t>(index)]);
         }
+
         returnValue(invocation, newVariant("(b)", valid ? 1 : 0));
     } else if (name == "GetName" || name == "GetLocalizedName") {
         returnValue(invocation, newVariant("(s)", valid ? nameOf(actions[static_cast<std::size_t>(index)]) : ""));
@@ -426,31 +451,40 @@ void* LinuxAccessibility::readProperty(void*, const char*, const char* path, con
         if (name == "Name") {
             return newVariant("s", getName(object).c_str());
         }
+
         if (name == "Description") {
             return newVariant("s", getDescription(object).c_str());
         }
+
         if (name == "Parent") {
             if (object.kind == Object::Kind::Root) {
                 return newVariant("(so)", parentName.c_str(), parentPath.c_str());
             }
+
             return newReference(getParent(object));
         }
+
         if (name == "ChildCount") {
             return newVariant("i", object.kind == Object::Kind::Root ? 1 : static_cast<int>(getChildren(object).size()));
         }
+
         if (name == "AccessibleId") {
             return newVariant("s", object.kind == Object::Kind::Element ? std::to_string(object.id).c_str() : "");
         }
+
         if (name == "HelpText") {
             const AccessibilityElement* element = findElement(object.id);
             return newVariant("s", object.kind == Object::Kind::Element && element != nullptr ? toUtf8(element->hint).c_str() : "");
         }
+
         return newVariant("s", "");
     }
+
     if (std::strcmp(interface, kAction) == 0) {
         const AccessibilityElement* element = findElement(object.id);
         return newVariant("i", element != nullptr ? static_cast<int>(getActions(*element).size()) : 0);
     }
+
     if (std::strcmp(interface, kValue) == 0) {
         // The engine knows the number of a value and not its range, so the range is the value itself and the text says the rest.
         const AccessibilityElement* element = findElement(object.id);
@@ -458,30 +492,38 @@ void* LinuxAccessibility::readProperty(void*, const char*, const char* path, con
         if (name == "Text") {
             return newVariant("s", text.c_str());
         }
+
         return newVariant("d", name == "MinimumIncrement" ? 0.0 : readNumber(text));
     }
+
     if (std::strcmp(interface, kApplication) == 0) {
         if (name == "Id") {
             return newVariant("i", applicationId);
         }
+
         if (name == "ToolkitName") {
             return newVariant("s", "Haylen");
         }
+
         if (name == "Version") {
             return newVariant("s", std::string(core::Version::kString).c_str());
         }
+
         return newVariant("s", "2.1");
     }
+
     return nullptr;
 }
 
 // The registry numbers the app, and a screen reader that sets the value of a slider moves it a step toward the new value.
 int LinuxAccessibility::writeProperty(void*, const char*, const char* path, const char* interface, const char* property, void* value, void**, void*) {
     const Object object = findObject(path);
+
     if (std::strcmp(interface, kApplication) == 0 && std::strcmp(property, "Id") == 0) {
         unpack(value, "i", &applicationId);
         return 1;
     }
+
     const AccessibilityElement* element = findElement(object.id);
     if (std::strcmp(interface, kValue) == 0 && std::strcmp(property, "CurrentValue") == 0 && element != nullptr) {
         double target = 0.0;
@@ -492,8 +534,10 @@ int LinuxAccessibility::writeProperty(void*, const char*, const char* path, cons
         } else if (target < current && element->can(AccessibilityElement::Decrement)) {
             perform(object, AccessibilityElement::Decrement);
         }
+
         return 1;
     }
+
     return 0;
 }
 
@@ -508,19 +552,23 @@ LinuxAccessibility::Object LinuxAccessibility::findObject(const char* path) {
     if (text == kRootPath) {
         return {.kind = Object::Kind::Root};
     }
+
     if (text == kWindowPath) {
         return {.kind = Object::Kind::Window};
     }
+
     const std::string_view prefix = kPrefix;
     if (!text.starts_with(prefix) || text.size() <= prefix.size() + 1 || text[prefix.size()] != '/') {
         return {};
     }
+
     std::uint64_t id = 0;
     const std::string_view digits = text.substr(prefix.size() + 1);
     const auto [end, error] = std::from_chars(digits.data(), digits.data() + digits.size(), id);
     if (error != std::errc{} || end != digits.data() + digits.size() || !indices.contains(id)) {
         return {};
     }
+
     return {.kind = Object::Kind::Element, .id = id};
 }
 
@@ -551,13 +599,16 @@ LinuxAccessibility::Object LinuxAccessibility::getParent(const Object& object) {
     if (object.kind == Object::Kind::Window) {
         return {.kind = Object::Kind::Root};
     }
+
     const AccessibilityElement* element = object.kind == Object::Kind::Element ? findElement(object.id) : nullptr;
     if (element == nullptr) {
         return {};
     }
+
     if (element->parent == 0 || !indices.contains(element->parent)) {
         return {.kind = Object::Kind::Window};
     }
+
     return {.kind = Object::Kind::Element, .id = element->parent};
 }
 
@@ -565,6 +616,7 @@ std::span<const std::uint64_t> LinuxAccessibility::getChildren(const Object& obj
     if (object.kind != Object::Kind::Window && object.kind != Object::Kind::Element) {
         return {};
     }
+
     const auto found = children.find(object.kind == Object::Kind::Window ? 0 : object.id);
     return found != children.end() ? std::span<const std::uint64_t>(found->second) : std::span<const std::uint64_t>();
 }
@@ -585,9 +637,11 @@ std::vector<const char*> LinuxAccessibility::getInterfaces(const Object& object)
     if (!getActions(element).empty()) {
         interfaces.push_back(kAction);
     }
+
     if (hasValue(element)) {
         interfaces.push_back(kValue);
     }
+
     return interfaces;
 }
 
@@ -595,6 +649,7 @@ std::string LinuxAccessibility::getName(const Object& object) {
     if (object.kind == Object::Kind::Root || object.kind == Object::Kind::Window) {
         return toUtf8(LinuxDesktop::getTitle());
     }
+
     const AccessibilityElement* element = findElement(object.id);
     return element != nullptr ? toUtf8(element->label) : std::string();
 }
@@ -605,9 +660,11 @@ std::string LinuxAccessibility::getDescription(const Object& object) {
     if (element == nullptr) {
         return {};
     }
+
     if (hasValue(*element) || element->value.empty()) {
         return toUtf8(element->hint);
     }
+
     return toUtf8(element->hint.empty() ? element->value : element->value + ". " + element->hint);
 }
 
@@ -615,6 +672,7 @@ std::uint32_t LinuxAccessibility::getRole(const Object& object) {
     if (object.kind == Object::Kind::Root) {
         return kRoleApplication;
     }
+
     const AccessibilityElement* element = object.kind == Object::Kind::Element ? findElement(object.id) : nullptr;
     return element != nullptr ? kRoles[static_cast<std::size_t>(element->role)] : kRoleFrame;
 }
@@ -623,6 +681,7 @@ std::string_view LinuxAccessibility::getRoleName(const Object& object) {
     if (object.kind == Object::Kind::Root) {
         return "application";
     }
+
     const AccessibilityElement* element = object.kind == Object::Kind::Element ? findElement(object.id) : nullptr;
     return element != nullptr ? kRoleNames[static_cast<std::size_t>(element->role)] : "frame";
 }
@@ -632,15 +691,18 @@ std::array<std::uint32_t, 2> LinuxAccessibility::getStates(const Object& object)
         const AccessibilityElement* element = findElement(object.id);
         return element != nullptr ? getStates(*element, object.id == focusedElement) : std::array<std::uint32_t, 2>{};
     }
+
     std::array<std::uint32_t, 2> states{};
     if (object.kind == Object::Kind::Window) {
         for (const std::uint32_t state : {kStateEnabled, kStateSensitive, kStateShowing, kStateVisible}) {
             states[state / 32] |= 1U << (state % 32);
         }
+
         if (active) {
             states[kStateActive / 32] |= 1U << (kStateActive % 32);
         }
     }
+
     return states;
 }
 
@@ -690,6 +752,7 @@ math::Rect LinuxAccessibility::getBounds(const Object& object, std::uint32_t coo
             area.y -= parent->bounds.y / scale;
         }
     }
+
     return area;
 }
 
@@ -698,6 +761,7 @@ LinuxAccessibility::Object LinuxAccessibility::findAt(const Object& object, math
     if (object.kind == Object::Kind::Root) {
         return findAt({.kind = Object::Kind::Window}, point);
     }
+
     const std::span<const std::uint64_t> found = getChildren(object);
     const math::Vec2 pixel = point * NativeWindow::getScale();
     for (auto child = found.rbegin(); child != found.rend(); ++child) {
@@ -705,6 +769,7 @@ LinuxAccessibility::Object LinuxAccessibility::findAt(const Object& object, math
             return findAt({.kind = Object::Kind::Element, .id = *child}, point);
         }
     }
+
     return object;
 }
 
@@ -715,6 +780,7 @@ std::vector<AccessibilityElement::Action> LinuxAccessibility::getActions(const A
             actions.push_back(action);
         }
     }
+
     return actions;
 }
 
@@ -733,10 +799,12 @@ std::string LinuxAccessibility::toUtf8(std::string_view text) {
     if (core::Utf8::isValid(text)) {
         return std::string(text);
     }
+
     std::string valid;
     for (std::size_t offset = 0; offset < text.size();) {
         core::Utf8::append(valid, core::Utf8::decode(text, offset));
     }
+
     return valid;
 }
 
@@ -757,18 +825,21 @@ void LinuxAccessibility::announceChildren(const std::unordered_map<std::uint64_t
         if (current == previous || (parent != 0 && !indices.contains(parent))) {
             continue;
         }
+
         for (std::size_t index = 0; index < previous.size(); ++index) {
             if (std::ranges::find(current, previous[index]) == current.end()) {
                 emit(parentOf(parent), kObjectEvents, "ChildrenChanged", "remove", static_cast<int>(index), 0, newVariant("(so)", uniqueName.c_str(), getPath({.kind = Object::Kind::Element, .id = previous[index]}).c_str()));
             }
         }
     }
+
     for (const auto& [parent, current] : children) {
         const auto found = before.find(parent);
         const std::vector<std::uint64_t>& previous = found != before.end() ? found->second : none;
         if (current == previous || (parent != 0 && !indices.contains(parent))) {
             continue;
         }
+
         for (std::size_t index = 0; index < current.size(); ++index) {
             if (std::ranges::find(previous, current[index]) == previous.end()) {
                 emit(parentOf(parent), kObjectEvents, "ChildrenChanged", "add", static_cast<int>(index), 0, newReference({.kind = Object::Kind::Element, .id = current[index]}));
@@ -784,17 +855,21 @@ void LinuxAccessibility::announceChanges(const std::vector<AccessibilityElement>
         if (found == indicesBefore.end()) {
             continue;
         }
+
         const AccessibilityElement& previous = before[found->second];
         const Object object{.kind = Object::Kind::Element, .id = element.id};
         if (element.label != previous.label) {
             emit(object, kObjectEvents, "PropertyChange", "accessible-name", 0, 0, newVariant("s", toUtf8(element.label).c_str()));
         }
+
         if (hasValue(element) && element.value != previous.value) {
             emit(object, kObjectEvents, "PropertyChange", "accessible-value", 0, 0, newVariant("d", readNumber(element.value)));
         }
+
         if (element.hint != previous.hint || (!hasValue(element) && element.value != previous.value)) {
             emit(object, kObjectEvents, "PropertyChange", "accessible-description", 0, 0, newVariant("s", getDescription(object).c_str()));
         }
+
         const std::array<std::uint32_t, 2> states = getStates(element, false);
         const std::array<std::uint32_t, 2> statesBefore = getStates(previous, false);
         for (const auto& [state, name] : kAnnouncedStates) {
@@ -808,9 +883,11 @@ void LinuxAccessibility::announceChanges(const std::vector<AccessibilityElement>
     if (focusedElement == focusedBefore) {
         return;
     }
+
     if (indices.contains(focusedBefore)) {
         emit({.kind = Object::Kind::Element, .id = focusedBefore}, kObjectEvents, "StateChanged", "focused", 0, 0, newVariant("i", 0));
     }
+
     if (indices.contains(focusedElement)) {
         const Object object{.kind = Object::Kind::Element, .id = focusedElement};
         emit(object, kObjectEvents, "StateChanged", "focused", 1, 0, newVariant("i", 0));

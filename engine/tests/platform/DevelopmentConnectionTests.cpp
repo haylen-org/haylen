@@ -70,8 +70,10 @@ class PushingServer final {
                     if (length <= 0 || (flags & Poco::Net::WebSocket::FRAME_OP_BITMASK) == Poco::Net::WebSocket::FRAME_OP_CLOSE) {
                         return;
                     }
+
                     const core::Json message = core::Json::parse(std::string_view(frame.begin(), frame.size()));
                     server.record(message);
+
                     if (message.at("type") == "hello") {
                         push(socket);
                     } else if (message.at("type") == "report" && !message.value("restarted", false)) {
@@ -88,16 +90,20 @@ class PushingServer final {
             for (const std::string console : {R"({"type": "console", "id": 1, "line": "help"})", R"({"type": "consoleCommands"})"}) {
                 socket.sendFrame(console.data(), static_cast<int>(console.size()), Poco::Net::WebSocket::FRAME_TEXT);
             }
+
             for (const std::string malformed : {R"({"type": 1})", R"({"type": "files", "files": [1]})", R"({"type": "files", "files": [], "removed": [2]})", R"({"type": "files", "files": [], "revision": "one"})", R"({"type": "shaderError", "path": 3})"}) {
                 socket.sendFrame(malformed.data(), static_cast<int>(malformed.size()), Poco::Net::WebSocket::FRAME_TEXT);
             }
+
             const std::vector<std::pair<std::string, std::string>> files{{"source/counter.lua", "return {value = 'pushed'}"}, {"content/data.json", R"({"level": 9})"}, {"../secret.lua", "return 'stolen'"}};
             core::Json listed = core::Json::array();
             for (const auto& [path, content] : files) {
                 listed.push_back({{"path", path}, {"size", content.size()}});
             }
+
             const std::string message = core::Json{{"type", "files"}, {"session", "run"}, {"revision", 1}, {"files", listed}, {"removed", core::Json::array()}}.dump();
             socket.sendFrame(message.data(), static_cast<int>(message.size()), Poco::Net::WebSocket::FRAME_TEXT);
+
             for (const auto& [path, content] : files) {
                 socket.sendFrame(content.data(), static_cast<int>(content.size()), Poco::Net::WebSocket::FRAME_BINARY);
             }
@@ -221,6 +227,7 @@ TEST(DevelopmentConnectionTest, WithdrawsTheConsoleLinesOfASessionThatEnds) {
         arrived = !session->takeChanges().empty();
         test::EventLoop::yield();
     }
+
     ASSERT_TRUE(arrived);
 
     session.reset();

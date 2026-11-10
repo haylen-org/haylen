@@ -13,6 +13,7 @@ Orientation AppleOrientation::get() {
         const math::Vec2 size = NativeWindow::getFramebufferSize();
         return size.y > size.x ? Orientation::Portrait : Orientation::Landscape;
     }
+
     return UIInterfaceOrientationIsPortrait(orientation) ? Orientation::Portrait : Orientation::Landscape;
 }
 

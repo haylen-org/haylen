@@ -78,6 +78,7 @@ NativeLibraries::Library NativeLibraries::open(std::string_view name) {
     if (!isAvailable()) {
         throw std::runtime_error("Native libraries are not available in the browser. Call JavaScript through \"haylen.platform\" instead.");
     }
+
     if (name.empty()) {
         throw std::invalid_argument("A native library needs a name or a path.");
     }
@@ -91,6 +92,7 @@ NativeLibraries::Library NativeLibraries::open(std::string_view name) {
     } else {
         std::vector<std::filesystem::path> folders = state.folders;
         std::ranges::copy(getPlatformFolders(), std::back_inserter(folders));
+
         for (const std::filesystem::path& folder : folders) {
             for (const std::string& file : getFileNames(name)) {
                 candidates.push_back(folder / file);
@@ -112,15 +114,18 @@ NativeLibraries::Library NativeLibraries::open(std::string_view name) {
             state.loaded.push_back(library);
             return library;
         }
+
         searched += "\n  " + path + ": " + failure;
     }
 
     if (!given.has_parent_path() && state.linked.contains(std::string(name))) {
         return {.name = std::string(name), .linked = true};
     }
+
     if (!given.has_parent_path()) {
         searched += "\n  The libraries linked into the app: not registered";
     }
+
     throw std::runtime_error("The native library \"" + std::string(name) + "\" could not be loaded. These are the places it searched:" + searched + "\nPut the library in one of them or load it by its path.");
 }
 
@@ -135,6 +140,7 @@ void* NativeLibraries::findSymbol(const Library& library, std::string_view name)
     if (table == state.linked.end()) {
         return nullptr;
     }
+
     const auto symbol = table->second.find(std::string(name));
     return symbol != table->second.end() ? symbol->second : nullptr;
 }
@@ -148,11 +154,13 @@ void* NativeLibraries::findSymbol(std::string_view name) {
             return symbol->second;
         }
     }
+
     for (const Library& library : state.loaded) {
         if (void* address = lookup(library.handle, text)) {
             return address;
         }
     }
+
     return lookupProcess(text);
 }
 
@@ -196,6 +204,7 @@ std::filesystem::path NativeLibraries::getExecutableFolder() {
         buffer.resize(buffer.size() * 2);
         length = GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
     }
+
     buffer.resize(length);
     return std::filesystem::path(buffer).parent_path();
 }
@@ -207,6 +216,7 @@ void* NativeLibraries::load(const std::filesystem::path& file, std::string& fail
         failure = "not found";
         return nullptr;
     }
+
     HMODULE module = LoadLibraryExW(file.c_str(), nullptr, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
     if (module == nullptr) {
         const DWORD code = GetLastError();
@@ -216,8 +226,10 @@ void* NativeLibraries::load(const std::filesystem::path& file, std::string& fail
         while (!failure.empty() && (failure.back() == '\n' || failure.back() == '\r' || failure.back() == '.')) {
             failure.pop_back();
         }
+
         return nullptr;
     }
+
     return reinterpret_cast<void*>(module);
 }
 
@@ -270,11 +282,13 @@ void* NativeLibraries::load(const std::filesystem::path& file, std::string& fail
         failure = "not found";
         return nullptr;
     }
+
     void* handle = dlopen(file.c_str(), RTLD_NOW | RTLD_LOCAL);
     if (handle == nullptr) {
         const char* text = dlerror();
         failure = text != nullptr ? text : "dlopen failed";
     }
+
     return handle;
 }
 

@@ -36,6 +36,7 @@ Battery AppleBattery::readPowerSources() {
         if (![values[@kIOPSTypeKey] isEqualToString:@kIOPSInternalBatteryType]) {
             continue;
         }
+
         const double current = [values[@kIOPSCurrentCapacityKey] doubleValue];
         const double maximum = [values[@kIOPSMaxCapacityKey] doubleValue];
         const bool external = [values[@kIOPSPowerSourceStateKey] isEqualToString:@kIOPSACPowerValue];
@@ -43,13 +44,16 @@ Battery AppleBattery::readPowerSources() {
         if (maximum > 0.0) {
             battery.level = static_cast<float>(current / maximum);
         }
+
         if (battery.charging) {
             battery.state = Battery::State::Charging;
         } else {
             battery.state = external ? Battery::State::Full : Battery::State::Discharging;
         }
+
         break;
     }
+
     CFRelease(sources);
     CFRelease(info);
     return battery;
@@ -71,6 +75,7 @@ Battery AppleBattery::readDevice() {
     if (device.batteryLevel >= 0.0F) {
         battery.level = device.batteryLevel;
     }
+
     switch (device.batteryState) {
     case UIDeviceBatteryStateUnknown:
         battery.state = Battery::State::Unknown;

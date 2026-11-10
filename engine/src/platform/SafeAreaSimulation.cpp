@@ -14,6 +14,7 @@ float SafeAreaSimulation::readSide(const core::Json& value) {
     if (!value.is_number() || !std::isfinite(value.get<double>()) || value.get<double>() < 0.0) {
         throw std::invalid_argument("A simulated safe area needs non-negative insets.");
     }
+
     return core::JsonNumber::toFloat(value);
 }
 
@@ -24,6 +25,7 @@ SafeAreaSimulation SafeAreaSimulation::fromJson(const core::Json& value) {
         if (found == kDevices.end()) {
             throw std::invalid_argument("There is no simulated device named \"" + value.get<std::string>() + "\".");
         }
+
         simulation.device = static_cast<std::size_t>(found - kDevices.begin());
         return simulation;
     }
@@ -38,6 +40,7 @@ SafeAreaSimulation SafeAreaSimulation::fromJson(const core::Json& value) {
     } else {
         throw std::invalid_argument("A simulated safe area is a device name or one, two or four insets.");
     }
+
     simulation.insets = sides.size() == 2 ? math::Insets{.left = sides[1], .top = sides[0], .right = sides[1], .bottom = sides[0]} : math::Insets{.left = sides[3], .top = sides[0], .right = sides[1], .bottom = sides[2]};
     return simulation;
 }
@@ -59,9 +62,11 @@ math::Insets SafeAreaSimulation::getInsets(math::Vec2 framebuffer, float dpiScal
 // A device in landscape lies with its top to the left, so the cutout at the top of its portrait screen sits along the left edge.
 void SafeAreaSimulation::getCutouts(math::Vec2 framebuffer, std::vector<math::Rect>& cutouts) const {
     cutouts.clear();
+
     if (!device || kDevices[*device].cutout.width <= 0.0F) {
         return;
     }
+
     const Device& simulated = kDevices[*device];
     const math::Rect& cutout = simulated.cutout;
     const bool landscape = framebuffer.x > framebuffer.y;
@@ -75,6 +80,7 @@ core::Json SafeAreaSimulation::toJson() const {
     if (device) {
         return std::string(kDevices[*device].name);
     }
+
     return core::Json::array({core::JsonNumber::fromFloat(insets.top), core::JsonNumber::fromFloat(insets.right), core::JsonNumber::fromFloat(insets.bottom), core::JsonNumber::fromFloat(insets.left)});
 }
 

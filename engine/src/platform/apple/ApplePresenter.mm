@@ -9,10 +9,12 @@ UIViewController* ApplePresenter::getTopmost() {
     if (!NativeWindow::isOpen()) {
         return nil;
     }
+
     UIViewController* top = ((__bridge UIWindow*)NativeWindow::getHandle()).rootViewController;
     while (top.presentedViewController != nil && !top.presentedViewController.isBeingDismissed) {
         top = top.presentedViewController;
     }
+
     return top;
 }
 

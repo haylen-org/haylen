@@ -37,6 +37,7 @@ void WebTextInput::setVisibleFields(std::span<const Field> fields) {
     for (const Field& field : fields) {
         list.push_back(toJson(field));
     }
+
     haylen_js_text_fields(list.dump().c_str());
 }
 

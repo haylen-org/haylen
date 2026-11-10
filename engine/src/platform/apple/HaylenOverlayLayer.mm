@@ -58,6 +58,7 @@ using haylen::platform::NativeHost;
 // Views reserve their edges only while they show over the app, and the next attach reserves them again.
 - (void)detach {
     [self removeFromSuperview];
+
     for (HaylenOverlayItem* item in items) {
         NativeHost::getNativeViews().releaseInsets(item.key.UTF8String);
     }
@@ -75,6 +76,7 @@ using haylen::platform::NativeHost;
     if (![items containsObject:item]) {
         return;
     }
+
     [NSLayoutConstraint deactivateConstraints:item.constraints];
     item.constraints = [self constraintsFor:item];
     [NSLayoutConstraint activateConstraints:item.constraints];
@@ -90,6 +92,7 @@ using haylen::platform::NativeHost;
     if (![items containsObject:item]) {
         return;
     }
+
     [items removeObject:item];
     [item.view removeFromSuperview];
     NativeHost::getNativeViews().releaseInsets(item.key.UTF8String);
@@ -149,6 +152,7 @@ using haylen::platform::NativeHost;
     } else {
         [constraints addObject:[view.centerXAnchor constraintEqualToAnchor:guide.centerXAnchor]];
     }
+
     if (alignment.y < 0.5) {
         [constraints addObject:[view.topAnchor constraintEqualToAnchor:guide.topAnchor constant:margin]];
     } else if (alignment.y > 0.5) {
@@ -160,9 +164,11 @@ using haylen::platform::NativeHost;
     if (placement.width > 0.0) {
         [constraints addObject:[view.widthAnchor constraintEqualToConstant:placement.width]];
     }
+
     if (placement.height > 0.0) {
         [constraints addObject:[view.heightAnchor constraintEqualToConstant:placement.height]];
     }
+
     return constraints;
 }
 
@@ -189,6 +195,7 @@ using haylen::platform::NativeHost;
         } else {
             insets.right = static_cast<float>((size.width - CGRectGetMinX(frame)) * scale);
         }
+
         NativeHost::getNativeViews().reserveInsets(item.key.UTF8String, insets);
     }
 }

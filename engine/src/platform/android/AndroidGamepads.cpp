@@ -31,6 +31,7 @@ bool AndroidGamepads::handleMotion(const GameActivityMotionEvent& event) {
     if (!isController(event.source)) {
         return false;
     }
+
     readMotion(event);
     return true;
 }

@@ -53,6 +53,7 @@ int SystemLua::powerSaving(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, *enabled);
     return 1;
 }
@@ -64,6 +65,7 @@ int SystemLua::timeZone(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, zone);
     return 1;
 }
@@ -123,17 +125,20 @@ int SystemLua::setNowPlaying(lua_State* L) {
         if (lua_type(L, -1) != LUA_TSTRING) {
             return luaL_error(L, "The option \"artwork\" must be the bytes of a PNG or JPEG image.");
         }
+
         std::size_t size = 0;
         const char* bytes = lua_tolstring(L, -1, &size);
         value.artwork.resize(size);
         std::memcpy(value.artwork.data(), bytes, size);
     }
+
     lua_pop(L, 1);
     lua_getfield(L, 1, "commands");
     if (!lua_isnil(L, -1)) {
         if (!lua_istable(L, -1)) {
             return luaL_error(L, "The option \"commands\" must be a list of command names.");
         }
+
         value.commands = 0;
         const auto count = static_cast<lua_Integer>(lua_rawlen(L, -1));
         for (lua_Integer index = 1; index <= count; ++index) {
@@ -142,10 +147,12 @@ int SystemLua::setNowPlaying(lua_State* L) {
             if (!command) {
                 return luaL_error(L, "The option \"commands\" names \"%s\", which is not \"play\", \"pause\", \"togglePlayPause\", \"stop\", \"next\", \"previous\" or \"seek\".", luaL_tolstring(L, -1, nullptr));
             }
+
             value.commands |= MediaSession::bit(*command);
             lua_pop(L, 1);
         }
     }
+
     lua_pop(L, 1);
     lua::Runtime::getEngine(L).getMediaSession().setNowPlaying(std::move(value));
     return 0;

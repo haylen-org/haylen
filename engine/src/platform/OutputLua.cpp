@@ -31,9 +31,11 @@ int OutputLua::open(lua_State* L) {
         lua::Table::readField(L, 2, "title", options.title);
         lua::Table::readField(L, 2, "clearColor", options.clearColor);
     }
+
     if (!(options.size.x > 0.0F && options.size.y > 0.0F)) {
         luaL_error(L, "The window of an output needs a positive \"width\" and \"height\" in points.");
     }
+
     lua::Userdata::emplace<Output>(L, lua::Runtime::getEngine(L).getOutputs().open(display, options));
     return 1;
 }
@@ -66,6 +68,7 @@ int OutputLua::ending(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, std::ranges::find(Output::kEndingNames, output.getEnding(), &std::pair<std::string_view, Output::Ending>::second)->first);
     return 1;
 }
@@ -94,6 +97,7 @@ int OutputLua::target(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, value);
     return 1;
 }

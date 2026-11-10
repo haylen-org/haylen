@@ -65,6 +65,7 @@ std::shared_ptr<io::Package> Services::openBundledPackage() {
             executable.resize(length);
             break;
         }
+
         executable.resize(executable.size() * 2);
     }
 
@@ -77,8 +78,10 @@ std::shared_ptr<io::Package> Services::openBundledPackage() {
         if (std::filesystem::is_directory(directory / "packs")) {
             files = std::make_shared<io::CompositePackage>("app", std::vector<std::shared_ptr<const io::Package>>{files, io::Package::openDirectory(directory / "packs")});
         }
+
         return content::ReleasePackage::openBundled(std::move(files), bootstrap, [](std::string_view identifier) { return std::make_unique<content::FolderStoreFiles>(getContentStoreDirectory(identifier)); });
     }
+
     return io::Package::open(directory / "app.zip");
 }
 
@@ -88,6 +91,7 @@ std::filesystem::path Services::getUserDataDirectory(std::string_view identifier
         CoTaskMemFree(folder);
         throw std::runtime_error("The application data folder could not be found.");
     }
+
     std::filesystem::path path(folder);
     CoTaskMemFree(folder);
     return path / std::string(identifier);
@@ -100,6 +104,7 @@ std::filesystem::path Services::getContentStoreDirectory(std::string_view identi
         CoTaskMemFree(folder);
         throw std::runtime_error("The local application data folder could not be found.");
     }
+
     std::filesystem::path path(folder);
     CoTaskMemFree(folder);
     return path / std::string(identifier) / "Content";

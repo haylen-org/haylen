@@ -87,6 +87,7 @@ using haylen::platform::AccessibilityElement;
     if (moved) {
         NSAccessibilityPostNotification(self, NSAccessibilityLayoutChangedNotification);
     }
+
     if (refocused && target != nil) {
         NSAccessibilityPostNotification(target, NSAccessibilityFocusedUIElementChangedNotification);
     }

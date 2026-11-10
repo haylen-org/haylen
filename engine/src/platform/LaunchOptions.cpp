@@ -27,6 +27,7 @@ LaunchOptions LaunchOptions::parse(int argc, char* argv[]) {
             options.package = argument;
         }
     }
+
     return options;
 }
 

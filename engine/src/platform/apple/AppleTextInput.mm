@@ -36,6 +36,7 @@ NSString* AppleTextInput::toNSString(std::string_view text) {
     for (std::size_t offset = 0; offset < text.size();) {
         core::Utf8::append(valid, core::Utf8::decode(text, offset));
     }
+
     return [[NSString alloc] initWithBytes:valid.data() length:valid.size() encoding:NSUTF8StringEncoding];
 }
 
@@ -45,6 +46,7 @@ int AppleTextInput::toCodePoints(NSString* text, NSUInteger offset) {
     for (NSUInteger index = 0; index < end; ++count) {
         index += CFStringIsSurrogateHighCharacter([text characterAtIndex:index]) ? 2 : 1;
     }
+
     return count;
 }
 
@@ -53,6 +55,7 @@ NSUInteger AppleTextInput::toUtf16(NSString* text, int codePoints) {
     for (int count = 0; count < codePoints && index < text.length; ++count) {
         index += CFStringIsSurrogateHighCharacter([text characterAtIndex:index]) ? 2 : 1;
     }
+
     return std::min(index, text.length);
 }
 
@@ -63,6 +66,7 @@ void AppleTextInput::report(std::uint64_t field, std::uint64_t revision, NSStrin
         edit.compositionStart = toCodePoints(text, marked.location);
         edit.compositionEnd = toCodePoints(text, NSMaxRange(marked));
     }
+
     Player::postEvent({.type = Event::Type::TextEdited, .textEdit = std::move(edit)});
 }
 

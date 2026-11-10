@@ -34,13 +34,16 @@ using haylen::platform::TextInput;
     self.automaticLinkDetectionEnabled = NO;
     self.automaticDataDetectionEnabled = NO;
     self.smartInsertDeleteEnabled = NO;
+
     if (@available(macOS 14.0, *)) {
         self.inlinePredictionType = NSTextInputTraitTypeNo;
     }
+
     if (@available(macOS 15.0, *)) {
         self.mathExpressionCompletionType = NSTextInputTraitTypeNo;
         self.writingToolsBehavior = NSWritingToolsBehaviorNone;
     }
+
     self.delegate = self;
     return self;
 }
@@ -86,6 +89,7 @@ using haylen::platform::TextInput;
         self.selectedRange = NSMakeRange(start, AppleTextInput::toUtf16(text, value.selectionEnd) - start);
         applying = NO;
     }
+
     if (window.firstResponder != self) {
         [window makeFirstResponder:self];
     }
@@ -96,6 +100,7 @@ using haylen::platform::TextInput;
     if (window.firstResponder == self) {
         [window makeFirstResponder:window.contentView];
     }
+
     field = TextInput::kKeyboardField;
     revision = 0;
 }
@@ -104,6 +109,7 @@ using haylen::platform::TextInput;
     if (applying) {
         return;
     }
+
     AppleTextInput::report(field, revision, self.string, self.selectedRange, self.hasMarkedText ? self.markedRange : NSMakeRange(NSNotFound, 0));
 }
 
@@ -121,17 +127,21 @@ using haylen::platform::TextInput;
         AppleTextInput::act(field, TextInput::Action::Submit);
         return YES;
     }
+
     if (command == @selector(insertTab:)) {
         AppleTextInput::act(field, TextInput::Action::Next);
         return YES;
     }
+
     if (command == @selector(insertBacktab:)) {
         return YES;
     }
+
     if (command == @selector(cancelOperation:)) {
         AppleTextInput::act(field, TextInput::Action::Cancel);
         return YES;
     }
+
     return NO;
 }
 

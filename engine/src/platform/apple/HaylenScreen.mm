@@ -73,11 +73,13 @@ using haylen::platform::ScreenRelay;
         dispatch_async(dispatch_get_main_queue(), ^{ [self finishWithResult:result]; });
         return;
     }
+
     std::optional<AppleBridge::Encoded> encoded = AppleBridge::encode(result);
     if (!encoded) {
         [self failWithMessage:[NSString stringWithFormat:@"The screen \"%@.%@\" ended with a result that is not JSON.", plugin, screenName] code:nil data:nil];
         return;
     }
+
     [self end:std::move(*encoded) succeeded:YES];
 }
 
@@ -87,6 +89,7 @@ using haylen::platform::ScreenRelay;
         dispatch_async(dispatch_get_main_queue(), ^{ [self failWithMessage:message code:code data:data]; });
         return;
     }
+
     NSMutableDictionary* failure = [NSMutableDictionary dictionaryWithObject:message forKey:@"message"];
     failure[@"code"] = code;
     failure[@"data"] = data;
@@ -95,6 +98,7 @@ using haylen::platform::ScreenRelay;
         [failure removeObjectForKey:@"data"];
         encoded = AppleBridge::encode(failure);
     }
+
     [self end:std::move(*encoded) succeeded:NO];
 }
 
@@ -103,8 +107,10 @@ using haylen::platform::ScreenRelay;
     if (ending) {
         return;
     }
+
     ending = std::move(encoded);
     succeeded = ok;
+
     if (shown == nil) {
         [self relay];
     } else if (!waiting) {
@@ -115,9 +121,11 @@ using haylen::platform::ScreenRelay;
 - (void)cancel {
     void (^handler)(void) = self.cancelHandler;
     self.cancelHandler = nil;
+
     if (shown != nil || handler == nil) {
         [self endWithCode:@"cancelled" message:@"The app gave the screen up."];
     }
+
     if (handler != nil) {
         handler();
     }
@@ -131,10 +139,12 @@ using haylen::platform::ScreenRelay;
     }
 #endif
     shown = nil;
+
     if (!ending) {
         [self endWithCode:@"cancelled" message:[NSString stringWithFormat:@"The person closed the screen \"%@.%@\".", plugin, screenName]];
         return;
     }
+
     [self relay];
 }
 
@@ -146,6 +156,7 @@ using haylen::platform::ScreenRelay;
     if (relayed) {
         return;
     }
+
     relayed = YES;
     ScreenRelay::finish(screenId, succeeded == YES, ending->json, std::move(ending->buffers));
     AppleScreens::forget(screenId);
@@ -157,6 +168,7 @@ using haylen::platform::ScreenRelay;
         Log::error("The screen \"{}.{}\" shows its UI once, before it ends.", plugin.UTF8String, screenName.UTF8String);
         return NO;
     }
+
     return YES;
 }
 
@@ -170,6 +182,7 @@ using haylen::platform::ScreenRelay;
     if (![self canShow] || ![self hasWindow:parent]) {
         return;
     }
+
     NSWindow* sheet = [NSWindow windowWithContentViewController:controller];
     shown = sheet;
     inSheet = YES;
@@ -183,6 +196,7 @@ using haylen::platform::ScreenRelay;
     if (![self canShow] || ![self hasWindow:parent]) {
         return;
     }
+
     NSWindow* window = [NSWindow windowWithContentViewController:controller];
     window.releasedWhenClosed = NO;
     window.level = parent.level;
@@ -200,6 +214,7 @@ using haylen::platform::ScreenRelay;
         [self endWithCode:@"notActive" message:@"The app has no window to show the screen on."];
         return NO;
     }
+
     return YES;
 }
 
@@ -211,6 +226,7 @@ using haylen::platform::ScreenRelay;
             [window.sheetParent endSheet:window];
             return;
         }
+
         [window.parentWindow removeChildWindow:window];
         [self dismissed];
     }];
@@ -223,6 +239,7 @@ using haylen::platform::ScreenRelay;
         [self.window endSheet:window returnCode:NSModalResponseCancel];
         return;
     }
+
     [window close];
 }
 #else
@@ -235,33 +252,39 @@ using haylen::platform::ScreenRelay;
     if (![self canShow]) {
         return;
     }
+
     UIModalPresentationStyle style = controller.modalPresentationStyle;
     if (style == UIModalPresentationAutomatic && screenOpaque) {
         style = UIModalPresentationFullScreen;
     }
+
     shown = [[HaylenScreenController alloc] initWithScreen:self content:controller style:style];
     [self presentContainer];
 }
 
 - (void)presentContainer {
     waiting = NO;
+
     if (ending) {
         shown = nil;
         [self relay];
         return;
     }
+
     UIViewController* top = haylen::platform::ApplePresenter::getTopmost();
     if (top == nil) {
         shown = nil;
         [self endWithCode:@"notActive" message:@"The app has no window to show the screen over."];
         return;
     }
+
     id<UIViewControllerTransitionCoordinator> coordinator = top.transitionCoordinator;
     if (coordinator != nil) {
         waiting = YES;
         [coordinator animateAlongsideTransition:nil completion:^(id<UIViewControllerTransitionCoordinatorContext>) { [self presentContainer]; }];
         return;
     }
+
     [top presentViewController:shown animated:YES completion:nil];
 }
 
@@ -270,10 +293,12 @@ using haylen::platform::ScreenRelay;
     if (![self canShow]) {
         return;
     }
+
     if (!UIApplication.sharedApplication.supportsMultipleScenes) {
         [self endWithCode:@"unsupported" message:@"This device shows the app in one window, so a screen opens no window of its own."];
         return;
     }
+
     windowContent = controller;
     NSUserActivity* activity = [[NSUserActivity alloc] initWithActivityType:AppleScreens::kWindowActivity];
     activity.userInfo = @{@"screen" : @(screenId)};
@@ -315,6 +340,7 @@ using haylen::platform::ScreenRelay;
             [self dismissed];
             return;
         }
+
         [container.presentingViewController dismissViewControllerAnimated:YES completion:^{ [self dismissed]; }];
         return;
     }

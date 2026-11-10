@@ -18,8 +18,10 @@ void Gamepads::handle(const SDL_Event& event) {
             opened.push_back(pad);
             applyMotion(pad);
         }
+
         return;
     }
+
     if (event.type != SDL_EVENT_GAMEPAD_REMOVED) {
         return;
     }
@@ -29,6 +31,7 @@ void Gamepads::handle(const SDL_Event& event) {
     if (pad == nullptr || found == opened.end()) {
         return;
     }
+
     opened.erase(found);
     SDL_CloseGamepad(pad);
 }
@@ -43,6 +46,7 @@ void Gamepads::poll(std::span<input::GamepadState> states) {
             states[index] = {};
             continue;
         }
+
         read(pad, states[index]);
     }
 }
@@ -52,6 +56,7 @@ void Gamepads::rumble(std::size_t slot, float low, float high, float seconds) co
     if (pad == nullptr) {
         return;
     }
+
     const auto strength = [](float value) { return static_cast<Uint16>(std::lround(std::clamp(value, 0.0F, 1.0F) * 65535.0F)); };
     const double milliseconds = std::min(std::round(static_cast<double>(seconds) * 1000.0), static_cast<double>(std::numeric_limits<Uint32>::max()));
     SDL_RumbleGamepad(pad, strength(low), strength(high), static_cast<Uint32>(std::max(milliseconds, 0.0)));
@@ -59,6 +64,7 @@ void Gamepads::rumble(std::size_t slot, float low, float high, float seconds) co
 
 void Gamepads::setMotion(input::GamepadMotion::Sensors sensors) {
     motion = sensors;
+
     for (SDL_Gamepad* pad : opened) {
         applyMotion(pad);
     }
@@ -106,6 +112,7 @@ void Gamepads::read(SDL_Gamepad* pad, input::GamepadState& state) {
     for (const auto& [source, button] : kButtons) {
         state.buttons[static_cast<std::size_t>(button)] = SDL_GetGamepadButton(pad, source);
     }
+
     state.axes[static_cast<std::size_t>(input::GamepadAxis::LeftX)] = readStick(SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_LEFTX));
     state.axes[static_cast<std::size_t>(input::GamepadAxis::LeftY)] = readStick(SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_LEFTY));
     state.axes[static_cast<std::size_t>(input::GamepadAxis::RightX)] = readStick(SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_RIGHTX));
@@ -122,14 +129,17 @@ void Gamepads::readMotion(SDL_Gamepad* pad, input::GamepadState& state) {
     state.motion = {};
     for (const auto& [sensor, type] : kSensors) {
         const auto slot = static_cast<std::size_t>(sensor);
+
         if (!SDL_GamepadHasSensor(pad, type)) {
             continue;
         }
+
         state.motionSensors.set(slot);
         std::array<float, 3> values{};
         if (!SDL_GamepadSensorEnabled(pad, type) || !SDL_GetGamepadSensorData(pad, type, values.data(), static_cast<int>(values.size()))) {
             continue;
         }
+
         state.motion.sensors.set(slot);
         (sensor == input::MotionSensor::Accelerometer ? state.motion.acceleration : state.motion.rotationRate) = toFlatAxes(values);
     }

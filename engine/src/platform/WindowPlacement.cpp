@@ -14,6 +14,7 @@ template <typename T, std::size_t Size> T WindowPlacement::readName(const core::
     if (!object.contains(key)) {
         return fallback;
     }
+
     const core::Json& value = object.at(key);
     if (value.is_string()) {
         const auto found = std::ranges::find(names, value.get<std::string>(), &std::pair<std::string_view, T>::first);
@@ -21,6 +22,7 @@ template <typename T, std::size_t Size> T WindowPlacement::readName(const core::
             return found->second;
         }
     }
+
     throw std::invalid_argument(std::string("A window position has the unknown \"") + key + "\" " + value.dump() + ".");
 }
 
@@ -32,6 +34,7 @@ float WindowPlacement::readNumber(const core::Json& value, const char* key) {
     if (!value.is_number() || !std::isfinite(value.get<double>())) {
         throw std::invalid_argument(std::string("A window position needs a number for \"") + key + "\".");
     }
+
     return core::JsonNumber::toFloat(value);
 }
 
@@ -40,9 +43,11 @@ WindowPlacement WindowPlacement::fromJson(const core::Json& value) {
     if (value == "center") {
         return placement;
     }
+
     if (!value.is_object()) {
         throw std::invalid_argument("A window position is \"center\", a point with \"x\" and \"y\", or an object with an \"anchor\".");
     }
+
     if (value.contains("x") || value.contains("y")) {
         core::JsonValidator::requireKnownKeys(value, {"x", "y"}, "window position");
         placement.point = math::Vec2{readNumber(value.value("x", core::Json()), "x"), readNumber(value.value("y", core::Json()), "y")};
@@ -63,13 +68,16 @@ WindowPlacement WindowPlacement::fromJson(const core::Json& value) {
             throw std::invalid_argument("A window position names its display with \"primary\", a number from 1 or the id of a display.");
         }
     }
+
     if (value.contains("offset")) {
         const core::Json& shift = value.at("offset");
         if (!shift.is_array() || shift.size() != 2) {
             throw std::invalid_argument("A window position offset is a pair of numbers.");
         }
+
         placement.offset = {readNumber(shift[0], "offset"), readNumber(shift[1], "offset")};
     }
+
     return placement;
 }
 
@@ -77,6 +85,7 @@ core::Json WindowPlacement::toJson() const {
     if (point) {
         return {{"x", core::JsonNumber::fromFloat(point->x)}, {"y", core::JsonNumber::fromFloat(point->y)}};
     }
+
     const core::Json target = number != 0 ? core::Json(number) : core::Json(display.empty() ? std::string("primary") : display);
     return {{"anchor", getName(kAnchors, anchor)}, {"area", getName(kAreas, area)}, {"display", target}, {"offset", {core::JsonNumber::fromFloat(offset.x), core::JsonNumber::fromFloat(offset.y)}}, {"fill", getName(kFills, fill)}};
 }
@@ -85,10 +94,12 @@ const Display& WindowPlacement::findDisplay(std::span<const Display> displays) c
     if (number >= 1 && number <= displays.size()) {
         return displays[number - 1];
     }
+
     const auto named = std::ranges::find(displays, display, &Display::id);
     if (!display.empty() && named != displays.end()) {
         return *named;
     }
+
     const auto primary = std::ranges::find_if(displays, &Display::primary);
     return primary != displays.end() ? *primary : displays.front();
 }
@@ -109,12 +120,14 @@ math::Rect WindowPlacement::resolve(std::span<const Display> displays, math::Vec
     } else if (anchor == Anchor::Right || anchor == Anchor::TopRight || anchor == Anchor::BottomRight) {
         x = region.getRight() - width;
     }
+
     float y = region.y + (region.height - height) * 0.5F;
     if (anchor == Anchor::Top || anchor == Anchor::TopLeft || anchor == Anchor::TopRight) {
         y = region.y;
     } else if (anchor == Anchor::Bottom || anchor == Anchor::BottomLeft || anchor == Anchor::BottomRight) {
         y = region.getBottom() - height;
     }
+
     return {std::round(x + offset.x), std::round(y + offset.y), width, height};
 }
 

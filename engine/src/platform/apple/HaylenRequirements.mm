@@ -39,17 +39,20 @@
     if (![types isKindOfClass:NSArray.class]) {
         return NO;
     }
+
     for (id type in types) {
         id schemes = [type isKindOfClass:NSDictionary.class] ? type[@"CFBundleURLSchemes"] : nil;
         if (![schemes isKindOfClass:NSArray.class]) {
             continue;
         }
+
         for (id declared in schemes) {
             if ([declared isKindOfClass:NSString.class] && [declared caseInsensitiveCompare:scheme] == NSOrderedSame) {
                 return YES;
             }
         }
     }
+
     return NO;
 }
 
@@ -67,6 +70,7 @@
     if (task == nullptr) {
         return NO;
     }
+
     id value = CFBridgingRelease(copyValue(task, (__bridge CFStringRef)key, nullptr));
     CFRelease(task);
     return value != nil && ![value isEqual:@NO];
@@ -80,6 +84,7 @@
             [missing addObject:requirement];
         }
     }
+
     return missing;
 }
 
@@ -96,6 +101,7 @@
         [summaries addObject:requirement.summary];
         [entries addObject:requirement.entry];
     }
+
     NSString* last = summaries.lastObject;
     [summaries removeLastObject];
     NSString* list = summaries.count == 0 ? last : [NSString stringWithFormat:@"%@ and %@", [summaries componentsJoinedByString:@", "], last];
@@ -103,6 +109,7 @@
     if (error != nullptr) {
         *error = [NSError errorWithDomain:@"HaylenRequirements" code:0 userInfo:@{NSLocalizedDescriptionKey : message, @"message" : message, @"code" : @"unsupported", @"data" : @{@"missing" : entries}}];
     }
+
     return NO;
 }
 
@@ -114,6 +121,7 @@
         if ([logged containsObject:key]) {
             return;
         }
+
         [logged addObject:key];
     }
     haylen::core::Log::warning("{} needs {}, which the app lacks, so the calls that need it fail with the code \"unsupported\". Add \"{}\" to \"{}\".", owner.UTF8String, requirement.summary.UTF8String, requirement.snippet.UTF8String, requirement.file.UTF8String);

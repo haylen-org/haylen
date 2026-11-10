@@ -146,6 +146,7 @@ TEST_F(SystemTest, PublishesEveryChangeOfPowerSavingAndTimeZoneOnce) {
     for (const std::string_view name : {core::LifecycleEvent::kPowerSavingChanged, core::LifecycleEvent::kTimeZoneChanged}) {
         fixture.engine().getEvents().on(name, [&log, name](core::EventBus::Event& event) { log.push_back(std::string(name) + " " + event.getData().dump()); });
     }
+
     System& system = fixture.engine().getSystem();
     EXPECT_EQ(system.getPowerSaving(), std::nullopt);
     EXPECT_EQ(system.getTimeZone(), "");
@@ -179,9 +180,11 @@ TEST_F(SystemTest, KeepsTheLastReportOfEveryThread) {
         });
         // clang-format on
     }
+
     for (std::thread& reporter : reporters) {
         reporter.join();
     }
+
     EXPECT_EQ(state.getTheme(), Theme::Light);
     EXPECT_TRUE(state.getBattery().level.has_value());
 }
@@ -284,6 +287,7 @@ TEST_F(SystemTest, NamesThePermissionsOfTheEngineAndHowToAskAgain) {
         ASSERT_TRUE(kind.has_value()) << name;
         EXPECT_EQ(Permission::kindName(*kind), name);
     }
+
     EXPECT_FALSE(Permission::kindFromName("camera").has_value());
     EXPECT_EQ(Permission::stateFromName("unsupported"), Permission::State::Unsupported);
     EXPECT_EQ(Permission::refusal(Permission::State::Denied, "the precise location", "preciseLocation"), "The person has not allowed the precise location. Ask for it with \"system.requestPermission('preciseLocation')\", which shows the prompt of the system while the system still asks, or the person allows it in the settings of the system.");
@@ -292,6 +296,7 @@ TEST_F(SystemTest, NamesThePermissionsOfTheEngineAndHowToAskAgain) {
 
     EXPECT_TRUE(Permission::isPluginName("backgroundLocation"));
     EXPECT_TRUE(Permission::isPluginName("bluetooth2"));
+
     for (const std::string_view name : {"", "Camera", "precise-location", "precise_location", "2d", "screens", "localNetwork"}) {
         EXPECT_FALSE(Permission::isPluginName(name)) << name;
     }
@@ -308,6 +313,7 @@ TEST_F(SystemTest, RefusesPluginPermissionsWithoutOneOwner) {
 
     io::MemoryPackage package("app", {{"plugins/cam-kit/plugin.json", test::TestFiles::bytes(R"({"id": "cam-kit", "version": "1.0.0", "permissions": ["camera"]})")}, {"plugins/notes/plugin.json", test::TestFiles::bytes(R"({"id": "notes", "version": "1.0.0", "permissions": ["camera"]})")}});
     EXPECT_EQ(AppPlugin::readAll(package, {{"cam-kit", {}}}).front().permissions, (std::vector<std::string>{"camera"}));
+
     try {
         (void)AppPlugin::readAll(package, {{"cam-kit", {}}, {"notes", {}}});
         FAIL() << "Two plugins that declare one permission must not read.";

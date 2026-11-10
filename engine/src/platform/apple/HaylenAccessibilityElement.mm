@@ -99,6 +99,7 @@ using haylen::platform::AccessibilityRelay;
     } else {
         self.accessibilityValue = element.value.empty() ? nil : [NSString stringWithUTF8String:element.value.c_str()];
     }
+
     self.accessibilityEnabled = !element.has(AccessibilityElement::Disabled);
     self.accessibilitySelected = element.has(AccessibilityElement::Selected);
     self.accessibilityExpanded = element.has(AccessibilityElement::Expanded);
@@ -109,6 +110,7 @@ using haylen::platform::AccessibilityRelay;
     if ((actions & AccessibilityElement::Activate) == 0) {
         return NO;
     }
+
     [self perform:AccessibilityElement::Activate];
     return YES;
 }
@@ -117,6 +119,7 @@ using haylen::platform::AccessibilityRelay;
     if ((actions & AccessibilityElement::Increment) == 0) {
         return NO;
     }
+
     [self perform:AccessibilityElement::Increment];
     return YES;
 }
@@ -125,6 +128,7 @@ using haylen::platform::AccessibilityRelay;
     if ((actions & AccessibilityElement::Decrement) == 0) {
         return NO;
     }
+
     [self perform:AccessibilityElement::Decrement];
     return YES;
 }
@@ -132,6 +136,7 @@ using haylen::platform::AccessibilityRelay;
 // VoiceOver focuses an element as it moves to it, which moves the focus of the UI there.
 - (void)setAccessibilityFocused:(BOOL)focused {
     [super setAccessibilityFocused:focused];
+
     if (focused && (actions & AccessibilityElement::Focus) != 0) {
         [self perform:AccessibilityElement::Focus];
     }
@@ -174,6 +179,7 @@ using haylen::platform::AccessibilityRelay;
         if (@available(iOS 17, tvOS 17, *)) {
             traits |= UIAccessibilityTraitToggleButton;
         }
+
         break;
     case Role::Slider:
         traits |= UIAccessibilityTraitAdjustable;
@@ -188,12 +194,15 @@ using haylen::platform::AccessibilityRelay;
     if (element.has(AccessibilityElement::Checked) || element.has(AccessibilityElement::Selected)) {
         traits |= UIAccessibilityTraitSelected;
     }
+
     if (element.has(AccessibilityElement::Disabled)) {
         traits |= UIAccessibilityTraitNotEnabled;
     }
+
     if ((element.actions & (AccessibilityElement::Increment | AccessibilityElement::Decrement)) != 0) {
         traits |= UIAccessibilityTraitAdjustable;
     }
+
     self.accessibilityTraits = traits;
     self.accessibilityLabel = [NSString stringWithUTF8String:element.label.c_str()];
     self.accessibilityValue = element.value.empty() ? nil : [NSString stringWithUTF8String:element.value.c_str()];
@@ -205,6 +214,7 @@ using haylen::platform::AccessibilityRelay;
     if ((actions & AccessibilityElement::Activate) == 0) {
         return NO;
     }
+
     [self perform:AccessibilityElement::Activate];
     return YES;
 }

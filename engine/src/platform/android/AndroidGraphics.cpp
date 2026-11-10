@@ -13,6 +13,7 @@ std::unique_ptr<gpu::Device> AndroidGraphics::createDevice() {
         if (apis.hasFailed(api)) {
             continue;
         }
+
         try {
             std::unique_ptr<gpu::Device> device = open(api);
             core::Log::info("The app draws through \"{}\".", gpu::DeviceFactory::getApiName(api));
@@ -22,6 +23,7 @@ std::unique_ptr<gpu::Device> AndroidGraphics::createDevice() {
             core::Log::warning("The graphics API \"{}\" could not start on this device. {}", gpu::DeviceFactory::getApiName(api), error.what());
         }
     }
+
     throw std::runtime_error("No graphics API of this build starts on this device.");
 }
 
@@ -30,6 +32,7 @@ void AndroidGraphics::attachWindow(gpu::Device* device) {
     if (egl != nullptr) {
         egl->attachWindow(*native);
     }
+
     if (device != nullptr) {
         device->attachSurface(*describeSurface(device->getApi()));
     }
@@ -51,6 +54,7 @@ void AndroidGraphics::detachWindow(gpu::Device* device) noexcept {
     if (device != nullptr) {
         device->detachSurface();
     }
+
     if (egl != nullptr) {
         egl->releaseWindow();
     }
@@ -69,14 +73,17 @@ std::unique_ptr<gpu::Device> AndroidGraphics::open(gpu::Device::Api api) {
         egl.reset();
         egl = std::make_unique<AndroidEglContext>(settings.sampleCount, kValidation);
     }
+
     ANativeWindow* native = window.getNative();
     if (native != nullptr) {
         egl->attachWindow(*native);
     }
+
     std::unique_ptr<gpu::Device> device = gpu::DeviceFactory::create(api, describeSurface(api), options);
     if (native == nullptr) {
         device->detachSurface();
     }
+
     return device;
 }
 
@@ -85,6 +92,7 @@ gpu::Surface AndroidGraphics::describeOutput(ANativeWindow& native, int width, i
         drawable = egl->makeDrawable(native);
         return {.kind = gpu::Surface::Kind::Gl, .gl = drawable.get(), .size = {.width = width, .height = height, .windowWidth = width, .windowHeight = height}, .sampleCount = settings.sampleCount, .vsync = settings.vsync};
     }
+
     return {.kind = gpu::Surface::Kind::Android, .window = &native, .size = {.width = width, .height = height, .windowWidth = width, .windowHeight = height}, .sampleCount = settings.sampleCount, .vsync = settings.vsync};
 }
 
@@ -94,10 +102,12 @@ std::optional<gpu::Surface> AndroidGraphics::describeSurface(gpu::Device::Api ap
     if (gpu::DeviceFactory::usesGlContext(api)) {
         return gpu::Surface{.kind = gpu::Surface::Kind::Gl, .gl = egl.get(), .size = size, .sampleCount = settings.sampleCount, .vsync = settings.vsync};
     }
+
     ANativeWindow* native = window.getNative();
     if (native == nullptr) {
         return std::nullopt;
     }
+
     return gpu::Surface{.kind = gpu::Surface::Kind::Android, .window = native, .size = size, .sampleCount = settings.sampleCount, .vsync = settings.vsync};
 }
 

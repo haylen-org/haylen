@@ -16,12 +16,15 @@ core::Json SystemInfo::toJson() const {
             json[key] = *text;
         }
     }
+
     if (cpuCores > 0) {
         json["cpuCores"] = cpuCores;
     }
+
     if (memoryBytes > 0) {
         json["memoryBytes"] = memoryBytes;
     }
+
     return json;
 }
 

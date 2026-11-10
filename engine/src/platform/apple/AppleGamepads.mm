@@ -45,6 +45,7 @@ void AppleGamepads::poll(std::span<input::GamepadState> states) {
             connected.push_back((__bridge const void*)controller);
         }
     }
+
     slots.update(connected);
 
     for (std::size_t index = 0; index < states.size(); ++index) {
@@ -60,12 +61,14 @@ void AppleGamepads::poll(std::span<input::GamepadState> states) {
         state.name = vendor != nil ? vendor.UTF8String : "Controller";
         readMotion(controller, state);
         readTouchpads(controller, state);
+
         if (controller.extendedGamepad == nil) {
             state.buttons = {};
             state.axes = {};
             AppleRemote::read(controller.microGamepad, state);
             continue;
         }
+
         read(controller.extendedGamepad, state);
         state.labels = getLabels(controller.extendedGamepad);
     }
@@ -77,12 +80,15 @@ input::GamepadLabels AppleGamepads::getLabels(GCExtendedGamepad* pad) {
     if ([symbol hasPrefix:@"a."]) {
         return input::GamepadLabels::Letters;
     }
+
     if ([symbol hasPrefix:@"b."]) {
         return input::GamepadLabels::SwappedLetters;
     }
+
     if ([symbol hasPrefix:@"xmark"]) {
         return input::GamepadLabels::Shapes;
     }
+
     return input::GamepadLabels::Unknown;
 }
 
@@ -92,6 +98,7 @@ void AppleGamepads::rumble(std::size_t slot, float low, float high, float second
     if (controller == nil || controller.haptics == nil || patternClass == nil) {
         return;
     }
+
     id<HaylenHapticPlayer> previous = objc_getAssociatedObject(controller, &playerKey);
     [previous stopAtTime:0 error:nil];
     objc_setAssociatedObject(controller, &playerKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -106,8 +113,10 @@ void AppleGamepads::rumble(std::size_t slot, float low, float high, float second
         if (engine == nil) {
             return;
         }
+
         objc_setAssociatedObject(controller, &engineKey, engine, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
+
     NSDictionary* event = @{
         @"EventType" : @"HapticContinuous",
         @"Time" : @0,
@@ -121,6 +130,7 @@ void AppleGamepads::rumble(std::size_t slot, float low, float high, float second
     if (pattern == nil || ![engine startAndReturnError:nil]) {
         return;
     }
+
     id<HaylenHapticPlayer> player = [engine createPlayerWithPattern:pattern error:nil];
     if ([player startAtTime:0 error:nil]) {
         objc_setAssociatedObject(controller, &playerKey, player, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -139,6 +149,7 @@ void AppleGamepads::readMotion(GCController* controller, input::GamepadState& st
     if (sensors == nil) {
         return;
     }
+
     state.motionSensors.set(static_cast<std::size_t>(input::MotionSensor::Accelerometer));
     state.motionSensors.set(static_cast<std::size_t>(input::MotionSensor::Gyroscope), sensors.hasRotationRate);
     state.motionSensors.set(static_cast<std::size_t>(input::MotionSensor::Attitude), sensors.hasAttitude);
@@ -146,6 +157,7 @@ void AppleGamepads::readMotion(GCController* controller, input::GamepadState& st
     if (sensors.sensorsRequireManualActivation && sensors.sensorsActive != wanted) {
         sensors.sensorsActive = wanted;
     }
+
     if (!wanted || (sensors.sensorsRequireManualActivation && !sensors.sensorsActive)) {
         return;
     }
@@ -156,11 +168,13 @@ void AppleGamepads::readMotion(GCController* controller, input::GamepadState& st
         state.motion.acceleration = {static_cast<float>(-value.x * kStandardGravity), static_cast<float>(-value.y * kStandardGravity), static_cast<float>(-value.z * kStandardGravity)};
         state.motion.sensors.set(static_cast<std::size_t>(input::MotionSensor::Accelerometer));
     }
+
     if (take(input::MotionSensor::Gyroscope)) {
         const GCRotationRate value = sensors.rotationRate;
         state.motion.rotationRate = {static_cast<float>(value.x), static_cast<float>(value.y), static_cast<float>(value.z)};
         state.motion.sensors.set(static_cast<std::size_t>(input::MotionSensor::Gyroscope));
     }
+
     if (take(input::MotionSensor::Attitude)) {
         const GCQuaternion value = sensors.attitude;
         state.motion.attitude = {static_cast<float>(value.x), static_cast<float>(value.y), static_cast<float>(value.z), static_cast<float>(value.w)};
@@ -171,9 +185,11 @@ void AppleGamepads::readMotion(GCController* controller, input::GamepadState& st
 // The touchpads of the profile of a controller tell whether a finger touches them, and their surface runs from -1 to 1 with up positive, while the engine reads them from 0 to 1 from the top left corner. The touchpad of the Siri Remote is its stick instead.
 void AppleGamepads::readTouchpads(GCController* controller, input::GamepadState& state) {
     state.touchpad = {};
+
     if (controller.extendedGamepad == nil) {
         return;
     }
+
     // The profile keeps its touchpads by name in no lasting order, so the names in order give every touchpad its slot.
     NSDictionary<NSString*, GCControllerTouchpad*>* touchpads = controller.physicalInputProfile.touchpads;
     std::size_t slot = 0;
@@ -181,6 +197,7 @@ void AppleGamepads::readTouchpads(GCController* controller, input::GamepadState&
         if (slot == state.touchpad.size()) {
             return;
         }
+
         GCControllerTouchpad* touchpad = touchpads[name];
         input::TouchpadFinger& finger = state.touchpad[slot];
         finger.touchpad = static_cast<std::uint8_t>(slot++);
@@ -196,6 +213,7 @@ GCController* AppleGamepads::find(NSArray<GCController*>* controllers, const voi
             return controller;
         }
     }
+
     return nil;
 }
 

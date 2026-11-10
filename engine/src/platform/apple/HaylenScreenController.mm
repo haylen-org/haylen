@@ -30,6 +30,7 @@
 // The container goes away when it is dismissed, and also when a controller below it dismisses what it presents.
 - (void)viewDidDisappear:(BOOL)animated {
     [super viewDidDisappear:animated];
+
     if (self.isBeingDismissed || self.presentingViewController == nil) {
         [owner dismissed];
     }

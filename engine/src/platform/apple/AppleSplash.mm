@@ -14,6 +14,7 @@ void AppleSplash::cover(UIView* content) {
     if (name == nil || [NSBundle.mainBundle pathForResource:name ofType:@"storyboardc"] == nil) {
         return;
     }
+
     UIViewController* launch = [[UIStoryboard storyboardWithName:name bundle:nil] instantiateInitialViewController];
     view = launch.view;
     view.frame = content.bounds;
@@ -25,9 +26,11 @@ void AppleSplash::cover(UIView* content) {
 void AppleSplash::end(float fadeOutSeconds) {
     UIView* cover = view;
     view = nil;
+
     if (cover == nil) {
         return;
     }
+
     // clang-format off
     [UIView animateWithDuration:fadeOutSeconds animations:^{
         cover.alpha = 0.0;
