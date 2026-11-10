@@ -618,6 +618,8 @@ end)
 
 Compressed texture formats are left out, because no format decodes on every graphics API of the engine. Desktop GPUs read BC, mobile GPUs read ETC2 and ASTC, and WebGPU and WebGL2 offer each one only where the device has it. A compressed release would need a copy for every family of devices.
 
+A measurement on the art of the sample Tiny Island shows what they would bring. Its 51 images hold 13 million pixels, which take 69 MB of texture memory as RGBA8 with mipmaps and would take about 17 MB as ASTC 4x4 or BC7. The files of Basis Universal that transcode to those formats with good quality, UASTC at a peak signal-to-noise ratio of about 41 dB against the PNG files, take 8.1 MB, which is 23 percent more than the 6.6 MB of the PNG files. The smaller kind, ETC1S, loses visible detail of painted art at 27 to 31 dB. Transcoding all of them takes about 80 to 140 milliseconds of the worker threads, against about 220 milliseconds to decode the PNG files with their mipmaps, and both happen away from the frame. So compressed textures would save texture memory that no app of the engine runs short of on the devices it supports, at the cost of larger downloads, a large dependency and a format for each family of GPUs in every GPU device. They also could not feed what reads the pixels of a texture, such as the atlas builder and the mipmaps that average by alpha.
+
 Separate textures split batches, as the [render benchmark](#render-benchmark) shows. The class `animation2d::AtlasBuilder`, `animation2d.newAtlasBuilder` in Lua, packs images, areas of images and the frames of whole atlases with their animations into one texture while the app runs:
 
 - It trims transparent borders and remembers where each frame sat.
