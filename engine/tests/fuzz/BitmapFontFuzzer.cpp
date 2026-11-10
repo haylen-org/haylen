@@ -19,10 +19,12 @@ class BitmapFontFuzzer final {
         if (bytes.empty()) {
             return;
         }
+
         std::vector<std::uint8_t> file;
         if (bytes[0] % 2 == 1) {
             file.assign(kBinaryMagic.begin(), kBinaryMagic.end());
         }
+
         file.insert(file.end(), bytes.begin() + 1, bytes.end());
 
         try {
@@ -30,6 +32,7 @@ class BitmapFontFuzzer final {
             if (description.pages.size() > kMaxPages) {
                 return;
             }
+
             BitmapFont font(description, std::vector<graphics::Texture>(description.pages.size(), getDevice().getWhiteTexture()));
             (void)font.layout("Sphinx of quartz, 0123 \xD8\xA8\xD8\xB3\xD9\x85", {.size = 20.0F, .maxWidth = 100.0F});
         } catch (const std::invalid_argument&) {}

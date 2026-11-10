@@ -6,6 +6,7 @@ export default function load(context) {
         } catch (error) {
             return { missing: error.data.missing.map((entry) => entry.name) };
         }
+
         return { missing: [] };
     });
 

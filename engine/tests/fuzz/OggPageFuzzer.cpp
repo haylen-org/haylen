@@ -21,8 +21,10 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     (void)recorded.readLength();
     recorded.restart(0);
     recorded.record(0, *bytes);
+
     for (const std::uint64_t frame : kFrames) {
         haylen::audio::OggPageIndex fresh(reader);
+
         for (haylen::audio::OggPageIndex* index : {&recorded, &fresh}) {
             const std::optional<haylen::audio::OggPageIndex::Page> found = index->find(frame);
             if (found && (found->offset >= size || found->frames > frame)) {
@@ -30,5 +32,6 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
             }
         }
     }
+
     return 0;
 }

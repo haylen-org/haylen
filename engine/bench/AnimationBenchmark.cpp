@@ -79,6 +79,7 @@ class AnimationBenchmark final {
         if (luaL_dostring(L, source) == LUA_OK) {
             return true;
         }
+
         std::fprintf(stderr, "%s\n", lua_tostring(L, -1));
         lua_pop(L, 1);
         return false;
@@ -97,9 +98,11 @@ class AnimationBenchmark final {
         animation2d::AnimatedBatch batch(texture);
         addWalkers(batch, texture);
         const auto start = std::chrono::steady_clock::now();
+
         for (int frame = 0; frame < kFrames; ++frame) {
             batch.update(1.0F / 60.0F, parallel ? &engine.getJobs() : nullptr);
         }
+
         report(std::string("Animated batch of 100000 sprites, ") + (parallel ? "job system" : "one thread"), std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count() / kFrames);
     }
 
@@ -115,6 +118,7 @@ class AnimationBenchmark final {
         camera.setZoom({zoom, zoom});
         double total = 0.0;
         gpu.resetFrames();
+
         for (int frame = 0; frame < kFrames; ++frame) {
             const auto began = std::chrono::steady_clock::now();
             batch.update(1.0F / 60.0F, &engine.getJobs());
@@ -126,6 +130,7 @@ class AnimationBenchmark final {
             renderer.endFrame(host.isFrameTransparent());
             gpu.addFrame(engine, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - began).count());
         }
+
         report("Draw of an animated batch of 100000 sprites", total / kFrames, gpu.formatFrameTime(), gpu.formatGpuTime());
     }
 
@@ -156,10 +161,13 @@ class AnimationBenchmark final {
         if (!runLua(L, setup.c_str())) {
             return;
         }
+
         const auto start = std::chrono::steady_clock::now();
+
         if (!runLua(L, "for frame = 1, 240 do benchmarkFrame() end")) {
             return;
         }
+
         report(name, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count() / kFrames);
         (void)runLua(L, "benchmarkUnits = nil benchmarkCrowd = nil collectgarbage()");
     }

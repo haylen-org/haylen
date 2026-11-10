@@ -45,6 +45,7 @@ class BrowserStoreFiles final : public content::StoreFiles {
         if (keepsAppended) {
             resident.emplace(name, offset, bytes.size());
         }
+
         return offset;
     }
     void sync(const std::string& name) override {

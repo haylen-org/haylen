@@ -115,6 +115,7 @@ class RenderBenchmark final {
 
     static void measure(core::Engine& engine, BenchmarkGpu& gpu, std::string_view name, Draw draw) {
         engine.getScenes().replace(std::make_shared<DrawingScene>(std::move(draw)));
+
         for (int frame = 0; frame < kWarmupFrames; ++frame) {
             engine.frame(kFrameSeconds);
         }
@@ -123,6 +124,7 @@ class RenderBenchmark final {
         Allocations::count = 0;
         Allocations::total = 0;
         gpu.resetFrames();
+
         for (int frame = 0; frame < kFrames; ++frame) {
             const auto started = std::chrono::steady_clock::now();
             Allocations::counting = true;
@@ -131,6 +133,7 @@ class RenderBenchmark final {
             gpu.addFrame(engine, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count());
             uploaded += engine.getRenderer2D().getStats().uploadedBytes;
         }
+
         const graphics2d::Renderer::Stats stats = engine.getRenderer2D().getStats();
         std::printf("%-44.*s %9s %9s %7zu %9zu %11.1f %9.1f %11.2f\n", static_cast<int>(name.size()), name.data(), gpu.formatFrameTime().c_str(), gpu.formatGpuTime().c_str(), stats.drawCalls, stats.instances, static_cast<double>(uploaded) / kFrames / 1024.0, static_cast<double>(Allocations::count) / kFrames, static_cast<double>(Allocations::total) / kFrames / 1024.0);
     }
@@ -141,12 +144,14 @@ class RenderBenchmark final {
         for (std::size_t index = 0; index < textures.size(); ++index) {
             textures[index] = engine.getGraphics().createTexture(graphics::Image(32, 32, math::Color{0.25F * static_cast<float>(index + 1), 0.5F, 0.8F, 1.0F}));
         }
+
         const graphics2d::Camera camera;
         for (const bool alternate : {false, true}) {
             // clang-format off
             measure(engine, gpu, alternate ? "Sprites, 10000 alternating 4 textures" : "Sprites, 10000 in runs of 4 textures", [&textures, &camera, alternate](core::Engine& current) {
                 graphics2d::Renderer& renderer = current.getRenderer2D();
                 renderer.beginWorld(camera);
+
                 for (int index = 0; index < 10000; ++index) {
                     const std::size_t texture = alternate ? static_cast<std::size_t>(index) % textures.size() : static_cast<std::size_t>(index) / 2500;
                     renderer.draw({.texture = textures[texture], .position = {static_cast<float>(index % 100) * 19.0F - 950.0F, static_cast<float>(index / 100) * 10.0F - 500.0F}, .size = {16.0F, 16.0F}, .rotation = static_cast<float>(index) * 0.01F});
@@ -160,6 +165,7 @@ class RenderBenchmark final {
         for (std::size_t index = 0; index < textures.size(); ++index) {
             builder.add(std::to_string(index), std::make_shared<graphics::Image>(32, 32, math::Color{0.25F * static_cast<float>(index + 1), 0.5F, 0.8F, 1.0F}));
         }
+
         animation2d::AtlasBuilder::Packed packed = builder.pack({});
         graphics::Texture image = engine.getGraphics().createTexture(packed.image);
         const animation2d::SpriteAtlas atlas = animation2d::AtlasBuilder::finish(std::move(packed), image);
@@ -167,6 +173,7 @@ class RenderBenchmark final {
         measure(engine, gpu, "Sprites, 10000 alternating 4 atlas frames", [&atlas, &camera](core::Engine& current) {
             graphics2d::Renderer& renderer = current.getRenderer2D();
             renderer.beginWorld(camera);
+
             for (int index = 0; index < 10000; ++index) {
                 const math::Rect source = atlas.getFrame(atlas.getFrameNames()[static_cast<std::size_t>(index) % 4]).source;
                 renderer.draw({.texture = atlas.getTexture(), .source = source, .position = {static_cast<float>(index % 100) * 19.0F - 950.0F, static_cast<float>(index / 100) * 10.0F - 500.0F}, .size = {16.0F, 16.0F}, .rotation = static_cast<float>(index) * 0.01F});
@@ -185,6 +192,7 @@ class RenderBenchmark final {
             image->fill({1, 1, width - 2, height - 2}, math::Color::white());
             builder.add(std::to_string(index), std::move(image));
         }
+
         const auto start = std::chrono::steady_clock::now();
         const animation2d::AtlasBuilder::Packed packed = builder.pack({.texture = {.filter = graphics::Texture::Filter::Linear}});
         const double milliseconds = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
@@ -196,6 +204,7 @@ class RenderBenchmark final {
         measure(engine, gpu, "Shapes, 3000 circles, panels and lines", [](core::Engine& current) {
             graphics2d::Renderer& renderer = current.getRenderer2D();
             renderer.beginScreen();
+
             for (int index = 0; index < 1000; ++index) {
                 const math::Vec2 place{static_cast<float>(index % 40) * 48.0F, static_cast<float>(index / 40) * 42.0F};
                 renderer.drawCircle(place + math::Vec2{12.0F, 12.0F}, 10.0F, math::Color{0.9F, 0.4F, 0.2F, 1.0F});
@@ -220,10 +229,12 @@ class RenderBenchmark final {
             path.arc({0.0F, 0.0F}, 12.0F + bend * 0.5F, 0.0F, math::Math::kTau);
             path.close();
         }
+
         // clang-format off
         measure(engine, gpu, "Paths, 200 kept, filled and stroked", [&paths](core::Engine& current) {
             graphics2d::Renderer& renderer = current.getRenderer2D();
             renderer.beginScreen();
+
             for (std::size_t index = 0; index < paths.size(); ++index) {
                 const math::Transform2D place = math::Transform2D::compose({static_cast<float>(index % 20) * 92.0F + 50.0F, static_cast<float>(index / 20) * 100.0F + 60.0F}, 0.0F, {1.0F, 1.0F});
                 renderer.fillPath(paths[index], {.color = math::Color{0.3F, 0.5F, 0.9F, 1.0F}, .rule = graphics2d::Path::FillRule::EvenOdd}, {}, place);
@@ -239,10 +250,12 @@ class RenderBenchmark final {
             time += 1.0F / 60.0F;
             wave.clear();
             wave.moveTo({100.0F, 540.0F});
+
             for (int step = 0; step < 16; ++step) {
                 const float x = 100.0F + static_cast<float>(step) * 110.0F;
                 wave.quadraticTo({x + 55.0F, 540.0F + std::sin(time * 3.0F + static_cast<float>(step)) * 200.0F}, {x + 110.0F, 540.0F});
             }
+
             wave.lineTo({1860.0F, 1000.0F});
             wave.lineTo({100.0F, 1000.0F});
             wave.close();
@@ -260,10 +273,12 @@ class RenderBenchmark final {
         for (int index = 0; index < 200; ++index) {
             labels.push_back(std::format("Label number {} of the screen", index + 1));
         }
+
         // clang-format off
         measure(engine, gpu, "Text, 200 labels that stay", [&labels](core::Engine& current) {
             graphics2d::Renderer& renderer = current.getRenderer2D();
             renderer.beginScreen();
+
             for (std::size_t index = 0; index < labels.size(); ++index) {
                 renderer.drawText(*current.getDefaultFont(), labels[index], {static_cast<float>(index % 5) * 380.0F, static_cast<float>(index / 5) * 26.0F}, {.size = 20.0F});
             }
@@ -272,6 +287,7 @@ class RenderBenchmark final {
         measure(engine, gpu, "Text, 200 labels that change every frame", [&changing](core::Engine& current) {
             graphics2d::Renderer& renderer = current.getRenderer2D();
             renderer.beginScreen();
+
             for (int index = 0; index < 200; ++index) {
                 changing.clear();
                 std::format_to(std::back_inserter(changing), "Score {} of player {}", current.getClock().getFrameIndex() * 7 + static_cast<std::uint64_t>(index), index);
@@ -288,10 +304,12 @@ class RenderBenchmark final {
         for (int index = 0; index < 20; ++index) {
             blocks.push_back(std::make_unique<text::RichText>("A [b]bold[/b] word, a [color=#ff8040]colored[/color] one, [i]italics[/i] and a [wave]wave that moves[/wave] in a block that wraps its lines.", text::RichTextOptions{.family = registry->getDefaultFamily(), .size = 22.0F, .maxWidth = 420.0F}, registry));
         }
+
         // clang-format off
         measure(engine, gpu, "Rich text, 20 blocks with a wave", [&blocks](core::Engine& current) {
             graphics2d::Renderer& renderer = current.getRenderer2D();
             renderer.beginScreen();
+
             for (std::size_t index = 0; index < blocks.size(); ++index) {
                 blocks[index]->update(static_cast<float>(kFrameSeconds));
                 renderer.drawRichText(*blocks[index], {static_cast<float>(index % 4) * 460.0F, static_cast<float>(index / 4) * 200.0F});
@@ -339,9 +357,11 @@ thread_local std::uint64_t RenderBenchmark::Allocations::total = 0;
 // The standard names the replaceable allocation functions, so the benchmark replaces them here, and they only forward to the counter and to `malloc` and `free`. The array and nothrow forms call these by default.
 void* operator new(std::size_t size) {
     haylen::bench::RenderBenchmark::Allocations::record(size);
+
     if (void* memory = std::malloc(size == 0 ? 1 : size)) {
         return memory;
     }
+
     throw std::bad_alloc();
 }
 

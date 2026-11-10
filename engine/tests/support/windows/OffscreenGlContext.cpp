@@ -61,6 +61,7 @@ class OffscreenGlContext::Drawable final : public gpu::GlContext {
         if (window == nullptr) {
             throw std::runtime_error("Windows could not open another hidden window of the OpenGL context.");
         }
+
         deviceContext = GetDC(window);
         try {
             Native::choosePixelFormat(deviceContext);
@@ -104,10 +105,12 @@ OffscreenGlContext::OffscreenGlContext(gpu::Device::Api api, int pixelsWide, int
     if (api != gpu::Device::Api::OpenGl) {
         throw std::runtime_error("Windows runs OpenGL ES only through a translation layer, which the tests do not use.");
     }
+
     const HWND window = Native::makeWindow(width, height);
     if (window == nullptr) {
         throw std::runtime_error("Windows could not open the hidden window of the OpenGL context.");
     }
+
     surface = window;
     const HDC deviceContext = GetDC(window);
     display = deviceContext;
@@ -120,11 +123,13 @@ OffscreenGlContext::OffscreenGlContext(gpu::Device::Api api, int pixelsWide, int
     const HGLRC made = createContextAttribs == nullptr ? nullptr : createContextAttribs(deviceContext, nullptr, attributes.data());
     wglMakeCurrent(nullptr, nullptr);
     wglDeleteContext(loader);
+
     if (made == nullptr) {
         ReleaseDC(window, deviceContext);
         DestroyWindow(window);
         throw std::runtime_error("Windows could not make an OpenGL 4.3 core context.");
     }
+
     context = made;
     makeCurrent();
 }
@@ -157,6 +162,7 @@ void* OffscreenGlContext::getProcAddress(const char* name) {
     if (value >= -1 && value <= 3) {
         address = reinterpret_cast<void*>(GetProcAddress(GetModuleHandleW(L"opengl32.dll"), name));
     }
+
     return address;
 }
 

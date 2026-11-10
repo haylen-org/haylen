@@ -38,6 +38,7 @@ const core::Json& DebugClient::getResponse(int number) const {
     if (response == nullptr) {
         throw std::runtime_error("The debugger never answered the request " + std::to_string(number) + ".");
     }
+
     return *response;
 }
 
@@ -48,15 +49,18 @@ std::vector<core::Json> DebugClient::getEvents(const std::string& name) const {
             events.push_back(message.value("body", core::Json::object()));
         }
     }
+
     return events;
 }
 
 // A step that sends no request lets the next one run at the following look.
 void DebugClient::pump() {
     std::erase_if(waiting, [this](int number) { return findResponse(number) != nullptr; });
+
     if (!waiting.empty() || steps.empty()) {
         return;
     }
+
     Step step = std::move(steps.front());
     steps.pop_front();
     step(*this);

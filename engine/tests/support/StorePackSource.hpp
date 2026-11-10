@@ -43,6 +43,7 @@ class StorePackSource final : public content::PackSource {
                 done(std::nullopt, content::Error(content::Error::Code::StoreAssetUnavailable, *failure));
                 return;
             }
+
             const auto found = folders.find(pack);
             done(found != folders.end() ? std::optional(found->second) : std::nullopt, std::nullopt);
         };

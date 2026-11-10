@@ -12,6 +12,7 @@ std::string BootstrapWriter::writeBytes(std::span<const std::uint8_t> bytes) {
     for (std::size_t index = 0; index < bytes.size(); ++index) {
         text += std::format("{}0x{:02x}", index == 0 ? "" : ", ", bytes[index]);
     }
+
     return text + "}";
 }
 
@@ -26,6 +27,7 @@ std::string BootstrapWriter::writeText(std::string_view text) {
             literal += character;
         }
     }
+
     return literal + "\"";
 }
 
@@ -34,6 +36,7 @@ std::string BootstrapWriter::write(const KeyStore& keys, std::string_view profil
     for (const EmbeddedKeyProvider::SealedKey& key : keys.sealContentKeys()) {
         sealed += std::format("        {{.id = {}, .mask = {}, .sealed = {}}},\n", writeBytes(key.id), writeBytes(key.mask), writeBytes(key.sealed));
     }
+
     const VerifyingKey& verifying = keys.getSigningKey()->getVerifyingKey();
     return std::format(R"(// Written by haylen.py from the key folder of the app for its release builds. It opens the protected release of the app, holds no key in plain form and never belongs in a repository.
 #include <memory>

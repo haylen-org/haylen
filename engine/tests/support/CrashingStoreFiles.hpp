@@ -37,18 +37,22 @@ class CrashingStoreFiles final : public content::StoreFiles {
     }
     void write(const std::string& name, std::span<const std::uint8_t> bytes) override {
         refuseAfterCrash();
+
         if (writePrefix && name.starts_with(*writePrefix) && writesLeft-- == 0) {
             files.write(name, bytes.first(bytes.size() / 2));
             crash();
         }
+
         files.write(name, bytes);
     }
     std::uint64_t append(const std::string& name, std::span<const std::uint8_t> bytes) override {
         refuseAfterCrash();
+
         if (appendsLeft && (*appendsLeft)-- == 0) {
             files.append(name, bytes.first(bytes.size() / 2));
             crash();
         }
+
         return files.append(name, bytes);
     }
     void sync(const std::string& name) override {

@@ -13,6 +13,7 @@ OffscreenGlContext::OffscreenGlContext(gpu::Device::Api api, int pixelsWide, int
     if (api != gpu::Device::Api::WebGl2) {
         throw std::runtime_error("The page of a browser runs WebGL2 alone, without OpenGL or OpenGL ES.");
     }
+
     EmscriptenWebGLContextAttributes attributes;
     emscripten_webgl_init_context_attributes(&attributes);
     attributes.majorVersion = 2;
@@ -24,6 +25,7 @@ OffscreenGlContext::OffscreenGlContext(gpu::Device::Api api, int pixelsWide, int
     if (handle <= 0) {
         throw std::runtime_error("The page has no canvas with a WebGL2 context.");
     }
+
     context = reinterpret_cast<void*>(static_cast<std::intptr_t>(handle));
     makeCurrent();
 }

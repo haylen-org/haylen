@@ -19,6 +19,7 @@ std::array<std::uint8_t, 32> ReleaseFixture::makeKey(std::uint8_t first) noexcep
     for (std::size_t index = 0; index < key.size(); ++index) {
         key[index] = static_cast<std::uint8_t>(first + index);
     }
+
     return key;
 }
 
@@ -43,6 +44,7 @@ void ReleaseFixture::build(const std::map<std::string, std::string>& files, std:
     for (const auto& [path, text] : files) {
         contents.emplace(path, TestFiles::bytes(text));
     }
+
     build(io::MemoryPackage("source", std::move(contents)), shardTarget);
 }
 

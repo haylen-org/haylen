@@ -28,12 +28,15 @@ class RecordingScene final : public core::Scene {
     void load(core::Engine&, core::SceneLoad& context) override {
         record("load");
         loadParams = context.getParams();
+
         for (const std::string& group : groups) {
             context.preload(group);
         }
+
         if (loading == Load::Deferred) {
             deferral.emplace(context.defer());
         }
+
         if (loading == Load::Failing) {
             throw lua::Error(name + " cannot load");
         }
@@ -108,6 +111,7 @@ class RecordingScene final : public core::Scene {
     void record(std::string_view hook) {
         const std::string entry = name + ":" + std::string(hook);
         log.push_back(entry);
+
         if (onHook) {
             onHook(entry);
         }

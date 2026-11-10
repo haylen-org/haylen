@@ -61,6 +61,7 @@ gpu::Device::Pipeline OffscreenSwapchain::makePipeline(const PipelineDesc& desc)
     if (!desc.swapchain) {
         return device->makePipeline(desc);
     }
+
     ColorTarget color = desc.colors.empty() ? ColorTarget{} : desc.colors.front();
     color.format = kFormat;
     PipelineDesc offscreen = desc;
@@ -108,6 +109,7 @@ void OffscreenSwapchain::beginPass(const PassDesc& desc) {
         device->beginPass(desc);
         return;
     }
+
     const ColorAttachment color{.image = target, .load = desc.load, .clear = desc.clear};
     PassDesc offscreen = desc;
     offscreen.colors = std::span(&color, 1);

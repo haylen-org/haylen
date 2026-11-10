@@ -15,6 +15,7 @@ void DamagedFonts::moveTablePastTheEnd(std::vector<std::uint8_t>& font, std::str
             return;
         }
     }
+
     throw std::invalid_argument("The font has no table " + std::string(tag) + ".");
 }
 
@@ -66,6 +67,7 @@ std::size_t DamagedFonts::findTable(const std::vector<std::uint8_t>& font, std::
             return static_cast<std::size_t>(readShort(font, record + 8)) << 16U | readShort(font, record + 10);
         }
     }
+
     throw std::invalid_argument("The font has no table " + std::string(tag) + ".");
 }
 
@@ -73,6 +75,7 @@ std::size_t DamagedFonts::findOutline(const std::vector<std::uint8_t>& font, std
     if (readShort(font, findTable(font, "head") + 50) != 0) {
         throw std::invalid_argument("The font keeps the locations of its glyphs in four bytes.");
     }
+
     const std::size_t location = findTable(font, "loca") + static_cast<std::size_t>(glyph) * 2;
     return findTable(font, "glyf") + static_cast<std::size_t>(readShort(font, location)) * 2;
 }

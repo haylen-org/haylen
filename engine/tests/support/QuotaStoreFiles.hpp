@@ -24,6 +24,7 @@ class QuotaStoreFiles final : public content::StoreFiles {
         if (appended + bytes.size() > quota) {
             throw content::Error(content::Error::Code::QuotaExceeded, "The browser ran out of storage for this site.");
         }
+
         appended += bytes.size();
         return files.append(name, bytes);
     }

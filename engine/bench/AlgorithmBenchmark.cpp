@@ -53,9 +53,11 @@ class AlgorithmBenchmark final {
     static void measure(const char* name, int runs, const std::function<void()>& work) {
         work();
         const auto start = std::chrono::steady_clock::now();
+
         for (int run = 0; run < runs; ++run) {
             work();
         }
+
         std::printf("%-52s %12.3f %8d\n", name, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count() / runs, runs);
     }
 
@@ -68,6 +70,7 @@ class AlgorithmBenchmark final {
                 grid.setWalkable({x, y}, !random.chance(wallChance));
             }
         }
+
         for (int pair = 0; pair < kPathPairs; ++pair) {
             const navigation2d::Grid::Cell start{random.range(0, 63), random.range(0, kGridSize - 1)};
             const navigation2d::Grid::Cell goal{random.range(kGridSize - 64, kGridSize - 1), random.range(0, kGridSize - 1)};
@@ -75,6 +78,7 @@ class AlgorithmBenchmark final {
             grid.setWalkable(goal, true);
             pairs.emplace_back(start, goal);
         }
+
         return grid;
     }
 
@@ -132,6 +136,7 @@ class AlgorithmBenchmark final {
             total += milliseconds;
             slowest = std::max(slowest, milliseconds);
         }
+
         std::printf("%-52s %12.3f %8d\n", name, total / runs, runs);
         std::printf("%-52s %12.3f %8d\n", "  slowest run", slowest, 1);
     }
@@ -145,6 +150,7 @@ class AlgorithmBenchmark final {
             const float size = random.range(10.0F, 60.0F);
             mesh.addObstacle(std::vector<math::Vec2>{center + math::Vec2{-size, -size}, center + math::Vec2{size, -size}, center + math::Vec2{size, size}, center + math::Vec2{-size, size}});
         }
+
         return mesh;
     }
 
@@ -161,6 +167,7 @@ class AlgorithmBenchmark final {
                 trips.emplace_back(start, goal);
             }
         }
+
         // clang-format off
         measure("Navmesh path with the funnel, radius 8", 1000, [&, trip = std::size_t{0}]() mutable {
             (void)mesh.findPath(trips[trip].first, trips[trip].second, 8.0F);
@@ -177,6 +184,7 @@ class AlgorithmBenchmark final {
             const navigation2d::Crowd::AgentId id = crowd.addAgent({.position = position, .radius = 8.0F, .maxSpeed = 80.0F, .neighborDistance = 60.0F});
             crowd.setTarget(id, {3000.0F - position.x, 3000.0F - position.y});
         }
+
         measure("Crowd step, 2000 ORCA agents, one thread", 20, [&crowd] { crowd.step(1.0F / 60.0F); });
         measure("Crowd step, 2000 ORCA agents, job system", 20, [&crowd, &jobs] { crowd.step(1.0F / 60.0F, &jobs); });
 
@@ -191,7 +199,9 @@ class AlgorithmBenchmark final {
             });
             // clang-format on
         }
+
         measureCold("Crowd step, 2000 ORCA agents, pool busy building", 20, [&crowd, &jobs] { crowd.step(1.0F / 60.0F, &jobs); });
+
         while (building > 0) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
@@ -206,6 +216,7 @@ class AlgorithmBenchmark final {
             tree.set(id, {position.x, position.y, 8.0F, 8.0F});
             points.set(id, position);
         }
+
         points.build();
         std::vector<std::uint64_t> ids;
         std::vector<spatial2d::Neighbor> neighbors;
@@ -237,6 +248,7 @@ class AlgorithmBenchmark final {
             physics2d::Body body = world.createBody({.type = physics2d::Body::Type::Static, .position = {random.range(0.0F, 4000.0F), random.range(0.0F, 4000.0F)}});
             body.addBox({random.range(10.0F, 60.0F), random.range(10.0F, 60.0F)});
         }
+
         physics2d::RayBatch batch;
         batch.resize(100000);
         for (std::size_t ray = 0; ray < batch.size(); ++ray) {

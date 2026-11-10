@@ -58,18 +58,21 @@ OffscreenGlContext::OffscreenGlContext(gpu::Device::Api api, int pixelsWide, int
     if (made == EGL_NO_DISPLAY || eglInitialize(made, nullptr, nullptr) == EGL_FALSE) {
         throw std::runtime_error("EGL has no display on this machine.");
     }
+
     display = made;
 
     const bool desktop = api == gpu::Device::Api::OpenGl;
     if (eglBindAPI(desktop ? EGL_OPENGL_API : EGL_OPENGL_ES_API) == EGL_FALSE) {
         throw std::runtime_error(std::format("EGL does not run {} on this machine.", desktop ? "OpenGL" : "OpenGL ES"));
     }
+
     const std::array<EGLint, 17> configAttributes{EGL_SURFACE_TYPE, EGL_PBUFFER_BIT, EGL_RENDERABLE_TYPE, desktop ? EGL_OPENGL_BIT : EGL_OPENGL_ES3_BIT, EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8, EGL_ALPHA_SIZE, 8, EGL_DEPTH_SIZE, 24, EGL_STENCIL_SIZE, 8, EGL_NONE};
     EGLConfig chosen = nullptr;
     EGLint configs = 0;
     if (eglChooseConfig(made, configAttributes.data(), &chosen, 1, &configs) == EGL_FALSE || configs == 0) {
         throw std::runtime_error("EGL has no configuration with a pixel buffer for the context.");
     }
+
     config = chosen;
 
     const std::array<EGLint, 5> surfaceAttributes{EGL_WIDTH, width, EGL_HEIGHT, height, EGL_NONE};
@@ -88,6 +91,7 @@ OffscreenGlContext::OffscreenGlContext(gpu::Device::Api api, int pixelsWide, int
         eglDestroySurface(made, surface);
         throw std::runtime_error(std::format("EGL could not make an {} context.", desktop ? "OpenGL 4.3 core" : "OpenGL ES 3.0"));
     }
+
     makeCurrent();
 }
 

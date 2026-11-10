@@ -24,9 +24,11 @@ class VarnRuntime final {
             if (std::chrono::steady_clock::now() > deadline) {
                 return false;
             }
+
             runtime->poll();
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
+
         return true;
     }
 

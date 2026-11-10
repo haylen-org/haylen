@@ -62,6 +62,7 @@ class FontFuzzer final {
         if (!file) {
             return;
         }
+
         (void)file->isDrawable();
         std::vector<std::uint8_t> copy(bytes.begin(), bytes.end());
         ImFontAtlas atlas;

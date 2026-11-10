@@ -43,6 +43,7 @@ void AllocationTracker::record(std::size_t size, const void* caller) noexcept {
     if (active == nullptr || isSystemGraphics(caller)) {
         return;
     }
+
     active->largest = std::max(active->largest, size);
     active->total += size;
 }
@@ -60,18 +61,21 @@ bool AllocationTracker::isSystemGraphics(const void* caller) noexcept {
             return true;
         }
     }
+
     return false;
 #elif defined(__APPLE__)
     Dl_info image{};
     if (dladdr(caller, &image) == 0 || image.dli_fname == nullptr) {
         return false;
     }
+
     // The simulators load the system from the root of their runtime, so the folders of the system start inside that root there.
     std::string_view path(image.dli_fname);
     const std::size_t system = path.find("/System/Library/");
     if (system == std::string_view::npos) {
         return false;
     }
+
     path.remove_prefix(system);
     return path.starts_with("/System/Library/Extensions/") || path.starts_with("/System/Library/PrivateFrameworks/MetalTools.framework/") || path.starts_with("/System/Library/PrivateFrameworks/MTLSim");
 #elif defined(__linux__)
@@ -94,8 +98,10 @@ bool AllocationTracker::isLinuxGraphics(const void* caller) noexcept {
         if (name == program || name.starts_with("libstdc++") || name.starts_with("libc++")) {
             continue;
         }
+
         return name.starts_with("libvulkan") || name.starts_with("libVkLayer_") || name.starts_with("libnvidia-") || name.starts_with("libLLVM") || name.starts_with("libEGL") || name.starts_with("libGLES");
     }
+
     return false;
 }
 
@@ -116,6 +122,7 @@ _Unwind_Reason_Code AllocationTracker::addFrame(_Unwind_Context* context, void* 
     if (state.depth == static_cast<int>(state.frames->size())) {
         return _URC_END_OF_STACK;
     }
+
     (*state.frames)[static_cast<std::size_t>(state.depth++)] = reinterpret_cast<void*>(_Unwind_GetIP(context));
     return _URC_NO_REASON;
 }
@@ -126,6 +133,7 @@ std::string_view AllocationTracker::getLibraryName(const void* address) noexcept
     if (dladdr(address, &image) == 0 || image.dli_fname == nullptr) {
         return {};
     }
+
     const std::string_view path(image.dli_fname);
     return path.substr(path.find_last_of('/') + 1);
 }
@@ -145,6 +153,7 @@ void* operator new(std::size_t size) {
     if (void* memory = std::malloc(size == 0 ? 1 : size)) {
         return memory;
     }
+
     throw std::bad_alloc();
 }
 

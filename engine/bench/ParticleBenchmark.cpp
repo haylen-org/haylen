@@ -100,7 +100,9 @@ class ParticleBenchmark final {
         for (particles2d::Emitter& emitter : emitters) {
             emitter.update(kStep);
         }
+
         const auto start = std::chrono::steady_clock::now();
+
         for (int frame = 0; frame < kFrames; ++frame) {
             for (particles2d::Emitter& emitter : emitters) {
                 if (jobs != nullptr) {
@@ -110,6 +112,7 @@ class ParticleBenchmark final {
                 }
             }
         }
+
         return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count() / kFrames;
     }
 
@@ -125,6 +128,7 @@ class ParticleBenchmark final {
         for (std::uint64_t index = 0; index < 1000; ++index) {
             emitters.emplace_back(fountain(texture, 100), index);
         }
+
         report("1000 emitters of 100 particles", timeUpdates(emitters, &engine.getJobs()), kFrames);
     }
 
@@ -168,27 +172,33 @@ class ParticleBenchmark final {
         for (std::uint64_t index = 0; index < 100; ++index) {
             emitters.emplace_back(config, index);
         }
+
         for (int frame = 0; frame < 30; ++frame) {
             for (particles2d::Emitter& emitter : emitters) {
                 emitter.update(kStep);
             }
         }
+
         graphics2d::Renderer& renderer = engine.getRenderer2D();
         const graphics2d::Camera camera;
         double total = 0.0;
         gpu.resetFrames();
+
         for (int frame = 0; frame < kFrames; ++frame) {
             const auto began = std::chrono::steady_clock::now();
             renderer.beginFrame(engine.getViewport(), math::Color::black());
             renderer.beginWorld(camera);
             const auto start = std::chrono::steady_clock::now();
+
             for (const particles2d::Emitter& emitter : emitters) {
                 emitter.draw(renderer);
             }
+
             total += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
             renderer.endFrame(host.isFrameTransparent());
             gpu.addFrame(engine, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - began).count());
         }
+
         report("Drawing 100 emitters of 100 particles with trails", total / kFrames, kFrames, gpu.formatFrameTime(), gpu.formatGpuTime());
     }
 
@@ -202,20 +212,25 @@ class ParticleBenchmark final {
                 emitters.emplace_back(fountain(texture, size), index);
                 emitters.back().update(kStep);
             }
+
             double total = 0.0;
             gpu.resetFrames();
+
             for (int frame = 0; frame < kFrames; ++frame) {
                 const auto began = std::chrono::steady_clock::now();
                 renderer.beginFrame(engine.getViewport(), math::Color::black());
                 renderer.beginWorld(camera);
                 const auto start = std::chrono::steady_clock::now();
+
                 for (const particles2d::Emitter& emitter : emitters) {
                     emitter.draw(renderer);
                 }
+
                 total += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
                 renderer.endFrame(host.isFrameTransparent());
                 gpu.addFrame(engine, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - began).count());
             }
+
             report("Drawing " + std::to_string(count) + (count == 1 ? " emitter of " : " emitters of ") + std::to_string(size) + " particles", total / kFrames, kFrames, gpu.formatFrameTime(), gpu.formatGpuTime());
         }
     }
@@ -224,6 +239,7 @@ class ParticleBenchmark final {
         if (luaL_dostring(L, source) == LUA_OK) {
             return true;
         }
+
         std::fprintf(stderr, "%s\n", lua_tostring(L, -1));
         lua_pop(L, 1);
         return false;
@@ -255,10 +271,13 @@ class ParticleBenchmark final {
         if (!runLua(L, setup)) {
             return;
         }
+
         const auto start = std::chrono::steady_clock::now();
+
         if (!runLua(L, "for frame = 1, 240 do benchmarkFrame() end")) {
             return;
         }
+
         report("500 emitters of about 60 particles updated from Lua", std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count() / kFrames, kFrames);
         (void)runLua(L, "benchmarkEmitters = nil collectgarbage()");
     }

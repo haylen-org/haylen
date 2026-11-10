@@ -56,6 +56,7 @@ class SpriteBenchmark final : public core::Application {
                     state = state * 6364136223846793005ULL + 1442695040888963407ULL;
                     value = static_cast<std::uint8_t>(state >> 56);
                 }
+
                 return std::make_shared<graphics::Image>(size, size, std::move(pixels));
             },
             .finalize = [&device](std::shared_ptr<void> decoded, const assets::Manager::Request&) {
@@ -90,15 +91,18 @@ class SpriteBenchmark final : public core::Application {
                 addGpuTime(engine);
                 slowestMilliseconds = std::max(slowestMilliseconds, std::chrono::duration<double, std::milli>(now - previousFrame).count());
             }
+
             previousFrame = now;
             const bool measured = current.textures > 0 ? frame > kWarmupFrames && loading == 0 : frame == kWarmupFrames + kMeasuredFrames;
             if (measured) {
                 finishPhase(engine, now, frame - kWarmupFrames);
                 return;
             }
+
             ++frame;
 
             elapsed += 1.0F / 60.0F;
+
             if (!kPhases[phaseIndex].baked) {
                 animate(engine);
             }
@@ -107,6 +111,7 @@ class SpriteBenchmark final : public core::Application {
         void render(core::Engine& engine) override {
             graphics2d::Renderer& renderer = engine.getRenderer2D();
             renderer.beginWorld(camera);
+
             if (kPhases[phaseIndex].baked) {
                 renderer.drawStatic(baked, {}, {std::sin(elapsed) * 8.0F, 0.0F});
             } else {
@@ -127,6 +132,7 @@ class SpriteBenchmark final : public core::Application {
                     total += sample.milliseconds;
                 }
             }
+
             return total;
         }
 
@@ -153,6 +159,7 @@ class SpriteBenchmark final : public core::Application {
                 const float hue = static_cast<float>(index % 360) / 360.0F;
                 sprites[index] = {.position = origins[index], .size = {3.0F, 3.0F}, .color = {0.4F + hue * 0.6F, 0.8F - hue * 0.5F, 1.0F - hue * 0.3F, 1.0F}};
             }
+
             baked = current.baked ? engine.getRenderer2D().createStaticBatch(texture, sprites) : graphics2d::StaticSpriteBatch{};
         }
 
@@ -195,6 +202,7 @@ class SpriteBenchmark final : public core::Application {
                 engine.quit();
                 return;
             }
+
             begin(engine);
         }
 

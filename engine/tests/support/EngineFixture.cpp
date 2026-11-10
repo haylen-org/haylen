@@ -18,10 +18,12 @@ EngineFixture::EngineFixture(std::map<std::string, std::string> files, std::uniq
     if (options.development || !options.developmentServer.empty()) {
         headlessHost.enableDevelopment(std::nullopt, options.developmentServer);
     }
+
     headlessHost.setAudioOutput(options.audioOutput);
     if (options.gpuDevice) {
         headlessHost.setGpuDeviceMaker(std::move(options.gpuDevice));
     }
+
     files.try_emplace("app.json", R"({"name": "Test App", "identifier": "com.haylen.tests"})");
     files.try_emplace("source/main.lua", "");
 
@@ -29,6 +31,7 @@ EngineFixture::EngineFixture(std::map<std::string, std::string> files, std::uniq
     for (const auto& [path, text] : files) {
         contents.emplace(path, TestFiles::bytes(text));
     }
+
     memoryPackage = std::make_shared<io::MemoryPackage>("test", std::move(contents));
     playedPackage = memoryPackage;
     if (platform::DevelopmentSession* session = headlessHost.getDevelopmentSession(); session != nullptr && session->isConnected()) {
@@ -36,6 +39,7 @@ EngineFixture::EngineFixture(std::map<std::string, std::string> files, std::uniq
         session->setOverlay(overlay);
         playedPackage = overlay;
     }
+
     launch(std::move(application));
 }
 
@@ -43,9 +47,11 @@ EngineFixture::~EngineFixture() = default;
 
 void EngineFixture::launch(std::unique_ptr<core::Application> application) {
     core::AppConfig config = core::AppConfig::fromPackage(*playedPackage);
+
     if (!application) {
         application = std::make_unique<lua::Application>();
     }
+
     application->configure(config);
     headlessHost.setTransparencySupported(config.window.transparent);
     runningEngine = std::make_unique<core::Engine>(headlessHost, playedPackage, std::move(config), std::move(application));
@@ -69,9 +75,11 @@ bool EngineFixture::frameUntil(const std::function<bool()>& condition, std::chro
         if (std::chrono::steady_clock::now() > deadline) {
             return false;
         }
+
         runningEngine->frame(1.0 / 60.0);
         EventLoop::yield();
     }
+
     return true;
 }
 
@@ -84,6 +92,7 @@ std::string EngineFixture::lua(const std::string& source) {
     } else {
         result = luaL_tolstring(L, -1, nullptr);
     }
+
     lua_settop(L, top);
     return result;
 }

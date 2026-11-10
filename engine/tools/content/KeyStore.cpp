@@ -33,6 +33,7 @@ KeyStore KeyStore::create(const std::filesystem::path& folder, std::string ident
     if (identifier.empty()) {
         throw std::invalid_argument("The keys of an app need the identifier of the app.");
     }
+
     if (std::filesystem::exists(folder / kIndexFile)) {
         throw std::invalid_argument("The key folder \"" + folder.generic_string() + "\" holds keys already, and they stay, since every release of the app needs them.");
     }
@@ -56,12 +57,14 @@ KeyStore KeyStore::open(const std::filesystem::path& folder) {
     if (!stream) {
         throw std::runtime_error("The key folder \"" + folder.generic_string() + "\" holds no \"" + std::string(kIndexFile) + "\".");
     }
+
     core::Json index;
     try {
         index = core::Json::parse(stream);
     } catch (const core::Json::exception&) {
         throw std::runtime_error("The file \"" + (folder / kIndexFile).generic_string() + "\" is not the JSON index of a key folder.");
     }
+
     if (!index.is_object() || !index.contains("identifier") || !index["identifier"].is_string() || !index.contains("contentKeys") || !index["contentKeys"].is_array() || index["contentKeys"].empty() || !index.contains("signingKey") || !index["signingKey"].is_string()) {
         throw std::runtime_error("The file \"" + (folder / kIndexFile).generic_string() + "\" needs the \"identifier\" of the app, its \"contentKeys\" and its \"signingKey\".");
     }
@@ -72,11 +75,13 @@ KeyStore KeyStore::open(const std::filesystem::path& folder) {
         if (!id) {
             throw std::runtime_error("The file \"" + (folder / kIndexFile).generic_string() + "\" lists a content key ID that is not 64 hexadecimal digits.");
         }
+
         Secret master = readSecret(folder / getContentKeyFile(*id));
         if (store.ring->add(master) != *id) {
             crypto_wipe(master.data(), master.size());
             throw std::runtime_error("The file \"" + (folder / getContentKeyFile(*id)).generic_string() + "\" holds another key than its name says.");
         }
+
         crypto_wipe(master.data(), master.size());
         store.contentKeyIds.push_back(*id);
     }
@@ -84,9 +89,11 @@ KeyStore KeyStore::open(const std::filesystem::path& folder) {
     Secret seed = readSecret(folder / kSigningKeyFile);
     store.signingKey = std::make_shared<const SigningKey>(seed);
     crypto_wipe(seed.data(), seed.size());
+
     if (store.signingKey->getVerifyingKey().getId().toHex() != index["signingKey"].get<std::string>()) {
         throw std::runtime_error("The file \"" + (folder / kSigningKeyFile).generic_string() + "\" holds another signing key than \"" + std::string(kIndexFile) + "\" names.");
     }
+
     return store;
 }
 
@@ -109,6 +116,7 @@ std::vector<EmbeddedKeyProvider::SealedKey> KeyStore::sealContentKeys() const {
         sealed.push_back(EmbeddedKeyProvider::seal(keyId, master));
         crypto_wipe(master.data(), master.size());
     }
+
     return sealed;
 }
 
@@ -119,6 +127,7 @@ KeyStore::Secret KeyStore::readSecret(const std::filesystem::path& file) {
         crypto_wipe(bytes.data(), bytes.size());
         throw std::runtime_error("The key file \"" + file.generic_string() + "\" is missing or does not hold the 32 bytes of a key.");
     }
+
     Secret secret{};
     std::ranges::copy(bytes, secret.begin());
     crypto_wipe(bytes.data(), bytes.size());
@@ -143,11 +152,13 @@ void KeyStore::restrictToOwner(const std::filesystem::path& path, bool folder) {
     if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token) == FALSE) {
         throw std::runtime_error("The user that runs the tool could not be identified to close its private files to everyone else.");
     }
+
     DWORD size = 0;
     GetTokenInformation(token, TokenUser, nullptr, 0, &size);
     std::vector<std::uint8_t> user(size);
     const BOOL identified = GetTokenInformation(token, TokenUser, user.data(), size, &size);
     CloseHandle(token);
+
     if (identified == FALSE) {
         throw std::runtime_error("The user that runs the tool could not be identified to close its private files to everyone else.");
     }
@@ -163,9 +174,11 @@ void KeyStore::restrictToOwner(const std::filesystem::path& path, bool folder) {
     if (SetEntriesInAclW(1, &access, nullptr, &list) != ERROR_SUCCESS) {
         throw std::runtime_error("The access list that closes \"" + path.generic_string() + "\" to everyone but its owner could not be made.");
     }
+
     std::wstring name = path.wstring();
     const DWORD result = SetNamedSecurityInfoW(name.data(), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION, nullptr, nullptr, list, nullptr);
     LocalFree(list);
+
     if (result != ERROR_SUCCESS) {
         throw std::runtime_error("The file \"" + path.generic_string() + "\" could not be closed to everyone but its owner.");
     }
@@ -180,6 +193,7 @@ void KeyStore::writeIndex() const {
     for (const Digest& id : contentKeyIds) {
         ids.push_back(id.toHex());
     }
+
     const core::Json index = {{"identifier", identifier}, {"contentKeys", ids}, {"signingKey", signingKey->getVerifyingKey().getId().toHex()}};
 
     // The index takes its name only once it is complete, so an interrupted rotation keeps the keys it had.

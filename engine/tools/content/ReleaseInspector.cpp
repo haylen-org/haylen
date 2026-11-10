@@ -25,10 +25,12 @@ Manifest ReleaseInspector::readManifest(const std::filesystem::path& folder, Man
     if (!stream) {
         throw std::runtime_error("The release folder \"" + folder.generic_string() + "\" has no \"" + file.filename().generic_string() + "\".");
     }
+
     Manifest manifest = Manifest::read({std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()}, trusted);
     if (manifest.getEnvelope().domain != domain) {
         throw Error(Error::Code::CorruptManifest, "The manifest \"" + file.generic_string() + "\" belongs to the other domain.");
     }
+
     return manifest;
 }
 
@@ -50,8 +52,10 @@ ReleaseInspector::Domain ReleaseInspector::inspectDomain(const std::filesystem::
             chunk.offset = piece.offset;
             file.chunks.push_back(chunk);
         }
+
         result.files.push_back(std::move(file));
     }
+
     return result;
 }
 
@@ -69,16 +73,20 @@ ReleaseInspector::Verification ReleaseInspector::verify(const std::filesystem::p
             if (!expected.insert(shard.getFileName()).second) {
                 continue;
             }
+
             const std::filesystem::path file = folder / shard.getFileName();
             if (!std::filesystem::is_regular_file(file)) {
                 throw Error(Error::Code::MissingShard, "The release folder has no shard \"" + shard.getFileName() + "\", which its manifests name.");
             }
+
             if (std::filesystem::file_size(file) != shard.fileSize || Digest::ofFile(file) != shard.fileDigest) {
                 throw Error(Error::Code::CorruptHeader, "The shard \"" + shard.getFileName() + "\" is not the file its manifest signs.");
             }
+
             ++verification.shards;
         }
     }
+
     for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(folder)) {
         if (!expected.contains(entry.path().filename().generic_string())) {
             throw std::runtime_error("The release folder holds \"" + entry.path().filename().generic_string() + "\", which no manifest names, so it does not belong in a release.");
@@ -97,9 +105,11 @@ ReleaseInspector::Verification ReleaseInspector::verify(const std::filesystem::p
             reader->readExactly(offset, std::span(buffer).first(count));
             offset += count;
         }
+
         ++verification.files;
         verification.bytes += reader->getSize();
     }
+
     crypto_wipe(buffer.data(), buffer.size());
     return verification;
 }
@@ -112,16 +122,19 @@ ReleaseInspector::Difference ReleaseInspector::compare(const Domain& before, con
             difference.reusedBytes += chunk.plainSize;
             continue;
         }
+
         ++difference.newChunks;
         difference.newBytes += chunk.plainSize;
         difference.downloadBytes += ChunkRecord::kHeaderSize + chunk.encodedSize;
     }
+
     for (const auto& [storedId, chunk] : before.chunks) {
         if (!after.chunks.contains(storedId)) {
             ++difference.removedChunks;
             difference.removedBytes += chunk.plainSize;
         }
     }
+
     for (const ShardReference& shard : after.envelope.shards) {
         if (std::ranges::find(before.envelope.shards, shard) == before.envelope.shards.end()) {
             difference.newShards.push_back(shard);
@@ -133,24 +146,30 @@ ReleaseInspector::Difference ReleaseInspector::compare(const Domain& before, con
     for (const File& file : before.files) {
         earlier.emplace(file.path, &file);
     }
+
     for (const File& file : after.files) {
         const auto found = earlier.find(file.path);
         if (found == earlier.end()) {
             difference.addedFiles.push_back(file.path);
             continue;
         }
+
         const File& previous = *found->second;
         if (!std::ranges::equal(previous.chunks, file.chunks, {}, &Chunk::storedId, &Chunk::storedId)) {
             difference.changedFiles.push_back(file.path);
         }
+
         if (previous.delivery != file.delivery) {
             difference.redeliveredFiles.push_back({.path = file.path, .before = previous.delivery, .after = file.delivery});
         }
+
         earlier.erase(found);
     }
+
     for (const auto& [path, file] : earlier) {
         difference.removedFiles.push_back(path);
     }
+
     return difference;
 }
 
@@ -159,6 +178,7 @@ std::uint64_t ReleaseInspector::getFileBytes(const Domain& domain) noexcept {
     for (const File& file : domain.files) {
         total += file.size;
     }
+
     return total;
 }
 
@@ -167,6 +187,7 @@ std::uint64_t ReleaseInspector::getChunkBytes(const Domain& domain) noexcept {
     for (const auto& [storedId, chunk] : domain.chunks) {
         total += chunk.plainSize;
     }
+
     return total;
 }
 
@@ -175,6 +196,7 @@ std::uint64_t ReleaseInspector::getStoredBytes(const Domain& domain) noexcept {
     for (const auto& [storedId, chunk] : domain.chunks) {
         total += ChunkRecord::kHeaderSize + chunk.encodedSize;
     }
+
     return total;
 }
 

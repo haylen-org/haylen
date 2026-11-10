@@ -20,6 +20,7 @@ ReleaseStager::Layout ReleaseStager::plan(const std::filesystem::path& release, 
         const std::string pack(settings.getPack(std::string_view(file.path).substr(io::Path::kContentDirectory.size() + 1)));
         for (const ReleaseInspector::Chunk& chunk : file.chunks) {
             owners[chunk.shard].insert(pack);
+
             if (content == Content::Required && file.delivery == Delivery::Required && pack.empty()) {
                 required.insert(chunk.shard);
             }
@@ -30,6 +31,7 @@ ReleaseStager::Layout ReleaseStager::plan(const std::filesystem::path& release, 
     for (const ShardReference& shard : report.app.envelope.shards) {
         layout.shipped.push_back(shard.getFileName());
     }
+
     const std::vector<ShardReference>& shards = report.content.envelope.shards;
     for (std::uint32_t index = 0; index < shards.size(); ++index) {
         const std::set<std::string>& packs = owners[index];
@@ -43,6 +45,7 @@ ReleaseStager::Layout ReleaseStager::plan(const std::filesystem::path& release, 
             layout.deferred.push_back(shards[index].getFileName());
         }
     }
+
     return layout;
 }
 
@@ -50,29 +53,37 @@ ReleaseStager::Layout ReleaseStager::stage(const std::filesystem::path& release,
     if (std::filesystem::exists(shipped)) {
         throw std::invalid_argument("The folder \"" + shipped.generic_string() + "\" exists already. Stage the release into a new folder.");
     }
+
     const Layout layout = plan(release, content);
     std::filesystem::create_directories(shipped);
+
     for (const std::string& name : layout.shipped) {
         place(release / name, shipped / name);
     }
+
     if (deferred) {
         std::filesystem::create_directories(*deferred);
+
         for (const std::string& name : layout.deferred) {
             place(release / name, *deferred / name);
         }
     }
+
     for (const auto& [pack, names] : packs ? layout.packs : std::map<std::string, std::vector<std::string>>{}) {
         std::filesystem::create_directories(*packs / pack);
+
         for (const std::string& name : names) {
             place(release / name, *packs / pack / name);
         }
     }
+
     return layout;
 }
 
 void ReleaseStager::place(const std::filesystem::path& source, const std::filesystem::path& destination) {
     std::error_code error;
     std::filesystem::create_hard_link(source, destination, error);
+
     if (error) {
         std::filesystem::copy_file(source, destination, std::filesystem::copy_options::overwrite_existing);
     }

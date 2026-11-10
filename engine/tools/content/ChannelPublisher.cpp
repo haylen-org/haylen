@@ -27,6 +27,7 @@ ChannelPublisher::Publication ChannelPublisher::publish(const io::Package& app, 
     if (options.channel.empty() || !Manifest::isValidName(options.channel)) {
         throw std::invalid_argument("A publication needs the name of a channel, with at most 64 lowercase letters, digits, dashes and dots, not \"" + options.channel + "\".");
     }
+
     const core::AppConfig config = core::AppConfig::fromPackage(app);
     const Digest application = Manifest::identifyApplication(config.identifier);
     const std::optional<ChannelDescriptor> current = readChannel(tree, options.channel);
@@ -35,6 +36,7 @@ ChannelPublisher::Publication ChannelPublisher::publish(const io::Package& app, 
         if (current->application != application) {
             throw std::invalid_argument("The channel \"" + options.channel + "\" of the tree belongs to another app.");
         }
+
         earlier = readManifest(tree, current->manifest);
     } else if (!options.release.empty()) {
         earlier = builder.readManifest(options.release / ReleasePackage::kContentManifestFile);
@@ -67,6 +69,7 @@ ChannelPublisher::Publication ChannelPublisher::publish(const io::Package& app, 
             publication.newPacks.push_back(pack);
         }
     }
+
     for (std::size_t index = built.result.keptShards; index < built.result.shards.size(); ++index) {
         const ShardReference& pack = built.result.shards[index];
         placeImmutable(staging / pack.getFileName(), tree / PublicationLayout::getPackPath(pack));
@@ -94,12 +97,14 @@ std::optional<ChannelDescriptor> ChannelPublisher::readChannel(const std::filesy
     if (!stream) {
         return std::nullopt;
     }
+
     const std::vector<std::uint8_t> bytes{std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
     const VerifyingKey trusted = signingKey->getVerifyingKey();
     ChannelDescriptor descriptor = ChannelDescriptor::read(bytes, std::span(&trusted, 1));
     if (descriptor.channel != channel) {
         throw Error(Error::Code::CorruptManifest, "The pointer of the channel \"" + std::string(channel) + "\" names the channel \"" + descriptor.channel + "\".");
     }
+
     return descriptor;
 }
 
@@ -108,11 +113,13 @@ Manifest ChannelPublisher::readManifest(const std::filesystem::path& tree, const
     if (!stream) {
         throw Error(Error::Code::MissingManifest, "The tree has no manifest \"" + manifest.toHex() + "\", which a channel names.");
     }
+
     const VerifyingKey trusted = signingKey->getVerifyingKey();
     Manifest read = Manifest::read({std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()}, std::span(&trusted, 1));
     if (read.getId() != manifest) {
         throw Error(Error::Code::CorruptManifest, "The file of the manifest \"" + manifest.toHex() + "\" holds another manifest.");
     }
+
     return read;
 }
 
@@ -122,6 +129,7 @@ void ChannelPublisher::verify(const std::filesystem::path& tree, const Manifest&
         if (!std::filesystem::is_regular_file(file)) {
             throw Error(Error::Code::MissingShard, "The tree has no pack \"" + pack.getFileName() + "\", which its manifest names.");
         }
+
         if (std::filesystem::file_size(file) != pack.fileSize || Digest::ofFile(file) != pack.fileDigest) {
             throw Error(Error::Code::CorruptHeader, "The pack \"" + pack.getFileName() + "\" of the tree is not the file its manifest signs.");
         }
@@ -140,6 +148,7 @@ void ChannelPublisher::verify(const std::filesystem::path& tree, const Manifest&
             reader->readExactly(offset, std::span(buffer).first(static_cast<std::size_t>(std::min<std::uint64_t>(buffer.size(), reader->getSize() - offset))));
         }
     }
+
     crypto_wipe(buffer.data(), buffer.size());
 }
 
@@ -148,9 +157,11 @@ void ChannelPublisher::placeImmutable(const std::filesystem::path& source, const
         if (std::filesystem::file_size(destination) != std::filesystem::file_size(source) || Digest::ofFile(destination) != Digest::ofFile(source)) {
             throw std::runtime_error("The tree already holds \"" + destination.generic_string() + "\" with other bytes, and a published file never changes. Restore the file, or publish into a new tree.");
         }
+
         std::filesystem::remove(source);
         return;
     }
+
     std::filesystem::create_directories(destination.parent_path());
     std::filesystem::rename(source, destination);
 }
@@ -180,6 +191,7 @@ ChannelPublisher::Compaction ChannelPublisher::compact(const std::filesystem::pa
         if (!descriptor) {
             continue;
         }
+
         Digest next = descriptor->manifest;
         for (std::uint64_t generation = 0; generation < keep && !next.isZero() && std::filesystem::exists(tree / PublicationLayout::getManifestPath(next)); ++generation) {
             const Manifest manifest = readManifest(tree, next);
@@ -187,6 +199,7 @@ ChannelPublisher::Compaction ChannelPublisher::compact(const std::filesystem::pa
             for (const ShardReference& pack : manifest.getEnvelope().shards) {
                 kept.insert(PublicationLayout::getPackPath(pack));
             }
+
             next = manifest.getEnvelope().previousManifest;
         }
     }
@@ -196,18 +209,21 @@ ChannelPublisher::Compaction ChannelPublisher::compact(const std::filesystem::pa
         if (!std::filesystem::is_directory(tree / folder)) {
             continue;
         }
+
         std::vector<std::filesystem::path> removed;
         for (const std::filesystem::directory_entry& entry : std::filesystem::recursive_directory_iterator(tree / folder)) {
             if (entry.is_regular_file() && !kept.contains(entry.path().lexically_relative(tree))) {
                 removed.push_back(entry.path());
             }
         }
+
         for (const std::filesystem::path& file : removed) {
             compaction.bytes += std::filesystem::file_size(file);
             ++(folder == PublicationLayout::kManifestsFolder ? compaction.manifests : compaction.packs);
             std::filesystem::remove(file);
         }
     }
+
     return compaction;
 }
 

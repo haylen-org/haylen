@@ -41,10 +41,12 @@ std::vector<std::uint8_t> TestFiles::wav(std::uint32_t sampleRate, std::uint16_t
     append(16, 2);
     appendText("data");
     append(dataSize, 4);
+
     for (const float sample : samples) {
         const auto value = static_cast<std::int16_t>(std::lround(std::clamp(sample, -1.0F, 1.0F) * 32767.0F));
         append(static_cast<std::uint16_t>(value), 2);
     }
+
     return file;
 }
 
@@ -61,6 +63,7 @@ std::vector<std::uint8_t> TestFiles::randomBytes(std::size_t size, std::uint64_t
             bytes[offset + index] = static_cast<std::uint8_t>(value >> (8 * index));
         }
     }
+
     return bytes;
 }
 

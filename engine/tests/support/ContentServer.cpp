@@ -102,6 +102,7 @@ std::uint64_t ContentServer::getSentBytes() const {
     for (const Exchange& exchange : exchanges) {
         total += exchange.bytes;
     }
+
     return total;
 }
 
@@ -138,6 +139,7 @@ void ContentServer::serve(const std::string& target, const std::string& range, c
     if (exchange.status == 0 && !std::filesystem::is_regular_file(file, error)) {
         exchange.status = 404;
     }
+
     if (exchange.status != 0) {
         response.setStatus(static_cast<Poco::Net::HTTPResponse::HTTPStatus>(exchange.status));
         response.setContentLength(0);
@@ -157,9 +159,11 @@ void ContentServer::serve(const std::string& target, const std::string& range, c
         const std::string spec = range.substr(6);
         const std::size_t dash = spec.find('-');
         std::from_chars(spec.data(), spec.data() + dash, first);
+
         if (dash + 1 < spec.size()) {
             std::from_chars(spec.data() + dash + 1, spec.data() + spec.size(), last);
         }
+
         if (first >= size) {
             response.setStatus(Poco::Net::HTTPResponse::HTTP_REQUESTED_RANGE_NOT_SATISFIABLE);
             response.set("Content-Range", std::format("bytes */{}", size));
@@ -169,6 +173,7 @@ void ContentServer::serve(const std::string& target, const std::string& range, c
             record(std::move(exchange));
             return;
         }
+
         last = std::min(last, size - 1);
         partial = true;
         exchange.first = first;
@@ -182,16 +187,19 @@ void ContentServer::serve(const std::string& target, const std::string& range, c
     if (partial) {
         response.set("Content-Range", std::format("bytes {}-{}/{}", sent, last, size));
     }
+
     response.setContentLength64(static_cast<Poco::Int64>(length));
     const bool drop = length > dropBytes.load() && drops.load() > 0 && drops.fetch_sub(1) > 0;
     if (drop) {
         response.setKeepAlive(false);
     }
+
     std::ostream& output = response.send();
 
     for (int waited = 0; stalls && waited < kStallMilliseconds && !stopping; waited += 10) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
+
     std::this_thread::sleep_for(std::chrono::milliseconds(delay.load()));
 
     std::ifstream stream(file, std::ios::binary);
@@ -204,10 +212,13 @@ void ContentServer::serve(const std::string& target, const std::string& range, c
         output.write(buffer.data(), count);
         exchange.bytes += static_cast<std::uint64_t>(count);
     }
+
     output.flush();
+
     if (drop) {
         socket.shutdown();
     }
+
     record(std::move(exchange));
 }
 

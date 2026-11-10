@@ -32,13 +32,16 @@ ContentTool::Arguments::Arguments(std::span<const std::string> words) {
             positionals.push_back(word);
             continue;
         }
+
         const std::string name = word.substr(2);
         if (index + 1 < words.size() && !words[index + 1].starts_with("--")) {
             if (!options.try_emplace(name, words[++index]).second) {
                 throw std::invalid_argument("The option \"--" + name + "\" is given twice.");
             }
+
             continue;
         }
+
         flags.push_back(name);
     }
 }
@@ -47,6 +50,7 @@ std::string ContentTool::Arguments::takePositional(std::string_view name) {
     if (positionals.empty()) {
         throw std::invalid_argument("The command needs the " + std::string(name) + ".");
     }
+
     std::string value = std::move(positionals.front());
     positionals.erase(positionals.begin());
     return value;
@@ -57,6 +61,7 @@ std::optional<std::string> ContentTool::Arguments::takeOptional(std::string_view
     if (found == options.end()) {
         return std::nullopt;
     }
+
     std::string value = std::move(found->second);
     options.erase(found);
     return value;
@@ -67,6 +72,7 @@ std::string ContentTool::Arguments::takeOption(std::string_view name) {
     if (!value) {
         throw std::invalid_argument("The command needs the option \"--" + std::string(name) + "\".");
     }
+
     return std::move(*value);
 }
 
@@ -75,11 +81,13 @@ std::optional<std::uint64_t> ContentTool::Arguments::takeOptionalNumber(std::str
     if (!text) {
         return std::nullopt;
     }
+
     std::uint64_t value = 0;
     const auto [end, error] = std::from_chars(text->data(), text->data() + text->size(), value);
     if (error != std::errc() || end != text->data() + text->size()) {
         throw std::invalid_argument("The option \"--" + std::string(name) + "\" takes a whole number, not \"" + *text + "\".");
     }
+
     return value;
 }
 
@@ -88,6 +96,7 @@ std::uint64_t ContentTool::Arguments::takeNumber(std::string_view name) {
     if (!value) {
         throw std::invalid_argument("The command needs the option \"--" + std::string(name) + "\".");
     }
+
     return *value;
 }
 
@@ -96,6 +105,7 @@ bool ContentTool::Arguments::takeFlag(std::string_view name) {
     if (found == flags.end()) {
         return false;
     }
+
     flags.erase(found);
     return true;
 }
@@ -104,9 +114,11 @@ void ContentTool::Arguments::finish() const {
     if (!positionals.empty()) {
         throw std::invalid_argument("The command takes no argument \"" + positionals.front() + "\".");
     }
+
     if (!options.empty()) {
         throw std::invalid_argument("The command takes no option \"--" + options.begin()->first + "\".");
     }
+
     if (!flags.empty()) {
         throw std::invalid_argument("The command takes no option \"--" + flags.front() + "\", or it needs a value.");
     }
@@ -119,6 +131,7 @@ int ContentTool::run(std::span<const std::string> arguments) {
         if (arguments.empty()) {
             throw std::invalid_argument("Name a command: \"keys\", \"build\", \"verify\", \"stage\", \"inspect\", \"diff\", \"publish\", \"compact\" or \"bootstrap\".");
         }
+
         const std::string& command = arguments.front();
         Arguments rest(arguments.subspan(1));
         if (command == "keys") {
@@ -142,6 +155,7 @@ int ContentTool::run(std::span<const std::string> arguments) {
         } else {
             throw std::invalid_argument("The command \"" + command + "\" is unknown. The commands are \"keys\", \"build\", \"verify\", \"stage\", \"inspect\", \"diff\", \"publish\", \"compact\" and \"bootstrap\".");
         }
+
         return 0;
     } catch (const std::exception& error) {
         errors << "Error: " << error.what() << '\n';
@@ -160,6 +174,7 @@ void ContentTool::runKeys(Arguments& arguments) {
         printKeys(store);
         return;
     }
+
     if (action == "rotate") {
         arguments.finish();
         KeyStore store = KeyStore::open(folder);
@@ -168,18 +183,22 @@ void ContentTool::runKeys(Arguments& arguments) {
         printKeys(store);
         return;
     }
+
     if (action != "show") {
         throw std::invalid_argument("The keys command takes \"create\", \"rotate\" or \"show\", not \"" + action + "\".");
     }
+
     arguments.finish();
     printKeys(KeyStore::open(folder));
 }
 
 void ContentTool::printKeys(const KeyStore& store) {
     output << "App \"" << store.getIdentifier() << "\".\n";
+
     for (const Digest& id : store.getContentKeyIds()) {
         output << "Content key \"" << id.toHex() << "\"" << (id == store.getActiveKeyId() ? ", which encrypts new content.\n" : ".\n");
     }
+
     const VerifyingKey& verifying = store.getSigningKey()->getVerifyingKey();
     output << "Signing key \"" << verifying.getId().toHex() << "\" with the public key \"" << Digest(verifying.getBytes()).toHex() << "\".\n";
 }
@@ -193,6 +212,7 @@ void ContentTool::runBuild(Arguments& arguments) {
     const std::optional<std::string> cache = arguments.takeOptional("cache");
     options.shardTarget = arguments.takeOptionalNumber("shard-target").value_or(ContentBuilder::kDefaultShardTarget);
     arguments.finish();
+
     if (options.shardTarget == 0) {
         throw std::invalid_argument("The option \"--shard-target\" takes a size above zero bytes.");
     }
@@ -202,6 +222,7 @@ void ContentTool::runBuild(Arguments& arguments) {
     if (config.identifier != store.getIdentifier()) {
         throw std::invalid_argument("The app \"" + config.identifier + "\" cannot build with the keys of \"" + store.getIdentifier() + "\".");
     }
+
     const ReleaseBuilder builder(store.getContentKeys(), store.getActiveKeyId(), store.getSigningKey(), cache ? std::make_shared<const RecordCache>(*cache) : nullptr);
     const std::optional<std::filesystem::path> previous = earlier ? std::optional<std::filesystem::path>(*earlier) : std::nullopt;
     const ReleaseBuilder::Result result = builder.build(*package, folder, previous, options);
@@ -212,6 +233,7 @@ void ContentTool::runBuild(Arguments& arguments) {
 
 void ContentTool::printStatistics(Manifest::Domain domain, const ContentBuilder::Statistics& statistics) {
     output << std::format("The {} domain stores {} new chunks of {} bytes in {} bytes, {} of them from the build cache, and reuses {} chunks of {} bytes, while {} earlier shards leave it.\n", getDomainName(domain), statistics.newChunks, statistics.newBytes, statistics.storedBytes, statistics.cachedChunks, statistics.reusedChunks, statistics.reusedBytes, statistics.droppedShards);
+
     if (statistics.missingShards > 0) {
         output << std::format("The folder of the previous release lacks {} of its shards of the {} domain, so their content was built again.\n", statistics.missingShards, getDomainName(domain));
     }
@@ -259,33 +281,42 @@ void ContentTool::runInspect(Arguments& arguments) {
 void ContentTool::printDomain(const ReleaseInspector::Domain& domain, bool chunks) {
     const Manifest::Envelope& envelope = domain.envelope;
     output << std::format("The {} domain has the manifest \"{}\", generation {} of the profile \"{}\" for app builds {} to {}, with {} shards.\n", getDomainName(envelope.domain), domain.manifest.toHex(), envelope.generation, envelope.profile, envelope.minimumAppBuild, envelope.maximumAppBuild, envelope.shards.size());
+
     if (!envelope.luaAbi.empty()) {
         output << "  Its Lua bytecode has the ABI \"" << envelope.luaAbi << "\".\n";
     }
+
     for (std::size_t index = 0; index < envelope.shards.size(); ++index) {
         output << std::format("  Shard {} is \"{}\" of {} bytes.\n", index, envelope.shards[index].getFileName(), envelope.shards[index].fileSize);
     }
+
     for (const ReleaseInspector::File& file : domain.files) {
         std::uint64_t stored = 0;
         std::vector<std::uint32_t> shards;
         for (const ReleaseInspector::Chunk& chunk : file.chunks) {
             stored += chunk.encodedSize;
+
             if (std::ranges::find(shards, chunk.shard) == shards.end()) {
                 shards.push_back(chunk.shard);
             }
         }
+
         std::string places;
         for (const std::uint32_t shard : shards) {
             places += (places.empty() ? "" : ", ") + std::to_string(shard);
         }
+
         output << std::format("  File \"{}\" holds {} bytes of {}, {}, in {} chunks stored in {} bytes{}.\n", file.path, file.size, getKindName(file.kind), core::AppConfig::deliveryName(file.delivery), file.chunks.size(), stored, places.empty() ? "" : " in shard " + places);
+
         if (!chunks) {
             continue;
         }
+
         for (const ReleaseInspector::Chunk& chunk : file.chunks) {
             output << std::format("    Chunk at {} holds {} bytes with the content ID \"{}\", stored in {} bytes with the stored ID \"{}\" in shard {}.\n", chunk.offset, chunk.plainSize, chunk.contentId.toHex(), chunk.encodedSize, chunk.storedId.toHex(), chunk.shard);
         }
     }
+
     const std::uint64_t files = ReleaseInspector::getFileBytes(domain);
     const std::uint64_t distinct = ReleaseInspector::getChunkBytes(domain);
     output << std::format("  The {} files hold {} bytes in {} distinct chunks of {} bytes, stored in {} bytes, so deduplication saves {} bytes.\n", domain.files.size(), files, domain.chunks.size(), distinct, ReleaseInspector::getStoredBytes(domain), files - distinct);
@@ -304,16 +335,20 @@ void ContentTool::runDiff(Arguments& arguments) {
     for (const auto& [older, newer] : {std::pair{&earlier.app, &later.app}, std::pair{&earlier.content, &later.content}}) {
         const ReleaseInspector::Difference difference = ReleaseInspector::compare(*older, *newer);
         output << std::format("The {} domain adds {} chunks of {} bytes, reuses {} chunks of {} bytes and drops {} chunks of {} bytes, with {} new shards and {} added, {} changed and {} removed files.\n", getDomainName(newer->envelope.domain), difference.newChunks, difference.newBytes, difference.reusedChunks, difference.reusedBytes, difference.removedChunks, difference.removedBytes, difference.newShards.size(), difference.addedFiles.size(), difference.changedFiles.size(), difference.removedFiles.size());
+
         for (const auto& [label, paths] : {std::pair{"Added", &difference.addedFiles}, std::pair{"Changed", &difference.changedFiles}, std::pair{"Removed", &difference.removedFiles}}) {
             for (const std::string& path : *paths) {
                 output << "  " << label << " \"" << path << "\".\n";
             }
         }
+
         for (const ReleaseInspector::Redelivery& file : difference.redeliveredFiles) {
             output << std::format("  Delivered \"{}\" as \"{}\" instead of \"{}\".\n", file.path, core::AppConfig::deliveryName(file.after), core::AppConfig::deliveryName(file.before));
         }
+
         download += difference.downloadBytes + std::filesystem::file_size(after / ReleasePackage::getManifestFile(newer->envelope.domain));
     }
+
     output << std::format("An app that holds the earlier release downloads about {} bytes to reach the later one.\n", download);
 }
 
@@ -330,12 +365,14 @@ void ContentTool::runPublish(Arguments& arguments) {
     if (core::AppConfig::fromPackage(*package).identifier != store.getIdentifier()) {
         throw std::invalid_argument("The app cannot publish with the keys of \"" + store.getIdentifier() + "\".");
     }
+
     const ChannelPublisher publisher(store.getContentKeys(), store.getActiveKeyId(), store.getSigningKey(), cache ? std::make_shared<const RecordCache>(*cache) : nullptr);
     const ChannelPublisher::Publication publication = publisher.publish(*package, tree, options);
     std::uint64_t bytes = 0;
     for (const ShardReference& pack : publication.newPacks) {
         bytes += pack.fileSize;
     }
+
     output << std::format("Published generation {} of the channel \"{}\" in \"{}\" with the manifest \"{}\" and {} new packs of {} bytes.\n", publication.generation, options.channel, tree.generic_string(), publication.manifest.toHex(), publication.newPacks.size(), bytes);
     printStatistics(Manifest::Domain::Content, publication.statistics);
 }
@@ -363,11 +400,14 @@ void ContentTool::runBootstrap(Arguments& arguments) {
     std::ifstream existing(file, std::ios::binary);
     if (std::string(std::istreambuf_iterator<char>(existing), std::istreambuf_iterator<char>()) != source) {
         existing.close();
+
         if (file.has_parent_path()) {
             std::filesystem::create_directories(file.parent_path());
         }
+
         KeyStore::writePrivate(file, {reinterpret_cast<const std::uint8_t*>(source.data()), source.size()});
     }
+
     output << "Wrote the bootstrap of \"" << store.getIdentifier() << "\" for the profile \"" << profile << "\" into \"" << file.generic_string() << "\".\n";
 }
 

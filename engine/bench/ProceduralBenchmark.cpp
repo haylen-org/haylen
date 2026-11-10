@@ -58,9 +58,11 @@ class ProceduralBenchmark final {
     static void measure(const char* name, int runs, const std::function<void()>& work) {
         work();
         const auto start = std::chrono::steady_clock::now();
+
         for (int run = 0; run < runs; ++run) {
             work();
         }
+
         report(name, std::chrono::steady_clock::now() - start, runs);
     }
 
@@ -79,6 +81,7 @@ class ProceduralBenchmark final {
             rules.allow(1, 2, direction);
             rules.allow(2, 1, direction);
         }
+
         return rules;
     }
 
@@ -91,6 +94,7 @@ class ProceduralBenchmark final {
                 values.push_back(noise.fractal(static_cast<float>(x) / 64.0F, static_cast<float>(y) / 64.0F));
             }
         }
+
         return values;
     }
 
@@ -101,6 +105,7 @@ class ProceduralBenchmark final {
         for (int index = 0; index < count; ++index) {
             points.push_back({random.range(0.0F, 10000.0F), random.range(0.0F, 10000.0F)});
         }
+
         return points;
     }
 

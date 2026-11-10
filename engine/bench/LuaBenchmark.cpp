@@ -23,9 +23,11 @@ class LuaBenchmark final {
 
         core::Engine engine(host, package, std::move(config), std::move(application));
         engine.start();
+
         while (engine.isRunning() && engine.getError() == nullptr) {
             engine.frame(1.0 / 60.0);
         }
+
         const bool failed = engine.getError() != nullptr;
         engine.stop();
         return failed ? 1 : 0;
@@ -39,5 +41,6 @@ int main(int argc, char** argv) {
         std::fprintf(stderr, "Usage: \"haylen-lua-benchmark <package folder>\".\n");
         return 2;
     }
+
     return haylen::bench::LuaBenchmark::run(argv[1]);
 }

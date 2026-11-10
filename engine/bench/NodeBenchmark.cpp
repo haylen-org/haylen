@@ -45,10 +45,12 @@ class NodeBenchmark final {
         gpu.printDevice(engine);
         std::printf("Workers of the job system: %zu\n", engine.getJobs().getWorkerCount());
         std::printf("%-62s %12s %8s %10s %10s\n", "Scene", "Average ms", "Frames", "Frame ms", "GPU ms");
+
         for (const bool parallel : {false, true}) {
             measureUpdate(engine, texture, parallel, 1);
             measureUpdate(engine, texture, parallel, 100);
         }
+
         measureDraw(engine, host, gpu, texture, false);
         measureDraw(engine, host, gpu, texture, true);
         engine.stop();
@@ -80,6 +82,7 @@ class NodeBenchmark final {
                 (void)roots.back().add({.position = {static_cast<float>(child % 10) * 20.0F, static_cast<float>(child / 10) * 20.0F}, .rotation = 0.1F, .content = {.value = graphics2d::Sprite{.texture = texture}}});
             }
         }
+
         tree->update(0.0F);
         return {std::move(tree), std::move(roots)};
     }
@@ -92,10 +95,12 @@ class NodeBenchmark final {
             for (std::size_t root = static_cast<std::size_t>(frame % stride); root < roots.size(); root += static_cast<std::size_t>(stride)) {
                 roots[root].setRotation(static_cast<float>(frame) * 0.01F);
             }
+
             const auto start = std::chrono::steady_clock::now();
             tree->update(1.0F / 60.0F, 1.0F, parallel ? &engine.getJobs() : nullptr);
             total += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
         }
+
         const std::string moved = stride == 1 ? "every root moved" : "1 root in 100 moved";
         report("Update of 100000 nodes, " + moved + ", " + (parallel ? "job system" : "one thread"), total / kFrames);
     }
@@ -112,6 +117,7 @@ class NodeBenchmark final {
         camera.setZoom({zoom, zoom});
         double total = 0.0;
         gpu.resetFrames();
+
         for (int frame = 0; frame < kFrames; ++frame) {
             const auto began = std::chrono::steady_clock::now();
             renderer.beginFrame(engine.getViewport(), math::Color::black());
@@ -122,6 +128,7 @@ class NodeBenchmark final {
             renderer.endFrame(host.isFrameTransparent());
             gpu.addFrame(engine, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - began).count());
         }
+
         report("Draw of 100000 sprite nodes, " + std::to_string(tree->getDrawnCount()) + " in view", total / kFrames, gpu.formatFrameTime(), gpu.formatGpuTime());
     }
 };

@@ -19,6 +19,7 @@ BenchmarkGpu::BenchmarkGpu(int argc, char** argv) {
         if (argument != "--graphics-api" || index + 1 == argc) {
             throw std::invalid_argument(std::format("The benchmark takes only \"--graphics-api <name>\", not \"{}\".", argument));
         }
+
         const std::string_view name = argv[++index];
         api = gpu::DeviceFactory::findApi(name);
         if (!api || *api == gpu::Device::Api::None) {
@@ -32,6 +33,7 @@ BenchmarkGpu::~BenchmarkGpu() = default;
 // The output goes out unbuffered, so a benchmark whose output goes to a file or a pipe keeps every row it printed even when it stops early.
 int BenchmarkGpu::run(int argc, char** argv, const std::function<int(BenchmarkGpu&)>& benchmark) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);
+
     try {
         BenchmarkGpu gpu(argc, argv);
         return benchmark(gpu);
@@ -51,6 +53,7 @@ void BenchmarkGpu::install(platform::HeadlessHost& host) {
     if (!api) {
         return;
     }
+
     width = static_cast<int>(host.getFramebufferSize().x);
     height = static_cast<int>(host.getFramebufferSize().y);
     host.setGpuDeviceMaker([this] { return makeDevice(); });
@@ -74,6 +77,7 @@ void BenchmarkGpu::printDevice(core::Engine& engine) const {
         std::printf("Graphics API \"%.*s\": the null device of the headless host, so the frames measure the frame thread alone.\n", static_cast<int>(graphics.getApiName().size()), graphics.getApiName().data());
         return;
     }
+
     const std::string adapter = graphics.getAdapterName();
     std::printf("Graphics API \"%.*s\" on \"%s\", drawing every frame offscreen at %d by %d pixels.\n", static_cast<int>(graphics.getApiName().size()), graphics.getApiName().data(), adapter.c_str(), width, height);
 }
@@ -89,8 +93,10 @@ void BenchmarkGpu::addFrame(core::Engine& engine, double milliseconds) {
     if (device != nullptr && device->isLost()) {
         throw Lost(std::format("The GPU lost the device of \"{}\", so the benchmark stops.", gpu::DeviceFactory::getApiName(*api)));
     }
+
     frameMilliseconds += milliseconds;
     ++frames;
+
     if (const std::optional<double> seconds = engine.getGraphics().getGpuFrameSeconds()) {
         gpuSeconds += *seconds;
         ++gpuFrames;

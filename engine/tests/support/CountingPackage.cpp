@@ -35,6 +35,7 @@ std::size_t CountingPackage::Reader::read(std::uint64_t offset, std::span<std::u
     if (std::this_thread::get_id() == counters->watched.load()) {
         ++counters->watchedReads;
     }
+
     const std::size_t count = inner->read(offset, target);
     counters->bytes += count;
     std::uint64_t largest = counters->largest;

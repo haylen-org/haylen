@@ -32,6 +32,7 @@ std::vector<std::uint8_t> FontCollection::build(std::span<const std::vector<std:
             writeBigEndian(collection, start + record + 8, moved, 4);
         }
     }
+
     return collection;
 }
 
@@ -42,6 +43,7 @@ std::vector<std::uint8_t> FontCollection::addTable(std::span<const std::uint8_t>
     for (std::size_t record = 12; record < 12 + tables * 16; record += 16) {
         records.push_back({readBigEndian(font, record, 4), readBigEndian(font, record + 4, 4), readBigEndian(font, record + 8, 4) + 16, readBigEndian(font, record + 12, 4)});
     }
+
     const std::size_t end = (font.size() + 16 + 3) & ~std::size_t{3};
     records.push_back({tag, 0, static_cast<std::uint32_t>(end), 4});
     std::ranges::sort(records);
@@ -50,11 +52,13 @@ std::vector<std::uint8_t> FontCollection::addTable(std::span<const std::uint8_t>
     std::copy_n(font.begin(), 12, added.begin());
     std::copy(font.begin() + 12 + tables * 16, font.end(), added.begin() + 12 + (tables + 1) * 16);
     writeBigEndian(added, 4, tables + 1, 2);
+
     for (std::size_t index = 0; index < records.size(); ++index) {
         for (std::size_t field = 0; field < 4; ++field) {
             writeBigEndian(added, 12 + index * 16 + field * 4, records[index][field], 4);
         }
     }
+
     return added;
 }
 
@@ -63,6 +67,7 @@ std::uint32_t FontCollection::readBigEndian(std::span<const std::uint8_t> bytes,
     for (std::size_t index = 0; index < width; ++index) {
         value = (value << 8U) | bytes[offset + index];
     }
+
     return value;
 }
 

@@ -48,19 +48,25 @@ class PhysicsBenchmark final {
         gpu.printDevice(engine);
         std::printf("Workers of the job system: %zu\n", jobs.getWorkerCount());
         std::printf("%-62s %12s %8s %10s %10s\n", "Scene", "Average ms", "Steps", "Frame ms", "GPU ms");
+
         for (const int threads : {1, 2, 4, 8}) {
             measurePile(jobs, threads);
         }
+
         measureSleeping(jobs);
+
         for (const int threads : {1, 4}) {
             measurePyramid(jobs, threads);
         }
+
         measureSubSteps(jobs);
         measureChain(jobs);
         measureRagdolls(jobs);
+
         for (const std::size_t particles : {1800U, 4000U, 8000U}) {
             measureFluid(jobs, particles);
         }
+
         measureQueries();
         measureSync();
         measureDebugDraw(engine, host, gpu);
@@ -90,12 +96,14 @@ class PhysicsBenchmark final {
         for (int step = 0; step < warmup; ++step) {
             world.step(kStep);
         }
+
         double total = 0.0;
         for (int step = 0; step < steps; ++step) {
             const auto start = std::chrono::steady_clock::now();
             world.step(kStep);
             total += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
         }
+
         report(name, total / steps, steps);
     }
 
@@ -116,6 +124,7 @@ class PhysicsBenchmark final {
             body.addBox({size, size});
             bodies.push_back(body);
         }
+
         return bodies;
     }
 
@@ -173,6 +182,7 @@ class PhysicsBenchmark final {
             (void)world.createJoint(physics2d::Joint::Type::Revolute, previous, body, {.anchorA = {static_cast<float>(link) * 16.0F, 0.0F}});
             previous = body;
         }
+
         physics2d::Body ball = world.createBody({.position = {static_cast<float>(kLinks) * 16.0F + 20.0F, 0.0F}});
         ball.addCircle(20.0F, {.density = 20.0F});
         (void)world.createJoint(physics2d::Joint::Type::Revolute, previous, ball, {.anchorA = {static_cast<float>(kLinks) * 16.0F, 0.0F}});
@@ -186,10 +196,12 @@ class PhysicsBenchmark final {
             const float top = static_cast<float>(step) * 60.0F;
             stairs.addBox({120.0F, 1000.0F - top}, {.offset = {static_cast<float>(step) * 120.0F + 60.0F, top + (1000.0F - top) * 0.5F}});
         }
+
         std::vector<physics2d::Ragdoll> dolls;
         for (int index = 0; index < 20; ++index) {
             dolls.push_back(physics2d::Ragdoll::create(world, {.position = {60.0F + static_cast<float>(index % 5) * 30.0F, -200.0F - static_cast<float>(index / 5) * 260.0F}, .height = 200.0F, .filter = {.group = -1 - index}, .velocity = {200.0F, 0.0F}}));
         }
+
         measureSteps("20 ragdolls tumbling down stairs", world, 0, 300);
     }
 
@@ -200,10 +212,12 @@ class PhysicsBenchmark final {
         tank.addBox({40.0F, 900.0F}, {.offset = {-660.0F, -50.0F}});
         tank.addBox({1360.0F, 40.0F}, {.offset = {0.0F, 400.0F}});
         tank.addBox({40.0F, 900.0F}, {.offset = {660.0F, -50.0F}});
+
         for (int index = 0; index < 6; ++index) {
             physics2d::Body crate = world.createBody({.position = {-300.0F + static_cast<float>(index) * 120.0F, -400.0F}});
             crate.addBox({70.0F, 50.0F}, {.density = 0.5F});
         }
+
         physics2d::Fluid fluid(world, {.radius = 6.0F, .smoothingRadius = 22.0F, .maxParticles = particles});
         (void)fluid.fill({-620.0F, -480.0F, 1240.0F, 860.0F});
 
@@ -216,6 +230,7 @@ class PhysicsBenchmark final {
             total += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
             fluidTotal += fluid.getStepMilliseconds();
         }
+
         const std::string name = "Fluid of " + std::to_string(fluid.size()) + " particles";
         report(name + ", fluid pass", fluidTotal / kSteps, kSteps);
         report(name + ", whole step", total / kSteps, kSteps);
@@ -225,6 +240,7 @@ class PhysicsBenchmark final {
         physics2d::World world;
         addPit(world, 2400.0F, 3000.0F);
         (void)addBoxes(world, 2000, 2300.0F, 24.0F);
+
         for (int step = 0; step < 300; ++step) {
             world.step(kStep);
         }
@@ -234,17 +250,20 @@ class PhysicsBenchmark final {
         for (int index = 0; index < 10000; ++index) {
             points.emplace_back(random.range(-1150.0F, 1150.0F), random.range(-800.0F, 0.0F));
         }
+
         const physics2d::Raycaster raycaster(world);
         const auto start = std::chrono::steady_clock::now();
         int hits = 0;
         for (const math::Vec2 point : points) {
             hits += raycaster.castRay(point, point + math::Vec2{0.0F, 600.0F}) ? 1 : 0;
         }
+
         const auto middle = std::chrono::steady_clock::now();
         std::size_t found = 0;
         for (const math::Vec2 point : points) {
             found += world.queryCircle(point, 40.0F).size();
         }
+
         const auto end = std::chrono::steady_clock::now();
         report("10000 ray casts through a pile of 2000 boxes", std::chrono::duration<double, std::milli>(middle - start).count(), 1);
         report("10000 circle queries in a pile of 2000 boxes", std::chrono::duration<double, std::milli>(end - middle).count(), 1);
@@ -260,9 +279,11 @@ class PhysicsBenchmark final {
             std::vector<float> values(bodies.size() * 3);
             constexpr int kRuns = 200;
             const auto start = std::chrono::steady_clock::now();
+
             for (int run = 0; run < kRuns; ++run) {
                 world.readTransforms(bodies, values, blended ? std::optional(0.5F) : std::nullopt);
             }
+
             report(std::string("Read the transforms of 5000 bodies") + (blended ? ", interpolated" : ""), std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count() / kRuns, kRuns);
         }
     }
@@ -276,6 +297,7 @@ class PhysicsBenchmark final {
         constexpr int kRuns = 60;
         double total = 0.0;
         gpu.resetFrames();
+
         for (int run = 0; run < kRuns; ++run) {
             const auto began = std::chrono::steady_clock::now();
             renderer.beginFrame(engine.getViewport(), math::Color::black());
@@ -286,6 +308,7 @@ class PhysicsBenchmark final {
             renderer.endFrame(host.isFrameTransparent());
             gpu.addFrame(engine, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - began).count());
         }
+
         report("Debug drawing of 2000 boxes", total / kRuns, kRuns, gpu.formatFrameTime(), gpu.formatGpuTime());
     }
 
@@ -293,6 +316,7 @@ class PhysicsBenchmark final {
         if (luaL_dostring(L, source) == LUA_OK) {
             return true;
         }
+
         std::fprintf(stderr, "%s\n", lua_tostring(L, -1));
         lua_pop(L, 1);
         return false;
@@ -326,15 +350,19 @@ class PhysicsBenchmark final {
         if (!runLua(L, setup)) {
             return;
         }
+
         for (const std::string world : {"quietWorld", "busyWorld"}) {
             const std::string steps = "for step = 1, 240 do " + world + ":step(1 / 60) end";
             const auto start = std::chrono::steady_clock::now();
+
             if (!runLua(L, steps.c_str())) {
                 return;
             }
+
             const double milliseconds = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count() / 240.0;
             report(world == "busyWorld" ? "Pile of 2000 boxes stepped from Lua with callbacks" : "Pile of 2000 boxes stepped from Lua", milliseconds, 240);
         }
+
         lua_getglobal(L, "benchmarkEvents");
         std::printf("%-62s %12.0f %8d\n", "Events that reached Lua", lua_tonumber(L, -1), 240);
         lua_pop(L, 1);

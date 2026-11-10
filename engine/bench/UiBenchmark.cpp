@@ -37,6 +37,7 @@ class UiBenchmark final {
         for (const auto& [path, text] : {std::pair<std::string, std::string_view>{"app.json", R"({"name": "UI Benchmark", "identifier": "com.haylen.uibenchmark"})"}, {"source/main.lua", ""}}) {
             files.emplace(path, std::vector<std::uint8_t>(text.begin(), text.end()));
         }
+
         const auto package = std::make_shared<io::MemoryPackage>("ui-benchmark", std::move(files));
         core::AppConfig config = core::AppConfig::fromPackage(*package);
         auto application = std::make_unique<lua::Application>();
@@ -96,6 +97,7 @@ class UiBenchmark final {
         for (std::size_t index = 0; index < kItems; ++index) {
             items[index] = {.id = "item-" + std::to_string(index), .type = typeOf(index), .fields = {{"title", "Item " + std::to_string(index + 1)}, {"caption", "Seed " + std::to_string(index * 2654435761U % 100000)}}};
         }
+
         auto source = std::make_shared<CountingItems>();
         source->assign(std::move(items));
         std::uint64_t binderCalls = 0;
@@ -106,6 +108,7 @@ class UiBenchmark final {
         });
         // clang-format on
         collection.setSource(source);
+
         for (int frame = 0; frame < kWarmupFrames; ++frame) {
             engine.frame(kFrameSeconds);
         }
@@ -119,6 +122,7 @@ class UiBenchmark final {
         for (int frame = 0; frame < kSettleFrames; ++frame) {
             engine.frame(kFrameSeconds);
         }
+
         report(engine, gpu, name, "rest", kRestFrames, *source, binderCalls, [](int) {});
         plugin.unmount(*gui);
         engine.frame(kFrameSeconds);
@@ -131,6 +135,7 @@ class UiBenchmark final {
         double total = 0.0;
         double worst = 0.0;
         gpu.resetFrames();
+
         for (int frame = 0; frame < count; ++frame) {
             step(frame);
             const auto started = std::chrono::steady_clock::now();
@@ -140,6 +145,7 @@ class UiBenchmark final {
             worst = std::max(worst, milliseconds);
             gpu.addFrame(engine, milliseconds);
         }
+
         const debug::ObjectCounter::Snapshot cells = *debug::ObjectCounter::find("UiCell");
         std::printf("%-6s %-6s %7d %9.3f %9.3f %9s %8llu %10llu %8llu %7llu\n", name, phase, count, total / count, worst, gpu.formatGpuTime().c_str(), static_cast<unsigned long long>(source.binds - bindsBefore), static_cast<unsigned long long>(binderCalls - callsBefore), static_cast<unsigned long long>(cells.created - cellsBefore.created), static_cast<unsigned long long>(cells.alive));
     }

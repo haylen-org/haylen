@@ -38,9 +38,11 @@ class CoreBenchmark final {
         const auto add = [&files](const std::string& path, std::string_view text) { files.insert_or_assign(path, std::vector<std::uint8_t>(text.begin(), text.end())); };
         add("app.json", R"({"name": "Core Benchmark", "identifier": "com.haylen.corebenchmark"})");
         add("source/main.lua", "");
+
         for (int index = 0; index < kAssets; ++index) {
             add("content/data/item-" + std::to_string(index) + ".json", R"({"name": "item", "stats": {"attack": 12, "defense": 7}, "tags": ["melee", "rare"]})");
         }
+
         const auto package = std::make_shared<io::MemoryPackage>("core-benchmark", std::move(files));
         core::AppConfig config = core::AppConfig::fromPackage(*package);
         auto application = std::make_unique<lua::Application>();
@@ -61,6 +63,7 @@ class CoreBenchmark final {
         if (failed) {
             std::fprintf(stderr, "%s\n", engine.getError()->what());
         }
+
         engine.stop();
         return failed ? 1 : 0;
     }
@@ -79,9 +82,11 @@ class CoreBenchmark final {
     static void measure(const char* name, int runs, const std::function<void()>& work) {
         work();
         const auto start = std::chrono::steady_clock::now();
+
         for (int run = 0; run < runs; ++run) {
             work();
         }
+
         std::printf("%-58s %12.4f %8d\n", name, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count() / runs, runs);
     }
 
@@ -108,11 +113,13 @@ class CoreBenchmark final {
         for (int index = 0; index < kListeners; ++index) {
             connections.push_back(bus.on("benchmark.native", [&calls](core::EventBus::Event&) { ++calls; }));
         }
+
         measure("emit to 100 C++ listeners, 1000 times", 20, [&bus] {
             for (int emit = 0; emit < 1000; ++emit) {
                 (void)bus.emit("benchmark.native");
             }
         });
+
         for (core::Connection& connection : connections) {
             connection.disconnect();
         }
@@ -167,6 +174,7 @@ class CoreBenchmark final {
         for (int index = 0; index < kTimers; ++index) {
             (void)timers.every(10.0F + static_cast<float>(index), [&fired] { ++fired; });
         }
+
         measure("update 10000 waiting timers", 200, [&clock, &timers] {
             clock.advance(kFrameSeconds);
             timers.update(clock);
@@ -176,6 +184,7 @@ class CoreBenchmark final {
         for (int index = 0; index < kTimers; ++index) {
             (void)due.every(0.0F, [&fired] { ++fired; });
         }
+
         measure("update 10000 timers that fire every frame", 20, [&clock, &due] {
             clock.advance(kFrameSeconds);
             due.update(clock);
@@ -196,6 +205,7 @@ class CoreBenchmark final {
             // clang-format on
             tweens.add(std::move(tween));
         }
+
         measure("update 10000 native tweens", 200, [&clock, &tweens] {
             clock.advance(kFrameSeconds);
             tweens.update(clock);
@@ -236,6 +246,7 @@ class CoreBenchmark final {
             for (int index = 0; index < 1000; ++index) {
                 jobs.run([index] { return index * 2; }, [&completed](core::JobSystem::Result<int>) { ++completed; });
             }
+
             while (completed < 1000) {
                 engine.getScriptRuntime().poll();
             }
@@ -267,9 +278,11 @@ class CoreBenchmark final {
                 });
                 // clang-format on
             }
+
             while (loaded < kAssets) {
                 engine.frame(kFrameSeconds);
             }
+
             held.clear();
             (void)assets.releaseUnused();
         });
@@ -279,6 +292,7 @@ class CoreBenchmark final {
             for (int index = 0; index < kAssets; ++index) {
                 held.push_back(assets.load("json", "data/item-" + std::to_string(index) + ".json"));
             }
+
             held.clear();
             (void)assets.releaseUnused();
         });

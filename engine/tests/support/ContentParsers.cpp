@@ -45,11 +45,13 @@ void ContentParsers::parse(std::span<const std::uint8_t> input) {
             if (bytes.size() >= content::ChunkRecord::kHeaderSize) {
                 (void)content::ChunkRecord::parse(bytes.first<content::ChunkRecord::kHeaderSize>());
             }
+
             break;
         case 1:
             if (bytes.size() >= content::ShardHeader::kSize) {
                 (void)content::ShardHeader::parse(bytes.first<content::ShardHeader::kSize>(), bytes.size());
             }
+
             break;
         case 2:
             (void)content::ShardIndex::parse(bytes, content::ShardHeader::kSize, std::uint64_t{1} << 40);
@@ -60,10 +62,12 @@ void ContentParsers::parse(std::span<const std::uint8_t> input) {
                 const content::Catalog::File file = catalog.getFile(index);
                 (void)catalog.findFile(file.path);
                 (void)catalog.findFolder(file.path);
+
                 if (file.size > 0) {
                     (void)catalog.findPart(file, file.size - 1);
                 }
             }
+
             break;
         }
         case 4:
@@ -79,6 +83,7 @@ void ContentParsers::parse(std::span<const std::uint8_t> input) {
             if (bytes.size() >= content::StoreEntry::kSize) {
                 (void)content::StoreEntry::parse(bytes.first<content::StoreEntry::kSize>());
             }
+
             break;
         default:
             (void)content::PartialRecord::parse(bytes);

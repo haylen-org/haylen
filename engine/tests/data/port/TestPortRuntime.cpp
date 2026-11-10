@@ -25,6 +25,7 @@ std::unique_ptr<gpu::Device> TestPortRuntime::createDevice() {
     if (openedDevice != nullptr) {
         return std::move(openedDevice);
     }
+
     return gpu::DeviceFactory::create(api, gpu::Surface{.kind = gpu::Surface::Kind::Port, .size = window.getSurfaceSize()}, {});
 }
 
@@ -48,6 +49,7 @@ bool TestPortRuntime::openWindow() {
             core::Log::warning("The graphics API \"{}\" could not start. {}", gpu::DeviceFactory::getApiName(candidate), error.what());
         }
     }
+
     core::Log::error("No graphics API could start on the test port.");
     return false;
 }
@@ -57,6 +59,7 @@ int TestPortRuntime::play() {
     if (!openWindow()) {
         return 1;
     }
+
     Player::initialize();
 
     int frames = 0;
@@ -66,16 +69,19 @@ int TestPortRuntime::play() {
             closing = true;
             break;
         }
+
         Player::frame(kFrameSeconds);
         ++frames;
     }
 
     Player::cleanup();
     window.setOpen(false);
+
     if (!closing) {
         core::Log::error("The app did not quit within {} frames.", kMaxFrames);
         return 1;
     }
+
     return Player::getExitStatus();
 }
 

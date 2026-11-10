@@ -40,6 +40,7 @@ class GatedManifestStoreFiles final : public content::StoreFiles {
             changed.wait(lock, [this] { return !closed; });
             --held;
         }
+
         return files.read(name);
     }
     void write(const std::string& name, std::span<const std::uint8_t> bytes) override {

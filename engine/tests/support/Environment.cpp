@@ -13,6 +13,7 @@ std::string Environment::get(const char* name) {
     if (_dupenv_s(&value, &length, name) != 0 || value == nullptr) {
         return {};
     }
+
     const std::unique_ptr<char, decltype(&std::free)> owned(value, &std::free);
     return owned.get();
 #else

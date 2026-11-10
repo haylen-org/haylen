@@ -26,6 +26,7 @@ void TestPortHost::setFullscreen(bool value, std::function<void(Permission::Answ
         callback({.state = Permission::State::Unsupported, .message = "The window of the test port always fills its screen."});
         return;
     }
+
     callback({.state = Permission::State::Granted});
 }
 
@@ -40,6 +41,7 @@ void TestPortHost::setMouseLocked(bool value, std::function<void(Permission::Ans
         callback({.state = Permission::State::Unsupported, .message = "The test port has no pointer to lock."});
         return;
     }
+
     callback({.state = Permission::State::Granted});
 }
 

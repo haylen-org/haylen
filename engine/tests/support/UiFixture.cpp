@@ -67,10 +67,12 @@ void UiFixture::drag(math::Vec2 from, math::Vec2 to, int steps) {
     frames();
     pointer(platform::Event::Type::MouseDown, from);
     frames();
+
     for (int step = 1; step <= steps; ++step) {
         pointer(platform::Event::Type::MouseMove, from + (to - from) * (static_cast<float>(step) / static_cast<float>(steps)));
         frames();
     }
+
     pointer(platform::Event::Type::MouseUp, to);
     frames(2);
 }
@@ -140,6 +142,7 @@ const ui::Event& UiFixture::findLastEvent(std::string_view name) const {
     if (found == events.rend()) {
         throw std::logic_error("No \"" + std::string(name) + "\" event was reported.");
     }
+
     return *found;
 }
 
@@ -148,6 +151,7 @@ std::vector<std::string> UiFixture::getEventNames() const {
     for (const ui::Event& event : events) {
         names.push_back(event.id + ":" + event.name);
     }
+
     return names;
 }
 

@@ -127,6 +127,7 @@ NATIVE_TEST_EXPORT uint32_t native_test_checksum(const uint8_t* buffer, size_t s
     for (size_t index = 0; index < size; ++index) {
         hash = (hash ^ buffer[index]) * 16777619U;
     }
+
     return hash;
 }
 
@@ -135,6 +136,7 @@ NATIVE_TEST_EXPORT int32_t native_test_visit(int32_t count, NativeTestVisitor vi
     for (int32_t index = 0; index < count; ++index) {
         visitor(index, labels[index % 4]);
     }
+
     return count;
 }
 
@@ -165,6 +167,7 @@ static void native_test_answer_bytes(NativeTestJob* job) {
     for (size_t index = 0; index < job->size; ++index) {
         reversed[index] = job->bytes[job->size - 1 - index];
     }
+
     const HaylenNativeBuffer buffers[2] = {{reversed, job->size}, {job->bytes, job->size}};
     char answer[64];
     snprintf(answer, sizeof(answer), "{\"same\":{\"$bytes\":1},\"reversed\":{\"$bytes\":0},\"size\":%zu}", job->size);
@@ -201,6 +204,7 @@ static void native_test_keep_bytes(NativeTestJob* job, const HaylenNativeBuffer*
 // Answers `native_test.echo` and `native_test.echoBytes` from a thread of the library, sends the batched events of `native_test.burst`, fails `native_test.fail` with a code and data, and leaves `native_test.wait` pending until the app gives it up.
 static void native_test_handle(void* user, uint64_t call, const char* method, const char* paramsJson, const HaylenNativeBuffer* buffers, size_t bufferCount) {
     (void)user;
+
     if (strcmp(method, "native_test.echo") == 0) {
         NativeTestJob* job = native_test_job(native_test_answer_echo);
         job->api = nativeTestApi;
@@ -245,6 +249,7 @@ static void native_test_push_frame(NativeTestJob* job) {
             pixel[3] = 255;
         }
     }
+
     job->api->pushVideoFrame(stream, pixels, job->width, job->height, (int)stride, job->value / 10.0);
     free(pixels);
 }
@@ -265,6 +270,7 @@ static void native_test_push_tone(NativeTestJob* job) {
     for (int32_t index = 0; index < job->width; ++index) {
         samples[index] = (int16_t)job->value;
     }
+
     job->api->pushAudioFrames(stream, samples, (size_t)job->width);
     free(samples);
 }
@@ -350,6 +356,7 @@ NATIVE_TEST_EXPORT int native_test_haylen_init(const HaylenNativeApi* api) {
     if (api->version != HAYLEN_NATIVE_API_VERSION) {
         return 1;
     }
+
     nativeTestApi = api;
     api->registerHandler("native_test.echo", native_test_handle, NULL, NULL);
     api->registerHandler("native_test.echoBytes", native_test_handle, NULL, NULL);

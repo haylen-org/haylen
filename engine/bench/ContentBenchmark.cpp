@@ -152,6 +152,7 @@ class ContentBenchmark final {
         for (std::size_t index = 0; index < key.size(); ++index) {
             key[index] = static_cast<std::uint8_t>(first + index);
         }
+
         return key;
     }
 
@@ -178,17 +179,21 @@ class ContentBenchmark final {
         while (text.size() < kTextFile) {
             text.insert(text.end(), line.begin(), line.end());
         }
+
         text.resize(kTextFile);
         writeFile(folder / "content" / "data" / "text.txt", text);
+
         for (int index = 0; index < kSmallFiles; ++index) {
             writeFile(folder / "content" / "items" / ("item_" + std::to_string(index) + ".bin"), randomBytes(kSmallFile, static_cast<std::uint32_t>(index + 2)));
         }
+
         const std::string module = makeModule();
         writeFile(folder / "source" / "world.lua", {module.begin(), module.end()});
         std::string map = R"({"width": 512, "height": 512, "layers": [{"name": "ground", "data": [)";
         for (int index = 0; index < 512 * 512; ++index) {
             map += (index > 0 ? "," : "") + std::to_string(1 + index % 37);
         }
+
         map += "]}]}";
         writeFile(folder / "content" / "maps" / "island.json", {map.begin(), map.end()});
         writeFile(folder / "content" / "maps" / "island.cbor", core::Json::to_cbor(core::Json::parse(map)));
@@ -205,6 +210,7 @@ class ContentBenchmark final {
                 pixels[pixel + 3] = 255;
             }
         }
+
         writeFile(folder / "content" / "images" / "scene.rgba", pixels);
         writeFile(folder / "content" / "images" / "scene.png", graphics::Image::fromRendered(pixels, kImageSize, kImageSize, false).encodePng());
     }
@@ -251,6 +257,7 @@ class ContentBenchmark final {
         for (std::size_t offset = 0; offset < text.size(); offset += kCodecChunk) {
             chunks.push_back(content::Compressor::encode(std::span(text).subspan(offset, std::min(kCodecChunk, text.size() - offset))));
         }
+
         return chunks;
     }
 
@@ -272,6 +279,7 @@ class ContentBenchmark final {
             const std::span<const std::uint8_t> chunk = std::span(text).subspan(offset, std::min(kCodecChunk, text.size() - offset));
             const content::Aead::Nonce nonce = key.deriveNonce(content::ContentKey::Purpose::Chunk, chunk.first(64));
             const content::Aead::Tag tag = content::Aead::seal(key.getSubkey(content::ContentKey::Purpose::Chunk), nonce, {}, chunk, std::span(cipher).first(chunk.size()));
+
             if (!content::Aead::open(key.getSubkey(content::ContentKey::Purpose::Chunk), nonce, {}, tag, std::span(cipher).first(chunk.size()), std::span(plain).first(chunk.size()))) {
                 std::fprintf(stderr, "A chunk did not decrypt.\n");
             }
@@ -284,11 +292,13 @@ class ContentBenchmark final {
         for (int index = 0; module.size() < kModuleSize; ++index) {
             module += "function world.rule" + std::to_string(index) + "(value, scale) local result = value * scale + " + std::to_string(index) + " if result > 100 then return result - 100 end return result end\n";
         }
+
         return module + "return world\n";
     }
 
     static void loadChunk(std::span<const std::uint8_t> chunk, const char* mode) {
         const std::unique_ptr<lua_State, decltype(&lua_close)> state(luaL_newstate(), &lua_close);
+
         if (luaL_loadbufferx(state.get(), reinterpret_cast<const char*>(chunk.data()), chunk.size(), "=world", mode) != LUA_OK) {
             std::fprintf(stderr, "The module did not load: %s\n", lua_tostring(state.get(), -1));
         }
@@ -303,6 +313,7 @@ class ContentBenchmark final {
         for (std::uint64_t part = file.firstPart; part < file.firstPart + file.partCount; ++part) {
             bytes += content::ChunkRecord::kHeaderSize + catalog.getChunk(catalog.getPart(part).chunk).encodedSize;
         }
+
         return bytes;
     }
 
@@ -320,6 +331,7 @@ class ContentBenchmark final {
         const std::string app = R"({"name": "Many Files", "identifier": "com.haylen.contentbenchmark"})";
         writeFile(folder / "app.json", {app.begin(), app.end()});
         writeFile(folder / "source" / "main.lua", {});
+
         for (int index = 0; index < kManyFiles; ++index) {
             writeFile(folder / "content" / "cards" / std::to_string(index % 100) / ("card-" + std::to_string(index) + ".json"), randomBytes(kManyFileSize, static_cast<std::uint32_t>(index + 50000)));
         }
@@ -330,6 +342,7 @@ class ContentBenchmark final {
         for (int index = 0; index < kManyFiles; ++index) {
             bytes += package.read("content/cards/" + std::to_string(index % 100) + "/card-" + std::to_string(index) + ".json").size();
         }
+
         if (bytes != static_cast<std::size_t>(kManyFiles) * kManyFileSize) {
             std::fprintf(stderr, "The release lost files.\n");
         }
@@ -354,6 +367,7 @@ class ContentBenchmark final {
         for (int index = 0; index < kSmallFiles; ++index) {
             found += package.exists("content/items/item_" + std::to_string(index) + ".bin") ? 1U : 0U;
         }
+
         if (found != static_cast<std::size_t>(kSmallFiles)) {
             std::fprintf(stderr, "The catalog lost files.\n");
         }
@@ -369,8 +383,10 @@ class ContentBenchmark final {
             if (index % 3 != 0) {
                 records.push_back({.offset = offset, .size = size});
             }
+
             offset += size;
         }
+
         (void)content::RangePlanner::plan(records);
     }
 
@@ -388,10 +404,12 @@ class ContentBenchmark final {
             bytes.insert(bytes.end(), ciphertext.begin(), ciphertext.end());
             records.push_back(std::move(bytes));
         }
+
         content::LocalStore store(std::make_unique<content::FolderStoreFiles>(folder), application, 1);
         for (const std::vector<std::uint8_t>& record : records) {
             store.addRecord(keyId, record);
         }
+
         store.commit([](content::StoreState&) {});
     }
 };
@@ -405,9 +423,11 @@ int main() {
 // The standard names the replaceable allocation functions, so the benchmark replaces them here, and they only forward to the meter and to `malloc` and `free`. The array and nothrow forms call these by default.
 void* operator new(std::size_t size) {
     haylen::bench::ContentBenchmark::AllocationMeter::record(size);
+
     if (void* memory = std::malloc(size == 0 ? 1 : size)) {
         return memory;
     }
+
     throw std::bad_alloc();
 }
 

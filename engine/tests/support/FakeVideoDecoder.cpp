@@ -16,6 +16,7 @@ const platform::VideoDecoder::Info& FakeVideoDecoder::getInfo() const noexcept {
         shown.width = 0;
         shown.height = 0;
     }
+
     return shown;
 }
 
@@ -30,25 +31,32 @@ platform::VideoDecoder::Read FakeVideoDecoder::readFrame(Frame& frame) {
         if (!log->error.empty()) {
             throw std::runtime_error(log->error);
         }
+
         if (!log->frameShown) {
             return Read::Waiting;
         }
+
         log->frameShown = false;
     }
+
     const double time = next / settings.frameRate;
     if (!settings.info.clocked && time >= settings.info.duration) {
         return Read::End;
     }
+
     if (settings.failAt && next == *settings.failAt) {
         throw std::runtime_error("The fake video broke at its frame " + std::to_string(next) + ".");
     }
+
     frame.width = settings.info.width;
     frame.height = settings.info.height;
     frame.time = settings.info.clocked ? getTime() : time;
     frame.pixels.assign(static_cast<std::size_t>(frame.width * frame.height) * 4U, 255);
+
     for (std::size_t pixel = 0; pixel < frame.pixels.size(); pixel += 4) {
         frame.pixels[pixel] = static_cast<std::uint8_t>(next);
     }
+
     ++next;
     const std::scoped_lock lock(log->mutex);
     ++log->framesRead;

@@ -72,6 +72,7 @@ class ServiceKeyProvider final : public content::KeyProvider {
         if (found == held.end()) {
             return false;
         }
+
         target = found->second;
         return true;
     }
