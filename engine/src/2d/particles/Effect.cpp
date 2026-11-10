@@ -20,6 +20,7 @@ float Effect::readNumber(const core::Json& value, std::string_view key) {
     if (!value.is_number()) {
         throw std::invalid_argument("The particle effect value \"" + std::string(key) + "\" needs a number.");
     }
+
     return core::JsonNumber::toFloat(value);
 }
 
@@ -27,6 +28,7 @@ bool Effect::readBool(const core::Json& value, std::string_view key) {
     if (!value.is_boolean()) {
         throw std::invalid_argument("The particle effect value \"" + std::string(key) + "\" needs true or false.");
     }
+
     return value.get<bool>();
 }
 
@@ -34,9 +36,11 @@ math::FloatRange Effect::readRange(const core::Json& value, std::string_view key
     if (value.is_number()) {
         return {core::JsonNumber::toFloat(value), core::JsonNumber::toFloat(value)};
     }
+
     if (!value.is_array() || value.size() != 2 || !value[0].is_number() || !value[1].is_number()) {
         throw std::invalid_argument("The particle effect value \"" + std::string(key) + "\" needs a number or a [min, max] pair.");
     }
+
     return {core::JsonNumber::toFloat(value[0]), core::JsonNumber::toFloat(value[1])};
 }
 
@@ -44,6 +48,7 @@ math::Vec2 Effect::readVec2(const core::Json& value, std::string_view key) {
     if (!value.is_array() || value.size() != 2 || !value[0].is_number() || !value[1].is_number()) {
         throw std::invalid_argument("The particle effect value \"" + std::string(key) + "\" needs an [x, y] pair.");
     }
+
     return {core::JsonNumber::toFloat(value[0]), core::JsonNumber::toFloat(value[1])};
 }
 
@@ -51,6 +56,7 @@ math::Rect Effect::readRect(const core::Json& value, std::string_view key) {
     if (!value.is_array() || value.size() != 4 || !std::all_of(value.begin(), value.end(), [](const core::Json& item) { return item.is_number(); })) {
         throw std::invalid_argument("The particle effect value \"" + std::string(key) + "\" needs an [x, y, width, height] rectangle.");
     }
+
     return {core::JsonNumber::toFloat(value[0]), core::JsonNumber::toFloat(value[1]), core::JsonNumber::toFloat(value[2]), core::JsonNumber::toFloat(value[3])};
 }
 
@@ -58,6 +64,7 @@ std::size_t Effect::readCount(const core::Json& value, std::string_view name) {
     if (!value.is_number_integer() || value < 0) {
         throw std::invalid_argument("The particle effect value \"" + std::string(name) + "\" needs an integer of at least 0.");
     }
+
     return value.get<std::size_t>();
 }
 
@@ -67,6 +74,7 @@ int Effect::readInteger(const core::Json& value, std::string_view key) {
     if (!fits) {
         throw std::invalid_argument("The particle effect value \"" + std::string(key) + "\" needs an integer from -2147483648 to 2147483647.");
     }
+
     return value.get<int>();
 }
 
@@ -74,6 +82,7 @@ EmitterConfig::CountRange Effect::readCountRange(const core::Json& value, std::s
     if (value.is_array() && value.size() == 2) {
         return {readCount(value[0], key), readCount(value[1], key)};
     }
+
     const std::size_t count = readCount(value, key);
     return {count, count};
 }
@@ -84,6 +93,7 @@ math::Color Effect::readColor(const core::Json& value) {
     if (!color) {
         throw std::invalid_argument("The particle color \"" + text + "\" is not a \"#RRGGBB\" or \"#AARRGGBB\" color.");
     }
+
     return *color;
 }
 
@@ -91,10 +101,12 @@ std::vector<math::Color> Effect::readColors(const core::Json& value, std::string
     if (!value.is_array()) {
         throw std::invalid_argument("The particle effect value \"" + std::string(key) + "\" needs a list of colors.");
     }
+
     std::vector<math::Color> colors;
     for (const core::Json& color : value) {
         colors.push_back(readColor(color));
     }
+
     return colors;
 }
 
@@ -102,11 +114,13 @@ const core::Json& Effect::requireObject(const core::Json& value, std::string_vie
     if (!value.is_object()) {
         throw std::invalid_argument("The particle effect value \"" + std::string(key) + "\" needs an object.");
     }
+
     for (const auto& [name, item] : value.items()) {
         if (std::find(fields.begin(), fields.end(), name) == fields.end()) {
             throw std::invalid_argument("The particle effect value \"" + std::string(key) + "\" has the unknown option \"" + name + "\".");
         }
     }
+
     return value;
 }
 
@@ -115,38 +129,47 @@ template <typename Enum, std::size_t Size> Enum Effect::readName(const core::Jso
     if (const std::optional<Enum> found = EmitterConfig::fromName(names, text)) {
         return *found;
     }
+
     std::string choices;
     for (std::size_t index = 0; index < Size; ++index) {
         choices += (index == 0 ? "" : index + 1 == Size ? " or " : ", ") + std::string("\"") + std::string(names[index].first) + "\"";
     }
+
     throw std::invalid_argument("The particle effect value \"" + std::string(key) + "\" must be " + choices + ", not \"" + text + "\".");
 }
 
 // Curves take the forms the easing of tweens takes, without functions: a name, `{"curve", "overshoot"}`, `{"curve", "amplitude", "period"}`, `{"steps", "position"}`, `{"cubicBezier"}` or `{"points"}`.
 math::EasingCurve Effect::readCurve(const core::Json& value, std::string_view key) {
     static constexpr std::array<std::string_view, 8> kCurveFields{"curve", "overshoot", "amplitude", "period", "steps", "position", "cubicBezier", "points"};
+
     if (value.is_string()) {
         const std::optional<math::Easing::Type> type = math::Easing::parse(value.get<std::string>());
         if (!type) {
             throw std::invalid_argument("The particle effect value \"" + std::string(key) + "\" names the unknown curve \"" + value.get<std::string>() + "\".");
         }
+
         return math::EasingCurve(*type);
     }
+
     const core::Json& curve = requireObject(value, key, kCurveFields);
     if (curve.contains("steps")) {
         const std::optional<math::Easing::StepPosition> position = math::Easing::parseStepPosition(curve.value("position", std::string("end")));
         if (!position) {
             throw std::invalid_argument("The step position of the particle effect value \"" + std::string(key) + "\" must be \"start\", \"end\", \"both\" or \"none\".");
         }
+
         return math::EasingCurve::steps(readInteger(curve.at("steps"), "steps"), *position);
     }
+
     if (curve.contains("cubicBezier")) {
         const core::Json& handles = curve.at("cubicBezier");
         if (!handles.is_array() || handles.size() != 4) {
             throw std::invalid_argument("A \"cubicBezier\" curve needs the four numbers \"x1\", \"y1\", \"x2\" and \"y2\".");
         }
+
         return math::EasingCurve::cubicBezier(readNumber(handles[0], key), readNumber(handles[1], key), readNumber(handles[2], key), readNumber(handles[3], key));
     }
+
     if (curve.contains("points")) {
         const core::Json& list = curve.at("points");
         std::vector<math::Vec2> points;
@@ -154,18 +177,23 @@ math::EasingCurve Effect::readCurve(const core::Json& value, std::string_view ke
             const float x = list.size() > 1 ? static_cast<float>(index) / static_cast<float>(list.size() - 1) : 0.0F;
             points.push_back(list[index].is_number() ? math::Vec2{x, core::JsonNumber::toFloat(list[index])} : readVec2(list[index], key));
         }
+
         return math::EasingCurve::points(std::move(points));
     }
+
     const std::optional<math::Easing::Type> type = math::Easing::parse(curve.value("curve", std::string("linear")));
     if (!type) {
         throw std::invalid_argument("The particle effect value \"" + std::string(key) + "\" names an unknown curve.");
     }
+
     if (curve.contains("overshoot")) {
         return math::EasingCurve::back(*type, readNumber(curve.at("overshoot"), "overshoot"));
     }
+
     if (curve.contains("amplitude") || curve.contains("period")) {
         return math::EasingCurve::elastic(*type, readNumber(curve.value("amplitude", core::Json(math::Easing::kElasticAmplitude)), "amplitude"), readNumber(curve.value("period", core::Json(math::Easing::kElasticPeriod)), "period"));
     }
+
     return math::EasingCurve(*type);
 }
 
@@ -179,23 +207,29 @@ bool Effect::isEmitterKey(std::string_view key) noexcept {
 Effect Effect::parse(const core::Json& document, std::string_view path, const Reader& read) {
     Context context{.read = read, .reading = {std::string(path)}};
     Effect effect;
+
     if (!document.is_object()) {
         throw std::invalid_argument("The particle effect \"" + std::string(path) + "\" must be a JSON object.");
     }
+
     if (!document.contains("emitters")) {
         readEmitter(document, path, {}, effect.config, effect.files, context);
+
         if (effect.files.texture.empty()) {
             throw std::invalid_argument("The particle effect \"" + std::string(path) + "\" needs a texture.");
         }
+
         return effect;
     }
 
     if (document.size() != 1 || !document.at("emitters").is_array() || document.at("emitters").empty()) {
         throw std::invalid_argument("The composite particle effect \"" + std::string(path) + "\" holds only a list of emitters, with at least one.");
     }
+
     for (const core::Json& entry : document.at("emitters")) {
         effect.parts.push_back(readPart(entry, path, context));
     }
+
     return effect;
 }
 
@@ -204,37 +238,46 @@ Effect::Part Effect::readPart(const core::Json& entry, std::string_view path, Co
     if (!entry.is_object()) {
         throw std::invalid_argument("Every emitter of the composite particle effect \"" + std::string(path) + "\" must be an object.");
     }
+
     Part part;
     part.name = entry.value("name", std::string());
     if (entry.contains("offset")) {
         part.offset = readVec2(entry.at("offset"), "offset");
     }
+
     if (entry.contains("scale")) {
         part.scale = readNumber(entry.at("scale"), "scale");
     }
+
     if (entry.contains("effect")) {
         for (const auto& [key, value] : entry.items()) {
             if (std::find(kPartFields.begin(), kPartFields.end(), key) == kPartFields.end()) {
                 throw std::invalid_argument("The emitter \"" + part.name + "\" of the composite particle effect \"" + std::string(path) + "\" names an effect file, so it takes no option \"" + key + "\" outside \"overrides\".");
             }
         }
+
         readReference(entry, path, part.config, part.files, context);
     } else {
         readEmitter(entry, path, kPartFields, part.config, part.files, context);
+
         if (part.files.texture.empty()) {
             throw std::invalid_argument("The emitter \"" + part.name + "\" of the composite particle effect \"" + std::string(path) + "\" needs a texture or an effect file.");
         }
     }
+
     if (entry.contains("delay")) {
         part.config.delay += readNumber(entry.at("delay"), "delay");
     }
+
     if (entry.contains("layerOffset")) {
         const std::int64_t layer = std::int64_t{part.config.order.layer} + readInteger(entry.at("layerOffset"), "layerOffset");
         if (!std::in_range<int>(layer)) {
             throw std::invalid_argument("The emitter \"" + part.name + "\" of the composite particle effect \"" + std::string(path) + "\" lands on a layer outside -2147483648 to 2147483647.");
         }
+
         part.config.order.layer = static_cast<int>(layer);
     }
+
     return part;
 }
 
@@ -243,6 +286,7 @@ void Effect::readReference(const core::Json& entry, std::string_view path, Emitt
     if (!reference.is_string()) {
         throw std::invalid_argument("The value \"effect\" of the particle effect \"" + std::string(path) + "\" needs the path of an effect file.");
     }
+
     const std::string target = io::Path::join(io::Path::directory(path), reference.get<std::string>());
     if (std::find(context.reading.begin(), context.reading.end(), target) != context.reading.end()) {
         throw std::invalid_argument("The particle effect \"" + std::string(path) + "\" refers to itself through \"" + target + "\".");
@@ -253,12 +297,16 @@ void Effect::readReference(const core::Json& entry, std::string_view path, Emitt
     if (document.contains("emitters")) {
         throw std::invalid_argument("The particle effect \"" + std::string(path) + "\" refers to the composite effect \"" + target + "\", where it needs an effect of one emitter.");
     }
+
     context.reading.push_back(target);
     readEmitter(document, target, {}, config, files, context);
+
     if (entry.contains("overrides")) {
         readEmitter(entry.at("overrides"), path, {}, config, files, context);
     }
+
     context.reading.pop_back();
+
     if (files.texture.empty()) {
         throw std::invalid_argument("The particle effect \"" + target + "\" needs a texture.");
     }
@@ -269,9 +317,11 @@ EmitterConfig::SubEmitter Effect::readSubEmitter(const core::Json& entry, std::s
     if (!object.contains("effect")) {
         throw std::invalid_argument("Every sub-emitter of the particle effect \"" + std::string(path) + "\" needs the path of an effect file in \"effect\".");
     }
+
     EmitterConfig::SubEmitter sub;
     sub.config = std::make_shared<EmitterConfig>();
     readReference(object, path, *sub.config, files, context);
+
     for (const auto& [key, value] : object.items()) {
         if (key == "trigger") {
             sub.trigger = readName(value, key, EmitterConfig::kTriggerNames);
@@ -287,6 +337,7 @@ EmitterConfig::SubEmitter Effect::readSubEmitter(const core::Json& entry, std::s
             sub.inheritColor = readBool(value, key);
         }
     }
+
     return sub;
 }
 
@@ -295,13 +346,16 @@ void Effect::readEmitter(const core::Json& document, std::string_view path, std:
     if (!document.is_object()) {
         throw std::invalid_argument("The options of the particle effect \"" + std::string(path) + "\" must be a JSON object.");
     }
+
     for (const auto& [key, value] : document.items()) {
         if (std::find(ignored.begin(), ignored.end(), key) != ignored.end()) {
             continue;
         }
+
         if (!isEmitterKey(key)) {
             throw std::invalid_argument("The particle effect \"" + std::string(path) + "\" has the unknown option \"" + key + "\".");
         }
+
         readKey(key, value, path, config, files, context);
     }
 }
@@ -312,25 +366,30 @@ void Effect::readKey(const std::string& key, const core::Json& value, std::strin
         if (!value.is_string()) {
             throw std::invalid_argument("The particle effect value \"texture\" needs the path of an image.");
         }
+
         files.texture = io::Path::join(io::Path::directory(path), value.get<std::string>());
     } else if (key == "filter") {
         const std::string name = value.is_string() ? value.get<std::string>() : value.dump();
         if (!graphics::Texture::filterFromName(name)) {
             throw std::invalid_argument("The particle effect value \"filter\" must be \"nearest\" or \"linear\", not \"" + name + "\".");
         }
+
         files.textureOptions["filter"] = name;
     } else if (key == "wrap") {
         const std::string name = value.is_string() ? value.get<std::string>() : value.dump();
         if (!graphics::Texture::wrapFromName(name)) {
             throw std::invalid_argument("The particle effect value \"wrap\" must be \"clamp\", \"repeat\" or \"mirror\", not \"" + name + "\".");
         }
+
         files.textureOptions["wrap"] = name;
     } else if (key == "subEmitters") {
         if (!value.is_array()) {
             throw std::invalid_argument("The particle effect value \"subEmitters\" needs a list.");
         }
+
         config.subEmitters.clear();
         files.subEmitters.clear();
+
         for (const core::Json& entry : value) {
             files.subEmitters.emplace_back();
             config.subEmitters.push_back(readSubEmitter(entry, path, files.subEmitters.back(), context));
@@ -376,7 +435,9 @@ void Effect::readMotion(const std::string& key, const core::Json& value, Emitter
         if (!value.is_array()) {
             throw std::invalid_argument("The particle effect value \"bursts\" needs a list.");
         }
+
         config.bursts.clear();
+
         for (const core::Json& entry : value) {
             const core::Json& burst = requireObject(entry, key, kBurstFields);
             EmitterConfig::Burst planned;
@@ -428,7 +489,9 @@ void Effect::readMotion(const std::string& key, const core::Json& value, Emitter
         if (!value.is_array()) {
             throw std::invalid_argument("The particle effect value \"attractors\" needs a list.");
         }
+
         config.attractors.clear();
+
         for (const core::Json& entry : value) {
             const core::Json& attractor = requireObject(entry, key, kAttractorFields);
             EmitterConfig::Attractor made;
@@ -439,6 +502,7 @@ void Effect::readMotion(const std::string& key, const core::Json& value, Emitter
             if (attractor.contains("space")) {
                 made.space = readName(attractor.at("space"), "space", EmitterConfig::kSpaceNames);
             }
+
             config.attractors.push_back(made);
         }
     } else if (key == "collision") {
@@ -487,7 +551,9 @@ void Effect::readLook(const std::string& key, const core::Json& value, EmitterCo
         if (!value.is_array()) {
             throw std::invalid_argument("The particle effect value \"frames\" needs a list of rectangles.");
         }
+
         config.frames.clear();
+
         for (const core::Json& frame : value) {
             config.frames.push_back(readRect(frame, key));
         }
@@ -530,7 +596,9 @@ void Effect::readLook(const std::string& key, const core::Json& value, EmitterCo
         if (!value.is_array()) {
             throw std::invalid_argument("The particle effect value \"colorTimes\" needs a list of numbers.");
         }
+
         config.colorTimes.clear();
+
         for (const core::Json& item : value) {
             config.colorTimes.push_back(readNumber(item, key));
         }
@@ -549,6 +617,7 @@ void Effect::readLook(const std::string& key, const core::Json& value, EmitterCo
                 if (!type) {
                     throw std::invalid_argument("The particle effect value \"type\" of a light must be \"point\", \"spot\" or \"directional\".");
                 }
+
                 made.type = *type;
             } else if (name == "offset") {
                 made.offset = readVec2(item, name);
@@ -566,6 +635,7 @@ void Effect::readLook(const std::string& key, const core::Json& value, EmitterCo
                 made.fade = readName(item, name, EmitterConfig::kFadeNames);
             }
         }
+
         config.light = made;
     } else if (key == "particleLights") {
         const core::Json& lights = requireObject(value, key, kParticleLightFields);
@@ -593,7 +663,9 @@ void Effect::readShape(const std::string& key, const core::Json& value, std::str
         if (!value.is_array()) {
             throw std::invalid_argument("The particle effect value \"shapePoints\" needs a list of [x, y] points.");
         }
+
         config.shapePoints.clear();
+
         for (const core::Json& point : value) {
             config.shapePoints.push_back(readVec2(point, key));
         }
@@ -606,10 +678,12 @@ void Effect::readShape(const std::string& key, const core::Json& value, std::str
         if (!image.contains("path") || !image.at("path").is_string()) {
             throw std::invalid_argument("The particle effect value \"shapeImage\" needs the path of an image.");
         }
+
         ImageShape::Options options;
         if (image.contains("source")) {
             options.source = readRect(image.at("source"), "source");
         }
+
         options.alphaThreshold = readNumber(image.value("alphaThreshold", core::Json(options.alphaThreshold)), "alphaThreshold");
         const std::vector<std::uint8_t> bytes = context.read(io::Path::join(io::Path::directory(path), image.at("path").get<std::string>()));
         config.shapeImage = std::make_shared<ImageShape>(graphics::Image::decode(bytes), options);
@@ -637,6 +711,7 @@ void Effect::readOrder(const std::string& key, const core::Json& value, EmitterC
         if (mask > 255) {
             throw std::invalid_argument("The particle effect value \"lightMask\" needs an integer from 0 to 255.");
         }
+
         order.lightMask = static_cast<std::uint8_t>(mask);
     } else {
         const std::string name = value.is_string() ? value.get<std::string>() : value.dump();
@@ -644,6 +719,7 @@ void Effect::readOrder(const std::string& key, const core::Json& value, EmitterC
         if (!blend || graphics::BlendMode::readsBackdrop(*blend)) {
             throw std::invalid_argument("The particle effect value \"blend\" must be \"alpha\", \"additive\", \"multiply\", \"screen\", \"premultiplied\" or \"opaque\", not \"" + name + "\".");
         }
+
         order.blend = *blend;
     }
 }
@@ -653,6 +729,7 @@ void Effect::applyTextures(EmitterConfig& config, const Files& files, const Text
     if (!files.trailTexture.empty()) {
         config.trail.texture = make(files.trailTexture, files.textureOptions);
     }
+
     for (std::size_t index = 0; index < files.subEmitters.size(); ++index) {
         applyTextures(*config.subEmitters[index].config, files.subEmitters[index], make);
     }
@@ -662,6 +739,7 @@ void Effect::applyTextures(const TextureMaker& make) {
     if (!isComposite()) {
         applyTextures(config, files, make);
     }
+
     for (Part& part : parts) {
         applyTextures(part.config, part.files, make);
     }
@@ -674,6 +752,7 @@ void Effect::collectTextures(const Files& source, std::vector<TextureFile>& foun
             found.push_back({.path = path, .options = source.textureOptions});
         }
     }
+
     for (const Files& sub : source.subEmitters) {
         collectTextures(sub, found);
     }
@@ -684,9 +763,11 @@ std::vector<Effect::TextureFile> Effect::getTextureFiles() const {
     if (!isComposite()) {
         collectTextures(files, found);
     }
+
     for (const Part& part : parts) {
         collectTextures(part.files, found);
     }
+
     return found;
 }
 

@@ -10,6 +10,7 @@ ImageShape::ImageShape(const graphics::Image& image, const Options& options) {
     if (!(options.alphaThreshold > 0.0F && options.alphaThreshold <= 1.0F)) {
         throw std::invalid_argument("The alpha threshold of an image shape must be above 0 and at most 1.");
     }
+
     const math::Rect whole{0.0F, 0.0F, static_cast<float>(image.getWidth()), static_cast<float>(image.getHeight())};
     const math::Rect source = options.source.isEmpty() ? whole : options.source;
     if (source.x < 0.0F || source.y < 0.0F || source.getRight() > whole.width || source.getBottom() > whole.height) {
@@ -31,6 +32,7 @@ ImageShape::ImageShape(const graphics::Image& image, const Options& options) {
             }
         }
     }
+
     if (points.empty()) {
         throw std::invalid_argument("An image shape needs at least one pixel whose alpha reaches the threshold.");
     }

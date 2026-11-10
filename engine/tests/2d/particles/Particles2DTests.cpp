@@ -41,6 +41,7 @@ class ParticlesTest : public ::testing::Test {
         // clang-format off
         fixture.engine().getScenes().push(std::make_shared<test::DrawingScene>([&emitters, ambient](core::Engine& engine) {
             engine.getRenderer2D().beginWorld(graphics2d::Camera{}, {.ambientLight = ambient});
+
             for (const Emitter* emitter : emitters) {
                 emitter->draw(engine.getRenderer2D());
             }
@@ -90,11 +91,13 @@ TEST_F(ParticlesTest, DrawsEveryShapeAndColorRamp) {
         emitters.back()->burst(10);
         emitters.back()->update(0.3F);
     }
+
     const Emitter empty({.texture = sheet});
     std::vector<const Emitter*> drawn{&empty};
     for (const std::unique_ptr<Emitter>& emitter : emitters) {
         drawn.push_back(emitter.get());
     }
+
     EXPECT_EQ(drawFrame(drawn).sprites, 40U);
 
     EXPECT_EQ(EmitterConfig::fromName(EmitterConfig::kShapeNames, "ring"), EmitterConfig::Shape::Ring);
@@ -176,6 +179,7 @@ TEST_F(ParticlesTest, PrewarmsConesAndAcceleratesAroundTheEmitter) {
 
     Emitter cone({.texture = texture(), .rate = 0.0F, .lifetime = {5.0F, 5.0F}, .speed = {10.0F, 10.0F}, .direction = 0.0F, .spread = 0.0F, .shape = EmitterConfig::Shape::Cone, .shapeSize = {8.0F, 0.0F}}, 2);
     cone.burst(20);
+
     for (const math::Vec2 point : cone.getPositions()) {
         EXPECT_GE(point.x, 0.0F);
         EXPECT_LE(point.x, 8.0F);
@@ -204,10 +208,12 @@ TEST_F(ParticlesTest, UpdatesLargeEmittersInParallel) {
     Emitter parallel(config, 9);
     serial.burst(20000);
     parallel.burst(20000);
+
     for (int frame = 0; frame < 30; ++frame) {
         serial.update(1.0F / 30.0F);
         parallel.update(1.0F / 30.0F, fixture.engine().getJobs());
     }
+
     ASSERT_EQ(serial.getCount(), parallel.getCount());
     EXPECT_GT(serial.getCount(), 0U);
     EXPECT_LT(serial.getCount(), 20000U);
@@ -266,6 +272,7 @@ TEST_F(ParticlesTest, SizesSpeedsAndSpinsFollowTheirCurves) {
     for (std::size_t index = 0; index < 10; ++index) {
         sizes.push_back(constant.getParticle(index).sprite.size.x);
     }
+
     constant.update(0.7F);
     for (std::size_t index = 0; index < 10; ++index) {
         EXPECT_FLOAT_EQ(constant.getParticle(index).sprite.size.x, sizes[index]);
@@ -275,9 +282,11 @@ TEST_F(ParticlesTest, SizesSpeedsAndSpinsFollowTheirCurves) {
     const math::EasingCurve halfway = math::EasingCurve::points({{0.0F, 0.0F}, {0.5F, 0.0F}, {0.5001F, 1.0F}, {1.0F, 1.0F}});
     Emitter stopping({.texture = texture(), .rate = 0.0F, .lifetime = {2.0F, 2.0F}, .speed = {100.0F, 100.0F}, .speedCurve = halfway, .direction = 0.0F, .spread = 0.0F, .stretch = 0.5F, .spin = {2.0F, 2.0F}, .spinCurve = halfway});
     stopping.burst(1);
+
     for (int step = 0; step < 11; ++step) {
         stopping.update(0.1F);
     }
+
     const Emitter::Particle stopped = stopping.getParticle(0);
     stopping.update(0.5F);
     EXPECT_NEAR(stopped.position.x, 100.0F, 1.0F);
@@ -293,9 +302,11 @@ TEST_F(ParticlesTest, SizesSpeedsAndSpinsFollowTheirCurves) {
         puff.burst(1);
         puff.update(0.1F);
         const float early = puff.getParticle(0).position.x;
+
         for (int step = 0; step < 18; ++step) {
             puff.update(0.1F);
         }
+
         return std::pair{early, puff.getParticle(0).position.x};
     };
     // clang-format on
@@ -311,6 +322,7 @@ TEST_F(ParticlesTest, ParticlesTurnStretchAndSnap) {
     // Rotations start in their range and snap to quarter turns, and aligned particles follow their motion.
     Emitter stepped({.texture = texture(), .rate = 0.0F, .rotation = {0.3F, 1.2F}, .rotationStep = 1.5707964F}, 2);
     stepped.burst(20);
+
     for (std::size_t index = 0; index < 20; ++index) {
         const float rotation = stepped.getParticle(index).sprite.rotation;
         EXPECT_TRUE(std::fabs(rotation) < 1e-5F || std::fabs(rotation - 1.5707964F) < 1e-5F);
@@ -325,11 +337,13 @@ TEST_F(ParticlesTest, ParticlesTurnStretchAndSnap) {
 
     Emitter snapped({.texture = texture(), .rate = 0.0F, .speed = {0.0F, 0.0F}, .shape = EmitterConfig::Shape::Rectangle, .shapeSize = {50.0F, 50.0F}, .pixelSnap = 4.0F}, 3);
     snapped.burst(10);
+
     for (std::size_t index = 0; index < 10; ++index) {
         const math::Vec2 at = snapped.getParticle(index).sprite.position;
         EXPECT_FLOAT_EQ(std::fmod(std::fabs(at.x), 4.0F), 0.0F);
         EXPECT_FLOAT_EQ(std::fmod(std::fabs(at.y), 4.0F), 0.0F);
     }
+
     EXPECT_THROW(Emitter({.texture = texture(), .aspect = {0.0F, 1.0F}}), std::invalid_argument);
     EXPECT_THROW(Emitter({.texture = texture(), .pixelSnap = -1.0F}), std::invalid_argument);
 }
@@ -372,10 +386,12 @@ TEST_F(ParticlesTest, FramesPlayInEveryMode) {
     for (std::size_t index = 0; index < 30; ++index) {
         first.push_back(random.getParticle(index).sprite.source.x);
     }
+
     random.update(1.0F);
     for (std::size_t index = 0; index < 30; ++index) {
         EXPECT_EQ(random.getParticle(index).sprite.source.x, first[index]);
     }
+
     EXPECT_GT(std::count(first.begin(), first.end(), 0.0F), 0);
     EXPECT_LT(std::count(first.begin(), first.end(), 0.0F), 30);
 
@@ -395,6 +411,7 @@ TEST_F(ParticlesTest, TurbulenceAndAttractorsMoveParticles) {
     for (std::size_t index = 0; index < 20; ++index) {
         moved += math::Vec2::distance(calm.getPositions()[index], stirred.getPositions()[index]);
     }
+
     EXPECT_GT(moved, 20.0F);
 
     // Attractors pull particles in and remove the ones that reach the kill radius, and the app can move them.
@@ -402,9 +419,11 @@ TEST_F(ParticlesTest, TurbulenceAndAttractorsMoveParticles) {
     pulled.burst(1);
     pulled.update(0.1F);
     EXPECT_GT(pulled.getPositions().front().x, 0.0F);
+
     for (int step = 0; step < 60 && pulled.getCount() > 0; ++step) {
         pulled.update(1.0F / 30.0F);
     }
+
     EXPECT_EQ(pulled.getCount(), 0U);
 
     Emitter world({.texture = texture(), .rate = 0.0F, .lifetime = {10.0F, 10.0F}, .speed = {0.0F, 0.0F}, .attractors = {{.strength = 1000.0F, .radius = 1000.0F, .space = EmitterConfig::Attractor::Space::World}}});
@@ -447,9 +466,11 @@ TEST_F(ParticlesTest, ParticlesCollideWithFloorsBoundsAndWorlds) {
     Emitter hitting({.texture = texture(), .rate = 0.0F, .lifetime = {10.0F, 10.0F}, .speed = {400.0F, 400.0F}, .direction = 0.0F, .spread = 0.0F, .collision = {.type = Collision::Type::World, .bounce = 1.0F}});
     hitting.setCollisionWorld(world);
     hitting.burst(1);
+
     for (int step = 0; step < 10; ++step) {
         hitting.update(0.05F);
     }
+
     EXPECT_LT(hitting.getPositions().front().x, 90.0F);
     EXPECT_LT(hitting.getParticle(0).velocity.x, 0.0F);
     const std::weak_ptr<physics2d::World> held = world;
@@ -470,9 +491,11 @@ TEST_F(ParticlesTest, ParticlesTouchSurfacesAtTheShareOfTheirSize) {
         Emitter emitter({.texture = texture(), .rate = 0.0F, .lifetime = {10.0F, 10.0F}, .speed = {300.0F, 300.0F}, .direction = direction, .spread = 0.0F, .collision = collision, .startSize = {20.0F, 20.0F}, .endSize = {20.0F, 20.0F}});
         emitter.setCollisionWorld(std::move(world));
         emitter.burst(1);
+
         for (int step = 0; step < 20; ++step) {
             emitter.update(0.05F);
         }
+
         return emitter.getPositions().front();
     };
     // clang-format on
@@ -523,12 +546,14 @@ TEST_F(ParticlesTest, ShapesAndDirectionModesPlaceParticles) {
     using Shape = EmitterConfig::Shape;
     Emitter ellipse({.texture = texture(), .rate = 0.0F, .shape = Shape::Ellipse, .shapeSize = {40.0F, 10.0F}}, 1);
     ellipse.burst(50);
+
     for (const math::Vec2 point : ellipse.getPositions()) {
         EXPECT_LE((point.x / 40.0F) * (point.x / 40.0F) + (point.y / 10.0F) * (point.y / 10.0F), 1.0001F);
     }
 
     Emitter edge({.texture = texture(), .rate = 0.0F, .shape = Shape::RectangleEdge, .shapeSize = {30.0F, 20.0F}}, 2);
     edge.burst(50);
+
     for (const math::Vec2 point : edge.getPositions()) {
         EXPECT_TRUE(std::fabs(std::fabs(point.x) - 30.0F) < 1e-3F || std::fabs(std::fabs(point.y) - 20.0F) < 1e-3F);
     }
@@ -536,6 +561,7 @@ TEST_F(ParticlesTest, ShapesAndDirectionModesPlaceParticles) {
     // Arcs stay inside their angles, and outward particles leave away from the center.
     Emitter arc({.texture = texture(), .rate = 0.0F, .speed = {10.0F, 10.0F}, .directionMode = EmitterConfig::DirectionMode::Outward, .spread = 0.0F, .shape = Shape::Arc, .shapeSize = {50.0F, 0.0F}, .shapeArc = {0.0F, 1.0F}}, 3);
     arc.burst(30);
+
     for (std::size_t index = 0; index < 30; ++index) {
         const Emitter::Particle particle = arc.getParticle(index);
         EXPECT_NEAR(particle.position.getLength(), 50.0F, 1e-3F);
@@ -543,6 +569,7 @@ TEST_F(ParticlesTest, ShapesAndDirectionModesPlaceParticles) {
         EXPECT_LE(particle.position.getAngle(), 1.0001F);
         EXPECT_NEAR(math::Vec2::dot(particle.velocity.getNormalized(), particle.position.getNormalized()), 1.0F, 1e-4F);
     }
+
     Emitter inward({.texture = texture(), .rate = 0.0F, .speed = {10.0F, 10.0F}, .directionMode = EmitterConfig::DirectionMode::Inward, .spread = 0.0F, .shape = Shape::Ring, .shapeSize = {50.0F, 0.0F}}, 4);
     Emitter tangent({.texture = texture(), .rate = 0.0F, .speed = {10.0F, 10.0F}, .directionMode = EmitterConfig::DirectionMode::Tangent, .spread = 0.0F, .shape = Shape::Ring, .shapeSize = {50.0F, 0.0F}}, 4);
     inward.burst(1);
@@ -553,14 +580,17 @@ TEST_F(ParticlesTest, ShapesAndDirectionModesPlaceParticles) {
     // Polygons spawn inside their outline and polylines along it, and the app can replace their points.
     Emitter polygon({.texture = texture(), .rate = 0.0F, .shape = Shape::Polygon, .shapePoints = {{0.0F, 0.0F}, {100.0F, 0.0F}, {0.0F, 100.0F}}}, 5);
     polygon.burst(50);
+
     for (const math::Vec2 point : polygon.getPositions()) {
         EXPECT_GE(point.x, -1e-3F);
         EXPECT_GE(point.y, -1e-3F);
         EXPECT_LE(point.x + point.y, 100.001F);
     }
+
     Emitter polyline({.texture = texture(), .rate = 0.0F, .shape = Shape::Polyline, .shapePoints = {{0.0F, 0.0F}, {100.0F, 0.0F}}}, 6);
     polyline.setShapePoints({{0.0F, 10.0F}, {0.0F, 60.0F}});
     polyline.burst(20);
+
     for (const math::Vec2 point : polyline.getPositions()) {
         EXPECT_NEAR(point.x, 0.0F, 1e-4F);
         EXPECT_GE(point.y, 10.0F - 1e-3F);
@@ -571,6 +601,7 @@ TEST_F(ParticlesTest, ShapesAndDirectionModesPlaceParticles) {
     Emitter turned({.texture = texture(), .rate = 0.0F, .shape = Shape::Rectangle, .shapeSize = {50.0F, 0.0F}, .shapeAngle = 1.5707964F}, 7);
     turned.scale = 2.0F;
     turned.burst(20);
+
     for (const math::Vec2 point : turned.getPositions()) {
         EXPECT_NEAR(point.x, 0.0F, 1e-3F);
         EXPECT_LE(std::fabs(point.y), 100.001F);
@@ -601,6 +632,7 @@ TEST_F(ParticlesTest, ImageShapesSpawnOnVisiblePixelsInTheirColors) {
 
     Emitter burning({.texture = texture(), .rate = 0.0F, .speed = {0.0F, 0.0F}, .shape = EmitterConfig::Shape::Image, .shapeSize = {40.0F, 20.0F}, .shapeImage = shape, .colorFromImage = true}, 3);
     burning.burst(20);
+
     for (std::size_t index = 0; index < 20; ++index) {
         const Emitter::Particle particle = burning.getParticle(index);
         const bool left = particle.position.x < 0.0F;
@@ -695,9 +727,11 @@ TEST_F(ParticlesTest, SubEmittersSpawnOnEveryTrigger) {
     EXPECT_EQ(drawFrame({&hitting}).sprites, 6U);
     Emitter living({.texture = texture(), .rate = 0.0F, .lifetime = {10.0F, 10.0F}, .subEmitters = {{.config = spark, .trigger = Trigger::Alive, .rate = 20.0F}}}, 2);
     living.burst(1);
+
     for (int step = 0; step < 10; ++step) {
         living.update(0.1F);
     }
+
     EXPECT_NEAR(static_cast<double>(drawFrame({&living}).sprites), 21.0, 4.0);
 
     living.restart();
@@ -763,9 +797,11 @@ TEST_F(ParticlesTest, DistortionParticlesBendOnlyCompositedCanvases) {
 TEST_F(ParticlesTest, TrailsDrawRibbonsBehindParticlesAndPoints) {
     Emitter streaks({.texture = texture(), .rate = 0.0F, .lifetime = {10.0F, 10.0F}, .speed = {100.0F, 100.0F}, .trail = {.length = 4, .lifetime = 0.4F}});
     streaks.burst(2);
+
     for (int step = 0; step < 10; ++step) {
         streaks.update(0.1F);
     }
+
     // Every particle draws a ribbon of five points, whose fading edges and round ends take more vertices than a strip of two vertices for each point.
     EXPECT_GT(drawFrame({&streaks}).vertices, 20U);
     EXPECT_THROW(Emitter({.texture = texture(), .trail = {.length = 65}}), std::invalid_argument);
@@ -775,10 +811,12 @@ TEST_F(ParticlesTest, TrailsDrawRibbonsBehindParticlesAndPoints) {
     blade.position = {5.0F, 0.0F};
     blade.update(0.1F);
     EXPECT_EQ(blade.getCount(), 1U);
+
     for (int step = 1; step <= 6; ++step) {
         blade.position = {static_cast<float>(step) * 20.0F, 0.0F};
         blade.update(0.05F);
     }
+
     EXPECT_EQ(blade.getCount(), 4U);
     blade.emitting = false;
     EXPECT_TRUE(blade.isAlive());
@@ -990,6 +1028,7 @@ TEST(EffectTest, LoadsEffectFilesAsAssets) {
         } catch (const std::exception& error) {
             return std::string(error.what());
         }
+
         return std::string("no error");
     };
     // clang-format on

@@ -28,21 +28,27 @@ void Emitter::validate(const EmitterConfig& settings) {
     if (!settings.texture.isValid() || settings.maxParticles == 0 || settings.colors.empty()) {
         throw std::invalid_argument("A particle emitter needs a texture, room for particles and at least one color.");
     }
+
     if (settings.maxParticles > kMaxParticles) {
         throw std::invalid_argument("A particle emitter holds at most 1000000 particles.");
     }
+
     if (!(settings.rate >= 0.0F && std::isfinite(settings.rate)) || !(settings.lifetime.min > 0.0F && settings.lifetime.max >= settings.lifetime.min)) {
         throw std::invalid_argument("Particles need a finite, non-negative rate and a positive lifetime range.");
     }
+
     if (!(settings.duration >= 0.0F && std::isfinite(settings.duration)) || !(settings.prewarm >= 0.0F && settings.prewarm <= kMaxPrewarm)) {
         throw std::invalid_argument("Particle durations must be finite and not negative, and prewarm times must be from 0 to 60 seconds.");
     }
+
     if (settings.loop && settings.duration < kMinimumCycle) {
         throw std::invalid_argument("A looping particle emitter needs a duration of at least 0.001 seconds.");
     }
+
     if (!(settings.delay >= 0.0F && std::isfinite(settings.delay)) || !(settings.rateOverDistance >= 0.0F && std::isfinite(settings.rateOverDistance))) {
         throw std::invalid_argument("A particle delay and a rate over distance must be finite and not negative.");
     }
+
     validateBursts(settings);
     validateMotion(settings);
     validateLook(settings);
@@ -54,6 +60,7 @@ void Emitter::validateBursts(const EmitterConfig& settings) {
         if (planned.cycles < 1 || planned.cycles > kMaxBurstCycles || !(planned.interval >= 0.0F && std::isfinite(planned.interval)) || planned.count.min > planned.count.max || !(planned.probability >= 0.0F && planned.probability <= 1.0F)) {
             throw std::invalid_argument("A particle burst needs from 1 to 65536 cycles, an interval of at least 0, a count range whose minimum is at most its maximum and a probability from 0 to 1.");
         }
+
         const float last = planned.time + planned.interval * static_cast<float>(planned.cycles - 1);
         if (!(planned.time >= 0.0F && std::isfinite(last)) || (settings.duration > 0.0F && last > settings.duration)) {
             throw std::invalid_argument("Particle bursts need a time inside the emission cycle.");
@@ -66,24 +73,30 @@ void Emitter::validateMotion(const EmitterConfig& settings) {
     if (!std::isfinite(turbulence.strength) || !(turbulence.frequency > 0.0F && std::isfinite(turbulence.frequency)) || !std::isfinite(turbulence.speed)) {
         throw std::invalid_argument("Particle turbulence needs a finite strength and speed and a positive frequency.");
     }
+
     for (const EmitterConfig::Attractor& attractor : settings.attractors) {
         if (!std::isfinite(attractor.strength) || !(attractor.radius >= 0.0F && std::isfinite(attractor.radius)) || !(attractor.killRadius >= 0.0F && std::isfinite(attractor.killRadius))) {
             throw std::invalid_argument("A particle attractor needs a finite strength and a radius and a kill radius of at least 0.");
         }
     }
+
     const EmitterConfig::Collision& collision = settings.collision;
     if (!(collision.bounce >= 0.0F && std::isfinite(collision.bounce)) || !(collision.friction >= 0.0F && collision.friction <= 1.0F) || !(collision.lifeLoss >= 0.0F && collision.lifeLoss <= 1.0F)) {
         throw std::invalid_argument("Particle collision needs a bounce of at least 0, and a friction and a life loss from 0 to 1.");
     }
+
     if (!(collision.sizeScale >= 0.0F && std::isfinite(collision.sizeScale))) {
         throw std::invalid_argument("Particle collision needs a finite size scale of at least 0.");
     }
+
     if (collision.type == EmitterConfig::Collision::Type::Bounds && !(collision.area.width > 0.0F && collision.area.height > 0.0F)) {
         throw std::invalid_argument("Particle collision with bounds needs an area with a positive width and height.");
     }
+
     if (settings.bounds && !(settings.bounds->width > 0.0F && settings.bounds->height > 0.0F)) {
         throw std::invalid_argument("Particle bounds need a positive width and height.");
     }
+
     for (const EmitterConfig::SubEmitter& sub : settings.subEmitters) {
         if (!sub.config || sub.count.min > sub.count.max || !(sub.rate >= 0.0F && std::isfinite(sub.rate)) || !(sub.probability >= 0.0F && sub.probability <= 1.0F) || !std::isfinite(sub.inheritVelocity)) {
             throw std::invalid_argument("A particle sub-emitter needs an effect, a count range whose minimum is at most its maximum, a finite rate of at least 0 and a probability from 0 to 1.");
@@ -95,33 +108,41 @@ void Emitter::validateLook(const EmitterConfig& settings) {
     if (!settings.frames.empty() && (settings.frameGrid.columns > 0 || settings.frameGrid.rows > 0)) {
         throw std::invalid_argument("A particle emitter takes either frames or a frame grid, not both.");
     }
+
     const EmitterConfig::FrameGrid& grid = settings.frameGrid;
     if ((grid.columns > 0 || grid.rows > 0) && (grid.columns < 1 || grid.rows < 1 || grid.count < 0 || std::int64_t{grid.columns} * grid.rows > kMaxFrames || grid.count > grid.columns * grid.rows)) {
         throw std::invalid_argument("A particle frame grid needs at least one column and one row, at most 65536 cells and a count of at most its cells.");
     }
+
     if (!(settings.frameRate > 0.0F && std::isfinite(settings.frameRate))) {
         throw std::invalid_argument("A particle frame rate must be positive and finite.");
     }
+
     if (!settings.colorTimes.empty()) {
         const bool inside = std::all_of(settings.colorTimes.begin(), settings.colorTimes.end(), [](float value) { return value >= 0.0F && value <= 1.0F; });
         if (settings.colorTimes.size() != settings.colors.size() || !inside || !std::is_sorted(settings.colorTimes.begin(), settings.colorTimes.end())) {
             throw std::invalid_argument("Particle color times need one time from 0 to 1 for each color, in growing order.");
         }
     }
+
     const bool scaleValid = !settings.endSizeScale || settings.endSizeScale->min >= 0.0F;
     if (!scaleValid || !(settings.aspect.min > 0.0F) || !(settings.stretch >= 0.0F) || !(settings.rotationStep >= 0.0F) || !(settings.pixelSnap >= 0.0F)) {
         throw std::invalid_argument("A particle end size scale, stretch, rotation step and pixel snap must be at least 0, and an aspect must be positive.");
     }
+
     if (!(settings.tilt >= 0.0F && settings.tilt <= kMaxTilt)) {
         throw std::invalid_argument("A particle tilt must be from 0 to 1.5708 radians.");
     }
+
     const EmitterConfig::ParticleTrail& trail = settings.trail;
     if (trail.length > kMaxTrailLength || trail.length * settings.maxParticles > kMaxTrailPoints || !(trail.lifetime > 0.0F && std::isfinite(trail.lifetime)) || !(trail.widthStart >= 0.0F && trail.widthEnd >= 0.0F) || trail.colors.empty()) {
         throw std::invalid_argument("A particle trail holds at most 64 points, a million points across all the particles of the emitter, and needs a positive lifetime, widths of at least 0 and at least one color.");
     }
+
     if (settings.light && (!(settings.light->radius > 0.0F) || !(settings.light->intensity >= 0.0F) || !(settings.light->flicker.speed >= 0.0F) || !(settings.light->flicker.amount >= 0.0F && settings.light->flicker.amount <= 1.0F))) {
         throw std::invalid_argument("A particle light needs a positive radius, an intensity and a flicker speed of at least 0 and a flicker amount from 0 to 1.");
     }
+
     if (settings.particleLights && (!(settings.particleLights->radius > 0.0F) || !(settings.particleLights->intensity >= 0.0F) || settings.particleLights->max > kMaxParticleLights)) {
         throw std::invalid_argument("Particle lights need a positive radius, an intensity of at least 0 and at most 1024 lights.");
     }
@@ -133,12 +154,15 @@ void Emitter::validateShape(const EmitterConfig& settings) {
     if (settings.shape == Shape::Polygon && (std::fabs(math::Geometry::signedArea(settings.shapePoints)) <= 0.0F || math::Geometry::triangulate(settings.shapePoints).empty())) {
         throw std::invalid_argument("The polygon shape of a particle emitter needs at least three points that enclose an area.");
     }
+
     if (settings.shape == Shape::Polyline && settings.shapePoints.size() < 2) {
         throw std::invalid_argument("The polyline shape of a particle emitter needs at least two points.");
     }
+
     if (settings.shape == Shape::Image && !settings.shapeImage) {
         throw std::invalid_argument("The image shape of a particle emitter needs a shape image.");
     }
+
     if (!(settings.shapeThickness >= 0.0F && std::isfinite(settings.shapeThickness))) {
         throw std::invalid_argument("The shape thickness of a particle emitter must be finite and not negative.");
     }
@@ -197,6 +221,7 @@ void Emitter::prepare() {
             firings.push_back({.time = planned.time + planned.interval * static_cast<float>(cycle), .burst = index});
         }
     }
+
     std::stable_sort(firings.begin(), firings.end(), [](const Firing& lhs, const Firing& rhs) { return lhs.time < rhs.time; });
     prepareShape();
 
@@ -215,9 +240,11 @@ void Emitter::prepare() {
             values.shrink_to_fit();
             return;
         }
+
         if (values.size() != count) {
             values.assign(count, neutral);
         }
+
         values.reserve(capacity);
     };
     // clang-format on
@@ -236,10 +263,12 @@ void Emitter::prepare() {
     follow(particles.frames, usesFrameStarts, std::uint32_t{0});
     follow(particles.flags, usesHits, std::uint8_t{0});
     follow(particles.trailCounts, config.trail.length > 0, std::uint16_t{0});
+
     if (particles.trails.size() != count * config.trail.length) {
         particles.trails.assign(count * config.trail.length, math::Vec2{});
         std::fill(particles.trailCounts.begin(), particles.trailCounts.end(), std::uint16_t{0});
     }
+
     particles.trails.reserve(capacity * config.trail.length);
 }
 
@@ -275,6 +304,7 @@ void Emitter::prepareSubEmitters(const std::vector<EmitterConfig::SubEmitter>& p
             kept[index] = std::move(children[index]);
             continue;
         }
+
         EmitterConfig child = *sub.config;
         child.localSpace = false;
         child.prewarm = 0.0F;
@@ -286,6 +316,7 @@ void Emitter::prepareSubEmitters(const std::vector<EmitterConfig::SubEmitter>& p
         made->prepare();
         kept[index] = std::move(made);
     }
+
     children = std::move(kept);
 }
 
@@ -300,6 +331,7 @@ void Emitter::restart() {
     peakCount = 0;
     prewarmed = false;
     emitting = true;
+
     if (children.size() != config.subEmitters.size()) {
         prepareSubEmitters({});
     }
@@ -309,8 +341,10 @@ void Emitter::prewarm() {
     if (prewarmed) {
         return;
     }
+
     prewarmed = true;
     previousPosition = position;
+
     for (float elapsed = 0.0F; elapsed < config.prewarm; elapsed += kPrewarmStep) {
         step(std::min(kPrewarmStep, config.prewarm - elapsed), nullptr);
     }
@@ -336,6 +370,7 @@ std::size_t Emitter::pick(EmitterConfig::CountRange range) {
     if (range.min == range.max) {
         return range.min;
     }
+
     return range.min + static_cast<std::size_t>(random.nextU64() % (range.max - range.min + 1));
 }
 
@@ -343,6 +378,7 @@ void Emitter::setAttractor(std::size_t index, math::Vec2 value) {
     if (index >= config.attractors.size()) {
         throw std::out_of_range("The particle emitter has no attractor at that index.");
     }
+
     config.attractors[index].position = value;
 }
 
@@ -371,10 +407,12 @@ void Emitter::spawn(std::size_t count, math::Vec2 from, math::Vec2 to, math::Vec
         if (casts) {
             previousPositions.push_back(particles.positions[born]);
         }
+
         const float lived = rest + span * (1.0F - share);
         if (lived > 0.0F) {
             simulate(lived, born, born + 1);
         }
+
         for (std::size_t sub = 0; sub < config.subEmitters.size(); ++sub) {
             if (config.subEmitters[sub].trigger == EmitterConfig::SubEmitter::Trigger::Birth) {
                 trigger(sub, born, lived);
@@ -413,8 +451,10 @@ math::Vec2 Emitter::pickShapePoint(std::size_t& pixel) {
                 const auto& [corner, direction] = sides[side];
                 return corner + direction * along + math::Vec2{-direction.y, direction.x} * thickness;
             }
+
             along -= length;
         }
+
         return {};
     }
     case Shape::Arc:
@@ -425,6 +465,7 @@ math::Vec2 Emitter::pickShapePoint(std::size_t& pixel) {
         while (triangle + 4 < shapeWeights.size() && shapeWeights[triangle] < target) {
             triangle += 4;
         }
+
         const math::Vec2 a = config.shapePoints[static_cast<std::size_t>(shapeWeights[triangle + 1])];
         const math::Vec2 b = config.shapePoints[static_cast<std::size_t>(shapeWeights[triangle + 2])];
         const math::Vec2 c = config.shapePoints[static_cast<std::size_t>(shapeWeights[triangle + 3])];
@@ -434,6 +475,7 @@ math::Vec2 Emitter::pickShapePoint(std::size_t& pixel) {
             u = 1.0F - u;
             v = 1.0F - v;
         }
+
         return a + (b - a) * u + (c - a) * v;
     }
     case Shape::Polyline: {
@@ -481,6 +523,7 @@ Emitter::Spawn Emitter::pickSpawn() {
     if (config.shape == EmitterConfig::Shape::Cone) {
         result.offset = math::Vec2::fromAngle(result.angle, config.shapeSize.x * scale * std::sqrt(random.nextFloat()));
     }
+
     return result;
 }
 
@@ -488,10 +531,12 @@ math::Color Emitter::pickTint(std::size_t pixel) {
     if (config.colorFromImage && config.shape == EmitterConfig::Shape::Image) {
         return config.shapeImage->getColors()[pixel];
     }
+
     const std::vector<math::Color>& tints = config.tints;
     if (tints.empty()) {
         return math::Color::white();
     }
+
     switch (config.tintMode) {
     case EmitterConfig::TintMode::Random:
         return tints[static_cast<std::size_t>(random.nextU64() % tints.size())];
@@ -519,22 +564,28 @@ void Emitter::spawnParticle(math::Vec2 origin, math::Vec2 inherited, math::Color
     particles.spins.push_back(pick(config.spin));
     particles.radial.push_back(pick(config.radialAcceleration) * scale);
     particles.tangential.push_back(pick(config.tangentialAcceleration) * scale);
+
     if (usesTints) {
         particles.tints.push_back(pickTint(placed.pixel) * tint);
     }
+
     if (usesAspects) {
         particles.aspects.push_back(pick(config.aspect));
     }
+
     if (usesFrameStarts) {
         particles.frames.push_back(frames.empty() ? 0U : static_cast<std::uint32_t>(random.nextU64() % frames.size()));
     }
+
     if (usesHits) {
         particles.flags.push_back(0);
     }
+
     if (config.trail.length > 0) {
         particles.trailCounts.push_back(0);
         particles.trails.resize(particles.trails.size() + config.trail.length);
     }
+
     ++spawned;
 }
 
@@ -549,6 +600,7 @@ void Emitter::trigger(std::size_t subEmitter, std::size_t index, float lived) {
     if (sub.probability < 1.0F && !random.chance(sub.probability)) {
         return;
     }
+
     const std::size_t count = pick(sub.count);
     const math::Vec2 velocityNow = getVelocity(index);
     const math::Vec2 at = placeOnPlane(getOrigin() + particles.positions[index] - velocityNow * lived);
@@ -573,6 +625,7 @@ void Emitter::step(float deltaSeconds, core::JobSystem* jobs) {
     for (const std::unique_ptr<Emitter>& child : children) {
         child->step(deltaSeconds, jobs);
     }
+
     velocity = deltaSeconds > 0.0F ? (position - previousPosition) / deltaSeconds : math::Vec2{};
     clock += deltaSeconds;
     const bool casts = castsRays();
@@ -589,9 +642,11 @@ void Emitter::step(float deltaSeconds, core::JobSystem* jobs) {
         });
         // clang-format on
     }
+
     if (casts) {
         collideWithWorld(0, jobs);
     }
+
     runTriggers(deltaSeconds);
     removeExpired();
 
@@ -599,9 +654,11 @@ void Emitter::step(float deltaSeconds, core::JobSystem* jobs) {
     const std::size_t firstBorn = getCount();
     previousPositions.clear();
     emit(deltaSeconds);
+
     if (casts && getCount() > firstBorn) {
         collideWithWorld(firstBorn, jobs);
     }
+
     sampleTrails(deltaSeconds);
     previousPosition = position;
     peakCount = std::max(peakCount, getCount());
@@ -633,10 +690,12 @@ void Emitter::simulate(float deltaSeconds, std::size_t begin, std::size_t end) n
             const math::Vec2 outward = (point - center).getNormalized();
             acceleration += outward * particles.radial[index] + math::Vec2{-outward.y, outward.x} * particles.tangential[index];
         }
+
         if (turbulence.strength != 0.0F) {
             const math::Vec2 sample = (config.localSpace ? point + position : point) * turbulence.frequency;
             acceleration += math::Vec2{noise.simplex(sample.x + flow, sample.y), noise.simplex(sample.x - 37.1F, sample.y + 11.3F + flow)} * (turbulence.strength * scale);
         }
+
         for (const EmitterConfig::Attractor& attractor : config.attractors) {
             const math::Vec2 world = attractor.space == EmitterConfig::Attractor::Space::World ? attractor.position : position + attractor.position.rotated(rotation) * scale;
             const math::Vec2 toward = world - (config.localSpace ? position : math::Vec2{}) - point;
@@ -645,6 +704,7 @@ void Emitter::simulate(float deltaSeconds, std::size_t begin, std::size_t end) n
                 particles.ages[index] = particles.lifetimes[index];
                 break;
             }
+
             const float reach = attractor.radius * scale;
             if (distance < reach) {
                 acceleration += toward / distance * (attractor.strength * scale * (1.0F - distance / reach));
@@ -669,12 +729,14 @@ void Emitter::simulate(float deltaSeconds, std::size_t begin, std::size_t end) n
             } else if (point.x > area.getRight()) {
                 collide(index, {area.getRight(), point.y}, {-1.0F, 0.0F});
             }
+
             if (point.y < area.getTop()) {
                 collide(index, {point.x, area.getTop()}, {0.0F, 1.0F});
             } else if (point.y > area.getBottom()) {
                 collide(index, {point.x, area.getBottom()}, {0.0F, -1.0F});
             }
         }
+
         if (config.bounds) {
             const math::Rect area{center.x + config.bounds->x * scale, center.y + config.bounds->y * scale, config.bounds->width * scale, config.bounds->height * scale};
             if (!area.contains(point)) {
@@ -703,6 +765,7 @@ void Emitter::collide(std::size_t index, math::Vec2 contact, math::Vec2 normal) 
 
     particles.flags[index] |= kHit;
     particles.ages[index] += collision.lifeLoss * particles.lifetimes[index];
+
     switch (collision.result) {
     case Result::Bounce: {
         const math::Vec2 along = motion - normal * into;
@@ -731,7 +794,9 @@ void Emitter::collideWithWorld(std::size_t begin, core::JobSystem* jobs) {
         const float reach = moving ? getContactRadius(index, std::min(particles.ages[index] / particles.lifetimes[index], 1.0F)) : 0.0F;
         rays.setRay(index - begin, from, moving ? from + move + move.getNormalized() * reach : from);
     }
+
     physics2d::Raycaster(*collisionWorld).castBatch(rays, collisionFilter, jobs);
+
     for (std::size_t index = begin; index < count; ++index) {
         if (const std::optional<physics2d::RaycastHit>& hit = rays.getHit(index - begin)) {
             const float reach = getContactRadius(index, std::min(particles.ages[index] / particles.lifetimes[index], 1.0F));
@@ -784,6 +849,7 @@ void Emitter::removeExpired() {
         if (particles.ages[index] >= particles.lifetimes[index]) {
             continue;
         }
+
         if (kept != index) {
             // clang-format off
             particles.forEachArray([kept, index](auto& values) {
@@ -794,8 +860,10 @@ void Emitter::removeExpired() {
             // clang-format on
             std::copy_n(particles.trails.begin() + static_cast<std::ptrdiff_t>(index * length), length, particles.trails.begin() + static_cast<std::ptrdiff_t>(kept * length));
         }
+
         ++kept;
     }
+
     // clang-format off
     particles.forEachArray([kept](auto& values) {
         if (!values.empty()) {
@@ -812,12 +880,15 @@ void Emitter::sampleTrails(float deltaSeconds) {
     if (length == 0) {
         return;
     }
+
     const float interval = config.trail.lifetime / static_cast<float>(length);
     trailClock += deltaSeconds;
     if (trailClock < interval) {
         return;
     }
+
     trailClock = std::fmod(trailClock, interval);
+
     for (std::size_t index = 0; index < getCount(); ++index) {
         math::Vec2* block = particles.trails.data() + index * length;
         std::memmove(block + 1, block, (length - 1) * sizeof(math::Vec2));
@@ -834,6 +905,7 @@ double Emitter::takeBursts() {
             count += static_cast<double>(pick(planned.count));
         }
     }
+
     return count;
 }
 
@@ -844,14 +916,17 @@ void Emitter::emit(float deltaSeconds) {
         distanceDebt = 0.0F;
         return;
     }
+
     if (!(deltaSeconds > 0.0F)) {
         return;
     }
+
     if (delayLeft > 0.0F) {
         delayLeft -= deltaSeconds;
         if (delayLeft > 0.0F) {
             return;
         }
+
         deltaSeconds = -delayLeft;
         delayLeft = 0.0F;
     }
@@ -859,10 +934,12 @@ void Emitter::emit(float deltaSeconds) {
     const float duration = config.duration;
     float emitted = deltaSeconds;
     double due = 0.0;
+
     if (duration > 0.0F && time >= duration) {
         time = 0.0F;
         nextBurst = 0;
     }
+
     if (duration <= 0.0F || deltaSeconds < duration - time) {
         time += deltaSeconds;
         due += takeBursts();
@@ -882,6 +959,7 @@ void Emitter::emit(float deltaSeconds) {
                 const EmitterConfig::Burst& planned = config.bursts[firing.burst];
                 everyBurst += static_cast<double>(planned.probability) * 0.5 * static_cast<double>(planned.count.min + planned.count.max);
             }
+
             due += everyBurst * static_cast<double>(std::round((rest - partial) / duration));
             if (partial > 0.0F) {
                 time = partial;
@@ -910,12 +988,14 @@ math::Color Emitter::colorAt(float life) const noexcept {
     if (count == 1) {
         return colors.front();
     }
+
     const float progress = math::Math::saturate(life);
     const bool steps = config.colorBlend == EmitterConfig::ColorBlend::Steps;
     if (config.colorTimes.empty()) {
         if (steps) {
             return colors[std::min(static_cast<std::size_t>(progress * static_cast<float>(count)), count - 1)];
         }
+
         const float scaled = progress * static_cast<float>(count - 1);
         const auto index = std::min(static_cast<std::size_t>(scaled), count - 2);
         return math::Color::lerp(colors[index], colors[index + 1], scaled - static_cast<float>(index));
@@ -926,10 +1006,12 @@ math::Color Emitter::colorAt(float life) const noexcept {
     if (after == times.begin()) {
         return colors.front();
     }
+
     const auto index = static_cast<std::size_t>(after - times.begin()) - 1;
     if (index + 1 >= count || steps) {
         return colors[index];
     }
+
     const float span = times[index + 1] - times[index];
     return span > 0.0F ? math::Color::lerp(colors[index], colors[index + 1], (progress - times[index]) / span) : colors[index + 1];
 }
@@ -941,9 +1023,11 @@ math::Color Emitter::particleColor(std::size_t index) const noexcept {
 
 math::Rect Emitter::frameAt(std::size_t index, float life) const noexcept {
     using Mode = EmitterConfig::FrameMode;
+
     if (frames.empty()) {
         return {};
     }
+
     const std::size_t count = frames.size();
     const auto played = static_cast<std::size_t>(particles.ages[index] * config.frameRate);
     switch (config.frameMode) {
@@ -970,17 +1054,21 @@ graphics2d::SpriteInstance Emitter::spriteAt(std::size_t index) const noexcept {
     if (config.alignToVelocity && !heading.isZero()) {
         angle += heading.getAngle();
     }
+
     if (config.rotationStep > 0.0F) {
         angle = std::round(angle / config.rotationStep) * config.rotationStep;
     }
+
     float width = particles.aspects.empty() ? size : size * particles.aspects[index];
     if (config.stretch > 0.0F) {
         width += heading.getLength() * std::fabs(easeDown(config.speedCurve, life)) * config.stretch;
     }
+
     math::Vec2 at = placeOnPlane(getOrigin() + particles.positions[index]);
     if (config.pixelSnap > 0.0F) {
         at = math::Vec2{std::round(at.x / config.pixelSnap), std::round(at.y / config.pixelSnap)} * config.pixelSnap;
     }
+
     return {.position = at, .size = {width, size}, .source = frameAt(index, life), .rotation = angle, .tilt = config.tilt, .color = particleColor(index)};
 }
 
@@ -1006,6 +1094,7 @@ Emitter::Particle Emitter::getParticle(std::size_t index) const {
     if (index >= getCount()) {
         throw std::out_of_range("The particle emitter has no live particle at that index.");
     }
+
     return {.position = getOrigin() + particles.positions[index], .velocity = getVelocity(index), .age = particles.ages[index], .lifetime = particles.lifetimes[index], .sprite = spriteAt(index)};
 }
 
@@ -1025,10 +1114,12 @@ void Emitter::draw(graphics2d::Renderer& renderer) const {
         for (std::size_t drawn = 0; drawn < getCount(); ++drawn) {
             instances.push_back(spriteAt(newestFirst ? getCount() - 1 - drawn : drawn));
         }
+
         renderer.drawBatch(config.texture, instances, config.order);
         drawTrails(renderer);
         drawLights(renderer);
     }
+
     for (const std::unique_ptr<Emitter>& child : children) {
         child->draw(renderer);
     }
@@ -1040,10 +1131,12 @@ void Emitter::drawTrails(graphics2d::Renderer& renderer) const {
     if (length == 0) {
         return;
     }
+
     trailPlaces.resize(length + 1);
     for (std::size_t point = 0; point <= length; ++point) {
         trailPlaces[point] = static_cast<float>(point) / static_cast<float>(length);
     }
+
     const math::Vec2 origin = getOrigin();
     const EmitterConfig::ParticleTrail& trail = config.trail;
     for (std::size_t index = 0; index < getCount(); ++index) {
@@ -1051,11 +1144,13 @@ void Emitter::drawTrails(graphics2d::Renderer& renderer) const {
         if (points == 0) {
             continue;
         }
+
         trailLine.clear();
         trailLine.push_back(placeOnPlane(origin + particles.positions[index]));
         for (std::size_t point = 0; point < points; ++point) {
             trailLine.push_back(placeOnPlane(origin + particles.trails[index * length + point]));
         }
+
         ribbon.draw(renderer, trailLine, trailPlaces, {.widthStart = trail.widthStart * scale, .widthEnd = trail.widthEnd * scale, .colors = trail.colors, .tint = particleColor(index)}, trail.texture, config.order);
     }
 }
@@ -1065,21 +1160,25 @@ void Emitter::drawLights(graphics2d::Renderer& renderer) const {
     if ((!config.light && !config.particleLights) || !renderer.isCanvasLit()) {
         return;
     }
+
     if (config.light) {
         const EmitterConfig::Light& glow = *config.light;
         float strength = glow.intensity;
         if (glow.flicker.amount > 0.0F) {
             strength *= lighting2d::LightFlicker::intensity(clock, glow.flicker.speed, glow.flicker.amount, seed);
         }
+
         if (glow.fade == EmitterConfig::Light::Fade::Cycle && !emitting) {
             strength = 0.0F;
         } else if (glow.fade == EmitterConfig::Light::Fade::Count) {
             strength *= peakCount > 0 ? static_cast<float>(getCount()) / static_cast<float>(peakCount) : 0.0F;
         }
+
         if (strength > 0.0F) {
             renderer.drawLight({.type = glow.type, .position = position + glow.offset.rotated(rotation) * scale, .radius = glow.radius * scale, .color = glow.color, .intensity = strength});
         }
     }
+
     if (config.particleLights && config.particleLights->max > 0) {
         const EmitterConfig::ParticleLights& lights = *config.particleLights;
         const math::Vec2 origin = getOrigin();
@@ -1099,9 +1198,11 @@ void Emitter::clear() noexcept {
     particles.trails.clear();
     emitDebt = 0.0F;
     distanceDebt = 0.0F;
+
     for (const std::unique_ptr<Emitter>& child : children) {
         child->clear();
     }
+
     liveParticles.set(0);
 }
 

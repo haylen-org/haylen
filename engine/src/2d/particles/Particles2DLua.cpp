@@ -109,8 +109,10 @@ template <> struct Converter<particles2d::EmitterConfig::CountRange> {
             if (pair.size() != 2) {
                 luaL_argerror(L, index, "a count needs an integer or the pair {min, max}");
             }
+
             return {pair[0], pair[1]};
         }
+
         const auto count = Stack::read<std::size_t>(L, index);
         return {count, count};
     }
@@ -321,6 +323,7 @@ void Particles2DLua::readCurve(lua_State* L, std::string_view key, std::optional
         curve.reset();
         return;
     }
+
     math::EasingCurve read;
     readCurve(L, key, read);
     curve = std::move(read);
@@ -398,23 +401,28 @@ void Particles2DLua::readSubEmitters(lua_State* L, std::vector<EmitterConfig::Su
             if ((*effect).isComposite()) {
                 luaL_error(L, "A sub-emitter needs an effect of one emitter, not a composite effect.");
             }
+
             sub.config = std::make_shared<EmitterConfig>((*effect).config);
         } else if (lua_istable(L, -1)) {
             if (isOpen(L, -1, open)) {
                 luaL_error(L, "A sub-emitter cannot take as its effect an options table that holds it.");
             }
+
             sub.config = std::make_shared<EmitterConfig>(readConfig(L, lua_gettop(L), {}, {}, &open));
         } else {
             luaL_error(L, "A sub-emitter needs a \"ParticleEffect\" or an options table in \"effect\".");
         }
+
         lua_pop(L, 1);
         lua_getfield(L, table, "overrides");
         if (!lua_isnil(L, -1)) {
             if (isOpen(L, -1, open)) {
                 luaL_error(L, "A sub-emitter cannot take as its overrides an options table that holds it.");
             }
+
             *sub.config = readConfig(L, lua_gettop(L), *sub.config, {}, &open);
         }
+
         lua_pop(L, 1);
         lua::Table::readField(L, table, "trigger", sub.trigger);
         lua::Table::readField(L, table, "count", sub.count);
@@ -434,6 +442,7 @@ bool Particles2DLua::isOpen(lua_State* L, int index, const OpenTable& open) {
             return true;
         }
     }
+
     return false;
 }
 
@@ -443,6 +452,7 @@ void Particles2DLua::readLight(lua_State* L, EmitterConfig& config) {
         config.light.reset();
         return;
     }
+
     luaL_checktype(L, -1, LUA_TTABLE);
     const int table = lua_gettop(L);
     lua::Table::checkFields(L, table, {kLightFields});
@@ -461,6 +471,7 @@ void Particles2DLua::readLight(lua_State* L, EmitterConfig& config) {
         lua::Table::readField(L, flicker, "speed", light.flicker.speed);
         lua::Table::readField(L, flicker, "amount", light.flicker.amount);
     }
+
     lua_pop(L, 1);
     config.light = light;
 }
@@ -470,6 +481,7 @@ void Particles2DLua::readParticleLights(lua_State* L, EmitterConfig& config) {
         config.particleLights.reset();
         return;
     }
+
     luaL_checktype(L, -1, LUA_TTABLE);
     const int table = lua_gettop(L);
     lua::Table::checkFields(L, table, {kParticleLightFields});
@@ -509,6 +521,7 @@ void Particles2DLua::pushConfig(lua_State* L, const EmitterConfig& config) {
         setValue(L, "count", config.frameGrid.count);
         lua_setfield(L, -2, "frameGrid");
     }
+
     setValue(L, "frameMode", config.frameMode);
     setValue(L, "frameRate", config.frameRate);
     pushMotion(L, config);
@@ -520,9 +533,11 @@ void Particles2DLua::pushConfig(lua_State* L, const EmitterConfig& config) {
     setValue(L, "sortOffset", order.sortOffset);
     setValue(L, "visibility", order.visibility);
     setValue(L, "blend", order.blend);
+
     if (order.material.isValid()) {
         setValue(L, "material", order.material);
     }
+
     setValue(L, "emission", order.emission);
     setValue(L, "unshaded", order.unshaded);
     setValue(L, "lightMask", order.lightMask);
@@ -543,6 +558,7 @@ void Particles2DLua::pushMotion(lua_State* L, const EmitterConfig& config) {
         setValue(L, "probability", burst.probability);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     lua_setfield(L, -2, "bursts");
     setValue(L, "delay", config.delay);
     setValue(L, "duration", config.duration);
@@ -551,9 +567,11 @@ void Particles2DLua::pushMotion(lua_State* L, const EmitterConfig& config) {
     setValue(L, "maxParticles", config.maxParticles);
     setValue(L, "lifetime", config.lifetime);
     setValue(L, "speed", config.speed);
+
     if (config.speedCurve) {
         setValue(L, "speedCurve", *config.speedCurve);
     }
+
     setValue(L, "direction", config.direction);
     setValue(L, "directionMode", config.directionMode);
     setValue(L, "spread", config.spread);
@@ -580,6 +598,7 @@ void Particles2DLua::pushMotion(lua_State* L, const EmitterConfig& config) {
         setValue(L, "space", attractor.space);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     lua_setfield(L, -2, "attractors");
     const EmitterConfig::Collision& collision = config.collision;
     lua_createtable(L, 0, 8);
@@ -592,9 +611,11 @@ void Particles2DLua::pushMotion(lua_State* L, const EmitterConfig& config) {
     setValue(L, "lifeLoss", collision.lifeLoss);
     setValue(L, "sizeScale", collision.sizeScale);
     lua_setfield(L, -2, "collision");
+
     if (config.bounds) {
         setValue(L, "bounds", *config.bounds);
     }
+
     setValue(L, "boundsMode", config.boundsMode);
     setValue(L, "localSpace", config.localSpace);
     setValue(L, "pixelSnap", config.pixelSnap);
@@ -604,9 +625,11 @@ void Particles2DLua::pushMotion(lua_State* L, const EmitterConfig& config) {
 void Particles2DLua::pushLook(lua_State* L, const EmitterConfig& config) {
     setValue(L, "startSize", config.startSize);
     setValue(L, "endSize", config.endSize);
+
     if (config.endSizeScale) {
         setValue(L, "endSizeScale", *config.endSizeScale);
     }
+
     setValue(L, "sizeCurve", config.sizeCurve);
     setValue(L, "aspect", config.aspect);
     setValue(L, "stretch", config.stretch);
@@ -615,9 +638,11 @@ void Particles2DLua::pushLook(lua_State* L, const EmitterConfig& config) {
     setValue(L, "tilt", config.tilt);
     setValue(L, "alignToVelocity", config.alignToVelocity);
     setValue(L, "spin", config.spin);
+
     if (config.spinCurve) {
         setValue(L, "spinCurve", *config.spinCurve);
     }
+
     setValue(L, "colors", config.colors);
     setValue(L, "colorTimes", config.colorTimes);
     setValue(L, "colorBlend", config.colorBlend);
@@ -646,6 +671,7 @@ void Particles2DLua::pushLook(lua_State* L, const EmitterConfig& config) {
         setValue(L, "inheritColor", sub.inheritColor);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     lua_setfield(L, -2, "subEmitters");
 
     const EmitterConfig::ParticleTrail& trail = config.trail;
@@ -655,9 +681,11 @@ void Particles2DLua::pushLook(lua_State* L, const EmitterConfig& config) {
     setValue(L, "widthStart", trail.widthStart);
     setValue(L, "widthEnd", trail.widthEnd);
     setValue(L, "colors", trail.colors);
+
     if (trail.texture.isValid()) {
         setValue(L, "texture", trail.texture);
     }
+
     lua_setfield(L, -2, "trail");
     if (config.light) {
         const EmitterConfig::Light& light = *config.light;
@@ -674,6 +702,7 @@ void Particles2DLua::pushLook(lua_State* L, const EmitterConfig& config) {
         setValue(L, "fade", light.fade);
         lua_setfield(L, -2, "light");
     }
+
     if (config.particleLights) {
         lua_createtable(L, 0, 3);
         setValue(L, "radius", config.particleLights->radius);
@@ -689,6 +718,7 @@ int Particles2DLua::newEmitter(lua_State* L) {
     if (effect != nullptr && effect->isComposite()) {
         return luaL_error(L, "The particle effect holds several emitters, so create it with \"particles2d.newSystem\".");
     }
+
     const int options = effect != nullptr ? 2 : 1;
     EmitterConfig config = effect != nullptr ? effect->config : EmitterConfig{};
     lua_Integer seed = 0;
@@ -696,6 +726,7 @@ int Particles2DLua::newEmitter(lua_State* L) {
         config = readConfig(L, options, std::move(config), kSeedFields);
         lua::Table::readField(L, options, "seed", seed);
     }
+
     lua::Userdata::emplace<Emitter>(L, std::make_shared<Emitter>(std::move(config), static_cast<std::uint64_t>(seed)));
     return 1;
 }
@@ -709,6 +740,7 @@ int Particles2DLua::newSystem(lua_State* L) {
         lua::Table::checkFields(L, 2, {kSeedFields});
         lua::Table::readField(L, 2, "seed", seed);
     }
+
     lua::Userdata::emplace<System>(L, std::make_shared<System>(effect, static_cast<std::uint64_t>(seed)));
     return 1;
 }
@@ -771,6 +803,7 @@ int Particles2DLua::emitterReadPositions(lua_State* L) {
         target[index * 2] = positions[index].x;
         target[index * 2 + 1] = positions[index].y;
     }
+
     lua_pushinteger(L, static_cast<lua_Integer>(count));
     return 1;
 }
@@ -857,6 +890,7 @@ int Particles2DLua::emitterSetCollisionWorld(lua_State* L) {
         emitter.setCollisionWorld(nullptr);
         return 0;
     }
+
     const std::shared_ptr<physics2d::World>& world = lua::Userdata::checkShared<physics2d::World>(L, 2);
     physics2d::CollisionFilter filter;
     if (!lua_isnoneornil(L, 3)) {
@@ -864,6 +898,7 @@ int Particles2DLua::emitterSetCollisionWorld(lua_State* L) {
         lua::Table::checkFields(L, 3, {kFilterFields});
         filter = physics2d::ShapeLua::readFilter(L, 3, {});
     }
+
     emitter.setCollisionWorld(world, filter);
     return 0;
 }
@@ -875,6 +910,7 @@ int Particles2DLua::effectTexturePath(lua_State* L) {
     } else {
         lua::Stack::push(L, effect.files.texture);
     }
+
     return 1;
 }
 
@@ -885,6 +921,7 @@ int Particles2DLua::effectConfig(lua_State* L) {
     } else {
         pushConfig(L, effect.config);
     }
+
     return 1;
 }
 
@@ -908,6 +945,7 @@ int Particles2DLua::effectParts(lua_State* L) {
         lua_setfield(L, -2, "config");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
@@ -937,6 +975,7 @@ int Particles2DLua::systemEmitter(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Userdata::emplace<Emitter>(L, emitter);
     return 1;
 }
@@ -948,6 +987,7 @@ int Particles2DLua::systemEmitters(lua_State* L) {
         lua::Userdata::emplace<Emitter>(L, system.getEmitter(index));
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
@@ -1000,17 +1040,21 @@ void Particles2DLua::pushTrailOptions(lua_State* L, const Trail::Options& option
     setValue(L, "widthStart", options.widthStart);
     setValue(L, "widthEnd", options.widthEnd);
     setValue(L, "colors", options.colors);
+
     if (options.texture.isValid()) {
         setValue(L, "texture", options.texture);
     }
+
     setValue(L, "layer", options.order.layer);
     setValue(L, "depth", options.order.depth);
     setValue(L, "sortOffset", options.order.sortOffset);
     setValue(L, "visibility", options.order.visibility);
     setValue(L, "blend", options.order.blend);
+
     if (options.order.material.isValid()) {
         setValue(L, "material", options.order.material);
     }
+
     setValue(L, "emission", options.order.emission);
     setValue(L, "unshaded", options.order.unshaded);
     setValue(L, "lightMask", options.order.lightMask);

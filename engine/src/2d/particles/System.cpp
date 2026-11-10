@@ -12,6 +12,7 @@ System::System(const Effect& effect, std::uint64_t seed) {
         parts.push_back({.emitter = std::make_shared<Emitter>(effect.config, seed)});
         return;
     }
+
     for (std::size_t index = 0; index < effect.parts.size(); ++index) {
         const Effect::Part& part = effect.parts[index];
         parts.push_back({.name = part.name, .offset = part.offset, .scale = part.scale, .emitter = std::make_shared<Emitter>(part.config, seed + index * 977U)});
@@ -28,6 +29,7 @@ void System::place() {
 
 void System::update(float deltaSeconds) {
     place();
+
     for (const Part& part : parts) {
         part.emitter->update(deltaSeconds);
     }
@@ -35,6 +37,7 @@ void System::update(float deltaSeconds) {
 
 void System::update(float deltaSeconds, core::JobSystem& jobs) {
     place();
+
     for (const Part& part : parts) {
         part.emitter->update(deltaSeconds, jobs);
     }
@@ -48,6 +51,7 @@ void System::draw(graphics2d::Renderer& renderer) const {
 
 void System::restart() {
     place();
+
     for (const Part& part : parts) {
         part.emitter->restart();
     }
@@ -64,6 +68,7 @@ std::size_t System::getCount() const noexcept {
     for (const Part& part : parts) {
         count += part.emitter->getCount();
     }
+
     return count;
 }
 
@@ -85,6 +90,7 @@ const std::shared_ptr<Emitter>& System::getEmitter(std::size_t index) const {
     if (index >= parts.size()) {
         throw std::out_of_range("The particle system has no emitter at that index.");
     }
+
     return parts[index].emitter;
 }
 
@@ -92,6 +98,7 @@ const std::string& System::getName(std::size_t index) const {
     if (index >= parts.size()) {
         throw std::out_of_range("The particle system has no emitter at that index.");
     }
+
     return parts[index].name;
 }
 

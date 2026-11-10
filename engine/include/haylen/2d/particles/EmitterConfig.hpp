@@ -296,6 +296,7 @@ struct EmitterConfig {
                 return value;
             }
         }
+
         return std::nullopt;
     }
 
@@ -305,6 +306,7 @@ struct EmitterConfig {
                 return text;
             }
         }
+
         return names.front().first;
     }
 };

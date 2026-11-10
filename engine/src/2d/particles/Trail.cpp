@@ -11,9 +11,11 @@ void Trail::validate(const Options& settings) {
     if (!(settings.lifetime > 0.0F && std::isfinite(settings.lifetime)) || !(settings.minDistance >= 0.0F && std::isfinite(settings.minDistance))) {
         throw std::invalid_argument("A trail needs a positive, finite lifetime and a minimum distance of at least 0.");
     }
+
     if (settings.maxPoints < 2 || settings.maxPoints > kMaxPoints) {
         throw std::invalid_argument("A trail keeps from 2 to 4096 points.");
     }
+
     if (!(settings.widthStart >= 0.0F && settings.widthEnd >= 0.0F) || settings.colors.empty()) {
         throw std::invalid_argument("A trail needs widths of at least 0 and at least one color.");
     }
@@ -36,6 +38,7 @@ void Trail::update(float deltaSeconds) {
     for (Point& point : points) {
         point.age += deltaSeconds;
     }
+
     const auto expired = std::find_if(points.begin(), points.end(), [this](const Point& point) { return point.age < options.lifetime; });
     points.erase(points.begin(), expired);
 
@@ -43,6 +46,7 @@ void Trail::update(float deltaSeconds) {
         if (points.size() == options.maxPoints) {
             points.erase(points.begin());
         }
+
         points.push_back({.position = position});
     }
 }
@@ -55,10 +59,12 @@ void Trail::draw(graphics2d::Renderer& renderer) const {
         line.push_back(position);
         places.push_back(0.0F);
     }
+
     for (auto point = points.rbegin(); point != points.rend(); ++point) {
         line.push_back(point->position);
         places.push_back(std::min(point->age / options.lifetime, 1.0F));
     }
+
     ribbon.draw(renderer, line, places, {.widthStart = options.widthStart, .widthEnd = options.widthEnd, .colors = options.colors}, options.texture, options.order);
 }
 
