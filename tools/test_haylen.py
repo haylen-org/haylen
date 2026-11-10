@@ -228,6 +228,22 @@ class StatusBarTest(unittest.TestCase):
     def test_iphones_may_refresh_above_60_hertz(self):
         self.assertTrue(self.launch({})["CADisableMinimumFrameDurationOnPhone"])
 
+    def test_cpp_apps_launch_with_the_info_plist_that_lua_apps_complete(self):
+        for folder, _, _ in haylen.APPLE_TEMPLATES.values():
+            shutil.copy(haylen.TEMPLATES_DIR / "lua" / "platform" / "apple" / folder / "Info.plist", self.root / folder / "Info.plist")
+        self.launch({"statusBar": "light"})
+        phone, pad = haylen.IOS_ORIENTATIONS
+        # The values of the placeholders that "haylen_add_app" fills for the same "app.json".
+        filled = {"HAYLEN_STATUS_BAR_HIDDEN": "false", "HAYLEN_STATUS_BAR_STYLE": haylen.IOS_STATUS_BAR_STYLES["light"], "HAYLEN_ORIENTATIONS": "".join(f"\t\t<string>{name}</string>\n" for name in phone), "HAYLEN_ORIENTATIONS_IPAD": "".join(f"\t\t<string>{name}</string>\n" for name in pad)}
+        for folder, _, _ in haylen.APPLE_TEMPLATES.values():
+            template = (haylen.ENGINE_DIR / "platform" / "apple" / ("mac" if folder == "macos" else folder) / "Info.plist.in").read_text(encoding="utf-8")
+            cpp = plistlib.loads(re.sub(r"@(\w+)@", lambda match: filled.get(match[1], ""), template).encode())
+            lua = plistlib.loads((self.scratch / "generated" / folder / "Info.plist").read_bytes())
+            self.assertEqual(sorted(cpp), sorted(lua), folder)
+            # The values that come from the build settings of the Lua project name the same values of "app.json" through CMake variables.
+            shared = {key: value for key, value in lua.items() if not (isinstance(value, str) and "$(" in value)}
+            self.assertEqual({key: cpp[key] for key in shared}, shared, folder)
+
 
 class BackgroundAudioTest(unittest.TestCase):
     def write_app(self, folder: Path, audio: dict) -> Path:

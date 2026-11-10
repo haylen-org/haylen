@@ -180,13 +180,13 @@ Lua apps embed the manifest of their Windows project instead, which selects the 
 
 ### Apple bundles
 
-C++ apps target iOS 16.3 on iPhone and iPad, tvOS 16.3 and visionOS 1.0, because the engine needs the C++ library of those releases. A visionOS bundle has no orientations, status bar or launch screen, as its window has none, and takes the `Info.plist` template of `engine/platform/apple/visionos`. They sign automatically. macOS apps target macOS 13.3, the first release with that C++ library. The bundle name, identifier, version and build number come from `name`, `identifier`, `version` and `build` in the `app.json` of the package. The templates in `engine/platform/apple` hold the `Info.plist` files, the launch screens and the privacy manifest of the engine, which every bundle carries among its resources.
+C++ apps target iOS 16.3 on iPhone and iPad, tvOS 16.3 and visionOS 1.0, because the engine needs the C++ library of those releases. A visionOS bundle has no orientations, status bar or launch screen, as its window has none, and takes the `Info.plist` template of `engine/platform/apple/visionos`. They sign automatically. macOS apps target macOS 13.3, the first release with that C++ library. The bundle name, identifier, version and build number come from `name`, `identifier`, `version` and `build` in the `app.json` of the package. The templates in `engine/platform/apple` hold the `Info.plist` files, the launch screens and the privacy manifest of the engine, which every bundle carries among its resources. Each `Info.plist` holds the keys of the `Info.plist` of the same platform in the [Apple template](distribution.md#apple) of Lua apps, such as the scene manifest and `ITSAppUsesNonExemptEncryption`, and the keys that haylen.py completes there from `app.json`.
 
 The function fills placeholders of the templates from `app.json`:
 
 | Placeholder | Template | Value |
 | --- | --- | --- |
-| `@HAYLEN_ORIENTATIONS@`, `@HAYLEN_ORIENTATIONS_IPAD@` | iOS | The orientations of iPhone and iPad from `orientation`: `landscape` allows both landscape sides, `portrait` allows portrait, and upside down on iPad, and `any` allows all of them. |
+| `@HAYLEN_ORIENTATIONS@`, `@HAYLEN_ORIENTATIONS_IPAD@` | iOS | Every orientation of iPhone, which does not turn upside down, and of iPad, while the runtime allows the ones of `orientation`, since a foldable iPhone shows an app that lists fewer in a box on its inner screen. |
 | `@HAYLEN_STATUS_BAR_HIDDEN@`, `@HAYLEN_STATUS_BAR_STYLE@` | iOS | The status bar that the app launches with, from `window.statusBar`. |
 | `@HAYLEN_UI_ELEMENT@` | macOS, at the end of the dictionary | `LSUIElement` when `window.showInTaskbar` is `false`, so the app never shows a Dock icon. |
 
