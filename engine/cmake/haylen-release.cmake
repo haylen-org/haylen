@@ -28,7 +28,7 @@ if(NOT MSVC AND NOT APPLE)
   add_compile_options(-ffunction-sections -fdata-sections)
 endif()
 
-# Apple executables export every global symbol unless told otherwise, so the engine and its dependencies keep theirs hidden there, and an app exports only the symbols of its own code, which `native.findSymbol` finds. Other platforms export nothing from an executable by default, and the library of an Android app names its exports in a version script.
+# Apple executables export every global symbol unless told otherwise, so the engine and the dependencies that CMake builds keep theirs hidden there. Other platforms export nothing from an executable by default, and the library of an Android app names its exports in a version script.
 if(APPLE)
   set(CMAKE_C_VISIBILITY_PRESET hidden)
   set(CMAKE_CXX_VISIBILITY_PRESET hidden)

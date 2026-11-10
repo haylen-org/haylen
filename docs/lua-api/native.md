@@ -83,6 +83,17 @@ print(lib.native_test_checksum(buffer, 8))
 
 Returns the address of the symbol `name` as a light userdata, or `nil` when no library has it. The search covers the symbols of the libraries linked into the app, the libraries loaded so far in the order they loaded, and the app itself. The address goes where C takes a pointer, such as a parameter declared `void*` or a function pointer. The function `ffi.cast` turns it into any typed pointer, and a function pointer made this way is called like a function.
 
+The app itself is what the dynamic linker of the platform sees of it, which depends on the platform and the configuration. On Apple platforms, Android and Linux the search also reaches the libraries of the system that the process links, such as the C library. On Windows it reaches only the executable. A release is what `haylen.py run --config Release` and `prepare` build:
+
+| Platform | Debug | Release |
+| --- | --- | --- |
+| Apple platforms | Every global symbol with default visibility in the code of the app, its plugins and its Swift packages. Xcode links that code into the library `<App>.debug.dylib`, which keeps every global symbol, and a C++ app keeps it in its executable. The symbols that dependencies of the engine keep visible, which the [build guide](../tools/build.md#settings-of-release-binaries) names, are found too. | No symbol of the code of the app. The linker drops every function that native code never calls, since an executable keeps only what its entry point reaches, and the release strips the executable, which keeps only `__mh_execute_header` and the weak definitions in its exports. |
+| Android | Every symbol with default visibility in the library that plays the app, which holds the engine. | Only `JNI_OnLoad`, the `Java_*` functions and `GameActivity_onCreate`, which the version script of the library of the app exports. |
+| Windows | Only what the executable exports with `__declspec(dllexport)`. The engine exports `NvOptimusEnablement` and `AmdPowerXpressRequestHighPerformance`, which ask the drivers for the discrete GPU. | The same as Debug. |
+| Linux | No symbol, since an executable exports none unless it links with `-rdynamic`. | The same as Debug. |
+
+So native code that Lua finds by name in every configuration lives in a library that `native.load` loads, or registers its symbols as [static libraries](../platform/native.md#static-libraries-on-ios-and-tvos) do.
+
 ```lua
 local ffi = require('ffi')
 local native = require('haylen.native')
