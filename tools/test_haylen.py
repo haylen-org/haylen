@@ -3488,6 +3488,14 @@ class SteamTest(unittest.TestCase):
             forest = (Path(scratch) / "scripts" / "depot_build_1002.vdf").read_text()
             self.assertIn('"ContentRoot" "../content/forest/"', forest)
 
+    def test_escapes_every_value_that_comes_from_the_app_or_the_command(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            haylen.write_steam_scripts(Path(scratch), "1000", 'Island "Deluxe" C:\\saves\nsecond line\tend', {"forest": "1002"}, 'beta"\n"AppID" "1')
+            build = (Path(scratch) / "scripts" / "app_build.vdf").read_text()
+        self.assertIn('\t"Desc" "Island \\"Deluxe\\" C:\\\\saves\\nsecond line\\tend"\n', build)
+        self.assertIn('\t"SetLive" "beta\\"\\n\\"AppID\\" \\"1"\n', build)
+        self.assertEqual(build.count('"AppID"'), 1)
+
     def test_names_the_depots_without_an_id(self):
         args = mock.Mock(depot=["macos=1001", "forest=x"], platform="macos")
         with self.assertRaises(haylen.BuildError):

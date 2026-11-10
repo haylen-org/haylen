@@ -7365,6 +7365,8 @@ def command_content_publish(args: argparse.Namespace) -> None:
 
 # Steam: the depots of a release for SteamPipe, which delivers the app with its protected content and the packs of the app as depots of their own, so a Steam app needs no content server of its own.
 STEAM_PLATFORMS = ("macos", "windows", "linux")
+# The KeyValues text of the scripts of steamcmd ends a value at a double quote and reads these escapes inside it.
+STEAM_SCRIPT_ESCAPES = str.maketrans({"\\": "\\\\", '"': '\\"', "\n": "\\n", "\r": "\\r", "\t": "\\t"})
 
 
 def steam_depot_ids(args: argparse.Namespace, names: list[str]) -> dict[str, str]:
@@ -7381,15 +7383,21 @@ def steam_depot_ids(args: argparse.Namespace, names: list[str]) -> dict[str, str
     return ids
 
 
+def steam_script_value(value: str) -> str:
+    """Quotes a value for a script of steamcmd, escaping what would end the value or break its line, so a description, a branch or a pack name of any text stays one value."""
+    escaped = value.translate(STEAM_SCRIPT_ESCAPES)
+    return f'"{escaped}"'
+
+
 def write_steam_scripts(output: Path, app_id: str, description: str, depots: dict[str, str], branch: str | None) -> None:
     """Writes the app build script and one depot build script per depot for "steamcmd +run_app_build", each depot taking its whole folder under `content/`."""
     scripts = output / "scripts"
     scripts.mkdir(parents=True, exist_ok=True)
-    entries = "".join(f'\t\t"{depot}" "depot_build_{depot}.vdf"\n' for depot in depots.values())
-    live = f'\t"SetLive" "{branch}"\n' if branch else ""
-    (scripts / "app_build.vdf").write_text(f'"AppBuild"\n{{\n\t"AppID" "{app_id}"\n\t"Desc" "{description}"\n\t"ContentRoot" "../content/"\n\t"BuildOutput" "../output/"\n{live}\t"Depots"\n\t{{\n{entries}\t}}\n}}\n', encoding="utf-8")
+    entries = "".join(f"\t\t{steam_script_value(depot)} {steam_script_value(f'depot_build_{depot}.vdf')}\n" for depot in depots.values())
+    live = f'\t"SetLive" {steam_script_value(branch)}\n' if branch else ""
+    (scripts / "app_build.vdf").write_text(f'"AppBuild"\n{{\n\t"AppID" {steam_script_value(app_id)}\n\t"Desc" {steam_script_value(description)}\n\t"ContentRoot" "../content/"\n\t"BuildOutput" "../output/"\n{live}\t"Depots"\n\t{{\n{entries}\t}}\n}}\n', encoding="utf-8")
     for name, depot in depots.items():
-        (scripts / f"depot_build_{depot}.vdf").write_text(f'"DepotBuild"\n{{\n\t"DepotID" "{depot}"\n\t"ContentRoot" "../content/{name}/"\n\t"FileMapping"\n\t{{\n\t\t"LocalPath" "*"\n\t\t"DepotPath" "."\n\t\t"Recursive" "1"\n\t}}\n}}\n', encoding="utf-8")
+        (scripts / f"depot_build_{depot}.vdf").write_text(f'"DepotBuild"\n{{\n\t"DepotID" {steam_script_value(depot)}\n\t"ContentRoot" {steam_script_value(f"../content/{name}/")}\n\t"FileMapping"\n\t{{\n\t\t"LocalPath" "*"\n\t\t"DepotPath" "."\n\t\t"Recursive" "1"\n\t}}\n}}\n', encoding="utf-8")
 
 
 def command_distribution_steam(args: argparse.Namespace) -> None:
