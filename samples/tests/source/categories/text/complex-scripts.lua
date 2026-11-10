@@ -29,7 +29,7 @@ ComplexScripts.paragraph = '[b]الرحلة[/b] بدأت في الصباح ال�
 ComplexScripts.thai = 'ภาษาไทยไม่มีช่องว่างระหว่างคำ จึงตัดบรรทัดตามวลีที่แบบจำลองภาษาไทยหาได้'
 ComplexScripts.typed = '[p dir=rightToLeft][b]القبطان:[/b] مرحبًا أيها المسافر.[pause=0.5] [speed=0.5]البحر هادئ اليوم.[/speed][/p]'
 ComplexScripts.directions = {{id = 'auto', text = 'From the first letter'}, {id = 'leftToRight', text = 'Left to right'}, {id = 'rightToLeft', text = 'Right to left'}}
-ComplexScripts.directionNames = {auto = 'the direction of its first letter', leftToRight = 'left to right', rightToLeft = 'right to left'}
+ComplexScripts.directionNames = {auto = 'in the direction of its first letter', leftToRight = 'left to right', rightToLeft = 'right to left'}
 ComplexScripts.labelWidth = 150
 ComplexScripts.padding = 16
 ComplexScripts.caption = 40

@@ -16,6 +16,10 @@ end)
 graphics2d.registerTextIcon('coin', assets.texture('text/coin.png', {filter = 'linear'}))
 local line = graphics2d.newRichText('[bounce height=20]Treasure found[/bounce] [icon=coin]', {family = family, size = 52})]]
 
+-- The text starts this far below its tag, and the tag and the text take this much height together.
+CustomEffects.textTop = 52
+CustomEffects.block = 120
+
 CustomEffects.lines = {
     {'[ghost speed=2]', '[ghost speed=2]The ghost of the old keeper[/ghost]'},
     {'[bounce height=20]', '[bounce height=20]Jump over the waves![/bounce]'},
@@ -110,16 +114,16 @@ function CustomEffects:update(dt)
     self:status('The registered effects are ' .. self.names .. '.')
 end
 
--- Draws the effects in two columns, each tag in the mono font above the text it animates.
+-- Draws the effects in two columns, each tag in the mono font above the text it animates, far enough above it that letters which hop never reach the tag.
 function CustomEffects:draw(area)
     local layout = self.layout
     local rows = math.ceil(#self.samples / 2)
     local pitch = layout.height / rows
     for index, sample in ipairs(self.samples) do
         local column, row = (index - 1) // rows, (index - 1) % rows
-        local x, y = column * layout.width / 2, row * pitch + (pitch - 104) / 2
+        local x, y = column * layout.width / 2, row * pitch + (pitch - CustomEffects.block) / 2
         graphics2d.drawText(self.mono, sample.label, x, y, {size = 22, color = Test.accent})
-        sample.text:draw(x, y + 36)
+        sample.text:draw(x, y + CustomEffects.textTop)
     end
 end
 
