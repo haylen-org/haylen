@@ -20,17 +20,19 @@ function Debugger:enter()
     self.count = 0
     self.elapsed = 0
     self.presses = 0
-    self.halts = LogCard(self, 'halts', 'Halts', 'Every press of the button shows here once the app goes on.', 'monospace')
+    self.halts = LogCard(self, 'halts', 'Halts', 'Every press of the button shows here once the app goes on.')
+    -- A web page cannot halt, so its debugger keeps only the log points of the editor.
+    local halting = haylen.platform ~= 'web'
     self:frame{
-        hint = hotReload.active() and 'Attach an editor to the port that "haylen run" prints, then set a breakpoint or press the button.' or 'The debugger is off, because the project does not run in development. Run it with "haylen run samples/tests" to try it.',
+        hint = hotReload.active() and string.format('Attach an editor to the port that "haylen run" prints, then set a %s or press the button.', halting and 'breakpoint' or 'log point') or 'The debugger is off, because the project does not run in development. Run it with "haylen run samples/tests" to try it.',
         code = Debugger.code,
         content = {ui.row{wrap = true, grow = 1, gap = 24, alignItems = 'stretch',
             ui.panel{width = 600, grow = 1, gap = 12,
                 ui.label{text = 'Steps', font = 'heading'},
                 ui.label{text = '1. Run the project with "haylen run samples/tests".'},
                 ui.label{text = '2. Attach the debugger of your editor to the port that the run prints.'},
-                ui.label{text = '3. Set a breakpoint in the function "tick" of "source/categories/development/debugger.lua".'},
-                ui.label{text = '4. Press the button, which halts where it calls "debug.breakpoint".'},
+                ui.label{text = halting and '3. Set a breakpoint in the function "tick" of "source/categories/development/debugger.lua".' or '3. Set a log point in the function "tick" of "source/categories/development/debugger.lua", which logs its message once a second.'},
+                ui.label{text = halting and '4. Press the button, which halts where it calls "debug.breakpoint".' or '4. Press the button. A web page cannot halt, so the debugger turns down the other breakpoints and "debug.breakpoint" does nothing.'},
                 ui.label{id = 'ticks', text = 'Ticks: 0', font = 'heading'},
                 ui.button{id = 'halt', text = 'Halt here', align = 'stretch', variant = 'primary', onClick = function() self:halt() end},
             },

@@ -26,7 +26,9 @@ function Crashes:enter()
     end)
     local crash = debugging.lastCrash()
     local report
-    if crash then
+    if haylen.platform == 'web' then
+        report = ui.alert{title = 'No crash reports in a browser', message = 'A fault of WebAssembly ends as a JavaScript error that reaches the page through "onError", so the web never has a report.'}
+    elseif crash then
         local crumbs = crash.context.breadcrumbs or {}
         local last = crumbs[#crumbs]
         report = ui.alert{tone = 'danger', title = string.format('The last run stopped with "%s"', crash.reason), message = string.format('It left %d breadcrumbs, the last one "%s".', #crumbs, last and last.message or 'none')}
@@ -42,7 +44,7 @@ function Crashes:enter()
                 report,
                 ui.label{id = 'heard', text = 'No breadcrumb arrived yet.', color = 'textMuted'},
                 ui.button{id = 'add', text = 'Add a breadcrumb', align = 'stretch', onClick = function() self:add() end},
-                ui.button{id = 'crash', text = 'Crash the app natively', align = 'stretch', variant = 'destructive', onClick = function() self:crash() end},
+                ui.button{id = 'crash', text = 'Crash the app natively', align = 'stretch', variant = 'destructive', enabled = haylen.platform ~= 'web', onClick = function() self:crash() end},
             },
             self.crumbs:node(),
         }},
