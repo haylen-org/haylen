@@ -43,7 +43,7 @@ const char* ImGuiLua::readLabel(lua_State* L, int index) {
 }
 
 ImVec2 ImGuiLua::readOptionalSize(lua_State* L, int first) {
-    return {static_cast<float>(luaL_optnumber(L, first, 0.0)), static_cast<float>(luaL_optnumber(L, first + 1, 0.0))};
+    return {lua::Converter<float>::readOr(L, first, 0.0), lua::Converter<float>::readOr(L, first + 1, 0.0)};
 }
 
 // ImGui moves the scroll bars of the windows it begins with a thumb at least as long as the thumbs of the components, which it paints in no color, so the window paints them with the theme once it began.
@@ -224,7 +224,7 @@ int ImGuiLua::sliderInt(lua_State* L) {
 int ImGuiLua::dragFloat(lua_State* L) {
     (void)requireFrame(L);
     auto value = lua::Stack::read<float>(L, 2);
-    const bool changed = ImGui::DragFloat(readLabel(L, 1), &value, static_cast<float>(luaL_optnumber(L, 3, 1.0)), static_cast<float>(luaL_optnumber(L, 4, 0.0)), static_cast<float>(luaL_optnumber(L, 5, 0.0)));
+    const bool changed = ImGui::DragFloat(readLabel(L, 1), &value, lua::Converter<float>::readOr(L, 3, 1.0), lua::Converter<float>::readOr(L, 4, 0.0), lua::Converter<float>::readOr(L, 5, 0.0));
     lua::Stack::push(L, value);
     return returnChanged(L, changed, 1);
 }
@@ -240,7 +240,7 @@ int ImGuiLua::inputText(lua_State* L) {
 int ImGuiLua::inputFloat(lua_State* L) {
     (void)requireFrame(L);
     auto value = lua::Stack::read<float>(L, 2);
-    const bool changed = ImGui::InputFloat(readLabel(L, 1), &value, static_cast<float>(luaL_optnumber(L, 3, 0.0)));
+    const bool changed = ImGui::InputFloat(readLabel(L, 1), &value, lua::Converter<float>::readOr(L, 3, 0.0));
     lua::Stack::push(L, value);
     return returnChanged(L, changed, 1);
 }
@@ -314,7 +314,7 @@ int ImGuiLua::separator(lua_State* L) {
 
 int ImGuiLua::sameLine(lua_State* L) {
     (void)requireFrame(L);
-    ImGui::SameLine(static_cast<float>(luaL_optnumber(L, 1, 0.0)), static_cast<float>(luaL_optnumber(L, 2, -1.0)));
+    ImGui::SameLine(lua::Converter<float>::readOr(L, 1, 0.0), lua::Converter<float>::readOr(L, 2, -1.0));
     return 0;
 }
 
@@ -413,7 +413,7 @@ int ImGuiLua::tableNextColumn(lua_State* L) {
 
 int ImGuiLua::progressBar(lua_State* L) {
     (void)requireFrame(L);
-    ImGui::ProgressBar(lua::Stack::read<float>(L, 1), {static_cast<float>(luaL_optnumber(L, 2, -1.0)), static_cast<float>(luaL_optnumber(L, 3, 0.0))}, luaL_optstring(L, 4, nullptr));
+    ImGui::ProgressBar(lua::Stack::read<float>(L, 1), {lua::Converter<float>::readOr(L, 2, -1.0), lua::Converter<float>::readOr(L, 3, 0.0)}, luaL_optstring(L, 4, nullptr));
     return 0;
 }
 
@@ -422,8 +422,8 @@ int ImGuiLua::plot(lua_State* L, bool histogram) {
     (void)requireFrame(L);
     const std::vector<float> values = lua::Stack::read<std::vector<float>>(L, 2);
     const char* overlay = luaL_optstring(L, 3, nullptr);
-    const auto minimum = static_cast<float>(luaL_optnumber(L, 4, FLT_MAX));
-    const auto maximum = static_cast<float>(luaL_optnumber(L, 5, FLT_MAX));
+    const auto minimum = lua::Converter<float>::readOr(L, 4, FLT_MAX);
+    const auto maximum = lua::Converter<float>::readOr(L, 5, FLT_MAX);
     const ImVec2 size = readOptionalSize(L, 6);
     if (histogram) {
         ImGui::PlotHistogram(readLabel(L, 1), values.data(), static_cast<int>(values.size()), 0, overlay, minimum, maximum, size);
@@ -444,7 +444,7 @@ int ImGuiLua::plotHistogram(lua_State* L) {
 int ImGuiLua::image(lua_State* L) {
     Backend& backend = requireFrame(L);
     const graphics::Texture texture = lua::Stack::read<graphics::Texture>(L, 1);
-    ImGui::Image(backend.getTextureReference(texture), {static_cast<float>(luaL_optnumber(L, 2, texture.getSize().x)), static_cast<float>(luaL_optnumber(L, 3, texture.getSize().y))});
+    ImGui::Image(backend.getTextureReference(texture), {lua::Converter<float>::readOr(L, 2, texture.getSize().x), lua::Converter<float>::readOr(L, 3, texture.getSize().y)});
     return 0;
 }
 

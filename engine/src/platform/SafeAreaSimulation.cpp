@@ -14,7 +14,7 @@ float SafeAreaSimulation::readSide(const core::Json& value) {
     if (!value.is_number() || !std::isfinite(value.get<double>()) || value.get<double>() < 0.0) {
         throw std::invalid_argument("A simulated safe area needs non-negative insets.");
     }
-    return value.get<float>();
+    return core::JsonNumber::toFloat(value);
 }
 
 SafeAreaSimulation SafeAreaSimulation::fromJson(const core::Json& value) {

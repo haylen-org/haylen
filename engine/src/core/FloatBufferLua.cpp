@@ -35,7 +35,7 @@ int FloatBufferLua::at(lua_State* L) {
 int FloatBufferLua::assign(lua_State* L) {
     FloatBuffer& buffer = check(L);
     const std::size_t position = checkPosition(L, buffer, 2, 1);
-    buffer.getValues()[position] = static_cast<float>(luaL_checknumber(L, 3));
+    buffer.getValues()[position] = lua::Stack::read<float>(L, 3);
     return 0;
 }
 
@@ -52,7 +52,7 @@ int FloatBufferLua::set(lua_State* L) {
     const std::span<float> values = buffer.getValues().subspan(checkPosition(L, buffer, 2, count), count);
     for (std::size_t index = 0; index < count; ++index) {
         if (!list) {
-            values[index] = static_cast<float>(luaL_checknumber(L, static_cast<int>(index) + 3));
+            values[index] = lua::Stack::read<float>(L, static_cast<int>(index) + 3);
             continue;
         }
         int isNumber = 0;
@@ -62,7 +62,7 @@ int FloatBufferLua::set(lua_State* L) {
         if (isNumber == 0) {
             return luaL_error(L, "Float buffer values are numbers, and entry %I of the list is not.", static_cast<lua_Integer>(index + 1));
         }
-        values[index] = static_cast<float>(value);
+        values[index] = lua::Converter<float>::fromNumber(L, value);
     }
     return 0;
 }
@@ -84,7 +84,7 @@ int FloatBufferLua::get(lua_State* L) {
 // Sets every value with `fill(value)`, or `count` values from a position with `fill(value, first, count)`.
 int FloatBufferLua::fill(lua_State* L) {
     FloatBuffer& buffer = check(L);
-    const auto value = static_cast<float>(luaL_checknumber(L, 2));
+    const auto value = lua::Stack::read<float>(L, 2);
     if (lua_isnoneornil(L, 3)) {
         buffer.fill(value);
         return 0;
@@ -101,7 +101,7 @@ int FloatBufferLua::fill(lua_State* L) {
 int FloatBufferLua::create(lua_State* L) {
     const lua_Integer size = luaL_checkinteger(L, 1);
     luaL_argcheck(L, size >= 0, 1, "the size cannot be negative");
-    lua::Userdata::emplace<FloatBuffer>(L, std::make_shared<FloatBuffer>(static_cast<std::size_t>(size), static_cast<float>(luaL_optnumber(L, 2, 0.0))));
+    lua::Userdata::emplace<FloatBuffer>(L, std::make_shared<FloatBuffer>(static_cast<std::size_t>(size), lua::Converter<float>::readOr(L, 2, 0.0)));
     return 1;
 }
 

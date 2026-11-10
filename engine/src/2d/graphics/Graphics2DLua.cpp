@@ -355,7 +355,7 @@ int Graphics2DLua::drawBatch(lua_State* L) {
 
 // Draws a baked batch with `drawStatic(batch[, x, y[, order]])`, where `x` and `y` shift the whole batch without rebaking it.
 int Graphics2DLua::drawStatic(lua_State* L) {
-    const math::Vec2 offset{static_cast<float>(luaL_optnumber(L, 2, 0.0)), static_cast<float>(luaL_optnumber(L, 3, 0.0))};
+    const math::Vec2 offset{lua::Converter<float>::readOr(L, 2, 0.0), lua::Converter<float>::readOr(L, 3, 0.0)};
     getRenderer(L).drawStatic(lua::Userdata::check<StaticSpriteBatch>(L, 1), lua::TypeConverter::readDrawOrder(L, 4), offset);
     return 0;
 }
@@ -443,7 +443,7 @@ int Graphics2DLua::drawArc(lua_State* L) {
 // Reads the value on top of the stack as one radius for every corner or as four from the top-left corner clockwise.
 void Graphics2DLua::readRadii(lua_State* L, std::array<float, 4>& radii) {
     if (lua_type(L, -1) == LUA_TNUMBER) {
-        radii.fill(static_cast<float>(lua_tonumber(L, -1)));
+        radii.fill(lua::Converter<float>::fromNumber(L, lua_tonumber(L, -1)));
         return;
     }
     std::vector<float> corners;
@@ -577,7 +577,7 @@ int Graphics2DLua::drawMetaballs(lua_State* L) {
     for (std::size_t point = 0; point < points.size(); ++point) {
         lua_rawgeti(L, 1, static_cast<lua_Integer>(point * 2 + 1));
         lua_rawgeti(L, 1, static_cast<lua_Integer>(point * 2 + 2));
-        points[point] = {static_cast<float>(luaL_checknumber(L, -2)), static_cast<float>(luaL_checknumber(L, -1))};
+        points[point] = {lua::Converter<float>::fromNumber(L, luaL_checknumber(L, -2)), lua::Converter<float>::fromNumber(L, luaL_checknumber(L, -1))};
         lua_pop(L, 2);
     }
 

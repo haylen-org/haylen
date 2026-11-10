@@ -10,6 +10,7 @@
 
 #include <imgui.h>
 
+#include "haylen/core/JsonNumber.hpp"
 #include "haylen/core/JsonValidator.hpp"
 #include "haylen/ui/Backend.hpp"
 #include "ui/ImGuiConverter.hpp"
@@ -38,7 +39,7 @@ float Theme::readNumber(const core::Json& value, const std::string& context) {
     if (!value.is_number() || !std::isfinite(value.get<double>()) || value.get<double>() < 0.0) {
         throw std::invalid_argument(context + " must be a non-negative number.");
     }
-    return value.get<float>();
+    return core::JsonNumber::toFloat(value);
 }
 
 // Insets are one number for every side, two for the vertical and horizontal sides, or four from the top clockwise.

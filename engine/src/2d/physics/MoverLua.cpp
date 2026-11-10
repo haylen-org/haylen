@@ -69,7 +69,7 @@ int MoverLua::clip(lua_State* L) {
 
 // Lets the mover pass one-way platforms with `dropThrough([seconds])`, for 0.2 seconds by default.
 int MoverLua::dropThrough(lua_State* L) {
-    check(L).dropThrough(static_cast<float>(luaL_optnumber(L, 2, BodyLua::kDropSeconds)));
+    check(L).dropThrough(lua::Converter<float>::readOr(L, 2, BodyLua::kDropSeconds));
     return 0;
 }
 

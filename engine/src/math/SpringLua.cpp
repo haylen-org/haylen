@@ -19,7 +19,7 @@ namespace haylen::math {
 
 // Creates a spring with `spring(value, smoothTime)`, both optional.
 int SpringLua::newSpring(lua_State* L) {
-    lua::Userdata::emplace<Spring>(L, static_cast<float>(luaL_optnumber(L, 1, 0.0)), static_cast<float>(luaL_optnumber(L, 2, 0.2)));
+    lua::Userdata::emplace<Spring>(L, lua::Converter<float>::readOr(L, 1, 0.0), lua::Converter<float>::readOr(L, 2, 0.2));
     return 1;
 }
 

@@ -48,7 +48,7 @@ text::BitmapFont::Grid TextPlugin::readGrid(const core::Json& options) {
         if (!options.at(key).is_number()) {
             throw std::invalid_argument(std::string("The grid font option \"") + key + "\" must be a number.");
         }
-        return options.at(key).get<float>();
+        return core::JsonNumber::toFloat(options.at(key));
     };
     const auto pair = [&options](const char* key) {
         if (!options.contains(key)) {
@@ -58,7 +58,7 @@ text::BitmapFont::Grid TextPlugin::readGrid(const core::Json& options) {
         if (!value.is_array() || value.size() != 2 || !value[0].is_number() || !value[1].is_number()) {
             throw std::invalid_argument(std::string("The grid font option \"") + key + "\" must be a pair of numbers.");
         }
-        return math::Vec2{value[0].get<float>(), value[1].get<float>()};
+        return math::Vec2{core::JsonNumber::toFloat(value[0]), core::JsonNumber::toFloat(value[1])};
     };
     // clang-format on
 

@@ -32,7 +32,7 @@ void StrokeLua::readNumbers(lua_State* L, int index, std::string_view what, std:
         if (lua_rawgeti(L, index, place) != LUA_TNUMBER) {
             luaL_error(L, "The %s are a list of numbers, and entry %d is not a number.", std::string(what).c_str(), static_cast<int>(place));
         }
-        values.push_back(static_cast<float>(lua_tonumber(L, -1)));
+        values.push_back(lua::Converter<float>::fromNumber(L, lua_tonumber(L, -1)));
         lua_pop(L, 1);
     }
 }

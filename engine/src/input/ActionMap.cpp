@@ -154,7 +154,7 @@ ActionMap::Action ActionMap::Action::fromJson(const core::Json& json) {
         if (!bufferField->is_number() || !std::isfinite(bufferField->get<double>()) || bufferField->get<double>() < 0.0) {
             throw std::invalid_argument("The buffer of an action must be a number of seconds from 0.");
         }
-        buffer = bufferField->get<float>();
+        buffer = core::JsonNumber::toFloat(*bufferField);
     }
 
     return {

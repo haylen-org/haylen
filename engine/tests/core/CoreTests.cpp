@@ -360,4 +360,18 @@ TEST(JsonNumberTest, WritesFloatsWithTheirShortestDecimalForm) {
     EXPECT_EQ(static_cast<float>(JsonNumber::fromFloat(0.3F)), 0.3F);
 }
 
+// A number of a document reads as a float only when a float holds it, since converting a larger one is undefined.
+TEST(JsonNumberTest, ReadsOnlyTheNumbersThatAFloatHolds) {
+    EXPECT_EQ(JsonNumber::toFloat(Json(-3.4e38)), -3.4e38F);
+    EXPECT_EQ(JsonNumber::toFloat(Json(7)), 7.0F);
+    EXPECT_EQ(JsonNumber::toFloat(Json{{"speed", 2.5}}, "speed", 1.0F), 2.5F);
+    EXPECT_EQ(JsonNumber::toFloat(Json::object(), "speed", 1.0F), 1.0F);
+    try {
+        (void)JsonNumber::toFloat(Json{{"speed", -1e39}}, "speed", 1.0F);
+        FAIL() << "A number past the floats must be refused.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_EQ(std::string(error.what()), "The number -1e+39 lies outside the numbers from -3.4028234663853e+38 to 3.4028234663853e+38 that the engine holds.");
+    }
+}
+
 } // namespace haylen::core

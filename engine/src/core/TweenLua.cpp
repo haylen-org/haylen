@@ -606,7 +606,7 @@ int TweenLua::scale(lua_State* L) {
     return startReadyMade(L, {}, {"scaleX", "scaleY"}, [](Builder& builder, const TweenValue& current) {
         lua_State* state = builder.state;
         if (current.getKind() == TweenValue::Kind::Vector && lua_type(state, 3) == LUA_TNUMBER) {
-            const auto uniform = static_cast<float>(lua_tonumber(state, 3));
+            const auto uniform = lua::Stack::read<float>(state, 3);
             return TweenProperty::to(math::Vec2{uniform, uniform});
         }
         return TweenProperty::to(readLike(state, 3, current, "scale"));
@@ -736,7 +736,7 @@ int TweenLua::shake(lua_State* L) {
             lua::Table::readField(state, builder.options, "randomness", randomness);
             lua::Table::readField(state, builder.options, "seed", seed);
         }
-        TweenValue strength = current.getKind() == TweenValue::Kind::Vector && lua_type(state, 3) == LUA_TNUMBER ? TweenValue(math::Vec2{static_cast<float>(lua_tonumber(state, 3)), static_cast<float>(lua_tonumber(state, 3))}) : readLike(state, 3, current, "strength");
+        TweenValue strength = current.getKind() == TweenValue::Kind::Vector && lua_type(state, 3) == LUA_TNUMBER ? TweenValue(math::Vec2{lua::Stack::read<float>(state, 3), lua::Stack::read<float>(state, 3)}) : readLike(state, 3, current, "strength");
         TweenProperty property = TweenProperty::to(std::move(strength));
         property.setMotion(TweenMotion::shake(vibrato, randomness, seed));
         return property;

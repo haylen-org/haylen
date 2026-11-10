@@ -1263,7 +1263,7 @@ These errors come from wrong curves:
 - A step count outside `1` to `16777216` raises `A steps curve needs between 1 and 16777216 steps.`
 - A `cubicBezier` list without four numbers raises `A "cubicBezier" curve needs the four numbers "x1", "y1", "x2" and "y2".`, and an x outside `0` to `1` raises `The x coordinates of a cubic Bézier curve must be between 0 and 1.`
 - Fewer than two points raise `A points curve needs at least two points.`, and points out of order raise `The points of a curve must be ordered by x.`
-- A function that returns anything but a number raises `An easing function must return a number.`
+- A function that returns anything but a number raises `An easing function must return a number.`, and a finite number past the floats of the engine raises `An easing function must return a number from -3.4028234663853e+38 to 3.4028234663853e+38.`
 
 ## EasingCurve
 

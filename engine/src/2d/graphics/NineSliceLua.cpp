@@ -42,7 +42,7 @@ int NineSliceLua::isValid(lua_State* L) {
 int NineSliceLua::layout(lua_State* L) {
     const NineSlice& slice = lua::Userdata::check<NineSlice>(L, 1);
     std::vector<NineSlice::Patch> patches;
-    slice.layout(lua::Stack::read<math::Rect>(L, 2), static_cast<float>(luaL_optnumber(L, 3, 1.0)), patches);
+    slice.layout(lua::Stack::read<math::Rect>(L, 2), lua::Converter<float>::readOr(L, 3, 1.0), patches);
     lua_createtable(L, static_cast<int>(patches.size()), 0);
     for (std::size_t index = 0; index < patches.size(); ++index) {
         lua_createtable(L, 0, 2);

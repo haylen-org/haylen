@@ -144,7 +144,7 @@ int MeshLua::setIndices(lua_State* L) {
 // Draws the mesh with `mesh:draw(x, y, options)`, whose options hold the rotation, the scale, whether the outline fades and the draw order, which place the vertices without changing them.
 int MeshLua::draw(lua_State* L) {
     const Mesh& mesh = lua::Userdata::check<Mesh>(L, 1);
-    const math::Vec2 position{static_cast<float>(luaL_optnumber(L, 2, 0.0)), static_cast<float>(luaL_optnumber(L, 3, 0.0))};
+    const math::Vec2 position{lua::Converter<float>::readOr(L, 2, 0.0), lua::Converter<float>::readOr(L, 3, 0.0)};
     float rotation = 0.0F;
     math::Vec2 scale{1.0F, 1.0F};
     bool fadeEdges = true;

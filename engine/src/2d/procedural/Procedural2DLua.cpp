@@ -135,7 +135,7 @@ std::function<float(math::Vec2)> Procedural2DLua::readCallback(lua_State* L, int
         lua_pushvalue(L, function);
         lua::Stack::push(L, point);
         lua::Runtime::protectedCall(L, 1, 1);
-        const auto value = static_cast<float>(luaL_checknumber(L, -1));
+        const auto value = lua::Converter<float>::fromNumber(L, luaL_checknumber(L, -1));
         lua_pop(L, 1);
         return value;
     };

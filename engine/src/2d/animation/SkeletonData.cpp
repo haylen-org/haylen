@@ -1,5 +1,7 @@
 #include "haylen/2d/animation/SkeletonData.hpp"
 
+#include "haylen/core/JsonNumber.hpp"
+
 #include <algorithm>
 #include <cstdint>
 #include <map>
@@ -53,7 +55,7 @@ class SkeletonData::Reader final {
         if (!found->is_number()) {
             throw std::invalid_argument("The key \"" + std::string(key) + "\" of " + where + " must be a number.");
         }
-        return found->get<float>();
+        return core::JsonNumber::toFloat(*found);
     }
 
     [[nodiscard]] static std::string text(const core::Json& object, const char* key, const std::string& where) {
@@ -306,7 +308,7 @@ class SkeletonData::Reader final {
             return {};
         }
         if (found->is_array() && found->size() == 4 && std::ranges::all_of(*found, [](const core::Json& value) { return value.is_number(); })) {
-            return {.kind = SkeletonAnimation::Curve::Kind::Bezier, .bezier = {(*found)[0].get<float>(), (*found)[1].get<float>(), (*found)[2].get<float>(), (*found)[3].get<float>()}};
+            return {.kind = SkeletonAnimation::Curve::Kind::Bezier, .bezier = {core::JsonNumber::toFloat((*found)[0]), core::JsonNumber::toFloat((*found)[1]), core::JsonNumber::toFloat((*found)[2]), core::JsonNumber::toFloat((*found)[3])}};
         }
         const std::string name = found->is_string() ? found->get<std::string>() : std::string();
         if (name == "linear") {

@@ -201,7 +201,7 @@ void StoragePlugin::applyEnginePreferences(core::Engine& engine) {
     for (const std::string& bus : mixer.getBuses()) {
         const core::Json volume = getStoredBusPreference(volumes, "audio.volume", bus, core::Json::value_t::number_float);
         if (!volume.is_null()) {
-            mixer.setBusVolume(bus, volume.get<float>());
+            mixer.setBusVolume(bus, core::JsonNumber::toFloat(volume));
         }
         const core::Json mute = getStoredBusPreference(muted, "audio.muted", bus, core::Json::value_t::boolean);
         if (!mute.is_null()) {

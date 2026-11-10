@@ -902,6 +902,7 @@ TEST(EffectTest, LoadsEffectFilesAsAssets) {
         {"content/effects/unbounded.particles", R"({"texture": "../images/spark.png", "maxParticles": -1})"},
         {"content/effects/high.particles", R"({"texture": "../images/spark.png", "layer": 1e20})"},
         {"content/effects/half.particles", R"({"texture": "../images/spark.png", "layer": 2.5})"},
+        {"content/effects/fast.particles", R"({"texture": "../images/spark.png", "speed": 1e39})"},
         {"content/effects/stacked.particles", R"({"emitters": [{"name": "top", "texture": "../images/spark.png", "layer": 2147483647, "layerOffset": 1}]})"},
         {"content/effects/mode.particles", R"({"texture": "../images/spark.png", "boundsMode": "bounce"})"},
         {"content/effects/overlay.particles", R"({"texture": "../images/spark.png", "blend": "overlay"})"},
@@ -997,6 +998,7 @@ TEST(EffectTest, LoadsEffectFilesAsAssets) {
     EXPECT_EQ(failure("effects/unbounded.particles"), "The particle effect value \"maxParticles\" needs an integer of at least 0.");
     EXPECT_EQ(failure("effects/high.particles"), "The particle effect value \"layer\" needs an integer from -2147483648 to 2147483647.");
     EXPECT_EQ(failure("effects/half.particles"), "The particle effect value \"layer\" needs an integer from -2147483648 to 2147483647.");
+    EXPECT_EQ(failure("effects/fast.particles"), "The number 1e+39 lies outside the numbers from -3.4028234663853e+38 to 3.4028234663853e+38 that the engine holds.");
     EXPECT_EQ(failure("effects/stacked.particles"), "The emitter \"top\" of the composite particle effect \"effects/stacked.particles\" lands on a layer outside -2147483648 to 2147483647.");
     EXPECT_EQ(failure("effects/mode.particles"), "The particle effect value \"boundsMode\" must be \"kill\" or \"wrap\", not \"bounce\".");
     EXPECT_EQ(failure("effects/overlay.particles"), "The particle effect value \"blend\" must be \"alpha\", \"additive\", \"multiply\", \"screen\", \"premultiplied\" or \"opaque\", not \"overlay\".");

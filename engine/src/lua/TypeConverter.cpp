@@ -47,7 +47,7 @@ float TypeConverter::numberComponent(lua_State* L, int table, const char* name, 
     if (lua_type(L, -1) != LUA_TNUMBER) {
         luaL_error(L, "Expected a number in field \"%s\".", name);
     }
-    const auto value = static_cast<float>(lua_tonumber(L, -1));
+    const auto value = Converter<float>::fromNumber(L, lua_tonumber(L, -1));
     lua_pop(L, 1);
     return value;
 }
@@ -153,7 +153,7 @@ void Converter<math::Insets>::push(lua_State* L, const math::Insets& value) {
 
 math::Insets Converter<math::Insets>::read(lua_State* L, int index) {
     if (lua_type(L, index) == LUA_TNUMBER) {
-        return math::Insets::uniform(static_cast<float>(lua_tonumber(L, index)));
+        return math::Insets::uniform(Stack::read<float>(L, index));
     }
     if (!lua_istable(L, index)) {
         luaL_typeerror(L, index, "number or table with left, top, right and bottom");
@@ -242,12 +242,15 @@ math::EasingCurve Converter<math::EasingCurve>::readFunction(lua_State* L, int i
         lua_pushnumber(main, static_cast<lua_Number>(t));
         Runtime::protectedCall(main, 1, 1);
         const bool number = lua_type(main, -1) == LUA_TNUMBER;
-        const auto value = static_cast<float>(lua_tonumber(main, -1));
+        const lua_Number value = lua_tonumber(main, -1);
         lua_pop(main, 1);
         if (!number) {
             throw std::runtime_error("An easing function must return a number.");
         }
-        return value;
+        if (!Converter<float>::fits(value)) {
+            throw std::runtime_error("An easing function must return a number from -3.4028234663853e+38 to 3.4028234663853e+38.");
+        }
+        return static_cast<float>(value);
     });
     // clang-format on
 }
@@ -294,7 +297,7 @@ math::EasingCurve Converter<math::EasingCurve>::read(lua_State* L, int index) {
             lua_rawgeti(L, -1, point);
             if (lua_type(L, -1) == LUA_TNUMBER) {
                 const float x = count > 1 ? static_cast<float>(point - 1) / static_cast<float>(count - 1) : 0.0F;
-                points.push_back({x, static_cast<float>(lua_tonumber(L, -1))});
+                points.push_back({x, Converter<float>::fromNumber(L, lua_tonumber(L, -1))});
             } else {
                 points.push_back(Stack::read<math::Vec2>(L, -1));
             }
@@ -308,7 +311,7 @@ math::EasingCurve Converter<math::EasingCurve>::read(lua_State* L, int index) {
     math::Easing::Type curve = math::Easing::Type::Linear;
     Table::readField(L, table, "curve", curve);
     if (lua_getfield(L, table, "overshoot") != LUA_TNIL) {
-        const auto overshoot = static_cast<float>(luaL_checknumber(L, -1));
+        const auto overshoot = Converter<float>::fromNumber(L, luaL_checknumber(L, -1));
         lua_pop(L, 1);
         return math::EasingCurve::back(curve, overshoot);
     }
@@ -384,7 +387,7 @@ void Converter<math::FloatRange>::push(lua_State* L, math::FloatRange value) {
 
 math::FloatRange Converter<math::FloatRange>::read(lua_State* L, int index) {
     if (lua_type(L, index) == LUA_TNUMBER) {
-        const auto value = static_cast<float>(lua_tonumber(L, index));
+        const auto value = Stack::read<float>(L, index);
         return {value, value};
     }
     if (!lua_istable(L, index)) {
@@ -396,7 +399,7 @@ math::FloatRange Converter<math::FloatRange>::read(lua_State* L, int index) {
     if (lua_rawlen(L, table) != 2 || lua_type(L, -2) != LUA_TNUMBER || lua_type(L, -1) != LUA_TNUMBER) {
         luaL_argerror(L, index, "a range needs a number or the pair {min, max}");
     }
-    const math::FloatRange range{static_cast<float>(lua_tonumber(L, -2)), static_cast<float>(lua_tonumber(L, -1))};
+    const math::FloatRange range{Converter<float>::fromNumber(L, lua_tonumber(L, -2)), Converter<float>::fromNumber(L, lua_tonumber(L, -1))};
     lua_pop(L, 2);
     return range;
 }

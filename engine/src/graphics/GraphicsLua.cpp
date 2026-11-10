@@ -201,7 +201,7 @@ int GraphicsLua::vectorHeight(lua_State* L) {
 // Rasterizes the image on the task pool with `image:rasterize(scale[, {filter, wrap}])`, and returns a promise of the texture of the raster, which samples with linear filtering unless the options say otherwise.
 int GraphicsLua::rasterizeVector(lua_State* L) {
     const VectorImage image = lua::Userdata::check<VectorImage>(L, 1);
-    const auto scale = static_cast<float>(luaL_checknumber(L, 2));
+    const auto scale = lua::Stack::read<float>(L, 2);
     core::Engine& engine = lua::Runtime::getEngine(L);
     const math::Vec2 size = image.getSize() * scale;
     if (!(scale > 0.0F && std::isfinite(scale)) || std::max(size.x, size.y) > static_cast<float>(engine.getGraphics().getMaxTextureSize())) {

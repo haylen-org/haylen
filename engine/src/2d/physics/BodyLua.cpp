@@ -337,7 +337,7 @@ int BodyLua::applyAngularImpulse(lua_State* L) {
 }
 
 int BodyLua::setTransform(lua_State* L) {
-    check(L).setTransform({lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)}, static_cast<float>(luaL_optnumber(L, 4, 0.0)));
+    check(L).setTransform({lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)}, lua::Converter<float>::readOr(L, 4, 0.0));
     return 0;
 }
 
@@ -346,7 +346,7 @@ int BodyLua::moveTo(lua_State* L) {
     Body& body = check(L);
     const math::Vec2 position{lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)};
     const float rotation = lua_isnoneornil(L, 4) ? body.getRotation() : lua::Stack::read<float>(L, 4);
-    const auto seconds = static_cast<float>(luaL_optnumber(L, 5, lua::Runtime::getEngine(L).getClock().getFixedStep()));
+    const auto seconds = lua::Converter<float>::readOr(L, 5, lua::Runtime::getEngine(L).getClock().getFixedStep());
     body.moveTo(position, rotation, seconds);
     return 0;
 }
@@ -362,7 +362,7 @@ int BodyLua::resetMass(lua_State* L) {
 }
 
 int BodyLua::dropThrough(lua_State* L) {
-    check(L).dropThrough(static_cast<float>(luaL_optnumber(L, 2, kDropSeconds)));
+    check(L).dropThrough(lua::Converter<float>::readOr(L, 2, kDropSeconds));
     return 0;
 }
 

@@ -152,7 +152,7 @@ Gradient ImageLua::readGradient(lua_State* L, int index) {
             lua::Table::readValue(L, key, center);
         } else if (key == "radius") {
             if (lua_type(L, -1) == LUA_TNUMBER) {
-                const auto both = static_cast<float>(lua_tonumber(L, -1));
+                const auto both = lua::Converter<float>::fromNumber(L, lua_tonumber(L, -1));
                 radius = math::Vec2{both, both};
             } else {
                 lua::Table::readValue(L, key, radius.emplace());
@@ -381,7 +381,7 @@ int ImageLua::blur(lua_State* L) {
 }
 
 int ImageLua::sharpen(lua_State* L) {
-    ImageFilters::sharpen(checkWritable(L, 1), static_cast<float>(luaL_optnumber(L, 2, 1.0)));
+    ImageFilters::sharpen(checkWritable(L, 1), lua::Converter<float>::readOr(L, 2, 1.0));
     return 0;
 }
 
@@ -403,7 +403,7 @@ int ImageLua::adjust(lua_State* L) {
 }
 
 int ImageLua::grayscale(lua_State* L) {
-    ImageFilters::grayscale(checkWritable(L, 1), static_cast<float>(luaL_optnumber(L, 2, 1.0)));
+    ImageFilters::grayscale(checkWritable(L, 1), lua::Converter<float>::readOr(L, 2, 1.0));
     return 0;
 }
 
@@ -414,7 +414,7 @@ int ImageLua::invert(lua_State* L) {
 
 int ImageLua::tint(lua_State* L) {
     Image& image = checkWritable(L, 1);
-    ImageFilters::tint(image, lua::Stack::read<math::Color>(L, 2), static_cast<float>(luaL_optnumber(L, 3, 1.0)));
+    ImageFilters::tint(image, lua::Stack::read<math::Color>(L, 2), lua::Converter<float>::readOr(L, 3, 1.0));
     return 0;
 }
 
@@ -425,7 +425,7 @@ int ImageLua::pixelate(lua_State* L) {
 
 int ImageLua::outline(lua_State* L) {
     Image& image = checkWritable(L, 1);
-    ImageFilters::outline(image, lua::Stack::read<math::Color>(L, 2), static_cast<float>(luaL_optnumber(L, 3, 1.0)));
+    ImageFilters::outline(image, lua::Stack::read<math::Color>(L, 2), lua::Converter<float>::readOr(L, 3, 1.0));
     return 0;
 }
 

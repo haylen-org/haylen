@@ -10,6 +10,7 @@
 #include "haylen/2d/particles/ImageShape.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/JsonNumber.hpp"
 #include "haylen/core/JsonValidator.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/io/Package.hpp"
@@ -45,10 +46,10 @@ particles2d::ImageShape::Options Particles2DPlugin::shapeOptionsFromJson(const c
         if (!source.is_array() || source.size() != 4) {
             throw std::invalid_argument("The source of an image shape needs four numbers: x, y, width and height.");
         }
-        result.source = {source[0].get<float>(), source[1].get<float>(), source[2].get<float>(), source[3].get<float>()};
+        result.source = {core::JsonNumber::toFloat(source[0]), core::JsonNumber::toFloat(source[1]), core::JsonNumber::toFloat(source[2]), core::JsonNumber::toFloat(source[3])};
     }
     if (options.contains("alphaThreshold")) {
-        result.alphaThreshold = options.at("alphaThreshold").get<float>();
+        result.alphaThreshold = core::JsonNumber::toFloat(options.at("alphaThreshold"));
     }
     return result;
 }

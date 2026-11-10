@@ -19,7 +19,7 @@ namespace haylen::graphics2d {
 // A zoom is one number for both axes or a vector.
 math::Vec2 CameraRigLua::readZoom(lua_State* L, int index) {
     if (lua_type(L, index) == LUA_TNUMBER) {
-        const auto zoom = static_cast<float>(lua_tonumber(L, index));
+        const auto zoom = lua::Stack::read<float>(L, index);
         return {zoom, zoom};
     }
     return lua::Stack::read<math::Vec2>(L, index);
@@ -104,7 +104,7 @@ int CameraRigLua::setRail(lua_State* L) {
 }
 
 int CameraRigLua::project(lua_State* L) {
-    const math::Vec2 point = lua::Userdata::check<CameraRig>(L, 1).project({static_cast<float>(luaL_checknumber(L, 2)), static_cast<float>(luaL_checknumber(L, 3))});
+    const math::Vec2 point = lua::Userdata::check<CameraRig>(L, 1).project({lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)});
     lua::Stack::push(L, point.x);
     lua::Stack::push(L, point.y);
     return 2;
@@ -114,7 +114,7 @@ int CameraRigLua::project(lua_State* L) {
 int CameraRigLua::update(lua_State* L) {
     CameraRig& rig = lua::Userdata::check<CameraRig>(L, 1);
     Camera& camera = lua::Userdata::check<Camera>(L, 2);
-    const math::Vec2 target{static_cast<float>(luaL_checknumber(L, 3)), static_cast<float>(luaL_checknumber(L, 4))};
+    const math::Vec2 target{lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4)};
     rig.update(camera, target, CameraLua::readSeconds(L, 5), CameraLua::getScreen(L));
     return 0;
 }

@@ -38,7 +38,7 @@ int MathLua::vec2New(lua_State* L) {
         lua::Stack::push(L, lua::Stack::read<Vec2>(L, 1));
         return 1;
     }
-    lua::Stack::push(L, Vec2{static_cast<float>(luaL_optnumber(L, 1, 0.0)), static_cast<float>(luaL_optnumber(L, 2, 0.0))});
+    lua::Stack::push(L, Vec2{lua::Converter<float>::readOr(L, 1, 0.0), lua::Converter<float>::readOr(L, 2, 0.0)});
     return 1;
 }
 
@@ -58,9 +58,9 @@ int MathLua::vec2Subtract(lua_State* L) {
 
 int MathLua::vec2Multiply(lua_State* L) {
     if (lua_type(L, 1) == LUA_TNUMBER) {
-        lua::Stack::push(L, lua::Stack::read<Vec2>(L, 2) * static_cast<float>(lua_tonumber(L, 1)));
+        lua::Stack::push(L, lua::Stack::read<Vec2>(L, 2) * lua::Stack::read<float>(L, 1));
     } else if (lua_type(L, 2) == LUA_TNUMBER) {
-        lua::Stack::push(L, lua::Stack::read<Vec2>(L, 1) * static_cast<float>(lua_tonumber(L, 2)));
+        lua::Stack::push(L, lua::Stack::read<Vec2>(L, 1) * lua::Stack::read<float>(L, 2));
     } else {
         lua::Stack::push(L, lua::Stack::read<Vec2>(L, 1) * lua::Stack::read<Vec2>(L, 2));
     }
@@ -69,7 +69,7 @@ int MathLua::vec2Multiply(lua_State* L) {
 
 int MathLua::vec2Divide(lua_State* L) {
     if (lua_type(L, 2) == LUA_TNUMBER) {
-        lua::Stack::push(L, lua::Stack::read<Vec2>(L, 1) / static_cast<float>(lua_tonumber(L, 2)));
+        lua::Stack::push(L, lua::Stack::read<Vec2>(L, 1) / lua::Stack::read<float>(L, 2));
     } else {
         lua::Stack::push(L, lua::Stack::read<Vec2>(L, 1) / lua::Stack::read<Vec2>(L, 2));
     }
@@ -108,7 +108,7 @@ int MathLua::rectNew(lua_State* L) {
         lua::Stack::push(L, lua::Stack::read<Rect>(L, 1));
         return 1;
     }
-    lua::Stack::push(L, Rect{static_cast<float>(luaL_optnumber(L, 1, 0.0)), static_cast<float>(luaL_optnumber(L, 2, 0.0)), static_cast<float>(luaL_optnumber(L, 3, 0.0)), static_cast<float>(luaL_optnumber(L, 4, 0.0))});
+    lua::Stack::push(L, Rect{lua::Converter<float>::readOr(L, 1, 0.0), lua::Converter<float>::readOr(L, 2, 0.0), lua::Converter<float>::readOr(L, 3, 0.0), lua::Converter<float>::readOr(L, 4, 0.0)});
     return 1;
 }
 
@@ -157,7 +157,7 @@ int MathLua::colorNew(lua_State* L) {
         lua::Stack::push(L, lua::Stack::read<Color>(L, 1));
         return 1;
     }
-    lua::Stack::push(L, Color{static_cast<float>(luaL_optnumber(L, 1, 1.0)), static_cast<float>(luaL_optnumber(L, 2, 1.0)), static_cast<float>(luaL_optnumber(L, 3, 1.0)), static_cast<float>(luaL_optnumber(L, 4, 1.0))});
+    lua::Stack::push(L, Color{lua::Converter<float>::readOr(L, 1, 1.0), lua::Converter<float>::readOr(L, 2, 1.0), lua::Converter<float>::readOr(L, 3, 1.0), lua::Converter<float>::readOr(L, 4, 1.0)});
     return 1;
 }
 
@@ -357,7 +357,7 @@ int MathLua::noiseWorley(lua_State* L) {
 int MathLua::noiseWarp(lua_State* L) {
     const Noise2D& noise = lua::Userdata::check<Noise2D>(L, 1);
     const int octaves = checkOctaves(lua::Stack::read<std::optional<int>>(L, 6).value_or(3));
-    const Vec2 warped = noise.warp(lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4), static_cast<float>(luaL_optnumber(L, 5, 1.0)), octaves);
+    const Vec2 warped = noise.warp(lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4), lua::Converter<float>::readOr(L, 5, 1.0), octaves);
     lua::Stack::push(L, warped.x);
     lua::Stack::push(L, warped.y);
     return 2;
@@ -405,7 +405,7 @@ Noise2D::Grid MathLua::readGrid(lua_State* L, bool intoAllowed, std::shared_ptr<
     lua::Table::readField(L, 2, "y", grid.origin.y);
     lua_getfield(L, 2, "step");
     if (lua_type(L, -1) == LUA_TNUMBER) {
-        const auto step = static_cast<float>(lua_tonumber(L, -1));
+        const auto step = lua::Converter<float>::fromNumber(L, lua_tonumber(L, -1));
         grid.step = {step, step};
     } else if (!lua_isnil(L, -1)) {
         lua::Table::readValue(L, "step", grid.step);
@@ -566,7 +566,7 @@ int MathLua::poissonDisk(lua_State* L) {
             lua::Stack::push(L, point);
             lua::Runtime::protectedCall(L, 1, 1);
             int isNumber = 0;
-            const auto distance = static_cast<float>(lua_tonumberx(L, -1, &isNumber));
+            const auto distance = lua::Converter<float>::fromNumber(L, lua_tonumberx(L, -1, &isNumber));
             if (isNumber == 0) {
                 luaL_error(L, "A Poisson distance function must return a number, not %s.", luaL_typename(L, -1));
             }

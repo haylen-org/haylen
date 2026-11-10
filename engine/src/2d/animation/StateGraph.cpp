@@ -1,5 +1,7 @@
 #include "haylen/2d/animation/StateGraph.hpp"
 
+#include "haylen/core/JsonNumber.hpp"
+
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -201,7 +203,7 @@ StateGraph StateGraph::parse(const core::Json& description) {
     for (const auto& [name, value] : parameterList) {
         Parameter parameter{.name = name, .slot = graph.valueCount};
         if (value.is_number()) {
-            parameter.value[0] = value.get<float>();
+            parameter.value[0] = core::JsonNumber::toFloat(value);
         } else if (value.is_boolean()) {
             parameter.kind = Kind::Boolean;
             parameter.value[0] = value.get<bool>() ? 1.0F : 0.0F;
@@ -209,7 +211,7 @@ StateGraph StateGraph::parse(const core::Json& description) {
             parameter.kind = Kind::Trigger;
         } else if (value.is_array() && value.size() == 2 && value[0].is_number() && value[1].is_number()) {
             parameter.kind = Kind::Vector;
-            parameter.value = {value[0].get<float>(), value[1].get<float>()};
+            parameter.value = {core::JsonNumber::toFloat(value[0]), core::JsonNumber::toFloat(value[1])};
         } else {
             throw std::invalid_argument("The parameter \"" + name + "\" must start as a number, a boolean, \"trigger\" or a vector of two numbers.");
         }
@@ -304,8 +306,8 @@ StateGraph StateGraph::parse(const core::Json& description) {
             transition.condition = parser.parse();
             transition.triggers = std::move(parser.triggers);
         }
-        transition.exitTime = entry.value("atEnd", false) ? 1.0F : entry.value("exitTime", 0.0F);
-        transition.fade = entry.value("fade", 0.0F);
+        transition.exitTime = entry.value("atEnd", false) ? 1.0F : core::JsonNumber::toFloat(entry, "exitTime", 0.0F);
+        transition.fade = core::JsonNumber::toFloat(entry, "fade", 0.0F);
         if (!(transition.exitTime >= 0.0F && transition.fade >= 0.0F)) {
             throw std::invalid_argument("The transition " + std::to_string(number) + " needs an exit time and a fade of at least 0.");
         }

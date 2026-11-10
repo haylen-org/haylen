@@ -27,7 +27,7 @@ int PathLua::create(lua_State* L) {
 }
 
 math::Vec2 PathLua::checkPoint(lua_State* L, int index) {
-    return {static_cast<float>(luaL_checknumber(L, index)), static_cast<float>(luaL_checknumber(L, index + 1))};
+    return {lua::Stack::read<float>(L, index), lua::Stack::read<float>(L, index + 1)};
 }
 
 int PathLua::moveTo(lua_State* L) {
@@ -56,7 +56,7 @@ int PathLua::cubicTo(lua_State* L) {
 
 // Adds an arc with `arc(x, y, radius, startAngle, sweep)`, the angles in radians.
 int PathLua::arc(lua_State* L) {
-    lua::Userdata::check<Path>(L, 1).arc(checkPoint(L, 2), static_cast<float>(luaL_checknumber(L, 4)), static_cast<float>(luaL_checknumber(L, 5)), static_cast<float>(luaL_checknumber(L, 6)));
+    lua::Userdata::check<Path>(L, 1).arc(checkPoint(L, 2), lua::Stack::read<float>(L, 4), lua::Stack::read<float>(L, 5), lua::Stack::read<float>(L, 6));
     lua_settop(L, 1);
     return 1;
 }
@@ -76,7 +76,7 @@ int PathLua::clear(lua_State* L) {
 // Fills with `fill(x, y, {color, fillRule, texture, rotation, scaleX, scaleY, ...})`, whose option table also takes the keys of the draw order.
 int PathLua::fill(lua_State* L) {
     const Path& path = lua::Userdata::check<Path>(L, 1);
-    const math::Vec2 position{static_cast<float>(luaL_optnumber(L, 2, 0.0)), static_cast<float>(luaL_optnumber(L, 3, 0.0))};
+    const math::Vec2 position{lua::Converter<float>::readOr(L, 2, 0.0), lua::Converter<float>::readOr(L, 3, 0.0)};
     Path::Fill style;
     float rotation = 0.0F;
     math::Vec2 scale{1.0F, 1.0F};
@@ -108,7 +108,7 @@ int PathLua::fill(lua_State* L) {
 // Strokes with `stroke(x, y, {width, color, join, cap, dashes, rotation, scaleX, scaleY, ...})`, whose option table also takes the keys of the draw order.
 int PathLua::stroke(lua_State* L) {
     const Path& path = lua::Userdata::check<Path>(L, 1);
-    const math::Vec2 position{static_cast<float>(luaL_optnumber(L, 2, 0.0)), static_cast<float>(luaL_optnumber(L, 3, 0.0))};
+    const math::Vec2 position{lua::Converter<float>::readOr(L, 2, 0.0), lua::Converter<float>::readOr(L, 3, 0.0)};
     Stroke style;
     float rotation = 0.0F;
     math::Vec2 scale{1.0F, 1.0F};
@@ -157,7 +157,7 @@ int PathLua::stroke(lua_State* L) {
 int PathLua::outlines(lua_State* L) {
     const Path& path = lua::Userdata::check<Path>(L, 1);
     Path::Outlines flattened;
-    path.flatten(static_cast<float>(luaL_optnumber(L, 2, 0.25)), flattened);
+    path.flatten(lua::Converter<float>::readOr(L, 2, 0.25), flattened);
 
     std::vector<std::vector<math::Vec2>> shape;
     shape.reserve(flattened.counts.size());

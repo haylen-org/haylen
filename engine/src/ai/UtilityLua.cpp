@@ -71,7 +71,7 @@ float UtilityLua::callInput(Scripted& self, lua_Integer input) {
     lua_pushvalue(L, 2);
     lua_call(L, 1, 1);
     int isNumber = 0;
-    const auto value = static_cast<float>(lua_tonumberx(L, -1, &isNumber));
+    const auto value = lua::Converter<float>::fromNumber(L, lua_tonumberx(L, -1, &isNumber));
     if (isNumber == 0) {
         luaL_error(L, "A utility input must return a number, not %s.", luaL_typename(L, -1));
     }
@@ -151,7 +151,7 @@ int UtilityLua::choose(lua_State* L) {
     lua_settop(L, 4);
     const CallerScope caller(self, L);
 
-    const std::optional<UtilitySelector::Choice> choice = lua_isnil(L, 3) ? self.selector.choose() : self.selector.choose(lua::Userdata::check<math::Random>(L, 3), static_cast<float>(luaL_optnumber(L, 4, 0.9)));
+    const std::optional<UtilitySelector::Choice> choice = lua_isnil(L, 3) ? self.selector.choose() : self.selector.choose(lua::Userdata::check<math::Random>(L, 3), lua::Converter<float>::readOr(L, 4, 0.9));
     if (!choice) {
         lua_pushnil(L);
         return 1;

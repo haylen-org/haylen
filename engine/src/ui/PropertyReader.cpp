@@ -1,5 +1,7 @@
 #include "haylen/ui/PropertyReader.hpp"
 
+#include "haylen/core/JsonNumber.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <format>
@@ -81,7 +83,7 @@ void PropertyReader::read(std::string_view key, float& out, float minimum, float
         if (!value->is_number() || !std::isfinite(value->get<double>())) {
             fail(key, "must be a number");
         }
-        const auto number = value->get<float>();
+        const auto number = core::JsonNumber::toFloat(*value);
         if (number < minimum || number > maximum) {
             fail(key, describeRange(minimum, maximum));
         }
@@ -139,10 +141,10 @@ void PropertyReader::read(std::string_view key, math::Insets& out) {
 
     std::vector<float> sides;
     if (value->is_number()) {
-        sides.assign(4, value->get<float>());
+        sides.assign(4, core::JsonNumber::toFloat(*value));
     } else if (value->is_array() && (value->size() == 2 || value->size() == 4)) {
         for (const core::Json& side : *value) {
-            sides.push_back(side.is_number() ? side.get<float>() : -1.0F);
+            sides.push_back(side.is_number() ? core::JsonNumber::toFloat(side) : -1.0F);
         }
     }
     if (sides.empty() || std::ranges::any_of(sides, [](float side) { return !(side >= 0.0F) || !std::isfinite(side); })) {
@@ -214,7 +216,7 @@ void PropertyReader::readLength(std::string_view key, std::optional<float>& out)
     if (!value->is_number() || !(value->get<double>() >= 0.0) || !std::isfinite(value->get<double>())) {
         fail(key, "must be a non-negative number or \"auto\"");
     }
-    out = value->get<float>();
+    out = core::JsonNumber::toFloat(*value);
 }
 
 void PropertyReader::finish() const {

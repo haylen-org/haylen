@@ -31,6 +31,7 @@ A capability enters as new names, never as a new meaning of an existing name. Th
 - An unknown key raises `Unknown option "<key>".`. So a misspelled option never passes silently, and a key added later never collides with a key of the app.
 - The last table of a draw call holds the draw order keys of [`haylen.graphics2d`](../lua-api/graphics2d.md#draw-order) together with the options of that draw, such as `borderScale` of a nine-slice or `rotation` of a mesh. So a draw gains options without another argument.
 - A number that the engine hands to Lua never carries a negative zero, so a coordinate at the origin prints as `0` and never as `-0`.
+- The engine keeps most numbers as 32-bit floats, which hold every number from `-3.4028234663853e+38` to `3.4028234663853e+38`, infinities and NaN. A finite number past that range, from Lua or from a data file of the app, is an error instead of an undefined conversion. An argument raises `bad argument #<n> to '<function>' (number out of range)`, an option raises `The option "<option>" of "<function>" is invalid: number out of range.`, and a number inside a table or a document raises `The number <value> lies outside the numbers from -3.4028234663853e+38 to 3.4028234663853e+38 that the engine holds.`.
 - Hot paths that run per item, such as the primitives of `graphics2d` and the queries of `physics2d` and `spatial2d`, take numbers positionally, to avoid tables in a loop. They end with an optional table for everything that may come later.
 
 ```lua

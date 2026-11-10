@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "haylen/2d/particles/ImageShape.hpp"
+#include "haylen/core/JsonNumber.hpp"
 #include "haylen/graphics/BlendMode.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/io/Path.hpp"
@@ -19,7 +20,7 @@ float Effect::readNumber(const core::Json& value, std::string_view key) {
     if (!value.is_number()) {
         throw std::invalid_argument("The particle effect value \"" + std::string(key) + "\" needs a number.");
     }
-    return value.get<float>();
+    return core::JsonNumber::toFloat(value);
 }
 
 bool Effect::readBool(const core::Json& value, std::string_view key) {
@@ -31,26 +32,26 @@ bool Effect::readBool(const core::Json& value, std::string_view key) {
 
 math::FloatRange Effect::readRange(const core::Json& value, std::string_view key) {
     if (value.is_number()) {
-        return {value.get<float>(), value.get<float>()};
+        return {core::JsonNumber::toFloat(value), core::JsonNumber::toFloat(value)};
     }
     if (!value.is_array() || value.size() != 2 || !value[0].is_number() || !value[1].is_number()) {
         throw std::invalid_argument("The particle effect value \"" + std::string(key) + "\" needs a number or a [min, max] pair.");
     }
-    return {value[0].get<float>(), value[1].get<float>()};
+    return {core::JsonNumber::toFloat(value[0]), core::JsonNumber::toFloat(value[1])};
 }
 
 math::Vec2 Effect::readVec2(const core::Json& value, std::string_view key) {
     if (!value.is_array() || value.size() != 2 || !value[0].is_number() || !value[1].is_number()) {
         throw std::invalid_argument("The particle effect value \"" + std::string(key) + "\" needs an [x, y] pair.");
     }
-    return {value[0].get<float>(), value[1].get<float>()};
+    return {core::JsonNumber::toFloat(value[0]), core::JsonNumber::toFloat(value[1])};
 }
 
 math::Rect Effect::readRect(const core::Json& value, std::string_view key) {
     if (!value.is_array() || value.size() != 4 || !std::all_of(value.begin(), value.end(), [](const core::Json& item) { return item.is_number(); })) {
         throw std::invalid_argument("The particle effect value \"" + std::string(key) + "\" needs an [x, y, width, height] rectangle.");
     }
-    return {value[0].get<float>(), value[1].get<float>(), value[2].get<float>(), value[3].get<float>()};
+    return {core::JsonNumber::toFloat(value[0]), core::JsonNumber::toFloat(value[1]), core::JsonNumber::toFloat(value[2]), core::JsonNumber::toFloat(value[3])};
 }
 
 std::size_t Effect::readCount(const core::Json& value, std::string_view name) {
@@ -151,7 +152,7 @@ math::EasingCurve Effect::readCurve(const core::Json& value, std::string_view ke
         std::vector<math::Vec2> points;
         for (std::size_t index = 0; index < list.size(); ++index) {
             const float x = list.size() > 1 ? static_cast<float>(index) / static_cast<float>(list.size() - 1) : 0.0F;
-            points.push_back(list[index].is_number() ? math::Vec2{x, list[index].get<float>()} : readVec2(list[index], key));
+            points.push_back(list[index].is_number() ? math::Vec2{x, core::JsonNumber::toFloat(list[index])} : readVec2(list[index], key));
         }
         return math::EasingCurve::points(std::move(points));
     }

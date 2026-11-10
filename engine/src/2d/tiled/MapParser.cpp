@@ -11,6 +11,7 @@
 #include <utility>
 
 #include "core/Base64.hpp"
+#include "haylen/core/JsonNumber.hpp"
 #include "haylen/io/Path.hpp"
 #include "haylen/math/Math.hpp"
 
@@ -28,7 +29,7 @@ Map MapParser::parse(const core::Json& document, std::string_view file, const Ma
     result.renderOrder = readRenderOrder(document.value("renderorder", std::string("right-down")));
     result.width = document.at("width").get<int>();
     result.height = document.at("height").get<int>();
-    result.tileSize = {document.at("tilewidth").get<float>(), document.at("tileheight").get<float>()};
+    result.tileSize = {core::JsonNumber::toFloat(document.at("tilewidth")), core::JsonNumber::toFloat(document.at("tileheight"))};
     if (result.width < 0 || result.height < 0) {
         throw std::invalid_argument("The Tiled map \"" + result.path + "\" has a negative size.");
     }
@@ -39,11 +40,11 @@ Map MapParser::parse(const core::Json& document, std::string_view file, const Ma
     result.hexSideLength = document.value("hexsidelength", 0);
     result.staggerX = document.value("staggeraxis", std::string("y")) == "x";
     result.staggerEven = document.value("staggerindex", std::string("odd")) == "even";
-    result.skew = {document.value("skewx", 0.0F), document.value("skewy", 0.0F)};
+    result.skew = {core::JsonNumber::toFloat(document, "skewx", 0.0F), core::JsonNumber::toFloat(document, "skewy", 0.0F)};
     if (result.orientation == Map::Orientation::Oblique && result.skew.x * result.skew.y == result.tileSize.x * result.tileSize.y) {
         throw std::invalid_argument("The skew of the oblique map \"" + result.path + "\" folds its grid onto a line.");
     }
-    result.parallaxOrigin = {document.value("parallaxoriginx", 0.0F), document.value("parallaxoriginy", 0.0F)};
+    result.parallaxOrigin = {core::JsonNumber::toFloat(document, "parallaxoriginx", 0.0F), core::JsonNumber::toFloat(document, "parallaxoriginy", 0.0F)};
     result.backgroundColor = readOptionalColor(document, "backgroundcolor");
     result.properties = readProperties(document, directory);
 
@@ -242,7 +243,7 @@ Map::RenderOrder MapParser::readRenderOrder(const std::string& name) {
 std::vector<math::Vec2> MapParser::readPoints(const core::Json& points) {
     std::vector<math::Vec2> result;
     for (const core::Json& point : points) {
-        result.push_back({point.at("x").get<float>(), point.at("y").get<float>()});
+        result.push_back({core::JsonNumber::toFloat(point.at("x")), core::JsonNumber::toFloat(point.at("y"))});
     }
     return result;
 }
@@ -272,11 +273,11 @@ Object MapParser::readObject(const core::Json& source, std::string_view director
         .id = object.value("id", 0U),
         .name = object.value("name", std::string{}),
         .type = object.value("type", std::string{}),
-        .position = {object.value("x", 0.0F), object.value("y", 0.0F)},
-        .size = {object.value("width", 0.0F), object.value("height", 0.0F)},
-        .rotation = math::Math::radians(object.value("rotation", 0.0F)),
+        .position = {core::JsonNumber::toFloat(object, "x", 0.0F), core::JsonNumber::toFloat(object, "y", 0.0F)},
+        .size = {core::JsonNumber::toFloat(object, "width", 0.0F), core::JsonNumber::toFloat(object, "height", 0.0F)},
+        .rotation = math::Math::radians(core::JsonNumber::toFloat(object, "rotation", 0.0F)),
         .visible = object.value("visible", true),
-        .opacity = object.value("opacity", 1.0F),
+        .opacity = core::JsonNumber::toFloat(object, "opacity", 1.0F),
         .gid = object.value("gid", 0U),
         .properties = std::move(properties),
         .templatePath = std::move(templatePath),
@@ -290,7 +291,7 @@ Object MapParser::readObject(const core::Json& source, std::string_view director
         result.text = {
             .text = text.value("text", std::string{}),
             .fontFamily = text.value("fontfamily", std::string("sans-serif")),
-            .pixelSize = text.value("pixelsize", 16.0F),
+            .pixelSize = core::JsonNumber::toFloat(text, "pixelsize", 16.0F),
             .wrap = text.value("wrap", false),
             .color = readOptionalColor(text, "color").value_or(math::Color::black()),
             .bold = text.value("bold", false),
@@ -337,14 +338,14 @@ std::shared_ptr<Tileset> MapParser::readTileset(const core::Json& document, std:
     tileset->path = std::move(path);
     tileset->image = resolve(directory, document.value("image", std::string{}));
     tileset->transparentColor = readOptionalColor(document, "transparentcolor");
-    tileset->imageSize = {document.value("imagewidth", 0.0F), document.value("imageheight", 0.0F)};
-    tileset->tileSize = {document.at("tilewidth").get<float>(), document.at("tileheight").get<float>()};
+    tileset->imageSize = {core::JsonNumber::toFloat(document, "imagewidth", 0.0F), core::JsonNumber::toFloat(document, "imageheight", 0.0F)};
+    tileset->tileSize = {core::JsonNumber::toFloat(document.at("tilewidth")), core::JsonNumber::toFloat(document.at("tileheight"))};
     tileset->columns = document.value("columns", 0);
     tileset->tileCount = document.value("tilecount", 0);
     tileset->margin = document.value("margin", 0);
     tileset->spacing = document.value("spacing", 0);
     if (document.contains("tileoffset")) {
-        tileset->tileOffset = {document.at("tileoffset").value("x", 0.0F), document.at("tileoffset").value("y", 0.0F)};
+        tileset->tileOffset = {core::JsonNumber::toFloat(document.at("tileoffset"), "x", 0.0F), core::JsonNumber::toFloat(document.at("tileoffset"), "y", 0.0F)};
     }
     tileset->objectAlignment = document.value("objectalignment", std::string("unspecified"));
     tileset->renderGridSize = document.value("tilerendersize", std::string("tile")) == "grid";
@@ -362,9 +363,9 @@ std::shared_ptr<Tileset> MapParser::readTileset(const core::Json& document, std:
     tileset->properties = readProperties(document, directory);
 
     for (const core::Json& entry : document.value("tiles", core::Json::array())) {
-        Tile tile{.id = entry.at("id").get<std::uint32_t>(), .type = entry.value("type", std::string{}), .properties = readProperties(entry, directory), .probability = entry.value("probability", 1.0F)};
+        Tile tile{.id = entry.at("id").get<std::uint32_t>(), .type = entry.value("type", std::string{}), .properties = readProperties(entry, directory), .probability = core::JsonNumber::toFloat(entry, "probability", 1.0F)};
         for (const core::Json& frame : entry.value("animation", core::Json::array())) {
-            tile.animation.push_back({.tileId = frame.at("tileid").get<std::uint32_t>(), .duration = frame.at("duration").get<float>() / 1000.0F});
+            tile.animation.push_back({.tileId = frame.at("tileid").get<std::uint32_t>(), .duration = core::JsonNumber::toFloat(frame.at("duration")) / 1000.0F});
         }
         if (entry.contains("objectgroup")) {
             for (const core::Json& object : entry.at("objectgroup").value("objects", core::Json::array())) {
@@ -373,8 +374,8 @@ std::shared_ptr<Tileset> MapParser::readTileset(const core::Json& document, std:
         }
         if (entry.contains("image")) {
             tile.image = resolve(directory, entry.at("image").get<std::string>());
-            const math::Vec2 imageSize{entry.value("imagewidth", 0.0F), entry.value("imageheight", 0.0F)};
-            tile.source = {entry.value("x", 0.0F), entry.value("y", 0.0F), entry.value("width", imageSize.x), entry.value("height", imageSize.y)};
+            const math::Vec2 imageSize{core::JsonNumber::toFloat(entry, "imagewidth", 0.0F), core::JsonNumber::toFloat(entry, "imageheight", 0.0F)};
+            tile.source = {core::JsonNumber::toFloat(entry, "x", 0.0F), core::JsonNumber::toFloat(entry, "y", 0.0F), core::JsonNumber::toFloat(entry, "width", imageSize.x), core::JsonNumber::toFloat(entry, "height", imageSize.y)};
         }
         tileset->tiles.emplace(tile.id, std::move(tile));
     }
@@ -382,7 +383,7 @@ std::shared_ptr<Tileset> MapParser::readTileset(const core::Json& document, std:
     for (const core::Json& entry : document.value("wangsets", core::Json::array())) {
         WangSet set{.name = entry.value("name", std::string{}), .type = entry.value("class", std::string{}), .kind = entry.value("type", std::string("corner")), .tile = entry.value("tile", -1), .properties = readProperties(entry, directory)};
         for (const core::Json& color : entry.value("colors", core::Json::array())) {
-            set.colors.push_back({.name = color.value("name", std::string{}), .type = color.value("class", std::string{}), .color = readOptionalColor(color, "color").value_or(math::Color::white()), .tile = color.value("tile", -1), .probability = color.value("probability", 1.0F), .properties = readProperties(color, directory)});
+            set.colors.push_back({.name = color.value("name", std::string{}), .type = color.value("class", std::string{}), .color = readOptionalColor(color, "color").value_or(math::Color::white()), .tile = color.value("tile", -1), .probability = core::JsonNumber::toFloat(color, "probability", 1.0F), .properties = readProperties(color, directory)});
         }
         for (const core::Json& tile : entry.value("wangtiles", core::Json::array())) {
             WangSet::Tile wang{.tileId = tile.at("tileid").get<std::uint32_t>()};
@@ -409,10 +410,10 @@ Layer MapParser::readLayer(const core::Json& entry, std::string_view directory) 
         .name = name,
         .type = entry.value("class", std::string{}),
         .visible = entry.value("visible", true),
-        .opacity = entry.value("opacity", 1.0F),
+        .opacity = core::JsonNumber::toFloat(entry, "opacity", 1.0F),
         .blend = readBlendMode(mode, name),
-        .offset = {entry.value("offsetx", 0.0F), entry.value("offsety", 0.0F)},
-        .parallax = {entry.value("parallaxx", 1.0F), entry.value("parallaxy", 1.0F)},
+        .offset = {core::JsonNumber::toFloat(entry, "offsetx", 0.0F), core::JsonNumber::toFloat(entry, "offsety", 0.0F)},
+        .parallax = {core::JsonNumber::toFloat(entry, "parallaxx", 1.0F), core::JsonNumber::toFloat(entry, "parallaxy", 1.0F)},
         .tint = readOptionalColor(entry, "tintcolor").value_or(math::Color::white()),
         .properties = readProperties(entry, directory),
     };
@@ -442,7 +443,7 @@ Layer MapParser::readLayer(const core::Json& entry, std::string_view directory) 
         layer.kind = Layer::Kind::Image;
         layer.image = resolve(directory, entry.value("image", std::string{}));
         layer.transparentColor = readOptionalColor(entry, "transparentcolor");
-        layer.imageSize = {entry.value("imagewidth", 0.0F), entry.value("imageheight", 0.0F)};
+        layer.imageSize = {core::JsonNumber::toFloat(entry, "imagewidth", 0.0F), core::JsonNumber::toFloat(entry, "imageheight", 0.0F)};
         layer.repeatX = entry.value("repeatx", false);
         layer.repeatY = entry.value("repeaty", false);
     } else if (kind == "group") {

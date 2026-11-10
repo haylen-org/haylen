@@ -51,7 +51,7 @@ class Table final {
     // Converters report problems as argument errors, so a value that is not a plain number or boolean is read in a protected call, and a failure names the option instead.
     template <typename T> static void readValue(lua_State* L, std::string_view field, T& target) {
         if constexpr (std::floating_point<T>) {
-            if (lua_type(L, -1) == LUA_TNUMBER) {
+            if (lua_type(L, -1) == LUA_TNUMBER && Converter<T>::fits(lua_tonumber(L, -1))) {
                 target = static_cast<T>(lua_tonumber(L, -1));
                 return;
             }

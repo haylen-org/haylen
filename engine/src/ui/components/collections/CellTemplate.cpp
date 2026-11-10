@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include "haylen/core/JsonNumber.hpp"
 #include "haylen/ui/CollectionCell.hpp"
 #include "haylen/ui/CollectionSource.hpp"
 #include "haylen/ui/Component.hpp"
@@ -31,7 +32,7 @@ void CellTemplate::readDefinition(const core::Json& definition) {
         if (!size->is_number() || size->get<double>() < 0.0 || size->get<double>() > kMaxEstimatedSize) {
             throw std::invalid_argument("The \"estimatedSize\" of the type \"" + name + "\" must be a number from 0 to 100000.");
         }
-        estimatedSize = size->get<float>();
+        estimatedSize = core::JsonNumber::toFloat(*size);
     }
     if (const auto lanes = definition.find("span"); lanes != definition.end()) {
         const bool full = lanes->is_string() && lanes->get_ref<const std::string&>() == "full";

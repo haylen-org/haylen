@@ -44,7 +44,7 @@ FoldSimulation FoldSimulation::fromJson(const core::Json& value) {
     }
     simulation.axis = axis->second;
     simulation.state = state->second;
-    simulation.hinge = hinge.get<float>();
+    simulation.hinge = core::JsonNumber::toFloat(hinge);
     return simulation;
 }
 

@@ -83,7 +83,7 @@ int TileLayerLua::clear(lua_State* L) {
 int TileLayerLua::draw(lua_State* L) {
     TileLayer& layer = check(L);
     const DrawOrder order = lua::TypeConverter::readDrawOrder(L, 2);
-    const math::Vec2 offset{static_cast<float>(luaL_optnumber(L, 3, 0.0)), static_cast<float>(luaL_optnumber(L, 4, 0.0))};
+    const math::Vec2 offset{lua::Converter<float>::readOr(L, 3, 0.0), lua::Converter<float>::readOr(L, 4, 0.0)};
     layer.draw(lua::Runtime::getEngine(L).getRenderer2D(), order, offset);
     return 0;
 }

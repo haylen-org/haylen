@@ -6,12 +6,13 @@
 #include <string>
 #include <utility>
 
+#include "haylen/core/JsonNumber.hpp"
 #include "haylen/math/Insets.hpp"
 
 namespace haylen::animation2d {
 
 math::Rect SpriteAtlas::readRect(const Document& value) {
-    return {value.at("x").get<float>(), value.at("y").get<float>(), value.at("w").get<float>(), value.at("h").get<float>()};
+    return {core::JsonNumber::toFloat(value.at("x")), core::JsonNumber::toFloat(value.at("y")), core::JsonNumber::toFloat(value.at("w")), core::JsonNumber::toFloat(value.at("h"))};
 }
 
 void SpriteAtlas::checkFrame(const std::string& name, const math::Rect& source, const graphics::Texture& texture) {
@@ -32,10 +33,10 @@ SpriteFrame SpriteAtlas::readFrame(const Document& entry) {
     frame.originalSize = frame.source.getSize();
     if (entry.contains("spriteSourceSize") && entry.contains("sourceSize")) {
         frame.offset = readRect(entry.at("spriteSourceSize")).getMin();
-        frame.originalSize = {entry.at("sourceSize").at("w").get<float>(), entry.at("sourceSize").at("h").get<float>()};
+        frame.originalSize = {core::JsonNumber::toFloat(entry.at("sourceSize").at("w")), core::JsonNumber::toFloat(entry.at("sourceSize").at("h"))};
     }
     if (entry.contains("duration")) {
-        frame.duration = entry.at("duration").get<float>() / 1000.0F;
+        frame.duration = core::JsonNumber::toFloat(entry.at("duration")) / 1000.0F;
     }
 
     // The user data of a frame names its events, separated by commas.
@@ -68,7 +69,7 @@ void SpriteAtlas::readFrameSlice(const Document& slice) {
         if (bounds.width <= 0.0F || bounds.height <= 0.0F) {
             continue;
         }
-        const std::optional<math::Vec2> pivot = key.contains("pivot") ? std::optional(bounds.getMin() + math::Vec2{key.at("pivot").at("x").get<float>(), key.at("pivot").at("y").get<float>()}) : std::nullopt;
+        const std::optional<math::Vec2> pivot = key.contains("pivot") ? std::optional(bounds.getMin() + math::Vec2{core::JsonNumber::toFloat(key.at("pivot").at("x")), core::JsonNumber::toFloat(key.at("pivot").at("y"))}) : std::nullopt;
         for (std::size_t place = first; place < end; ++place) {
             SpriteFrame& frame = frames.at(frameOrder[place]);
             if (point) {

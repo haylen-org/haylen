@@ -32,7 +32,7 @@ std::vector<math::Vec2> OccluderLua::readPoints(lua_State* L, int index) {
         lua_rawgeti(L, table, static_cast<lua_Integer>(point * 2 + 1));
         lua_rawgeti(L, table, static_cast<lua_Integer>(point * 2 + 2));
         numbers = lua_type(L, -2) == LUA_TNUMBER && lua_type(L, -1) == LUA_TNUMBER;
-        points[point] = {static_cast<float>(lua_tonumber(L, -2)), static_cast<float>(lua_tonumber(L, -1))};
+        points[point] = {lua::Converter<float>::fromNumber(L, lua_tonumber(L, -2)), lua::Converter<float>::fromNumber(L, lua_tonumber(L, -1))};
         lua_pop(L, 2);
     }
     if (!numbers) {

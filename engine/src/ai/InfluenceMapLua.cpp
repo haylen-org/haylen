@@ -70,7 +70,7 @@ int InfluenceMapLua::scale(lua_State* L) {
 
 int InfluenceMapLua::add(lua_State* L) {
     InfluenceMap& map = lua::Userdata::check<InfluenceMap>(L, 1);
-    map.add(lua::Userdata::check<InfluenceMap>(L, 2), static_cast<float>(luaL_optnumber(L, 3, 1.0)));
+    map.add(lua::Userdata::check<InfluenceMap>(L, 2), lua::Converter<float>::readOr(L, 3, 1.0));
     return 0;
 }
 

@@ -169,7 +169,7 @@ int AudioLua::play(lua_State* L) {
 }
 
 int AudioLua::stop(lua_State* L) {
-    getMixer(L).stop(lua::Stack::read<Mixer::VoiceId>(L, 1), static_cast<float>(luaL_optnumber(L, 2, 0.0)));
+    getMixer(L).stop(lua::Stack::read<Mixer::VoiceId>(L, 1), lua::Converter<float>::readOr(L, 2, 0.0));
     return 0;
 }
 
@@ -276,7 +276,7 @@ int AudioLua::setCursor(lua_State* L) {
 }
 
 int AudioLua::stopAll(lua_State* L) {
-    getMixer(L).stopAll(static_cast<float>(luaL_optnumber(L, 1, 0.0)));
+    getMixer(L).stopAll(lua::Converter<float>::readOr(L, 1, 0.0));
     return 0;
 }
 
@@ -334,7 +334,7 @@ int AudioLua::playMusic(lua_State* L) {
 }
 
 int AudioLua::stopMusic(lua_State* L) {
-    getMixer(L).stopMusic(static_cast<float>(luaL_optnumber(L, 1, 1.0)));
+    getMixer(L).stopMusic(lua::Converter<float>::readOr(L, 1, 1.0));
     return 0;
 }
 
@@ -354,7 +354,7 @@ int AudioLua::createBus(lua_State* L) {
 }
 
 int AudioLua::setBusVolume(lua_State* L) {
-    getMixer(L).setBusVolume(lua::Stack::read<std::string_view>(L, 1), lua::Stack::read<float>(L, 2), static_cast<float>(luaL_optnumber(L, 3, 0.0)));
+    getMixer(L).setBusVolume(lua::Stack::read<std::string_view>(L, 1), lua::Stack::read<float>(L, 2), lua::Converter<float>::readOr(L, 3, 0.0));
     return 0;
 }
 

@@ -809,6 +809,34 @@ TEST(ClassBuilderTest, RecordsTheNativePropertiesThatTweensAnimate) {
 }
 
 // A binding tells which converter reads an argument, the way `intersects` tells a circle from a rectangle.
+// A finite number past the floats of the engine is an error wherever Lua hands it over, as an argument, an optional argument, an option or a field of a table, since converting it is undefined, while infinities convert as they are.
+TEST(ConverterTest, RefusesNumbersPastTheRangeOfFloats) {
+    test::EngineFixture fixture;
+    lua_State* L = fixture.lua();
+    // clang-format off
+    constexpr lua_CFunction readOption = [](lua_State* state) -> int {
+        float size = 0.0F;
+        Table::readField(state, 1, "size", size);
+        lua_pushnumber(state, size);
+        return 1;
+    };
+    constexpr lua_CFunction readPoint = [](lua_State* state) -> int {
+        Stack::push(state, Stack::read<math::Vec2>(state, 1).x);
+        return 1;
+    };
+    // clang-format on
+    lua_register(L, "readOption", readOption);
+    lua_register(L, "readPoint", readPoint);
+
+    EXPECT_NE(fixture.lua("return require('haylen.math').vec2(1e39, 0)").find("(number out of range)"), std::string::npos);
+    EXPECT_NE(fixture.lua("return require('haylen.math').vec2(1, 2) * -1e39").find("(number out of range)"), std::string::npos);
+    EXPECT_EQ(fixture.lua("return require('haylen.math').vec2(math.huge, 0).x == math.huge"), "true");
+    EXPECT_NE(fixture.lua("return readOption({size = -1e39})").find("The option \"size\" of \"readOption\" is invalid: number out of range."), std::string::npos);
+    EXPECT_EQ(fixture.lua("return readOption({size = 3e38}) > 2.9e38"), "true");
+    EXPECT_NE(fixture.lua("return readPoint({x = 1e39, y = 0})").find("The number 1e+39 lies outside the numbers from -3.4028234663853e+38 to 3.4028234663853e+38 that the engine holds."), std::string::npos);
+    EXPECT_EQ(fixture.lua("return readPoint({x = -math.huge, y = 0}) == -math.huge"), "true");
+}
+
 TEST(ConverterTest, TellsWhichValuesEachConverterReads) {
     test::EngineFixture fixture;
     lua_State* L = fixture.lua();

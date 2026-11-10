@@ -57,7 +57,7 @@ int FluidLua::newFluid(lua_State* L) {
 int FluidLua::spawn(lua_State* L) {
     Fluid& fluid = lua::Userdata::check<ScriptedOwner<Fluid>>(L, 1).object;
     const math::Vec2 position{lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)};
-    const math::Vec2 velocity{static_cast<float>(luaL_optnumber(L, 4, 0.0)), static_cast<float>(luaL_optnumber(L, 5, 0.0))};
+    const math::Vec2 velocity{lua::Converter<float>::readOr(L, 4, 0.0), lua::Converter<float>::readOr(L, 5, 0.0)};
     lua::Stack::push(L, fluid.spawn(position, velocity));
     return 1;
 }
@@ -65,7 +65,7 @@ int FluidLua::spawn(lua_State* L) {
 int FluidLua::fill(lua_State* L) {
     Fluid& fluid = lua::Userdata::check<ScriptedOwner<Fluid>>(L, 1).object;
     const auto area = lua::Stack::read<math::Rect>(L, 2);
-    const math::Vec2 velocity{static_cast<float>(luaL_optnumber(L, 3, 0.0)), static_cast<float>(luaL_optnumber(L, 4, 0.0))};
+    const math::Vec2 velocity{lua::Converter<float>::readOr(L, 3, 0.0), lua::Converter<float>::readOr(L, 4, 0.0)};
     lua::Stack::push(L, fluid.fill(area, velocity));
     return 1;
 }

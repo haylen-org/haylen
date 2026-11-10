@@ -34,7 +34,7 @@ int PixelCanvasLua::begin(lua_State* L) {
 // Draws with `draw(x, y, width, height, order)` into the open canvas.
 int PixelCanvasLua::draw(lua_State* L) {
     const PixelCanvas& canvas = lua::Userdata::check<PixelCanvas>(L, 1);
-    const math::Rect area{static_cast<float>(luaL_checknumber(L, 2)), static_cast<float>(luaL_checknumber(L, 3)), static_cast<float>(luaL_checknumber(L, 4)), static_cast<float>(luaL_checknumber(L, 5))};
+    const math::Rect area{lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4), lua::Stack::read<float>(L, 5)};
     canvas.draw(lua::Runtime::getEngine(L).getRenderer2D(), area, lua::TypeConverter::readDrawOrder(L, 6));
     return 0;
 }

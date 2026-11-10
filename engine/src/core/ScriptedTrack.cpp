@@ -95,7 +95,7 @@ TweenValue ScriptedTrack::read(lua_State* L, int object, const std::vector<Path>
         if (lua_type(L, -1) != LUA_TNUMBER) {
             luaL_error(L, "Cannot tween the field \"%s\" as part of a \"Vec2\" because it is not a number.", join(paths[axis]).c_str());
         }
-        (axis == 0 ? components.x : components.y) = static_cast<float>(lua_tonumber(L, -1));
+        (axis == 0 ? components.x : components.y) = lua::Converter<float>::fromNumber(L, lua_tonumber(L, -1));
         lua_pop(L, 1);
     }
     return components;

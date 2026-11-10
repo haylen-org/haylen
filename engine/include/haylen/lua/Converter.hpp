@@ -2,8 +2,10 @@
 
 #include <lua.hpp>
 
+#include <cmath>
 #include <concepts>
 #include <cstddef>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <string>
@@ -83,16 +85,37 @@ template <Integer T> struct Converter<T> {
     }
 };
 
-// A number reaches Lua without a negative zero, which adding zero turns positive, so the coordinates of a rectangle at the origin never print as "-0".
+// A number reaches Lua without a negative zero, which adding zero turns positive, so the coordinates of a rectangle at the origin never print as "-0". A finite number of Lua past the range of the type is an error, since converting it is undefined, while infinities and NaN convert as they are.
 template <std::floating_point T> struct Converter<T> {
     static void push(lua_State* L, T value) {
         lua_pushnumber(L, static_cast<lua_Number>(value) + 0.0);
     }
     static T read(lua_State* L, int index) {
-        return static_cast<T>(luaL_checknumber(L, index));
+        const lua_Number value = luaL_checknumber(L, index);
+        luaL_argcheck(L, fits(value), index, "number out of range");
+        return static_cast<T>(value);
     }
     static bool is(lua_State* L, int index) {
         return lua_type(L, index) == LUA_TNUMBER;
+    }
+
+    // Reads an optional argument, which is the fallback when it is absent or nil.
+    static T readOr(lua_State* L, int index, lua_Number fallback) {
+        const lua_Number value = luaL_optnumber(L, index, fallback);
+        luaL_argcheck(L, fits(value), index, "number out of range");
+        return static_cast<T>(value);
+    }
+
+    // Converts a number that is no argument, such as a field of a table. Only a float holds fewer numbers than Lua, so the error names the range of a float.
+    static T fromNumber(lua_State* L, lua_Number value) {
+        if (!fits(value)) {
+            luaL_error(L, "The number %f lies outside the numbers from -3.4028234663853e+38 to 3.4028234663853e+38 that the engine holds.", value);
+        }
+        return static_cast<T>(value);
+    }
+
+    [[nodiscard]] static bool fits(lua_Number value) noexcept {
+        return !std::isfinite(value) || std::fabs(value) <= static_cast<lua_Number>(std::numeric_limits<T>::max());
     }
 };
 

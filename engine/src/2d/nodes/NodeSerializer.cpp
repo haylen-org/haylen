@@ -9,6 +9,7 @@
 #include "graphics/TextureResource.hpp"
 #include "haylen/2d/nodes/NodeTree.hpp"
 #include "haylen/2d/particles/System.hpp"
+#include "haylen/core/JsonNumber.hpp"
 #include "haylen/text/Font.hpp"
 
 namespace haylen::nodes2d {
@@ -41,7 +42,7 @@ float NodeSerializer::number(const core::Json& object, std::string_view key, flo
     if (!found->is_number()) {
         throw std::invalid_argument(describe(node, part, key) + " must be a number.");
     }
-    return found->get<float>();
+    return core::JsonNumber::toFloat(*found);
 }
 
 // A whole number that a field of the type `int` holds, such as a layer, so a fraction never truncates and no number wraps.
@@ -99,7 +100,7 @@ math::Vec2 NodeSerializer::pair(const core::Json& object, std::string_view key, 
     if (!found->is_array() || found->size() != 2 || !(*found)[0].is_number() || !(*found)[1].is_number()) {
         throw std::invalid_argument(describe(node, part, key) + " must be a list of two numbers.");
     }
-    return {(*found)[0].get<float>(), (*found)[1].get<float>()};
+    return {core::JsonNumber::toFloat((*found)[0]), core::JsonNumber::toFloat((*found)[1])};
 }
 
 math::Rect NodeSerializer::rect(const core::Json& object, std::string_view key, std::string_view node, std::string_view part) {
@@ -111,7 +112,7 @@ math::Rect NodeSerializer::rect(const core::Json& object, std::string_view key, 
     if (!numbers) {
         throw std::invalid_argument(describe(node, part, key) + " must be a list of four numbers: x, y, width and height.");
     }
-    return {(*found)[0].get<float>(), (*found)[1].get<float>(), (*found)[2].get<float>(), (*found)[3].get<float>()};
+    return {core::JsonNumber::toFloat((*found)[0]), core::JsonNumber::toFloat((*found)[1]), core::JsonNumber::toFloat((*found)[2]), core::JsonNumber::toFloat((*found)[3])};
 }
 
 graphics::Texture::Options NodeSerializer::textureOptions(const core::Json& object, std::string_view node, std::string_view part) {

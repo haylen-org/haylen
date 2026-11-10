@@ -8,6 +8,7 @@
 
 #include <imgui.h>
 
+#include "haylen/core/JsonNumber.hpp"
 #include "haylen/core/JsonValidator.hpp"
 #include "haylen/ui/Context.hpp"
 #include "ui/Typography.hpp"
@@ -95,7 +96,7 @@ std::vector<Table::Column> Table::readColumns(PropertyReader& reader, const core
             if (!width->is_number() || !(width->get<double>() >= 0.0 && width->get<double>() <= 10000.0)) {
                 reader.fail("columns", "has a width that is not a number from 0 to 10000");
             }
-            column.width = width->get<float>();
+            column.width = core::JsonNumber::toFloat(*width);
         }
         if (const auto align = entry.find("align"); align != entry.end()) {
             const auto found = align->is_string() ? std::ranges::find(Typography::kAlignments, align->get<std::string>(), &std::pair<std::string_view, Alignment>::first) : Typography::kAlignments.end();
