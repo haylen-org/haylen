@@ -467,6 +467,8 @@ text::Style TypeConverter::readTextStyle(lua_State* L, int index, std::initializ
             Table::readValue(L, key, style.shadowColor);
         } else if (key == "shadowBlur") {
             Table::readValue(L, key, style.shadowBlur);
+        } else if (key == "gradient") {
+            style.gradient = readTextGradient(L, -1);
         } else if (key == "align") {
             Table::readValue(L, key, style.align);
         } else if (key == "maxWidth") {
@@ -512,6 +514,69 @@ text::Style TypeConverter::readTextStyle(lua_State* L, int index, std::initializ
     });
     // clang-format on
     return style;
+}
+
+text::Gradient TypeConverter::readTextGradient(lua_State* L, int index) {
+    if (!lua_istable(L, index)) {
+        throw std::invalid_argument("A text gradient is a table with \"stops\" or \"colors\", such as {colors = {'#FFFFE9A0', '#FFC8861E'}}.");
+    }
+
+    std::array<text::Gradient::Stop, text::Gradient::kMaxStops> stops{};
+    std::size_t count = 0;
+    bool listsStops = false;
+    bool listsColors = false;
+    float angle = text::Gradient::kDown;
+    // clang-format off
+    Table::readFields(L, index, kTextGradientFields, {}, [&](std::string_view key) {
+        if (key == "angle") {
+            Table::readValue(L, key, angle);
+            return;
+        }
+        listsStops = listsStops || key == "stops";
+        listsColors = listsColors || key == "colors";
+        count = readTextGradientStops(L, key, stops);
+    });
+    // clang-format on
+    if (listsStops == listsColors) {
+        throw std::invalid_argument("A gradient takes its colors from either \"stops\" or \"colors\".");
+    }
+
+    if (listsColors) {
+        for (std::size_t stop = 0; stop < count; ++stop) {
+            stops[stop].offset = count > 1 ? static_cast<float>(stop) / static_cast<float>(count - 1) : 0.0F;
+        }
+    }
+    return text::Gradient(std::span(stops.data(), count), angle);
+}
+
+// Reads the list on top of the stack, of offset and color pairs for `stops` or of colors for `colors`, and returns how many it holds.
+std::size_t TypeConverter::readTextGradientStops(lua_State* L, std::string_view key, std::array<text::Gradient::Stop, text::Gradient::kMaxStops>& stops) {
+    const bool paired = key == "stops";
+    if (!lua_istable(L, -1)) {
+        throw std::invalid_argument(paired ? "The stops of a gradient are a list of offset and color pairs, such as {{0, '#FF000000'}, {1, '#FFFFFFFF'}}." : "The colors of a gradient are a list of colors.");
+    }
+    const auto count = static_cast<std::size_t>(lua_rawlen(L, -1));
+    if (count > text::Gradient::kMaxStops) {
+        throw std::invalid_argument("A text gradient holds at most 4 color stops.");
+    }
+
+    for (std::size_t index = 0; index < count; ++index) {
+        lua_rawgeti(L, -1, static_cast<lua_Integer>(index) + 1);
+        if (!paired) {
+            Table::readValue(L, key, stops[index].color);
+            lua_pop(L, 1);
+            continue;
+        }
+        if (!lua_istable(L, -1) || lua_rawlen(L, -1) != 2) {
+            throw std::invalid_argument("The stops of a gradient are a list of offset and color pairs, such as {{0, '#FF000000'}, {1, '#FFFFFFFF'}}.");
+        }
+        lua_rawgeti(L, -1, 1);
+        Table::readValue(L, key, stops[index].offset);
+        lua_rawgeti(L, -2, 2);
+        Table::readValue(L, key, stops[index].color);
+        lua_pop(L, 3);
+    }
+    return count;
 }
 
 std::string_view TypeConverter::readBytes(lua_State* L, int index) {

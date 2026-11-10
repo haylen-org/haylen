@@ -22,6 +22,7 @@ void Label::readProperties(PropertyReader& reader) {
         outline = outlineColor;
     }
     reader.read("outlineWidth", outlineWidth, 0.0F, 16.0F);
+    reader.read("gradient", gradient);
     reader.read("minScale", minScale, 0.25F, 1.0F);
 }
 
@@ -33,7 +34,7 @@ math::Vec2 Label::measureContent(Context& context, float availableWidth) {
 void Label::render(Context& context, const math::Rect& bounds) {
     const std::string_view full = context.getText(text);
     if (wrap) {
-        Typography::drawParagraph(context, font, bounds, context.getColor(color.value_or(Theme::Color::Text)), full, textAlign, outline, outlineWidth, 1.0F, minScale);
+        Typography::drawParagraph(context, font, bounds, context.getColor(color.value_or(Theme::Color::Text)), full, textAlign, {.outline = outline, .outlineWidth = outlineWidth, .gradient = gradient}, 1.0F, minScale);
         return;
     }
     std::string_view shown = full;
@@ -55,7 +56,7 @@ void Label::render(Context& context, const math::Rect& bounds) {
     }
     const float height = Typography::measureParagraph(context, font, shown, -1.0F).y * scale;
     const math::Rect block{bounds.x, std::floor(bounds.y + (bounds.height - height) * 0.5F), bounds.width, height};
-    Typography::drawParagraph(context, font, block, context.getColor(color.value_or(Theme::Color::Text)), shown, textAlign, outline, outlineWidth, scale);
+    Typography::drawParagraph(context, font, block, context.getColor(color.value_or(Theme::Color::Text)), shown, textAlign, {.outline = outline, .outlineWidth = outlineWidth, .gradient = gradient}, scale);
 }
 
 bool Label::describe(Context& context, platform::AccessibilityElement& element) const {

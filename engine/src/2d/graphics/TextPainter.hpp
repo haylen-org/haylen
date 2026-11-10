@@ -18,7 +18,7 @@
 
 namespace haylen::graphics2d {
 
-// Turns laid out text into the instances the renderer draws. Glyphs of distance field fonts go through the text program with their outline, weight, skew and softness, while bitmap glyphs, images and filled boxes go through the sprite program, and so do color glyphs, as the rasters of their vector images that the vector atlas keeps at the size they cover. Consecutive instances of one program and texture share a batch, and batches keep the drawing order, so backgrounds, glows and shadows lie under the glyphs. Every paint replaces the batches of the one before and reuses their storage, so painting text that was painted before allocates nothing.
+// Turns laid out text into the instances the renderer draws. Glyphs of distance field fonts go through the text program with their outline, weight, skew and softness, or through the gradient text program with the record of their gradient after their own when their fill has a gradient, while bitmap glyphs, images and filled boxes go through the sprite program, and so do color glyphs, as the rasters of their vector images that the vector atlas keeps at the size they cover. Consecutive instances of one program and texture share a batch, and batches keep the drawing order, so backgrounds, glows and shadows lie under the glyphs. Every paint replaces the batches of the one before and reuses their storage, so painting text that was painted before allocates nothing.
 class TextPainter final {
   public:
     struct Batch {
@@ -70,6 +70,8 @@ class TextPainter final {
     [[nodiscard]] math::Vec2 place(math::Vec2 local) const noexcept;
 
     void add(Program program, const graphics::Texture& texture, const GpuInstance& instance);
+    void addGradientGlyph(const graphics::Texture& page, const GpuInstance& glyph, const GpuInstance& gradient);
+    [[nodiscard]] GpuInstance makeGradient(const text::Layout& layout, const text::Layout::Glyph& glyph, const text::Gradient& gradient) const noexcept;
     void addColorGlyph(const text::Layout::Glyph& glyph, SpriteInstance instance);
     void paintPlainGlyphs(const text::Layout& layout, const text::Style& style, Layer layer);
     void paintBoxes(const text::Layout& layout, bool underText, math::Color tint);

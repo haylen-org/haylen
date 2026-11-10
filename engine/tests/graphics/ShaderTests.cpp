@@ -614,6 +614,11 @@ TEST_F(MaterialLuaTest, LoadsShadersAndDrawsWithMaterials) {
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return tostring(spriteMaterial == tint) .. ' ' .. graphics2d.stats().canvases"), "true 1");
 
+    // The gradient text program has no material form, so a text with both is an error.
+    fixture.runLua("require('haylen.scene').replace({render = function() graphics2d.beginScreen() gradientError = select(2, pcall(graphics2d.drawText, nil, 'Hi', 0, 0, {material = tint, gradient = {colors = {'#FFFFFFFF'}}})) end})");
+    fixture.frames(2);
+    EXPECT_NE(fixture.lua("return gradientError").find("A text with a gradient does not take a material."), std::string::npos);
+
     EXPECT_NE(fixture.lua("graphics2d.newMaterial(shader, {missing = 1})").find("has no uniform named \"missing\""), std::string::npos);
     EXPECT_NE(fixture.lua("tint:set('tint', 1)").find("takes 4 numbers, not 1"), std::string::npos);
     EXPECT_NE(fixture.lua("tint:get('nothing')").find("has no uniform named \"nothing\""), std::string::npos);

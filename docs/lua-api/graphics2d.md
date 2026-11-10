@@ -3041,6 +3041,7 @@ scene.push({
 | `shadowOffset` | Vec2 | `{0, 0}` | The offset of the drop shadow. |
 | `shadowColor` | Color | `'#00000000'` | The shadow color. The shadow draws only when its alpha is above 0. The shadow of a bitmap font is the silhouette of its glyphs. |
 | `shadowBlur` | number | `0` | Softens the shadow over this many canvas units. |
+| `gradient` | table | none | Fills the glyphs with colors that blend from stop to stop across each line of the text, as [gradient text](../graphics/text.md#gradient-text) explains. The table takes `colors`, a list of 1 to 4 colors spread evenly, or `stops`, a list of 1 to 4 pairs of an offset from 0 to 1 and a color in increasing order, such as `{{0, '#FFFFF4C2'}, {0.5, '#FFF6C26B'}, {1, '#FF7A4A10'}}`, and `angle`, the direction in radians clockwise from the x axis, `math.pi / 2` by default, which runs from the top of each line down. The colors multiply `color`, so its alpha still fades the text. A draw with a gradient takes no `material`. |
 | `align` | string | `'start'` | The alignment of each line inside the block. The values `'start'` and `'end'` are the sides where the lines of the paragraph begin and end: left and right for left-to-right text and the other way around for right-to-left text. The values `'left'`, `'center'` and `'right'` are fixed sides, and `'fill'` stretches the spaces of every wrapped line to reach both edges and leaves the last line of a paragraph at its start. |
 | `maxWidth` | number | `0` | Wraps whole words at this width, where 0 never wraps. |
 | `wrap` | boolean | `true` | Whether lines wrap at `maxWidth`. Without wrapping every line stays whole, and `maxWidth` only bounds the box that `minScale` fits the text into. |
@@ -3058,6 +3059,20 @@ scene.push({
 | `pixelSnap` | boolean | `false` | Moves every line so its left edge lands on a whole pixel of the destination, centered and right-aligned lines included, and puts its baseline on a whole pixel row. This keeps small text crisp and stops it from shimmering as it moves. It applies when neither the text nor the view of its canvas turns, and it never changes the layout. |
 | `ligatures` | boolean | `true` | Joins letters such as f and i into one glyph where the font has a ligature for them, which suits prose. The value `false` keeps a glyph for every letter, which code, file names and the names of functions need. |
 | `code` | boolean | `false` | Lays the text out as code, which keeps a glyph for every letter and breaks lines only between tokens, never inside a string that fits on a line or after the indentation of a line, as [code](../graphics/text.md#code) explains. |
+
+A wrong `gradient` raises one of these errors:
+
+| Error | Cause |
+| --- | --- |
+| `A text gradient is a table with "stops" or "colors", such as {colors = {'#FFFFE9A0', '#FFC8861E'}}.` | The value is not a table. |
+| `A gradient takes its colors from either "stops" or "colors".` | The table has both keys, or neither. |
+| `A text gradient holds at most 4 color stops.` | The list has more than 4 entries. |
+| `A gradient needs at least one color stop.` | The list is empty. |
+| `The stops of a gradient are a list of offset and color pairs, such as {{0, '#FF000000'}, {1, '#FFFFFFFF'}}.` | A stop is not a pair. |
+| `The stops of a gradient need offsets from 0 to 1 in increasing order.` | An offset is out of range or out of order. |
+| `The angle of a text gradient must be a finite number of radians.` | The angle is infinite or not a number. |
+| `A text with a gradient does not take a material.` | The draw also has a `material`. |
+| `Unknown option "<key>".` | The table has another key. |
 
 A `size`, `maxWidth`, `maxHeight`, `minScale` or `lineSpacing` that is not a finite number raises `Text needs a finite size, maximum width, maximum height, minimum scale and line spacing.`. A `minScale` out of range raises `The "minScale" of a text style is a share of its size above 0 and at most 1.`.
 

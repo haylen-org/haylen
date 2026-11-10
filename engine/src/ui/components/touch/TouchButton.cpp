@@ -74,7 +74,7 @@ void TouchButton::drawLabel(Context& context, const math::Rect& circle, std::str
     const std::string_view fitted = natural * scale > room ? Typography::elide(context, Theme::Font::Button, shown, room / scale) : shown;
     const float height = lineHeight * scale;
     const math::Rect line{circle.x, std::floor(circle.getCenter().y - height * 0.5F), circle.width, height};
-    Typography::drawParagraph(context, Theme::Font::Button, line, context.getColor(Theme::Color::OnAccent), fitted, Alignment::Center, std::nullopt, 2.0F, scale);
+    Typography::drawParagraph(context, Theme::Font::Button, line, context.getColor(Theme::Color::OnAccent), fitted, Alignment::Center, {}, scale);
 }
 
 void TouchButton::drawingStopped(Context& context) {

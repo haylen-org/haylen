@@ -4,6 +4,8 @@
 #include <array>
 #include <bit>
 #include <cmath>
+#include <cstddef>
+#include <span>
 
 #include "graphics/TextureResource.hpp"
 #include "haylen/math/Math.hpp"
@@ -103,6 +105,18 @@ GpuInstance GpuInstance::makeData(const SpriteData& data) noexcept {
 
 std::size_t GpuInstance::getDataTexture() const noexcept {
     return static_cast<std::size_t>(std::bit_cast<DataRecord>(*this).texture);
+}
+
+GpuInstance GpuInstance::makeGradient(const text::Gradient& gradient, math::Vec2 axis, float base) noexcept {
+    static_assert(sizeof(GradientRecord) == sizeof(GpuInstance));
+    const std::span<const text::Gradient::Stop> stops = gradient.getStops();
+    GradientRecord record{.line = {axis.x, axis.y, base}, .colors = {}, .offsets = {}, .unused = {}};
+    for (std::size_t index = 0; index < text::Gradient::kMaxStops; ++index) {
+        const text::Gradient::Stop& stop = stops[std::min(index, stops.size() - 1)];
+        record.colors[index] = stop.color.toRgba8();
+        record.offsets[index] = unorm16(stop.offset);
+    }
+    return std::bit_cast<GpuInstance>(record);
 }
 
 GpuInstance GpuInstance::makeEffect(const SpriteEffect& effect, math::Vec2 sourceSize) noexcept {

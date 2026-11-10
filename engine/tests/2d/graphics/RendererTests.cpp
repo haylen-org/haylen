@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -34,6 +35,7 @@
 #include "haylen/math/Insets.hpp"
 #include "haylen/math/Spline.hpp"
 #include "haylen/text/Font.hpp"
+#include "haylen/text/Gradient.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
@@ -737,6 +739,8 @@ TEST(RendererTest, DrawsEveryKindOfDrawWithoutAllocating) {
     const lighting2d::Occluder wall{.points = {{-20.0F, 30.0F}, {20.0F, 30.0F}}, .closed = false};
     graphics2d::Camera camera;
     camera.flash(math::Color::white(), 100.0F);
+    const std::array<math::Color, 3> gold{math::Color::fromHex(0xFFF6C26BU), math::Color::fromHex(0xFFC8861EU), math::Color::fromHex(0xFF7A4A10U)};
+    const text::Gradient gradient = text::Gradient::fromColors(gold);
 
     // clang-format off
     const auto measure = [&fixture](std::function<void(core::Engine&)> draw) {
@@ -766,6 +770,7 @@ TEST(RendererTest, DrawsEveryKindOfDrawWithoutAllocating) {
         renderer.drawOccluder(wall);
         renderer.drawMetaballs(points, 4.0F);
         parallax.draw(renderer, camera);
+        renderer.drawText(*current.getDefaultFont(), "Lit gold", {0.0F, 40.0F}, {.size = 12.0F, .gradient = gradient});
         renderer.popFade();
 
         renderer.beginScreen();
@@ -785,6 +790,7 @@ TEST(RendererTest, DrawsEveryKindOfDrawWithoutAllocating) {
         renderer.drawPoints(line, 3.0F, std::span(&dotColor, 1));
         renderer.drawMesh(texture, mesh, indices);
         renderer.drawText(*current.getDefaultFont(), "Every frame", {10.0F, 200.0F}, {.size = 24.0F, .outlineWidth = 2.0F, .shadowOffset = {2.0F, 2.0F}, .shadowColor = math::Color::black()});
+        renderer.drawText(*current.getDefaultFont(), "Gold", {10.0F, 240.0F}, {.size = 24.0F, .outlineWidth = 2.0F, .gradient = gradient, .rotation = 0.3F});
         renderer.popFade();
         renderer.popClip();
     });

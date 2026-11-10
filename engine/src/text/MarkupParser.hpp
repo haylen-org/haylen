@@ -104,6 +104,8 @@ class MarkupParser final {
     [[nodiscard]] math::Color color(const Tag& tag, std::string_view text) const;
     [[nodiscard]] math::Vec2 pair(const Tag& tag, std::string_view text) const;
     [[nodiscard]] float size(const Tag& tag, std::string_view text) const;
+    [[nodiscard]] Gradient gradient(const Tag& tag) const;
+    [[nodiscard]] static std::vector<std::string_view> splitList(std::string_view text);
     [[nodiscard]] RichTextDocument::VerticalAlign verticalAlign(const Tag& tag, std::string_view text) const;
     [[nodiscard]] std::string_view requireValue(const Tag& tag) const;
     void requireNoValue(const Tag& tag) const;

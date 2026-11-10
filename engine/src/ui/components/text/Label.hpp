@@ -8,6 +8,7 @@
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/text/Gradient.hpp"
 #include "haylen/ui/Alignment.hpp"
 #include "haylen/ui/Component.hpp"
 #include "haylen/ui/TextValue.hpp"
@@ -48,6 +49,7 @@ class Label final : public Component {
     bool wrap = true;
     std::optional<math::Color> outline;
     float outlineWidth = 2.0F;
+    std::optional<text::Gradient> gradient;
 
     // A label draws wrapped lines taller than its bounds, or a text that does not wrap wider than them, smaller, down to this share of its font size, and a text that does not wrap and still does not fit ends with an ellipsis.
     float minScale = 1.0F;

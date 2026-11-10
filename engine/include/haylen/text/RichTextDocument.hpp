@@ -12,6 +12,7 @@
 #include "haylen/math/Vec2.hpp"
 #include "haylen/text/Alignment.hpp"
 #include "haylen/text/Direction.hpp"
+#include "haylen/text/Gradient.hpp"
 
 namespace haylen::text {
 
@@ -60,6 +61,7 @@ struct RichTextDocument {
         math::Color outlineColor = math::Color::black();
         std::optional<Shadow> shadow;
         std::optional<Glow> glow;
+        std::optional<Gradient> gradient;
         float alpha = 1.0F;
         std::optional<std::size_t> link;
         std::optional<std::size_t> hint;

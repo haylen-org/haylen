@@ -48,7 +48,7 @@ FrameSubmitter::Matrix FrameSubmitter::projection(const math::Transform2D& view,
 }
 
 bool FrameSubmitter::isInstanced(const DrawItem& item) noexcept {
-    return (item.program == Program::Sprite || item.program == Program::Text || item.program == Program::Recolor || item.program == Program::Effect || item.program == Program::Shape || item.program == Program::Batch) && item.batch == nullptr;
+    return (item.program == Program::Sprite || item.program == Program::Text || item.program == Program::Recolor || item.program == Program::Effect || item.program == Program::Shape || item.program == Program::Batch || item.program == Program::GradientText) && item.batch == nullptr;
 }
 
 void FrameSubmitter::submit() {
@@ -836,7 +836,7 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
             bindings.vertexBuffers[1] = command.batch != nullptr ? command.batch->buffer : state.instanceBuffer;
             bindings.vertexOffsets[1] = static_cast<int>(command.first * sizeof(GpuInstance));
         }
-        const bool paired = command.program == Program::Recolor || command.program == Program::Effect || command.program == Program::Batch;
+        const bool paired = command.program == Program::Recolor || command.program == Program::Effect || command.program == Program::Batch || command.program == Program::GradientText;
         if (paired) {
             bindings.vertexBuffers[2] = state.instanceBuffer;
             bindings.vertexOffsets[2] = static_cast<int>((command.first + 1) * sizeof(GpuInstance));

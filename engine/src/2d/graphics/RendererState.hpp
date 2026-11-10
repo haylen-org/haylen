@@ -69,7 +69,7 @@ struct RendererState {
     static constexpr std::size_t kParallelGrain = 4096;
     static constexpr int kLightTextureSize = 128;
     static constexpr int kMetaballTextureSize = 64;
-    static constexpr std::size_t kProgramCount = 13;
+    static constexpr std::size_t kProgramCount = 14;
 
     // The bind slots of the programs of the renderer, which their sources declare with `layout(binding = ...)` and `getProgram` checks against the reflection of their packages. Every program reads its view projection from the vertex block slot, its fade from the fade block slot and the lighting of lit passes from the lit block slot, which the shader library reserves.
     static constexpr int kVertexBlock = 0;
@@ -358,6 +358,7 @@ struct RendererState {
     static const std::array<Input, 11> kBatchInputs;
     static const std::array<Input, 13> kRecolorInputs;
     static const std::array<Input, 15> kEffectInputs;
+    static const std::array<Input, 15> kGradientTextInputs;
     static const std::array<Input, 9> kShapeInputs;
     static const std::array<Input, 10> kLightInputs;
     static const std::array<Input, 3> kMeshInputs;
@@ -372,6 +373,7 @@ struct RendererState {
     [[nodiscard]] std::uint32_t getShade(Program program, const DrawOrder& order, std::span<const graphics::Texture> textures);
     [[nodiscard]] std::uint32_t pushShade(Shade shade, const Material& material);
     [[nodiscard]] static Layout describeLayout(Program program);
+    [[nodiscard]] static std::span<const Input> getPairedInputs(Program program) noexcept;
     [[nodiscard]] Targets describeTargets(std::uint8_t blend, graphics::PassTarget target) const;
 
     // Makes a pipeline of a program of a package with the layout of a program of the renderer and the colors of a pass target.

@@ -461,6 +461,7 @@ A label shows text in one of the theme fonts.
 | `wrap` | boolean | `true` | Wraps long text onto more lines. Without wrapping, every line of the text stays on its own line, each one ended by a line break. A line that does not fit ends with an ellipsis, and the block of lines sits in the middle of the height of the label. |
 | `outline` | color | none | Draws an outline of this color around the letters. |
 | `outlineWidth` | number from 0 to 16 | `2` | The thickness of the outline. |
+| `gradient` | table | none | Fills the letters with colors that blend across each line, multiplied by `color`: `colors`, a list of 1 to 4 colors spread evenly, or `stops`, a list of 1 to 4 pairs of an offset from 0 to 1 and a color in increasing order, and `angle`, the direction in radians, from the top down by default, as [gradient text](../graphics/text.md#gradient-text) explains. |
 | `minScale` | number from 0.25 to 1 | `1` | A text that does not fit draws smaller, down to this share of its font size. So a long translation still shows whole in a fixed space. Wrapped text shrinks until its lines fit the height of the label. Text without wrapping shrinks until it fits the width, and ends with an ellipsis when it still does not fit. |
 
 ```lua
@@ -473,6 +474,7 @@ ui.mount(ui.column{
     ui.label{text = 'A title that shrinks to fit', wrap = false, width = 200, minScale = 0.6},
     ui.label{text = 'A long story that shrinks until all of its lines fit the box', width = 300, height = 90, minScale = 0.5},
     ui.label{text = 'Over the sea', outline = '#FF000000', outlineWidth = 3},
+    ui.label{text = 'Level up', font = 'title', gradient = {colors = {'#FFB8F28C', '#FF2E9E4F'}}},
 })
 ```
 

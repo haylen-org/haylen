@@ -151,6 +151,47 @@ void PropertyReader::read(std::string_view key, math::Insets& out) {
     out = sides.size() == 2 ? math::Insets{.left = sides[1], .top = sides[0], .right = sides[1], .bottom = sides[0]} : math::Insets{.left = sides[3], .top = sides[0], .right = sides[1], .bottom = sides[2]};
 }
 
+void PropertyReader::read(std::string_view key, std::optional<text::Gradient>& out) {
+    const core::Json* value = take(key);
+    if (value == nullptr) {
+        return;
+    }
+    if (!value->is_object() || value->contains("colors") == value->contains("stops")) {
+        fail(key, "must be a table with \"colors\" or \"stops\" and an optional \"angle\", such as {colors = {\"#FFFFE9A0\", \"#FFC8861E\"}}");
+    }
+    for (const auto& [name, item] : value->items()) {
+        if (name != "colors" && name != "stops" && name != "angle") {
+            fail(key, std::format("has the unknown key \"{}\"", name));
+        }
+    }
+
+    const bool paired = value->contains("stops");
+    const core::Json& list = value->at(paired ? "stops" : "colors");
+    if (!list.is_array() || list.empty() || list.size() > text::Gradient::kMaxStops) {
+        fail(key, "holds from 1 to 4 colors");
+    }
+    std::vector<text::Gradient::Stop> stops;
+    for (std::size_t index = 0; index < list.size(); ++index) {
+        const core::Json& entry = paired && list[index].is_array() && list[index].size() == 2 ? list[index][1] : list[index];
+        const std::optional<math::Color> color = entry.is_string() ? math::Color::parse(entry.get<std::string>()) : std::nullopt;
+        if (!color || (paired && !list[index][0].is_number())) {
+            fail(key, paired ? "lists its stops as pairs of an offset and a color, such as {0, \"#FFFFE9A0\"}" : "lists its colors as strings such as \"#FFFFE9A0\"");
+        }
+        const float spread = list.size() > 1 ? static_cast<float>(index) / static_cast<float>(list.size() - 1) : 0.0F;
+        stops.push_back({.offset = paired ? list[index][0].get<float>() : spread, .color = *color});
+    }
+
+    const bool inRange = std::ranges::all_of(stops, [](const text::Gradient::Stop& stop) { return stop.offset >= 0.0F && stop.offset <= 1.0F; });
+    if (!inRange || !std::ranges::is_sorted(stops, {}, &text::Gradient::Stop::offset)) {
+        fail(key, "needs offsets from 0 to 1 in increasing order");
+    }
+    const core::Json* angle = value->contains("angle") ? &value->at("angle") : nullptr;
+    if (angle != nullptr && !(angle->is_number() && std::isfinite(angle->get<float>()))) {
+        fail(key, "needs an angle in radians");
+    }
+    out = text::Gradient(stops, angle != nullptr ? angle->get<float>() : text::Gradient::kDown);
+}
+
 void PropertyReader::read(std::string_view key, std::optional<Theme::Color>& out) {
     if (const core::Json* value = take(key)) {
         const std::optional<Theme::Color> role = value->is_string() ? Theme::colorFromName(value->get<std::string>()) : std::nullopt;

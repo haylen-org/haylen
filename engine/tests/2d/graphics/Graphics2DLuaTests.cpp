@@ -100,6 +100,21 @@ TEST_F(Graphics2DLuaTest, DrawsTheShadowAndOutlineOfTextUnderItsFill) {
     EXPECT_EQ(std::stoi(lua("return graphics2d.stats().sprites")), 3 * plain);
 }
 
+// A text gradient takes its stops or colors from Lua, draws every glyph with the record of its gradient, which the statistics count once, and reports what is wrong with a table.
+TEST_F(Graphics2DLuaTest, FillsTextWithAGradient) {
+    EXPECT_EQ(render("graphics2d.beginScreen() graphics2d.drawText(nil, 'Hi', 100, 100, {size = 24})"), "nil");
+    const int plain = std::stoi(lua("return graphics2d.stats().sprites"));
+    EXPECT_EQ(render("graphics2d.beginScreen() graphics2d.drawText(nil, 'Hi', 100, 100, {size = 24, gradient = {colors = {'#FFFFE9A0', '#FFC8861E'}}})"), "nil");
+    EXPECT_EQ(std::stoi(lua("return graphics2d.stats().sprites")), plain);
+    EXPECT_EQ(render("graphics2d.beginScreen() graphics2d.drawText(nil, 'Hi', 100, 100, {gradient = {stops = {{0, '#FFFFFFFF'}, {0.4, '#FF808080'}, {1, '#FF000000'}}, angle = 0}})"), "nil");
+
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawText(nil, 'Hi', 0, 0, {gradient = {colors = {'#FF000000', '#FF000000', '#FF000000', '#FF000000', '#FF000000'}}})").find("A text gradient holds at most 4 color stops."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawText(nil, 'Hi', 0, 0, {gradient = {kind = 'radial', colors = {'#FF000000'}}})").find("Unknown option \"kind\"."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawText(nil, 'Hi', 0, 0, {gradient = {angle = 1}})").find("A gradient takes its colors from either \"stops\" or \"colors\"."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawText(nil, 'Hi', 0, 0, {gradient = {stops = {{1, '#FF000000'}, {0, '#FFFFFFFF'}}}})").find("The stops of a gradient need offsets from 0 to 1 in increasing order."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawText(nil, 'Hi', 0, 0, {gradient = '#FF000000'})").find("A text gradient is a table with \"stops\" or \"colors\""), std::string::npos);
+}
+
 TEST_F(Graphics2DLuaTest, CreatesAndEditsSprites) {
     lua("sprite = graphics2d.newSprite(hero, {x = 10, y = 20, layer = 2, flipHorizontal = true, color = '#80FF0000', blend = 'additive'})");
     EXPECT_EQ(lua("return sprite.x .. ',' .. sprite.y .. ' ' .. sprite.layer .. ' ' .. tostring(sprite.flipHorizontal) .. ' ' .. tostring(sprite.flipVertical)"), "10.0,20.0 2 true false");

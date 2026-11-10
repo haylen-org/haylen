@@ -40,6 +40,28 @@ void TextPainter::add(Program program, const graphics::Texture& texture, const G
     batches[batchCount - 1].instances.push_back(instance);
 }
 
+// A glyph with a gradient takes the record of its gradient right after its own.
+void TextPainter::addGradientGlyph(const graphics::Texture& page, const GpuInstance& glyph, const GpuInstance& gradient) {
+    add(Program::GradientText, page, glyph);
+    batches[batchCount - 1].instances.push_back(gradient);
+}
+
+// A gradient runs across the box of the line of the glyph, or across the block for a glyph outside every line, and reaches 0 and 1 at the corners furthest along its direction. The position along it is linear in the point of the layout, so it is linear in the point of the canvas too, through the inverse of the scale and the rotation that place the block.
+GpuInstance TextPainter::makeGradient(const text::Layout& layout, const text::Layout::Glyph& glyph, const text::Gradient& gradient) const noexcept {
+    const auto line = std::ranges::upper_bound(layout.lines, glyph.character, {}, &text::Layout::Line::endCharacter);
+    const math::Rect area = line != layout.lines.end() ? line->box : math::Rect{0.0F, 0.0F, layout.size.x, layout.size.y};
+    const math::Vec2 direction{std::cos(gradient.getAngle()), std::sin(gradient.getAngle())};
+    const float extent = std::fabs(area.width * direction.x) + std::fabs(area.height * direction.y);
+    const math::Vec2 slope = extent > 0.0F ? direction / extent : math::Vec2{};
+
+    const math::Vec2 unscaled{blockScale.x != 0.0F ? slope.x / blockScale.x : 0.0F, blockScale.y != 0.0F ? slope.y / blockScale.y : 0.0F};
+    const float cosine = std::cos(blockRotation);
+    const float sine = std::sin(blockRotation);
+    const math::Vec2 axis{unscaled.x * cosine - unscaled.y * sine, unscaled.x * sine + unscaled.y * cosine};
+    const float base = 0.5F + math::Vec2::dot(blockOrigin - area.getCenter(), slope) - math::Vec2::dot(blockPosition, axis);
+    return GpuInstance::makeGradient(gradient, axis, base);
+}
+
 // A color glyph draws the raster of its vector image that suits the pixels its quad covers, through the sprite program.
 void TextPainter::addColorGlyph(const text::Layout::Glyph& glyph, SpriteInstance instance) {
     const math::Vec2 natural = glyph.image.getSize();
@@ -117,9 +139,15 @@ void TextPainter::paintPlainGlyphs(const text::Layout& layout, const text::Style
         }
 
         const graphics::Texture& page = look.font->getPage(glyph.page);
-        const Program program = field ? Program::Text : Program::Sprite;
         SpriteInstance instance = placeGlyph(glyph, {}, color, flash);
         instance.position += moved;
+        if (layer == Layer::Fill && field && style.gradient) {
+            const GpuInstance gradient = makeGradient(layout, glyph, *style.gradient);
+            addGradientGlyph(page, GpuInstance::makeGlyph(*page.getResource(), instance, parameters), gradient);
+            continue;
+        }
+
+        const Program program = field ? Program::Text : Program::Sprite;
         add(program, page, GpuInstance::makeGlyph(*page.getResource(), instance, parameters));
         if (look.emboldenOffset > 0.0F) {
             SpriteInstance copy = placeGlyph(glyph, {look.emboldenOffset, 0.0F}, color, flash);
@@ -253,8 +281,14 @@ void TextPainter::paintGlyphs(const text::Layout& layout) {
         const text::Layout::Look& look = layout.looks[glyph.look];
         const GpuInstance::TextParameters parameters{.weight = look.font->toDistance(look.weight, look.size), .width = look.font->toDistance(glyph.size.x, look.size), .skew = look.skew};
         const graphics::Texture& page = look.font->getPage(glyph.page);
+        const GpuInstance placed = GpuInstance::makeGlyph(*page.getResource(), placeGlyph(glyph, {}, glyph.color, math::Color::transparent()), parameters);
+        if (look.gradient && look.font->isDistanceField()) {
+            addGradientGlyph(page, placed, makeGradient(layout, glyph, *look.gradient));
+            continue;
+        }
+
         const Program program = look.font->isDistanceField() ? Program::Text : Program::Sprite;
-        add(program, page, GpuInstance::makeGlyph(*page.getResource(), placeGlyph(glyph, {}, glyph.color, math::Color::transparent()), parameters));
+        add(program, page, placed);
         if (look.emboldenOffset > 0.0F) {
             add(program, page, GpuInstance::makeGlyph(*page.getResource(), placeGlyph(glyph, {look.emboldenOffset, 0.0F}, glyph.color, math::Color::transparent()), parameters));
         }

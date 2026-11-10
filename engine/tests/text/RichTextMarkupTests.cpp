@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "haylen/text/Gradient.hpp"
 #include "haylen/text/RichText.hpp"
 #include "haylen/text/RichTextDocument.hpp"
 #include "haylen/text/Style.hpp"
@@ -230,6 +231,29 @@ TEST_F(RichTextMarkupTest, GivesTablesTheIndentOfTheirBlock) {
     const auto table = std::ranges::find(document.paragraphs, RichTextDocument::Paragraph::Kind::Table, &RichTextDocument::Paragraph::kind);
     ASSERT_NE(table, document.paragraphs.end());
     EXPECT_FLOAT_EQ(table->indent, 2.0F);
+}
+
+// A gradient tag spreads its colors evenly unless it names their offsets, and runs from the top down unless it names an angle.
+TEST_F(RichTextMarkupTest, ReadsGradientsWithTheirOffsetsAndAngle) {
+    const RichTextDocument even = RichText::parse("[gradient=gold,#FF8000,red]x[/gradient]");
+    ASSERT_TRUE(even.styles.back().gradient);
+    const Gradient& spread = *even.styles.back().gradient;
+    ASSERT_EQ(spread.getStops().size(), 3U);
+    EXPECT_FLOAT_EQ(spread.getStops()[1].offset, 0.5F);
+    EXPECT_EQ(spread.getStops()[1].color.toRgba8(), math::Color::fromHex(0xFF8000FFU).toRgba8());
+    EXPECT_FLOAT_EQ(spread.getAngle(), Gradient::kDown);
+
+    const RichTextDocument placed = RichText::parse("[gradient=white,black offsets=0.25,0.75 angle=0]x[/gradient]");
+    const Gradient& sideways = *placed.styles.back().gradient;
+    EXPECT_FLOAT_EQ(sideways.getStops()[0].offset, 0.25F);
+    EXPECT_FLOAT_EQ(sideways.getStops()[1].offset, 0.75F);
+    EXPECT_FLOAT_EQ(sideways.getAngle(), 0.0F);
+
+    EXPECT_EQ(errorOf("[gradient=red,red,red,red,red]x[/gradient]"), "Rich text markup at line 1, column 1: A \"[gradient]\" holds at most 4 colors.");
+    EXPECT_EQ(errorOf("[gradient=red,blue offsets=0]x[/gradient]"), "Rich text markup at line 1, column 1: The \"offsets\" of \"[gradient]\" give one offset for each color.");
+    EXPECT_EQ(errorOf("[gradient=red,blue offsets=0.8,0.2]x[/gradient]"), "Rich text markup at line 1, column 1: The \"offsets\" of \"[gradient]\" go from 0 to 1 in increasing order.");
+    EXPECT_EQ(errorOf("[gradient=red,teal-ish]x[/gradient]"), "Rich text markup at line 1, column 1: The value \"teal-ish\" is not a color. Use a name such as \"red\" or \"#RRGGBB\" or \"#AARRGGBB\".");
+    EXPECT_EQ(errorOf("[gradient=red spin=1]x[/gradient]"), "Rich text markup at line 1, column 1: The tag \"[gradient]\" has no attribute named \"spin\".");
 }
 
 } // namespace haylen::text

@@ -67,6 +67,29 @@ scene.push({
 })
 ```
 
+## Gradient text
+
+A gradient fills the glyphs of a text with colors that blend from stop to stop, the way a golden title or a fiery damage number looks. The style key `gradient` of plain text, the tag `[gradient]` of rich text and the property `gradient` of a [label](../lua-api/ui.md#uilabelproperties) take it. It runs across each line of the text, from the top of the line to its bottom unless it names another angle, so every line of a title shows the whole gradient. A gradient at an angle reaches its first and last colors at the two corners of the box of the line that lie furthest along its direction, like the [gradients of images](../lua-api/graphics.md#gradients).
+
+The text program blends the colors in the shader, so the edge of every glyph stays as sharp as plain text, and the gradient turns and stretches with the text. A gradient holds 1 to 4 color stops, which the record after each glyph in the instance stream carries. The colors blend premultiplied by their alpha and multiply the color of the text, so the alpha of the text still fades a gradient. Outlines, shadows and glows keep their own colors and draw under the gradient. Bitmap fonts and color glyphs keep their colors, since only the distance field gives the text program a glyph to fill, and a draw with a gradient takes no material.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local gold = {stops = {{0, '#FFFFF4C2'}, {0.45, '#FFF6C26B'}, {0.55, '#FFC8861E'}, {1, '#FF7A4A10'}}}
+local frost = graphics2d.newRichText('A [gradient=#FF7FE3FF,#FF2E5BFF]Frost[/gradient] bolt', {size = 48})
+
+scene.push({
+    renderUi = function(self)
+        graphics2d.beginScreen()
+        graphics2d.drawText(nil, 'Treasure', 960, 300, {size = 120, anchor = {0.5, 0.5}, gradient = gold, outlineWidth = 6, outlineColor = '#FF2A1600'})
+        graphics2d.drawText(nil, '-128', 960, 500, {size = 72, anchor = {0.5, 0.5}, rotation = 0.2, gradient = {colors = {'#FFFFE066', '#FFFF3B30'}, angle = 0}})
+        frost:draw(760, 640)
+    end,
+})
+```
+
 ## Sharp small text
 
 Small text looks sharpest when its glyphs start on whole pixels, since a baseline between two pixel rows spreads every horizontal stroke over both. The style option `pixelSnap` moves every line of plain text so its left edge lands on a pixel column of the destination. This keeps centered and right-aligned lines as crisp as the others. It also puts the baseline on a pixel row. It works in whatever units the canvas uses and at any zoom, so text that moves steps from pixel to pixel instead of shimmering. Text that turns, or that draws in a canvas whose view turns, keeps its exact place, because no pixel row runs along its baselines.
@@ -391,6 +414,7 @@ Rich text is text with tags in square brackets:
 | `[outline=3 color=c]` | An outline 3 pixels wide, black by default. |
 | `[shadow=2,3 color=c blur=2]` | A shadow at an offset, 2,2 and half transparent black by default, softened by the blur. |
 | `[glow=6 color=c]` | A glow that fades out 6 pixels past the text, white by default. |
+| `[gradient=c1,c2 offsets=0,1 angle=1.57]` | Fills the glyphs with 1 to 4 colors that blend across each line, spread evenly unless `offsets` gives one offset from 0 to 1 for each color in increasing order, and from the top down unless `angle` names a direction in radians, as [gradient text](#gradient-text) explains. |
 | `[alpha=0.5]` | Multiplies the opacity of the text, images and icons inside. |
 | `[url=payload]`, `[url]text[/url]` | A link, underlined unless the host turns that off, whose payload hit tests and the UI report. Without a payload the text is the payload. |
 | `[hint=text]` | A hint that the UI shows as a tooltip and `text:hintAt` reports. |
@@ -578,6 +602,7 @@ The text types live in `haylen::text` under `engine/include/haylen/text/`:
 - The class `text::Font` is the interface of both kinds of font, with `text::TrueTypeFont` and `text::BitmapFont` behind it. The methods `BitmapFont::parse` and `BitmapFont::describeGrid` read BMFont files and grids.
 - The method `Font::shape` shapes one run into `Font::ShapedGlyph` values. The methods `Font::layout` and `FontFamily::layout` lay plain text out into a cached `text::Layout` of glyphs, characters and lines.
 - The class `text::FontFamily` selects faces and resolves fallbacks.
+- The class `text::Gradient` holds the 1 to 4 color stops and the angle of the `gradient` of a `text::Style`, of a run of rich text and of a `text::Layout::Look`.
 - The types `text::Direction` and `text::Alignment` set the direction and alignment of a `text::Style`. The style also owns their names, `Style::alignmentFromName`, `Style::directionName` and the tables behind them, for Lua, markup and GUIs.
 - The method `text::RichText::parse` reads markup into a `text::RichTextDocument` of paragraphs, runs, objects, links, hints and effects. A `text::RichText` made from markup, `text::RichTextOptions` and the `text::RichTextRegistry` of effects and icons lays it out into a `text::Layout` and animates it.
 - The method `graphics2d::Renderer::drawText` draws plain text with a font or a family, and `graphics2d::Renderer::drawRichText` draws the frame of this moment.

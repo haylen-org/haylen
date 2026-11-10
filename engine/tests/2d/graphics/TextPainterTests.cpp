@@ -1,8 +1,11 @@
 #include <gtest/gtest.h>
 
+#include <array>
+#include <bit>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <fstream>
 #include <iterator>
 #include <memory>
@@ -18,6 +21,7 @@
 #include "haylen/plugins/TextPlugin.hpp"
 #include "haylen/text/BitmapFont.hpp"
 #include "haylen/text/FontFamily.hpp"
+#include "haylen/text/Gradient.hpp"
 #include "haylen/text/RichText.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
 #include "support/EngineFixture.hpp"
@@ -52,6 +56,19 @@ class TextPainterTest : public ::testing::Test {
 
     [[nodiscard]] TextPainter makePainter() {
         return {fixture.engine().getGraphics().getWhiteTexture(), atlas};
+    }
+
+    // Reads a field of the record of a gradient at the offset the vertex layout of the gradient text program gives it.
+    template <typename T> [[nodiscard]] static T at(const GpuInstance& record, std::size_t offset) {
+        const auto bytes = std::bit_cast<std::array<std::uint8_t, sizeof(GpuInstance)>>(record);
+        T value{};
+        std::memcpy(&value, bytes.data() + offset, sizeof(T));
+        return value;
+    }
+
+    // The position along the gradient of a record at a point of the canvas, as the vertex stage takes it.
+    [[nodiscard]] static float positionAlong(const GpuInstance& record, math::Vec2 point) {
+        return point.x * at<float>(record, 0) + point.y * at<float>(record, 4) + at<float>(record, 8);
     }
 
     // Decodes a parameter byte the way the shaders read a signed one.
@@ -316,6 +333,83 @@ TEST_F(TextPainterTest, SnapsSmallTextToWholePixels) {
     free.paintText(*layout, {10.3F, 20.6F}, turned, {});
     EXPECT_FLOAT_EQ(rotated.getBatches()[0].instances[0].position[0], free.getBatches()[0].instances[0].position[0]);
     EXPECT_FLOAT_EQ(rotated.getBatches()[0].instances[0].position[1], free.getBatches()[0].instances[0].position[1]);
+}
+
+// A glyph with a gradient draws through the gradient text program with the record of its gradient after it, which runs from the top of its line to the bottom, so every line shows the whole gradient.
+TEST_F(TextPainterTest, FillsGlyphsWithTheGradientOfTheirLine) {
+    text::Font& font = *fixture.engine().getDefaultFont();
+    const std::array<math::Color, 2> colors{math::Color::fromHex(0xFF0000FFU), math::Color::fromHex(0x0000FFFFU)};
+    const text::Style style{.size = 32.0F, .color = math::Color{1.0F, 1.0F, 1.0F, 0.5F}, .gradient = text::Gradient::fromColors(colors)};
+    const std::shared_ptr<const text::Layout> layout = font.layout("Ab\nCd", style);
+    TextPainter painter = makePainter();
+    painter.paintText(*layout, {100.0F, 50.0F}, style, {});
+    ASSERT_EQ(painter.getBatches().size(), 1U);
+    EXPECT_EQ(painter.getBatches()[0].program, Program::GradientText);
+    const std::vector<GpuInstance>& instances = painter.getBatches()[0].instances;
+    ASSERT_EQ(instances.size(), layout->glyphs.size() * 2);
+
+    for (std::size_t index = 0; index < layout->glyphs.size(); ++index) {
+        const GpuInstance& glyph = instances[index * 2];
+        const GpuInstance& record = instances[index * 2 + 1];
+        const text::Layout::Line& line = layout->lines[index < 2 ? 0 : 1];
+        EXPECT_EQ(glyph.color, style.color.toRgba8());
+        EXPECT_NEAR(positionAlong(record, {100.0F + line.box.x, 50.0F + line.box.y}), 0.0F, 0.0001F);
+        EXPECT_NEAR(positionAlong(record, {100.0F + line.box.getRight(), 50.0F + line.box.getBottom()}), 1.0F, 0.0001F);
+        EXPECT_EQ(at<std::uint32_t>(record, 12), colors[0].toRgba8());
+        EXPECT_EQ(at<std::uint32_t>(record, 16), colors[1].toRgba8());
+        EXPECT_EQ(at<std::uint32_t>(record, 24), colors[1].toRgba8());
+        EXPECT_EQ(at<std::uint16_t>(record, 28), 0U);
+        EXPECT_EQ(at<std::uint16_t>(record, 30), 65535U);
+        EXPECT_EQ(at<std::uint16_t>(record, 34), 65535U);
+    }
+}
+
+// The position along a gradient follows the text as it turns and stretches, so the gradient keeps its place in the letters.
+TEST_F(TextPainterTest, TurnsAndStretchesTheGradientWithTheText) {
+    text::Font& font = *fixture.engine().getDefaultFont();
+    const std::array<math::Color, 2> colors{math::Color::white(), math::Color::black()};
+    const text::Style style{.size = 32.0F, .gradient = text::Gradient::fromColors(colors, 0.0F), .anchor = {0.5F, 0.5F}, .rotation = 0.7F, .scale = {2.0F, 0.5F}};
+    const std::shared_ptr<const text::Layout> layout = font.layout("Wide", style);
+    TextPainter painter = makePainter();
+    painter.paintText(*layout, {300.0F, 200.0F}, style, {});
+    const GpuInstance& record = painter.getBatches()[0].instances[1];
+
+    // clang-format off
+    const auto place = [&](math::Vec2 local) {
+        const math::Vec2 scaled = (local - layout->size * style.anchor) * style.scale;
+        return math::Vec2{300.0F + scaled.x * std::cos(0.7F) - scaled.y * std::sin(0.7F), 200.0F + scaled.x * std::sin(0.7F) + scaled.y * std::cos(0.7F)};
+    };
+    // clang-format on
+    const math::Rect& box = layout->lines[0].box;
+    EXPECT_NEAR(positionAlong(record, place({box.x, box.y})), 0.0F, 0.0001F);
+    EXPECT_NEAR(positionAlong(record, place({box.x, box.getBottom()})), 0.0F, 0.0001F);
+    EXPECT_NEAR(positionAlong(record, place(box.getCenter())), 0.5F, 0.0001F);
+    EXPECT_NEAR(positionAlong(record, place({box.getRight(), box.y})), 1.0F, 0.0001F);
+}
+
+// Rich text fills the glyphs of a gradient tag with it, over their outlines and beside plain glyphs, while bitmap glyphs keep their color.
+TEST_F(TextPainterTest, FillsTheGlyphsOfAGradientTag) {
+    text::RichText tagged = make("[outline=2][gradient=#FF0000,#0000FF offsets=0.2,0.6]G[/gradient][/outline]x", {.size = 32.0F});
+    const std::vector<TextPainter::Batch> batches = paint(tagged);
+    ASSERT_EQ(batches.size(), 3U);
+    EXPECT_EQ(batches[0].program, Program::Text);
+    EXPECT_EQ(batches[0].instances.size(), 1U);
+    EXPECT_EQ(batches[1].program, Program::GradientText);
+    ASSERT_EQ(batches[1].instances.size(), 2U);
+    EXPECT_EQ(at<std::uint16_t>(batches[1].instances[1], 28), static_cast<std::uint16_t>(0.2F * 65535.0F + 0.5F));
+    EXPECT_EQ(at<std::uint16_t>(batches[1].instances[1], 30), static_cast<std::uint16_t>(0.6F * 65535.0F + 0.5F));
+    EXPECT_EQ(batches[2].program, Program::Text);
+    EXPECT_EQ(batches[2].instances.size(), 1U);
+
+    const graphics::Texture page = fixture.engine().getGraphics().createTexture(graphics::Image(16, 8, math::Color::white()));
+    const std::shared_ptr<text::Font> grid = std::make_shared<text::BitmapFont>(text::BitmapFont::describeGrid({.characters = "AB", .cellWidth = 8.0F, .cellHeight = 8.0F}, page.getSize()), std::vector<graphics::Texture>{page});
+    const std::array<math::Color, 2> colors{math::Color::white(), math::Color::black()};
+    const text::Style style{.size = 16.0F, .gradient = text::Gradient::fromColors(colors)};
+    TextPainter pixel = makePainter();
+    pixel.paintText(*grid->layout("AB", style), {}, style, {});
+    ASSERT_EQ(pixel.getBatches().size(), 1U);
+    EXPECT_EQ(pixel.getBatches()[0].program, Program::Sprite);
+    EXPECT_EQ(pixel.getBatches()[0].instances.size(), 2U);
 }
 
 } // namespace haylen::graphics2d

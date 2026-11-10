@@ -2,10 +2,12 @@
 
 #include <algorithm>
 #include <cmath>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <tuple>
 #include <utility>
+#include <vector>
 
 #include <fast_float/fast_float.h>
 
@@ -143,6 +145,50 @@ math::Vec2 MarkupParser::pair(const Tag& tag, std::string_view text) const {
         fail(tag.offset, "The value \"" + std::string(text) + "\" is not a pair of numbers like \"2,3\" for \"[" + tag.name + "]\".");
     }
     return {number(tag, text.substr(0, comma), "x"), number(tag, text.substr(comma + 1), "y")};
+}
+
+// Reads the colors of `[gradient=#FFFFE9A0,#FFC8861E]`, spread evenly unless `offsets` gives one offset for each color, and the angle in radians, from the top down by default.
+Gradient MarkupParser::gradient(const Tag& tag) const {
+    const std::vector<std::string_view> colors = splitList(requireValue(tag));
+    if (colors.size() > Gradient::kMaxStops) {
+        fail(tag.offset, "A \"[gradient]\" holds at most 4 colors.");
+    }
+    std::array<Gradient::Stop, Gradient::kMaxStops> stops{};
+    for (std::size_t index = 0; index < colors.size(); ++index) {
+        stops[index].color = color(tag, colors[index]);
+        stops[index].offset = colors.size() > 1 ? static_cast<float>(index) / static_cast<float>(colors.size() - 1) : 0.0F;
+    }
+
+    if (tag.attributes.contains("offsets")) {
+        const std::vector<std::string_view> offsets = splitList(tag.attributes.at("offsets"));
+        if (offsets.size() != colors.size()) {
+            fail(tag.offset, "The \"offsets\" of \"[gradient]\" give one offset for each color.");
+        }
+        for (std::size_t index = 0; index < offsets.size(); ++index) {
+            stops[index].offset = number(tag, offsets[index], "offsets");
+        }
+    }
+
+    const std::span<const Gradient::Stop> used(stops.data(), colors.size());
+    const bool inRange = std::ranges::all_of(used, [](const Gradient::Stop& stop) { return stop.offset >= 0.0F && stop.offset <= 1.0F; });
+    if (!inRange || !std::ranges::is_sorted(used, {}, &Gradient::Stop::offset)) {
+        fail(tag.offset, "The \"offsets\" of \"[gradient]\" go from 0 to 1 in increasing order.");
+    }
+    const float angle = tag.attributes.contains("angle") ? number(tag, tag.attributes.at("angle"), "angle") : Gradient::kDown;
+    return Gradient(used, angle);
+}
+
+std::vector<std::string_view> MarkupParser::splitList(std::string_view text) {
+    std::vector<std::string_view> parts;
+    std::size_t start = 0;
+    while (true) {
+        const std::size_t comma = text.find(',', start);
+        parts.push_back(text.substr(start, comma == std::string_view::npos ? std::string_view::npos : comma - start));
+        if (comma == std::string_view::npos) {
+            return parts;
+        }
+        start = comma + 1;
+    }
 }
 
 float MarkupParser::size(const Tag& tag, std::string_view text) const {
@@ -390,6 +436,9 @@ void MarkupParser::openInline(const Tag& tag) {
     } else if (name == "glow") {
         checkAttributes(tag, {"color"});
         style.glow = RichTextDocument::Glow{.width = tag.value ? number(tag, *tag.value, "width") : 4.0F, .color = tag.attributes.contains("color") ? color(tag, tag.attributes.at("color")) : math::Color::white()};
+    } else if (name == "gradient") {
+        checkAttributes(tag, {"angle", "offsets"});
+        style.gradient = gradient(tag);
     } else if (name == "alpha") {
         checkAttributes(tag, {});
         const float alpha = number(tag, requireValue(tag), "alpha");

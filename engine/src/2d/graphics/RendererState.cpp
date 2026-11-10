@@ -35,6 +35,7 @@ const std::array<RendererState::ProgramSource, RendererState::kProgramCount> Ren
     {.package = 9, .program = "shape", .lit = "shape_lit"},
     {.package = 0, .program = "batch", .lit = "batch_lit"},
     {.package = 10, .program = "backdrop", .lit = ""},
+    {.package = 1, .program = "text_gradient", .lit = "text_gradient_lit"},
 }};
 
 // The vertex layouts below read these records at fixed offsets.
@@ -98,6 +99,24 @@ const std::array<RendererState::Input, 15> RendererState::kEffectInputs{{
     {.name = "effect_amounts", .buffer = 2, .offset = 12, .format = gpu::Device::VertexFormat::UByte4Normalized},
     {.name = "effect_reach", .buffer = 2, .offset = 16, .format = gpu::Device::VertexFormat::Float2},
     {.name = "effect_widths", .buffer = 2, .offset = 24, .format = gpu::Device::VertexFormat::Float2},
+}};
+
+const std::array<RendererState::Input, 15> RendererState::kGradientTextInputs{{
+    {.name = "corner", .buffer = 0, .offset = 0, .format = gpu::Device::VertexFormat::Float2},
+    {.name = "instance_position", .buffer = 1, .offset = 0, .format = gpu::Device::VertexFormat::Float2},
+    {.name = "instance_size", .buffer = 1, .offset = 8, .format = gpu::Device::VertexFormat::Float2},
+    {.name = "instance_uv", .buffer = 1, .offset = 16, .format = gpu::Device::VertexFormat::UShort4Normalized},
+    {.name = "instance_color", .buffer = 1, .offset = 24, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "instance_flash", .buffer = 1, .offset = 28, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "instance_rotation", .buffer = 1, .offset = 32, .format = gpu::Device::VertexFormat::Float},
+    {.name = "instance_parameters", .buffer = 1, .offset = 36, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "instance_pivot", .buffer = 1, .offset = 40, .format = gpu::Device::VertexFormat::Float2},
+    {.name = "gradient_line", .buffer = 2, .offset = 0, .format = gpu::Device::VertexFormat::Float3},
+    {.name = "gradient_color_0", .buffer = 2, .offset = 12, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "gradient_color_1", .buffer = 2, .offset = 16, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "gradient_color_2", .buffer = 2, .offset = 20, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "gradient_color_3", .buffer = 2, .offset = 24, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "gradient_offsets", .buffer = 2, .offset = 28, .format = gpu::Device::VertexFormat::UShort4Normalized},
 }};
 
 const std::array<RendererState::Input, 9> RendererState::kShapeInputs{{
@@ -482,6 +501,9 @@ DrawItem& RendererState::addItem(Program program, const DrawOrder& order, graphi
     if (order.material.isValid() && program == Program::Effect) {
         throw std::invalid_argument("A sprite with an effect does not take a material.");
     }
+    if (order.material.isValid() && program == Program::GradientText) {
+        throw std::invalid_argument("A text with a gradient does not take a material.");
+    }
     if (program == Program::Batch && textures.size() > 1 && order.normalMap.isValid()) {
         throw std::invalid_argument("A sprite batch with several textures draws without a normal map.");
     }
@@ -535,7 +557,7 @@ void RendererState::addInstances(Program program, const DrawOrder& order, const 
         scaleCoverage(std::span(instances).subspan(item.first), program, order.distortion);
     }
     if (program != Program::Shape) {
-        stats.sprites += program == Program::Recolor || program == Program::Effect ? data.size() / 2 : data.size();
+        stats.sprites += program == Program::Recolor || program == Program::Effect || program == Program::GradientText ? data.size() / 2 : data.size();
     }
 }
 
@@ -651,7 +673,7 @@ gpu::Device::Blend RendererState::lightBlend(std::uint8_t blend) noexcept {
     return {};
 }
 
-// A recolored sprite, a sprite with an effect and a sprite of a batch take two records of the instance stream, the sprite and then its part colors, its effect or its data, which two buffers read at the same instance.
+// A recolored sprite, a sprite with an effect, a sprite of a batch and a glyph with a gradient take two records of the instance stream, the sprite or glyph and then its part colors, its effect, its data or its gradient, which two buffers read at the same instance.
 RendererState::Layout RendererState::describeLayout(Program program) {
     constexpr int kCorner = 8;
     constexpr int kInstance = static_cast<int>(sizeof(GpuInstance));
@@ -685,11 +707,12 @@ RendererState::Layout RendererState::describeLayout(Program program) {
     case Program::Recolor:
     case Program::Effect:
     case Program::Batch:
+    case Program::GradientText:
         layout.buffers[0] = {.stride = kCorner};
         layout.buffers[1] = {.stride = kPaired, .perInstance = true};
         layout.buffers[2] = {.stride = kPaired, .perInstance = true};
         layout.bufferCount = 3;
-        layout.inputs = program == Program::Recolor ? std::span<const Input>(kRecolorInputs) : (program == Program::Effect ? std::span<const Input>(kEffectInputs) : std::span<const Input>(kBatchInputs));
+        layout.inputs = getPairedInputs(program);
         return layout;
     case Program::Shape:
     case Program::Sprite:
@@ -701,6 +724,19 @@ RendererState::Layout RendererState::describeLayout(Program program) {
     layout.bufferCount = 2;
     layout.inputs = program == Program::Shape ? std::span<const Input>(kShapeInputs) : std::span<const Input>(kSpriteInputs);
     return layout;
+}
+
+std::span<const RendererState::Input> RendererState::getPairedInputs(Program program) noexcept {
+    if (program == Program::Recolor) {
+        return kRecolorInputs;
+    }
+    if (program == Program::Effect) {
+        return kEffectInputs;
+    }
+    if (program == Program::GradientText) {
+        return kGradientTextInputs;
+    }
+    return kBatchInputs;
 }
 
 RendererState::Targets RendererState::describeTargets(std::uint8_t blend, graphics::PassTarget target) const {
@@ -813,6 +849,7 @@ const char* RendererState::materialProgramName(Program program, graphics::PassTa
     case Program::Recolor:
     case Program::Filter:
     case Program::Effect:
+    case Program::GradientText:
         break;
     }
     throw std::logic_error("Materials only replace the sprite, batch, text, mesh and shape programs.");

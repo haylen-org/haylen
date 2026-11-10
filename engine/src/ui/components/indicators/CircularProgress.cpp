@@ -46,7 +46,7 @@ void CircularProgress::render(Context& context, const math::Rect& bounds) {
     if (variant == Variant::Ring) {
         Typography::drawAligned(context, font, label, context.getColor(Theme::Color::Text), shown, Alignment::Center);
     } else {
-        Typography::drawParagraph(context, font, label, context.getColor(Theme::Color::Text), shown, Alignment::Center, context.getColor(Theme::Color::Window), 2.0F);
+        Typography::drawParagraph(context, font, label, context.getColor(Theme::Color::Text), shown, Alignment::Center, {.outline = context.getColor(Theme::Color::Window)});
     }
 }
 

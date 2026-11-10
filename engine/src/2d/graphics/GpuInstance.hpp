@@ -11,6 +11,7 @@
 #include "haylen/2d/graphics/SpriteFlip.hpp"
 #include "haylen/2d/graphics/SpriteInstance.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/text/Gradient.hpp"
 
 namespace haylen::graphics {
 struct TextureResource;
@@ -49,6 +50,9 @@ struct GpuInstance {
     // Packs the data of a sprite of a batch into the record that follows its own, which the batch program reads at the same instance.
     [[nodiscard]] static GpuInstance makeData(const SpriteData& data) noexcept;
 
+    // Packs the gradient of a glyph into the record that follows its own, which the gradient text program reads at the same instance. The position along the gradient at a point of the canvas is the dot product of the point with the axis plus the base, 0 where the first stop holds and 1 where the last one does.
+    [[nodiscard]] static GpuInstance makeGradient(const text::Gradient& gradient, math::Vec2 axis, float base) noexcept;
+
     // Packs the effect of a sprite into the record that follows its own, which the effect program reads at the same instance. The reach grows the quad of the sprite by the outline and the glow, as a share of its source of `sourceSize` pixels.
     [[nodiscard]] static GpuInstance makeEffect(const SpriteEffect& effect, math::Vec2 sourceSize) noexcept;
 
@@ -80,6 +84,14 @@ struct GpuInstance {
         float values[4];
         float texture;
         std::uint8_t unused[28];
+    };
+
+    // The axis and the base of the position along a text gradient, its colors and their offsets. A gradient with fewer stops repeats its last one, which changes nothing past it.
+    struct GradientRecord {
+        float line[3];
+        std::uint32_t colors[4];
+        std::uint16_t offsets[4];
+        std::uint8_t unused[12];
     };
 
     // The colors of the red, green, blue and yellow parts in the first bytes of a record.

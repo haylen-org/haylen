@@ -612,6 +612,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/text/Effect.cpp
   src/text/Font.cpp
   src/text/FontFamily.cpp
+  src/text/Gradient.cpp
   src/text/LayoutBuilder.cpp
   src/text/LayoutCache.cpp
   src/text/MarkupParser.cpp
@@ -783,10 +784,10 @@ if(APPLE)
   target_link_libraries(haylen-engine PRIVATE "-framework Foundation")
 endif()
 
-# Programs that draw into lit canvases also compile with HAYLEN_LIT, which writes the images the light pass reads, and the sprite program compiles once more with HAYLEN_BATCH for the sprite batches with several textures or sprite data.
+# Programs that draw into lit canvases also compile with HAYLEN_LIT, which writes the images the light pass reads, the sprite program compiles once more with HAYLEN_BATCH for the sprite batches with several textures or sprite data, and the text program with HAYLEN_TEXT_GRADIENT for text filled with a gradient.
 set(shader_dir "${CMAKE_CURRENT_LIST_DIR}/shaders")
 haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/sprite.glsl" SYMBOL getSpriteShader VARIANTS "sprite=" "sprite_lit=HAYLEN_LIT" "batch=HAYLEN_BATCH" "batch_lit=HAYLEN_BATCH,HAYLEN_LIT")
-haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/text.glsl" SYMBOL getTextShader VARIANTS "text=HAYLEN_TEXT" "text_lit=HAYLEN_TEXT,HAYLEN_LIT")
+haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/text.glsl" SYMBOL getTextShader VARIANTS "text=HAYLEN_TEXT" "text_lit=HAYLEN_TEXT,HAYLEN_LIT" "text_gradient=HAYLEN_TEXT,HAYLEN_TEXT_GRADIENT" "text_gradient_lit=HAYLEN_TEXT,HAYLEN_TEXT_GRADIENT,HAYLEN_LIT")
 haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/mesh.glsl" SYMBOL getMeshShader VARIANTS "mesh=HAYLEN_MESH" "mesh_lit=HAYLEN_MESH,HAYLEN_LIT")
 haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/shape.glsl" SYMBOL getShapeShader VARIANTS "shape=HAYLEN_SHAPE" "shape_lit=HAYLEN_SHAPE,HAYLEN_LIT")
 haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/blend.glsl" SYMBOL getBlendShader VARIANTS "blend=" "blend_lit=HAYLEN_LIT")

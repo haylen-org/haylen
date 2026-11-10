@@ -140,6 +140,7 @@ std::size_t LayoutBuilder::getLook(std::size_t style, const FontFamily::Selectio
         glow.width *= options.scale;
         look.glow = glow;
     }
+    look.gradient = described.gradient;
 
     layout.looks.push_back(look);
     looks.emplace(key, layout.looks.size() - 1);

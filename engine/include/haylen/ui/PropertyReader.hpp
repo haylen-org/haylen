@@ -13,6 +13,7 @@
 #include "haylen/core/Json.hpp"
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Insets.hpp"
+#include "haylen/text/Gradient.hpp"
 #include "haylen/ui/TextValue.hpp"
 #include "haylen/ui/Theme.hpp"
 
@@ -38,6 +39,9 @@ class PropertyReader final {
     void read(std::string_view key, TextValue& out);
     void read(std::string_view key, math::Insets& out);
     void read(std::string_view key, std::optional<Theme::Color>& out);
+
+    // Reads a text gradient as `{colors = {...}}` or `{stops = {{offset, color}, ...}}` with an optional `angle`.
+    void read(std::string_view key, std::optional<text::Gradient>& out);
 
     // Reads a string that must be one of the names, storing the matching value.
     template <typename T> void readChoice(std::string_view key, T& out, std::span<const std::pair<std::string_view, T>> choices) {

@@ -1011,7 +1011,8 @@ void Renderer::visitDrawn(const DrawnVisitor& visitor) const {
     for (std::size_t index = canvas.itemBegin; index < end; ++index) {
         const DrawItem item = state->items[index];
         const bool sprite = item.program == Program::Sprite || item.program == Program::Recolor || item.program == Program::Effect || item.program == Program::Batch;
-        if ((!sprite && item.program != Program::Text) || item.distortion || item.texture == state->white.getResource().get()) {
+        const bool text = item.program == Program::Text || item.program == Program::GradientText;
+        if ((!sprite && !text) || item.distortion || item.texture == state->white.getResource().get()) {
             continue;
         }
         if (item.batch != nullptr) {
@@ -1021,9 +1022,10 @@ void Renderer::visitDrawn(const DrawnVisitor& visitor) const {
         }
 
         const std::size_t stride = item.program == Program::Recolor || item.program == Program::Effect || item.program == Program::Batch ? 2 : 1;
-        if (item.program == Program::Text) {
+        if (text) {
+            const std::size_t step = item.program == Program::GradientText ? 2 : 1;
             math::Rect block = math::Rect::fromCenter(math::Vec2{state->instances[item.first].position[0], state->instances[item.first].position[1]}, {});
-            for (std::size_t quad = item.first; quad < item.first + item.count; ++quad) {
+            for (std::size_t quad = item.first; quad < item.first + item.count; quad += step) {
                 block = block.merged(math::Geometry::bounds(state->instances[quad].getCorners()));
             }
             visitor({.corners = {block.getMin(), math::Vec2{block.getRight(), block.y}, block.getMax(), math::Vec2{block.x, block.getBottom()}}, .text = true});

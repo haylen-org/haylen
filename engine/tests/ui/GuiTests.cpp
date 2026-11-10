@@ -146,7 +146,9 @@ TEST_F(GuiTest, ReadsPropertyValuesStrictly) {
         {"kind": "label", "id": "count", "text": 42, "width": "auto", "minWidth": 10, "align": "center", "tooltip": {"key": "hint", "args": {"n": 1}}},
         {"kind": "column", "id": "padded", "padding": [4, 8], "gap": 2, "justify": "spaceBetween"},
         {"kind": "divider", "id": "line", "color": "borderStrong"},
-        {"kind": "label", "id": "outlined", "outline": "#FF000000", "outlineWidth": 3}
+        {"kind": "label", "id": "outlined", "outline": "#FF000000", "outlineWidth": 3},
+        {"kind": "label", "id": "golden", "gradient": {"colors": ["#FFFFE9A0", "#FFC8861E"]}},
+        {"kind": "label", "id": "banded", "gradient": {"stops": [[0, "#FFFFFFFF"], [0.5, "#FF808080"]], "angle": 0}}
     ]})");
     EXPECT_EQ(sample.find("count")->getAlignment(), Alignment::Center);
     EXPECT_EQ(sample.find("count")->getCommon().tooltip.key, "hint");
@@ -160,6 +162,11 @@ TEST_F(GuiTest, ReadsPropertyValuesStrictly) {
     EXPECT_NE(invalid(R"({"kind": "label", "visible": "yes"})").find("The property \"visible\" of a \"label\" must be \"true\" or \"false\"."), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "label", "color": "purple"})").find("must name a theme color"), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "label", "outline": "dark"})").find("must be a color"), std::string::npos);
+    EXPECT_NE(invalid(R"({"kind": "label", "gradient": "#FFFFFFFF"})").find("The property \"gradient\" of a \"label\" must be a table with \"colors\" or \"stops\""), std::string::npos);
+    EXPECT_NE(invalid(R"({"kind": "label", "gradient": {"colors": ["#FFFFFFFF"], "kind": "radial"}})").find("has the unknown key \"kind\"."), std::string::npos);
+    EXPECT_NE(invalid(R"({"kind": "label", "gradient": {"colors": ["a", "b", "c", "d", "e"]}})").find("holds from 1 to 4 colors."), std::string::npos);
+    EXPECT_NE(invalid(R"({"kind": "label", "gradient": {"stops": [[0.9, "#FFFFFFFF"], [0.1, "#FF000000"]]}})").find("needs offsets from 0 to 1 in increasing order."), std::string::npos);
+    EXPECT_NE(invalid(R"({"kind": "label", "gradient": {"colors": ["#FFFFFFFF"], "angle": "up"}})").find("needs an angle in radians."), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "label", "text": ["a"]})").find("The property \"text\" of a \"label\" must be text"), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "label", "text": {"args": {}}})").find("needs a translation key"), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "column", "padding": [1, 2, 3]})").find("one, two or four non-negative numbers"), std::string::npos);

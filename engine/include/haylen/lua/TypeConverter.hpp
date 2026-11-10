@@ -65,6 +65,7 @@
 #include "haylen/platform/Window.hpp"
 #include "haylen/text/Direction.hpp"
 #include "haylen/text/Font.hpp"
+#include "haylen/text/Gradient.hpp"
 #include "haylen/text/Style.hpp"
 
 namespace haylen::lua {
@@ -74,13 +75,17 @@ class TypeConverter final {
   public:
     static constexpr std::array<std::string_view, 15> kDrawOrderFields{"layer", "depth", "sortOffset", "sortId", "visibility", "blend", "material", "partMask", "normalMap", "specular", "shininess", "emission", "lightMask", "unshaded", "distortion"};
     static constexpr std::array<std::string_view, 8> kSpriteEffectFields{"dissolve", "dissolveEdge", "dissolveSize", "dissolveColor", "outlineWidth", "outlineColor", "glowSize", "glowColor"};
-    static constexpr std::array<std::string_view, 26> kTextStyleFields{"size", "color", "outlineWidth", "outlineColor", "shadowOffset", "shadowColor", "shadowBlur", "align", "maxWidth", "maxHeight", "minScale", "wrap", "balance", "lineSpacing", "anchor", "rotation", "scale", "bold", "italic", "underline", "strike", "direction", "language", "pixelSnap", "ligatures", "code"};
+    static constexpr std::array<std::string_view, 27> kTextStyleFields{"size", "color", "outlineWidth", "outlineColor", "shadowOffset", "shadowColor", "shadowBlur", "gradient", "align", "maxWidth", "maxHeight", "minScale", "wrap", "balance", "lineSpacing", "anchor", "rotation", "scale", "bold", "italic", "underline", "strike", "direction", "language", "pixelSnap", "ligatures", "code"};
+    static constexpr std::array<std::string_view, 3> kTextGradientFields{"stops", "colors", "angle"};
     static constexpr std::array<std::string_view, 3> kTextureOptionFields{"filter", "wrap", "mipmaps"};
     static constexpr std::array<std::string_view, 14> kSpriteInstanceFields{"x", "y", "width", "height", "source", "pivotX", "pivotY", "rotation", "tilt", "color", "flash", "flipHorizontal", "flipVertical", "flipDiagonal"};
 
     // Option readers accept `nil` for the defaults and reject keys outside their own fields and the extra fields the caller reads from the same table.
     [[nodiscard]] static graphics2d::DrawOrder readDrawOrder(lua_State* L, int index, std::initializer_list<Table::FieldNames> extraFields = {});
     [[nodiscard]] static text::Style readTextStyle(lua_State* L, int index, std::initializer_list<Table::FieldNames> extraFields = {});
+
+    // Reads a text gradient from `{stops = {{offset, color}, ...}}` or `{colors = {...}}` with an optional `angle`, into the fixed room of its stops, so reading it for every draw allocates nothing.
+    [[nodiscard]] static text::Gradient readTextGradient(lua_State* L, int index);
     [[nodiscard]] static graphics::Texture::Options readTextureOptions(lua_State* L, int index, std::initializer_list<Table::FieldNames> extraFields = {});
 
     // Reads the bytes of a Lua string or of a live data view of Varn, which share their memory instead of copying it, valid while the value stays on the stack. Throws `std::invalid_argument` for any other value.
@@ -94,6 +99,8 @@ class TypeConverter final {
     template <typename T> friend struct EnumNames;
 
     template <typename T, std::size_t Size> using NameTable = std::array<std::pair<std::string_view, T>, Size>;
+
+    [[nodiscard]] static std::size_t readTextGradientStops(lua_State* L, std::string_view key, std::array<text::Gradient::Stop, text::Gradient::kMaxStops>& stops);
 
     static const NameTable<graphics2d::Renderer::SortMode, 3> kSortModes;
     static const NameTable<graphics2d::ImageBlend::Pattern, 6> kBlendPatterns;
