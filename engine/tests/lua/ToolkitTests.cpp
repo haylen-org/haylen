@@ -165,6 +165,7 @@ TEST(EnvironmentTest, ReportsErrorsWithTheirStack) {
 
     fixture.runLua("function explode() error('boom') end");
     lua_getglobal(L, "explode");
+
     try {
         Runtime::protectedCall(L, 0, 0);
         FAIL() << "The call should fail.";
@@ -174,6 +175,7 @@ TEST(EnvironmentTest, ReportsErrorsWithTheirStack) {
         EXPECT_EQ(error.getFrames()[1].getLocation(), "test:1");
         EXPECT_EQ(error.getFrames()[1].function, "function <test:1>");
     }
+
     EXPECT_EQ(lua_gettop(L), 0);
 
     EXPECT_THROW(Runtime::runChunk(L, "local = 1", "=broken"), Error);
@@ -524,8 +526,10 @@ TEST(ErrorTest, NamesTheTypeOfErrorValuesWithoutText) {
     test::EngineFixture fixture;
     lua_State* L = fixture.lua();
     fixture.runLua("function raiseTable() error({}) end function raiseBlank() error(setmetatable({}, {__tostring = function() return '' end})) end");
+
     for (const char* function : {"raiseTable", "raiseBlank"}) {
         lua_getglobal(L, function);
+
         try {
             Runtime::protectedCall(L, 0, 0);
             ADD_FAILURE() << "The call of \"" << function << "\" should fail.";
@@ -642,6 +646,7 @@ TEST(JsonConverterTest, ConvertsBetweenTablesAndJson) {
         EXPECT_THROW((void)JsonConverter::read(L, -1), std::invalid_argument) << invalid;
         lua_settop(L, 0);
     }
+
     JsonConverter::push(L, core::Json::binary({1, 2}));
     std::size_t length = 0;
     const char* text = lua_tolstring(L, -1, &length);
@@ -736,6 +741,7 @@ TEST(BindingTest, RefusesAModuleNameThatIsTaken) {
 
     Binding::preload(L, "app.fresh", open);
     EXPECT_EQ(fixture.lua("return require('app.fresh')"), "fresh");
+
     for (const char* taken : {"app.fresh", "haylen.graphics", "json"}) {
         try {
             Binding::preload(L, taken, open);
@@ -744,6 +750,7 @@ TEST(BindingTest, RefusesAModuleNameThatIsTaken) {
             EXPECT_EQ(std::string(error.what()), "The Lua module \"" + std::string(taken) + "\" cannot be added, because a module of Varn or of another plugin already has its name. Give the module another name.");
         }
     }
+
     EXPECT_EQ(fixture.lua("return type(require('json').encode)"), "function");
 }
 
@@ -791,10 +798,12 @@ TEST(ClassBuilderTest, RecordsTheNativePropertiesThatTweensAnimate) {
 
     // The userdata of a released object stays, and its properties no longer reach the object.
     static_cast<std::shared_ptr<Probe>*>(storage)->reset();
+
     for (const NativeProperty* property : {speed, depth, scale}) {
         EXPECT_FALSE(property->read(storage, values));
         EXPECT_FALSE(property->write(storage, values));
     }
+
     lua_pop(L, 1);
     EXPECT_NE(fixture.lua("return probeSpeed(probe)").find("This \"haylen.test.Probe\" was already released."), std::string::npos);
 
@@ -903,6 +912,7 @@ TEST(ConverterTest, NamesEveryValueOfTheEnumsOfTheEngine) {
                 return false;
             }
         }
+
         return true;
     };
     // clang-format on

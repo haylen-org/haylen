@@ -28,6 +28,7 @@ void Promise::resolve(core::Json value) const {
         reject(error.what());
         return;
     }
+
     promise->resolveCustom([value = std::move(value)](lua_State* L) { JsonConverter::push(L, value); });
 }
 

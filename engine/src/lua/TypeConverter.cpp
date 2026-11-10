@@ -44,9 +44,11 @@ float TypeConverter::numberComponent(lua_State* L, int table, const char* name, 
         lua_pop(L, 1);
         return *fallback;
     }
+
     if (lua_type(L, -1) != LUA_TNUMBER) {
         luaL_error(L, "Expected a number in field \"%s\".", name);
     }
+
     const auto value = Converter<float>::fromNumber(L, lua_tonumber(L, -1));
     lua_pop(L, 1);
     return value;
@@ -57,6 +59,7 @@ math::Vec2 TypeConverter::pointComponent(lua_State* L, int table, const char* na
     if (!Stack::is<math::Vec2>(L, -1)) {
         luaL_error(L, "Expected a point in field \"%s\".", name);
     }
+
     const math::Vec2 value = Stack::read<math::Vec2>(L, -1);
     lua_pop(L, 1);
     return value;
@@ -66,9 +69,11 @@ math::Vec2 Converter<math::Vec2>::read(lua_State* L, int index) {
     if (const math::Vec2* value = Userdata::test<math::Vec2>(L, index)) {
         return *value;
     }
+
     if (!lua_istable(L, index)) {
         luaL_typeerror(L, index, "Vec2 or table with x and y");
     }
+
     const int table = lua_absindex(L, index);
     return {TypeConverter::numberComponent(L, table, "x", 1), TypeConverter::numberComponent(L, table, "y", 2)};
 }
@@ -81,9 +86,11 @@ math::Rect Converter<math::Rect>::read(lua_State* L, int index) {
     if (const math::Rect* value = Userdata::test<math::Rect>(L, index)) {
         return *value;
     }
+
     if (!lua_istable(L, index)) {
         luaL_typeerror(L, index, "Rect or table with x, y, width and height");
     }
+
     const int table = lua_absindex(L, index);
     return {TypeConverter::numberComponent(L, table, "x", 1), TypeConverter::numberComponent(L, table, "y", 2), TypeConverter::numberComponent(L, table, "width", 3), TypeConverter::numberComponent(L, table, "height", 4)};
 }
@@ -96,16 +103,20 @@ math::Color Converter<math::Color>::read(lua_State* L, int index) {
     if (const math::Color* value = Userdata::test<math::Color>(L, index)) {
         return *value;
     }
+
     if (lua_type(L, index) == LUA_TSTRING) {
         const std::optional<math::Color> parsed = math::Color::parse(lua_tostring(L, index));
         if (!parsed) {
             luaL_argerror(L, index, "invalid color text, expected #RRGGBB or #AARRGGBB");
         }
+
         return *parsed;
     }
+
     if (!lua_istable(L, index)) {
         luaL_typeerror(L, index, "Color, color text or table with r, g and b");
     }
+
     const int table = lua_absindex(L, index);
     return {TypeConverter::numberComponent(L, table, "r", 1), TypeConverter::numberComponent(L, table, "g", 2), TypeConverter::numberComponent(L, table, "b", 3), TypeConverter::numberComponent(L, table, "a", 4, 1.0F)};
 }
@@ -118,6 +129,7 @@ math::Circle Converter<math::Circle>::read(lua_State* L, int index) {
     if (!lua_istable(L, index)) {
         luaL_typeerror(L, index, "table with center and radius");
     }
+
     const int table = lua_absindex(L, index);
     return {TypeConverter::pointComponent(L, table, "center", 1), TypeConverter::numberComponent(L, table, "radius", 2)};
 }
@@ -126,6 +138,7 @@ bool Converter<math::Circle>::is(lua_State* L, int index) {
     if (!lua_istable(L, index)) {
         return false;
     }
+
     const bool named = lua_getfield(L, index, "radius") != LUA_TNIL;
     lua_pop(L, 1);
     return named || lua_rawlen(L, index) == 2;
@@ -135,6 +148,7 @@ math::Segment Converter<math::Segment>::read(lua_State* L, int index) {
     if (!lua_istable(L, index)) {
         luaL_typeerror(L, index, "table with start and end");
     }
+
     const int table = lua_absindex(L, index);
     return {TypeConverter::pointComponent(L, table, "start", 1), TypeConverter::pointComponent(L, table, "end", 2)};
 }
@@ -155,9 +169,11 @@ math::Insets Converter<math::Insets>::read(lua_State* L, int index) {
     if (lua_type(L, index) == LUA_TNUMBER) {
         return math::Insets::uniform(Stack::read<float>(L, index));
     }
+
     if (!lua_istable(L, index)) {
         luaL_typeerror(L, index, "number or table with left, top, right and bottom");
     }
+
     const int table = lua_absindex(L, index);
     return {TypeConverter::numberComponent(L, table, "left", 1), TypeConverter::numberComponent(L, table, "top", 2), TypeConverter::numberComponent(L, table, "right", 3), TypeConverter::numberComponent(L, table, "bottom", 4)};
 }
@@ -204,6 +220,7 @@ void Converter<math::EasingCurve>::push(lua_State* L, const math::EasingCurve& v
             Stack::push(L, parameters[1]);
             lua_setfield(L, -2, "period");
         }
+
         return;
     }
     case Kind::Steps:
@@ -239,17 +256,21 @@ math::EasingCurve Converter<math::EasingCurve>::readFunction(lua_State* L, int i
         if (!function->push(main)) {
             return t;
         }
+
         lua_pushnumber(main, static_cast<lua_Number>(t));
         Runtime::protectedCall(main, 1, 1);
         const bool number = lua_type(main, -1) == LUA_TNUMBER;
         const lua_Number value = lua_tonumber(main, -1);
         lua_pop(main, 1);
+
         if (!number) {
             throw std::runtime_error("An easing function must return a number.");
         }
+
         if (!Converter<float>::fits(value)) {
             throw std::runtime_error("An easing function must return a number from -3.4028234663853e+38 to 3.4028234663853e+38.");
         }
+
         return static_cast<float>(value);
     });
     // clang-format on
@@ -259,12 +280,15 @@ math::EasingCurve Converter<math::EasingCurve>::read(lua_State* L, int index) {
     if (const math::EasingCurve* curve = Userdata::test<math::EasingCurve>(L, index)) {
         return *curve;
     }
+
     if (lua_type(L, index) == LUA_TSTRING) {
         return math::EasingCurve(Stack::read<math::Easing::Type>(L, index));
     }
+
     if (lua_isfunction(L, index)) {
         return readFunction(L, index, 0);
     }
+
     if (!lua_istable(L, index)) {
         luaL_typeerror(L, index, "easing curve name, function or table");
     }
@@ -279,6 +303,7 @@ math::EasingCurve Converter<math::EasingCurve>::read(lua_State* L, int index) {
         Table::readField(L, table, "position", position);
         return math::EasingCurve::steps(count, position);
     }
+
     lua_pop(L, 1);
     if (lua_getfield(L, table, "cubicBezier") != LUA_TNIL) {
         const std::vector<float> handles = Stack::read<std::vector<float>>(L, -1);
@@ -286,8 +311,10 @@ math::EasingCurve Converter<math::EasingCurve>::read(lua_State* L, int index) {
         if (handles.size() != 4) {
             luaL_error(L, "A \"cubicBezier\" curve needs the four numbers \"x1\", \"y1\", \"x2\" and \"y2\".");
         }
+
         return math::EasingCurve::cubicBezier(handles[0], handles[1], handles[2], handles[3]);
     }
+
     lua_pop(L, 1);
     if (lua_getfield(L, table, "points") != LUA_TNIL) {
         luaL_checktype(L, -1, LUA_TTABLE);
@@ -301,11 +328,14 @@ math::EasingCurve Converter<math::EasingCurve>::read(lua_State* L, int index) {
             } else {
                 points.push_back(Stack::read<math::Vec2>(L, -1));
             }
+
             lua_pop(L, 1);
         }
+
         lua_pop(L, 1);
         return math::EasingCurve::points(std::move(points));
     }
+
     lua_pop(L, 1);
 
     math::Easing::Type curve = math::Easing::Type::Linear;
@@ -315,6 +345,7 @@ math::EasingCurve Converter<math::EasingCurve>::read(lua_State* L, int index) {
         lua_pop(L, 1);
         return math::EasingCurve::back(curve, overshoot);
     }
+
     lua_pop(L, 1);
     float amplitude = math::Easing::kElasticAmplitude;
     float period = math::Easing::kElasticPeriod;
@@ -322,11 +353,13 @@ math::EasingCurve Converter<math::EasingCurve>::read(lua_State* L, int index) {
     lua_getfield(L, table, "period");
     const bool elastic = !lua_isnil(L, -1) || !lua_isnil(L, -2);
     lua_pop(L, 2);
+
     if (elastic) {
         Table::readField(L, table, "amplitude", amplitude);
         Table::readField(L, table, "period", period);
         return math::EasingCurve::elastic(curve, amplitude, period);
     }
+
     return math::EasingCurve(curve);
 }
 
@@ -371,9 +404,11 @@ graphics2d::SpriteEffect Converter<graphics2d::SpriteEffect>::read(lua_State* L,
     } catch (const std::invalid_argument& error) {
         problem = error.what();
     }
+
     if (!problem.empty()) {
         luaL_error(L, "%s", problem.c_str());
     }
+
     return effect;
 }
 
@@ -390,15 +425,18 @@ math::FloatRange Converter<math::FloatRange>::read(lua_State* L, int index) {
         const auto value = Stack::read<float>(L, index);
         return {value, value};
     }
+
     if (!lua_istable(L, index)) {
         luaL_typeerror(L, index, "number or {min, max} pair");
     }
+
     const int table = lua_absindex(L, index);
     lua_rawgeti(L, table, 1);
     lua_rawgeti(L, table, 2);
     if (lua_rawlen(L, table) != 2 || lua_type(L, -2) != LUA_TNUMBER || lua_type(L, -1) != LUA_TNUMBER) {
         luaL_argerror(L, index, "a range needs a number or the pair {min, max}");
     }
+
     const math::FloatRange range{Converter<float>::fromNumber(L, lua_tonumber(L, -2)), Converter<float>::fromNumber(L, lua_tonumber(L, -1))};
     lua_pop(L, 2);
     return range;
@@ -409,6 +447,7 @@ graphics2d::DrawOrder TypeConverter::readDrawOrder(lua_State* L, int index, std:
     if (lua_isnoneornil(L, index)) {
         return order;
     }
+
     luaL_checktype(L, index, LUA_TTABLE);
     // clang-format off
     Table::readFields(L, index, kDrawOrderFields, extraFields, [L, &order](std::string_view key) {
@@ -453,6 +492,7 @@ text::Style TypeConverter::readTextStyle(lua_State* L, int index, std::initializ
     if (lua_isnoneornil(L, index)) {
         return style;
     }
+
     luaL_checktype(L, index, LUA_TTABLE);
     // clang-format off
     Table::readFields(L, index, kTextStyleFields, extraFields, [L, &style](std::string_view key) {
@@ -535,6 +575,7 @@ text::Gradient TypeConverter::readTextGradient(lua_State* L, int index) {
             Table::readValue(L, key, angle);
             return;
         }
+
         listsStops = listsStops || key == "stops";
         listsColors = listsColors || key == "colors";
         count = readTextGradientStops(L, key, stops);
@@ -549,6 +590,7 @@ text::Gradient TypeConverter::readTextGradient(lua_State* L, int index) {
             stops[stop].offset = count > 1 ? static_cast<float>(stop) / static_cast<float>(count - 1) : 0.0F;
         }
     }
+
     return text::Gradient(std::span(stops.data(), count), angle);
 }
 
@@ -558,6 +600,7 @@ std::size_t TypeConverter::readTextGradientStops(lua_State* L, std::string_view 
     if (!lua_istable(L, -1)) {
         throw std::invalid_argument(paired ? "The stops of a gradient are a list of offset and color pairs, such as {{0, '#FF000000'}, {1, '#FFFFFFFF'}}." : "The colors of a gradient are a list of colors.");
     }
+
     const auto count = static_cast<std::size_t>(lua_rawlen(L, -1));
     if (count > text::Gradient::kMaxStops) {
         throw std::invalid_argument("A text gradient holds at most 4 color stops.");
@@ -570,15 +613,18 @@ std::size_t TypeConverter::readTextGradientStops(lua_State* L, std::string_view 
             lua_pop(L, 1);
             continue;
         }
+
         if (!lua_istable(L, -1) || lua_rawlen(L, -1) != 2) {
             throw std::invalid_argument("The stops of a gradient are a list of offset and color pairs, such as {{0, '#FF000000'}, {1, '#FFFFFFFF'}}.");
         }
+
         lua_rawgeti(L, -1, 1);
         Table::readValue(L, key, stops[index].offset);
         lua_rawgeti(L, -2, 2);
         Table::readValue(L, key, stops[index].color);
         lua_pop(L, 3);
     }
+
     return count;
 }
 
@@ -588,9 +634,11 @@ std::string_view TypeConverter::readBytes(lua_State* L, int index) {
         const char* text = lua_tolstring(L, index, &length);
         return {text, length};
     }
+
     if (const varn::dataview::DataView* view = varn::dataview::DataViewModule::test(L, index)) {
         return {reinterpret_cast<const char*>(view->data()), view->size()};
     }
+
     throw std::invalid_argument(std::string("Bytes come as a string or a data view that was not released, not as a ") + luaL_typename(L, index) + ".");
 }
 
@@ -599,6 +647,7 @@ graphics::Texture::Options TypeConverter::readTextureOptions(lua_State* L, int i
     if (lua_isnoneornil(L, index)) {
         return options;
     }
+
     luaL_checktype(L, index, LUA_TTABLE);
     // clang-format off
     Table::readFields(L, index, kTextureOptionFields, extraFields, [L, &options](std::string_view key) {
@@ -655,6 +704,7 @@ graphics2d::SpriteInstance TypeConverter::readSpriteInstance(lua_State* L, int i
     if (base.size.isZero()) {
         base.size = base.source.isEmpty() ? texture.getSize() : base.source.getSize();
     }
+
     return base;
 }
 

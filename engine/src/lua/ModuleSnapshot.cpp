@@ -8,14 +8,18 @@ bool ModuleSnapshot::isMergeable(lua_State* L, int index) {
     if (lua_type(L, index) != LUA_TTABLE) {
         return false;
     }
+
     if (lua_getmetatable(L, index) == 0) {
         return true;
     }
+
     const bool marked = isJsonMarker(L, lua_gettop(L));
     lua_pop(L, 1);
+
     if (marked) {
         return true;
     }
+
     return isPrototype(L, index);
 }
 
@@ -23,6 +27,7 @@ bool ModuleSnapshot::isPrototype(lua_State* L, int index) {
     if (lua_type(L, index) != LUA_TTABLE) {
         return false;
     }
+
     const int table = lua_absindex(L, index);
     lua_pushliteral(L, "__index");
     lua_rawget(L, table);
@@ -71,6 +76,7 @@ void ModuleSnapshot::claim(lua_State* L, int copies, int creators, std::string_v
             lua_pushlstring(L, path.data(), path.size());
             lua_rawset(L, creators);
         }
+
         lua_pop(L, 1);
     }
 }
@@ -82,10 +88,12 @@ void ModuleSnapshot::copy(lua_State* L, int value, int copies, int keys, int dep
         lua_pushvalue(L, value);
         return;
     }
+
     lua_pushvalue(L, value);
     if (lua_rawget(L, copies) != LUA_TNIL) {
         return;
     }
+
     lua_pop(L, 1);
 
     lua_newtable(L);
@@ -106,6 +114,7 @@ void ModuleSnapshot::copy(lua_State* L, int value, int copies, int keys, int dep
                 lua_pop(L, 1);
             }
         }
+
         lua_insert(L, -2);
         lua_rawset(L, result);
         lua_pop(L, 1);
@@ -128,15 +137,19 @@ bool ModuleSnapshot::compare(lua_State* L, int live, int base, int visited, int 
     if (lua_rawequal(L, live, base) != 0) {
         return true;
     }
+
     if (lua_type(L, base) != LUA_TTABLE || !isMergeable(L, live) || depth > kMaxDepth || budget <= 0) {
         return false;
     }
+
     lua_pushvalue(L, base);
     const bool met = lua_rawget(L, visited) != LUA_TNIL;
     lua_pop(L, 1);
+
     if (met) {
         return true;
     }
+
     lua_pushvalue(L, base);
     lua_pushvalue(L, live);
     lua_rawset(L, visited);
@@ -155,6 +168,7 @@ bool ModuleSnapshot::compare(lua_State* L, int live, int base, int visited, int 
             return false;
         }
     }
+
     lua_pushnil(L);
     while (lua_next(L, live) != 0) {
         lua_pop(L, 1);
@@ -163,6 +177,7 @@ bool ModuleSnapshot::compare(lua_State* L, int live, int base, int visited, int 
             return false;
         }
     }
+
     return count == 0;
 }
 

@@ -19,6 +19,7 @@ core::Engine& Runtime::getEngine(lua_State* L) {
     if (owner == nullptr) {
         luaL_error(L, "This Lua state is not bound to a Haylen engine.");
     }
+
     return *owner;
 }
 
@@ -39,6 +40,7 @@ void Runtime::runChunk(lua_State* L, std::string_view source, const std::string&
         lua_pop(L, 1);
         throw error;
     }
+
     protectedCall(L, 0, 0);
 }
 
@@ -47,13 +49,16 @@ std::string Runtime::describeValue(lua_State* L, int index) {
     if (lua_isstring(L, index) != 0) {
         return lua_tostring(L, index);
     }
+
     if (luaL_callmeta(L, index, "__tostring") != 0) {
         std::string text = lua_type(L, -1) == LUA_TSTRING ? lua_tostring(L, -1) : "";
         lua_pop(L, 1);
+
         if (!text.empty()) {
             return text;
         }
     }
+
     return std::string("(error object is a ") + luaL_typename(L, index) + " value)";
 }
 
@@ -71,12 +76,15 @@ std::string Runtime::describeFunction(const Level& level) {
     if (!level.nameWhat.empty()) {
         return std::string(level.nameWhat) + " '" + std::string(level.name) + "'";
     }
+
     if (level.what == "main") {
         return "main chunk";
     }
+
     if (level.what != "C") {
         return "function <" + std::string(level.source) + ":" + std::to_string(level.lineDefined) + ">";
     }
+
     return "?";
 }
 
@@ -84,6 +92,7 @@ Error::Frame::Kind Runtime::getFrameKind(std::string_view what) noexcept {
     if (what == "C") {
         return Error::Frame::Kind::C;
     }
+
     return what == "main" ? Error::Frame::Kind::Main : Error::Frame::Kind::Lua;
 }
 
@@ -96,6 +105,7 @@ int Runtime::findLastLevel(lua_State* L) {
         low = high;
         high *= 2;
     }
+
     while (low < high) {
         const int middle = low + (high - low) / 2;
         if (lua_getstack(L, middle, &info) != 0) {
@@ -104,6 +114,7 @@ int Runtime::findLastLevel(lua_State* L) {
             high = middle;
         }
     }
+
     return high - 1;
 }
 
@@ -119,9 +130,11 @@ Error Runtime::captureError(lua_State* L, const std::string& text, int level) {
             current += skipped - 1;
             continue;
         }
+
         lua_getinfo(L, "Slnf", &info);
         const lua_CFunction function = lua_tocfunction(L, -1);
         lua_pop(L, 1);
+
         if (function == &runBody) {
             continue;
         }
@@ -133,6 +146,7 @@ Error Runtime::captureError(lua_State* L, const std::string& text, int level) {
 
         frames.push_back(makeFrame({.source = info.short_src, .line = info.currentline, .what = info.what, .nameWhat = info.namewhat, .name = info.name != nullptr ? info.name : "", .lineDefined = info.linedefined}));
     }
+
     return Error(text, std::move(frames));
 }
 
@@ -153,6 +167,7 @@ void Runtime::pushError(lua_State* L, Error error) {
         lua_pushcfunction(L, &errorToString);
         lua_setfield(L, -2, "__tostring");
     }
+
     void* memory = lua_newuserdatauv(L, sizeof(Error), 0);
     new (memory) Error(std::move(error));
     lua_insert(L, -2);
@@ -176,6 +191,7 @@ Error Runtime::readError(lua_State* L, int index) {
     if (const auto* error = static_cast<const Error*>(luaL_testudata(L, index, kErrorType))) {
         return *error;
     }
+
     return Error(describeValue(L, index));
 }
 

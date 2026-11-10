@@ -25,6 +25,7 @@ std::string Environment::modulePath(std::string_view name) {
             character = '/';
         }
     }
+
     return path;
 }
 
@@ -40,6 +41,7 @@ std::vector<std::string> Environment::getCandidates(const core::AppConfig& confi
     if (head.size() == name.size()) {
         return {source + "/init.lua"};
     }
+
     const std::string base = source + "/" + modulePath(name.substr(head.size() + 1));
     return {base + ".lua", base + "/init.lua"};
 }
@@ -56,11 +58,13 @@ void Environment::checkModules(core::Engine& engine) {
         if (io::Path::extension(file) != ".lua") {
             continue;
         }
+
         std::string module = file.substr(root.size());
         module.resize(module.size() - std::string_view(".lua").size());
         if (module.ends_with("/init")) {
             module.resize(module.size() - std::string_view("/init").size());
         }
+
         std::ranges::replace(module, '/', '.');
 
         const std::string id = module.substr(0, module.find('.'));
@@ -83,6 +87,7 @@ std::vector<Error::Frame> Environment::readFrames(lua_State* L, int index) {
     while (!frames.empty() && frames.back().kind == Error::Frame::Kind::C && frames.back().function == "?") {
         frames.pop_back();
     }
+
     return frames;
 }
 
@@ -119,10 +124,12 @@ int Environment::reportFailure(lua_State* L) {
     if (lua_istable(L, 3)) {
         frames = readFrames(L, 3);
     }
+
     Error error(Runtime::describeValue(L, 1), std::move(frames));
     if (lua_type(L, 4) == LUA_TSTRING && std::string_view(lua_tostring(L, 4)) == "rejection") {
         error = describeRejection(error);
     }
+
     const core::Engine::PhaseScope scope(Runtime::getEngine(L), core::Engine::Phase::Lifecycle);
     Runtime::reportError(L, error);
     return 0;
@@ -134,6 +141,7 @@ Error Environment::describeRejection(const Error& error) {
     if (error.getMessage() == error.what()) {
         return Error(message, error.getFrames());
     }
+
     return Error(std::format("{}:{}: {}", error.getFile(), error.getLine(), message), error.getFrames());
 }
 
@@ -153,9 +161,11 @@ int Environment::loadModule(lua_State* L, const io::Package& package, const std:
     const bool bytecode = package.isLuaBytecode(path);
     const std::string chunkName = "@" + path;
     const int status = luaL_loadbufferx(L, reinterpret_cast<const char*>(bytes.data()), bytes.size(), chunkName.c_str(), bytecode ? "b" : "t");
+
     if (bytecode) {
         crypto_wipe(bytes.data(), bytes.size());
     }
+
     return status;
 }
 
@@ -165,6 +175,7 @@ void Environment::runModule(lua_State* L, const io::Package& package, const std:
         lua_pop(L, 1);
         throw error;
     }
+
     Runtime::protectedCall(L, 0, 0);
 }
 
@@ -181,9 +192,11 @@ int Environment::searchPackage(lua_State* L) {
             if (!package.exists(candidate)) {
                 continue;
             }
+
             if (loadModule(L, package, candidate) != LUA_OK) {
                 return lua_error(L);
             }
+
             lua_pushstring(L, candidate.c_str());
             return 2;
         }
@@ -192,6 +205,7 @@ int Environment::searchPackage(lua_State* L) {
         if (candidates.size() > 1) {
             message += " or '" + candidates.back() + "'";
         }
+
         message += " in the app package";
         lua_pushstring(L, message.c_str());
         return 1;
@@ -221,6 +235,7 @@ int Environment::doFileAsText(lua_State* L) {
     if (luaL_loadfilex(L, name, "t") != LUA_OK) {
         return lua_error(L);
     }
+
     lua_callk(L, 0, LUA_MULTRET, 0, &finishDoFile);
     return finishDoFile(L, LUA_OK, 0);
 }
@@ -272,6 +287,7 @@ void Environment::withholdNativeAccess(lua_State* L) {
         lua_pushnil(L);
         lua_setglobal(L, name);
     }
+
     lua_pop(L, 3);
 
     // These functions run other programs, as `process` does.
@@ -296,6 +312,7 @@ int Environment::setUnprotectedMetatable(lua_State* L) {
     if (luaL_getmetafield(L, 1, "__metatable") != LUA_TNIL) {
         return luaL_error(L, "The metatable of this value is protected and cannot be changed.");
     }
+
     return callOriginal(L);
 }
 
@@ -304,6 +321,7 @@ int Environment::accessScriptUpvalue(lua_State* L) {
     if (lua_iscfunction(L, 1) != 0) {
         return 0;
     }
+
     return callOriginal(L);
 }
 
@@ -315,13 +333,16 @@ bool Environment::shiftLevel(lua_State* L) {
     if (isInteger == 0 || level < 0 || level >= std::numeric_limits<int>::max()) {
         return false;
     }
+
     lua_State* target = index == 2 ? lua_tothread(L, 1) : L;
     lua_Debug info{};
     const bool native = lua_getstack(target, static_cast<int>(level), &info) != 0 && lua_getinfo(target, "S", &info) != 0 && std::string_view(info.what) == "C";
+
     if (target == L) {
         lua_pushinteger(L, level + 1);
         lua_replace(L, index);
     }
+
     return native;
 }
 
@@ -331,6 +352,7 @@ int Environment::getScriptLocal(lua_State* L) {
         luaL_pushfail(L);
         return 1;
     }
+
     return callOriginal(L);
 }
 
@@ -338,6 +360,7 @@ int Environment::setScriptLocal(lua_State* L) {
     if (shiftLevel(L)) {
         return luaL_error(L, "The locals of native functions cannot be changed.");
     }
+
     return callOriginal(L);
 }
 
@@ -349,6 +372,7 @@ int Environment::getScriptInfo(lua_State* L) {
         lua_pushnil(L);
         lua_setfield(L, -2, "func");
     }
+
     return results;
 }
 
@@ -365,15 +389,18 @@ void Environment::restrictDebug(lua_State* L) {
         lua_pushcclosure(L, &accessScriptUpvalue, 1);
         lua_setfield(L, -2, name);
     }
+
     for (const auto& [name, wrapper] : {std::pair<const char*, lua_CFunction>{"getlocal", &getScriptLocal}, {"setlocal", &setScriptLocal}, {"getinfo", &getScriptInfo}}) {
         lua_getfield(L, -1, name);
         lua_pushcclosure(L, wrapper, 1);
         lua_setfield(L, -2, name);
     }
+
     for (const char* name : {"getregistry", "getuservalue", "setuservalue"}) {
         lua_pushnil(L);
         lua_setfield(L, -2, name);
     }
+
     lua_pop(L, 1);
 }
 

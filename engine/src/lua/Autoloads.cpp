@@ -29,9 +29,11 @@ std::string Autoloads::getName(std::string_view module) {
             upper = !name.empty();
             continue;
         }
+
         name.push_back(upper ? static_cast<char>(std::toupper(static_cast<unsigned char>(character))) : character);
         upper = false;
     }
+
     return name;
 }
 
@@ -47,6 +49,7 @@ void Autoloads::pushTable(lua_State* L) {
     if (lua_getfield(L, LUA_REGISTRYINDEX, kTable) == LUA_TTABLE) {
         return;
     }
+
     lua_pop(L, 1);
     lua_newtable(L);
     lua_pushvalue(L, -1);
@@ -57,11 +60,13 @@ void Autoloads::add(lua_State* L, const std::string& name, const std::string& mo
     if (name.empty()) {
         throw std::invalid_argument("An autoload needs a name.");
     }
+
     // Adding the same module under the same name again keeps the autoload, so a module that adds one at its top level can run again when it reloads.
     for (const Entry& entry : entries) {
         if (entry.name == name && entry.module == module) {
             return;
         }
+
         if (entry.name == name) {
             throw std::invalid_argument("An autoload named \"" + name + "\" already exists.");
         }
@@ -73,6 +78,7 @@ void Autoloads::add(lua_State* L, const std::string& name, const std::string& mo
     lua_getglobal(main, "require");
     lua_pushstring(main, module.c_str());
     Runtime::protectedCall(main, 1, 1);
+
     if (!lua_istable(main, -1)) {
         lua_pop(main, 1);
         throw std::invalid_argument("The autoload module \"" + module + "\" must return a table.");
@@ -83,11 +89,13 @@ void Autoloads::add(lua_State* L, const std::string& name, const std::string& mo
         entry.table.push(main);
         const bool same = lua_rawequal(main, -1, -2) != 0;
         lua_pop(main, 1);
+
         if (same) {
             lua_pop(main, 1);
             throw std::invalid_argument("The module \"" + module + "\" is already the autoload \"" + entry.name + "\".");
         }
     }
+
     pushTable(main);
     lua_pushvalue(main, -2);
     lua_setfield(main, -2, name.c_str());
@@ -112,10 +120,13 @@ void Autoloads::call(const Entry& entry, const char* method, int arguments, cons
             lua_pop(L, 2);
             return;
         }
+
         lua_insert(L, -2);
+
         if (pushArguments) {
             pushArguments(L);
         }
+
         lua_call(L, 1 + arguments, 0);
     });
     // clang-format on
@@ -190,6 +201,7 @@ void Autoloads::stop(core::Engine& engine) {
         attempt([&entry] { call(*entry, "stop"); });
         attempt([&engine, &entry] { engine.getEvents().emit(core::LifecycleEvent::kAutoloadStopped, {{"name", entry->name}}); });
     }
+
     if (failure) {
         std::rethrow_exception(failure);
     }

@@ -43,6 +43,7 @@ class ModuleReloadTest : public ::testing::Test {
             fixture->package().setFile(path, test::TestFiles::bytes(source));
             paths.push_back(path);
         }
+
         fixture->host().getDevelopmentSession()->addChanges(paths);
         fixture->frames(1);
     }
@@ -998,6 +999,7 @@ TEST_F(ModuleReloadTest, RestartsWhenASaveTouchesMoreModulesThanReloadInPlace) {
         files.emplace(path, "return {}");
         edits.emplace(path, "return {edited = true}");
     }
+
     start(std::move(files));
     recordLog();
     edit(edits);

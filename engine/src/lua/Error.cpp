@@ -15,9 +15,11 @@ Error::Error(const std::string& text, std::vector<Frame> stack) : std::runtime_e
     if (const std::optional<Position> position = findPosition(text)) {
         file = std::string(position->file);
         line = position->line;
+
         if (position->start == 0) {
             message = text.substr(position->end);
         }
+
         return;
     }
 
@@ -44,12 +46,15 @@ std::optional<Error::Position> Error::findPosition(std::string_view text) {
         while (end < text.size() && end - digits <= maximumDigits && std::isdigit(static_cast<unsigned char>(text[end])) != 0) {
             ++end;
         }
+
         const std::size_t count = end - digits;
         if (start == found || count == 0 || count > maximumDigits || text.substr(end, 2) != ": ") {
             continue;
         }
+
         return Position{.start = start, .end = end + 2, .file = text.substr(start, digits - 1 - start), .line = std::stoi(std::string(text.substr(digits, count)))};
     }
+
     return std::nullopt;
 }
 
@@ -70,10 +75,12 @@ std::string Error::getTraceback() const {
         if (index > 0) {
             text += '\n';
         }
+
         text += locations[index];
         text.append(width - locations[index].size() + 2, ' ');
         text += frames[index].function;
     }
+
     return text;
 }
 
@@ -94,6 +101,7 @@ core::Json Error::toJson() const {
     for (const Frame& frame : frames) {
         stack.push_back({{"source", frame.source}, {"line", frame.line}, {"function", frame.function}, {"kind", getKindName(frame.kind)}});
     }
+
     return {{"message", message}, {"file", file}, {"line", line}, {"traceback", getTraceback()}, {"frames", std::move(stack)}};
 }
 

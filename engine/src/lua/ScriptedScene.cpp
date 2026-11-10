@@ -25,6 +25,7 @@ void ScriptedScene::pushWeakKeyed(lua_State* L, const char* name) {
     if (lua_getfield(L, LUA_REGISTRYINDEX, name) == LUA_TTABLE) {
         return;
     }
+
     lua_pop(L, 1);
     lua_newtable(L);
     lua_createtable(L, 0, 1);
@@ -50,6 +51,7 @@ std::shared_ptr<ScriptedScene> ScriptedScene::find(lua_State* L, int index) {
     if (lua_rawget(L, -2) == LUA_TUSERDATA) {
         scene = static_cast<std::weak_ptr<ScriptedScene>*>(lua_touserdata(L, -1))->lock();
     }
+
     lua_pop(L, 2);
     return scene;
 }
@@ -77,6 +79,7 @@ std::shared_ptr<ScriptedScene> ScriptedScene::get(lua_State* L, int index) {
         lua_pushcfunction(L, &collectHandle);
         lua_setfield(L, -2, "__gc");
     }
+
     lua_pop(L, 1);
     new (lua_newuserdatauv(L, sizeof(std::weak_ptr<ScriptedScene>), 0)) std::weak_ptr<ScriptedScene>(created);
     luaL_setmetatable(L, kHandleType);
@@ -90,10 +93,12 @@ void ScriptedScene::pushParams(lua_State* L, const std::any& params) {
         lua_pushnil(L);
         return;
     }
+
     const auto* value = std::any_cast<std::shared_ptr<Reference>>(&params);
     if (value == nullptr) {
         throw std::invalid_argument("A Lua scene takes the \"params\" of a change from Lua.");
     }
+
     (*value)->push(L);
 }
 
@@ -110,10 +115,13 @@ void ScriptedScene::call(const char* name, int arguments, const std::function<vo
             lua_pop(L, 2);
             return;
         }
+
         lua_insert(L, -2);
+
         if (pushArguments) {
             pushArguments(L);
         }
+
         lua_call(L, 1 + arguments, 0);
     });
     // clang-format on
@@ -129,6 +137,7 @@ void ScriptedScene::load(core::Engine&, core::SceneLoad& context) {
             lua_settop(L, self - 1);
             return;
         }
+
         lua_pushvalue(L, self);
         core::SceneLua::pushLoad(L, context);
         auto deferral = std::make_shared<core::SceneLoad::Deferral>(context.defer());
@@ -137,6 +146,7 @@ void ScriptedScene::load(core::Engine&, core::SceneLoad& context) {
                 deferral->fail(*error);
                 return;
             }
+
             deferral->complete();
         });
         lua_settop(L, self - 1);
@@ -168,6 +178,7 @@ void ScriptedScene::unload(core::Engine&) {
     } catch (...) {
         failure = std::current_exception();
     }
+
     // clang-format off
     Runtime::protectedRun(table.getState(), [this](lua_State* L) {
         table.push(L);
@@ -221,10 +232,12 @@ core::ProcessMode ScriptedScene::readProcessMode(lua_State* L, int index) {
         lua_pop(L, 1);
         return core::ProcessMode::Inherit;
     }
+
     const std::optional<core::ProcessMode> mode = lua_type(L, -1) == LUA_TSTRING ? EnumNames<core::ProcessMode>::fromName(lua_tostring(L, -1)) : std::nullopt;
     if (!mode) {
         luaL_error(L, "The \"processMode\" must be \"inherit\", \"pausable\", \"whenPaused\", \"always\" or \"disabled\".");
     }
+
     lua_pop(L, 1);
     return *mode;
 }
@@ -246,12 +259,14 @@ core::ProcessMode ScriptedScene::resolveOwnerMode(lua_State* L, int owner) {
     if (!lua_istable(L, index)) {
         return core::ProcessMode::Inherit;
     }
+
     const core::SceneManager& scenes = Runtime::getEngine(L).getScenes();
     if (const std::shared_ptr<ScriptedScene> scene = find(L, index)) {
         if (const std::optional<std::size_t> level = scenes.find(*scene)) {
             return scenes.getProcessMode(*level);
         }
     }
+
     return readProcessMode(L, index);
 }
 
@@ -265,13 +280,16 @@ std::shared_ptr<ScriptedScene::OwnerMode> ScriptedScene::findOwnerMode(lua_State
         lua_pop(L, 2);
         return found;
     }
+
     lua_pop(L, 1);
 
     auto created = std::make_shared<OwnerMode>(L, key);
+
     if (Userdata::newMetatable(L, kOwnerModeType)) {
         lua_pushcfunction(L, &collectOwnerMode);
         lua_setfield(L, -2, "__gc");
     }
+
     lua_pop(L, 1);
     new (lua_newuserdatauv(L, sizeof(std::shared_ptr<OwnerMode>), 0)) std::shared_ptr<OwnerMode>(created);
     luaL_setmetatable(L, kOwnerModeType);
@@ -299,6 +317,7 @@ std::function<core::ProcessMode()> ScriptedScene::followOwnerMode(lua_State* L, 
         if (cached.frame == clock.getFrameIndex()) {
             return cached.mode;
         }
+
         core::ProcessMode mode = core::ProcessMode::Inherit;
         Runtime::protectedRun(main, [&](lua_State* thread) {
             if (cached.owner.push(thread)) {
@@ -322,6 +341,7 @@ std::string ScriptedScene::getName() const {
         if (lua_getfield(L, -1, "name") == LUA_TSTRING) {
             name = lua_tostring(L, -1);
         }
+
         lua_pop(L, 2);
     });
     // clang-format on

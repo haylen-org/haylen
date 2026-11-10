@@ -151,9 +151,11 @@ TEST_F(MathLuaTest, SamplesGridsOfNoiseInOneCall) {
 
 TEST_F(MathLuaTest, BoundsTheOctavesOfNoise) {
     EXPECT_EQ(lua("local n = m.noise(3) local x, y = n:warp(1, 2, 4, 1, 16) return type(n:fractal(0.5, 0.25, 16)) .. ' ' .. type(x)"), "number number");
+
     for (const std::string call : {"fractal(0.5, 0.25, 17)", "fractal(0.5, 0.25, 0)", "warp(1, 2, 4, 1, 17)", "warp(1, 2, 4, 1, 1000000000)"}) {
         EXPECT_NE(lua("m.noise(3):" + call).find("The octaves must be a whole number from 1 to 16."), std::string::npos) << call;
     }
+
     EXPECT_NE(lua("m.noise(3):warp(1, 2, 4, 1, 2^32 + 3)").find("error: "), std::string::npos);
 }
 
@@ -179,6 +181,7 @@ TEST_F(MathLuaTest, PushesCurvesInTheFormsItReads) {
         lua::Stack::push(L, curve);
         lua_setglobal(L, name);
     }
+
     EXPECT_EQ(lua("return preset .. ' ' .. back.curve .. back.overshoot .. ' ' .. elastic.curve .. elastic.amplitude .. ' ' .. steps.steps .. steps.position"), "quadOut backOut3.0 elasticIn1.5 4start");
     EXPECT_EQ(lua("return #bezier.cubicBezier .. ' ' .. #points.points .. ' ' .. points.points[2].y .. ' ' .. m.ease(points, 0.5)"), "4 3 2.0 2.0");
     EXPECT_EQ(lua("return custom(0.5) .. ' ' .. m.ease(custom, 0.25)"), "0.25 0.125");

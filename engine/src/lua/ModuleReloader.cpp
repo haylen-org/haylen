@@ -32,13 +32,16 @@ ModuleReloader::Result ModuleReloader::reload(const std::string& file) {
     ModuleGraph::Module& module = *graph.find(file);
     path = file;
     name = module.names.front();
+
     if (!package.exists(file)) {
         return {.status = Status::Restart, .reason = "The module file \"" + file + "\" was removed."};
     }
+
     const std::string source = package.readText(file);
     if (source == module.source) {
         return {};
     }
+
     if (module.restartOnChange) {
         return {.status = Status::Restart, .reason = "The module \"" + name + "\" restarts the app when it changes."};
     }
@@ -50,6 +53,7 @@ ModuleReloader::Result ModuleReloader::reload(const std::string& file) {
         lua_settop(state, top);
         return {.status = Status::Failed, .error = std::move(error)};
     }
+
     const int chunk = top + 1;
 
     // The globals that the new load writes wait in a staging table, and what it registers belongs to a staging owner, until it ran without errors.
@@ -76,6 +80,7 @@ ModuleReloader::Result ModuleReloader::reload(const std::string& file) {
     lua_pushvalue(state, chunk);
     lua_pushstring(state, name.c_str());
     lua_pushstring(state, file.c_str());
+
     try {
         Runtime::protectedCall(state, 2, 1);
     } catch (const Error& error) {
@@ -83,11 +88,14 @@ ModuleReloader::Result ModuleReloader::reload(const std::string& file) {
         abandon();
         return {.status = Status::Failed, .error = error};
     }
+
     graph.endLoad(state, true);
+
     if (lua_isnil(state, -1)) {
         lua_pop(state, 1);
         lua_pushboolean(state, 1);
     }
+
     const int fresh = top + 4;
     lua_pushnil(state);
     lua_setmetatable(state, staging);
@@ -97,10 +105,12 @@ ModuleReloader::Result ModuleReloader::reload(const std::string& file) {
     lua_remove(state, -2);
     const int live = top + 5;
     ModuleGraph::pushSnapshot(state, file);
+
     if (!lua_istable(state, -1)) {
         lua_pop(state, 1);
         lua_newtable(state);
     }
+
     lua_getfield(state, top + 6, "value");
     lua_getfield(state, top + 6, "upvalues");
     lua_getfield(state, top + 6, "globals");
@@ -128,6 +138,7 @@ ModuleReloader::Result ModuleReloader::reload(const std::string& file) {
     const ModuleClosures previous(state, file, previousRoots);
     const std::array<int, 3> freshRoots{fresh, staging, top + 12};
     const ModuleClosures created(state, file, freshRoots);
+
     for (const ModuleClosures* closures : {&previous, &created}) {
         if (const std::string variable = closures->findAmbiguous(); !variable.empty()) {
             abandon();
@@ -138,6 +149,7 @@ ModuleReloader::Result ModuleReloader::reload(const std::string& file) {
     // The values the new load produced become the base of the next reload, so they are read before the merge changes what its functions see.
     created.pushValues(state);
     const int freshUpvalues = top + 14;
+
     if (tables && lua_rawequal(state, live, fresh) != 0) {
         mapReplaced(live, baseValue, 0);
     } else if (tables) {
@@ -145,6 +157,7 @@ ModuleReloader::Result ModuleReloader::reload(const std::string& file) {
     } else if (functions) {
         mapFunction(live, fresh);
     }
+
     joinVariables(previous, created, baseUpvalues);
     mergeGlobals(staging, baseGlobals);
     mergeDeferred();
@@ -174,6 +187,7 @@ void ModuleReloader::finish() {
         lua_newtable(state);
         return;
     }
+
     lua_pop(state, 2);
     ValueRemap::run(state, map, map + 1, map + 2);
     lua_replace(state, map);
@@ -194,23 +208,28 @@ void ModuleReloader::pushMerged(int base, int live, int fresh, const std::string
         if (!replacedByApp) {
             mapFunction(current, next);
         }
+
         lua_pushvalue(state, replacedByApp ? current : next);
         return;
     }
+
     if (liveType == LUA_TUSERDATA || liveType == LUA_TTHREAD) {
         lua_pushvalue(state, current);
         return;
     }
+
     if (liveType == LUA_TTABLE && freshType == LUA_TTABLE) {
         if (lua_rawequal(state, current, next) != 0) {
             mapReplaced(current, previous, 0);
             lua_pushvalue(state, current);
             return;
         }
+
         if (!ModuleSnapshot::isMergeable(state, current)) {
             lua_pushvalue(state, current);
             return;
         }
+
         if (ModuleSnapshot::isMergeable(state, next) && isClaimed(current, true) && !isClaimed(next, false)) {
             mergeTable(current, next, previous, field);
             lua_pushvalue(state, current);
@@ -222,6 +241,7 @@ void ModuleReloader::pushMerged(int base, int live, int fresh, const std::string
     if (!untouched && liveType != freshType && freshType != LUA_TNIL) {
         core::Log::warning("The field \"{}\" of the module \"{}\" keeps its value, because the app changed it and the new code gives it another kind.", field, name);
     }
+
     lua_pushvalue(state, untouched ? next : current);
 }
 
@@ -234,10 +254,12 @@ void ModuleReloader::mergeTable(int live, int fresh, int base, const std::string
     replacements.push(state);
     const int map = lua_gettop(state);
     lua_pushvalue(state, next);
+
     if (lua_rawget(state, map) != LUA_TNIL) {
         lua_pop(state, 2);
         return;
     }
+
     lua_pop(state, 1);
     lua_pushvalue(state, next);
     lua_pushvalue(state, current);
@@ -250,6 +272,7 @@ void ModuleReloader::mergeTable(int live, int fresh, int base, const std::string
     const bool hasBase = lua_istable(state, previous);
 
     lua_pushnil(state);
+
     while (lua_next(state, next) != 0) {
         const int value = lua_gettop(state);
         const int key = value - 1;
@@ -259,6 +282,7 @@ void ModuleReloader::mergeTable(int live, int fresh, int base, const std::string
             const std::string member = lua_type(state, key) == LUA_TSTRING ? field + "." + lua_tostring(state, key) : field + "[]";
             mergeField(current, previous, key, value, member);
         }
+
         lua_settop(state, key);
     }
 
@@ -268,6 +292,7 @@ void ModuleReloader::mergeTable(int live, int fresh, int base, const std::string
         const int removed = lua_gettop(state);
         int count = 0;
         lua_pushnil(state);
+
         while (lua_next(state, current) != 0) {
             const int key = lua_gettop(state) - 1;
             const int keyType = lua_type(state, key);
@@ -276,32 +301,39 @@ void ModuleReloader::mergeTable(int live, int fresh, int base, const std::string
                 const bool absent = lua_rawget(state, next) == LUA_TNIL;
                 lua_pushvalue(state, key);
                 lua_rawget(state, previous);
+
                 if (absent && !lua_isnil(state, -1) && ModuleSnapshot::equals(state, key + 1, -1)) {
                     lua_pushvalue(state, key);
                     lua_rawseti(state, removed, ++count);
                 }
             }
+
             lua_settop(state, key);
         }
+
         for (int index = 1; index <= count; ++index) {
             lua_rawgeti(state, removed, index);
             lua_pushnil(state);
             lua_rawset(state, current);
         }
+
         lua_pop(state, 1);
     }
+
     mergeMetatables(current, next, field);
     lua_settop(state, map - 1);
 }
 
 void ModuleReloader::mergeField(int live, int base, int key, int value, const std::string& field) {
     const int top = lua_gettop(state);
+
     if (lua_istable(state, base)) {
         lua_pushvalue(state, key);
         lua_rawget(state, base);
     } else {
         lua_pushnil(state);
     }
+
     lua_pushvalue(state, key);
     lua_rawget(state, live);
     pushMerged(top + 1, top + 2, value, field);
@@ -314,10 +346,12 @@ void ModuleReloader::mergeField(int live, int base, int key, int value, const st
 void ModuleReloader::defer(int live, int fresh, int base, int key, const std::string& field) {
     deferred.push(state);
     lua_createtable(state, 0, 5);
+
     for (const auto& [slot, index] : {std::pair{"live", live}, std::pair{"fresh", fresh}, std::pair{"base", base}, std::pair{"key", key}}) {
         lua_pushvalue(state, index);
         lua_setfield(state, -2, slot);
     }
+
     lua_pushstring(state, field.c_str());
     lua_setfield(state, -2, "field");
     lua_rawseti(state, -2, static_cast<lua_Integer>(lua_rawlen(state, -2)) + 1);
@@ -355,10 +389,12 @@ void ModuleReloader::mergeDeferred() {
                 lua_settop(state, entry - 1);
                 continue;
             }
+
             if (!mapped) {
                 lua_pop(state, 1);
                 lua_pushvalue(state, -1);
             }
+
             const int liveKey = lua_gettop(state);
             lua_getfield(state, entry, "live");
             lua_getfield(state, entry, "base");
@@ -370,9 +406,11 @@ void ModuleReloader::mergeDeferred() {
             merged = true;
             lua_settop(state, entry - 1);
         }
+
         forced = !merged;
         lua_pop(state, 1);
     }
+
     lua_settop(state, map - 1);
 }
 
@@ -395,6 +433,7 @@ void ModuleReloader::mergeMetatables(int live, int fresh, const std::string& fie
         lua_pushvalue(state, freshMeta);
         lua_setmetatable(state, live);
     }
+
     lua_settop(state, top);
 }
 
@@ -402,19 +441,23 @@ void ModuleReloader::mapReplaced(int live, int base, int depth) {
     if (!lua_istable(state, base) || depth > 8) {
         return;
     }
+
     luaL_checkstack(state, 8, kDepthMessage);
     const int current = lua_absindex(state, live);
     const int previous = lua_absindex(state, base);
     lua_pushnil(state);
+
     while (lua_next(state, previous) != 0) {
         const int value = lua_gettop(state);
         lua_pushvalue(state, value - 1);
         lua_rawget(state, current);
+
         if (lua_isfunction(state, value) && lua_isfunction(state, -1)) {
             mapFunction(value, -1);
         } else if (lua_istable(state, value) && ModuleSnapshot::isMergeable(state, -1)) {
             mapReplaced(-1, value, depth + 1);
         }
+
         lua_settop(state, value - 1);
     }
 }
@@ -426,6 +469,7 @@ void ModuleReloader::mapFunction(int previous, int fresh) {
     if (!lua_isfunction(state, old) || lua_rawequal(state, old, next) != 0 || !isOfModule(old)) {
         return;
     }
+
     replacements.push(state);
     lua_pushvalue(state, old);
     lua_pushvalue(state, next);
@@ -437,6 +481,7 @@ bool ModuleReloader::isOfModule(int function) {
     if (lua_iscfunction(state, function) != 0) {
         return false;
     }
+
     lua_Debug info{};
     lua_pushvalue(state, function);
     lua_getinfo(state, ">S", &info);
@@ -462,6 +507,7 @@ void ModuleReloader::joinVariables(const ModuleClosures& previous, const ModuleC
         if (old == previous.getCells().end()) {
             continue;
         }
+
         const ModuleClosures::Cell& target = old->second.front();
         const int mark = lua_gettop(state);
         previous.pushClosure(state, target);
@@ -470,18 +516,22 @@ void ModuleReloader::joinVariables(const ModuleClosures& previous, const ModuleC
         fresh.pushClosure(state, cells.front());
         lua_getupvalue(state, -1, cells.front().upvalue);
         lua_remove(state, -2);
+
         if (lua_istable(state, baseIndex)) {
             lua_getfield(state, baseIndex, variable.c_str());
         } else {
             lua_pushnil(state);
         }
+
         pushMerged(mark + 4, mark + 2, mark + 3, "local " + variable);
         lua_setupvalue(state, oldClosure, target.upvalue);
+
         for (const ModuleClosures::Cell& cell : cells) {
             fresh.pushClosure(state, cell);
             lua_upvaluejoin(state, -1, cell.upvalue, oldClosure, target.upvalue);
             lua_pop(state, 1);
         }
+
         lua_settop(state, mark);
     }
 }
@@ -494,6 +544,7 @@ void ModuleReloader::mergeGlobals(int staging, int base) {
     lua_pushglobaltable(state);
     const int globals = lua_gettop(state);
     lua_pushnil(state);
+
     while (lua_next(state, written) != 0) {
         const int value = lua_gettop(state);
         const int key = value - 1;
@@ -503,6 +554,7 @@ void ModuleReloader::mergeGlobals(int staging, int base) {
         } else {
             lua_pushnil(state);
         }
+
         lua_pushvalue(state, key);
         lua_rawget(state, globals);
         const std::string global = lua_type(state, key) == LUA_TSTRING ? std::string("global ") + lua_tostring(state, key) : std::string("global");
@@ -516,6 +568,7 @@ void ModuleReloader::mergeGlobals(int staging, int base) {
     // A global that the new source no longer writes goes away, unless the app changed it since the last load.
     if (hasBase) {
         lua_pushnil(state);
+
         while (lua_next(state, previous) != 0) {
             const int value = lua_gettop(state);
             const int key = value - 1;
@@ -523,26 +576,32 @@ void ModuleReloader::mergeGlobals(int staging, int base) {
             const bool absent = lua_rawget(state, written) == LUA_TNIL;
             lua_pushvalue(state, key);
             lua_rawget(state, globals);
+
             if (absent && ModuleSnapshot::equals(state, -1, value)) {
                 lua_pushvalue(state, key);
                 lua_pushnil(state);
                 lua_rawset(state, globals);
             }
+
             lua_settop(state, key);
         }
     }
+
     lua_pop(state, 1);
 }
 
 void ModuleReloader::pushPreviousGlobals(int base) {
     const int previous = lua_absindex(state, base);
     lua_newtable(state);
+
     if (!lua_istable(state, previous)) {
         return;
     }
+
     const int result = lua_gettop(state);
     lua_pushglobaltable(state);
     lua_pushnil(state);
+
     while (lua_next(state, previous) != 0) {
         lua_pop(state, 1);
         lua_pushvalue(state, -1);
@@ -550,6 +609,7 @@ void ModuleReloader::pushPreviousGlobals(int base) {
         lua_rawget(state, result + 1);
         lua_rawset(state, result);
     }
+
     lua_pop(state, 1);
 }
 

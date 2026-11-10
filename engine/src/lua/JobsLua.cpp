@@ -38,6 +38,7 @@ int JobsLua::spawn(lua_State* L) {
             owner = lua_gettop(L);
         }
     }
+
     if (owner == 0) {
         owner = Owners::pushDefault(L);
     }
@@ -55,6 +56,7 @@ int JobsLua::checkpoint(lua_State* L) {
     if (outOfTime == 0) {
         return 0;
     }
+
     lua_pushlightuserdata(L, &checkpointKey);
     return lua_yield(L, 1);
 }
@@ -65,6 +67,7 @@ int JobsLua::setBudget(lua_State* L) {
     if (!(microseconds > 0.0)) {
         throw std::invalid_argument("The job budget must be a positive number of milliseconds.");
     }
+
     const auto largest = static_cast<double>(std::chrono::microseconds::max().count());
     getPlugin(L).setBudget(microseconds >= largest ? std::chrono::microseconds::max() : std::chrono::microseconds(std::max(1LL, std::llround(microseconds))));
     return 0;

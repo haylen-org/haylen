@@ -43,10 +43,12 @@ template <Bound T> class ClassBuilder final {
     ClassBuilder& property(const char* name, lua_CFunction getter, lua_CFunction setter = nullptr) {
         lua_pushcfunction(state, getter);
         lua_setfield(state, getters, name);
+
         if (setter != nullptr) {
             lua_pushcfunction(state, setter);
             lua_setfield(state, setters, name);
         }
+
         return *this;
     }
 
@@ -55,6 +57,7 @@ template <Bound T> class ClassBuilder final {
         if constexpr (NativeProperty::kindOf<Field>().has_value()) {
             NativeProperty::record(state, metatable, name, fieldProperty<Member>);
         }
+
         return property(name, &Binding::getField<Member>, &Binding::setField<Member>);
     }
 
@@ -64,6 +67,7 @@ template <Bound T> class ClassBuilder final {
         if constexpr (NativeProperty::kindOf<Value>().has_value()) {
             NativeProperty::record(state, metatable, name, accessorProperty<Getter, Setter>);
         }
+
         return property(name, &Binding::method<Getter>, &setThrough<Setter>);
     }
 
@@ -72,6 +76,7 @@ template <Bound T> class ClassBuilder final {
         if constexpr (NativeProperty::kindOf<Field>().has_value()) {
             NativeProperty::record(state, metatable, name, nestedProperty<Outer, Inner>);
         }
+
         return property(name, &Binding::getNestedField<Outer, Inner>, &Binding::setNestedField<Outer, Inner>);
     }
 
@@ -98,21 +103,25 @@ template <Bound T> class ClassBuilder final {
 
         lua_pushvalue(state, methods);
         lua_pushvalue(state, getters);
+
         if (indexGetter != nullptr) {
             lua_pushcfunction(state, indexGetter);
             lua_pushcclosure(state, &indexWithIntegers, 3);
         } else {
             lua_pushcclosure(state, &index, 2);
         }
+
         lua_setfield(state, metatable, "__index");
 
         lua_pushvalue(state, setters);
+
         if (indexSetter != nullptr) {
             lua_pushcfunction(state, indexSetter);
             lua_pushcclosure(state, &newIndexWithIntegers, 2);
         } else {
             lua_pushcclosure(state, &newIndex, 1);
         }
+
         lua_setfield(state, metatable, "__newindex");
 
         lua_settop(state, metatable - 1);
@@ -136,6 +145,7 @@ template <Bound T> class ClassBuilder final {
         if (object == nullptr) {
             return false;
         }
+
         NativeProperty::pack(object->*Member, values);
         return true;
     }
@@ -146,6 +156,7 @@ template <Bound T> class ClassBuilder final {
         if (object == nullptr) {
             return false;
         }
+
         object->*Member = NativeProperty::unpack<Field>(values);
         return true;
     }
@@ -155,6 +166,7 @@ template <Bound T> class ClassBuilder final {
         if (object == nullptr) {
             return false;
         }
+
         NativeProperty::pack((object->*Outer).*Inner, values);
         return true;
     }
@@ -165,6 +177,7 @@ template <Bound T> class ClassBuilder final {
         if (object == nullptr) {
             return false;
         }
+
         (object->*Outer).*Inner = NativeProperty::unpack<Field>(values);
         return true;
     }
@@ -174,6 +187,7 @@ template <Bound T> class ClassBuilder final {
         if (object == nullptr) {
             return false;
         }
+
         NativeProperty::pack((object->*Getter)(), values);
         return true;
     }
@@ -184,6 +198,7 @@ template <Bound T> class ClassBuilder final {
         if (object == nullptr) {
             return false;
         }
+
         (object->*Setter)(NativeProperty::unpack<Value>(values));
         return true;
     }
@@ -218,6 +233,7 @@ template <Bound T> class ClassBuilder final {
         if (lua_rawget(L, lua_upvalueindex(1)) != LUA_TNIL) {
             return 1;
         }
+
         lua_pop(L, 1);
 
         lua_pushvalue(L, 2);
@@ -226,6 +242,7 @@ template <Bound T> class ClassBuilder final {
             lua_pop(L, 1);
             return getter(L);
         }
+
         return luaL_error(L, "The type \"%s\" has no member \"%s\".", Type<T>::name, luaL_tolstring(L, 2, nullptr));
     }
 
@@ -233,6 +250,7 @@ template <Bound T> class ClassBuilder final {
         if (lua_type(L, 2) == LUA_TNUMBER) {
             return lua_tocfunction(L, lua_upvalueindex(3))(L);
         }
+
         return index(L);
     }
 
@@ -240,6 +258,7 @@ template <Bound T> class ClassBuilder final {
         if (lua_type(L, 2) == LUA_TNUMBER) {
             return lua_tocfunction(L, lua_upvalueindex(2))(L);
         }
+
         return newIndex(L);
     }
 
@@ -250,6 +269,7 @@ template <Bound T> class ClassBuilder final {
             lua_pop(L, 1);
             return setter(L);
         }
+
         return luaL_error(L, "The type \"%s\" has no writable property \"%s\".", Type<T>::name, luaL_tolstring(L, 2, nullptr));
     }
 

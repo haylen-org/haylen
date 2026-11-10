@@ -6,6 +6,7 @@ bool Userdata::newMetatable(lua_State* L, const char* name) {
     if (luaL_newmetatable(L, name) == 0) {
         return false;
     }
+
     lua_pushstring(L, name);
     lua_setfield(L, -2, "__metatable");
     return true;
@@ -17,6 +18,7 @@ void Userdata::pushField(lua_State* L, int index, const char* name) {
         lua_pushnil(L);
         return;
     }
+
     lua_getfield(L, -1, name);
     lua_remove(L, -2);
 }
@@ -30,6 +32,7 @@ void Userdata::setField(lua_State* L, int index, const char* name, int valueInde
         lua_pushvalue(L, -1);
         lua_setiuservalue(L, owner, 1);
     }
+
     lua_pushvalue(L, value);
     lua_setfield(L, -2, name);
     lua_pop(L, 1);
@@ -40,6 +43,7 @@ bool Userdata::pushFunction(lua_State* L, int index, const char* name) {
     if (lua_isfunction(L, -1)) {
         return true;
     }
+
     lua_pop(L, 1);
     return false;
 }

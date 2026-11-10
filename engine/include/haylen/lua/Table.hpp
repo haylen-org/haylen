@@ -32,6 +32,7 @@ class Table final {
         if (!lua_isnil(L, -1)) {
             readValue(L, field, target);
         }
+
         lua_pop(L, 1);
     }
 
@@ -43,6 +44,7 @@ class Table final {
             if (const std::optional<std::string_view> key = findKey(L, own, extras)) {
                 read(*key);
             }
+
             lua_pop(L, 1);
         }
     }
@@ -61,6 +63,7 @@ class Table final {
                 return;
             }
         }
+
         lua_pushcfunction(L, &readProtected<T>);
         lua_pushvalue(L, -2);
         lua_pushlightuserdata(L, &target);
@@ -79,10 +82,12 @@ class Table final {
             } else {
                 target = Converter<T>::read(L, 1);
             }
+
             return 0;
         } catch (const std::exception& exception) {
             message = exception.what();
         }
+
         return luaL_error(L, "%s", message.c_str());
     }
 

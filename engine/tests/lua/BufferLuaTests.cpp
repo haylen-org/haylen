@@ -86,6 +86,7 @@ TEST(SpriteLayoutTest, StoresAndAppliesEveryField) {
         fields.push_back(static_cast<SpriteLayout::Field>(field));
         values.push_back(static_cast<float>(field + 1) * 0.5F);
     }
+
     values[static_cast<std::size_t>(SpriteLayout::Field::Texture)] = 9.0F;
     const SpriteLayout layout(fields);
     const SpriteInstance sprite = layout.makeSprite(values, 0);

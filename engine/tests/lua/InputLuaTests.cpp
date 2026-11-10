@@ -379,6 +379,7 @@ TEST(InputStepLuaTest, CountsEveryPressOnceInFixedSteps) {
         engine.handleEvent({.type = platform::Event::Type::KeyUp, .key = Key::F});
         fixture.frames(5, 1.0 / 120.0);
     }
+
     EXPECT_EQ(fixture.lua("return attacks .. ' ' .. held"), "3 3");
     engine.handleEvent({.type = platform::Event::Type::KeyDown, .key = Key::F});
     fixture.frames(1, 1.0 / 10.0);

@@ -157,6 +157,7 @@ TEST_F(YieldTest, PassesThroughJobCheckpoints) {
     for (int frame = 0; frame < 100000 && fixture.lua("return total") == "nil"; ++frame) {
         fixture.frames(1);
     }
+
     EXPECT_EQ(fixture.lua("return total"), "5005000");
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }

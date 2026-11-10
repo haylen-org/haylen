@@ -27,6 +27,7 @@ class Binding final {
         } catch (const std::exception& exception) {
             message = exception.what();
         }
+
         return luaL_error(L, "%s", message.c_str());
     }
 

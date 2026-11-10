@@ -13,9 +13,11 @@ ModuleClosures::ModuleClosures(lua_State* L, std::string_view path, std::span<co
     for (const int root : roots) {
         indices.push_back(lua_absindex(L, root));
     }
+
     lua_newtable(L);
     anchor = Reference(L, -1);
     lua_pop(L, 1);
+
     for (const int root : indices) {
         visit(L, root, 0);
     }
@@ -24,29 +26,36 @@ ModuleClosures::ModuleClosures(lua_State* L, std::string_view path, std::span<co
 // Only mergeable tables lead further, so the functions of instances and engine objects, which a reload keeps as they are, stay out.
 void ModuleClosures::visit(lua_State* L, int index, int depth) {
     luaL_checkstack(L, 6, "The functions of a module are nested too deeply.");
+
     if (depth > kMaxDepth) {
         return;
     }
+
     const int type = lua_type(L, index);
     if (type == LUA_TFUNCTION) {
         if (lua_iscfunction(L, index) != 0 || !seen.insert(lua_topointer(L, index)).second) {
             return;
         }
+
         lua_Debug info{};
         lua_pushvalue(L, index);
         lua_getinfo(L, ">S", &info);
         if (source == info.source) {
             addClosure(L, index, depth);
         }
+
         return;
     }
+
     if (type != LUA_TTABLE || !ModuleSnapshot::isMergeable(L, index) || !seen.insert(lua_topointer(L, index)).second) {
         return;
     }
+
     if (lua_getmetatable(L, index) != 0) {
         visit(L, lua_gettop(L), depth + 1);
         lua_pop(L, 1);
     }
+
     lua_pushnil(L);
     while (lua_next(L, index) != 0) {
         visit(L, lua_gettop(L), depth + 1);
@@ -67,9 +76,11 @@ void ModuleClosures::addClosure(lua_State* L, int index, int depth) {
         if (name == nullptr) {
             break;
         }
+
         if (std::string_view(name) != "_ENV") {
             cells[std::string(name)].push_back({.closure = closure, .upvalue = upvalue, .id = lua_upvalueid(L, index, upvalue)});
         }
+
         visit(L, lua_gettop(L), depth + 1);
         lua_pop(L, 1);
     }
@@ -82,6 +93,7 @@ std::string ModuleClosures::findAmbiguous() const {
             return name;
         }
     }
+
     return {};
 }
 

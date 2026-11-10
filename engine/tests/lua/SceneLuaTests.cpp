@@ -168,6 +168,7 @@ TEST(SceneLuaTest, PlaysBuiltInEffectsWithBothScenesAlive) {
     for (int frame = 0; frame < 24 * 6; ++frame) {
         fixture.frames(1, 0.1);
     }
+
     EXPECT_EQ(fixture.lua("return scene.transitioning()"), "false");
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
@@ -364,6 +365,7 @@ TEST(SceneLuaTest, SpawnedTasksNeverResumeOnceTheirSceneUnloaded) {
         fixture.frames(1);
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
+
     EXPECT_EQ(fixture.lua("return table.concat(log, ', ') .. ' ' .. scene.size()"), "clearing, closed 0");
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 

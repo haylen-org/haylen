@@ -23,6 +23,7 @@ Reference& Reference::operator=(Reference&& other) noexcept {
         state = std::exchange(other.state, nullptr);
         reference = std::exchange(other.reference, LUA_NOREF);
     }
+
     return *this;
 }
 
@@ -34,6 +35,7 @@ void Reference::reset() noexcept {
     if (state != nullptr && reference != LUA_NOREF) {
         luaL_unref(state, LUA_REGISTRYINDEX, reference);
     }
+
     reference = LUA_NOREF;
 }
 

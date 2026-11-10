@@ -397,6 +397,7 @@ TEST(JobsLuaTest, SplitsLongWorkAcrossFrames) {
     for (int frame = 0; frame < 5000 && fixture.lua("return tostring(result)") == "nil"; ++frame) {
         fixture.frames(1);
     }
+
     EXPECT_EQ(fixture.lua("return result"), "45000150000");
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }

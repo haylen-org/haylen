@@ -16,6 +16,7 @@ void Owners::pushWeakTable(lua_State* L, const char* name, const char* mode) {
     if (lua_getfield(L, LUA_REGISTRYINDEX, name) == LUA_TTABLE) {
         return;
     }
+
     lua_pop(L, 1);
     lua_newtable(L);
     lua_createtable(L, 0, 1);
@@ -45,6 +46,7 @@ int Owners::collectScope(lua_State* L) {
         });
         // clang-format on
     }
+
     scope->~Scope();
     lua_pushnil(L);
     lua_setmetatable(L, 1);
@@ -56,6 +58,7 @@ int Owners::pushDefault(lua_State* L) {
         lua_pop(L, 1);
         return 0;
     }
+
     return lua_gettop(L);
 }
 
@@ -72,6 +75,7 @@ Owners::DefaultScope::DefaultScope(lua_State* L, int owner) : state(L) {
     } else {
         lua_pushvalue(L, owner);
     }
+
     swapDefault(L, -1);
     previous = Reference(L, -1);
     lua_pop(L, 2);
@@ -92,6 +96,7 @@ void Owners::pushFunctions(lua_State* L, int owner) {
         lua_pushnil(L);
         return;
     }
+
     lua_getiuservalue(L, -1, 1);
     lua_replace(L, -3);
     lua_pop(L, 1);
@@ -105,12 +110,14 @@ Owners::Scope& Owners::pushScope(lua_State* L, int owner) {
         lua_remove(L, -2);
         return *static_cast<Scope*>(lua_touserdata(L, -1));
     }
+
     lua_pop(L, 1);
 
     if (Userdata::newMetatable(L, kScopeType)) {
         lua_pushcfunction(L, &collectScope);
         lua_setfield(L, -2, "__gc");
     }
+
     lua_pop(L, 1);
 
     // The scope keeps the functions of the owner's listeners in its user value, reachable only through the owner.
@@ -176,14 +183,17 @@ void Owners::endHeld(std::vector<std::weak_ptr<Task>> tasks, std::vector<std::sh
             task->cancel();
         }
     }
+
     for (const std::shared_ptr<core::Connection::Link>& link : links) {
         link->disconnect();
     }
+
     connections.clear();
 }
 
 Owners::Function::Function(lua_State* L, int function, int owner) : state(Runtime::getMainThread(L)) {
     luaL_checktype(L, function, LUA_TFUNCTION);
+
     if (owner == 0) {
         strong = Reference(L, function);
         return;
@@ -220,6 +230,7 @@ Owners::Function::~Function() {
     if (key == 0) {
         return;
     }
+
     lua_State* L = state;
     pushWeakTable(L, kFunctions, "v");
     lua_pushnil(L);
@@ -233,6 +244,7 @@ Owners::Function::~Function() {
         lua_rawseti(L, -2, key);
         lua_pop(L, 1);
     }
+
     lua_pop(L, 1);
     lua_pushnil(L);
     lua_rawseti(L, -2, key);
@@ -244,12 +256,14 @@ bool Owners::Function::push(lua_State* L) const {
         strong.push(L);
         return true;
     }
+
     pushWeakTable(L, kFunctions, "v");
     const bool present = lua_rawgeti(L, -1, key) == LUA_TFUNCTION;
     lua_remove(L, -2);
     if (!present) {
         lua_pop(L, 1);
     }
+
     return present;
 }
 

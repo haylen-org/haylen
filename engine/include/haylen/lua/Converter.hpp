@@ -41,6 +41,7 @@ template <SharedBound T> struct Converter<std::shared_ptr<T>> {
             lua_pushnil(L);
             return;
         }
+
         Userdata::emplace<T>(L, std::move(value));
     }
     static std::shared_ptr<T> read(lua_State* L, int index) {
@@ -76,6 +77,7 @@ template <Integer T> struct Converter<T> {
         if constexpr (std::is_unsigned_v<T>) {
             luaL_argcheck(L, value >= 0, index, "expected a non-negative integer");
         }
+
         // Narrow integers never wrap silently, so a light mask of 300 is an error instead of 44.
         luaL_argcheck(L, std::in_range<T>(value), index, "integer out of range");
         return static_cast<T>(value);
@@ -111,6 +113,7 @@ template <std::floating_point T> struct Converter<T> {
         if (!fits(value)) {
             luaL_error(L, "The number %f lies outside the numbers from -3.4028234663853e+38 to 3.4028234663853e+38 that the engine holds.", value);
         }
+
         return static_cast<T>(value);
     }
 
@@ -159,12 +162,14 @@ template <typename T> struct Converter<std::optional<T>> {
             Converter<T>::push(L, *value);
             return;
         }
+
         lua_pushnil(L);
     }
     static std::optional<T> read(lua_State* L, int index) {
         if (lua_isnoneornil(L, index)) {
             return std::nullopt;
         }
+
         return Converter<T>::read(L, index);
     }
     static bool is(lua_State* L, int index) {
@@ -214,6 +219,7 @@ template <NamedEnum T> struct Converter<T> {
         if (!value) {
             luaL_argerror(L, index, lua_pushfstring(L, "unknown value '%s'", std::string(name).c_str()));
         }
+
         return *value;
     }
     static bool is(lua_State* L, int index) {

@@ -36,6 +36,7 @@ class LuaReferenceTest : public ::testing::Test {
             if (entry.path().extension() != ".md" || entry.path().filename() == "README.md") {
                 continue;
             }
+
             Page& page = pages[entry.path().stem().string()];
             std::ifstream file(entry.path());
             std::string line;
@@ -47,21 +48,25 @@ class LuaReferenceTest : public ::testing::Test {
                     if (inside && lua) {
                         page.examples.push_back(example);
                     }
+
                     lua = !inside && line == "```lua";
                     inside = !inside;
                     example.clear();
                     continue;
                 }
+
                 if (inside) {
                     example += line + "\n";
                     continue;
                 }
+
                 page.prose += line + "\n";
                 if (line.starts_with("#")) {
                     page.headings.push_back(line);
                 }
             }
         }
+
         return pages;
     }
 
@@ -77,6 +82,7 @@ class LuaReferenceTest : public ::testing::Test {
                 modules.push_back(name);
             }
         }
+
         lua_pop(L, 2);
         std::ranges::sort(modules);
         return modules;
@@ -92,6 +98,7 @@ class LuaReferenceTest : public ::testing::Test {
                 keys.insert(lua_tostring(L, -1));
             }
         }
+
         return keys;
     }
 
@@ -105,18 +112,23 @@ class LuaReferenceTest : public ::testing::Test {
                     if (lua_istable(L, -1)) {
                         type.methods = getKeys(L, -1);
                     }
+
                     lua_pop(L, 1);
                 } else if (lua_istable(L, -1)) {
                     type.methods = getKeys(L, -1);
                 }
+
                 lua_pop(L, 1);
                 if (lua_getfield(L, -1, "__properties") == LUA_TTABLE) {
                     type.properties = getKeys(L, -1);
                 }
+
                 lua_pop(L, 1);
             }
+
             lua_pop(L, 1);
         }
+
         return types;
     }
 
@@ -125,6 +137,7 @@ class LuaReferenceTest : public ::testing::Test {
         if (lua_type(L, -2) != LUA_TSTRING || lua_type(L, -1) != LUA_TTABLE || !std::string(lua_tostring(L, -2)).starts_with("haylen.")) {
             return false;
         }
+
         lua_getfield(L, -1, "__name");
         const bool named = lua_type(L, -1) == LUA_TSTRING && lua_rawequal(L, -1, -3) != 0;
         lua_pop(L, 1);
@@ -140,6 +153,7 @@ class LuaReferenceTest : public ::testing::Test {
                 return match[1];
             }
         }
+
         return stem;
     }
 
@@ -160,6 +174,7 @@ class LuaReferenceTest : public ::testing::Test {
                 return true;
             }
         }
+
         return false;
     }
 
@@ -168,6 +183,7 @@ class LuaReferenceTest : public ::testing::Test {
         for (const std::string& line : lines) {
             text << "\n  " << line;
         }
+
         return text.str();
     }
 
@@ -185,6 +201,7 @@ TEST_F(LuaReferenceTest, EveryModuleAndEveryMemberHasItsPlaceInTheReference) {
             missing.push_back(module + " has no page \"docs/lua-api/" + stem + ".md\".");
             continue;
         }
+
         const std::string alias = getAlias(page->second, module, stem);
         lua_getglobal(L, "require");
         lua_pushstring(L, module.c_str());
@@ -196,8 +213,10 @@ TEST_F(LuaReferenceTest, EveryModuleAndEveryMemberHasItsPlaceInTheReference) {
                 }
             }
         }
+
         lua_pop(L, 1);
     }
+
     EXPECT_TRUE(missing.empty()) << "These modules and members have no place in their reference page:" << join(missing);
 }
 
@@ -209,17 +228,20 @@ TEST_F(LuaReferenceTest, EveryBoundTypeWithItsMethodsAndPropertiesHasItsPlaceInT
             missing.push_back(name + " has no heading in the reference.");
             continue;
         }
+
         for (const std::string& method : type.methods) {
             if (!method.starts_with("_") && page->second.prose.find(":" + method) == std::string::npos && page->second.prose.find("." + method) == std::string::npos) {
                 missing.push_back(name + ":" + method + " in " + page->first + ".md");
             }
         }
+
         for (const std::string& property : type.properties) {
             if (page->second.prose.find("`" + property + "`") == std::string::npos && page->second.prose.find("." + property) == std::string::npos) {
                 missing.push_back(name + "." + property + " in " + page->first + ".md");
             }
         }
     }
+
     EXPECT_TRUE(missing.empty()) << "These types, methods and properties have no place in the reference:" << join(missing);
 }
 
@@ -231,9 +253,11 @@ TEST_F(LuaReferenceTest, EveryLuaExampleOfTheReferenceCompiles) {
             if (luaL_loadbufferx(L, example.data(), example.size(), stem.c_str(), "t") != LUA_OK) {
                 failing.push_back(stem + ".md: " + lua_tostring(L, -1));
             }
+
             lua_pop(L, 1);
         }
     }
+
     EXPECT_TRUE(failing.empty()) << "These examples of the reference do not compile:" << join(failing);
 }
 

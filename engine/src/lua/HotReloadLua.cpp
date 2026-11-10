@@ -30,9 +30,11 @@ int HotReloadLua::keep(lua_State* L) {
         lua_call(L, 0, 1);
         return 1;
     }
+
     if (graph->getLoading().empty()) {
         return luaL_error(L, "The function \"keep\" works only while a module loads.");
     }
+
     graph->pushKept(L, lua_tostring(L, 1), 2);
     return 1;
 }
@@ -43,10 +45,12 @@ int HotReloadLua::restartOnChange(lua_State* L) {
     if (graph == nullptr) {
         return 0;
     }
+
     ModuleGraph::Module* module = graph->find(graph->getLoading());
     if (module == nullptr) {
         return luaL_error(L, "The function \"restartOnChange\" works only while a module loads.");
     }
+
     module->restartOnChange = true;
     return 0;
 }

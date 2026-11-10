@@ -25,6 +25,7 @@ std::shared_ptr<Task> Task::start(lua_State* L, int function, int arguments, int
     if (owner != 0) {
         Owners::addTask(L, owner, task);
     }
+
     task->run(L, function, arguments);
     return task;
 }
@@ -37,6 +38,7 @@ void Task::run(lua_State* L, int function, int arguments) {
     if (lua_checkstack(L, arguments + 2) == 0 || lua_checkstack(thread, arguments + 2) == 0) {
         throw std::runtime_error("A task cannot start with that many arguments.");
     }
+
     lua_pushvalue(L, -1);
     threadReference = luaL_ref(L, LUA_REGISTRYINDEX);
 
@@ -45,6 +47,7 @@ void Task::run(lua_State* L, int function, int arguments) {
         lua_pushcfunction(thread, &collectHolder);
         lua_setfield(thread, -2, "__gc");
     }
+
     lua_pop(thread, 1);
     new (lua_newuserdatauv(thread, sizeof(std::shared_ptr<Task>), 0)) std::shared_ptr<Task>(shared_from_this());
     luaL_setmetatable(thread, kHolderType);
@@ -53,6 +56,7 @@ void Task::run(lua_State* L, int function, int arguments) {
     for (int index = 0; index <= arguments; ++index) {
         lua_pushvalue(L, first + index);
     }
+
     lua_xmove(L, thread, arguments + 1);
 
     // The body catches every error of the function, so only a failure of the coroutine itself, such as running out of memory, ends the resume here.
@@ -78,16 +82,19 @@ int Task::continueBody(lua_State* L, int status, lua_KContext context) {
         task.finish(Runtime::readError(L, -1));
         return 0;
     }
+
     if (context == kCalled && lua_gettop(L) >= 2 && Promise::isPromise(L, 2)) {
         lua_getfield(L, 2, "await");
         lua_pushvalue(L, 2);
         lua_callk(L, 1, 2, kAwaited, &continueBody);
         return continueBody(L, LUA_OK, kAwaited);
     }
+
     if (context == kAwaited && !lua_isnil(L, -1)) {
         task.finish(Error(Runtime::describeValue(L, -1)));
         return 0;
     }
+
     task.finish(std::nullopt);
     return 0;
 }
@@ -103,9 +110,11 @@ int Task::collectHolder(lua_State* L) {
 void Task::finish(const std::optional<Error>& error) {
     finished = true;
     release();
+
     if (!completion || (cancelled && !error)) {
         return;
     }
+
     try {
         completion(error);
     } catch (const std::exception& exception) {
@@ -117,6 +126,7 @@ void Task::cancel() {
     if (!isRunning()) {
         return;
     }
+
     cancelled = true;
     lua_rawgeti(main, LUA_REGISTRYINDEX, threadReference);
     varn::async::Promise::cancelTask(main, -1);
@@ -128,6 +138,7 @@ void Task::release() noexcept {
     if (threadReference == LUA_NOREF) {
         return;
     }
+
     luaL_unref(main, LUA_REGISTRYINDEX, threadReference);
     threadReference = LUA_NOREF;
 }

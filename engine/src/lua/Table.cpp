@@ -26,15 +26,18 @@ std::optional<std::string_view> Table::findKey(lua_State* L, FieldNames own, std
     if (lua_type(L, -2) != LUA_TSTRING) {
         luaL_error(L, "Option tables only accept string keys.");
     }
+
     std::size_t length = 0;
     const char* text = lua_tolstring(L, -2, &length);
     const std::string_view key{text, length};
     if (std::find(own.begin(), own.end(), key) != own.end()) {
         return key;
     }
+
     if (std::none_of(extras.begin(), extras.end(), [key](FieldNames names) { return std::find(names.begin(), names.end(), key) != names.end(); })) {
         luaL_error(L, "Unknown option \"%s\".", text);
     }
+
     return std::nullopt;
 }
 
@@ -44,9 +47,11 @@ int Table::raiseFieldError(lua_State* L, std::string_view field) {
     if (const std::size_t open = reason.find(" ("); reason.starts_with("bad argument") && open != std::string::npos && reason.ends_with(')')) {
         reason = reason.substr(open + 2, reason.size() - open - 3);
     }
+
     if (!reason.ends_with('.')) {
         reason += '.';
     }
+
     lua_pop(L, 1);
 
     lua_Debug frame{};

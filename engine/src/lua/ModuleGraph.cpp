@@ -26,6 +26,7 @@ void ModuleGraph::install(lua_State* L) {
         lua_pushcfunction(L, &Binding::native<&closeLoad>);
         lua_setfield(L, -2, "__close");
     }
+
     lua_pop(L, 1);
 }
 
@@ -48,11 +49,13 @@ std::vector<std::string> ModuleGraph::order(const std::vector<std::string>& path
         if (!visited.insert(path).second) {
             return;
         }
+
         if (const Module* module = find(path)) {
             for (const std::string& required : module->dependencies) {
                 visit(required);
             }
         }
+
         if (wanted.contains(path)) {
             ordered.push_back(path);
         }
@@ -63,6 +66,7 @@ std::vector<std::string> ModuleGraph::order(const std::vector<std::string>& path
             visit(path);
         }
     }
+
     return ordered;
 }
 
@@ -76,11 +80,13 @@ std::vector<std::string> ModuleGraph::findDependents(const std::vector<std::stri
             if (reached.contains(path) || std::ranges::none_of(module.dependencies, [&reached](const std::string& required) { return reached.contains(required); })) {
                 continue;
             }
+
             reached.insert(path);
             dependents.push_back(path);
             grew = true;
         }
     }
+
     std::ranges::sort(dependents, [this](const std::string& left, const std::string& right) { return std::ranges::find(loadOrder, left) < std::ranges::find(loadOrder, right); });
     return dependents;
 }
@@ -99,9 +105,11 @@ void ModuleGraph::beginLoad(lua_State* L, const std::string& path, int owner) {
 void ModuleGraph::endLoad(lua_State* L, bool succeeded) {
     const Loading run = std::move(loading.back());
     loading.pop_back();
+
     if (!succeeded) {
         dropKept(L, run.path, run.kept);
     }
+
     run.previous.push(L);
     Owners::swapDefault(L, -1);
     lua_pop(L, 2);
@@ -117,11 +125,13 @@ void ModuleGraph::pushKept(lua_State* L, const std::string& key, int create) {
         lua_remove(L, values);
         return;
     }
+
     lua_pop(L, 1);
 
     lua_newtable(L);
     const int owner = lua_gettop(L);
     lua_pushvalue(L, function);
+
     try {
         const Owners::DefaultScope scope(L, owner);
         Runtime::protectedCall(L, 0, 1);
@@ -129,6 +139,7 @@ void ModuleGraph::pushKept(lua_State* L, const std::string& key, int create) {
         Owners::release(L, owner);
         throw;
     }
+
     lua_pushvalue(L, -1);
     lua_setfield(L, values, key.c_str());
     pushModuleTable(L, "keptOwners", path);
@@ -147,6 +158,7 @@ void ModuleGraph::dropKept(lua_State* L, std::string_view path, const std::vecto
     if (keys.empty()) {
         return;
     }
+
     pushModuleTable(L, "kept", path);
     pushModuleTable(L, "keptOwners", path);
     for (const std::string& key : keys) {
@@ -158,6 +170,7 @@ void ModuleGraph::dropKept(lua_State* L, std::string_view path, const std::vecto
         lua_pushnil(L);
         lua_setfield(L, -3, key.c_str());
     }
+
     lua_pop(L, 2);
 }
 
@@ -165,6 +178,7 @@ void ModuleGraph::pushStore(lua_State* L) {
     if (lua_getfield(L, LUA_REGISTRYINDEX, kStore) == LUA_TTABLE) {
         return;
     }
+
     lua_pop(L, 1);
     lua_newtable(L);
     lua_pushvalue(L, -1);
@@ -183,6 +197,7 @@ void ModuleGraph::pushCreators(lua_State* L) {
         lua_pushvalue(L, -1);
         lua_setfield(L, -3, "creators");
     }
+
     lua_remove(L, -2);
 }
 
@@ -194,6 +209,7 @@ void ModuleGraph::pushSection(lua_State* L, const char* name) {
         lua_pushvalue(L, -1);
         lua_setfield(L, -3, name);
     }
+
     lua_remove(L, -2);
 }
 
@@ -221,6 +237,7 @@ void ModuleGraph::pushModuleTable(lua_State* L, const char* section, std::string
         lua_pushvalue(L, -2);
         lua_rawset(L, -4);
     }
+
     lua_remove(L, -2);
 }
 
@@ -253,6 +270,7 @@ int ModuleGraph::require(lua_State* L) {
         graph.recordRequire(L, name);
         return 1;
     }
+
     lua_pop(L, 1);
 
     findLoader(L, name.c_str());
@@ -269,11 +287,13 @@ int ModuleGraph::require(lua_State* L) {
     } else {
         lua_pop(L, 1);
     }
+
     if (lua_getfield(L, 2, name.c_str()) == LUA_TNIL) {
         lua_pushboolean(L, 1);
         lua_copy(L, -1, -2);
         lua_setfield(L, 2, name.c_str());
     }
+
     lua_pushvalue(L, 4);
     return 2;
 }
@@ -284,6 +304,7 @@ void ModuleGraph::findLoader(lua_State* L, const char* name) {
     if (lua_type(L, -1) != LUA_TTABLE || lua_getfield(L, -1, "searchers") != LUA_TTABLE) {
         luaL_error(L, "The field \"package.searchers\" must be a table.");
     }
+
     const int searchers = lua_gettop(L);
     luaL_Buffer message;
     luaL_buffinit(L, &message);
@@ -295,11 +316,13 @@ void ModuleGraph::findLoader(lua_State* L, const char* name) {
             luaL_pushresult(&message);
             luaL_error(L, "The module \"%s\" was not found.%s", name, lua_tostring(L, -1));
         }
+
         lua_pushstring(L, name);
         lua_call(L, 1, 2);
         if (lua_isfunction(L, -2) != 0) {
             break;
         }
+
         if (lua_isstring(L, -2) != 0) {
             lua_pop(L, 1);
             luaL_addvalue(&message);
@@ -321,6 +344,7 @@ void ModuleGraph::recordRequire(lua_State* L, const std::string& name) {
     if (lua_getstack(L, 1, &caller) == 0 || lua_getinfo(L, "S", &caller) == 0 || caller.source[0] != '@') {
         return;
     }
+
     const auto required = pathsByName.find(name);
     Module* module = find(caller.source + 1);
     if (required != pathsByName.end() && module != nullptr && required->second != module->path) {
@@ -337,10 +361,13 @@ int ModuleGraph::load(lua_State* L, const std::string& name, const std::string& 
     if (std::ranges::find(module.names, name) == module.names.end()) {
         module.names.push_back(name);
     }
+
     pathsByName[name] = path;
+
     if (first) {
         loadOrder.push_back(path);
     }
+
     recordRequire(L, name);
 
     lua_newtable(L);
@@ -377,6 +404,7 @@ int ModuleGraph::load(lua_State* L, const std::string& name, const std::string& 
             lua_pushboolean(L, 1);
         }
     }
+
     const int result = lua_gettop(L);
     finishLoad(L, path, std::move(source), result, written);
     static_cast<Load*>(lua_touserdata(L, closing))->finished = true;
@@ -412,6 +440,7 @@ void ModuleGraph::setEnvironment(lua_State* L, int chunk) {
         lua_pop(L, 1);
         return;
     }
+
     lua_pop(L, 1);
     if (std::string_view(name) == "_ENV") {
         lua_setupvalue(L, function, 1);
@@ -441,6 +470,7 @@ int ModuleGraph::closeLoad(lua_State* L) {
     setEnvironment(L, -2);
     lua_pop(L, 1);
     graph.endLoad(L, load.finished);
+
     if (load.finished) {
         return 0;
     }
@@ -456,9 +486,11 @@ int ModuleGraph::closeLoad(lua_State* L) {
         for (const std::string& name : module->names) {
             graph.pathsByName.erase(name);
         }
+
         std::erase(graph.loadOrder, path);
         graph.modules.erase(path);
     }
+
     return 0;
 }
 

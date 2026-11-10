@@ -19,14 +19,18 @@ void ScriptedLoadingView::call(const char* name, const core::SceneLoad::Progress
             lua_pop(L, 2);
             return;
         }
+
         lua_insert(L, -2);
+
         if (pushArguments) {
             pushArguments(L);
         }
+
         if (progress != nullptr) {
             lua_pushnumber(L, progress->value);
             Stack::push(L, progress->message);
         }
+
         lua_call(L, 1 + arguments + (progress != nullptr ? 2 : 0), 0);
     });
     // clang-format on
@@ -44,6 +48,7 @@ void ScriptedLoadingView::exit(core::Engine&) {
     } catch (...) {
         failure = std::current_exception();
     }
+
     // clang-format off
     Runtime::protectedRun(table.getState(), [this](lua_State* L) {
         table.push(L);

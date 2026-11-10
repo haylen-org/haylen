@@ -19,6 +19,7 @@ class Userdata final {
         if (storage == nullptr) {
             return nullptr;
         }
+
         if constexpr (SharedBound<T>) {
             return storage->get();
         } else if constexpr (WeakBound<T>) {
@@ -35,12 +36,14 @@ class Userdata final {
             if (!*storage) {
                 luaL_error(L, "This \"%s\" was already released.", Type<T>::name);
             }
+
             return **storage;
         } else if constexpr (WeakBound<T>) {
             T* object = storage->lock().get();
             if (object == nullptr) {
                 luaL_error(L, "This \"%s\" was already released.", Type<T>::name);
             }
+
             return *object;
         } else {
             return *storage;
@@ -52,6 +55,7 @@ class Userdata final {
         if (!*storage) {
             luaL_error(L, "This \"%s\" was already released.", Type<T>::name);
         }
+
         return *storage;
     }
 

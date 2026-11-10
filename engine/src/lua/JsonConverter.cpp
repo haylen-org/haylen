@@ -30,8 +30,10 @@ bool JsonConverter::isSequence(lua_State* L, int table) {
             lua_pop(L, 1);
             return false;
         }
+
         ++count;
     }
+
     return count == length;
 }
 
@@ -41,6 +43,7 @@ std::string JsonConverter::objectKey(lua_State* L, int index) {
         const char* text = lua_tolstring(L, index, &length);
         return {text, length};
     }
+
     if (lua_type(L, index) == LUA_TNUMBER) {
         // The key is converted from a copy so `lua_tolstring` never changes the key that `lua_next` expects.
         lua_pushvalue(L, index);
@@ -48,6 +51,7 @@ std::string JsonConverter::objectKey(lua_State* L, int index) {
         lua_pop(L, 1);
         return key;
     }
+
     throw std::invalid_argument(std::string("A ") + luaL_typename(L, index) + " key cannot be converted to JSON.");
 }
 
@@ -66,6 +70,7 @@ core::Json JsonConverter::convert(lua_State* L, int index, int depth, std::vecto
         if (lua_isinteger(L, index) != 0) {
             return static_cast<std::int64_t>(lua_tointeger(L, index));
         }
+
         return lua_tonumber(L, index);
     case LUA_TSTRING: {
         std::size_t length = 0;
@@ -79,13 +84,16 @@ core::Json JsonConverter::convert(lua_State* L, int index, int depth, std::vecto
             buffers->push_back(bytes->data);
             return core::JsonBytes::makeReference(buffers->size() - 1);
         }
+
         if (views && luaL_testudata(L, index, varn::dataview::DataViewModule::kMetatable) != nullptr) {
             const varn::dataview::DataView* view = varn::dataview::DataViewModule::test(L, index);
             if (view == nullptr) {
                 throw std::invalid_argument("A data view that was released cannot cross the platform bridge.");
             }
+
             return varn::dataview::DataViewJson::write(*view);
         }
+
         [[fallthrough]];
     default:
         throw std::invalid_argument(std::string("A ") + luaL_typename(L, index) + " cannot be converted to JSON.");
@@ -104,6 +112,7 @@ core::Json JsonConverter::convert(lua_State* L, int index, int depth, std::vecto
             array.push_back(convert(L, -1, depth + 1, buffers, views));
             lua_pop(L, 1);
         }
+
         return array;
     }
 
@@ -114,6 +123,7 @@ core::Json JsonConverter::convert(lua_State* L, int index, int depth, std::vecto
         object[std::move(key)] = convert(L, -1, depth + 1, buffers, views);
         lua_pop(L, 1);
     }
+
     return object;
 }
 
@@ -141,6 +151,7 @@ void JsonConverter::pushConverted(lua_State* L, const core::Json& value, int dep
         } else {
             lua_pushinteger(L, static_cast<lua_Integer>(number));
         }
+
         return;
     }
     case core::Json::value_t::number_float:
@@ -162,6 +173,7 @@ void JsonConverter::pushConverted(lua_State* L, const core::Json& value, int dep
             pushConverted(L, value[element], depth + 1, buffers, views);
             lua_rawseti(L, -2, static_cast<lua_Integer>(element + 1));
         }
+
         return;
     case core::Json::value_t::object:
         if (const std::optional<std::size_t> reference = buffers != nullptr ? core::JsonBytes::findReference(value) : std::nullopt) {
@@ -170,20 +182,24 @@ void JsonConverter::pushConverted(lua_State* L, const core::Json& value, int dep
             lua_pushlstring(L, reinterpret_cast<const char*>(bytes.data()), bytes.size());
             return;
         }
+
         if (const std::optional<varn::dataview::DataView::Token> token = views ? varn::dataview::DataViewJson::read(value) : std::nullopt) {
             varn::dataview::DataView view = varn::dataview::DataView::acquire(*token);
             if (!view) {
                 throw std::invalid_argument(std::format("The JSON names the data view {}, which is no longer alive.", token->id));
             }
+
             varn::dataview::DataViewModule::push(L, std::move(view));
             return;
         }
+
         lua_createtable(L, 0, static_cast<int>(value.size()));
         for (const auto& [key, member] : value.items()) {
             lua_pushlstring(L, key.data(), key.size());
             pushConverted(L, member, depth + 1, buffers, views);
             lua_rawset(L, -3);
         }
+
         return;
     }
 }
@@ -192,6 +208,7 @@ void JsonConverter::validateNested(const core::Json& value, int depth) {
     if (depth > kMaxDepth) {
         throw std::invalid_argument(kTooDeep);
     }
+
     if (value.is_structured()) {
         for (const core::Json& element : value) {
             validateNested(element, depth + 1);

@@ -18,16 +18,20 @@ void Warnings::receive(void* data, const char* message, int continued) {
         if (control == "@on" || control == "@off") {
             warnings.enabled = control == "@on";
         }
+
         return;
     }
 
     warnings.pending += message;
+
     if (continued != 0) {
         return;
     }
+
     if (warnings.enabled) {
         core::Log::warning("Lua warning: {}", warnings.pending);
     }
+
     warnings.pending.clear();
 }
 
