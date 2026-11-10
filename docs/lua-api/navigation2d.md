@@ -1212,7 +1212,7 @@ print(sheep.agentCount, sheep.separation) -- 0 0.5
 
 A `Crowd` moves many agents at once with optimal reciprocal collision avoidance, ORCA, which [`navigation2d.newCrowd`](#navigation2dnewcrowdflocking) returns. Every step, each agent takes the velocity closest to the one it wants among the velocities that keep it clear of its neighbors for a time horizon, and clear of obstacles for a shorter one. Each agent of a pair takes half of the effort to avoid the other. Steps are deterministic, allocate nothing once the crowd has grown, and spread over the job system of the engine.
 
-Agents are known by the integer ids that `crowd:addAgent` returns, which count from 0. A removed agent frees its id for a later agent. An unknown id raises an error such as `Agent 7 is not in the crowd.`, and a position, target or velocity that is not finite raises `Crowd positions, targets and velocities must be finite.`
+Agents are known by the integer ids that `crowd:addAgent` returns, which count from 0 while no agent has been removed. A later agent takes the place of a removed one with an id of its own, so an id that an app kept after the removal never names the new agent, and `crowd:hasAgent` answers `false` for it. An unknown id raises an error such as `Agent 7 is not in the crowd.`, and a position, target or velocity that is not finite raises `Crowd positions, targets and velocities must be finite.`
 
 Agents that all want the same spot, or that meet head on in a symmetric formation, can settle in a standoff where every agent keeps its neighbors clear. That is the correct ORCA answer. Break it by giving the targets a small spread, or by adding a little `separation`.
 

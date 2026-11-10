@@ -237,6 +237,8 @@ TEST_F(NavigationLuaTest, MovesCrowdsWithoutOverlaps) {
     // clang-format on
     EXPECT_EQ(lua("return tostring(crossed)"), "false");
     EXPECT_EQ(lua("crowd:clearObstacles() return tostring(crowd:removeAgent(b)) .. tostring(crowd:removeAgent(b)) .. tostring(crowd:hasAgent(b)) .. ' ' .. crowd.agentCount"), "truefalsefalse 1");
+    EXPECT_EQ(lua("c = crowd:addAgent() return tostring(c ~= b) .. ' ' .. tostring(crowd:hasAgent(b)) .. ' ' .. tostring(crowd:hasAgent(c))"), "true false true");
+    EXPECT_NE(lua("crowd:position(b)").find("is not in the crowd."), std::string::npos);
 
     EXPECT_NE(lua("crowd:addObstacle({{0, 0}})").find("at least two points"), std::string::npos);
     EXPECT_NE(lua("crowd:step(0)").find("positive and finite time"), std::string::npos);

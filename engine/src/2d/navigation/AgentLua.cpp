@@ -121,8 +121,8 @@ Crowd& AgentLua::checkCrowd(lua_State* L) {
     return lua::Userdata::check<Crowd>(L, 1);
 }
 
-std::uint32_t AgentLua::readAgentId(lua_State* L) {
-    return lua::Stack::read<std::uint32_t>(L, 2);
+Crowd::AgentId AgentLua::readAgentId(lua_State* L) {
+    return lua::Stack::read<Crowd::AgentId>(L, 2);
 }
 
 // Creates a crowd with `newCrowd([{separation = 0, alignment = 0, cohesion = 0}])`.

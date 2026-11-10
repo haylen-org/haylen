@@ -25,52 +25,74 @@ void Crowd::requireFinite(math::Vec2 value) {
     }
 }
 
-std::uint32_t Crowd::addAgent(const AgentOptions& options) {
+Crowd::AgentId Crowd::addAgent(const AgentOptions& options) {
     const bool valid = options.radius >= 0.0F && options.maxSpeed >= 0.0F && options.neighborDistance >= 0.0F && options.timeHorizon > 0.0F && options.obstacleTimeHorizon > 0.0F;
     const bool finite = std::isfinite(options.position.x) && std::isfinite(options.position.y) && std::isfinite(options.velocity.x) && std::isfinite(options.velocity.y) && std::isfinite(options.radius) && std::isfinite(options.maxSpeed) && std::isfinite(options.neighborDistance);
     if (!valid || !finite) {
         throw std::invalid_argument("A crowd agent needs a finite position, velocity, radius, speed and neighbor distance and positive time horizons.");
     }
 
-    std::uint32_t id = 0;
+    std::uint32_t agentIndex = 0;
     if (freeAgents.empty()) {
-        id = static_cast<std::uint32_t>(agents.size());
+        agentIndex = static_cast<std::uint32_t>(agents.size());
         agents.emplace_back();
     } else {
-        id = freeAgents.back();
+        agentIndex = freeAgents.back();
         freeAgents.pop_back();
     }
-    agents[id] = {.options = options, .preferred = {}, .target = std::nullopt, .next = options.velocity, .active = true};
+
+    Agent& agent = agents[agentIndex];
+    agent = {.options = options, .preferred = {}, .target = std::nullopt, .next = options.velocity, .generation = agent.generation, .active = true};
     ++activeAgents;
-    return id;
+    return makeId(agentIndex, agent.generation);
 }
 
-bool Crowd::removeAgent(std::uint32_t id) {
+// A slot whose generation reaches the last one is never used again, so no id ever names two agents.
+bool Crowd::removeAgent(AgentId id) {
     if (!hasAgent(id)) {
         return false;
     }
-    agents[id].active = false;
-    freeAgents.push_back(id);
+
+    Agent& agent = agents[indexOf(id)];
+    agent.active = false;
     --activeAgents;
+    if (agent.generation == kLastGeneration) {
+        return true;
+    }
+    ++agent.generation;
+    freeAgents.push_back(indexOf(id));
     return true;
 }
 
-bool Crowd::hasAgent(std::uint32_t id) const noexcept {
-    return id < agents.size() && agents[id].active;
+bool Crowd::hasAgent(AgentId id) const noexcept {
+    const std::uint32_t agentIndex = indexOf(id);
+    return agentIndex < agents.size() && agents[agentIndex].active && agents[agentIndex].generation == generationOf(id);
 }
 
-Crowd::Agent& Crowd::agentAt(std::uint32_t id) {
+Crowd::AgentId Crowd::makeId(std::uint32_t agentIndex, std::uint32_t generation) noexcept {
+    return (static_cast<AgentId>(generation) << 32U) | agentIndex;
+}
+
+std::uint32_t Crowd::indexOf(AgentId id) noexcept {
+    return static_cast<std::uint32_t>(id & 0xFFFFFFFFU);
+}
+
+std::uint32_t Crowd::generationOf(AgentId id) noexcept {
+    return static_cast<std::uint32_t>(id >> 32U);
+}
+
+Crowd::Agent& Crowd::agentAt(AgentId id) {
     if (!hasAgent(id)) {
         throw std::out_of_range("Agent " + std::to_string(id) + " is not in the crowd.");
     }
-    return agents[id];
+    return agents[indexOf(id)];
 }
 
-const Crowd::Agent& Crowd::agentAt(std::uint32_t id) const {
+const Crowd::Agent& Crowd::agentAt(AgentId id) const {
     if (!hasAgent(id)) {
         throw std::out_of_range("Agent " + std::to_string(id) + " is not in the crowd.");
     }
-    return agents[id];
+    return agents[indexOf(id)];
 }
 
 void Crowd::addObstacle(std::span<const math::Vec2> polygon) {
@@ -100,51 +122,51 @@ void Crowd::clearObstacles() noexcept {
     vertices.clear();
 }
 
-math::Vec2 Crowd::getPosition(std::uint32_t id) const {
+math::Vec2 Crowd::getPosition(AgentId id) const {
     return agentAt(id).options.position;
 }
 
-void Crowd::setPosition(std::uint32_t id, math::Vec2 value) {
+void Crowd::setPosition(AgentId id, math::Vec2 value) {
     Agent& agent = agentAt(id);
     requireFinite(value);
     agent.options.position = value;
 }
 
-math::Vec2 Crowd::getVelocity(std::uint32_t id) const {
+math::Vec2 Crowd::getVelocity(AgentId id) const {
     return agentAt(id).options.velocity;
 }
 
-float Crowd::getRadius(std::uint32_t id) const {
+float Crowd::getRadius(AgentId id) const {
     return agentAt(id).options.radius;
 }
 
-float Crowd::getMaxSpeed(std::uint32_t id) const {
+float Crowd::getMaxSpeed(AgentId id) const {
     return agentAt(id).options.maxSpeed;
 }
 
-void Crowd::setPreferredVelocity(std::uint32_t id, math::Vec2 value) {
+void Crowd::setPreferredVelocity(AgentId id, math::Vec2 value) {
     Agent& agent = agentAt(id);
     requireFinite(value);
     agent.preferred = value;
     agent.target.reset();
 }
 
-math::Vec2 Crowd::getPreferredVelocity(std::uint32_t id) const {
+math::Vec2 Crowd::getPreferredVelocity(AgentId id) const {
     return agentAt(id).preferred;
 }
 
-void Crowd::setTarget(std::uint32_t id, math::Vec2 value) {
+void Crowd::setTarget(AgentId id, math::Vec2 value) {
     Agent& agent = agentAt(id);
     requireFinite(value);
     agent.target = value;
     agent.preferred = {};
 }
 
-void Crowd::clearTarget(std::uint32_t id) {
+void Crowd::clearTarget(AgentId id) {
     agentAt(id).target.reset();
 }
 
-std::optional<math::Vec2> Crowd::getTarget(std::uint32_t id) const {
+std::optional<math::Vec2> Crowd::getTarget(AgentId id) const {
     return agentAt(id).target;
 }
 
@@ -188,15 +210,15 @@ void Crowd::bucketAgents() {
     }
     bucketFill.assign(bucketStarts.begin(), bucketStarts.end() - 1);
     bucketAgentIds.resize(activeAgents);
-    for (std::uint32_t id = 0; id < agents.size(); ++id) {
-        if (agents[id].active) {
-            bucketAgentIds[bucketFill[bucketOf(agents[id].options.position)]++] = id;
+    for (std::uint32_t agentIndex = 0; agentIndex < agents.size(); ++agentIndex) {
+        if (agents[agentIndex].active) {
+            bucketAgentIds[bucketFill[bucketOf(agents[agentIndex].options.position)]++] = agentIndex;
         }
     }
 }
 
-void Crowd::findNeighbors(std::uint32_t id, Scratch& scratch) const {
-    const AgentOptions& self = agents[id].options;
+void Crowd::findNeighbors(std::uint32_t agentIndex, Scratch& scratch) const {
+    const AgentOptions& self = agents[agentIndex].options;
     scratch.neighbors.clear();
     const float range = self.neighborDistance;
     if (self.maxNeighbors == 0 || range <= 0.0F) {
@@ -209,14 +231,14 @@ void Crowd::findNeighbors(std::uint32_t id, Scratch& scratch) const {
     const int top = cellOf(self.position.y - range, bucketOrigin.y, bucketsY);
     const int bottom = cellOf(self.position.y + range, bucketOrigin.y, bucketsY);
 
-    // Keeps the closest neighbors sorted by distance and then by id, so every step sees them in the same order.
+    // Keeps the closest neighbors sorted by distance and then by slot, so every step sees them in the same order.
     for (int y = top; y <= bottom; ++y) {
         for (int x = left; x <= right; ++x) {
             const auto bucket = static_cast<std::size_t>(y * bucketsX + x);
             for (std::uint32_t slot = bucketStarts[bucket]; slot < bucketStarts[bucket + 1]; ++slot) {
                 const std::uint32_t other = bucketAgentIds[slot];
                 const float distanceSquared = math::Vec2::distanceSquared(self.position, agents[other].options.position);
-                if (other == id || distanceSquared >= range * range) {
+                if (other == agentIndex || distanceSquared >= range * range) {
                     continue;
                 }
                 const std::pair<float, std::uint32_t> candidate{distanceSquared, other};
@@ -232,8 +254,8 @@ void Crowd::findNeighbors(std::uint32_t id, Scratch& scratch) const {
     }
 }
 
-void Crowd::findWalls(std::uint32_t id, Scratch& scratch) const {
-    const AgentOptions& self = agents[id].options;
+void Crowd::findWalls(std::uint32_t agentIndex, Scratch& scratch) const {
+    const AgentOptions& self = agents[agentIndex].options;
     scratch.walls.clear();
     const float range = self.obstacleTimeHorizon * self.maxSpeed + self.radius;
     for (std::size_t index = 0; index < vertices.size(); ++index) {
@@ -255,8 +277,8 @@ void Crowd::findWalls(std::uint32_t id, Scratch& scratch) const {
     std::ranges::sort(scratch.walls);
 }
 
-math::Vec2 Crowd::preferredVelocity(std::uint32_t id, const Scratch& scratch, float deltaSeconds) const noexcept {
-    const Agent& agent = agents[id];
+math::Vec2 Crowd::preferredVelocity(std::uint32_t agentIndex, const Scratch& scratch, float deltaSeconds) const noexcept {
+    const Agent& agent = agents[agentIndex];
     const AgentOptions& self = agent.options;
     math::Vec2 preferred = agent.preferred;
     if (agent.target) {
@@ -415,11 +437,11 @@ void Crowd::addWallLines(const Agent& agent, Scratch& scratch) const {
     }
 }
 
-void Crowd::addAgentLines(std::uint32_t id, Scratch& scratch, float deltaSeconds) const {
-    const AgentOptions& self = agents[id].options;
+void Crowd::addAgentLines(std::uint32_t agentIndex, Scratch& scratch, float deltaSeconds) const {
+    const AgentOptions& self = agents[agentIndex].options;
     const float inverseHorizon = 1.0F / self.timeHorizon;
-    for (const auto& [distanceSquared, otherId] : scratch.neighbors) {
-        const AgentOptions& other = agents[otherId].options;
+    for (const auto& [distanceSquared, otherIndex] : scratch.neighbors) {
+        const AgentOptions& other = agents[otherIndex].options;
         const math::Vec2 relativePosition = other.position - self.position;
         const math::Vec2 relativeVelocity = self.velocity - other.velocity;
         const float combinedRadius = self.radius + other.radius;
@@ -448,11 +470,11 @@ void Crowd::addAgentLines(std::uint32_t id, Scratch& scratch, float deltaSeconds
                 change = line.direction * math::Vec2::dot(relativeVelocity, line.direction) - relativeVelocity;
             }
         } else {
-            // Overlapping agents separate within one step, and agents on the same spot part along x by id.
+            // Overlapping agents separate within one step, and agents on the same spot part along x by slot.
             const float inverseStep = 1.0F / deltaSeconds;
             const math::Vec2 w = relativeVelocity - relativePosition * inverseStep;
             const float wLength = w.getLength();
-            const math::Vec2 unit = wLength > kEpsilon ? w / wLength : math::Vec2{id < otherId ? -1.0F : 1.0F, 0.0F};
+            const math::Vec2 unit = wLength > kEpsilon ? w / wLength : math::Vec2{agentIndex < otherIndex ? -1.0F : 1.0F, 0.0F};
             line.direction = {unit.y, -unit.x};
             change = unit * (combinedRadius * inverseStep - wLength);
         }
@@ -553,23 +575,23 @@ void Crowd::solveFallback(std::span<const Line> lines, std::size_t obstacleLines
     }
 }
 
-void Crowd::computeVelocity(std::uint32_t id, Scratch& scratch, float deltaSeconds) {
-    findNeighbors(id, scratch);
-    findWalls(id, scratch);
-    const math::Vec2 preferred = preferredVelocity(id, scratch, deltaSeconds);
+void Crowd::computeVelocity(std::uint32_t agentIndex, Scratch& scratch, float deltaSeconds) {
+    findNeighbors(agentIndex, scratch);
+    findWalls(agentIndex, scratch);
+    const math::Vec2 preferred = preferredVelocity(agentIndex, scratch, deltaSeconds);
 
     scratch.lines.clear();
-    addWallLines(agents[id], scratch);
+    addWallLines(agents[agentIndex], scratch);
     const std::size_t obstacleLines = scratch.lines.size();
-    addAgentLines(id, scratch, deltaSeconds);
+    addAgentLines(agentIndex, scratch, deltaSeconds);
 
-    const float maxSpeed = agents[id].options.maxSpeed;
+    const float maxSpeed = agents[agentIndex].options.maxSpeed;
     math::Vec2 result;
     const std::size_t failed = solvePlanes(scratch.lines, maxSpeed, preferred, false, result);
     if (failed < scratch.lines.size()) {
         solveFallback(scratch.lines, obstacleLines, failed, maxSpeed, scratch.projected, result);
     }
-    agents[id].next = result;
+    agents[agentIndex].next = result;
 }
 
 void Crowd::step(float deltaSeconds, core::JobSystem* jobs) {
@@ -587,9 +609,9 @@ void Crowd::step(float deltaSeconds, core::JobSystem* jobs) {
     // clang-format off
     const auto runChunks = [&](std::size_t begin, std::size_t end) {
         for (std::size_t chunk = begin; chunk < end; ++chunk) {
-            for (std::size_t id = chunk * chunkSize; id < std::min(agents.size(), (chunk + 1) * chunkSize); ++id) {
-                if (agents[id].active) {
-                    computeVelocity(static_cast<std::uint32_t>(id), scratches[chunk], deltaSeconds);
+            for (std::size_t agentIndex = chunk * chunkSize; agentIndex < std::min(agents.size(), (chunk + 1) * chunkSize); ++agentIndex) {
+                if (agents[agentIndex].active) {
+                    computeVelocity(static_cast<std::uint32_t>(agentIndex), scratches[chunk], deltaSeconds);
                 }
             }
         }

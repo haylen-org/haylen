@@ -19,8 +19,8 @@ namespace {
 class CrowdTest : public ::testing::Test {
   protected:
     // Places agents on a circle, each heading for the opposite side, which makes them all meet in the middle.
-    static std::vector<std::uint32_t> swapAcrossCircle(navigation2d::Crowd& crowd, int count, float radius) {
-        std::vector<std::uint32_t> ids;
+    static std::vector<navigation2d::Crowd::AgentId> swapAcrossCircle(navigation2d::Crowd& crowd, int count, float radius) {
+        std::vector<navigation2d::Crowd::AgentId> ids;
         for (int index = 0; index < count; ++index) {
             const float angle = std::numbers::pi_v<float> * 2.0F * static_cast<float>(index) / static_cast<float>(count);
             const math::Vec2 start = math::Vec2::fromAngle(angle, radius);
@@ -30,7 +30,7 @@ class CrowdTest : public ::testing::Test {
         return ids;
     }
 
-    [[nodiscard]] static float closestPair(const navigation2d::Crowd& crowd, const std::vector<std::uint32_t>& ids) {
+    [[nodiscard]] static float closestPair(const navigation2d::Crowd& crowd, const std::vector<navigation2d::Crowd::AgentId>& ids) {
         float closest = std::numeric_limits<float>::infinity();
         for (std::size_t first = 0; first < ids.size(); ++first) {
             for (std::size_t second = first + 1; second < ids.size(); ++second) {
@@ -46,10 +46,10 @@ class CrowdTest : public ::testing::Test {
 
 TEST_F(CrowdTest, SwapsSidesWithoutAgentsOverlapping) {
     navigation2d::Crowd crowd;
-    const std::vector<std::uint32_t> ring = swapAcrossCircle(crowd, 8, 200.0F);
+    const std::vector<navigation2d::Crowd::AgentId> ring = swapAcrossCircle(crowd, 8, 200.0F);
 
     // Two columns cross each other head on, with their rows interleaved.
-    std::vector<std::uint32_t> ids = ring;
+    std::vector<navigation2d::Crowd::AgentId> ids = ring;
     for (int row = 0; row < 10; ++row) {
         const float y = 600.0F + static_cast<float>(row) * 20.0F;
         ids.push_back(crowd.addAgent({.position = {-200.0F, y}, .radius = 8.0F, .maxSpeed = 60.0F}));
@@ -65,7 +65,7 @@ TEST_F(CrowdTest, SwapsSidesWithoutAgentsOverlapping) {
         closest = std::min(closest, closestPair(crowd, ids));
     }
     EXPECT_GT(closest, -0.5F);
-    for (const std::uint32_t id : ids) {
+    for (const navigation2d::Crowd::AgentId id : ids) {
         ASSERT_TRUE(crowd.getTarget(id).has_value());
         EXPECT_LT(math::Vec2::distance(crowd.getPosition(id), *crowd.getTarget(id)), 2.0F);
         EXPECT_LE(crowd.getVelocity(id).getLength(), crowd.getMaxSpeed(id) + 1e-3F);
@@ -77,7 +77,7 @@ TEST_F(CrowdTest, WalksAroundObstaclesAndWalls) {
     const std::vector<math::Vec2> block{{-40.0F, -40.0F}, {-40.0F, 40.0F}, {40.0F, 40.0F}, {40.0F, -40.0F}};
     crowd.addObstacle(block);
     crowd.addObstacle(std::vector<math::Vec2>{{100.0F, -200.0F}, {100.0F, 200.0F}});
-    const std::uint32_t walker = crowd.addAgent({.position = {-150.0F, 45.0F}, .radius = 10.0F, .maxSpeed = 80.0F});
+    const navigation2d::Crowd::AgentId walker = crowd.addAgent({.position = {-150.0F, 45.0F}, .radius = 10.0F, .maxSpeed = 80.0F});
     crowd.setTarget(walker, {60.0F, 60.0F});
 
     for (int step = 0; step < 400; ++step) {
@@ -108,21 +108,21 @@ TEST_F(CrowdTest, StepsTheSameWayOnEveryThread) {
     test::EngineFixture fixture;
     navigation2d::Crowd serial;
     navigation2d::Crowd parallel;
-    const std::vector<std::uint32_t> ids = swapAcrossCircle(serial, 300, 1500.0F);
+    const std::vector<navigation2d::Crowd::AgentId> ids = swapAcrossCircle(serial, 300, 1500.0F);
     swapAcrossCircle(parallel, 300, 1500.0F);
     for (int step = 0; step < 60; ++step) {
         serial.step(1.0F / 30.0F);
         parallel.step(1.0F / 30.0F, &fixture.engine().getJobs());
     }
-    for (const std::uint32_t id : ids) {
+    for (const navigation2d::Crowd::AgentId id : ids) {
         EXPECT_EQ(serial.getPosition(id), parallel.getPosition(id));
     }
 }
 
 TEST_F(CrowdTest, FlocksAndManagesAgents) {
     navigation2d::Crowd crowd({.separation = 0.0F, .alignment = 0.0F, .cohesion = 1.0F});
-    const std::uint32_t left = crowd.addAgent({.position = {-60.0F, 0.0F}, .radius = 5.0F, .maxSpeed = 40.0F});
-    const std::uint32_t right = crowd.addAgent({.position = {60.0F, 0.0F}, .radius = 5.0F, .maxSpeed = 40.0F});
+    const navigation2d::Crowd::AgentId left = crowd.addAgent({.position = {-60.0F, 0.0F}, .radius = 5.0F, .maxSpeed = 40.0F});
+    const navigation2d::Crowd::AgentId right = crowd.addAgent({.position = {60.0F, 0.0F}, .radius = 5.0F, .maxSpeed = 40.0F});
     for (int step = 0; step < 60; ++step) {
         crowd.step(1.0F / 30.0F);
     }
@@ -135,10 +135,17 @@ TEST_F(CrowdTest, FlocksAndManagesAgents) {
     EXPECT_FALSE(crowd.removeAgent(left));
     EXPECT_FALSE(crowd.hasAgent(left));
     EXPECT_EQ(crowd.getAgentCount(), 1U);
-    EXPECT_EQ(crowd.addAgent({}), left);
-    crowd.setPosition(left, {5.0F, 6.0F});
-    EXPECT_EQ(crowd.getPosition(left), (math::Vec2{5.0F, 6.0F}));
-    crowd.clearTarget(left);
+
+    // An agent that takes the slot of a removed one gets an id of its own, so the stale id names no agent.
+    const navigation2d::Crowd::AgentId next = crowd.addAgent({});
+    EXPECT_NE(next, left);
+    EXPECT_TRUE(crowd.hasAgent(next));
+    EXPECT_FALSE(crowd.hasAgent(left));
+    EXPECT_THROW(crowd.setPosition(left, {5.0F, 6.0F}), std::out_of_range);
+    EXPECT_FALSE(crowd.removeAgent(left));
+    crowd.setPosition(next, {5.0F, 6.0F});
+    EXPECT_EQ(crowd.getPosition(next), (math::Vec2{5.0F, 6.0F}));
+    crowd.clearTarget(next);
 
     EXPECT_THROW((void)crowd.getPosition(99), std::out_of_range);
     EXPECT_THROW((void)crowd.addAgent({.radius = -1.0F}), std::invalid_argument);

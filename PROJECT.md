@@ -2371,7 +2371,7 @@ Correções:
 
 Achados da revisão geral, decididos pelo dono em 10/11/2026:
 
-- [ ] Os ids dos agentes de uma multidão voltavam a ser usados na hora: dar gerações aos ids, para que um id velho seja detectado como os handles da física.
+- [x] Os ids dos agentes de uma multidão voltavam a ser usados na hora: dar gerações aos ids, para que um id velho seja detectado como os handles da física. Feito: o `Crowd::AgentId` guarda a vaga do agente nos 32 bits de baixo e a geração da vaga nos de cima, a remoção avança a geração, e uma vaga que chega à última geração (a que ainda cabe nos inteiros do Lua) nunca é usada de novo, então um id antigo não nomeia o agente que ocupa a vaga depois, nem no C++ nem no Lua. Testado em `CrowdTest.FlocksAndManagesAgents` e `NavigationLuaTest.MovesCrowdsWithoutOverlaps`, e a referência de `haylen.navigation2d` diz como os ids se comportam.
 - [ ] As coordenadas dos chunks do Tiled podem estourar o `int`: recusar esses mapas como entrada hostil com uma mensagem clara.
 - [ ] O `GroupLua::pushMask` deixa o modo de máscara ligado depois de um erro capturado: restaurar em todos os caminhos, sem locais destrutíveis atravessando chamadas do Lua.
 - [x] O `ReleasePackage::acquireKey` chama de volta com o mutex preso: soltar a trava antes da chamada. Feito: as respostas saem depois que a trava é solta, e um pedido por uma chave que o provedor já está buscando espera a mesma resposta, de modo que o provedor ouve cada chave uma vez. Verificado com os testes `BootstrapTest.AnswersAKeyRequestWithoutHoldingItsLock` e `BootstrapTest.AsksTheProviderOnceForAKeyThatRequestsRaceFor`, que falham sem a correção e passam também com o `--sanitizers thread`, repetidos 50 vezes.

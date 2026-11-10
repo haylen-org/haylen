@@ -39,7 +39,7 @@ class AgentLua final {
     template <float Wanderer::Settings::* Field> static int agentSetWander(lua_State* L);
 
     [[nodiscard]] static Crowd& checkCrowd(lua_State* L);
-    [[nodiscard]] static std::uint32_t readAgentId(lua_State* L);
+    [[nodiscard]] static Crowd::AgentId readAgentId(lua_State* L);
     static int newCrowd(lua_State* L);
     static int crowdAddAgent(lua_State* L);
     static int crowdRemoveAgent(lua_State* L);

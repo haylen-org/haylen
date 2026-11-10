@@ -18,6 +18,9 @@ namespace haylen::navigation2d {
 // Moves many agents at once with optimal reciprocal collision avoidance (ORCA). Every step, each agent takes the velocity closest to the one it prefers among those that keep it clear of its neighbors for a time horizon, sharing the effort with them, and clear of static obstacles for a shorter one. Flocking weights can bend the preferred velocities. Steps are deterministic and allocate nothing once the buffers have grown, and a job system spreads them over its workers.
 class Crowd final {
   public:
+    // An agent id holds the slot of the agent in its low 32 bits and the generation of the slot in its high bits, so the id of a removed agent never names an agent that takes its slot later.
+    using AgentId = std::uint64_t;
+
     struct AgentOptions {
         math::Vec2 position{};
         math::Vec2 velocity{};
@@ -38,9 +41,9 @@ class Crowd final {
 
     explicit Crowd(const Flocking& value = kDefaultFlocking);
 
-    std::uint32_t addAgent(const AgentOptions& options);
-    bool removeAgent(std::uint32_t id);
-    [[nodiscard]] bool hasAgent(std::uint32_t id) const noexcept;
+    AgentId addAgent(const AgentOptions& options);
+    bool removeAgent(AgentId id);
+    [[nodiscard]] bool hasAgent(AgentId id) const noexcept;
     [[nodiscard]] std::size_t getAgentCount() const noexcept {
         return activeAgents;
     }
@@ -49,20 +52,20 @@ class Crowd final {
     void addObstacle(std::span<const math::Vec2> polygon);
     void clearObstacles() noexcept;
 
-    [[nodiscard]] math::Vec2 getPosition(std::uint32_t id) const;
-    void setPosition(std::uint32_t id, math::Vec2 value);
-    [[nodiscard]] math::Vec2 getVelocity(std::uint32_t id) const;
-    [[nodiscard]] float getRadius(std::uint32_t id) const;
-    [[nodiscard]] float getMaxSpeed(std::uint32_t id) const;
+    [[nodiscard]] math::Vec2 getPosition(AgentId id) const;
+    void setPosition(AgentId id, math::Vec2 value);
+    [[nodiscard]] math::Vec2 getVelocity(AgentId id) const;
+    [[nodiscard]] float getRadius(AgentId id) const;
+    [[nodiscard]] float getMaxSpeed(AgentId id) const;
 
     // Sets the velocity the agent wants, which also drops its target.
-    void setPreferredVelocity(std::uint32_t id, math::Vec2 value);
-    [[nodiscard]] math::Vec2 getPreferredVelocity(std::uint32_t id) const;
+    void setPreferredVelocity(AgentId id, math::Vec2 value);
+    [[nodiscard]] math::Vec2 getPreferredVelocity(AgentId id) const;
 
     // Makes the agent head for the target at full speed every step and slow down to stop on it. Clearing the target leaves the agent wanting to stand still.
-    void setTarget(std::uint32_t id, math::Vec2 value);
-    void clearTarget(std::uint32_t id);
-    [[nodiscard]] std::optional<math::Vec2> getTarget(std::uint32_t id) const;
+    void setTarget(AgentId id, math::Vec2 value);
+    void clearTarget(AgentId id);
+    [[nodiscard]] std::optional<math::Vec2> getTarget(AgentId id) const;
 
     [[nodiscard]] const Flocking& getFlocking() const noexcept {
         return flocking;
@@ -80,6 +83,7 @@ class Crowd final {
         math::Vec2 preferred{};
         std::optional<math::Vec2> target;
         math::Vec2 next{};
+        std::uint32_t generation = 0;
         bool active = false;
     };
 
@@ -109,6 +113,9 @@ class Crowd final {
     static const Flocking kDefaultFlocking;
     static constexpr float kEpsilon = 1e-5F;
 
+    // Generations stop here, so every id fits the integers of Lua.
+    static constexpr std::uint32_t kLastGeneration = 0x7FFFFFFFU;
+
     // Steps with a job system give each worker chunks of at least this many agents.
     static constexpr std::size_t kChunkAgents = 64;
 
@@ -118,19 +125,23 @@ class Crowd final {
     [[nodiscard]] static std::size_t solvePlanes(std::span<const Line> lines, float radius, math::Vec2 optimal, bool directionOptimal, math::Vec2& result) noexcept;
     static void solveFallback(std::span<const Line> lines, std::size_t obstacleLines, std::size_t beginLine, float radius, std::vector<Line>& projected, math::Vec2& result);
 
-    [[nodiscard]] Agent& agentAt(std::uint32_t id);
-    [[nodiscard]] const Agent& agentAt(std::uint32_t id) const;
+    [[nodiscard]] static AgentId makeId(std::uint32_t agentIndex, std::uint32_t generation) noexcept;
+    [[nodiscard]] static std::uint32_t indexOf(AgentId id) noexcept;
+    [[nodiscard]] static std::uint32_t generationOf(AgentId id) noexcept;
+
+    [[nodiscard]] Agent& agentAt(AgentId id);
+    [[nodiscard]] const Agent& agentAt(AgentId id) const;
 
     // Sorts the agents into grid buckets as wide as the largest neighbor distance, which neighbor queries scan.
     void bucketAgents();
-    void findNeighbors(std::uint32_t id, Scratch& scratch) const;
-    void findWalls(std::uint32_t id, Scratch& scratch) const;
-    [[nodiscard]] math::Vec2 preferredVelocity(std::uint32_t id, const Scratch& scratch, float deltaSeconds) const noexcept;
+    void findNeighbors(std::uint32_t agentIndex, Scratch& scratch) const;
+    void findWalls(std::uint32_t agentIndex, Scratch& scratch) const;
+    [[nodiscard]] math::Vec2 preferredVelocity(std::uint32_t agentIndex, const Scratch& scratch, float deltaSeconds) const noexcept;
     void addWallLines(const Agent& agent, Scratch& scratch) const;
-    void addAgentLines(std::uint32_t id, Scratch& scratch, float deltaSeconds) const;
+    void addAgentLines(std::uint32_t agentIndex, Scratch& scratch, float deltaSeconds) const;
 
     // Stores the new velocity of one agent, which only touches that agent, so agents compute in parallel.
-    void computeVelocity(std::uint32_t id, Scratch& scratch, float deltaSeconds);
+    void computeVelocity(std::uint32_t agentIndex, Scratch& scratch, float deltaSeconds);
 
     Flocking flocking;
     std::vector<Agent> agents;
