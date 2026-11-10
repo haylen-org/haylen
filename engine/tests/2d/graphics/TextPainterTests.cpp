@@ -28,8 +28,6 @@
 
 namespace haylen::graphics2d {
 
-namespace {
-
 class TextPainterTest : public ::testing::Test {
   protected:
     [[nodiscard]] text::RichText make(const std::string& markup, text::RichTextOptions options = {}) {
@@ -53,6 +51,11 @@ class TextPainterTest : public ::testing::Test {
         std::ifstream file(std::string(HAYLEN_TEST_FONTS) + "/noto-color-emoji-regular.ttf", std::ios::binary);
         auto emoji = std::make_shared<text::TrueTypeFont>(fixture.engine().getGraphics(), std::vector<std::uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()));
         return std::make_shared<text::FontFamily>(text::FontFamily::Faces{.regular = fixture.engine().getDefaultFont(), .fallbacks = {emoji}});
+    }
+
+    // A bitmap font of the letters A and B in two cells of 8 by 8 pixels of the page.
+    [[nodiscard]] static std::shared_ptr<text::Font> makeGridFont(const graphics::Texture& page) {
+        return std::make_shared<text::BitmapFont>(text::BitmapFont::describeGrid({.characters = "AB", .cellWidth = 8.0F, .cellHeight = 8.0F}, page.getSize()), std::vector<graphics::Texture>{page});
     }
 
     [[nodiscard]] TextPainter makePainter() {
@@ -80,8 +83,6 @@ class TextPainterTest : public ::testing::Test {
     test::EngineFixture fixture;
     VectorAtlas atlas{fixture.engine().getGraphics(), fixture.engine().getJobs()};
 };
-
-} // namespace
 
 // A synthetic bold spreads the glyph by a share of its quad along the baseline instead of moving the edge of its field, so the gaps above and below its strokes stay as the font draws them.
 TEST_F(TextPainterTest, PacksSyntheticStylesIntoTheGlyphParameters) {
@@ -193,7 +194,7 @@ TEST_F(TextPainterTest, DrawsShadowsAndGlowsUnderTheGlyphs) {
 
 TEST_F(TextPainterTest, DrawsBitmapGlyphsAsSprites) {
     const graphics::Texture page = fixture.engine().getGraphics().createTexture(graphics::Image(16, 8, math::Color::white()));
-    const std::shared_ptr<text::Font> grid = std::make_shared<text::BitmapFont>(text::BitmapFont::describeGrid({.characters = "AB", .cellWidth = 8.0F, .cellHeight = 8.0F}, page.getSize()), std::vector<graphics::Texture>{page});
+    const std::shared_ptr<text::Font> grid = makeGridFont(page);
     text::RichText pixel = make("A[b]B[/b][i]A[/i][shadow=1,1]B[/shadow]", {.family = std::make_shared<text::FontFamily>(text::FontFamily::Faces{.regular = grid}), .size = 16.0F});
     const std::vector<TextPainter::Batch> batches = paint(pixel);
     ASSERT_EQ(batches.size(), 1U);
@@ -258,7 +259,7 @@ TEST_F(TextPainterTest, DrawsColorGlyphsAsRastersInTheirOwnColors) {
 
 TEST_F(TextPainterTest, StretchesPlainTextByTheScaleOfItsStyle) {
     const graphics::Texture page = fixture.engine().getGraphics().createTexture(graphics::Image(16, 8, math::Color::white()));
-    const std::shared_ptr<text::Font> grid = std::make_shared<text::BitmapFont>(text::BitmapFont::describeGrid({.characters = "AB", .cellWidth = 8.0F, .cellHeight = 8.0F}, page.getSize()), std::vector<graphics::Texture>{page});
+    const std::shared_ptr<text::Font> grid = makeGridFont(page);
     const text::Style style{.size = 8.0F};
     const text::Style stretched{.size = 8.0F, .scale = {2.0F, 3.0F}};
     TextPainter plain = makePainter();
@@ -408,7 +409,7 @@ TEST_F(TextPainterTest, FillsTheGlyphsOfAGradientTag) {
     EXPECT_EQ(batches[2].instances.size(), 1U);
 
     const graphics::Texture page = fixture.engine().getGraphics().createTexture(graphics::Image(16, 8, math::Color::white()));
-    const std::shared_ptr<text::Font> grid = std::make_shared<text::BitmapFont>(text::BitmapFont::describeGrid({.characters = "AB", .cellWidth = 8.0F, .cellHeight = 8.0F}, page.getSize()), std::vector<graphics::Texture>{page});
+    const std::shared_ptr<text::Font> grid = makeGridFont(page);
     const std::array<math::Color, 2> colors{math::Color::white(), math::Color::black()};
     const text::Style style{.size = 16.0F, .gradient = text::Gradient::fromColors(colors)};
     TextPainter pixel = makePainter();

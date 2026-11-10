@@ -27,8 +27,6 @@
 
 namespace haylen::graphics2d {
 
-namespace {
-
 // Reads the fields of a packed shape at the offsets the vertex layout of the shape program gives them.
 class ShapeRecordTest : public ::testing::Test {
   protected:
@@ -64,8 +62,6 @@ class ShapeCanvasTest : public ShapeRecordTest {
     test::EngineFixture fixture;
     RendererState state{fixture.engine().getGraphics(), fixture.engine().getJobs()};
 };
-
-} // namespace
 
 TEST_F(ShapeRecordTest, PacksTheFieldsTheShapeProgramReads) {
     const Shape shape{

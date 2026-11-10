@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <functional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -15,15 +16,21 @@
 
 namespace haylen::graphics2d {
 
-namespace {
-
 class GroupTest : public ::testing::Test {
   protected:
+    // Runs the call and records the message of what it throws, or an empty message when it throws nothing.
+    static void record(std::vector<std::string>& errors, const std::function<void()>& call) {
+        try {
+            call();
+            errors.emplace_back();
+        } catch (const std::exception& error) {
+            errors.emplace_back(error.what());
+        }
+    }
+
     test::EngineFixture fixture;
     Camera camera;
 };
-
-} // namespace
 
 TEST_F(GroupTest, RendersGroupsApartAndDrawsThemAsOneImage) {
     std::size_t visited = 0;
@@ -102,23 +109,15 @@ TEST_F(GroupTest, RejectsCallsThatMatchNothing) {
     // clang-format off
     test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
         Renderer& renderer = engine.getRenderer2D();
-        const auto expect = [&errors](const std::function<void()>& call) {
-            try {
-                call();
-                errors.emplace_back();
-            } catch (const std::exception& error) {
-                errors.emplace_back(error.what());
-            }
-        };
-        expect([&renderer] { renderer.beginGroup({}); });
+        record(errors, [&renderer] { renderer.beginGroup({}); });
         renderer.beginWorld(camera);
-        expect([&renderer] { renderer.endGroup(); });
-        expect([&renderer] { renderer.popMask(); });
-        expect([&renderer] { renderer.endMaskShape(); });
-        expect([&renderer] { renderer.beginGroup({.opacity = 2.0F}); });
+        record(errors, [&renderer] { renderer.endGroup(); });
+        record(errors, [&renderer] { renderer.popMask(); });
+        record(errors, [&renderer] { renderer.endMaskShape(); });
+        record(errors, [&renderer] { renderer.beginGroup({.opacity = 2.0F}); });
         renderer.pushMask();
-        expect([&renderer] { renderer.popMask(); });
-        expect([&renderer] { renderer.endGroup(); });
+        record(errors, [&renderer] { renderer.popMask(); });
+        record(errors, [&renderer] { renderer.endGroup(); });
     });
     // clang-format on
     ASSERT_EQ(errors.size(), 7U);
@@ -154,19 +153,11 @@ TEST_F(GroupTest, KeepsTheModesThatReadWhatLiesBelowForGroups) {
     // clang-format off
     test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
         Renderer& renderer = engine.getRenderer2D();
-        const auto expect = [&errors](const std::function<void()>& call) {
-            try {
-                call();
-                errors.emplace_back();
-            } catch (const std::exception& error) {
-                errors.emplace_back(error.what());
-            }
-        };
         renderer.beginWorld(camera, {.ambientLight = math::Color(0.5F, 0.5F, 0.5F, 1.0F)});
-        expect([&renderer] { renderer.drawRect({0.0F, 0.0F, 8.0F, 8.0F}, math::Color::white(), {.blend = graphics::BlendMode::Type::Difference}); });
+        record(errors, [&renderer] { renderer.drawRect({0.0F, 0.0F, 8.0F, 8.0F}, math::Color::white(), {.blend = graphics::BlendMode::Type::Difference}); });
         renderer.beginGroup({.order = {.blend = graphics::BlendMode::Type::SoftLight}});
         renderer.drawRect({0.0F, 0.0F, 8.0F, 8.0F}, math::Color::white());
-        expect([&renderer] { renderer.endGroup(); });
+        record(errors, [&renderer] { renderer.endGroup(); });
     });
     // clang-format on
     ASSERT_EQ(errors.size(), 2U);

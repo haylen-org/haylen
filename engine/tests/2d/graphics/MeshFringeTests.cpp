@@ -13,8 +13,6 @@
 
 namespace haylen::graphics2d {
 
-namespace {
-
 // Builds the fringes of meshes one pixel to the unit.
 class MeshFringeTest : public ::testing::Test {
   protected:
@@ -24,8 +22,6 @@ class MeshFringeTest : public ::testing::Test {
 
     MeshFringe fringe;
 };
-
-} // namespace
 
 // The outline of a mesh moves half a pixel in and a fringe fades from it to nothing half a pixel out, while an edge that two triangles share, even through vertices of their own at the same place, keeps no fringe.
 TEST_F(MeshFringeTest, FadesTheOutlineOverOnePixel) {

@@ -1,9 +1,10 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <cstdint>
 #include <cstring>
 #include <memory>
-#include <optional>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -25,8 +26,6 @@
 
 namespace haylen::graphics2d {
 
-namespace {
-
 class SpriteDataTest : public ::testing::Test {
   protected:
     [[nodiscard]] graphics::Texture makeTexture(int size = 8, graphics::Texture::Options options = {}) {
@@ -40,13 +39,11 @@ class SpriteDataTest : public ::testing::Test {
     test::EngineFixture fixture;
 };
 
-} // namespace
-
 // The record after a sprite of the batch program holds its four numbers and then the index of its texture.
 TEST_F(SpriteDataTest, PacksTheDataIntoTheRecordAfterTheSprite) {
     const GpuInstance packed = GpuInstance::makeData({.texture = 3, .values = {0.25F, -1.0F, 8.0F, 0.5F}});
-    float read[5]{};
-    std::memcpy(read, &packed, sizeof(read));
+    std::array<float, 5> read{};
+    std::memcpy(read.data(), &packed, sizeof(read));
     EXPECT_EQ(read[0], 0.25F);
     EXPECT_EQ(read[1], -1.0F);
     EXPECT_EQ(read[2], 8.0F);

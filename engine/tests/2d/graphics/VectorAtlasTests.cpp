@@ -13,8 +13,6 @@
 
 namespace haylen::graphics2d {
 
-namespace {
-
 class VectorAtlasTest : public ::testing::Test {
   protected:
     static constexpr const char* kSquare = R"(<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10" fill="#FF8000"/></svg>)";
@@ -25,8 +23,6 @@ class VectorAtlasTest : public ::testing::Test {
 
     test::EngineFixture fixture;
 };
-
-} // namespace
 
 TEST_F(VectorAtlasTest, RoundsScalesUpToQuarterOctaveSteps) {
     EXPECT_EQ(VectorAtlas::stepOf(1.0F), 0);

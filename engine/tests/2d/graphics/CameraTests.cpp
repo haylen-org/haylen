@@ -18,19 +18,15 @@
 #include "support/EngineFixture.hpp"
 #include "support/FrameRenderer.hpp"
 
-namespace haylen {
-
-namespace {
+namespace haylen::graphics2d {
 
 class CameraTest : public ::testing::Test {
   protected:
     static constexpr math::Rect kScreen{0.0F, 0.0F, 200.0F, 100.0F};
 };
 
-} // namespace
-
 TEST_F(CameraTest, FollowsThroughTheDeadZoneSmoothingAndLimits) {
-    graphics2d::Camera camera;
+    Camera camera;
     camera.limits = math::Rect{0.0F, 0.0F, 1000.0F, 1000.0F};
     camera.deadZone = {20.0F, 20.0F};
     camera.follow({5.0F, 5.0F}, 1.0F, kScreen);
@@ -55,7 +51,7 @@ TEST_F(CameraTest, FollowsThroughTheDeadZoneSmoothingAndLimits) {
     EXPECT_EQ(camera.position, math::Vec2(50.0F, 25.0F));
 
     // With limit smoothing the view eases toward the limit instead of stopping at it.
-    graphics2d::Camera eased;
+    Camera eased;
     eased.limits = math::Rect{0.0F, 0.0F, 1000.0F, 1000.0F};
     eased.positionSmoothing = true;
     eased.limitSmoothing = true;
@@ -65,7 +61,7 @@ TEST_F(CameraTest, FollowsThroughTheDeadZoneSmoothingAndLimits) {
 }
 
 TEST_F(CameraTest, DragsInsideItsMarginsAndRestsAtTheDragOffset) {
-    graphics2d::Camera camera;
+    Camera camera;
     camera.dragHorizontal = true;
     camera.dragMargins = {0.5F, 0.2F, 0.25F, 0.2F};
     camera.snapTo({}, kScreen);
@@ -91,7 +87,7 @@ TEST_F(CameraTest, DragsInsideItsMarginsAndRestsAtTheDragOffset) {
     camera.follow({30.0F, 10.0F}, 1.0F, kScreen);
     EXPECT_FLOAT_EQ(camera.position.x, 30.0F);
 
-    graphics2d::Camera still;
+    Camera still;
     still.position = {7.0F, 3.0F};
     still.align(kScreen);
     still.resetSmoothing(kScreen);
@@ -99,7 +95,7 @@ TEST_F(CameraTest, DragsInsideItsMarginsAndRestsAtTheDragOffset) {
 }
 
 TEST_F(CameraTest, LooksAheadOfAMovingTarget) {
-    graphics2d::Camera camera;
+    Camera camera;
     camera.lookAheadTime = 0.5F;
     camera.lookAheadSmoothingSpeed = 1000.0F;
     camera.maxLookAhead = 1000.0F;
@@ -119,7 +115,7 @@ TEST_F(CameraTest, LooksAheadOfAMovingTarget) {
 }
 
 TEST_F(CameraTest, ZoomsWithinLimitsAroundPointsAndFramesTargets) {
-    graphics2d::Camera camera;
+    Camera camera;
     camera.setZoom({2.0F, 30.0F});
     EXPECT_EQ(camera.getZoom(), math::Vec2(2.0F, 20.0F));
     camera.setMaxZoom(4.0F);
@@ -142,7 +138,7 @@ TEST_F(CameraTest, ZoomsWithinLimitsAroundPointsAndFramesTargets) {
     EXPECT_NEAR(after.y, before.y, 1e-3F);
 
     // Padded by 10 units the points span 120 by 60 units, which fit the 200 by 100 view at a zoom of 5/3.
-    graphics2d::Camera framing;
+    Camera framing;
     const std::array<math::Vec2, 3> points{math::Vec2{0.0F, 0.0F}, math::Vec2{100.0F, 0.0F}, math::Vec2{50.0F, 40.0F}};
     framing.frame(points, 10.0F, 1.0F, kScreen);
     EXPECT_NEAR(framing.getZoom().x, 5.0F / 3.0F, 1e-4F);
@@ -157,15 +153,15 @@ TEST_F(CameraTest, ZoomsWithinLimitsAroundPointsAndFramesTargets) {
     EXPECT_LT(framing.getZoom().x, 1.0F);
     EXPECT_THROW(framing.frame({}, 0.0F, 1.0F, kScreen), std::invalid_argument);
 
-    graphics2d::Camera topLeft;
-    topLeft.anchor = graphics2d::Camera::Anchor::TopLeft;
+    Camera topLeft;
+    topLeft.anchor = Camera::Anchor::TopLeft;
     topLeft.frame(points, 10.0F, 1.0F, kScreen);
     EXPECT_NEAR(topLeft.worldToScreen({50.0F, 20.0F}, kScreen).x, 100.0F, 1e-3F);
 }
 
 // A zoom that is not a number would spread through every transform of the view, so it is rejected and the zoom stays as it was.
 TEST_F(CameraTest, RejectsAZoomThatIsNotANumber) {
-    graphics2d::Camera camera;
+    Camera camera;
     camera.setZoom({2.0F, 2.0F});
     EXPECT_THROW(camera.setZoom({std::nanf(""), 1.0F}), std::invalid_argument);
     EXPECT_THROW(camera.setZoom({1.0F, std::nanf("")}), std::invalid_argument);
@@ -179,7 +175,7 @@ TEST_F(CameraTest, RejectsAZoomThatIsNotANumber) {
 }
 
 TEST_F(CameraTest, AnchorsRotatesAndConvertsThroughViewports) {
-    graphics2d::Camera camera;
+    Camera camera;
     camera.setZoom({2.0F, 2.0F});
     EXPECT_EQ(camera.worldToScreen({10.0F, 0.0F}, kScreen), math::Vec2(120.0F, 50.0F));
     EXPECT_EQ(camera.viewTransform(kScreen.getSize()).apply({10.0F, 0.0F}), math::Vec2(120.0F, 50.0F));
@@ -192,11 +188,11 @@ TEST_F(CameraTest, AnchorsRotatesAndConvertsThroughViewports) {
     EXPECT_EQ(camera.getViewRect(kScreen), (math::Rect{100.0F, 0.0F, 100.0F, 100.0F}));
 
     camera.viewport.reset();
-    camera.anchor = graphics2d::Camera::Anchor::TopLeft;
+    camera.anchor = Camera::Anchor::TopLeft;
     EXPECT_EQ(camera.worldToScreen({}, kScreen), math::Vec2(0.0F, 0.0F));
     EXPECT_EQ(camera.worldToScreen({10.0F, 5.0F}, kScreen), math::Vec2(20.0F, 10.0F));
 
-    graphics2d::Camera turned;
+    Camera turned;
     turned.rotation = math::Math::kHalfPi;
     const math::Vec2 rotated = turned.worldToScreen({10.0F, 0.0F}, kScreen);
     EXPECT_NEAR(rotated.x, 100.0F, 1e-4F);
@@ -204,7 +200,7 @@ TEST_F(CameraTest, AnchorsRotatesAndConvertsThroughViewports) {
     turned.ignoreRotation = true;
     EXPECT_EQ(turned.worldToScreen({10.0F, 0.0F}, kScreen), math::Vec2(110.0F, 50.0F));
 
-    graphics2d::Camera smooth;
+    Camera smooth;
     smooth.rotationSmoothing = true;
     smooth.rotation = 1.0F;
     smooth.update(0.1F);
@@ -214,7 +210,7 @@ TEST_F(CameraTest, AnchorsRotatesAndConvertsThroughViewports) {
 }
 
 TEST_F(CameraTest, ShakesWithTraumaFrequencyAndDirection) {
-    graphics2d::Camera camera;
+    Camera camera;
     camera.addTrauma(0.8F);
     camera.addTrauma(0.8F);
     EXPECT_FLOAT_EQ(camera.getTrauma(), 1.0F);
@@ -234,7 +230,7 @@ TEST_F(CameraTest, ShakesWithTraumaFrequencyAndDirection) {
     EXPECT_FLOAT_EQ(camera.getRenderRotation(), 0.0F);
 
     // At a frequency of zero the noise stands still, so only the fading trauma changes the offset.
-    graphics2d::Camera frozen;
+    Camera frozen;
     frozen.shakeFrequency = 0.0F;
     frozen.addTrauma(1.0F);
     frozen.update(0.1F);
@@ -256,7 +252,7 @@ TEST_F(CameraTest, ShakesWithTraumaFrequencyAndDirection) {
 
 // A snapped view of an odd size keeps the world on whole view pixels, where its exact center would put everything half a pixel off.
 TEST_F(CameraTest, SnapsTheCenterOfAViewOfAnOddSize) {
-    graphics2d::Camera camera;
+    Camera camera;
     camera.position = {10.0F, 20.0F};
     const math::Rect odd{0.0F, 0.0F, 321.0F, 181.0F};
     EXPECT_EQ(camera.worldToScreen({10.0F, 20.0F}, odd), math::Vec2(160.5F, 90.5F));
@@ -268,27 +264,27 @@ TEST_F(CameraTest, SnapsTheCenterOfAViewOfAnOddSize) {
 }
 
 TEST_F(CameraTest, BlendsBetweenTwoViews) {
-    graphics2d::Camera from;
+    Camera from;
     from.viewport = math::Rect{100.0F, 100.0F, 300.0F, 300.0F};
-    graphics2d::Camera to;
+    Camera to;
     to.position = {100.0F, 50.0F};
     to.setZoom({4.0F, 4.0F});
     to.rotation = 1.0F;
     to.viewport = math::Rect{0.0F, 0.0F, 100.0F, 100.0F};
 
-    const graphics2d::Camera half = graphics2d::Camera::blend(from, to, 0.5F);
+    const Camera half = Camera::blend(from, to, 0.5F);
     EXPECT_EQ(half.position, math::Vec2(50.0F, 25.0F));
     EXPECT_NEAR(half.getZoom().x, 2.0F, 1e-4F);
     EXPECT_FLOAT_EQ(half.getRenderRotation(), 0.5F);
     EXPECT_EQ(half.viewport, (math::Rect{50.0F, 50.0F, 200.0F, 200.0F}));
     from.viewport.reset();
-    EXPECT_EQ(graphics2d::Camera::blend(from, to, 0.25F).viewport, to.viewport);
+    EXPECT_EQ(Camera::blend(from, to, 0.25F).viewport, to.viewport);
 }
 
 TEST_F(CameraTest, DrawsItsDebugShapes) {
     test::EngineFixture fixture;
     const math::Rect screen = fixture.engine().getViewport().getVisibleRect();
-    graphics2d::Camera camera;
+    Camera camera;
     camera.limits = math::Rect{-2000.0F, -2000.0F, 4000.0F, 4000.0F};
     camera.deadZone = {40.0F, 40.0F};
     camera.follow({10.0F, 10.0F}, 0.1F, screen);
@@ -304,16 +300,16 @@ TEST_F(CameraTest, DrawsItsDebugShapes) {
 
     // The view, the limits and the box of the target are closed strokes of five cross sections each, and the cross of the target two lines of four, at four vertices a section.
     EXPECT_EQ(vertices(), 92U);
-    camera.anchor = graphics2d::Camera::Anchor::TopLeft;
+    camera.anchor = Camera::Anchor::TopLeft;
     EXPECT_EQ(vertices(), 40U);
 }
 
 TEST(ParallaxTest, ScrollsRepeatsAndStopsOutsideItsLimits) {
     test::EngineFixture fixture;
-    graphics2d::Parallax layer;
+    Parallax layer;
     layer.texture = fixture.engine().getGraphics().createTexture(graphics::Image(100, 50, math::Color::white()));
     layer.scrollScale = {0.5F, 1.0F};
-    graphics2d::Camera camera;
+    Camera camera;
     camera.position = {200.0F, 0.0F};
     EXPECT_EQ(layer.getOffset(camera), math::Vec2(100.0F, 0.0F));
 
@@ -344,7 +340,7 @@ TEST(ParallaxTest, ScrollsRepeatsAndStopsOutsideItsLimits) {
     layer.source = math::Rect{0.0F, 0.0F, 50.0F, 50.0F};
     EXPECT_EQ(sprites(), 132U);
 
-    graphics2d::Renderer& renderer = fixture.engine().getRenderer2D();
+    Renderer& renderer = fixture.engine().getRenderer2D();
     layer.repeatSize = {};
     layer.size = {0.0F, 10.0F};
     fixture.engine().getScenes().clear();
@@ -363,4 +359,4 @@ TEST(ParallaxTest, ScrollsRepeatsAndStopsOutsideItsLimits) {
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
-} // namespace haylen
+} // namespace haylen::graphics2d

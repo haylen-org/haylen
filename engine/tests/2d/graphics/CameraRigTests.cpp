@@ -14,14 +14,10 @@
 
 namespace haylen::graphics2d {
 
-namespace {
-
 class CameraRigTest : public ::testing::Test {
   protected:
     const math::Rect screen{0.0F, 0.0F, 200.0F, 100.0F};
 };
-
-} // namespace
 
 TEST_F(CameraRigTest, HoldsTheCameraInTheZoneOfTheTargetAndEasesBetweenZones) {
     CameraRig rig({.limits = math::Rect{0.0F, 0.0F, 2000.0F, 1000.0F}, .blendTime = 1.0F});

@@ -13,7 +13,7 @@
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen {
+namespace haylen::graphics2d {
 
 class Graphics2DLuaTest : public ::testing::Test {
   protected:
@@ -56,6 +56,7 @@ TEST_F(Graphics2DLuaTest, MeasuresTextWithFonts) {
     EXPECT_EQ(lua("local w, h = graphics2d.measureText(nil, 'Hello', {size = 32}) local sw, sh = graphics2d.measureText(nil, 'Hello', {size = 32, scale = {2, 3}}) return tostring(sw == 2 * w and sh == 3 * h)"), "true");
     EXPECT_EQ(lua("local font = graphics2d.defaultFont() local w, h = font:measure('Hello', {size = 32}) local sw, sh = font:measure('Hello', {size = 32, scale = {2, 3}}) return tostring(sw == 2 * w and sh == 3 * h)"), "true");
     EXPECT_EQ(render("graphics2d.beginScreen() graphics2d.drawText(nil, 'Hello', 0, 0, {size = 32, scale = {2, 0.5}, layer = 1})"), "nil");
+
     // The lines under and through plain text draw after its glyphs, one for each.
     EXPECT_EQ(render("graphics2d.beginScreen() graphics2d.drawText(nil, 'Sale', 0, 0, {size = 32})"), "nil");
     const int bare = std::stoi(lua("return graphics2d.stats().instances"));
@@ -738,4 +739,4 @@ TEST_F(Graphics2DLuaTest, DrawsEveryKindOfDrawWithoutAllocating) {
     EXPECT_GT(fixture.engine().getRenderer2D().getStats().sprites, 0U);
 }
 
-} // namespace haylen
+} // namespace haylen::graphics2d

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <array>
 #include <cstdint>
 #include <cstring>
 #include <stdexcept>
@@ -19,8 +20,6 @@
 
 namespace haylen::graphics2d {
 
-namespace {
-
 class PartMaskTest : public ::testing::Test {
   protected:
     [[nodiscard]] graphics::Texture makeTexture() {
@@ -34,14 +33,12 @@ class PartMaskTest : public ::testing::Test {
     test::EngineFixture fixture;
 };
 
-} // namespace
-
 // The record after a recolored sprite holds the colors of its red, green, blue and yellow parts in its first sixteen bytes.
 TEST_F(PartMaskTest, PacksThePartColorsIntoTheRecordAfterTheSprite) {
     const PartColors colors{.red = math::Color::fromHex(0xC03030FFU), .green = math::Color::fromHex(0x30C030FFU), .blue = math::Color::fromHex(0x3030C080U), .yellow = math::Color::transparent()};
     const GpuInstance packed = GpuInstance::makeParts(colors);
-    std::uint32_t read[4]{};
-    std::memcpy(read, &packed, sizeof(read));
+    std::array<std::uint32_t, 4> read{};
+    std::memcpy(read.data(), &packed, sizeof(read));
     EXPECT_EQ(read[0], colors.red.toRgba8());
     EXPECT_EQ(read[1], colors.green.toRgba8());
     EXPECT_EQ(read[2], colors.blue.toRgba8());

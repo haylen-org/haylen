@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <stdexcept>
 #include <vector>
 
@@ -14,8 +15,6 @@
 #include "support/EngineFixture.hpp"
 
 namespace haylen::graphics2d {
-
-namespace {
 
 class NineSliceTest : public ::testing::Test {
   protected:
@@ -31,8 +30,6 @@ class NineSliceTest : public ::testing::Test {
 
     test::EngineFixture fixture;
 };
-
-} // namespace
 
 TEST_F(NineSliceTest, BuildsPiecesFromBorders) {
     const graphics::Texture texture = makeTexture(30, 20);

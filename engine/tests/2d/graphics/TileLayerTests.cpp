@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -10,13 +11,12 @@
 #include "haylen/assets/Manager.hpp"
 #include "haylen/core/Engine.hpp"
 #include "support/AllocationTracker.hpp"
+#include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/FrameRenderer.hpp"
 #include "support/TestFiles.hpp"
 
 namespace haylen::graphics2d {
-
-namespace {
 
 class TileLayerTest : public ::testing::Test {
   protected:
@@ -38,8 +38,6 @@ class TileLayerTest : public ::testing::Test {
 
     test::EngineFixture fixture;
 };
-
-} // namespace
 
 TEST_F(TileLayerTest, KeepsSparseChunksAndBakesOnlyChangedOnes) {
     TileLayer layer = makeLayer(4);

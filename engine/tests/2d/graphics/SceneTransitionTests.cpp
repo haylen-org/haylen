@@ -10,8 +10,6 @@
 
 namespace haylen::graphics2d {
 
-namespace {
-
 // Renders one frame of a transition between two images and returns how many sprites it drew.
 class SceneTransitionTest : public ::testing::Test {
   protected:
@@ -27,8 +25,6 @@ class SceneTransitionTest : public ::testing::Test {
     graphics::RenderTarget outgoing;
     graphics::RenderTarget incoming;
 };
-
-} // namespace
 
 // An image that shrinks to nothing or grows from nothing draws nothing at that end, instead of the whole image at its own size.
 TEST_F(SceneTransitionTest, DrawsNothingOfAnImageWithNoSizeLeft) {

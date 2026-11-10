@@ -18,8 +18,6 @@
 
 namespace haylen::graphics2d {
 
-namespace {
-
 // Builds strokes one pixel to the unit and reads back their sections, the four vertices each cross section adds.
 class StrokeBuilderTest : public ::testing::Test {
   protected:
@@ -53,8 +51,6 @@ class StrokeBuilderTest : public ::testing::Test {
     const std::array<math::Vec2, 2> line{{{0.0F, 0.0F}, {100.0F, 0.0F}}};
     const std::array<math::Vec2, 3> corner{{{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}}};
 };
-
-} // namespace
 
 TEST_F(StrokeBuilderTest, FadesTheEdgesAndButtEndsOverOnePixel) {
     build(line, {.width = 10.0F});

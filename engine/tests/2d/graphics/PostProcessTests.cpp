@@ -8,8 +8,6 @@
 
 namespace haylen::graphics2d {
 
-namespace {
-
 class PostProcessTest : public ::testing::Test {
   protected:
     static std::array<float, 3> apply(const std::array<std::array<float, 3>, 3>& matrix, std::array<float, 3> color) {
@@ -21,8 +19,6 @@ class PostProcessTest : public ::testing::Test {
         return result;
     }
 };
-
-} // namespace
 
 TEST_F(PostProcessTest, SimulatesAndCorrectsDeficienciesOfColorVision) {
     PostProcess post;

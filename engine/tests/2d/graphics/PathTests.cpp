@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
@@ -26,8 +27,6 @@
 #include "support/EngineFixture.hpp"
 
 namespace haylen::graphics2d {
-
-namespace {
 
 // Reads the coverage that the triangles of a path give a point, from 0 outside to 255 inside, as the GPU interpolates the alpha of their vertices.
 class PathCoverageTest : public ::testing::Test {
@@ -88,8 +87,6 @@ class PathCoverageTest : public ::testing::Test {
     PolygonMesh polygons;
     StrokeBuilder strokes;
 };
-
-} // namespace
 
 // Every line of a curve or an arc stays within the tolerance of it, and the outline ends on the exact end of the command.
 TEST(PathCommandTest, FlattensCurvesAndArcsWithinTheTolerance) {
@@ -267,6 +264,7 @@ TEST_F(PathCoverageTest, StrokesEveryOutlineAndKeepsItsTriangles) {
         static_cast<void>(tessellation.getStroke(path, solid, 1.0F, {1.0F, 1.0F}, strokes));
         EXPECT_EQ(tracker.getTotal(), built);
     }
+
     const test::AllocationTracker again;
     static_cast<void>(tessellation.getStroke(path, solid, 1.0F, {1.0F, 1.0F}, strokes));
     EXPECT_EQ(again.getTotal(), 0U);
