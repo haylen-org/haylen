@@ -98,7 +98,8 @@ function Distortion:update(dt)
     self.haze:update(dt)
     self.shield:update(dt)
     local rings = ParticleTest.updateAll(self.rings, dt)
-    self:report('The image bends up to %.0f units, with %d particles of haze, %d rings on the shield and %d shock rings.', self.post.distortion, self.haze.count, self.shield.count, rings)
+    local shield = self.shield.count
+    self:report('The image bends up to %.0f units, with %d particles of haze, %d %s on the shield and %d shock %s.', self.post.distortion, self.haze.count, shield, shield == 1 and 'ring' or 'rings', rings, rings == 1 and 'ring' or 'rings')
 end
 
 function Distortion:render()
