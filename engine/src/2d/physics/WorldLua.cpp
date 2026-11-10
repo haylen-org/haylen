@@ -25,6 +25,7 @@ World& WorldLua::check(lua_State* L) {
     if (world.isDestroyed()) {
         luaL_error(L, "The physics world was destroyed.");
     }
+
     return world;
 }
 
@@ -41,6 +42,7 @@ Body::Options WorldLua::readBodyOptions(lua_State* L, int index) {
     if (lua_isnoneornil(L, index)) {
         return options;
     }
+
     luaL_checktype(L, index, LUA_TTABLE);
     lua::Table::checkFields(L, index, {kBodyFields});
     lua::Table::readField(L, index, "type", options.type);
@@ -70,6 +72,7 @@ Joint::Options WorldLua::readJointOptions(lua_State* L, int index) {
     if (lua_isnoneornil(L, index)) {
         return options;
     }
+
     luaL_checktype(L, index, LUA_TTABLE);
     lua::Table::checkFields(L, index, {kJointFields});
     lua::Table::readField(L, index, "ax", options.anchorA.x);
@@ -101,6 +104,7 @@ CollisionFilter WorldLua::readQueryFilter(lua_State* L, int index) {
     if (lua_isnoneornil(L, index)) {
         return {};
     }
+
     luaL_checktype(L, index, LUA_TTABLE);
     lua::Table::checkFields(L, index, {kFilterFields});
     return ShapeLua::readFilter(L, index, {});
@@ -120,6 +124,7 @@ void WorldLua::pushBodyOf(lua_State* L, int worldIndex, const Shape& shape) {
         lua_pushnil(L);
         return;
     }
+
     Physics2DLua::push(L, worldIndex, shape.getBody());
 }
 
@@ -129,6 +134,7 @@ bool WorldLua::pushCallback(lua_State* L, int worldIndex, const char* name) {
         lua_pop(L, 2);
         return false;
     }
+
     lua_remove(L, -2);
     return true;
 }
@@ -137,6 +143,7 @@ bool WorldLua::hasCallback(lua_State* L, int worldIndex, const char* name) {
     if (!pushCallback(L, worldIndex, name)) {
         return false;
     }
+
     lua_pop(L, 1);
     return true;
 }
@@ -146,6 +153,7 @@ void WorldLua::dispatchContacts(lua_State* L, int worldIndex, const char* name, 
         if (!pushCallback(L, worldIndex, name)) {
             return;
         }
+
         pushBodyOf(L, worldIndex, event.first);
         pushBodyOf(L, worldIndex, event.second);
         pushContact(L, worldIndex, event);
@@ -158,6 +166,7 @@ void WorldLua::dispatchSensors(lua_State* L, int worldIndex, const char* name, c
         if (!pushCallback(L, worldIndex, name)) {
             return;
         }
+
         pushBodyOf(L, worldIndex, event.sensor);
         pushBodyOf(L, worldIndex, event.visitor);
         lua_createtable(L, 0, 2);
@@ -175,16 +184,19 @@ void WorldLua::dispatchJointBreaks(lua_State* L, int worldIndex, const std::vect
         if (!pushCallback(L, worldIndex, "onJointBreak")) {
             return;
         }
+
         Physics2DLua::push(L, worldIndex, broken.joint);
         lua_createtable(L, 0, 5);
         if (broken.first.isValid()) {
             Physics2DLua::push(L, worldIndex, broken.first);
             lua_setfield(L, -2, "bodyA");
         }
+
         if (broken.second.isValid()) {
             Physics2DLua::push(L, worldIndex, broken.second);
             lua_setfield(L, -2, "bodyB");
         }
+
         lua::Stack::push(L, broken.force.x);
         lua_setfield(L, -2, "forceX");
         lua::Stack::push(L, broken.force.y);
@@ -222,6 +234,7 @@ std::vector<Body> WorldLua::readBodies(lua_State* L, int index) {
         bodies.push_back(lua::Userdata::check<ScriptedHandle<Body>>(L, -1).handle);
         lua_pop(L, 1);
     }
+
     return bodies;
 }
 
@@ -239,6 +252,7 @@ int WorldLua::readTransforms(lua_State* L) {
     if (lua_toboolean(L, 5) != 0) {
         blend = static_cast<float>(lua::Runtime::getEngine(L).getClock().getInterpolation());
     }
+
     check(L).readTransforms(bodies, readTransformValues(L, 3), blend);
     return 0;
 }
@@ -254,15 +268,18 @@ int WorldLua::writeTransforms(lua_State* L) {
 void WorldLua::releaseDestroyedData(lua_State* L, int worldIndex) {
     std::vector<std::uint64_t> destroyed;
     lua::Userdata::check<World>(L, worldIndex).takeDestroyedBodies(destroyed);
+
     if (destroyed.empty()) {
         return;
     }
+
     lua_getiuservalue(L, worldIndex, 1);
     lua_getfield(L, -1, "data");
     for (const std::uint64_t id : destroyed) {
         lua_pushnil(L);
         lua_rawseti(L, -2, static_cast<lua_Integer>(id));
     }
+
     lua_pop(L, 2);
 }
 
@@ -282,6 +299,7 @@ int WorldLua::step(lua_State* L) {
     if (!begins && !ends && !hits && !sensorBegins && !sensorEnds && !breaks) {
         return 0;
     }
+
     const std::vector<ContactEvent> beginEvents = begins ? world.getContactBegins() : std::vector<ContactEvent>{};
     const std::vector<ContactEvent> endEvents = ends ? world.getContactEnds() : std::vector<ContactEvent>{};
     const std::vector<ContactEvent> hitEvents = hits ? world.getContactHits() : std::vector<ContactEvent>{};
@@ -361,6 +379,7 @@ int WorldLua::predictPath(lua_State* L) {
         lua::Table::readField(L, 6, "linearDamping", options.linearDamping);
         options.filter = ShapeLua::readFilter(L, 6, {});
     }
+
     const math::Vec2 position{lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)};
     const math::Vec2 velocity{lua::Stack::read<float>(L, 4), lua::Stack::read<float>(L, 5)};
     const PathPredictor::Path path = PathPredictor::predict(world, position, velocity, options);
@@ -370,6 +389,7 @@ int WorldLua::predictPath(lua_State* L) {
     } else {
         lua_pushnil(L);
     }
+
     return 2;
 }
 
@@ -530,6 +550,7 @@ template <std::size_t Index> int WorldLua::setCallback(lua_State* L) {
     if (!lua_isnil(L, 3)) {
         luaL_checktype(L, 3, LUA_TFUNCTION);
     }
+
     lua_getiuservalue(L, 1, 1);
     lua_pushvalue(L, 3);
     lua_setfield(L, -2, kCallbacks[Index].data());

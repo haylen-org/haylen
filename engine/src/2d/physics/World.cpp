@@ -53,6 +53,7 @@ class World::OneWayFilter final {
                 bodies.push_back(body);
             }
         }
+
         for (const std::uint64_t body : bodies) {
             const b2BodyId id = b2LoadBodyId(body);
             contacts.resize(static_cast<std::size_t>(b2Body_GetContactCapacity(id)));
@@ -63,11 +64,13 @@ class World::OneWayFilter final {
                 if (world.oneWayShapes.contains(first)) {
                     standing.emplace_back(first, second);
                 }
+
                 if (world.oneWayShapes.contains(second)) {
                     standing.emplace_back(second, first);
                 }
             }
         }
+
         std::sort(standing.begin(), standing.end());
         standing.erase(std::unique(standing.begin(), standing.end()), standing.end());
     }
@@ -87,6 +90,7 @@ class World::OneWayFilter final {
                 touch = {.point = manifold.points[index].anchorA, .separation = manifold.points[index].separation};
             }
         }
+
         touch.point = b2Add(b2Body_GetPosition(b2Shape_GetBody(shapeA)), touch.point);
         return touch;
     }
@@ -97,13 +101,16 @@ class World::OneWayFilter final {
         if (found == world.oneWayShapes.end()) {
             return true;
         }
+
         const b2BodyId otherBody = b2Shape_GetBody(other);
         if (world.droppingBodies.contains(b2StoreBodyId(otherBody)) || math::Vec2::dot(normal, found->second.worldDirection) < kOneWayThreshold) {
             return false;
         }
+
         if (std::binary_search(world.oneWayFilter->standing.begin(), world.oneWayFilter->standing.end(), std::pair{b2StoreShapeId(platform), b2StoreShapeId(other)})) {
             return true;
         }
+
         if (touch.separation >= -kOneWayDepth) {
             return true;
         }
@@ -122,6 +129,7 @@ World::World(const Settings& settings, core::JobSystem* jobSystem) : pixelsPerMe
     if (settings.pixelsPerMeter <= 0.0F || settings.subSteps < 1 || settings.threads < 1) {
         throw std::invalid_argument("A physics world needs positive pixels per meter, at least one sub-step and at least one thread.");
     }
+
     if (settings.threads > 1 && jobSystem == nullptr) {
         throw std::invalid_argument("A physics world with more than one thread needs a job system.");
     }
@@ -135,15 +143,19 @@ World::World(const Settings& settings, core::JobSystem* jobSystem) : pixelsPerMe
     if (settings.contactPushSpeed) {
         def.contactSpeed = *settings.contactPushSpeed / pixelsPerMeter;
     }
+
     if (settings.maxSpeed) {
         def.maximumLinearSpeed = *settings.maxSpeed / pixelsPerMeter;
     }
+
     if (settings.restitutionThreshold) {
         def.restitutionThreshold = *settings.restitutionThreshold / pixelsPerMeter;
     }
+
     if (settings.hitThreshold) {
         def.hitEventThreshold = *settings.hitThreshold / pixelsPerMeter;
     }
+
     contactHertz = def.contactHertz;
     contactDampingRatio = def.contactDampingRatio;
     contactPushSpeed = def.contactSpeed * pixelsPerMeter;
@@ -167,6 +179,7 @@ World::World(const Settings& settings, core::JobSystem* jobSystem) : pixelsPerMe
     if (!b2World_IsValid(world)) {
         throw std::runtime_error("Too many physics worlds exist at once to create another one.");
     }
+
     handle = b2StoreWorldId(world);
     b2World_SetPreSolveCallback(world, &OneWayFilter::preSolve, &OneWayFilter::preContinuous, this);
 }
@@ -179,6 +192,7 @@ void World::destroy() {
     if (isDestroyed()) {
         return;
     }
+
     b2DestroyWorld(b2LoadWorldId(handle));
     handle = 0;
 
@@ -225,10 +239,12 @@ Body World::createBody(const Body::Options& options) {
     if (options.sleepThreshold) {
         def.sleepThreshold = Box2DConverter::toSpeed(*options.sleepThreshold, pixelsPerMeter);
     }
+
     const Body body{this, b2StoreBodyId(b2CreateBody(b2LoadWorldId(getHandle()), &def))};
     if (options.fastRotation) {
         fastBodies.insert(body.getId());
     }
+
     countObjects();
     return body;
 }
@@ -243,6 +259,7 @@ Joint World::createJoint(Joint::Type type, Body first, Body second, const Joint:
     if (!first.isValid() || !second.isValid() || first.getWorld() != this || second.getWorld() != this) {
         throw std::invalid_argument("A joint needs two bodies of this world.");
     }
+
     checkLimits(type, options);
 
     const b2WorldId world = b2LoadWorldId(getHandle());
@@ -272,6 +289,7 @@ Joint World::createJoint(Joint::Type type, Body first, Body second, const Joint:
         if (!(length >= Box2DConverter::kLinearSlop)) {
             throw std::invalid_argument("A distance joint needs a length of at least 0.005 meters.");
         }
+
         b2DistanceJointDef def = b2DefaultDistanceJointDef();
         def.base = base;
         def.base.localFrameB.p = b2Body_GetLocalPoint(b, anchorB);
@@ -397,12 +415,15 @@ void World::checkLimits(Joint::Type type, const Joint::Options& options) {
     if (type == Joint::Type::Revolute && (!ordered || options.lower < -kRevoluteLimit || options.upper > kRevoluteLimit)) {
         throw std::invalid_argument("A revolute joint needs a lower limit that is not above the upper one, both within 0.99 pi radians of zero.");
     }
+
     if ((type == Joint::Type::Prismatic || type == Joint::Type::Wheel || type == Joint::Type::Distance) && !ordered) {
         throw std::invalid_argument("A prismatic, wheel or distance joint needs a lower limit that is not above the upper one.");
     }
+
     if ((type == Joint::Type::Prismatic || type == Joint::Type::Wheel) && options.axis.isZero()) {
         throw std::invalid_argument("A prismatic or wheel joint needs an axis that is not zero.");
     }
+
     if ((options.breakForce && !(*options.breakForce >= 0.0F)) || (options.breakTorque && !(*options.breakTorque >= 0.0F))) {
         throw std::invalid_argument("A joint needs a break force and a break torque of zero or more.");
     }
@@ -435,9 +456,11 @@ void World::releaseBrokenChains() {
         if (!b2Joint_IsValid(joint)) {
             return true;
         }
+
         if (std::all_of(tie.chain.begin(), tie.chain.end(), [](std::uint64_t link) { return b2Joint_IsValid(b2LoadJointId(link)); })) {
             return false;
         }
+
         b2DestroyJoint(joint);
         return true;
     });
@@ -460,12 +483,15 @@ void World::prepareOneWayPlatforms(float deltaSeconds) {
             platform = oneWayShapes.erase(platform);
             continue;
         }
+
         const b2Vec2 direction = b2RotateVector(b2Body_GetRotation(b2Shape_GetBody(shape)), {platform->second.direction.x, platform->second.direction.y});
         platform->second.worldDirection = {direction.x, direction.y};
         ++platform;
     }
+
     oneWayFilter->collectStanding(*this);
     std::erase_if(droppingBodies, [](const auto& body) { return body.second <= 0.0F || !b2Body_IsValid(b2LoadBodyId(body.first)); });
+
     for (auto& [id, seconds] : droppingBodies) {
         seconds -= deltaSeconds;
     }
@@ -484,18 +510,22 @@ void World::step(float deltaSeconds) {
 
     prepareOneWayPlatforms(deltaSeconds);
     lastStep = deltaSeconds;
+
     if (tasks) {
         tasks->setParallel(b2World_GetAwakeBodyCount(world) >= kParallelBodies);
     }
+
     b2World_Step(world, deltaSeconds, subSteps);
 
     events.contactsRead = false;
     events.sensorsRead = false;
     jointBreaks.clear();
     breakJoints();
+
     if (interpolate) {
         recordMotion();
     }
+
     countObjects();
 
     const auto afterStart = std::chrono::steady_clock::now();
@@ -512,6 +542,7 @@ void World::breakJoints() {
         if (!b2Joint_IsValid(joint)) {
             continue;
         }
+
         jointBreaks.push_back({
             .joint = {this, b2StoreJointId(joint)},
             .first = {this, b2StoreBodyId(b2Joint_GetBodyA(joint))},
@@ -521,6 +552,7 @@ void World::breakJoints() {
         });
         b2DestroyJoint(joint);
     }
+
     std::erase_if(mouseJoints, [](std::uint64_t joint) { return !b2Joint_IsValid(b2LoadJointId(joint)); });
 }
 
@@ -534,6 +566,7 @@ void World::recordMotion() {
         if (slot >= motions.size()) {
             motions.resize(slot + 1);
         }
+
         Motion& motion = motions[slot];
         const std::uint64_t id = b2StoreBodyId(move.bodyId);
         const Transform current{Box2DConverter::toPixels(move.transform.p, pixelsPerMeter), b2Rot_GetAngle(move.transform.q)};
@@ -551,10 +584,12 @@ World::Transform World::blendMotion(const Body& body, float blend) const {
     if (slot >= motions.size()) {
         return actual;
     }
+
     const Motion& motion = motions[slot];
     if (motion.id != body.getId() || motion.step != motionStep || motion.current.position != actual.position || motion.current.rotation != actual.rotation) {
         return actual;
     }
+
     const float turn = std::remainder(motion.current.rotation - motion.previous.rotation, math::Math::kTau);
     return {math::Vec2::lerp(motion.previous.position, motion.current.position, blend), motion.previous.rotation + turn * blend};
 }
@@ -563,9 +598,11 @@ World::Transform World::getInterpolatedTransform(const Body& body, float blend) 
     if (!interpolate) {
         throw std::logic_error("Only a world created with interpolation blends the transforms of its bodies.");
     }
+
     if (body.getWorld() != this || !body.isValid()) {
         throw std::invalid_argument("Body transforms need live bodies of this world.");
     }
+
     return blendMotion(body, std::clamp(blend, 0.0F, 1.0F));
 }
 
@@ -573,6 +610,7 @@ void World::readContactEvents() const {
     if (events.contactsRead) {
         return;
     }
+
     events.contactsRead = true;
     events.contactBegins.clear();
     events.contactEnds.clear();
@@ -585,6 +623,7 @@ void World::readContactEvents() const {
         const b2ContactBeginTouchEvent& event = contacts.beginEvents[index];
         events.contactBegins.push_back({.first = {self, b2StoreShapeId(event.shapeIdA)}, .second = {self, b2StoreShapeId(event.shapeIdB)}, .manifold = Box2DConverter::toSolvedManifold(event.contactId, pixelsPerMeter, subStep)});
     }
+
     for (int index = 0; index < contacts.endCount; ++index) {
         const b2ContactEndTouchEvent& event = contacts.endEvents[index];
         events.contactEnds.push_back({.first = {self, b2StoreShapeId(event.shapeIdA)}, .second = {self, b2StoreShapeId(event.shapeIdB)}});
@@ -599,6 +638,7 @@ void World::readContactEvents() const {
             hit.points[0].point = Box2DConverter::toPixels(event.point, pixelsPerMeter);
             hit.normal = {event.normal.x, event.normal.y};
         }
+
         hit.approachSpeed = event.approachSpeed * pixelsPerMeter;
         events.contactHits.push_back({.first = {self, b2StoreShapeId(event.shapeIdA)}, .second = {self, b2StoreShapeId(event.shapeIdB)}, .manifold = hit});
     }
@@ -608,6 +648,7 @@ void World::readSensorEvents() const {
     if (events.sensorsRead) {
         return;
     }
+
     events.sensorsRead = true;
     events.sensorBegins.clear();
     events.sensorEnds.clear();
@@ -617,6 +658,7 @@ void World::readSensorEvents() const {
     for (int index = 0; index < sensors.beginCount; ++index) {
         events.sensorBegins.push_back({.sensor = {self, b2StoreShapeId(sensors.beginEvents[index].sensorShapeId)}, .visitor = {self, b2StoreShapeId(sensors.beginEvents[index].visitorShapeId)}});
     }
+
     for (int index = 0; index < sensors.endCount; ++index) {
         events.sensorEnds.push_back({.sensor = {self, b2StoreShapeId(sensors.endEvents[index].sensorShapeId)}, .visitor = {self, b2StoreShapeId(sensors.endEvents[index].visitorShapeId)}});
     }
@@ -662,6 +704,7 @@ void World::checkTransforms(std::span<const Body> bodies, std::size_t valueCount
     if (valueCount < bodies.size() * 3) {
         throw std::invalid_argument("Body transforms take three floats for each body.");
     }
+
     for (const Body& body : bodies) {
         if (body.getWorld() != this || !body.isValid()) {
             throw std::invalid_argument("Body transforms need live bodies of this world.");
@@ -671,9 +714,11 @@ void World::checkTransforms(std::span<const Body> bodies, std::size_t valueCount
 
 void World::readTransforms(std::span<const Body> bodies, std::span<float> values, std::optional<float> blend) const {
     checkTransforms(bodies, values.size());
+
     if (blend && !interpolate) {
         throw std::logic_error("Only a world created with interpolation blends the transforms of its bodies.");
     }
+
     for (std::size_t index = 0; index < bodies.size(); ++index) {
         Transform transform;
         if (blend) {
@@ -682,6 +727,7 @@ void World::readTransforms(std::span<const Body> bodies, std::span<float> values
             const b2Transform current = b2Body_GetTransform(b2LoadBodyId(bodies[index].getId()));
             transform = {Box2DConverter::toPixels(current.p, pixelsPerMeter), b2Rot_GetAngle(current.q)};
         }
+
         values[index * 3] = transform.position.x;
         values[index * 3 + 1] = transform.position.y;
         values[index * 3 + 2] = transform.rotation;
@@ -690,6 +736,7 @@ void World::readTransforms(std::span<const Body> bodies, std::span<float> values
 
 void World::writeTransforms(std::span<const Body> bodies, std::span<const float> values) {
     checkTransforms(bodies, values.size());
+
     for (std::size_t index = 0; index < bodies.size(); ++index) {
         const b2Vec2 position = Box2DConverter::toMeters({values[index * 3], values[index * 3 + 1]}, pixelsPerMeter);
         b2Body_SetTransform(b2LoadBodyId(bodies[index].getId()), position, b2MakeRot(values[index * 3 + 2]));
@@ -718,6 +765,7 @@ void World::setSubSteps(int value) {
     if (value < 1) {
         throw std::invalid_argument("A physics world needs at least one sub-step.");
     }
+
     subSteps = value;
 }
 
@@ -805,6 +853,7 @@ std::vector<Shape> World::queryRect(const math::Rect& area, const CollisionFilte
     if (!(area.width >= 0.0F) || !(area.height >= 0.0F)) {
         throw std::invalid_argument("A rectangle query needs a width and height of zero or more.");
     }
+
     return overlapBounds(area, filter);
 }
 
@@ -843,6 +892,7 @@ std::vector<Shape> World::pick(math::Vec2 point, float radius, const CollisionFi
         const float distance = b2Shape_TestPoint(id, location) ? 0.0F : b2Distance(b2Shape_GetClosestPoint(id, location), location);
         found.emplace_back(distance, shape);
     }
+
     std::stable_sort(found.begin(), found.end(), [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
 
     std::vector<Shape> shapes;
@@ -850,6 +900,7 @@ std::vector<Shape> World::pick(math::Vec2 point, float radius, const CollisionFi
     for (const auto& [distance, shape] : found) {
         shapes.push_back(shape);
     }
+
     return shapes;
 }
 
@@ -865,13 +916,16 @@ std::uint64_t World::computeStateHash(std::span<const Body> bodies) const {
         if (body.getWorld() != this || !body.isValid()) {
             throw std::invalid_argument("A state hash needs live bodies of this world.");
         }
+
         const b2BodyId id = b2LoadBodyId(body.getId());
         const b2Transform transform = b2Body_GetTransform(id);
         const b2Vec2 velocity = b2Body_GetLinearVelocity(id);
+
         for (const float value : {transform.p.x, transform.p.y, transform.q.c, transform.q.s, velocity.x, velocity.y, b2Body_GetAngularVelocity(id)}) {
             mix(value);
         }
     }
+
     return hash;
 }
 

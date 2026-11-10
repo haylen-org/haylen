@@ -50,6 +50,7 @@ ForceField& ForceFieldLua::check(lua_State* L) {
     if (!field.isValid()) {
         luaL_error(L, "The force field was destroyed.");
     }
+
     return field;
 }
 

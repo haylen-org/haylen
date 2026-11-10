@@ -27,10 +27,12 @@ class ContactTest : public ::testing::Test {
     std::vector<ContactEvent> stepUntilContact() {
         for (int step = 0; step < 120; ++step) {
             world.step(kStep);
+
             if (!world.getContactBegins().empty()) {
                 return world.getContactBegins();
             }
         }
+
         return {};
     }
 
@@ -63,6 +65,7 @@ TEST_F(ContactTest, ReportsTheContactOfAHit) {
         world.step(kStep);
         hits = world.getContactHits();
     }
+
     ASSERT_EQ(hits.size(), 1U);
     EXPECT_NEAR(hits[0].manifold.approachSpeed, kSpeed, kSpeed * 0.05F);
     EXPECT_EQ(hits[0].manifold.pointCount, 2U);
@@ -75,9 +78,11 @@ TEST(ContactRestTest, ReportsTheWeightOfABodyAtRest) {
     floor.addBox({400.0F, 20.0F});
     Body crate = world.createBody({.position = {0.0F, 70.0F}});
     crate.addBox({40.0F, 40.0F});
+
     for (int step = 0; step < 120; ++step) {
         world.step(1.0F / 60.0F);
     }
+
     const std::vector<Body::Contact> contacts = crate.getContacts();
     ASSERT_EQ(contacts.size(), 1U);
     const ContactManifold& resting = contacts[0].manifold;

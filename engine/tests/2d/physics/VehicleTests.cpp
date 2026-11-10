@@ -68,12 +68,14 @@ TEST_F(VehicleTest, KeepsItsWheelsDownAndCoasts) {
         world.step(1.0F / 60.0F);
         steepest = std::max(steepest, std::abs(car.getChassis().getRotation()));
     }
+
     const float cruising = car.getSpeed();
     car.setThrottle(0.0F);
     for (int step = 0; step < 120; ++step) {
         world.step(1.0F / 60.0F);
         steepest = std::max(steepest, std::abs(car.getChassis().getRotation()));
     }
+
     EXPECT_LT(steepest, 0.35F);
     EXPECT_GT(car.getSpeed(), cruising * 0.5F);
     EXPECT_LT(car.getSpeed(), cruising);
@@ -99,9 +101,11 @@ TEST_F(VehicleTest, TurnsItsNoseInTheAir) {
     World space({.gravity = {}});
     Vehicle car(space, {.position = {0.0F, 0.0F}, .airControl = 6.0F});
     car.setThrottle(1.0F);
+
     for (int step = 0; step < 30; ++step) {
         space.step(1.0F / 60.0F);
     }
+
     EXPECT_FALSE(car.isGrounded());
     EXPECT_LT(car.getChassis().getAngularVelocity(), -1.0F);
 }
@@ -110,17 +114,21 @@ TEST_F(VehicleTest, TopDownCarsSteerGripAndDrift) {
     World flat({.gravity = {}});
     TopDownVehicle car(flat, {.position = {0.0F, 0.0F}});
     car.setThrottle(1.0F);
+
     for (int step = 0; step < 120; ++step) {
         flat.step(1.0F / 60.0F);
     }
+
     EXPECT_GT(car.getSpeed(), 600.0F);
     EXPECT_NEAR(car.getSlip(), 0.0F, 5.0F);
 
     // A gentle turn keeps the car on its tires, and the handbrake lets the rear slide out.
     car.setSteering(0.3F);
+
     for (int step = 0; step < 30; ++step) {
         flat.step(1.0F / 60.0F);
     }
+
     EXPECT_GT(car.getBody().getRotation(), 0.1F);
     EXPECT_GT(car.getSteeringAngle(), 0.0F);
     car.setSteering(1.0F);
@@ -130,15 +138,18 @@ TEST_F(VehicleTest, TopDownCarsSteerGripAndDrift) {
         flat.step(1.0F / 60.0F);
         drifted = drifted || car.isDrifting();
     }
+
     EXPECT_TRUE(drifted);
 
     car.setThrottle(0.0F);
     car.setHandbrake(false);
     car.setSteering(0.0F);
     car.setBrake(1.0F);
+
     for (int step = 0; step < 120; ++step) {
         flat.step(1.0F / 60.0F);
     }
+
     EXPECT_NEAR(car.getBody().getVelocity().getLength(), 0.0F, 5.0F);
     EXPECT_THROW(TopDownVehicle(flat, {.grip = 0.0F}), std::invalid_argument);
     EXPECT_THROW(TopDownVehicle(flat, {.frontAxle = -40.0F}), std::invalid_argument);

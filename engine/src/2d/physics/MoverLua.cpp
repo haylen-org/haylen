@@ -31,6 +31,7 @@ Mover& MoverLua::check(lua_State* L) {
     if (!mover.isValid()) {
         luaL_error(L, "The mover was destroyed.");
     }
+
     return mover;
 }
 
@@ -51,6 +52,7 @@ int MoverLua::newMover(lua_State* L) {
         lua::Table::readField(L, 2, "pushForce", options.pushForce);
         options.filter = ShapeLua::readFilter(L, 2, {});
     }
+
     lua::Userdata::emplace<ScriptedOwner<Mover>>(L, world, options);
     lua_pushvalue(L, 1);
     lua_setiuservalue(L, -2, 1);
@@ -114,6 +116,7 @@ int MoverLua::getGroundBody(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua_getiuservalue(L, 1, 1);
     Physics2DLua::push(L, -1, *ground);
     return 1;

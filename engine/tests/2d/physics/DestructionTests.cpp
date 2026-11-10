@@ -55,10 +55,12 @@ TEST_F(DestructionTest, TerrainBuildsChainsFromFilledShapes) {
         EXPECT_GE(outline.size(), 4U);
         EXPECT_GT(math::Geometry::signedArea(outline), 0.0F);
         area += math::Geometry::signedArea(outline);
+
         for (const math::Vec2 point : outline) {
             EXPECT_GE(point.y, 101.9F);
         }
     }
+
     // The two upper corners sit on the edge of the grid, where samples are half covered, and lose a small triangle each, toward which the points between the hard samples beside them relax by less than half a cell.
     EXPECT_NEAR(area, 512.0F * 154.0F, 96.0F);
 
@@ -92,6 +94,7 @@ TEST_F(DestructionTest, CarvingRebuildsOnlyTheChunksItTouches) {
     for (const std::vector<math::Vec2>& outline : terrain.getOutlines()) {
         area += math::Geometry::signedArea(outline);
     }
+
     const float craters = 3.14159265F * (20.0F * 20.0F + 24.0F * 24.0F) * 0.5F + 4.0F * (20.0F + 24.0F);
     EXPECT_NEAR(area, 512.0F * (256.0F - 78.0F) - craters, craters * 0.1F);
 
@@ -123,6 +126,7 @@ TEST_F(DestructionTest, TerrainSmoothsTheStairsOfHardSamples) {
             samples[static_cast<std::size_t>(row * kColumns + column)] = static_cast<float>(row) > 20.0F + static_cast<float>(column) / 6.0F ? 255 : 0;
         }
     }
+
     terrain.setSamples(samples);
     terrain.update();
 
@@ -137,6 +141,7 @@ TEST_F(DestructionTest, TerrainSmoothsTheStairsOfHardSamples) {
             }
         }
     }
+
     EXPECT_GT(worst, 0.0F);
     EXPECT_LT(worst, kCell * 0.25F);
 }
@@ -169,6 +174,7 @@ TEST_F(DestructionTest, ExplosionsFadeWithDistanceAndHideBehindWalls) {
     EXPECT_GT(close.getVelocity().x, far.getVelocity().x);
     EXPECT_GT(far.getVelocity().x, 0.0F);
     EXPECT_TRUE(behind.getVelocity().isZero());
+
     for (const Explosion::Hit& hit : hits) {
         EXPECT_LE(hit.impulse.getLength(), 100.0F);
     }
@@ -176,9 +182,11 @@ TEST_F(DestructionTest, ExplosionsFadeWithDistanceAndHideBehindWalls) {
     // Without occlusion the crate behind the wall moves too, and without falloff every crate takes the full impulse.
     const std::vector<Explosion::Hit> open = Explosion::apply(world, {.center = {0.0F, 0.0F}, .radius = 200.0F, .impulse = 100.0F, .falloff = Explosion::Falloff::None});
     EXPECT_EQ(open.size(), 3U);
+
     for (const Explosion::Hit& hit : open) {
         EXPECT_NEAR(hit.impulse.getLength(), 100.0F, 1e-3F);
     }
+
     EXPECT_GT(behind.getVelocity().y, 0.0F);
 
     EXPECT_EQ(Explosion::falloffFromName("quadratic"), Explosion::Falloff::Quadratic);
@@ -209,6 +217,7 @@ TEST_F(DestructionTest, FracturesSplitShapesIntoCoveringPieces) {
     for (const auto& piece : pieces) {
         area += math::Polygon::getArea(piece);
     }
+
     EXPECT_NEAR(area, 10000.0F, 1.0F);
     EXPECT_THROW((void)Fracture::split(square, {.pieces = 0}), std::invalid_argument);
 }
@@ -229,6 +238,7 @@ TEST_F(DestructionTest, ShatteringReplacesABodyWithMovingPieces) {
         EXPECT_NEAR(fragment.getVelocity().x, 30.0F, 1e-3F);
         EXPECT_NEAR(fragment.getRotation(), rotation, 5e-3F);
     }
+
     EXPECT_NEAR(total, mass, mass * 0.01F);
 
     Body round = world.createBody({});
@@ -262,6 +272,7 @@ TEST_F(DestructionTest, ShatteringIntoManyPiecesLeavesOutOnlySlivers) {
             total += piece.getMass();
             piece.destroy();
         }
+
         EXPECT_GT(total, mass * 0.97F);
     }
 }

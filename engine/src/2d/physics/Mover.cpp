@@ -37,6 +37,7 @@ class Mover::Query final {
         if (!local) {
             return false;
         }
+
         const b2Vec2 side = b2RotateVector(b2Body_GetRotation(b2Shape_GetBody(shape)), {local->x, local->y});
         return !holding || mover.world.isDroppingThrough(mover.body) || math::Vec2::dot(normal, {side.x, side.y}) < World::kOneWayThreshold;
     }
@@ -51,6 +52,7 @@ class Mover::Query final {
         if (mover.planeCount < kPlaneCapacity && !ignores(mover, shape) && !passesOneWay(mover, shape, normal, result->plane.offset <= World::kOneWayDepth)) {
             mover.planes[mover.planeCount++] = {.normal = normal, .offset = result->plane.offset, .shape = b2StoreShapeId(shape)};
         }
+
         return true;
     }
 
@@ -66,6 +68,7 @@ class Mover::Query final {
         if (fraction <= 0.0F || ignores(*search.mover, shape) || passesOneWay(*search.mover, shape, {normal.x, normal.y}, movesInto(search.motion, {normal.x, normal.y}))) {
             return -1.0F;
         }
+
         search.probe = {.hit = true, .fraction = fraction, .normal = {normal.x, normal.y}, .point = {point.x, point.y}, .shape = b2StoreShapeId(shape)};
         return fraction;
     }
@@ -79,9 +82,11 @@ Mover::Mover(World& owner, const Options& settings) : world(owner), options(sett
     if (!(options.radius / scale > 2.0F * Box2DConverter::kLinearSlop) || !(options.stepHeight >= 0.0F) || !(options.height - options.stepHeight >= options.radius * 2.0F)) {
         throw std::invalid_argument("A mover needs a radius of more than 0.01 meters, a step height of zero or more and a height that leaves twice the radius above the step height.");
     }
+
     if (!(options.pushForce >= 0.0F)) {
         throw std::invalid_argument("A mover needs a push force of zero or more.");
     }
+
     setMaxSlope(options.maxSlope);
     setSnapDistance(options.snapDistance);
 
@@ -104,6 +109,7 @@ void Mover::setMaxSlope(float value) {
     if (!(value >= 0.0F && value < math::Math::kHalfPi)) {
         throw std::invalid_argument("A mover needs a slope limit of zero or more and below half pi radians.");
     }
+
     options.maxSlope = value;
 }
 
@@ -111,6 +117,7 @@ void Mover::setSnapDistance(float value) {
     if (!std::isfinite(value) || value < 0.0F) {
         throw std::invalid_argument("A mover needs a finite snap distance of zero or more.");
     }
+
     options.snapDistance = value;
 }
 
@@ -124,9 +131,11 @@ void Mover::gatherPlanes(bool flattenSteep) {
     planeCount = 0;
     const b2Capsule capsule = Query::capsule(*this, position);
     b2World_CollideMover(b2LoadWorldId(world.getHandle()), b2Pos_zero, &capsule, Box2DConverter::toQueryFilter(options.filter), &Query::addPlane, this);
+
     if (!flattenSteep) {
         return;
     }
+
     for (Plane& plane : std::span(planes.data(), planeCount)) {
         if (!isWalkable(plane.normal) && plane.normal.y < 0.0F && plane.normal.x != 0.0F) {
             plane.normal = {std::copysign(1.0F, plane.normal.x), 0.0F};
@@ -161,14 +170,17 @@ math::Vec2 Mover::slide(math::Vec2 delta, bool flattenSteep) {
         for (std::size_t index = 0; index < planeCount; ++index) {
             solverPlanes[index] = {.plane = {Query::meters(planes[index].normal), planes[index].offset}, .pushLimit = FLT_MAX, .clipVelocity = true};
         }
+
         const b2PlaneSolverResult solved = b2SolvePlanes(Box2DConverter::toMeters(target - position, scale), solverPlanes.data(), static_cast<int>(planeCount));
         const math::Vec2 translation = Box2DConverter::toPixels(solved.delta, scale);
         const math::Vec2 step = translation * cast(position, translation).fraction;
         position += step;
+
         if (step.getLength() < kTolerance * scale) {
             break;
         }
     }
+
     return position - start;
 }
 
@@ -184,6 +196,7 @@ void Mover::stand(bool snap) {
         if (lift < 0.0F) {
             lift *= cast(position, {0.0F, lift}).fraction;
         }
+
         position.y += lift;
         groundNormal = ground.normal;
         groundShape = ground.shape;
@@ -208,6 +221,7 @@ math::Vec2 Mover::followGround() const {
     if (!grounded || !b2Shape_IsValid(b2LoadShapeId(groundShape))) {
         return {};
     }
+
     const b2Vec2 moved = b2Body_GetWorldPoint(b2Shape_GetBody(b2LoadShapeId(groundShape)), Query::meters(groundAnchor));
     return math::Vec2{moved.x - groundPoint.x, moved.y - groundPoint.y} * scale;
 }
@@ -218,6 +232,7 @@ void Mover::push(math::Vec2 delta) {
     if (options.pushForce <= 0.0F || seconds <= 0.0F) {
         return;
     }
+
     const b2Vec2 wanted = Box2DConverter::toMeters(delta, scale);
     const b2Vec2 middle = Box2DConverter::toMeters(position, scale);
     for (const Plane& plane : std::span(planes.data(), planeCount)) {
@@ -226,6 +241,7 @@ void Mover::push(math::Vec2 delta) {
         if (into <= 0.0F || b2Body_GetType(pushed) != b2_dynamicBody) {
             continue;
         }
+
         // The mover pushes at the height of its middle, so a crate slides instead of tipping over its foot.
         const b2Vec2 direction = Query::meters(-plane.normal);
         const b2Vec2 point = b2Body_GetWorldCenter(pushed);
@@ -241,6 +257,7 @@ math::Vec2 Mover::move(math::Vec2 delta) {
     if (!body.isValid()) {
         throw std::logic_error("The mover was destroyed.");
     }
+
     const math::Vec2 start = position;
     const bool wasGrounded = grounded;
     const bool rising = delta.y < 0.0F;
@@ -254,6 +271,7 @@ math::Vec2 Mover::move(math::Vec2 delta) {
     gatherPlanes(wasGrounded);
     push(wanted);
     slide(wanted, wasGrounded);
+
     if (rising) {
         grounded = false;
         groundNormal = {0.0F, -1.0F};
@@ -262,6 +280,7 @@ math::Vec2 Mover::move(math::Vec2 delta) {
     } else {
         stand(wasGrounded);
     }
+
     moveBody();
     return position - start;
 }
@@ -273,12 +292,15 @@ math::Vec2 Mover::clip(math::Vec2 velocity) const {
         if (b2Shape_IsValid(shape) && b2Body_GetType(b2Shape_GetBody(shape)) == b2_dynamicBody) {
             continue;
         }
+
         velocity -= plane.normal * std::min(0.0F, math::Vec2::dot(velocity, plane.normal));
     }
+
     // Ground holds the mover straight up, so a landing on a slope stops it instead of turning the fall into a slide.
     if (grounded) {
         velocity.y = std::min(velocity.y, 0.0F);
     }
+
     return velocity;
 }
 
@@ -297,6 +319,7 @@ std::optional<Body> Mover::getGroundBody() const {
     if (!grounded || !b2Shape_IsValid(b2LoadShapeId(groundShape))) {
         return std::nullopt;
     }
+
     return Body(&world, b2StoreBodyId(b2Shape_GetBody(b2LoadShapeId(groundShape))));
 }
 
@@ -304,6 +327,7 @@ math::Vec2 Mover::getGroundVelocity() const {
     if (!grounded || !b2Shape_IsValid(b2LoadShapeId(groundShape))) {
         return {};
     }
+
     return Box2DConverter::toPixels(b2Body_GetWorldPointVelocity(b2Shape_GetBody(b2LoadShapeId(groundShape)), Query::meters(groundPoint)), scale);
 }
 
@@ -313,6 +337,7 @@ void Mover::moveBody() {
         body.moveTo(position, 0.0F, world.getLastStep());
         return;
     }
+
     body.setTransform(position, 0.0F);
 }
 

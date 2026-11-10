@@ -20,6 +20,7 @@ Rope Rope::create(World& world, const Options& options) {
         rope.destroy();
         throw;
     }
+
     return rope;
 }
 
@@ -55,9 +56,11 @@ void Rope::build(World& world, const Options& options) {
         if (!holder && pinned) {
             holder = anchors.emplace_back(world.createBody({.type = Body::Type::Static, .position = point}));
         }
+
         if (holder) {
             joints.push_back(world.createJoint(Joint::Type::Revolute, *holder, segment, {.anchorA = point}));
         }
+
         return holder.value_or(segment);
     };
     // clang-format on
@@ -90,6 +93,7 @@ std::vector<Rope::Segment> Rope::getSegments() const {
     for (const Body& body : bodies) {
         segments.push_back({body.getPosition(), body.getRotation(), segmentLength});
     }
+
     return segments;
 }
 
@@ -101,8 +105,10 @@ std::vector<math::Vec2> Rope::getPoints() const {
         if (points.empty()) {
             points.push_back(body.getPosition() - half);
         }
+
         points.push_back(body.getPosition() + half);
     }
+
     return points;
 }
 
@@ -110,9 +116,11 @@ void Rope::destroy() {
     for (Body& body : bodies) {
         body.destroy();
     }
+
     for (Body& anchor : anchors) {
         anchor.destroy();
     }
+
     bodies.clear();
     anchors.clear();
     joints.clear();

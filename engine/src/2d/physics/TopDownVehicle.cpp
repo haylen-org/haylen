@@ -23,6 +23,7 @@ TopDownVehicle::TopDownVehicle(World& owner, const Options& settings) : world(ow
         body.destroy();
         throw;
     }
+
     hook = world.addStepHook(World::StepPhase::Before, [this](float deltaSeconds) { update(deltaSeconds); });
 }
 
@@ -78,10 +79,12 @@ bool TopDownVehicle::updateAxle(float distance, float angle, float grip, bool dr
     } else if (driven && throttle < 0.0F && speed > -options.reverseSpeed) {
         body.applyForce(forward * (throttle * options.reverseAcceleration * pushed), point);
     }
+
     if (brake > 0.0F && speed != 0.0F) {
         const float stop = std::min(brake * options.brakeAcceleration * deltaSeconds, std::abs(speed)) * mass;
         body.applyImpulse(forward * std::copysign(stop, -speed), point);
     }
+
     return slid;
 }
 

@@ -80,6 +80,7 @@ TEST_F(JointRuntimeTest, RopeJointsSlackAndLimitTheirLength) {
         world.step(1.0F / 60.0F);
         farthest = std::max(farthest, hero.getPosition().getLength());
     }
+
     EXPECT_NEAR(rope.getCurrentLength(), 200.0F, 2.0F);
     EXPECT_LT(farthest, 203.0F);
     EXPECT_NEAR(math::Vec2::distance(rope.getAnchorA(), {0.0F, 0.0F}), 0.0F, 0.01F);
@@ -124,6 +125,7 @@ TEST_F(JointRuntimeTest, JointsBreakAboveTheirBreakForce) {
         world.step(1.0F / 60.0F);
         breaks += world.getJointBreaks().size();
     }
+
     EXPECT_EQ(breaks, 1U);
     EXPECT_FALSE(weld.isValid());
     EXPECT_GT(anvil.getMass(), 0.0F);

@@ -19,6 +19,7 @@ Terrain::Terrain(World& owner, const Options& settings) : world(owner), options(
     if (settings.columns < 2 || settings.rows < 2 || settings.cellSize <= 0.0F || settings.chunkSize < 1 || settings.simplifyTolerance < 0.0F) {
         throw std::invalid_argument("A terrain needs at least 2 by 2 samples, a positive cell size and chunk size, and a tolerance of at least zero.");
     }
+
     Box2DConverter::checkShapeOptions(settings.shape);
     samples.assign(static_cast<std::size_t>(settings.columns) * static_cast<std::size_t>(settings.rows), 0);
     chunkColumns = (settings.columns - 2) / settings.chunkSize + 1;
@@ -40,6 +41,7 @@ void Terrain::setSamples(std::span<const std::uint8_t> values) {
     if (values.size() != samples.size()) {
         throw std::invalid_argument("The terrain needs one value per sample.");
     }
+
     std::copy(values.begin(), values.end(), samples.begin());
     markDirty({0, 0, options.columns - 1, options.rows - 1});
 }
@@ -48,6 +50,7 @@ std::uint8_t Terrain::getSample(int column, int row) const {
     if (column < 0 || row < 0 || column >= options.columns || row >= options.rows) {
         throw std::out_of_range("The sample is outside the terrain.");
     }
+
     return samples[static_cast<std::size_t>(row) * static_cast<std::size_t>(options.columns) + static_cast<std::size_t>(column)];
 }
 
@@ -104,6 +107,7 @@ template <typename Distance> void Terrain::stamp(const math::Rect& area, bool ad
             sample = adding ? std::max(sample, value) : std::min(sample, static_cast<std::uint8_t>(255 - value));
         }
     }
+
     markDirty(span);
 }
 
@@ -112,6 +116,7 @@ float Terrain::distanceToPolygon(std::span<const math::Vec2> polygon, math::Vec2
     for (std::size_t index = 0; index < polygon.size(); ++index) {
         nearest = std::min(nearest, math::Geometry::distanceToSegment({polygon[index], polygon[(index + 1) % polygon.size()]}, point));
     }
+
     return math::Geometry::contains(polygon, point) ? -nearest : nearest;
 }
 
@@ -141,6 +146,7 @@ std::vector<std::vector<math::Vec2>> Terrain::getOutlines() const {
     for (const Chunk& chunk : chunks) {
         outlines.insert(outlines.end(), chunk.outlines.begin(), chunk.outlines.end());
     }
+
     return outlines;
 }
 
@@ -151,6 +157,7 @@ std::vector<Body> Terrain::getBodies() const {
             bodies.push_back(chunk.body);
         }
     }
+
     return bodies;
 }
 
@@ -166,6 +173,7 @@ std::size_t Terrain::update() {
             ++rebuilt;
         }
     }
+
     return rebuilt;
 }
 
@@ -192,12 +200,14 @@ void Terrain::rebuild(std::size_t index) {
     const math::Vec2 corner = options.origin + math::Vec2{static_cast<float>(span.firstColumn), static_cast<float>(span.firstRow)} * options.cellSize;
     const math::Rect area{corner.x, corner.y, static_cast<float>(width - 1) * options.cellSize, static_cast<float>(height - 1) * options.cellSize};
     chunk.outlines.clear();
+
     for (const std::vector<math::Vec2>& traced : math::MarchingSquares::trace(field, width, height, {.threshold = 0.5F, .spacing = options.cellSize, .origin = corner})) {
         std::vector<math::Vec2> outline = simplify(smooth(traced, area, field, width), area);
         // Specks smaller than a quarter cell carry no useful collision.
         if (outline.size() < 3 || std::fabs(math::Geometry::signedArea(outline)) < options.cellSize * options.cellSize * 0.25F) {
             continue;
         }
+
         // Chain loops need four points, so a triangle gains the middle of its longest edge.
         if (outline.size() == 3) {
             std::size_t longest = 0;
@@ -206,8 +216,10 @@ void Terrain::rebuild(std::size_t index) {
                     longest = edge;
                 }
             }
+
             outline.insert(outline.begin() + static_cast<std::ptrdiff_t>(longest) + 1, (outline[longest] + outline[(longest + 1) % 3]) * 0.5F);
         }
+
         chunk.outlines.push_back(std::move(outline));
     }
 
@@ -219,6 +231,7 @@ void Terrain::rebuild(std::size_t index) {
             chunk.body.addChain(outline, true, options.shape);
         }
     }
+
     chunk.dirty = false;
 }
 
@@ -254,8 +267,10 @@ std::vector<math::Vec2> Terrain::smooth(const std::vector<math::Vec2>& outline, 
             const math::Vec2 relaxed = (current[(index + count - 1) % count] + current[index] * 2.0F + current[(index + 1) % count]) * 0.25F;
             next[index] = outline[index] + (relaxed - outline[index]).clampedLength(freedom[index]);
         }
+
         std::swap(current, next);
     }
+
     return current;
 }
 
@@ -277,6 +292,7 @@ std::vector<math::Vec2> Terrain::simplify(const std::vector<math::Vec2>& outline
             anchors.push_back(index);
         }
     }
+
     if (anchors.empty()) {
         return math::Polygon::simplify(outline, options.simplifyTolerance, true);
     }
@@ -289,9 +305,11 @@ std::vector<math::Vec2> Terrain::simplify(const std::vector<math::Vec2>& outline
         for (std::size_t index = from; index <= to; ++index) {
             run.push_back(outline[index % count]);
         }
+
         const std::vector<math::Vec2> simplified = math::Polygon::simplify(run, options.simplifyTolerance, false);
         result.insert(result.end(), simplified.begin(), simplified.end() - 1);
     }
+
     return result;
 }
 

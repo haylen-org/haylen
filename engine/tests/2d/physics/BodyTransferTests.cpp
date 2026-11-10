@@ -75,9 +75,11 @@ TEST_F(BodyTransferTest, EveryKindOfShapeGoesAcrossWithItsMaterialFilterAndBehav
     // The outlines of the shapes, the chains joined as before, land where they were.
     const std::vector<Shape::Outline> after = moved.getOutlines();
     ASSERT_EQ(after.size(), before.size());
+
     for (std::size_t index = 0; index < before.size(); ++index) {
         ASSERT_EQ(after[index].points.size(), before[index].points.size()) << "Outline " << index;
         EXPECT_EQ(after[index].closed, before[index].closed) << "Outline " << index;
+
         for (std::size_t point = 0; point < before[index].points.size(); ++point) {
             EXPECT_NEAR(math::Vec2::distance(after[index].points[point], before[index].points[point]), 0.0F, 1e-2F) << "Outline " << index << ", point " << point;
         }
@@ -97,6 +99,7 @@ TEST_F(BodyTransferTest, EveryKindOfShapeGoesAcrossWithItsMaterialFilterAndBehav
         grippy = grippy || (shape.getKind() == Shape::Kind::ChainSegment && shape.getFriction() == 0.9F);
         rolling = rolling || (shape.getKind() == Shape::Kind::ChainSegment && shape.getRollingResistance() == 0.2F);
     }
+
     EXPECT_TRUE(box);
     EXPECT_TRUE(sensor);
     EXPECT_TRUE(oneWay);

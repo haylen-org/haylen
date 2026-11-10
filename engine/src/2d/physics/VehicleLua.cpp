@@ -47,6 +47,7 @@ Vehicle& VehicleLua::checkVehicle(lua_State* L) {
     if (!vehicle.isValid()) {
         luaL_error(L, "The vehicle was destroyed.");
     }
+
     return vehicle;
 }
 
@@ -55,6 +56,7 @@ TopDownVehicle& VehicleLua::checkTopDown(lua_State* L) {
     if (!vehicle.isValid()) {
         luaL_error(L, "The vehicle was destroyed.");
     }
+
     return vehicle;
 }
 
@@ -88,6 +90,7 @@ int VehicleLua::newVehicle(lua_State* L) {
         lua::Table::readField(L, 2, "bullet", options.bullet);
         options.filter = ShapeLua::readFilter(L, 2, options.filter);
     }
+
     lua::Userdata::emplace<ScriptedOwner<Vehicle>>(L, world, options);
     lua_pushvalue(L, 1);
     lua_setiuservalue(L, -2, 1);
@@ -200,6 +203,7 @@ int VehicleLua::newTopDownVehicle(lua_State* L) {
         lua::Table::readField(L, 2, "bullet", options.bullet);
         options.filter = ShapeLua::readFilter(L, 2, options.filter);
     }
+
     lua::Userdata::emplace<ScriptedOwner<TopDownVehicle>>(L, world, options);
     lua_pushvalue(L, 1);
     lua_setiuservalue(L, -2, 1);

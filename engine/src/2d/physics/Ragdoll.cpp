@@ -44,6 +44,7 @@ std::optional<Ragdoll::Part> Ragdoll::partFromName(std::string_view name) noexce
     if (found == kNames.end()) {
         return std::nullopt;
     }
+
     return static_cast<Part>(found - kNames.begin());
 }
 
@@ -64,6 +65,7 @@ Ragdoll Ragdoll::create(World& world, const Options& options) {
         ragdoll.destroy();
         throw;
     }
+
     return ragdoll;
 }
 
@@ -102,6 +104,7 @@ float Ragdoll::measureLimb(Part part, float at, float& mass) const {
             reach = std::max(reach, measureLimb(link.child, at, mass));
         }
     }
+
     return reach;
 }
 
@@ -110,6 +113,7 @@ float Ragdoll::getMass() const {
     for (const Body& body : bodies) {
         mass += body.isValid() ? body.getMass() : 0.0F;
     }
+
     return mass;
 }
 
@@ -121,6 +125,7 @@ void Ragdoll::destroy() {
     for (Body& body : bodies) {
         body.destroy();
     }
+
     joints.clear();
 }
 

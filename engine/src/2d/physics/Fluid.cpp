@@ -31,6 +31,7 @@ class Fluid::Collider final {
             low = math::Vec2::min(low, point);
             high = math::Vec2::max(high, point);
         }
+
         const float margin = owner.options.radius * 2.0F;
         origin = low - math::Vec2{margin, margin};
         const math::Vec2 extent = high - low + math::Vec2{margin, margin} * 2.0F;
@@ -59,6 +60,7 @@ class Fluid::Collider final {
                     touched = touched || depth > kSettled;
                 }
             }
+
             if (!touched) {
                 return;
             }
@@ -74,26 +76,31 @@ class Fluid::Collider final {
                 body.angularImpulse += math::Vec2::cross(contact.point - body.center, contact.impulse);
             }
         }
+
         for (const Contact& contact : contacts) {
             const float pushed = -math::Vec2::dot(contact.impulse, contact.normal);
             if (!contact.valid || pushed <= 0.0F) {
                 continue;
             }
+
             Body& body = bodies[contact.body];
             const math::Vec2 arm = contact.point - body.center;
             const math::Vec2 change = body.impulse / body.mass + math::Vec2{-arm.y, arm.x} * (body.angularImpulse * body.inverseInertia);
             body.approach += pushed * (contact.approach + std::max(0.0F, math::Vec2::dot(body.fall, contact.normal)));
             body.recoil -= pushed * math::Vec2::dot(change, contact.normal);
         }
+
         for (Body& body : bodies) {
             if (body.recoil > body.approach) {
                 body.share = body.approach / body.recoil;
             }
         }
+
         for (const Body& body : bodies) {
             if (!body.dynamic || (body.impulse.isZero() && body.angularImpulse == 0.0F)) {
                 continue;
             }
+
             const b2BodyId id = b2LoadBodyId(body.id);
             const math::Vec2 impulse = body.impulse * body.share;
             const bool wakes = impulse.getLength() / body.mass > kWakeSpeed * scale;
@@ -171,9 +178,11 @@ class Fluid::Collider final {
             const math::Vec2 slide = relative - normal * approach;
             relative = slide * (1.0F - std::min(1.0F, fluid.options.friction)) - normal * (approach * fluid.options.restitution);
         }
+
         const math::Vec2 after = carried + relative;
         position = surface + normal * fluid.options.radius;
         last = position - after * deltaSeconds;
+
         if (body.dynamic) {
             Contact& contact = contacts[index];
             const bool same = contact.valid && contact.body == solid.body;
@@ -204,6 +213,7 @@ class Fluid::Collider final {
         if (a <= 0.0F || c <= 0.0F || b >= 0.0F || discriminant < 0.0F) {
             return std::nullopt;
         }
+
         const float t = (-b - std::sqrt(discriminant)) / a;
         return t <= 1.0F ? std::optional<float>(t) : std::nullopt;
     }
@@ -220,6 +230,7 @@ class Fluid::Collider final {
                 core = point;
             }
         }
+
         if (solid.kind != Kind::Circle) {
             // The path crosses the side of a segment where it comes within reach of its line between the ends.
             const math::Vec2 span = solid.points[1] - solid.points[0];
@@ -239,9 +250,11 @@ class Fluid::Collider final {
                 }
             }
         }
+
         if (!first) {
             return false;
         }
+
         const math::Vec2 contact = math::Vec2::lerp(last, position, *first);
         normal = (contact - core).getNormalized();
         surface = core + normal * solid.radius;
@@ -260,6 +273,7 @@ class Fluid::Collider final {
             if (from > 0.0F && to > 0.0F) {
                 return false;
             }
+
             if (from > 0.0F) {
                 const float t = from / (from - to);
                 if (t > enter || face < 0) {
@@ -270,9 +284,11 @@ class Fluid::Collider final {
                 exit = std::min(exit, from / (from - to));
             }
         }
+
         if (face < 0 || enter > exit) {
             return false;
         }
+
         normal = solid.normals[static_cast<std::size_t>(face)];
         surface = math::Vec2::lerp(last, position, enter) - normal * fluid.options.radius;
         return true;
@@ -314,6 +330,7 @@ class Fluid::Collider final {
         } else {
             normal = distance > 0.0F ? offset / distance : held;
         }
+
         surface = core + normal * solid.radius;
         return true;
     }
@@ -325,6 +342,7 @@ class Fluid::Collider final {
         if (lastHeight < 0.0F) {
             return false;
         }
+
         const math::Vec2 span = solid.points[1] - solid.points[0];
         const float height = math::Vec2::dot(position - solid.points[0], front);
         float along = math::Vec2::dot(position - solid.points[0], span) / span.getLengthSquared();
@@ -332,17 +350,20 @@ class Fluid::Collider final {
             const math::Vec2 crossing = math::Vec2::lerp(last, position, lastHeight / (lastHeight - height));
             along = math::Vec2::dot(crossing - solid.points[0], span) / span.getLengthSquared();
         }
+
         if (along > 0.0F && along < 1.0F) {
             normal = front;
             surface = solid.points[0] + span * math::Vec2::dot(position - solid.points[0], span) / span.getLengthSquared();
             return height < reach;
         }
+
         const math::Vec2 core = solid.points[0] + span * std::clamp(along, 0.0F, 1.0F);
         const math::Vec2 offset = position - core;
         const float distance = offset.getLength();
         if (distance >= reach) {
             return false;
         }
+
         normal = distance > 0.0F ? offset / distance : front;
         surface = core;
         return true;
@@ -356,15 +377,18 @@ class Fluid::Collider final {
         for (std::size_t slot = 0; slot < static_cast<std::size_t>(solid.count); ++slot) {
             const float separation = math::Vec2::dot(solid.normals[slot], position - solid.points[slot]);
             const float before = math::Vec2::dot(solid.normals[slot], last - solid.points[slot]);
+
             if (separation > deepest) {
                 deepest = separation;
                 side = slot;
             }
+
             if (before > held) {
                 held = before;
                 face = slot;
             }
         }
+
         if (held > reach) {
             return sweepPolygon(solid, reach, last, position, normal, surface);
         }
@@ -377,6 +401,7 @@ class Fluid::Collider final {
             surface = position - normal * behind + normal * solid.radius;
             return true;
         }
+
         if (deepest > reach) {
             return false;
         }
@@ -391,11 +416,13 @@ class Fluid::Collider final {
                 core = point;
             }
         }
+
         const math::Vec2 offset = position - core;
         const float distance = offset.getLength();
         if (distance >= reach) {
             return false;
         }
+
         normal = distance > 0.0F ? offset / distance : solid.normals[exit];
         surface = core + normal * solid.radius;
         return true;
@@ -408,6 +435,7 @@ class Fluid::Collider final {
                 return static_cast<std::uint32_t>(index);
             }
         }
+
         const b2Vec2 velocity = b2Body_GetLinearVelocity(id);
         const float inertia = b2Body_GetRotationalInertia(id) * scale * scale;
         bodies.push_back({
@@ -468,6 +496,7 @@ class Fluid::Collider final {
                 const b2Vec2 normal = b2RotateVector(transform.q, polygon.normals[index]);
                 solid.normals[slot] = {normal.x, normal.y};
             }
+
             break;
         }
         default:
@@ -489,6 +518,7 @@ class Fluid::Collider final {
             if (!b2Shape_IsSensor(shape) && Box2DConverter::collides(*filter, b2Shape_GetFilter(shape))) {
                 shapes.push_back(shape);
             }
+
             return true;
         }, &found);
         // clang-format on
@@ -517,9 +547,11 @@ class Fluid::Collider final {
                 }
             }
         }
+
         for (std::size_t cell = 1; cell < cellStarts.size(); ++cell) {
             cellStarts[cell] += cellStarts[cell - 1];
         }
+
         cellEntries.resize(cellStarts.back());
         std::vector<std::uint32_t> cursors(cellStarts.begin(), cellStarts.end() - 1);
         for (std::size_t index = 0; index < solids.size(); ++index) {
@@ -553,6 +585,7 @@ Fluid::Fluid(World& owner, const Options& settings) : world(owner), options(sett
     if (options.radius <= 0.0F || options.smoothingRadius <= options.radius || !materials || !motion) {
         throw std::invalid_argument("A fluid needs a positive particle radius, a larger smoothing radius, at least one iteration, a viscosity from 0 to 1, and a density, friction, restitution and top speed of zero or more.");
     }
+
     const float scale = world.getPixelsPerMeter();
     particleMass = options.density * math::Math::kPi * options.radius * options.radius / (scale * scale);
 
@@ -563,6 +596,7 @@ Fluid::Fluid(World& owner, const Options& settings) : world(owner), options(sett
             restDensity += kernel(0.5F * std::hypot(static_cast<float>(column), static_cast<float>(row)));
         }
     }
+
     clumpKernel = kernel(kClumpDistance);
     hook = world.addStepHook(World::StepPhase::After, [this](float deltaSeconds) { step(deltaSeconds); });
 }
@@ -575,6 +609,7 @@ bool Fluid::spawn(math::Vec2 position, math::Vec2 velocity) {
     if (positions.size() >= options.maxParticles) {
         return false;
     }
+
     positions.push_back(position);
     previous.push_back(position);
     velocities.push_back(velocity);
@@ -590,12 +625,15 @@ std::size_t Fluid::fill(const math::Rect& area, math::Vec2 velocity) {
         for (int column = 0; column < columns; ++column) {
             // A perfect grid is a lattice the pressure balances, so every other row shifts by half a cell and every particle by a fixed small amount.
             const float shift = (row % 2 == 0 ? 0.25F : 0.75F) + 0.05F * static_cast<float>((column * 7 + row * 3) % 5 - 2);
+
             if (!spawn(area.getMin() + math::Vec2{static_cast<float>(column) + shift, static_cast<float>(row) + 0.5F} * spacing, velocity)) {
                 return added;
             }
+
             ++added;
         }
     }
+
     return added;
 }
 
@@ -603,6 +641,7 @@ void Fluid::remove(std::size_t index) {
     if (index >= positions.size()) {
         throw std::out_of_range("The fluid has no such particle.");
     }
+
     for (std::vector<math::Vec2>* values : {&positions, &previous, &velocities}) {
         (*values)[index] = values->back();
         values->pop_back();
@@ -621,6 +660,7 @@ template <typename Work> void Fluid::forEachRange(Work&& work) {
         work(std::size_t{0}, positions.size());
         return;
     }
+
     jobs->parallelFor(0, positions.size(), kGrain, work);
 }
 
@@ -643,9 +683,11 @@ void Fluid::buildGrid() {
         cellKeys[index] = key;
         ++cellStarts[key + 1];
     }
+
     for (std::size_t cell = 1; cell <= table; ++cell) {
         cellStarts[cell] += cellStarts[cell - 1];
     }
+
     cellCursors.assign(cellStarts.begin(), cellStarts.end() - 1);
     sorted.resize(count);
     for (std::size_t index = 0; index < count; ++index) {
@@ -693,6 +735,7 @@ void Fluid::findNeighbors(std::size_t begin, std::size_t end) {
                 }
             }
         }
+
         neighborCounts[index] = static_cast<std::uint8_t>(found);
     }
 }
@@ -711,11 +754,13 @@ void Fluid::solveDensity(std::size_t begin, std::size_t end) {
             if (distance >= 1.0F || distance <= 0.0F) {
                 continue;
             }
+
             density += kernel(distance);
             const math::Vec2 gradient = offset * (slope(distance) / (distance * restDensity));
             own += gradient;
             others += gradient.getLengthSquared();
         }
+
         const float error = density / restDensity - 1.0F;
         lambdas[index] = error > 0.0F ? -error / (own.getLengthSquared() + others) : 0.0F;
     }
@@ -734,10 +779,12 @@ void Fluid::separate(std::size_t begin, std::size_t end, float limit) {
             if (distance >= 1.0F || distance <= 0.0F) {
                 continue;
             }
+
             const float ratio = kernel(distance) / clumpKernel;
             const float clump = -kClumpStrength * ratio * ratio * ratio * ratio;
             shift += offset * ((lambdas[index] + lambdas[other] + clump) * slope(distance) / (distance * restDensity));
         }
+
         scratch[index] = positions[index] + (shift * (options.smoothingRadius * kRelaxation)).clampedLength(limit);
     }
 }
@@ -755,6 +802,7 @@ void Fluid::smooth(std::size_t begin, std::size_t end) {
             change += (velocities[other] - velocities[index]) * weight;
             total += weight;
         }
+
         const math::Vec2 blended = total > 0.0F ? velocities[index] + change * (options.viscosity / std::max(total, 1.0F)) : velocities[index];
         scratch[index] = blended.clampedLength(options.maxSpeed);
     }
@@ -766,6 +814,7 @@ void Fluid::step(float deltaSeconds) {
         stepMilliseconds = 0.0F;
         return;
     }
+
     const auto start = std::chrono::steady_clock::now();
     const math::Vec2 gravity = world.getGravity() * (options.gravityScale * deltaSeconds);
 
@@ -794,6 +843,7 @@ void Fluid::step(float deltaSeconds) {
         forEachRange([this, limit](std::size_t begin, std::size_t end) { separate(begin, end, limit); });
         positions.swap(scratch);
     }
+
     Collider collider(*this, positions, deltaSeconds);
     // clang-format off
     forEachRange([&](std::size_t begin, std::size_t end) {

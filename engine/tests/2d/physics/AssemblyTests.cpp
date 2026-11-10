@@ -90,6 +90,7 @@ TEST_F(AssemblyTest, RagdollsFallAsOneFigure) {
         EXPECT_LT(part.getPosition().y, 295.0F);
         EXPECT_GT(part.getPosition().y, 150.0F);
     }
+
     EXPECT_LT(math::Vec2::distance(ragdoll.getBody(Ragdoll::Part::Head).getPosition(), ragdoll.getBody(Ragdoll::Part::Chest).getPosition()), 64.0F);
 
     EXPECT_EQ(Ragdoll::partFromName("lowerLegRight"), Ragdoll::Part::LowerLegRight);
@@ -184,9 +185,11 @@ TEST_F(AssemblyTest, RopesWithALengthLimitHoldHeavyLoads) {
         Body load = chain.createBody({.position = {0.0F, 400.0F}});
         load.addCircle(20.0F, {.density = 40.0F});
         const Rope rope = Rope::create(chain, {.start = {0.0F, 0.0F}, .end = {0.0F, 380.0F}, .segments = 20, .pinStart = true, .limitLength = limited, .endBody = load});
+
         for (int step = 0; step < 300; ++step) {
             chain.step(1.0F / 60.0F);
         }
+
         const float stretch = load.getPosition().y - 400.0F;
         if (limited) {
             EXPECT_LT(stretch, 4.0F);
@@ -247,11 +250,13 @@ TEST_F(AssemblyTest, GrabbersDragRagdollsOverSteps) {
     const Body hand = ragdoll.getBody(Ragdoll::Part::LowerArmRight);
     ASSERT_TRUE(grabber.grab(hand.getPosition()).has_value());
     EXPECT_GT(grabber.getForce(), 0.0F);
+
     for (int step = 0; step < 240; ++step) {
         const float progress = std::min(1.0F, static_cast<float>(step) / 120.0F);
         grabber.moveTo(math::Vec2::lerp(hand.getPosition(), {320.0F, 0.0F}, progress));
         world.step(1.0F / 60.0F);
     }
+
     grabber.release();
     simulate(2.0F);
 
@@ -266,12 +271,14 @@ TEST_F(AssemblyTest, GrabbersLiftWholeAssemblies) {
     // A grabber holding the end of a chain of ten links lifts the whole chain, because it pulls with the weight of everything joined to the link.
     Body previous = world.createBody({.position = {0.0F, 0.0F}});
     previous.addBox({20.0F, 8.0F});
+
     for (int link = 1; link < 10; ++link) {
         Body body = world.createBody({.position = {static_cast<float>(link) * 20.0F, 0.0F}});
         body.addBox({20.0F, 8.0F});
         (void)world.createJoint(Joint::Type::Revolute, previous, body, {.anchorA = {static_cast<float>(link) * 20.0F - 10.0F, 0.0F}});
         previous = body;
     }
+
     Grabber grabber(world, {.pickRadius = 4.0F, .strength = 30.0F});
     ASSERT_TRUE(grabber.grab({0.0F, 0.0F}).has_value());
     EXPECT_NEAR(grabber.getForce(), 30.0F * previous.getMass() * 10.0F * 9.80665F * world.getPixelsPerMeter(), grabber.getForce() * 0.01F);
@@ -312,7 +319,9 @@ TEST_F(AssemblyTest, OneWayPlatformsCatchFastFalls) {
             fallers.push_back(body);
         }
     }
+
     simulate(1.0F);
+
     for (const Body& body : fallers) {
         EXPECT_LT(body.getPosition().y, -10.0F) << body.getPosition().x;
     }
@@ -326,15 +335,18 @@ TEST_F(AssemblyTest, OneWayPlatformsHoldWhatLandsDeepInThem) {
         Body platform = steep.createBody({.type = Body::Type::Static, .position = {x, 8.0F}});
         platform.addBox({160.0F, 16.0F}, {.oneWay = math::Vec2{0.0F, -1.0F}});
     }
+
     std::vector<Body> heroes;
     for (int drop = 0; drop < 12; ++drop) {
         Body hero = steep.createBody({.position = {static_cast<float>(drop) * 200.0F, -42.0F - 20.0F - static_cast<float>(drop) * 7.0F}, .locks = {.rotation = true}});
         hero.addCapsule({0.0F, -22.0F}, {0.0F, 22.0F}, 20.0F, {.friction = 0.0F});
         heroes.push_back(hero);
     }
+
     for (int step = 0; step < 120; ++step) {
         steep.step(1.0F / 60.0F);
     }
+
     for (const Body& hero : heroes) {
         EXPECT_NEAR(hero.getPosition().y, -42.0F, 2.0F) << hero.getPosition().x;
     }
@@ -346,6 +358,7 @@ TEST_F(AssemblyTest, DropThroughPassesOnePlatform) {
         Body platform = world.createBody({.type = Body::Type::Static, .position = {0.0F, y}});
         platform.addBox({200.0F, 8.0F}, {.oneWay = math::Vec2{0.0F, -1.0F}});
     }
+
     Body hero = world.createBody({.position = {0.0F, -30.0F}, .locks = {.rotation = true}});
     hero.addCapsule({0.0F, -10.0F}, {0.0F, 10.0F}, 8.0F);
     simulate(1.0F);

@@ -81,6 +81,7 @@ std::vector<Explosion::Hit> Explosion::apply(World& world, const Options& option
         if (direction.isZero()) {
             direction = Box2DConverter::toPixels(b2Body_GetWorldCenter(b2LoadBodyId(hit.body.getId())), scale) - options.center;
         }
+
         if (direction.isZero()) {
             direction = {0.0F, -1.0F};
         }
@@ -89,6 +90,7 @@ std::vector<Explosion::Hit> Explosion::apply(World& world, const Options& option
         hit.body.applyImpulse(hit.impulse, hit.point);
         pushed.push_back(hit);
     }
+
     return pushed;
 }
 

@@ -55,6 +55,7 @@ void Physics2DLua::setManifold(lua_State* L, const ContactManifold& manifold) {
         setNumber("approachSpeed", contact.approachSpeed);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     lua_setfield(L, -2, "points");
 }
 
@@ -86,6 +87,7 @@ int Physics2DLua::newWorld(lua_State* L) {
             owner = lua_gettop(L);
         }
     }
+
     if (owner == 0) {
         owner = lua::Owners::pushDefault(L);
     }
@@ -96,6 +98,7 @@ int Physics2DLua::newWorld(lua_State* L) {
         lua::Owners::add(L, owner, tracked);
         lua_remove(L, owner);
     }
+
     lua::Userdata::emplace<World>(L, world);
     WorldLua::resetState(L, -1);
     return 1;

@@ -35,6 +35,7 @@ class FluidTest : public ::testing::Test {
         for (const math::Vec2 velocity : fluid.getVelocities()) {
             fastest = std::max(fastest, velocity.getLength());
         }
+
         return fastest;
     }
 
@@ -43,6 +44,7 @@ class FluidTest : public ::testing::Test {
         for (const math::Vec2 position : fluid.getPositions()) {
             top = std::min(top, position.y);
         }
+
         return top;
     }
 
@@ -70,6 +72,7 @@ TEST_F(FluidTest, SpreadsAndSettlesInsideItsContainer) {
         left = std::min(left, position.x);
         right = std::max(right, position.x);
     }
+
     EXPECT_GT(right - left, 330.0F);
     EXPECT_GE(fluid.getStepMilliseconds(), 0.0F);
 
@@ -110,10 +113,12 @@ TEST_F(FluidTest, RestsWithoutGainingEnergyOrVolume) {
     Fluid fluid(world, {.radius = 4.0F, .smoothingRadius = 16.0F, .viscosity = 0.25F, .maxParticles = 2000});
     const std::size_t added = fluid.fill({-150.0F, -200.0F, 300.0F, 200.0F});
     const float depth = static_cast<float>(added) * 64.0F / 300.0F;
+
     for (int second = 0; second < 6; ++second) {
         simulate(1.0F);
         ASSERT_EQ(countOutside(fluid, 300.0F), 0U) << "Second " << second;
     }
+
     EXPECT_LT(getFastest(fluid), 15.0F);
     EXPECT_LT(getTop(fluid), -depth * 0.85F);
 }
@@ -137,6 +142,7 @@ TEST_F(FluidTest, SlowTouchesNeverSplash) {
         world.step(1.0F / 60.0F);
         top = std::min(top, getTop(fluid));
     }
+
     EXPECT_GT(top, surface - 20.0F);
     EXPECT_LT(std::abs(crate.getAngularVelocity()), 1.0F);
 
@@ -159,12 +165,15 @@ TEST_F(FluidTest, FloatsVeryLightBodiesCalmly) {
         crate.addBox({52.0F, 36.0F}, {.density = density});
         crates.push_back(crate);
     }
+
     simulate(5.0F);
+
     for (const Body& crate : crates) {
         EXPECT_LT(crate.getVelocity().getLength(), 40.0F);
         EXPECT_LT(std::abs(crate.getAngularVelocity()), 1.0F);
         EXPECT_NEAR(crate.getPosition().y, surface, 40.0F);
     }
+
     EXPECT_LT(crates[0].getPosition().y, crates[2].getPosition().y);
     EXPECT_EQ(countOutside(fluid, 420.0F), 0U);
 }
@@ -183,9 +192,11 @@ TEST_F(FluidTest, ThinWallsHoldFastParticlesAtEveryStep) {
             fluid.spawn({0.0F, y}, {index % 2 == 0 ? -3000.0F : 3000.0F, 0.0F});
             fluid.spawn({static_cast<float>(index) * 9.0F - 180.0F, -360.0F}, {0.0F, 3000.0F});
         }
+
         for (float time = 0.0F; time < 1.0F; time += stepSeconds) {
             walled.step(stepSeconds);
         }
+
         EXPECT_EQ(countOutside(fluid, 400.0F), 0U) << "Step " << stepSeconds;
     }
 }
@@ -199,6 +210,7 @@ TEST_F(FluidTest, StaysOutOfOneSidedWallsAndSlopes) {
     Fluid fluid(world, {.maxParticles = 800});
     fluid.fill({-200.0F, -460.0F, 160.0F, 120.0F});
     simulate(4.0F);
+
     for (const math::Vec2 position : fluid.getPositions()) {
         EXPECT_GT(position.x, -300.0F);
         EXPECT_LT(position.x, 300.0F);

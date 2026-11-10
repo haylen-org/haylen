@@ -22,6 +22,7 @@ std::vector<std::vector<std::vector<math::Vec2>>> Fracture::split(std::span<cons
     if (options.pieces < 1) {
         throw std::invalid_argument("A fracture needs at least one piece.");
     }
+
     const std::vector<std::vector<math::Vec2>> outlines = math::Polygon::unite(shape);
     if (outlines.empty()) {
         return {};
@@ -40,6 +41,7 @@ std::vector<std::vector<std::vector<math::Vec2>>> Fracture::split(std::span<cons
             const math::Vec2 near = *options.impact + math::Vec2::fromAngle(random.range(0.0F, math::Math::kTau), distance);
             site = region.contains(near) ? near : site;
         }
+
         sites.push_back(site);
     }
 
@@ -50,23 +52,27 @@ std::vector<std::vector<std::vector<math::Vec2>>> Fracture::split(std::span<cons
         if (cell.empty()) {
             continue;
         }
+
         const std::vector<std::vector<math::Vec2>> cells{cell};
         const std::vector<std::vector<math::Vec2>> parts = math::Polygon::intersect(outlines, cells);
         for (const std::vector<math::Vec2>& outer : parts) {
             if (math::Geometry::signedArea(outer) <= 0.0F) {
                 continue;
             }
+
             std::vector<std::vector<math::Vec2>> piece{outer};
             for (const std::vector<math::Vec2>& hole : parts) {
                 if (math::Geometry::signedArea(hole) < 0.0F && math::Geometry::contains(outer, hole.front())) {
                     piece.push_back(hole);
                 }
             }
+
             if (math::Polygon::getArea(piece) >= options.minimumArea) {
                 pieces.push_back(std::move(piece));
             }
         }
     }
+
     return pieces;
 }
 
@@ -84,15 +90,18 @@ std::vector<Body> Fracture::shatter(Body body, const Options& options) {
         if (b2Shape_GetType(id) != b2_polygonShape) {
             continue;
         }
+
         if (outlines.empty()) {
             material = {.density = b2Shape_GetDensity(id), .friction = b2Shape_GetFriction(id), .restitution = b2Shape_GetRestitution(id), .filter = shape.getFilter()};
         }
+
         const b2Polygon polygon = b2Shape_GetPolygon(id);
         std::vector<math::Vec2>& outline = outlines.emplace_back();
         for (int vertex = 0; vertex < polygon.count; ++vertex) {
             outline.push_back(Box2DConverter::toPixels(polygon.vertices[vertex], scale));
         }
     }
+
     if (outlines.empty()) {
         return {};
     }
@@ -116,6 +125,7 @@ std::vector<Body> Fracture::shatter(Body body, const Options& options) {
         for (const std::vector<std::vector<math::Vec2>>& piece : split(outlines, local)) {
             std::vector<std::vector<math::Vec2>> parts = math::Polygon::decompose(piece, B2_MAX_POLYGON_VERTICES);
             std::erase_if(parts, [scale](const std::vector<math::Vec2>& part) { return !isSolid(part, scale); });
+
             if (parts.empty()) {
                 continue;
             }
@@ -132,12 +142,14 @@ std::vector<Body> Fracture::shatter(Body body, const Options& options) {
         for (Body& fragment : fragments) {
             fragment.destroy();
         }
+
         throw;
     }
 
     if (!fragments.empty()) {
         body.destroy();
     }
+
     return fragments;
 }
 
@@ -146,6 +158,7 @@ bool Fracture::isSolid(std::span<const math::Vec2> part, float scale) {
     for (std::size_t index = 0; index < part.size(); ++index) {
         points[index] = Box2DConverter::toMeters(part[index], scale);
     }
+
     return b2ComputeHull(points.data(), static_cast<int>(part.size())).count > 0;
 }
 

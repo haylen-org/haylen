@@ -22,6 +22,7 @@ std::optional<Shape::Kind> Shape::kindFromName(std::string_view name) noexcept {
             return kind;
         }
     }
+
     return std::nullopt;
 }
 
@@ -31,6 +32,7 @@ std::string_view Shape::kindName(Kind value) noexcept {
             return text;
         }
     }
+
     return kKindNames.back().first;
 }
 
@@ -40,9 +42,11 @@ std::uint64_t Shape::checkedId() const {
     if (world != nullptr && !b2World_IsValid(b2LoadWorldId(worldHandle))) {
         throw std::logic_error("The physics world of the shape was destroyed.");
     }
+
     if (!isValid()) {
         throw std::logic_error("The physics shape was destroyed.");
     }
+
     return id;
 }
 
@@ -109,6 +113,7 @@ std::vector<math::Vec2> Shape::readPoints(bool inWorld) const {
     for (const b2Vec2 point : local) {
         points.push_back(Box2DConverter::toPixels(b2TransformPoint(transform, point), scale));
     }
+
     return points;
 }
 
@@ -138,6 +143,7 @@ Shape::Outline Shape::getOutline() const {
     if (kind == Kind::Polygon) {
         return {.points = std::move(points), .closed = true};
     }
+
     if (kind == Kind::Segment || kind == Kind::ChainSegment) {
         return {.points = std::move(points)};
     }
@@ -149,6 +155,7 @@ Shape::Outline Shape::getOutline() const {
         for (int step = 0; step < steps; ++step) {
             outline.points.push_back(points[0] + math::Vec2::fromAngle(math::Math::kTau * static_cast<float>(step) / static_cast<float>(steps), radius));
         }
+
         return outline;
     }
 
@@ -160,6 +167,7 @@ Shape::Outline Shape::getOutline() const {
             outline.points.push_back(center + math::Vec2::fromAngle(start + math::Math::kPi * static_cast<float>(step) / static_cast<float>(halfSteps), radius));
         }
     }
+
     return outline;
 }
 
@@ -180,13 +188,16 @@ math::Rect Shape::getBounds() const {
 
 void Shape::destroy() {
     const b2ShapeId shape = b2LoadShapeId(id);
+
     if (!isValid()) {
         return;
     }
+
     if (b2Shape_GetType(shape) == b2_chainSegmentShape) {
         b2DestroyChain(b2Shape_GetParentChain(shape));
         return;
     }
+
     b2DestroyShape(shape, true);
 }
 
@@ -194,6 +205,7 @@ float Shape::checkMaterial(float value) {
     if (!std::isfinite(value) || value < 0.0F) {
         throw std::invalid_argument("A physics shape needs a finite density, friction, restitution and rolling resistance of zero or more.");
     }
+
     return value;
 }
 
@@ -261,6 +273,7 @@ std::vector<Shape> Shape::getOverlaps() const {
     if (!b2Shape_IsSensor(shape)) {
         throw std::logic_error("Only sensor shapes have overlaps.");
     }
+
     std::vector<b2ShapeId> ids(static_cast<std::size_t>(b2Shape_GetSensorCapacity(shape)));
     ids.resize(static_cast<std::size_t>(b2Shape_GetSensorData(shape, ids.data(), static_cast<int>(ids.size()))));
     std::vector<Shape> overlaps;
@@ -270,6 +283,7 @@ std::vector<Shape> Shape::getOverlaps() const {
             overlaps.emplace_back(world, b2StoreShapeId(overlap));
         }
     }
+
     return overlaps;
 }
 
@@ -294,14 +308,17 @@ std::optional<math::Vec2> Shape::getOneWay() const {
 
 void Shape::setOneWay(std::optional<math::Vec2> value) {
     const b2ShapeId shape = b2LoadShapeId(checkedId());
+
     if (value && value->isZero()) {
         throw std::invalid_argument("A one-way direction cannot be zero.");
     }
+
     if (value) {
         world->oneWayShapes[id] = {.direction = value->getNormalized()};
     } else {
         world->oneWayShapes.erase(id);
     }
+
     b2Shape_EnablePreSolveEvents(shape, value.has_value());
 
     // Box2D skips the pre-solve callback of a contact it recycles, so the contacts of a body that holds a one-way platform never recycle, and the platform decides about each of them in every step.

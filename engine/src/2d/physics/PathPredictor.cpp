@@ -23,21 +23,26 @@ PathPredictor::Path PathPredictor::predict(const World& world, math::Vec2 positi
     Path path;
     path.points.reserve(static_cast<std::size_t>(options.steps) + 1);
     path.points.push_back(position);
+
     for (int step = 0; step < options.steps; ++step) {
         // The solver adds gravity to the damped velocity and then moves the body, once per sub-step.
         const math::Vec2 start = position;
+
         for (int sub = 0; sub < subSteps; ++sub) {
             velocity = (gravity + velocity * damping).clampedLength(maxSpeed);
             position += velocity * subStep;
         }
+
         const Raycaster::Filter filter{.collision = options.filter};
         path.hit = options.radius > 0.0F ? raycaster.castCircle(start, options.radius, position - start, filter) : raycaster.castRay(start, position, filter);
         if (path.hit) {
             path.points.push_back(options.radius > 0.0F ? start + (position - start) * path.hit->fraction : path.hit->point);
             return path;
         }
+
         path.points.push_back(position);
     }
+
     return path;
 }
 

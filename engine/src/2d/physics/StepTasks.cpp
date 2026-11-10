@@ -12,6 +12,7 @@ void StepTasks::Task::run() {
     if (claimed.exchange(true)) {
         return;
     }
+
     callback(context);
     const std::scoped_lock lock(mutex);
     done = true;
@@ -22,6 +23,7 @@ std::shared_ptr<StepTasks::Task> StepTasks::takeTask() {
     if (idle.empty()) {
         return std::make_shared<Task>();
     }
+
     std::shared_ptr<Task> task = std::move(idle.back());
     idle.pop_back();
     task->claimed = false;
@@ -38,6 +40,7 @@ void* StepTasks::enqueue(b2TaskCallbackFcn* callback, void* taskContext, void* u
     if (task->posted) {
         self.jobs.post([task] { task->run(); });
     }
+
     return self.running.emplace_back(std::move(task)).get();
 }
 
@@ -54,6 +57,7 @@ void StepTasks::finish(void* userTask, void* userContext) {
     if (!task->posted) {
         self.idle.push_back(std::move(*found));
     }
+
     self.running.erase(found);
 }
 

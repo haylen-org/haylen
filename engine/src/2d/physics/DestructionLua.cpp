@@ -89,6 +89,7 @@ int DestructionLua::newTerrain(lua_State* L) {
         lua::Table::readField(L, 2, "restitution", options.shape.restitution);
         options.shape.filter = ShapeLua::readFilter(L, 2, {});
     }
+
     lua::Userdata::emplace<ScriptedOwner<Terrain>>(L, world, options);
     lua_pushvalue(L, 1);
     lua_setiuservalue(L, -2, 1);
@@ -103,6 +104,7 @@ int DestructionLua::terrainSetSamples(lua_State* L) {
     if (!computed) {
         luaL_checktype(L, 3, LUA_TTABLE);
     }
+
     const std::size_t count = computed ? columns * static_cast<std::size_t>(terrain.getRows()) : static_cast<std::size_t>(lua_rawlen(L, 3));
     std::vector<std::uint8_t> values(count);
     for (std::size_t index = 0; index < values.size(); ++index) {
@@ -114,10 +116,12 @@ int DestructionLua::terrainSetSamples(lua_State* L) {
         } else {
             lua_rawgeti(L, 3, static_cast<lua_Integer>(index + 1));
         }
+
         const double value = luaL_checknumber(L, -1);
         values[index] = static_cast<std::uint8_t>(std::lround(std::clamp(value, 0.0, 1.0) * 255.0));
         lua_pop(L, 1);
     }
+
     terrain.setSamples(values);
     return 0;
 }
@@ -135,6 +139,7 @@ int DestructionLua::terrainGetSamples(lua_State* L) {
         lua_pushnumber(L, static_cast<lua_Number>(samples[index]) / 255.0);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
@@ -171,6 +176,7 @@ int DestructionLua::terrainExplode(lua_State* L) {
     if (!lua_isnoneornil(L, 5)) {
         blast = readExplosion(L, 5, blast);
     }
+
     const std::vector<Explosion::Hit> hits = terrain.explode(crater, blast);
     lua_getiuservalue(L, 1, 1);
     pushHits(L, -1, hits);
@@ -243,6 +249,7 @@ int DestructionLua::fracture(lua_State* L) {
         lua::Table::readField(L, 2, "seed", options.seed);
         lua::Table::readField(L, 2, "minimumArea", options.minimumArea);
     }
+
     const std::vector<Body> pieces = Fracture::shatter(body, options);
     lua_getiuservalue(L, 1, 1);
     Physics2DLua::pushList(L, -1, pieces);
@@ -259,6 +266,7 @@ int DestructionLua::splitPolygon(lua_State* L) {
         lua::Table::readField(L, 2, "seed", options.seed);
         lua::Table::readField(L, 2, "minimumArea", options.minimumArea);
     }
+
     lua::Stack::push(L, Fracture::split(math::PolygonLua::readShape(L, 1), options));
     return 1;
 }

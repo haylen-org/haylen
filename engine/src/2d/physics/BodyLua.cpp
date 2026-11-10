@@ -15,12 +15,15 @@ namespace haylen::physics2d {
 
 Body& BodyLua::check(lua_State* L) {
     ScriptedHandle<Body>& self = lua::Userdata::check<ScriptedHandle<Body>>(L, 1);
+
     if (self.world->isDestroyed()) {
         luaL_error(L, "The physics world of the body was destroyed.");
     }
+
     if (!self.handle.isValid()) {
         luaL_error(L, "The body was destroyed.");
     }
+
     return self.handle;
 }
 
@@ -37,6 +40,7 @@ std::optional<math::Vec2> BodyLua::readOptionalPoint(lua_State* L, int index) {
     if (lua_isnoneornil(L, index)) {
         return std::nullopt;
     }
+
     return math::Vec2{lua::Stack::read<float>(L, index), lua::Stack::read<float>(L, index + 1)};
 }
 
@@ -384,6 +388,7 @@ int BodyLua::contacts(lua_State* L) {
         Physics2DLua::setManifold(L, contact.manifold);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
@@ -394,6 +399,7 @@ int BodyLua::renderTransform(lua_State* L) {
     if (body.getWorld()->isInterpolating()) {
         transform = body.getWorld()->getInterpolatedTransform(body, static_cast<float>(lua::Runtime::getEngine(L).getClock().getInterpolation()));
     }
+
     lua::Stack::push(L, transform.position.x);
     lua::Stack::push(L, transform.position.y);
     lua::Stack::push(L, transform.rotation);
@@ -435,14 +441,17 @@ int BodyLua::outlines(lua_State* L) {
         ShapeLua::pushOutline(L, found[index]);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
 int BodyLua::destroy(lua_State* L) {
     ScriptedHandle<Body>& self = lua::Userdata::check<ScriptedHandle<Body>>(L, 1);
+
     if (!self.handle.isValid()) {
         return 0;
     }
+
     pushDataSlot(L, self.handle.getId());
     lua_pushnil(L);
     lua_settable(L, -3);

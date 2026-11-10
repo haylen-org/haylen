@@ -39,6 +39,7 @@ void DebugDraw::drawPolygon(b2Transform transform, const b2Vec2* vertices, int c
     for (int index = 0; index < count; ++index) {
         points.push_back(self.toPixels(b2TransformPoint(transform, vertices[index])));
     }
+
     self.renderer.drawPolyline(points, self.lineWidth, toColor(color), true, self.order);
 }
 
@@ -48,6 +49,7 @@ void DebugDraw::drawSolidPolygon(b2Transform transform, const b2Vec2* vertices, 
     for (int index = 0; index < count; ++index) {
         points.push_back(self.toPixels(b2TransformPoint(transform, vertices[index])));
     }
+
     self.renderer.drawPolyline(points, self.lineWidth, toColor(color), true, self.order);
 }
 

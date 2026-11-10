@@ -38,6 +38,7 @@ struct Raycaster::Gather {
         if (gather.skipOverlap && fraction == 0.0F) {
             return -1.0F;
         }
+
         if (gather.filter.group != 0) {
             const b2Filter shape = b2Shape_GetFilter(shapeId);
             const bool seen = shape.groupIndex == gather.filter.group ? gather.filter.group > 0 : (shape.categoryBits & gather.filter.mask) != 0 && (shape.maskBits & gather.filter.category) != 0;
@@ -51,6 +52,7 @@ struct Raycaster::Gather {
             gather.best = hit;
             return fraction;
         }
+
         gather.hits.push_back(hit);
         return 1.0F;
     }
@@ -59,17 +61,20 @@ struct Raycaster::Gather {
 template <typename Cast> std::optional<RaycastHit> Raycaster::firstAccepted(const Filter& filter, Cast&& cast) const {
     Gather gather{.filter = filter.collision, .closest = !filter.accept};
     cast(gather);
+
     if (!filter.accept) {
         return gather.best;
     }
 
     // The `accept` function runs after Box2D finished, in order from the start of the cast, so it may even change the world.
     std::ranges::sort(gather.hits, [](const RaycastHit& lhs, const RaycastHit& rhs) { return lhs.fraction != rhs.fraction ? lhs.fraction < rhs.fraction : lhs.shape.getId() < rhs.shape.getId(); });
+
     for (const RaycastHit& hit : gather.hits) {
         if (filter.accept(hit)) {
             return hit;
         }
     }
+
     return std::nullopt;
 }
 
@@ -94,6 +99,7 @@ void Raycaster::castRayAll(math::Vec2 from, math::Vec2 to, const Filter& filter,
         if (limit > 0 && hits.size() == limit) {
             return;
         }
+
         if (!filter.accept || filter.accept(hit)) {
             hits.push_back(hit);
         }
@@ -106,6 +112,7 @@ std::optional<RaycastHit> Raycaster::castShape(std::span<const math::Vec2> point
     for (std::size_t index = 0; index < points.size(); ++index) {
         corners[index] = Box2DConverter::toMeters(points[index], scale);
     }
+
     const b2ShapeProxy proxy = b2MakeProxy(corners.data(), static_cast<int>(points.size()), radius / scale);
 
     // clang-format off
@@ -123,6 +130,7 @@ std::optional<RaycastHit> Raycaster::castCircle(math::Vec2 center, float radius,
     if (!(radius >= 0.0F) || !std::isfinite(radius)) {
         throw std::invalid_argument("A circle cast needs a finite radius of zero or more.");
     }
+
     const std::array<math::Vec2, 1> points{center};
     return castShape(points, radius, translation, filter);
 }
@@ -131,6 +139,7 @@ std::optional<RaycastHit> Raycaster::castBox(math::Vec2 center, math::Vec2 size,
     if (!(size.x > 0.0F) || !(size.y > 0.0F) || !std::isfinite(size.x) || !std::isfinite(size.y)) {
         throw std::invalid_argument("A box cast needs a positive size.");
     }
+
     const math::Vec2 half = size * 0.5F;
     const std::array<math::Vec2, 4> points{center + math::Vec2{-half.x, -half.y}.rotated(rotation), center + math::Vec2{half.x, -half.y}.rotated(rotation), center + half.rotated(rotation), center + math::Vec2{-half.x, half.y}.rotated(rotation)};
     return castShape(points, 0.0F, translation, filter);
@@ -140,6 +149,7 @@ std::optional<RaycastHit> Raycaster::castCapsule(math::Vec2 first, math::Vec2 se
     if (!(radius > 0.0F) || !std::isfinite(radius)) {
         throw std::invalid_argument("A capsule cast needs a positive radius.");
     }
+
     const std::array<math::Vec2, 2> points{first, second};
     return castShape(points, radius, translation, filter);
 }
@@ -148,6 +158,7 @@ std::optional<RaycastHit> Raycaster::castPolygon(std::span<const math::Vec2> poi
     if (points.size() < 3 || points.size() > B2_MAX_POLYGON_VERTICES) {
         throw std::invalid_argument("A polygon cast needs between three and eight points.");
     }
+
     return castShape(points, 0.0F, translation, filter);
 }
 
@@ -155,6 +166,7 @@ math::Ray Raycaster::bounce(const math::Ray& ray, int bounces, const Filter& fil
     if (!std::isfinite(ray.length)) {
         throw std::invalid_argument("A bouncing physics ray needs a finite length.");
     }
+
     return math::Raycast::bounce(ray, bounces, [this, &filter](const math::Ray& leg) { return castRay(leg.origin, leg.getEnd(), filter); }, hits);
 }
 
@@ -162,6 +174,7 @@ void Raycaster::fan(math::Vec2 origin, float angle, float spread, std::size_t co
     if (!std::isfinite(length)) {
         throw std::invalid_argument("A fan of physics rays needs a finite length.");
     }
+
     math::Raycast::fan(origin, angle, spread, count, length, [this, &filter](const math::Ray& ray) { return castRay(ray.origin, ray.getEnd(), filter); }, results);
 }
 
@@ -183,6 +196,7 @@ void Raycaster::castBatch(RayBatch& batch, const CollisionFilter& filter, core::
         castRange(0, batch.size());
         return;
     }
+
     jobs->parallelFor(0, batch.size(), kBatchGrain, castRange);
 }
 

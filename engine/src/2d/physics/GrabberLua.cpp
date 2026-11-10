@@ -38,6 +38,7 @@ int GrabberLua::newGrabber(lua_State* L) {
         lua::Table::readField(L, 2, "dampingRatio", options.dampingRatio);
         options.filter = ShapeLua::readFilter(L, 2, {});
     }
+
     lua::Userdata::emplace<ScriptedOwner<Grabber>>(L, world, options);
     lua_pushvalue(L, 1);
     lua_setiuservalue(L, -2, 1);
@@ -51,6 +52,7 @@ int GrabberLua::grab(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua_getiuservalue(L, 1, 1);
     Physics2DLua::push(L, -1, *body);
     return 1;
@@ -77,6 +79,7 @@ int GrabberLua::getBody(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua_getiuservalue(L, 1, 1);
     Physics2DLua::push(L, -1, *body);
     return 1;

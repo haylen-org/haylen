@@ -21,6 +21,7 @@ std::optional<Joint::Type> Joint::typeFromName(std::string_view name) noexcept {
             return type;
         }
     }
+
     return std::nullopt;
 }
 
@@ -30,6 +31,7 @@ std::string_view Joint::typeName(Type value) noexcept {
             return text;
         }
     }
+
     return kTypeNames.front().first;
 }
 
@@ -39,17 +41,21 @@ std::uint64_t Joint::checkedId() const {
     if (world != nullptr && !b2World_IsValid(b2LoadWorldId(worldHandle))) {
         throw std::logic_error("The physics world of the joint was destroyed.");
     }
+
     if (!isValid()) {
         throw std::logic_error("The physics joint was destroyed.");
     }
+
     return id;
 }
 
 std::uint64_t Joint::checkedId(std::initializer_list<Type> types, const char* message) const {
     const std::uint64_t checked = checkedId();
+
     if (std::ranges::find(types, getType()) == types.end()) {
         throw std::logic_error(message);
     }
+
     return checked;
 }
 
@@ -142,6 +148,7 @@ void Joint::setConstraintDampingRatio(float value) {
     if (!std::isfinite(value) || value < 0.0F) {
         throw std::invalid_argument("A joint needs a finite constraint damping ratio of zero or more.");
     }
+
     b2Joint_SetConstraintTuning(b2LoadJointId(checkedId()), getConstraintHertz(), value);
 }
 
@@ -153,9 +160,11 @@ std::optional<float> Joint::getBreakForce() const {
 
 void Joint::setBreakForce(std::optional<float> value) {
     const b2JointId joint = b2LoadJointId(checkedId());
+
     if (value && !(*value >= 0.0F)) {
         throw std::invalid_argument("A joint needs a break force and a break torque of zero or more.");
     }
+
     b2Joint_SetForceThreshold(joint, value ? *value / getScale() : FLT_MAX);
     b2Joint_WakeBodies(joint);
 }
@@ -167,9 +176,11 @@ std::optional<float> Joint::getBreakTorque() const {
 
 void Joint::setBreakTorque(std::optional<float> value) {
     const b2JointId joint = b2LoadJointId(checkedId());
+
     if (value && !(*value >= 0.0F)) {
         throw std::invalid_argument("A joint needs a break force and a break torque of zero or more.");
     }
+
     b2Joint_SetTorqueThreshold(joint, value ? *value / (getScale() * getScale()) : FLT_MAX);
     b2Joint_WakeBodies(joint);
 }
@@ -261,14 +272,17 @@ float Joint::getUpper() const {
 
 void Joint::setLimits(float lower, float upper) {
     const b2JointId joint = b2LoadJointId(checkedId({Type::Revolute, Type::Prismatic, Type::Wheel, Type::Distance}, "Only revolute, prismatic, wheel and distance joints have limits."));
+
     if (!(lower <= upper)) {
         throw std::invalid_argument("A joint needs a lower limit that is not above the upper one.");
     }
+
     switch (getType()) {
     case Type::Revolute:
         if (lower < -World::kRevoluteLimit || upper > World::kRevoluteLimit) {
             throw std::invalid_argument("A revolute joint needs a lower limit that is not above the upper one, both within 0.99 pi radians of zero.");
         }
+
         b2RevoluteJoint_SetLimits(joint, lower, upper);
         break;
     case Type::Prismatic:
@@ -366,9 +380,11 @@ float Joint::getMaxMotorForce() const {
 
 void Joint::setMaxMotorForce(float value) {
     const b2JointId joint = b2LoadJointId(checkedId({Type::Prismatic, Type::Distance, Type::Mouse, Type::Motor}, "Only prismatic, distance, mouse and motor joints have a maximum motor force."));
+
     if (!std::isfinite(value) || value < 0.0F) {
         throw std::invalid_argument("A joint needs a finite maximum motor force of zero or more.");
     }
+
     const float force = value / getScale();
     switch (getType()) {
     case Type::Prismatic:
@@ -403,9 +419,11 @@ float Joint::getMaxMotorTorque() const {
 
 void Joint::setMaxMotorTorque(float value) {
     const b2JointId joint = b2LoadJointId(checkedId({Type::Revolute, Type::Wheel, Type::Motor}, "Only revolute, wheel and motor joints have a maximum motor torque."));
+
     if (!std::isfinite(value) || value < 0.0F) {
         throw std::invalid_argument("A joint needs a finite maximum motor torque of zero or more.");
     }
+
     const float torque = value / (getScale() * getScale());
     switch (getType()) {
     case Type::Revolute:
@@ -487,9 +505,11 @@ float Joint::getHertz() const {
 
 void Joint::setHertz(float value) {
     const b2JointId joint = b2LoadJointId(checkedId({Type::Distance, Type::Revolute, Type::Prismatic, Type::Wheel, Type::Mouse, Type::Motor, Type::Weld}, "Only distance, revolute, prismatic, wheel, mouse, motor and weld joints have a spring."));
+
     if (!std::isfinite(value) || value < 0.0F) {
         throw std::invalid_argument("A joint spring needs a finite stiffness and damping ratio of zero or more.");
     }
+
     switch (getType()) {
     case Type::Distance:
         b2DistanceJoint_SetSpringHertz(joint, value);
@@ -539,9 +559,11 @@ float Joint::getDampingRatio() const {
 
 void Joint::setDampingRatio(float value) {
     const b2JointId joint = b2LoadJointId(checkedId({Type::Distance, Type::Revolute, Type::Prismatic, Type::Wheel, Type::Mouse, Type::Motor, Type::Weld}, "Only distance, revolute, prismatic, wheel, mouse, motor and weld joints have a spring."));
+
     if (!std::isfinite(value) || value < 0.0F) {
         throw std::invalid_argument("A joint spring needs a finite stiffness and damping ratio of zero or more.");
     }
+
     switch (getType()) {
     case Type::Distance:
         b2DistanceJoint_SetSpringDampingRatio(joint, value);
@@ -576,9 +598,11 @@ float Joint::getLength() const {
 
 void Joint::setLength(float value) {
     const b2JointId joint = b2LoadJointId(checkedId({Type::Distance}, "Only distance joints have a length."));
+
     if (!(value / getScale() >= Box2DConverter::kLinearSlop)) {
         throw std::invalid_argument("A distance joint needs a length of at least 0.005 meters.");
     }
+
     b2DistanceJoint_SetRestLength(joint, value / getScale());
     b2Joint_WakeBodies(joint);
 }

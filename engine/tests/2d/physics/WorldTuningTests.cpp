@@ -30,6 +30,7 @@ class WorldTuningTest : public ::testing::Test {
             box.addBox({32.0F, 32.0F});
             boxes.push_back(box);
         }
+
         return boxes;
     }
 };
@@ -118,6 +119,7 @@ TEST_F(WorldTuningTest, RestitutionAndHitThresholdsDecideSlowImpacts) {
             world.step(1.0F / 60.0F);
             hits += world.getContactHits().size();
         }
+
         EXPECT_EQ(ball.getVelocity().x < -30.0F, threshold < 40.0F);
         EXPECT_EQ(hits > 0, threshold < 40.0F);
     }
@@ -141,6 +143,7 @@ TEST_F(WorldTuningTest, ShapesReportOnlyTheEventsTheyAskFor) {
         begins += world.getContactBegins().size();
         hits += world.getContactHits().size();
     }
+
     EXPECT_EQ(begins, 1U);
     EXPECT_EQ(hits, 1U);
     quietShape.setHitEvents(true);
@@ -184,9 +187,11 @@ TEST_F(WorldTuningTest, ThreadedStepsMatchSingleThreadedSteps) {
             box.addBox({20.0F, 20.0F});
             boxes.push_back(box);
         }
+
         simulate(world, 1.0F);
         hashes.push_back(world.computeStateHash(boxes));
     }
+
     EXPECT_EQ(hashes[0], hashes[1]);
     EXPECT_THROW(World({.threads = 2}), std::invalid_argument);
     EXPECT_THROW(World({.threads = 0}), std::invalid_argument);
@@ -199,10 +204,12 @@ TEST_F(WorldTuningTest, PredictsTheFlightOfABody) {
     thrown.addCircle(4.0F, {.filter = {.category = 2, .mask = 0}});
     const PathPredictor::Path path = PathPredictor::predict(world, {0.0F, 0.0F}, {400.0F, -600.0F}, {.steps = 60, .gravityScale = 0.8F, .linearDamping = 0.2F});
     ASSERT_EQ(path.points.size(), 61U);
+
     for (std::size_t step = 1; step < path.points.size(); ++step) {
         world.step(1.0F / 60.0F);
         EXPECT_LT(math::Vec2::distance(path.points[step], thrown.getPosition()), 0.5F);
     }
+
     EXPECT_FALSE(path.hit.has_value());
 
     // A wall in the way ends the path at the hit.

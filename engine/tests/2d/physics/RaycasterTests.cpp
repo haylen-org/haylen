@@ -34,6 +34,7 @@ struct Range {
             physics2d::Body post = world.createBody({.type = physics2d::Body::Type::Static, .position = {100.0F * static_cast<float>(index + 1), 0.0F}});
             posts.push_back(post.addBox({10.0F, 100.0F}, {.filter = {.category = index == 1 ? 2U : 1U, .group = index == 2 ? -3 : 0}}));
         }
+
         leftMirror = world.createBody({.type = physics2d::Body::Type::Static, .position = {-400.0F, 0.0F}}).addBox({10.0F, 1000.0F}, {.filter = {.category = 4}});
         rightMirror = world.createBody({.type = physics2d::Body::Type::Static, .position = {400.0F, 0.0F}}).addBox({10.0F, 1000.0F}, {.filter = {.category = 4}});
     }
@@ -59,6 +60,7 @@ TEST(RaycasterTest, FindsTheClosestHitEveryHitAndFilteredHits) {
     ASSERT_EQ(hits.size(), 4U);
     EXPECT_EQ(hits[1].shape, range.posts[1]);
     EXPECT_EQ(hits[3].shape, range.rightMirror);
+
     for (std::size_t index = 1; index < hits.size(); ++index) {
         EXPECT_LT(hits[index - 1].fraction, hits[index].fraction);
     }
@@ -157,6 +159,7 @@ TEST(RaycasterTest, CastsBatchesInParallelLikeOneByOne) {
     physics2d::RayBatch batch;
     batch.resize(500);
     EXPECT_EQ(batch.size(), 500U);
+
     for (std::size_t index = 0; index < batch.size(); ++index) {
         const float y = static_cast<float>(index) - 250.0F;
         batch.setRay(index, {0.0F, y}, {1000.0F, y * 0.5F});
@@ -168,12 +171,14 @@ TEST(RaycasterTest, CastsBatchesInParallelLikeOneByOne) {
         const math::Segment& ray = batch.getRay(index);
         const std::optional<physics2d::RaycastHit> expected = caster.castRay(ray.start, ray.end);
         ASSERT_EQ(batch.getHit(index).has_value(), expected.has_value());
+
         if (expected) {
             EXPECT_EQ(batch.getHit(index)->shape, expected->shape);
             EXPECT_EQ(batch.getHit(index)->point, expected->point);
             ++hits;
         }
     }
+
     EXPECT_GT(hits, 100U);
 
     caster.castBatch(batch, {.mask = 4});

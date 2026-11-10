@@ -45,12 +45,15 @@ Raycaster::Filter WorldRaycastLua::readFilter(lua_State* L, int index, bool with
     if (lua_isnoneornil(L, index)) {
         return filter;
     }
+
     luaL_checktype(L, index, LUA_TTABLE);
+
     if (withLimit) {
         lua::Table::checkFields(L, index, {kFilterFields, kLimitFields});
     } else {
         lua::Table::checkFields(L, index, {kFilterFields});
     }
+
     filter.collision = ShapeLua::readFilter(L, index, {});
 
     // The `accept` function stays on the stack while the cast runs, and it receives the hit tables of the world at index 1.
@@ -58,6 +61,7 @@ Raycaster::Filter WorldRaycastLua::readFilter(lua_State* L, int index, bool with
         lua_pop(L, 1);
         return filter;
     }
+
     luaL_checktype(L, -1, LUA_TFUNCTION);
     const int function = lua_gettop(L);
     // clang-format off
@@ -78,6 +82,7 @@ std::size_t WorldRaycastLua::readLimit(lua_State* L, int index) {
     if (lua_istable(L, index)) {
         lua::Table::readField(L, index, "limit", limit);
     }
+
     return limit;
 }
 
@@ -91,6 +96,7 @@ void WorldRaycastLua::pushHit(lua_State* L, int worldIndex, const RaycastHit& hi
     } else {
         lua_pushnil(L);
     }
+
     lua_setfield(L, -2, "body");
     lua::Stack::push(L, hit.point.x);
     lua_setfield(L, -2, "x");
@@ -111,6 +117,7 @@ void WorldRaycastLua::pushResult(lua_State* L, const std::optional<RaycastHit>& 
         lua_pushnil(L);
         return;
     }
+
     pushHit(L, 1, *hit);
 }
 
@@ -120,6 +127,7 @@ void WorldRaycastLua::record(lua_State* L, math::Vec2 from, math::Vec2 to, const
         const std::optional<RayDebugDraw::Hit> mark = hit ? std::optional<RayDebugDraw::Hit>{{.point = hit->point, .normal = hit->normal}} : std::nullopt;
         lua::Userdata::check<RayDebugDraw>(L, -1).add(lua::Runtime::getEngine(L).getClock().getFrameIndex(), from, to, mark);
     }
+
     lua_pop(L, 2);
 }
 
@@ -148,6 +156,7 @@ int WorldRaycastLua::raycastAll(lua_State* L) {
         pushHit(L, 1, hits[index]);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
@@ -197,6 +206,7 @@ int WorldRaycastLua::castPolygon(lua_State* L) {
     for (const math::Vec2 point : points) {
         center += point / static_cast<float>(points.size());
     }
+
     record(L, center, center + translation, hit);
     pushResult(L, hit);
     return 1;
@@ -227,10 +237,12 @@ int WorldRaycastLua::bounceRay(lua_State* L) {
         pushHit(L, 1, along);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     const math::Vec2 end = last.getEnd();
     if (hits.empty() || end != hits.back().point) {
         record(L, last.origin, end, std::nullopt);
     }
+
     lua::Stack::push(L, end.x);
     lua::Stack::push(L, end.y);
     return 3;
@@ -264,8 +276,10 @@ int WorldRaycastLua::rayFan(lua_State* L) {
         } else {
             lua_pushboolean(L, 0);
         }
+
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
@@ -287,14 +301,17 @@ int WorldRaycastLua::raycastBatch(lua_State* L) {
     if (filter.accept) {
         return luaL_error(L, "Ray batches take no \"accept\" function, because their rays run on worker threads.");
     }
+
     Raycaster(world).castBatch(batch, filter.collision, &lua::Runtime::getEngine(L).getJobs());
 
     // The batch keeps the world that cast it, which hands its shapes and bodies to Lua.
     lua_pushvalue(L, 1);
     lua_setiuservalue(L, 2, 1);
+
     for (std::size_t index = 0; index < batch.size(); ++index) {
         record(L, batch.getRay(index).start, batch.getRay(index).end, batch.getHit(index));
     }
+
     return 0;
 }
 
@@ -312,6 +329,7 @@ int WorldRaycastLua::pick(lua_State* L) {
         filter = ShapeLua::readFilter(L, 5, {});
         lua::Table::readField(L, 5, "radius", radius);
     }
+
     luaL_argcheck(L, radius >= 0.0F, 5, "the radius must be zero or more");
     const float reach = radius > 0.0F ? math::Vec2::distance(point, picker.toWorld(screen + math::Vec2{radius, 0.0F})) : 0.0F;
     Physics2DLua::pushList(L, 1, world.pick(point, reach, filter));
@@ -332,14 +350,17 @@ int WorldRaycastLua::setDebuggingRays(lua_State* L) {
     lua_getiuservalue(L, 1, 1);
     const bool active = lua_getfield(L, -1, "rayDebug") == LUA_TUSERDATA;
     lua_pop(L, 1);
+
     if (enabled == active) {
         return 0;
     }
+
     if (enabled) {
         lua::Userdata::emplace<RayDebugDraw>(L);
     } else {
         lua_pushnil(L);
     }
+
     lua_setfield(L, -2, "rayDebug");
     return 0;
 }
@@ -352,6 +373,7 @@ int WorldRaycastLua::debugDrawRays(lua_State* L) {
     if (lua_getfield(L, -1, "rayDebug") == LUA_TUSERDATA) {
         lua::Userdata::check<RayDebugDraw>(L, -1).draw(lua::Runtime::getEngine(L).getRenderer2D(), order);
     }
+
     return 0;
 }
 
@@ -401,6 +423,7 @@ int WorldRaycastLua::batchHit(lua_State* L) {
         lua::Stack::push(L, false);
         return 1;
     }
+
     lua::Stack::push(L, true);
     lua::Stack::push(L, hit->point.x);
     lua::Stack::push(L, hit->point.y);
@@ -416,6 +439,7 @@ int WorldRaycastLua::batchShape(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     Physics2DLua::push(L, -1, hit->shape);
     return 1;
 }
@@ -426,6 +450,7 @@ int WorldRaycastLua::batchBody(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     Physics2DLua::push(L, -1, hit->shape.getBody());
     return 1;
 }
@@ -443,6 +468,7 @@ int WorldRaycastLua::drawRay(lua_State* L) {
         lua::Table::readField(L, 5, "normalY", mark.normal.y);
         hit = mark;
     }
+
     RayDebugDraw::drawRay(lua::Runtime::getEngine(L).getRenderer2D(), from, to, hit, lua::TypeConverter::readDrawOrder(L, 6));
     return 0;
 }

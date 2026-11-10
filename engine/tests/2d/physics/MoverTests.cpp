@@ -102,6 +102,7 @@ TEST_F(MoverTest, SnapsToTheGroundOverCrests) {
         walk(mover, 400.0F, 1.0F / 60.0F);
         airborne += mover.isGrounded() ? 0 : 1;
     }
+
     EXPECT_EQ(airborne, 0);
     EXPECT_GT(mover.getPosition().x, 200.0F);
 }
@@ -138,6 +139,7 @@ TEST_F(MoverTest, PushesCratesAndStopsAtCeilings) {
         velocity = mover.clip(velocity + math::Vec2{0.0F, 980.0F / 60.0F});
         world.step(1.0F / 60.0F);
     }
+
     EXPECT_TRUE(bumped);
     EXPECT_GT(mover.getPosition().y, 30.0F);
 }
@@ -156,6 +158,7 @@ TEST_F(MoverTest, JumpsUpThroughOneWayPlatformsAndDropsDown) {
         velocity = mover.clip(velocity + math::Vec2{0.0F, 980.0F / 60.0F});
         world.step(1.0F / 60.0F);
     }
+
     EXPECT_TRUE(mover.isGrounded());
     EXPECT_NEAR(mover.getPosition().y, -9.0F, 1.0F);
     ASSERT_TRUE(mover.getGroundBody().has_value());

@@ -33,11 +33,13 @@ TEST_F(BodyMotionTest, KinematicPlatformsMovedToTargetsCarryBodies) {
     Body crate = world.createBody({.position = {0.0F, -26.0F}});
     crate.addBox({32.0F, 32.0F});
     simulate(0.5F);
+
     for (int step = 1; step <= 60; ++step) {
         platform.moveTo({static_cast<float>(step) * 2.0F, -static_cast<float>(step) * 3.0F}, 0.0F, 1.0F / 60.0F);
         EXPECT_NEAR(platform.getVelocity().y, -180.0F, 0.1F);
         world.step(1.0F / 60.0F);
     }
+
     EXPECT_NEAR(platform.getPosition().y, -180.0F, 0.1F);
     EXPECT_NEAR(crate.getPosition().y - platform.getPosition().y, -26.0F, 1.0F);
     EXPECT_NEAR(crate.getPosition().x - platform.getPosition().x, 0.0F, 2.0F);
@@ -157,9 +159,11 @@ TEST_F(BodyMotionTest, OpenChainsCollideAlongEveryListedSegment) {
     walls.addChain(std::vector<math::Vec2>{{300.0F, 100.0F}, {100.0F, 100.0F}, {100.0F, -100.0F}}, false);
     Body ball = space.createBody({.velocity = {400.0F, 0.0F}});
     ball.addCircle(8.0F, {.restitution = 1.0F});
+
     for (int step = 0; step < 60; ++step) {
         space.step(1.0F / 60.0F);
     }
+
     EXPECT_LT(ball.getPosition().x, 100.0F);
     EXPECT_EQ(walls.getShapes().size(), 2U);
     EXPECT_EQ(walls.getOutlines().front().points.size(), 3U);

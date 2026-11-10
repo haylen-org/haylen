@@ -22,6 +22,7 @@ std::optional<Body::Type> Body::typeFromName(std::string_view name) noexcept {
             return type;
         }
     }
+
     return std::nullopt;
 }
 
@@ -31,6 +32,7 @@ std::string_view Body::typeName(Type value) noexcept {
             return text;
         }
     }
+
     return kTypeNames.back().first;
 }
 
@@ -40,9 +42,11 @@ std::uint64_t Body::checkedId() const {
     if (world != nullptr && !b2World_IsValid(b2LoadWorldId(worldHandle))) {
         throw std::logic_error("The physics world of the body was destroyed.");
     }
+
     if (!isValid()) {
         throw std::logic_error("The physics body was destroyed.");
     }
+
     return id;
 }
 
@@ -81,6 +85,7 @@ void Body::setTransform(math::Vec2 position, float rotation) {
 
 void Body::moveTo(math::Vec2 position, float rotation, float seconds) {
     const b2BodyId body = b2LoadBodyId(checkedId());
+
     if (!std::isfinite(seconds) || seconds <= 0.0F) {
         throw std::invalid_argument("A physics body moves to a target over a positive time.");
     }
@@ -90,6 +95,7 @@ void Body::moveTo(math::Vec2 position, float rotation, float seconds) {
     const b2Transform target{Box2DConverter::toMeters(position, world->getPixelsPerMeter()), b2MakeRot(rotation)};
     const b2Vec2 center = b2Body_GetLocalCenter(body);
     b2Body_SetLinearVelocity(body, b2MulSV(1.0F / seconds, b2Sub(b2TransformPoint(target, center), b2TransformPoint(current, center))));
+
     if (!b2Body_GetMotionLocks(body).angularZ) {
         b2Body_SetAngularVelocity(body, b2RelativeAngle(current.q, target.q) / seconds);
     }
@@ -126,9 +132,11 @@ Body::MassData Body::getMassData() const {
 
 void Body::setMassData(const MassData& value) {
     const b2BodyId body = b2LoadBodyId(checkedId());
+
     if (!std::isfinite(value.mass) || value.mass < 0.0F || !std::isfinite(value.inertia) || value.inertia < 0.0F || !std::isfinite(value.center.x) || !std::isfinite(value.center.y)) {
         throw std::invalid_argument("A physics body needs a finite mass, center of mass and inertia of zero or more.");
     }
+
     const float scale = world->getPixelsPerMeter();
     b2Body_SetMassData(body, {.mass = value.mass, .center = Box2DConverter::toMeters(value.center, scale), .rotationalInertia = value.inertia / (scale * scale)});
 }
@@ -180,6 +188,7 @@ void Body::applyForce(math::Vec2 force, std::optional<math::Vec2> point) {
         b2Body_ApplyForce(body, Box2DConverter::toMeters(force, scale), Box2DConverter::toMeters(*point, scale), true);
         return;
     }
+
     b2Body_ApplyForceToCenter(body, Box2DConverter::toMeters(force, scale), true);
 }
 
@@ -190,6 +199,7 @@ void Body::applyImpulse(math::Vec2 impulse, std::optional<math::Vec2> point) {
         b2Body_ApplyLinearImpulse(body, Box2DConverter::toMeters(impulse, scale), Box2DConverter::toMeters(*point, scale), true);
         return;
     }
+
     b2Body_ApplyLinearImpulseToCenter(body, Box2DConverter::toMeters(impulse, scale), true);
 }
 
@@ -272,9 +282,11 @@ void Body::setSleepThreshold(float value) {
 
 void Body::dropThrough(float seconds) {
     const std::uint64_t checked = checkedId();
+
     if (!std::isfinite(seconds) || seconds < 0.0F) {
         throw std::invalid_argument("A physics body drops through one-way platforms for a finite time of zero or more.");
     }
+
     world->droppingBodies[checked] = seconds;
     b2Body_SetAwake(b2LoadBodyId(checked), true);
 }
@@ -296,6 +308,7 @@ void Body::setEnabled(bool value) {
         b2Body_Enable(b2LoadBodyId(checkedId()));
         return;
     }
+
     b2Body_Disable(b2LoadBodyId(checkedId()));
 }
 
@@ -303,6 +316,7 @@ Shape Body::addBox(math::Vec2 size, const Shape::Options& options) {
     if (size.x <= 0.0F || size.y <= 0.0F) {
         throw std::invalid_argument("A physics box needs a positive size.");
     }
+
     const float scale = world->getPixelsPerMeter();
     const b2Polygon box = b2MakeOffsetBox(size.x * 0.5F / scale, size.y * 0.5F / scale, Box2DConverter::toMeters(options.offset, scale), b2MakeRot(options.rotation));
     const b2ShapeDef def = Box2DConverter::toShapeDef(options);
@@ -313,6 +327,7 @@ Shape Body::addCircle(float radius, const Shape::Options& options) {
     if (radius <= 0.0F) {
         throw std::invalid_argument("A physics circle needs a positive radius.");
     }
+
     const float scale = world->getPixelsPerMeter();
     const b2Circle circle{.center = Box2DConverter::toMeters(options.offset, scale), .radius = radius / scale};
     const b2ShapeDef def = Box2DConverter::toShapeDef(options);
@@ -323,6 +338,7 @@ Shape Body::addCapsule(math::Vec2 first, math::Vec2 second, float radius, const 
     if (radius <= 0.0F) {
         throw std::invalid_argument("A physics capsule needs a positive radius.");
     }
+
     const std::array<math::Vec2, 2> ends{first, second};
     const std::vector<b2Vec2> points = Box2DConverter::toLocalPoints(ends, options, world->getPixelsPerMeter());
     const b2Capsule capsule{.center1 = points[0], .center2 = points[1], .radius = radius / world->getPixelsPerMeter()};
@@ -336,6 +352,7 @@ Shape Body::addSegment(math::Vec2 first, math::Vec2 second, const Shape::Options
     if (!(b2Distance(points[0], points[1]) > Box2DConverter::kLinearSlop)) {
         throw std::invalid_argument("A physics segment needs ends more than 0.005 meters apart.");
     }
+
     const b2Segment segment{.point1 = points[0], .point2 = points[1]};
     const b2ShapeDef def = Box2DConverter::toShapeDef(options);
     return finishShape(b2StoreShapeId(b2CreateSegmentShape(b2LoadBodyId(checkedId()), &def, &segment)), options);
@@ -364,12 +381,15 @@ std::vector<Shape> Body::addPolygon(std::span<const math::Vec2> points, const Sh
         if (hull.count == 0) {
             continue;
         }
+
         const b2Polygon polygon = b2MakePolygon(&hull, 0.0F);
         shapes.push_back(finishShape(b2StoreShapeId(b2CreatePolygonShape(body, &def, &polygon)), options));
     }
+
     if (shapes.empty()) {
         throw std::invalid_argument("A physics polygon needs a non-degenerate outline.");
     }
+
     return shapes;
 }
 
@@ -381,9 +401,11 @@ std::vector<Shape> Body::addChain(std::span<const math::Vec2> points, bool loop,
             local.push_back(point);
         }
     }
+
     while (loop && local.size() > 1 && b2Distance(local.front(), local.back()) <= Box2DConverter::kLinearSlop) {
         local.pop_back();
     }
+
     if (local.size() < (loop ? 4U : 2U)) {
         throw std::invalid_argument("A physics chain needs at least four points for a loop and two for an open chain, each more than 0.005 meters from the one before it.");
     }
@@ -398,6 +420,7 @@ std::vector<Shape> Body::addChain(std::span<const math::Vec2> points, bool loop,
         def.ghost1 = b2Sub(b2MulSV(2.0F, local[0]), local[1]);
         def.ghost2 = b2Sub(b2MulSV(2.0F, local[local.size() - 1]), local[local.size() - 2]);
     }
+
     def.materials = &material;
     def.materialCount = 1;
     def.filter = Box2DConverter::toFilter(options.filter);
@@ -413,6 +436,7 @@ std::vector<Shape> Body::addChain(std::span<const math::Vec2> points, bool loop,
         b2Shape_EnableHitEvents(segment, options.hitEvents);
         shapes.push_back(finishShape(b2StoreShapeId(segment), options));
     }
+
     return shapes;
 }
 
@@ -424,6 +448,7 @@ std::vector<Shape> Body::getShapes() const {
     for (const b2ShapeId shape : ids) {
         result.emplace_back(world, b2StoreShapeId(shape));
     }
+
     return result;
 }
 
@@ -438,6 +463,7 @@ std::vector<Body::Contact> Body::getContacts() const {
         if (contact.manifold.pointCount == 0) {
             continue;
         }
+
         // The manifold reads from the first shape toward the second, and the contact reads from the shape of this body.
         const bool first = B2_ID_EQUALS(b2Shape_GetBody(contact.shapeIdA), body);
         ContactManifold manifold = Box2DConverter::toManifold(contact.manifold, b2Shape_GetBody(contact.shapeIdA), b2Shape_GetBody(contact.shapeIdB), scale, world->getLastStep() / static_cast<float>(world->getSubSteps()));
@@ -445,8 +471,10 @@ std::vector<Body::Contact> Body::getContacts() const {
             manifold.normal = -manifold.normal;
             manifold.relativeVelocity = -manifold.relativeVelocity;
         }
+
         contacts.push_back({.shape = {world, b2StoreShapeId(first ? contact.shapeIdA : contact.shapeIdB)}, .other = {world, b2StoreShapeId(first ? contact.shapeIdB : contact.shapeIdA)}, .manifold = manifold});
     }
+
     return contacts;
 }
 
@@ -458,12 +486,14 @@ std::vector<Shape::Outline> Body::getOutlines() const {
             outlines.push_back(shape.getOutline());
             continue;
         }
+
         const std::uint64_t chain = b2StoreChainId(b2Shape_GetParentChain(b2LoadShapeId(shape.getId())));
         if (std::ranges::find(chains, chain) == chains.end()) {
             chains.push_back(chain);
             outlines.push_back(getChainOutline(chain));
         }
     }
+
     return outlines;
 }
 
@@ -479,12 +509,15 @@ Shape::Outline Body::getChainOutline(std::uint64_t chainId) const {
         if (outline.points.empty()) {
             outline.points.push_back(ends[0]);
         }
+
         outline.points.push_back(ends[1]);
     }
+
     if (outline.points.size() > 2 && outline.points.front() == outline.points.back()) {
         outline.points.pop_back();
         outline.closed = true;
     }
+
     return outline;
 }
 
@@ -500,12 +533,15 @@ std::pair<std::vector<math::Vec2>, bool> Body::getChainPoints(std::uint64_t chai
         if (points.empty()) {
             points.push_back(ends[0]);
         }
+
         points.push_back(ends[1]);
     }
+
     const bool loop = points.size() > 2 && points.front() == points.back();
     if (loop) {
         points.pop_back();
     }
+
     return {points, loop};
 }
 
@@ -541,6 +577,7 @@ void Body::copyShapesTo(Body& target) const {
                 const auto [chainPoints, loop] = getChainPoints(chain);
                 (void)target.addChain(chainPoints, loop, options);
             }
+
             break;
         }
         }
@@ -549,6 +586,7 @@ void Body::copyShapesTo(Body& target) const {
 
 Body Body::moveToWorld(World& target) {
     (void)checkedId();
+
     if (&target == world) {
         throw std::invalid_argument("A body moves only to another world.");
     }
@@ -561,6 +599,7 @@ Body Body::moveToWorld(World& target) {
     if (getType() == Type::Dynamic) {
         moved.setMassData(getMassData());
     }
+
     moved.setEnabled(isEnabled());
     moved.setAwake(isAwake());
     destroy();
@@ -572,9 +611,11 @@ Shape Body::finishShape(std::uint64_t shapeId, const Shape::Options& options) {
     if (options.tangentSpeed != 0.0F) {
         shape.setTangentSpeed(options.tangentSpeed);
     }
+
     if (options.oneWay) {
         shape.setOneWay(options.oneWay);
     }
+
     return shape;
 }
 

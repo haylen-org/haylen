@@ -29,10 +29,12 @@ ContactManifold Box2DConverter::toManifold(const b2Manifold& manifold, b2BodyId 
         result.force += point.normalImpulse;
         result.approachSpeed = std::max(result.approachSpeed, point.approachSpeed);
     }
+
     if (result.pointCount > 0) {
         const b2Vec2 at = b2Add(center, manifold.points[0].anchorA);
         result.relativeVelocity = toPixels(b2Sub(b2Body_GetWorldPointVelocity(second, at), b2Body_GetWorldPointVelocity(first, at)), scale);
     }
+
     result.force = subStepSeconds > 0.0F ? result.force / subStepSeconds : 0.0F;
     return result;
 }
@@ -41,6 +43,7 @@ ContactManifold Box2DConverter::toSolvedManifold(b2ContactId contact, float scal
     if (!b2Contact_IsValid(contact)) {
         return {};
     }
+
     const b2ContactData data = b2Contact_GetData(contact);
     return toManifold(data.manifold, b2Shape_GetBody(data.shapeIdA), b2Shape_GetBody(data.shapeIdB), scale, subStepSeconds);
 }
@@ -73,6 +76,7 @@ bool Box2DConverter::collides(const CollisionFilter& filter, b2Filter shape) noe
     if (filter.group != 0 && filter.group == shape.groupIndex) {
         return filter.group > 0;
     }
+
     return (filter.mask & shape.categoryBits) != 0 && (filter.category & shape.maskBits) != 0;
 }
 
@@ -84,6 +88,7 @@ void Box2DConverter::checkShapeOptions(const Shape::Options& options) {
     if (!isFiniteAndNotNegative(options.density) || !isFiniteAndNotNegative(options.friction) || !isFiniteAndNotNegative(options.restitution) || !isFiniteAndNotNegative(options.rollingResistance)) {
         throw std::invalid_argument("A physics shape needs a finite density, friction, restitution and rolling resistance of zero or more.");
     }
+
     if (options.oneWay && options.oneWay->isZero()) {
         throw std::invalid_argument("A one-way direction cannot be zero.");
     }
@@ -114,6 +119,7 @@ float Box2DConverter::toDamping(float value) {
     if (!isFiniteAndNotNegative(value)) {
         throw std::invalid_argument("A physics body needs a finite damping of zero or more.");
     }
+
     return value;
 }
 
@@ -121,6 +127,7 @@ float Box2DConverter::toContinuousThreshold(float value) {
     if (!isFiniteAndNotNegative(value)) {
         throw std::invalid_argument("A physics body needs a finite continuous threshold of zero or more.");
     }
+
     return value;
 }
 
@@ -128,6 +135,7 @@ float Box2DConverter::toSpeed(float value, float scale) {
     if (!isFiniteAndNotNegative(value)) {
         throw std::invalid_argument("A physics speed needs to be finite and zero or more.");
     }
+
     return value / scale;
 }
 
@@ -135,6 +143,7 @@ float Box2DConverter::toPositive(float value, const char* message) {
     if (!std::isfinite(value) || value <= 0.0F) {
         throw std::invalid_argument(message);
     }
+
     return value;
 }
 
@@ -147,6 +156,7 @@ std::vector<b2Vec2> Box2DConverter::toLocalPoints(std::span<const math::Vec2> po
         const math::Vec2 turned{point.x * cosine - point.y * sine, point.x * sine + point.y * cosine};
         result.push_back(toMeters(turned + options.offset, scale));
     }
+
     return result;
 }
 
@@ -155,6 +165,7 @@ b2Polygon Box2DConverter::toHullPolygon(std::span<const b2Vec2> points) {
     if (hull.count == 0) {
         throw std::invalid_argument("A physics polygon needs at least three points that are not on one line.");
     }
+
     return b2MakePolygon(&hull, 0.0F);
 }
 

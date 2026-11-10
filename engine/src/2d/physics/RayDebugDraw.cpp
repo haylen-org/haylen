@@ -13,6 +13,7 @@ void RayDebugDraw::add(std::uint64_t frameIndex, math::Vec2 from, math::Vec2 to,
         rays.clear();
         frame = frameIndex;
     }
+
     rays.push_back({.from = from, .to = to, .hit = hit});
 }
 
@@ -21,8 +22,10 @@ void RayDebugDraw::drawRay(graphics2d::Renderer& renderer, math::Vec2 from, math
         renderer.drawLine(from, to, kLineWidth, kMissColor, order);
         return;
     }
+
     renderer.drawLine(from, hit->point, kLineWidth, kHitColor, order);
     renderer.drawCircle(hit->point, kHitRadius, kHitColor, order);
+
     if (!hit->normal.isZero()) {
         renderer.drawLine(hit->point, hit->point + hit->normal * kNormalLength, kLineWidth, kNormalColor, order);
     }
@@ -32,6 +35,7 @@ void RayDebugDraw::draw(graphics2d::Renderer& renderer, const graphics2d::DrawOr
     for (const Ray& ray : rays) {
         drawRay(renderer, ray.from, ray.to, ray.hit, order);
     }
+
     rays.clear();
 }
 

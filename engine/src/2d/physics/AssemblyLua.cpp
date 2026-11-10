@@ -58,9 +58,11 @@ int AssemblyLua::createRope(lua_State* L, bool bridge) {
     if (lua_getfield(L, 2, "startBody") != LUA_TNIL) {
         options.startBody = lua::Userdata::check<ScriptedHandle<Body>>(L, -1).handle;
     }
+
     if (lua_getfield(L, 2, "endBody") != LUA_TNIL) {
         options.endBody = lua::Userdata::check<ScriptedHandle<Body>>(L, -1).handle;
     }
+
     Physics2DLua::push(L, 1, bridge ? Rope::createBridge(world, options) : Rope::create(world, options));
     return 1;
 }
@@ -103,6 +105,7 @@ int AssemblyLua::ropeSegments(lua_State* L) {
         lua_setfield(L, -2, "length");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
@@ -143,6 +146,7 @@ int AssemblyLua::newRagdoll(lua_State* L) {
         lua::Table::readField(L, 2, "vx", options.velocity.x);
         lua::Table::readField(L, 2, "vy", options.velocity.y);
     }
+
     Physics2DLua::push(L, 1, Ragdoll::create(world, options));
     return 1;
 }
@@ -154,6 +158,7 @@ int AssemblyLua::ragdollBody(lua_State* L) {
     if (!part) {
         return luaL_argerror(L, 2, "unknown ragdoll part");
     }
+
     pushWorld(L);
     Physics2DLua::push(L, -1, ragdoll.getBody(*part));
     return 1;
@@ -169,6 +174,7 @@ int AssemblyLua::ragdollBodies(lua_State* L) {
         Physics2DLua::push(L, world, ragdoll.getBodies()[part]);
         lua_setfield(L, -2, Ragdoll::partName(static_cast<Ragdoll::Part>(part)).data());
     }
+
     return 1;
 }
 

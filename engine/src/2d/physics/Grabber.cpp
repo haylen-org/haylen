@@ -29,6 +29,7 @@ void Grabber::setPickRadius(float value) {
     if (!std::isfinite(value) || value < 0.0F) {
         throw std::invalid_argument("A grabber needs a finite pick radius of zero or more.");
     }
+
     options.pickRadius = value;
 }
 
@@ -65,6 +66,7 @@ float Grabber::getConnectedMass(const Body& body) const {
 
         joints.resize(static_cast<std::size_t>(b2Body_GetJointCount(current)));
         b2Body_GetJoints(current, joints.data(), static_cast<int>(joints.size()));
+
         for (const b2JointId link : joints) {
             const b2BodyId first = b2Joint_GetBodyA(link);
             const b2BodyId other = B2_ID_EQUALS(first, current) ? b2Joint_GetBodyB(link) : first;
@@ -75,11 +77,13 @@ float Grabber::getConnectedMass(const Body& body) const {
             }
         }
     }
+
     return mass;
 }
 
 std::optional<Body> Grabber::grab(math::Vec2 point) {
     release();
+
     for (const Shape& shape : world.pick(point, options.pickRadius, options.filter)) {
         const b2ShapeId id = b2LoadShapeId(shape.getId());
         const Body body = shape.getBody();
@@ -100,11 +104,13 @@ std::optional<Body> Grabber::grab(math::Vec2 point) {
         held.setAwake(true);
         return held;
     }
+
     return std::nullopt;
 }
 
 void Grabber::moveTo(math::Vec2 value) {
     target = value;
+
     if (isHolding()) {
         joint.setTarget(value);
     }
@@ -128,6 +134,7 @@ math::Vec2 Grabber::getHandle() const {
     if (!isHolding()) {
         return target;
     }
+
     return Box2DConverter::toPixels(b2Body_GetWorldPoint(b2LoadBodyId(held.getId()), {handle.x, handle.y}), world.getPixelsPerMeter());
 }
 

@@ -42,6 +42,7 @@ ForceField::ForceField(World& owner, const Options& settings) : world(owner), op
     } else if (options.radius <= 0.0F) {
         area = options.points;
     }
+
     check();
     hook = world.addStepHook(World::StepPhase::Before, [this](float deltaSeconds) { update(deltaSeconds); });
     wake();
@@ -85,6 +86,7 @@ void ForceField::setDirection(math::Vec2 value) {
     if (value.isZero()) {
         throw std::invalid_argument("A force field needs a direction that is not zero.");
     }
+
     options.direction = value;
     wake();
 }
@@ -98,6 +100,7 @@ void ForceField::setDensity(float value) {
     if (!(value >= 0.0F)) {
         throw std::invalid_argument("A force field needs a density of zero or more.");
     }
+
     options.density = value;
     wake();
 }
@@ -106,6 +109,7 @@ void ForceField::setLinearDrag(float value) {
     if (!(value >= 0.0F)) {
         throw std::invalid_argument("A force field needs drags of zero or more.");
     }
+
     options.linearDrag = value;
 }
 
@@ -113,6 +117,7 @@ void ForceField::setAngularDrag(float value) {
     if (!(value >= 0.0F)) {
         throw std::invalid_argument("A force field needs drags of zero or more.");
     }
+
     options.angularDrag = value;
 }
 
@@ -120,6 +125,7 @@ void ForceField::setAirDrag(float value) {
     if (!(value >= 0.0F)) {
         throw std::invalid_argument("A force field needs drags of zero or more.");
     }
+
     options.airDrag = value;
     wake();
 }
@@ -128,6 +134,7 @@ void ForceField::setLift(float value) {
     if (!std::isfinite(value)) {
         throw std::invalid_argument("A force field needs a finite lift.");
     }
+
     options.lift = value;
     wake();
 }
@@ -136,6 +143,7 @@ math::Rect ForceField::getBounds() const {
     if (options.radius > 0.0F) {
         return {options.position.x - options.radius, options.position.y - options.radius, options.radius * 2.0F, options.radius * 2.0F};
     }
+
     math::Rect bounds = math::Geometry::bounds(area);
     bounds.x += options.position.x;
     bounds.y += options.position.y;
@@ -147,6 +155,7 @@ bool ForceField::contains(math::Vec2 point) const {
     if (options.radius > 0.0F) {
         return local.getLengthSquared() <= options.radius * options.radius;
     }
+
     return math::Geometry::contains(area, local);
 }
 
@@ -178,6 +187,7 @@ void ForceField::gather() {
         if (!b2Shape_IsSensor(shape) && b2Body_GetType(body) == b2_dynamicBody && Box2DConverter::collides(field.options.filter, b2Shape_GetFilter(shape))) {
             field.targets.push_back({b2StoreBodyId(body), b2StoreShapeId(shape)});
         }
+
         return true;
     }, this);
     // clang-format on
@@ -186,6 +196,7 @@ void ForceField::gather() {
 
 void ForceField::wake() {
     gather();
+
     for (const Target& target : targets) {
         b2Body_SetAwake(b2LoadBodyId(target.body), true);
     }
@@ -193,10 +204,13 @@ void ForceField::wake() {
 
 void ForceField::update(float) {
     bodyCount = 0;
+
     if (!options.enabled) {
         return;
     }
+
     gather();
+
     for (std::size_t index = 0; index < targets.size(); ++index) {
         const Body body(&world, targets[index].body);
         if (options.kind == Kind::Buoyancy) {
@@ -206,6 +220,7 @@ void ForceField::update(float) {
         } else if (index == 0 || targets[index - 1].body != targets[index].body) {
             push(body);
         }
+
         if (index == 0 || targets[index - 1].body != targets[index].body) {
             ++bodyCount;
         }
@@ -218,6 +233,7 @@ void ForceField::push(const Body& body) {
     if (!contains(center)) {
         return;
     }
+
     const math::Vec2 offset = center - options.position;
     const float distance = offset.getLength();
     math::Vec2 pull{};
@@ -242,6 +258,7 @@ void ForceField::push(const Body& body) {
     const float scale = world.getPixelsPerMeter();
     const b2BodyId id = b2LoadBodyId(body.getId());
     b2Body_ApplyForceToCenter(id, Box2DConverter::toMeters(force, scale), false);
+
     if (options.angularDrag > 0.0F) {
         b2Body_ApplyTorque(id, -options.angularDrag * b2Body_GetRotationalInertia(id) * b2Body_GetAngularVelocity(id), false);
     }
@@ -253,6 +270,7 @@ void ForceField::floatShape(const Body& body, std::uint64_t shape) {
     if (outline.size() < 3) {
         return;
     }
+
     const std::vector<math::Vec2> submerged = clip(outline);
     const float wet = submerged.size() < 3 ? 0.0F : std::abs(math::Geometry::signedArea(submerged));
     if (wet <= 0.0F) {
@@ -266,6 +284,7 @@ void ForceField::floatShape(const Body& body, std::uint64_t shape) {
     force -= (body.getVelocityAt(centroid) - options.flow) * (options.linearDrag * displaced);
     const b2BodyId id = b2LoadBodyId(body.getId());
     b2Body_ApplyForce(id, Box2DConverter::toMeters(force, scale), Box2DConverter::toMeters(centroid, scale), false);
+
     if (options.angularDrag > 0.0F) {
         const float share = wet / std::abs(math::Geometry::signedArea(outline));
         b2Body_ApplyTorque(id, -options.angularDrag * share * b2Body_GetRotationalInertia(id) * b2Body_GetAngularVelocity(id), false);
@@ -280,6 +299,7 @@ void ForceField::blowShape(std::uint64_t shape) {
     if (!contains(middle)) {
         return;
     }
+
     const math::Vec2 wind = options.direction.getNormalized() * (options.strength * fade((middle - options.position).getLength()));
     b2Shape_ApplyWind(id, Box2DConverter::toMeters(wind, scale), options.airDrag, options.lift, false);
 }
@@ -318,6 +338,7 @@ std::vector<math::Vec2> ForceField::outlineOf(std::uint64_t shape) const {
         for (int index = 0; index < polygon.count; ++index) {
             points.push_back(Box2DConverter::toPixels(b2TransformPoint(transform, polygon.vertices[index]), scale));
         }
+
         break;
     }
     default:
@@ -340,15 +361,19 @@ std::vector<math::Vec2> ForceField::clip(std::vector<math::Vec2> polygon) const 
             const math::Vec2 next = polygon[(index + 1) % polygon.size()];
             const float currentSide = side(current);
             const float nextSide = side(next);
+
             if (currentSide >= 0.0F) {
                 kept.push_back(current);
             }
+
             if ((currentSide >= 0.0F) != (nextSide >= 0.0F)) {
                 kept.push_back(math::Vec2::lerp(current, next, currentSide / (currentSide - nextSide)));
             }
         }
+
         polygon.swap(kept);
     }
+
     return polygon;
 }
 

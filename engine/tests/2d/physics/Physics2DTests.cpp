@@ -151,13 +151,16 @@ TEST_F(PhysicsWorldTest, SensesQueriesAndCastsRays) {
     std::size_t left = 0;
     for (int step = 0; step < 120; ++step) {
         world.step(1.0F / 60.0F);
+
         for (const physics2d::SensorEvent& event : world.getSensorBegins()) {
             EXPECT_EQ(event.sensor, sensor);
             EXPECT_EQ(event.visitor.getBody(), ball);
             ++sensed;
         }
+
         left += world.getSensorEnds().size();
     }
+
     EXPECT_EQ(sensed, 1U);
     EXPECT_EQ(left, 1U);
     EXPECT_TRUE(sensor.isSensor());
@@ -225,6 +228,7 @@ TEST_F(PhysicsWorldTest, SweepsBodiesFromTheirContinuousThreshold) {
         world.step(1.0F / 60.0F);
         seen += world.getSensorBegins().size();
     }
+
     EXPECT_EQ(seen, 1U);
     EXPECT_GT(shot.getPosition().x, 400.0F);
 
@@ -344,6 +348,7 @@ TEST_F(PhysicsWorldTest, DetectsHandlesOfADestroyedWorldWhoseSlotANewWorldReuses
     EXPECT_FALSE(staleJoint.isValid());
     EXPECT_NE(staleBody, body);
     EXPECT_NE(staleShape, shape);
+
     for (const auto& [use, message] : std::array<std::pair<std::function<void()>, std::string>, 3>{{
              {[&staleBody] { (void)staleBody.getPosition(); }, "The physics world of the body was destroyed."},
              {[&staleShape] { (void)staleShape.getBounds(); }, "The physics world of the shape was destroyed."},
@@ -379,6 +384,7 @@ TEST_F(PhysicsWorldTest, DestroysTheWorldBeforeItsObjectGoes) {
     EXPECT_TRUE(world.isDestroyed());
     EXPECT_FALSE(body.isValid() || shape.isValid() || joint.isValid());
     EXPECT_EQ(hookRuns, 0);
+
     for (const auto& [use, message] : std::array<std::pair<std::function<void()>, std::string>, 6>{{
              {[&world] { world.step(1.0F / 60.0F); }, "The physics world was destroyed."},
              {[&world] { (void)world.createBody(); }, "The physics world was destroyed."},
@@ -416,11 +422,13 @@ TEST_F(PhysicsWorldTest, ReportsTheGeometryAndOutlinesOfShapes) {
     ASSERT_EQ(corners.size(), 4U);
     EXPECT_EQ(box.getKind(), physics2d::Shape::Kind::Polygon);
     EXPECT_EQ(box.getRadius(), 0.0F);
+
     for (std::size_t index = 0; index < corners.size(); ++index) {
         EXPECT_NEAR(std::abs(corners[index].x - 10.0F), 20.0F, 1e-3F);
         EXPECT_NEAR(std::abs(corners[index].y), 10.0F, 1e-3F);
         expectInWorld(corners[index], box.getWorldPoints()[index]);
     }
+
     EXPECT_TRUE(box.getOutline().closed);
     EXPECT_EQ(box.getOutline().points.size(), 4U);
 
@@ -431,6 +439,7 @@ TEST_F(PhysicsWorldTest, ReportsTheGeometryAndOutlinesOfShapes) {
     const physics2d::Shape::Outline round = circle.getOutline();
     EXPECT_TRUE(round.closed);
     EXPECT_EQ(round.points.size(), 16U);
+
     for (const math::Vec2 point : round.points) {
         EXPECT_NEAR(math::Vec2::distance(point, {70.0F, 50.0F}), 12.0F, 1e-3F);
     }
@@ -444,6 +453,7 @@ TEST_F(PhysicsWorldTest, ReportsTheGeometryAndOutlinesOfShapes) {
     const physics2d::Shape::Outline pill = capsule.getOutline();
     EXPECT_TRUE(pill.closed);
     EXPECT_EQ(pill.points.size(), 18U);
+
     for (const math::Vec2 point : pill.points) {
         EXPECT_NEAR(math::Vec2::distance(point, {std::clamp(point.x, 90.0F, 110.0F), 50.0F}), 6.0F, 1e-3F);
     }
@@ -488,6 +498,7 @@ TEST_F(PhysicsWorldTest, ConnectsBodiesWithJoints) {
         joints.push_back(world.createJoint(type, anchor, bob, {.anchorA = {0.0F, 0.0F}, .anchorB = {100.0F, 0.0F}, .enableLimit = limited, .lower = -1.0F, .upper = 1.0F, .enableMotor = limited, .maxMotorForce = 10.0F, .maxMotorTorque = 10.0F, .axis = {0.0F, 1.0F}}));
         EXPECT_TRUE(joints.back().isValid());
     }
+
     simulate(world, 0.5F);
 
     EXPECT_NEAR(bobs[0].getPosition().getLength(), 100.0F, 1.0F);

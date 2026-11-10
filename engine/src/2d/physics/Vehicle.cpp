@@ -37,6 +37,7 @@ Vehicle::Vehicle(World& owner, const Options& settings) : world(owner), options(
         destroy();
         throw;
     }
+
     hook = world.addStepHook(World::StepPhase::Before, [this](float deltaSeconds) { update(deltaSeconds); });
 }
 
@@ -141,14 +142,17 @@ void Vehicle::update(float) {
     if (!isValid()) {
         return;
     }
+
     const b2BodyId body = b2LoadBodyId(chassis.getId());
     if (!isGrounded()) {
         if (throttle != 0.0F) {
             // The throttle lifts the nose in the air, which turns the chassis counter-clockwise on screen.
             b2Body_ApplyTorque(body, -throttle * options.airControl * b2Body_GetRotationalInertia(body), true);
         }
+
         return;
     }
+
     if (options.antiRoll <= 0.0F) {
         return;
     }
@@ -174,6 +178,7 @@ bool Vehicle::isValid() const noexcept {
 
 void Vehicle::destroy() {
     chassis.destroy();
+
     for (Body& wheel : wheels) {
         wheel.destroy();
     }

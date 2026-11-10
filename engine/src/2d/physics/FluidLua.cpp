@@ -48,6 +48,7 @@ int FluidLua::newFluid(lua_State* L) {
         lua::Table::readField(L, 2, "maxParticles", options.maxParticles);
         options.filter = ShapeLua::readFilter(L, 2, {});
     }
+
     lua::Userdata::emplace<ScriptedOwner<Fluid>>(L, world, options);
     lua_pushvalue(L, 1);
     lua_setiuservalue(L, -2, 1);
@@ -90,10 +91,12 @@ int FluidLua::pushPairs(lua_State* L, bool velocities) {
         const lua_Integer first = luaL_optinteger(L, 3, 1);
         const std::span<float> floats = buffer->getValues();
         luaL_argcheck(L, first >= 1 && static_cast<std::size_t>(first - 1) + values.size() * 2 <= floats.size(), 2, "the buffer needs two values for each particle");
+
         for (std::size_t index = 0; index < values.size(); ++index) {
             floats[static_cast<std::size_t>(first - 1) + index * 2] = values[index].x;
             floats[static_cast<std::size_t>(first - 1) + index * 2 + 1] = values[index].y;
         }
+
         lua_pushvalue(L, 2);
         return 1;
     }
@@ -104,17 +107,20 @@ int FluidLua::pushPairs(lua_State* L, bool velocities) {
         luaL_checktype(L, 2, LUA_TTABLE);
         lua_pushvalue(L, 2);
     }
+
     for (std::size_t index = 0; index < values.size(); ++index) {
         lua_pushnumber(L, values[index].x);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index * 2 + 1));
         lua_pushnumber(L, values[index].y);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index * 2 + 2));
     }
+
     for (auto extra = static_cast<lua_Integer>(values.size() * 2 + 1); lua_rawgeti(L, -1, extra) != LUA_TNIL; ++extra) {
         lua_pop(L, 1);
         lua_pushnil(L);
         lua_rawseti(L, -2, extra);
     }
+
     lua_pop(L, 1);
     return 1;
 }
@@ -141,9 +147,11 @@ int FluidLua::draw(lua_State* L) {
         lua::Table::readField(L, 2, "outlineWidth", style.outlineWidth);
         lua::Table::readField(L, 2, "threshold", style.threshold);
     }
+
     if (fluid.size() > 0) {
         lua::Runtime::getEngine(L).getRenderer2D().drawMetaballs(fluid.getPositions(), ball, style, lua::TypeConverter::readDrawOrder(L, 2, {kDrawFields}));
     }
+
     return 0;
 }
 
