@@ -138,6 +138,32 @@ std::size_t MapParser::countCells(int width, int height, std::string_view layer)
     return columns * rows;
 }
 
+// A chunk whose cells reach far from the origin would overflow the arithmetic over its cells, so the parser refuses it as a hostile file.
+Layer::Chunk MapParser::readChunkArea(const core::Json& chunk, std::string_view layer) {
+    const std::string farther = "The chunk at " + chunk.at("x").dump() + ", " + chunk.at("y").dump() + " of the Tiled tile layer \"" + std::string(layer) + "\" reaches farther than " + std::to_string(Layer::kMaxChunkReach) + " cells from the origin.";
+    std::array<std::int64_t, 4> area{};
+    constexpr std::array<const char*, 4> kKeys{"x", "y", "width", "height"};
+    for (std::size_t index = 0; index < kKeys.size(); ++index) {
+        const core::Json& value = chunk.at(kKeys[index]);
+        if (!value.is_number_integer()) {
+            throw std::invalid_argument("A chunk of the Tiled tile layer \"" + std::string(layer) + "\" has an \"" + kKeys[index] + "\" that is not an integer.");
+        }
+        if (value.is_number_unsigned() && !std::in_range<std::int64_t>(value.get<std::uint64_t>())) {
+            throw std::invalid_argument(farther);
+        }
+        area[index] = value.get<std::int64_t>();
+    }
+
+    const auto [x, y, width, height] = area;
+    if (width < 0 || height < 0) {
+        throw std::invalid_argument("The Tiled tile layer \"" + std::string(layer) + "\" has a negative size.");
+    }
+    if (!Layer::isChunkInReach(x, y, width, height)) {
+        throw std::invalid_argument(farther);
+    }
+    return {.x = static_cast<int>(x), .y = static_cast<int>(y), .width = static_cast<int>(width), .height = static_cast<int>(height), .gids = {}};
+}
+
 std::vector<std::uint32_t> MapParser::readTileData(const core::Json& layer, const core::Json& data, std::size_t cells) {
     if (data.is_array()) {
         std::vector<std::uint32_t> gids = data.get<std::vector<std::uint32_t>>();
@@ -425,7 +451,7 @@ Layer MapParser::readLayer(const core::Json& entry, std::string_view directory) 
         layer.infinite = entry.contains("chunks");
         if (layer.infinite) {
             for (const core::Json& chunk : entry.at("chunks")) {
-                Layer::Chunk parsed{.x = chunk.at("x").get<int>(), .y = chunk.at("y").get<int>(), .width = chunk.at("width").get<int>(), .height = chunk.at("height").get<int>()};
+                Layer::Chunk parsed = readChunkArea(chunk, name);
                 parsed.gids = readTileData(entry, chunk.at("data"), countCells(parsed.width, parsed.height, name));
                 layer.chunks.push_back(std::move(parsed));
             }

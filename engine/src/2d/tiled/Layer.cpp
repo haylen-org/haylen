@@ -5,6 +5,12 @@
 
 namespace haylen::tiled {
 
+bool Layer::isChunkInReach(std::int64_t x, std::int64_t y, std::int64_t width, std::int64_t height) noexcept {
+    const bool columns = x >= -kMaxChunkReach && x <= kMaxChunkReach && width >= 0 && width <= kMaxChunkReach - x;
+    const bool rows = y >= -kMaxChunkReach && y <= kMaxChunkReach && height >= 0 && height <= kMaxChunkReach - y;
+    return columns && rows;
+}
+
 std::string_view Layer::kindName(Kind value) noexcept {
     switch (value) {
     case Kind::Tile:

@@ -906,7 +906,7 @@ map:fill('ground', grid, first)
 
 ### map:setChunk(layer, column, row, grid, firstGid)
 
-Puts a chunk of the size of `grid` at the cell `column`, `row` of a tile layer of an infinite map. It replaces the chunk that starts at that cell. The values of the grid are read like those of `map:fill`, with `firstGid` 1 by default. So a streamed world adds the chunks near the player. A finite map raises `Only the tile layers of an infinite map have chunks.`.
+Puts a chunk of the size of `grid` at the cell `column`, `row` of a tile layer of an infinite map. It replaces the chunk that starts at that cell. The values of the grid are read like those of `map:fill`, with `firstGid` 1 by default. So a streamed world adds the chunks near the player. A finite map raises `Only the tile layers of an infinite map have chunks.`, and a chunk with a cell more than 16777216 cells from the origin raises `The chunk at <column>, <row> reaches farther than 16777216 cells from the origin.`.
 
 ```lua
 local spatial2d = require('haylen.spatial2d')
@@ -1012,6 +1012,8 @@ Loading a map raises these errors:
 | `The skew of the oblique map "<path>" folds its grid onto a line.` | The skew of an oblique map leaves the grid without area. |
 | `The Tiled tile layer "<name>" has a negative size.` | A tile layer has a negative width or height. |
 | `The Tiled tile layer "<name>" has more cells than a layer can hold.` | A tile layer is too large. |
+| `A chunk of the Tiled tile layer "<name>" has an "<key>" that is not an integer.` | The `x`, `y`, `width` or `height` of a chunk is not a whole number. |
+| `The chunk at <x>, <y> of the Tiled tile layer "<name>" reaches farther than 16777216 cells from the origin.` | A cell of a chunk lies more than 16777216 cells from the origin, which the arithmetic over its cells cannot hold. |
 | `The compression of a tile layer must be "zlib", "gzip" or "zstd", not "<name>".` | The tile data uses another compression. |
 | `Tile layer data is not valid base64.` | The base64 text of a tile layer is broken. |
 | `Tile layer data could not be decompressed.` | The compressed tile data is broken. |

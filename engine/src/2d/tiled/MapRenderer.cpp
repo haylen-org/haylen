@@ -323,6 +323,9 @@ void MapRenderer::setChunk(std::string_view name, int column, int row, const spa
     if (!map.infinite) {
         throw std::invalid_argument("Only the tile layers of an infinite map have chunks.");
     }
+    if (!Layer::isChunkInReach(column, row, grid.getWidth(), grid.getHeight())) {
+        throw std::invalid_argument("The chunk at " + std::to_string(column) + ", " + std::to_string(row) + " reaches farther than " + std::to_string(Layer::kMaxChunkReach) + " cells from the origin.");
+    }
     Layer::Chunk chunk{.x = column, .y = row, .width = grid.getWidth(), .height = grid.getHeight()};
     for (const std::int32_t value : grid.getValues()) {
         const std::uint32_t gid = value < 0 ? 0U : firstGid + static_cast<std::uint32_t>(value);

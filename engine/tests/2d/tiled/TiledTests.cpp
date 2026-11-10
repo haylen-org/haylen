@@ -413,6 +413,20 @@ TEST_F(MapTest, RejectsBrokenData) {
     map = infiniteMap();
     map["layers"][0]["chunks"][1]["width"] = -2;
     EXPECT_EQ(failure(map), "The Tiled tile layer \"ground\" has a negative size.");
+    // A chunk whose cells reach far from the origin would overflow the arithmetic over its cells, so it is refused like any hostile file.
+    map = infiniteMap();
+    map["layers"][0]["chunks"][1]["x"] = 2147483646;
+    EXPECT_EQ(failure(map), "The chunk at 2147483646, 0 of the Tiled tile layer \"ground\" reaches farther than 16777216 cells from the origin.");
+    map["layers"][0]["chunks"][1]["x"] = 16777215;
+    EXPECT_EQ(failure(map), "The chunk at 16777215, 0 of the Tiled tile layer \"ground\" reaches farther than 16777216 cells from the origin.");
+    map["layers"][0]["chunks"][1]["x"] = -9223372036854775807LL;
+    EXPECT_EQ(failure(map), "The chunk at -9223372036854775807, 0 of the Tiled tile layer \"ground\" reaches farther than 16777216 cells from the origin.");
+    map["layers"][0]["chunks"][1]["x"] = 18446744073709551615ULL;
+    EXPECT_EQ(failure(map), "The chunk at 18446744073709551615, 0 of the Tiled tile layer \"ground\" reaches farther than 16777216 cells from the origin.");
+    map["layers"][0]["chunks"][1]["x"] = 1e20;
+    EXPECT_EQ(failure(map), "A chunk of the Tiled tile layer \"ground\" has an \"x\" that is not an integer.");
+    map["layers"][0]["chunks"][1]["x"] = 16777214;
+    EXPECT_EQ(failure(map), "no error");
     map = orthogonalMap();
     map["height"] = -1;
     EXPECT_EQ(failure(map), "The Tiled map \"maps/broken.tmj\" has a negative size.");
@@ -1282,6 +1296,11 @@ TEST_F(TiledLuaTest, BuildsMapsAtRunTime) {
         open:removeChunk('ground', -16, 0)
         return before .. ' ' .. open:tile('ground', -15, 1) .. ' ' .. open:toJson().tilesets[1].image
     )"), "4 0 maps/images/terrain.png");
+    EXPECT_NE(fixture.lua(R"(
+        local open = tiled.newMapRenderer(tiled.newMap({infinite = true, tileWidth = 16, tileHeight = 16}))
+        open:addLayer({name = 'ground'})
+        open:setChunk('ground', 2147483640, 0, grid)
+    )").find("The chunk at 2147483640, 0 reaches farther than 16777216 cells from the origin."), std::string::npos);
     // clang-format on
 
     EXPECT_NE(fixture.lua("tiled.newMap({width = 0, height = 4, tileWidth = 16, tileHeight = 16})").find("A map needs a positive tile size, and a finite map a positive width and height in cells."), std::string::npos);

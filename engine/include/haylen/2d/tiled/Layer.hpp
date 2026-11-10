@@ -32,6 +32,9 @@ struct Layer {
         std::vector<std::uint32_t> gids;
     };
 
+    // Every cell of a chunk lies within this many cells of the origin, so the sums and spans of chunk cells never leave the range of `int`.
+    static constexpr std::int64_t kMaxChunkReach = std::int64_t{1} << 24U;
+
     std::uint32_t id = 0;
     std::string name;
     std::string type;
@@ -68,6 +71,9 @@ struct Layer {
     std::vector<Layer> layers;
 
     [[nodiscard]] static std::string_view kindName(Kind value) noexcept;
+
+    // Whether a chunk at the cell `x`, `y` of the size `width` by `height` lies within `kMaxChunkReach` of the origin.
+    [[nodiscard]] static bool isChunkInReach(std::int64_t x, std::int64_t y, std::int64_t width, std::int64_t height) noexcept;
 
     // Returns the global tile id at a cell, including flip flags, or zero outside the layer.
     [[nodiscard]] std::uint32_t getGid(int column, int row) const noexcept;

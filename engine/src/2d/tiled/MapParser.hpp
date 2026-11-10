@@ -47,6 +47,7 @@ class MapParser final {
     [[nodiscard]] static std::size_t countCells(int width, int height, std::string_view layer);
     [[nodiscard]] static std::vector<std::uint8_t> inflate(const std::vector<std::uint8_t>& compressed, bool gzip, std::size_t expected);
     [[nodiscard]] static std::vector<std::uint8_t> decompressZstd(const std::vector<std::uint8_t>& compressed, std::size_t expected);
+    [[nodiscard]] static Layer::Chunk readChunkArea(const core::Json& chunk, std::string_view layer);
     [[nodiscard]] static std::vector<std::uint32_t> readTileData(const core::Json& layer, const core::Json& data, std::size_t cells);
     [[nodiscard]] static std::optional<math::Color> readOptionalColor(const core::Json& object, const char* key);
     // The blend modes of Tiled layers by the names of the Tiled format.
