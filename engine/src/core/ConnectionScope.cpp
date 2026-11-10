@@ -17,6 +17,7 @@ ConnectionScope& ConnectionScope::operator=(ConnectionScope&& other) noexcept {
         connections = std::exchange(other.connections, {});
         compactAt = std::exchange(other.compactAt, kCompactThreshold);
     }
+
     return *this;
 }
 
@@ -25,6 +26,7 @@ void ConnectionScope::add(Connection connection) {
         std::erase_if(connections, [](const Connection& existing) { return !existing.isConnected(); });
         compactAt = std::max(kCompactThreshold, connections.size() * 2);
     }
+
     connections.push_back(std::move(connection));
 }
 
@@ -35,6 +37,7 @@ void ConnectionScope::clear() {
             connection.disconnect();
         }
     }
+
     compactAt = kCompactThreshold;
 }
 

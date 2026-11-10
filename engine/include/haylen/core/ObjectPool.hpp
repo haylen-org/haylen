@@ -30,6 +30,7 @@ template <typename T> class ObjectPool final {
             freeSlots.push_back(static_cast<std::uint32_t>(slots.size()));
             slots.emplace_back();
         }
+
         const std::uint32_t index = freeSlots.back();
         Slot& slot = slots[index];
         slot.value.emplace(std::forward<Args>(args)...);
@@ -43,6 +44,7 @@ template <typename T> class ObjectPool final {
         if (!isAlive(handle)) {
             return false;
         }
+
         Slot& slot = slots[handle.index];
         slot.value.reset();
         ++slot.generation;

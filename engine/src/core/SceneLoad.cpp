@@ -20,6 +20,7 @@ SceneLoad::Deferral& SceneLoad::Deferral::operator=(Deferral&& other) noexcept {
         drop();
         load = std::exchange(other.load, {});
     }
+
     return *this;
 }
 
@@ -47,9 +48,11 @@ void SceneLoad::setProgress(float value, std::string text) {
     if (!(value >= 0.0F && value <= 1.0F)) {
         throw std::invalid_argument("A load progress runs from 0 to 1.");
     }
+
     if (isOver()) {
         return;
     }
+
     ownProgress = value;
     message = std::move(text);
 }
@@ -58,6 +61,7 @@ SceneLoad::Progress SceneLoad::getProgress() const {
     if (isFinished()) {
         return {.value = 1.0F, .message = message};
     }
+
     const float sum = std::accumulate(groups.begin(), groups.end(), ownProgress.value_or(0.0F));
     const std::size_t parts = groups.size() + (ownProgress ? 1 : 0);
     return {.value = parts == 0 ? 0.0F : sum / static_cast<float>(parts), .message = message};
@@ -67,6 +71,7 @@ SceneLoad::Deferral SceneLoad::defer() {
     if (isOver()) {
         throw std::logic_error("The scene load is over.");
     }
+
     ++pending;
     return Deferral(weak_from_this());
 }
@@ -90,11 +95,13 @@ void SceneLoad::preload(std::string_view group, PreloadCompletion completion) {
                 for (std::size_t index = 1; index < failures.size(); ++index) {
                     text += ", " + failures[index];
                 }
+
                 failure.emplace(text + ".");
                 deferral->fail(*failure);
             } else {
                 deferral->complete();
             }
+
             if (completion) {
                 completion(failure);
             }
@@ -112,6 +119,7 @@ void SceneLoad::release() {
     if (isOver()) {
         return;
     }
+
     --pending;
 }
 
@@ -120,6 +128,7 @@ void SceneLoad::fail(const lua::Error& failure) {
     if (cancelled || (isOver() && !dropped)) {
         return;
     }
+
     error = failure;
     dropped = false;
 }
@@ -128,6 +137,7 @@ void SceneLoad::drop() {
     if (isOver()) {
         return;
     }
+
     error = lua::Error("The scene load was dropped before it finished.");
     dropped = true;
 }

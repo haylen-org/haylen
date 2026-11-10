@@ -26,6 +26,7 @@ class Connection final {
         if (const std::shared_ptr<Link> locked = link.lock()) {
             locked->disconnect();
         }
+
         link.reset();
     }
 

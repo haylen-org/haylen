@@ -28,13 +28,16 @@ namespace haylen::core {
 
 void CollectionsLua::callHook(lua_State* L, const char* name, int object, int first, int count) {
     luaL_checkstack(L, count + 2, "too many values to deliver");
+
     if (!lua::Userdata::pushFunction(L, 1, name)) {
         return;
     }
+
     lua_pushvalue(L, object);
     for (int argument = 0; argument < count; ++argument) {
         lua_pushvalue(L, first + argument);
     }
+
     lua_call(L, count + 1, 0);
 }
 
@@ -53,6 +56,7 @@ void CollectionsLua::prewarm(lua_State* L, Pool& pool, std::size_t count) {
         create(L);
         lua_rawseti(L, idle, static_cast<lua_Integer>(++pool.idle));
     }
+
     lua_pop(L, 1);
 }
 
@@ -63,6 +67,7 @@ void CollectionsLua::pushActive(lua_State* L, const Pool& pool) {
         lua_rawgeti(L, -2, static_cast<lua_Integer>(slot));
         lua_rawseti(L, -2, static_cast<lua_Integer>(slot));
     }
+
     lua_remove(L, -2);
 }
 
@@ -75,6 +80,7 @@ bool CollectionsLua::releaseObject(lua_State* L, Pool& pool, int object) {
         lua_settop(L, slots - 1);
         return false;
     }
+
     const lua_Integer slot = lua_tointeger(L, -1);
     lua::Userdata::pushField(L, 1, "active");
     const int active = lua_gettop(L);
@@ -121,6 +127,7 @@ int CollectionsLua::newPool(lua_State* L) {
         lua::Userdata::setField(L, self, hook, -1);
         lua_pop(L, 1);
     }
+
     for (const char* list : kLists) {
         lua_newtable(L);
         lua::Userdata::setField(L, self, list, -1);
@@ -151,6 +158,7 @@ int CollectionsLua::poolAcquire(lua_State* L) {
     } else {
         create(L);
     }
+
     const int object = lua_gettop(L);
 
     const auto slot = static_cast<lua_Integer>(++pool.active);
@@ -185,6 +193,7 @@ int CollectionsLua::poolReleaseAll(lua_State* L) {
         (void)releaseObject(L, pool, 3);
         lua_settop(L, 2);
     }
+
     return 0;
 }
 
@@ -199,6 +208,7 @@ int CollectionsLua::poolEach(lua_State* L) {
         lua_rawgeti(L, 3, index);
         lua_call(L, 1, 0);
     }
+
     return 0;
 }
 
@@ -244,6 +254,7 @@ int CollectionsLua::bufferPop(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     buffer.pop().push(L);
     return 1;
 }
@@ -254,6 +265,7 @@ int CollectionsLua::bufferFront(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     buffer.front().push(L);
     return 1;
 }
@@ -264,6 +276,7 @@ int CollectionsLua::bufferBack(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     buffer.back().push(L);
     return 1;
 }
@@ -276,6 +289,7 @@ int CollectionsLua::bufferGet(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     buffer[static_cast<std::size_t>(position - 1)].push(L);
     return 1;
 }
@@ -288,6 +302,7 @@ int CollectionsLua::bufferValues(lua_State* L) {
         value.push(L);
         lua_rawseti(L, -2, ++position);
     }
+
     return 1;
 }
 

@@ -37,9 +37,11 @@ int TimerLua::start(lua_State* L, bool repeating) {
             owner = lua_gettop(L);
         }
     }
+
     if (owner == 0) {
         owner = lua::Owners::pushDefault(L);
     }
+
     if (owner != 0 && options.processMode == ProcessMode::Inherit) {
         options.parentMode = lua::ScriptedScene::followOwnerMode(L, owner);
     }
@@ -58,6 +60,7 @@ int TimerLua::start(lua_State* L, bool repeating) {
     if (owner != 0) {
         lua::Owners::add(L, owner, timers.getConnection(id));
     }
+
     lua::Stack::push(L, id);
     return 1;
 }

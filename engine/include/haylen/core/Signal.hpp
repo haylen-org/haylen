@@ -50,6 +50,7 @@ template <typename... Args> class Signal final {
         if (!slot) {
             throw std::invalid_argument("A signal slot needs a function.");
         }
+
         if (options.queue != nullptr) {
             slot = deferTo(*options.queue, std::move(slot), options.once);
         }
@@ -71,6 +72,7 @@ template <typename... Args> class Signal final {
     void emit(Args... args) {
         State& current = *state;
         ++current.emissions;
+
         if (current.blocked) {
             return;
         }
@@ -83,13 +85,16 @@ template <typename... Args> class Signal final {
             if (!entry->connected || entry->blocked) {
                 continue;
             }
+
             if (entry->tracked && entry->owner.expired()) {
                 entry->disconnect();
                 continue;
             }
+
             if (entry->once) {
                 entry->disconnect();
             }
+
             entry->slot(args...);
         }
     }
@@ -108,7 +113,9 @@ template <typename... Args> class Signal final {
                 entry->connected = false;
             }
         }
+
         state->added.clear();
+
         if (state->emitting == 0) {
             state->entries.clear();
         }
@@ -150,7 +157,9 @@ template <typename... Args> class Signal final {
             if (!connected) {
                 return;
             }
+
             connected = false;
+
             if (const std::shared_ptr<State> owning = signal.lock()) {
                 owning->compact();
             }
@@ -178,7 +187,9 @@ template <typename... Args> class Signal final {
             if (emitting > 0) {
                 return;
             }
+
             std::erase_if(entries, [](const std::shared_ptr<Entry>& entry) { return !entry->connected; });
+
             for (std::shared_ptr<Entry>& entry : std::exchange(added, {})) {
                 if (entry->connected) {
                     insertByPriority(entries, std::move(entry));

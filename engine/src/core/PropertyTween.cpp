@@ -17,9 +17,11 @@ void PropertyTween::addTrack(std::unique_ptr<TweenTrack> track) {
     if (!track) {
         throw std::invalid_argument("A tween track cannot be empty.");
     }
+
     if (hasRendered()) {
         throw std::logic_error("Tracks can only be added before the tween starts.");
     }
+
     tracks.push_back(std::move(track));
 }
 
@@ -31,11 +33,14 @@ void PropertyTween::prepare() {
     if (begun) {
         return;
     }
+
     if (!areTargetsAlive()) {
         kill();
         return;
     }
+
     begun = true;
+
     for (const std::unique_ptr<TweenTrack>& track : tracks) {
         track->begin();
     }
@@ -46,12 +51,14 @@ void PropertyTween::prepare() {
         for (const std::unique_ptr<TweenTrack>& track : tracks) {
             distance = std::max(distance, track->getDistance());
         }
+
         duration = std::max(distance / speed, 1e-4F);
     }
 }
 
 void PropertyTween::renderStart() {
     prepare();
+
     if (isAlive()) {
         renderLoop(0.0F, -1.0F, 0, true);
     }
@@ -62,10 +69,13 @@ void PropertyTween::renderLoop(float loopTime, float, int loops, bool) {
         kill();
         return;
     }
+
     easedProgress = ease.apply(duration > 0.0F ? loopTime / duration : 1.0F);
+
     if (!isAlive()) {
         return;
     }
+
     for (const std::unique_ptr<TweenTrack>& track : tracks) {
         track->render(easedProgress, loops);
     }
@@ -76,6 +86,7 @@ bool PropertyTween::killTarget(const void* target) {
     if (animates) {
         kill();
     }
+
     return animates;
 }
 
@@ -83,6 +94,7 @@ void PropertyTween::yieldTo(const PropertyTween& newer) {
     if (&newer == this) {
         return;
     }
+
     for (const std::unique_ptr<TweenTrack>& incoming : newer.tracks) {
         for (const std::string& field : incoming->getFields()) {
             for (const std::unique_ptr<TweenTrack>& track : tracks) {

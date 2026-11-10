@@ -63,9 +63,11 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     audioSetup.latency = current.config.audioOutput.latency;
     current.audio = std::make_unique<audio::Mixer>(audioSetup, *current.jobs);
     host.setBackgroundAudio(current.backgroundAudio);
+
     if (current.config.audioOutput.limiter) {
         current.audio->addBusEffect("master", std::make_shared<audio::Limiter>(audio::Limiter::Settings{}));
     }
+
     // clang-format off
     current.storage = std::make_unique<storage::UserStorage>(host.getUserDataDirectory(current.config.identifier), [&host] { host.persistUserData(); });
     // clang-format on
@@ -167,6 +169,7 @@ void Engine::activatePlugin(plugins::Plugin& plugin) {
     if (!state->started) {
         return;
     }
+
     plugin.start(*this);
     state->startedPlugins.push_back(&plugin);
     plugin.installLua(*this, getLuaState());
@@ -178,12 +181,14 @@ void Engine::start() {
     if (current.started) {
         return;
     }
+
     current.started = true;
 
     applyWindowOptions();
 
     // A plugin or an application that fails to start shows the error screen instead of taking the process down.
     const PhaseScope scope(*this, Phase::Lifecycle);
+
     try {
         lua::Environment::install(*this, getLuaState());
         for (plugins::Plugin* plugin : current.plugins.getAll()) {
@@ -192,14 +197,18 @@ void Engine::start() {
             plugin->installLua(*this, getLuaState());
             current.events.emit(LifecycleEvent::kPluginStarted, {{"name", std::string(plugin->getName())}});
         }
+
         if (!current.host.hasNativeAccess()) {
             lua::Environment::withholdNativeAccess(getLuaState());
         }
+
         lua::Environment::checkModules(*this);
+
         if (isStartHeld()) {
             current.applicationPending = true;
             return;
         }
+
         startApplication();
     } catch (const std::exception& exception) {
         reportError(exception);
@@ -260,6 +269,7 @@ void Engine::stop() {
     if (!current.started) {
         return;
     }
+
     current.started = false;
     const PhaseScope scope(*this, Phase::Lifecycle);
 
@@ -333,6 +343,7 @@ void Engine::frame(double frameSeconds) {
 
         // Window and gamepad changes, asynchronous results and platform replies arrive before the app updates, and their callbacks may fail like any app code.
         publishDeviceChanges();
+
         if (current.errorScreen) {
             current.errorScreen->update();
         }
@@ -341,6 +352,7 @@ void Engine::frame(double frameSeconds) {
         if (!hidden) {
             current.assets->finalizePending();
         }
+
         // The replies of the platform settle their promises before the event loop runs too, so a coroutine that awaits a native call resumes in the frame its reply reaches.
         {
             const debug::ProfileScope scope(profiler, "scripts");
@@ -371,6 +383,7 @@ void Engine::frame(double frameSeconds) {
                 current.actions.beginStep(step);
                 current.scenes->fixedUpdate(current.clock);
                 current.tweens.fixedUpdate(current.clock);
+
                 for (std::size_t index = 0; index < plugins; ++index) {
                     current.plugins[index].fixedUpdate(*this, step);
                 }
@@ -379,11 +392,14 @@ void Engine::frame(double frameSeconds) {
             const debug::ProfileScope scope(profiler, "update");
             current.timers.update(current.clock);
             current.tweens.update(current.clock);
+
             for (std::size_t index = 0; index < plugins; ++index) {
                 current.plugins[index].update(*this, delta);
             }
+
             current.scenes->update(current.clock);
         }
+
         current.audio->update(static_cast<float>(current.clock.getUnscaledDelta()));
         followBackgroundPlayback();
     } catch (const std::exception& exception) {
@@ -403,6 +419,7 @@ void Engine::frame(double frameSeconds) {
     } catch (const std::exception& exception) {
         reportError(exception);
     }
+
     current.graphics->collectGarbage();
     current.input.endFrame();
     profiler.endFrame();
@@ -439,12 +456,14 @@ void Engine::publishDeviceChanges() {
     } else {
         current.host.getCutouts(current.readCutouts);
     }
+
     if (current.readCutouts != current.cutouts) {
         std::swap(current.readCutouts, current.cutouts);
         Json cutouts = Json::array();
         for (const math::Rect& cutout : current.cutouts) {
             cutouts.push_back(toDesignJson(cutout));
         }
+
         current.events.emit(LifecycleEvent::kWindowCutoutsChanged, {{"cutouts", std::move(cutouts)}});
     }
 
@@ -455,6 +474,7 @@ void Engine::publishDeviceChanges() {
         if (gamepad.connected == known.has_value()) {
             continue;
         }
+
         const std::string name = gamepad.connected ? gamepad.name : *known;
         known = gamepad.connected ? std::optional<std::string>(gamepad.name) : std::nullopt;
         current.events.emit(gamepad.connected ? LifecycleEvent::kGamepadConnected : LifecycleEvent::kGamepadDisconnected, {{"gamepad", index + 1}, {"name", name}});
@@ -476,22 +496,28 @@ void Engine::render(std::size_t plugins) {
         if (!current.screenImage.isValid() || current.screenImage.getWidth() != width || current.screenImage.getHeight() != height) {
             current.screenImage = current.graphics->createRenderTarget(width, height);
         }
+
         current.renderer->beginCapture(current.screenImage, current.config.clearColor);
     }
+
     try {
         const debug::ProfileScope scope(profiler, "render");
+
         if (!current.errorScreen) {
             renderScenes(plugins);
         }
     } catch (const std::exception& exception) {
         reportError(exception);
     }
+
     if (current.errorScreen) {
         current.errorScreen->render();
     }
+
     if (current.statusBarColor) {
         paintStatusBar(*current.statusBarColor);
     }
+
     try {
         for (std::size_t index = 0; index < plugins; ++index) {
             current.plugins[index].renderOverlay(*this);
@@ -499,6 +525,7 @@ void Engine::render(std::size_t plugins) {
     } catch (const std::exception& exception) {
         reportError(exception);
     }
+
     if (capturing) {
         try {
             current.renderer->endCapture();
@@ -509,26 +536,32 @@ void Engine::render(std::size_t plugins) {
             reportError(exception);
         }
     }
+
     for (const std::shared_ptr<platform::Output>& output : current.outputs->getAll()) {
         if (output->getState() == platform::Output::State::Shown) {
             current.renderer->present(output->getTarget(), output->getSurface(), output->getSurfaceSize(), output->getClearColor());
         }
     }
+
     try {
         const debug::ProfileScope scope(profiler, "submit");
         current.renderer->endFrame(current.host.isFrameTransparent());
     } catch (const std::exception& exception) {
         reportError(exception);
     }
+
     try {
         current.graphics->processCapture();
     } catch (const std::exception& exception) {
         reportError(exception);
     }
+
     for (graphics::Device::ReadCallback& done : current.capturingScreen) {
         current.graphics->readTarget(current.screenImage, std::move(done));
     }
+
     current.capturingScreen.clear();
+
     try {
         current.graphics->processReads(*current.jobs);
     } catch (const std::exception& exception) {
@@ -552,6 +585,7 @@ void Engine::paintStatusBar(math::Color color) {
     if (covered <= 0.0F) {
         return;
     }
+
     const math::Rect visible = viewport.getVisibleRect();
     current.renderer->beginScreen();
     current.renderer->drawRect({visible.x, visible.y, visible.width, covered / viewport.getPixelsPerUnit().y}, color);
@@ -563,23 +597,30 @@ void Engine::renderScenes(std::size_t plugins) {
     graphics2d::Renderer& renderer = *current.renderer;
     SceneManager& scenes = *current.scenes;
     scenes.prepareViews();
+
     for (const SceneView& view : scenes.getViews()) {
         if (view.target.isValid()) {
             renderer.beginCapture(view.target, current.config.clearColor);
         }
+
         if (view.effect) {
             scenes.renderTransition(renderer, view);
         }
+
         scenes.render(view);
+
         if (view.current) {
             for (std::size_t index = 0; index < plugins; ++index) {
                 current.plugins[index].render(*this);
             }
         }
+
         scenes.renderUi(view);
+
         for (std::size_t index = 0; index < plugins; ++index) {
             current.plugins[index].renderUi(*this, view);
         }
+
         if (view.target.isValid()) {
             renderer.endCapture();
         }
@@ -609,14 +650,17 @@ void Engine::dispatchEvent(const platform::Event& event) {
         } catch (const std::exception& exception) {
             reportError(exception);
         }
+
         return;
     }
+
     current.input.handleEvent(event, current.viewport);
 
     // The error screen takes the input of the stopped app, so its actions work even when a plugin fails on the same event.
     if (current.errorScreen) {
         current.errorScreen->handleEvent(event);
     }
+
     try {
         switch (event.type) {
         case platform::Event::Type::Resized: {
@@ -668,6 +712,7 @@ void Engine::dispatchEvent(const platform::Event& event) {
                 current.windowPosition = position;
                 current.events.emit(LifecycleEvent::kWindowMoved, {{"x", JsonNumber::fromFloat(position.x)}, {"y", JsonNumber::fromFloat(position.y)}});
             }
+
             current.displays->refreshWindowDisplay();
             break;
         }
@@ -682,6 +727,7 @@ void Engine::dispatchEvent(const platform::Event& event) {
                 current.network = reported;
                 current.events.emit(event.online ? LifecycleEvent::kNetworkOnline : LifecycleEvent::kNetworkOffline);
             }
+
             break;
         }
         case platform::Event::Type::QuitRequested:
@@ -705,6 +751,7 @@ void Engine::dispatchEvent(const platform::Event& event) {
         for (std::size_t index = 0, plugins = current.plugins.size(); index < plugins; ++index) {
             current.plugins[index].event(*this, event);
         }
+
         if (!current.errorScreen) {
             current.scenes->event(event);
         }
@@ -720,11 +767,13 @@ void Engine::publishKeyboard(const math::Rect& value) {
     if (frame == current.keyboardFrame) {
         return;
     }
+
     current.keyboardFrame = frame;
     if (frame.isEmpty()) {
         current.events.emit(LifecycleEvent::kKeyboardHidden);
         return;
     }
+
     const math::Rect area = math::Rect::fromMinMax(current.viewport.toDesign(frame.getMin()), current.viewport.toDesign(frame.getMax()));
     current.events.emit(LifecycleEvent::kKeyboardShown, {{"x", JsonNumber::fromFloat(area.x)}, {"y", JsonNumber::fromFloat(area.y)}, {"width", JsonNumber::fromFloat(area.width)}, {"height", JsonNumber::fromFloat(area.height)}});
 }
@@ -734,6 +783,7 @@ void Engine::setAppState(AppState value) {
     if (current.appState == value) {
         return;
     }
+
     const AppState previous = current.appState;
     const bool wasHalted = isHalted();
     current.appState = value;
@@ -742,21 +792,26 @@ void Engine::setAppState(AppState value) {
     if (value != AppState::Active) {
         releaseHeldInput();
     }
+
     if (value == AppState::Background && !current.backgroundAudio) {
         current.audio->suspend();
     }
+
     if (previous == AppState::Background) {
         current.backgroundSilent = false;
         current.audio->resume();
         current.clock.skipNextDelta();
         current.coveredFrameDrawn = false;
     }
+
     if (wasHalted && !isHalted()) {
         current.clock.skipNextDelta();
     }
+
     applyStateMute();
 
     appStateChanged.emit(value);
+
     switch (value) {
     case AppState::Active:
         current.events.emit(LifecycleEvent::kAppActive);
@@ -772,6 +827,7 @@ void Engine::setAppState(AppState value) {
             current.storage->flush();
             throw;
         }
+
         current.storage->flush();
         break;
     }
@@ -790,6 +846,7 @@ void Engine::refreshForegroundState() {
     if (state->appState == AppState::Background) {
         return;
     }
+
     setAppState(getForegroundState());
 }
 
@@ -808,11 +865,13 @@ void Engine::applyCover() {
     if (covered == current.covered) {
         return;
     }
+
     const bool wasHalted = isHalted();
     current.covered = covered;
     if (wasHalted && !isHalted()) {
         current.clock.skipNextDelta();
     }
+
     applyStateMute();
     refreshForegroundState();
 }
@@ -828,6 +887,7 @@ void Engine::publishLinks() {
         if (platform::LinkRelay::hasLinks()) {
             quit();
         }
+
         return;
     }
 
@@ -842,15 +902,18 @@ void Engine::followBackgroundPlayback() {
     if (current.appState != AppState::Background || !current.backgroundAudio) {
         return;
     }
+
     const bool silent = !current.audio->isPlaying();
     if (silent == current.backgroundSilent) {
         return;
     }
+
     current.backgroundSilent = silent;
     if (silent) {
         current.audio->suspend();
         return;
     }
+
     current.audio->resume();
 }
 
@@ -867,6 +930,7 @@ void Engine::setPaused(bool value) {
     if (current.clock.isPaused() == value) {
         return;
     }
+
     current.clock.setPaused(value);
     current.scenes->notifyPauseChange(value);
     pausedChanged.emit(value);
@@ -905,6 +969,7 @@ void Engine::setLifecycle(const AppConfig::Lifecycle& value) {
     if (wasHalted && !isHalted()) {
         current.clock.skipNextDelta();
     }
+
     applyStateMute();
 }
 
@@ -914,14 +979,18 @@ void Engine::setBackgroundAudio(bool value) {
     if (value && !current.config.audioSession.background) {
         throw std::invalid_argument("The app plays in the background only when \"audio.background\" of \"app.json\" is true, which brings the settings of each platform that it needs.");
     }
+
     if (value == current.backgroundAudio) {
         return;
     }
+
     current.backgroundAudio = value;
     current.host.setBackgroundAudio(value);
+
     if (current.appState != AppState::Background) {
         return;
     }
+
     current.backgroundSilent = value;
     if (!value) {
         current.audio->suspend();
@@ -941,6 +1010,7 @@ void Engine::setDesignSize(math::Vec2 value) {
     if (!(value.x > 0.0F) || !(value.y > 0.0F)) {
         throw std::invalid_argument("The design size needs a positive width and height.");
     }
+
     state->config.designSize = value;
     remapViewport();
 }
@@ -952,6 +1022,7 @@ void Engine::remapViewport() {
     current.reservedInsets = current.host.getReservedInsets();
     const math::Vec2 framebuffer = current.host.getFramebufferSize();
     current.viewport.update(framebuffer, getOrientedDesignSize(framebuffer), current.config.scaling, getSafeAreaInsets(), current.host.getDpiScale());
+
     if (current.viewport.getPixelRect() != previous.getPixelRect() || current.viewport.getVisibleRect() != previous.getVisibleRect()) {
         current.input.followViewport(previous, current.viewport);
     }
@@ -963,6 +1034,7 @@ math::Vec2 Engine::getOrientedDesignSize(math::Vec2 framebuffer) const noexcept 
     if (state->config.orientation != platform::Orientation::Any) {
         return design;
     }
+
     const bool turned = (framebuffer.x > framebuffer.y && design.x < design.y) || (framebuffer.x < framebuffer.y && design.x > design.y);
     return turned ? math::Vec2{design.y, design.x} : design;
 }
@@ -982,6 +1054,7 @@ std::optional<platform::Fold> Engine::getFold() const {
     if (current.foldSimulation) {
         return current.foldSimulation->getFold(current.host.getFramebufferSize(), current.host.getDpiScale());
     }
+
     return current.host.getFold();
 }
 
@@ -1005,6 +1078,7 @@ Json Engine::describeFold(const std::optional<platform::Fold>& fold) const {
     for (const math::Rect& segment : segments) {
         description["segments"].push_back(toDesignJson(segment));
     }
+
     if (fold) {
         Json area = toDesignJson(fold->bounds);
         area["axis"] = platform::Fold::axisName(fold->axis);
@@ -1013,6 +1087,7 @@ Json Engine::describeFold(const std::optional<platform::Fold>& fold) const {
         area["occluding"] = fold->occluding;
         description["fold"] = std::move(area);
     }
+
     return description;
 }
 
@@ -1041,6 +1116,7 @@ std::vector<platform::AppPlugin> Engine::getAppPlugins() const {
     for (platform::AppPlugin& plugin : all) {
         plugin.native = std::ranges::binary_search(loaded, plugin.id);
     }
+
     return all;
 }
 
@@ -1074,11 +1150,13 @@ bool Engine::isBackCaptured() const {
     if (!current.backLeavesApp || (current.errorScreen && current.recoverable)) {
         return true;
     }
+
     for (std::size_t index = 0; index < current.plugins.size(); ++index) {
         if (current.plugins[index].isCapturingBack()) {
             return true;
         }
     }
+
     return false;
 }
 
@@ -1097,11 +1175,13 @@ bool Engine::checkFrameComplete() const {
     if (scenes.empty() && scenes.isTransitioning() && !scenes.isLoadingViewShown()) {
         return false;
     }
+
     for (std::size_t index = 0; index < current.plugins.size(); ++index) {
         if (!current.plugins[index].isFrameComplete()) {
             return false;
         }
     }
+
     return true;
 }
 
@@ -1114,6 +1194,7 @@ Engine::PhaseScope::~PhaseScope() {
     if (current.phase == Phase::Lifecycle && std::uncaught_exceptions() > exceptions) {
         current.lifecycleFailed = true;
     }
+
     current.phase = previous;
 }
 
@@ -1124,6 +1205,7 @@ Engine::Phase Engine::getPhase() const noexcept {
 void Engine::reportError(const std::exception& exception) {
     EngineState& current = *state;
     const bool lifecycle = current.phase == Phase::Lifecycle || std::exchange(current.lifecycleFailed, false);
+
     if (current.errorScreen) {
         return;
     }
@@ -1158,6 +1240,7 @@ bool Engine::clearError() noexcept {
     if (!current.errorScreen || !current.errorScreen->isResumable()) {
         return false;
     }
+
     current.errorScreen.reset();
     current.recovering = false;
     return true;
@@ -1197,10 +1280,12 @@ void Engine::requestLaunch(Launch launch) {
     if (!std::filesystem::exists(launch.package, error)) {
         throw std::invalid_argument("No app package is at \"" + launch.package.string() + "\". Launch a folder or a zip file that holds \"app.json\".");
     }
+
     const std::string_view server = launch.developmentServer;
     if (!server.empty() && !server.starts_with("ws://") && !server.starts_with("wss://")) {
         throw std::invalid_argument("The development server \"" + launch.developmentServer + "\" is not an address that starts with \"ws://\" or \"wss://\".");
     }
+
     state->launchRequest = std::move(launch);
 }
 

@@ -53,6 +53,7 @@ class UnreadablePackage final : public io::Package {
         if (path == unreadable) {
             throw std::runtime_error("The storage of the package is gone.");
         }
+
         return inner->openReader(path);
     }
     [[nodiscard]] std::vector<std::string> list(std::string_view directory) const override {
@@ -449,6 +450,7 @@ TEST_F(ErrorScreenTest, ScrollsContentTallerThanTheScreen) {
         fixture.frames(1);
         EXPECT_NEAR(screen.getScroll(), expected, 0.01F);
     }
+
     screen.handleEvent({.type = platform::Event::Type::KeyDown, .key = input::Key::A});
     screen.handleEvent({.type = platform::Event::Type::KeyUp, .key = input::Key::Down});
     EXPECT_EQ(screen.getScroll(), 0.0F);
@@ -463,6 +465,7 @@ TEST_F(ErrorScreenTest, DrawsAndScrollsInTheHeadlessEngine) {
 
     // A small window makes the content taller than the screen, and every way of scrolling it keeps drawing.
     fixture.host().resize({480.0F, 320.0F});
+
     for (const input::Key key : {input::Key::Down, input::Key::PageDown, input::Key::End, input::Key::Up, input::Key::PageUp, input::Key::Home}) {
         press(fixture, key);
         fixture.frames(1);
@@ -511,6 +514,7 @@ TEST_F(ErrorScreenTest, TellsWhichErrorsAFixCanResume) {
         {"require('async').spawn(function() error('task', 0) end)", false},
         {"error('main', 0)", false},
     };
+
     for (const auto& [source, resumable] : cases) {
         test::EngineFixture fixture({{"source/main.lua", source}});
         fixture.frames(3);

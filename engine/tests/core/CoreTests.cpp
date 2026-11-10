@@ -24,6 +24,7 @@ TEST(FrameClockTest, AccumulatesFixedStepsAndClampsSpikes) {
     while (clock.consumeFixedStep()) {
         ++steps;
     }
+
     EXPECT_EQ(steps, 2);
     EXPECT_NEAR(clock.getInterpolation(), 0.5, 1e-9);
     EXPECT_EQ(clock.getFrameIndex(), 1U);
@@ -55,6 +56,7 @@ TEST(FrameClockTest, RunsABoundedNumberOfFixedStepsAtHugeTimeScales) {
     while (clock.consumeFixedStep()) {
         ++steps;
     }
+
     EXPECT_EQ(steps, core::FrameClock::kMaxFixedSteps);
     EXPECT_LT(clock.getInterpolation(), 1.0);
 }
@@ -88,6 +90,7 @@ TEST(FrameClockTest, PauseStopsFixedStepsAndGatesProcessModes) {
     while (clock.consumeFixedStep()) {
         ++steps;
     }
+
     EXPECT_EQ(steps, 1);
 }
 
@@ -327,6 +330,7 @@ TEST(Utf8Test, ValidatesWellFormedText) {
     EXPECT_TRUE(core::Utf8::isValid(""));
     EXPECT_TRUE(core::Utf8::isValid("aé€😀"));
     EXPECT_TRUE(core::Utf8::isValid("\xEF\xBF\xBD")) << "An encoded replacement character is valid text.";
+
     for (const std::string_view invalid : {"\xFF", "\xE2\x82", "a\x80", "\xC0\x80", "\xED\xA0\x80", "\xF4\x90\x80\x80", "\xEF\xBF"}) {
         EXPECT_FALSE(core::Utf8::isValid(invalid));
     }
@@ -337,11 +341,13 @@ TEST(Utf8Test, EncodesEveryLength) {
     for (const char32_t codePoint : {U'a', U'é', U'€', U'\U0001F600', static_cast<char32_t>(0xD800), static_cast<char32_t>(0x110000)}) {
         core::Utf8::append(text, codePoint);
     }
+
     EXPECT_EQ(core::Utf8::decode(text), (std::u32string{U'a', U'é', U'€', U'\U0001F600', core::Utf8::kReplacementCharacter, core::Utf8::kReplacementCharacter}));
 }
 
 TEST(JsonBytesTest, RefersToBuffersOnlyThroughIndexesOfZeroOrMore) {
     EXPECT_EQ(JsonBytes::findReference(Json{{JsonBytes::kKey, 2}}), 2U);
+
     for (const Json& value : {Json{{JsonBytes::kKey, -1}}, Json{{JsonBytes::kKey, "0"}}, Json{{JsonBytes::kKey, 1}, {"name", "photo"}}, Json::array({0})}) {
         EXPECT_FALSE(JsonBytes::findReference(value).has_value()) << value.dump();
     }
@@ -366,6 +372,7 @@ TEST(JsonNumberTest, ReadsOnlyTheNumbersThatAFloatHolds) {
     EXPECT_EQ(JsonNumber::toFloat(Json(7)), 7.0F);
     EXPECT_EQ(JsonNumber::toFloat(Json{{"speed", 2.5}}, "speed", 1.0F), 2.5F);
     EXPECT_EQ(JsonNumber::toFloat(Json::object(), "speed", 1.0F), 1.0F);
+
     try {
         (void)JsonNumber::toFloat(Json{{"speed", -1e39}}, "speed", 1.0F);
         FAIL() << "A number past the floats must be refused.";

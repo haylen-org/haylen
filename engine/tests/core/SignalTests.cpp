@@ -282,6 +282,7 @@ TEST(ConnectionScopeTest, DropsFinishedConnectionsAsItGrows) {
         scope.add(connection);
         signal.emit();
     }
+
     EXPECT_LT(scope.size(), 100U);
 }
 
@@ -336,6 +337,7 @@ TEST(EventBusTest, ListenersConsumeFilterAndRunOnce) {
     // clang-format off
     bus.on("click", [&](core::EventBus::Event& event) {
         calls.emplace_back("top");
+
         if (event.getData().value("consume", false)) {
             event.consume();
         }

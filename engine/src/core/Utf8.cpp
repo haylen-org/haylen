@@ -37,6 +37,7 @@ char32_t Utf8::decode(std::string_view text, std::size_t& offset) noexcept {
         if (offset >= text.size() || !isContinuation(static_cast<unsigned char>(text[offset]))) {
             return kReplacementCharacter;
         }
+
         codePoint = (codePoint << 6U) | (static_cast<unsigned char>(text[offset++]) & 0x3FU);
     }
 
@@ -44,6 +45,7 @@ char32_t Utf8::decode(std::string_view text, std::size_t& offset) noexcept {
     if (codePoint < minimum || codePoint > 0x10FFFFU || surrogate) {
         return kReplacementCharacter;
     }
+
     return static_cast<char32_t>(codePoint);
 }
 
@@ -70,6 +72,7 @@ bool Utf8::isValid(std::string_view text) noexcept {
             return false;
         }
     }
+
     return true;
 }
 
@@ -102,6 +105,7 @@ std::size_t Utf8::countCodePoints(std::string_view text) noexcept {
         (void)decode(text, offset);
         ++count;
     }
+
     return count;
 }
 
@@ -110,6 +114,7 @@ std::size_t Utf8::getOffset(std::string_view text, std::size_t index) noexcept {
     for (std::size_t count = 0; count < index && offset < text.size(); ++count) {
         (void)decode(text, offset);
     }
+
     return offset;
 }
 

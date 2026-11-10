@@ -24,6 +24,7 @@ float JsonNumber::toFloat(const Json& value) {
     if (std::fabs(number) > static_cast<double>(std::numeric_limits<float>::max())) {
         throw std::invalid_argument(std::format("The number {:.14g} lies outside the numbers from {:.14g} to {:.14g} that the engine holds.", number, static_cast<double>(std::numeric_limits<float>::lowest()), static_cast<double>(std::numeric_limits<float>::max())));
     }
+
     return static_cast<float>(number);
 }
 

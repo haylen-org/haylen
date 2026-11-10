@@ -24,8 +24,10 @@ int EventsLua::pushPayload(lua_State* L, const EventBus::Event& event) {
         for (int index = 0; index < arguments->count; ++index) {
             lua_pushvalue(L, arguments->first + index);
         }
+
         return arguments->count;
     }
+
     if (const StoredArguments* arguments = event.get<StoredArguments>()) {
         luaL_checkstack(L, arguments->count + 2, "too many values to deliver");
         arguments->table->push(L);
@@ -33,16 +35,20 @@ int EventsLua::pushPayload(lua_State* L, const EventBus::Event& event) {
         for (int index = 1; index <= arguments->count; ++index) {
             lua_rawgeti(L, table, index);
         }
+
         lua_remove(L, table);
         return arguments->count;
     }
+
     if (const auto payload = payloads.find(event.getType()); payload != payloads.end()) {
         payload->second(L, event);
         return 1;
     }
+
     if (event.getData().is_null()) {
         return 0;
     }
+
     lua::JsonConverter::push(L, event.getData());
     return 1;
 }
@@ -53,12 +59,14 @@ bool EventsLua::invoke(const lua::Owners::Function& function, lua_State* main, c
     if (!function.push(L)) {
         return false;
     }
+
     const int count = pushPayload(L, event);
     if (arguments != nullptr) {
         lua_call(L, count, 1);
     } else {
         lua::Runtime::protectedCall(L, count, 1);
     }
+
     const bool result = lua_toboolean(L, -1) != 0;
     lua_pop(L, 1);
     return result;
@@ -80,11 +88,13 @@ Connection EventsLua::subscribe(lua_State* L, int name, int function, int option
         if (ownerIndex == 0 && lua_getfield(L, options, "owner") != LUA_TNIL) {
             ownerIndex = lua_gettop(L);
         }
+
         if (lua_getfield(L, options, "filter") != LUA_TNIL) {
             luaL_checktype(L, -1, LUA_TFUNCTION);
             filterIndex = lua_gettop(L);
         }
     }
+
     if (ownerIndex == 0) {
         ownerIndex = lua::Owners::pushDefault(L);
     }
@@ -95,6 +105,7 @@ Connection EventsLua::subscribe(lua_State* L, int name, int function, int option
 
     lua_State* main = lua::Runtime::getMainThread(L);
     auto callback = std::make_shared<lua::Owners::Function>(L, function, ownerIndex);
+
     if (filterIndex != 0) {
         auto filter = std::make_shared<lua::Owners::Function>(L, filterIndex, ownerIndex);
         settings.filter = [filter, main](const EventBus::Event& event) { return invoke(*filter, main, event); };
@@ -111,6 +122,7 @@ Connection EventsLua::subscribe(lua_State* L, int name, int function, int option
     if (ownerIndex != 0) {
         lua::Owners::add(L, ownerIndex, connection);
     }
+
     lua_settop(L, top);
     return connection;
 }
@@ -135,6 +147,7 @@ int EventsLua::postOn(lua_State* L, std::string_view channel, int first) {
         lua_pushvalue(L, first + index);
         lua_rawseti(L, -2, index);
     }
+
     StoredArguments arguments{.table = std::make_shared<lua::Reference>(L, -1), .count = count};
     lua_pop(L, 1);
     lua::Runtime::getEngine(L).getEvents().postWith(std::move(name), std::move(arguments), std::string(channel));
@@ -178,6 +191,7 @@ int EventsLua::topics(lua_State* L) {
         lua_setfield(L, -2, "stale");
         lua_rawseti(L, -2, ++index);
     }
+
     return 1;
 }
 

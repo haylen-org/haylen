@@ -90,10 +90,12 @@ void ClassLua::push(lua_State* L) {
     if (lua_getfield(L, LUA_REGISTRYINDEX, kRegistryKey) == LUA_TFUNCTION) {
         return;
     }
+
     lua_pop(L, 1);
     if (luaL_loadbufferx(L, kSource.data(), kSource.size(), "=haylen.class", "t") != LUA_OK) {
         lua_error(L);
     }
+
     lua_call(L, 0, 1);
     lua_pushvalue(L, -1);
     lua_setfield(L, LUA_REGISTRYINDEX, kRegistryKey);

@@ -65,6 +65,7 @@ class Log final {
         if (messageLevel < getLevel()) {
             return;
         }
+
         write(messageLevel, std::format(format, std::forward<Args>(args)...));
     }
 

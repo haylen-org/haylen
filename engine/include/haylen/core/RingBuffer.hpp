@@ -55,11 +55,13 @@ template <typename T> class RingBuffer final {
     bool push(T value) {
         const bool overwrote = full();
         slots[(head + count) % slots.size()] = std::move(value);
+
         if (overwrote) {
             head = (head + 1) % slots.size();
         } else {
             ++count;
         }
+
         return overwrote;
     }
 
@@ -68,6 +70,7 @@ template <typename T> class RingBuffer final {
         if (empty()) {
             throw std::out_of_range("The ring buffer is empty.");
         }
+
         T value = std::move(*slots[head]);
         slots[head].reset();
         head = (head + 1) % slots.size();
@@ -87,6 +90,7 @@ template <typename T> class RingBuffer final {
         if (index >= count) {
             throw std::out_of_range("The ring buffer index is out of range.");
         }
+
         return (*this)[index];
     }
 
@@ -101,6 +105,7 @@ template <typename T> class RingBuffer final {
         for (std::optional<T>& slot : slots) {
             slot.reset();
         }
+
         head = 0;
         count = 0;
     }

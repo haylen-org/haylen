@@ -26,6 +26,7 @@ bool EventBus::State::deliver(Listeners* listeners, Event event) {
     if (listeners != nullptr) {
         listeners->emit(event);
     }
+
     return event.isConsumed();
 }
 
@@ -47,9 +48,11 @@ Connection EventBus::subscribe(std::unique_ptr<Listeners>& listeners, Handler ha
         if (event.isConsumed() || (!channel.empty() && channel != event.getChannel()) || (filter && !filter(event))) {
             return;
         }
+
         if (once) {
             connection->disconnect();
         }
+
         handler(event);
     }, {.priority = options.priority, .owner = std::move(options.owner)});
     // clang-format on
@@ -67,6 +70,7 @@ Connection EventBus::on(std::string_view name, Handler handler, Options options)
     if (found == state->named.end()) {
         found = state->named.emplace(std::string(name), nullptr).first;
     }
+
     return subscribe(found->second, std::move(handler), std::move(options));
 }
 
@@ -90,6 +94,7 @@ void EventBus::clear() noexcept {
             listeners->clear();
         }
     }
+
     for (const auto& [type, listeners] : state->typed) {
         if (listeners) {
             listeners->clear();
@@ -103,6 +108,7 @@ std::vector<EventBus::Topic> EventBus::getTopics() const {
     for (const auto& [name, listeners] : state->named) {
         topics.push_back({.name = name, .listeners = listeners->size(), .emissions = listeners->getEmissionCount(), .stale = listeners->getStaleCount()});
     }
+
     return topics;
 }
 

@@ -203,16 +203,21 @@ TEST(AppConfigTest, ReadsEveryField) {
 
     const core::AppConfig roundTrip = core::AppConfig::fromJson(config.toJson());
     EXPECT_EQ(roundTrip.toJson(), config.toJson());
+
     for (const char* scaling : {"fit", "fill", "stretch", "expand", "pixelPerfect"}) {
         EXPECT_EQ(core::AppConfig::fromJson(core::Json{{"design", {{"scaling", scaling}}}}).toJson().at("design").at("scaling"), scaling);
     }
+
     for (const char* orientation : {"landscape", "portrait", "any"}) {
         EXPECT_EQ(core::AppConfig::fromJson(core::Json{{"orientation", orientation}}).toJson().at("orientation"), orientation);
     }
+
     EXPECT_EQ(core::AppConfig::fromJson(core::Json::object()).window.title, "Haylen App");
+
     for (const char* reload : {"module", "restart"}) {
         EXPECT_EQ(core::AppConfig::fromJson(core::Json{{"debug", {{"reload", reload}}}}).toJson().at("debug").at("reload"), reload);
     }
+
     try {
         (void)core::AppConfig::fromJson(core::Json{{"debug", {{"reload", "always"}}}});
         ADD_FAILURE() << "An unknown reload mode must be refused.";
@@ -242,9 +247,11 @@ TEST(AppConfigTest, ThePublisherFollowsTheNameUntilTheAppGivesItsOwn) {
 TEST(AppConfigTest, TheBuildNumberIsAWholeNumberFromOne) {
     EXPECT_EQ(core::AppConfig::fromJson(core::Json::object()).build, 1U);
     EXPECT_EQ(core::AppConfig::fromJson(core::Json{{"build", core::AppConfig::kMaxBuild}}).toJson().at("build"), core::AppConfig::kMaxBuild);
+
     for (const char* document : {R"({"build": 0})", R"({"build": -3})", R"({"build": 2.5})", R"({"build": "7"})", R"({"build": 2100000001})", R"({"build": 18446744073709551615})"}) {
         EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(document)), std::invalid_argument) << document;
     }
+
     try {
         (void)core::AppConfig::fromJson(core::Json{{"build", "7"}});
         FAIL() << "A build number in a string must be refused.";
@@ -257,6 +264,7 @@ TEST(AppConfigTest, RejectsInvalidValues) {
     for (const char* document : {R"([])", R"({"name": 3})", R"({"company": 3})", R"({"description": false})", R"({"window": {"width": 0}})", R"({"design": {"scaling": "zoom"}})", R"({"design": {"height": -1}})", R"({"orientation": "sideways"})", R"({"fixedRate": 0})", R"({"clearColor": "blue"})", R"({"title": "typo"})", R"({"window": {"fullScreen": true}})", R"({"design": {"widht": 10}})", R"({"splash": {"background": "blue"}})", R"({"splash": {"image": "logo.png"}})", R"({"splash": {"darkBackground": ""}})", R"({"splash": {"duration": -1}})", R"({"splash": {"fadeOut": "slow"}})"}) {
         EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(document)), std::invalid_argument) << document;
     }
+
     try {
         (void)core::AppConfig::fromJson(core::Json::parse(R"({"autoload": ["state.player", ""]})"));
         FAIL() << "An autoload needs the name of its module.";
@@ -274,6 +282,7 @@ TEST(AppConfigTest, RefusesNumbersThatTheirFieldsCannotHold) {
             EXPECT_TRUE(std::string_view(error.what()).ends_with("in \"app.json\" must be a whole number from -2147483648 to 2147483647.")) << error.what();
         }
     }
+
     try {
         (void)core::AppConfig::fromJson(core::Json::parse(R"({"splash": {"duration": 1e300}})"));
         FAIL() << "A number beyond the range of a float must be refused.";
@@ -304,6 +313,7 @@ TEST(AppConfigTest, ReadsTheGraphicsApisTheWindowTriesFirst) {
         } catch (const std::invalid_argument& failure) {
             return std::string(failure.what());
         }
+
         return std::string();
     };
     // clang-format on
@@ -333,6 +343,7 @@ TEST(AppConfigTest, ReadsHowTheContentReachesTheDevice) {
 
     // A content server is an `https` address that ends with a slash, or an `http` address of this machine while a release is tested.
     EXPECT_NO_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"content": {"updates": {"baseUrl": "http://127.0.0.1:8080/tree/"}}})")));
+
     for (const char* document : {R"({"content": {"updates": {"baseUrl": "http://cdn.example.com/"}}})", R"({"content": {"updates": {"baseUrl": "https://cdn.example.com"}}})", R"({"content": {"updates": {}}})", R"({"content": {"updates": {"baseUrl": "https://a.com/", "channel": "Stable"}}})", R"({"content": {"delivery": [{"match": "../x", "mode": "onDemand"}]}})", R"({"content": {"delivery": [{"match": "x/**", "mode": "later"}]}})", R"({"content": {"delivery": {"match": "x"}}})", R"({"content": {"delivery": [{"match": "x/**"}]}})", R"({"content": {"delivery": [{"match": "x/**", "mode": "onDemand", "pack": "x"}]}})", R"({"content": {"delivery": [{"match": "x/**", "pack": "Expansion"}]}})", R"({"content": {"cdn": true}})"}) {
         EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(document)), std::invalid_argument) << document;
     }
@@ -357,6 +368,7 @@ TEST(AppConfigTest, DeliversThePreloadGroupsThatRulesName) {
         } catch (const std::invalid_argument& error) {
             return std::string(error.what());
         }
+
         return std::string();
     };
     // clang-format on
@@ -385,6 +397,7 @@ TEST(AppConfigTest, ReadsThePluginsOfTheApp) {
     for (const char* document : {R"({"plugins": ["ads"]})", R"({"plugins": {"ads": true}})", R"({"plugins": {"Ads": {}}})", R"({"plugins": {"a--ds": {}}})", R"({"plugins": {"ads-": {}}})", R"({"plugins": {"2d-kit": {}}})", R"({"plugins": {"../ads": {}}})", R"({"plugins": {"": {}}})"}) {
         EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(document)), std::invalid_argument) << document;
     }
+
     // clang-format off
     const auto failure = [](const char* document) {
         try {
@@ -392,6 +405,7 @@ TEST(AppConfigTest, ReadsThePluginsOfTheApp) {
         } catch (const std::invalid_argument& error) {
             return std::string(error.what());
         }
+
         return std::string();
     };
     // clang-format on
@@ -411,6 +425,7 @@ TEST(AppConfigTest, ReadsThePluginsOfTheApp) {
     } catch (const std::invalid_argument& error) {
         EXPECT_STREQ(error.what(), "The plugin \"ads\" in \"app.json\" has no \"plugins/ads/plugin.json\" in the package.");
     }
+
     package.setFile("plugins/ads/plugin.json", test::TestFiles::bytes(R"({"id": "ads"})"));
     EXPECT_EQ(core::AppConfig::fromPackage(package).plugins.size(), 1U);
 
@@ -421,6 +436,7 @@ TEST(AppConfigTest, ReadsThePluginsOfTheApp) {
     } catch (const std::invalid_argument& error) {
         EXPECT_STREQ(error.what(), "The plugin \"camera\" in \"app.json\" comes from a \"path\" or a \"git\" repository, so the package has no \"plugins/camera/plugin.json\". Run the app with \"haylen run\", which places every plugin in the package wherever it comes from.");
     }
+
     package.setFile("plugins/camera/plugin.json", test::TestFiles::bytes(R"({"id": "camera"})"));
     EXPECT_EQ(core::AppConfig::fromPackage(package).plugins.size(), 2U);
 }
@@ -436,6 +452,7 @@ TEST(PluginRegistryTest, FindsPluginsByTypeAndName) {
 
     registry.clear();
     EXPECT_EQ(registry.find<CountingPlugin>(), nullptr);
+
     try {
         (void)registry.get<CountingPlugin>();
         FAIL() << "The registry has no plugin left.";
@@ -519,6 +536,7 @@ TEST(EngineTest, TracksAppStatesFromPlatformEvents) {
     const core::ScopedConnection states = engine.appStateChanged.connect([&](core::Engine::AppState state) { log.push_back("state " + std::to_string(static_cast<int>(state))); });
     const core::ScopedConnection resized = engine.resized.connect([&] { log.emplace_back("resized"); });
     const core::ScopedConnection quit = engine.quitRequested.connect([&] { log.emplace_back("quit"); });
+
     for (const std::string_view name : {core::LifecycleEvent::kAppActive, core::LifecycleEvent::kAppInactive, core::LifecycleEvent::kAppBackground, core::LifecycleEvent::kWindowResized, core::LifecycleEvent::kWindowFocusLost, core::LifecycleEvent::kWindowFocusGained, core::LifecycleEvent::kAppQuitRequested}) {
         engine.getEvents().on(name, [&log, name](core::EventBus::Event& event) { log.push_back(std::string(name) + (event.getData().is_null() ? "" : " " + event.getData().dump())); });
     }
@@ -526,9 +544,11 @@ TEST(EngineTest, TracksAppStatesFromPlatformEvents) {
     engine.getInput().handleEvent({.type = platform::Event::Type::KeyDown, .key = input::Key::A}, engine.getViewport());
     engine.getVirtualInput().setButton("jump", true);
     const int persisted = fixture.host().getPersistCount();
+
     for (const platform::Event::Type type : {platform::Event::Type::FocusLost, platform::Event::Type::FocusGained, platform::Event::Type::Suspended, platform::Event::Type::FocusGained, platform::Event::Type::Resumed, platform::Event::Type::Resized, platform::Event::Type::QuitRequested}) {
         engine.handleEvent({.type = type});
     }
+
     EXPECT_EQ(log, (std::vector<std::string>{"windowFocusLost", "state 1", "appInactive", "windowFocusGained", "state 0", "appActive", "state 2", "appBackground", "windowFocusGained", "state 0", "appActive", "resized", R"(windowResized {"height":1080.0,"width":1920.0})", "quit", "appQuitRequested"}));
     EXPECT_FALSE(engine.getInput().isKeyDown(input::Key::A));
     EXPECT_FALSE(engine.getVirtualInput().isButtonDown("jump"));
@@ -546,6 +566,7 @@ TEST(EngineTest, TreatsInterruptionsAsInactiveTime) {
     for (const platform::Event::Type type : {platform::Event::Type::InterruptionBegan, platform::Event::Type::FocusLost, platform::Event::Type::FocusGained, platform::Event::Type::Suspended, platform::Event::Type::Resumed}) {
         engine.handleEvent({.type = type});
     }
+
     EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Inactive);
     engine.handleEvent({.type = platform::Event::Type::InterruptionEnded});
     EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Active);
@@ -568,6 +589,7 @@ TEST(EngineTest, ComesBackInactiveWhileTheWindowLacksTheFocus) {
     for (const platform::Event::Type type : {platform::Event::Type::FocusLost, platform::Event::Type::Suspended, platform::Event::Type::Resumed}) {
         engine.handleEvent({.type = type});
     }
+
     EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Inactive);
     engine.handleEvent({.type = platform::Event::Type::FocusGained});
     EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Active);
@@ -591,9 +613,11 @@ TEST(EngineTest, PublishesTheKeyboardAndTheNetwork) {
 
     // The network is unknown until the platform reports it, and the first report publishes the state the app starts in.
     EXPECT_EQ(engine.getNetworkState(), core::Engine::NetworkState::Unknown);
+
     for (const bool online : {true, true, false, false, true}) {
         engine.handleEvent({.type = platform::Event::Type::NetworkChanged, .online = online});
     }
+
     EXPECT_EQ(engine.getNetworkState(), core::Engine::NetworkState::Online);
     EXPECT_EQ(log, (std::vector<std::string>{R"(keyboardShown {"height":240.0,"width":960.0,"x":0.0,"y":300.0})", "keyboardHidden", "networkOnline", "networkOffline", "networkOnline"}));
 }
@@ -605,6 +629,7 @@ TEST(EngineTest, PublishesWindowAndGamepadChanges) {
     for (const std::string_view name : {core::LifecycleEvent::kWindowFullscreenChanged, core::LifecycleEvent::kWindowOrientationChanged, core::LifecycleEvent::kWindowSafeAreaChanged, core::LifecycleEvent::kGamepadConnected, core::LifecycleEvent::kGamepadDisconnected}) {
         engine.getEvents().on(name, [&log, name](core::EventBus::Event& event) { log.push_back(std::string(name) + " " + event.getData().dump()); });
     }
+
     fixture.host().setGamepad(1, {.connected = true, .name = "Pad"});
     fixture.frames(2);
     EXPECT_EQ(log, (std::vector<std::string>{R"(gamepadConnected {"gamepad":2,"name":"Pad"})"}));

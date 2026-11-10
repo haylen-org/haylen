@@ -19,6 +19,7 @@ std::size_t TweenManager::getGroup(std::string_view tag) {
     if (found != groups.end()) {
         return static_cast<std::size_t>(found - groups.begin());
     }
+
     groups.push_back({.tag = std::string(tag)});
     return groups.size() - 1;
 }
@@ -27,9 +28,11 @@ void TweenManager::add(std::shared_ptr<Tween> tween) {
     if (!tween) {
         throw std::invalid_argument("The tween manager cannot play an empty tween.");
     }
+
     if (!tween->isAlive() || tween->manager != nullptr || tween->isInTimeline()) {
         throw std::logic_error("A tween plays in one manager or timeline at a time, and a killed tween cannot play again.");
     }
+
     tween->manager = this;
     tween->group = getGroup(tween->getTag());
 
@@ -39,9 +42,11 @@ void TweenManager::add(std::shared_ptr<Tween> tween) {
 
 void TweenManager::detach(Tween& tween) {
     tween.manager = nullptr;
+
     if (updating) {
         return;
     }
+
     for (auto* list : {&tweens, &pending}) {
         std::erase_if(*list, [&tween](const std::shared_ptr<Tween>& candidate) { return candidate.get() == &tween; });
     }
@@ -49,6 +54,7 @@ void TweenManager::detach(Tween& tween) {
 
 void TweenManager::advanceAll(const FrameClock& clock, bool fixed) {
     updating = true;
+
     try {
         const std::size_t count = tweens.size();
         for (std::size_t index = 0; index < count; ++index) {
@@ -56,6 +62,7 @@ void TweenManager::advanceAll(const FrameClock& clock, bool fixed) {
             if (tween.manager != this || !tween.isPlaying() || tween.isFixedStep() != fixed || !clock.canProcess(tween.resolveProcessMode())) {
                 continue;
             }
+
             const double delta = fixed ? clock.getFixedStep() : (tween.isUnscaled() ? clock.getUnscaledDelta() : clock.getDelta());
             float step = static_cast<float>(delta) * groups[tween.group].timeScale;
 
@@ -64,15 +71,18 @@ void TweenManager::advanceAll(const FrameClock& clock, bool fixed) {
                 tween.complete();
                 continue;
             }
+
             if (reducedMotion && tween.getMotionReduction() == MotionReduction::Shorten) {
                 step *= kShortenedSpeed;
             }
+
             tween.advance(step);
         }
     } catch (...) {
         finishUpdate();
         throw;
     }
+
     finishUpdate();
 }
 
@@ -118,6 +128,7 @@ std::vector<std::shared_ptr<Tween>> TweenManager::collectTagged(std::string_view
     for (const auto* list : {&tweens, &pending}) {
         std::copy_if(list->begin(), list->end(), std::back_inserter(tagged), [tag, this](const std::shared_ptr<Tween>& tween) { return tween->isAlive() && tween->manager == this && tween->getTag() == tag; });
     }
+
     return tagged;
 }
 
@@ -147,6 +158,7 @@ void TweenManager::setTimeScale(std::string_view tag, float value) {
     if (!(value >= 0.0F && std::isfinite(value))) {
         throw std::invalid_argument("A tween time scale must be a finite number of 0 or more.");
     }
+
     groups[getGroup(tag)].timeScale = value;
 }
 
@@ -160,6 +172,7 @@ void TweenManager::killAll() {
     for (const auto* list : {&tweens, &pending}) {
         std::copy_if(list->begin(), list->end(), std::back_inserter(all), [this](const std::shared_ptr<Tween>& tween) { return tween->isAlive() && tween->manager == this; });
     }
+
     for (const std::shared_ptr<Tween>& tween : all) {
         tween->kill();
     }
@@ -173,7 +186,9 @@ void TweenManager::clear() noexcept {
             }
         }
     }
+
     pending.clear();
+
     if (!updating) {
         tweens.clear();
     }
@@ -184,6 +199,7 @@ std::size_t TweenManager::size() const noexcept {
     for (const auto* list : {&tweens, &pending}) {
         count += static_cast<std::size_t>(std::count_if(list->begin(), list->end(), [this](const std::shared_ptr<Tween>& tween) { return tween->isAlive() && tween->manager == this; }));
     }
+
     return count;
 }
 

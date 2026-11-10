@@ -18,6 +18,7 @@ std::string ScriptedTrack::join(const Path& path) {
     for (const std::string& part : path) {
         name += name.empty() ? part : "." + part;
     }
+
     return name;
 }
 
@@ -32,13 +33,17 @@ std::vector<ScriptedTrack::Path> ScriptedTrack::split(const std::vector<std::str
             if (path.back().empty()) {
                 throw std::invalid_argument("The tween field \"" + name + "\" has an empty part.");
             }
+
             if (dot == std::string::npos) {
                 break;
             }
+
             start = dot + 1;
         }
+
         paths.push_back(std::move(path));
     }
+
     return paths;
 }
 
@@ -66,15 +71,19 @@ TweenValue ScriptedTrack::toValue(lua_State* L, int index, const Path& path) {
     if (lua_type(L, index) == LUA_TNUMBER) {
         return lua_tonumber(L, index);
     }
+
     if (const math::Vec2* vector = lua::Userdata::test<math::Vec2>(L, index)) {
         return *vector;
     }
+
     if (const math::Color* color = lua::Userdata::test<math::Color>(L, index)) {
         return *color;
     }
+
     if (lua_type(L, index) == LUA_TSTRING) {
         return lua::Stack::read<std::string>(L, index);
     }
+
     luaL_error(L, "Cannot tween the field \"%s\" because it is not a number, a \"Vec2\", a \"Color\" or a text.", join(path).c_str());
     return {};
 }
@@ -95,9 +104,11 @@ TweenValue ScriptedTrack::read(lua_State* L, int object, const std::vector<Path>
         if (lua_type(L, -1) != LUA_TNUMBER) {
             luaL_error(L, "Cannot tween the field \"%s\" as part of a \"Vec2\" because it is not a number.", join(paths[axis]).c_str());
         }
+
         (axis == 0 ? components.x : components.y) = lua::Converter<float>::fromNumber(L, lua_tonumber(L, -1));
         lua_pop(L, 1);
     }
+
     return components;
 }
 
@@ -132,6 +143,7 @@ void ScriptedTrack::write(lua_State* L, int object, const Path& path, const Twee
         lua_getfield(L, -1, path[part].c_str());
         lua_remove(L, -2);
     }
+
     checkIndexable(L, -1, path);
     const int holder = lua_gettop(L);
     const std::string& container = path[path.size() - 2];
@@ -141,9 +153,11 @@ void ScriptedTrack::write(lua_State* L, int object, const Path& path, const Twee
     const auto amount = static_cast<float>(value.getKind() == TweenValue::Kind::Number ? value.getNumber() : 0.0);
     if (const math::Vec2* vector = lua::Userdata::test<math::Vec2>(L, -1)) {
         math::Vec2 copy = *vector;
+
         if (component != "x" && component != "y") {
             luaL_error(L, "Cannot tween the field \"%s\" because a \"Vec2\" has only \"x\" and \"y\".", join(path).c_str());
         }
+
         (component == "x" ? copy.x : copy.y) = amount;
         lua_pop(L, 1);
         lua::Stack::push(L, copy);
@@ -154,6 +168,7 @@ void ScriptedTrack::write(lua_State* L, int object, const Path& path, const Twee
         if (channel == nullptr) {
             luaL_error(L, "Cannot tween the field \"%s\" because a \"Color\" has only \"r\", \"g\", \"b\" and \"a\".", join(path).c_str());
         }
+
         *channel = amount;
         lua_pop(L, 1);
         lua::Stack::push(L, copy);
@@ -164,6 +179,7 @@ void ScriptedTrack::write(lua_State* L, int object, const Path& path, const Twee
         lua_setfield(L, -2, component.c_str());
         lua_pop(L, 1);
     }
+
     lua_settop(L, holder - 1);
 }
 
@@ -173,10 +189,12 @@ void ScriptedTrack::begin() {
         if (!target.push(L)) {
             return;
         }
+
         const int index = lua_gettop(L);
         for (Field& field : fields) {
             field.property.begin(read(L, index, field.paths));
         }
+
         lua_pop(L, 1);
     });
     // clang-format on
@@ -188,20 +206,24 @@ void ScriptedTrack::render(float progress, int loops) {
         if (!target.push(L)) {
             return;
         }
+
         const int index = lua_gettop(L);
         for (const Field& field : fields) {
             if (field.released) {
                 continue;
             }
+
             const TweenValue value = field.property.evaluate(progress, loops);
             if (field.paths.size() == 1) {
                 write(L, index, field.paths.front(), value);
                 continue;
             }
+
             const math::Vec2 components = value.getVector();
             write(L, index, field.paths[0], static_cast<double>(components.x));
             write(L, index, field.paths[1], static_cast<double>(components.y));
         }
+
         lua_pop(L, 1);
     });
     // clang-format on
@@ -218,6 +240,7 @@ float ScriptedTrack::getDistance() const {
             distance = std::max(distance, field.property.getDistance());
         }
     }
+
     return distance;
 }
 
@@ -228,6 +251,7 @@ std::vector<std::string> ScriptedTrack::getFields() const {
             names.insert(names.end(), field.names.begin(), field.names.end());
         }
     }
+
     return names;
 }
 
@@ -237,8 +261,10 @@ bool ScriptedTrack::release(std::string_view name) {
         if (std::find(field.names.begin(), field.names.end(), name) != field.names.end()) {
             field.released = true;
         }
+
         remaining = remaining || !field.released;
     }
+
     return remaining;
 }
 

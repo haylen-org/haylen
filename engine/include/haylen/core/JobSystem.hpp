@@ -79,6 +79,7 @@ class JobSystem final {
             } catch (...) {
                 result->error = "Background job failed with an unknown exception.";
             }
+
             postToFrame([completion = std::move(completion), result]() mutable { completion(std::move(*result)); });
         };
         // clang-format on

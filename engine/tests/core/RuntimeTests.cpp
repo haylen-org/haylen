@@ -139,13 +139,16 @@ TEST(JobSystemTest, ParallelForNeverWaitsBehindBusyWorkers) {
         // clang-format off
         jobs.post([&] {
             ++started;
+
             while (!open) {
                 std::this_thread::yield();
             }
+
             ++left;
         });
         // clang-format on
     }
+
     ASSERT_TRUE(varn.pumpUntil([&] { return started.load() == jobs.getWorkerCount(); }));
 
     std::vector<int> values(1000, 0);
@@ -164,6 +167,7 @@ TEST(JobSystemTest, ParallelForNeverWaitsBehindBusyWorkers) {
     while (!finished && std::chrono::steady_clock::now() < deadline) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
+
     const bool finishedWhileBusy = finished;
     open = true;
     caller.join();
@@ -184,13 +188,16 @@ TEST(JobSystemTest, DiscardsQueuedWorkWithoutRunningIt) {
         // clang-format off
         jobs.post([&] {
             ++started;
+
             while (!open) {
                 std::this_thread::yield();
             }
+
             ++left;
         });
         // clang-format on
     }
+
     ASSERT_TRUE(varn.pumpUntil([&] { return started.load() == jobs.getWorkerCount(); }));
 
     auto held = std::make_shared<int>(0);

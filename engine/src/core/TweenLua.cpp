@@ -45,6 +45,7 @@ template <> struct EnumNames<core::Tween::LoopMode> {
                 return mode;
             }
         }
+
         return std::nullopt;
     }
 
@@ -62,6 +63,7 @@ template <> struct EnumNames<core::Timeline::StaggerOrigin> {
                 return origin;
             }
         }
+
         return std::nullopt;
     }
 
@@ -78,9 +80,11 @@ std::shared_ptr<Tween> TweenLua::check(lua_State* L, int index) {
     if (auto* tween = static_cast<std::shared_ptr<Tween>*>(luaL_testudata(L, index, lua::Type<Tween>::name)); tween != nullptr && *tween) {
         return *tween;
     }
+
     if (auto* timeline = static_cast<std::shared_ptr<Timeline>*>(luaL_testudata(L, index, lua::Type<Timeline>::name)); timeline != nullptr && *timeline) {
         return *timeline;
     }
+
     luaL_typeerror(L, index, "haylen.Tween");
     return nullptr;
 }
@@ -94,6 +98,7 @@ void TweenLua::pushHandle(lua_State* L, const std::shared_ptr<Tween>& tween) {
         lua::Userdata::emplace<Timeline>(L, std::move(timeline));
         return;
     }
+
     lua::Userdata::emplace<Tween>(L, tween);
 }
 
@@ -101,10 +106,12 @@ int TweenLua::readOwner(lua_State* L, int options) {
     if (options == 0) {
         return lua::Owners::pushDefault(L);
     }
+
     if (lua_getfield(L, options, "owner") == LUA_TNIL) {
         lua_pop(L, 1);
         return lua::Owners::pushDefault(L);
     }
+
     lua::Owners::checkOwner(L, -1);
     return lua_gettop(L);
 }
@@ -124,9 +131,11 @@ void TweenLua::readCallbacks(lua_State* L, int options, int owner, Tween::Callba
             lua_pop(L, 1);
             return nullptr;
         }
+
         if (!lua_isfunction(L, -1)) {
             luaL_error(L, "The tween option \"%s\" must be a function.", name);
         }
+
         auto function = std::make_shared<lua::Owners::Function>(L, -1, owner);
         lua_pop(L, 1);
         return function;
@@ -135,18 +144,23 @@ void TweenLua::readCallbacks(lua_State* L, int options, int owner, Tween::Callba
     if (auto function = read("onStart")) {
         callbacks.start = [function, main] { call(*function, main); };
     }
+
     if (auto function = read("onUpdate")) {
         callbacks.update = [function, main](float progress) { call(*function, main, progress); };
     }
+
     if (auto function = read("onLoop")) {
         callbacks.loop = [function, main](int loop) { call(*function, main, loop); };
     }
+
     if (auto function = read("onStep")) {
         callbacks.step = [function, main](int step) { call(*function, main, step + 1); };
     }
+
     if (auto function = read("onComplete")) {
         callbacks.complete = [function, main] { call(*function, main); };
     }
+
     if (auto function = read("onKill")) {
         callbacks.kill = [function, main] { call(*function, main); };
     }
@@ -156,6 +170,7 @@ void TweenLua::configure(lua_State* L, int options, int owner, Tween& tween) {
     if (options == 0) {
         return;
     }
+
     float delay = tween.getDelay();
     int repeatCount = tween.getRepeatCount();
     Tween::LoopMode loop = tween.getLoopMode();
@@ -196,20 +211,26 @@ void TweenLua::configure(lua_State* L, int options, int owner, Tween& tween) {
 // Hands the tween to the manager, ties it to its owner and pushes its handle. A tween that inherits its process mode follows the one of its owner.
 void TweenLua::start(lua_State* L, const std::shared_ptr<Tween>& tween, int options, int owner) {
     Engine& engine = lua::Runtime::getEngine(L);
+
     if (tween->getProcessMode() == ProcessMode::Inherit && owner != 0) {
         tween->setParentMode(lua::ScriptedScene::followOwnerMode(L, owner));
     }
+
     engine.getTweens().add(tween);
+
     if (owner != 0) {
         lua::Owners::add(L, owner, tween->getConnection());
     }
+
     bool paused = false;
     if (options != 0) {
         lua::Table::readField(L, options, "paused", paused);
     }
+
     if (paused) {
         tween->pause();
     }
+
     pushHandle(L, tween);
 }
 
@@ -218,11 +239,14 @@ std::shared_ptr<PropertyTween> TweenLua::createTween(lua_State* L, float length,
     if (options != 0) {
         lua::Table::readField(L, options, "speedBased", speedBased);
     }
+
     auto tween = std::make_shared<PropertyTween>(length, speedBased);
     configure(L, options, owner, *tween);
+
     if (options != 0) {
         tween->setEase(readEase(L, options, owner));
     }
+
     return tween;
 }
 
@@ -234,6 +258,7 @@ math::EasingCurve TweenLua::readEase(lua_State* L, int options, int owner) {
     } else if (!lua_isnil(L, -1)) {
         lua::Table::readValue(L, "ease", ease);
     }
+
     lua_pop(L, 1);
     return ease;
 }
@@ -243,11 +268,14 @@ bool TweenLua::isListed(lua_State* L, int options, const char* list, std::string
         if (options != 0) {
             lua_pop(L, 1);
         }
+
         return false;
     }
+
     if (!lua_istable(L, -1)) {
         luaL_error(L, "The tween option \"%s\" must be a list of field names.", list);
     }
+
     bool found = false;
     const auto length = static_cast<lua_Integer>(lua_rawlen(L, -1));
     for (lua_Integer index = 1; index <= length && !found; ++index) {
@@ -255,6 +283,7 @@ bool TweenLua::isListed(lua_State* L, int options, const char* list, std::string
         found = lua_type(L, -1) == LUA_TSTRING && name == lua_tostring(L, -1);
         lua_pop(L, 1);
     }
+
     lua_pop(L, 1);
     return found;
 }
@@ -263,17 +292,21 @@ TweenValue::Interpolation TweenLua::getInterpolation(lua_State* L, int options, 
     if (kind == TweenValue::Kind::Number && isListed(L, options, "angles", name)) {
         return TweenValue::Interpolation::Angle;
     }
+
     if (kind == TweenValue::Kind::Number && isListed(L, options, "integers", name)) {
         return TweenValue::Interpolation::Integer;
     }
+
     if (kind == TweenValue::Kind::Color && options != 0) {
         std::string space = "rgb";
         lua::Table::readField(L, options, "colorSpace", space);
         if (space != "rgb" && space != "hsv") {
             luaL_error(L, "The tween option \"colorSpace\" must be \"rgb\" or \"hsv\".");
         }
+
         return space == "hsv" ? TweenValue::Interpolation::Hsv : TweenValue::Interpolation::Linear;
     }
+
     return TweenValue::Interpolation::Linear;
 }
 
@@ -281,6 +314,7 @@ std::optional<std::vector<TweenLua::NativeField>> TweenLua::findNativeFields(lua
     if (lua_type(L, target) != LUA_TUSERDATA) {
         return std::nullopt;
     }
+
     std::vector<NativeField> fields;
     for (const std::string& name : names) {
         const std::size_t dot = name.find('.');
@@ -298,14 +332,18 @@ std::optional<std::vector<TweenLua::NativeField>> TweenLua::findNativeFields(lua
             if (tail.size() != 1 || components.find(tail.front()) == std::string_view::npos) {
                 return std::nullopt;
             }
+
             field.component = static_cast<int>(components.find(tail.front()));
         }
+
         const bool number = field.component >= 0 || property->kind == lua::NativeProperty::Kind::Number;
         if (names.size() == 2 && !number) {
             return std::nullopt;
         }
+
         fields.push_back(field);
     }
+
     return fields;
 }
 
@@ -314,9 +352,11 @@ TweenValue TweenLua::readNative(const std::vector<NativeField>& fields) {
     const auto readOne = [](const NativeField& field) -> TweenValue {
         lua::NativeProperty::Values values{};
         (void)field.property->read(field.storage, values);
+
         if (field.component >= 0) {
             return static_cast<double>(values[static_cast<std::size_t>(field.component)]);
         }
+
         switch (field.property->kind) {
         case lua::NativeProperty::Kind::Vector:
             return math::Vec2{values[0], values[1]};
@@ -331,6 +371,7 @@ TweenValue TweenLua::readNative(const std::vector<NativeField>& fields) {
     if (fields.size() == 2) {
         return math::Vec2{static_cast<float>(readOne(fields[0]).getNumber()), static_cast<float>(readOne(fields[1]).getNumber())};
     }
+
     return readOne(fields.front());
 }
 
@@ -377,8 +418,10 @@ TweenValue TweenLua::readCurrent(Builder& builder, const std::vector<std::string
         if (lua::NativeProperty::Values values{}; !fields->front().property->read(fields->front().storage, values)) {
             luaL_error(builder.state, "Cannot tween an object that was already released.");
         }
+
         return readNative(*fields);
     }
+
     return ScriptedTrack::read(builder.state, builder.target, ScriptedTrack::split(names));
 }
 
@@ -389,6 +432,7 @@ TweenValue TweenLua::readLike(lua_State* L, int index, const TweenValue& current
         if (lua_type(L, index) != LUA_TNUMBER) {
             luaL_error(L, "The tween value of \"%s\" must be a number.", field.c_str());
         }
+
         return lua_tonumber(L, index);
     case TweenValue::Kind::Vector:
         return lua::Stack::read<math::Vec2>(L, index);
@@ -398,6 +442,7 @@ TweenValue TweenLua::readLike(lua_State* L, int index, const TweenValue& current
         if (lua_type(L, index) != LUA_TSTRING) {
             luaL_error(L, "The tween value of \"%s\" must be a text.", field.c_str());
         }
+
         return lua::Stack::read<std::string>(L, index);
     }
     return current;
@@ -421,9 +466,11 @@ void TweenLua::addProperty(Builder& builder, const std::vector<std::string>& nam
         // clang-format on
         return;
     }
+
     if (!builder.scripted) {
         builder.scripted = std::make_unique<ScriptedTrack>(L, builder.target);
     }
+
     builder.scripted->add(names, std::move(property));
 }
 
@@ -452,12 +499,14 @@ int TweenLua::startValues(lua_State* L, TweenProperty::Mode mode) {
     if (pair) {
         luaL_checktype(L, ends, LUA_TTABLE);
     }
+
     int options = 0;
     if (!lua_isnoneornil(L, optionsArgument)) {
         luaL_checktype(L, optionsArgument, LUA_TTABLE);
         lua::Table::checkFields(L, optionsArgument, {kCommonFields, kTweenFields});
         options = optionsArgument;
     }
+
     const int owner = readOwner(L, options);
     const std::shared_ptr<PropertyTween> tween = createTween(L, seconds, options, owner);
 
@@ -480,25 +529,31 @@ int TweenLua::startValues(lua_State* L, TweenProperty::Mode mode) {
             if (lua_getfield(L, ends, name.c_str()) == LUA_TNIL) {
                 luaL_error(L, "A \"tween.fromTo\" call needs an end value for the field \"%s\".", name.c_str());
             }
+
             property = TweenProperty::fromTo(given, readLike(L, -1, current, name));
             lua_pop(L, 1);
         }
+
         property.setInterpolation(getInterpolation(L, options, name, current.getKind()));
         addProperty(builder, names, std::move(property));
     }
+
     finishTracks(builder);
 
     // A `from` tween shows its start values right away, even while its delay runs.
     if (mode == TweenProperty::Mode::From) {
         tween->renderStart();
     }
+
     bool overwrite = false;
     if (options != 0) {
         lua::Table::readField(L, options, "overwrite", overwrite);
     }
+
     if (overwrite) {
         lua::Runtime::getEngine(L).getTweens().overwrite(*tween);
     }
+
     start(L, tween, options, owner);
     return 1;
 }
@@ -524,8 +579,10 @@ std::vector<std::string> TweenLua::readFieldNames(lua_State* L, int options, std
         if (options != 0) {
             lua_pop(L, 1);
         }
+
         return defaults;
     }
+
     std::vector<std::string> names;
     if (lua_type(L, -1) == LUA_TSTRING) {
         names.emplace_back(lua_tostring(L, -1));
@@ -538,6 +595,7 @@ std::vector<std::string> TweenLua::readFieldNames(lua_State* L, int options, std
     } else {
         luaL_error(L, "The tween option \"field\" must be a field name or a list of two number field names.");
     }
+
     lua_pop(L, 1);
     return names;
 }
@@ -560,6 +618,7 @@ int TweenLua::startReadyMade(lua_State* L, std::initializer_list<lua::Table::Fie
         lua::Table::checkFields(L, 4, std::span<const lua::Table::FieldNames>(allowed));
         options = 4;
     }
+
     const int owner = readOwner(L, options);
     const std::shared_ptr<PropertyTween> tween = createTween(L, seconds, options, owner);
 
@@ -570,6 +629,7 @@ int TweenLua::startReadyMade(lua_State* L, std::initializer_list<lua::Table::Fie
     if (property.getInterpolation() == TweenValue::Interpolation::Linear) {
         property.setInterpolation(getInterpolation(L, options, names.front(), current.getKind()));
     }
+
     addProperty(builder, names, std::move(property));
     finishTracks(builder);
 
@@ -577,15 +637,18 @@ int TweenLua::startReadyMade(lua_State* L, std::initializer_list<lua::Table::Fie
     for (auto& [pendingNames, pendingProperty] : builder.pending) {
         addProperty(builder, pendingNames, std::move(pendingProperty));
     }
+
     finishTracks(builder);
 
     bool overwrite = false;
     if (options != 0) {
         lua::Table::readField(L, options, "overwrite", overwrite);
     }
+
     if (overwrite) {
         lua::Runtime::getEngine(L).getTweens().overwrite(*tween);
     }
+
     start(L, tween, options, owner);
     return 1;
 }
@@ -609,6 +672,7 @@ int TweenLua::scale(lua_State* L) {
             const auto uniform = lua::Stack::read<float>(state, 3);
             return TweenProperty::to(math::Vec2{uniform, uniform});
         }
+
         return TweenProperty::to(readLike(state, 3, current, "scale"));
     });
     // clang-format on
@@ -641,6 +705,7 @@ int TweenLua::jump(lua_State* L) {
             lua::Table::readField(builder.state, builder.options, "power", power);
             lua::Table::readField(builder.state, builder.options, "jumps", jumps);
         }
+
         requireVector(builder.state, current, "jump");
         TweenProperty property = TweenProperty::to(readLike(builder.state, 3, current, "position"));
         property.setMotion(TweenMotion::jump(power, jumps));
@@ -665,20 +730,24 @@ int TweenLua::path(lua_State* L) {
             lua::Table::readField(state, builder.options, "orient", orient);
             lua::Table::readField(state, builder.options, "orientField", orientField);
         }
+
         std::vector<math::Vec2> points = readPoints(state, 3);
         if (points.empty()) {
             luaL_error(state, "A path needs at least one point.");
         }
+
         const math::Vec2 end = closed ? math::Vec2{} : points.back();
         std::shared_ptr<TweenMotion> motion = TweenMotion::path(std::move(points), curved, closed);
         TweenProperty property = TweenProperty::to(end);
         property.setMotion(motion);
+
         if (orient) {
             const std::vector<std::string> names{orientField};
             TweenProperty heading = TweenProperty::to(readCurrent(builder, names));
             heading.setMotion(TweenMotion::orientation(motion));
             builder.pending.emplace_back(names, std::move(heading));
         }
+
         return property;
     });
     // clang-format on
@@ -692,6 +761,7 @@ int TweenLua::bezier(lua_State* L) {
         if (points.size() < 2 || points.size() > 3) {
             luaL_error(builder.state, "A Bézier tween needs one or two control points followed by the end point.");
         }
+
         const math::Vec2 end = points.back();
         points.pop_back();
         TweenProperty property = TweenProperty::to(end);
@@ -713,9 +783,11 @@ int TweenLua::blink(lua_State* L) {
         } else if (current.getKind() != TweenValue::Kind::Number && current.getKind() != TweenValue::Kind::Color) {
             luaL_error(state, "A blink of a \"Vec2\" or a text needs the \"hidden\" option.");
         }
+
         if (builder.options != 0) {
             lua_pop(state, 1);
         }
+
         TweenProperty property = TweenProperty::to(hidden);
         property.setMotion(TweenMotion::blink(count));
         return property;
@@ -736,6 +808,7 @@ int TweenLua::shake(lua_State* L) {
             lua::Table::readField(state, builder.options, "randomness", randomness);
             lua::Table::readField(state, builder.options, "seed", seed);
         }
+
         TweenValue strength = current.getKind() == TweenValue::Kind::Vector && lua_type(state, 3) == LUA_TNUMBER ? TweenValue(math::Vec2{lua::Stack::read<float>(state, 3), lua::Stack::read<float>(state, 3)}) : readLike(state, 3, current, "strength");
         TweenProperty property = TweenProperty::to(std::move(strength));
         property.setMotion(TweenMotion::shake(vibrato, randomness, seed));
@@ -754,6 +827,7 @@ int TweenLua::punch(lua_State* L) {
             lua::Table::readField(state, builder.options, "vibrato", vibrato);
             lua::Table::readField(state, builder.options, "elasticity", elasticity);
         }
+
         TweenProperty property = TweenProperty::to(readLike(state, 3, current, "offset"));
         property.setMotion(TweenMotion::punch(vibrato, elasticity));
         return property;
@@ -768,6 +842,7 @@ int TweenLua::timeline(lua_State* L) {
         lua::Table::checkFields(L, 1, {kCommonFields, kTimelineFields});
         options = 1;
     }
+
     const int owner = readOwner(L, options);
     const auto created = std::make_shared<Timeline>();
     configure(L, options, owner, *created);
@@ -900,6 +975,7 @@ int TweenLua::handleSeek(lua_State* L) {
     } else {
         tween->seek(lua::Stack::read<float>(L, 2));
     }
+
     lua_settop(L, 1);
     return 1;
 }
@@ -931,6 +1007,7 @@ int TweenLua::handleWait(lua_State* L) {
     } else {
         (void)tween->finished.connect(settle, {.once = true});
     }
+
     varn::async::Promise::push(L, promise);
     return 1;
 }
@@ -1032,6 +1109,7 @@ int TweenLua::timelineAppend(lua_State* L) {
     } else {
         target.append(check(L, 2));
     }
+
     lua_settop(L, 1);
     return 1;
 }
@@ -1043,6 +1121,7 @@ int TweenLua::timelineJoin(lua_State* L) {
     } else {
         target.join(check(L, 2));
     }
+
     lua_settop(L, 1);
     return 1;
 }
@@ -1056,6 +1135,7 @@ int TweenLua::timelineInsert(lua_State* L) {
     } else {
         target.insert(time, check(L, 3));
     }
+
     lua_settop(L, 1);
     return 1;
 }
@@ -1068,6 +1148,7 @@ int TweenLua::timelineAddLabel(lua_State* L) {
     } else {
         target.addLabel(std::move(name), lua::Stack::read<float>(L, 3));
     }
+
     lua_settop(L, 1);
     return 1;
 }
@@ -1084,6 +1165,7 @@ template <typename T> void TweenLua::installHandle(lua_State* L, bool withTimeli
     if (withTimeline) {
         builder.function("append", &lua::Binding::native<&timelineAppend>).function("join", &lua::Binding::native<&timelineJoin>).function("insert", &lua::Binding::native<&timelineInsert>).function("addLabel", &lua::Binding::native<&timelineAddLabel>).property("size", &timelineSize);
     }
+
     builder.install();
 }
 

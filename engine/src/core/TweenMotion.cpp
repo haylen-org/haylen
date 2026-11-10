@@ -13,6 +13,7 @@ std::shared_ptr<TweenMotion> TweenMotion::jump(float power, int jumps) {
     if (jumps < 1) {
         throw std::invalid_argument("A jump needs at least one hop.");
     }
+
     auto motion = std::shared_ptr<TweenMotion>(new TweenMotion(Kind::Jump));
     motion->amount = power;
     motion->count = jumps;
@@ -23,6 +24,7 @@ std::shared_ptr<TweenMotion> TweenMotion::path(std::vector<math::Vec2> waypoints
     if (waypoints.empty()) {
         throw std::invalid_argument("A path needs at least one point.");
     }
+
     auto motion = std::shared_ptr<TweenMotion>(new TweenMotion(Kind::Path));
     motion->points = std::move(waypoints);
     motion->curvedPath = curved;
@@ -34,6 +36,7 @@ std::shared_ptr<TweenMotion> TweenMotion::bezier(std::vector<math::Vec2> control
     if (controls.empty() || controls.size() > 2) {
         throw std::invalid_argument("A Bézier curve needs one or two control points.");
     }
+
     auto motion = std::shared_ptr<TweenMotion>(new TweenMotion(Kind::Bezier));
     motion->points = std::move(controls);
     return motion;
@@ -43,6 +46,7 @@ std::shared_ptr<TweenMotion> TweenMotion::shake(int vibrato, float randomness, s
     if (vibrato < 1) {
         throw std::invalid_argument("A shake needs a vibrato of at least 1.");
     }
+
     auto motion = std::shared_ptr<TweenMotion>(new TweenMotion(Kind::Shake));
     motion->count = vibrato;
     motion->amount = std::clamp(randomness, 0.0F, 180.0F);
@@ -54,6 +58,7 @@ std::shared_ptr<TweenMotion> TweenMotion::punch(int vibrato, float elasticity) {
     if (vibrato < 1) {
         throw std::invalid_argument("A punch needs a vibrato of at least 1.");
     }
+
     auto motion = std::shared_ptr<TweenMotion>(new TweenMotion(Kind::Punch));
     motion->count = vibrato;
     motion->amount = std::clamp(elasticity, 0.0F, 1.0F);
@@ -64,6 +69,7 @@ std::shared_ptr<TweenMotion> TweenMotion::blink(int times) {
     if (times < 1) {
         throw std::invalid_argument("A blink needs at least one blink.");
     }
+
     auto motion = std::shared_ptr<TweenMotion>(new TweenMotion(Kind::Blink));
     motion->count = times;
     return motion;
@@ -73,6 +79,7 @@ std::shared_ptr<TweenMotion> TweenMotion::orientation(std::shared_ptr<TweenMotio
     if (!followed || followed->kind != Kind::Path) {
         throw std::invalid_argument("An orientation follows a path motion.");
     }
+
     auto motion = std::shared_ptr<TweenMotion>(new TweenMotion(Kind::Orientation));
     motion->source = std::move(followed);
     return motion;
@@ -92,6 +99,7 @@ math::Vec2 TweenMotion::vector(const TweenValue& value) {
     if (value.getKind() != TweenValue::Kind::Vector) {
         throw std::invalid_argument("This motion only moves \"Vec2\" values.");
     }
+
     return value.getVector();
 }
 
@@ -101,6 +109,7 @@ void TweenMotion::prepare(const TweenValue& from, const TweenValue& to) {
         (void)vector(to);
         return;
     }
+
     if (kind != Kind::Path) {
         return;
     }
@@ -128,6 +137,7 @@ math::Vec2 TweenMotion::pathPoint(float t) const noexcept {
     if (segments <= 0) {
         return nodes.front();
     }
+
     const float position = std::clamp(t, 0.0F, 1.0F) * static_cast<float>(segments);
     const int segment = std::min(static_cast<int>(position), segments - 1);
     const float f = position - static_cast<float>(segment);
@@ -154,6 +164,7 @@ math::Vec2 TweenMotion::pathAt(float progress) const noexcept {
     if (after == lengths.begin()) {
         return nodes.front();
     }
+
     if (after == lengths.end()) {
         return nodes.back();
     }
@@ -186,6 +197,7 @@ TweenValue TweenMotion::shakeOffset(const TweenValue& strength, float progress) 
             const float sign = index % 2 == 0 ? 1.0F : -1.0F;
             return static_cast<double>(sign * decay * (1.0F - 0.5F * random * amount / 180.0F)) * strength.getNumber();
         }
+
         const math::Vec2 reach = strength.getVector();
         const float angle = hash(seed, 0U) * math::Math::kTau + static_cast<float>(index) * math::Math::kPi + (random * 2.0F - 1.0F) * math::Math::radians(amount);
         return math::Vec2{std::cos(angle) * reach.x, std::sin(angle) * reach.y} * decay;
@@ -211,6 +223,7 @@ TweenValue TweenMotion::evaluate(const TweenValue& from, const TweenValue& to, f
         if (points.size() == 1) {
             return start * (inverse * inverse) + points[0] * (2.0F * inverse * progress) + end * (progress * progress);
         }
+
         return start * (inverse * inverse * inverse) + points[0] * (3.0F * inverse * inverse * progress) + points[1] * (3.0F * inverse * progress * progress) + end * (progress * progress * progress);
     }
     case Kind::Shake:
@@ -220,6 +233,7 @@ TweenValue TweenMotion::evaluate(const TweenValue& from, const TweenValue& to, f
         if (wave < 0.0F) {
             wave *= amount;
         }
+
         return TweenValue::add(from, to, wave);
     }
     case Kind::Blink: {
@@ -244,6 +258,7 @@ float TweenMotion::getDistance(const TweenValue& from, const TweenValue& to) con
             length += math::Vec2::distance(previous, current);
             previous = current;
         }
+
         return length;
     }
     case Kind::Shake:

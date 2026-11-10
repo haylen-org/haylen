@@ -27,7 +27,9 @@ void FrameQueue::flush() {
             }
         }
     }
+
     running.clear();
+
     if (failure) {
         std::rethrow_exception(failure);
     }

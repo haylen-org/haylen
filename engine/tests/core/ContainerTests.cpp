@@ -28,6 +28,7 @@ TEST(ObjectPoolTest, ReusesSlotsAndDetectsReleasedHandles) {
     for (int index = 0; index < 100; ++index) {
         (void)pool.acquire("filler");
     }
+
     EXPECT_EQ(pool.get(first), address);
 
     EXPECT_TRUE(pool.release(first));

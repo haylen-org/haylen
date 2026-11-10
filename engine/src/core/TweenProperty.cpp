@@ -24,6 +24,7 @@ void TweenProperty::begin(const TweenValue& current) {
     if (begun) {
         return;
     }
+
     switch (mode) {
     case Mode::To:
         start = current;
@@ -41,9 +42,11 @@ void TweenProperty::begin(const TweenValue& current) {
 
     // Mixing checks the kinds, and doing it here reports a mismatch when the tween starts instead of in the middle of it.
     (void)TweenValue::mix(start, end, 0.0F, interpolation);
+
     if (motion) {
         motion->prepare(start, end);
     }
+
     begun = true;
 }
 
@@ -55,6 +58,7 @@ TweenValue TweenProperty::evaluate(float progress, int loops) const {
         const TweenValue shiftedEnd = TweenValue::add(end, offset, times);
         return motion ? motion->evaluate(shiftedStart, shiftedEnd, progress) : TweenValue::mix(shiftedStart, shiftedEnd, progress, interpolation);
     }
+
     return motion ? motion->evaluate(start, end, progress) : TweenValue::mix(start, end, progress, interpolation);
 }
 

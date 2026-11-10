@@ -81,6 +81,7 @@ void Log::write(Level level, std::string_view message) {
     if (level < getLevel()) {
         return;
     }
+
     varn::log::Log::emit(toVarnLevel(level), message);
 }
 
@@ -91,6 +92,7 @@ std::uint64_t Log::addListener(Listener listener) {
         varn::log::Log::setSink(&dispatch);
         all.installed = true;
     }
+
     const std::uint64_t id = all.next++;
     all.entries.emplace(id, std::move(listener));
     return id;

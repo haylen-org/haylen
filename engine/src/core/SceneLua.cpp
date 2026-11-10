@@ -58,6 +58,7 @@ SceneManager::Transition SceneLua::readTransition(lua_State* L, int index) {
     if (index == 0) {
         return transition;
     }
+
     lua::Table::readField(L, index, "duration", transition.duration);
     lua::Table::readField(L, index, "ease", transition.ease);
     lua::Table::readField(L, index, "blockInput", transition.blockInput);
@@ -68,25 +69,31 @@ SceneManager::Transition SceneLua::readTransition(lua_State* L, int index) {
         lua_getfield(L, index, "direction");
         const bool configured = !lua_isnil(L, -1) || !lua_isnil(L, -2);
         lua_pop(L, 2);
+
         if (configured) {
             throw std::invalid_argument("A custom transition effect takes no color or direction.");
         }
+
         transition.effect = std::make_shared<lua::ScriptedTransition>(L, -1);
         lua_pop(L, 1);
         return transition;
     }
+
     if (!lua_isnil(L, -1) && lua_type(L, -1) != LUA_TSTRING) {
         throw std::invalid_argument("The transition effect must be the name of a built-in effect or a table with a \"render\" method.");
     }
+
     lua_pop(L, 1);
 
     graphics2d::SceneTransition::Options options;
     lua::Table::readField(L, index, "effect", options.kind);
     lua::Table::readField(L, index, "direction", options.direction);
     lua::Table::readField(L, index, "color", options.color);
+
     if (transition.duration > 0.0F) {
         transition.effect = std::make_shared<graphics2d::SceneTransition>(options);
     }
+
     return transition;
 }
 
@@ -95,6 +102,7 @@ SceneManager::Options SceneLua::readOptions(lua_State* L, int index) {
     if (index == 0) {
         return options;
     }
+
     lua::Table::readField(L, index, "loadingDelay", options.loadingDelay);
     lua::Table::readField(L, index, "minimumLoadingTime", options.minimumLoadingTime);
     lua::Table::readField(L, index, "loadingFadeOut", options.loadingFadeOut);
@@ -102,11 +110,13 @@ SceneManager::Options SceneLua::readOptions(lua_State* L, int index) {
     if (lua_getfield(L, index, "params") != LUA_TNIL) {
         options.params = std::make_shared<lua::Reference>(L, -1);
     }
+
     lua_pop(L, 1);
     if (lua_getfield(L, index, "loading") != LUA_TNIL) {
         luaL_checktype(L, -1, LUA_TTABLE);
         options.loading = std::make_shared<lua::ScriptedLoadingView>(L, -1);
     }
+
     lua_pop(L, 1);
 
     // The error handler receives the message of the failure, as Lua errors carry it.
@@ -122,6 +132,7 @@ SceneManager::Options SceneLua::readOptions(lua_State* L, int index) {
         };
         // clang-format on
     }
+
     lua_pop(L, 1);
     return options;
 }
@@ -134,8 +145,10 @@ SceneManager::Completion SceneLua::pushCompletion(lua_State* L, int options) {
             luaL_checktype(L, -1, LUA_TFUNCTION);
             callback = std::make_shared<lua::Reference>(L, -1);
         }
+
         lua_pop(L, 1);
     }
+
     promise.push(L);
 
     // The promise resolves with `true` once the change is done and with `false` once it was dropped, and a failed load rejects it with the error, which the scenes report themselves through the event of the failed load, the error handler of a change or the log.
@@ -147,6 +160,7 @@ SceneManager::Completion SceneLua::pushCompletion(lua_State* L, int options) {
         } else {
             promise.resolveWith([completed](lua_State* state) { lua_pushboolean(state, completed ? 1 : 0); });
         }
+
         if (callback) {
             lua_State* main = callback->getState();
             callback->push(main);
@@ -163,6 +177,7 @@ void SceneLua::pushScene(lua_State* L, const Scene& scene) {
         scripted->pushTable(L);
         return;
     }
+
     lua_pushboolean(L, 0);
 }
 
@@ -178,6 +193,7 @@ void SceneLua::pushTransfer(lua_State* L, const SceneManager::Transfer& transfer
         pushScene(L, *transfer.from);
         lua_setfield(L, -2, "from");
     }
+
     if (transfer.to != nullptr) {
         pushScene(L, *transfer.to);
         lua_setfield(L, -2, "to");
@@ -204,6 +220,7 @@ int SceneLua::push(lua_State* L) {
         luaL_checktype(L, options, LUA_TTABLE);
         lua::Table::checkFields(L, options, {kChangeFields});
     }
+
     SceneManager::Options change = readOptions(L, options);
     change.completion = pushCompletion(L, options);
     lua::Runtime::getEngine(L).getScenes().push(lua::ScriptedScene::get(L, 1), std::move(change));
@@ -218,6 +235,7 @@ int SceneLua::replace(lua_State* L) {
         luaL_checktype(L, options, LUA_TTABLE);
         lua::Table::checkFields(L, options, {kChangeFields});
     }
+
     SceneManager::Options change = readOptions(L, options);
     change.completion = pushCompletion(L, options);
     lua::Runtime::getEngine(L).getScenes().replace(lua::ScriptedScene::get(L, 1), std::move(change));
@@ -230,6 +248,7 @@ int SceneLua::pop(lua_State* L) {
         luaL_checktype(L, options, LUA_TTABLE);
         lua::Table::checkFields(L, options, {kTransitionFields});
     }
+
     SceneManager::Transition transition = readTransition(L, options);
     SceneManager::Completion completion = pushCompletion(L, options);
     lua::Runtime::getEngine(L).getScenes().pop(std::move(transition), std::move(completion));
@@ -243,6 +262,7 @@ int SceneLua::popTo(lua_State* L) {
         luaL_checktype(L, options, LUA_TTABLE);
         lua::Table::checkFields(L, options, {kTransitionFields});
     }
+
     SceneManager::Transition transition = readTransition(L, options);
     SceneManager::Completion completion = pushCompletion(L, options);
     lua::Runtime::getEngine(L).getScenes().popTo(level, std::move(transition), std::move(completion));
@@ -255,6 +275,7 @@ int SceneLua::popToRoot(lua_State* L) {
         luaL_checktype(L, options, LUA_TTABLE);
         lua::Table::checkFields(L, options, {kTransitionFields});
     }
+
     SceneManager::Transition transition = readTransition(L, options);
     SceneManager::Completion completion = pushCompletion(L, options);
     lua::Runtime::getEngine(L).getScenes().popToRoot(std::move(transition), std::move(completion));
@@ -269,6 +290,7 @@ int SceneLua::preload(lua_State* L) {
     if (!lua_isnoneornil(L, 2)) {
         params = std::make_shared<lua::Reference>(L, 2);
     }
+
     SceneManager::Completion completion = pushCompletion(L, 0);
     lua::Runtime::getEngine(L).getScenes().preload(lua::ScriptedScene::get(L, 1), std::move(params), std::move(completion));
     return 1;
@@ -280,6 +302,7 @@ int SceneLua::cancelPreload(lua_State* L) {
     if (!scene) {
         throw std::invalid_argument("The scene is not preloaded.");
     }
+
     lua::Runtime::getEngine(L).getScenes().cancelPreload(*scene);
     return 0;
 }
@@ -300,6 +323,7 @@ int SceneLua::top(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     pushScene(L, *scene);
     return 1;
 }
@@ -312,6 +336,7 @@ int SceneLua::at(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     pushScene(L, scenes.at(static_cast<std::size_t>(index - 1)));
     return 1;
 }
@@ -324,6 +349,7 @@ int SceneLua::list(lua_State* L) {
         pushScene(L, *scene);
         lua_rawseti(L, -2, ++index);
     }
+
     return 1;
 }
 
@@ -340,14 +366,17 @@ int SceneLua::loadingViewOpacity(lua_State* L) {
 // Returns the state of the scene of a table, `unloaded` for a table whose scene the engine no longer holds, or `nil` for a table that never was a scene.
 int SceneLua::state(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
+
     if (const std::shared_ptr<lua::ScriptedScene> scene = lua::ScriptedScene::find(L, 1)) {
         lua::Stack::push(L, lua::EnumNames<Scene::State>::name(scene->getState()));
         return 1;
     }
+
     if (lua::ScriptedScene::wasScene(L, 1)) {
         lua::Stack::push(L, lua::EnumNames<Scene::State>::name(Scene::State::Unloaded));
         return 1;
     }
+
     lua_pushnil(L);
     return 1;
 }
@@ -370,9 +399,11 @@ int SceneLua::listen(lua_State* L) {
         lua::Userdata::emplace<Connection>(L, EventsLua::subscribe(L, 2, 3, options, 1));
         return 1;
     }
+
     if (!SignalLua::isSignal(L, 2)) {
         return luaL_typeerror(L, 2, "signal or event name");
     }
+
     lua::Userdata::emplace<Connection>(L, SignalLua::connect(L, 2, 3, options, 1));
     return 1;
 }
@@ -413,15 +444,18 @@ int SceneLua::loadPreload(lua_State* L) {
                 promise.rejectHandled(failure->what());
                 return;
             }
+
             if (--*remaining == 0) {
                 promise.resolveWith([](lua_State* state) { lua_pushboolean(state, 1); });
             }
         });
         // clang-format on
     }
+
     if (groups.empty()) {
         promise.resolveWith([](lua_State* state) { lua_pushboolean(state, 1); });
     }
+
     promise.push(L);
     return 1;
 }
@@ -445,6 +479,7 @@ int SceneLua::open(lua_State* L) {
         lua_getfield(L, -2, name);
         lua_setfield(L, -2, name);
     }
+
     lua_setfield(L, -2, "Scene");
     return 1;
 }

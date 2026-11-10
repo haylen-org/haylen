@@ -19,6 +19,7 @@ class MessagePackTest : public ::testing::Test {
         for (const int value : values) {
             bytes.push_back(static_cast<std::byte>(value));
         }
+
         return bytes;
     }
 
@@ -28,6 +29,7 @@ class MessagePackTest : public ::testing::Test {
         } catch (const std::invalid_argument& error) {
             return error.what();
         }
+
         return {};
     }
 };
@@ -63,6 +65,7 @@ TEST_F(MessagePackTest, RefusesBrokenAndHostileMessages) {
     for (int level = 0; level < 200; ++level) {
         nested = Json::array({nested});
     }
+
     EXPECT_THROW((void)MessagePack::encode(nested), std::invalid_argument);
 }
 

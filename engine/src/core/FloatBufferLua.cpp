@@ -22,6 +22,7 @@ std::size_t FloatBufferLua::checkPosition(lua_State* L, const FloatBuffer& buffe
         const auto last = static_cast<lua_Integer>(static_cast<lua_Unsigned>(position) + count - 1);
         luaL_error(L, "Float buffer positions %I to %I fall outside its size of %I.", position, last, static_cast<lua_Integer>(buffer.size()));
     }
+
     return static_cast<std::size_t>(position - 1);
 }
 
@@ -55,6 +56,7 @@ int FloatBufferLua::set(lua_State* L) {
             values[index] = lua::Stack::read<float>(L, static_cast<int>(index) + 3);
             continue;
         }
+
         int isNumber = 0;
         lua_rawgeti(L, 3, static_cast<lua_Integer>(index + 1));
         const lua_Number value = lua_tonumberx(L, -1, &isNumber);
@@ -62,8 +64,10 @@ int FloatBufferLua::set(lua_State* L) {
         if (isNumber == 0) {
             return luaL_error(L, "Float buffer values are numbers, and entry %I of the list is not.", static_cast<lua_Integer>(index + 1));
         }
+
         values[index] = lua::Converter<float>::fromNumber(L, value);
     }
+
     return 0;
 }
 
@@ -78,6 +82,7 @@ int FloatBufferLua::get(lua_State* L) {
     for (const float value : values) {
         lua_pushnumber(L, static_cast<lua_Number>(value));
     }
+
     return static_cast<int>(count);
 }
 
@@ -89,12 +94,14 @@ int FloatBufferLua::fill(lua_State* L) {
         buffer.fill(value);
         return 0;
     }
+
     const lua_Integer requested = luaL_checkinteger(L, 4);
     luaL_argcheck(L, requested >= 0, 4, "the count cannot be negative");
     const auto count = static_cast<std::size_t>(requested);
     for (float& target : buffer.getValues().subspan(checkPosition(L, buffer, 3, count), count)) {
         target = value;
     }
+
     return 0;
 }
 

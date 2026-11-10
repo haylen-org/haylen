@@ -15,6 +15,7 @@ void FrameClock::advance(double frameSeconds) noexcept {
     if (!paused) {
         accumulator = std::min(accumulator + delta, fixedStep * kMaxFixedSteps);
     }
+
     elapsed += delta;
     ++frameIndex;
     fixedSteps = 0;
@@ -24,6 +25,7 @@ bool FrameClock::consumeFixedStep() noexcept {
     if (paused || accumulator < fixedStep) {
         return false;
     }
+
     accumulator -= fixedStep;
     ++fixedSteps;
     return true;
@@ -34,6 +36,7 @@ void FrameClock::setTimeScale(double value) {
     if (!std::isfinite(value)) {
         throw std::invalid_argument("The time scale must be a finite number.");
     }
+
     timeScale = std::max(0.0, value);
 }
 

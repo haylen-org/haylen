@@ -43,6 +43,7 @@ int SignalLua::create(lua_State* L) {
     if (!lua_isnoneornil(L, 1)) {
         created->name = lua::Stack::read<std::string>(L, 1);
     }
+
     lua::Userdata::emplace<ScriptedSignal>(L, created);
 
     // Named signals are listed for diagnostics without being kept alive by the list.
@@ -57,11 +58,13 @@ int SignalLua::create(lua_State* L) {
             lua_pushvalue(L, -1);
             lua_setfield(L, LUA_REGISTRYINDEX, kNamedSignals);
         }
+
         lua_pushvalue(L, -2);
         lua_pushboolean(L, 1);
         lua_rawset(L, -3);
         lua_pop(L, 1);
     }
+
     return 1;
 }
 
@@ -82,9 +85,11 @@ Connection SignalLua::connect(lua_State* L, int signal, int function, int option
             ownerIndex = lua_gettop(L);
         }
     }
+
     if (ownerIndex == 0) {
         ownerIndex = lua::Owners::pushDefault(L);
     }
+
     if (ownerIndex != 0) {
         settings.owner = lua::Owners::getLifetime(L, ownerIndex);
     }
@@ -99,24 +104,29 @@ Connection SignalLua::connect(lua_State* L, int signal, int function, int option
         slot = [callback, once = settings.once, &queue = lua::Runtime::getEngine(L).getFrameQueue()](const ScriptedSignal::Arguments& arguments) {
             lua_State* source = arguments.state;
             lua_createtable(source, arguments.count, 0);
+
             for (int index = 0; index < arguments.count; ++index) {
                 lua_pushvalue(source, arguments.first + index);
                 lua_rawseti(source, -2, index + 1);
             }
+
             auto packed = std::make_shared<lua::Reference>(source, -1);
             lua_pop(source, 1);
             queue.post([weak = std::weak_ptr<lua::Owners::Function>(callback), held = once ? callback : nullptr, packed, count = arguments.count] {
                 const std::shared_ptr<lua::Owners::Function> listener = weak.lock();
                 lua_State* main = packed->getState();
                 luaL_checkstack(main, count + 2, "too many values to deliver");
+
                 if (!listener || !listener->push(main)) {
                     return;
                 }
+
                 packed->push(main);
                 const int table = lua_gettop(main);
                 for (int index = 1; index <= count; ++index) {
                     lua_rawgeti(main, table, index);
                 }
+
                 lua_remove(main, table);
                 lua::Runtime::protectedCall(main, count, 0);
             });
@@ -129,6 +139,7 @@ Connection SignalLua::connect(lua_State* L, int signal, int function, int option
             if (!callback->push(source)) {
                 return;
             }
+
             pushArguments(source, arguments.first, arguments.count);
             lua_call(source, arguments.count, 0);
         };
@@ -139,6 +150,7 @@ Connection SignalLua::connect(lua_State* L, int signal, int function, int option
     if (ownerIndex != 0) {
         lua::Owners::add(L, ownerIndex, connection);
     }
+
     lua_settop(L, top);
     return connection;
 }
@@ -195,13 +207,16 @@ std::vector<EventBus::Topic> SignalLua::getNamedSignals(lua_State* L) {
         lua_pop(L, 1);
         return signals;
     }
+
     lua_pushnil(L);
     while (lua_next(L, -2) != 0) {
         lua_pop(L, 1);
+
         if (const ScriptedSignal* signal = lua::Userdata::test<ScriptedSignal>(L, -1)) {
             signals.push_back({.name = signal->name, .listeners = signal->signal.size(), .emissions = signal->signal.getEmissionCount(), .stale = signal->signal.getStaleCount()});
         }
     }
+
     lua_pop(L, 1);
     return signals;
 }
@@ -223,6 +238,7 @@ int SignalLua::list(lua_State* L) {
         lua_setfield(L, -2, "stale");
         lua_rawseti(L, -2, ++count);
     }
+
     return 1;
 }
 

@@ -49,6 +49,7 @@ template <> struct EnumNames<core::Log::Level> {
                 return level;
             }
         }
+
         return std::nullopt;
     }
 
@@ -58,6 +59,7 @@ template <> struct EnumNames<core::Log::Level> {
                 return candidate;
             }
         }
+
         return kLevels.front().first;
     }
 };
@@ -73,11 +75,13 @@ std::string CoreLua::joinArguments(lua_State* L) {
         if (index > 1) {
             line.push_back('\t');
         }
+
         std::size_t length = 0;
         const char* text = luaL_tolstring(L, index, &length);
         line.append(text, length);
         lua_pop(L, 1);
     }
+
     return line;
 }
 
@@ -102,6 +106,7 @@ int CoreLua::rootQuit(lua_State* L) {
         lua::Table::checkFields(L, 1, {kQuitFields});
         lua::Table::readField(L, 1, "status", status);
     }
+
     lua::Runtime::getEngine(L).quit(status);
     return 0;
 }
@@ -115,6 +120,7 @@ int CoreLua::rootLaunch(lua_State* L) {
         lua::Table::readField(L, 2, "developmentServer", launch.developmentServer);
         lua::Table::readField(L, 2, "nativeAccess", launch.nativeAccess);
     }
+
     lua::Runtime::getEngine(L).requestLaunch(std::move(launch));
     return 0;
 }
@@ -125,12 +131,14 @@ CoreLua::PackageInfo CoreLua::readPackageInfo(const std::filesystem::path& path)
     if (!std::filesystem::exists(path, error)) {
         throw std::invalid_argument("No app package is at \"" + path.string() + "\". Name a folder or a zip file that holds \"app.json\".");
     }
+
     const std::unique_ptr<io::Package> package = io::Package::open(path);
     const AppConfig config = AppConfig::fromPackage(*package);
     PackageInfo info{.name = config.name, .identifier = config.identifier, .version = config.version, .build = config.build, .logo = config.splash.logo};
     if (!info.logo.empty()) {
         info.logoBytes = package->read("content/" + info.logo);
     }
+
     return info;
 }
 
@@ -145,6 +153,7 @@ int CoreLua::rootPackageInfo(lua_State* L) {
             promise.reject("The app package could not be read. " + result.error);
             return;
         }
+
         promise.resolveWith([info = std::move(*result.value)](lua_State* state) {
             lua_createtable(state, 0, 6);
             lua::Stack::push(state, info.name);
@@ -155,6 +164,7 @@ int CoreLua::rootPackageInfo(lua_State* L) {
             lua_setfield(state, -2, "version");
             lua_pushinteger(state, info.build);
             lua_setfield(state, -2, "build");
+
             if (!info.logo.empty()) {
                 lua::Stack::push(state, info.logo);
                 lua_setfield(state, -2, "logo");
@@ -387,6 +397,7 @@ int CoreLua::viewportCutouts(lua_State* L) {
         lua::Stack::push(L, math::Rect::fromMinMax(viewport.toDesign(cutouts[index].getMin()), viewport.toDesign(cutouts[index].getMax())));
         lua_rawseti(L, -2, static_cast<lua_Integer>(index) + 1);
     }
+
     return 1;
 }
 
@@ -438,6 +449,7 @@ int CoreLua::viewportSafeAreaSimulation(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::JsonConverter::push(L, simulation->toJson());
     return 1;
 }
@@ -449,6 +461,7 @@ int CoreLua::viewportSetSafeAreaSimulation(lua_State* L) {
         engine.setSafeAreaSimulation(std::nullopt);
         return 0;
     }
+
     engine.setSafeAreaSimulation(platform::SafeAreaSimulation::fromJson(lua::JsonConverter::read(L, 1)));
     return 0;
 }

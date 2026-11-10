@@ -34,6 +34,7 @@ std::vector<std::string> PropertyTrack::getFields() const {
     if (released) {
         return {};
     }
+
     return fields;
 }
 
@@ -41,6 +42,7 @@ bool PropertyTrack::release(std::string_view name) {
     if (std::find(fields.begin(), fields.end(), name) != fields.end()) {
         released = true;
     }
+
     return !released;
 }
 

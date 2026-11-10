@@ -40,9 +40,11 @@ class TweenRig final {
     std::shared_ptr<core::PropertyTween> tweenX(Box& box, float duration, core::TweenProperty property, bool add = true) {
         auto tween = std::make_shared<core::PropertyTween>(duration);
         tween->addTrack(numberTrack(box, std::move(property)));
+
         if (add) {
             tweens.add(tween);
         }
+
         return tween;
     }
 
@@ -351,6 +353,7 @@ TEST(TweenManagerTest, RepeatsForeverWithoutLosingSteps) {
     tween->getCallbacks().loop = [&loops](int) { ++loops; };
     rig.step(100.0);
     EXPECT_EQ(loops, 256);
+
     for (int step = 0; step < 12 * 864; ++step) {
         rig.step(100.0);
     }
@@ -665,6 +668,7 @@ TEST(TweenManagerTest, CallbacksMayChangeTweensWhileUpdating) {
     // clang-format off
     tween->getCallbacks().update = [&](float) {
         victim->kill();
+
         if (!added) {
             added = rig.tweenX(other, 1.0F, core::TweenProperty::to(-1.0));
         }
@@ -791,6 +795,7 @@ TEST(TimelineTest, RepeatsNestsAndStaggers) {
     for (Box& box : boxes) {
         tweens.push_back(rig.tweenX(box, 1.0F, core::TweenProperty::to(1.0), false));
     }
+
     auto staggered = std::make_shared<core::Timeline>();
     staggered->stagger(tweens, 0.5F, core::Timeline::StaggerOrigin::Center);
     rig.tweens.add(staggered);

@@ -35,6 +35,7 @@ void SceneManager::push(std::shared_ptr<Scene> scene, Options options) {
     if (!scene) {
         throw std::invalid_argument("Cannot push an empty scene.");
     }
+
     request({.operation = Operation::Push, .scene = std::move(scene), .options = std::move(options)});
 }
 
@@ -46,6 +47,7 @@ void SceneManager::replace(std::shared_ptr<Scene> scene, Options options) {
     if (!scene) {
         throw std::invalid_argument("Cannot replace with an empty scene.");
     }
+
     request({.operation = Operation::Replace, .scene = std::move(scene), .options = std::move(options)});
 }
 
@@ -78,6 +80,7 @@ void SceneManager::request(Change change) {
     if (options.transition.duration > 0.0F && !options.transition.effect) {
         throw std::invalid_argument("A scene transition with a duration needs an effect.");
     }
+
     if (options.loadingDelay < 0.0F || options.minimumLoadingTime < 0.0F || options.loadingFadeOut < 0.0F) {
         throw std::invalid_argument("The loading delay, the minimum loading time and the loading fade-out cannot be negative.");
     }
@@ -87,6 +90,7 @@ void SceneManager::request(Change change) {
         queue.push_back(std::move(shared));
         return;
     }
+
     pending = std::move(shared);
 }
 
@@ -94,13 +98,17 @@ void SceneManager::preload(std::shared_ptr<Scene> scene, std::any params, Comple
     if (!scene) {
         throw std::invalid_argument("Cannot preload an empty scene.");
     }
+
     if (!needsLoad(scene.get())) {
         throw std::invalid_argument("The scene is already loaded or on the stack.");
     }
+
     preloaded.push_back(scene);
+
     if (completion) {
         watchers.emplace_back(scene, std::move(completion));
     }
+
     startLoad(scene, std::move(params));
 }
 
@@ -109,6 +117,7 @@ void SceneManager::cancelPreload(const Scene& scene) {
     if (found == preloaded.end()) {
         throw std::invalid_argument("The scene is not preloaded.");
     }
+
     const std::shared_ptr<Scene> cancelled = *found;
     preloaded.erase(found);
     unloadNotifying(cancelled, {.outcome = Outcome::Dropped});
@@ -133,11 +142,13 @@ void SceneManager::clear() {
     if (pending && pending->viewShown) {
         attempt([this] { hideLoadingView(*pending); });
     }
+
     while (!stack.empty()) {
         const std::shared_ptr<Scene> scene = stack.back();
         stack.pop_back();
         attempt([this, &scene] { retire(scene); });
     }
+
     for (const std::shared_ptr<Scene>& scene : std::exchange(leaving, {})) {
         attempt([this, &scene] { retire(scene); });
     }
@@ -147,24 +158,30 @@ void SceneManager::clear() {
     if (pending && pending->scene && (pending->scene->state == Scene::State::Loading || pending->scene->state == Scene::State::Loaded)) {
         loaded.push_back(pending->scene);
     }
+
     for (const std::shared_ptr<Scene>& scene : loaded) {
         attempt([this, &scene] { unloadScene(scene); });
     }
 
     std::vector<std::shared_ptr<Change>> dropped(std::make_move_iterator(queue.begin()), std::make_move_iterator(queue.end()));
     queue.clear();
+
     if (pending) {
         dropped.insert(dropped.begin(), std::exchange(pending, {}));
     }
+
     endTransition();
+
     for (const auto& [scene, completion] : std::exchange(watchers, {})) {
         attempt([&completion] { completion({.outcome = Outcome::Dropped}); });
     }
+
     for (const std::shared_ptr<Change>& change : dropped) {
         if (change->options.completion) {
             attempt([&change] { change->options.completion({.outcome = Outcome::Dropped}); });
         }
     }
+
     if (failure) {
         std::rethrow_exception(failure);
     }
@@ -182,6 +199,7 @@ Scene& SceneManager::at(std::size_t index) const {
     if (index >= stack.size()) {
         throw std::out_of_range("The scene stack has no scene at that index.");
     }
+
     return *stack[index];
 }
 
@@ -190,6 +208,7 @@ std::optional<std::size_t> SceneManager::find(const Scene& scene) const noexcept
     if (found == stack.end()) {
         return std::nullopt;
     }
+
     return static_cast<std::size_t>(found - stack.begin());
 }
 
@@ -200,6 +219,7 @@ ProcessMode SceneManager::getProcessMode(std::size_t index) const {
             return mode;
         }
     }
+
     return ProcessMode::Pausable;
 }
 
@@ -218,6 +238,7 @@ void SceneManager::notifyPauseChange(bool gamePaused) {
         if (!find(*scene)) {
             continue;
         }
+
         if (running) {
             scene->unpaused(engine);
         } else {
@@ -240,6 +261,7 @@ void SceneManager::startLoad(const std::shared_ptr<Scene>& scene, std::any param
     scene->state = Scene::State::Loading;
     scene->loading = load;
     publish(LifecycleEvent::kSceneLoading, *scene);
+
     if (scene->loading != load) {
         return;
     }
@@ -253,7 +275,9 @@ void SceneManager::startLoad(const std::shared_ptr<Scene>& scene, std::any param
     } catch (const std::exception& exception) {
         load->fail(lua::Error(exception.what()));
     }
+
     load->release();
+
     if (scene->loading == load) {
         settle(scene);
     }
@@ -275,13 +299,17 @@ void SceneManager::settle(const std::shared_ptr<Scene>& scene) {
     // A listener may clear the stack or cancel the preload, which already unloaded the scene.
     const lua::Error error = *load->getError();
     (void)engine.getEvents().emitWith(LifecycleEvent::kSceneLoadFailed, LoadFailure{.scene = scene.get(), .error = &error});
+
     if (scene->loading != load) {
         return;
     }
+
     std::erase(preloaded, scene);
+
     if (pending && pending->scene == scene && pending->phase != Phase::Start) {
         pending->failure = error;
     }
+
     unloadNotifying(scene, {.outcome = Outcome::Failed, .error = error});
 }
 
@@ -293,7 +321,9 @@ void SceneManager::unloadNotifying(const std::shared_ptr<Scene>& scene, const Re
     } catch (...) {
         failure = std::current_exception();
     }
+
     notifyWatchers(*scene, result);
+
     if (failure) {
         std::rethrow_exception(failure);
     }
@@ -305,6 +335,7 @@ void SceneManager::settleLoads() {
     if (pending && pending->scene && pending->phase != Phase::Start) {
         loading.push_back(pending->scene);
     }
+
     for (const std::shared_ptr<Scene>& scene : loading) {
         settle(scene);
     }
@@ -317,9 +348,11 @@ void SceneManager::notifyWatchers(const Scene& scene, const Result& result) {
             ++entry;
             continue;
         }
+
         matched.push_back(std::move(entry->second));
         entry = watchers.erase(entry);
     }
+
     for (const Completion& completion : matched) {
         completion(result);
     }
@@ -338,6 +371,7 @@ void SceneManager::publishPhase(std::string_view name, const Change& change) {
         const std::size_t keep = getKeptLevel(change);
         to = keep > 0 ? stack[keep - 1].get() : nullptr;
     }
+
     (void)engine.getEvents().emitWith(name, Transfer{.from = change.from.get(), .to = to});
 }
 
@@ -363,6 +397,7 @@ void SceneManager::update(const FrameClock& clock) {
         const std::shared_ptr<Change> change = pending;
         change->options.loading->update(engine, delta, getLoadingProgress(*change));
     }
+
     if (canProcessTop(clock)) {
         getTopShared()->update(engine, static_cast<float>(clock.getDelta()));
     }
@@ -380,11 +415,13 @@ void SceneManager::advance(float deltaSeconds) {
         } catch (const std::exception& exception) {
             if (pending == change) {
                 takeNext();
+
                 if (change->options.completion) {
                     const auto* error = dynamic_cast<const lua::Error*>(&exception);
                     change->options.completion({.outcome = Outcome::Failed, .error = error != nullptr ? *error : lua::Error(exception.what())});
                 }
             }
+
             throw;
         }
     }
@@ -400,53 +437,65 @@ bool SceneManager::step(const std::shared_ptr<Change>& change, float& remaining)
         if (!waitForLoad(change, remaining)) {
             return false;
         }
+
         if (change->blocked) {
             remaining = 0.0F;
         }
+
         if (pending == change && change->failure) {
             takeNext();
             reportFailure(*change, change->from != nullptr);
+
             if (change->options.completion) {
                 change->options.completion({.outcome = Outcome::Failed, .error = change->failure});
             }
         } else if (pending == change) {
             switchScenes(change);
         }
+
         return true;
     case Phase::Out:
         change->elapsed += std::exchange(remaining, 0.0F);
         if (!isFinished(*change) && getProgress(*change) < change->options.transition.effect->getSwitchProgress()) {
             return false;
         }
+
         coverScreen(change);
         return true;
     case Phase::Covered:
         if (!waitForLoad(change, remaining)) {
             return false;
         }
+
         if (change->blocked) {
             remaining = 0.0F;
         }
+
         if (pending == change && change->failure) {
             restoreScenes(change);
         } else if (pending == change) {
             revealScene(change);
         }
+
         return true;
     case Phase::In:
         change->elapsed += std::exchange(remaining, 0.0F);
         if (!change->exited && (isFinished(*change) || getProgress(*change) >= change->options.transition.effect->getExitProgress())) {
             change->exited = true;
             exitLeaving();
+
             if (pending == change && !change->outFinished) {
                 change->outFinished = true;
                 publishPhase(LifecycleEvent::kTransitionOutFinished, *change);
             }
+
             return true;
         }
+
         if (!isFinished(*change)) {
             return false;
         }
+
         finish(change);
         return true;
     }
@@ -458,6 +507,7 @@ void SceneManager::reduceMotion(Transition& transition) const {
     if (!engine.getAccessibility().getSettings().reducedMotion) {
         return;
     }
+
     if (transition.motionReduction == MotionReduction::Skip) {
         transition.duration = 0.0F;
         transition.effect.reset();
@@ -472,10 +522,12 @@ void SceneManager::start(const std::shared_ptr<Change>& change) {
     if (scene && (find(*scene) || std::ranges::find(leaving, scene) != leaving.end())) {
         throw lua::Error("The scene is already on the stack.");
     }
+
     if (const auto taken = std::ranges::find(preloaded, scene); scene && taken != preloaded.end()) {
         if (change->options.params.has_value()) {
             throw lua::Error("A preloaded scene keeps the \"params\" of its preload.");
         }
+
         preloaded.erase(taken);
     }
 
@@ -483,9 +535,11 @@ void SceneManager::start(const std::shared_ptr<Change>& change) {
     const std::size_t keep = getKeptLevel(*change);
     if (!scene && keep == stack.size()) {
         takeNext();
+
         if (change->options.completion) {
             change->options.completion({});
         }
+
         return;
     }
 
@@ -497,25 +551,32 @@ void SceneManager::start(const std::shared_ptr<Change>& change) {
         if (needsLoad(scene.get())) {
             startLoad(scene, std::move(change->options.params));
         }
+
         return;
     }
 
     // The scenes that leave the stack start exiting, the top scene hears that the transition takes it off the screen, and the next scene loads during the out phase unless the replaced scene unloads first.
     prepareImages();
     change->phase = Phase::Out;
+
     for (std::size_t level = keep; level < stack.size(); ++level) {
         stack[level]->state = Scene::State::Exiting;
     }
+
     if (change->from) {
         change->from->exitTransitionStarted(engine);
+
         if (pending != change) {
             return;
         }
+
         publish(LifecycleEvent::kSceneExitTransitionStarted, *change->from);
+
         if (pending != change) {
             return;
         }
     }
+
     publishPhase(LifecycleEvent::kTransitionOutStarted, *change);
     const bool unloadFirst = change->operation == Operation::Replace && change->options.unloadBeforeLoad && change->from;
     if (pending == change && !unloadFirst && needsLoad(scene.get())) {
@@ -525,18 +586,22 @@ void SceneManager::start(const std::shared_ptr<Change>& change) {
 
 bool SceneManager::waitForLoad(const std::shared_ptr<Change>& change, float deltaSeconds) {
     const bool loaded = change->failure || !change->scene || change->scene->state == Scene::State::Loaded;
+
     if (change->viewShown) {
         change->shown += deltaSeconds;
     }
+
     if (change->fading) {
         change->faded += deltaSeconds;
     }
+
     if (!loaded) {
         change->waited += deltaSeconds;
         change->blocked = true;
         if (change->options.loading && !change->viewShown && change->waited >= change->options.loadingDelay) {
             showLoadingView(change);
         }
+
         return false;
     }
 
@@ -546,15 +611,18 @@ bool SceneManager::waitForLoad(const std::shared_ptr<Change>& change, float delt
             change->blocked = true;
             return false;
         }
+
         if (change->phase == Phase::Covered && change->faded < change->options.loadingFadeOut) {
             change->fading = true;
             change->blocked = true;
             return false;
         }
     }
+
     if (change->viewShown) {
         hideLoadingView(*change);
     }
+
     return true;
 }
 
@@ -576,9 +644,11 @@ float SceneManager::getLoadingViewOpacity() const noexcept {
     if (!isLoadingViewShown()) {
         return 0.0F;
     }
+
     if (!pending->fading) {
         return 1.0F;
     }
+
     return std::clamp(1.0F - pending->faded / pending->options.loadingFadeOut, 0.0F, 1.0F);
 }
 
@@ -590,6 +660,7 @@ SceneLoad::Progress SceneManager::getLoadingProgress(const Change& change) {
 void SceneManager::coverScreen(const std::shared_ptr<Change>& change) {
     change->outFinished = true;
     publishPhase(LifecycleEvent::kTransitionOutFinished, *change);
+
     if (pending != change) {
         return;
     }
@@ -602,15 +673,18 @@ void SceneManager::coverScreen(const std::shared_ptr<Change>& change) {
             if (change->from) {
                 coverScene(change->from);
             }
+
             break;
         case Operation::Replace:
             if (change->from) {
                 stack.pop_back();
                 release(change->from, change->options.unloadBeforeLoad);
             }
+
             if (pending == change && needsLoad(change->scene.get())) {
                 startLoad(change->scene, std::move(change->options.params));
             }
+
             break;
         case Operation::Pop:
         case Operation::PopTo:
@@ -619,29 +693,36 @@ void SceneManager::coverScreen(const std::shared_ptr<Change>& change) {
                 stack.pop_back();
                 release(popped, true);
             }
+
             if (const std::shared_ptr<Scene> top = getTopShared(); top && pending == change) {
                 uncoverScene(top);
             }
+
             break;
         }
         if (pending != change) {
             return;
         }
     }
+
     change->phase = Phase::Covered;
 }
 
 void SceneManager::revealScene(const std::shared_ptr<Change>& change) {
     exitLeaving();
+
     if (pending != change) {
         return;
     }
+
     if (change->scene) {
         enterScene(change->scene);
+
         if (pending != change) {
             return;
         }
     }
+
     change->phase = Phase::In;
     publishPhase(LifecycleEvent::kTransitionInStarted, *change);
 }
@@ -651,22 +732,28 @@ void SceneManager::restoreScenes(const std::shared_ptr<Change>& change) {
     const std::shared_ptr<Scene>& from = change->from;
     const bool waiting = from && std::ranges::find(leaving, from) != leaving.end();
     const bool kept = waiting || (from && find(*from));
+
     if (waiting) {
         std::erase(leaving, from);
         stack.push_back(from);
     }
+
     if (const std::shared_ptr<Scene> top = getTopShared(); top && top->state == Scene::State::Covered) {
         uncoverScene(top);
     } else if (top) {
         top->state = Scene::State::Entering;
     }
+
     if (pending != change) {
         return;
     }
+
     reportFailure(*change, kept);
+
     if (pending != change) {
         return;
     }
+
     change->phase = Phase::In;
     publishPhase(LifecycleEvent::kTransitionInStarted, *change);
 }
@@ -679,12 +766,16 @@ void SceneManager::switchScenes(const std::shared_ptr<Change>& change) {
         copyVisible(outgoing);
         change->exited = false;
     }
+
     if (change->from) {
         change->from->exitTransitionStarted(engine);
+
         if (pending != change) {
             return;
         }
+
         publish(LifecycleEvent::kSceneExitTransitionStarted, *change->from);
+
         if (pending != change) {
             return;
         }
@@ -697,12 +788,14 @@ void SceneManager::switchScenes(const std::shared_ptr<Change>& change) {
         if (change->from) {
             coverScene(change->from);
         }
+
         break;
     case Operation::Replace:
         if (change->from) {
             stack.pop_back();
             release(change->from, exitNow);
         }
+
         break;
     case Operation::Pop:
     case Operation::PopTo:
@@ -711,36 +804,45 @@ void SceneManager::switchScenes(const std::shared_ptr<Change>& change) {
             stack.pop_back();
             release(popped, exitNow);
         }
+
         if (const std::shared_ptr<Scene> top = getTopShared(); top && pending == change) {
             uncoverScene(top);
         }
+
         break;
     }
     if (pending != change) {
         return;
     }
+
     if (change->scene) {
         enterScene(change->scene);
+
         if (pending != change) {
             return;
         }
     }
+
     if (effect == nullptr) {
         finish(change);
         return;
     }
+
     // An effect that shows both scenes hides the current scenes while it shows the next ones, so both halves start together.
     change->phase = Phase::In;
     publishPhase(LifecycleEvent::kTransitionOutStarted, *change);
+
     if (pending != change) {
         return;
     }
+
     publishPhase(LifecycleEvent::kTransitionInStarted, *change);
 }
 
 void SceneManager::finish(const std::shared_ptr<Change>& change) {
     if (change->options.transition.effect) {
         publishPhase(LifecycleEvent::kTransitionInFinished, *change);
+
         if (pending != change) {
             return;
         }
@@ -748,11 +850,13 @@ void SceneManager::finish(const std::shared_ptr<Change>& change) {
 
     // The next change is already pending when the hooks run, so changes they request queue behind it.
     takeNext();
+
     if (const std::shared_ptr<Scene> top = getTopShared(); top && top->state == Scene::State::Entering) {
         top->state = Scene::State::Active;
         top->enterTransitionFinished(engine);
         publish(LifecycleEvent::kSceneEnterTransitionFinished, *top);
     }
+
     if (change->options.completion) {
         change->options.completion(change->failure ? Result{.outcome = Outcome::Failed, .error = change->failure} : Result{});
     }
@@ -774,10 +878,12 @@ void SceneManager::reportFailure(const Change& change, bool currentKept) {
         change.options.onError(error);
         return;
     }
+
     if (currentKept) {
         Log::error("A scene could not load: {}", error.what());
         return;
     }
+
     const Engine::PhaseScope scope(engine, Engine::Phase::Lifecycle);
     engine.reportError(error);
 }
@@ -789,6 +895,7 @@ void SceneManager::enterScene(const std::shared_ptr<Scene>& scene) {
     scene->state = Scene::State::Entering;
     const Engine::PhaseScope scope(engine, Engine::Phase::Lifecycle);
     scene->enter(engine, load->getParams());
+
     if (scene->state == Scene::State::Entering) {
         publish(LifecycleEvent::kSceneEntered, *scene);
     }
@@ -807,6 +914,7 @@ void SceneManager::unloadScene(const std::shared_ptr<Scene>& scene) {
     if (const std::shared_ptr<SceneLoad> load = std::exchange(scene->loading, {})) {
         load->cancel();
     }
+
     std::exception_ptr failure;
     try {
         const Engine::PhaseScope scope(engine, Engine::Phase::Lifecycle);
@@ -814,11 +922,14 @@ void SceneManager::unloadScene(const std::shared_ptr<Scene>& scene) {
     } catch (...) {
         failure = std::current_exception();
     }
+
     scene->connections.clear();
     scene->state = Scene::State::Unloaded;
+
     if (failure) {
         std::rethrow_exception(failure);
     }
+
     publish(LifecycleEvent::kSceneUnloaded, *scene);
 }
 
@@ -830,6 +941,7 @@ void SceneManager::retire(const std::shared_ptr<Scene>& scene) {
     } catch (...) {
         failure = std::current_exception();
     }
+
     try {
         unloadScene(scene);
     } catch (...) {
@@ -837,6 +949,7 @@ void SceneManager::retire(const std::shared_ptr<Scene>& scene) {
             failure = std::current_exception();
         }
     }
+
     if (failure) {
         std::rethrow_exception(failure);
     }
@@ -846,6 +959,7 @@ void SceneManager::coverScene(const std::shared_ptr<Scene>& scene) {
     scene->state = Scene::State::Covered;
     const Engine::PhaseScope scope(engine, Engine::Phase::Lifecycle);
     scene->pause(engine);
+
     if (scene->state == Scene::State::Covered) {
         publish(LifecycleEvent::kScenePaused, *scene);
     }
@@ -855,6 +969,7 @@ void SceneManager::uncoverScene(const std::shared_ptr<Scene>& scene) {
     scene->state = Scene::State::Entering;
     const Engine::PhaseScope scope(engine, Engine::Phase::Lifecycle);
     scene->resume(engine);
+
     if (scene->state == Scene::State::Entering) {
         publish(LifecycleEvent::kSceneResumed, *scene);
     }
@@ -866,6 +981,7 @@ void SceneManager::release(const std::shared_ptr<Scene>& scene, bool exitNow) {
         retire(scene);
         return;
     }
+
     leaving.push_back(scene);
 }
 
@@ -883,6 +999,7 @@ void SceneManager::exitLeaving() {
             }
         }
     }
+
     if (failure) {
         std::rethrow_exception(failure);
     }
@@ -908,6 +1025,7 @@ void SceneManager::event(const platform::Event& event) {
     if (event.isInput() && (isInputBlocked() || !canProcessTop(engine.getClock()))) {
         return;
     }
+
     scene->event(engine, event);
 }
 
@@ -927,6 +1045,7 @@ void SceneManager::copyVisible(std::vector<std::shared_ptr<Scene>>& scenes) cons
             break;
         }
     }
+
     scenes.erase(scenes.begin(), scenes.begin() + static_cast<std::ptrdiff_t>(first));
 }
 
@@ -951,6 +1070,7 @@ void SceneManager::prepareImages() {
     if (outgoingImage.isValid() && outgoingImage.getWidth() == width && outgoingImage.getHeight() == height) {
         return;
     }
+
     const graphics::Texture::Options options{.filter = graphics::Texture::Filter::Linear};
     outgoingImage = engine.getGraphics().createRenderTarget(width, height, options);
     incomingImage = engine.getGraphics().createRenderTarget(width, height, options);
@@ -961,6 +1081,7 @@ void SceneManager::prepareLoadingImage() {
     if (loadingImage.isValid() && loadingImage.getWidth() == outgoingImage.getWidth() && loadingImage.getHeight() == outgoingImage.getHeight()) {
         return;
     }
+
     loadingImage = engine.getGraphics().createRenderTarget(outgoingImage.getWidth(), outgoingImage.getHeight(), {.filter = graphics::Texture::Filter::Linear});
 }
 
@@ -1001,6 +1122,7 @@ void SceneManager::prepareViews() {
             views[1].effect = true;
             break;
         }
+
         resetViews(1);
         views[0].current = true;
         views[0].effect = true;
@@ -1010,10 +1132,12 @@ void SceneManager::prepareViews() {
     case Phase::In: {
         const std::size_t incoming = change->exited ? 0 : 1;
         resetViews(incoming + 2);
+
         if (incoming != 0) {
             views[0].scenes.assign(outgoing.begin(), outgoing.end());
             views[0].target = outgoingImage;
         }
+
         copyVisible(views[incoming].scenes);
         views[incoming].target = incomingImage;
         views[incoming].current = true;
@@ -1041,6 +1165,7 @@ void SceneManager::render(const SceneView& view) {
             scene->render(engine);
         }
     }
+
     if (view.current && isLoadingViewShown()) {
         const std::shared_ptr<Change> change = pending;
         change->options.loading->render(engine, getLoadingProgress(*change));
@@ -1053,6 +1178,7 @@ void SceneManager::renderUi(const SceneView& view) {
             scene->renderUi(engine);
         }
     }
+
     if (view.current && isLoadingViewShown()) {
         const std::shared_ptr<Change> change = pending;
         change->options.loading->renderUi(engine, getLoadingProgress(*change));
@@ -1064,6 +1190,7 @@ void SceneManager::renderTransition(graphics2d::Renderer& renderer, const SceneV
     if (!isEffectShown()) {
         return;
     }
+
     // A scripted effect may clear the stack while it renders, which drops the change, so the change stays held until the end.
     const std::shared_ptr<Change> change = pending;
     const std::shared_ptr<TransitionEffect> effect = change->options.transition.effect;
@@ -1073,7 +1200,9 @@ void SceneManager::renderTransition(graphics2d::Renderer& renderer, const SceneV
     } else if (change->covering && change->phase == Phase::In) {
         progress = std::max(progress, effect->getSwitchProgress());
     }
+
     effect->render(renderer, {.outgoing = outgoingImage.getTexture(), .incoming = incomingImage.getTexture()}, progress);
+
     if (pending != change || !change->fading || view.current) {
         return;
     }

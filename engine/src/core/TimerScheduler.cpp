@@ -24,6 +24,7 @@ TimerScheduler::Id TimerScheduler::every(float intervalSeconds, std::function<vo
     if (count == 0) {
         throw std::invalid_argument("A repeating timer needs a positive count, or a negative count to repeat until it is cancelled.");
     }
+
     return add(intervalSeconds, intervalSeconds, count, std::move(callback), options);
 }
 
@@ -35,6 +36,7 @@ TimerScheduler::Id TimerScheduler::add(float interval, float delay, int count, s
     if (!callback) {
         throw std::invalid_argument("A timer needs a callback.");
     }
+
     auto timer = std::make_shared<Timer>();
     timer->id = nextId++;
     timer->interval = std::max(0.0F, interval);
@@ -56,6 +58,7 @@ TimerScheduler::Timer* TimerScheduler::find(Id id) const noexcept {
             return found->get();
         }
     }
+
     return nullptr;
 }
 
@@ -79,6 +82,7 @@ Connection TimerScheduler::getConnection(Id id) {
             }
         }
     }
+
     return {};
 }
 
@@ -86,7 +90,9 @@ void TimerScheduler::clear() noexcept {
     for (const std::shared_ptr<Timer>& timer : pending) {
         timer->cancelled = true;
     }
+
     pending.clear();
+
     for (const std::shared_ptr<Timer>& timer : timers) {
         timer->cancelled = true;
     }
@@ -112,9 +118,11 @@ void TimerScheduler::update(const FrameClock& clock) {
         const bool running = !timer.cancelled && !timer.paused && clock.canProcess(resolveMode(timer.options));
         timer.firedThisUpdate = !running;
         timer.callsThisUpdate = 0;
+
         if (!running) {
             continue;
         }
+
         timer.remaining -= static_cast<float>(timer.options.unscaled ? clock.getUnscaledDelta() : clock.getDelta());
         if (timer.remaining <= 0.0F && timer.repeatsLeft != 0) {
             due.emplace_back(timer.remaining, index);
@@ -123,6 +131,7 @@ void TimerScheduler::update(const FrameClock& clock) {
 
     // Due timers fire in the order they expired, the earlier one in the list first on a tie, so a timer can still cancel another one that expires later in the same update. A repeating timer that fell behind fires again while it is still due, and the timers that the callbacks create wait in the pending list for the next update.
     std::ranges::make_heap(due, std::greater<>());
+
     try {
         while (!due.empty()) {
             std::ranges::pop_heap(due, std::greater<>());
@@ -132,17 +141,21 @@ void TimerScheduler::update(const FrameClock& clock) {
             if (timer.cancelled || timer.paused || timer.firedThisUpdate || timer.repeatsLeft == 0) {
                 continue;
             }
+
             if (timer.repeatsLeft > 0) {
                 --timer.repeatsLeft;
             }
+
             timer.remaining += timer.interval;
             // A timer that owes more calls than one update runs, as one with a tiny interval does, drops the rest of its debt.
             if (++timer.callsThisUpdate >= kMaxCallsPerUpdate && timer.remaining <= 0.0F) {
                 timer.remaining = timer.interval;
             }
+
             timer.firedThisUpdate = timer.interval <= 0.0F;
             timer.cancelled = timer.repeatsLeft == 0;
             timer.callback();
+
             if (!timer.cancelled && !timer.paused && !timer.firedThisUpdate && timer.remaining <= 0.0F) {
                 due.emplace_back(timer.remaining, index);
                 std::ranges::push_heap(due, std::greater<>());
@@ -152,6 +165,7 @@ void TimerScheduler::update(const FrameClock& clock) {
         finishUpdate();
         throw;
     }
+
     finishUpdate();
 }
 

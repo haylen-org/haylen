@@ -43,6 +43,7 @@ class EventRecorder final {
         for (const std::string_view name : {LifecycleEvent::kSceneLoading, LifecycleEvent::kSceneLoaded, LifecycleEvent::kSceneEntered, LifecycleEvent::kSceneExited, LifecycleEvent::kSceneUnloaded, LifecycleEvent::kScenePaused, LifecycleEvent::kSceneResumed, LifecycleEvent::kSceneExitTransitionStarted, LifecycleEvent::kSceneEnterTransitionFinished}) {
             connections.add(engine.getEvents().on(name, [this, name](EventBus::Event& event) { log.push_back(std::string(name) + " " + describe(event.get<Scene>())); }));
         }
+
         for (const std::string_view name : {LifecycleEvent::kTransitionOutStarted, LifecycleEvent::kTransitionOutFinished, LifecycleEvent::kTransitionInStarted, LifecycleEvent::kTransitionInFinished}) {
             // clang-format off
             connections.add(engine.getEvents().on(name, [this, name](EventBus::Event& event) {
@@ -51,6 +52,7 @@ class EventRecorder final {
             }));
             // clang-format on
         }
+
         // clang-format off
         connections.add(engine.getEvents().on(LifecycleEvent::kSceneLoadFailed, [this](EventBus::Event& event) {
             const SceneManager::LoadFailure& failure = *event.get<SceneManager::LoadFailure>();
@@ -1018,6 +1020,7 @@ TEST(SceneManagerTest, ClearingDropsPendingChangesAndEndsConnections) {
     for (const std::string_view name : {LifecycleEvent::kSceneExited, LifecycleEvent::kSceneUnloaded, LifecycleEvent::kSceneEntered}) {
         engine.getEvents().on(name, [&events, name](EventBus::Event& event) { events.push_back(std::string(name) + (event.get<Scene>() != nullptr ? " scene" : "")); });
     }
+
     std::vector<SceneManager::Outcome> outcomes;
     auto spare = std::make_shared<test::RecordingScene>("spare", log);
     spare->loading = test::RecordingScene::Load::Deferred;
@@ -1191,6 +1194,7 @@ TEST(SceneManagerTest, PopsToLevelsAndListsTheStack) {
     for (const std::shared_ptr<Scene>& scene : scenes) {
         visited += scene ? 1U : 0U;
     }
+
     EXPECT_EQ(visited, 4U);
 
     log.clear();
@@ -1302,11 +1306,13 @@ TEST(SceneManagerTest, DropsAChangeWhoseHookOrListenerClearedTheStack) {
 
         // The cover takes two frames, and the load of the game ends during the hold.
         fixture.frames(2, 0.125);
+
         if (game->deferral && entry.failing) {
             game->deferral->fail(lua::Error("the game cannot load"));
         } else if (game->deferral) {
             game->deferral->complete();
         }
+
         fixture.frames(4, 0.125);
         EXPECT_TRUE(cleared) << label;
         EXPECT_EQ(outcomes, std::vector<SceneManager::Outcome>{SceneManager::Outcome::Dropped}) << label;

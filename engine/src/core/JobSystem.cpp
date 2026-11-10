@@ -38,6 +38,7 @@ struct JobSystem::ParallelRange {
                     error = std::current_exception();
                 }
             }
+
             if (finishedChunks.fetch_add(1) + 1 == chunkCount) {
                 const std::scoped_lock lock(mutex);
                 finished.notify_all();
@@ -72,11 +73,13 @@ std::function<void()> JobSystem::guardWorker(std::function<void()> work, std::st
         const double start = recorder ? debug::TraceRecorder::now() : 0.0;
         debug::TraceRecorder* const previous = debug::TraceRecorder::getThreadRecorder();
         debug::TraceRecorder::setThreadRecorder(recorder.get());
+
         try {
             work();
         } catch (...) {
             postToFrame([this, message = describe(std::current_exception())] { onError(message); });
         }
+
         debug::TraceRecorder::setThreadRecorder(previous);
 
         if (recorder) {
@@ -110,6 +113,7 @@ std::function<void()> JobSystem::enqueue(std::function<void()> work, std::string
             if (found == target->jobs.end()) {
                 return;
             }
+
             job = std::move(found->second);
             target->jobs.erase(found);
         }
@@ -177,6 +181,7 @@ void JobSystem::parallelFor(std::size_t begin, std::size_t end, [[maybe_unused]]
     for (std::size_t helper = 0; helper < helpers; ++helper) {
         post([range] { range->runChunks(); });
     }
+
     range->runChunks();
 
     // Chunks that workers claimed may still run, and they reference `body`, so the caller waits for them even when a chunk failed.

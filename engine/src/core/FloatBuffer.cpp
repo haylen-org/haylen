@@ -12,6 +12,7 @@ float FloatBuffer::get(std::size_t index) const {
     if (index >= values.size()) {
         throw std::out_of_range("Float buffer index " + std::to_string(index) + " is past its size of " + std::to_string(values.size()) + ".");
     }
+
     return values[index];
 }
 
@@ -19,6 +20,7 @@ void FloatBuffer::set(std::size_t index, float value) {
     if (index >= values.size()) {
         throw std::out_of_range("Float buffer index " + std::to_string(index) + " is past its size of " + std::to_string(values.size()) + ".");
     }
+
     values[index] = value;
 }
 
@@ -26,6 +28,7 @@ void FloatBuffer::set(std::size_t first, std::span<const float> source) {
     if (first > values.size() || source.size() > values.size() - first) {
         throw std::out_of_range("Writing " + std::to_string(source.size()) + " values at " + std::to_string(first) + " goes past the float buffer size of " + std::to_string(values.size()) + ".");
     }
+
     std::ranges::copy(source, values.begin() + static_cast<std::ptrdiff_t>(first));
 }
 

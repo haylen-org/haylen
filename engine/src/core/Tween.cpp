@@ -19,6 +19,7 @@ void Tween::setDelay(float seconds) {
     if (!(seconds >= 0.0F)) {
         throw std::invalid_argument("A tween delay cannot be negative.");
     }
+
     delay = seconds;
     delayLeft = seconds;
 }
@@ -31,6 +32,7 @@ void Tween::setRepeatDelay(float seconds) {
     if (!(seconds >= 0.0F)) {
         throw std::invalid_argument("A tween repeat delay cannot be negative.");
     }
+
     repeatDelay = seconds;
 }
 
@@ -38,6 +40,7 @@ void Tween::setTimeScale(float value) {
     if (!(value >= 0.0F && std::isfinite(value))) {
         throw std::invalid_argument("A tween time scale must be a finite number of 0 or more.");
     }
+
     timeScale = value;
 }
 
@@ -45,6 +48,7 @@ void Tween::setTag(std::string value) {
     if (manager != nullptr) {
         throw std::logic_error("The tag of a tween is fixed once it plays.");
     }
+
     tag = std::move(value);
 }
 
@@ -52,6 +56,7 @@ Tween::Callbacks& Tween::getCallbacks() {
     if (!callbacks) {
         callbacks = std::make_shared<Callbacks>();
     }
+
     return *callbacks;
 }
 
@@ -63,6 +68,7 @@ float Tween::getTotalDuration() const noexcept {
     if (repeatCount < 0) {
         return std::numeric_limits<float>::infinity();
     }
+
     const auto loops = static_cast<float>(repeatCount + 1);
     return getDuration() * loops + repeatDelay * (loops - 1.0F);
 }
@@ -95,6 +101,7 @@ float Tween::getProgress() const noexcept {
         const float loopLength = getDuration();
         return loopLength > 0.0F ? locate(time).time / loopLength : 1.0F;
     }
+
     return total > 0.0F ? static_cast<float>(time / static_cast<double>(total)) : 1.0F;
 }
 
@@ -126,11 +133,13 @@ void Tween::render(double totalTime, bool silent) {
     if (killed) {
         return;
     }
+
     const std::shared_ptr<const Callbacks> events = callbacks;
     const bool first = !rendered;
     if (first) {
         rendered = true;
         prepare();
+
         if (killed) {
             return;
         }
@@ -146,9 +155,11 @@ void Tween::render(double totalTime, bool silent) {
 
     if (!started && forward && !silent) {
         started = true;
+
         if (events && events->start) {
             events->start();
         }
+
         if (killed) {
             return;
         }
@@ -161,13 +172,16 @@ void Tween::render(double totalTime, bool silent) {
     if (entered.loop != left.loop) {
         const float leftEdge = forward ? getLoopEnd(left.loop) : getLoopStart(left.loop);
         renderLoop(leftEdge, previousInLoop, incremental ? left.loop : 0, silent);
+
         if (killed) {
             return;
         }
+
         const int direction = forward ? 1 : -1;
         const int reported = std::abs(entered.loop - left.loop) > kMaxLoopCalls ? entered.loop - direction * (kMaxLoopCalls - 1) : left.loop + direction;
         for (int loop = reported; loop != entered.loop + direction && !silent && events && events->loop; loop += direction) {
             events->loop(loop);
+
             if (killed) {
                 return;
             }
@@ -177,20 +191,26 @@ void Tween::render(double totalTime, bool silent) {
         const float edge = forward ? getLoopStart(entered.loop) : getLoopEnd(entered.loop);
         if (loopMode != LoopMode::Yoyo) {
             renderLoop(edge, leftEdge, incremental ? entered.loop : 0, true);
+
             if (killed) {
                 return;
             }
         }
+
         previousInLoop = edge > 0.0F ? loopLength + 1.0F : -1.0F;
     }
 
     renderLoop(entered.time, previousInLoop, incremental ? entered.loop : 0, silent);
+
     if (killed) {
         return;
     }
+
     atStart = !forward && target <= 0.0;
+
     if (!silent && events && events->update) {
         events->update(getRenderedProgress());
+
         if (killed) {
             return;
         }
@@ -200,21 +220,26 @@ void Tween::render(double totalTime, bool silent) {
     const bool atEnd = !std::isinf(total) && (reversed ? target <= 0.0 : target >= total);
     const bool arrived = atEnd && !completed && (first || (reversed ? previous > 0.0 : previous < total));
     completed = atEnd && (completed || arrived);
+
     if (!arrived) {
         return;
     }
 
     // Waiters hear of the completion before the `complete` callback runs, so a callback that kills the tween never turns its completion into a kill.
     finished.emit(true);
+
     if (killed) {
         return;
     }
+
     if (!silent && events && events->complete) {
         events->complete();
+
         if (killed) {
             return;
         }
     }
+
     if (autoKill && parent == nullptr) {
         end(true);
     }
@@ -227,9 +252,11 @@ void Tween::advance(float seconds) {
         if (delayLeft > 0.0F) {
             return;
         }
+
         step = -delayLeft;
         delayLeft = 0.0F;
     }
+
     render(time + (reversed ? -step : step), false);
 }
 
@@ -251,6 +278,7 @@ void Tween::restart() {
     if (killed) {
         return;
     }
+
     delayLeft = delay;
     started = false;
     completed = false;
@@ -270,15 +298,18 @@ void Tween::seek(float seconds) {
     if (std::isnan(seconds)) {
         throw std::invalid_argument("A tween cannot seek to a time that is not a number.");
     }
+
     if (killed) {
         return;
     }
+
     delayLeft = 0.0F;
     double target = std::max(seconds, 0.0F);
     if (std::isinf(getTotalDuration())) {
         const double period = static_cast<double>(getDuration()) + static_cast<double>(repeatDelay);
         target = static_cast<double>(locate(time).loop) * period + std::min(std::max(seconds, 0.0F), getDuration());
     }
+
     render(target, true);
 }
 
@@ -292,6 +323,7 @@ void Tween::complete(bool withCallbacks) {
     if (killed || std::isinf(getTotalDuration())) {
         return;
     }
+
     delayLeft = 0.0F;
     render(reversed ? 0.0F : getTotalDuration(), !withCallbacks);
 }
@@ -304,9 +336,11 @@ void Tween::end(bool justCompleted) {
     if (killed) {
         return;
     }
+
     const std::shared_ptr<Tween> keepAlive = weak_from_this().lock();
     killed = true;
     killChildren();
+
     if (parent != nullptr) {
         parent->remove(*this);
     }
@@ -322,10 +356,13 @@ void Tween::end(bool justCompleted) {
     } catch (...) {
         failure = std::current_exception();
     }
+
     if (!justCompleted) {
         finished.emit(false);
     }
+
     finished.clear();
+
     if (failure) {
         std::rethrow_exception(failure);
     }

@@ -29,6 +29,7 @@ std::string TweenValue::mixText(const std::string& from, const std::string& to, 
     for (std::size_t index = 0; index < revealed && fromOffset < from.size(); ++index) {
         (void)Utf8::decode(from, fromOffset);
     }
+
     std::string result = to.substr(0, toOffset);
     result.append(from, std::min(fromOffset, from.size()));
     return result;
@@ -36,6 +37,7 @@ std::string TweenValue::mixText(const std::string& from, const std::string& to, 
 
 TweenValue TweenValue::mix(const TweenValue& from, const TweenValue& to, float t, Interpolation interpolation) {
     requireSameKind(from, to);
+
     switch (from.getKind()) {
     case Kind::Number: {
         const double start = from.getNumber();
@@ -43,6 +45,7 @@ TweenValue TweenValue::mix(const TweenValue& from, const TweenValue& to, float t
         if (interpolation == Interpolation::Angle) {
             end = start + static_cast<double>(math::Math::wrapAngle(static_cast<float>(end - start)));
         }
+
         const double value = start * (1.0 - static_cast<double>(t)) + end * static_cast<double>(t);
         return interpolation == Interpolation::Integer ? std::round(value) : value;
     }
@@ -58,6 +61,7 @@ TweenValue TweenValue::mix(const TweenValue& from, const TweenValue& to, float t
 
 TweenValue TweenValue::add(const TweenValue& value, const TweenValue& offset, float times) {
     requireSameKind(value, offset);
+
     switch (value.getKind()) {
     case Kind::Number:
         return value.getNumber() + offset.getNumber() * static_cast<double>(times);
@@ -76,6 +80,7 @@ TweenValue TweenValue::add(const TweenValue& value, const TweenValue& offset, fl
 
 TweenValue TweenValue::difference(const TweenValue& end, const TweenValue& start) {
     requireSameKind(end, start);
+
     switch (end.getKind()) {
     case Kind::Number:
         return end.getNumber() - start.getNumber();
@@ -94,6 +99,7 @@ TweenValue TweenValue::difference(const TweenValue& end, const TweenValue& start
 
 float TweenValue::distance(const TweenValue& from, const TweenValue& to, Interpolation interpolation) {
     requireSameKind(from, to);
+
     switch (from.getKind()) {
     case Kind::Number: {
         const auto delta = static_cast<float>(to.getNumber() - from.getNumber());

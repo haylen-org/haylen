@@ -61,6 +61,7 @@ SceneLoad::Progress Scene::getLoadProgress() const {
     if (loading) {
         return loading->getProgress();
     }
+
     return {.value = state == State::Created || state == State::Unloaded ? 0.0F : 1.0F};
 }
 

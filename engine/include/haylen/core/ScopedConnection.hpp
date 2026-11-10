@@ -24,6 +24,7 @@ class ScopedConnection final {
             connection.disconnect();
             connection = std::exchange(other.connection, {});
         }
+
         return *this;
     }
 

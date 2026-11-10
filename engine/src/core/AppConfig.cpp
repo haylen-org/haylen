@@ -42,6 +42,7 @@ content::Delivery AppConfig::Content::getDelivery(std::string_view path) const n
             return rule.mode;
         }
     }
+
     return content::Delivery::Required;
 }
 
@@ -51,6 +52,7 @@ std::string_view AppConfig::Content::getPack(std::string_view path) const noexce
             return rule.pack;
         }
     }
+
     return {};
 }
 
@@ -59,14 +61,17 @@ bool AppConfig::isServerAddress(std::string_view url) noexcept {
     if (!url.ends_with('/')) {
         return false;
     }
+
     if (url.starts_with("https://") && url.size() > 9) {
         return true;
     }
+
     for (const std::string_view local : {"http://localhost", "http://127.0.0.1", "http://[::1]"}) {
         if (url.starts_with(local) && (url.size() == local.size() || url[local.size()] == ':' || url[local.size()] == '/')) {
             return true;
         }
     }
+
     return false;
 }
 
@@ -74,13 +79,16 @@ bool AppConfig::isServerAddress(std::string_view url) noexcept {
 std::string AppConfig::readLanguageTag(const Json& section, const char* key) {
     std::string tag;
     readValue(section, key, tag);
+
     if (!section.contains(key)) {
         return tag;
     }
+
     std::optional<std::string> canonical = localization::LanguageTag::parse(tag);
     if (!canonical) {
         throw std::invalid_argument("The \"localization." + std::string(key) + "\" value \"" + tag + "\" in \"app.json\" is no language tag. Write a language such as \"en\", \"pt-BR\" or \"pt_BR\".");
     }
+
     return std::move(*canonical);
 }
 
@@ -89,9 +97,11 @@ void AppConfig::readLocalization(const Json& section, AppConfig& config) {
     JsonValidator::requireKnownKeys(section, {"folder", "fallback", "language"}, "the \"localization\" section of \"app.json\"");
     Localization& localization = config.localization;
     readValue(section, "folder", localization.folder);
+
     if (section.contains("folder")) {
         localization.folder = io::Path::normalize(localization.folder);
     }
+
     localization.fallback = readLanguageTag(section, "fallback");
     localization.language = readLanguageTag(section, "language");
 
@@ -103,9 +113,11 @@ void AppConfig::readLocalization(const Json& section, AppConfig& config) {
 void AppConfig::readContent(const Json& section, AppConfig& config) {
     JsonValidator::requireKnownKeys(section, {"updates", "delivery", "groups"}, "the \"content\" section of \"app.json\"");
     readValue(section, "groups", config.content.groups);
+
     if (section.contains("groups") && !isContentPattern(config.content.groups)) {
         throw std::invalid_argument("The \"content.groups\" in \"app.json\" must name a file relative to the \"content\" folder, such as \"groups.json\", not \"" + config.content.groups + "\".");
     }
+
     if (section.contains("updates")) {
         const Json& updates = section.at("updates");
         JsonValidator::requireKnownKeys(updates, {"baseUrl", "channel", "enabled"}, "the \"content.updates\" section of \"app.json\"");
@@ -113,19 +125,24 @@ void AppConfig::readContent(const Json& section, AppConfig& config) {
         readValue(updates, "baseUrl", read.baseUrl);
         readValue(updates, "channel", read.channel);
         readValue(updates, "enabled", read.enabled);
+
         if (!isServerAddress(read.baseUrl)) {
             throw std::invalid_argument("The \"content.updates.baseUrl\" in \"app.json\" must be an \"https\" address that ends with a slash, such as \"https://cdn.example.com/my-game/\", or an \"http\" address of this machine, not \"" + read.baseUrl + "\".");
         }
+
         if (!content::Manifest::isValidName(read.channel)) {
             throw std::invalid_argument("The \"content.updates.channel\" in \"app.json\" must have at most 64 lowercase letters, digits, dashes and dots, not \"" + read.channel + "\".");
         }
+
         config.content.updates = std::move(read);
     }
+
     if (section.contains("delivery")) {
         const Json& rules = section.at("delivery");
         if (!rules.is_array()) {
             throw std::invalid_argument("The \"content.delivery\" section of \"app.json\" must be a list of rules with \"match\" or \"group\" and a \"mode\" or a \"pack\".");
         }
+
         for (const Json& rule : rules) {
             JsonValidator::requireKnownKeys(rule, {"match", "group", "mode", "pack"}, "a rule of \"content.delivery\" in \"app.json\"");
             Content::Rule read;
@@ -134,25 +151,33 @@ void AppConfig::readContent(const Json& section, AppConfig& config) {
             readValue(rule, "group", read.group);
             readValue(rule, "mode", mode);
             readValue(rule, "pack", read.pack);
+
             if (rule.contains("match") == rule.contains("group")) {
                 throw std::invalid_argument("A rule of \"content.delivery\" in \"app.json\" needs either a \"match\" pattern or the name of a preload \"group\".");
             }
+
             if (rule.contains("group") && config.content.groups.empty()) {
                 throw std::invalid_argument("A rule of \"content.delivery\" in \"app.json\" names the group \"" + read.group + "\", so \"content.groups\" must name the group manifest that defines it.");
             }
+
             if (rule.contains("mode") == rule.contains("pack")) {
                 throw std::invalid_argument("A rule of \"content.delivery\" in \"app.json\" needs either a \"mode\" or a \"pack\", since a store delivers a pack on its own.");
             }
+
             if (rule.contains("pack") && !content::Manifest::isValidName(read.pack)) {
                 throw std::invalid_argument("The \"pack\" of a rule of \"content.delivery\" in \"app.json\" must have at most 64 lowercase letters, digits, dashes and dots, not \"" + read.pack + "\".");
             }
+
             const std::optional<content::Delivery> delivery = deliveryFromName(mode);
+
             if (rule.contains("match") && !isContentPattern(read.match)) {
                 throw std::invalid_argument("A rule of \"content.delivery\" in \"app.json\" must match paths relative to the \"content\" folder, such as \"world/asia/**\", not \"" + read.match + "\".");
             }
+
             if (!delivery) {
                 throw std::invalid_argument("The \"mode\" of a rule of \"content.delivery\" in \"app.json\" must be \"required\", \"prefetch\" or \"onDemand\", not \"" + mode + "\".");
             }
+
             read.mode = *delivery;
             config.content.delivery.push_back(std::move(read));
         }
@@ -173,6 +198,7 @@ template <typename T> void AppConfig::readValue(const Json& object, const char* 
     if (!object.contains(key)) {
         return;
     }
+
     const Json& value = object.at(key);
     if constexpr (std::is_integral_v<T> && !std::is_same_v<T, bool>) {
         const bool fits = value.is_number_unsigned() ? std::in_range<T>(value.get<std::uint64_t>()) : value.is_number_integer() && std::in_range<T>(value.get<std::int64_t>());
@@ -180,12 +206,14 @@ template <typename T> void AppConfig::readValue(const Json& object, const char* 
             throw std::invalid_argument(std::format("The value of \"{}\" in \"app.json\" must be a whole number from {} to {}.", key, std::numeric_limits<T>::min(), std::numeric_limits<T>::max()));
         }
     }
+
     if constexpr (std::is_floating_point_v<T>) {
         const bool fits = value.is_number() && std::isfinite(value.get<double>()) && std::abs(value.get<double>()) <= std::numeric_limits<T>::max();
         if (!fits) {
             throw std::invalid_argument(std::format("The value of \"{}\" in \"app.json\" must be a number from {:g} to {:g}.", key, std::numeric_limits<T>::lowest(), std::numeric_limits<T>::max()));
         }
     }
+
     try {
         target = value.get<T>();
     } catch (const Json::exception&) {
@@ -203,6 +231,7 @@ std::uint32_t AppConfig::readBuild(const Json& document) {
     if (number < 1 || number > kMaxBuild) {
         throw std::invalid_argument("The \"build\" value " + value.dump() + " in \"app.json\" is not a build number. It is a whole number from 1 to " + std::to_string(kMaxBuild) + " that grows with every upload of the app.");
     }
+
     return static_cast<std::uint32_t>(number);
 }
 
@@ -225,6 +254,7 @@ math::Color AppConfig::readColor(const Json& object, const char* key, const char
     if (!color) {
         throw std::invalid_argument(std::string("The \"") + name + "\" value \"" + text + "\" in \"app.json\" is not a color such as \"#RRGGBB\" or \"#AARRGGBB\".");
     }
+
     return *color;
 }
 
@@ -233,6 +263,7 @@ platform::Orientation AppConfig::orientationFromName(const std::string& text) {
     if (!orientation) {
         throw std::invalid_argument("The orientation \"" + text + "\" in \"app.json\" is unknown. It is \"landscape\", \"portrait\" or \"any\".");
     }
+
     return *orientation;
 }
 
@@ -241,6 +272,7 @@ audio::Session::Category AppConfig::sessionCategoryFromName(const std::string& t
     if (!category) {
         throw std::invalid_argument("The \"audio.iosSession\" value \"" + text + "\" in \"app.json\" is unknown. It is \"ambient\", \"soloAmbient\" or \"playback\".");
     }
+
     return *category;
 }
 
@@ -249,14 +281,17 @@ bool AppConfig::isPluginId(std::string_view text) noexcept {
     if (text.empty() || text.front() < 'a' || text.front() > 'z' || text.back() == '-') {
         return false;
     }
+
     char previous = '\0';
     for (const char character : text) {
         const bool word = (character >= 'a' && character <= 'z') || (character >= '0' && character <= '9');
         if (!word && (character != '-' || previous == '-')) {
             return false;
         }
+
         previous = character;
     }
+
     return true;
 }
 
@@ -265,6 +300,7 @@ std::vector<gpu::Device::Api> AppConfig::readGraphicsApis(const Json& value) {
     if (!value.is_array()) {
         throw std::invalid_argument("The \"window.graphicsApis\" of \"app.json\" is not an array of graphics API names, such as [\"vulkan\", \"openGl\"].");
     }
+
     std::vector<gpu::Device::Api> apis;
     for (const Json& entry : value) {
         const std::string name = entry.is_string() ? entry.get<std::string>() : entry.dump();
@@ -272,11 +308,14 @@ std::vector<gpu::Device::Api> AppConfig::readGraphicsApis(const Json& value) {
         if (found == gpu::Device::kApiNames.end() || found->second == gpu::Device::Api::None) {
             throw std::invalid_argument("The \"window.graphicsApis\" value \"" + name + "\" in \"app.json\" is not a graphics API. It is \"metal\", \"direct3D12\", \"direct3D11\", \"vulkan\", \"openGl\", \"openGlEs\", \"webGpu\", \"webGl2\" or \"port\".");
         }
+
         if (std::ranges::find(apis, found->second) != apis.end()) {
             throw std::invalid_argument("The \"window.graphicsApis\" of \"app.json\" names \"" + name + "\" twice.");
         }
+
         apis.push_back(found->second);
     }
+
     return apis;
 }
 
@@ -284,10 +323,12 @@ void AppConfig::readPlugins(const Json& section, AppConfig& config) {
     if (!section.is_object()) {
         throw std::invalid_argument("The \"plugins\" section of \"app.json\" must be an object of plugins by id.");
     }
+
     for (const auto& [id, entry] : section.items()) {
         if (!isPluginId(id)) {
             throw std::invalid_argument("The plugin id \"" + id + "\" in \"app.json\" is not in \"dash-case\", such as \"cloud-analytics\".");
         }
+
         config.plugins[id] = readPlugin(id, entry);
     }
 }
@@ -296,15 +337,18 @@ AppConfig::Plugin AppConfig::readPlugin(const std::string& id, const Json& entry
     if (!entry.is_object()) {
         throw std::invalid_argument("The plugin \"" + id + "\" in \"app.json\" must be an object with the optional keys \"path\", \"git\", \"ref\" and \"parameters\".");
     }
+
     JsonValidator::requireKnownKeys(entry, {"path", "git", "ref", "parameters"}, "the plugin \"" + id + "\" of \"app.json\"");
 
     Plugin plugin;
     readPluginText(entry, id, "path", plugin.path);
     readPluginText(entry, id, "git", plugin.git);
     readPluginText(entry, id, "ref", plugin.ref);
+
     if (!plugin.path.empty() && !plugin.git.empty()) {
         throw std::invalid_argument("The plugin \"" + id + "\" in \"app.json\" names both a \"path\" and a \"git\" repository. Keep the one that the plugin comes from.");
     }
+
     if (!plugin.ref.empty() && plugin.git.empty()) {
         throw std::invalid_argument("The \"ref\" of the plugin \"" + id + "\" in \"app.json\" picks a branch, tag or commit of a git repository, so it needs \"git\".");
     }
@@ -313,9 +357,11 @@ AppConfig::Plugin AppConfig::readPlugin(const std::string& id, const Json& entry
     if (parameters == entry.end()) {
         return plugin;
     }
+
     if (!parameters->is_object()) {
         throw std::invalid_argument("The \"parameters\" of the plugin \"" + id + "\" in \"app.json\" must be an object of parameter values.");
     }
+
     plugin.parameters = *parameters;
     return plugin;
 }
@@ -325,9 +371,11 @@ void AppConfig::readPluginText(const Json& entry, const std::string& id, const c
     if (found == entry.end()) {
         return;
     }
+
     if (!found->is_string() || found->get_ref<const std::string&>().empty()) {
         throw std::invalid_argument("The \"" + std::string(key) + "\" of the plugin \"" + id + "\" in \"app.json\" must be a text.");
     }
+
     target = found->get<std::string>();
 }
 
@@ -340,10 +388,12 @@ void AppConfig::expandGroups(const io::Package& package, Content& content) {
     if (std::ranges::none_of(content.delivery, [](const Content::Rule& rule) { return !rule.group.empty(); })) {
         return;
     }
+
     const std::string manifest = io::Path::asset(content.groups);
     if (!package.exists(manifest)) {
         throw std::invalid_argument("The group manifest \"" + manifest + "\" that \"content.groups\" in \"app.json\" names is not in the package.");
     }
+
     const std::map<std::string, std::vector<assets::GroupManifest::Entry>> groups = assets::GroupManifest::read(Json::parse(package.readText(manifest)));
     std::vector<Content::Rule> expanded;
     for (Content::Rule& rule : content.delivery) {
@@ -351,23 +401,28 @@ void AppConfig::expandGroups(const io::Package& package, Content& content) {
             expanded.push_back(std::move(rule));
             continue;
         }
+
         const auto found = groups.find(rule.group);
         if (found == groups.end()) {
             throw std::invalid_argument("A rule of \"content.delivery\" in \"app.json\" names the group \"" + rule.group + "\", which \"" + manifest + "\" does not define.");
         }
+
         for (const assets::GroupManifest::Entry& entry : found->second) {
             if (!isContentPattern(entry.path)) {
                 throw std::invalid_argument("The group \"" + rule.group + "\" of \"" + manifest + "\" has the path \"" + entry.path + "\", which is not relative to the \"content\" folder.");
             }
+
             expanded.push_back({.match = entry.path.ends_with('/') ? entry.path + "**" : entry.path, .mode = rule.mode, .pack = rule.pack, .group = rule.group});
         }
     }
+
     content.delivery = std::move(expanded);
 }
 
 AppConfig AppConfig::fromPackage(const io::Package& package) {
     AppConfig config = fromJson(Json::parse(package.readText(io::Path::kAppConfigFile)));
     expandGroups(package, config.content);
+
     for (const auto& [id, plugin] : config.plugins) {
         const std::string manifest = io::Path::plugin(id, io::Path::kPluginManifestFile);
         if (package.exists(manifest)) {
@@ -378,8 +433,10 @@ AppConfig AppConfig::fromPackage(const io::Package& package) {
         if (!plugin.path.empty() || !plugin.git.empty()) {
             throw std::invalid_argument("The plugin \"" + id + "\" in \"app.json\" comes from a \"path\" or a \"git\" repository, so the package has no \"" + manifest + "\". Run the app with \"haylen run\", which places every plugin in the package wherever it comes from.");
         }
+
         throw std::invalid_argument("The plugin \"" + id + "\" in \"app.json\" has no \"" + manifest + "\" in the package.");
     }
+
     return config;
 }
 
@@ -423,21 +480,27 @@ AppConfig AppConfig::fromJson(const Json& document) {
         requirePositive(config.window.width, "window.width");
         requirePositive(config.window.height, "window.height");
         requirePositive(config.window.sampleCount, "window.sampleCount");
+
         if (!std::isfinite(config.window.maxPixelDensity) || config.window.maxPixelDensity < 0.0F) {
             throw std::invalid_argument("The \"window.maxPixelDensity\" value in \"app.json\" is out of range. It is 0 for every pixel of the display, or a positive number of framebuffer pixels in each point.");
         }
+
         if (config.window.frameRate < 0 || config.window.frameRate > platform::Window::kMaxFrameRate) {
             throw std::invalid_argument("The \"window.frameRate\" value " + std::to_string(config.window.frameRate) + " in \"app.json\" is out of range. It is 0 for every refresh of the display, or from 1 to " + std::to_string(platform::Window::kMaxFrameRate) + " frames per second.");
         }
+
         std::string statusBarText;
         readValue(windowJson, "statusBar", statusBarText);
+
         if (!statusBarText.empty()) {
             const std::optional<platform::Window::StatusBar> statusBar = platform::Window::statusBarFromName(statusBarText);
             if (!statusBar) {
                 throw std::invalid_argument("The \"window.statusBar\" value \"" + statusBarText + "\" in \"app.json\" is unknown. It is \"hidden\", \"auto\", \"light\" or \"dark\".");
             }
+
             config.window.statusBar = *statusBar;
         }
+
         if (windowJson.contains("systemGestures")) {
             std::string systemGesturesText;
             readValue(windowJson, "systemGestures", systemGesturesText);
@@ -445,19 +508,24 @@ AppConfig AppConfig::fromJson(const Json& document) {
             if (!systemGestures) {
                 throw std::invalid_argument("The \"window.systemGestures\" value \"" + systemGesturesText + "\" in \"app.json\" is unknown. It is \"system\", \"deferred\" or \"autoHideIndicator\".");
             }
+
             config.window.systemGestures = *systemGestures;
         }
+
         std::string statusBarColorText;
         readValue(windowJson, "statusBarColor", statusBarColorText);
+
         if (!statusBarColorText.empty()) {
             config.window.statusBarColor = math::Color::parse(statusBarColorText);
             if (!config.window.statusBarColor) {
                 throw std::invalid_argument("The \"window.statusBarColor\" value \"" + statusBarColorText + "\" in \"app.json\" is not a color such as \"#RRGGBB\" or \"#AARRGGBB\".");
             }
         }
+
         if (windowJson.contains("graphicsApis")) {
             config.window.graphicsApis = readGraphicsApis(windowJson.at("graphicsApis"));
         }
+
         if (windowJson.contains("position")) {
             try {
                 config.window.position = platform::WindowPlacement::fromJson(windowJson.at("position"));
@@ -477,17 +545,20 @@ AppConfig AppConfig::fromJson(const Json& document) {
 
         std::string scalingText;
         readValue(designJson, "scaling", scalingText);
+
         if (!scalingText.empty()) {
             const auto policy = graphics::Viewport::scalingPolicyFromName(scalingText);
             if (!policy) {
                 throw std::invalid_argument("The \"design.scaling\" value \"" + scalingText + "\" in \"app.json\" is unknown. It is \"fit\", \"fill\", \"stretch\", \"expand\", \"pixelPerfect\", \"fitWidth\" or \"none\".");
             }
+
             config.scaling = *policy;
         }
     }
 
     std::string orientationText;
     readValue(document, "orientation", orientationText);
+
     if (!orientationText.empty()) {
         config.orientation = orientationFromName(orientationText);
     }
@@ -499,14 +570,17 @@ AppConfig AppConfig::fromJson(const Json& document) {
 
     std::string clearColorText;
     readValue(document, "clearColor", clearColorText);
+
     if (config.window.transparent) {
         config.clearColor = math::Color::transparent();
     }
+
     if (!clearColorText.empty()) {
         const auto color = math::Color::parse(clearColorText);
         if (!color) {
             throw std::invalid_argument("The \"clearColor\" value \"" + clearColorText + "\" in \"app.json\" is not a color such as \"#RRGGBB\" or \"#AARRGGBB\".");
         }
+
         config.clearColor = *color;
     }
 
@@ -515,12 +589,15 @@ AppConfig AppConfig::fromJson(const Json& document) {
         const Json& splashJson = document.at("splash");
         JsonValidator::requireKnownKeys(splashJson, {"logo", "background", "darkBackground", "duration", "fadeOut"}, "the \"splash\" section of \"app.json\"");
         readValue(splashJson, "logo", config.splash.logo);
+
         if (splashJson.contains("background")) {
             config.splash.background = readColor(splashJson, "background", "splash.background");
         }
+
         if (splashJson.contains("darkBackground")) {
             config.splash.darkBackground = readColor(splashJson, "darkBackground", "splash.darkBackground");
         }
+
         readValue(splashJson, "duration", config.splash.duration);
         requireNonNegative(config.splash.duration, "splash.duration");
         readValue(splashJson, "fadeOut", config.splash.fadeOut);
@@ -538,6 +615,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
     if (document.contains("audio")) {
         const Json& audioJson = document.at("audio");
         JsonValidator::requireKnownKeys(audioJson, {"iosSession", "mixWithOthers", "background", "latency", "limiter"}, "the \"audio\" section of \"app.json\"");
+
         if (audioJson.contains("latency")) {
             std::string latency;
             readValue(audioJson, "latency", latency);
@@ -545,19 +623,26 @@ AppConfig AppConfig::fromJson(const Json& document) {
             if (!found) {
                 throw std::invalid_argument("The \"audio.latency\" value \"" + latency + "\" in \"app.json\" is unknown. It is \"low\", \"balanced\" or \"powerSaving\".");
             }
+
             config.audioOutput.latency = *found;
         }
+
         readValue(audioJson, "limiter", config.audioOutput.limiter);
+
         if (audioJson.contains("iosSession")) {
             std::string category;
             readValue(audioJson, "iosSession", category);
             config.audioSession.category = sessionCategoryFromName(category);
         }
+
         readValue(audioJson, "mixWithOthers", config.audioSession.mixWithOthers);
+
         if (config.audioSession.mixWithOthers && config.audioSession.category != audio::Session::Category::Playback) {
             throw std::invalid_argument("The \"audio.mixWithOthers\" option in \"app.json\" needs the \"iosSession\" value \"playback\".");
         }
+
         readValue(audioJson, "background", config.audioSession.background);
+
         if (config.audioSession.background && config.audioSession.category != audio::Session::Category::Playback) {
             throw std::invalid_argument("The \"audio.background\" option in \"app.json\" needs the \"iosSession\" value \"playback\", the only session that iOS and tvOS play in the background.");
         }
@@ -569,6 +654,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
         readValue(inputJson, "mouseAsTouch", config.input.mouseAsTouch);
         readValue(inputJson, "touchAsMouse", config.input.touchAsMouse);
         readValue(inputJson, "scrollSpeed", config.input.scrollSpeed);
+
         if (!(config.input.scrollSpeed > 0.0F && std::isfinite(config.input.scrollSpeed))) {
             throw std::invalid_argument("The \"input.scrollSpeed\" value in \"app.json\" must be a positive number.");
         }
@@ -579,14 +665,18 @@ AppConfig AppConfig::fromJson(const Json& document) {
         JsonValidator::requireKnownKeys(uiJson, {"scaleMode", "scale"}, "the \"ui\" section of \"app.json\"");
         std::string mode;
         readValue(uiJson, "scaleMode", mode);
+
         if (!mode.empty()) {
             const std::optional<ui::Scaling::Mode> found = ui::Scaling::modeFromName(mode);
             if (!found) {
                 throw std::invalid_argument("The \"ui.scaleMode\" value \"" + mode + "\" in \"app.json\" is unknown. It is \"design\" or \"physical\".");
             }
+
             config.uiScaling.mode = *found;
         }
+
         readValue(uiJson, "scale", config.uiScaling.factor);
+
         if (config.uiScaling.factor < ui::Scaling::kMinimumFactor || config.uiScaling.factor > ui::Scaling::kMaximumFactor) {
             throw std::invalid_argument("The \"ui.scale\" value in \"app.json\" must be from 0.25 to 4.");
         }
@@ -597,31 +687,40 @@ AppConfig AppConfig::fromJson(const Json& document) {
         JsonValidator::requireKnownKeys(debugJson, {"stats", "statsItems", "drawings", "objectEvents", "console", "safeArea", "fold", "showSafeArea", "reload"}, "the \"debug\" section of \"app.json\"");
         std::string stats;
         readValue(debugJson, "stats", stats);
+
         if (!stats.empty()) {
             const auto mode = debug::StatsDisplay::modeFromName(stats);
             if (!mode) {
                 throw std::invalid_argument("The \"debug.stats\" value \"" + stats + "\" in \"app.json\" is unknown. It is \"off\", \"compact\" or \"full\".");
             }
+
             config.debug.stats = *mode;
         }
+
         if (debugJson.contains("statsItems")) {
             std::vector<std::string> items;
             readValue(debugJson, "statsItems", items);
             config.debug.statsItems.clear();
+
             for (const std::string& name : items) {
                 const std::optional<debug::StatsDisplay::Item> item = debug::StatsDisplay::itemFromName(name);
                 if (!item) {
                     throw std::invalid_argument("The \"debug.statsItems\" item \"" + name + "\" in \"app.json\" is unknown. It is \"frameRate\", \"drawCalls\", \"geometry\", \"memory\", \"counters\", \"physics\", \"particles\" or \"audio\".");
                 }
+
                 config.debug.statsItems.push_back(*item);
             }
         }
+
         readValue(debugJson, "drawings", config.debug.drawings);
+
         if (std::ranges::any_of(config.debug.drawings, [](const std::string& drawing) { return drawing.empty(); })) {
             throw std::invalid_argument("The \"debug.drawings\" list in \"app.json\" has an empty drawing name.");
         }
+
         readValue(debugJson, "objectEvents", config.debug.objectEvents);
         readValue(debugJson, "console", config.debug.console);
+
         if (debugJson.contains("safeArea")) {
             try {
                 config.debug.safeArea = platform::SafeAreaSimulation::fromJson(debugJson.at("safeArea"));
@@ -629,6 +728,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
                 throw std::invalid_argument(std::string("The \"debug.safeArea\" in \"app.json\" is invalid. ") + error.what());
             }
         }
+
         if (debugJson.contains("fold")) {
             try {
                 config.debug.fold = platform::FoldSimulation::fromJson(debugJson.at("fold"));
@@ -636,7 +736,9 @@ AppConfig AppConfig::fromJson(const Json& document) {
                 throw std::invalid_argument(std::string("The \"debug.fold\" in \"app.json\" is invalid. ") + error.what());
             }
         }
+
         readValue(debugJson, "showSafeArea", config.debug.showSafeArea);
+
         if (debugJson.contains("reload")) {
             std::string reload;
             readValue(debugJson, "reload", reload);
@@ -644,11 +746,13 @@ AppConfig AppConfig::fromJson(const Json& document) {
             if (!mode) {
                 throw std::invalid_argument("The \"debug.reload\" option must be \"module\" or \"restart\".");
             }
+
             config.debug.reload = *mode;
         }
     }
 
     readValue(document, "autoload", config.autoloads);
+
     for (const std::string& module : config.autoloads) {
         if (module.empty()) {
             throw std::invalid_argument("The \"autoload\" list in \"app.json\" has an empty module name.");
@@ -659,18 +763,22 @@ AppConfig AppConfig::fromJson(const Json& document) {
         if (!document.at("native").is_object()) {
             throw std::invalid_argument("The \"native\" section of \"app.json\" must be an object of libraries.");
         }
+
         config.native = document.at("native");
     }
 
     if (document.contains("plugins")) {
         readPlugins(document.at("plugins"), config);
     }
+
     if (document.contains("content")) {
         readContent(document.at("content"), config);
     }
+
     if (document.contains("localization")) {
         readLocalization(document.at("localization"), config);
     }
+
     return config;
 }
 
@@ -679,30 +787,39 @@ Json AppConfig::toJson() const {
     for (const debug::StatsDisplay::Item item : debug.statsItems) {
         statsItems.push_back(debug::StatsDisplay::itemName(item));
     }
+
     Json debugJson = {{"stats", debug::StatsDisplay::modeName(debug.stats)}, {"statsItems", statsItems}, {"drawings", debug.drawings}, {"objectEvents", debug.objectEvents}, {"console", debug.console}, {"showSafeArea", debug.showSafeArea}, {"reload", reloadName(debug.reload)}};
     if (debug.safeArea) {
         debugJson["safeArea"] = debug.safeArea->toJson();
     }
+
     if (debug.fold) {
         debugJson["fold"] = debug.fold->toJson();
     }
+
     Json splashJson = {{"logo", splash.logo}, {"background", splash.background.toHex()}, {"duration", JsonNumber::fromFloat(splash.duration)}, {"fadeOut", JsonNumber::fromFloat(splash.fadeOut)}};
     if (splash.darkBackground) {
         splashJson["darkBackground"] = splash.darkBackground->toHex();
     }
+
     Json windowJson = {{"title", window.title}, {"width", window.width}, {"height", window.height}, {"fullscreen", window.fullscreen}, {"maxPixelDensity", JsonNumber::fromFloat(window.maxPixelDensity)}, {"resizable", window.resizable}, {"vsync", window.vsync}, {"frameRate", window.frameRate}, {"sampleCount", window.sampleCount}, {"decorated", window.decorated}, {"transparent", window.transparent}, {"alwaysOnTop", window.alwaysOnTop}, {"showInTaskbar", window.showInTaskbar}, {"focusable", window.focusable}, {"mousePassthrough", window.mousePassthrough}, {"keepScreenOn", window.keepScreenOn}, {"lowPowerGpu", window.lowPowerGpu}};
     windowJson["statusBar"] = platform::Window::statusBarName(window.statusBar);
     windowJson["systemGestures"] = platform::Window::systemGesturesName(window.systemGestures);
+
     if (window.statusBarColor) {
         windowJson["statusBarColor"] = window.statusBarColor->toHex();
     }
+
     if (window.position) {
         windowJson["position"] = window.position->toJson();
     }
+
     windowJson["graphicsApis"] = Json::array();
+
     for (const gpu::Device::Api api : window.graphicsApis) {
         windowJson["graphicsApis"].push_back(std::ranges::find(gpu::Device::kApiNames, api, &std::pair<std::string_view, gpu::Device::Api>::second)->first);
     }
+
     // A rule that names a group keeps the name until `fromPackage` replaces it with the patterns of the group.
     Json contentJson = {{"delivery", Json::array()}};
     for (const Content::Rule& rule : content.delivery) {
@@ -712,11 +829,14 @@ Json AppConfig::toJson() const {
         } else {
             written["pack"] = rule.pack;
         }
+
         contentJson["delivery"].push_back(std::move(written));
     }
+
     if (!content.groups.empty()) {
         contentJson["groups"] = content.groups;
     }
+
     if (content.updates) {
         contentJson["updates"] = {{"baseUrl", content.updates->baseUrl}, {"channel", content.updates->channel}, {"enabled", content.updates->enabled}};
     }
@@ -735,6 +855,7 @@ Json AppConfig::toJson() const {
         if (!plugin.ref.empty()) {
             written["ref"] = plugin.ref;
         }
+
         pluginsJson[id] = std::move(written);
     }
 
@@ -750,6 +871,7 @@ Json AppConfig::toJson() const {
     if (!localization.language.empty()) {
         localizationJson["language"] = localization.language;
     }
+
     return {
         {"name", name}, {"identifier", identifier}, {"version", version}, {"build", build}, {"description", description}, {"company", company}, {"copyright", copyright}, {"website", website}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", graphics::Viewport::scalingPolicyName(scaling)}}}, {"orientation", platform::Window::orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", splashJson}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", audio::Session::categoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}, {"background", audioSession.background}, {"latency", audio::OutputSettings::latencyName(audioOutput.latency)}, {"limiter", audioOutput.limiter}}}, {"input", {{"mouseAsTouch", input.mouseAsTouch}, {"touchAsMouse", input.touchAsMouse}, {"scrollSpeed", JsonNumber::fromFloat(input.scrollSpeed)}}}, {"ui", {{"scaleMode", std::string(ui::Scaling::modeName(uiScaling.mode))}, {"scale", JsonNumber::fromFloat(uiScaling.factor)}}}, {"debug", debugJson}, {"content", contentJson}, {"localization", localizationJson}, {"autoload", autoloads}, {"native", native}, {"plugins", pluginsJson},
     };

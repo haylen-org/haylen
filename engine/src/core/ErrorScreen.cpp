@@ -36,12 +36,15 @@ std::string ErrorScreen::expandTabs(std::string_view text) {
             column += spaces;
             continue;
         }
+
         if (character == '\r') {
             continue;
         }
+
         expanded.push_back(character);
         column = character == '\n' ? 0 : column + 1;
     }
+
     return expanded;
 }
 
@@ -71,11 +74,14 @@ std::vector<ErrorScreen::SourceLine> ErrorScreen::readExcerpt() const {
         if (number >= first) {
             lines.push_back({.number = number, .text = expandTabs(std::string_view(source).substr(start, end - start))});
         }
+
         start = end + 1;
     }
+
     if (lines.empty() || lines.back().number < error.getLine()) {
         return {};
     }
+
     return lines;
 }
 
@@ -109,6 +115,7 @@ std::string ErrorScreen::buildReport() const {
     if (!error.getFrames().empty()) {
         text += "\n\nStack\n" + error.getTraceback();
     }
+
     return text;
 }
 
@@ -142,6 +149,7 @@ void ErrorScreen::copyReport() {
         if (!copied) {
             core::Log::warning("The report of the error stays off the clipboard. {}", answer.message);
         }
+
         if (const std::shared_ptr<CopyState> alive = state.lock()) {
             *alive = copied ? CopyState::Copied : CopyState::Refused;
         }
@@ -202,9 +210,11 @@ void ErrorScreen::moveFocus(int step) {
     if (engine.isRecoverable()) {
         shown[count++] = Action::Back;
     }
+
     if (engine.isLaunched()) {
         shown[count++] = Action::Close;
     }
+
     const auto index = std::ranges::find(shown.begin(), shown.begin() + static_cast<std::ptrdiff_t>(count), focused) - shown.begin();
     focused = shown[static_cast<std::size_t>(std::clamp<std::ptrdiff_t>(index + step, 0, static_cast<std::ptrdiff_t>(count) - 1))];
 }
@@ -220,21 +230,25 @@ void ErrorScreen::handleKey(const platform::Event& event) {
         if (!event.repeat) {
             copyReport();
         }
+
         break;
     case input::Key::R:
         if (!event.repeat) {
             restartApp();
         }
+
         break;
     case input::Key::Escape:
         if (!event.repeat) {
             goBack();
         }
+
         break;
     case input::Key::Q:
         if (!event.repeat) {
             closeApp();
         }
+
         break;
     case input::Key::Left:
     case input::Key::Right:
@@ -269,6 +283,7 @@ void ErrorScreen::pressFocus(const platform::Event& event) {
     if (!isGamepadDriven() || event.repeat) {
         return;
     }
+
     if (event.key == input::Key::Left) {
         moveFocus(-1);
     } else if (event.key == input::Key::Right) {
@@ -284,18 +299,22 @@ void ErrorScreen::press(math::Vec2 point) {
         copyReport();
         return;
     }
+
     if (restartButton.contains(point)) {
         restartApp();
         return;
     }
+
     if (backButton.contains(point)) {
         goBack();
         return;
     }
+
     if (closeButton.contains(point)) {
         closeApp();
         return;
     }
+
     dragging = Drag{.pointer = point.y, .scroll = scroll};
 }
 
@@ -314,8 +333,10 @@ void ErrorScreen::handleTouch(const platform::Event& event) {
                 finger = touch.id;
                 press(toCanvas(touch.position));
             }
+
             continue;
         }
+
         if (touch.id != finger) {
             continue;
         }
@@ -336,18 +357,23 @@ void ErrorScreen::update() {
         if (input.isGamepadPressed(index, input::GamepadButton::DpadLeft)) {
             moveFocus(-1);
         }
+
         if (input.isGamepadPressed(index, input::GamepadButton::DpadRight)) {
             moveFocus(1);
         }
+
         if (input.isGamepadPressed(index, input::GamepadButton::DpadUp)) {
             scrollBy(-line);
         }
+
         if (input.isGamepadPressed(index, input::GamepadButton::DpadDown)) {
             scrollBy(line);
         }
+
         if (input.isGamepadPressed(index, input::GamepadButton::South)) {
             run(focused);
         }
+
         if (input.isGamepadPressed(index, input::GamepadButton::East)) {
             goBack();
         }
@@ -367,6 +393,7 @@ void ErrorScreen::handleEvent(const platform::Event& event) {
         if (event.mouseButton == input::MouseButton::Left) {
             press(toCanvas(event.position));
         }
+
         break;
     case platform::Event::Type::MouseMove:
         drag(toCanvas(event.position));
@@ -421,12 +448,15 @@ float ErrorScreen::drawContent(graphics2d::Renderer& renderer, text::Font& font,
     if (!error.getFile().empty()) {
         y += drawLine(renderer, font, getLocation(), {origin.x, y}, {.size = kBodySize * unit, .color = kAccentColor}) + gap;
     }
+
     if (!excerpt.empty()) {
         y += drawExcerpt(renderer, font, {origin.x, y}, width, unit) + gap;
     }
+
     if (!error.getFrames().empty()) {
         y += drawStack(renderer, font, {origin.x, y}, unit);
     }
+
     return y - origin.y;
 }
 
@@ -454,6 +484,7 @@ float ErrorScreen::drawExcerpt(graphics2d::Renderer& renderer, text::Font& font,
         renderer.drawText(font, line.text, {codeX, y}, code);
         y += lineHeight;
     }
+
     return height;
 }
 
@@ -476,6 +507,7 @@ float ErrorScreen::drawStack(graphics2d::Renderer& renderer, text::Font& font, m
         renderer.drawText(font, frame.function, {functionX, y}, function);
         y += lineHeight;
     }
+
     return y - origin.y;
 }
 
@@ -490,6 +522,7 @@ math::Rect ErrorScreen::drawAction(graphics2d::Renderer& renderer, text::Font& f
     const float keyWidth = keyboard ? font.measure(key, style).x + padding * 1.6F : 0.0F;
     const math::Rect button{position.x, position.y, keyWidth + labelSize.x + padding * 2.0F, height};
     renderer.drawRect(button, kButtonColor);
+
     if (gamepad && action == focused) {
         renderer.drawRectOutline(button, std::max(2.0F, 2.0F * unit), kAccentColor);
     }
@@ -502,6 +535,7 @@ math::Rect ErrorScreen::drawAction(graphics2d::Renderer& renderer, text::Font& f
         renderer.drawText(font, key, {x + padding * 0.2F, textY}, style);
         x += keyWidth;
     }
+
     renderer.drawText(font, label, {x, textY}, style);
     return button;
 }
