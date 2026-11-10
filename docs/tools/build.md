@@ -81,7 +81,7 @@ The script refuses to configure macOS, iOS, tvOS, Linux and Windows builds on an
 
 ### Tools that haylen.py brings
 
-The script downloads, or builds, the other tools the first time a command needs them. It keeps them in `.tools/` at the root of the repository. Each tool is pinned to one version, and a new pin downloads its own copy. The downloads of the shader compiler, XcodeGen, bundletool, Inno Setup and the AppImage tools are also pinned by their SHA-256 hashes. A download whose hash differs is deleted and stops the command.
+The script downloads, or builds, the other tools the first time a command needs them. It keeps them in `.tools/` at the root of the repository. Each tool is pinned to one version, and a new pin downloads its own copy. The downloads of the shader compiler, Gradle, XcodeGen, bundletool, Inno Setup and the AppImage tools are also pinned by their SHA-256 hashes. A download whose hash differs is deleted and stops the command. The zips of Gradle and XcodeGen unpack into a folder next to their own, which moves into place only once it is complete, so a command that stops while it unpacks leaves no tool that looks installed.
 
 | Tool | Version | Folder | Used by |
 | --- | --- | --- | --- |

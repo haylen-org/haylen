@@ -97,7 +97,9 @@ SHADER_LIBRARY_DIR = ENGINE_DIR / "shaders" / "include"
 # Every material compiles once per kind of draw and once more for lit canvases, and the engine picks the program of a draw by these names.
 SHADER_PROGRAMS = {"sprite": [], "sprite_lit": ["HAYLEN_LIT"], "batch": ["HAYLEN_BATCH"], "batch_lit": ["HAYLEN_BATCH", "HAYLEN_LIT"], "text": ["HAYLEN_TEXT"], "text_lit": ["HAYLEN_TEXT", "HAYLEN_LIT"], "mesh": ["HAYLEN_MESH"], "mesh_lit": ["HAYLEN_MESH", "HAYLEN_LIT"], "shape": ["HAYLEN_SHAPE"], "shape_lit": ["HAYLEN_SHAPE", "HAYLEN_LIT"]}
 SHADER_WATCH_SECONDS = 0.5
+# Gradle builds the Android projects. The hash is the one that Gradle publishes for the distribution of the version in `https://services.gradle.org/distributions/gradle-<version>-bin.zip.sha256`.
 GRADLE_VERSION = "9.8.2"
+GRADLE_SHA256 = "21bd5da2de49b642904077f38c0efdc7778e92b3ed0889392dca61b97e389607"
 # XcodeGen generates the Apple projects from their `project.yml`. The hash is the one of the `xcodegen.zip` asset of the release.
 XCODEGEN_VERSION = "2.46.0"
 XCODEGEN_SHA256 = "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
@@ -616,18 +618,44 @@ def ensure_shaderc() -> Path:
         return Path(result.read_text(encoding="utf-8"))
 
 
+def install_tool(url: str, sha256: str, folder: Path, executable: Path, root: str = "") -> None:
+    """Downloads the pinned zip of a tool and unpacks it into a folder next to `folder`, which moves into place only once it is complete with its executable runnable, so an interrupted unpack never leaves a folder whose executable seems installed. The folder `root` of the zip, when it names one, becomes `folder`."""
+    partial = folder.with_name(f"{folder.name}.{os.getpid()}.part")
+    archive = partial.with_name(f"{partial.name}.zip")
+    try:
+        download(url, archive, sha256)
+        with zipfile.ZipFile(archive) as package:
+            package.extractall(partial)
+    except BaseException:
+        archive.unlink(missing_ok=True)
+        if partial.exists():
+            shutil.rmtree(partial)
+        raise
+    archive.unlink()
+
+    unpacked = partial / root if root else partial
+    (unpacked / executable.relative_to(folder)).chmod(0o755)
+    if executable.exists():
+        # Another run of the tool installed it while this one unpacked.
+        shutil.rmtree(partial)
+        return
+
+    if folder.exists():
+        # A folder without its executable is what an unpack that stopped halfway left.
+        shutil.rmtree(folder)
+    unpacked.replace(folder)
+    if root:
+        partial.rmdir()
+
+
 def ensure_gradle() -> Path:
     executable = "gradle.bat" if host_name() == "windows" else "gradle"
-    target = TOOLS_DIR / f"gradle-{GRADLE_VERSION}" / "bin" / executable
+    folder = TOOLS_DIR / f"gradle-{GRADLE_VERSION}"
+    target = folder / "bin" / executable
     if target.exists():
         return target
 
-    archive = TOOLS_DIR / f"gradle-{GRADLE_VERSION}-bin.zip"
-    download(f"https://services.gradle.org/distributions/gradle-{GRADLE_VERSION}-bin.zip", archive)
-    with zipfile.ZipFile(archive) as package:
-        package.extractall(TOOLS_DIR)
-    archive.unlink()
-    target.chmod(0o755)
+    install_tool(f"https://services.gradle.org/distributions/gradle-{GRADLE_VERSION}-bin.zip", GRADLE_SHA256, folder, target, f"gradle-{GRADLE_VERSION}")
     return target
 
 
@@ -650,12 +678,7 @@ def ensure_xcodegen() -> Path:
         return target
 
     require_host("apple")
-    archive = TOOLS_DIR / "xcodegen.zip"
-    download(f"https://github.com/yonaskolb/XcodeGen/releases/download/{XCODEGEN_VERSION}/xcodegen.zip", archive, XCODEGEN_SHA256)
-    with zipfile.ZipFile(archive) as package:
-        package.extractall(folder)
-    archive.unlink()
-    target.chmod(0o755)
+    install_tool(f"https://github.com/yonaskolb/XcodeGen/releases/download/{XCODEGEN_VERSION}/xcodegen.zip", XCODEGEN_SHA256, folder, target)
     return target
 
 

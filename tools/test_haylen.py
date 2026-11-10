@@ -2432,6 +2432,46 @@ class XcodeGenTest(unittest.TestCase):
         self.assertEqual(installed.read_text(), "pinned")
 
 
+class GradleTest(unittest.TestCase):
+    def setUp(self):
+        self.scratch = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.scratch)
+        self.executable = "gradle.bat" if haylen.host_name() == "windows" else "gradle"
+        self.downloads: list[tuple[str, str | None]] = []
+
+    def download(self, url: str, archive: Path, sha256: str | None = None) -> None:
+        self.downloads.append((url, sha256))
+        with zipfile.ZipFile(archive, "w") as package:
+            package.writestr(f"gradle-{haylen.GRADLE_VERSION}/bin/{self.executable}", "pinned")
+            package.writestr(f"gradle-{haylen.GRADLE_VERSION}/lib/gradle.jar", "library")
+
+    def test_the_pinned_distribution_moves_into_place_only_once_it_is_unpacked(self):
+        folder = self.scratch / f"gradle-{haylen.GRADLE_VERSION}"
+        with mock.patch.object(haylen, "TOOLS_DIR", self.scratch), mock.patch.object(haylen, "download", side_effect=self.download):
+            # An unpack that stops halfway leaves no folder whose executable seems installed.
+            with mock.patch.object(haylen.zipfile.ZipFile, "extractall", side_effect=OSError("No space left on device")), self.assertRaises(OSError):
+                haylen.ensure_gradle()
+            self.assertEqual(list(self.scratch.iterdir()), [])
+
+            installed = haylen.ensure_gradle()
+        self.assertEqual(installed, folder / "bin" / self.executable)
+        self.assertEqual(installed.read_text(), "pinned")
+        self.assertTrue(os.access(installed, os.X_OK))
+        self.assertEqual((folder / "lib" / "gradle.jar").read_text(), "library")
+        self.assertEqual(self.downloads, [(f"https://services.gradle.org/distributions/gradle-{haylen.GRADLE_VERSION}-bin.zip", haylen.GRADLE_SHA256)] * 2)
+        self.assertEqual([path.name for path in self.scratch.iterdir()], [folder.name])
+
+    def test_a_folder_that_an_interrupted_unpack_left_is_replaced(self):
+        folder = self.scratch / f"gradle-{haylen.GRADLE_VERSION}"
+        (folder / "lib").mkdir(parents=True)
+        (folder / "lib" / "partial.jar").write_text("partial")
+        with mock.patch.object(haylen, "TOOLS_DIR", self.scratch), mock.patch.object(haylen, "download", side_effect=self.download):
+            installed = haylen.ensure_gradle()
+        self.assertEqual(installed.read_text(), "pinned")
+        self.assertFalse((folder / "lib" / "partial.jar").exists())
+        self.assertEqual([path.name for path in self.scratch.iterdir()], [folder.name])
+
+
 class DownloadTest(unittest.TestCase):
     def test_a_download_that_the_server_refuses_fails_with_its_reason_and_keeps_nothing(self):
         scratch = Path(tempfile.mkdtemp())
