@@ -34,8 +34,10 @@ int GpuCaptureLua::captureGpuAsync(lua_State* L) {
         if (lua_getfield(L, 1, "frames") != LUA_TNIL) {
             frames = luaL_checkinteger(L, -1);
         }
+
         lua_pop(L, 1);
     }
+
     if (frames < 1) {
         throw std::invalid_argument("A GPU capture records at least 1 frame.");
     }
@@ -49,6 +51,7 @@ int GpuCaptureLua::captureGpuAsync(lua_State* L) {
         promise.push(L);
         return 1;
     }
+
     if (graphics.isCapturing()) {
         reject(L, promise, "busy", "A GPU capture is already recording. Wait for it to end before capturing again.", false);
         promise.push(L);
@@ -66,6 +69,7 @@ int GpuCaptureLua::captureGpuAsync(lua_State* L) {
                 reject(main, promise, "failed", error, true);
                 return;
             }
+
             const std::u8string text = path->u8string();
             promise.resolve({{"path", std::string(text.begin(), text.end())}, {"tool", tool}, {"frames", count}});
         });
@@ -73,9 +77,11 @@ int GpuCaptureLua::captureGpuAsync(lua_State* L) {
     } catch (const std::runtime_error& error) {
         refusal = error.what();
     }
+
     if (refusal) {
         reject(L, promise, "failed", *refusal, false);
     }
+
     promise.push(L);
     return 1;
 }
@@ -86,10 +92,12 @@ void GpuCaptureLua::reject(lua_State* L, const lua::Promise& promise, std::strin
     lua_setfield(L, -2, "error");
     lua::Stack::push(L, code);
     lua_setfield(L, -2, "code");
+
     if (handled) {
         promise.rejectHandledFailure(L);
         return;
     }
+
     promise.rejectFailure(L);
 }
 

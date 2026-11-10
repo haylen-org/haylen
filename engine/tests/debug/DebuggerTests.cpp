@@ -71,6 +71,7 @@ end
         } catch (const lua::Error& error) {
             return error.what();
         }
+
         return {};
     }
 
@@ -147,6 +148,7 @@ TEST_F(DebuggerTest, HaltsAtABreakpointWithTheStackScopesAndValues) {
     for (const core::Json& variable : client.getResponse(locals).at("body").at("variables")) {
         values[variable.at("name").get<std::string>()] = variable.at("value").get<std::string>();
     }
+
     EXPECT_EQ(values.at("a"), "2");
     EXPECT_EQ(values.at("b"), "3");
     EXPECT_EQ(values.at("sum"), "5");
@@ -173,9 +175,11 @@ TEST_F(DebuggerTest, ConditionsCountsAndLogPointsDecideWhetherALineHalts) {
 
     client.request("setBreakpoints", breakpoints({{{"line", 14}, {"hitCondition", "%2"}}}));
     client.getDebugger().update(fixture.lua());
+
     for (int halt = 0; halt < 3; ++halt) {
         client.then([](test::DebugClient& debug) { debug.request("continue"); });
     }
+
     EXPECT_EQ(run(fixture.lua(), "result = require('mod').loop()"), "");
     EXPECT_EQ(client.getEvents("stopped").size(), 4U);
 
@@ -225,6 +229,7 @@ TEST_F(DebuggerStepTest, StepsInOutAndOverTheCallsOfAFunction) {
     for (const int request : traces) {
         lines.push_back(client.getResponse(request).at("body").at("stackFrames").at(0).at("line").get<int>());
     }
+
     EXPECT_EQ(lines, (std::vector<int>{8, 3, 4, 9}));
     const std::vector<core::Json> stops = client.getEvents("stopped");
     ASSERT_EQ(stops.size(), 4U);
@@ -245,6 +250,7 @@ TEST_F(DebuggerStepTest, StepsOverTheAwaitOfATaskIntoTheFrameWhereItGoesOn) {
         });
         // clang-format on
     }
+
     EXPECT_EQ(run(fixture.lua(), "require('task')()"), "");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return finished") == "2"; }));
     EXPECT_FALSE(client.hasSteps());
@@ -255,6 +261,7 @@ TEST_F(DebuggerStepTest, StepsOverTheAwaitOfATaskIntoTheFrameWhereItGoesOn) {
         EXPECT_EQ(frame.at("source").at("path"), "source/task.lua");
         lines.push_back(frame.at("line").get<int>());
     }
+
     EXPECT_EQ(lines, (std::vector<int>{4, 5, 6, 7}));
 }
 
@@ -380,6 +387,7 @@ TEST_F(DebuggerTest, InspectsValuesWithoutRunningMetamethodsAndBoundsEvaluations
     for (const core::Json& variable : client.getResponse(camera).at("body").at("variables")) {
         properties[variable.at("name").get<std::string>()] = variable.at("value").get<std::string>();
     }
+
     EXPECT_TRUE(properties.at("zoom").starts_with("haylen.Vec2: "));
     EXPECT_EQ(properties.at("rotation"), "0.0");
     EXPECT_TRUE(properties.contains("(metatable)"));

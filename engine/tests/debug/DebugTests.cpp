@@ -92,6 +92,7 @@ TEST(ProfilerTest, KeepsARingOfFrameTimes) {
         now += 0.001 * frame;
         profiler.endFrame();
     }
+
     const std::vector<float> history = profiler.getFrameHistory();
     ASSERT_EQ(history.size(), 4U);
     EXPECT_NEAR(history.front(), 3.0F, 1e-4F);
@@ -117,11 +118,13 @@ TEST(ProfilerTest, MeasuresTheFrameRateFromTheFramesTheDisplayShowed) {
     Profiler profiler(8, [&now] { return now; });
     profiler.beginFrame(0.0);
     EXPECT_EQ(profiler.getFramesPerSecond(), 0.0);
+
     for (int frame = 0; frame < 20; ++frame) {
         now += 0.002;
         profiler.endFrame();
         profiler.beginFrame(frame % 4 == 0 ? 2.0 / 60.0 : 1.0 / 60.0);
     }
+
     now += 0.002;
     profiler.endFrame();
 
@@ -216,6 +219,7 @@ TEST(LogTest, KeepsWorkingWhileAnotherThreadExits) {
             std::this_thread::sleep_for(std::chrono::milliseconds(20));
             std::exit(0);
         }).detach();
+
         for (;;) {
             core::Log::removeListener(core::Log::addListener([](core::Log::Level, std::string_view) {}));
             const ObjectCounter counter("Probe", ObjectCounter::Kind::Native);
@@ -266,6 +270,7 @@ TEST(DebugPluginTest, CyclesTheStatisticsAndKeepsRecentLines) {
     for (std::size_t line = 0; line < plugins::DebugPlugin::kLogLines + 20; ++line) {
         core::Log::info("line {}", line);
     }
+
     EXPECT_EQ(plugin.getRecentLog().size(), plugins::DebugPlugin::kLogLines);
 }
 

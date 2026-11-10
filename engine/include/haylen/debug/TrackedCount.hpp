@@ -27,6 +27,7 @@ class TrackedCount final {
         } else if (value < count) {
             counter->remove(count - value);
         }
+
         count = value;
     }
     [[nodiscard]] std::size_t get() const noexcept {

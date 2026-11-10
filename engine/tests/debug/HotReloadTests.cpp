@@ -123,6 +123,7 @@ TEST_F(PackageWatcherTest, WaitsForFilesToSettle) {
             for (const char* file : {"content/level.json", "content/added.json"}) {
                 std::ofstream(directory.getPath() / file, std::ios::app) << ' ';
             }
+
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
     });
@@ -244,6 +245,7 @@ class WatchedEngine final {
             engine->frame(0.1);
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
+
         return condition();
     }
 
@@ -409,6 +411,7 @@ TEST_F(HotReloadPluginTest, RestartsFromAFailedAppWhenAppJsonChanges) {
         engine.frame(0.1);
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
+
     EXPECT_TRUE(engine.isRestartRequested());
 }
 

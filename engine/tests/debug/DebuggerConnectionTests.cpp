@@ -51,6 +51,7 @@ class DebuggingServer final {
                 found.push_back(message);
             }
         }
+
         return found;
     }
 
@@ -90,6 +91,7 @@ class DebuggingServer final {
                     if (length <= 0 || (flags & Poco::Net::WebSocket::FRAME_OP_BITMASK) == Poco::Net::WebSocket::FRAME_OP_CLOSE) {
                         break;
                     }
+
                     server.receive(socket, core::Json::parse(std::string_view(frame.begin(), frame.size())));
                 }
             } catch (const Poco::Exception&) {}
@@ -136,15 +138,19 @@ class DebuggingServer final {
             sendRequest(socket, "setBreakpoints", {{"source", {{"path", "source/mod.lua"}}}, {"breakpoints", {{{"line", 3}}}}});
             return;
         }
+
         if (type == "report") {
             reports.push_back(message);
             return;
         }
+
         if (type != "debug") {
             return;
         }
+
         const core::Json& debug = message.at("message");
         debugMessages.push_back(debug);
+
         if (debug.value("event", "") == "stopped") {
             sendBatch(socket, "content/data.json", R"({"level": 9})");
             sendRequest(socket, "stackTrace", {{"threadId", 1}});

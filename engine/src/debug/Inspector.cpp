@@ -23,8 +23,10 @@ std::vector<std::string> Inspector::splitPath(std::string_view path) {
         if (end > start) {
             keys.emplace_back(path.substr(start, end - start));
         }
+
         start = end + 1;
     }
+
     return keys;
 }
 
@@ -53,6 +55,7 @@ std::vector<Inspector::Entry> Inspector::list(lua_State* L, std::span<const std:
         if (first.has_value() != second.has_value()) {
             return first.has_value();
         }
+
         return first ? *first < *second : left.key < right.key;
     });
     // clang-format on
@@ -69,11 +72,14 @@ void Inspector::collect(lua_State* L, std::span<const std::string> path, std::ve
             entries.push_back(describe(L, describeKey(L, -2), lua_gettop(L), true));
             lua_pop(L, 1);
         }
+
         return;
     }
+
     if (lua_type(L, value) != LUA_TUSERDATA || lua_getmetatable(L, value) == 0 || lua_getfield(L, -1, "__properties") != LUA_TTABLE) {
         throw std::invalid_argument(std::format("The value at \"{}\" is of the type \"{}\", which holds nothing to list.", joinPath(path), luaL_typename(L, value)));
     }
+
     const int getters = lua_gettop(L);
     lua_getfield(L, getters - 1, "__writable");
     const int setters = lua_gettop(L);
@@ -94,6 +100,7 @@ void Inspector::set(lua_State* L, std::span<const std::string> path, std::string
     if (path.size() < 2) {
         throw std::invalid_argument("The inspector edits values inside a root, such as \"watched.player.speed\".");
     }
+
     lua::Runtime::protectedRun(L, [path, text](lua_State* state) { assign(state, path, text); });
 }
 
@@ -114,6 +121,7 @@ void Inspector::assign(lua_State* L, std::span<const std::string> path, std::str
         if (error != std::errc{} || end != text.data() + text.size() || !std::isfinite(number)) {
             throw std::invalid_argument(std::format("The value at \"{}\" is a number, and \"{}\" is not one.", joinPath(path), text));
         }
+
         if (std::trunc(number) == number && std::abs(number) < 9.0e15) {
             lua_pushinteger(L, static_cast<lua_Integer>(number));
         } else {
@@ -123,12 +131,14 @@ void Inspector::assign(lua_State* L, std::span<const std::string> path, std::str
         if (text != "true" && text != "false") {
             throw std::invalid_argument(std::format("The value at \"{}\" is a boolean, which is \"true\" or \"false\".", joinPath(path)));
         }
+
         lua_pushboolean(L, text == "true" ? 1 : 0);
     } else if (current == LUA_TSTRING) {
         lua_pushlstring(L, text.data(), text.size());
     } else {
         throw std::invalid_argument(std::format("The value at \"{}\" is of the type \"{}\", which the inspector does not edit. It edits numbers, booleans and strings.", joinPath(path), lua_typename(L, current)));
     }
+
     lua_settable(L, container);
 }
 
@@ -146,6 +156,7 @@ void Inspector::pushWatched(lua_State* L) {
     if (lua_getfield(L, LUA_REGISTRYINDEX, kWatchedKey) == LUA_TTABLE) {
         return;
     }
+
     lua_pop(L, 1);
     lua_newtable(L);
     lua_createtable(L, 0, 1);
@@ -188,6 +199,7 @@ void Inspector::pushPath(lua_State* L, std::span<const std::string> path) {
         if (!lua_istable(L, container) && !lua_isuserdata(L, container)) {
             throw std::invalid_argument(std::format("The value at \"{}\" is of the type \"{}\", which holds no \"{}\".", joinPath(path.first(index)), luaL_typename(L, container), path[index]));
         }
+
         pushKey(L, container, path[index]);
         lua_gettable(L, container);
         lua_remove(L, container);
@@ -204,8 +216,10 @@ void Inspector::pushKey(lua_State* L, int container, const std::string& key) {
             lua_pushinteger(L, *number);
             return;
         }
+
         lua_pop(L, 1);
     }
+
     lua_pushlstring(L, key.data(), key.size());
 }
 
@@ -217,6 +231,7 @@ std::optional<std::int64_t> Inspector::readIndex(std::string_view key) noexcept 
     if (read.ec != std::errc{} || read.ptr != end) {
         return std::nullopt;
     }
+
     return number;
 }
 
@@ -227,8 +242,10 @@ Inspector::Entry Inspector::describe(lua_State* L, std::string key, int index, b
         if (lua_getfield(L, -1, "__name") == LUA_TSTRING) {
             name = lua_tostring(L, -1);
         }
+
         lua_pop(L, 2);
     }
+
     const bool primitive = type == LUA_TNUMBER || type == LUA_TBOOLEAN || type == LUA_TSTRING;
     return {.key = std::move(key), .type = std::move(name), .value = describeValue(L, index), .editable = editable && primitive, .expandable = type == LUA_TTABLE || type == LUA_TUSERDATA};
 }
@@ -272,9 +289,11 @@ std::string Inspector::describeTable(lua_State* L, int index) {
             return std::format("More than {} values", kMaxEntries);
         }
     }
+
     if (count == 0) {
         return "Empty";
     }
+
     const std::string values = count == 1 ? "1 value" : std::format("{} values", count);
 
     // A table with a name, such as a scene or an object of the app, shows it before its count.
@@ -283,6 +302,7 @@ std::string Inspector::describeTable(lua_State* L, int index) {
         lua_pop(L, 1);
         return values;
     }
+
     std::size_t length = 0;
     const char* characters = lua_tolstring(L, -1, &length);
     std::string named = std::format("{}, {}", std::string_view(characters, std::min(length, kMaxValueText)), values);
@@ -307,6 +327,7 @@ std::string Inspector::joinPath(std::span<const std::string> path) {
     for (const std::string& key : path) {
         joined += joined.empty() ? key : "." + key;
     }
+
     return joined;
 }
 

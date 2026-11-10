@@ -66,6 +66,7 @@ std::vector<StatsDisplay::Item> StatsDisplay::getItems() const {
             items.push_back(item);
         }
     }
+
     return items;
 }
 
@@ -81,6 +82,7 @@ void StatsDisplay::format(core::Engine& engine, const graphics2d::Renderer::Stat
         if (!isShowing(item)) {
             continue;
         }
+
         std::string& line = lines[lineCount++];
         line.clear();
         const auto out = std::back_inserter(line);
@@ -121,10 +123,12 @@ void StatsDisplay::drawCompact(core::Engine& engine, const graphics2d::Renderer:
     const bool drewLastFrame = clock.getFrameIndex() == drawnFrame + 1 && !std::exchange(itemsChanged, false);
     sinceRefresh = drewLastFrame ? sinceRefresh + clock.getUnscaledDelta() : kRefreshSeconds;
     drawnFrame = clock.getFrameIndex();
+
     if (sinceRefresh >= kRefreshSeconds) {
         sinceRefresh = 0.0;
         format(engine, rendering);
     }
+
     if (lineCount == 0) {
         return;
     }
@@ -137,6 +141,7 @@ void StatsDisplay::drawCompact(core::Engine& engine, const graphics2d::Renderer:
     for (std::size_t index = 0; index < lineCount; ++index) {
         width = std::max(width, font.measure(lines[index], style).x);
     }
+
     const float padding = kPadding * unit;
     const float lineHeight = font.getLineHeight(style.size);
     const math::Rect safe = engine.getViewport().getSafeRect();
@@ -146,6 +151,7 @@ void StatsDisplay::drawCompact(core::Engine& engine, const graphics2d::Renderer:
     // The highest canvas order keeps the display above every canvas of the app.
     renderer.beginScreen({.order = std::numeric_limits<int>::max()});
     renderer.drawRect(panel, math::Color::fromHex(0x0B0F18C0U));
+
     for (std::size_t index = 0; index < lineCount; ++index) {
         renderer.drawText(font, lines[index], {panel.x + padding, panel.y + padding + lineHeight * static_cast<float>(index)}, style);
     }

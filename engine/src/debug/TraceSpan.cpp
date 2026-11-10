@@ -14,6 +14,7 @@ TraceSpan::~TraceSpan() {
     if (!recorder) {
         return;
     }
+
     std::string name;
     name.reserve(action.size() + 1 + subject.size());
     name.append(action).append(" ").append(subject);

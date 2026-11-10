@@ -36,6 +36,7 @@ int CrashLua::breadcrumbs(lua_State* L) {
         lua_setfield(L, -2, "data");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
@@ -45,6 +46,7 @@ int CrashLua::lastCrash(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::JsonConverter::push(L, report);
     return 1;
 }

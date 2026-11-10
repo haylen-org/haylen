@@ -23,6 +23,7 @@ bool InspectorWindow::draw(lua_State* L, ui::Backend& backend, double now) {
             ImGui::TextWrapped("%s", failure.c_str());
             ImGui::PopStyleColor();
         }
+
         if (std::exchange(expired, false)) {
             for (auto& [key, snapshot] : snapshots) {
                 snapshot.time = -1.0;
@@ -38,11 +39,13 @@ bool InspectorWindow::draw(lua_State* L, ui::Backend& backend, double now) {
             ImGui::EndTable();
         }
     }
+
     DebugWindow::end();
 
     if (!open) {
         reset();
     }
+
     return open;
 }
 
@@ -62,6 +65,7 @@ void InspectorWindow::drawRows(lua_State* L, std::vector<std::string>& path, dou
         ImGui::TextDisabled("%s", snapshot.error.c_str());
         return;
     }
+
     if (snapshot.entries.empty()) {
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
@@ -74,9 +78,11 @@ void InspectorWindow::drawRows(lua_State* L, std::vector<std::string>& path, dou
         ImGui::PushID(entry.key.c_str());
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
+
         if (path.size() == 1 && entry.key == kOpenRoot) {
             ImGui::SetNextItemOpen(true, ImGuiCond_Once);
         }
+
         const ImGuiTreeNodeFlags kind = entry.expandable ? ImGuiTreeNodeFlags_None : ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
         const bool opened = ImGui::TreeNodeEx("##row", kind | ImGuiTreeNodeFlags_SpanAvailWidth, "%s", entry.key.c_str());
         ImGui::TableNextColumn();
@@ -86,6 +92,7 @@ void InspectorWindow::drawRows(lua_State* L, std::vector<std::string>& path, dou
             drawRows(L, path, now);
             ImGui::TreePop();
         }
+
         ImGui::PopID();
         path.pop_back();
     }
@@ -97,13 +104,16 @@ void InspectorWindow::drawValue(lua_State* L, const std::vector<std::string>& pa
         ImGui::TextDisabled("%s", entry.value.empty() ? entry.type.c_str() : entry.value.c_str());
         return;
     }
+
     if (entry.type == "boolean") {
         bool checked = entry.value == "true";
         if (ImGui::Checkbox("##value", &checked)) {
             edit(L, path, checked ? "true" : "false");
         }
+
         return;
     }
+
     drawField(L, path, entry);
 }
 
@@ -114,8 +124,10 @@ void InspectorWindow::drawField(lua_State* L, const std::vector<std::string>& pa
     if (activeField != key) {
         text = entry.value;
     }
+
     ImGui::SetNextItemWidth(-1.0F);
     ImGui::InputText("##value", &text);
+
     if (ImGui::IsItemActive()) {
         activeField = key;
     } else if (activeField == key) {
@@ -134,6 +146,7 @@ void InspectorWindow::edit(lua_State* L, const std::vector<std::string>& path, s
     } catch (const std::exception& error) {
         failure = error.what();
     }
+
     expired = true;
 }
 
@@ -142,6 +155,7 @@ const InspectorWindow::Snapshot& InspectorWindow::snapshotOf(lua_State* L, const
     if (snapshot.time >= 0.0 && now - snapshot.time < kRefreshSeconds) {
         return snapshot;
     }
+
     snapshot.time = now;
     try {
         snapshot.entries = Inspector::list(L, path);
@@ -150,6 +164,7 @@ const InspectorWindow::Snapshot& InspectorWindow::snapshotOf(lua_State* L, const
         snapshot.entries.clear();
         snapshot.error = error.what();
     }
+
     return snapshot;
 }
 

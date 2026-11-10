@@ -51,6 +51,7 @@ int InspectorLua::inspect(lua_State* L) {
         lua_setfield(L, -2, "expandable");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 

@@ -33,10 +33,12 @@ Console::Parameter ConsoleLua::readParameter(lua_State* L, int index) {
     if (optional) {
         name.remove_suffix(1);
     }
+
     const auto found = std::ranges::find(Console::kKindNames, name, &std::pair<std::string_view, Console::Kind>::first);
     if (found == Console::kKindNames.end()) {
         throw std::invalid_argument(std::format("The argument kind \"{}\" is unknown. It is \"integer\", \"number\", \"string\", \"boolean\" or \"text\", with \"?\" after it for an optional argument.", name));
     }
+
     return {.kind = found->second, .optional = optional};
 }
 
@@ -51,6 +53,7 @@ int ConsoleLua::addCommand(lua_State* L) {
         if (lua_getfield(L, 3, "help") != LUA_TNIL) {
             command.help = lua::Stack::read<std::string>(L, -1);
         }
+
         if (lua_getfield(L, 3, "args") != LUA_TNIL) {
             luaL_checktype(L, -1, LUA_TTABLE);
             const int args = lua_gettop(L);
@@ -58,13 +61,16 @@ int ConsoleLua::addCommand(lua_State* L) {
                 command.parameters.push_back(readParameter(L, -1));
                 lua_pop(L, 1);
             }
+
             lua_pop(L, 1);
         }
+
         if (lua_getfield(L, 3, "owner") != LUA_TNIL) {
             lua::Owners::checkOwner(L, -1);
             owner = lua_gettop(L);
         }
     }
+
     if (owner == 0) {
         owner = lua::Owners::pushDefault(L);
     }
@@ -76,16 +82,20 @@ int ConsoleLua::addCommand(lua_State* L) {
         if (!function->push(main)) {
             throw std::runtime_error("The command ended with its owner.");
         }
+
         for (const core::Json& argument : arguments) {
             lua::JsonConverter::push(main, argument);
         }
+
         lua::Runtime::protectedCall(main, static_cast<int>(arguments.size()), 1);
         const int type = lua_type(main, -1);
         std::string text = type == LUA_TSTRING || type == LUA_TNUMBER ? lua_tostring(main, -1) : "";
         lua_pop(main, 1);
+
         if (type != LUA_TNIL && type != LUA_TSTRING && type != LUA_TNUMBER) {
             throw std::runtime_error("A console command returns a string, a number or nothing.");
         }
+
         return text;
     };
     // clang-format on
@@ -93,6 +103,7 @@ int ConsoleLua::addCommand(lua_State* L) {
     if (owner != 0) {
         lua::Owners::add(L, owner, connection);
     }
+
     lua::Userdata::emplace<core::Connection>(L, std::move(connection));
     return 1;
 }
@@ -124,6 +135,7 @@ int ConsoleLua::commands(lua_State* L) {
         lua_setfield(L, -2, "usage");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 

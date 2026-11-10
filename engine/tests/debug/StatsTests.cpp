@@ -49,6 +49,7 @@ class ObjectCounterTest : public ::testing::Test {
                 return found;
             }
         }
+
         return {};
     }
 };
@@ -384,6 +385,7 @@ TEST(StatsTest, DrawsALineForEveryItemItShows) {
     for (const auto& [name, item] : StatsDisplay::kItemNames) {
         display.setShowing(item, true);
     }
+
     fixture.frames(2);
     EXPECT_GT(fixture.engine().getRenderer2D().getStats().instances, standard);
 
@@ -455,6 +457,7 @@ TEST(StatsTest, DrawsTheCompactDisplayWithoutAllocating) {
     for (const auto& [name, item] : StatsDisplay::kItemNames) {
         plugin.getStatsDisplay().setShowing(item, true);
     }
+
     EXPECT_EQ(measure(), quiet);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
@@ -466,9 +469,11 @@ TEST(StatsTest, DrawsEverySectionOfTheOverlay) {
     plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
     fixture.engine().getScenes().push(std::make_shared<test::RecordingScene>("first", entries));
     fixture.runLua("require('haylen.events').on('tick', function() end) require('haylen.signal').new('named')");
+
     for (const core::Log::Level level : {core::Log::Level::Debug, core::Log::Level::Info, core::Log::Level::Warning, core::Log::Level::Error}) {
         core::Log::write(level, "A line of the overlay log.");
     }
+
     const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(1024, 1024, math::Color::white()));
     plugin.setStatsMode(StatsDisplay::Mode::Full);
     fixture.frames(2);

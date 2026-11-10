@@ -22,11 +22,13 @@ double Profiler::getSteadySeconds() {
 void Profiler::beginFrame(double shownSeconds) {
     current.clear();
     open.clear();
+
     if (shownSeconds > 0.0) {
         intervals[nextInterval] = static_cast<float>(shownSeconds * 1000.0);
         nextInterval = (nextInterval + 1) % intervals.size();
         intervalCount = std::min(intervalCount + 1, intervals.size());
     }
+
     frameStart = clock();
     inFrame = true;
 }
@@ -39,9 +41,11 @@ void Profiler::endFrame() {
     // Scopes left open by an error close at the end of the frame, so one failure never skews the next frame.
     const double now = clock();
     endScopesTo(0);
+
     if (tracer) {
         tracer->record("frame", frameStart, now);
     }
+
     lastFrameMilliseconds = (now - frameStart) * 1000.0;
     history[next] = static_cast<float>(lastFrameMilliseconds);
     next = (next + 1) % history.size();
@@ -59,10 +63,12 @@ void Profiler::beginScope(std::string_view name) {
             break;
         }
     }
+
     if (index < 0) {
         index = static_cast<int>(current.size());
         current.push_back({.name = std::string(name), .milliseconds = 0.0, .calls = 0, .depth = static_cast<int>(open.size()), .parent = parent});
     }
+
     ++current[static_cast<std::size_t>(index)].calls;
     open.push_back({.sample = index, .start = clock()});
 }
@@ -76,6 +82,7 @@ void Profiler::endScriptScope() {
     if (open.empty() || !open.back().script) {
         throw std::logic_error("A profiler scope was closed without being opened.");
     }
+
     endScope();
 }
 
@@ -83,6 +90,7 @@ void Profiler::endScope() {
     if (open.empty()) {
         throw std::logic_error("A profiler scope was closed without being opened.");
     }
+
     const OpenScope scope = open.back();
     open.pop_back();
     const double end = clock();
@@ -104,6 +112,7 @@ double Profiler::getAverageFrameMilliseconds() const noexcept {
     if (recorded == 0) {
         return 0.0;
     }
+
     return std::accumulate(history.begin(), history.begin() + static_cast<std::ptrdiff_t>(recorded), 0.0) / static_cast<double>(recorded);
 }
 
@@ -119,6 +128,7 @@ std::vector<float> Profiler::getFrameHistory() const {
     for (std::size_t index = 0; index < recorded; ++index) {
         frames.push_back(history[(first + index) % history.size()]);
     }
+
     return frames;
 }
 

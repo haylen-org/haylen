@@ -49,6 +49,7 @@ void ThreadWalk::run(lua_State* L, const std::function<void(lua_State* thread)>&
         }
         lua_settop(L, value - 1);
     }
+
     lua_pop(L, 1);
 }
 
@@ -57,20 +58,25 @@ void ThreadWalk::enqueue(int index) {
     if (type != LUA_TTABLE && type != LUA_TFUNCTION && type != LUA_TUSERDATA && type != LUA_TTHREAD) {
         return;
     }
+
     if (!seen.insert(lua_topointer(state, index)).second) {
         return;
     }
+
     lua_pushvalue(state, index);
     lua_rawseti(state, work, ++pending);
 }
 
 void ThreadWalk::visitTable(int index) {
     luaL_checkstack(state, 4, "The Lua heap is too deep to walk.");
+
     if (lua_getmetatable(state, index) != 0) {
         enqueue(lua_gettop(state));
         lua_pop(state, 1);
     }
+
     lua_pushnil(state);
+
     while (lua_next(state, index) != 0) {
         enqueue(-2);
         enqueue(-1);
@@ -80,6 +86,7 @@ void ThreadWalk::visitTable(int index) {
 
 void ThreadWalk::visitFunction(int index) {
     luaL_checkstack(state, 2, "The Lua heap is too deep to walk.");
+
     for (int upvalue = 1; lua_getupvalue(state, index, upvalue) != nullptr; ++upvalue) {
         enqueue(-1);
         lua_pop(state, 1);
@@ -88,14 +95,17 @@ void ThreadWalk::visitFunction(int index) {
 
 void ThreadWalk::visitUserdata(int index) {
     luaL_checkstack(state, 2, "The Lua heap is too deep to walk.");
+
     if (lua_getmetatable(state, index) != 0) {
         enqueue(-1);
         lua_pop(state, 1);
     }
+
     for (int slot = 1; lua_getiuservalue(state, index, slot) != LUA_TNONE; ++slot) {
         enqueue(-1);
         lua_pop(state, 1);
     }
+
     lua_pop(state, 1);
 }
 
@@ -104,6 +114,7 @@ void ThreadWalk::visitThread(lua_State* thread) {
     if (lua_status(thread) > LUA_YIELD || lua_checkstack(thread, 2) == 0) {
         return;
     }
+
     luaL_checkstack(state, 2, "The Lua heap is too deep to walk.");
     lua_Debug level{};
     for (int depth = 0; lua_getstack(thread, depth, &level) != 0; ++depth) {
@@ -112,12 +123,14 @@ void ThreadWalk::visitThread(lua_State* thread) {
             enqueue(-1);
             lua_pop(state, 1);
         }
+
         for (int local = 1; lua_getlocal(thread, &level, local) != nullptr; ++local) {
             lua_xmove(thread, state, 1);
             enqueue(-1);
             lua_pop(state, 1);
         }
     }
+
     const int top = lua_gettop(thread);
     for (int slot = 1; slot <= top; ++slot) {
         lua_pushvalue(thread, slot);

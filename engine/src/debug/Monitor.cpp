@@ -16,6 +16,7 @@ void Monitor::sample() {
     if (!sampled) {
         return;
     }
+
     value = *sampled;
     history.push(static_cast<float>(value));
 }

@@ -27,6 +27,7 @@ void Tracer::detach() noexcept {
     if (current == this) {
         current = nullptr;
     }
+
     state = nullptr;
     main = nullptr;
     hooked = false;
@@ -56,15 +57,18 @@ void Tracer::refresh(lua_State* L) {
     if (state == nullptr) {
         return;
     }
+
     if (!isWatching()) {
         hooked = false;
         return;
     }
+
     if (!hooked) {
         hookAll(L);
         hooked = true;
         return;
     }
+
     lua_Debug info{};
     if (lua_getstack(L, 0, &info) != 0 && lua_getinfo(L, "S", &info) != 0) {
         applyMask(L, getMask(L, info));
@@ -79,9 +83,11 @@ void Tracer::hookAll(lua_State* L) {
     };
     // clang-format on
     hook(main);
+
     if (L != main) {
         hook(L);
     }
+
     ThreadWalk::run(L, hook);
 
     // The coroutine that runs now goes on in its current function, which no call announces.
@@ -111,13 +117,16 @@ int Tracer::getMask(lua_State* L, const lua_Debug& info) {
     if (needsAllLines(L)) {
         return mask | LUA_MASKLINE;
     }
+
     if (breakpoints.empty() || info.what[0] == 'C') {
         return mask;
     }
+
     const Breakpoints::File* file = breakpoints.find(info.source);
     if (file == nullptr) {
         return mask;
     }
+
     const bool covered = info.what[0] == 'm' || file->covers(info.linedefined, info.lastlinedefined);
     return covered ? mask | LUA_MASKLINE : mask;
 }
@@ -134,9 +143,11 @@ void Tracer::onHook(lua_State* L, lua_Debug* ar) {
         lua_sethook(L, nullptr, 0, 0);
         return;
     }
+
     if (tracer->busy) {
         return;
     }
+
     switch (ar->event) {
     case LUA_HOOKCALL:
     case LUA_HOOKTAILCALL:
@@ -165,14 +176,17 @@ void Tracer::enter(lua_State* L, lua_Debug* ar) {
     const lua_CFunction function = lua_tocfunction(L, -1);
     lua_pop(L, 1);
     applyMask(L, getMask(L, *ar));
+
     if (function != &lua::Runtime::handleMessage && function != &varn::async::AsyncModule::capture) {
         return;
     }
+
     std::string text = "An error rose that no protected call of the app catches.";
     if (lua_getlocal(L, ar, 1) != nullptr) {
         text = Evaluation::describeError(L, -1);
         lua_pop(L, 1);
     }
+
     halt({.thread = L, .level = 1, .reason = Reason::Error, .text = std::move(text)});
 }
 
@@ -185,8 +199,10 @@ void Tracer::leave(lua_State* L, lua_Debug*) {
             stepThread = nullptr;
             stepAnchor.reset();
         }
+
         return;
     }
+
     lua_getinfo(L, "S", &caller);
     applyMask(L, getMask(L, caller));
 }
@@ -195,8 +211,10 @@ void Tracer::line(lua_State* L, lua_Debug* ar) {
     if (suspended) {
         return;
     }
+
     if (breakpoints.hasLine(ar->currentline)) {
         lua_getinfo(L, "S", ar);
+
         if (Breakpoints::File* file = breakpoints.find(ar->source)) {
             Breakpoints::Breakpoint* breakpoint = file->find(ar->currentline);
             if (breakpoint != nullptr && takeBreakpoint(L, *breakpoint)) {
@@ -205,6 +223,7 @@ void Tracer::line(lua_State* L, lua_Debug* ar) {
             }
         }
     }
+
     if (step != Step::None && isStepDone(L)) {
         halt({.thread = L, .reason = step == Step::Pause ? Reason::Pause : Reason::Step});
     }
@@ -235,6 +254,7 @@ int Tracer::getDepth(lua_State* L) {
     while (lua_getstack(L, depth, &level) != 0) {
         ++depth;
     }
+
     return depth;
 }
 
@@ -253,8 +273,10 @@ bool Tracer::takeBreakpoint(lua_State* L, Breakpoints::Breakpoint& breakpoint) {
                 holds = result.count > 0 && lua_toboolean(L, -result.count) != 0;
                 lua_pop(L, result.count);
             }
+
             lua_pop(L, 1);
         }
+
         if (!holds) {
             return false;
         }
@@ -264,9 +286,11 @@ bool Tracer::takeBreakpoint(lua_State* L, Breakpoints::Breakpoint& breakpoint) {
     if (!breakpoint.hit.passes(breakpoint.hits)) {
         return false;
     }
+
     if (breakpoint.logMessage.empty()) {
         return true;
     }
+
     const Busy guard(*this);
     debugger.output(interpolate(L, breakpoint.logMessage) + "\n");
     return false;
@@ -278,6 +302,7 @@ std::string Tracer::interpolate(lua_State* L, const std::string& message) {
     if (!stack.pushEnvironment(1)) {
         return message;
     }
+
     const int environment = lua_gettop(L);
     std::string text;
     std::size_t position = 0;
@@ -288,6 +313,7 @@ std::string Tracer::interpolate(lua_State* L, const std::string& message) {
             text += message.substr(position);
             break;
         }
+
         text += message.substr(position, open - position);
         const Evaluation::Result result = Evaluation::run(L, environment, std::string_view(message).substr(open + 1, close - open - 1));
         if (!result.ok) {
@@ -296,8 +322,10 @@ std::string Tracer::interpolate(lua_State* L, const std::string& message) {
             text += result.count > 0 ? HaltedStack::formatValue(L, -result.count) : "nil";
             lua_pop(L, result.count);
         }
+
         position = close + 1;
     }
+
     lua_settop(L, environment - 1);
     return text;
 }
@@ -307,6 +335,7 @@ void Tracer::halt(Halt value) {
     if (busy || suspended) {
         return;
     }
+
     lua_State* thread = value.thread;
     {
         const Busy guard(*this);

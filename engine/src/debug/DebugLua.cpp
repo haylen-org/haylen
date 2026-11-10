@@ -140,6 +140,7 @@ int DebugLua::addDrawer(lua_State* L) {
             owner = lua_gettop(L);
         }
     }
+
     if (owner == 0) {
         owner = lua::Owners::pushDefault(L);
     }
@@ -157,6 +158,7 @@ int DebugLua::addDrawer(lua_State* L) {
     if (owner != 0) {
         lua::Owners::add(L, owner, connection);
     }
+
     lua::Userdata::emplace<core::Connection>(L, std::move(connection));
     return 1;
 }
@@ -278,6 +280,7 @@ void DebugLua::pushStats(lua_State* L, const Stats& snapshot) {
         lua_setfield(L, -2, "size");
         lua_setfield(L, -2, std::string(pool.name).c_str());
     }
+
     lua_setfield(L, -2, "pools");
 
     lua_createtable(L, 0, static_cast<int>(snapshot.buses.size()));
@@ -293,6 +296,7 @@ void DebugLua::pushStats(lua_State* L, const Stats& snapshot) {
         lua_setfield(L, -2, "processing");
         lua_setfield(L, -2, bus.name.c_str());
     }
+
     lua_setfield(L, -2, "buses");
 
     lua_createtable(L, 0, static_cast<int>(snapshot.objects.size()));
@@ -310,6 +314,7 @@ void DebugLua::pushStats(lua_State* L, const Stats& snapshot) {
         lua_setfield(L, -2, "bytes");
         lua_setfield(L, -2, object.name.c_str());
     }
+
     lua_setfield(L, -2, "objects");
 }
 
@@ -331,6 +336,7 @@ int DebugLua::addMonitor(lua_State* L) {
             owner = lua_gettop(L);
         }
     }
+
     if (owner == 0) {
         owner = lua::Owners::pushDefault(L);
     }
@@ -342,19 +348,23 @@ int DebugLua::addMonitor(lua_State* L) {
         if (!function->push(main)) {
             return std::nullopt;
         }
+
         lua::Runtime::protectedCall(main, 0, 1);
         int isNumber = 0;
         const lua_Number value = lua_tonumberx(main, -1, &isNumber);
         lua_pop(main, 1);
+
         if (isNumber == 0) {
             throw std::runtime_error("A debug monitor function returns a number.");
         }
+
         return static_cast<double>(value);
     });
     // clang-format on
     if (owner != 0) {
         lua::Owners::add(L, owner, connection);
     }
+
     lua::Userdata::emplace<core::Connection>(L, std::move(connection));
     return 1;
 }
@@ -378,6 +388,7 @@ int DebugLua::monitors(lua_State* L) {
         lua_setfield(L, -2, "history");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
@@ -412,6 +423,7 @@ int DebugLua::frame(lua_State* L) {
         lua_setfield(L, -2, "depth");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     lua_setfield(L, -2, "scopes");
     return 1;
 }
@@ -454,6 +466,7 @@ int DebugLua::recentLog(lua_State* L) {
         lua_setfield(L, -2, "text");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index - first + 1));
     }
+
     return 1;
 }
 
@@ -462,6 +475,7 @@ int DebugLua::breakpoint(lua_State* L) {
     if (Debugger* debugger = Debugger::find(L)) {
         debugger->breakHere(L);
     }
+
     return 0;
 }
 

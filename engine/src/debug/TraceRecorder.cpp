@@ -37,6 +37,7 @@ void TraceRecorder::append(std::string_view name, std::uint32_t lane, double sta
         ++dropped;
         return;
     }
+
     spans.push_back({.name = intern(name), .lane = lane, .start = (startSeconds - origin) * 1e6, .duration = std::max(durationSeconds, 0.0) * 1e6});
 }
 
@@ -44,6 +45,7 @@ std::uint32_t TraceRecorder::intern(std::string_view name) {
     if (const auto found = nameIndices.find(name); found != nameIndices.end()) {
         return found->second;
     }
+
     const auto index = static_cast<std::uint32_t>(names.size());
     names.emplace_back(name);
     nameIndices.emplace(names.back(), index);
@@ -56,6 +58,7 @@ std::uint32_t TraceRecorder::laneOfThisThread() {
     if (found != threads.end()) {
         return static_cast<std::uint32_t>(found - threads.begin());
     }
+
     threads.push_back(self);
     laneNames.push_back(std::format("thread {}", threads.size() - 1));
     return static_cast<std::uint32_t>(threads.size() - 1);
@@ -86,9 +89,11 @@ std::string TraceRecorder::toJson() const {
         const std::size_t order = lane == kGpuLane ? laneNames.size() : lane;
         text += std::format(R"({}{{"name":"thread_name","ph":"M","pid":1,"tid":{},"args":{{"name":{}}}}},{{"name":"thread_sort_index","ph":"M","pid":1,"tid":{},"args":{{"sort_index":{}}}}})", lane == 0 ? "" : ",", lane, core::Json(laneNames[lane]).dump(), lane, order);
     }
+
     for (const Span& span : spans) {
         text += std::format(R"(,{{"name":{},"ph":"X","pid":1,"tid":{},"ts":{:.3f},"dur":{:.3f}}})", quoted[span.name], span.lane, span.start, span.duration);
     }
+
     text += std::format(R"(],"displayTimeUnit":"ms","otherData":{{"dropped":{}}}}})", dropped);
     return text;
 }

@@ -66,6 +66,7 @@ void DebugWindow::holdFinger(ImGuiWindow& window, ui::Backend& backend) {
     for (int corner = 0; corner < 4; ++corner) {
         grip = grip || state.ActiveId == ImGui::GetWindowResizeCornerID(&window, corner);
     }
+
     if (scrollbar || grip) {
         backend.keepDrag(state.ActiveId);
     }
@@ -75,12 +76,15 @@ void DebugWindow::holdFinger(ImGuiWindow& window, ui::Backend& backend) {
 void DebugWindow::followFinger(ImGuiWindow& window) {
     const ImGuiContext& state = *ImGui::GetCurrentContext();
     const ImVec2 pressed = state.IO.MouseClickedPos[0];
+
     if (state.IO.MouseSource != ImGuiMouseSource_TouchScreen || !state.IO.MouseDown[0] || state.ActiveId != 0) {
         return;
     }
+
     if (!window.Rect().Contains(pressed) || window.TitleBarRect().Contains(pressed)) {
         return;
     }
+
     const ImVec2 travelled = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left, 0.0F);
     if (std::hypot(travelled.x, travelled.y) < ui::ScrollArbiter::kDragSlop) {
         return;
@@ -90,9 +94,11 @@ void DebugWindow::followFinger(ImGuiWindow& window) {
     while (area != nullptr && area != &window && area->ScrollMax.y <= 0.0F) {
         area = area->ParentWindow;
     }
+
     if (area == nullptr || area->RootWindow != &window) {
         return;
     }
+
     ImGui::SetScrollY(area, area->Scroll.y - state.IO.MouseDelta.y);
 }
 

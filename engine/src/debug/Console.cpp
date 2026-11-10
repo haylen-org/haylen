@@ -29,10 +29,12 @@ core::Connection Console::addCommand(Command command) {
     if (command.name.empty() || std::ranges::any_of(command.name, [](char character) { return character == ' ' || character == '\t' || character == '"'; })) {
         throw std::invalid_argument(std::format("The command name \"{}\" is not one word. Name a command with letters, digits and symbols without spaces or quotes.", command.name));
     }
+
     const auto text = std::ranges::find(command.parameters, Kind::Text, &Parameter::kind);
     if (text != command.parameters.end() && text + 1 != command.parameters.end()) {
         throw std::invalid_argument(std::format("The command \"{}\" has an argument of the kind \"text\" before another argument. A text argument takes the rest of the line, so it comes last.", command.name));
     }
+
     const auto optional = std::ranges::find_if(command.parameters, &Parameter::optional);
     if (std::any_of(optional, command.parameters.end(), [](const Parameter& parameter) { return !parameter.optional; })) {
         throw std::invalid_argument(std::format("The command \"{}\" has a required argument after an optional one. Put the optional arguments last.", command.name));
@@ -51,6 +53,7 @@ bool Console::removeCommand(std::string_view name) {
     if (!entry) {
         return false;
     }
+
     entry->disconnect();
     return true;
 }
@@ -70,6 +73,7 @@ std::vector<const Console::Command*> Console::getCommands() const {
     for (const std::shared_ptr<Entry>& entry : entries) {
         commands.push_back(&entry->command);
     }
+
     return commands;
 }
 
@@ -80,10 +84,12 @@ Console::Result Console::run(std::string_view line) {
         if (tokens.empty()) {
             return {.ok = true, .output = {}};
         }
+
         const std::shared_ptr<Entry> entry = find(tokens.front().text);
         if (!entry || entry->blocked) {
             return {.ok = false, .output = std::format("There is no command \"{}\". Type \"help\" to list the commands.", tokens.front().text)};
         }
+
         const core::Json arguments = readArguments(entry->command, line, tokens);
         return {.ok = true, .output = entry->command.handler(arguments)};
     } catch (const std::exception& error) {
@@ -112,11 +118,14 @@ std::vector<Console::Token> Console::split(std::string_view line) {
                 token.text += line[index];
             }
         }
+
         if (quoted) {
             throw std::invalid_argument("The line has a quote that is not closed.");
         }
+
         tokens.push_back(std::move(token));
     }
+
     return tokens;
 }
 
@@ -129,17 +138,22 @@ core::Json Console::readArguments(const Command& command, std::string_view line,
             if (!parameter.optional) {
                 throw std::invalid_argument(std::format("The command \"{}\" needs {} as its {} argument. Type it as \"{}\".", command.name, describeKind(parameter.kind), describePosition(index), describeUsage(command)));
             }
+
             break;
         }
+
         if (parameter.kind == Kind::Text) {
             arguments.push_back(std::string(line.substr(tokens[index + 1].start)));
             return arguments;
         }
+
         arguments.push_back(readArgument(command, index, tokens[index + 1].text));
     }
+
     if (given > command.parameters.size()) {
         throw std::invalid_argument(std::format("The command \"{}\" takes {} {}. Type it as \"{}\".", command.name, command.parameters.size(), command.parameters.size() == 1 ? "argument" : "arguments", describeUsage(command)));
     }
+
     return arguments;
 }
 
@@ -152,6 +166,7 @@ core::Json Console::readArgument(const Command& command, std::size_t index, cons
         if (const auto [end, error] = std::from_chars(text.data(), last, value); error == std::errc{} && end == last) {
             return value;
         }
+
         break;
     }
     case Kind::Number: {
@@ -159,12 +174,14 @@ core::Json Console::readArgument(const Command& command, std::size_t index, cons
         if (const auto [end, error] = fast_float::from_chars(text.data(), last, value); error == std::errc{} && end == last && std::isfinite(value)) {
             return value;
         }
+
         break;
     }
     case Kind::Boolean:
         if (text == "true" || text == "false") {
             return text == "true";
         }
+
         break;
     case Kind::String:
     case Kind::Text:
@@ -179,6 +196,7 @@ std::string Console::describeUsage(const Command& command) {
         const std::string_view kind = describeKind(parameter.kind).substr(describeKind(parameter.kind).find(' ') + 1);
         usage += parameter.optional ? std::format(" [{}]", kind) : std::format(" <{}>", kind);
     }
+
     return usage;
 }
 
@@ -214,6 +232,7 @@ std::string Console::help(const core::Json& arguments) const {
         if (!entry) {
             throw std::invalid_argument(std::format("There is no command \"{}\". Type \"help\" to list the commands.", name));
         }
+
         return std::format("{}\n{}", describeUsage(entry->command), entry->command.help);
     }
 
@@ -222,10 +241,12 @@ std::string Console::help(const core::Json& arguments) const {
     for (const std::shared_ptr<Entry>& entry : entries) {
         width = std::max(width, describeUsage(entry->command).size());
     }
+
     std::string text;
     for (const std::shared_ptr<Entry>& entry : entries) {
         text += std::format("{}{:<{}}  {}", text.empty() ? "" : "\n", describeUsage(entry->command), width, entry->command.help);
     }
+
     return text;
 }
 

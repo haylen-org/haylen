@@ -111,10 +111,12 @@ class InspectorWindowTest : public ::testing::Test, public test::UiFixture {
     void swipe(math::Vec2 from, math::Vec2 to) {
         touch(platform::Event::Type::TouchBegan, 1, from);
         frames();
+
         for (int step = 1; step <= 8; ++step) {
             touch(platform::Event::Type::TouchMoved, 1, from + (to - from) * (static_cast<float>(step) / 8.0F));
             frames();
         }
+
         touch(platform::Event::Type::TouchEnded, 1, to);
         frames(2);
     }

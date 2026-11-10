@@ -48,11 +48,13 @@ void Debugger::receive(core::Json message) {
         core::Log::warning("The debugger received a message that is no request of the Debug Adapter Protocol.");
         return;
     }
+
     inbox.push_back(std::move(message));
 }
 
 void Debugger::update(lua_State* L) {
     tracer.beginFrame();
+
     while (!inbox.empty()) {
         const core::Json request = std::move(inbox.front());
         inbox.pop_front();
@@ -66,9 +68,11 @@ void Debugger::reset() {
     tracer.setErrorsWatched(false);
     tracer.setStep(Tracer::Step::None);
     inbox.clear();
+
     if (state != nullptr) {
         tracer.refresh(state);
     }
+
     if (isHalted()) {
         next = Resume::Continue;
     }
@@ -89,6 +93,7 @@ void Debugger::halt(const Tracer::Halt& value) {
     if (!attached || state == nullptr || !host.canHaltFrames()) {
         return;
     }
+
     const bool collecting = lua_gc(value.thread, LUA_GCISRUNNING) != 0;
     lua_gc(value.thread, LUA_GCSTOP);
     halted = value;
@@ -100,9 +105,11 @@ void Debugger::halt(const Tracer::Halt& value) {
         body["text"] = value.text;
         body["description"] = value.text;
     }
+
     if (!value.breakpoints.empty()) {
         body["hitBreakpointIds"] = value.breakpoints;
     }
+
     sendEvent("stopped", std::move(body));
 
     bool released = false;
@@ -114,19 +121,24 @@ void Debugger::halt(const Tracer::Halt& value) {
             released = true;
             break;
         }
+
         pump();
+
         while (!inbox.empty() && next == Resume::None) {
             const core::Json request = std::move(inbox.front());
             inbox.pop_front();
             handle(request, value.thread);
         }
+
         if (next == Resume::None && inbox.empty()) {
             std::this_thread::sleep_for(kHaltPoll);
         }
     }
+
     released = released || !attached;
 
     stack.reset();
+
     if (collecting) {
         lua_gc(value.thread, LUA_GCRESTART);
     }
@@ -138,6 +150,7 @@ void Debugger::halt(const Tracer::Halt& value) {
     } else {
         tracer.setStep(next == Resume::In ? Tracer::Step::In : next == Resume::Over ? Tracer::Step::Over : Tracer::Step::Out, value.thread, value.level);
     }
+
     if (released && attached) {
         sendEvent("continued", {{"threadId", kThreadId}, {"allThreadsContinued", true}});
     }
@@ -179,16 +192,19 @@ void Debugger::dispatch(const core::Json& request, const core::Json& arguments, 
             fail(request, "The app runs, so it has no stack to show. Pause it first.");
             return;
         }
+
         respond(request, stack->getFrames(readInt(arguments, "startFrame", 0), readInt(arguments, "levels", 0)));
     } else if (command == "scopes" || command == "variables") {
         core::Json body;
         if (isHalted()) {
             body = command == "scopes" ? stack->getScopes(readInt(arguments, "frameId", 0)) : stack->getVariables(readInt(arguments, "variablesReference", 0), readInt(arguments, "start", 0), readInt(arguments, "count", 0));
         }
+
         if (body.is_null()) {
             fail(request, isHalted() ? "The frame or the variable no longer exists." : "The app runs, so it has no values to show. Pause it first.");
             return;
         }
+
         respond(request, std::move(body));
     } else if (command == "evaluate") {
         evaluate(request, arguments, L);
@@ -214,6 +230,7 @@ core::Json Debugger::getCapabilities() const {
     if (halts) {
         filters.push_back({{"filter", kErrorFilter}, {"label", "Uncaught errors"}, {"description", "Halts where an error rises that no pcall or xpcall of the app catches, before its stack unwinds."}, {"default", true}});
     }
+
     return {{"supportsConfigurationDoneRequest", true}, {"supportsConditionalBreakpoints", true}, {"supportsHitConditionalBreakpoints", true}, {"supportsLogPoints", true}, {"supportsEvaluateForHovers", true}, {"exceptionBreakpointFilters", std::move(filters)}};
 }
 
@@ -234,10 +251,12 @@ void Debugger::setBreakpoints(const core::Json& request, const core::Json& argum
         if (!item.is_object()) {
             throw std::invalid_argument("Every item of the field \"breakpoints\" of the request must be an object.");
         }
+
         Breakpoints::Request entry{.line = readInt(item, "line", 0), .condition = readText(item, "condition"), .hitCondition = readText(item, "hitCondition"), .logMessage = readText(item, "logMessage")};
         if (!halts && entry.logMessage.empty()) {
             continue;
         }
+
         kept.push_back(index);
         requests.push_back(std::move(entry));
     }
@@ -252,14 +271,18 @@ void Debugger::setBreakpoints(const core::Json& request, const core::Json& argum
             if (!result.message.empty()) {
                 item["message"] = result.message;
             }
+
             breakpoints.push_back(std::move(item));
             continue;
         }
+
         breakpoints.push_back({{"verified", false}, {"line", readInt(asked[index], "line", 0)}, {"message", "A web page cannot halt, since it runs the app on the thread that delivers every message, so only log points work there."}});
     }
+
     if (state != nullptr) {
         tracer.refresh(L);
     }
+
     respond(request, {{"breakpoints", std::move(breakpoints)}});
 }
 
@@ -269,6 +292,7 @@ void Debugger::setExceptionBreakpoints(const core::Json& request, const core::Js
     if (state != nullptr) {
         tracer.refresh(L);
     }
+
     respond(request);
 }
 
@@ -278,6 +302,7 @@ void Debugger::evaluate(const core::Json& request, const core::Json& arguments, 
         fail(request, "No app runs, so nothing can be evaluated.");
         return;
     }
+
     const std::string expression = readText(arguments, "expression");
     const int top = lua_gettop(L);
     const int frameId = readInt(arguments, "frameId", 0);
@@ -296,6 +321,7 @@ void Debugger::evaluate(const core::Json& request, const core::Json& arguments, 
         fail(request, result.error);
         return;
     }
+
     core::Json body{{"result", ""}, {"variablesReference", 0}};
     for (int index = 0; index < result.count; ++index) {
         const int value = lua_gettop(L) - result.count + 1 + index;
@@ -304,8 +330,10 @@ void Debugger::evaluate(const core::Json& request, const core::Json& arguments, 
             body = {{"result", variable.at("value")}, {"type", variable.at("type")}, {"variablesReference", variable.at("variablesReference")}};
             break;
         }
+
         body["result"] = body.at("result").get<std::string>() + (index > 0 ? ", " : "") + HaltedStack::formatValue(L, value);
     }
+
     lua_settop(L, top);
     respond(request, std::move(body));
 }
@@ -316,9 +344,11 @@ void Debugger::resume(const core::Json& request, Resume value) {
             respond(request, {{"allThreadsContinued", true}});
             return;
         }
+
         fail(request, "The app runs, so it cannot step. Pause it first.");
         return;
     }
+
     next = value;
     respond(request, value == Resume::Continue ? core::Json{{"allThreadsContinued", true}} : core::Json::object());
 }
@@ -329,12 +359,14 @@ void Debugger::pause(const core::Json& request, lua_State* L) {
         fail(request, "A web page cannot halt, since it runs the app on the thread that delivers every message.");
         return;
     }
+
     if (!isHalted()) {
         tracer.setStep(Tracer::Step::Pause);
         if (state != nullptr) {
             tracer.refresh(L);
         }
     }
+
     respond(request);
 }
 
@@ -355,9 +387,11 @@ core::Json Debugger::readObject(const core::Json& object, const char* key) {
     if (found == object.end()) {
         return core::Json::object();
     }
+
     if (!found->is_object()) {
         throw std::invalid_argument(std::format("The field \"{}\" of the request must be an object.", key));
     }
+
     return *found;
 }
 
@@ -366,9 +400,11 @@ core::Json Debugger::readArray(const core::Json& object, const char* key) {
     if (found == object.end()) {
         return core::Json::array();
     }
+
     if (!found->is_array()) {
         throw std::invalid_argument(std::format("The field \"{}\" of the request must be an array.", key));
     }
+
     return *found;
 }
 
@@ -377,10 +413,12 @@ int Debugger::readInt(const core::Json& object, const char* key, int fallback) {
     if (found == object.end()) {
         return fallback;
     }
+
     const bool fits = found->is_number_unsigned() ? std::in_range<int>(found->get<std::uint64_t>()) : found->is_number_integer() && std::in_range<int>(found->get<std::int64_t>());
     if (!fits) {
         throw std::invalid_argument(std::format("The field \"{}\" of the request must be an integer of 32 bits.", key));
     }
+
     return found->get<int>();
 }
 
@@ -389,9 +427,11 @@ std::string Debugger::readText(const core::Json& object, const char* key) {
     if (found == object.end()) {
         return {};
     }
+
     if (!found->is_string()) {
         throw std::invalid_argument(std::format("The field \"{}\" of the request must be a string.", key));
     }
+
     return found->get<std::string>();
 }
 

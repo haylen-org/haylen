@@ -35,6 +35,7 @@ ObjectCounter::~ObjectCounter() {
 
 void ObjectCounter::add(std::size_t count) noexcept {
     created.fetch_add(count, std::memory_order_relaxed);
+
     if (isObserved()) {
         notify(true, count);
     }
@@ -42,6 +43,7 @@ void ObjectCounter::add(std::size_t count) noexcept {
 
 void ObjectCounter::remove(std::size_t count) noexcept {
     destroyed.fetch_add(count, std::memory_order_relaxed);
+
     if (isObserved()) {
         notify(false, count);
     }

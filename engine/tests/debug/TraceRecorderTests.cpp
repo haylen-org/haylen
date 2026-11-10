@@ -25,6 +25,7 @@ class TraceRecorderTest : public ::testing::Test {
                 spans.push_back(event);
             }
         }
+
         return spans;
     }
 
@@ -34,6 +35,7 @@ class TraceRecorderTest : public ::testing::Test {
                 return event.at("args").at("name");
             }
         }
+
         return {};
     }
 };
@@ -88,6 +90,7 @@ TEST_F(TraceRecorderTest, DropsSpansBeyondItsCapacity) {
     for (int index = 0; index < 5; ++index) {
         trace.record("say \"hi\"", 0.0, 1.0);
     }
+
     EXPECT_EQ(trace.size(), 3U);
     EXPECT_EQ(trace.getDropped(), 2U);
     const core::Json parsed = core::Json::parse(trace.toJson());
@@ -133,6 +136,7 @@ TEST(TraceLuaTest, TracesFramesAndJobsIntoAFileOffTheFrameThread) {
             frames += event.at("name") == "frame" ? 1 : 0;
         }
     }
+
     EXPECT_EQ(frames, 4);
     EXPECT_TRUE(names.contains("update"));
     EXPECT_TRUE(names.contains("job"));
@@ -164,6 +168,7 @@ TEST(TraceLuaTest, NamesTheReadDecodeAndCreationOfEachAssetLoad) {
             lanes.emplace(event.at("name").get<std::string>(), event.at("tid").get<int>());
         }
     }
+
     ASSERT_TRUE(lanes.contains("read content/images/hero.png"));
     ASSERT_TRUE(lanes.contains("decode images/hero.png"));
     ASSERT_TRUE(lanes.contains("create images/hero.png"));

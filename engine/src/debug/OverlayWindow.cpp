@@ -38,9 +38,11 @@ std::string OverlayWindow::formatBytes(std::int64_t bytes) {
     if (value >= 1024.0 * 1024.0) {
         return std::format("{:.1f} MB", value / (1024.0 * 1024.0));
     }
+
     if (value >= 1024.0) {
         return std::format("{:.1f} KB", value / 1024.0);
     }
+
     return std::format("{} B", bytes);
 }
 
@@ -68,10 +70,12 @@ void OverlayWindow::drawProfiler(const Profiler& profiler) {
     if (!ImGui::BeginTable("##scopes", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
         return;
     }
+
     ImGui::TableSetupColumn("Scope", ImGuiTableColumnFlags_WidthStretch, 3.0F);
     ImGui::TableSetupColumn("Time in ms", ImGuiTableColumnFlags_WidthStretch, 1.0F);
     ImGui::TableSetupColumn("Calls", ImGuiTableColumnFlags_WidthStretch, 1.0F);
     ImGui::TableHeadersRow();
+
     for (const ProfileSample& sample : profiler.getLastFrame()) {
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
@@ -83,6 +87,7 @@ void OverlayWindow::drawProfiler(const Profiler& profiler) {
         ImGui::TableNextColumn();
         ImGui::Text("%u", sample.calls);
     }
+
     ImGui::EndTable();
 }
 
@@ -102,6 +107,7 @@ void OverlayWindow::drawResources(const Stats& stats) {
     for (const audio::Mixer::BusStats& bus : stats.buses) {
         voices += std::format(" {} {}{}", bus.name, bus.voices, bus.processing ? "" : " (paused)");
     }
+
     ImGui::TextWrapped("%s", voices.c_str());
     ImGui::TextWrapped("Bodies %llu, contacts %llu, particles %llu", static_cast<unsigned long long>(counts.bodies), static_cast<unsigned long long>(counts.contacts), static_cast<unsigned long long>(counts.particles));
 
@@ -122,6 +128,7 @@ void OverlayWindow::drawContent(const content::ContentManager& content) {
     ImGui::TextWrapped("Shards installed %llu, from the store or the server %llu, chunks missing %llu, of them prefetched %llu", static_cast<unsigned long long>(statistics.installedShards), static_cast<unsigned long long>(statistics.remoteShards), static_cast<unsigned long long>(statistics.missingChunks), static_cast<unsigned long long>(statistics.pendingPrefetch));
     ImGui::TextWrapped("Store %llu records (%s)", static_cast<unsigned long long>(statistics.storedRecords), formatBytes(static_cast<std::int64_t>(statistics.storedBytes)).c_str());
     ImGui::TextWrapped("Downloaded %s in %llu requests, %s/s, %llu records waiting, %llu transfers, %llu resumed", formatBytes(static_cast<std::int64_t>(statistics.downloadedBytes)).c_str(), static_cast<unsigned long long>(statistics.requests), formatBytes(static_cast<std::int64_t>(statistics.downloadRate)).c_str(), static_cast<unsigned long long>(statistics.wantedRecords), static_cast<unsigned long long>(statistics.activeTransfers), static_cast<unsigned long long>(statistics.resumedRecords));
+
     if (statistics.reusedBytes > 0) {
         ImGui::TextWrapped("The offered update reuses %s that the device holds", formatBytes(static_cast<std::int64_t>(statistics.reusedBytes)).c_str());
     }
@@ -131,16 +138,19 @@ void OverlayWindow::drawObjects(const std::vector<ObjectCounter::Snapshot>& obje
     if (!ImGui::BeginTable("##objects", 5, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
         return;
     }
+
     ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthStretch, 3.0F);
     ImGui::TableSetupColumn("Alive", ImGuiTableColumnFlags_WidthStretch, 1.0F);
     ImGui::TableSetupColumn("Created", ImGuiTableColumnFlags_WidthStretch, 1.0F);
     ImGui::TableSetupColumn("Destroyed", ImGuiTableColumnFlags_WidthStretch, 1.0F);
     ImGui::TableSetupColumn("Memory", ImGuiTableColumnFlags_WidthStretch, 1.2F);
     ImGui::TableHeadersRow();
+
     for (const ObjectCounter::Snapshot& object : objects) {
         if (object.created == 0) {
             continue;
         }
+
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
         ImGui::TextUnformatted(object.name.c_str());
@@ -151,10 +161,12 @@ void OverlayWindow::drawObjects(const std::vector<ObjectCounter::Snapshot>& obje
         ImGui::TableNextColumn();
         ImGui::Text("%llu", static_cast<unsigned long long>(object.destroyed));
         ImGui::TableNextColumn();
+
         if (object.bytes > 0) {
             ImGui::TextUnformatted(formatBytes(object.bytes).c_str());
         }
     }
+
     ImGui::EndTable();
 }
 
@@ -164,14 +176,17 @@ void OverlayWindow::drawScenes(const core::SceneManager& scenes) {
         ImGui::TextUnformatted("No scene is on the stack.");
         return;
     }
+
     if (!ImGui::BeginTable("##scenes", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
         return;
     }
+
     ImGui::TableSetupColumn("Scene", ImGuiTableColumnFlags_WidthStretch, 3.0F);
     ImGui::TableSetupColumn("State", ImGuiTableColumnFlags_WidthStretch, 1.2F);
     ImGui::TableSetupColumn("Mode", ImGuiTableColumnFlags_WidthStretch, 1.2F);
     ImGui::TableSetupColumn("Transparent", ImGuiTableColumnFlags_WidthStretch, 1.0F);
     ImGui::TableHeadersRow();
+
     for (std::size_t index = 0; index < scenes.size(); ++index) {
         const core::Scene& scene = scenes.at(index);
         ImGui::TableNextRow();
@@ -184,6 +199,7 @@ void OverlayWindow::drawScenes(const core::SceneManager& scenes) {
         ImGui::TableNextColumn();
         ImGui::TextUnformatted(scene.isTransparent() ? "Yes" : "No");
     }
+
     ImGui::EndTable();
 }
 
@@ -194,8 +210,10 @@ void OverlayWindow::drawDrawings(plugins::DebugPlugin& plugin) {
         if (ImGui::Checkbox(name.c_str(), &enabled)) {
             plugin.setDrawing(name, enabled);
         }
+
         ImGui::SameLine();
     }
+
     ImGui::NewLine();
 }
 
@@ -206,8 +224,10 @@ void OverlayWindow::drawItems(StatsDisplay& display) {
         if (ImGui::Checkbox(std::string(name).c_str(), &showing)) {
             display.setShowing(item, showing);
         }
+
         ImGui::SameLine();
     }
+
     ImGui::NewLine();
 }
 
@@ -219,16 +239,20 @@ void OverlayWindow::drawTopics(const char* id, const std::vector<core::EventBus:
     if (topics.empty() || !ImGui::BeginTable(id, 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
         return;
     }
+
     ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch, 3.0F);
     ImGui::TableSetupColumn("Listeners", ImGuiTableColumnFlags_WidthStretch, 1.0F);
     ImGui::TableSetupColumn("Emits", ImGuiTableColumnFlags_WidthStretch, 1.0F);
     ImGui::TableSetupColumn("Owner gone", ImGuiTableColumnFlags_WidthStretch, 1.0F);
     ImGui::TableHeadersRow();
+
     for (const core::EventBus::Topic& topic : topics) {
         ImGui::TableNextRow();
+
         if (topic.stale > 0) {
             ImGui::PushStyleColor(ImGuiCol_Text, getLevelColor(core::Log::Level::Warning));
         }
+
         ImGui::TableNextColumn();
         ImGui::TextUnformatted(topic.name.empty() ? "(Unnamed)" : topic.name.c_str());
         ImGui::TableNextColumn();
@@ -237,10 +261,12 @@ void OverlayWindow::drawTopics(const char* id, const std::vector<core::EventBus:
         ImGui::Text("%llu", static_cast<unsigned long long>(topic.emissions));
         ImGui::TableNextColumn();
         ImGui::Text("%zu", topic.stale);
+
         if (topic.stale > 0) {
             ImGui::PopStyleColor();
         }
     }
+
     ImGui::EndTable();
 }
 
@@ -250,6 +276,7 @@ void OverlayWindow::drawMonitors(const std::vector<std::shared_ptr<Monitor>>& mo
         if (history.empty()) {
             continue;
         }
+
         const auto [lowest, highest] = std::ranges::minmax(history);
         const std::string label = std::format("{} {:.3g}", monitor->getName(), monitor->getValue());
         ImGui::PlotLines(("##" + monitor->getName()).c_str(), history.data(), static_cast<int>(history.size()), 0, label.c_str(), lowest, std::max(highest, lowest + 1.0F), {-1.0F, 48.0F});
@@ -263,10 +290,12 @@ void OverlayWindow::drawLog(const std::vector<LogLine>& log) {
             ImGui::TextWrapped("%s", line.text.c_str());
             ImGui::PopStyleColor();
         }
+
         if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) {
             ImGui::SetScrollHereY(1.0F);
         }
     }
+
     ImGui::EndChild();
 }
 
@@ -286,43 +315,56 @@ bool OverlayWindow::draw(core::Engine& engine, ui::Backend& backend, const Stats
     const std::size_t stale = countStale(events) + countStale(signals);
     drawFrame(profiler, stats.frame);
     drawEventLoop(stats.eventLoop);
+
     if (stale > 0) {
         ImGui::TextColored(getLevelColor(core::Log::Level::Warning), "%zu events or signals keep listeners whose owner is gone.", stale);
     }
+
     if (ImGui::CollapsingHeader("Profiler", ImGuiTreeNodeFlags_DefaultOpen)) {
         drawProfiler(profiler);
     }
+
     if (ImGui::CollapsingHeader("Scenes", ImGuiTreeNodeFlags_DefaultOpen)) {
         drawScenes(engine.getScenes());
     }
+
     if (ImGui::CollapsingHeader("Drawings", ImGuiTreeNodeFlags_DefaultOpen)) {
         drawDrawings(engine.getPlugin<plugins::DebugPlugin>());
     }
+
     if (ImGui::CollapsingHeader("Compact statistics", ImGuiTreeNodeFlags_DefaultOpen)) {
         drawItems(engine.getPlugin<plugins::DebugPlugin>().getStatsDisplay());
     }
+
     if (ImGui::CollapsingHeader("Rendering", ImGuiTreeNodeFlags_DefaultOpen)) {
         drawRendering(stats.rendering);
     }
+
     if (ImGui::CollapsingHeader("Memory, counters and GPU pools", ImGuiTreeNodeFlags_DefaultOpen)) {
         drawResources(stats);
     }
+
     if (ImGui::CollapsingHeader("Content")) {
         drawContent(engine.getContent());
     }
+
     if (ImGui::CollapsingHeader("Objects")) {
         drawObjects(stats.objects);
     }
+
     if (ImGui::CollapsingHeader("Signals and events")) {
         drawTopics("##events", events);
         drawTopics("##signals", signals);
     }
+
     if (!monitors.empty() && ImGui::CollapsingHeader("Monitors", ImGuiTreeNodeFlags_DefaultOpen)) {
         drawMonitors(monitors);
     }
+
     if (ImGui::CollapsingHeader("Log", ImGuiTreeNodeFlags_DefaultOpen)) {
         drawLog(log);
     }
+
     DebugWindow::end();
     return open;
 }

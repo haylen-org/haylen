@@ -32,6 +32,7 @@ int TraceLua::startTrace(lua_State* L) {
         if (lua_getfield(L, 1, "frames") != LUA_TNIL) {
             frames = static_cast<int>(luaL_checkinteger(L, -1));
         }
+
         if (lua_getfield(L, 1, "capacity") != LUA_TNIL) {
             capacity = luaL_checkinteger(L, -1);
             if (capacity < 1) {
@@ -39,6 +40,7 @@ int TraceLua::startTrace(lua_State* L) {
             }
         }
     }
+
     lua::Runtime::getEngine(L).getPlugin<plugins::DebugPlugin>().startTrace(frames, static_cast<std::size_t>(capacity));
     return 0;
 }
@@ -56,6 +58,7 @@ int TraceLua::stopTraceAsync(lua_State* L) {
     if (!trace) {
         throw std::logic_error("No trace is recording. Start one with \"debug.startTrace\".");
     }
+
     const lua::Promise promise(engine);
     storage::UserStorage& files = engine.getStorage();
     // clang-format off

@@ -10,9 +10,11 @@ std::optional<Breakpoints::HitCondition> Breakpoints::HitCondition::parse(std::s
     while (!text.empty() && text.front() == ' ') {
         text.remove_prefix(1);
     }
+
     while (!text.empty() && text.back() == ' ') {
         text.remove_suffix(1);
     }
+
     if (text.empty()) {
         return HitCondition{};
     }
@@ -25,6 +27,7 @@ std::optional<Breakpoints::HitCondition> Breakpoints::HitCondition::parse(std::s
             break;
         }
     }
+
     while (!text.empty() && text.front() == ' ') {
         text.remove_prefix(1);
     }
@@ -33,6 +36,7 @@ std::optional<Breakpoints::HitCondition> Breakpoints::HitCondition::parse(std::s
     if (error != std::errc() || end != text.data() + text.size() || condition.count < 0 || (condition.op == Operator::Multiple && condition.count == 0)) {
         return std::nullopt;
     }
+
     return condition;
 }
 
@@ -79,10 +83,12 @@ std::vector<Breakpoints::Result> Breakpoints::set(const std::string& path, const
             results.push_back({.id = id, .line = request.line, .message = "The hit count \"" + request.hitCondition + "\" is not a count, which is a whole number alone or after \"==\", \">=\", \">\" or \"%\"."});
             continue;
         }
+
         if (request.line <= 0 || request.line > kMaxLine) {
             results.push_back({.id = id, .line = request.line, .message = std::format("The line of a breakpoint is a whole number from 1 to {}.", kMaxLine)});
             continue;
         }
+
         file.lines[request.line] = Breakpoint{.id = id, .line = request.line, .condition = request.condition, .hit = *hit, .logMessage = request.logMessage};
         results.push_back({.id = id, .line = request.line, .verified = true});
     }
@@ -91,6 +97,7 @@ std::vector<Breakpoints::Result> Breakpoints::set(const std::string& path, const
         count(file, 1);
         files.emplace(path, std::move(file));
     }
+
     return results;
 }
 
@@ -103,6 +110,7 @@ Breakpoints::File* Breakpoints::find(std::string_view source) {
     if (!source.starts_with('@')) {
         return nullptr;
     }
+
     const auto found = files.find(source.substr(1));
     return found == files.end() ? nullptr : &found->second;
 }
@@ -113,6 +121,7 @@ void Breakpoints::count(const File& file, int delta) {
         if (index >= lineCounts.size()) {
             lineCounts.resize(index + 1, 0);
         }
+
         lineCounts[index] += delta;
     }
 }
