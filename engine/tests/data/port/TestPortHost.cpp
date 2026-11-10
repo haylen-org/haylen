@@ -2,16 +2,18 @@
 
 #include "TestPortRuntime.hpp"
 #include "TestPortWindow.hpp"
+#include "platform/PixelDensityCap.hpp"
 #include "platform/Services.hpp"
 
 namespace haylen::platform {
 
 math::Vec2 TestPortHost::getFramebufferSize() const noexcept {
-    return TestPortWindow::kSize;
+    const gpu::Surface::Size size = runtime.getWindow().getSurfaceSize();
+    return {static_cast<float>(size.width), static_cast<float>(size.height)};
 }
 
 float TestPortHost::getDpiScale() const noexcept {
-    return 1.0F;
+    return PixelDensityCap::getShare(runtime.getWindow().getSurfaceSize());
 }
 
 // The window of the test port always fills its screen.
@@ -107,5 +109,9 @@ void TestPortHost::setScreenSaverSuspended(bool, std::function<void(Permission::
 
 // The runtime of the test port plays frames of a fixed length that no display paces.
 void TestPortHost::applyFrameRate(int) {}
+
+void TestPortHost::applyMaxPixelDensity(float cap) {
+    runtime.setMaxPixelDensity(cap);
+}
 
 } // namespace haylen::platform

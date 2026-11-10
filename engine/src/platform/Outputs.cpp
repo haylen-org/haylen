@@ -92,7 +92,7 @@ void Outputs::followDisplays() {
 // A GPU device that draws into no surface beyond the window ends the output, since nothing can show it.
 void Outputs::show(Output& output, const gpu::Surface& surface, float scale) {
     gpu::Device& gpu = graphics.getGpu();
-    const math::Vec2 size{static_cast<float>(surface.width), static_cast<float>(surface.height)};
+    const math::Vec2 size{static_cast<float>(surface.size.width), static_cast<float>(surface.size.height)};
     if (output.surface == 0) {
         try {
             output.surface = gpu.addSurface(surface);
@@ -101,18 +101,18 @@ void Outputs::show(Output& output, const gpu::Surface& surface, float scale) {
             return;
         }
     } else if (size != output.surfaceSize) {
-        gpu.resizeSurface(output.surface, surface.width, surface.height);
+        gpu.resizeSurface(output.surface, surface.size);
     }
 
     const bool resized = size != output.surfaceSize;
     output.surfaceSize = size;
     output.scale = scale;
-    if (resized && surface.width > 0 && surface.height > 0) {
-        output.target = graphics.createRenderTarget(surface.width, surface.height);
+    if (resized && surface.size.width > 0 && surface.size.height > 0) {
+        output.target = graphics.createRenderTarget(surface.size.width, surface.size.height);
     }
 
     const Output::State previous = std::exchange(output.state, Output::State::Shown);
-    const core::Json described{{"output", output.id}, {"display", output.displayId}, {"width", surface.width}, {"height", surface.height}, {"scale", core::JsonNumber::fromFloat(scale)}};
+    const core::Json described{{"output", output.id}, {"display", output.displayId}, {"width", surface.size.width}, {"height", surface.size.height}, {"scale", core::JsonNumber::fromFloat(scale)}};
     if (previous != Output::State::Shown) {
         events.emit(core::LifecycleEvent::kOutputShown, described);
     } else if (resized) {

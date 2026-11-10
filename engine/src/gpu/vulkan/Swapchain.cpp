@@ -87,11 +87,11 @@ VkCompositeAlphaFlagBitsKHR Swapchain::chooseCompositeAlpha(VkCompositeAlphaFlag
     return VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 }
 
-// A surface that leaves the size to the swapchain takes the size of the drawable. The images keep the size of the window as it shows, since the compositor turns them where the display turns.
+// A surface that leaves the size to the swapchain takes the size of the window. The images keep the size of the window as it shows, since the compositor turns them where the display turns.
 VkExtent2D Swapchain::chooseExtent(const VkSurfaceCapabilitiesKHR& capabilities, const Settings& settings) noexcept {
     VkExtent2D chosen = capabilities.currentExtent;
     if (chosen.width == 0xFFFFFFFFU) {
-        chosen = {static_cast<std::uint32_t>(std::max(settings.width, 0)), static_cast<std::uint32_t>(std::max(settings.height, 0))};
+        chosen = {static_cast<std::uint32_t>(std::max(settings.size.windowWidth, 0)), static_cast<std::uint32_t>(std::max(settings.size.windowHeight, 0))};
     }
     if (chosen.width == 0 || chosen.height == 0) {
         return {};
@@ -121,7 +121,20 @@ bool Swapchain::configure(const Settings& settings) {
         destroySwapchain();
         return false;
     }
+    presentedExtent = chosen;
     extent = chosen;
+
+    // A window that shows a smaller drawable, whose surface fixes the size of the images, takes the drawable through a copy into each image.
+    const VkExtent2D wanted{static_cast<std::uint32_t>(std::max(settings.size.width, 1)), static_cast<std::uint32_t>(std::max(settings.size.height, 1))};
+    const bool scaled = settings.size.isScaled() && (wanted.width != chosen.width || wanted.height != chosen.height);
+    if (scaled && !canScale(capabilities)) {
+        throw std::runtime_error("The Vulkan surface of the window takes no copies into its images, so this GPU cannot draw the window with fewer pixels than it shows. Remove the limit of the pixel density, or draw with another graphics API.");
+    }
+    VkImageUsageFlags usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    if (scaled) {
+        extent = {std::min(wanted.width, chosen.width), std::min(wanted.height, chosen.height)};
+        usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    }
 
     const VkSampleCountFlags counts = context->getProperties().limits.framebufferColorSampleCounts & context->getProperties().limits.framebufferDepthSampleCounts;
     samples = VK_SAMPLE_COUNT_1_BIT;
@@ -149,9 +162,9 @@ bool Swapchain::configure(const Settings& settings) {
         .minImageCount = imageCount,
         .imageFormat = format,
         .imageColorSpace = colorSpace,
-        .imageExtent = extent,
+        .imageExtent = presentedExtent,
         .imageArrayLayers = 1,
-        .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        .imageUsage = usage,
         .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
         .preTransform = transform,
         .compositeAlpha = alpha,
@@ -167,6 +180,7 @@ bool Swapchain::configure(const Settings& settings) {
     if (result == VK_ERROR_SURFACE_LOST_KHR || result == VK_ERROR_NATIVE_WINDOW_IN_USE_KHR) {
         handle = VK_NULL_HANDLE;
         extent = {};
+        presentedExtent = {};
         return false;
     }
     if (result != VK_SUCCESS) {
@@ -186,6 +200,12 @@ bool Swapchain::configure(const Settings& settings) {
         Context::check(vk.vkCreateSemaphore(context->getDevice(), &semaphoreInfo, nullptr, &images[index].finished), "make a semaphore");
         context->setName(VK_OBJECT_TYPE_IMAGE, made[index], "haylen-swapchain-image");
     }
+    if (scaled) {
+        drawables.resize(count);
+        for (Attachment& drawable : drawables) {
+            drawable = makeDrawable();
+        }
+    }
 
     if (samples != VK_SAMPLE_COUNT_1_BIT) {
         color = makeAttachment(format, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
@@ -194,6 +214,43 @@ bool Swapchain::configure(const Settings& settings) {
     depth = makeAttachment(depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
     context->setName(VK_OBJECT_TYPE_IMAGE, depth.image, "haylen-swapchain-depth");
     return true;
+}
+
+// The surface must take copies into its images, and its format must copy between images with the linear filter, which Vulkan requires of the formats that `chooseFormat` prefers.
+bool Swapchain::canScale(const VkSurfaceCapabilitiesKHR& capabilities) const {
+    if ((capabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT) == 0) {
+        return false;
+    }
+
+    VkFormatProperties properties{};
+    vkGetPhysicalDeviceFormatProperties(context->getPhysicalDevice(), format, &properties);
+    const VkFormatFeatureFlags needed = VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+    return (properties.optimalTilingFeatures & needed) == needed;
+}
+
+void Swapchain::recordScale(VkCommandBuffer commands, std::uint32_t index) const {
+    const VolkDeviceTable& vk = context->getFunctions();
+    const VkImageSubresourceRange range{.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1};
+    const VkImage source = drawables[index].image;
+    const VkImage target = images[index].image;
+
+    const std::array<VkImageMemoryBarrier, 2> toCopy{{
+        {.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT, .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, .newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = source, .subresourceRange = range},
+        {.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .srcAccessMask = 0, .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED, .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = target, .subresourceRange = range},
+    }};
+    vk.vkCmdPipelineBarrier(commands, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, static_cast<std::uint32_t>(toCopy.size()), toCopy.data());
+
+    const VkImageSubresourceLayers layers{.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .layerCount = 1};
+    const VkImageBlit region{
+        .srcSubresource = layers,
+        .srcOffsets = {{0, 0, 0}, {static_cast<std::int32_t>(extent.width), static_cast<std::int32_t>(extent.height), 1}},
+        .dstSubresource = layers,
+        .dstOffsets = {{0, 0, 0}, {static_cast<std::int32_t>(presentedExtent.width), static_cast<std::int32_t>(presentedExtent.height), 1}},
+    };
+    vk.vkCmdBlitImage(commands, source, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, target, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region, VK_FILTER_LINEAR);
+
+    const VkImageMemoryBarrier toPresent{.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .dstAccessMask = 0, .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = target, .subresourceRange = range};
+    vk.vkCmdPipelineBarrier(commands, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &toPresent);
 }
 
 VkResult Swapchain::acquire(std::size_t frame, std::uint32_t& index) const {
@@ -209,6 +266,9 @@ std::vector<VkImageView> Swapchain::getViews() const {
     std::vector<VkImageView> views;
     for (const SwapchainImage& image : images) {
         views.push_back(image.view);
+    }
+    for (const Attachment& drawable : drawables) {
+        views.push_back(drawable.view);
     }
     for (const VkImageView view : {color.view, depth.view}) {
         if (view != VK_NULL_HANDLE) {
@@ -250,6 +310,29 @@ Swapchain::Attachment Swapchain::makeAttachment(VkFormat attachmentFormat, VkIma
     return made;
 }
 
+// The drawable of an image of the swapchain keeps what the passes of a frame drew until the frame copies it into that image.
+Swapchain::Attachment Swapchain::makeDrawable() const {
+    const VkImageCreateInfo info{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .imageType = VK_IMAGE_TYPE_2D,
+        .format = format,
+        .extent = {extent.width, extent.height, 1},
+        .mipLevels = 1,
+        .arrayLayers = 1,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .tiling = VK_IMAGE_TILING_OPTIMAL,
+        .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+    };
+    Attachment made;
+    const VmaAllocationCreateInfo memory{.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE};
+    Context::check(vmaCreateImage(context->getAllocator(), &info, &memory, &made.image, &made.allocation, nullptr), "make a drawable of the swapchain");
+    made.view = makeView(made.image, format);
+    context->setName(VK_OBJECT_TYPE_IMAGE, made.image, "haylen-swapchain-drawable");
+    return made;
+}
+
 void Swapchain::destroyAttachment(Attachment& attachment) const {
     if (attachment.image == VK_NULL_HANDLE) {
         return;
@@ -265,6 +348,7 @@ void Swapchain::destroySwapchain() {
         handle = VK_NULL_HANDLE;
     }
     extent = {};
+    presentedExtent = {};
 }
 
 void Swapchain::destroyImages() {
@@ -274,6 +358,10 @@ void Swapchain::destroyImages() {
         vk.vkDestroySemaphore(context->getDevice(), image.finished, nullptr);
     }
     images.clear();
+    for (Attachment& drawable : drawables) {
+        destroyAttachment(drawable);
+    }
+    drawables.clear();
     destroyAttachment(color);
     destroyAttachment(depth);
 }

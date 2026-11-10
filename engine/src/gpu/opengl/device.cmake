@@ -10,6 +10,7 @@ target_sources(haylen-gpu PRIVATE
   "${CMAKE_CURRENT_LIST_DIR}/GpuTimer.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/LayerClear.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/PixelReadback.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/ScaledDrawable.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/ShaderProgram.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/StateCache.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/UploadRing.cpp"

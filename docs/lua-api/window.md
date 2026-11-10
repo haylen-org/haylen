@@ -1,6 +1,6 @@
 # 📖 `haylen.window`
 
-The module `haylen.window` controls the window that the app runs in, or the canvas on the web. It covers the size, fullscreen, the title, the mouse cursor, the on-screen keyboard, the orientation and the status bar of phones, the system gestures at the edges of the screen, the back button, keeping the screen on and the fold of foldable devices. On desktops it also covers frameless, transparent, always-on-top and click-through windows and their frame. The module [`haylen.display`](display.md) lists the displays. The `window` section of `app.json` sets the window when the app starts, as the [Lua guide](../core/lua.md) lists. Drawing works in design units, so layout code usually reads [`haylen.viewport`](viewport.md) instead of the window size. The [desktop guide](../platform/desktop.md) explains how the desktop options fit together.
+The module `haylen.window` controls the window that the app runs in, or the canvas on the web. It covers the size, the pixel density, fullscreen, the title, the mouse cursor, the on-screen keyboard, the orientation and the status bar of phones, the system gestures at the edges of the screen, the back button, keeping the screen on and the fold of foldable devices. On desktops it also covers frameless, transparent, always-on-top and click-through windows and their frame. The module [`haylen.display`](display.md) lists the displays. The `window` section of `app.json` sets the window when the app starts, as the [Lua guide](../core/lua.md) lists. Drawing works in design units, so layout code usually reads [`haylen.viewport`](viewport.md) instead of the window size. The [desktop guide](../platform/desktop.md) explains how the desktop options fit together.
 
 ```lua
 local window = require('haylen.window')
@@ -12,7 +12,7 @@ A function that takes a boolean needs a real `true` or `false`. Any other value 
 
 ### window.framebufferSize()
 
-Returns the width and the height of the framebuffer in pixels, as two numbers. On screens of high density these are physical pixels, not window points.
+Returns the width and the height of the framebuffer in pixels, as two numbers. On screens of high density these are physical pixels, not window points, and fewer under the [pixel density cap](#windowsetmaxpixeldensitycap) of the app.
 
 ```lua
 local window = require('haylen.window')
@@ -31,6 +31,38 @@ local window = require('haylen.window')
 if window.dpiScale() >= 2 then
     print('A screen of high density.')
 end
+```
+
+### window.maxPixelDensity()
+
+Returns the most framebuffer pixels that the app draws in each window point, or `0` when it draws every pixel of the display. It starts as `window.maxPixelDensity` of `app.json` says, `0` by default.
+
+```lua
+local window = require('haylen.window')
+
+print('Pixel density cap:', window.maxPixelDensity())
+```
+
+### window.setMaxPixelDensity(cap)
+
+Draws at most `cap` framebuffer pixels in each window point, or every pixel of the display with `0`. On a display denser than the cap, such as a phone of 3 pixels in each point or a 4K monitor, the framebuffer shrinks to the cap and is stretched over the window, so the GPU fills fewer pixels at the price of sharpness. A cap of `2` keeps text and art sharp on almost every screen and fills less than half the pixels of a phone of 3 pixels in each point, and a cap below `1` draws fewer pixels than points for the slowest devices. The [rendering guide](../graphics/rendering.md#pixel-density) explains where the stretch happens on each platform.
+
+The window keeps its size, and every size in window points and design units stays the same: [`window.framebufferSize()`](#windowframebuffersize) and [`window.dpiScale()`](#windowdpiscale) report the smaller framebuffer, while input, the safe area and the UI keep their place. A display that is not denser than the cap draws every pixel, and outputs on other displays always draw every pixel of their display. The cap applies from the next frame and ends with the app, and a restarted app starts with the value of `app.json` again. A cap that is negative or not a number raises `The pixel density cap <cap> is out of range. It is 0 for every pixel of the display, or a positive number of framebuffer pixels in each point.`.
+
+```lua
+local window = require('haylen.window')
+
+-- A busy battle draws fewer pixels, and the calm menu gets the full sharpness of the display back.
+local function startBattle()
+    window.setMaxPixelDensity(1.5)
+end
+
+local function openMenu()
+    window.setMaxPixelDensity(0)
+end
+
+startBattle()
+openMenu()
 ```
 
 ### window.fullscreen()
@@ -830,6 +862,7 @@ These messages are raised by the functions of the module.
 | --- | --- |
 | `bad argument #1 to '<function>' (boolean expected, got <type>)` | A function that takes a boolean got another value. |
 | `The frame rate <rate> is out of range. It is 0 for every refresh of the display, or from 1 to 1000 frames per second.` | The rate of `window.setFrameRate` is below 0 or above 1000. |
+| `The pixel density cap <cap> is out of range. It is 0 for every pixel of the display, or a positive number of framebuffer pixels in each point.` | The cap of `window.setMaxPixelDensity` is negative, infinite or not a number. |
 | `There is no display "<id>" to go fullscreen on. The function "display.list()" lists the displays.` | The `display` of `window.setFullscreen` is not connected. |
 | `The display "<id>" has no mode of <width> by <height> pixels at <rate> frames per second. The modes of "display.list()" are the ones it runs in.` | The `mode` of `window.setFullscreen` is not a mode of the display. |
 | `A fullscreen mode needs a positive "width" and "height" in pixels.` | The `mode` of `window.setFullscreen` has no size. |

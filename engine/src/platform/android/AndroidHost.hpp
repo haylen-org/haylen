@@ -49,6 +49,7 @@ class AndroidHost final : public NativeHost {
     void setWindowFocusable(bool) override {}
     void setScreenSaverSuspended(bool value, std::function<void(Permission::Answer answer)> callback) override;
     void applyFrameRate(int framesPerSecond) override;
+    void applyMaxPixelDensity(float cap) override;
     void openOutput(std::uint32_t number, std::string_view display, const Output::Options& options) override;
     void closeOutput(std::uint32_t number) override;
     [[nodiscard]] OutputReport getOutputReport(std::uint32_t number) const override;

@@ -44,12 +44,21 @@ class Window final : public platform::NativeWindow {
     // Replaces the context of OpenGL, OpenGL ES or WebGL2 that the GPU lost with a new one for the device that replaces the lost one. Windows of the other graphics APIs keep what they have.
     void renewGlContext();
 
-    // Reads the size of the drawable and the scale again once SDL reported that they changed, for the services that read them on other threads.
+    // Reads the size of the window and the scale again once SDL reported that they changed, and sizes the drawable after them and the pixel density cap, for the services that read them on other threads.
     void refresh() noexcept;
 
-    // The size of the drawable in pixels, and the framebuffer pixels per unit of the coordinates SDL gives the window, which turns the positions of the mouse into framebuffer pixels.
+    // Caps the framebuffer pixels in each point of the window, or lets the drawable take every pixel of the window for 0, from the next `refresh`.
+    void setMaxPixelDensity(float value) noexcept {
+        maxPixelDensity = value;
+    }
+
+    // The size of the drawable in pixels, the framebuffer pixels per unit of the coordinates SDL gives the window, which turns the positions of the mouse into framebuffer pixels, and the framebuffer pixels per point.
     [[nodiscard]] math::Vec2 getPixelSize() const noexcept;
     [[nodiscard]] float getPixelDensity() const noexcept;
+    [[nodiscard]] float getDpiScale() const noexcept;
+
+    // The size of the drawable and of the window in pixels, which the GPU device takes.
+    [[nodiscard]] gpu::Surface::Size getSurfaceSize() const noexcept;
 
     [[nodiscard]] int getSampleCount() const noexcept {
         return sampleCount;
@@ -87,14 +96,18 @@ class Window final : public platform::NativeWindow {
     int sampleCount = 1;
     bool vsync = true;
     bool transparent = false;
+    float maxPixelDensity = 0.0F;
 
-    // What other threads read: the native handles of the window, the size of its drawable in pixels and its scale.
+    // What other threads read: the native handles of the window, the size of the window and of its drawable in pixels, and its scales.
     std::atomic<bool> opened = false;
     std::atomic<void*> handle = nullptr;
     std::atomic<void*> display = nullptr;
-    std::atomic<float> width = 0.0F;
-    std::atomic<float> height = 0.0F;
+    std::atomic<int> windowWidth = 0;
+    std::atomic<int> windowHeight = 0;
+    std::atomic<int> width = 0;
+    std::atomic<int> height = 0;
     std::atomic<float> scale = 1.0F;
+    std::atomic<float> dpiScale = 1.0F;
 };
 
 } // namespace haylen::platform::sdl

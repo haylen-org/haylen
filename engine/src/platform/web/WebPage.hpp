@@ -29,6 +29,9 @@ class WebPage final {
     // Whether the element that holds the canvas and the overlay of the page is fullscreen. SDL follows only a fullscreen of the canvas itself, so the page reports it.
     [[nodiscard]] static bool isFullscreen() noexcept;
 
+    // Tells the page the width of the drawable of the engine, which turns framebuffer pixels into page pixels over the canvas, whenever the window sizes it.
+    static void setDrawableWidth(int width);
+
     // Puts the element that holds the canvas and the overlay of the page in fullscreen on the screen with the id, or takes the page out of it, and answers once the browser settled it. A newer change replaces one that the browser has not settled, which answers `Denied`, and starts once the browser settled it.
     static void setFullscreen(bool value, std::string_view display, std::function<void(Permission::Answer answer)> callback);
 

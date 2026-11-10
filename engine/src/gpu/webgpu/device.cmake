@@ -7,6 +7,7 @@ target_sources(haylen-gpu PRIVATE
   "${CMAKE_CURRENT_LIST_DIR}/FrameTimer.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/ImageReadback.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/PassTimeline.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/ScaledDrawable.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/Swapchain.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/UniformRing.cpp"
 )

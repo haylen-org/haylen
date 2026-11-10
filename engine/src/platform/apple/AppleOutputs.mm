@@ -74,11 +74,10 @@ void AppleOutputs::resize(std::uint32_t number) {
     const CGFloat scale = entry.view.contentScaleFactor;
     const int width = static_cast<int>(std::lround(entry.view.bounds.size.width * scale));
     const int height = static_cast<int>(std::lround(entry.view.bounds.size.height * scale));
-    if (width == entry.report.surface->width && height == entry.report.surface->height) {
+    if (width == entry.report.surface->size.width && height == entry.report.surface->size.height) {
         return;
     }
-    entry.report.surface->width = width;
-    entry.report.surface->height = height;
+    entry.report.surface->size = {.width = width, .height = height, .windowWidth = width, .windowHeight = height};
     entry.report.scale = static_cast<float>(scale);
     announce(number);
 }

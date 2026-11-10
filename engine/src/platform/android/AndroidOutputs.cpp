@@ -58,8 +58,7 @@ Host::OutputReport AndroidOutputs::getReport(std::uint32_t number, const Android
 
     try {
         gpu::Surface surface = entry.drawable != nullptr ? gpu::Surface{.kind = gpu::Surface::Kind::Gl, .gl = entry.drawable.get()} : graphics.describeOutput(*entry.window, entry.width, entry.height, entry.drawable);
-        surface.width = entry.width;
-        surface.height = entry.height;
+        surface.size = {.width = entry.width, .height = entry.height, .windowWidth = entry.width, .windowHeight = entry.height};
         return {.surface = surface, .scale = entry.scale};
     } catch (const std::exception& error) {
         entry.ending = Output::Ending::Unsupported;

@@ -298,18 +298,26 @@ TEST_F(NullDeviceTest, BalancesDebugGroupsWithinTheirPasses) {
     EXPECT_NO_THROW(device.commit());
 }
 
-// The surface goes and comes back in turn between frames, and a minimized window resizes it to no pixels.
+// The surface goes and comes back in turn between frames, a minimized window resizes it to no pixels, and a window shows its drawable at its size or larger, as when the app caps its pixel density.
 TEST_F(NullDeviceTest, TakesTheSurfaceInTurnBetweenFrames) {
     NullDevice device;
-    EXPECT_THROW(device.attachSurface({.width = 8, .height = 8}), std::logic_error);
+    const Surface::Size eight{.width = 8, .height = 8, .windowWidth = 8, .windowHeight = 8};
+    EXPECT_THROW(device.attachSurface({.size = eight}), std::logic_error);
     device.detachSurface();
     EXPECT_THROW(device.detachSurface(), std::logic_error);
-    EXPECT_THROW(device.attachSurface({.width = 8, .height = 8, .sampleCount = 3}), std::logic_error);
-    device.attachSurface({.width = 8, .height = 8});
-    EXPECT_NO_THROW(device.resizeSurface(0, 0));
-    EXPECT_THROW(device.resizeSurface(-1, 4), std::logic_error);
+    EXPECT_THROW(device.attachSurface({.size = eight, .sampleCount = 3}), std::logic_error);
+    device.attachSurface({.size = eight});
+    EXPECT_EQ(device.getSurfaceSize(), eight);
+    EXPECT_NO_THROW(device.resizeSurface({}));
+    EXPECT_THROW(device.resizeSurface({.width = -1, .height = 4, .windowWidth = 4, .windowHeight = 4}), std::logic_error);
+    EXPECT_THROW(device.resizeSurface({.width = 8, .height = 8, .windowWidth = 4, .windowHeight = 8}), std::logic_error);
+
+    const Surface::Size scaled{.width = 4, .height = 4, .windowWidth = 8, .windowHeight = 8};
+    device.resizeSurface(scaled);
+    EXPECT_EQ(device.getSurfaceSize(), scaled);
+    EXPECT_TRUE(device.getSurfaceSize().isScaled());
     device.beginPass({});
-    EXPECT_THROW(device.resizeSurface(4, 4), std::logic_error);
+    EXPECT_THROW(device.resizeSurface(eight), std::logic_error);
     EXPECT_THROW(device.detachSurface(), std::logic_error);
     device.endPass();
     device.commit();
@@ -318,7 +326,7 @@ TEST_F(NullDeviceTest, TakesTheSurfaceInTurnBetweenFrames) {
 // A device may present a surface once a pass into another surface leaves it, so the passes of a frame into one surface follow one another, with offscreen passes between them.
 TEST_F(NullDeviceTest, KeepsThePassesOfAFrameIntoOneSurfaceTogether) {
     NullDevice device;
-    const int board = device.addSurface({.width = 8, .height = 8});
+    const int board = device.addSurface({.size = {.width = 8, .height = 8, .windowWidth = 8, .windowHeight = 8}});
     const Device::Image target = device.makeImage({.width = 4, .height = 4, .kind = Device::ImageKind::RenderTarget, .label = "target"});
     const std::array<Device::ColorAttachment, 1> attachments{{{.image = target}}};
     device.beginPass({});

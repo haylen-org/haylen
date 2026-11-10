@@ -25,7 +25,14 @@ std::unique_ptr<gpu::Device> TestPortRuntime::createDevice() {
     if (openedDevice != nullptr) {
         return std::move(openedDevice);
     }
-    return gpu::DeviceFactory::create(api, gpu::Surface{.kind = gpu::Surface::Kind::Port, .width = static_cast<int>(TestPortWindow::kSize.x), .height = static_cast<int>(TestPortWindow::kSize.y)}, {});
+    return gpu::DeviceFactory::create(api, gpu::Surface{.kind = gpu::Surface::Kind::Port, .size = window.getSurfaceSize()}, {});
+}
+
+void TestPortRuntime::setMaxPixelDensity(float cap) {
+    window.setMaxPixelDensity(cap);
+    if (gpu::Device* device = Player::getGpuDevice()) {
+        device->resizeSurface(window.getSurfaceSize());
+    }
 }
 
 // The graphics APIs of the app open the window in turn, as on every platform, and the reason of each one that fails reaches the log.

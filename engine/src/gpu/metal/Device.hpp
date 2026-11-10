@@ -61,11 +61,11 @@ class Device final : public gpu::Device {
 
     void commit() override;
 
-    void resizeSurface(int width, int height) override;
+    void resizeSurface(const Surface::Size& size) override;
     void detachSurface() override;
     void attachSurface(const Surface& surface) override;
     [[nodiscard]] int addSurface(const Surface& surface) override;
-    void resizeSurface(int surface, int width, int height) override;
+    void resizeSurface(int surface, const Surface::Size& size) override;
     void removeSurface(int surface) override;
 
     [[nodiscard]] std::unique_ptr<Readback> readImage(Image image, int width, int height) override;

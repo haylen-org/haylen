@@ -42,7 +42,7 @@ bool AndroidGraphics::isLost(const gpu::Device& device) const noexcept {
 
 void AndroidGraphics::resizeWindow(gpu::Device* device) {
     if (device != nullptr) {
-        device->resizeSurface(window.getFramebufferWidth(), window.getFramebufferHeight());
+        device->resizeSurface(window.getSurfaceSize());
     }
 }
 
@@ -83,23 +83,22 @@ std::unique_ptr<gpu::Device> AndroidGraphics::open(gpu::Device::Api api) {
 gpu::Surface AndroidGraphics::describeOutput(ANativeWindow& native, int width, int height, std::unique_ptr<gpu::GlContext>& drawable) const {
     if (egl != nullptr) {
         drawable = egl->makeDrawable(native);
-        return {.kind = gpu::Surface::Kind::Gl, .gl = drawable.get(), .width = width, .height = height, .sampleCount = settings.sampleCount, .vsync = settings.vsync};
+        return {.kind = gpu::Surface::Kind::Gl, .gl = drawable.get(), .size = {.width = width, .height = height, .windowWidth = width, .windowHeight = height}, .sampleCount = settings.sampleCount, .vsync = settings.vsync};
     }
-    return {.kind = gpu::Surface::Kind::Android, .window = &native, .width = width, .height = height, .sampleCount = settings.sampleCount, .vsync = settings.vsync};
+    return {.kind = gpu::Surface::Kind::Android, .window = &native, .size = {.width = width, .height = height, .windowWidth = width, .windowHeight = height}, .sampleCount = settings.sampleCount, .vsync = settings.vsync};
 }
 
 // A device that draws into the window directly has no surface while the activity has no window, and one of OpenGL ES always draws through the context.
 std::optional<gpu::Surface> AndroidGraphics::describeSurface(gpu::Device::Api api) const {
-    const int width = window.getFramebufferWidth();
-    const int height = window.getFramebufferHeight();
+    const gpu::Surface::Size size = window.getSurfaceSize();
     if (gpu::DeviceFactory::usesGlContext(api)) {
-        return gpu::Surface{.kind = gpu::Surface::Kind::Gl, .gl = egl.get(), .width = width, .height = height, .sampleCount = settings.sampleCount, .vsync = settings.vsync};
+        return gpu::Surface{.kind = gpu::Surface::Kind::Gl, .gl = egl.get(), .size = size, .sampleCount = settings.sampleCount, .vsync = settings.vsync};
     }
     ANativeWindow* native = window.getNative();
     if (native == nullptr) {
         return std::nullopt;
     }
-    return gpu::Surface{.kind = gpu::Surface::Kind::Android, .window = native, .width = width, .height = height, .sampleCount = settings.sampleCount, .vsync = settings.vsync};
+    return gpu::Surface{.kind = gpu::Surface::Kind::Android, .window = native, .size = size, .sampleCount = settings.sampleCount, .vsync = settings.vsync};
 }
 
 } // namespace haylen::platform

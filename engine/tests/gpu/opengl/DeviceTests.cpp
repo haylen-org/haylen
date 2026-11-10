@@ -218,8 +218,7 @@ TEST_P(OpenGlDeviceTest, PresentsADrawableBeforeAPassLeavesIt) {
     device = Device::create(GetParam(), surface, {.validation = true});
     Surface added = surface;
     added.gl = &side;
-    added.width = 16;
-    added.height = 16;
+    added.size = {.width = 16, .height = 16, .windowWidth = 16, .windowHeight = 16};
     const int number = device->addSurface(added);
 
     log.clear();

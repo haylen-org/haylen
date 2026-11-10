@@ -1004,6 +1004,14 @@ void Device::popDebugGroup() {
 void Device::commit() {
     ring.flush(queue);
     if (encoder != nullptr) {
+        if (swapchain) {
+            swapchain->recordScale(encoder);
+        }
+        for (const std::unique_ptr<Swapchain>& chain : surfaces) {
+            if (chain != nullptr) {
+                chain->recordScale(encoder);
+            }
+        }
         if (timer) {
             timer->resolve(encoder);
         }
@@ -1032,9 +1040,9 @@ void Device::commit() {
     ++frame;
 }
 
-void Device::resizeSurface(int width, int height) {
+void Device::resizeSurface(const Surface::Size& size) {
     if (swapchain) {
-        swapchain->resize(width, height);
+        swapchain->resize(size);
     }
 }
 
@@ -1074,8 +1082,8 @@ Swapchain& Device::requireSwapchain(int surface) {
     return *surfaces[static_cast<std::size_t>(surface - 1)];
 }
 
-void Device::resizeSurface(int surface, int width, int height) {
-    requireSwapchain(surface).resize(width, height);
+void Device::resizeSurface(int surface, const Surface::Size& size) {
+    requireSwapchain(surface).resize(size);
 }
 
 void Device::removeSurface(int surface) {

@@ -63,6 +63,8 @@ class WindowLua final {
     static int setKeepScreenOn(lua_State* L);
     static int frameRate(lua_State* L);
     static int setFrameRate(lua_State* L);
+    static int maxPixelDensity(lua_State* L);
+    static int setMaxPixelDensity(lua_State* L);
     static int canBeTransparent(lua_State* L);
     static int transparent(lua_State* L);
     static int setTransparent(lua_State* L);

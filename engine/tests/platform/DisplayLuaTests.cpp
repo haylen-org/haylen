@@ -37,7 +37,7 @@ class DisplayLuaTest : public ::testing::Test {
     }
 
     static void report(test::EngineFixture& fixture, int width, int height) {
-        fixture.host().setOutputReport(1, {.surface = gpu::Surface{.width = width, .height = height}, .scale = 1.0F});
+        fixture.host().setOutputReport(1, {.surface = gpu::Surface{.size = {.width = width, .height = height, .windowWidth = width, .windowHeight = height}}, .scale = 1.0F});
         fixture.engine().handleEvent({.type = Event::Type::OutputChanged, .output = 1});
     }
 };

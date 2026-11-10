@@ -245,6 +245,7 @@ void Engine::applyWindowOptions() {
     });
     // clang-format on
     host.setFrameRate(window.frameRate);
+    host.setMaxPixelDensity(window.maxPixelDensity);
     current.statusBarColor = window.statusBarColor;
     host.setMousePassthrough(window.mousePassthrough ? platform::Window::Passthrough::Whole : platform::Window::Passthrough::Off, {});
     // A pointer that goes free needs no answer.

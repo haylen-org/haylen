@@ -45,6 +45,9 @@ class AndroidRuntime final {
     // Plays a frame every few refreshes of the display for a frame rate below its refresh, and asks Android for the refresh that suits the rate, or for the highest refresh of the display for 0. It runs on the frame thread.
     void setFrameRate(int framesPerSecond);
 
+    // Caps the framebuffer pixels in each point of the window, or takes every pixel for 0, and resizes the drawable of the GPU device after it.
+    void setMaxPixelDensity(float cap);
+
     // Whether the UI thread waits for the frame thread to let go of the window or the activity, from any thread.
     [[nodiscard]] bool isEnding() {
         return messages.isEnding();

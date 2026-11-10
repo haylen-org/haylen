@@ -56,10 +56,6 @@ class Runtime final {
         return outputs;
     }
 
-    [[nodiscard]] bool isHighDpi() const noexcept {
-        return highDpi;
-    }
-
     [[nodiscard]] bool isTransparent() const noexcept {
         return transparent;
     }
@@ -88,6 +84,9 @@ class Runtime final {
 
     // Paces the iterations at the frames per second of the app, or at every refresh of the display for 0.
     void setFrameRate(int framesPerSecond);
+
+    // Caps the framebuffer pixels in each point of the window, or takes every pixel for 0, and resizes the drawable of the GPU device after it.
+    void setMaxPixelDensity(float cap);
 
     // Queues an event that the platform read on its own, in the order of the events of SDL, such as the scrolls of macOS trackpads with their phases.
     void post(const platform::Event& event);
@@ -140,6 +139,7 @@ class Runtime final {
     [[nodiscard]] bool takes(const SDL_Event& event) const noexcept;
     [[nodiscard]] Events::Context getContext() const noexcept;
     void followWindow(const SDL_Event& event);
+    void followDrawable();
     void updateCallbackRate();
 
     // The host of the player, which the player owns while the window lives.
@@ -161,7 +161,6 @@ class Runtime final {
     // The graphics APIs to try in order, and the next one to try.
     std::vector<gpu::Device::Api> apis;
     std::size_t nextApi = 0;
-    bool highDpi = true;
     bool transparent = false;
     bool started = false;
     bool closing = false;

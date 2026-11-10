@@ -46,7 +46,7 @@ void* OffscreenGlContext::getProcAddress(const char* name) {
 }
 
 gpu::Surface OffscreenGlContext::getSurface() {
-    return {.kind = gpu::Surface::Kind::Gl, .gl = this, .width = width, .height = height};
+    return {.kind = gpu::Surface::Kind::Gl, .gl = this, .size = {.width = width, .height = height, .windowWidth = width, .windowHeight = height}};
 }
 
 // A WebGL2 context belongs to its one canvas and shares its objects with no other.

@@ -101,6 +101,10 @@ TEST_F(WindowConfigTest, ReadsTheDesktopOptionsOfAppJson) {
     EXPECT_EQ(defaults.window.frameRate, 0);
     EXPECT_EQ(core::AppConfig::fromJson(core::Json::parse(R"({"window": {"frameRate": 120}})")).window.frameRate, 120);
     EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"window": {"frameRate": 1001}})")), std::invalid_argument);
+    EXPECT_EQ(defaults.window.maxPixelDensity, 0.0F);
+    EXPECT_FLOAT_EQ(core::AppConfig::fromJson(core::Json::parse(R"({"window": {"maxPixelDensity": 1.5}})")).window.maxPixelDensity, 1.5F);
+    EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"window": {"maxPixelDensity": -2}})")), std::invalid_argument);
+    EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"window": {"maxPixelDensity": "high"}})")), std::invalid_argument);
     EXPECT_FALSE(defaults.window.position.has_value());
     EXPECT_FALSE(defaults.toJson().at("window").contains("position"));
 }

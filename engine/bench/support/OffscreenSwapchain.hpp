@@ -62,11 +62,11 @@ class OffscreenSwapchain final : public gpu::Device {
     void popDebugGroup() override;
     void commit() override;
 
-    void resizeSurface(int width, int height) override;
+    void resizeSurface(const gpu::Surface::Size& size) override;
     void detachSurface() override;
     void attachSurface(const gpu::Surface& surface) override;
     [[nodiscard]] int addSurface(const gpu::Surface& surface) override;
-    void resizeSurface(int surface, int width, int height) override;
+    void resizeSurface(int surface, const gpu::Surface::Size& size) override;
     void removeSurface(int surface) override;
 
     [[nodiscard]] std::unique_ptr<Readback> readImage(Image image, int width, int height) override;

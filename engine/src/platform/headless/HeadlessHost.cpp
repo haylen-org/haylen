@@ -9,7 +9,7 @@
 
 namespace haylen::platform {
 
-HeadlessHost::HeadlessHost(std::filesystem::path directory, math::Vec2 size) : dataDirectory(std::move(directory)), framebufferSize(size), frame{0.0F, 0.0F, size.x, size.y} {
+HeadlessHost::HeadlessHost(std::filesystem::path directory, math::Vec2 size) : dataDirectory(std::move(directory)), windowSize(size), frame{0.0F, 0.0F, size.x, size.y} {
 #if defined(__APPLE__)
     systemInfo.os = SystemInfo::Os::MacOs;
 #elif defined(_WIN32)
@@ -39,7 +39,15 @@ std::unique_ptr<gpu::Device> HeadlessHost::createGpuDevice() {
     }
     auto device = std::make_unique<gpu::NullDevice>();
     gpu = device.get();
+    followDrawable();
     return device;
+}
+
+// The null device of the host takes the drawable as the GPU device of a real host does, while a device that a test made draws offscreen.
+void HeadlessHost::followDrawable() {
+    if (gpu != nullptr) {
+        gpu->resizeSurface(getSurfaceSize());
+    }
 }
 
 void HeadlessHost::setTransparent(bool value) {

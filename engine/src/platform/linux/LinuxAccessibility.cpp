@@ -673,10 +673,12 @@ std::array<std::uint32_t, 2> LinuxAccessibility::getStates(const AccessibilityEl
     return states;
 }
 
-// The screen takes the corner of the window on it, and a parent is the element around, or the window for the elements at the top.
+// The bounds of the elements are in framebuffer pixels, which the scale of the window turns into its pixels. The screen takes the corner of the window on it, and a parent is the element around, or the window for the elements at the top.
 math::Rect LinuxAccessibility::getBounds(const Object& object, std::uint32_t coordinates) {
     const AccessibilityElement* element = object.kind == Object::Kind::Element ? findElement(object.id) : nullptr;
-    math::Rect area = element != nullptr ? element->bounds : math::Rect{0.0F, 0.0F, NativeWindow::getFramebufferSize().x, NativeWindow::getFramebufferSize().y};
+    const math::Rect framebuffer = element != nullptr ? element->bounds : math::Rect{0.0F, 0.0F, NativeWindow::getFramebufferSize().x, NativeWindow::getFramebufferSize().y};
+    const float scale = NativeWindow::getScale();
+    math::Rect area{framebuffer.x / scale, framebuffer.y / scale, framebuffer.width / scale, framebuffer.height / scale};
     if (coordinates == 0) {
         const math::Vec2 origin = LinuxDesktop::getOrigin();
         area.x += origin.x;
@@ -684,21 +686,22 @@ math::Rect LinuxAccessibility::getBounds(const Object& object, std::uint32_t coo
     } else if (coordinates == 2 && element != nullptr) {
         const AccessibilityElement* parent = findElement(element->parent);
         if (parent != nullptr) {
-            area.x -= parent->bounds.x;
-            area.y -= parent->bounds.y;
+            area.x -= parent->bounds.x / scale;
+            area.y -= parent->bounds.y / scale;
         }
     }
     return area;
 }
 
-// The deepest element under a point in the coordinates of the window, where later siblings lie above earlier ones.
+// The deepest element under a point in the pixels of the window, which the scale of the window turns into framebuffer pixels, where later siblings lie above earlier ones.
 LinuxAccessibility::Object LinuxAccessibility::findAt(const Object& object, math::Vec2 point) {
     if (object.kind == Object::Kind::Root) {
         return findAt({.kind = Object::Kind::Window}, point);
     }
     const std::span<const std::uint64_t> found = getChildren(object);
+    const math::Vec2 pixel = point * NativeWindow::getScale();
     for (auto child = found.rbegin(); child != found.rend(); ++child) {
-        if (findElement(*child)->bounds.contains(point)) {
+        if (findElement(*child)->bounds.contains(pixel)) {
             return findAt({.kind = Object::Kind::Element, .id = *child}, point);
         }
     }

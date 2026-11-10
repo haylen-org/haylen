@@ -30,7 +30,7 @@ void Swapchain::attach(const Surface& surface) {
 #if TARGET_OS_OSX || TARGET_OS_MACCATALYST
     layer.displaySyncEnabled = surface.vsync ? YES : NO;
 #endif
-    resize(surface.width, surface.height);
+    resize(surface.size);
 }
 
 // The frame that records may draw the drawable already, which then waits for the frame in the graveyard.
@@ -40,9 +40,10 @@ void Swapchain::detach() {
     drawable = nil;
 }
 
-void Swapchain::resize(int pixelWidth, int pixelHeight) noexcept {
-    width = pixelWidth;
-    height = pixelHeight;
+// The layer stretches its drawable over its bounds, so a drawable smaller than the window shows at the size of the window, and the window size needs nothing of the device.
+void Swapchain::resize(const Surface::Size& size) noexcept {
+    width = size.width;
+    height = size.height;
 }
 
 bool Swapchain::acquire() {

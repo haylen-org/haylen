@@ -55,7 +55,7 @@ Device::Device(ComPtr<IDXGIFactory6> dxgiFactory, ComPtr<IDXGIAdapter1> card, co
     // A window that has a drawable takes its swapchain now, so a window that Direct3D 11 cannot draw into fails the device while the platform can still try another API.
     chains.push_back(std::make_unique<SurfaceChain>(SurfaceChain{.surface = target}));
     SurfaceChain& window = *chains.front();
-    if (target && target->width > 0 && target->height > 0) {
+    if (target && target->size.width > 0 && target->size.height > 0) {
         window.swapchain = std::make_unique<direct3d::Swapchain>(*factory.Get(), *device.Get(), *target);
         makeSwapchainTargets(window);
     }
@@ -496,7 +496,7 @@ void Device::openFrame() {
 }
 
 bool Device::prepareSwapchain(SurfaceChain& chain) {
-    if (!chain.surface || chain.surface->width <= 0 || chain.surface->height <= 0 || lost) {
+    if (!chain.surface || chain.surface->size.width <= 0 || chain.surface->size.height <= 0 || lost) {
         return false;
     }
     if (chain.swapchain == nullptr) {
@@ -505,7 +505,7 @@ bool Device::prepareSwapchain(SurfaceChain& chain) {
         return true;
     }
     // A new size applies from the first pass of a frame into the swapchain, so the passes of one frame draw into the same buffers.
-    if (chain.presentPending || (chain.swapchain->getWidth() == chain.surface->width && chain.swapchain->getHeight() == chain.surface->height)) {
+    if (chain.presentPending || chain.swapchain->getSize() == chain.surface->size) {
         return true;
     }
 
@@ -513,7 +513,7 @@ bool Device::prepareSwapchain(SurfaceChain& chain) {
     releaseSwapchainTargets(chain);
     context->OMSetRenderTargets(0, nullptr, nullptr);
     context->Flush();
-    const HRESULT result = chain.swapchain->resize(chain.surface->width, chain.surface->height);
+    const HRESULT result = chain.swapchain->resize(chain.surface->size);
     if (HResult::isDeviceLoss(result)) {
         loseDevice(result);
         return false;
@@ -534,8 +534,8 @@ void Device::makeSwapchainTargets(SurfaceChain& chain) {
     HResult::check(device->CreateRenderTargetView(backBuffer.Get(), nullptr, chain.backBufferView.GetAddressOf()), "create the view of the swapchain");
 
     D3D11_TEXTURE2D_DESC desc{};
-    desc.Width = static_cast<UINT>(chain.swapchain->getWidth());
-    desc.Height = static_cast<UINT>(chain.swapchain->getHeight());
+    desc.Width = static_cast<UINT>(chain.swapchain->getSize().width);
+    desc.Height = static_cast<UINT>(chain.swapchain->getSize().height);
     desc.MipLevels = 1;
     desc.ArraySize = 1;
     desc.SampleDesc.Count = static_cast<UINT>(std::max(1, chain.surface->sampleCount));
@@ -648,7 +648,7 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
         context->DiscardView(pass.colors[0]);
         context->DiscardView(pass.depthStencil);
     }
-    setViewportAndScissor(chain.swapchain->getWidth(), chain.swapchain->getHeight());
+    setViewportAndScissor(chain.swapchain->getSize().width, chain.swapchain->getSize().height);
 }
 
 void Device::beginOffscreenPass(const PassDesc& desc) {
@@ -1048,11 +1048,10 @@ void Device::drainMessages() {
     }
 }
 
-void Device::resizeSurface(int width, int height) {
+void Device::resizeSurface(const Surface::Size& size) {
     SurfaceChain& window = *chains.front();
     if (window.surface) {
-        window.surface->width = width;
-        window.surface->height = height;
+        window.surface->size = size;
     }
 }
 
@@ -1102,7 +1101,7 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
 // A surface beyond the window makes its swapchain now, so a surface that Direct3D 11 cannot draw into fails at once.
 int Device::addSurface(const Surface& added) {
     auto chain = std::make_unique<SurfaceChain>(SurfaceChain{.surface = added});
-    if (added.width > 0 && added.height > 0) {
+    if (added.size.width > 0 && added.size.height > 0) {
         chain->swapchain = std::make_unique<direct3d::Swapchain>(*factory.Get(), *device.Get(), added);
         makeSwapchainTargets(*chain);
     }
@@ -1116,10 +1115,9 @@ int Device::addSurface(const Surface& added) {
     return static_cast<int>(chains.size()) - 1;
 }
 
-void Device::resizeSurface(int number, int width, int height) {
+void Device::resizeSurface(int number, const Surface::Size& size) {
     SurfaceChain& chain = requireAddedChain(number);
-    chain.surface->width = width;
-    chain.surface->height = height;
+    chain.surface->size = size;
 }
 
 void Device::removeSurface(int number) {

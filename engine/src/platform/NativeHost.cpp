@@ -113,6 +113,19 @@ void NativeHost::setFrameRate(int value) {
     applyFrameRate(value);
 }
 
+float NativeHost::getMaxPixelDensity() const noexcept {
+    return maxPixelDensity;
+}
+
+void NativeHost::setMaxPixelDensity(float value) {
+    requireMaxPixelDensity(value);
+    if (value == maxPixelDensity) {
+        return;
+    }
+    maxPixelDensity = value;
+    applyMaxPixelDensity(value);
+}
+
 bool NativeHost::isTransparent() const noexcept {
     return style.transparent;
 }

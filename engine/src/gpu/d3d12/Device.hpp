@@ -87,11 +87,11 @@ class Device final : public gpu::Device {
     void popDebugGroup() override;
 
     void commit() override;
-    void resizeSurface(int width, int height) override;
+    void resizeSurface(const Surface::Size& size) override;
     void detachSurface() override;
     void attachSurface(const Surface& target) override;
     [[nodiscard]] int addSurface(const Surface& added) override;
-    void resizeSurface(int number, int width, int height) override;
+    void resizeSurface(int number, const Surface::Size& size) override;
     void removeSurface(int number) override;
 
     [[nodiscard]] std::unique_ptr<Readback> readImage(Image image, int width, int height) override;

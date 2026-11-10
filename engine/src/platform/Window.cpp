@@ -1,6 +1,8 @@
 #include "haylen/platform/Window.hpp"
 
 #include <algorithm>
+#include <cmath>
+#include <format>
 #include <stdexcept>
 #include <string>
 
@@ -27,6 +29,12 @@ std::optional<Window::StatusBar> Window::statusBarFromName(std::string_view name
 void Window::requireFrameRate(int value) {
     if (value < 0 || value > kMaxFrameRate) {
         throw std::invalid_argument("The frame rate " + std::to_string(value) + " is out of range. It is 0 for every refresh of the display, or from 1 to " + std::to_string(kMaxFrameRate) + " frames per second.");
+    }
+}
+
+void Window::requireMaxPixelDensity(float value) {
+    if (!std::isfinite(value) || value < 0.0F) {
+        throw std::invalid_argument(std::format("The pixel density cap {} is out of range. It is 0 for every pixel of the display, or a positive number of framebuffer pixels in each point.", value));
     }
 }
 

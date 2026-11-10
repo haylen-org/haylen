@@ -61,6 +61,7 @@ class Host final : public platform::NativeHost {
     void setWindowFocusable(bool value) override;
     void setScreenSaverSuspended(bool value, std::function<void(Permission::Answer answer)> callback) override;
     void applyFrameRate(int framesPerSecond) override;
+    void applyMaxPixelDensity(float cap) override;
 
   private:
     static constexpr std::size_t kCursorCount = static_cast<std::size_t>(Cursor::NotAllowed) + 1;

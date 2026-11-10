@@ -200,7 +200,7 @@ SDL_AppResult Runtime::initialize(int argc, char* argv[]) {
         return SDL_APP_SUCCESS;
     }
     const core::AppConfig& config = Player::getOpeningConfig();
-    highDpi = config.window.highDpi;
+    window.setMaxPixelDensity(config.window.maxPixelDensity);
     transparent = config.window.transparent;
     describeApp(config);
     if (!SDL_Init(kSubsystems)) {
@@ -426,11 +426,7 @@ void Runtime::followWindow(const SDL_Event& event) {
     case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
     case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
     case SDL_EVENT_WINDOW_METAL_VIEW_RESIZED: {
-        window.refresh();
-        const math::Vec2 size = window.getPixelSize();
-        if (gpu::Device* device = Player::getGpuDevice()) {
-            device->resizeSurface(static_cast<int>(size.x), static_cast<int>(size.y));
-        }
+        followDrawable();
         return;
     }
     case SDL_EVENT_WINDOW_MINIMIZED:
@@ -457,6 +453,18 @@ void Runtime::followWindow(const SDL_Event& event) {
 #endif
     default:
         return;
+    }
+}
+
+void Runtime::setMaxPixelDensity(float cap) {
+    window.setMaxPixelDensity(cap);
+    followDrawable();
+}
+
+void Runtime::followDrawable() {
+    window.refresh();
+    if (gpu::Device* device = Player::getGpuDevice()) {
+        device->resizeSurface(window.getSurfaceSize());
     }
 }
 

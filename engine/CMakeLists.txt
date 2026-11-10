@@ -847,6 +847,7 @@ add_library(haylen-platform STATIC
   src/platform/FrameRateGate.cpp
   src/platform/GraphicsApiOrder.cpp
   src/platform/KeyboardTranslator.cpp
+  src/platform/PixelDensityCap.cpp
   src/platform/PluginLoadOrder.cpp
   src/platform/android/AndroidBatteryStatus.cpp
   src/platform/android/AndroidDeviceInfo.cpp

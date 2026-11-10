@@ -99,6 +99,10 @@ void AndroidHost::applyFrameRate(int framesPerSecond) {
     runtime.setFrameRate(framesPerSecond);
 }
 
+void AndroidHost::applyMaxPixelDensity(float cap) {
+    runtime.setMaxPixelDensity(cap);
+}
+
 void AndroidHost::openOutput(std::uint32_t number, std::string_view display, const Output::Options& options) {
     AndroidOutputs::open(number, display, options);
 }

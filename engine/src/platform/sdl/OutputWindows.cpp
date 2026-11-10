@@ -127,9 +127,12 @@ void OutputWindows::destroy(Entry& entry) noexcept {
     }
 }
 
-// The surface takes the size of the drawable, and the scale of the display that the window is on.
+// The surface takes every pixel of its window, since the pixel density cap of the app leaves outputs alone, and the scale of the display that the window is on.
 void OutputWindows::refresh(Entry& entry) {
-    SDL_GetWindowSizeInPixels(entry.window, &entry.report.surface->width, &entry.report.surface->height);
+    int pixelWidth = 0;
+    int pixelHeight = 0;
+    SDL_GetWindowSizeInPixels(entry.window, &pixelWidth, &pixelHeight);
+    entry.report.surface->size = {.width = pixelWidth, .height = pixelHeight, .windowWidth = pixelWidth, .windowHeight = pixelHeight};
     entry.report.scale = SDL_GetWindowDisplayScale(entry.window);
 }
 

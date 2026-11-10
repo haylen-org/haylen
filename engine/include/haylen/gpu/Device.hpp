@@ -635,8 +635,8 @@ class Device {
     // Submits the passes of the frame and presents the swapchain of every surface that a pass drew into.
     virtual void commit() = 0;
 
-    // Makes the swapchain follow a new size of the drawable in pixels, from the next frame.
-    virtual void resizeSurface(int width, int height) = 0;
+    // Makes the swapchain follow a new size of the drawable and of its window in pixels, from the next frame.
+    virtual void resizeSurface(const Surface::Size& size) = 0;
 
     // Lets go of the surface while the platform has none, such as an Android app in the background, and takes the new one when it comes back, keeping every object the device made. A frame without a surface records nothing into the swapchain.
     virtual void detachSurface() = 0;
@@ -645,8 +645,8 @@ class Device {
     // Makes a swapchain on a surface beyond the window, such as a window of the app on another display, with the color format, the samples and the depth and stencil of the swapchain of the window, so the swapchain pipelines draw into it too. Returns its number from 1, which swapchain passes name, and which no other surface takes while it lives. Throws `std::runtime_error` when the device cannot draw into the surface.
     [[nodiscard]] virtual int addSurface(const Surface& surface) = 0;
 
-    // Makes the swapchain of a surface that `addSurface` made follow a new size of its drawable in pixels, from the next frame.
-    virtual void resizeSurface(int surface, int width, int height) = 0;
+    // Makes the swapchain of a surface that `addSurface` made follow a new size of its drawable and of its window in pixels, from the next frame.
+    virtual void resizeSurface(int surface, const Surface::Size& size) = 0;
 
     // Lets go of a surface that `addSurface` made, whose objects the frames in flight still draw into wait for them.
     virtual void removeSurface(int surface) = 0;

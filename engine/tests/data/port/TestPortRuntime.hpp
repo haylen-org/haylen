@@ -29,6 +29,13 @@ class TestPortRuntime final {
         closing = true;
     }
 
+    // Caps the framebuffer pixels in each point of the window, and resizes the drawable of the GPU device after it.
+    void setMaxPixelDensity(float cap);
+
+    [[nodiscard]] const TestPortWindow& getWindow() const noexcept {
+        return window;
+    }
+
   private:
     [[nodiscard]] bool openWindow();
     [[nodiscard]] int play();

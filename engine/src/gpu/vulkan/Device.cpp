@@ -45,7 +45,7 @@ Device::Device(const std::optional<Surface>& surface, const Settings& settings) 
         if (surface) {
             SurfaceChain& window = *chains.front();
             window.swapchain->attach(*context, frames.size());
-            window.settings = {.width = surface->width, .height = surface->height, .sampleCount = surface->sampleCount, .vsync = surface->vsync, .transparent = surface->transparent};
+            window.settings = {.size = surface->size, .sampleCount = surface->sampleCount, .vsync = surface->vsync, .transparent = surface->transparent};
             window.swapchain->configure(window.settings);
             updateSwapchainTarget();
         }
@@ -314,7 +314,7 @@ void Device::commit() {
         vk.vkCmdPipelineBarrier(frame.uploads, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 1, &barrier, 0, nullptr, 0, nullptr);
     }
 
-    // Every image that the frame acquired goes to its presentation, which waits for the semaphore that the submission signals for it.
+    // Every image that the frame acquired goes to its presentation, which waits for the semaphore that the submission signals for it. A scaled swapchain first copies its drawable into the image, so its copy waits for the image instead of its passes.
     imageBarriers.clear();
     waitSemaphores.clear();
     waitStages.clear();
@@ -323,10 +323,16 @@ void Device::commit() {
         if (chain == nullptr || !chain->acquired) {
             continue;
         }
-        imageBarriers.push_back({.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, .dstAccessMask = 0, .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = chain->swapchain->getImage(chain->imageIndex), .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1}});
         waitSemaphores.push_back(chain->swapchain->getAcquired(frameIndex));
-        waitStages.push_back(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
         signalSemaphores.push_back(chain->swapchain->getFinished(chain->imageIndex));
+        if (chain->swapchain->isScaled()) {
+            chain->swapchain->recordScale(frame.graphics, chain->imageIndex);
+            waitStages.push_back(VK_PIPELINE_STAGE_TRANSFER_BIT);
+            continue;
+        }
+
+        waitStages.push_back(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        imageBarriers.push_back({.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, .dstAccessMask = 0, .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = chain->swapchain->getImage(chain->imageIndex), .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1}});
     }
     if (!imageBarriers.empty()) {
         vk.vkCmdPipelineBarrier(frame.graphics, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, static_cast<std::uint32_t>(imageBarriers.size()), imageBarriers.data());
@@ -380,13 +386,12 @@ void Device::commit() {
     readbacks.sweep();
 }
 
-void Device::resizeSurface(int width, int height) {
+void Device::resizeSurface(const Surface::Size& size) {
     SurfaceChain& window = *chains.front();
-    if (window.settings.width == width && window.settings.height == height) {
+    if (window.settings.size == size) {
         return;
     }
-    window.settings.width = width;
-    window.settings.height = height;
+    window.settings.size = size;
     window.dirty = true;
 }
 
@@ -410,7 +415,7 @@ void Device::attachSurface(const Surface& surface) {
     made->attach(*context, frames.size());
     SurfaceChain& window = *chains.front();
     window.swapchain = std::move(made);
-    window.settings = {.width = surface.width, .height = surface.height, .sampleCount = surface.sampleCount, .vsync = surface.vsync, .transparent = surface.transparent};
+    window.settings = {.size = surface.size, .sampleCount = surface.sampleCount, .vsync = surface.vsync, .transparent = surface.transparent};
     window.dirty = true;
 }
 
@@ -425,7 +430,7 @@ int Device::addSurface(const Surface& surface) {
     if (chain->swapchain->getFormat() != swapchainTarget.color) {
         throw std::runtime_error("The surface takes another color format than the swapchain of the window, whose pipelines the Vulkan device draws every surface with.");
     }
-    chain->settings = {.width = surface.width, .height = surface.height, .sampleCount = chains.front()->settings.sampleCount, .vsync = surface.vsync, .transparent = surface.transparent};
+    chain->settings = {.size = surface.size, .sampleCount = chains.front()->settings.sampleCount, .vsync = surface.vsync, .transparent = surface.transparent};
     chain->dirty = true;
 
     const auto free = std::find(chains.begin() + 1, chains.end(), nullptr);
@@ -437,13 +442,12 @@ int Device::addSurface(const Surface& surface) {
     return static_cast<int>(chains.size()) - 1;
 }
 
-void Device::resizeSurface(int number, int width, int height) {
+void Device::resizeSurface(int number, const Surface::Size& size) {
     SurfaceChain& chain = requireAddedChain(number);
-    if (chain.settings.width == width && chain.settings.height == height) {
+    if (chain.settings.size == size) {
         return;
     }
-    chain.settings.width = width;
-    chain.settings.height = height;
+    chain.settings.size = size;
     chain.dirty = true;
 }
 

@@ -8,7 +8,7 @@
         "width": 1280,
         "height": 720,
         "resizable": true,
-        "highDpi": true
+        "maxPixelDensity": 0
     },
     "design": {
         "width": 1920,

@@ -39,7 +39,9 @@ struct AppConfig {
         int width = 1280;
         int height = 720;
         bool fullscreen = false;
-        bool highDpi = true;
+
+        // The most framebuffer pixels in each point of the window, or 0 for every pixel of the display, as `platform::Window::setMaxPixelDensity` describes.
+        float maxPixelDensity = 0.0F;
         bool resizable = true;
         bool vsync = true;
 

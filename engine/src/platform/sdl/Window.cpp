@@ -9,10 +9,13 @@
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_properties.h>
 
+#include "platform/PixelDensityCap.hpp"
 #include "platform/sdl/WaylandDisplays.hpp"
 
 #if defined(__APPLE__)
 #include <TargetConditionals.h>
+#elif defined(__EMSCRIPTEN__)
+#include "platform/web/WebPage.hpp"
 #endif
 
 namespace haylen::platform::sdl {
@@ -42,7 +45,7 @@ void Window::open(const core::AppConfig::Window& options, gpu::Device::Api value
 
     // Desktops whose window coordinates are pixels, as on Windows and X11, open the window as large in points as on the others.
     const float points = SDL_GetWindowDisplayScale(window) / SDL_GetWindowPixelDensity(window);
-    if (options.highDpi && points != 1.0F) {
+    if (points != 1.0F) {
         SDL_SetWindowSize(window, static_cast<int>(std::lround(static_cast<float>(options.width) * points)), static_cast<int>(std::lround(static_cast<float>(options.height) * points)));
     }
 
@@ -79,7 +82,7 @@ void Window::show() {
 
 gpu::Surface Window::getSurface() const {
     gpu::Surface surface = getNativeSurface();
-    SDL_GetWindowSizeInPixels(window, &surface.width, &surface.height);
+    surface.size = getSurfaceSize();
     surface.sampleCount = sampleCount;
     surface.vsync = vsync;
     surface.transparent = transparent;
@@ -93,21 +96,40 @@ void Window::renewGlContext() {
     }
 }
 
+// The window always takes every pixel of its display, so its pixels per point are the scale of the display, and the drawable shrinks from there to the cap, with the scales after it.
 void Window::refresh() noexcept {
     int pixelWidth = 0;
     int pixelHeight = 0;
     SDL_GetWindowSizeInPixels(window, &pixelWidth, &pixelHeight);
-    width.store(static_cast<float>(pixelWidth));
-    height.store(static_cast<float>(pixelHeight));
-    scale.store(SDL_GetWindowPixelDensity(window));
+    const float displayScale = SDL_GetWindowDisplayScale(window);
+    const gpu::Surface::Size size = PixelDensityCap::apply(pixelWidth, pixelHeight, displayScale, maxPixelDensity);
+    const float share = PixelDensityCap::getShare(size);
+
+    windowWidth.store(pixelWidth);
+    windowHeight.store(pixelHeight);
+    width.store(size.width);
+    height.store(size.height);
+    scale.store(SDL_GetWindowPixelDensity(window) * share);
+    dpiScale.store(displayScale * share);
+#if defined(__EMSCRIPTEN__)
+    WebPage::setDrawableWidth(size.width);
+#endif
 }
 
 math::Vec2 Window::getPixelSize() const noexcept {
-    return {width.load(), height.load()};
+    return {static_cast<float>(width.load()), static_cast<float>(height.load())};
 }
 
 float Window::getPixelDensity() const noexcept {
     return scale.load();
+}
+
+float Window::getDpiScale() const noexcept {
+    return dpiScale.load();
+}
+
+gpu::Surface::Size Window::getSurfaceSize() const noexcept {
+    return {.width = width.load(), .height = height.load(), .windowWidth = windowWidth.load(), .windowHeight = windowHeight.load()};
 }
 
 bool Window::queryOpen() const noexcept {
@@ -136,10 +158,7 @@ float Window::queryScale() const noexcept {
 
 // The window opens hidden, so it first shows with the style that the app gives it as it starts, and UIKit replaces the root view controller of a window that SDL gives its Metal view without a transition of its appearance.
 SDL_WindowFlags Window::getFlags(const core::AppConfig::Window& options, gpu::Device::Api api) noexcept {
-    SDL_WindowFlags flags = SDL_WINDOW_HIDDEN;
-    if (options.highDpi) {
-        flags |= SDL_WINDOW_HIGH_PIXEL_DENSITY;
-    }
+    SDL_WindowFlags flags = SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
     if (options.fullscreen) {
         flags |= SDL_WINDOW_FULLSCREEN;
     }

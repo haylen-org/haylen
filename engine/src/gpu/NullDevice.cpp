@@ -731,12 +731,10 @@ void NullDevice::commit() {
     ++frame;
 }
 
-// A minimized window has a drawable of no pixels.
-void NullDevice::resizeSurface(int width, int height) {
+void NullDevice::resizeSurface(const Surface::Size& size) {
     requireNoPass("resizeSurface");
-    if (width < 0 || height < 0) {
-        throw std::logic_error(std::format("A surface cannot be {}x{} pixels.", width, height));
-    }
+    checkSize(size);
+    surfaceSize = size;
 }
 
 void NullDevice::detachSurface() {
@@ -748,8 +746,16 @@ void NullDevice::detachSurface() {
 }
 
 void NullDevice::checkSurface(const Surface& surface, int maxSampleCount) {
-    if (surface.width < 0 || surface.height < 0 || !isPowerOfTwo(surface.sampleCount) || surface.sampleCount > maxSampleCount) {
-        throw std::logic_error(std::format("The surface of {}x{} pixels and {} samples does not fit the device.", surface.width, surface.height, surface.sampleCount));
+    checkSize(surface.size);
+    if (!isPowerOfTwo(surface.sampleCount) || surface.sampleCount > maxSampleCount) {
+        throw std::logic_error(std::format("The surface of {}x{} pixels and {} samples does not fit the device.", surface.size.width, surface.size.height, surface.sampleCount));
+    }
+}
+
+// A minimized window has a drawable of no pixels, and a window shows its drawable at the size of the drawable or larger.
+void NullDevice::checkSize(const Surface::Size& size) {
+    if (size.width < 0 || size.height < 0 || size.windowWidth < size.width || size.windowHeight < size.height) {
+        throw std::logic_error(std::format("A surface cannot draw {}x{} pixels into a window of {}x{}.", size.width, size.height, size.windowWidth, size.windowHeight));
     }
 }
 
@@ -760,6 +766,7 @@ void NullDevice::attachSurface(const Surface& surface) {
     }
     checkSurface(surface, features.maxSampleCount);
     surfaceAttached = true;
+    surfaceSize = surface.size;
 }
 
 int NullDevice::addSurface(const Surface& surface) {
@@ -770,14 +777,14 @@ int NullDevice::addSurface(const Surface& surface) {
     return number;
 }
 
-void NullDevice::resizeSurface(int surface, int width, int height) {
+void NullDevice::resizeSurface(int surface, const Surface::Size& size) {
     requireNoPass("resizeSurface");
     const auto found = addedSurfaces.find(surface);
-    if (found == addedSurfaces.end() || width < 0 || height < 0) {
-        throw std::logic_error(std::format("The surface {} cannot be {}x{} pixels.", surface, width, height));
+    if (found == addedSurfaces.end()) {
+        throw std::logic_error(std::format("The surface {} was resized while the device did not have it.", surface));
     }
-    found->second.width = width;
-    found->second.height = height;
+    checkSize(size);
+    found->second.size = size;
 }
 
 void NullDevice::removeSurface(int surface) {

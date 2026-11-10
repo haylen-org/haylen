@@ -59,7 +59,7 @@ void WebOutputs::receiveCanvas(std::uint32_t number, int width, int height, floa
     if (!entry.report.surface) {
         haylen_js_name_output_canvas(static_cast<int>(number));
     }
-    entry.report.surface = gpu::Surface{.kind = gpu::Surface::Kind::WebCanvas, .canvas = entry.canvas, .width = width, .height = height, .sampleCount = entry.sampleCount};
+    entry.report.surface = gpu::Surface{.kind = gpu::Surface::Kind::WebCanvas, .canvas = entry.canvas, .size = {.width = width, .height = height, .windowWidth = width, .windowHeight = height}, .sampleCount = entry.sampleCount};
     entry.report.scale = scale;
     Player::postEvent({.type = Event::Type::OutputChanged, .output = number});
 }

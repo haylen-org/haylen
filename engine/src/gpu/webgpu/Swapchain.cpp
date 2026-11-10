@@ -9,7 +9,7 @@
 namespace haylen::gpu::webgpu {
 
 // The first format the surface reports is the one the browser prefers for the canvas, which draws without a conversion when the page composites it.
-Swapchain::Swapchain(WGPUInstance instance, WGPUAdapter adapter, WGPUDevice owner, const Surface& target) : device(owner), canvas(target.canvas), sampleCount(target.sampleCount), width(target.width), height(target.height) {
+Swapchain::Swapchain(WGPUInstance instance, WGPUAdapter adapter, WGPUDevice owner, const Surface& target) : device(owner), canvas(target.canvas), sampleCount(target.sampleCount), size(target.size) {
     if (target.kind != Surface::Kind::WebCanvas) {
         throw std::runtime_error("The WebGPU device draws only into the canvas of a page.");
     }
@@ -38,6 +38,7 @@ Swapchain::Swapchain(WGPUInstance instance, WGPUAdapter adapter, WGPUDevice owne
 Swapchain::~Swapchain() {
     release();
     releaseAttachments();
+    scaled.reset();
     if (configured) {
         wgpuSurfaceUnconfigure(surface);
     }
@@ -55,12 +56,11 @@ Device::PixelFormat Swapchain::toPixelFormat(WGPUTextureFormat value) noexcept {
     }
 }
 
-void Swapchain::resize(int pixelsWide, int pixelsHigh) noexcept {
-    if (pixelsWide == width && pixelsHigh == height) {
+void Swapchain::resize(const Surface::Size& value) noexcept {
+    if (value == size) {
         return;
     }
-    width = pixelsWide;
-    height = pixelsHigh;
+    size = value;
     stale = true;
 }
 
@@ -68,17 +68,17 @@ WGPUTexture Swapchain::makeAttachment(WGPUTextureFormat attachmentFormat, const 
     WGPUTextureDescriptor descriptor = WGPU_TEXTURE_DESCRIPTOR_INIT;
     descriptor.label = Conversion::toText(label);
     descriptor.usage = WGPUTextureUsage_RenderAttachment;
-    descriptor.size = {.width = static_cast<std::uint32_t>(width), .height = static_cast<std::uint32_t>(height), .depthOrArrayLayers = 1};
+    descriptor.size = {.width = static_cast<std::uint32_t>(size.width), .height = static_cast<std::uint32_t>(size.height), .depthOrArrayLayers = 1};
     descriptor.format = attachmentFormat;
     descriptor.sampleCount = static_cast<std::uint32_t>(sampleCount);
     return wgpuDeviceCreateTexture(device, &descriptor);
 }
 
-// Configuring the surface sets the size of the drawing buffer of the canvas, and the attachments of the frames follow it.
+// Configuring the surface sets the size of the drawing buffer of the canvas to the size of the window, and the attachments of the frames follow the drawable.
 void Swapchain::configure() {
     releaseAttachments();
     stale = false;
-    if (width <= 0 || height <= 0) {
+    if (size.width <= 0 || size.height <= 0) {
         return;
     }
 
@@ -86,8 +86,8 @@ void Swapchain::configure() {
     configuration.device = device;
     configuration.format = format;
     configuration.usage = WGPUTextureUsage_RenderAttachment;
-    configuration.width = static_cast<std::uint32_t>(width);
-    configuration.height = static_cast<std::uint32_t>(height);
+    configuration.width = static_cast<std::uint32_t>(size.windowWidth);
+    configuration.height = static_cast<std::uint32_t>(size.windowHeight);
     configuration.alphaMode = alphaMode;
     configuration.presentMode = WGPUPresentMode_Fifo;
     wgpuSurfaceConfigure(surface, &configuration);
@@ -99,6 +99,16 @@ void Swapchain::configure() {
         multisampled = makeAttachment(format, "haylen-swapchain-color");
         multisampledView = wgpuTextureCreateView(multisampled, nullptr);
     }
+
+    if (!size.isScaled()) {
+        scaled.reset();
+        return;
+    }
+    if (scaled == nullptr) {
+        scaled = std::make_unique<ScaledDrawable>(device, format, size);
+        return;
+    }
+    scaled->resize(size);
 }
 
 bool Swapchain::acquire() {
@@ -150,12 +160,24 @@ void Swapchain::releaseAttachments() noexcept {
     }
 }
 
+void Swapchain::recordScale(WGPUCommandEncoder encoder) const {
+    if (scaled != nullptr && frameView != nullptr) {
+        scaled->record(encoder, frameView);
+    }
+}
+
 WGPUTextureView Swapchain::getColorView() const noexcept {
-    return multisampledView != nullptr ? multisampledView : frameView;
+    if (multisampledView != nullptr) {
+        return multisampledView;
+    }
+    return scaled != nullptr ? scaled->getView() : frameView;
 }
 
 WGPUTextureView Swapchain::getResolveView() const noexcept {
-    return multisampledView != nullptr ? frameView : nullptr;
+    if (multisampledView == nullptr) {
+        return nullptr;
+    }
+    return scaled != nullptr ? scaled->getView() : frameView;
 }
 
 WGPUTextureView Swapchain::getDepthView() const noexcept {
@@ -171,11 +193,11 @@ int Swapchain::getSampleCount() const noexcept {
 }
 
 int Swapchain::getWidth() const noexcept {
-    return width;
+    return size.width;
 }
 
 int Swapchain::getHeight() const noexcept {
-    return height;
+    return size.height;
 }
 
 } // namespace haylen::gpu::webgpu

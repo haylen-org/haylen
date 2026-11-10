@@ -27,8 +27,7 @@ SecondSurface::SecondSurface(gpu::Device::Api api, OffscreenSurface&, int width,
     }
     native = std::make_unique<Native>(width, height);
     surface = native->describe();
-    surface.width = width;
-    surface.height = height;
+    surface.size = {.width = width, .height = height, .windowWidth = width, .windowHeight = height};
 }
 
 SecondSurface::~SecondSurface() = default;

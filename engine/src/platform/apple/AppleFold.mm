@@ -2,6 +2,7 @@
 
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
 #include "haylen/math/Rect.hpp"
+#include "platform/NativeWindow.hpp"
 
 namespace haylen::platform {
 
@@ -29,7 +30,7 @@ void AppleFold::attach([[maybe_unused]] UIView* view) {
 #endif
 }
 
-// The region is in the points of the view, and the fold in framebuffer pixels. A fold whose region has an area hides what lies under it, and a fold that is half opened or hides its region separates the window.
+// The region is in the points of the view, which the fold keeps until `get` turns them into framebuffer pixels at the scale of the window then, since the pixel density cap changes that scale without a layout. A fold whose region has an area hides what lies under it, and a fold that is half opened or hides its region separates the window.
 void AppleFold::refresh([[maybe_unused]] UIView* view) {
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= 270100
     if (@available(iOS 27.1, *)) {
@@ -39,8 +40,7 @@ void AppleFold::refresh([[maybe_unused]] UIView* view) {
                 continue;
             }
             const CGRect frame = region.frame;
-            const auto scale = static_cast<float>(view.contentScaleFactor);
-            const math::Rect bounds{static_cast<float>(frame.origin.x) * scale, static_cast<float>(frame.origin.y) * scale, static_cast<float>(frame.size.width) * scale, static_cast<float>(frame.size.height) * scale};
+            const math::Rect bounds{static_cast<float>(frame.origin.x), static_cast<float>(frame.origin.y), static_cast<float>(frame.size.width), static_cast<float>(frame.size.height)};
             const bool occluding = frame.size.width > 0.0 && frame.size.height > 0.0;
             fold = Fold{.bounds = bounds, .axis = frame.size.height >= frame.size.width ? Fold::Axis::Vertical : Fold::Axis::Horizontal, .state = halfOpened ? Fold::State::HalfOpened : Fold::State::Flat, .separating = halfOpened || occluding, .occluding = occluding};
             return;
@@ -50,7 +50,14 @@ void AppleFold::refresh([[maybe_unused]] UIView* view) {
 }
 
 std::optional<Fold> AppleFold::get() noexcept {
-    return fold;
+    if (!fold) {
+        return std::nullopt;
+    }
+
+    Fold scaled = *fold;
+    const float scale = NativeWindow::getScale();
+    scaled.bounds = {fold->bounds.x * scale, fold->bounds.y * scale, fold->bounds.width * scale, fold->bounds.height * scale};
+    return scaled;
 }
 
 } // namespace haylen::platform

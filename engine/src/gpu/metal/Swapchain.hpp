@@ -27,7 +27,7 @@ class Swapchain final {
     // Draws into the layer of the surface from the next frame. Throws `std::runtime_error` when the surface holds no `CAMetalLayer` or asks for a sample count other than the one the swapchain pipelines of the device were made for.
     void attach(const Surface& surface);
     void detach();
-    void resize(int pixelWidth, int pixelHeight) noexcept;
+    void resize(const Surface::Size& size) noexcept;
 
     [[nodiscard]] int getSampleCount() const noexcept {
         return sampleCount;

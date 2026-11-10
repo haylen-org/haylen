@@ -88,6 +88,9 @@ class Window {
     // Throws `std::invalid_argument` for a frame rate below 0 or above `kMaxFrameRate`.
     static void requireFrameRate(int value);
 
+    // Throws `std::invalid_argument` for a pixel density cap that is not 0 or a positive finite number.
+    static void requireMaxPixelDensity(float value);
+
     // Resolves the orientation names `landscape`, `portrait` and `any` that `app.json` and Lua share.
     [[nodiscard]] static std::optional<Orientation> orientationFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view orientationName(Orientation value) noexcept;
@@ -150,6 +153,10 @@ class Window {
     // The frames per second the app aims for, or 0 for a frame at every refresh of the display, at the highest rate the display shows. Displays that change their refresh, such as those of iPhones, iPads and Android devices, slow down to the rate, and every platform plays a frame every few refreshes when the display refreshes faster, so the frames average the rate. A rate above the refresh of the display plays every refresh while vsync is on, and caps the frames of a window without vsync, which keeps a simple app from spending a whole core. Throws `std::invalid_argument` as `requireFrameRate` does.
     [[nodiscard]] virtual int getFrameRate() const noexcept = 0;
     virtual void setFrameRate(int value) = 0;
+
+    // The most framebuffer pixels that the app draws in each point of the window, or 0 for every pixel of the display. On a denser display the framebuffer shrinks to the cap and the system or the GPU device stretches it over the window, which trades sharpness for fill rate, while the window keeps its size and every size in points and design units stays the same. Throws `std::invalid_argument` as `requireMaxPixelDensity` does.
+    [[nodiscard]] virtual float getMaxPixelDensity() const noexcept = 0;
+    virtual void setMaxPixelDensity(float value) = 0;
 
     [[nodiscard]] virtual TextInput& getTextInput() noexcept = 0;
 

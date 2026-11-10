@@ -6,7 +6,7 @@
         "title": "Haylen sprite benchmark",
         "width": 1280,
         "height": 720,
-        "highDpi": true,
+        "maxPixelDensity": 0,
         "vsync": false
     },
     "design": {

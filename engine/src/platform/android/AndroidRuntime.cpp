@@ -146,7 +146,7 @@ void AndroidRuntime::run() {
     window.setRunning(true);
     Player::create(0, nullptr, std::make_unique<AndroidHost>(*this));
     const core::AppConfig::Window& config = Player::getOpeningConfig().window;
-    window.setHighDpi(config.highDpi);
+    window.setMaxPixelDensity(config.maxPixelDensity);
     graphics.configure(Player::getGraphicsApis(), {.sampleCount = config.sampleCount, .vsync = config.vsync});
 
     loop();
@@ -253,6 +253,12 @@ void AndroidRuntime::requestFrame() {
     }
     postFrameCallback(choreographer, &onFrameCallback, this);
     frameRequested = true;
+}
+
+void AndroidRuntime::setMaxPixelDensity(float cap) {
+    window.setMaxPixelDensity(cap);
+    window.refresh();
+    graphics.resizeWindow(Player::getGpuDevice());
 }
 
 void AndroidRuntime::setFrameRate(int framesPerSecond) {

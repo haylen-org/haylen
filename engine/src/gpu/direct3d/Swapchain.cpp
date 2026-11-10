@@ -10,7 +10,7 @@ namespace haylen::gpu::direct3d {
 
 using Microsoft::WRL::ComPtr;
 
-Swapchain::Swapchain(IDXGIFactory6& factory, IUnknown& presenter, const Surface& surface) : vsync(surface.vsync), width(surface.width), height(surface.height) {
+Swapchain::Swapchain(IDXGIFactory6& factory, IUnknown& presenter, const Surface& surface) : vsync(surface.vsync), size(surface.size) {
     if (surface.kind != Surface::Kind::Win32 || surface.window == nullptr) {
         throw std::runtime_error("Direct3D draws only into the window of a surface of Windows.");
     }
@@ -21,8 +21,8 @@ Swapchain::Swapchain(IDXGIFactory6& factory, IUnknown& presenter, const Surface&
     flags = tearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 
     DXGI_SWAP_CHAIN_DESC1 desc{};
-    desc.Width = static_cast<UINT>(width);
-    desc.Height = static_cast<UINT>(height);
+    desc.Width = static_cast<UINT>(size.width);
+    desc.Height = static_cast<UINT>(size.height);
     desc.Format = Formats::kSwapchainColor;
     desc.SampleDesc.Count = 1;
     desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -72,6 +72,15 @@ void Swapchain::compose(HWND window) {
     HResult::check(composition->CreateVisual(visual.GetAddressOf()), "make the visual of the transparent window");
     HResult::check(visual->SetContent(swapchain.Get()), "show the swapchain in the transparent window");
     HResult::check(target->SetRoot(visual.Get()), "show the visual in the transparent window");
+    scaleVisual();
+}
+
+// DirectComposition shows the buffers at their own size, so the visual scales a drawable smaller than the window up to the window.
+void Swapchain::scaleVisual() {
+    D2D_MATRIX_3X2_F scale{};
+    scale._11 = static_cast<FLOAT>(size.windowWidth) / static_cast<FLOAT>(size.width);
+    scale._22 = static_cast<FLOAT>(size.windowHeight) / static_cast<FLOAT>(size.height);
+    HResult::check(visual->SetTransform(scale), "scale the visual of the transparent window");
     HResult::check(composition->Commit(), "commit the composition of the transparent window");
 }
 
@@ -79,11 +88,15 @@ HRESULT Swapchain::present() {
     return swapchain->Present(vsync ? 1 : 0, !vsync && tearing ? DXGI_PRESENT_ALLOW_TEARING : 0);
 }
 
-HRESULT Swapchain::resize(int newWidth, int newHeight) {
-    const HRESULT result = swapchain->ResizeBuffers(0, static_cast<UINT>(newWidth), static_cast<UINT>(newHeight), DXGI_FORMAT_UNKNOWN, flags);
-    if (SUCCEEDED(result)) {
-        width = newWidth;
-        height = newHeight;
+HRESULT Swapchain::resize(const Surface::Size& value) {
+    const HRESULT result = swapchain->ResizeBuffers(0, static_cast<UINT>(value.width), static_cast<UINT>(value.height), DXGI_FORMAT_UNKNOWN, flags);
+    if (FAILED(result)) {
+        return result;
+    }
+
+    size = value;
+    if (visual != nullptr) {
+        scaleVisual();
     }
     return result;
 }

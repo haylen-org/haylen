@@ -107,12 +107,17 @@ class NullDevice final : public Device {
 
     void commit() override;
 
-    void resizeSurface(int width, int height) override;
+    void resizeSurface(const Surface::Size& size) override;
     void detachSurface() override;
     void attachSurface(const Surface& surface) override;
     [[nodiscard]] int addSurface(const Surface& surface) override;
-    void resizeSurface(int surface, int width, int height) override;
+    void resizeSurface(int surface, const Surface::Size& size) override;
     void removeSurface(int surface) override;
+
+    // The size of the drawable of the window and of the window that shows it, as the platform gave it last.
+    [[nodiscard]] const Surface::Size& getSurfaceSize() const noexcept {
+        return surfaceSize;
+    }
 
     // The surfaces beyond the window that the device draws into now, with the size of each.
     [[nodiscard]] const std::unordered_map<int, Surface>& getAddedSurfaces() const noexcept {
@@ -223,6 +228,7 @@ class NullDevice final : public Device {
     void recordPass(bool swapchain, int surface, Load load, math::Color clear);
     void requireFollowingPasses(int surface) const;
     static void checkSurface(const Surface& surface, int maxSampleCount);
+    static void checkSize(const Surface::Size& size);
 
     std::unordered_map<std::uint32_t, BufferState> buffers;
     std::unordered_map<std::uint32_t, ImageDesc> images;
@@ -254,6 +260,7 @@ class NullDevice final : public Device {
 
     // The surface the swapchain passes draw into, which a headless window has from the start, and the surfaces beyond it by their numbers.
     bool surfaceAttached = true;
+    Surface::Size surfaceSize;
     std::unordered_map<int, Surface> addedSurfaces;
     int nextSurface = 1;
 

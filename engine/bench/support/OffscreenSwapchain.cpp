@@ -162,8 +162,8 @@ void OffscreenSwapchain::commit() {
     device->commit();
 }
 
-void OffscreenSwapchain::resizeSurface(int width, int height) {
-    device->resizeSurface(width, height);
+void OffscreenSwapchain::resizeSurface(const gpu::Surface::Size& size) {
+    device->resizeSurface(size);
 }
 
 void OffscreenSwapchain::detachSurface() {
@@ -178,8 +178,8 @@ int OffscreenSwapchain::addSurface(const gpu::Surface& surface) {
     return device->addSurface(surface);
 }
 
-void OffscreenSwapchain::resizeSurface(int surface, int width, int height) {
-    device->resizeSurface(surface, width, height);
+void OffscreenSwapchain::resizeSurface(int surface, const gpu::Surface::Size& size) {
+    device->resizeSurface(surface, size);
 }
 
 void OffscreenSwapchain::removeSurface(int surface) {

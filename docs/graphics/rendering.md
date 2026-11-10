@@ -206,6 +206,23 @@ scene.push({
 })
 ```
 
+## Pixel density
+
+A dense display draws many framebuffer pixels in each window point: 2 on a Retina Mac, 3 on many phones, and 2 or more on a 4K monitor. Every pixel costs fill rate, so a weak GPU, a phone that runs hot or a page in a browser may spend most of its frame filling pixels that the eye hardly tells apart. The cap of the pixel density, `window.maxPixelDensity` of `app.json` or [`window.setMaxPixelDensity`](../lua-api/window.md#windowsetmaxpixeldensitycap), limits the framebuffer pixels in each point. On a denser display the framebuffer shrinks to the cap and is stretched over the window with a linear filter, so the window keeps its size and every size in points and design units stays the same.
+
+The cap trades sharpness for fill rate. Curves keep their fade of one pixel, which is now a pixel of the smaller framebuffer, so edges look softer once stretched, and text and art lose the detail that the display could show. A cap of `2` is hard to tell from the full density on most phones and fills less than half the pixels of a screen of 3 pixels in each point. A cap of `1` draws one pixel in each point, as on a display of standard density.
+
+Each platform stretches the framebuffer where the system can, at no cost to the app:
+
+| Platform and device | Who stretches the framebuffer |
+| --- | --- |
+| Apple platforms with Metal | The `CAMetalLayer` of the window, whose drawable takes the size of the framebuffer. |
+| Windows with Direct3D 12 or 11 | The swapchain of DXGI, whose buffers take the size of the framebuffer, and DirectComposition for a transparent window. |
+| Android with Vulkan or OpenGL ES | The native window, whose buffers take the size of the framebuffer. |
+| Windows and Linux with Vulkan or OpenGL, and the web with WebGPU or WebGL2 | The GPU device, since the swapchain or the canvas keeps the size of the window. The frame draws into an image of the size of the framebuffer, which the device copies over the window at the end of the frame, a cost of one pass over the pixels of the window. |
+
+The [RHI guide](rhi.md#surfaces) explains how a surface hands the device both sizes. Outputs on other displays always draw every pixel of their display, and captures, render targets and readbacks keep the sizes they ask for.
+
 ## Cameras and parallax
 
 A camera, `graphics2d::Camera`, decides which part of the world a world or render target canvas shows. Its position is the point the view shows. The method `follow` moves the camera toward a target through these steps:

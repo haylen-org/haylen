@@ -101,7 +101,7 @@ print('Halts in the background: ' .. tostring(config.lifecycle.pauseOnBackground
 | `window.title` | string | The value of `name` | The title of the window. |
 | `window.width`, `window.height` | integer | `1280`, `720` | The size of the window when it opens. |
 | `window.fullscreen` | boolean | `false` | Starts in fullscreen. |
-| `window.highDpi` | boolean | `true` | Uses the full density of the display for the framebuffer. |
+| `window.maxPixelDensity` | number | `0` | The most framebuffer pixels in each window point, or `0` for every pixel of the display, as [`window.setMaxPixelDensity`](window.md#windowsetmaxpixeldensitycap) describes. |
 | `window.resizable` | boolean | `true` | Whether the player may resize a desktop window. [`window.setResizable`](window.md#desktop-windows) changes it later. |
 | `window.vsync` | boolean | `true` | Waits for the refresh of the display before it shows a frame. |
 | `window.frameRate` | integer | `0` | The frames per second the app aims for, from 1 to 1000, or `0` for every refresh of the display. [`window.setFrameRate`](window.md#windowsetframerateframespersecond) changes it later. |
@@ -889,6 +889,7 @@ The engine checks `app.json` before any Lua runs. A package whose `app.json` fai
 | `The value of "<key>" in "app.json" must be a number from <minimum> to <maximum>.` | A number with a fraction, such as `splash.duration`, lies outside the numbers it can hold. |
 | `The value of "<key>" in "app.json" must be positive.` | One of `window.width`, `window.height`, `window.sampleCount`, `design.width`, `design.height`, `fixedRate` and `maxFrameTime` is `0` or less. |
 | `The value of "<key>" in "app.json" must be a number of at least 0.` | The `splash.duration` or `splash.fadeOut` is negative or not finite. |
+| `The "window.maxPixelDensity" value in "app.json" is out of range. It is 0 for every pixel of the display, or a positive number of framebuffer pixels in each point.` | The cap of the pixel density is negative or not finite. |
 | `The "<key>" value "<value>" in "app.json" is not a color such as "#RRGGBB" or "#AARRGGBB".` | The `clearColor`, `window.statusBarColor`, `splash.background` or `splash.darkBackground` is not a color. |
 | `The "window.statusBar" value "<value>" in "app.json" is unknown. It is "hidden", "auto", "light" or "dark".` | The status bar has another value. |
 | `The "window.graphicsApis" value "<value>" in "app.json" is not a graphics API. It is "metal", "direct3D12", "direct3D11", "vulkan", "openGl", "openGlEs", "webGpu", "webGl2" or "port".` | The list names something else, or `"none"`. |

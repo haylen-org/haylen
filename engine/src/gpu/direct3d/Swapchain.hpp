@@ -8,12 +8,12 @@
 
 namespace haylen::gpu::direct3d {
 
-// The flip model swapchain of a window of Windows, which a device of Direct3D 11 makes on its device and a device of Direct3D 12 on its command queue. A transparent window takes its frames through DirectComposition, which composites them with their premultiplied alpha over what lies behind the window, since only a swapchain for composition keeps the alpha. A swapchain without vertical sync presents with tearing where the display allows it, so frames reach the screen without waiting for its refresh.
+// The flip model swapchain of a window of Windows, which a device of Direct3D 11 makes on its device and a device of Direct3D 12 on its command queue. A transparent window takes its frames through DirectComposition, which composites them with their premultiplied alpha over what lies behind the window, since only a swapchain for composition keeps the alpha. A swapchain without vertical sync presents with tearing where the display allows it, so frames reach the screen without waiting for its refresh. Its buffers take the size of the drawable, which DXGI stretches over the window and DirectComposition scales to it, so a drawable smaller than its window fills the window.
 class Swapchain final {
   public:
     static constexpr UINT kBufferCount = 3;
 
-    // Makes the swapchain on the window of the surface, at the size of the surface, which is never zero.
+    // Makes the swapchain on the window of the surface, at the size of the drawable of the surface, which is never zero.
     Swapchain(IDXGIFactory6& factory, IUnknown& presenter, const Surface& surface);
     Swapchain(const Swapchain&) = delete;
     Swapchain& operator=(const Swapchain&) = delete;
@@ -22,25 +22,22 @@ class Swapchain final {
     // Shows the buffer drawn last, with the result of DXGI, which a lost device fails.
     [[nodiscard]] HRESULT present();
 
-    // Gives the buffers a new size, once the device let go of every reference to them.
-    [[nodiscard]] HRESULT resize(int width, int height);
+    // Gives the buffers the size of the drawable and shows them at the size of the window, once the device let go of every reference to them.
+    [[nodiscard]] HRESULT resize(const Surface::Size& value);
 
     [[nodiscard]] IDXGISwapChain3& get() const noexcept {
         return *swapchain.Get();
     }
 
-    [[nodiscard]] int getWidth() const noexcept {
-        return width;
-    }
-
-    [[nodiscard]] int getHeight() const noexcept {
-        return height;
+    [[nodiscard]] const Surface::Size& getSize() const noexcept {
+        return size;
     }
 
   private:
     using CreateComposition = HRESULT(WINAPI*)(IUnknown*, REFIID, void**);
 
     void compose(HWND window);
+    void scaleVisual();
 
     Microsoft::WRL::ComPtr<IDXGISwapChain3> swapchain;
     HMODULE compositionLibrary = nullptr;
@@ -50,8 +47,7 @@ class Swapchain final {
     UINT flags = 0;
     bool vsync = true;
     bool tearing = false;
-    int width = 0;
-    int height = 0;
+    Surface::Size size;
 };
 
 } // namespace haylen::gpu::direct3d

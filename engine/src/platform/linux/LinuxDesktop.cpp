@@ -248,24 +248,24 @@ void LinuxDesktop::setStyle(const WindowStyle& value) {
     changeState(display, window, "_NET_WM_STATE_ABOVE", value.alwaysOnTop);
     changeState(display, window, "_NET_WM_STATE_SKIP_TASKBAR", !value.shownInTaskbar);
     changeState(display, window, "_NET_WM_STATE_SKIP_PAGER", !value.shownInTaskbar);
-    const math::Vec2 size = NativeWindow::getFramebufferSize();
-    applySizeHints(display, window, static_cast<int>(size.x), static_cast<int>(size.y));
+    const math::Vec2 size = NativeWindow::getFramebufferSize() / NativeWindow::getScale();
+    applySizeHints(display, window, static_cast<int>(std::lround(size.x)), static_cast<int>(std::lround(size.y)));
     XFlush(display);
 }
 
-// The framebuffer covers the window pixel for pixel on X11.
+// The scale of the window turns its framebuffer into its pixels, which are the units of X11.
 math::Rect LinuxDesktop::getFrame() {
+    const math::Vec2 pixels = NativeWindow::getFramebufferSize() / NativeWindow::getScale();
     ::Display* display = getDisplay();
     if (display == nullptr) {
-        const math::Vec2 size = NativeWindow::getFramebufferSize() / NativeWindow::getScale();
-        return {0.0F, 0.0F, size.x, size.y};
+        return {0.0F, 0.0F, pixels.x, pixels.y};
     }
     int x = 0;
     int y = 0;
     ::Window child = 0;
     XTranslateCoordinates(display, getWindow(), DefaultRootWindow(display), 0, 0, &x, &y, &child);
     const float scale = getDesktopScale(display);
-    return {static_cast<float>(x) / scale, static_cast<float>(y) / scale, NativeWindow::getFramebufferSize().x / scale, NativeWindow::getFramebufferSize().y / scale};
+    return {static_cast<float>(x) / scale, static_cast<float>(y) / scale, pixels.x / scale, pixels.y / scale};
 }
 
 std::string LinuxDesktop::getTitle() {
@@ -324,14 +324,15 @@ void LinuxDesktop::setPassthrough(Window::Passthrough mode, std::span<const math
         return;
     }
 
-    // An empty shape lets every click through the whole window.
+    // An empty shape lets every click through the whole window, and the regions in framebuffer pixels shape it in the pixels of the window.
     Region shape = XCreateRegion();
     if (mode == Window::Passthrough::Regions) {
+        const float scale = NativeWindow::getScale();
         for (const math::Polygon::Outline& region : regions) {
             std::vector<XPoint> points;
             points.reserve(region.size());
             for (const math::Vec2 point : region) {
-                points.push_back({.x = static_cast<short>(std::lround(point.x)), .y = static_cast<short>(std::lround(point.y))});
+                points.push_back({.x = static_cast<short>(std::lround(point.x / scale)), .y = static_cast<short>(std::lround(point.y / scale))});
             }
             Region polygon = XPolygonRegion(points.data(), static_cast<int>(points.size()), WindingRule);
             XUnionRegion(shape, polygon, shape);

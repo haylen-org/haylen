@@ -8,16 +8,17 @@
 
 #include <vk_mem_alloc.h>
 
+#include "haylen/gpu/Surface.hpp"
+
 namespace haylen::gpu::vulkan {
 
 class Context;
 
-// The swapchain of the surface of a window, with the multisampled color image that resolves into its images when the window draws with several samples and the depth and stencil image of its passes. Those two images last for one pass, so they live in memory that tile GPUs never allocate.
+// The swapchain of the surface of a window, with the multisampled color image that resolves into its images when the window draws with several samples and the depth and stencil image of its passes. Those two images last for one pass, so they live in memory that tile GPUs never allocate. A drawable smaller than the images that the surface takes, as when the app caps its pixel density on a window whose surface fixes their size, draws into an image of its own for each image of the swapchain, which the frame scales into the image of the swapchain before it presents it.
 class Swapchain final {
   public:
     struct Settings {
-        int width = 0;
-        int height = 0;
+        Surface::Size size;
         int sampleCount = 1;
         bool vsync = true;
         bool transparent = false;
@@ -63,17 +64,27 @@ class Swapchain final {
         return samples;
     }
 
+    // The size that the passes draw, which is the size of the drawable when the swapchain scales it.
     [[nodiscard]] VkExtent2D getExtent() const noexcept {
         return extent;
     }
 
+    // Whether the passes draw into images of their own, which `recordScale` scales into the images of the swapchain.
+    [[nodiscard]] bool isScaled() const noexcept {
+        return !drawables.empty();
+    }
+
+    // The image that the passes draw into for the image of the swapchain at the index, and its view.
     [[nodiscard]] VkImage getImage(std::uint32_t index) const noexcept {
-        return images[index].image;
+        return isScaled() ? drawables[index].image : images[index].image;
     }
 
     [[nodiscard]] VkImageView getView(std::uint32_t index) const noexcept {
-        return images[index].view;
+        return isScaled() ? drawables[index].view : images[index].view;
     }
+
+    // Records the scale of the drawable that the passes drew for the image at the index into that image of the swapchain, with the linear filter, and leaves the image ready to present.
+    void recordScale(VkCommandBuffer commands, std::uint32_t index) const;
 
     // The semaphore that the frame drawing into the image signals for its presentation.
     [[nodiscard]] VkSemaphore getFinished(std::uint32_t index) const noexcept {
@@ -116,8 +127,10 @@ class Swapchain final {
     [[nodiscard]] VkPresentModeKHR choosePresentMode(bool vsync) const;
     [[nodiscard]] static VkCompositeAlphaFlagBitsKHR chooseCompositeAlpha(VkCompositeAlphaFlagsKHR supported, bool transparent) noexcept;
     [[nodiscard]] static VkExtent2D chooseExtent(const VkSurfaceCapabilitiesKHR& capabilities, const Settings& settings) noexcept;
+    [[nodiscard]] bool canScale(const VkSurfaceCapabilitiesKHR& capabilities) const;
     [[nodiscard]] VkImageView makeView(VkImage image, VkFormat viewFormat) const;
     [[nodiscard]] Attachment makeAttachment(VkFormat attachmentFormat, VkImageUsageFlags usage) const;
+    [[nodiscard]] Attachment makeDrawable() const;
     void destroyAttachment(Attachment& attachment) const;
     void destroyImages();
     void destroySwapchain();
@@ -131,7 +144,9 @@ class Swapchain final {
     VkFormat depthFormat = VK_FORMAT_D24_UNORM_S8_UINT;
     VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT;
     VkExtent2D extent{};
+    VkExtent2D presentedExtent{};
     std::vector<SwapchainImage> images;
+    std::vector<Attachment> drawables;
     std::vector<VkSemaphore> acquired;
     Attachment color;
     Attachment depth;

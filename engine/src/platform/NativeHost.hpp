@@ -43,6 +43,8 @@ class NativeHost : public Host {
     void setKeepScreenOn(bool value, std::function<void(Permission::Answer answer)> callback) override;
     [[nodiscard]] int getFrameRate() const noexcept override;
     void setFrameRate(int value) override;
+    [[nodiscard]] float getMaxPixelDensity() const noexcept override;
+    void setMaxPixelDensity(float value) override;
     [[nodiscard]] bool isTransparent() const noexcept override;
     void setTransparent(bool value) override;
     [[nodiscard]] bool isDecorated() const noexcept override;
@@ -179,6 +181,9 @@ class NativeHost : public Host {
     // Paces the frames of the platform at the frames per second, or at every refresh of the display for 0.
     virtual void applyFrameRate(int framesPerSecond) = 0;
 
+    // Sizes the drawable of the window for the pixel density cap, or for every pixel of the display for 0, and the GPU device after it.
+    virtual void applyMaxPixelDensity(float cap) = 0;
+
     // Fullscreen windows keep the style of the platform, and leaving fullscreen brings this one back.
     void applyStyle();
 
@@ -197,6 +202,7 @@ class NativeHost : public Host {
     bool focusable = true;
     bool screenKeptOn = false;
     int frameRate = 0;
+    float maxPixelDensity = 0.0F;
 };
 
 } // namespace haylen::platform

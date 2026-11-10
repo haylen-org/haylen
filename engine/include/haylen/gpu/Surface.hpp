@@ -18,8 +18,23 @@ class GlContext {
     [[nodiscard]] virtual void* getProcAddress(const char* name) = 0;
 };
 
-// The window a device draws into, as the platform hands it over: the native handles of the window that the graphics API makes its swapchain on, the size of the drawable in pixels and how the frames reach the screen.
+// The window a device draws into, as the platform hands it over: the native handles of the window that the graphics API makes its swapchain on, the size of its drawable in pixels and how the frames reach the screen.
 struct Surface {
+    // The size in pixels of the drawable that the swapchain passes draw into and of the window that shows it. The window is larger while the app caps its pixel density, and then the system stretches the drawable over the window where it can, such as a `CAMetalLayer`, a swapchain of DXGI or the native window of Android, and the device scales it into the window itself elsewhere. A platform whose window takes the size of the drawable, such as Android, reports the drawable as the window.
+    struct Size {
+        int width = 0;
+        int height = 0;
+        int windowWidth = 0;
+        int windowHeight = 0;
+
+        // Whether the window shows the drawable at another size, which the device then scales.
+        [[nodiscard]] bool isScaled() const noexcept {
+            return windowWidth != width || windowHeight != height;
+        }
+
+        friend bool operator==(const Size&, const Size&) = default;
+    };
+
     enum class Kind : unsigned char {
         // A `CAMetalLayer` in `layer`.
         MetalLayer,
@@ -45,8 +60,7 @@ struct Surface {
     void* display = nullptr;
     std::string_view canvas;
     GlContext* gl = nullptr;
-    int width = 0;
-    int height = 0;
+    Size size;
     int sampleCount = 1;
     bool vsync = true;
 

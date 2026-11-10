@@ -2,14 +2,16 @@
 
 #include <webgpu/webgpu.h>
 
+#include <memory>
 #include <string>
 
+#include "gpu/webgpu/ScaledDrawable.hpp"
 #include "haylen/gpu/Device.hpp"
 #include "haylen/gpu/Surface.hpp"
 
 namespace haylen::gpu::webgpu {
 
-// The canvas of the page that the frames are drawn into, configured for the device in the format the browser prefers, with the depth and stencil attachment of the frames and the multisampled color attachment that resolves into the canvas when the window asks for more than one sample. The browser presents the texture of the canvas when the frame returns to its event loop, at the pace of the display, so frames never run without vertical sync.
+// The canvas of the page that the frames are drawn into, configured for the device in the format the browser prefers, with the depth and stencil attachment of the frames and the multisampled color attachment that resolves into the canvas when the window asks for more than one sample. The browser presents the texture of the canvas when the frame returns to its event loop, at the pace of the display, so frames never run without vertical sync. The drawing buffer of the canvas takes the size of the window, and a smaller drawable draws into a texture of its own that the frame scales over the canvas.
 class Swapchain final {
   public:
     static constexpr Device::PixelFormat kDepthFormat = Device::PixelFormat::Depth24Stencil8;
@@ -19,11 +21,14 @@ class Swapchain final {
     Swapchain& operator=(const Swapchain&) = delete;
     ~Swapchain();
 
-    // Takes the new size of the canvas in pixels, which the next frame configures.
-    void resize(int pixelsWide, int pixelsHigh) noexcept;
+    // Takes the new size of the drawable and of the canvas in pixels, which the next frame configures.
+    void resize(const Surface::Size& value) noexcept;
 
     // Takes the texture of the canvas for the frame, once per frame, and returns whether the frame has one, which a canvas without pixels lacks.
     [[nodiscard]] bool acquire();
+
+    // Records the scale of a smaller drawable over the canvas of a frame that drew into it, before the frame is submitted.
+    void recordScale(WGPUCommandEncoder encoder) const;
 
     // Lets go of the texture of the frame once the frame is submitted.
     void release() noexcept;
@@ -49,8 +54,7 @@ class Swapchain final {
     WGPUTextureFormat format = WGPUTextureFormat_BGRA8Unorm;
     WGPUCompositeAlphaMode alphaMode = WGPUCompositeAlphaMode_Opaque;
     int sampleCount = 1;
-    int width = 0;
-    int height = 0;
+    Surface::Size size;
     bool configured = false;
     bool stale = true;
     WGPUTexture frameTexture = nullptr;
@@ -59,6 +63,7 @@ class Swapchain final {
     WGPUTextureView multisampledView = nullptr;
     WGPUTexture depth = nullptr;
     WGPUTextureView depthView = nullptr;
+    std::unique_ptr<ScaledDrawable> scaled;
 };
 
 } // namespace haylen::gpu::webgpu

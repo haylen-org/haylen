@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "haylen/core/Engine.hpp"
+#include "haylen/gpu/Surface.hpp"
 #include "haylen/math/Polygon.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/platform/Window.hpp"
@@ -121,6 +122,33 @@ TEST(WindowLuaTest, AimsForTheFrameRateTheAppAsks) {
 
     fixture.restart();
     EXPECT_EQ(fixture.host().getFrameRate(), 30);
+}
+
+// A dense screen draws a framebuffer of the cap of app.json, which a script lowers or lifts, while the window keeps its size, the points of the window stay the same and the GPU device takes the smaller drawable with the size of its window. A restarted app starts again with the cap of app.json.
+TEST(WindowLuaTest, CapsThePixelDensityOfTheFramebuffer) {
+    test::EngineFixture fixture({{"app.json", R"({"window": {"maxPixelDensity": 2}})"}});
+    fixture.host().setDpiScale(3.0F);
+    fixture.host().resize({2400.0F, 1080.0F});
+    fixture.restart();
+    fixture.runLua("window = require('haylen.window')");
+    EXPECT_EQ(fixture.lua("local width, height = window.framebufferSize() return width .. ' ' .. height .. ' ' .. window.dpiScale() .. ' ' .. window.maxPixelDensity()"), "1600.0 720.0 2.0 2.0");
+    EXPECT_EQ(fixture.host().getGpu().getSurfaceSize(), (gpu::Surface::Size{.width = 1600, .height = 720, .windowWidth = 2400, .windowHeight = 1080}));
+
+    fixture.runLua("window.setMaxPixelDensity(1.5)");
+    EXPECT_EQ(fixture.lua("local width, height = window.framebufferSize() return width / window.dpiScale() .. ' ' .. height / window.dpiScale()"), "800.0 360.0");
+    EXPECT_EQ(fixture.host().getGpu().getSurfaceSize(), (gpu::Surface::Size{.width = 1200, .height = 540, .windowWidth = 2400, .windowHeight = 1080}));
+
+    // A cap at or above the density of the screen, or none, draws every pixel of the window.
+    fixture.runLua("window.setMaxPixelDensity(4)");
+    EXPECT_FALSE(fixture.host().getGpu().getSurfaceSize().isScaled());
+    fixture.runLua("window.setMaxPixelDensity(0)");
+    EXPECT_EQ(fixture.lua("local width, height = window.framebufferSize() return width .. ' ' .. height .. ' ' .. window.dpiScale()"), "2400.0 1080.0 3.0");
+    EXPECT_NE(fixture.lua("window.setMaxPixelDensity(-1)").find("The pixel density cap -1 is out of range. It is 0 for every pixel of the display, or a positive number of framebuffer pixels in each point."), std::string::npos);
+    EXPECT_NE(fixture.lua("window.setMaxPixelDensity('sharp')").find("error: "), std::string::npos);
+
+    fixture.restart();
+    EXPECT_FLOAT_EQ(fixture.host().getMaxPixelDensity(), 2.0F);
+    EXPECT_EQ(fixture.host().getGpu().getSurfaceSize().width, 1600);
 }
 
 TEST(WindowLuaTest, GivesARestartedAppTheMouseCursorAndKeyboardOfANewWindow) {

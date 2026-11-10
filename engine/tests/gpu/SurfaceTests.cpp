@@ -74,7 +74,7 @@ TEST_P(GpuSurfaceTest, DrawsIntoSurfacesBeyondTheWindow) {
     }
 
     // A surface that resizes takes its new size from the next frame, while a second surface draws in the same frames.
-    device().resizeSurface(board, 32, 24);
+    device().resizeSurface(board, {.width = 32, .height = 24, .windowWidth = 32, .windowHeight = 24});
     const int side = device().addSurface(second->getSurface());
     EXPECT_NE(side, board);
     for (int frame = 0; frame < 3; ++frame) {
@@ -92,6 +92,42 @@ TEST_P(GpuSurfaceTest, DrawsIntoSurfacesBeyondTheWindow) {
     device().commit();
     device().removeSurface(board);
     device().removeSurface(side);
+    device().commit();
+    EXPECT_FALSE(device().isLost());
+}
+
+// A drawable of fewer pixels than its window, as when the app caps its pixel density, takes the passes of each frame, which the system or the device stretches over the window, and follows the window as it resizes, scaled and not, with the validation of its API watching.
+TEST_P(GpuSurfaceTest, StretchesADrawableSmallerThanItsWindow) {
+    Surface scaled = first->getSurface();
+    scaled.size = {.width = 32, .height = 24, .windowWidth = 64, .windowHeight = 48};
+    int board = 0;
+    try {
+        board = device().addSurface(scaled);
+    } catch (const std::runtime_error& error) {
+        if (std::string(error.what()).find("no desktop") == std::string::npos) {
+            throw;
+        }
+        GTEST_SKIP() << error.what();
+    }
+    for (int frame = 0; frame < 3; ++frame) {
+        drawInto(board, {0.1F, 0.2F, 0.3F, 1.0F});
+        device().commit();
+    }
+
+    device().resizeSurface(board, {.width = 21, .height = 16, .windowWidth = 64, .windowHeight = 48});
+    for (int frame = 0; frame < 3; ++frame) {
+        drawInto(board, {0.3F, 0.2F, 0.1F, 1.0F});
+        device().commit();
+    }
+    device().resizeSurface(board, {.width = 64, .height = 48, .windowWidth = 64, .windowHeight = 48});
+    for (int frame = 0; frame < 3; ++frame) {
+        drawInto(board, {0.0F, 0.5F, 0.0F, 1.0F});
+        device().commit();
+    }
+    device().resizeSurface(board, scaled.size);
+    drawInto(board, {0.4F, 0.4F, 0.4F, 1.0F});
+    device().commit();
+    device().removeSurface(board);
     device().commit();
     EXPECT_FALSE(device().isLost());
 }

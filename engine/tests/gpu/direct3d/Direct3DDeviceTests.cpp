@@ -131,7 +131,7 @@ float4 main() : SV_Target0 { return color; }
         if (window == nullptr) {
             throw std::runtime_error("The test could not open a window.");
         }
-        return {.kind = Surface::Kind::Win32, .window = window, .display = windowClass.hInstance, .width = width, .height = height, .transparent = transparent};
+        return {.kind = Surface::Kind::Win32, .window = window, .display = windowClass.hInstance, .size = {.width = width, .height = height, .windowWidth = width, .windowHeight = height}, .transparent = transparent};
     }
 
     [[nodiscard]] Pipeline makePipeline(bool swapchain) {
@@ -228,11 +228,11 @@ TEST_P(Direct3DDeviceTest, PresentsThroughResizesMinimizingAndNewSurfaces) {
     const Buffer vertices = makeTriangle({-0.5F, -0.5F, 0.0F, 0.5F, 0.5F, -0.5F});
     drawFrames(pipeline, vertices, 3);
 
-    device->resizeSurface(200, 120);
+    device->resizeSurface({.width = 200, .height = 120, .windowWidth = 200, .windowHeight = 120});
     drawFrames(pipeline, vertices, 3);
-    device->resizeSurface(0, 0);
+    device->resizeSurface({});
     drawFrames(pipeline, vertices, 3);
-    device->resizeSurface(160, 90);
+    device->resizeSurface({.width = 160, .height = 90, .windowWidth = 160, .windowHeight = 90});
     drawFrames(pipeline, vertices, 3);
 
     // A surface with another sample count makes the pipelines of the swapchain again.
@@ -253,7 +253,11 @@ TEST_P(Direct3DDeviceTest, ComposesATransparentWindow) {
     const Pipeline pipeline = makePipeline(true);
     const Buffer vertices = makeTriangle({-0.5F, -0.5F, 0.0F, 0.5F, 0.5F, -0.5F});
     drawFrames(pipeline, vertices, 3);
-    device->resizeSurface(120, 60);
+    device->resizeSurface({.width = 120, .height = 60, .windowWidth = 120, .windowHeight = 60});
+    drawFrames(pipeline, vertices, 3);
+
+    // A drawable of fewer pixels than its window, as when the app caps its pixel density, shows through a scaled visual.
+    device->resizeSurface({.width = 60, .height = 30, .windowWidth = 120, .windowHeight = 60});
     drawFrames(pipeline, vertices, 3);
     EXPECT_FALSE(device->isLost());
 }

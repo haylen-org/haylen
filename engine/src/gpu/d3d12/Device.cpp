@@ -80,7 +80,7 @@ Device::Device(ComPtr<IDXGIFactory6> dxgiFactory, ComPtr<IDXGIAdapter1> card, co
 
     // A window that has a drawable takes its swapchain now, so a window that Direct3D 12 cannot draw into fails the device while the platform can still try another API.
     SurfaceChain& window = *chains.front();
-    if (target && target->width > 0 && target->height > 0) {
+    if (target && target->size.width > 0 && target->size.height > 0) {
         window.swapchain = std::make_unique<direct3d::Swapchain>(*factory.Get(), *queue.Get(), *target);
         makeSwapchainTargets(window);
     }
@@ -671,7 +671,7 @@ Device::SurfaceChain& Device::requireAddedChain(int number) const {
 }
 
 bool Device::prepareSwapchain(SurfaceChain& chain) {
-    if (!chain.surface || chain.surface->width <= 0 || chain.surface->height <= 0 || lost) {
+    if (!chain.surface || chain.surface->size.width <= 0 || chain.surface->size.height <= 0 || lost) {
         return false;
     }
     if (chain.swapchain == nullptr) {
@@ -680,14 +680,14 @@ bool Device::prepareSwapchain(SurfaceChain& chain) {
         return true;
     }
     // A new size applies from the first pass of a frame into the swapchain, so the passes of one frame draw into the same buffers.
-    if (chain.presentPending || (chain.swapchain->getWidth() == chain.surface->width && chain.swapchain->getHeight() == chain.surface->height)) {
+    if (chain.presentPending || chain.swapchain->getSize() == chain.surface->size) {
         return true;
     }
 
     // The buffers resize only once the GPU let go of them and the device holds no reference to them.
     waitIdle();
     releaseSwapchainTargets(chain);
-    const HRESULT result = chain.swapchain->resize(chain.surface->width, chain.surface->height);
+    const HRESULT result = chain.swapchain->resize(chain.surface->size);
     if (HResult::isDeviceLoss(result)) {
         loseDevice(result);
         return false;
@@ -706,8 +706,8 @@ void Device::makeSwapchainTargets(SurfaceChain& chain) {
 
     D3D12_RESOURCE_DESC desc{};
     desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-    desc.Width = static_cast<UINT64>(chain.swapchain->getWidth());
-    desc.Height = static_cast<UINT>(chain.swapchain->getHeight());
+    desc.Width = static_cast<UINT64>(chain.swapchain->getSize().width);
+    desc.Height = static_cast<UINT>(chain.swapchain->getSize().height);
     desc.DepthOrArraySize = 1;
     desc.MipLevels = 1;
     desc.SampleDesc.Count = static_cast<UINT>(std::max(1, chain.surface->sampleCount));
@@ -800,7 +800,7 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
     depth.StencilEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
 
     commands->BeginRenderPass(1, &color, &depth, D3D12_RENDER_PASS_FLAG_NONE);
-    setViewportAndScissor(chain.swapchain->getWidth(), chain.swapchain->getHeight());
+    setViewportAndScissor(chain.swapchain->getSize().width, chain.swapchain->getSize().height);
 }
 
 // The attachments leave the state that shaders read for the pass, and the barriers that bring them back wait for its end. A multisampled attachment resolves as its render pass ends, which tile GPUs do without writing the samples back to memory.
@@ -1200,11 +1200,10 @@ void Device::drainMessages() {
     }
 }
 
-void Device::resizeSurface(int width, int height) {
+void Device::resizeSurface(const Surface::Size& size) {
     SurfaceChain& window = *chains.front();
     if (window.surface) {
-        window.surface->width = width;
-        window.surface->height = height;
+        window.surface->size = size;
     }
 }
 
@@ -1258,7 +1257,7 @@ int Device::addSurface(const Surface& added) {
     Surface target = added;
     target.sampleCount = pipelineSampleCount;
     std::unique_ptr<SurfaceChain> chain = makeChain(target);
-    if (target.width > 0 && target.height > 0) {
+    if (target.size.width > 0 && target.size.height > 0) {
         chain->swapchain = std::make_unique<direct3d::Swapchain>(*factory.Get(), *queue.Get(), target);
         makeSwapchainTargets(*chain);
     }
@@ -1272,10 +1271,9 @@ int Device::addSurface(const Surface& added) {
     return static_cast<int>(chains.size()) - 1;
 }
 
-void Device::resizeSurface(int number, int width, int height) {
+void Device::resizeSurface(int number, const Surface::Size& size) {
     SurfaceChain& chain = requireAddedChain(number);
-    chain.surface->width = width;
-    chain.surface->height = height;
+    chain.surface->size = size;
 }
 
 // The frames in flight may still draw into the buffers of the swapchain, so the device waits for them before it lets go of the swapchain and its views.

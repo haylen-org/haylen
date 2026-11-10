@@ -5,6 +5,8 @@ Module.haylen = Module.haylen || {};
 
 (function (haylen) {
     const handlers = new Map();
+    // The size of the drawable that the engine draws into, in pixels, which `haylen.setDrawableWidth` keeps up to date.
+    const drawable = { width: 0 };
     const levels = ["debug", "info", "warning", "error"];
 
     // The system services of the engine: what the browser tells about the device, its color scheme, its accessibility preferences, its battery and its time zone. The details of `navigator.userAgentData` and the battery arrive asynchronously, so the page reads them before the runtime starts.
@@ -498,7 +500,7 @@ Module.haylen = Module.haylen || {};
 
     // The safe area insets of the canvas box in page pixels, from the canvas pixels that `haylen.safeAreaInsets` reports as far as the insets reach into the box.
     const safeInsets = (box) => {
-        const scale = box.width > 0 ? Module.canvas.width / box.width : 1;
+        const scale = box.width > 0 ? drawable.width / box.width : 1;
         const [left, top, right, bottom] = haylen.safeAreaInsets().map((value) => value / scale);
         return { left, top, right, bottom };
     };
@@ -547,7 +549,7 @@ Module.haylen = Module.haylen || {};
         }
 
         // The element reserves the edge its anchor names, from the edge of the canvas to its far side, in canvas pixels.
-        const scale = box.width > 0 ? Module.canvas.width / box.width : 1;
+        const scale = box.width > 0 ? drawable.width / box.width : 1;
         const reserved = { left: 0, top: 0, right: 0, bottom: 0 };
         if (vertical === 0) {
             reserved.top = (y + height) * scale;
@@ -753,7 +755,7 @@ Module.haylen = Module.haylen || {};
             layer.style.top = box.top + "px";
             layer.style.width = box.width + "px";
             layer.style.height = box.height + "px";
-            const scale = Module.canvas.width > 0 ? box.width / Module.canvas.width : 1;
+            const scale = drawable.width > 0 ? box.width / drawable.width : 1;
             const byId = new Map(mirror.elements.map((element) => [element.id, element]));
             for (const element of mirror.elements) {
                 const node = mirror.nodes.get(element.id);
@@ -1251,6 +1253,12 @@ Module.haylen = Module.haylen || {};
         pageLayout.safeArea = null;
         pageLayout.fold = undefined;
     };
+
+    // Takes the width in pixels of the drawable of the engine, which turns framebuffer pixels into page pixels over the canvas box. The canvas takes every pixel of the screen, while the pixel density cap of the app may keep the drawable narrower.
+    haylen.setDrawableWidth = function (width) {
+        drawable.width = width;
+        forgetLayout();
+    };
     window.addEventListener("resize", forgetLayout);
     window.addEventListener("scroll", forgetLayout, { passive: true });
     if (navigator.devicePosture) {
@@ -1270,7 +1278,7 @@ Module.haylen = Module.haylen || {};
         }
         const style = getComputedStyle(probe);
         const box = Module.canvas.getBoundingClientRect();
-        const scale = box.width > 0 ? Module.canvas.width / box.width : 0;
+        const scale = box.width > 0 ? drawable.width / box.width : 0;
         const covered = [
             parseFloat(style.paddingLeft) - box.left,
             parseFloat(style.paddingTop) - box.top,
@@ -1297,7 +1305,7 @@ Module.haylen = Module.haylen || {};
         const [first, second] = segments;
         const vertical = second.left >= first.right;
         const box = Module.canvas.getBoundingClientRect();
-        const scale = box.width > 0 ? Module.canvas.width / box.width : 0;
+        const scale = box.width > 0 ? drawable.width / box.width : 0;
         const gap = vertical ? [first.right, box.top, second.left, box.bottom] : [box.left, first.bottom, box.right, second.top];
         const bounds = [(gap[0] - box.left) * scale, (gap[1] - box.top) * scale, (gap[2] - box.left) * scale, (gap[3] - box.top) * scale];
         const folded = navigator.devicePosture !== undefined && navigator.devicePosture.type === "folded";
@@ -1610,7 +1618,7 @@ Module.haylen = Module.haylen || {};
     // Turns framebuffer pixels of the engine into page pixels over the canvas box.
     const toPage = (bounds) => {
         const box = Module.canvas.getBoundingClientRect();
-        const scale = box.width / Module.canvas.width;
+        const scale = box.width / drawable.width;
         return { left: box.left + bounds[0] * scale, top: box.top + bounds[1] * scale, width: bounds[2] * scale, height: bounds[3] * scale };
     };
 
@@ -1655,8 +1663,8 @@ Module.haylen = Module.haylen || {};
             const box = Module.canvas.getBoundingClientRect();
             const top = Math.max(box.top, viewport.offsetTop + viewport.height);
             if (box.width > 0 && box.bottom - top >= 1) {
-                const scale = Module.canvas.width / box.width;
-                frame = [0, (top - box.top) * scale, Module.canvas.width, (box.bottom - top) * scale];
+                const scale = drawable.width / box.width;
+                frame = [0, (top - box.top) * scale, drawable.width, (box.bottom - top) * scale];
             }
         }
         if (frame.some((value, index) => value !== text.keyboard[index])) {

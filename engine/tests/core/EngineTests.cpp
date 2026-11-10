@@ -149,7 +149,7 @@ TEST(AppConfigTest, ReadsEveryField) {
         "identifier": "com.haylen.tinyisland",
         "version": "2.0.0",
         "build": 14,
-        "window": {"title": "Island", "width": 800, "height": 600, "fullscreen": true, "highDpi": false, "resizable": false, "vsync": false, "sampleCount": 4},
+        "window": {"title": "Island", "width": 800, "height": 600, "fullscreen": true, "maxPixelDensity": 2, "resizable": false, "vsync": false, "sampleCount": 4},
         "design": {"width": 1280, "height": 720, "scaling": "fit"},
         "orientation": "portrait",
         "fixedRate": 30,
@@ -168,7 +168,7 @@ TEST(AppConfigTest, ReadsEveryField) {
     EXPECT_EQ(config.window.title, "Island");
     EXPECT_EQ(config.window.width, 800);
     EXPECT_TRUE(config.window.fullscreen);
-    EXPECT_FALSE(config.window.highDpi);
+    EXPECT_FLOAT_EQ(config.window.maxPixelDensity, 2.0F);
     EXPECT_FALSE(config.window.resizable);
     EXPECT_FALSE(config.window.vsync);
     EXPECT_EQ(config.window.sampleCount, 4);

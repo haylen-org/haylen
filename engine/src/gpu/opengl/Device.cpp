@@ -34,7 +34,7 @@ std::shared_ptr<Context> Device::makeContext(Api flavour, const Surface& surface
     return made;
 }
 
-Device::Device(Api flavour, const Surface& surface, bool validation) : context(makeContext(flavour, surface)), gl(context->gl), state(context->state), api(flavour), surfaceContext(surface.gl), surfaceWidth(surface.width), surfaceHeight(surface.height), surfaceAttached(true), surfaceVsync(surface.vsync), adapterName(gl.getString(Gl::kRenderer)), debug(gl, validation), timer(gl), framebuffers(gl, state) {
+Device::Device(Api flavour, const Surface& surface, bool validation) : context(makeContext(flavour, surface)), gl(context->gl), state(context->state), api(flavour), surfaceContext(surface.gl), surfaceSize(surface.size), surfaceSamples(surface.sampleCount), surfaceAttached(true), surfaceVsync(surface.vsync), adapterName(gl.getString(Gl::kRenderer)), debug(gl, validation), timer(gl), framebuffers(gl, state) {
     gl.pixelStorei(Gl::kPackAlignment, 1);
     gl.pixelStorei(Gl::kUnpackAlignment, 1);
     if (gl.isDesktop()) {
@@ -48,6 +48,7 @@ Device::Device(Api flavour, const Surface& surface, bool validation) : context(m
     surfaceContext->setSwapInterval(surface.vsync ? 1 : 0);
     applyDriverIssues();
     readCapabilities();
+    scaleDrawable(surfaceScaled, surfaceSize);
 }
 
 Device::~Device() {
@@ -493,6 +494,7 @@ void Device::beginFrame() {
     if (frameStarted) {
         return;
     }
+    applySizes();
     frameStarted = true;
     if (ring) {
         waitForFrame(frameIndex % kFramesInFlight);
@@ -670,30 +672,38 @@ void Device::beginPass(const PassDesc& desc) {
 void Device::beginSwapchainPass(const PassDesc& desc) {
     pass.swapchain = true;
     pass.surface = desc.surface;
+    const ScaledDrawable* scaled = nullptr;
     if (desc.surface == 0) {
-        if (!surfaceAttached || surfaceWidth <= 0 || surfaceHeight <= 0) {
+        if (!surfaceAttached || surfaceSize.width <= 0 || surfaceSize.height <= 0) {
             pass.skipped = true;
             return;
         }
         leaveDrawable(0);
         makeDrawableCurrent(0, *surfaceContext);
-        pass.width = surfaceWidth;
-        pass.height = surfaceHeight;
+        pass.width = surfaceSize.width;
+        pass.height = surfaceSize.height;
+        scaled = surfaceScaled.get();
     } else {
         const Drawable& drawable = requireDrawable(desc.surface);
-        if (drawable.width <= 0 || drawable.height <= 0) {
+        if (drawable.size.width <= 0 || drawable.size.height <= 0) {
             pass.skipped = true;
             return;
         }
         leaveDrawable(desc.surface);
         makeDrawableCurrent(desc.surface, *drawable.context);
-        pass.width = drawable.width;
-        pass.height = drawable.height;
+        pass.width = drawable.size.width;
+        pass.height = drawable.size.height;
+        scaled = drawable.scaled.get();
     }
     timer.beginPass();
-    state.bindDrawFramebuffer(0);
+    state.bindDrawFramebuffer(scaled != nullptr ? scaled->getFramebuffer() : 0);
     state.setFramebufferSrgb(false);
 
+    if (desc.load == Load::DontCare && scaled != nullptr) {
+        const std::array<Gl::Enum, 2> attachments{Gl::kColorAttachment0, Gl::kDepthStencilAttachment};
+        gl.invalidateFramebuffer(Gl::kDrawFramebuffer, static_cast<Gl::Sizei>(attachments.size()), attachments.data());
+        return;
+    }
     if (desc.load == Load::DontCare) {
         const std::array<Gl::Enum, 3> attachments{Gl::kColor, Gl::kDepth, Gl::kStencil};
         gl.invalidateFramebuffer(Gl::kDrawFramebuffer, static_cast<Gl::Sizei>(attachments.size()), attachments.data());
@@ -1060,9 +1070,12 @@ void Device::checkLost() {
     }
 }
 
-void Device::resizeSurface(int width, int height) {
-    surfaceWidth = width;
-    surfaceHeight = height;
+// A size that changes during a frame applies from the next one, so the passes of a frame draw into one framebuffer.
+void Device::resizeSurface(const Surface::Size& size) {
+    nextSurfaceSize = size;
+    if (!frameStarted) {
+        applySizes();
+    }
 }
 
 // The platform may make another drawable current or none while the window is away, so the next pass makes its drawable current again.
@@ -1079,8 +1092,8 @@ void Device::attachSurface(const Surface& surface) {
     surfaceContext->makeCurrent();
     surfaceContext->setSwapInterval(surface.vsync ? 1 : 0);
     currentSurface = 0;
-    surfaceWidth = surface.width;
-    surfaceHeight = surface.height;
+    surfaceSize = surface.size;
+    scaleDrawable(surfaceScaled, surface.size);
     surfaceAttached = true;
     surfaceVsync = surface.vsync;
 }
@@ -1110,20 +1123,38 @@ int Device::addSurface(const Surface& added) {
         surfaceContext->setSwapInterval(surfaceVsync ? 1 : 0);
     }
 
-    const Drawable made{.context = added.gl, .width = added.width, .height = added.height};
+    Drawable made{.context = added.gl, .size = added.size};
+    scaleDrawable(made.scaled, added.size);
     const auto free = std::ranges::find(drawables, nullptr, &Drawable::context);
     if (free != drawables.end()) {
-        *free = made;
+        *free = std::move(made);
         return static_cast<int>(free - drawables.begin()) + 1;
     }
-    drawables.push_back(made);
+    drawables.push_back(std::move(made));
     return static_cast<int>(drawables.size());
 }
 
-void Device::resizeSurface(int number, int width, int height) {
+void Device::resizeSurface(int number, const Surface::Size& size) {
     Drawable& drawable = requireDrawable(number);
-    drawable.width = width;
-    drawable.height = height;
+    drawable.nextSize = size;
+    if (!frameStarted) {
+        applySizes();
+    }
+}
+
+void Device::applySizes() {
+    if (nextSurfaceSize) {
+        surfaceSize = *nextSurfaceSize;
+        scaleDrawable(surfaceScaled, surfaceSize);
+        nextSurfaceSize.reset();
+    }
+    for (Drawable& drawable : drawables) {
+        if (drawable.nextSize) {
+            drawable.size = *drawable.nextSize;
+            scaleDrawable(drawable.scaled, drawable.size);
+            drawable.nextSize.reset();
+        }
+    }
 }
 
 // The window becomes current again before the drawable goes, since the platform destroys the drawable once the surface is removed.
@@ -1146,6 +1177,19 @@ Device::Drawable& Device::requireDrawable(int number) {
         throw std::logic_error(std::format("The device has no surface {} beyond the window.", number));
     }
     return drawables[static_cast<std::size_t>(number - 1)];
+}
+
+// A surface whose window shows its drawable larger draws into a framebuffer of the size of the drawable, with the samples of the window, and the others draw into their default framebuffer.
+void Device::scaleDrawable(std::unique_ptr<ScaledDrawable>& scaled, const Surface::Size& size) {
+    if (!size.isScaled() || size.width <= 0 || size.height <= 0) {
+        scaled.reset();
+        return;
+    }
+    if (scaled == nullptr) {
+        scaled = std::make_unique<ScaledDrawable>(gl, state, size, surfaceSamples);
+        return;
+    }
+    scaled->resize(size);
 }
 
 void Device::makeDrawableCurrent(int number, GlContext& drawable) {
@@ -1171,7 +1215,7 @@ void Device::leaveDrawable(int next) {
 
 void Device::presentCurrentDrawable() {
     if (currentSurface == 0 && drewSwapchain) {
-        presentDrawable(0, *surfaceContext);
+        presentDrawable(0, *surfaceContext, surfaceScaled.get());
         drewSwapchain = false;
         presentedSwapchain = true;
         return;
@@ -1179,16 +1223,23 @@ void Device::presentCurrentDrawable() {
     if (currentSurface > 0) {
         Drawable& drawable = requireDrawable(currentSurface);
         if (drawable.drawn) {
-            presentDrawable(currentSurface, *drawable.context);
+            presentDrawable(currentSurface, *drawable.context, drawable.scaled.get());
             drawable.drawn = false;
             drawable.presented = true;
         }
     }
 }
 
-// The depth and stencil of a drawable are never kept past the frame, so they are invalidated before the swap.
-void Device::presentDrawable(int number, GlContext& drawable) {
+// The depth and stencil of a drawable are never kept past the frame, so they are invalidated before the swap, and a drawable that its window shows larger is drawn over the window first.
+void Device::presentDrawable(int number, GlContext& drawable, ScaledDrawable* scaled) {
     makeDrawableCurrent(number, drawable);
+    if (scaled != nullptr) {
+        state.bindDrawFramebuffer(scaled->getFramebuffer());
+        const std::array<Gl::Enum, 1> depth{Gl::kDepthStencilAttachment};
+        gl.invalidateFramebuffer(Gl::kDrawFramebuffer, static_cast<Gl::Sizei>(depth.size()), depth.data());
+        scaled->present();
+    }
+
     const std::array<Gl::Enum, 2> attachments{Gl::kDepth, Gl::kStencil};
     state.bindDrawFramebuffer(0);
     gl.invalidateFramebuffer(Gl::kDrawFramebuffer, static_cast<Gl::Sizei>(attachments.size()), attachments.data());

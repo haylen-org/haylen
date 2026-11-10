@@ -45,6 +45,10 @@ EM_JS(void, haylen_js_started, (const char* json), {
     Module.haylen.reportStarted(JSON.parse(UTF8ToString(json)));
 });
 
+EM_JS(void, haylen_js_set_drawable_width, (int width), {
+    Module.haylen.setDrawableWidth(width);
+});
+
 EM_JS(void, haylen_js_stopped, (), {
     Module.haylen.reportStopped();
 });
@@ -121,6 +125,10 @@ template <typename Body> int WebPage::answer(Body&& body) {
 
 bool WebPage::isFullscreen() noexcept {
     return haylen_js_fullscreen() != 0;
+}
+
+void WebPage::setDrawableWidth(int width) {
+    haylen_js_set_drawable_width(width);
 }
 
 void WebPage::setFullscreen(bool value, std::string_view display, std::function<void(Permission::Answer answer)> callback) {

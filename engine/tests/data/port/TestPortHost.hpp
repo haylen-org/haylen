@@ -46,6 +46,7 @@ class TestPortHost final : public NativeHost {
     void setWindowFocusable(bool value) override;
     void setScreenSaverSuspended(bool value, std::function<void(Permission::Answer answer)> callback) override;
     void applyFrameRate(int framesPerSecond) override;
+    void applyMaxPixelDensity(float cap) override;
 
   private:
     TestPortRuntime& runtime;

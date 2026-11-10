@@ -44,10 +44,9 @@ math::Vec2 Host::getFramebufferSize() const noexcept {
     return runtime.getWindow().getPixelSize();
 }
 
-// The scale is the framebuffer pixels per point, which SDL measures through the pixels per unit of the window and the scale of the display where window units are pixels, as on Windows and X11. A window that opened without high DPI keeps one framebuffer pixel per unit of the window.
+// The scale is the framebuffer pixels per point, which SDL measures through the pixels per unit of the window and the scale of the display where window units are pixels, as on Windows and X11, and which the pixel density cap lowers.
 float Host::getDpiScale() const noexcept {
-    SDL_Window* window = runtime.getWindow().get();
-    return runtime.isHighDpi() ? SDL_GetWindowDisplayScale(window) : SDL_GetWindowPixelDensity(window);
+    return runtime.getWindow().getDpiScale();
 }
 
 bool Host::isFullscreen() const noexcept {
@@ -391,6 +390,10 @@ void Host::setWindowFocusable(bool value) {
 
 void Host::applyFrameRate(int framesPerSecond) {
     runtime.setFrameRate(framesPerSecond);
+}
+
+void Host::applyMaxPixelDensity(float cap) {
+    runtime.setMaxPixelDensity(cap);
 }
 
 // SDL keeps the screen on through the idle timer of UIKit, the power assertions of macOS, the execution state of Windows and the inhibitors of Linux desktops, and the page asks the browser for a wake lock.

@@ -20,6 +20,7 @@
 #include "platform/DevelopmentSession.hpp"
 #include "platform/Host.hpp"
 #include "platform/NativeViews.hpp"
+#include "platform/PixelDensityCap.hpp"
 #include "platform/SystemState.hpp"
 #include "platform/headless/HeadlessTextInput.hpp"
 
@@ -58,15 +59,29 @@ class HeadlessHost final : public Host {
     explicit HeadlessHost(std::filesystem::path directory, math::Vec2 size = {1920.0F, 1080.0F});
 
     [[nodiscard]] math::Vec2 getFramebufferSize() const noexcept override {
-        return framebufferSize;
+        const gpu::Surface::Size size = getSurfaceSize();
+        return {static_cast<float>(size.width), static_cast<float>(size.height)};
     }
     [[nodiscard]] float getDpiScale() const noexcept override {
-        return dpiScale;
+        return dpiScale * PixelDensityCap::getShare(getSurfaceSize());
     }
 
-    // Sets the framebuffer pixels per window point that the host reports, as a dense screen would.
+    // Sets the pixels per window point of the headless screen, as a dense screen would, which the framebuffer keeps unless the pixel density cap lowers it.
     void setDpiScale(float value) noexcept {
         dpiScale = value;
+    }
+
+    // The size of the drawable and of the window, which the null device of the host takes when it is made and whenever the pixel density cap changes.
+    [[nodiscard]] gpu::Surface::Size getSurfaceSize() const noexcept {
+        return PixelDensityCap::apply(static_cast<int>(windowSize.x), static_cast<int>(windowSize.y), dpiScale, maxPixelDensity);
+    }
+    [[nodiscard]] float getMaxPixelDensity() const noexcept override {
+        return maxPixelDensity;
+    }
+    void setMaxPixelDensity(float value) override {
+        requireMaxPixelDensity(value);
+        maxPixelDensity = value;
+        followDrawable();
     }
     [[nodiscard]] bool isFullscreen() const noexcept override {
         return fullscreen;
@@ -130,7 +145,7 @@ class HeadlessHost final : public Host {
 
     // The headless screen turns with its framebuffer, like the screen of a phone.
     [[nodiscard]] Orientation getOrientation() const override {
-        return framebufferSize.y > framebufferSize.x ? Orientation::Portrait : Orientation::Landscape;
+        return windowSize.y > windowSize.x ? Orientation::Portrait : Orientation::Landscape;
     }
     void lockOrientation(Orientation value) override {
         orientationLock = value;
@@ -438,8 +453,9 @@ class HeadlessHost final : public Host {
         return std::exchange(developmentSession, std::move(value));
     }
 
+    // Resizes the window in pixels, whose drawable the pixel density cap may shrink.
     void resize(math::Vec2 size) noexcept {
-        framebufferSize = size;
+        windowSize = size;
     }
     void setSafeAreaInsets(const math::Insets& value) noexcept {
         safeAreaInsets = value;
@@ -654,11 +670,14 @@ class HeadlessHost final : public Host {
     }
 
   private:
+    void followDrawable();
+
     gpu::NullDevice* gpu = nullptr;
     std::function<std::unique_ptr<gpu::Device>()> gpuDeviceMaker;
     std::filesystem::path dataDirectory;
-    math::Vec2 framebufferSize;
+    math::Vec2 windowSize;
     float dpiScale = 1.0F;
+    float maxPixelDensity = 0.0F;
     math::Insets safeAreaInsets{};
     StatusBar statusBar = StatusBar::Hidden;
     SystemGestures systemGestures = SystemGestures::Deferred;

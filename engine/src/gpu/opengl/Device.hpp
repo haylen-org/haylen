@@ -19,6 +19,7 @@
 #include "gpu/opengl/GpuTimer.hpp"
 #include "gpu/opengl/LayerClear.hpp"
 #include "gpu/opengl/ObjectTable.hpp"
+#include "gpu/opengl/ScaledDrawable.hpp"
 #include "gpu/opengl/ShaderProgram.hpp"
 #include "gpu/opengl/UploadRing.hpp"
 #include "gpu/opengl/VertexArray.hpp"
@@ -80,11 +81,11 @@ class Device final : public gpu::Device {
 
     void commit() override;
 
-    void resizeSurface(int width, int height) override;
+    void resizeSurface(const Surface::Size& size) override;
     void detachSurface() override;
     void attachSurface(const Surface& surface) override;
     [[nodiscard]] int addSurface(const Surface& added) override;
-    void resizeSurface(int number, int width, int height) override;
+    void resizeSurface(int number, const Surface::Size& size) override;
     void removeSurface(int number) override;
 
     [[nodiscard]] std::unique_ptr<Readback> readImage(Image image, int width, int height) override;
@@ -145,11 +146,12 @@ class Device final : public gpu::Device {
         int surface = 0;
     };
 
-    // A drawable beyond the window that the context of the device draws into, with the size of its pixels, whether the frame drew into it and whether the frame presented it.
+    // A drawable beyond the window that the context of the device draws into, with the size of its pixels and of its window, the framebuffer that it draws into while its window shows it larger, whether the frame drew into it and whether the frame presented it.
     struct Drawable {
         GlContext* context = nullptr;
-        int width = 0;
-        int height = 0;
+        Surface::Size size;
+        std::optional<Surface::Size> nextSize;
+        std::unique_ptr<ScaledDrawable> scaled;
         bool drawn = false;
         bool presented = false;
     };
@@ -180,11 +182,13 @@ class Device final : public gpu::Device {
     [[nodiscard]] StateCache::Raster toRaster(const PipelineDesc& desc) const;
 
     void beginFrame();
+    void applySizes();
     void waitForFrame(std::size_t slot);
     void requirePass(std::string_view call) const;
     [[nodiscard]] Drawable& requireDrawable(int number);
     void makeDrawableCurrent(int number, GlContext& drawable);
-    void presentDrawable(int number, GlContext& drawable);
+    void scaleDrawable(std::unique_ptr<ScaledDrawable>& scaled, const Surface::Size& size);
+    void presentDrawable(int number, GlContext& drawable, ScaledDrawable* scaled);
     void requireUnpresented(int surface);
     void leaveDrawable(int next);
     void presentCurrentDrawable();
@@ -202,8 +206,10 @@ class Device final : public gpu::Device {
     StateCache& state;
     Api api = Api::OpenGl;
     GlContext* surfaceContext = nullptr;
-    int surfaceWidth = 0;
-    int surfaceHeight = 0;
+    Surface::Size surfaceSize;
+    std::optional<Surface::Size> nextSurfaceSize;
+    int surfaceSamples = 1;
+    std::unique_ptr<ScaledDrawable> surfaceScaled;
     bool surfaceAttached = false;
     bool surfaceVsync = true;
 

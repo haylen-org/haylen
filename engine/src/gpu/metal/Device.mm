@@ -1368,8 +1368,8 @@ void Device::commit() {
     native->graveyard.setFrame(native->frameNumber);
 }
 
-void Device::resizeSurface(int width, int height) {
-    native->swapchain.resize(width, height);
+void Device::resizeSurface(const Surface::Size& size) {
+    native->swapchain.resize(size);
 }
 
 void Device::detachSurface() {
@@ -1392,8 +1392,8 @@ int Device::addSurface(const Surface& surface) {
     return static_cast<int>(native->surfaces.size());
 }
 
-void Device::resizeSurface(int surface, int width, int height) {
-    native->requireSwapchain(surface).resize(width, height);
+void Device::resizeSurface(int surface, const Surface::Size& size) {
+    native->requireSwapchain(surface).resize(size);
 }
 
 void Device::removeSurface(int surface) {

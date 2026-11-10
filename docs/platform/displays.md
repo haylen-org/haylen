@@ -103,7 +103,7 @@ end
 
 The app runs in one window, and it can show more on the other displays through outputs. An output is a picture of the app on a display other than the one of its window, such as a scoreboard on a TV next to a laptop, the map of a game on a second monitor, or the slides of a talk on a projector while the iPad shows the notes.
 
-The function `display.open(id)` opens an output. The output has a render target of the size of its display in pixels. The app draws into it with any canvas, such as `graphics2d.beginTarget(output.target, camera)`, lit and post-processed like any render target. At the end of every frame the engine shows the target on the display, as large as it fits, with bars of the clear color around it. A frame in which the app draws nothing into the target shows what the target held, so a still picture costs one copy per frame.
+The function `display.open(id)` opens an output. The output has a render target of the size of its display in pixels, every pixel of the display, since the [pixel density cap](../graphics/rendering.md#pixel-density) of the app applies to its window alone and the app sizes what it draws into the target itself. The app draws into it with any canvas, such as `graphics2d.beginTarget(output.target, camera)`, lit and post-processed like any render target. At the end of every frame the engine shows the target on the display, as large as it fits, with bars of the clear color around it. A frame in which the app draws nothing into the target shows what the target held, so a still picture costs one copy per frame.
 
 ```lua
 local display = require('haylen.display')
