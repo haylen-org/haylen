@@ -26,6 +26,9 @@ Tunneling.wallX = 210
 Tunneling.cannonX = -300
 Tunneling.staticLane, Tunneling.movingLane, Tunneling.shelfY = -170, 10, 250
 Tunneling.ground = 350
+-- The plate of the shelf ends this far right of the middle of its half, short of the line between the halves.
+Tunneling.shelfLabel = 380
+Tunneling.shelfAnchor = {1, 0.5}
 Tunneling.names = {'The wall', 'The moving plate', 'The shelf'}
 -- The tower of the cannons, its posts this far to each side of the cannons, with a deck under each cannon.
 Tunneling.towerPosts = 30
@@ -210,7 +213,7 @@ function Tunneling:draw(area)
         for lane, spot in ipairs({{Tunneling.wallX - 10, Tunneling.staticLane - 100}, {Tunneling.wallX - 10, Tunneling.movingLane + 110}}) do
             self:label(string.format('%s: %d through, %d stopped', Tunneling.names[lane], shown.through[lane], shown.stopped[lane]), origin + spot[1], spot[2], {size = 17})
         end
-        self:label(string.format('%s\n%d through, %d stopped', Tunneling.names[3], shown.through[3], shown.stopped[3]), origin + 290, Tunneling.shelfY + 20, {size = 17})
+        self:label(string.format('%s\n%d through, %d stopped', Tunneling.names[3], shown.through[3], shown.stopped[3]), origin + Tunneling.shelfLabel, Tunneling.shelfY + 20, {size = 17, anchor = Tunneling.shelfAnchor})
     end
 end
 

@@ -23,6 +23,10 @@ world:createJoint('motor', leader, follower, {maxMotorForce = 3000})  -- And 'fi
 Joints.ground = 330
 Joints.beam = -360
 Joints.shelf = -10
+-- The names of the leader and the follower of the motor joint sit past the reach of their bodies from their centers, in world units, by a gap in pixels of the screen, so they clear the bodies at any zoom.
+Joints.leaderReach = 20
+Joints.followerReach = 34
+Joints.tagGap = 16
 Joints.columns = {-600, -200, 200, 600}
 Joints.liftTop, Joints.liftBottom = -270, -70
 -- The welds stiffen toward the wall, where they carry the weight of every plank beyond them.
@@ -297,6 +301,14 @@ function Joints:drawJoints()
     end
 end
 
+-- Names the leader of the motor joint under it and the follower over it. The follower keeps beside the leader, so the two names stay on opposite sides of the pair however the follower lags.
+function Joints:tagPair()
+    local leader, follower = self.leader, self.follower
+    local gap = Joints.tagGap * Look.pixel
+    self:tag('Leads on a path', leader.x, leader.y + Joints.leaderReach + gap, {size = 17})
+    self:tag('Follows', follower.x, follower.y - Joints.followerReach - gap, {size = 17})
+end
+
 function Joints:draw(area)
     Scenery.sky(self.camera, Joints.ground)
     Scenery.ground(Joints.ground)
@@ -309,8 +321,7 @@ function Joints:draw(area)
     for _, caption in ipairs(self.filterCaptions) do
         self:tag(caption.text, caption.x, Joints.ground - 150, {size = 17})
     end
-    self:tag('Leads on a path', self.leader.x, self.leader.y - 40, {size = 17})
-    self:tag('Follows', self.follower.x, self.follower.y - 46, {size = 17})
+    self:tagPair()
     self.grab:draw()
     if self.debug then
         self.world:debugDraw({layer = 20})
