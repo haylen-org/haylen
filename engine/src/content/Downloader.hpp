@@ -137,6 +137,9 @@ class Downloader final {
         std::vector<std::uint64_t> requests;
         bool transferring = false;
         bool verifying = false;
+
+        // Whether the download of the record went on from its staged first bytes, which a damaged device may have changed.
+        bool resumed = false;
     };
 
     struct Shard {
@@ -173,6 +176,8 @@ class Downloader final {
     void finishTransfer(const std::shared_ptr<Transfer>& transfer, std::optional<Error> failure);
     void verify(const Digest& shard, const Digest& storedId, std::vector<std::uint8_t> record);
     void stored(const Digest& storedId, std::optional<Error> failure);
+    void rejected(const Digest& storedId, const Error& error);
+    void discardPartial(const Digest& shard, std::uint64_t recordOffset);
     void fail(const Digest& storedId, const Error& error);
     void fail(std::uint64_t request, const Digest& storedId, const Error& error);
     void complete(std::uint64_t request, std::optional<Error> failure);

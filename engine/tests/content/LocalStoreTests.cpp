@@ -371,16 +371,43 @@ TEST_F(LocalStoreTest, KeepsTheStartOfARecordWhoseDownloadStopped) {
     const PartialRecord partial{.shardId = shard, .recordOffset = 160, .recordSize = 5000, .validator = "\"v1\"", .bytes = test::TestFiles::randomBytes(1000, 4)};
     store->writePartial(partial);
 
-    const std::optional<PartialRecord> read = store->readPartial(shard, 160);
-    ASSERT_TRUE(read);
-    EXPECT_EQ(read->bytes, partial.bytes);
-    EXPECT_EQ(read->validator, "\"v1\"");
-    EXPECT_FALSE(store->readPartial(shard, 161));
+    const std::vector<PartialRecord> listed = store->listPartials();
+    ASSERT_EQ(listed.size(), 1U);
+    EXPECT_EQ(listed.front().recordOffset, 160U);
+    EXPECT_EQ(listed.front().bytes, partial.bytes);
+    EXPECT_EQ(listed.front().validator, "\"v1\"");
 
-    std::filesystem::resize_file(folder.getPath() / "staging" / (shard.toHex() + "-160.hpart"), 30);
-    EXPECT_FALSE(store->readPartial(shard, 160));
     store->removePartial(shard, 160);
+    EXPECT_TRUE(store->listPartials().empty());
     EXPECT_FALSE(std::filesystem::exists(folder.getPath() / "staging" / (shard.toHex() + "-160.hpart")));
+}
+
+// A staged file that the device damaged, or that holds another record than its name says, goes when a downloader lists what it may resume, so its record downloads whole.
+TEST_F(LocalStoreTest, RemovesStagedStartsThatAreDamaged) {
+    const std::unique_ptr<LocalStore> store = open();
+    const Digest shard = Digest::of(test::TestFiles::bytes("shard"));
+    const std::filesystem::path staging = folder.getPath() / "staging";
+    store->writePartial({.shardId = shard, .recordOffset = 160, .recordSize = 5000, .validator = "\"v1\"", .bytes = test::TestFiles::randomBytes(1000, 4)});
+    store->writePartial({.shardId = shard, .recordOffset = 9000, .recordSize = 5000, .validator = "\"v1\"", .bytes = test::TestFiles::randomBytes(1000, 5)});
+    store->writePartial({.shardId = shard, .recordOffset = 20000, .recordSize = 5000, .validator = "\"v1\"", .bytes = test::TestFiles::randomBytes(1000, 6)});
+    std::filesystem::resize_file(staging / (shard.toHex() + "-160.hpart"), 30);
+    std::filesystem::rename(staging / (shard.toHex() + "-9000.hpart"), staging / (shard.toHex() + "-9001.hpart"));
+
+    const std::vector<PartialRecord> listed = store->listPartials();
+    ASSERT_EQ(listed.size(), 1U);
+    EXPECT_EQ(listed.front().recordOffset, 20000U);
+    EXPECT_FALSE(std::filesystem::exists(staging / (shard.toHex() + "-160.hpart")));
+    EXPECT_FALSE(std::filesystem::exists(staging / (shard.toHex() + "-9001.hpart")));
+    EXPECT_TRUE(std::filesystem::exists(staging / (shard.toHex() + "-20000.hpart")));
+}
+
+TEST(PartialRecordTest, RefusesAValidatorThatIsNoStrongEntityTag) {
+    PartialRecord partial{.shardId = Digest::of(test::TestFiles::bytes("shard")), .recordOffset = 160, .recordSize = 5000, .validator = "\"v1\"", .bytes = test::TestFiles::randomBytes(1000, 4)};
+    EXPECT_EQ(PartialRecord::parse(partial.write()).validator, "\"v1\"");
+    for (const std::string validator : {"v1", "W/\"v1\"", "\"v\r\nRange: bytes=0-\"", "\"v 1\"", "\"v\"1\""}) {
+        partial.validator = validator;
+        EXPECT_THROW((void)PartialRecord::parse(partial.write()), Error) << validator;
+    }
 }
 
 TEST(StoreFormatTest, ReadsWhatItWritesAndRefusesTornCopies) {

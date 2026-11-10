@@ -20,6 +20,7 @@
 #include "content/PublicationLayout.hpp"
 #include "content/ReleasePackage.hpp"
 #include "content/Updater.hpp"
+#include "content/format/PartialRecord.hpp"
 #include "content/format/ShardHeader.hpp"
 #include "haylen/content/Error.hpp"
 #include "haylen/core/JobSystem.hpp"
@@ -129,6 +130,41 @@ class UpdaterTest : public ::testing::Test {
         client.updater->install(offer, {}, [&result](std::optional<Error> error) { result.emplace(std::move(error)); });
         EXPECT_TRUE(runtime.pumpUntil([&result] { return result.has_value(); }, std::chrono::seconds(20)));
         return std::move(*result);
+    }
+
+    // Stops the install of the update in the middle of one of its records, whose first bytes stay in the staging folder of the store, and returns the file that holds them.
+    std::filesystem::path stageStoppedRecord() {
+        server.dropAfter(1500 * 1024, 1);
+        const std::unique_ptr<Client> client = connect();
+        EXPECT_TRUE(install(*client, requireOffer(*client)));
+        const std::filesystem::path staging = store.getPath() / "staging";
+        std::filesystem::path staged;
+        // clang-format off
+        EXPECT_TRUE(runtime.pumpUntil([&staging, &staged] {
+            if (!std::filesystem::exists(staging) || std::filesystem::is_empty(staging)) {
+                return false;
+            }
+            staged = std::filesystem::directory_iterator(staging)->path();
+            return readStaged(staged).has_value();
+        }));
+        // clang-format on
+        return staged;
+    }
+
+    [[nodiscard]] static std::optional<PartialRecord> readStaged(const std::filesystem::path& file) {
+        std::ifstream stream(file, std::ios::binary);
+        const std::vector<std::uint8_t> bytes{std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
+        try {
+            return PartialRecord::parse(bytes);
+        } catch (const Error&) {
+            return std::nullopt;
+        }
+    }
+
+    static void writeStaged(const std::filesystem::path& file, const PartialRecord& partial) {
+        const std::vector<std::uint8_t> bytes = partial.write();
+        std::ofstream stream(file, std::ios::binary | std::ios::trunc);
+        stream.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
     }
 
     [[nodiscard]] static std::string readText(const io::Package& package, std::string_view path) {
@@ -452,6 +488,51 @@ TEST_F(UpdaterTest, ResumesAnUpdateThatStoppedAndCommitsOnlyOnceItIsWhole) {
     EXPECT_GE(client->downloader->getStatistics().resumedRecords, 1U);
     EXPECT_LT(server.getSentBytes(), whole);
 
+    const std::unique_ptr<Client> restarted = connect();
+    EXPECT_EQ(restarted->package->read("content/maps/world.bin"), update.at("content/maps/world.bin"));
+}
+
+// Staged bytes that the device damaged fail the checks of their record once it arrives, so the record downloads once more, whole, and the install that resumes it succeeds.
+TEST_F(UpdaterTest, DownloadsARecordWholeWhenItsStagedBytesAreDamaged) {
+    Files update = makeUpdate(2);
+    update["content/maps/world.bin"] = test::TestFiles::randomBytes(6 * kMegabyte, 21);
+    publish(update);
+    const std::filesystem::path staged = stageStoppedRecord();
+    std::optional<PartialRecord> partial = readStaged(staged);
+    ASSERT_TRUE(partial);
+    partial->bytes[partial->bytes.size() / 2] ^= 1U;
+    writeStaged(staged, *partial);
+
+    {
+        const std::unique_ptr<Client> client = connect();
+        const std::optional<Error> error = install(*client, requireOffer(*client));
+        EXPECT_FALSE(error) << error->what();
+        EXPECT_GE(client->downloader->getStatistics().resumedRecords, 1U);
+    }
+    const std::unique_ptr<Client> restarted = connect();
+    EXPECT_EQ(restarted->package->read("content/maps/world.bin"), update.at("content/maps/world.bin"));
+}
+
+// A staged start that is longer than the record that the index of its shard describes is damaged, so it goes before any request and the record downloads whole.
+TEST_F(UpdaterTest, DiscardsAStagedStartThatDoesNotMatchItsRecord) {
+    Files update = makeUpdate(2);
+    update["content/maps/world.bin"] = test::TestFiles::randomBytes(6 * kMegabyte, 21);
+    publish(update);
+    const std::filesystem::path staged = stageStoppedRecord();
+    std::optional<PartialRecord> partial = readStaged(staged);
+    ASSERT_TRUE(partial);
+    const std::vector<std::uint8_t> beyond = test::TestFiles::randomBytes(static_cast<std::size_t>(partial->recordSize) - partial->bytes.size() + 1000, 22);
+    partial->bytes.insert(partial->bytes.end(), beyond.begin(), beyond.end());
+    partial->recordSize += 2000;
+    writeStaged(staged, *partial);
+
+    {
+        const std::unique_ptr<Client> client = connect();
+        const std::optional<Error> error = install(*client, requireOffer(*client));
+        EXPECT_FALSE(error) << error->what();
+        EXPECT_EQ(client->downloader->getStatistics().resumedRecords, 0U);
+        EXPECT_TRUE(runtime.pumpUntil([&staged] { return !std::filesystem::exists(staged); }));
+    }
     const std::unique_ptr<Client> restarted = connect();
     EXPECT_EQ(restarted->package->read("content/maps/world.bin"), update.at("content/maps/world.bin"));
 }

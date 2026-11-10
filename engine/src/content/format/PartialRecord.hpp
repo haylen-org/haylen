@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "content/crypto/Digest.hpp"
@@ -25,11 +26,14 @@ class PartialRecord final {
 
     [[nodiscard]] std::vector<std::uint8_t> write() const;
 
-    // Reads a partial record, and throws `CacheCorrupt` for one that is damaged or holds no more bytes than a record may.
+    // Reads a partial record, and throws `CacheCorrupt` for one that is damaged, holds no more bytes than a record may or names a validator that is no strong entity tag.
     [[nodiscard]] static PartialRecord parse(std::span<const std::uint8_t> file);
 
   private:
     static constexpr std::array<std::uint8_t, 8> kMagic = {'H', 'P', 'R', 'T', 0x0D, 0x0A, 0x1A, 0x0A};
+
+    // Whether the validator is a quoted strong entity tag of HTTP, the only kind a download resumes with, so a damaged one never reaches the header of a request.
+    [[nodiscard]] static bool isStrongEntityTag(std::string_view validator) noexcept;
 };
 
 } // namespace haylen::content

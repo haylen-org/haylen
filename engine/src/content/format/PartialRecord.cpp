@@ -29,11 +29,27 @@ PartialRecord PartialRecord::parse(std::span<const std::uint8_t> file) {
     PartialRecord partial{.shardId = reader.readDigest(), .recordOffset = reader.read<std::uint64_t>(), .recordSize = reader.read<std::uint64_t>()};
     partial.validator = std::string(reader.readString(kMaximumValidatorLength));
     const std::span<const std::uint8_t> held = reader.readBytes(reader.getRemaining());
-    if (partial.recordSize <= ChunkRecord::kHeaderSize || partial.recordSize > ChunkRecord::kHeaderSize + ChunkRecord::kMaximumPlainSize || held.empty() || held.size() >= partial.recordSize || partial.validator.empty()) {
+    if (partial.recordSize <= ChunkRecord::kHeaderSize || partial.recordSize > ChunkRecord::kHeaderSize + ChunkRecord::kMaximumPlainSize || held.empty() || held.size() >= partial.recordSize) {
         reader.fail("has sizes that are not those of a record that stopped part way");
+    }
+    if (!isStrongEntityTag(partial.validator)) {
+        reader.fail("names a validator that is no strong entity tag");
     }
     partial.bytes.assign(held.begin(), held.end());
     return partial;
+}
+
+bool PartialRecord::isStrongEntityTag(std::string_view validator) noexcept {
+    if (validator.size() < 2 || validator.front() != '"' || validator.back() != '"') {
+        return false;
+    }
+    const std::string_view tag = validator.substr(1, validator.size() - 2);
+    // clang-format off
+    return std::ranges::all_of(tag, [](char character) {
+        const auto code = static_cast<unsigned char>(character);
+        return code == 0x21 || (code >= 0x23 && code <= 0x7E) || code >= 0x80;
+    });
+    // clang-format on
 }
 
 } // namespace haylen::content

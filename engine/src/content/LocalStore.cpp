@@ -278,34 +278,30 @@ void LocalStore::writeShardIndex(const Digest& shard, std::span<const std::uint8
     files->write(std::format("{}/{}.hidx", kIndexFolder, shard.toHex()), bytes);
 }
 
-std::optional<PartialRecord> LocalStore::readPartial(const Digest& shard, std::uint64_t recordOffset) const {
-    const std::optional<std::vector<std::uint8_t>> bytes = files->read(getPartialName(shard, recordOffset));
-    if (!bytes) {
-        return std::nullopt;
-    }
-    try {
-        PartialRecord partial = PartialRecord::parse(*bytes);
-        if (partial.shardId == shard && partial.recordOffset == recordOffset) {
-            return partial;
-        }
-    } catch (const Error&) {}
-    return std::nullopt;
-}
-
 void LocalStore::writePartial(const PartialRecord& partial) {
     std::scoped_lock write(writeMutex);
     files->write(getPartialName(partial.shardId, partial.recordOffset), partial.write());
 }
 
-std::vector<PartialRecord> LocalStore::listPartials() const {
+std::vector<PartialRecord> LocalStore::listPartials() {
+    std::scoped_lock write(writeMutex);
     std::vector<PartialRecord> partials;
     for (const std::string& name : files->list(std::string(kStagingFolder))) {
-        const std::optional<std::vector<std::uint8_t>> bytes = files->read(std::string(kStagingFolder) + "/" + name);
+        const std::string path = std::string(kStagingFolder) + "/" + name;
+        const std::optional<std::vector<std::uint8_t>> bytes = files->read(path);
+        if (!bytes) {
+            continue;
+        }
+
+        std::optional<PartialRecord> partial;
         try {
-            if (bytes) {
-                partials.push_back(PartialRecord::parse(*bytes));
-            }
+            partial = PartialRecord::parse(*bytes);
         } catch (const Error&) {}
+        if (!partial || getPartialName(partial->shardId, partial->recordOffset) != path) {
+            files->remove(path);
+            continue;
+        }
+        partials.push_back(std::move(*partial));
     }
     return partials;
 }

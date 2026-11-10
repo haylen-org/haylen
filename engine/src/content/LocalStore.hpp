@@ -96,12 +96,10 @@ class LocalStore final {
     [[nodiscard]] std::optional<std::vector<std::uint8_t>> readShardIndex(const Digest& shard) const;
     void writeShardIndex(const Digest& shard, std::span<const std::uint8_t> bytes);
 
-    // Reads the staged start of a record, or nothing when there is none or it is damaged, which the next download replaces.
-    [[nodiscard]] std::optional<PartialRecord> readPartial(const Digest& shard, std::uint64_t recordOffset) const;
     void writePartial(const PartialRecord& partial);
 
-    // Reads every staged start of a record that is whole, when a downloader starts.
-    [[nodiscard]] std::vector<PartialRecord> listPartials() const;
+    // Reads every staged start of a record that is whole, when a downloader starts, and removes the staged files that are damaged or hold another record than their name says, so their records download whole.
+    [[nodiscard]] std::vector<PartialRecord> listPartials();
     void removePartial(const Digest& shard, std::uint64_t recordOffset);
 
     // Asks what the current state retains and removes the records outside it, and the manifests, shard indexes and staged records that are no longer kept, as one step that no commit comes between, and moves the live records of segments that are mostly dead into new ones, without ever touching what the live set uses. It moves records only when the device has room for them and its margin, and otherwise removes only the segments that hold no live record. The new journal becomes active with a new state, so a collection that a crash interrupts leaves the store as it was, and one that `stop` ends before it switches throws `UpdateInterrupted` and leaves the store as it was too.

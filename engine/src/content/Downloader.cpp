@@ -283,6 +283,14 @@ void Downloader::plan(Shard& shard) {
     }
     std::ranges::sort(records, {}, [](const auto& record) { return record.second.recordOffset; });
 
+    // Staged bytes that are not the start of the record that the index describes are damaged, so the record downloads whole.
+    for (const auto& [storedId, entry] : records) {
+        const auto partial = partials.find({shard.reference.shardId, entry.recordOffset});
+        if (partial != partials.end() && partial->second.recordSize != ChunkRecord::kHeaderSize + entry.encodedSize) {
+            discardPartial(shard.reference.shardId, entry.recordOffset);
+        }
+    }
+
     // A record with staged bytes starts a range of its own, so its download goes on from where it stopped.
     std::size_t begin = 0;
     while (begin < records.size()) {
@@ -374,6 +382,9 @@ void Downloader::start(std::shared_ptr<Transfer> transfer) {
             transfer->validator = started.validator;
             if (started.resumed) {
                 ++statistics.resumedRecords;
+                if (const auto first = wanted.find(transfer->records.front().first); first != wanted.end()) {
+                    first->second.resumed = true;
+                }
                 return;
             }
             transfer->buffer.clear();
@@ -479,9 +490,7 @@ void Downloader::verify(const Digest& shardId, const Digest& storedId, std::vect
     }
     const Shard& shard = shards.at(shardId);
     const ShardIndex::Entry entry = *shard.index->getIndex().find(storedId);
-    if (partials.erase({shardId, entry.recordOffset}) > 0) {
-        jobs.postIo([localStore = store, shardId, offset = entry.recordOffset] { localStore->removePartial(shardId, offset); });
-    }
+    discardPartial(shardId, entry.recordOffset);
 
     // The record is checked against the signed catalog and the index of its shard and opened on the task pool, and only then written to the store on the I/O pool.
     const std::uint64_t size = record.size();
@@ -506,7 +515,7 @@ void Downloader::verify(const Digest& shardId, const Digest& storedId, std::vect
             pool.postToFrame([this, owner, storedId = chunk.storedId, size, failure] {
                 if (!owner.expired()) {
                     verifyingBytes -= size;
-                    stored(storedId, failure);
+                    rejected(storedId, *failure);
                 }
             });
             return;
@@ -547,6 +556,37 @@ void Downloader::stored(const Digest& storedId, std::optional<Error> failure) {
         if (request.waiting.empty()) {
             complete(id, request.failure);
         }
+    }
+}
+
+// A record that went on from its staged bytes may fail its checks because the device damaged those bytes, so it downloads once more, whole, before its requests fail.
+void Downloader::rejected(const Digest& storedId, const Error& error) {
+    const auto found = wanted.find(storedId);
+    if (found == wanted.end()) {
+        return;
+    }
+    Wanted& record = found->second;
+    if (!record.resumed || record.requests.empty() || !shards.contains(record.shard)) {
+        fail(storedId, error);
+        return;
+    }
+
+    record.resumed = false;
+    record.verifying = false;
+    for (const std::uint64_t id : record.requests) {
+        Request& request = requests.at(id);
+        request.progress.totalBytes += ChunkRecord::kHeaderSize + record.chunk.encodedSize;
+        request.changed = true;
+    }
+    Shard& shard = shards.at(record.shard);
+    shard.queued.push_back(storedId);
+    plan(shard);
+    pump();
+}
+
+void Downloader::discardPartial(const Digest& shard, std::uint64_t recordOffset) {
+    if (partials.erase({shard, recordOffset}) > 0) {
+        jobs.postIo([localStore = store, shard, recordOffset] { localStore->removePartial(shard, recordOffset); });
     }
 }
 
