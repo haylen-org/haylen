@@ -40,6 +40,7 @@ std::vector<Occluder> Occluder::fromBody(const physics2d::World& world, const ph
             for (int index = 0; index < polygon.count; ++index) {
                 occluder.points.push_back(pixels(polygon.vertices[index]));
             }
+
             break;
         }
         case b2_circleShape: {
@@ -47,6 +48,7 @@ std::vector<Occluder> Occluder::fromBody(const physics2d::World& world, const ph
             for (int index = 0; index < kCurveSegments; ++index) {
                 occluder.points.push_back(pixels(circle.center) + math::Vec2::fromAngle(math::Math::kTau * static_cast<float>(index) / static_cast<float>(kCurveSegments), circle.radius * scale));
             }
+
             break;
         }
         case b2_capsuleShape: {
@@ -59,9 +61,11 @@ std::vector<Occluder> Occluder::fromBody(const physics2d::World& world, const ph
             for (int index = 0; index <= half; ++index) {
                 occluder.points.push_back(second + math::Vec2::fromAngle(facing - math::Math::kHalfPi + math::Math::kPi * static_cast<float>(index) / static_cast<float>(half), capsule.radius * scale));
             }
+
             for (int index = 0; index <= half; ++index) {
                 occluder.points.push_back(first + math::Vec2::fromAngle(facing + math::Math::kHalfPi + math::Math::kPi * static_cast<float>(index) / static_cast<float>(half), capsule.radius * scale));
             }
+
             break;
         }
         case b2_segmentShape: {
@@ -79,10 +83,12 @@ std::vector<Occluder> Occluder::fromBody(const physics2d::World& world, const ph
                 occluders.back().points.push_back(to);
                 continue;
             }
+
             if (!occluders.empty() && !occluders.back().closed && occluders.back().points.front() == to) {
                 occluders.back().points.insert(occluders.back().points.begin(), from);
                 continue;
             }
+
             occluder.points = {from, to};
             occluder.closed = false;
             break;
@@ -100,6 +106,7 @@ std::vector<Occluder> Occluder::fromBody(const physics2d::World& world, const ph
             occluder.closed = true;
         }
     }
+
     return occluders;
 }
 
@@ -131,6 +138,7 @@ std::vector<math::Vec2> Occluder::getWorldPoints() const {
     for (const math::Vec2 point : points) {
         placed.push_back(toWorld(point));
     }
+
     return placed;
 }
 

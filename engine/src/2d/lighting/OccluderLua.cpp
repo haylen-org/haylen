@@ -20,6 +20,7 @@ void OccluderLua::readPoints(lua_State* L, int index, std::vector<math::Vec2>& p
     lua_rawgeti(L, table, 1);
     const bool flat = lua_type(L, -1) == LUA_TNUMBER;
     lua_pop(L, 1);
+
     if (!flat) {
         lua::Stack::readInto(L, table, points);
         return;
@@ -36,6 +37,7 @@ void OccluderLua::readPoints(lua_State* L, int index, std::vector<math::Vec2>& p
         points[point] = {lua::Converter<float>::fromNumber(L, lua_tonumber(L, -2)), lua::Converter<float>::fromNumber(L, lua_tonumber(L, -1))};
         lua_pop(L, 2);
     }
+
     if (!numbers) {
         throw std::invalid_argument("A flat list of points needs two numbers per point.");
     }
@@ -50,6 +52,7 @@ void OccluderLua::read(lua_State* L, int index, Occluder& occluder) {
     // The table starts from the defaults, while the points keep the storage they had.
     occluder = Occluder{.points = std::move(occluder.points)};
     occluder.points.clear();
+
     if (lua_isnoneornil(L, index)) {
         return;
     }
@@ -61,6 +64,7 @@ void OccluderLua::read(lua_State* L, int index, Occluder& occluder) {
     if (!lua_isnil(L, -1)) {
         readPoints(L, -1, occluder.points);
     }
+
     lua_pop(L, 1);
     lua::Table::readField(L, table, "closed", occluder.closed);
     lua::Table::readField(L, table, "cull", occluder.cull);

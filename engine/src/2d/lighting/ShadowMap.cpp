@@ -29,6 +29,7 @@ ShadowMap::Axis ShadowMap::cast(const Light& light, std::span<const Segment> seg
     } else {
         castRadial(light, segments, map);
     }
+
     reduce(row);
     return axis;
 }
@@ -42,6 +43,7 @@ void ShadowMap::reduce(std::span<float> row) noexcept {
         for (std::size_t texel = 0; texel < width / 2; ++texel) {
             row[to + texel] = std::min(row[from + texel * 2], row[from + texel * 2 + 1]);
         }
+
         from = to;
         width /= 2;
     }
@@ -74,12 +76,14 @@ bool ShadowMap::blocks(const Light& light, std::span<const Segment> segments, ma
         if (!casts(light, segment) || std::fabs(denominator) < 1.0e-6F || (!directional && isEdgeOn(segment.from - origin, segment.to - origin))) {
             continue;
         }
+
         const float along = math::Vec2::cross(segment.from - origin, edge) / denominator;
         const float across = math::Vec2::cross(segment.from - origin, unit) / denominator;
         if (across >= 0.0F && across <= 1.0F && along >= nearest && along <= farthest) {
             return true;
         }
     }
+
     return false;
 }
 
@@ -87,6 +91,7 @@ bool ShadowMap::casts(const Light& light, const Segment& segment) noexcept {
     if ((segment.mask & light.shadowMask) == 0) {
         return false;
     }
+
     if (segment.cull == Occluder::Cull::Disabled) {
         return true;
     }
@@ -129,10 +134,12 @@ void ShadowMap::castRadial(const Light& light, std::span<const Segment> segments
             if (std::fabs(denominator) < 1.0e-6F) {
                 continue;
             }
+
             const float distance = math::Vec2::cross(from, edge) / denominator;
             if (distance < 0.0F) {
                 continue;
             }
+
             float& texel = row[static_cast<std::size_t>(((index % width) + width) % width)];
             texel = std::min(texel, distance / range);
         }
@@ -154,6 +161,7 @@ ShadowMap::Axis ShadowMap::castParallel(const Light& light, std::span<const Segm
         alongMin = std::min(alongMin, math::Vec2::dot(corner, direction));
         alongMax = std::max(alongMax, math::Vec2::dot(corner, direction));
     }
+
     const Axis axis{.acrossStart = acrossMin, .acrossSpan = std::max(acrossMax - acrossMin, 1.0F), .alongStart = alongMin, .alongSpan = std::max(alongMax - alongMin, 1.0F)};
 
     const auto width = static_cast<int>(row.size());
@@ -180,6 +188,7 @@ ShadowMap::Axis ShadowMap::castParallel(const Light& light, std::span<const Segm
             texel = std::min(texel, (along - axis.alongStart) / axis.alongSpan);
         }
     }
+
     return axis;
 }
 

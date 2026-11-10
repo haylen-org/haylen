@@ -24,6 +24,7 @@ int Lighting2DLua::flicker(lua_State* L) {
         lua::Table::readField(L, 2, "amount", amount);
         lua::Table::readField(L, 2, "seed", seed);
     }
+
     lua::Stack::push(L, LightFlicker::intensity(time, speed, amount, static_cast<std::uint64_t>(seed)));
     return 1;
 }

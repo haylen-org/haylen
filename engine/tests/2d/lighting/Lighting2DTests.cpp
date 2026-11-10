@@ -29,6 +29,7 @@ struct CastRow {
         for (const lighting2d::Occluder& occluder : occluders) {
             lighting2d::ShadowMap::appendSegments(occluder, segments);
         }
+
         axis = lighting2d::ShadowMap::cast(light, segments, bounds, row);
     }
 
@@ -72,6 +73,7 @@ TEST(LightFlickerTest, WaversBelowOneDeterministically) {
         lowest = std::min(lowest, value);
         highest = std::max(highest, value);
     }
+
     EXPECT_GE(lowest, 0.8F);
     EXPECT_LE(highest, 1.0F);
     EXPECT_GT(highest - lowest, 0.05F);
@@ -81,12 +83,15 @@ TEST(LightFlickerTest, WaversBelowOneDeterministically) {
     // Many lights with their own seeds, more than a thread keeps noise for, flicker the same way whether their noise was kept or built again.
     std::vector<float> forward(20);
     std::vector<float> backward(20);
+
     for (std::size_t seed = 0; seed < forward.size(); ++seed) {
         forward[seed] = lighting2d::LightFlicker::intensity(0.7F, 8.0F, 0.5F, seed);
     }
+
     for (std::size_t seed = backward.size(); seed > 0; --seed) {
         backward[seed - 1] = lighting2d::LightFlicker::intensity(0.7F, 8.0F, 0.5F, seed - 1);
     }
+
     EXPECT_EQ(forward, backward);
     EXPECT_NE(forward[1], forward[2]);
 }
@@ -207,6 +212,7 @@ TEST_F(ShadowMapTest, ShadowsWhatLiesBehindOccludersOfPointLights) {
         EXPECT_TRUE(cast.shadows(light, point));
         EXPECT_TRUE(light.isShadowedAt(point, occluders));
     }
+
     for (const math::Vec2 point : {math::Vec2{200.0F, 100.0F}, math::Vec2{400.0F, 300.0F}, math::Vec2{100.0F, 300.0F}}) {
         EXPECT_FALSE(cast.shadows(light, point));
         EXPECT_FALSE(light.isShadowedAt(point, occluders));
@@ -234,9 +240,11 @@ TEST_F(ShadowMapTest, KeepsTheNearestOccluderInEverySmallerCopy) {
         for (std::size_t texel = 0; texel < width / 2; ++texel) {
             ASSERT_EQ(row[from + width + texel], std::min(row[from + texel * 2], row[from + texel * 2 + 1])) << level;
         }
+
         from += width;
         width /= 2;
     }
+
     EXPECT_LE(from + width, row.size());
 
     // The occluder a texel thin above the light still shows in the smallest copy, whose texel above the light is as near as the occluder.
@@ -252,6 +260,7 @@ TEST_F(ShadowMapTest, LightsAroundTheEdgesThatPassThroughTheLight) {
         EXPECT_FALSE(cornerCast.shadows(light, point));
         EXPECT_FALSE(light.isShadowedAt(point, corner));
     }
+
     EXPECT_TRUE(light.isShadowedAt({60.0F, 160.0F}, corner));
 
     const std::vector<lighting2d::Occluder> edge{box({100.0F, 120.0F})};
@@ -260,6 +269,7 @@ TEST_F(ShadowMapTest, LightsAroundTheEdgesThatPassThroughTheLight) {
         EXPECT_FALSE(edgeCast.shadows(light, point));
         EXPECT_FALSE(light.isShadowedAt(point, edge));
     }
+
     EXPECT_TRUE(edgeCast.shadows(light, {100.0F, 200.0F}));
     EXPECT_TRUE(light.isShadowedAt({100.0F, 200.0F}, edge));
 }
@@ -331,11 +341,13 @@ TEST(OccluderTest, PlacesPointsAndBuildsFromBodiesAndMaps) {
     const std::vector<lighting2d::Occluder> shapes = lighting2d::Occluder::fromBody(world, body);
     ASSERT_EQ(shapes.size(), 4U);
     EXPECT_EQ(std::count_if(shapes.begin(), shapes.end(), [](const lighting2d::Occluder& occluder) { return occluder.closed; }), 3);
+
     for (const lighting2d::Occluder& occluder : shapes) {
         EXPECT_NEAR(occluder.position.x, 50.0F, 1e-3F);
         EXPECT_NEAR(occluder.rotation, 0.5F, 1e-3F);
         EXPECT_NO_THROW(occluder.validate());
     }
+
     const std::vector<lighting2d::Occluder> outline = lighting2d::Occluder::fromBody(world, ground);
     ASSERT_EQ(outline.size(), 1U);
     EXPECT_FALSE(outline[0].closed);

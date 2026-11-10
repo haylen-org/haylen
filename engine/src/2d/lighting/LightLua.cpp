@@ -16,6 +16,7 @@ Light LightLua::read(lua_State* L, int index) {
     if (const Light* light = lua::Userdata::test<Light>(L, index)) {
         return *light;
     }
+
     Light light;
     if (lua_isnoneornil(L, index)) {
         return light;
@@ -75,6 +76,7 @@ int LightLua::illuminate(lua_State* L) {
         lua::Table::readField(L, 5, "lightMask", lightMask);
         lua::Table::readField(L, 5, "layer", layer);
     }
+
     lua::Stack::push(L, Light::illuminate(ambient, lights, {lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4)}, lightMask, layer));
     return 1;
 }
@@ -90,6 +92,7 @@ int LightLua::getTexture(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, light.texture);
     return 1;
 }
@@ -131,6 +134,7 @@ int LightLua::shadowedAt(lua_State* L) {
         OccluderLua::read(L, -1, occluders[index]);
         lua_pop(L, 1);
     }
+
     lua::Stack::push(L, light.isShadowedAt({lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)}, occluders));
     return 1;
 }

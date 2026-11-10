@@ -53,6 +53,7 @@ math::Color Light::illuminate(math::Color ambient, std::span<const Light> lights
             value = light.apply(value, point);
         }
     }
+
     return value;
 }
 
@@ -60,21 +61,27 @@ void Light::validate() const {
     if (type != Type::Directional && !(radius > 0.0F && std::isfinite(radius))) {
         throw std::invalid_argument("A light radius must be positive.");
     }
+
     if (!(intensity >= 0.0F && std::isfinite(intensity))) {
         throw std::invalid_argument("A light intensity must be zero or positive.");
     }
+
     if (!(scale.x > 0.0F && scale.y > 0.0F)) {
         throw std::invalid_argument("A light scale must be positive.");
     }
+
     if (type == Type::Spot && !(innerAngle >= 0.0F && innerAngle <= outerAngle && outerAngle > 0.0F && outerAngle <= math::Math::kTau)) {
         throw std::invalid_argument("A spot light needs an outer angle up to a full turn and an inner angle from 0 to the outer angle.");
     }
+
     if (!(height >= 0.0F)) {
         throw std::invalid_argument("A light height must be zero or positive.");
     }
+
     if (layerMin > layerMax) {
         throw std::invalid_argument("A light layer range needs \"layerMin\" at most \"layerMax\".");
     }
+
     if (!(shadowSmoothness >= 0.0F)) {
         throw std::invalid_argument("A light shadow smoothness must be zero or positive.");
     }
@@ -99,6 +106,7 @@ float Light::getStrengthAt(math::Vec2 point) const noexcept {
         const float outer = std::cos(outerAngle * 0.5F);
         strength *= math::Math::smoothstep(outer, std::max(std::cos(innerAngle * 0.5F), outer + kConeEdge), along);
     }
+
     return strength;
 }
 
@@ -127,6 +135,7 @@ bool Light::isShadowedAt(math::Vec2 point, std::span<const Occluder> occluders) 
     for (const Occluder& occluder : occluders) {
         occluder.validate();
     }
+
     if (!shadows) {
         return false;
     }
@@ -135,6 +144,7 @@ bool Light::isShadowedAt(math::Vec2 point, std::span<const Occluder> occluders) 
     for (const Occluder& occluder : occluders) {
         ShadowMap::appendSegments(occluder, segments);
     }
+
     return ShadowMap::blocks(*this, segments, point);
 }
 
