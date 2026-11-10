@@ -148,6 +148,10 @@ class NullDevice final : public Device {
         return programs.at(program.id);
     }
 
+    [[nodiscard]] const SamplerDesc& getSamplerDesc(Sampler sampler) const {
+        return samplers.at(sampler.id);
+    }
+
     // Loses the device, as a reset of the GPU or a driver that fails does, so `isLost` answers `true` from then on.
     void lose() noexcept {
         lost = true;

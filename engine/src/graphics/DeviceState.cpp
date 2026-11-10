@@ -32,7 +32,9 @@ gpu::Device::Sampler DeviceState::getSampler(Texture::Options options) {
         return found->second;
     }
     const gpu::Device::Filter filter = options.filter == Texture::Filter::Nearest ? gpu::Device::Filter::Nearest : gpu::Device::Filter::Linear;
-    const gpu::Device::Sampler sampler = gpu->makeSampler({.minification = filter, .magnification = filter, .mipmap = options.mipmaps.value_or(false) ? filter : gpu::Device::Filter::Nearest, .wrapU = toWrap(options.wrap), .wrapV = toWrap(options.wrap)});
+    const bool mipmaps = options.mipmaps.value_or(false);
+    const int anisotropy = mipmaps && filter == gpu::Device::Filter::Linear ? kMaxAnisotropy : 1;
+    const gpu::Device::Sampler sampler = gpu->makeSampler({.minification = filter, .magnification = filter, .mipmap = mipmaps ? filter : gpu::Device::Filter::Nearest, .wrapU = toWrap(options.wrap), .wrapV = toWrap(options.wrap), .maxAnisotropy = anisotropy});
     samplers.emplace(key, sampler);
     return sampler;
 }

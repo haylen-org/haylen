@@ -77,6 +77,9 @@ struct DeviceState {
     void stagePixels(const std::shared_ptr<TextureResource>& resource, std::span<const std::uint8_t> pixels);
 
   private:
+    // The samples a linear texture with mipmaps takes along the longer side of the footprint of a pixel, so a texture drawn much smaller along one side than the other, such as the middle of a nine-slice squeezed into a narrow button, keeps the detail of its other side.
+    static constexpr int kMaxAnisotropy = 16;
+
     [[nodiscard]] static std::uint8_t samplerKey(Texture::Options options) noexcept;
     [[nodiscard]] static gpu::Device::Wrap toWrap(Texture::Wrap wrap) noexcept;
 };

@@ -354,6 +354,21 @@ TEST(DeviceTest, CreatesReplacesAndReleasesResources) {
     device.collectGarbage();
 }
 
+// A linear texture with mipmaps keeps the detail of its longer side when it draws much smaller along the other, such as the middle of a nine-slice squeezed into a narrow button, which only anisotropic filtering does, while pixel art and textures without mipmaps take one sample.
+TEST(DeviceTest, FiltersLinearTexturesWithMipmapsAnisotropically) {
+    test::EngineFixture fixture;
+    graphics::Device& device = fixture.engine().getGraphics();
+    const gpu::NullDevice& gpu = fixture.host().getGpu();
+    const graphics::Image image(8, 8, math::Color::white());
+
+    const graphics::Texture painted = device.createTexture(image, {.filter = graphics::Texture::Filter::Linear});
+    const graphics::Texture flat = device.createTexture(image, {.filter = graphics::Texture::Filter::Linear, .mipmaps = false});
+    const graphics::Texture pixels = device.createTexture(image, {.filter = graphics::Texture::Filter::Nearest});
+    EXPECT_EQ(gpu.getSamplerDesc(painted.getResource()->sampler).maxAnisotropy, 16);
+    EXPECT_EQ(gpu.getSamplerDesc(flat.getResource()->sampler).maxAnisotropy, 1);
+    EXPECT_EQ(gpu.getSamplerDesc(pixels.getResource()->sampler).maxAnisotropy, 1);
+}
+
 // Dynamic textures change in place and reach the GPU once per frame, with the last pixels they received however many updates the frame made.
 TEST(DeviceTest, UploadsEachChangedDynamicTextureOncePerFrame) {
     test::EngineFixture fixture;
