@@ -142,8 +142,13 @@ function Background:update(dt)
         self.played = self.played + cursor - self.cursor
     end
     self.cursor = cursor
+    local name = sounds.tracks[self.index].text:lower()
+    if AudioTest.locked() then
+        self:status(string.format('The %s waits at %s, since the browser plays no sound until the first click, tap or key on the page.', name, AudioTest.clock(cursor)))
+        return
+    end
     local state = audio.paused(self.voice) and 'is paused' or 'plays'
-    self:status(string.format('The %s %s at %s of %s in the app state "%s", and the sound %s in the background.', sounds.tracks[self.index].text:lower(), state, AudioTest.clock(cursor), AudioTest.clock(Background.length), haylen.appState(), audio.background() and 'plays on' or 'stops'))
+    self:status(string.format('The %s %s at %s of %s in the app state "%s", and the sound %s in the background.', name, state, AudioTest.clock(cursor), AudioTest.clock(Background.length), haylen.appState(), audio.background() and 'plays on' or 'stops'))
 end
 
 -- The card of what plays beside the log of the times the app was away.
@@ -159,7 +164,8 @@ function Background:draw(area)
     local cursor = audio.cursor(self.voice)
     local y = top + size + 14
     Test.caption(sounds.tracks[self.index].text, left, y, {size = 28, color = Test.ink, maxWidth = size, layer = 1})
-    Test.caption(string.format('Track %d of %d, %s', self.index, #sounds.tracks, playing and 'playing' or 'paused'), left, y + 38, {size = 20, maxWidth = size, wrap = false, minScale = 0.8, layer = 1})
+    local state = not playing and 'paused' or AudioTest.locked() and 'waiting for the browser' or 'playing'
+    Test.caption(string.format('Track %d of %d, %s', self.index, #sounds.tracks, state), left, y + 38, {size = 20, maxWidth = size, wrap = false, minScale = 0.8, layer = 1})
     AudioTest.bar(left, y + 74, size, 10, cursor / Background.length, playing and Test.accent or Test.muted)
 
     local logLeft = margin * 2 + cardWidth
