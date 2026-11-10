@@ -42,11 +42,13 @@ int GraphicsLua::newTexture(lua_State* L) {
         pushImageTexture(L);
         return 1;
     }
+
     if (const Image* image = lua::Userdata::test<Image>(L, 1)) {
         const Texture::Options options = lua::TypeConverter::readTextureOptions(L, 2);
         lua::Stack::push(L, lua::Runtime::getEngine(L).getGraphics().createTexture(*image, options));
         return 1;
     }
+
     const int width = lua::Stack::read<int>(L, 1);
     const int height = lua::Stack::read<int>(L, 2);
     math::Color fill = math::Color::white();
@@ -68,6 +70,7 @@ int GraphicsLua::newTexture(lua_State* L) {
         lua::Stack::push(L, dynamic ? device.createDynamicTexture(width, height, fill, options) : device.createTexture(width, height, fill, options));
         return 1;
     }
+
     const Image image(width, height, std::vector<std::uint8_t>(pixels.begin(), pixels.end()));
     lua::Stack::push(L, dynamic ? device.createDynamicTexture(image, options) : device.createTexture(image, options));
     return 1;
@@ -80,6 +83,7 @@ void GraphicsLua::pushImageTexture(lua_State* L) {
         luaL_checktype(L, 2, LUA_TTABLE);
         lua::Table::readField(L, 2, "dynamic", dynamic);
     }
+
     const Texture::Options options = lua::TypeConverter::readTextureOptions(L, 2, {kImageTextureFields});
     const Image image = Image::decodeFor({reinterpret_cast<const std::uint8_t*>(bytes.data()), bytes.size()}, options);
     Device& device = lua::Runtime::getEngine(L).getGraphics();
@@ -168,6 +172,7 @@ int GraphicsLua::shaderUniforms(lua_State* L) {
         lua_setfield(L, -2, "count");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
@@ -178,6 +183,7 @@ int GraphicsLua::shaderTextures(lua_State* L) {
         lua::Stack::push(L, textures[index].name);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
@@ -207,6 +213,7 @@ int GraphicsLua::rasterizeVector(lua_State* L) {
     if (!(scale > 0.0F && std::isfinite(scale)) || std::max(size.x, size.y) > static_cast<float>(engine.getGraphics().getMaxTextureSize())) {
         throw std::invalid_argument("A vector image rasterizes at a positive scale whose raster fits the maximum texture size of the device.");
     }
+
     Texture::Options options{.filter = Texture::Filter::Linear};
     if (!lua_isnoneornil(L, 3)) {
         options = lua::TypeConverter::readTextureOptions(L, 3);
@@ -223,6 +230,7 @@ int GraphicsLua::rasterizeVector(lua_State* L) {
             promise->reject(result.error);
             return;
         }
+
         Texture texture;
         try {
             texture = device->createTexture(*result.value, options);
@@ -230,6 +238,7 @@ int GraphicsLua::rasterizeVector(lua_State* L) {
             promise->reject(error.what());
             return;
         }
+
         promise->resolveCustom([texture](lua_State* state) { lua::Stack::push(state, texture); });
     });
     // clang-format on

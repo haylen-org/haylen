@@ -45,9 +45,11 @@ Video::Video(core::JobSystem& jobSystem, Device& graphics, audio::Mixer& audioMi
     if (!(options.rate >= kMinimumRate && options.rate <= kMaximumRate)) {
         throw std::invalid_argument("The rate of a video must be from 0.25 to 4.");
     }
+
     if (!(options.volume >= 0.0F) || !std::isfinite(options.volume)) {
         throw std::invalid_argument("The volume of a video must be zero or positive.");
     }
+
     texture = device.createDynamicTexture(1, 1, math::Color::transparent(), {.filter = Texture::Filter::Linear});
 }
 
@@ -79,14 +81,17 @@ void Video::load(Opener opener) {
         } catch (const std::exception& exception) {
             failure = exception.what();
         }
+
         const std::shared_ptr<Shared> alive = target.lock();
         if (!alive) {
             return;
         }
+
         const std::scoped_lock lock(alive->mutex);
         if (decoder) {
             alive->info = decoder->getInfo();
         }
+
         alive->decoder = std::move(decoder);
         alive->failure = std::move(failure);
         alive->unsupported = noDecoder;
@@ -99,18 +104,23 @@ void Video::play() {
     if (atEnd) {
         seek(0.0);
     }
+
     playing = true;
+
     if (state != State::Ready) {
         return;
     }
+
     if (voice == 0) {
         restartSound();
     }
+
     mixer.setPaused(voice, false);
 }
 
 void Video::pause() {
     playing = false;
+
     if (voice != 0) {
         mixer.setPaused(voice, true);
     }
@@ -120,14 +130,17 @@ void Video::seek(double seconds) {
     if (!std::isfinite(seconds)) {
         throw std::invalid_argument("A video seeks to a finite number of seconds.");
     }
+
     const double duration = getDuration();
     time = std::clamp(seconds, 0.0, duration > 0.0 ? duration : seconds);
     atEnd = false;
+
     if (state == State::Ready && shared->info.clocked) {
         shared->decoder->seek(time);
         controlledRate = 0.0F;
         return;
     }
+
     {
         const std::scoped_lock lock(shared->mutex);
         ++shared->generation;
@@ -137,6 +150,7 @@ void Video::seek(double seconds) {
         for (Frame& frame : shared->queued) {
             shared->spare.push_back(std::move(frame));
         }
+
         shared->queued.clear();
     }
     if (state == State::Ready) {
@@ -148,6 +162,7 @@ void Video::setRate(float value) {
     if (!(value >= kMinimumRate && value <= kMaximumRate)) {
         throw std::invalid_argument("The rate of a video must be from 0.25 to 4.");
     }
+
     rate = value;
     if (voice != 0) {
         mixer.setPitch(voice, rate);
@@ -158,6 +173,7 @@ void Video::setVolume(float value) {
     if (!(value >= 0.0F) || !std::isfinite(value)) {
         throw std::invalid_argument("The volume of a video must be zero or positive.");
     }
+
     volume = value;
     if (voice != 0) {
         mixer.setVolume(voice, muted ? 0.0F : volume);
@@ -189,6 +205,7 @@ void Video::update(double seconds, bool running) {
         if (!shared->opened) {
             return;
         }
+
         std::string failure = shared->failure;
         lock.unlock();
 
@@ -200,16 +217,20 @@ void Video::update(double seconds, bool running) {
                     (void)shared->decoder->readFrame(probe);
                     return;
                 }
+
                 shared->info = shared->decoder->getInfo();
             } catch (const std::exception& exception) {
                 failure = exception.what();
             }
         }
+
         finishOpening(std::move(failure));
     }
+
     if (state != State::Ready) {
         return;
     }
+
     if (shared->info.clocked) {
         try {
             updateClocked();
@@ -217,6 +238,7 @@ void Video::update(double seconds, bool running) {
             error = exception.what();
             fail();
         }
+
         return;
     }
 
@@ -231,6 +253,7 @@ void Video::update(double seconds, bool running) {
         fail();
         return;
     }
+
     // The clock stops at the end of the video, where it waits for the decoder to deliver the last frame, so the time never depends on how fast the decoder runs.
     if (playing && running) {
         time += seconds * rate;
@@ -247,13 +270,16 @@ void Video::update(double seconds, bool running) {
         while (passed < shared->queued.size() && shared->queued[passed].time <= time) {
             ++passed;
         }
+
         if (passed > 0) {
             for (std::size_t index = 0; index + 1 < passed; ++index) {
                 shared->spare.push_back(std::move(shared->queued[index]));
             }
+
             shown = std::move(shared->queued[passed - 1]);
             shared->queued.erase(shared->queued.begin(), shared->queued.begin() + static_cast<std::ptrdiff_t>(passed));
         }
+
         exhausted = shared->framesEnded && shared->queued.empty();
     }
     if (shown) {
@@ -261,9 +287,11 @@ void Video::update(double seconds, bool running) {
         const std::scoped_lock lock(shared->mutex);
         shared->spare.push_back(std::move(*shown));
     }
+
     if (exhausted && !atEnd && time >= shared->info.duration) {
         reachEnd();
     }
+
     schedule();
 }
 
@@ -274,16 +302,21 @@ void Video::finishOpening(std::string failure) {
         fail();
         return;
     }
+
     const platform::VideoDecoder::Info& info = shared->info;
     state = State::Ready;
     device.replaceTexture(texture, Image(std::max(info.width, 1), std::max(info.height, 1), std::vector<std::uint8_t>(static_cast<std::size_t>(std::max(info.width, 1)) * static_cast<std::size_t>(std::max(info.height, 1)) * 4U, 0)));
+
     if (time > 0.0) {
         seek(time);
     }
+
     if (playing) {
         restartSound();
     }
+
     ready.emit();
+
     if (!info.clocked) {
         schedule();
     }
@@ -302,6 +335,7 @@ void Video::present(Frame& frame) {
     } else {
         device.replaceTexture(texture, Image(frame.width, frame.height, frame.pixels));
     }
+
     ++frameCount;
 }
 
@@ -313,16 +347,19 @@ void Video::updateClocked() {
         controlledRate = rate;
         decoder.control(playing, rate);
     }
+
     time = decoder.getTime();
     Frame& frame = shared->spare.empty() ? shared->spare.emplace_back() : shared->spare.back();
     const Read read = decoder.readFrame(frame);
     if (read == Read::Frame) {
         present(frame);
     }
+
     if (shared->info.channels > 0 && shared->sound) {
         (void)decoder.readAudio(shared->samples, time);
         pushSound(*shared);
     }
+
     if (read == Read::End && playing) {
         reachEnd();
     }
@@ -333,11 +370,14 @@ void Video::reachEnd() {
         seek(0.0);
         return;
     }
+
     playing = false;
     atEnd = true;
+
     if (voice != 0) {
         mixer.setPaused(voice, true);
     }
+
     ended.emit();
 }
 
@@ -348,6 +388,7 @@ void Video::restartSound() {
     if (info.channels == 0 || info.sampleRate == 0) {
         return;
     }
+
     auto stream = std::make_shared<platform::AudioStream>(info.sampleRate, info.channels, platform::AudioStream::Format::Float32, info.sampleRate);
     {
         const std::scoped_lock lock(shared->mutex);
@@ -364,6 +405,7 @@ void Video::stopSound() {
         mixer.stop(voice);
         voice = 0;
     }
+
     const std::scoped_lock lock(shared->mutex);
     shared->sound.reset();
 }
@@ -374,6 +416,7 @@ void Video::schedule() {
         if (shared->busy || shared->framesEnded || shared->queued.size() >= kFramesAhead) {
             return;
         }
+
         shared->busy = true;
     }
     jobs.post([target = shared] { decode(target); });
@@ -398,6 +441,7 @@ void Video::decode(const std::shared_ptr<Shared>& shared) {
             state.decoder->seek(*target);
             state.samples.clear();
         }
+
         while (true) {
             Frame frame;
             {
@@ -405,6 +449,7 @@ void Video::decode(const std::shared_ptr<Shared>& shared) {
                 if (state.generation != generation || state.queued.size() >= kFramesAhead) {
                     break;
                 }
+
                 if (!state.spare.empty()) {
                     frame = std::move(state.spare.back());
                     state.spare.pop_back();
@@ -421,19 +466,23 @@ void Video::decode(const std::shared_ptr<Shared>& shared) {
                 state.spare.push_back(std::move(frame));
                 break;
             }
+
             state.soundEnded = soundEnded;
             pushSound(state);
+
             if (last) {
                 state.framesEnded = true;
                 state.spare.push_back(std::move(frame));
                 break;
             }
+
             state.queued.push_back(std::move(frame));
         }
     } catch (const std::exception& exception) {
         const std::scoped_lock lock(state.mutex);
         state.failure = exception.what();
     }
+
     const std::scoped_lock lock(state.mutex);
     state.busy = false;
 }
@@ -443,6 +492,7 @@ void Video::pushSound(Shared& shared) {
     if (!shared.sound || shared.samples.empty()) {
         return;
     }
+
     const std::size_t channels = shared.info.channels;
     const std::size_t whole = shared.samples.size() / channels * channels;
     const std::size_t taken = shared.sound->push(std::span<const float>(shared.samples.data(), whole)) * channels;

@@ -97,11 +97,13 @@ void main() {
         for (const auto& [pointer, value] : changes.items()) {
             document[core::Json::json_pointer(pointer)] = value;
         }
+
         try {
             (void)graphics::Shader::parse(test::TestFiles::bytes(document.dump()));
         } catch (const std::invalid_argument& error) {
             return error.what();
         }
+
         return {};
     }
 
@@ -128,9 +130,11 @@ void main() {
         app.write("app.json", R"({"name": "Shaders", "identifier": "com.haylen.shaders", "version": "1.0.0"})");
         app.write("content/shaders/" + name + ".glsl", source);
         const Poco::Process::Env env{{"HAYLEN_SHADER_COMPILER", HAYLEN_SHADER_COMPILER}};
+
         if (Poco::Process::launch(HAYLEN_PYTHON, {HAYLEN_TOOL_SCRIPT, "shaders", app.getPath().string()}, "", nullptr, nullptr, nullptr, env).wait() != 0) {
             throw std::runtime_error("The command \"haylen.py shaders\" failed.");
         }
+
         std::ifstream file(app.getPath() / "content" / "shaders" / (name + ".shader"), std::ios::binary);
         return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
     }
@@ -158,9 +162,11 @@ TEST_F(ShaderTest, CompilesWithMakePyIntoEveryProgramWithItsReflection) {
     const graphics::Shader shader = graphics::Shader::parse(tintShader());
     EXPECT_EQ(shader.getName(), "tint");
     EXPECT_EQ(shader.getVersion(), 1U);
+
     for (const std::string_view program : graphics2d::Material::kPrograms) {
         EXPECT_TRUE(shader.hasProgram(program)) << program;
     }
+
     EXPECT_FALSE(shader.hasProgram("light"));
 
     // The blocks of the material keep the std140 layout the shader compiler gives them, and the blocks and texture of the shader library stay out.
@@ -179,12 +185,14 @@ TEST_F(ShaderTest, CompilesWithMakePyIntoEveryProgramWithItsReflection) {
     const std::vector<Type> types{Type::Vec4, Type::Float, Type::Vec2, Type::Int, Type::Mat4, Type::Vec4, Type::Vec3, Type::Float};
     const std::vector<std::uint32_t> offsets{0, 16, 24, 0, 32, 96, 0, 16};
     ASSERT_EQ(shader.getUniforms().size(), names.size());
+
     for (std::size_t index = 0; index < names.size(); ++index) {
         const graphics::Shader::Uniform* uniform = shader.findUniform(names[index]);
         ASSERT_NE(uniform, nullptr) << names[index];
         EXPECT_EQ(uniform->type, types[index]) << names[index];
         EXPECT_EQ(uniform->offset, offsets[index]) << names[index];
     }
+
     EXPECT_EQ(shader.findUniform("palette")->count, 3);
     EXPECT_EQ(shader.findUniform("weights")->count, 3);
     EXPECT_EQ(shader.findUniform("glow")->block, 1U);
@@ -267,6 +275,7 @@ TEST_F(ShaderTest, MakesTheProgramsOfTheRendererWhenDrawsFirstNeedThem) {
                 return pool.used;
             }
         }
+
         return -1;
     };
     // clang-format on
@@ -399,6 +408,7 @@ TEST_F(ShaderTest, ReportsAFullShaderPool) {
     } catch (const std::runtime_error& failure) {
         error = failure.what();
     }
+
     EXPECT_EQ(error, "The graphics device has no room for another shader. At most 512 shader programs can exist at once.");
 
     shaders.clear();
@@ -476,11 +486,13 @@ TEST_F(MaterialTest, SetsAndPacksValuesEveryFrameWithoutAllocating) {
     material.getResource()->pack(bytes);
 
     const test::AllocationTracker tracker;
+
     for (int frame = 1; frame <= 10; ++frame) {
         material.set("strength", static_cast<float>(frame));
         bytes.clear();
         material.getResource()->pack(bytes);
     }
+
     EXPECT_EQ(tracker.getTotal(), 0U);
     EXPECT_EQ(floatAt(bytes, 16), 10.0F);
     EXPECT_EQ(floatAt(bytes, 96), 0.5F);
@@ -515,6 +527,7 @@ TEST_F(MaterialTest, DrawsEveryKindOfDrawAndPostProcessesCanvases) {
             renderer.drawCircle({0.0F, 0.0F}, 8.0F, math::Color::white(), order);
             renderer.drawText(*engine.getDefaultFont(), "Hi", {}, {}, order);
         }
+
         renderer.beginTarget(target, graphics2d::Camera{}, {.ambientLight = math::Color::white(), .postProcess = graphics2d::PostProcess{.materials = {post}}});
         renderer.draw({.texture = texture, .order = order});
     }));

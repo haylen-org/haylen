@@ -10,6 +10,7 @@ std::optional<BlendMode::Type> BlendMode::parse(std::string_view text) noexcept 
             return static_cast<Type>(index);
         }
     }
+
     return std::nullopt;
 }
 

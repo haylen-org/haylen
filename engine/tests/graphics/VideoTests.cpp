@@ -32,6 +32,7 @@ class VideoTest : public ::testing::Test {
             if (path == "videos/broken.mp4") {
                 throw std::runtime_error("The file is no video this platform decodes.");
             }
+
             EXPECT_EQ(file->getSize(), 16U);
             return std::make_unique<test::FakeVideoDecoder>(settings, log);
         });

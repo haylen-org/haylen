@@ -65,12 +65,14 @@ TEST(ImageTest, RefusesAnImageWhoseHeaderDeclaresASideTooLongBeforeDecodingIt) {
 
     // The decoder reads the header with buffers of its own, far smaller than the pixels it declares.
     test::AllocationTracker tracker;
+
     try {
         (void)graphics::Image::decode(png);
         FAIL() << "The image decoded.";
     } catch (const std::runtime_error& error) {
         EXPECT_STREQ(error.what(), "The image of 16385 by 16000 pixels is too large to decode. The image may have at most 16384 pixels on a side.");
     }
+
     EXPECT_LT(tracker.getLargest(), 64U * 1024U);
     EXPECT_THROW((void)graphics::Image::decode(test::TestFiles::pngImage(4, 4, 0xFF0000FFU), 3), std::runtime_error);
     EXPECT_THROW((void)graphics::Image::decode(png, 0), std::invalid_argument);
@@ -96,12 +98,14 @@ TEST(ImageTest, StopsADecodeWhoseDataInflatesPastItsImage) {
     }
 
     test::AllocationTracker tracker;
+
     try {
         (void)graphics::Image::decode(png);
         FAIL() << "The image decoded.";
     } catch (const std::runtime_error& error) {
         EXPECT_STREQ(error.what(), "The image could not be decoded, because its data holds more than an image of 1 by 1 pixels.");
     }
+
     EXPECT_LT(tracker.getLargest(), 256U * 1024U);
 }
 
@@ -305,12 +309,14 @@ TEST(DeviceTest, CapturesTheFramesItIsAskedForAndEndsACaptureThatStops) {
 TEST(DeviceTest, RefusesACaptureWithoutACaptureTool) {
     graphics::Device device(std::make_unique<gpu::NullDevice>());
     EXPECT_EQ(device.getCaptureSupport().tool, gpu::Device::CaptureTool::None);
+
     try {
         device.captureFrames(1, "captures/frame", [](std::optional<std::filesystem::path>, const std::string&) {});
         FAIL() << "A device without a capture tool started a capture.";
     } catch (const std::runtime_error& error) {
         EXPECT_EQ(error.what(), gpu::NullDevice::kMissingCaptureTool);
     }
+
     EXPECT_FALSE(device.isCapturing());
 }
 
@@ -391,6 +397,7 @@ TEST(DeviceTest, UploadsEachChangedDynamicTextureOncePerFrame) {
     for (std::uint8_t glyph = 1; glyph <= 12; ++glyph) {
         device.updateTexture(atlas, std::vector<std::uint8_t>(16, glyph));
     }
+
     fixture.frames(1);
     EXPECT_EQ(gpu.getLastFrame().imageWrites, 1);
     EXPECT_EQ(gpu.getLastFrame().imageWriteBytes, 16U);
@@ -433,6 +440,7 @@ TEST(DeviceTest, ReportsAFullTexturePool) {
     } catch (const std::runtime_error& failure) {
         error = failure.what();
     }
+
     EXPECT_NE(error.find("no room for another texture"), std::string::npos);
     EXPECT_LT(textures.size(), static_cast<std::size_t>(gpu::NullDevice::kImagePoolSize));
 
@@ -454,12 +462,15 @@ TEST(DeviceTest, UpdatesDynamicTexturesEveryFrameWithoutAllocating) {
     // clang-format off
     const auto measure = [&](bool update) {
         const test::AllocationTracker tracker;
+
         for (int frame = 0; frame < 3; ++frame) {
             if (update) {
                 device.updateTexture(texture, pixels);
             }
+
             fixture.frames(1);
         }
+
         return tracker.getTotal();
     };
     // clang-format on
@@ -563,9 +574,11 @@ TEST(ViewportTest, LandsOnWholePixels) {
 
     viewport.update(math::Vec2(1366.0F, 769.0F), math::Vec2(1920.0F, 1080.0F), graphics::Viewport::ScalingPolicy::Fit);
     const math::Rect fitted = viewport.getPixelRect();
+
     for (const float edge : {fitted.x, fitted.y, fitted.getRight(), fitted.getBottom()}) {
         EXPECT_EQ(edge, std::round(edge));
     }
+
     EXPECT_EQ(viewport.toDesign(fitted.getMin()), math::Vec2(0.0F, 0.0F));
 
     // A design that fits into less than a pixel still takes one, so every conversion stays finite.
@@ -587,12 +600,15 @@ TEST(GraphicsNamesTest, ParsesAndNamesBlendFilterWrapAndScalingValues) {
     for (const std::string_view name : {"nearest", "linear"}) {
         EXPECT_EQ(graphics::Texture::filterName(*graphics::Texture::filterFromName(name)), name);
     }
+
     for (const std::string_view name : {"clamp", "repeat", "mirror"}) {
         EXPECT_EQ(graphics::Texture::wrapName(*graphics::Texture::wrapFromName(name)), name);
     }
+
     for (const std::string_view name : {"fit", "fill", "stretch", "expand", "pixelPerfect"}) {
         EXPECT_EQ(graphics::Viewport::scalingPolicyName(*graphics::Viewport::scalingPolicyFromName(name)), name);
     }
+
     EXPECT_EQ(graphics::Texture::filterFromName("linear"), graphics::Texture::Filter::Linear);
     EXPECT_EQ(graphics::Texture::wrapFromName("mirror"), graphics::Texture::Wrap::Mirror);
     EXPECT_EQ(graphics::Viewport::scalingPolicyFromName("pixelPerfect"), graphics::Viewport::ScalingPolicy::PixelPerfect);

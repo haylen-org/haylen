@@ -17,6 +17,7 @@ void Device::validateSize(int width, int height, int limit) {
     if (width <= 0 || height <= 0) {
         throw std::invalid_argument("Texture dimensions must be positive.");
     }
+
     if (width > limit || height > limit) {
         throw std::invalid_argument("Texture dimensions exceed the device limit.");
     }
@@ -24,6 +25,7 @@ void Device::validateSize(int width, int height, int limit) {
 
 void Device::validateDistances(int width, int height, std::span<const std::uint16_t> distances, int limit) {
     validateSize(width, height, limit);
+
     if (distances.size() != static_cast<std::size_t>(width) * static_cast<std::size_t>(height)) {
         throw std::invalid_argument("The distances of a distance texture do not match its dimensions.");
     }
@@ -38,6 +40,7 @@ Device::~Device() {
     state->white = {};
     state->graveyard->collect(*state->gpu);
     state->graveyard.reset();
+
     for (const auto& [key, sampler] : state->samplers) {
         state->gpu->destroy(sampler);
     }
@@ -75,9 +78,11 @@ const Texture& Device::getWhiteTexture() const noexcept {
 
 RenderTarget Device::createRenderTarget(int width, int height, Texture::Options options) {
     validateSize(width, height, getMaxTextureSize());
+
     if (options.mipmaps.value_or(false)) {
         throw std::invalid_argument("A render target has no mipmaps.");
     }
+
     return state->createRenderTarget(width, height, state->offscreenFormat, options);
 }
 
@@ -94,6 +99,7 @@ void Device::replaceTexture(const Texture& texture, const Image& image) {
     resource->width = image.getWidth();
     resource->height = image.getHeight();
     resource->tracked.setBytes(bytes);
+
     if (resource->dynamic) {
         state->stagePixels(resource, image.getPixels());
     }
@@ -103,6 +109,7 @@ void Device::readTarget(const RenderTarget& target, ReadCallback done) {
     if (!target.isValid()) {
         throw std::invalid_argument("A read needs a valid render target.");
     }
+
     state->reads.push_back({.target = target, .done = std::move(done)});
 }
 
@@ -120,6 +127,7 @@ void Device::processReads(core::JobSystem& jobs) {
                 state->reads.erase(state->reads.begin() + static_cast<std::ptrdiff_t>(index));
                 continue;
             }
+
             ++index;
             continue;
         }
@@ -132,10 +140,12 @@ void Device::processReads(core::JobSystem& jobs) {
             state->reads.erase(state->reads.begin() + static_cast<std::ptrdiff_t>(index));
             continue;
         }
+
         if (!pixels) {
             ++index;
             continue;
         }
+
         const int width = resource.width;
         const int height = resource.height;
         const bool flipped = resource.flipped;
@@ -149,6 +159,7 @@ void Device::processReads(core::JobSystem& jobs) {
         });
         // clang-format on
     }
+
     for (auto& [done, error] : failed) {
         done(std::nullopt, error);
     }
@@ -170,13 +181,16 @@ void Device::captureFrames(int frames, const std::filesystem::path& path, Captur
     if (frames < 1) {
         throw std::invalid_argument("A capture records at least 1 frame.");
     }
+
     if (state->capture) {
         throw std::logic_error("A GPU capture is already recording. Wait for it to end before capturing again.");
     }
+
     gpu::Device::CaptureSupport support = state->gpu->getCaptureSupport();
     if (support.tool == gpu::Device::CaptureTool::None) {
         throw std::runtime_error(std::move(support.missing));
     }
+
     state->gpu->beginCapture(path);
     state->capture = DeviceState::PendingCapture{.framesLeft = frames, .done = std::move(done)};
 }
@@ -190,6 +204,7 @@ void Device::processCapture() {
     if (!state->capture || --state->capture->framesLeft > 0) {
         return;
     }
+
     CaptureCallback done = std::move(state->capture->done);
     state->capture.reset();
 
@@ -200,6 +215,7 @@ void Device::processCapture() {
         done(std::nullopt, error.what());
         return;
     }
+
     done(std::move(path), {});
 }
 
@@ -207,7 +223,9 @@ void Device::cancelCapture() noexcept {
     if (!state->capture) {
         return;
     }
+
     state->capture.reset();
+
     try {
         static_cast<void>(state->gpu->endCapture());
     } catch (const std::exception& error) {
@@ -217,9 +235,11 @@ void Device::cancelCapture() noexcept {
 
 Texture Device::createDynamicTexture(const Image& image, Texture::Options options) {
     validateSize(image.getWidth(), image.getHeight(), getMaxTextureSize());
+
     if (options.mipmaps.value_or(false)) {
         throw std::invalid_argument("A texture that changes in place has no mipmaps.");
     }
+
     return state->createDynamicTexture(image.getWidth(), image.getHeight(), gpu::Device::PixelFormat::Rgba8, image.getPixels(), options);
 }
 
@@ -240,9 +260,11 @@ void Device::updateTexture(const Texture& texture, std::span<const std::uint8_t>
     if (!resource || !resource->dynamic) {
         throw std::logic_error("Only a dynamic texture changes its pixels in place.");
     }
+
     if (pixels.size() != DeviceState::getImageBytes(resource->width, resource->height, resource->format)) {
         throw std::invalid_argument("The pixels do not match the size of the dynamic texture.");
     }
+
     state->stagePixels(resource, pixels);
 }
 
@@ -262,10 +284,13 @@ std::size_t Device::uploadTextures(std::span<const gpu::Device::ImageWrite> fram
             state->uploading.push_back(std::move(resource));
         }
     }
+
     state->writes.insert(state->writes.end(), frameImages.begin(), frameImages.end());
+
     if (!state->writes.empty()) {
         state->gpu->writeImages(state->writes);
     }
+
     state->writes.clear();
     state->uploading.clear();
 
@@ -276,6 +301,7 @@ std::size_t Device::uploadTextures(std::span<const gpu::Device::ImageWrite> fram
             resource->staged = std::vector<std::uint8_t>();
         }
     }
+
     std::swap(state->uploadedTextures, state->uploadingTextures);
     state->uploadingTextures.clear();
     return bytes;
@@ -288,6 +314,7 @@ std::string_view Device::getApiName() const noexcept {
             return name;
         }
     }
+
     return gpu::Device::kApiNames.front().first;
 }
 
@@ -309,6 +336,7 @@ std::vector<Device::Pool> Device::getPools() const {
     for (const gpu::Device::Pool& pool : state->gpu->getPools()) {
         pools.push_back({.name = pool.name, .used = pool.used, .size = pool.size});
     }
+
     return pools;
 }
 

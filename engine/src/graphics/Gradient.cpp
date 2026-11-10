@@ -13,6 +13,7 @@ Gradient::Gradient(std::vector<Stop> gradientStops, Kind gradientKind) : stops(s
     if (stops.empty()) {
         throw std::invalid_argument("A gradient needs at least one color stop.");
     }
+
     const bool ordered = std::ranges::all_of(stops, [](const Stop& stop) { return stop.offset >= 0.0F && stop.offset <= 1.0F; }) && std::ranges::is_sorted(stops, {}, &Stop::offset);
     if (!ordered) {
         throw std::invalid_argument("The stops of a gradient need offsets from 0 to 1 in increasing order.");
@@ -25,6 +26,7 @@ Gradient Gradient::fromColors(std::span<const math::Color> colors, Kind gradient
     for (std::size_t index = 0; index < colors.size(); ++index) {
         spread.push_back({.offset = colors.size() > 1 ? static_cast<float>(index) / static_cast<float>(colors.size() - 1) : 0.0F, .color = colors[index]});
     }
+
     return Gradient(std::move(spread), gradientKind);
 }
 
@@ -42,6 +44,7 @@ void Gradient::setRadius(math::Vec2 value) {
     if (!(value.x > 0.0F && value.y > 0.0F)) {
         throw std::invalid_argument("A radial gradient needs a radius above 0 on both axes.");
     }
+
     radius = value;
 }
 
@@ -50,9 +53,11 @@ math::Color Gradient::getColor(float at) const noexcept {
     if (!(at > stops.front().offset)) {
         return stops.front().color;
     }
+
     if (at >= stops.back().offset) {
         return stops.back().color;
     }
+
     const auto next = std::ranges::upper_bound(stops, at, {}, &Stop::offset);
     const Stop& to = *next;
     const Stop& from = *(next - 1);
@@ -61,6 +66,7 @@ math::Color Gradient::getColor(float at) const noexcept {
     if (alpha <= 0.0F) {
         return math::Color::transparent();
     }
+
     const auto blend = [&](float first, float second) { return (first * from.color.a + (second * to.color.a - first * from.color.a) * share) / alpha; };
     return {blend(from.color.r, to.color.r), blend(from.color.g, to.color.g), blend(from.color.b, to.color.b), alpha};
 }

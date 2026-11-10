@@ -36,6 +36,7 @@ Image& ImageLua::checkWritable(lua_State* L, int index) {
     if (storage.use_count() > 1) {
         storage = std::make_shared<Image>(*storage);
     }
+
     return *storage;
 }
 
@@ -44,6 +45,7 @@ Image::Area ImageLua::readArea(lua_State* L, int index, const Image& image) {
     if (lua_isnoneornil(L, index)) {
         return image.getArea();
     }
+
     const auto area = lua::Stack::read<math::Rect>(L, index);
     return {static_cast<int>(std::lround(area.x)), static_cast<int>(std::lround(area.y)), static_cast<int>(std::lround(area.width)), static_cast<int>(std::lround(area.height))};
 }
@@ -54,6 +56,7 @@ int ImageLua::create(lua_State* L) {
     if (columns < 1 || rows < 1) {
         throw std::invalid_argument("An image needs a width and a height of one pixel or more.");
     }
+
     push(L, Image(columns, rows, lua_isnoneornil(L, 3) ? math::Color::transparent() : lua::Stack::read<math::Color>(L, 3)));
     return 1;
 }
@@ -70,9 +73,11 @@ int ImageLua::readMaxSide(lua_State* L, int index) {
         lua::Table::checkFields(L, index, {kDecodeFields});
         lua::Table::readField(L, index, "maxSize", maxSide);
     }
+
     if (maxSide < 1 || maxSide > Image::kMaxSide) {
         throw std::invalid_argument("The option \"maxSize\" of a decode is from 1 to " + std::to_string(Image::kMaxSide) + " pixels.");
     }
+
     return maxSide;
 }
 
@@ -95,6 +100,7 @@ int ImageLua::decodeAsync(lua_State* L) {
             promise->reject(result.error);
             return;
         }
+
         auto image = std::make_shared<Image>(std::move(*result.value));
         promise->resolveCustom([image](lua_State* state) { lua::Userdata::emplace<Image>(state, image); });
     });
@@ -172,6 +178,7 @@ Gradient ImageLua::readGradient(lua_State* L, int index) {
     if (radius) {
         gradient.setRadius(*radius);
     }
+
     gradient.setDithered(dither);
     return gradient;
 }
@@ -180,12 +187,14 @@ void ImageLua::readStops(lua_State* L, std::vector<Gradient::Stop>& stops) {
     if (!lua_istable(L, -1)) {
         throw std::invalid_argument("The stops of a gradient are a list of offset and color pairs, such as {{0, '#FF000000'}, {1, '#FFFFFFFF'}}.");
     }
+
     const auto count = static_cast<lua_Integer>(lua_rawlen(L, -1));
     for (lua_Integer index = 1; index <= count; ++index) {
         lua_rawgeti(L, -1, index);
         if (!lua_istable(L, -1) || lua_rawlen(L, -1) != 2) {
             throw std::invalid_argument("The stops of a gradient are a list of offset and color pairs, such as {{0, '#FF000000'}, {1, '#FFFFFFFF'}}.");
         }
+
         Gradient::Stop stop;
         lua_rawgeti(L, -1, 1);
         lua::Table::readValue(L, "stops", stop.offset);
@@ -210,6 +219,7 @@ int ImageLua::blit(lua_State* L) {
         lua_pop(L, 1);
         lua::Table::readField(L, 5, "blend", blend);
     }
+
     image.blit(*source, from, lua::Stack::read<int>(L, 3), lua::Stack::read<int>(L, 4), blend ? Image::BlitMode::Blend : Image::BlitMode::Replace);
     return 0;
 }
@@ -228,6 +238,7 @@ int ImageLua::blitAsync(lua_State* L) {
         lua_pop(L, 1);
         lua::Table::readField(L, 5, "blend", blend);
     }
+
     const auto x = lua::Stack::read<int>(L, 3);
     const auto y = lua::Stack::read<int>(L, 4);
     core::Engine& engine = lua::Runtime::getEngine(L);
@@ -242,6 +253,7 @@ int ImageLua::blitAsync(lua_State* L) {
             promise->reject(result.error);
             return;
         }
+
         auto image = std::make_shared<Image>(std::move(*result.value));
         promise->resolveCustom([image](lua_State* state) { lua::Userdata::emplace<Image>(state, image); });
     });
@@ -267,6 +279,7 @@ int ImageLua::visibleArea(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, math::Rect{static_cast<float>(area.x), static_cast<float>(area.y), static_cast<float>(area.width), static_cast<float>(area.height)});
     return 1;
 }
@@ -293,6 +306,7 @@ int ImageLua::encodePngAsync(lua_State* L) {
             promise->reject(result.error);
             return;
         }
+
         auto bytes = std::make_shared<std::vector<std::uint8_t>>(std::move(*result.value));
         promise->resolveCustom([bytes](lua_State* state) { lua_pushlstring(state, reinterpret_cast<const char*>(bytes->data()), bytes->size()); });
     });
@@ -326,6 +340,7 @@ Device::ReadCallback ImageLua::settle(const std::shared_ptr<varn::async::Promise
             promise->reject(error);
             return;
         }
+
         auto shared = std::make_shared<Image>(std::move(*image));
         promise->resolveCustom([shared](lua_State* state) { lua::Userdata::emplace<Image>(state, shared); });
     };
@@ -344,6 +359,7 @@ int ImageLua::palette(lua_State* L) {
         lua_setfield(L, -2, "population");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
@@ -359,6 +375,7 @@ int ImageLua::swatches(lua_State* L) {
             lua_setfield(L, -2, name);
         }
     }
+
     return 1;
 }
 
@@ -371,6 +388,7 @@ int ImageLua::placeholder(lua_State* L) {
         lua::Table::readField(L, 2, "columns", options.columns);
         lua::Table::readField(L, 2, "rows", options.rows);
     }
+
     lua::Stack::push(L, ImagePlaceholder::encode(image, options));
     return 1;
 }
@@ -452,35 +470,43 @@ std::function<void(Image&)> ImageLua::readEffect(lua_State* L, int index) {
         lua::Table::checkFields(L, index, {kBlurEffectFields});
         return [radius = number("radius", 0.0F)](Image& image) { ImageFilters::blur(image, radius); };
     }
+
     if (effect == "sharpen") {
         lua::Table::checkFields(L, index, {kAmountEffectFields});
         return [amount = number("amount", 1.0F)](Image& image) { ImageFilters::sharpen(image, amount); };
     }
+
     if (effect == "adjust") {
         lua::Table::checkFields(L, index, {kAdjustEffectFields});
         ImageFilters::Adjustment adjustment{.brightness = number("brightness", 0.0F), .contrast = number("contrast", 1.0F), .saturation = number("saturation", 1.0F), .hue = number("hue", 0.0F)};
         return [adjustment](Image& image) { ImageFilters::adjust(image, adjustment); };
     }
+
     if (effect == "grayscale") {
         lua::Table::checkFields(L, index, {kAmountEffectFields});
         return [amount = number("amount", 1.0F)](Image& image) { ImageFilters::grayscale(image, amount); };
     }
+
     if (effect == "invert") {
         lua::Table::checkFields(L, index, {kInvertEffectFields});
         return [](Image& image) { ImageFilters::invert(image); };
     }
+
     if (effect == "tint") {
         lua::Table::checkFields(L, index, {kTintEffectFields});
         return [tinted = color("color"), amount = number("amount", 1.0F)](Image& image) { ImageFilters::tint(image, tinted, amount); };
     }
+
     if (effect == "pixelate") {
         lua::Table::checkFields(L, index, {kPixelateEffectFields});
         return [size = static_cast<int>(number("size", 1.0F))](Image& image) { ImageFilters::pixelate(image, size); };
     }
+
     if (effect == "outline") {
         lua::Table::checkFields(L, index, {kOutlineEffectFields});
         return [outlined = color("color"), thickness = number("thickness", 1.0F)](Image& image) { ImageFilters::outline(image, outlined, thickness); };
     }
+
     luaL_error(L, "The image effect \"%s\" is unknown. It is \"blur\", \"sharpen\", \"adjust\", \"grayscale\", \"invert\", \"tint\", \"pixelate\" or \"outline\".", effect.c_str());
     return {};
 }
@@ -494,6 +520,7 @@ int ImageLua::applyAsync(lua_State* L) {
         steps.push_back(readEffect(L, lua_gettop(L)));
         lua_pop(L, 1);
     }
+
     lua_pop(L, 1);
     core::Engine& engine = lua::Runtime::getEngine(L);
     auto promise = std::make_shared<varn::async::Promise>(engine.getScriptRuntime());
@@ -503,12 +530,14 @@ int ImageLua::applyAsync(lua_State* L) {
         for (const std::function<void(Image&)>& step : steps) {
             step(result);
         }
+
         return result;
     }, [promise](core::JobSystem::Result<Image> result) {
         if (!result.isOk()) {
             promise->reject(result.error);
             return;
         }
+
         auto image = std::make_shared<Image>(std::move(*result.value));
         promise->resolveCustom([image](lua_State* state) { lua::Userdata::emplace<Image>(state, image); });
     });

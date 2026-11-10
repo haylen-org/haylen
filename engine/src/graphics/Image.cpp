@@ -41,6 +41,7 @@ Image::Pixels& Image::Pixels::operator=(const Pixels& other) {
     if (this != &other) {
         *this = Pixels(other);
     }
+
     return *this;
 }
 
@@ -52,9 +53,11 @@ std::size_t Image::byteCount(int columns, int rows) {
     if (columns < 0 || rows < 0) {
         throw std::invalid_argument("Image dimensions cannot be negative.");
     }
+
     if (columns > kMaxSide || rows > kMaxSide) {
         throw std::invalid_argument("The image of " + std::to_string(columns) + " by " + std::to_string(rows) + " pixels is too large. An image has at most " + std::to_string(kMaxSide) + " pixels on a side.");
     }
+
     return static_cast<std::size_t>(columns) * static_cast<std::size_t>(rows) * 4U;
 }
 
@@ -81,6 +84,7 @@ Image Image::decode(std::span<const std::uint8_t> encoded, int maxSide) {
     if (maxSide < 1 || maxSide > kMaxSide) {
         throw std::invalid_argument("The largest side of a decoded image is from 1 to " + std::to_string(kMaxSide) + " pixels.");
     }
+
     if (encoded.size() > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
         throw std::runtime_error("The encoded image of " + std::to_string(encoded.size()) + " bytes is too large to decode. An encoded image holds at most " + std::to_string(std::numeric_limits<int>::max()) + " bytes.");
     }
@@ -92,9 +96,11 @@ Image Image::decode(std::span<const std::uint8_t> encoded, int maxSide) {
     if (stbi_info_from_memory(encoded.data(), size, &columns, &rows, &channels) == 0) {
         throw std::runtime_error(std::string("The image could not be decoded, and the decoder reported \"") + stbi_failure_reason() + "\".");
     }
+
     if (columns < 1 || rows < 1) {
         throw std::runtime_error("The image of " + std::to_string(columns) + " by " + std::to_string(rows) + " pixels has no pixels to decode.");
     }
+
     if (columns > maxSide || rows > maxSide) {
         throw std::runtime_error("The image of " + std::to_string(columns) + " by " + std::to_string(rows) + " pixels is too large to decode. The image may have at most " + std::to_string(maxSide) + " pixels on a side.");
     }
@@ -104,9 +110,11 @@ Image Image::decode(std::span<const std::uint8_t> encoded, int maxSide) {
     if (decoded == nullptr && cap.hasRefused()) {
         throw std::runtime_error("The image could not be decoded, because its data holds more than an image of " + std::to_string(columns) + " by " + std::to_string(rows) + " pixels.");
     }
+
     if (decoded == nullptr) {
         throw std::runtime_error(std::string("The image could not be decoded, and the decoder reported \"") + stbi_failure_reason() + "\".");
     }
+
     return {columns, rows, Pixels(decoded, static_cast<std::size_t>(columns) * static_cast<std::size_t>(rows) * 4U)};
 }
 
@@ -114,6 +122,7 @@ std::vector<std::uint8_t> Image::encodePng() const {
     if (pixels.empty()) {
         throw std::invalid_argument("An empty image has no PNG file.");
     }
+
     std::vector<std::uint8_t> encoded;
     // clang-format off
     stbi_write_png_to_func([](void* context, void* data, int size) {
@@ -132,15 +141,18 @@ Image Image::fromRendered(std::vector<std::uint8_t> data, int columns, int rows,
             std::swap_ranges(data.begin() + static_cast<std::ptrdiff_t>(static_cast<std::size_t>(row) * rowBytes), data.begin() + static_cast<std::ptrdiff_t>(static_cast<std::size_t>(row + 1) * rowBytes), data.begin() + static_cast<std::ptrdiff_t>(static_cast<std::size_t>(rows - 1 - row) * rowBytes));
         }
     }
+
     for (std::size_t offset = 0; offset < data.size(); offset += 4) {
         const unsigned alpha = data[offset + 3];
         if (alpha == 0U || alpha == 255U) {
             continue;
         }
+
         for (std::size_t channel = 0; channel < 3; ++channel) {
             data[offset + channel] = static_cast<std::uint8_t>(std::min(255U, (static_cast<unsigned>(data[offset + channel]) * 255U + alpha / 2U) / alpha));
         }
     }
+
     return Image(columns, rows, std::move(data));
 }
 
@@ -149,9 +161,11 @@ Image Image::decodeFor(std::span<const std::uint8_t> encoded, Texture::Options o
     if (options.filter == Texture::Filter::Linear) {
         image.bleed();
     }
+
     if (options.hasMipmaps()) {
         image.buildMipmaps();
     }
+
     return image;
 }
 
@@ -172,6 +186,7 @@ void Image::fill(const Area& area, math::Color color) noexcept {
             std::memcpy(&pixels[static_cast<std::size_t>(row * width + column) * 4U], &packed, 4);
         }
     }
+
     mipmaps.clear();
 }
 
@@ -182,6 +197,7 @@ void Image::blit(const Image& source, const Area& from, int x, int y, BlitMode m
         blit(snapshot, from, x, y, mode);
         return;
     }
+
     const Area region = clip(from, source.width, source.height);
     const int shiftX = x + region.x - from.x;
     const int shiftY = y + region.y - from.y;
@@ -195,6 +211,7 @@ void Image::blit(const Image& source, const Area& from, int x, int y, BlitMode m
             std::memcpy(out, in, static_cast<std::size_t>(target.width) * 4U);
             continue;
         }
+
         for (int column = 0; column < target.width; ++column, in += 4, out += 4) {
             const float alpha = static_cast<float>(in[3]) / 255.0F;
             const float below = static_cast<float>(out[3]) / 255.0F * (1.0F - alpha);
@@ -202,9 +219,11 @@ void Image::blit(const Image& source, const Area& from, int x, int y, BlitMode m
             for (int channel = 0; channel < 3; ++channel) {
                 out[channel] = total > 0.0F ? static_cast<std::uint8_t>(std::lround((static_cast<float>(in[channel]) * alpha + static_cast<float>(out[channel]) * below) / total)) : in[channel];
             }
+
             out[3] = static_cast<std::uint8_t>(std::lround(total * 255.0F));
         }
     }
+
     mipmaps.clear();
 }
 
@@ -212,6 +231,7 @@ Image Image::crop(const Area& area) const {
     if (area.x < 0 || area.y < 0 || area.width < 0 || area.height < 0 || area.x > width || area.y > height || area.width > width - area.x || area.height > height - area.y) {
         throw std::out_of_range("The area " + std::to_string(area.x) + ", " + std::to_string(area.y) + ", " + std::to_string(area.width) + " by " + std::to_string(area.height) + " is not inside the image of " + std::to_string(width) + " by " + std::to_string(height) + " pixels.");
     }
+
     Image result(area.width, area.height);
     result.blit(*this, area, 0, 0);
     return result;
@@ -222,6 +242,7 @@ void Image::extrude(const Area& area, int amount) noexcept {
     if (inside.width == 0 || inside.height == 0 || amount <= 0) {
         return;
     }
+
     const Area grown = clip({inside.x - amount, inside.y - amount, inside.width + amount * 2, inside.height + amount * 2}, width, height);
     for (int row = grown.y; row < grown.y + grown.height; ++row) {
         const int sourceRow = std::clamp(row, inside.y, inside.y + inside.height - 1);
@@ -232,6 +253,7 @@ void Image::extrude(const Area& area, int amount) noexcept {
             }
         }
     }
+
     mipmaps.clear();
 }
 
@@ -246,15 +268,18 @@ void Image::bleed() {
             queue.push_back(static_cast<std::uint32_t>(index));
         }
     }
+
     std::size_t ringEnd = queue.size();
     int ring = 0;
     for (std::size_t head = 0; head < queue.size(); ++head) {
         if (head == ringEnd) {
             ringEnd = queue.size();
+
             if (++ring == kBleedReach) {
                 break;
             }
         }
+
         const std::uint32_t index = queue[head];
         const int x = static_cast<int>(index % static_cast<std::uint32_t>(width));
         const int y = static_cast<int>(index / static_cast<std::uint32_t>(width));
@@ -265,16 +290,19 @@ void Image::bleed() {
                 if (nx < 0 || ny < 0 || nx >= width || ny >= height) {
                     continue;
                 }
+
                 const auto next = static_cast<std::size_t>(ny * width + nx);
                 if (reached[next] != 0) {
                     continue;
                 }
+
                 reached[next] = 1;
                 std::memcpy(&pixels[next * 4U], &pixels[static_cast<std::size_t>(index) * 4U], 3);
                 queue.push_back(static_cast<std::uint32_t>(next));
             }
         }
     }
+
     mipmaps.clear();
 }
 
@@ -293,6 +321,7 @@ Image::Area Image::getVisibleArea() const noexcept {
             }
         }
     }
+
     return right < 0 ? Area{} : Area{left, top, right - left + 1, bottom - top + 1};
 }
 
@@ -315,16 +344,20 @@ Image Image::halved() const {
                         weighted[channel] += static_cast<float>(in[channel]) * weight;
                         plain[channel] += static_cast<float>(in[channel]);
                     }
+
                     alpha += weight;
                 }
             }
+
             std::uint8_t* out = &result.pixels[static_cast<std::size_t>(row * halfWidth + column) * 4U];
             for (std::size_t channel = 0; channel < 3; ++channel) {
                 out[channel] = static_cast<std::uint8_t>(std::lround(alpha > 0.0F ? weighted[channel] / alpha : plain[channel] / 4.0F));
             }
+
             out[3] = static_cast<std::uint8_t>(std::lround(alpha / 4.0F));
         }
     }
+
     return result;
 }
 
@@ -334,6 +367,7 @@ void Image::buildMipmaps() {
     for (int size = std::max(width, height); size > 1; size /= 2) {
         ++levels;
     }
+
     mipmaps.reserve(levels);
     for (std::size_t level = 0; level < levels; ++level) {
         mipmaps.push_back(level == 0 ? halved() : mipmaps.back().halved());
@@ -344,6 +378,7 @@ math::Color Image::getPixel(int x, int y) const noexcept {
     if (x < 0 || y < 0 || x >= width || y >= height) {
         return math::Color::transparent();
     }
+
     const auto offset = static_cast<std::size_t>((y * width + x) * 4);
     return math::Color::fromRgba8(pixels[offset], pixels[offset + 1], pixels[offset + 2], pixels[offset + 3]);
 }
@@ -352,6 +387,7 @@ void Image::setPixel(int x, int y, math::Color color) noexcept {
     if (x < 0 || y < 0 || x >= width || y >= height) {
         return;
     }
+
     mipmaps.clear();
     const auto offset = static_cast<std::size_t>((y * width + x) * 4);
     const std::uint32_t packed = color.toRgba8();

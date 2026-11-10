@@ -81,9 +81,11 @@ TEST(ImagePlaceholderTest, EncodesAShortTextThatDecodesToABlurredImage) {
 // A placeholder may come from a server, so every malformed text and every size out of range is refused without reading past its bytes.
 TEST(ImagePlaceholderTest, RefusesHostileTextsAndSizes) {
     const std::string code = ImagePlaceholder::encode(makeCover(), {});
+
     for (const std::string& hostile : {std::string(), std::string("AAAA"), code.substr(0, code.size() - 3), code + "AAAA", std::string(code).replace(0, 1, "*"), std::string("_") + code.substr(1), std::string(500, 'A')}) {
         EXPECT_THROW((void)ImagePlaceholder::decode(hostile, 8, 8), std::invalid_argument) << hostile;
     }
+
     EXPECT_THROW((void)ImagePlaceholder::decode(code, 0, 8), std::invalid_argument);
     EXPECT_THROW((void)ImagePlaceholder::decode(code, 8, ImagePlaceholder::kMaxSize + 1), std::invalid_argument);
     EXPECT_THROW((void)ImagePlaceholder::encode(Image(), {}), std::invalid_argument);

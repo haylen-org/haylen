@@ -15,6 +15,7 @@ std::string ImagePlaceholder::encode(const Image& image, Options options) {
     if (image.isEmpty()) {
         throw std::invalid_argument("An image placeholder needs an image with pixels.");
     }
+
     if (options.columns < 1 || options.columns > kMaxComponents || options.rows < 1 || options.rows > kMaxComponents) {
         throw std::invalid_argument("An image placeholder keeps from 1 to " + std::to_string(kMaxComponents) + " cosines on each axis.");
     }
@@ -37,10 +38,12 @@ std::string ImagePlaceholder::encode(const Image& image, Options options) {
                     }
                 }
             }
+
             const float scale = (i == 0 && j == 0 ? 1.0F : 2.0F) / static_cast<float>(gridColumns * gridRows);
             for (float& channel : factor) {
                 channel *= scale;
             }
+
             factors.push_back(factor);
         }
     }
@@ -49,6 +52,7 @@ std::string ImagePlaceholder::encode(const Image& image, Options options) {
     for (std::size_t index = 1; index < factors.size(); ++index) {
         largest = std::max({largest, std::abs(factors[index][0]), std::abs(factors[index][1]), std::abs(factors[index][2])});
     }
+
     const int quantized = std::clamp(static_cast<int>(std::ceil(largest * 255.0F)), 1, 255);
     const float maximum = static_cast<float>(quantized) / 255.0F;
 
@@ -60,9 +64,11 @@ std::string ImagePlaceholder::encode(const Image& image, Options options) {
             const float root = std::copysign(std::sqrt(std::abs(scaled)), scaled);
             packed = packed * kLevels + std::clamp(static_cast<int>(std::lround(root * static_cast<float>(kLevels / 2) + static_cast<float>(kLevels / 2))), 0, kLevels - 1);
         }
+
         bytes.push_back(static_cast<std::uint8_t>(packed >> 8));
         bytes.push_back(static_cast<std::uint8_t>(packed & 0xFF));
     }
+
     return toText(bytes);
 }
 
@@ -71,10 +77,12 @@ Image ImagePlaceholder::decode(std::string_view code, int width, int height) {
     if (width < 1 || width > kMaxSize || height < 1 || height > kMaxSize) {
         throw std::invalid_argument("An image placeholder decodes to a size from 1 to " + std::to_string(kMaxSize) + " pixels on each side.");
     }
+
     const std::vector<std::uint8_t> bytes = fromText(code);
     if (bytes.size() < 5 || bytes[0] >= kMaxComponents * kMaxComponents) {
         throw std::invalid_argument("The text is not an image placeholder.");
     }
+
     const int columns = bytes[0] % kMaxComponents + 1;
     const int rows = bytes[0] / kMaxComponents + 1;
     if (bytes.size() != 5 + static_cast<std::size_t>(columns * rows - 1) * 2 || bytes[1] == 0) {
@@ -88,12 +96,14 @@ Image ImagePlaceholder::decode(std::string_view code, int width, int height) {
         if (packed >= kLevels * kLevels * kLevels) {
             throw std::invalid_argument("The text is not an image placeholder.");
         }
+
         Linear factor{};
         for (int channel = 2; channel >= 0; --channel) {
             const float root = (static_cast<float>(packed % kLevels) - static_cast<float>(kLevels / 2)) / static_cast<float>(kLevels / 2);
             factor[static_cast<std::size_t>(channel)] = std::copysign(root * root, root) * maximum;
             packed /= kLevels;
         }
+
         factors.push_back(factor);
     }
 
@@ -112,6 +122,7 @@ Image ImagePlaceholder::decode(std::string_view code, int width, int height) {
                     }
                 }
             }
+
             const std::size_t offset = (static_cast<std::size_t>(y) * static_cast<std::size_t>(width) + static_cast<std::size_t>(x)) * 4;
             pixels[offset] = toByte(color[0]);
             pixels[offset + 1] = toByte(color[1]);
@@ -119,6 +130,7 @@ Image ImagePlaceholder::decode(std::string_view code, int width, int height) {
             pixels[offset + 3] = 255;
         }
     }
+
     return image;
 }
 
@@ -147,14 +159,17 @@ std::vector<ImagePlaceholder::Linear> ImagePlaceholder::average(const Image& ima
             for (std::size_t channel = 0; channel < 3; ++channel) {
                 grid[cell][channel] += toLinear(pixels[offset + channel]) * alpha;
             }
+
             ++counts[cell];
         }
     }
+
     for (std::size_t cell = 0; cell < grid.size(); ++cell) {
         for (float& channel : grid[cell]) {
             channel /= static_cast<float>(std::max(counts[cell], 1));
         }
     }
+
     return grid;
 }
 
@@ -171,9 +186,11 @@ std::string ImagePlaceholder::toText(const std::vector<std::uint8_t>& bytes) {
             text += kAlphabet[(buffer >> static_cast<unsigned>(bits)) & 0x3FU];
         }
     }
+
     if (bits > 0) {
         text += kAlphabet[(buffer << static_cast<unsigned>(6 - bits)) & 0x3FU];
     }
+
     return text;
 }
 
@@ -183,6 +200,7 @@ std::vector<std::uint8_t> ImagePlaceholder::fromText(std::string_view text) {
     if (text.size() > (kMaxBytes * 8 + 5) / 6) {
         throw std::invalid_argument("The text is not an image placeholder.");
     }
+
     std::vector<std::uint8_t> bytes;
     bytes.reserve(text.size() * 6 / 8);
     unsigned buffer = 0;
@@ -192,6 +210,7 @@ std::vector<std::uint8_t> ImagePlaceholder::fromText(std::string_view text) {
         if (value == std::string_view::npos) {
             throw std::invalid_argument("The text is not an image placeholder.");
         }
+
         buffer = (buffer << 6U) | static_cast<unsigned>(value);
         bits += 6;
         if (bits >= 8) {
@@ -199,6 +218,7 @@ std::vector<std::uint8_t> ImagePlaceholder::fromText(std::string_view text) {
             bytes.push_back(static_cast<std::uint8_t>((buffer >> static_cast<unsigned>(bits)) & 0xFFU));
         }
     }
+
     return bytes;
 }
 

@@ -25,6 +25,7 @@ std::optional<gpu::Device::Language> ShaderResource::languageFromName(std::strin
     if (found == kLanguageNames.begin() || found == kLanguageNames.end()) {
         return std::nullopt;
     }
+
     return static_cast<gpu::Device::Language>(found - kLanguageNames.begin());
 }
 
@@ -37,9 +38,11 @@ gpu::Device::Stage ShaderResource::readStage(const core::Json& value) {
     if (stage == "vertex") {
         return gpu::Device::Stage::Vertex;
     }
+
     if (stage == "fragment") {
         return gpu::Device::Stage::Fragment;
     }
+
     throw std::invalid_argument(std::format("Shaders have no \"{}\" stage.", stage));
 }
 
@@ -48,6 +51,7 @@ int ShaderResource::readSlot(const core::Json& value, std::string_view kind, std
     if (slot < 0 || static_cast<std::uint64_t>(slot) >= limit) {
         throw std::invalid_argument(std::format("The {} slot {} is out of range.", kind, slot));
     }
+
     return static_cast<int>(slot);
 }
 
@@ -56,15 +60,19 @@ gpu::Device::TextureType ShaderResource::readTextureType(const core::Json& value
     if (type == "2d") {
         return gpu::Device::TextureType::Flat;
     }
+
     if (type == "2d_array") {
         return gpu::Device::TextureType::Array;
     }
+
     if (type == "3d") {
         return gpu::Device::TextureType::Volume;
     }
+
     if (type == "cube") {
         return gpu::Device::TextureType::Cube;
     }
+
     throw std::invalid_argument(std::format("Shaders have no \"{}\" textures.", type));
 }
 
@@ -73,18 +81,23 @@ gpu::Device::SampleType ShaderResource::readSampleType(const core::Json& value) 
     if (type == "float") {
         return gpu::Device::SampleType::Float;
     }
+
     if (type == "unfilterable_float") {
         return gpu::Device::SampleType::UnfilterableFloat;
     }
+
     if (type == "depth") {
         return gpu::Device::SampleType::Depth;
     }
+
     if (type == "sint") {
         return gpu::Device::SampleType::SignedInteger;
     }
+
     if (type == "uint") {
         return gpu::Device::SampleType::UnsignedInteger;
     }
+
     throw std::invalid_argument(std::format("Shaders have no textures that sample \"{}\".", type));
 }
 
@@ -93,12 +106,15 @@ gpu::Device::SamplerType ShaderResource::readSamplerType(const core::Json& value
     if (type == "filtering") {
         return gpu::Device::SamplerType::Filtering;
     }
+
     if (type == "nonfiltering") {
         return gpu::Device::SamplerType::NonFiltering;
     }
+
     if (type == "comparison") {
         return gpu::Device::SamplerType::Comparison;
     }
+
     throw std::invalid_argument(std::format("Shaders have no \"{}\" samplers.", type));
 }
 
@@ -107,6 +123,7 @@ int ShaderResource::readNumber(const core::Json& value, std::string_view what, s
     if (number < 0 || number > 255) {
         throw std::invalid_argument(std::format("The {} {} of the {} at slot {} is out of range.", what, number, kind, slot));
     }
+
     return static_cast<int>(number);
 }
 
@@ -116,6 +133,7 @@ std::vector<ShaderResource::Binding> ShaderResource::readBindings(const core::Js
     if (slots.empty()) {
         return bindings;
     }
+
     const bool images = std::string_view(key) != "blocks";
     const int group = language == gpu::Device::Language::Wgsl && images ? 1 : 0;
     const core::Json& entries = target.at(key);
@@ -124,14 +142,17 @@ std::vector<ShaderResource::Binding> ShaderResource::readBindings(const core::Js
         if (!entries.contains(name)) {
             throw std::invalid_argument(std::format("The {} at slot {} has no binding number.", kind, slot));
         }
+
         const core::Json& entry = entries.at(name);
         if (!isBinary(language)) {
             bindings.push_back({.slot = slot, .binding = readNumber(entry, "binding number", kind, slot), .set = group});
             continue;
         }
+
         core::JsonValidator::requireKnownKeys(entry, {"set", "binding"}, "a binding");
         bindings.push_back({.slot = slot, .binding = readNumber(entry.at("binding"), "binding number", kind, slot), .set = readNumber(entry.at("set"), "descriptor set", kind, slot)});
     }
+
     return bindings;
 }
 
@@ -141,6 +162,7 @@ ShaderResource::StageCode ShaderResource::readStageCode(const core::Json& value)
     if (source < 0 || static_cast<std::uint64_t>(source) >= sources.size()) {
         throw std::invalid_argument(std::format("A stage names the source {}, which the file does not have.", source));
     }
+
     return {.source = static_cast<std::size_t>(source), .entry = value.at("entry").get<std::string>(), .profile = value.value("profile", std::string())};
 }
 
@@ -157,9 +179,11 @@ ShaderResource::ProgramInfo ShaderResource::readProgram(const std::string& progr
         if (read.size == 0 || read.size % 16 != 0) {
             throw std::invalid_argument(std::format("The uniform block \"{}\" holds {} bytes, which is not a multiple of 16.", read.name, read.size));
         }
+
         if (std::ranges::find(blockSlots, read.slot) != blockSlots.end()) {
             throw std::invalid_argument(std::format("Two uniform blocks of the program \"{}\" share the slot {}.", program, read.slot));
         }
+
         blockSlots.push_back(read.slot);
         info.blocks.push_back(std::move(read));
     }
@@ -170,6 +194,7 @@ ShaderResource::ProgramInfo ShaderResource::readProgram(const std::string& progr
         if (std::ranges::find(textureSlots, read.slot) != textureSlots.end()) {
             throw std::invalid_argument(std::format("Two textures of the program \"{}\" share the slot {}.", program, read.slot));
         }
+
         textureSlots.push_back(read.slot);
         info.textures.push_back(std::move(read));
     }
@@ -180,6 +205,7 @@ ShaderResource::ProgramInfo ShaderResource::readProgram(const std::string& progr
         if (std::ranges::find(samplerSlots, read.slot) != samplerSlots.end()) {
             throw std::invalid_argument(std::format("Two samplers of the program \"{}\" share the slot {}.", program, read.slot));
         }
+
         samplerSlots.push_back(read.slot);
         info.samplers.push_back(std::move(read));
     }
@@ -189,6 +215,7 @@ ShaderResource::ProgramInfo ShaderResource::readProgram(const std::string& progr
         if (std::ranges::find(textureSlots, read.texture) == textureSlots.end() || std::ranges::find(samplerSlots, read.sampler) == samplerSlots.end()) {
             throw std::invalid_argument(std::format("The texture sampler pair \"{}\" names a texture or sampler the program does not declare.", read.name));
         }
+
         info.pairs.push_back(std::move(read));
     }
 
@@ -202,6 +229,7 @@ ShaderResource::ProgramInfo ShaderResource::readProgram(const std::string& progr
         if (!language) {
             throw std::invalid_argument(std::format("The program \"{}\" has code for \"{}\", which is not a shader language of the engine.", program, languageName));
         }
+
         core::JsonValidator::requireKnownKeys(target, {"vertex", "fragment", "blocks", "textures", "samplers"}, "a target");
         Target read{.vertex = readStageCode(target.at("vertex")), .fragment = readStageCode(target.at("fragment"))};
         const bool glsl = *language == gpu::Device::Language::Glsl430 || *language == gpu::Device::Language::Glsl300es;
@@ -212,21 +240,26 @@ ShaderResource::ProgramInfo ShaderResource::readProgram(const std::string& progr
                 if (type != "vec4" && type != "ivec4") {
                     throw std::invalid_argument(std::format("The block \"{}\" is read as \"{}\", and OpenGL reads blocks as arrays of \"vec4\" or \"ivec4\".", block.name, type));
                 }
+
                 const int count = flattened.at("count").get<int>();
                 if (count * 16 != static_cast<int>(block.size)) {
                     throw std::invalid_argument(std::format("The array of the block \"{}\" does not fill its {} bytes.", block.name, block.size));
                 }
+
                 read.glslBlocks.push_back({.slot = block.slot, .name = flattened.at("name").get<std::string>(), .integers = type == "ivec4", .count = count});
             }
         } else {
             read.blockBindings = readBindings(target, "blocks", blockSlots, "uniform block", *language);
         }
+
         if (!glsl) {
             read.textureBindings = readBindings(target, "textures", textureSlots, "texture", *language);
             read.samplerBindings = readBindings(target, "samplers", samplerSlots, "sampler", *language);
         }
+
         info.targets[static_cast<std::size_t>(*language)] = std::move(read);
     }
+
     return info;
 }
 
@@ -236,15 +269,18 @@ void ShaderResource::readModules(const ProgramInfo& program, gpu::Device::Langua
     if (!target) {
         return;
     }
+
     const bool spirv = language == gpu::Device::Language::Spirv;
     for (const std::size_t source : {target->vertex.source, target->fragment.source}) {
         if (modules.contains(source)) {
             continue;
         }
+
         std::optional<std::vector<std::uint8_t>> decoded = core::Base64::decode(sources[source]);
         if (!decoded || decoded->empty() || (spirv && decoded->size() % 4 != 0)) {
             throw std::invalid_argument(std::format("The source {} is not the Base64 text of {}.", source, spirv ? "a SPIR-V module" : "the code of a port"));
         }
+
         std::vector<std::byte>& module = modules[source];
         module.resize(decoded->size());
         std::ranges::transform(*decoded, module.begin(), [](std::uint8_t value) { return static_cast<std::byte>(value); });
@@ -257,14 +293,17 @@ void ShaderResource::readMaterialBindings(const ProgramInfo& program) {
         if (block.stage != gpu::Device::Stage::Fragment || std::ranges::find(kEngineBlocks, block.name) != kEngineBlocks.end()) {
             continue;
         }
+
         const auto known = std::ranges::find(blocks, block.name, &Shader::Block::name);
         if (known == blocks.end()) {
             throw std::invalid_argument(std::format("The block \"{}\" has no members in the file.", block.name));
         }
+
         if (known->slot != block.slot || known->size != block.size) {
             throw std::invalid_argument(std::format("A program reads {} bytes at slot {} from the block \"{}\", which holds {} at slot {}.", block.size, block.slot, block.name, known->size, known->slot));
         }
     }
+
     for (const TextureInfo& texture : program.textures) {
         if (std::ranges::find(kEngineTextures, texture.name) == kEngineTextures.end() && std::ranges::find(textures, texture.name, &Shader::TextureSlot::name) == textures.end()) {
             textures.push_back({.name = texture.name, .slot = texture.slot});
@@ -274,9 +313,11 @@ void ShaderResource::readMaterialBindings(const ProgramInfo& program) {
 
 void ShaderResource::read(const core::Json& document) {
     core::JsonValidator::requireKnownKeys(document, {"format", "version", "name", "sources", "programs"}, "a shader file");
+
     if (document.at("format") != "haylen-shader" || document.at("version") != 2) {
         throw std::invalid_argument("It is not a version 2 Haylen shader package. Compile its source again with the Haylen shader compiler.");
     }
+
     name = document.at("name").get<std::string>();
     sources = document.at("sources").get<std::vector<std::string>>();
     const core::Json& entries = document.at("programs");
@@ -291,6 +332,7 @@ void ShaderResource::read(const core::Json& document) {
             if (readStage(block.at("stage")) != gpu::Device::Stage::Fragment || std::ranges::find(kEngineBlocks, blockName) != kEngineBlocks.end() || std::ranges::find(blocks, blockName, &Shader::Block::name) != blocks.end()) {
                 continue;
             }
+
             blocks.push_back({.name = blockName, .slot = readSlot(block.at("slot"), "uniform block", gpu::Device::kMaxBlocks), .size = block.at("size").get<std::uint32_t>()});
             for (const core::Json& member : block.at("members")) {
                 const std::string& typeName = member.at("type").get_ref<const std::string&>();
@@ -298,12 +340,14 @@ void ShaderResource::read(const core::Json& document) {
                 if (!type) {
                     throw std::invalid_argument(std::format("The uniform \"{}\" has the type \"{}\", which materials do not set.", member.at("name").get<std::string>(), typeName));
                 }
+
                 Shader::Uniform uniform{.name = member.at("name").get<std::string>(), .type = *type, .count = member.at("count").get<int>(), .offset = member.at("offset").get<std::uint32_t>(), .block = blocks.size() - 1};
                 const std::uint64_t element = static_cast<std::uint64_t>(Shader::getComponentCount(uniform.type)) * 4U;
                 const std::uint64_t bytes = uniform.count < 1 ? 0U : (static_cast<std::uint64_t>(uniform.count) - 1U) * Shader::getArrayStride(uniform.type) + element;
                 if (uniform.count < 1 || uniform.offset + bytes > blocks.back().size) {
                     throw std::invalid_argument(std::format("The uniform \"{}\" does not fit in the block \"{}\".", uniform.name, blockName));
                 }
+
                 uniforms.push_back(std::move(uniform));
             }
         }
@@ -323,6 +367,7 @@ const ShaderResource::ProgramInfo& ShaderResource::getInfo(std::string_view prog
     if (found == programs.end()) {
         throw std::invalid_argument(std::format("The shader \"{}\" has no \"{}\" program.", name, program));
     }
+
     return found->second;
 }
 
@@ -335,6 +380,7 @@ gpu::Device::StageCode ShaderResource::describeStage(const StageCode& stage, gpu
     if (isBinary(language)) {
         return {.bytecode = modules.at(stage.source), .entry = stage.entry};
     }
+
     return {.source = sources[stage.source], .entry = stage.entry, .profile = stage.profile};
 }
 
@@ -347,6 +393,7 @@ void ShaderResource::describe(const ProgramInfo& program, gpu::Device::Language 
     for (const Attribute& attribute : program.attributes) {
         described.attributes.push_back({.location = attribute.location, .name = attribute.name});
     }
+
     for (const Block& block : program.blocks) {
         gpu::Device::BlockBinding binding{.slot = block.slot, .stage = block.stage, .size = block.size};
         if (target) {
@@ -359,16 +406,20 @@ void ShaderResource::describe(const ProgramInfo& program, gpu::Device::Language 
                 binding.glslCount = glsl->count;
             }
         }
+
         described.blocks.push_back(binding);
     }
+
     for (const TextureInfo& texture : program.textures) {
         const Binding found = target ? findBinding(target->textureBindings, texture.slot) : Binding{};
         described.textures.push_back({.slot = texture.slot, .stage = texture.stage, .type = texture.type, .sampleType = texture.sampleType, .binding = found.binding, .set = found.set});
     }
+
     for (const SamplerInfo& sampler : program.samplers) {
         const Binding found = target ? findBinding(target->samplerBindings, sampler.slot) : Binding{};
         described.samplers.push_back({.slot = sampler.slot, .stage = sampler.stage, .type = sampler.type, .binding = found.binding, .set = found.set});
     }
+
     for (const Pair& pair : program.pairs) {
         described.pairs.push_back({.stage = pair.stage, .texture = pair.texture, .sampler = pair.sampler, .glslName = pair.name});
     }
@@ -390,6 +441,7 @@ const ShaderResource::Compiled& ShaderResource::getProgram(gpu::Device& device, 
     if (const auto found = compiled.find(key); found != compiled.end()) {
         return found->second;
     }
+
     const ProgramInfo& info = getInfo(program);
     const std::string label = std::format("{}/{}", name, program);
     Described described;
@@ -399,13 +451,16 @@ const ShaderResource::Compiled& ShaderResource::getProgram(gpu::Device& device, 
     made.program = device.makeProgram(described.desc);
     for (const Block& block : info.blocks) {
         made.blockSizes[static_cast<std::size_t>(block.slot)] = block.size;
+
         if (block.stage == gpu::Device::Stage::Fragment) {
             made.blocks.push_back(block.slot);
         }
     }
+
     for (const TextureInfo& texture : info.textures) {
         made.textures.push_back(texture.slot);
     }
+
     for (const Pair& pair : info.pairs) {
         if (std::ranges::find(made.samplers, pair.sampler, &std::pair<int, int>::first) == made.samplers.end()) {
             made.samplers.emplace_back(pair.sampler, pair.texture);
@@ -418,6 +473,7 @@ const ShaderResource::Compiled& ShaderResource::getProgram(gpu::Device& device, 
             made.samplers.emplace_back(sampler.slot, sampler.slot);
         }
     }
+
     return compiled.emplace(key, std::move(made)).first->second;
 }
 
@@ -438,10 +494,12 @@ void ShaderResource::release() noexcept {
         for (const auto& [key, pipeline] : pipelines) {
             owner->bury(pipeline);
         }
+
         for (const auto& [key, made] : compiled) {
             owner->bury(made.program);
         }
     }
+
     pipelines.clear();
     compiled.clear();
 }

@@ -14,6 +14,7 @@ std::vector<ImagePalette::Swatch> ImagePalette::extract(const Image& image, int 
     if (count < 1 || count > kMaxColors) {
         throw std::invalid_argument("A palette has from 1 to " + std::to_string(kMaxColors) + " colors, not " + std::to_string(count) + ".");
     }
+
     std::vector<Sample> samples = sample(image);
     if (samples.empty()) {
         return {};
@@ -30,9 +31,11 @@ std::vector<ImagePalette::Swatch> ImagePalette::extract(const Image& image, int 
                 widest = box;
             }
         }
+
         if (widest == boxes.end()) {
             break;
         }
+
         // The box splits below the median value of the channel, or above it when the median is the lowest value, so the samples of one value never end up in both halves.
         const std::span<Sample> box = *widest;
         const auto channel = static_cast<std::size_t>(widestChannel(box));
@@ -43,6 +46,7 @@ std::vector<ImagePalette::Swatch> ImagePalette::extract(const Image& image, int 
         if (split == box.begin()) {
             split = std::ranges::partition(box, [&](const Sample& sample) { return value(sample) <= median; }).begin();
         }
+
         const auto half = static_cast<std::size_t>(split - box.begin());
         *widest = box.first(half);
         boxes.push_back(box.subspan(half));
@@ -53,6 +57,7 @@ std::vector<ImagePalette::Swatch> ImagePalette::extract(const Image& image, int 
     for (const std::span<Sample> box : boxes) {
         palette.push_back({.color = average(box), .population = static_cast<float>(box.size()) / static_cast<float>(samples.size())});
     }
+
     std::ranges::stable_sort(palette, std::ranges::greater{}, &Swatch::population);
     return palette;
 }
@@ -63,6 +68,7 @@ ImagePalette::Swatches ImagePalette::choose(std::span<const Swatch> palette) {
     if (palette.empty()) {
         return swatches;
     }
+
     swatches.dominant = palette.front().color;
     std::vector<bool> used(palette.size(), false);
     swatches.vibrant = find(palette, {.lightness = 0.5F, .minimumLightness = 0.3F, .maximumLightness = 0.7F, .saturation = 1.0F, .minimumSaturation = 0.35F}, used);
@@ -80,6 +86,7 @@ std::vector<ImagePalette::Sample> ImagePalette::sample(const Image& image) {
     if (image.isEmpty()) {
         return samples;
     }
+
     const int step = std::max(1, (std::max(image.getWidth(), image.getHeight()) + kSampleSide - 1) / kSampleSide);
     const std::span<const std::uint8_t> pixels = image.getPixels();
     samples.reserve(static_cast<std::size_t>(((image.getWidth() + step - 1) / step) * ((image.getHeight() + step - 1) / step)));
@@ -91,6 +98,7 @@ std::vector<ImagePalette::Sample> ImagePalette::sample(const Image& image) {
             }
         }
     }
+
     return samples;
 }
 
@@ -101,6 +109,7 @@ int ImagePalette::widestChannel(std::span<const Sample> samples) noexcept {
             widest = channel;
         }
     }
+
     return widest;
 }
 
@@ -116,6 +125,7 @@ math::Color ImagePalette::average(std::span<const Sample> samples) noexcept {
             sums[channel] += value[channel];
         }
     }
+
     const double scale = 1.0 / (255.0 * static_cast<double>(samples.size()));
     return {static_cast<float>(sums[0] * scale), static_cast<float>(sums[1] * scale), static_cast<float>(sums[2] * scale), 1.0F};
 }
@@ -137,15 +147,18 @@ std::optional<math::Color> ImagePalette::find(std::span<const Swatch> palette, c
         if (used[index] || lightness < target.minimumLightness || lightness > target.maximumLightness || saturation < target.minimumSaturation || saturation > target.maximumSaturation) {
             continue;
         }
+
         const float score = (1.0F - std::abs(lightness - target.lightness)) * 6.0F + (1.0F - std::abs(saturation - target.saturation)) * 3.0F + palette[index].population / mostCommon;
         if (!best || score > bestScore) {
             best = index;
             bestScore = score;
         }
     }
+
     if (!best) {
         return std::nullopt;
     }
+
     used[*best] = true;
     return palette[*best].color;
 }

@@ -54,6 +54,7 @@ Shader Shader::parse(std::span<const std::uint8_t> bytes) {
     } catch (const std::invalid_argument& error) {
         throw std::invalid_argument(std::format("The shader file is malformed: {}", error.what()));
     }
+
     return Shader(std::move(resource));
 }
 
@@ -61,6 +62,7 @@ const ShaderResource& Shader::getChecked() const {
     if (!resource) {
         throw std::logic_error("The shader handle is empty.");
     }
+
     return *resource;
 }
 
@@ -102,6 +104,7 @@ std::uint32_t Shader::getVersion() const {
 
 void Shader::replace(const Shader& fresh) {
     const ShaderResource& source = fresh.getChecked();
+
     if (!resource) {
         throw std::logic_error("The shader handle is empty.");
     }

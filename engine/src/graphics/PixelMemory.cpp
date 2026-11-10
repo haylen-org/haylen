@@ -21,6 +21,7 @@ void* PixelMemory::allocate(std::size_t size) noexcept {
         active->refused = true;
         return nullptr;
     }
+
     return ::operator new(size, std::nothrow);
 }
 
@@ -34,6 +35,7 @@ void* PixelMemory::reallocate(void* block, std::size_t oldSize, std::size_t newS
         std::memcpy(moved, block, std::min(oldSize, newSize));
         release(block);
     }
+
     return moved;
 }
 

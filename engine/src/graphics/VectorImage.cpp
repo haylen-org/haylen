@@ -26,6 +26,7 @@ VectorImage VectorImage::parse(std::span<const std::uint8_t> bytes) {
     if (!document || !(document->width > 0.0F && document->height > 0.0F)) {
         throw std::invalid_argument("The bytes are not an SVG document with a size. Give its root element a view box, or a width and a height.");
     }
+
     const math::Vec2 size{document->width, document->height};
     return VectorImage(std::make_shared<SvgDocument>(std::move(document), size));
 }

@@ -31,6 +31,7 @@ gpu::Device::Sampler DeviceState::getSampler(Texture::Options options) {
     if (const auto found = samplers.find(key); found != samplers.end()) {
         return found->second;
     }
+
     const gpu::Device::Filter filter = options.filter == Texture::Filter::Nearest ? gpu::Device::Filter::Nearest : gpu::Device::Filter::Linear;
     const bool mipmaps = options.mipmaps.value_or(false);
     const int anisotropy = mipmaps && filter == gpu::Device::Filter::Linear ? kMaxAnisotropy : 1;
@@ -60,6 +61,7 @@ gpu::Device::Image DeviceState::createTextureImage(const Image& image, bool mipm
         pixels.push_back(std::as_bytes(level.getPixels()));
         bytes += level.getPixels().size();
     }
+
     return gpu->makeImage({.width = image.getWidth(), .height = image.getHeight(), .mipLevels = static_cast<int>(pixels.size()), .format = gpu::Device::PixelFormat::Rgba8, .kind = gpu::Device::ImageKind::Texture, .levels = pixels, .label = "haylen-texture"});
 }
 
@@ -89,6 +91,7 @@ void DeviceState::stagePixels(const std::shared_ptr<TextureResource>& resource, 
         resource->pending = true;
         changedTextures.push_back(resource);
     }
+
     resource->staged.assign(pixels.begin(), pixels.end());
 }
 

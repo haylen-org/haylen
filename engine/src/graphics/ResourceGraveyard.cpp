@@ -39,12 +39,15 @@ void ResourceGraveyard::collect(gpu::Device& device) {
     for (const gpu::Device::Pipeline pipeline : deadPipelines) {
         device.destroy(pipeline);
     }
+
     for (const gpu::Device::Program program : deadPrograms) {
         device.destroy(program);
     }
+
     for (const gpu::Device::Image image : deadImages) {
         device.destroy(image);
     }
+
     for (const gpu::Device::Buffer buffer : deadBuffers) {
         device.destroy(buffer);
     }

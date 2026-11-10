@@ -23,6 +23,7 @@ void VideoLua::Release::disconnect() {
     if (const std::shared_ptr<Video> alive = video.lock()) {
         lua::Runtime::getEngine(main).getPlugin<plugins::VideoPlugin>().release(*alive);
     }
+
     video.reset();
 }
 
@@ -45,14 +46,17 @@ std::shared_ptr<Video> VideoLua::create(lua_State* L) {
             owner = lua_gettop(L);
         }
     }
+
     if (owner == 0) {
         owner = lua::Owners::pushDefault(L);
     }
+
     core::Engine& engine = lua::Runtime::getEngine(L);
     std::shared_ptr<Video> video = engine.getPlugin<plugins::VideoPlugin>().create(engine, path, options);
     if (owner != 0) {
         lua::Owners::add(L, owner, std::make_shared<Release>(lua::Runtime::getMainThread(L), video));
     }
+
     return video;
 }
 
@@ -75,6 +79,7 @@ int VideoLua::loadAsync(lua_State* L) {
         if (const std::shared_ptr<Video> alive = weak.lock()) {
             promise.resolveWith([alive](lua_State* state) { lua::Userdata::emplace<Video>(state, alive); });
         }
+
         connections->first.disconnect();
         connections->second.disconnect();
     });
@@ -115,6 +120,7 @@ int VideoLua::on(lua_State* L) {
     if (event != "ready" && event != "ended" && event != "error") {
         return luaL_error(L, "Unknown video event \"%s\". Videos report \"ready\", \"ended\" and \"error\".", std::string(event).c_str());
     }
+
     luaL_checktype(L, 3, LUA_TFUNCTION);
     int owner = 0;
     if (!lua_isnoneornil(L, 4)) {
@@ -124,9 +130,11 @@ int VideoLua::on(lua_State* L) {
             owner = lua_gettop(L);
         }
     }
+
     if (owner == 0) {
         owner = lua::Owners::pushDefault(L);
     }
+
     const std::weak_ptr<const void> lifetime = owner != 0 ? lua::Owners::getLifetime(L, owner) : std::weak_ptr<const void>();
     auto function = std::make_shared<lua::Owners::Function>(L, 3, owner);
     lua_State* main = lua::Runtime::getMainThread(L);
@@ -160,6 +168,7 @@ int VideoLua::on(lua_State* L) {
     if (owner != 0) {
         lua::Owners::add(L, owner, connection);
     }
+
     lua::Userdata::emplace<core::Connection>(L, std::move(connection));
     return 1;
 }
@@ -216,6 +225,7 @@ int VideoLua::getError(lua_State* L) {
     } else {
         lua::Stack::push(L, video.getError());
     }
+
     return 1;
 }
 

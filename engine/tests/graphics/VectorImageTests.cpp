@@ -87,6 +87,7 @@ TEST_F(VectorImageTest, LaysGradientsOutInTheBoundingBoxOfTheirShape) {
         EXPECT_GT(raster.getPixel(left + 19, 5).g, 0.9F) << "x " << left;
         EXPECT_NEAR(raster.getPixel(left + 10, 5).g, 0.5F, 0.1F) << "x " << left;
     }
+
     EXPECT_GT(raster.getPixel(10, 20).b, 0.9F);
     EXPECT_GT(raster.getPixel(10, 39).g, 0.9F);
 
@@ -107,6 +108,7 @@ TEST_F(VectorImageTest, LeavesOutTheShapesThatAreHidden) {
     </svg>)svg")
                              .rasterize(1.0F);
     EXPECT_EQ(raster.getPixel(2, 5), math::Color::fromHex(0xFF0000FFU));
+
     for (const int x : {8, 15, 25}) {
         EXPECT_EQ(raster.getPixel(x, 5).a, 0.0F) << "x " << x;
     }
@@ -130,6 +132,7 @@ TEST_F(VectorImageTest, RejectsDocumentsWithoutASize) {
     } catch (const std::invalid_argument& error) {
         EXPECT_STREQ(error.what(), "The bytes are not an SVG document with a size. Give its root element a view box, or a width and a height.");
     }
+
     EXPECT_THROW((void)parse(R"(<svg xmlns="http://www.w3.org/2000/svg"></svg>)"), std::invalid_argument);
 
     // A document that names no size takes the size of what it draws.

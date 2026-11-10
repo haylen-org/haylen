@@ -107,6 +107,7 @@ TEST(GradientTest, DithersTheRoundingOfEveryPixel) {
             sum += red(gray, x, y);
         }
     }
+
     EXPECT_EQ(sum, 127 * 8 + 128 * 8);
 }
 

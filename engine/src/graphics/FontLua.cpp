@@ -32,9 +32,11 @@ std::shared_ptr<text::FontFamily> FontLua::readFamily(lua_State* L, int index) {
     if (lua::Userdata::test<text::FontFamily>(L, index) != nullptr) {
         return lua::Userdata::checkShared<text::FontFamily>(L, index);
     }
+
     if (lua::Userdata::test<text::Font>(L, index) != nullptr) {
         return std::make_shared<text::FontFamily>(text::FontFamily::Faces{.regular = lua::Userdata::checkShared<text::Font>(L, index), .systemFonts = getSystemFonts(L)});
     }
+
     luaL_argerror(L, index, "expected a FontFamily or a Font");
     return nullptr;
 }
@@ -45,6 +47,7 @@ char32_t FontLua::readCharacter(lua_State* L, int index) {
         luaL_argcheck(L, codePoint >= 0 && codePoint <= 0x10FFFF, index, "expected a code point from 0 to 0x10FFFF");
         return static_cast<char32_t>(codePoint);
     }
+
     const std::u32string decoded = core::Utf8::decode(lua::Stack::read<std::string_view>(L, index));
     luaL_argcheck(L, decoded.size() == 1, index, "expected one character or a code point");
     return decoded.front();
@@ -63,9 +66,11 @@ int FontLua::newFontFamily(lua_State* L) {
     lua::Table::readField(L, 1, "fallbacks", faces.fallbacks);
     bool system = true;
     lua::Table::readField(L, 1, "systemFonts", system);
+
     if (system) {
         faces.systemFonts = getSystemFonts(L);
     }
+
     lua::Stack::push(L, std::make_shared<text::FontFamily>(std::move(faces)));
     return 1;
 }
@@ -78,6 +83,7 @@ int FontLua::systemFonts(lua_State* L) {
         lua::Stack::push(L, faces[index].name);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index) + 1);
     }
+
     return 1;
 }
 
@@ -124,6 +130,7 @@ int FontLua::pushLayout(lua_State* L, const text::Layout& laid, const text::Styl
     const math::Vec2 anchorOffset = laid.size * style.anchor;
     const int fonts = lua_gettop(L) + 1;
     luaL_checkstack(L, static_cast<int>(laid.looks.size()) + 4, "too many fonts in one layout");
+
     for (const text::Layout::Look& look : laid.looks) {
         lua::Stack::push(L, fontOf(look.font));
     }
@@ -147,8 +154,10 @@ int FontLua::pushLayout(lua_State* L, const text::Layout& laid, const text::Styl
             lua::Stack::push(L, glyph.image);
             lua_setfield(L, -2, "image");
         }
+
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     lua_setfield(L, -2, "quads");
     lua::Stack::push(L, laid.size);
     lua_setfield(L, -2, "size");
@@ -198,6 +207,7 @@ std::vector<text::Font::ShapedGlyph> FontLua::shapeText(text::Font& font, std::u
     if (text.empty()) {
         return shaped;
     }
+
     const std::vector<std::uint32_t> scripts = text::Segmenter::getScripts(text);
     const auto firstParagraph = static_cast<std::size_t>(std::ranges::find_if(text, &text::Segmenter::isParagraphSeparator) - text.begin());
     const bool rightToLeft = text::BidiParagraph(text.substr(0, firstParagraph), direction).isRightToLeft();
@@ -225,6 +235,7 @@ int FontLua::pushGlyph(lua_State* L, text::Font& font, std::uint32_t index) {
         lua::Stack::push(L, found.image);
         lua_setfield(L, -2, "image");
     }
+
     return 1;
 }
 
@@ -274,6 +285,7 @@ int FontLua::shape(lua_State* L) {
         lua_setfield(L, -2, "offset");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
@@ -303,24 +315,29 @@ int FontLua::pageCount(lua_State* L) {
 
 std::shared_ptr<text::Font> FontLua::findFace(const text::FontFamily& family, const text::Font* font) {
     const text::FontFamily::Faces& faces = family.getFaces();
+
     for (const std::shared_ptr<text::Font>& face : {faces.regular, faces.bold, faces.italic, faces.boldItalic, faces.mono}) {
         if (face.get() == font) {
             return face;
         }
     }
+
     for (const std::shared_ptr<text::Font>& fallback : faces.fallbacks) {
         if (fallback.get() == font) {
             return fallback;
         }
     }
+
     if (!faces.systemFonts) {
         return nullptr;
     }
+
     for (const text::SystemFonts::Face& system : faces.systemFonts->getFaces()) {
         if (system.font.get() == font) {
             return system.font;
         }
     }
+
     return nullptr;
 }
 
@@ -364,6 +381,7 @@ int FontLua::familySelect(lua_State* L) {
         lua::Table::readField(L, 2, "italic", italic);
         lua::Table::readField(L, 2, "mono", mono);
     }
+
     return pushSelection(L, family, family.select(bold, italic, mono));
 }
 
@@ -382,6 +400,7 @@ int FontLua::familyResolve(lua_State* L) {
         lua::Table::readField(L, 3, "italic", italic);
         lua::Table::readField(L, 3, "mono", mono);
     }
+
     return pushSelection(L, family, family.resolve(family.select(bold, italic, mono), character, bold, italic));
 }
 
