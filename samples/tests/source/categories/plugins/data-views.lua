@@ -87,6 +87,15 @@ function DataViews:stream()
 end
 
 -- Fills a view in Lua, which the native part sums and marks in place, so the mark reaches Lua through the same memory and not through the answer.
+-- The bytes in hexadecimal, such as "4E 41 54".
+function DataViews.hex(bytes)
+    local parts = {}
+    for index = 1, #bytes do
+        parts[index] = string.format('%02X', bytes:byte(index))
+    end
+    return table.concat(parts, ' ')
+end
+
 function DataViews:share()
     self.results:set('shared', 'waiting', DataViews.sharedName, string.format('Sharing a view of %d bytes.', DataViews.viewSize))
     local view = dataview.new(DataViews.viewSize)
@@ -98,7 +107,7 @@ function DataViews:share()
         checksum = checksum + value
     end
     view:write(0, table.concat(bytes))
-    self:set('before', {text = DemoTest.json(view:read(0, #DataViews.mark))})
+    self:set('before', {text = DataViews.hex(view:read(0, #DataViews.mark))})
 
     local answer, err = demo.checksumView(view):await()
     if err then
@@ -106,7 +115,7 @@ function DataViews:share()
         return
     end
     local marked = view:read(0, #DataViews.mark)
-    self:set('after', {text = DemoTest.json(marked)})
+    self:set('after', {text = string.format('%s, the text "%s"', DataViews.hex(marked), marked)})
     local valid = answer.checksum == checksum and answer.size == DataViews.viewSize and marked == DataViews.mark
     self.results:set('shared', valid and 'pass' or 'fail', DataViews.sharedName, string.format('%s summed %d bytes to %d, which Lua sums to %d, and the view of Lua now starts with "%s".', answer.language, answer.size, answer.checksum, checksum, marked))
     view:release()
