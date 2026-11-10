@@ -12,6 +12,10 @@ struct _EXCEPTION_POINTERS;
 #include <signal.h>
 #endif
 
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
+
 namespace haylen::platform {
 
 // Captures the native crashes of the process into a small JSON report that the next start of the app reads: fatal signals on macOS, iOS, tvOS, Mac Catalyst, Linux and Android, and unhandled exceptions on Windows. The report holds the reason and the context that the frame thread published last, such as breadcrumbs and log lines, and the handler writes it from text prepared before the crash with calls that are safe while the process crashes. The crash then goes on to the handler that was there before, with the signal information and the context of the crash itself, or to the system, so the crash reporters of the system and of plugins still see the real crash. Browsers have no native crashes to catch, so the guard does nothing on the web.
@@ -20,7 +24,7 @@ class CrashGuard final {
     static constexpr std::size_t kContextSize = 32768;
     static constexpr std::size_t kPathSize = 4096;
 
-    // Installs the handlers once per process. Every platform runtime calls it as the process starts, before the native parts of plugins load, so a crash reporter that a plugin installs finds the guard and hands each crash on to it. The calling thread, the one that plays the frames, gets a stack of its own for the handlers when it has none, so a stack overflow there is reported too.
+    // Installs the handlers once per process. Every platform runtime calls it as the process starts, before the native parts of plugins load, so a crash reporter that a plugin installs finds the guard and hands each crash on to it. The calling thread, the one that plays the frames, gets a stack of its own for the handlers when it has none, so a stack overflow there is reported too, except on tvOS, whose SDK marks the alternate stacks of signals unavailable.
     static void install();
 
     // Points the handlers at the report file of the app that plays, replacing the file of an earlier app of the process. A path longer than `kPathSize` turns the reports off.
@@ -53,15 +57,20 @@ class CrashGuard final {
     static ExceptionFilter previousFilter;
 #elif !defined(__EMSCRIPTEN__)
     static constexpr std::array<int, 6> kSignals{SIGSEGV, SIGBUS, SIGILL, SIGFPE, SIGABRT, SIGTRAP};
-    static constexpr std::size_t kAlternateStackSize = 262144;
 
-    static void prepareAlternateStack();
     static void handleSignal(int signal, siginfo_t* info, void* context);
     static void forwardSignal(int signal, siginfo_t* info, void* context);
     [[nodiscard]] static std::string_view describeSignal(int signal) noexcept;
 
     static std::array<struct sigaction, kSignals.size()>& previousActions;
+
+#if !(defined(__APPLE__) && TARGET_OS_TV)
+    static constexpr std::size_t kAlternateStackSize = 262144;
+
+    static void prepareAlternateStack();
+
     static std::array<std::byte, kAlternateStackSize>& alternateStack;
+#endif
 #endif
 
     static std::array<Context, 2>& contexts;

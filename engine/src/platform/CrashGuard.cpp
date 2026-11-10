@@ -29,8 +29,11 @@ std::atomic<bool> CrashGuard::crashing = false;
 CrashGuard::ExceptionFilter CrashGuard::previousFilter = nullptr;
 #elif !defined(__EMSCRIPTEN__)
 std::array<struct sigaction, CrashGuard::kSignals.size()>& CrashGuard::previousActions = *new std::array<struct sigaction, CrashGuard::kSignals.size()>{};
+
+#if !(defined(__APPLE__) && TARGET_OS_TV)
 // The stack stays untouched until a handler runs on it, so it takes no memory before.
 std::array<std::byte, CrashGuard::kAlternateStackSize>& CrashGuard::alternateStack = *new std::array<std::byte, CrashGuard::kAlternateStackSize>;
+#endif
 #endif
 
 void CrashGuard::install() {
@@ -143,7 +146,10 @@ std::string_view CrashGuard::describeException(unsigned long code) noexcept {
 #elif !defined(__EMSCRIPTEN__)
 
 void CrashGuard::installHandlers() {
+#if !(defined(__APPLE__) && TARGET_OS_TV)
     prepareAlternateStack();
+#endif
+
     for (std::size_t index = 0; index < kSignals.size(); ++index) {
         struct sigaction action{};
         action.sa_sigaction = &handleSignal;
@@ -153,6 +159,7 @@ void CrashGuard::installHandlers() {
     }
 }
 
+#if !(defined(__APPLE__) && TARGET_OS_TV)
 // A stack overflow leaves the thread no stack to run a handler on, and the handlers run on the alternate stack of the thread. A thread that has one already, such as every thread on Android, keeps it.
 void CrashGuard::prepareAlternateStack() {
     stack_t current{};
@@ -166,6 +173,7 @@ void CrashGuard::prepareAlternateStack() {
     stack.ss_size = alternateStack.size();
     sigaltstack(&stack, nullptr);
 }
+#endif
 
 void CrashGuard::handleSignal(int signal, siginfo_t* info, void* context) {
     if (!crashing.exchange(true)) {
