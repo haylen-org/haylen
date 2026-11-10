@@ -46,6 +46,16 @@ class CrashGuardTest : public ::testing::Test {
     static long __stdcall exitFromThePreviousFilter(_EXCEPTION_POINTERS* info) {
         _exit(info->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION ? kForwarded : kForwardedWithoutTheCrash);
     }
+
+    // Hands an access violation to the filter of the process, as a crash does.
+    static void crashThroughTheFilter() {
+        SetUnhandledExceptionFilter(&exitFromThePreviousFilter);
+        CrashGuard::install();
+        EXCEPTION_RECORD record{.ExceptionCode = EXCEPTION_ACCESS_VIOLATION};
+        CONTEXT context{};
+        EXCEPTION_POINTERS pointers{.ExceptionRecord = &record, .ContextRecord = &context};
+        UnhandledExceptionFilter(&pointers);
+    }
 #elif !defined(__EMSCRIPTEN__)
     // The fault of a page without access arrives as a segmentation fault on Linux and as a bus error on Apple platforms.
     static void installPreviousHandler(void (*handler)(int, siginfo_t*, void*)) {
@@ -113,16 +123,7 @@ TEST_F(CrashGuardTest, WritesTheReasonAndTheLastPublishedContext) {
 
 #if defined(_WIN32)
 TEST_F(CrashGuardTest, HandsAnExceptionToTheFilterThatWasThereBefore) {
-    // clang-format off
-    EXPECT_EXIT({
-        SetUnhandledExceptionFilter(&exitFromThePreviousFilter);
-        CrashGuard::install();
-        EXCEPTION_RECORD record{.ExceptionCode = EXCEPTION_ACCESS_VIOLATION};
-        CONTEXT context{};
-        EXCEPTION_POINTERS pointers{.ExceptionRecord = &record, .ContextRecord = &context};
-        UnhandledExceptionFilter(&pointers);
-    }, testing::ExitedWithCode(kForwarded), "");
-    // clang-format on
+    EXPECT_EXIT(crashThroughTheFilter(), testing::ExitedWithCode(kForwarded), "");
 }
 #elif !defined(__EMSCRIPTEN__)
 // A crash reporter that a plugin installed before the guard receives the fault itself, with its address, not a signal that the guard raised again.
