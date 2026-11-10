@@ -30,10 +30,10 @@ class BehaviorTreeLua final {
     // The kind names of descriptions, in the order of `BehaviorTree::Kind`.
     static constexpr std::array<std::string_view, 13> kKinds{"sequence", "selector", "parallel", "inverter", "succeeder", "failer", "repeater", "retry", "cooldown", "timeout", "wait", "condition", "action"};
 
-    // The keys that descriptions of each group of kinds hold.
     // Building, ticking and resetting a tree recurse through its levels, so a deeper tree is refused instead of running out of the native stack.
     static constexpr int kMaxDepth = 256;
 
+    // The keys that descriptions of each group of kinds hold.
     static constexpr std::array<std::string_view, 2> kCompositeFields{"kind", "children"};
     static constexpr std::array<std::string_view, 3> kCountedFields{"kind", "children", "count"};
     static constexpr std::array<std::string_view, 3> kTimedFields{"kind", "children", "seconds"};

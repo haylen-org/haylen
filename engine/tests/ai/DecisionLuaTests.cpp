@@ -103,6 +103,8 @@ TEST_F(DecisionLuaTest, ReadsDeepTreesAndRejectsDescriptionsThatContainThemselve
     EXPECT_EQ(lua("local shared = ai.succeeder(ai.action(function() return false end)) return ai.newBehaviorTree(ai.sequence({shared, ai.inverter(shared)})):tick(0)"), "failure");
     EXPECT_NE(lua("local loop = ai.sequence({}) loop.children[1] = ai.inverter(loop) ai.newBehaviorTree(loop)").find("A behavior tree description contains itself."), std::string::npos);
     EXPECT_NE(lua("local node = ai.action(function() end) for level = 1, 200000 do node = ai.inverter(node) end ai.newBehaviorTree(node)").find("A behavior tree nests deeper than 256 levels."), std::string::npos);
+    // The deepest tree builds, ticks, resets and goes away within the smallest native stack, the one of a Windows thread.
+    EXPECT_EQ(lua("local node = ai.action(function() return 'success' end) for level = 1, 255 do node = ai.inverter(node) end local tree = ai.newBehaviorTree(node) local first = tree:tick(0) tree:reset() local count = tree.nodeCount tree = nil collectgarbage() return first .. ' ' .. count"), "failure 256");
 }
 
 TEST_F(DecisionLuaTest, ChoosesByUtility) {
