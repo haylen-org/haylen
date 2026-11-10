@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -374,12 +375,18 @@ TEST_F(FontFileTest, MeasuresFontsWithTruncatedAdvancesAndNoEmSquare) {
     EXPECT_GT(width, 0.0F);
 }
 
-// The inside of a distance field covers the pixels the glyph covers, for the quadratic curves of TrueType outlines and the cubic curves of CFF outlines alike.
+// The inside of a distance field covers the pixels the glyph covers, for the quadratic curves of TrueType outlines and the cubic curves of CFF outlines alike, and for kana whose edge nearest to the corner of their box ends in a corner.
 TEST_F(FontFileTest, BuildsDistanceFieldsFromWholeOutlines) {
-    for (const std::string_view name : {"default", "fira-sans-regular.otf", "crimson-text-regular.ttf"}) {
+    const std::array<std::pair<std::string_view, std::u32string_view>, 4> fonts{{
+        {"default", U"Sphinx&@8Og"},
+        {"fira-sans-regular.otf", U"Sphinx&@8Og"},
+        {"crimson-text-regular.ttf", U"Sphinx&@8Og"},
+        {"noto-sans-cjk-regular.otf", U"\u3072\u306A\u3089"},
+    }};
+    for (const auto& [name, characters] : fonts) {
         const FontFile file = open(read(name));
         const float scale = scaleFor(file, 64.0F);
-        for (const char32_t character : std::u32string_view(U"Sphinx&@8Og")) {
+        for (const char32_t character : characters) {
             const std::uint32_t glyph = file.findGlyph(character);
             const std::optional<DistanceField> field = DistanceField::build(file, glyph, scale, 8, 4096);
             ASSERT_TRUE(field.has_value()) << name;

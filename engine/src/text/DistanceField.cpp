@@ -134,9 +134,8 @@ std::optional<DistanceField> DistanceField::build(const FontFile& font, std::uin
     shape.normalize();
     shape.setYAxisOrientation(msdfgen::Y_DOWNWARD);
 
-    // TrueType and CFF outlines wind their contours in opposite directions, so a point outside the glyph tells which way this one fills.
-    const msdfgen::Shape::Bounds bounds = shape.getBounds();
-    if (msdfgen::SimpleTrueShapeDistanceFinder::oneShotDistance(shape, msdfgen::Point2(bounds.l - 1.0, bounds.b - 1.0)) > 0.0) {
+    // TrueType and CFF outlines wind their contours in opposite directions, which the sign of the area of the outline tells.
+    if (fillsBackward(shape)) {
         for (msdfgen::Contour& outline : shape.contours) {
             outline.reverse();
         }
@@ -147,12 +146,15 @@ std::optional<DistanceField> DistanceField::build(const FontFile& font, std::uin
     const msdfgen::BitmapSection<float, 1> output(samples.data(), field->width, field->height, msdfgen::Y_DOWNWARD);
     const msdfgen::Projection projection(msdfgen::Vector2(1.0), msdfgen::Vector2(-field->offsetX, -field->offsetY));
     msdfgen::generateSDF(output, shape, msdfgen::SDFTransformation(projection, msdfgen::Range(spread * 2.0)), msdfgen::GeneratorConfig(mayOverlap(shape)));
+
+    // The nearest edge of a pixel where overlapping contours meet may lie on either side, so the fill of the whole outline settles which side each pixel is on.
+    msdfgen::distanceSignCorrection(output, shape, projection, 0.5F, msdfgen::FILL_NONZERO);
     field->distances.resize(samples.size());
     std::ranges::transform(samples, field->distances.begin(), [](float distance) { return math::HalfFloat::fromFloat(std::clamp(distance, 0.0F, 1.0F)); });
     return field;
 }
 
-// The distance takes the sign of the side of the outline a point lies on, so the middle lies in a hole when its sign matches the sign of a point outside the box.
+// The distance takes the sign of the side of the outline a point lies on, positive outside an outline that fills backward, so the middle lies in a hole when its sign is the sign of the outside.
 float DistanceField::measureHole(const FontFile& font, std::uint32_t glyph, float scale) {
     msdfgen::Shape shape = readShape(font, glyph, scale);
     if (shape.contours.empty()) {
@@ -161,9 +163,24 @@ float DistanceField::measureHole(const FontFile& font, std::uint32_t glyph, floa
 
     shape.normalize();
     const msdfgen::Shape::Bounds bounds = shape.getBounds();
-    const double outside = msdfgen::SimpleTrueShapeDistanceFinder::oneShotDistance(shape, msdfgen::Point2(bounds.l - 1.0, bounds.b - 1.0));
     const double middle = msdfgen::SimpleTrueShapeDistanceFinder::oneShotDistance(shape, msdfgen::Point2((bounds.l + bounds.r) * 0.5, (bounds.b + bounds.t) * 0.5));
-    return (outside > 0.0) == (middle > 0.0) ? static_cast<float>(std::fabs(middle) * 2.0) : 0.0F;
+    return fillsBackward(shape) == (middle > 0.0) ? static_cast<float>(std::fabs(middle) * 2.0) : 0.0F;
+}
+
+// The outer contours of a glyph enclose more than the holes inside them, so the sign of the summed area tells the way it fills, which the nearest edge of a point outside the glyph cannot when that edge ends in a corner. Each edge counts through points along its curve.
+bool DistanceField::fillsBackward(const msdfgen::Shape& shape) {
+    double area = 0.0;
+    for (const msdfgen::Contour& contour : shape.contours) {
+        for (const msdfgen::EdgeHolder& edge : contour.edges) {
+            msdfgen::Point2 from = edge->point(0.0);
+            for (int step = 1; step <= kAreaSteps; ++step) {
+                const msdfgen::Point2 to = edge->point(static_cast<double>(step) / kAreaSteps);
+                area += (to.x - from.x) * (to.y + from.y);
+                from = to;
+            }
+        }
+    }
+    return area < 0.0;
 }
 
 } // namespace haylen::text

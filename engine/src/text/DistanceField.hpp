@@ -35,6 +35,9 @@ struct DistanceField {
     [[nodiscard]] static float measureHole(const FontFile& font, std::uint32_t glyph, float scale);
 
   private:
+    // How many straight steps follow each edge when the area of an outline is summed.
+    static constexpr int kAreaSteps = 8;
+
     // The outline that HarfBuzz draws, gathered in pixels with y pointing down like the rows of the field.
     struct Outline {
         msdfgen::Shape& shape;
@@ -53,6 +56,7 @@ struct DistanceField {
 
     [[nodiscard]] static msdfgen::Shape readShape(const FontFile& font, std::uint32_t glyph, float scale);
     [[nodiscard]] static bool mayOverlap(const msdfgen::Shape& shape);
+    [[nodiscard]] static bool fillsBackward(const msdfgen::Shape& shape);
 };
 
 } // namespace haylen::text
