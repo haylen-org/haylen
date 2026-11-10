@@ -23,9 +23,11 @@ class BehaviorTreeTest : public ::testing::Test {
         // clang-format off
         return BehaviorTree::action([this, name = std::move(name), remaining, ticks, result](Blackboard&, float) {
             calls.push_back(name);
+
             if (--*remaining > 0) {
                 return Status::Running;
             }
+
             *remaining = ticks;
             return result;
         });
@@ -169,6 +171,7 @@ TEST(UtilitySelectorTest, PicksTheOptionWithTheBestScore) {
     for (int pick = 0; pick < 200; ++pick) {
         ++picks[selector.choose(random, 0.0F)->index];
     }
+
     EXPECT_GT(picks[attack], 0);
     EXPECT_GT(picks[flee], picks[attack]);
     EXPECT_EQ(selector.choose(random, 1.0F)->index, flee);
@@ -189,6 +192,7 @@ TEST(ResponseCurveTest, ShapesStayWithinZeroAndOne) {
             EXPECT_LE(value, 1.0F);
         }
     }
+
     EXPECT_NEAR((ResponseCurve{.shape = ResponseCurve::Shape::Logistic, .slope = 10.0F, .shift = 0.5F}).evaluate(0.5F), 0.5F, 1e-5F);
     EXPECT_NEAR((ResponseCurve{.shape = ResponseCurve::Shape::Logit, .slope = 1.0F}).evaluate(0.5F), 0.5F, 1e-5F);
     EXPECT_NEAR((ResponseCurve{.shape = ResponseCurve::Shape::Normal, .slope = 1.0F, .exponent = 10.0F, .shift = 0.5F}).evaluate(0.5F), 1.0F, 1e-5F);

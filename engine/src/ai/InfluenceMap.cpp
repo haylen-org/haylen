@@ -17,6 +17,7 @@ InfluenceMap::InfluenceMap(int columns, int rows, float size, math::Vec2 corner)
     if (columns < 1 || rows < 1 || !std::isfinite(size) || size <= 0.0F) {
         throw std::invalid_argument("An influence map needs at least one cell on each side and a finite cell size above 0.");
     }
+
     values.assign(static_cast<std::size_t>(columns) * static_cast<std::size_t>(rows), 0.0F);
 }
 
@@ -83,6 +84,7 @@ void InfluenceMap::stamp(math::Vec2 center, float strength, float radius, Fallof
     if (radius <= 0.0F) {
         return;
     }
+
     const Range range = rangeAround(center, radius);
 
     for (int row = range.firstRow; row <= range.lastRow; ++row) {
@@ -91,6 +93,7 @@ void InfluenceMap::stamp(math::Vec2 center, float strength, float radius, Fallof
             if (distance > radius) {
                 continue;
             }
+
             const float remaining = 1.0F - distance / radius;
             const float factor = falloff == Falloff::Constant ? 1.0F : (falloff == Falloff::Linear ? remaining : remaining * remaining);
             values[indexOf(column, row)] += strength * factor;
@@ -113,14 +116,17 @@ void InfluenceMap::propagate(float decay, float momentum) {
                     if ((offsetX == 0 && offsetY == 0) || neighborColumn < 0 || neighborRow < 0 || neighborColumn >= width || neighborRow >= height) {
                         continue;
                     }
+
                     const float spread = values[indexOf(neighborColumn, neighborRow)] * (offsetX != 0 && offsetY != 0 ? diagonal : straight);
                     strongest = std::fabs(spread) > std::fabs(strongest) ? spread : strongest;
                 }
             }
+
             const std::size_t index = indexOf(column, row);
             scratch[index] = math::Math::lerp(strongest, values[index], momentum);
         }
     }
+
     values.swap(scratch);
 }
 
@@ -134,6 +140,7 @@ void InfluenceMap::add(const InfluenceMap& other, float weight) {
     if (other.width != width || other.height != height) {
         throw std::invalid_argument("Only influence maps of the same size add up.");
     }
+
     for (std::size_t index = 0; index < values.size(); ++index) {
         values[index] += other.values[index] * weight;
     }
@@ -151,14 +158,17 @@ std::optional<InfluenceMap::Spot> InfluenceMap::findExtreme(math::Vec2 center, f
         for (int column = range.firstColumn; column <= range.lastColumn; ++column) {
             const math::Vec2 position = getCellCenter(column, row);
             const float value = values[indexOf(column, row)];
+
             if (math::Vec2::distance(position, center) > radius) {
                 continue;
             }
+
             if (!found || (highest ? value > found->value : value < found->value)) {
                 found = Spot{position, value};
             }
         }
     }
+
     return found;
 }
 

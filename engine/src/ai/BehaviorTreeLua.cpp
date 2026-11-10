@@ -28,9 +28,11 @@ int BehaviorTreeLua::describe(lua_State* L, BehaviorTree::Kind kind, int childre
     if (children > 0) {
         luaL_checktype(L, children, LUA_TTABLE);
     }
+
     if (child > 0) {
         luaL_checktype(L, child, LUA_TTABLE);
     }
+
     std::optional<lua_Integer> times;
     if (count > 0 && !lua_isnoneornil(L, count)) {
         times = luaL_checkinteger(L, count);
@@ -38,6 +40,7 @@ int BehaviorTreeLua::describe(lua_State* L, BehaviorTree::Kind kind, int childre
         // A parallel node that names no count succeeds once every child succeeded.
         times = luaL_len(L, children);
     }
+
     const std::optional<lua_Number> duration = seconds > 0 ? std::optional(luaL_checknumber(L, seconds)) : std::nullopt;
 
     lua_createtable(L, 0, 4);
@@ -48,20 +51,24 @@ int BehaviorTreeLua::describe(lua_State* L, BehaviorTree::Kind kind, int childre
         lua_pushvalue(L, children);
         lua_setfield(L, description, "children");
     }
+
     if (child > 0) {
         lua_createtable(L, 1, 0);
         lua_pushvalue(L, child);
         lua_rawseti(L, -2, 1);
         lua_setfield(L, description, "children");
     }
+
     if (times) {
         lua_pushinteger(L, *times);
         lua_setfield(L, description, "count");
     }
+
     if (duration) {
         lua_pushnumber(L, *duration);
         lua_setfield(L, description, "seconds");
     }
+
     return 1;
 }
 
@@ -135,6 +142,7 @@ BehaviorTree::Status BehaviorTreeLua::callLeaf(Scripted& self, lua_Integer leaf,
     if (deltaSeconds != nullptr) {
         lua_pushnumber(L, *deltaSeconds);
     }
+
     lua_call(L, deltaSeconds != nullptr ? 2 : 1, 1);
 
     const int type = lua_type(L, -1);
@@ -146,10 +154,12 @@ BehaviorTree::Status BehaviorTreeLua::callLeaf(Scripted& self, lua_Integer leaf,
         if (!named) {
             luaL_error(L, "A behavior tree action returned the unknown status \"%s\".", lua_tostring(L, -1));
         }
+
         status = *named;
     } else if (type != LUA_TNIL) {
         luaL_error(L, "A behavior tree action must return a status name, a boolean or nothing.");
     }
+
     lua_pop(L, 1);
     return status;
 }
@@ -184,6 +194,7 @@ std::string BehaviorTreeLua::listKinds() {
         list += index == 0 ? "" : (index + 1 == kKinds.size() ? " or " : ", ");
         list += "\"" + std::string(kKinds[index]) + "\"";
     }
+
     return list;
 }
 
@@ -192,12 +203,14 @@ BehaviorTree::Node BehaviorTreeLua::readNode(lua_State* L, int index, int leaves
     if (depth > kMaxDepth) {
         luaL_error(L, "A behavior tree nests deeper than %d levels.", kMaxDepth);
     }
+
     luaL_checkstack(L, 4, "behavior tree too deep");
     const int description = lua_absindex(L, index);
     lua_pushvalue(L, description);
     if (lua_rawget(L, pathIndex) != LUA_TNIL) {
         luaL_error(L, "A behavior tree description contains itself.");
     }
+
     lua_pop(L, 1);
 
     lua_getfield(L, description, "kind");
@@ -205,6 +218,7 @@ BehaviorTree::Node BehaviorTreeLua::readNode(lua_State* L, int index, int leaves
     if (found == kKinds.end()) {
         luaL_error(L, "Unknown behavior tree node \"%s\". The kind of a node is %s.", luaL_tolstring(L, -1, nullptr), listKinds().c_str());
     }
+
     lua_pop(L, 1);
 
     BehaviorTree::Node node{.kind = static_cast<BehaviorTree::Kind>(found - kKinds.begin())};
@@ -223,10 +237,12 @@ BehaviorTree::Node BehaviorTreeLua::readNode(lua_State* L, int index, int leaves
             node.children.push_back(readNode(L, -1, leavesIndex, pathIndex, self, depth + 1));
             lua_pop(L, 1);
         }
+
         lua_pushvalue(L, description);
         lua_pushnil(L);
         lua_rawset(L, pathIndex);
     }
+
     lua_pop(L, 1);
 
     if (node.kind == BehaviorTree::Kind::Condition || node.kind == BehaviorTree::Kind::Action) {
@@ -234,6 +250,7 @@ BehaviorTree::Node BehaviorTreeLua::readNode(lua_State* L, int index, int leaves
         if (lua_getfield(L, description, "fn") != LUA_TFUNCTION) {
             luaL_error(L, "A behavior tree leaf needs a function in \"fn\", not %s.", luaL_typename(L, -1));
         }
+
         lua_rawseti(L, leavesIndex, leaf);
         Scripted* owner = &self;
         if (node.kind == BehaviorTree::Kind::Condition) {
@@ -242,6 +259,7 @@ BehaviorTree::Node BehaviorTreeLua::readNode(lua_State* L, int index, int leaves
             node.action = [owner, leaf](Blackboard&, float deltaSeconds) { return callLeaf(*owner, leaf, &deltaSeconds); };
         }
     }
+
     return node;
 }
 

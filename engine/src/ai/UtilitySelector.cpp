@@ -15,6 +15,7 @@ std::size_t UtilitySelector::add(Option option) {
             throw std::invalid_argument("A consideration needs an input and a range with two different ends.");
         }
     }
+
     options.push_back(std::move(option));
     return options.size() - 1;
 }
@@ -31,8 +32,10 @@ float UtilitySelector::score(std::size_t index) const {
         if (factor <= 0.0F) {
             return 0.0F;
         }
+
         product *= factor + (1.0F - factor) * modification * factor;
     }
+
     return product * option.weight;
 }
 
@@ -44,6 +47,7 @@ std::optional<UtilitySelector::Choice> UtilitySelector::choose() const {
             best = Choice{index, value};
         }
     }
+
     return best;
 }
 
@@ -59,9 +63,11 @@ std::optional<UtilitySelector::Choice> UtilitySelector::choose(math::Random& ran
     for (float& value : scores) {
         value = value > 0.0F && value >= threshold ? value : 0.0F;
     }
+
     if (std::ranges::none_of(scores, [](float value) { return value > 0.0F; })) {
         return std::nullopt;
     }
+
     const std::size_t index = random.weightedIndex(scores);
     return Choice{index, scores[index]};
 }

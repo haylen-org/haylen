@@ -103,6 +103,7 @@ int InfluenceMapLua::pushSpot(lua_State* L, bool highest) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, spot->position.x);
     lua::Stack::push(L, spot->position.y);
     lua::Stack::push(L, spot->value);
@@ -132,6 +133,7 @@ int InfluenceMapLua::values(lua_State* L) {
         lua_pushnumber(L, cells[index]);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 

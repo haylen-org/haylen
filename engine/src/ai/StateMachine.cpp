@@ -9,6 +9,7 @@ void StateMachine::add(std::string name, Callbacks callbacks) {
     if (name.empty()) {
         throw std::invalid_argument("A state needs a name.");
     }
+
     const std::string label = name;
     if (!states.emplace(std::move(name), std::move(callbacks)).second) {
         throw std::invalid_argument("The state machine already has a state named \"" + label + "\".");
@@ -23,7 +24,9 @@ void StateMachine::change(std::string_view name) {
     if (!has(name)) {
         throw std::invalid_argument("The state machine has no state named \"" + std::string(name) + "\".");
     }
+
     pending.emplace_back(name);
+
     if (transitioning) {
         return;
     }
@@ -47,11 +50,14 @@ void StateMachine::change(std::string_view name) {
                 onExit();
             }
         }
+
         previous = std::exchange(current, std::move(next));
         elapsed = 0.0F;
+
         if (onChange) {
             onChange(previous, current);
         }
+
         if (const auto& onEnter = states.find(current)->second.enter) {
             onEnter();
         }
@@ -62,7 +68,9 @@ void StateMachine::update(float deltaSeconds) {
     if (current.empty()) {
         return;
     }
+
     elapsed += deltaSeconds;
+
     if (const auto& onUpdate = states.find(current)->second.update) {
         onUpdate(deltaSeconds);
     }

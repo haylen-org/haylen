@@ -46,12 +46,14 @@ bool AiLua::pushStateFunction(lua_State* L, const std::string& name, const char*
         lua_pop(L, 2);
         return false;
     }
+
     lua_getfield(L, -1, callback);
     lua_remove(L, -2);
     lua_remove(L, -2);
     if (lua_isfunction(L, -1)) {
         return true;
     }
+
     lua_pop(L, 1);
     return false;
 }
@@ -68,6 +70,7 @@ void AiLua::enterState(Scripted& self, const std::string& name) {
         lua_rawgeti(L, queue, index + 1);
         lua_rawseti(L, queue, index);
     }
+
     lua_pushnil(L);
     lua_rawseti(L, queue, remaining);
 
@@ -75,6 +78,7 @@ void AiLua::enterState(Scripted& self, const std::string& name) {
         lua_settop(L, queue - 1);
         return;
     }
+
     lua_pushvalue(L, 1);
     lua_getfield(L, arguments, "n");
     const auto count = static_cast<int>(lua_tointeger(L, -1));
@@ -83,6 +87,7 @@ void AiLua::enterState(Scripted& self, const std::string& name) {
     for (int index = 1; index <= count; ++index) {
         lua_rawgeti(L, arguments, index);
     }
+
     lua_call(L, count + 1, 0);
     lua_settop(L, queue - 1);
 }
@@ -92,10 +97,13 @@ void AiLua::callState(Scripted& self, const std::string& name, const char* callb
     if (!pushStateFunction(L, name, callback)) {
         return;
     }
+
     lua_pushvalue(L, 1);
+
     if (deltaSeconds != nullptr) {
         lua::Stack::push(L, *deltaSeconds);
     }
+
     lua_call(L, deltaSeconds != nullptr ? 2 : 1, 0);
 }
 
@@ -130,12 +138,15 @@ int AiLua::newStateMachine(lua_State* L) {
         if (!lua::Userdata::pushFunction(caller, 1, "onChange")) {
             return;
         }
+
         lua_pushvalue(caller, 1);
+
         if (from.empty()) {
             lua_pushnil(caller);
         } else {
             lua::Stack::push(caller, from);
         }
+
         lua::Stack::push(caller, to);
         lua_call(caller, 3, 0);
     };
@@ -157,6 +168,7 @@ int AiLua::machineChange(lua_State* L) {
         lua_pushvalue(L, 2 + index);
         lua_rawseti(L, -2, index);
     }
+
     lua_pushinteger(L, count);
     lua_setfield(L, -2, "n");
     const int arguments = lua_gettop(L);
@@ -168,6 +180,7 @@ int AiLua::machineChange(lua_State* L) {
     } else {
         lua::Userdata::pushField(L, 1, "arguments");
     }
+
     lua_pushvalue(L, arguments);
     lua_rawseti(L, -2, luaL_len(L, -2) + 1);
     lua_settop(L, 1);
@@ -202,6 +215,7 @@ void AiLua::pushName(lua_State* L, const std::string& name) {
         lua_pushnil(L);
         return;
     }
+
     lua::Stack::push(L, name);
 }
 
@@ -228,9 +242,11 @@ int AiLua::machineGetOnChange(lua_State* L) {
 
 int AiLua::machineSetOnChange(lua_State* L) {
     (void)lua::Userdata::check<Scripted>(L, 1);
+
     if (!lua_isnil(L, 3)) {
         luaL_checktype(L, 3, LUA_TFUNCTION);
     }
+
     lua::Userdata::setField(L, 1, "onChange", 3);
     return 0;
 }

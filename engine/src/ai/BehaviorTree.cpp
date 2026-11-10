@@ -86,9 +86,11 @@ std::uint32_t BehaviorTree::compile(Node node) {
     if (decorator && node.children.size() != 1) {
         throw std::invalid_argument("A behavior tree decorator needs exactly one child.");
     }
+
     if ((node.kind == Kind::Condition && !node.condition) || (node.kind == Kind::Action && !node.action)) {
         throw std::invalid_argument("A behavior tree leaf needs a function.");
     }
+
     if (node.kind == Kind::Parallel && (node.count < 1 || static_cast<std::size_t>(node.count) > node.children.size())) {
         throw std::invalid_argument("A parallel node needs between one success and as many successes as it has children.");
     }
@@ -99,6 +101,7 @@ std::uint32_t BehaviorTree::compile(Node node) {
     for (Node& child : node.children) {
         children.push_back(compile(std::move(child)));
     }
+
     nodes[index].children = std::move(children);
     return index;
 }
@@ -126,10 +129,12 @@ void BehaviorTree::reset() {
     if (ticking) {
         throw std::logic_error("The behavior tree cannot reset while it ticks. Call \"reset\" after \"tick\" returns.");
     }
+
     for (std::uint32_t index = 0; index < nodes.size(); ++index) {
         resetNode(index);
         nodes[index].readyAt = 0.0F;
     }
+
     status = Status::Success;
 }
 
@@ -139,6 +144,7 @@ void BehaviorTree::resetNode(std::uint32_t index) {
     node.finished = 0;
     node.elapsed = 0.0F;
     node.results.clear();
+
     for (const std::uint32_t child : node.children) {
         resetNode(child);
     }
@@ -155,6 +161,7 @@ BehaviorTree::Status BehaviorTree::runParallel(State& node, float deltaSeconds) 
         if (node.results[child] == Status::Running) {
             node.results[child] = run(node.children[child], deltaSeconds);
         }
+
         successes += node.results[child] == Status::Success ? 1 : 0;
         failures += node.results[child] == Status::Failure ? 1 : 0;
     }
@@ -163,9 +170,11 @@ BehaviorTree::Status BehaviorTree::runParallel(State& node, float deltaSeconds) 
     if (!succeeded && failures <= static_cast<int>(node.children.size()) - node.count) {
         return Status::Running;
     }
+
     for (const std::uint32_t child : node.children) {
         resetNode(child);
     }
+
     node.results.clear();
     return succeeded ? Status::Success : Status::Failure;
 }
@@ -181,12 +190,15 @@ BehaviorTree::Status BehaviorTree::run(std::uint32_t index, float deltaSeconds) 
             if (result == Status::Running) {
                 return result;
             }
+
             if (result == stop) {
                 node.current = 0;
                 return stop;
             }
+
             ++node.current;
         }
+
         node.current = 0;
         return stop == Status::Failure ? Status::Success : Status::Failure;
     }
@@ -206,27 +218,33 @@ BehaviorTree::Status BehaviorTree::run(std::uint32_t index, float deltaSeconds) 
         // A repeater goes on after successes and a retry goes on after failures, until the count runs out.
         const Status result = run(node.children.front(), deltaSeconds);
         const Status goesOn = node.kind == Kind::Repeater ? Status::Success : Status::Failure;
+
         if (result == Status::Running) {
             return result;
         }
+
         if (result != goesOn) {
             node.finished = 0;
             return result;
         }
+
         if (node.count > 0 && ++node.finished >= node.count) {
             node.finished = 0;
             return result;
         }
+
         return Status::Running;
     }
     case Kind::Cooldown: {
         if (time < node.readyAt) {
             return Status::Failure;
         }
+
         const Status result = run(node.children.front(), deltaSeconds);
         if (result != Status::Running) {
             node.readyAt = time + node.seconds;
         }
+
         return result;
     }
     case Kind::Timeout: {
@@ -236,10 +254,12 @@ BehaviorTree::Status BehaviorTree::run(std::uint32_t index, float deltaSeconds) 
             node.elapsed = 0.0F;
             return result;
         }
+
         if (node.elapsed > node.seconds) {
             resetNode(index);
             return Status::Failure;
         }
+
         return result;
     }
     case Kind::Wait:
@@ -248,6 +268,7 @@ BehaviorTree::Status BehaviorTree::run(std::uint32_t index, float deltaSeconds) 
             node.elapsed = 0.0F;
             return Status::Success;
         }
+
         return Status::Running;
     case Kind::Condition:
         return node.condition(blackboard) ? Status::Success : Status::Failure;

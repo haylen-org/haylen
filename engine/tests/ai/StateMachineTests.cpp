@@ -84,6 +84,7 @@ TEST_F(StateMachineTest, RejectsBadStatesAndRecoversFromFailures) {
     machine.add("fragile", {
         .enter = [&] {
             machine.change("safe");
+
             if (fail) {
                 throw std::runtime_error("broken");
             }

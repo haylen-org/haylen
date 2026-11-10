@@ -53,6 +53,7 @@ ResponseCurve UtilityLua::readCurve(lua_State* L, int index) {
     if (lua_isnoneornil(L, index)) {
         return curve;
     }
+
     luaL_checktype(L, index, LUA_TTABLE);
     lua::Table::checkFields(L, index, {kCurveFields});
     lua::Table::readField(L, index, "shape", curve.shape);
@@ -75,6 +76,7 @@ float UtilityLua::callInput(Scripted& self, lua_Integer input) {
     if (isNumber == 0) {
         luaL_error(L, "A utility input must return a number, not %s.", luaL_typename(L, -1));
     }
+
     lua_pop(L, 1);
     return value;
 }
@@ -88,8 +90,10 @@ std::size_t UtilityLua::readOption(lua_State* L, int index, const UtilitySelecto
                 return option;
             }
         }
+
         luaL_argerror(L, index, "unknown option");
     }
+
     const auto option = lua::Stack::read<std::size_t>(L, index);
     luaL_argcheck(L, option >= 1 && option <= available.size(), index, "no option with this number");
     return option - 1;
@@ -138,9 +142,11 @@ int UtilityLua::newSelector(lua_State* L) {
             consideration.input = [scripted, input] { return callInput(*scripted, input); };
             lua_pop(L, 1);
         }
+
         lua_settop(L, inputs);
         self.selector.add(std::move(option));
     }
+
     lua_settop(L, owner);
     return 1;
 }
@@ -156,6 +162,7 @@ int UtilityLua::choose(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, self.selector.getOptions()[choice->index].name);
     lua::Stack::push(L, choice->score);
     return 2;
@@ -179,6 +186,7 @@ int UtilityLua::options(lua_State* L) {
         lua::Stack::push(L, self.selector.getOptions()[option].name);
         lua_rawseti(L, -2, static_cast<lua_Integer>(option + 1));
     }
+
     return 1;
 }
 
