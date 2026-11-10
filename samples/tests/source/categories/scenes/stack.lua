@@ -25,6 +25,8 @@ Stack.transitions = {
     fade = {arrive = {effect = 'fade', duration = 0.5}, leave = {effect = 'fade', duration = 0.5}},
 }
 Stack.lines = 14
+-- The size of the lines of the timeline, which shrinks together down to seven tenths so the longest line fits.
+Stack.lineSize = 20
 -- The cards the test pushes by itself as it opens, one after the other.
 Stack.openingCards = 2
 -- The colors of the hooks on the timeline.
@@ -150,6 +152,17 @@ function Stack:draw(area)
     log[3] = area.width - log[1] - 24
     graphics2d.drawShape(log, {radius = 18, color = Test.surface, borderWidth = 2, borderColor = Test.line})
     graphics2d.drawText(nil, 'Hooks, newest first', log[1] + 20, log[2] + 18, {size = 22, color = Test.muted, layer = 2})
+    -- Every line of the timeline takes one size, the largest at which its longest line fits the panel.
+    local texts, widest = {}, 0
+    for index, entry in ipairs(self.history) do
+        texts[index] = entry.name .. ': ' .. entry.hook .. (entry.detail and ', ' .. tostring(entry.detail) or '')
+        widest = math.max(widest, graphics2d.measureText(nil, texts[index], {size = Stack.lineSize}))
+    end
+    local size = Stack.lineSize
+    if widest > log[3] - 150 then
+        size = math.max(Stack.lineSize * 0.7, Stack.lineSize * (log[3] - 150) / widest)
+    end
+
     local lineHeight = math.min(36, (log[4] - 70) / Stack.lines)
     for index, entry in ipairs(self.history) do
         local y = log[2] + 60 + (index - 1) * lineHeight
@@ -157,9 +170,9 @@ function Stack:draw(area)
             break
         end
         local color = Stack.hookColors[entry.hook] or Test.ink
-        graphics2d.drawText(nil, string.format('%.2f s', entry.time), log[1] + 96, y, {size = 20, color = Test.muted, anchor = {1, 0}, layer = 2})
-        graphics2d.drawShape({log[1] + 110, y + 6, 12, 12}, {kind = 'ellipse', color = color, layer = 2})
-        graphics2d.drawText(nil, entry.name .. ': ' .. entry.hook .. (entry.detail and ', ' .. tostring(entry.detail) or ''), log[1] + 132, y, {size = 20, color = Test.ink, maxWidth = log[3] - 150, wrap = false, minScale = 0.7, layer = 2})
+        graphics2d.drawText(nil, string.format('%.2f s', entry.time), log[1] + 96, y, {size = size, color = Test.muted, anchor = {1, 0}, layer = 2})
+        graphics2d.drawShape({log[1] + 110, y + size * 0.3, 12, 12}, {kind = 'ellipse', color = color, layer = 2})
+        graphics2d.drawText(nil, texts[index], log[1] + 132, y, {size = size, color = Test.ink, layer = 2})
     end
 end
 
