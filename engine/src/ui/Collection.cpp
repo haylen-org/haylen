@@ -36,6 +36,7 @@ class Collection::FlagScope final {
     explicit FlagScope(bool& raised) noexcept : flag(raised) {
         flag = true;
     }
+
     ~FlagScope() {
         flag = false;
     }
@@ -306,6 +307,7 @@ void Collection::applyChange(const CollectionSource::Change& change) {
         break;
     }
     }
+
     remapIndices(change, before);
 
     if (!layoutDirty && change.kind != Kind::Changed) {
@@ -317,7 +319,27 @@ void Collection::applyChange(const CollectionSource::Change& change) {
 void Collection::arrangeChange(const CollectionSource::Change& change) {
     using Kind = CollectionSource::Change::Kind;
     const std::size_t first = change.kind == Kind::Moved ? std::min(change.index, change.target) : change.index;
-    const auto isSticky = [this](std::size_t index) { return sizes->getType(index) != SizeCache::kNoType && types->get(sizes->getType(index)).isSticky(); };
+    updateStickyItems(change, first);
+    updateSpans(change);
+
+    const std::size_t count = sizes->size();
+    if (count == 0) {
+        layoutDirty = true;
+        return;
+    }
+
+    layout->arrange({.count = count, .crossLength = std::max(0.0F, crossLength), .gap = gapLength, .lanes = laneCount, .spans = spans}, first);
+    sizes->arrangeFrom(*layout, gapLength, layout->getLine(std::min(first, count - 1)));
+    scroller->setRange(getContentLength() - getMainLength(), getMainLength());
+}
+
+bool Collection::isStickyItem(std::size_t index) const {
+    const std::uint16_t type = sizes->getType(index);
+    return type != SizeCache::kNoType && types->get(type).isSticky();
+}
+
+void Collection::updateStickyItems(const CollectionSource::Change& change, std::size_t first) {
+    using Kind = CollectionSource::Change::Kind;
     const auto from = std::ranges::lower_bound(stickyItems, first);
     if (change.kind == Kind::Inserted) {
         for (auto entry = from; entry != stickyItems.end(); ++entry) {
@@ -326,7 +348,7 @@ void Collection::arrangeChange(const CollectionSource::Change& change) {
 
         auto position = from;
         for (std::size_t index = change.index; index < change.index + change.count; ++index) {
-            if (isSticky(index)) {
+            if (isStickyItem(index)) {
                 position = std::next(stickyItems.insert(position, index));
             }
         }
@@ -341,37 +363,34 @@ void Collection::arrangeChange(const CollectionSource::Change& change) {
         stickyItems.erase(from, std::ranges::upper_bound(stickyItems, last));
         auto position = std::ranges::lower_bound(stickyItems, first);
         for (std::size_t index = first; index <= last; ++index) {
-            if (isSticky(index)) {
+            if (isStickyItem(index)) {
                 position = std::next(stickyItems.insert(position, index));
             }
         }
     }
+}
 
-    if (!spans.empty()) {
-        const auto start = spans.begin() + static_cast<std::ptrdiff_t>(change.index);
-        if (change.kind == Kind::Inserted) {
-            spans.insert(start, change.count, 1);
-            for (std::size_t index = change.index; index < change.index + change.count; ++index) {
-                spans[index] = sizes->getType(index) == SizeCache::kNoType ? 1 : types->get(sizes->getType(index)).getSpan();
-            }
-        } else if (change.kind == Kind::Removed) {
-            spans.erase(start, start + static_cast<std::ptrdiff_t>(change.count));
-        } else if (change.index < change.target) {
-            std::rotate(start, start + 1, spans.begin() + static_cast<std::ptrdiff_t>(change.target) + 1);
-        } else {
-            std::rotate(spans.begin() + static_cast<std::ptrdiff_t>(change.target), start, start + 1);
-        }
-    }
-
-    const std::size_t count = sizes->size();
-    if (count == 0) {
-        layoutDirty = true;
+// The spans of a grid, which only a grid with spanning types keeps, follow the items they belong to.
+void Collection::updateSpans(const CollectionSource::Change& change) {
+    using Kind = CollectionSource::Change::Kind;
+    if (spans.empty()) {
         return;
     }
 
-    layout->arrange({.count = count, .crossLength = std::max(0.0F, crossLength), .gap = gapLength, .lanes = laneCount, .spans = spans}, first);
-    sizes->arrangeFrom(*layout, gapLength, layout->getLine(std::min(first, count - 1)));
-    scroller->setRange(getContentLength() - getMainLength(), getMainLength());
+    const auto start = spans.begin() + static_cast<std::ptrdiff_t>(change.index);
+    if (change.kind == Kind::Inserted) {
+        spans.insert(start, change.count, 1);
+        for (std::size_t index = change.index; index < change.index + change.count; ++index) {
+            const std::uint16_t type = sizes->getType(index);
+            spans[index] = type == SizeCache::kNoType ? 1 : types->get(type).getSpan();
+        }
+    } else if (change.kind == Kind::Removed) {
+        spans.erase(start, start + static_cast<std::ptrdiff_t>(change.count));
+    } else if (change.index < change.target) {
+        std::rotate(start, start + 1, spans.begin() + static_cast<std::ptrdiff_t>(change.target) + 1);
+    } else {
+        std::rotate(spans.begin() + static_cast<std::ptrdiff_t>(change.target), start, start + 1);
+    }
 }
 
 std::optional<std::size_t> Collection::mapIndex(std::size_t index, const CollectionSource::Change& change) const {
@@ -408,6 +427,7 @@ std::optional<std::size_t> Collection::mapIndex(std::size_t index, const Collect
     case Kind::Replaced:
         return index < remapping.size() && remapping[index] != CollectionSource::Change::kNew ? std::optional<std::size_t>(remapping[index]) : std::nullopt;
     }
+
     return index;
 }
 
@@ -440,6 +460,7 @@ void Collection::remapIndices(const CollectionSource::Change& change, std::size_
         return false;
     });
     // clang-format on
+
     std::ranges::sort(cells, {}, [](const std::shared_ptr<CollectionCell>& cell) { return cell->index; });
 
     if (pendingFocus) {
@@ -775,6 +796,13 @@ void Collection::release(const std::shared_ptr<CollectionCell>& cell) {
     released.push_back(cell);
 }
 
+// A cell that faded out, or stops fading because the collection stops drawing, goes back to the pool of its type.
+void Collection::recycle(const std::shared_ptr<CollectionCell>& cell) {
+    cell->opacity = 1.0F;
+    types->release(cell);
+    released.push_back(cell);
+}
+
 // Only the cells that drew in the last frame of a collection that animates its changes move or fade, so changes out of view or while it is hidden apply at once.
 bool Collection::isAnimating(const CollectionCell& cell) const noexcept {
     return animateChanges && renderedFrame > 0 && cell.root->drawnFrame == renderedFrame;
@@ -831,12 +859,11 @@ void Collection::animate() {
             return false;
         }
 
-        cell->opacity = 1.0F;
-        types->release(cell);
-        released.push_back(cell);
+        recycle(cell);
         return true;
     });
     // clang-format on
+
     entering.clear();
 }
 
@@ -969,6 +996,7 @@ void Collection::prepare(Context& context) {
             const FlagScope scope(requesting);
             source->request(window->first, window->last - window->first + 1);
         }
+
         ensureArranged();
     }
 
@@ -989,6 +1017,7 @@ void Collection::prepare(Context& context) {
 
         runBinders();
     }
+
     types->trim(static_cast<std::size_t>(poolSize));
 }
 
@@ -1038,8 +1067,18 @@ void Collection::render(Context& context, const math::Rect& bounds) {
     takeInput(context);
     takePaging(context);
     resolveScroll();
+    bindWindow(context);
+    types->trim(static_cast<std::size_t>(poolSize));
+    settle();
+    animate();
+    drawContent(context, bounds);
+    context.blockPointer(bounds);
+    report(context);
+    noticeHiddenCells(context);
+}
 
-    // Cells measured for the first time move the lines after them, so the view holds the item it shows while the window settles. Cells that a jump left behind go to the pools first, so the new items reuse them.
+// Cells measured for the first time move the lines after them, so the view holds the item it shows while the window settles. Cells that a jump left behind go to the pools first, so the new items reuse them.
+void Collection::bindWindow(Context& context) {
     for (int pass = 0; pass < 2; ++pass) {
         holdView();
         const std::optional<std::size_t> sticky = findSticky();
@@ -1063,26 +1102,25 @@ void Collection::render(Context& context, const math::Rect& bounds) {
         ensureArranged();
         restoreHold();
     }
+}
 
-    types->trim(static_cast<std::size_t>(poolSize));
-    settle();
-    animate();
-
-    // The bar shows once the cells left its lane, from the frame after the content grew longer than the view, and the lane goes the frame after the content fits again. The bar takes the pointer in its lane before the cells do, which draw only outside it.
+// The bar shows once the cells left its lane, from the frame after the content grew longer than the view, and the lane goes the frame after the content fits again. The bar takes the pointer in its lane before the cells do, which draw only outside it.
+void Collection::drawContent(Context& context, const math::Rect& bounds) {
     const std::optional<Range> window = findWindow(0.0F);
     const std::optional<std::size_t> sticky = findSticky();
     const bool overflowing = scrollbarShown && scroller->getMaximum() > 0.0;
     const bool barShown = overflowing && laneReserved;
     laneReserved = overflowing;
     const math::Rect cellArea = barShown ? Scrollbar::getContentBox(context, bounds, bounds, !isVertical()) : bounds;
+    const bool mirrored = rightToLeft && !isVertical();
+
     ImGui::PushClipRect(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()), true);
-    const std::optional<double> dragged = barShown ? scrollbar->interact(context, bounds, !isVertical(), rightToLeft && !isVertical(), scroller->getOffset(), scroller->getMaximum(), getMainLength()) : std::nullopt;
+    const std::optional<double> dragged = barShown ? scrollbar->interact(context, bounds, !isVertical(), mirrored, scroller->getOffset(), scroller->getMaximum(), getMainLength()) : std::nullopt;
     ImGui::PushClipRect(ImGuiConverter::toImVec2(cellArea.getMin()), ImGuiConverter::toImVec2(cellArea.getMax()), true);
 
     // A mirrored collection starts at its right end, so the content past its left edge is what its offset has not reached yet.
     const double shown = std::clamp(scroller->getOffset(), 0.0, scroller->getMaximum());
     const double rest = scroller->getMaximum() - shown;
-    const bool mirrored = rightToLeft && !isVertical();
     const bool faded = ScrollFade::begin(context, cellArea, !isVertical(), mirrored ? rest : shown, mirrored ? shown : rest);
     drawCells(context, *window, sticky);
     drawLeaving(context);
@@ -1096,7 +1134,8 @@ void Collection::render(Context& context, const math::Rect& bounds) {
 
     if (barShown) {
         const bool touch = context.getInput().getLastDevice() == input::InputDevice::Touch;
-        scrollbar->draw(context, touch ? std::clamp(1.0F - (idle - kScrollbarFadeDelay) / kScrollbarFade, 0.0F, 1.0F) : 1.0F);
+        const float fading = std::clamp(1.0F - (idle - kScrollbarFadeDelay) / kScrollbarFade, 0.0F, 1.0F);
+        scrollbar->draw(context, touch ? fading : 1.0F);
     }
 
     ImGui::PopClipRect();
@@ -1106,10 +1145,6 @@ void Collection::render(Context& context, const math::Rect& bounds) {
         pendingScroll.reset();
         idle = 0.0F;
     }
-
-    context.blockPointer(bounds);
-    report(context);
-    noticeHiddenCells(context);
 }
 
 // The wheel moves the collection along its axis while its gesture belongs to it, and a finger that drags along its axis takes over from the control it pressed, unless that control edits text.
@@ -1202,13 +1237,15 @@ bool Collection::takeLift(Context& context) {
     const ImVec2 moved = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left, 0.0F);
     const float distance = std::sqrt(moved.x * moved.x + moved.y * moved.y);
     const bool touch = io.MouseSource == ImGuiMouseSource_TouchScreen;
-    const bool lifting = touch ? distance < ScrollArbiter::kDragSlop && io.MouseDownDuration[0] >= context.getMetric(Theme::Metric::LongPressDuration) : distance >= ScrollArbiter::kDragSlop;
+    const bool longPress = distance < ScrollArbiter::kDragSlop && io.MouseDownDuration[0] >= context.getMetric(Theme::Metric::LongPressDuration);
+    const bool lifting = touch ? longPress : distance >= ScrollArbiter::kDragSlop;
     if (!lifting) {
         return false;
     }
 
     const CollectionCell& cell = *findCell(*index);
-    lift = Lift{.index = *index, .item = cell.item, .grab = math::Vec2{io.MouseClickedPos[0].x, io.MouseClickedPos[0].y} - cell.placed.getMin()};
+    const math::Vec2 pressPoint{io.MouseClickedPos[0].x, io.MouseClickedPos[0].y};
+    lift = Lift{.index = *index, .item = cell.item, .grab = pressPoint - cell.placed.getMin()};
     pressCandidate.clear();
     pendingScroll.reset();
 
@@ -1287,7 +1324,6 @@ bool Collection::drawLifted(Context& context, ImGuiID reveal) {
     }
 
     const ImVec2 pointer = ImGui::GetIO().MousePos;
-
     if (const std::optional<std::size_t> target = findItemAt({pointer.x, pointer.y}); target && *target != lift->index) {
         drawDropMark(context, getItemRect(*target), *target < lift->index);
     }
@@ -1408,6 +1444,7 @@ double Collection::findScrollTarget(const PendingScroll& pending) const {
     case ScrollAlign::Nearest:
         break;
     }
+
     const double offset = scroller->getOffset();
     if (offset > toStart) {
         return toStart;
@@ -1433,6 +1470,7 @@ void Collection::resolveScroll() {
     const bool arrived = std::fabs(scroller->getOffset() - target) < kSettleDistance;
     pending.stableFrames = steady ? pending.stableFrames + 1 : 0;
     pending.target = target;
+
     // A smooth scroll to a far item jumps to a view away from it first, so it neither takes long nor binds every item on the way.
     const double far = getMainLength() * 2.0;
     if (pending.request.animated && std::fabs(target - scroller->getOffset()) > far) {
@@ -1495,24 +1533,7 @@ void Collection::drawCells(Context& context, const Range& window, std::optional<
     }
 
     if (sticky) {
-        if (CollectionCell* cell = findCell(*sticky); cell != nullptr && !cell->waiting) {
-            math::Rect rect = getItemRect(*sticky);
-            const float length = isVertical() ? rect.height : rect.width;
-            float pinned = 0.0F;
-            const auto next = std::ranges::upper_bound(stickyItems, *sticky);
-            if (next != stickyItems.end()) {
-                const math::Rect following = getItemRect(*next);
-                pinned = std::min(0.0F, isVertical() ? following.y - viewport.y - length : (rightToLeft ? viewport.getRight() - following.getRight() - length : following.x - viewport.x - length));
-            }
-
-            if (isVertical()) {
-                rect.y = viewport.y + pinned;
-            } else {
-                rect.x = rightToLeft ? viewport.getRight() - length - pinned : viewport.x + pinned;
-            }
-
-            focusDrawn = drawCell(context, *cell, rect, reveal) || focusDrawn;
-        }
+        focusDrawn = drawSticky(context, *sticky, reveal) || focusDrawn;
     }
 
     // The item that waits for the focus takes it wherever it lies, and the next direction brings it into view.
@@ -1527,6 +1548,32 @@ void Collection::drawCells(Context& context, const Range& window, std::optional<
     }
 
     drawProxy(context, focusDrawn, reveal);
+}
+
+// The sticky item stays at the start of the view until the next sticky item reaches it and pushes it out.
+bool Collection::drawSticky(Context& context, std::size_t index, ImGuiID reveal) {
+    CollectionCell* cell = findCell(index);
+    if (cell == nullptr || cell->waiting) {
+        return false;
+    }
+
+    math::Rect rect = getItemRect(index);
+    const float length = isVertical() ? rect.height : rect.width;
+    float pinned = 0.0F;
+    if (const auto next = std::ranges::upper_bound(stickyItems, index); next != stickyItems.end()) {
+        const math::Rect following = getItemRect(*next);
+        const float horizontalRoom = rightToLeft ? viewport.getRight() - following.getRight() : following.x - viewport.x;
+        const float room = isVertical() ? following.y - viewport.y : horizontalRoom;
+        pinned = std::min(0.0F, room - length);
+    }
+
+    if (isVertical()) {
+        rect.y = viewport.y + pinned;
+    } else {
+        rect.x = rightToLeft ? viewport.getRight() - length - pinned : viewport.x + pinned;
+    }
+
+    return drawCell(context, *cell, rect, reveal);
 }
 
 // A cell draws between the id of its item, so the ImGui state of its controls follows the item, with its events turned into events of the collection. An interactive cell is one focus target that paints its state behind its parts. Returns whether the cell holds the focus.
@@ -1547,36 +1594,19 @@ bool Collection::drawCell(Context& context, CollectionCell& cell, const math::Re
         focus.enterCell(*this, cell.item);
 
         if (cell.type.isInteractive() && !cell.item.empty()) {
-            const float radius = context.getMetric(Theme::Metric::CellRadius);
-            ImGui::SetNextItemAllowOverlap();
-            const Widgets::Interaction state = Widgets::interact(context, rect, radius, "##cell");
-            const ImGuiID item = ImGui::GetItemID();
-            const bool chosen = selection != Selection::None && selected[index] != 0;
-
-            if (context.getSurface(Theme::Surface::Cell) != nullptr) {
-                Surfaces::draw(context, Theme::Surface::Cell, rect, context.getColor(Theme::Color::Raised), std::nullopt, radius);
-            }
-
-            if (chosen || state.held || state.hovered) {
-                const Theme::Surface surface = chosen ? Theme::Surface::CellSelected : state.held ? Theme::Surface::CellPressed : Theme::Surface::CellHover;
-                const Theme::Color color = chosen ? Theme::Color::Selection : state.held ? Theme::Color::Pressed : Theme::Color::Hover;
-                Surfaces::draw(context, surface, rect, context.getColor(color), std::nullopt, context.getInnerRadii(rect, radius));
-            }
-
-            clicked = state.clicked && !(reorderable && GImGui->NavActivatePressedId == item && takeCarry(context, cell));
-
-            if (reorderable && focus.getCarried() && focus.getCarried()->source == getId()) {
-                drawCarryMarks(context, cell, rect, item);
-            }
+            clicked = drawInteractive(context, cell, rect);
         }
 
         drawFaded(context, cell, rect);
         focus.leaveCell();
     }
+
     ImGui::PopID();
+
     // The item a press starts on is the one a drag lifts, which the press of a control inside its cell does not hide.
     const math::Vec2 pointer{ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y};
-    if (reorderable && !lift && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) && rect.contains(pointer) && viewport.contains(pointer)) {
+    const bool pressedHere = ImGui::IsMouseClicked(ImGuiMouseButton_Left) && ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) && rect.contains(pointer) && viewport.contains(pointer);
+    if (reorderable && !lift && pressedHere) {
         pressCandidate = cell.item;
     }
 
@@ -1615,6 +1645,33 @@ bool Collection::drawCell(Context& context, CollectionCell& cell, const math::Re
     }
 
     return true;
+}
+
+// The cell paints the surface of its state behind its parts, and returns whether it was clicked, which a press that picks up or drops a carried item is not.
+bool Collection::drawInteractive(Context& context, CollectionCell& cell, const math::Rect& rect) {
+    const float radius = context.getMetric(Theme::Metric::CellRadius);
+    ImGui::SetNextItemAllowOverlap();
+    const Widgets::Interaction state = Widgets::interact(context, rect, radius, "##cell");
+    const ImGuiID item = ImGui::GetItemID();
+    const bool chosen = selection != Selection::None && selected[cell.index] != 0;
+
+    if (context.getSurface(Theme::Surface::Cell) != nullptr) {
+        Surfaces::draw(context, Theme::Surface::Cell, rect, context.getColor(Theme::Color::Raised), std::nullopt, radius);
+    }
+
+    if (chosen || state.held || state.hovered) {
+        const Theme::Surface surface = chosen ? Theme::Surface::CellSelected : state.held ? Theme::Surface::CellPressed : Theme::Surface::CellHover;
+        const Theme::Color color = chosen ? Theme::Color::Selection : state.held ? Theme::Color::Pressed : Theme::Color::Hover;
+        Surfaces::draw(context, surface, rect, context.getColor(color), std::nullopt, context.getInnerRadii(rect, radius));
+    }
+
+    const bool clicked = state.clicked && !(reorderable && GImGui->NavActivatePressedId == item && takeCarry(context, cell));
+    const FocusNavigator& focus = context.getFocus();
+    if (reorderable && focus.getCarried() && focus.getCarried()->source == getId()) {
+        drawCarryMarks(context, cell, rect, item);
+    }
+
+    return clicked;
 }
 
 // A press selects the item as the selection mode says and reports it, again when the item already was selected.
@@ -1759,7 +1816,8 @@ void Collection::report(Context& context) {
     const bool scrolling = dragging || !scroller->isResting();
     if (moving && !scrolling && range) {
         const std::size_t first = std::min(findFirstFrom(getViewStart()), count - 1);
-        context.emit(*this, "scrollEnd", {{"offset", core::JsonNumber::fromFloat(static_cast<float>(scroller->getOffset()))}, {"item", source->getId(first)}});
+        const core::Json offset = core::JsonNumber::fromFloat(static_cast<float>(scroller->getOffset()));
+        context.emit(*this, "scrollEnd", {{"offset", offset}, {"item", source->getId(first)}});
     }
 
     moving = scrolling;
@@ -1767,12 +1825,7 @@ void Collection::report(Context& context) {
 
 // Cells that drew in the last frame and not in this one, such as released cells, hear that they stopped drawing, with their events turned into events of the collection.
 void Collection::noticeHiddenCells(Context& context) {
-    for (const std::shared_ptr<CollectionCell>& cell : released) {
-        const Context::EventRedirect redirect(context, *this, *cell);
-        cell->root->noticeStoppedDrawing(context);
-    }
-
-    released.clear();
+    noticeReleasedCells(context);
 
     for (const std::shared_ptr<CollectionCell>& cell : cells) {
         if (cell->root->drawnFrame + 1 == context.getFrame()) {
@@ -1790,24 +1843,25 @@ void Collection::drawingStopped(Context& context) {
     }
 
     for (const std::shared_ptr<CollectionCell>& cell : leaving) {
-        cell->opacity = 1.0F;
-        types->release(cell);
-        released.push_back(cell);
+        recycle(cell);
     }
 
     leaving.clear();
+    noticeReleasedCells(context);
 
+    for (const std::shared_ptr<CollectionCell>& cell : cells) {
+        const Context::EventRedirect redirect(context, *this, *cell);
+        cell->root->noticeStoppedDrawing(context);
+    }
+}
+
+void Collection::noticeReleasedCells(Context& context) {
     for (const std::shared_ptr<CollectionCell>& cell : released) {
         const Context::EventRedirect redirect(context, *this, *cell);
         cell->root->noticeStoppedDrawing(context);
     }
 
     released.clear();
-
-    for (const std::shared_ptr<CollectionCell>& cell : cells) {
-        const Context::EventRedirect redirect(context, *this, *cell);
-        cell->root->noticeStoppedDrawing(context);
-    }
 }
 
 Event Collection::toCellEvent(CollectionCell& cell, const Component& component, std::string name, core::Json value) {
@@ -1821,7 +1875,8 @@ Event Collection::toCellEvent(CollectionCell& cell, const Component& component, 
     }
 
     value["part"] = component.getId();
-    value["cell"] = {{"item", cell.item}, {"index", cell.index == CollectionCell::kNoIndex ? core::Json() : core::Json(cell.index + 1)}, {"type", cell.getType()}};
+    const core::Json cellIndex = cell.index == CollectionCell::kNoIndex ? core::Json() : core::Json(cell.index + 1);
+    value["cell"] = {{"item", cell.item}, {"index", cellIndex}, {"type", cell.getType()}};
     return {.id = getId(), .name = std::move(name), .value = std::move(value)};
 }
 
@@ -1881,7 +1936,9 @@ void Collection::refreshRange() {
 void Collection::scrollBy(double distance, bool animated) {
     refreshRange();
     pendingScroll.reset();
-    const double target = std::clamp((scroller->isAnimating() ? scroller->getTarget() : scroller->getOffset()) + distance, 0.0, scroller->getMaximum());
+
+    const double from = scroller->isAnimating() ? scroller->getTarget() : scroller->getOffset();
+    const double target = std::clamp(from + distance, 0.0, scroller->getMaximum());
     if (animated) {
         scroller->animateTo(target);
     } else {
@@ -1930,7 +1987,8 @@ Collection::State Collection::saveState() const {
 // The saved item goes back to its saved distance from the start of the view and the saved focus returns, for the items that still exist.
 void Collection::restoreState(const State& value) {
     if (const std::optional<std::size_t> index = findItem(value.item)) {
-        pendingScroll = PendingScroll{.index = *index, .request = {.align = ScrollAlign::Start, .offset = 0.0F, .animated = false}, .distance = value.distance, .target = -1.0, .stableFrames = 0};
+        const ScrollRequest request{.align = ScrollAlign::Start, .offset = 0.0F, .animated = false};
+        pendingScroll = PendingScroll{.index = *index, .request = request, .distance = value.distance, .target = -1.0, .stableFrames = 0};
     }
 
     if (const std::optional<std::size_t> focused = value.focused.empty() ? std::nullopt : findItem(value.focused)) {

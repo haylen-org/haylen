@@ -67,7 +67,11 @@ class LuaPageSource final : public CollectionSource, public std::enable_shared_f
     static int finishPage(lua_State* L, int status, lua_KContext context);
     static int collectRequest(lua_State* L);
 
+    [[nodiscard]] static std::size_t getPageLength(std::size_t page, const Options& paging) noexcept;
     [[nodiscard]] std::size_t getPageLength(std::size_t page) const noexcept;
+
+    // Returns how many pages lie between a page and the range of pages the view needs, zero inside it.
+    [[nodiscard]] std::size_t getDistance(std::size_t page) const noexcept;
     [[nodiscard]] const Page* findLoaded(std::size_t index) const;
     void load(std::size_t page);
     void dropFarthest();

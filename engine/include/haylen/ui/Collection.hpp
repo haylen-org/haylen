@@ -227,6 +227,7 @@ class Collection final : public Component {
     [[nodiscard]] std::size_t findFirstFrom(double offset) const;
 
     void rebuildTypes();
+
     // The types of items read against a table of types, the one of the collection or new ones it checks before it takes them.
     void checkType(std::string_view item, std::string_view type, const CellTypes& table) const;
     [[nodiscard]] std::uint16_t readType(std::size_t index, const CellTypes& table, std::optional<std::uint16_t> placeholderIndex) const;
@@ -235,6 +236,9 @@ class Collection final : public Component {
     [[nodiscard]] std::optional<std::size_t> mapIndex(std::size_t index, const CollectionSource::Change& change) const;
     void remapIndices(const CollectionSource::Change& change, std::size_t before);
     void arrangeChange(const CollectionSource::Change& change);
+    [[nodiscard]] bool isStickyItem(std::size_t index) const;
+    void updateStickyItems(const CollectionSource::Change& change, std::size_t first);
+    void updateSpans(const CollectionSource::Change& change);
     void resolveSelection();
 
     void updateGeometry(Context& context, float cross);
@@ -247,6 +251,7 @@ class Collection final : public Component {
     void restoreHold();
 
     void release(const std::shared_ptr<CollectionCell>& cell);
+    void recycle(const std::shared_ptr<CollectionCell>& cell);
     [[nodiscard]] bool isAnimating(const CollectionCell& cell) const noexcept;
     void noteEntering(std::size_t first, std::size_t count);
     void animate();
@@ -279,8 +284,12 @@ class Collection final : public Component {
     void settle();
     [[nodiscard]] double findSnapPoint() const;
 
+    void bindWindow(Context& context);
+    void drawContent(Context& context, const math::Rect& bounds);
     void drawCells(Context& context, const Range& window, std::optional<std::size_t> sticky);
+    bool drawSticky(Context& context, std::size_t index, ImGuiID reveal);
     bool drawCell(Context& context, CollectionCell& cell, const math::Rect& layoutRect, ImGuiID reveal);
+    [[nodiscard]] bool drawInteractive(Context& context, CollectionCell& cell, const math::Rect& rect);
     void press(Context& context, std::size_t index);
     void select(std::size_t index, bool value);
     void drawProxy(Context& context, bool focusDrawn, ImGuiID reveal);
@@ -290,6 +299,7 @@ class Collection final : public Component {
     void drawRefresh(Context& context);
     void report(Context& context);
     void noticeHiddenCells(Context& context);
+    void noticeReleasedCells(Context& context);
 
     // Turns an event of a component of a cell into an event of the collection, after the bound values the player changed went back to the item.
     [[nodiscard]] Event toCellEvent(CollectionCell& cell, const Component& component, std::string name, core::Json value);

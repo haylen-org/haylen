@@ -2,6 +2,7 @@
 
 #include <lua.hpp>
 
+#include <algorithm>
 #include <optional>
 #include <stdexcept>
 #include <vector>
@@ -321,13 +322,13 @@ int CollectionLua::setPages(lua_State* L) {
     luaL_checktype(L, 2, LUA_TTABLE);
     lua::Table::checkFields(L, 2, {kPageFields});
     checkUnbound(L, collection);
-    LuaPageSource::Options options;
 
     if (lua_getfield(L, 2, "count") == LUA_TNIL) {
         return luaL_error(L, "The option \"count\" is required.");
     }
 
     lua_pop(L, 1);
+    LuaPageSource::Options options;
     lua_Integer count = 0;
     lua_Integer pageSize = static_cast<lua_Integer>(options.pageSize);
     lua_Integer maxPages = static_cast<lua_Integer>(options.maxPages);
@@ -349,7 +350,6 @@ int CollectionLua::setPages(lua_State* L) {
     }
 
     const int load = lua_gettop(L);
-
     pushValue(L, *gui, collection, "load");
     const bool sameLoader = lua_rawequal(L, -1, load) != 0;
     lua_pop(L, 1);
@@ -444,11 +444,13 @@ int CollectionLua::setBinder(lua_State* L) {
     lua_State* main = lua::Runtime::getMainThread(L);
     const Gui* owner = gui.get();
     const Collection* shown = &collection;
+
     // clang-format off
     collection.setBinder(type, [main, owner, shown, type](CollectionCell& cell, std::size_t index) {
         callBinder(main, *owner, *shown, type, cell, index);
     });
     // clang-format on
+
     pushValue(L, *gui, collection, "binders");
     lua_pushvalue(L, 3);
     lua_setfield(L, -2, type.c_str());
@@ -463,7 +465,8 @@ int CollectionLua::scrollTo(lua_State* L) {
         luaL_checktype(L, 3, LUA_TTABLE);
         lua::Table::checkFields(L, 3, {kScrollFields});
         if (lua_getfield(L, 3, "align") != LUA_TNIL) {
-            const auto found = lua_type(L, -1) == LUA_TSTRING ? std::ranges::find(Collection::kScrollAligns, lua::Stack::read<std::string_view>(L, -1), &std::pair<std::string_view, Collection::ScrollAlign>::first) : Collection::kScrollAligns.end();
+            const std::string_view name = lua_type(L, -1) == LUA_TSTRING ? lua::Stack::read<std::string_view>(L, -1) : std::string_view();
+            const auto found = std::ranges::find(Collection::kScrollAligns, name, &std::pair<std::string_view, Collection::ScrollAlign>::first);
             if (found == Collection::kScrollAligns.end()) {
                 return luaL_error(L, "The option \"align\" must be \"nearest\", \"start\", \"center\" or \"end\".");
             }
@@ -630,8 +633,10 @@ int CollectionLua::cellTransform(lua_State* L) {
 
 int CollectionLua::cellCommand(lua_State* L) {
     CollectionCell& cell = checkCell(L);
+    const auto part = lua::Stack::read<std::string_view>(L, 2);
+    const auto name = lua::Stack::read<std::string_view>(L, 3);
     const core::Json arguments = lua_isnoneornil(L, 4) ? core::Json::object() : lua::JsonConverter::read(L, 4);
-    cell.command(lua::Runtime::getEngine(L).getPlugin<plugins::UiPlugin>().getContext(), lua::Stack::read<std::string_view>(L, 2), lua::Stack::read<std::string_view>(L, 3), arguments);
+    cell.command(lua::Runtime::getEngine(L).getPlugin<plugins::UiPlugin>().getContext(), part, name, arguments);
     return 0;
 }
 
@@ -639,7 +644,12 @@ int CollectionLua::cellCommand(lua_State* L) {
 int CollectionLua::cellBounds(lua_State* L) {
     CollectionCell& cell = checkCell(L);
     const Context& context = lua::Runtime::getEngine(L).getPlugin<plugins::UiPlugin>().getContext();
-    const std::optional<math::Rect> bounds = cell.getBounds(context, lua_isnoneornil(L, 2) ? std::nullopt : std::optional<std::string_view>(lua::Stack::read<std::string_view>(L, 2)));
+    std::optional<std::string_view> part;
+    if (!lua_isnoneornil(L, 2)) {
+        part = lua::Stack::read<std::string_view>(L, 2);
+    }
+
+    const std::optional<math::Rect> bounds = cell.getBounds(context, part);
     if (!bounds || bounds->isEmpty()) {
         lua_pushnil(L);
         return 1;

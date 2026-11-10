@@ -3,8 +3,9 @@
 #include <lua.hpp>
 
 #include <algorithm>
-#include <stdexcept>
+#include <array>
 #include <tuple>
+#include <utility>
 
 #include "haylen/lua/JsonConverter.hpp"
 #include "haylen/lua/Runtime.hpp"
@@ -90,6 +91,7 @@ void LuaItemSource::insert(lua_State* L, std::size_t index, int added) {
     }
 
     lua_pop(L, 1);
+
     ids.insert(ids.begin() + static_cast<std::ptrdiff_t>(index), std::make_move_iterator(newIds.begin()), std::make_move_iterator(newIds.end()));
     types.insert(types.begin() + static_cast<std::ptrdiff_t>(index), newTypes.begin(), newTypes.end());
     changed.emit({.kind = Change::Kind::Inserted, .index = index, .count = count});
@@ -97,6 +99,7 @@ void LuaItemSource::insert(lua_State* L, std::size_t index, int added) {
 
 void LuaItemSource::remove(lua_State* L, std::size_t index, std::size_t count) {
     const std::size_t removed = std::min(count, ids.size() - index);
+
     pushList(L);
     const int list = lua_gettop(L);
     const auto total = static_cast<lua_Integer>(ids.size());
@@ -154,9 +157,10 @@ void LuaItemSource::move(lua_State* L, std::size_t from, std::size_t to) {
 // An item that keeps its id changes in place and keeps its cell, and an item with another id leaves while the new one comes in at its place.
 void LuaItemSource::replace(lua_State* L, std::size_t index, int item) {
     auto [id, type] = readItem(L, item, index + 1);
-    const std::string_view added[] = {id};
-    const std::string_view leaving[] = {ids[index]};
+    const std::array<std::string_view, 1> added{id};
+    const std::array<std::string_view, 1> leaving{ids[index]};
     known.check(added, leaving, collection.getId());
+
     pushList(L);
     lua_pushvalue(L, item);
     lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
@@ -181,9 +185,11 @@ void LuaItemSource::reload(lua_State* L, std::size_t index) {
     pushItem(L, index);
     auto [id, type] = readItem(L, -1, index + 1);
     lua_pop(L, 1);
-    const std::string_view added[] = {id};
-    const std::string_view leaving[] = {ids[index]};
+
+    const std::array<std::string_view, 1> added{id};
+    const std::array<std::string_view, 1> leaving{ids[index]};
     known.check(added, leaving, collection.getId());
+
     known.remove(ids[index]);
     known.add(id);
     ids[index] = std::move(id);
@@ -199,6 +205,7 @@ void LuaItemSource::pushItem(lua_State* L, std::size_t index) const {
 
 core::Json LuaItemSource::getValue(std::size_t index, std::string_view field) const {
     core::Json value;
+
     // clang-format off
     lua::Runtime::protectedRun(state, [&](lua_State* L) {
         pushItem(L, index);
@@ -209,6 +216,7 @@ core::Json LuaItemSource::getValue(std::size_t index, std::string_view field) co
         }
     });
     // clang-format on
+
     return value;
 }
 

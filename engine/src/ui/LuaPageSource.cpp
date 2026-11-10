@@ -25,9 +25,7 @@ LuaPageSource::LuaPageSource(lua_State* L, const Gui& owner, Collection& shown) 
 void LuaPageSource::configure(const Options& value) {
     std::vector<std::size_t> dropped;
     for (const auto& [page, kept] : pages) {
-        const std::size_t first = page * value.pageSize;
-        const std::size_t length = first >= value.count ? 0 : std::min(value.pageSize, value.count - first);
-        if (value.pageSize != options.pageSize || length != getPageLength(page)) {
+        if (value.pageSize != options.pageSize || getPageLength(page, value) != getPageLength(page, options)) {
             dropped.push_back(page);
         }
     }
@@ -46,9 +44,21 @@ void LuaPageSource::configure(const Options& value) {
     changed.emit({.kind = Change::Kind::Replaced, .index = 0, .count = options.count, .target = 0, .previous = previous});
 }
 
+std::size_t LuaPageSource::getPageLength(std::size_t page, const Options& paging) noexcept {
+    const std::size_t first = page * paging.pageSize;
+    return first >= paging.count ? 0 : std::min(paging.pageSize, paging.count - first);
+}
+
 std::size_t LuaPageSource::getPageLength(std::size_t page) const noexcept {
-    const std::size_t first = page * options.pageSize;
-    return first >= options.count ? 0 : std::min(options.pageSize, options.count - first);
+    return getPageLength(page, options);
+}
+
+std::size_t LuaPageSource::getDistance(std::size_t page) const noexcept {
+    if (page < neededFirst) {
+        return neededFirst - page;
+    }
+
+    return page > neededLast ? page - neededLast : 0;
 }
 
 const LuaPageSource::Page* LuaPageSource::findLoaded(std::size_t index) const {
@@ -87,6 +97,7 @@ void LuaPageSource::request(std::size_t first, std::size_t count) {
 void LuaPageSource::load(std::size_t page) {
     const std::uint64_t ticket = nextTicket++;
     pages[page] = Page{.ids = {}, .types = {}, .ticket = ticket, .loaded = false};
+
     lua_State* L = state;
     const lua::StackScope scope(L);
     CollectionLua::pushValue(L, gui, collection, "load");
@@ -102,6 +113,7 @@ void LuaPageSource::load(std::size_t page) {
         throw std::invalid_argument("The page loader of the collection \"" + collection.getId() + "\" must return a list of items or a promise of one.");
     }
 
+    // The task runs a closure over the request, which awaits the promise and stores the page while the source is still there.
     const int promise = lua_gettop(L);
     new (lua_newuserdatauv(L, sizeof(Request), 0)) Request{.source = weak_from_this(), .page = page, .ticket = ticket};
     if (lua::Userdata::newMetatable(L, kRequestType)) {
@@ -112,7 +124,9 @@ void LuaPageSource::load(std::size_t page) {
     lua_setmetatable(L, -2);
     lua_pushcclosure(L, &awaitPage, 1);
     lua_pushvalue(L, promise);
+
     lua_State* main = state;
+
     // clang-format off
     lua::Task::start(L, lua_gettop(L) - 1, 1, 0, [main](const std::optional<lua::Error>& error) {
         if (error) {
@@ -163,12 +177,11 @@ void LuaPageSource::store(lua_State* L, std::size_t page, std::uint64_t ticket, 
     }
 
     const int table = lua_absindex(L, list);
-    const std::size_t length = getPageLength(page);
-
     if (!lua_istable(L, table)) {
         throw std::invalid_argument("The page loader of the collection \"" + collection.getId() + "\" must return a list of items or a promise of one.");
     }
 
+    const std::size_t length = getPageLength(page);
     if (lua_rawlen(L, table) != length) {
         throw std::invalid_argument("The page loader of the collection \"" + collection.getId() + "\" returned " + std::to_string(lua_rawlen(L, table)) + " items for a page of " + std::to_string(length) + ".");
     }
@@ -208,10 +221,9 @@ void LuaPageSource::drop(std::size_t page) {
 
 // The pages of the range the view needs stay, also when a page that arrives later is stored, and the others go from the farthest one while more than `maxPages` are kept.
 void LuaPageSource::dropFarthest() {
-    const auto distance = [this](std::size_t page) { return page < neededFirst ? neededFirst - page : page > neededLast ? page - neededLast : 0; };
     while (pages.size() > options.maxPages) {
-        const auto farthest = std::ranges::max_element(pages, {}, [&](const auto& entry) { return distance(entry.first); });
-        if (distance(farthest->first) == 0) {
+        const auto farthest = std::ranges::max_element(pages, {}, [this](const auto& entry) { return getDistance(entry.first); });
+        if (getDistance(farthest->first) == 0) {
             return;
         }
 
@@ -232,6 +244,7 @@ void LuaPageSource::pushItem(lua_State* L, std::size_t index) const {
 
 core::Json LuaPageSource::getValue(std::size_t index, std::string_view field) const {
     core::Json value;
+
     // clang-format off
     lua::Runtime::protectedRun(state, [&](lua_State* L) {
         pushItem(L, index);
@@ -242,6 +255,7 @@ core::Json LuaPageSource::getValue(std::size_t index, std::string_view field) co
         }
     });
     // clang-format on
+
     return value;
 }
 

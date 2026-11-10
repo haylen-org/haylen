@@ -10,15 +10,15 @@
 
 namespace haylen::ui {
 
+CollectionItems::CollectionItems() : known(std::make_unique<CollectionIds>()) {}
+
+CollectionItems::~CollectionItems() = default;
+
 void CollectionItems::checkIndex(std::size_t index, std::size_t limit) const {
     if (index >= limit) {
         throw std::out_of_range("The index " + std::to_string(index) + " is outside the items, which hold " + std::to_string(items.size()) + ".");
     }
 }
-
-CollectionItems::CollectionItems() : known(std::make_unique<CollectionIds>()) {}
-
-CollectionItems::~CollectionItems() = default;
 
 // Items that did not load yet have no id, so only the ids that exist must be unique.
 void CollectionItems::checkIds(const std::vector<Item>& added, std::size_t first, std::size_t last) const {
@@ -59,8 +59,8 @@ void CollectionItems::assign(std::vector<Item> value) {
 void CollectionItems::insert(std::size_t index, std::vector<Item> added) {
     checkIndex(index, items.size() + 1);
     checkIds(added, index, index);
-    const std::size_t count = added.size();
 
+    const std::size_t count = added.size();
     for (const Item& item : added) {
         known->add(item.id);
     }
@@ -71,6 +71,7 @@ void CollectionItems::insert(std::size_t index, std::vector<Item> added) {
 
 void CollectionItems::remove(std::size_t index, std::size_t count) {
     checkIndex(index, items.size());
+
     const std::size_t removed = std::min(count, items.size() - index);
     for (std::size_t offset = 0; offset < removed; ++offset) {
         known->remove(items[index + offset].id);
@@ -84,6 +85,7 @@ void CollectionItems::remove(std::size_t index, std::size_t count) {
 void CollectionItems::move(std::size_t from, std::size_t to) {
     checkIndex(from, items.size());
     checkIndex(to, items.size());
+
     const auto source = items.begin() + static_cast<std::ptrdiff_t>(from);
     const auto target = items.begin() + static_cast<std::ptrdiff_t>(to);
     if (from < to) {
@@ -100,6 +102,7 @@ void CollectionItems::replace(std::size_t index, Item value) {
     checkIndex(index, items.size());
     const std::vector<Item> added{value};
     checkIds(added, index, index + 1);
+
     const bool same = items[index].id == value.id;
     known->remove(items[index].id);
     known->add(value.id);
