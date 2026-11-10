@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <functional>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -89,7 +90,7 @@ class ReleasePackage final : public io::Package {
     // Tells for each shard of a content whether the device holds its file, in the release or in a pack folder, without opening any.
     [[nodiscard]] std::vector<bool> findInstalledShards(const Content& shown) const;
 
-    // Asks the key provider for a key that the release does not hold, such as the key of an update, and calls `done` once, from any thread, with whether the key is in the ring now. A release without a provider, or whose provider does not give the key, answers false, and the content the release plays stays as it is.
+    // Asks the key provider for a key that the release does not hold, such as the key of an update, and calls `done` once, from any thread and never while the release holds a lock, with whether the key is in the ring now. A request for a key that the provider is already asked for waits for the same answer, so the provider hears of each key once. A release without a provider, or whose provider does not give the key, answers false, and the content the release plays stays as it is.
     void acquireKey(const Digest& id, std::function<void(bool)> done);
     [[nodiscard]] std::span<const VerifyingKey> getTrustedKeys() const noexcept {
         return trusted;
@@ -131,12 +132,16 @@ class ReleasePackage final : public io::Package {
 
     std::shared_ptr<const io::Package> files;
     std::shared_ptr<PackFolders> packs = std::make_shared<PackFolders>();
-    // The key ring and the provider that adds to it, which a key that arrives from any thread replaces under the lock with a ring that also holds the new key.
+    // The key ring and the provider that adds to it, which a key that arrives from any thread replaces under the lock with a ring that also holds the new key, and the requests that wait for each key the provider is asked for.
     struct Keys {
         std::mutex mutex;
         std::shared_ptr<const KeyRing> ring;
         std::shared_ptr<const KeyProvider> provider;
+        std::map<Digest, std::vector<std::function<void(bool)>>> waiting;
     };
+
+    // Adds the key that the provider answered with to the ring, when it gave the key, and answers every request that waits for it.
+    static void receiveKey(Keys& state, const KeyProvider& provider, const KeyProvider::KeyId& wanted, const Digest& id, bool given);
 
     std::shared_ptr<Keys> keys = std::make_shared<Keys>();
     std::vector<VerifyingKey> trusted;

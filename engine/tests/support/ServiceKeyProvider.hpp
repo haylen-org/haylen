@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <condition_variable>
 #include <functional>
 #include <map>
 #include <mutex>
@@ -13,7 +14,7 @@
 
 namespace haylen::test {
 
-// A key provider like the one of an online game, which holds no key until its service hands one out on request, from a thread of its own, and hands out only the keys a test allows.
+// A key provider like the one of an online game, which holds no key until its service hands one out on request, from a thread of its own, and hands out only the keys a test allows. A test may hold the answers back until it releases them, so requests meet while the service is still asked.
 class ServiceKeyProvider final : public content::KeyProvider {
   public:
     [[nodiscard]] static KeyId identify(const Key& key) {
@@ -38,6 +39,19 @@ class ServiceKeyProvider final : public content::KeyProvider {
     void allow(const Key& key) {
         const std::scoped_lock lock(mutex);
         allowed.emplace(identify(key), key);
+    }
+
+    void holdAnswers() {
+        const std::scoped_lock lock(mutex);
+        holding = true;
+    }
+
+    void releaseAnswers() {
+        {
+            const std::scoped_lock lock(mutex);
+            holding = false;
+        }
+        released.notify_all();
     }
 
     [[nodiscard]] int getRequests() const {
@@ -69,7 +83,11 @@ class ServiceKeyProvider final : public content::KeyProvider {
         answers.emplace_back([this, id, done = std::move(done)] {
             bool given = false;
             {
-                const std::scoped_lock answerLock(mutex);
+                std::unique_lock answerLock(mutex);
+                while (holding) {
+                    released.wait(answerLock);
+                }
+
                 const auto found = allowed.find(id);
                 if (found != allowed.end()) {
                     held.insert(*found);
@@ -86,6 +104,8 @@ class ServiceKeyProvider final : public content::KeyProvider {
     std::map<KeyId, Key> allowed;
     mutable std::map<KeyId, Key> held;
     mutable int requests = 0;
+    bool holding = false;
+    mutable std::condition_variable released;
 
     // The answers that are still running end before the keys they reach go away.
     mutable std::vector<std::jthread> answers;

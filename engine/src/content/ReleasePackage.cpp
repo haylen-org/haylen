@@ -77,43 +77,61 @@ std::shared_ptr<const KeyRing> ReleasePackage::getKeys() const {
 }
 
 void ReleasePackage::acquireKey(const Digest& id, std::function<void(bool)> done) {
-    std::shared_ptr<const KeyProvider> provider;
+    bool held = false;
+    bool asked = false;
     {
         const std::scoped_lock lock(keys->mutex);
-        if (keys->ring->contains(id)) {
-            done(true);
-            return;
+        held = keys->ring->contains(id);
+        if (!held && keys->provider) {
+            std::vector<std::function<void(bool)>>& waiting = keys->waiting[id];
+            asked = !waiting.empty();
+            waiting.push_back(std::move(done));
         }
-        provider = keys->provider;
     }
-    if (!provider) {
+
+    if (held) {
+        done(true);
+        return;
+    }
+    if (!keys->provider) {
         done(false);
         return;
     }
+    if (asked) {
+        return;
+    }
+
     KeyProvider::KeyId wanted{};
     std::ranges::copy(id.getBytes(), wanted.begin());
     // clang-format off
-    provider->requestKey(wanted, [shared = keys, provider, wanted, id, done = std::move(done)](bool given) {
-        KeyProvider::Key key{};
-        if (!given || !provider->getKey(wanted, key)) {
-            done(false);
-            return;
-        }
-        auto ring = std::make_shared<KeyRing>();
-        {
-            const std::scoped_lock lock(shared->mutex);
-            *ring = *shared->ring;
-            ring->add(key);
-            crypto_wipe(key.data(), key.size());
-            if (!ring->contains(id)) {
-                done(false);
-                return;
-            }
-            shared->ring = std::move(ring);
-        }
-        done(true);
+    keys->provider->requestKey(wanted, [state = keys, provider = keys->provider, wanted, id](bool given) {
+        receiveKey(*state, *provider, wanted, id, given);
     });
     // clang-format on
+}
+
+void ReleasePackage::receiveKey(Keys& state, const KeyProvider& provider, const KeyProvider::KeyId& wanted, const Digest& id, bool given) {
+    KeyProvider::Key key{};
+    const bool provided = given && provider.getKey(wanted, key);
+    bool held = false;
+    std::vector<std::function<void(bool)>> waiting;
+    {
+        const std::scoped_lock lock(state.mutex);
+        if (provided) {
+            auto ring = std::make_shared<KeyRing>(*state.ring);
+            ring->add(key);
+            held = ring->contains(id);
+            if (held) {
+                state.ring = std::move(ring);
+            }
+        }
+        waiting = std::move(state.waiting.extract(id).mapped());
+    }
+    crypto_wipe(key.data(), key.size());
+
+    for (const std::function<void(bool)>& done : waiting) {
+        done(held);
+    }
 }
 
 std::string_view ReleasePackage::getManifestFile(Manifest::Domain domain) noexcept {

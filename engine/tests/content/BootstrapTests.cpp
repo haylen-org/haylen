@@ -1,11 +1,14 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <chrono>
 #include <functional>
 #include <future>
 #include <map>
 #include <memory>
+#include <span>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "content/ReleasePackage.hpp"
@@ -33,6 +36,25 @@ class BootstrapTest : public ::testing::Test {
         bootstrap.trustedKeys.push_back(trusted);
         bootstrap.keys = std::make_shared<const EmbeddedKeyProvider>(std::vector{EmbeddedKeyProvider::seal(getKeyId(), test::ReleaseFixture::makeKey(1))});
         return bootstrap;
+    }
+
+    // The release of the test app with the keys of its build and a provider that gives the keys that later content needs.
+    [[nodiscard]] std::unique_ptr<ReleasePackage> openWithProvider(std::shared_ptr<const KeyProvider> provider) const {
+        const VerifyingKey trusted = release.getSigningKey().getVerifyingKey();
+        return std::make_unique<ReleasePackage>(release.getFiles(), release.getKeys(), std::span(&trusted, 1), release.getCompatibility(), nullptr, std::move(provider));
+    }
+
+    // Asks the release for a key and returns whether it gave the key and another thread could read the keys of the release while the answer ran. The read outlives the answer, so a release that answers under its lock fails the check instead of waiting for itself.
+    [[nodiscard]] static bool acquireAndReadKeys(ReleasePackage& package, const Digest& id) {
+        std::future<std::shared_ptr<const KeyRing>> keys;
+        std::promise<bool> readable;
+        // clang-format off
+        package.acquireKey(id, [&package, &keys, &readable](bool given) {
+            keys = std::async(std::launch::async, &ReleasePackage::getKeys, &package);
+            readable.set_value(given && keys.wait_for(std::chrono::seconds(5)) == std::future_status::ready);
+        });
+        // clang-format on
+        return readable.get_future().get();
     }
 
     [[nodiscard]] KeyProvider::KeyId getKeyId() const {
@@ -146,6 +168,44 @@ TEST_F(BootstrapTest, AddsAProviderAfterTheKeysOfTheApp) {
 
     // The bootstrap of the process lets the service go, so the threads of its answers end with the test.
     EXPECT_TRUE(Bootstrap::install(makeBootstrap()));
+}
+
+// An answer may read the keys of the release, which a lock that the release held while it answered would keep from it for good.
+TEST_F(BootstrapTest, AnswersAKeyRequestWithoutHoldingItsLock) {
+    const auto service = std::make_shared<test::ServiceKeyProvider>();
+    const KeyProvider::Key later = test::ReleaseFixture::makeKey(2);
+    service->allow(later);
+    const std::unique_ptr<ReleasePackage> package = openWithProvider(service);
+    const Digest laterId(test::ServiceKeyProvider::identify(later));
+
+    EXPECT_TRUE(acquireAndReadKeys(*package, release.getContentKeyId()));
+    EXPECT_TRUE(acquireAndReadKeys(*package, laterId));
+    EXPECT_TRUE(package->getKeys()->contains(laterId));
+}
+
+// Two requests that race for a key the release lacks ask the provider once, and both hear its answer.
+TEST_F(BootstrapTest, AsksTheProviderOnceForAKeyThatRequestsRaceFor) {
+    const auto service = std::make_shared<test::ServiceKeyProvider>();
+    const KeyProvider::Key later = test::ReleaseFixture::makeKey(2);
+    service->allow(later);
+    service->holdAnswers();
+    const std::unique_ptr<ReleasePackage> package = openWithProvider(service);
+    const Digest laterId(test::ServiceKeyProvider::identify(later));
+
+    std::promise<bool> first;
+    std::promise<bool> second;
+    const std::function<void(bool)> answerFirst = [&first](bool given) { first.set_value(given); };
+    const std::function<void(bool)> answerSecond = [&second](bool given) { second.set_value(given); };
+    {
+        const std::jthread firstRequest(&ReleasePackage::acquireKey, package.get(), laterId, answerFirst);
+        const std::jthread secondRequest(&ReleasePackage::acquireKey, package.get(), laterId, answerSecond);
+    }
+    EXPECT_EQ(service->getRequests(), 1);
+
+    service->releaseAnswers();
+    EXPECT_TRUE(first.get_future().get());
+    EXPECT_TRUE(second.get_future().get());
+    EXPECT_TRUE(package->getKeys()->contains(laterId));
 }
 
 } // namespace haylen::content
