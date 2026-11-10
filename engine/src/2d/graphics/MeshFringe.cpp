@@ -18,15 +18,25 @@ const MeshFringe::Corner* MeshFringe::findCorner(const GpuVertex& vertex) const 
     return found != corners.end() && found->key == key ? &*found : nullptr;
 }
 
+math::Vec2 MeshFringe::positionOf(const GpuVertex& vertex) noexcept {
+    return {vertex.position[0], vertex.position[1]};
+}
+
 void MeshFringe::build(std::span<const GpuVertex> meshVertices, std::span<const std::uint32_t> meshIndices, float pixel) {
     vertices.assign(meshVertices.begin(), meshVertices.end());
     indices.assign(meshIndices.begin(), meshIndices.end());
+    collectEdges(meshVertices, meshIndices);
+    findOutline();
+    placeCorners(pixel * 0.5F);
+    addFringe(meshVertices);
+}
 
-    // Every edge of a triangle with an area, with its normal turned away from the third vertex of the triangle.
+// Every edge of a triangle with an area, with its normal turned away from the third vertex of the triangle.
+void MeshFringe::collectEdges(std::span<const GpuVertex> meshVertices, std::span<const std::uint32_t> meshIndices) {
     edges.clear();
     for (std::size_t first = 0; first + 2 < meshIndices.size(); first += 3) {
         const std::array<std::uint32_t, 3> points{meshIndices[first], meshIndices[first + 1], meshIndices[first + 2]};
-        const std::array<math::Vec2, 3> places{math::Vec2{meshVertices[points[0]].position[0], meshVertices[points[0]].position[1]}, math::Vec2{meshVertices[points[1]].position[0], meshVertices[points[1]].position[1]}, math::Vec2{meshVertices[points[2]].position[0], meshVertices[points[2]].position[1]}};
+        const std::array<math::Vec2, 3> places{positionOf(meshVertices[points[0]]), positionOf(meshVertices[points[1]]), positionOf(meshVertices[points[2]])};
         if (math::Vec2::cross(places[1] - places[0], places[2] - places[0]) == 0.0F) {
             continue;
         }
@@ -45,8 +55,10 @@ void MeshFringe::build(std::span<const GpuVertex> meshVertices, std::span<const 
             edges.push_back({.key = key, .from = points[side], .to = points[next], .normal = normal});
         }
     }
+}
 
-    // The edges that no other triangle shares are the outline.
+// The edges that no other triangle shares are the outline.
+void MeshFringe::findOutline() {
     std::ranges::sort(edges, {}, &Edge::key);
     outline.clear();
     for (std::size_t start = 0; start < edges.size();) {
@@ -61,9 +73,10 @@ void MeshFringe::build(std::span<const GpuVertex> meshVertices, std::span<const 
 
         start = end;
     }
+}
 
-    // Each place on the outline moves where the lines of the edges that meet there meet once each moves half a pixel along its normal.
-    const float half = pixel * 0.5F;
+// Each place on the outline moves where the lines of the edges that meet there meet once each moves half a pixel along its normal.
+void MeshFringe::placeCorners(float half) {
     corners.clear();
     for (const Edge& edge : outline) {
         corners.push_back({.key = keyOf(vertices[edge.from]), .normal = edge.normal});
@@ -86,8 +99,10 @@ void MeshFringe::build(std::span<const GpuVertex> meshVertices, std::span<const 
     }
 
     corners.resize(kept);
+}
 
-    // The outline moves half a pixel in, and every edge of it gains a fringe whose outer side fades to nothing half a pixel out.
+// The outline moves half a pixel in, and every edge of it gains a fringe whose outer side fades to nothing half a pixel out.
+void MeshFringe::addFringe(std::span<const GpuVertex> meshVertices) {
     for (GpuVertex& vertex : vertices) {
         if (const Corner* corner = findCorner(vertex); corner != nullptr) {
             vertex.position[0] -= corner->offset.x;

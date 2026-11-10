@@ -19,6 +19,10 @@ struct LightInstance {
 
     // Packs a light of a canvas whose world bounds a directional light covers.
     [[nodiscard]] static LightInstance make(const LightDraw& draw, const math::Rect& bounds) noexcept;
+
+  private:
+    // Returns how many taps of the shadow map a filter takes.
+    [[nodiscard]] static int getShadowTaps(lighting2d::Light::ShadowFilter filter) noexcept;
 };
 
 } // namespace haylen::graphics2d

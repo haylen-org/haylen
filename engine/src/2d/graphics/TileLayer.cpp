@@ -25,21 +25,32 @@ std::uint64_t TileLayer::keyOf(int column, int row) noexcept {
     return (static_cast<std::uint64_t>(static_cast<std::uint32_t>(column)) << 32U) | static_cast<std::uint32_t>(row);
 }
 
+std::int32_t TileLayer::columnOf(std::uint64_t key) noexcept {
+    return static_cast<std::int32_t>(static_cast<std::uint32_t>(key >> 32U));
+}
+
+std::int32_t TileLayer::rowOf(std::uint64_t key) noexcept {
+    return static_cast<std::int32_t>(static_cast<std::uint32_t>(key));
+}
+
 bool TileLayer::drawsBefore(std::uint64_t lhs, std::uint64_t rhs) noexcept {
-    const auto row = [](std::uint64_t key) { return static_cast<std::int32_t>(static_cast<std::uint32_t>(key)); };
-    const auto column = [](std::uint64_t key) { return static_cast<std::int32_t>(static_cast<std::uint32_t>(key >> 32U)); };
-    return row(lhs) != row(rhs) ? row(lhs) < row(rhs) : column(lhs) < column(rhs);
+    return rowOf(lhs) != rowOf(rhs) ? rowOf(lhs) < rowOf(rhs) : columnOf(lhs) < columnOf(rhs);
 }
 
 int TileLayer::floorDivide(int value, int divisor) noexcept {
     return value >= 0 ? value / divisor : -((-value + divisor - 1) / divisor);
 }
 
+TileLayer::Place TileLayer::locate(int column, int row) const noexcept {
+    const int size = options.chunkSize;
+    const int chunkColumn = floorDivide(column, size);
+    const int chunkRow = floorDivide(row, size);
+    return {.chunk = keyOf(chunkColumn, chunkRow), .cell = static_cast<std::size_t>((row - chunkRow * size) * size + (column - chunkColumn * size))};
+}
+
 math::Rect TileLayer::boundsOf(std::uint64_t key) const noexcept {
-    const auto column = static_cast<std::int32_t>(static_cast<std::uint32_t>(key >> 32U));
-    const auto row = static_cast<std::int32_t>(static_cast<std::uint32_t>(key));
     const math::Vec2 size = options.cellSize * static_cast<float>(options.chunkSize);
-    return {static_cast<float>(column) * size.x, static_cast<float>(row) * size.y, size.x, size.y};
+    return {static_cast<float>(columnOf(key)) * size.x, static_cast<float>(rowOf(key)) * size.y, size.x, size.y};
 }
 
 void TileLayer::defineFrame(int id, const Frame& frame) {
@@ -75,22 +86,20 @@ void TileLayer::write(int column, int row, int frame) {
         throw std::invalid_argument("The tile layer has no frame " + std::to_string(frame) + ".");
     }
 
-    const int size = options.chunkSize;
-    const int chunkColumn = floorDivide(column, size);
-    const int chunkRow = floorDivide(row, size);
-    const std::uint64_t key = keyOf(chunkColumn, chunkRow);
-    auto found = chunks.find(key);
+    const Place place = locate(column, row);
+    auto found = chunks.find(place.chunk);
     if (found == chunks.end()) {
         if (frame == 0) {
             return;
         }
 
-        found = chunks.emplace(key, Chunk{.cells = std::vector<std::int32_t>(static_cast<std::size_t>(size * size), 0)}).first;
+        const auto cellCount = static_cast<std::size_t>(options.chunkSize * options.chunkSize);
+        found = chunks.emplace(place.chunk, Chunk{.cells = std::vector<std::int32_t>(cellCount, 0)}).first;
         orderChanged = true;
     }
 
     Chunk& chunk = found->second;
-    std::int32_t& cell = chunk.cells[static_cast<std::size_t>((row - chunkRow * size) * size + (column - chunkColumn * size))];
+    std::int32_t& cell = chunk.cells[place.cell];
     if (cell == frame) {
         return;
     }
@@ -98,6 +107,7 @@ void TileLayer::write(int column, int row, int frame) {
     chunk.filled = chunk.filled - (cell != 0 ? 1 : 0) + (frame != 0 ? 1 : 0);
     cell = frame;
     chunk.stale = true;
+
     if (chunk.filled == 0) {
         chunks.erase(found);
         orderChanged = true;
@@ -119,15 +129,13 @@ void TileLayer::setCells(int column, int row, int width, std::span<const float> 
 }
 
 int TileLayer::getCell(int column, int row) const noexcept {
-    const int size = options.chunkSize;
-    const int chunkColumn = floorDivide(column, size);
-    const int chunkRow = floorDivide(row, size);
-    const auto found = chunks.find(keyOf(chunkColumn, chunkRow));
+    const Place place = locate(column, row);
+    const auto found = chunks.find(place.chunk);
     if (found == chunks.end()) {
         return 0;
     }
 
-    return found->second.cells[static_cast<std::size_t>((row - chunkRow * size) * size + (column - chunkColumn * size))];
+    return found->second.cells[place.cell];
 }
 
 void TileLayer::clear() noexcept {

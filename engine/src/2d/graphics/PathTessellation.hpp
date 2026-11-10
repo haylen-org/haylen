@@ -77,6 +77,7 @@ class PathTessellation final {
     void update(const Path& path);
     [[nodiscard]] bool isCurrent(const Build& build, float pixel) const noexcept;
     void buildFill(FillBuild& fill, float pixel, PolygonMesh& polygons);
+    void resolveOutlines(const Path::Outlines& outlines, Path::FillRule rule, double scale);
     void buildStroke(StrokeBuild& stroke, const Stroke& value, float pixel, math::Vec2 textureSize, StrokeBuilder& strokes);
     [[nodiscard]] static bool isLook(const StrokeLook& look, const Stroke& stroke, math::Vec2 textureSize) noexcept;
 

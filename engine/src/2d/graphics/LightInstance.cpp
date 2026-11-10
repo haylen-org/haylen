@@ -7,6 +7,19 @@
 
 namespace haylen::graphics2d {
 
+int LightInstance::getShadowTaps(lighting2d::Light::ShadowFilter filter) noexcept {
+    switch (filter) {
+    case lighting2d::Light::ShadowFilter::Pcf5:
+        return 5;
+    case lighting2d::Light::ShadowFilter::Pcf13:
+        return 13;
+    case lighting2d::Light::ShadowFilter::None:
+        break;
+    }
+
+    return 1;
+}
+
 // Directional lights cover the view of the canvas, and the others a quad of their reach turned with them.
 LightInstance LightInstance::make(const LightDraw& draw, const math::Rect& bounds) noexcept {
     const lighting2d::Light& light = draw.light;
@@ -16,7 +29,7 @@ LightInstance LightInstance::make(const LightDraw& draw, const math::Rect& bound
     const math::Vec2 direction = math::Vec2::fromAngle(light.rotation);
     const float energy = light.intensity * light.color.a;
     const float outer = std::cos(light.outerAngle * 0.5F);
-    const float window = static_cast<float>(light.shadowFilter == lighting2d::Light::ShadowFilter::Pcf13 ? 13 : (light.shadowFilter == lighting2d::Light::ShadowFilter::Pcf5 ? 5 : 1)) * (1.0F + light.shadowSmoothness);
+    const float window = static_cast<float>(getShadowTaps(light.shadowFilter)) * (1.0F + light.shadowSmoothness);
     const int lowest = std::clamp(light.layerMin, lighting2d::Light::kLowestLayer, lighting2d::Light::kHighestLayer);
     const int highest = std::clamp(light.layerMax, lighting2d::Light::kLowestLayer, lighting2d::Light::kHighestLayer);
     return {

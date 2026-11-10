@@ -283,7 +283,8 @@ float Camera::getRenderRotation() const noexcept {
 // A snapped view keeps its center on a whole view pixel too, so a view of an odd size does not put the world half a pixel off.
 math::Transform2D Camera::viewTransform(math::Vec2 viewSize) const noexcept {
     const math::Vec2 middle = viewSize * 0.5F;
-    const math::Vec2 pivot = anchor != Anchor::Center ? math::Vec2{} : (pixelSnap ? math::Vec2::floor(middle) : middle);
+    const math::Vec2 center = pixelSnap ? math::Vec2::floor(middle) : middle;
+    const math::Vec2 pivot = anchor == Anchor::Center ? center : math::Vec2{};
     return math::Transform2D::translation(pivot) * math::Transform2D::scaling(zoom) * math::Transform2D::rotation(-getRenderRotation()) * math::Transform2D::translation(-getRenderPosition());
 }
 
@@ -297,16 +298,18 @@ math::Vec2 Camera::screenToWorld(math::Vec2 point, const math::Rect& screen) con
     return viewTransform(view.getSize()).getInverse().apply(point - view.getMin());
 }
 
-math::Rect Camera::visibleBounds(const math::Rect& screen) const noexcept {
+std::array<math::Vec2, 4> Camera::getViewCorners(const math::Rect& screen) const noexcept {
     const math::Rect view = getViewRect(screen);
-    const std::array<math::Vec2, 4> corners{screenToWorld(view.getMin(), screen), screenToWorld({view.getRight(), view.getTop()}, screen), screenToWorld(view.getMax(), screen), screenToWorld({view.getLeft(), view.getBottom()}, screen)};
-    return math::Geometry::bounds(corners);
+    return {screenToWorld(view.getMin(), screen), screenToWorld({view.getRight(), view.getTop()}, screen), screenToWorld(view.getMax(), screen), screenToWorld({view.getLeft(), view.getBottom()}, screen)};
+}
+
+math::Rect Camera::visibleBounds(const math::Rect& screen) const noexcept {
+    return math::Geometry::bounds(getViewCorners(screen));
 }
 
 void Camera::drawDebug(Renderer& renderer, const math::Rect& screen, const DrawOrder& order) const {
     const float thickness = kDebugThickness * renderer.getCanvasUnitSize();
-    const math::Rect view = getViewRect(screen);
-    const std::array<math::Vec2, 4> corners{screenToWorld(view.getMin(), screen), screenToWorld({view.getRight(), view.getTop()}, screen), screenToWorld(view.getMax(), screen), screenToWorld({view.getLeft(), view.getBottom()}, screen)};
+    const std::array<math::Vec2, 4> corners = getViewCorners(screen);
     renderer.drawPolyline(corners, thickness, math::Color::fromHex(0xFFFFFFC0U), true, order);
 
     if (limits) {

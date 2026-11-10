@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <utility>
 
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/math/Rect.hpp"

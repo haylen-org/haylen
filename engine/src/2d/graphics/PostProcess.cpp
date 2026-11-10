@@ -25,6 +25,7 @@ std::array<std::array<float, 3>, 3> PostProcess::getColorVisionMatrix() const no
         simulation = &kTritanopia;
         break;
     }
+
     if (!correctColorVision) {
         return *simulation;
     }

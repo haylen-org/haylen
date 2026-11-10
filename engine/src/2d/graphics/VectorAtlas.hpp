@@ -86,6 +86,8 @@ class VectorAtlas final {
 
     [[nodiscard]] int clampStep(const graphics::VectorImage& image, int step) const noexcept;
     void request(const graphics::VectorImage& image, int step);
+    static void rasterize(const std::weak_ptr<Link>& owner, const graphics::VectorImage& image, int step, core::JobSystem& queue);
+    static void receive(const std::weak_ptr<Link>& owner, std::uint32_t id, int step, const graphics::Image& raster);
     const Entry& place(std::uint32_t image, int step, const graphics::Image& raster, std::uint64_t frame);
     [[nodiscard]] std::size_t findRoom(int width, int height, std::uint64_t frame);
     void clearPage(std::size_t index, int side);

@@ -165,6 +165,9 @@ class Camera final {
     [[nodiscard]] math::Vec2 getRestingPoint(math::Vec2 target, math::Vec2 worldView) const noexcept;
     [[nodiscard]] math::Vec2 clampPoint(math::Vec2 point, math::Vec2 worldView) const noexcept;
     [[nodiscard]] float getViewRotation() const noexcept;
+
+    // Returns the corners of the view in world coordinates, from the top-left one clockwise.
+    [[nodiscard]] std::array<math::Vec2, 4> getViewCorners(const math::Rect& screen) const noexcept;
     void moveGoal(math::Vec2 target, math::Vec2 worldView) noexcept;
 
     math::Vec2 zoom{1.0F, 1.0F};

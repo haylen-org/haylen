@@ -126,6 +126,7 @@ class SpriteLayout final {
         case Field::Data4:
             break;
         }
+
         return sprite.source.height;
     }
 

@@ -54,6 +54,7 @@ class StrokeBuilder final {
     void collect(std::span<const math::Vec2> points, const Stroke& stroke);
     void buildDashes(std::span<const float> pattern, float offset);
     void buildPath(std::span<const Node> path, bool closed);
+
     // Fills the joint with the sections of the turn at a point, which the closed paths take apart.
     void addJoin(const Node& previous, const Node& node, const Node& next, float distance);
     void emitJoint();

@@ -1,7 +1,8 @@
 #include "2d/graphics/PathTessellation.hpp"
 
-#include <algorithm>
 #include <clipper2/clipper.h>
+
+#include <algorithm>
 #include <cmath>
 #include <span>
 #include <stdexcept>
@@ -69,6 +70,20 @@ void PathTessellation::buildFill(FillBuild& fill, float pixel, PolygonMesh& poly
     const math::Rect bounds = math::Geometry::bounds(outlines.points);
     const double extent = std::max({std::fabs(static_cast<double>(bounds.getLeft())), std::fabs(static_cast<double>(bounds.getRight())), std::fabs(static_cast<double>(bounds.getTop())), std::fabs(static_cast<double>(bounds.getBottom())), 1.0});
     const double scale = std::min(kGridSteps / static_cast<double>(pixel), kGridLimit / extent);
+    resolveOutlines(outlines, fill.rule, scale);
+    polygons.build(simplePoints, simpleCounts, math::Color::white().toRgba8(), pixel);
+    triangles.vertices.assign(polygons.getVertices().begin(), polygons.getVertices().end());
+    triangles.indices.assign(polygons.getIndices().begin(), polygons.getIndices().end());
+
+    const math::Vec2 size{std::max(bounds.width, 1.0e-6F), std::max(bounds.height, 1.0e-6F)};
+    for (GpuVertex& vertex : triangles.vertices) {
+        vertex.uv[0] = (vertex.position[0] - bounds.x) / size.x;
+        vertex.uv[1] = (vertex.position[1] - bounds.y) / size.y;
+    }
+}
+
+// Replaces `simplePoints` and `simpleCounts` with the simple outlines and holes of the union of the outlines, resolved on the grid of the scale.
+void PathTessellation::resolveOutlines(const Path::Outlines& outlines, Path::FillRule rule, double scale) {
     Clipper2Lib::Paths64 subjects;
     subjects.reserve(outlines.counts.size());
     std::size_t first = 0;
@@ -87,7 +102,7 @@ void PathTessellation::buildFill(FillBuild& fill, float pixel, PolygonMesh& poly
     clipper.PreserveCollinear(false);
     clipper.AddSubject(subjects);
     Clipper2Lib::Paths64 solution;
-    if (!clipper.Execute(Clipper2Lib::ClipType::Union, fill.rule == Path::FillRule::EvenOdd ? Clipper2Lib::FillRule::EvenOdd : Clipper2Lib::FillRule::NonZero, solution)) {
+    if (!clipper.Execute(Clipper2Lib::ClipType::Union, rule == Path::FillRule::EvenOdd ? Clipper2Lib::FillRule::EvenOdd : Clipper2Lib::FillRule::NonZero, solution)) {
         throw std::runtime_error("The outlines of the path could not be resolved into a fill.");
     }
 
@@ -99,16 +114,6 @@ void PathTessellation::buildFill(FillBuild& fill, float pixel, PolygonMesh& poly
         }
 
         simpleCounts.push_back(static_cast<std::uint32_t>(outline.size()));
-    }
-
-    polygons.build(simplePoints, simpleCounts, math::Color::white().toRgba8(), pixel);
-    triangles.vertices.assign(polygons.getVertices().begin(), polygons.getVertices().end());
-    triangles.indices.assign(polygons.getIndices().begin(), polygons.getIndices().end());
-
-    const math::Vec2 size{std::max(bounds.width, 1.0e-6F), std::max(bounds.height, 1.0e-6F)};
-    for (GpuVertex& vertex : triangles.vertices) {
-        vertex.uv[0] = (vertex.position[0] - bounds.x) / size.x;
-        vertex.uv[1] = (vertex.position[1] - bounds.y) / size.y;
     }
 }
 

@@ -2,6 +2,7 @@
 
 #include <format>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 #include "2d/graphics/MaterialResource.hpp"
@@ -80,7 +81,8 @@ void Material::set(std::string_view name, std::span<const float> values) {
     const graphics::Shader::Uniform& uniform = findUniform(name);
     const auto expected = static_cast<std::size_t>(uniform.count * graphics::Shader::getComponentCount(uniform.type));
     if (values.size() != expected) {
-        throw std::invalid_argument(std::format("The uniform \"{}\" is {} \"{}\", which takes {} numbers, not {}.", name, uniform.count > 1 ? std::format("an array of {}", uniform.count) : std::string("a"), graphics::Shader::uniformTypeName(uniform.type), expected, values.size()));
+        const std::string shape = uniform.count > 1 ? std::format("an array of {}", uniform.count) : std::string("a");
+        throw std::invalid_argument(std::format("The uniform \"{}\" is {} \"{}\", which takes {} numbers, not {}.", name, shape, graphics::Shader::uniformTypeName(uniform.type), expected, values.size()));
     }
 
     // A value set every frame, such as a time, reuses the storage of the last one.
@@ -95,12 +97,11 @@ void Material::set(std::string_view name, std::span<const float> values) {
 }
 
 void Material::setTexture(std::string_view name, graphics::Texture texture) {
-    const graphics::Shader& shader = getChecked().shader;
-    if (shader.findTexture(name) == nullptr) {
-        throw std::invalid_argument(std::format("The shader \"{}\" has no texture named \"{}\".", shader.getName(), name));
+    MaterialResource& state = getChecked();
+    if (state.shader.findTexture(name) == nullptr) {
+        throw std::invalid_argument(std::format("The shader \"{}\" has no texture named \"{}\".", state.shader.getName(), name));
     }
 
-    MaterialResource& state = getChecked();
     state.textures.insert_or_assign(std::string(name), std::move(texture));
     ++state.revision;
 }

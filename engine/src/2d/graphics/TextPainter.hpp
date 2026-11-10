@@ -69,6 +69,9 @@ class TextPainter final {
     [[nodiscard]] SpriteInstance placeGlyph(const text::Layout::Glyph& glyph, math::Vec2 offset, math::Color color, math::Color flash) const noexcept;
     [[nodiscard]] math::Vec2 place(math::Vec2 local) const noexcept;
 
+    // Returns the weight, the width and the skew of a glyph in the units of the distance field of its font, without an outline or a softness.
+    [[nodiscard]] static GpuInstance::TextParameters getParameters(const text::Layout::Look& look, const text::Layout::Glyph& glyph) noexcept;
+
     void add(Program program, const graphics::Texture& texture, const GpuInstance& instance);
     void addGradientGlyph(const graphics::Texture& page, const GpuInstance& glyph, const GpuInstance& gradient);
     [[nodiscard]] GpuInstance makeGradient(const text::Layout& layout, const text::Layout::Glyph& glyph, const text::Gradient& gradient) const noexcept;

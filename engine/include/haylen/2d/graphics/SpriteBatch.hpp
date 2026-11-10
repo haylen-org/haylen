@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <span>
 #include <vector>
 
@@ -36,7 +37,8 @@ class SpriteBatch final {
     [[nodiscard]] const SpriteInstance& get(std::size_t index) const;
     void remove(std::size_t index);
     void clear() noexcept;
-    // Make room for a number of sprites or set it, filling new sprites with the sprite. A count above `kMaxSprites` throws `std::invalid_argument`.
+
+    // Makes room for a number of sprites or set it, filling new sprites with the sprite. A count above `kMaxSprites` throws `std::invalid_argument`.
     void reserve(std::size_t count);
     void resize(std::size_t count, const SpriteInstance& sprite = {});
 
@@ -67,11 +69,14 @@ class SpriteBatch final {
     }
 
     void draw(Renderer& renderer, const DrawOrder& order = {}) const;
+
     // Throws `std::logic_error` for a batch with several textures or with data, which a baked batch cannot draw.
     [[nodiscard]] StaticSpriteBatch bake(Renderer& renderer) const;
 
   private:
     static void checkCount(std::size_t count);
+    void checkIndex(std::size_t index) const;
+    void checkFirst(std::size_t first) const;
     void checkTexture(std::uint8_t texture) const;
 
     std::vector<graphics::Texture> textures;

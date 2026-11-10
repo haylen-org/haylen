@@ -23,9 +23,20 @@ void PolygonMesh::build(std::span<const math::Vec2> points, std::span<const std:
     vertices.clear();
     indices.clear();
     triangulator.triangulate(points, counts);
-    const std::vector<math::Triangulator::Kind>& kinds = triangulator.getKinds();
+    markFadingEdges(points, counts);
+    findSharedEdges(points, counts);
+    addVertices(points, counts, color, pixel);
 
-    // Every edge of an outer outline or a hole fades on the side away from the fill, unless it has no length or another outline shares it.
+    for (const std::uint32_t index : triangulator.getTriangles()) {
+        indices.push_back(index * 2U);
+    }
+
+    addFringes(counts);
+}
+
+// Every edge of an outer outline or a hole fades on the side away from the fill, unless it has no length.
+void PolygonMesh::markFadingEdges(std::span<const math::Vec2> points, std::span<const std::uint32_t> counts) {
+    const std::vector<math::Triangulator::Kind>& kinds = triangulator.getKinds();
     normals.assign(points.size(), math::Vec2{});
     fades.assign(points.size(), 0);
     std::uint32_t first = 0;
@@ -47,13 +58,13 @@ void PolygonMesh::build(std::span<const math::Vec2> points, std::span<const std:
             }
         }
     }
+}
 
-    findSharedEdges(points, counts);
-
-    // Every point gives an inner vertex in the color, where the fill stops, and an outer one without alpha, where the fringe ends.
+// Every point gives an inner vertex in the color, where the fill stops, and an outer one without alpha, where the fringe ends.
+void PolygonMesh::addVertices(std::span<const math::Vec2> points, std::span<const std::uint32_t> counts, std::uint32_t color, float pixel) {
     const float half = pixel * 0.5F;
     const std::uint32_t clear = color & 0x00FFFFFFU;
-    first = 0;
+    std::uint32_t first = 0;
     for (const std::uint32_t count : counts) {
         for (std::uint32_t step = 0; step < count; ++step) {
             const std::uint32_t index = first + step;
@@ -67,12 +78,11 @@ void PolygonMesh::build(std::span<const math::Vec2> points, std::span<const std:
 
         first += count;
     }
+}
 
-    for (const std::uint32_t index : triangulator.getTriangles()) {
-        indices.push_back(index * 2U);
-    }
-
-    first = 0;
+// Every edge that fades joins the inner and outer vertices of its ends with a quad of the fringe.
+void PolygonMesh::addFringes(std::span<const std::uint32_t> counts) {
+    std::uint32_t first = 0;
     for (const std::uint32_t count : counts) {
         for (std::uint32_t step = 0; step < count; ++step) {
             if (fades[first + step] == 0) {
@@ -111,7 +121,7 @@ void PolygonMesh::findSharedEdges(std::span<const math::Vec2> points, std::span<
         first += count;
     }
 
-    std::sort(edges.begin(), edges.end(), [](const Edge& lhs, const Edge& rhs) { return lhs.key < rhs.key; });
+    std::ranges::sort(edges, {}, &Edge::key);
 
     for (std::size_t start = 0; start < edges.size();) {
         std::size_t end = start + 1;

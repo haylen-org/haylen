@@ -80,10 +80,11 @@ void StrokeBuilder::build(std::span<const math::Vec2> points, const Stroke& stro
 
     const bool closed = stroke.closed && nodes.size() > 2;
     const float total = nodes.back().distance + (closed ? math::Vec2::distance(nodes.back().position, nodes.front().position) : 0.0F);
-    const float tile = stroke.textureLength > 0.0F ? stroke.textureLength : (textureSize.y > 0.0F ? stroke.width * textureSize.x / textureSize.y : 0.0F);
     if (stroke.textureMode == Stroke::TextureMode::Stretch) {
         textureScale = total > 0.0F ? 1.0F / total : 0.0F;
     } else {
+        const float aspectLength = textureSize.y > 0.0F ? stroke.width * textureSize.x / textureSize.y : 0.0F;
+        const float tile = stroke.textureLength > 0.0F ? stroke.textureLength : aspectLength;
         textureScale = tile > 0.0F ? 1.0F / tile : 0.0F;
     }
 

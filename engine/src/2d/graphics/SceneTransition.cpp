@@ -35,6 +35,7 @@ math::Vec2 SceneTransition::getSteps(Direction direction) noexcept {
     case Direction::DownRight:
         return {1.0F, 1.0F};
     }
+
     return {};
 }
 
@@ -108,6 +109,7 @@ float SceneTransition::getSwitchProgress() const noexcept {
     case Kind::Dissolve:
         break;
     }
+
     return 0.0F;
 }
 

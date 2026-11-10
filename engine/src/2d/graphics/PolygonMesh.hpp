@@ -37,7 +37,10 @@ class PolygonMesh final {
         std::uint32_t point = 0;
     };
 
+    void markFadingEdges(std::span<const math::Vec2> points, std::span<const std::uint32_t> counts);
     void findSharedEdges(std::span<const math::Vec2> points, std::span<const std::uint32_t> counts);
+    void addVertices(std::span<const math::Vec2> points, std::span<const std::uint32_t> counts, std::uint32_t color, float pixel);
+    void addFringes(std::span<const std::uint32_t> counts);
 
     math::Triangulator triangulator;
     std::vector<Edge> edges;

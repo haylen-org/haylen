@@ -68,9 +68,18 @@ class TileLayer final {
         bool stale = true;
     };
 
+    // Where a cell lies: the key of its chunk and its index among the cells of the chunk.
+    struct Place {
+        std::uint64_t chunk = 0;
+        std::size_t cell = 0;
+    };
+
     [[nodiscard]] static std::uint64_t keyOf(int column, int row) noexcept;
+    [[nodiscard]] static std::int32_t columnOf(std::uint64_t key) noexcept;
+    [[nodiscard]] static std::int32_t rowOf(std::uint64_t key) noexcept;
     [[nodiscard]] static int floorDivide(int value, int divisor) noexcept;
     [[nodiscard]] static bool drawsBefore(std::uint64_t lhs, std::uint64_t rhs) noexcept;
+    [[nodiscard]] Place locate(int column, int row) const noexcept;
     [[nodiscard]] math::Rect boundsOf(std::uint64_t key) const noexcept;
     void write(int column, int row, int frame);
     void bake(Renderer& renderer, std::uint64_t key, Chunk& chunk);

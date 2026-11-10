@@ -31,14 +31,14 @@ NineSlice NineSlice::fromBorders(graphics::Texture image, math::Rect source, mat
         throw std::invalid_argument("The borders of a nine-slice must fit inside its source rectangle, with the left and right borders at most its width and the top and bottom borders at most its height.");
     }
 
-    const float columns[4] = {source.getLeft(), source.getLeft() + borders.left, source.getRight() - borders.right, source.getRight()};
-    const float rows[4] = {source.getTop(), source.getTop() + borders.top, source.getBottom() - borders.bottom, source.getBottom()};
+    const std::array<float, 4> columns{source.getLeft(), source.getLeft() + borders.left, source.getRight() - borders.right, source.getRight()};
+    const std::array<float, 4> rows{source.getTop(), source.getTop() + borders.top, source.getBottom() - borders.bottom, source.getBottom()};
 
     NineSlice slice;
     slice.texture = std::move(image);
-    for (int row = 0; row < 3; ++row) {
-        for (int column = 0; column < 3; ++column) {
-            slice.pieces[static_cast<std::size_t>(row * 3 + column)] = math::Rect::fromMinMax(math::Vec2{columns[column], rows[row]}, math::Vec2{columns[column + 1], rows[row + 1]});
+    for (std::size_t row = 0; row < 3; ++row) {
+        for (std::size_t column = 0; column < 3; ++column) {
+            slice.pieces[row * 3 + column] = math::Rect::fromMinMax(math::Vec2{columns[column], rows[row]}, math::Vec2{columns[column + 1], rows[row + 1]});
         }
     }
 

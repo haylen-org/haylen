@@ -4,6 +4,7 @@
 #include <cmath>
 #include <iterator>
 #include <span>
+#include <utility>
 
 #include "haylen/core/JobSystem.hpp"
 #include "haylen/graphics/Device.hpp"
@@ -59,25 +60,28 @@ void VectorAtlas::request(const graphics::VectorImage& image, int step) {
         return;
     }
 
-    // clang-format off
-    jobs.post([owner = std::weak_ptr<Link>(link), image, step, queue = &jobs] {
-        graphics::Image raster = image.rasterize(scaleOf(step));
-        queue->postToFrame([owner, id = image.getId(), step, raster = std::move(raster)] {
-            const std::shared_ptr<Link> alive = owner.lock();
-            if (alive == nullptr || alive->atlas == nullptr) {
-                return;
-            }
+    jobs.post([owner = std::weak_ptr<Link>(link), image, step, queue = &jobs] { rasterize(owner, image, step, *queue); });
+}
 
-            // The image may have left the atlas and come back with this step made at once meanwhile, which keeps its place.
-            VectorAtlas& atlas = *alive->atlas;
-            atlas.pending.erase({id, step});
-            const auto known = atlas.images.find(id);
-            if (known == atlas.images.end() || !known->second.contains(step)) {
-                atlas.place(id, step, raster, atlas.currentFrame);
-            }
-        });
-    });
-    // clang-format on
+// Makes the raster on the task pool and hands it to the frame thread.
+void VectorAtlas::rasterize(const std::weak_ptr<Link>& owner, const graphics::VectorImage& image, int step, core::JobSystem& queue) {
+    graphics::Image raster = image.rasterize(scaleOf(step));
+    queue.postToFrame([owner, id = image.getId(), step, raster = std::move(raster)] { receive(owner, id, step, raster); });
+}
+
+// The image may have left the atlas and come back with this step made at once meanwhile, which keeps its place.
+void VectorAtlas::receive(const std::weak_ptr<Link>& owner, std::uint32_t id, int step, const graphics::Image& raster) {
+    const std::shared_ptr<Link> alive = owner.lock();
+    if (alive == nullptr || alive->atlas == nullptr) {
+        return;
+    }
+
+    VectorAtlas& atlas = *alive->atlas;
+    atlas.pending.erase({id, step});
+    const auto known = atlas.images.find(id);
+    if (known == atlas.images.end() || !known->second.contains(step)) {
+        atlas.place(id, step, raster, atlas.currentFrame);
+    }
 }
 
 const VectorAtlas::Entry& VectorAtlas::place(std::uint32_t image, int step, const graphics::Image& raster, std::uint64_t frame) {

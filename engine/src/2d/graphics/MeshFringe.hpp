@@ -43,7 +43,12 @@ class MeshFringe final {
     static constexpr float kMiterLimit = 2.0F;
 
     [[nodiscard]] static std::array<std::uint32_t, 2> keyOf(const GpuVertex& vertex) noexcept;
+    [[nodiscard]] static math::Vec2 positionOf(const GpuVertex& vertex) noexcept;
     [[nodiscard]] const Corner* findCorner(const GpuVertex& vertex) const noexcept;
+    void collectEdges(std::span<const GpuVertex> meshVertices, std::span<const std::uint32_t> meshIndices);
+    void findOutline();
+    void placeCorners(float half);
+    void addFringe(std::span<const GpuVertex> meshVertices);
 
     std::vector<Edge> edges;
     std::vector<Edge> outline;
