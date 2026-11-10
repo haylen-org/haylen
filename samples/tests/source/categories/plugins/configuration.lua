@@ -19,7 +19,8 @@ Configuration.default = 1
 
 function Configuration:enter()
     local config = demo.config()
-    local given = haylen.config.plugins[demo.id] or {}
+    local entry = haylen.config.plugins[demo.id] or {}
+    local given = entry.parameters or {}
     local cards = {}
     for index, name in ipairs(Configuration.parameters) do
         cards[index] = ui.card{align = 'stretch', padding = {14, 20},
