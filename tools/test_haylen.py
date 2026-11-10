@@ -2498,6 +2498,11 @@ class GradleTest(unittest.TestCase):
         self.assertEqual(self.downloads, [(f"https://services.gradle.org/distributions/gradle-{haylen.GRADLE_VERSION}-bin.zip", haylen.GRADLE_SHA256)] * 2)
         self.assertEqual([path.name for path in self.scratch.iterdir()], [folder.name])
 
+    def test_the_wrapper_of_the_android_template_downloads_the_pinned_distribution_with_its_hash(self):
+        properties = (haylen.ROOT / "templates" / "common" / "platform" / "android" / "gradle" / "wrapper" / "gradle-wrapper.properties").read_text(encoding="utf-8").splitlines()
+        self.assertIn(f"distributionUrl=https\\://services.gradle.org/distributions/gradle-{haylen.GRADLE_VERSION}-bin.zip", properties)
+        self.assertIn(f"distributionSha256Sum={haylen.GRADLE_SHA256}", properties)
+
     def test_a_folder_that_an_interrupted_unpack_left_is_replaced(self):
         folder = self.scratch / f"gradle-{haylen.GRADLE_VERSION}"
         (folder / "lib").mkdir(parents=True)
