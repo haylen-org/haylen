@@ -94,6 +94,9 @@ class ModuleGraph final {
     static void findLoader(lua_State* L, const char* name);
     void recordRequire(lua_State* L, const std::string& name);
     int load(lua_State* L, const std::string& name, const std::string& path);
+
+    // Gives the chunk at index an environment that writes through to the globals and records every write in a new table, which it leaves on the stack and whose index it returns.
+    static int pushRecordingEnvironment(lua_State* L, int chunk);
     void finishLoad(lua_State* L, const std::string& path, std::string source, int result, int written);
 
     std::map<std::string, Module, std::less<>> modules;

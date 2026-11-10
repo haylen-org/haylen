@@ -93,6 +93,7 @@ std::string_view Error::getKindName(Frame::Kind kind) noexcept {
     case Frame::Kind::Main:
         return "main";
     }
+
     return "lua";
 }
 

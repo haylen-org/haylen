@@ -65,6 +65,7 @@ ModuleReloader::Result ModuleReloader::reload(const std::string& file) {
     lua_setmetatable(state, staging);
     lua_pushvalue(state, staging);
     ModuleGraph::setEnvironment(state, chunk);
+
     lua_newtable(state);
     const int owner = top + 3;
     // clang-format off
@@ -269,10 +270,9 @@ void ModuleReloader::mergeTable(int live, int fresh, int base, const std::string
     lua_pushboolean(state, 1);
     lua_rawset(state, -3);
     lua_pop(state, 1);
+
     const bool hasBase = lua_istable(state, previous);
-
     lua_pushnil(state);
-
     while (lua_next(state, next) != 0) {
         const int value = lua_gettop(state);
         const int key = value - 1;
@@ -292,7 +292,6 @@ void ModuleReloader::mergeTable(int live, int fresh, int base, const std::string
         const int removed = lua_gettop(state);
         int count = 0;
         lua_pushnil(state);
-
         while (lua_next(state, current) != 0) {
             const int key = lua_gettop(state) - 1;
             const int keyType = lua_type(state, key);
@@ -446,7 +445,6 @@ void ModuleReloader::mapReplaced(int live, int base, int depth) {
     const int current = lua_absindex(state, live);
     const int previous = lua_absindex(state, base);
     lua_pushnil(state);
-
     while (lua_next(state, previous) != 0) {
         const int value = lua_gettop(state);
         lua_pushvalue(state, value - 1);
@@ -544,7 +542,6 @@ void ModuleReloader::mergeGlobals(int staging, int base) {
     lua_pushglobaltable(state);
     const int globals = lua_gettop(state);
     lua_pushnil(state);
-
     while (lua_next(state, written) != 0) {
         const int value = lua_gettop(state);
         const int key = value - 1;
@@ -568,7 +565,6 @@ void ModuleReloader::mergeGlobals(int staging, int base) {
     // A global that the new source no longer writes goes away, unless the app changed it since the last load.
     if (hasBase) {
         lua_pushnil(state);
-
         while (lua_next(state, previous) != 0) {
             const int value = lua_gettop(state);
             const int key = value - 1;
@@ -601,7 +597,6 @@ void ModuleReloader::pushPreviousGlobals(int base) {
     const int result = lua_gettop(state);
     lua_pushglobaltable(state);
     lua_pushnil(state);
-
     while (lua_next(state, previous) != 0) {
         lua_pop(state, 1);
         lua_pushvalue(state, -1);

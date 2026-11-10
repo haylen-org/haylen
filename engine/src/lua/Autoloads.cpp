@@ -108,6 +108,7 @@ void Autoloads::add(lua_State* L, const std::string& name, const std::string& mo
         const Owners::DefaultScope unowned(main, 0);
         call(entries.back(), "start");
     }
+
     Runtime::getEngine(main).getEvents().emit(core::LifecycleEvent::kAutoloadStarted, {{"name", name}});
 }
 
@@ -197,6 +198,7 @@ void Autoloads::stop(core::Engine& engine) {
         }
     };
     // clang-format on
+
     for (auto entry = stopping.rbegin(); entry != stopping.rend(); ++entry) {
         attempt([&entry] { call(*entry, "stop"); });
         attempt([&engine, &entry] { engine.getEvents().emit(core::LifecycleEvent::kAutoloadStopped, {{"name", entry->name}}); });

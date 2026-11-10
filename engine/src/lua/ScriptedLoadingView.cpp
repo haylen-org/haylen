@@ -56,6 +56,7 @@ void ScriptedLoadingView::exit(core::Engine&) {
         lua_pop(L, 1);
     });
     // clang-format on
+
     if (failure) {
         std::rethrow_exception(failure);
     }

@@ -202,6 +202,7 @@ void Runtime::protectedCall(lua_State* L, int arguments, int results) {
 
     const int status = lua_pcall(L, arguments, results, function);
     lua_remove(L, function);
+
     if (status != LUA_OK) {
         Error error = readError(L, -1);
         lua_pop(L, 1);

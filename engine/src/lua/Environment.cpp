@@ -295,6 +295,7 @@ void Environment::withholdNativeAccess(lua_State* L) {
     lua_pushnil(L);
     lua_setfield(L, -2, "popen");
     lua_pop(L, 1);
+
     lua_getglobal(L, "os");
     lua_pushnil(L);
     lua_setfield(L, -2, "execute");
@@ -384,6 +385,7 @@ void Environment::restrictDebug(lua_State* L) {
     lua_getfield(L, -1, "setmetatable");
     lua_pushcclosure(L, &setUnprotectedMetatable, 1);
     lua_setfield(L, -2, "setmetatable");
+
     for (const char* name : {"getupvalue", "setupvalue"}) {
         lua_getfield(L, -1, name);
         lua_pushcclosure(L, &accessScriptUpvalue, 1);

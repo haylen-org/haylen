@@ -61,6 +61,7 @@ std::vector<std::string> ModuleGraph::order(const std::vector<std::string>& path
         }
     };
     // clang-format on
+
     for (const std::string& path : loadOrder) {
         if (wanted.contains(path)) {
             visit(path);
@@ -380,18 +381,7 @@ int ModuleGraph::load(lua_State* L, const std::string& name, const std::string& 
     const int closing = lua_gettop(L);
     lua_toclose(L, closing);
     beginLoad(L, path, owner);
-
-    lua_newtable(L);
-    const int written = lua_gettop(L);
-    lua_newtable(L);
-    lua_createtable(L, 0, 2);
-    lua_pushglobaltable(L);
-    lua_setfield(L, -2, "__index");
-    lua_pushvalue(L, written);
-    lua_pushcclosure(L, &recordGlobal, 1);
-    lua_setfield(L, -2, "__newindex");
-    lua_setmetatable(L, -2);
-    setEnvironment(L, 3);
+    const int written = pushRecordingEnvironment(L, 3);
 
     lua_pushvalue(L, 3);
     lua_pushvalue(L, 1);
@@ -415,6 +405,21 @@ int ModuleGraph::load(lua_State* L, const std::string& name, const std::string& 
     lua_pushvalue(L, result);
     lua_pushvalue(L, 4);
     return 2;
+}
+
+int ModuleGraph::pushRecordingEnvironment(lua_State* L, int chunk) {
+    lua_newtable(L);
+    const int written = lua_gettop(L);
+    lua_newtable(L);
+    lua_createtable(L, 0, 2);
+    lua_pushglobaltable(L);
+    lua_setfield(L, -2, "__index");
+    lua_pushvalue(L, written);
+    lua_pushcclosure(L, &recordGlobal, 1);
+    lua_setfield(L, -2, "__newindex");
+    lua_setmetatable(L, -2);
+    setEnvironment(L, chunk);
+    return written;
 }
 
 void ModuleGraph::finishLoad(lua_State* L, const std::string& path, std::string source, int result, int written) {
@@ -442,6 +447,7 @@ void ModuleGraph::setEnvironment(lua_State* L, int chunk) {
     }
 
     lua_pop(L, 1);
+
     if (std::string_view(name) == "_ENV") {
         lua_setupvalue(L, function, 1);
     } else {
@@ -481,6 +487,7 @@ int ModuleGraph::closeLoad(lua_State* L) {
     lua_pushnil(L);
     setOwner(L, path, -1);
     lua_pop(L, 1);
+
     const Module* module = graph.find(path);
     if (module != nullptr && module->source.empty()) {
         for (const std::string& name : module->names) {

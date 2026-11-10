@@ -69,7 +69,8 @@ int JobsLua::setBudget(lua_State* L) {
     }
 
     const auto largest = static_cast<double>(std::chrono::microseconds::max().count());
-    getPlugin(L).setBudget(microseconds >= largest ? std::chrono::microseconds::max() : std::chrono::microseconds(std::max(1LL, std::llround(microseconds))));
+    const std::chrono::microseconds limit = microseconds >= largest ? std::chrono::microseconds::max() : std::chrono::microseconds(std::max(1LL, std::llround(microseconds)));
+    getPlugin(L).setBudget(limit);
     return 0;
 }
 

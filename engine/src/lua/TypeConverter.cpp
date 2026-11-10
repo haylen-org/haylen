@@ -24,11 +24,8 @@ const TypeConverter::NameTable<input::InputDevice, 3> TypeConverter::kDevices = 
 const TypeConverter::NameTable<input::GamepadLabels, 4> TypeConverter::kGamepadLabels = {{{"unknown", input::GamepadLabels::Unknown}, {"letters", input::GamepadLabels::Letters}, {"swappedLetters", input::GamepadLabels::SwappedLetters}, {"shapes", input::GamepadLabels::Shapes}}};
 const TypeConverter::NameTable<input::TouchPhase, 5> TypeConverter::kPhases = {{{"began", input::TouchPhase::Began}, {"moved", input::TouchPhase::Moved}, {"stationary", input::TouchPhase::Stationary}, {"ended", input::TouchPhase::Ended}, {"cancelled", input::TouchPhase::Cancelled}}};
 const TypeConverter::NameTable<platform::Window::Passthrough, 3> TypeConverter::kPassthroughs = {{{"off", platform::Window::Passthrough::Off}, {"whole", platform::Window::Passthrough::Whole}, {"regions", platform::Window::Passthrough::Regions}}};
-
 const TypeConverter::NameTable<platform::TextInput::Action, 4> TypeConverter::kTextActions = {{{"submit", platform::TextInput::Action::Submit}, {"next", platform::TextInput::Action::Next}, {"cancel", platform::TextInput::Action::Cancel}, {"dismissed", platform::TextInput::Action::Dismissed}}};
-
 const TypeConverter::NameTable<core::ProcessMode, 5> TypeConverter::kProcessModes = {{{"inherit", core::ProcessMode::Inherit}, {"pausable", core::ProcessMode::Pausable}, {"whenPaused", core::ProcessMode::WhenPaused}, {"always", core::ProcessMode::Always}, {"disabled", core::ProcessMode::Disabled}}};
-
 const TypeConverter::NameTable<core::MotionReduction, 3> TypeConverter::kMotionReductions = {{{"keep", core::MotionReduction::Keep}, {"shorten", core::MotionReduction::Shorten}, {"skip", core::MotionReduction::Skip}}};
 
 void TypeConverter::pushComponent(lua_State* L, int table, const char* name, lua_Integer position) {
@@ -245,6 +242,7 @@ void Converter<math::EasingCurve>::push(lua_State* L, const math::EasingCurve& v
     case Kind::Custom:
         break;
     }
+
     Userdata::emplace<math::EasingCurve>(L, value);
 }
 
@@ -295,6 +293,7 @@ math::EasingCurve Converter<math::EasingCurve>::read(lua_State* L, int index) {
 
     const int table = lua_absindex(L, index);
     Table::checkFields(L, table, {TypeConverter::kEasingFields});
+
     if (lua_getfield(L, table, "steps") != LUA_TNIL) {
         lua_pop(L, 1);
         int count = 0;
@@ -305,6 +304,7 @@ math::EasingCurve Converter<math::EasingCurve>::read(lua_State* L, int index) {
     }
 
     lua_pop(L, 1);
+
     if (lua_getfield(L, table, "cubicBezier") != LUA_TNIL) {
         const std::vector<float> handles = Stack::read<std::vector<float>>(L, -1);
         lua_pop(L, 1);
@@ -316,6 +316,7 @@ math::EasingCurve Converter<math::EasingCurve>::read(lua_State* L, int index) {
     }
 
     lua_pop(L, 1);
+
     if (lua_getfield(L, table, "points") != LUA_TNIL) {
         luaL_checktype(L, -1, LUA_TTABLE);
         std::vector<math::Vec2> points;
@@ -347,6 +348,7 @@ math::EasingCurve Converter<math::EasingCurve>::read(lua_State* L, int index) {
     }
 
     lua_pop(L, 1);
+
     float amplitude = math::Easing::kElasticAmplitude;
     float period = math::Easing::kElasticPeriod;
     lua_getfield(L, table, "amplitude");
@@ -581,6 +583,7 @@ text::Gradient TypeConverter::readTextGradient(lua_State* L, int index) {
         count = readTextGradientStops(L, key, stops);
     });
     // clang-format on
+
     if (listsStops == listsColors) {
         throw std::invalid_argument("A gradient takes its colors from either \"stops\" or \"colors\".");
     }
@@ -655,7 +658,7 @@ graphics::Texture::Options TypeConverter::readTextureOptions(lua_State* L, int i
             Table::readValue(L, key, options.filter);
         } else if (key == "wrap") {
             Table::readValue(L, key, options.wrap);
-        } else {
+        } else if (key == "mipmaps") {
             bool mipmaps = false;
             Table::readValue(L, key, mipmaps);
             options.mipmaps = mipmaps;

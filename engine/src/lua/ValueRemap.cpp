@@ -43,6 +43,7 @@ void ValueRemap::run(lua_State* L, int replacements, int skipped, int classes) {
         default:
             break;
         }
+
         lua_settop(L, value - 1);
     }
 
@@ -126,7 +127,6 @@ void ValueRemap::visitTable(int index) {
     const int renamed = lua_gettop(state);
     int renamedCount = 0;
     lua_pushnil(state);
-
     while (lua_next(state, index) != 0) {
         const int value = lua_gettop(state);
         if (pushReplacement(value)) {

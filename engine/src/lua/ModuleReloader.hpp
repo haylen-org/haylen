@@ -39,7 +39,7 @@ class ModuleReloader final {
     ModuleReloader(lua_State* L, ModuleGraph& modules, const io::Package& source);
 
     // Reloads the loaded module of the file. A batch reloads its modules in the order of `ModuleGraph::order`, so a module runs after the modules it requires.
-    [[nodiscard]] Result reload(const std::string& path);
+    [[nodiscard]] Result reload(const std::string& file);
 
     // Puts the new functions and the live tables in place of the old functions and the staging tables everywhere in the heap, once the batch reloaded, and pushes a list of the tables whose metatable is a patched table, such as the instances of a patched class.
     void finish();
