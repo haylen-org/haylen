@@ -101,8 +101,10 @@ function LocksAndAir:build()
     target:addBox(30, 240)
     Look.dress(target, 'iron')
     self.target = target
+    -- A shot that bounces back off the target crosses the gate again, so the gate counts each shot once.
     self.world.onSensorBegin = function(sensor, visitor)
-        if visitor.data.shot then
+        if visitor.data.shot and not visitor.data.counted then
+            visitor.data.counted = true
             self.counted = self.counted + 1
             self.flash = 1
         end
