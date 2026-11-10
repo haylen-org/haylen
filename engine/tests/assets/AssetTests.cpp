@@ -226,6 +226,7 @@ TEST_F(AssetsManagerTest, SpreadsUploadsOverFramesWithinTheBudget) {
     for (const char* path : {"images/red.png", "images/blue.png", "data/config.json"}) {
         assets.loadAsync(assets.getTypeForPath(path), path, [&finished](std::shared_ptr<void> asset, std::string) { finished += asset ? 1 : 0; });
     }
+
     int most = 0;
     int last = 0;
     // clang-format off
@@ -327,6 +328,7 @@ TEST_F(AssetsManagerTest, KeepsAGroupAsItWasWhenItsPreloadFails) {
         EXPECT_EQ(progress, std::vector<float>{1.0F});
         assets.unloadGroup("menu");
     }
+
     fixture.frames(1);
     EXPECT_EQ(staleProgress, 0);
     EXPECT_EQ(staleCompletions, 0);
@@ -450,9 +452,11 @@ TEST_F(AssetsManagerTest, LoadsTheDependenciesOfAnAssetOnceThroughTheCache) {
 
     std::vector<std::shared_ptr<void>> maps;
     std::string failure;
+
     for (const char* name : {"maps/one.map", "maps/two.map", "maps/three.map"}) {
         assets.loadAsync("map", name, [&maps](std::shared_ptr<void> asset, std::string) { maps.push_back(std::move(asset)); });
     }
+
     assets.loadAsync("map", "maps/lost.map", [&failure](std::shared_ptr<void> asset, std::string error) { failure = asset ? "loaded" : error; });
     ASSERT_TRUE(fixture.frameUntil([&] { return maps.size() == 3 && !failure.empty(); }));
     EXPECT_EQ(decodedTiles->load(), 1);

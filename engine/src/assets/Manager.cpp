@@ -55,9 +55,11 @@ text::TrueTypeFont::Options Manager::fontOptionsFromJson(const core::Json& optio
         if (!options.contains(key)) {
             return value;
         }
+
         if (!options.at(key).is_number()) {
             throw std::invalid_argument(std::string("The font option \"") + key + "\" must be a number, not " + describe(options.at(key)) + ".");
         }
+
         return options.at(key).get<decltype(value)>();
     };
     // clang-format on
@@ -83,23 +85,29 @@ graphics::Texture::Options Manager::textureOptionsFromJson(const core::Json& opt
         if (!filter) {
             throw std::invalid_argument("The texture filter must be \"nearest\" or \"linear\", not " + describe(value) + ".");
         }
+
         result.filter = *filter;
     }
+
     if (options.contains("wrap")) {
         const core::Json& value = options.at("wrap");
         const std::optional<graphics::Texture::Wrap> wrap = value.is_string() ? graphics::Texture::wrapFromName(value.get<std::string>()) : std::nullopt;
         if (!wrap) {
             throw std::invalid_argument("The texture wrap must be \"clamp\", \"repeat\" or \"mirror\", not " + describe(value) + ".");
         }
+
         result.wrap = *wrap;
     }
+
     if (options.contains("mipmaps")) {
         const core::Json& value = options.at("mipmaps");
         if (!value.is_boolean()) {
             throw std::invalid_argument("The texture option \"mipmaps\" must be true or false, not " + describe(value) + ".");
         }
+
         result.mipmaps = value.get<bool>();
     }
+
     return result;
 }
 
@@ -210,9 +218,11 @@ void Manager::registerType(Type type) {
     if (type.name.empty() || !type.normalize || !type.decode || !type.finalize) {
         throw std::invalid_argument("An asset type needs a name, an option normalizer, a decoder and a finalizer.");
     }
+
     for (std::string& extension : type.extensions) {
         extension = lowercase(extension);
     }
+
     std::string name = type.name;
     types.insert_or_assign(std::move(name), std::move(type));
 }
@@ -228,6 +238,7 @@ std::string Manager::getTypeForPath(std::string_view path) const {
             return name;
         }
     }
+
     throw std::invalid_argument("No asset type handles the file \"" + std::string(path) + "\". Pass its type or use an extension that an asset type handles.");
 }
 
@@ -236,6 +247,7 @@ const Manager::Type& Manager::getType(std::string_view name) const {
     if (found == types.end()) {
         throw std::invalid_argument("The asset type \"" + std::string(name) + "\" does not exist.");
     }
+
     return found->second;
 }
 
@@ -257,6 +269,7 @@ std::size_t Manager::reload(std::string_view path) {
             cache.erase(key);
             continue;
         }
+
         ++reloaded;
         const Type& kind = getType(entry.type);
         if (!kind.reload) {
@@ -264,11 +277,13 @@ std::size_t Manager::reload(std::string_view path) {
             cache.erase(key);
             continue;
         }
+
         Request fresh{.type = entry.type, .path = changed, .options = entry.options, .package = &package};
         readFile(fresh, isStreamed(fresh, kind));
         kind.reload(asset, fresh);
         publisher->publish(core::LifecycleEvent::kAssetReloaded, entry.type, changed);
     }
+
     return reloaded;
 }
 
@@ -305,6 +320,7 @@ std::shared_ptr<void> Manager::load(std::string_view typeName, std::string_view 
                 held.push_back(load(dependency.type, dependency.path, dependency.options));
             }
         }
+
         return finalize(std::move(decoded), loading, assetType.finalize);
     });
     // clang-format on
@@ -329,6 +345,7 @@ std::shared_ptr<void> Manager::track(std::shared_ptr<void> asset, const Request&
     // clang-format off
     return {asset.get(), [inner = asset, weak = std::weak_ptr<Publisher>(publisher), type = request.type, path = request.path](void*) mutable {
         inner.reset();
+
         if (const std::shared_ptr<Publisher> owner = weak.lock()) {
             owner->publish(core::LifecycleEvent::kAssetUnloaded, type, path);
         }
@@ -351,6 +368,7 @@ void Manager::startLoad(Request request, Callback callback) {
 
     const bool alreadyLoading = pending.contains(key);
     pending[key].callbacks.push_back(std::move(callback));
+
     if (alreadyLoading) {
         return;
     }
@@ -368,10 +386,12 @@ void Manager::startLoad(Request request, Callback callback) {
         if (owner.expired()) {
             return;
         }
+
         if (error.empty()) {
             readAndDecode(loading, key, assetType);
             return;
         }
+
         jobs.postToFrame([this, owner, key, loading, finalize = assetType.finalize, error] {
             if (!owner.expired()) {
                 uploads.push_back({.key = key, .request = loading, .finalize = finalize, .error = error});
@@ -399,6 +419,7 @@ void Manager::readAndDecode(const std::shared_ptr<Request>& loading, const std::
         } catch (const std::exception& exception) {
             error = exception.what();
         }
+
         deliver(std::move(decoded), std::move(error));
     };
 
@@ -409,10 +430,12 @@ void Manager::readAndDecode(const std::shared_ptr<Request>& loading, const std::
             deliver(nullptr, exception.what());
             return;
         }
+
         if (streamed) {
             decodeFile();
             return;
         }
+
         jobs.post(decodeFile);
     });
     // clang-format on
@@ -428,6 +451,7 @@ void Manager::queueUpload(Upload upload, const Type& assetType) {
             upload.error = exception.what();
         }
     }
+
     if (needed.empty()) {
         uploads.push_back(std::move(upload));
         return;
@@ -440,11 +464,13 @@ void Manager::queueUpload(Upload upload, const Type& assetType) {
         if (owner.expired()) {
             return;
         }
+
         if (asset) {
             waiting->held.push_back(std::move(asset));
         } else if (waiting->error.empty()) {
             waiting->error = std::move(error);
         }
+
         if (--*left == 0) {
             uploads.push_back(std::move(*waiting));
         }
@@ -478,6 +504,7 @@ void Manager::readFile(Request& request, bool streamed) const {
         request.reader = package.openAssetReader(request.path);
         return;
     }
+
     request.bytes = package.readAsset(request.path);
 }
 
@@ -578,10 +605,12 @@ void Manager::readAsync(std::string path, std::optional<std::pair<std::uint64_t,
         if (owner.expired()) {
             return;
         }
+
         if (error.empty()) {
             read();
             return;
         }
+
         (*done)({}, error);
     });
     // clang-format on
@@ -631,6 +660,7 @@ std::vector<GroupManifest::Entry> Manager::expand(const std::vector<GroupManifes
             }
         }
     }
+
     return expanded;
 }
 
@@ -639,10 +669,12 @@ std::vector<std::string> Manager::getGroupPaths(std::string_view group) const {
     if (found == groups.end()) {
         throw std::invalid_argument("The asset group \"" + std::string(group) + "\" is not defined.");
     }
+
     std::vector<std::string> paths;
     for (const GroupManifest::Entry& entry : expand(found->second.entries)) {
         paths.push_back(entry.path);
     }
+
     return paths;
 }
 
@@ -659,6 +691,7 @@ void Manager::preload(std::string_view name, GroupProgress progress, GroupComple
             if (progress) {
                 progress(1.0F);
             }
+
             if (completion) {
                 completion(errors);
             }
@@ -678,9 +711,11 @@ void Manager::preload(std::string_view name, GroupProgress progress, GroupComple
     if (progress) {
         group.progressListeners.push_back(std::move(progress));
     }
+
     if (completion) {
         group.completionListeners.push_back(std::move(completion));
     }
+
     if (group.loading) {
         return;
     }
@@ -707,10 +742,12 @@ void Manager::preload(std::string_view name, GroupProgress progress, GroupComple
             missing.push_back(request.path);
         }
     }
+
     if (missing.empty()) {
         loadGroup(groupName, generation, std::move(requests));
         return;
     }
+
     group.downloadShare = 0.5F;
     // clang-format off
     availability.acquire(missing, [this, groupName, generation](float fraction) {
@@ -723,6 +760,7 @@ void Manager::preload(std::string_view name, GroupProgress progress, GroupComple
         if (owner.expired() || groups.at(groupName).generation != generation) {
             return;
         }
+
         Group& target = groups.at(groupName);
         target.downloaded = 1.0F;
         if (!error.empty()) {
@@ -730,15 +768,18 @@ void Manager::preload(std::string_view name, GroupProgress progress, GroupComple
                 if (isLocal(request.path)) {
                     return false;
                 }
+
                 target.errors.push_back(request.path + ": " + error);
                 ++target.completed;
                 return true;
             });
         }
+
         if (requests.empty()) {
             completeGroup(groupName, generation);
             return;
         }
+
         loadGroup(groupName, generation, std::move(requests));
     });
     // clang-format on
@@ -759,8 +800,10 @@ void Manager::loadGroup(const std::string& groupName, std::uint64_t generation, 
             } else {
                 target.errors.push_back(path + ": " + error);
             }
+
             ++target.completed;
             reportGroupProgress(target);
+
             if (target.completed == target.total) {
                 completeGroup(groupName, generation);
             }
@@ -827,10 +870,12 @@ float Manager::getGroupProgress(std::string_view name) const {
     if (found == groups.end()) {
         throw std::invalid_argument("The asset group \"" + std::string(name) + "\" is not defined.");
     }
+
     const Group& group = found->second;
     if (group.loaded) {
         return 1.0F;
     }
+
     return group.total == 0 ? 0.0F : static_cast<float>(group.completed) / static_cast<float>(group.total);
 }
 
@@ -845,6 +890,7 @@ std::vector<std::string> Manager::getGroups() const {
     for (const auto& [name, group] : groups) {
         names.push_back(name);
     }
+
     std::sort(names.begin(), names.end());
     return names;
 }
@@ -868,6 +914,7 @@ void Manager::finalizePending() {
         if (uploads.empty()) {
             return;
         }
+
         Upload upload = std::move(uploads.front());
         uploads.pop_front();
 
@@ -884,6 +931,7 @@ void Manager::finalizePending() {
                 upload.error = exception.what();
             }
         }
+
         finish(upload.key, asset, upload.error);
     } while (std::chrono::steady_clock::now() - start < budget);
 }
@@ -892,12 +940,14 @@ void Manager::setUploadBudget(double seconds) {
     if (seconds < 0.0) {
         throw std::invalid_argument("The upload budget cannot be negative.");
     }
+
     uploadBudget = seconds;
 }
 
 void Manager::cancelAll() noexcept {
     uploads.clear();
     pending.clear();
+
     for (auto& [name, group] : groups) {
         group.progressListeners.clear();
         group.completionListeners.clear();

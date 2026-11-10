@@ -32,6 +32,7 @@ core::Json AssetsLua::readOptions(lua_State* L, int index) {
     if (lua_isnoneornil(L, index)) {
         return core::Json::object();
     }
+
     luaL_checktype(L, index, LUA_TTABLE);
     return lua::JsonConverter::read(L, index);
 }
@@ -92,6 +93,7 @@ int AssetsLua::bytesAsync(lua_State* L) {
             promise.reject(std::move(error));
             return;
         }
+
         promise.resolveWith([data = std::move(data)](lua_State* state) { lua_pushlstring(state, reinterpret_cast<const char*>(data.data()), data.size()); });
     };
     // clang-format on
@@ -100,6 +102,7 @@ int AssetsLua::bytesAsync(lua_State* L) {
     } else {
         engine.getAssets().bytesAsync(path, lua::Stack::read<std::uint64_t>(L, 2), lua::Stack::read<std::size_t>(L, 3), std::move(settle));
     }
+
     promise.push(L);
     return 1;
 }
@@ -150,6 +153,7 @@ int AssetsLua::loadAsync(lua_State* L) {
             promise->reject(error);
             return;
         }
+
         promise->resolveCustom([plugin, type, asset](lua_State* state) { plugin->pushAsset(state, type, asset); });
     }, readOptions(L, 3));
     // clang-format on
@@ -175,9 +179,11 @@ int AssetsLua::defineGroup(lua_State* L) {
 int AssetsLua::preload(lua_State* L) {
     core::Engine& engine = lua::Runtime::getEngine(L);
     const std::string name = lua::Stack::read<std::string>(L, 1);
+
     if (!lua_isnoneornil(L, 2)) {
         luaL_checktype(L, 2, LUA_TFUNCTION);
     }
+
     int owner = 0;
     if (!lua_isnoneornil(L, 3)) {
         luaL_checktype(L, 3, LUA_TTABLE);
@@ -193,6 +199,7 @@ int AssetsLua::preload(lua_State* L) {
         if (owner == 0) {
             owner = lua::Owners::pushDefault(L);
         }
+
         auto function = std::make_shared<lua::Owners::Function>(L, 2, owner);
         lua_State* main = lua::Runtime::getMainThread(L);
         // clang-format off
