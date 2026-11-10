@@ -20,9 +20,11 @@ void PlatformPlugin::start(core::Engine& engine) {
 void PlatformPlugin::stop(core::Engine& engine) {
     platform::AccessibilityRelay::detach(engine.getAccessibility());
     platform::BridgeRelay::detach(engine.getPlatform());
+
     for (const std::shared_ptr<platform::VideoStream>& stream : videoStreams) {
         stream->detach();
     }
+
     videoStreams.clear();
     updating.clear();
 }
@@ -39,6 +41,7 @@ void PlatformPlugin::beginFrame(core::Engine& engine, float) {
     for (const std::shared_ptr<platform::VideoStream>& stream : updating) {
         stream->update(engine.getGraphics());
     }
+
     updating.clear();
 }
 

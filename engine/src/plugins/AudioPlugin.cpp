@@ -94,6 +94,7 @@ void AudioPlugin::handleDeviceEvent(core::Engine& engine, audio::Mixer::DeviceEv
         if (engine.getAppState() == core::Engine::AppState::Active) {
             endInterruption(engine);
         }
+
         break;
     case audio::Mixer::DeviceEvent::RouteChanged:
         engine.getEvents().emit(core::LifecycleEvent::kAudioRouteChanged);
@@ -106,6 +107,7 @@ void AudioPlugin::beginInterruption(core::Engine& engine) {
     if (mixer.isInterrupted()) {
         return;
     }
+
     mixer.beginInterruption();
     engine.getEvents().emit(core::LifecycleEvent::kAudioInterrupted);
 }
@@ -114,6 +116,7 @@ void AudioPlugin::endInterruption(core::Engine& engine) {
     audio::Mixer& mixer = engine.getAudio();
     const bool interrupted = mixer.isInterrupted();
     mixer.endInterruption();
+
     if (interrupted) {
         engine.getEvents().emit(core::LifecycleEvent::kAudioResumed);
     }

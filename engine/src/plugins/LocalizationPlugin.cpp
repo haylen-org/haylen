@@ -44,6 +44,7 @@ void LocalizationPlugin::loadConfiguredLanguages(core::Engine& engine) {
         if (std::ranges::find(languages, configured.fallback) == languages.end()) {
             throw std::runtime_error("The \"localization.fallback\" of \"app.json\" names \"" + configured.fallback + "\", whose file the folder \"" + configured.folder + "\" lacks.");
         }
+
         catalog.setFallback(configured.fallback);
     }
 
@@ -62,6 +63,7 @@ void LocalizationPlugin::beginFrame(core::Engine& engine, float) {
     if (catalog.getLanguage() == announced) {
         return;
     }
+
     std::string previous = std::exchange(announced, catalog.getLanguage());
     engine.getEvents().emit(core::LifecycleEvent::kLanguageChanged, {{"language", announced}, {"previous", std::move(previous)}});
 }
@@ -72,9 +74,11 @@ std::vector<std::string> LocalizationPlugin::loadFolder(const io::Package& packa
         if (std::filesystem::path(file).extension() != ".json") {
             continue;
         }
+
         std::string language = addFile(package, file);
         languages.push_back(std::move(language));
     }
+
     folders.insert(io::Path::normalize(folder));
     return languages;
 }
@@ -84,11 +88,13 @@ std::string LocalizationPlugin::addFile(const io::Package& package, const std::s
     if (table.is_discarded()) {
         throw std::runtime_error("The localization file \"" + file + "\" is not valid JSON.");
     }
+
     const std::string name = std::filesystem::path(file).stem().string();
     const std::optional<std::string> language = localization::LanguageTag::parse(name);
     if (!language) {
         throw std::runtime_error("The localization file \"" + file + "\" is not named after a language tag. Name it after its language, such as \"en.json\", \"pt-BR.json\" or \"pt_BR.json\".");
     }
+
     catalog.add(*language, table);
     return *language;
 }
@@ -100,6 +106,7 @@ std::string LocalizationPlugin::getAssetPath(const assets::Manager& assets, std:
             return localized;
         }
     }
+
     return std::string(path);
 }
 
@@ -109,10 +116,12 @@ void LocalizationPlugin::packageChanged(core::Engine& engine, std::span<const st
         if (!io::Path::isInside(path, io::Path::kContentDirectory) || io::Path::extension(path) != ".json") {
             continue;
         }
+
         const std::string file = path.substr(io::Path::kContentDirectory.size() + 1);
         if (std::ranges::none_of(folders, [&file](const std::string& folder) { return io::Path::isInside(file, folder); }) || !engine.getPackage().assetExists(file)) {
             continue;
         }
+
         try {
             addFile(engine.getPackage(), file);
             core::Log::info("Reloaded the texts of \"{}\".", file);

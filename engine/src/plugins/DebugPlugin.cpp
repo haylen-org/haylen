@@ -56,15 +56,18 @@ void DebugPlugin::stop(core::Engine& engine) {
     for (core::Connection& command : std::exchange(builtInCommands, {})) {
         command.disconnect();
     }
+
     std::vector<std::string> names;
     for (const debug::Console::Command* command : console.getCommands()) {
         names.push_back(command->name);
     }
+
     for (const std::string& name : names) {
         if (name != "help") {
             console.removeCommand(name);
         }
     }
+
     inspectorVisible = false;
     detachTrace();
     trace.reset();
@@ -72,9 +75,11 @@ void DebugPlugin::stop(core::Engine& engine) {
     setObjectEvents(false);
     core::Log::removeListener(listener);
     removeMonitors([](const MonitorEntry&) { return true; });
+
     for (const std::shared_ptr<DrawerEntry>& entry : std::exchange(drawers, {})) {
         entry->plugin = nullptr;
     }
+
     drawings.clear();
     owner = nullptr;
 }
@@ -84,6 +89,7 @@ void DebugPlugin::setDrawing(std::string_view name, bool enabled) {
         drawings.emplace(name);
         return;
     }
+
     if (const auto found = drawings.find(name); found != drawings.end()) {
         drawings.erase(found);
     }
@@ -102,6 +108,7 @@ std::vector<std::string> DebugPlugin::getDrawingNames() const {
     for (const std::shared_ptr<DrawerEntry>& entry : drawers) {
         names.insert(entry->name);
     }
+
     return {names.begin(), names.end()};
 }
 
@@ -126,6 +133,7 @@ void DebugPlugin::drawOverlay(core::Engine& engine, graphics2d::Renderer& render
     if (drawings.empty() || !renderer.getCanvasOptions().debugDrawings) {
         return;
     }
+
     std::vector<std::shared_ptr<DrawerEntry>> snapshot = std::exchange(drawerSnapshot, {});
     snapshot.assign(drawers.begin(), drawers.end());
     for (const std::shared_ptr<DrawerEntry>& entry : snapshot) {
@@ -133,6 +141,7 @@ void DebugPlugin::drawOverlay(core::Engine& engine, graphics2d::Renderer& render
             entry->drawer(renderer);
         }
     }
+
     snapshot.clear();
     drawerSnapshot = std::move(snapshot);
 
@@ -146,6 +155,7 @@ void DebugPlugin::toggleDrawings() {
         drawings.clear();
         return;
     }
+
     for (std::string& name : getDrawingNames()) {
         drawings.insert(std::move(name));
     }
@@ -157,6 +167,7 @@ void DebugPlugin::record(core::Log::Level level, std::string_view line) {
     while (lines.size() > kLogLines) {
         lines.pop_front();
     }
+
     logChanged = true;
 }
 
@@ -174,8 +185,10 @@ void DebugPlugin::readLastCrash(core::Engine& engine) {
     if (!files.exists(kCrashReportFile)) {
         return;
     }
+
     core::Json report = core::Json::parse(files.readText(kCrashReportFile), nullptr, false);
     files.remove(kCrashReportFile);
+
     if (report.is_object() && report.contains("reason") && report.at("reason").is_string()) {
         lastCrash = std::move(report);
     }
@@ -188,6 +201,7 @@ void DebugPlugin::publishCrashContext(core::Engine& engine) {
     for (std::size_t index = first; index < breadcrumbs.size(); ++index) {
         recent.push_back({{"time", breadcrumbs[index].time}, {"message", cut(breadcrumbs[index].message)}, {"data", breadcrumbs[index].data}});
     }
+
     core::Json log = core::Json::array();
     {
         const std::scoped_lock lock(linesMutex);
@@ -204,8 +218,10 @@ void DebugPlugin::publishCrashContext(core::Engine& engine) {
         for (core::Json& breadcrumb : context.at("breadcrumbs")) {
             breadcrumb.erase("data");
         }
+
         text = context.dump(-1, ' ', false, core::Json::error_handler_t::replace);
     }
+
     engine.getSystem().setCrashContext(text);
 }
 
@@ -225,6 +241,7 @@ void DebugPlugin::setObjectEvents(bool value) {
         debug::ObjectCounter::setObserver({});
         return;
     }
+
     core::EventBus* events = &owner->getEvents();
     // clang-format off
     debug::ObjectCounter::setObserver([events](std::string_view type, bool created, std::size_t count) {
@@ -262,6 +279,7 @@ bool DebugPlugin::removeMonitors(const std::function<bool(const MonitorEntry&)>&
         if (!matches(*entry)) {
             return false;
         }
+
         entry->plugin = nullptr;
         return true;
     }) > 0;
@@ -274,6 +292,7 @@ std::vector<std::shared_ptr<debug::Monitor>> DebugPlugin::getMonitors() const {
     for (const std::shared_ptr<MonitorEntry>& entry : monitors) {
         registered.push_back(entry->monitor);
     }
+
     return registered;
 }
 
@@ -287,10 +306,12 @@ void DebugPlugin::event(core::Engine&, const platform::Event& event) {
         cycleStatsMode();
         return;
     }
+
     if (consoleEnabled && inspectorKey && event.key == *inspectorKey) {
         setInspectorVisible(!inspectorVisible);
         return;
     }
+
     if (drawKey && event.key == *drawKey) {
         toggleDrawings();
     }
@@ -314,12 +335,14 @@ void DebugPlugin::renderUi(core::Engine& engine, const core::SceneView& view) {
     if (!view.current || (statsMode != debug::StatsDisplay::Mode::Full && !inspectorVisible)) {
         return;
     }
+
     ui::Backend& backend = engine.getPlugin<UiPlugin>().getBackend();
     backend.makeCurrent();
 
     if (statsMode == debug::StatsDisplay::Mode::Full && !debug::OverlayWindow::draw(engine, backend, captureStats(engine), getMonitors(), getRecentLog())) {
         statsMode = debug::StatsDisplay::Mode::Off;
     }
+
     if (inspectorVisible) {
         const double now = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
         inspectorVisible = inspectorWindow->draw(engine.getLuaState(), backend, now);
@@ -330,6 +353,7 @@ void DebugPlugin::setInspectorVisible(bool value) {
     if (value && !consoleEnabled) {
         throw std::logic_error("The inspector is off outside development runs. Set \"debug.console\" to true in \"app.json\" to turn it on.");
     }
+
     inspectorVisible = value;
 }
 
@@ -338,6 +362,7 @@ void DebugPlugin::beginFrame(core::Engine&, float) {
     if (tracing && traceFramesLeft && *traceFramesLeft <= 0) {
         detachTrace();
     }
+
     runRelayedLines();
 }
 
@@ -347,8 +372,10 @@ void DebugPlugin::runRelayedLines() {
             request.reply({.ok = false, .output = "The console is off outside development runs. Set \"debug.console\" to true in \"app.json\" to turn it on."});
             continue;
         }
+
         request.reply(console.run(request.line));
     }
+
     for (const platform::ConsoleRelay::ListReply& reply : platform::ConsoleRelay::takeCommandRequests()) {
         reply(consoleEnabled ? describeCommands() : core::Json::array());
     }
@@ -361,8 +388,10 @@ core::Json DebugPlugin::describeCommands() const {
         for (const debug::Console::Parameter& parameter : command->parameters) {
             arguments.push_back(std::string(debug::Console::kindName(parameter.kind)) + (parameter.optional ? "?" : ""));
         }
+
         commands.push_back({{"name", command->name}, {"usage", debug::Console::describeUsage(*command)}, {"help", command->help}, {"arguments", std::move(arguments)}});
     }
+
     return commands;
 }
 
@@ -372,6 +401,7 @@ void DebugPlugin::captureGpu(int frames, graphics::Device::CaptureCallback done)
     if (graphics.getCaptureSupport().tool != gpu::Device::CaptureTool::None) {
         std::filesystem::create_directories(folder);
     }
+
     // clang-format off
     graphics.captureFrames(frames, folder / makeCaptureName(), [this, frames, done = std::move(done)](std::optional<std::filesystem::path> path, const std::string& error) {
         reportCapture(frames, path, error);
@@ -393,16 +423,20 @@ void DebugPlugin::reportCapture(int frames, const std::optional<std::filesystem:
     if (!path) {
         const std::string line = std::format("The GPU capture failed: {}", error);
         core::Log::warning("{}", line);
+
         if (session != nullptr) {
             session->report({{"gpuCapture", {{"ok", false}, {"error", error}}}});
         }
+
         return;
     }
+
     const std::u8string text = path->u8string();
     const std::string shown(text.begin(), text.end());
     const std::string_view tool = gpu::Device::kCaptureToolNames[static_cast<std::size_t>(owner->getGraphics().getCaptureSupport().tool)].first;
     const std::string line = std::format("The GPU capture of {} {} is in \"{}\".", frames, frames == 1 ? "frame" : "frames", shown);
     core::Log::info("{}", line);
+
     if (session != nullptr) {
         session->report({{"gpuCapture", {{"ok", true}, {"path", shown}, {"tool", tool}, {"frames", frames}}}});
     }
@@ -412,9 +446,11 @@ void DebugPlugin::startTrace(std::optional<int> frames, std::size_t capacity) {
     if (tracing) {
         throw std::logic_error("A trace is already recording. Stop it with \"debug.stopTraceAsync\" before starting another.");
     }
+
     if (frames && *frames < 1) {
         throw std::invalid_argument("A trace records at least 1 frame.");
     }
+
     trace = std::make_shared<debug::TraceRecorder>(capacity);
     trace->nameThread("frame");
     owner->getProfiler().setTraceRecorder(trace);
@@ -434,6 +470,7 @@ void DebugPlugin::detachTrace() {
     if (!tracing) {
         return;
     }
+
     owner->getProfiler().setTraceRecorder(nullptr);
     owner->getJobs().setTraceRecorder(nullptr);
     debug::TraceRecorder::setThreadRecorder(nullptr);
@@ -448,11 +485,13 @@ void DebugPlugin::addBuiltInCommands(core::Engine& engine) {
             cycleStatsMode();
             return std::format("The statistics are \"{}\".", debug::StatsDisplay::modeName(statsMode));
         }
+
         const std::string& name = arguments[0].get_ref<const std::string&>();
         const std::optional<debug::StatsDisplay::Mode> mode = debug::StatsDisplay::modeFromName(name);
         if (!mode) {
             throw std::invalid_argument(std::format("The statistics mode \"{}\" is unknown. It is \"off\", \"compact\" or \"full\".", name));
         }
+
         statsMode = *mode;
         return std::format("The statistics are \"{}\".", name);
     }}));
@@ -461,6 +500,7 @@ void DebugPlugin::addBuiltInCommands(core::Engine& engine) {
             toggleDrawings();
             return std::string(drawings.empty() ? "The drawings are off." : "The drawings are on.");
         }
+
         const std::string& name = arguments[0].get_ref<const std::string&>();
         const bool enabled = arguments.size() > 1 ? arguments[1].get<bool>() : !isDrawing(name);
         setDrawing(name, enabled);
@@ -470,6 +510,7 @@ void DebugPlugin::addBuiltInCommands(core::Engine& engine) {
         if (!arguments.empty()) {
             engine.getClock().setTimeScale(arguments[0].get<double>());
         }
+
         return std::format("The time scale is {:g}.", engine.getClock().getTimeScale());
     }}));
     builtInCommands.push_back(console.addCommand({.name = "pause", .help = "Pauses the app or resumes it, or switches when the line leaves the state out.", .parameters = {{.kind = Kind::Boolean, .optional = true}}, .handler = [&engine](const core::Json& arguments) {
@@ -486,6 +527,7 @@ void DebugPlugin::addBuiltInCommands(core::Engine& engine) {
         for (const debug::Inspector::Entry& entry : debug::Inspector::list(engine.getLuaState(), path)) {
             text += std::format("{}{}  {}{}{}", text.empty() ? "" : "\n", entry.key, entry.type, entry.value.empty() ? "" : "  ", entry.value);
         }
+
         return text;
     }}));
     builtInCommands.push_back(console.addCommand({.name = "set", .help = "Sets the number, boolean or string at a path of the inspector, such as \"set watched.player.speed 300\".", .parameters = {{.kind = Kind::String}, {.kind = Kind::Text}}, .handler = [&engine](const core::Json& arguments) {
@@ -524,6 +566,7 @@ std::string DebugPlugin::runLua(core::Engine& engine, const std::string& chunk) 
             throw std::invalid_argument(message);
         }
     }
+
     lua::Runtime::protectedCall(L, 0, LUA_MULTRET);
 
     std::string text;
@@ -531,6 +574,7 @@ std::string DebugPlugin::runLua(core::Engine& engine, const std::string& chunk) 
         if (index > top + 1) {
             text += "  ";
         }
+
         switch (lua_type(L, index)) {
         case LUA_TNIL:
             text += "nil";
@@ -547,6 +591,7 @@ std::string DebugPlugin::runLua(core::Engine& engine, const std::string& chunk) 
             break;
         }
     }
+
     lua_settop(L, top);
     return text;
 }
@@ -555,25 +600,30 @@ void DebugPlugin::renderOverlay(core::Engine& engine) {
     if (statsMode != debug::StatsDisplay::Mode::Compact) {
         return;
     }
+
     statsDisplay.drawCompact(engine, lastRendering);
 }
 
 // The renderer has just submitted the frame, so its statistics are complete, and monitors sample what the frame left behind. A monitor may add or remove monitors while it samples, so the loop walks a copy, kept in a member like the copy of the drawers, and skips the ones removed meanwhile.
 void DebugPlugin::endFrame(core::Engine& engine) {
     lastRendering = engine.getRenderer2D().getStats();
+
     if (logChanged.exchange(false) || std::exchange(breadcrumbsChanged, false)) {
         publishCrashContext(engine);
     }
+
     if (tracing) {
         // The GPU reports a frame once it finished it, so a time that did not change belongs to a frame the trace already holds.
         if (const std::optional<double> gpu = engine.getGraphics().getGpuFrameSeconds(); gpu && *gpu != lastGpuSeconds) {
             trace->recordGpu("gpuFrame", debug::TraceRecorder::now(), *gpu);
             lastGpuSeconds = *gpu;
         }
+
         if (traceFramesLeft) {
             --*traceFramesLeft;
         }
     }
+
     std::vector<std::shared_ptr<MonitorEntry>> snapshot = std::exchange(monitorSnapshot, {});
     snapshot.assign(monitors.begin(), monitors.end());
     for (const std::shared_ptr<MonitorEntry>& entry : snapshot) {
@@ -581,6 +631,7 @@ void DebugPlugin::endFrame(core::Engine& engine) {
             entry->monitor->sample();
         }
     }
+
     snapshot.clear();
     monitorSnapshot = std::move(snapshot);
 }

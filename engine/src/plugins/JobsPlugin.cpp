@@ -31,6 +31,7 @@ void JobsPlugin::spawn(lua_State* L, int owner, lua::Promise promise) {
         job.ownership = std::make_shared<Ownership>();
         lua::Owners::add(L, owner, core::Connection(job.ownership));
     }
+
     jobs.push_back(std::move(job));
 }
 
@@ -38,6 +39,7 @@ void JobsPlugin::setBudget(std::chrono::microseconds value) {
     if (value.count() <= 0) {
         throw std::invalid_argument("The job budget must be a positive number of milliseconds.");
     }
+
     budget = value;
 }
 
@@ -45,6 +47,7 @@ bool JobsPlugin::isOutOfTime(lua_State* L) const {
     if (L != current) {
         throw std::logic_error("A \"jobs.checkpoint\" call only runs inside a job started with \"jobs.spawn\".");
     }
+
     return std::chrono::steady_clock::now() >= deadline;
 }
 
@@ -57,6 +60,7 @@ void JobsPlugin::update(core::Engine&, float) {
     for (std::size_t turn = 0; turn < turns && (turn == 0 || std::chrono::steady_clock::now() < deadline); ++turn) {
         Job job = std::move(jobs.front());
         jobs.pop_front();
+
         if (resume(job)) {
             jobs.push_back(std::move(job));
         }
@@ -65,6 +69,7 @@ void JobsPlugin::update(core::Engine&, float) {
 
 bool JobsPlugin::resume(Job& job) {
     lua_State* main = job.thread.getState();
+
     if (job.ownership && !job.ownership->isConnected()) {
         job.promise.rejectHandled("The job ended with its owner.");
         return false;
@@ -79,9 +84,11 @@ bool JobsPlugin::resume(Job& job) {
     if (status == LUA_YIELD) {
         const bool paused = lua::JobsLua::isCheckpoint(job.state, results);
         lua_pop(job.state, results);
+
         if (paused) {
             return true;
         }
+
         job.thread.push(main);
         varn::async::Promise::cancelTask(main, -1);
         lua_pop(main, 1);
@@ -101,6 +108,7 @@ bool JobsPlugin::resume(Job& job) {
         job.promise.resolveWith([](lua_State* state) { lua_pushnil(state); });
         return false;
     }
+
     auto value = std::make_shared<lua::Reference>(job.state, -results);
     lua_pop(job.state, results);
     job.promise.resolveWith([value](lua_State* state) { value->push(state); });

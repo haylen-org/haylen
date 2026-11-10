@@ -71,20 +71,25 @@ void TiledPlugin::decodeImages(const tiled::Map& map, const io::Package& package
             }
         }
     }
+
     for (const tiled::Map::Image& entry : map.getImages()) {
         if (skipped.contains(entry.path) || images.contains(entry.path)) {
             continue;
         }
+
         DecodedImage image{.image = graphics::Image::decode(package.readAsset(entry.path)), .keyed = entry.transparentColor.has_value()};
         if (entry.transparentColor) {
             applyColorKey(image.image, *entry.transparentColor);
         }
+
         if (options.filter == graphics::Texture::Filter::Linear) {
             image.image.bleed();
         }
+
         if (options.hasMipmaps()) {
             image.image.buildMipmaps();
         }
+
         images.emplace(entry.path, std::move(image));
     }
 }
@@ -98,9 +103,11 @@ void TiledPlugin::attachImages(tiled::Map& map, const std::map<std::string, Deco
         if (found == images.end()) {
             return graphics::Texture();
         }
+
         if (found->second.keyed) {
             return device.createTexture(found->second.image, options);
         }
+
         return graphics::Texture(std::static_pointer_cast<graphics::TextureResource>(manager.share("texture", path, textureJson, [&](const assets::Manager::Request&) {
             return device.createTexture(found->second.image, options).getResource();
         })));
@@ -126,8 +133,10 @@ void TiledPlugin::start(core::Engine& engine) {
                 if (!project.is_string() || project.get<std::string>().empty()) {
                     throw std::invalid_argument("The \"project\" of a Tiled map is the path of its \".tiled-project\" file.");
                 }
+
                 normalized["project"] = io::Path::normalize(project.get<std::string>());
             }
+
             return normalized;
         },
         .decode = [](assets::Manager::Request& request) -> std::shared_ptr<void> {
@@ -139,6 +148,7 @@ void TiledPlugin::start(core::Engine& engine) {
             if (request.options.contains("project")) {
                 decoded->map.applyPropertyTypes(tiled::PropertyTypes::parse(reader(request.options.at("project").get<std::string>())));
             }
+
             decodeImages(decoded->map, package, options, decoded->images);
             return decoded;
         },
@@ -162,6 +172,7 @@ void TiledPlugin::start(core::Engine& engine) {
             for (const tiled::AutoMapper::RuleMap& ruleMap : decoded->mapper->getRuleMaps()) {
                 decodeImages(*ruleMap.map, package, options, decoded->images);
             }
+
             return decoded;
         },
         .finalize = [&manager = engine.getAssets(), &device = engine.getGraphics()](std::shared_ptr<void> result, const assets::Manager::Request& request) -> std::shared_ptr<void> {
@@ -169,6 +180,7 @@ void TiledPlugin::start(core::Engine& engine) {
             for (const tiled::AutoMapper::RuleMap& ruleMap : decoded.mapper->getRuleMaps()) {
                 attachImages(*ruleMap.map, decoded.images, manager, device, request.options);
             }
+
             return decoded.mapper;
         },
     });

@@ -18,6 +18,7 @@ void VideoPlugin::stop(core::Engine&) {
     for (const std::shared_ptr<graphics::Video>& video : videos) {
         video->close();
     }
+
     videos.clear();
     updating.clear();
 }
@@ -34,6 +35,7 @@ void VideoPlugin::beginFrame(core::Engine& engine, float) {
         const core::ProcessMode mode = video->getProcessMode() == core::ProcessMode::Inherit ? core::ProcessMode::Pausable : video->getProcessMode();
         video->update(clock.getUnscaledDelta(), clock.canProcess(mode));
     }
+
     updating.clear();
 }
 
@@ -41,6 +43,7 @@ std::shared_ptr<graphics::Video> VideoPlugin::create(core::Engine& engine, const
     if (!engine.getPackage().assetExists(path)) {
         throw std::invalid_argument("The video \"" + path + "\" does not exist.");
     }
+
     auto video = std::make_shared<graphics::Video>(engine.getJobs(), engine.getGraphics(), engine.getAudio(), options);
     videos.push_back(video);
 
@@ -61,10 +64,12 @@ std::shared_ptr<graphics::Video> VideoPlugin::create(core::Engine& engine, const
         if (!alive) {
             return;
         }
+
         if (error) {
             alive->load([message = std::string(error->what())]() -> std::unique_ptr<platform::VideoDecoder> { throw std::runtime_error(message); });
             return;
         }
+
         alive->load(std::move(opener));
     });
     // clang-format on

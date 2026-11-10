@@ -57,6 +57,7 @@ void Physics2DPlugin::draw(graphics2d::Renderer& renderer) {
     if (renderer.getCanvasKind() == graphics2d::Renderer::CanvasKind::Screen) {
         return;
     }
+
     for (const std::shared_ptr<TrackedWorld>& known : worlds) {
         if (const std::shared_ptr<physics2d::World> world = known->lock()) {
             world->debugDraw(renderer, {.layer = std::numeric_limits<int>::max() / 2, .unshaded = true});

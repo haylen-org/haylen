@@ -53,6 +53,7 @@ namespace haylen::plugins {
 
 UiPlugin::UiPlugin() {
     ui::BuiltInComponents::registerAll(components);
+
     for (ui::Theme theme : {ui::Theme::dark(), ui::Theme::light(), ui::Theme::darkHighContrast(), ui::Theme::lightHighContrast()}) {
         const std::string name = theme.getName();
         themes.emplace(name, std::move(theme));
@@ -84,6 +85,7 @@ void UiPlugin::start(core::Engine& engine) {
     for (const auto& [name, theme] : themes) {
         sounds->load(theme);
     }
+
     setTheme(themeName);
 }
 
@@ -92,9 +94,11 @@ void UiPlugin::stop(core::Engine& engine) {
     for (const std::string& name : std::exchange(heldButtons, {})) {
         controls.setButton(name, false);
     }
+
     for (const std::string& name : std::exchange(sticks, {})) {
         controls.setStick(name, {});
     }
+
     engine.getInput().setPointerCaptured(false);
     engine.getActionMaps().setCapture({});
 
@@ -109,6 +113,7 @@ void UiPlugin::stop(core::Engine& engine) {
     for (const Mounted& entry : guis) {
         (void)entry.gui->detach();
     }
+
     guis.clear();
     events.clear();
     context.reset();
@@ -121,6 +126,7 @@ ui::Backend& UiPlugin::getBackend() {
     if (!backend) {
         throw std::logic_error("The UI plugin has not started.");
     }
+
     return *backend;
 }
 
@@ -132,6 +138,7 @@ ui::Context& UiPlugin::getContext() {
     if (!context) {
         throw std::logic_error("The UI plugin has not started.");
     }
+
     return *context;
 }
 
@@ -157,12 +164,15 @@ void UiPlugin::beginFrame(core::Engine& engine, float) {
     if (settings.highContrast != shownHighContrast || settings.reducedTransparency != shownOpaque) {
         applyTheme(settings.highContrast, settings.reducedTransparency);
     }
+
     context->setTextScale(textScale.value_or(settings.textScale));
     backend->beginFrame(delta, viewport, engine.getInput(), navigation);
+
     if (backend->getPointsPerUnit() != styledPoints) {
         styledPoints = backend->getPointsPerUnit();
         getTheme().applyTo(ImGui::GetStyle(), styledPoints);
     }
+
     context->beginFrame(elapsed, delta);
     images->beginFrame();
 
@@ -177,9 +187,11 @@ void UiPlugin::beginFrame(core::Engine& engine, float) {
     platform::Accessibility& accessibility = engine.getAccessibility();
     ui::AccessibilityTree& tree = context->getAccessibility();
     accessibility.takeRequests(accessibilityRequests);
+
     for (const platform::Accessibility::Request& request : accessibilityRequests) {
         perform(request);
     }
+
     tree.setEnabled(accessibility.isTreeWanted());
     tree.beginFrame();
 }
@@ -190,6 +202,7 @@ void UiPlugin::perform(const platform::Accessibility::Request& request) {
     if (!target) {
         return;
     }
+
     const ui::FocusDirection increase = context->isRightToLeft() ? ui::FocusDirection::Left : ui::FocusDirection::Right;
     const ui::FocusDirection decrease = context->isRightToLeft() ? ui::FocusDirection::Right : ui::FocusDirection::Left;
     switch (request.action) {
@@ -214,6 +227,7 @@ void UiPlugin::publishAccessibility(core::Engine& engine) {
     if (!tree.isEnabled()) {
         return;
     }
+
     tree.endFrame(backend->getImGuiContext()->NavId);
     const graphics::Viewport& viewport = engine.getViewport();
     for (platform::AccessibilityElement& element : tree.getElements()) {
@@ -221,6 +235,7 @@ void UiPlugin::publishAccessibility(core::Engine& engine) {
         const math::Vec2 max = viewport.toFramebuffer(backend->toDesign(element.bounds.getMax()));
         element.bounds = math::Rect::fromMinMax(min, max);
     }
+
     engine.getAccessibility().publish(tree.getElements(), tree.getFocused());
 }
 
@@ -233,9 +248,11 @@ void UiPlugin::update(core::Engine& engine, float) {
             if (!isMounted(gui)) {
                 break;
             }
+
             deliver(engine, gui, event);
         }
     }
+
     delivering.clear();
 }
 
@@ -261,12 +278,14 @@ void UiPlugin::renderUi(core::Engine& engine, const core::SceneView& view) {
     if (!drawing.isFrameActive()) {
         return;
     }
+
     if (!drawBegun) {
         drawBegun = true;
         shownGuis.clear();
         prepareGuis();
         focus.beginDraw();
     }
+
     if (view.current) {
         drawCurrent(engine, view);
     } else if (!view.scenes.empty()) {
@@ -290,13 +309,16 @@ void UiPlugin::collectGuis(core::Engine& engine, const core::SceneView& view, bo
             if (freeGuis) {
                 drawnGuis.push_back(&entry);
             }
+
             continue;
         }
+
         const std::shared_ptr<const core::Scene> scene = entry.scene.lock();
         if (sceneGuis && scene && shows(view, scene.get()) && (view.current || current == views.end() || !shows(*current, scene.get()))) {
             drawnGuis.push_back(&entry);
         }
     }
+
     // clang-format off
     std::ranges::sort(drawnGuis, [](const Mounted* lhs, const Mounted* rhs) {
         const bool lhsRegion = lhs->gui->getPlacement() == ui::Placement::Region;
@@ -312,6 +334,7 @@ std::optional<math::Rect> UiPlugin::findArea(const Mounted& entry) const {
     if (entry.gui->getPlacement() == ui::Placement::Safe) {
         return drawing.getLiftedSafeRect();
     }
+
     if (entry.gui->getPlacement() == ui::Placement::Screen) {
         return drawing.getLiftedDisplayRect();
     }
@@ -320,10 +343,12 @@ std::optional<math::Rect> UiPlugin::findArea(const Mounted& entry) const {
     if (!host || !host->isVisible() || !isMounted(*host)) {
         return std::nullopt;
     }
+
     const ui::Component* node = host->find(entry.hostNode);
     if (node == nullptr || node->getDrawnFrame() + 1 < context->getFrame() || node->getBounds().isEmpty()) {
         return std::nullopt;
     }
+
     return node->getBounds();
 }
 
@@ -333,11 +358,13 @@ void UiPlugin::prepareGuis() {
     for (const Mounted& entry : guis) {
         preparing.push_back(entry.gui);
     }
+
     for (const std::shared_ptr<ui::Gui>& gui : preparing) {
         if (gui->isVisible() && isMounted(*gui)) {
             gui->prepare(*context);
         }
     }
+
     preparing.clear();
 }
 
@@ -363,6 +390,7 @@ void UiPlugin::drawGuis() {
         if (entry->gui->getRoot().getDrawnFrame() == 0) {
             guiAppeared = true;
         }
+
         ImGui::PushID(entry->gui.get());
         entry->gui->draw(*context, *area);
         ImGui::PopID();
@@ -413,9 +441,11 @@ void UiPlugin::drawCurrent(core::Engine& engine, const core::SceneView& view) {
             entry.gui->skip(*context);
         }
     }
+
     ImGui::End();
     focus.endDraw();
     publishAccessibility(engine);
+
     if (safeAreaVisible) {
         drawSafeArea();
     }
@@ -441,9 +471,11 @@ input::ActionMap::Capture UiPlugin::getCapture() const {
 
     const ui::FocusNavigator::Owner holder = focus.getOwner();
     const bool control = holder == ui::FocusNavigator::Owner::Control;
+
     if (holder != ui::FocusNavigator::Owner::None) {
         capture.keys.set(static_cast<std::size_t>(input::Key::Tab));
     }
+
     const std::array<std::pair<Action, bool>, ui::NavigationInput::kActionCount> answers{{
         {Action::Accept, focus.answersAccept()},
         {Action::Cancel, focus.answersCancel()},
@@ -458,11 +490,13 @@ input::ActionMap::Capture UiPlugin::getCapture() const {
         {Action::First, control},
         {Action::Last, control},
     }};
+
     for (const auto& [action, answered] : answers) {
         if (answered) {
             addCapture(capture, navigation.getBindings(action));
         }
     }
+
     return capture;
 }
 
@@ -518,6 +552,7 @@ void UiPlugin::drawSafeAreaLabel(ImDrawList& list, const math::Rect& display, co
         list.AddText(font, size, {std::floor(display.getCenter().x - lineSize.x * 0.5F), std::floor(y)}, color, line.c_str());
         return;
     }
+
     const std::string lines = std::format("Safe area\ntop {:.0f}\nright {:.0f}\nbottom {:.0f}\nleft {:.0f}", top, right, bottom, left);
     const ImVec2 linesSize = font->CalcTextSizeA(size, std::numeric_limits<float>::max(), 0.0F, lines.c_str());
     if (std::max(left, right) >= linesSize.x + padding * 2.0F) {
@@ -525,6 +560,7 @@ void UiPlugin::drawSafeAreaLabel(ImDrawList& list, const math::Rect& display, co
         list.AddText(font, size, {std::floor(x), std::floor(safe.getCenter().y - linesSize.y * 0.5F)}, color, lines.c_str());
         return;
     }
+
     const ImVec2 corner{std::floor(display.getCenter().x - lineSize.x * 0.5F), std::floor(display.getBottom() - lineSize.y - padding * 3.0F)};
     list.AddRectFilled({corner.x - padding, corner.y - padding * 0.5F}, {corner.x + lineSize.x + padding, corner.y + lineSize.y + padding * 0.5F}, IM_COL32(0, 0, 0, 200), lineSize.y);
     list.AddText(font, size, corner, color, line.c_str());
@@ -537,9 +573,11 @@ void UiPlugin::applyVirtualInput(core::Engine& engine) {
             controls.setButton(name, false);
         }
     }
+
     for (const std::string& name : context->getHeldButtons()) {
         controls.setButton(name, true);
     }
+
     for (const std::string& name : sticks) {
         if (!context->getSticks().contains(name)) {
             controls.setStick(name, {});
@@ -562,9 +600,11 @@ void UiPlugin::mount(std::shared_ptr<ui::Gui> gui, int layer, const std::shared_
     if (owner == nullptr) {
         throw std::logic_error("The UI plugin has not started.");
     }
+
     if (!gui || isMounted(*gui)) {
         throw std::invalid_argument("Only a GUI that is not mounted can be mounted.");
     }
+
     if (region.has_value() != (gui->getPlacement() == ui::Placement::Region)) {
         throw std::invalid_argument("A GUI takes a region exactly when its placement is the region placement.");
     }
@@ -579,6 +619,7 @@ void UiPlugin::mount(std::shared_ptr<ui::Gui> gui, int layer, const std::shared_
         entry.drawLayer = host.drawLayer;
         entry.drawOrder = host.drawOrder;
     }
+
     guis.push_back(std::move(entry));
     gui->attach([this](ui::Gui& target, const ui::Event& event) { deliverAtOnce(target, event); });
     owner->getEvents().emitWith(core::LifecycleEvent::kGuiMounted, gui);
@@ -590,13 +631,16 @@ bool UiPlugin::unmount(const ui::Gui& gui) {
     if (found == guis.end()) {
         return false;
     }
+
     gui.checkNotPreparing();
     const std::shared_ptr<ui::Gui> unmounted = found->gui;
     guis.erase(found);
     focus.forget(*unmounted);
+
     for (const ui::Event& event : unmounted->detach()) {
         deliverAtOnce(*unmounted, event);
     }
+
     owner->getEvents().emitWith(core::LifecycleEvent::kGuiUnmounted, unmounted);
     ui::UiLua::forgetGui(owner->getLuaState(), gui);
     return true;
@@ -646,10 +690,12 @@ void UiPlugin::setTheme(std::string_view name) {
     if (found == themes.end()) {
         throw std::invalid_argument("The UI has no theme named \"" + std::string(name) + "\".");
     }
+
     const std::string& variant = found->second.getHighContrast();
     if (!variant.empty() && !themes.contains(variant)) {
         throw std::invalid_argument("The theme \"" + std::string(name) + "\" names the high contrast theme \"" + variant + "\", which the UI does not know.");
     }
+
     themeName = found->first;
     applyTheme(shownHighContrast, shownOpaque);
 }
@@ -671,6 +717,7 @@ void UiPlugin::applyTheme(bool highContrast, bool reducedTransparency) {
     if (reducedTransparency) {
         shownTheme.makeSurfacesOpaque();
     }
+
     if (!backend) {
         return;
     }
@@ -679,6 +726,7 @@ void UiPlugin::applyTheme(bool highContrast, bool reducedTransparency) {
     for (std::size_t index = 0; index < ui::Theme::kFontCount; ++index) {
         (void)backend->getFont(theme.getFont(static_cast<ui::Theme::Font>(index)).font);
     }
+
     backend->makeCurrent();
     styledPoints = backend->getPointsPerUnit();
     theme.applyTo(ImGui::GetStyle(), styledPoints);
@@ -700,6 +748,7 @@ std::vector<std::string> UiPlugin::getThemes() const {
     for (const auto& [name, theme] : themes) {
         names.push_back(name);
     }
+
     return names;
 }
 
@@ -719,6 +768,7 @@ std::string UiPlugin::addTheme(core::Engine& engine, const core::Json& definitio
             addFont(engine, name, file);
         }
     }
+
     for (std::size_t index = 0; index < ui::Theme::kFontCount; ++index) {
         const std::string& font = theme.getFont(static_cast<ui::Theme::Font>(index)).font;
         if (!getBackend().hasFont(font)) {
@@ -750,12 +800,14 @@ void UiPlugin::packageChanged(core::Engine& engine, std::span<const std::string>
         if (!io::Path::isInside(path, io::Path::kContentDirectory)) {
             continue;
         }
+
         const std::string_view asset = std::string_view(path).substr(io::Path::kContentDirectory.size() + 1);
         sounds->reload(asset);
         const auto theme = themeFiles.find(asset);
         if (theme == themeFiles.end() || !engine.getPackage().exists(path)) {
             continue;
         }
+
         try {
             const std::string name = addTheme(engine, engine.getAssets().json(theme->first), theme->second);
             core::Log::info("Reloaded the theme \"{}\" from \"{}\".", name, theme->first);
@@ -779,6 +831,7 @@ void UiPlugin::addFontFamily(const std::string& name, std::shared_ptr<text::Font
     if (!family) {
         throw std::invalid_argument("The UI font \"" + name + "\" needs a family.");
     }
+
     if (fontFamilies.contains(name)) {
         throw std::invalid_argument("The UI already has a font named \"" + name + "\".");
     }
@@ -792,8 +845,10 @@ void UiPlugin::addFontFamily(const std::string& name, std::shared_ptr<text::Font
                 files.fallbacks.push_back(std::move(data));
             }
         }
+
         getBackend().addFont(name, std::move(files));
     }
+
     fontFamilies.emplace(name, std::move(family));
 }
 
@@ -802,6 +857,7 @@ std::shared_ptr<text::FontFamily> UiPlugin::getFontFamily(core::Engine& engine, 
     if (const auto found = fontFamilies.find(name); found != fontFamilies.end()) {
         return found->second;
     }
+
     std::shared_ptr<text::FontFamily> family;
     if (const auto path = fontPaths.find(name); path != fontPaths.end()) {
         family = std::make_shared<text::FontFamily>(text::FontFamily::Faces{.regular = engine.getAssets().font(path->second), .systemFonts = engine.getPlugin<TextPlugin>().getSystemFonts()});
@@ -812,6 +868,7 @@ std::shared_ptr<text::FontFamily> UiPlugin::getFontFamily(core::Engine& engine, 
     } else {
         return nullptr;
     }
+
     fontFamilies.emplace(std::string(name), family);
     return family;
 }

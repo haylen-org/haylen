@@ -24,6 +24,7 @@ std::shared_ptr<net::WebSocket> NetPlugin::connectWebSocket(std::string url, net
     if (events != nullptr) {
         publishEvents(*socket);
     }
+
     sockets.push_back(socket);
     return socket;
 }
@@ -42,6 +43,7 @@ void NetPlugin::stop(core::Engine&) {
         socket->dropListeners();
         socket->close();
     }
+
     sockets.clear();
     events = nullptr;
 }
@@ -52,6 +54,7 @@ void NetPlugin::beginFrame(core::Engine&, float) {
     for (const std::shared_ptr<net::WebSocket>& socket : pumping) {
         socket->pump();
     }
+
     pumping.clear();
     std::erase_if(sockets, [](const std::shared_ptr<net::WebSocket>& socket) { return socket->getState() == net::WebSocket::State::Closed; });
 }

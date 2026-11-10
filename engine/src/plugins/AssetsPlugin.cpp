@@ -50,6 +50,7 @@ void AssetsPlugin::pushAsset(lua_State* L, std::string_view type, const std::sha
     if (found == pushers.end()) {
         throw std::logic_error("The asset type \"" + std::string(type) + "\" has no Lua representation.");
     }
+
     found->second(L, asset);
 }
 

@@ -27,12 +27,14 @@ void ReturnHoldPlugin::beginFrame(core::Engine& engine, float deltaSeconds) {
     if (!engine.isLaunched()) {
         return;
     }
+
     const input::Input& input = engine.getInput();
     bool backHeld = host.isBackHeld();
     for (std::size_t index = 0; index < input::Input::kMaxGamepads && !backHeld; ++index) {
         const input::GamepadState& gamepad = input.getGamepad(index);
         backHeld = gamepad.connected && gamepad.buttons[static_cast<std::size_t>(input::GamepadButton::Back)];
     }
+
     if (hold.update(deltaSeconds, backHeld)) {
         engine.quit();
     }
@@ -44,6 +46,7 @@ void ReturnHoldPlugin::renderOverlay(core::Engine& engine) {
     if (progress <= 0.0F) {
         return;
     }
+
     graphics2d::Renderer& renderer = engine.getRenderer2D();
     const graphics::Viewport& viewport = engine.getViewport();
     const float unit = engine.getWindow().getDpiScale() / viewport.getPixelsPerUnit().y;

@@ -10,6 +10,7 @@ Plugin* PluginRegistry::find(std::string_view name) const noexcept {
             return entry.plugin.get();
         }
     }
+
     return nullptr;
 }
 
@@ -19,6 +20,7 @@ std::vector<Plugin*> PluginRegistry::getAll() const {
     for (const Entry& entry : entries) {
         plugins.push_back(entry.plugin.get());
     }
+
     return plugins;
 }
 

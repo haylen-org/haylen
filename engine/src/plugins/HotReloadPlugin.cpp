@@ -31,6 +31,7 @@ core::Json HotReloadPlugin::Report::toJson() const {
     if (restarted) {
         return {{"restarted", true}, {"reason", reason}};
     }
+
     return {{"restarted", false}, {"mode", core::AppConfig::reloadName(mode)}, {"modules", modules}, {"assets", assets}, {"resumed", resumed}, {"milliseconds", milliseconds}};
 }
 
@@ -41,6 +42,7 @@ void HotReloadPlugin::start(core::Engine& engine) {
 // The module graph replaces `require` before the app loads any module, because plugins install their modules before the app starts.
 void HotReloadPlugin::installLua(core::Engine&, lua_State* L) {
     lua::HotReloadLua::install(L);
+
     if (session != nullptr) {
         graph = std::make_unique<lua::ModuleGraph>();
         graph->install(L);
@@ -52,7 +54,9 @@ void HotReloadPlugin::beginFrame(core::Engine& engine, float) {
     if (session == nullptr) {
         return;
     }
+
     session->pump();
+
     if (session->takeRestartRequest()) {
         const Report report{.restarted = true, .reason = "The developer restarted the app from the development server."};
         core::Log::info("{}", report.reason);
@@ -60,6 +64,7 @@ void HotReloadPlugin::beginFrame(core::Engine& engine, float) {
         finish(report);
         return;
     }
+
     const auto now = std::chrono::steady_clock::now();
     if (now - lastScan >= kScanInterval) {
         if (const std::shared_ptr<platform::DevelopmentSession::Scan> scan = session->beginScan()) {
@@ -81,17 +86,20 @@ HotReloadPlugin::Batch HotReloadPlugin::classify(core::Engine& engine, const std
         if (!io::PackageWatcher::isWatched(path)) {
             continue;
         }
+
         const std::string_view extension = io::Path::extension(path);
         const bool font = extension == ".ttf" || extension == ".otf" || extension == ".ttc";
         if (io::Path::isInside(path, io::Path::kContentDirectory) && font) {
             batch.restart = "The font file \"" + path + "\" changed, restarting the app, because the text and the UI bake their fonts into atlases.";
             return batch;
         }
+
         if (io::Path::isInside(path, io::Path::kContentDirectory)) {
             batch.assets.push_back(path.substr(io::Path::kContentDirectory.size() + 1));
             batch.files.push_back(path);
             continue;
         }
+
         const bool manifest = path == io::Path::kAppConfigFile || path.ends_with(std::string("/") + std::string(io::Path::kPluginManifestFile));
         const bool main = path == std::string(io::Path::kSourceDirectory) + "/main.lua";
         const bool loaded = graph != nullptr && graph->find(path) != nullptr;
@@ -99,6 +107,7 @@ HotReloadPlugin::Batch HotReloadPlugin::classify(core::Engine& engine, const std
             batch.restart = "The file \"" + path + "\" changed, restarting the app.";
             return batch;
         }
+
         if (loaded) {
             batch.modules.push_back(path);
         } else if (engine.getError() != nullptr) {
@@ -114,6 +123,7 @@ HotReloadPlugin::Batch HotReloadPlugin::classify(core::Engine& engine, const std
     } else if (batch.modules.size() > kRestartModules) {
         batch.restart = "The change touches " + std::to_string(batch.modules.size()) + " loaded modules, more than the " + std::to_string(kRestartModules) + " that reload in place, so the app restarts.";
     }
+
     return batch;
 }
 
@@ -129,31 +139,39 @@ void HotReloadPlugin::apply(core::Engine& engine, const std::vector<std::string>
         finish(report);
         return;
     }
+
     if (batch.assets.empty() && batch.modules.empty() && !batch.retry) {
         return;
     }
 
     reloadAssets(engine, batch.assets, report);
+
     for (Plugin* plugin : engine.getPlugins().getAll()) {
         plugin->packageChanged(engine, batch.files);
     }
+
     const bool applied = batch.modules.empty() || reloadModules(engine, batch.modules, report);
+
     if (report.restarted) {
         finish(report);
         return;
     }
+
     report.milliseconds = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
     if (!report.modules.empty()) {
         std::string list;
         for (const std::string& path : report.modules) {
             list += (list.empty() ? "\"" : ", \"") + path + "\"";
         }
+
         core::Log::info("Reloaded {} in {:.0f} ms.", list, report.milliseconds);
     }
+
     if (applied && (!report.modules.empty() || !report.assets.empty() || batch.retry) && engine.clearError()) {
         report.resumed = true;
         core::Log::info("The app resumed after the reload.");
     }
+
     finish(report);
 }
 
@@ -186,6 +204,7 @@ bool HotReloadPlugin::reloadModules(core::Engine& engine, const std::vector<std:
             lua_settop(L, top);
             result = {.status = lua::ModuleReloader::Status::Failed, .error = lua::Error(exception.what())};
         }
+
         if (result.status == lua::ModuleReloader::Status::Restart) {
             core::Log::info("{} The app restarts.", result.reason);
             report.restarted = true;
@@ -193,30 +212,37 @@ bool HotReloadPlugin::reloadModules(core::Engine& engine, const std::vector<std:
             engine.requestRestart();
             return false;
         }
+
         if (result.status == lua::ModuleReloader::Status::Failed && !failure) {
             failure = std::move(result.error);
         }
+
         if (result.status == lua::ModuleReloader::Status::Patched) {
             report.modules.push_back(path);
         }
     }
 
     reloader.finish();
+
     if (!report.modules.empty()) {
         std::optional<lua::Error> hookFailure = callHooks(engine, report.modules, top + 1);
         if (!failure) {
             failure = std::move(hookFailure);
         }
+
         for (const std::string& path : report.modules) {
             engine.getEvents().post(std::string(core::LifecycleEvent::kModuleReloaded), {{"module", graph->find(path)->names.front()}, {"path", path}});
         }
     }
+
     lua_settop(L, top);
+
     if (failure) {
         engine.clearError();
         engine.reportError(*failure);
         return false;
     }
+
     return true;
 }
 
@@ -233,6 +259,7 @@ std::optional<lua::Error> HotReloadPlugin::callHooks(core::Engine& engine, const
         lua_pushstring(L, paths[index].c_str());
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     lua_setfield(L, -3, "paths");
     lua_setfield(L, -2, "modules");
     const lua::Reference info(L, -1);
@@ -244,15 +271,18 @@ std::optional<lua::Error> HotReloadPlugin::callHooks(core::Engine& engine, const
         if (!lua_istable(L, index) || !called.insert(lua_topointer(L, index)).second) {
             return;
         }
+
         const lua::Reference target(L, index);
         try {
             lua::Runtime::protectedRun(L, [&target, &info](lua_State* state) {
                 target.push(state);
                 lua_getfield(state, -1, "reloaded");
+
                 if (!lua_isfunction(state, -1)) {
                     lua_pop(state, 2);
                     return;
                 }
+
                 lua_insert(state, -2);
                 info.push(state);
                 lua_call(state, 2, 0);
@@ -274,8 +304,10 @@ std::optional<lua::Error> HotReloadPlugin::callHooks(core::Engine& engine, const
         if (!lua::ModuleSnapshot::isPrototype(L, -1)) {
             call(lua_gettop(L));
         }
+
         lua_pop(L, 1);
     }
+
     lua_pop(L, 1);
 
     engine.getPlugin<CorePlugin>().getAutoloads().pushList(L);
@@ -283,6 +315,7 @@ std::optional<lua::Error> HotReloadPlugin::callHooks(core::Engine& engine, const
         call(lua_gettop(L));
         lua_pop(L, 1);
     }
+
     lua_pop(L, 2);
 
     const std::vector<std::shared_ptr<core::Scene>> scenes(engine.getScenes().begin(), engine.getScenes().end());
@@ -298,6 +331,7 @@ std::optional<lua::Error> HotReloadPlugin::callHooks(core::Engine& engine, const
         call(lua_gettop(L));
         lua_pop(L, 1);
     }
+
     lua_settop(L, top);
     return failure;
 }

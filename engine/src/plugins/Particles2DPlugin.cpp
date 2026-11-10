@@ -23,6 +23,7 @@ core::Json Particles2DPlugin::normalizeEffectOptions(const core::Json& options) 
     if (options.is_null()) {
         return core::Json::object();
     }
+
     (void)assets::Manager::textureOptionsFromJson(options);
     return options;
 }
@@ -40,17 +41,22 @@ particles2d::ImageShape::Options Particles2DPlugin::shapeOptionsFromJson(const c
     if (options.is_null()) {
         return result;
     }
+
     core::JsonValidator::requireKnownOptions(options, {"source", "alphaThreshold"}, "image shape options");
+
     if (options.contains("source")) {
         const core::Json& source = options.at("source");
         if (!source.is_array() || source.size() != 4) {
             throw std::invalid_argument("The source of an image shape needs four numbers: x, y, width and height.");
         }
+
         result.source = {core::JsonNumber::toFloat(source[0]), core::JsonNumber::toFloat(source[1]), core::JsonNumber::toFloat(source[2]), core::JsonNumber::toFloat(source[3])};
     }
+
     if (options.contains("alphaThreshold")) {
         result.alphaThreshold = core::JsonNumber::toFloat(options.at("alphaThreshold"));
     }
+
     return result;
 }
 
@@ -78,6 +84,7 @@ void Particles2DPlugin::start(core::Engine& engine) {
             for (const particles2d::Effect::TextureFile& file : std::static_pointer_cast<particles2d::Effect>(decoded)->getTextureFiles()) {
                 needed.push_back({.type = "texture", .path = file.path, .options = textureOptions(file.options, request.options)});
             }
+
             return needed;
         },
     });

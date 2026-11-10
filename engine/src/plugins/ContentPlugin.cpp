@@ -38,9 +38,11 @@ void ContentPlugin::update(core::Engine& engine, float) {
         screen.reset();
         return;
     }
+
     if (!screen) {
         screen = std::make_unique<content::UpdateScreen>(engine);
     }
+
     screen->update();
 }
 

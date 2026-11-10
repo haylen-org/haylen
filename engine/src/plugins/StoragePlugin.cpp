@@ -36,6 +36,7 @@ core::Json StoragePlugin::getStoredPreference(const storage::Preferences& source
     if (!hasStoredType(value, type)) {
         throw std::invalid_argument("The preference \"" + key + "\" has a value of the wrong type.");
     }
+
     return value;
 }
 
@@ -44,9 +45,11 @@ core::Json StoragePlugin::getStoredBusPreference(const core::Json& group, const 
     if (found == group.end()) {
         return nullptr;
     }
+
     if (!hasStoredType(*found, type)) {
         throw std::invalid_argument("The preference \"" + key + "\" has a value of the wrong type for the bus \"" + bus + "\".");
     }
+
     return *found;
 }
 
@@ -59,6 +62,7 @@ void StoragePlugin::start(core::Engine& engine) {
     } catch (const std::exception& error) {
         core::Log::warning("{} The app starts with default preferences, and the next save replaces the file.", error.what());
     }
+
     resumeState = std::make_unique<storage::ResumeState>(engine.getStorage());
     try {
         resumeState->load();
@@ -72,6 +76,7 @@ void StoragePlugin::event(core::Engine&, const platform::Event& event) {
     if (!preferences) {
         return;
     }
+
     if (event.type == platform::Event::Type::Suspended) {
         saveQuietly(*preferences);
         writeResumeState(true);
@@ -97,10 +102,12 @@ void StoragePlugin::writeResumeState(bool background) noexcept {
 void StoragePlugin::stop(core::Engine&) {
     const std::exception_ptr failure = runOperations(*operations);
     jobs = nullptr;
+
     if (preferences) {
         saveQuietly(*preferences);
         writeResumeState(false);
     }
+
     if (failure) {
         std::rethrow_exception(failure);
     }
@@ -110,6 +117,7 @@ void StoragePlugin::queueOperation(std::function<void()> operation) {
     if (jobs == nullptr) {
         throw std::logic_error("The storage plugin has not started.");
     }
+
     bool schedule = false;
     {
         const std::scoped_lock lock(operations->mutex);
@@ -136,6 +144,7 @@ std::exception_ptr StoragePlugin::runOperations(Operations& queue) {
         std::function<void()> operation = std::move(queue.waiting.front());
         queue.waiting.pop_front();
         lock.unlock();
+
         try {
             operation();
         } catch (...) {
@@ -143,8 +152,10 @@ std::exception_ptr StoragePlugin::runOperations(Operations& queue) {
                 failure = std::current_exception();
             }
         }
+
         lock.lock();
     }
+
     queue.running = false;
     queue.scheduled = false;
     queue.idle.notify_all();
@@ -160,6 +171,7 @@ storage::SaveSlots& StoragePlugin::getSaveSlots() {
     if (!saveSlots) {
         throw std::logic_error("The storage plugin has not started.");
     }
+
     return *saveSlots;
 }
 
@@ -167,6 +179,7 @@ storage::Preferences& StoragePlugin::getPreferences() {
     if (!preferences) {
         throw std::logic_error("The storage plugin has not started.");
     }
+
     return *preferences;
 }
 
@@ -174,6 +187,7 @@ storage::ResumeState& StoragePlugin::getResumeState() {
     if (!resumeState) {
         throw std::logic_error("The storage plugin has not started.");
     }
+
     return *resumeState;
 }
 
@@ -187,6 +201,7 @@ void StoragePlugin::captureEnginePreferences(core::Engine& engine) {
         volumes[bus] = core::JsonNumber::fromFloat(mixer.getBusVolume(bus));
         muted[bus] = mixer.isBusMuted(bus);
     }
+
     values.set("audio.volume", std::move(volumes));
     values.set("audio.muted", std::move(muted));
     values.set("window.fullscreen", engine.getWindow().isFullscreen());
@@ -203,6 +218,7 @@ void StoragePlugin::applyEnginePreferences(core::Engine& engine) {
         if (!volume.is_null()) {
             mixer.setBusVolume(bus, core::JsonNumber::toFloat(volume));
         }
+
         const core::Json mute = getStoredBusPreference(muted, "audio.muted", bus, core::Json::value_t::boolean);
         if (!mute.is_null()) {
             mixer.setBusMuted(bus, mute.get<bool>());
@@ -219,6 +235,7 @@ void StoragePlugin::applyEnginePreferences(core::Engine& engine) {
         });
         // clang-format on
     }
+
     const core::Json actions = getStoredPreference(values, "input.actions", core::Json::value_t::object);
     if (!actions.is_null()) {
         engine.getActions().load(actions);

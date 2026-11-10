@@ -49,19 +49,23 @@ text::BitmapFont::Grid TextPlugin::readGrid(const core::Json& options) {
         if (!options.contains(key)) {
             return 0.0F;
         }
+
         if (!options.at(key).is_number()) {
             throw std::invalid_argument(std::string("The grid font option \"") + key + "\" must be a number.");
         }
+
         return core::JsonNumber::toFloat(options.at(key));
     };
     const auto pair = [&options](const char* key) {
         if (!options.contains(key)) {
             return math::Vec2{};
         }
+
         const core::Json& value = options.at(key);
         if (!value.is_array() || value.size() != 2 || !value[0].is_number() || !value[1].is_number()) {
             throw std::invalid_argument(std::string("The grid font option \"") + key + "\" must be a pair of numbers.");
         }
+
         return math::Vec2{core::JsonNumber::toFloat(value[0]), core::JsonNumber::toFloat(value[1])};
     };
     // clang-format on
@@ -87,6 +91,7 @@ core::Json TextPlugin::normalizeGrid(const core::Json& options) {
             texture[key] = options.at(key);
         }
     }
+
     core::Json normalized = assets::Manager::textureOptionsToJson(assets::Manager::textureOptionsFromJson(texture));
     normalized.update({{"characters", grid.characters}, {"cellWidth", core::JsonNumber::fromFloat(grid.cellWidth)}, {"cellHeight", core::JsonNumber::fromFloat(grid.cellHeight)}, {"spacing", {core::JsonNumber::fromFloat(grid.spacing.x), core::JsonNumber::fromFloat(grid.spacing.y)}}, {"margin", {core::JsonNumber::fromFloat(grid.margin.x), core::JsonNumber::fromFloat(grid.margin.y)}}, {"advance", core::JsonNumber::fromFloat(grid.advance)}, {"lineHeight", core::JsonNumber::fromFloat(grid.lineHeight)}, {"baseline", core::JsonNumber::fromFloat(grid.baseline)}});
     return normalized;
@@ -115,6 +120,7 @@ void TextPlugin::start(core::Engine& engine) {
                 decoded->paths.push_back(io::Path::join(io::Path::directory(request.path), page));
                 decoded->images.push_back(graphics::Image::decode(request.package->readAsset(decoded->paths.back())));
             }
+
             return decoded;
         },
         .finalize = [&manager, &device](std::shared_ptr<void> result, const assets::Manager::Request& request) -> std::shared_ptr<void> {
@@ -126,6 +132,7 @@ void TextPlugin::start(core::Engine& engine) {
                 });
                 pages.emplace_back(std::static_pointer_cast<graphics::TextureResource>(resource));
             }
+
             const std::shared_ptr<text::Font> font = std::make_shared<text::BitmapFont>(decoded.description, std::move(pages));
             return font;
         },
@@ -148,6 +155,7 @@ void TextPlugin::start(core::Engine& engine) {
             return font;
         },
     });
+
     for (const char* type : {"bitmapFont", "gridFont"}) {
         engine.getPlugin<AssetsPlugin>().registerLuaPusher(type, [](lua_State* L, const std::shared_ptr<void>& asset) {
             lua::Stack::push(L, std::static_pointer_cast<text::Font>(asset));
@@ -175,6 +183,7 @@ void TextPlugin::beginFrame(core::Engine& engine, float) {
 // The lookup runs on the I/O pool, one at a time, and skips the faces that arrived or were refused before.
 void TextPlugin::lookUpSystemFonts(core::Engine& engine) {
     systemFonts->takeRequests(requested);
+
     if (requested.empty()) {
         return;
     }
@@ -202,6 +211,7 @@ TextPlugin::SystemLookup TextPlugin::findSystemFaces(platform::Host& target, std
         if (!font || std::ranges::find(known, font->name) != known.end()) {
             continue;
         }
+
         known.push_back(font->name);
 
         std::vector<std::uint8_t> bytes;
@@ -219,14 +229,17 @@ TextPlugin::SystemLookup TextPlugin::findSystemFaces(platform::Host& target, std
             lookup.refused.push_back(font->name);
             continue;
         }
+
         lookup.faces.push_back({.name = font->name, .face = font->face, .bytes = std::move(bytes)});
     }
+
     return lookup;
 }
 
 // A face that the system did not hand over logs why, and the characters of the faces that were refused draw the missing glyph of their font.
 void TextPlugin::addSystemFonts(core::Engine& engine, core::JobSystem::Result<SystemLookup> lookup) {
     lookingUp = false;
+
     if (!lookup.isOk()) {
         core::Log::warning("The fonts of the system could not be looked up: {}", lookup.error);
         systemFonts->finish(requested);
@@ -236,23 +249,29 @@ void TextPlugin::addSystemFonts(core::Engine& engine, core::JobSystem::Result<Sy
     for (const std::string& failure : lookup.value->failures) {
         core::Log::warning("{}", failure);
     }
+
     for (std::string& name : lookup.value->refused) {
         core::Log::debug("The font of the system \"{}\" holds no glyph that the engine draws for the characters it was found for.", name);
         systemFonts->refuse(std::move(name));
     }
+
     for (SystemLookup::Found& found : lookup.value->faces) {
         const text::TrueTypeFont::Options options{.face = found.face};
         systemFonts->add({.name = found.name, .font = std::make_shared<text::TrueTypeFont>(engine.getGraphics(), std::move(found.bytes), options)});
     }
+
     systemFonts->finish(requested);
 }
 
 void TextPlugin::endFrame(core::Engine&) {
     std::erase_if(images, [](const auto& entry) { return !entry.second.used; });
+
     for (auto& [path, image] : images) {
         image.used = false;
     }
+
     std::erase_if(drawnTexts, [](const auto& entry) { return !entry.second.used; });
+
     for (auto& [hash, drawn] : drawnTexts) {
         drawn.used = false;
     }
@@ -263,6 +282,7 @@ std::size_t TextPlugin::hashDrawn(std::string_view markup, const text::RichTextO
     for (const std::size_t part : {std::hash<const void*>{}(options.family.get()), std::hash<float>{}(options.size), std::hash<float>{}(options.maxWidth), std::hash<float>{}(options.scale), std::hash<std::string_view>{}(options.language)}) {
         hash ^= part + std::size_t{0x9E3779B9U} + (hash << 6U) + (hash >> 2U);
     }
+
     return hash;
 }
 
@@ -287,6 +307,7 @@ text::RichText& TextPlugin::getDrawnText(std::string_view markup, const text::Ri
     if (time > drawn.text->getTime()) {
         drawn.text->update(time - drawn.text->getTime());
     }
+
     return *drawn.text;
 }
 
@@ -295,6 +316,7 @@ graphics::Texture TextPlugin::getImage(core::Engine& engine, std::string_view pa
     if (found == images.end()) {
         found = images.emplace(std::string(path), CachedImage{.texture = engine.getAssets().texture(path)}).first;
     }
+
     found->second.used = true;
     return found->second.texture;
 }
@@ -303,6 +325,7 @@ const std::shared_ptr<text::RichTextRegistry>& TextPlugin::getRegistry() const {
     if (!registry) {
         throw std::logic_error("The text plugin has not started.");
     }
+
     return registry;
 }
 

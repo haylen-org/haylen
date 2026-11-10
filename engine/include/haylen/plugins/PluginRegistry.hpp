@@ -25,6 +25,7 @@ class PluginRegistry final {
                 return static_cast<T*>(entry.plugin.get());
             }
         }
+
         return nullptr;
     }
 
@@ -34,6 +35,7 @@ class PluginRegistry final {
         if (plugin == nullptr) {
             throwMissing();
         }
+
         return *plugin;
     }
 
