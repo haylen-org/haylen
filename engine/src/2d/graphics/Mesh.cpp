@@ -15,6 +15,7 @@ Mesh Mesh::grid(graphics::Texture image, int columns, int rows, const math::Rect
     if (columns < 1 || rows < 1 || static_cast<long long>(columns) * rows > kMaxGridCells) {
         throw std::invalid_argument("A grid mesh needs at least one column and one row and at most 1048576 cells.");
     }
+
     const math::Vec2 size = image.isValid() ? image.getSize() : math::Vec2{1.0F, 1.0F};
     const math::Rect region = source.value_or(math::Rect{0.0F, 0.0F, size.x, size.y});
     std::vector<MeshVertex> points;
@@ -25,6 +26,7 @@ Mesh Mesh::grid(graphics::Texture image, int columns, int rows, const math::Rect
             points.push_back({.position = area.getMin() + area.getSize() * share, .uv = (region.getMin() + region.getSize() * share) / size});
         }
     }
+
     std::vector<std::uint32_t> triangles;
     triangles.reserve(static_cast<std::size_t>(columns) * static_cast<std::size_t>(rows) * 6U);
     const auto stride = static_cast<std::uint32_t>(columns + 1);
@@ -34,6 +36,7 @@ Mesh Mesh::grid(graphics::Texture image, int columns, int rows, const math::Rect
             triangles.insert(triangles.end(), {corner, corner + 1U, corner + stride + 1U, corner, corner + stride + 1U, corner + stride});
         }
     }
+
     return {std::move(image), std::move(points), std::move(triangles)};
 }
 
@@ -41,6 +44,7 @@ void Mesh::checkIndices(std::size_t vertexCount, std::span<const std::uint32_t> 
     if (triangles.size() % 3 != 0) {
         throw std::invalid_argument("A mesh lists its triangles as three indices each, and " + std::to_string(triangles.size()) + " is not a multiple of three.");
     }
+
     if (std::ranges::any_of(triangles, [vertexCount](std::uint32_t index) { return index >= vertexCount; })) {
         throw std::invalid_argument("Mesh index refers to a vertex that does not exist.");
     }
@@ -48,6 +52,7 @@ void Mesh::checkIndices(std::size_t vertexCount, std::span<const std::uint32_t> 
 
 void Mesh::setIndices(std::vector<std::uint32_t> value) {
     std::swap(indices, value);
+
     try {
         checkIndices(vertices.size(), indices);
     } catch (...) {
@@ -64,6 +69,7 @@ void Mesh::checkPairs(std::size_t count, std::size_t first) const {
 
 void Mesh::setPositions(std::span<const float> values, std::size_t first) {
     checkPairs(values.size(), first);
+
     for (std::size_t index = 0; index < values.size() / 2; ++index) {
         vertices[first + index].position = {values[index * 2], values[index * 2 + 1]};
     }
@@ -71,6 +77,7 @@ void Mesh::setPositions(std::span<const float> values, std::size_t first) {
 
 void Mesh::readPositions(std::span<float> values, std::size_t first) const {
     checkPairs(values.size(), first);
+
     for (std::size_t index = 0; index < values.size() / 2; ++index) {
         values[index * 2] = vertices[first + index].position.x;
         values[index * 2 + 1] = vertices[first + index].position.y;
@@ -81,12 +88,14 @@ math::Rect Mesh::getBounds() const noexcept {
     if (vertices.empty()) {
         return {};
     }
+
     math::Vec2 low = vertices.front().position;
     math::Vec2 high = low;
     for (const MeshVertex& vertex : vertices) {
         low = math::Vec2::min(low, vertex.position);
         high = math::Vec2::max(high, vertex.position);
     }
+
     return {low.x, low.y, high.x - low.x, high.y - low.y};
 }
 

@@ -44,11 +44,13 @@ std::span<const graphics::Texture> SpriteBatchLua::readTextures(lua_State* L, in
     const int table = lua_absindex(L, index);
     const auto count = static_cast<std::size_t>(lua_rawlen(L, table));
     SpriteBatch::checkTextureCount(count);
+
     for (std::size_t texture = 0; texture < count; ++texture) {
         lua_rawgeti(L, table, static_cast<lua_Integer>(texture + 1));
         textures[texture] = lua::Stack::read<graphics::Texture>(L, -1);
         lua_pop(L, 1);
     }
+
     return std::span(textures).first(count);
 }
 
@@ -61,25 +63,30 @@ std::optional<SpriteData> SpriteBatchLua::readSpriteData(lua_State* L, int index
         lua_pop(L, 2);
         return std::nullopt;
     }
+
     if (texture != LUA_TNIL) {
         const lua_Integer number = luaL_checkinteger(L, -2);
         if (number < 1 || static_cast<std::size_t>(number) > textureCount) {
             throw std::invalid_argument(std::format("A sprite draws from the texture {} of its batch, which has {}.", number, textureCount == 1 ? std::string("1 texture") : std::format("{} textures", textureCount)));
         }
+
         base.texture = static_cast<std::uint8_t>(number - 1);
     }
+
     if (values != LUA_TNIL) {
         luaL_checktype(L, -1, LUA_TTABLE);
         const auto count = static_cast<std::size_t>(lua_rawlen(L, -1));
         if (count > base.values.size()) {
             throw std::invalid_argument(std::format("The data of a sprite holds up to 4 numbers, and this one has {}.", count));
         }
+
         for (std::size_t value = 0; value < count; ++value) {
             lua_rawgeti(L, -1, static_cast<lua_Integer>(value + 1));
             base.values[value] = lua::Stack::read<float>(L, -1);
             lua_pop(L, 1);
         }
     }
+
     lua_pop(L, 2);
     return base;
 }
@@ -131,6 +138,7 @@ void SpriteBatchLua::readPartColors(lua_State* L, int table, SpriteBatch& batch,
     if (lua_getfield(L, table, "partColors") != LUA_TNIL) {
         batch.setPartColors(index, lua::Stack::read<PartColors>(L, -1));
     }
+
     lua_pop(L, 1);
 }
 
@@ -154,9 +162,11 @@ int SpriteBatchLua::add(lua_State* L) {
     const graphics::Texture& texture = batch.getTextures()[data ? data->texture : 0];
     const std::size_t index = batch.add(lua::TypeConverter::readSpriteInstance(L, 2, texture, {}, {kPartColorFields, kDataFields}));
     readPartColors(L, 2, batch, index);
+
     if (data) {
         batch.setData(index, *data);
     }
+
     lua::Stack::push(L, index + 1);
     return 1;
 }
@@ -169,9 +179,11 @@ int SpriteBatchLua::set(lua_State* L) {
     const graphics::Texture& texture = batch.getTextures()[data ? data->texture : batch.getData(index).texture];
     batch.set(index, lua::TypeConverter::readSpriteInstance(L, 3, texture, batch.get(index), {kPartColorFields, kDataFields}));
     readPartColors(L, 3, batch, index);
+
     if (data) {
         batch.setData(index, *data);
     }
+
     return 0;
 }
 
@@ -196,6 +208,7 @@ int SpriteBatchLua::resize(lua_State* L) {
     if (!lua_isnoneornil(L, 3)) {
         sprite = lua::TypeConverter::readSpriteInstance(L, 3, batch.getTexture());
     }
+
     batch.resize(static_cast<std::size_t>(count), sprite);
     return 0;
 }

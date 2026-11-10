@@ -22,9 +22,11 @@ NineSlice NineSlice::fromBorders(graphics::Texture image, math::Rect source, mat
     if (source.isEmpty()) {
         source = {0.0F, 0.0F, image.getSize().x, image.getSize().y};
     }
+
     if (!(borders.left >= 0.0F && borders.top >= 0.0F && borders.right >= 0.0F && borders.bottom >= 0.0F)) {
         throw std::invalid_argument("The borders of a nine-slice cannot be negative.");
     }
+
     if (borders.getHorizontal() > source.width || borders.getVertical() > source.height) {
         throw std::invalid_argument("The borders of a nine-slice must fit inside its source rectangle, with the left and right borders at most its width and the top and bottom borders at most its height.");
     }
@@ -39,6 +41,7 @@ NineSlice NineSlice::fromBorders(graphics::Texture image, math::Rect source, mat
             slice.pieces[static_cast<std::size_t>(row * 3 + column)] = math::Rect::fromMinMax(math::Vec2{columns[column], rows[row]}, math::Vec2{columns[column + 1], rows[row + 1]});
         }
     }
+
     return slice;
 }
 
@@ -62,6 +65,7 @@ void NineSlice::layout(const math::Rect& area, float borderScale, std::vector<Pa
     if (!(borderScale > 0.0F && std::isfinite(borderScale))) {
         throw std::invalid_argument("A nine-slice border scale must be positive.");
     }
+
     if (area.isEmpty()) {
         return;
     }
@@ -81,6 +85,7 @@ void NineSlice::layout(const math::Rect& area, float borderScale, std::vector<Pa
             if (source.isEmpty() || part.isEmpty()) {
                 continue;
             }
+
             if (fill == Fill::Stretch || (row != 1 && column != 1)) {
                 patches.push_back({.area = part, .source = source});
                 continue;

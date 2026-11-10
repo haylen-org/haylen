@@ -109,6 +109,7 @@ TEST_F(TileLayerTest, DrawsOnlyTheChunksInViewWithoutAllocating) {
                 inside += view.intersects({static_cast<float>(column) * 256.0F, static_cast<float>(row) * 256.0F, 256.0F, 256.0F}) ? 1U : 0U;
             }
         }
+
         layer.draw(engine.getRenderer2D());
     }));
     // clang-format on

@@ -29,6 +29,7 @@ FrameSubmitter::Matrix FrameSubmitter::translated(Matrix matrix, math::Vec2 offs
     for (std::size_t row = 0; row < 4; ++row) {
         matrix[12 + row] += matrix[row] * offset.x + matrix[4 + row] * offset.y;
     }
+
     return matrix;
 }
 
@@ -65,6 +66,7 @@ void FrameSubmitter::submit() {
         if (passOpen) {
             endPass();
         }
+
         state.getGpu().commit();
         throw;
     }
@@ -79,12 +81,14 @@ void FrameSubmitter::prepareTargets() {
             canvas.litIndex = litCount++;
             getLitTargets(canvas.litIndex, size, canvas);
         }
+
         if (canvas.hasPostMaterials()) {
             canvas.postShade = state.shades.size();
             for (const Material& material : canvas.options.postProcess->materials) {
                 state.addMaterialShade(material);
             }
         }
+
         for (std::size_t index = canvas.metaballBegin; index < canvas.metaballEnd; ++index) {
             state.metaballs[index].field = fieldCount;
             getField(fieldCount++, size);
@@ -99,6 +103,7 @@ void FrameSubmitter::prepareTargets() {
 LitTargets& FrameSubmitter::getLitTargets(std::size_t index, math::Vec2 size, const Canvas& canvas) {
     const int width = std::max(1, static_cast<int>(std::lround(size.x)));
     const int height = std::max(1, static_cast<int>(std::lround(size.y)));
+
     if (state.litTargets.size() <= index) {
         state.litTargets.resize(index + 1);
     }
@@ -109,20 +114,24 @@ LitTargets& FrameSubmitter::getLitTargets(std::size_t index, math::Vec2 size, co
         targets = {};
         targets.scene = state.device.createRenderTarget(width, height, {.filter = graphics::Texture::Filter::Nearest});
     }
+
     if (canvas.isLit() && !targets.light.isValid()) {
         targets.emission = state.device.createRenderTarget(width, height, {.filter = graphics::Texture::Filter::Nearest});
         targets.surface = state.device.createRenderTarget(width, height, {.filter = graphics::Texture::Filter::Nearest});
         targets.info = state.device.createRenderTarget(width, height, {.filter = graphics::Texture::Filter::Nearest});
         targets.light = state.device.getState().createRenderTarget(width, height, state.lightFormat, {.filter = graphics::Texture::Filter::Linear});
     }
+
     if ((canvas.hasPostMaterials() || canvas.isStaged()) && !targets.post[0].isValid()) {
         for (graphics::RenderTarget& image : targets.post) {
             image = state.device.createRenderTarget(width, height, {.filter = graphics::Texture::Filter::Linear});
         }
     }
+
     if (canvas.distorted && !targets.distortion.isValid()) {
         targets.distortion = state.device.createRenderTarget(width, height, {.filter = graphics::Texture::Filter::Linear});
     }
+
     if (canvas.backdrop && !targets.backdrop.isValid()) {
         targets.backdrop = state.device.createRenderTarget(width, height, {.filter = graphics::Texture::Filter::Nearest});
     }
@@ -133,6 +142,7 @@ LitTargets& FrameSubmitter::getLitTargets(std::size_t index, math::Vec2 size, co
             growChain(*chain, 1, width, height);
         }
     }
+
     return targets;
 }
 
@@ -153,6 +163,7 @@ void FrameSubmitter::growChain(std::vector<std::array<graphics::RenderTarget, 2>
 const graphics::RenderTarget& FrameSubmitter::getField(std::size_t index, math::Vec2 size) {
     const int width = std::max(1, static_cast<int>(std::lround(size.x * 0.5F)));
     const int height = std::max(1, static_cast<int>(std::lround(size.y * 0.5F)));
+
     if (state.fields.size() <= index) {
         state.fields.resize(index + 1);
     }
@@ -161,6 +172,7 @@ const graphics::RenderTarget& FrameSubmitter::getField(std::size_t index, math::
     if (!field.isValid() || field.getWidth() != width || field.getHeight() != height) {
         field = state.device.createRenderTarget(width, height, {.filter = graphics::Texture::Filter::Linear});
     }
+
     return field;
 }
 
@@ -187,8 +199,10 @@ void FrameSubmitter::castShadows() {
         if (state.shadowImage.isValid()) {
             state.device.getState().graveyard->bury(state.shadowImage);
         }
+
         state.shadowImage = state.getGpu().makeImage({.width = lighting2d::ShadowMap::kRowTexels, .height = state.shadowRows, .format = gpu::Device::PixelFormat::R32Float, .kind = gpu::Device::ImageKind::Dynamic, .label = "haylen-shadow-atlas"});
     }
+
     state.shadowTexels.assign(static_cast<std::size_t>(state.shadowRows) * lighting2d::ShadowMap::kRowTexels, lighting2d::ShadowMap::kClear);
     // clang-format off
     state.jobs.parallelFor(0, casts.size(), 1, [&](std::size_t begin, std::size_t end) {
@@ -223,6 +237,7 @@ void FrameSubmitter::buildCommands() {
             if (a.key != b.key) {
                 return a.key < b.key;
             }
+
             return a.sortId != b.sortId ? a.sortId < b.sortId : a.sequence < b.sequence;
         });
         // clang-format on
@@ -234,6 +249,7 @@ void FrameSubmitter::buildCommands() {
         if (canvas.distorted) {
             appendCanvas(order, true, expected, inOrder);
         }
+
         canvas.distortEnd = state.commands.size();
     }
 
@@ -243,15 +259,18 @@ void FrameSubmitter::buildCommands() {
 // The draws of the image of a canvas and its distortion draws become separate runs of commands, which never merge across.
 void FrameSubmitter::appendCanvas(const std::vector<std::uint32_t>& order, bool distortion, std::uint32_t& expected, bool& inOrder) {
     commandFloor = state.commands.size();
+
     for (const std::uint32_t index : order) {
         const DrawItem& item = state.items[index];
         if (item.distortion != distortion) {
             continue;
         }
+
         if (isInstanced(item)) {
             inOrder = inOrder && item.first == expected;
             expected = item.first + item.count;
         }
+
         append(item);
     }
 }
@@ -283,6 +302,7 @@ void FrameSubmitter::append(const DrawItem& item) {
             return;
         }
     }
+
     state.commands.push_back(command);
 }
 
@@ -299,6 +319,7 @@ void FrameSubmitter::upload() {
             std::copy_n(state.instances.begin() + static_cast<std::ptrdiff_t>(first), count, state.upload.begin() + static_cast<std::ptrdiff_t>(cursor));
             cursor += count;
         }
+
         source = &state.upload;
     }
 
@@ -307,11 +328,13 @@ void FrameSubmitter::upload() {
     if (total > 0) {
         state.ensureBuffer(state.instanceBuffer, state.instanceCapacity, total, sizeof(GpuInstance), false);
     }
+
     // clang-format off
     const auto write = [&](std::span<const GpuInstance> data, std::size_t offset) {
         if (data.empty()) {
             return;
         }
+
         state.getGpu().writeBuffer(state.instanceBuffer, offset * sizeof(GpuInstance), std::as_bytes(data));
         state.stats.uploadedBytes += data.size_bytes();
     };
@@ -323,12 +346,14 @@ void FrameSubmitter::upload() {
 
     // Every light takes the slot of its index, so the canvases draw their own ranges of the buffer.
     state.lightInstances.resize(state.lights.size());
+
     for (const Canvas& canvas : state.canvases) {
         const math::Rect bounds = canvas.getWorldBounds();
         for (std::size_t index = canvas.lightBegin; index < canvas.lightEnd; ++index) {
             state.lightInstances[index] = LightInstance::make(state.lights[index], bounds);
         }
     }
+
     writeBuffer(state.lightBuffer, state.lightCapacity, std::as_bytes(std::span(state.lightInstances)), sizeof(LightInstance), false);
 
     state.stats.instances = source->size();
@@ -340,6 +365,7 @@ void FrameSubmitter::writeBuffer(gpu::Device::Buffer& buffer, std::size_t& capac
     if (data.empty()) {
         return;
     }
+
     state.ensureBuffer(buffer, capacity, data.size() / elementSize, elementSize, indexBuffer);
     state.getGpu().writeBuffer(buffer, 0, data);
     state.stats.uploadedBytes += data.size();
@@ -353,9 +379,11 @@ void FrameSubmitter::renderOffscreen() {
         while (nextCapture < captures.size() && state.captures[captures[nextCapture]].canvasEnd <= index) {
             renderCapture(captures[nextCapture++]);
         }
+
         renderFields(state.canvases[index]);
         renderCanvasOffscreen(state.canvases[index]);
     }
+
     while (nextCapture < captures.size()) {
         renderCapture(captures[nextCapture++]);
     }
@@ -394,6 +422,7 @@ void FrameSubmitter::renderCanvasOffscreen(Canvas& canvas) {
             drawCommands(canvas, canvas.sceneBegin, canvas.sceneEnd, graphics::PassTarget::Offscreen, rect);
             endPass();
         }
+
         return;
     }
 
@@ -408,6 +437,7 @@ void FrameSubmitter::renderCanvasOffscreen(Canvas& canvas) {
         endPass();
         blurInto(canvas, targets.distortion, targets.distortionBlur, -1.0F, post.distortion * kBendDeviation / kBlurDeviation);
     }
+
     if (canvas.isLit()) {
         beginLitPass(targets, clear);
         drawCommands(canvas, canvas.sceneBegin, canvas.sceneEnd, graphics::PassTarget::LitScene, full);
@@ -418,6 +448,7 @@ void FrameSubmitter::renderCanvasOffscreen(Canvas& canvas) {
         drawCommands(canvas, canvas.sceneBegin, canvas.sceneEnd, graphics::PassTarget::Offscreen, full);
         endPass();
     }
+
     renderPostChain(canvas, targets);
 
     // A render target canvas takes its finished image the way a world canvas reaches the screen.
@@ -464,6 +495,7 @@ void FrameSubmitter::renderLights(const Canvas& canvas, const LitTargets& target
         ++state.stats.drawCalls;
         first = end;
     }
+
     endPass();
 }
 
@@ -484,15 +516,19 @@ void FrameSubmitter::renderPostChain(Canvas& canvas, LitTargets& targets) {
         beginOffscreenPass(targets.post[0], math::Color::transparent());
         composite(canvas, graphics::PassTarget::Offscreen, Stage::First);
         endPass();
+
         if (canvas.hasBloom()) {
             blurInto(canvas, targets.post[0], targets.bloom, post.bloomThreshold, post.bloomRadius);
         }
+
         if (canvas.hasBlur()) {
             blurInto(canvas, targets.post[0], targets.blur, -1.0F, post.blur);
         }
+
         if (!canvas.hasPostMaterials()) {
             return;
         }
+
         beginOffscreenPass(targets.post[1], math::Color::transparent());
         composite(canvas, graphics::PassTarget::Offscreen, Stage::Finish);
         endPass();
@@ -510,6 +546,7 @@ void FrameSubmitter::renderPostChain(Canvas& canvas, LitTargets& targets) {
         endPass();
         current = 1 - current;
     }
+
     canvas.postImage = current;
 }
 
@@ -566,17 +603,20 @@ void FrameSubmitter::drawCanvases(std::size_t capture, graphics::PassTarget pass
             ordered.push_back(&canvas);
         }
     }
+
     std::ranges::sort(ordered, [](const Canvas* lhs, const Canvas* rhs) { return lhs->options.order != rhs->options.order ? lhs->options.order < rhs->options.order : lhs < rhs; });
 
     for (const Canvas* canvas : ordered) {
         const math::Rect rect = state.getPassRect(*canvas);
         state.getGpu().applyViewport(rect);
+
         if (canvas->isComposited()) {
             // The clip of an earlier canvas stays applied until something sets another one.
             state.getGpu().applyScissor(rect);
             drawFinal(*canvas, pass);
             continue;
         }
+
         drawCommands(*canvas, canvas->sceneBegin, canvas->sceneEnd, pass, rect);
     }
 }
@@ -586,6 +626,7 @@ void FrameSubmitter::drawFinal(const Canvas& canvas, graphics::PassTarget pass) 
         composite(canvas, pass, canvas.isStaged() ? Stage::Finish : Stage::Whole);
         return;
     }
+
     const LitTargets& targets = state.litTargets[canvas.litIndex];
     drawPostMaterial(canvas.postShade + canvas.options.postProcess->materials.size() - 1, targets.post[canvas.postImage].getTexture(), pass);
 }
@@ -701,15 +742,19 @@ void FrameSubmitter::blurInto(const Canvas& canvas, const graphics::RenderTarget
         reach *= 0.5F;
         ++level;
     }
+
     growChain(chain, level + 1, image.getWidth(), image.getHeight());
 
     filter(image, chain[0][0], threshold, {});
+
     for (std::size_t index = 1; index <= level; ++index) {
         filter(chain[index - 1][0], chain[index][0], -1.0F, {});
     }
+
     const float spacing = std::max(reach * 0.25F, 0.5F);
     filter(chain[level][0], chain[level][1], -1.0F, {spacing, 0.0F});
     filter(chain[level][1], chain[level][0], -1.0F, {0.0F, spacing});
+
     for (std::size_t index = level; index > 0; --index) {
         filter(chain[index][0], chain[index - 1][0], -1.0F, {});
     }
@@ -774,27 +819,32 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
             checkedClip = command.clip;
             clipShows = showsPixels(canvas, command.clip, passRect);
         }
+
         if (!clipShows) {
             continue;
         }
 
         const Shade& shade = state.shades[command.shade];
+
         if (command.program == Program::Backdrop) {
             drawBackdrop(canvas, command, matrix, passRect);
             currentPipeline = {};
             currentClip.reset();
             continue;
         }
+
         if (command.program == Program::ImageBlend || command.program == Program::Metaball) {
             // These apply their own pipeline, uniforms and clip, so the next command applies them again.
             state.getGpu().applyPipeline(state.getPipeline(command.program, static_cast<std::uint8_t>(command.blend), pass));
             applyClip(canvas, command.clip, passRect);
             applyShade(shade, pass, command.program, command.blend);
+
             if (command.program == Program::ImageBlend) {
                 drawImageBlend(command, matrix);
             } else {
                 drawMetaball(command, matrix);
             }
+
             currentPipeline = {};
             currentClip.reset();
             continue;
@@ -808,20 +858,24 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
             currentPipeline = pipeline;
             currentClip.reset();
         }
+
         if (fresh || command.offset != currentOffset || command.fade != currentFade) {
             applyUniforms(translated(matrix, command.offset), command.blend);
             applyFade(command.fade, command.offset);
             currentOffset = command.offset;
             currentFade = command.fade;
         }
+
         if (fresh || command.shade != currentShade) {
             applyShade(shade, pass, command.program, command.blend);
             currentShade = command.shade;
         }
+
         if (currentClip != command.clip) {
             applyClip(canvas, command.clip, passRect);
             currentClip = command.clip;
         }
+
         if (currentTexture != command.texture) {
             ++state.stats.textureSwitches;
             currentTexture = command.texture;
@@ -836,14 +890,17 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
             bindings.vertexBuffers[1] = command.batch != nullptr ? command.batch->buffer : state.instanceBuffer;
             bindings.vertexOffsets[1] = static_cast<int>(command.first * sizeof(GpuInstance));
         }
+
         const bool paired = command.program == Program::Recolor || command.program == Program::Effect || command.program == Program::Batch || command.program == Program::GradientText;
         if (paired) {
             bindings.vertexBuffers[2] = state.instanceBuffer;
             bindings.vertexOffsets[2] = static_cast<int>((command.first + 1) * sizeof(GpuInstance));
         }
+
         if (command.program == Program::Recolor) {
             bindings.textures[RendererState::kPartMask] = shade.partMask->image;
         }
+
         if (shade.material != nullptr) {
             bindMaterial(bindings, shade, *command.texture, pass, command.program);
         } else if (command.program == Program::Batch) {
@@ -855,6 +912,7 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
                 bindings.textures[RendererState::kNormalTexture] = (shade.normalMap != nullptr ? shade.normalMap : state.white.getResource().get())->image;
             }
         }
+
         state.getGpu().applyBindings(bindings);
 
         if (command.program == Program::Mesh) {
@@ -862,6 +920,7 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
         } else {
             state.getGpu().draw(0, 4, static_cast<int>(paired ? command.count / 2 : command.count));
         }
+
         ++state.stats.drawCalls;
     }
 }
@@ -996,6 +1055,7 @@ void FrameSubmitter::applyFade(std::uint32_t fade, math::Vec2 offset) {
             shift[lane] = edge.getCoverage(offset);
         }
     }
+
     applyBlock(RendererState::kFadeBlock, params);
 }
 
@@ -1010,6 +1070,7 @@ void FrameSubmitter::applyShade(const Shade& shade, graphics::PassTarget pass, P
         };
         applyBlock(RendererState::kLitBlock, lit);
     }
+
     if (shade.material == nullptr) {
         return;
     }
@@ -1021,6 +1082,7 @@ void FrameSubmitter::applyShade(const Shade& shade, graphics::PassTarget pass, P
         if (std::find(made.blocks.begin(), made.blocks.end(), block.slot) != made.blocks.end()) {
             state.getGpu().applyUniforms(block.slot, std::as_bytes(std::span(state.uniformBytes).subspan(offset, block.size)));
         }
+
         offset += block.size;
     }
 }
@@ -1030,6 +1092,7 @@ void FrameSubmitter::bindBatch(gpu::Device::Bindings& bindings, const Shade& sha
     for (std::size_t index = 0; index < shade.batchTextures.size(); ++index) {
         bindings.textures[RendererState::kBatchTextures + index] = shade.batchTextures[index]->image;
     }
+
     bindings.samplers[RendererState::kSpriteSampler] = texture.sampler;
     if (pass == graphics::PassTarget::LitScene) {
         bindings.textures[RendererState::kNormalTexture] = (shade.normalMap != nullptr ? shade.normalMap : state.white.getResource().get())->image;
@@ -1046,9 +1109,11 @@ void FrameSubmitter::bindMaterial(gpu::Device::Bindings& bindings, const Shade& 
                 return *state.shadeTextures[shade.textureBegin + index];
             }
         }
+
         if (program == Program::Batch && slot >= RendererState::kBatchTextures) {
             return *shade.batchTextures[static_cast<std::size_t>(slot - RendererState::kBatchTextures)];
         }
+
         return slot == 0 ? texture : *state.white.getResource();
     };
     // clang-format on
@@ -1056,6 +1121,7 @@ void FrameSubmitter::bindMaterial(gpu::Device::Bindings& bindings, const Shade& 
     for (const int slot : made.textures) {
         bindings.textures[static_cast<std::size_t>(slot)] = textureAt(slot).image;
     }
+
     for (const auto& [sampler, view] : made.samplers) {
         bindings.samplers[static_cast<std::size_t>(sampler)] = textureAt(view).sampler;
     }

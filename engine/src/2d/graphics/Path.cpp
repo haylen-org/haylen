@@ -55,6 +55,7 @@ class Path::Flattener final {
         if (!active) {
             from = first;
         }
+
         begin();
         add(first);
 
@@ -78,6 +79,7 @@ class Path::Flattener final {
         if (!active) {
             return;
         }
+
         active = false;
         std::vector<math::Vec2>& line = outlines.points;
         if (closes && line.size() - opening > 2 && line.back() == line[opening]) {
@@ -89,6 +91,7 @@ class Path::Flattener final {
             line.resize(opening);
             return;
         }
+
         outlines.counts.push_back(static_cast<std::uint32_t>(count));
         outlines.closed.push_back(closes ? 1U : 0U);
     }
@@ -102,6 +105,7 @@ class Path::Flattener final {
         if (active) {
             return;
         }
+
         active = true;
         opening = outlines.points.size();
         outlines.points.push_back(from);
@@ -111,6 +115,7 @@ class Path::Flattener final {
         if (point != outlines.points.back()) {
             outlines.points.push_back(point);
         }
+
         from = point;
     }
 
@@ -203,15 +208,18 @@ void Path::cubicTo(math::Vec2 first, math::Vec2 second, math::Vec2 point) {
 
 void Path::arc(math::Vec2 center, float radius, float startAngle, float sweep) {
     requireFinite(center);
+
     if (!(radius >= 0.0F) || !std::isfinite(radius) || !std::isfinite(startAngle) || !std::isfinite(sweep)) {
         throw std::invalid_argument("An arc of a path takes a finite radius of zero or more and finite angles.");
     }
 
     verbs.push_back(Verb::Arc);
     arcs.push_back({.center = center, .radius = radius, .startAngle = startAngle, .sweep = sweep});
+
     if (!open) {
         start = center + math::Vec2{std::cos(startAngle), std::sin(startAngle)} * radius;
     }
+
     const float end = startAngle + sweep;
     current = center + math::Vec2{std::cos(end), std::sin(end)} * radius;
     hasCurrent = true;
@@ -222,6 +230,7 @@ void Path::close() {
     if (!open) {
         throw std::logic_error("A path closes only an outline it has open, so \"close\" follows a move, a line, a curve or an arc.");
     }
+
     verbs.push_back(Verb::Close);
     current = start;
     open = false;
@@ -241,6 +250,7 @@ void Path::flatten(float tolerance, Outlines& outlines) const {
     if (!(tolerance > 0.0F) || !std::isfinite(tolerance)) {
         throw std::invalid_argument("A path flattens within a positive and finite tolerance.");
     }
+
     outlines.points.clear();
     outlines.counts.clear();
     outlines.closed.clear();
@@ -272,6 +282,7 @@ void Path::flatten(float tolerance, Outlines& outlines) const {
             break;
         }
     }
+
     flattener.finish(false);
 }
 

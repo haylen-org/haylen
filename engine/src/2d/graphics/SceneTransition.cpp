@@ -66,13 +66,16 @@ std::vector<math::Vec2> SceneTransition::clip(std::span<const math::Vec2> polygo
         const math::Vec2 next = polygon[(index + 1) % polygon.size()];
         const float currentSide = math::Vec2::dot(current, normal) - limit;
         const float nextSide = math::Vec2::dot(next, normal) - limit;
+
         if (currentSide <= 0.0F) {
             kept.push_back(current);
         }
+
         if ((currentSide < 0.0F) != (nextSide < 0.0F) && currentSide != nextSide) {
             kept.push_back(math::Vec2::lerp(current, next, currentSide / (currentSide - nextSide)));
         }
     }
+
     return kept;
 }
 
@@ -182,6 +185,7 @@ void SceneTransition::render(Renderer& renderer, const Frames& frames, float pro
             low = std::min(low, math::Vec2::dot(corner, normal));
             high = std::max(high, math::Vec2::dot(corner, normal));
         }
+
         drawImage(renderer, frames.outgoing, area);
         drawRegion(renderer, area, frames.incoming, clip(square, normal, math::Math::lerp(low, high, progress)));
         return;
@@ -222,6 +226,7 @@ void SceneTransition::drawImage(Renderer& renderer, const graphics::Texture& tex
     if (target.width <= 0.0F || target.height <= 0.0F) {
         return;
     }
+
     renderer.draw({.texture = texture, .source = getSource(texture, part), .position = target.getMin(), .size = target.getSize(), .pivot = {}, .color = tint, .order = kCapturedOrder});
 }
 
@@ -229,6 +234,7 @@ void SceneTransition::drawTransformed(Renderer& renderer, const math::Rect& area
     if (scale <= 0.0F) {
         return;
     }
+
     const math::Vec2 center = area.getMin() + area.getSize() * pivot;
     renderer.draw({.texture = texture, .source = getSource(texture, {0.0F, 0.0F, 1.0F, 1.0F}), .position = center, .size = area.getSize() * scale, .pivot = pivot, .rotation = rotation, .order = kCapturedOrder});
 }
@@ -253,6 +259,7 @@ void SceneTransition::drawTurn(Renderer& renderer, const math::Rect& area, const
             const float side = (across * 2.0F - 1.0F) * (vertical ? half.x : half.y);
             const math::Vec2 local = vertical ? math::Vec2{side, reach * cosine} : math::Vec2{reach * cosine, side};
             vertices.push_back({.position = center + local * perspective, .uv = vertical ? math::Vec2{across, along} : math::Vec2{along, across}});
+
             if (column > 0 && row > 0) {
                 const auto corner = static_cast<std::uint32_t>(column * (kTurnRows + 1) + row);
                 const auto before = corner - static_cast<std::uint32_t>(kTurnRows + 1);
@@ -260,6 +267,7 @@ void SceneTransition::drawTurn(Renderer& renderer, const math::Rect& area, const
             }
         }
     }
+
     // The captured scene reaches the edges of the screen, so its pieces keep hard edges.
     renderer.drawMesh(texture, vertices, indices, kCapturedOrder, false);
 }
@@ -268,14 +276,18 @@ void SceneTransition::drawRegion(Renderer& renderer, const math::Rect& area, con
     if (polygon.size() < 3) {
         return;
     }
+
     std::vector<MeshVertex> vertices;
     std::vector<std::uint32_t> indices;
+
     for (const math::Vec2 point : polygon) {
         vertices.push_back({.position = area.getMin() + point * area.getSize(), .uv = point});
     }
+
     for (std::uint32_t corner = 2; corner < polygon.size(); ++corner) {
         indices.insert(indices.end(), {0U, corner - 1U, corner});
     }
+
     // The captured scene reaches the edges of the screen, so its pieces keep hard edges.
     renderer.drawMesh(texture, vertices, indices, kCapturedOrder, false);
 }
@@ -300,13 +312,16 @@ void SceneTransition::drawGrid(Renderer& renderer, const math::Rect& area, const
             } else if (getHash(row * columns + column) < progress) {
                 scale = 0.0F;
             }
+
             if (scale <= 0.0F) {
                 continue;
             }
+
             const math::Vec2 center = area.getMin() + part.getCenter() * area.getSize();
             tiles.push_back({.position = center, .size = part.getSize() * area.getSize() * scale, .source = getSource(texture, part)});
         }
     }
+
     renderer.drawBatch(texture, tiles, kCapturedOrder);
 }
 
@@ -327,6 +342,7 @@ void SceneTransition::drawSplit(Renderer& renderer, const math::Rect& area, cons
         const math::Vec2 shift = columns ? math::Vec2{0.0F, sign * travel * area.height} : math::Vec2{sign * travel * area.width, 0.0F};
         strips.push_back({.position = area.getMin() + part.getMin() * area.getSize() + shift, .size = part.getSize() * area.getSize(), .source = getSource(texture, part), .pivot = {}});
     }
+
     renderer.drawRect(area, options.color);
     renderer.drawBatch(texture, strips, kCapturedOrder);
 }
@@ -359,6 +375,7 @@ void SceneTransition::drawJump(Renderer& renderer, const math::Rect& area, const
 void SceneTransition::drawMotion(Renderer& renderer, const math::Rect& area, const Frames& frames, float progress) const {
     const math::Vec2 travel = getSteps(options.direction) * area.getSize();
     const math::Rect incoming = area.translated(-travel * (1.0F - progress));
+
     if (options.kind == Kind::MoveIn) {
         drawImage(renderer, frames.outgoing, area);
     } else if (options.kind == Kind::SlideIn) {
@@ -367,6 +384,7 @@ void SceneTransition::drawMotion(Renderer& renderer, const math::Rect& area, con
     } else {
         drawImage(renderer, frames.outgoing, area.translated(travel * progress));
     }
+
     drawImage(renderer, frames.incoming, incoming);
 }
 

@@ -17,6 +17,7 @@ class PostProcessTest : public ::testing::Test {
         for (std::size_t row = 0; row < 3; ++row) {
             result[row] = matrix[row][0] * color[0] + matrix[row][1] * color[1] + matrix[row][2] * color[2];
         }
+
         return result;
     }
 };
@@ -42,6 +43,7 @@ TEST_F(PostProcessTest, SimulatesAndCorrectsDeficienciesOfColorVision) {
     const std::array<float, 3> correctedRed = apply(post.getColorVisionMatrix(), {1.0F, 0.0F, 0.0F});
     const std::array<float, 3> correctedGreen = apply(post.getColorVisionMatrix(), {0.0F, 1.0F, 0.0F});
     EXPECT_GT(correctedRed[2] - correctedGreen[2], 0.5F);
+
     for (const PostProcess::ColorVision vision : {PostProcess::ColorVision::Protanopia, PostProcess::ColorVision::Tritanopia}) {
         post.colorVision = vision;
         for (const float channel : apply(post.getColorVisionMatrix(), {0.5F, 0.5F, 0.5F})) {
@@ -53,9 +55,11 @@ TEST_F(PostProcessTest, SimulatesAndCorrectsDeficienciesOfColorVision) {
 TEST_F(PostProcessTest, ReadsTheColorVisionOptionsFromLua) {
     test::EngineFixture fixture;
     fixture.runLua("graphics2d = require('haylen.graphics2d') camera = graphics2d.newCamera()");
+
     for (const char* vision : {"normal", "protanopia", "deuteranopia", "tritanopia"}) {
         EXPECT_EQ(fixture.lua(std::string("graphics2d.beginWorld(camera, {postProcess = {colorVision = '") + vision + "', correctColorVision = true}}) graphics2d.drawRect({0, 0, 10, 10}, '#FF0000') return 'ok'"), "ok");
     }
+
     fixture.frames(1);
     EXPECT_NE(fixture.lua("graphics2d.beginWorld(camera, {postProcess = {colorVision = 'gray'}})").find("The color vision \"gray\" is unknown. It is \"normal\", \"protanopia\", \"deuteranopia\" or \"tritanopia\"."), std::string::npos);
 }

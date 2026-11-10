@@ -14,11 +14,13 @@ Material::Material(graphics::Shader shader) {
     if (!shader.isValid()) {
         throw std::invalid_argument("A material needs a shader.");
     }
+
     for (const std::string_view program : kPrograms) {
         if (!shader.hasProgram(program)) {
             throw std::invalid_argument(std::format("The shader \"{}\" has no \"{}\" program. Compile it with \"haylen.py shaders\" from a source that includes \"haylen/material.glsl\".", shader.getName(), program));
         }
     }
+
     resource = std::make_shared<MaterialResource>();
     resource->shader = std::move(shader);
 }
@@ -27,6 +29,7 @@ MaterialResource& Material::getChecked() const {
     if (!resource) {
         throw std::logic_error("The material handle is empty.");
     }
+
     return *resource;
 }
 
@@ -40,6 +43,7 @@ const graphics::Shader::Uniform& Material::findUniform(std::string_view name) co
     if (uniform == nullptr) {
         throw std::invalid_argument(std::format("The shader \"{}\" has no uniform named \"{}\".", shader.getName(), name));
     }
+
     return *uniform;
 }
 
@@ -61,6 +65,7 @@ void Material::set(std::string_view name, math::Color value) {
         set(name, values);
         return;
     }
+
     const std::array<float, 4> values{value.r, value.g, value.b, value.a};
     set(name, values);
 }
@@ -85,6 +90,7 @@ void Material::set(std::string_view name, std::span<const float> values) {
     } else {
         state.values.emplace(std::string(name), std::vector<float>(values.begin(), values.end()));
     }
+
     ++state.revision;
 }
 
@@ -112,6 +118,7 @@ graphics::Texture Material::getTexture(std::string_view name) const {
     if (state.shader.findTexture(name) == nullptr) {
         throw std::invalid_argument(std::format("The shader \"{}\" has no texture named \"{}\".", state.shader.getName(), name));
     }
+
     const auto found = state.textures.find(name);
     return found == state.textures.end() ? graphics::Texture{} : found->second;
 }

@@ -231,6 +231,7 @@ TEST_F(Graphics2DLuaTest, ControlsCameras) {
     for (const char* call : {"camera:update(0 / 0)", "camera:update(-1)", "camera:follow(0, 0, 1 / 0)", "camera:frame({{0, 0}}, 0, 0 / 0)"}) {
         EXPECT_NE(lua(call).find("A camera moves forward by a number of seconds that is finite and not negative."), std::string::npos) << call;
     }
+
     EXPECT_NE(lua("camera.deadZone = {-20, 0}").find("The dead zone of a camera cannot be negative."), std::string::npos);
     EXPECT_NE(lua("camera.dragMargins = {0.2, -0.1, 0.2, 0.2}").find("The drag margins of a camera cannot be negative."), std::string::npos);
     EXPECT_EQ(lua("return tostring(camera:renderRotation() == camera:renderRotation()) .. ' ' .. camera.deadZone.x"), "true 100.0");
@@ -471,6 +472,7 @@ TEST_F(Graphics2DLuaTest, KeepsGpuPoolsSteadyAcrossFrames) {
     const std::vector<graphics::Device::Pool> later = fixture.engine().getGraphics().getPools();
     ASSERT_EQ(fixture.engine().getError(), nullptr);
     ASSERT_EQ(warm.size(), later.size());
+
     for (std::size_t index = 0; index < warm.size(); ++index) {
         EXPECT_EQ(warm[index].used, later[index].used) << warm[index].name;
     }

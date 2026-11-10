@@ -71,6 +71,7 @@ TEST_F(NineSliceTest, LaysOutCornersEdgesAndCenterAtTheBorderScale) {
     EXPECT_EQ(patches[0].area, (math::Rect{10.0F, 20.0F, 10.0F, 8.0F}));
     EXPECT_EQ(patches[4].area, (math::Rect{20.0F, 28.0F, 78.0F, 36.0F}));
     EXPECT_EQ(patches[8].area, (math::Rect{98.0F, 64.0F, 12.0F, 6.0F}));
+
     for (std::size_t index = 0; index < patches.size(); ++index) {
         EXPECT_EQ(patches[index].source, slice.pieces[index]);
     }
@@ -123,6 +124,7 @@ TEST_F(NineSliceTest, KeepsTheShapeOfTiledEdgesAcrossTheirBorder) {
             top.push_back(patch);
         }
     }
+
     ASSERT_EQ(top.size(), 2U);
     EXPECT_EQ(top[0].area, (math::Rect{4.0F, 0.0F, 8.0F, 4.0F}));
     EXPECT_EQ(top[1].area, (math::Rect{12.0F, 0.0F, 8.0F, 4.0F}));
@@ -138,6 +140,7 @@ TEST_F(NineSliceTest, BoundsTheCopiesOfASqueezedTiledFrame) {
     for (const NineSlice::Patch& patch : patches) {
         covered += patch.area.x == 0.0F && patch.area.y >= 0.0F && patch.area.y < 500.0F ? patch.area.height : 0.0F;
     }
+
     EXPECT_NEAR(covered, 500.0F, 0.01F);
 }
 
@@ -147,6 +150,7 @@ TEST_F(NineSliceTest, LeavesOutSliversOfRoundingError) {
     slice.fill = NineSlice::Fill::Tile;
     const std::vector<NineSlice::Patch> patches = layout(slice, {0.0F, 0.0F, 0.3F * 10.0F + 1e-6F, 1.0F}, 0.1F);
     ASSERT_EQ(patches.size(), 3U);
+
     for (const NineSlice::Patch& patch : patches) {
         EXPECT_GT(patch.area.width, 0.99F);
     }

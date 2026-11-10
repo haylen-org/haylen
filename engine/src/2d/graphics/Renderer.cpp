@@ -53,6 +53,7 @@ std::vector<std::uint8_t> Renderer::radialFalloff(int size) {
             pixels[static_cast<std::size_t>((y * size + x) * 4 + 3)] = static_cast<std::uint8_t>(lighting2d::Light::falloff(distanceToCenter) * 255.0F);
         }
     }
+
     return pixels;
 }
 
@@ -67,6 +68,7 @@ std::vector<std::uint8_t> Renderer::metaballKernel(int size) {
             pixels[static_cast<std::size_t>((y * size + x) * 4 + 3)] = static_cast<std::uint8_t>(std::lround(inside * inside * 255.0F));
         }
     }
+
     return pixels;
 }
 
@@ -74,25 +76,30 @@ void Renderer::validatePostProcess(const CanvasOptions& options) {
     if (!options.postProcess) {
         return;
     }
+
     const PostProcess& post = *options.postProcess;
     for (const Material& material : post.materials) {
         if (!material.isValid()) {
             throw std::invalid_argument("A post-processing material needs a shader.");
         }
     }
+
     const bool distances = post.distortion >= 0.0F && post.chromaticAberration >= 0.0F && post.pixelate >= 0.0F && post.blur >= 0.0F && post.bloomStrength >= 0.0F && post.bloomThreshold >= 0.0F && post.bloomRadius > 0.0F;
     if (!distances || !std::isfinite(post.distortion + post.chromaticAberration + post.pixelate + post.blur + post.bloomStrength + post.bloomThreshold + post.bloomRadius)) {
         throw std::invalid_argument("Post-processing needs a distortion, chromatic aberration, pixelate, blur, bloom strength and bloom threshold of at least 0 and a positive bloom radius.");
     }
+
     if (post.colorLut.isValid()) {
         const math::Vec2 size = post.colorLut.getSize();
         if (size.y < 2.0F || size.x != size.y * size.y) {
             throw std::invalid_argument("A color lookup texture is as wide as its height squared, such as 256 by 16 pixels.");
         }
     }
+
     if (!(post.colorLutStrength >= 0.0F && post.colorLutStrength <= 1.0F)) {
         throw std::invalid_argument("The strength of a color lookup texture must be from 0 to 1.");
     }
+
     if (!(post.grain >= 0.0F && post.grain <= 1.0F)) {
         throw std::invalid_argument("The grain of post-processing must be from 0 to 1.");
     }
@@ -103,6 +110,7 @@ float Renderer::lowestPoint(std::span<const math::Vec2> points) noexcept {
     for (const math::Vec2 point : points) {
         lowest = std::max(lowest, point.y);
     }
+
     return lowest;
 }
 
@@ -134,12 +142,15 @@ Renderer::~Renderer() {
     for (const auto& [key, pipeline] : state->pipelines) {
         gpu.destroy(pipeline);
     }
+
     for (graphics::Shader& package : state->packages) {
         package.getResource()->release();
     }
+
     if (state->shadowImage.isValid()) {
         gpu.destroy(state->shadowImage);
     }
+
     for (const gpu::Device::Buffer buffer : {state->quad, state->screen, state->instanceBuffer, state->vertexBuffer, state->indexBuffer, state->lightBuffer}) {
         if (buffer.isValid()) {
             gpu.destroy(buffer);
@@ -159,6 +170,7 @@ void Renderer::beginWorld(const Camera& camera, const CanvasOptions& options) {
     if (options.clear && !options.ambientLight && !options.postProcess) {
         throw std::invalid_argument("World canvases only support a clear color with lighting or post-processing.");
     }
+
     validatePostProcess(options);
 
     if (camera.viewport && !(camera.viewport->width > 0.0F && camera.viewport->height > 0.0F)) {
@@ -174,6 +186,7 @@ void Renderer::beginScreen(const CanvasOptions& options) {
     if (options.ambientLight || options.postProcess) {
         throw std::invalid_argument("Screen canvases do not support lighting or post-processing.");
     }
+
     if (options.clear) {
         throw std::invalid_argument("Screen canvases do not support a clear color.");
     }
@@ -186,6 +199,7 @@ void Renderer::beginTarget(const graphics::RenderTarget& target, const Camera& c
     if (!target.isValid()) {
         throw std::invalid_argument("A render target canvas needs a valid render target.");
     }
+
     validatePostProcess(options);
 
     if (camera.viewport && !(camera.viewport->width > 0.0F && camera.viewport->height > 0.0F)) {
@@ -212,6 +226,7 @@ void Renderer::endCapture() {
     if (state->openCaptures.empty()) {
         throw std::logic_error("The \"endCapture\" call has no matching \"beginCapture\".");
     }
+
     finishCanvas();
     state->closeCapture();
 }
@@ -220,6 +235,7 @@ void Renderer::draw(const Sprite& sprite) {
     if (!sprite.texture.isValid()) {
         throw std::invalid_argument("Cannot draw a sprite without a texture.");
     }
+
     if (!state->accepts(sprite.order)) {
         return;
     }
@@ -242,24 +258,29 @@ void Renderer::draw(const Sprite& sprite) {
         if (sprite.order.partMask.isValid()) {
             throw std::invalid_argument("A sprite takes a part mask or an effect, not both.");
         }
+
         sprite.effect.validate();
         const std::array<GpuInstance, 2> affected{gpu, GpuInstance::makeEffect(sprite.effect, source.getSize())};
         state->addInstances(Program::Effect, sprite.order, sprite.texture, affected, sprite.position.y);
         return;
     }
+
     if (!sprite.order.partMask.isValid()) {
         state->addInstances(Program::Sprite, sprite.order, sprite.texture, std::span(&gpu, 1), sprite.position.y);
         return;
     }
+
     const std::array<GpuInstance, 2> recolored{gpu, GpuInstance::makeParts(sprite.partColors)};
     state->addInstances(Program::Recolor, sprite.order, sprite.texture, recolored, sprite.position.y);
 }
 
 template <typename DataAt> void Renderer::checkBatch(std::span<const graphics::Texture> textures, std::size_t count, const DataAt& dataAt, bool hasData) {
     SpriteBatch::checkTextures(textures);
+
     if (!hasData) {
         return;
     }
+
     for (std::size_t index = 0; index < count; ++index) {
         if (dataAt(index).texture >= textures.size()) {
             throw std::invalid_argument(std::format("A sprite of a batch names a texture past the {} textures of the batch.", textures.size()));
@@ -269,6 +290,7 @@ template <typename DataAt> void Renderer::checkBatch(std::span<const graphics::T
 
 template <typename SpriteAt, typename PartsAt, typename DataAt> void Renderer::addBatch(std::span<const graphics::Texture> textures, std::size_t count, const DrawOrder& order, const SpriteAt& spriteAt, const PartsAt& partsAt, const DataAt& dataAt, bool hasData) {
     checkBatch(textures, count, dataAt, hasData);
+
     if (count == 0 || !state->accepts(order)) {
         return;
     }
@@ -279,6 +301,7 @@ template <typename SpriteAt, typename PartsAt, typename DataAt> void Renderer::a
     if (recolored && several) {
         throw std::invalid_argument("A sprite batch with several textures draws without a part mask.");
     }
+
     const bool batched = !recolored && (several || (hasData && order.material.isValid()));
     const Program program = recolored ? Program::Recolor : (batched ? Program::Batch : Program::Sprite);
     const std::size_t stride = recolored || batched ? 2 : 1;
@@ -289,6 +312,7 @@ template <typename SpriteAt, typename PartsAt, typename DataAt> void Renderer::a
         state->retain(textures[index]);
         resources[index] = textures[index].getResource().get();
     }
+
     const auto begin = static_cast<std::uint32_t>(state->instances.size());
     if (state->getCanvas().options.sort == SortMode::Y) {
         for (std::size_t index = 0; index < count; ++index) {
@@ -301,6 +325,7 @@ template <typename SpriteAt, typename PartsAt, typename DataAt> void Renderer::a
         item.first = begin;
         item.count = static_cast<std::uint32_t>(count * stride);
     }
+
     state->instances.resize(state->instances.size() + count * stride);
 
     // Large batches convert their instances on the worker pool while the frame thread takes its own share.
@@ -314,11 +339,13 @@ template <typename SpriteAt, typename PartsAt, typename DataAt> void Renderer::a
             } else if (hasData) {
                 const SpriteData data = dataAt(index);
                 output[index * stride] = GpuInstance::make(*resources[data.texture], spriteAt(index));
+
                 if (batched) {
                     output[index * stride + 1] = GpuInstance::makeData(data);
                 }
             } else {
                 output[index * stride] = GpuInstance::make(*first, spriteAt(index));
+
                 if (batched) {
                     output[index * stride + 1] = GpuInstance::makeData({});
                 }
@@ -332,9 +359,11 @@ template <typename SpriteAt, typename PartsAt, typename DataAt> void Renderer::a
     } else {
         convert(0, count);
     }
+
     if (order.distortion > 0.0F) {
         RendererState::scaleCoverage(std::span(state->instances).subspan(begin, count * stride), program, order.distortion);
     }
+
     state->stats.sprites += count;
 }
 
@@ -368,9 +397,11 @@ void Renderer::drawStatic(const StaticSpriteBatch& batch, const DrawOrder& order
     if (order.partMask.isValid()) {
         throw std::invalid_argument("A baked sprite batch draws without a part mask. Draw a sprite batch to recolor its sprites.");
     }
+
     if (order.distortion > 0.0F) {
         throw std::invalid_argument("A baked sprite batch draws without a distortion. Draw a sprite batch to distort with its sprites.");
     }
+
     if (!batch.isValid() || batch.size() == 0 || !state->accepts(order)) {
         return;
     }
@@ -389,6 +420,7 @@ void Renderer::drawNineSlice(const NineSlice& slice, const math::Rect& area, mat
     if (!slice.isValid()) {
         throw std::invalid_argument("Cannot draw a nine-slice without a texture.");
     }
+
     if (!state->accepts(order)) {
         return;
     }
@@ -396,6 +428,7 @@ void Renderer::drawNineSlice(const NineSlice& slice, const math::Rect& area, mat
     std::vector<NineSlice::Patch>& patches = state->patches;
     patches.clear();
     slice.layout(area, borderScale, patches);
+
     if (patches.empty()) {
         return;
     }
@@ -406,6 +439,7 @@ void Renderer::drawNineSlice(const NineSlice& slice, const math::Rect& area, mat
     for (const NineSlice::Patch& patch : patches) {
         quads.push_back(GpuInstance::make(resource, {.position = patch.area.getMin(), .size = patch.area.getSize(), .source = patch.source, .pivot = {}, .color = color}));
     }
+
     state->addInstances(Program::Sprite, order, slice.texture, quads, area.getBottom());
 }
 
@@ -413,9 +447,11 @@ void Renderer::drawVector(const graphics::VectorImage& image, const Sprite& spri
     if (!image.isValid()) {
         throw std::invalid_argument("Cannot draw a vector image without a document.");
     }
+
     if (sprite.order.partMask.isValid()) {
         throw std::invalid_argument("A vector image draws without a part mask.");
     }
+
     if (!state->accepts(sprite.order)) {
         return;
     }
@@ -426,6 +462,7 @@ void Renderer::drawVector(const graphics::VectorImage& image, const Sprite& spri
     if (!(scale > 0.0F && std::isfinite(scale))) {
         return;
     }
+
     const VectorAtlas::Raster raster = state->vectors.find(image, scale, state->frame);
     Sprite placed = sprite;
     placed.texture = raster.texture;
@@ -452,11 +489,14 @@ void Renderer::drawTextLayout(const text::Layout& layout, math::Vec2 position, c
     for (const text::Layout::Look& look : layout.looks) {
         look.font->sync();
     }
+
     TextPainter& painter = state->painter;
     painter.paintText(layout, position, style, {.pixelsPerUnit = state->getPixelsPerUnit(), .frame = state->frame}, style.pixelSnap ? state->getPixelGrid() : std::nullopt);
+
     for (const TextPainter::Batch& batch : painter.getBatches()) {
         state->addInstances(batch.program, order, batch.texture, batch.instances, position.y);
     }
+
     painter.clear();
 }
 
@@ -470,11 +510,14 @@ void Renderer::drawRichText(text::RichText& richText, math::Vec2 position, const
     for (const text::Layout::Look& look : frame.looks) {
         look.font->sync();
     }
+
     TextPainter& painter = state->painter;
     painter.paintRichText(frame, position, {.pixelsPerUnit = state->getPixelsPerUnit(), .frame = state->frame}, scale, tint);
+
     for (const TextPainter::Batch& batch : painter.getBatches()) {
         state->addInstances(batch.program, order, batch.texture, batch.instances, position.y + frame.size.y * scale.y);
     }
+
     painter.clear();
 }
 
@@ -492,6 +535,7 @@ void Renderer::addMesh(const graphics::Texture& texture, std::span<const MeshVer
     if (!state->accepts(order)) {
         return;
     }
+
     const graphics::Texture& used = texture.isValid() ? texture : state->white;
     const bool flipped = used.getResource()->flipped;
     std::vector<GpuVertex>& packed = state->scratchVertices;
@@ -500,10 +544,12 @@ void Renderer::addMesh(const graphics::Texture& texture, std::span<const MeshVer
         const math::Vec2 position = transform != nullptr ? transform->apply(vertex.position) : vertex.position;
         packed.push_back({{position.x, position.y}, {vertex.uv.x, flipped ? 1.0F - vertex.uv.y : vertex.uv.y}, vertex.color.toRgba8()});
     }
+
     if (!fadeEdges) {
         state->addMesh(used, packed, indices, order);
         return;
     }
+
     state->meshFringe.build(packed, indices, state->getPixelSize());
     state->addMesh(used, state->meshFringe.getVertices(), state->meshFringe.getIndices(), order);
 }
@@ -512,6 +558,7 @@ void Renderer::drawStroke(std::span<const math::Vec2> points, const Stroke& stro
     if (points.size() < 2 || !state->accepts(order)) {
         return;
     }
+
     const graphics::Texture& used = stroke.texture.isValid() ? stroke.texture : state->white;
     state->strokes.build(points, stroke, state->getPixelSize(), used.getSize(), used.getResource()->flipped);
     state->addMesh(used, state->strokes.getVertices(), state->strokes.getIndices(), order);
@@ -521,9 +568,11 @@ void Renderer::drawStroke(const math::Spline& spline, const Stroke& stroke, cons
     if (!stroke.widths.empty() || !stroke.colors.empty()) {
         throw std::invalid_argument("A stroke along a spline takes one width and one color, without widths or colors for each point.");
     }
+
     if (!state->accepts(order)) {
         return;
     }
+
     spline.flatten(state->getPixelSize() * 0.25F, state->curvePoints);
     Stroke along = stroke;
     along.closed = spline.isClosed();
@@ -534,6 +583,7 @@ void Renderer::drawImageBlend(const ImageBlend& blend, const DrawOrder& order) {
     if (!blend.from.isValid() || !blend.to.isValid()) {
         throw std::invalid_argument("An image blend needs a texture to blend from and one to blend to.");
     }
+
     if (!state->accepts(order)) {
         return;
     }
@@ -551,7 +601,9 @@ void Renderer::drawLight(const lighting2d::Light& light) {
     if (!state->getCanvas().isLit()) {
         throw std::logic_error("Lights can only be drawn in a lit canvas, a world or render target canvas with ambient light.");
     }
+
     light.validate();
+
     if (!light.enabled) {
         return;
     }
@@ -559,6 +611,7 @@ void Renderer::drawLight(const lighting2d::Light& light) {
     if (light.texture.isValid()) {
         state->retain(light.texture);
     }
+
     state->lights.push_back({.light = light});
     ++state->stats.lights;
 }
@@ -567,6 +620,7 @@ void Renderer::drawOccluder(const lighting2d::Occluder& occluder) {
     if (!state->getCanvas().isLit()) {
         throw std::logic_error("Occluders can only be drawn in a lit canvas, a world or render target canvas with ambient light.");
     }
+
     occluder.validate();
     lighting2d::ShadowMap::appendSegments(occluder, state->segments);
     ++state->stats.occluders;
@@ -576,12 +630,15 @@ void Renderer::drawMetaballs(std::span<const math::Vec2> points, float radius, c
     if (!(radius > 0.0F && std::isfinite(radius))) {
         throw std::invalid_argument("A metaball radius must be positive.");
     }
+
     if (!(style.threshold > 0.0F && style.threshold < 1.0F)) {
         throw std::invalid_argument("A metaball threshold must be between 0 and 1.");
     }
+
     if (!(style.outlineWidth >= 0.0F && style.threshold + style.outlineWidth < 1.0F)) {
         throw std::invalid_argument("A metaball outline width must be zero or more and keep the threshold plus the width below 1.");
     }
+
     if (points.empty() || !state->accepts(order)) {
         return;
     }
@@ -601,9 +658,11 @@ void Renderer::drawMetaballs(std::span<const math::Vec2> points, float radius, c
 
     const graphics::TextureResource& kernel = *state->metaball.getResource();
     const auto first = static_cast<std::uint32_t>(state->splats.size());
+
     for (const math::Vec2 point : points) {
         state->splats.push_back(GpuInstance::make(kernel, {.position = point, .size = {reach * 2.0F, reach * 2.0F}}));
     }
+
     state->metaballs.push_back({.first = first, .count = static_cast<std::uint32_t>(points.size()), .area = area, .style = style});
 }
 
@@ -611,6 +670,7 @@ void Renderer::drawRect(const math::Rect& rect, math::Color color, const DrawOrd
     if (!state->accepts(order)) {
         return;
     }
+
     const GpuInstance gpu = GpuInstance::make(*state->white.getResource(), {.position = rect.getMin(), .size = rect.getSize(), .pivot = {}, .color = color});
     state->addInstances(Program::Sprite, order, state->white, std::span(&gpu, 1), rect.getBottom());
 }
@@ -628,6 +688,7 @@ void Renderer::drawRectOutline(const math::Rect& rect, float thickness, math::Co
         drawStroke(line, {.width = wide ? rect.height : rect.width, .color = color}, order);
         return;
     }
+
     const float inset = thickness * 0.5F;
     const std::array<math::Vec2, 4> corners{math::Vec2{rect.getLeft() + inset, rect.getTop() + inset}, math::Vec2{rect.getRight() - inset, rect.getTop() + inset}, math::Vec2{rect.getRight() - inset, rect.getBottom() - inset}, math::Vec2{rect.getLeft() + inset, rect.getBottom() - inset}};
     drawStroke(corners, {.width = thickness, .color = color, .closed = true}, order);
@@ -667,6 +728,7 @@ void Renderer::drawArc(math::Vec2 center, float radius, float thickness, float s
     if (!(thickness > 0.0F && outer > 0.0F)) {
         return;
     }
+
     const Shape band{
         .bounds = math::Rect::fromCenter(center, {outer * 2.0F, outer * 2.0F}),
         .radii = {outer, outer, outer, outer},
@@ -684,6 +746,7 @@ void Renderer::drawShape(const Shape& shape, const DrawOrder& order) {
     if (!measured) {
         throw std::invalid_argument("A shape needs corner radii, a border width and a softness of zero or more.");
     }
+
     if (shape.bounds.width > 0.0F && shape.bounds.height > 0.0F && state->accepts(order)) {
         state->addShape(shape, order);
     }
@@ -693,6 +756,7 @@ void Renderer::drawPoints(std::span<const math::Vec2> points, float radius, std:
     if (colors.size() != 1 && colors.size() != points.size()) {
         throw std::invalid_argument(std::format("Points take one color, or one for each of their {} points.", points.size()));
     }
+
     if (points.empty() || !(radius > 0.0F) || !state->accepts(order)) {
         return;
     }
@@ -704,6 +768,7 @@ void Renderer::drawPoints(std::span<const math::Vec2> points, float radius, std:
         const Shape dot{.bounds = math::Rect::fromCenter(points[index], {radius * 2.0F, radius * 2.0F}), .radii = {radius, radius, radius, radius}, .color = colors[colors.size() == 1 ? 0 : index]};
         dots.push_back(GpuInstance::makeShape(dot, margin, false));
     }
+
     state->addInstances(Program::Shape, order, state->white, dots, lowestPoint(points) + radius);
 }
 
@@ -722,6 +787,7 @@ void Renderer::drawPolygon(std::span<const std::vector<math::Vec2>> shape, math:
         points.insert(points.end(), outline.begin(), outline.end());
         counts.push_back(static_cast<std::uint32_t>(outline.size()));
     }
+
     drawPolygon(points, counts, color, order);
 }
 
@@ -730,9 +796,11 @@ void Renderer::drawPolygon(std::span<const math::Vec2> points, std::span<const s
     if (counted != points.size()) {
         throw std::invalid_argument(std::format("The outlines of a polygon count {} points, and it has {}.", counted, points.size()));
     }
+
     if (!state->accepts(order)) {
         return;
     }
+
     PolygonMesh& polygon = state->polygons;
     polygon.build(points, counts, color.toRgba8(), state->getPixelSize());
     state->addMesh(state->white, polygon.getVertices(), polygon.getIndices(), order);
@@ -748,6 +816,7 @@ void Renderer::fillPath(const Path& path, const Path::Fill& fill, const DrawOrde
     if (path.empty() || !(scale > 0.0F) || !state->accepts(order)) {
         return;
     }
+
     const PathTessellation::Triangles& triangles = path.getTessellation().getFill(path, fill.rule, state->getPixelSize() / scale, state->polygons);
     state->addTintedMesh(fill.texture.isValid() ? fill.texture : state->white, triangles.vertices, triangles.indices, fill.color, transform, order);
 }
@@ -757,6 +826,7 @@ void Renderer::strokePath(const Path& path, const Stroke& stroke, const DrawOrde
     if (path.empty() || !(scale > 0.0F) || !state->accepts(order)) {
         return;
     }
+
     const graphics::Texture& used = stroke.texture.isValid() ? stroke.texture : state->white;
     const PathTessellation::Triangles& triangles = path.getTessellation().getStroke(path, stroke, state->getPixelSize() / scale, used.getSize(), state->strokes);
     state->addTintedMesh(used, triangles.vertices, triangles.indices, stroke.color, transform, order);
@@ -846,12 +916,14 @@ graphics::Texture Renderer::closeGroup() {
             item.first = item.first >= scope.metaballStart ? item.first - static_cast<std::uint32_t>(metaballsBefore) : item.first + static_cast<std::uint32_t>(metaballsMoved);
         }
     }
+
     for (std::size_t index = scope.parent + 1; index < canvases.size(); ++index) {
         canvases[index].itemBegin -= itemsBefore;
         canvases[index].itemEnd -= itemsBefore;
         canvases[index].metaballBegin -= metaballsBefore;
         canvases[index].metaballEnd -= metaballsBefore;
     }
+
     parent.itemBegin += itemsMoved;
     parent.metaballBegin += metaballsMoved;
     const auto parentPlace = canvases.begin() + static_cast<std::ptrdiff_t>(scope.parent);
@@ -876,13 +948,17 @@ void Renderer::composite(const GroupScope& scope, const graphics::Texture& image
     using Mode = graphics::BlendMode::Type;
     DrawOrder order = scope.order;
     const bool backdrop = graphics::BlendMode::readsBackdrop(order.blend);
+
     if (order.blend == Mode::Alpha || order.blend == Mode::Premultiplied) {
         order.blend = Mode::Premultiplied;
     }
+
     const bool straighten = !backdrop && order.blend != Mode::Premultiplied;
+
     if (!state->accepts(order)) {
         return;
     }
+
     const Canvas& canvas = state->getCanvas();
     const math::Transform2D inverse = canvas.view.getInverse();
     const math::Vec2 origin = inverse.apply(math::Vec2{});
@@ -903,6 +979,7 @@ void Renderer::beginGroup(const GroupOptions& options) {
     if (!(options.opacity >= 0.0F && options.opacity <= 1.0F)) {
         throw std::invalid_argument("A group needs an opacity from 0 to 1.");
     }
+
     openGroup({.stage = GroupScope::Stage::Group, .opacity = options.opacity, .order = options.order});
 }
 
@@ -910,6 +987,7 @@ void Renderer::endGroup() {
     if (state->groups.empty() || state->groups.back().stage != GroupScope::Stage::Group) {
         throw std::logic_error("The \"endGroup\" call has no matching \"beginGroup\".");
     }
+
     const GroupScope scope = state->groups.back();
     const graphics::Texture image = closeGroup();
     state->groups.pop_back();
@@ -924,6 +1002,7 @@ void Renderer::endMaskShape() {
     if (state->groups.empty() || state->groups.back().stage != GroupScope::Stage::MaskShape) {
         throw std::logic_error("The \"endMaskShape\" call has no matching \"pushMask\".");
     }
+
     GroupScope scope = state->groups.back();
     scope.shape = closeGroup();
     state->groups.pop_back();
@@ -935,6 +1014,7 @@ void Renderer::popMask() {
     if (state->groups.empty() || state->groups.back().stage != GroupScope::Stage::MaskContent) {
         throw std::logic_error("The \"popMask\" call has no matching \"pushMask\" whose shape ended with \"endMaskShape\".");
     }
+
     const GroupScope scope = state->groups.back();
     const graphics::Texture image = closeGroup();
     state->groups.pop_back();
@@ -961,6 +1041,7 @@ void Renderer::finishCanvas() {
     if (state->canvasOpen) {
         closeGroups();
     }
+
     if (state->canvasOpen && state->canvases.back().flash.a > 0.0F) {
         const math::Color flash = state->canvases.back().flash;
         state->canvases.back().flash = math::Color::transparent();
@@ -969,6 +1050,7 @@ void Renderer::finishCanvas() {
         state->layerOffset = 0;
         drawRect(getCanvasBounds().expanded(1.0F), flash, {.layer = std::numeric_limits<int>::max() / 2 - 1, .unshaded = true});
     }
+
     if (state->canvasOpen && !state->overlays.empty() && !state->drawingOverlays) {
         std::vector<std::pair<std::uint64_t, CanvasOverlay>>& overlays = state->overlaySnapshot;
         overlays = state->overlays;
@@ -987,9 +1069,11 @@ void Renderer::finishCanvas() {
             state->closeCanvas();
             throw;
         }
+
         overlays.clear();
         state->drawingOverlays = false;
     }
+
     state->closeCanvas();
 }
 
@@ -1002,7 +1086,9 @@ void Renderer::drawBounds(text::Font& font, math::Color color, float labelSize) 
             drawRectOutline(math::Geometry::bounds(drawn.corners), unit, color.withAlpha(color.a * 0.6F), order);
             return;
         }
+
         drawPolyline(drawn.corners, unit, color, true, order);
+
         if (!drawn.label.empty()) {
             drawText(font, drawn.label, drawn.corners[0], {.size = labelSize * unit, .color = color, .shadowOffset = {unit, unit}, .shadowColor = math::Color::black()}, order);
         }
@@ -1021,6 +1107,7 @@ void Renderer::visitDrawn(const DrawnVisitor& visitor) const {
         if ((!sprite && !text) || item.distortion || item.texture == state->white.getResource().get()) {
             continue;
         }
+
         if (item.batch != nullptr) {
             const math::Rect bounds = item.batch->bounds.translated(item.offset);
             visitor({.corners = {bounds.getMin(), math::Vec2{bounds.getRight(), bounds.y}, bounds.getMax(), math::Vec2{bounds.x, bounds.getBottom()}}});
@@ -1028,15 +1115,18 @@ void Renderer::visitDrawn(const DrawnVisitor& visitor) const {
         }
 
         const std::size_t stride = item.program == Program::Recolor || item.program == Program::Effect || item.program == Program::Batch ? 2 : 1;
+
         if (text) {
             const std::size_t step = item.program == Program::GradientText ? 2 : 1;
             math::Rect block = math::Rect::fromCenter(math::Vec2{state->instances[item.first].position[0], state->instances[item.first].position[1]}, {});
             for (std::size_t quad = item.first; quad < item.first + item.count; quad += step) {
                 block = block.merged(math::Geometry::bounds(state->instances[quad].getCorners()));
             }
+
             visitor({.corners = {block.getMin(), math::Vec2{block.getRight(), block.y}, block.getMax(), math::Vec2{block.x, block.getBottom()}}, .text = true});
             continue;
         }
+
         for (std::size_t quad = item.first; quad < item.first + item.count; quad += stride) {
             const bool named = quad == item.first || item.count == stride;
             const std::size_t texture = item.program == Program::Batch ? state->instances[quad + 1].getDataTexture() : 0;
@@ -1057,6 +1147,7 @@ void Renderer::pushClip(const math::Rect& rect) {
     if (state->clips.empty() || !(state->clips.back() == clip)) {
         state->clips.push_back(clip);
     }
+
     state->clipStack.push_back(static_cast<std::uint32_t>(state->clips.size()));
 }
 
@@ -1064,6 +1155,7 @@ void Renderer::popClip() {
     if (state->clipStack.empty()) {
         throw std::logic_error("The \"popClip\" call has no matching \"pushClip\".");
     }
+
     state->clipStack.pop_back();
 }
 
@@ -1086,6 +1178,7 @@ void Renderer::popLayerOffset() {
     if (state->layerOffsets.empty()) {
         throw std::logic_error("The \"popLayerOffset\" call has no matching \"pushLayerOffset\".");
     }
+
     state->layerOffset = state->layerOffsets.back();
     state->layerOffsets.pop_back();
 }
@@ -1148,20 +1241,24 @@ void Renderer::present(const graphics::RenderTarget& target, int surface, math::
     if (!target.isValid() || surface == 0) {
         throw std::invalid_argument("A presentation needs a valid render target and a surface beyond the window.");
     }
+
     state->presentations.push_back({.target = target, .surface = surface, .size = size, .clear = clear});
 }
 
 void Renderer::endFrame(bool transparent) {
     try {
         finishCanvas();
+
         while (!state->openCaptures.empty()) {
             state->closeCapture();
         }
+
         FrameSubmitter(*state, transparent).submit();
     } catch (...) {
         state->resetFrame();
         throw;
     }
+
     state->resetFrame();
 }
 

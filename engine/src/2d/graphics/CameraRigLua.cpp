@@ -22,6 +22,7 @@ math::Vec2 CameraRigLua::readZoom(lua_State* L, int index) {
         const auto zoom = lua::Stack::read<float>(L, index);
         return {zoom, zoom};
     }
+
     return lua::Stack::read<math::Vec2>(L, index);
 }
 
@@ -37,6 +38,7 @@ CameraRig::Zone CameraRigLua::readZone(lua_State* L, int index) {
     if (lua_getfield(L, index, "zoom") != LUA_TNIL) {
         zone.zoom = readZoom(L, lua_gettop(L));
     }
+
     lua_pop(L, 1);
     return zone;
 }
@@ -46,6 +48,7 @@ void CameraRigLua::readRail(lua_State* L, int index, CameraRig& rig) {
         rig.setRail({});
         return;
     }
+
     std::vector<math::Vec2> points;
     StrokeLua::readPoints(L, index, points);
     rig.setRail(std::move(points));
@@ -61,8 +64,10 @@ int CameraRigLua::create(lua_State* L) {
         if (lua_getfield(L, 1, "zoom") != LUA_TNIL) {
             options.zoom = readZoom(L, lua_gettop(L));
         }
+
         lua_pop(L, 1);
     }
+
     auto rig = std::make_shared<CameraRig>(options);
     if (!lua_isnoneornil(L, 1)) {
         if (lua_getfield(L, 1, "zones") != LUA_TNIL) {
@@ -74,11 +79,13 @@ int CameraRigLua::create(lua_State* L) {
                 lua_pop(L, 1);
             }
         }
+
         lua_pop(L, 1);
         lua_getfield(L, 1, "rail");
         readRail(L, lua_gettop(L), *rig);
         lua_pop(L, 1);
     }
+
     lua::Userdata::emplace<CameraRig>(L, std::move(rig));
     return 1;
 }
@@ -125,6 +132,7 @@ int CameraRigLua::zone(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, current->name);
     return 1;
 }

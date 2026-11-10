@@ -40,6 +40,7 @@ void Parallax::draw(Renderer& renderer, const Camera& camera, const DrawOrder& o
     if (!std::isfinite(origin.x) || !std::isfinite(origin.y)) {
         throw std::invalid_argument("A parallax layer needs a finite position and scroll.");
     }
+
     const math::Rect visible = renderer.getCanvasBounds();
     const float left = repeatX ? firstCopy(visible.getLeft(), origin.x, step.x) : origin.x;
     const float top = repeatY ? firstCopy(visible.getTop(), origin.y, step.y) : origin.y;

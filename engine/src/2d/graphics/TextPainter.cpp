@@ -24,6 +24,7 @@ void TextPainter::clear() noexcept {
         batches[index].texture = {};
         batches[index].instances.clear();
     }
+
     batchCount = 0;
 }
 
@@ -32,11 +33,13 @@ void TextPainter::add(Program program, const graphics::Texture& texture, const G
         if (batchCount == batches.size()) {
             batches.emplace_back();
         }
+
         Batch& next = batches[batchCount++];
         next.program = program;
         next.texture = texture;
         next.instances.clear();
     }
+
     batches[batchCount - 1].instances.push_back(instance);
 }
 
@@ -69,6 +72,7 @@ void TextPainter::addColorGlyph(const text::Layout::Glyph& glyph, SpriteInstance
     if (!(scale > 0.0F && std::isfinite(scale))) {
         return;
     }
+
     const VectorAtlas::Raster raster = vectors.find(glyph.image, scale, target.frame);
     instance.source = raster.source;
     add(Program::Sprite, raster.texture, GpuInstance::make(*raster.texture.getResource(), instance));
@@ -84,12 +88,15 @@ void TextPainter::paintText(const text::Layout& layout, math::Vec2 position, con
     blockRotation = style.rotation;
     blockTint = math::Color::white();
     pixels = style.rotation == 0.0F ? grid : std::nullopt;
+
     if (style.shadowColor.a > 0.0F) {
         paintPlainGlyphs(layout, style, Layer::Shadow);
     }
+
     if (style.outlineWidth > 0.0F) {
         paintPlainGlyphs(layout, style, Layer::Outline);
     }
+
     paintPlainGlyphs(layout, style, Layer::Fill);
     paintBoxes(layout, false, style.color);
 }
@@ -103,9 +110,11 @@ void TextPainter::paintPlainGlyphs(const text::Layout& layout, const text::Style
             while (line + 1 < layout.lines.size() && glyph.character >= layout.lines[line].endCharacter) {
                 ++line;
             }
+
             const float left = place({layout.lines[line].box.x, 0.0F}).x;
             lineShift = pixels->snapX(left) - left;
         }
+
         const text::Layout::Look& look = layout.looks[glyph.look];
         const bool colored = glyph.image.isValid();
         const bool field = look.font->isDistanceField() && !colored;
@@ -149,6 +158,7 @@ void TextPainter::paintPlainGlyphs(const text::Layout& layout, const text::Style
 
         const Program program = field ? Program::Text : Program::Sprite;
         add(program, page, GpuInstance::makeGlyph(*page.getResource(), instance, parameters));
+
         if (look.emboldenOffset > 0.0F) {
             SpriteInstance copy = placeGlyph(glyph, {look.emboldenOffset, 0.0F}, color, flash);
             copy.position += moved;
@@ -162,6 +172,7 @@ math::Vec2 TextPainter::place(math::Vec2 local) const noexcept {
     if (blockRotation == 0.0F) {
         return blockPosition + scaled;
     }
+
     const float cosine = std::cos(blockRotation);
     const float sine = std::sin(blockRotation);
     return blockPosition + math::Vec2{scaled.x * cosine - scaled.y * sine, scaled.x * sine + scaled.y * cosine};
@@ -174,6 +185,7 @@ SpriteInstance TextPainter::placeGlyph(const text::Layout::Glyph& glyph, math::V
         pen.x += lineShift;
         pen.y = pixels->snapY(pen.y);
     }
+
     return {
         .position = pen,
         .size = glyph.size * blockScale,
@@ -198,11 +210,13 @@ void TextPainter::paintRichText(const text::Layout& layout, math::Vec2 position,
     paintBoxes(layout, true, blockTint);
     paintGlows(layout);
     paintShadows(layout);
+
     for (const text::Layout::Image& image : layout.images) {
         if (image.visible) {
             add(Program::Sprite, image.texture, GpuInstance::make(*image.texture.getResource(), {.position = place(image.rect.getMin()), .size = image.rect.getSize() * scale, .source = image.source, .pivot = {}, .color = image.color * tint}));
         }
     }
+
     paintOutlines(layout);
     paintGlyphs(layout);
     paintBoxes(layout, false, blockTint);
@@ -225,6 +239,7 @@ void TextPainter::paintGlows(const text::Layout& layout) {
         if (!glyph.visible || !look.glow || !look.font->isDistanceField() || glyph.image.isValid()) {
             continue;
         }
+
         const float half = look.glow->width * 0.5F;
         const GpuInstance::TextParameters glow{.outline = look.font->toDistance(look.outlineWidth + half, look.size), .weight = look.font->toDistance(look.weight, look.size), .width = look.font->toDistance(glyph.size.x, look.size), .skew = look.skew, .softness = look.font->toDistance(half, look.size)};
         const graphics::Texture& page = look.font->getPage(glyph.page);
@@ -239,11 +254,13 @@ void TextPainter::paintShadows(const text::Layout& layout) {
         if (!glyph.visible || !look.shadow) {
             continue;
         }
+
         const math::Color color = look.shadow->color.withAlpha(look.shadow->color.a * glyph.color.a);
         if (glyph.image.isValid()) {
             addColorGlyph(glyph, placeGlyph(glyph, look.shadow->offset, color, color.withAlpha(1.0F)));
             continue;
         }
+
         const bool field = look.font->isDistanceField();
         const float outline = look.font->toDistance(look.outlineWidth, look.size);
         const math::Color flash = field ? color.withAlpha(outline > 0.0F ? color.a : 0.0F) : color.withAlpha(1.0F);
@@ -261,6 +278,7 @@ void TextPainter::paintOutlines(const text::Layout& layout) {
         if (!glyph.visible || !look.font->isDistanceField() || glyph.image.isValid() || outline <= 0.0F) {
             continue;
         }
+
         const math::Color flash = look.outlineColor.withAlpha(look.outlineColor.a * glyph.color.a);
         const GpuInstance::TextParameters parameters{.outline = outline, .weight = look.font->toDistance(look.weight, look.size), .width = look.font->toDistance(glyph.size.x, look.size), .skew = look.skew};
         const graphics::Texture& page = look.font->getPage(glyph.page);
@@ -274,10 +292,12 @@ void TextPainter::paintGlyphs(const text::Layout& layout) {
         if (!glyph.visible) {
             continue;
         }
+
         if (glyph.image.isValid()) {
             addColorGlyph(glyph, placeGlyph(glyph, {}, math::Color::white().withAlpha(glyph.color.a), math::Color::transparent()));
             continue;
         }
+
         const text::Layout::Look& look = layout.looks[glyph.look];
         const GpuInstance::TextParameters parameters{.weight = look.font->toDistance(look.weight, look.size), .width = look.font->toDistance(glyph.size.x, look.size), .skew = look.skew};
         const graphics::Texture& page = look.font->getPage(glyph.page);
@@ -289,6 +309,7 @@ void TextPainter::paintGlyphs(const text::Layout& layout) {
 
         const Program program = look.font->isDistanceField() ? Program::Text : Program::Sprite;
         add(program, page, placed);
+
         if (look.emboldenOffset > 0.0F) {
             add(program, page, GpuInstance::makeGlyph(*page.getResource(), placeGlyph(glyph, {look.emboldenOffset, 0.0F}, glyph.color, math::Color::transparent()), parameters));
         }

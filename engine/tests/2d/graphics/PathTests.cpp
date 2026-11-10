@@ -45,6 +45,7 @@ class PathCoverageTest : public ::testing::Test {
             if (std::fabs(area) < 1.0e-9F) {
                 continue;
             }
+
             const float u = math::Vec2::cross(pb - point, pc - point) / area;
             const float v = math::Vec2::cross(pc - point, pa - point) / area;
             const float w = 1.0F - u - v;
@@ -52,6 +53,7 @@ class PathCoverageTest : public ::testing::Test {
                 found = std::max(found, u * static_cast<float>(a.color >> 24U) + v * static_cast<float>(b.color >> 24U) + w * static_cast<float>(c.color >> 24U));
             }
         }
+
         return found;
     }
 
@@ -67,6 +69,7 @@ class PathCoverageTest : public ::testing::Test {
                 path.lineTo(point);
             }
         }
+
         path.close();
         return path;
     }
@@ -99,6 +102,7 @@ TEST(PathCommandTest, FlattensCurvesAndArcsWithinTheTolerance) {
     EXPECT_EQ(outlines.closed[0], 1U);
     EXPECT_GT(outlines.counts[0], 30U);
     EXPECT_LT(outlines.counts[0], 80U);
+
     for (std::size_t index = 0; index < outlines.points.size(); ++index) {
         const math::Vec2 point = outlines.points[index];
         const math::Vec2 next = outlines.points[(index + 1) % outlines.points.size()];
@@ -124,6 +128,7 @@ TEST(PathCommandTest, FlattensCurvesAndArcsWithinTheTolerance) {
     ASSERT_EQ(outlines.counts.size(), 1U);
     EXPECT_EQ(outlines.closed[0], 0U);
     EXPECT_EQ(outlines.points.back(), end);
+
     for (int sample = 0; sample <= 1000; ++sample) {
         const float t = static_cast<float>(sample) / 1000.0F;
         const float u = 1.0F - t;
@@ -135,6 +140,7 @@ TEST(PathCommandTest, FlattensCurvesAndArcsWithinTheTolerance) {
             const float along = std::clamp(math::Vec2::dot(curve - a, b - a) / (b - a).getLengthSquared(), 0.0F, 1.0F);
             nearest = std::min(nearest, math::Vec2::distance(curve, a + (b - a) * along));
         }
+
         EXPECT_LE(nearest, 0.25F) << t;
     }
 

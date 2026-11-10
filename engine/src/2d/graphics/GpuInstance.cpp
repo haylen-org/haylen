@@ -65,6 +65,7 @@ GpuInstance GpuInstance::make(const graphics::TextureResource& texture, const Sp
         for (std::size_t index = 0; index < corners.size(); ++index) {
             packed.uv[index] = unorm16(corners[index]);
         }
+
         return packed;
     }
 
@@ -77,6 +78,7 @@ GpuInstance GpuInstance::make(const graphics::TextureResource& texture, const Sp
     for (std::size_t index = 0; index < corners.size(); ++index) {
         packed.uv[index] = unorm16((corners[index] + shift) / span);
     }
+
     packed.parameters[0] = static_cast<std::uint8_t>(packed.parameters[0] | static_cast<unsigned>(range << kRangeShift) | (centered ? kCenteredBit : 0U));
     return packed;
 }
@@ -116,6 +118,7 @@ GpuInstance GpuInstance::makeGradient(const text::Gradient& gradient, math::Vec2
         record.colors[index] = stop.color.toRgba8();
         record.offsets[index] = unorm16(stop.offset);
     }
+
     return std::bit_cast<GpuInstance>(record);
 }
 
@@ -160,6 +163,7 @@ void GpuInstance::fadeShape(float amount) noexcept {
     for (std::uint32_t& value : record.colors) {
         value = scaleAlpha(value, amount);
     }
+
     *this = std::bit_cast<GpuInstance>(record);
 }
 
@@ -171,6 +175,7 @@ std::array<math::Vec2, 4> GpuInstance::getCorners() const noexcept {
         const math::Vec2 local = (corner - math::Vec2{pivot[0], pivot[1]}) * math::Vec2{size[0], size[1]};
         corner = math::Vec2{position[0] + local.x * cosine - local.y * sine, position[1] + local.x * sine + local.y * cosine};
     }
+
     return corners;
 }
 

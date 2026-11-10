@@ -91,6 +91,7 @@ TEST_F(StrokeBuilderTest, ExtendsSquareCapsAndRoundsRoundCaps) {
     expectNear(at(0, 0), {-5.5F, 0.0F});
     expectNear(at(0, 1), {-4.5F, 0.0F});
     expectNear(at(sections() - 1, 3), {105.5F, 0.0F});
+
     for (std::size_t section = 0; section < sections(); ++section) {
         EXPECT_NEAR((at(section, 0) - (section < sections() / 2 ? line[0] : line[1])).getLength(), 5.5F, 1e-3F) << section;
     }
@@ -112,6 +113,7 @@ TEST_F(StrokeBuilderTest, JoinsTurnsWithMitersBevelsAndArcs) {
 
     build(corner, {.width = 10.0F, .join = Stroke::Join::Round});
     ASSERT_GT(sections(), 6U);
+
     for (std::size_t section = 2; section + 2 < sections(); ++section) {
         EXPECT_NEAR((at(section, 2) - corner[1]).getLength(), 4.5F, 1e-3F) << section;
     }
@@ -129,6 +131,7 @@ TEST_F(StrokeBuilderTest, KeepsTheFadeOfSharpTurnsWithinTheirSegments) {
     const std::array<math::Vec2, 3> needle{math::Vec2{0.0F, 0.0F}, math::Vec2{100.0F, 1.0F}, math::Vec2{100.0F, -1.0F}};
     for (const float width : {2.0F, 0.5F}) {
         build(needle, {.width = width, .join = Stroke::Join::Round, .closed = true});
+
         for (const GpuVertex& vertex : builder.getVertices()) {
             EXPECT_LE(vertex.position[0], 100.0F + width * 0.5F + 1.0F) << width;
             EXPECT_GE(vertex.position[0], -width * 0.5F - 1.0F) << width;
@@ -140,11 +143,14 @@ TEST_F(StrokeBuilderTest, ClosesPathsWithoutASeam) {
     const std::array<math::Vec2, 5> square{{{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}, {0.0F, 0.0F}}};
     build(square, {.width = 4.0F, .closed = true});
     ASSERT_EQ(sections(), 5U);
+
     for (std::size_t lane = 0; lane < 4; ++lane) {
         expectNear(at(0, lane), at(4, lane));
     }
+
     EXPECT_FLOAT_EQ(u(0), 0.0F);
     EXPECT_FLOAT_EQ(u(4), 1.0F);
+
     for (std::size_t section = 0; section < sections(); ++section) {
         EXPECT_FLOAT_EQ(alpha(section, 1), 1.0F);
     }
@@ -254,9 +260,11 @@ TEST(MeshTest, DeformsKeptVerticesAndDrawsThemWithoutAllocating) {
     std::vector<float> positions(30);
     grid.readPositions(positions);
     EXPECT_FLOAT_EQ(positions[2], 20.0F);
+
     for (std::size_t index = 1; index < positions.size(); index += 2) {
         positions[index] += 5.0F;
     }
+
     grid.setPositions(positions);
     EXPECT_EQ(grid.getBounds(), (math::Rect{10.0F, 25.0F, 40.0F, 20.0F}));
     const std::array<float, 2> moved{0.0F, 0.0F};

@@ -17,6 +17,7 @@ void PathTessellation::update(const Path& path) {
     if (revision != 0 && std::ranges::equal(path.getVerbs(), verbs) && std::ranges::equal(path.getPoints(), points) && std::ranges::equal(path.getArcs(), arcs)) {
         return;
     }
+
     verbs.assign(path.getVerbs().begin(), path.getVerbs().end());
     points.assign(path.getPoints().begin(), path.getPoints().end());
     arcs.assign(path.getArcs().begin(), path.getArcs().end());
@@ -37,6 +38,7 @@ const PathTessellation::Triangles& PathTessellation::getFill(const Path& path, P
             kept.build.used = draws;
             return kept.build.triangles;
         }
+
         if (kept.build.used < replaced->build.used) {
             replaced = &kept;
         }
@@ -59,6 +61,7 @@ void PathTessellation::buildFill(FillBuild& fill, float pixel, PolygonMesh& poly
     const Path::Outlines& outlines = fill.build.outlines;
     triangles.vertices.clear();
     triangles.indices.clear();
+
     if (outlines.counts.empty()) {
         return;
     }
@@ -76,6 +79,7 @@ void PathTessellation::buildFill(FillBuild& fill, float pixel, PolygonMesh& poly
             const math::Vec2 point = outlines.points[index];
             subject.emplace_back(std::llround(static_cast<double>(point.x) * scale), std::llround(static_cast<double>(point.y) * scale));
         }
+
         first += count;
     }
 
@@ -93,8 +97,10 @@ void PathTessellation::buildFill(FillBuild& fill, float pixel, PolygonMesh& poly
         for (const Clipper2Lib::Point64& point : outline) {
             simplePoints.push_back({static_cast<float>(static_cast<double>(point.x) / scale), static_cast<float>(static_cast<double>(point.y) / scale)});
         }
+
         simpleCounts.push_back(static_cast<std::uint32_t>(outline.size()));
     }
+
     polygons.build(simplePoints, simpleCounts, math::Color::white().toRgba8(), pixel);
     triangles.vertices.assign(polygons.getVertices().begin(), polygons.getVertices().end());
     triangles.indices.assign(polygons.getIndices().begin(), polygons.getIndices().end());
@@ -114,6 +120,7 @@ const PathTessellation::Triangles& PathTessellation::getStroke(const Path& path,
     if (!value.widths.empty() || !value.colors.empty()) {
         throw std::invalid_argument("A stroke of a path takes one width and one color, without widths or colors for each point.");
     }
+
     update(path);
     ++draws;
     StrokeBuild* replaced = &strokeBuilds.front();
@@ -122,6 +129,7 @@ const PathTessellation::Triangles& PathTessellation::getStroke(const Path& path,
             kept.build.used = draws;
             return kept.build.triangles;
         }
+
         if (kept.build.used < replaced->build.used) {
             replaced = &kept;
         }
@@ -155,6 +163,7 @@ void PathTessellation::buildStroke(StrokeBuild& stroke, const Stroke& value, flo
 
         const auto base = static_cast<std::uint32_t>(triangles.vertices.size());
         triangles.vertices.insert(triangles.vertices.end(), strokes.getVertices().begin(), strokes.getVertices().end());
+
         for (const std::uint32_t index : strokes.getIndices()) {
             triangles.indices.push_back(base + index);
         }

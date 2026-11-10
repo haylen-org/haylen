@@ -12,22 +12,27 @@ void StrokeBuilder::validate(std::span<const math::Vec2> points, const Stroke& s
     if (!stroke.widths.empty() && stroke.widths.size() != points.size()) {
         throw std::invalid_argument("A stroke has one width for each of its " + std::to_string(points.size()) + " points, or none.");
     }
+
     if (!stroke.colors.empty() && stroke.colors.size() != points.size()) {
         throw std::invalid_argument("A stroke has one color for each of its " + std::to_string(points.size()) + " points, or none.");
     }
+
     const auto isWidth = [](float width) { return width >= 0.0F && std::isfinite(width); };
     const bool measured = isWidth(stroke.width) && std::ranges::all_of(stroke.widths, isWidth) && stroke.textureLength >= 0.0F && stroke.miterLimit >= 1.0F;
     if (!measured) {
         throw std::invalid_argument("A stroke needs finite widths and a texture length of zero or more and a miter limit of 1 or more.");
     }
+
     float period = 0.0F;
     for (const float length : stroke.dashes) {
         if (!(length >= 0.0F) || !std::isfinite(length)) {
             period = 0.0F;
             break;
         }
+
         period += length;
     }
+
     if (!stroke.dashes.empty() && !(period > 0.0F && std::isfinite(stroke.dashOffset))) {
         throw std::invalid_argument("A dash pattern needs lengths of zero or more that add up to more than zero, and a finite offset.");
     }
@@ -46,12 +51,14 @@ int StrokeBuilder::arcSteps(float angle, float half) const noexcept {
     if (radius <= tolerance) {
         return 1;
     }
+
     // A radius so wide that its curve rounds to a straight line takes no finite step, and then the most steps.
     const float step = 2.0F * std::acos(1.0F - tolerance / radius);
     const float steps = std::ceil(std::fabs(angle) / step);
     if (!(steps < static_cast<float>(kMaxArcSteps))) {
         return kMaxArcSteps;
     }
+
     return std::max(static_cast<int>(steps), 1);
 }
 
@@ -66,9 +73,11 @@ void StrokeBuilder::build(std::span<const math::Vec2> points, const Stroke& stro
     flipped = flippedRows;
 
     collect(points, stroke);
+
     if (nodes.size() < 2) {
         return;
     }
+
     const bool closed = stroke.closed && nodes.size() > 2;
     const float total = nodes.back().distance + (closed ? math::Vec2::distance(nodes.back().position, nodes.front().position) : 0.0F);
     const float tile = stroke.textureLength > 0.0F ? stroke.textureLength : (textureSize.y > 0.0F ? stroke.width * textureSize.x / textureSize.y : 0.0F);
@@ -82,11 +91,13 @@ void StrokeBuilder::build(std::span<const math::Vec2> points, const Stroke& stro
         buildPath(nodes, closed);
         return;
     }
+
     if (closed) {
         Node end = nodes.front();
         end.distance = total;
         nodes.push_back(end);
     }
+
     buildDashes(stroke.dashes, stroke.dashOffset);
 }
 
@@ -100,10 +111,13 @@ void StrokeBuilder::collect(std::span<const math::Vec2> points, const Stroke& st
             if (step <= 1e-6F) {
                 continue;
             }
+
             node.distance = nodes.back().distance + step;
         }
+
         nodes.push_back(node);
     }
+
     if (stroke.closed && nodes.size() > 2 && math::Vec2::distance(nodes.front().position, nodes.back().position) <= 1e-6F) {
         nodes.pop_back();
     }
@@ -116,6 +130,7 @@ void StrokeBuilder::buildDashes(std::span<const float> pattern, float offset) {
     for (std::size_t entry = 0; entry < count; ++entry) {
         period += pattern[entry % pattern.size()];
     }
+
     const float total = nodes.back().distance;
     if (total / period * static_cast<float>(count) > static_cast<float>(kMaxDashes)) {
         throw std::invalid_argument("A dash pattern makes more than 65536 dashes along the stroke.");
@@ -135,6 +150,7 @@ void StrokeBuilder::buildDashes(std::span<const float> pattern, float offset) {
         const float start = std::max(position, 0.0F);
         const float end = std::min(position + length, total);
         position += length;
+
         if (entry % 2 != 0 || end < start || (length == 0.0F && cap == Stroke::Cap::Butt)) {
             continue;
         }
@@ -142,6 +158,7 @@ void StrokeBuilder::buildDashes(std::span<const float> pattern, float offset) {
         while (cursor + 1 < nodes.size() && nodes[cursor].distance < start) {
             ++cursor;
         }
+
         dash.clear();
         dash.push_back(interpolate(nodes[cursor - 1], nodes[cursor], start));
 
@@ -153,12 +170,14 @@ void StrokeBuilder::buildDashes(std::span<const float> pattern, float offset) {
             buildPath(dash, false);
             continue;
         }
+
         std::size_t last = cursor;
         for (; last + 1 < nodes.size() && nodes[last].distance < end; ++last) {
             if (nodes[last].distance > start) {
                 dash.push_back(nodes[last]);
             }
         }
+
         dash.push_back(interpolate(nodes[last - 1], nodes[last], end));
         buildPath(dash, false);
     }
@@ -170,20 +189,24 @@ void StrokeBuilder::buildPath(std::span<const Node> path, bool closed) {
     const std::size_t last = path.size() - 1;
     if (!closed) {
         addStartCap(path[0], (path[1].position - path[0].position).getNormalized());
+
         for (std::size_t index = 1; index < last; ++index) {
             addJoin(path[index - 1], path[index], path[index + 1], path[index].distance);
             emitJoint();
         }
+
         addEndCap(path[last], (path[last].position - path[last - 1].position).getNormalized());
         return;
     }
 
     addJoin(path[last], path[0], path[1], 0.0F);
     emit(joint.back());
+
     for (std::size_t index = 1; index < last; ++index) {
         addJoin(path[index - 1], path[index], path[index + 1], path[index].distance);
         emitJoint();
     }
+
     addJoin(path[last - 1], path[last], path[0], path[last].distance);
     emitJoint();
     addJoin(path[last], path[0], path[1], path[last].distance + math::Vec2::distance(path[last].position, path[0].position));
@@ -253,6 +276,7 @@ void StrokeBuilder::addStartCap(const Node& node, math::Vec2 direction) {
             part.right = -direction * std::cos(angle) - normal * std::sin(angle);
             emit(part);
         }
+
         return;
     }
 
@@ -262,12 +286,14 @@ void StrokeBuilder::addStartCap(const Node& node, math::Vec2 direction) {
     fringe.distance -= reach + pixel * 0.5F;
     fringe.fade = 0.0F;
     emit(fringe);
+
     if (reach > 0.0F) {
         Section end = section;
         end.center -= direction * reach;
         end.distance -= reach;
         emit(end);
     }
+
     emit(section);
 }
 
@@ -275,6 +301,7 @@ void StrokeBuilder::addEndCap(const Node& node, math::Vec2 direction) {
     const math::Vec2 normal = direction.getPerpendicular();
     const Section section{.center = node.position, .left = normal, .right = -normal, .half = node.half, .color = node.color, .distance = node.distance};
     emit(section);
+
     if (cap == Stroke::Cap::Round) {
         const int steps = arcSteps(std::numbers::pi_v<float> * 0.5F, node.half);
         for (int step = steps - 1; step >= 0; --step) {
@@ -284,6 +311,7 @@ void StrokeBuilder::addEndCap(const Node& node, math::Vec2 direction) {
             part.right = direction * std::cos(angle) - normal * std::sin(angle);
             emit(part);
         }
+
         return;
     }
 
@@ -294,6 +322,7 @@ void StrokeBuilder::addEndCap(const Node& node, math::Vec2 direction) {
         end.distance += reach;
         emit(end);
     }
+
     Section fringe = section;
     fringe.center += direction * (reach + pixel * 0.5F);
     fringe.distance += reach + pixel * 0.5F;
@@ -331,6 +360,7 @@ void StrokeBuilder::emit(const Section& section) {
             indices.insert(indices.end(), {previous + lane, previous + lane + 1U, base + lane + 1U, previous + lane, base + lane + 1U, base + lane});
         }
     }
+
     continues = true;
 }
 

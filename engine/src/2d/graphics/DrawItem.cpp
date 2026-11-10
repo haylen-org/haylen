@@ -24,6 +24,7 @@ std::uint64_t DrawItem::makeKey(const DrawOrder& order, int layerOffset, Rendere
     } else if (mode == Renderer::SortMode::Y) {
         inside = sortableFloat(standingY + order.sortOffset);
     }
+
     return (static_cast<std::uint64_t>(layer) << 32U) | inside;
 }
 

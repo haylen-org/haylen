@@ -22,6 +22,7 @@ class RendererStateTest : public ::testing::Test {
         if (!state.enabled) {
             return source;
         }
+
         return {mix(state, source.r, source.a, target.r), mix(state, source.g, source.a, target.g), mix(state, source.b, source.a, target.b), target.a};
     }
 
@@ -87,12 +88,14 @@ TEST_F(RendererStateTest, BlendsTheStraightColorsOfDrawsInEveryModeButPremultipl
     const math::Color solid{0.5F, 1.0F, 0.0F, 1.0F};
     EXPECT_FLOAT_EQ(blend(Mode::Multiply, solid, target).r, 0.3F);
     EXPECT_FLOAT_EQ(blend(Mode::Screen, solid, target).r, 0.8F);
+
     for (const Mode mode : {Mode::Alpha, Mode::Additive, Mode::Multiply, Mode::Screen, Mode::Premultiplied}) {
         const math::Color untouched = blend(mode, {0.0F, 0.0F, 0.0F, 0.0F}, target);
         EXPECT_FLOAT_EQ(untouched.r, target.r);
         EXPECT_FLOAT_EQ(untouched.g, target.g);
         EXPECT_FLOAT_EQ(untouched.b, target.b);
     }
+
     EXPECT_FLOAT_EQ(blend(Mode::Opaque, color, target).r, color.r);
 }
 

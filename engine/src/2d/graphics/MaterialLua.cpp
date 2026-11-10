@@ -60,6 +60,7 @@ int MaterialLua::newMaterial(lua_State* L) {
             lua_pop(L, 1);
         }
     }
+
     lua::Userdata::emplace<Material>(L, std::move(material));
     return 1;
 }
@@ -82,6 +83,7 @@ int MaterialLua::get(lua_State* L) {
         } else {
             lua_pushnil(L);
         }
+
         return 1;
     }
 
@@ -91,6 +93,7 @@ int MaterialLua::get(lua_State* L) {
         lua::Stack::push(L, values);
         return 1;
     }
+
     switch (uniform.type) {
     case Type::Float:
         lua::Stack::push(L, values[0]);

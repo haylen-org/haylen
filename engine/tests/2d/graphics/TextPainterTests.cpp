@@ -37,6 +37,7 @@ class TextPainterTest : public ::testing::Test {
         if (!options.family) {
             options.family = registry->getDefaultFamily();
         }
+
         return {markup, std::move(options), registry};
     }
 
@@ -125,6 +126,7 @@ TEST_F(TextPainterTest, DrawsEveryOutlineUnderEveryFill) {
     ASSERT_EQ(painter.getBatches().size(), 1U);
     const std::vector<GpuInstance>& instances = painter.getBatches()[0].instances;
     ASSERT_EQ(instances.size(), 8U);
+
     for (std::size_t index = 0; index < 4; ++index) {
         const GpuInstance& outline = instances[index];
         const GpuInstance& fill = instances[index + 4];
@@ -141,6 +143,7 @@ TEST_F(TextPainterTest, DrawsEveryOutlineUnderEveryFill) {
     const std::vector<TextPainter::Batch> batches = paint(rich);
     ASSERT_EQ(batches.size(), 1U);
     ASSERT_EQ(batches[0].instances.size(), 8U);
+
     for (std::size_t index = 0; index < 4; ++index) {
         EXPECT_GT(batches[0].instances[index].parameters[0], 0U);
         EXPECT_EQ(batches[0].instances[index + 4].parameters[0], 0U);
@@ -267,6 +270,7 @@ TEST_F(TextPainterTest, StretchesPlainTextByTheScaleOfItsStyle) {
     const std::vector<GpuInstance>& before = plain.getBatches()[0].instances;
     const std::vector<GpuInstance>& after = wide.getBatches()[0].instances;
     ASSERT_EQ(after.size(), before.size());
+
     for (std::size_t index = 0; index < before.size(); ++index) {
         EXPECT_FLOAT_EQ(after[index].size[0], before[index].size[0] * 2.0F);
         EXPECT_FLOAT_EQ(after[index].size[1], before[index].size[1] * 3.0F);
@@ -304,6 +308,7 @@ TEST_F(TextPainterTest, SnapsSmallTextToWholePixels) {
     const std::vector<GpuInstance>& after = snapped.getBatches()[0].instances;
     const std::vector<GpuInstance>& before = loose.getBatches()[0].instances;
     ASSERT_EQ(after.size(), layout->glyphs.size());
+
     for (std::size_t index = 0; index < after.size(); ++index) {
         EXPECT_NEAR(after[index].position[0] - before[index].position[0], 0.2F, 0.0001F);
         EXPECT_FLOAT_EQ(after[index].position[1] * 2.0F, std::round(before[index].position[1] * 2.0F));
@@ -321,6 +326,7 @@ TEST_F(TextPainterTest, SnapsSmallTextToWholePixels) {
         while (lines->glyphs[index].character >= lines->lines[line].endCharacter) {
             ++line;
         }
+
         const float left = 10.3F + lines->lines[line].box.x;
         EXPECT_NEAR(middle.getBatches()[0].instances[index].position[0] - unsnapped.getBatches()[0].instances[index].position[0], std::round(left * 2.0F) / 2.0F - left, 0.0001F);
     }

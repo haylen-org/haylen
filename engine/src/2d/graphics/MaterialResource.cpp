@@ -9,6 +9,7 @@ void MaterialResource::pack(std::vector<std::uint8_t>& bytes) const {
     using Type = graphics::Shader::UniformType;
     const std::vector<graphics::Shader::Block>& blocks = shader.getBlocks();
     const std::size_t first = bytes.size();
+
     for (const graphics::Shader::Block& block : blocks) {
         bytes.resize(bytes.size() + block.size, 0);
     }
@@ -24,6 +25,7 @@ void MaterialResource::pack(std::vector<std::uint8_t>& bytes) const {
         for (std::size_t block = 0; block < uniform.block; ++block) {
             start += blocks[block].size;
         }
+
         const auto components = static_cast<std::size_t>(graphics::Shader::getComponentCount(uniform.type));
         const std::size_t stride = graphics::Shader::getArrayStride(uniform.type);
         const bool integer = uniform.type == Type::Int || uniform.type == Type::IVec2 || uniform.type == Type::IVec3 || uniform.type == Type::IVec4;
@@ -45,9 +47,11 @@ graphics::Texture MaterialResource::getTextureAt(int slot) const {
         if (texture.slot != slot) {
             continue;
         }
+
         const auto found = textures.find(texture.name);
         return found == textures.end() ? graphics::Texture{} : found->second;
     }
+
     return {};
 }
 

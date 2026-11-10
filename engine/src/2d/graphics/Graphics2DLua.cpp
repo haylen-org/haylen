@@ -61,6 +61,7 @@ Renderer::CanvasOptions Graphics2DLua::readCanvasOptions(lua_State* L, int index
     if (lua_isnoneornil(L, index)) {
         return options;
     }
+
     luaL_checktype(L, index, LUA_TTABLE);
     const int table = lua_absindex(L, index);
     lua::Table::checkFields(L, table, {kCanvasFields});
@@ -100,8 +101,10 @@ Renderer::CanvasOptions Graphics2DLua::readCanvasOptions(lua_State* L, int index
             if (found == PostProcess::kColorVisionNames.end()) {
                 luaL_error(L, "The color vision \"%s\" is unknown. It is \"normal\", \"protanopia\", \"deuteranopia\" or \"tritanopia\".", std::string(name).c_str());
             }
+
             process.colorVision = found->second;
         }
+
         lua_pop(L, 1);
         lua::Table::readField(L, post, "correctColorVision", process.correctColorVision);
         lua::Table::readField(L, post, "grain", process.grain);
@@ -109,6 +112,7 @@ Renderer::CanvasOptions Graphics2DLua::readCanvasOptions(lua_State* L, int index
         lua::Table::readField(L, post, "materials", process.materials);
         options.postProcess = process;
     }
+
     lua_pop(L, 1);
     return options;
 }
@@ -117,6 +121,7 @@ void Graphics2DLua::assignFields(lua_State* L, int options) {
     if (lua_isnoneornil(L, options)) {
         return;
     }
+
     luaL_checktype(L, options, LUA_TTABLE);
     const int object = lua_gettop(L);
     lua_pushnil(L);
@@ -131,9 +136,11 @@ void Graphics2DLua::assignFields(lua_State* L, int options) {
 int Graphics2DLua::newSprite(lua_State* L) {
     Sprite sprite;
     sprite.texture = lua::Stack::read<graphics::Texture>(L, 1);
+
     if (!lua_isnoneornil(L, 2)) {
         luaL_checktype(L, 2, LUA_TTABLE);
     }
+
     lua_settop(L, 2);
     lua::Userdata::emplace<Sprite>(L, std::move(sprite));
     assignFields(L, 2);
@@ -144,9 +151,11 @@ int Graphics2DLua::newSprite(lua_State* L) {
 int Graphics2DLua::newParallax(lua_State* L) {
     Parallax parallax;
     parallax.texture = lua::Stack::read<graphics::Texture>(L, 1);
+
     if (!lua_isnoneornil(L, 2)) {
         luaL_checktype(L, 2, LUA_TTABLE);
     }
+
     lua_settop(L, 2);
     lua::Userdata::emplace<Parallax>(L, std::move(parallax));
     assignFields(L, 2);
@@ -196,6 +205,7 @@ int Graphics2DLua::newNineSlice(lua_State* L) {
         lua_pop(L, 1);
         slice = NineSlice::fromBorders(texture, source, {borders[0], borders[1], borders[2], borders[3]});
     }
+
     lua_pop(L, 1);
 
     lua::Table::readField(L, 2, "fill", slice.fill);
@@ -226,6 +236,7 @@ int Graphics2DLua::beginCapture(lua_State* L) {
         lua::Table::checkFields(L, 2, {kCaptureFields});
         lua::Table::readField(L, 2, "clear", clear);
     }
+
     getRenderer(L).beginCapture(lua::Userdata::check<graphics::RenderTarget>(L, 1), clear);
     return 0;
 }
@@ -266,6 +277,7 @@ int Graphics2DLua::draw(lua_State* L) {
         // clang-format on
         sprite.order = lua::TypeConverter::readDrawOrder(L, 4, {lua::TypeConverter::kSpriteInstanceFields, kDrawFields});
     }
+
     getRenderer(L).draw(sprite);
     return 0;
 }
@@ -314,6 +326,7 @@ int Graphics2DLua::drawVector(lua_State* L) {
         // clang-format on
         sprite.order = lua::TypeConverter::readDrawOrder(L, 4, {kVectorFields});
     }
+
     getRenderer(L).drawVector(image, sprite);
     return 0;
 }
@@ -323,6 +336,7 @@ int Graphics2DLua::drawBatch(lua_State* L) {
     SpriteBatchLua::Textures held;
     const std::span<const graphics::Texture> textures = SpriteBatchLua::readTextures(L, 1, held);
     SpriteBatch::checkTextures(textures);
+
     if (const core::FloatBuffer* buffer = lua::Userdata::test<core::FloatBuffer>(L, 2)) {
         luaL_checktype(L, 3, LUA_TTABLE);
         const SpriteData data = SpriteBatchLua::readSpriteData(L, 3, textures.size()).value_or(SpriteData{});
@@ -330,6 +344,7 @@ int Graphics2DLua::drawBatch(lua_State* L) {
         if (lua_getfield(L, 3, "fields") != LUA_TTABLE) {
             return luaL_error(L, "A \"drawBatch\" call with a float buffer needs the fields each sprite takes, such as \"fields = {'x', 'y'}\".");
         }
+
         const SpriteLayout layout = SpriteBatchLua::readLayout(L, -1, sprite, data);
         lua_pop(L, 1);
         getRenderer(L).drawBatch(textures, buffer->getValues(), layout, lua::TypeConverter::readDrawOrder(L, 4));
@@ -351,13 +366,16 @@ int Graphics2DLua::drawBatch(lua_State* L) {
             data.resize(sprites.size());
             data[index] = *spriteData;
         }
+
         sprites[index] = lua::TypeConverter::readSpriteInstance(L, -1, textures[spriteData ? spriteData->texture : 0], {}, {SpriteBatchLua::kPartColorFields, SpriteBatchLua::kDataFields});
         if (lua_getfield(L, -1, "partColors") != LUA_TNIL) {
             partColors.resize(sprites.size());
             partColors[index] = lua::Stack::read<PartColors>(L, -1);
         }
+
         lua_pop(L, 2);
     }
+
     getRenderer(L).drawBatch(textures, sprites, data, lua::TypeConverter::readDrawOrder(L, 3), partColors);
     return 0;
 }
@@ -421,19 +439,24 @@ int Graphics2DLua::drawPoints(lua_State* L) {
         });
         // clang-format on
     }
+
     if (color && eachColor) {
         throw std::invalid_argument("Points take either one \"color\" or \"colors\" for each point.");
     }
+
     if (eachColor && colorScratch.size() != pointScratch.size()) {
         throw std::invalid_argument(std::format("Points take one color for each of their {} points.", pointScratch.size()));
     }
+
     if (!eachColor) {
         colorScratch.push_back(color.value_or(math::Color::white()));
     }
+
     const std::size_t drawn = count.value_or(pointScratch.size());
     if (drawn > pointScratch.size()) {
         throw std::invalid_argument(std::format("The points draw {} of the {} they were given.", drawn, pointScratch.size()));
     }
+
     const std::span<const math::Color> used = eachColor ? std::span<const math::Color>(colorScratch).first(drawn) : std::span<const math::Color>(colorScratch);
     getRenderer(L).drawPoints(std::span(pointScratch).first(drawn), radius, used, order);
     return 0;
@@ -455,9 +478,11 @@ void Graphics2DLua::readRadii(lua_State* L, std::array<float, 4>& radii) {
         radii.fill(lua::Converter<float>::fromNumber(L, lua_tonumber(L, -1)));
         return;
     }
+
     if (lua_type(L, -1) != LUA_TTABLE || lua_rawlen(L, -1) != radii.size()) {
         throw std::invalid_argument("The option \"radius\" of a shape takes one radius for every corner or four, from the top-left corner clockwise.");
     }
+
     for (std::size_t corner = 0; corner < radii.size(); ++corner) {
         lua_rawgeti(L, -1, static_cast<lua_Integer>(corner + 1));
         lua::Table::readValue(L, "radius", radii[corner]);
@@ -496,6 +521,7 @@ int Graphics2DLua::drawShape(lua_State* L) {
         });
         // clang-format on
     }
+
     getRenderer(L).drawShape(shape, lua::TypeConverter::readDrawOrder(L, 2, {kShapeFields}));
     return 0;
 }
@@ -524,6 +550,7 @@ int Graphics2DLua::drawMesh(lua_State* L) {
     if (lua_istable(L, 4)) {
         lua::Table::readField(L, 4, "fadeEdges", fadeEdges);
     }
+
     getRenderer(L).drawMesh(texture, vertices, indices, lua::TypeConverter::readDrawOrder(L, 4, {kMeshFields}), fadeEdges);
     return 0;
 }
@@ -539,6 +566,7 @@ int Graphics2DLua::drawText(lua_State* L) {
     } else {
         getRenderer(L).drawText(fontArgument(L, 1), content, position, style, order);
     }
+
     return 0;
 }
 
@@ -565,6 +593,7 @@ int Graphics2DLua::drawNineSlice(lua_State* L) {
         });
         // clang-format on
     }
+
     getRenderer(L).drawNineSlice(lua::Userdata::check<NineSlice>(L, 1), lua::Stack::read<math::Rect>(L, 2), color, lua::TypeConverter::readDrawOrder(L, 4, {kNineSliceDrawFields}), borderScale);
     return 0;
 }
@@ -581,6 +610,7 @@ int Graphics2DLua::drawOccluder(lua_State* L) {
         getRenderer(L).drawOccluder(*occluder);
         return 0;
     }
+
     lighting2d::OccluderLua::read(L, 1, occluderScratch);
     getRenderer(L).drawOccluder(occluderScratch);
     return 0;
@@ -617,6 +647,7 @@ int Graphics2DLua::drawMetaballs(lua_State* L) {
         });
         // clang-format on
     }
+
     getRenderer(L).drawMetaballs(points, lua::Stack::read<float>(L, 2), style, lua::TypeConverter::readDrawOrder(L, 3, {kMetaballFields}));
     return 0;
 }
@@ -648,6 +679,7 @@ int Graphics2DLua::drawImageBlend(lua_State* L) {
         });
         // clang-format on
     }
+
     getRenderer(L).drawImageBlend(blend, lua::TypeConverter::readDrawOrder(L, 4, {kImageBlendFields}));
     return 0;
 }
@@ -701,6 +733,7 @@ int Graphics2DLua::stats(lua_State* L) {
         lua::Stack::push(L, value);
         lua_setfield(L, -2, name);
     }
+
     return 1;
 }
 
@@ -726,6 +759,7 @@ int Graphics2DLua::drawn(lua_State* L) {
             lua::Stack::push(L, item.label);
             lua_setfield(L, -2, "label");
         }
+
         lua_rawseti(L, -2, ++count);
     });
     // clang-format on

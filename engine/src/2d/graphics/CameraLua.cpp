@@ -36,6 +36,7 @@ float CameraLua::readSeconds(lua_State* L, int index) {
     if (!(seconds >= 0.0F && std::isfinite(seconds))) {
         throw std::invalid_argument("A camera moves forward by a number of seconds that is finite and not negative.");
     }
+
     return seconds;
 }
 
@@ -148,6 +149,7 @@ int CameraLua::getDragMargins(lua_State* L) {
         lua::Stack::push(L, value);
         lua_setfield(L, -2, name);
     }
+
     return 1;
 }
 
@@ -162,6 +164,7 @@ int CameraLua::setDeadZone(lua_State* L) {
     if (!(value.x >= 0.0F && value.y >= 0.0F)) {
         throw std::invalid_argument("The dead zone of a camera cannot be negative.");
     }
+
     lua::Userdata::check<Camera>(L, 1).deadZone = value;
     return 0;
 }
@@ -171,6 +174,7 @@ int CameraLua::setDragMargins(lua_State* L) {
     if (!(value.left >= 0.0F && value.top >= 0.0F && value.right >= 0.0F && value.bottom >= 0.0F)) {
         throw std::invalid_argument("The drag margins of a camera cannot be negative.");
     }
+
     lua::Userdata::check<Camera>(L, 1).dragMargins = value;
     return 0;
 }

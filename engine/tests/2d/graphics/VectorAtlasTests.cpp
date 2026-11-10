@@ -67,6 +67,7 @@ TEST_F(VectorAtlasTest, StartsTheLeastRecentPageOverWhenFull) {
         images.push_back(square());
         rasters.push_back(atlas.find(images.back(), large, index + 1));
     }
+
     EXPECT_EQ(atlas.getPageCount(), VectorAtlas::kMaxPages);
 
     images.push_back(square());

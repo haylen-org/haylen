@@ -30,6 +30,7 @@ void MeshFringe::build(std::span<const GpuVertex> meshVertices, std::span<const 
         if (math::Vec2::cross(places[1] - places[0], places[2] - places[0]) == 0.0F) {
             continue;
         }
+
         for (std::size_t side = 0; side < 3; ++side) {
             const std::size_t next = (side + 1) % 3;
             const math::Vec2 delta = places[next] - places[side];
@@ -37,6 +38,7 @@ void MeshFringe::build(std::span<const GpuVertex> meshVertices, std::span<const 
             if (math::Vec2::dot(normal, places[(side + 2) % 3] - places[side]) > 0.0F) {
                 normal = -normal;
             }
+
             const std::array<std::uint32_t, 2> start = keyOf(meshVertices[points[side]]);
             const std::array<std::uint32_t, 2> end = keyOf(meshVertices[points[next]]);
             const std::array<std::uint32_t, 4> key = start < end ? std::array{start[0], start[1], end[0], end[1]} : std::array{end[0], end[1], start[0], start[1]};
@@ -52,9 +54,11 @@ void MeshFringe::build(std::span<const GpuVertex> meshVertices, std::span<const 
         while (end < edges.size() && edges[end].key == edges[start].key) {
             ++end;
         }
+
         if (end - start == 1) {
             outline.push_back(edges[start]);
         }
+
         start = end;
     }
 
@@ -65,6 +69,7 @@ void MeshFringe::build(std::span<const GpuVertex> meshVertices, std::span<const 
         corners.push_back({.key = keyOf(vertices[edge.from]), .normal = edge.normal});
         corners.push_back({.key = keyOf(vertices[edge.to]), .normal = edge.normal});
     }
+
     std::ranges::sort(corners, {}, &Corner::key);
     std::size_t kept = 0;
     for (std::size_t start = 0; start < corners.size();) {
@@ -74,10 +79,12 @@ void MeshFringe::build(std::span<const GpuVertex> meshVertices, std::span<const 
             sum += corners[end].normal;
             ++end;
         }
+
         const math::Vec2 offset = end - start == 2 ? PolygonMesh::getOffset(corners[start].normal, corners[start + 1].normal, half, half, half * kMiterLimit) : sum.getNormalized() * half;
         corners[kept++] = {.key = corners[start].key, .offset = offset};
         start = end;
     }
+
     corners.resize(kept);
 
     // The outline moves half a pixel in, and every edge of it gains a fringe whose outer side fades to nothing half a pixel out.
@@ -87,8 +94,10 @@ void MeshFringe::build(std::span<const GpuVertex> meshVertices, std::span<const 
             vertex.position[1] -= corner->offset.y;
         }
     }
+
     for (const Edge& edge : outline) {
         const auto base = static_cast<std::uint32_t>(vertices.size());
+
         for (const std::uint32_t point : {edge.from, edge.to}) {
             GpuVertex outer = vertices[point];
             const Corner& corner = *findCorner(meshVertices[point]);
@@ -97,6 +106,7 @@ void MeshFringe::build(std::span<const GpuVertex> meshVertices, std::span<const 
             outer.color &= 0x00FFFFFFU;
             vertices.push_back(outer);
         }
+
         indices.insert(indices.end(), {edge.from, edge.to, base + 1U, edge.from, base + 1U, base});
     }
 }

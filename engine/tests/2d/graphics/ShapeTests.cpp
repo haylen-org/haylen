@@ -130,6 +130,7 @@ TEST_F(ShapeCanvasTest, ReachesOnePixelPastTheEdgeAtEveryScale) {
         math::Vec2 view;
         float zoom = 1.0F;
     };
+
     for (const Case& scale : {Case{{1280.0F, 720.0F}, {1920.0F, 1080.0F}, 1.0F}, Case{{2560.0F, 1440.0F}, {1920.0F, 1080.0F}, 2.0F}, Case{{960.0F, 540.0F}, {960.0F, 540.0F}, 0.5F}, Case{{3200.0F, 1800.0F}, {800.0F, 450.0F}, 3.0F}}) {
         open(scale.pixels, scale.view, scale.zoom);
         const float pixelsPerUnit = scale.pixels.x / scale.view.x * scale.zoom;
@@ -137,8 +138,10 @@ TEST_F(ShapeCanvasTest, ReachesOnePixelPastTheEdgeAtEveryScale) {
             state.addShape({.bounds = {0.0F, 0.0F, 10.0F, 10.0F}, .radii = {5.0F, 5.0F, 5.0F, 5.0F}, .softness = softness}, {});
             EXPECT_NEAR((half(state.instances.back(), 22) - softness * 0.5F) * pixelsPerUnit, 1.0F, 0.02F) << pixelsPerUnit;
         }
+
         state.closeCanvas();
     }
+
     EXPECT_EQ(state.items.back().program, Program::Shape);
     state.resetFrame();
 }
@@ -156,6 +159,7 @@ TEST(PolygonMeshTest, FadesTheEdgeOverOnePixelAtEveryScale) {
             const std::vector<GpuVertex>& vertices = mesh.getVertices();
             ASSERT_EQ(vertices.size(), 8U);
             EXPECT_EQ(mesh.getIndices().size(), 6U + 4U * 6U);
+
             for (std::size_t corner = 0; corner < 4; ++corner) {
                 const GpuVertex& inner = vertices[corner * 2];
                 const GpuVertex& outer = vertices[corner * 2 + 1];
@@ -187,6 +191,7 @@ TEST(PolygonMeshTest, FadesHolesAndJoinsPiecesWithoutASeam) {
     const std::vector<GpuVertex>& vertices = mesh.getVertices();
     ASSERT_EQ(vertices.size(), 16U);
     EXPECT_EQ(mesh.getIndices().size(), 8U * 3U + 8U * 6U);
+
     for (std::size_t corner = 4; corner < 8; ++corner) {
         const math::Vec2 inner{vertices[corner * 2].position[0], vertices[corner * 2].position[1]};
         const math::Vec2 outer{vertices[corner * 2 + 1].position[0], vertices[corner * 2 + 1].position[1]};
@@ -198,6 +203,7 @@ TEST(PolygonMeshTest, FadesHolesAndJoinsPiecesWithoutASeam) {
     const std::vector<math::Vec2> pieces{{0.0F, 0.0F}, {10.0F, 0.0F}, {10.0F, 10.0F}, {0.0F, 10.0F}, {10.0F, 0.0F}, {20.0F, 0.0F}, {20.0F, 10.0F}, {10.0F, 10.0F}};
     mesh.build(pieces, counts, color, 2.0F);
     EXPECT_EQ(mesh.getIndices().size(), 4U * 3U + 6U * 6U);
+
     for (const std::size_t corner : {1U, 2U, 4U, 7U}) {
         EXPECT_FLOAT_EQ(mesh.getVertices()[corner * 2].position[0], 10.0F) << corner;
         EXPECT_FLOAT_EQ(mesh.getVertices()[corner * 2 + 1].position[0], 10.0F) << corner;

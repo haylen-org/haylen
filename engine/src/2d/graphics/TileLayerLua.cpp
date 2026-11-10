@@ -22,6 +22,7 @@ int TileLayerLua::create(lua_State* L) {
     } else {
         textures = lua::Stack::read<std::vector<graphics::Texture>>(L, 1);
     }
+
     TileLayer::Options options;
     if (!lua_isnoneornil(L, 2)) {
         luaL_checktype(L, 2, LUA_TTABLE);
@@ -30,6 +31,7 @@ int TileLayerLua::create(lua_State* L) {
         lua::Table::readField(L, 2, "cellHeight", options.cellSize.y);
         lua::Table::readField(L, 2, "chunkSize", options.chunkSize);
     }
+
     lua::Userdata::emplace<TileLayer>(L, std::make_shared<TileLayer>(std::move(textures), options));
     return 1;
 }

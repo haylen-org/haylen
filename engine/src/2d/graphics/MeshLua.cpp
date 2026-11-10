@@ -72,6 +72,7 @@ int MeshLua::createGrid(lua_State* L) {
         lua::Table::readField(L, 4, "height", area.height);
         lua::Table::readField(L, 4, "source", source);
     }
+
     lua::Userdata::emplace<Mesh>(L, std::make_shared<Mesh>(Mesh::grid(std::move(texture), columns, rows, area, source)));
     return 1;
 }
@@ -87,10 +88,12 @@ int MeshLua::setPositions(lua_State* L) {
     Mesh& mesh = lua::Userdata::check<Mesh>(L, 1);
     const auto first = static_cast<std::size_t>(luaL_optinteger(L, 3, 1));
     luaL_argcheck(L, first >= 1, 3, "vertices count from 1");
+
     if (const core::FloatBuffer* buffer = lua::Userdata::test<core::FloatBuffer>(L, 2)) {
         mesh.setPositions(buffer->getValues(), first - 1);
         return 0;
     }
+
     StrokeLua::readNumbers(L, 2, "positions", positionScratch);
     mesh.setPositions(positionScratch, first - 1);
     return 0;
@@ -163,6 +166,7 @@ int MeshLua::draw(lua_State* L) {
         });
         // clang-format on
     }
+
     lua::Runtime::getEngine(L).getRenderer2D().drawMesh(mesh, lua::TypeConverter::readDrawOrder(L, 4, {kDrawFields}), math::Transform2D::compose(position, rotation, scale), fadeEdges);
     return 0;
 }
@@ -188,6 +192,7 @@ int MeshLua::getTexture(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, texture);
     return 1;
 }

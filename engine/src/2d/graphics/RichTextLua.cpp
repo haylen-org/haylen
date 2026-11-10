@@ -38,6 +38,7 @@ text::RichTextOptions RichTextLua::readOptions(lua_State* L, int index, std::ini
     if (lua_isnoneornil(L, index)) {
         return options;
     }
+
     luaL_checktype(L, index, LUA_TTABLE);
     // clang-format off
     lua::Table::readFields(L, index, kOptionFields, extraFields, [L, &options, fontNames](std::string_view key) {
@@ -90,12 +91,15 @@ std::function<std::shared_ptr<text::FontFamily>(std::string_view)> RichTextLua::
         if (lua_type(L, -2) != LUA_TSTRING) {
             luaL_error(L, "The \"fonts\" option maps font names to families, so its keys must be strings.");
         }
+
         fonts.insert_or_assign(lua::Stack::read<std::string>(L, -2), graphics::FontLua::readFamily(L, lua_gettop(L)));
         lua_pop(L, 1);
     }
+
     if (fontNames != nullptr) {
         fontNames->assign(fonts.begin(), fonts.end());
     }
+
     // clang-format off
     return [fonts = std::move(fonts)](std::string_view name) -> std::shared_ptr<text::FontFamily> {
         const auto found = fonts.find(name);
@@ -116,6 +120,7 @@ math::Color RichTextLua::readTint(lua_State* L, int index) {
     if (!lua_isnoneornil(L, index)) {
         lua::Table::readFields(L, index, kTintFields, {kOptionFields, lua::TypeConverter::kDrawOrderFields}, [L, &tint](std::string_view key) { lua::Table::readValue(L, key, tint); });
     }
+
     return tint;
 }
 
@@ -152,6 +157,7 @@ void RichTextLua::runEffect(const lua::Reference& function, text::Effect::Glyph&
             lua_pushnumber(L, value);
             lua_setfield(L, table, name);
         }
+
         lua_pushinteger(L, static_cast<lua_Integer>(glyph.index + 1));
         lua_setfield(L, table, "index");
         lua_pushinteger(L, static_cast<lua_Integer>(glyph.character + 1));
@@ -172,6 +178,7 @@ void RichTextLua::runEffect(const lua::Reference& function, text::Effect::Glyph&
             if (lua_stringtonumber(L, value.c_str()) == 0) {
                 lua::Stack::push(L, value);
             }
+
             lua_setfield(L, -2, key.c_str());
         }
 
@@ -206,6 +213,7 @@ int RichTextLua::registerTextIcon(lua_State* L) {
         lua::Table::readField(L, 3, "width", icon.size.x);
         lua::Table::readField(L, 3, "height", icon.size.y);
     }
+
     getRegistry(L)->registerIcon(std::move(name), std::move(icon));
     return 0;
 }
@@ -236,6 +244,7 @@ int RichTextLua::draw(lua_State* L) {
         });
         // clang-format on
     }
+
     lua::Runtime::getEngine(L).getRenderer2D().drawRichText(lua::Userdata::check<text::RichText>(L, 1), {lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)}, order, scale, tint);
     return 0;
 }
@@ -308,8 +317,10 @@ int RichTextLua::frame(lua_State* L) {
             lua::Stack::push(L, glyph.image);
             lua_setfield(L, -2, "image");
         }
+
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     lua_setfield(L, -2, "glyphs");
 
     constexpr std::array<std::string_view, 6> kKinds{"background", "underline", "strike", "rule", "cellBackground", "cellBorder"};
@@ -327,6 +338,7 @@ int RichTextLua::frame(lua_State* L) {
         lua_setfield(L, -2, "visible");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     lua_setfield(L, -2, "boxes");
 
     lua_createtable(L, static_cast<int>(frame.images.size()), 0);
@@ -340,6 +352,7 @@ int RichTextLua::frame(lua_State* L) {
         lua_setfield(L, -2, "visible");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     lua_setfield(L, -2, "images");
 
     // clang-format off
@@ -375,6 +388,7 @@ int RichTextLua::frame(lua_State* L) {
         lua_setfield(L, -2, "rightToLeft");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     lua_setfield(L, -2, "characters");
 
     lua_createtable(L, static_cast<int>(frame.lines.size()), 0);
@@ -389,6 +403,7 @@ int RichTextLua::frame(lua_State* L) {
         lua_setfield(L, -2, "rightToLeft");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     lua_setfield(L, -2, "lines");
     return 1;
 }

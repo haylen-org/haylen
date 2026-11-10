@@ -158,6 +158,7 @@ TEST_F(SpriteDataTest, DrawsFramesWithoutAllocating) {
         batch.add({.position = {static_cast<float>(index), 0.0F}, .size = {4.0F, 4.0F}});
         batch.setData(static_cast<std::size_t>(index), {.texture = static_cast<std::uint8_t>(index % 3), .values = {static_cast<float>(index)}});
     }
+
     // clang-format off
     fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&batch](core::Engine& engine) {
         engine.getRenderer2D().beginWorld(Camera{}, {.sort = Renderer::SortMode::Y});

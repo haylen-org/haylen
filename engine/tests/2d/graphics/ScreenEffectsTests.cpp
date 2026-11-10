@@ -145,9 +145,11 @@ TEST(ScreenEffectsTest, SpriteEffectsDrawInOneCallPerTexture) {
     const Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
         Renderer& renderer = engine.getRenderer2D();
         renderer.beginWorld(Camera{});
+
         for (int index = 0; index < 4; ++index) {
             renderer.draw({.texture = texture, .position = {static_cast<float>(index) * 20.0F, 0.0F}, .effect = {.dissolve = 0.25F * static_cast<float>(index), .outlineWidth = 2.0F, .glowSize = static_cast<float>(index) * 3.0F}});
         }
+
         renderer.draw({.texture = texture});
         renderer.beginWorld(Camera{}, {.ambientLight = math::Color::black()});
         renderer.draw({.texture = texture, .effect = {.glowSize = 8.0F, .glowColor = math::Color{1.0F, 0.8F, 0.2F, 1.0F}}});

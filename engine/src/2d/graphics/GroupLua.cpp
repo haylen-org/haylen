@@ -19,6 +19,7 @@ int GroupLua::beginGroup(lua_State* L) {
         options.order = lua::TypeConverter::readDrawOrder(L, 1, {kGroupFields});
         lua::Table::readField(L, 1, "opacity", options.opacity);
     }
+
     lua::Runtime::getEngine(L).getRenderer2D().beginGroup(options);
     return 0;
 }
@@ -35,6 +36,7 @@ int GroupLua::beginMask(lua_State* L) {
         order = lua::TypeConverter::readDrawOrder(L, 1, {kMaskFields});
         lua::Table::readField(L, 1, "mode", mode);
     }
+
     lua::Runtime::getEngine(L).getRenderer2D().pushMask(mode, order);
     return 0;
 }
@@ -77,6 +79,7 @@ GroupLua::MaskCloser& GroupLua::pushCloser(lua_State* L) {
         lua_pushvalue(L, -1);
         lua_setfield(L, LUA_REGISTRYINDEX, kClosersKey);
     }
+
     const int closers = lua_gettop(L);
 
     for (lua_Integer level = 1;; ++level) {
@@ -95,6 +98,7 @@ GroupLua::MaskCloser& GroupLua::pushCloser(lua_State* L) {
             lua_remove(L, closers);
             return closer;
         }
+
         lua_pop(L, 1);
     }
 }

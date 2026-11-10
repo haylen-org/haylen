@@ -35,6 +35,7 @@ TEST(GpuInstanceTest, PacksSourcesThatReachPastTheTexture) {
         for (std::size_t index = 0; index < corners.size(); ++index) {
             corners[index] = static_cast<float>(packed.uv[index]) / 65535.0F * span - shift;
         }
+
         return corners;
     };
     // clang-format on

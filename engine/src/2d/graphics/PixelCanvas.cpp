@@ -17,6 +17,7 @@ PixelCanvas::PixelCanvas(graphics::Device& device, int width, int height, Option
     if (width > largest || height > largest) {
         throw std::invalid_argument(std::format("A pixel canvas has at most {} pixels on a side on this device, and {} by {} pixels is larger.", largest, width, height));
     }
+
     target = device.createRenderTarget(width + 2, height + 2);
 }
 
@@ -28,9 +29,11 @@ void PixelCanvas::begin(Renderer& renderer, const Camera& camera, const Renderer
     const math::Vec2 zoom = camera.getZoom();
     const math::Vec2 exact = camera.getRenderPosition() * zoom;
     fraction = options.smooth ? exact - math::Vec2::round(exact) : math::Vec2{};
+
     if (snapped.anchor == Camera::Anchor::TopLeft) {
         snapped.position -= math::Vec2{1.0F, 1.0F} / zoom;
     }
+
     renderer.beginTarget(target, snapped, canvasOptions);
 }
 

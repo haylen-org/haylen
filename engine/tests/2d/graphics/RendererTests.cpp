@@ -54,9 +54,11 @@ TEST(RendererTest, BatchesSpritesByTextureAndLayer) {
     const graphics2d::Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
         graphics2d::Renderer& renderer = engine.getRenderer2D();
         renderer.beginScreen();
+
         for (int index = 0; index < 10; ++index) {
             renderer.draw({.texture = first, .position = {static_cast<float>(index), 0.0F}});
         }
+
         renderer.draw({.texture = second, .order = {.layer = -1}});
         renderer.draw({.texture = first, .source = {0.0F, 0.0F, 8.0F, 8.0F}, .scale = {2.0F, 2.0F}, .flip = {.horizontal = true, .diagonal = true}, .order = {.blend = graphics::BlendMode::Type::Additive}});
     });
@@ -143,6 +145,7 @@ TEST(RendererTest, BlendsEveryColorOfALitPassAlike) {
         for (const Mode mode : {Mode::Alpha, Mode::Additive, Mode::Multiply, Mode::Screen, Mode::Premultiplied, Mode::Opaque}) {
             renderer.draw({.texture = texture, .position = {0.0F, 0.0F}, .order = {.layer = layer++, .blend = mode, .emission = 0.5F}});
         }
+
         renderer.drawLight({.position = {0.0F, 0.0F}, .radius = 100.0F});
     });
     // clang-format on
@@ -160,6 +163,7 @@ TEST(RendererTest, RendersLitWorldsTargetsAndStaticBatches) {
     for (std::size_t index = 0; index < sprites.size(); ++index) {
         sprites[index] = {.position = {static_cast<float>(index % 100), static_cast<float>(index / 100)}, .size = {4.0F, 4.0F}};
     }
+
     const graphics2d::StaticSpriteBatch batch = engine.getRenderer2D().createStaticBatch(texture, std::span(sprites).first(100));
     EXPECT_EQ(batch.size(), 100U);
     EXPECT_GT(batch.getBounds().width, 0.0F);
@@ -236,11 +240,14 @@ TEST(RendererTest, MergesDrawsThatShadeAndClipAlike) {
     const graphics2d::Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
         graphics2d::Renderer& renderer = engine.getRenderer2D();
         renderer.beginWorld(graphics2d::Camera{}, {.ambientLight = math::Color::white()});
+
         for (int index = 0; index < 8; ++index) {
             renderer.draw({.texture = texture, .order = {.layer = 0}});
             renderer.draw({.texture = texture, .order = {.layer = 1}});
         }
+
         renderer.beginScreen();
+
         for (int index = 0; index < 8; ++index) {
             renderer.pushClip({0.0F, 0.0F, 100.0F, 100.0F});
             renderer.draw({.texture = texture});
@@ -309,6 +316,7 @@ TEST(RendererTest, EndsTheFrameWhenAMaterialFailsInsideAPass) {
     for (const std::string_view name : graphics2d::Material::kPrograms) {
         document["programs"][std::string(name)] = program;
     }
+
     const graphics2d::Material material{graphics::Shader::parse(test::TestFiles::bytes(document.dump()))};
     const graphics::Texture white = fixture.engine().getGraphics().getWhiteTexture();
 
@@ -376,6 +384,7 @@ TEST(RendererTest, OrdersDrawsThatSortTheSameByTheirSortIds) {
         return test::FrameRenderer::renderOnce(fixture, [&, reversed, ids](core::Engine& engine) {
             graphics2d::Renderer& renderer = engine.getRenderer2D();
             renderer.beginWorld(graphics2d::Camera{}, {.sort = graphics2d::Renderer::SortMode::Y});
+
             for (int step = 0; step < 4; ++step) {
                 const int index = reversed ? 3 - step : step;
                 const bool even = index % 2 == 0;
@@ -637,6 +646,7 @@ TEST(RendererTest, DrawsNeighbouringLightsAlikeInOneCall) {
             graphics2d::Renderer& renderer = engine.getRenderer2D();
             renderer.beginWorld(graphics2d::Camera{}, {.ambientLight = math::Color::black()});
             renderer.draw({.texture = texture});
+
             for (const Light& light : lights) {
                 renderer.drawLight(light);
             }
@@ -725,6 +735,7 @@ TEST(RendererTest, DrawsEveryKindOfDrawWithoutAllocating) {
     for (int index = 0; index < 100; ++index) {
         batch.add({.position = {static_cast<float>(index), 10.0F}, .size = {4.0F, 4.0F}});
     }
+
     const graphics2d::StaticSpriteBatch baked = batch.bake(engine.getRenderer2D());
     const std::vector<math::Vec2> line{{0.0F, 0.0F}, {40.0F, 10.0F}, {80.0F, 0.0F}};
     const math::Color dotColor = math::Color::white();
@@ -865,6 +876,7 @@ TEST(RendererTest, CombinesTheEdgesOfNestedFades) {
     for (std::size_t level = 1; level < graphics2d::Renderer::kMaxFadeEdges / 2; ++level) {
         state.pushFade({0.0F, 0.0F, 100.0F, 400.0F}, page);
     }
+
     EXPECT_EQ(state.fades[state.getFade(0) - 1U].second, graphics2d::Renderer::kMaxFadeEdges);
     state.pushFade({0.0F, 0.0F, 100.0F, 400.0F}, {.length = 20.0F, .left = 1.0F});
     EXPECT_THROW((void)state.getFade(0), std::length_error);

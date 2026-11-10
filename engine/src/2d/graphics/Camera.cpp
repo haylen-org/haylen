@@ -43,6 +43,7 @@ Camera Camera::blend(const Camera& from, const Camera& to, float amount) {
     if (from.viewport && to.viewport) {
         result.viewport = math::Rect::fromMinMax(math::Vec2::lerp(from.viewport->getMin(), to.viewport->getMin(), amount), math::Vec2::lerp(from.viewport->getMax(), to.viewport->getMax(), amount));
     }
+
     result.goal = result.position;
     result.following = false;
     return result;
@@ -52,6 +53,7 @@ void Camera::setZoom(math::Vec2 value) {
     if (std::isnan(value.x) || std::isnan(value.y)) {
         throw std::invalid_argument("The camera zoom must be a number.");
     }
+
     zoom = {std::clamp(value.x, minZoom, maxZoom), std::clamp(value.y, minZoom, maxZoom)};
 }
 
@@ -59,6 +61,7 @@ void Camera::setMinZoom(float value) {
     if (!(value > 0.0F && value <= maxZoom)) {
         throw std::invalid_argument("The smallest zoom must be above 0 and not above the largest zoom.");
     }
+
     minZoom = value;
     setZoom(zoom);
 }
@@ -67,6 +70,7 @@ void Camera::setMaxZoom(float value) {
     if (!(value >= minZoom)) {
         throw std::invalid_argument("The largest zoom must not be below the smallest zoom.");
     }
+
     maxZoom = value;
     setZoom(zoom);
 }
@@ -93,9 +97,11 @@ math::Vec2 Camera::getRestingPoint(math::Vec2 target, math::Vec2 worldView) cons
     if (!dragHorizontal) {
         resting.x += half.x * (dragOffset.x < 0.0F ? dragMargins.right : dragMargins.left) * dragOffset.x;
     }
+
     if (!dragVertical) {
         resting.y += half.y * (dragOffset.y < 0.0F ? dragMargins.bottom : dragMargins.top) * dragOffset.y;
     }
+
     return resting;
 }
 
@@ -122,6 +128,7 @@ void Camera::moveGoal(math::Vec2 target, math::Vec2 worldView) noexcept {
         goal = target;
         return;
     }
+
     const math::Vec2 resting = getRestingPoint(target, worldView);
     const math::Insets slack = getSlack(worldView);
     goal.x = std::clamp(goal.x, resting.x - slack.right, resting.x + slack.left);
@@ -130,6 +137,7 @@ void Camera::moveGoal(math::Vec2 target, math::Vec2 worldView) noexcept {
 
 void Camera::follow(math::Vec2 target, float deltaSeconds, const math::Rect& screen) noexcept {
     const math::Vec2 worldView = getWorldView(screen);
+
     if (!following) {
         following = true;
         lastTarget = target;
@@ -142,6 +150,7 @@ void Camera::follow(math::Vec2 target, float deltaSeconds, const math::Rect& scr
         const math::Vec2 wanted = ((target - lastTarget) * (lookAheadTime / deltaSeconds)).clampedLength(maxLookAhead);
         lead += (wanted - lead) * math::Math::dampFactor(lookAheadSmoothingSpeed, deltaSeconds);
     }
+
     lastTarget = target;
     moveGoal(target + lead, worldView);
 
@@ -186,6 +195,7 @@ void Camera::update(float deltaSeconds) noexcept {
         shakeAngle = 0.0F;
         return;
     }
+
     shakeOffset = math::Vec2{noise.simplex(phase, 1.0F), noise.simplex(phase, 2.0F)} * (maxShakeOffset * strength);
     shakeAngle = noise.simplex(phase, 3.0F) * maxShakeAngle * strength;
 }
@@ -198,16 +208,19 @@ void Camera::resetSmoothing(const math::Rect& screen) noexcept {
     if (following) {
         position = clampPoint(goal, getWorldView(screen));
     }
+
     smoothedRotation = rotation;
 }
 
 void Camera::align(const math::Rect& screen) noexcept {
     const math::Vec2 worldView = getWorldView(screen);
+
     if (!following) {
         following = true;
         lastTarget = position;
         lead = {};
     }
+
     goal = anchor == Anchor::TopLeft ? lastTarget + lead : getRestingPoint(lastTarget + lead, worldView);
 }
 
@@ -249,6 +262,7 @@ math::Color Camera::getFlash() const noexcept {
     if (!(flashLeft > 0.0F)) {
         return math::Color::transparent();
     }
+
     const float left = flashLeft / flashLength;
     return flashColor.withAlpha(flashColor.a * left * left);
 }
@@ -294,9 +308,11 @@ void Camera::drawDebug(Renderer& renderer, const math::Rect& screen, const DrawO
     const math::Rect view = getViewRect(screen);
     const std::array<math::Vec2, 4> corners{screenToWorld(view.getMin(), screen), screenToWorld({view.getRight(), view.getTop()}, screen), screenToWorld(view.getMax(), screen), screenToWorld({view.getLeft(), view.getBottom()}, screen)};
     renderer.drawPolyline(corners, thickness, math::Color::fromHex(0xFFFFFFC0U), true, order);
+
     if (limits) {
         renderer.drawRectOutline(*limits, thickness, math::Color::fromHex(0xFF5A4AE0U), order);
     }
+
     if (anchor == Anchor::TopLeft) {
         return;
     }
@@ -308,6 +324,7 @@ void Camera::drawDebug(Renderer& renderer, const math::Rect& screen, const DrawO
     const math::Vec2 anchorPoint = following ? goal : position;
     const math::Rect box = math::Rect::fromMinMax(anchorPoint - math::Vec2{slack.left, slack.top} - rest, anchorPoint + math::Vec2{slack.right, slack.bottom} - rest);
     renderer.drawRectOutline(box, thickness, math::Color::fromHex(0xFFD84AE0U), order);
+
     if (following) {
         const float arm = thickness * 6.0F;
         renderer.drawLine(lastTarget - math::Vec2{arm, 0.0F}, lastTarget + math::Vec2{arm, 0.0F}, thickness, math::Color::fromHex(0x4AD8FFFFU), order);

@@ -36,6 +36,7 @@ TEST_F(MeshFringeTest, FadesTheOutlineOverOnePixel) {
     EXPECT_EQ(fringe.getIndices().size(), 6U + 4U * 6U);
     EXPECT_FLOAT_EQ(fringe.getVertices()[0].position[0], 0.5F);
     EXPECT_FLOAT_EQ(fringe.getVertices()[2].position[1], 9.5F);
+
     for (std::size_t index = 4; index < fringe.getVertices().size(); ++index) {
         const GpuVertex& outer = fringe.getVertices()[index];
         EXPECT_EQ(outer.color >> 24U, 0U);

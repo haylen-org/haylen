@@ -104,6 +104,7 @@ TEST_F(CameraTest, LooksAheadOfAMovingTarget) {
     camera.lookAheadSmoothingSpeed = 1000.0F;
     camera.maxLookAhead = 1000.0F;
     camera.snapTo({}, kScreen);
+
     for (int step = 1; step <= 10; ++step) {
         camera.follow({static_cast<float>(step) * 10.0F, 0.0F}, 0.1F, kScreen);
     }

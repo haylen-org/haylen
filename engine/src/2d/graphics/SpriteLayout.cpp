@@ -20,9 +20,11 @@ SpriteLayout::SpriteLayout(std::span<const Field> layoutFields, const SpriteInst
         if (std::find(fields.begin(), named, field) != named) {
             throw std::invalid_argument(std::format("A sprite layout names each field once, and \"{}\" comes twice.", fieldName(field)));
         }
+
         fields[fieldCount] = field;
         ++fieldCount;
     }
+
     dataFields = std::any_of(fields.begin(), fields.begin() + static_cast<std::ptrdiff_t>(fieldCount), &SpriteLayout::isDataField);
 }
 
@@ -44,6 +46,7 @@ SpriteInstance SpriteLayout::makeSprite(std::span<const float> values, std::size
             select(fields[field], sprite) = source[field];
         }
     }
+
     return sprite;
 }
 
@@ -55,6 +58,7 @@ SpriteData SpriteLayout::makeData(std::span<const float> values, std::size_t ind
             setData(fields[field], source[field], data);
         }
     }
+
     return data;
 }
 
@@ -88,6 +92,7 @@ void SpriteLayout::setData(Field field, float value, SpriteData& data) noexcept 
         data.texture = static_cast<std::uint8_t>(std::lround(std::clamp(value, 1.0F, 256.0F)) - 1);
         return;
     }
+
     data.values[dataSlot(field)] = value;
 }
 

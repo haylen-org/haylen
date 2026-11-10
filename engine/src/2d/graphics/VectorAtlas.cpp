@@ -58,6 +58,7 @@ void VectorAtlas::request(const graphics::VectorImage& image, int step) {
     if (!pending.emplace(image.getId(), step).second) {
         return;
     }
+
     // clang-format off
     jobs.post([owner = std::weak_ptr<Link>(link), image, step, queue = &jobs] {
         graphics::Image raster = image.rasterize(scaleOf(step));
@@ -66,6 +67,7 @@ void VectorAtlas::request(const graphics::VectorImage& image, int step) {
             if (alive == nullptr || alive->atlas == nullptr) {
                 return;
             }
+
             // The image may have left the atlas and come back with this step made at once meanwhile, which keeps its place.
             VectorAtlas& atlas = *alive->atlas;
             atlas.pending.erase({id, step});
@@ -107,6 +109,7 @@ std::size_t VectorAtlas::findRoom(int width, int height, std::uint64_t frame) {
         if (page.cursorX + width + 1 <= page.width && page.cursorY + height + 1 <= page.height) {
             return index;
         }
+
         if (width + 2 <= page.width && page.cursorY + page.rowHeight + height + 2 <= page.height) {
             page.cursorX = 1;
             page.cursorY += page.rowHeight + 1;
@@ -122,9 +125,11 @@ std::size_t VectorAtlas::findRoom(int width, int height, std::uint64_t frame) {
             index = static_cast<std::size_t>(oldest - pages.begin());
         }
     }
+
     if (index == pages.size()) {
         pages.emplace_back();
     }
+
     clearPage(index, std::min(device.getMaxTextureSize(), std::max({kPageSize, width + 2, height + 2})));
     return index;
 }
@@ -137,13 +142,16 @@ void VectorAtlas::clearPage(std::size_t index, int side) {
         if (found == images.end()) {
             continue;
         }
+
         if (const auto entry = found->second.find(step); entry != found->second.end() && entry->second.page == index) {
             found->second.erase(entry);
         }
+
         if (found->second.empty()) {
             images.erase(found);
         }
     }
+
     page = Page{.pixels = std::vector<std::uint8_t>(static_cast<std::size_t>(side) * static_cast<std::size_t>(side) * 4U, 0), .width = side, .height = side};
     page.texture = device.createDynamicTexture(graphics::Image(side, side, page.pixels), {.filter = graphics::Texture::Filter::Linear});
 }

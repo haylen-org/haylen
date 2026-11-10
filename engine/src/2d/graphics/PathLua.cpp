@@ -101,6 +101,7 @@ int PathLua::fill(lua_State* L) {
         });
         // clang-format on
     }
+
     lua::Runtime::getEngine(L).getRenderer2D().fillPath(path, style, order, math::Transform2D::compose(position, rotation, scale));
     return 0;
 }
@@ -148,6 +149,7 @@ int PathLua::stroke(lua_State* L) {
         });
         // clang-format on
     }
+
     style.dashes = dashes;
     lua::Runtime::getEngine(L).getRenderer2D().strokePath(path, style, order, math::Transform2D::compose(position, rotation, scale));
     return 0;
@@ -166,12 +168,14 @@ int PathLua::outlines(lua_State* L) {
         shape.emplace_back(flattened.points.begin() + static_cast<std::ptrdiff_t>(first), flattened.points.begin() + static_cast<std::ptrdiff_t>(first + count));
         first += count;
     }
+
     lua::Stack::push(L, shape);
     lua_createtable(L, static_cast<int>(flattened.closed.size()), 0);
     for (std::size_t index = 0; index < flattened.closed.size(); ++index) {
         lua_pushboolean(L, flattened.closed[index] != 0 ? 1 : 0);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 2;
 }
 

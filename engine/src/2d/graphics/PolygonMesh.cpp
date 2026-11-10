@@ -15,6 +15,7 @@ math::Vec2 PolygonMesh::getOffset(math::Vec2 before, math::Vec2 after, float bef
     if (std::fabs(determinant) > 1.0e-3F) {
         offset = math::Vec2{after.y * beforeDistance - before.y * afterDistance, before.x * afterDistance - after.x * beforeDistance} / determinant;
     }
+
     return offset.clampedLength(limit);
 }
 
@@ -30,9 +31,11 @@ void PolygonMesh::build(std::span<const math::Vec2> points, std::span<const std:
     std::uint32_t first = 0;
     for (std::size_t outline = 0; outline < counts.size(); first += counts[outline++]) {
         const std::uint32_t count = counts[outline];
+
         if (kinds[outline] == math::Triangulator::Kind::Inside) {
             continue;
         }
+
         const float area = math::Geometry::signedArea(points.subspan(first, count));
         const float side = (area > 0.0F ? 1.0F : -1.0F) * (kinds[outline] == math::Triangulator::Kind::Hole ? -1.0F : 1.0F);
         for (std::uint32_t step = 0; step < count; ++step) {
@@ -44,6 +47,7 @@ void PolygonMesh::build(std::span<const math::Vec2> points, std::span<const std:
             }
         }
     }
+
     findSharedEdges(points, counts);
 
     // Every point gives an inner vertex in the color, where the fill stops, and an outer one without alpha, where the fringe ends.
@@ -60,22 +64,26 @@ void PolygonMesh::build(std::span<const math::Vec2> points, std::span<const std:
             vertices.push_back({{inner.x, inner.y}, {0.5F, 0.5F}, color});
             vertices.push_back({{outer.x, outer.y}, {0.5F, 0.5F}, clear});
         }
+
         first += count;
     }
 
     for (const std::uint32_t index : triangulator.getTriangles()) {
         indices.push_back(index * 2U);
     }
+
     first = 0;
     for (const std::uint32_t count : counts) {
         for (std::uint32_t step = 0; step < count; ++step) {
             if (fades[first + step] == 0) {
                 continue;
             }
+
             const std::uint32_t inner = (first + step) * 2U;
             const std::uint32_t next = (first + (step + 1) % count) * 2U;
             indices.insert(indices.end(), {inner, next, next + 1U, inner, next + 1U, inner + 1U});
         }
+
         first += count;
     }
 }
@@ -89,28 +97,34 @@ void PolygonMesh::findSharedEdges(std::span<const math::Vec2> points, std::span<
             if (fades[first + step] == 0) {
                 continue;
             }
+
             const math::Vec2 from = points[first + step];
             const math::Vec2 to = points[first + (step + 1) % count];
             std::array<std::uint32_t, 4> key{std::bit_cast<std::uint32_t>(from.x), std::bit_cast<std::uint32_t>(from.y), std::bit_cast<std::uint32_t>(to.x), std::bit_cast<std::uint32_t>(to.y)};
             if (std::pair(key[2], key[3]) < std::pair(key[0], key[1])) {
                 key = {key[2], key[3], key[0], key[1]};
             }
+
             edges.push_back({.key = key, .point = first + step});
         }
+
         first += count;
     }
 
     std::sort(edges.begin(), edges.end(), [](const Edge& lhs, const Edge& rhs) { return lhs.key < rhs.key; });
+
     for (std::size_t start = 0; start < edges.size();) {
         std::size_t end = start + 1;
         while (end < edges.size() && edges[end].key == edges[start].key) {
             ++end;
         }
+
         if (end - start > 1) {
             for (std::size_t copy = start; copy < end; ++copy) {
                 fades[edges[copy].point] = 0;
             }
         }
+
         start = end;
     }
 }

@@ -73,6 +73,7 @@ struct Canvas {
         if (!(size.x > 0.0F && size.y > 0.0F)) {
             return {};
         }
+
         return {(area.x - destination.x) / size.x, (area.y - destination.y) / size.y, area.width / size.x, area.height / size.y};
     }
 

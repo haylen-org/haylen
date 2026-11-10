@@ -20,6 +20,7 @@ void SpriteBatch::checkTextures(std::span<const graphics::Texture> images) {
     if (images.empty() || !std::ranges::all_of(images, &graphics::Texture::isValid)) {
         throw std::invalid_argument("A sprite batch needs a texture.");
     }
+
     checkTextureCount(images.size());
     const graphics::Texture::Options& options = images.front().getResource()->options;
     if (!std::ranges::all_of(images, [&options](const graphics::Texture& image) { return image.getResource()->options == options; })) {
@@ -41,12 +42,15 @@ void SpriteBatch::checkTexture(std::uint8_t texture) const {
 
 std::size_t SpriteBatch::add(const SpriteInstance& sprite) {
     sprites.push_back(sprite);
+
     if (!partColors.empty()) {
         partColors.emplace_back();
     }
+
     if (!data.empty()) {
         data.emplace_back();
     }
+
     return sprites.size() - 1;
 }
 
@@ -62,10 +66,13 @@ void SpriteBatch::remove(std::size_t index) {
     if (index >= sprites.size()) {
         throw std::out_of_range("Sprite batch index is out of range.");
     }
+
     sprites.erase(sprites.begin() + static_cast<std::ptrdiff_t>(index));
+
     if (!partColors.empty()) {
         partColors.erase(partColors.begin() + static_cast<std::ptrdiff_t>(index));
     }
+
     if (!data.empty()) {
         data.erase(data.begin() + static_cast<std::ptrdiff_t>(index));
     }
@@ -91,9 +98,11 @@ void SpriteBatch::reserve(std::size_t count) {
 void SpriteBatch::resize(std::size_t count, const SpriteInstance& sprite) {
     checkCount(count);
     sprites.resize(count, sprite);
+
     if (!partColors.empty()) {
         partColors.resize(count);
     }
+
     if (!data.empty()) {
         data.resize(count);
     }
@@ -103,6 +112,7 @@ void SpriteBatch::setPartColors(std::size_t index, const PartColors& colors) {
     if (index >= sprites.size()) {
         throw std::out_of_range("Sprite batch index is out of range.");
     }
+
     partColors.resize(sprites.size());
     partColors[index] = colors;
 }
@@ -111,6 +121,7 @@ PartColors SpriteBatch::getPartColors(std::size_t index) const {
     if (index >= sprites.size()) {
         throw std::out_of_range("Sprite batch index is out of range.");
     }
+
     return partColors.empty() ? PartColors{} : partColors[index];
 }
 
@@ -118,6 +129,7 @@ void SpriteBatch::setData(std::size_t index, const SpriteData& value) {
     if (index >= sprites.size()) {
         throw std::out_of_range("Sprite batch index is out of range.");
     }
+
     checkTexture(value.texture);
     data.resize(sprites.size());
     data[index] = value;
@@ -127,6 +139,7 @@ SpriteData SpriteBatch::getData(std::size_t index) const {
     if (index >= sprites.size()) {
         throw std::out_of_range("Sprite batch index is out of range.");
     }
+
     return data.empty() ? SpriteData{} : data[index];
 }
 
@@ -134,12 +147,14 @@ void SpriteBatch::writeFields(std::span<const float> values, const SpriteLayout&
     if (first > sprites.size()) {
         throw std::out_of_range("Sprite batch index is out of range.");
     }
+
     const std::size_t count = std::min(layout.getCount(values), sprites.size() - first);
     if (!layout.hasDataFields()) {
         SpriteData unused;
         for (std::size_t index = 0; index < count; ++index) {
             layout.apply(values, index, sprites[first + index], unused);
         }
+
         return;
     }
 
@@ -147,6 +162,7 @@ void SpriteBatch::writeFields(std::span<const float> values, const SpriteLayout&
     for (std::size_t index = 0; index < count; ++index) {
         checkTexture(layout.makeData(values, index).texture);
     }
+
     data.resize(sprites.size());
     for (std::size_t index = 0; index < count; ++index) {
         layout.apply(values, index, sprites[first + index], data[first + index]);
@@ -157,6 +173,7 @@ void SpriteBatch::readFields(std::span<float> values, const SpriteLayout& layout
     if (first > sprites.size()) {
         throw std::out_of_range("Sprite batch index is out of range.");
     }
+
     const std::size_t count = std::min(layout.getCount(values), sprites.size() - first);
     for (std::size_t index = 0; index < count; ++index) {
         layout.store(sprites[first + index], data.empty() ? SpriteData{} : data[first + index], values, index);
@@ -171,6 +188,7 @@ StaticSpriteBatch SpriteBatch::bake(Renderer& renderer) const {
     if (textures.size() > 1 || !data.empty()) {
         throw std::logic_error("A sprite batch with several textures or sprite data does not bake. Draw it as a sprite batch instead.");
     }
+
     return renderer.createStaticBatch(textures.front(), sprites);
 }
 

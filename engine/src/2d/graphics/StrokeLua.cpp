@@ -23,15 +23,18 @@ void StrokeLua::readNumbers(lua_State* L, int index, std::string_view what, std:
         values.assign(buffer->getValues().begin(), buffer->getValues().end());
         return;
     }
+
     if (!lua_istable(L, index)) {
         luaL_error(L, "The %s are a list of numbers or a float buffer.", std::string(what).c_str());
         return;
     }
+
     const lua_Integer count = luaL_len(L, index);
     for (lua_Integer place = 1; place <= count; ++place) {
         if (lua_rawgeti(L, index, place) != LUA_TNUMBER) {
             luaL_error(L, "The %s are a list of numbers, and entry %d is not a number.", std::string(what).c_str(), static_cast<int>(place));
         }
+
         values.push_back(lua::Converter<float>::fromNumber(L, lua_tonumber(L, -1)));
         lua_pop(L, 1);
     }
@@ -42,6 +45,7 @@ void StrokeLua::readPoints(lua_State* L, int index, std::vector<math::Vec2>& tar
     if (numbers.size() % 2 != 0) {
         luaL_error(L, "The points are x and y pairs, and %d numbers leave one alone.", static_cast<int>(numbers.size()));
     }
+
     target.clear();
     for (std::size_t pair = 0; pair < numbers.size(); pair += 2) {
         target.push_back({numbers[pair], numbers[pair + 1]});
@@ -54,6 +58,7 @@ int StrokeLua::drawStroke(lua_State* L) {
     if (spline == nullptr) {
         readPoints(L, 1, points);
     }
+
     Stroke stroke;
     std::optional<std::size_t> count;
     DrawOrder order;
@@ -96,6 +101,7 @@ int StrokeLua::drawStroke(lua_State* L) {
         });
         // clang-format on
     }
+
     stroke.widths = widths;
     stroke.colors = colors;
     stroke.dashes = dashes;
@@ -104,6 +110,7 @@ int StrokeLua::drawStroke(lua_State* L) {
         if (count) {
             return luaL_error(L, "A stroke along a spline draws the whole curve, without \"count\".");
         }
+
         renderer.drawStroke(*spline, stroke, order);
         return 0;
     }
@@ -112,9 +119,11 @@ int StrokeLua::drawStroke(lua_State* L) {
     if (drawn > points.size()) {
         return luaL_error(L, "The stroke draws %d points of the %d it was given.", static_cast<int>(drawn), static_cast<int>(points.size()));
     }
+
     if (drawn < 2) {
         return luaL_error(L, "A stroke needs at least two points.");
     }
+
     renderer.drawStroke(std::span(points).first(drawn), stroke, order);
     return 0;
 }

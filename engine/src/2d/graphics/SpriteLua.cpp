@@ -17,6 +17,7 @@ int SpriteLua::getMaterial(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, material);
     return 1;
 }
@@ -32,6 +33,7 @@ int SpriteLua::getNormalMap(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, normalMap);
     return 1;
 }
@@ -47,6 +49,7 @@ int SpriteLua::getPartMask(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, partMask);
     return 1;
 }
