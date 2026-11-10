@@ -77,10 +77,10 @@ function ComponentTest:drawGround()
     graphics2d.drawRect({area.x, top + height - 1, area.width, math.max(0, area:bottom() - top - height + 1)}, ComponentTest.earth, {layer = -2})
 end
 
--- Draws a caption under a target on a dark plate, large enough to read at any size of the play area and over any ground.
+-- Draws a caption under a target on a dark plate, large enough to read at any size of the play area and over any ground. The plate shares the layer of its text, so a name drawn later covers a name it overlaps instead of mixing their letters.
 function ComponentTest.name(text, x, y)
     local width, height = graphics2d.measureText(nil, text, ComponentTest.nameStyle)
-    graphics2d.drawShape({x - width / 2 - 20, y - 6, width + 40, height + 12}, {radius = (height + 12) / 2, color = '#C81E1B33', layer = 19})
+    graphics2d.drawShape({x - width / 2 - 20, y - 6, width + 40, height + 12}, {radius = (height + 12) / 2, color = '#C81E1B33', layer = ComponentTest.nameStyle.layer})
     graphics2d.drawText(nil, text, x, y, ComponentTest.nameStyle)
 end
 
