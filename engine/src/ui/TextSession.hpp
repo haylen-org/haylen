@@ -20,9 +20,10 @@ namespace haylen::ui {
 class TextSession final {
   public:
     explicit TextSession(platform::TextInput& platformInput) : input(platformInput) {}
+    ~TextSession();
+
     TextSession(const TextSession&) = delete;
     TextSession& operator=(const TextSession&) = delete;
-    ~TextSession();
 
     void receiveEdit(platform::TextInput::Edit edit);
 
@@ -30,6 +31,7 @@ class TextSession final {
     void receiveAction(platform::TextInput::Action value) noexcept {
         action = value;
     }
+
     void setKeyboardFrame(const math::Rect& frame) noexcept {
         keyboard = frame;
     }
@@ -95,6 +97,9 @@ class TextSession final {
     static constexpr float kKeyboardMargin = 16.0F;
     static constexpr float kKeyboardSpeed = 14.0F;
 
+    // The keys and buttons that open the field that the focus is on, as the navigation of the UI reads them.
+    static constexpr std::array<ImGuiKey, 4> kAcceptKeys{ImGuiKey_Enter, ImGuiKey_KeypadEnter, ImGuiKey_Space, ImGuiKey_GamepadFaceDown};
+
     // Every session of the process draws its revisions from one sequence, so an edit made for an app that restarted never matches the field of the new one.
     static std::uint64_t lastRevision;
 
@@ -102,9 +107,6 @@ class TextSession final {
     [[nodiscard]] static bool limit(ImGuiInputTextCallbackData& data, int maxLength);
     static void apply(ImGuiInputTextCallbackData& data, const platform::TextInput::Edit& edit);
     [[nodiscard]] static std::pair<int, int> getSelection(const ImGuiInputTextCallbackData& data);
-
-    // The keys and buttons that open the field that the focus is on, as the navigation of the UI reads them.
-    static constexpr std::array<ImGuiKey, 4> kAcceptKeys{ImGuiKey_Enter, ImGuiKey_KeypadEnter, ImGuiKey_Space, ImGuiKey_GamepadFaceDown};
 
     [[nodiscard]] bool isOpenedByAHeldPress() const;
     [[nodiscard]] math::Rect toFramebuffer(const math::Rect& rect) const noexcept;

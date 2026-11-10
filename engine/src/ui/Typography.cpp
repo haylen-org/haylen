@@ -16,7 +16,9 @@ namespace haylen::ui {
 
 // A line of a role is as tall as a line the face of its style lays out at the size of the role.
 float Typography::getLineHeight(Context& context, Theme::Font font) {
-    return context.getFontFamily(font)->select(context.isFontBold(font), context.isFontItalic(font), false).font->getLineHeight(context.getFontSize(font));
+    const std::shared_ptr<text::FontFamily> family = context.getFontFamily(font);
+    const text::FontFamily::Selection face = family->select(context.isFontBold(font), context.isFontItalic(font), false);
+    return face.font->getLineHeight(context.getFontSize(font));
 }
 
 // Text takes the size of the em square of its role, and lines follow each other by the height of their fonts. Every paragraph reads in the direction of its first strong letter, while start and end line it up with the side of the UI they name. Text in the monospace role lays out as code.
@@ -126,7 +128,8 @@ void Typography::drawAligned(Context& context, Theme::Font font, const math::Rec
     text::Style style = getStyle(context, font);
     style.color = color;
     const math::Vec2 size = layout(context, font, shown, style)->size;
-    drawLayout(context, font, shown, style, {context.alignHorizontally(horizontal, bounds.x, bounds.width, size.x), bounds.y + (bounds.height - size.y) * 0.5F});
+    const math::Vec2 position{context.alignHorizontally(horizontal, bounds.x, bounds.width, size.x), bounds.y + (bounds.height - size.y) * 0.5F};
+    drawLayout(context, font, shown, style, position);
 }
 
 // A value that rounds to zero shows without a sign, so a slider at a tiny negative value or at -0 reads "0.00" and never "-0.00".

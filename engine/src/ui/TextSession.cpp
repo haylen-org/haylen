@@ -11,6 +11,13 @@ namespace haylen::ui {
 
 std::uint64_t TextSession::lastRevision = 0;
 
+// A field still published when the UI ends, such as when the app restarts while it edits, stops editing with it.
+TextSession::~TextSession() {
+    if (published) {
+        input.finish();
+    }
+}
+
 bool TextSession::limit(ImGuiInputTextCallbackData& data, int maxLength) {
     if (maxLength <= 0) {
         return false;
@@ -43,11 +50,14 @@ void TextSession::apply(ImGuiInputTextCallbackData& data, const platform::TextIn
 
 std::pair<int, int> TextSession::getSelection(const ImGuiInputTextCallbackData& data) {
     const std::string_view buffer(data.Buf, static_cast<std::size_t>(data.BufTextLen));
+
     // clang-format off
     const auto toIndex = [buffer](int offset) {
-        return static_cast<int>(core::Utf8::countCodePoints(buffer.substr(0, static_cast<std::size_t>(std::clamp(offset, 0, static_cast<int>(buffer.size()))))));
+        const auto clamped = static_cast<std::size_t>(std::clamp(offset, 0, static_cast<int>(buffer.size())));
+        return static_cast<int>(core::Utf8::countCodePoints(buffer.substr(0, clamped)));
     };
     // clang-format on
+
     if (data.SelectionStart == data.SelectionEnd) {
         const int caret = toIndex(data.CursorPos);
         return {caret, caret};
@@ -170,13 +180,6 @@ std::optional<std::pair<int, int>> TextSession::getComposition(ImGuiID id) const
     return std::pair{compositionStart, compositionEnd};
 }
 
-// A field still published when the UI ends, such as when the app restarts while it edits, stops editing with it.
-TextSession::~TextSession() {
-    if (published) {
-        input.finish();
-    }
-}
-
 void TextSession::publish() {
     const bool composing = compositionStart >= 0 && compositionEnd > compositionStart;
     if (!activeThisFrame) {
@@ -194,7 +197,8 @@ void TextSession::publish() {
         // The field compares with the one the platform has in place, so a field that did not change costs no copy of its text.
         const math::Rect fieldBounds = toFramebuffer(bounds);
         const math::Rect caret = toFramebuffer(caretRect);
-        const bool same = published && published->id == active && published->revision == revision && published->text == text && published->selectionStart == selectionStart && published->selectionEnd == selectionEnd && published->bounds == fieldBounds && published->caret == caret && published->options == options;
+        const bool sameText = published && published->id == active && published->revision == revision && published->text == text && published->selectionStart == selectionStart && published->selectionEnd == selectionEnd;
+        const bool same = sameText && published->bounds == fieldBounds && published->caret == caret && published->options == options;
         if (!same) {
             platform::TextInput::Field field{.id = active, .revision = revision, .text = text, .selectionStart = selectionStart, .selectionEnd = selectionEnd, .bounds = fieldBounds, .caret = caret, .options = options};
             input.edit(field);

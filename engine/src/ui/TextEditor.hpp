@@ -80,11 +80,15 @@ class TextEditor final {
     [[nodiscard]] static math::Vec2 getOrigin(const text::Layout& laid, const math::Rect& area, math::Vec2 scroll, bool rightToLeft, bool multiline, bool centered);
     [[nodiscard]] static bool isCentered(math::Vec2 size, const math::Rect& area, bool multiline, bool centered) noexcept;
 
+    // Returns the code point that a byte offset of the text stands at.
+    [[nodiscard]] static std::size_t toPosition(std::string_view text, int bytes);
+
     // Moves the scroll so the caret stays inside the area, without leaving room at an end the text does not fill.
     static void follow(math::Vec2& scroll, const TextFieldLayout& field, const math::Rect& caret, const math::Rect& area, bool rightToLeft, bool multiline);
 
     // Underlines the text the input method composes in the focused field.
     static void drawComposition(Context& context, const TextSession& session, ImGuiID id, const TextFieldLayout& field, math::Vec2 origin);
+
     // Shortens a value to its most characters and tells whether it was longer.
     static bool limit(std::string& value, int maxLength);
 };

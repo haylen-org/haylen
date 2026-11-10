@@ -230,14 +230,25 @@ void Backend::setClipboardText(ImGuiContext* context, const char* text) {
     getOwner(context).system.setClipboard(text, {});
 }
 
+// ImGui copies the data of a callback into its draw list byte by byte, with no alignment, so the data is copied back out the same way.
+template <typename Call> Call Backend::readCall(const ImDrawList* list, const ImDrawCmd* command) {
+    Call call;
+    std::memcpy(&call, list->_CallbacksDataBuf.Data + command->UserCallbackDataOffset, sizeof(call));
+    return call;
+}
+
+math::Rect Backend::getClip(const ImDrawCmd& command) noexcept {
+    return math::Rect::fromMinMax({command.ClipRect.x, command.ClipRect.y}, {command.ClipRect.z, command.ClipRect.w});
+}
+
 // Every mesh carries its own render state, so a request to reset it needs no work.
 void Backend::resetRenderState(const ImDrawList*, const ImDrawCmd*) {}
 
 // Runs a render callback at its place among the meshes, inside the clip of its command. Its data lives in the draw list, where ImGui points the command only once the frame ends, so a window drawn before that finds it by its offset.
 void Backend::runRenderCall(const ImDrawList* list, const ImDrawCmd* command) {
-    const RenderCall& call = *reinterpret_cast<const RenderCall*>(list->_CallbacksDataBuf.Data + command->UserCallbackDataOffset);
+    const auto call = readCall<RenderCall>(list, command);
     Backend& owner = *call.owner;
-    const math::Rect clip = math::Rect::fromMinMax({command->ClipRect.x, command->ClipRect.y}, {command->ClipRect.z, command->ClipRect.w});
+    const math::Rect clip = getClip(*command);
     if (clip.isEmpty()) {
         return;
     }
@@ -249,22 +260,20 @@ void Backend::runRenderCall(const ImDrawList* list, const ImDrawCmd* command) {
 
 // Draws a child window at its place among the meshes of its parent, before the lists of ImGui reach it.
 void Backend::runChildCall(const ImDrawList* list, const ImDrawCmd* command) {
-    const ChildCall& call = *reinterpret_cast<const ChildCall*>(list->_CallbacksDataBuf.Data + command->UserCallbackDataOffset);
+    const auto call = readCall<ChildCall>(list, command);
     call.owner->drawWindow(*call.window);
 }
 
 // Draws a run of shapes, texts and nine-slices at its place among the meshes, inside the clip of its command.
 void Backend::runDraws(const ImDrawList* list, const ImDrawCmd* command) {
-    DrawRun run;
-    std::memcpy(&run, list->_CallbacksDataBuf.Data + command->UserCallbackDataOffset, sizeof(run));
+    const auto run = readCall<DrawRun>(list, command);
     Backend& owner = *run.owner;
-    const math::Rect clip = math::Rect::fromMinMax({command->ClipRect.x, command->ClipRect.y}, {command->ClipRect.z, command->ClipRect.w});
+    const math::Rect clip = getClip(*command);
     if (clip.isEmpty()) {
         return;
     }
 
     owner.rendering->pushClip(clip);
-
     for (std::size_t index = run.first; index < run.first + run.count; ++index) {
         owner.runDraw(owner.draws[index]);
     }
@@ -273,15 +282,13 @@ void Backend::runDraws(const ImDrawList* list, const ImDrawCmd* command) {
 }
 
 void Backend::runPushFade(const ImDrawList* list, const ImDrawCmd* command) {
-    FadeCall call;
-    std::memcpy(&call, list->_CallbacksDataBuf.Data + command->UserCallbackDataOffset, sizeof(call));
+    const auto call = readCall<FadeCall>(list, command);
     const Fade& fade = call.owner->fades[call.index];
     call.owner->rendering->pushFade(fade.area, fade.edges);
 }
 
 void Backend::runPopFade(const ImDrawList* list, const ImDrawCmd* command) {
-    FadeCall call;
-    std::memcpy(&call, list->_CallbacksDataBuf.Data + command->UserCallbackDataOffset, sizeof(call));
+    const auto call = readCall<FadeCall>(list, command);
     call.owner->rendering->popFade();
 }
 
@@ -433,9 +440,11 @@ ImFont* Backend::addFont(const std::string& name, FontFiles files) {
 Backend::Face Backend::addFace(const std::string& name, std::vector<std::uint8_t> bytes, std::span<const std::span<std::uint8_t>> fallbacks) {
     std::vector<std::uint8_t>& data = fontData.emplace_back(std::move(bytes));
     const float height = readHeight(name, data);
+
     ImFontConfig config;
     config.FontDataOwnedByAtlas = false;
     ImFont* font = ImGui::GetIO().Fonts->AddFontFromMemoryTTF(data.data(), static_cast<int>(data.size()), kBaseFontSize, &config);
+
     for (const std::span<std::uint8_t> fallback : fallbacks) {
         ImFontConfig merged;
         merged.FontDataOwnedByAtlas = false;
@@ -511,7 +520,9 @@ void Backend::handleEvent(const platform::Event& event, const graphics::Viewport
         handleTextAction(event);
         break;
     case platform::Event::Type::KeyboardChanged: {
-        textSession->setKeyboardFrame(math::Rect::fromMinMax(toUi(viewport.toDesign(event.keyboardFrame.getMin())), toUi(viewport.toDesign(event.keyboardFrame.getMax()))));
+        const math::Vec2 min = toUi(viewport.toDesign(event.keyboardFrame.getMin()));
+        const math::Vec2 max = toUi(viewport.toDesign(event.keyboardFrame.getMax()));
+        textSession->setKeyboardFrame(math::Rect::fromMinMax(min, max));
         break;
     }
     case platform::Event::Type::FocusGained:
@@ -662,10 +673,20 @@ void Backend::feedGamepad(const input::Input& input, const NavigationInput& navi
     // While a text field takes text, the keys that type it never press the navigation actions they are bound to, so Space types a space and Enter starts a new line, while gamepad buttons still accept and cancel.
     // clang-format off
     const auto typed = [&](NavigationInput::Action action) {
-        const auto held = [&](const input::ActionMap::Binding& binding) { return binding.source == input::ActionMap::Binding::Source::Key && input.isKeyDown(binding.key); };
-        return io.WantTextInput && std::ranges::any_of(navigation.getBindings(action), held);
+        if (!io.WantTextInput) {
+            return false;
+        }
+
+        for (const input::ActionMap::Binding& binding : navigation.getBindings(action)) {
+            if (binding.source == input::ActionMap::Binding::Source::Key && input.isKeyDown(binding.key)) {
+                return true;
+            }
+        }
+
+        return false;
     };
     // clang-format on
+
     for (const auto& [action, key] : kNavigation) {
         io.AddKeyEvent(key, navigation.isDown(action) && !typed(action));
     }
@@ -699,6 +720,7 @@ void Backend::feedGamepad(const input::Input& input, const NavigationInput& navi
         io.AddKeyAnalogEvent(key, amount > 0.1F, amount);
     };
     // clang-format on
+
     analog(ImGuiKey_GamepadL2, pad ? input.getGamepadAxis(*pad, input::GamepadAxis::LeftTrigger) : 0.0F);
     analog(ImGuiKey_GamepadR2, pad ? input.getGamepadAxis(*pad, input::GamepadAxis::RightTrigger) : 0.0F);
 }
@@ -733,7 +755,8 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
     io.DeltaTime = std::max(deltaSeconds, 1.0F / 1000.0F);
 
     // ImGui takes in the presses and releases of this frame in its new frame, so a press that lets go now still holds the UI in place for the frame of its release.
-    textSession->beginFrame(viewport, scale, deltaSeconds, std::ranges::any_of(io.MouseDown, [](bool down) { return down; }));
+    const bool pointerDown = std::ranges::any_of(io.MouseDown, [](bool down) { return down; });
+    textSession->beginFrame(viewport, scale, deltaSeconds, pointerDown);
     closeAbandonedPopups();
     feedGamepad(input, navigation);
 
@@ -974,7 +997,8 @@ void Backend::render(graphics2d::Renderer& renderer) {
         window.setKeyboardVisible(true);
     }
 
-    const platform::Window::Cursor wanted = requestedCursor ? *requestedCursor : toCursor(isUsingPointer() ? ImGui::GetMouseCursor() : ImGuiMouseCursor_Arrow);
+    const ImGuiMouseCursor imguiCursor = isUsingPointer() ? ImGui::GetMouseCursor() : ImGuiMouseCursor_Arrow;
+    const platform::Window::Cursor wanted = requestedCursor ? *requestedCursor : toCursor(imguiCursor);
     if (wanted != cursor) {
         cursor = wanted;
         window.setCursor(wanted);
@@ -1087,7 +1111,7 @@ void Backend::drawList(const ImDrawList& list) {
 
         const ImTextureData* atlas = command.TexRef._TexData;
         const graphics::Texture* texture = atlas != nullptr && atlas->TexID == ImTextureID_Invalid ? nullptr : findTexture(command.GetTexID());
-        const math::Rect clip = math::Rect::fromMinMax({command.ClipRect.x, command.ClipRect.y}, {command.ClipRect.z, command.ClipRect.w});
+        const math::Rect clip = getClip(command);
         if (texture == nullptr || command.ElemCount == 0 || clip.isEmpty()) {
             continue;
         }

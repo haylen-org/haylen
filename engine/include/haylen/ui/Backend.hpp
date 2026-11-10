@@ -92,6 +92,7 @@ class Backend final {
     void beginDeferring();
     void endDeferring();
     void renderDeferred(graphics2d::Renderer& renderer);
+
     [[nodiscard]] bool isFrameActive() const noexcept {
         return frameActive;
     }
@@ -304,6 +305,7 @@ class Backend final {
     // App textures shown by the UI get identifiers with the top bit set, so they never collide with the atlas textures ImGui asks for.
     static constexpr ImTextureID kAppTextureBit = ImTextureID{1} << 63U;
     static constexpr float kBaseFontSize = 28.0F;
+
     // ImGui windows of the app scroll by this many font sizes for each step of a wheel.
     static constexpr float kImGuiScrollFonts = 5.0F;
 
@@ -317,6 +319,8 @@ class Backend final {
     [[nodiscard]] static math::Color toColor(ImU32 value) noexcept;
     [[nodiscard]] static float readHeight(const std::string& name, std::span<const std::uint8_t> data);
     [[nodiscard]] static Backend& getOwner(ImGuiContext* context);
+    template <typename Call> [[nodiscard]] static Call readCall(const ImDrawList* list, const ImDrawCmd* command);
+    [[nodiscard]] static math::Rect getClip(const ImDrawCmd& command) noexcept;
     [[nodiscard]] static const char* getClipboardText(ImGuiContext* context);
     static void setClipboardText(ImGuiContext* context, const char* text);
     static void resetRenderState(const ImDrawList* list, const ImDrawCmd* command);
@@ -334,6 +338,7 @@ class Backend final {
 
     // Closes every popup that no component drew in the last frame, such as the dialog of a node that was hidden or of a GUI that was unmounted, so it never keeps the pointer and cancel from the windows under it.
     static void closeAbandonedPopups();
+
     void releaseTravelledTouch();
     void updateTextures(ImDrawData& data);
     static void collectLists(const ImGuiWindow& window, std::vector<const ImDrawList*>& lists);
@@ -354,6 +359,7 @@ class Backend final {
     std::vector<std::vector<std::uint8_t>> fontData;
     std::map<std::string, Typeface, std::less<>> fonts;
     std::unordered_map<ImTextureID, graphics::Texture> atlasTextures;
+
     // The app textures the frame shows, few enough to find by a walk, in storage that frames reuse.
     std::vector<graphics::Texture> frameTextures;
     std::vector<std::function<void(graphics2d::Renderer&)>> renderCalls;

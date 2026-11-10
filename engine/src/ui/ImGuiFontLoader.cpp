@@ -49,7 +49,6 @@ bool ImGuiFontLoader::initSource(ImFontAtlas* /*atlas*/, ImFontConfig* source) {
 
     auto loaded = std::make_unique<Source>(Source{.file = std::move(*file), .scale = scale});
     loaded->raster.reset(hb_raster_draw_create_or_fail());
-
     if (!loaded->raster) {
         throw std::bad_alloc();
     }
@@ -93,6 +92,7 @@ bool ImGuiFontLoader::loadGlyph(ImFontAtlas* atlas, ImFontConfig* source, ImFont
     int oversampleX = 0;
     int oversampleY = 0;
     ImFontAtlasBuildGetOversampleFactors(source, baked, &oversampleX, &oversampleY);
+
     const float layoutScale = font.scale * baked->Size;
     const float density = source->RasterizerDensity * baked->RasterizerDensity;
     const float scaleX = font.scale * baked->Size * density * static_cast<float>(oversampleX);
@@ -143,6 +143,7 @@ bool ImGuiFontLoader::loadGlyph(ImFontAtlas* atlas, ImFontConfig* source, ImFont
     const float offsetY = ImFloor(source->GlyphOffset.y * offsetScale + 0.5F) + baseline;
     const float pixelWidth = 1.0F / (static_cast<float>(oversampleX) * density);
     const float pixelHeight = 1.0F / (static_cast<float>(oversampleY) * density);
+
     loaded->X0 = static_cast<float>(box.left) * pixelWidth + offsetX;
     loaded->Y0 = static_cast<float>(box.top) * pixelHeight + offsetY;
     loaded->X1 = static_cast<float>(box.left + static_cast<int>(rect->w)) * pixelWidth + offsetX;
@@ -179,12 +180,12 @@ void ImGuiFontLoader::rasterize(Source& source, std::uint32_t glyph, float scale
     hb_raster_draw_t* raster = source.raster.get();
     const int width = box.right - box.left;
     const int height = box.bottom - box.top;
+
     hb_raster_draw_set_transform(raster, scaleX, 0.0F, 0.0F, scaleY, 0.0F, 0.0F);
     const hb_raster_extents_t area{.x_origin = box.left, .y_origin = -box.bottom, .width = static_cast<unsigned int>(width), .height = static_cast<unsigned int>(height), .stride = 0};
     hb_raster_draw_set_extents(raster, &area);
     hb_raster_draw_glyph(raster, &source.file.getFont(), glyph);
     std::unique_ptr<hb_raster_image_t, decltype(&hb_raster_image_destroy)> image(hb_raster_draw_render(raster), &hb_raster_image_destroy);
-
     if (!image) {
         throw std::bad_alloc();
     }
