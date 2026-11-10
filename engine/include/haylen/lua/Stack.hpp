@@ -4,6 +4,7 @@
 
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include "haylen/lua/Converter.hpp"
 
@@ -18,6 +19,11 @@ class Stack final {
 
     template <typename T> [[nodiscard]] static T read(lua_State* L, int index) {
         return Converter<T>::read(L, index);
+    }
+
+    // Reads a list into storage that the caller keeps, such as storage that every frame reuses.
+    template <typename T> static void readInto(lua_State* L, int index, std::vector<T>& values) {
+        Converter<std::vector<T>>::readInto(L, index, values);
     }
 
     template <typename T> [[nodiscard]] static bool is(lua_State* L, int index) {

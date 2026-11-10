@@ -128,7 +128,7 @@ int LightLua::shadowedAt(lua_State* L) {
     std::vector<Occluder> occluders(static_cast<std::size_t>(luaL_len(L, 4)));
     for (std::size_t index = 0; index < occluders.size(); ++index) {
         lua_rawgeti(L, 4, static_cast<lua_Integer>(index + 1));
-        occluders[index] = OccluderLua::read(L, -1);
+        OccluderLua::read(L, -1, occluders[index]);
         lua_pop(L, 1);
     }
     lua::Stack::push(L, light.isShadowedAt({lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)}, occluders));

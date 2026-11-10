@@ -7,7 +7,6 @@
 #include <span>
 #include <string_view>
 #include <utility>
-#include <vector>
 
 #include "haylen/2d/graphics/SpriteData.hpp"
 #include "haylen/2d/graphics/SpriteInstance.hpp"
@@ -41,15 +40,15 @@ class SpriteLayout final {
         Data4,
     };
 
-    // Throws `std::invalid_argument` without fields.
-    explicit SpriteLayout(std::vector<Field> layoutFields, const SpriteInstance& sprite = {}, const SpriteData& data = {});
+    // Throws `std::invalid_argument` without fields or with a field that comes twice.
+    explicit SpriteLayout(std::span<const Field> layoutFields, const SpriteInstance& sprite = {}, const SpriteData& data = {});
 
     // Resolves the names `x`, `y`, `width`, `height`, `rotation`, `tilt`, `pivotX`, `pivotY`, `red`, `green`, `blue`, `alpha`, `sourceX`, `sourceY`, `sourceWidth`, `sourceHeight`, `texture`, `data1`, `data2`, `data3` and `data4`.
     [[nodiscard]] static std::optional<Field> fieldFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view fieldName(Field value) noexcept;
 
     [[nodiscard]] std::size_t getStride() const noexcept {
-        return fields.size();
+        return fieldCount;
     }
 
     // Tells whether the sprites have data, from a field of the data or from the template.
@@ -62,7 +61,7 @@ class SpriteLayout final {
 
     // Returns how many whole sprites the values hold.
     [[nodiscard]] std::size_t getCount(std::span<const float> values) const noexcept {
-        return values.size() / fields.size();
+        return values.size() / fieldCount;
     }
 
     // Returns the template sprite with the fields the values give the sprite at the index.
@@ -130,7 +129,9 @@ class SpriteLayout final {
         return sprite.source.height;
     }
 
-    std::vector<Field> fields;
+    // A layout names each field once, so it holds its fields without allocating.
+    std::array<Field, kFieldNames.size()> fields{};
+    std::size_t fieldCount = 0;
     SpriteInstance base;
     SpriteData baseData;
     bool dataFields = false;

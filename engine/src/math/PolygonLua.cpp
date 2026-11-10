@@ -53,6 +53,41 @@ std::vector<std::vector<Vec2>> PolygonLua::readShape(lua_State* L, int index) {
     return lua::Stack::read<std::vector<std::vector<Vec2>>>(L, table);
 }
 
+void PolygonLua::readShape(lua_State* L, int index, std::vector<Vec2>& points, std::vector<std::uint32_t>& counts) {
+    luaL_checktype(L, index, LUA_TTABLE);
+    const int table = lua_absindex(L, index);
+    points.clear();
+    counts.clear();
+    lua_rawgeti(L, table, 1);
+    const bool outline = isPoint(L, -1);
+    lua_pop(L, 1);
+    if (outline) {
+        appendOutline(L, table, points);
+        counts.push_back(static_cast<std::uint32_t>(points.size()));
+        return;
+    }
+
+    const auto length = static_cast<lua_Integer>(lua_rawlen(L, table));
+    for (lua_Integer place = 1; place <= length; ++place) {
+        lua_rawgeti(L, table, place);
+        const std::size_t first = points.size();
+        appendOutline(L, lua_gettop(L), points);
+        counts.push_back(static_cast<std::uint32_t>(points.size() - first));
+        lua_pop(L, 1);
+    }
+}
+
+// The points are read raw, as the lists of every shape are.
+void PolygonLua::appendOutline(lua_State* L, int index, std::vector<Vec2>& points) {
+    luaL_checktype(L, index, LUA_TTABLE);
+    const auto length = static_cast<lua_Integer>(lua_rawlen(L, index));
+    for (lua_Integer place = 1; place <= length; ++place) {
+        lua_rawgeti(L, index, place);
+        points.push_back(lua::Stack::read<Vec2>(L, -1));
+        lua_pop(L, 1);
+    }
+}
+
 std::vector<std::vector<Vec2>> PolygonLua::readClips(lua_State* L, int index) {
     return lua_isnoneornil(L, index) ? std::vector<std::vector<Vec2>>{} : readShape(L, index);
 }

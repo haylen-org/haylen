@@ -2,16 +2,28 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
+#include <format>
 #include <stdexcept>
 #include <utility>
 
 namespace haylen::graphics2d {
 
-SpriteLayout::SpriteLayout(std::vector<Field> layoutFields, const SpriteInstance& sprite, const SpriteData& data) : fields(std::move(layoutFields)), base(sprite), baseData(data) {
-    if (fields.empty()) {
+SpriteLayout::SpriteLayout(std::span<const Field> layoutFields, const SpriteInstance& sprite, const SpriteData& data) : base(sprite), baseData(data) {
+    if (layoutFields.empty()) {
         throw std::invalid_argument("A sprite layout needs at least one field.");
     }
-    dataFields = std::ranges::any_of(fields, &SpriteLayout::isDataField);
+
+    // A field that comes twice stops the copy before it passes the room for every field once.
+    for (const Field field : layoutFields) {
+        const auto named = fields.begin() + static_cast<std::ptrdiff_t>(fieldCount);
+        if (std::find(fields.begin(), named, field) != named) {
+            throw std::invalid_argument(std::format("A sprite layout names each field once, and \"{}\" comes twice.", fieldName(field)));
+        }
+        fields[fieldCount] = field;
+        ++fieldCount;
+    }
+    dataFields = std::any_of(fields.begin(), fields.begin() + static_cast<std::ptrdiff_t>(fieldCount), &SpriteLayout::isDataField);
 }
 
 std::optional<SpriteLayout::Field> SpriteLayout::fieldFromName(std::string_view name) noexcept {
@@ -26,8 +38,8 @@ std::string_view SpriteLayout::fieldName(Field value) noexcept {
 
 SpriteInstance SpriteLayout::makeSprite(std::span<const float> values, std::size_t index) const noexcept {
     SpriteInstance sprite = base;
-    const float* source = values.data() + index * fields.size();
-    for (std::size_t field = 0; field < fields.size(); ++field) {
+    const float* source = values.data() + index * fieldCount;
+    for (std::size_t field = 0; field < fieldCount; ++field) {
         if (!isDataField(fields[field])) {
             select(fields[field], sprite) = source[field];
         }
@@ -37,8 +49,8 @@ SpriteInstance SpriteLayout::makeSprite(std::span<const float> values, std::size
 
 SpriteData SpriteLayout::makeData(std::span<const float> values, std::size_t index) const noexcept {
     SpriteData data = baseData;
-    const float* source = values.data() + index * fields.size();
-    for (std::size_t field = 0; field < fields.size(); ++field) {
+    const float* source = values.data() + index * fieldCount;
+    for (std::size_t field = 0; field < fieldCount; ++field) {
         if (isDataField(fields[field])) {
             setData(fields[field], source[field], data);
         }
@@ -47,8 +59,8 @@ SpriteData SpriteLayout::makeData(std::span<const float> values, std::size_t ind
 }
 
 void SpriteLayout::apply(std::span<const float> values, std::size_t index, SpriteInstance& sprite, SpriteData& data) const noexcept {
-    const float* source = values.data() + index * fields.size();
-    for (std::size_t field = 0; field < fields.size(); ++field) {
+    const float* source = values.data() + index * fieldCount;
+    for (std::size_t field = 0; field < fieldCount; ++field) {
         if (isDataField(fields[field])) {
             setData(fields[field], source[field], data);
         } else {
@@ -58,8 +70,8 @@ void SpriteLayout::apply(std::span<const float> values, std::size_t index, Sprit
 }
 
 void SpriteLayout::store(const SpriteInstance& sprite, const SpriteData& data, std::span<float> values, std::size_t index) const noexcept {
-    float* target = values.data() + index * fields.size();
-    for (std::size_t field = 0; field < fields.size(); ++field) {
+    float* target = values.data() + index * fieldCount;
+    for (std::size_t field = 0; field < fieldCount; ++field) {
         if (fields[field] == Field::Texture) {
             target[field] = static_cast<float>(data.texture) + 1.0F;
         } else if (isDataField(fields[field])) {

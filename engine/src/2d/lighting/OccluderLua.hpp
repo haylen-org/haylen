@@ -37,8 +37,8 @@ class OccluderLua final {
   public:
     static void install(lua_State* L);
 
-    // Reads an `Occluder`, or a table with its properties over the defaults, at index.
-    [[nodiscard]] static Occluder read(lua_State* L, int index);
+    // Reads an `Occluder`, or a table with its properties over the defaults, at index into `occluder`, whose points keep their storage, so an occluder read every frame allocates nothing once it has grown.
+    static void read(lua_State* L, int index, Occluder& occluder);
 
     // Creates an occluder with `newOccluder({points = {...}, closed = true, cull = 'disabled', mask = 1, x, y, rotation, scaleX, scaleY})`.
     static int newOccluder(lua_State* L);
@@ -53,7 +53,7 @@ class OccluderLua final {
     static constexpr std::array<std::string_view, 10> kFields{"points", "closed", "cull", "mask", "x", "y", "position", "rotation", "scaleX", "scaleY"};
 
     // Points come as a list of vectors or as a flat list of numbers, two per point.
-    [[nodiscard]] static std::vector<math::Vec2> readPoints(lua_State* L, int index);
+    static void readPoints(lua_State* L, int index, std::vector<math::Vec2>& points);
     static void pushList(lua_State* L, std::vector<Occluder> occluders);
 
     static int getPoints(lua_State* L);

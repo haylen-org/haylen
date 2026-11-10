@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <array>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -58,7 +59,7 @@ TEST(FloatBufferLuaTest, ReadsAndWritesFromLua) {
 namespace haylen::graphics2d {
 
 TEST(SpriteLayoutTest, MovesSpriteFieldsThroughFloats) {
-    const SpriteLayout layout({SpriteLayout::Field::X, SpriteLayout::Field::Y, SpriteLayout::Field::Rotation, SpriteLayout::Field::Alpha}, {.size = {4.0F, 4.0F}});
+    const SpriteLayout layout(std::array{SpriteLayout::Field::X, SpriteLayout::Field::Y, SpriteLayout::Field::Rotation, SpriteLayout::Field::Alpha}, {.size = {4.0F, 4.0F}});
     EXPECT_EQ(layout.getStride(), 4U);
     const std::vector<float> values{1.0F, 2.0F, 0.5F, 0.25F, 3.0F, 4.0F, 1.0F, 1.0F, 9.0F};
     EXPECT_EQ(layout.getCount(values), 2U);
@@ -71,6 +72,7 @@ TEST(SpriteLayoutTest, MovesSpriteFieldsThroughFloats) {
     layout.store(layout.makeSprite(values, 0), {}, stored, 0);
     EXPECT_EQ(stored, (std::vector<float>{1.0F, 2.0F, 0.5F, 0.25F}));
     EXPECT_THROW(SpriteLayout({}), std::invalid_argument);
+    EXPECT_THROW(SpriteLayout(std::array{SpriteLayout::Field::X, SpriteLayout::Field::Y, SpriteLayout::Field::X}), std::invalid_argument);
     EXPECT_EQ(SpriteLayout::fieldFromName("sourceWidth"), SpriteLayout::Field::SourceWidth);
     EXPECT_EQ(SpriteLayout::fieldName(SpriteLayout::Field::PivotY), "pivotY");
     EXPECT_FALSE(SpriteLayout::fieldFromName("depth").has_value());
@@ -97,8 +99,8 @@ TEST(SpriteLayoutTest, StoresAndAppliesEveryField) {
     const SpriteData data = layout.makeData(values, 0);
     EXPECT_EQ(data, (SpriteData{.texture = 8, .values = {9.0F, 9.5F, 10.0F, 10.5F}}));
     EXPECT_TRUE(layout.hasData());
-    EXPECT_FALSE(SpriteLayout({SpriteLayout::Field::X}).hasData());
-    EXPECT_TRUE(SpriteLayout({SpriteLayout::Field::X}, {}, {.texture = 1}).hasData());
+    EXPECT_FALSE(SpriteLayout(std::array{SpriteLayout::Field::X}).hasData());
+    EXPECT_TRUE(SpriteLayout(std::array{SpriteLayout::Field::X}, {}, {.texture = 1}).hasData());
 
     std::vector<float> stored(values.size());
     layout.store(sprite, data, stored, 0);
@@ -109,7 +111,7 @@ TEST(SpriteLayoutTest, UpdatesBatchesInBulk) {
     test::EngineFixture fixture;
     SpriteBatch batch(fixture.engine().getGraphics().getWhiteTexture());
     batch.resize(3, {.size = {2.0F, 2.0F}});
-    const SpriteLayout layout({SpriteLayout::Field::X, SpriteLayout::Field::Y});
+    const SpriteLayout layout(std::array{SpriteLayout::Field::X, SpriteLayout::Field::Y});
     const std::vector<float> values{1.0F, 2.0F, 3.0F, 4.0F};
     batch.writeFields(values, layout, 1);
     EXPECT_EQ(batch.get(1).position, math::Vec2(1.0F, 2.0F));
@@ -152,6 +154,7 @@ TEST(SpriteLayoutTest, DrawsAndUpdatesSpritesFromBuffersInLua) {
     EXPECT_NE(fixture.lua("graphics2d.beginScreen() graphics2d.drawBatch(graphics.whiteTexture(), buffer, {width = 4})").find("needs the fields each sprite takes"), std::string::npos);
     EXPECT_NE(fixture.lua("batch:writeFields(buffer, {'x', 'depth'})").find("unknown value 'depth'"), std::string::npos);
     EXPECT_NE(fixture.lua("batch:writeFields(buffer, {})").find("at least one field"), std::string::npos);
+    EXPECT_NE(fixture.lua("batch:writeFields(buffer, {'x', 'y', 'x'})").find("A sprite layout names each field once, and \"x\" comes twice."), std::string::npos);
     EXPECT_NE(fixture.lua("batch:writeFields(buffer, {'x'}, 0)").find("numbered from one"), std::string::npos);
     EXPECT_NE(fixture.lua("batch:resize(-1)").find("the count cannot be negative"), std::string::npos);
 }

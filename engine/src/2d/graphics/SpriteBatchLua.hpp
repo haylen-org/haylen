@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <optional>
+#include <span>
 #include <string_view>
 #include <vector>
 
@@ -32,21 +33,27 @@ class SpriteBatchLua final {
     // The keys of a sprite table with the texture of its batch that it draws from, counted from 1, and the numbers it hands the material of the draw.
     static constexpr std::array<std::string_view, 2> kDataFields{"texture", "data"};
 
+    // Room for every texture that one batch draws from.
+    using Textures = std::array<graphics::Texture, SpriteData::kMaxTextures>;
+
     static void install(lua_State* L);
 
-    // Reads the textures of a batch at index: a texture, or a list of textures.
-    [[nodiscard]] static std::vector<graphics::Texture> readTextures(lua_State* L, int index);
+    // Reads the textures of a batch at index, a texture or a list of textures, into `textures`, and returns the ones it read.
+    [[nodiscard]] static std::span<const graphics::Texture> readTextures(lua_State* L, int index, Textures& textures);
 
     // Reads the `texture` and `data` of a sprite table into its data over a base, or nothing when the table has neither.
     [[nodiscard]] static std::optional<SpriteData> readSpriteData(lua_State* L, int index, std::size_t textureCount, SpriteData base = {});
 
-    // Reads a list of field names at index, such as `{'x', 'y', 'rotation'}`, into a layout over the template sprite and its data.
+    // Reads a list of field names at index, such as `{'x', 'y', 'rotation'}`, into a layout over the template sprite and its data, without allocating once the list has been read before.
     [[nodiscard]] static SpriteLayout readLayout(lua_State* L, int index, const SpriteInstance& sprite = {}, const SpriteData& data = {});
 
     // Pushes a sprite as the table `batch:get` returns.
     static void pushSpriteInstance(lua_State* L, const SpriteInstance& sprite, const PartColors& colors, const SpriteData& data);
 
   private:
+    // Kept from read to read on the frame thread, so a list of fields read every frame allocates nothing once it has grown.
+    inline static std::vector<SpriteLayout::Field> layoutFields;
+
     // Gives the sprite at an index of the batch the part colors of a sprite table that has them.
     static void readPartColors(lua_State* L, int table, SpriteBatch& batch, std::size_t index);
     [[nodiscard]] static std::size_t checkIndex(lua_State* L, int index, const SpriteBatch& batch);

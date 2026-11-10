@@ -1791,7 +1791,7 @@ Float buffers name the numbers of a sprite with these fields:
 | `texture` | The texture of the batch, counted from 1. |
 | `data1`, `data2`, `data3`, `data4` | The numbers of the data. |
 
-An unknown name raises an error that ends with `(unknown value '<name>')`, and an empty list raises `A sprite layout needs at least one field.`.
+An unknown name raises an error that ends with `(unknown value '<name>')`, an empty list raises `A sprite layout needs at least one field.`, and a field named twice raises `A sprite layout names each field once, and "<name>" comes twice.`.
 
 ### graphics2d.drawBatch(texture, sprites, order)
 
@@ -4025,6 +4025,7 @@ These messages come from the functions and methods of the module, besides the er
 | `Sprite batch index is out of range.` | The `first` of `batch:writeFields` or `batch:readFields` is more than one past the last sprite. |
 | `A sprite batch with several textures or sprite data does not bake. Draw it as a sprite batch instead.` | The method `batch:bake` ran on such a batch. |
 | `A sprite layout needs at least one field.` | A list of sprite fields is empty. |
+| `A sprite layout names each field once, and "<name>" comes twice.` | A list of sprite fields names a field twice. |
 | `A "drawBatch" call with a float buffer needs the fields each sprite takes, such as "fields = {'x', 'y'}".` | The layout of `graphics2d.drawBatch` lacks `fields`. |
 | `A shape needs corner radii, a border width and a softness of zero or more.` | A value of `graphics2d.drawShape` is negative. |
 | `The option "radius" of a shape takes one radius for every corner or four, from the top-left corner clockwise.` | The `radius` table of a shape has another length. |

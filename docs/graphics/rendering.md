@@ -413,7 +413,7 @@ Every instanced program samples its texture only inside the texels of the source
 
 The renderer keeps one streaming buffer each for instances, vertices and indices. It writes each of them once per frame and grows them to one and a half times the need when a frame outgrows them. When the app recorded the draws in their final order, the instances upload as recorded, and otherwise they are first copied into draw order.
 
-Everything a frame records and submits goes into storage that the renderer keeps from frame to frame. That covers the draw items, the instances, the sorted order, the commands, the text painter and the resources a frame keeps alive. Once that storage has grown to what the app draws, a frame of any kind of draw allocates nothing in the renderer.
+Everything a frame records and submits goes into storage that the renderer keeps from frame to frame. That covers the draw items, the instances, the sorted order, the commands, the text painter and the resources a frame keeps alive. Once that storage has grown to what the app draws, a frame of any kind of draw allocates nothing in the renderer. The draw functions of Lua read the lists of their tables, such as points, outlines, vertices, indices, sprites, colors and the fields of a float buffer, into storage they keep too, so a Lua frame that draws what the frame before it drew allocates nothing either.
 
 ### Measuring a frame
 

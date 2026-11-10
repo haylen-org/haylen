@@ -3,6 +3,7 @@
 #include <lua.hpp>
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "haylen/2d/graphics/Material.hpp"
@@ -16,7 +17,7 @@ namespace haylen::graphics2d {
 
 void MaterialLua::setValue(lua_State* L, Material& material, int nameIndex, int valueIndex) {
     using Type = graphics::Shader::UniformType;
-    const std::string name = lua::Stack::read<std::string>(L, nameIndex);
+    const auto name = lua::Stack::read<std::string_view>(L, nameIndex);
     const graphics::Shader& shader = material.getShader();
     if (shader.findTexture(name) != nullptr) {
         material.setTexture(name, lua_isnil(L, valueIndex) ? graphics::Texture{} : lua::Stack::read<graphics::Texture>(L, valueIndex));
@@ -36,7 +37,8 @@ void MaterialLua::setValue(lua_State* L, Material& material, int nameIndex, int 
         lua_pop(L, 1);
         const graphics::Shader::Uniform* uniform = shader.findUniform(name);
         if (numbers || uniform == nullptr) {
-            material.set(name, lua::Stack::read<std::vector<float>>(L, valueIndex));
+            lua::Stack::readInto(L, valueIndex, valueScratch);
+            material.set(name, valueScratch);
         } else if (uniform->type == Type::Vec2 || uniform->type == Type::IVec2) {
             material.set(name, lua::Stack::read<math::Vec2>(L, valueIndex));
         } else {

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <format>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -34,11 +35,21 @@ template <> struct EnumNames<graphics2d::SpriteLayout::Field> {
 
 namespace haylen::graphics2d {
 
-std::vector<graphics::Texture> SpriteBatchLua::readTextures(lua_State* L, int index) {
-    if (lua_type(L, index) == LUA_TTABLE) {
-        return lua::Stack::read<std::vector<graphics::Texture>>(L, index);
+std::span<const graphics::Texture> SpriteBatchLua::readTextures(lua_State* L, int index, Textures& textures) {
+    if (lua_type(L, index) != LUA_TTABLE) {
+        textures[0] = lua::Stack::read<graphics::Texture>(L, index);
+        return std::span(textures).first(1);
     }
-    return {lua::Stack::read<graphics::Texture>(L, index)};
+
+    const int table = lua_absindex(L, index);
+    const auto count = static_cast<std::size_t>(lua_rawlen(L, table));
+    SpriteBatch::checkTextureCount(count);
+    for (std::size_t texture = 0; texture < count; ++texture) {
+        lua_rawgeti(L, table, static_cast<lua_Integer>(texture + 1));
+        textures[texture] = lua::Stack::read<graphics::Texture>(L, -1);
+        lua_pop(L, 1);
+    }
+    return std::span(textures).first(count);
 }
 
 // The data holds up to four numbers, and the numbers it leaves out keep those of the base.
@@ -58,19 +69,24 @@ std::optional<SpriteData> SpriteBatchLua::readSpriteData(lua_State* L, int index
         base.texture = static_cast<std::uint8_t>(number - 1);
     }
     if (values != LUA_TNIL) {
-        const std::vector<float> numbers = lua::Stack::read<std::vector<float>>(L, -1);
-        if (numbers.size() > base.values.size()) {
-            throw std::invalid_argument(std::format("The data of a sprite holds up to 4 numbers, and this one has {}.", numbers.size()));
+        luaL_checktype(L, -1, LUA_TTABLE);
+        const auto count = static_cast<std::size_t>(lua_rawlen(L, -1));
+        if (count > base.values.size()) {
+            throw std::invalid_argument(std::format("The data of a sprite holds up to 4 numbers, and this one has {}.", count));
         }
-        std::ranges::copy(numbers, base.values.begin());
+        for (std::size_t value = 0; value < count; ++value) {
+            lua_rawgeti(L, -1, static_cast<lua_Integer>(value + 1));
+            base.values[value] = lua::Stack::read<float>(L, -1);
+            lua_pop(L, 1);
+        }
     }
     lua_pop(L, 2);
     return base;
 }
 
 SpriteLayout SpriteBatchLua::readLayout(lua_State* L, int index, const SpriteInstance& sprite, const SpriteData& data) {
-    luaL_checktype(L, index, LUA_TTABLE);
-    return SpriteLayout(lua::Stack::read<std::vector<SpriteLayout::Field>>(L, index), sprite, data);
+    lua::Stack::readInto(L, index, layoutFields);
+    return SpriteLayout(layoutFields, sprite, data);
 }
 
 void SpriteBatchLua::pushSpriteInstance(lua_State* L, const SpriteInstance& sprite, const PartColors& colors, const SpriteData& data) {

@@ -180,19 +180,24 @@ template <typename T> struct Converter<std::vector<T>> {
             lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
         }
     }
-    // The elements are read raw, so the length is the raw one too, which no `__len` of the table can make up.
     static std::vector<T> read(lua_State* L, int index) {
+        std::vector<T> values;
+        readInto(L, index, values);
+        return values;
+    }
+
+    // Reads the list into `values`, keeping its storage, so a list read every frame allocates nothing once it has grown. The elements are read raw, so the length is the raw one too, which no `__len` of the table can make up.
+    static void readInto(lua_State* L, int index, std::vector<T>& values) {
         luaL_checktype(L, index, LUA_TTABLE);
         const int table = lua_absindex(L, index);
         const auto length = static_cast<std::size_t>(lua_rawlen(L, table));
-        std::vector<T> values;
+        values.clear();
         values.reserve(length);
         for (std::size_t element = 1; element <= length; ++element) {
             lua_rawgeti(L, table, static_cast<lua_Integer>(element));
             values.push_back(Converter<T>::read(L, -1));
             lua_pop(L, 1);
         }
-        return values;
     }
     static bool is(lua_State* L, int index) {
         return lua_istable(L, index);

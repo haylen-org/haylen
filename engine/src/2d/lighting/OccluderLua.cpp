@@ -14,19 +14,20 @@
 
 namespace haylen::lighting2d {
 
-std::vector<math::Vec2> OccluderLua::readPoints(lua_State* L, int index) {
+void OccluderLua::readPoints(lua_State* L, int index, std::vector<math::Vec2>& points) {
     luaL_checktype(L, index, LUA_TTABLE);
     const int table = lua_absindex(L, index);
     lua_rawgeti(L, table, 1);
     const bool flat = lua_type(L, -1) == LUA_TNUMBER;
     lua_pop(L, 1);
     if (!flat) {
-        return lua::Stack::read<std::vector<math::Vec2>>(L, table);
+        lua::Stack::readInto(L, table, points);
+        return;
     }
 
     // The list may sit in a field of a table, so the error names the list instead of an argument.
     const auto count = static_cast<std::size_t>(luaL_len(L, table));
-    std::vector<math::Vec2> points(count / 2);
+    points.resize(count / 2);
     bool numbers = count % 2 == 0;
     for (std::size_t point = 0; numbers && point < points.size(); ++point) {
         lua_rawgeti(L, table, static_cast<lua_Integer>(point * 2 + 1));
@@ -38,16 +39,19 @@ std::vector<math::Vec2> OccluderLua::readPoints(lua_State* L, int index) {
     if (!numbers) {
         throw std::invalid_argument("A flat list of points needs two numbers per point.");
     }
-    return points;
 }
 
-Occluder OccluderLua::read(lua_State* L, int index) {
-    if (const Occluder* occluder = lua::Userdata::test<Occluder>(L, index)) {
-        return *occluder;
+void OccluderLua::read(lua_State* L, int index, Occluder& occluder) {
+    if (const Occluder* found = lua::Userdata::test<Occluder>(L, index)) {
+        occluder = *found;
+        return;
     }
-    Occluder occluder;
+
+    // The table starts from the defaults, while the points keep the storage they had.
+    occluder = Occluder{.points = std::move(occluder.points)};
+    occluder.points.clear();
     if (lua_isnoneornil(L, index)) {
-        return occluder;
+        return;
     }
 
     luaL_checktype(L, index, LUA_TTABLE);
@@ -55,7 +59,7 @@ Occluder OccluderLua::read(lua_State* L, int index) {
     lua::Table::checkFields(L, table, {kFields});
     lua_getfield(L, table, "points");
     if (!lua_isnil(L, -1)) {
-        occluder.points = readPoints(L, -1);
+        readPoints(L, -1, occluder.points);
     }
     lua_pop(L, 1);
     lua::Table::readField(L, table, "closed", occluder.closed);
@@ -67,7 +71,6 @@ Occluder OccluderLua::read(lua_State* L, int index) {
     lua::Table::readField(L, table, "rotation", occluder.rotation);
     lua::Table::readField(L, table, "scaleX", occluder.scale.x);
     lua::Table::readField(L, table, "scaleY", occluder.scale.y);
-    return occluder;
 }
 
 void OccluderLua::pushList(lua_State* L, std::vector<Occluder> occluders) {
@@ -79,7 +82,9 @@ void OccluderLua::pushList(lua_State* L, std::vector<Occluder> occluders) {
 }
 
 int OccluderLua::newOccluder(lua_State* L) {
-    lua::Userdata::emplace<Occluder>(L, read(L, 1));
+    Occluder occluder;
+    read(L, 1, occluder);
+    lua::Userdata::emplace<Occluder>(L, std::move(occluder));
     return 1;
 }
 
@@ -102,7 +107,7 @@ int OccluderLua::getPoints(lua_State* L) {
 }
 
 int OccluderLua::setPoints(lua_State* L) {
-    lua::Userdata::check<Occluder>(L, 1).points = readPoints(L, 3);
+    readPoints(L, 3, lua::Userdata::check<Occluder>(L, 1).points);
     return 0;
 }
 

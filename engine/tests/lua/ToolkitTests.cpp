@@ -837,6 +837,25 @@ TEST(ConverterTest, RefusesNumbersPastTheRangeOfFloats) {
     EXPECT_EQ(fixture.lua("return readPoint({x = -math.huge, y = 0}) == -math.huge"), "true");
 }
 
+// A list read into storage that the caller keeps, directly or as an option, fills it again without allocating once it has grown.
+TEST(ConverterTest, ReadsListsIntoTheStorageTheCallerKeeps) {
+    test::EngineFixture fixture;
+    lua_State* L = fixture.lua();
+    ASSERT_EQ(luaL_dostring(L, "return {1, 2, 3}"), LUA_OK);
+    std::vector<float> values{9.0F};
+    Stack::readInto(L, -1, values);
+    EXPECT_EQ(values, (std::vector<float>{1.0F, 2.0F, 3.0F}));
+
+    const float* storage = values.data();
+    const test::AllocationTracker tracker;
+    Stack::readInto(L, -1, values);
+    Table::readValue(L, "values", values);
+    EXPECT_EQ(tracker.getTotal(), 0U);
+    EXPECT_EQ(values.data(), storage);
+    EXPECT_EQ(values.size(), 3U);
+    lua_pop(L, 1);
+}
+
 TEST(ConverterTest, TellsWhichValuesEachConverterReads) {
     test::EngineFixture fixture;
     lua_State* L = fixture.lua();

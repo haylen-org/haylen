@@ -40,7 +40,7 @@ void MeshLua::readVertices(lua_State* L, int index, std::vector<MeshVertex>& ver
 }
 
 void MeshLua::readIndices(lua_State* L, int index, std::vector<std::uint32_t>& indices) {
-    indices = lua::Stack::read<std::vector<std::uint32_t>>(L, index);
+    lua::Stack::readInto(L, index, indices);
     for (std::uint32_t& entry : indices) {
         luaL_argcheck(L, entry >= 1, index, "mesh indices start at 1");
         --entry;
@@ -91,9 +91,8 @@ int MeshLua::setPositions(lua_State* L) {
         mesh.setPositions(buffer->getValues(), first - 1);
         return 0;
     }
-    std::vector<float> values;
-    StrokeLua::readNumbers(L, 2, "positions", values);
-    mesh.setPositions(values, first - 1);
+    StrokeLua::readNumbers(L, 2, "positions", positionScratch);
+    mesh.setPositions(positionScratch, first - 1);
     return 0;
 }
 

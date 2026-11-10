@@ -226,16 +226,24 @@ TEST(PolygonDrawTest, DrawsShapesWithHolesFromLuaWithoutAllocating) {
     EXPECT_EQ(fixture.lua("local m = require('haylen.math') return #m.triangulate(m.polygon.subtract({{0, 0}, {100, 0}, {100, 100}, {0, 100}}, {{30, 30}, {30, 70}, {70, 70}, {70, 30}}))"), "24");
 
     const std::vector<std::vector<math::Vec2>> shape{{{0.0F, 0.0F}, {50.0F, 0.0F}, {50.0F, 50.0F}, {0.0F, 50.0F}}, {{10.0F, 10.0F}, {10.0F, 40.0F}, {40.0F, 40.0F}, {40.0F, 10.0F}}};
+    const std::vector<math::Vec2> points{{0.0F, 0.0F}, {50.0F, 0.0F}, {50.0F, 50.0F}, {0.0F, 50.0F}, {10.0F, 10.0F}, {10.0F, 40.0F}, {40.0F, 40.0F}, {40.0F, 10.0F}};
+    const std::array<std::uint32_t, 2> counts{4, 4};
     // clang-format off
-    fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&shape](core::Engine& engine) {
+    fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&shape, &points, &counts](core::Engine& engine) {
         engine.getRenderer2D().beginScreen();
         engine.getRenderer2D().drawPolygon(shape, math::Color::white());
+        engine.getRenderer2D().drawPolygon(points, counts, math::Color::white());
     }));
     // clang-format on
     fixture.frames(3);
     const test::AllocationTracker tracker;
     fixture.frames(3);
     EXPECT_EQ(tracker.getTotal(), 0U);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+
+    // The outlines of a shape in flat storage count every point it has.
+    const std::array<std::uint32_t, 2> missing{4, 3};
+    EXPECT_THROW(fixture.engine().getRenderer2D().drawPolygon(points, missing, math::Color::white()), std::invalid_argument);
 }
 
 // Circles, rings, arcs and shapes draw as one quad each of the shape program, which merge into one call and upload no vertices, while sprites count only the sprites.

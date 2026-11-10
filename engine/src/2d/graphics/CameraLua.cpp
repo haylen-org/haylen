@@ -51,7 +51,8 @@ int CameraLua::update(lua_State* L) {
 
 // Frames a list of points with `frame({{x, y}, ...}, padding, dt)`.
 int CameraLua::frame(lua_State* L) {
-    lua::Userdata::check<Camera>(L, 1).frame(lua::Stack::read<std::vector<math::Vec2>>(L, 2), lua::Stack::read<float>(L, 3), readSeconds(L, 4), getScreen(L));
+    lua::Stack::readInto(L, 2, framedPoints);
+    lua::Userdata::check<Camera>(L, 1).frame(framedPoints, lua::Stack::read<float>(L, 3), readSeconds(L, 4), getScreen(L));
     return 0;
 }
 

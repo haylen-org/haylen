@@ -583,6 +583,28 @@ TEST_F(MaterialTest, ReloadsItsShaderInPlace) {
     EXPECT_THROW((void)assets.load("shader", "shaders/tint.shader", core::Json{{"filter", "linear"}}), std::invalid_argument);
 }
 
+// Uniforms that Lua sets every frame, lists of numbers among them, and the draws that take the material allocate nothing once their storage has grown.
+TEST_F(MaterialLuaTest, SetsUniformsEveryFrameWithoutAllocating) {
+    const std::string compiled(tintShader().begin(), tintShader().end());
+    test::EngineFixture fixture({{"content/shaders/tint.shader", compiled}});
+    fixture.runLua(R"(
+        graphics = require('haylen.graphics') graphics2d = require('haylen.graphics2d') scene = require('haylen.scene') m = require('haylen.math')
+        tint = graphics2d.newMaterial(require('haylen.assets').shader('shaders/tint.shader'))
+    )");
+    // clang-format off
+    const auto measure = [&fixture](const std::string& body) {
+        fixture.runLua("scene.clear() scene.push({render = function() graphics2d.beginScreen() " + body + " end})");
+        fixture.frames(5);
+        const test::AllocationTracker tracker;
+        fixture.frames(10);
+        return tracker.getTotal();
+    };
+    // clang-format on
+    const std::size_t empty = measure("");
+    EXPECT_EQ(measure("tint:set('strength', 0.5) tint:set('palette', {1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1}) tint:set('tint', '#FF8040FF') tint:set('offset', m.vec2(1, 2)) graphics2d.draw(graphics.whiteTexture(), 0, 0, {width = 10, height = 10, material = tint})"), empty);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
 TEST_F(MaterialLuaTest, LoadsShadersAndDrawsWithMaterials) {
     const std::string compiled(tintShader().begin(), tintShader().end());
     test::EngineFixture fixture({{"content/shaders/tint.shader", compiled}});

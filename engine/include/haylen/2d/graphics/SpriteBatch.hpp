@@ -28,6 +28,9 @@ class SpriteBatch final {
     // Throws `std::invalid_argument` for textures that cannot draw one batch: none, an invalid one, more than `SpriteData::kMaxTextures` or textures that sample differently.
     static void checkTextures(std::span<const graphics::Texture> images);
 
+    // Throws `std::invalid_argument` for more textures than one batch draws from, `SpriteData::kMaxTextures`.
+    static void checkTextureCount(std::size_t count);
+
     std::size_t add(const SpriteInstance& sprite);
     void set(std::size_t index, const SpriteInstance& sprite);
     [[nodiscard]] const SpriteInstance& get(std::size_t index) const;

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <array>
 #include <cstring>
 #include <memory>
 #include <optional>
@@ -139,7 +140,7 @@ TEST_F(SpriteDataTest, KeepsTheDataOfABatchWithItsSprites) {
     EXPECT_THROW((void)batch.bake(fixture.engine().getRenderer2D()), std::logic_error);
 
     // Fields of the data write every sprite, or none when a value names a texture the batch lacks, and read back with the texture counted from 1.
-    const SpriteLayout layout({SpriteLayout::Field::Texture, SpriteLayout::Field::Data2});
+    const SpriteLayout layout(std::array{SpriteLayout::Field::Texture, SpriteLayout::Field::Data2});
     batch.writeFields(std::vector<float>{2.0F, 0.5F, 1.0F, 0.75F}, layout);
     EXPECT_EQ(batch.getData(0), (SpriteData{.texture = 1, .values = {2.0F, 0.5F}}));
     EXPECT_EQ(batch.getData(1), (SpriteData{.texture = 0, .values = {0.0F, 0.75F}}));

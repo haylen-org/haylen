@@ -3,8 +3,10 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <format>
 #include <limits>
+#include <numeric>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -707,7 +709,7 @@ void Renderer::drawPoints(std::span<const math::Vec2> points, float radius, std:
 
 void Renderer::drawPolygon(std::span<const math::Vec2> points, math::Color color, const DrawOrder& order) {
     const std::array<std::uint32_t, 1> counts{static_cast<std::uint32_t>(points.size())};
-    addPolygon(points, counts, color, order);
+    drawPolygon(points, counts, color, order);
 }
 
 // The outlines of a shape follow each other in storage the renderer keeps, so a shape drawn every frame allocates nothing once it has grown.
@@ -720,10 +722,14 @@ void Renderer::drawPolygon(std::span<const std::vector<math::Vec2>> shape, math:
         points.insert(points.end(), outline.begin(), outline.end());
         counts.push_back(static_cast<std::uint32_t>(outline.size()));
     }
-    addPolygon(points, counts, color, order);
+    drawPolygon(points, counts, color, order);
 }
 
-void Renderer::addPolygon(std::span<const math::Vec2> points, std::span<const std::uint32_t> counts, math::Color color, const DrawOrder& order) {
+void Renderer::drawPolygon(std::span<const math::Vec2> points, std::span<const std::uint32_t> counts, math::Color color, const DrawOrder& order) {
+    const std::uint64_t counted = std::accumulate(counts.begin(), counts.end(), std::uint64_t{0});
+    if (counted != points.size()) {
+        throw std::invalid_argument(std::format("The outlines of a polygon count {} points, and it has {}.", counted, points.size()));
+    }
     if (!state->accepts(order)) {
         return;
     }

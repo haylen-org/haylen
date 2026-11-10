@@ -662,12 +662,12 @@ A C++ project can add Lua modules of its own, backed by a plugin of its own, whi
 
 | Header | What it gives |
 | --- | --- |
-| `Stack.hpp` | `Stack::push`, `Stack::read` and `Stack::is`, which move C++ values on and off the Lua stack through their converters. |
+| `Stack.hpp` | `Stack::push`, `Stack::read` and `Stack::is`, which move C++ values on and off the Lua stack through their converters, and `Stack::readInto`, which reads a list into a `std::vector` that the caller keeps, so a list read every frame allocates nothing once it has grown. |
 | `Userdata.hpp` | `Userdata::check`, `Userdata::checkShared`, `Userdata::test` and `Userdata::emplace` for bound objects, `Userdata::equal` for an `__eq` that compares the bound objects, and `Userdata::pushField`, `Userdata::setField` and `Userdata::pushFunction`, which store Lua callbacks on userdata. |
 | `Type.hpp` | The trait `Type<T>`, which binds a C++ type as userdata. |
 | `Converter.hpp` | The trait `Converter<T>`, with the conversions of scalars, strings, optionals, vectors and bound types. |
 | `EnumNames.hpp` | The trait `EnumNames<T>` for enums passed as strings. Every engine enum has one table of its names, which its specialization and the file parsers share. Its class usually owns it, such as `Texture::filterFromName` and `Texture::filterName`. |
-| `Table.hpp` | `Table::checkFields` and `Table::readField` for option tables whose unknown keys are errors, and `Table::readFields` with `Table::readValue`, which read an option table in one pass over the keys it holds, for options read on every draw. |
+| `Table.hpp` | `Table::checkFields` and `Table::readField` for option tables whose unknown keys are errors, and `Table::readFields` with `Table::readValue`, which read an option table in one pass over the keys it holds, for options read on every draw. An option that holds a list reads into the storage of its `std::vector`. |
 | `Binding.hpp` | `Binding::preload`, which adds a module to the Varn runtime of the engine, `Binding::newModule`, and the wrappers `Binding::native`, `Binding::function` and `Binding::method`. |
 | `ClassBuilder.hpp` | `ClassBuilder`, which builds metatables with methods and properties. |
 | `Runtime.hpp` | `Runtime::getEngine(L)`, which reaches the engine from a binding, `Runtime::getMainThread` for callbacks that outlive their coroutine, `Runtime::protectedCall`, `Runtime::protectedRun`, `Runtime::runChunk`, `Runtime::runReporting`, `Runtime::reportError` and `Runtime::captureError`. |

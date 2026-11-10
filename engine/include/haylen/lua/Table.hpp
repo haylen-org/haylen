@@ -73,7 +73,12 @@ class Table final {
     template <typename T> static int readProtected(lua_State* L) {
         std::string message;
         try {
-            *static_cast<T*>(lua_touserdata(L, 2)) = Converter<T>::read(L, 1);
+            T& target = *static_cast<T*>(lua_touserdata(L, 2));
+            if constexpr (requires(lua_State* state, T& value) { Converter<T>::readInto(state, 1, value); }) {
+                Converter<T>::readInto(L, 1, target);
+            } else {
+                target = Converter<T>::read(L, 1);
+            }
             return 0;
         } catch (const std::exception& exception) {
             message = exception.what();

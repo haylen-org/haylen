@@ -20,12 +20,16 @@ void SpriteBatch::checkTextures(std::span<const graphics::Texture> images) {
     if (images.empty() || !std::ranges::all_of(images, &graphics::Texture::isValid)) {
         throw std::invalid_argument("A sprite batch needs a texture.");
     }
-    if (images.size() > SpriteData::kMaxTextures) {
-        throw std::invalid_argument(std::format("A sprite batch draws from at most {} textures.", SpriteData::kMaxTextures));
-    }
+    checkTextureCount(images.size());
     const graphics::Texture::Options& options = images.front().getResource()->options;
     if (!std::ranges::all_of(images, [&options](const graphics::Texture& image) { return image.getResource()->options == options; })) {
         throw std::invalid_argument("The textures of a sprite batch share their filter, wrap and mipmaps, since they draw with one sampler.");
+    }
+}
+
+void SpriteBatch::checkTextureCount(std::size_t count) {
+    if (count > SpriteData::kMaxTextures) {
+        throw std::invalid_argument(std::format("A sprite batch draws from at most {} textures.", SpriteData::kMaxTextures));
     }
 }
 

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <array>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -133,7 +134,7 @@ TEST_F(AnimatedBatchTest, DrawsEverySpriteInOneCall) {
         (void)batch.add({.position = {static_cast<float>(index), 0.0F}}, "walk", static_cast<float>(index % 3));
     }
     std::vector<float> places{1.0F, 2.0F, 3.0F, 4.0F};
-    batch.writeFields(places, graphics2d::SpriteLayout({graphics2d::SpriteLayout::Field::X, graphics2d::SpriteLayout::Field::Y}), 10);
+    batch.writeFields(places, graphics2d::SpriteLayout(std::array{graphics2d::SpriteLayout::Field::X, graphics2d::SpriteLayout::Field::Y}), 10);
     EXPECT_EQ(batch.get(11).position, math::Vec2(3.0F, 4.0F));
     batch.update(0.25F);
 

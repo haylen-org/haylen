@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 
@@ -18,6 +20,9 @@ class CameraLua final {
     [[nodiscard]] static float readSeconds(lua_State* L, int index);
 
   private:
+    // Kept from call to call on the frame thread, so points framed every frame allocate nothing once they have grown.
+    inline static std::vector<math::Vec2> framedPoints;
+
     [[nodiscard]] static math::Vec2 readPoint(lua_State* L, int index);
     static int pushPoint(lua_State* L, math::Vec2 point);
 

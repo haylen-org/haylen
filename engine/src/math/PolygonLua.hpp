@@ -3,6 +3,7 @@
 #include <lua.hpp>
 
 #include <array>
+#include <cstdint>
 #include <string_view>
 #include <vector>
 
@@ -19,12 +20,16 @@ class PolygonLua final {
     // Reads a shape, or one outline as a shape with one outline.
     [[nodiscard]] static std::vector<std::vector<Vec2>> readShape(lua_State* L, int index);
 
+    // Reads a shape as the points of its outlines one after another and the number of points of each, into storage that the caller keeps, such as the storage of a shape drawn every frame.
+    static void readShape(lua_State* L, int index, std::vector<Vec2>& points, std::vector<std::uint32_t>& counts);
+
   private:
     static constexpr std::array<std::string_view, 2> kOffsetFields{"join", "miterLimit"};
     static constexpr std::array<std::string_view, 3> kTraceFields{"threshold", "spacing", "origin"};
     static constexpr std::array<std::string_view, 2> kBitmapFields{"spacing", "origin"};
 
     [[nodiscard]] static bool isPoint(lua_State* L, int index);
+    static void appendOutline(lua_State* L, int index, std::vector<Vec2>& points);
     [[nodiscard]] static std::vector<std::vector<Vec2>> readClips(lua_State* L, int index);
 
     static int unite(lua_State* L);

@@ -43,6 +43,9 @@ class MeshLua final {
     static constexpr std::array<std::string_view, 4> kDrawFields{"rotation", "scaleX", "scaleY", "fadeEdges"};
     static constexpr std::array<std::string_view, 5> kGridFields{"x", "y", "width", "height", "source"};
 
+    // Kept from call to call on the frame thread, so positions set from a list every frame allocate nothing once they have grown.
+    inline static std::vector<float> positionScratch;
+
     static int setPositions(lua_State* L);
     static int readPositions(lua_State* L);
     static int setVertex(lua_State* L);

@@ -1,11 +1,15 @@
 #include <gtest/gtest.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <map>
 #include <string>
 #include <vector>
 
+#include "haylen/2d/graphics/Renderer.hpp"
+#include "haylen/core/Engine.hpp"
 #include "haylen/graphics/Device.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
 
@@ -162,6 +166,7 @@ TEST_F(Graphics2DLuaTest, DrawsBatchesAndStaticBatches) {
     EXPECT_NE(lua("batch:reserve(-1)").find("expected a non-negative integer"), std::string::npos);
     EXPECT_NE(lua("batch:reserve(1 << 60)").find("A sprite batch holds at most 16777216 sprites."), std::string::npos);
     EXPECT_NE(lua("batch:resize(1 << 40)").find("A sprite batch holds at most 16777216 sprites."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawBatch({hero, hero, hero, hero, hero, hero, hero, hero, hero}, {})").find("A sprite batch draws from at most 8 textures."), std::string::npos);
     EXPECT_EQ(lua("batch:set(2, {x = 30}) batch:remove(1) return batch:size()"), "1");
     EXPECT_NE(lua("batch:set(5, {x = 1})").find("sprite index out of range"), std::string::npos);
     EXPECT_NE(lua("batch:remove(0)").find("sprite index out of range"), std::string::npos);
@@ -610,6 +615,100 @@ TEST_F(Graphics2DLuaTest, DirectsCamerasThroughZonesAndRailsAndScrollsPixelCanva
     EXPECT_NE(lua("graphics2d.newPixelCanvas(2147483647, 90)").find("A pixel canvas has at most"), std::string::npos);
     EXPECT_NE(lua("graphics2d.newPixelCanvas(4294967312, 90)").find("integer out of range"), std::string::npos);
     EXPECT_NE(lua("graphics2d.newPixelCanvas(10, 10, {crisp = true})").find("Unknown option \"crisp\"."), std::string::npos);
+}
+
+// A frame that draws through every draw function and method of the module what the frame before it drew allocates nothing, whatever lists of points, outlines, vertices, sprites, colors and fields its tables hold.
+TEST_F(Graphics2DLuaTest, DrawsEveryKindOfDrawWithoutAllocating) {
+    // clang-format off
+    lua(R"(
+        collections = require('haylen.collections') lighting2d = require('haylen.lighting2d')
+        icon = graphics.newVectorImage('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="8" fill="currentColor"/></svg>')
+        buffer = collections.newFloatBuffer(8, 1) positions = collections.newFloatBuffer(6, 1)
+        batch = graphics2d.newSpriteBatch(hero) batch:add({x = 1, y = 2}) batch:add({x = 3, y = 4}) baked = batch:bake()
+        path = graphics2d.newPath() path:moveTo(0, 0) path:lineTo(40, 0) path:quadraticTo(50, 20, 40, 40) path:close()
+        mesh = graphics2d.newMesh(hero, {{x = 0, y = 0}, {x = 10, y = 0}, {x = 0, y = 10}}, {1, 2, 3})
+        camera = graphics2d.newCamera()
+        parallax = graphics2d.newParallax(hero, {repeatX = true})
+        slice = graphics2d.newNineSlice(hero, {borders = {2, 2, 2, 2}})
+        tiles = graphics2d.newTileLayer(hero, {cellWidth = 4, cellHeight = 4}) tiles:defineFrame(1, {source = {0, 0, 4, 4}}) tiles:setCell(0, 0, 1)
+        pixels = graphics2d.newPixelCanvas(32, 32)
+        rich = graphics2d.newRichText('[b]Hi[/b] there', {size = 16})
+        sprite = graphics2d.newSprite(hero, {x = 4, y = 4})
+        spline = m.spline({{0, 0}, {40, 20}, {80, 0}})
+        lamp = lighting2d.newLight({x = 20, y = 20, radius = 60})
+        wall = lighting2d.newOccluder({points = {40, 0, 40, 40, 50, 40}})
+        family = graphics.newFontFamily({regular = graphics2d.defaultFont()})
+        target = graphics.newRenderTarget(16, 16)
+    )");
+    const std::string frame = R"(
+        camera:frame({{0, 0}, {10, 10}}, 4, 0.016)
+        batch:writeFields(buffer, {'x', 'y'}, 1)
+        batch:readFields(buffer, {'x', 'y'}, 1)
+        mesh:setPositions({0, 0, 10, 0, 0, 10})
+        mesh:setPositions(positions)
+        graphics2d.beginTarget(target, camera, {clear = '#FF000000'})
+        graphics2d.drawRect({0, 0, 4, 4}, '#FFFFFFFF')
+        graphics2d.beginWorld(camera, {ambientLight = '#FF202020', postProcess = {blur = 1, bloomStrength = 0.5}})
+        graphics2d.drawLight(lamp)
+        graphics2d.drawLight({x = 10, y = 10, radius = 40})
+        graphics2d.drawOccluder(wall)
+        graphics2d.drawOccluder({points = {40, 0, 40, 40, 50, 40}})
+        tiles:draw()
+        parallax:draw(camera)
+        camera:drawDebug()
+        graphics2d.beginScreen()
+        graphics2d.draw(hero, 10, 10, {width = 20, height = 20, rotation = 0.5, color = '#FF0000FF', layer = 1, effect = {outlineWidth = 1, outlineColor = '#FF0000FF'}})
+        graphics2d.drawVector(icon, 10, 10, {width = 32, height = 32})
+        graphics2d.drawBatch(hero, {{x = 1, y = 2, width = 4, height = 4, data = {1, 2}}, {x = 5, y = 6}})
+        graphics2d.drawBatch({hero, hero}, {{x = 1, y = 2, texture = 2}, {x = 5, y = 6, partColors = {red = '#FF0000FF'}}})
+        graphics2d.drawBatch(hero, buffer, {fields = {'x', 'y'}, width = 4, height = 4})
+        graphics2d.drawStatic(baked, 1, 2)
+        graphics2d.drawRectOutline({0, 0, 10, 10}, 2, '#FFFFFFFF')
+        graphics2d.drawLine(0, 0, 10, 10, 2, '#FFFFFFFF')
+        graphics2d.drawCircle(10, 10, 5, '#FFFFFFFF')
+        graphics2d.drawEllipse(10, 10, 5, 3, '#FFFFFFFF')
+        graphics2d.drawRing(10, 10, 5, 2, '#FFFFFFFF')
+        graphics2d.drawArc(10, 10, 5, 2, 0, 2, '#FFFFFFFF')
+        graphics2d.drawPoints({1, 2, 3, 4}, {radius = 2, colors = {'#FF0000FF', '#00FF00FF'}})
+        graphics2d.drawPoints(buffer, {radius = 2, color = '#FF0000FF'})
+        graphics2d.drawShape({0, 0, 20, 20}, {radius = {1, 2, 3, 4}, borderWidth = 1})
+        graphics2d.drawPolygon({{0, 0}, {10, 0}, {10, 10}}, '#FFFFFFFF')
+        graphics2d.drawPolygon({{{0, 0}, {10, 0}, {10, 10}}, {{20, 0}, {30, 0}, {30, 10}}}, '#FFFFFFFF')
+        graphics2d.drawPolyline({{0, 0}, {10, 10}, {20, 0}}, 2, '#FFFFFFFF')
+        graphics2d.drawMesh(hero, {{x = 0, y = 0}, {x = 10, y = 0}, {x = 0, y = 10}}, {1, 2, 3}, {fadeEdges = false})
+        graphics2d.drawStroke({0, 0, 10, 10, 20, 0}, {width = 2, widths = {1, 2, 3}, colors = {'#FF0000FF', '#00FF00FF', '#0000FFFF'}})
+        graphics2d.drawStroke({0, 0, 10, 10, 20, 0}, {width = 2, dashes = {2, 1}})
+        graphics2d.drawStroke(spline, {width = 2})
+        graphics2d.drawText(nil, 'Gold', 0, 0, {size = 16, gradient = {colors = {'#FFFF0000', '#FF0000FF'}}, outlineWidth = 1})
+        graphics2d.drawText(family, 'Hello', 10, 10, {size = 16})
+        graphics2d.measureText(nil, 'Hello', {size = 16})
+        graphics2d.drawNineSlice(slice, {0, 0, 50, 50}, '#FFFFFFFF', {borderScale = 2})
+        graphics2d.drawMetaballs({1, 2, 3, 4}, 4, {color = '#FFFFFFFF'})
+        graphics2d.drawImageBlend(hero, hero, {0, 0, 10, 10}, {pattern = 'dissolve', progress = 0.5})
+        graphics2d.pushClip({0, 0, 10, 10}) graphics2d.pushFade({0, 0, 10, 10}, {length = 2, left = 1}) graphics2d.pushLayerOffset(2)
+        graphics2d.popLayerOffset() graphics2d.popFade() graphics2d.popClip()
+        path:fill(0, 0, {color = '#FFFFFFFF', rotation = 0.1})
+        path:fill(0, 0, {fillRule = 'evenOdd', scaleX = 2, scaleY = 2})
+        path:stroke(0, 0, {width = 4, dashes = {4, 2}})
+        path:stroke(0, 0, {width = 2})
+        mesh:draw(0, 0, {rotation = 1})
+        batch:draw({layer = 1})
+        sprite:draw()
+        pixels:draw(0, 0, 32, 32)
+        rich:draw(0, 0)
+    )";
+    const auto measure = [this](const std::string& body) {
+        lua("require('haylen.scene').clear() require('haylen.scene').push({render = function() " + body + " end})");
+        fixture.frames(5);
+        const test::AllocationTracker tracker;
+        fixture.frames(10);
+        return tracker.getTotal();
+    };
+    // clang-format on
+    const std::size_t empty = measure("");
+    EXPECT_EQ(measure(frame), empty);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+    EXPECT_GT(fixture.engine().getRenderer2D().getStats().sprites, 0U);
 }
 
 } // namespace haylen

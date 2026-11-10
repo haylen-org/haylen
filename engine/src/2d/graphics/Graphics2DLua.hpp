@@ -1,12 +1,18 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 #include <optional>
 #include <string_view>
 #include <vector>
 
+#include "haylen/2d/graphics/MeshVertex.hpp"
+#include "haylen/2d/graphics/PartColors.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/2d/graphics/Shape.hpp"
+#include "haylen/2d/graphics/SpriteData.hpp"
+#include "haylen/2d/graphics/SpriteInstance.hpp"
+#include "haylen/2d/lighting/Occluder.hpp"
 #include "haylen/lua/EnumNames.hpp"
 #include "haylen/math/Vec2.hpp"
 
@@ -55,9 +61,16 @@ class Graphics2DLua final {
 
     [[nodiscard]] static Renderer& getRenderer(lua_State* L);
 
-    // Kept from draw to draw on the frame thread, so points drawn every frame allocate nothing once they have grown.
+    // Kept from draw to draw on the frame thread, so the lists of points, colors, outlines, vertices and sprites that a frame draws allocate nothing once they have grown.
     inline static std::vector<math::Vec2> pointScratch;
     inline static std::vector<math::Color> colorScratch;
+    inline static std::vector<std::uint32_t> countScratch;
+    inline static std::vector<MeshVertex> meshVertices;
+    inline static std::vector<std::uint32_t> meshIndices;
+    inline static std::vector<SpriteInstance> batchSprites;
+    inline static std::vector<PartColors> batchPartColors;
+    inline static std::vector<SpriteData> batchData;
+    inline static lighting2d::Occluder occluderScratch;
 
     // Returns the font at the index, or the default font of the engine where the argument is nil.
     [[nodiscard]] static text::Font& fontArgument(lua_State* L, int index);

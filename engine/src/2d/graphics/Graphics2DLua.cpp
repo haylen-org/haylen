@@ -1,9 +1,11 @@
 #include "2d/graphics/Graphics2DLua.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <format>
 #include <memory>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -158,7 +160,9 @@ int Graphics2DLua::blendCameras(lua_State* L) {
 
 // Makes a batch of one texture with `newSpriteBatch(texture)`, or of several with `newSpriteBatch({texture, ...})`.
 int Graphics2DLua::newSpriteBatch(lua_State* L) {
-    lua::Userdata::emplace<SpriteBatch>(L, std::make_shared<SpriteBatch>(SpriteBatchLua::readTextures(L, 1)));
+    SpriteBatchLua::Textures textures;
+    const std::span<const graphics::Texture> read = SpriteBatchLua::readTextures(L, 1, textures);
+    lua::Userdata::emplace<SpriteBatch>(L, std::make_shared<SpriteBatch>(std::vector<graphics::Texture>(read.begin(), read.end())));
     return 1;
 }
 
@@ -316,7 +320,8 @@ int Graphics2DLua::drawVector(lua_State* L) {
 
 // Draws a list of sprite tables of one texture, or of a list of textures that each sprite picks from with its `texture`, as a single batch with `drawBatch(textures, {{x, y, width, height, ...}, ...}, order)`, or the sprites a float buffer holds with `drawBatch(textures, buffer, {fields = {'x', 'y', ...}, width = ..., ...}, order)`, where the table is the template of every sprite.
 int Graphics2DLua::drawBatch(lua_State* L) {
-    const std::vector<graphics::Texture> textures = SpriteBatchLua::readTextures(L, 1);
+    SpriteBatchLua::Textures held;
+    const std::span<const graphics::Texture> textures = SpriteBatchLua::readTextures(L, 1, held);
     SpriteBatch::checkTextures(textures);
     if (const core::FloatBuffer* buffer = lua::Userdata::test<core::FloatBuffer>(L, 2)) {
         luaL_checktype(L, 3, LUA_TTABLE);
@@ -330,10 +335,14 @@ int Graphics2DLua::drawBatch(lua_State* L) {
         getRenderer(L).drawBatch(textures, buffer->getValues(), layout, lua::TypeConverter::readDrawOrder(L, 4));
         return 0;
     }
+
     luaL_checktype(L, 2, LUA_TTABLE);
-    std::vector<SpriteInstance> sprites(static_cast<std::size_t>(luaL_len(L, 2)));
-    std::vector<PartColors> partColors;
-    std::vector<SpriteData> data;
+    std::vector<SpriteInstance>& sprites = batchSprites;
+    std::vector<PartColors>& partColors = batchPartColors;
+    std::vector<SpriteData>& data = batchData;
+    sprites.resize(static_cast<std::size_t>(luaL_len(L, 2)));
+    partColors.clear();
+    data.clear();
     for (std::size_t index = 0; index < sprites.size(); ++index) {
         lua_rawgeti(L, 2, static_cast<lua_Integer>(index + 1));
         luaL_checktype(L, -1, LUA_TTABLE);
@@ -446,12 +455,14 @@ void Graphics2DLua::readRadii(lua_State* L, std::array<float, 4>& radii) {
         radii.fill(lua::Converter<float>::fromNumber(L, lua_tonumber(L, -1)));
         return;
     }
-    std::vector<float> corners;
-    lua::Table::readValue(L, "radius", corners);
-    if (corners.size() != radii.size()) {
+    if (lua_type(L, -1) != LUA_TTABLE || lua_rawlen(L, -1) != radii.size()) {
         throw std::invalid_argument("The option \"radius\" of a shape takes one radius for every corner or four, from the top-left corner clockwise.");
     }
-    std::ranges::copy(corners, radii.begin());
+    for (std::size_t corner = 0; corner < radii.size(); ++corner) {
+        lua_rawgeti(L, -1, static_cast<lua_Integer>(corner + 1));
+        lua::Table::readValue(L, "radius", radii[corner]);
+        lua_pop(L, 1);
+    }
 }
 
 // Draws a rounded rectangle, an ellipse, a circle, a capsule, a ring or an arc with `drawShape(rect, {kind, radius, rotation, startAngle, sweep, color, texture, borderWidth, borderColor, softness, layer, depth, ...})`.
@@ -491,20 +502,22 @@ int Graphics2DLua::drawShape(lua_State* L) {
 
 // Fills a polygon or a shape of outlines with `drawPolygon(points or shape, color, order)`, where a shape takes the outlines of `m.polygon`.
 int Graphics2DLua::drawPolygon(lua_State* L) {
-    getRenderer(L).drawPolygon(math::PolygonLua::readShape(L, 1), lua::Stack::read<math::Color>(L, 2), lua::TypeConverter::readDrawOrder(L, 3));
+    math::PolygonLua::readShape(L, 1, pointScratch, countScratch);
+    getRenderer(L).drawPolygon(pointScratch, countScratch, lua::Stack::read<math::Color>(L, 2), lua::TypeConverter::readDrawOrder(L, 3));
     return 0;
 }
 
 int Graphics2DLua::drawPolyline(lua_State* L) {
-    getRenderer(L).drawPolyline(lua::Stack::read<std::vector<math::Vec2>>(L, 1), lua::Stack::read<float>(L, 2), lua::Stack::read<math::Color>(L, 3), lua_toboolean(L, 4) != 0, lua::TypeConverter::readDrawOrder(L, 5));
+    lua::Stack::readInto(L, 1, pointScratch);
+    getRenderer(L).drawPolyline(pointScratch, lua::Stack::read<float>(L, 2), lua::Stack::read<math::Color>(L, 3), lua_toboolean(L, 4) != 0, lua::TypeConverter::readDrawOrder(L, 5));
     return 0;
 }
 
 // Draws triangles with `drawMesh(texture or nil, {{x, y, u, v, color}, ...}, {1, 2, 3, ...}, options)`, whose options take `fadeEdges` and the keys of the draw order.
 int Graphics2DLua::drawMesh(lua_State* L) {
     const graphics::Texture texture = lua_isnil(L, 1) ? graphics::Texture{} : lua::Stack::read<graphics::Texture>(L, 1);
-    std::vector<MeshVertex> vertices;
-    std::vector<std::uint32_t> indices;
+    std::vector<MeshVertex>& vertices = meshVertices;
+    std::vector<std::uint32_t>& indices = meshIndices;
     MeshLua::readVertices(L, 2, vertices);
     MeshLua::readIndices(L, 3, indices);
     bool fadeEdges = true;
@@ -564,7 +577,12 @@ int Graphics2DLua::drawLight(lua_State* L) {
 
 // Draws an `Occluder`, or a table with the properties of one, with `drawOccluder(occluder)`.
 int Graphics2DLua::drawOccluder(lua_State* L) {
-    getRenderer(L).drawOccluder(lighting2d::OccluderLua::read(L, 1));
+    if (const lighting2d::Occluder* occluder = lua::Userdata::test<lighting2d::Occluder>(L, 1)) {
+        getRenderer(L).drawOccluder(*occluder);
+        return 0;
+    }
+    lighting2d::OccluderLua::read(L, 1, occluderScratch);
+    getRenderer(L).drawOccluder(occluderScratch);
     return 0;
 }
 
@@ -573,7 +591,8 @@ int Graphics2DLua::drawMetaballs(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     const auto count = static_cast<std::size_t>(luaL_len(L, 1));
     luaL_argcheck(L, count % 2 == 0, 1, "metaball positions need two numbers per point");
-    std::vector<math::Vec2> points(count / 2);
+    std::vector<math::Vec2>& points = pointScratch;
+    points.resize(count / 2);
     for (std::size_t point = 0; point < points.size(); ++point) {
         lua_rawgeti(L, 1, static_cast<lua_Integer>(point * 2 + 1));
         lua_rawgeti(L, 1, static_cast<lua_Integer>(point * 2 + 2));

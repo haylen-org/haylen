@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 struct lua_State;
 
 namespace haylen::graphics2d {
@@ -15,6 +17,9 @@ class MaterialLua final {
     static int newMaterial(lua_State* L);
 
   private:
+    // Kept from call to call on the frame thread, so a list of numbers set every frame allocates nothing once it has grown.
+    inline static std::vector<float> valueScratch;
+
     // Sets a uniform or texture from the Lua value at index: a number, a `Vec2`, a `Color` or color string, a `Transform`, a `Texture`, or a list of numbers.
     static void setValue(lua_State* L, Material& material, int nameIndex, int valueIndex);
 
