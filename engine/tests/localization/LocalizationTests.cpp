@@ -113,6 +113,7 @@ TEST_F(CatalogTest, NormalizesLanguageTags) {
     EXPECT_EQ(Catalog::normalizeTag("de-CH-1901"), "de-CH-1901");
     EXPECT_EQ(Catalog::normalizeTag("en-US-u-mu-celsius"), "en-US");
     EXPECT_EQ(Catalog::normalizeTag("fil-PH-x-private"), "fil-PH");
+
     for (const char* text : {"", "e", "english", "en-", "en--US", "en US", "pt-BR-", "123", "en-Latn-Latn", "en-US-BR", "x-private", "pt.BR"}) {
         EXPECT_THROW((void)Catalog::normalizeTag(text), std::invalid_argument) << text;
     }
@@ -124,6 +125,7 @@ TEST_F(CatalogTest, MatchesLanguageTagsInOrder) {
     for (const char* language : {"en", "pt", "pt-PT", "es-MX", "es-AR", "zh-Hans", "zh-Hant-TW"}) {
         catalog.add(language, core::Json::object());
     }
+
     EXPECT_EQ(catalog.findBestMatch("PT_pt"), "pt-PT");
     EXPECT_EQ(catalog.findBestMatch("pt-BR"), "pt");
     EXPECT_EQ(catalog.findBestMatch("en-Latn-US"), "en");
@@ -307,6 +309,7 @@ TEST(LocalizationPluginTest, ReadsTheLocalizationSectionOfAppJson) {
         } catch (const std::invalid_argument& failure) {
             return std::string(failure.what());
         }
+
         return std::string();
     };
     // clang-format on

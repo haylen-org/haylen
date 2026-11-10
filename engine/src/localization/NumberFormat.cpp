@@ -39,6 +39,7 @@ std::string NumberFormat::replace(std::string_view pattern, std::string_view key
     if (found != std::string::npos) {
         result.replace(found, key.size(), value);
     }
+
     return result;
 }
 
@@ -49,6 +50,7 @@ std::string NumberFormat::formatPlain(std::string_view language, double value, i
     if (const std::size_t point = digits.find('.'); point != std::string::npos) {
         fraction = digits.substr(point + 1);
         digits.resize(point);
+
         while (static_cast<int>(fraction.size()) > minimum && fraction.back() == '0') {
             fraction.pop_back();
         }
@@ -64,9 +66,11 @@ std::string NumberFormat::formatPlain(std::string_view language, double value, i
             count = 0;
             size = locale.secondaryGroup;
         }
+
         whole.insert(whole.begin(), *digit);
         ++count;
     }
+
     return fraction.empty() ? whole : whole + std::string(locale.decimal) + fraction;
 }
 
@@ -74,6 +78,7 @@ std::string NumberFormat::format(std::string_view language, double value, const 
     if (!std::isfinite(value)) {
         throw std::invalid_argument("A number to format must be finite.");
     }
+
     const LocaleData::Locale& locale = LocaleData::find(language);
     double shown = options.style == Style::Percent ? value * 100.0 : value;
     std::string_view suffix;
@@ -84,6 +89,7 @@ std::string NumberFormat::format(std::string_view language, double value, const 
     if (options.style == Style::Currency) {
         defaultMinimum = defaultMaximum = getCurrencyDigits(options.currency);
     }
+
     if (options.style == Style::Compact) {
         int power = 0;
         for (const LocaleData::Compact& scale : locale.compact) {
@@ -95,8 +101,10 @@ std::string NumberFormat::format(std::string_view language, double value, const 
                 suffix = scale.suffix;
             }
         }
+
         defaultMaximum = std::fabs(shown) < 9.95 ? 1 : 0;
     }
+
     const int minimum = options.minimumFractionDigits.value_or(std::min(defaultMinimum, options.maximumFractionDigits.value_or(defaultMinimum)));
     const int maximum = options.maximumFractionDigits.value_or(std::max(defaultMaximum, minimum));
     if (minimum < 0 || maximum > kMaxFractionDigits || minimum > maximum) {

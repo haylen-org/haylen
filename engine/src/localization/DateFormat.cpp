@@ -29,6 +29,7 @@ DateFormat::Fields DateFormat::fromUtc(std::int64_t seconds) noexcept {
         rest += 86400;
         --days;
     }
+
     const std::int64_t shifted = days + 719468;
     const std::int64_t era = (shifted >= 0 ? shifted : shifted - 146096) / 146097;
     const std::int64_t dayOfEra = shifted - era * 146097;
@@ -50,10 +51,12 @@ DateFormat::Fields DateFormat::toFields(std::int64_t seconds, std::optional<int>
         if (*timeZoneOffset < -kMaxOffsetMinutes || *timeZoneOffset > kMaxOffsetMinutes) {
             throw std::invalid_argument("A time zone offset runs from -1080 to 1080 minutes.");
         }
+
         const std::int64_t shift = static_cast<std::int64_t>(*timeZoneOffset) * 60;
         if ((shift > 0 && seconds > std::numeric_limits<std::int64_t>::max() - shift) || (shift < 0 && seconds < std::numeric_limits<std::int64_t>::min() - shift)) {
             throw std::invalid_argument("The moment is too far from 1970 to shift by the time zone offset.");
         }
+
         return fromUtc(seconds + shift);
     }
 
@@ -68,6 +71,7 @@ DateFormat::Fields DateFormat::toFields(std::int64_t seconds, std::optional<int>
     if (!converted) {
         throw std::invalid_argument(std::format("The system cannot express the moment {} in the time zone of the device. Pass a \"timeZoneOffset\" to format it.", seconds));
     }
+
     return {.year = local.tm_year + 1900, .month = local.tm_mon + 1, .day = local.tm_mday, .hour = local.tm_hour, .minute = local.tm_min, .weekday = local.tm_wday};
 }
 
@@ -80,6 +84,7 @@ std::string DateFormat::expand(std::string_view language, std::string_view patte
             text.append(pattern);
             break;
         }
+
         text.append(pattern.substr(0, open));
         const std::size_t close = pattern.find('}', open);
         const std::string_view field = pattern.substr(open + 1, close - open - 1);
@@ -114,6 +119,7 @@ std::string DateFormat::expand(std::string_view language, std::string_view patte
             text.append(fields.hour < 12 ? locale.am : locale.pm);
         }
     }
+
     return text;
 }
 
@@ -124,9 +130,11 @@ std::string DateFormat::format(std::string_view language, std::int64_t seconds, 
     if (options.date) {
         text = expand(language, locale.dates.at(static_cast<std::size_t>(*options.date)), fields);
     }
+
     if (options.time) {
         text += (text.empty() ? "" : " ") + expand(language, locale.time, fields);
     }
+
     return text;
 }
 

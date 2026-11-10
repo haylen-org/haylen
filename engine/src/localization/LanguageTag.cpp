@@ -48,6 +48,7 @@ std::optional<std::string> LanguageTag::parse(std::string_view tag) {
     if (language.size() < 2 || language.size() > 3 || !isLetters(language)) {
         return std::nullopt;
     }
+
     std::string canonical(language);
     toLower(canonical);
 
@@ -57,15 +58,18 @@ std::optional<std::string> LanguageTag::parse(std::string_view tag) {
         const std::size_t end = std::min(tag.find_first_of("-_", start), tag.size());
         const std::string_view subtag = tag.substr(start, end - start);
         start = end + 1;
+
         if (subtag.empty() || subtag.size() > 8 || !isAlphanumeric(subtag)) {
             return std::nullopt;
         }
+
         if (subtag.size() == 1) {
             break;
         }
 
         std::string written(subtag);
         toLower(written);
+
         if (expected == Part::Script && subtag.size() == 4 && isLetters(subtag)) {
             written.front() = static_cast<char>(std::toupper(static_cast<unsigned char>(written.front())));
             expected = Part::Region;
@@ -77,9 +81,11 @@ std::optional<std::string> LanguageTag::parse(std::string_view tag) {
         } else {
             return std::nullopt;
         }
+
         canonical += '-';
         canonical += written;
     }
+
     return canonical;
 }
 
@@ -88,6 +94,7 @@ std::string LanguageTag::normalize(std::string_view tag) {
     if (!canonical) {
         throw std::invalid_argument("The language tag \"" + std::string(tag) + "\" is not valid. Write a language such as \"en\", with a script or a region where it needs one, such as \"zh-Hans\", \"pt-BR\" or \"pt_BR\".");
     }
+
     return std::move(*canonical);
 }
 
@@ -105,6 +112,7 @@ std::string_view LanguageTag::getScript(std::string_view tag) noexcept {
     if (separator == std::string_view::npos) {
         return {};
     }
+
     const std::string_view rest = tag.substr(separator + 1);
     const std::string_view subtag = rest.substr(0, rest.find('-'));
     return subtag.size() == 4 && isLetters(subtag) ? subtag : std::string_view();
@@ -127,6 +135,7 @@ std::optional<std::size_t> LanguageTag::findBestMatch(std::string_view tag, std:
             return index;
         }
     }
+
     return std::nullopt;
 }
 

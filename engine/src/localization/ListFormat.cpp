@@ -32,8 +32,10 @@ std::string ListFormat::format(std::string_view language, std::span<const std::s
                 text.append(type == Type::And ? locale.andLast : locale.orLast);
             }
         }
+
         text += items[index];
     }
+
     return text;
 }
 

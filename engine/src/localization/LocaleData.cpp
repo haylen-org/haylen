@@ -633,12 +633,14 @@ const LocaleData::Locale& LocaleData::find(std::string_view language) noexcept {
             return locale;
         }
     }
+
     const std::string_view base = language.substr(0, language.find_first_of("-_"));
     for (const Locale& locale : kLocales) {
         if (same(locale.tag, base)) {
             return locale;
         }
     }
+
     return kLocales.front();
 }
 

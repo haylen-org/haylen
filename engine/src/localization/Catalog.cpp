@@ -18,11 +18,13 @@ bool Catalog::isPlural(const core::Json& value) {
     if (!value.is_object() || !value.contains("other")) {
         return false;
     }
+
     for (const auto& [form, text] : value.items()) {
         if (!PluralRules::categoryFromName(form) || !text.is_string()) {
             return false;
         }
     }
+
     return true;
 }
 
@@ -43,12 +45,14 @@ std::string Catalog::formatArgument(const core::Json& value) {
     if (value.is_string()) {
         return value.get<std::string>();
     }
+
     if (value.is_number_float()) {
         const double number = value.get<double>();
         if (std::trunc(number) == number && std::abs(number) < 1e15) {
             return std::to_string(static_cast<long long>(number));
         }
     }
+
     return value.dump();
 }
 
@@ -65,6 +69,7 @@ std::string Catalog::format(std::string_view pattern, const core::Json& argument
     for (std::size_t index = 0; index < pattern.size(); ++index) {
         const char character = pattern[index];
         const bool doubled = index + 1 < pattern.size() && pattern[index + 1] == character;
+
         if ((character == '{' || character == '}') && doubled) {
             result += character;
             ++index;
@@ -83,6 +88,7 @@ std::string Catalog::format(std::string_view pattern, const core::Json& argument
         result += argument != arguments.end() ? formatArgument(*argument) : std::string(pattern.substr(index, close - index + 1));
         index = close;
     }
+
     return result;
 }
 
@@ -101,9 +107,11 @@ std::string Catalog::translatePseudo(std::string_view pattern) {
             index = close;
             continue;
         }
+
         if (std::isalpha(static_cast<unsigned char>(character)) != 0) {
             ++letters;
         }
+
         const std::size_t plain = kPlain.find(character);
         if (plain == std::string_view::npos) {
             result += character;
@@ -111,6 +119,7 @@ std::string Catalog::translatePseudo(std::string_view pattern) {
             result.append(kAccented[plain]);
         }
     }
+
     result += ' ';
     result.append((letters + 2) / 3, '.');
     result += " »";
@@ -121,6 +130,7 @@ void Catalog::add(const std::string& name, const core::Json& table) {
     if (name.empty()) {
         throw std::invalid_argument("A localization table needs a language.");
     }
+
     const std::string tag = LanguageTag::normalize(name);
     if (!table.is_object()) {
         throw std::invalid_argument("The localization table of \"" + tag + "\" must be a JSON object.");
@@ -133,12 +143,14 @@ void Catalog::add(const std::string& name, const core::Json& table) {
             throw std::invalid_argument("The \"@direction\" of the localization table of \"" + tag + "\" must be \"leftToRight\" or \"rightToLeft\".");
         }
     }
+
     core::Json texts = table;
     texts.erase(std::string(kDirectionKey));
 
     Table entries = tables.contains(tag) ? tables.find(tag)->second : Table{};
     flatten(texts, "", entries);
     tables[tag] = std::move(entries);
+
     if (direction) {
         directions.insert_or_assign(tag, *direction);
     }
@@ -146,9 +158,11 @@ void Catalog::add(const std::string& name, const core::Json& table) {
     if (std::ranges::find(languages, tag) == languages.end()) {
         languages.push_back(tag);
     }
+
     if (fallback.empty()) {
         fallback = tag;
     }
+
     resolveLanguage();
 }
 
@@ -167,6 +181,7 @@ void Catalog::resolveLanguage() {
             return;
         }
     }
+
     language = fallback;
 }
 
@@ -186,6 +201,7 @@ void Catalog::setSystemLanguages(std::span<const std::string> value) {
     for (const std::string& tag : value) {
         tags.push_back(LanguageTag::normalize(tag));
     }
+
     systemLanguages = std::move(tags);
     resolveLanguage();
 }
@@ -210,11 +226,13 @@ std::pair<const core::Json*, const std::string*> Catalog::find(std::string_view 
         if (found == tables.end()) {
             continue;
         }
+
         const auto entry = found->second.find(key);
         if (entry != found->second.end()) {
             return {&entry->second, candidate};
         }
     }
+
     return {nullptr, nullptr};
 }
 
@@ -228,6 +246,7 @@ std::string Catalog::getText(std::string_view key, const core::Json& arguments) 
     if (entry == nullptr) {
         return std::string(key);
     }
+
     if (entry->is_string()) {
         const std::string& pattern = entry->get_ref<const std::string&>();
         return format(pseudo ? translatePseudo(pattern) : pattern, arguments);
@@ -247,6 +266,7 @@ std::string Catalog::getText(std::string_view key, const core::Json& arguments) 
             form = PluralRules::categoryName(category);
         }
     }
+
     const std::string& pattern = entry->at(form).get_ref<const std::string&>();
     return format(pseudo ? translatePseudo(pattern) : pattern, arguments);
 }
@@ -256,6 +276,7 @@ std::optional<std::string> Catalog::findBestMatch(std::string_view tag) const {
     if (!found) {
         return std::nullopt;
     }
+
     return languages[*found];
 }
 

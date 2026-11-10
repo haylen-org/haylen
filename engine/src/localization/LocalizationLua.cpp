@@ -126,6 +126,7 @@ std::string LocalizationLua::readLanguage(lua_State* L, int index) {
     if (lua_istable(L, index)) {
         lua::Table::readField(L, index, "language", language);
     }
+
     return language;
 }
 
@@ -143,13 +144,16 @@ int LocalizationLua::formatNumber(lua_State* L) {
             if (!found) {
                 return luaL_error(L, "The style of a number must be \"decimal\", \"percent\", \"currency\" or \"compact\".");
             }
+
             options.style = *found;
         }
+
         lua::Table::readField(L, 2, "minimumFractionDigits", options.minimumFractionDigits);
         lua::Table::readField(L, 2, "maximumFractionDigits", options.maximumFractionDigits);
         lua::Table::readField(L, 2, "currency", options.currency);
         lua::Table::readField(L, 2, "grouping", options.grouping);
     }
+
     lua::Stack::push(L, NumberFormat::format(readLanguage(L, 2), value, options));
     return 1;
 }
@@ -160,6 +164,7 @@ int LocalizationLua::formatDate(lua_State* L) {
     if (!(moment >= -0x1p63 && moment < 0x1p63)) {
         throw std::invalid_argument("A moment to format is a finite number of seconds within the range of 64-bit integers.");
     }
+
     const auto seconds = static_cast<std::int64_t>(moment);
     DateFormat::Options options;
     if (!lua_isnoneornil(L, 2)) {
@@ -172,12 +177,15 @@ int LocalizationLua::formatDate(lua_State* L) {
             if (!found) {
                 return luaL_error(L, "The date of a date format must be \"short\", \"medium\", \"long\", \"full\" or false.");
             }
+
             options.date = *found;
         }
+
         lua_pop(L, 1);
         lua::Table::readField(L, 2, "time", options.time);
         lua::Table::readField(L, 2, "timeZoneOffset", options.timeZoneOffset);
     }
+
     lua::Stack::push(L, DateFormat::format(readLanguage(L, 2), seconds, options));
     return 1;
 }
@@ -196,9 +204,11 @@ int LocalizationLua::formatList(lua_State* L) {
             if (!found) {
                 return luaL_error(L, "The type of a list must be \"and\" or \"or\".");
             }
+
             type = *found;
         }
     }
+
     lua::Stack::push(L, ListFormat::format(readLanguage(L, 2), items, type));
     return 1;
 }
@@ -212,6 +222,7 @@ int LocalizationLua::pluralCategory(lua_State* L) {
         lua::Table::checkFields(L, 2, {kPluralOptions});
         lua::Table::readField(L, 2, "ordinal", ordinal);
     }
+
     const std::string language = readLanguage(L, 2);
     lua::Stack::push(L, PluralRules::categoryName(ordinal ? PluralRules::selectOrdinal(language, count) : PluralRules::select(language, count)));
     return 1;
