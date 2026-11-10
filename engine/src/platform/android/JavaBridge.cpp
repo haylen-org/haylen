@@ -1,6 +1,7 @@
 #include "platform/android/JavaBridge.hpp"
 
 #include <format>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -468,13 +469,23 @@ std::string JavaBridge::callText(JNIEnv& env, jclass owner, jmethodID method, st
     return toString(env, bytes.get());
 }
 
-// A thread that this class attached keeps its attachment, which the key ends when the thread exits, so no call pays for attaching and every attachment is released.
+// A thread that this class attached keeps its attachment, which the key ends when the thread exits, so no call pays for attaching and every attachment is released. A thread that Java refuses to attach cannot call into Java, which is an error of the call.
 JNIEnv& JavaBridge::getEnv() {
     JNIEnv* env = nullptr;
-    if (javaVm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) == JNI_EDETACHED) {
-        javaVm->AttachCurrentThread(&env, nullptr);
-        pthread_setspecific(attachedThreads, env);
+    const jint state = javaVm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
+    if (state == JNI_OK) {
+        return *env;
     }
+
+    if (state != JNI_EDETACHED) {
+        throw std::runtime_error(std::format("Java refused the environment of this thread with the code {}, so the thread cannot call into Java.", state));
+    }
+
+    const jint attached = javaVm->AttachCurrentThread(&env, nullptr);
+    if (attached != JNI_OK) {
+        throw std::runtime_error(std::format("Java could not attach this thread, which failed with the code {}, so the thread cannot call into Java.", attached));
+    }
+    pthread_setspecific(attachedThreads, env);
     return *env;
 }
 
