@@ -24,7 +24,7 @@ using Microsoft::WRL::Callback;
 using Microsoft::WRL::ComPtr;
 using Microsoft::WRL::Wrappers::HStringReference;
 
-ComPtr<ISystemMediaTransportControls> WindowsMediaSession::controls;
+ComPtr<ISystemMediaTransportControls>& WindowsMediaSession::controls = *new ComPtr<ISystemMediaTransportControls>();
 bool WindowsMediaSession::attempted = false;
 std::atomic<MediaSession::Commands> WindowsMediaSession::offered = 0;
 

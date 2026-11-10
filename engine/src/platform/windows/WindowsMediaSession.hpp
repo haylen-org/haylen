@@ -23,8 +23,8 @@ class WindowsMediaSession final {
   private:
     // The controls of the window, made once with their handlers, or null where the system has none.
     [[nodiscard]] static ABI::Windows::Media::ISystemMediaTransportControls* getControls();
-    static void show(ABI::Windows::Media::ISystemMediaTransportControls& controls, const MediaSession::NowPlaying& value);
-    static void showTimeline(ABI::Windows::Media::ISystemMediaTransportControls& controls, const MediaSession::NowPlaying& value);
+    static void show(ABI::Windows::Media::ISystemMediaTransportControls& target, const MediaSession::NowPlaying& value);
+    static void showTimeline(ABI::Windows::Media::ISystemMediaTransportControls& target, const MediaSession::NowPlaying& value);
     static void showArtwork(ABI::Windows::Media::ISystemMediaTransportControlsDisplayUpdater& updater, const MediaSession::NowPlaying& value);
     static void receiveButton(ABI::Windows::Media::SystemMediaTransportControlsButton button);
     [[nodiscard]] static std::wstring toWide(const std::string& text);
@@ -32,7 +32,8 @@ class WindowsMediaSession final {
     // Media Foundation and the transport controls count time in units of 100 nanoseconds.
     static constexpr double kUnitsPerSecond = 10000000.0;
 
-    static Microsoft::WRL::ComPtr<ABI::Windows::Media::ISystemMediaTransportControls> controls;
+    // The controls call their handlers on threads of the system until the process ends, so they are never released.
+    static Microsoft::WRL::ComPtr<ABI::Windows::Media::ISystemMediaTransportControls>& controls;
     static bool attempted;
     // The commands the app offers, which the frame thread writes and the handlers of the controls read on a thread of the system.
     static std::atomic<MediaSession::Commands> offered;
