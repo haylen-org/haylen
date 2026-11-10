@@ -133,14 +133,15 @@ function Results:badge()
     return string.format('%d of %d passed', self:count('pass'), checks), 'success'
 end
 
--- The panel of the checks for the GUI of the test: a title, the badge and the cards in a scroll that fills the room the panel gets, or the text `options.empty` under a mark while there is no row. Call `show` with the mounted GUI so the cards follow the rows.
+-- The panel of the checks for the GUI of the test: a title, the badge, the node `options.action` beside them, such as a button that runs the checks again, and the cards in a scroll that fills the room the panel gets, or the text `options.empty` under a mark while there is no row. Call `show` with the mounted GUI so the cards follow the rows.
 function Results:view(title, options)
     options = options or {}
     local text, tone = self:badge()
     return ui.panel{id = 'checks', grow = options.grow or 1, width = options.width, align = 'stretch', gap = 16,
-        ui.row{gap = 12,
+        ui.row{gap = 12, alignItems = options.action and 'center' or nil,
             ui.sectionTitle{text = title or 'Checks', grow = 1},
             ui.badge{id = 'checks-summary', text = text, tone = tone, visible = text ~= ''},
+            options.action,
         },
         ui.column{id = 'checks-empty', grow = 1, gap = 16, justify = 'center', align = 'stretch', visible = #self.rows == 0,
             ui.icon{image = Results.icons.info, size = 72, color = 'textMuted', align = 'center'},

@@ -1,19 +1,18 @@
--- The base of the Varn tests: a test runs its lesson in a task of its scene, shows the Lua code of the lesson in the panel and its checks as cards, with the nodes its `showcase` returns under them, or beside them when it sets `showcaseWidth`, and a drawing of what the lesson does on a stage under them when the test sets `stageHeight`, or beside them when it sets `stageWidth`. Run again repeats the lesson.
+-- The base of the Varn tests: a test runs its lesson in a task of its scene, shows the Lua code of the lesson in the code card and its checks as cards under a button that runs the lesson again, with the nodes its `showcase` returns under them, or beside them when it sets `showcaseWidth`, and a drawing of what the lesson does on a stage under them when the test sets `stageHeight`, or beside them when it sets `stageWidth`. Run again repeats the lesson.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
 local Results = require('harness.results')
 local Test = require('harness.test')
-local code = require('harness.code')
+local Unsupported = require('harness.unsupported')
 
 local VarnTest = haylen.class('VarnTest', Test)
 
-VarnTest.panelWidth = 720
 VarnTest.hint = 'Run again repeats the lesson.'
 VarnTest.stageRadius = 16
 
--- The code of a test, as a list of `{title, code}` excerpts that the panel shows in order.
+-- The code of a test, as a list of `{title, code}` excerpts that the code card shows in order, each under a comment with its title.
 VarnTest.excerpts = {}
 
 function VarnTest:init(entry)
@@ -22,12 +21,8 @@ function VarnTest:init(entry)
 end
 
 function VarnTest:enter()
-    local controls = {ui.button{id = 'run', text = 'Run again', variant = 'primary', onClick = function() self:start() end}}
-    for _, excerpt in ipairs(self.excerpts) do
-        controls[#controls + 1] = ui.sectionTitle{text = excerpt[1]}
-        controls[#controls + 1] = ui.card{align = 'stretch', ui.richText{text = code.markup(excerpt[2]), font = 'monospace'}}
-    end
-    local content = {self.results:view('Checks')}
+    local run = ui.button{id = 'run', text = 'Run again', variant = 'primary', onClick = function() self:start() end}
+    local content = {self.results:view('Checks', {action = run})}
     if self.showcaseWidth then
         content = {ui.row{grow = 1, gap = 16, align = 'stretch', content[1], ui.column{width = self.showcaseWidth, gap = 16, align = 'stretch', children = self:showcase()}}}
     else
@@ -40,7 +35,7 @@ function VarnTest:enter()
     elseif self.stageWidth then
         content = {ui.row{grow = 1, gap = 16, align = 'stretch', ui.column{grow = 1, gap = 16, align = 'stretch', children = content}, ui.playArea{id = 'stage', width = self.stageWidth, align = 'stretch', focusable = false}}}
     end
-    self:frame{hint = self.hint, focus = 'run', panelWidth = VarnTest.panelWidth, controls = controls, content = content}
+    self:frame{hint = self.hint, focus = 'run', content = content, code = Unsupported.codeOf(self)}
     self.results:show(self.gui)
     self:start()
 end
