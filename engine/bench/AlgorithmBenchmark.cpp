@@ -174,7 +174,7 @@ class AlgorithmBenchmark final {
         math::Random random(13);
         for (int agent = 0; agent < 2000; ++agent) {
             const math::Vec2 position{random.range(0.0F, 3000.0F), random.range(0.0F, 3000.0F)};
-            const std::uint32_t id = crowd.addAgent({.position = position, .radius = 8.0F, .maxSpeed = 80.0F, .neighborDistance = 60.0F});
+            const navigation2d::Crowd::AgentId id = crowd.addAgent({.position = position, .radius = 8.0F, .maxSpeed = 80.0F, .neighborDistance = 60.0F});
             crowd.setTarget(id, {3000.0F - position.x, 3000.0F - position.y});
         }
         measure("Crowd step, 2000 ORCA agents, one thread", 20, [&crowd] { crowd.step(1.0F / 60.0F); });
