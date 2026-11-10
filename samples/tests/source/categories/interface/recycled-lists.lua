@@ -129,7 +129,7 @@ function RecycledLists:columns()
                 end},
             }),
             layout.section('Horizontal shelf', {
-                ui.collection{id = 'shelf', axis = 'horizontal', height = 110, gap = 12, snap = 'item', rememberFocus = true, types = {
+                ui.collection{id = 'shelf', axis = 'horizontal', height = 150, gap = 12, snap = 'item', rememberFocus = true, types = {
                     shell = {template = ui.card{width = 180, gap = 4,
                         ui.label{part = 'title', bind = {text = 'title'}},
                         ui.contextMenu{part = 'menu', items = {{id = 'polish', text = 'Polish'}, {id = 'sell', text = 'Sell'}}, ui.button{part = 'more', text = 'More', variant = 'link'}},
