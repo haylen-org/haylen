@@ -1445,6 +1445,27 @@ class CleanTest(unittest.TestCase):
                 haylen.command_clean(argparse.Namespace())
         self.assertEqual(output.getvalue(), "")
 
+    @unittest.skipIf(os.name == "nt" or os.geteuid() == 0, "Only a POSIX user who is not root keeps the files of a read-only folder.")
+    def test_a_staging_folder_that_stays_stops_the_step_that_makes_it_again(self):
+        scratch = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, scratch)
+        app = mock.Mock(folder=scratch / "app", build_folder=scratch / "build")
+        locked = scratch / "build" / "release" / "macos.new" / "shards"
+        locked.mkdir(parents=True)
+        (locked / "content.hpak").write_text("")
+        locked.chmod(0o500)
+        self.addCleanup(locked.chmod, 0o700)
+        patches = [mock.patch.object(haylen, "compile_app_shaders"), mock.patch.object(haylen, "content_tool", return_value=Path("haylen-content")), mock.patch.object(haylen, "ensure_keys", return_value=scratch / "keys"), mock.patch.object(haylen, "run")]
+        with contextlib.ExitStack() as stack:
+            mocks = [stack.enter_context(patch) for patch in patches]
+            # A release built into a folder that still holds the shards of an earlier build would ship them.
+            with self.assertRaisesRegex(haylen.BuildError, f"`{re.escape(haylen.shown_path(locked.parent))}` could not be removed"):
+                haylen.build_release(app, "macos", "Debug", 4, None)
+            mocks[-1].assert_not_called()
+
+        # A folder that does not exist yet is what a first build finds.
+        haylen.remove_folder(scratch / "missing")
+
 
 class CoverageTest(unittest.TestCase):
     def test_the_report_reads_the_tests_by_the_name_of_their_executable_on_this_machine(self):

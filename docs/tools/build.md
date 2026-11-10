@@ -227,7 +227,7 @@ The benchmarks that draw, `sprites`, `render`, `ui`, `particles`, `nodes`, `anim
 haylen clean
 ```
 
-Removes the whole `build/` folder: every build tree, the engine artifacts, the logs and the build folders of apps with the copies of the templates that haylen.py keeps for them. It keeps `.tools/` and the dependency cache in `.cache/cpm`.
+Removes the whole `build/` folder: every build tree, the engine artifacts, the logs and the build folders of apps with the copies of the templates that haylen.py keeps for them. It keeps `.tools/` and the dependency cache in `.cache/cpm`. A file that stays, such as one that a running app or an editor holds open on Windows, stops the command with its path. Every other command that makes a folder again, such as a staging folder, a generated folder or an installed copy, stops the same way, so no step builds on what the folder held before.
 
 ## CMake options
 

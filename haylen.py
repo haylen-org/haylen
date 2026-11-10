@@ -587,6 +587,18 @@ def engine_version() -> str:
     return (ENGINE_DIR / "VERSION").read_text(encoding="utf-8").strip()
 
 
+def remove_folder(folder: Path) -> None:
+    """Removes a folder that a step makes again, or that it no longer needs, and that may not exist yet. A file that stays in it, such as one that a running app or an editor holds, stops the command, since the next steps would build on what the folder held before."""
+    if not folder.exists() and not folder.is_symlink():
+        return
+    try:
+        shutil.rmtree(folder)
+    except OSError as error:
+        staying = Path(error.filename) if error.filename else folder
+        reason = error.strerror or str(error)
+        raise BuildError(f'The folder `{shown_path(folder)}` could not be removed, since `{shown_path(staying)}` stays: {reason}. Close what uses it, such as a running app or an editor, and try again.') from error
+
+
 def download(url: str, target: Path, sha256: str | None = None) -> None:
     """Downloads a file, failing with the reason and keeping nothing when the server or the network refuses it, and, when a hash is pinned, deletes the download and fails unless its SHA-256 matches."""
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -628,8 +640,7 @@ def install_tool(url: str, sha256: str, folder: Path, executable: Path, root: st
             package.extractall(partial)
     except BaseException:
         archive.unlink(missing_ok=True)
-        if partial.exists():
-            shutil.rmtree(partial)
+        remove_folder(partial)
         raise
     archive.unlink()
 
@@ -637,12 +648,11 @@ def install_tool(url: str, sha256: str, folder: Path, executable: Path, root: st
     (unpacked / executable.relative_to(folder)).chmod(0o755)
     if executable.exists():
         # Another run of the tool installed it while this one unpacked.
-        shutil.rmtree(partial)
+        remove_folder(partial)
         return
 
-    if folder.exists():
-        # A folder without its executable is what an unpack that stopped halfway left.
-        shutil.rmtree(folder)
+    # A folder without its executable is what an unpack that stopped halfway left.
+    remove_folder(folder)
     unpacked.replace(folder)
     if root:
         partial.rmdir()
@@ -728,7 +738,7 @@ def configure_tree(command: list, directory: Path, env: dict[str, str] | None = 
 def configure_web_tree(command: list, directory: Path, env: dict[str, str] | None = None) -> None:
     """Configures a web build tree with the pinned Emscripten. A tree that another version configured is deleted first, because Emscripten keeps no ABI between versions, so every object builds again."""
     if is_stale_web_tree(directory):
-        shutil.rmtree(directory)
+        remove_folder(directory)
     configure_tree(command, directory, env)
     (directory / EMSCRIPTEN_MARKER).write_text(EMSDK_VERSION, encoding="utf-8")
 
@@ -1060,7 +1070,7 @@ def check_web_page_steps(report: dict, steps: list[str], page: str) -> None:
 def check_web_memory_pages(args: argparse.Namespace, target) -> None:
     """Builds the release site of the memory check app with a medium and a large file in its content, serves it, opens it in a headless browser with the files of the browser and without them, and stops when the page holds memory that grows with what it downloads or a page without files misses its room."""
     folder = BUILD_ROOT / "tests" / "web-memory"
-    shutil.rmtree(folder, ignore_errors=True)
+    remove_folder(folder)
     shutil.copytree(WEB_MEMORY_APP, folder)
     (folder / "content" / "large").mkdir(parents=True)
     for name, size in (("medium.bin", WEB_MEMORY_MEDIUM_SIZE), ("blob.bin", WEB_MEMORY_FILE_SIZE)):
@@ -1100,7 +1110,7 @@ def headless_browser(arguments: list[str], purpose: str):
     finally:
         browser.terminate()
         browser.wait()
-        shutil.rmtree(profile, ignore_errors=True)
+        remove_folder(profile)
 
 
 def emsdk_node() -> Path:
@@ -1347,7 +1357,7 @@ def android_gpu_test_apk(directory: Path, abi: str) -> Path:
     """Packages the library of the GPU tests without its debug information, which the build strips, and the reference images into the APK of the test app, aligned and signed with a key that the tree keeps."""
     folder = directory / "apk"
     assets = folder / "assets"
-    shutil.rmtree(assets, ignore_errors=True)
+    remove_folder(assets)
     shutil.copytree(ENGINE_DIR / "tests" / "data" / "gpu", assets / "gpu")
     jar, api = android_platform_jar()
     unsigned = folder / "unsigned.apk"
@@ -1452,7 +1462,7 @@ def command_test_gpu_android(args: argparse.Namespace) -> None:
     apk = android_gpu_test_apk(directory, abi)
 
     output = directory / "gpu-test-output"
-    shutil.rmtree(output, ignore_errors=True)
+    remove_folder(output)
     with android_test_device(args.device) as device:
         terminal.step(f'Installing the GPU test app on "{device}"')
         run([adb(), "-s", device, "install", "-r", apk])
@@ -1524,7 +1534,7 @@ def command_test_gpu_apple(args: argparse.Namespace) -> None:
     run(["cmake", "--build", directory, "--target", "haylen-gpu-tests", "--parallel", str(args.jobs)])
 
     output = directory / "gpu-test-output"
-    shutil.rmtree(output, ignore_errors=True)
+    remove_folder(output)
     executable = directory / "bin" / "haylen-gpu-tests"
     family = APPLE_GPU_TEST_FAMILIES.get(args.platform)
     with contextlib.ExitStack() as stack:
@@ -1573,7 +1583,7 @@ def command_test_gpu_apple_device(args: argparse.Namespace) -> None:
     run(["cmake", "--build", directory, "--config", args.config, "--target", "haylen-gpu-tests", "--parallel", str(args.jobs), "--", "-allowProvisioningUpdates"])
 
     output = directory / "gpu-test-output"
-    shutil.rmtree(output, ignore_errors=True)
+    remove_folder(output)
     devicectl = ["xcrun", "devicectl", "device"]
     terminal.step(f'Installing the GPU test app on "{args.device}"')
     run([*devicectl, "install", "app", "--device", args.device, directory / "bin" / "haylen-gpu-tests.app"])
@@ -1643,7 +1653,7 @@ def command_test_ui(args: argparse.Namespace) -> None:
     info = plistlib.loads((bundle / "Info.plist").read_bytes())
     directory = BUILD_ROOT / f"{args.platform}-ui-tests"
     output = app.build_folder / "ui-tests" / args.platform
-    shutil.rmtree(output, ignore_errors=True)
+    remove_folder(output)
     output.mkdir(parents=True)
     directory.mkdir(parents=True, exist_ok=True)
     terminal.step(f"Generating the UI test runner in `{shown_path(directory)}`")
@@ -1724,7 +1734,7 @@ def command_coverage(args: argparse.Namespace) -> None:
     run(["cmake", "--build", directory, "--target", "haylen-tests", "--parallel", str(args.jobs)])
 
     profiles = directory / "coverage"
-    shutil.rmtree(profiles, ignore_errors=True)
+    remove_folder(profiles)
     terminal.step("Running the engine tests")
     run(["ctest", "--test-dir", directory, "--output-on-failure", "--parallel", str(args.jobs)], stream=True)
 
@@ -1984,7 +1994,7 @@ def build_apple_artifacts(config: str, jobs: int, slices: list[str], current: li
             run(["lipo", "-create", *archives, "-output", library])
 
     output = ARTIFACTS_DIR / "apple" / "Haylen.xcframework"
-    shutil.rmtree(output, ignore_errors=True)
+    remove_folder(output)
     command: list = ["xcodebuild", "-create-xcframework"]
     for slice_name in APPLE_SLICES:
         if slice_name in slices or slice_name in current:
@@ -2006,13 +2016,13 @@ def android_engine_sdk(abi: str) -> Path:
 def build_android_players(config: str, jobs: int) -> Path:
     """Builds `libhaylen.so`, the Lua player, and the SDK of the engine, for one ABI after the other with every job, so the configures never write into the shared CPM sources together and the compilers stay within the jobs, gathers the libraries in the `jniLibs` layout and installs each SDK into the artifacts."""
     libraries = ENGINE_BUILDS_DIR / f"android-{config.lower()}" / "jniLibs"
-    shutil.rmtree(libraries, ignore_errors=True)
+    remove_folder(libraries)
     for abi in ANDROID_ABIS:
         directory = ENGINE_BUILDS_DIR / f"android-{abi}-{config.lower()}"
         run(["cmake", "-S", ENGINE_DIR, "-B", directory, "-G", "Ninja", f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DCMAKE_BUILD_TYPE={config}", "-DHAYLEN_BUILD_PLAYER=ON", "-DHAYLEN_BUILD_SDK=ON", "-DHAYLEN_BUILD_TESTS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF", *android_options(abi)])
         run(["cmake", "--build", directory, "--target", "haylen", "haylen-sdk", "--parallel", str(jobs)])
         copy_into(directory / "lib" / "libhaylen.so", libraries / abi)
-        shutil.rmtree(android_engine_sdk(abi), ignore_errors=True)
+        remove_folder(android_engine_sdk(abi))
         run(["cmake", "--install", directory, "--component", "haylen-sdk", "--prefix", android_engine_sdk(abi)])
     return libraries
 
@@ -2022,7 +2032,7 @@ def build_android_artifacts(config: str, jobs: int) -> None:
     libraries = build_android_players(config, jobs)
     varn = cmake_cache_value(ENGINE_BUILDS_DIR / f"android-{ANDROID_ABIS[0]}-{config.lower()}", "varn_SOURCE_DIR")
     maven = ARTIFACTS_DIR / "android" / "maven"
-    shutil.rmtree(maven, ignore_errors=True)
+    remove_folder(maven)
     tasks = [f":{module}:publishReleasePublicationToArtifactsRepository" for module in ANDROID_LIBRARIES]
     run([ensure_gradle(), "-p", ANDROID_LIBRARY_PROJECT, *tasks, f"--max-workers={jobs}", f"-PhaylenNativeLibraries={libraries}", f"-PhaylenVarnSourceDir={varn}", f"-PhaylenMavenDir={maven}"])
 
@@ -2042,13 +2052,13 @@ def build_web_artifacts(config: str, jobs: int) -> None:
     command_build(build_options("web", config, "haylen", jobs))
     directory = build_dir("web", config)
     built = directory / "bin" / "haylen"
-    shutil.rmtree(web_player(), ignore_errors=True)
+    remove_folder(web_player())
     web_player().mkdir(parents=True)
     for name in WEB_RUNTIME_FILES:
         shutil.copy2(built / name, web_player())
     run(["cmake", "-B", directory, "-DHAYLEN_BUILD_SDK=ON"])
     run(["cmake", "--build", directory, "--target", "haylen-sdk", "--parallel", str(jobs)])
-    shutil.rmtree(web_sdk(), ignore_errors=True)
+    remove_folder(web_sdk())
     run(["cmake", "--install", directory, "--config", config, "--component", "haylen-sdk", "--prefix", web_sdk()])
 
 
@@ -2075,7 +2085,7 @@ def build_desktop_artifacts(config: str, jobs: int) -> None:
     run(command)
     run(["cmake", "--build", directory, "--config", config, "--target", "haylen", CONTENT_TOOL, "haylen-sdk", "--parallel", str(jobs)])
     destination = desktop_artifact().parent
-    shutil.rmtree(destination, ignore_errors=True)
+    remove_folder(destination)
     destination.mkdir(parents=True)
     shutil.copy2(directory / "bin" / "haylen" / executable_name("haylen"), desktop_artifact())
     shutil.copy2(directory / "bin" / executable_name(CONTENT_TOOL), desktop_artifact(CONTENT_TOOL))
@@ -2432,7 +2442,7 @@ def build_apple_native(app: App, library: NativeLibrary, slice_name: str, jobs: 
         return joined
 
     framework = folder / f"{library.name}.framework"
-    shutil.rmtree(framework, ignore_errors=True)
+    remove_folder(framework)
     framework.mkdir()
     shutil.copy2(joined, framework / library.name)
     run(["install_name_tool", "-id", f"@rpath/{library.name}.framework/{library.name}", framework / library.name])
@@ -2481,7 +2491,7 @@ def prepare_apple_native(app: App, generated: Path, run_platform: str, jobs: int
     key = APPLE_NATIVE_KEYS[slice_name]
     platform = APPLE_SLICE_NATIVE_PLATFORMS[slice_name]
     folder = generated / "native"
-    shutil.rmtree(folder, ignore_errors=True)
+    remove_folder(folder)
     embedded: list[Path] = []
     linked: list[Path] = []
     for library in app.native:
@@ -3423,7 +3433,7 @@ def project_root(app: App, template: str) -> Path:
     files = layered_files(platform_layers(app_kind(app.folder), template))
     stamp = files_hash(files)
     if read_state(copy).get("template") != stamp:
-        shutil.rmtree(copy, ignore_errors=True)
+        remove_folder(copy)
         copy_files(files, copy)
         write_state(copy, {"template": stamp})
     return copy
@@ -3549,7 +3559,7 @@ def apple_colorset(color: tuple[int, int, int, int], dark: tuple[int, int, int, 
 def write_apple_splash(app: App, generated: Path) -> None:
     """Writes `Splash.xcassets`, whose `splash-logo` image, the logo of the app or the vector logo of the engine, and `splash-background` color, with its dark variant when `app.json` gives one, the launch screens of iOS and tvOS show."""
     catalog = generated / "Splash.xcassets"
-    shutil.rmtree(catalog, ignore_errors=True)
+    remove_folder(catalog)
     source = app.splash_logo or ENGINE_LOGO
     filename = f"splash-logo{source.suffix.lower()}"
     (catalog / "splash-logo.imageset").mkdir(parents=True)
@@ -3732,7 +3742,7 @@ def write_apple_spec(app: App, root: Path, generated: Path, entitlements: dict[s
     """Copies the Apple sources, resources and frameworks of the plugins into `haylen/plugins/` and writes `haylen/project.yml`, whose target templates give the targets the engine library and frameworks, the package, the splash assets, the completed Info.plist, entitlements and privacy manifest, the native libraries and the sources, Swift packages, system frameworks, shipped frameworks, resources and build scripts of the plugins of their platforms."""
     spec = apple_spec(root)
     frameworks = apple_frameworks()
-    shutil.rmtree(generated / "plugins", ignore_errors=True)
+    remove_folder(generated / "plugins")
     packages: dict[str, dict] = {}
     package_owners: dict[str, str] = {}
     bundled: dict[str, str] = {}
@@ -3740,7 +3750,7 @@ def write_apple_spec(app: App, root: Path, generated: Path, entitlements: dict[s
     templates = {template: {"sources": [], "postBuildScripts": [], "extensions": [], "binaries": []} for template in APPLE_TEMPLATES}
     linked: dict[str, dict[tuple[str, ...], list[str] | None]] = {template: {} for template in APPLE_TEMPLATES}
     extensions: dict[str, dict] = {}
-    shutil.rmtree(generated / "extensions", ignore_errors=True)
+    remove_folder(generated / "extensions")
     for plugin in app.plugins:
         apple = plugin_section(app, plugin, "apple")
         if apple is None:
@@ -3905,7 +3915,7 @@ def prepare_apple(app: App, root: Path, run_platform: str, config: str, engine_c
     if not link.is_symlink() or link.readlink() != framework:
         link.unlink(missing_ok=True)
         link.symlink_to(framework)
-    shutil.rmtree(generated / "app", ignore_errors=True)
+    remove_folder(generated / "app")
     if config == "Release":
         shutil.copytree(build_release(app, CONTENT_PROFILES[run_platform], engine_config, jobs, previous), generated / "app")
         write_bootstrap(app, CONTENT_PROFILES[run_platform], generated / BOOTSTRAP_SOURCE, engine_config, jobs)
@@ -3929,7 +3939,7 @@ def apple_asset_packs_folder(app: App) -> Path:
 def write_apple_asset_packs(app: App, packs: Path) -> list[Path]:
     """Packs every named pack of the Apple release of an app into an asset pack of Background Assets with `ba-package`, when a plugin of the app delivers them from the App Store, and returns the archives. The packs that the plugin lists in `prefetch` download with the install and every update, the others when the app asks for them, and the shards of each sit in a folder named after the pack, which the plugin finds in the downloaded packs."""
     output = apple_asset_packs_folder(app)
-    shutil.rmtree(output, ignore_errors=True)
+    remove_folder(output)
     delivering = [(plugin, section["assetPacks"]) for plugin in app.plugins if (section := plugin_section(app, plugin, "apple")) is not None and "assetPacks" in section]
     folders = sorted(path for path in packs.iterdir() if path.is_dir()) if packs.is_dir() else []
     if not delivering or not folders:
@@ -4402,7 +4412,7 @@ def prepare_android(app: App, root: Path, library: str, config: str, jobs: int, 
     generated = root / GENERATED_FOLDER
     terminal.step(f"Preparing the Android project `{shown_path(root)}`")
     for name in ("assets", "res", "jniLibs", "plugins", "asset-packs"):
-        shutil.rmtree(generated / name, ignore_errors=True)
+        remove_folder(generated / name)
     packs: list[str] = []
     if release:
         # A release is a flat folder, which Android lists without an index.
@@ -4942,7 +4952,7 @@ def prepare_web(app: App, args: argparse.Namespace) -> Path:
     own = app.folder / "platform" / "web"
     site = app.build_folder / "web"
     terminal.step(f"Preparing the site `{shown_path(site)}`")
-    shutil.rmtree(site, ignore_errors=True)
+    remove_folder(site)
     copy_files(project_files(own) if own.is_dir() else layered_files(platform_layers(app_kind(app.folder), "web")), site)
     release = None
     if args.config == "Release":
@@ -5816,7 +5826,7 @@ def prepare_desktop(app: App, args: argparse.Namespace) -> Path:
     generated = root / GENERATED_FOLDER
     terminal.step(f"Preparing the {args.platform.capitalize()} project `{shown_path(root)}`")
     for name in ("app", "native"):
-        shutil.rmtree(generated / name, ignore_errors=True)
+        remove_folder(generated / name)
     if args.config == "Release":
         shutil.copytree(build_release(app, CONTENT_PROFILES[args.platform], args.engine_config, args.jobs, args.previous_release), generated / "app")
         write_bootstrap(app, CONTENT_PROFILES[args.platform], generated / BOOTSTRAP_SOURCE, args.engine_config, args.jobs)
@@ -5850,12 +5860,12 @@ def build_desktop(app: App, root: Path, args: argparse.Namespace) -> Path:
     build = app.build_folder / "cmake" / f"{args.platform}-{args.config.lower()}"
     # A build tree belongs to one project, so a project of the developer that replaces the copy of the template builds in a new tree.
     if (build / "CMakeCache.txt").is_file() and cmake_cache_value(build, "CMAKE_HOME_DIRECTORY") != root.as_posix():
-        shutil.rmtree(build)
+        remove_folder(build)
     terminal.step(f'Building the {args.platform.capitalize()} project in "{args.config}"')
     run(["cmake", "-S", root, "-B", build, *cmake_generator(), f"-DCMAKE_BUILD_TYPE={args.config}"])
     run(["cmake", "--build", build, "--config", args.config, "--parallel", str(args.jobs)])
     folder = desktop_folder(app, args.platform)
-    shutil.rmtree(folder, ignore_errors=True)
+    remove_folder(folder)
     run(["cmake", "--install", build, "--config", args.config, "--prefix", folder])
     return build
 
@@ -5959,7 +5969,7 @@ def ensure_appimage_tools() -> dict[str, Path]:
 
     require_host("linux")
     hashes = APPIMAGE_TOOLS_SHA256[arch]
-    shutil.rmtree(folder, ignore_errors=True)
+    remove_folder(folder)
     image = folder / f"appimagetool-{arch}.AppImage"
     download(f"https://github.com/AppImage/appimagetool/releases/download/{APPIMAGETOOL_VERSION}/appimagetool-{arch}.AppImage", image, hashes["appimagetool"])
     image.chmod(0o755)
@@ -6009,7 +6019,7 @@ def command_distribution_installer(args: argparse.Namespace) -> None:
         appimage = ensure_appimage_tools()
         tools = [f"-DCPACK_APPIMAGE_TOOL_EXECUTABLE={appimage['appimagetool']}", f"-DCPACK_APPIMAGE_PATCHELF_EXECUTABLE={appimage['patchelf']}", f"-DCPACK_APPIMAGE_RUNTIME_FILE={appimage['runtime']}"]
     staging = info.build_folder / "packages" / args.platform
-    shutil.rmtree(staging, ignore_errors=True)
+    remove_folder(staging)
     terminal.step(f"Packaging `{shown_path(app)}` for {args.platform.capitalize()} with CPack")
     run(["cpack", "--config", build / "CPackConfig.cmake", "-C", "Release", "-B", staging, *tools])
 
@@ -6184,7 +6194,7 @@ def command_run(args: argparse.Namespace) -> None:
         command_build(build)
         # The native libraries of the app wait in a folder of their own, which the player searches first.
         native = info.build_folder / "native" / "development"
-        shutil.rmtree(native, ignore_errors=True)
+        remove_folder(native)
         native_options = ["--native", native] if prepare_host_native(info, native, args.jobs) else []
         args.config = "Debug"
         package = stage_package(info)
@@ -6228,13 +6238,13 @@ def generate_template_project(args: argparse.Namespace) -> None:
     ensure_artifacts("apple", args.engine_config, args.jobs)
     template = TEMPLATES_DIR / "lua" / "platform" / "apple"
     starter = BUILD_ROOT / "templates" / "lua"
-    shutil.rmtree(starter, ignore_errors=True)
+    remove_folder(starter)
     copy_files(layered_files(template_layers("lua")), starter)
     copy = starter / "platform" / "apple"
     prepare_apple(App(starter, "macos"), copy, "macos", "Debug", args.engine_config, args.jobs, None)
     terminal.step(f"Generating `{shown_path(template / 'App.xcodeproj')}` from \"project.yml\"")
     run([ensure_xcodegen(), "generate", "--quiet", "--spec", copy / "project.yml"], cwd=copy)
-    shutil.rmtree(template / "App.xcodeproj")
+    remove_folder(template / "App.xcodeproj")
     shutil.copytree(copy / "App.xcodeproj", template / "App.xcodeproj", ignore=shutil.ignore_patterns("xcuserdata", ".DS_Store"))
     terminal.success(f"Generated `{shown_path(template / 'App.xcodeproj')}` from `{shown_path(template / 'project.yml')}`.")
 
@@ -6457,12 +6467,12 @@ def command_plugin_add(args: argparse.Namespace) -> None:
 
     copy = app / "plugins" / plugin.id
     if args.reference and copy.exists() and copy.resolve() != source:
-        shutil.rmtree(copy)
+        remove_folder(copy)
         terminal.info(f"Deleted the copy `{shown_path(copy)}`, since the app now references the plugin.")
         if not any(copy.parent.iterdir()):
             copy.parent.rmdir()
     if not args.reference and source != copy:
-        shutil.rmtree(copy, ignore_errors=True)
+        remove_folder(copy)
         shutil.copytree(source, copy, symlinks=True, ignore=COPY_IGNORED)
 
     # The defaults stay in "plugin.json", so a newer version of the plugin brings its own, and only a required parameter gets the empty text that the developer fills in.
@@ -6491,7 +6501,7 @@ def command_plugin_remove(args: argparse.Namespace) -> None:
     if args.id not in listed and not folder.exists():
         raise BuildError(f'The app `{shown_path(app)}` has no plugin "{args.id}". List its plugins with "{TOOL} plugin list --app {shown_path(app)}".')
 
-    shutil.rmtree(folder, ignore_errors=True)
+    remove_folder(folder)
     if folder.parent.is_dir() and not any(folder.parent.iterdir()):
         folder.parent.rmdir()
     if args.id in listed:
@@ -6945,7 +6955,7 @@ def write_cpp_apple_parts(app: App, platform: str, directory: Path, fragment: Pa
     target_platform = RUN_TARGETS[platform].plugins
     slice_name = APPLE_NATIVE_SLICES[platform]
     copied = directory / "haylen-plugins"
-    shutil.rmtree(copied, ignore_errors=True)
+    remove_folder(copied)
     settings = apple_app_settings(app)
     sources: list[Path] = []
     resources: list[Path] = []
@@ -7127,7 +7137,7 @@ def run_cpp_android(project: Path, target: str, folder: Path, args: argparse.Nam
 def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int, options: list[str]) -> Path:
     """Builds a CMake web target in a build folder and bundles it into its web folder with the web parts of the plugins of its app, whose page draws through WebGPU or WebGL2, whichever starts first, and returns that folder. A protected release goes into `app/` of the site, where its content streams by range."""
     output = folder / "web"
-    shutil.rmtree(output, ignore_errors=True)
+    remove_folder(output)
     output.mkdir(parents=True)
     directory = folder / f"web-{config.lower()}"
     terminal.step(f'Building the target "{target}" for "web" in `{shown_path(directory)}`')
@@ -7206,7 +7216,7 @@ def build_release(app: App, profile: str, config: str, jobs: int, previous: str 
     keys = ensure_keys(app, tool)
     folder = release_folder(app, profile)
     staging = folder.with_name(f"{profile}.new")
-    shutil.rmtree(staging, ignore_errors=True)
+    remove_folder(staging)
     command = [tool, "build", stage_package(app), "--keys", keys, "--profile", profile, "--build", str(app.build), "--output", staging, "--cache", app.build_folder / "content-cache"]
     if previous:
         command += ["--previous", Path(previous).resolve()]
@@ -7216,7 +7226,7 @@ def build_release(app: App, profile: str, config: str, jobs: int, previous: str 
         command += ["--shard-target", str(CONTENT_SHARD_TARGETS[profile])]
     terminal.step(f'Building the protected release of `{shown_path(app.folder)}` for the profile "{profile}"')
     run(command)
-    shutil.rmtree(folder, ignore_errors=True)
+    remove_folder(folder)
     staging.rename(folder)
     if not app.content_server and not app.content_packs:
         warn_store_size(folder, profile)
@@ -7225,8 +7235,8 @@ def build_release(app: App, profile: str, config: str, jobs: int, previous: str 
     # The shards of named packs go to the stores that deliver them, in a folder per pack, and with a server the shards that only later deliveries use stay in the release, which "content publish" puts on the server.
     shipped = folder.with_name(f"{profile}.shipped")
     packs = release_packs_folder(app, profile)
-    shutil.rmtree(shipped, ignore_errors=True)
-    shutil.rmtree(packs, ignore_errors=True)
+    remove_folder(shipped)
+    remove_folder(packs)
     command = [tool, "stage", folder, "--keys", keys, "--output", shipped, "--app", stage_package(app), "--packs", packs]
     run(command if app.content_server else [*command, "--ship-deferred"])
     warn_store_size(shipped, profile)
@@ -7237,10 +7247,10 @@ def release_app_files(app: App, release: Path, config: str, jobs: int) -> list[s
     """The files of a protected release that its app domain needs, the manifests and the shards of the code of the app, which the content tool finds in the manifests of the release."""
     tool = content_tool(config, jobs)
     boot = app.build_folder / "release" / "app-files"
-    shutil.rmtree(boot, ignore_errors=True)
+    remove_folder(boot)
     run([tool, "stage", release, "--keys", ensure_keys(app, tool), "--output", boot, "--app-only"], echo=False)
     files = sorted(path.name for path in boot.iterdir())
-    shutil.rmtree(boot)
+    remove_folder(boot)
     return files
 
 
@@ -7410,7 +7420,7 @@ def command_distribution_steam(args: argparse.Namespace) -> None:
     app = App(folder, RUN_TARGETS[args.platform].plugins)
     depots = steam_depot_ids(args, [args.platform, *app.content_packs])
     output = Path(args.output).resolve() if args.output else app.build_folder / "steam"
-    shutil.rmtree(output / "content", ignore_errors=True)
+    remove_folder(output / "content")
     platform_folder = output / "content" / args.platform
     place = ""
     if args.platform == "macos":
@@ -7445,7 +7455,7 @@ def stage_cpp_steam(project: Path, args: argparse.Namespace) -> None:
     app = cpp_release_app(directory, args.target)
     depots = steam_depot_ids(args, [args.platform, *app.content_packs])
     output = Path(args.output).resolve() if args.output else app.build_folder / "steam"
-    shutil.rmtree(output / "content", ignore_errors=True)
+    remove_folder(output / "content")
     bundle = apple_bundle_of(executable)
     if bundle:
         (output / "content" / args.platform).mkdir(parents=True)
@@ -8298,10 +8308,7 @@ def command_clean(_: argparse.Namespace) -> None:
         terminal.success("The build folder is already clean.")
         return
 
-    try:
-        shutil.rmtree(BUILD_ROOT)
-    except OSError as error:
-        raise BuildError(f'The build folder could not be removed, since `{shown_path(Path(error.filename))}` stays: {error.strerror}. Close what uses it, such as a running app or an editor, and clean again.') from error
+    remove_folder(BUILD_ROOT)
     terminal.success("Cleaned the build folder.")
 
 
