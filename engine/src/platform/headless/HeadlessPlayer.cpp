@@ -12,6 +12,7 @@
 #include "haylen/core/Log.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/lua/Application.hpp"
+#include "haylen/lua/Error.hpp"
 #include "io/OverlayPackage.hpp"
 #include "platform/DevelopmentSession.hpp"
 #include "platform/headless/HeadlessHost.hpp"
@@ -61,20 +62,14 @@ int HeadlessPlayer::play(const Options& options) {
     std::shared_ptr<io::Package> playing = package;
     std::unique_ptr<core::Engine> engine = launch(host, playing);
 
-    // An app that another app launched starts that app again when it quits, with the development session and the native access of that app, the way the player does.
+    // An app that another app launched starts that app again when it quits or cannot start, with the development session and the native access of that app, the way the player does.
     std::vector<Launcher> launchers;
     long long frame = 0;
     auto next = std::chrono::steady_clock::now();
     while (engine->isRunning() || !launchers.empty()) {
         if (!engine->isRunning()) {
-            Launcher launcher = std::move(launchers.back());
-            launchers.pop_back();
-            host.setLaunched(!launchers.empty());
-            host.setNativeAccess(launcher.nativeAccess);
             engine.reset();
-            (void)host.exchangeDevelopmentSession(std::move(launcher.development));
-            playing = std::move(launcher.package);
-            engine = launch(host, playing);
+            engine = returnToLauncher(host, launchers, playing);
         }
         if (options.frames && frame >= *options.frames) {
             core::Log::error("The app did not quit within {} frames.", *options.frames);
@@ -91,12 +86,10 @@ int HeadlessPlayer::play(const Options& options) {
             host.setLaunched(true);
             host.setNativeAccess(host.hasNativeAccess() && request->nativeAccess);
             engine.reset();
-            playing = io::Package::open(request->package);
-            if (!request->developmentServer.empty()) {
-                host.enableDevelopment(std::nullopt, request->developmentServer);
-                playing = std::make_shared<io::OverlayPackage>(std::move(playing));
+            engine = launchPackage(host, *request, playing);
+            if (engine == nullptr) {
+                engine = returnToLauncher(host, launchers, playing);
             }
-            engine = launch(host, playing);
         }
 
         engine->frame(std::chrono::duration<double>(kFrameTime).count());
@@ -108,6 +101,32 @@ int HeadlessPlayer::play(const Options& options) {
     const int status = host.getErrorReports().empty() ? engine->getExitStatus() : 1;
     engine->stop();
     return status;
+}
+
+// A launched app that cannot start reports its failure, which makes the run fail, and returns no engine.
+std::unique_ptr<core::Engine> HeadlessPlayer::launchPackage(HeadlessHost& host, const core::Engine::Launch& request, std::shared_ptr<io::Package>& playing) {
+    try {
+        playing = io::Package::open(request.package);
+        if (!request.developmentServer.empty()) {
+            host.enableDevelopment(std::nullopt, request.developmentServer);
+            playing = std::make_shared<io::OverlayPackage>(std::move(playing));
+        }
+        return launch(host, playing);
+    } catch (const std::exception& error) {
+        core::Log::error("The launched app could not start: {}", error.what());
+        host.reportError(lua::Error(error.what()).toJson());
+        return nullptr;
+    }
+}
+
+std::unique_ptr<core::Engine> HeadlessPlayer::returnToLauncher(HeadlessHost& host, std::vector<Launcher>& launchers, std::shared_ptr<io::Package>& playing) {
+    Launcher launcher = std::move(launchers.back());
+    launchers.pop_back();
+    host.setLaunched(!launchers.empty());
+    host.setNativeAccess(launcher.nativeAccess);
+    (void)host.exchangeDevelopmentSession(std::move(launcher.development));
+    playing = std::move(launcher.package);
+    return launch(host, playing);
 }
 
 std::unique_ptr<core::Engine> HeadlessPlayer::launch(HeadlessHost& host, const std::shared_ptr<io::Package>& package) {

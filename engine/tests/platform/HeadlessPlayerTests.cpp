@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 
 #include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <string>
 
 #include "platform/headless/HeadlessPlayer.hpp"
@@ -69,6 +71,42 @@ TEST_F(HeadlessPlayerTest, StartsTheLauncherAgainWhenTheAppItLaunchedQuits) {
         end
     )", 120), 5);
     // clang-format on
+}
+
+// A launched app whose engine cannot start, since a file stands where its storage folder goes, fails the run, and the app that launched it starts again.
+TEST_F(HeadlessPlayerTest, StartsTheLauncherAgainWhenTheAppItLaunchedCannotStart) {
+    test::TemporaryDirectory guest;
+    guest.write("app.json", R"({"name": "Guest", "identifier": "com.haylen.brokenguest"})");
+    guest.write("source/main.lua", "require('haylen').quit()");
+    const std::filesystem::path storage = std::filesystem::temp_directory_path() / "haylen-headless" / "com.haylen.tests" / "com.haylen.brokenguest";
+    std::filesystem::create_directories(storage.parent_path());
+    std::filesystem::remove_all(storage);
+    std::ofstream(storage) << "A file where the storage folder of the guest goes.";
+    test::TemporaryDirectory records;
+    const std::filesystem::path restarted = records.getPath() / "restarted";
+    // clang-format off
+    EXPECT_EQ(play(R"(
+        local haylen = require('haylen')
+        local preferences = require('haylen.preferences')
+        if preferences.get('brokenGuest', false) then
+            preferences.remove('brokenGuest')
+            preferences.save()
+            local record = io.open(')" + restarted.generic_string() + R"(', 'w')
+            record:write(tostring(haylen.launched()))
+            record:close()
+            haylen.quit()
+        else
+            preferences.set('brokenGuest', true)
+            preferences.save()
+            haylen.launch(')" + guest.getPath().generic_string() + R"(')
+        end
+    )", 120), 1);
+    // clang-format on
+    std::filesystem::remove(storage);
+
+    std::ifstream record(restarted);
+    const std::string launched((std::istreambuf_iterator<char>(record)), std::istreambuf_iterator<char>());
+    EXPECT_EQ(launched, "false");
 }
 
 // An app launched without native access has none of the modules and functions that reach native code and other programs but keeps every module of the engine, an app it launches with native access has none either, and the app that launched it keeps them.

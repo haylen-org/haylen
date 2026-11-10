@@ -239,7 +239,7 @@ The entry point of the platform layer hands the command line to `platform::Playe
 3. It keeps the configuration that the platform layer opens the window with, which `Player::getOpeningConfig` returns.
 4. It creates and drives the `Engine`.
 
-A package that cannot be opened, or an `app.json` that fails validation, starts a stand-in application that shows the error on the screen. The process keeps the status that the last app quit with, or `1` when the engine could not start, and a desktop process exits with it. The SDL platform layer returns it from the entry point on every desktop, since its own application delegate of macOS leaves the run loop of AppKit to SDL.
+A package that cannot be opened, or an `app.json` that fails validation, starts a stand-in application that shows the error on the screen. The process keeps the status that the last app quit with, or `1` when the engine could not start, and a desktop process exits with it. A launched app whose engine could not start leaves to the app that launched it, with its error in the log and on the page, so only the app that runs first closes the window. The SDL platform layer returns it from the entry point on every desktop, since its own application delegate of macOS leaves the run loop of AppKit to SDL.
 
 ### The headless host
 

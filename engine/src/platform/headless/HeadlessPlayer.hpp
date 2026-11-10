@@ -4,10 +4,9 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <vector>
 
-namespace haylen::core {
-class Engine;
-}
+#include "haylen/core/Engine.hpp"
 
 namespace haylen::io {
 class Package;
@@ -31,7 +30,7 @@ class HeadlessPlayer final {
 
     [[nodiscard]] static std::optional<Options> parse(int argc, char** argv);
 
-    // A package that cannot open or an app that cannot start stops the run with its message.
+    // A package that cannot open or an app that cannot start stops the run with its message, while a launched app that cannot start fails the run and starts the app that launched it again.
     static int run(const Options& options);
 
   private:
@@ -43,6 +42,8 @@ class HeadlessPlayer final {
     };
 
     static int play(const Options& options);
+    [[nodiscard]] static std::unique_ptr<core::Engine> launchPackage(HeadlessHost& host, const core::Engine::Launch& request, std::shared_ptr<io::Package>& playing);
+    [[nodiscard]] static std::unique_ptr<core::Engine> returnToLauncher(HeadlessHost& host, std::vector<Launcher>& launchers, std::shared_ptr<io::Package>& playing);
     [[nodiscard]] static std::unique_ptr<core::Engine> launch(HeadlessHost& host, const std::shared_ptr<io::Package>& package);
 };
 

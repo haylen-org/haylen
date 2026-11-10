@@ -686,7 +686,7 @@ An app launched without native access passes that limit on: every app it launche
 
 Each app plays with its own development session. A launched app that names a server plays in development even when the app that launched it ships as a release, and an app that names none plays without the files that a development server sends to the app that launched it. The app that launched it starts again with its own session, or with none.
 
-A path with nothing at it raises `No app package is at "<path>". Launch a folder or a zip file that holds "app.json".`, and a `developmentServer` of another kind raises `The development server "<address>" is not an address that starts with "ws://" or "wss://".`. An unknown key raises `Unknown option "<key>".`. A package that cannot open, such as one without a valid `app.json`, shows the error screen in place of the launched app.
+A path with nothing at it raises `No app package is at "<path>". Launch a folder or a zip file that holds "app.json".`, and a `developmentServer` of another kind raises `The development server "<address>" is not an address that starts with "ws://" or "wss://".`. An unknown key raises `Unknown option "<key>".`. A package that cannot open, such as one without a valid `app.json`, shows the error screen in place of the launched app. A launched app whose engine cannot start, such as one whose storage folder cannot be made, has no error screen, so its error goes to the log and this app starts again. The [headless player](../tools/testing.md#the-test-project) then exits with `1`.
 
 ```lua
 local async = require('async')

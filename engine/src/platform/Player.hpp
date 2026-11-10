@@ -189,6 +189,7 @@ class Player final {
     [[nodiscard]] std::shared_ptr<io::Package> withOverlay(std::shared_ptr<io::Package> source) const;
     void endSplashScreenWhenDue();
     void launch();
+    void leaveFailedStart();
     void launchWhenReady();
     void close() noexcept;
     void replace(App app);

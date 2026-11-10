@@ -481,15 +481,15 @@ void Player::launch() {
     try {
         engine = std::make_unique<core::Engine>(*host, std::move(app.package), std::move(app.config), std::move(app.application));
     } catch (const std::exception& error) {
-        // Without an engine there is no error screen, so the failure goes to the log and the page. A desktop app closes, while the web runtime waits for the next package.
+        // Without an engine there is no error screen, so the failure goes to the log and the page.
         core::Log::error("The engine could not start: {}", error.what());
         Services::reportError(lua::Error(error.what()).toJson());
-#if !defined(__EMSCRIPTEN__)
-        getProcess().exitStatus = 1;
-        host->closeWindow();
-#endif
+    }
+    if (engine == nullptr) {
+        leaveFailedStart();
         return;
     }
+
     engine->start();
     for (const Event& event : reported.getReplay()) {
         engine->handleEvent(event);
@@ -502,6 +502,18 @@ void Player::launch() {
     JavaBridge::setAppRunning(true);
 #elif defined(__APPLE__) && !defined(HAYLEN_PORT)
     AppleRuntime::setAppRunning(true);
+#endif
+}
+
+// An app whose engine could not start returns to the app that launched it. The app that runs first closes its desktop window, while the web runtime waits for the next package.
+void Player::leaveFailedStart() {
+    if (!launchers.empty()) {
+        returnToLauncher();
+        return;
+    }
+#if !defined(__EMSCRIPTEN__)
+    getProcess().exitStatus = 1;
+    host->closeWindow();
 #endif
 }
 
