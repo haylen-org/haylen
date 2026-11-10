@@ -34,6 +34,7 @@ class GridRay final {
         double nextY = boundary(ray.origin.y, ray.direction.y, cellSize.y, cell.y);
         const double deltaX = ray.direction.x != 0.0F ? static_cast<double>(cellSize.x) / std::fabs(static_cast<double>(ray.direction.x)) : kUnreachable;
         const double deltaY = ray.direction.y != 0.0F ? static_cast<double>(cellSize.y) / std::fabs(static_cast<double>(ray.direction.y)) : kUnreachable;
+
         if (!visit(cell, 0.0F, math::Vec2{})) {
             return;
         }
@@ -52,6 +53,7 @@ class GridRay final {
                 nextY += deltaY;
                 normal.y = static_cast<float>(-stepY);
             }
+
             if (distance > static_cast<double>(ray.length) || !visit(cell, static_cast<float>(distance), normal)) {
                 return;
             }
@@ -68,6 +70,7 @@ class GridRay final {
             if (!blocked(cell)) {
                 return true;
             }
+
             hit = Hit{cell, ray.at(distance), normal, distance};
             return false;
         });
@@ -91,9 +94,11 @@ class GridRay final {
         if (direction > 0.0F) {
             return ((static_cast<double>(cell) + 1.0) * size - origin) / direction;
         }
+
         if (direction < 0.0F) {
             return (static_cast<double>(cell) * size - origin) / direction;
         }
+
         return kUnreachable;
     }
 };

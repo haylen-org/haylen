@@ -39,6 +39,7 @@ struct Reference {
                 ids.push_back(id);
             }
         }
+
         std::ranges::sort(ids);
         return ids;
     }
@@ -50,6 +51,7 @@ struct Reference {
                 ids.push_back(id);
             }
         }
+
         std::ranges::sort(ids);
         return ids;
     }
@@ -61,10 +63,13 @@ struct Reference {
                 hits.push_back({.id = id, .point = hit->point, .normal = hit->normal, .distance = hit->distance});
             }
         }
+
         std::ranges::sort(hits, [](const auto& lhs, const auto& rhs) { return lhs.distance != rhs.distance ? lhs.distance < rhs.distance : lhs.id < rhs.id; });
+
         if (limit > 0 && hits.size() > limit) {
             hits.resize(limit);
         }
+
         return hits;
     }
 
@@ -76,10 +81,13 @@ struct Reference {
                 neighbors.push_back({.id = id, .distance = distance});
             }
         }
+
         std::ranges::sort(neighbors, [](const auto& lhs, const auto& rhs) { return lhs < rhs; });
+
         if (neighbors.size() > count) {
             neighbors.resize(count);
         }
+
         return neighbors;
     }
 };
@@ -115,6 +123,7 @@ template <typename Structure> class SpatialStructureTest : public ::testing::Tes
             structure.raycast(ray, limit, hits);
             const std::vector<spatial2d::RayHit> expectedHits = reference.raycast(ray, limit);
             ASSERT_EQ(hits.size(), expectedHits.size());
+
             for (std::size_t index = 0; index < hits.size(); ++index) {
                 EXPECT_EQ(hits[index].id, expectedHits[index].id);
                 EXPECT_EQ(hits[index].distance, expectedHits[index].distance);
@@ -127,6 +136,7 @@ template <typename Structure> class SpatialStructureTest : public ::testing::Tes
             structure.nearest(point, count, maxDistance, neighbors);
             const std::vector<spatial2d::Neighbor> expectedNeighbors = reference.nearest(point, count, maxDistance);
             ASSERT_EQ(neighbors.size(), expectedNeighbors.size());
+
             for (std::size_t index = 0; index < neighbors.size(); ++index) {
                 EXPECT_EQ(neighbors[index].id, expectedNeighbors[index].id);
                 EXPECT_EQ(neighbors[index].distance, expectedNeighbors[index].distance);
@@ -165,6 +175,7 @@ TYPED_TEST(SpatialStructureTest, AnswersLikeTestingEveryEntry) {
         structure.set(id, bounds);
         reference.set(id, bounds);
     }
+
     EXPECT_EQ(structure.size(), 300U);
     TestFixture::expectSameAnswers(structure, reference, random);
 
@@ -174,10 +185,12 @@ TYPED_TEST(SpatialStructureTest, AnswersLikeTestingEveryEntry) {
         structure.set(id, bounds);
         reference.set(id, bounds);
     }
+
     for (std::uint64_t id = 2; id <= 300; id += 4) {
         EXPECT_TRUE(structure.remove(id));
         std::erase_if(reference.entries, [id](const auto& entry) { return entry.first == id; });
     }
+
     EXPECT_FALSE(structure.remove(2));
     EXPECT_FALSE(structure.contains(2));
     EXPECT_TRUE(structure.contains(3));
@@ -321,6 +334,7 @@ TEST(QuadTreeTest, StopsSplittingCoincidentEntriesAtTheDepthLimit) {
     for (std::uint64_t id = 1; id <= 3; ++id) {
         tree.set(id, {10.0F, 10.0F, 0.0F, 0.0F});
     }
+
     EXPECT_EQ(tree.getNodeCount(), 1U + 4U * 16U);
     Ids ids;
     tree.queryPoint({10.0F, 10.0F}, ids);
@@ -335,10 +349,12 @@ TEST(AabbTreeTest, StaysBalancedAndSkipsSmallMoves) {
     spatial2d::AabbTree tree(5.0F);
     EXPECT_EQ(tree.getMargin(), 5.0F);
     EXPECT_EQ(tree.getHeight(), 0);
+
     for (std::uint64_t id = 0; id < 1024; ++id) {
         // Entries added in sorted order are the worst case for an unbalanced tree.
         tree.set(id, {static_cast<float>(id) * 10.0F, 0.0F, 5.0F, 5.0F});
     }
+
     EXPECT_LE(tree.getHeight(), 20);
 
     tree.set(3, {32.0F, 2.0F, 5.0F, 5.0F});
@@ -350,6 +366,7 @@ TEST(AabbTreeTest, StaysBalancedAndSkipsSmallMoves) {
     for (std::uint64_t id = 0; id < 1024; id += 2) {
         tree.remove(id);
     }
+
     EXPECT_LE(tree.getHeight(), 20);
     EXPECT_THROW(spatial2d::AabbTree(-1.0F), std::invalid_argument);
 }
@@ -362,6 +379,7 @@ TEST(KdTreeTest, FindsNearestPointsLikeTestingEveryEntry) {
         points.emplace_back(id, math::Vec2{random.range(-100.0F, 100.0F), random.range(-100.0F, 100.0F)});
         tree.set(id, points.back().second);
     }
+
     std::vector<spatial2d::Neighbor> neighbors;
     EXPECT_FALSE(tree.isBuilt());
     EXPECT_THROW(tree.nearest({0.0F, 0.0F}, 1, 10.0F, neighbors), std::logic_error);
@@ -375,9 +393,11 @@ TEST(KdTreeTest, FindsNearestPointsLikeTestingEveryEntry) {
         for (const auto& [id, position] : points) {
             expected.push_back({.id = id, .distance = math::Vec2::distance(point, position)});
         }
+
         std::ranges::sort(expected, [](const auto& lhs, const auto& rhs) { return lhs < rhs; });
         expected.resize(5);
         ASSERT_EQ(neighbors.size(), 5U);
+
         for (std::size_t index = 0; index < 5; ++index) {
             EXPECT_EQ(neighbors[index].id, expected[index].id);
         }
@@ -390,6 +410,7 @@ TEST(KdTreeTest, FindsNearestPointsLikeTestingEveryEntry) {
                 inside.push_back(id);
             }
         }
+
         std::ranges::sort(inside);
         EXPECT_EQ(ids, inside);
     }

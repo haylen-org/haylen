@@ -16,6 +16,7 @@ class FloodFill final {
     // Fills `cells` with the cells of a `width` by `height` grid that connect to the start through cells for which `inside(cell)` is `true`, in breadth-first order from the start. Diagonal fills also step between cells that only share a corner. A start outside the grid or not inside gives no cells.
     template <typename Inside> void fill(Cell start, int width, int height, bool diagonal, Inside&& inside, std::vector<Cell>& cells) {
         cells.clear();
+
         if (start.x < 0 || start.y < 0 || start.x >= width || start.y >= height || !inside(start)) {
             return;
         }
@@ -33,6 +34,7 @@ class FloodFill final {
                 if (neighbor.x < 0 || neighbor.y < 0 || neighbor.x >= width || neighbor.y >= height || visits[indexOf(neighbor)] == visit || !inside(neighbor)) {
                     continue;
                 }
+
                 visits[indexOf(neighbor)] = visit;
                 cells.push_back(neighbor);
             }

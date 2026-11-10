@@ -64,6 +64,7 @@ std::optional<std::uint64_t> SpatialIndexLua::idOf(lua_State* L, int valueIndex)
     if (lua_isinteger(L, -1) != 0) {
         id = static_cast<std::uint64_t>(lua_tointeger(L, -1));
     }
+
     lua_pop(L, 2);
     return id;
 }
@@ -84,6 +85,7 @@ template <typename Structure, typename Store> void SpatialIndexLua::store(lua_St
     const std::optional<std::uint64_t> existing = idOf(L, 2);
     const std::uint64_t id = existing.value_or(self.nextId);
     storeEntry(id);
+
     if (!existing) {
         remember(L, id);
         ++self.nextId;
@@ -98,6 +100,7 @@ void SpatialIndexLua::pushValues(lua_State* L, const std::vector<std::uint64_t>&
         lua_rawgeti(L, values, static_cast<lua_Integer>(ids[index]));
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     lua_remove(L, values);
 }
 
@@ -112,6 +115,7 @@ void SpatialIndexLua::pushHits(lua_State* L, const std::vector<RayHit>& hits, fl
         lua_setfield(L, -2, "value");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     lua_remove(L, values);
 }
 
@@ -131,6 +135,7 @@ int SpatialIndexLua::newQuadTree(lua_State* L) {
         lua::Table::readField(L, 2, "maxEntries", settings.maxEntries);
         lua::Table::readField(L, 2, "maxDepth", settings.maxDepth);
     }
+
     QuadTree tree(lua::Stack::read<math::Rect>(L, 1), settings);
     lua::Userdata::emplace<ScriptedIndex<QuadTree>>(L, ScriptedIndex<QuadTree>{.index = std::move(tree)});
     resetTables(L, lua_gettop(L));
@@ -263,6 +268,7 @@ template <typename Structure> int SpatialIndexLua::nearest(lua_State* L) {
     // The callback `accept` runs on every candidate from the closest one on, and it may remove values or clear the structure, which replaces the `values` table, so each candidate is looked up in the current table and a value that is gone is skipped.
     std::vector<Neighbor> candidates;
     structure.nearest(point, filtered ? structure.size() : 1, maxDistance, candidates);
+
     for (const Neighbor& candidate : candidates) {
         lua::Userdata::pushField(L, 1, "values");
         const int type = lua_rawgeti(L, -1, static_cast<lua_Integer>(candidate.id));
@@ -271,19 +277,24 @@ template <typename Structure> int SpatialIndexLua::nearest(lua_State* L) {
             lua_pop(L, 1);
             continue;
         }
+
         if (!filtered) {
             return 1;
         }
+
         lua_pushvalue(L, 5);
         lua_pushvalue(L, -2);
         lua_call(L, 1, 1);
         const bool accepted = lua_toboolean(L, -1) != 0;
         lua_pop(L, 1);
+
         if (accepted) {
             return 1;
         }
+
         lua_pop(L, 1);
     }
+
     lua_pushnil(L);
     return 1;
 }
@@ -302,6 +313,7 @@ template <typename Structure> int SpatialIndexLua::nearestList(lua_State* L) {
     for (const Neighbor& neighbor : neighbors) {
         ids.push_back(neighbor.id);
     }
+
     pushValues(L, ids);
     return 1;
 }

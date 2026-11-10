@@ -23,6 +23,7 @@ const std::vector<math::Vec2>& VisibilityPolygon::compute(math::Vec2 origin, std
     if (!finite) {
         throw std::invalid_argument("A visibility polygon needs finite walls and bounds.");
     }
+
     if (!(origin.x > bounds.getLeft() && origin.x < bounds.getRight() && origin.y > bounds.getTop() && origin.y < bounds.getBottom())) {
         throw std::invalid_argument("A visibility polygon needs an origin inside its bounds.");
     }
@@ -41,9 +42,11 @@ const std::vector<math::Vec2>& VisibilityPolygon::compute(math::Vec2 origin, std
             angles.insert(angles.end(), {angle - kCornerAngle, angle, angle + kCornerAngle});
         }
     }
+
     for (float& angle : angles) {
         angle = std::remainder(angle, 2.0F * std::numbers::pi_v<float>);
     }
+
     std::ranges::sort(angles);
     angles.erase(std::ranges::unique(angles).begin(), angles.end());
 
@@ -54,6 +57,7 @@ const std::vector<math::Vec2>& VisibilityPolygon::compute(math::Vec2 origin, std
             points.push_back(hit->point);
         }
     }
+
     return points;
 }
 

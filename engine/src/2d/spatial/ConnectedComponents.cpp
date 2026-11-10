@@ -24,6 +24,7 @@ std::size_t ConnectedComponents::label(const CellGrid& grid, const Options& opti
             if (isBackground(value)) {
                 continue;
             }
+
             for (std::size_t neighbor = 0; neighbor < neighbors; ++neighbor) {
                 const Cell other{x + scanned[neighbor].x, y + scanned[neighbor].y};
                 if (grid.contains(other) && grid[other] == value) {
@@ -42,13 +43,16 @@ std::size_t ConnectedComponents::label(const CellGrid& grid, const Options& opti
                 labels.set({x, y}, 0);
                 continue;
             }
+
             std::int32_t& number = numbers[regions.find(grid.indexOf({x, y}))];
             if (number == 0) {
                 number = ++count;
             }
+
             labels.set({x, y}, number);
         }
     }
+
     return static_cast<std::size_t>(count);
 }
 

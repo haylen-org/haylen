@@ -34,9 +34,11 @@ HashGrid::CellRange HashGrid::entryCellsOf(const math::Rect& bounds) const {
     if (!(left >= -kMaxCell && top >= -kMaxCell && right <= kMaxCell && bottom <= kMaxCell)) {
         throw std::invalid_argument("A spatial hash entry must lie within 536870912 cells of the origin.");
     }
+
     if ((static_cast<double>(right) - left + 1.0) * (static_cast<double>(bottom) - top + 1.0) > kMaxEntryCells) {
         throw std::invalid_argument("A spatial hash entry may cover at most 65536 cells, so the cell size should be closer to the size of the entries.");
     }
+
     return {.left = static_cast<int>(left), .top = static_cast<int>(top), .right = static_cast<int>(right), .bottom = static_cast<int>(bottom)};
 }
 
@@ -48,6 +50,7 @@ HashGrid::CellRange HashGrid::occupiedCellsOf(const math::Rect& area) const noex
     if (left > right || top > bottom) {
         return {};
     }
+
     return {.left = static_cast<int>(left), .top = static_cast<int>(top), .right = static_cast<int>(right), .bottom = static_cast<int>(bottom)};
 }
 
@@ -95,6 +98,7 @@ void HashGrid::set(std::uint64_t id, const math::Rect& bounds) {
         link(id, cells);
         entry.cells = cells;
     }
+
     entry.bounds = bounds;
 }
 
@@ -103,6 +107,7 @@ bool HashGrid::remove(std::uint64_t id) {
     if (entry == entries.end()) {
         return false;
     }
+
     unlink(id, entry->second.cells);
     entries.erase(entry);
     return true;
@@ -123,6 +128,7 @@ std::optional<math::Rect> HashGrid::getBounds(std::uint64_t id) const {
     if (entry == entries.end()) {
         return std::nullopt;
     }
+
     return entry->second.bounds;
 }
 
@@ -150,6 +156,7 @@ void HashGrid::collect(const CellRange& cells, std::vector<std::uint64_t>& ids) 
             }
         }
     }
+
     std::ranges::sort(ids);
     ids.erase(std::ranges::unique(ids).begin(), ids.end());
 }
@@ -190,6 +197,7 @@ void HashGrid::raycast(const math::Ray& ray, std::size_t limit, std::vector<RayH
                 EntryBounds::insertHit(hits, {.id = id, .point = hit->point, .normal = hit->normal, .distance = hit->distance});
             }
         }
+
         EntryBounds::finishHits(hits, limit);
         return;
     }
@@ -200,18 +208,22 @@ void HashGrid::raycast(const math::Ray& ray, std::size_t limit, std::vector<RayH
         if (limit > 0 && hits.size() >= limit && hits[limit - 1].distance <= (*travel)[0] + distance) {
             return false;
         }
+
         const auto bucket = buckets.find(cellKey(cell.x, cell.y));
         if (bucket == buckets.end()) {
             return true;
         }
+
         for (const std::uint64_t id : bucket->second) {
             if (std::ranges::any_of(hits, [id](const RayHit& hit) { return hit.id == id; })) {
                 continue;
             }
+
             if (const std::optional<math::RayHit> hit = math::Raycast::rect(ray, entries.at(id).bounds)) {
                 EntryBounds::insertHit(hits, {.id = id, .point = hit->point, .normal = hit->normal, .distance = hit->distance});
             }
         }
+
         return true;
     });
     // clang-format on
@@ -222,6 +234,7 @@ void HashGrid::offerBucket(Cell cell, Cell center, math::Vec2 point, std::size_t
     if (cell.x < occupied.left || cell.x > occupied.right || cell.y < occupied.top || cell.y > occupied.bottom) {
         return;
     }
+
     const auto bucket = buckets.find(cellKey(cell.x, cell.y));
     if (bucket == buckets.end()) {
         return;
@@ -229,9 +242,11 @@ void HashGrid::offerBucket(Cell cell, Cell center, math::Vec2 point, std::size_t
 
     for (const std::uint64_t id : bucket->second) {
         const Entry& entry = entries.at(id);
+
         if (cell != Cell{std::clamp(center.x, entry.cells.left, entry.cells.right), std::clamp(center.y, entry.cells.top, entry.cells.bottom)}) {
             continue;
         }
+
         const float distance = std::sqrt(EntryBounds::distanceSquared(entry.bounds, point));
         if (distance <= maxDistance) {
             EntryBounds::keepNearest(neighbors, {.id = id, .distance = distance}, count);
@@ -247,6 +262,7 @@ void HashGrid::scanNearest(math::Vec2 point, std::size_t count, float maxDistanc
             EntryBounds::keepNearest(neighbors, {.id = id, .distance = distance}, count);
         }
     }
+
     EntryBounds::finishNearest(neighbors);
 }
 
@@ -254,6 +270,7 @@ void HashGrid::nearest(math::Vec2 point, std::size_t count, float maxDistance, s
     EntryBounds::requirePoint(point);
     EntryBounds::requireRadius(maxDistance);
     neighbors.clear();
+
     if (count == 0 || entries.empty()) {
         return;
     }
@@ -283,19 +300,23 @@ void HashGrid::nearest(math::Vec2 point, std::size_t count, float maxDistance, s
             scanNearest(point, count, maxDistance, neighbors);
             return;
         }
+
         if (ring == 0) {
             offerBucket(center, center, point, count, maxDistance, neighbors);
             continue;
         }
+
         for (int x = std::max(center.x - ring, occupied.left); x <= std::min(center.x + ring, occupied.right); ++x) {
             offerBucket({x, center.y - ring}, center, point, count, maxDistance, neighbors);
             offerBucket({x, center.y + ring}, center, point, count, maxDistance, neighbors);
         }
+
         for (int y = std::max(center.y - ring + 1, occupied.top); y <= std::min(center.y + ring - 1, occupied.bottom); ++y) {
             offerBucket({center.x - ring, y}, center, point, count, maxDistance, neighbors);
             offerBucket({center.x + ring, y}, center, point, count, maxDistance, neighbors);
         }
     }
+
     EntryBounds::finishNearest(neighbors);
 }
 

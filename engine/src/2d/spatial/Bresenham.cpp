@@ -16,14 +16,17 @@ void Bresenham::line(Cell from, Cell to, std::vector<Cell>& cells) {
 
     for (Cell cell = from;;) {
         cells.push_back(cell);
+
         if (cell == to) {
             return;
         }
+
         const int doubled = 2 * error;
         if (doubled >= spanY) {
             error += spanY;
             cell.x += stepX;
         }
+
         if (doubled <= spanX) {
             error += spanX;
             cell.y += stepY;
@@ -44,6 +47,7 @@ void Bresenham::circle(Cell center, int radius, std::vector<Cell>& cells) {
         for (const Cell offset : {Cell{x, y}, Cell{y, x}, Cell{-y, x}, Cell{-x, y}, Cell{-x, -y}, Cell{-y, -x}, Cell{y, -x}, Cell{x, -y}}) {
             cells.push_back({center.x + offset.x, center.y + offset.y});
         }
+
         ++y;
         if (error < 0) {
             error += 2 * y + 1;

@@ -15,6 +15,7 @@ void KdTree::set(std::uint64_t id, math::Vec2 point, float radius) {
     if (!std::isfinite(point.x) || !std::isfinite(point.y) || !(radius >= 0.0F) || !std::isfinite(radius)) {
         throw std::invalid_argument("A k-d tree entry needs a finite point and a finite radius of zero or more.");
     }
+
     entries.insert_or_assign(id, Entry{.id = id, .point = point, .radius = radius});
     built = false;
 }
@@ -23,6 +24,7 @@ bool KdTree::remove(std::uint64_t id) {
     if (entries.erase(id) == 0) {
         return false;
     }
+
     built = false;
     return true;
 }
@@ -53,6 +55,7 @@ void KdTree::split(Range range) {
     if (range.end - range.begin <= 1) {
         return;
     }
+
     const std::size_t middle = range.begin + (range.end - range.begin) / 2;
     // clang-format off
     std::nth_element(tree.begin() + static_cast<std::ptrdiff_t>(range.begin), tree.begin() + static_cast<std::ptrdiff_t>(middle), tree.begin() + static_cast<std::ptrdiff_t>(range.end), [depth = range.depth](const Entry& lhs, const Entry& rhs) {
@@ -80,6 +83,7 @@ std::optional<math::Vec2> KdTree::getPoint(std::uint64_t id) const {
     if (entry == entries.end()) {
         return std::nullopt;
     }
+
     return entry->second.point;
 }
 
@@ -87,6 +91,7 @@ template <typename Visit> void KdTree::visitBox(Range range, math::Vec2 low, mat
     if (range.begin >= range.end) {
         return;
     }
+
     const std::size_t middle = range.begin + (range.end - range.begin) / 2;
     const Entry& entry = tree[middle];
     visit(entry);
@@ -96,6 +101,7 @@ template <typename Visit> void KdTree::visitBox(Range range, math::Vec2 low, mat
     if (along(low, range.depth) - maxRadius <= plane) {
         visitBox({.begin = range.begin, .end = middle, .depth = range.depth + 1}, low, high, visit);
     }
+
     if (along(high, range.depth) + maxRadius >= plane) {
         visitBox({.begin = middle + 1, .end = range.end, .depth = range.depth + 1}, low, high, visit);
     }
@@ -169,6 +175,7 @@ void KdTree::collectNearest(Range range, math::Vec2 point, std::size_t count, fl
     if (range.begin >= range.end) {
         return;
     }
+
     const std::size_t middle = range.begin + (range.end - range.begin) / 2;
     const Entry& entry = tree[middle];
     const float distance = std::max(0.0F, math::Vec2::distance(point, entry.point) - entry.radius);
@@ -195,6 +202,7 @@ void KdTree::nearest(math::Vec2 point, std::size_t count, float maxDistance, std
     if (count > 0) {
         collectNearest({.begin = 0, .end = tree.size()}, point, count, maxDistance, neighbors);
     }
+
     EntryBounds::finishNearest(neighbors);
 }
 

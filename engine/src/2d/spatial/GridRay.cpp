@@ -17,10 +17,13 @@ void GridRay::requireCellSize(math::Vec2 cellSize) {
 
 void GridRay::requireCastable(const math::Ray& ray, math::Vec2 cellSize) {
     requireCellSize(cellSize);
+
     if (!std::isfinite(ray.length)) {
         throw std::invalid_argument("A ray across an unbounded grid needs a finite length.");
     }
+
     const math::Vec2 end = ray.getEnd();
+
     for (const float cell : {ray.origin.x / cellSize.x, ray.origin.y / cellSize.y, end.x / cellSize.x, end.y / cellSize.y}) {
         if (!(std::fabs(cell) < kCellLimit)) {
             throw std::invalid_argument("A grid ray must stay within the 32-bit range of cells.");
@@ -43,10 +46,12 @@ std::optional<GridRay::Hit> GridRay::cast(const math::Ray& ray, math::Vec2 cellS
     if (!hit) {
         return std::nullopt;
     }
+
     hit->distance += entry->distance;
     if (hit->normal.isZero()) {
         hit->normal = entry->normal;
     }
+
     return hit;
 }
 

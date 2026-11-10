@@ -29,10 +29,12 @@ void EntryBounds::keepNearest(std::vector<Neighbor>& neighbors, const Neighbor& 
     if (count == 0 || (neighbors.size() == count && !(candidate < neighbors.front()))) {
         return;
     }
+
     if (neighbors.size() == count) {
         std::pop_heap(neighbors.begin(), neighbors.end());
         neighbors.pop_back();
     }
+
     neighbors.push_back(candidate);
     std::push_heap(neighbors.begin(), neighbors.end());
 }

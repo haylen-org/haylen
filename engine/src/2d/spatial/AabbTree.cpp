@@ -22,6 +22,7 @@ std::int32_t AabbTree::allocate() {
         nodes.emplace_back();
         return static_cast<std::int32_t>(nodes.size() - 1);
     }
+
     const std::int32_t node = freeList;
     freeList = at(node).parent;
     at(node) = Node{};
@@ -70,6 +71,7 @@ void AabbTree::insertLeaf(std::int32_t leaf) {
         if (cost < leftCost && cost < rightCost) {
             break;
         }
+
         sibling = leftCost < rightCost ? node.left : node.right;
     }
 
@@ -88,6 +90,7 @@ void AabbTree::insertLeaf(std::int32_t leaf) {
     } else {
         replaceChild(oldParent, sibling, parent);
     }
+
     refit(parent);
 }
 
@@ -102,10 +105,12 @@ void AabbTree::removeLeaf(std::int32_t leaf) {
     const std::int32_t sibling = at(parent).left == leaf ? at(parent).right : at(parent).left;
     release(parent);
     at(sibling).parent = grandParent;
+
     if (grandParent < 0) {
         root = sibling;
         return;
     }
+
     replaceChild(grandParent, parent, sibling);
     refit(grandParent);
 }
@@ -179,6 +184,7 @@ std::int32_t AabbTree::balance(std::int32_t a) {
         at(b).height = 1 + std::max(at(a).height, at(kept).height);
         return b;
     }
+
     return a;
 }
 
@@ -191,6 +197,7 @@ void AabbTree::set(std::uint64_t id, const math::Rect& bounds) {
         if (at(leaf).box.contains(bounds)) {
             return;
         }
+
         removeLeaf(leaf);
         at(leaf).box = bounds.expanded(margin);
         insertLeaf(leaf);
@@ -211,6 +218,7 @@ bool AabbTree::remove(std::uint64_t id) {
     if (leaf == leaves.end()) {
         return false;
     }
+
     removeLeaf(leaf->second);
     release(leaf->second);
     leaves.erase(leaf);
@@ -233,6 +241,7 @@ std::optional<math::Rect> AabbTree::getBounds(std::uint64_t id) const {
     if (leaf == leaves.end()) {
         return std::nullopt;
     }
+
     return at(leaf->second).bounds;
 }
 
@@ -245,12 +254,15 @@ void AabbTree::collectOverlapping(std::int32_t node, const math::Rect& area, std
     if (!EntryBounds::overlaps(current.box, area)) {
         return;
     }
+
     if (current.isLeaf()) {
         if (EntryBounds::overlaps(current.bounds, area)) {
             ids.push_back(current.id);
         }
+
         return;
     }
+
     collectOverlapping(current.left, area, ids);
     collectOverlapping(current.right, area, ids);
 }
@@ -261,6 +273,7 @@ void AabbTree::query(const math::Rect& area, std::vector<std::uint64_t>& ids) co
     if (root >= 0) {
         collectOverlapping(root, area, ids);
     }
+
     std::ranges::sort(ids);
 }
 
@@ -280,12 +293,15 @@ void AabbTree::collectCrossed(std::int32_t node, const math::Ray& ray, std::size
     if (!travel || EntryBounds::isSettled(hits, limit, (*travel)[0])) {
         return;
     }
+
     if (current.isLeaf()) {
         if (const std::optional<math::RayHit> hit = math::Raycast::rect(ray, current.bounds)) {
             EntryBounds::insertHit(hits, {.id = current.id, .point = hit->point, .normal = hit->normal, .distance = hit->distance});
         }
+
         return;
     }
+
     collectCrossed(current.left, ray, limit, hits);
     collectCrossed(current.right, ray, limit, hits);
 }
@@ -295,6 +311,7 @@ void AabbTree::raycast(const math::Ray& ray, std::size_t limit, std::vector<RayH
     if (root >= 0) {
         collectCrossed(root, ray, limit, hits);
     }
+
     EntryBounds::finishHits(hits, limit);
 }
 
@@ -304,11 +321,13 @@ void AabbTree::collectNearest(std::int32_t node, math::Vec2 point, std::size_t c
     if (reach > maxDistance || (neighbors.size() == count && reach > EntryBounds::getFarthest(neighbors).distance)) {
         return;
     }
+
     if (current.isLeaf()) {
         const float distance = std::sqrt(EntryBounds::distanceSquared(current.bounds, point));
         if (distance <= maxDistance) {
             EntryBounds::keepNearest(neighbors, {.id = current.id, .distance = distance}, count);
         }
+
         return;
     }
 
@@ -324,6 +343,7 @@ void AabbTree::nearest(math::Vec2 point, std::size_t count, float maxDistance, s
     if (count > 0 && root >= 0) {
         collectNearest(root, point, count, maxDistance, neighbors);
     }
+
     EntryBounds::finishNearest(neighbors);
 }
 

@@ -11,6 +11,7 @@ CellGrid::CellGrid(int columns, int rows, std::int32_t value) : width(columns), 
     if (columns <= 0 || rows <= 0 || static_cast<std::int64_t>(columns) * rows > std::numeric_limits<std::int32_t>::max()) {
         throw std::invalid_argument("A cell grid needs a positive size that fits in 32-bit cell indices.");
     }
+
     values.assign(static_cast<std::size_t>(columns) * static_cast<std::size_t>(rows), value);
 }
 

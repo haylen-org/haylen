@@ -58,6 +58,7 @@ std::size_t GridLua::readElement(lua_State* L, int index, const UnionFind& sets)
     if (static_cast<std::size_t>(element) > sets.size()) {
         luaL_error(L, "Element %I is outside the union-find of %I elements.", element, static_cast<lua_Integer>(sets.size()));
     }
+
     return static_cast<std::size_t>(element - 1);
 }
 
@@ -153,6 +154,7 @@ math::Vec2 GridLua::readCellSize(lua_State* L, int index) {
         const auto side = lua::Stack::read<float>(L, index);
         return {side, side};
     }
+
     return lua::Stack::read<math::Vec2>(L, index);
 }
 
@@ -183,6 +185,7 @@ int GridLua::traverseGrid(lua_State* L) {
         if (crossed.size() == kMaxTraversedCells) {
             throw std::invalid_argument("A grid traversal lists at most 65536 cells.");
         }
+
         crossed.emplace_back(cell, distance);
         return true;
     });
@@ -199,6 +202,7 @@ int GridLua::traverseGrid(lua_State* L) {
         lua_setfield(L, -2, "distance");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
@@ -235,6 +239,7 @@ int GridLua::fieldOfView(lua_State* L) {
         if (!grid.contains(cell)) {
             return;
         }
+
         const auto mark = static_cast<std::size_t>((cell.y - top) * columns + (cell.x - left));
         if (revealed[mark] == 0) {
             revealed[mark] = 1;
@@ -268,11 +273,13 @@ int GridLua::floodFill(lua_State* L) {
 
     std::vector<Cell> cells;
     FloodFill().fill(grid, start, diagonal, cells);
+
     if (paint) {
         for (const Cell cell : cells) {
             grid.set(cell, *paint);
         }
     }
+
     pushCells(L, cells);
     return 1;
 }

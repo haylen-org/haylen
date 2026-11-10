@@ -118,9 +118,11 @@ TEST(BresenhamTest, DrawsLinesAndCircles) {
     EXPECT_EQ(cells, (Cells{{10, 10}}));
     spatial2d::Bresenham::circle({0, 0}, 6, cells);
     EXPECT_EQ(cells.front(), (spatial2d::Cell{-2, -6}));
+
     for (const spatial2d::Cell cell : cells) {
         EXPECT_NEAR(std::hypot(static_cast<float>(cell.x), static_cast<float>(cell.y)), 6.0F, 0.75F);
     }
+
     Cells unique = cells;
     unique.erase(std::ranges::unique(unique).begin(), unique.end());
     EXPECT_EQ(unique.size(), cells.size());
@@ -168,6 +170,7 @@ TEST(FieldOfViewTest, IsSymmetricBetweenOpenCells) {
             if (grid[{x, y}] != 0) {
                 continue;
             }
+
             const std::size_t viewer = grid.indexOf({x, y});
             // clang-format off
             spatial2d::FieldOfView::compute({x, y}, kRadius, [&grid](spatial2d::Cell cell) { return grid.isSolid(cell); }, [&](spatial2d::Cell cell) {
@@ -185,10 +188,12 @@ TEST(FieldOfViewTest, IsSymmetricBetweenOpenCells) {
             if (grid.getValues()[first] != 0 || grid.getValues()[second] != 0) {
                 continue;
             }
+
             EXPECT_EQ(sees[first * cells + second], sees[second * cells + first]) << first << " and " << second;
             pairs += sees[first * cells + second];
         }
     }
+
     EXPECT_GT(pairs, 1000);
 }
 
@@ -205,9 +210,11 @@ TEST(VisibilityPolygonTest, OutlinesWhatAPointSeesAmongWalls) {
     EXPECT_TRUE(math::Geometry::contains(shadowed, {60.0F, 50.0F}));
     EXPECT_TRUE(math::Geometry::contains(shadowed, {90.0F, 10.0F}));
     EXPECT_FALSE(math::Geometry::contains(shadowed, {95.0F, 50.0F}));
+
     for (std::size_t index = 1; index < shadowed.size(); ++index) {
         EXPECT_LE((shadowed[index - 1] - math::Vec2{50.0F, 50.0F}).getAngle(), (shadowed[index] - math::Vec2{50.0F, 50.0F}).getAngle() + 1e-5F);
     }
+
     EXPECT_THROW((void)visibility.compute({150.0F, 50.0F}, pillar, room), std::invalid_argument);
 
     // Points that are not finite would leave the angles without an order, so they raise.
@@ -223,6 +230,7 @@ TEST(FloodFillTest, FillsConnectedCellsOfTheSameValue) {
     for (int x = 0; x < 5; ++x) {
         grid.set({x, 2}, 1);
     }
+
     grid.set({2, 2}, 0);
     grid.set({4, 4}, 1);
     grid.set({3, 3}, 1);

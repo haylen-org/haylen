@@ -80,9 +80,11 @@ TEST_F(OverlapWorldTest, RestsAPairForItsTicksAndKeepsTheOrderOfEntities) {
     const std::uint32_t first = world.add();
     const std::uint32_t second = world.add();
     const std::uint32_t third = world.add();
+
     for (const std::uint32_t entity : {first, second, third}) {
         world.place(entity, {static_cast<float>(entity) * 30.0F, 0.0F}, 0.0F, false, punching);
     }
+
     world.rest(first, second, 2);
     EXPECT_TRUE(world.isResting(first, second));
     world.step();
@@ -108,6 +110,7 @@ TEST_F(OverlapWorldTest, RestsAPairForItsTicksAndKeepsTheOrderOfEntities) {
 TEST_F(OverlapWorldTest, TheHashGridFindsTheSameContactsAsEveryPair) {
     OverlapWorld everyPair({.kinds = {"body", "hit"}});
     OverlapWorld hashed({.kinds = {"body", "hit"}, .cellSize = 128.0F});
+
     for (OverlapWorld* world : {&everyPair, &hashed}) {
         const std::uint32_t standing = world->defineSet(std::vector{kBody});
         const std::uint32_t punching = world->defineSet(std::vector{kBody, kHit});
@@ -117,10 +120,12 @@ TEST_F(OverlapWorldTest, TheHashGridFindsTheSameContactsAsEveryPair) {
             world->place(id, {places.range(0.0F, 2000.0F), places.range(0.0F, 400.0F)}, places.range(0.0F, 60.0F), places.chance(0.5F), places.chance(0.5F) ? standing : punching);
         }
     }
+
     const std::vector<OverlapWorld::Contact> expected = contactsOf(everyPair);
     const std::vector<OverlapWorld::Contact> found = contactsOf(hashed);
     ASSERT_GT(expected.size(), 10U);
     ASSERT_EQ(found.size(), expected.size());
+
     for (std::size_t index = 0; index < expected.size(); ++index) {
         EXPECT_EQ(found[index].source, expected[index].source);
         EXPECT_EQ(found[index].target, expected[index].target);
@@ -176,6 +181,7 @@ TEST(OverlapWorldLuaTest, RejectsPlacementsWhoseIdsAreNotWholeNumbersOf32Bits) {
     for (const std::string& group : {"entity + 0.5, 4, 0, 0, 1, set", "-1, 4, 0, 0, 1, set", "5e9, 4, 0, 0, 1, set", "0 / 0, 4, 0, 0, 1, set", "entity, 4, 0, 0, 1, set + 0.5"}) {
         EXPECT_NE(fixture.lua("placements:set(1, {" + group + "}) world:placeAll(placements)").find("The entity and the set of a placement in a buffer are whole numbers of 32 bits."), std::string::npos) << group;
     }
+
     fixture.runLua("placements:set(1, {entity, 4, 0, 0, 1, set}) world:placeAll(placements)");
 }
 

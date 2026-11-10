@@ -16,7 +16,9 @@ class FieldOfView final {
         if (radius < 0) {
             throw std::invalid_argument("A field of view needs a radius of zero or more cells.");
         }
+
         reveal(origin);
+
         for (int quadrant = 0; quadrant < 4; ++quadrant) {
             scan({.depth = 1, .start = {-1, 1}, .end = {1, 1}}, {.origin = origin, .quadrant = quadrant, .radius = radius}, opaque, reveal);
         }
@@ -94,11 +96,14 @@ class FieldOfView final {
             if (previousOpaque == true && !blocks) {
                 row.start = slopeOf(row.depth, column);
             }
+
             if (previousOpaque == false && blocks) {
                 scan({.depth = row.depth + 1, .start = row.start, .end = slopeOf(row.depth, column)}, quadrant, opaque, reveal);
             }
+
             previousOpaque = blocks;
         }
+
         if (previousOpaque == false) {
             scan({.depth = row.depth + 1, .start = row.start, .end = row.end}, quadrant, opaque, reveal);
         }

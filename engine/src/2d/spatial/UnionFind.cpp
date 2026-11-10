@@ -33,10 +33,12 @@ std::size_t UnionFind::add() {
 
 std::size_t UnionFind::find(std::size_t element) {
     requireElement(element);
+
     while (parents[element] != element) {
         parents[element] = parents[parents[element]];
         element = parents[element];
     }
+
     return element;
 }
 
@@ -46,9 +48,11 @@ bool UnionFind::unite(std::size_t first, std::size_t second) {
     if (larger == smaller) {
         return false;
     }
+
     if (sizes[larger] < sizes[smaller]) {
         std::swap(larger, smaller);
     }
+
     parents[smaller] = larger;
     sizes[larger] += sizes[smaller];
     --sets;

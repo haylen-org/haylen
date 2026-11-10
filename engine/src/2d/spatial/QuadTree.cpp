@@ -15,9 +15,11 @@ const QuadTree::Settings QuadTree::kDefaultSettings{};
 
 QuadTree::QuadTree(const math::Rect& area, const Settings& value) : settings(value) {
     EntryBounds::requireValid(area);
+
     if (area.isEmpty() || value.maxEntries == 0 || value.maxDepth < 0 || value.maxDepth > kMaxDepth) {
         throw std::invalid_argument("A quadtree needs an area of positive size, room for an entry per quadrant and a depth from 0 to 16.");
     }
+
     nodes.push_back({.bounds = area});
 }
 
@@ -30,11 +32,13 @@ std::int32_t QuadTree::childFor(std::int32_t node, const math::Rect& bounds) con
     if (first < 0) {
         return -1;
     }
+
     for (std::int32_t child = first; child < first + 4; ++child) {
         if (nodes[static_cast<std::size_t>(child)].bounds.contains(bounds)) {
             return child;
         }
     }
+
     return -1;
 }
 
@@ -47,6 +51,7 @@ void QuadTree::insert(std::uint64_t id, const math::Rect& bounds) {
     Node& target = nodes[static_cast<std::size_t>(node)];
     target.ids.push_back(id);
     entries.insert_or_assign(id, Entry{.bounds = bounds, .node = node});
+
     if (target.firstChild < 0 && target.ids.size() > settings.maxEntries && target.depth < settings.maxDepth) {
         split(node);
     }
@@ -74,6 +79,7 @@ void QuadTree::split(std::int32_t node) {
         child.depth = depth;
         child.ids.clear();
     }
+
     nodes[static_cast<std::size_t>(node)].firstChild = first;
 
     // Entries that fit a quadrant whole move down into it, and entries that straddle quadrants stay.
@@ -85,6 +91,7 @@ void QuadTree::split(std::int32_t node) {
             ++index;
             continue;
         }
+
         nodes[static_cast<std::size_t>(child)].ids.push_back(ids[index]);
         entry.node = child;
         ids[index] = ids.back();
@@ -104,6 +111,7 @@ std::size_t QuadTree::countBelow(std::int32_t node) const noexcept {
     for (std::int32_t child = current.firstChild; current.firstChild >= 0 && child < current.firstChild + 4 && count <= settings.maxEntries; ++child) {
         count += countBelow(child);
     }
+
     return count;
 }
 
@@ -112,6 +120,7 @@ void QuadTree::gather(std::int32_t node, std::vector<std::uint64_t>& ids) const 
     if (current.firstChild < 0) {
         return;
     }
+
     for (std::int32_t child = current.firstChild; child < current.firstChild + 4; ++child) {
         const std::vector<std::uint64_t>& below = nodes[static_cast<std::size_t>(child)].ids;
         ids.insert(ids.end(), below.begin(), below.end());
@@ -124,10 +133,12 @@ void QuadTree::release(std::int32_t node) {
     if (first < 0) {
         return;
     }
+
     for (std::int32_t child = first; child < first + 4; ++child) {
         release(child);
         nodes[static_cast<std::size_t>(child)].ids.clear();
     }
+
     freeBlocks.push_back(first);
     nodes[static_cast<std::size_t>(node)].firstChild = -1;
 }
@@ -137,6 +148,7 @@ void QuadTree::collapse(std::int32_t node) {
         if (nodes[static_cast<std::size_t>(current)].firstChild < 0) {
             continue;
         }
+
         if (countBelow(current) > settings.maxEntries) {
             return;
         }
@@ -145,9 +157,11 @@ void QuadTree::collapse(std::int32_t node) {
         std::vector<std::uint64_t> moved;
         gather(current, moved);
         release(current);
+
         for (const std::uint64_t id : moved) {
             entries.at(id).node = current;
         }
+
         std::vector<std::uint64_t>& ids = nodes[static_cast<std::size_t>(current)].ids;
         ids.insert(ids.end(), moved.begin(), moved.end());
     }
@@ -164,8 +178,10 @@ void QuadTree::set(std::uint64_t id, const math::Rect& bounds) {
             entry.bounds = bounds;
             return;
         }
+
         remove(id);
     }
+
     insert(id, bounds);
 }
 
@@ -201,6 +217,7 @@ std::optional<math::Rect> QuadTree::getBounds(std::uint64_t id) const {
     if (entry == entries.end()) {
         return std::nullopt;
     }
+
     return entry->second.bounds;
 }
 
@@ -211,6 +228,7 @@ void QuadTree::collectOverlapping(std::int32_t node, const math::Rect& area, std
             ids.push_back(id);
         }
     }
+
     for (std::int32_t child = current.firstChild; current.firstChild >= 0 && child < current.firstChild + 4; ++child) {
         if (EntryBounds::overlaps(nodes[static_cast<std::size_t>(child)].bounds, area)) {
             collectOverlapping(child, area, ids);
@@ -242,6 +260,7 @@ void QuadTree::collectCrossed(std::int32_t node, const math::Ray& ray, std::size
             EntryBounds::insertHit(hits, {.id = id, .point = hit->point, .normal = hit->normal, .distance = hit->distance});
         }
     }
+
     for (std::int32_t child = current.firstChild; current.firstChild >= 0 && child < current.firstChild + 4; ++child) {
         const std::optional<std::array<float, 2>> travel = math::Raycast::clip(ray, nodes[static_cast<std::size_t>(child)].bounds);
         if (travel && !EntryBounds::isSettled(hits, limit, (*travel)[0])) {
@@ -264,6 +283,7 @@ void QuadTree::collectNearest(std::int32_t node, math::Vec2 point, std::size_t c
             EntryBounds::keepNearest(neighbors, {.id = id, .distance = distance}, count);
         }
     }
+
     if (current.firstChild < 0) {
         return;
     }
@@ -274,11 +294,14 @@ void QuadTree::collectNearest(std::int32_t node, math::Vec2 point, std::size_t c
         const std::int32_t child = current.firstChild + quadrant;
         children[static_cast<std::size_t>(quadrant)] = {std::sqrt(EntryBounds::distanceSquared(nodes[static_cast<std::size_t>(child)].bounds, point)), child};
     }
+
     std::ranges::sort(children);
+
     for (const auto& [distance, child] : children) {
         if (distance > maxDistance || (neighbors.size() == count && distance > EntryBounds::getFarthest(neighbors).distance)) {
             return;
         }
+
         collectNearest(child, point, count, maxDistance, neighbors);
     }
 }
@@ -290,6 +313,7 @@ void QuadTree::nearest(math::Vec2 point, std::size_t count, float maxDistance, s
     if (count > 0) {
         collectNearest(0, point, count, maxDistance, neighbors);
     }
+
     EntryBounds::finishNearest(neighbors);
 }
 

@@ -37,6 +37,7 @@ std::uint32_t OverlapWorldLua::readBufferId(lua_State* L, float value) {
     if (!(value >= 0.0F && value < kIdLimit) || std::trunc(value) != value) {
         luaL_error(L, "The entity and the set of a placement in a buffer are whole numbers of 32 bits.");
     }
+
     return static_cast<std::uint32_t>(value);
 }
 
@@ -46,12 +47,14 @@ std::uint32_t OverlapWorldLua::readMask(lua_State* L, const char* field, std::ui
         lua_pop(L, 1);
         return fallback;
     }
+
     int isInteger = 0;
     const lua_Integer bits = lua_tointegerx(L, -1, &isInteger);
     lua_pop(L, 1);
     if (isInteger == 0 || bits < 0 || bits > static_cast<lua_Integer>(std::numeric_limits<std::uint32_t>::max())) {
         luaL_error(L, "The \"%s\" of a box is an integer of 32 bits.", field);
     }
+
     return static_cast<std::uint32_t>(bits);
 }
 
@@ -65,6 +68,7 @@ int OverlapWorldLua::newOverlapWorld(lua_State* L) {
         lua::Table::readField(L, 1, "touching", options.touching);
         lua::Table::readField(L, 1, "cellSize", options.cellSize);
     }
+
     lua::Userdata::emplace<ScriptedOverlapWorld>(L, ScriptedOverlapWorld{.world = OverlapWorld(std::move(options))});
     return 1;
 }
@@ -95,14 +99,18 @@ int OverlapWorldLua::defineSet(lua_State* L) {
             while (found < kinds.size() && kinds[found] != kind) {
                 ++found;
             }
+
             if (found == kinds.size()) {
                 return luaL_error(L, "The box kind \"%s\" is not one of the kinds of the overlap world.", kind.c_str());
             }
+
             box.kind = static_cast<std::uint8_t>(found);
         }
+
         boxes.push_back(box);
         lua_pop(L, 1);
     }
+
     lua_pushinteger(L, static_cast<lua_Integer>(world.defineSet(boxes)));
     return 1;
 }
@@ -124,10 +132,12 @@ int OverlapWorldLua::placeAll(lua_State* L) {
     const std::span<const float> values = lua::Userdata::check<core::FloatBuffer>(L, 2).getValues();
     const lua_Integer first = luaL_optinteger(L, 3, 1);
     luaL_argcheck(L, first >= 1, 3, "the first value of a buffer is at position 1");
+
     for (std::size_t offset = static_cast<std::size_t>(first - 1); offset + kPlacementSize <= values.size(); offset += kPlacementSize) {
         const std::span<const float> group = values.subspan(offset, kPlacementSize);
         world.place(readBufferId(L, group[0]), {group[1], group[2]}, group[3], group[4] < 0.0F, readBufferId(L, group[5]));
     }
+
     return 0;
 }
 
@@ -140,6 +150,7 @@ int OverlapWorldLua::remove(lua_State* L) {
 int OverlapWorldLua::contacts(lua_State* L) {
     ScriptedOverlapWorld& scripted = check(L);
     scripted.world.collect(scripted.contacts);
+
     if (lua_isnoneornil(L, 2)) {
         lua_createtable(L, static_cast<int>(scripted.contacts.size()), 0);
         for (std::size_t index = 0; index < scripted.contacts.size(); ++index) {
@@ -157,6 +168,7 @@ int OverlapWorldLua::contacts(lua_State* L) {
             lua_setfield(L, -2, "overlap");
             lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
         }
+
         return 1;
     }
 
@@ -174,6 +186,7 @@ int OverlapWorldLua::contacts(lua_State* L) {
         group[6] = contact.overlap.width;
         group[7] = contact.overlap.height;
     }
+
     lua_pushinteger(L, static_cast<lua_Integer>(scripted.contacts.size()));
     return 1;
 }
