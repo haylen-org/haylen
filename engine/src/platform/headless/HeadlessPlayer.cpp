@@ -55,7 +55,9 @@ int HeadlessPlayer::run(const Options& options) {
 
 int HeadlessPlayer::play(const Options& options) {
     const std::shared_ptr<io::Package> package = io::Package::open(options.package);
-    HeadlessHost host(std::filesystem::temp_directory_path() / "haylen-headless" / core::AppConfig::fromPackage(*package).identifier);
+    // The apps keep their user data in the folder the run names, or in a folder of the app under the temporary directory of the system.
+    const std::filesystem::path dataDirectory = options.dataDirectory.value_or(std::filesystem::temp_directory_path() / "haylen-headless" / core::AppConfig::fromPackage(*package).identifier);
+    HeadlessHost host(dataDirectory);
     if (options.development) {
         host.enableDevelopment(package->getDirectory());
     }

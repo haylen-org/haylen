@@ -198,7 +198,8 @@ TEST(DevelopmentConnectionTest, PlaysALaunchedAppInDevelopmentWithTheServerItNam
     )");
     // clang-format on
 
-    EXPECT_EQ(HeadlessPlayer::run({.package = launcher.getPath(), .frames = 600}), 7);
+    const test::TemporaryDirectory data;
+    EXPECT_EQ(HeadlessPlayer::run({.package = launcher.getPath(), .frames = 600, .dataDirectory = data.getPath()}), 7);
     const std::vector<core::Json> messages = server.getMessages();
     EXPECT_TRUE(std::ranges::any_of(messages, [](const core::Json& message) { return message.at("type") == "hello"; }));
 }

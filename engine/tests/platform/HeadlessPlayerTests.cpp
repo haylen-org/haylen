@@ -19,10 +19,11 @@ class HeadlessPlayerTest : public ::testing::Test {
     // Plays the app with the source of its main module and returns the exit status of the player.
     int play(const std::string& main, long long frames = 60) {
         app.write("source/main.lua", main);
-        return HeadlessPlayer::run({.package = app.getPath(), .frames = frames});
+        return HeadlessPlayer::run({.package = app.getPath(), .frames = frames, .dataDirectory = data.getPath()});
     }
 
     test::TemporaryDirectory app;
+    test::TemporaryDirectory data;
 };
 
 TEST_F(HeadlessPlayerTest, ExitsWithTheStatusTheAppQuitWith) {
@@ -78,9 +79,7 @@ TEST_F(HeadlessPlayerTest, StartsTheLauncherAgainWhenTheAppItLaunchedCannotStart
     test::TemporaryDirectory guest;
     guest.write("app.json", R"({"name": "Guest", "identifier": "com.haylen.brokenguest"})");
     guest.write("source/main.lua", "require('haylen').quit()");
-    const std::filesystem::path storage = std::filesystem::temp_directory_path() / "haylen-headless" / "com.haylen.tests" / "com.haylen.brokenguest";
-    std::filesystem::create_directories(storage.parent_path());
-    std::filesystem::remove_all(storage);
+    const std::filesystem::path storage = data.getPath() / "com.haylen.brokenguest";
     std::ofstream(storage) << "A file where the storage folder of the guest goes.";
     test::TemporaryDirectory records;
     const std::filesystem::path restarted = records.getPath() / "restarted";
