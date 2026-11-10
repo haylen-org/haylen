@@ -19,10 +19,12 @@ std::vector<std::string> Preferences::splitKey(std::string_view key) {
         if (part.empty()) {
             throw std::invalid_argument("The preference key \"" + std::string(key) + "\" must be a dotted path without empty parts.");
         }
+
         parts.emplace_back(part);
         if (dot == std::string_view::npos) {
             return parts;
         }
+
         start = dot + 1;
     }
 }
@@ -36,10 +38,12 @@ void Preferences::load() {
 
     core::Json stored = core::Json::parse(userStorage.readText(path), nullptr, false);
     dirty = false;
+
     if (stored.is_discarded() || !stored.is_object()) {
         values = core::Json::object();
         throw std::runtime_error("The preferences file \"" + path + "\" is damaged.");
     }
+
     values = std::move(stored);
 }
 
@@ -55,12 +59,15 @@ const core::Json* Preferences::find(std::string_view key) const {
         if (!node->is_object()) {
             return nullptr;
         }
+
         const auto child = node->find(part);
         if (child == node->end()) {
             return nullptr;
         }
+
         node = &*child;
     }
+
     return node;
 }
 
@@ -88,11 +95,14 @@ void Preferences::set(std::string_view key, core::Json value) {
         if (child.is_null()) {
             child = core::Json::object();
         }
+
         if (!child.is_object()) {
             throw std::invalid_argument("The preference key \"" + std::string(key) + "\" passes through \"" + parts[index] + "\", which holds a value instead of a group.");
         }
+
         node = &child;
     }
+
     (*node)[parts.back()] = std::move(value);
     dirty = true;
 }
@@ -105,8 +115,10 @@ bool Preferences::remove(std::string_view key) {
         if (child == node->end() || !child->is_object()) {
             return false;
         }
+
         node = &*child;
     }
+
     const bool removed = node->erase(parts.back()) > 0;
     dirty = dirty || removed;
     return removed;

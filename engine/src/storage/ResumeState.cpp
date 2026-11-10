@@ -14,6 +14,7 @@ ResumeState::ResumeState(UserStorage& storage, std::string file) : userStorage(s
 
 void ResumeState::load() {
     restored.reset();
+
     if (!userStorage.exists(path)) {
         return;
     }
@@ -25,6 +26,7 @@ void ResumeState::load() {
     if (stored.is_discarded() || !stored.is_object() || savedAt == stored.end() || !savedAt->is_number() || !stored.contains("value")) {
         throw std::runtime_error("The resume state \"" + path + "\" is damaged, so the app starts without it.");
     }
+
     const double now = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
     restored = Restored{.value = stored.at("value"), .age = std::max(0.0, now - savedAt->get<double>())};
 }
@@ -39,6 +41,7 @@ void ResumeState::save() {
         discard();
         return;
     }
+
     const double now = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
     userStorage.writeText(path, core::Json{{"savedAt", now}, {"value", value}}.dump(), UserStorage::Durability::Durable);
     userStorage.flush();
@@ -49,6 +52,7 @@ void ResumeState::discard() {
     if (!std::exchange(written, false)) {
         return;
     }
+
     userStorage.remove(path);
     userStorage.flush();
 }

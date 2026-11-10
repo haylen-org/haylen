@@ -29,6 +29,7 @@ void UserStorage::removeTemporaryFiles() noexcept {
             stale.push_back(iterator->path());
         }
     }
+
     for (const std::filesystem::path& file : stale) {
         std::filesystem::remove(file, error);
     }
@@ -39,10 +40,12 @@ std::filesystem::path UserStorage::resolve(std::string_view path) const {
     if (relative.empty()) {
         throw std::invalid_argument("A storage path cannot be empty.");
     }
+
     // Writes go through temporary files with this extension, which the storage removes when it opens.
     if (relative.ends_with(".tmp")) {
         throw std::invalid_argument("The storage path \"" + relative + "\" ends with \".tmp\", which the storage keeps for the temporary files of its writes.");
     }
+
     return root / relative;
 }
 
@@ -67,6 +70,7 @@ std::vector<std::uint8_t> UserStorage::read(std::string_view path) const {
     if (!stream) {
         throw std::runtime_error("The storage file \"" + std::string(path) + "\" could not be read.");
     }
+
     return bytes;
 }
 
@@ -104,9 +108,11 @@ bool UserStorage::writeDurably(const std::filesystem::path& file, std::span<cons
 bool UserStorage::replace(const std::filesystem::path& file, const std::filesystem::path& temporary, std::span<const std::uint8_t> bytes, Durability durability) {
     std::error_code error;
     std::filesystem::create_directories(file.parent_path(), error);
+
     if (error) {
         return false;
     }
+
     if (durability == Durability::Durable) {
         if (!writeDurably(temporary, bytes)) {
             return false;
@@ -131,9 +137,11 @@ bool UserStorage::replace(const std::filesystem::path& file, const std::filesyst
         if (!error && durability == Durability::Durable) {
             content::StoreFile::syncFolder(file.parent_path());
         }
+
         if (!error || attempt == kReplaceAttempts) {
             return !error;
         }
+
         std::this_thread::sleep_for(kReplaceDelay);
     }
 }
@@ -166,10 +174,12 @@ std::vector<std::string> UserStorage::list(std::string_view directory) const {
             files.push_back(iterator->path().lexically_relative(root).generic_string());
         }
     }
+
     if (error) {
         const std::string folder = relative.empty() ? std::string("The user storage") : "The storage folder \"" + relative + "\"";
         throw std::runtime_error(folder + " could not be listed, and the file system reported \"" + error.message() + "\".");
     }
+
     std::sort(files.begin(), files.end());
     return files;
 }

@@ -85,6 +85,7 @@ TEST(UserStorageTest, FailedWriteKeepsThePreviousFile) {
     } catch (const std::runtime_error& failure) {
         error = failure.what();
     }
+
     EXPECT_EQ(error, "The storage file \"save.json\" could not be written.");
     EXPECT_EQ(storage.readText("save.json"), "good");
 }
@@ -103,8 +104,10 @@ TEST(UserStorageTest, FailedWritesLeaveNoTemporaryFileAndNameTheRelativePath) {
         } catch (const std::runtime_error& failure) {
             error = failure.what();
         }
+
         EXPECT_EQ(error, "The storage file \"" + path + "\" could not be written.");
     }
+
     EXPECT_EQ(std::distance(std::filesystem::directory_iterator(directory.getPath()), std::filesystem::directory_iterator()), 2) << "No temporary file stays next to the folder.";
     EXPECT_EQ(storage.readText("slot/inside.txt"), "kept");
 }
@@ -121,6 +124,7 @@ TEST(UserStorageTest, RefusesToListAFolderPartly) {
     // A user who reads every folder, such as the superuser, cannot meet the problem.
     std::error_code denied;
     const std::filesystem::directory_iterator probe(locked, denied);
+
     if (!denied) {
         std::filesystem::permissions(locked, std::filesystem::perms::owner_all);
         GTEST_SKIP() << "The user reads folders without permission.";
@@ -132,6 +136,7 @@ TEST(UserStorageTest, RefusesToListAFolderPartly) {
     } catch (const std::runtime_error& error) {
         message = error.what();
     }
+
     std::filesystem::permissions(locked, std::filesystem::perms::owner_all);
     EXPECT_TRUE(message.starts_with("The storage folder \"saves\" could not be listed, and the file system reported")) << message;
 }
@@ -180,6 +185,7 @@ TEST(SaveSlotsTest, RejectsBadNamesAndDamagedFiles) {
     for (const std::string& name : {std::string(""), std::string("../escape"), std::string("a b"), std::string(65, 'x')}) {
         EXPECT_THROW(saves.write(name, core::Json::object()), std::invalid_argument) << name;
     }
+
     EXPECT_THROW(saves.write("slot", core::Json::object(), core::Json::array()), std::invalid_argument);
 
     storage.writeText("saves/broken.json", "{");
@@ -233,6 +239,7 @@ TEST(SaveSlotsTest, MigratesOldSavesOnRead) {
     } catch (const std::runtime_error& error) {
         missing = error.what();
     }
+
     EXPECT_EQ(missing, "The save slot \"slot-1\" has version 1 and no migration reaches version 4.");
     saves.setVersion(2);
     std::string newer;
@@ -241,6 +248,7 @@ TEST(SaveSlotsTest, MigratesOldSavesOnRead) {
     } catch (const std::runtime_error& error) {
         newer = error.what();
     }
+
     EXPECT_EQ(newer, "The save slot \"slot-2\" has version 3, which is newer than the version 2 this app reads.");
     EXPECT_THROW(saves.setVersion(0), std::invalid_argument);
     EXPECT_THROW(saves.addMigration(0, [](core::Json data) { return data; }), std::invalid_argument);
@@ -312,10 +320,12 @@ TEST(SaveSlotsTest, FailsForSlotsThatCannotBeRead) {
     // A file without read permission fails to read, except on platforms or for users that read it anyway.
     const std::filesystem::path file = directory.getPath() / "saves" / "locked.json";
     std::filesystem::permissions(file, std::filesystem::perms::none);
+
     if (std::ifstream(file).is_open()) {
         std::filesystem::permissions(file, std::filesystem::perms::owner_read | std::filesystem::perms::owner_write);
         GTEST_SKIP() << "This platform reads files without read permission.";
     }
+
     EXPECT_THROW((void)saves.read("locked"), std::runtime_error);
     std::filesystem::permissions(file, std::filesystem::perms::owner_read | std::filesystem::perms::owner_write);
     EXPECT_EQ(saves.read("locked"), (core::Json{{"day", 1}}));
@@ -390,10 +400,12 @@ TEST(PreferencesTest, KeepsUnsavedChangesWhenTheFileCannotBeRead) {
     // A file without read permission fails to read, except on platforms or for users that read it anyway.
     const std::filesystem::path file = directory.getPath() / "preferences.json";
     std::filesystem::permissions(file, std::filesystem::perms::none);
+
     if (std::ifstream(file).is_open()) {
         std::filesystem::permissions(file, std::filesystem::perms::owner_read | std::filesystem::perms::owner_write);
         GTEST_SKIP() << "This platform reads files without read permission.";
     }
+
     EXPECT_THROW(preferences.load(), std::runtime_error);
     std::filesystem::permissions(file, std::filesystem::perms::owner_read | std::filesystem::perms::owner_write);
     EXPECT_TRUE(preferences.isDirty());
@@ -805,6 +817,7 @@ TEST(UserStorageTest, ReadsAndWritesOfTheSameFileOnTwoThreadsNeverMix) {
         const std::string stored = storage.readText("shared.bin");
         EXPECT_TRUE(stored == first || stored == second);
     }
+
     writer.join();
     EXPECT_EQ(failure, "");
     EXPECT_EQ(storage.list(""), (std::vector<std::string>{"shared.bin"}));
@@ -826,6 +839,7 @@ TEST(UserStorageTest, ReplacesAFileThatAnotherProgramHoldsForAMoment) {
     while (!holding) {
         std::this_thread::yield();
     }
+
     storage.writeText("save.json", R"({"level": 2})");
     scanner.join();
     EXPECT_EQ(storage.readText("save.json"), R"({"level": 2})");

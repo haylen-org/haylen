@@ -39,6 +39,7 @@ void SaveSlots::setVersion(int value) {
     if (value < 1) {
         throw std::invalid_argument("A save version is a whole number from 1.");
     }
+
     const std::scoped_lock lock(mutex);
     version = value;
 }
@@ -52,6 +53,7 @@ void SaveSlots::addMigration(int fromVersion, Migration migration) {
     if (fromVersion < 1 || !migration) {
         throw std::invalid_argument("A save migration needs a version from 1 and a function.");
     }
+
     const std::scoped_lock lock(mutex);
     migrations.insert_or_assign(fromVersion, std::move(migration));
 }
@@ -65,6 +67,7 @@ std::string SaveSlots::pathOf(std::string_view slot) const {
     if (!isValidSlot(slot)) {
         throw std::invalid_argument("The save slot name \"" + std::string(slot) + "\" must use 1 to 64 letters, digits, dashes or underscores.");
     }
+
     return directory + "/" + std::string(slot) + std::string(kExtension);
 }
 
@@ -80,6 +83,7 @@ std::string SaveSlots::checksumOf(const core::Json& saved) {
     for (const char character : payload.dump()) {
         hash = (hash ^ static_cast<unsigned char>(character)) * kChecksumPrime;
     }
+
     return std::format("{:016x}", hash);
 }
 
@@ -90,6 +94,7 @@ std::optional<core::Json> SaveSlots::parse(std::string_view text) {
     if (!valid || saved.at("checksum").get<std::string>() != checksumOf(saved)) {
         return std::nullopt;
     }
+
     return saved;
 }
 
@@ -102,12 +107,14 @@ std::optional<std::string> SaveSlots::readFile(const std::string& path) const {
     if (!userStorage.exists(path)) {
         return std::nullopt;
     }
+
     try {
         return userStorage.readText(path);
     } catch (const std::runtime_error&) {
         if (userStorage.exists(path)) {
             throw;
         }
+
         return std::nullopt;
     }
 }
@@ -118,15 +125,18 @@ std::optional<SaveSlots::Stored> SaveSlots::load(std::string_view slot) const {
     if (!text) {
         return std::nullopt;
     }
+
     if (std::optional<core::Json> saved = parse(*text)) {
         Info info = infoOf(slot, *saved, false);
         return Stored{.data = std::move(saved->at("data")), .info = std::move(info)};
     }
+
     const std::optional<std::string> backup = readFile(backupOf(slot));
     std::optional<core::Json> previous = backup ? parse(*backup) : std::nullopt;
     if (!previous) {
         throw std::runtime_error("The save slot \"" + std::string(slot) + "\" is damaged.");
     }
+
     core::Log::warning("The save slot \"{}\" is damaged, and its backup of revision {} takes its place.", slot, previous->at("revision").get<std::uint64_t>());
     Info info = infoOf(slot, *previous, true);
     return Stored{.data = std::move(previous->at("data")), .info = std::move(info)};
@@ -136,6 +146,7 @@ void SaveSlots::write(std::string_view slot, const core::Json& data, const core:
     if (!summary.is_object()) {
         throw std::invalid_argument("A save summary must be a JSON object.");
     }
+
     StoredJson::validate(data);
     StoredJson::validate(summary);
     const std::string path = pathOf(slot);
@@ -149,6 +160,7 @@ void SaveSlots::write(std::string_view slot, const core::Json& data, const core:
             userStorage.writeText(backupOf(slot), *current, UserStorage::Durability::Durable);
         }
     }
+
     core::Json saved{{"version", getVersion()}, {"revision", revision + 1}, {"savedAt", clock()}, {"summary", summary}, {"data", data}};
     saved["checksum"] = checksumOf(saved);
     userStorage.writeText(path, saved.dump(), UserStorage::Durability::Durable);
@@ -169,13 +181,16 @@ core::Json SaveSlots::migrate(std::string_view slot, core::Json data, int fromVe
     if (fromVersion > target) {
         throw std::runtime_error(std::format("The save slot \"{}\" has version {}, which is newer than the version {} this app reads.", slot, fromVersion, target));
     }
+
     for (int current = fromVersion; current < target; ++current) {
         const auto step = steps.find(current);
         if (step == steps.end()) {
             throw std::runtime_error(std::format("The save slot \"{}\" has version {} and no migration reaches version {}.", slot, fromVersion, target));
         }
+
         data = step->second(std::move(data));
     }
+
     return data;
 }
 
@@ -184,6 +199,7 @@ std::optional<core::Json> SaveSlots::read(std::string_view slot) const {
     if (!stored) {
         return std::nullopt;
     }
+
     return migrate(slot, std::move(stored->data), stored->info.version);
 }
 
@@ -209,6 +225,7 @@ std::vector<SaveSlots::Info> SaveSlots::list() const {
         if (!file.starts_with(prefix) || !file.ends_with(kExtension)) {
             continue;
         }
+
         const std::string_view slot = std::string_view(file).substr(prefix.size(), file.size() - prefix.size() - kExtension.size());
         if (!isValidSlot(slot)) {
             continue;
@@ -238,6 +255,7 @@ bool SaveSlots::importSlot(std::string_view slot, std::string_view bytes, Import
     if (!imported) {
         throw std::invalid_argument("The imported save slot \"" + std::string(slot) + "\" is damaged.");
     }
+
     const std::string path = pathOf(slot);
     if (policy == ImportPolicy::KeepNewer) {
         const std::optional<std::string> current = readFile(path);
@@ -249,9 +267,11 @@ bool SaveSlots::importSlot(std::string_view slot, std::string_view bytes, Import
             }
         }
     }
+
     if (const std::optional<std::string> current = readFile(path); current && parse(*current)) {
         userStorage.writeText(backupOf(slot), *current, UserStorage::Durability::Durable);
     }
+
     userStorage.writeText(path, std::string(bytes), UserStorage::Durability::Durable);
     return true;
 }

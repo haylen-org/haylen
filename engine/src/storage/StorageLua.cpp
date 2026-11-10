@@ -110,16 +110,19 @@ void StorageLua::migrate(lua_State* L, const std::string& slot, int fromVersion)
     if (fromVersion > target) {
         luaL_error(L, "The save slot \"%s\" has version %d, which is newer than the version %d this app reads.", slot.c_str(), fromVersion, target);
     }
+
     lua_getfield(L, LUA_REGISTRYINDEX, kMigrations);
     const int migrations = lua_gettop(L);
     for (int current = fromVersion; current < target; ++current) {
         if (!lua_istable(L, migrations) || lua_rawgeti(L, migrations, current) != LUA_TFUNCTION) {
             luaL_error(L, "The save slot \"%s\" has version %d and no migration reaches version %d.", slot.c_str(), fromVersion, target);
         }
+
         lua_pushvalue(L, migrations - 1);
         lua_call(L, 1, 1);
         lua_replace(L, migrations - 1);
     }
+
     lua_settop(L, migrations - 1);
 }
 
@@ -146,12 +149,14 @@ int StorageLua::addMigration(lua_State* L) {
     if (from < 1) {
         return luaL_error(L, "A save migration needs a version from 1 and a function.");
     }
+
     if (lua_getfield(L, LUA_REGISTRYINDEX, kMigrations) != LUA_TTABLE) {
         lua_pop(L, 1);
         lua_newtable(L);
         lua_pushvalue(L, -1);
         lua_setfield(L, LUA_REGISTRYINDEX, kMigrations);
     }
+
     lua_pushvalue(L, 2);
     lua_rawseti(L, -2, from);
     return 0;
@@ -163,6 +168,7 @@ int StorageLua::exportSlot(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua_pushlstring(L, bytes->data(), bytes->size());
     return 1;
 }
@@ -180,13 +186,16 @@ int StorageLua::importSlot(lua_State* L) {
             if (!found) {
                 return luaL_error(L, "The policy of an imported save slot must be \"replace\" or \"keepNewer\".");
             }
+
             policy = *found;
         }
     }
+
     const bool imported = getSaveSlots(L).importSlot(lua::Stack::read<std::string_view>(L, 1), lua::Stack::read<std::string_view>(L, 2), policy);
     if (imported) {
         getUserStorage(L).flush();
     }
+
     lua::Stack::push(L, imported);
     return 1;
 }
@@ -208,6 +217,7 @@ int StorageLua::readSlot(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::JsonConverter::push(L, stored->data);
     migrate(L, slot, stored->info.version);
     return 1;
@@ -219,6 +229,7 @@ int StorageLua::slotInfo(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     pushInfo(L, *info);
     return 1;
 }
@@ -233,6 +244,7 @@ int StorageLua::removeSlot(lua_State* L) {
     if (removed) {
         getUserStorage(L).flush();
     }
+
     lua::Stack::push(L, removed);
     return 1;
 }
@@ -252,9 +264,11 @@ StorageLua::Pusher StorageLua::pushInfos(std::vector<SaveSlots::Info> infos) {
     for (const SaveSlots::Info& info : infos) {
         lua::JsonConverter::validate(info.summary);
     }
+
     // clang-format off
     return [infos = std::move(infos)](lua_State* state) {
         lua_createtable(state, static_cast<int>(infos.size()), 0);
+
         for (std::size_t index = 0; index < infos.size(); ++index) {
             pushInfo(state, infos[index]);
             lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1));
@@ -277,6 +291,7 @@ void StorageLua::settle(lua_State* L, const lua::Promise& promise, const Pusher&
         promise.reject(error.what());
         return;
     }
+
     promise.resolveWith([value](lua_State* state) { value->push(state); });
 }
 
@@ -296,6 +311,7 @@ int StorageLua::queue(lua_State* L, bool durable, std::function<Pusher()> work) 
                 if (durable) {
                     storage.flush();
                 }
+
                 settle(main, promise, pushResult);
             });
         } catch (const std::exception& error) {
@@ -383,6 +399,7 @@ int StorageLua::readSlotAsync(lua_State* L) {
         if (!stored) {
             return Pusher([](lua_State* state) { lua_pushnil(state); });
         }
+
         lua::JsonConverter::validate(stored->data);
         return Pusher([slot, data = std::move(stored->data), version = stored->info.version](lua_State* state) {
             lua::JsonConverter::push(state, data);
@@ -400,6 +417,7 @@ int StorageLua::slotInfoAsync(lua_State* L) {
         if (!info) {
             return Pusher([](lua_State* state) { lua_pushnil(state); });
         }
+
         lua::JsonConverter::validate(info->summary);
         return Pusher([info = std::move(*info)](lua_State* state) { pushInfo(state, info); });
     });
@@ -434,6 +452,7 @@ int StorageLua::resumeState(lua_State* L) {
     if (!restored) {
         return 0;
     }
+
     lua::JsonConverter::push(L, restored->value);
     lua_pushnumber(L, restored->age);
     return 2;
