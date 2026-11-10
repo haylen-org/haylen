@@ -38,14 +38,18 @@ function Permissions:enter()
             ui.button{id = 'paste', text = 'Read the clipboard', onClick = function() self:paste() end},
             ui.label{text = 'A platform that never asks answers "granted", one that asks at the first use answers "unknown", and one without the capability answers "unsupported" with the reason.', color = 'textMuted', font = 'caption'},
         },
-        content = {ui.row{grow = 1, gap = 24, align = 'stretch',
-            ui.panel{grow = 1, align = 'stretch', gap = 12,
+        content = {ui.column{grow = 1, gap = 24, align = 'stretch',
+            ui.panel{align = 'stretch', gap = 12,
                 ui.sectionTitle{text = 'Permissions'},
-                ui.scroll{grow = 1, height = 0, ui.column{gap = 10, children = rows}},
+                ui.column{gap = 10, align = 'stretch', children = rows},
             },
-            ui.panel{width = 600, align = 'stretch', gap = 12,
+            ui.panel{grow = 1, align = 'stretch', gap = 12,
                 ui.sectionTitle{text = 'Answers'},
-                ui.scroll{grow = 1, height = 0, focusable = false, ui.list{id = 'answers', items = {}}},
+                ui.column{id = 'answersEmpty', grow = 1, gap = 16, justify = 'center', align = 'stretch',
+                    ui.icon{image = 'plugins/bell.svg', size = 72, color = 'textMuted', align = 'center'},
+                    ui.label{text = 'Nothing asked yet. Each request and each read of the clipboard answers here, the newest first.', color = 'textMuted', textAlign = 'center', align = 'center', maxWidth = 560},
+                },
+                ui.scroll{id = 'answersScroll', grow = 1, height = 0, focusable = false, visible = false, ui.list{id = 'answers', items = {}}},
             },
         }},
         code = "local state = system.permission('localNetwork'):await()\nif state == 'prompt' then\n  state = system.requestPermission('localNetwork'):await()\nend\nlocal text, message, failure = system.clipboard():await()\nprint(failure and failure.code, message)",
@@ -58,6 +62,8 @@ function Permissions:record(text, detail)
     table.insert(self.lines, 1, {id = 'answer-' .. self.logged, text = text, caption = detail})
     self.lines[Permissions.kept + 1] = nil
     self:set('answers', {items = self.lines})
+    self:set('answersEmpty', {visible = false})
+    self:set('answersScroll', {visible = true})
     self:log('%s: %s', text, detail)
 end
 
