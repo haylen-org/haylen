@@ -110,6 +110,7 @@ TEST_F(MixerTest, DeliversEveryDeviceEventWhenAListenerFails) {
     // clang-format off
     const core::Connection connection = mixer.deviceEventReceived.connect([&heard](Mixer::DeviceEvent event) {
         heard.push_back(event);
+
         if (event == Mixer::DeviceEvent::InterruptionBegan) {
             throw std::runtime_error("The listener failed.");
         }
@@ -187,10 +188,12 @@ TEST_F(MixerTest, VariesPitchWithinTheRange) {
         pitches.push_back(mixer.getPitch(voice));
         mixer.stop(voice);
     }
+
     for (const float pitch : pitches) {
         EXPECT_GE(pitch, 1.1F);
         EXPECT_LE(pitch, 1.3F);
     }
+
     EXPECT_NE(pitches.front(), pitches.back());
 
     mixer.seedVariation(42);
@@ -348,6 +351,7 @@ TEST_F(MixerTest, FailedPlaysLeaveEveryVoicePlaying) {
     for (int index = 0; index < 7; ++index) {
         voices.push_back(mixer.play(track));
     }
+
     const auto busy = std::make_shared<Filter>(Filter::Kind::Lowpass, Filter::Settings{});
     mixer.addBusEffect("ui", busy);
     EXPECT_THROW((void)mixer.play(track, {.effects = {busy}}), std::invalid_argument);
@@ -362,6 +366,7 @@ TEST_F(MixerTest, StealsTheOldestVoiceWhenFull) {
     for (int index = 0; index < 8; ++index) {
         voices.push_back(mixer.play(sound));
     }
+
     EXPECT_TRUE(mixer.getMusic().isValid());
     EXPECT_FALSE(mixer.isActive(voices[0]));
     EXPECT_TRUE(mixer.isActive(voices[7]));
@@ -418,6 +423,7 @@ TEST_F(MixerTest, StealsTheLowestPriorityFirst) {
     for (int index = 0; index < 8; ++index) {
         voices.push_back(mixer.play(sound, {.priority = index == 5 ? std::uint8_t{10} : std::uint8_t{200}}));
     }
+
     const Mixer::VoiceId important = mixer.play(sound, {.priority = 250});
     EXPECT_FALSE(mixer.isActive(voices[5]));
     EXPECT_TRUE(mixer.isActive(voices[0]));
@@ -434,6 +440,7 @@ TEST_F(MixerTest, StopsAndPausesWithoutDiscontinuities) {
         for (std::size_t index = 1; index < samples.size(); ++index) {
             largest = std::max(largest, std::abs(samples[index] - samples[index - 1]));
         }
+
         return largest;
     };
     // clang-format on

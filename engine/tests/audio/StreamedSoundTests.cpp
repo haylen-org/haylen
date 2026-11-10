@@ -43,6 +43,7 @@ class StreamedSoundTest : public MixerFixture {
             if (offset + target.size() > failAt) {
                 throw std::runtime_error("The record of the file failed its checks.");
             }
+
             return inner->read(offset, target);
         }
 
@@ -97,6 +98,7 @@ class StreamedSoundTest : public MixerFixture {
                 return false;
             }
         }
+
         return true;
     }
 
@@ -164,10 +166,12 @@ TEST_F(StreamedSoundTest, LoopsBetweenLoopPointsWithoutAGap) {
             ASSERT_EQ(position, expected) << streamed;
             expected = expected + 1 == kRate / 2 ? kRate / 4 : expected + 1;
         }
+
         mixer.stop(voice);
         peak(toFrames(Mixer::kDeclickSeconds) + 1024);
         mixer.update(0.0F);
     }
+
     EXPECT_THROW((void)mixer.play(makeTone(100), {.loop = true, .loopStart = 0.5F}), std::invalid_argument);
     EXPECT_THROW((void)mixer.play(makeTone(toFrames(1.0F)), {.loop = true, .loopStart = 0.5F, .loopEnd = 0.4F}), std::invalid_argument);
 
@@ -237,6 +241,7 @@ TEST_F(StreamedSoundTest, DecodesThroughAWindowOfTheFile) {
     for (std::uint64_t count = decoder.read(block); count > 0; count = decoder.read(block)) {
         frames += count;
     }
+
     EXPECT_EQ(frames, kLongFrames);
 
     // A seek reads only the bytes of the frame it moves to.
@@ -285,6 +290,7 @@ TEST_F(StreamedSoundTest, SeeksAnOggVorbisFileToTheExactFrame) {
         for (std::uint64_t step = 1; step <= 60; ++step) {
             frames.push_back(step * 2654435761U % length);
         }
+
         std::vector<float> block(std::size_t{3000} * channels);
         for (const std::uint64_t frame : frames) {
             reader->reset();
@@ -294,6 +300,7 @@ TEST_F(StreamedSoundTest, SeeksAnOggVorbisFileToTheExactFrame) {
             if (frame >= length * 3 / 4) {
                 EXPECT_GT(reader->getLowest(), 0U) << frame;
             }
+
             const std::uint64_t count = decoder.read(block);
             ASSERT_EQ(count, std::min<std::uint64_t>(3000, length - frame)) << frame;
             ASSERT_TRUE(std::equal(block.begin(), block.begin() + static_cast<std::ptrdiff_t>(count * channels), expected.begin() + static_cast<std::ptrdiff_t>(frame * channels))) << "The frames after frame " << frame << " differ from a decoding of the whole file.";
@@ -328,6 +335,7 @@ TEST_F(StreamedSoundTest, LoopsAnOggVorbisFileBetweenLoopPointsExactly) {
             ASSERT_TRUE(std::equal(block.begin(), block.begin() + static_cast<std::ptrdiff_t>(count * channels), expected.begin() + static_cast<std::ptrdiff_t>(position * channels))) << pass << " " << position;
             position += count;
         }
+
         ASSERT_TRUE(decoder.seek(loopStart));
         position = loopStart;
     }
@@ -369,6 +377,7 @@ TEST_F(StreamedSoundTest, ReadsTheLengthOfAnOggFileFromItsLastWholePage) {
         const std::vector<std::uint8_t> shorter(file.begin(), file.end() - static_cast<std::ptrdiff_t>(cut));
         EXPECT_LE(Sound::stream(makeReader(shorter)).getFrameCount(), whole) << cut;
     }
+
     std::vector<std::uint8_t> garbage = file;
     std::fill(garbage.end() - 64, garbage.end(), std::uint8_t{'S'});
     EXPECT_LE(Sound::stream(makeReader(garbage)).getFrameCount(), whole);

@@ -26,9 +26,11 @@ ma_result StreamSource::read(ma_data_source* source, void* frames, ma_uint64 fra
     auto& self = *static_cast<StreamSource*>(source);
     self.stream->read(self.token, std::span(static_cast<float*>(frames), static_cast<std::size_t>(frameCount) * self.stream->getChannels()));
     self.framesRead.fetch_add(frameCount, std::memory_order_relaxed);
+
     if (framesRead != nullptr) {
         *framesRead = frameCount;
     }
+
     return MA_SUCCESS;
 }
 
@@ -44,6 +46,7 @@ ma_result StreamSource::getFormat(ma_data_source* source, ma_format* format, ma_
     if (channelMap != nullptr) {
         ma_channel_map_init_standard(ma_standard_channel_map_default, channelMap, channelMapCapacity, stream.getChannels());
     }
+
     return MA_SUCCESS;
 }
 

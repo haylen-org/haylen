@@ -11,6 +11,7 @@ Freeverb::Freeverb(std::uint32_t sampleRate) {
         combsLeft[index].buffer.assign(scaled(kCombTuning[index], ratio), 0.0F);
         combsRight[index].buffer.assign(scaled(kCombTuning[index] + kStereoSpread, ratio), 0.0F);
     }
+
     for (std::size_t index = 0; index < kAllpassTuning.size(); ++index) {
         allpassesLeft[index].buffer.assign(scaled(kAllpassTuning[index], ratio), 0.0F);
         allpassesRight[index].buffer.assign(scaled(kAllpassTuning[index] + kStereoSpread, ratio), 0.0F);
@@ -46,6 +47,7 @@ void Freeverb::process(const float* input, float* output, std::uint32_t frames, 
             wetLeft += filter(combsLeft[index], mono);
             wetRight += filter(combsRight[index], mono);
         }
+
         for (std::size_t index = 0; index < allpassesLeft.size(); ++index) {
             wetLeft = diffuse(allpassesLeft[index], wetLeft);
             wetRight = diffuse(allpassesRight[index], wetRight);
@@ -55,6 +57,7 @@ void Freeverb::process(const float* input, float* output, std::uint32_t frames, 
         if (channels > 1) {
             out[1] = wetRight * wetDirect + wetLeft * wetCross + right * dry;
         }
+
         for (std::uint32_t channel = 2; channel < channels; ++channel) {
             out[channel] = in[channel] * dry;
         }
@@ -76,10 +79,12 @@ float Freeverb::filter(Comb& comb, float input) noexcept {
     if (std::abs(comb.filtered) < kDenormal) {
         comb.filtered = 0.0F;
     }
+
     comb.buffer[comb.index] = input + comb.filtered * feedback;
     if (++comb.index == comb.buffer.size()) {
         comb.index = 0;
     }
+
     return output;
 }
 
@@ -89,6 +94,7 @@ float Freeverb::diffuse(Allpass& allpass, float input) noexcept {
     if (++allpass.index == allpass.buffer.size()) {
         allpass.index = 0;
     }
+
     return delayed - input;
 }
 

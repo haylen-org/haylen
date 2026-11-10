@@ -30,6 +30,7 @@ Sound Sound::decode(std::span<const std::uint8_t> encoded) {
         ma_uint64 read = 0;
         const ma_result result = ma_decoder_read_pcm_frames(&decoder.get(), chunk.data(), framesPerChunk, &read);
         decoded->samples.insert(decoded->samples.end(), chunk.begin(), chunk.begin() + static_cast<std::ptrdiff_t>(read * decoded->channels));
+
         if (result != MA_SUCCESS || read < framesPerChunk) {
             break;
         }
@@ -39,6 +40,7 @@ Sound Sound::decode(std::span<const std::uint8_t> encoded) {
     if (decoded->frames == 0) {
         throw std::runtime_error("Audio data contains no samples.");
     }
+
     decoded->tracked.setBytes(decoded->samples.size() * sizeof(float));
     return Sound(std::move(decoded));
 }
@@ -47,12 +49,15 @@ Sound Sound::fromSamples(std::span<const float> samples, std::uint32_t channels,
     if (channels == 0 || sampleRate == 0) {
         throw std::invalid_argument("Raw audio needs a sample rate and channels.");
     }
+
     if (samples.size() % channels != 0) {
         throw std::invalid_argument("Raw audio samples come in whole frames, one sample for every channel.");
     }
+
     if (samples.empty()) {
         throw std::runtime_error("Audio data contains no samples.");
     }
+
     auto decoded = std::make_shared<SoundData>();
     decoded->samples.assign(samples.begin(), samples.end());
     decoded->channels = channels;
@@ -72,6 +77,7 @@ Sound Sound::stream(std::shared_ptr<io::PackageReader> reader) {
     if (!reader) {
         throw std::invalid_argument("A streamed sound needs a reader of its file.");
     }
+
     auto streamed = std::make_shared<SoundData>();
     {
         ReaderDecoder decoder(reader);

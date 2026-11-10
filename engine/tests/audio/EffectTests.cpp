@@ -64,6 +64,7 @@ class FreeverbTest : public ::testing::Test {
         for (std::size_t index = first; index < last; ++index) {
             sum += static_cast<double>(samples[index]) * samples[index];
         }
+
         return sum;
     }
 };
@@ -223,6 +224,7 @@ TEST_F(AudioEffectTest, LimiterKeepsPeaksUnderTheThreshold) {
     for (int index = 0; index < 4; ++index) {
         mixer.play(makeTone(toFrames(1.0F), 0.9F), {.loop = true});
     }
+
     EXPECT_GT(settledPeak(1024), 1.5F);
 
     const auto limiter = std::make_shared<Limiter>(Limiter::Settings{.threshold = 0.8F, .release = 0.05F});
@@ -305,10 +307,12 @@ TEST_F(FreeverbTest, ImpulseResponseArrivesLateAndDecays) {
     while (response[firstLeft * 2] == 0.0F) {
         ++firstLeft;
     }
+
     std::size_t firstRight = 0;
     while (response[firstRight * 2 + 1] == 0.0F) {
         ++firstRight;
     }
+
     EXPECT_EQ(firstLeft, 1215U);
     EXPECT_EQ(firstRight, 1240U);
 
@@ -323,6 +327,7 @@ TEST_F(FreeverbTest, ImpulseResponseArrivesLateAndDecays) {
     for (std::size_t frame = 0; frame < response.size() / 2; ++frame) {
         difference += std::abs(response[frame * 2] - response[frame * 2 + 1]);
     }
+
     EXPECT_GT(difference, 0.1);
 }
 

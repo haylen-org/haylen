@@ -75,6 +75,7 @@ void Reverb::process(const float* input, float* output, std::uint32_t frames) no
         model->setDamping(getDamping());
         model->setMix(getWet(), getDry(), getWidth());
     }
+
     model->process(input, output, frames, channels);
 }
 

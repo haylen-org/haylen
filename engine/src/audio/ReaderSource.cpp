@@ -25,6 +25,7 @@ struct ReaderSource::Feed {
             filling.store(false, std::memory_order_release);
             throw;
         }
+
         filling.store(false, std::memory_order_release);
     }
 
@@ -32,6 +33,7 @@ struct ReaderSource::Feed {
         if (!decoder) {
             decoder = std::make_unique<ReaderDecoder>(reader);
         }
+
         if (ready.load(std::memory_order_relaxed) != served) {
             taken.store(written.load(std::memory_order_relaxed), std::memory_order_relaxed);
             position = target.load(std::memory_order_relaxed);
@@ -47,6 +49,7 @@ struct ReaderSource::Feed {
             if (room == 0) {
                 return;
             }
+
             // A looping voice decodes up to the end of its loop and goes on from its start.
             const bool loops = looping.load(std::memory_order_relaxed);
             const std::uint64_t end = loopEnd.load(std::memory_order_relaxed);
@@ -54,16 +57,20 @@ struct ReaderSource::Feed {
                 if (!restartLoop()) {
                     return;
                 }
+
                 continue;
             }
+
             const std::size_t offset = ringOffset(head);
             const std::size_t count = loops ? static_cast<std::size_t>(std::min<std::uint64_t>(std::min(room, capacity - offset), end - position)) : std::min(room, capacity - offset);
             const std::uint64_t decoded = decoder->read(std::span(ring).subspan(offset * channels, count * channels));
             written.store(head + decoded, std::memory_order_release);
             position += decoded;
+
             if (decoded > 0) {
                 wrapped = false;
             }
+
             if (decoded == count) {
                 continue;
             }
@@ -73,6 +80,7 @@ struct ReaderSource::Feed {
                 finished.store(true, std::memory_order_release);
                 return;
             }
+
             wrapped = true;
         }
     }
@@ -83,6 +91,7 @@ struct ReaderSource::Feed {
             finished.store(true, std::memory_order_release);
             return false;
         }
+
         return true;
     }
 
@@ -96,6 +105,7 @@ struct ReaderSource::Feed {
             std::copy_n(ring.begin() + static_cast<std::ptrdiff_t>(offset * channels), run * channels, frames + copied * channels);
             copied += run;
         }
+
         taken.store(start + total, std::memory_order_release);
         return total;
     }
@@ -159,6 +169,7 @@ std::function<void()> ReaderSource::takeFill() {
     if ((!moved && !room) || state.filling.exchange(true, std::memory_order_acq_rel)) {
         return {};
     }
+
     return [shared = feed] { shared->fill(); };
 }
 
@@ -182,7 +193,9 @@ ma_result ReaderSource::read(ma_data_source* source, void* frames, ma_uint64 fra
         if (state.looping.load(std::memory_order_relaxed) && end > begin && moved >= end) {
             moved = begin + (moved - begin) % (end - begin);
         }
+
         self.cursor.store(moved, std::memory_order_relaxed);
+
         if (delivered < count && state.finished.load(std::memory_order_acquire) && state.written.load(std::memory_order_acquire) == state.taken.load(std::memory_order_relaxed)) {
             *framesRead = delivered;
             return delivered == 0 ? MA_AT_END : MA_SUCCESS;
@@ -210,6 +223,7 @@ ma_result ReaderSource::getFormat(ma_data_source* source, ma_format* format, ma_
     if (channelMap != nullptr) {
         ma_channel_map_init_standard(ma_standard_channel_map_default, channelMap, channelMapCapacity, state.channels);
     }
+
     return MA_SUCCESS;
 }
 

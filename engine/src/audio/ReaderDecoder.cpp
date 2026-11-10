@@ -37,12 +37,14 @@ ma_result ReaderDecoder::onRead(ma_decoder* source, void* buffer, std::size_t by
     if (self.failure) {
         return MA_IO_ERROR;
     }
+
     try {
         *bytesRead = self.fetch({static_cast<std::uint8_t*>(buffer), bytesToRead});
     } catch (...) {
         self.failure = std::current_exception();
         return MA_IO_ERROR;
     }
+
     return *bytesRead == 0 && bytesToRead > 0 ? MA_AT_END : MA_SUCCESS;
 }
 
@@ -56,6 +58,7 @@ ma_result ReaderDecoder::onSeek(ma_decoder* source, ma_int64 offset, ma_seek_ori
     } else if (origin == ma_seek_origin_end) {
         base = size;
     }
+
     self.position = static_cast<std::uint64_t>(std::clamp(base + offset, ma_int64{0}, size));
     return MA_SUCCESS;
 }
@@ -70,6 +73,7 @@ std::size_t ReaderDecoder::fetch(std::span<std::uint8_t> target) {
             if (count == 0) {
                 break;
             }
+
             position += count;
             filled += count;
             continue;
@@ -82,12 +86,14 @@ std::size_t ReaderDecoder::fetch(std::span<std::uint8_t> target) {
                 break;
             }
         }
+
         const auto start = static_cast<std::size_t>(position - windowOffset);
         const std::size_t count = std::min(rest.size(), windowSize - start);
         std::copy_n(window.begin() + static_cast<std::ptrdiff_t>(start), count, rest.begin());
         position += count;
         filled += count;
     }
+
     return filled;
 }
 
@@ -103,6 +109,7 @@ std::uint64_t ReaderDecoder::getLength() {
     if (vorbis) {
         return vorbis->getLength();
     }
+
     ma_uint64 frames = 0;
     ma_decoder_get_length_in_pcm_frames(&decoder, &frames);
     rethrowFailure();
@@ -113,6 +120,7 @@ std::uint64_t ReaderDecoder::read(std::span<float> target) {
     if (vorbis) {
         return vorbis->read(target);
     }
+
     ma_uint64 decoded = 0;
     ma_decoder_read_pcm_frames(&decoder, target.data(), target.size() / decoder.outputChannels, &decoded);
     rethrowFailure();
@@ -123,6 +131,7 @@ bool ReaderDecoder::seek(std::uint64_t frame) {
     if (vorbis) {
         return vorbis->seek(frame);
     }
+
     const ma_result result = ma_decoder_seek_to_pcm_frame(&decoder, frame);
     rethrowFailure();
     return result == MA_SUCCESS;

@@ -36,6 +36,7 @@ Mixer::PlayOptions AudioLua::readPlayOptions(lua_State* L, int index, std::span<
     if (lua_isnoneornil(L, index)) {
         return options;
     }
+
     luaL_checktype(L, index, LUA_TTABLE);
 
     // A voice becomes positional when the options give it a place in the world.
@@ -69,6 +70,7 @@ Mixer::PlayOptions AudioLua::readPlayOptions(lua_State* L, int index, std::span<
             if (priority < 0 || priority > 255) {
                 luaL_error(L, "The priority of a voice runs from 0 to 255.");
             }
+
             options.priority = static_cast<std::uint8_t>(priority);
         } else if (key == "loopStart") {
             lua::Table::readValue(L, key, options.loopStart);
@@ -84,15 +86,18 @@ Mixer::PlayOptions AudioLua::readPlayOptions(lua_State* L, int index, std::span<
     if (x || y) {
         options.position = math::Vec2{x.value_or(0.0F), y.value_or(0.0F)};
     }
+
     return options;
 }
 
 // Reads the list of effects on top of the stack.
 std::vector<std::shared_ptr<Effect>> AudioLua::readEffects(lua_State* L) {
     std::vector<std::shared_ptr<Effect>> list;
+
     if (!lua_istable(L, -1)) {
         luaL_error(L, "The option \"effects\" must be a list of audio effects.");
     }
+
     const lua_Integer count = luaL_len(L, -1);
     for (lua_Integer position = 1; position <= count; ++position) {
         lua_geti(L, -1, position);
@@ -100,9 +105,11 @@ std::vector<std::shared_ptr<Effect>> AudioLua::readEffects(lua_State* L) {
         if (!effect) {
             luaL_error(L, "The option \"effects\" must be a list of audio effects.");
         }
+
         list.push_back(std::move(effect));
         lua_pop(L, 1);
     }
+
     return list;
 }
 
@@ -119,6 +126,7 @@ template <typename Sample> std::vector<Sample> AudioLua::readSamples(std::string
     if (bytes.size() % sizeof(Sample) != 0) {
         throw std::invalid_argument(std::format("Samples of this format take {} bytes each, which {} bytes do not fill.", sizeof(Sample), bytes.size()));
     }
+
     std::vector<Sample> samples(bytes.size() / sizeof(Sample));
     std::memcpy(samples.data(), bytes.data(), bytes.size());
     return samples;
@@ -145,20 +153,25 @@ int AudioLua::newSound(lua_State* L) {
         if (sampleRate != 0 || channels != 0) {
             throw std::invalid_argument("Only raw samples take a sample rate and channels, together with their format.");
         }
+
         lua::Stack::push(L, stream ? Sound::stream(std::make_shared<io::MemoryReader>(std::make_shared<const std::vector<std::uint8_t>>(encoded.begin(), encoded.end()))) : Sound::decode(encoded));
         return 1;
     }
+
     if (stream) {
         throw std::invalid_argument("Raw samples are decoded already, so they cannot stream.");
     }
+
     if (format == "float32") {
         lua::Stack::push(L, Sound::fromSamples(std::span<const float>(readSamples<float>(bytes)), channels, sampleRate));
         return 1;
     }
+
     if (format == "int16") {
         lua::Stack::push(L, Sound::fromSamples(std::span<const std::int16_t>(readSamples<std::int16_t>(bytes)), channels, sampleRate));
         return 1;
     }
+
     throw std::invalid_argument("The format of raw samples is \"float32\" or \"int16\", not \"" + format + "\".");
 }
 
@@ -188,8 +201,10 @@ int AudioLua::setLimit(lua_State* L) {
         if (!found) {
             return luaL_error(L, "The \"steal\" of a sound limit must be \"oldest\", \"quietest\" or \"none\".");
         }
+
         limit.steal = *found;
     }
+
     getMixer(L).setLimit(sound, limit);
     return 0;
 }
@@ -200,6 +215,7 @@ int AudioLua::limit(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua_createtable(L, 0, 3);
     lua_pushinteger(L, static_cast<lua_Integer>(found->voices));
     lua_setfield(L, -2, "voices");
@@ -329,6 +345,7 @@ int AudioLua::playMusic(lua_State* L) {
         lua::Table::readField(L, 2, "loopStart", options.loopStart);
         lua::Table::readField(L, 2, "loopEnd", options.loopEnd);
     }
+
     lua::Stack::push(L, getMixer(L).playMusic(lua::Stack::read<Sound>(L, 1), options));
     return 1;
 }
@@ -344,6 +361,7 @@ int AudioLua::music(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, current);
     return 1;
 }
@@ -422,6 +440,7 @@ int AudioLua::busStats(lua_State* L) {
         lua_setfield(L, -2, "processing");
         lua_rawseti(L, -2, position++);
     }
+
     return 1;
 }
 

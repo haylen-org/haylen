@@ -37,15 +37,19 @@ class OggPageIndexTest : public ::testing::Test {
             for (std::size_t segment = 0; segment < count; ++segment) {
                 size += file[offset + 27 + segment];
             }
+
             std::uint64_t granule = 0;
             for (std::size_t index = 8; index-- > 0;) {
                 granule = (granule << 8U) | file[offset + 6 + index];
             }
+
             if (count > 0 && file[offset + 26 + count] < 255 && granule > 0 && granule != ~std::uint64_t{0}) {
                 pages.push_back({offset, granule});
             }
+
             offset += size;
         }
+
         return pages;
     }
 
@@ -59,6 +63,7 @@ class OggPageIndexTest : public ::testing::Test {
                 value = (value & 0x80000000U) != 0 ? (value << 1U) ^ 0x04C11DB7U : value << 1U;
             }
         }
+
         for (std::size_t index = 0; index < 4; ++index) {
             file[offset + 22 + index] = static_cast<std::uint8_t>(value >> (8 * index));
         }
@@ -72,11 +77,13 @@ class OggPageIndexTest : public ::testing::Test {
                 found = page;
             }
         }
+
         return found;
     }
 
     static void expectSame(const std::optional<OggPageIndex::Page>& found, const std::optional<OggPageIndex::Page>& expected, std::uint64_t frame) {
         ASSERT_EQ(found.has_value(), expected.has_value()) << frame;
+
         if (expected) {
             EXPECT_EQ(found->offset, expected->offset) << frame;
             EXPECT_EQ(found->frames, expected->frames) << frame;
@@ -98,6 +105,7 @@ TEST_F(OggPageIndexTest, FindsTheLastPageBeforeAFrameInAFileItNeverRead) {
         OggPageIndex fresh(*reader);
         expectSame(fresh.find(frame), expected(pages, frame), frame);
     }
+
     EXPECT_FALSE(index.find(pages.front().frames - 1));
     EXPECT_EQ(index.readLength(), pages.back().frames);
 }
@@ -116,6 +124,7 @@ TEST_F(OggPageIndexTest, SkipsBytesInsidePagesThatOnlyLookLikeAPage) {
             std::copy_n(file.begin() + static_cast<std::ptrdiff_t>(real), header, damaged.begin() + static_cast<std::ptrdiff_t>(fake));
             damaged[fake + 6] ^= 0x40U;
         }
+
         sign(damaged, real, end - real);
     }
 
@@ -143,11 +152,13 @@ TEST_F(OggPageIndexTest, ReadsDamagedFilesWithoutFailing) {
         largest[offset + 26] = 255;
         std::fill_n(largest.begin() + static_cast<std::ptrdiff_t>(offset + 27), 255, std::uint8_t{255});
     }
+
     files.push_back(std::move(largest));
     std::vector<std::uint8_t> captures;
     for (int index = 0; index < 20000; ++index) {
         captures.insert(captures.end(), {'O', 'g', 'g', 'S'});
     }
+
     files.push_back(std::move(captures));
 
     for (const std::vector<std::uint8_t>& bytes : files) {
@@ -158,6 +169,7 @@ TEST_F(OggPageIndexTest, ReadsDamagedFilesWithoutFailing) {
         EXPECT_NO_THROW((void)index.readLength());
         index.restart(0);
         index.record(0, bytes);
+
         for (const std::uint64_t frame : {std::uint64_t{0}, std::uint64_t{50000}, std::uint64_t{1} << 40U}) {
             const std::optional<OggPageIndex::Page> found = index.find(frame);
             if (found) {

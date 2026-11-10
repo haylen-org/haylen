@@ -11,6 +11,7 @@ Delay::Delay(const Settings& settings) : maxTime(settings.maxTime), time(setting
     if (!(settings.maxTime > 0.0F) || settings.maxTime > kLongestTime) {
         throw std::invalid_argument("A delay needs a largest time above 0 and up to 10 seconds.");
     }
+
     requireTime(settings.time);
     requireFeedback(settings.feedback);
     requireLevel(settings.wet, "wet");
@@ -94,8 +95,10 @@ void Delay::process(const float* input, float* output, std::uint32_t frames) noe
             ring[written + channel] = in + delayed * repeat;
             output[sample + channel] = in * dryLevel + delayed * wetLevel;
         }
+
         writeFrame = (writeFrame + 1) % ringFrames;
     }
+
     currentDelay = target;
 }
 

@@ -58,6 +58,7 @@ class MixerFixture : public ::testing::Test {
         for (std::size_t index = 0; index < samples.size(); ++index) {
             samples[index] = amplitude * static_cast<float>(std::sin(2.0 * std::numbers::pi * static_cast<double>(index) / static_cast<double>(period)));
         }
+
         return Sound::decode(test::TestFiles::wav(kRate, 1, samples));
     }
 
@@ -79,6 +80,7 @@ class MixerFixture : public ::testing::Test {
             samples[frame * 2] = static_cast<float>(frame % kPositionPeriod + 1) / 32767.0F;
             samples[frame * 2 + 1] = static_cast<float>(frame / kPositionPeriod + 1) / 32767.0F;
         }
+
         return test::TestFiles::wav(kRate, 2, samples);
     }
 
@@ -95,16 +97,20 @@ class MixerFixture : public ::testing::Test {
             for (std::size_t frame = 0; frame < kListenBlock && positions.size() < count; ++frame) {
                 const long left = std::lround(block[frame * 2] * 32768.0F);
                 const long right = std::lround(block[frame * 2 + 1] * 32768.0F);
+
                 if (left <= 0) {
                     silent = true;
                     continue;
                 }
+
                 positions.push_back(static_cast<std::uint64_t>(right - 1) * kPositionPeriod + static_cast<std::uint64_t>(left - 1));
             }
+
             if (silent) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
         }
+
         runtime.getRuntime().poll();
         mixer.update(0.0F);
         return positions;
@@ -117,6 +123,7 @@ class MixerFixture : public ::testing::Test {
             runtime.getRuntime().poll();
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
+
         return jobErrors.size() >= count;
     }
 
@@ -128,6 +135,7 @@ class MixerFixture : public ::testing::Test {
         for (std::size_t frame = 0; frame < frames; ++frame) {
             left[frame] = samples[frame * mixer.getChannels()];
         }
+
         return left;
     }
 
@@ -139,6 +147,7 @@ class MixerFixture : public ::testing::Test {
         for (const float sample : samples) {
             loudest = std::max(loudest, std::abs(sample));
         }
+
         return loudest;
     }
 

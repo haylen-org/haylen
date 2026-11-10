@@ -105,6 +105,7 @@ TEST_F(AudioStreamTest, TakesSamplesFromAnotherThreadWhileTheMixerReads) {
             written += stream->push(block);
             std::this_thread::yield();
         }
+
         done = true;
     });
     // clang-format on
@@ -113,6 +114,7 @@ TEST_F(AudioStreamTest, TakesSamplesFromAnotherThreadWhileTheMixerReads) {
         peak(256);
         stream->copyLatest(latest);
     }
+
     producer.join();
     EXPECT_EQ(latest.back(), 0.5F);
 }

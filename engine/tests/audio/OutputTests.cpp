@@ -58,6 +58,7 @@ class AudioOutputTest : public MixerFixture {
         if (!accepting) {
             return MA_FAILED_TO_INIT_BACKEND;
         }
+
         callbacks->onDeviceInit = &initDevice;
         callbacks->onDeviceUninit = &uninitDevice;
         callbacks->onDeviceStart = &ignore;
@@ -119,8 +120,10 @@ class AudioOutputTest : public MixerFixture {
             if (std::chrono::steady_clock::now() > deadline) {
                 return false;
             }
+
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
+
         return true;
     }
 
@@ -132,6 +135,7 @@ class AudioOutputTest : public MixerFixture {
                 found.push_back(line);
             }
         }
+
         return found;
     }
 
@@ -412,6 +416,7 @@ class PulledOutputTest : public MixerFixture {
             ma_device_handle_backend_data_callback(device, samples.data(), nullptr, kPeriod);
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
+
         return MA_SUCCESS;
     }
 
@@ -431,6 +436,7 @@ TEST_F(PulledOutputTest, MovesTheCursorOfStreamedVoicesWhileTheDeviceReadsThem) 
         pulled.update(0.0F);
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
+
     ASSERT_TRUE(pulled.isOutputAvailable());
 
     for (const std::string name : {"tone.ogg", "tone.mp3"}) {
@@ -442,6 +448,7 @@ TEST_F(PulledOutputTest, MovesTheCursorOfStreamedVoicesWhileTheDeviceReadsThem) 
             pulled.update(1.0F / 60.0F);
             std::this_thread::sleep_for(std::chrono::milliseconds(2));
         }
+
         pulled.setCursor(voice, 1000.0F);
         EXPECT_LE(pulled.getCursor(voice), sound.getDuration() + 0.01F) << name;
         pulled.stop(voice);

@@ -11,6 +11,7 @@ Filter::Filter(Kind value, const Settings& settings) : kind(value), cutoff(setti
     requireCutoff(settings.cutoff);
     requireQ(settings.q);
     requireGain(settings.gain);
+
     if (settings.gain != 0.0F && !hasGain()) {
         throw std::invalid_argument("Only peak and shelf filters have a gain.");
     }
@@ -32,6 +33,7 @@ void Filter::setGain(float value) {
     if (!hasGain()) {
         throw std::invalid_argument("Only peak and shelf filters have a gain.");
     }
+
     requireGain(value);
     gain.store(value, std::memory_order_relaxed);
     changed();

@@ -14,8 +14,10 @@ consteval std::array<std::uint32_t, 256> OggPageIndex::makeChecksumTable() {
         for (int bit = 0; bit < 8; ++bit) {
             value = (value & 0x80000000U) != 0 ? (value << 1U) ^ 0x04C11DB7U : value << 1U;
         }
+
         table[index] = value;
     }
+
     return table;
 }
 
@@ -27,6 +29,7 @@ bool OggPageIndex::startsWith(io::PackageReader& reader, std::span<const std::ui
     if (!holdsHeader(head) || !parse(head)) {
         return false;
     }
+
     const std::size_t packet = kHeaderSize + head[kSegmentsOffset];
     std::vector<std::uint8_t> first(bytes.size());
     return reader.read(packet, first) == first.size() && std::ranges::equal(first, bytes);
@@ -44,6 +47,7 @@ void OggPageIndex::record(std::uint64_t offset, std::span<const std::uint8_t> by
             recording.reset();
             return;
         }
+
         if (*recording - offset >= bytes.size()) {
             return;
         }
@@ -52,14 +56,17 @@ void OggPageIndex::record(std::uint64_t offset, std::span<const std::uint8_t> by
         if (!holdsHeader(rest)) {
             return;
         }
+
         const std::optional<Header> parsed = parse(rest);
         if (!parsed) {
             recording.reset();
             return;
         }
+
         if (parsed->resumable) {
             add({*recording, parsed->granule});
         }
+
         *recording += parsed->size;
     }
 }
@@ -70,6 +77,7 @@ std::optional<OggPageIndex::Page> OggPageIndex::find(std::uint64_t frame) {
     if (after != pages.begin()) {
         best = *std::prev(after);
     }
+
     std::uint64_t low = best ? best->offset : 0;
     std::uint64_t high = after != pages.end() ? after->offset : reader.getSize();
 
@@ -82,6 +90,7 @@ std::optional<OggPageIndex::Page> OggPageIndex::find(std::uint64_t frame) {
             low = found->offset;
             continue;
         }
+
         high = middle;
     }
 
@@ -91,15 +100,19 @@ std::optional<OggPageIndex::Page> OggPageIndex::find(std::uint64_t frame) {
         if (!parsed) {
             break;
         }
+
         if (parsed->resumable) {
             if (parsed->granule > frame) {
                 break;
             }
+
             best = Page{offset, parsed->granule};
             add(*best);
         }
+
         offset += parsed->size;
     }
+
     return best;
 }
 
@@ -114,11 +127,13 @@ std::uint64_t OggPageIndex::readLength() {
         if (!holdsHeader(rest)) {
             continue;
         }
+
         const std::optional<Header> parsed = parse(rest);
         if (parsed && parsed->size <= rest.size() && parsed->granule != kNoGranule && checksum(rest.first(static_cast<std::size_t>(parsed->size))) == readNumber(rest.subspan(kChecksumOffset), 4)) {
             return parsed->granule;
         }
     }
+
     return 0;
 }
 
@@ -126,6 +141,7 @@ std::optional<OggPageIndex::Header> OggPageIndex::parse(std::span<const std::uin
     if (!std::ranges::equal(bytes.first(kCapture.size()), kCapture) || bytes[kCapture.size()] != 0) {
         return std::nullopt;
     }
+
     const std::size_t count = bytes[kSegmentsOffset];
     const std::span<const std::uint8_t> lacing = bytes.subspan(kHeaderSize, count);
     Header parsed;
@@ -149,6 +165,7 @@ std::uint64_t OggPageIndex::readNumber(std::span<const std::uint8_t> bytes, std:
     for (std::size_t index = count; index-- > 0;) {
         value = (value << 8U) | bytes[index];
     }
+
     return value;
 }
 
@@ -159,6 +176,7 @@ std::uint32_t OggPageIndex::checksum(std::span<const std::uint8_t> page) noexcep
         const std::uint8_t byte = index >= kChecksumOffset && index < kChecksumOffset + 4 ? 0 : page[index];
         value = (value << 8U) ^ kChecksumTable[((value >> 24U) ^ byte) & 0xFFU];
     }
+
     return value;
 }
 
@@ -173,6 +191,7 @@ std::optional<OggPageIndex::Header> OggPageIndex::readCheckedPage(std::uint64_t 
     if (!parsed || offset + parsed->size > reader.getSize()) {
         return std::nullopt;
     }
+
     pageBytes.resize(static_cast<std::size_t>(parsed->size));
     reader.readExactly(offset, pageBytes);
     return checksum(pageBytes) == readNumber(std::span(pageBytes).subspan(kChecksumOffset), 4) ? parsed : std::nullopt;
@@ -191,6 +210,7 @@ std::optional<OggPageIndex::Page> OggPageIndex::synchronize(std::uint64_t from, 
             if (!std::equal(kCapture.begin(), kCapture.end(), probeBytes.begin() + static_cast<std::ptrdiff_t>(start))) {
                 continue;
             }
+
             std::optional<Header> parsed = readCheckedPage(offset + start);
             if (!parsed) {
                 continue;
@@ -202,15 +222,19 @@ std::optional<OggPageIndex::Page> OggPageIndex::synchronize(std::uint64_t from, 
                 at += parsed->size;
                 parsed = at < to ? readHeader(at) : std::nullopt;
             }
+
             if (!parsed) {
                 return std::nullopt;
             }
+
             const Page found{at, parsed->granule};
             add(found);
             return found;
         }
+
         offset += count - (kCapture.size() - 1);
     }
+
     return std::nullopt;
 }
 
@@ -219,6 +243,7 @@ void OggPageIndex::add(const Page& page) {
     if (at != pages.end() && at->offset == page.offset) {
         return;
     }
+
     pages.insert(at, page);
 }
 

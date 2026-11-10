@@ -15,6 +15,7 @@ MixerState::Voice::~Voice() {
     if (handleReady) {
         ma_sound_uninit(&handle);
     }
+
     if (bufferReady) {
         ma_audio_buffer_uninit(&buffer);
     }
@@ -24,11 +25,13 @@ MixerState::~MixerState() {
     output.stop();
     voices.clear();
     tails.clear();
+
     for (auto name = busOrder.rbegin(); name != busOrder.rend(); ++name) {
         Bus& bus = *buses.at(*name);
         bus.effects.reset();
         ma_sound_group_uninit(&bus.group);
     }
+
     if (engineReady) {
         ma_engine_uninit(&engine);
     }
@@ -47,6 +50,7 @@ MixerState::Bus& MixerState::getBus(std::string_view name) const {
     if (found == buses.end()) {
         throw std::invalid_argument("The audio bus \"" + std::string(name) + "\" does not exist.");
     }
+
     return *found->second;
 }
 
@@ -62,6 +66,7 @@ void MixerState::addBus(const std::string& name, Bus* parent) {
     if (ma_sound_group_init(&engine, 0, parent != nullptr ? &parent->group : nullptr, &created->group) != MA_SUCCESS) {
         throw std::runtime_error("The audio bus \"" + name + "\" could not be created.");
     }
+
     created->effects = std::make_unique<EffectChain>(engine, &created->group, parent != nullptr ? &parent->group : ma_engine_get_endpoint(&engine));
     buses.emplace(name, std::move(created));
     busOrder.push_back(name);
@@ -87,18 +92,22 @@ Mixer::VoiceId MixerState::start(std::unique_ptr<Voice> voice, ma_data_source* s
     if (limited != nullptr && !admits(*limited)) {
         return voice->id;
     }
+
     if (ma_sound_init_from_data_source(&engine, source, MA_SOUND_FLAG_NO_SPATIALIZATION, &voice->bus->group, &voice->handle) != MA_SUCCESS) {
         throw std::runtime_error("A voice could not be created.");
     }
+
     voice->handleReady = true;
 
     ma_sound_set_looping(&voice->handle, options.loop ? MA_TRUE : MA_FALSE);
     if (options.startAt > 0.0F) {
         ma_sound_seek_to_second(&voice->handle, options.startAt);
     }
+
     if (options.fadeIn > 0.0F) {
         ma_sound_set_fade_in_milliseconds(&voice->handle, 0.0F, 1.0F, toMilliseconds(options.fadeIn));
     }
+
     for (const std::shared_ptr<Effect>& effect : options.effects) {
         getEffects(*voice).add(effect);
     }
@@ -107,6 +116,7 @@ Mixer::VoiceId MixerState::start(std::unique_ptr<Voice> voice, ma_data_source* s
         makeRoomFor(*limited);
         limited->lastPlay = clock;
     }
+
     makeRoom();
     apply(*voice);
     refresh(*voice);
@@ -126,6 +136,7 @@ core::ProcessMode MixerState::resolveMode(const Bus& bus) const noexcept {
             return level->processMode;
         }
     }
+
     return core::ProcessMode::Pausable;
 }
 
@@ -133,11 +144,13 @@ void MixerState::refresh(Voice& voice) {
     if (voice.stopped) {
         return;
     }
+
     voice.processHeld = !core::FrameClock::canProcess(resolveMode(voice), processPaused);
     const bool play = !voice.isHeld();
     if (play == voice.started) {
         return;
     }
+
     voice.started = play;
     if (!play) {
         ma_sound_stop_with_fade_in_milliseconds(&voice.handle, toMilliseconds(Mixer::kDeclickSeconds));
@@ -148,10 +161,12 @@ void MixerState::refresh(Voice& voice) {
     if (ma_sound_at_end(&voice.handle) == MA_TRUE) {
         return;
     }
+
     if (voice.everStarted) {
         ma_sound_reset_stop_time_and_fade(&voice.handle);
         ma_sound_set_fade_in_milliseconds(&voice.handle, 0.0F, 1.0F, toMilliseconds(Mixer::kDeclickSeconds));
     }
+
     voice.everStarted = true;
     ma_sound_start(&voice.handle);
 }
@@ -172,6 +187,7 @@ void MixerState::apply(Voice& voice) const {
         pan += spatialization.getPan(offset);
         pitch *= spatialization.getDopplerPitch(offset, listenerVelocity, voice.velocity);
     }
+
     ma_sound_set_volume(&voice.handle, voice.volume * gain);
     ma_sound_set_pan(&voice.handle, std::clamp(pan, -1.0F, 1.0F));
     ma_sound_set_pitch(&voice.handle, pitch);
@@ -181,6 +197,7 @@ void MixerState::fill(Voice& voice) const {
     if (!voice.readerSource) {
         return;
     }
+
     if (std::function<void()> work = voice.readerSource->takeFill()) {
         jobs.postIo(std::move(work));
     }
@@ -190,6 +207,7 @@ void MixerState::retire(Voice& voice) {
     if (!voice.effects || voice.effects->empty()) {
         return;
     }
+
     const float tail = voice.effects->getTail();
     if (tail > 0.0F) {
         const auto frames = static_cast<ma_uint64>(std::ceil(tail * static_cast<float>(ma_engine_get_sample_rate(&engine))));
@@ -201,6 +219,7 @@ EffectChain& MixerState::getEffects(Voice& voice) {
     if (!voice.effects) {
         voice.effects = std::make_unique<EffectChain>(engine, &voice.handle, &voice.bus->group);
     }
+
     return *voice.effects;
 }
 
@@ -229,6 +248,7 @@ void MixerState::releaseFinished() {
             ++voice;
             continue;
         }
+
         retire(**voice);
         voice = voices.erase(voice);
     }
@@ -246,10 +266,12 @@ void MixerState::spatialize(float deltaSeconds) {
     const float rate = deltaSeconds > 0.0F ? 1.0F / deltaSeconds : 0.0F;
     listenerVelocity = (listener - lastListener) * rate;
     lastListener = listener;
+
     for (const std::unique_ptr<Voice>& voice : voices) {
         if (!voice->position) {
             continue;
         }
+
         voice->velocity = (*voice->position - voice->lastPosition) * rate;
         voice->lastPosition = *voice->position;
         apply(*voice);
@@ -262,6 +284,7 @@ void MixerState::fadeOut(Voice& voice, float seconds) {
     if (!voice.started) {
         return;
     }
+
     ma_sound_stop_with_fade_in_milliseconds(&voice.handle, toMilliseconds(std::max(seconds, Mixer::kDeclickSeconds)));
 }
 
@@ -270,11 +293,13 @@ MixerState::Limited* MixerState::findLimit(const Sound& sound) {
     if (found == limits.end()) {
         return nullptr;
     }
+
     // A limit whose sound went away belongs to no sound, even when new data takes the same address.
     if (found->second.sound.expired()) {
         limits.erase(found);
         return nullptr;
     }
+
     return &found->second;
 }
 
@@ -282,9 +307,11 @@ bool MixerState::admits(const Limited& limited) const {
     if (limited.lastPlay && clock - *limited.lastPlay < static_cast<double>(limited.limit.cooldown)) {
         return false;
     }
+
     if (limited.limit.voices == 0 || limited.limit.steal != Mixer::Limit::Steal::None) {
         return true;
     }
+
     const SoundData* data = limited.sound.lock().get();
     const auto playing = std::ranges::count_if(voices, [data](const std::unique_ptr<Voice>& voice) { return !voice->stopped && voice->sound.getData().get() == data; });
     return static_cast<std::size_t>(playing) < limited.limit.voices;
@@ -294,6 +321,7 @@ void MixerState::makeRoomFor(Limited& limited) {
     if (limited.limit.voices == 0) {
         return;
     }
+
     const SoundData* data = limited.sound.lock().get();
     for (;;) {
         Voice* victim = nullptr;
@@ -302,15 +330,18 @@ void MixerState::makeRoomFor(Limited& limited) {
             if (voice->stopped || voice->sound.getData().get() != data) {
                 continue;
             }
+
             ++playing;
             const bool quieter = victim != nullptr && limited.limit.steal == Mixer::Limit::Steal::Quietest && voice->volume < victim->volume;
             if (victim == nullptr || quieter) {
                 victim = voice.get();
             }
         }
+
         if (playing < limited.limit.voices) {
             return;
         }
+
         fadeOut(*victim, 0.0F);
     }
 }
@@ -323,19 +354,24 @@ void MixerState::makeRoom() {
             if (voice->stopped) {
                 continue;
             }
+
             ++playing;
+
             if (victim == nullptr || (victim->music && !voice->music)) {
                 victim = voice.get();
                 continue;
             }
+
             const bool lower = voice->priority < victim->priority || (voice->priority == victim->priority && voice->volume < victim->volume);
             if (voice->music == victim->music && lower) {
                 victim = voice.get();
             }
         }
+
         if (playing < maxVoices) {
             return;
         }
+
         fadeOut(*victim, 0.0F);
     }
 }

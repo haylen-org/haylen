@@ -42,15 +42,18 @@ std::uint64_t VorbisDecoder::read(std::span<float> target) {
         if (packetTaken == packetFrames && !decode()) {
             break;
         }
+
         const std::size_t count = std::min(frames - done, packetFrames - packetTaken);
         for (std::size_t frame = 0; frame < count; ++frame) {
             for (std::size_t channel = 0; channel < channels; ++channel) {
                 target[(done + frame) * channels + channel] = packet[channel][packetTaken + frame];
             }
         }
+
         packetTaken += count;
         done += count;
     }
+
     cursor += done;
     return done;
 }
@@ -64,6 +67,7 @@ bool VorbisDecoder::seek(std::uint64_t frame) {
     if (!ahead && (!start || !resume(*start) || cursor > frame)) {
         open();
     }
+
     return skip(frame - cursor);
 }
 
@@ -87,10 +91,12 @@ void VorbisDecoder::open() {
             bufferStart = static_cast<std::size_t>(used);
             return;
         }
+
         if (error != VORBIS_need_more_data) {
             break;
         }
     }
+
     throw std::runtime_error("Audio data is not a supported WAV, FLAC, MP3 or Ogg Vorbis file.");
 }
 
@@ -103,9 +109,11 @@ bool VorbisDecoder::resume(const OggPageIndex::Page& start) {
     bufferEnd = 0;
     packetFrames = 0;
     packetTaken = 0;
+
     if (!decode() || packetPosition < 0) {
         return false;
     }
+
     cursor = static_cast<std::uint64_t>(packetPosition);
     return true;
 }
@@ -122,10 +130,12 @@ bool VorbisDecoder::decode() {
             if ((error != VORBIS__no_error && error != VORBIS_need_more_data) || !fill()) {
                 return false;
             }
+
             continue;
         }
 
         bufferStart += static_cast<std::size_t>(used);
+
         if (frames > 0) {
             packet = output;
             packetFrames = static_cast<std::size_t>(frames);
@@ -142,11 +152,13 @@ bool VorbisDecoder::skip(std::uint64_t frames) {
         if (packetTaken == packetFrames && !decode()) {
             return false;
         }
+
         const auto count = static_cast<std::size_t>(std::min<std::uint64_t>(frames, packetFrames - packetTaken));
         packetTaken += count;
         cursor += count;
         frames -= count;
     }
+
     return true;
 }
 
@@ -158,10 +170,12 @@ bool VorbisDecoder::fill() {
         bufferEnd -= bufferStart;
         bufferStart = 0;
     }
+
     if (bufferEnd == buffer.size()) {
         if (buffer.size() >= kLargestBuffer) {
             throw std::runtime_error("The Ogg Vorbis file holds a packet larger than 1 MiB, the most that a streamed sound reads at once.");
         }
+
         buffer.resize(buffer.size() * 2);
     }
 
@@ -169,6 +183,7 @@ bool VorbisDecoder::fill() {
     if (count == 0) {
         return false;
     }
+
     bufferEnd += count;
     index.record(bufferOffset, std::span(buffer).first(bufferEnd));
     return true;

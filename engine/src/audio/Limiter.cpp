@@ -51,15 +51,18 @@ void Limiter::process(const float* input, float* output, std::uint32_t frames) n
         for (std::uint32_t channel = 0; channel < channels; ++channel) {
             peak = std::max(peak, std::abs(in[channel]));
         }
+
         gain += (1.0F - gain) * recovery;
         if (peak * gain > level) {
             gain = level / peak;
         }
+
         float* out = output + static_cast<std::size_t>(frame) * channels;
         for (std::uint32_t channel = 0; channel < channels; ++channel) {
             out[channel] = in[channel] * gain;
         }
     }
+
     gainOut.store(gain, std::memory_order_relaxed);
 }
 

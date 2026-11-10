@@ -68,9 +68,11 @@ Mixer::Mixer(const Setup& setup, core::JobSystem& jobs) {
     if (setup.sampleRate == 0 || setup.channels == 0 || setup.maxVoices == 0) {
         throw std::invalid_argument("Audio needs a sample rate, a channel count and room for at least one voice.");
     }
+
     if (setup.session.mixWithOthers && setup.session.category != Session::Category::Playback) {
         throw std::invalid_argument("Only the playback audio session mixes with other apps on request.");
     }
+
     state = std::make_unique<MixerState>(setup, jobs);
 
     ma_engine_config config = ma_engine_config_init();
@@ -81,6 +83,7 @@ Mixer::Mixer(const Setup& setup, core::JobSystem& jobs) {
     if (ma_engine_init(&config, &state->engine) != MA_SUCCESS) {
         throw std::runtime_error("The audio engine could not be started.");
     }
+
     state->engineReady = true;
     state->maxVoices = setup.maxVoices;
 
@@ -89,6 +92,7 @@ Mixer::Mixer(const Setup& setup, core::JobSystem& jobs) {
     for (const char* name : {"music", "sfx", "ui", "ambience"}) {
         state->addBus(name, &master);
     }
+
     state->getBus("music").processMode = core::ProcessMode::Always;
     state->getBus("ui").processMode = core::ProcessMode::Always;
     state->getBus("sfx").processMode = core::ProcessMode::Pausable;
@@ -124,12 +128,15 @@ void Mixer::requirePosition(math::Vec2 position) {
 void Mixer::requirePlayOptions(const PlayOptions& options) {
     requireFinite(options.volume, "volume");
     requirePitch(options.pitch);
+
     if (!(options.pitchVariation >= 0.0F) || (options.pitchVariation > 0.0F && options.pitchVariation >= options.pitch)) {
         throw std::invalid_argument("A pitch variation must be at least 0 and smaller than the pitch.");
     }
+
     requireFinite(options.pan, "pan");
     requireFade(options.fadeIn);
     requireFinite(options.startAt, "start time");
+
     if (options.position) {
         requirePosition(*options.position);
     }
@@ -155,12 +162,14 @@ Mixer::VoiceId Mixer::play(const Sound& sound, const PlayOptions& options) {
     if (!sound.isValid()) {
         throw std::invalid_argument("Cannot play an empty sound.");
     }
+
     requirePlayOptions(options);
     const SoundData& data = *sound.getData();
     const bool region = options.loopStart > 0.0F || options.loopEnd.has_value();
     if (region) {
         requireLoop(options, sound.getDuration(), data.sampleRate);
     }
+
     std::unique_ptr<MixerState::Voice> voice = state->createVoice(options);
     voice->sound = sound;
 
@@ -169,6 +178,7 @@ Mixer::VoiceId Mixer::play(const Sound& sound, const PlayOptions& options) {
         if (region) {
             voice->readerSource->setLoopRegion(toFrame(options.loopStart, data.sampleRate), toFrame(options.loopEnd.value_or(sound.getDuration()), data.sampleRate));
         }
+
         MixerState::Voice& streamed = *voice;
         const VoiceId id = state->start(std::move(voice), streamed.readerSource->get(), options);
         state->fill(streamed);
@@ -180,11 +190,13 @@ Mixer::VoiceId Mixer::play(const Sound& sound, const PlayOptions& options) {
     if (ma_audio_buffer_init(&config, &voice->buffer) != MA_SUCCESS) {
         throw std::runtime_error("A sound could not be prepared for playback.");
     }
+
     voice->bufferReady = true;
     ma_data_source* source = &voice->buffer;
     if (region) {
         ma_data_source_set_loop_point_in_pcm_frames(source, toFrame(options.loopStart, data.sampleRate), std::min<ma_uint64>(toFrame(options.loopEnd.value_or(sound.getDuration()), data.sampleRate), data.frames));
     }
+
     return state->start(std::move(voice), source, options);
 }
 
@@ -193,9 +205,11 @@ Mixer::VoiceId Mixer::play(const std::shared_ptr<platform::AudioStream>& stream,
     if (!stream) {
         throw std::invalid_argument("Cannot play an empty audio stream.");
     }
+
     if (options.loop || options.startAt != 0.0F || options.pitchVariation != 0.0F || options.loopStart != 0.0F || options.loopEnd) {
         throw std::invalid_argument("A stream plays as its samples arrive, so its voice takes no loop, start time or pitch variation.");
     }
+
     requirePlayOptions(options);
     std::unique_ptr<MixerState::Voice> voice = state->createVoice(options);
     voice->stream = stream;
@@ -210,6 +224,7 @@ void Mixer::stop(VoiceId id, float fadeOutSeconds) {
     if (voice == nullptr) {
         return;
     }
+
     state->fadeOut(*voice, fadeOutSeconds);
 }
 
@@ -217,14 +232,17 @@ void Mixer::setLimit(const Sound& sound, const Limit& limit) {
     if (!sound.isValid()) {
         throw std::invalid_argument("Cannot limit an empty sound.");
     }
+
     if (!(limit.cooldown >= 0.0F) || !std::isfinite(limit.cooldown)) {
         throw std::invalid_argument("The cooldown of a sound must be a finite number of seconds from 0.");
     }
+
     const SoundData* data = sound.getData().get();
     if (limit.voices == 0 && limit.cooldown == 0.0F) {
         state->limits.erase(data);
         return;
     }
+
     MixerState::Limited& limited = state->limits[data];
     limited.sound = sound.getData();
     limited.limit = limit;
@@ -234,6 +252,7 @@ std::optional<Mixer::Limit> Mixer::getLimit(const Sound& sound) const {
     if (!sound.isValid()) {
         return std::nullopt;
     }
+
     const MixerState::Limited* limited = state->findLimit(sound);
     return limited != nullptr ? std::optional(limited->limit) : std::nullopt;
 }
@@ -252,6 +271,7 @@ bool Mixer::isPaused(VoiceId id) const {
 
 void Mixer::setVolume(VoiceId id, float volume) {
     requireFinite(volume, "volume");
+
     if (MixerState::Voice* voice = state->findVoice(id)) {
         voice->volume = volume;
         state->apply(*voice);
@@ -260,6 +280,7 @@ void Mixer::setVolume(VoiceId id, float volume) {
 
 void Mixer::setPitch(VoiceId id, float pitch) {
     requirePitch(pitch);
+
     if (MixerState::Voice* voice = state->findVoice(id)) {
         voice->pitch = pitch;
         state->apply(*voice);
@@ -277,6 +298,7 @@ void Mixer::seedVariation(std::uint64_t seed) noexcept {
 
 void Mixer::setPan(VoiceId id, float pan) {
     requireFinite(pan, "pan");
+
     if (MixerState::Voice* voice = state->findVoice(id)) {
         voice->pan = pan;
         state->apply(*voice);
@@ -294,6 +316,7 @@ void Mixer::setPosition(VoiceId id, math::Vec2 position) {
     if (!voice->position) {
         voice->lastPosition = position;
     }
+
     voice->position = position;
     state->apply(*voice);
 }
@@ -314,6 +337,7 @@ float Mixer::getCursor(VoiceId id) const {
     if (voice != nullptr) {
         ma_sound_get_cursor_in_seconds(&voice->handle, &seconds);
     }
+
     return seconds;
 }
 
@@ -323,9 +347,11 @@ void Mixer::setCursor(VoiceId id, float seconds) {
     if (voice == nullptr) {
         return;
     }
+
     if (voice->stream) {
         throw std::invalid_argument("The voice of a live audio stream has no cursor to move.");
     }
+
     // The length comes from the sound, because asking the decoder of a streamed voice would seek it while the audio thread reads it.
     const float length = voice->sound.getDuration();
     ma_sound_seek_to_second(&voice->handle, std::max(0.0F, length > 0.0F ? std::min(seconds, length) : seconds));
@@ -333,6 +359,7 @@ void Mixer::setCursor(VoiceId id, float seconds) {
 
 void Mixer::stopAll(float fadeOutSeconds) {
     requireFade(fadeOutSeconds);
+
     for (const std::unique_ptr<MixerState::Voice>& voice : state->voices) {
         stop(voice->id, fadeOutSeconds);
     }
@@ -419,6 +446,7 @@ void Mixer::createBus(const std::string& name, std::string_view parent) {
     if (name.empty() || state->buses.contains(name)) {
         throw std::invalid_argument("An audio bus needs a non-empty name that no other bus uses, not \"" + name + "\".");
     }
+
     state->addBus(name, &state->getBus(parent));
 }
 
@@ -468,6 +496,7 @@ std::vector<std::string> Mixer::getBuses() const {
     for (const auto& [name, bus] : state->buses) {
         names.push_back(name);
     }
+
     return names;
 }
 
@@ -480,15 +509,19 @@ std::vector<Mixer::BusStats> Mixer::getBusStats() const {
             if (voice->bus != bus.get()) {
                 continue;
             }
+
             ++entry.voices;
+
             if (!voice->stopped && voice->isHeld()) {
                 ++entry.paused;
             } else if (ma_sound_is_playing(&voice->handle) == MA_TRUE) {
                 ++entry.playing;
             }
         }
+
         stats.push_back(std::move(entry));
     }
+
     return stats;
 }
 
@@ -496,6 +529,7 @@ void Mixer::setProcessPaused(bool value) {
     if (state->processPaused == value) {
         return;
     }
+
     state->processPaused = value;
     state->refreshAll();
 }
@@ -525,18 +559,23 @@ void Mixer::setSpatialization(const Spatialization& value) {
     for (const float setting : {value.minDistance, value.maxDistance, value.rolloff, value.panDistance, value.doppler, value.speedOfSound}) {
         requireFinite(setting, "spatialization setting");
     }
+
     if (value.minDistance < 0.0F || value.maxDistance <= value.minDistance) {
         throw std::invalid_argument("Audio attenuation needs 0 <= minimum distance < maximum distance.");
     }
+
     if (value.model != Spatialization::Model::Linear && value.minDistance <= 0.0F) {
         throw std::invalid_argument("The inverse and exponential audio models need a minimum distance above 0.");
     }
+
     if (value.rolloff < 0.0F || value.doppler < 0.0F) {
         throw std::invalid_argument("The audio rolloff and Doppler factor cannot be negative.");
     }
+
     if (value.panDistance <= 0.0F || value.speedOfSound <= 0.0F) {
         throw std::invalid_argument("The audio pan distance and speed of sound must be positive.");
     }
+
     state->spatialization = value;
     for (const std::unique_ptr<MixerState::Voice>& voice : state->voices) {
         state->apply(*voice);
@@ -563,6 +602,7 @@ void Mixer::beginInterruption() {
     if (isInterrupted()) {
         return;
     }
+
     state->output.interrupt();
     pauseAll(PauseReason::Interruption);
 }
@@ -570,6 +610,7 @@ void Mixer::beginInterruption() {
 void Mixer::endInterruption() {
     const bool interrupted = isInterrupted();
     state->output.endInterruption();
+
     if (interrupted) {
         resumeAll(PauseReason::Interruption);
     }
@@ -595,12 +636,15 @@ void Mixer::update(float deltaSeconds) {
             failure = failure != nullptr ? failure : std::current_exception();
         }
     }
+
     state->advance(deltaSeconds);
     state->releaseFinished();
     state->spatialize(deltaSeconds);
+
     for (const std::unique_ptr<MixerState::Voice>& voice : state->voices) {
         state->fill(*voice);
     }
+
     if (failure != nullptr) {
         std::rethrow_exception(failure);
     }
@@ -631,9 +675,11 @@ Mixer::OutputState Mixer::getOutputState() const noexcept {
     if (!output.hasDevice() || !output.isAvailable() || output.isOpening()) {
         return OutputState::Unavailable;
     }
+
     if (output.isSuspended()) {
         return OutputState::Suspended;
     }
+
     return output.isLocked() ? OutputState::Locked : OutputState::Running;
 }
 
@@ -649,10 +695,12 @@ void Mixer::render(std::span<float> samples) {
     if (state->output.isSelfRendering()) {
         throw std::logic_error("A mixer with a device or one that keeps time renders on its own.");
     }
+
     if (!state->output.isRunning()) {
         std::ranges::fill(samples, 0.0F);
         return;
     }
+
     const ma_uint64 frames = samples.size() / getChannels();
     ma_engine_read_pcm_frames(&state->engine, samples.data(), frames, nullptr);
 }

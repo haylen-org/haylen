@@ -46,6 +46,7 @@ template <> struct EnumNames<audio::Filter::Kind> {
                 return kind;
             }
         }
+
         return std::nullopt;
     }
     static std::string_view name(audio::Filter::Kind value) {
@@ -54,6 +55,7 @@ template <> struct EnumNames<audio::Filter::Kind> {
                 return candidate;
             }
         }
+
         return kNames.front().first;
     }
 };

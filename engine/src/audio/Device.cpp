@@ -17,6 +17,7 @@ Device::Device(const Mixer::Setup& value) : setup(value) {
 Device::~Device() {
     stop();
     disconnect();
+
     if (opening == nullptr) {
         return;
     }
@@ -39,6 +40,7 @@ void Device::stop() noexcept {
         ma_device_stop(&connection->device);
         started = false;
     }
+
     shared->engine.store(nullptr, std::memory_order_release);
     running = false;
 }
@@ -65,6 +67,7 @@ void Device::endInterruption() {
         disconnect();
         connect(played);
     }
+
     interrupted = false;
     apply();
 }
@@ -75,6 +78,7 @@ void Device::restart() {
         disconnect();
         connect(played);
     }
+
     apply();
 }
 
@@ -82,6 +86,7 @@ void Device::update(float deltaSeconds) {
     if (opening == nullptr) {
         return;
     }
+
     {
         const std::scoped_lock lock(opening->mutex);
         if (!opening->finished) {
@@ -90,6 +95,7 @@ void Device::update(float deltaSeconds) {
                 warnedWaiting = true;
                 core::Log::warning("The audio output does not answer, so the app runs without sound until the system opens it.");
             }
+
             return;
         }
     }
@@ -169,6 +175,7 @@ std::optional<std::string_view> Device::initialize(Connection& target, const Mix
     if (hosted) {
         contextConfig.custom.onContextInit = setup.backend->initContext;
     }
+
     if (const ma_result result = ma_context_init(hosted ? &custom : nullptr, hosted ? 1U : 0U, &contextConfig, &target.context); result != MA_SUCCESS) {
         return hosted ? setup.backend->refusal : ma_result_description(result);
     }
@@ -186,12 +193,14 @@ std::optional<std::string_view> Device::initialize(Connection& target, const Mix
     if (setup.latency == OutputSettings::Latency::Low) {
         config.periodSizeInMilliseconds = kLowLatencyPeriodMilliseconds;
     }
+
     config.aaudio.usage = ma_aaudio_usage_game;
     config.aaudio.contentType = ma_aaudio_content_type_sonification;
     if (const ma_result result = ma_device_init(&target.context, &config, &target.device); result != MA_SUCCESS) {
         ma_context_uninit(&target.context);
         return ma_result_description(result);
     }
+
     return std::nullopt;
 }
 
@@ -203,6 +212,7 @@ float Device::getLatency() const noexcept {
     if (connection == nullptr) {
         return 0.0F;
     }
+
     const ma_device& device = connection->device;
     const ma_uint32 rate = device.playback.internalSampleRate;
     return rate > 0 ? static_cast<float>(device.playback.internalPeriodSizeInFrames * device.playback.internalPeriods) / static_cast<float>(rate) : 0.0F;
@@ -212,6 +222,7 @@ void Device::close(Connection& target) noexcept {
     if (!target.opened) {
         return;
     }
+
     ma_device_uninit(&target.device);
     ma_context_uninit(&target.context);
     target.opened = false;
@@ -238,11 +249,14 @@ void Device::take() {
         if (warnRefusal && !warnedWaiting) {
             core::Log::warning("The app runs without sound because the audio output is unavailable: {}.", *done->refusal);
         }
+
         return;
     }
+
     if (warnedWaiting) {
         core::Log::info("The audio output answered, and the app plays sound again.");
     }
+
     connection = done;
     apply();
 }
@@ -251,10 +265,12 @@ void Device::disconnect() noexcept {
     if (connection == nullptr) {
         return;
     }
+
     if (started) {
         ma_device_stop(&connection->device);
         started = false;
     }
+
     close(*connection);
     connection.reset();
 }
@@ -264,15 +280,18 @@ void Device::apply() {
     if (connection == nullptr || running == started) {
         return;
     }
+
     if (!running) {
         ma_device_stop(&connection->device);
         started = false;
         return;
     }
+
     if (const ma_result result = ma_device_start(&connection->device); result != MA_SUCCESS) {
         core::Log::warning("The audio output could not start ({}), so the app runs without sound until it resumes again.", ma_result_description(result));
         return;
     }
+
     started = true;
 }
 

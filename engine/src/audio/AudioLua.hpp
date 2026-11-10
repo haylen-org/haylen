@@ -26,6 +26,7 @@ template <> struct EnumNames<audio::Mixer::Spatialization::Model> {
                 return model;
             }
         }
+
         return std::nullopt;
     }
     static std::string_view name(Model value) {
@@ -34,6 +35,7 @@ template <> struct EnumNames<audio::Mixer::Spatialization::Model> {
                 return candidate;
             }
         }
+
         return kNames.front().first;
     }
 };
