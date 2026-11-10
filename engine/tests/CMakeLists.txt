@@ -306,6 +306,11 @@ if(APPLE)
   set_source_files_properties(platform/AppleFontsTests.mm "${HAYLEN_ENGINE_DIR}/src/platform/apple/AppleFonts.mm" PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
   target_link_libraries(haylen-tests PRIVATE "-framework CoreText" "-framework Foundation")
 endif()
+# The graveyard of the Metal device keeps the objects that frames still use, which its tests check without a GPU.
+if("metal" IN_LIST HAYLEN_GRAPHICS_APIS)
+  target_sources(haylen-tests PRIVATE gpu/metal/GraveyardTests.mm)
+  set_source_files_properties(gpu/metal/GraveyardTests.mm PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+endif()
 haylen_enable_warnings(haylen-tests)
 haylen_enable_coverage(haylen-tests)
 

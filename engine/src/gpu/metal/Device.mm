@@ -129,6 +129,9 @@ struct Device::Native {
         std::vector<std::string> errors;
     };
 
+    // The number of the first frame, since the count of the frames that the GPU finished is 0 before any.
+    static constexpr std::uint64_t kFirstFrame = 1;
+
     Native(id<MTLDevice> metal, int swapchainSamples, bool debug);
 
     [[nodiscard]] static Capabilities describe(id<MTLDevice> metal);
@@ -161,7 +164,7 @@ struct Device::Native {
     // The texture indices that a stage binds, all the slots of the contract except on the A8 to A10X of the Apple TVs before the second Apple TV 4K, which bind 31. The simulator binds them on the GPU of the Mac.
     int textureBindings = static_cast<int>(kMaxTextures);
     std::shared_ptr<Signals> signals = std::make_shared<Signals>();
-    Graveyard graveyard;
+    Graveyard graveyard{kFirstFrame};
     Swapchain swapchain;
 
     // The swapchains of the surfaces beyond the window, at their numbers less one, with an empty place for a surface that went away.
@@ -179,8 +182,8 @@ struct Device::Native {
     MTLCommandBufferDescriptor* commandsDesc = nil;
     MTLRenderPassDescriptor* passDesc = nil;
 
-    // The frame that records, numbered from 1, or the next one between frames.
-    std::uint64_t frameNumber = 1;
+    // The frame that records, or the next one between frames.
+    std::uint64_t frameNumber = kFirstFrame;
     std::size_t frameSlot = 0;
     bool frameOpen = false;
     int passes = 0;
