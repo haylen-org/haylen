@@ -131,6 +131,24 @@ TEST_F(BitmapFontTest, ReadsTextAndBinaryBmFonts) {
     EXPECT_THROW((void)BitmapFont::parse(std::vector<std::uint8_t>{'B', 'M', 'F', 3, 3, 0xFB, 0xFF, 0xFF, 0xFF}), std::invalid_argument);
 }
 
+// Every field lies inside its block and its range, so a short block never reads the blocks after it and a page past 16 bits never wraps to another page.
+TEST_F(BitmapFontTest, KeepsEveryFieldInsideItsBlockAndRange) {
+    std::vector<std::uint8_t> shortCommon = binaryFont();
+    const std::size_t common = 4 + 5 + 14 + std::string("Pixel Sans").size() + 1;
+    ASSERT_EQ(shortCommon[common], 2);
+    shortCommon[common + 1] = 4;
+    shortCommon.erase(shortCommon.begin() + static_cast<std::ptrdiff_t>(common + 5 + 4), shortCommon.begin() + static_cast<std::ptrdiff_t>(common + 5 + 15));
+    try {
+        (void)BitmapFont::parse(shortCommon);
+        FAIL() << "A common block shorter than its fields must be refused.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_EQ(std::string(error.what()), "The \"common\" block of the binary BMFont file is shorter than its 15 bytes of fields.");
+    }
+
+    const std::string wrapped = std::string(kTextFont).replace(std::string(kTextFont).find("page=1 chnl"), 6, "page=65537");
+    EXPECT_THROW((void)BitmapFont::parse(bytesOf(wrapped)), std::invalid_argument);
+}
+
 TEST_F(BitmapFontTest, DescribesGridsOfCells) {
     const BitmapFont::Description grid = BitmapFont::describeGrid({.characters = "ABCDE", .cellWidth = 8.0F, .cellHeight = 10.0F, .spacing = {2.0F, 1.0F}, .margin = {1.0F, 3.0F}, .advance = 7.0F, .baseline = 8.0F}, {33.0F, 30.0F});
     ASSERT_EQ(grid.characters.size(), 5U);

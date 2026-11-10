@@ -82,6 +82,10 @@ class BitmapFont final : public Font {
   private:
     static constexpr std::string_view kBinaryMagic = "BMF";
 
+    // The fields of the "info" and "common" blocks of the binary format take this many bytes, which a block holds before anything it adds.
+    static constexpr std::size_t kInfoBlockSize = 14;
+    static constexpr std::size_t kCommonBlockSize = 15;
+
     [[nodiscard]] static Metrics readMetrics(const Description& description);
     [[nodiscard]] static Description parseText(std::string_view text);
     [[nodiscard]] static Description parseBinary(std::span<const std::uint8_t> bytes);

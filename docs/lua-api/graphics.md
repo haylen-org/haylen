@@ -1210,9 +1210,11 @@ These messages come from the functions and methods of the module.
 | `BMFont line <line> needs a whole number for "<key>".` | A value of the text file is not a whole number. |
 | `BMFont line <line> needs a page count from 0 to 65535.` | The page count of the text file is out of range. |
 | `BMFont line <line> names a page the "common" line does not count, or no file.` | A page line of the text file is wrong. |
+| `BMFont line <line> needs a page from 0 to 65535.` | The page of a character of the text file is out of range. |
 | `Only version 3 of the binary BMFont format is supported.` | The binary file has another version. |
 | `The binary BMFont file ends in the middle of a block.` | The binary file is cut short. |
 | `The binary BMFont file has a block of unknown type <type>.` | The binary file holds a block it should not. |
+| `The "<block>" block of the binary BMFont file is shorter than its <size> bytes of fields.` | The `info` block of the binary file holds fewer than 14 bytes, or its `common` block fewer than 15. |
 | `A grid font needs cells at least one pixel wide and tall.` | The cells of `graphics.newGridFont` are too small. |
 | `A grid font cannot have a negative spacing or margin.` | A gap of `graphics.newGridFont` is negative. |
 | `A grid font needs the characters of its cells.` | The `characters` of `graphics.newGridFont` are empty. |

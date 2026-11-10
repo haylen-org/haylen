@@ -1647,7 +1647,7 @@ def command_test_ui(args: argparse.Namespace) -> None:
 
 
 # The fuzzers of the parsers that read hostile bytes, which `fuzz` builds with a Clang that links libFuzzer and runs for a while each.
-FUZZERS = ("haylen-content-fuzzer", "haylen-input-fuzzer", "haylen-messagepack-fuzzer", "haylen-placeholder-fuzzer", "haylen-image-fuzzer", "haylen-vector-image-fuzzer", "haylen-ogg-fuzzer")
+FUZZERS = ("haylen-content-fuzzer", "haylen-input-fuzzer", "haylen-messagepack-fuzzer", "haylen-placeholder-fuzzer", "haylen-image-fuzzer", "haylen-vector-image-fuzzer", "haylen-ogg-fuzzer", "haylen-bitmap-font-fuzzer")
 FUZZ_MAX_LENGTH = 65536
 FUZZ_LLVM_FOLDERS = ("/opt/homebrew/opt/llvm/bin", "/usr/local/opt/llvm/bin", "/usr/lib/llvm-20/bin", "/usr/lib/llvm-19/bin", "/usr/lib/llvm-18/bin")
 

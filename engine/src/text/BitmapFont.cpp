@@ -164,12 +164,16 @@ BitmapFont::Description BitmapFont::parseText(std::string_view text) {
             }
             description.pages[static_cast<std::size_t>(id)] = std::string(values.at("file"));
         } else if (tag == "char") {
+            const int page = number("page");
+            if (!std::in_range<std::uint16_t>(page)) {
+                throw std::invalid_argument("BMFont line " + std::to_string(lineNumber) + " needs a page from 0 to 65535.");
+            }
             description.characters.push_back({
                 .codePoint = static_cast<char32_t>(number("id")),
                 .source = {static_cast<float>(number("x")), static_cast<float>(number("y")), static_cast<float>(number("width")), static_cast<float>(number("height"))},
                 .offset = {static_cast<float>(number("xoffset")), static_cast<float>(number("yoffset")) - description.base},
                 .advance = static_cast<float>(number("xadvance")),
-                .page = static_cast<std::uint16_t>(number("page")),
+                .page = static_cast<std::uint16_t>(page),
             });
         } else if (tag == "kerning") {
             description.kernings.push_back({.left = static_cast<char32_t>(number("first")), .right = static_cast<char32_t>(number("second")), .amount = static_cast<float>(number("amount"))});
@@ -225,10 +229,16 @@ BitmapFont::Description BitmapFont::parseBinary(std::span<const std::uint8_t> by
 
         switch (type) {
         case 1:
+            if (size < kInfoBlockSize) {
+                throw std::invalid_argument("The \"info\" block of the binary BMFont file is shorter than its " + std::to_string(kInfoBlockSize) + " bytes of fields.");
+            }
             description.size = std::fabs(readSigned(start));
             hasInfo = true;
             break;
         case 2:
+            if (size < kCommonBlockSize) {
+                throw std::invalid_argument("The \"common\" block of the binary BMFont file is shorter than its " + std::to_string(kCommonBlockSize) + " bytes of fields.");
+            }
             description.lineHeight = static_cast<float>(read(start, 2));
             description.base = static_cast<float>(read(start + 2, 2));
             description.pages.resize(read(start + 8, 2));

@@ -326,7 +326,7 @@ gtest_discover_tests(haylen-tests
   PROPERTIES TIMEOUT 120
 )
 
-# The fuzzers of the content formats, of input recordings, of MessagePack, of image placeholders, of image files, of SVG documents and of Ogg pages run their parsers on the inputs libFuzzer generates.
+# The fuzzers of the content formats, of input recordings, of MessagePack, of image placeholders, of image files, of SVG documents, of Ogg pages and of BMFont files run their parsers on the inputs libFuzzer generates.
 if(HAYLEN_BUILD_FUZZERS)
   add_executable(haylen-content-fuzzer fuzz/ContentFuzzer.cpp support/ContentParsers.cpp support/ReleaseFixture.cpp support/TemporaryDirectory.cpp support/TestFiles.cpp)
   set_target_properties(haylen-content-fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
@@ -371,4 +371,11 @@ if(HAYLEN_BUILD_FUZZERS)
   target_link_libraries(haylen-ogg-fuzzer PRIVATE haylen::engine)
   target_link_options(haylen-ogg-fuzzer PRIVATE -fsanitize=fuzzer)
   haylen_enable_warnings(haylen-ogg-fuzzer)
+
+  add_executable(haylen-bitmap-font-fuzzer fuzz/BitmapFontFuzzer.cpp)
+  set_target_properties(haylen-bitmap-font-fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+  target_include_directories(haylen-bitmap-font-fuzzer PRIVATE "${HAYLEN_ENGINE_DIR}/src")
+  target_link_libraries(haylen-bitmap-font-fuzzer PRIVATE haylen::engine haylen::headless)
+  target_link_options(haylen-bitmap-font-fuzzer PRIVATE -fsanitize=fuzzer)
+  haylen_enable_warnings(haylen-bitmap-font-fuzzer)
 endif()
