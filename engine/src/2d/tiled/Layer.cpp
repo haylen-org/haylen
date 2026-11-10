@@ -30,13 +30,16 @@ std::uint32_t Layer::getGid(int column, int row) const noexcept {
         if (column < 0 || row < 0 || column >= width || row >= height) {
             return 0;
         }
+
         return gids[static_cast<std::size_t>(row * width + column)];
     }
+
     for (const Chunk& chunk : chunks) {
         if (column >= chunk.x && row >= chunk.y && column < chunk.x + chunk.width && row < chunk.y + chunk.height) {
             return chunk.gids[static_cast<std::size_t>((row - chunk.y) * chunk.width + (column - chunk.x))];
         }
     }
+
     return 0;
 }
 
@@ -44,6 +47,7 @@ bool Layer::contains(int column, int row) const noexcept {
     if (!infinite) {
         return column >= 0 && row >= 0 && column < width && row < height;
     }
+
     return std::ranges::any_of(chunks, [column, row](const Chunk& chunk) { return column >= chunk.x && row >= chunk.y && column < chunk.x + chunk.width && row < chunk.y + chunk.height; });
 }
 
@@ -52,15 +56,18 @@ void Layer::setGid(int column, int row, std::uint32_t value) {
         if (column < 0 || row < 0 || column >= width || row >= height) {
             throw std::out_of_range("The cell is outside the tile layer.");
         }
+
         gids[static_cast<std::size_t>(row * width + column)] = value;
         return;
     }
+
     for (Chunk& chunk : chunks) {
         if (column >= chunk.x && row >= chunk.y && column < chunk.x + chunk.width && row < chunk.y + chunk.height) {
             chunk.gids[static_cast<std::size_t>((row - chunk.y) * chunk.width + (column - chunk.x))] = value;
             return;
         }
     }
+
     throw std::out_of_range("The cell is outside every chunk of the infinite tile layer.");
 }
 

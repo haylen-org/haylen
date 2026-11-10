@@ -31,6 +31,7 @@ struct AutoMapper::Target {
         if (cached != layers.end()) {
             return cached->second;
         }
+
         std::vector<Layer*> all;
         AutoMapper::collectLayers(map.layers, all);
         const auto found = std::ranges::find_if(all, [&](const Layer* layer) { return layer->name == name && layer->kind == kind; });
@@ -44,6 +45,7 @@ struct AutoMapper::Target {
         if (Layer* layer = findLayer(name, kind)) {
             return *layer;
         }
+
         Layer created{.id = nextLayerId++, .name = std::string(name), .kind = kind};
         created.infinite = kind == Layer::Kind::Tile && map.infinite;
         if (kind == Layer::Kind::Tile && !map.infinite) {
@@ -51,6 +53,7 @@ struct AutoMapper::Target {
             created.height = map.height;
             created.gids.assign(static_cast<std::size_t>(map.width) * static_cast<std::size_t>(map.height), 0U);
         }
+
         map.layers.push_back(std::move(created));
         layers.clear();
         return map.layers.back();
@@ -61,6 +64,7 @@ struct AutoMapper::Target {
         if (layer == nullptr) {
             return 0;
         }
+
         if (!map.infinite && (cell.x < 0 || cell.y < 0 || cell.x >= map.width || cell.y >= map.height)) {
             if (rules.wrapBorder) {
                 cell = {((cell.x % map.width) + map.width) % map.width, ((cell.y % map.height) + map.height) % map.height};
@@ -70,6 +74,7 @@ struct AutoMapper::Target {
                 return 0;
             }
         }
+
         return layer->getGid(cell.x, cell.y);
     }
 
@@ -79,14 +84,17 @@ struct AutoMapper::Target {
             if (cell.x >= 0 && cell.y >= 0 && cell.x < layer.width && cell.y < layer.height) {
                 layer.setGid(cell.x, cell.y, gid);
             }
+
             return;
         }
+
         if (!layer.contains(cell.x, cell.y)) {
             constexpr int kChunk = 16;
             const int left = cell.x >= 0 ? cell.x / kChunk * kChunk : (cell.x - kChunk + 1) / kChunk * kChunk;
             const int top = cell.y >= 0 ? cell.y / kChunk * kChunk : (cell.y - kChunk + 1) / kChunk * kChunk;
             layer.chunks.push_back({.x = left, .y = top, .width = kChunk, .height = kChunk, .gids = std::vector<std::uint32_t>(kChunk * kChunk, 0U)});
         }
+
         layer.setGid(cell.x, cell.y, gid);
     }
 
@@ -95,6 +103,7 @@ struct AutoMapper::Target {
         if (const auto known = firstGids.find(tileset); known != firstGids.end()) {
             return known->second;
         }
+
         // clang-format off
         const auto same = std::ranges::find_if(map.tilesets, [tileset](const Map::TilesetReference& candidate) {
             const Tileset& other = *candidate.tileset;
@@ -117,6 +126,7 @@ struct AutoMapper::Target {
         if (reference == nullptr) {
             throw std::invalid_argument("A rule map outputs the tile \"" + std::to_string(Map::tileId(gid)) + "\", which no tileset of the rule map holds.");
         }
+
         const Tileset* tileset = reference->tileset.get();
         auto found = firstGids.find(tileset);
         if (found == firstGids.end()) {
@@ -129,10 +139,13 @@ struct AutoMapper::Target {
                     const std::uint32_t highest = existing.tileset->tiles.empty() ? 0U : existing.tileset->tiles.rbegin()->first + 1U;
                     firstGid = std::max(firstGid, existing.firstGid + std::max(static_cast<std::uint32_t>(existing.tileset->tileCount), highest));
                 }
+
                 map.tilesets.push_back({.firstGid = firstGid, .tileset = reference->tileset});
             }
+
             found = firstGids.emplace(tileset, firstGid).first;
         }
+
         return (found->second + (Map::tileId(gid) - reference->firstGid)) | (gid & Map::kFlagMask);
     }
 
@@ -171,6 +184,7 @@ void AutoMapper::loadRules(std::string_view path, const TextReader& readText, co
     if (depth > kMaxRulesDepth) {
         throw std::invalid_argument("The automapping rules file \"" + std::string(path) + "\" includes itself.");
     }
+
     const std::string file = io::Path::normalize(path);
     if (!file.ends_with(".txt")) {
         found.push_back({.map = std::make_shared<Map>(Map::parse(readJson(file), file, readJson)), .filter = std::move(filter)});
@@ -185,14 +199,17 @@ void AutoMapper::loadRules(std::string_view path, const TextReader& readText, co
         if (first == std::string::npos) {
             continue;
         }
+
         line = line.substr(first, line.find_last_not_of(" \t\r") - first + 1);
         if (line.starts_with('#') || line.starts_with("//")) {
             continue;
         }
+
         if (line.starts_with('[') && line.ends_with(']')) {
             filter = line.substr(1, line.size() - 2);
             continue;
         }
+
         loadRules(MapParser::resolve(directory, line), readText, readJson, filter, found, depth + 1);
     }
 }
@@ -209,21 +226,26 @@ bool AutoMapper::matchesFilter(std::string_view filter, std::string_view mapPath
         if (star == std::string_view::npos) {
             return anchored ? name.substr(position) == piece : name.size() >= position + piece.size() && name.ends_with(piece);
         }
+
         if (anchored) {
             if (name.substr(position, piece.size()) != piece) {
                 return false;
             }
+
             position += piece.size();
         } else {
             const std::size_t at = name.find(piece, position);
             if (at == std::string_view::npos) {
                 return false;
             }
+
             position = at + piece.size();
         }
+
         anchored = false;
         start = star + 1;
     }
+
     return true;
 }
 
@@ -239,12 +261,14 @@ AutoMapper::Match AutoMapper::matchOf(const Map& map, std::uint32_t gid) {
     if (tile == nullptr || !tile->properties.has("MatchType")) {
         return Match::Tile;
     }
+
     const std::string type = tile->properties.getString("MatchType", "");
     for (const auto& [name, match] : {std::pair{"Empty", Match::Empty}, std::pair{"Ignore", Match::Ignore}, std::pair{"NonEmpty", Match::NonEmpty}, std::pair{"Other", Match::Other}, std::pair{"Negate", Match::Negate}}) {
         if (type == name) {
             return match;
         }
     }
+
     throw std::invalid_argument("The automapping tile type \"" + type + "\" is unknown. It is \"Empty\", \"Ignore\", \"NonEmpty\", \"Other\" or \"Negate\".");
 }
 
@@ -286,13 +310,16 @@ AutoMapper::CompiledMap AutoMapper::compile(const RuleMap& ruleMap) {
     const Layer* options = nullptr;
     std::vector<Layer*> layers;
     collectLayers(map.layers, layers);
+
     for (const Layer* layer : layers) {
         std::string lower = layer->name;
         std::ranges::transform(lower, lower.begin(), [](unsigned char letter) { return static_cast<char>(std::tolower(letter)); });
         const std::size_t underscore = layer->name.find('_');
+
         if (lower == "regions" || lower.starts_with("regions_")) {
             throw std::invalid_argument("The rule map \"" + map.path + "\" uses the legacy \"regions\" layers. Remove them, so its rules follow the tiles of their input and output layers.");
         }
+
         if (lower == "rule_options") {
             options = layer;
         } else if (lower.starts_with("input") && underscore != std::string::npos && layer->kind == Layer::Kind::Tile) {
@@ -303,6 +330,7 @@ AutoMapper::CompiledMap AutoMapper::compile(const RuleMap& ruleMap) {
             outputs.push_back({.layer = layer, .index = lower.substr(6, underscore - 6), .target = layer->name.substr(underscore + 1)});
         }
     }
+
     if (inputs.empty() || outputs.empty()) {
         throw std::invalid_argument("The rule map \"" + map.path + "\" needs an input layer and an output layer.");
     }
@@ -316,6 +344,7 @@ AutoMapper::CompiledMap AutoMapper::compile(const RuleMap& ruleMap) {
             for (int column = left; column < left + width; ++column) {
                 if (layer.getGid(column, row) != 0) {
                     filled.insert({row, column});
+
                     if (input) {
                         covered.insert({row, column});
                     }
@@ -327,6 +356,7 @@ AutoMapper::CompiledMap AutoMapper::compile(const RuleMap& ruleMap) {
         if (!map.infinite) {
             markArea(layer, input, 0, 0, map.width, map.height);
         }
+
         for (const Layer::Chunk& chunk : layer.chunks) {
             markArea(layer, input, chunk.x, chunk.y, chunk.width, chunk.height);
         }
@@ -335,10 +365,12 @@ AutoMapper::CompiledMap AutoMapper::compile(const RuleMap& ruleMap) {
     for (const Input& input : inputs) {
         mark(*input.layer, true);
     }
+
     for (const Output& output : outputs) {
         if (output.layer->kind == Layer::Kind::Tile) {
             mark(*output.layer, false);
         }
+
         for (const Object& object : output.layer->objects) {
             const Cell cell = objectCell(object, map.tileSize);
             filled.insert({cell.y, cell.x});
@@ -354,6 +386,7 @@ AutoMapper::CompiledMap AutoMapper::compile(const RuleMap& ruleMap) {
             const auto [row, column] = pending.back();
             pending.pop_back();
             rule.region.push_back({column, row});
+
             for (int dy = -1; dy <= 1; ++dy) {
                 for (int dx = -1; dx <= 1; ++dx) {
                     if (const auto next = left.find({row + dy, column + dx}); next != left.end()) {
@@ -363,6 +396,7 @@ AutoMapper::CompiledMap AutoMapper::compile(const RuleMap& ruleMap) {
                 }
             }
         }
+
         rule.origin = {std::ranges::min(rule.region, {}, &Cell::x).x, std::ranges::min(rule.region, {}, &Cell::y).y};
         std::ranges::sort(rule.region, [](Cell a, Cell b) { return a.y != b.y ? a.y < b.y : a.x < b.x; });
 
@@ -373,11 +407,13 @@ AutoMapper::CompiledMap AutoMapper::compile(const RuleMap& ruleMap) {
                 rule.inputs.push_back({.index = input.index});
                 index = rule.inputs.end() - 1;
             }
+
             auto target = std::ranges::find(index->targets, input.target, &TargetCondition::layer);
             if (target == index->targets.end()) {
                 index->targets.push_back({.layer = input.target});
                 target = index->targets.end() - 1;
             }
+
             const std::uint32_t ignored = (input.layer->properties.getBool("IgnoreHorizontalFlip", false) ? Map::kFlipHorizontal : 0U) | (input.layer->properties.getBool("IgnoreVerticalFlip", false) ? Map::kFlipVertical : 0U) | (input.layer->properties.getBool("IgnoreDiagonalFlip", false) ? Map::kFlipDiagonal : 0U) | (input.layer->properties.getBool("IgnoreHexRotate120", false) ? Map::kRotateHexagonal : 0U);
             const bool strictEmpty = input.layer->properties.getBool("AutoEmpty", false) || input.layer->properties.getBool("StrictEmpty", false);
             for (const Cell cell : rule.region) {
@@ -388,12 +424,15 @@ AutoMapper::CompiledMap AutoMapper::compile(const RuleMap& ruleMap) {
                     target->cells.push_back({.cell = relative});
                     condition = target->cells.end() - 1;
                 }
+
                 if (gid == 0) {
                     if (strictEmpty && covered.contains({cell.y, cell.x}) && !input.inverted) {
                         condition->wanted.push_back({.match = Match::Empty});
                     }
+
                     continue;
                 }
+
                 const Match match = matchOf(map, gid);
                 if (match == Match::Negate) {
                     condition->negated = true;
@@ -420,6 +459,7 @@ AutoMapper::CompiledMap AutoMapper::compile(const RuleMap& ruleMap) {
                 }
             }
         }
+
         // An input layer without tiles in the rule sets no condition, and an index without conditions is no alternative, since it would hold everywhere.
         for (InputIndex& index : rule.inputs) {
             for (TargetCondition& target : index.targets) {
@@ -427,8 +467,10 @@ AutoMapper::CompiledMap AutoMapper::compile(const RuleMap& ruleMap) {
                 target.used = used[target.layer].first;
                 target.usesEmpty = used[target.layer].second;
             }
+
             std::erase_if(index.targets, [](const TargetCondition& target) { return target.cells.empty(); });
         }
+
         std::erase_if(rule.inputs, [](const InputIndex& index) { return index.targets.empty(); });
 
         // An output index with nothing in the rule is never chosen, and the top layer of an index sets its probability.
@@ -440,6 +482,7 @@ AutoMapper::CompiledMap AutoMapper::compile(const RuleMap& ruleMap) {
                     kept.push_back(property);
                 }
             }
+
             written.properties = Properties(std::move(kept));
             for (const Cell cell : rule.region) {
                 if (output.layer->kind == Layer::Kind::Tile) {
@@ -448,6 +491,7 @@ AutoMapper::CompiledMap AutoMapper::compile(const RuleMap& ruleMap) {
                     }
                 }
             }
+
             for (const Object& object : output.layer->objects) {
                 if (std::ranges::find(rule.region, objectCell(object, map.tileSize)) != rule.region.end()) {
                     Object placed = object;
@@ -455,14 +499,17 @@ AutoMapper::CompiledMap AutoMapper::compile(const RuleMap& ruleMap) {
                     written.placed.push_back(std::move(placed));
                 }
             }
+
             if (written.cells.empty() && written.placed.empty()) {
                 continue;
             }
+
             auto index = std::ranges::find(rule.outputs, output.index, &OutputIndex::index);
             if (index == rule.outputs.end()) {
                 rule.outputs.push_back({.index = output.index});
                 index = rule.outputs.end() - 1;
             }
+
             index->probability = static_cast<float>(output.layer->properties.getNumber("Probability", index->probability));
             index->layers.push_back(std::move(written));
         }
@@ -478,17 +525,22 @@ AutoMapper::CompiledMap AutoMapper::compile(const RuleMap& ruleMap) {
                 }
             }
         }
+
         rule.inputCells.clear();
+
         for (const Cell cell : rule.region) {
             if (covered.contains({cell.y, cell.x})) {
                 rule.inputCells.push_back({cell.x - rule.origin.x, cell.y - rule.origin.y});
             }
         }
+
         for (Cell& cell : rule.region) {
             cell = {cell.x - rule.origin.x, cell.y - rule.origin.y};
         }
+
         result.rules.push_back(std::move(rule));
     }
+
     std::ranges::sort(result.rules, [](const Rule& a, const Rule& b) { return a.origin.y != b.origin.y ? a.origin.y < b.origin.y : a.origin.x < b.origin.x; });
     return result;
 }
@@ -529,6 +581,7 @@ bool AutoMapper::satisfies(const CompiledMap& compiled, const Rule& rule, const 
             return true;
         }
     }
+
     return false;
 }
 
@@ -543,6 +596,7 @@ AutoMapper::Result AutoMapper::apply(Map& map, math::Random& random) const {
         for (const Layer& layer : list) {
             highest = std::max({highest, layer.id, self(layer.layers, self)});
         }
+
         return highest;
     };
     // clang-format on
@@ -552,11 +606,13 @@ AutoMapper::Result AutoMapper::apply(Map& map, math::Random& random) const {
             target.nextObjectId = std::max(target.nextObjectId, object.id + 1);
         }
     }
+
     for (const CompiledMap& rules : compiled) {
         if (rules.filter.empty() || matchesFilter(rules.filter, map.path)) {
             applyMap(rules, target, random);
         }
     }
+
     return result;
 }
 
@@ -581,6 +637,7 @@ void AutoMapper::applyMap(const CompiledMap& source, Target& target, math::Rando
                 bottom = std::max(bottom, chunk.y + chunk.height - 1);
             }
         }
+
         if (left > right) {
             return;
         }
@@ -592,6 +649,7 @@ void AutoMapper::applyMap(const CompiledMap& source, Target& target, math::Rando
         if (rule.options.disabled) {
             return found;
         }
+
         const int width = std::ranges::max(rule.region, {}, &Cell::x).x;
         const int height = std::ranges::max(rule.region, {}, &Cell::y).y;
         const bool outside = rules.matchOutsideMap || map.infinite;
@@ -603,6 +661,7 @@ void AutoMapper::applyMap(const CompiledMap& source, Target& target, math::Rando
                 }
             }
         }
+
         return found;
     };
     // clang-format on
@@ -616,13 +675,16 @@ void AutoMapper::applyMap(const CompiledMap& source, Target& target, math::Rando
                 }
             }
         }
+
         return;
     }
+
     std::vector<std::vector<Cell>> matches;
     matches.reserve(rules.rules.size());
     for (const Rule& rule : rules.rules) {
         matches.push_back(find(rule));
     }
+
     for (std::size_t index = 0; index < rules.rules.size(); ++index) {
         std::vector<std::pair<std::string, Cell>> written;
         for (const Cell offset : matches[index]) {
@@ -646,12 +708,14 @@ AutoMapper::CompiledMap AutoMapper::translateInputs(const CompiledMap& compiled,
                         }
                     }
                 }
+
                 for (std::uint32_t& used : condition.used) {
                     used = Map::tileId(target.lookup(*compiled.source, used));
                 }
             }
         }
     }
+
     return translated;
 }
 
@@ -666,6 +730,7 @@ void AutoMapper::write(const CompiledMap& rules, const Rule& rule, Target& targe
             total += std::max(output.probability, 0.0F);
         }
     }
+
     if (total > 0.0F) {
         float pick = random.nextFloat() * total;
         for (const OutputIndex& output : rule.outputs) {
@@ -689,14 +754,17 @@ void AutoMapper::write(const CompiledMap& rules, const Rule& rule, Target& targe
             }
         }
     }
+
     if (rule.options.noOverlappingOutput && std::ranges::any_of(cells, [&written](const auto& cell) { return std::ranges::find(written, cell) != written.end(); })) {
         return;
     }
+
     written.insert(written.end(), cells.begin(), cells.end());
     ++target.result.matches;
 
     const Map& source = *rules.source;
     const math::Vec2 shift{static_cast<float>(offset.x) * target.map.tileSize.x, static_cast<float>(offset.y) * target.map.tileSize.y};
+
     if (rules.deleteTiles) {
         for (const OutputIndex& output : rule.outputs) {
             for (const OutputLayer& layer : output.layers) {
@@ -709,10 +777,12 @@ void AutoMapper::write(const CompiledMap& rules, const Rule& rule, Target& targe
                         target.setGid(cleared, at, 0);
                     }
                 }
+
                 target.markLayer(cleared);
             }
         }
     }
+
     for (const OutputIndex* output : chosen) {
         for (const OutputLayer& layer : output->layers) {
             Layer& destination = target.requireLayer(layer.layer, layer.objects ? Layer::Kind::Object : Layer::Kind::Tile);
@@ -721,6 +791,7 @@ void AutoMapper::write(const CompiledMap& rules, const Rule& rule, Target& targe
                     target.setGid(destination, {offset.x + cell.x, offset.y + cell.y}, entry.match == Match::Tile ? target.translate(source, entry.gid) : 0U);
                 }
             }
+
             for (const Object& object : layer.placed) {
                 Object placed = object;
                 placed.id = target.nextObjectId++;
@@ -728,8 +799,10 @@ void AutoMapper::write(const CompiledMap& rules, const Rule& rule, Target& targe
                 if (placed.gid != 0) {
                     placed.gid = target.translate(source, placed.gid);
                 }
+
                 destination.objects.push_back(std::move(placed));
             }
+
             destination.properties = destination.properties.merged(layer.properties);
             target.markLayer(destination);
         }

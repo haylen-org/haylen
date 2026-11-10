@@ -60,9 +60,11 @@ void TiledLua::pushPropertyValue(lua_State* L, std::string_view type, const core
             lua::Stack::push(L, *color);
             return;
         }
+
         lua_pushnil(L);
         return;
     }
+
     if (type != "list") {
         lua::JsonConverter::push(L, value);
         return;
@@ -219,6 +221,7 @@ void TiledLua::pushLayer(lua_State* L, const Layer& layer) {
             pushLayer(L, layer.layers[index]);
             lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
         }
+
         lua_setfield(L, -2, "layers");
         break;
     }
@@ -267,6 +270,7 @@ void TiledLua::pushTileset(lua_State* L, const Tileset& tileset, std::uint32_t f
         lua::Stack::push(L, tileset.texture);
         lua_setfield(L, -2, "texture");
     }
+
     setProperties(L, tileset.properties);
 
     lua_createtable(L, static_cast<int>(tileset.wangSets.size()), 0);
@@ -290,6 +294,7 @@ void TiledLua::pushTileset(lua_State* L, const Tileset& tileset, std::uint32_t f
             setProperties(L, set.colors[color].properties);
             lua_rawseti(L, -2, static_cast<lua_Integer>(color + 1));
         }
+
         lua_setfield(L, -2, "colors");
         lua_createtable(L, static_cast<int>(set.tiles.size()), 0);
         for (std::size_t tile = 0; tile < set.tiles.size(); ++tile) {
@@ -300,12 +305,15 @@ void TiledLua::pushTileset(lua_State* L, const Tileset& tileset, std::uint32_t f
                 lua_pushinteger(L, set.tiles[tile].wangId[corner]);
                 lua_rawseti(L, -2, static_cast<lua_Integer>(corner + 1));
             }
+
             lua_setfield(L, -2, "wangId");
             lua_rawseti(L, -2, static_cast<lua_Integer>(tile + 1));
         }
+
         lua_setfield(L, -2, "tiles");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     lua_setfield(L, -2, "wangSets");
 }
 
@@ -314,6 +322,7 @@ MapRenderer::View TiledLua::readView(lua_State* L, int index) {
     if (lua_isnoneornil(L, index)) {
         return {};
     }
+
     return {.center = lua::Userdata::check<graphics2d::Camera>(L, index).getRenderPosition(), .visible = lua::Runtime::getEngine(L).getRenderer2D().getCanvasBounds()};
 }
 
@@ -325,6 +334,7 @@ MapRenderer::DrawOptions TiledLua::readDrawOptions(lua_State* L, int index) {
         lua::Table::readField(L, index, "y", options.offset.y);
         lua::Table::readField(L, index, "ysort", options.ysort);
     }
+
     return options;
 }
 
@@ -400,6 +410,7 @@ int TiledLua::mapLayer(lua_State* L) {
     if (layer == nullptr) {
         return luaL_error(L, "The map has no layer named \"%s\".", std::string(name).c_str());
     }
+
     pushLayer(L, *layer);
     return 1;
 }
@@ -411,6 +422,7 @@ int TiledLua::mapLayers(lua_State* L) {
         pushLayer(L, layers[index]);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
@@ -423,11 +435,13 @@ int TiledLua::mapObjects(lua_State* L) {
         pushObjects(L, objects);
         return 1;
     }
+
     const std::string_view name = lua::Stack::read<std::string_view>(L, 2);
     const Layer* layer = data.findLayer(name);
     if (layer == nullptr || layer->kind != Layer::Kind::Object) {
         return luaL_error(L, "The map has no object layer named \"%s\".", std::string(name).c_str());
     }
+
     pushObjects(L, layer->objects);
     return 1;
 }
@@ -461,18 +475,22 @@ int TiledLua::mapSpawn(lua_State* L) {
             lua_pop(L, 2);
             continue;
         }
+
         if (!lua_isfunction(L, -1)) {
             lua_getfield(L, -2, "type");
             return luaL_error(L, "The factory for the Tiled class \"%s\" is not a function.", lua_tostring(L, -1));
         }
+
         lua_insert(L, -2);
         lua_call(L, 1, 1);
         if (lua_isnil(L, -1)) {
             lua_pop(L, 1);
             continue;
         }
+
         lua_rawseti(L, results, ++count);
     }
+
     return 1;
 }
 
@@ -512,6 +530,7 @@ int TiledLua::mapTileInfo(lua_State* L) {
             lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
         }
     }
+
     lua_setfield(L, -2, "animation");
     return 1;
 }
@@ -523,6 +542,7 @@ int TiledLua::mapTilesets(lua_State* L) {
         pushTileset(L, *tilesets[index].tileset, tilesets[index].firstGid);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
@@ -579,6 +599,7 @@ int TiledLua::mapBackgroundColor(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, *color);
     return 1;
 }
@@ -656,6 +677,7 @@ int TiledLua::open(lua_State* L) {
         lua::Stack::push(L, value);
         lua_setfield(L, -2, name);
     }
+
     return 1;
 }
 
@@ -676,6 +698,7 @@ int TiledLua::autoMapperRuleMaps(lua_State* L) {
         setString(L, "filter", ruleMaps[index].filter);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 

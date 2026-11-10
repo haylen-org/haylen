@@ -42,6 +42,7 @@ void Map::collectImages(const Layer& layer, std::vector<Image>& images) {
     if (layer.kind == Layer::Kind::Image && !layer.image.empty()) {
         images.push_back({layer.image, layer.transparentColor});
     }
+
     for (const Layer& child : layer.layers) {
         collectImages(child, images);
     }
@@ -51,6 +52,7 @@ void Map::attachLayer(Layer& layer, const TextureLoader& load) {
     if (layer.kind == Layer::Kind::Image && !layer.image.empty()) {
         layer.texture = load(layer.image);
     }
+
     for (Layer& child : layer.layers) {
         attachLayer(child, load);
     }
@@ -61,10 +63,12 @@ template <typename Layers> auto Map::findIn(Layers& candidates, std::string_view
         if (layer.name == name) {
             return &layer;
         }
+
         if (auto* found = findIn(layer.layers, name)) {
             return found;
         }
     }
+
     return nullptr;
 }
 
@@ -75,12 +79,14 @@ std::vector<Map::Image> Map::getImages() const {
         if (!tileset.image.empty()) {
             images.push_back({tileset.image, tileset.transparentColor});
         }
+
         for (const auto& [id, tile] : tileset.tiles) {
             if (!tile.image.empty()) {
                 images.push_back({tile.image, tileset.transparentColor});
             }
         }
     }
+
     for (const Layer& layer : layers) {
         collectImages(layer, images);
     }
@@ -96,12 +102,14 @@ void Map::attachTextures(const TextureLoader& load) {
         if (!tileset.image.empty()) {
             tileset.texture = load(tileset.image);
         }
+
         for (auto& [id, tile] : tileset.tiles) {
             if (!tile.image.empty()) {
                 tile.texture = load(tile.image);
             }
         }
     }
+
     for (Layer& layer : layers) {
         attachLayer(layer, load);
     }
@@ -112,12 +120,14 @@ const Map::TilesetReference* Map::findTileset(std::uint32_t gid) const noexcept 
     if (id == 0) {
         return nullptr;
     }
+
     const TilesetReference* found = nullptr;
     for (const TilesetReference& reference : tilesets) {
         if (reference.firstGid <= id) {
             found = &reference;
         }
     }
+
     if (found == nullptr) {
         return nullptr;
     }
@@ -159,6 +169,7 @@ math::Vec2 Map::cellToWorld(int column, int row) const noexcept {
         const bool shifted = positiveModulo(column, 2) == staggeredParity;
         return {static_cast<float>(column) * columnWidth, static_cast<float>(row) * tileHeight + (shifted ? tileHeight * 0.5F : 0.0F)};
     }
+
     const float rowHeight = (tileHeight + side) * 0.5F;
     const bool shifted = positiveModulo(row, 2) == staggeredParity;
     return {static_cast<float>(column) * tileWidth + (shifted ? tileWidth * 0.5F : 0.0F), static_cast<float>(row) * rowHeight};
@@ -170,11 +181,13 @@ std::array<int, 2> Map::worldToCell(math::Vec2 position) const noexcept {
     if (orientation == Orientation::Orthogonal) {
         return {static_cast<int>(std::floor(position.x / tileWidth)), static_cast<int>(std::floor(position.y / tileHeight))};
     }
+
     if (orientation == Orientation::Isometric) {
         const float across = (position.x - static_cast<float>(height) * tileWidth * 0.5F) / (tileWidth * 0.5F);
         const float down = position.y / (tileHeight * 0.5F);
         return {static_cast<int>(std::floor((across + down) * 0.5F)), static_cast<int>(std::floor((down - across) * 0.5F))};
     }
+
     if (orientation == Orientation::Oblique) {
         // Undoes the shear, whose determinant parsing keeps away from zero.
         const float shearX = skew.x / tileHeight;
@@ -203,6 +216,7 @@ std::array<int, 2> Map::worldToCell(math::Vec2 position) const noexcept {
             }
         }
     }
+
     return best;
 }
 
@@ -211,9 +225,11 @@ math::Vec2 Map::objectToWorld(math::Vec2 position) const noexcept {
         // Each row slides right by the horizontal skew and each column slides down by the vertical skew.
         return {position.x + position.y / tileSize.y * skew.x, position.y + position.x / tileSize.x * skew.y};
     }
+
     if (orientation != Orientation::Isometric) {
         return position;
     }
+
     // Isometric object coordinates measure both axes in tile heights along the diamond edges.
     const float across = position.x / tileSize.y;
     const float down = position.y / tileSize.y;
@@ -245,21 +261,25 @@ math::Rect Map::getPixelBounds() const noexcept {
         const float columnWidth = (tileSize.x + side) * 0.5F;
         return {0.0F, 0.0F, columns * columnWidth + (tileSize.x - columnWidth), rows * tileSize.y + tileSize.y * 0.5F};
     }
+
     const float rowHeight = (tileSize.y + side) * 0.5F;
     return {0.0F, 0.0F, columns * tileSize.x + tileSize.x * 0.5F, rows * rowHeight + (tileSize.y - rowHeight)};
 }
 
 void Map::applyPropertyTypes(const PropertyTypes& types) {
     properties = types.complete(properties, type);
+
     for (Layer& layer : layers) {
         applyToLayer(layer, types);
     }
+
     for (const TilesetReference& reference : tilesets) {
         Tileset& tileset = *reference.tileset;
         tileset.properties = types.complete(tileset.properties, tileset.type);
         for (auto& [id, tile] : tileset.tiles) {
             tile.properties = types.complete(tile.properties, tile.type);
         }
+
         for (WangSet& set : tileset.wangSets) {
             set.properties = types.complete(set.properties, set.type);
             for (WangSet::Color& color : set.colors) {
@@ -274,6 +294,7 @@ void Map::applyToLayer(Layer& layer, const PropertyTypes& types) {
     for (Object& object : layer.objects) {
         object.properties = types.complete(object.properties, object.type);
     }
+
     for (Layer& child : layer.layers) {
         applyToLayer(child, types);
     }

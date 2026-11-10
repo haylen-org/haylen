@@ -29,9 +29,11 @@ math::Vec2 MapRenderer::drawSize(const Tileset& tileset, math::Rect source, math
     if (!tileset.renderGridSize) {
         return source.getSize();
     }
+
     if (!tileset.preserveAspect) {
         return grid;
     }
+
     const float scale = std::min(grid.x / source.width, grid.y / source.height);
     return source.getSize() * scale;
 }
@@ -56,12 +58,15 @@ math::Vec2 MapRenderer::flipInTile(math::Vec2 point, math::Vec2 tileSize, std::u
         result = {result.y, result.x};
         size = {size.y, size.x};
     }
+
     if ((gid & Map::kFlipHorizontal) != 0) {
         result.x = size.x - result.x;
     }
+
     if ((gid & Map::kFlipVertical) != 0) {
         result.y = size.y - result.y;
     }
+
     return result;
 }
 
@@ -69,13 +74,16 @@ std::vector<physics2d::Shape> MapRenderer::addOutline(physics2d::Body& body, con
     if (points.empty()) {
         return {};
     }
+
     if (object.shape != Object::Shape::Polyline) {
         return body.addPolygon(points, options);
     }
+
     std::vector<physics2d::Shape> shapes;
     for (std::size_t index = 1; index < points.size(); ++index) {
         shapes.push_back(body.addSegment(points[index - 1], points[index], options));
     }
+
     return shapes;
 }
 
@@ -84,6 +92,7 @@ physics2d::Shape::Options MapRenderer::shapeOptions(const Object& object, const 
     if (object.properties.getBool("oneWay", false)) {
         options.oneWay = math::Vec2{0.0F, -1.0F};
     }
+
     return options;
 }
 
@@ -99,9 +108,11 @@ std::uint64_t MapRenderer::readCollisionBits(const Layer& layer, std::string_vie
     if (property == nullptr) {
         return fallback;
     }
+
     if (!property->value.is_number_integer() || property->value < 0) {
         throw std::invalid_argument("The collision property \"" + std::string(name) + "\" of the Tiled layer \"" + layer.name + "\" needs an integer of at least 0.");
     }
+
     return property->value.get<std::uint64_t>();
 }
 
@@ -132,9 +143,11 @@ math::Vec2 MapRenderer::cellAnchor(int column, int row) const noexcept {
     if (map.orientation == Map::Orientation::Isometric) {
         return {cell.x - map.tileSize.x * 0.5F, cell.y + map.tileSize.y};
     }
+
     if (map.orientation == Map::Orientation::Oblique) {
         return map.cellToWorld(column, row + 1);
     }
+
     return {cell.x, cell.y + map.tileSize.y};
 }
 
@@ -176,11 +189,14 @@ template <typename Visit> void MapRenderer::forEachCell(const Layer& layer, Visi
         visitGrid(0, 0, layer.width, layer.height, layer.gids);
         return;
     }
+
     std::vector<const Layer::Chunk*> chunks;
     for (const Layer::Chunk& chunk : layer.chunks) {
         chunks.push_back(&chunk);
     }
+
     std::sort(chunks.begin(), chunks.end(), [](const Layer::Chunk* lhs, const Layer::Chunk* rhs) { return lhs->y != rhs->y ? lhs->y < rhs->y : lhs->x < rhs->x; });
+
     for (const Layer::Chunk* chunk : chunks) {
         visitGrid(chunk->x, chunk->y, chunk->width, chunk->height, chunk->gids);
     }
@@ -191,6 +207,7 @@ std::uint32_t MapRenderer::getTile(std::string_view layer, int column, int row) 
     if (found == nullptr || found->kind != Layer::Kind::Tile) {
         throw std::invalid_argument("The map has no tile layer named \"" + std::string(layer) + "\".");
     }
+
     return found->getGid(column, row);
 }
 
@@ -199,9 +216,11 @@ void MapRenderer::setTile(std::string_view layer, int column, int row, std::uint
     if (found == nullptr || found->kind != Layer::Kind::Tile) {
         throw std::invalid_argument("The map has no tile layer named \"" + std::string(layer) + "\".");
     }
+
     if (gid != 0 && map.findTileset(gid) == nullptr) {
         throw std::invalid_argument("The tile \"" + std::to_string(Map::tileId(gid)) + "\" belongs to no tileset of the map.");
     }
+
     found->setGid(column, row, gid);
 
     // Only the region of the cell bakes again, in every cache of the layer that baked already.
@@ -213,10 +232,12 @@ void MapRenderer::setTile(std::string_view layer, int column, int row, std::uint
 
     // The collision built from the layer follows the cell, and collision whose body went with its world is forgotten.
     std::erase_if(collisions, [](const TileCollision& collision) { return !collision.getBody().isValid(); });
+
     for (TileCollision& collision : collisions) {
         if (collision.getLayerId() != found->id) {
             continue;
         }
+
         physics2d::Body body = collision.getBody();
         collision.setCell(column, row, collisionCell(body, column, row, gid, collision.getOrigin(), collision.getFilter()));
         collision.update();
@@ -228,6 +249,7 @@ Layer& MapRenderer::requireTileLayer(std::string_view name) {
     if (found == nullptr || found->kind != Layer::Kind::Tile) {
         throw std::invalid_argument("The map has no tile layer named \"" + std::string(name) + "\".");
     }
+
     return *found;
 }
 
@@ -249,16 +271,19 @@ void MapRenderer::invalidate(const Layer& layer, int left, int top, int width, i
     caches.erase({layer.id, false});
     caches.erase({layer.id, true});
     std::erase_if(collisions, [](const TileCollision& collision) { return !collision.getBody().isValid(); });
+
     for (TileCollision& collision : collisions) {
         if (collision.getLayerId() != layer.id) {
             continue;
         }
+
         physics2d::Body body = collision.getBody();
         for (int row = top; row < top + height; ++row) {
             for (int column = left; column < left + width; ++column) {
                 collision.setCell(column, row, collisionCell(body, column, row, layer.getGid(column, row), collision.getOrigin(), collision.getFilter()));
             }
         }
+
         collision.update();
     }
 }
@@ -267,10 +292,12 @@ std::uint32_t MapRenderer::addTileset(std::shared_ptr<Tileset> tileset) {
     if (!tileset || !(tileset->tileSize.x > 0.0F && tileset->tileSize.y > 0.0F) || tileset->tileCount <= 0) {
         throw std::invalid_argument("A tileset needs a positive tile size and at least one tile.");
     }
+
     std::uint32_t firstGid = 1;
     for (const Map::TilesetReference& reference : map.tilesets) {
         firstGid = std::max(firstGid, reference.firstGid + static_cast<std::uint32_t>(reference.tileset->tileCount));
     }
+
     map.tilesets.push_back({firstGid, std::move(tileset)});
     return firstGid;
 }
@@ -279,6 +306,7 @@ Layer& MapRenderer::addLayer(Layer layer) {
     if (layer.name.empty() || map.findLayer(layer.name) != nullptr) {
         throw std::invalid_argument("A layer of a map needs a name of its own, and \"" + layer.name + "\" is empty or taken.");
     }
+
     layer.id = nextLayerId();
     layer.infinite = layer.kind == Layer::Kind::Tile && map.infinite;
     if (layer.kind == Layer::Kind::Tile && !map.infinite) {
@@ -286,6 +314,7 @@ Layer& MapRenderer::addLayer(Layer layer) {
         layer.height = map.height;
         layer.gids.assign(static_cast<std::size_t>(map.width) * static_cast<std::size_t>(map.height), 0U);
     }
+
     map.layers.push_back(std::move(layer));
     return map.layers.back();
 }
@@ -295,6 +324,7 @@ void MapRenderer::removeLayer(std::string_view name) {
     if (found == map.layers.end()) {
         throw std::invalid_argument("The map has no layer named \"" + std::string(name) + "\" at its top level.");
     }
+
     caches.erase({found->id, false});
     caches.erase({found->id, true});
     objectOrders.erase(found->id);
@@ -312,28 +342,35 @@ void MapRenderer::fill(std::string_view name, const spatial2d::CellGrid& grid, s
             if (gid != 0 && map.findTileset(gid) == nullptr) {
                 throw std::invalid_argument("The tile \"" + std::to_string(gid) + "\" belongs to no tileset of the map.");
             }
+
             layer.setGid(column + x, row + y, gid);
         }
     }
+
     invalidate(layer, column, row, grid.getWidth(), grid.getHeight());
 }
 
 void MapRenderer::setChunk(std::string_view name, int column, int row, const spatial2d::CellGrid& grid, std::uint32_t firstGid) {
     Layer& layer = requireTileLayer(name);
+
     if (!map.infinite) {
         throw std::invalid_argument("Only the tile layers of an infinite map have chunks.");
     }
+
     if (!Layer::isChunkInReach(column, row, grid.getWidth(), grid.getHeight())) {
         throw std::invalid_argument("The chunk at " + std::to_string(column) + ", " + std::to_string(row) + " reaches farther than " + std::to_string(Layer::kMaxChunkReach) + " cells from the origin.");
     }
+
     Layer::Chunk chunk{.x = column, .y = row, .width = grid.getWidth(), .height = grid.getHeight()};
     for (const std::int32_t value : grid.getValues()) {
         const std::uint32_t gid = value < 0 ? 0U : firstGid + static_cast<std::uint32_t>(value);
         if (gid != 0 && map.findTileset(gid) == nullptr) {
             throw std::invalid_argument("The tile \"" + std::to_string(gid) + "\" belongs to no tileset of the map.");
         }
+
         chunk.gids.push_back(gid);
     }
+
     std::erase_if(layer.chunks, [column, row](const Layer::Chunk& existing) { return existing.x == column && existing.y == row; });
     layer.chunks.push_back(std::move(chunk));
     invalidate(layer, column, row, grid.getWidth(), grid.getHeight());
@@ -345,6 +382,7 @@ void MapRenderer::removeChunk(std::string_view name, int column, int row) {
     if (found == layer.chunks.end()) {
         return;
     }
+
     const Layer::Chunk removed = std::move(*found);
     layer.chunks.erase(found);
     invalidate(layer, removed.x, removed.y, removed.width, removed.height);
@@ -360,10 +398,12 @@ const Layer* MapRenderer::findLayerIn(const std::vector<Layer>& layers, std::uin
         if (layer.id == id) {
             return &layer;
         }
+
         if (const Layer* found = findLayerIn(layer.layers, id)) {
             return found;
         }
     }
+
     return nullptr;
 }
 
@@ -382,11 +422,14 @@ AutoMapper::Result MapRenderer::automap(const AutoMapper& mapper, math::Random& 
             right = std::max(right, chunk.x + chunk.width);
             bottom = std::max(bottom, chunk.y + chunk.height);
         }
+
         invalidate(*layer, left, top, right - left, bottom - top);
     }
+
     for (const std::uint32_t id : result.objectLayers) {
         objectOrders.erase(id);
     }
+
     return result;
 }
 
@@ -402,12 +445,15 @@ void MapRenderer::paintTerrain(std::string_view name, std::string_view wangSet, 
             }
         }
     }
+
     if (set == nullptr) {
         throw std::invalid_argument("No tileset of the map has the Wang set \"" + std::string(wangSet) + "\".");
     }
+
     if (color < 0 || static_cast<std::size_t>(color) > set->colors.size()) {
         throw std::invalid_argument("The Wang set \"" + std::string(wangSet) + "\" has the colors 1 to " + std::to_string(set->colors.size()) + ", and 0 erases.");
     }
+
     const bool corners = set->kind != "edge";
     const bool edges = set->kind != "corner";
     const auto paintedVertex = [column, row](int x, int y) { return (x == column || x == column + 1) && (y == row || y == row + 1); };
@@ -419,6 +465,7 @@ void MapRenderer::paintTerrain(std::string_view name, std::string_view wangSet, 
             if (!layer.contains(x, y)) {
                 continue;
             }
+
             std::array<std::uint8_t, 8> wang{};
             const std::uint32_t gid = Map::tileId(layer.getGid(x, y));
             if (gid >= owner->firstGid) {
@@ -427,6 +474,7 @@ void MapRenderer::paintTerrain(std::string_view name, std::string_view wangSet, 
                     wang = known->wangId;
                 }
             }
+
             const auto value = static_cast<std::uint8_t>(color);
             if (corners) {
                 const std::array<std::pair<int, std::array<int, 2>>, 4> vertices{{{1, {x + 1, y}}, {3, {x + 1, y + 1}}, {5, {x, y + 1}}, {7, {x, y}}}};
@@ -436,6 +484,7 @@ void MapRenderer::paintTerrain(std::string_view name, std::string_view wangSet, 
                     }
                 }
             }
+
             if (edges) {
                 const bool center = dx == 0 && dy == 0;
                 const std::array<std::pair<int, bool>, 4> shared{{{0, center || (dx == 0 && dy == 1)}, {2, center || (dx == -1 && dy == 0)}, {4, center || (dx == 0 && dy == -1)}, {6, center || (dx == 1 && dy == 0)}}};
@@ -454,11 +503,13 @@ void MapRenderer::paintTerrain(std::string_view name, std::string_view wangSet, 
                     const bool counted = index % 2 == 1 ? corners : edges;
                     score += counted && tile.wangId[index] == wang[index] ? 1 : 0;
                 }
+
                 if (score > best) {
                     best = score;
                     chosen = owner->firstGid + tile.tileId;
                 }
             }
+
             const bool empty = std::ranges::all_of(wang, [](std::uint8_t entry) { return entry == 0; });
             setTile(name, x, y, empty ? 0U : chosen);
         }
@@ -474,6 +525,7 @@ void MapRenderer::setLayerVisible(std::string_view layer, bool visible) {
     if (found == nullptr) {
         throw std::invalid_argument("The map has no layer named \"" + std::string(layer) + "\".");
     }
+
     found->visible = visible;
 }
 
@@ -491,16 +543,20 @@ std::uint32_t MapRenderer::animatedTileId(const Tile& tile) const noexcept {
     for (const Tile::AnimationFrame& frame : tile.animation) {
         total += frame.duration;
     }
+
     if (total <= 0.0F) {
         return tile.animation.front().tileId;
     }
+
     float elapsed = std::fmod(time, total);
     for (const Tile::AnimationFrame& frame : tile.animation) {
         if (elapsed < frame.duration) {
             return frame.tileId;
         }
+
         elapsed -= frame.duration;
     }
+
     return tile.animation.back().tileId;
 }
 
@@ -519,10 +575,12 @@ void MapRenderer::drawLayer(graphics2d::Renderer& renderer, std::string_view nam
                 drawTree(renderer, layer, parent, view, options);
                 return true;
             }
+
             if (self(self, layer.layers, inherit(parent, layer))) {
                 return true;
             }
         }
+
         return false;
     };
     // clang-format on
@@ -561,6 +619,7 @@ void MapRenderer::drawTree(graphics2d::Renderer& renderer, const Layer& layer, c
         for (const Layer& child : layer.layers) {
             drawTree(renderer, child, state, view, options);
         }
+
         break;
     }
 
@@ -593,6 +652,7 @@ void MapRenderer::bake(graphics2d::Renderer& renderer, const Layer& layer, const
         if (reference == nullptr) {
             throw std::invalid_argument("A tile layer uses the tile \"" + std::to_string(Map::tileId(gid)) + "\", which no tileset of the map holds.");
         }
+
         const Tileset& tileset = *reference->tileset;
         const std::uint32_t localId = Map::tileId(gid) - reference->firstGid;
         graphics2d::SpriteInstance instance = tileInstance(tileset, localId, gid, anchor);
@@ -609,6 +669,7 @@ void MapRenderer::bake(graphics2d::Renderer& renderer, const Layer& layer, const
         if (!continues) {
             region.runs.push_back({.texture = texture});
         }
+
         if (animated) {
             region.runs.back().animated.push_back({.tileset = &tileset, .tile = tile, .instance = instance});
         } else {
@@ -623,6 +684,7 @@ void MapRenderer::bake(graphics2d::Renderer& renderer, const Layer& layer, const
             cache.regions.erase(key);
         }
     }
+
     for (auto& [key, region] : regions) {
         for (Run& run : region.runs) {
             if (!run.instances.empty()) {
@@ -630,8 +692,10 @@ void MapRenderer::bake(graphics2d::Renderer& renderer, const Layer& layer, const
                 run.instances = {};
             }
         }
+
         cache.regions.insert_or_assign(key, std::move(region));
     }
+
     cache.stale.clear();
     cache.offset = state.offset;
     cache.baked = true;
@@ -650,6 +714,7 @@ void MapRenderer::drawTiles(graphics2d::Renderer& renderer, const Layer& layer, 
         if (culling && !region.bounds.translated(shift).intersects(view.visible)) {
             continue;
         }
+
         const float ground = region.ground + shift.y;
         for (const Run& run : region.runs) {
             if (run.batch.isValid()) {
@@ -678,9 +743,11 @@ std::vector<std::size_t> MapRenderer::drawnObjects(const Layer& layer) const {
             drawn.push_back(index);
         }
     }
+
     if (!layer.indexDrawOrder) {
         std::stable_sort(drawn.begin(), drawn.end(), [&layer](std::size_t lhs, std::size_t rhs) { return layer.objects[lhs].position.y < layer.objects[rhs].position.y; });
     }
+
     return drawn;
 }
 
@@ -699,6 +766,7 @@ void MapRenderer::drawObjects(graphics2d::Renderer& renderer, const Layer& layer
             if (font == nullptr) {
                 throw std::logic_error("Drawing Tiled text objects needs a font.");
             }
+
             const Object::Text& text = object->text;
             const text::Alignment align = text.horizontalAlign == "center" ? text::Alignment::Center : (text.horizontalAlign == "right" ? text::Alignment::Right : (text.horizontalAlign == "justify" ? text::Alignment::Fill : text::Alignment::Left));
             const float height = font->measure(text.text, {.size = text.pixelSize, .maxWidth = text.wrap ? object->size.x : 0.0F, .bold = text.bold, .italic = text.italic}).y;
@@ -715,11 +783,13 @@ void MapRenderer::drawObjects(graphics2d::Renderer& renderer, const Layer& layer
         if (reference == nullptr) {
             throw std::invalid_argument("A tile object uses the tile \"" + std::to_string(Map::tileId(object->gid)) + "\", which no tileset of the map holds.");
         }
+
         const Tileset& tileset = *reference->tileset;
         std::uint32_t localId = Map::tileId(object->gid) - reference->firstGid;
         if (const Tile* tile = tileset.findTile(localId); tile != nullptr && !tile->animation.empty()) {
             localId = animatedTileId(*tile);
         }
+
         const math::Rect source = tileset.getSource(localId);
         const graphics2d::SpriteInstance instance{
             .position = position,
@@ -730,6 +800,7 @@ void MapRenderer::drawObjects(graphics2d::Renderer& renderer, const Layer& layer
             .color = fade(state.tint, object->opacity),
             .flip = flipsOf(object->gid, false),
         };
+
         if (view.visible.isEmpty() || instanceBounds(instance).intersects(view.visible)) {
             const float ground = instance.position.y + instance.size.y * (1.0F - instance.pivot.y);
             renderer.drawBatch(tileset.getTexture(localId), std::span(&instance, 1), options.ysort ? groundOrder(options.order, ground, instance.position.y) : options.order);
@@ -748,6 +819,7 @@ void MapRenderer::drawImage(graphics2d::Renderer& renderer, const Layer& layer, 
         renderer.draw({.texture = layer.texture, .position = origin, .pivot = {0.0F, 0.0F}, .color = state.tint, .order = order});
         return;
     }
+
     if (view.visible.isEmpty()) {
         throw std::invalid_argument("Repeated image layers need the visible area of the view.");
     }
@@ -764,6 +836,7 @@ void MapRenderer::drawImage(graphics2d::Renderer& renderer, const Layer& layer, 
             copies.push_back({.position = {x, y}, .size = size, .pivot = {0.0F, 0.0F}, .color = state.tint});
         }
     }
+
     renderer.drawBatch(layer.texture, copies, order);
 }
 
@@ -777,6 +850,7 @@ TileCollision::Cell MapRenderer::collisionCell(physics2d::Body& body, int column
     if (reference == nullptr) {
         return cell;
     }
+
     const Tileset& tileset = *reference->tileset;
     const std::uint32_t localId = Map::tileId(gid) - reference->firstGid;
     const Tile* tile = tileset.findTile(localId);
@@ -800,17 +874,22 @@ TileCollision::Cell MapRenderer::collisionCell(physics2d::Body& body, int column
             cell.full = true;
             continue;
         }
+
         query.traceOutline(object, points);
+
         for (math::Vec2& point : points) {
             point = topLeft + flipInTile(point * scale, imageSize, gid);
         }
+
         if (solid && points.size() >= 3) {
             cell.outlines.push_back(points);
             continue;
         }
+
         const std::vector<physics2d::Shape> shapes = addOutline(body, object, points, options);
         cell.shapes.insert(cell.shapes.end(), shapes.begin(), shapes.end());
     }
+
     return cell;
 }
 
@@ -825,6 +904,7 @@ std::vector<physics2d::Body> MapRenderer::buildCollision(physics2d::World& world
             body.destroy();
             return;
         }
+
         bodies.push_back(body);
     };
     const auto visit = [&](const auto& self, const Layer& layer, math::Vec2 offset) -> void {
@@ -833,6 +913,7 @@ std::vector<physics2d::Body> MapRenderer::buildCollision(physics2d::World& world
             for (const Layer& child : layer.layers) {
                 self(self, child, origin);
             }
+
             return;
         }
 
@@ -846,9 +927,11 @@ std::vector<physics2d::Body> MapRenderer::buildCollision(physics2d::World& world
                     (void)addOutline(body, object, points, shapeOptions(object, filter));
                 }
             }
+
             finish(body);
             return;
         }
+
         if (layer.kind != Layer::Kind::Tile || !layer.properties.getBool("collision", true)) {
             return;
         }
@@ -867,6 +950,7 @@ std::vector<physics2d::Body> MapRenderer::buildCollision(physics2d::World& world
     for (const Layer& layer : map.layers) {
         visit(visit, layer, {});
     }
+
     return bodies;
 }
 

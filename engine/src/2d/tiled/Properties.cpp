@@ -34,6 +34,7 @@ Properties Properties::merged(const Properties& overrides) const {
             result.push_back(property);
         }
     }
+
     return Properties(std::move(result));
 }
 

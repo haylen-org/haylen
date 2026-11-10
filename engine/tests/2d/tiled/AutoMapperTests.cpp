@@ -49,11 +49,13 @@ class AutoMapperTest : public ::testing::Test {
         for (const char* type : {"Empty", "Ignore", "NonEmpty", "Other", "Negate"}) {
             specials.push_back({{"id", id++}, {"properties", core::Json::array({special(type)})}});
         }
+
         tilesets.push_back({{"firstgid", 101}, {"name", "automap"}, {"tilewidth", 16}, {"tileheight", 16}, {"tilecount", 5}, {"columns", 5}, {"image", "automap.png"}, {"imagewidth", 80}, {"imageheight", 16}, {"tiles", specials}});
         std::uint32_t layerId = 1;
         for (core::Json& entry : layers) {
             entry["id"] = layerId++;
         }
+
         return {{"type", "map"}, {"orientation", "orthogonal"}, {"renderorder", "right-down"}, {"width", width}, {"height", height}, {"tilewidth", 16}, {"tileheight", 16}, {"tilesets", tilesets}, {"layers", std::move(layers)}, {"properties", std::move(properties)}};
     }
 
@@ -71,6 +73,7 @@ class AutoMapperTest : public ::testing::Test {
         for (int x = 0; x < map.width; ++x) {
             cells.push_back(found != nullptr ? found->getGid(x, y) : 0U);
         }
+
         return cells;
     }
 
@@ -125,6 +128,7 @@ TEST_F(AutoMapperTest, PicksOneIndexedOutputByItsProbability) {
     for (const std::uint32_t gid : row(map, "decor", 0)) {
         ++counts[gid];
     }
+
     EXPECT_EQ(counts[kFlower] + counts[kRock], 64);
     EXPECT_GT(counts[kRock], counts[kFlower]);
     EXPECT_GT(counts[kFlower], 0);
@@ -244,9 +248,11 @@ TEST_F(AutoMapperTest, LoadsRulesFilesWithFilters) {
         {"rules/edges.tmj", document(1, 1, core::Json::array({layer("input_ground", 1, 1, {kGrass}), layer("output_edges", 1, 1, {kEdge})}))},
         {"rules/decor.tmj", document(1, 1, core::Json::array({layer("input_ground", 1, 1, {kGrass}), layer("output_decor", 1, 1, {kFlower})}))},
     };
+
     for (auto& [path, rules] : maps) {
         rules["tilesets"][0]["image"] = "../maps/terrain.png";
     }
+
     const AutoMapper loaded = AutoMapper::load("rules/rules.txt", [&texts](const std::string& path) { return texts.at(path); }, [&maps](const std::string& path) { return maps.at(path); });
     ASSERT_EQ(loaded.getRuleMaps().size(), 2U);
     EXPECT_EQ(loaded.getRuleMaps()[1].filter, "town*");

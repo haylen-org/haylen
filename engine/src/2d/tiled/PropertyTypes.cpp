@@ -12,19 +12,24 @@ PropertyTypes PropertyTypes::parse(const core::Json& project) {
         if (entry.value("type", std::string{}) != "class") {
             continue;
         }
+
         Class type{.name = entry.value("name", std::string{})};
         if (type.name.empty()) {
             throw std::invalid_argument("A class of the Tiled project has no name.");
         }
+
         for (const core::Json& member : entry.value("members", core::Json::array())) {
             Member read{.name = member.value("name", std::string{}), .type = member.value("type", std::string("string")), .propertyType = member.value("propertyType", std::string{}), .value = member.value("value", core::Json())};
             if (read.name.empty()) {
                 throw std::invalid_argument("A member of the class \"" + type.name + "\" of the Tiled project has no name.");
             }
+
             type.members.push_back(std::move(read));
         }
+
         result.classes.push_back(std::move(type));
     }
+
     return result;
 }
 
@@ -42,6 +47,7 @@ Properties PropertyTypes::complete(const Properties& properties, std::string_vie
             property.value = completeItems(std::move(property.value), 0);
         }
     }
+
     if (const Class* type = findClass(className)) {
         for (const Member& member : type->members) {
             if (std::ranges::none_of(items, [&member](const Property& property) { return property.name == member.name; })) {
@@ -49,6 +55,7 @@ Properties PropertyTypes::complete(const Properties& properties, std::string_vie
             }
         }
     }
+
     return Properties(std::move(items));
 }
 
@@ -57,6 +64,7 @@ core::Json PropertyTypes::completeItems(core::Json items, int depth) const {
     if (!items.is_array() || depth >= kMaxDepth) {
         return items;
     }
+
     for (core::Json& item : items) {
         const std::string type = item.value("type", std::string("string"));
         if (type == "class") {
@@ -65,6 +73,7 @@ core::Json PropertyTypes::completeItems(core::Json items, int depth) const {
             item["value"] = completeItems(item.value("value", core::Json()), depth + 1);
         }
     }
+
     return items;
 }
 
@@ -74,12 +83,15 @@ core::Json PropertyTypes::completeValue(std::string_view className, core::Json v
     if (type == nullptr) {
         return value;
     }
+
     if (depth >= kMaxDepth) {
         throw std::invalid_argument("The class \"" + type->name + "\" of the Tiled project holds itself.");
     }
+
     if (!value.is_object()) {
         value = core::Json::object();
     }
+
     for (const Member& member : type->members) {
         if (!value.contains(member.name)) {
             value[member.name] = member.type == "class" ? completeValue(member.propertyType, member.value, depth + 1) : member.value;
@@ -87,6 +99,7 @@ core::Json PropertyTypes::completeValue(std::string_view className, core::Json v
             value[member.name] = completeValue(member.propertyType, std::move(value[member.name]), depth + 1);
         }
     }
+
     return value;
 }
 

@@ -12,9 +12,11 @@ void ObjectFactories::add(std::string type, Factory factory) {
     if (type.empty() || !factory) {
         throw std::invalid_argument("A Tiled object factory needs a class name and a function.");
     }
+
     if (factories.contains(type)) {
         throw std::invalid_argument("The Tiled object class \"" + type + "\" already has a factory.");
     }
+
     factories.emplace(std::move(type), std::move(factory));
 }
 
@@ -41,6 +43,7 @@ std::size_t ObjectFactories::spawn(const MapRenderer& map, std::string_view laye
             ++spawned;
         }
     }
+
     return spawned;
 }
 

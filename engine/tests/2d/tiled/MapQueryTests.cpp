@@ -32,6 +32,7 @@ class MapQueryTest : public ::testing::Test {
 
         tiled::Layer walls{.name = "walls", .kind = tiled::Layer::Kind::Tile, .width = 8, .height = 6};
         walls.gids.assign(48, 0);
+
         for (int row = 0; row < 6; ++row) {
             walls.gids[static_cast<std::size_t>(row * 8 + 5)] = row == 3 ? 0U : (row == 4 ? 2U : 1U);
         }
@@ -145,10 +146,12 @@ TEST_F(MapQueryTest, OutlinesObjectsAndCastsRaysAgainstThem) {
     EXPECT_EQ(outline.front(), (math::Vec2{104.0F, 10.0F}));
     query.getOutline(objects[1], offset, outline);
     EXPECT_EQ(outline.size(), 16U);
+
     for (const math::Vec2 point : outline) {
         const math::Vec2 local = point - math::Vec2{54.0F, 27.0F};
         EXPECT_NEAR(local.x * local.x / 100.0F + local.y * local.y / 25.0F, 1.0F, 1e-3F);
     }
+
     query.getOutline(objects[6], offset, outline);
     EXPECT_EQ(outline.size(), 18U);
     EXPECT_NEAR(std::fabs(math::Geometry::signedArea(outline)), 20.0F * 10.0F + std::numbers::pi_v<float> * 25.0F, 3.0F);

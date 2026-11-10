@@ -45,6 +45,7 @@ int MapQueryLua::raycastTiles(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     math::RaycastLua::pushHit(L, {.point = hit->point, .normal = hit->normal, .distance = hit->distance}, ray.length);
     lua_pushinteger(L, hit->column);
     lua_setfield(L, -2, "column");
@@ -65,6 +66,7 @@ int MapQueryLua::raycastObjects(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     math::RaycastLua::pushHit(L, {.point = hit->point, .normal = hit->normal, .distance = hit->distance}, ray.length);
     lua_pushinteger(L, static_cast<lua_Integer>(hit->object->id));
     lua_setfield(L, -2, "id");

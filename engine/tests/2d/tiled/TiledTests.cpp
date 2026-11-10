@@ -47,16 +47,19 @@ class TiledTest : public ::testing::Test {
                 text.push_back(alphabet[(value >> shift) & 63U]);
             }
         }
+
         if (index < bytes.size()) {
             std::uint32_t value = static_cast<std::uint32_t>(bytes[index]) << 16U;
             if (index + 1 < bytes.size()) {
                 value |= static_cast<std::uint32_t>(bytes[index + 1]) << 8U;
             }
+
             text.push_back(alphabet[(value >> 18U) & 63U]);
             text.push_back(alphabet[(value >> 12U) & 63U]);
             text.push_back(index + 1 < bytes.size() ? alphabet[(value >> 6U) & 63U] : '=');
             text.push_back('=');
         }
+
         return text;
     }
 
@@ -68,11 +71,13 @@ class TiledTest : public ::testing::Test {
                 raw.push_back(static_cast<std::uint8_t>((gid >> shift) & 0xFFU));
             }
         }
+
         if (compression == "zstd") {
             std::vector<std::uint8_t> packed(ZSTD_compressBound(raw.size()));
             packed.resize(ZSTD_compress(packed.data(), packed.size(), raw.data(), raw.size(), 1));
             return base64(packed);
         }
+
         if (compression == "zlib" || compression == "gzip") {
             std::vector<std::uint8_t> packed(raw.size() + 64);
             z_stream stream{};
@@ -86,6 +91,7 @@ class TiledTest : public ::testing::Test {
             deflateEnd(&stream);
             return base64(packed);
         }
+
         return base64(raw);
     }
 
@@ -188,9 +194,11 @@ class TiledTest : public ::testing::Test {
             if (path == "maps/tiles/terrain.tsj") {
                 return terrainTileset();
             }
+
             if (path == "maps/templates/rock.tj") {
                 return rockTemplate();
             }
+
             throw std::runtime_error("The file \"" + path + "\" was read unexpectedly.");
         };
         // clang-format on
@@ -399,6 +407,7 @@ TEST_F(MapTest, RejectsBrokenData) {
         } catch (const std::invalid_argument& error) {
             return std::string(error.what());
         }
+
         return std::string("no error");
     };
     // clang-format on
@@ -486,10 +495,12 @@ TEST_F(MapTest, ConvertsCellsForEveryOrientation) {
                     const math::Vec2 center = map.cellToWorld(column, row) + map.tileSize * 0.5F;
                     EXPECT_EQ(map.worldToCell(center), (std::array<int, 2>{column, row})) << column << "," << row;
                 }
+
                 EXPECT_GT(map.getPixelBounds().width, 0.0F);
             }
         }
     }
+
     EXPECT_EQ(tiled::Map::orientationName(tiled::Map::Orientation::Hexagonal), "hexagonal");
     EXPECT_EQ(tiled::Map::renderOrderName(tiled::Map::RenderOrder::RightDown), "right-down");
     EXPECT_EQ(tiled::Map::renderOrderName(tiled::Map::RenderOrder::RightUp), "right-up");
@@ -536,7 +547,9 @@ TEST_F(MapTest, ReadsObliqueMapsBlendModesAndCapsules) {
         blended["layers"][6]["layers"][0]["mode"] = mode;
         EXPECT_EQ(tiled::Map::parse(blended, "maps/blended.tmj", reader()).findLayer("inner")->blend, type) << mode;
     }
+
     blended["layers"][6]["layers"][0]["mode"] = "glow";
+
     try {
         (void)tiled::Map::parse(blended, "maps/blended.tmj", reader());
         FAIL() << "The glow blend mode was accepted.";
@@ -547,12 +560,14 @@ TEST_F(MapTest, ReadsObliqueMapsBlendModesAndCapsules) {
     // Tiled draws the layers of a group with their own modes, so a group mode would silently change nothing.
     core::Json blendedGroup = orthogonalMap();
     blendedGroup["layers"][6]["mode"] = "add";
+
     try {
         (void)tiled::Map::parse(blendedGroup, "maps/group.tmj", reader());
         FAIL() << "The group blend mode was accepted.";
     } catch (const std::invalid_argument& error) {
         EXPECT_EQ(std::string(error.what()), "The Tiled group layer \"group\" uses the blend mode \"add\", which Tiled does not apply to the layers inside it. Set the blend mode on those layers.");
     }
+
     blendedGroup["layers"][6]["mode"] = "normal";
     EXPECT_EQ(tiled::Map::parse(blendedGroup, "maps/group.tmj", reader()).findLayer("group")->blend, graphics::BlendMode::Type::Alpha);
 }
@@ -755,6 +770,7 @@ TEST_F(MapRendererTest, DrawsALayerThatMixesWithWhatLiesBelowAsAGroup) {
             layer["mode"] = "overlay";
         }
     }
+
     files["content/maps/island.tmj"] = oblique.dump();
     test::EngineFixture fixture(files);
     tiled::MapRenderer map(*std::static_pointer_cast<tiled::Map>(fixture.engine().getAssets().load("tiled", "maps/island.tmj")), fixture.engine().getDefaultFont());
@@ -789,11 +805,13 @@ TEST_F(MapRendererTest, RejectsDrawingWhatItCannotPlace) {
     // clang-format off
     fixture.engine().getScenes().push(std::make_shared<test::DrawingScene>([&](core::Engine& engine) {
         engine.getRenderer2D().beginWorld(graphics2d::Camera{});
+
         try {
             textless.drawLayer(engine.getRenderer2D(), "things", {});
         } catch (const std::logic_error& failure) {
             error = failure.what();
         }
+
         try {
             textless.drawLayer(engine.getRenderer2D(), "sky", {});
         } catch (const std::invalid_argument& failure) {
@@ -820,11 +838,13 @@ TEST_F(MapRendererTest, BuildsCollisionBodies) {
     // Solid cells that touch merge into one chain loop, which gives two single cells on the first row and a single cell and a pair on the last row.
     const std::vector<physics2d::Shape::Outline> outlines = bodies[0].getOutlines();
     ASSERT_EQ(outlines.size(), 4U);
+
     for (const physics2d::Shape::Outline& outline : outlines) {
         EXPECT_TRUE(outline.closed);
         EXPECT_EQ(outline.points.size(), 4U);
         EXPECT_GT(math::Geometry::signedArea(outline.points), 0.0F);
     }
+
     EXPECT_NEAR(world.raycast({24.0F, -10.0F}, {24.0F, 30.0F})->point.y, 0.0F, 0.01F);
     EXPECT_NEAR(world.raycast({70.0F, 40.0F}, {30.0F, 40.0F})->point.x, 64.0F, 0.01F);
     EXPECT_FALSE(world.raycast({20.0F, 40.0F}, {28.0F, 40.0F}).has_value());
@@ -998,6 +1018,7 @@ TEST_F(TiledLuaTest, HandsDeeplyNestedGroupsToLua) {
     for (int level = 1; level <= 60; ++level) {
         group = core::Json{{"id", 100 + level}, {"name", "level"}, {"type", "group"}, {"layers", core::Json::array({group})}};
     }
+
     document["layers"].push_back(group);
     std::map<std::string, std::string> files = packageFiles();
     files["content/maps/island.tmj"] = document.dump();
@@ -1162,6 +1183,7 @@ TEST_F(MapTest, WritesMapsThatReadBackUnchanged) {
     EXPECT_EQ(copy.properties.find("loot")->value[3].at("value")[1].at("value"), "maps/gem.png");
 
     ASSERT_EQ(copy.tilesets.size(), original.tilesets.size());
+
     for (std::size_t index = 0; index < copy.tilesets.size(); ++index) {
         const tiled::Tileset& from = *original.tilesets[index].tileset;
         const tiled::Tileset& to = *copy.tilesets[index].tileset;
@@ -1170,6 +1192,7 @@ TEST_F(MapTest, WritesMapsThatReadBackUnchanged) {
         EXPECT_EQ(to.tileCount, from.tileCount);
         EXPECT_EQ(to.wangSets.size(), from.wangSets.size());
     }
+
     EXPECT_EQ(copy.tilesets[1].tileset->findTile(0)->image, "maps/props/tree.png");
     EXPECT_EQ(copy.tilesets[0].tileset->findTile(2)->animation.size(), 2U);
     EXPECT_EQ(copy.tilesets[0].tileset->wangSets.front().tiles.front().wangId, original.tilesets[0].tileset->wangSets.front().tiles.front().wangId);
@@ -1178,6 +1201,7 @@ TEST_F(MapTest, WritesMapsThatReadBackUnchanged) {
         EXPECT_EQ(copy.findLayer(name)->gids, original.findLayer(name)->gids) << name;
         EXPECT_EQ(copy.findLayer(name)->id, original.findLayer(name)->id) << name;
     }
+
     EXPECT_EQ(copy.findLayer("group")->opacity, 0.5F);
     EXPECT_EQ(copy.findLayer("sky")->image, "maps/backgrounds/sky.png");
     EXPECT_EQ(copy.findLayer("sky")->parallax, math::Vec2(0.5F, 0.5F));
@@ -1185,12 +1209,14 @@ TEST_F(MapTest, WritesMapsThatReadBackUnchanged) {
     const tiled::Layer& things = *copy.findLayer("things");
     const tiled::Layer& before = *original.findLayer("things");
     ASSERT_EQ(things.objects.size(), before.objects.size());
+
     for (std::size_t index = 0; index < things.objects.size(); ++index) {
         EXPECT_EQ(things.objects[index].shape, before.objects[index].shape) << index;
         EXPECT_EQ(things.objects[index].position, before.objects[index].position) << index;
         EXPECT_EQ(things.objects[index].points.size(), before.objects[index].points.size()) << index;
         EXPECT_EQ(things.objects[index].gid, before.objects[index].gid) << index;
     }
+
     EXPECT_EQ(things.objects[8].name, "big rock");
     EXPECT_TRUE(things.objects[8].properties.getBool("hard", false));
 

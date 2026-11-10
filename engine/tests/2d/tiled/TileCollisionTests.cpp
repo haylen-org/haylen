@@ -38,15 +38,18 @@ TEST_F(TileCollisionTest, BodiesSlideAcrossTheJointsOfMergedTiles) {
     for (int column = -5; column < 100; ++column) {
         (void)tiles.addBox({kCell, kCell}, {.offset = {static_cast<float>(column) * kCell + kCell * 0.5F, 10.0F * kCell + kCell * 0.5F}});
     }
+
     fillRow(10, -5, 99);
     collision.update();
 
     for (physics2d::World* space : {&separate, &world}) {
         physics2d::Body box = space->createBody({.position = {0.0F, 10.0F * kCell - 15.0F}, .velocity = {600.0F, 0.0F}, .locks = {.rotation = true}});
         (void)box.addBox({30.0F, 30.0F}, {.friction = 0.0F});
+
         for (int step = 0; step < 120; ++step) {
             space->step(1.0F / 60.0F);
         }
+
         EXPECT_EQ(box.getVelocity().x > 599.0F, space == &world);
     }
 }
@@ -66,6 +69,7 @@ TEST_F(TileCollisionTest, MergesTouchingCellsAndTracesHoles) {
     EXPECT_NEAR(math::Geometry::signedArea(loops[0].points), -kCell * kCell, 0.1F);
     EXPECT_NEAR(math::Geometry::signedArea(loops[1].points), kCell * kCell, 0.1F);
     EXPECT_NEAR(math::Geometry::signedArea(loops[2].points), 9.0F * kCell * kCell, 0.1F);
+
     for (const physics2d::Shape::Outline& loop : loops) {
         EXPECT_TRUE(loop.closed);
         EXPECT_EQ(loop.points.size(), 4U);
@@ -80,9 +84,11 @@ TEST_F(TileCollisionTest, MergesTouchingCellsAndTracesHoles) {
             ring.setCell(column, row, {.full = row != 1 || column != 1});
         }
     }
+
     ring.update();
     physics2d::Body ball = space.createBody({.position = {kCell * 1.5F, kCell * 1.5F}, .velocity = {900.0F, 400.0F}});
     (void)ball.addCircle(4.0F, {.restitution = 1.0F});
+
     for (int step = 0; step < 120; ++step) {
         space.step(1.0F / 60.0F);
         const math::Rect hole{kCell, kCell, kCell, kCell};

@@ -20,30 +20,39 @@ math::Vec2 MapQuery::alignmentPivot(std::string_view alignment, Map::Orientation
     if (alignment == "topleft") {
         return {0.0F, 0.0F};
     }
+
     if (alignment == "top") {
         return {0.5F, 0.0F};
     }
+
     if (alignment == "topright") {
         return {1.0F, 0.0F};
     }
+
     if (alignment == "left") {
         return {0.0F, 0.5F};
     }
+
     if (alignment == "center") {
         return {0.5F, 0.5F};
     }
+
     if (alignment == "right") {
         return {1.0F, 0.5F};
     }
+
     if (alignment == "bottom") {
         return {0.5F, 1.0F};
     }
+
     if (alignment == "bottomright") {
         return {1.0F, 1.0F};
     }
+
     if (alignment == "bottomleft") {
         return {0.0F, 1.0F};
     }
+
     return orientation == Map::Orientation::Isometric ? math::Vec2{0.5F, 1.0F} : math::Vec2{0.0F, 1.0F};
 }
 
@@ -51,11 +60,13 @@ math::Rect MapQuery::getCellBounds(const Layer& layer) noexcept {
     if (!layer.infinite) {
         return {0.0F, 0.0F, static_cast<float>(layer.width), static_cast<float>(layer.height)};
     }
+
     const auto cellsOf = [](const Layer::Chunk& chunk) { return math::Rect{static_cast<float>(chunk.x), static_cast<float>(chunk.y), static_cast<float>(chunk.width), static_cast<float>(chunk.height)}; };
     math::Rect bounds = cellsOf(layer.chunks.front());
     for (const Layer::Chunk& chunk : layer.chunks) {
         bounds = bounds.merged(cellsOf(chunk));
     }
+
     return bounds;
 }
 
@@ -67,10 +78,12 @@ std::optional<std::pair<const Layer*, math::Vec2>> MapQuery::findLayer(std::stri
             if (found) {
                 return;
             }
+
             if (layer.name == name) {
                 found = std::pair{&layer, offset + layer.offset};
                 return;
             }
+
             self(self, layer.layers, offset + layer.offset);
         }
     };
@@ -85,9 +98,11 @@ void MapQuery::forEachObject(std::string_view layer, const ObjectVisitor& visit)
         if (!found || found->first->kind != Layer::Kind::Object) {
             throw std::invalid_argument("The map has no object layer named \"" + std::string(layer) + "\".");
         }
+
         for (const Object& object : found->first->objects) {
             visit(object, found->second);
         }
+
         return;
     }
 
@@ -97,6 +112,7 @@ void MapQuery::forEachObject(std::string_view layer, const ObjectVisitor& visit)
             for (const Object& object : child.objects) {
                 visit(object, offset + child.offset);
             }
+
             self(self, child.layers, offset + child.offset);
         }
     };
@@ -129,6 +145,7 @@ void MapQuery::traceOutline(const Object& object, std::vector<math::Vec2>& point
         if (reference == nullptr) {
             throw std::invalid_argument("A tile object uses the tile \"" + std::to_string(Map::tileId(object.gid)) + "\", which no tileset of the map holds.");
         }
+
         const Tileset& tileset = *reference->tileset;
         const math::Vec2 size = object.size.isZero() ? tileset.getSource(Map::tileId(object.gid) - reference->firstGid).getSize() : object.size;
         placeBox(origin - size * alignmentPivot(tileset.objectAlignment, map.orientation), size);
@@ -143,6 +160,7 @@ void MapQuery::traceOutline(const Object& object, std::vector<math::Vec2>& point
                 const float angle = tau * static_cast<float>(segment) / static_cast<float>(kCurveSegments);
                 place(origin + radii + math::Vec2{std::cos(angle) * radii.x, std::sin(angle) * radii.y});
             }
+
             return;
         }
 
@@ -156,9 +174,11 @@ void MapQuery::traceOutline(const Object& object, std::vector<math::Vec2>& point
         for (int segment = 0; segment <= half; ++segment) {
             place(second + math::Vec2::fromAngle(start + std::numbers::pi_v<float> * static_cast<float>(segment) / static_cast<float>(half), radius));
         }
+
         for (int segment = 0; segment <= half; ++segment) {
             place(first + math::Vec2::fromAngle(start + std::numbers::pi_v<float> * (1.0F + static_cast<float>(segment) / static_cast<float>(half)), radius));
         }
+
         return;
     }
     case Object::Shape::Polygon:
@@ -166,6 +186,7 @@ void MapQuery::traceOutline(const Object& object, std::vector<math::Vec2>& point
         for (const math::Vec2 point : object.points) {
             place(origin + point);
         }
+
         return;
     }
 }
@@ -186,6 +207,7 @@ void MapQuery::getOutlines(std::string_view layer, std::vector<std::vector<math:
     // clang-format off
     forEachObject(layer, [&](const Object& object, math::Vec2 offset) {
         getOutline(object, offset, points);
+
         if (object.shape != Object::Shape::Polyline && points.size() >= 3) {
             outlines.push_back(points);
         }
@@ -215,12 +237,14 @@ math::Vec2 MapQuery::worldToCell(math::Vec2 point) const noexcept {
         const float down = point.y / (tile.y * 0.5F);
         return {(across + down) * 0.5F, (down - across) * 0.5F};
     }
+
     if (map.orientation == Map::Orientation::Oblique) {
         const float shearX = map.skew.x / tile.y;
         const float shearY = map.skew.y / tile.x;
         const float determinant = 1.0F - shearX * shearY;
         return {(point.x - shearX * point.y) / determinant / tile.x, (point.y - shearY * point.x) / determinant / tile.y};
     }
+
     return {point.x / tile.x, point.y / tile.y};
 }
 
@@ -234,6 +258,7 @@ std::optional<MapQuery::TileHit> MapQuery::castTiles(std::string_view layer, con
     if (map.orientation == Map::Orientation::Staggered || map.orientation == Map::Orientation::Hexagonal) {
         throw std::invalid_argument("Tile ray casts need an orthogonal, isometric or oblique map.");
     }
+
     const std::optional<std::pair<const Layer*, math::Vec2>> found = findLayer(layer);
     if (!found || found->first->kind != Layer::Kind::Tile) {
         throw std::invalid_argument("The map has no tile layer named \"" + std::string(layer) + "\".");
@@ -260,6 +285,7 @@ std::optional<MapQuery::TileHit> MapQuery::castTiles(std::string_view layer, con
         if (const std::uint32_t gid = tiles.getGid(cell.x, cell.y); gid != 0) {
             crossed.push_back({.column = cell.x, .row = cell.y, .gid = gid, .distance = entry->distance + distance, .normal = normal.isZero() ? entry->normal : normal});
         }
+
         return true;
     });
     // clang-format on
@@ -268,6 +294,7 @@ std::optional<MapQuery::TileHit> MapQuery::castTiles(std::string_view layer, con
         if (solid && !solid(tile.gid)) {
             continue;
         }
+
         const float distance = tile.distance / cellsPerUnit;
         math::Vec2 normal;
         if (!tile.normal.isZero()) {
@@ -276,8 +303,10 @@ std::optional<MapQuery::TileHit> MapQuery::castTiles(std::string_view layer, con
                 normal = -normal;
             }
         }
+
         return TileHit{.column = tile.column, .row = tile.row, .gid = tile.gid, .point = ray.at(distance), .normal = normal, .distance = distance};
     }
+
     return std::nullopt;
 }
 

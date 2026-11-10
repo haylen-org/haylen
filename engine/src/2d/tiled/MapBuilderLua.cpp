@@ -46,6 +46,7 @@ int MapBuilderLua::newMap(lua_State* L) {
     if (lua_getfield(L, 1, "backgroundColor") != LUA_TNIL) {
         map->backgroundColor = lua::Stack::read<math::Color>(L, -1);
     }
+
     lua_pop(L, 1);
 
     const std::optional<Map::Orientation> parsedOrientation = Map::orientationFromName(orientation);
@@ -53,12 +54,15 @@ int MapBuilderLua::newMap(lua_State* L) {
     if (!parsedOrientation || !parsedOrder) {
         return luaL_error(L, "A map has the orientation \"orthogonal\", \"isometric\", \"staggered\", \"hexagonal\" or \"oblique\" and the render order \"right-down\", \"right-up\", \"left-down\" or \"left-up\".");
     }
+
     if ((!map->infinite && (map->width < 1 || map->height < 1)) || !(map->tileSize.x > 0.0F && map->tileSize.y > 0.0F)) {
         return luaL_error(L, "A map needs a positive tile size, and a finite map a positive width and height in cells.");
     }
+
     if ((staggerAxis != "x" && staggerAxis != "y") || (staggerIndex != "odd" && staggerIndex != "even")) {
         return luaL_error(L, "A map staggers along the axis \"x\" or \"y\" from the \"odd\" or \"even\" cells.");
     }
+
     map->orientation = *parsedOrientation;
     map->renderOrder = *parsedOrder;
     map->staggerX = staggerAxis == "x";
@@ -95,10 +99,12 @@ int MapBuilderLua::addTileset(lua_State* L) {
         if (!lua_isstring(L, -1)) {
             return luaL_error(L, "A tileset needs the package path of its \"image\" or a \"texture\".");
         }
+
         tileset->image = lua::Stack::read<std::string>(L, -1);
         lua_pop(L, 1);
         tileset->texture = lua::Runtime::getEngine(L).getAssets().texture(tileset->image, lua::TypeConverter::readTextureOptions(L, 2, {kTilesetFields}));
     }
+
     lua_pop(L, 1);
     tileset->imageSize = tileset->texture.getSize();
     const float stepX = tileset->tileSize.x + static_cast<float>(tileset->spacing);
@@ -122,11 +128,14 @@ int MapBuilderLua::addTileset(lua_State* L) {
             if (set.kind != "corner" && set.kind != "edge" && set.kind != "mixed") {
                 return luaL_error(L, "A Wang set has the type \"corner\", \"edge\" or \"mixed\".");
             }
+
             std::vector<std::string> colors;
             lua::Table::readField(L, entry, "colors", colors);
+
             for (std::string& color : colors) {
                 set.colors.push_back({.name = std::move(color)});
             }
+
             if (lua_getfield(L, entry, "tiles") != LUA_TNIL) {
                 const int tiles = lua_gettop(L);
                 for (lua_Integer place = 1; place <= static_cast<lua_Integer>(luaL_len(L, tiles)); ++place) {
@@ -139,19 +148,23 @@ int MapBuilderLua::addTileset(lua_State* L) {
                     if (wangId.size() != 8) {
                         return luaL_error(L, "A tile of a Wang set needs \"wangId\", the eight colors of its edges and corners from the top clockwise.");
                     }
+
                     WangSet::Tile parsed{.tileId = tile};
                     for (std::size_t corner = 0; corner < 8; ++corner) {
                         parsed.wangId[corner] = static_cast<std::uint8_t>(wangId[corner]);
                     }
+
                     set.tiles.push_back(parsed);
                     lua_pop(L, 1);
                 }
             }
+
             lua_pop(L, 1);
             tileset->wangSets.push_back(std::move(set));
             lua_pop(L, 1);
         }
     }
+
     lua_pop(L, 1);
     lua::Stack::push(L, renderer.addTileset(std::move(tileset)));
     return 1;
@@ -177,6 +190,7 @@ int MapBuilderLua::addLayer(lua_State* L) {
     if (kind != "tile" && kind != "object") {
         return luaL_error(L, "A layer built in code has the kind \"tile\" or \"object\".");
     }
+
     layer.kind = kind == "tile" ? Layer::Kind::Tile : Layer::Kind::Object;
     renderer.addLayer(std::move(layer));
     return 0;
@@ -208,6 +222,7 @@ int MapBuilderLua::automap(lua_State* L) {
         });
         // clang-format on
     }
+
     math::Random random(seed.value_or(std::random_device{}()));
     lua::Stack::push(L, static_cast<lua_Integer>(map.automap(rules, random).matches));
     return 1;

@@ -45,9 +45,12 @@ void TileCollision::setCell(int column, int row, Cell value) {
         for (physics2d::Shape& shape : found->second.cell.shapes) {
             shape.destroy();
         }
+
         cells.erase(found);
     }
+
     changed.push_back(cell);
+
     if (!isSolid(value) && value.shapes.empty()) {
         return;
     }
@@ -65,10 +68,12 @@ void TileCollision::setCell(int column, int row, Cell value) {
     for (const math::Polygon::Outline& outline : value.outlines) {
         bounds = bounds.merged(math::Geometry::bounds(outline));
     }
+
     if (isSolid(value)) {
         const float over = std::max({(own.getLeft() - bounds.getLeft()) / cellSize.x, (bounds.getRight() - own.getRight()) / cellSize.x, (own.getTop() - bounds.getTop()) / cellSize.y, (bounds.getBottom() - own.getBottom()) / cellSize.y});
         extent = std::max(extent, static_cast<int>(std::ceil(over - kTouch)));
     }
+
     cells.emplace(cell, Stored{.cell = std::move(value), .bounds = bounds});
 }
 
@@ -88,12 +93,14 @@ void TileCollision::update() {
                 if (found == regionOf.end()) {
                     continue;
                 }
+
                 const std::size_t index = found->second;
                 seeds.insert(seeds.end(), regions[index].cells.begin(), regions[index].cells.end());
                 release(index);
             }
         }
     }
+
     changed.clear();
 
     for (const std::int64_t seed : seeds) {
@@ -106,9 +113,11 @@ void TileCollision::release(std::size_t index) {
     for (physics2d::Shape& shape : region.shapes) {
         shape.destroy();
     }
+
     for (const std::int64_t cell : region.cells) {
         regionOf.erase(cell);
     }
+
     region.shapes.clear();
     region.cells.clear();
     freeRegions.push_back(index);
@@ -119,6 +128,7 @@ void TileCollision::gather(std::int64_t seed) {
     if (start == cells.end() || !isSolid(start->second.cell) || regionOf.contains(seed)) {
         return;
     }
+
     std::size_t index = regions.size();
     if (freeRegions.empty()) {
         regions.emplace_back();
@@ -142,11 +152,13 @@ void TileCollision::gather(std::int64_t seed) {
                 if (found == cells.end() || !isSolid(found->second.cell) || regionOf.contains(neighbor) || !near.intersects(found->second.bounds)) {
                     continue;
                 }
+
                 regionOf.emplace(neighbor, index);
                 region.cells.push_back(neighbor);
             }
         }
     }
+
     build(region);
 }
 
@@ -163,6 +175,7 @@ std::vector<math::Polygon::Outline> TileCollision::traceFullCells(std::span<cons
             if (isFull(outsideColumn, outsideRow)) {
                 continue;
             }
+
             const std::int64_t first = corners[static_cast<std::size_t>(direction)];
             auto& slots = starts.try_emplace(first, std::array<int, 2>{-1, -1}).first->second;
             slots[slots[0] < 0 ? 0 : 1] = static_cast<int>(edges.size());
@@ -175,6 +188,7 @@ std::vector<math::Polygon::Outline> TileCollision::traceFullCells(std::span<cons
         if (edges[first].traced) {
             continue;
         }
+
         math::Polygon::Outline outline;
         int incoming = edges[first].direction;
         std::size_t current = first;
@@ -184,6 +198,7 @@ std::vector<math::Polygon::Outline> TileCollision::traceFullCells(std::span<cons
             if (edge.direction != incoming || current == first) {
                 outline.push_back({origin.x + static_cast<float>(columnOf(edge.start)) * cellSize.x, origin.y + static_cast<float>(rowOf(edge.start)) * cellSize.y});
             }
+
             incoming = edge.direction;
 
             // Where two cells touch only at a corner, the right turn keeps each outline around its own cells, so outlines never cross themselves.
@@ -195,8 +210,10 @@ std::vector<math::Polygon::Outline> TileCollision::traceFullCells(std::span<cons
         if (incoming == edges[first].direction) {
             outline.erase(outline.begin());
         }
+
         outlines.push_back(std::move(outline));
     }
+
     return outlines;
 }
 
@@ -208,8 +225,10 @@ void TileCollision::build(Region& region) {
         if (stored.full) {
             full.push_back(cell);
         }
+
         partial.insert(partial.end(), stored.outlines.begin(), stored.outlines.end());
     }
+
     std::vector<math::Polygon::Outline> outlines = traceFullCells(full);
     if (!partial.empty()) {
         outlines = math::Polygon::unite(outlines, partial);
@@ -221,11 +240,13 @@ void TileCollision::build(Region& region) {
         if (points.size() < 3) {
             continue;
         }
+
         if (points.size() == 3) {
             const std::vector<physics2d::Shape> shapes = body.addPolygon(points, {.filter = filter});
             region.shapes.insert(region.shapes.end(), shapes.begin(), shapes.end());
             continue;
         }
+
         region.shapes.push_back(body.addChain(points, true, {.filter = filter}).front());
     }
 }

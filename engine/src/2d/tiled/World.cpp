@@ -25,15 +25,18 @@ World World::parse(const core::Json& document, std::string_view file, const std:
             if (!directory.empty() && !candidate.starts_with(directory + "/")) {
                 continue;
             }
+
             const std::string relative = directory.empty() ? candidate : candidate.substr(directory.size() + 1);
             std::smatch match;
             if (!std::regex_match(relative, match, expression) || match.size() < 3) {
                 continue;
             }
+
             const math::Vec2 cell{std::stof(match[1].str()), std::stof(match[2].str())};
             world.maps.push_back({.path = candidate, .bounds = {cell.x * multiplier.x + offset.x, cell.y * multiplier.y + offset.y, size.x, size.y}});
         }
     }
+
     return world;
 }
 

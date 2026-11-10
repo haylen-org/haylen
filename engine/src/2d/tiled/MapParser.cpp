@@ -33,9 +33,11 @@ Map MapParser::parse(const core::Json& document, std::string_view file, const Ma
     if (result.width < 0 || result.height < 0) {
         throw std::invalid_argument("The Tiled map \"" + result.path + "\" has a negative size.");
     }
+
     if (!(result.tileSize.x > 0.0F && result.tileSize.y > 0.0F && std::isfinite(result.tileSize.x) && std::isfinite(result.tileSize.y))) {
         throw std::invalid_argument("The Tiled map \"" + result.path + "\" needs a positive tile size.");
     }
+
     result.infinite = document.value("infinite", false);
     result.hexSideLength = document.value("hexsidelength", 0);
     result.staggerX = document.value("staggeraxis", std::string("y")) == "x";
@@ -44,6 +46,7 @@ Map MapParser::parse(const core::Json& document, std::string_view file, const Ma
     if (result.orientation == Map::Orientation::Oblique && result.skew.x * result.skew.y == result.tileSize.x * result.tileSize.y) {
         throw std::invalid_argument("The skew of the oblique map \"" + result.path + "\" folds its grid onto a line.");
     }
+
     result.parallaxOrigin = {core::JsonNumber::toFloat(document, "parallaxoriginx", 0.0F), core::JsonNumber::toFloat(document, "parallaxoriginy", 0.0F)};
     result.backgroundColor = readOptionalColor(document, "backgroundcolor");
     result.properties = readProperties(document, directory);
@@ -55,14 +58,17 @@ Map MapParser::parse(const core::Json& document, std::string_view file, const Ma
             result.tilesets.push_back({firstGid, parser.readTileset(entry, directory, {})});
             continue;
         }
+
         const std::string source = resolve(directory, entry.at("source").get<std::string>());
         result.tilesets.push_back({firstGid, parser.readTileset(reader(source), io::Path::directory(source), source)});
     }
+
     std::sort(result.tilesets.begin(), result.tilesets.end(), [](const Map::TilesetReference& lhs, const Map::TilesetReference& rhs) { return lhs.firstGid < rhs.firstGid; });
 
     for (const core::Json& entry : document.value("layers", core::Json::array())) {
         result.layers.push_back(parser.readLayer(entry, directory));
     }
+
     return result;
 }
 
@@ -75,6 +81,7 @@ std::vector<std::uint8_t> MapParser::inflate(const std::vector<std::uint8_t>& co
     if (inflateInit2(&stream, gzip ? 16 + MAX_WBITS : MAX_WBITS) != Z_OK) {
         throw std::runtime_error("Tile layer data could not be decompressed.");
     }
+
     stream.next_in = const_cast<Bytef*>(compressed.data());
     stream.avail_in = static_cast<uInt>(compressed.size());
 
@@ -90,19 +97,23 @@ std::vector<std::uint8_t> MapParser::inflate(const std::vector<std::uint8_t>& co
         status = ::inflate(&stream, Z_NO_FLUSH);
         output.resize(done + step - stream.avail_out);
     }
+
     inflateEnd(&stream);
 
     if (status != Z_STREAM_END || output.size() != expected) {
         throw std::runtime_error("Tile layer data could not be decompressed.");
     }
+
     return output;
 }
 
 std::vector<std::uint8_t> MapParser::decompressZstd(const std::vector<std::uint8_t>& compressed, std::size_t expected) {
     const std::unique_ptr<ZSTD_DCtx, decltype(&ZSTD_freeDCtx)> context(ZSTD_createDCtx(), &ZSTD_freeDCtx);
+
     if (!context) {
         throw std::runtime_error("Tile layer data could not be decompressed.");
     }
+
     ZSTD_inBuffer input{compressed.data(), compressed.size(), 0};
 
     // The output may grow one byte past the size the layer expects, which tells data that holds too many cells.
@@ -115,6 +126,7 @@ std::vector<std::uint8_t> MapParser::decompressZstd(const std::vector<std::uint8
         ZSTD_outBuffer target{output.data() + done, step, 0};
         remaining = ZSTD_decompressStream(context.get(), &target, &input);
         output.resize(done + target.pos);
+
         if (ZSTD_isError(remaining) != 0U || (target.pos == 0 && input.pos == input.size)) {
             break;
         }
@@ -123,6 +135,7 @@ std::vector<std::uint8_t> MapParser::decompressZstd(const std::vector<std::uint8
     if (ZSTD_isError(remaining) != 0U || remaining != 0 || output.size() != expected) {
         throw std::runtime_error("Tile layer data could not be decompressed.");
     }
+
     return output;
 }
 
@@ -130,11 +143,13 @@ std::size_t MapParser::countCells(int width, int height, std::string_view layer)
     if (width < 0 || height < 0) {
         throw std::invalid_argument("The Tiled tile layer \"" + std::string(layer) + "\" has a negative size.");
     }
+
     const auto columns = static_cast<std::size_t>(width);
     const auto rows = static_cast<std::size_t>(height);
     if (columns != 0 && rows > kMaxCells / columns) {
         throw std::invalid_argument("The Tiled tile layer \"" + std::string(layer) + "\" has more cells than a layer can hold.");
     }
+
     return columns * rows;
 }
 
@@ -148,9 +163,11 @@ Layer::Chunk MapParser::readChunkArea(const core::Json& chunk, std::string_view 
         if (!value.is_number_integer()) {
             throw std::invalid_argument("A chunk of the Tiled tile layer \"" + std::string(layer) + "\" has an \"" + kKeys[index] + "\" that is not an integer.");
         }
+
         if (value.is_number_unsigned() && !std::in_range<std::int64_t>(value.get<std::uint64_t>())) {
             throw std::invalid_argument(farther);
         }
+
         area[index] = value.get<std::int64_t>();
     }
 
@@ -158,9 +175,11 @@ Layer::Chunk MapParser::readChunkArea(const core::Json& chunk, std::string_view 
     if (width < 0 || height < 0) {
         throw std::invalid_argument("The Tiled tile layer \"" + std::string(layer) + "\" has a negative size.");
     }
+
     if (!Layer::isChunkInReach(x, y, width, height)) {
         throw std::invalid_argument(farther);
     }
+
     return {.x = static_cast<int>(x), .y = static_cast<int>(y), .width = static_cast<int>(width), .height = static_cast<int>(height), .gids = {}};
 }
 
@@ -170,6 +189,7 @@ std::vector<std::uint32_t> MapParser::readTileData(const core::Json& layer, cons
         if (gids.size() != cells) {
             throw std::invalid_argument("Tile layer data does not match the layer size.");
         }
+
         return gids;
     }
 
@@ -177,6 +197,7 @@ std::vector<std::uint32_t> MapParser::readTileData(const core::Json& layer, cons
     if (!decoded) {
         throw std::invalid_argument("Tile layer data is not valid base64.");
     }
+
     std::vector<std::uint8_t> bytes = std::move(*decoded);
     const std::string compression = layer.value("compression", std::string{});
     if (compression == "zlib" || compression == "gzip") {
@@ -190,11 +211,13 @@ std::vector<std::uint32_t> MapParser::readTileData(const core::Json& layer, cons
     if (bytes.size() != cells * 4) {
         throw std::invalid_argument("Tile layer data does not match the layer size.");
     }
+
     std::vector<std::uint32_t> gids(cells);
     for (std::size_t index = 0; index < cells; ++index) {
         const std::size_t offset = index * 4;
         gids[index] = static_cast<std::uint32_t>(bytes[offset]) | (static_cast<std::uint32_t>(bytes[offset + 1]) << 8U) | (static_cast<std::uint32_t>(bytes[offset + 2]) << 16U) | (static_cast<std::uint32_t>(bytes[offset + 3]) << 24U);
     }
+
     return gids;
 }
 
@@ -202,11 +225,13 @@ std::optional<math::Color> MapParser::readOptionalColor(const core::Json& object
     if (!object.contains(key)) {
         return std::nullopt;
     }
+
     const std::string text = object.at(key).get<std::string>();
     const std::optional<math::Color> color = math::Color::parse(text);
     if (!color) {
         throw std::invalid_argument("The Tiled color \"" + text + "\" is not a \"#RRGGBB\" or \"#AARRGGBB\" color.");
     }
+
     return color;
 }
 
@@ -216,6 +241,7 @@ graphics::BlendMode::Type MapParser::readBlendMode(const std::string& mode, std:
     if (found == kBlendModes.end()) {
         throw std::invalid_argument("The Tiled layer \"" + std::string(layer) + "\" uses the blend mode \"" + mode + "\", which Tiled does not offer. Layers can use \"normal\", \"add\", \"multiply\", \"screen\", \"overlay\", \"darken\", \"lighten\", \"color-dodge\", \"color-burn\", \"hard-light\", \"soft-light\", \"difference\" or \"exclusion\".");
     }
+
     return found->second;
 }
 
@@ -224,6 +250,7 @@ std::string_view MapParser::blendModeName(graphics::BlendMode::Type value) {
     if (found == kBlendModes.end()) {
         throw std::invalid_argument("A Tiled layer blends with \"normal\", \"add\", \"multiply\", \"screen\", \"overlay\", \"darken\", \"lighten\", \"color-dodge\", \"color-burn\", \"hard-light\", \"soft-light\", \"difference\" or \"exclusion\", not \"" + std::string(graphics::BlendMode::name(value)) + "\".");
     }
+
     return found->first;
 }
 
@@ -232,11 +259,13 @@ core::Json MapParser::resolveValue(std::string_view type, core::Json value, std:
     if (type == "file" && value.is_string()) {
         return resolve(directory, value.get<std::string>());
     }
+
     if (type == "list" && value.is_array()) {
         for (core::Json& item : value) {
             item["value"] = resolveValue(item.value("type", std::string("string")), item.value("value", core::Json()), directory);
         }
     }
+
     return value;
 }
 
@@ -247,6 +276,7 @@ Properties MapParser::readProperties(const core::Json& owner, std::string_view d
         property.value = resolveValue(property.type, entry.value("value", core::Json()), directory);
         items.push_back(std::move(property));
     }
+
     return Properties(std::move(items));
 }
 
@@ -255,6 +285,7 @@ Map::Orientation MapParser::readOrientation(const std::string& name) {
     if (!orientation) {
         throw std::invalid_argument("The orientation of a Tiled map must be \"orthogonal\", \"isometric\", \"staggered\", \"hexagonal\" or \"oblique\", not \"" + name + "\".");
     }
+
     return *orientation;
 }
 
@@ -263,6 +294,7 @@ Map::RenderOrder MapParser::readRenderOrder(const std::string& name) {
     if (!order) {
         throw std::invalid_argument("The render order of a Tiled map must be \"right-down\", \"right-up\", \"left-down\" or \"left-up\", not \"" + name + "\".");
     }
+
     return *order;
 }
 
@@ -271,6 +303,7 @@ std::vector<math::Vec2> MapParser::readPoints(const core::Json& points) {
     for (const core::Json& point : points) {
         result.push_back({core::JsonNumber::toFloat(point.at("x")), core::JsonNumber::toFloat(point.at("y"))});
     }
+
     return result;
 }
 
@@ -289,7 +322,9 @@ Object MapParser::readObject(const core::Json& source, std::string_view director
         for (const auto& [key, value] : source.items()) {
             object[key] = value;
         }
+
         properties = readProperties(base, templateDirectory).merged(properties);
+
         if (!source.contains("gid") && base.contains("gid")) {
             object["gid"] = readTemplateGid(document, base.at("gid").get<std::uint32_t>(), templateDirectory);
         }
@@ -341,6 +376,7 @@ Object MapParser::readObject(const core::Json& source, std::string_view director
         result.shape = Object::Shape::Polyline;
         result.points = readPoints(object.at("polyline"));
     }
+
     return result;
 }
 
@@ -354,6 +390,7 @@ std::uint32_t MapParser::readTemplateGid(const core::Json& document, std::uint32
             return (gid & Map::kFlagMask) | (candidate.firstGid + local);
         }
     }
+
     throw std::invalid_argument("A tile template uses the tileset \"" + source + "\", which the map does not list.");
 }
 
@@ -373,6 +410,7 @@ std::shared_ptr<Tileset> MapParser::readTileset(const core::Json& document, std:
     if (document.contains("tileoffset")) {
         tileset->tileOffset = {core::JsonNumber::toFloat(document.at("tileoffset"), "x", 0.0F), core::JsonNumber::toFloat(document.at("tileoffset"), "y", 0.0F)};
     }
+
     tileset->objectAlignment = document.value("objectalignment", std::string("unspecified"));
     tileset->renderGridSize = document.value("tilerendersize", std::string("tile")) == "grid";
     tileset->preserveAspect = document.value("fillmode", std::string("stretch")) == "preserve-aspect-fit";
@@ -382,10 +420,12 @@ std::shared_ptr<Tileset> MapParser::readTileset(const core::Json& document, std:
     } else {
         tileset->grid.size = tileset->tileSize;
     }
+
     if (document.contains("transformations")) {
         const core::Json& turns = document.at("transformations");
         tileset->transformations = {.flipHorizontal = turns.value("hflip", false), .flipVertical = turns.value("vflip", false), .rotate = turns.value("rotate", false), .preferUntransformed = turns.value("preferuntransformed", false)};
     }
+
     tileset->properties = readProperties(document, directory);
 
     for (const core::Json& entry : document.value("tiles", core::Json::array())) {
@@ -393,16 +433,19 @@ std::shared_ptr<Tileset> MapParser::readTileset(const core::Json& document, std:
         for (const core::Json& frame : entry.value("animation", core::Json::array())) {
             tile.animation.push_back({.tileId = frame.at("tileid").get<std::uint32_t>(), .duration = core::JsonNumber::toFloat(frame.at("duration")) / 1000.0F});
         }
+
         if (entry.contains("objectgroup")) {
             for (const core::Json& object : entry.at("objectgroup").value("objects", core::Json::array())) {
                 tile.collision.push_back(readObject(object, directory));
             }
         }
+
         if (entry.contains("image")) {
             tile.image = resolve(directory, entry.at("image").get<std::string>());
             const math::Vec2 imageSize{core::JsonNumber::toFloat(entry, "imagewidth", 0.0F), core::JsonNumber::toFloat(entry, "imageheight", 0.0F)};
             tile.source = {core::JsonNumber::toFloat(entry, "x", 0.0F), core::JsonNumber::toFloat(entry, "y", 0.0F), core::JsonNumber::toFloat(entry, "width", imageSize.x), core::JsonNumber::toFloat(entry, "height", imageSize.y)};
         }
+
         tileset->tiles.emplace(tile.id, std::move(tile));
     }
 
@@ -411,14 +454,17 @@ std::shared_ptr<Tileset> MapParser::readTileset(const core::Json& document, std:
         for (const core::Json& color : entry.value("colors", core::Json::array())) {
             set.colors.push_back({.name = color.value("name", std::string{}), .type = color.value("class", std::string{}), .color = readOptionalColor(color, "color").value_or(math::Color::white()), .tile = color.value("tile", -1), .probability = core::JsonNumber::toFloat(color, "probability", 1.0F), .properties = readProperties(color, directory)});
         }
+
         for (const core::Json& tile : entry.value("wangtiles", core::Json::array())) {
             WangSet::Tile wang{.tileId = tile.at("tileid").get<std::uint32_t>()};
             const std::vector<int> ids = tile.at("wangid").get<std::vector<int>>();
             std::ranges::transform(ids | std::views::take(wang.wangId.size()), wang.wangId.begin(), [](int id) { return static_cast<std::uint8_t>(id); });
             set.tiles.push_back(wang);
         }
+
         tileset->wangSets.push_back(std::move(set));
     }
+
     return tileset;
 }
 
@@ -480,6 +526,7 @@ Layer MapParser::readLayer(const core::Json& entry, std::string_view directory) 
     } else {
         throw std::invalid_argument("The type of a Tiled layer must be \"tilelayer\", \"objectgroup\", \"imagelayer\" or \"group\", not \"" + kind + "\".");
     }
+
     return layer;
 }
 
