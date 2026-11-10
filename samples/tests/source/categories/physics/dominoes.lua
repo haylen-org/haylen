@@ -27,11 +27,10 @@ Dominoes.floor = 300
 -- The valley runs from its first to its last x and dips this deep in its middle.
 Dominoes.valleyFrom, Dominoes.valleyTo, Dominoes.valleyDepth = -440, 160, 34
 Dominoes.stairs = {x = 200, run = 40, rise = 16, count = 6}
-Dominoes.edge = 790
--- The stone blocks of the landing are this wide in this many courses, and the landing and the ground under it run to this x, past the edge of the view.
+-- The stone blocks of the landing are this wide in this many courses. The ground runs from the left edge to the right edge, and the landing to the right edge, past the sides of the view on screens as wide as a phone held sideways.
 Dominoes.stone = 92
 Dominoes.courses = 2
-Dominoes.landingEnd = 1000
+Dominoes.leftEdge, Dominoes.rightEdge = -1600, 1600
 Dominoes.push = 120
 Dominoes.firstPush = 1
 Dominoes.ivory = Look.tint('yellow', '#FFFBF4E2', '#FFD9CCB0', '#FFFFFFFF')
@@ -76,11 +75,11 @@ function Dominoes:build()
     local stairsEnd = stairs.x + stairs.run * stairs.count
 
     -- The grass runs along the valley to the foot of the steps, and the steps and the landing above them are stone blocks on it.
-    local lawn = {{-Dominoes.edge, floor}}
+    local lawn = {{Dominoes.leftEdge, floor}}
     for x = Dominoes.valleyFrom, Dominoes.valleyTo, 30 do
         lawn[#lawn + 1] = {x, (Dominoes.valley(x))}
     end
-    lawn[#lawn + 1] = {Dominoes.landingEnd, floor}
+    lawn[#lawn + 1] = {Dominoes.rightEdge, floor}
     self.lawn = Scenery.newTerrain(lawn)
     local profile = {}
     for index = 1, #lawn - 1 do
@@ -91,7 +90,7 @@ function Dominoes:build()
         profile[#profile + 1] = {x, floor - (step - 1) * stairs.rise}
         profile[#profile + 1] = {x, floor - step * stairs.rise}
     end
-    profile[#profile + 1] = {Dominoes.landingEnd, top}
+    profile[#profile + 1] = {Dominoes.rightEdge, top}
     self.ground = self.world:createBody({type = 'static'})
     self.ground:addChain(profile, false, {friction = 0.8})
 
@@ -199,8 +198,8 @@ function Dominoes:drawLanding()
     for course = 1, Dominoes.courses do
         local top = floor - course * height
         local x = left - (course % 2) * Dominoes.stone / 2
-        while x < Dominoes.landingEnd do
-            local from, to = math.max(x, left), math.min(x + Dominoes.stone, Dominoes.landingEnd)
+        while x < Dominoes.rightEdge do
+            local from, to = math.max(x, left), math.min(x + Dominoes.stone, Dominoes.rightEdge)
             Look.block((from + to) / 2, top + height / 2, to - from, height, 'stone', 0)
             x = x + Dominoes.stone
         end
