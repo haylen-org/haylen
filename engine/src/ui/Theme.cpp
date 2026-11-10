@@ -275,14 +275,14 @@ Theme Theme::fromJson(const core::Json& document, const Theme& base, const Textu
         if (!filter) {
             throw std::invalid_argument("The image filter of the theme must be \"nearest\" or \"linear\".");
         }
-        theme.imageFilter = *filter;
+        theme.setImageFilter(*filter);
     }
     if (document.contains("highContrast")) {
         const core::Json& value = document.at("highContrast");
         if (value.is_boolean() && !value.get<bool>()) {
-            theme.highContrast.clear();
+            theme.setHighContrast({});
         } else if (value.is_string() && !value.get<std::string>().empty()) {
-            theme.highContrast = value.get<std::string>();
+            theme.setHighContrast(value.get<std::string>());
         } else {
             throw std::invalid_argument("The high contrast theme of a theme must be the name of a theme or \"false\".");
         }

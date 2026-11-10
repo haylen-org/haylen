@@ -66,9 +66,6 @@ class Gui final {
 
     // Lets the nodes that prepare themselves do it before the GUIs draw, such as collections that bind their cells and run their binders. Meanwhile the GUI refuses to replace nodes or to unmount.
     void prepare(Context& context);
-    [[nodiscard]] bool isPreparing() const noexcept {
-        return preparing;
-    }
 
     // Throws while the GUI prepares, when it can neither replace nodes nor unmount.
     void checkNotPreparing() const;

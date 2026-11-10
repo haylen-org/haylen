@@ -19,7 +19,6 @@
 #include "haylen/math/Insets.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
-#include "haylen/ui/CollectionLayout.hpp"
 #include "haylen/ui/CollectionSource.hpp"
 #include "haylen/ui/Component.hpp"
 #include "haylen/ui/Event.hpp"
@@ -28,6 +27,7 @@ namespace haylen::ui {
 
 class CellTypes;
 class CollectionCell;
+class CollectionLayout;
 class Scrollbar;
 class Scroller;
 class SizeCache;
@@ -107,9 +107,6 @@ class Collection final : public Component {
     [[nodiscard]] const std::shared_ptr<CollectionSource>& getSource() const noexcept {
         return source;
     }
-
-    // Places the items with a layout of the app instead of the one the `layout` property chooses.
-    void setLayout(std::unique_ptr<CollectionLayout> value);
 
     // Registers the binder of a type, or removes it with an empty binder. Throws for a type the collection does not declare.
     void setBinder(std::string_view type, Binder binder);
@@ -331,7 +328,6 @@ class Collection final : public Component {
     std::shared_ptr<CollectionSource> source;
     core::ScopedConnection connection;
     std::unique_ptr<CollectionLayout> layout;
-    bool customLayout = false;
     std::optional<Arrangement> builtLayout;
     std::unique_ptr<SizeCache> sizes;
     bool estimatesDirty = true;

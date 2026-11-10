@@ -544,7 +544,7 @@ void Collection::ensureArranged() {
 
 // Grid cells that do not span the whole line take their length from the aspect ratio when it is set, so they need no measuring.
 void Collection::arrange() {
-    if (!customLayout && builtLayout != arrangement) {
+    if (builtLayout != arrangement) {
         layout = arrangement == Arrangement::Grid ? std::unique_ptr<CollectionLayout>(std::make_unique<GridLayout>()) : std::make_unique<LinearLayout>();
         builtLayout = arrangement;
     }
@@ -1645,14 +1645,6 @@ void Collection::command(Context& context, std::string_view name, const core::Js
     if (getCount() > 0) {
         focusItem(std::min(focusedIndex.value_or(visibleRange ? visibleRange->first : 0), getCount() - 1));
     }
-}
-
-// A layout of the app stays until another one replaces it, and none goes back to the layout the `layout` property chooses.
-void Collection::setLayout(std::unique_ptr<CollectionLayout> value) {
-    builtLayout.reset();
-    customLayout = static_cast<bool>(value);
-    layout = value ? std::move(value) : std::make_unique<LinearLayout>();
-    layoutDirty = true;
 }
 
 void Collection::setBinder(std::string_view type, Binder binder) {

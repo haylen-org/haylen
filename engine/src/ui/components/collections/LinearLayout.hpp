@@ -2,7 +2,7 @@
 
 #include <cstddef>
 
-#include "haylen/ui/CollectionLayout.hpp"
+#include "ui/components/collections/CollectionLayout.hpp"
 
 namespace haylen::ui {
 
