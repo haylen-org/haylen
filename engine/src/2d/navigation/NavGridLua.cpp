@@ -82,6 +82,7 @@ GridSearch::Options NavGridLua::readPathOptions(lua_State* L, int index) {
     if (lua_isnoneornil(L, index)) {
         return options;
     }
+
     luaL_checktype(L, index, LUA_TTABLE);
     lua::Table::checkFields(L, index, {kPathFields});
     lua::Table::readField(L, index, "diagonal", options.diagonal);
@@ -99,6 +100,7 @@ bool NavGridLua::readDiagonal(lua_State* L, int index) {
         lua::Table::checkFields(L, index, {kMapFields});
         lua::Table::readField(L, index, "diagonal", diagonal);
     }
+
     return diagonal;
 }
 
@@ -113,9 +115,11 @@ std::vector<DijkstraMap::Source> NavGridLua::readSources(lua_State* L, int index
         if (lua_getfield(L, -1, "value") != LUA_TNIL) {
             source.value = lua::Stack::read<float>(L, -1);
         }
+
         lua_pop(L, 2);
         sources.push_back(source);
     }
+
     return sources;
 }
 
@@ -124,6 +128,7 @@ void NavGridLua::pushPath(lua_State* L, std::span<const Grid::Cell> path) {
         lua_pushnil(L);
         return;
     }
+
     lua_createtable(L, static_cast<int>(path.size()), 0);
     for (std::size_t index = 0; index < path.size(); ++index) {
         lua::Stack::push(L, path[index]);
@@ -146,9 +151,11 @@ Grid& NavGridLua::ownerGrid(lua_State* L) {
 
 std::shared_ptr<const Grid> NavGridLua::snapshotOf(lua_State* L) {
     ScriptedGrid& self = lua::Userdata::check<ScriptedGrid>(L, 1);
+
     if (!self.snapshot) {
         self.snapshot = std::make_shared<const Grid>(self.grid);
     }
+
     return self.snapshot;
 }
 
@@ -157,6 +164,7 @@ template <typename T> void NavGridLua::settleOwned(const lua::Promise& promise, 
         promise.reject(result.error);
         return;
     }
+
     // clang-format off
     promise.resolveWith([owner, value = std::make_shared<const T>(std::move(*result.value))](lua_State* state) {
         owner->push(state);
@@ -176,6 +184,7 @@ int NavGridLua::newGrid(lua_State* L) {
         lua::Table::readField(L, 3, "staggerX", layout.staggerX);
         lua::Table::readField(L, 3, "staggerEven", layout.staggerEven);
     }
+
     lua::Userdata::emplace<ScriptedGrid>(L, ScriptedGrid{.grid = Grid(lua::Stack::read<int>(L, 1), lua::Stack::read<int>(L, 2), layout), .search = {}});
     return 1;
 }
@@ -255,9 +264,11 @@ int NavGridLua::findPath(lua_State* L) {
     ScriptedGrid& self = lua::Userdata::check<ScriptedGrid>(L, 1);
     const std::span<const Grid::Cell> path = self.search.findPath(self.grid, readCell(L, 2), readCell(L, 4), readPathOptions(L, 6));
     pushPath(L, path);
+
     if (path.empty()) {
         return 1;
     }
+
     lua::Stack::push(L, self.search.getCost());
     return 2;
 }
@@ -282,6 +293,7 @@ int NavGridLua::findPathAsync(lua_State* L) {
             promise.reject(result.error);
             return;
         }
+
         promise.resolveWith([path = std::move(*result.value)](lua_State* state) { pushPath(state, path); });
     });
     // clang-format on
@@ -308,6 +320,7 @@ int NavGridLua::raycast(lua_State* L) {
     if (grid.getLayout().topology != Grid::Topology::Square) {
         return luaL_error(L, "Grid ray casts need a square grid.");
     }
+
     const math::Ray ray = math::Ray::between(lua::Stack::read<math::Vec2>(L, 2), lua::Stack::read<math::Vec2>(L, 3));
     const math::Vec2 cellSize = lua_type(L, 4) == LUA_TNUMBER ? math::Vec2{lua::Stack::read<float>(L, 4), lua::Stack::read<float>(L, 4)} : lua::Stack::read<math::Vec2>(L, 4);
     const std::optional<spatial2d::GridRay::Hit> hit = spatial2d::GridRay::cast(ray, cellSize, [&grid](spatial2d::Cell cell) { return !grid.isWalkable({cell.x, cell.y}); });
@@ -315,6 +328,7 @@ int NavGridLua::raycast(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     math::RaycastLua::pushHit(L, {.point = hit->point, .normal = hit->normal, .distance = hit->distance}, ray.length);
     lua_pushinteger(L, hit->cell.x);
     lua_setfield(L, -2, "column");
@@ -394,6 +408,7 @@ HierarchicalPathfinder::Options NavGridLua::readHierarchyOptions(lua_State* L, i
     if (lua_isnoneornil(L, index)) {
         return options;
     }
+
     luaL_checktype(L, index, LUA_TTABLE);
     lua::Table::checkFields(L, index, {kHierarchyFields});
     lua::Table::readField(L, index, "clusterSize", options.clusterSize);
@@ -441,6 +456,7 @@ int NavGridLua::mapNext(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, next->x);
     lua::Stack::push(L, next->y);
     return 2;
@@ -471,6 +487,7 @@ int NavGridLua::mapValues(lua_State* L) {
         lua_pushnumber(L, values[index]);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
@@ -480,6 +497,7 @@ int NavGridLua::fieldNext(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, next->x);
     lua::Stack::push(L, next->y);
     return 2;
@@ -511,9 +529,11 @@ int NavGridLua::hierarchyFindPath(lua_State* L) {
     const Grid::Cell goal = readCell(L, 4);
     const std::span<const Grid::Cell> path = hierarchy.findPath(ownerGrid(L), start, goal);
     pushPath(L, path);
+
     if (path.empty()) {
         return 1;
     }
+
     lua::Stack::push(L, hierarchy.getCost());
     return 2;
 }

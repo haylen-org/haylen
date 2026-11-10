@@ -30,6 +30,7 @@ template <> struct Converter<navigation2d::Grid::Cell> {
             lua_rawgeti(L, table, 1);
             lua_rawgeti(L, table, 2);
         }
+
         const navigation2d::Grid::Cell cell{Stack::read<int>(L, -2), Stack::read<int>(L, -1)};
         lua_pop(L, 2);
         return cell;

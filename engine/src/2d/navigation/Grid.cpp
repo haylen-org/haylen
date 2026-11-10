@@ -36,6 +36,7 @@ Grid::Grid(int columns, int rows, const Layout& value) : width(columns), height(
     if (columns <= 0 || rows <= 0 || static_cast<std::int64_t>(columns) * rows > std::numeric_limits<std::int32_t>::max()) {
         throw std::invalid_argument("A navigation grid needs a positive size that fits in 32-bit cell indices.");
     }
+
     const auto count = static_cast<std::size_t>(columns) * static_cast<std::size_t>(rows);
     walkable.assign(count, 1);
     costs.assign(count, 1.0F);
@@ -54,6 +55,7 @@ void Grid::setWalkable(Cell cell, bool value) {
 
 void Grid::setCost(Cell cell, float value) {
     requireInside(cell);
+
     if (!(value >= 1.0F) || !std::isfinite(value)) {
         throw std::invalid_argument("A navigation cost must be finite and at least 1.");
     }
@@ -64,6 +66,7 @@ void Grid::setCost(Cell cell, float value) {
     } else if (value == 1.0F && cost != 1.0F) {
         --costlyCells;
     }
+
     cost = value;
 }
 
@@ -77,6 +80,7 @@ Grid::Cell Grid::toAxial(Cell cell) const noexcept {
     if (layout.staggerX) {
         return {cell.x, cell.y - (cell.x + parity * (cell.x & 1)) / 2};
     }
+
     return {cell.x - (cell.y + parity * (cell.y & 1)) / 2, cell.y};
 }
 
@@ -85,6 +89,7 @@ Grid::Cell Grid::fromAxial(Cell axial) const noexcept {
     if (layout.staggerX) {
         return {axial.x, axial.y + (axial.x + parity * (axial.x & 1)) / 2};
     }
+
     return {axial.x + (axial.y + parity * (axial.y & 1)) / 2, axial.y};
 }
 
@@ -107,10 +112,12 @@ Grid::Cell Grid::toLattice(Cell cell) const noexcept {
     if (layout.topology != Topology::Staggered) {
         return cell;
     }
+
     if (layout.staggerX) {
         const Cell point = staggeredToLattice(cell.y, cell.x);
         return {point.y, point.x};
     }
+
     return staggeredToLattice(cell.x, cell.y);
 }
 
@@ -118,10 +125,12 @@ Grid::Cell Grid::fromLattice(Cell point) const noexcept {
     if (layout.topology != Topology::Staggered) {
         return point;
     }
+
     if (layout.staggerX) {
         const Cell cell = staggeredFromLattice({point.y, point.x});
         return {cell.y, cell.x};
     }
+
     return staggeredFromLattice(point);
 }
 
@@ -155,6 +164,7 @@ bool Grid::hasLineOfSight(Cell from, Cell to) const noexcept {
     if (!isWalkable(from) || !isWalkable(to)) {
         return false;
     }
+
     return layout.topology == Topology::Hexagonal ? hasHexLineOfSight(from, to) : hasLatticeLineOfSight(toLattice(from), toLattice(to));
 }
 
@@ -173,6 +183,7 @@ bool Grid::hasLatticeLineOfSight(Cell from, Cell to) const noexcept {
             if (!isWalkable(fromLattice({point.x + stepX, point.y})) || !isWalkable(fromLattice({point.x, point.y + stepY}))) {
                 return false;
             }
+
             point = {point.x + stepX, point.y + stepY};
             ++x;
             ++y;
@@ -188,6 +199,7 @@ bool Grid::hasLatticeLineOfSight(Cell from, Cell to) const noexcept {
             return false;
         }
     }
+
     return true;
 }
 
@@ -213,10 +225,12 @@ bool Grid::hasHexLineOfSight(Cell from, Cell to) const noexcept {
         } else if (errorR > errorS) {
             roundedR = -roundedQ - roundedS;
         }
+
         if (!isWalkable(fromAxial({static_cast<int>(roundedQ), static_cast<int>(roundedR)}))) {
             return false;
         }
     }
+
     return true;
 }
 
@@ -234,6 +248,7 @@ void Grid::smoothPath(std::vector<Cell>& path) const {
             path[kept++] = path[anchor];
         }
     }
+
     path[kept++] = path.back();
     path.resize(kept);
 }

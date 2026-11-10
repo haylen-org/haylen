@@ -9,6 +9,7 @@ void FlowField::compute(const Grid& grid, std::span<const Grid::Cell> goals, boo
     for (const Grid::Cell goal : goals) {
         sources.push_back({.cell = goal});
     }
+
     distances.compute(grid, sources, diagonal);
 
     next.assign(grid.getCellCount(), -1);
@@ -23,6 +24,7 @@ std::size_t FlowField::indexOf(Grid::Cell cell) const {
     if (cell.x < 0 || cell.y < 0 || cell.x >= getWidth() || cell.y >= getHeight()) {
         throw std::out_of_range("The cell is outside the flow field.");
     }
+
     return static_cast<std::size_t>(cell.y) * static_cast<std::size_t>(getWidth()) + static_cast<std::size_t>(cell.x);
 }
 
@@ -31,6 +33,7 @@ std::optional<Grid::Cell> FlowField::getNext(Grid::Cell cell) const {
     if (step < 0) {
         return std::nullopt;
     }
+
     return Grid::Cell{step % getWidth(), step / getWidth()};
 }
 
@@ -39,6 +42,7 @@ math::Vec2 FlowField::getDirection(Grid::Cell cell) const {
     if (!step) {
         return {};
     }
+
     return math::Vec2{static_cast<float>(step->x - cell.x), static_cast<float>(step->y - cell.y)}.getNormalized();
 }
 

@@ -35,19 +35,23 @@ void DijkstraMap::compute(const Grid& grid, std::span<const Source> sources, boo
             value = std::min(value, source.value);
         }
     }
+
     walk(grid);
 }
 
 void DijkstraMap::flee(const Grid& grid, float coefficient) {
     requireGrid(grid);
+
     if (!(coefficient < 0.0F) || !std::isfinite(coefficient)) {
         throw std::invalid_argument("A flee map needs a finite negative coefficient.");
     }
+
     for (float& value : values) {
         if (std::isfinite(value)) {
             value *= coefficient;
         }
     }
+
     walk(grid);
 }
 
@@ -58,6 +62,7 @@ void DijkstraMap::walk(const Grid& grid) {
             open.push_back({.value = values[index], .cell = static_cast<std::int32_t>(index)});
         }
     }
+
     std::ranges::make_heap(open, &DijkstraMap::isWorse);
 
     // Values only fall, so a popped node whose value changed since it was pushed is stale and skipped.
@@ -90,11 +95,13 @@ float DijkstraMap::getValue(Grid::Cell cell) const {
     if (cell.x < 0 || cell.y < 0 || cell.x >= width || cell.y >= height) {
         throw std::out_of_range("The cell is outside the Dijkstra map.");
     }
+
     return values[static_cast<std::size_t>(cell.y) * static_cast<std::size_t>(width) + static_cast<std::size_t>(cell.x)];
 }
 
 std::optional<Grid::Cell> DijkstraMap::getNext(const Grid& grid, Grid::Cell cell) const {
     requireGrid(grid);
+
     if (!grid.isWalkable(cell) || !std::isfinite(values[grid.indexOf(cell)])) {
         return std::nullopt;
     }

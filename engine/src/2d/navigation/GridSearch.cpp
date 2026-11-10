@@ -13,9 +13,11 @@ bool GridSearch::isWorse(const OpenNode& lhs, const OpenNode& rhs) noexcept {
     if (lhs.estimate != rhs.estimate) {
         return lhs.estimate > rhs.estimate;
     }
+
     if (lhs.heuristic != rhs.heuristic) {
         return lhs.heuristic > rhs.heuristic;
     }
+
     return lhs.cell > rhs.cell;
 }
 
@@ -23,13 +25,16 @@ void GridSearch::requireValid(const Grid& grid, const Options& options) {
     if (!(options.weight >= 1.0F) || !std::isfinite(options.weight)) {
         throw std::invalid_argument("A search weight must be finite and at least 1.");
     }
+
     const bool hexagonal = grid.getLayout().topology == Grid::Topology::Hexagonal;
     if (hexagonal && options.heuristic) {
         throw std::invalid_argument("Hexagonal grids count hex steps and take no heuristic.");
     }
+
     if (options.jumpPoint && hexagonal) {
         throw std::invalid_argument("Jump point search needs a square or staggered grid.");
     }
+
     if (options.jumpPoint && !grid.hasUniformCost()) {
         throw std::invalid_argument("Jump point search needs a grid where every cell costs 1.");
     }
@@ -39,11 +44,13 @@ void GridSearch::begin(std::size_t cells) {
     if (nodes.size() < cells) {
         nodes.resize(cells);
     }
+
     ++visit;
     if (visit == 0) {
         std::ranges::fill(nodes, Node{});
         visit = 1;
     }
+
     open.clear();
 }
 
@@ -52,6 +59,7 @@ GridSearch::Node& GridSearch::at(std::int32_t cell) {
     if (node.visit != visit) {
         node = {.visit = visit};
     }
+
     return node;
 }
 
@@ -72,9 +80,11 @@ std::span<const Grid::Cell> GridSearch::findPath(const Grid& grid, Grid::Cell st
     path.clear();
     cost = std::numeric_limits<float>::infinity();
     expanded = 0;
+
     if (!grid.isWalkable(start) || !grid.isWalkable(goal)) {
         return {};
     }
+
     if (start == goal) {
         path.push_back(start);
         cost = 0.0F;
@@ -93,11 +103,14 @@ std::span<const Grid::Cell> GridSearch::findPath(const Grid& grid, Grid::Cell st
     if (!at(goalIndex).closed) {
         return {};
     }
+
     cost = at(goalIndex).score;
     buildPath(grid, goalIndex, options.jumpPoint);
+
     if (options.smooth) {
         grid.smoothPath(path);
     }
+
     return path;
 }
 
@@ -114,8 +127,10 @@ void GridSearch::searchAStar(const Grid& grid, Grid::Cell start, Grid::Cell goal
         if (node.closed) {
             continue;
         }
+
         node.closed = true;
         ++expanded;
+
         if (current.cell == goalIndex) {
             return;
         }
@@ -129,6 +144,7 @@ void GridSearch::searchAStar(const Grid& grid, Grid::Cell start, Grid::Cell goal
             if (neighbor.closed || tentative >= neighbor.score) {
                 return;
             }
+
             neighbor.score = tentative;
             neighbor.parent = current.cell;
             const float remaining = grid.estimate(next, goal, heuristic);
@@ -156,26 +172,32 @@ std::size_t GridSearch::prunedNeighbors(const Grid& grid, Grid::Cell point, std:
     if (!diagonal) {
         const Grid::Cell sideA = dx != 0 ? Grid::Cell{x, y - 1} : Grid::Cell{x - 1, y};
         const Grid::Cell sideB = dx != 0 ? Grid::Cell{x, y + 1} : Grid::Cell{x + 1, y};
+
         for (const Grid::Cell next : {sideA, sideB, Grid::Cell{x + dx, y + dy}}) {
             if (passable(next.x, next.y)) {
                 add(next.x, next.y);
             }
         }
+
         return count;
     }
 
     if (dx != 0 && dy != 0) {
         const bool alongY = passable(x, y + dy);
         const bool alongX = passable(x + dx, y);
+
         if (alongY) {
             add(x, y + dy);
         }
+
         if (alongX) {
             add(x + dx, y);
         }
+
         if (alongY && alongX) {
             add(x + dx, y + dy);
         }
+
         return count;
     }
 
@@ -188,19 +210,24 @@ std::size_t GridSearch::prunedNeighbors(const Grid& grid, Grid::Cell point, std:
     const bool sideBOpen = passable(sideB.x, sideB.y);
     if (aheadOpen) {
         add(ahead.x, ahead.y);
+
         if (sideAOpen) {
             add(sideA.x + dx, sideA.y + dy);
         }
+
         if (sideBOpen) {
             add(sideB.x + dx, sideB.y + dy);
         }
     }
+
     if (sideAOpen) {
         add(sideA.x, sideA.y);
     }
+
     if (sideBOpen) {
         add(sideB.x, sideB.y);
     }
+
     return count;
 }
 
@@ -214,6 +241,7 @@ std::optional<Grid::Cell> GridSearch::jump(const Grid& grid, Grid::Cell point, G
         if (!passable(x, y)) {
             return std::nullopt;
         }
+
         if (point == goal) {
             return point;
         }
@@ -223,6 +251,7 @@ std::optional<Grid::Cell> GridSearch::jump(const Grid& grid, Grid::Cell point, G
             if (jump(grid, {x + dx, y}, {dx, 0}, goal, diagonal) || jump(grid, {x, y + dy}, {0, dy}, goal, diagonal)) {
                 return point;
             }
+
             if (!passable(x + dx, y) || !passable(x, y + dy)) {
                 return std::nullopt;
             }
@@ -234,10 +263,12 @@ std::optional<Grid::Cell> GridSearch::jump(const Grid& grid, Grid::Cell point, G
             if ((passable(x - 1, y) && !passable(x - 1, y - dy)) || (passable(x + 1, y) && !passable(x + 1, y - dy))) {
                 return point;
             }
+
             if (!diagonal && (jump(grid, {x + 1, y}, {1, 0}, goal, diagonal) || jump(grid, {x - 1, y}, {-1, 0}, goal, diagonal))) {
                 return point;
             }
         }
+
         point = {x + dx, y + dy};
     }
 }
@@ -257,8 +288,10 @@ void GridSearch::searchJumpPoints(const Grid& grid, Grid::Cell start, Grid::Cell
         if (node.closed) {
             continue;
         }
+
         node.closed = true;
         ++expanded;
+
         if (current.cell == goalIndex) {
             return;
         }
@@ -282,6 +315,7 @@ void GridSearch::searchJumpPoints(const Grid& grid, Grid::Cell start, Grid::Cell
             if (neighbor.closed || tentative >= neighbor.score) {
                 continue;
             }
+
             neighbor.score = tentative;
             neighbor.parent = current.cell;
             const float remaining = grid.estimate(target, goal, heuristic);
@@ -296,7 +330,9 @@ void GridSearch::buildPath(const Grid& grid, std::int32_t goal, bool jumpPoints)
     for (std::int32_t cell = goal; cell >= 0; cell = at(cell).parent) {
         chain.push_back(grid.cellAt(static_cast<std::size_t>(cell)));
     }
+
     std::ranges::reverse(chain);
+
     if (!jumpPoints) {
         return;
     }
@@ -307,10 +343,12 @@ void GridSearch::buildPath(const Grid& grid, std::int32_t goal, bool jumpPoints)
         Grid::Cell point = grid.toLattice(jumps[index]);
         const Grid::Cell end = grid.toLattice(jumps[index + 1]);
         const Grid::Cell step{(end.x > point.x) - (end.x < point.x), (end.y > point.y) - (end.y < point.y)};
+
         for (; point != end; point = {point.x + step.x, point.y + step.y}) {
             path.push_back(grid.fromLattice(point));
         }
     }
+
     path.push_back(jumps.back());
 }
 

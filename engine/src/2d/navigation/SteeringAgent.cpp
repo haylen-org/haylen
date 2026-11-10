@@ -23,6 +23,7 @@ math::Vec2 SteeringAgent::arrive(math::Vec2 target, float slowingRadius) const n
     if (remaining <= 0.0F) {
         return -velocity;
     }
+
     const float speed = slowingRadius > 0.0F ? maxSpeed * std::min(remaining / slowingRadius, 1.0F) : maxSpeed;
     return offset / remaining * speed - velocity;
 }
@@ -36,6 +37,7 @@ math::Vec2 SteeringAgent::separation(std::span<const math::Vec2> neighbors, floa
             force += away / gap * (1.0F - gap / radius) * maxSpeed;
         }
     }
+
     return force;
 }
 
@@ -44,9 +46,11 @@ math::Vec2 SteeringAgent::alignment(std::span<const math::Vec2> neighborVelociti
     for (const math::Vec2 neighbor : neighborVelocities) {
         heading += neighbor;
     }
+
     if (heading.isZero()) {
         return {};
     }
+
     return heading.getNormalized() * maxSpeed - velocity;
 }
 
@@ -54,10 +58,12 @@ math::Vec2 SteeringAgent::cohesion(std::span<const math::Vec2> neighborPositions
     if (neighborPositions.empty()) {
         return {};
     }
+
     math::Vec2 center;
     for (const math::Vec2 neighbor : neighborPositions) {
         center += neighbor;
     }
+
     return seek(center / static_cast<float>(neighborPositions.size()));
 }
 
@@ -78,6 +84,7 @@ math::Vec2 SteeringAgent::avoid(std::span<const math::Circle> obstacles, float l
             threat = &obstacle;
         }
     }
+
     if (threat == nullptr) {
         return {};
     }
@@ -87,6 +94,7 @@ math::Vec2 SteeringAgent::avoid(std::span<const math::Circle> obstacles, float l
     if (side.isZero()) {
         side = heading.getPerpendicular();
     }
+
     return side.getNormalized() * (maxSpeed * (1.0F - closest / lookAhead));
 }
 

@@ -56,9 +56,11 @@ bool Crowd::removeAgent(AgentId id) {
     Agent& agent = agents[indexOf(id)];
     agent.active = false;
     --activeAgents;
+
     if (agent.generation == kLastGeneration) {
         return true;
     }
+
     ++agent.generation;
     freeAgents.push_back(indexOf(id));
     return true;
@@ -85,6 +87,7 @@ Crowd::Agent& Crowd::agentAt(AgentId id) {
     if (!hasAgent(id)) {
         throw std::out_of_range("Agent " + std::to_string(id) + " is not in the crowd.");
     }
+
     return agents[indexOf(id)];
 }
 
@@ -92,6 +95,7 @@ const Crowd::Agent& Crowd::agentAt(AgentId id) const {
     if (!hasAgent(id)) {
         throw std::out_of_range("Agent " + std::to_string(id) + " is not in the crowd.");
     }
+
     return agents[indexOf(id)];
 }
 
@@ -99,6 +103,7 @@ void Crowd::addObstacle(std::span<const math::Vec2> polygon) {
     if (polygon.size() < 2) {
         throw std::invalid_argument("A crowd obstacle needs at least two points.");
     }
+
     if (!std::ranges::all_of(polygon, [](math::Vec2 point) { return std::isfinite(point.x) && std::isfinite(point.y); })) {
         throw std::invalid_argument("A crowd obstacle needs finite points.");
     }
@@ -181,6 +186,7 @@ void Crowd::bucketAgents() {
             reach = std::max(reach, agent.options.neighborDistance);
         }
     }
+
     if (activeAgents == 0) {
         bucketsX = 0;
         bucketsY = 0;
@@ -194,6 +200,7 @@ void Crowd::bucketAgents() {
     while (std::floor((high.x - low.x) / bucketSize + 1.0F) * std::floor((high.y - low.y) / bucketSize + 1.0F) > limit) {
         bucketSize *= 2.0F;
     }
+
     bucketsX = static_cast<int>((high.x - low.x) / bucketSize) + 1;
     bucketsY = static_cast<int>((high.y - low.y) / bucketSize) + 1;
 
@@ -205,9 +212,11 @@ void Crowd::bucketAgents() {
             ++bucketStarts[bucketOf(agent.options.position) + 1];
         }
     }
+
     for (std::size_t bucket = 0; bucket < bucketCount; ++bucket) {
         bucketStarts[bucket + 1] += bucketStarts[bucket];
     }
+
     bucketFill.assign(bucketStarts.begin(), bucketStarts.end() - 1);
     bucketAgentIds.resize(activeAgents);
     for (std::uint32_t agentIndex = 0; agentIndex < agents.size(); ++agentIndex) {
@@ -241,13 +250,16 @@ void Crowd::findNeighbors(std::uint32_t agentIndex, Scratch& scratch) const {
                 if (other == agentIndex || distanceSquared >= range * range) {
                     continue;
                 }
+
                 const std::pair<float, std::uint32_t> candidate{distanceSquared, other};
                 if (scratch.neighbors.size() == self.maxNeighbors) {
                     if (!(candidate < scratch.neighbors.back())) {
                         continue;
                     }
+
                     scratch.neighbors.pop_back();
                 }
+
                 scratch.neighbors.insert(std::ranges::upper_bound(scratch.neighbors, candidate), candidate);
             }
         }
@@ -268,12 +280,14 @@ void Crowd::findWalls(std::uint32_t agentIndex, Scratch& scratch) const {
         if (side >= 0.0F || side * side / edge.getLengthSquared() >= range * range) {
             continue;
         }
+
         const float along = std::clamp(math::Vec2::dot(self.position - a, edge) / edge.getLengthSquared(), 0.0F, 1.0F);
         const float distanceSquared = math::Vec2::distanceSquared(self.position, a + edge * along);
         if (distanceSquared < range * range) {
             scratch.walls.emplace_back(distanceSquared, index);
         }
     }
+
     std::ranges::sort(scratch.walls);
 }
 
@@ -289,6 +303,7 @@ math::Vec2 Crowd::preferredVelocity(std::uint32_t agentIndex, const Scratch& scr
         const double speed = std::min(static_cast<double>(self.maxSpeed), distance / deltaSeconds);
         preferred = distance > kEpsilon ? math::Vec2{static_cast<float>(offsetX / distance * speed), static_cast<float>(offsetY / distance * speed)} : math::Vec2{};
     }
+
     const bool flocks = flocking.separation != 0.0F || flocking.alignment != 0.0F || flocking.cohesion != 0.0F;
     if (!flocks || scratch.neighbors.empty()) {
         return preferred.clampedLength(self.maxSpeed);
@@ -303,9 +318,11 @@ math::Vec2 Crowd::preferredVelocity(std::uint32_t agentIndex, const Scratch& scr
         if (distance > 0.0F) {
             away += (self.position - neighbor.position) / distance * (1.0F - distance / self.neighborDistance);
         }
+
         heading += neighbor.velocity;
         center += neighbor.position;
     }
+
     const auto count = static_cast<float>(scratch.neighbors.size());
     preferred += away * (self.maxSpeed * flocking.separation);
     preferred += (heading / count - self.velocity) * flocking.alignment;
@@ -337,18 +354,23 @@ void Crowd::addWallLines(const Agent& agent, Scratch& scratch) const {
         const math::Vec2 edge = second->point - first->point;
         const float along = math::Vec2::dot(-relative1, edge) / edge.getLengthSquared();
         const float distanceSquaredLine = (-relative1 - edge * along).getLengthSquared();
+
         if (along < 0.0F && distanceSquared1 <= radiusSquared) {
             if (first->convex) {
                 scratch.lines.push_back({.point = {}, .direction = math::Vec2{-relative1.y, relative1.x}.getNormalized()});
             }
+
             continue;
         }
+
         if (along > 1.0F && distanceSquared2 <= radiusSquared) {
             if (second->convex && math::Vec2::cross(relative2, second->direction) >= 0.0F) {
                 scratch.lines.push_back({.point = {}, .direction = math::Vec2{-relative2.y, relative2.x}.getNormalized()});
             }
+
             continue;
         }
+
         if (along >= 0.0F && along < 1.0F && distanceSquaredLine <= radiusSquared) {
             scratch.lines.push_back({.point = {}, .direction = -first->direction});
             continue;
@@ -361,6 +383,7 @@ void Crowd::addWallLines(const Agent& agent, Scratch& scratch) const {
             if (!first->convex) {
                 continue;
             }
+
             second = first;
             const float leg = std::sqrt(distanceSquared1 - radiusSquared);
             leftLeg = math::Vec2{relative1.x * leg - relative1.y * self.radius, relative1.x * self.radius + relative1.y * leg} / distanceSquared1;
@@ -369,6 +392,7 @@ void Crowd::addWallLines(const Agent& agent, Scratch& scratch) const {
             if (!second->convex) {
                 continue;
             }
+
             first = second;
             const float leg = std::sqrt(distanceSquared2 - radiusSquared);
             leftLeg = math::Vec2{relative2.x * leg - relative2.y * self.radius, relative2.x * self.radius + relative2.y * leg} / distanceSquared2;
@@ -380,6 +404,7 @@ void Crowd::addWallLines(const Agent& agent, Scratch& scratch) const {
             } else {
                 leftLeg = -first->direction;
             }
+
             if (second->convex) {
                 const float leg = std::sqrt(distanceSquared2 - radiusSquared);
                 rightLeg = math::Vec2{relative2.x * leg + relative2.y * self.radius, -relative2.x * self.radius + relative2.y * leg} / distanceSquared2;
@@ -392,10 +417,12 @@ void Crowd::addWallLines(const Agent& agent, Scratch& scratch) const {
         const Vertex& leftNeighbor = vertices[first->previous];
         bool leftForeign = false;
         bool rightForeign = false;
+
         if (first->convex && math::Vec2::cross(leftLeg, -leftNeighbor.direction) >= 0.0F) {
             leftLeg = -leftNeighbor.direction;
             leftForeign = true;
         }
+
         if (second->convex && math::Vec2::cross(rightLeg, second->direction) <= 0.0F) {
             rightLeg = second->direction;
             rightForeign = true;
@@ -414,6 +441,7 @@ void Crowd::addWallLines(const Agent& agent, Scratch& scratch) const {
             scratch.lines.push_back({.point = leftCutoff + unit * (self.radius * inverseHorizon), .direction = {unit.y, -unit.x}});
             continue;
         }
+
         if (t > 1.0F && tRight < 0.0F) {
             const math::Vec2 unit = (self.velocity - rightCutoff).getNormalized();
             scratch.lines.push_back({.point = rightCutoff + unit * (self.radius * inverseHorizon), .direction = {unit.y, -unit.x}});
@@ -467,6 +495,7 @@ void Crowd::addAgentLines(std::uint32_t agentIndex, Scratch& scratch, float delt
                 } else {
                     line.direction = -math::Vec2{relativePosition.x * leg + relativePosition.y * combinedRadius, -relativePosition.x * combinedRadius + relativePosition.y * leg} / distanceSquared;
                 }
+
                 change = line.direction * math::Vec2::dot(relativeVelocity, line.direction) - relativeVelocity;
             }
         } else {
@@ -478,6 +507,7 @@ void Crowd::addAgentLines(std::uint32_t agentIndex, Scratch& scratch, float delt
             line.direction = {unit.y, -unit.x};
             change = unit * (combinedRadius * inverseStep - wLength);
         }
+
         line.point = self.velocity + change * 0.5F;
         scratch.lines.push_back(line);
     }
@@ -502,14 +532,17 @@ bool Crowd::solveLine(std::span<const Line> lines, std::size_t lineIndex, float 
             if (numerator < 0.0F) {
                 return false;
             }
+
             continue;
         }
+
         const float limit = numerator / denominator;
         if (denominator >= 0.0F) {
             rightLimit = std::min(rightLimit, limit);
         } else {
             leftLimit = std::max(leftLimit, limit);
         }
+
         if (leftLimit > rightLimit) {
             return false;
         }
@@ -519,6 +552,7 @@ bool Crowd::solveLine(std::span<const Line> lines, std::size_t lineIndex, float 
         result = line.point + line.direction * (math::Vec2::dot(optimal, line.direction) > 0.0F ? rightLimit : leftLimit);
         return true;
     }
+
     const float along = std::clamp(math::Vec2::dot(line.direction, optimal - line.point), leftLimit, rightLimit);
     result = line.point + line.direction * along;
     return true;
@@ -540,6 +574,7 @@ std::size_t Crowd::solvePlanes(std::span<const Line> lines, float radius, math::
             }
         }
     }
+
     return lines.size();
 }
 
@@ -559,10 +594,12 @@ void Crowd::solveFallback(std::span<const Line> lines, std::size_t obstacleLines
                 if (math::Vec2::dot(lines[index].direction, lines[other].direction) > 0.0F) {
                     continue;
                 }
+
                 line.point = (lines[index].point + lines[other].point) * 0.5F;
             } else {
                 line.point = lines[index].point + lines[index].direction * (math::Vec2::cross(lines[other].direction, lines[index].point - lines[other].point) / determinant);
             }
+
             line.direction = (lines[other].direction - lines[index].direction).getNormalized();
             projected.push_back(line);
         }
@@ -571,6 +608,7 @@ void Crowd::solveFallback(std::span<const Line> lines, std::size_t obstacleLines
         if (solvePlanes(projected, radius, {-lines[index].direction.y, lines[index].direction.x}, true, result) < projected.size()) {
             result = previous;
         }
+
         distance = math::Vec2::cross(lines[index].direction, lines[index].point - result);
     }
 }
@@ -591,6 +629,7 @@ void Crowd::computeVelocity(std::uint32_t agentIndex, Scratch& scratch, float de
     if (failed < scratch.lines.size()) {
         solveFallback(scratch.lines, obstacleLines, failed, maxSpeed, scratch.projected, result);
     }
+
     agents[agentIndex].next = result;
 }
 
@@ -598,6 +637,7 @@ void Crowd::step(float deltaSeconds, core::JobSystem* jobs) {
     if (!(deltaSeconds > 0.0F) || !std::isfinite(deltaSeconds)) {
         throw std::invalid_argument("A crowd step needs a positive and finite time.");
     }
+
     bucketAgents();
 
     // Every agent picks its velocity from the state before the step, so the chunks may run in any order on any thread with the same result.
@@ -605,6 +645,7 @@ void Crowd::step(float deltaSeconds, core::JobSystem* jobs) {
     if (scratches.size() < chunks) {
         scratches.resize(chunks);
     }
+
     const std::size_t chunkSize = (agents.size() + chunks - 1) / chunks;
     // clang-format off
     const auto runChunks = [&](std::size_t begin, std::size_t end) {

@@ -12,11 +12,13 @@ void GraphSearch::begin(std::size_t slots) {
     if (nodes.size() < slots) {
         nodes.resize(slots);
     }
+
     ++visit;
     if (visit == 0) {
         std::ranges::fill(nodes, Node{});
         visit = 1;
     }
+
     open.clear();
 }
 
@@ -25,6 +27,7 @@ GraphSearch::Node& GraphSearch::at(std::uint32_t slot) {
     if (node.visit != visit) {
         node = {.visit = visit};
     }
+
     return node;
 }
 
@@ -43,7 +46,9 @@ void GraphSearch::search(const Graph& graph, std::uint32_t start, std::int64_t g
         if (node.closed) {
             continue;
         }
+
         node.closed = true;
+
         if (toGoal && current.slot == goalSlot) {
             return;
         }
@@ -55,10 +60,12 @@ void GraphSearch::search(const Graph& graph, std::uint32_t start, std::int64_t g
             if (!neighbor.enabled || state.closed) {
                 continue;
             }
+
             const float score = node.score + math::Vec2::distance(point.position, neighbor.position) * neighbor.weight;
             if (score >= state.score) {
                 continue;
             }
+
             state.score = score;
             state.parent = static_cast<std::int32_t>(current.slot);
             open.push_back({.estimate = score + (toGoal ? math::Vec2::distance(neighbor.position, target) : 0.0F), .slot = next});
@@ -72,6 +79,7 @@ std::span<const std::int64_t> GraphSearch::findPath(const Graph& graph, std::int
     const std::uint32_t goalSlot = graph.slotOf(goal);
     path.clear();
     cost = std::numeric_limits<float>::infinity();
+
     if (!graph.points[startSlot].enabled || !graph.points[goalSlot].enabled) {
         return {};
     }
@@ -81,10 +89,13 @@ std::span<const std::int64_t> GraphSearch::findPath(const Graph& graph, std::int
     if (!end.closed) {
         return {};
     }
+
     cost = end.score;
+
     for (std::int32_t slot = static_cast<std::int32_t>(goalSlot); slot >= 0; slot = at(static_cast<std::uint32_t>(slot)).parent) {
         path.push_back(graph.points[static_cast<std::size_t>(slot)].id);
     }
+
     std::ranges::reverse(path);
     return path;
 }
@@ -93,10 +104,12 @@ void GraphSearch::computeDistances(const Graph& graph, std::int64_t source) {
     const std::uint32_t slot = graph.slotOf(source);
     path.clear();
     cost = std::numeric_limits<float>::infinity();
+
     if (graph.points[slot].enabled) {
         search(graph, slot, source, false);
         return;
     }
+
     begin(graph.points.size());
 }
 
@@ -105,6 +118,7 @@ float GraphSearch::getDistance(const Graph& graph, std::int64_t id) const {
     if (slot >= nodes.size() || nodes[slot].visit != visit) {
         return std::numeric_limits<float>::infinity();
     }
+
     return nodes[slot].score;
 }
 

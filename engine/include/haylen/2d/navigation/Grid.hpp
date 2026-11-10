@@ -98,6 +98,7 @@ class Grid final {
                     visit(next, 1.0F);
                 }
             }
+
             return;
         }
 
@@ -109,10 +110,12 @@ class Grid final {
             if (!isWalkable(next)) {
                 continue;
             }
+
             const bool corner = step.x != 0 && step.y != 0;
             if (corner && (!isWalkable(fromLattice({point.x + step.x, point.y})) || !isWalkable(fromLattice({point.x, point.y + step.y})))) {
                 continue;
             }
+
             visit(next, corner ? kDiagonalStep : 1.0F);
         }
     }

@@ -137,6 +137,7 @@ int NavGraphLua::findPath(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     pushIds(L, path);
     lua::Stack::push(L, self.search.getCost());
     return 2;
@@ -156,6 +157,7 @@ int NavGraphLua::distances(lua_State* L) {
             lua_rawseti(L, -2, static_cast<lua_Integer>(id));
         }
     }
+
     return 1;
 }
 

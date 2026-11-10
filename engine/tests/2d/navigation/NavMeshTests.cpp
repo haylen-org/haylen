@@ -35,6 +35,7 @@ class NavMeshTest : public ::testing::Test {
             for (int corner = 0; corner < corners; ++corner) {
                 polygon.push_back(center + math::Vec2::fromAngle(turn + static_cast<float>(corner) * 2.0F * std::numbers::pi_v<float> / static_cast<float>(corners), size));
             }
+
             mesh.addObstacle(polygon);
         }
     }
@@ -52,6 +53,7 @@ class NavMeshTest : public ::testing::Test {
             const float twice = math::Vec2::cross(b - a, c - a);
             EXPECT_GT(twice, 0.0F);
             area += twice * 0.5F;
+
             for (const std::int32_t neighbor : triangle.neighbors) {
                 if (neighbor >= 0) {
                     const std::array<std::int32_t, 3>& back = triangles[static_cast<std::size_t>(neighbor)].neighbors;
@@ -59,6 +61,7 @@ class NavMeshTest : public ::testing::Test {
                 }
             }
         }
+
         return area;
     }
 
@@ -72,6 +75,7 @@ class NavMeshTest : public ::testing::Test {
                 }
             }
         }
+
         return walls;
     }
 
@@ -161,10 +165,12 @@ TEST_F(NavMeshTest, PullsPathsTightAroundCornersWithTheAgentRadius) {
     const std::vector<math::Vec2> padded = copyPath(mesh.findPath({20.0F, 150.0F}, {380.0F, 150.0F}, 10.0F));
     ASSERT_GE(padded.size(), 3U);
     expectInside(mesh, padded);
+
     for (std::size_t index = 1; index + 1 < padded.size(); ++index) {
         EXPECT_GE(std::min(math::Vec2::distance(padded[index], {190.0F, 240.0F}), math::Vec2::distance(padded[index], {210.0F, 240.0F})), 9.5F);
         EXPECT_GT(padded[index].y, 240.0F);
     }
+
     EXPECT_GT(mesh.getPathLength(), tightLength);
 
     // A gap narrower than the agent closes the way.
@@ -237,6 +243,7 @@ TEST_F(NavMeshTest, KeepsAgentsOutOfGapsBetweenCornersAndWalls) {
     navigation2d::NavMesh mesh;
     mesh.setBoundary(box(0.0F, 0.0F, 800.0F, 600.0F));
     mesh.addObstacle(Polygon{{590.0F, 27.0F}, {743.0F, 10.0F}, {769.0F, 55.0F}, {660.0F, 95.0F}});
+
     for (const float radius : {6.0F, 12.0F}) {
         const std::vector<math::Vec2> over = copyPath(mesh.findPath({300.0F, 40.0F}, {775.0F, 30.0F}, radius));
         ASSERT_GE(over.size(), 4U);
@@ -244,6 +251,7 @@ TEST_F(NavMeshTest, KeepsAgentsOutOfGapsBetweenCornersAndWalls) {
         EXPECT_GT(over[1].y, 95.0F);
         expectClear(over, std::vector<math::Vec2>{{660.0F, 95.0F}, {769.0F, 55.0F}}, radius);
     }
+
     const std::vector<math::Vec2> under = copyPath(mesh.findPath({300.0F, 40.0F}, {775.0F, 30.0F}, 4.0F));
     ASSERT_EQ(under.size(), 3U);
     expectInside(mesh, under);
@@ -264,12 +272,14 @@ TEST_F(NavMeshTest, KeepsRandomPathsInsideTheMesh) {
         if (!mesh.contains(start) || !mesh.contains(goal)) {
             continue;
         }
+
         const std::vector<math::Vec2> path = copyPath(mesh.findPath(start, goal));
         ASSERT_FALSE(path.empty());
         expectInside(mesh, path);
         EXPECT_GE(mesh.getPathLength() + 1e-3F, math::Vec2::distance(start, goal));
         ++found;
     }
+
     EXPECT_GT(found, 20);
 }
 
@@ -291,12 +301,14 @@ TEST_F(NavMeshTest, KeepsPathsBetweenPointsNearWallsInsideTheMesh) {
             if (path.empty()) {
                 continue;
             }
+
             EXPECT_EQ(path.front(), start);
             EXPECT_EQ(path.back(), goal);
             expectInside(mesh, path);
             ++found;
         }
     }
+
     EXPECT_GT(found, 100);
 }
 
@@ -310,6 +322,7 @@ TEST_F(NavMeshTest, BuildsAmongManyOverlappingSquares) {
         const float size = random.range(10.0F, 60.0F);
         mesh.addObstacle(box(center.x - size, center.y - size, size * 2.0F, size * 2.0F));
     }
+
     mesh.build();
     EXPECT_GT(checkTriangles(mesh), 0.0F);
 
@@ -320,14 +333,17 @@ TEST_F(NavMeshTest, BuildsAmongManyOverlappingSquares) {
         if (!mesh.contains(start) || !mesh.contains(goal)) {
             continue;
         }
+
         // Squares can close off pockets, so only the paths that exist are checked.
         const std::vector<math::Vec2> path = copyPath(mesh.findPath(start, goal, 4.0F));
         if (path.empty()) {
             continue;
         }
+
         expectInside(mesh, path);
         ++found;
     }
+
     EXPECT_GT(found, 15);
 }
 

@@ -25,6 +25,7 @@ void NavMesh::requirePolygon(std::span<const math::Vec2> polygon) {
     if (polygon.size() < 3) {
         throw std::invalid_argument("A navigation mesh polygon needs at least three points.");
     }
+
     for (const math::Vec2 point : polygon) {
         if (!std::isfinite(point.x) || !std::isfinite(point.y)) {
             throw std::invalid_argument("A navigation mesh polygon needs finite points.");
@@ -52,6 +53,7 @@ void NavMesh::setObstacle(std::uint32_t id, std::span<const math::Vec2> polygon)
     if (obstacle == obstacles.end()) {
         throw std::out_of_range("Obstacle " + std::to_string(id) + " is not in the navigation mesh.");
     }
+
     obstacle->second.assign(polygon.begin(), polygon.end());
     dirty = true;
 }
@@ -60,6 +62,7 @@ bool NavMesh::removeObstacle(std::uint32_t id) {
     if (obstacles.erase(id) == 0) {
         return false;
     }
+
     dirty = true;
     return true;
 }
@@ -83,6 +86,7 @@ void NavMesh::build() {
     };
     // clang-format on
     addOutline(boundary);
+
     for (const auto& [id, polygon] : obstacles) {
         addOutline(polygon);
     }
@@ -110,9 +114,11 @@ void NavMesh::build() {
                 walls.push_back({vertexAt(current.vertices[side]), vertexAt(current.vertices[(side + 1) % 3])});
             }
         }
+
         const std::array<math::Vec2, 3> corners{vertexAt(current.vertices[0]), vertexAt(current.vertices[1]), vertexAt(current.vertices[2])};
         triangleIndex.set(triangle, math::Geometry::bounds(corners));
     }
+
     dirty = false;
 }
 
@@ -141,17 +147,20 @@ bool NavMesh::isInside(std::size_t triangle, math::Vec2 point) const noexcept {
             return false;
         }
     }
+
     return true;
 }
 
 std::optional<std::size_t> NavMesh::findTriangle(math::Vec2 point) {
     ensureBuilt();
     triangleIndex.queryPoint(point, candidates);
+
     for (const std::uint64_t candidate : candidates) {
         if (isInside(static_cast<std::size_t>(candidate), point)) {
             return static_cast<std::size_t>(candidate);
         }
     }
+
     return std::nullopt;
 }
 
@@ -163,6 +172,7 @@ std::optional<math::Vec2> NavMesh::getClosestPoint(math::Vec2 point) {
     if (contains(point)) {
         return point;
     }
+
     std::optional<math::Vec2> closest;
     float closestDistance = std::numeric_limits<float>::infinity();
     for (const math::Segment& wall : walls) {
@@ -173,6 +183,7 @@ std::optional<math::Vec2> NavMesh::getClosestPoint(math::Vec2 point) {
             closest = candidate;
         }
     }
+
     return closest;
 }
 
@@ -208,6 +219,7 @@ void NavMesh::addCrossings(const math::Segment& piece, math::Vec2 center, float 
     if (length <= 0.0F) {
         return;
     }
+
     const math::Vec2 along = direction / length;
     const math::Vec2 offset = piece.start - center;
     const float middle = -math::Vec2::dot(along, offset);
@@ -215,6 +227,7 @@ void NavMesh::addCrossings(const math::Segment& piece, math::Vec2 center, float 
     if (squared < 0.0F) {
         return;
     }
+
     for (const float travel : {middle - std::sqrt(squared), middle + std::sqrt(squared)}) {
         if (travel >= 0.0F && travel <= length) {
             crossings.push_back(piece.start + along * travel);
@@ -227,6 +240,7 @@ void NavMesh::addCrossings(math::Vec2 center, math::Vec2 other, float radius, st
     if (half <= 0.0F || half > radius) {
         return;
     }
+
     const math::Vec2 middle = (center + other) * 0.5F;
     const math::Vec2 across = (other - center).getNormalized().getPerpendicular() * std::sqrt(radius * radius - half * half);
     crossings.push_back(middle + across);
@@ -237,8 +251,10 @@ std::optional<math::Vec2> NavMesh::findRoom(math::Vec2 point, float agentRadius)
     if (!contains(point)) {
         return std::nullopt;
     }
+
     const float reach = agentRadius * 2.0F;
     gatherWalls(point, reach + agentRadius);
+
     if (hasRoom(point, agentRadius)) {
         return point;
     }
@@ -246,10 +262,12 @@ std::optional<math::Vec2> NavMesh::findRoom(math::Vec2 point, float agentRadius)
     // Every spot the radius away from the walls lies on the walls moved by the radius to their walkable side or on the circles of the radius around their ends. The closest one is the foot of the point on one of those pieces or a point where two of them cross.
     offsets.clear();
     spots.clear();
+
     for (const math::Segment& wall : nearWalls) {
         const math::Vec2 normal = (wall.end - wall.start).getNormalized().getPerpendicular() * agentRadius;
         offsets.push_back({wall.start + normal, wall.end + normal});
     }
+
     for (std::size_t index = 0; index < offsets.size(); ++index) {
         const math::Vec2 corner = nearWalls[index].start;
         spots.push_back(math::Geometry::closestPoint(offsets[index], point));
@@ -258,6 +276,7 @@ std::optional<math::Vec2> NavMesh::findRoom(math::Vec2 point, float agentRadius)
             if (const std::optional<math::Vec2> crossing = math::Geometry::intersection(offsets[index], offsets[other])) {
                 spots.push_back(*crossing);
             }
+
             addCrossings(offsets[index], nearWalls[other].start, agentRadius, spots);
             addCrossings(offsets[other], corner, agentRadius, spots);
             addCrossings(corner, nearWalls[other].start, agentRadius, spots);
@@ -273,9 +292,11 @@ std::optional<math::Vec2> NavMesh::findRoom(math::Vec2 point, float agentRadius)
             roomDistance = distance;
         }
     }
+
     if (!room || !canStep(point, *room)) {
         return std::nullopt;
     }
+
     return room;
 }
 
@@ -287,12 +308,14 @@ bool NavMesh::findCorridor(std::int32_t start, std::int32_t goal, math::Vec2 fro
         entries.resize(count);
         visits.resize(count, 0);
     }
+
     // Each search stamps the triangles it opens with `visit` and the ones it settles with `visit + 1`, so no buffer needs clearing.
     visit += 2;
     if (visit < 2) {
         std::ranges::fill(visits, 0U);
         visit = 2;
     }
+
     const std::uint32_t settled = visit + 1;
     // clang-format off
     const auto reset = [this, settled](std::int32_t triangle) {
@@ -317,7 +340,9 @@ bool NavMesh::findCorridor(std::int32_t start, std::int32_t goal, math::Vec2 fro
         if (visits[slot] == settled) {
             continue;
         }
+
         visits[slot] = settled;
+
         if (current.triangle == goal) {
             break;
         }
@@ -328,6 +353,7 @@ bool NavMesh::findCorridor(std::int32_t start, std::int32_t goal, math::Vec2 fro
             if (neighbor < 0) {
                 continue;
             }
+
             const math::Vec2 a = vertexAt(triangle.vertices[side]);
             const math::Vec2 b = vertexAt(triangle.vertices[(side + 1) % 3]);
             reset(neighbor);
@@ -335,6 +361,7 @@ bool NavMesh::findCorridor(std::int32_t start, std::int32_t goal, math::Vec2 fro
             if (visits[next] == settled) {
                 continue;
             }
+
             if (math::Vec2::distance(a, b) < agentRadius * 2.0F) {
                 continue;
             }
@@ -355,10 +382,12 @@ bool NavMesh::findCorridor(std::int32_t start, std::int32_t goal, math::Vec2 fro
     if (visits[static_cast<std::size_t>(goal)] != settled) {
         return false;
     }
+
     corridor.clear();
     for (std::int32_t triangle = goal; triangle >= 0; triangle = parents[static_cast<std::size_t>(triangle)]) {
         corridor.push_back(triangle);
     }
+
     std::ranges::reverse(corridor);
     return true;
 }
@@ -374,6 +403,7 @@ void NavMesh::pullString(math::Vec2 start, math::Vec2 goal, float agentRadius) {
         const math::Vec2 inward = (right - left).getNormalized() * agentRadius;
         portals.push_back({.left = left + inward, .right = right - inward, .leftCorner = left, .rightCorner = right});
     }
+
     portals.push_back({.left = goal, .right = goal, .leftCorner = goal, .rightCorner = goal});
 
     // A funnel from the apex tightens through the portals and turns at a corner whenever one of its sides crosses the other.
@@ -391,6 +421,7 @@ void NavMesh::pullString(math::Vec2 start, math::Vec2 goal, float agentRadius) {
         if (portal == apexIndex || portal + 1 == portals.size()) {
             return;
         }
+
         const math::Vec2 corner = onLeft ? portals[portal].leftCorner : portals[portal].rightCorner;
         if (turns.empty() || turns.back().corner != corner) {
             turns.push_back({.corner = corner, .side = onLeft ? 1.0F : -1.0F});
@@ -413,6 +444,7 @@ void NavMesh::pullString(math::Vec2 start, math::Vec2 goal, float agentRadius) {
                 continue;
             }
         }
+
         if (area(apex, left, portal.left) >= -kEdgeTolerance * math::Vec2::distance(apex, portal.left)) {
             if (apex == left || area(apex, right, portal.left) < 0.0F) {
                 left = portal.left;
@@ -447,12 +479,14 @@ void NavMesh::bendAroundTurns(math::Vec2 start, math::Vec2 goal, float agentRadi
         from = turn.corner;
         fromOffset = turn.side * agentRadius;
     }
+
     directions.push_back(tangentDirection(from, goal, -fromOffset));
 
     // Each turn becomes the corners of a polygon around its circle, whose sides touch the circle, one corner for turns up to a right angle and two for wider ones.
     if (path.back() != start) {
         path.push_back(start);
     }
+
     for (std::size_t index = 0; index < turns.size(); ++index) {
         const math::Vec2 in = directions[index];
         const math::Vec2 out = directions[index + 1];
@@ -467,6 +501,7 @@ void NavMesh::bendAroundTurns(math::Vec2 start, math::Vec2 goal, float agentRadi
             }
         }
     }
+
     if (path.back() != goal) {
         path.push_back(goal);
     }
@@ -476,6 +511,7 @@ std::span<const math::Vec2> NavMesh::findPath(math::Vec2 start, math::Vec2 goal,
     if (!(agentRadius >= 0.0F) || !std::isfinite(agentRadius)) {
         throw std::invalid_argument("An agent radius must be finite and not negative.");
     }
+
     path.clear();
     pathLength = std::numeric_limits<float>::infinity();
     const std::optional<math::Vec2> from = findRoom(start, agentRadius);
@@ -483,6 +519,7 @@ std::span<const math::Vec2> NavMesh::findPath(math::Vec2 start, math::Vec2 goal,
     if (!from || !to) {
         return {};
     }
+
     const std::optional<std::size_t> first = findTriangle(*from);
     const std::optional<std::size_t> last = findTriangle(*to);
     if (!first || !last || !findCorridor(static_cast<std::int32_t>(*first), static_cast<std::int32_t>(*last), *from, *to, agentRadius)) {
@@ -492,13 +529,16 @@ std::span<const math::Vec2> NavMesh::findPath(math::Vec2 start, math::Vec2 goal,
     pullString(*from, *to, agentRadius);
     path.assign(1, start);
     bendAroundTurns(*from, *to, agentRadius);
+
     if (path.back() != goal) {
         path.push_back(goal);
     }
+
     pathLength = 0.0F;
     for (std::size_t index = 1; index < path.size(); ++index) {
         pathLength += math::Vec2::distance(path[index - 1], path[index]);
     }
+
     return path;
 }
 

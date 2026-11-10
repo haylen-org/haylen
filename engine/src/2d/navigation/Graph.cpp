@@ -19,11 +19,13 @@ std::uint32_t Graph::slotOf(std::int64_t id) const {
     if (slot == slots.end()) {
         throw std::out_of_range("Point " + std::to_string(id) + " is not in the graph.");
     }
+
     return slot->second;
 }
 
 void Graph::addPoint(std::int64_t id, math::Vec2 position, float weight) {
     requireWeight(weight);
+
     if (const auto existing = slots.find(id); existing != slots.end()) {
         Point& point = points[existing->second];
         point.position = position;
@@ -39,6 +41,7 @@ void Graph::addPoint(std::int64_t id, math::Vec2 position, float weight) {
         slot = freeSlots.back();
         freeSlots.pop_back();
     }
+
     Point& point = points[slot];
     point.id = id;
     point.position = position;
@@ -58,9 +61,11 @@ bool Graph::removePoint(std::int64_t id) {
     for (const std::uint32_t target : point.outgoing) {
         std::erase(points[target].incoming, slot);
     }
+
     for (const std::uint32_t source : point.incoming) {
         std::erase(points[source].outgoing, slot);
     }
+
     point.outgoing.clear();
     point.incoming.clear();
     slots.erase(found);
@@ -109,10 +114,12 @@ void Graph::connect(std::int64_t from, std::int64_t to, bool bidirectional) {
     if (source == target) {
         throw std::invalid_argument("A graph point cannot connect to itself.");
     }
+
     if (std::ranges::find(points[source].outgoing, target) == points[source].outgoing.end()) {
         points[source].outgoing.push_back(target);
         points[target].incoming.push_back(source);
     }
+
     if (bidirectional) {
         connect(to, from, false);
     }
@@ -123,6 +130,7 @@ void Graph::disconnect(std::int64_t from, std::int64_t to, bool bidirectional) {
     const std::uint32_t target = slotOf(to);
     std::erase(points[source].outgoing, target);
     std::erase(points[target].incoming, source);
+
     if (bidirectional) {
         disconnect(to, from, false);
     }
@@ -145,6 +153,7 @@ void Graph::getPoints(std::vector<std::int64_t>& ids) const {
     for (const auto& [id, slot] : slots) {
         ids.push_back(id);
     }
+
     std::ranges::sort(ids);
 }
 
@@ -156,12 +165,14 @@ std::optional<std::int64_t> Graph::getClosestPoint(math::Vec2 position, bool inc
         if (!point.enabled && !includeDisabled) {
             continue;
         }
+
         const float distance = math::Vec2::distanceSquared(point.position, position);
         if (distance < closestDistance || (distance == closestDistance && (!closest || id < *closest))) {
             closestDistance = distance;
             closest = id;
         }
     }
+
     return closest;
 }
 

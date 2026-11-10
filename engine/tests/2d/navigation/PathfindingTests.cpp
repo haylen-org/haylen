@@ -36,6 +36,7 @@ class PathfindingTest : public ::testing::Test {
                 grid.setWalkable({x, y}, !random.chance(wallChance));
             }
         }
+
         return grid;
     }
 
@@ -47,6 +48,7 @@ class PathfindingTest : public ::testing::Test {
             grid.forEachStep(path[index - 1], diagonal, [&](Cell next, float step) { length = next == path[index] ? step : length; });
             cost += length * grid.getCost(path[index]);
         }
+
         return cost;
     }
 };
@@ -81,12 +83,15 @@ TEST_F(GridSearchTest, FindsCheapestPathsWithEveryAdmissibleHeuristic) {
                 EXPECT_TRUE(path.empty());
                 continue;
             }
+
             ASSERT_FALSE(path.empty());
             EXPECT_NEAR(search.getCost(), cheapest, 1e-3F);
             EXPECT_NEAR(pathCost(grid, path, true), cheapest, 1e-3F);
         }
+
         found += std::isfinite(cheapest) ? 1 : 0;
     }
+
     EXPECT_GT(found, 20);
 }
 
@@ -124,9 +129,11 @@ TEST_F(GridSearchTest, JumpPointSearchMatchesAStar) {
                 const std::span<const Cell> expected = astar.findPath(grid, start, goal, {.diagonal = diagonal});
                 const std::span<const Cell> path = jumps.findPath(grid, start, goal, {.diagonal = diagonal, .jumpPoint = true});
                 ASSERT_EQ(path.empty(), expected.empty());
+
                 if (path.empty()) {
                     continue;
                 }
+
                 EXPECT_NEAR(jumps.getCost(), astar.getCost(), 1e-3F);
                 EXPECT_NEAR(pathCost(grid, path, diagonal), astar.getCost(), 1e-3F);
                 EXPECT_EQ(path.front(), start);
@@ -136,6 +143,7 @@ TEST_F(GridSearchTest, JumpPointSearchMatchesAStar) {
             }
         }
     }
+
     EXPECT_LT(jumpWork, astarWork);
 
     navigation2d::Grid costly(4, 4);
@@ -167,15 +175,19 @@ TEST_F(GridSearchTest, WalksHexagonalGrids) {
             ASSERT_FALSE(path.empty());
             EXPECT_EQ(search.getCost(), grid.estimate({0, 0}, {8, 6}, navigation2d::Grid::Heuristic::Octile));
             EXPECT_EQ(static_cast<float>(path.size() - 1), search.getCost());
+
             for (std::size_t index = 1; index < path.size(); ++index) {
                 bool adjacent = false;
                 grid.forEachStep(path[index - 1], false, [&](Cell next, float) { adjacent = adjacent || next == path[index]; });
                 EXPECT_TRUE(adjacent);
             }
+
             EXPECT_TRUE(grid.hasLineOfSight({0, 0}, {8, 6}));
+
             for (int row = 0; row < 8; ++row) {
                 grid.setWalkable({4, row}, false);
             }
+
             EXPECT_FALSE(grid.hasLineOfSight({0, 3}, {8, 3}));
             EXPECT_GT(search.findPath(grid, {0, 3}, {8, 3}).size(), 9U);
             EXPECT_THROW((void)search.findPath(grid, {0, 0}, {1, 1}, {.jumpPoint = true}), std::invalid_argument);
@@ -214,6 +226,7 @@ TEST_F(DijkstraMapTest, LeadsDownhillToTheClosestSourceAndAwayWhenFleeing) {
     for (int y = 0; y < 8; ++y) {
         grid.setWalkable({10, y}, false);
     }
+
     navigation2d::DijkstraMap map;
     const std::vector<navigation2d::DijkstraMap::Source> sources{{.cell = {2, 2}}, {.cell = {17, 2}, .value = 3.0F}, {.cell = {10, 0}}};
     map.compute(grid, sources);
@@ -230,6 +243,7 @@ TEST_F(DijkstraMapTest, LeadsDownhillToTheClosestSourceAndAwayWhenFleeing) {
         spent += pathCost(grid, std::vector<Cell>{walker, *next}, true);
         walker = *next;
     }
+
     EXPECT_EQ(walker, (Cell{17, 2}));
     EXPECT_NEAR(spent + 3.0F, map.getValue({18, 8}), 1e-4F);
 
@@ -242,6 +256,7 @@ TEST_F(DijkstraMapTest, LeadsDownhillToTheClosestSourceAndAwayWhenFleeing) {
             runner = *next;
         }
     }
+
     EXPECT_GT(std::abs(runner.x - 5) + std::abs(runner.y - 5), 8);
     EXPECT_THROW(map.flee(grid, 0.5F), std::invalid_argument);
     EXPECT_THROW(map.flee(navigation2d::Grid(3, 3), -1.0F), std::invalid_argument);
@@ -266,6 +281,7 @@ TEST_F(FlowFieldTest, PointsEveryCellAlongACheapestPathToAGoal) {
                     cheapest = std::min(cheapest, search.getCost());
                 }
             }
+
             if (std::isfinite(cheapest)) {
                 EXPECT_NEAR(field.getDistance(cell), cheapest, 1e-3F);
             } else {
@@ -281,6 +297,7 @@ TEST_F(FlowFieldTest, PointsEveryCellAlongACheapestPathToAGoal) {
                 spent += pathCost(grid, std::vector<Cell>{walker, *next}, true);
                 walker = *next;
             }
+
             if (std::isfinite(cheapest)) {
                 EXPECT_TRUE(walker == goals[0] || walker == goals[1]);
                 EXPECT_NEAR(spent, cheapest, 1e-3F);
@@ -289,6 +306,7 @@ TEST_F(FlowFieldTest, PointsEveryCellAlongACheapestPathToAGoal) {
             }
         }
     }
+
     EXPECT_THROW((void)field.getNext({30, 0}), std::out_of_range);
 }
 
@@ -307,9 +325,11 @@ TEST_F(HierarchicalPathfinderTest, FindsNearOptimalPathsAndFollowsLocalChanges) 
             const std::span<const Cell> expected = search.findPath(grid, start, goal);
             const std::span<const Cell> path = hierarchy.findPath(grid, start, goal);
             ASSERT_EQ(path.empty(), expected.empty()) << start.x << "," << start.y << " to " << goal.x << "," << goal.y;
+
             if (path.empty()) {
                 continue;
             }
+
             EXPECT_EQ(path.front(), start);
             EXPECT_EQ(path.back(), goal);
             EXPECT_NEAR(pathCost(grid, path, true), hierarchy.getCost(), 1e-2F);
@@ -324,6 +344,7 @@ TEST_F(HierarchicalPathfinderTest, FindsNearOptimalPathsAndFollowsLocalChanges) 
     for (int x = 0; x < 90; ++x) {
         grid.setWalkable({x, 48}, false);
     }
+
     hierarchy.update(grid, {0, 48}, {89, 48});
     compare(60);
     EXPECT_TRUE(hierarchy.findPath(grid, {0, 0}, {0, 0}).size() == 1 || !grid.isWalkable({0, 0}));
@@ -343,6 +364,7 @@ TEST_F(HierarchicalPathfinderTest, FindsNoPathThroughCellsThatChangedWithoutAnUp
     for (int y = 0; y < 4; ++y) {
         grid.setWalkable({5, y}, false);
     }
+
     EXPECT_TRUE(hierarchy.findPath(grid, {0, 1}, {11, 1}).empty());
     EXPECT_TRUE(std::isinf(hierarchy.getCost()));
 
@@ -350,6 +372,7 @@ TEST_F(HierarchicalPathfinderTest, FindsNoPathThroughCellsThatChangedWithoutAnUp
     for (int y = 0; y < 4; ++y) {
         grid.setWalkable({5, y}, true);
     }
+
     grid.setWalkable({4, 2}, false);
     EXPECT_TRUE(hierarchy.findPath(grid, {0, 1}, {11, 1}).empty());
 

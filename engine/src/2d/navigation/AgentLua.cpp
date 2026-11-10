@@ -53,6 +53,7 @@ int AgentLua::newAgent(lua_State* L) {
         lua::Table::readField(L, 1, "wanderJitter", wander.jitter);
         lua::Table::readField(L, 1, "seed", seed);
     }
+
     lua::Userdata::emplace<ScriptedAgent>(L, ScriptedAgent{.agent = agent, .wanderer = Wanderer(static_cast<std::uint64_t>(seed), wander)});
     return 1;
 }
@@ -135,6 +136,7 @@ int AgentLua::newCrowd(lua_State* L) {
         lua::Table::readField(L, 1, "alignment", flocking.alignment);
         lua::Table::readField(L, 1, "cohesion", flocking.cohesion);
     }
+
     lua::Userdata::emplace<Crowd>(L, flocking);
     return 1;
 }
@@ -157,6 +159,7 @@ int AgentLua::crowdAddAgent(lua_State* L) {
         lua::Table::readField(L, 2, "timeHorizon", options.timeHorizon);
         lua::Table::readField(L, 2, "obstacleTimeHorizon", options.obstacleTimeHorizon);
     }
+
     lua::Stack::push(L, crowd.addAgent(options));
     return 1;
 }

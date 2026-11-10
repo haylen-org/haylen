@@ -30,6 +30,7 @@ class GridTest : public ::testing::Test {
             EXPECT_TRUE(grid.isWalkable(to));
             EXPECT_LE(std::abs(to.x - from.x), 1);
             EXPECT_LE(std::abs(to.y - from.y), 1);
+
             if (to.x != from.x && to.y != from.y) {
                 EXPECT_TRUE(grid.isWalkable({to.x, from.y}) && grid.isWalkable({from.x, to.y}));
             }
@@ -63,6 +64,7 @@ TEST_F(GridTest, RoutesAroundWallsCostsAndCorners) {
     for (int y = 0; y < 4; ++y) {
         grid.setWalkable({3, y}, false);
     }
+
     const Path around = findPath(grid, {0, 0}, {6, 0});
     ASSERT_FALSE(around.empty());
     EXPECT_EQ(around.front(), (Cell{0, 0}));
@@ -79,6 +81,7 @@ TEST_F(GridTest, RoutesAroundWallsCostsAndCorners) {
     for (int x = 1; x <= 3; ++x) {
         swamp.setCost({x, 1}, 10.0F);
     }
+
     const Path dry = findPath(swamp, {0, 1}, {4, 1});
     EXPECT_FALSE(visits(dry, {2, 1}));
     expectWalkable(swamp, dry);
@@ -91,6 +94,7 @@ TEST_F(GridTest, ReportsMissingPaths) {
     for (const Cell wall : {Cell{1, 0}, Cell{1, 1}, Cell{0, 1}}) {
         grid.setWalkable(wall, false);
     }
+
     EXPECT_EQ(findPath(grid, {4, 4}, {0, 0}), Path{});
     EXPECT_EQ(findPath(grid, {1, 1}, {4, 4}), Path{});
     EXPECT_EQ(findPath(grid, {4, 4}, {1, 1}), Path{});
@@ -122,15 +126,18 @@ TEST_F(GridTest, TracesLinesAndSmoothsPaths) {
     for (int y = 0; y < 4; ++y) {
         walls.setWalkable({4, y}, false);
     }
+
     const Path path = findPath(walls, {0, 0}, {8, 0});
     Path smooth = path;
     walls.smoothPath(smooth);
     EXPECT_LT(smooth.size(), path.size());
     EXPECT_EQ(smooth.front(), path.front());
     EXPECT_EQ(smooth.back(), path.back());
+
     for (std::size_t index = 1; index < smooth.size(); ++index) {
         EXPECT_TRUE(walls.hasLineOfSight(smooth[index - 1], smooth[index]));
     }
+
     EXPECT_EQ(findPath(walls, {0, 0}, {8, 0}, {.smooth = true}), smooth);
     Path pair{{1, 1}, {2, 2}};
     walls.smoothPath(pair);
@@ -175,6 +182,7 @@ TEST(SteeringTest, AppliesLimitedForcesAndReachesTargets) {
     for (int step = 0; step < 600; ++step) {
         walker.apply(walker.arrive({200.0F, -100.0F}, 60.0F), 1.0F / 60.0F);
     }
+
     EXPECT_NEAR(walker.position.x, 200.0F, 1.0F);
     EXPECT_NEAR(walker.position.y, -100.0F, 1.0F);
     EXPECT_LT(walker.velocity.getLength(), 1.0F);
@@ -192,6 +200,7 @@ TEST(SteeringTest, WandersDeterministicallyPerSeed) {
         EXPECT_LE(force.getLength(), agent.maxSpeed + agent.velocity.getLength() + 0.001F);
         diverged = diverged || force != other.steer(agent, 0.1F);
     }
+
     EXPECT_TRUE(diverged);
     EXPECT_EQ(other.getSettings().distance, 40.0F);
     other.setSettings({.distance = 1.0F});

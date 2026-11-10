@@ -36,6 +36,7 @@ std::vector<std::vector<math::Vec2>> NavMeshLua::readPolygons(lua_State* L, int 
     if (lua_isnoneornil(L, index)) {
         return {};
     }
+
     return lua::Stack::read<std::vector<std::vector<math::Vec2>>>(L, index);
 }
 
@@ -45,6 +46,7 @@ int NavMeshLua::newNavMesh(lua_State* L) {
     if (!lua_isnoneornil(L, 1)) {
         mesh.setBoundary(lua::Stack::read<std::vector<math::Vec2>>(L, 1));
     }
+
     lua::Userdata::emplace<NavMesh>(L, std::move(mesh));
     return 1;
 }
@@ -56,6 +58,7 @@ int NavMeshLua::buildAsync(lua_State* L) {
     for (const std::vector<math::Vec2>& obstacle : readPolygons(L, 2)) {
         mesh.addObstacle(obstacle);
     }
+
     core::Engine& engine = lua::Runtime::getEngine(L);
     const lua::Promise promise(engine);
 
@@ -68,6 +71,7 @@ int NavMeshLua::buildAsync(lua_State* L) {
             promise.reject(result.error);
             return;
         }
+
         // The promise pushes the mesh once for every coroutine that awaits it, and each one gets its own copy.
         promise.resolveWith([mesh = std::make_shared<const NavMesh>(std::move(*result.value))](lua_State* state) { lua::Userdata::emplace<NavMesh>(state, *mesh); });
     });
@@ -120,6 +124,7 @@ int NavMeshLua::findPath(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, std::vector<math::Vec2>(path.begin(), path.end()));
     lua::Stack::push(L, mesh.getPathLength());
     return 2;
@@ -132,6 +137,7 @@ int NavMeshLua::findTriangle(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, *triangle + 1);
     return 1;
 }
@@ -147,6 +153,7 @@ int NavMeshLua::closestPoint(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, point->x);
     lua::Stack::push(L, point->y);
     return 2;
@@ -164,8 +171,10 @@ int NavMeshLua::triangles(lua_State* L) {
             lua::Stack::push(L, corners[all[index].vertices[corner]]);
             lua_rawseti(L, -2, static_cast<lua_Integer>(corner + 1));
         }
+
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
