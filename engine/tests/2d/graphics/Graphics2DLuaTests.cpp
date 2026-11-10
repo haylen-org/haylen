@@ -523,6 +523,7 @@ TEST_F(Graphics2DLuaTest, DrawsStrokesAndKeptMeshes) {
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawStroke({0, 0, 1, 1}, {widths = {1}})").find("A stroke has one width for each of its 2 points, or none."), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawStroke({0, 0, 1, 1}, {dashes = {0}})").find("A dash pattern needs lengths of zero or more that add up to more than zero, and a finite offset."), std::string::npos);
     EXPECT_NE(lua("grid:setPositions({1, 2}, 16)").find("The positions of a mesh come in x and y pairs for the vertices it has, 15, from the first one given."), std::string::npos);
+    EXPECT_NE(lua("grid:setPositions({1, 2}, -1)").find("vertices count from 1"), std::string::npos);
     EXPECT_NE(lua("triangle:vertex(4)").find("the mesh has no such vertex"), std::string::npos);
     EXPECT_NE(lua("triangle:setIndices({1, 2})").find("A mesh lists its triangles as three indices each, and 2 is not a multiple of three."), std::string::npos);
     EXPECT_NE(lua("graphics2d.newGridMesh(nil, 0, 1)").find("A grid mesh needs at least one column and one row and at most 1048576 cells."), std::string::npos);

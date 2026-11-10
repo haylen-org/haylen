@@ -60,6 +60,7 @@ class MeshLua final {
 
     // Returns the vertex the argument at the index names, counted from one.
     [[nodiscard]] static std::size_t checkVertex(lua_State* L, int index, const Mesh& mesh);
+    [[nodiscard]] static std::size_t checkFirst(lua_State* L, int index);
 };
 
 } // namespace haylen::graphics2d

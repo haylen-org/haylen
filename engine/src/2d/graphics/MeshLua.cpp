@@ -83,19 +83,25 @@ std::size_t MeshLua::checkVertex(lua_State* L, int index, const Mesh& mesh) {
     return static_cast<std::size_t>(place - 1);
 }
 
+// The first vertex is counted from 1 and defaults to 1, and the index it returns counts from 0.
+std::size_t MeshLua::checkFirst(lua_State* L, int index) {
+    const lua_Integer first = luaL_optinteger(L, index, 1);
+    luaL_argcheck(L, first >= 1, index, "vertices count from 1");
+    return static_cast<std::size_t>(first - 1);
+}
+
 // Moves vertices with `setPositions(buffer or list, first)`, x and y pairs from the vertex `first`, which defaults to 1.
 int MeshLua::setPositions(lua_State* L) {
     Mesh& mesh = lua::Userdata::check<Mesh>(L, 1);
-    const auto first = static_cast<std::size_t>(luaL_optinteger(L, 3, 1));
-    luaL_argcheck(L, first >= 1, 3, "vertices count from 1");
+    const std::size_t first = checkFirst(L, 3);
 
     if (const core::FloatBuffer* buffer = lua::Userdata::test<core::FloatBuffer>(L, 2)) {
-        mesh.setPositions(buffer->getValues(), first - 1);
+        mesh.setPositions(buffer->getValues(), first);
         return 0;
     }
 
     StrokeLua::readNumbers(L, 2, "positions", positionScratch);
-    mesh.setPositions(positionScratch, first - 1);
+    mesh.setPositions(positionScratch, first);
     return 0;
 }
 
@@ -103,9 +109,8 @@ int MeshLua::setPositions(lua_State* L) {
 int MeshLua::readPositions(lua_State* L) {
     const Mesh& mesh = lua::Userdata::check<Mesh>(L, 1);
     core::FloatBuffer& buffer = lua::Userdata::check<core::FloatBuffer>(L, 2);
-    const auto first = static_cast<std::size_t>(luaL_optinteger(L, 3, 1));
-    luaL_argcheck(L, first >= 1, 3, "vertices count from 1");
-    mesh.readPositions(buffer.getValues(), first - 1);
+    const std::size_t first = checkFirst(L, 3);
+    mesh.readPositions(buffer.getValues(), first);
     return 0;
 }
 
