@@ -2369,6 +2369,24 @@ Correções:
 - [x] Um link que abre o processo enquanto um app lançado roda se perdia, porque o app lançado o recebia e não conhecia o esquema, e assim o QR code lido pela câmera do sistema não abria outro app. Feito: os links pertencem ao app que o processo instalou, já que o sistema só conhece os esquemas dele, então um link que chega enquanto um app lançado roda encerra esse app e os que ele lançou, e o primeiro app recebe o link como `linkOpened` quando começa de novo. Testado em `EngineTest.EndsALaunchedAppForTheLinksOfTheAppThatLaunchedIt` e num app real no Linux, e documentado no `haylen.launch`, no `linkOpened` e no `AGENTS.md`.
 - [x] Na web o link de um esquema de plugin, que o hash do endereço da página representa, chegava ao app como um evento do plugin e não como `linkOpened`, então um hash novo enquanto um app lançado rodava se perdia. Feito: o runtime da web ganhou `Module.haylen.openLink(url)` e `context.openLink(url)` do módulo web de um plugin, que entregam o link ao app como `linkOpened`, com a mesma regra dos links que chegam enquanto um app lançado roda. Verificado num app real na web com WebGPU e WebGL2, e documentado no guia de plugins, no ciclo de vida, no `linkOpened` e na API do runtime.
 
+Achados da revisão geral, decididos pelo dono em 10/11/2026:
+
+- [ ] Os ids dos agentes de uma multidão voltavam a ser usados na hora: dar gerações aos ids, para que um id velho seja detectado como os handles da física.
+- [ ] As coordenadas dos chunks do Tiled podem estourar o `int`: recusar esses mapas como entrada hostil com uma mensagem clara.
+- [ ] O `GroupLua::pushMask` deixa o modo de máscara ligado depois de um erro capturado: restaurar em todos os caminhos, sem locais destrutíveis atravessando chamadas do Lua.
+- [ ] O `ReleasePackage::acquireKey` chama de volta com o mutex preso: soltar a trava antes da chamada.
+- [ ] Um registro parcial guardado e estragado no armazenamento de conteúdo bloqueia esse registro para sempre: descartar e baixar de novo.
+- [ ] O observador de shaders tem a mesma corrida do arquivo que some que o observador do hot reload tinha: corrigir do mesmo jeito.
+- [ ] O `VectorAtlas` pode criar uma página de cerca de 1 GiB: limitar. O `PathTessellation` e vários bindings de desenho alocam a cada quadro: corrigir e cobrir com testes do `test::AllocationTracker`.
+- [ ] API pública sem uso (`Gui::isPreparing`, `Theme::setHighContrast`, `Theme::setImageFilter` e `Collection::setLayout`): remover o que ninguém usa, ou ligar ao Lua e documentar o que for uma capacidade de verdade.
+- [ ] O `native.findSymbol` não acha os símbolos do próprio app nos builds Release da Apple, e o `docs/tools/build.md` exagera quão poucos símbolos um app exporta: deixar a documentação exata.
+- [ ] Os downloads do Gradle e do XcodeGen sem SHA-256 fixado e sem proteção contra uma extração pela metade: fixar os hashes e extrair de forma atômica.
+- [ ] A descrição do VDF do Steam não é escapada: escapar.
+- [ ] Os hard links do Windows em `haylen-link-content.cmake` precisam copiar quando o link falha entre volumes: usar a opção do CMake que faz isso.
+- [ ] O `Info.plist` de iOS dos apps C++ fica com uma cena só e sem `ITSAppUsesNonExemptEncryption`: igualar ao template Lua.
+- [ ] O `haylen.py` usa `ignore_errors=True` 42 vezes: rever cada uso, mantendo só onde uma pasta ausente é o estado esperado e relatando a falha onde ela importa.
+- [ ] O `PROJECT.md` ainda descreve como presentes o `openUrl`, a vibração, o `platform::Dialogs`, o `haylen.dialogs` e a janela de console dentro do app: reescrever no presente o que existe agora, os plugins e o console do terminal.
+
 #### AT. Documentação
 
 - [x] Documentação organizada por módulo da engine (núcleo, gráficos, 2D com cada módulo, UI, áudio, input, plataforma, rede, conteúdo, ferramentas), com um índice claro. Os guias ficam numa pasta por módulo (`docs/core`, `docs/graphics`, `docs/2d`, `docs/ui`, `docs/audio`, `docs/input`, `docs/platform`, `docs/network`, `docs/content`, `docs/tools`), o índice único é `docs/README.md` com os guias e as referências de cada módulo, cada módulo 2D ganhou o seu guia (nós, animação, luz, navegação, espacial e geração procedural), e um verificador de links não acha nenhum link quebrado.
