@@ -112,12 +112,14 @@ public final class HaylenBridge {
             Log.e("haylen", "The event \"" + event + "\" carried a payload that is not JSON and was dropped: " + reason(error));
             return;
         }
+
         KeptEvent kept = new KeptEvent(event, utf8(event), encoded, retain, batched);
         synchronized (keptEvents) {
             if (appRunning) {
                 kept.send();
                 return;
             }
+
             // The oldest event of the name gives way once the name has its limit.
             int oldest = -1;
             int count = 0;
@@ -125,14 +127,18 @@ public final class HaylenBridge {
                 if (!keptEvents.get(index).event.equals(event)) {
                     continue;
                 }
+
                 if (oldest < 0) {
                     oldest = index;
                 }
+
                 ++count;
             }
+
             if (count == KEPT_EVENTS_PER_NAME) {
                 keptEvents.remove(oldest);
             }
+
             keptEvents.add(kept);
         }
     }
@@ -157,12 +163,15 @@ public final class HaylenBridge {
     static void setAppRunning(boolean running) {
         synchronized (keptEvents) {
             appRunning = running;
+
             if (!running) {
                 return;
             }
+
             for (KeptEvent kept : keptEvents) {
                 kept.send();
             }
+
             keptEvents.clear();
         }
     }
@@ -176,6 +185,7 @@ public final class HaylenBridge {
             reply.failure("No native handler is registered for \"" + method + "\".", "noHandler", null);
             return;
         }
+
         pending.put(call, reply);
         Runnable run = () -> handle(method, registration, paramsBytes, buffers, reply);
         if (registration.threading == Threading.BACKGROUND) {
@@ -198,6 +208,7 @@ public final class HaylenBridge {
             reply.closeViews();
             return;
         }
+
         if (registration.threading == Threading.MAIN && activity == null) {
             reply.failure("The activity was destroyed before \"" + method + "\" ran.");
             return;
@@ -210,6 +221,7 @@ public final class HaylenBridge {
             reply.failure("The parameters of \"" + method + "\" are not JSON: " + reason(error));
             return;
         }
+
         try {
             registration.handler.handle(params, reply);
         } catch (Exception error) {
@@ -225,6 +237,7 @@ public final class HaylenBridge {
             if (data != null) {
                 failure.put("data", JSONObject.wrap(data));
             }
+
             return utf8(failure.toString());
         } catch (JSONException error) {
             return utf8(JSONObject.quote(text));
@@ -237,6 +250,7 @@ public final class HaylenBridge {
             Failure failure = (Failure) error;
             return encodeFailure(failure.getMessage(), failure.code(), failure.data());
         }
+
         return encodeFailure(reason(error), "exception", Collections.singletonMap("type", error.getClass().getName()));
     }
 
@@ -299,12 +313,14 @@ public final class HaylenBridge {
                 closeViews();
                 return;
             }
+
             try {
                 HaylenPayload payload = HaylenPayload.encode(value);
                 nativeResolve(call, true, payload.json, payload.buffers);
             } catch (JSONException error) {
                 nativeResolve(call, false, encodeFailure("The native handler returned a value that is not JSON: " + reason(error), null, null), HaylenPayload.NO_BUFFERS);
             }
+
             closeViews();
         }
 
@@ -318,6 +334,7 @@ public final class HaylenBridge {
             if (settle()) {
                 nativeResolve(call, false, encodeFailure(message, code, data), HaylenPayload.NO_BUFFERS);
             }
+
             closeViews();
         }
 
@@ -326,6 +343,7 @@ public final class HaylenBridge {
             if (settle()) {
                 nativeResolve(call, false, encodeFailure(error), HaylenPayload.NO_BUFFERS);
             }
+
             closeViews();
         }
 
@@ -351,6 +369,7 @@ public final class HaylenBridge {
                 if (settled) {
                     return;
                 }
+
                 settled = true;
                 cancelled = true;
                 listeners = new ArrayList<>(cancelListeners);
@@ -369,6 +388,7 @@ public final class HaylenBridge {
             if (settled) {
                 return false;
             }
+
             settled = true;
             pending.remove(call);
             return true;

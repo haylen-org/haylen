@@ -39,6 +39,7 @@ extension HaylenBridge {
                     if let data = failure.data {
                         answer["data"] = try? jsonObject(data)
                     }
+
                     reply(false, answer)
                 } catch {
                     reply(false, ["message": String(describing: error), "code": "exception", "data": ["type": String(reflecting: type(of: error))]])
@@ -98,6 +99,7 @@ extension HaylenPluginContext {
                     continuation.resume()
                     return
                 }
+
                 let failure = (error as NSError).userInfo
                 continuation.resume(throwing: HaylenFailure(failure["message"] as? String ?? error.localizedDescription, code: failure["code"] as? String, data: failure["data"] as? [String: [[String: String]]]))
             }

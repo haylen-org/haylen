@@ -65,6 +65,7 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
 
     void detach() {
         manager.removeAccessibilityStateChangeListener(this);
+
         if (current == this) {
             current = null;
             nativeWanted(false);
@@ -96,10 +97,12 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
                 Rect rect = new Rect(left, top, (int) Math.ceil(bounds.getDouble(0) + bounds.getDouble(2)), (int) Math.ceil(bounds.getDouble(1) + bounds.getDouble(3)));
                 parsed[index] = new Element(element.getLong("id"), element.getString("role"), element.getString("label"), element.getString("value"), element.getString("hint"), rect, element.getInt("states"), element.getInt("actions"));
             }
+
             focusedId = tree.getLong("focused");
         } catch (JSONException error) {
             throw new IllegalStateException("The engine handed a tree of accessible elements that is not valid JSON.", error);
         }
+
         main.post(() -> {
             HaylenAccessibilityTree tree = current;
             if (tree != null) {
@@ -116,12 +119,14 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
             if (tree == null) {
                 return;
             }
+
             boolean joins = tree.announcement.isEmpty();
             tree.announcement = said;
             tree.interrupting = interrupt;
             if (joins) {
                 tree.invalidateRoot();
             }
+
             tree.invalidateVirtualView(ANNOUNCER, AccessibilityEventCompat.CONTENT_CHANGE_TYPE_TEXT);
         });
     }
@@ -134,6 +139,7 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
         for (int index = 0; same && index < parsed.length; ++index) {
             same = shown[index].id == parsed[index].id;
         }
+
         if (!same) {
             invalidateRoot();
         } else {
@@ -143,9 +149,11 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
                 }
             }
         }
+
         if (focusedId == focused) {
             return;
         }
+
         focused = focusedId;
         int index = indexOf(focusedId);
         if (index >= 0 && manager.isTouchExplorationEnabled()) {
@@ -162,6 +170,7 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
                 return index;
             }
         }
+
         return -1;
     }
 
@@ -176,24 +185,28 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
     @Override
     protected int getVirtualViewAt(float x, float y) {
         markAsked();
+
         for (int index = elements.length - 1; index >= 0; --index) {
             Element element = elements[index];
             if (element.bounds.contains((int) x, (int) y) && (element.actions != 0 || !element.label.isEmpty())) {
                 return index;
             }
         }
+
         return INVALID_ID;
     }
 
     @Override
     protected void getVisibleVirtualViews(List<Integer> virtualViewIds) {
         markAsked();
+
         for (int index = 0; index < elements.length; ++index) {
             Element element = elements[index];
             if (element.actions != 0 || !element.label.isEmpty() || !element.value.isEmpty()) {
                 virtualViewIds.add(index);
             }
         }
+
         if (!announcement.isEmpty()) {
             virtualViewIds.add(ANNOUNCER);
         }
@@ -204,6 +217,7 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
     @Override
     protected void onPopulateNodeForVirtualView(int virtualViewId, @NonNull AccessibilityNodeInfoCompat node) {
         markAsked();
+
         if (virtualViewId == ANNOUNCER) {
             node.setClassName("android.widget.TextView");
             node.setBoundsInParent(new Rect(0, 0, view.getWidth(), view.getHeight()));
@@ -211,12 +225,14 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
             node.setLiveRegion(interrupting ? ViewCompat.ACCESSIBILITY_LIVE_REGION_ASSERTIVE : ViewCompat.ACCESSIBILITY_LIVE_REGION_POLITE);
             return;
         }
+
         Element element = virtualViewId < elements.length ? elements[virtualViewId] : null;
         if (element == null) {
             node.setBoundsInParent(new Rect());
             node.setContentDescription("");
             return;
         }
+
         node.setClassName(classOf(element.role));
         node.setBoundsInParent(element.bounds);
         if (element.role.equals("textField")) {
@@ -228,9 +244,11 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
                 node.setStateDescription(element.value);
             }
         }
+
         if (!element.hint.isEmpty()) {
             node.setTooltipText(element.hint);
         }
+
         node.setHeading(element.role.equals("heading"));
         boolean checkable = element.role.equals("checkBox") || element.role.equals("switch") || element.role.equals("radioButton");
         node.setCheckable(checkable);
@@ -240,15 +258,18 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
         if ((element.states & EXPANDED) != 0) {
             node.addAction(AccessibilityNodeInfoCompat.AccessibilityActionCompat.ACTION_COLLAPSE);
         }
+
         node.setFocusable((element.actions & ACTION_FOCUS) != 0);
         node.setFocused((element.states & FOCUSED) != 0);
         if ((element.actions & ACTION_ACTIVATE) != 0) {
             node.setClickable(true);
             node.addAction(AccessibilityNodeInfoCompat.AccessibilityActionCompat.ACTION_CLICK);
         }
+
         if ((element.actions & ACTION_INCREMENT) != 0) {
             node.addAction(AccessibilityNodeInfoCompat.AccessibilityActionCompat.ACTION_SCROLL_FORWARD);
         }
+
         if ((element.actions & ACTION_DECREMENT) != 0) {
             node.addAction(AccessibilityNodeInfoCompat.AccessibilityActionCompat.ACTION_SCROLL_BACKWARD);
         }
@@ -259,6 +280,7 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
         if (virtualViewId >= elements.length) {
             return false;
         }
+
         Element element = elements[virtualViewId];
         int engineAction = switch (action) {
             case AccessibilityNodeInfoCompat.ACTION_CLICK -> ACTION_ACTIVATE;
@@ -269,6 +291,7 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
         if ((element.actions & engineAction) == 0) {
             return false;
         }
+
         nativePerform(element.id, engineAction);
         return true;
     }
@@ -279,6 +302,7 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
         if (virtualViewId >= elements.length) {
             return;
         }
+
         Element element = elements[virtualViewId];
         event.setContentDescription(element.label);
         if (event.getEventType() == AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED && (element.actions & ACTION_FOCUS) != 0 && element.id != focused) {

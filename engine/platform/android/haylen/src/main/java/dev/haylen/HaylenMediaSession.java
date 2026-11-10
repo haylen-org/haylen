@@ -58,15 +58,18 @@ final class HaylenMediaSession extends MediaSession.Callback {
         if (activity == null) {
             return;
         }
+
         activity.runOnUiThread(() -> {
             if (json == null) {
                 release();
                 return;
             }
+
             if (current == null || current.activity != activity) {
                 release();
                 current = new HaylenMediaSession(activity);
             }
+
             try {
                 current.show(new JSONObject(new String(json, StandardCharsets.UTF_8)), artwork);
             } catch (JSONException exception) {
@@ -82,6 +85,7 @@ final class HaylenMediaSession extends MediaSession.Callback {
             background = false;
             return;
         }
+
         background = value && isDeclared(activity);
         activity.runOnUiThread(() -> {
             if (current != null) {
@@ -120,6 +124,7 @@ final class HaylenMediaSession extends MediaSession.Callback {
         if (current == null) {
             return;
         }
+
         playing = false;
         current.follow();
         current.activity.getSystemService(NotificationManager.class).cancel(NOTIFICATION);
@@ -133,10 +138,12 @@ final class HaylenMediaSession extends MediaSession.Callback {
         if (duration > 0) {
             metadata.putLong(MediaMetadata.METADATA_KEY_DURATION, duration);
         }
+
         Bitmap art = artwork != null && artwork.length > 0 ? BitmapFactory.decodeByteArray(artwork, 0, artwork.length) : null;
         if (art != null) {
             metadata.putBitmap(MediaMetadata.METADATA_KEY_ART, art);
         }
+
         session.setMetadata(metadata.build());
 
         int commands = info.optInt("commands");
@@ -146,6 +153,7 @@ final class HaylenMediaSession extends MediaSession.Callback {
                 actions |= ACTIONS[index];
             }
         }
+
         boolean playing = info.optBoolean("playing");
         long position = Math.round(info.optDouble("position", 0.0) * 1000.0);
         session.setPlaybackState(new PlaybackState.Builder().setActions(actions).setState(playing ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED, position, playing ? 1.0f : 0.0f).build());
@@ -161,12 +169,14 @@ final class HaylenMediaSession extends MediaSession.Callback {
             channel.setShowBadge(false);
             manager.createNotificationChannel(channel);
         }
+
         Intent open = new Intent(activity, activity.getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent content = PendingIntent.getActivity(activity, 0, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         Notification.Builder builder = new Notification.Builder(activity, CHANNEL).setSmallIcon(activity.getApplicationInfo().icon).setContentTitle(info.optString("title")).setContentText(info.optString("artist")).setContentIntent(content).setVisibility(Notification.VISIBILITY_PUBLIC).setOngoing(info.optBoolean("playing")).setStyle(new Notification.MediaStyle().setMediaSession(session.getSessionToken()));
         if (art != null) {
             builder.setLargeIcon(art);
         }
+
         shown = builder.build();
         playing = info.optBoolean("playing");
         manager.notify(NOTIFICATION, shown);
@@ -179,12 +189,14 @@ final class HaylenMediaSession extends MediaSession.Callback {
         if (wanted == foreground) {
             return;
         }
+
         foreground = wanted;
         Intent service = new Intent(activity, HaylenPlaybackService.class);
         if (!wanted) {
             activity.stopService(service);
             return;
         }
+
         try {
             ContextCompat.startForegroundService(activity, service);
         } catch (IllegalStateException refused) {
@@ -231,6 +243,7 @@ final class HaylenMediaSession extends MediaSession.Callback {
             nativeCommand(TOGGLE, 0.0);
             return true;
         }
+
         return super.onMediaButtonEvent(intent);
     }
 

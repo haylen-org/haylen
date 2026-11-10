@@ -101,10 +101,12 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         // A new activity starts with the link as its intent, while a restored one hands it to the plugins as a new intent once they heard of the activity.
         Intent link = pendingLink;
         pendingLink = null;
+
         if (link != null && savedInstanceState == null) {
             setIntent(link);
             reportLink(link);
         }
+
         nativeTelevision(isTelevision(this));
         nativeDensity(getResources().getDisplayMetrics().density);
         nativeOrientation(getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT);
@@ -152,9 +154,11 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         };
         getOnBackPressedDispatcher().addCallback(this, backCallback);
         getSystemService(InputManager.class).registerInputDeviceListener(this, null);
+
         for (int deviceId : InputDevice.getDeviceIds()) {
             onInputDeviceAdded(deviceId);
         }
+
         followNetwork();
         HaylenPlugins.checkLoaded(getApplication());
 
@@ -163,6 +167,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         HaylenPermissions.activityCreated(this);
         HaylenScreens.activityCreated(this);
         HaylenPlugins.activityCreated(this, savedInstanceState);
+
         if (link != null && savedInstanceState != null) {
             receiveIntent(link);
         }
@@ -214,6 +219,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
             controller.hide(WindowInsetsCompat.Type.statusBars());
             return;
         }
+
         controller.show(WindowInsetsCompat.Type.statusBars());
         controller.setAppearanceLightStatusBars(statusBar == STATUS_BAR_DARK || (statusBar == STATUS_BAR_AUTO && !isDark(getResources().getConfiguration())));
     }
@@ -227,6 +233,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         } else {
             controller.hide(WindowInsetsCompat.Type.navigationBars());
         }
+
         excludeBackGesture();
     }
 
@@ -237,6 +244,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
             ViewCompat.setSystemGestureExclusionRects(view, Collections.emptyList());
             return;
         }
+
         int height = Math.round(GESTURE_EXCLUSION_HEIGHT_DP * getResources().getDisplayMetrics().density);
         ViewCompat.setSystemGestureExclusionRects(view, Collections.singletonList(new Rect(0, Math.max(0, view.getHeight() - height), view.getWidth(), view.getHeight())));
     }
@@ -297,6 +305,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         if (event.getAction() == KeyEvent.ACTION_UP && event.getKeyCode() != KeyEvent.KEYCODE_BACK && onKeyUp(event.getKeyCode(), event)) {
             return true;
         }
+
         return super.dispatchKeyEvent(event);
     }
 
@@ -306,6 +315,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         if (event.isFromSource(InputDevice.SOURCE_CLASS_JOYSTICK)) {
             return processMotionEvent(event);
         }
+
         return super.dispatchGenericMotionEvent(event);
     }
 
@@ -326,9 +336,11 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         displays.unregister();
         outputs.dismissAll();
         getSystemService(InputManager.class).unregisterInputDeviceListener(this);
+
         if (network != null) {
             network.unregister();
         }
+
         HaylenEditText.detach(editor);
         HaylenBridge.detach(this);
     }
@@ -338,9 +350,11 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     @SuppressWarnings("deprecation")
     public void onTrimMemory(int level) {
         super.onTrimMemory(level);
+
         if (level != TRIM_MEMORY_UI_HIDDEN) {
             nativeLowMemory(level == TRIM_MEMORY_RUNNING_CRITICAL || level >= TRIM_MEMORY_COMPLETE);
         }
+
         HaylenPlugins.trimMemory(level);
     }
 
@@ -351,6 +365,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         if (device == null) {
             return;
         }
+
         int sources = device.getSources();
         if ((sources & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD || (sources & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK) {
             nativeControllerAdded(deviceId, device.getName().getBytes(StandardCharsets.UTF_8), device.getVendorId());
@@ -371,6 +386,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         if (activity == null) {
             return;
         }
+
         int requested = value == 0 ? ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE : value == 1 ? ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT : ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR;
         activity.runOnUiThread(() -> activity.setRequestedOrientation(requested));
     }
@@ -381,6 +397,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         if (activity == null) {
             return;
         }
+
         activity.runOnUiThread(() -> {
             activity.statusBar = value;
             activity.applyStatusBar();
@@ -419,17 +436,21 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         if (activity == null) {
             return "{}".getBytes(StandardCharsets.UTF_8);
         }
+
         ActivityManager.MemoryInfo memory = new ActivityManager.MemoryInfo();
         activity.getSystemService(ActivityManager.class).getMemoryInfo(memory);
         Map<String, Object> info = new HashMap<>();
         info.put("osVersion", Build.VERSION.RELEASE);
         info.put("deviceModel", Build.MODEL);
+
         if (!Build.MANUFACTURER.equals(Build.UNKNOWN)) {
             info.put("manufacturer", Build.MANUFACTURER);
         }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !Build.SOC_MODEL.equals(Build.UNKNOWN)) {
             info.put("cpuName", Build.SOC_MODEL);
         }
+
         info.put("cpuCores", Runtime.getRuntime().availableProcessors());
         info.put("memoryBytes", memory.totalMem);
         info.put("television", isTelevision(activity));
@@ -443,6 +464,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         if (activity == null) {
             return answer("unsupported", "The clipboard is out of reach while the app has no activity.");
         }
+
         activity.getSystemService(ClipboardManager.class).setPrimaryClip(ClipData.newPlainText("text", new String(text, StandardCharsets.UTF_8)));
         return answer("granted", "");
     }
@@ -470,10 +492,12 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         if (activity == null || device == null) {
             return;
         }
+
         if (!activity.requirements.isGranted(Manifest.permission.VIBRATE)) {
             activity.requirements.report(HaylenRequirements.Requirement.permission(Manifest.permission.VIBRATE), Log.WARN, "\"input.rumble\" does nothing");
             return;
         }
+
         boolean stop = low <= 0.0f && high <= 0.0f;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             VibratorManager manager = device.getVibratorManager();
@@ -481,21 +505,26 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
             if (ids.length == 0) {
                 return;
             }
+
             if (stop) {
                 manager.cancel();
                 return;
             }
+
             CombinedVibration.ParallelCombination combination = CombinedVibration.startParallel();
             float first = ids.length > 1 ? low : Math.max(low, high);
             if (first > 0.0f) {
                 combination.addVibrator(ids[0], oneShot(milliseconds, first));
             }
+
             if (ids.length > 1 && high > 0.0f) {
                 combination.addVibrator(ids[1], oneShot(milliseconds, high));
             }
+
             manager.vibrate(combination.combine());
             return;
         }
+
         rumbleBeforeVibratorManagers(device, stop, Math.max(low, high), milliseconds);
     }
 
@@ -506,10 +535,12 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         if (!vibrator.hasVibrator()) {
             return;
         }
+
         if (stop) {
             vibrator.cancel();
             return;
         }
+
         vibrator.vibrate(oneShot(milliseconds, intensity));
     }
 
@@ -524,6 +555,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         if (activity == null || activity.requirements.isGranted(Manifest.permission.INTERNET)) {
             return new byte[0];
         }
+
         HaylenRequirements.Requirement internet = HaylenRequirements.Requirement.permission(Manifest.permission.INTERNET);
         return ("The app lacks " + internet.description() + ", which network access needs on Android. " + internet.instructions()).getBytes(StandardCharsets.UTF_8);
     }
@@ -534,6 +566,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         if (activity == null || (activity.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) == 0) {
             return new byte[0];
         }
+
         String address = activity.getIntent().getStringExtra(DEVELOPMENT_SERVER_EXTRA);
         return address == null ? new byte[0] : address.getBytes(StandardCharsets.UTF_8);
     }
@@ -572,6 +605,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
             requirements.report(HaylenRequirements.Requirement.permission(Manifest.permission.ACCESS_NETWORK_STATE), Log.INFO, "the network state stays \"unknown\" and the events \"networkOnline\" and \"networkOffline\" never fire");
             return;
         }
+
         network = new HaylenNetwork(this);
         network.register();
     }
@@ -595,6 +629,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         if (cutout == null) {
             return new int[0];
         }
+
         List<Rect> rects = cutout.getBoundingRects();
         int[] edges = new int[rects.size() * 4];
         for (int index = 0; index < rects.size(); ++index) {
@@ -604,6 +639,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
             edges[index * 4 + 2] = rect.right;
             edges[index * 4 + 3] = rect.bottom;
         }
+
         return edges;
     }
 
@@ -626,6 +662,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         for (int index = 0; index < locales.size(); ++index) {
             languages.put(locales.get(index).toLanguageTag());
         }
+
         return languages.toString().getBytes(StandardCharsets.UTF_8);
     }
 
@@ -662,6 +699,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
             if (focused != null && focused != this && focused.onCheckIsTextEditor()) {
                 return false;
             }
+
             return super.requestFocus(direction, previouslyFocusedRect);
         }
     }

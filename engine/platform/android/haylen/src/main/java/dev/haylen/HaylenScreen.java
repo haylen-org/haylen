@@ -69,6 +69,7 @@ public final class HaylenScreen {
             end(false, HaylenBridge.encodeFailure("The screen \"" + name + "\" ended with a value that is not JSON: " + HaylenBridge.reason(error), null, null), HaylenPayload.NO_BUFFERS);
             return;
         }
+
         end(true, payload.json, payload.buffers);
     }
 
@@ -133,6 +134,7 @@ public final class HaylenScreen {
             if (cancelled || ended) {
                 return;
             }
+
             cancelled = true;
             listeners = new ArrayList<>(cancelListeners);
             cancelListeners.clear();
@@ -148,9 +150,11 @@ public final class HaylenScreen {
             if (ended) {
                 return;
             }
+
             ended = true;
         }
         HaylenScreens.ended(this);
+
         if (restored) {
             nativeRestore(HaylenBridge.utf8(plugin), HaylenBridge.utf8(name), HaylenBridge.utf8(state), ok, json, buffers);
         } else {

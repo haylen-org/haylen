@@ -12,9 +12,11 @@ public final class HaylenPlaybackService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         ServiceCompat.startForeground(this, HaylenMediaSession.NOTIFICATION, HaylenMediaSession.notification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
+
         if (!HaylenMediaSession.isPlayingInBackground()) {
             stopSelf();
         }
+
         return START_NOT_STICKY;
     }
 

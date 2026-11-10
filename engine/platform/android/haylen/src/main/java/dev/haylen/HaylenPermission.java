@@ -46,6 +46,7 @@ public class HaylenPermission {
                 return false;
             }
         }
+
         return true;
     }
 

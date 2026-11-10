@@ -54,10 +54,12 @@ final class HaylenSplash {
         if (cover == null) {
             return;
         }
+
         if (!nativeFramePresented()) {
             Choreographer.getInstance().postFrameCallback(this::removeOnceAppDrew);
             return;
         }
+
         cover.animate().alpha(0).setDuration(Math.round(nativeFadeOut() * 1000.0)).withEndAction(this::dismiss);
     }
 

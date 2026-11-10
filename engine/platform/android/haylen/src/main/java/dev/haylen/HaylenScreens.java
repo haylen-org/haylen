@@ -59,10 +59,12 @@ final class HaylenScreens {
                 Log.i(TAG, "The screen \"" + key + "\" answered after it ended, so no app receives the answer.");
                 return;
             }
+
             if (result == null) {
                 screen.fail("The person closed the screen \"" + screen.name() + "\".", "cancelled", null);
                 return;
             }
+
             try {
                 screen.finish(output.convert(result));
             } catch (Exception error) {
@@ -121,6 +123,7 @@ final class HaylenScreens {
             }
         }
         saved.registerSavedStateProvider(SAVED_STATE_KEY, HaylenScreens::save);
+
         for (Map.Entry<String, Registration> entry : registrations.entrySet()) {
             entry.getValue().attach(activity, entry.getKey());
         }
@@ -151,11 +154,13 @@ final class HaylenScreens {
             screen.fail("No screen \"" + screen.name() + "\" of the plugin \"" + screen.plugin() + "\" is registered on Android.", "noHandler", null);
             return;
         }
+
         HaylenActivity activity = HaylenBridge.activity();
         if (activity == null || !activity.getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.RESUMED)) {
             screen.fail("The screen \"" + screen.name() + "\" cannot show while the app is away from the foreground.", "notActive", null);
             return;
         }
+
         synchronized (HaylenScreens.class) {
             showing = screen;
         }
@@ -176,15 +181,19 @@ final class HaylenScreens {
             if (screen == null) {
                 return;
             }
+
             boolean listens = screen.hasCancelListeners();
             screen.cancel();
+
             if (listens) {
                 return;
             }
+
             HaylenActivity activity = HaylenBridge.activity();
             if (activity != null && screen.requestCode() >= 0) {
                 activity.finishActivity(screen.requestCode());
             }
+
             screen.fail("The app gave the screen \"" + screen.name() + "\" up.", "cancelled", null);
         });
     }
@@ -200,6 +209,7 @@ final class HaylenScreens {
         if (showing == screen) {
             showing = null;
         }
+
         if (restored == screen) {
             restored = null;
         }
@@ -209,6 +219,7 @@ final class HaylenScreens {
         if (showing != null && showing.key().equals(key)) {
             return showing;
         }
+
         return restored != null && restored.key().equals(key) ? restored : null;
     }
 
@@ -222,6 +233,7 @@ final class HaylenScreens {
             bundle.putString("state", screen.state());
             bundle.putBoolean("opaque", screen.isOpaque());
         }
+
         return bundle;
     }
 

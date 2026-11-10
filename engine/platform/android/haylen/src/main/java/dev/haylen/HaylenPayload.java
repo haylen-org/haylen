@@ -47,6 +47,7 @@ final class HaylenPayload {
         for (long handle : handles) {
             views.add(VarnDataView.adopt(nativeShare(handle)));
         }
+
         return views;
     }
 
@@ -60,18 +61,22 @@ final class HaylenPayload {
         if (value instanceof byte[]) {
             return reference(value, buffers);
         }
+
         if (value instanceof ByteBuffer) {
             ByteBuffer bytes = (ByteBuffer) value;
             if (bytes.isDirect()) {
                 return reference(bytes.slice(), buffers);
             }
+
             byte[] copy = new byte[bytes.remaining()];
             bytes.duplicate().get(copy);
             return reference(copy, buffers);
         }
+
         if (value instanceof VarnDataView) {
             return ((VarnDataView) value).token();
         }
+
         if (value instanceof JSONObject) {
             JSONObject source = (JSONObject) value;
             JSONObject object = new JSONObject();
@@ -79,37 +84,47 @@ final class HaylenPayload {
                 String key = keys.next();
                 object.put(key, prepare(source.opt(key), buffers));
             }
+
             return object;
         }
+
         if (value instanceof Map) {
             JSONObject object = new JSONObject();
             for (Map.Entry<?, ?> entry : ((Map<?, ?>) value).entrySet()) {
                 object.put(String.valueOf(entry.getKey()), prepare(entry.getValue(), buffers));
             }
+
             return object;
         }
+
         if (value instanceof JSONArray) {
             JSONArray source = (JSONArray) value;
             JSONArray array = new JSONArray();
             for (int index = 0; index < source.length(); ++index) {
                 array.put(prepare(source.opt(index), buffers));
             }
+
             return array;
         }
+
         if (value instanceof Collection) {
             JSONArray array = new JSONArray();
             for (Object element : (Collection<?>) value) {
                 array.put(prepare(element, buffers));
             }
+
             return array;
         }
+
         if (value instanceof Object[]) {
             JSONArray array = new JSONArray();
             for (Object element : (Object[]) value) {
                 array.put(prepare(element, buffers));
             }
+
             return array;
         }
+
         Object wrapped = JSONObject.wrap(value);
         return wrapped == null ? JSONObject.NULL : wrapped;
     }
@@ -125,14 +140,18 @@ final class HaylenPayload {
             for (int index = 0; index < array.length(); ++index) {
                 array.put(index, restore(array.get(index), buffers, views));
             }
+
             return array;
         }
+
         if (!(value instanceof JSONObject)) {
             return value;
         }
+
         if (VarnDataView.isToken(value)) {
             return view((JSONObject) value, views);
         }
+
         JSONObject object = (JSONObject) value;
         Object index = object.length() == 1 ? object.opt(BYTES_KEY) : null;
         if (index instanceof Integer || index instanceof Long) {
@@ -141,13 +160,16 @@ final class HaylenPayload {
                 return buffers[(int) position];
             }
         }
+
         List<String> keys = new ArrayList<>();
         for (Iterator<String> names = object.keys(); names.hasNext();) {
             keys.add(names.next());
         }
+
         for (String key : keys) {
             object.put(key, restore(object.get(key), buffers, views));
         }
+
         return object;
     }
 
@@ -158,6 +180,7 @@ final class HaylenPayload {
                 return view;
             }
         }
+
         throw new JSONException("The parameters name the data view " + id + ", which did not come with them.");
     }
 

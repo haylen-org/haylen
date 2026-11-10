@@ -31,16 +31,19 @@ final class HaylenAccessibility implements AccessibilityManager.TouchExploration
         manager = activity.getSystemService(AccessibilityManager.class);
         manager.addTouchExplorationStateChangeListener(this);
         activity.getContentResolver().registerContentObserver(Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE), false, animations);
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             contrast = level -> report();
             activity.getSystemService(UiModeManager.class).addContrastChangeListener(ContextCompat.getMainExecutor(activity), contrast);
         }
+
         report();
     }
 
     void unregister() {
         manager.removeTouchExplorationStateChangeListener(this);
         activity.getContentResolver().unregisterContentObserver(animations);
+
         if (contrast != null) {
             activity.getSystemService(UiModeManager.class).removeContrastChangeListener(contrast);
         }

@@ -53,6 +53,7 @@ final class HaylenPlugins {
             if (plugin == null) {
                 continue;
             }
+
             JSONObject entry = declared.get(id);
             JSONObject parameters = entry != null ? entry.optJSONObject("parameters") : null;
             HaylenPluginContext context = new HaylenPluginContext(id, application, parameters != null ? parameters : new JSONObject());
@@ -63,9 +64,11 @@ final class HaylenPlugins {
                 context.unregisterAll();
                 continue;
             }
+
             Log.i(TAG, "Loaded the plugin \"" + id + "\" " + (entry != null ? entry.optString("version") : "that \"app.json\" does not list") + ".");
             all.add(new Loaded(plugin, context));
         }
+
         loaded = Collections.unmodifiableList(all);
         started = true;
     }
@@ -75,6 +78,7 @@ final class HaylenPlugins {
         if (started || checked) {
             return;
         }
+
         checked = true;
         Set<String> ids = readClasses(application).keySet();
         if (!ids.isEmpty()) {
@@ -88,6 +92,7 @@ final class HaylenPlugins {
         for (Loaded entry : loaded) {
             ids.put(entry.context.id());
         }
+
         return ids.toString().getBytes(StandardCharsets.UTF_8);
     }
 
@@ -102,6 +107,7 @@ final class HaylenPlugins {
                 Log.e(TAG, "The engine reported an error that is not a JSON object.", failure);
                 return;
             }
+
             notifyPlugins("onAppError", plugin -> plugin.onAppError(error));
         });
     }
@@ -115,6 +121,7 @@ final class HaylenPlugins {
     // The covers that plugins left open end with the activity, so the next app starts uncovered.
     static void activityDestroyed(HaylenActivity activity) {
         notifyPlugins("onActivityDestroyed", plugin -> plugin.onActivityDestroyed(activity));
+
         for (Loaded entry : loaded) {
             entry.context.endCovers();
         }
@@ -155,15 +162,18 @@ final class HaylenPlugins {
         } catch (PackageManager.NameNotFoundException error) {
             throw new IllegalStateException("The package of the app is not installed.", error);
         }
+
         Map<String, String> classes = new TreeMap<>();
         if (metaData == null) {
             return classes;
         }
+
         for (String key : metaData.keySet()) {
             if (key.startsWith(META_DATA_PREFIX)) {
                 classes.put(key.substring(META_DATA_PREFIX.length()), metaData.getString(key));
             }
         }
+
         return classes;
     }
 
@@ -176,6 +186,7 @@ final class HaylenPlugins {
             for (int read; (read = input.read(buffer)) > 0; ) {
                 text.write(buffer, 0, read);
             }
+
             JSONArray plugins = new JSONObject(new String(text.toByteArray(), StandardCharsets.UTF_8)).getJSONArray("plugins");
             for (int index = 0; index < plugins.length(); ++index) {
                 JSONObject entry = plugins.getJSONObject(index);
@@ -184,6 +195,7 @@ final class HaylenPlugins {
         } catch (IOException | JSONException error) {
             Log.w(TAG, "The assets of the app have no readable \"" + PLUGINS_FILE + "\", which \"haylen.py prepare\" writes: " + HaylenBridge.reason(error));
         }
+
         return declared;
     }
 
@@ -202,6 +214,7 @@ final class HaylenPlugins {
                 Log.e(TAG, "The plugin \"" + id + "\" names the class \"" + className + "\", which does not extend \"dev.haylen.HaylenPlugin\", so the app runs without its native part.");
                 return null;
             }
+
             return type.asSubclass(HaylenPlugin.class).getDeclaredConstructor().newInstance();
         } catch (ReflectiveOperationException | LinkageError error) {
             Log.e(TAG, "The plugin \"" + id + "\" names the class \"" + className + "\", which cannot be found or created with a public constructor without parameters, so the app runs without its native part.", error);

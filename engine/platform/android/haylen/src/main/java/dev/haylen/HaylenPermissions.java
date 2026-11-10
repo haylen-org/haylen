@@ -62,6 +62,7 @@ final class HaylenPermissions {
                 nativeAnswered(request, encode("unknown", "", Collections.emptyList()));
                 return;
             }
+
             check(permission, activity, activity.requirements(), (state, message, missing) -> nativeAnswered(request, encode(state, message, missing)));
         });
     }
@@ -75,6 +76,7 @@ final class HaylenPermissions {
                 nativeAnswered(request, encode("unknown", "", Collections.emptyList()));
                 return;
             }
+
             ask(permission, activity, activity.requirements(), (state, message, missing) -> nativeAnswered(request, encode(state, message, missing)));
         });
     }
@@ -90,6 +92,7 @@ final class HaylenPermissions {
         if (reportUnsupported(permission, context, requirements, answer)) {
             return;
         }
+
         answerState(permission, context, answer);
     }
 
@@ -98,6 +101,7 @@ final class HaylenPermissions {
         if (reportUnsupported(permission, context, requirements, answer)) {
             return;
         }
+
         if (permission.required(context).length == 0 || permission.isGranted(context)) {
             answerState(permission, context, answer);
             return;
@@ -122,10 +126,12 @@ final class HaylenPermissions {
             answer.answer(permission.stateWithoutPrompt(context), "", Collections.emptyList());
             return;
         }
+
         if (permission.isGranted(context)) {
             answer.answer("granted", "", Collections.emptyList());
             return;
         }
+
         answer.answer(isRefused(permission, required, context) ? "denied" : "prompt", "", Collections.emptyList());
     }
 
@@ -134,10 +140,12 @@ final class HaylenPermissions {
         if (reportMissing(permission, context, requirements, answer)) {
             return true;
         }
+
         String reason = permission.unsupportedReason(context);
         if (reason == null) {
             return false;
         }
+
         answer.answer("unsupported", reason, Collections.emptyList());
         return true;
     }
@@ -147,6 +155,7 @@ final class HaylenPermissions {
         if (answered.equals("prompt")) {
             return "The system did not show its prompt for " + permission.getCapability() + ", so the app does not hold it yet. Ask for it again later with \"system.requestPermission('" + permission.getName() + "')\".";
         }
+
         return "The person has not allowed " + permission.getCapability() + ". Ask for it with \"system.requestPermission('" + permission.getName() + "')\", which shows the prompt of the system while the system still asks, or the person allows it in the settings of the system.";
     }
 
@@ -160,10 +169,12 @@ final class HaylenPermissions {
             for (Map<String, Object> requirement : missing) {
                 list.put(new JSONObject(requirement));
             }
+
             answer.put("missing", list);
         } catch (JSONException error) {
             throw new IllegalStateException("The answer of a permission could not be written as JSON.", error);
         }
+
         return answer;
     }
 
@@ -177,6 +188,7 @@ final class HaylenPermissions {
                 return permission;
             }
         }
+
         throw new IllegalArgumentException("The permission \"" + name + "\" is not one of the engine.");
     }
 
@@ -185,6 +197,7 @@ final class HaylenPermissions {
             ask(permission, context, requirements, answer);
             return;
         }
+
         answer.answer(state.equals("unsupported") ? state : "denied", message, missing);
     }
 
@@ -195,6 +208,7 @@ final class HaylenPermissions {
             next();
             return;
         }
+
         activity.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit().putBoolean(permission.getName(), true).apply();
         settle = () -> answer.answer(permission.isGranted(activity) ? "granted" : "denied", "", Collections.emptyList());
         launcher.launch(asked);
@@ -206,6 +220,7 @@ final class HaylenPermissions {
         if (waiting == null) {
             return;
         }
+
         settle = null;
         waiting.run();
         next();
@@ -224,12 +239,14 @@ final class HaylenPermissions {
         if (!context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).getBoolean(permission.getName(), false)) {
             return false;
         }
+
         HaylenActivity activity = HaylenBridge.activity();
         for (String name : required) {
             if (context.checkSelfPermission(name) != PackageManager.PERMISSION_GRANTED && (activity == null || !activity.shouldShowRequestPermissionRationale(name))) {
                 return true;
             }
         }
+
         return false;
     }
 
@@ -241,6 +258,7 @@ final class HaylenPermissions {
                 missing.add(HaylenRequirements.Requirement.permission(name));
             }
         }
+
         if (missing.isEmpty()) {
             return false;
         }
@@ -254,6 +272,7 @@ final class HaylenPermissions {
             instructions.add(requirement.instructions());
             entries.add(requirement.toMap());
         }
+
         String list = descriptions.size() == 1 ? descriptions.get(0) : String.join(", ", descriptions.subList(0, descriptions.size() - 1)) + " and " + descriptions.get(descriptions.size() - 1);
         answer.answer("unsupported", requirements.owner() + " needs " + list + ", which the app lacks. " + String.join(" ", instructions), entries);
         return true;

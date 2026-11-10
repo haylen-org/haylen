@@ -69,6 +69,7 @@ final class HaylenEditText extends EditText {
             if (editing) {
                 nativeTextAction(field, ACTION_SUBMIT);
             }
+
             return true;
         });
         setOnKeyListener((view, code, event) -> onEditKey(code, event));
@@ -104,6 +105,7 @@ final class HaylenEditText extends EditText {
         if (!editing) {
             return false;
         }
+
         nativeTextAction(field, ACTION_DISMISSED);
         return true;
     }
@@ -154,6 +156,7 @@ final class HaylenEditText extends EditText {
         boolean starting = !editing || id != field;
         boolean changed = nextRevision != revision;
         boolean reopening = changed && !keyboardShown;
+
         if (starting || changed) {
             field = id;
             revision = nextRevision;
@@ -171,11 +174,13 @@ final class HaylenEditText extends EditText {
         editing = true;
         setFocusable(true);
         setFocusableInTouchMode(true);
+
         if (!hasFocus()) {
             requestFocus();
         } else if (reconfigured) {
             methods.restartInput(this);
         }
+
         if (starting || reopening) {
             methods.showSoftInput(this, 0);
         }
@@ -192,15 +197,18 @@ final class HaylenEditText extends EditText {
         if (!editing || applying || reportPending) {
             return;
         }
+
         reportPending = true;
         post(this::report);
     }
 
     private void report() {
         reportPending = false;
+
         if (!editing) {
             return;
         }
+
         Editable editable = getText();
         String text = editable.toString();
         int start = BaseInputConnection.getComposingSpanStart(editable);
@@ -219,12 +227,15 @@ final class HaylenEditText extends EditText {
         } else if ((code == KeyEvent.KEYCODE_ENTER || code == KeyEvent.KEYCODE_NUMPAD_ENTER) && !multiline) {
             action = ACTION_SUBMIT;
         }
+
         if (!editing || action < 0) {
             return false;
         }
+
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
             nativeTextAction(field, action);
         }
+
         return true;
     }
 
@@ -272,6 +283,7 @@ final class HaylenEditText extends EditText {
             if (Character.codePointCount(source, start, end) <= room) {
                 return null;
             }
+
             return room <= 0 ? "" : source.subSequence(start, Character.offsetByCodePoints(source, start, room));
         };
     }

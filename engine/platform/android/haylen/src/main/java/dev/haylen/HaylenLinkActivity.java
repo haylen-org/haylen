@@ -19,6 +19,7 @@ public final class HaylenLinkActivity extends Activity {
         } else {
             HaylenActivity.keepLink(link);
         }
+
         startActivity(launch);
         finish();
     }

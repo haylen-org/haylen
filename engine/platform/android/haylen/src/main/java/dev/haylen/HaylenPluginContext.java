@@ -121,6 +121,7 @@ public final class HaylenPluginContext {
             if (permissions.containsKey(permission.getName())) {
                 throw new IllegalArgumentException("The plugin \"" + id + "\" registered the permission \"" + permission.getName() + "\" twice.");
             }
+
             first = permissions.isEmpty();
             permissions.put(permission.getName(), permission);
         }
@@ -136,6 +137,7 @@ public final class HaylenPluginContext {
         if (permission == null) {
             throw new IllegalArgumentException("The plugin \"" + id + "\" requires the permission \"" + name + "\", which it did not register with \"registerPermission\".");
         }
+
         runOnMainThread(() -> HaylenPermissions.ask(permission, application, requirements, (state, message, missing) -> {
             if (state.equals("granted") || state.equals("unknown")) {
                 try {
@@ -157,6 +159,7 @@ public final class HaylenPluginContext {
             Log.w("haylen", "The plugin \"" + id + "\" covered the app while no activity exists, which covers nothing.");
             return;
         }
+
         ++covers;
         nativeCoverApp();
     }
@@ -166,6 +169,7 @@ public final class HaylenPluginContext {
             Log.e("haylen", "The plugin \"" + id + "\" uncovered the app without covering it first.");
             return;
         }
+
         --covers;
         nativeUncoverApp();
     }
@@ -187,6 +191,7 @@ public final class HaylenPluginContext {
             reply.success(HaylenPermissions.toJson("unsupported", "The plugin \"" + id + "\" registers no permission \"" + name + "\" on Android.", Collections.emptyList()));
             return;
         }
+
         HaylenPermissions.Answer answer = (state, message, missing) -> reply.success(HaylenPermissions.toJson(state, message, missing));
         if (asking) {
             HaylenPermissions.ask(permission, application, requirements, answer);
@@ -214,6 +219,7 @@ public final class HaylenPluginContext {
             for (String name : methods) {
                 HaylenBridge.unregister(name);
             }
+
             methods.clear();
         }
     }

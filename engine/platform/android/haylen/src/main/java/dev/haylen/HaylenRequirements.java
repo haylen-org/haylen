@@ -190,6 +190,7 @@ public final class HaylenRequirements {
                 return true;
             }
         }
+
         return false;
     }
 
@@ -207,6 +208,7 @@ public final class HaylenRequirements {
                 missing.add(requirement);
             }
         }
+
         if (missing.isEmpty()) {
             return;
         }
@@ -218,6 +220,7 @@ public final class HaylenRequirements {
             descriptions.add(requirement.description());
             data.add(requirement.toMap());
         }
+
         String list = descriptions.size() == 1 ? descriptions.get(0) : String.join(", ", descriptions.subList(0, descriptions.size() - 1)) + " and " + descriptions.get(descriptions.size() - 1);
         throw new HaylenBridge.Failure(owner + " needs " + list + ", which the app lacks.", "unsupported", Collections.singletonMap("missing", data));
     }
@@ -247,6 +250,7 @@ public final class HaylenRequirements {
                 return true;
             }
         }
+
         return false;
     }
 
@@ -255,6 +259,7 @@ public final class HaylenRequirements {
             if (packageInfo == null) {
                 packageInfo = queryPackage();
             }
+
             return packageInfo;
         }
     }
@@ -267,6 +272,7 @@ public final class HaylenRequirements {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 return manager.getPackageInfo(context.getPackageName(), PackageManager.PackageInfoFlags.of(PACKAGE_FLAGS));
             }
+
             return manager.getPackageInfo(context.getPackageName(), PACKAGE_FLAGS);
         } catch (PackageManager.NameNotFoundException error) {
             throw new IllegalStateException("The package of the app is not installed.", error);
@@ -279,6 +285,7 @@ public final class HaylenRequirements {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             return manager.queryIntentActivities(intent, PackageManager.ResolveInfoFlags.of(0));
         }
+
         return manager.queryIntentActivities(intent, 0);
     }
 }

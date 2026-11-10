@@ -41,6 +41,7 @@ final class HaylenOutputs {
             nativeEnded(number, ENDING_UNSUPPORTED, "The app has no activity to show an output from.".getBytes(StandardCharsets.UTF_8));
             return;
         }
+
         activity.runOnUiThread(() -> activity.outputs.show(number, displayId, new String(title, StandardCharsets.UTF_8)));
     }
 
@@ -98,6 +99,7 @@ final class HaylenOutputs {
             }
         });
         shown.put(number, presentation);
+
         try {
             presentation.show();
         } catch (WindowManager.InvalidDisplayException exception) {
@@ -134,6 +136,7 @@ final class HaylenOutputs {
             default:
                 return;
         }
+
         int count = event.getPointerCount();
         int[] ids = new int[count];
         float[] points = new float[count * 2];
@@ -142,6 +145,7 @@ final class HaylenOutputs {
             points[index * 2] = event.getX(index) / density;
             points[index * 2 + 1] = event.getY(index) / density;
         }
+
         int changed = type == TOUCH_MOVED ? -1 : event.getActionIndex();
         nativeTouch(number, type, ids, points, changed);
     }

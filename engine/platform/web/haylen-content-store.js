@@ -11,6 +11,7 @@ const locate = async (name, create) => {
     for (const part of parts.slice(0, -1)) {
         folder = await folder.getDirectoryHandle(part, { create });
     }
+
     return [folder, parts[parts.length - 1]];
 };
 
@@ -20,6 +21,7 @@ const open = async (name, create) => {
         const handle = await (await folder.getFileHandle(file, { create })).createSyncAccessHandle();
         handles.set(name, handle);
     }
+
     return handles.get(name);
 };
 
@@ -45,6 +47,7 @@ const walk = async (folder, prefix, found) => {
             found.push(prefix + name);
         }
     }
+
     return found;
 };
 
@@ -61,10 +64,12 @@ const operations = {
                 segments[name] = handle.getSize();
                 continue;
             }
+
             const bytes = new Uint8Array(handle.getSize());
             handle.read(bytes, { at: 0 });
             files.push({ name, bytes });
         }
+
         return { files, segments, available: await available() };
     },
     async write({ name, bytes }) {
@@ -87,6 +92,7 @@ const operations = {
     },
     async remove({ name }) {
         close(name);
+
         try {
             const [folder, file] = await locate(name, false);
             await folder.removeEntry(file);
@@ -118,6 +124,7 @@ self.onmessage = (event) => {
             self.postMessage({ op: message.op, id: message.id, size: message.size, ok: false, quota: refused.quota, message: refused.message });
             return;
         }
+
         try {
             const result = (await operations[message.op](message)) || {};
             const transfer = result.bytes ? [result.bytes.buffer] : result.files ? result.files.map((file) => file.bytes.buffer) : [];
@@ -127,6 +134,7 @@ self.onmessage = (event) => {
             if (changes.has(message.op)) {
                 refused = failure;
             }
+
             self.postMessage({ op: message.op, id: message.id, size: message.size, ok: false, ...failure });
         }
     });

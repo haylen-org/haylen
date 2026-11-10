@@ -25,6 +25,7 @@ class HaylenAudioProcessor extends AudioWorkletProcessor {
             this.write(data);
             return;
         }
+
         this.active = data.active;
         this.primed = false;
     }
@@ -51,8 +52,10 @@ class HaylenAudioProcessor extends AudioWorkletProcessor {
                 samples[index] = this.ring[frame * this.channels + channel];
                 frame = frame + 1 === this.capacity ? 0 : frame + 1;
             }
+
             samples.fill(0, played);
         }
+
         this.readFrame = (this.readFrame + played) % this.capacity;
         this.storedFrames -= played;
         this.unreportedFrames += played;
@@ -62,11 +65,13 @@ class HaylenAudioProcessor extends AudioWorkletProcessor {
         if (starved) {
             this.underruns += 1;
         }
+
         if (this.unreportedFrames >= this.reportFrames || (starved && this.unreportedFrames > 0)) {
             this.port.postMessage({ played: this.unreportedFrames, underruns: this.underruns, buffers: this.spent }, this.spent);
             this.unreportedFrames = 0;
             this.spent = [];
         }
+
         return true;
     }
 }
@@ -89,6 +94,7 @@ class HaylenVideoTapProcessor extends AudioWorkletProcessor {
             for (let index = 0; index < left.length; ++index) {
                 this.block[this.filled++] = left[index];
                 this.block[this.filled++] = right[index];
+
                 if (this.filled === this.block.length) {
                     this.port.postMessage(this.block, [this.block.buffer]);
                     this.block = new Float32Array(1024 * 2);
@@ -96,9 +102,11 @@ class HaylenVideoTapProcessor extends AudioWorkletProcessor {
                 }
             }
         }
+
         for (const channel of outputs[0]) {
             channel.fill(0);
         }
+
         return true;
     }
 }

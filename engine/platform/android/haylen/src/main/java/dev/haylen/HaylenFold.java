@@ -38,6 +38,7 @@ final class HaylenFold implements Consumer<WindowLayoutInfo> {
                 return;
             }
         }
+
         nativeFold(false, 0, 0, 0, 0, false, false, false, false);
     }
 

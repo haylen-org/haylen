@@ -84,16 +84,20 @@ Module.haylen = Module.haylen || {};
         if (!("mediaSession" in navigator)) {
             return;
         }
+
         const session = navigator.mediaSession;
+
         if (mediaArtwork) {
             URL.revokeObjectURL(mediaArtwork);
             mediaArtwork = null;
         }
+
         const offers = (command) => info !== null && (info.commands & (1 << command)) !== 0;
         mediaActions.forEach(function (action, command) {
             if (action === null) {
                 return;
             }
+
             const sent = command <= 1 && !offers(command) && offers(2) ? 2 : command;
             const handler = offers(sent) ? (details) => Module._haylen_web_media_command(sent, details.seekTime || 0) : null;
             // A browser that lacks an action throws, and the action is then not offered there.
@@ -103,14 +107,17 @@ Module.haylen = Module.haylen || {};
                 return;
             }
         });
+
         if (info === null) {
             session.metadata = null;
             session.playbackState = "none";
             return;
         }
+
         if (artwork.length > 0) {
             mediaArtwork = URL.createObjectURL(new Blob([artwork]));
         }
+
         session.metadata = new MediaMetadata({ title: info.title, artist: info.artist, album: info.album, artwork: mediaArtwork ? [{ src: mediaArtwork }] : [] });
         session.playbackState = info.playing ? "playing" : "paused";
         if (info.duration > 0 && session.setPositionState) {
@@ -135,6 +142,7 @@ Module.haylen = Module.haylen || {};
             work();
             return;
         }
+
         waiting.runtime.push(work);
     };
 
@@ -147,16 +155,20 @@ Module.haylen = Module.haylen || {};
                 views.push(item);
                 return item.token();
             }
+
             if (item instanceof ArrayBuffer || ArrayBuffer.isView(item)) {
                 buffers.push(item instanceof ArrayBuffer ? new Uint8Array(item) : new Uint8Array(item.buffer, item.byteOffset, item.byteLength));
                 return { $bytes: buffers.length - 1 };
             }
+
             if (Array.isArray(item)) {
                 return item.map(prepare);
             }
+
             if (item !== null && typeof item === "object" && typeof item.toJSON !== "function") {
                 return Object.fromEntries(Object.entries(item).map(([key, element]) => [key, prepare(element)]));
             }
+
             return item;
         };
         const json = JSON.stringify(prepare(value === undefined ? null : value));
@@ -171,9 +183,11 @@ Module.haylen = Module.haylen || {};
                 if (view === null) {
                     throw new Error(`The data view ${value.$view} was gone before the page received it.`);
                 }
+
                 acquired.push(view);
                 return view;
             }
+
             const index = value !== null && typeof value === "object" && !Array.isArray(value) && Object.keys(value).length === 1 ? value.$bytes : undefined;
             return Number.isInteger(index) && index >= 0 && index < buffers.length ? buffers[index] : value;
         });
@@ -188,6 +202,7 @@ Module.haylen = Module.haylen || {};
             if (types[index] !== "string") {
                 return value;
             }
+
             const address = Module.stringToNewUTF8(value);
             owned.push(address);
             return address;
@@ -211,6 +226,7 @@ Module.haylen = Module.haylen || {};
             Module.HEAPU32[(table >> 2) + index * 2] = address;
             Module.HEAPU32[(table >> 2) + index * 2 + 1] = buffers[index].length;
         });
+
         try {
             return body(table, buffers.length);
         } finally {
@@ -226,6 +242,7 @@ Module.haylen = Module.haylen || {};
             const address = Module.HEAPU32[(table >> 2) + index * 2];
             buffers.push(Module.HEAPU8.slice(address, address + Module.HEAPU32[(table >> 2) + index * 2 + 1]));
         }
+
         return buffers;
     };
 
@@ -241,6 +258,7 @@ Module.haylen = Module.haylen || {};
             waiting.events.push({ event, json: encoded.json, buffers: encoded.buffers.map((buffer) => buffer.slice()), views: encoded.views.map((view) => view.retain()), flags });
             return;
         }
+
         sendEvent(event, encoded.json, encoded.buffers, flags);
     };
 
@@ -258,6 +276,7 @@ Module.haylen = Module.haylen || {};
         if (error && typeof error.code === "string") {
             return { message, code: error.code, data: error.data };
         }
+
         return { message, code: "exception", data: { type: error && error.name ? error.name : typeof error } };
     };
 
@@ -268,6 +287,7 @@ Module.haylen = Module.haylen || {};
             if (!pending.delete(call)) {
                 return;
             }
+
             const encoded = ok ? encodePayload(value) : { json: JSON.stringify(value), buffers: [], views: [] };
             withBuffers(encoded.buffers, (table, count) => callEngine("haylen_web_resolve", null, ["number", "number", "string", "number", "number"], [call, ok ? 1 : 0, encoded.json, table, count]));
             releaseViews(encoded.views);
@@ -275,10 +295,12 @@ Module.haylen = Module.haylen || {};
         const handler = handlers.get(method);
         const controller = new AbortController();
         pending.set(call, controller);
+
         if (!handler) {
             reply(false, { message: "No page handler is registered for \"" + method + "\".", code: "noHandler" });
             return;
         }
+
         let decoded;
         try {
             decoded = decodePayload(params, buffers, views);
@@ -287,12 +309,14 @@ Module.haylen = Module.haylen || {};
             reply(false, describeFailure(error));
             return;
         }
+
         // The handler starts after the frame that made the call, and a cancel in that frame keeps it from starting, as on the other platforms.
         queueMicrotask(async () => {
             if (controller.signal.aborted) {
                 releaseViews(views);
                 return;
             }
+
             try {
                 reply(true, await handler(decoded, { call, signal: controller.signal }));
             } catch (error) {
@@ -322,11 +346,14 @@ Module.haylen = Module.haylen || {};
         if (screens.current !== screen) {
             return;
         }
+
         screens.current = null;
         clearInterval(screen.watch);
+
         if (screen.popup && !screen.popup.closed) {
             screen.popup.close();
         }
+
         const encoded = ok ? encodePayload(value) : { json: JSON.stringify(value), buffers: [], views: [] };
         withBuffers(encoded.buffers, (table, count) => callEngine("haylen_web_finish_screen", null, ["number", "number", "string", "number", "number"], [screen.id, ok ? 1 : 0, encoded.json, table, count]));
         releaseViews(encoded.views);
@@ -338,6 +365,7 @@ Module.haylen = Module.haylen || {};
         if (!screen || !screen.answer || data === null || typeof data !== "object" || data.haylenScreen !== screen.token || !trusted(screen)) {
             return;
         }
+
         if ("error" in data) {
             screen.answer.reject(Object.assign(new Error(String(data.error && data.error.message ? data.error.message : data.error)), { code: data.error && data.error.code, data: data.error && data.error.data }));
         } else {
@@ -346,6 +374,7 @@ Module.haylen = Module.haylen || {};
     };
 
     window.addEventListener("message", (event) => receiveScreenAnswer(event.data, (screen) => screen.origins.includes(event.origin) && event.source === screen.popup));
+
     if (typeof BroadcastChannel !== "undefined") {
         new BroadcastChannel("haylen-screens").onmessage = (event) => receiveScreenAnswer(event.data, () => true);
     }
@@ -359,6 +388,7 @@ Module.haylen = Module.haylen || {};
             } catch (error) {
                 console.warn("The session storage could not forget the screen: " + error.message);
             }
+
             endScreen(screen, false, { message: "The page came back without the result of the screen.", code: "cancelled" });
         }
     });
@@ -372,6 +402,7 @@ Module.haylen = Module.haylen || {};
         if (!popup) {
             return Promise.reject(screenFailure("The browser blocked the popup of the screen. Browsers open popups only right after a click, a tap or a key press of the person.", "popupBlocked"));
         }
+
         screen.popup = popup;
         screen.origins = [location.origin, new URL(settings.origin, location.href).origin];
         return new Promise((resolve, reject) => {
@@ -393,6 +424,7 @@ Module.haylen = Module.haylen || {};
             endScreen(screen, false, { message: "The session storage could not keep the screen for the redirect: " + error.message, code: "storageUnavailable" });
             return;
         }
+
         screen.redirected = true;
         location.assign(url);
     };
@@ -407,6 +439,7 @@ Module.haylen = Module.haylen || {};
             endScreen(screen, false, { message: "No page screen is registered for \"" + plugin + "." + name + "\".", code: "noHandler" });
             return;
         }
+
         const handle = {
             id,
             name,
@@ -448,15 +481,18 @@ Module.haylen = Module.haylen || {};
         } catch (error) {
             return null;
         }
+
         if (!record || record.plugin !== plugin) {
             return null;
         }
+
         sessionStorage.removeItem(kScreenKey);
         let settled = false;
         const restore = (ok, value) => {
             if (settled) {
                 return;
             }
+
             settled = true;
             const encoded = ok ? encodePayload(value) : { json: JSON.stringify(value), buffers: [] };
             const buffers = encoded.buffers.map((buffer) => buffer.slice());
@@ -495,6 +531,7 @@ Module.haylen = Module.haylen || {};
         if (!(value.anchor in anchors)) {
             throw new Error("The overlay anchor \"" + value.anchor + "\" is unknown. It is one of \"" + Object.keys(anchors).join("\", \"") + "\".");
         }
+
         return value;
     };
 
@@ -511,6 +548,7 @@ Module.haylen = Module.haylen || {};
         if (insets === previous || (insets && previous && ["left", "top", "right", "bottom"].every((edge) => insets[edge] === previous[edge]))) {
             return;
         }
+
         item.reserved = insets;
         const key = item.key;
         if (insets) {
@@ -527,6 +565,7 @@ Module.haylen = Module.haylen || {};
         element.style.visibility = item.visible ? item.original.visibility : "hidden";
         element.style.width = placement.width === null ? item.original.width : placement.width + "px";
         element.style.height = placement.height === null ? item.original.height : placement.height + "px";
+
         if (!item.visible) {
             reserve(item, null);
             return;
@@ -543,6 +582,7 @@ Module.haylen = Module.haylen || {};
         const y = insets.top + (vertical === 0.5 ? (areaHeight - height) / 2 : vertical === 0 ? margin : areaHeight - height - margin);
         element.style.left = x + "px";
         element.style.top = y + "px";
+
         if (!placement.reserve || placement.anchor === "center") {
             reserve(item, null);
             return;
@@ -560,6 +600,7 @@ Module.haylen = Module.haylen || {};
         } else {
             reserved.right = (box.width - x) * scale;
         }
+
         reserve(item, reserved);
     };
 
@@ -568,11 +609,13 @@ Module.haylen = Module.haylen || {};
         if (!layer) {
             return;
         }
+
         const box = Module.canvas.getBoundingClientRect();
         layer.style.left = box.left + "px";
         layer.style.top = box.top + "px";
         layer.style.width = box.width + "px";
         layer.style.height = box.height + "px";
+
         for (const item of overlay.items) {
             place(item, box);
         }
@@ -582,6 +625,7 @@ Module.haylen = Module.haylen || {};
         if (overlay.layer) {
             return overlay.layer;
         }
+
         const layer = document.createElement("div");
         layer.id = "haylen-overlay";
         layer.style.cssText = "position:fixed;left:0;top:0;width:0;height:0;overflow:hidden;pointer-events:none;z-index:2;";
@@ -591,9 +635,11 @@ Module.haylen = Module.haylen || {};
         overlay.resizes.observe(Module.canvas);
         window.addEventListener("resize", layout);
         window.addEventListener("scroll", layout, true);
+
         if (window.visualViewport) {
             window.visualViewport.addEventListener("resize", layout);
         }
+
         return layer;
     };
 
@@ -601,6 +647,7 @@ Module.haylen = Module.haylen || {};
         if (!(element instanceof HTMLElement)) {
             throw new Error("The plugin \"" + id + "\" can only place an HTML element over the app.");
         }
+
         const original = { width: element.style.width, height: element.style.height, visibility: element.style.visibility };
         const item = { key: id + "#" + ++overlay.serial, element, original, placement: readPlacement(placement), visible: true, reserved: null };
         element.style.position = "absolute";
@@ -623,6 +670,7 @@ Module.haylen = Module.haylen || {};
                 if (!overlay.items.delete(item)) {
                     return;
                 }
+
                 overlay.resizes.unobserve(element);
                 element.remove();
                 reserve(item, null);
@@ -671,6 +719,7 @@ Module.haylen = Module.haylen || {};
                 layer.appendChild(region);
                 mirror[live] = region;
             }
+
             Module.canvas.after(layer);
             mirror.layer = layer;
             const resizes = new ResizeObserver(place);
@@ -731,6 +780,7 @@ Module.haylen = Module.haylen || {};
             } else if (node.firstChild.data !== text) {
                 node.firstChild.data = text;
             }
+
             setAttribute(node, "aria-level", element.role === "heading" ? 2 : null);
             setAttribute(node, "aria-valuetext", element.role === "slider" || element.role === "progressBar" ? element.value : null);
             setAttribute(node, "aria-description", element.hint);
@@ -750,6 +800,7 @@ Module.haylen = Module.haylen || {};
             if (!layer) {
                 return;
             }
+
             const box = Module.canvas.getBoundingClientRect();
             layer.style.left = box.left + "px";
             layer.style.top = box.top + "px";
@@ -778,6 +829,7 @@ Module.haylen = Module.haylen || {};
                 describe(node, element);
                 kept.set(element.id, node);
             }
+
             for (const [id, node] of mirror.nodes) {
                 if (!kept.has(id)) {
                     node.remove();
@@ -792,6 +844,7 @@ Module.haylen = Module.haylen || {};
                     parent.appendChild(node);
                 }
             }
+
             mirror.nodes = kept;
             mirror.elements = tree.elements;
             place();
@@ -824,12 +877,15 @@ Module.haylen = Module.haylen || {};
         if (typeof VideoFrame !== "undefined" && source instanceof VideoFrame) {
             return [source.displayWidth, source.displayHeight];
         }
+
         if (source instanceof HTMLVideoElement) {
             return [source.videoWidth, source.videoHeight];
         }
+
         if (source instanceof HTMLImageElement) {
             return [source.naturalWidth, source.naturalHeight];
         }
+
         return [source.width, source.height];
     };
 
@@ -838,6 +894,7 @@ Module.haylen = Module.haylen || {};
         if (typeof VideoFrame !== "undefined" && source instanceof VideoFrame && source.timestamp !== null) {
             return source.timestamp / 1e6;
         }
+
         return source instanceof HTMLVideoElement ? source.currentTime : performance.now() / 1000;
     };
 
@@ -858,6 +915,7 @@ Module.haylen = Module.haylen || {};
             stream.memory = Module._malloc(size);
             stream.size = size;
         }
+
         return stream.memory;
     };
 
@@ -868,13 +926,16 @@ Module.haylen = Module.haylen || {};
         return {
             push(source, timestamp) {
                 const [width, height] = sourceSize(source);
+
                 if (!stream.handle || !(width > 0 && height > 0)) {
                     return false;
                 }
+
                 if (!stream.canvas || stream.canvas.width !== width || stream.canvas.height !== height) {
                     stream.canvas = new OffscreenCanvas(width, height);
                     stream.context = stream.canvas.getContext("2d", { willReadFrequently: true });
                 }
+
                 stream.context.clearRect(0, 0, width, height);
                 stream.context.drawImage(source, 0, 0, width, height);
                 const pixels = stream.context.getImageData(0, 0, width, height).data;
@@ -895,9 +956,11 @@ Module.haylen = Module.haylen || {};
                 if (samples.length % channels !== 0) {
                     throw new Error("Audio samples come in whole frames, one sample for every channel.");
                 }
+
                 if (!stream.handle) {
                     return 0;
                 }
+
                 const memory = reserveMemory(stream, samples.length * Float32Array.BYTES_PER_ELEMENT);
                 Module.HEAPF32.set(samples, memory / Float32Array.BYTES_PER_ELEMENT);
                 return checked(Module._haylen_web_push_audio_frames(stream.handle, memory, samples.length / channels));
@@ -921,9 +984,11 @@ Module.haylen = Module.haylen || {};
         if (kind === "secureContext") {
             return { entry: { kind, name, file: "", snippet: "" }, summary: "a secure context", instructions: "Serve the page over \"https\" or from \"localhost\"." };
         }
+
         if (kind === "api") {
             return { entry: { kind, name, file: "", snippet: "" }, summary: "the API \"" + name + "\"", instructions: "Run the app in a browser that offers it." };
         }
+
         const framed = window.self !== window.top;
         const snippet = framed ? "allow=\"" + name + "\"" : "Permissions-Policy: " + name + "=(self)";
         const instructions = framed ? "Add \"" + snippet + "\" to the \"<iframe>\" that embeds the page." : "Send \"" + snippet + "\" with the page.";
@@ -937,6 +1002,7 @@ Module.haylen = Module.haylen || {};
                 throw new TypeError("A plugin requires \"secureContext\", \"api\" or \"permissionsPolicy\", not \"" + key + "\".");
             }
         }
+
         const failure = findMissing("The plugin \"" + id + "\"", id, needs);
         if (failure) {
             throw Object.assign(new Error(failure.message), { code: "unsupported", data: { missing: failure.missing } });
@@ -949,12 +1015,15 @@ Module.haylen = Module.haylen || {};
         if (needs.secureContext && !window.isSecureContext) {
             missing.push(describeRequirement("secureContext", "https"));
         }
+
         for (const api of [].concat(needs.api || []).filter((path) => !hasApi(path))) {
             missing.push(describeRequirement("api", api));
         }
+
         for (const feature of [].concat(needs.permissionsPolicy || []).filter((name) => !allowsFeature(name))) {
             missing.push(describeRequirement("permissionsPolicy", feature));
         }
+
         if (missing.length === 0) {
             return null;
         }
@@ -968,6 +1037,7 @@ Module.haylen = Module.haylen || {};
                 notify("onLog", "warning", message);
             }
         }
+
         const summaries = missing.map((requirement) => requirement.summary);
         const list = summaries.length === 1 ? summaries[0] : summaries.slice(0, -1).join(", ") + " and " + summaries[summaries.length - 1];
         return { message: owner + " needs " + list + ", which the page lacks.", missing: missing.map((requirement) => requirement.entry) };
@@ -984,6 +1054,7 @@ Module.haylen = Module.haylen || {};
         if (answered === "prompt") {
             return "The system did not show its prompt for " + permission.capability + ", so the app does not hold it yet. Ask for it again later with \"system.requestPermission('" + name + "')\".";
         }
+
         return "The person has not allowed " + permission.capability + ". Ask for it with \"system.requestPermission('" + name + "')\", which shows the prompt of the system while the system still asks, or the person allows it in the settings of the system.";
     };
 
@@ -992,6 +1063,7 @@ Module.haylen = Module.haylen || {};
         if (!navigator.permissions || typeof navigator.permissions.query !== "function") {
             return null;
         }
+
         try {
             return (await navigator.permissions.query({ name })).state;
         } catch {
@@ -1005,6 +1077,7 @@ Module.haylen = Module.haylen || {};
         if (missing) {
             return { state: "unsupported", message: missing.message, missing: missing.missing };
         }
+
         const unavailable = permission.unavailable ? permission.unavailable() : null;
         return unavailable ? { state: "unsupported", message: unavailable } : null;
     };
@@ -1014,9 +1087,11 @@ Module.haylen = Module.haylen || {};
         if (blocked) {
             return blocked;
         }
+
         if (permission.check) {
             return permission.check();
         }
+
         return { state: (await queryPermission(permission.query)) || permission.unnamed };
     };
 
@@ -1058,6 +1133,7 @@ Module.haylen = Module.haylen || {};
         if (!answer || !["granted", "prompt", "denied", "unknown", "unsupported"].includes(answer.state)) {
             throw new TypeError("A permission of a plugin answers \"granted\", \"prompt\", \"denied\", \"unknown\" or \"unsupported\", or {state, message}.");
         }
+
         return { state: answer.state, message: answer.message || "" };
     };
 
@@ -1069,21 +1145,26 @@ Module.haylen = Module.haylen || {};
                 throw new TypeError("A permission of the plugin \"" + id + "\" takes \"" + keys.join("\", \"") + "\", not \"" + key + "\".");
             }
         }
+
         if (!spec || typeof spec.name !== "string" || spec.name === "" || typeof spec.capability !== "string" || typeof spec.request !== "function") {
             throw new TypeError("A permission of the plugin \"" + id + "\" needs a \"name\", a \"capability\" in words and a \"request\" function.");
         }
+
         if (spec.state !== undefined && typeof spec.state !== "function") {
             throw new TypeError("The \"state\" of the permission \"" + spec.name + "\" of the plugin \"" + id + "\" is a function.");
         }
+
         if (spec.state === undefined && typeof spec.query !== "string") {
             throw new TypeError("The permission \"" + spec.name + "\" of the plugin \"" + id + "\" tells its state through a \"query\" of the Permissions API or a \"state\" function.");
         }
+
         const needs = spec.needs || {};
         for (const key of Object.keys(needs)) {
             if (!requirements.kinds.includes(key)) {
                 throw new TypeError("A permission requires \"secureContext\", \"api\" or \"permissionsPolicy\", not \"" + key + "\".");
             }
         }
+
         return {
             capability: spec.capability,
             needs,
@@ -1101,19 +1182,23 @@ Module.haylen = Module.haylen || {};
         if (!permission) {
             return { state: "unsupported", message: "The plugin \"" + id + "\" registers no permission \"" + name + "\" on the web." };
         }
+
         const owner = "The plugin \"" + id + "\"";
         return asking ? requestPluginPermission(permission, owner, id) : checkPermission(permission, owner, id);
     };
 
     const registerPluginPermission = (id, plugin, spec) => {
         const permission = createPluginPermission(id, spec);
+
         if (plugin.permissions.has(spec.name)) {
             throw new Error("The plugin \"" + id + "\" registered the permission \"" + spec.name + "\" twice.");
         }
+
         if (plugin.permissions.size === 0) {
             haylen.register(id + ".permission", (params) => answerPluginPermission(id, plugin, params, false));
             haylen.register(id + ".requestPermission", (params) => answerPluginPermission(id, plugin, params, true));
         }
+
         plugin.permissions.set(spec.name, permission);
     };
 
@@ -1123,10 +1208,12 @@ Module.haylen = Module.haylen || {};
         if (!permission) {
             throw Object.assign(new Error("The plugin \"" + id + "\" requires the permission \"" + name + "\", which it did not register with \"registerPermission\"."), { code: "unsupported" });
         }
+
         const answer = await requestPluginPermission(permission, "The plugin \"" + id + "\"", id);
         if (answer.state === "denied" || answer.state === "prompt") {
             throw Object.assign(new Error(permissionRefusal(permission, name, answer.state)), { code: "denied" });
         }
+
         if (answer.state === "unsupported") {
             throw Object.assign(new Error(answer.message), { code: "unsupported", data: answer.missing ? { missing: answer.missing } : undefined });
         }
@@ -1137,6 +1224,7 @@ Module.haylen = Module.haylen || {};
         if (plugins.has(id)) {
             throw new Error("The plugin \"" + id + "\" already has a context.");
         }
+
         const plugin = { errorListeners: [], permissions: new Map() };
         plugins.set(id, plugin);
         return {
@@ -1199,6 +1287,7 @@ Module.haylen = Module.haylen || {};
     // Errors arrive as `{message, file, line, traceback, frames}`, with an empty `file` when no script position is known. The page and every plugin that listens with `onAppError` receive them.
     haylen.reportError = function (error) {
         notify("onError", error);
+
         for (const plugin of plugins.values()) {
             for (const listener of plugin.errorListeners) {
                 queueMicrotask(() => listener(error));
@@ -1216,6 +1305,7 @@ Module.haylen = Module.haylen || {};
                 }
             });
         }
+
         notify("onStarted", app);
     };
 
@@ -1243,6 +1333,7 @@ Module.haylen = Module.haylen || {};
         if (!(Module.canvas instanceof HTMLCanvasElement) || !Module.canvas.id) {
             throw new Error("The property \"Module.canvas\" must be a canvas element with an id.");
         }
+
         return "#" + CSS.escape(Module.canvas.id);
     };
 
@@ -1261,6 +1352,7 @@ Module.haylen = Module.haylen || {};
     };
     window.addEventListener("resize", forgetLayout);
     window.addEventListener("scroll", forgetLayout, { passive: true });
+
     if (navigator.devicePosture) {
         navigator.devicePosture.addEventListener("change", forgetLayout);
     }
@@ -1269,6 +1361,7 @@ Module.haylen = Module.haylen || {};
         if (pageLayout.safeArea) {
             return pageLayout.safeArea;
         }
+
         let probe = document.getElementById("haylen-safe-area");
         if (!probe) {
             probe = document.createElement("div");
@@ -1276,6 +1369,7 @@ Module.haylen = Module.haylen || {};
             probe.style.cssText = "position:fixed;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);";
             document.body.appendChild(probe);
         }
+
         const style = getComputedStyle(probe);
         const box = Module.canvas.getBoundingClientRect();
         const scale = box.width > 0 ? drawable.width / box.width : 0;
@@ -1294,6 +1388,7 @@ Module.haylen = Module.haylen || {};
         if (pageLayout.fold === undefined) {
             pageLayout.fold = readFold();
         }
+
         return pageLayout.fold;
     };
 
@@ -1302,6 +1397,7 @@ Module.haylen = Module.haylen || {};
         if (!segments || segments.length < 2) {
             return null;
         }
+
         const [first, second] = segments;
         const vertical = second.left >= first.right;
         const box = Module.canvas.getBoundingClientRect();
@@ -1320,6 +1416,7 @@ Module.haylen = Module.haylen || {};
             pageScreens.counted += 1;
             pageScreens.ids.set(shown, "screen-" + pageScreens.counted);
         }
+
         return pageScreens.ids.get(shown);
     };
     const describeScreen = (shown) => {
@@ -1365,6 +1462,7 @@ Module.haylen = Module.haylen || {};
             pageOutputs.delete(number);
             output.window.close();
         }
+
         whenRuntimeReady(() => callEngine("haylen_web_output_ended", null, ["number", "number", "string"], [number, ending, reason]));
     };
     haylen.outputCanvas = (number) => pageOutputs.get(number)?.canvas ?? null;
@@ -1374,6 +1472,7 @@ Module.haylen = Module.haylen || {};
             queueMicrotask(() => endOutput(number, outputEndings.disconnected, ""));
             return;
         }
+
         const size = fullscreen ? [target.availWidth, target.availHeight] : [Math.min(width, target.availWidth), Math.min(height, target.availHeight)];
         const left = target.availLeft + Math.round((target.availWidth - size[0]) / 2);
         const top = target.availTop + Math.round((target.availHeight - size[1]) / 2);
@@ -1435,6 +1534,7 @@ Module.haylen = Module.haylen || {};
         if (result < 0) {
             throw new Error(Module.UTF8ToString(Module._haylen_web_last_error()));
         }
+
         return result;
     };
 
@@ -1443,6 +1543,7 @@ Module.haylen = Module.haylen || {};
         const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
         const pointer = Module._malloc(data.length);
         Module.HEAPU8.set(data, pointer);
+
         try {
             checked(Module._haylen_web_load_zip(pointer, data.length));
         } finally {
@@ -1459,6 +1560,7 @@ Module.haylen = Module.haylen || {};
         const data = typeof content === "string" ? new TextEncoder().encode(content) : new Uint8Array(content);
         const pointer = Module._malloc(data.length);
         Module.HEAPU8.set(data, pointer);
+
         try {
             checked(callEngine("haylen_web_set_file", "number", ["string", "number", "number"], [path, pointer, data.length]));
         } finally {
@@ -1493,6 +1595,7 @@ Module.haylen = Module.haylen || {};
     haylen.reportConsoleResult = function (id, ok, output) {
         const resolve = consoleCalls.get(id);
         consoleCalls.delete(id);
+
         if (resolve) {
             resolve({ ok, output });
         }
@@ -1539,6 +1642,7 @@ Module.haylen = Module.haylen || {};
             });
             return;
         }
+
         socket.binaryType = "arraybuffer";
         socket.onopen = () => report("haylen_web_socket_opened", ["string"], [socket.protocol]);
         socket.onerror = () => report("haylen_web_socket_failed", ["string"], ["The WebSocket connection to \"" + url + "\" failed."]);
@@ -1551,6 +1655,7 @@ Module.haylen = Module.haylen || {};
             const bytes = binary ? new Uint8Array(event.data) : new TextEncoder().encode(event.data);
             const pointer = Module._malloc(bytes.length);
             Module.HEAPU8.set(bytes, pointer);
+
             try {
                 report("haylen_web_socket_received", ["number", "number", "number"], [pointer, bytes.length, binary ? 1 : 0]);
             } finally {
@@ -1603,6 +1708,7 @@ Module.haylen = Module.haylen || {};
             const code = value.charCodeAt(position);
             position += code >= 0xd800 && code <= 0xdbff && position + 1 < value.length ? 2 : 1;
         }
+
         return count;
     };
 
@@ -1612,6 +1718,7 @@ Module.haylen = Module.haylen || {};
             const code = value.charCodeAt(position);
             position += code >= 0xd800 && code <= 0xdbff && position + 1 < value.length ? 2 : 1;
         }
+
         return position;
     };
 
@@ -1628,6 +1735,7 @@ Module.haylen = Module.haylen || {};
         if (field.maxLength <= 0 || text.composition || toCodePoints(value, value.length) <= field.maxLength) {
             return;
         }
+
         const cut = toUtf16(value, field.maxLength);
         const caret = Math.min(target.selectionEnd, cut);
         target.value = value.slice(0, cut);
@@ -1640,6 +1748,7 @@ Module.haylen = Module.haylen || {};
         if (!field || !target) {
             return;
         }
+
         limit(target, field);
         const value = target.value;
         const composition = text.composition;
@@ -1667,6 +1776,7 @@ Module.haylen = Module.haylen || {};
                 frame = [0, (top - box.top) * scale, drawable.width, (box.bottom - top) * scale];
             }
         }
+
         if (frame.some((value, index) => value !== text.keyboard[index])) {
             text.keyboard = frame;
             callEngine("haylen_web_keyboard", null, ["number", "number", "number", "number"], frame);
@@ -1686,21 +1796,27 @@ Module.haylen = Module.haylen || {};
         if (event.type === "keyup" && held.delete(event.code)) {
             return;
         }
+
         if (isForeign(event.target)) {
             Module.haylenIgnoredKey = event.timeStamp;
             return;
         }
+
         const field = text.field;
         if (!field || !isElement(event.target) || (field.id === 0 && event.type !== "keypress")) {
             if (event.type === "keydown") {
                 held.add(event.code);
             }
+
             return;
         }
+
         event.stopImmediatePropagation();
+
         if (field.id === 0 || event.type !== "keydown" || event.isComposing || event.keyCode === 229) {
             return;
         }
+
         const action = event.key === "Enter" && !field.multiline ? 0 : event.key === "Tab" ? 1 : event.key === "Escape" ? 2 : -1;
         if (action >= 0) {
             event.preventDefault();
@@ -1714,11 +1830,14 @@ Module.haylen = Module.haylen || {};
             if (event.type === "blur") {
                 held.clear();
             }
+
             return;
         }
+
         if (!isElement(event.target) || event.type !== "blur" || text.finishing) {
             return;
         }
+
         const target = event.target;
         setTimeout(() => {
             if (text.field && text.field.id !== 0 && text.active === target && document.activeElement !== target && document.hasFocus()) {
@@ -1731,6 +1850,7 @@ Module.haylen = Module.haylen || {};
     for (const type of ["keydown", "keyup", "keypress"]) {
         window.addEventListener(type, onKey, true);
     }
+
     for (const type of ["focus", "blur"]) {
         window.addEventListener(type, onFocus, true);
     }
@@ -1740,10 +1860,12 @@ Module.haylen = Module.haylen || {};
         if (text.elements[kind]) {
             return text.elements[kind];
         }
+
         const target = document.createElement(password ? "input" : "textarea");
         if (password) {
             target.type = "password";
         }
+
         // A font of 16 pixels keeps Safari on iOS from zooming into the page when the element takes the focus.
         target.style.cssText = "position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;color:transparent;caret-color:transparent;background:transparent;border:0;margin:0;padding:0;outline:none;resize:none;overflow:hidden;font-size:16px;pointer-events:none;z-index:1;";
         target.setAttribute("autocomplete", "off");
@@ -1761,9 +1883,11 @@ Module.haylen = Module.haylen || {};
             text.composition = null;
             report();
         });
+
         for (const type of ["paste", "copy", "cut"]) {
             target.addEventListener(type, (event) => event.stopPropagation());
         }
+
         Module.canvas.after(target);
         text.elements[kind] = target;
         return target;
@@ -1777,6 +1901,7 @@ Module.haylen = Module.haylen || {};
         } else {
             target.removeAttribute("enterkeyhint");
         }
+
         target.setAttribute("autocapitalize", field.autocapitalize);
         target.setAttribute("autocorrect", field.autocorrect ? "on" : "off");
         target.spellcheck = field.autocorrect;
@@ -1801,6 +1926,7 @@ Module.haylen = Module.haylen || {};
         if (text.active !== target) {
             blurActive();
         }
+
         configure(target, field);
         const replaced = !text.field || text.field.id !== field.id || text.field.revision !== field.revision || text.active !== target;
         text.active = target;
@@ -1810,9 +1936,11 @@ Module.haylen = Module.haylen || {};
             target.value = field.text;
             target.setSelectionRange(toUtf16(field.text, field.selectionStart), toUtf16(field.text, field.selectionEnd));
         }
+
         if (document.activeElement !== target) {
             target.focus({ preventScroll: true });
         }
+
         reportKeyboard();
     };
 
@@ -1834,9 +1962,11 @@ Module.haylen = Module.haylen || {};
             if (event.clientX >= place.left && event.clientX <= place.left + place.width && event.clientY >= place.top && event.clientY <= place.top + place.height) {
                 const target = element(field.password);
                 configure(target, field);
+
                 if (document.activeElement !== target) {
                     target.focus({ preventScroll: true });
                 }
+
                 return;
             }
         }
@@ -1864,9 +1994,11 @@ Module.haylen = Module.haylen || {};
         // The sound joins the context of the audio output of the engine, or the video plays without sound while the app has none.
         const connectSound = (video) => {
             const [output] = audio.outputs.values();
+
             if (!output || !output.node) {
                 return;
             }
+
             const context = output.context;
             const source = context.createMediaElementSource(video.element);
             const tap = new AudioWorkletNode(context, "haylen-video-tap", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: "explicit" });
@@ -1909,10 +2041,12 @@ Module.haylen = Module.haylen || {};
                 video.element.pause();
                 return;
             }
+
             video.element.play().catch((error) => {
                 if (error.name !== "NotAllowedError") {
                     return;
                 }
+
                 video.element.muted = true;
                 video.waitingForUser = true;
                 video.element.play().catch(() => {});
@@ -1923,19 +2057,24 @@ Module.haylen = Module.haylen || {};
         const frame = (id, pointer, width, height) => {
             const video = videos.get(id);
             const element = video.element;
+
             if (video.error) {
                 return 3;
             }
+
             if (element.ended && element.currentTime === video.shownTime) {
                 return 2;
             }
+
             if (element.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || element.currentTime === video.shownTime || width <= 0 || height <= 0) {
                 return 0;
             }
+
             if (!video.canvas || video.canvas.width !== width || video.canvas.height !== height) {
                 video.canvas = new OffscreenCanvas(width, height);
                 video.context = video.canvas.getContext("2d", { willReadFrequently: true });
             }
+
             video.context.drawImage(element, 0, 0, width, height);
             Module.HEAPU8.set(video.context.getImageData(0, 0, width, height).data, pointer);
             video.shownTime = element.currentTime;
@@ -1951,12 +2090,14 @@ Module.haylen = Module.haylen || {};
                 const count = Math.min(block.length, capacity - copied);
                 Module.HEAPF32.set(block.subarray(0, count), pointer / Float32Array.BYTES_PER_ELEMENT + copied);
                 copied += count;
+
                 if (count === block.length) {
                     video.samples.shift();
                 } else {
                     video.samples[0] = block.subarray(count);
                 }
             }
+
             return copied;
         };
 
@@ -1973,11 +2114,13 @@ Module.haylen = Module.haylen || {};
             video.element.pause();
             video.element.removeAttribute("src");
             video.element.load();
+
             if (video.tap) {
                 video.tap.source.disconnect();
                 video.tap.tap.disconnect();
                 video.tap.silence.disconnect();
             }
+
             URL.revokeObjectURL(video.url);
         };
 
@@ -2006,6 +2149,7 @@ Module.haylen = Module.haylen || {};
         if (output.context.state === "running" || (activation && !activation.hasBeenActive && !output.ran)) {
             return;
         }
+
         output.context.resume().catch(() => {});
     };
 
@@ -2035,9 +2179,11 @@ Module.haylen = Module.haylen || {};
             for (const buffer of event.data.buffers) {
                 output.spare.push(new Float32Array(buffer));
             }
+
             fillAudio(output);
         };
         output.node.connect(output.context.destination);
+
         if (output.started) {
             output.node.port.postMessage({ active: true });
             fillAudio(output);
@@ -2053,6 +2199,7 @@ Module.haylen = Module.haylen || {};
             console.error("The audio output could not be opened: " + error.message);
             return false;
         }
+
         const output = { device, channels, blockFrames, bufferedFrames, context, node: null, started: false, ran: false, queued: 0, blocks: 0, underruns: 0, spare: [], scratch: Module._malloc(blockFrames * channels * Float32Array.BYTES_PER_ELEMENT) };
         context.onstatechange = () => {
             output.ran = output.ran || context.state === "running";
@@ -2083,6 +2230,7 @@ Module.haylen = Module.haylen || {};
         if (output.node) {
             output.node.port.postMessage({ active: true });
         }
+
         resumeAudio(output);
         queueMicrotask(() => fillAudio(output));
     };
@@ -2094,16 +2242,19 @@ Module.haylen = Module.haylen || {};
         if (output.node) {
             output.node.port.postMessage({ active: false });
         }
+
         output.context.suspend();
     };
 
     audio.close = function (device) {
         const output = audio.outputs.get(device);
         audio.outputs.delete(device);
+
         if (output.node) {
             output.node.port.onmessage = null;
             output.node.disconnect();
         }
+
         output.context.close();
         Module._free(output.scratch);
     };
@@ -2117,9 +2268,11 @@ Module.haylen = Module.haylen || {};
     // Describes the output of the app for `onStats`, which is unavailable while the app runs without sound.
     audio.stats = function () {
         const [output] = audio.outputs.values();
+
         if (!output) {
             return { available: false };
         }
+
         const rate = output.context.sampleRate;
         return { available: true, state: output.context.state, sampleRate: rate, bufferedMilliseconds: (output.queued * 1000) / rate, blocks: output.blocks, underruns: output.underruns };
     };
@@ -2129,7 +2282,9 @@ Module.haylen = Module.haylen || {};
         if (document.visibilityState !== "visible" || haylen.paused()) {
             return;
         }
+
         haylen.video.unlock();
+
         for (const output of audio.outputs.values()) {
             if (output.started) {
                 resumeAudio(output);
@@ -2158,6 +2313,7 @@ Module.haylen = Module.haylen || {};
             if (!holder.requestFullscreen && !holder.webkitRequestFullscreen) {
                 return { state: "unsupported", message: "The browser has no Fullscreen API." };
             }
+
             try {
                 await (holder.requestFullscreen ? holder.requestFullscreen(target !== undefined ? { screen: target } : {}) : holder.webkitRequestFullscreen());
             } catch (error) {
@@ -2166,6 +2322,7 @@ Module.haylen = Module.haylen || {};
         } else if (!value && current === holder) {
             await (document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen());
         }
+
         return { state: "granted" };
     };
 
@@ -2181,11 +2338,13 @@ Module.haylen = Module.haylen || {};
         if (previous !== null) {
             answerGatedCall(previous.id, { state: "denied", message: "A newer change of fullscreen replaced this one before the window finished it." });
         }
+
         const change = { id, settled: null };
         change.settled = (async () => {
             if (previous !== null) {
                 await previous.settled.catch(() => undefined);
             }
+
             return changeFullscreen(value, display);
         })();
         fullscreenChange = change;
@@ -2208,10 +2367,12 @@ Module.haylen = Module.haylen || {};
                 resolve({ state: "granted" });
                 return;
             }
+
             if (typeof Module.canvas.requestPointerLock !== "function") {
                 resolve({ state: "unsupported", message: "The browser has no Pointer Lock API." });
                 return;
             }
+
             const refusal = "The browser locks the pointer only during a click or a key of the person, so the app locks it from one.";
             const settle = (answer) => {
                 clearTimeout(timer);
@@ -2235,20 +2396,25 @@ Module.haylen = Module.haylen || {};
         if (!screenKeptOn || wakeLock) {
             return Promise.resolve({ state: "granted" });
         }
+
         if (document.visibilityState !== "visible") {
             return Promise.resolve({ state: "denied", message: "The browser keeps the screen on only for a page that shows, so the page asks again once it shows." });
         }
+
         if (requestingWakeLock) {
             return requestingWakeLock;
         }
+
         requestingWakeLock = navigator.wakeLock.request("screen").then((lock) => {
             wakeLock = lock;
             lock.addEventListener("release", () => {
                 wakeLock = null;
             });
+
             if (!screenKeptOn) {
                 lock.release();
             }
+
             return { state: "granted" };
         }, (error) => ({ state: "denied", message: "The browser refused to keep the screen on: " + error.message })).finally(() => {
             requestingWakeLock = null;
@@ -2263,15 +2429,19 @@ Module.haylen = Module.haylen || {};
     haylen.keepScreenOn = function (id, value) {
         settleGatedCall(id, () => {
             screenKeptOn = value;
+
             if (!value) {
                 if (wakeLock) {
                     wakeLock.release();
                 }
+
                 return { state: "granted" };
             }
+
             if (!navigator.wakeLock) {
                 return { state: "unsupported", message: "The browser has no Screen Wake Lock API, so the screen follows the settings of the system." };
             }
+
             return requestWakeLock();
         });
     };
@@ -2290,11 +2460,13 @@ Module.haylen = Module.haylen || {};
             if (!navigator.clipboard || typeof navigator.clipboard.writeText !== "function") {
                 return withoutClipboard("write");
             }
+
             try {
                 await navigator.clipboard.writeText(text);
             } catch (error) {
                 return { state: "denied", message: "The browser refused to write the clipboard: " + error.message + " Browsers write it only shortly after an input of the person, such as a click or a key." };
             }
+
             clipboardText = text;
             return { state: "granted" };
         });
@@ -2304,6 +2476,7 @@ Module.haylen = Module.haylen || {};
             if (!navigator.clipboard || typeof navigator.clipboard.readText !== "function") {
                 return withoutClipboard("read");
             }
+
             try {
                 const text = await navigator.clipboard.readText();
                 return { state: "granted", text };
@@ -2319,10 +2492,12 @@ Module.haylen = Module.haylen || {};
         if (!orientation || !orientation.lock) {
             return;
         }
+
         if (value === 2) {
             orientation.unlock();
             return;
         }
+
         orientation.lock(value === 1 ? "portrait" : "landscape").catch(() => {});
     };
 
@@ -2351,14 +2526,17 @@ Module.haylen = Module.haylen || {};
                 report();
             }
         });
+
         if (window.visualViewport) {
             window.visualViewport.addEventListener("resize", reportKeyboard);
             window.visualViewport.addEventListener("scroll", reportKeyboard);
         }
+
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === "visible") {
                 reportTimeZone();
             }
+
             Module._haylen_web_visibility(document.visibilityState === "visible" ? 1 : 0);
             unlockAudio();
         });
@@ -2375,15 +2553,19 @@ Module.haylen = Module.haylen || {};
         device.darkScheme.addEventListener("change", reportTheme);
         window.addEventListener("languagechange", reportLanguages);
         reportAccessibility();
+
         for (const query of [device.reducedMotion, device.highContrast, device.reducedTransparency]) {
             query.addEventListener("change", reportAccessibility);
         }
+
         if (device.battery) {
             reportBattery();
+
             for (const type of ["levelchange", "chargingchange", "chargingtimechange"]) {
                 device.battery.addEventListener(type, reportBattery);
             }
         }
+
         for (const type of ["pointerdown", "touchend", "keydown"]) {
             window.addEventListener(type, unlockAudio, { capture: true, passive: true });
         }
@@ -2415,7 +2597,9 @@ Module.haylen = Module.haylen || {};
             if (size > 0) {
                 HEAPU8.set(bytes, pointer);
             }
+
             Module._haylen_web_store_received(id, pointer, size, bytes ? 1 : 0);
+
             if (pointer) {
                 Module._free(pointer);
             }
@@ -2427,6 +2611,7 @@ Module.haylen = Module.haylen || {};
                     console.warn("This browser keeps no files for the page, so downloaded content downloads again on the next visit.");
                     return;
                 }
+
                 worker = new Worker(locateFile("haylen-content-store.js"));
                 worker.onmessage = (event) => {
                     const message = event.data;
@@ -2434,19 +2619,23 @@ Module.haylen = Module.haylen || {};
                         deliver(message.id, message.ok ? message.bytes : null);
                         return;
                     }
+
                     if (replies.has(message.id)) {
                         replies.get(message.id)(message);
                         replies.delete(message.id);
                         return;
                     }
+
                     if (!message.ok && !refused) {
                         refused = true;
                         console.warn("The browser did not keep a change of the downloaded content, so it keeps the content it held before: " + message.message);
                         callEngine("haylen_web_store_refused", null, ["number", "string"], [message.quota ? 1 : 0, message.message]);
                     }
+
                     if (message.op === "estimate" && message.ok) {
                         space = message.available;
                     }
+
                     if (message.op === "append") {
                         unwritten -= message.size;
                     }
@@ -2458,14 +2647,18 @@ Module.haylen = Module.haylen || {};
                     worker = null;
                     return;
                 }
+
                 FS.mkdirTree("/content-store");
+
                 for (const file of opened.files) {
                     const folder = file.name.includes("/") ? "/content-store/" + file.name.slice(0, file.name.lastIndexOf("/")) : "/content-store";
                     FS.mkdirTree(folder);
                     FS.writeFile("/content-store/" + file.name, file.bytes);
                 }
+
                 FS.writeFile("/content-store/.segments", JSON.stringify(opened.segments));
                 space = opened.available;
+
                 if (navigator.storage.persist) {
                     navigator.storage.persist().catch(() => {});
                 }
@@ -2479,6 +2672,7 @@ Module.haylen = Module.haylen || {};
                 if (worker) {
                     unwritten += bytes.length;
                 }
+
                 post({ op: "append", name, bytes, size: bytes.length }, [bytes.buffer]);
             },
             // The bytes of appends that the worker has not written yet, which downloads keep within a bound.
@@ -2522,6 +2716,7 @@ Module.haylen = Module.haylen || {};
             total += download.total;
             known = known && download.total > 0;
         }
+
         notify("onLoadProgress", { loaded, total: known ? total : 0 });
     };
 
@@ -2533,10 +2728,12 @@ Module.haylen = Module.haylen || {};
         const body = new ReadableStream({
             async pull(controller) {
                 const { done, value } = await reader.read();
+
                 if (done) {
                     controller.close();
                     return;
                 }
+
                 download.loaded += value.length;
                 reportDownloads();
                 controller.enqueue(value);
@@ -2549,6 +2746,7 @@ Module.haylen = Module.haylen || {};
     const pageStatus = Module.setStatus;
     Module.setStatus = function (text) {
         reportDownloads();
+
         if (pageStatus) {
             pageStatus(text);
         }
@@ -2562,6 +2760,7 @@ Module.haylen = Module.haylen || {};
                     if (!response.ok) {
                         throw new Error(response.status + " " + response.statusText);
                     }
+
                     return track(url, response).arrayBuffer();
                 })
                 .then((bytes) => WebAssembly.instantiate(bytes, imports))
@@ -2586,6 +2785,7 @@ Module.haylen = Module.haylen || {};
             if (error) {
                 console.error("Loading user data failed.", error);
             }
+
             removeRunDependency("haylen-user-data");
         });
     });
@@ -2595,9 +2795,11 @@ Module.haylen = Module.haylen || {};
         haylen.releaseAddress = new URL(haylen.release.address, document.baseURI).href;
         Module.preRun.push(function () {
             FS.mkdirTree("/app");
+
             for (const file of haylen.release.files) {
                 FS.writeFile("/app/" + file.name, new Uint8Array(file.bytes));
             }
+
             haylen.release.files = null;
             addRunDependency("haylen-content-store");
             haylen.contentStore.open(haylen.release.identifier).finally(() => removeRunDependency("haylen-content-store"));
@@ -2609,18 +2811,23 @@ Module.haylen = Module.haylen || {};
     if (haylen.packageData || haylen.packageUrl) {
         launch.push("/package.zip");
     }
+
     if (haylen.graphicsApi) {
         launch.push("--graphics-api", haylen.graphicsApi);
     }
+
     if (haylen.development) {
         launch.push("--dev");
     }
+
     if (haylen.developmentServer) {
         launch.push("--dev-server", haylen.developmentServer);
     }
+
     if (launch.length > 0) {
         Module.arguments = launch;
     }
+
     if (haylen.packageData) {
         Module.preRun.push(function () {
             FS.writeFile("/package.zip", new Uint8Array(haylen.packageData));
@@ -2634,6 +2841,7 @@ Module.haylen = Module.haylen || {};
                     if (!response.ok) {
                         throw new Error(response.status + " " + response.statusText);
                     }
+
                     return track(haylen.packageUrl, response).arrayBuffer();
                 })
                 .then((buffer) => FS.writeFile("/package.zip", new Uint8Array(buffer)))

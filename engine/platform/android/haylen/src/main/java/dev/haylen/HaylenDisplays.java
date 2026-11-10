@@ -61,6 +61,7 @@ final class HaylenDisplays implements DisplayManager.DisplayListener {
             for (Display display : manager.getDisplays()) {
                 list.put(describe(display));
             }
+
             nativeDisplays(list.toString().getBytes(StandardCharsets.UTF_8), getActivityDisplay().getDisplayId());
         } catch (JSONException exception) {
             throw new IllegalStateException("The displays could not be described.", exception);
@@ -91,6 +92,7 @@ final class HaylenDisplays implements DisplayManager.DisplayListener {
         for (Display.Mode mode : display.getSupportedModes()) {
             modes.put(new JSONArray().put(mode.getPhysicalWidth()).put(mode.getPhysicalHeight()).put(mode.getRefreshRate()));
         }
+
         return new JSONObject()
             .put("id", String.valueOf(display.getDisplayId()))
             .put("name", display.getName())

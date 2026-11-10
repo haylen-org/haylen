@@ -25,6 +25,7 @@ public final class HaylenOverlay {
         if (activity == null) {
             throw new IllegalStateException("The plugin \"" + id + "\" can only place a view over the app while an activity exists.");
         }
+
         HaylenOverlayLayer layer = activity.overlays();
         Panel panel = new Panel(layer, id + "#" + ++serial, view, placement.copy());
         layer.add(panel);
@@ -82,9 +83,11 @@ public final class HaylenOverlay {
         // Takes the view off the app for good and gives its edge back, so the plugin may place the view again.
         public void remove() {
             requireMainThread();
+
             if (removed) {
                 return;
             }
+
             removed = true;
             view.removeOnLayoutChangeListener(layoutListener);
             owner.getContent().removeView(view);
@@ -95,9 +98,11 @@ public final class HaylenOverlay {
         // The frame of the view in the pixels of the activity window, or `null` while it does not show.
         public Rect bounds() {
             requireMainThread();
+
             if (removed || view.getVisibility() != View.VISIBLE || !view.isLaidOut()) {
                 return null;
             }
+
             int[] location = new int[2];
             view.getLocationInWindow(location);
             return new Rect(location[0], location[1], location[0] + view.getWidth(), location[1] + view.getHeight());
@@ -108,6 +113,7 @@ public final class HaylenOverlay {
             if (removed) {
                 return;
             }
+
             float density = owner.getActivity().getResources().getDisplayMetrics().density;
             int viewWidthPixels = placement.widthDp == HaylenPlacement.MEASURED ? viewWidth : Math.round(placement.widthDp * density);
             int viewHeightPixels = placement.heightDp == HaylenPlacement.MEASURED ? viewHeight : Math.round(placement.heightDp * density);
@@ -159,10 +165,13 @@ public final class HaylenOverlay {
                     value = Insets.of(0, 0, insets.right + margin + width, 0);
                 }
             }
+
             if (value == null ? reserved == null : value.equals(reserved)) {
                 return;
             }
+
             reserved = value;
+
             if (value == null) {
                 HaylenOverlayLayer.nativeReleaseInsets(key);
             } else {
