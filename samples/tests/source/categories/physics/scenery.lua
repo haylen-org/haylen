@@ -14,6 +14,8 @@ Scenery.skyBottom = '#FFD4F1FB'
 -- The ground strip draws at this many world units per pixel of its image, with its grass surface this many pixels below its top.
 Scenery.groundScale = 0.6
 Scenery.groundSurface = 54
+-- The clear rows above and under each band of the ground strip, as many as the smaller copies of a band blend together when the camera shows it at a sixteenth of its size.
+Scenery.bandPadding = 16
 
 -- The painted surfaces that fill shapes of any outline and repeat in world space, at `scale` world units for each pixel of their image.
 Scenery.surfaces = {
@@ -32,9 +34,10 @@ Scenery.clouds = {
 
 local textures = {}
 
-local function texture(name, path, options)
+-- Loads a painted image once. The images drawn whole clamp at their edges, since their smaller copies would otherwise blend the opposite edge into a line along each side, and only the surfaces that repeat across a shape take `wrap = 'repeat'`.
+local function texture(name, path, wrap)
     if not textures[name] then
-        textures[name] = assets.texture(path, options or {filter = 'linear', wrap = 'repeat'})
+        textures[name] = assets.texture(path, {filter = 'linear', wrap = wrap or 'clamp'})
     end
     return textures[name]
 end
@@ -48,11 +51,12 @@ local function gradient(name, stops)
     return textures[name]
 end
 
--- A band of rows of the ground strip, which strokes along terrain of any outline: the grass at its top or the layers of dirt under it. The band takes `padding` clear rows under it, so neither edge of the band takes the color of the other edge where the texture repeats across it.
-local function band(name, top, height, padding)
+-- A band of rows of the ground strip, which strokes along terrain of any outline: the grass at its top or the layers of dirt under it. The band takes `Scenery.bandPadding` clear rows above and under it, because a stroke samples its texture up to its edges, where the texture repeats across the band. So neither edge takes the color of the other edge, even in the smaller copies that a far camera samples.
+local function band(name, top, height)
     if not textures[name] then
-        local image = graphics.newImage(1076, height + padding)
-        image:blit(assets.load('camera/ground.png', 'image'), 0, 0, {source = {0, top, 1076, height}})
+        local padding = Scenery.bandPadding
+        local image = graphics.newImage(1076, height + padding * 2)
+        image:blit(assets.load('camera/ground.png', 'image'), 0, padding, {source = {0, top, 1076, height}})
         image:bleed()
         textures[name] = graphics.newTexture(image, {filter = 'linear', wrap = 'repeat'})
     end
@@ -99,11 +103,11 @@ function Scenery.sky(camera, groundY, settings)
     for start = first, bounds.x + bounds.width, Scenery.cloudPeriod do
         for _, cloud in ipairs(Scenery.clouds) do
             local source = cloud.source
-            cloudOptions.source, cloudOptions.width, cloudOptions.height, cloudOptions.layer = source, source[3] * cloud.scale, source[4] * cloud.scale, layer + 1
+            cloudOptions.source, cloudOptions.width, cloudOptions.height, cloudOptions.layer = source, source[3] * cloud.scale, source[4] * cloud.scale, layer + 2
             graphics2d.draw(clouds, start + cloud.x, math.max(groundY + cloud.y, bounds.y + cloud.top), cloudOptions)
         end
     end
-    drawRow(texture('mountains', 'camera/mountains.png'), groundY - 380, 820, 367, x * 0.85, '#80FFFFFF', layer + 2)
+    drawRow(texture('mountains', 'camera/mountains.png'), groundY - 380, 820, 367, x * 0.85, '#80FFFFFF', layer + 1)
     if settings.hills ~= false then
         drawRow(texture('hills', 'camera/hills.png'), groundY - 300, 760, 373, x * 0.65, '#FFFFFFFF', layer + 3)
     end
@@ -130,7 +134,7 @@ function Scenery.ground(y, left, right, layer)
     local source = surfaceOptions.source
     source[1], source[2], source[3], source[4] = left / soil.scale, below / soil.scale, (right - left) / soil.scale, depth / soil.scale
     surfaceOptions.width, surfaceOptions.height, surfaceOptions.color, surfaceOptions.layer = right - left, depth, '#FFFFFFFF', layer
-    graphics2d.draw(texture('soil', soil.path), left, below, surfaceOptions)
+    graphics2d.draw(texture('soil', soil.path, 'repeat'), left, below, surfaceOptions)
 end
 
 -- A stroke along a surface runs from right to left, so the top of a band of the ground strip faces up.
@@ -143,10 +147,18 @@ local function along(points, offset)
     return flat
 end
 
+-- Returns a stroke along `points` with the rows of the ground strip from `top` down `height` rows, whose middle row follows the points offset as far as that row lies below the grass surface.
+local function strip(points, name, top, height)
+    local scale = Scenery.groundScale
+    local width = (height + Scenery.bandPadding * 2) * scale
+    return {surface = along(points, (top + height / 2 - Scenery.groundSurface) * scale), stroke = {width = width, texture = band(name, top, height), textureMode = 'tile', textureLength = 1076 * scale, join = 'round', layer = 0}}
+end
+
 -- Returns the painted grass along `points`, a list of `{x, y}` from left to right, which `Scenery.drawGrass` draws on top of ground of any material.
 function Scenery.newGrass(points)
-    local scale = Scenery.groundScale
-    return {surface = along(points, (126 / 2 - Scenery.groundSurface) * scale), stroke = {width = 126 * scale, texture = band('grass', 0, 124, 2), textureMode = 'tile', textureLength = 1076 * scale, join = 'round', cap = 'round', layer = 0}}
+    local grass = strip(points, 'grass', 0, 124)
+    grass.stroke.cap = 'round'
+    return grass
 end
 
 function Scenery.drawGrass(grass, layer)
@@ -157,7 +169,7 @@ end
 -- Returns a mesh that fills a polygon, a list of `{x, y}`, with a painted surface of `Scenery.surfaces`, which repeats in world space so neighboring shapes meet without a seam.
 function Scenery.newSurface(points, name)
     local surface = Scenery.surfaces[name]
-    local image = texture(name, surface.path)
+    local image = texture(name, surface.path, 'repeat')
     local units = image.width * surface.scale
     local vertices = {}
     for index, point in ipairs(points) do
@@ -168,8 +180,7 @@ end
 
 -- Returns the layers of dirt of the ground strip along a surface, a list of `{x, y}` from left to right, which `Scenery.drawLayers` draws under the grass.
 function Scenery.newLayers(points)
-    local scale = Scenery.groundScale
-    return {surface = along(points, (112 + 146 / 2 - Scenery.groundSurface) * scale), stroke = {width = 146 * scale, texture = band('dirt', 112, 144, 2), textureMode = 'tile', textureLength = 1076 * scale, join = 'round', layer = 0}}
+    return strip(points, 'dirt', 112, 144)
 end
 
 function Scenery.drawLayers(layers, layer)
@@ -213,7 +224,7 @@ function Scenery.drawPattern(name, color, layer)
     local source = surfaceOptions.source
     source[1], source[2], source[3], source[4] = bounds.x / surface.scale, bounds.y / surface.scale, bounds.width / surface.scale, bounds.height / surface.scale
     surfaceOptions.width, surfaceOptions.height, surfaceOptions.color, surfaceOptions.layer = bounds.width, bounds.height, color or '#FFFFFFFF', layer or 0
-    graphics2d.draw(texture(name, surface.path), bounds.x, bounds.y, surfaceOptions)
+    graphics2d.draw(texture(name, surface.path, 'repeat'), bounds.x, bounds.y, surfaceOptions)
 end
 
 -- Fills a shape that changes, a polygon or a list of outlines with holes, with a painted surface of `Scenery.surfaces` tinted by `color`, through a mask, so its edges stay smooth however the outline moves.
