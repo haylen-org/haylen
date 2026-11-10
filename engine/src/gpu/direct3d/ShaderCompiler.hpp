@@ -6,6 +6,7 @@
 #include <wrl/client.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <future>
 #include <memory>
 #include <mutex>
@@ -19,7 +20,7 @@
 
 namespace haylen::gpu::direct3d {
 
-// Compiles the HLSL of shader packages into the bytecode of shader model 5.0, which Direct3D 11 and 12 both run, through `D3DCompile` of the system library `d3dcompiler_47.dll`, which the first compiler of the process loads and nothing unloads, since its bytecode and the threads that compile with it may outlive every compiler. Programs prepared ahead compile on the threads of its `CompileQueue`, and the frame thread takes their bytecode when it makes the program, waiting only for what is left. Every method may run on any thread.
+// Compiles the HLSL of shader packages into the bytecode of shader model 5.0, which Direct3D 11 and 12 both run, through `D3DCompile` of the system library `d3dcompiler_47.dll`, which the first compiler of the process loads and nothing unloads, since its bytecode and the threads that compile with it may outlive every compiler. Programs prepared ahead compile on the threads of its `CompileQueue`, and the frame thread takes their bytecode when it makes the program, waiting only for a compilation of that program that runs and compiling one that did not start itself. Every method may run on any thread.
 class ShaderCompiler final : public std::enable_shared_from_this<ShaderCompiler> {
   public:
     // Loads the compiler, which keeps debug information in the bytecode for GPU debuggers when `debug` is on. Throws `std::runtime_error` when the system lacks it.
@@ -40,9 +41,14 @@ class ShaderCompiler final : public std::enable_shared_from_this<ShaderCompiler>
         std::string error;
     };
 
+    // A compilation that `prepare` started, with the ticket of its job in the queue.
+    struct Prepared {
+        std::shared_future<Result> result;
+        std::uint64_t ticket = 0;
+    };
+
     [[nodiscard]] static std::string makeKey(const Device::StageCode& stage);
     [[nodiscard]] Result run(const std::string& key) const;
-    [[nodiscard]] Result take(const std::shared_future<Result>& prepared, const std::string& key) const;
     void start(const Device::StageCode& stage);
 
     using CreateBlob = HRESULT(WINAPI*)(SIZE_T, ID3DBlob**);
@@ -60,7 +66,7 @@ class ShaderCompiler final : public std::enable_shared_from_this<ShaderCompiler>
     UINT flags = 0;
     std::mutex mutex;
     // The compilations that `prepare` started, under the profile, entry point and source of the stage they compile, until a program takes them.
-    std::unordered_map<std::string, std::shared_future<Result>> started;
+    std::unordered_map<std::string, Prepared> started;
     CompileQueue queue{std::max(std::thread::hardware_concurrency() / 2, 1U)};
 };
 

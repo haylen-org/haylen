@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <format>
+#include <optional>
 #include <stdexcept>
 #include <utility>
 
@@ -52,7 +53,7 @@ ComPtr<ID3DBlob> ShaderCompiler::compile(const Device::StageCode& stage, std::st
     }
 
     const std::string key = makeKey(stage);
-    std::shared_future<Result> prepared;
+    std::optional<Prepared> prepared;
     {
         const std::scoped_lock lock(mutex);
         const auto found = started.find(key);
@@ -62,20 +63,13 @@ ComPtr<ID3DBlob> ShaderCompiler::compile(const Device::StageCode& stage, std::st
         }
     }
 
-    Result result = prepared.valid() ? take(prepared, key) : run(key);
+    // A prepared compilation that waits behind others in the queue compiles here, so the frame waits only for its own program.
+    const bool waits = prepared.has_value() && !queue.withdraw(prepared->ticket);
+    Result result = waits ? prepared->result.get() : run(key);
     if (result.code == nullptr) {
         throw std::runtime_error(std::format("The shader \"{}\" does not compile for Direct3D: {}", label, result.error));
     }
     return std::move(result.code);
-}
-
-// A compilation whose job the pools dropped before it ran, as they do when the engine stops, compiles here instead.
-ShaderCompiler::Result ShaderCompiler::take(const std::shared_future<Result>& prepared, const std::string& key) const {
-    try {
-        return prepared.get();
-    } catch (const std::future_error&) {
-        return run(key);
-    }
 }
 
 ShaderCompiler::Result ShaderCompiler::run(const std::string& key) const {
@@ -119,9 +113,9 @@ void ShaderCompiler::start(const Device::StageCode& stage) {
             return compiler != nullptr ? compiler->run(key) : Result{};
         });
         // clang-format on
-        started.emplace(std::move(key), task->get_future().share());
+        const std::uint64_t ticket = queue.post([task] { (*task)(); });
+        started.emplace(std::move(key), Prepared{.result = task->get_future().share(), .ticket = ticket});
     }
-    queue.post([task] { (*task)(); });
 }
 
 } // namespace haylen::gpu::direct3d

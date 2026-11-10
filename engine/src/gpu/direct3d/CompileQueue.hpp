@@ -2,6 +2,7 @@
 
 #include <condition_variable>
 #include <cstddef>
+#include <cstdint>
 #include <deque>
 #include <functional>
 #include <memory>
@@ -17,14 +18,23 @@ class CompileQueue final {
     CompileQueue& operator=(const CompileQueue&) = delete;
     ~CompileQueue();
 
-    // Runs the job on a free thread of the queue, which starts another thread while every thread is busy and the queue has room for one more.
-    void post(std::function<void()> job);
+    // Runs the job on a free thread of the queue, which starts another thread while the jobs that wait outnumber the free threads and the queue has room for one more, and returns the ticket that `withdraw` takes. Throws `std::system_error` with the job out of the queue when the system starts no thread for it.
+    std::uint64_t post(std::function<void()> job);
+
+    // Takes the job of the ticket back from the queue unless a thread started it, so the caller runs it at once instead of waiting for the jobs queued before it. Returns whether it took it.
+    bool withdraw(std::uint64_t ticket);
 
   private:
+    struct Job {
+        std::uint64_t ticket = 0;
+        std::function<void()> run;
+    };
+
     struct State {
         std::mutex mutex;
         std::condition_variable wake;
-        std::deque<std::function<void()>> jobs;
+        std::deque<Job> jobs;
+        std::uint64_t tickets = 0;
         std::size_t threads = 0;
         std::size_t idle = 0;
         bool stopped = false;
