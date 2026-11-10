@@ -144,22 +144,32 @@ class Context final {
 
     [[nodiscard]] math::Color getColor(Theme::Color role) const noexcept;
     [[nodiscard]] float getMetric(Theme::Metric role) const noexcept;
+
     // Returns how far the wheels and the trackpads scroll in this frame in UI units: `scrollLine` for each step of a wheel and the points a trackpad moved, with positive values for scrolling up and to the left.
     [[nodiscard]] math::Vec2 getWheelDistance() const noexcept;
+
     // Returns the wheel of the frame for an area that scrolls along one axis, and nothing while the gesture belongs to another area. A gesture keeps the axis it starts along and goes to the innermost area under the pointer that can move along it the way it scrolls, then stays with that area until it pauses. The `position` is how far the area shows from its top or left end, out of `maximum`, and `hovered` says whether the pointer is over the area and nothing covers it.
     [[nodiscard]] WheelScroll takeWheel(ImGuiID area, const math::Rect& bounds, bool horizontal, double position, double maximum, bool hovered);
+
     // Returns whether the finger that drags belongs to an area that it pressed and that can scroll along `horizontal`. The finger goes to the innermost such area once it travels past the slop along that axis more than across it, and stays with it until it lifts.
     [[nodiscard]] bool takeDrag(ImGuiID area, const math::Rect& bounds, bool horizontal);
+
     // Keeps the finger that holds `item` when it travels or shares the screen, for a control that follows the pointer while held, such as a slider. A finger lets go of every other item then, so a swipe or a pinch never clicks it.
     void keepDrag(ImGuiID item);
+
     // Returns how far an area scrolls in this frame, toward its bottom or right end when positive, while the player drags an item near one of its ends: within a quarter of its length or the theme metric `listRowHeight`, whichever is shorter, in the innermost area that can move that way, faster the closer the item gets to the edge. The `position` is how far the area shows from its top or left end, out of `maximum`.
     [[nodiscard]] float takeEdgeScroll(ImGuiID area, const math::Rect& bounds, bool horizontal, double position, double maximum);
+
     // Holds an item that the pointer drags outside drag and drop, such as the lifted item of a collection, for the next frame, so it scrolls the areas it nears.
     void carryItem() noexcept;
+
     [[nodiscard]] const Theme::Image* getSurface(Theme::Surface role) const;
+
     // Plays the sound that the styles and the theme around the node being drawn give an interaction, if any.
     void playSound(Theme::Sound role) const;
+
     [[nodiscard]] const std::string& getFontName(Theme::Font role) const noexcept;
+
     // The size of the em square of a font role in UI units, which the text scale multiplies.
     [[nodiscard]] float getFontSize(Theme::Font role) const noexcept;
 
@@ -207,10 +217,12 @@ class Context final {
     [[nodiscard]] Backend& getBackend() const noexcept {
         return backend;
     }
+
     // The elements that screen readers read, which the components add as they draw while the tree is enabled.
     [[nodiscard]] AccessibilityTree& getAccessibility() noexcept {
         return accessibility;
     }
+
     [[nodiscard]] FocusNavigator& getFocus() const noexcept {
         return focus;
     }
@@ -259,6 +271,7 @@ class Context final {
     // A rounded surface pushes its area and corner radius around the drawing of the nodes inside it, so their highlights round concentric with its corners. Popups, dialogs and the other windows of their own never take the corners of a surface around them.
     void pushEnclosure(const math::Rect& bounds, float radius);
     void popEnclosure();
+
     // Returns the radii of the top-left, top-right, bottom-right and bottom-left corners of a highlight, such as a selected row: concentric with a corner of the innermost enclosure that the highlight comes within its radius of, and `radius` elsewhere.
     [[nodiscard]] std::array<float, 4> getInnerRadii(const math::Rect& bounds, float radius) const;
 

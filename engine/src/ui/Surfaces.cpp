@@ -1,6 +1,8 @@
 #include "ui/Surfaces.hpp"
 
 #include <algorithm>
+#include <cmath>
+#include <utility>
 
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Context.hpp"
@@ -15,12 +17,15 @@ void Surfaces::drawPiece(ImDrawList& list, ImTextureRef texture, const math::Rec
 
     const ImVec2 uvMin{source.x / textureSize.x, source.y / textureSize.y};
     const ImVec2 uvMax{source.getRight() / textureSize.x, source.getBottom() / textureSize.y};
+    const ImVec2 min = ImGuiConverter::toImVec2(destination.getMin());
+    const ImVec2 max = ImGuiConverter::toImVec2(destination.getMax());
     if (radius > 0.0F) {
-        list.AddImageRounded(texture, ImGuiConverter::toImVec2(destination.getMin()), ImGuiConverter::toImVec2(destination.getMax()), uvMin, uvMax, color, std::min(radius, std::min(destination.width, destination.height) * 0.5F));
+        const float rounding = std::min(radius, std::min(destination.width, destination.height) * 0.5F);
+        list.AddImageRounded(texture, min, max, uvMin, uvMax, color, rounding);
         return;
     }
 
-    list.AddImage(texture, ImGuiConverter::toImVec2(destination.getMin()), ImGuiConverter::toImVec2(destination.getMax()), uvMin, uvMax, color);
+    list.AddImage(texture, min, max, uvMin, uvMax, color);
 }
 
 // The frame draws through the 2D renderer at its place among the ImGui draws of the window, so its pieces lay out and sample like every other nine-slice, and the transform of the node moves them like the vertices around them.
@@ -96,7 +101,8 @@ void Surfaces::draw(Context& context, Theme::Surface role, const math::Rect& bou
         return;
     }
 
-    drawShape(context, {.bounds = bounds, .radii = radii, .color = fill, .borderWidth = bordered ? width : 0.0F, .borderColor = bordered ? *border : math::Color::transparent()});
+    const graphics2d::Shape shape{.bounds = bounds, .radii = radii, .color = fill, .borderWidth = bordered ? width : 0.0F, .borderColor = bordered ? *border : math::Color::transparent()};
+    drawShape(context, shape);
 }
 
 // A shape rounds each corner by at most half its shorter side, so the radius needs no limit here.
@@ -116,6 +122,7 @@ void Surfaces::drawShape(Context& context, graphics2d::Shape shape) {
     const Context::Reshape reshape = context.getReshape();
     const float scale = std::min(reshape.scale.x, reshape.scale.y);
     const math::Color tint = reshape.color.withAlpha(reshape.color.a * ImGui::GetStyle().Alpha);
+
     shape.bounds = reshape.apply(shape.bounds);
     for (float& radius : shape.radii) {
         radius *= scale;
@@ -147,8 +154,8 @@ void Surfaces::drawShadow(Context& context, const math::Rect& bounds, float radi
     }
 
     const math::Rect cast = bounds.translated({0.0F, context.getMetric(Theme::Metric::ShadowOffset) * lift});
-    ImDrawList& list = *ImGui::GetWindowDrawList();
     const math::Rect reach = context.getReshape().apply(cast.expanded(size));
+    ImDrawList& list = *ImGui::GetWindowDrawList();
     list.PushClipRect(ImGuiConverter::toImVec2(reach.getMin()), ImGuiConverter::toImVec2(reach.getMax()), false);
     drawShape(context, {.bounds = cast, .radii = {radius, radius, radius, radius}, .color = color, .softness = size * 2.0F});
     list.PopClipRect();

@@ -24,10 +24,15 @@ std::optional<math::Rect> Popup::begin(Context& context, const char* name, ImGui
     const float roomAbove = anchor.y - kAnchorGap - display.y - margin;
     const bool below = needed <= roomBelow || roomBelow >= roomAbove;
     const float limit = std::max(0.0F, below ? roomBelow : roomAbove);
+
     const math::Insets edge = Surfaces::getFrame(context, Theme::Surface::Menu);
+    const float barEdge = rightToLeft ? edge.left : edge.right;
     overflowing = needed > limit;
-    const float reserve = overflowing ? Scrollbar::getReserve(context, padding - (rightToLeft ? edge.left : edge.right)) : 0.0F;
-    ImGui::SetNextWindowPos({rightToLeft ? anchor.getRight() : anchor.x, below ? anchor.getBottom() + kAnchorGap : anchor.y - kAnchorGap}, ImGuiCond_Always, {rightToLeft ? 1.0F : 0.0F, below ? 0.0F : 1.0F});
+    const float reserve = overflowing ? Scrollbar::getReserve(context, padding - barEdge) : 0.0F;
+
+    const ImVec2 position{rightToLeft ? anchor.getRight() : anchor.x, below ? anchor.getBottom() + kAnchorGap : anchor.y - kAnchorGap};
+    const ImVec2 pivot{rightToLeft ? 1.0F : 0.0F, below ? 0.0F : 1.0F};
+    ImGui::SetNextWindowPos(position, ImGuiCond_Always, pivot);
     ImGui::SetNextWindowSizeConstraints({std::max(minimumWidth, anchor.width), 0.0F}, {FLT_MAX, limit});
     ImGui::SetNextWindowContentSize({std::ceil(content.x + reserve), content.y});
     ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.0F, 0.0F, 0.0F, 0.0F));
@@ -56,7 +61,8 @@ std::optional<math::Rect> Popup::begin(Context& context, const char* name, ImGui
         const math::Rect area = frame.inset(edge);
         box = Scrollbar::getContentBox(context, area, box, false);
 
-        if (const std::optional<double> offset = scrollbar.interact(context, area, false, false, ImGui::GetScrollY(), ImGui::GetScrollMaxY(), frame.height, Surfaces::getInnerRadius(radius, rightToLeft ? edge.left : edge.right))) {
+        const float barRadius = Surfaces::getInnerRadius(radius, barEdge);
+        if (const std::optional<double> offset = scrollbar.interact(context, area, false, false, ImGui::GetScrollY(), ImGui::GetScrollMaxY(), frame.height, barRadius)) {
             ImGui::SetScrollY(static_cast<float>(*offset));
         }
 

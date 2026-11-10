@@ -121,8 +121,8 @@ math::Vec2 Context::getWheelDistance() const noexcept {
 }
 
 Context::WheelScroll Context::takeWheel(ImGuiID area, const math::Rect& bounds, bool horizontal, double position, double maximum, bool hovered) {
-    const ScrollArbiter::AxisWheel wheel = getBackend().getScrollArbiter().takeWheel(area, bounds, horizontal, position, maximum, hovered);
     using Motion = WheelScroll::Motion;
+    const ScrollArbiter::AxisWheel wheel = getBackend().getScrollArbiter().takeWheel(area, bounds, horizontal, position, maximum, hovered);
     Motion motion = Motion::None;
     if (wheel.lines != 0.0F) {
         motion = Motion::Glide;
@@ -132,7 +132,9 @@ Context::WheelScroll Context::takeWheel(ImGuiID area, const math::Rect& bounds, 
         motion = Motion::Free;
     }
 
-    return {.distance = wheel.lines * getMetric(Theme::Metric::ScrollLine) + wheel.points / getBackend().getPointsPerUnit(), .momentum = wheel.momentum / getBackend().getPointsPerUnit(), .motion = motion, .touched = wheel.touched, .lifted = wheel.lifted};
+    const float pointsPerUnit = getBackend().getPointsPerUnit();
+    const float distance = wheel.lines * getMetric(Theme::Metric::ScrollLine) + wheel.points / pointsPerUnit;
+    return {.distance = distance, .momentum = wheel.momentum / pointsPerUnit, .motion = motion, .touched = wheel.touched, .lifted = wheel.lifted};
 }
 
 void Context::keepDrag(ImGuiID item) {
@@ -189,7 +191,19 @@ const Theme::Cue* Context::findSound(Theme::Sound role) const noexcept {
 }
 
 const std::string& Context::getFontName(Theme::Font role) const noexcept {
-    return *resolve<const std::string*>([role](const Style& style) { return style.getFont(role).font ? std::optional<const std::string*>(&*style.getFont(role).font) : std::nullopt; }, [role](const Theme& theme) { return &theme.getFont(role).font; });
+    // clang-format off
+    const auto fromStyle = [role](const Style& style) -> std::optional<const std::string*> {
+        const std::optional<std::string>& font = style.getFont(role).font;
+        if (!font) {
+            return std::nullopt;
+        }
+
+        return &*font;
+    };
+    // clang-format on
+
+    const auto fromTheme = [role](const Theme& theme) { return &theme.getFont(role).font; };
+    return *resolve<const std::string*>(fromStyle, fromTheme);
 }
 
 float Context::getFontSize(Theme::Font role) const noexcept {
@@ -370,7 +384,8 @@ std::array<float, 4> Context::getInnerRadii(const math::Rect& bounds, float radi
 void Context::pushReshape(const Transform& shape, math::Vec2 center) {
     const Reshape outer = getReshape();
     const math::Color color = shape.tint.withAlpha(shape.tint.a * shape.opacity);
-    reshapes.push_back({.scale = shape.scale * outer.scale, .offset = center * (math::Vec2{1.0F, 1.0F} - shape.scale) * outer.scale + outer.offset, .color = color * outer.color});
+    const math::Vec2 offset = center * (math::Vec2{1.0F, 1.0F} - shape.scale) * outer.scale + outer.offset;
+    reshapes.push_back({.scale = shape.scale * outer.scale, .offset = offset, .color = color * outer.color});
 }
 
 void Context::popReshape() {

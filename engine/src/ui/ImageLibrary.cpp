@@ -173,6 +173,7 @@ ImageLibrary::File& ImageLibrary::requestFile(std::string_view path, graphics::T
     }
 
     File& file = loaded.emplace(std::string(path), File{}).first->second;
+
     // clang-format off
     assets.textureAsync(path, [this, owner = std::weak_ptr<bool>(alive), key = std::string(path), filter](graphics::Texture texture, std::string error) {
         if (owner.expired()) {
@@ -184,6 +185,7 @@ ImageLibrary::File& ImageLibrary::requestFile(std::string_view path, graphics::T
         entry.error = std::move(error);
     }, {.filter = filter, .wrap = graphics::Texture::Wrap::Clamp});
     // clang-format on
+
     return file;
 }
 
@@ -197,6 +199,7 @@ ImageLibrary::Vector& ImageLibrary::requestVector(std::string_view path) {
     }
 
     Vector& vector = vectors.emplace(std::string(path), Vector{}).first->second;
+
     // clang-format off
     assets.loadAsync("vectorImage", path, [this, owner = std::weak_ptr<bool>(alive), key = std::string(path)](std::shared_ptr<void> asset, std::string error) {
         if (owner.expired()) {
@@ -208,6 +211,7 @@ ImageLibrary::Vector& ImageLibrary::requestVector(std::string_view path) {
         entry.error = std::move(error);
     });
     // clang-format on
+
     return vector;
 }
 
@@ -217,7 +221,9 @@ void ImageLibrary::requestRaster(const std::string& path, Vector& vector, int st
     }
 
     // clang-format off
-    jobs.run([image = vector.image, step] { return image.rasterize(getStepScale(step)); }, [this, owner = std::weak_ptr<bool>(alive), path, step, image = vector.image](core::JobSystem::Result<graphics::Image> result) {
+    jobs.run([image = vector.image, step] {
+        return image.rasterize(getStepScale(step));
+    }, [this, owner = std::weak_ptr<bool>(alive), path, step, image = vector.image](core::JobSystem::Result<graphics::Image> result) {
         const auto found = owner.expired() ? vectors.end() : vectors.find(path);
         if (found == vectors.end() || !(found->second.image == image)) {
             return;
@@ -231,9 +237,10 @@ void ImageLibrary::requestRaster(const std::string& path, Vector& vector, int st
             return;
         }
 
-        const graphics::Image& pixels = *result.value;
         // A raster draws at the scale it was made for, so it needs no smaller copies.
-        Raster raster{.texture = device.createTexture(pixels, {.filter = graphics::Texture::Filter::Linear, .wrap = graphics::Texture::Wrap::Clamp, .mipmaps = false}), .bytes = pixels.getPixels().size(), .frame = frame};
+        const graphics::Texture::Options options{.filter = graphics::Texture::Filter::Linear, .wrap = graphics::Texture::Wrap::Clamp, .mipmaps = false};
+        const graphics::Image& pixels = *result.value;
+        Raster raster{.texture = device.createTexture(pixels, options), .bytes = pixels.getPixels().size(), .frame = frame};
         rasterBytes += raster.bytes;
         entry.rasters.insert_or_assign(step, std::move(raster));
     });
@@ -244,16 +251,12 @@ void ImageLibrary::requestRaster(const std::string& path, Vector& vector, int st
 int ImageLibrary::clampStep(const graphics::VectorImage& image, int step) const noexcept {
     const math::Vec2 size = image.getSize();
     const float largest = static_cast<float>(device.getMaxTextureSize());
-    return std::min(step, static_cast<int>(std::floor(std::log2(largest / std::max(size.x, size.y)) * static_cast<float>(kStepsPerOctave))));
+    const auto largestStep = static_cast<int>(std::floor(std::log2(largest / std::max(size.x, size.y)) * static_cast<float>(kStepsPerOctave)));
+    return std::min(step, largestStep);
 }
 
 // The rasters drawn longest ago go first.
 void ImageLibrary::release() {
-    struct Candidate {
-        std::uint64_t frame;
-        Vector* vector;
-        int step;
-    };
     std::vector<Candidate> candidates;
     for (auto& [path, vector] : vectors) {
         for (const auto& [step, raster] : vector.rasters) {

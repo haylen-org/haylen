@@ -22,7 +22,9 @@ float Scrollbar::getGap(const Context& context) {
 
 void Scrollbar::takeWheel(Context& context) {
     const ImGuiWindow& window = *ImGui::GetCurrentWindow();
-    const Context::WheelScroll wheel = context.takeWheel(window.ID, ImGuiConverter::toRect(window.InnerRect), false, window.Scroll.y, window.ScrollMax.y, ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows));
+    const math::Rect bounds = ImGuiConverter::toRect(window.InnerRect);
+    const bool windowHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows);
+    const Context::WheelScroll wheel = context.takeWheel(window.ID, bounds, false, window.Scroll.y, window.ScrollMax.y, windowHovered);
     const float distance = wheel.distance + wheel.momentum;
     if (distance != 0.0F) {
         ImGui::SetScrollY(window.Scroll.y - distance);
@@ -67,7 +69,8 @@ std::optional<double> Scrollbar::interact(Context& context, const math::Rect& ar
     }
 
     const float trackLength = horizontal ? track.width : track.height;
-    const auto length = static_cast<float>(std::clamp(static_cast<double>(trackLength) * viewLength / (maximum + viewLength), static_cast<double>(std::min(kMinThumb, trackLength)), static_cast<double>(trackLength)));
+    const double viewShare = static_cast<double>(trackLength) * viewLength / (maximum + viewLength);
+    const auto length = static_cast<float>(std::clamp(viewShare, static_cast<double>(std::min(kMinThumb, trackLength)), static_cast<double>(trackLength)));
     const float travel = trackLength - length;
     const float progress = maximum > 0.0 ? static_cast<float>(std::clamp(offset / maximum, 0.0, 1.0)) : 0.0F;
     const float start = (reversed ? 1.0F - progress : progress) * travel;

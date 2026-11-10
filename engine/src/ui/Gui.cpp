@@ -22,6 +22,7 @@ class Gui::EventScope final {
     EventScope(Context& drawing, std::vector<Event>& queue) : context(drawing) {
         context.setEventQueue(&queue);
     }
+
     ~EventScope() {
         context.setEventQueue(nullptr);
     }
@@ -39,6 +40,7 @@ class Gui::PreparingScope final {
     explicit PreparingScope(bool& flag) noexcept : preparing(flag) {
         preparing = true;
     }
+
     ~PreparingScope() {
         preparing = false;
     }
@@ -112,7 +114,7 @@ math::Rect Gui::place(const Context& context, const Component& component, math::
 }
 
 // A node of the same kind that the GUI builds again in the same place among its siblings names its ImGui items as before and keeps their state, such as the focus and the editing of a field, and a node with an id of the app names them by that id wherever it moves. The ids that start with "#" are those the engine gives nodes with handlers, which change whenever a tree is built again.
-Gui::Built Gui::build(const core::Json& node, std::size_t depth, std::size_t& count, int place) const {
+Gui::Built Gui::build(const core::Json& node, std::size_t depth, std::size_t& count, int siblingIndex) const {
     if (!node.is_object()) {
         throw std::invalid_argument("A UI node must be an object with a kind.");
     }
@@ -129,7 +131,8 @@ Gui::Built Gui::build(const core::Json& node, std::size_t depth, std::size_t& co
     Built built{.component = registry.create(kind->get<std::string>()), .ids = {}, .properties = {}};
     Component& component = *built.component;
     const std::string& kindName = kind->get_ref<const std::string&>();
-    component.key = ImHashStr(kindName.data(), kindName.size(), static_cast<ImGuiID>(place));
+    component.key = ImHashStr(kindName.data(), kindName.size(), static_cast<ImGuiID>(siblingIndex));
+
     if (const auto id = node.find("id"); id != node.end()) {
         if (!id->is_string() || id->get<std::string>().empty()) {
             throw std::invalid_argument("The id of " + PropertyReader::describeKind(kind->get<std::string>()) + " must be a non-empty string.");
@@ -239,6 +242,7 @@ void Gui::set(std::string_view id, const core::Json& changes) {
     checked->apply(merged);
     checked->compile(registry);
     component.checkReplacement(*checked);
+
     component.apply(changes);
     component.compile(registry);
     properties.insert_or_assign(std::string(id), std::move(merged));
@@ -310,8 +314,8 @@ void Gui::listen(std::string_view id, Component::Notice notice, bool value) {
     require(id).setListening(notice, value);
 }
 
-void Gui::attach(Delivery deliver) {
-    delivery = std::move(deliver);
+void Gui::attach(Delivery handler) {
+    delivery = std::move(handler);
     arrived = true;
 }
 
@@ -345,10 +349,11 @@ void Gui::reportMounts(Component& component) {
     }
 }
 
+// A handler may detach the GUI, so the events go through a copy of the delivery.
 void Gui::deliver(const std::vector<Event>& found) {
-    const Delivery deliver = delivery;
+    const Delivery handler = delivery;
     for (const Event& event : found) {
-        deliver(*this, event);
+        handler(*this, event);
     }
 }
 
@@ -371,7 +376,6 @@ void Gui::draw(Context& context, const math::Rect& area) {
     context.getFocus().beginGui(*this);
     const bool writing = root->pushWriting(context);
     const math::Rect placed = root->getCommon().anchor ? root->getAnchoredBounds(context, area) : place(context, *root, root->measure(context, area.width), area);
-
     if (writing) {
         context.popWriting();
     }

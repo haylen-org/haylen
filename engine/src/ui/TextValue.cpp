@@ -28,13 +28,13 @@ TextValue TextValue::fromJson(const core::Json& value, std::string_view context)
 
     if (value.is_object()) {
         core::JsonValidator::requireKnownKeys(value, {"key", "args"}, "\"" + std::string(context) + "\"");
-        const auto found = value.find("key");
-        const auto values = value.find("args");
-        if (found == value.end() || !found->is_string() || found->get<std::string>().empty() || (values != value.end() && !values->is_object())) {
+        const auto keyField = value.find("key");
+        const auto argumentsField = value.find("args");
+        if (keyField == value.end() || !keyField->is_string() || keyField->get<std::string>().empty() || (argumentsField != value.end() && !argumentsField->is_object())) {
             throw std::invalid_argument(PropertyReader::describeProperty(context) + " needs a translation key and an optional \"args\" object.");
         }
 
-        return {.literal = {}, .key = found->get<std::string>(), .arguments = values != value.end() ? *values : core::Json::object()};
+        return {.literal = {}, .key = keyField->get<std::string>(), .arguments = argumentsField != value.end() ? *argumentsField : core::Json::object()};
     }
 
     throw std::invalid_argument(PropertyReader::describeProperty(context) + " must be text, a number or a translation such as \"{key = 'menu.play'}\".");

@@ -269,30 +269,9 @@ void Component::draw(Context& context, const math::Rect& layout) {
         context.getBackend().setCursor(*common.cursor);
     }
 
-    // The context carries the transform to the draws of the node that go around the ImGui vertices, such as rich text. The vertices the node draws in its window and in the child windows it begins, such as scroll areas, take the transform once it drew them, while popups, tooltips and the other windows of their own keep their look.
-    const bool reshaping = transform->isReshaping();
-    ImGuiWindow* window = ImGui::GetCurrentWindow();
-    const int firstVertex = window->DrawList->VtxBuffer.Size;
-    const int firstWindow = GImGui->WindowsActiveCount;
-
-    if (reshaping) {
-        context.pushReshape(*transform, bounds.getCenter());
-    }
-
-    render(context, bounds);
-
-    if (reshaping) {
-        context.popReshape();
-        reshape(*window->DrawList, firstVertex, *transform, bounds.getCenter(), false);
-
-        for (ImGuiWindow* child : GImGui->Windows) {
-            if (child != window && child->RootWindow == window->RootWindow && child->BeginOrderWithinContext >= firstWindow && child->LastFrameActive == GImGui->FrameCount) {
-                reshape(*child->DrawList, 0, *transform, bounds.getCenter(), true);
-            }
-        }
-    }
-
+    renderReshaped(context, bounds);
     drawDetachedChildren(context, bounds);
+
     // A node that is disabled, itself or through a node around it, reports nothing of the pointer.
     if (isListeningToPointer() && (ImGui::GetCurrentContext()->CurrentItemFlags & ImGuiItemFlags_Disabled) == 0) {
         reportPointer(context, bounds);
@@ -318,6 +297,29 @@ void Component::draw(Context& context, const math::Rect& layout) {
 
     focus.leave();
     ImGui::PopID();
+}
+
+// The context carries the transform to the draws of the node that go around the ImGui vertices, such as rich text. The vertices the node draws in its window and in the child windows it begins, such as scroll areas, take the transform once it drew them, while popups, tooltips and the other windows of their own keep their look.
+void Component::renderReshaped(Context& context, const math::Rect& bounds) {
+    if (!transform->isReshaping()) {
+        render(context, bounds);
+        return;
+    }
+
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    const int firstVertex = window->DrawList->VtxBuffer.Size;
+    const int firstWindow = GImGui->WindowsActiveCount;
+    context.pushReshape(*transform, bounds.getCenter());
+    render(context, bounds);
+    context.popReshape();
+
+    reshape(*window->DrawList, firstVertex, *transform, bounds.getCenter(), false);
+    for (ImGuiWindow* child : GImGui->Windows) {
+        const bool beganInside = child != window && child->RootWindow == window->RootWindow && child->BeginOrderWithinContext >= firstWindow;
+        if (beganInside && child->LastFrameActive == GImGui->FrameCount) {
+            reshape(*child->DrawList, 0, *transform, bounds.getCenter(), true);
+        }
+    }
 }
 
 math::Rect Component::getAnchoredBounds(Context& context, const math::Rect& parent) {
@@ -468,22 +470,26 @@ void Component::drawTooltip(Context& context, const math::Rect& bounds) {
     // The tooltip window takes the size of the text, and the theme paints the tooltip surface behind it, keeping the text inside the padding of a surface image.
     const math::Insets padding = Surfaces::getPadding(context, Theme::Surface::Tooltip);
     const ImVec2 spacing = ImGui::GetStyle().WindowPadding;
+    const ImVec2 windowPadding{spacing.x + std::max(padding.left, padding.right), spacing.y + std::max(padding.top, padding.bottom)};
     ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.0F, 0.0F, 0.0F, 0.0F));
     ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, 0.0F);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {spacing.x + std::max(padding.left, padding.right), spacing.y + std::max(padding.top, padding.bottom)});
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, windowPadding);
 
     if (ImGui::BeginTooltip()) {
         context.pushPlainReshape();
+
         const ImVec2 position = ImGui::GetWindowPos();
         const ImVec2 size = ImGui::GetWindowSize();
         const math::Rect frame{position.x, position.y, size.x, size.y};
         Surfaces::drawShadow(context, frame, context.getMetric(Theme::Metric::ControlRadius));
         Surfaces::draw(context, Theme::Surface::Tooltip, frame, context.getColor(Theme::Color::Tooltip));
+
         const std::string_view text = context.getText(common.tooltip);
         const math::Vec2 measured = Typography::measureParagraph(context, Theme::Font::Caption, text, context.getMetric(Theme::Metric::TooltipWidth));
         const ImVec2 cursor = ImGui::GetCursorScreenPos();
         Typography::drawParagraph(context, Theme::Font::Caption, {cursor.x, cursor.y, measured.x, measured.y}, context.getColor(Theme::Color::OnTooltip), text, Alignment::Start);
         ImGui::Dummy(ImGuiConverter::toImVec2(measured));
+
         context.popReshape();
         ImGui::EndTooltip();
     }

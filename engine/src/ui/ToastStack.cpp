@@ -41,6 +41,7 @@ std::optional<ToastStack::Placement> ToastStack::place(std::uint64_t key, Positi
     float offset = 0.0F;
     double newest = since;
     float front = extent;
+
     // clang-format off
     const auto count = [&](const Entry& entry) {
         if (entry.position != position || entry.key == key || isBefore(entry, key, since) == deck) {
@@ -56,6 +57,7 @@ std::optional<ToastStack::Placement> ToastStack::place(std::uint64_t key, Positi
         }
     };
     // clang-format on
+
     for (const Entry& entry : previous) {
         count(entry);
     }

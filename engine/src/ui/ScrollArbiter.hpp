@@ -101,6 +101,7 @@ class ScrollArbiter final {
 
     // Chooses the area that a dragged item scrolls among the areas of the frame before, with how fast it scrolls.
     void chooseEdge(math::Vec2 pointer);
+
     [[nodiscard]] static bool isEmpty(const Wheel& value) noexcept;
 
     Wheel pending;

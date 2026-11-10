@@ -84,6 +84,7 @@ void ScrollArbiter::beginFrame(float seconds) {
     const ImGuiIO& io = ImGui::GetIO();
     const math::Vec2 pointer{io.MousePos.x, io.MousePos.y};
     frameSeconds = seconds;
+
     edgeAreas.swap(previousEdgeAreas);
     edgeAreas.clear();
     itemDragged = std::exchange(carrying, false) || ImGui::GetDragDropPayload() != nullptr;
@@ -103,8 +104,9 @@ void ScrollArbiter::beginFrame(float seconds) {
 
     // A gesture of a trackpad with phases lasts while its fingers are on it or its momentum goes on, until fingers touch it again. A wheel without phases that pauses, or that rests while the pointer moves on, ends its gesture. The next wheel starts a gesture along the axis it moves most.
     const bool scrolled = !isEmpty(wheel);
-
-    if (gesture && !fingers && (touched || (phased && wheel.momentum.isZero()) || quiet > kGesturePause || (quiet > kPointerPause && (pointer - wheelPointer).getLengthSquared() > kPointerTravel * kPointerTravel))) {
+    const bool pointerTravelled = (pointer - wheelPointer).getLengthSquared() > kPointerTravel * kPointerTravel;
+    const bool paused = quiet > kGesturePause || (quiet > kPointerPause && pointerTravelled);
+    if (gesture && !fingers && (touched || (phased && wheel.momentum.isZero()) || paused)) {
         gesture = false;
     }
 
@@ -143,6 +145,7 @@ void ScrollArbiter::beginFrame(float seconds) {
 
 ScrollArbiter::AxisWheel ScrollArbiter::takeWheel(ImGuiID area, const math::Rect& bounds, bool horizontal, double position, double maximum, bool hovered) {
     areas.push_back({.id = area, .bounds = bounds, .horizontal = horizontal, .position = position, .maximum = maximum, .hovered = hovered});
+
     const ImVec2 pointer = ImGui::GetIO().MousePos;
     AxisWheel result{.touched = touched && hovered && bounds.contains(math::Vec2{pointer.x, pointer.y})};
     if (!gesture || vertical == horizontal || area != wheelArea) {
@@ -168,7 +171,6 @@ bool ScrollArbiter::takeDrag(ImGuiID area, const math::Rect& bounds, bool horizo
 
     const ImGuiIO& io = ImGui::GetIO();
     const ImVec2 press = io.MouseClickedPos[ImGuiMouseButton_Left];
-
     if (!io.MouseDown[ImGuiMouseButton_Left] || !bounds.contains(math::Vec2{press.x, press.y})) {
         return false;
     }

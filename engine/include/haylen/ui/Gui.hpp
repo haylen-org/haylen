@@ -61,7 +61,7 @@ class Gui final {
     void listen(std::string_view id, Component::Notice notice, bool value);
 
     // The UI plugin attaches a GUI it mounts, whose nodes then report that they joined it the next time it draws, and detaches it when it unmounts, which returns the unmount events of its nodes for the plugin to deliver at once.
-    void attach(Delivery deliver);
+    void attach(Delivery handler);
     [[nodiscard]] std::vector<Event> detach();
 
     // Lets the nodes that prepare themselves do it before the GUIs draw, such as collections that bind their cells and run their binders. Meanwhile the GUI refuses to replace nodes or to unmount.
@@ -113,7 +113,7 @@ class Gui final {
     void reportMounts(Component& component);
     void deliver(const std::vector<Event>& found);
 
-    [[nodiscard]] Built build(const core::Json& node, std::size_t depth, std::size_t& count, int place) const;
+    [[nodiscard]] Built build(const core::Json& node, std::size_t depth, std::size_t& count, int siblingIndex) const;
     [[nodiscard]] Component& require(std::string_view id) const;
 
     const ComponentRegistry& registry;

@@ -108,6 +108,7 @@ class Widgets final {
 
     // A label wider than the room the width leaves wraps onto more lines, and the button grows taller to hold them.
     [[nodiscard]] static math::Vec2 measureButton(Context& context, std::string_view label, bool hasIcon, ButtonVariant variant, const ButtonContent& content, float availableWidth = Component::CommonProperties::kUnbounded);
+
     // Draws a button with its label and icon, which takes the icon color when it sets one and otherwise the color of the label in toolbar and icon buttons and its own colors in the others.
     [[nodiscard]] static bool button(Context& context, const math::Rect& bounds, std::string_view label, const graphics::Texture* icon, ButtonVariant variant, bool checked, const IconColor& iconColor, const ButtonContent& content);
 
@@ -123,6 +124,7 @@ class Widgets final {
 
     // Returns the value inside the range, on the nearest multiple of the step from the minimum when the step is above zero.
     [[nodiscard]] static double snap(double value, double minimum, double maximum, double step) noexcept;
+
     // Draws a bar filled up to the value and returns the part of the bounds the fill covers, empty while the value is 0.
     static math::Rect progress(Context& context, const math::Rect& bounds, float value, Tone tone);
     static void spinner(Context& context, math::Vec2 center, float radius, math::Color color);

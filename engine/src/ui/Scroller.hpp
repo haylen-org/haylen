@@ -21,6 +21,7 @@ class Scroller final {
 
     // How far the offset lies past an end, negative before the start.
     [[nodiscard]] double getOverscroll() const noexcept;
+
     [[nodiscard]] double getVelocity() const noexcept {
         return velocity;
     }

@@ -143,6 +143,7 @@ void Scroller::spring(double goal, float seconds) noexcept {
     const double decay = std::exp(-kSpring * time);
     offset = goal + (distance + rate * time) * decay;
     velocity = (rate - kSpring * (distance + rate * time)) * decay;
+
     if (std::fabs(offset - goal) < kSettleDistance && std::fabs(velocity) < kStopSpeed) {
         offset = goal;
         velocity = 0.0;
@@ -176,6 +177,7 @@ bool Scroller::update(float seconds) noexcept {
     case Motion::Dragging:
         break;
     }
+
     return offset != before;
 }
 

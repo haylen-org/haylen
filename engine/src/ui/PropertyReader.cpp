@@ -1,12 +1,12 @@
 #include "haylen/ui/PropertyReader.hpp"
 
-#include "haylen/core/JsonNumber.hpp"
-
 #include <algorithm>
 #include <cmath>
 #include <format>
 #include <stdexcept>
 #include <vector>
+
+#include "haylen/core/JsonNumber.hpp"
 
 namespace haylen::ui {
 

@@ -8,6 +8,7 @@
 
 #include <imgui_internal.h>
 
+#include "haylen/2d/graphics/Shape.hpp"
 #include "haylen/math/Insets.hpp"
 #include "haylen/ui/Alignment.hpp"
 #include "haylen/ui/Component.hpp"
@@ -62,6 +63,7 @@ Widgets::ToneColors Widgets::getToneColors(Tone tone) noexcept {
     case Tone::Neutral:
         break;
     }
+
     return {Theme::Color::BorderStrong, Theme::Color::Text, Theme::Color::Hover, Theme::Color::TextMuted};
 }
 
@@ -111,7 +113,8 @@ void Widgets::drawFocusRing(Context& context, const math::Rect& bounds, ImGuiID 
     // The line runs a gap away from the edge of the control, and it may reach past the clip of a scrolled area so an item at the edge still shows it whole. The ring lies in the units of the control, which the transforms around it move onto the screen, where the clip of the window lies.
     const float width = context.getMetric(Theme::Metric::FocusWidth);
     const float distance = context.getMetric(Theme::Metric::FocusGap) + width;
-    const math::Rect clip = Context::Reshape{.scale = math::Vec2{1.0F, 1.0F} / shape.scale, .offset = math::Vec2{} - shape.offset / shape.scale}.apply(ImGuiConverter::toRect(window->ClipRect));
+    const Context::Reshape toControl{.scale = math::Vec2{1.0F, 1.0F} / shape.scale, .offset = math::Vec2{} - shape.offset / shape.scale};
+    const math::Rect clip = toControl.apply(ImGuiConverter::toRect(window->ClipRect));
     const math::Rect ring = bounds.intersection(clip).expanded(distance);
     const bool clipped = !clip.contains(ring);
     if (clipped) {
@@ -124,7 +127,8 @@ void Widgets::drawFocusRing(Context& context, const math::Rect& bounds, ImGuiID 
     if (const Theme::Image* image = context.getSurface(Theme::Surface::FocusRing)) {
         Surfaces::drawNineSlice(context, *image, ring, context.getColor(Theme::Color::Focus));
     } else {
-        Surfaces::drawShape(context, {.bounds = ring, .radii = {rounding, rounding, rounding, rounding}, .color = math::Color::transparent(), .borderWidth = width, .borderColor = context.getColor(Theme::Color::Focus)});
+        const graphics2d::Shape outline{.bounds = ring, .radii = {rounding, rounding, rounding, rounding}, .color = math::Color::transparent(), .borderWidth = width, .borderColor = context.getColor(Theme::Color::Focus)};
+        Surfaces::drawShape(context, outline);
     }
 
     if (clipped) {
@@ -133,8 +137,8 @@ void Widgets::drawFocusRing(Context& context, const math::Rect& bounds, ImGuiID 
 }
 
 void Widgets::focusItem(Context& context) {
-    const ImRect& box = GImGui->LastItemData.Rect;
-    context.getFocus().focus(ImGui::GetItemID(), math::Rect::fromMinMax({box.Min.x, box.Min.y}, {box.Max.x, box.Max.y}));
+    const math::Rect bounds = ImGuiConverter::toRect(GImGui->LastItemData.Rect);
+    context.getFocus().focus(ImGui::GetItemID(), bounds);
 }
 
 math::Vec2 Widgets::measureButton(Context& context, std::string_view label, bool hasIcon, ButtonVariant variant, const ButtonContent& content, float availableWidth) {
@@ -187,8 +191,9 @@ bool Widgets::button(Context& context, const math::Rect& bounds, std::string_vie
 
         if (state.hovered) {
             const float y = std::floor(bounds.y + (bounds.height + Typography::getLineHeight(context, Theme::Font::Button)) * 0.5F);
-            const math::Rect line = context.mirror({bounds.x, y, std::min(Typography::measure(context, Theme::Font::Button, label).x, bounds.width), 0.0F}, bounds);
-            Widgets::line(context, {line.x, y}, {line.getRight(), y}, 1.0F, color);
+            const float lineWidth = std::min(Typography::measure(context, Theme::Font::Button, label).x, bounds.width);
+            const math::Rect underline = context.mirror({bounds.x, y, lineWidth, 0.0F}, bounds);
+            line(context, {underline.x, y}, {underline.getRight(), y}, 1.0F, color);
         }
 
         return state.clicked;
@@ -201,7 +206,10 @@ bool Widgets::button(Context& context, const math::Rect& bounds, std::string_vie
     std::optional<math::Color> border = context.getColor(Theme::Color::Border);
     if (variant == ButtonVariant::Primary || variant == ButtonVariant::Destructive) {
         const bool primary = variant == ButtonVariant::Primary;
-        fill = context.getColor(state.held ? (primary ? Theme::Color::AccentStrong : Theme::Color::DangerStrong) : state.hovered ? (primary ? Theme::Color::AccentHover : Theme::Color::DangerHover) : (primary ? Theme::Color::Accent : Theme::Color::Danger));
+        const Theme::Color heldFill = primary ? Theme::Color::AccentStrong : Theme::Color::DangerStrong;
+        const Theme::Color hoverFill = primary ? Theme::Color::AccentHover : Theme::Color::DangerHover;
+        const Theme::Color restFill = primary ? Theme::Color::Accent : Theme::Color::Danger;
+        fill = context.getColor(state.held ? heldFill : (state.hovered ? hoverFill : restFill));
         textColor = context.getColor(primary ? Theme::Color::OnAccent : Theme::Color::OnDanger);
         border.reset();
     } else if (variant == ButtonVariant::Toolbar || variant == ButtonVariant::Icon) {
@@ -228,7 +236,8 @@ bool Widgets::button(Context& context, const math::Rect& bounds, std::string_vie
     }
 
     const math::Color iconTint = iconColor.resolve(context, variant == ButtonVariant::Icon || variant == ButtonVariant::Toolbar ? textColor : math::Color::white());
-    drawButtonContent(context, bounds.inset(Surfaces::getPadding(context, surfaces.normal)), label, icon != nullptr && icon->isValid() ? icon : nullptr, textColor, iconTint, content);
+    const graphics::Texture* shownIcon = icon != nullptr && icon->isValid() ? icon : nullptr;
+    drawButtonContent(context, bounds.inset(Surfaces::getPadding(context, surfaces.normal)), label, shownIcon, textColor, iconTint, content);
     return state.clicked;
 }
 
@@ -248,12 +257,14 @@ void Widgets::drawButtonContent(Context& context, const math::Rect& inner, std::
         const float gap = label.empty() ? 0.0F : spacing * 0.5F;
         const float top = std::floor(inner.getCenter().y - (iconSize + gap + lineHeight) * 0.5F);
         const float iconX = std::floor(Component::align(content.justify, start, room, iconSize));
-        Surfaces::drawImage(context, *icon, context.mirror({iconX, top, iconSize, iconSize}, inner), iconColor);
+        const math::Rect iconBounds = context.mirror({iconX, top, iconSize, iconSize}, inner);
+        Surfaces::drawImage(context, *icon, iconBounds, iconColor);
 
         if (!label.empty()) {
             const float labelWidth = std::min(measured, room);
             const float labelX = std::floor(Component::align(content.justify, start, room, labelWidth));
-            Typography::drawAligned(context, Theme::Font::Button, context.mirror({labelX, top + iconSize + gap, labelWidth, lineHeight}, inner), textColor, label, Alignment::Start);
+            const math::Rect labelBounds = context.mirror({labelX, top + iconSize + gap, labelWidth, lineHeight}, inner);
+            Typography::drawAligned(context, Theme::Font::Button, labelBounds, textColor, label, Alignment::Start);
         }
 
         return;
@@ -262,16 +273,19 @@ void Widgets::drawButtonContent(Context& context, const math::Rect& inner, std::
     // A label wider than its room wraps there, on lines that keep the alignment of the content.
     const float textRoom = std::max(0.0F, room - iconRoom);
     const bool wrapped = measured > textRoom && textRoom > 0.0F;
-    const math::Vec2 text = wrapped ? Typography::measure(context, Theme::Font::Button, label, textRoom) : math::Vec2{std::min(measured, textRoom), Typography::getLineHeight(context, Theme::Font::Button)};
+    const math::Vec2 singleLine{std::min(measured, textRoom), Typography::getLineHeight(context, Theme::Font::Button)};
+    const math::Vec2 text = wrapped ? Typography::measure(context, Theme::Font::Button, label, textRoom) : singleLine;
     const float contentWidth = iconSize + text.x + (iconSize > 0.0F && text.x > 0.0F ? spacing : 0.0F);
     float x = std::floor(Component::align(content.justify, start, room, contentWidth));
     if (iconSize > 0.0F) {
-        Surfaces::drawImage(context, *icon, context.mirror({x, std::floor(inner.getCenter().y - iconSize * 0.5F), iconSize, iconSize}, inner), iconColor);
+        const math::Rect iconBounds = context.mirror({x, std::floor(inner.getCenter().y - iconSize * 0.5F), iconSize, iconSize}, inner);
+        Surfaces::drawImage(context, *icon, iconBounds, iconColor);
         x += iconSize + spacing;
     }
 
     if (wrapped) {
-        Typography::drawParagraph(context, Theme::Font::Button, context.mirror({x, std::floor(inner.getCenter().y - text.y * 0.5F), text.x, text.y}, inner), textColor, label, content.justify == Alignment::Center ? Alignment::Center : Alignment::Start);
+        const math::Rect paragraph = context.mirror({x, std::floor(inner.getCenter().y - text.y * 0.5F), text.x, text.y}, inner);
+        Typography::drawParagraph(context, Theme::Font::Button, paragraph, textColor, label, content.justify == Alignment::Center ? Alignment::Center : Alignment::Start);
     } else if (text.x > 0.0F) {
         Typography::drawAligned(context, Theme::Font::Button, context.mirror({x, inner.y, text.x, inner.height}, inner), textColor, label, Alignment::Start);
     }
@@ -284,9 +298,11 @@ math::Vec2 Widgets::measureChoice(Context& context, std::string_view label, floa
 
 math::Vec2 Widgets::measureChoiceRow(Context& context, std::string_view label, float mark, float markHeight, float availableWidth) {
     const float spacing = context.getMetric(Theme::Metric::ContentSpacing);
-    const math::Vec2 text = label.empty() ? math::Vec2{0.0F, Typography::getLineHeight(context, Theme::Font::Body)} : Typography::measure(context, Theme::Font::Body, label, std::max(1.0F, availableWidth - mark - spacing));
+    const float wrapWidth = std::max(1.0F, availableWidth - mark - spacing);
+    const math::Vec2 text = label.empty() ? math::Vec2{0.0F, Typography::getLineHeight(context, Theme::Font::Body)} : Typography::measure(context, Theme::Font::Body, label, wrapWidth);
     const float width = mark + (label.empty() ? 0.0F : spacing + text.x);
-    return {width, std::max(std::max(markHeight, text.y) + context.getMetric(Theme::Metric::ControlPaddingY), context.getMetric(Theme::Metric::ControlHeight))};
+    const float height = std::max(markHeight, text.y) + context.getMetric(Theme::Metric::ControlPaddingY);
+    return {width, std::max(height, context.getMetric(Theme::Metric::ControlHeight))};
 }
 
 void Widgets::drawChoiceLabel(Context& context, const math::Rect& bounds, float mark, std::string_view label) {
@@ -315,7 +331,8 @@ bool Widgets::checkbox(Context& context, const math::Rect& bounds, bool& value, 
         fill = mix(fill, context.getColor(Theme::Color::Hover));
     }
 
-    Surfaces::draw(context, role, box, fill, context.getColor(value ? Theme::Color::Accent : Theme::Color::BorderStrong), context.getMetric(Theme::Metric::CheckRadius));
+    const math::Color border = context.getColor(value ? Theme::Color::Accent : Theme::Color::BorderStrong);
+    Surfaces::draw(context, role, box, fill, border, context.getMetric(Theme::Metric::CheckRadius));
 
     if (value && context.getSurface(role) == nullptr) {
         const float padding = size * 0.22F;
@@ -341,7 +358,8 @@ bool Widgets::radio(Context& context, const math::Rect& bounds, bool selected, s
     } else {
         // The ring runs inside the circle of the mark, so it never reaches past its size.
         const float half = size * 0.5F;
-        Surfaces::drawShape(context, {.bounds = circle, .radii = {half, half, half, half}, .color = fill, .borderWidth = context.getMetric(Theme::Metric::BorderWidth), .borderColor = context.getColor(selected ? Theme::Color::Accent : Theme::Color::BorderStrong)});
+        const math::Color border = context.getColor(selected ? Theme::Color::Accent : Theme::Color::BorderStrong);
+        Surfaces::drawShape(context, {.bounds = circle, .radii = {half, half, half, half}, .color = fill, .borderWidth = context.getMetric(Theme::Metric::BorderWidth), .borderColor = border});
     }
 
     if (selected && image == nullptr) {
@@ -375,7 +393,13 @@ bool Widgets::toggle(Context& context, const math::Rect& bounds, bool& value, st
     const float width = context.getMetric(Theme::Metric::ToggleWidth);
     const float height = context.getMetric(Theme::Metric::ToggleHeight);
     const math::Rect track = context.mirror({bounds.x, std::floor(bounds.getCenter().y - height * 0.5F), width, height}, bounds);
-    const std::optional<math::Color> layer = state.held ? std::optional(context.getColor(Theme::Color::Pressed)) : state.hovered ? std::optional(context.getColor(Theme::Color::Hover)) : std::nullopt;
+    std::optional<math::Color> layer;
+    if (state.held) {
+        layer = context.getColor(Theme::Color::Pressed);
+    } else if (state.hovered) {
+        layer = context.getColor(Theme::Color::Hover);
+    }
+
     const math::Color off = layer ? mix(context.getColor(Theme::Color::Track), *layer) : context.getColor(Theme::Color::Track);
     const math::Color on = layer ? mix(context.getColor(Theme::Color::Accent), *layer) : context.getColor(Theme::Color::Accent);
     if (context.getSurface(Theme::Surface::Track) == nullptr && context.getSurface(Theme::Surface::TrackFill) == nullptr) {
@@ -396,7 +420,8 @@ bool Widgets::toggle(Context& context, const math::Rect& bounds, bool& value, st
     const float knob = height - inset * 2.0F;
     const math::Rect knobRect = context.mirror({track.x + inset + (width - knob - inset * 2.0F) * eased, track.y + inset, knob, knob}, track);
     const math::Color knobColor = context.getColor(Theme::Color::Knob);
-    Surfaces::draw(context, Theme::Surface::Knob, knobRect, state.held ? mix(knobColor, context.getColor(Theme::Color::Pressed)) : knobColor, std::nullopt, knob * 0.5F);
+    const math::Color knobFill = state.held ? mix(knobColor, context.getColor(Theme::Color::Pressed)) : knobColor;
+    Surfaces::draw(context, Theme::Surface::Knob, knobRect, knobFill, std::nullopt, knob * 0.5F);
     drawChoiceLabel(context, bounds, width, label);
     return state.clicked;
 }
@@ -451,11 +476,15 @@ bool Widgets::slider(Context& context, const math::Rect& bounds, double& value, 
     const float span = maximum > minimum ? static_cast<float>((value - minimum) / (maximum - minimum)) : 0.0F;
     const math::Rect track{bounds.x + knob * 0.5F, std::floor(bounds.getCenter().y - trackHeight * 0.5F), bounds.width - knob, trackHeight};
     const math::Rect groove = track.inset(Surfaces::getPadding(context, Theme::Surface::Track));
+    const math::Rect filled = context.mirror({groove.x, groove.y, groove.width * span, groove.height}, groove);
     Surfaces::draw(context, Theme::Surface::Track, track, context.getColor(Theme::Color::BorderStrong), std::nullopt, trackHeight * 0.5F);
-    Surfaces::draw(context, Theme::Surface::TrackFill, context.mirror({groove.x, groove.y, groove.width * span, groove.height}, groove), context.getColor(Theme::Color::Accent), std::nullopt, groove.height * 0.5F);
+    Surfaces::draw(context, Theme::Surface::TrackFill, filled, context.getColor(Theme::Color::Accent), std::nullopt, groove.height * 0.5F);
+
     const math::Rect knobRect = context.mirror({track.x + track.width * span - knob * 0.5F, std::floor(bounds.getCenter().y - knob * 0.5F), knob, knob}, track);
     const bool active = state.ActiveId == id;
-    Surfaces::draw(context, Theme::Surface::Knob, knobRect, active || hovered ? mix(context.getColor(Theme::Color::OnAccent), context.getColor(Theme::Color::Pressed)) : context.getColor(Theme::Color::OnAccent), context.getColor(Theme::Color::Accent), knob * 0.5F);
+    const math::Color knobColor = context.getColor(Theme::Color::OnAccent);
+    const math::Color knobFill = active || hovered ? mix(knobColor, context.getColor(Theme::Color::Pressed)) : knobColor;
+    Surfaces::draw(context, Theme::Surface::Knob, knobRect, knobFill, context.getColor(Theme::Color::Accent), knob * 0.5F);
 
     const bool changed = value != before;
     if (changed) {
@@ -483,8 +512,10 @@ math::Rect Widgets::progress(Context& context, const math::Rect& bounds, float v
 
     // The fill stays inside the padding of the track surface, so a framed bar image keeps its frame visible.
     const math::Rect groove = bounds.inset(Surfaces::getPadding(context, Theme::Surface::Track));
-    const math::Rect filled = context.mirror({groove.x, groove.y, std::max(groove.width * amount, context.getSurface(Theme::Surface::TrackFill) != nullptr ? 0.0F : groove.height), groove.height}, groove);
-    Surfaces::draw(context, Theme::Surface::TrackFill, filled, context.getColor(getToneColors(tone == Tone::Neutral ? Tone::Accent : tone).fill), std::nullopt, groove.height * 0.5F);
+    const float shortest = context.getSurface(Theme::Surface::TrackFill) != nullptr ? 0.0F : groove.height;
+    const math::Rect filled = context.mirror({groove.x, groove.y, std::max(groove.width * amount, shortest), groove.height}, groove);
+    const Theme::Color fill = getToneColors(tone == Tone::Neutral ? Tone::Accent : tone).fill;
+    Surfaces::draw(context, Theme::Surface::TrackFill, filled, context.getColor(fill), std::nullopt, groove.height * 0.5F);
     return filled;
 }
 

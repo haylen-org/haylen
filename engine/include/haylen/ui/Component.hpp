@@ -182,10 +182,12 @@ class Component {
     [[nodiscard]] virtual bool usesFocusDirection(FocusDirection) const noexcept {
         return false;
     }
+
     // Describes the node to screen readers with its role, label, value, states and actions, and returns whether its kind is an element of its own. Containers leave it alone, so their children join the element around them.
     [[nodiscard]] virtual bool describe(Context&, platform::AccessibilityElement&) const {
         return false;
     }
+
     [[nodiscard]] bool isListening(Notice notice) const noexcept {
         return (listening & toBit(notice)) != 0U;
     }
@@ -306,6 +308,7 @@ class Component {
     [[nodiscard]] static std::string getButtonName(int button);
     void drawTooltip(Context& context, const math::Rect& bounds);
 
+    void renderReshaped(Context& context, const math::Rect& bounds);
     void drawDetachedChildren(Context& context, const math::Rect& bounds);
     void noticeStoppedDrawing(Context& context);
 

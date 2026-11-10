@@ -22,6 +22,7 @@ class Surfaces final {
   public:
     // Paints a surface, whose flat colors round the corners the flags name, all of them by default, with the border inside the same edge.
     static void draw(Context& context, Theme::Surface role, const math::Rect& bounds, math::Color fill, std::optional<math::Color> border = std::nullopt, float radius = -1.0F, ImDrawFlags corners = ImDrawFlags_RoundAll);
+
     // Draws a surface whose corners round by their own radii, each at most half the shorter side, top-left first and clockwise.
     static void draw(Context& context, Theme::Surface role, const math::Rect& bounds, math::Color fill, std::optional<math::Color> border, const std::array<float, 4>& radii);
 
@@ -42,10 +43,12 @@ class Surfaces final {
 
     // Returns the radius of a rounded rectangle inside a rounded container, an inset away from its edges, so the two curves stay parallel.
     [[nodiscard]] static float getInnerRadius(float radius, float inset) noexcept;
+
     [[nodiscard]] static math::Insets getPadding(Context& context, Theme::Surface role);
 
     // Returns how far the frame of a surface reaches into its bounds: the padding of its image, or the border of its flat colors.
     [[nodiscard]] static math::Insets getFrame(Context& context, Theme::Surface role);
+
     static void drawNineSlice(Context& context, const Theme::Image& image, const math::Rect& bounds, math::Color fill);
     static void drawImage(Context& context, const graphics::Texture& texture, const math::Rect& bounds, math::Color tint = math::Color::white(), math::Rect source = {}, float radius = 0.0F);
 

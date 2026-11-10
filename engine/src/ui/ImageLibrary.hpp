@@ -56,8 +56,8 @@ class ImageLibrary final {
     void setTexture(std::string_view name, graphics::Texture texture);
     void setVector(std::string_view name, graphics::VectorImage image);
     void remove(std::string_view name);
-    [[nodiscard]] static bool isNamed(std::string_view path) noexcept;
 
+    [[nodiscard]] static bool isNamed(std::string_view path) noexcept;
     [[nodiscard]] static bool isVector(std::string_view path) noexcept;
     [[nodiscard]] static int getStep(float scale) noexcept;
     [[nodiscard]] static float getStepScale(int step) noexcept;
@@ -83,6 +83,13 @@ class ImageLibrary final {
         std::string error;
         std::map<int, Raster> rasters;
         std::set<int> pending;
+    };
+
+    // A raster that `release` may drop, with the frame that drew it last.
+    struct Candidate {
+        std::uint64_t frame = 0;
+        Vector* vector = nullptr;
+        int step = 0;
     };
 
     [[nodiscard]] File& requestFile(std::string_view path, graphics::Texture::Filter filter);
