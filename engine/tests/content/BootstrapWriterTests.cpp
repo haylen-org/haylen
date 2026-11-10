@@ -25,6 +25,7 @@ class BootstrapWriterTest : public ::testing::Test {
         for (std::size_t index = 0; index <= occurrence; ++index) {
             start = source.find("." + field + " = {", start) + field.size() + 5;
         }
+
         std::array<std::uint8_t, 32> bytes{};
         const std::string text = source.substr(start, source.find('}', start) - start);
         std::size_t position = 0;
@@ -32,6 +33,7 @@ class BootstrapWriterTest : public ::testing::Test {
             position = text.find("0x", position) + 2;
             byte = static_cast<std::uint8_t>(std::stoi(text.substr(position, 2), nullptr, 16));
         }
+
         return bytes;
     }
 
@@ -46,6 +48,7 @@ class BootstrapWriterTest : public ::testing::Test {
         for (const std::uint8_t byte : bytes) {
             text += std::format("{}0x{:02x}", text.empty() ? "" : ", ", byte);
         }
+
         return text;
     }
 
@@ -73,6 +76,7 @@ TEST_F(BootstrapWriterTest, WritesTheIdentityAndSealedKeysOfTheApp) {
         EXPECT_EQ(source.find(writeLiterals(key)), std::string::npos);
         EXPECT_EQ(source.find(Digest(std::span(key).first<32>()).toHex()), std::string::npos);
     }
+
     const std::vector<std::uint8_t> seed = readFile(std::string(KeyStore::kSigningKeyFile));
     EXPECT_EQ(source.find(writeLiterals(seed)), std::string::npos);
     EXPECT_EQ(source.find(Digest(std::span(seed).first<32>()).toHex()), std::string::npos);

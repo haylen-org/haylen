@@ -35,6 +35,7 @@ void ShardWriter::write(std::span<const std::uint8_t> bytes) {
     if (!stream) {
         throw std::runtime_error("The shard file \"" + temporary.generic_string() + "\" could not be written.");
     }
+
     offset += bytes.size();
 }
 
@@ -42,9 +43,11 @@ void ShardWriter::add(const ChunkRecord& record, std::span<const std::uint8_t> c
     if (ciphertext.size() != record.encodedSize) {
         throw std::invalid_argument("A shard record takes exactly the encrypted bytes its header declares.");
     }
+
     if (!stored.insert(record.storedId).second) {
         return;
     }
+
     entries.push_back({.storedId = record.storedId, .recordOffset = offset, .encodedSize = record.encodedSize, .plainSize = record.plainSize, .codec = record.codec, .profile = record.profile});
     write(record.serialize());
     write(ciphertext);
@@ -59,8 +62,10 @@ Digest ShardWriter::identify() const {
         for (std::size_t index = 0; index < position.size(); ++index) {
             position[index] = static_cast<std::uint8_t>(entry.recordOffset >> (8 * index));
         }
+
         hasher.update(entry.storedId).update(position);
     }
+
     return hasher.finish();
 }
 

@@ -71,13 +71,16 @@ class ContentManagerTest : public ::testing::Test {
     [[nodiscard]] std::filesystem::path shipWithoutContent() {
         const std::filesystem::path folder = shipped.getPath() / std::to_string(++ships);
         std::filesystem::create_directories(folder);
+
         for (const std::string_view manifest : {ReleasePackage::kAppManifestFile, ReleasePackage::kContentManifestFile}) {
             std::filesystem::copy_file(release.getFolder() / manifest, folder / manifest);
         }
+
         const ReleaseInspector inspector(release.getKeys(), {release.getSigningKey().getVerifyingKey()});
         for (const ShardReference& shard : inspector.inspect(release.getFolder()).app.envelope.shards) {
             std::filesystem::copy_file(release.getFolder() / shard.getFileName(), folder / shard.getFileName());
         }
+
         return folder;
     }
 
@@ -111,6 +114,7 @@ class ContentManagerTest : public ::testing::Test {
         } else {
             storeFiles = std::make_unique<FolderStoreFiles>(storeFolder.getPath());
         }
+
         auto store = std::make_shared<LocalStore>(std::move(storeFiles), release.getCompatibility().application, test::ReleaseFixture::kAppBuild);
         package = ReleasePackage::open(std::move(files), release.getKeys(), std::span(&trusted, 1), release.getCompatibility(), std::move(store));
         core::AppConfig config = core::AppConfig::fromPackage(*package);
@@ -126,8 +130,10 @@ class ContentManagerTest : public ::testing::Test {
             if (std::chrono::steady_clock::now() > deadline) {
                 return false;
             }
+
             engine->frame(1.0 / 60.0);
         }
+
         return true;
     }
 
@@ -450,6 +456,7 @@ TEST_F(ContentManagerTest, TellsTheAppThatItPlaysEarlierContentWhenTheUpdateWasD
     for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(storeFolder.getPath() / "manifests")) {
         std::filesystem::remove(entry.path());
     }
+
     run(ship());
     ASSERT_TRUE(frameUntil([this] { return hasStarted(); }));
     engine->frame(1.0 / 60.0);

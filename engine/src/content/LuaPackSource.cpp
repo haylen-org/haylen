@@ -19,6 +19,7 @@ void LuaPackSource::Answer::deliver(std::optional<std::filesystem::path> folder,
     if (!done) {
         return;
     }
+
     const Delivery finish = std::exchange(done, nullptr);
     finish(std::move(folder), std::move(failure));
 }
@@ -35,26 +36,32 @@ void LuaPackSource::acquire(const std::string& pack, std::function<void(const Pr
             answer->deliver(std::nullopt, std::nullopt);
             return;
         }
+
         ownerIndex = lua_gettop(L);
     }
+
     new (lua_newuserdatauv(L, sizeof(std::shared_ptr<Answer>), 0)) std::shared_ptr<Answer>(answer);
     if (lua::Userdata::newMetatable(L, kRequestType)) {
         lua_pushcfunction(L, &collect<std::shared_ptr<Answer>>);
         lua_setfield(L, -2, "__gc");
     }
+
     lua_setmetatable(L, -2);
     lua_pushcclosure(L, &run, 1);
     const int runner = lua_gettop(L);
+
     if (!function->push(L)) {
         answer->deliver(std::nullopt, std::nullopt);
         return;
     }
+
     lua_pushlstring(L, pack.data(), pack.size());
     new (lua_newuserdatauv(L, sizeof(std::function<void(const Progress&)>), 0)) std::function<void(const Progress&)>(std::move(progress));
     if (lua::Userdata::newMetatable(L, kProgressType)) {
         lua_pushcfunction(L, &collect<std::function<void(const Progress&)>>);
         lua_setfield(L, -2, "__gc");
     }
+
     lua_setmetatable(L, -2);
     lua_pushcclosure(L, &reportProgress, 1);
 
@@ -80,15 +87,19 @@ int LuaPackSource::continueRun(lua_State* L, int, lua_KContext context) {
         lua_callk(L, 1, 2, kAwaited, &continueRun);
         return continueRun(L, LUA_OK, kAwaited);
     }
+
     if (context == kAwaited) {
         if (!lua_isnil(L, -1)) {
             return lua_error(L);
         }
+
         lua_pop(L, 1);
     }
+
     if (!lua_isnil(L, -1) && lua_type(L, -1) != LUA_TSTRING) {
         return luaL_error(L, "The source of packs must return the folder of the pack, nil or a promise of either.");
     }
+
     // clang-format off
     return lua::Binding::guarded(L, [L] {
         Answer& answer = **static_cast<std::shared_ptr<Answer>*>(lua_touserdata(L, lua_upvalueindex(1)));
@@ -97,6 +108,7 @@ int LuaPackSource::continueRun(lua_State* L, int, lua_KContext context) {
         } else {
             answer.deliver(std::filesystem::path(lua_tostring(L, -1)), std::nullopt);
         }
+
         return 0;
     });
     // clang-format on

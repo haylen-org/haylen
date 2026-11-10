@@ -30,6 +30,7 @@ class CryptoTest : public ::testing::Test {
         for (std::size_t index = 0; index + 1 < text.size(); index += 2) {
             bytes.push_back(static_cast<std::uint8_t>(std::stoi(std::string(text.substr(index, 2)), nullptr, 16)));
         }
+
         return bytes;
     }
 
@@ -40,6 +41,7 @@ class CryptoTest : public ::testing::Test {
             text.push_back(kDigits[byte >> 4]);
             text.push_back(kDigits[byte & 0x0F]);
         }
+
         return text;
     }
 
@@ -69,6 +71,7 @@ TEST_F(CryptoTest, ReadsDigestsFromTheirTextAndFiles) {
     const test::TemporaryDirectory directory;
     directory.write("chunk.bin", "abc");
     EXPECT_EQ(Digest::ofFile(directory.getPath() / "chunk.bin"), digest);
+
     try {
         (void)Digest::ofFile(directory.getPath() / "missing.bin");
         FAIL() << "A missing file has no digest.";
@@ -144,11 +147,13 @@ TEST_F(CryptoTest, RejectsWrongSignaturesAndKeys) {
     EXPECT_TRUE(signingKey.getVerifyingKey().verify(message, signature));
     EXPECT_FALSE(otherKey.getVerifyingKey().verify(message, signature));
     EXPECT_FALSE(signingKey.getVerifyingKey().verify(test::TestFiles::bytes("manifest envelopf"), signature));
+
     for (std::size_t index = 0; index < signature.size(); index += 7) {
         VerifyingKey::Signature broken = signature;
         broken[index] ^= 0x20;
         EXPECT_FALSE(signingKey.getVerifyingKey().verify(message, broken)) << "Byte " << index;
     }
+
     EXPECT_NE(signingKey.getVerifyingKey().getId(), otherKey.getVerifyingKey().getId());
 }
 
@@ -163,6 +168,7 @@ TEST_F(CryptoTest, DerivesStableSeparateSubkeys) {
     for (const ContentKey::Purpose purpose : {ContentKey::Purpose::Chunk, ContentKey::Purpose::ShardIndex, ContentKey::Purpose::Catalog, ContentKey::Purpose::Nonce}) {
         subkeys.insert(toHex(key.getSubkey(purpose)));
     }
+
     EXPECT_EQ(subkeys.size(), 4U) << "Every purpose has a key of its own.";
     EXPECT_NE(ContentKey(test::ReleaseFixture::makeKey(2)).getId(), key.getId());
 }
@@ -184,6 +190,7 @@ TEST_F(CryptoTest, DerivesNoncesFromTheWholeMessage) {
         changed[index] ^= 1;
         nonces.insert(toHex(key.deriveNonce(ContentKey::Purpose::Chunk, changed)));
     }
+
     nonces.insert(toHex(key.deriveNonce(ContentKey::Purpose::Chunk, std::span(identity).first(identity.size() - 1))));
     EXPECT_EQ(nonces.size(), identity.size() + 2);
 }

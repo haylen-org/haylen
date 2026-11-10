@@ -24,6 +24,7 @@ bool ChunkRecord::hasValidSizes(Compression::Codec storedCodec, std::uint64_t pl
     if (plain == 0 || plain > kMaximumPlainSize) {
         return false;
     }
+
     return storedCodec == Compression::Codec::None ? encoded == plain : encoded > 0 && encoded < plain;
 }
 
@@ -32,6 +33,7 @@ ChunkRecord ChunkRecord::parse(std::span<const std::uint8_t, kHeaderSize> header
     if (!std::ranges::equal(reader.readBytes(kMagic.size()), kMagic)) {
         throw Error(Error::Code::UnsupportedFormat, "The chunk record does not start with the HPAK record magic.");
     }
+
     if (reader.read<std::uint16_t>() != kVersion) {
         throw Error(Error::Code::UnsupportedVersion, "The chunk record has a version this app does not read.");
     }
@@ -50,6 +52,7 @@ ChunkRecord ChunkRecord::parse(std::span<const std::uint8_t, kHeaderSize> header
     if (!hasValidSizes(record.codec, record.plainSize, record.encodedSize)) {
         reader.fail("declares sizes no chunk has");
     }
+
     record.contentId = reader.readDigest();
     record.storedId = reader.readDigest();
     std::ranges::copy(reader.readBytes(Aead::kNonceSize), record.nonce.begin());
@@ -84,6 +87,7 @@ void ChunkRecord::open(const ContentKey& key, std::span<std::uint8_t> ciphertext
         plain.clear();
         throw;
     }
+
     crypto_wipe(ciphertext.data(), ciphertext.size());
 
     if (identifyContent(plain) != contentId) {

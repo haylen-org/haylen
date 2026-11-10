@@ -25,6 +25,7 @@ void ContentBuilder::reuse(const Catalog& catalog, std::span<const ShardReferenc
             earlierChunks.try_emplace(chunk.contentId, chunk);
         }
     }
+
     earlierShards.insert(earlierShards.end(), earlier.begin(), earlier.end());
     earlierHeld.insert(earlierHeld.end(), held.begin(), held.end());
 }
@@ -32,6 +33,7 @@ void ContentBuilder::reuse(const Catalog& catalog, std::span<const ShardReferenc
 ContentBuilder::Result ContentBuilder::build(const io::Package& source, std::vector<Input> inputs) {
     // Files go in path order, so the shards come out the same whatever order the inputs arrive in.
     std::ranges::sort(inputs, {}, &Input::path);
+
     if (const auto repeated = std::ranges::adjacent_find(inputs, {}, &Input::path); repeated != inputs.end()) {
         throw std::invalid_argument("The content build lists the file \"" + repeated->path + "\" twice.");
     }
@@ -45,6 +47,7 @@ ContentBuilder::Result ContentBuilder::build(const io::Package& source, std::vec
     for (Input& input : inputs) {
         files.push_back(identify(source, std::move(input)));
     }
+
     keepEarlierShards(files);
 
     for (std::size_t index = 0; index < files.size(); ++index) {
@@ -52,8 +55,10 @@ ContentBuilder::Result ContentBuilder::build(const io::Package& source, std::vec
         if (writer && (files[index].input.delivery != previous.delivery || files[index].input.pack != previous.pack)) {
             closeShard();
         }
+
         storeFile(source, files[index]);
     }
+
     if (writer) {
         closeShard();
     }
@@ -62,13 +67,16 @@ ContentBuilder::Result ContentBuilder::build(const io::Package& source, std::vec
     for (const auto& [contentId, chunk] : chunksByContent) {
         chunksByStored.try_emplace(chunk.storedId, &chunk);
     }
+
     CatalogWriter catalog;
     for (const File& file : files) {
         for (const Digest& part : file.parts) {
             catalog.addChunk(*chunksByStored.at(part));
         }
+
         catalog.addFile(file.input.path, file.input.delivery, file.parts, file.input.kind);
     }
+
     return {.catalog = catalog.write(), .shards = shards, .keptShards = keptShards, .statistics = statistics};
 }
 
@@ -96,6 +104,7 @@ ContentBuilder::File ContentBuilder::identify(const io::Package& source, Input i
         begin += cut;
         offset += cut;
     }
+
     return file;
 }
 
@@ -118,14 +127,17 @@ void ContentBuilder::keepEarlierShards(const std::vector<File>& files) {
             ++statistics.missingShards;
             continue;
         }
+
         const std::uint64_t size = earlierShards[shard].fileSize;
         if (live[shard] == 0 || live[shard] < size - size / 2 || size > 2 * target + kRecordSpan) {
             ++statistics.droppedShards;
             continue;
         }
+
         positions[shard] = static_cast<std::uint32_t>(shards.size());
         shards.push_back(earlierShards[shard]);
     }
+
     keptShards = shards.size();
 
     for (const auto& [contentId, chunk] : earlierChunks) {
@@ -141,6 +153,7 @@ void ContentBuilder::storeFile(const io::Package& source, File& file) {
     std::unique_ptr<io::PackageReader> reader;
     std::vector<std::uint8_t> plain;
     fileInShard = false;
+
     for (const Piece& piece : file.pieces) {
         if (const auto found = chunksByContent.find(piece.contentId); found != chunksByContent.end()) {
             file.parts.push_back(found->second.storedId);
@@ -148,9 +161,11 @@ void ContentBuilder::storeFile(const io::Package& source, File& file) {
             statistics.reusedBytes += piece.size;
             continue;
         }
+
         if (!reader) {
             reader = source.openReader(file.input.path);
         }
+
         file.parts.push_back(storePiece(*reader, file, piece, plain));
     }
 }
@@ -168,6 +183,7 @@ Digest ContentBuilder::storePiece(io::PackageReader& reader, const File& file, c
         if (ChunkRecord::identifyContent(plain) != piece.contentId) {
             throw std::runtime_error("The file \"" + file.input.path + "\" changed while the release was built. Build the release again.");
         }
+
         record = RecordSealer::seal(*key, plain, piece.contentId, ciphertext);
         if (cache) {
             cache->store(*key, *record, ciphertext);
@@ -179,10 +195,12 @@ Digest ContentBuilder::storePiece(io::PackageReader& reader, const File& file, c
     if (writer && (writer->getEntryCount() >= ShardIndex::kMaximumEntries || (writer->getSize() + record->getRecordSize() + ShardIndex::kEntrySize > target && !keepsFileWhole))) {
         closeShard();
     }
+
     if (!writer) {
         writer.emplace(folder, key);
         fileInShard = false;
     }
+
     writer->add(*record, ciphertext);
     fileInShard = true;
 

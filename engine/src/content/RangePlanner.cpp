@@ -16,8 +16,10 @@ std::vector<RangePlanner::Range> RangePlanner::plan(std::span<const Span> record
                 continue;
             }
         }
+
         ranges.push_back({.offset = record.offset, .size = record.size, .first = index, .count = 1});
     }
+
     return ranges;
 }
 

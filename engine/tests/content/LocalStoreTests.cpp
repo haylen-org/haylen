@@ -41,10 +41,12 @@ class LocalStoreTest : public ::testing::Test {
         for (std::uint64_t seed = 0; seed < 12; ++seed) {
             records.push_back(makeRecord(seed));
         }
+
         store = std::make_unique<LocalStore>(std::make_unique<test::LimitedStoreFiles>(folder.getPath(), availableBytes), application, kAppBuild, 4 * records[0].size() + 16);
         for (const std::vector<std::uint8_t>& record : records) {
             store->addRecord(key.getId(), record);
         }
+
         return records;
     }
 
@@ -54,6 +56,7 @@ class LocalStoreTest : public ::testing::Test {
         for (const std::size_t index : {0U, 1U, 2U, 3U, 5U}) {
             live.insert(idOf(records[index]));
         }
+
         return live;
     }
 
@@ -82,6 +85,7 @@ class LocalStoreTest : public ::testing::Test {
         for ([[maybe_unused]] const auto& entry : std::filesystem::directory_iterator(folder.getPath() / "segments")) {
             ++count;
         }
+
         return count;
     }
 
@@ -258,10 +262,12 @@ TEST_F(LocalStoreTest, CollectsDeadRecordsAndMovesTheLiveRecordsOfMostlyDeadSegm
     for (std::uint64_t seed = 0; seed < 12; ++seed) {
         records.push_back(makeRecord(seed));
     }
+
     const std::unique_ptr<LocalStore> store = open(kAppBuild, 4 * records[0].size() + 16);
     for (const std::vector<std::uint8_t>& record : records) {
         store->addRecord(key.getId(), record);
     }
+
     EXPECT_EQ(countSegments(), 3U);
     const Digest manifest = Digest::of(test::TestFiles::bytes("kept"));
     store->commit(manifest, test::TestFiles::bytes("manifest"), [](StoreState&) {});
@@ -272,6 +278,7 @@ TEST_F(LocalStoreTest, CollectsDeadRecordsAndMovesTheLiveRecordsOfMostlyDeadSegm
     for (const std::size_t index : {0U, 1U, 2U, 3U, 5U}) {
         live.insert(idOf(records[index]));
     }
+
     const LocalStore::Collection collection = store->collect(retaining({.records = live, .manifests = {manifest}}), std::atomic<bool>(false));
 
     EXPECT_EQ(collection.removedRecords, 7U);
@@ -285,10 +292,12 @@ TEST_F(LocalStoreTest, CollectsDeadRecordsAndMovesTheLiveRecordsOfMostlyDeadSegm
     Digest keyId;
     for (std::size_t index = 0; index < records.size(); ++index) {
         EXPECT_EQ(reopened->readRecord(idOf(records[index]), read, keyId), live.contains(idOf(records[index])));
+
         if (live.contains(idOf(records[index]))) {
             EXPECT_EQ(read, records[index]);
         }
     }
+
     EXPECT_FALSE(std::filesystem::exists(folder.getPath() / "journal-0"));
 }
 
@@ -312,6 +321,7 @@ TEST_F(LocalStoreTest, StopsACollectionAndLeavesTheStoreAsItWas) {
     std::unique_ptr<LocalStore> store;
     const std::vector<std::vector<std::uint8_t>> records = fillSegments(store, std::uint64_t{1} << 40);
     const StoreState before = store->getState();
+
     try {
         (void)store->collect(retaining({.records = keepSomeRecords(records)}), std::atomic<bool>(true));
         FAIL() << "A stopped collection never switches to a new state.";
@@ -338,19 +348,23 @@ TEST_F(LocalStoreTest, KeepsEveryRecordWhenACollectionLosesPower) {
         for (std::uint64_t seed = 0; seed < 12; ++seed) {
             records.push_back(makeRecord(seed));
         }
+
         auto files = std::make_unique<test::CrashingStoreFiles>(folder.getPath());
         test::CrashingStoreFiles& crashing = *files;
         LocalStore store(std::move(files), application, kAppBuild, 4 * records[0].size() + 16);
         for (const std::vector<std::uint8_t>& record : records) {
             store.addRecord(key.getId(), record);
         }
+
         store.commit([](StoreState&) {});
         const StoreState before = store.getState();
+
         if (duringMove) {
             crashing.crashOnAppend(0);
         } else {
             crashing.crashOnWrite("state-");
         }
+
         EXPECT_THROW((void)store.collect(retaining({.records = keepSomeRecords(records)}), std::atomic<bool>(false)), Error);
         EXPECT_TRUE(crashing.hasCrashed());
 
@@ -404,6 +418,7 @@ TEST_F(LocalStoreTest, RemovesStagedStartsThatAreDamaged) {
 TEST(PartialRecordTest, RefusesAValidatorThatIsNoStrongEntityTag) {
     PartialRecord partial{.shardId = Digest::of(test::TestFiles::bytes("shard")), .recordOffset = 160, .recordSize = 5000, .validator = "\"v1\"", .bytes = test::TestFiles::randomBytes(1000, 4)};
     EXPECT_EQ(PartialRecord::parse(partial.write()).validator, "\"v1\"");
+
     for (const std::string validator : {"v1", "W/\"v1\"", "\"v\r\nRange: bytes=0-\"", "\"v 1\"", "\"v\"1\""}) {
         partial.validator = validator;
         EXPECT_THROW((void)PartialRecord::parse(partial.write()), Error) << validator;
@@ -421,6 +436,7 @@ TEST(StoreFormatTest, ReadsWhatItWritesAndRefusesTornCopies) {
     } catch (const Error& error) {
         EXPECT_STREQ(error.what(), "The store state has a checksum that does not match, so a write tore it.");
     }
+
     EXPECT_THROW((void)StoreState::parse(std::span(bytes).first(10)), Error);
 
     const StoreEntry entry{.storedId = Digest::of(test::TestFiles::bytes("record")), .segment = 3, .offset = 16, .size = 500};

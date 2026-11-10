@@ -23,11 +23,13 @@ class ChunkerTest : public ::testing::Test {
             sizes.push_back(file.size());
             return sizes;
         }
+
         for (std::size_t offset = 0; offset < file.size();) {
             const std::size_t cut = Chunker::findCut(file.subspan(offset, std::min(Chunker::kMaximumSize, file.size() - offset)));
             sizes.push_back(cut);
             offset += cut;
         }
+
         return sizes;
     }
 
@@ -38,6 +40,7 @@ class ChunkerTest : public ::testing::Test {
             chunks.insert(Digest::of(file.subspan(offset, size)));
             offset += size;
         }
+
         return chunks;
     }
 
@@ -57,15 +60,18 @@ TEST_F(ChunkerTest, KeepsChunksBetweenTheirLimits) {
         const std::vector<std::uint8_t> file = test::TestFiles::randomBytes(20 * kMegabyte + seed * 12345, seed);
         const std::vector<std::size_t> sizes = split(file);
         ASSERT_GT(sizes.size(), 4U);
+
         for (std::size_t index = 0; index + 1 < sizes.size(); ++index) {
             EXPECT_GE(sizes[index], Chunker::kMinimumSize);
             EXPECT_LE(sizes[index], Chunker::kMaximumSize);
         }
+
         EXPECT_LE(sizes.back(), Chunker::kMaximumSize);
         std::size_t total = 0;
         for (const std::size_t size : sizes) {
             total += size;
         }
+
         EXPECT_EQ(total, file.size());
     }
 

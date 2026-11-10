@@ -51,6 +51,7 @@ class ChannelPublisherTest : public ::testing::Test {
                 files.emplace(entry.path().lexically_relative(tree.getPath()).generic_string(), std::vector<std::uint8_t>{std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()});
             }
         }
+
         return files;
     }
 
@@ -95,7 +96,9 @@ TEST_F(ChannelPublisherTest, PublishesGenerationsThatOnlyAddFiles) {
             EXPECT_EQ(after.at(path), bytes) << path;
         }
     }
+
     EXPECT_EQ(after.size(), before.size() + 2);
+
     for (const auto& [path, bytes] : after) {
         EXPECT_TRUE(path.starts_with("channels/") || path.starts_with("manifests/") || path.starts_with("packs/")) << path;
         EXPECT_EQ(path.find("config"), std::string::npos) << path;
@@ -193,6 +196,7 @@ TEST_F(ChannelPublisherTest, CompactsWhatNoChannelReaches) {
     for (const auto& [path, bytes] : readTree()) {
         left.insert(path);
     }
+
     EXPECT_TRUE(left.contains(PublicationLayout::getManifestPath(last.manifest)));
     EXPECT_EQ(publish("6").generation, 4U);
 }

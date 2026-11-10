@@ -23,6 +23,7 @@ bool Manifest::isLuaModule(std::string_view path) noexcept {
     if (io::Path::extension(path) != ".lua") {
         return false;
     }
+
     if (io::Path::isInside(path, io::Path::kSourceDirectory)) {
         return true;
     }
@@ -31,6 +32,7 @@ bool Manifest::isLuaModule(std::string_view path) noexcept {
     if (!io::Path::isInside(path, io::Path::kPluginsDirectory)) {
         return false;
     }
+
     const std::string_view plugin = path.substr(io::Path::kPluginsDirectory.size() + 1);
     const std::size_t slash = plugin.find('/');
     return slash != std::string_view::npos && io::Path::isInside(plugin.substr(slash + 1), io::Path::kSourceDirectory);
@@ -40,6 +42,7 @@ bool Manifest::belongsToDomain(std::string_view path, Domain domain) noexcept {
     if (domain == Domain::Content) {
         return io::Path::isInside(path, io::Path::kContentDirectory);
     }
+
     return path == io::Path::kAppConfigFile || io::Path::isInside(path, io::Path::kSourceDirectory) || io::Path::isInside(path, io::Path::kPluginsDirectory);
 }
 
@@ -48,12 +51,15 @@ Manifest Manifest::read(std::vector<std::uint8_t> file, std::span<const Verifyin
     if (file.size() < kPrefixSize + VerifyingKey::kSignatureSize) {
         prefix.fail("ends before its envelope and signature do");
     }
+
     if (!std::ranges::equal(prefix.readBytes(kMagic.size()), kMagic)) {
         throw Error(Error::Code::UnsupportedFormat, "The file is not a Haylen manifest.");
     }
+
     if (prefix.read<std::uint16_t>() != kVersion) {
         throw Error(Error::Code::UnsupportedVersion, "The manifest has a version this app does not read.");
     }
+
     prefix.skipZeros(sizeof(std::uint16_t));
 
     // Only the size of the envelope is trusted before the signature, and only to find the signature.
@@ -61,14 +67,17 @@ Manifest Manifest::read(std::vector<std::uint8_t> file, std::span<const Verifyin
     if (envelopeSize < kSigningKeyOffset + Digest::kSize || envelopeSize > kMaximumEnvelopeSize || envelopeSize > file.size() - VerifyingKey::kSignatureSize) {
         prefix.fail("declares an envelope that does not fit in it");
     }
+
     const std::span<const std::uint8_t> signedBytes = std::span(file).first(envelopeSize);
     const Digest signingKeyId(signedBytes.subspan(kSigningKeyOffset).first<Digest::kSize>());
     const auto trusted = std::ranges::find(trustedKeys, signingKeyId, &VerifyingKey::getId);
     if (trusted == trustedKeys.end()) {
         throw Error(Error::Code::ManifestSignatureInvalid, "The manifest is signed by the key \"" + signingKeyId.toHex() + "\", which this app does not trust.");
     }
+
     VerifyingKey::Signature signature{};
     std::ranges::copy(std::span(file).subspan(envelopeSize, VerifyingKey::kSignatureSize), signature.begin());
+
     if (!trusted->verify(signedBytes, signature)) {
         throw Error(Error::Code::ManifestSignatureInvalid, "The signature of the manifest is not valid, so the manifest is damaged or was changed.");
     }
@@ -79,6 +88,7 @@ Manifest Manifest::read(std::vector<std::uint8_t> file, std::span<const Verifyin
     if (manifest.catalogSize != file.size() - envelopeSize - VerifyingKey::kSignatureSize) {
         prefix.fail("holds a catalog of another size than its envelope signs");
     }
+
     manifest.bytes = std::move(file);
     return manifest;
 }
@@ -91,11 +101,14 @@ void Manifest::parseEnvelope(std::span<const std::uint8_t> signedBytes) {
     if (domain > static_cast<std::uint8_t>(Domain::Content)) {
         reader.fail("names a domain this app does not know");
     }
+
     envelope.domain = static_cast<Domain>(domain);
     reader.skipZeros(1);
+
     if (reader.read<std::uint16_t>() != ShardHeader::kVersion || reader.read<std::uint16_t>() != Catalog::kVersion) {
         throw Error(Error::Code::UnsupportedVersion, "The manifest uses shard or catalog versions this app does not read.");
     }
+
     reader.skipZeros(sizeof(std::uint16_t));
 
     envelope.application = reader.readDigest();
@@ -116,7 +129,9 @@ void Manifest::parseEnvelope(std::span<const std::uint8_t> signedBytes) {
     if (shardCount > kMaximumShards || shardCount > reader.getRemaining() / kShardReferenceSize) {
         reader.fail("lists more shards than it holds");
     }
+
     envelope.shards.reserve(static_cast<std::size_t>(shardCount));
+
     for (std::uint64_t index = 0; index < shardCount; ++index) {
         ShardReference shard;
         shard.shardId = reader.readDigest();
@@ -124,6 +139,7 @@ void Manifest::parseEnvelope(std::span<const std::uint8_t> signedBytes) {
         shard.fileDigest = reader.readDigest();
         envelope.shards.push_back(shard);
     }
+
     contextSize = reader.getPosition();
 
     catalogSize = reader.read<std::uint64_t>();
@@ -131,6 +147,7 @@ void Manifest::parseEnvelope(std::span<const std::uint8_t> signedBytes) {
     std::ranges::copy(reader.readBytes(Aead::kNonceSize), catalogNonce.begin());
     std::ranges::copy(reader.readBytes(Aead::kTagSize), catalogTag.begin());
     reader.requireEnd();
+
     if (catalogSize > kMaximumCatalogSize) {
         reader.fail("declares a catalog larger than the limit");
     }

@@ -32,6 +32,7 @@ class RecordCacheTest : public ::testing::Test {
                 return entry.path();
             }
         }
+
         return {};
     }
 
@@ -94,6 +95,7 @@ TEST_F(RecordCacheTest, ReportsAnEntryItCannotWrite) {
     std::filesystem::remove(partial);
     partial += ".partial";
     std::filesystem::create_directories(partial);
+
     try {
         cache.store(key, record, ciphertext);
         FAIL() << "An entry that cannot be written must stop the store.";

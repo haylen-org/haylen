@@ -21,9 +21,11 @@ PartialRecord PartialRecord::parse(std::span<const std::uint8_t> file) {
     if (!std::ranges::equal(magic, kMagic)) {
         reader.fail("does not start with the magic of a partial record");
     }
+
     if (reader.read<std::uint16_t>() != kVersion) {
         reader.fail("has a version this build does not read");
     }
+
     reader.skipZeros(6);
 
     PartialRecord partial{.shardId = reader.readDigest(), .recordOffset = reader.read<std::uint64_t>(), .recordSize = reader.read<std::uint64_t>()};
@@ -32,9 +34,11 @@ PartialRecord PartialRecord::parse(std::span<const std::uint8_t> file) {
     if (partial.recordSize <= ChunkRecord::kHeaderSize || partial.recordSize > ChunkRecord::kHeaderSize + ChunkRecord::kMaximumPlainSize || held.empty() || held.size() >= partial.recordSize) {
         reader.fail("has sizes that are not those of a record that stopped part way");
     }
+
     if (!isStrongEntityTag(partial.validator)) {
         reader.fail("names a validator that is no strong entity tag");
     }
+
     partial.bytes.assign(held.begin(), held.end());
     return partial;
 }
@@ -43,6 +47,7 @@ bool PartialRecord::isStrongEntityTag(std::string_view validator) noexcept {
     if (validator.size() < 2 || validator.front() != '"' || validator.back() != '"') {
         return false;
     }
+
     const std::string_view tag = validator.substr(1, validator.size() - 2);
     // clang-format off
     return std::ranges::all_of(tag, [](char character) {

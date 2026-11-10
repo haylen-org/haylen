@@ -10,6 +10,7 @@ std::span<const std::uint8_t> BinaryReader::readBytes(std::size_t count) {
     if (count > getRemaining()) {
         fail("ends before its fields do");
     }
+
     const std::span<const std::uint8_t> field = bytes.subspan(position, count);
     position += count;
     return field;
@@ -24,6 +25,7 @@ std::string_view BinaryReader::readString(std::size_t maximum) {
     if (length > maximum) {
         fail("holds a string longer than its format allows");
     }
+
     const std::span<const std::uint8_t> text = readBytes(length);
     return {reinterpret_cast<const char*>(text.data()), text.size()};
 }
@@ -32,6 +34,7 @@ void BinaryReader::skip(std::size_t count) {
     if (count > getRemaining()) {
         fail("ends before its fields do");
     }
+
     position += count;
 }
 

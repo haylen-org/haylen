@@ -16,6 +16,7 @@ Catalog::File HpakPackage::find(std::string_view path) const {
     if (!index) {
         throw std::runtime_error("The package file \"" + name + "/" + entry + "\" was not found.");
     }
+
     return catalog->getFile(*index);
 }
 
@@ -42,6 +43,7 @@ std::vector<std::string> HpakPackage::list(std::string_view directory) const {
     for (std::uint64_t index = first; index < last; ++index) {
         files.emplace_back(catalog->getFile(index).path);
     }
+
     return files;
 }
 

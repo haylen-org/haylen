@@ -18,6 +18,7 @@ BinaryWriter& BinaryWriter::writeString(std::string_view text) {
     if (text.size() > std::numeric_limits<std::uint16_t>::max()) {
         throw std::length_error("A string of the content formats holds at most 65535 bytes.");
     }
+
     write(static_cast<std::uint16_t>(text.size()));
     bytes.insert(bytes.end(), text.begin(), text.end());
     return *this;

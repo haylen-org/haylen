@@ -20,6 +20,7 @@ std::shared_ptr<const ShardReader> ShardSet::findOpen(std::uint32_t shard) const
         const auto used = std::ranges::find(recent, shard);
         std::rotate(used, used + 1, recent.end());
     }
+
     return reader;
 }
 
@@ -28,10 +29,12 @@ std::shared_ptr<const ShardReader> ShardSet::findShard(std::uint32_t shard) cons
     if (std::shared_ptr<const ShardReader> reader = findOpen(shard)) {
         return reader;
     }
+
     const std::scoped_lock openingLock(opening[shard % kOpeningStripes]);
     if (std::shared_ptr<const ShardReader> reader = findOpen(shard)) {
         return reader;
     }
+
     {
         const std::scoped_lock lock(mutex);
         if (missing[shard]) {
@@ -46,6 +49,7 @@ std::shared_ptr<const ShardReader> ShardSet::findShard(std::uint32_t shard) cons
         missing[shard] = true;
         return nullptr;
     }
+
     auto reader = std::make_shared<const ShardReader>(std::move(file), reference, *keys);
 
     // The shard that closes lets go of its file outside the lock, once the reads that still hold it end.
@@ -57,6 +61,7 @@ std::shared_ptr<const ShardReader> ShardSet::findShard(std::uint32_t shard) cons
         closing = std::exchange(readers[recent.front()], nullptr);
         recent.erase(recent.begin());
     }
+
     return reader;
 }
 
@@ -72,6 +77,7 @@ void ShardSet::forgetMissing() const {
 void ShardSet::readChunk(const Catalog::Chunk& chunk, std::vector<std::uint8_t>& scratch, std::vector<std::uint8_t>& plain) const {
     const auto started = std::chrono::steady_clock::now();
     activeReads.fetch_add(1, std::memory_order_relaxed);
+
     try {
         if (const std::shared_ptr<const ShardReader> reader = findShard(chunk.shard)) {
             reader->readChunk(chunk, scratch, plain);
@@ -117,6 +123,7 @@ void ShardSet::readRecord(const Catalog::Chunk& chunk, std::vector<std::uint8_t>
         if (!record.describes(chunk) || scratch.size() != record.getRecordSize()) {
             throw Error(Error::Code::CorruptChunk, "The record does not match its catalog.");
         }
+
         record.open(*keys->get(keyId), std::span(scratch).subspan(ChunkRecord::kHeaderSize), plain);
     } catch (const Error& error) {
         store->removeRecord(chunk.storedId);

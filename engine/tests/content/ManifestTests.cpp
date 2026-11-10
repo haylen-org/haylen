@@ -87,6 +87,7 @@ class ManifestTest : public ::testing::Test {
         for (std::size_t index = 0; index < sizeof(std::uint32_t); ++index) {
             size |= std::size_t{manifest[kEnvelopeSizeOffset + index]} << (8 * index);
         }
+
         std::vector<std::uint8_t> changed(manifest.begin(), manifest.begin() + static_cast<std::ptrdiff_t>(size));
         change(changed);
         writeNumber(changed, kEnvelopeSizeOffset, changed.size(), sizeof(std::uint32_t));
@@ -151,6 +152,7 @@ TEST_F(ManifestTest, RejectsUntrustedAndBrokenSignatures) {
             ADD_FAILURE() << "A change at byte " << index << " went unnoticed.";
         } catch (const Error&) {}
     }
+
     for (std::size_t size = 0; size < bytes.size(); size += 11) {
         try {
             (void)Manifest::read(std::vector<std::uint8_t>(bytes.begin(), bytes.begin() + static_cast<std::ptrdiff_t>(size)), trusted);
@@ -194,9 +196,11 @@ TEST_F(ManifestTest, KeepsLuaBytecodeToTheModulesOfTheAppDomain) {
     EXPECT_EQ(decrypt(app, "source/scenes/menu.lua"), 1U);
     EXPECT_EQ(decrypt(app, "plugins/ads/source/init.lua"), 1U);
     EXPECT_EQ(Manifest::read(write(app, makeCatalog("source/main.lua")), trusted).getEnvelope().luaAbi, LuaBytecodeAbi::get());
+
     for (const char* path : {"app.json", "source/notes.txt", "plugins/ads/plugin.json", "plugins/ads/main.lua", "plugins/source/init.lua"}) {
         expectCode(Error::Code::CorruptCatalog, [&] { (void)decrypt(app, path); });
     }
+
     EXPECT_FALSE(Manifest::isLuaModule("content/script.lua")) << "Only the source folders of the app and its plugins hold modules.";
 
     Manifest::Envelope content = makeEnvelope(Manifest::Domain::Content);
@@ -222,6 +226,7 @@ TEST_F(ManifestTest, ChecksTheCompatibilityOfTheApp) {
     older.appBuild = 4;
     Compatibility newer = compatibility;
     newer.appBuild = 10;
+
     for (const Compatibility& other : {otherApp, otherProfile, older, newer}) {
         expectCode(Error::Code::ManifestIncompatible, [&] { other.check(manifest); });
     }
@@ -289,6 +294,7 @@ TEST_F(ManifestTest, VerifiesChannelDescriptors) {
     const std::vector<std::uint8_t> bytes = ChannelWriter::write(descriptor, signingKey);
     const SigningKey other(test::ReleaseFixture::makeKey(102));
     expectCode(Error::Code::ManifestSignatureInvalid, [&] { (void)ChannelDescriptor::read(bytes, std::vector{other.getVerifyingKey()}); });
+
     for (std::size_t index = 0; index < bytes.size(); ++index) {
         std::vector<std::uint8_t> changed = bytes;
         changed[index] ^= 0x01;

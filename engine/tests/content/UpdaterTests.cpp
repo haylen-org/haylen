@@ -144,6 +144,7 @@ class UpdaterTest : public ::testing::Test {
             if (!std::filesystem::exists(staging) || std::filesystem::is_empty(staging)) {
                 return false;
             }
+
             staged = std::filesystem::directory_iterator(staging)->path();
             return readStaged(staged).has_value();
         }));
@@ -309,6 +310,7 @@ TEST_F(UpdaterTest, KeepsTheContentWhenThePowerFailsAsTheUpdateBecomesActive) {
 // A store of the web lets go of the records of a large download past its budget, so a download that a load waits for reads its records in again before it ends, while a download that only keeps content on the device, such as a prefetch, reads nothing in.
 TEST_F(UpdaterTest, ReadsInTheRecordsOfADownloadThatALoadWaitsFor) {
     publish(makeUpdate(2));
+
     for (const Downloader::Use use : {Downloader::Use::Keep, Downloader::Use::Read}) {
         const test::TemporaryDirectory folder;
         auto files = std::make_unique<test::BrowserStoreFiles>(folder.getPath());
@@ -654,6 +656,7 @@ TEST_F(UpdaterTest, ReadsInWhatTheStoreHoldsInsteadOfDownloadingItAgain) {
         EXPECT_EQ(error.getDetails().storedId.size(), Digest::kSize * 2);
         EXPECT_EQ(error.getDetails().contentId.size(), Digest::kSize * 2);
     }
+
     const std::shared_ptr<const ReleasePackage::Content> content = client->package->getContent();
     const std::vector<Catalog::Chunk> missing = Downloader::findMissing(*content->shards, Updater::getChunks(*content->catalog, Delivery::Required, {}));
     ASSERT_FALSE(missing.empty());
@@ -681,6 +684,7 @@ TEST_F(UpdaterTest, LetsBackgroundWorkHoldOneRequestAndTheForegroundGoFirst) {
     for (const char* name : {"content/extra/a.bin", "content/extra/b.bin", "content/extra/c.bin"}) {
         update[name] = test::TestFiles::randomBytes(200 * 1024, static_cast<std::uint64_t>(name[14]));
     }
+
     publish(update);
     const std::unique_ptr<Client> client = connect();
     const UpdateOffer offer = requireOffer(*client);
@@ -694,6 +698,7 @@ TEST_F(UpdaterTest, LetsBackgroundWorkHoldOneRequestAndTheForegroundGoFirst) {
         for (std::uint64_t part = file.firstPart; part < file.firstPart + file.partCount; ++part) {
             chunks.push_back(catalog.getChunk(catalog.getPart(part).chunk));
         }
+
         return chunks;
     };
     const auto fetch = [&](std::string_view path, Downloader::Priority priority) {
@@ -754,6 +759,7 @@ TEST_F(UpdaterTest, DownloadsARecordAgainAfterItFailedItsChecks) {
         for (std::uint64_t offset = ShardHeader::kSize + 64; offset < indexOffset; offset += 1024) {
             bytes[offset] = static_cast<char>(~bytes[offset]);
         }
+
         tree.write(pack, bytes);
         server.touch(pack);
     }
@@ -771,6 +777,7 @@ TEST_F(UpdaterTest, DownloadsARecordAgainAfterItFailedItsChecks) {
         tree.write(pack, bytes);
         server.touch(pack);
     }
+
     std::optional<Error> failure;
     for (int attempt = 0; attempt < 3; ++attempt) {
         std::optional<std::optional<Error>> retried;
@@ -781,6 +788,7 @@ TEST_F(UpdaterTest, DownloadsARecordAgainAfterItFailedItsChecks) {
             break;
         }
     }
+
     EXPECT_FALSE(failure);
 }
 
@@ -791,8 +799,10 @@ TEST_F(UpdaterTest, CollectsWhatNoRetainedContentUses) {
         if (level > 2) {
             publish(makeUpdate(level));
         }
+
         ASSERT_FALSE(install(*client, requireOffer(*client)));
     }
+
     const LocalStore::Statistics before = client->package->getStore()->getStatistics();
 
     EXPECT_GT(collect(*client).removedRecords, 0U);

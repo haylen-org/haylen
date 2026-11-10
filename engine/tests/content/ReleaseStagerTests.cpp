@@ -50,6 +50,7 @@ class ReleaseStagerTest : public ::testing::Test {
                 read.emplace(entry.path().lexically_relative(folder).generic_string(), std::vector<std::uint8_t>{std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()});
             }
         }
+
         return read;
     }
 
@@ -109,6 +110,7 @@ TEST_F(ReleaseStagerTest, ChangesOnlyTheShardsOfWhatAnUpdateChanged) {
             ++kept;
         }
     }
+
     EXPECT_EQ(readFolder(before / "packs"), readFolder(after / "packs")) << "The pack depot does not change.";
     EXPECT_EQ(readFolder(before / "deferred"), readFolder(after / "deferred"));
     EXPECT_GE(kept, 2U) << "The unchanged shards of the forest and the music stay as they were.";

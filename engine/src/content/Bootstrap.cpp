@@ -22,6 +22,7 @@ void Bootstrap::addKeyProvider(std::shared_ptr<const KeyProvider> provider) {
     if (!installed) {
         return;
     }
+
     Bootstrap next = *installed;
     next.keys = std::make_shared<const CompositeKeyProvider>(std::vector{std::move(next.keys), std::move(provider)});
     installed = std::make_unique<const Bootstrap>(std::move(next));

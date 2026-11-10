@@ -45,6 +45,7 @@ class ContentToolTest : public ::testing::Test {
                 secrets.push_back(Digest(std::span(bytes).first<Digest::kSize>()).toHex());
             }
         }
+
         return secrets;
     }
 
@@ -147,6 +148,7 @@ TEST_F(ContentToolTest, BuildsShardsOfTheSizeThatItsTargetNames) {
         const std::vector<std::uint8_t> bytes = test::TestFiles::randomBytes(kFileSize, index + 1);
         app.write("content/world/part-" + std::to_string(index) + ".bin", std::string(bytes.begin(), bytes.end()));
     }
+
     ASSERT_EQ(run({"keys", "create", getPath("keys"), "--identifier", "com.haylen.tests"}), 0) << errors.str();
     // clang-format off
     const auto build = [this](const std::string& name, std::vector<std::string> extra) {
@@ -159,6 +161,7 @@ TEST_F(ContentToolTest, BuildsShardsOfTheSizeThatItsTargetNames) {
         for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(getPath(name))) {
             largest = entry.path().extension() == ".hpak" ? std::max(largest, entry.file_size()) : largest;
         }
+
         return largest;
     };
     // clang-format on

@@ -23,6 +23,7 @@ StoreEntry::Bytes StoreEntry::write() const {
 std::optional<StoreEntry> StoreEntry::parse(std::span<const std::uint8_t, kSize> bytes) {
     std::array<std::uint8_t, kCheckSize> check{};
     Hasher(kCheckSize).update(bytes.first<kCheckOffset>()).finish(check);
+
     if (!std::ranges::equal(check, bytes.subspan<kCheckOffset>())) {
         return std::nullopt;
     }
@@ -39,6 +40,7 @@ std::optional<StoreEntry> StoreEntry::parse(std::span<const std::uint8_t, kSize>
     if ((flags != 0 && flags != kRemovedFlag) || (!entry.removed && !validRecord)) {
         return std::nullopt;
     }
+
     return entry;
 }
 

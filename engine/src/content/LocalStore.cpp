@@ -41,6 +41,7 @@ StoreState LocalStore::readState(const Digest& application, std::uint64_t appBui
         if (!bytes) {
             continue;
         }
+
         try {
             StoreState read = StoreState::parse(*bytes);
             if (!newest || read.sequence > newest->sequence) {
@@ -48,15 +49,18 @@ StoreState LocalStore::readState(const Digest& application, std::uint64_t appBui
             }
         } catch (const Error&) {}
     }
+
     if (!newest || newest->application != application) {
         return {.application = application, .appBuild = appBuild};
     }
+
     if (newest->appBuild != appBuild) {
         newest->appBuild = appBuild;
         newest->active = Digest();
         newest->previous = Digest();
         newest->pending = Digest();
     }
+
     return *newest;
 }
 
@@ -69,22 +73,27 @@ void LocalStore::readJournal() {
         journal.resize(journal.size() - journal.size() % StoreEntry::kSize);
         files->truncate(name, journal.size());
     }
+
     for (std::size_t offset = 0; offset < journal.size(); offset += StoreEntry::kSize) {
         const std::optional<StoreEntry> entry = StoreEntry::parse(std::span(journal).subspan(offset).first<StoreEntry::kSize>());
         if (!entry) {
             continue;
         }
+
         if (entry->removed) {
             records.erase(entry->storedId);
             continue;
         }
+
         records.insert_or_assign(entry->storedId, Location{.segment = entry->segment, .offset = entry->offset, .size = entry->size, .keyId = entry->keyId});
     }
 
     eraseLostRecords();
+
     for (const auto& [storedId, location] : records) {
         appendSegment = std::max(appendSegment, location.segment);
     }
+
     appendEnd = files->getSize(getSegmentName(appendSegment));
 }
 
@@ -98,6 +107,7 @@ std::size_t LocalStore::eraseLostRecords() {
         if (added) {
             found->second = files->getSize(getSegmentName(location.segment));
         }
+
         return location.offset < kSegmentHeader.size() || location.offset + location.size > found->second;
     });
     // clang-format on
@@ -114,6 +124,7 @@ void LocalStore::removeLeftovers() {
     for (const auto& [storedId, location] : records) {
         used.insert(location.segment);
     }
+
     for (const std::string& name : files->list(std::string(kSegmentFolder))) {
         std::uint32_t segment = 0;
         const auto [end, error] = std::from_chars(name.data(), name.data() + name.size(), segment);
@@ -121,6 +132,7 @@ void LocalStore::removeLeftovers() {
             files->remove(std::string(kSegmentFolder) + "/" + name);
         }
     }
+
     for (const std::string& name : files->list("")) {
         if (name.starts_with("journal-") && name != getJournalName(state.journal)) {
             files->remove(name);
@@ -177,6 +189,7 @@ std::vector<StoreFiles::Range> LocalStore::getRanges(const std::vector<Digest>& 
             ranges.push_back({.name = getSegmentName(found->second.segment), .offset = found->second.offset, .size = found->second.size});
         }
     }
+
     return ranges;
 }
 
@@ -199,10 +212,12 @@ bool LocalStore::readRecord(const Digest& storedId, std::vector<std::uint8_t>& r
     if (found == records.end()) {
         return false;
     }
+
     const Location& location = found->second;
     if (!files->isResident(getSegmentName(location.segment), location.offset, location.size)) {
         return false;
     }
+
     record.resize(static_cast<std::size_t>(location.size));
     files->readRange(getSegmentName(location.segment), location.offset, record);
     keyId = location.keyId;
@@ -215,6 +230,7 @@ void LocalStore::addRecord(const Digest& keyId, std::span<const std::uint8_t> re
     if (holds(header.storedId)) {
         return;
     }
+
     const Location location = appendRecord(keyId, record);
     const StoreEntry entry{.storedId = header.storedId, .keyId = keyId, .segment = location.segment, .offset = location.offset, .size = location.size};
     files->append(getJournalName(state.journal), entry.write());
@@ -232,14 +248,17 @@ LocalStore::Location LocalStore::appendRecord(const Digest& keyId, std::span<con
         std::unique_lock lock(mutex);
         eraseLostRecords();
     }
+
     if (size > kSegmentHeader.size() && size + record.size() > target) {
         ++appendSegment;
         name = getSegmentName(appendSegment);
         size = files->getSize(name);
     }
+
     if (size == 0) {
         files->append(name, kSegmentHeader);
     }
+
     const std::uint64_t offset = files->append(name, record);
     appendEnd = offset + record.size();
     dirty.insert(name);
@@ -251,6 +270,7 @@ void LocalStore::removeRecord(const Digest& storedId) {
     if (!holds(storedId)) {
         return;
     }
+
     const StoreEntry entry{.storedId = storedId, .removed = true};
     files->append(getJournalName(state.journal), entry.write());
     dirty.insert(getJournalName(state.journal));
@@ -262,6 +282,7 @@ void LocalStore::flush() {
     for (const std::string& name : dirty) {
         files->sync(name);
     }
+
     dirty.clear();
 }
 
@@ -301,8 +322,10 @@ std::vector<PartialRecord> LocalStore::listPartials() {
             files->remove(path);
             continue;
         }
+
         partials.push_back(std::move(*partial));
     }
+
     return partials;
 }
 
@@ -326,12 +349,15 @@ LocalStore::Collection LocalStore::collect(const std::function<Retained(const St
             ++collection.removedRecords;
             continue;
         }
+
         kept.emplace(storedId, location);
         live[location.segment] += location.size;
+
         if (!files->isResident(getSegmentName(location.segment), location.offset, location.size)) {
             unreadable.insert(location.segment);
         }
     }
+
     const std::uint32_t oldAppend = appendSegment;
     std::set<std::uint32_t> emptied;
     for (const std::string& name : files->list(std::string(kSegmentFolder))) {
@@ -350,16 +376,19 @@ LocalStore::Collection LocalStore::collect(const std::function<Retained(const St
     for (const std::uint32_t segment : emptied) {
         moved += live[segment];
     }
+
     if (moved > 0 && files->getAvailableSpace() < moved + kSafetyMargin) {
         for (auto segment = emptied.begin(); segment != emptied.end();) {
             if (live[*segment] == 0) {
                 ++segment;
                 continue;
             }
+
             collection.freedBytes -= files->getSize(getSegmentName(*segment));
             segment = emptied.erase(segment);
         }
     }
+
     if (emptied.contains(oldAppend)) {
         ++appendSegment;
         appendEnd = 0;
@@ -370,15 +399,18 @@ LocalStore::Collection LocalStore::collect(const std::function<Retained(const St
         if (!emptied.contains(location.segment)) {
             continue;
         }
+
         if (stop) {
             throw Error(Error::Code::UpdateInterrupted, "The collection of the content store stopped before it finished, and the store stays as it was.");
         }
+
         bytes.resize(static_cast<std::size_t>(location.size));
         files->readRange(getSegmentName(location.segment), location.offset, bytes);
         location = appendRecord(location.keyId, bytes);
         collection.freedBytes -= std::min(collection.freedBytes, location.size);
         ++collection.movedRecords;
     }
+
     flush();
 
     // The new journal lists only the live records, and the new state switches to it before anything is deleted.
@@ -389,6 +421,7 @@ LocalStore::Collection LocalStore::collect(const std::function<Retained(const St
         const StoreEntry::Bytes entry = StoreEntry{.storedId = storedId, .keyId = location.keyId, .segment = location.segment, .offset = location.offset, .size = location.size}.write();
         entries.insert(entries.end(), entry.begin(), entry.end());
     }
+
     files->write(getJournalName(journal), entries);
     StoreState next = state;
     next.journal = journal;
@@ -400,12 +433,14 @@ LocalStore::Collection LocalStore::collect(const std::function<Retained(const St
     for (const std::uint32_t segment : emptied) {
         files->remove(getSegmentName(segment));
     }
+
     for (const std::string& name : files->list(std::string(kManifestFolder))) {
         const std::optional<Digest> id = Digest::fromHex(name.substr(0, name.find('.')));
         if (!id || !retained.manifests.contains(*id)) {
             files->remove(std::string(kManifestFolder) + "/" + name);
         }
     }
+
     for (const std::string& folder : {std::string(kIndexFolder), std::string(kStagingFolder)}) {
         for (const std::string& name : files->list(folder)) {
             const std::optional<Digest> shard = Digest::fromHex(name.substr(0, Digest::kSize * 2));
@@ -414,6 +449,7 @@ LocalStore::Collection LocalStore::collect(const std::function<Retained(const St
             }
         }
     }
+
     return collection;
 }
 
@@ -425,10 +461,12 @@ LocalStore::Statistics LocalStore::getStatistics() const {
         statistics.recordBytes += location.size;
         segments.insert(location.segment);
     }
+
     statistics.segments = segments.size();
     for (const std::uint32_t segment : segments) {
         statistics.segmentBytes += files->getSize(getSegmentName(segment));
     }
+
     return statistics;
 }
 

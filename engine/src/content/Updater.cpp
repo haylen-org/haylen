@@ -24,6 +24,7 @@ Updater::Updater(std::shared_ptr<ReleasePackage> releasePackage, core::JobSystem
 
 Updater::~Updater() {
     stopping->store(true);
+
     for (const HttpTransport::Transfer& transfer : transfers) {
         transfer.cancel();
     }
@@ -41,6 +42,7 @@ std::vector<Catalog::Chunk> Updater::getChunks(const Catalog& catalog, Delivery 
         if (file.delivery != delivery || isPacked(file.path, rules)) {
             continue;
         }
+
         for (std::uint64_t part = file.firstPart; part < file.firstPart + file.partCount; ++part) {
             const std::uint64_t chunk = catalog.getPart(part).chunk;
             if (listed.insert(chunk).second) {
@@ -48,6 +50,7 @@ std::vector<Catalog::Chunk> Updater::getChunks(const Catalog& catalog, Delivery 
             }
         }
     }
+
     return chunks;
 }
 
@@ -82,6 +85,7 @@ void Updater::check(std::function<void(std::optional<UpdateOffer>, std::optional
             done(std::nullopt, std::move(failure));
             return;
         }
+
         std::optional<ChannelDescriptor> descriptor;
         try {
             descriptor = ChannelDescriptor::read(bytes, release->getTrustedKeys());
@@ -100,15 +104,18 @@ void Updater::check(std::function<void(std::optional<UpdateOffer>, std::optional
             done(std::nullopt, error);
             return;
         }
+
         if (descriptor->manifest == release->getContent()->manifest->getId()) {
             done(std::nullopt, std::nullopt);
             return;
         }
+
         fetch(baseUrl + PublicationLayout::getManifestPath(descriptor->manifest), kMaximumManifestSize, [this, generation = descriptor->generation, manifest = descriptor->manifest, done = std::move(done)](std::vector<std::uint8_t> manifestBytes, std::optional<Error> manifestFailure) mutable {
             if (manifestFailure) {
                 done(std::nullopt, std::move(manifestFailure));
                 return;
             }
+
             readOffer(generation, manifest, std::move(manifestBytes), false, std::move(done));
         });
     });
@@ -128,6 +135,7 @@ void Updater::readOffer(std::uint64_t generation, const Digest& manifest, std::v
             if (offer->content->manifest->getId() != manifest || envelope.generation != generation || envelope.channel != channelName) {
                 throw Error(Error::Code::CorruptManifest, "The manifest \"" + manifest.toHex() + "\" is not the one its channel names.");
             }
+
             const std::vector<Catalog::Chunk> required = getChunks(*offer->content->catalog, Delivery::Required, rules);
             offer->missing = Downloader::findMissing(*offer->content->shards, required);
             offer->downloadBytes = Downloader::measure(offer->missing, *releasePackage->getStore());
@@ -137,6 +145,7 @@ void Updater::readOffer(std::uint64_t generation, const Digest& manifest, std::v
             for (const Catalog::Chunk& chunk : required) {
                 requiredBytes += ChunkRecord::kHeaderSize + chunk.encodedSize;
             }
+
             offer->reusedBytes = requiredBytes - offer->downloadBytes;
         } catch (const Error& error) {
             offer.reset();
@@ -149,10 +158,12 @@ void Updater::readOffer(std::uint64_t generation, const Digest& manifest, std::v
             if (owner.expired()) {
                 return;
             }
+
             if (key) {
                 requestKey(generation, manifest, std::move(bytes), *key, std::move(done));
                 return;
             }
+
             done(std::move(offer), std::move(failure));
         });
     });
@@ -166,10 +177,12 @@ void Updater::requestKey(std::uint64_t generation, const Digest& manifest, std::
             if (owner.expired()) {
                 return;
             }
+
             if (given) {
                 readOffer(generation, manifest, std::move(bytes), true, std::move(done));
                 return;
             }
+
             done(std::nullopt, Error(Error::Code::KeyUnavailable, "The update \"" + manifest.toHex() + "\" needs the content key \"" + key.toHex() + "\", which the key provider of the app did not give. The app keeps playing its content, and the update installs once the provider gives the key, such as after the player signs in.", {.manifestId = manifest.toHex(), .keyId = key.toHex()}));
         });
     });
@@ -194,6 +207,7 @@ void Updater::install(const UpdateOffer& offer, std::function<void(const Downloa
         if (failure && failure->getDetails().manifestId.empty()) {
             failure->getDetails().manifestId = manifestId;
         }
+
         installed(std::move(failure));
     };
     jobs.postIo([this, &pool = jobs, owner = std::weak_ptr(alive), store = release->getStore(), offer, progress = std::move(progress), done = std::move(done)]() mutable {
@@ -209,22 +223,27 @@ void Updater::install(const UpdateOffer& offer, std::function<void(const Downloa
                 failure = error;
             }
         }
+
         pool.postToFrame([this, owner, failure = std::move(failure), offer = std::move(offer), progress = std::move(progress), done = std::move(done)]() mutable {
             if (owner.expired()) {
                 return;
             }
+
             if (failure) {
                 done(std::move(failure));
                 return;
             }
+
             download = downloader.fetch(offer.content->shards, offer.missing, [this](const ShardReference& pack) { return locate(pack); }, {
                 .onProgress = std::move(progress),
                 .onComplete = [this, offer, done = std::move(done)](std::optional<Error> downloadFailure) mutable {
                     download.reset();
+
                     if (downloadFailure) {
                         done(std::move(downloadFailure));
                         return;
                     }
+
                     commit(offer, std::move(done));
                 },
             });
@@ -257,6 +276,7 @@ void Updater::commit(const UpdateOffer& offer, std::function<void(std::optional<
                     state.previous = state.active;
                     state.active = id;
                 }
+
                 state.pending = Digest();
                 state.channel = channelName;
                 state.acceptedGeneration = offer.generation;
@@ -265,6 +285,7 @@ void Updater::commit(const UpdateOffer& offer, std::function<void(std::optional<
         } catch (const Error& error) {
             failure = error;
         }
+
         pool.postToFrame([owner, failure = std::move(failure), done = std::move(done)]() mutable {
             if (!owner.expired()) {
                 done(std::move(failure));
@@ -278,6 +299,7 @@ void Updater::cancel() {
     for (const HttpTransport::Transfer& transfer : transfers) {
         transfer.cancel();
     }
+
     if (download) {
         downloader.cancel(*download);
     }
@@ -295,6 +317,7 @@ void Updater::collect(std::function<void(Collection, std::optional<Error>)> done
         } catch (const Error& error) {
             failure = error;
         }
+
         pool.postToFrame([owner, collection, failure = std::move(failure), done = std::move(done)]() mutable {
             if (!owner.expired()) {
                 done(collection, std::move(failure));
@@ -308,17 +331,21 @@ void Updater::collect(std::function<void(Collection, std::optional<Error>)> done
 LocalStore::Retained Updater::retain(const ReleasePackage& releasePackage, const StoreState& state) {
     LocalStore::Retained retained;
     retain(*releasePackage.getBundledContent(), retained);
+
     for (const Digest& id : {state.active, state.previous, state.pending}) {
         if (id.isZero()) {
             continue;
         }
+
         std::optional<std::vector<std::uint8_t>> bytes = releasePackage.getStore()->readManifest(id);
         if (!bytes) {
             continue;
         }
+
         retain(*releasePackage.load(std::move(*bytes)), retained);
         retained.manifests.insert(id);
     }
+
     return retained;
 }
 
@@ -326,6 +353,7 @@ void Updater::retain(const ReleasePackage::Content& content, LocalStore::Retaine
     for (std::uint64_t index = 0; index < content.catalog->getChunkCount(); ++index) {
         retained.records.insert(content.catalog->getChunk(index).storedId);
     }
+
     for (const ShardReference& shard : content.manifest->getEnvelope().shards) {
         retained.shards.insert(shard.shardId);
     }

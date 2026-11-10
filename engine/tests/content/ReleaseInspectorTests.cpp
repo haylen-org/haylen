@@ -156,6 +156,7 @@ TEST_F(ReleaseInspectorTest, VerifiesEveryByteOfARelease) {
     std::filesystem::copy_file(release.getFolder() / ReleasePackage::kAppManifestFile, release.getFolder() / ReleasePackage::kContentManifestFile, std::filesystem::copy_options::overwrite_existing);
     expectCode(Error::Code::CorruptManifest, [&] { (void)inspector.inspect(release.getFolder()); });
     std::filesystem::remove(release.getFolder() / ReleasePackage::kAppManifestFile);
+
     try {
         (void)inspector.inspect(release.getFolder());
         FAIL() << "A folder without its manifests is no release.";

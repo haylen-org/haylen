@@ -39,12 +39,15 @@ void ContentLua::pushError(lua_State* L, const Error& failure) {
         lua_pushinteger(L, *details.httpStatus);
         lua_setfield(L, -2, "httpStatus");
     }
+
     if (details.requiredBytes) {
         setInteger(L, "requiredBytes", *details.requiredBytes);
     }
+
     if (details.availableBytes) {
         setInteger(L, "availableBytes", *details.availableBytes);
     }
+
     for (const auto& [field, value] : {std::pair{"path", &details.path}, {"manifestId", &details.manifestId}, {"packId", &details.packId}, {"contentId", &details.contentId}, {"storedId", &details.storedId}, {"keyId", &details.keyId}, {"platform", &details.platform}, {"platformMessage", &details.platformMessage}}) {
         if (!value->empty()) {
             lua::Stack::push(L, *value);
@@ -76,6 +79,7 @@ ContentManager::ProgressCallback ContentLua::readProgress(lua_State* L, int inde
     if (!lua_isnoneornil(L, index)) {
         luaL_checktype(L, index, LUA_TFUNCTION);
     }
+
     int owner = 0;
     if (!lua_isnoneornil(L, index + 1)) {
         luaL_checktype(L, index + 1, LUA_TTABLE);
@@ -85,12 +89,15 @@ ContentManager::ProgressCallback ContentLua::readProgress(lua_State* L, int inde
             owner = lua_gettop(L);
         }
     }
+
     if (!lua_isfunction(L, index)) {
         return {};
     }
+
     if (owner == 0) {
         owner = lua::Owners::pushDefault(L);
     }
+
     auto function = std::make_shared<lua::Owners::Function>(L, index, owner);
     lua_State* main = lua::Runtime::getMainThread(L);
     // clang-format off
@@ -122,6 +129,7 @@ int ContentLua::channel(lua_State* L) {
     } else {
         lua::Stack::push(L, name);
     }
+
     return 1;
 }
 
@@ -142,6 +150,7 @@ int ContentLua::error(lua_State* L) {
     } else {
         lua_pushnil(L);
     }
+
     return 1;
 }
 
@@ -151,6 +160,7 @@ int ContentLua::update(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua_createtable(L, 0, 3);
     setInteger(L, "generation", found->generation);
     setInteger(L, "downloadBytes", found->downloadBytes);
@@ -184,13 +194,16 @@ int ContentLua::addPackSource(lua_State* L) {
             owner = lua_gettop(L);
         }
     }
+
     if (owner == 0) {
         owner = lua::Owners::pushDefault(L);
     }
+
     core::Connection connection = getManager(L).addPackSource(std::make_shared<LuaPackSource>(L, 1, owner));
     if (owner != 0) {
         lua::Owners::add(L, owner, connection);
     }
+
     lua::Userdata::emplace<core::Connection>(L, connection);
     return 1;
 }
@@ -204,6 +217,7 @@ int ContentLua::prefetch(lua_State* L) {
         luaL_checktype(L, 1, LUA_TTABLE);
         paths = lua::Stack::read<std::vector<std::string>>(L, 1);
     }
+
     ContentManager::ProgressCallback onProgress = readProgress(L, 2);
 
     const lua::Promise promise(engine);
@@ -213,6 +227,7 @@ int ContentLua::prefetch(lua_State* L) {
             reject(engine.getLuaState(), promise, *failure);
             return;
         }
+
         promise.resolve(true);
     });
     // clang-format on
@@ -229,6 +244,7 @@ int ContentLua::check(lua_State* L) {
             reject(engine.getLuaState(), promise, *failure);
             return;
         }
+
         promise.resolve(found ? core::Json{{"generation", found->generation}, {"downloadBytes", found->downloadBytes}} : core::Json());
     });
     // clang-format on
@@ -246,6 +262,7 @@ int ContentLua::download(lua_State* L) {
             reject(engine.getLuaState(), promise, *failure);
             return;
         }
+
         promise.resolve(true);
     });
     // clang-format on

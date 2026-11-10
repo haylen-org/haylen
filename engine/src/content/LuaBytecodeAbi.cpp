@@ -39,6 +39,7 @@ std::string LuaBytecodeAbi::read() {
         size = chunk[position];
         position += 1 + size;
     }
+
     return std::format("lua-{}.{}-f{}-i{}-x{}-l{}-n{}-{}", version >> 4, version & 0x0F, format, sizes[0], sizes[1], sizes[2], sizes[3], littleEndian ? "le" : "be");
 }
 

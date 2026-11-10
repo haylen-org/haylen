@@ -50,6 +50,7 @@ class ReleaseBuilderTest : public ::testing::Test {
             if (++opened[std::string(path)] > 1 && !bytes.empty()) {
                 bytes.back() ^= 1;
             }
+
             return std::make_unique<io::MemoryReader>(std::make_shared<const std::vector<std::uint8_t>>(std::move(bytes)));
         }
         [[nodiscard]] std::vector<std::string> list(std::string_view folder) const override {
@@ -59,6 +60,7 @@ class ReleaseBuilderTest : public ::testing::Test {
                     paths.push_back(path);
                 }
             }
+
             return paths;
         }
 
@@ -91,6 +93,7 @@ class ReleaseBuilderTest : public ::testing::Test {
             std::ifstream stream(entry.path(), std::ios::binary);
             files.emplace(entry.path().filename().string(), std::vector<std::uint8_t>{std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()});
         }
+
         return files;
     }
 
@@ -108,6 +111,7 @@ TEST_F(ReleaseBuilderTest, ReleasesOnlyThePackageOfTheApp) {
     for (const auto& [path, bytes] : makeFiles()) {
         app.write(path, std::string(bytes.begin(), bytes.end()));
     }
+
     app.write("plugins/unused/plugin.json", R"({"id": "unused", "version": "1.0.0"})");
     app.write("plugins/unused/source/init.lua", "return {}");
     app.write("plugins/ads/android/build.gradle.kts", "plugins {}");
@@ -118,6 +122,7 @@ TEST_F(ReleaseBuilderTest, ReleasesOnlyThePackageOfTheApp) {
 
     const std::unique_ptr<io::Package> release = open("release");
     EXPECT_EQ(release->list(""), (std::vector<std::string>{"app.json", "content/data/config.json", "content/world/terrain.bin", "plugins/ads/plugin.json", "plugins/ads/source/init.lua", "source/main.lua"}));
+
     for (const auto& [name, bytes] : readFolder("release")) {
         EXPECT_TRUE(name.ends_with(".hpak") || name.ends_with(".hmanifest")) << name;
     }
@@ -131,9 +136,11 @@ TEST_F(ReleaseBuilderTest, FollowsAReleaseThatAStoreLaidOutInFoldersOfItsOwn) {
     const std::filesystem::path depot = directory.getPath() / "depot";
     std::filesystem::create_directories(depot / "app");
     std::filesystem::create_directories(depot / "packs" / "expansion");
+
     for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(directory.getPath() / "first")) {
         std::filesystem::copy_file(entry.path(), depot / "app" / entry.path().filename());
     }
+
     const ShardReference& packed = first.content.shards.front();
     const ShardReference& lost = first.content.shards.back();
     std::filesystem::rename(depot / "app" / packed.getFileName(), depot / "packs" / "expansion" / packed.getFileName());
@@ -179,9 +186,11 @@ TEST_F(ReleaseBuilderTest, KeepsUnchangedShardsByteForByte) {
     EXPECT_EQ(update.app.statistics.newChunks, 0U);
     EXPECT_EQ(update.content.statistics.newChunks, 1U);
     EXPECT_EQ(after.at(std::string(ReleasePackage::kAppManifestFile)), before.at(std::string(ReleasePackage::kAppManifestFile))) << "An unchanged domain signs the same manifest.";
+
     for (const ShardReference& shard : base.content.shards) {
         EXPECT_EQ(after.at(shard.getFileName()), before.at(shard.getFileName())) << "Unrelated shards stay byte for byte.";
     }
+
     ASSERT_EQ(update.content.shards.size(), base.content.shards.size() + 1);
     EXPECT_EQ(update.content.keptShards, base.content.shards.size());
     EXPECT_LT(update.content.shards.back().fileSize, 4096U) << "The new shard holds only the changed chunk.";
@@ -223,6 +232,7 @@ TEST_F(ReleaseBuilderTest, StopsOnADamagedEarlierRelease) {
     stream.seekp(1000);
     stream.put('x');
     stream.close();
+
     try {
         (void)build(source, "update", "base");
         FAIL() << "A damaged earlier shard must stop the build.";

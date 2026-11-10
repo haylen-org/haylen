@@ -28,6 +28,7 @@ Compressor::Encoded Compressor::encode(std::span<const std::uint8_t> plain) {
         compressed.resize(size);
         return {.codec = Compression::Codec::Zstd, .profile = Compression::kZstdProfile, .bytes = std::move(compressed)};
     }
+
     return {.codec = Compression::Codec::None, .profile = Compression::kNoneProfile, .bytes = std::vector<std::uint8_t>(plain.begin(), plain.end())};
 }
 

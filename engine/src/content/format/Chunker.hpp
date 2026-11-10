@@ -40,6 +40,7 @@ class Chunker final {
             mixed = (mixed ^ (mixed >> 27)) * 0x94D049BB133111EB;
             value = mixed ^ (mixed >> 31);
         }
+
         return gear;
     }
 };

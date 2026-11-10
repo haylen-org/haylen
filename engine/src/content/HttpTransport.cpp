@@ -29,6 +29,7 @@ void HttpTransport::Transfer::cancel() const {
     if (!state) {
         return;
     }
+
     std::scoped_lock lock(state->mutex);
     state->cancelled = true;
     state->handle.cancel();
@@ -38,6 +39,7 @@ bool HttpTransport::Transfer::isActive() const {
     if (!state) {
         return false;
     }
+
     std::scoped_lock lock(state->mutex);
     return state->handle.active();
 }
@@ -75,6 +77,7 @@ void HttpTransport::send(const std::shared_ptr<Transfer::State>& state) {
     if (state->request.validator.empty()) {
         state->request.held = 0;
     }
+
     const Request& request = state->request;
     client::Request http;
     http.url = request.url;
@@ -83,10 +86,12 @@ void HttpTransport::send(const std::shared_ptr<Transfer::State>& state) {
         const std::uint64_t first = request.offset + request.held;
         expected = *request.size - request.held;
         http.headers.emplace_back("Range", std::format("bytes={}-{}", first, request.offset + *request.size - 1));
+
         if (request.held > 0) {
             http.headers.emplace_back("If-Range", request.validator);
         }
     }
+
     // A range takes no limit from the client, which would refuse a whole file before its head arrives, so its head reports a server that sends the whole file, and the bytes are counted here instead.
     http.maxResponseBytes = request.size ? std::numeric_limits<std::uint64_t>::max() : expected;
     http.timeout = request.timeout.value_or(getTimeout(expected));
@@ -100,6 +105,7 @@ void HttpTransport::send(const std::shared_ptr<Transfer::State>& state) {
         if (!state->request.size && head.status == 200) {
             fileSize = head.contentLength;
         }
+
         receiveHead(*state, head.status, range ? std::optional(range->first) : std::nullopt, range ? std::optional(range->last) : std::nullopt, fileSize, readValidator(head.header("etag")));
     };
     callbacks.onChunk = [state](std::string_view chunk) {
@@ -110,11 +116,13 @@ void HttpTransport::send(const std::shared_ptr<Transfer::State>& state) {
             complete(state, std::move(state->failure));
             return;
         }
+
         if (state->restarting) {
             state->restarting = false;
             send(state);
             return;
         }
+
         complete(state, error ? std::optional(describeFailure(*state, static_cast<int>(error->code), error->message)) : std::nullopt);
     };
     // clang-format on
@@ -123,6 +131,7 @@ void HttpTransport::send(const std::shared_ptr<Transfer::State>& state) {
     if (state->cancelled) {
         state->failure = Error(Error::Code::NetworkCancelled, "The download of \"" + request.url + "\" was cancelled.");
     }
+
     state->handle = client->send(std::move(http), std::move(callbacks));
     if (state->cancelled) {
         state->handle.cancel();
@@ -136,6 +145,7 @@ void HttpTransport::receiveHead(Transfer::State& state, int status, std::optiona
             stop(state, Error(Error::Code::UnexpectedHttpStatus, std::format("The server answered \"{}\" with the status {} instead of the file.", request.url, status), {.httpStatus = status}));
             return;
         }
+
         state.callbacks.onStart({.validator = std::move(validator), .fileSize = fileSize});
         return;
     }
@@ -148,10 +158,12 @@ void HttpTransport::receiveHead(Transfer::State& state, int status, std::optiona
         stop(state, std::nullopt);
         return;
     }
+
     if (status == 200) {
         stop(state, Error(Error::Code::RangeUnsupported, std::format("The server of \"{}\" answered a byte range with the whole file, and protected content needs a server that serves byte ranges.", request.url), {.httpStatus = status}));
         return;
     }
+
     if (status != 206) {
         stop(state, Error(Error::Code::UnexpectedHttpStatus, std::format("The server answered the range of \"{}\" with the status {}.", request.url, status), {.httpStatus = status}));
         return;
@@ -163,6 +175,7 @@ void HttpTransport::receiveHead(Transfer::State& state, int status, std::optiona
         stop(state, Error(Error::Code::RangeUnsupported, std::format("The server answered the bytes {} to {} of \"{}\" with another range, and protected content needs a server that serves byte ranges exactly.", expectedFirst, expectedLast, request.url), {.httpStatus = status}));
         return;
     }
+
     state.callbacks.onStart({.resumed = request.held > 0, .validator = std::move(validator), .fileSize = fileSize});
 }
 
@@ -170,11 +183,13 @@ void HttpTransport::receiveBytes(Transfer::State& state, std::span<const std::ui
     if (state.failure || state.restarting) {
         return;
     }
+
     state.received += bytes.size();
     if (state.request.size && state.received > *state.request.size - state.request.held) {
         stop(state, Error(Error::Code::RangeUnsupported, std::format("The server sent more than the {} bytes asked for of \"{}\".", *state.request.size - state.request.held, state.request.url)));
         return;
     }
+
     try {
         state.callbacks.onBytes(bytes);
     } catch (const Error& error) {
@@ -195,6 +210,7 @@ void HttpTransport::complete(const std::shared_ptr<Transfer::State>& state, std:
     if (!failure && request.size && state->received != *request.size - request.held) {
         failure = Error(Error::Code::UpdateInterrupted, std::format("The download of \"{}\" ended after {} of {} bytes.", request.url, state->received, *request.size - request.held));
     }
+
     const std::function<void(std::optional<Error>)> onComplete = std::move(state->callbacks.onComplete);
     state->callbacks = {};
     onComplete(std::move(failure));
@@ -208,6 +224,7 @@ Error HttpTransport::describeFailure(const Transfer::State& state, int code, con
         if (state.received > 0) {
             return {Error::Code::UpdateInterrupted, "The connection to the server ended during the download of \"" + url + "\": " + message, details};
         }
+
         return {Error::Code::NetworkOffline, "The server of \"" + url + "\" could not be reached: " + message, details};
     case client::ErrorCode::Timeout:
         return {Error::Code::NetworkTimeout, "The download of \"" + url + "\" took too long: " + message, details};
@@ -225,6 +242,7 @@ std::string HttpTransport::readValidator(std::optional<std::string_view> etag) {
     if (!etag || etag->starts_with("W/") || etag->size() < 2 || etag->front() != '"' || etag->back() != '"') {
         return {};
     }
+
     return std::string(*etag);
 }
 

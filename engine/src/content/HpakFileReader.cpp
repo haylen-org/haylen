@@ -27,12 +27,14 @@ std::size_t HpakFileReader::read(std::uint64_t offset, std::span<std::uint8_t> t
         const Catalog::Part piece = catalog->getPart(part);
         if (cachedPart != part) {
             cachedPart.reset();
+
             try {
                 shards->readChunk(catalog->getChunk(piece.chunk), scratch, plain);
             } catch (Error& error) {
                 error.getDetails().path = file.path;
                 throw;
             }
+
             cachedPart = part;
         }
 
@@ -41,6 +43,7 @@ std::size_t HpakFileReader::read(std::uint64_t offset, std::span<std::uint8_t> t
         std::copy_n(plain.begin() + static_cast<std::ptrdiff_t>(begin), length, target.begin() + static_cast<std::ptrdiff_t>(filled));
         filled += length;
     }
+
     return count;
 }
 

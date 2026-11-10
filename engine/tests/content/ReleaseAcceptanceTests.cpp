@@ -49,6 +49,7 @@ class ReleaseAcceptanceTest : public ::testing::Test {
             std::ifstream stream(entry.path(), std::ios::binary);
             files.emplace(entry.path().filename().string(), std::vector<std::uint8_t>{std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()});
         }
+
         return files;
     }
 
@@ -72,13 +73,16 @@ TEST_F(ReleaseAcceptanceTest, ShipsASmallGameWithoutAnyReadableFile) {
     ASSERT_EQ(shipped.size(), 4U);
     EXPECT_TRUE(shipped.contains(std::string(ReleasePackage::kAppManifestFile)));
     EXPECT_TRUE(shipped.contains(std::string(ReleasePackage::kContentManifestFile)));
+
     for (const auto& [name, bytes] : shipped) {
         for (const auto& [path, content] : game) {
             EXPECT_FALSE(holds(bytes, test::TestFiles::bytes(path))) << name << " names " << path;
             EXPECT_FALSE(holds(bytes, std::span(content).first(std::min<std::size_t>(content.size(), 24)))) << name << " holds the start of " << path;
         }
+
         EXPECT_FALSE(holds(bytes, test::TestFiles::bytes("release test"))) << name;
     }
+
     EXPECT_EQ(makeInspector().verify(release.getFolder()).files, game.size());
     EXPECT_EQ(release.open()->readAsset("images/hero.png"), game.at("content/images/hero.png"));
 }
@@ -89,6 +93,7 @@ TEST_F(ReleaseAcceptanceTest, SplitsALargeGameIntoShardsAndPatchesOnlyWhatChange
     for (int index = 0; index < 12; ++index) {
         game.emplace("content/world/region" + std::to_string(index) + ".bin", test::TestFiles::randomBytes(2 * kMegabyte, static_cast<std::uint64_t>(index + 1)));
     }
+
     const std::uint64_t target = 4 * kMegabyte;
     release.build(io::MemoryPackage("source", game), target);
     const ReleaseInspector::Report base = makeInspector().inspect(release.getFolder());
@@ -109,6 +114,7 @@ TEST_F(ReleaseAcceptanceTest, SplitsALargeGameIntoShardsAndPatchesOnlyWhatChange
         ASSERT_TRUE(after.contains(shard.getFileName()));
         EXPECT_EQ(after.at(shard.getFileName()), before.at(shard.getFileName()));
     }
+
     EXPECT_EQ(release.open()->readAsset("world/region5.bin"), game.at("content/world/region5.bin"));
 }
 
@@ -132,6 +138,7 @@ TEST_F(ReleaseAcceptanceTest, UpdatesCodeAndContentWithNewShardsOnly) {
             EXPECT_EQ(bytes, found->second) << name;
         }
     }
+
     EXPECT_EQ(added.size(), 2U) << "Each domain adds one shard.";
     EXPECT_EQ(release.getStatistics(Manifest::Domain::App).newChunks, 1U);
     EXPECT_EQ(release.getStatistics(Manifest::Domain::Content).newChunks, 1U);

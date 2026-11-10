@@ -37,6 +37,7 @@ bool EmbeddedKeyProvider::getKey(const KeyId& id, Key& target) const {
     if (found == keys.end()) {
         return false;
     }
+
     applyPad(*found, found->sealed, target);
     return true;
 }

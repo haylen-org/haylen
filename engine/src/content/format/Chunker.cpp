@@ -21,12 +21,14 @@ std::size_t Chunker::findCut(std::span<const std::uint8_t> window) noexcept {
             return index + 1;
         }
     }
+
     for (; index < size; ++index) {
         hash = (hash << 1) + kGear[window[index]];
         if ((hash & kLargeMask) == 0) {
             return index + 1;
         }
     }
+
     return size;
 }
 

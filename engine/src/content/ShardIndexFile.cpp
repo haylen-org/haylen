@@ -12,10 +12,12 @@ ShardIndexFile::ShardIndexFile(std::vector<std::uint8_t> headerAndIndex, const S
     if (bytes.size() < ShardHeader::kSize) {
         throw Error(Error::Code::CorruptHeader, std::format("The header of the shard \"{}\" is incomplete.", reference.shardId.toHex()));
     }
+
     const ShardHeader header = ShardHeader::parse(std::span(bytes).first<ShardHeader::kSize>(), fileSize);
     if (bytes.size() != ShardHeader::kSize + header.indexSize) {
         throw Error(Error::Code::CorruptHeader, std::format("The index of the shard \"{}\" does not have the size its header names.", reference.shardId.toHex()));
     }
+
     indexOffset = header.indexOffset;
 }
 
@@ -30,6 +32,7 @@ std::size_t ShardIndexFile::read(std::uint64_t offset, std::span<std::uint8_t> t
     } else {
         throw Error(Error::Code::MissingChunk, std::format("The bytes {} to {} of a shard are not on the device.", offset, offset + target.size()));
     }
+
     std::copy_n(bytes.begin() + static_cast<std::ptrdiff_t>(source), target.size(), target.begin());
     return target.size();
 }

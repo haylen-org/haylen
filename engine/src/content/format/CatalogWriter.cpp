@@ -16,11 +16,13 @@ void CatalogWriter::addFile(std::string path, Delivery delivery, std::span<const
     if (!Catalog::isValidPath(path)) {
         throw std::invalid_argument("The path \"" + path + "\" cannot name a file of a catalog.");
     }
+
     for (const Digest& part : parts) {
         if (!chunks.contains(part)) {
             throw std::invalid_argument("The file \"" + path + "\" uses the chunk \"" + part.toHex() + "\", which the catalog does not list.");
         }
     }
+
     if (!files.try_emplace(path, File{.kind = kind, .delivery = delivery, .parts = {parts.begin(), parts.end()}}).second) {
         throw std::invalid_argument("The catalog lists the file \"" + path + "\" twice.");
     }
@@ -30,9 +32,11 @@ std::vector<std::uint8_t> CatalogWriter::write() const {
     std::unordered_map<Digest, std::uint64_t, Digest::Hash> rows;
     std::uint64_t partCount = 0;
     std::uint64_t stringSize = 0;
+
     for (const auto& [storedId, chunk] : chunks) {
         rows.emplace(storedId, rows.size());
     }
+
     for (const auto& [path, file] : files) {
         partCount += file.parts.size();
         stringSize += path.size();
@@ -50,6 +54,7 @@ std::vector<std::uint8_t> CatalogWriter::write() const {
         for (const Digest& part : file.parts) {
             size += chunks.at(part).plainSize;
         }
+
         writer.write(pathOffset).write(static_cast<std::uint32_t>(path.size())).write(static_cast<std::uint8_t>(file.kind)).write(static_cast<std::uint8_t>(file.delivery)).writeZeros(sizeof(std::uint16_t));
         writer.write(size).write(firstPart).write(std::uint64_t{file.parts.size()});
         pathOffset += path.size();
@@ -72,6 +77,7 @@ std::vector<std::uint8_t> CatalogWriter::write() const {
     for (const auto& [path, file] : files) {
         writer.writeBytes({reinterpret_cast<const std::uint8_t*>(path.data()), path.size()});
     }
+
     return writer.take();
 }
 

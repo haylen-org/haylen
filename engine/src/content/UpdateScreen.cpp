@@ -47,15 +47,18 @@ math::Color UpdateScreen::getTextColor() const {
 
 std::string UpdateScreen::formatBytes(std::uint64_t bytes) {
     constexpr std::array<std::string_view, 4> kUnits = {"KB", "MB", "GB", "TB"};
+
     if (bytes < 1000) {
         return std::format("{} bytes", bytes);
     }
+
     auto value = static_cast<double>(bytes) / 1000.0;
     std::size_t unit = 0;
     while (value >= 1000.0 && unit + 1 < kUnits.size()) {
         value /= 1000.0;
         ++unit;
     }
+
     return std::format("{:.1f} {}", value, kUnits[unit]);
 }
 
@@ -65,6 +68,7 @@ std::string UpdateScreen::getStatus() const {
         if (!error) {
             return "The content could not be downloaded.";
         }
+
         switch (error->getCode()) {
         case Error::Code::NetworkOffline:
         case Error::Code::NetworkTimeout:
@@ -79,10 +83,12 @@ std::string UpdateScreen::getStatus() const {
             return error->what();
         }
     }
+
     const ContentManager::Progress& progress = content.getProgress();
     if (progress.totalBytes == 0) {
         return "Checking the content on the device.";
     }
+
     return std::format("Downloading the content of the app, {} of {}.", formatBytes(progress.receivedBytes), formatBytes(progress.totalBytes));
 }
 
@@ -118,11 +124,13 @@ void UpdateScreen::render() {
         // The bar is a pill, and its fill starts as a dot as wide as the bar is tall, so both keep round ends.
         const float radius = bar.height * 0.5F;
         renderer.drawShape({.bounds = bar, .radii = {radius, radius, radius, radius}, .color = kTrackColor});
+
         if (fraction > 0.0F) {
             const float filled = std::max(bar.width * std::min(fraction, 1.0F), bar.height);
             renderer.drawShape({.bounds = {bar.x, bar.y, filled, bar.height}, .radii = {radius, radius, radius, radius}, .color = kBarColor});
         }
     }
+
     y = bar.getBottom() + kGap * unit;
 
     const text::Style status{.size = kBodySize * unit, .color = hasFailed() ? kErrorColor : textColor, .align = text::Alignment::Center, .maxWidth = safe.width - kMargin * 2.0F * unit};
@@ -131,11 +139,14 @@ void UpdateScreen::render() {
 
     retryButton = {};
     quitButton = {};
+
     if (!hasFailed()) {
         return;
     }
+
     const float half = canQuit() ? (kGap * 0.5F + 80.0F) * unit : 0.0F;
     retryButton = drawButton(renderer, font, {center.x - half, y}, "Try again", Action::Retry, unit);
+
     if (canQuit()) {
         quitButton = drawButton(renderer, font, {center.x + half, y}, "Quit", Action::Quit, unit);
     }
@@ -156,6 +167,7 @@ void UpdateScreen::run(Action action) {
     if (!hasFailed()) {
         return;
     }
+
     if (action == Action::Retry) {
         content.retry();
     } else if (canQuit()) {
@@ -181,6 +193,7 @@ void UpdateScreen::handleEvent(const platform::Event& event) {
         if (event.repeat) {
             break;
         }
+
         if (event.key == input::Key::Left || event.key == input::Key::Right || event.key == input::Key::Tab) {
             moveFocus();
         } else if (event.key == input::Key::Enter || event.key == input::Key::Space) {
@@ -188,11 +201,13 @@ void UpdateScreen::handleEvent(const platform::Event& event) {
         } else if (event.key == input::Key::R) {
             run(Action::Retry);
         }
+
         break;
     case platform::Event::Type::MouseDown:
         if (event.mouseButton == input::MouseButton::Left) {
             press(engine.getViewport().toDesign(event.position));
         }
+
         break;
     case platform::Event::Type::TouchBegan:
         for (std::size_t index = 0; index < event.touchCount; ++index) {
@@ -200,6 +215,7 @@ void UpdateScreen::handleEvent(const platform::Event& event) {
                 press(engine.getViewport().toDesign(event.touches[index].position));
             }
         }
+
         break;
     default:
         break;
@@ -212,6 +228,7 @@ void UpdateScreen::update() {
         if (input.isGamepadPressed(index, input::GamepadButton::DpadLeft) || input.isGamepadPressed(index, input::GamepadButton::DpadRight)) {
             moveFocus();
         }
+
         if (input.isGamepadPressed(index, input::GamepadButton::South)) {
             run(focused);
         }

@@ -37,6 +37,7 @@ class ContentBuilderTest : public ::testing::Test {
         for (int index = 0; index < 20; ++index) {
             files.emplace("content/data/item" + std::to_string(index) + ".json", test::TestFiles::bytes("{\"item\": " + std::to_string(index) + ", \"name\": \"Item number " + std::to_string(index) + "\"}"));
         }
+
         return files;
     }
 
@@ -46,10 +47,12 @@ class ContentBuilderTest : public ::testing::Test {
             const Catalog catalog = Catalog::parse(previous->catalog, previous->shards.size());
             builder.reuse(catalog, previous->shards, std::vector<bool>(previous->shards.size(), true));
         }
+
         std::vector<ContentBuilder::Input> inputs;
         for (const auto& [path, bytes] : files) {
             inputs.push_back({.path = path});
         }
+
         return builder.build(io::MemoryPackage("source", files), std::move(inputs));
     }
 
@@ -84,9 +87,11 @@ TEST_F(ContentBuilderTest, BuildsTheSameBytesInEveryCleanBuild) {
     const ContentBuilder::Result second = build(directory.getPath() / "second", files);
     EXPECT_EQ(first.catalog, second.catalog);
     ASSERT_EQ(first.shards, second.shards);
+
     for (const ShardReference& shard : first.shards) {
         EXPECT_EQ(readFile(directory.getPath() / "first" / shard.getFileName()), readFile(directory.getPath() / "second" / shard.getFileName()));
     }
+
     EXPECT_GE(first.statistics.newChunks, 21U + 12 * kMegabyte / Chunker::kMaximumSize);
 }
 
@@ -99,6 +104,7 @@ TEST_F(ContentBuilderTest, IgnoresTheOrderOfItsInputs) {
     for (const auto& [path, bytes] : files) {
         inputs.insert(inputs.begin(), {.path = path});
     }
+
     const ContentBuilder::Result reversed = builder.build(io::MemoryPackage("source", files), std::move(inputs));
     EXPECT_EQ(reversed.catalog, ordered.catalog);
     EXPECT_EQ(reversed.shards, ordered.shards);
@@ -123,9 +129,11 @@ TEST_F(ContentBuilderTest, StoresOnlyTheChunksAnUpdateChanged) {
     EXPECT_GE(patch.statistics.reusedChunks, base.statistics.newChunks - 3);
     ASSERT_EQ(patch.shards.size(), base.shards.size() + 1);
     EXPECT_TRUE(std::equal(base.shards.begin(), base.shards.end(), patch.shards.begin())) << "The update references the old shards as they are.";
+
     for (const auto& [name, bytes] : before) {
         EXPECT_EQ(readFile(directory.getPath() / name), bytes) << "An update never rewrites an old shard.";
     }
+
     EXPECT_LT(patch.shards.back().fileSize, 2 * Chunker::kMaximumSize + 4096) << "The patch shard holds only the changed chunks.";
 }
 
@@ -168,6 +176,7 @@ TEST_F(ContentBuilderTest, BuildsTheShardsOfALargerTargetAgainForASmallerOne) {
     const ContentBuilder::Result split = build(directory.getPath(), files, &whole, target);
     EXPECT_EQ(split.keptShards, 0U);
     EXPECT_EQ(split.statistics.droppedShards, 1U);
+
     for (const ShardReference& shard : split.shards) {
         EXPECT_LE(shard.fileSize, target + Chunker::kMaximumSize);
     }
@@ -185,6 +194,7 @@ TEST_F(ContentBuilderTest, ClosesShardsNearTheirTarget) {
     files.emplace("content/world/rivers.bin", test::TestFiles::randomBytes(100000, 2));
     const ContentBuilder::Result result = build(directory.getPath(), files, nullptr, target);
     ASSERT_GE(result.shards.size(), 4U);
+
     for (const ShardReference& shard : result.shards) {
         EXPECT_LE(shard.fileSize, target + Chunker::kMaximumSize);
     }
@@ -197,6 +207,7 @@ TEST_F(ContentBuilderTest, ClosesShardsNearTheirTarget) {
             for (std::uint64_t part = file.firstPart; part < file.firstPart + file.partCount; ++part) {
                 shards.insert(catalog.getChunk(catalog.getPart(part).chunk).shard);
             }
+
             EXPECT_EQ(shards.size(), 1U) << file.path;
         }
     }

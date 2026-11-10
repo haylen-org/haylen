@@ -91,6 +91,7 @@ class HpakPackageTest : public ::testing::Test {
                 shards.push_back(entry.path().filename().string());
             }
         }
+
         std::ranges::sort(shards);
         return shards;
     }
@@ -110,14 +111,17 @@ TEST_F(HpakPackageTest, ServesTheFilesOfTheApp) {
         EXPECT_TRUE(package->exists(path));
         const bool module = path.ends_with(".lua");
         EXPECT_EQ(package->isLuaBytecode(path), module) << path;
+
         if (module) {
             const std::vector<std::uint8_t> chunk = package->read(path);
             EXPECT_EQ(std::string(chunk.begin(), chunk.begin() + 4), LUA_SIGNATURE) << path;
             continue;
         }
+
         EXPECT_EQ(package->getFileSize(path), bytes.size());
         EXPECT_EQ(package->read(path), bytes) << path;
     }
+
     EXPECT_EQ(package->list(""), paths);
     EXPECT_EQ(package->list("source"), (std::vector<std::string>{"source/main.lua", "source/scenes/menu.lua"}));
     EXPECT_EQ(package->listAssets("world"), (std::vector<std::string>{"world/terrain.bin"}));
@@ -146,6 +150,7 @@ TEST_F(HpakPackageTest, ReadsRangesAcrossChunks) {
         ASSERT_EQ(range.size(), expected);
         EXPECT_TRUE(std::equal(range.begin(), range.end(), terrain.begin() + static_cast<std::ptrdiff_t>(offset))) << offset;
     }
+
     EXPECT_TRUE(package->readAssetRange("world/terrain.bin", terrain.size(), 10).empty());
 
     // Reading the file in pieces that never line up with its chunks gives back every byte.
@@ -154,6 +159,7 @@ TEST_F(HpakPackageTest, ReadsRangesAcrossChunks) {
     for (std::size_t offset = 0; offset < streamed.size(); offset += 777777) {
         reader->readExactly(offset, std::span(streamed).subspan(offset, std::min<std::size_t>(777777, streamed.size() - offset)));
     }
+
     EXPECT_EQ(streamed, terrain);
     std::array<std::uint8_t, 4> beyond{};
     EXPECT_EQ(reader->read(terrain.size(), beyond), 0U);
@@ -233,12 +239,14 @@ TEST_F(HpakPackageTest, MountsHundredsOfGigabytesInBoundedMemory) {
     // A range read that asks for more than one read allows fails before it allocates anything for the range.
     {
         const test::AllocationTracker tracker;
+
         try {
             (void)package->readRange("content/world.bin", size - io::Package::kMaxReadSize - 1, std::numeric_limits<std::size_t>::max());
             ADD_FAILURE() << "A range read longer than the limit must fail.";
         } catch (const std::runtime_error& error) {
             EXPECT_NE(std::string(error.what()).find("Read it in smaller ranges instead."), std::string::npos);
         }
+
         EXPECT_LT(tracker.getLargest(), std::size_t{1} << 20);
     }
 }
@@ -300,6 +308,7 @@ TEST_F(HpakPackageTest, ReadsTheChunksOfAShardItLacksFromTheLocalStore) {
         const ChunkRecord::Header header = record.serialize();
         records.emplace_back(header.begin(), header.end()).insert(records.back().end(), ciphertext.begin(), ciphertext.end());
     }
+
     catalogWriter.addFile("content/level.bin", Delivery::OnDemand, parts);
     const auto catalog = std::make_shared<const Catalog>(Catalog::parse(catalogWriter.write(), 1));
     const ShardReference reference{.shardId = Digest::of(test::TestFiles::bytes("remote shard")), .fileSize = 1000};
@@ -327,11 +336,13 @@ TEST_F(HpakPackageTest, ReadsTheChunksOfAShardItLacksFromTheLocalStore) {
 
     // A record that the device damaged leaves the store, and a download brings it back.
     store->flush();
+
     for (const std::filesystem::directory_entry& segment : std::filesystem::directory_iterator(folder.getPath() / "store" / "segments")) {
         std::fstream stream(segment.path(), std::ios::binary | std::ios::in | std::ios::out);
         stream.seekp(-10, std::ios::end);
         stream.put('x');
     }
+
     expectCode(Error::Code::CacheCorrupt, [&] { (void)package.readRange("content/level.bin", 5000, 10); });
     EXPECT_FALSE(store->contains(parts[1]));
     EXPECT_TRUE(store->contains(parts[0]));
@@ -360,9 +371,11 @@ TEST_F(HpakPackageTest, ReadsFromManyThreadsAtOnce) {
         });
         // clang-format on
     }
+
     for (std::thread& thread : threads) {
         thread.join();
     }
+
     EXPECT_EQ(matches, std::vector<int>(8, 6));
 }
 
@@ -376,6 +389,7 @@ TEST_F(HpakPackageTest, KeepsABoundedNumberOfShardsOpen) {
         parts.push_back("parts/part_" + std::to_string(100 + part) + ".bin");
         files.emplace("content/" + parts.back(), test::TestFiles::randomBytes(40 * 1024, part + 1));
     }
+
     release.build(io::MemoryPackage("source", files), 64 * 1024);
     ASSERT_GE(listShards().size(), parts.size());
     const auto counting = std::make_shared<test::CountingPackage>(release.getFiles());
@@ -393,9 +407,11 @@ TEST_F(HpakPackageTest, KeepsABoundedNumberOfShardsOpen) {
         });
         // clang-format on
     }
+
     for (std::thread& thread : threads) {
         thread.join();
     }
+
     EXPECT_EQ(matches, std::vector<std::size_t>(4, 2 * parts.size()));
     EXPECT_LE(counting->getOpenReaders(), ShardSet::kMaxOpenShards + 1);
     EXPECT_LE(counting->getMostOpenReaders(), ShardSet::kMaxOpenShards + 1 + matches.size());
@@ -419,6 +435,7 @@ TEST_F(HpakPackageTest, ReportsMissingAndDamagedContent) {
     for (const std::string& shard : shards) {
         std::filesystem::remove(release.getFolder() / shard);
     }
+
     const std::shared_ptr<io::Package> missing = open();
     EXPECT_TRUE(missing->exists("source/main.lua"));
     expectCode(Error::Code::MissingShard, [&] { (void)missing->read("source/main.lua"); });

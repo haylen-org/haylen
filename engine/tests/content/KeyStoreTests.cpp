@@ -42,6 +42,7 @@ TEST_F(KeyStoreTest, CreatesKeysThatOnlyTheirOwnerReads) {
     EXPECT_TRUE(created.getContentKeys()->contains(created.getActiveKeyId()));
 
     test::PrivateFiles::expectOwnerOnly(getFolder());
+
     for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(getFolder())) {
         test::PrivateFiles::expectOwnerOnly(entry.path());
     }

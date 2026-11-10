@@ -19,6 +19,7 @@ std::shared_ptr<const ContentKey> KeyRing::get(const Digest& id) const {
     if (found == keys.end()) {
         throw Error(Error::Code::UnknownKeyId, "The content key \"" + id.toHex() + "\" is not available to this app. Install the app build that matches its content.", {.keyId = id.toHex()});
     }
+
     return found->second;
 }
 

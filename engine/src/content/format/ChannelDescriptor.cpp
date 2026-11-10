@@ -13,9 +13,11 @@ ChannelDescriptor ChannelDescriptor::read(std::span<const std::uint8_t> bytes, s
     if (bytes.size() < kSigningKeyOffset + Digest::kSize + VerifyingKey::kSignatureSize) {
         reader.fail("ends before its fields and signature do");
     }
+
     if (!std::ranges::equal(reader.readBytes(kMagic.size()), kMagic)) {
         throw Error(Error::Code::UnsupportedFormat, "The file is not a Haylen channel descriptor.");
     }
+
     if (reader.read<std::uint16_t>() != kVersion) {
         throw Error(Error::Code::UnsupportedVersion, "The channel descriptor has a version this app does not read.");
     }
@@ -26,8 +28,10 @@ ChannelDescriptor ChannelDescriptor::read(std::span<const std::uint8_t> bytes, s
     if (trusted == trustedKeys.end()) {
         throw Error(Error::Code::ManifestSignatureInvalid, "The channel descriptor is signed by the key \"" + keyId.toHex() + "\", which this app does not trust.");
     }
+
     VerifyingKey::Signature signature{};
     std::ranges::copy(bytes.last(VerifyingKey::kSignatureSize), signature.begin());
+
     if (!trusted->verify(signedBytes, signature)) {
         throw Error(Error::Code::ManifestSignatureInvalid, "The signature of the channel descriptor is not valid, so it is damaged or was changed.");
     }
@@ -49,9 +53,11 @@ bool ChannelDescriptor::offersUpdate(std::uint64_t acceptedGeneration, const Dig
     if (generation > acceptedGeneration) {
         return true;
     }
+
     if (generation == acceptedGeneration && manifest == acceptedManifest) {
         return false;
     }
+
     throw Error(Error::Code::ManifestRollbackRejected, std::format("The channel \"{}\" offers generation {} with manifest \"{}\", but this app already accepted generation {} with manifest \"{}\".", channel, generation, manifest.toHex(), acceptedGeneration, acceptedManifest.toHex()));
 }
 

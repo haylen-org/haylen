@@ -24,6 +24,7 @@ std::optional<ChunkRecord> RecordCache::find(const ContentKey& key, const Digest
     if (!stream) {
         return std::nullopt;
     }
+
     std::vector<std::uint8_t> bytes{std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
     if (bytes.size() < ChunkRecord::kHeaderSize) {
         return std::nullopt;
@@ -35,6 +36,7 @@ std::optional<ChunkRecord> RecordCache::find(const ContentKey& key, const Digest
         if (record.contentId != contentId || bytes.size() != record.getRecordSize()) {
             return std::nullopt;
         }
+
         std::vector<std::uint8_t> opened(bytes.begin() + ChunkRecord::kHeaderSize, bytes.end());
         std::vector<std::uint8_t> plain;
         record.open(key, opened, plain);
@@ -61,6 +63,7 @@ void RecordCache::store(const ContentKey& key, const ChunkRecord& record, std::s
     if (!stream) {
         throw std::runtime_error("The build cache entry \"" + partial.generic_string() + "\" could not be written.");
     }
+
     std::filesystem::rename(partial, path);
 }
 

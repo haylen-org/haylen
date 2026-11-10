@@ -19,9 +19,11 @@ ReleaseBuilder::ReleaseBuilder(std::shared_ptr<const KeyRing> contentKeys, const
 
 ReleaseBuilder::Result ReleaseBuilder::build(const io::Package& app, const std::filesystem::path& output, const std::optional<std::filesystem::path>& earlier, const Options& options) const {
     const core::AppConfig config = core::AppConfig::fromPackage(app);
+
     if (std::filesystem::exists(output)) {
         throw std::invalid_argument("The release folder \"" + output.generic_string() + "\" exists already. Build into a new folder.");
     }
+
     const EarlierFiles files = earlier ? findEarlierFiles(*earlier) : EarlierFiles{};
     std::filesystem::create_directories(output);
     return {.app = buildRelease(app, config, Manifest::Domain::App, output, files, options), .content = buildRelease(app, config, Manifest::Domain::Content, output, files, options)};
@@ -31,6 +33,7 @@ ReleaseBuilder::EarlierFiles ReleaseBuilder::findEarlierFiles(const std::filesys
     if (!std::filesystem::is_directory(folder)) {
         throw std::invalid_argument("The folder \"" + folder.generic_string() + "\" of the previous release does not exist.");
     }
+
     EarlierFiles files;
     for (const std::filesystem::directory_entry& entry : std::filesystem::recursive_directory_iterator(folder)) {
         const std::string name = entry.path().filename().string();
@@ -38,15 +41,18 @@ ReleaseBuilder::EarlierFiles ReleaseBuilder::findEarlierFiles(const std::filesys
         if (!entry.is_regular_file() || (!manifest && entry.path().extension() != ShardReference::kExtension)) {
             continue;
         }
+
         if (!files.emplace(name, entry.path()).second && manifest) {
             throw std::invalid_argument("The folder \"" + folder.generic_string() + "\" holds \"" + name + "\" more than once, so it holds more than one release. Name the folder of one release.");
         }
     }
+
     for (const std::string_view manifest : {ReleasePackage::kAppManifestFile, ReleasePackage::kContentManifestFile}) {
         if (!files.contains(std::string(manifest))) {
             throw std::invalid_argument("The folder \"" + folder.generic_string() + "\" holds no \"" + std::string(manifest) + "\", so it holds no release to follow.");
         }
     }
+
     return files;
 }
 
@@ -65,6 +71,7 @@ ReleaseBuilder::Domain ReleaseBuilder::buildRelease(const io::Package& app, cons
         compiled = compileModules(app, inputs);
         envelope.luaAbi = LuaBytecodeAbi::get();
     }
+
     DomainBuild built = buildDomain(compiled ? *compiled : app, std::move(inputs), std::move(envelope), previous ? &*previous : nullptr, earlier, output, options.shardTarget);
     for (std::size_t shard = 0; shard < built.result.keptShards; ++shard) {
         keepShard(earlier.at(built.result.shards[shard].getFileName()), output, built.result.shards[shard]);
@@ -89,10 +96,12 @@ ReleaseBuilder::DomainBuild ReleaseBuilder::buildDomain(const io::Package& sourc
         if (before.domain != envelope.domain || before.application != envelope.application) {
             throw std::invalid_argument("The earlier manifest \"" + earlier->getId().toHex() + "\" belongs to another app or domain, so the build cannot reuse it.");
         }
+
         std::vector<bool> held;
         for (const ShardReference& shard : before.shards) {
             held.push_back(files.contains(shard.getFileName()));
         }
+
         builder.reuse(earlier->decryptCatalog(*keys), before.shards, held);
     }
 
@@ -107,6 +116,7 @@ Manifest ReleaseBuilder::readManifest(const std::filesystem::path& file) const {
     if (!stream) {
         throw std::runtime_error("The manifest \"" + file.generic_string() + "\" could not be read.");
     }
+
     const VerifyingKey trusted = signingKey->getVerifyingKey();
     return Manifest::read({std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()}, std::span(&trusted, 1));
 }
@@ -119,8 +129,10 @@ std::unique_ptr<io::MemoryPackage> ReleaseBuilder::compileModules(const io::Pack
             bytes = LuaCompiler::compile({reinterpret_cast<const char*>(bytes.data()), bytes.size()}, input.path);
             input.kind = Catalog::Kind::LuaBytecode;
         }
+
         files.emplace(input.path, std::move(bytes));
     }
+
     return std::make_unique<io::MemoryPackage>("app", std::move(files));
 }
 
@@ -143,15 +155,18 @@ std::vector<ContentBuilder::Input> ReleaseBuilder::listFiles(const io::Package& 
         if (path.substr(path.rfind('/') + 1) == kFolderFile) {
             continue;
         }
+
         if (domain == Manifest::Domain::App) {
             inputs.push_back({.path = std::move(path)});
             continue;
         }
+
         const std::string_view asset = std::string_view(path).substr(io::Path::kContentDirectory.size() + 1);
         const Delivery delivery = config.content.getDelivery(asset);
         std::string pack(config.content.getPack(asset));
         inputs.push_back({.path = std::move(path), .delivery = delivery, .pack = std::move(pack)});
     }
+
     return inputs;
 }
 
@@ -164,6 +179,7 @@ void ReleaseBuilder::keepShard(const std::filesystem::path& source, const std::f
 
     // Shards never change after they are written, so the new release links the file where the file system can.
     std::filesystem::create_hard_link(source, output / shard.getFileName(), error);
+
     if (error) {
         std::filesystem::copy_file(source, output / shard.getFileName());
     }

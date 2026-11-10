@@ -56,6 +56,7 @@ class HostileInputTest : public ::testing::Test {
                 seeds.push_back(withParser(1, readFile(entry.path())));
             }
         }
+
         seeds.push_back(withParser(2, ShardIndex({{.storedId = Digest::of(plain), .recordOffset = 160, .encodedSize = 5, .plainSize = 5}, {.storedId = Digest::of(header), .recordOffset = 300, .encodedSize = 5, .plainSize = 5}}).serialize()));
 
         CatalogWriter catalog;
@@ -122,6 +123,7 @@ TEST(BinaryReaderTest, NeverMovesPastItsBytes) {
         EXPECT_EQ(error.getCode(), Error::Code::CorruptIndex);
         EXPECT_EQ(std::string(error.what()), "The test structure ends before its fields do.");
     }
+
     EXPECT_EQ(reader.getPosition(), 0U);
     EXPECT_EQ(reader.readString(2), "ab");
     EXPECT_THROW(reader.requireEnd(), Error);

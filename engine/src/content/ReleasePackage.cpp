@@ -32,6 +32,7 @@ std::unique_ptr<ReleasePackage> ReleasePackage::open(std::shared_ptr<const io::P
         const bool provided = bootstrap.keys->getKey(id, key);
         const Digest added = provided ? keys->add(key) : Digest();
         crypto_wipe(key.data(), key.size());
+
         if (added != Digest(id)) {
             throw Error(Error::Code::KeyUnavailable, "The content key \"" + Digest(id).toHex() + "\" of the app is not available, so the build of the app is damaged. Install the app again.");
         }
@@ -41,6 +42,7 @@ std::unique_ptr<ReleasePackage> ReleasePackage::open(std::shared_ptr<const io::P
     for (const Bootstrap::PublicKey& key : bootstrap.trustedKeys) {
         trusted.emplace_back(key);
     }
+
     const Compatibility compatibility{.application = Manifest::identifyApplication(bootstrap.identifier), .appBuild = bootstrap.appBuild, .profile = bootstrap.profile};
 
     // The store only holds what downloads can bring again, so a device that refuses it leaves the app with the content it ships.
@@ -52,6 +54,7 @@ std::unique_ptr<ReleasePackage> ReleasePackage::open(std::shared_ptr<const io::P
             core::Log::warning("The content store of the app could not be opened, so the app plays the content it ships with: {}", error.what());
         }
     }
+
     auto package = std::make_unique<ReleasePackage>(std::move(files), std::move(keys), trusted, compatibility, std::move(store), bootstrap.keys);
     package->remote = std::move(remoteAddress);
     return package;
@@ -62,12 +65,15 @@ std::shared_ptr<io::Package> ReleasePackage::openBundled(std::shared_ptr<io::Pac
     if (bootstrap != nullptr && !files->exists(kAppManifestFile)) {
         throw Error(Error::Code::MissingManifest, "This build of the app plays only its protected release, and the release is missing or damaged. Install the app again.");
     }
+
     if (!files->exists(kAppManifestFile)) {
         return files;
     }
+
     if (bootstrap == nullptr) {
         throw Error(Error::Code::KeyUnavailable, "The app ships a protected release, and this build holds no keys to open it. Build the app in the Release configuration with \"haylen.py\", which compiles the keys of the app into it.");
     }
+
     return open(std::move(files), *bootstrap, std::move(openStore), std::move(remoteAddress));
 }
 
@@ -93,10 +99,12 @@ void ReleasePackage::acquireKey(const Digest& id, std::function<void(bool)> done
         done(true);
         return;
     }
+
     if (!keys->provider) {
         done(false);
         return;
     }
+
     if (asked) {
         return;
     }
@@ -125,6 +133,7 @@ void ReleasePackage::receiveKey(Keys& state, const KeyProvider& provider, const 
                 state.ring = std::move(ring);
             }
         }
+
         waiting = std::move(state.waiting.extract(id).mapped());
     }
     crypto_wipe(key.data(), key.size());
@@ -148,6 +157,7 @@ std::shared_ptr<const ReleasePackage::Content> ReleasePackage::load(std::vector<
     if (manifest->getEnvelope().domain != domain) {
         throw Error(Error::Code::CorruptManifest, "The manifest \"" + manifest->getId().toHex() + "\" belongs to the other domain.", {.manifestId = manifest->getId().toHex()});
     }
+
     compatibility.check(*manifest);
 
     std::shared_ptr<const Catalog> catalog;
@@ -157,18 +167,21 @@ std::shared_ptr<const ReleasePackage::Content> ReleasePackage::load(std::vector<
         error.getDetails().manifestId = manifest->getId().toHex();
         throw;
     }
+
     // clang-format off
     auto shards = std::make_shared<const ShardSet>(manifest->getEnvelope().shards, ring, [releaseFiles = files, packFolders = packs](const ShardReference& reference) -> std::unique_ptr<io::PackageReader> {
         const std::string name = reference.getFileName();
         if (releaseFiles->exists(name)) {
             return releaseFiles->openReader(name);
         }
+
         std::scoped_lock lock(packFolders->mutex);
         for (const std::shared_ptr<const io::Package>& folder : packFolders->folders) {
             if (folder->exists(name)) {
                 return folder->openReader(name);
             }
         }
+
         return nullptr;
     }, domain == Manifest::Domain::Content ? store : nullptr);
     // clang-format on
@@ -184,6 +197,7 @@ std::vector<bool> ReleasePackage::findInstalledShards(const Content& shown) cons
         const std::string name = references[index].getFileName();
         installed[index] = files->exists(name) || std::ranges::any_of(packs->folders, [&name](const std::shared_ptr<const io::Package>& pack) { return pack->exists(name); });
     }
+
     return installed;
 }
 
@@ -191,6 +205,7 @@ void ReleasePackage::addPackFolder(const std::filesystem::path& folder) {
     if (!std::filesystem::is_directory(folder)) {
         throw std::runtime_error("The pack folder \"" + folder.generic_string() + "\" does not exist.");
     }
+
     {
         std::scoped_lock lock(packs->mutex);
         packs->folders.push_back(io::Package::openDirectory(folder));
@@ -205,20 +220,25 @@ void ReleasePackage::recover() {
     if (!store) {
         return;
     }
+
     const StoreState state = store->getState();
+
     for (const Digest& id : {state.active, state.previous}) {
         if (id.isZero()) {
             break;
         }
+
         try {
             std::optional<std::vector<std::uint8_t>> bytes = store->readManifest(id);
             if (!bytes) {
                 throw Error(Error::Code::MissingManifest, "The store lost the manifest.");
             }
+
             std::shared_ptr<const Content> loaded = load(std::move(*bytes));
             if (loaded->manifest->getId() != id) {
                 throw Error(Error::Code::CorruptManifest, "The file of the manifest holds another manifest.");
             }
+
             content = std::move(loaded);
             break;
         } catch (const Error& error) {
@@ -227,11 +247,13 @@ void ReleasePackage::recover() {
                 core::Log::warning("The content \"{}\" waits for its key, so the app plays earlier content: {}", id.toHex(), error.what());
                 continue;
             }
+
             if (!recovery) {
                 recovery = Recovery{.failed = id, .reason = error.what()};
             }
         }
     }
+
     if (!recovery) {
         return;
     }
@@ -266,6 +288,7 @@ std::shared_ptr<const io::Package> ReleasePackage::getDomain(std::string_view pa
     if (normalized == io::Path::kContentDirectory || normalized.starts_with(std::string(io::Path::kContentDirectory) + "/")) {
         return getContent()->package;
     }
+
     return app->package;
 }
 
@@ -295,12 +318,14 @@ bool ReleasePackage::isLocal(std::string_view path) const {
     if (!index) {
         throw std::runtime_error("The package file \"" + io::Path::normalize(path) + "\" was not found.");
     }
+
     const Catalog::File file = shown->catalog->getFile(*index);
     for (std::uint64_t part = file.firstPart; part < file.firstPart + file.partCount; ++part) {
         if (!shown->shards->hasChunk(shown->catalog->getChunk(shown->catalog->getPart(part).chunk))) {
             return false;
         }
     }
+
     return true;
 }
 
@@ -308,6 +333,7 @@ std::vector<std::string> ReleasePackage::list(std::string_view directory) const 
     if (!io::Path::normalize(directory).empty()) {
         return getDomain(directory)->list(directory);
     }
+
     std::vector<std::string> paths = app->package->list(directory);
     std::vector<std::string> assets = getContent()->package->list(directory);
     paths.insert(paths.end(), std::make_move_iterator(assets.begin()), std::make_move_iterator(assets.end()));

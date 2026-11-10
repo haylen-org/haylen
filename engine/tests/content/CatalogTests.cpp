@@ -53,6 +53,7 @@ class ContentCatalogTest : public ::testing::Test {
         for (std::uint64_t index = first; index < last; ++index) {
             found.emplace_back(catalog.getFile(index).path);
         }
+
         return found;
     }
 
@@ -143,6 +144,7 @@ TEST_F(ContentCatalogTest, RejectsPathsThatAreNotNormalized) {
     for (const std::string& path : {std::string(""), std::string("/etc/passwd"), std::string("../secret"), std::string("content/../app.json"), std::string("content//a.png"), std::string("content/./a.png"), std::string("content/a.png/"), std::string("content\\a.png"), std::string("C:/a.png"), std::string("content/a\0b.png", 15), std::string("content/\x7F.png"), std::string("content/\xC0\xAF.png"), std::string("content/\xFF.png"), std::string(Catalog::kMaximumPathLength + 1, 'a')}) {
         EXPECT_FALSE(Catalog::isValidPath(path)) << path;
     }
+
     for (const std::string& path : {std::string("app.json"), std::string("content/maps/island.tmj"), std::string("content/ação/naïve €.png"), std::string(Catalog::kMaximumPathLength, 'a')}) {
         EXPECT_TRUE(Catalog::isValidPath(path)) << path;
     }
@@ -163,6 +165,7 @@ TEST_F(ContentCatalogTest, RejectsDamagedCatalogs) {
     for (std::size_t size = 0; size < bytes.size(); ++size) {
         expectCorrupt(std::vector<std::uint8_t>(bytes.begin(), bytes.begin() + static_cast<std::ptrdiff_t>(size)));
     }
+
     for (std::size_t index = 0; index < bytes.size(); ++index) {
         std::vector<std::uint8_t> changed = bytes;
         changed[index] ^= 0x80;

@@ -44,6 +44,7 @@ class ShardTest : public ::testing::Test {
         [[nodiscard]] std::size_t read(std::uint64_t offset, std::span<std::uint8_t> target) override {
             const auto count = static_cast<std::size_t>(std::min<std::uint64_t>(target.size(), offset < size ? size - offset : 0));
             std::fill_n(target.begin(), count, std::uint8_t{0});
+
             for (const auto& [start, bytes] : regions) {
                 for (std::size_t index = 0; index < bytes.size(); ++index) {
                     if (start + index >= offset && start + index < offset + count) {
@@ -51,6 +52,7 @@ class ShardTest : public ::testing::Test {
                     }
                 }
             }
+
             return count;
         }
 
@@ -84,6 +86,7 @@ class ShardTest : public ::testing::Test {
             const ChunkRecord record = RecordSealer::seal(*getKey(), chunk, ChunkRecord::identifyContent(chunk), ciphertext);
             writer.add(record, ciphertext);
         }
+
         return writer.finish();
     }
 
@@ -92,6 +95,7 @@ class ShardTest : public ::testing::Test {
         for (std::uint64_t seed = 1; seed <= 4; ++seed) {
             chunks.push_back(test::TestFiles::randomBytes(1000 * seed, seed));
         }
+
         chunks.push_back(test::TestFiles::bytes(std::string(5000, 'a')));
         chunks.push_back(chunks.front());
         return chunks;
@@ -193,6 +197,7 @@ TEST_F(ShardTest, RejectsEveryChangeToARecord) {
         } else {
             changedCiphertext[index - ChunkRecord::kHeaderSize] ^= 0x01;
         }
+
         std::vector<std::uint8_t> opened;
         try {
             ChunkRecord::parse(changedHeader).open(*getKey(), changedCiphertext, opened);
@@ -295,6 +300,7 @@ TEST_F(ShardTest, LeavesNoFileOfAShardItDidNotFinish) {
     // A folder under the name a shard grows in leaves no room for it.
     const std::filesystem::path partial = directory.getPath() / "blocked" / "shard.hpak.partial";
     std::filesystem::create_directories(partial);
+
     try {
         const ShardWriter writer(directory.getPath() / "blocked", getKey());
         FAIL() << "A shard file that cannot be created must stop the writer.";
@@ -323,11 +329,13 @@ TEST_F(ShardTest, RejectsEveryChangeToTheHeaderAndTheIndex) {
         changed[index] ^= 0x10;
         expectRejected(std::move(changed), reference, keys);
     }
+
     for (std::uint64_t index = header.indexOffset; index < file.size(); index += 5) {
         std::vector<std::uint8_t> changed = file;
         changed[static_cast<std::size_t>(index)] ^= 0x01;
         expectRejected(std::move(changed), reference, keys);
     }
+
     for (std::size_t size = 0; size < file.size(); size += 97) {
         expectRejected(std::vector<std::uint8_t>(file.begin(), file.begin() + static_cast<std::ptrdiff_t>(size)), reference, keys);
         ShardReference truncated = reference;
@@ -417,6 +425,7 @@ TEST_F(ShardTest, ReportsChunksTheShardDoesNotHold) {
     Catalog::Chunk larger = stored;
     larger.plainSize += 1000;
     larger.encodedSize += 1000;
+
     for (const Catalog::Chunk& named : {otherContent, larger}) {
         expectReadFails(reader, named, Error::Code::CorruptChunk);
     }

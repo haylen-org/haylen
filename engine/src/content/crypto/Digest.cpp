@@ -27,15 +27,18 @@ Digest Digest::ofFile(const std::filesystem::path& file) {
     if (!stream) {
         throw std::runtime_error("The file \"" + file.generic_string() + "\" could not be read.");
     }
+
     std::vector<std::uint8_t> buffer(kFileBlockSize);
     Hasher hasher;
     while (stream) {
         stream.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(buffer.size()));
         hasher.update(std::span(buffer).first(static_cast<std::size_t>(stream.gcount())));
     }
+
     if (stream.bad()) {
         throw std::runtime_error("The file \"" + file.generic_string() + "\" could not be read to its end.");
     }
+
     return hasher.finish();
 }
 
@@ -47,14 +50,17 @@ std::optional<Digest> Digest::fromHex(std::string_view text) noexcept {
     if (text.size() != kSize * 2) {
         return std::nullopt;
     }
+
     Digest digest;
     for (std::size_t index = 0; index < text.size(); ++index) {
         const std::size_t value = kDigits.find(text[index]);
         if (value == std::string_view::npos) {
             return std::nullopt;
         }
+
         digest.bytes[index / 2] = static_cast<std::uint8_t>(digest.bytes[index / 2] | (index % 2 == 0 ? value << 4 : value));
     }
+
     return digest;
 }
 
@@ -65,6 +71,7 @@ std::string Digest::toHex() const {
         text.push_back(kDigits[byte >> 4]);
         text.push_back(kDigits[byte & 0x0F]);
     }
+
     return text;
 }
 
@@ -74,6 +81,7 @@ std::size_t Digest::Hash::operator()(const Digest& digest) const noexcept {
     for (std::size_t index = 0; index < sizeof(std::size_t); ++index) {
         value = (value << 8) | digest.bytes[index];
     }
+
     return value;
 }
 

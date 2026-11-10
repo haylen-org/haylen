@@ -23,6 +23,7 @@ class LuaCompilerTest : public ::testing::Test {
         if (luaL_loadbufferx(state.get(), reinterpret_cast<const char*>(bytes.data()), bytes.size(), "=chunk", mode) == LUA_OK) {
             return "";
         }
+
         std::string message = lua_tostring(state.get(), -1);
         lua_pop(state.get(), 1);
         return message;

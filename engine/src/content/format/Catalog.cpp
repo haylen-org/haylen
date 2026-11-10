@@ -28,6 +28,7 @@ template <std::unsigned_integral T> T Catalog::load(std::size_t offset) const no
     for (std::size_t index = 0; index < sizeof(T); ++index) {
         value |= static_cast<T>(static_cast<T>(bytes[offset + index]) << (8 * index));
     }
+
     return value;
 }
 
@@ -39,12 +40,15 @@ Catalog Catalog::parse(std::vector<std::uint8_t> plain, std::uint64_t shardCount
     if (table.size() < kHeaderSize) {
         reader.fail("ends before its header does");
     }
+
     if (!std::ranges::equal(reader.readBytes(kMagic.size()), kMagic)) {
         throw Error(Error::Code::UnsupportedFormat, "The catalog does not start with the catalog magic.");
     }
+
     if (reader.read<std::uint16_t>() != kVersion) {
         throw Error(Error::Code::UnsupportedVersion, "The catalog has a version this app does not read.");
     }
+
     reader.skipZeros(sizeof(std::uint16_t));
     const auto files = reader.read<std::uint64_t>();
     const auto chunks = reader.read<std::uint64_t>();
@@ -58,8 +62,10 @@ Catalog Catalog::parse(std::vector<std::uint8_t> plain, std::uint64_t shardCount
         if (count > (table.size() - total) / size) {
             reader.fail("declares tables larger than its bytes");
         }
+
         total += count * size;
     }
+
     if (total != table.size()) {
         reader.fail("has bytes its tables do not account for");
     }
@@ -79,9 +85,11 @@ bool Catalog::isValidPath(std::string_view path) {
     if (path.empty() || path.size() > kMaximumPathLength || !core::Utf8::isValid(path)) {
         return false;
     }
+
     if (std::ranges::any_of(path, [](char character) { return static_cast<unsigned char>(character) < 0x20 || character == 0x7F || character == '\\'; })) {
         return false;
     }
+
     try {
         return io::Path::normalize(path) == path;
     } catch (const std::invalid_argument&) {
@@ -99,13 +107,16 @@ void Catalog::validate(std::uint64_t shardCount) const {
         if (!Compression::isSupported(codec, profile) || load<std::uint16_t>(row + ChunkLayout::kReserved) != 0) {
             fail("names a codec this app does not decode");
         }
+
         const Chunk chunk = getChunk(index);
         if (!ChunkRecord::hasValidSizes(chunk.codec, chunk.plainSize, chunk.encodedSize)) {
             fail("declares a chunk of sizes no chunk has");
         }
+
         if (chunk.shard >= shardCount) {
             fail("places a chunk in a shard its manifest does not name");
         }
+
         if (index > 0 && !(getChunk(index - 1).storedId < chunk.storedId)) {
             fail("lists chunks out of order or twice");
         }
@@ -118,6 +129,7 @@ void Catalog::validate(std::uint64_t shardCount) const {
         if (pathOffset > stringSize || pathLength > stringSize - pathOffset) {
             fail("places a path outside its string table");
         }
+
         if (load<std::uint8_t>(row + FileLayout::kKind) > static_cast<std::uint8_t>(Kind::LuaBytecode) || load<std::uint8_t>(row + FileLayout::kDelivery) > static_cast<std::uint8_t>(Delivery::OnDemand) || load<std::uint16_t>(row + FileLayout::kReserved) != 0) {
             fail("declares a file of a kind or delivery this app does not know");
         }
@@ -126,9 +138,11 @@ void Catalog::validate(std::uint64_t shardCount) const {
         if (!isValidPath(file.path)) {
             fail("holds a path that is not a normalized UTF-8 package path");
         }
+
         if (index > 0 && !(getPath(index - 1) < file.path)) {
             fail("lists paths out of order or twice");
         }
+
         if (file.firstPart > partCount || file.partCount > partCount - file.firstPart) {
             fail("gives a file parts outside its part table");
         }
@@ -140,12 +154,15 @@ void Catalog::validate(std::uint64_t shardCount) const {
             if (piece.chunk >= chunkCount || piece.offset != expected) {
                 fail("gives a file parts that do not follow each other");
             }
+
             const std::uint64_t plainSize = getChunk(piece.chunk).plainSize;
             if (plainSize > std::numeric_limits<std::uint64_t>::max() - expected) {
                 fail("gives a file more bytes than any file holds");
             }
+
             expected += plainSize;
         }
+
         if (expected != file.size) {
             fail("gives a file parts that do not add up to its size");
         }
@@ -200,6 +217,7 @@ std::uint64_t Catalog::lowerBound(std::string_view path) const noexcept {
             high = middle;
         }
     }
+
     return low;
 }
 
@@ -208,6 +226,7 @@ std::optional<std::uint64_t> Catalog::findFile(std::string_view path) const noex
     if (index < fileCount && getPath(index) == path) {
         return index;
     }
+
     return std::nullopt;
 }
 
@@ -235,6 +254,7 @@ std::uint64_t Catalog::findPart(const File& file, std::uint64_t offset) const no
             high = middle;
         }
     }
+
     return low;
 }
 

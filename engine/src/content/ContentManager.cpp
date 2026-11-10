@@ -32,6 +32,7 @@ ContentManager::ContentManager(core::Engine& owner, std::shared_ptr<io::Package>
     if (!release || !release->getStore()) {
         return;
     }
+
     transport = std::make_unique<HttpTransport>(engine.getScriptRuntime());
     downloader = std::make_unique<Downloader>(engine.getJobs(), *transport, release->getStore());
     updater = std::make_unique<Updater>(release, engine.getJobs(), *transport, *downloader, settings);
@@ -55,6 +56,7 @@ std::optional<ContentManager::Update> ContentManager::getUpdate() const {
     if (!offer) {
         return std::nullopt;
     }
+
     return Update{.generation = offer->generation, .downloadBytes = offer->downloadBytes, .reusedBytes = offer->reusedBytes};
 }
 
@@ -67,9 +69,11 @@ bool ContentManager::isLocal(std::string_view path) const {
     if (!engine.getPackage().exists(toPackagePath(path))) {
         return true;
     }
+
     if (!release) {
         return settings.getDelivery(io::Path::normalize(path)) == Delivery::Required || broughtInDevelopment.contains(io::Path::normalize(path));
     }
+
     return release->isLocal(toPackagePath(path));
 }
 
@@ -106,6 +110,7 @@ std::string ContentManager::locate(const ShardReference& pack) const {
     if (!release->getRemoteAddress().empty() && std::ranges::find(shipped, pack) != shipped.end()) {
         return release->getRemoteAddress() + pack.getFileName();
     }
+
     return updater->locate(pack);
 }
 
@@ -118,14 +123,17 @@ void ContentManager::start() {
     if (!release) {
         return;
     }
+
     // The app hears of a fall back once it runs, so the listeners that its main module adds receive it.
     if (const std::optional<ReleasePackage::Recovery> recovery = release->takeRecovery()) {
         const core::Json report = {{"manifest", recovery->failed.toHex()}, {"reason", recovery->reason}};
         recoveryReport = engine.getEvents().on(core::LifecycleEvent::kAppStarted, [this, report](core::EventBus::Event&) { engine.getEvents().emit(core::LifecycleEvent::kContentRecovered, report); }, {.once = true});
     }
+
     if (!downloader) {
         return;
     }
+
     listen();
     startHold = engine.holdStart();
     holdingStart = true;
@@ -145,11 +153,14 @@ void ContentManager::resumeOnline() {
         if (retryable) {
             bringRequired();
         }
+
         return;
     }
+
     if (prefetchWanted && !prefetching && !inBackground) {
         prefetchRules();
     }
+
     if (checkAgain && retryable) {
         checkAgain = false;
         startCheck();
@@ -158,6 +169,7 @@ void ContentManager::resumeOnline() {
 
 void ContentManager::pauseBackground() {
     inBackground = true;
+
     if (prefetchRequest != 0) {
         downloader->cancel(std::exchange(prefetchRequest, 0));
     }
@@ -166,6 +178,7 @@ void ContentManager::pauseBackground() {
 void ContentManager::resumeBackground() {
     inBackground = false;
     bringBackLost();
+
     if (prefetchWanted && !prefetching) {
         prefetchRules();
     }
@@ -175,6 +188,7 @@ void ContentManager::bringBackLost() {
     if (!downloader || holdingStart) {
         return;
     }
+
     const std::shared_ptr<const ReleasePackage::Content> content = release->getContent();
     // clang-format off
     engine.getJobs().run([store = release->getStore(), content, chunks = Updater::getChunks(*content->catalog, Delivery::Required, settings)] {
@@ -184,13 +198,17 @@ void ContentManager::bringBackLost() {
         if (owner.expired() || !found.isOk() || found.value->first == 0) {
             return;
         }
+
         core::Log::warning("The device removed {} downloaded records of the content while the app was in the background, so the content it needs comes down again.", found.value->first);
+
         if (!prefetching && !inBackground) {
             prefetchRules();
         }
+
         if (found.value->second.empty()) {
             return;
         }
+
         downloader->fetch(content->shards, found.value->second, [this](const ShardReference& pack) { return locate(pack); }, {
             .onProgress = {},
             .onComplete = [this, owner](std::optional<Error> failure) {
@@ -208,6 +226,7 @@ std::optional<Error> ContentManager::checkRoom(std::uint64_t downloadBytes, std:
     if (required <= available) {
         return std::nullopt;
     }
+
     return Error(Error::Code::InsufficientStorage, std::format("The content needs {} bytes of room on the device and {} are free. Free some room and try again.", required, available), {.requiredBytes = required, .availableBytes = available});
 }
 
@@ -223,18 +242,22 @@ void ContentManager::bringRequired() {
         if (owner.expired()) {
             return;
         }
+
         if (!missing.isOk()) {
             fail(Error(Error::Code::CacheCorrupt, missing.error));
             return;
         }
+
         if (missing.value->empty()) {
             finishStart();
             return;
         }
+
         if (!hasServer()) {
             fail(Error(Error::Code::StoreAssetUnavailable, "The content that the app needs to start is not on the device, and the app names no server to download it from. Install the app again."));
             return;
         }
+
         progress = {.totalBytes = Downloader::measure(*missing.value, *release->getStore())};
         downloader->fetch(content->shards, *missing.value, [this](const ShardReference& pack) { return locate(pack); }, {
             .onProgress = [this](const Downloader::Progress& received) { progress = {.receivedBytes = received.receivedBytes, .totalBytes = received.totalBytes}; },
@@ -242,6 +265,7 @@ void ContentManager::bringRequired() {
                 if (owner.expired()) {
                     return;
                 }
+
                 if (!failure) {
                     finishStart();
                     return;
@@ -254,6 +278,7 @@ void ContentManager::bringRequired() {
                     bringRequired();
                     return;
                 }
+
                 fail(*failure);
             },
         }, Downloader::Priority::Foreground, Downloader::Use::Read);
@@ -271,6 +296,7 @@ void ContentManager::finishStart() {
     for (const Catalog::Chunk& chunk : Updater::getChunks(*release->getContent()->catalog, Delivery::Required, settings)) {
         required.push_back(chunk.storedId);
     }
+
     release->getStore()->pin(required);
 
     // The store forgets what no retained content uses before anything new arrives, and the background work begins after that.
@@ -279,13 +305,17 @@ void ContentManager::finishStart() {
         if (owner.expired()) {
             return;
         }
+
         if (failure) {
             core::Log::warning("The content store could not drop what the app no longer uses: {}", failure->what());
         }
+
         if (!hasServer()) {
             return;
         }
+
         prefetchRules();
+
         if (settings.updates && settings.updates->enabled) {
             startCheck();
         }
@@ -304,39 +334,49 @@ void ContentManager::prefetchRules() {
         if (owner.expired()) {
             return;
         }
+
         prefetching = false;
+
         if (!found.isOk() || found.value->first.empty()) {
             prefetchWanted = false;
             return;
         }
+
         // The app went to the background meanwhile, and the prefetch begins once it is active again.
         if (inBackground) {
             return;
         }
+
         const std::vector<Catalog::Chunk>& missing = found.value->first;
         if (const std::optional<Error> lacking = checkRoom(Downloader::measure(missing, *release->getStore()), missing.size(), found.value->second)) {
             core::Log::warning("The prefetched content does not download, and it downloads when the app asks for it: {}", lacking->what());
             prefetchWanted = false;
             return;
         }
+
         prefetching = true;
         prefetchRequest = downloader->fetch(content->shards, missing, [this](const ShardReference& pack) { return locate(pack); }, {
             .onComplete = [this, owner](std::optional<Error> failure) {
                 if (owner.expired()) {
                     return;
                 }
+
                 prefetching = false;
                 prefetchRequest = 0;
+
                 if (failure && failure->getCode() == Error::Code::NetworkCancelled) {
                     if (!inBackground) {
                         prefetchRules();
                     }
+
                     return;
                 }
+
                 if (failure) {
                     core::Log::warning("The prefetched content stopped downloading, and it goes on when the network comes back or downloads when the app asks for it: {}", failure->what());
                     return;
                 }
+
                 prefetchWanted = false;
             },
         }, Downloader::Priority::Background);
@@ -352,9 +392,11 @@ void ContentManager::startCheck() {
             checkAgain = true;
             return;
         }
+
         if (!found) {
             return;
         }
+
         download({}, [this, owner = std::weak_ptr(alive)](std::optional<Error> installFailure) {
             if (!owner.expired() && installFailure) {
                 checkAgain = true;
@@ -378,6 +420,7 @@ void ContentManager::bringAssets(const std::vector<std::string>& paths, Progress
         if (!engine.getPackage().exists(toPackagePath(path))) {
             throw std::invalid_argument("The asset \"" + path + "\" does not exist.");
         }
+
         if (!isLocal(path)) {
             wanted.push_back(io::Path::normalize(path));
         }
@@ -390,10 +433,13 @@ void ContentManager::bringAssets(const std::vector<std::string>& paths, Progress
             if (owner.expired()) {
                 return;
             }
+
             broughtInDevelopment.insert(wanted.begin(), wanted.end());
+
             if (onProgress) {
                 onProgress({.receivedBytes = 1, .totalBytes = 1});
             }
+
             done(std::nullopt);
         });
         // clang-format on
@@ -408,22 +454,28 @@ void ContentManager::bringAssets(const std::vector<std::string>& paths, Progress
             packs.push_back(pack);
         }
     }
+
     std::erase_if(packSources, [](const std::shared_ptr<PackSourceLink>& link) { return !link->isConnected(); });
+
     if (packs.empty() || packSources.empty()) {
         fetchFromServer(std::move(wanted), std::move(onProgress), std::move(done), readIn);
         return;
     }
+
     // clang-format off
     deliverPacks(std::move(packs), 0, std::make_shared<const PackSources>(packSources), onProgress, [this, wanted = std::move(wanted), onProgress, done = std::move(done), readIn](std::optional<Error> failure) mutable {
         if (failure) {
             done(std::move(failure));
             return;
         }
+
         std::erase_if(wanted, [this](const std::string& path) { return isLocal(path); });
+
         if (wanted.empty()) {
             done(std::nullopt);
             return;
         }
+
         fetchFromServer(std::move(wanted), std::move(onProgress), std::move(done), readIn);
     });
     // clang-format on
@@ -434,6 +486,7 @@ void ContentManager::deliverPacks(std::vector<std::string> packs, std::size_t in
         done(std::nullopt);
         return;
     }
+
     std::string pack = packs[index];
     // clang-format off
     askSource(std::move(pack), sources, 0, onProgress, [this, packs = std::move(packs), index, sources, onProgress, done = std::move(done)](std::optional<Error> failure) mutable {
@@ -441,6 +494,7 @@ void ContentManager::deliverPacks(std::vector<std::string> packs, std::size_t in
             done(std::move(failure));
             return;
         }
+
         deliverPacks(std::move(packs), index + 1, std::move(sources), std::move(onProgress), std::move(done));
     });
     // clang-format on
@@ -450,10 +504,12 @@ void ContentManager::askSource(std::string pack, std::shared_ptr<const PackSourc
     while (index < sources->size() && (!(*sources)[index]->isConnected() || (*sources)[index]->isBlocked())) {
         ++index;
     }
+
     if (index == sources->size()) {
         done(std::nullopt);
         return;
     }
+
     const std::shared_ptr<PackSourceLink>& link = (*sources)[index];
     const std::uint64_t request = ++packRequests;
 
@@ -462,27 +518,34 @@ void ContentManager::askSource(std::string pack, std::shared_ptr<const PackSourc
     auto answer = std::make_shared<std::function<void(std::optional<std::filesystem::path>, std::optional<Error>)>>();
     *answer = [this, owner = std::weak_ptr(alive), held = std::weak_ptr(link), request, pack, sources, index, onProgress, done = std::move(done)](std::optional<std::filesystem::path> folder, std::optional<Error> failure) mutable {
         const std::shared_ptr<PackSourceLink> source = held.lock();
+
         if (owner.expired() || !done) {
             return;
         }
+
         Completion finish = std::exchange(done, nullptr);
+
         if (source) {
             source->waiting.erase(request);
         }
+
         if (failure) {
             finish(std::move(failure));
             return;
         }
+
         if (!folder) {
             askSource(std::move(pack), std::move(sources), index + 1, std::move(onProgress), std::move(finish));
             return;
         }
+
         try {
             addPackFolder(*folder);
         } catch (const std::runtime_error&) {
             finish(Error(Error::Code::StoreAssetUnavailable, "The source of packs delivered the pack \"" + pack + "\" into \"" + folder->generic_string() + "\", which is no folder."));
             return;
         }
+
         finish(std::nullopt);
     };
     link->waiting.emplace(request, [&jobs = engine.getJobs(), owner = std::weak_ptr(alive), answer] {
@@ -523,6 +586,7 @@ void ContentManager::fetchFromServer(std::vector<std::string> wanted, ProgressCa
             chunks.push_back(content->catalog->getChunk(content->catalog->getPart(part).chunk));
         }
     }
+
     // clang-format off
     engine.getJobs().run([content, chunks = std::move(chunks), store = release->getStore()] {
         return std::pair(Downloader::findMissing(*content->shards, chunks), store->getAvailableSpace());
@@ -530,15 +594,18 @@ void ContentManager::fetchFromServer(std::vector<std::string> wanted, ProgressCa
         if (owner.expired()) {
             return;
         }
+
         if (!found.isOk()) {
             done(Error(Error::Code::CacheCorrupt, found.error));
             return;
         }
+
         const std::vector<Catalog::Chunk>& missing = found.value->first;
         if (std::optional<Error> lacking = missing.empty() ? std::nullopt : checkRoom(Downloader::measure(missing, *release->getStore()), missing.size(), found.value->second)) {
             done(std::move(lacking));
             return;
         }
+
         downloader->fetch(content->shards, missing, [this](const ShardReference& pack) { return locate(pack); }, {
             .onProgress = [onProgress = std::move(onProgress)](const Downloader::Progress& received) {
                 if (onProgress) {
@@ -555,9 +622,11 @@ void ContentManager::check(std::function<void(std::optional<Update>, std::option
     if (!release) {
         throw std::logic_error("The app plays its folder in development, which has no updates. Build it in the Release configuration to check for updates.");
     }
+
     if (!updater || !settings.updates) {
         throw std::logic_error("The app names no content server, so it has no updates. Name one in \"content.updates\" of \"app.json\".");
     }
+
     status = Status::Checking;
     error.reset();
     // clang-format off
@@ -565,17 +634,21 @@ void ContentManager::check(std::function<void(std::optional<Update>, std::option
         if (owner.expired()) {
             return;
         }
+
         if (failure) {
             fail(*failure);
             engine.getEvents().emit(core::LifecycleEvent::kContentUpdateFailed, {{"code", Error::getCodeName(failure->getCode())}, {"message", failure->what()}});
             done(std::nullopt, std::move(failure));
             return;
         }
+
         status = installed ? Status::Ready : Status::Idle;
+
         if (!found) {
             done(std::nullopt, std::nullopt);
             return;
         }
+
         offer = std::make_unique<UpdateOffer>(std::move(*found));
         installed = false;
         engine.getEvents().emit(core::LifecycleEvent::kContentUpdateAvailable, {{"generation", offer->generation}, {"downloadBytes", offer->downloadBytes}});
@@ -589,12 +662,14 @@ void ContentManager::download(ProgressCallback onProgress, Completion done) {
         installOffer(std::move(onProgress), std::move(done));
         return;
     }
+
     // clang-format off
     check([this, onProgress = std::move(onProgress), done = std::move(done)](std::optional<Update> found, std::optional<Error> failure) mutable {
         if (failure || !found) {
             done(std::move(failure));
             return;
         }
+
         installOffer(std::move(onProgress), std::move(done));
     });
     // clang-format on
@@ -614,12 +689,14 @@ void ContentManager::installOffer(ProgressCallback onProgress, Completion done) 
         if (owner.expired()) {
             return;
         }
+
         if (failure) {
             fail(*failure);
             engine.getEvents().emit(core::LifecycleEvent::kContentUpdateFailed, {{"code", Error::getCodeName(failure->getCode())}, {"message", failure->what()}});
             done(std::move(failure));
             return;
         }
+
         status = Status::Ready;
         installed = true;
         engine.getEvents().emit(core::LifecycleEvent::kContentUpdateReady, {{"generation", offer->generation}});
@@ -632,6 +709,7 @@ void ContentManager::apply() {
     if (!installed) {
         throw std::logic_error("No content update is ready to apply. Download one first.");
     }
+
     release->mount(offer->content);
     engine.requestRestart();
 }
@@ -653,9 +731,11 @@ void ContentManager::update() {
     if (release && surveyWanted && !surveying && now - surveyed >= kSurveyInterval) {
         startSurvey();
     }
+
     if (!downloader) {
         return;
     }
+
     downloader->update();
 
     if (now - rateSampled >= kRateInterval) {
@@ -681,16 +761,20 @@ void ContentManager::startSurvey() {
         for (std::uint64_t index = 0; index < content->catalog->getChunkCount(); ++index) {
             counted.missingChunks += isLocal(content->catalog->getChunk(index)) ? 0U : 1U;
         }
+
         for (const Catalog::Chunk& chunk : Updater::getChunks(*content->catalog, Delivery::Prefetch, rules)) {
             counted.pendingPrefetch += isLocal(chunk) ? 0U : 1U;
         }
+
         return counted;
     }, [this, owner = std::weak_ptr(alive)](core::JobSystem::Result<Survey> counted) {
         if (owner.expired()) {
             return;
         }
+
         surveying = false;
         surveyed = std::chrono::steady_clock::now();
+
         if (counted.isOk()) {
             survey = *counted.value;
         }
@@ -713,6 +797,7 @@ ContentManager::Statistics ContentManager::getStatistics() const {
             statistics.activeReads += reads.activeReads;
         }
     }
+
     if (downloader) {
         const LocalStore::Statistics stored = release->getStore()->getStatistics();
         statistics.storedRecords = stored.records;
@@ -726,6 +811,7 @@ ContentManager::Statistics ContentManager::getStatistics() const {
         statistics.downloadRate = downloadRate;
         statistics.reusedBytes = offer ? offer->reusedBytes : 0;
     }
+
     return statistics;
 }
 

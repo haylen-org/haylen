@@ -36,6 +36,7 @@ std::vector<Catalog::Chunk> Downloader::findMissing(const ShardSet& shards, std:
             missing.push_back(chunk);
         }
     }
+
     return missing;
 }
 
@@ -46,6 +47,7 @@ std::uint64_t Downloader::measure(std::span<const Catalog::Chunk> chunks, const 
             bytes += ChunkRecord::kHeaderSize + chunk.encodedSize;
         }
     }
+
     return bytes;
 }
 
@@ -61,9 +63,11 @@ std::uint64_t Downloader::fetch(std::shared_ptr<const ShardSet> shardSet, std::s
         if (use == Use::Read) {
             request.records.push_back(chunk.storedId);
         }
+
         if (request.waiting.contains(chunk.storedId) || store->contains(chunk.storedId) || (use == Use::Keep && store->holds(chunk.storedId))) {
             continue;
         }
+
         request.waiting.insert(chunk.storedId);
 
         // A record that the store holds but cannot read yet, as on the web, comes in from the store instead of the network, so it downloads no byte.
@@ -75,9 +79,11 @@ std::uint64_t Downloader::fetch(std::shared_ptr<const ShardSet> shardSet, std::s
         const ShardReference& reference = shardSet->getReferences()[chunk.shard];
         auto [found, added] = wanted.try_emplace(chunk.storedId);
         found->second.requests.push_back(id);
+
         if (!added) {
             continue;
         }
+
         found->second.chunk = chunk;
         found->second.shard = reference.shardId;
         auto [shard, created] = shards.try_emplace(reference.shardId);
@@ -92,9 +98,11 @@ std::uint64_t Downloader::fetch(std::shared_ptr<const ShardSet> shardSet, std::s
             held.push_back(chunk.storedId);
             continue;
         }
+
         shard->second.queued.push_back(chunk.storedId);
         touched.insert(reference.shardId);
     }
+
     if (!held.empty()) {
         loadHeld(std::move(held));
     }
@@ -103,6 +111,7 @@ std::uint64_t Downloader::fetch(std::shared_ptr<const ShardSet> shardSet, std::s
         complete(id, std::nullopt);
         return id;
     }
+
     for (const Digest& shardId : touched) {
         Shard& shard = shards.at(shardId);
         if (shard.index) {
@@ -111,6 +120,7 @@ std::uint64_t Downloader::fetch(std::shared_ptr<const ShardSet> shardSet, std::s
             indexShard(shard);
         }
     }
+
     pump();
     return id;
 }
@@ -130,17 +140,21 @@ void Downloader::loadHeld(std::vector<Digest> storedIds) {
                 if (found == wanted.end()) {
                     continue;
                 }
+
                 if (store->contains(storedId)) {
                     stored(storedId, std::nullopt);
                     continue;
                 }
+
                 found->second.transferring = false;
                 for (const std::uint64_t id : found->second.requests) {
                     requests.at(id).progress.totalBytes += ChunkRecord::kHeaderSize + found->second.chunk.encodedSize;
                 }
+
                 shards.at(found->second.shard).queued.push_back(storedId);
                 touched.insert(found->second.shard);
             }
+
             for (const Digest& shardId : touched) {
                 Shard& shard = shards.at(shardId);
                 if (shard.index) {
@@ -149,6 +163,7 @@ void Downloader::loadHeld(std::vector<Digest> storedIds) {
                     indexShard(shard);
                 }
             }
+
             pump();
         });
     });
@@ -166,10 +181,12 @@ void Downloader::indexShard(Shard& shard) {
             }
         } catch (const Error&) {
         }
+
         pool.postToFrame([this, owner, reference, index] {
             if (owner.expired()) {
                 return;
             }
+
             Shard& indexed = shards.at(reference.shardId);
             if (index) {
                 indexed.index = index;
@@ -184,6 +201,7 @@ void Downloader::indexShard(Shard& shard) {
                     failShard(reference.shardId, *failure);
                     return;
                 }
+
                 std::optional<ShardHeader> parsed;
                 try {
                     parsed = ShardHeader::parse(std::span(header).first<ShardHeader::kSize>(), reference.fileSize);
@@ -191,11 +209,13 @@ void Downloader::indexShard(Shard& shard) {
                     failShard(reference.shardId, error);
                     return;
                 }
+
                 fetchRange(shards.at(reference.shardId).url, parsed->indexOffset, parsed->indexSize, [this, reference, header = std::move(header)](std::vector<std::uint8_t> indexBytes, std::optional<Error> indexFailure) mutable {
                     if (indexFailure) {
                         failShard(reference.shardId, *indexFailure);
                         return;
                     }
+
                     header.insert(header.end(), indexBytes.begin(), indexBytes.end());
                     receiveIndex(reference.shardId, std::move(header));
                 });
@@ -217,14 +237,17 @@ void Downloader::receiveIndex(const Digest& shardId, std::vector<std::uint8_t> b
         } catch (const Error& error) {
             failure = error;
         }
+
         pool.postToFrame([this, owner, shardId = reference.shardId, index, failure] {
             if (owner.expired()) {
                 return;
             }
+
             if (failure) {
                 failShard(shardId, *failure);
                 return;
             }
+
             Shard& indexed = shards.at(shardId);
             indexed.index = index;
             plan(indexed);
@@ -263,6 +286,7 @@ void Downloader::failShard(const Digest& shardId, const Error& error) {
     for (const Digest& storedId : queued) {
         fail(storedId, error);
     }
+
     shards.erase(shardId);
     dropUnwanted();
 }
@@ -273,14 +297,17 @@ void Downloader::plan(Shard& shard) {
         if (!wanted.contains(storedId)) {
             continue;
         }
+
         const ShardIndex::Entry* entry = shard.index->getIndex().find(storedId);
         if (entry == nullptr) {
             fail(storedId, Error(Error::Code::MissingChunk, "The shard \"" + shard.reference.shardId.toHex() + "\" does not hold the chunk \"" + storedId.toHex() + "\" that its catalog places in it."));
             continue;
         }
+
         records.emplace_back(storedId, *entry);
         wanted.at(storedId).transferring = true;
     }
+
     std::ranges::sort(records, {}, [](const auto& record) { return record.second.recordOffset; });
 
     // Staged bytes that are not the start of the record that the index describes are damaged, so the record downloads whole.
@@ -298,11 +325,13 @@ void Downloader::plan(Shard& shard) {
         while (end < records.size() && !partials.contains({shard.reference.shardId, records[end].second.recordOffset})) {
             ++end;
         }
+
         std::vector<RangePlanner::Span> spans;
         spans.reserve(end - begin);
         for (std::size_t index = begin; index < end; ++index) {
             spans.push_back({.offset = records[index].second.recordOffset, .size = ChunkRecord::kHeaderSize + records[index].second.encodedSize});
         }
+
         for (const RangePlanner::Range& range : RangePlanner::plan(spans)) {
             auto transfer = std::make_shared<Transfer>();
             transfer->shard = shard.reference.shardId;
@@ -310,6 +339,7 @@ void Downloader::plan(Shard& shard) {
             transfer->records.assign(first, first + static_cast<std::ptrdiff_t>(range.count));
             waitingTransfers.push_back(std::move(transfer));
         }
+
         begin = end;
     }
 }
@@ -332,8 +362,10 @@ void Downloader::pump() {
             if (static_cast<std::size_t>(background) >= kMaximumBackgroundTransfers) {
                 return;
             }
+
             next = waitingTransfers.begin();
         }
+
         std::shared_ptr<Transfer> transfer = std::move(*next);
         waitingTransfers.erase(next);
         // clang-format off
@@ -346,11 +378,13 @@ void Downloader::pump() {
             start(std::move(transfer));
             continue;
         }
+
         for (const auto& [storedId, entry] : transfer->records) {
             if (const auto found = wanted.find(storedId); found != wanted.end()) {
                 found->second.transferring = false;
             }
         }
+
         dropUnwanted();
     }
 }
@@ -369,6 +403,7 @@ void Downloader::start(std::shared_ptr<Transfer> transfer) {
         request.validator = partial->second.validator;
         transfer->buffer = partial->second.bytes;
     }
+
     transfer->position = offset + request.held;
     activeTransfers.push_back(transfer);
     ++statistics.requests;
@@ -379,14 +414,18 @@ void Downloader::start(std::shared_ptr<Transfer> transfer) {
             if (owner.expired()) {
                 return;
             }
+
             transfer->validator = started.validator;
             if (started.resumed) {
                 ++statistics.resumedRecords;
+
                 if (const auto first = wanted.find(transfer->records.front().first); first != wanted.end()) {
                     first->second.resumed = true;
                 }
+
                 return;
             }
+
             transfer->buffer.clear();
             transfer->position = offset;
         },
@@ -406,6 +445,7 @@ void Downloader::start(std::shared_ptr<Transfer> transfer) {
 
 void Downloader::receive(Transfer& transfer, std::span<const std::uint8_t> bytes) {
     statistics.downloadedBytes += bytes.size();
+
     while (!bytes.empty() && transfer.current < transfer.records.size()) {
         const auto& [storedId, entry] = transfer.records[transfer.current];
         const std::uint64_t end = entry.recordOffset + ChunkRecord::kHeaderSize + entry.encodedSize;
@@ -422,6 +462,7 @@ void Downloader::receive(Transfer& transfer, std::span<const std::uint8_t> bytes
         transfer.buffer.insert(transfer.buffer.end(), bytes.begin(), bytes.begin() + static_cast<std::ptrdiff_t>(taken));
         transfer.position += taken;
         bytes = bytes.subspan(taken);
+
         if (const auto found = wanted.find(storedId); found != wanted.end()) {
             for (const std::uint64_t id : found->second.requests) {
                 Request& request = requests.at(id);
@@ -429,6 +470,7 @@ void Downloader::receive(Transfer& transfer, std::span<const std::uint8_t> bytes
                 request.changed = true;
             }
         }
+
         if (transfer.position == end) {
             verify(transfer.shard, storedId, std::exchange(transfer.buffer, {}));
             ++transfer.current;
@@ -438,6 +480,7 @@ void Downloader::receive(Transfer& transfer, std::span<const std::uint8_t> bytes
 
 void Downloader::finishTransfer(const std::shared_ptr<Transfer>& transfer, std::optional<Error> failure) {
     std::erase(activeTransfers, transfer);
+
     if (failure && !transfer->abandoned && transfer->current < transfer->records.size()) {
         // The first bytes of the record that stopped stay for a resume, as long as they are worth a request of their own.
         const auto& [storedId, entry] = transfer->records[transfer->current];
@@ -454,10 +497,12 @@ void Downloader::finishTransfer(const std::shared_ptr<Transfer>& transfer, std::
             });
             // clang-format on
         }
+
         for (std::size_t index = transfer->current; index < transfer->records.size(); ++index) {
             fail(transfer->records[index].first, *failure);
         }
     }
+
     // A record of a transfer that stopped because nobody wanted it may have found a request since, which downloads it again.
     std::set<Digest> touched;
     for (std::size_t index = transfer->current; index < transfer->records.size(); ++index) {
@@ -465,12 +510,14 @@ void Downloader::finishTransfer(const std::shared_ptr<Transfer>& transfer, std::
         if (found == wanted.end()) {
             continue;
         }
+
         found->second.transferring = false;
         if (!found->second.requests.empty() && shards.contains(found->second.shard)) {
             shards.at(found->second.shard).queued.push_back(found->first);
             touched.insert(found->second.shard);
         }
     }
+
     for (const Digest& shardId : touched) {
         Shard& shard = shards.at(shardId);
         if (shard.index) {
@@ -479,6 +526,7 @@ void Downloader::finishTransfer(const std::shared_ptr<Transfer>& transfer, std::
             indexShard(shard);
         }
     }
+
     dropUnwanted();
     pump();
 }
@@ -488,6 +536,7 @@ void Downloader::verify(const Digest& shardId, const Digest& storedId, std::vect
     if (found == wanted.end()) {
         return;
     }
+
     const Shard& shard = shards.at(shardId);
     const ShardIndex::Entry entry = *shard.index->getIndex().find(storedId);
     discardPartial(shardId, entry.recordOffset);
@@ -504,6 +553,7 @@ void Downloader::verify(const Digest& shardId, const Digest& storedId, std::vect
             if (!header.describes(chunk) || header.codec != entry.codec || header.profile != entry.profile || header.plainSize != entry.plainSize) {
                 throw Error(Error::Code::CorruptChunk, "The downloaded record of the chunk \"" + chunk.storedId.toHex() + "\" does not match its catalog and the index of its shard.");
             }
+
             std::vector<std::uint8_t> ciphertext(record.begin() + ChunkRecord::kHeaderSize, record.end());
             std::vector<std::uint8_t> plain;
             header.open(*keys->get(keyId), ciphertext, plain);
@@ -511,6 +561,7 @@ void Downloader::verify(const Digest& shardId, const Digest& storedId, std::vect
         } catch (const Error& error) {
             failure = error;
         }
+
         if (failure) {
             pool.postToFrame([this, owner, storedId = chunk.storedId, size, failure] {
                 if (!owner.expired()) {
@@ -520,6 +571,7 @@ void Downloader::verify(const Digest& shardId, const Digest& storedId, std::vect
             });
             return;
         }
+
         pool.postIo([this, &pool, owner, localStore, storedId = chunk.storedId, keyId, size, record = std::move(record)] {
             std::optional<Error> writeFailure;
             try {
@@ -527,6 +579,7 @@ void Downloader::verify(const Digest& shardId, const Digest& storedId, std::vect
             } catch (const Error& error) {
                 writeFailure = error;
             }
+
             pool.postToFrame([this, owner, storedId, size, writeFailure] {
                 if (!owner.expired()) {
                     verifyingBytes -= size;
@@ -543,16 +596,20 @@ void Downloader::stored(const Digest& storedId, std::optional<Error> failure) {
         fail(storedId, *failure);
         return;
     }
+
     const auto found = wanted.find(storedId);
     if (found == wanted.end()) {
         return;
     }
+
     ++statistics.storedRecords;
     const std::vector<std::uint64_t> waiting = std::move(found->second.requests);
     wanted.erase(found);
+
     for (const std::uint64_t id : waiting) {
         Request& request = requests.at(id);
         request.waiting.erase(storedId);
+
         if (request.waiting.empty()) {
             complete(id, request.failure);
         }
@@ -565,6 +622,7 @@ void Downloader::rejected(const Digest& storedId, const Error& error) {
     if (found == wanted.end()) {
         return;
     }
+
     Wanted& record = found->second;
     if (!record.resumed || record.requests.empty() || !shards.contains(record.shard)) {
         fail(storedId, error);
@@ -578,6 +636,7 @@ void Downloader::rejected(const Digest& storedId, const Error& error) {
         request.progress.totalBytes += ChunkRecord::kHeaderSize + record.chunk.encodedSize;
         request.changed = true;
     }
+
     Shard& shard = shards.at(record.shard);
     shard.queued.push_back(storedId);
     plan(shard);
@@ -596,6 +655,7 @@ void Downloader::fail(const Digest& storedId, const Error& error) {
     if (found == wanted.end()) {
         return;
     }
+
     Error failure = error;
     Error::Details& details = failure.getDetails();
     details.packId = found->second.shard.toHex();
@@ -603,6 +663,7 @@ void Downloader::fail(const Digest& storedId, const Error& error) {
     details.storedId = storedId.toHex();
     const std::vector<std::uint64_t> waiting = std::move(found->second.requests);
     wanted.erase(found);
+
     for (const std::uint64_t id : waiting) {
         fail(id, storedId, failure);
     }
@@ -614,8 +675,10 @@ void Downloader::fail(std::uint64_t id, const Digest& storedId, const Error& err
     if (found == requests.end()) {
         return;
     }
+
     Request& request = found->second;
     request.waiting.erase(storedId);
+
     if (!request.failure) {
         request.failure = error;
     }
@@ -626,9 +689,11 @@ void Downloader::fail(std::uint64_t id, const Digest& storedId, const Error& err
         if (record != wanted.end() && record->second.verifying) {
             return false;
         }
+
         if (record != wanted.end()) {
             std::erase(record->second.requests, id);
         }
+
         return true;
     });
     // clang-format on
@@ -636,6 +701,7 @@ void Downloader::fail(std::uint64_t id, const Digest& storedId, const Error& err
         complete(id, request.failure);
         return;
     }
+
     dropUnwanted();
 }
 
@@ -652,6 +718,7 @@ void Downloader::complete(std::uint64_t id, std::optional<Error> failure) {
     if (found == requests.end()) {
         return;
     }
+
     Request request = std::move(found->second);
     requests.erase(found);
     for (const Digest& storedId : request.waiting) {
@@ -667,9 +734,11 @@ void Downloader::complete(std::uint64_t id, std::optional<Error> failure) {
             if (owner.expired()) {
                 return;
             }
+
             if (callbacks.onProgress && !result) {
                 callbacks.onProgress({.receivedBytes = progress.totalBytes, .totalBytes = progress.totalBytes});
             }
+
             callbacks.onComplete(result);
         });
     };
@@ -708,11 +777,14 @@ void Downloader::update() {
         if (request.changed && request.callbacks.onProgress) {
             reports.emplace_back(request.callbacks.onProgress, request.progress);
         }
+
         request.changed = false;
     }
+
     for (const auto& [report, progress] : reports) {
         report(progress);
     }
+
     if (!waitingTransfers.empty()) {
         pump();
     }

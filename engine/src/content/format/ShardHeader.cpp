@@ -14,12 +14,15 @@ ShardHeader ShardHeader::parse(std::span<const std::uint8_t, kSize> bytes, std::
     if (!std::ranges::equal(reader.readBytes(kMagic.size()), kMagic)) {
         throw Error(Error::Code::UnsupportedFormat, "The file is not an HPAK shard.");
     }
+
     if (reader.read<std::uint16_t>() != kVersion) {
         throw Error(Error::Code::UnsupportedVersion, "The HPAK shard has a version this app does not read.");
     }
+
     if (reader.read<std::uint16_t>() != kSize) {
         reader.fail("declares a size other than its version has");
     }
+
     if (reader.read<std::uint32_t>() != 0) {
         reader.fail("sets flags its version does not define");
     }
@@ -38,9 +41,11 @@ ShardHeader ShardHeader::parse(std::span<const std::uint8_t, kSize> bytes, std::
     if (header.entryCount == 0 || header.entryCount > ShardIndex::kMaximumEntries || header.indexSize != header.entryCount * ShardIndex::kEntrySize) {
         reader.fail("declares an index size that does not match its entry count");
     }
+
     if (header.indexOffset < kSize || header.indexOffset > fileSize || fileSize - header.indexOffset != header.indexSize) {
         reader.fail("places its index anywhere but at the end of the file");
     }
+
     return header;
 }
 

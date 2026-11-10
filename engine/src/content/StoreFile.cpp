@@ -50,6 +50,7 @@ void StoreFile::readAt(std::uint64_t offset, std::span<std::uint8_t> target) con
         if (!ReadFile(handle, target.data() + done, wanted, &read, &position) || read == 0) {
             throw Error(Error::Code::CacheCorrupt, "The content store file \"" + path.generic_string() + "\" ends before the bytes it should hold.");
         }
+
         done += read;
     }
 }
@@ -63,8 +64,10 @@ std::uint64_t StoreFile::append(std::span<const std::uint8_t> bytes) {
         if (!WriteFile(handle, bytes.data() + done, wanted, &written, nullptr)) {
             fail("write");
         }
+
         done += written;
     }
+
     return offset;
 }
 
@@ -86,6 +89,7 @@ void StoreFile::truncate(std::uint64_t size) {
     const bool truncated = SetFilePointerEx(writer, position, nullptr, FILE_BEGIN) && SetEndOfFile(writer);
     const DWORD code = GetLastError();
     CloseHandle(writer);
+
     if (!truncated) {
         SetLastError(code);
         fail("truncate");
@@ -97,6 +101,7 @@ std::uint64_t StoreFile::getSize() const {
     if (!GetFileSizeEx(handle, &size)) {
         fail("measure");
     }
+
     return static_cast<std::uint64_t>(size.QuadPart);
 }
 
@@ -105,6 +110,7 @@ bool StoreFile::isRemoved() const {
     if (!GetFileInformationByHandleEx(handle, FileStandardInfo, &info, sizeof(info))) {
         fail("measure");
     }
+
     return info.DeletePending != 0 || info.NumberOfLinks == 0;
 }
 
@@ -116,9 +122,11 @@ void StoreFile::fail(const char* action) const {
     if (code == ERROR_DISK_FULL || code == ERROR_HANDLE_DISK_FULL) {
         throw Error(Error::Code::DiskFull, message);
     }
+
     if (code == ERROR_ACCESS_DENIED || code == ERROR_WRITE_PROTECT) {
         throw Error(Error::Code::PermissionDenied, message);
     }
+
     throw Error(Error::Code::CacheCorrupt, message);
 }
 
@@ -145,9 +153,11 @@ void StoreFile::readAt(std::uint64_t offset, std::span<std::uint8_t> target) con
         if (read < 0 && errno == EINTR) {
             continue;
         }
+
         if (read <= 0) {
             throw Error(Error::Code::CacheCorrupt, "The content store file \"" + path.generic_string() + "\" ends before the bytes it should hold.");
         }
+
         done += static_cast<std::size_t>(read);
     }
 }
@@ -160,11 +170,14 @@ std::uint64_t StoreFile::append(std::span<const std::uint8_t> bytes) {
         if (written < 0 && errno == EINTR) {
             continue;
         }
+
         if (written <= 0) {
             fail("write");
         }
+
         done += static_cast<std::size_t>(written);
     }
+
     return offset;
 }
 
@@ -191,6 +204,7 @@ std::uint64_t StoreFile::getSize() const {
     if (::fstat(descriptor, &status) != 0) {
         fail("measure");
     }
+
     return static_cast<std::uint64_t>(status.st_size);
 }
 
@@ -199,6 +213,7 @@ bool StoreFile::isRemoved() const {
     if (::fstat(descriptor, &status) != 0) {
         fail("measure");
     }
+
     return status.st_nlink == 0;
 }
 
@@ -216,9 +231,11 @@ void StoreFile::fail(const char* action) const {
     if (code == ENOSPC || code == EDQUOT) {
         throw Error(Error::Code::DiskFull, message, {.platformMessage = std::strerror(code)});
     }
+
     if (code == EACCES || code == EPERM || code == EROFS) {
         throw Error(Error::Code::PermissionDenied, message, {.platformMessage = std::strerror(code)});
     }
+
     throw Error(Error::Code::CacheCorrupt, message, {.platformMessage = std::strerror(code)});
 }
 

@@ -16,6 +16,7 @@ std::vector<KeyProvider::KeyId> CompositeKeyProvider::getKeyIds() const {
             }
         }
     }
+
     return ids;
 }
 
@@ -33,6 +34,7 @@ void CompositeKeyProvider::requestFrom(std::shared_ptr<const Providers> list, st
         done(false);
         return;
     }
+
     const std::shared_ptr<const KeyProvider>& provider = (*list)[index];
     // clang-format off
     provider->requestKey(id, [list, index, id, done = std::move(done)](bool given) mutable {
@@ -40,6 +42,7 @@ void CompositeKeyProvider::requestFrom(std::shared_ptr<const Providers> list, st
             done(true);
             return;
         }
+
         requestFrom(std::move(list), index + 1, id, std::move(done));
     });
     // clang-format on

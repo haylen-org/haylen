@@ -18,6 +18,7 @@ class CompressionTest : public ::testing::Test {
         for (int line = 0; line < 4000; ++line) {
             text += "{\"tile\": " + std::to_string(line % 37) + ", \"layer\": \"ground\", \"solid\": true}\n";
         }
+
         return test::TestFiles::bytes(text);
     }
 

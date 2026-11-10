@@ -23,6 +23,7 @@ class BinaryReader final {
         for (std::size_t index = 0; index < sizeof(T); ++index) {
             value |= static_cast<T>(static_cast<T>(field[index]) << (8 * index));
         }
+
         return value;
     }
 

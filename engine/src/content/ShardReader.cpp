@@ -17,6 +17,7 @@ ShardHeader ShardReader::readHeader(io::PackageReader& source, const ShardRefere
     if (size != reference.fileSize) {
         throw Error(Error::Code::CorruptHeader, std::format("The shard \"{}\" has {} bytes instead of the {} its manifest names.", reference.shardId.toHex(), size, reference.fileSize));
     }
+
     if (size < ShardHeader::kSize) {
         throw Error(Error::Code::CorruptHeader, std::format("The shard \"{}\" has {} bytes, fewer than its header takes.", reference.shardId.toHex(), size));
     }
@@ -27,6 +28,7 @@ ShardHeader ShardReader::readHeader(io::PackageReader& source, const ShardRefere
     if (parsed.shardId != reference.shardId) {
         throw Error(Error::Code::CorruptHeader, "The file of the shard \"" + reference.shardId.toHex() + "\" holds another shard.");
     }
+
     return parsed;
 }
 
@@ -55,6 +57,7 @@ void ShardReader::readChunk(const Catalog::Chunk& chunk, std::vector<std::uint8_
     if (!matchesCatalog || !matchesIndex) {
         throw Error(Error::Code::CorruptChunk, "The record of the chunk \"" + chunk.storedId.toHex() + "\" does not match the index of its shard and its catalog.");
     }
+
     record.open(*key, std::span(scratch).subspan(ChunkRecord::kHeaderSize), plain);
 }
 

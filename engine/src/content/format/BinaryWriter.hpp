@@ -19,6 +19,7 @@ class BinaryWriter final {
         for (std::size_t index = 0; index < sizeof(T); ++index) {
             bytes.push_back(static_cast<std::uint8_t>(value >> (8 * index)));
         }
+
         return *this;
     }
 

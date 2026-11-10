@@ -20,6 +20,7 @@ std::vector<std::uint8_t> ManifestWriter::writeContext(const Manifest::Envelope&
     for (const ShardReference& shard : fields.shards) {
         writer.writeDigest(shard.shardId).write(shard.fileSize).writeDigest(shard.fileDigest);
     }
+
     return writer.take();
 }
 
@@ -27,9 +28,11 @@ std::vector<std::uint8_t> ManifestWriter::write(Manifest::Envelope fields, std::
     if (fields.profile.empty() || !Manifest::isValidName(fields.profile) || !Manifest::isValidName(fields.channel) || !Manifest::isValidName(fields.luaAbi)) {
         throw std::invalid_argument("A manifest needs a profile, and its profile, channel and Lua ABI use at most 64 lowercase letters, digits, dashes and dots.");
     }
+
     if (fields.minimumAppBuild > fields.maximumAppBuild || fields.shards.size() > Manifest::kMaximumShards || catalog.size() > Manifest::kMaximumCatalogSize) {
         throw std::invalid_argument("A manifest needs a build range from low to high, and it holds at most its limits of shards and catalog bytes.");
     }
+
     fields.contentKeyId = contentKey.getId();
     fields.signingKeyId = signingKey.getVerifyingKey().getId();
 

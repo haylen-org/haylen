@@ -15,6 +15,7 @@ void FolderStoreFiles::createFolder(const std::filesystem::path& folder) const {
     std::error_code error;
     std::filesystem::create_directories(folder, error);
     std::filesystem::permissions(folder, std::filesystem::perms::owner_all, error);
+
     if (!std::filesystem::is_directory(folder)) {
         throw Error(Error::Code::PermissionDenied, "The content store could not create the folder \"" + folder.generic_string() + "\".");
     }
@@ -27,16 +28,20 @@ std::shared_ptr<StoreFile> FolderStoreFiles::open(const std::string& name, bool 
         if (!found->second->isRemoved()) {
             return found->second;
         }
+
         files.erase(found);
     }
+
     const std::filesystem::path file = root / name;
     std::error_code error;
     if (!create && !std::filesystem::is_regular_file(file, error)) {
         return nullptr;
     }
+
     if (create) {
         createFolder(file.parent_path());
     }
+
     auto opened = std::make_shared<StoreFile>(file, StoreFile::Mode::Append);
     files.emplace(name, opened);
     return opened;
@@ -52,6 +57,7 @@ std::optional<std::vector<std::uint8_t>> FolderStoreFiles::read(const std::strin
     if (!file) {
         return std::nullopt;
     }
+
     std::vector<std::uint8_t> bytes(static_cast<std::size_t>(file->getSize()));
     file->readAt(0, bytes);
     return bytes;
@@ -101,6 +107,7 @@ std::vector<std::string> FolderStoreFiles::list(const std::string& folder) const
             names.push_back(entry->path().filename().generic_string());
         }
     }
+
     return names;
 }
 
@@ -109,6 +116,7 @@ void FolderStoreFiles::readRange(const std::string& name, std::uint64_t offset, 
     if (!file) {
         throw Error(Error::Code::CacheCorrupt, "The content store has lost its file \"" + name + "\".");
     }
+
     file->readAt(offset, target);
 }
 
