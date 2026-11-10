@@ -24,13 +24,13 @@ foreach(entry original IN ZIP_LISTS entries paths)
     continue()
   endif()
 
-  # Windows creates symbolic links only with extra privileges, so folders become junctions and `app.json` a hard link.
+  # Windows creates symbolic links only with extra privileges, so folders become junctions, which reach every local volume, and files hard links, which reach only their own volume, so a file on another volume is copied and shows its edits after the next build.
   if(CMAKE_HOST_WIN32 AND IS_DIRECTORY "${original}")
     file(TO_NATIVE_PATH "${original}" native_original)
     file(TO_NATIVE_PATH "${link}" native_link)
     execute_process(COMMAND cmd.exe /c mklink /J "${native_link}" "${native_original}" COMMAND_ERROR_IS_FATAL ANY OUTPUT_QUIET)
   elseif(CMAKE_HOST_WIN32)
-    file(CREATE_LINK "${original}" "${link}")
+    file(CREATE_LINK "${original}" "${link}" COPY_ON_ERROR)
   else()
     file(CREATE_LINK "${original}" "${link}" SYMBOLIC)
   endif()
