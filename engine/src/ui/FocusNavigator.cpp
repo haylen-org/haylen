@@ -236,31 +236,37 @@ void FocusNavigator::addItem(ImGuiID item, const math::Rect& bounds, bool play, 
     // A component becomes a node the first time it registers a target in a frame, so components without targets cost nothing. The targets a collection registers for its cells each name their own item, so each one is a node.
     Level& level = levels.back();
     if (!level.node || (cellOwner != nullptr && level.component == cellOwner)) {
-        // The nodes of a frame take the slots of the frame before the last one, so their names reuse the storage those names had.
-        if (building.nodeCount == building.nodes.size()) {
-            building.nodes.emplace_back();
-        }
-
-        Node& node = building.nodes[building.nodeCount];
-        node.id = level.id;
-        node.gui = currentGui;
-        node.name.assign(cellOwner != nullptr ? cellOwner->getId() : level.component->getId());
-        node.item.assign(cellOwner != nullptr ? cellItem : std::string_view());
-        node.part.assign(cellOwner != nullptr && level.component != cellOwner ? std::string_view(level.component->getId()) : std::string_view());
-        node.neighbors = level.component->getCommon().focusNeighbors;
-        node.usedDirections = 0;
-        node.scope = level.scope;
-        for (const FocusDirection direction : {FocusDirection::Left, FocusDirection::Right, FocusDirection::Up, FocusDirection::Down}) {
-            if (level.component->usesFocusDirection(direction)) {
-                node.usedDirections |= toBit(direction);
-            }
-        }
-
-        level.node = building.nodeCount++;
+        level.node = addNode(level);
     }
 
     const bool inputable = GImGui->LastItemData.ID == item && (GImGui->LastItemData.ItemFlags & ImGuiItemFlags_Inputable) != 0;
     building.targets.push_back({.id = item, .window = ImGui::GetCurrentWindow(), .bounds = bounds, .node = *level.node, .inputable = inputable, .play = play, .shown = shown});
+}
+
+// The nodes of a frame take the slots of the frame before the last one, so their names reuse the storage those names had.
+std::size_t FocusNavigator::addNode(const Level& level) {
+    if (building.nodeCount == building.nodes.size()) {
+        building.nodes.emplace_back();
+    }
+
+    const bool inCell = cellOwner != nullptr;
+    Node& node = building.nodes[building.nodeCount];
+    node.id = level.id;
+    node.gui = currentGui;
+    node.name.assign(inCell ? cellOwner->getId() : level.component->getId());
+    node.item.assign(inCell ? cellItem : std::string_view());
+    node.part.assign(inCell && level.component != cellOwner ? std::string_view(level.component->getId()) : std::string_view());
+    node.neighbors = level.component->getCommon().focusNeighbors;
+    node.usedDirections = 0;
+    node.scope = level.scope;
+
+    for (const FocusDirection direction : {FocusDirection::Left, FocusDirection::Right, FocusDirection::Up, FocusDirection::Down}) {
+        if (level.component->usesFocusDirection(direction)) {
+            node.usedDirections |= toBit(direction);
+        }
+    }
+
+    return building.nodeCount++;
 }
 
 // The collection reuses the scope a focus wrap of its own opened, so its wraps along the axis reach it.
@@ -306,7 +312,8 @@ std::optional<ImGuiID> FocusNavigator::findFocusedSince(std::size_t first) const
 }
 
 bool FocusNavigator::hasTargetSince(std::size_t first, ImGuiID item) const {
-    return item != 0 && std::any_of(building.targets.begin() + static_cast<std::ptrdiff_t>(std::min(first, building.targets.size())), building.targets.end(), [item](const Target& target) { return target.id == item; });
+    const auto begin = building.targets.begin() + static_cast<std::ptrdiff_t>(std::min(first, building.targets.size()));
+    return item != 0 && std::any_of(begin, building.targets.end(), [item](const Target& target) { return target.id == item; });
 }
 
 void FocusNavigator::markShownSince(std::size_t first) noexcept {
@@ -532,7 +539,13 @@ const FocusNavigator::Target* FocusNavigator::find(const Frame& frame, ImGuiID i
 }
 
 const FocusNavigator::Target* FocusNavigator::findNamed(const Gui* gui, std::string_view name) const noexcept {
-    const auto found = std::ranges::find_if(drawn.targets, [&](const Target& target) { return drawn.nodes[target.node].gui == gui && drawn.nodes[target.node].name == name; });
+    // clang-format off
+    const auto found = std::ranges::find_if(drawn.targets, [&](const Target& target) {
+        const Node& node = drawn.nodes[target.node];
+        return node.gui == gui && node.name == name;
+    });
+    // clang-format on
+
     return found != drawn.targets.end() ? &*found : nullptr;
 }
 
@@ -586,7 +599,8 @@ bool FocusNavigator::isPeer(const Target& source, const Target& target) const no
     const Node& origin = drawn.nodes[source.node];
     const Node& node = drawn.nodes[target.node];
     const bool popup = ((source.window->RootWindow->Flags | target.window->RootWindow->Flags) & ImGuiWindowFlags_Popup) != 0;
-    return isSameSpace(node.gui, origin.gui) && (target.window->RootWindow == source.window->RootWindow || !popup) && findTrap(node.scope) == findTrap(origin.scope);
+    const bool sameWindow = target.window->RootWindow == source.window->RootWindow;
+    return isSameSpace(node.gui, origin.gui) && (sameWindow || !popup) && findTrap(node.scope) == findTrap(origin.scope);
 }
 
 const FocusNavigator::Target* FocusNavigator::search(const Target& source, const math::Rect& from, std::optional<std::size_t> scope, FocusDirection direction) const {
@@ -824,6 +838,7 @@ bool FocusNavigator::stepTarget(ImGuiID item, FocusDirection direction) {
 
     ringVisible = true;
     apply(*target);
+
     const Node& node = drawn.nodes[target->node];
     if ((node.usedDirections & toBit(direction)) != 0) {
         pendingDirection = {node.id, direction};
@@ -870,8 +885,9 @@ void FocusNavigator::remember(const Frame& frame, const Target& next) {
         return;
     }
 
-    const bool elsewhere = !isSameSpace(drawn.nodes[current->node].gui, frame.nodes[next.node].gui) || current->window->RootWindow != next.window->RootWindow || getTrapId(drawn, *current) != getTrapId(frame, next);
-    if (!elsewhere) {
+    const bool otherSpace = !isSameSpace(drawn.nodes[current->node].gui, frame.nodes[next.node].gui);
+    const bool otherWindow = current->window->RootWindow != next.window->RootWindow;
+    if (!otherSpace && !otherWindow && getTrapId(drawn, *current) == getTrapId(frame, next)) {
         return;
     }
 
@@ -882,7 +898,6 @@ void FocusNavigator::remember(const Frame& frame, const Target& next) {
     }
 }
 
-// Lost focus goes back to where it was before it entered the scope that closed, for players who navigate. A pointer player simply loses it, so a key that also plays the game never presses a control nobody chose.
 // A move from a control into a play area keeps the control, where `uiFocus` takes the focus back.
 void FocusNavigator::keepControl(const Target& next) {
     const Target* current = find(drawn, GImGui->NavId);
@@ -891,9 +906,9 @@ void FocusNavigator::keepControl(const Target& next) {
     }
 }
 
+// Lost focus goes back to where it was before it entered the scope that closed, for players who navigate. A pointer player simply loses it, so a key that also plays the game never presses a control nobody chose.
 void FocusNavigator::restore() {
     ImGuiContext& g = *GImGui;
-
     while (ringVisible && !history.empty()) {
         const ImGuiID item = history.back();
         history.pop_back();

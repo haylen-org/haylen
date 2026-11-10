@@ -283,6 +283,7 @@ class FocusNavigator final {
     [[nodiscard]] bool takePageAction(const NavigationInput& navigation, const Target& current);
 
     void addItem(ImGuiID item, const math::Rect& bounds, bool play, bool shown);
+    [[nodiscard]] std::size_t addNode(const Level& level);
     void switchFocus(const Target* source);
     void move(const Target& source, FocusDirection direction);
     void tab(const Target& source, bool backward);

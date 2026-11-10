@@ -31,6 +31,7 @@ math::Rect FocusSearch::wrap(const math::Rect& source, const math::Rect& bounds,
     case Direction::Down:
         break;
     }
+
     return {source.x, bounds.y - source.height - 1.0F, source.width, source.height};
 }
 
@@ -55,6 +56,7 @@ bool FocusSearch::isCandidate(const math::Rect& source, const math::Rect& target
         ahead = (source.y < target.y || source.getBottom() <= target.y) && source.getBottom() < target.getBottom();
         break;
     }
+
     return ahead && (beamsOverlap(source, target, direction) || isToDirectionOf(source, target, direction));
 }
 
@@ -77,6 +79,7 @@ bool FocusSearch::isToDirectionOf(const math::Rect& source, const math::Rect& ta
     case Direction::Down:
         break;
     }
+
     return source.getBottom() <= target.y;
 }
 
@@ -91,6 +94,7 @@ float FocusSearch::getMajorAxisDistance(const math::Rect& source, const math::Re
     case Direction::Down:
         break;
     }
+
     return std::max(0.0F, target.y - source.getBottom());
 }
 
@@ -105,6 +109,7 @@ float FocusSearch::getMajorAxisDistanceToFarEdge(const math::Rect& source, const
     case Direction::Down:
         break;
     }
+
     return std::max(1.0F, target.getBottom() - source.getBottom());
 }
 
