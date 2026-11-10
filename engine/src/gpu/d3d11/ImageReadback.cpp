@@ -20,6 +20,7 @@ std::optional<std::vector<std::uint8_t>> ImageReadback::poll() {
     if (result == DXGI_ERROR_WAS_STILL_DRAWING) {
         return std::nullopt;
     }
+
     if (FAILED(result)) {
         throw std::runtime_error("The GPU could not hand over the pixels of a render target.");
     }
@@ -30,6 +31,7 @@ std::optional<std::vector<std::uint8_t>> ImageReadback::poll() {
         const auto* source = static_cast<const std::byte*>(mapped.pData) + static_cast<std::size_t>(row) * mapped.RowPitch;
         direct3d::PixelConverter::convertRow(format, {source, rowBytes}, std::span(pixels).subspan(static_cast<std::size_t>(row) * static_cast<std::size_t>(width) * 4, static_cast<std::size_t>(width) * 4));
     }
+
     context->Unmap(staging.Get(), 0);
     delivered = true;
     return pixels;

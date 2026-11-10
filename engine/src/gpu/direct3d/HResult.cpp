@@ -11,6 +11,7 @@ void HResult::check(HRESULT result, std::string_view action) {
     if (SUCCEEDED(result)) {
         return;
     }
+
     throw std::runtime_error(std::format("The graphics device could not {}, because {}.", action, describe(result)));
 }
 

@@ -25,6 +25,7 @@ SecondSurface::SecondSurface(gpu::Device::Api api, OffscreenSurface&, int width,
     if (api != gpu::Device::Api::Metal) {
         throw std::runtime_error("Apple platforms draw only through Metal.");
     }
+
     native = std::make_unique<Native>(width, height);
     surface = native->describe();
     surface.size = {.width = width, .height = height, .windowWidth = width, .windowHeight = height};

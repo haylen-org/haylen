@@ -29,6 +29,7 @@ std::optional<std::vector<std::uint8_t>> ImageReadback::poll() {
         const auto* source = static_cast<const std::byte*>(mapped) + static_cast<std::size_t>(row) * rowPitch;
         direct3d::PixelConverter::convertRow(format, {source, rowBytes}, std::span(pixels).subspan(static_cast<std::size_t>(row) * pixelRow, pixelRow));
     }
+
     const D3D12_RANGE nothing{.Begin = 0, .End = 0};
     buffer->Unmap(0, &nothing);
     delivered = true;

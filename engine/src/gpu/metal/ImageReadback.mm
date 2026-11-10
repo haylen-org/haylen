@@ -36,6 +36,7 @@ std::optional<std::vector<std::uint8_t>> ImageReadback::poll() {
     if (delivered || !done->load(std::memory_order_acquire)) {
         return std::nullopt;
     }
+
     delivered = true;
     std::vector<std::uint8_t> pixels(pixelCount * 4U);
     const auto* source = static_cast<const std::byte*>(buffer.contents);
@@ -49,6 +50,7 @@ std::optional<std::vector<std::uint8_t>> ImageReadback::poll() {
         const std::array<std::uint8_t, 4> pixel = readPixel(source + index * stride);
         std::memcpy(pixels.data() + index * 4U, pixel.data(), pixel.size());
     }
+
     return pixels;
 }
 
@@ -60,9 +62,11 @@ float ImageReadback::fromHalf(std::uint16_t value) noexcept {
     if (exponent == 0) {
         return sign * std::ldexp(mantissa, -24);
     }
+
     if (exponent == 31) {
         return mantissa == 0.0F ? sign * std::numeric_limits<float>::infinity() : std::numeric_limits<float>::quiet_NaN();
     }
+
     return sign * std::ldexp(mantissa + 1024.0F, exponent - 25);
 }
 
@@ -71,6 +75,7 @@ std::array<std::uint8_t, 4> ImageReadback::toBytes(const std::array<float, 4>& c
     for (std::size_t channel = 0; channel < bytes.size(); ++channel) {
         bytes[channel] = static_cast<std::uint8_t>(std::lround(std::clamp(color[channel], 0.0F, 1.0F) * 255.0F));
     }
+
     return bytes;
 }
 
@@ -81,6 +86,7 @@ std::array<float, 4> ImageReadback::readHalves(const std::byte* source, std::siz
     for (std::size_t channel = 0; channel < channels; ++channel) {
         color[channel] = fromHalf(halves[channel]);
     }
+
     return color;
 }
 

@@ -17,6 +17,7 @@ const PrecompiledLibraries::Library* PrecompiledLibraries::find(std::string_view
     if (found == libraries.end() || found->key != key) {
         return nullptr;
     }
+
     return &*found;
 }
 

@@ -14,6 +14,7 @@ void Swapchain::attach(const Context& owner, std::size_t frames) {
     if (!owner.hasSwapchain() || !owner.canPresent(surface)) {
         throw std::runtime_error("The queue of the Vulkan device cannot present to the surface.");
     }
+
     context = &owner;
     depthFormat = owner.getDepthStencilFormat();
     const VkSemaphoreCreateInfo semaphoreInfo{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
@@ -34,13 +35,16 @@ void Swapchain::attach(const Context& owner, std::size_t frames) {
 Swapchain::~Swapchain() {
     if (context != nullptr) {
         destroyImages();
+
         for (const VkSemaphore semaphore : acquired) {
             context->getFunctions().vkDestroySemaphore(context->getDevice(), semaphore, nullptr);
         }
     }
+
     if (handle != VK_NULL_HANDLE) {
         context->getFunctions().vkDestroySwapchainKHR(context->getDevice(), handle, nullptr);
     }
+
     vkDestroySurfaceKHR(instance, surface, nullptr);
 }
 
@@ -53,9 +57,11 @@ VkSurfaceFormatKHR Swapchain::chooseFormat(std::uint32_t count, const VkSurfaceF
             }
         }
     }
+
     if (count == 0 || formats[0].format == VK_FORMAT_UNDEFINED) {
         return {.format = VK_FORMAT_B8G8R8A8_UNORM, .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
     }
+
     return formats[0];
 }
 
@@ -64,15 +70,18 @@ VkPresentModeKHR Swapchain::choosePresentMode(bool vsync) const {
     if (vsync) {
         return VK_PRESENT_MODE_FIFO_KHR;
     }
+
     std::uint32_t count = 0;
     vkGetPhysicalDeviceSurfacePresentModesKHR(context->getPhysicalDevice(), surface, &count, nullptr);
     std::vector<VkPresentModeKHR> modes(count);
     vkGetPhysicalDeviceSurfacePresentModesKHR(context->getPhysicalDevice(), surface, &count, modes.data());
+
     for (const VkPresentModeKHR preferred : {VK_PRESENT_MODE_MAILBOX_KHR, VK_PRESENT_MODE_IMMEDIATE_KHR}) {
         if (std::ranges::find(modes, preferred) != modes.end()) {
             return preferred;
         }
     }
+
     return VK_PRESENT_MODE_FIFO_KHR;
 }
 
@@ -84,6 +93,7 @@ VkCompositeAlphaFlagBitsKHR Swapchain::chooseCompositeAlpha(VkCompositeAlphaFlag
             return mode;
         }
     }
+
     return VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 }
 
@@ -93,9 +103,11 @@ VkExtent2D Swapchain::chooseExtent(const VkSurfaceCapabilitiesKHR& capabilities,
     if (chosen.width == 0xFFFFFFFFU) {
         chosen = {static_cast<std::uint32_t>(std::max(settings.size.windowWidth, 0)), static_cast<std::uint32_t>(std::max(settings.size.windowHeight, 0))};
     }
+
     if (chosen.width == 0 || chosen.height == 0) {
         return {};
     }
+
     chosen.width = std::clamp(chosen.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
     chosen.height = std::clamp(chosen.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
     return chosen;
@@ -111,16 +123,19 @@ bool Swapchain::configure(const Settings& settings) {
         destroySwapchain();
         return false;
     }
+
     Context::check(described, "read the surface of the window");
 
     // The compositor turns the images when the surface allows it, so the frames draw as the window shows them.
     const VkSurfaceTransformFlagBitsKHR transform = (capabilities.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR) != 0 ? VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR : capabilities.currentTransform;
     const VkExtent2D chosen = chooseExtent(capabilities, settings);
     destroyImages();
+
     if (chosen.width == 0) {
         destroySwapchain();
         return false;
     }
+
     presentedExtent = chosen;
     extent = chosen;
 
@@ -130,6 +145,7 @@ bool Swapchain::configure(const Settings& settings) {
     if (scaled && !canScale(capabilities)) {
         throw std::runtime_error("The Vulkan surface of the window takes no copies into its images, so this GPU cannot draw the window with fewer pixels than it shows. Remove the limit of the pixel density, or draw with another graphics API.");
     }
+
     VkImageUsageFlags usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     if (scaled) {
         extent = {std::min(wanted.width, chosen.width), std::min(wanted.height, chosen.height)};
@@ -155,6 +171,7 @@ bool Swapchain::configure(const Settings& settings) {
     if (capabilities.maxImageCount > 0) {
         imageCount = std::min(imageCount, capabilities.maxImageCount);
     }
+
     const VkSwapchainKHR old = handle;
     const VkSwapchainCreateInfoKHR info{
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
@@ -174,15 +191,18 @@ bool Swapchain::configure(const Settings& settings) {
     };
     const VolkDeviceTable& vk = context->getFunctions();
     const VkResult result = vk.vkCreateSwapchainKHR(context->getDevice(), &info, nullptr, &handle);
+
     if (old != VK_NULL_HANDLE) {
         vk.vkDestroySwapchainKHR(context->getDevice(), old, nullptr);
     }
+
     if (result == VK_ERROR_SURFACE_LOST_KHR || result == VK_ERROR_NATIVE_WINDOW_IN_USE_KHR) {
         handle = VK_NULL_HANDLE;
         extent = {};
         presentedExtent = {};
         return false;
     }
+
     if (result != VK_SUCCESS) {
         handle = VK_NULL_HANDLE;
         Context::check(result, "make the swapchain of the window");
@@ -200,6 +220,7 @@ bool Swapchain::configure(const Settings& settings) {
         Context::check(vk.vkCreateSemaphore(context->getDevice(), &semaphoreInfo, nullptr, &images[index].finished), "make a semaphore");
         context->setName(VK_OBJECT_TYPE_IMAGE, made[index], "haylen-swapchain-image");
     }
+
     if (scaled) {
         drawables.resize(count);
         for (Attachment& drawable : drawables) {
@@ -211,6 +232,7 @@ bool Swapchain::configure(const Settings& settings) {
         color = makeAttachment(format, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
         context->setName(VK_OBJECT_TYPE_IMAGE, color.image, "haylen-swapchain-color");
     }
+
     depth = makeAttachment(depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
     context->setName(VK_OBJECT_TYPE_IMAGE, depth.image, "haylen-swapchain-depth");
     return true;
@@ -267,14 +289,17 @@ std::vector<VkImageView> Swapchain::getViews() const {
     for (const SwapchainImage& image : images) {
         views.push_back(image.view);
     }
+
     for (const Attachment& drawable : drawables) {
         views.push_back(drawable.view);
     }
+
     for (const VkImageView view : {color.view, depth.view}) {
         if (view != VK_NULL_HANDLE) {
             views.push_back(view);
         }
     }
+
     return views;
 }
 
@@ -306,6 +331,7 @@ Swapchain::Attachment Swapchain::makeAttachment(VkFormat attachmentFormat, VkIma
         memory.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
         Context::check(vmaCreateImage(context->getAllocator(), &info, &memory, &made.image, &made.allocation, nullptr), "make an attachment of the swapchain");
     }
+
     made.view = makeView(made.image, attachmentFormat);
     return made;
 }
@@ -337,6 +363,7 @@ void Swapchain::destroyAttachment(Attachment& attachment) const {
     if (attachment.image == VK_NULL_HANDLE) {
         return;
     }
+
     context->getFunctions().vkDestroyImageView(context->getDevice(), attachment.view, nullptr);
     vmaDestroyImage(context->getAllocator(), attachment.image, attachment.allocation);
     attachment = {};
@@ -347,6 +374,7 @@ void Swapchain::destroySwapchain() {
         context->getFunctions().vkDestroySwapchainKHR(context->getDevice(), handle, nullptr);
         handle = VK_NULL_HANDLE;
     }
+
     extent = {};
     presentedExtent = {};
 }
@@ -357,10 +385,13 @@ void Swapchain::destroyImages() {
         vk.vkDestroyImageView(context->getDevice(), image.view, nullptr);
         vk.vkDestroySemaphore(context->getDevice(), image.finished, nullptr);
     }
+
     images.clear();
+
     for (Attachment& drawable : drawables) {
         destroyAttachment(drawable);
     }
+
     drawables.clear();
     destroyAttachment(color);
     destroyAttachment(depth);

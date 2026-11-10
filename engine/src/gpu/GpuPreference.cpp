@@ -13,6 +13,7 @@ void GpuPreference::request([[maybe_unused]] bool lowPower) noexcept {
     if (auto* nvidia = reinterpret_cast<DWORD*>(reinterpret_cast<void*>(GetProcAddress(executable, "NvOptimusEnablement")))) {
         *nvidia = lowPower ? 0U : 1U;
     }
+
     if (auto* amd = reinterpret_cast<int*>(reinterpret_cast<void*>(GetProcAddress(executable, "AmdPowerXpressRequestHighPerformance")))) {
         *amd = lowPower ? 0 : 1;
     }

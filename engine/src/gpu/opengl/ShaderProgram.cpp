@@ -21,6 +21,7 @@ ShaderProgram::ShaderProgram(Gl& functions, StateCache& cache, const Device::Pro
         gl.deleteShader(fragment);
         throw;
     }
+
     gl.deleteShader(vertex);
     gl.deleteShader(fragment);
 
@@ -51,6 +52,7 @@ Gl::Uint ShaderProgram::compile(Gl::Enum stage, std::string_view source, std::st
     if (compiled != 0) {
         return shader;
     }
+
     Gl::Int size = 0;
     gl.getShaderiv(shader, Gl::kInfoLogLength, &size);
     std::string log(static_cast<std::size_t>(std::max(size, 1)), '\0');
@@ -65,9 +67,11 @@ void ShaderProgram::link(const Device::ProgramDesc& desc, Gl::Uint vertex, Gl::U
     name = gl.createProgram();
     gl.attachShader(name, vertex);
     gl.attachShader(name, fragment);
+
     for (const Device::Attribute& attribute : desc.attributes) {
         gl.bindAttribLocation(name, static_cast<Gl::Uint>(attribute.location), std::string(attribute.name).c_str());
     }
+
     gl.linkProgram(name);
     gl.detachShader(name, vertex);
     gl.detachShader(name, fragment);
@@ -77,6 +81,7 @@ void ShaderProgram::link(const Device::ProgramDesc& desc, Gl::Uint vertex, Gl::U
     if (linked != 0) {
         return;
     }
+
     Gl::Int size = 0;
     gl.getProgramiv(name, Gl::kInfoLogLength, &size);
     std::string log(static_cast<std::size_t>(std::max(size, 1)), '\0');
@@ -93,6 +98,7 @@ void ShaderProgram::readBlocks(const Device::ProgramDesc& desc) {
         if (binding.slot < 0 || binding.slot >= static_cast<int>(Device::kMaxBlocks) || binding.glslName.empty() || static_cast<std::uint32_t>(binding.glslCount) * 16U != binding.size) {
             throw std::logic_error(std::format("The program \"{}\" has a uniform block at slot {} that OpenGL cannot read as an array of vectors.", desc.label, binding.slot));
         }
+
         blockIndices[static_cast<std::size_t>(binding.slot)] = static_cast<std::int8_t>(blocks.size());
         blocks.push_back({.location = gl.getUniformLocation(name, std::string(binding.glslName).c_str()), .count = binding.glslCount, .integers = binding.glslIntegers, .values = std::vector<std::byte>(binding.size)});
     }
@@ -102,6 +108,7 @@ void ShaderProgram::readUnits(const Device::ProgramDesc& desc) {
     if (desc.pairs.size() > StateCache::kMaxUnits) {
         throw std::logic_error(std::format("The program \"{}\" samples {} textures, and OpenGL programs sample at most {}.", desc.label, desc.pairs.size(), StateCache::kMaxUnits));
     }
+
     state.useProgram(name);
     units.reserve(desc.pairs.size());
     for (const Device::TexturePair& pair : desc.pairs) {
@@ -109,9 +116,11 @@ void ShaderProgram::readUnits(const Device::ProgramDesc& desc) {
         if (texture == desc.textures.end() || pair.sampler < 0 || pair.sampler >= static_cast<int>(Device::kMaxSamplers)) {
             throw std::logic_error(std::format("The texture sampler pair \"{}\" of the program \"{}\" names a texture or a sampler the program does not declare.", pair.glslName, desc.label));
         }
+
         if (texture->multisampled) {
             throw std::logic_error(std::format("The program \"{}\" samples a multisampled texture, which the OpenGL device resolves instead of sampling.", desc.label));
         }
+
         gl.uniform1i(gl.getUniformLocation(name, std::string(pair.glslName).c_str()), static_cast<Gl::Int>(units.size()));
         units.push_back({.texture = static_cast<std::size_t>(pair.texture), .sampler = static_cast<std::size_t>(pair.sampler), .target = Conversions::toTextureTarget(texture->type)});
     }
@@ -122,10 +131,12 @@ void ShaderProgram::applyUniforms(int slot, std::span<const std::byte> data) {
     if (index < 0) {
         throw std::logic_error(std::format("The program has no uniform block at slot {}.", slot));
     }
+
     Block& block = blocks[static_cast<std::size_t>(index)];
     if (data.size() != block.values.size()) {
         throw std::logic_error(std::format("The uniform block at slot {} holds {} bytes, not {}.", slot, block.values.size(), data.size()));
     }
+
     if (block.location < 0 || (block.written && std::memcmp(block.values.data(), data.data(), data.size()) == 0)) {
         return;
     }

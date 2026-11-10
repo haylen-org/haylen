@@ -23,6 +23,7 @@ template <typename Record> class Slots final {
             if (slots.size() > kIndexMask) {
                 throw std::runtime_error(std::format("The graphics device has no room for another {}.", name));
             }
+
             index = static_cast<std::uint32_t>(slots.size());
             slots.emplace_back();
         } else {
@@ -42,6 +43,7 @@ template <typename Record> class Slots final {
         if (index >= slots.size() || !slots[index].record || slots[index].generation != id >> kIndexBits) {
             return nullptr;
         }
+
         // A smart pointer of COM overloads its address operator, so the record takes its address apart.
         return std::addressof(*slots[index].record);
     }
@@ -51,6 +53,7 @@ template <typename Record> class Slots final {
         if (record == nullptr) {
             throw std::logic_error(std::format("The {} {} does not exist.", name, id));
         }
+
         return *record;
     }
 
@@ -59,6 +62,7 @@ template <typename Record> class Slots final {
         if (find(id) == nullptr) {
             return std::nullopt;
         }
+
         const std::uint32_t index = id & kIndexMask;
         std::optional<Record> record = std::exchange(slots[index].record, std::nullopt);
         free.push_back(index);

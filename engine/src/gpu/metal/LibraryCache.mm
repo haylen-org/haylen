@@ -14,6 +14,7 @@ std::shared_ptr<LibraryCache::Entry> LibraryCache::find(std::string_view source,
     if (inserted) {
         found->second = std::make_shared<Entry>();
     }
+
     added = inserted;
     return found->second;
 }
@@ -21,6 +22,7 @@ std::shared_ptr<LibraryCache::Entry> LibraryCache::find(std::string_view source,
 void LibraryCache::prepare(std::string_view source, core::JobSystem& jobs) {
     bool added = false;
     std::shared_ptr<Entry> entry = find(source, added);
+
     if (!added) {
         return;
     }
@@ -38,6 +40,7 @@ void LibraryCache::compile(id<MTLDevice> metal, std::string_view source, Entry& 
         if (entry.state != State::Queued) {
             return;
         }
+
         entry.state = State::Compiling;
     }
 
@@ -81,6 +84,7 @@ id<MTLLibrary> LibraryCache::acquire(std::string_view source, std::string& error
         ++entry->users;
         return entry->library;
     }
+
     error = entry->error;
     lock.unlock();
 
@@ -89,6 +93,7 @@ id<MTLLibrary> LibraryCache::acquire(std::string_view source, std::string& error
     if (const auto found = entries.find(std::string(source)); found != entries.end() && found->second == entry) {
         entries.erase(found);
     }
+
     return nil;
 }
 
@@ -101,11 +106,13 @@ void LibraryCache::release(id<MTLLibrary> library) {
             if (found->second->library != library) {
                 continue;
             }
+
             unused = --found->second->users <= 0;
         }
         if (unused) {
             entries.erase(found);
         }
+
         return;
     }
 }

@@ -32,6 +32,7 @@ TEST_P(GpuShaderPackageTest, MakesEveryProgramOfTheRenderer) {
             ++programs;
         }
     }
+
     programGraveyard->collect(device());
     device().commit();
     EXPECT_GT(programs, 0);

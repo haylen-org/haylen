@@ -23,12 +23,14 @@ const ShaderCompiler::Library* ShaderCompiler::loadLibrary() {
     if (handle == nullptr) {
         throw std::runtime_error("The shader compiler of Direct3D, \"d3dcompiler_47.dll\", is missing from the system.");
     }
+
     const auto compileFunction = reinterpret_cast<pD3DCompile>(reinterpret_cast<void*>(GetProcAddress(handle, "D3DCompile")));
     const auto blobFunction = reinterpret_cast<CreateBlob>(reinterpret_cast<void*>(GetProcAddress(handle, "D3DCreateBlob")));
     if (compileFunction == nullptr || blobFunction == nullptr) {
         FreeLibrary(handle);
         throw std::runtime_error("The shader compiler of Direct3D, \"d3dcompiler_47.dll\", lacks the functions \"D3DCompile\" and \"D3DCreateBlob\".");
     }
+
     return new Library{.compile = compileFunction, .createBlob = blobFunction};
 }
 
@@ -48,6 +50,7 @@ ComPtr<ID3DBlob> ShaderCompiler::compile(const Device::StageCode& stage, std::st
         if (FAILED(library.createBlob(stage.bytecode.size(), code.GetAddressOf()))) {
             throw std::runtime_error(std::format("The graphics device found no memory for the bytecode of the shader \"{}\".", label));
         }
+
         std::memcpy(code->GetBufferPointer(), stage.bytecode.data(), stage.bytecode.size());
         return code;
     }
@@ -69,6 +72,7 @@ ComPtr<ID3DBlob> ShaderCompiler::compile(const Device::StageCode& stage, std::st
     if (result.code == nullptr) {
         throw std::runtime_error(std::format("The shader \"{}\" does not compile for Direct3D: {}", label, result.error));
     }
+
     return std::move(result.code);
 }
 
@@ -85,6 +89,7 @@ ShaderCompiler::Result ShaderCompiler::run(const std::string& key) const {
     if (SUCCEEDED(status)) {
         return result;
     }
+
     result.code.Reset();
     result.error = errors != nullptr ? std::string(static_cast<const char*>(errors->GetBufferPointer()), errors->GetBufferSize()) : std::format("the compiler failed with the error 0x{:08X}.", static_cast<unsigned long>(status));
     return result;
@@ -100,6 +105,7 @@ void ShaderCompiler::start(const Device::StageCode& stage) {
     if (!stage.bytecode.empty() || stage.source.empty()) {
         return;
     }
+
     std::string key = makeKey(stage);
     auto task = std::make_shared<std::packaged_task<Result()>>();
     {
@@ -107,6 +113,7 @@ void ShaderCompiler::start(const Device::StageCode& stage) {
         if (started.contains(key)) {
             return;
         }
+
         // clang-format off
         *task = std::packaged_task<Result()>([weak = weak_from_this(), key] {
             const std::shared_ptr<ShaderCompiler> compiler = weak.lock();

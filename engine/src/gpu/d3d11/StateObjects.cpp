@@ -21,6 +21,7 @@ ComPtr<ID3D11BlendState> StateObjects::makeBlend(ID3D11Device& device, const Dev
             target.BlendOp = target.BlendOpAlpha = D3D11_BLEND_OP_ADD;
             continue;
         }
+
         const Device::ColorTarget& color = desc.colors[index];
         target.BlendEnable = color.blend.enabled ? TRUE : FALSE;
         target.SrcBlend = toBlend(color.blend.sourceColor);
@@ -239,6 +240,7 @@ D3D11_FILTER StateObjects::toFilter(const Device::SamplerDesc& desc) noexcept {
     if (desc.maxAnisotropy > 1) {
         return static_cast<D3D11_FILTER>(0x55U | comparison);
     }
+
     const UINT mipmap = desc.mipmap == Device::Filter::Linear ? 0x1U : 0U;
     const UINT magnification = desc.magnification == Device::Filter::Linear ? 0x4U : 0U;
     const UINT minification = desc.minification == Device::Filter::Linear ? 0x10U : 0U;

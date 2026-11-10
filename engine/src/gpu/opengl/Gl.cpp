@@ -45,6 +45,7 @@ void Gl::readVersion() {
     if (embedded == isDesktop()) {
         throw std::runtime_error(std::format("The context of version \"{}\" is not of the OpenGL flavour the device draws through.", version));
     }
+
     if (reported < required) {
         throw std::runtime_error(std::format("The context has OpenGL \"{}\", and the OpenGL device needs {} {}.{} or later.", version, isDesktop() ? "OpenGL" : "OpenGL ES", required / 10, required % 10));
     }
@@ -101,9 +102,11 @@ void Gl::readFeatures() {
     suffixes.bufferStorage = "EXT";
     suffixes.timerQuery = "EXT";
     suffixes.parallelShaderCompile = "KHR";
+
     if (version >= 32) {
         return;
     }
+
     suffixes.drawBuffersIndexed = hasExtension("GL_OES_draw_buffers_indexed") ? "OES" : "EXT";
     suffixes.debug = "KHR";
     suffixes.robustness = hasExtension("GL_KHR_robustness") ? "KHR" : "EXT";
@@ -226,6 +229,7 @@ void Gl::loadCore(GlContext& context) {
         require(context, mapBufferRange, "glMapBufferRange");
         require(context, unmapBuffer, "glUnmapBuffer");
     }
+
     if (isDesktop()) {
         require(context, getBufferSubData, "glGetBufferSubData");
     }

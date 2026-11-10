@@ -53,6 +53,7 @@ void ScaledDrawable::resize(const Surface::Size& value) {
     if (value == size) {
         return;
     }
+
     destroyTargets();
     size = value;
     makeTargets();
@@ -67,13 +68,16 @@ void ScaledDrawable::makeTargets() {
 
     gl.genFramebuffers(1, &framebuffer);
     state.bindDrawFramebuffer(framebuffer);
+
     if (samples > 1) {
         colorBuffer = makeRenderbuffer(Gl::kRgba8);
         gl.framebufferRenderbuffer(Gl::kDrawFramebuffer, Gl::kColorAttachment0, Gl::kRenderbuffer, colorBuffer);
     } else {
         gl.framebufferTexture2D(Gl::kDrawFramebuffer, Gl::kColorAttachment0, Gl::kTexture2d, texture, 0);
     }
+
     gl.framebufferRenderbuffer(Gl::kDrawFramebuffer, Gl::kDepthStencilAttachment, Gl::kRenderbuffer, depthStencil);
+
     if (gl.checkFramebufferStatus(Gl::kDrawFramebuffer) != Gl::kFramebufferComplete) {
         throw std::runtime_error("The OpenGL device cannot draw into a framebuffer of the size of the drawable, so it cannot show the window with fewer pixels than it has.");
     }
@@ -102,12 +106,14 @@ void ScaledDrawable::destroyTargets() noexcept {
             *made = 0;
         }
     }
+
     for (Gl::Uint* made : {&colorBuffer, &depthStencil}) {
         if (*made != 0) {
             gl.deleteRenderbuffers(1, made);
             *made = 0;
         }
     }
+
     if (texture != 0) {
         gl.deleteTextures(1, &texture);
         state.forgetTexture(texture);

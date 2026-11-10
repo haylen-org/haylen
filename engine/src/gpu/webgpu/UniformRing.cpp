@@ -68,8 +68,10 @@ void UniformRing::flush(WGPUQueue queue) noexcept {
         if (chunk.used != 0) {
             wgpuQueueWriteBuffer(queue, chunk.buffer, 0, chunk.bytes.data(), (chunk.used + 3U) & ~std::size_t{3U});
         }
+
         chunk.used = 0;
     }
+
     current = 0;
 }
 

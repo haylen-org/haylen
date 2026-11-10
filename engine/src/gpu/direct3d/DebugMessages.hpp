@@ -24,12 +24,14 @@ class DebugMessages final {
             if (FAILED(queue.GetMessage(index, nullptr, &size))) {
                 continue;
             }
+
             storage.resize(size);
             auto* message = reinterpret_cast<Message*>(storage.data());
             if (SUCCEEDED(queue.GetMessage(index, message, &size))) {
                 write(static_cast<int>(message->Severity), api, std::string_view(message->pDescription, message->DescriptionByteLength > 0 ? message->DescriptionByteLength - 1 : 0));
             }
         }
+
         queue.ClearStoredMessages();
         drainDxgi();
     }

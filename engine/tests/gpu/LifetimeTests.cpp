@@ -30,9 +30,11 @@ class GpuLifetimeTest : public test::GpuFixture {
         device().beginPass({.colors = colors, .label = "haylen-test-frame"});
         device().pushDebugGroup("haylen-test-planes");
         device().applyPipeline(pipeline);
+
         for (int draw = 0; draw < 4; ++draw) {
             drawPlane(color);
         }
+
         device().popDebugGroup();
         device().endPass();
         device().popDebugGroup();
@@ -93,19 +95,24 @@ TEST_P(GpuLifetimeTest, RunsManyFramesWithoutGrowing) {
     for (int frame = 0; frame < 60; ++frame) {
         drawFrame(target, pipeline, buffer, math::Color::white());
     }
+
     const std::vector<Device::Pool> before = device().getPools();
 
     const test::AllocationTracker tracker;
+
     for (int frame = 0; frame < 240; ++frame) {
         drawFrame(target, pipeline, buffer, math::Color::white());
     }
+
     EXPECT_EQ(tracker.getTotal(), 0U);
 
     const std::vector<Device::Pool> after = device().getPools();
     ASSERT_EQ(after.size(), before.size());
+
     for (std::size_t index = 0; index < after.size(); ++index) {
         EXPECT_EQ(after[index].used, before[index].used) << after[index].name;
     }
+
     EXPECT_TRUE(isNear(read(target, kSize, kSize).at(4, 4), math::Color::white()));
     device().destroy(buffer);
 }
@@ -116,6 +123,7 @@ TEST_P(GpuLifetimeTest, MeasuresTheFramesOfTheGpuWhereItCan) {
         EXPECT_FALSE(device().getGpuFrameSeconds().has_value());
         return;
     }
+
     const Device::Image target = makeTarget(kSize, kSize);
     const std::array<Device::ColorTarget, 1> formats{};
     const Device::Pipeline pipeline = makePlanePipeline(formats);
@@ -125,6 +133,7 @@ TEST_P(GpuLifetimeTest, MeasuresTheFramesOfTheGpuWhereItCan) {
         drawFrame(target, pipeline, buffer, math::Color::white());
         test::EventLoop::yield();
     }
+
     ASSERT_TRUE(device().getGpuFrameSeconds().has_value());
     EXPECT_GE(*device().getGpuFrameSeconds(), 0.0);
     device().destroy(buffer);
@@ -158,10 +167,12 @@ TEST_P(GpuLifetimeTest, ReleasesADeviceWithoutReportingItLost) {
     if (GetParam() != Device::Api::WebGpu) {
         GTEST_SKIP() << "Only WebGPU reports the end of a device that the engine releases.";
     }
+
     std::unique_ptr<test::OffscreenSurface> surface;
     std::unique_ptr<Device> released = makeDevice(GetParam(), surface);
     EXPECT_FALSE(released->isLost());
     released.reset();
+
     for (int turn = 0; turn < 8; ++turn) {
         test::EventLoop::yield();
     }

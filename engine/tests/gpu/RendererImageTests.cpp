@@ -53,6 +53,7 @@ class GpuRendererTest : public ::testing::TestWithParam<Device::Api> {
         if (GetParam() == Device::Api::None) {
             FAIL() << "The variable \"HAYLEN_TEST_GRAPHICS_API\" names no graphics API.";
         }
+
         errors = std::make_unique<test::LoggedErrors>();
 
         // clang-format off
@@ -66,8 +67,10 @@ class GpuRendererTest : public ::testing::TestWithParam<Device::Api> {
             if (test::GpuFixture::isApiRequired()) {
                 FAIL() << "The device of \"" << DeviceFactory::getApiName(GetParam()) << "\", which \"HAYLEN_TEST_GRAPHICS_API\" names, cannot start on this machine: " << error.what();
             }
+
             GTEST_SKIP() << "The device of \"" << DeviceFactory::getApiName(GetParam()) << "\" cannot start on this machine: " << error.what();
         }
+
         target = fixture->engine().getGraphics().createRenderTarget(kSize, kSize);
     }
 
@@ -76,6 +79,7 @@ class GpuRendererTest : public ::testing::TestWithParam<Device::Api> {
         target = {};
         fixture.reset();
         surface.reset();
+
         if (errors && !IsSkipped()) {
             errors->reportAsFailures();
         }
@@ -87,6 +91,7 @@ class GpuRendererTest : public ::testing::TestWithParam<Device::Api> {
     void expectScene(std::string_view name, Draw draw) {
         std::optional<graphics::Image> image;
         readScene(name, std::move(draw), image);
+
         if (image) {
             test::ImageComparison::expectReference(*image, name, kTolerance, kAllowedPixels);
         }
@@ -158,6 +163,7 @@ TEST_P(GpuRendererTest, DrawsSprites) {
             checker.setPixel(x, y, (x + y) % 2 == 0 ? math::Color::fromHex(0xFF6B6BFFU) : math::Color::fromHex(0x4ECDC4FFU));
         }
     }
+
     graphics::Device& graphics = fixture->engine().getGraphics();
     const graphics::Texture nearest = graphics.createTexture(checker, {.filter = graphics::Texture::Filter::Nearest});
     const graphics::Texture linear = graphics.createTexture(checker, {.filter = graphics::Texture::Filter::Linear});
@@ -248,6 +254,7 @@ TEST_P(GpuRendererTest, PostProcessesCanvases) {
     // clang-format off
     expectScene("post-process", [](core::Engine&, graphics2d::Renderer& renderer, const graphics::RenderTarget& into) {
         renderer.beginTarget(into, topLeft(), {.postProcess = graphics2d::PostProcess{.tint = math::Color::fromHex(0xFFF0D8FFU), .saturation = 0.6F, .contrast = 1.2F, .vignetteStrength = 0.6F}, .clear = math::Color::fromHex(0x3A86FFFFU)});
+
         for (int index = 0; index < 4; ++index) {
             const float x = 16.0F + static_cast<float>(index) * 28.0F;
             renderer.drawCircle({x + 10.0F, 64.0F}, 12.0F, math::Color::fromHsv(static_cast<float>(index) / 4.0F, 0.8F, 1.0F));
@@ -281,6 +288,7 @@ TEST_P(GpuRendererTest, BlendsGroupsWithWhatLiesBelow) {
         for (std::size_t index = 0; index < stripes.size(); ++index) {
             renderer.drawRect({static_cast<float>(index) * 32.0F, 0.0F, 32.0F, static_cast<float>(kSize)}, math::Color::fromHex(stripes[index]));
         }
+
         const std::array<std::pair<graphics::BlendMode::Type, float>, 3> groups{{{graphics::BlendMode::Type::Overlay, 32.0F}, {graphics::BlendMode::Type::Difference, 64.0F}, {graphics::BlendMode::Type::ColorBurn, 96.0F}}};
         for (const auto& [blend, y] : groups) {
             renderer.beginGroup({.opacity = 0.9F, .order = {.blend = blend}});
@@ -302,20 +310,25 @@ TEST_P(GpuRendererTest, FadesDrawsTowardTheEdgesOfTheirFades) {
         for (std::size_t index = 0; index < stripes.size(); ++index) {
             renderer.drawRect({static_cast<float>(index) * 32.0F, 0.0F, 32.0F, static_cast<float>(kSize)}, math::Color::fromHex(stripes[index]));
         }
+
         const math::Rect area{16.0F, 8.0F, 96.0F, 112.0F};
         renderer.pushClip(area);
         renderer.pushFade(area, {.length = 28.0F, .top = 1.0F, .bottom = 0.75F});
+
         for (int row = 0; row < 7; ++row) {
             const float y = 4.0F + static_cast<float>(row) * 18.0F;
             renderer.drawShape({.bounds = {20.0F, y, 88.0F, 14.0F}, .radii = {6.0F, 6.0F, 6.0F, 6.0F}, .color = math::Color::fromHex(0x2A9D8FFFU), .borderWidth = 2.0F, .borderColor = math::Color::fromHex(0x0B3D3AFFU)});
             renderer.draw({.texture = white, .position = {30.0F, y + 7.0F}, .size = {8.0F, 8.0F}, .color = math::Color::fromHex(0xE9C46AFFU)});
             renderer.drawText(*engine.getDefaultFont(), "Row", {44.0F, y + 1.0F}, {.size = 12.0F, .color = math::Color::white()});
         }
+
         renderer.pushFade({16.0F, 58.0F, 96.0F, 20.0F}, {.length = 20.0F, .left = 1.0F, .right = 1.0F});
         renderer.beginGroup({.opacity = 0.8F});
+
         for (int column = 0; column < 6; ++column) {
             renderer.drawCircle({24.0F + static_cast<float>(column) * 16.0F, 68.0F}, 7.0F, math::Color::fromHex(0xF4A261FFU));
         }
+
         renderer.endGroup();
         renderer.drawLine({16.0F, 76.0F}, {112.0F, 76.0F}, 2.0F, math::Color::fromHex(0x264653FFU));
         renderer.popFade();
@@ -333,6 +346,7 @@ TEST_P(GpuRendererTest, ReadsTexturesAtThePixelFootprintWherePointsJump) {
             checker.setPixel(x, y, (x + y) % 2 == 0 ? math::Color::fromHex(0xFF0000FFU) : math::Color::fromHex(0x0000FFFFU));
         }
     }
+
     const graphics::Texture texture = fixture->engine().getGraphics().createTexture(checker, {.filter = graphics::Texture::Filter::Linear, .mipmaps = true});
     const graphics2d::Material material(graphics::Shader::parse(core::EmbeddedFiles::getScatteredSamplingShader()));
 
@@ -352,6 +366,7 @@ TEST_P(GpuRendererTest, ReadsTexturesAtThePixelFootprintWherePointsJump) {
             red += pixel.r > 0.9F && pixel.b < 0.1F ? 1 : 0;
         }
     }
+
     EXPECT_GE(red, 60 * 60 * 98 / 100);
 }
 

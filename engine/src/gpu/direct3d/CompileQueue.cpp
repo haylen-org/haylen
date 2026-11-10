@@ -50,6 +50,7 @@ std::uint64_t CompileQueue::post(std::function<void()> job) {
         withdraw(ticket);
         throw;
     }
+
     return ticket;
 }
 
@@ -59,6 +60,7 @@ bool CompileQueue::withdraw(std::uint64_t ticket) {
     if (found == state->jobs.end()) {
         return false;
     }
+
     state->jobs.erase(found);
     return true;
 }
@@ -70,6 +72,7 @@ void CompileQueue::work(const std::shared_ptr<State>& state) {
         ++state->idle;
         state->wake.wait(lock, [&state] { return state->stopped || !state->jobs.empty(); });
         --state->idle;
+
         if (state->stopped) {
             break;
         }
@@ -81,6 +84,7 @@ void CompileQueue::work(const std::shared_ptr<State>& state) {
         job = nullptr;
         lock.lock();
     }
+
     --state->threads;
 }
 

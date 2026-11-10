@@ -20,6 +20,7 @@ Device::Device(std::unique_ptr<Connection> owned, const std::optional<Surface>& 
     if (connection->hasFeature(WGPUFeatureName_TimestampQuery)) {
         timer = std::make_unique<FrameTimer>(device);
     }
+
     if (surface) {
         attachSurface(*surface);
     }
@@ -29,9 +30,11 @@ Device::~Device() {
     if (pass != nullptr) {
         wgpuRenderPassEncoderRelease(pass);
     }
+
     if (encoder != nullptr) {
         wgpuCommandEncoderRelease(encoder);
     }
+
     swapchain.reset();
     surfaces.clear();
 
@@ -50,18 +53,22 @@ Device::~Device() {
     for (const auto& [source, module] : modules) {
         wgpuShaderModuleRelease(module.module);
     }
+
     for (const auto& [key, layout] : pipelineLayouts) {
         wgpuPipelineLayoutRelease(layout);
     }
+
     for (const auto& [key, layout] : imageLayouts) {
         wgpuBindGroupLayoutRelease(layout);
     }
+
     for (const auto& [key, layout] : blockLayouts) {
         for (const WGPUBindGroup group : layout->groups) {
             if (group != nullptr) {
                 wgpuBindGroupRelease(group);
             }
         }
+
         wgpuBindGroupLayoutRelease(layout->layout);
     }
 }
@@ -90,6 +97,7 @@ gpu::Device::Capabilities Device::describeCapabilities(const Connection& connect
         result.blendableFormats[index] = !ImageInfo::isDepth(format) && (!wideFloat || floatBlending);
         result.filterableFormats[index] = !ImageInfo::isDepth(format) && (!wideFloat || floatFiltering);
     }
+
     return result;
 }
 
@@ -148,6 +156,7 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
         std::memcpy(wgpuBufferGetMappedRange(buffer, 0, static_cast<std::size_t>(descriptor.size)), desc.data.data(), desc.data.size());
         wgpuBufferUnmap(buffer);
     }
+
     return {buffers.add({.buffer = buffer, .size = static_cast<std::size_t>(descriptor.size)})};
 }
 
@@ -155,27 +164,35 @@ void Device::validateImage(const ImageDesc& desc) const {
     if (!capabilities.textureFormats[static_cast<std::size_t>(desc.format)]) {
         throw std::runtime_error("This WebGPU adapter has no depth format with a 32-bit float and stencil.");
     }
+
     if (desc.width < 1 || desc.height < 1 || desc.width > capabilities.maxImageSize || desc.height > capabilities.maxImageSize) {
         throw std::runtime_error(std::format("The graphics device cannot create a {}x{} image, since its sides are between 1 and {} pixels.", desc.width, desc.height, capabilities.maxImageSize));
     }
+
     if (desc.layers < 1 || (desc.type != TextureType::Volume && desc.layers > capabilities.maxArrayLayers)) {
         throw std::runtime_error(std::format("The graphics device cannot create an image of {} layers, since it holds between 1 and {}.", desc.layers, capabilities.maxArrayLayers));
     }
+
     if (desc.type == TextureType::Cube && (desc.layers != 6 || desc.width != desc.height)) {
         throw std::runtime_error("A cube image has six square faces.");
     }
+
     if (desc.mipLevels < 1 || desc.mipLevels > ImageInfo::getMaxMipLevels(desc)) {
         throw std::runtime_error(std::format("The graphics device cannot create a {}x{} image with {} mip levels.", desc.width, desc.height, desc.mipLevels));
     }
+
     if (desc.sampleCount != 1 && desc.sampleCount != 4) {
         throw std::runtime_error(std::format("WebGPU draws images of one or four samples, not {}.", desc.sampleCount));
     }
+
     if (desc.sampleCount > 1 && (desc.type != TextureType::Flat || desc.mipLevels > 1 || desc.kind == ImageKind::Texture || desc.kind == ImageKind::Dynamic)) {
         throw std::runtime_error("A multisampled image is a flat render target or depth stencil image of one mip level.");
     }
+
     if (ImageInfo::isDepth(desc.format) != (desc.kind == ImageKind::DepthStencil)) {
         throw std::runtime_error("Depth formats belong to depth stencil images, and only to them.");
     }
+
     if (desc.kind == ImageKind::Texture && desc.levels.size() != static_cast<std::size_t>(desc.mipLevels)) {
         throw std::runtime_error(std::format("A texture of {} mip levels comes with the pixels of each, not of {}.", desc.mipLevels, desc.levels.size()));
     }
@@ -232,6 +249,7 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
         const ImageInfo::Extent extent = ImageInfo::getLevelExtent(desc, static_cast<int>(level));
         writeLevel(texture, static_cast<int>(level), extent.width, extent.height, extent.depth, desc.format, desc.levels[level]);
     }
+
     return {images.add(std::move(record))};
 }
 
@@ -265,6 +283,7 @@ WGPUShaderModule Device::acquireModule(std::string_view source, std::string_view
         descriptor.label = Conversion::toText(label);
         found = modules.emplace(std::string(source), ShaderModule{.module = wgpuDeviceCreateShaderModule(device, &descriptor)}).first;
     }
+
     key = &found->first;
     return found->second.module;
 }
@@ -274,6 +293,7 @@ void Device::releaseModule(const std::string* key) noexcept {
     if (found == modules.end() || --found->second.programs > 0) {
         return;
     }
+
     retire(Retired::Kind::ShaderModule, found->second.module);
     modules.erase(found);
 }
@@ -286,6 +306,7 @@ Device::BlockLayout& Device::getBlockLayout(std::span<const BlockBinding> blocks
     for (const BlockBinding& block : sorted) {
         key.push_back((static_cast<std::uint64_t>(block.binding) << 40U) | (static_cast<std::uint64_t>(block.stage) << 32U) | block.size);
     }
+
     const auto found = blockLayouts.find(key);
     if (found != blockLayouts.end()) {
         return *found->second;
@@ -303,6 +324,7 @@ Device::BlockLayout& Device::getBlockLayout(std::span<const BlockBinding> blocks
         entries.push_back(entry);
         layout->blocks.emplace_back(static_cast<std::uint32_t>(block.binding), block.size);
     }
+
     WGPUBindGroupLayoutDescriptor descriptor = WGPU_BIND_GROUP_LAYOUT_DESCRIPTOR_INIT;
     descriptor.label = Conversion::toText("haylen-uniform-blocks");
     descriptor.entryCount = entries.size();
@@ -316,9 +338,11 @@ WGPUBindGroupLayout Device::getImageLayout(std::span<const TextureBinding> textu
     for (const TextureBinding& texture : textures) {
         key.push_back((static_cast<std::uint64_t>(texture.binding) << 32U) | (static_cast<std::uint64_t>(texture.stage) << 24U) | (static_cast<std::uint64_t>(texture.type) << 16U) | (static_cast<std::uint64_t>(texture.sampleType) << 8U) | (texture.multisampled ? 1U : 0U));
     }
+
     for (const SamplerBinding& sampler : textureSamplers) {
         key.push_back((std::uint64_t{1} << 63U) | (static_cast<std::uint64_t>(sampler.binding) << 32U) | (static_cast<std::uint64_t>(sampler.stage) << 24U) | static_cast<std::uint64_t>(sampler.type));
     }
+
     const auto found = imageLayouts.find(key);
     if (found != imageLayouts.end()) {
         return found->second;
@@ -334,6 +358,7 @@ WGPUBindGroupLayout Device::getImageLayout(std::span<const TextureBinding> textu
         entry.texture.multisampled = texture.multisampled ? 1U : 0U;
         entries.push_back(entry);
     }
+
     for (const SamplerBinding& sampler : textureSamplers) {
         WGPUBindGroupLayoutEntry entry = WGPU_BIND_GROUP_LAYOUT_ENTRY_INIT;
         entry.binding = static_cast<std::uint32_t>(sampler.binding);
@@ -341,6 +366,7 @@ WGPUBindGroupLayout Device::getImageLayout(std::span<const TextureBinding> textu
         entry.sampler.type = Conversion::toSamplerType(sampler.type);
         entries.push_back(entry);
     }
+
     WGPUBindGroupLayoutDescriptor descriptor = WGPU_BIND_GROUP_LAYOUT_DESCRIPTOR_INIT;
     descriptor.label = Conversion::toText("haylen-images");
     descriptor.entryCount = entries.size();
@@ -355,6 +381,7 @@ WGPUPipelineLayout Device::getPipelineLayout(WGPUBindGroupLayout blocks, WGPUBin
     if (found != pipelineLayouts.end()) {
         return found->second;
     }
+
     const std::array<WGPUBindGroupLayout, 2> groups{blocks, textures};
     WGPUPipelineLayoutDescriptor descriptor = WGPU_PIPELINE_LAYOUT_DESCRIPTOR_INIT;
     descriptor.bindGroupLayoutCount = groups.size();
@@ -389,6 +416,7 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
     for (const BlockBinding& block : sorted) {
         record.blockSlots[record.blockCount++] = block.slot;
     }
+
     return {programs.add(std::move(record))};
 }
 
@@ -410,6 +438,7 @@ gpu::Device::PipelineDesc Device::SwapchainPipeline::describe() const noexcept {
 // A pipeline of the swapchain draws into its color format, its depth and stencil format and its sample count, keeping the depth and stencil tests the description asks for, or none.
 WGPURenderPipeline Device::createPipeline(const PipelineDesc& desc) {
     const ProgramRecord& program = programs.get(desc.program.id);
+
     if (desc.colors.size() > kMaxColorTargets || desc.buffers.size() > kMaxVertexBuffers) {
         throw std::logic_error(std::format("The pipeline \"{}\" draws into at most {} color targets from at most {} vertex buffers.", desc.label, kMaxColorTargets, kMaxVertexBuffers));
     }
@@ -418,6 +447,7 @@ WGPURenderPipeline Device::createPipeline(const PipelineDesc& desc) {
     for (const VertexAttribute& attribute : desc.attributes) {
         attributes.at(static_cast<std::size_t>(attribute.buffer)).push_back({.format = Conversion::toVertexFormat(attribute.format), .offset = static_cast<std::uint64_t>(attribute.offset), .shaderLocation = static_cast<std::uint32_t>(attribute.location)});
     }
+
     std::array<WGPUVertexBufferLayout, kMaxVertexBuffers> layouts{};
     for (std::size_t index = 0; index < desc.buffers.size(); ++index) {
         layouts[index] = WGPU_VERTEX_BUFFER_LAYOUT_INIT;
@@ -452,6 +482,7 @@ WGPURenderPipeline Device::createPipeline(const PipelineDesc& desc) {
             depthStencil.stencilReadMask = tests.stencilReadMask;
             depthStencil.stencilWriteMask = tests.stencilWriteMask;
         }
+
         depthStencil.depthBias = triangles ? static_cast<std::int32_t>(tests.depthBias) : 0;
         depthStencil.depthBiasSlopeScale = triangles ? tests.depthBiasSlope : 0.0F;
     }
@@ -485,6 +516,7 @@ gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
     if (desc.swapchain) {
         record.swapchain = SwapchainPipeline::from(desc);
     }
+
     return {pipelines.add(std::move(record))};
 }
 
@@ -494,6 +526,7 @@ void Device::rebuildSwapchainPipelines() {
         if (!record.swapchain) {
             return;
         }
+
         retire(Retired::Kind::Pipeline, record.pipeline);
         record.pipeline = createPipeline(record.swapchain->describe());
     });
@@ -529,6 +562,7 @@ void Device::releaseRetired() noexcept {
             break;
         }
     }
+
     retired.clear();
 }
 
@@ -536,6 +570,7 @@ void Device::releaseImage(ImageRecord& image) noexcept {
     for (const auto& [key, view] : image.attachments) {
         retire(Retired::Kind::TextureView, view);
     }
+
     retire(Retired::Kind::TextureView, image.sampled);
     retire(Retired::Kind::Texture, image.texture);
 }
@@ -585,9 +620,11 @@ void Device::destroy(Pipeline pipeline) noexcept {
 // Queue writes take offsets and sizes in multiples of four bytes, so the last bytes of data of another size go through a padded copy that ends inside the buffer, whose size is a multiple of four.
 void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) {
     const BufferRecord& record = buffers.get(buffer.id);
+
     if (offset % 4U != 0) {
         throw std::logic_error(std::format("WebGPU writes buffers at offsets that are multiples of four bytes, not at {}.", offset));
     }
+
     if (offset + data.size() > record.size) {
         throw std::logic_error(std::format("The write of {} bytes at {} ends past the {} bytes of the buffer.", data.size(), offset, record.size));
     }
@@ -596,9 +633,11 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
     if (whole != 0) {
         wgpuQueueWriteBuffer(queue, record.buffer, offset, data.data(), whole);
     }
+
     if (whole == data.size()) {
         return;
     }
+
     padded.assign(4, std::byte{0});
     std::memcpy(padded.data(), data.data() + whole, data.size() - whole);
     wgpuQueueWriteBuffer(queue, record.buffer, offset + whole, padded.data(), 4);
@@ -610,6 +649,7 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
         if (image.kind != ImageKind::Dynamic) {
             throw std::logic_error(std::format("The image {} is not dynamic, so it keeps the pixels it was made with.", write.image.id));
         }
+
         writeLevel(image.texture, 0, image.width, image.height, image.layers, image.format, write.pixels);
     }
 }
@@ -644,12 +684,15 @@ void Device::beginPass(const PassDesc& desc) {
     if (pass != nullptr || skipping) {
         throw std::logic_error("A pass begins while another pass is open.");
     }
+
     openEncoder();
+
     if (desc.colors.empty() && !desc.depthStencil) {
         beginSwapchainPass(desc);
     } else {
         beginOffscreenPass(desc);
     }
+
     bound = {};
     blocksDirty = true;
     imagesDirty = true;
@@ -694,6 +737,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
     if (desc.colors.size() > kMaxColorTargets) {
         throw std::logic_error(std::format("A pass draws into at most {} color attachments.", kMaxColorTargets));
     }
+
     std::array<WGPURenderPassColorAttachment, kMaxColorTargets> colors{};
     passWidth = 0;
     passHeight = 0;
@@ -703,6 +747,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         if (image.kind != ImageKind::RenderTarget) {
             throw std::logic_error("A pass draws only into render targets.");
         }
+
         colors[index] = WGPU_RENDER_PASS_COLOR_ATTACHMENT_INIT;
         colors[index].view = getAttachmentView(image, attachment.mipLevel, attachment.layer);
         colors[index].depthSlice = image.type == TextureType::Volume ? static_cast<std::uint32_t>(attachment.layer) : WGPU_DEPTH_SLICE_UNDEFINED;
@@ -710,6 +755,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         colors[index].loadOp = Conversion::toLoad(attachment.load);
         colors[index].storeOp = Conversion::toStore(attachment.store);
         colors[index].clearValue = Conversion::toColor(attachment.clear);
+
         if (index == 0) {
             passWidth = std::max(1, image.width >> attachment.mipLevel);
             passHeight = std::max(1, image.height >> attachment.mipLevel);
@@ -723,6 +769,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         if (image.kind != ImageKind::DepthStencil) {
             throw std::logic_error("A pass takes only a depth stencil image as its depth and stencil attachment.");
         }
+
         depth.view = getAttachmentView(image, 0, 0);
         depth.depthLoadOp = Conversion::toLoad(attachment.depthLoad);
         depth.depthStoreOp = Conversion::toStore(attachment.depthStore);
@@ -732,6 +779,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
             depth.stencilStoreOp = Conversion::toStore(attachment.stencilStore);
             depth.stencilClearValue = attachment.clearStencil;
         }
+
         if (desc.colors.empty()) {
             passWidth = image.width;
             passHeight = image.height;
@@ -758,6 +806,7 @@ void Device::applyScissor(const math::Rect& pixels) {
     if (pass == nullptr) {
         return;
     }
+
     const long left = std::clamp(std::lround(pixels.x), 0L, static_cast<long>(passWidth));
     const long top = std::clamp(std::lround(pixels.y), 0L, static_cast<long>(passHeight));
     const long right = std::clamp(std::lround(pixels.x + pixels.width), left, static_cast<long>(passWidth));
@@ -769,11 +818,13 @@ void Device::applyPipeline(Pipeline pipeline) {
     if (pass == nullptr) {
         return;
     }
+
     const PipelineRecord& record = pipelines.get(pipeline.id);
     if (record.pipeline != bound.pipeline) {
         wgpuRenderPassEncoderSetPipeline(pass, record.pipeline);
         bound.pipeline = record.pipeline;
     }
+
     currentPipeline = pipeline.id;
     blocksDirty = true;
     imagesDirty = true;
@@ -783,18 +834,22 @@ void Device::applyBindings(const Bindings& value) {
     if (pass == nullptr) {
         return;
     }
+
     for (std::size_t index = 0; index < kMaxVertexBuffers; ++index) {
         if (!value.vertexBuffers[index].isValid()) {
             continue;
         }
+
         WGPUBuffer buffer = buffers.get(value.vertexBuffers[index].id).buffer;
         if (buffer == bound.vertexBuffers[index] && value.vertexOffsets[index] == bound.vertexOffsets[index]) {
             continue;
         }
+
         wgpuRenderPassEncoderSetVertexBuffer(pass, static_cast<std::uint32_t>(index), buffer, static_cast<std::uint64_t>(value.vertexOffsets[index]), WGPU_WHOLE_SIZE);
         bound.vertexBuffers[index] = buffer;
         bound.vertexOffsets[index] = value.vertexOffsets[index];
     }
+
     imagesDirty = imagesDirty || value.textures != bindings.textures || value.samplers != bindings.samplers;
     bindings = value;
 }
@@ -804,13 +859,16 @@ void Device::applyUniforms(int slot, std::span<const std::byte> data) {
     if (pass == nullptr) {
         return;
     }
+
     if (data.size() > std::min<std::uint64_t>(connection->getLimits().maxUniformBufferBindingSize, UniformRing::kMaxBlockSize)) {
         throw std::logic_error(std::format("A uniform block of {} bytes is larger than WebGPU binds.", data.size()));
     }
+
     if (!ring.fits(data.size())) {
         ring.advance();
         carryUniforms();
     }
+
     uniforms.at(static_cast<std::size_t>(slot)) = {.chunk = ring.getChunk(), .offset = ring.push(data), .size = static_cast<std::uint32_t>(data.size())};
     blocksDirty = true;
 }
@@ -820,6 +878,7 @@ void Device::carryUniforms() noexcept {
         if (block.size == 0) {
             continue;
         }
+
         block.offset = ring.push(ring.view(block.chunk, block.offset, block.size));
         block.chunk = ring.getChunk();
     }
@@ -842,6 +901,7 @@ WGPUBindGroup Device::getBlockGroup(BlockLayout& layout, std::uint32_t chunk) {
     if (layout.groups.size() <= chunk) {
         layout.groups.resize(ring.getChunkCount(), nullptr);
     }
+
     WGPUBindGroup& group = layout.groups[chunk];
     if (group != nullptr) {
         return group;
@@ -855,6 +915,7 @@ WGPUBindGroup Device::getBlockGroup(BlockLayout& layout, std::uint32_t chunk) {
         entry.size = size;
         entries.push_back(entry);
     }
+
     WGPUBindGroupDescriptor descriptor = WGPU_BIND_GROUP_DESCRIPTOR_INIT;
     descriptor.label = Conversion::toText("haylen-uniform-blocks");
     descriptor.layout = layout.layout;
@@ -871,16 +932,19 @@ WGPUBindGroup Device::makeImageGroup(const ProgramRecord& program, const BindGro
         if (image == nullptr) {
             throw std::logic_error(std::format("The draw binds no image at the texture slot {}, which the program samples.", texture.slot));
         }
+
         WGPUBindGroupEntry entry = WGPU_BIND_GROUP_ENTRY_INIT;
         entry.binding = static_cast<std::uint32_t>(texture.binding);
         entry.textureView = image->sampled;
         entries.push_back(entry);
     }
+
     for (const SamplerBinding& sampler : program.samplers) {
         const SamplerRecord* record = samplers.find(key.samplers[static_cast<std::size_t>(sampler.slot)]);
         if (record == nullptr) {
             throw std::logic_error(std::format("The draw binds no sampler at the slot {}, which the program samples with.", sampler.slot));
         }
+
         WGPUBindGroupEntry entry = WGPU_BIND_GROUP_ENTRY_INIT;
         entry.binding = static_cast<std::uint32_t>(sampler.binding);
         entry.sampler = record->sampler;
@@ -901,16 +965,19 @@ void Device::bindBlocks(const ProgramRecord& program) {
     if (!blocksDirty) {
         return;
     }
+
     blocksDirty = false;
 
     std::array<std::uint32_t, kMaxBlocks> offsets{};
     for (std::uint32_t index = 0; index < program.blockCount; ++index) {
         offsets[index] = uniforms[static_cast<std::size_t>(program.blockSlots[index])].offset;
     }
+
     WGPUBindGroup group = getBlockGroup(*program.blocks, ring.getChunk());
     if (group == bound.blockGroup && offsets == bound.blockOffsets) {
         return;
     }
+
     wgpuRenderPassEncoderSetBindGroup(pass, 0, group, program.blockCount, offsets.data());
     bound.blockGroup = group;
     bound.blockOffsets = offsets;
@@ -920,19 +987,23 @@ void Device::bindImages(const ProgramRecord& program) {
     if (!imagesDirty) {
         return;
     }
+
     imagesDirty = false;
 
     BindGroupCache::Key key{.layout = program.images};
     for (const TextureBinding& texture : program.textures) {
         key.images[static_cast<std::size_t>(texture.slot)] = bindings.textures[static_cast<std::size_t>(texture.slot)].id;
     }
+
     for (const SamplerBinding& sampler : program.samplers) {
         key.samplers[static_cast<std::size_t>(sampler.slot)] = bindings.samplers[static_cast<std::size_t>(sampler.slot)].id;
     }
+
     WGPUBindGroup group = imageGroups.find(key, frame);
     if (group == nullptr) {
         group = makeImageGroup(program, key);
     }
+
     if (group != bound.imageGroup) {
         wgpuRenderPassEncoderSetBindGroup(pass, 1, group, 0, nullptr);
         bound.imageGroup = group;
@@ -944,6 +1015,7 @@ void Device::bindIndexBuffer(WGPUIndexFormat format) {
     if (buffer == bound.indexBuffer && bindings.indexOffset == bound.indexOffset && format == bound.indexFormat) {
         return;
     }
+
     wgpuRenderPassEncoderSetIndexBuffer(pass, buffer, format, static_cast<std::uint64_t>(bindings.indexOffset), WGPU_WHOLE_SIZE);
     bound.indexBuffer = buffer;
     bound.indexOffset = bindings.indexOffset;
@@ -954,6 +1026,7 @@ void Device::draw(int first, int count, int instances) {
     if (pass == nullptr) {
         return;
     }
+
     const PipelineRecord& pipeline = pipelines.get(currentPipeline);
     const ProgramRecord& program = programs.get(pipeline.program);
     bindBlocks(program);
@@ -963,6 +1036,7 @@ void Device::draw(int first, int count, int instances) {
         wgpuRenderPassEncoderDraw(pass, static_cast<std::uint32_t>(count), static_cast<std::uint32_t>(instances), static_cast<std::uint32_t>(first), 0);
         return;
     }
+
     bindIndexBuffer(pipeline.indexFormat);
     wgpuRenderPassEncoderDrawIndexed(pass, static_cast<std::uint32_t>(count), static_cast<std::uint32_t>(instances), static_cast<std::uint32_t>(first), 0, 0);
 }
@@ -974,6 +1048,7 @@ void Device::endPass() {
         pass = nullptr;
         passGroups = 0;
     }
+
     skipping = false;
 }
 
@@ -983,6 +1058,7 @@ void Device::pushDebugGroup(std::string_view name) {
         ++passGroups;
         return;
     }
+
     openEncoder();
     wgpuCommandEncoderPushDebugGroup(encoder, Conversion::toText(name));
     ++encoderGroups;
@@ -994,6 +1070,7 @@ void Device::popDebugGroup() {
         --passGroups;
         return;
     }
+
     if (encoderGroups > 0) {
         wgpuCommandEncoderPopDebugGroup(encoder);
         --encoderGroups;
@@ -1003,31 +1080,38 @@ void Device::popDebugGroup() {
 // The uniforms of the frame reach the GPU through the queue before the commands that read them, and what the frame destroyed goes to WebGPU once the commands that may record it are submitted.
 void Device::commit() {
     ring.flush(queue);
+
     if (encoder != nullptr) {
         if (swapchain) {
             swapchain->recordScale(encoder);
         }
+
         for (const std::unique_ptr<Swapchain>& chain : surfaces) {
             if (chain != nullptr) {
                 chain->recordScale(encoder);
             }
         }
+
         if (timer) {
             timer->resolve(encoder);
         }
+
         WGPUCommandBuffer commands = wgpuCommandEncoderFinish(encoder, nullptr);
         wgpuQueueSubmit(queue, 1, &commands);
         wgpuCommandBufferRelease(commands);
         wgpuCommandEncoderRelease(encoder);
         encoder = nullptr;
         encoderGroups = 0;
+
         if (timer) {
             timer->submitted();
         }
     }
+
     if (swapchain) {
         swapchain->release();
     }
+
     for (const std::unique_ptr<Swapchain>& chain : surfaces) {
         if (chain != nullptr) {
             chain->release();
@@ -1055,6 +1139,7 @@ void Device::attachSurface(const Surface& surface) {
     if (swapchain->getFormat() == swapchainFormat && swapchain->getSampleCount() == swapchainSamples) {
         return;
     }
+
     swapchainFormat = swapchain->getFormat();
     swapchainSamples = swapchain->getSampleCount();
     rebuildSwapchainPipelines();
@@ -1066,11 +1151,13 @@ int Device::addSurface(const Surface& surface) {
     if (chain->getFormat() != swapchainFormat || chain->getSampleCount() != swapchainSamples) {
         throw std::runtime_error("The canvas takes another format or another sample count than the canvas of the window, so the pipelines of the window cannot draw into it.");
     }
+
     const auto free = std::ranges::find_if(surfaces, [](const std::unique_ptr<Swapchain>& chain) { return chain == nullptr; });
     if (free != surfaces.end()) {
         *free = std::move(chain);
         return static_cast<int>(free - surfaces.begin()) + 1;
     }
+
     surfaces.push_back(std::move(chain));
     return static_cast<int>(surfaces.size());
 }
@@ -1083,6 +1170,7 @@ std::unique_ptr<Swapchain>& Device::requireAddedSurface(int surface) {
     if (surface < 1 || static_cast<std::size_t>(surface) > surfaces.size() || surfaces[static_cast<std::size_t>(surface - 1)] == nullptr) {
         throw std::logic_error(std::format("The device has no surface {}.", surface));
     }
+
     return surfaces[static_cast<std::size_t>(surface - 1)];
 }
 
@@ -1099,9 +1187,11 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
     if (record.kind != ImageKind::RenderTarget || record.sampleCount != 1) {
         throw std::logic_error(std::format("The image {} is not a render target of one sample, whose pixels can be read back.", image.id));
     }
+
     if (width <= 0 || height <= 0 || width > record.width || height > record.height) {
         throw std::logic_error(std::format("A region of {}x{} pixels does not fit the render target of {}x{}.", width, height, record.width, record.height));
     }
+
     return std::make_unique<ImageReadback>(device, queue, record.texture, record.format, width, height);
 }
 

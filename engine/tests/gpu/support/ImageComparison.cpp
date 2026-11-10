@@ -21,6 +21,7 @@ ImageComparison::Result ImageComparison::compare(const graphics::Image& actual, 
     if (actual.getWidth() != expected.getWidth() || actual.getHeight() != expected.getHeight()) {
         return {.differing = std::max(actual.getWidth() * actual.getHeight(), expected.getWidth() * expected.getHeight()), .largest = 255};
     }
+
     Result result;
     const std::span<const std::uint8_t> drawn = actual.getPixels();
     const std::span<const std::uint8_t> wanted = expected.getPixels();
@@ -29,9 +30,11 @@ ImageComparison::Result ImageComparison::compare(const graphics::Image& actual, 
         for (std::size_t channel = 0; channel < 4; ++channel) {
             largest = std::max(largest, std::abs(static_cast<int>(drawn[pixel + channel]) - static_cast<int>(wanted[pixel + channel])));
         }
+
         result.largest = std::max(result.largest, largest);
         result.differing += largest > tolerance ? 1 : 0;
     }
+
     return result;
 }
 
@@ -50,8 +53,10 @@ graphics::Image ImageComparison::makeDifference(const graphics::Image& actual, c
         for (std::size_t channel = 0; channel < 4; ++channel) {
             largest = std::max(largest, std::abs(static_cast<int>(drawn[pixel + channel]) - static_cast<int>(wanted[pixel + channel])));
         }
+
         std::fill_n(shown.begin() + static_cast<std::ptrdiff_t>(pixel), 3, static_cast<std::uint8_t>(largest));
     }
+
     return difference;
 }
 
@@ -69,6 +74,7 @@ void ImageComparison::expectReference(const graphics::Image& actual, std::string
         std::cout << "Wrote the reference image \"" << reference.generic_string() << "\". Look at it before you commit it.\n";
         return;
     }
+
     if (!std::filesystem::exists(reference)) {
         ADD_FAILURE() << "The reference image \"" << reference.generic_string() << "\" does not exist. Run the GPU tests with \"HAYLEN_GPU_REFERENCES=write\" on a device that draws the scene right, look at the image and commit it.";
         return;
@@ -84,9 +90,11 @@ void ImageComparison::expectReference(const graphics::Image& actual, std::string
 
     const std::filesystem::path output = GpuTestFiles::getOutputDirectory() / std::string(name);
     write(actual, output / "drawn.png");
+
     if (actual.getWidth() == expected.getWidth() && actual.getHeight() == expected.getHeight()) {
         write(makeDifference(actual, expected), output / "difference.png");
     }
+
     ADD_FAILURE() << "The image of \"" << name << "\" differs from its reference in " << result.differing << " pixels, by up to " << result.largest << ", and allows " << allowedPixels << " pixels past " << tolerance << ". The image it drew and the difference are in \"" << output.generic_string() << "\".";
 }
 

@@ -437,6 +437,7 @@ class Gl final {
 
     template <typename Function> void require(GlContext& context, Function& function, std::string_view name) {
         bindSuffixed(context, function, name, "");
+
         if (function == nullptr) {
             throwMissing(name);
         }

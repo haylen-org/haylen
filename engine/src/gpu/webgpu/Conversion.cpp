@@ -10,6 +10,7 @@ std::string_view Conversion::fromText(WGPUStringView text) noexcept {
     if (text.data == nullptr) {
         return {};
     }
+
     return text.length == WGPU_STRLEN ? std::string_view(text.data) : std::string_view(text.data, text.length);
 }
 
@@ -162,6 +163,7 @@ WGPUBlendComponent Conversion::toBlendComponent(Device::BlendFactor source, Devi
     if (operation == Device::BlendOperation::Minimum || operation == Device::BlendOperation::Maximum) {
         return {.operation = toBlendOperation(operation), .srcFactor = WGPUBlendFactor_One, .dstFactor = WGPUBlendFactor_One};
     }
+
     return {.operation = toBlendOperation(operation), .srcFactor = toBlendFactor(source), .dstFactor = toBlendFactor(destination)};
 }
 
@@ -171,15 +173,19 @@ WGPUColorWriteMask Conversion::toWriteMask(Device::ColorMask mask) noexcept {
     if ((bits & static_cast<unsigned>(Device::ColorMask::Red)) != 0) {
         result |= WGPUColorWriteMask_Red;
     }
+
     if ((bits & static_cast<unsigned>(Device::ColorMask::Green)) != 0) {
         result |= WGPUColorWriteMask_Green;
     }
+
     if ((bits & static_cast<unsigned>(Device::ColorMask::Blue)) != 0) {
         result |= WGPUColorWriteMask_Blue;
     }
+
     if ((bits & static_cast<unsigned>(Device::ColorMask::Alpha)) != 0) {
         result |= WGPUColorWriteMask_Alpha;
     }
+
     return result;
 }
 

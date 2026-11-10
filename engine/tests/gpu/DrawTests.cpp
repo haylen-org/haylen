@@ -31,6 +31,7 @@ class GpuDrawTest : public test::GpuFixture {
 
     void SetUp() override {
         GpuFixture::SetUp();
+
         if (!IsSkipped() && !HasFatalFailure()) {
             target = makeTarget(kSize, kSize);
         }
@@ -44,6 +45,7 @@ class GpuDrawTest : public test::GpuFixture {
             buffers.push_back({.stride = 8, .perInstance = true});
             attributes.push_back({.location = attribute(name, "instance_offset"), .buffer = 1, .format = Device::VertexFormat::Float2});
         }
+
         const std::array<Device::ColorTarget, 1> colors{};
         return device().makePipeline({.program = program(name), .buffers = buffers, .attributes = attributes, .primitive = primitive, .indexType = indexType, .colors = colors, .label = "haylen-test-color"});
     }
@@ -52,6 +54,7 @@ class GpuDrawTest : public test::GpuFixture {
         if (usage == Device::Usage::Dynamic) {
             return device().makeBuffer({.size = vertices.size_bytes(), .usage = usage, .label = "haylen-test-vertices"});
         }
+
         return device().makeBuffer({.data = std::as_bytes(vertices), .label = "haylen-test-vertices"});
     }
 
@@ -113,9 +116,11 @@ TEST_P(GpuDrawTest, DrawsTrianglesAndStripsFromVertexBuffers) {
 
     EXPECT_TRUE(isNear(pixels.at(4, 1), {0.0F, 1.0F, 0.0F, 1.0F}));
     EXPECT_TRUE(isNear(pixels.at(4, 6), {1.0F, 0.0F, 0.0F, 1.0F}));
+
     for (const Device::Buffer buffer : {square, corners}) {
         device().destroy(buffer);
     }
+
     device().destroy(triangles);
     device().destroy(strip);
 }
@@ -145,6 +150,7 @@ TEST_P(GpuDrawTest, DrawsIndexedTrianglesOfBothIndexSizes) {
         EXPECT_TRUE(isNear(pixels.at(7, 7), {0.0F, 1.0F, 0.0F, 1.0F})) << static_cast<int>(type);
         device().destroy(pipeline);
     }
+
     for (const Device::Buffer buffer : {corners, shortBuffer, longBuffer}) {
         device().destroy(buffer);
     }
@@ -226,9 +232,11 @@ TEST_P(GpuDrawTest, KeepsUniformBlocksWhileLaterBlocksFillTheUploadMemory) {
     bindings.vertexBuffers[0] = vertices;
     device().applyBindings(bindings);
     device().applyUniforms(0, std::as_bytes(std::span(move)));
+
     for (int index = 0; index < kLaterBlocks; ++index) {
         device().applyUniforms(1, std::as_bytes(std::span(red)));
     }
+
     device().applyUniforms(1, std::as_bytes(std::span(green)));
     device().draw(0, 3, 1);
     const Pixels pixels = finish();
@@ -269,6 +277,7 @@ TEST_P(GpuDrawTest, DrawsLines) {
     for (int x = 0; x < kSize; ++x) {
         lit += pixels.at(x, 3).r > 0.5F ? 1 : 0;
     }
+
     EXPECT_GE(lit, kSize - 1);
     EXPECT_TRUE(isNear(pixels.at(4, 0), math::Color::black()));
     device().destroy(vertices);
@@ -284,6 +293,7 @@ TEST_P(GpuDrawTest, ReadsTheContentsOfDynamicBuffersOfEachFrame) {
         for (Vertex& vertex : square) {
             vertex.color = color;
         }
+
         device().writeBuffer(vertices, 0, std::as_bytes(std::span(square)));
         beginPass();
         device().applyPipeline(pipeline);
@@ -294,6 +304,7 @@ TEST_P(GpuDrawTest, ReadsTheContentsOfDynamicBuffersOfEachFrame) {
         device().draw(0, 6, 1);
         EXPECT_TRUE(isNear(finish().at(4, 4), color)) << color.toHex();
     }
+
     device().destroy(vertices);
     device().destroy(pipeline);
 }

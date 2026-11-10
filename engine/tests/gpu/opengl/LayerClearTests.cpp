@@ -15,26 +15,33 @@ class LayerClearTest : public OpenGlTest {
 
     void SetUp() override {
         OpenGlTest::SetUp();
+
         if (IsSkipped()) {
             return;
         }
+
         if (GetParam() != Device::Api::OpenGlEs) {
             GTEST_SKIP() << "The layer clear serves OpenGL ES drivers alone.";
         }
+
         opened.gl.load(*context, GetParam());
         opened.state.reset();
 
         Gl& gl = opened.gl;
         gl.genTextures(static_cast<Gl::Sizei>(targets.size()), targets.data());
+
         for (const Gl::Uint target : targets) {
             opened.state.bindTexture(0, Gl::kTexture2d, target);
             gl.texStorage2D(Gl::kTexture2d, 1, Gl::kRgba8, kTargetSize, kTargetSize);
         }
+
         gl.genFramebuffers(1, &framebuffer);
         opened.state.bindDrawFramebuffer(framebuffer);
+
         for (std::size_t index = 0; index < targets.size(); ++index) {
             gl.framebufferTexture2D(Gl::kDrawFramebuffer, Gl::kColorAttachment0 + static_cast<Gl::Enum>(index), Gl::kTexture2d, targets[index], 0);
         }
+
         const std::array<Gl::Enum, 2> buffers{Gl::kColorAttachment0, Gl::kColorAttachment0 + 1};
         gl.drawBuffers(static_cast<Gl::Sizei>(buffers.size()), buffers.data());
     }
@@ -45,6 +52,7 @@ class LayerClearTest : public OpenGlTest {
             opened.state.forgetFramebuffer(framebuffer);
             opened.gl.deleteTextures(static_cast<Gl::Sizei>(targets.size()), targets.data());
         }
+
         OpenGlTest::TearDown();
     }
 

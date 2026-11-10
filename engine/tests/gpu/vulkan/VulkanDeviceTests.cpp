@@ -22,6 +22,7 @@ class VulkanDeviceTest : public ::testing::Test {
 
     void SetUp() override {
         errors = std::make_unique<test::LoggedErrors>();
+
         try {
             device = std::make_unique<Device>(std::nullopt, Device::Settings{.validation = true, .dynamicRendering = false});
         } catch (const std::runtime_error& error) {
@@ -31,6 +32,7 @@ class VulkanDeviceTest : public ::testing::Test {
 
     void TearDown() override {
         device.reset();
+
         if (!IsSkipped()) {
             errors->reportAsFailures();
         }
@@ -43,8 +45,10 @@ class VulkanDeviceTest : public ::testing::Test {
             if (std::optional<std::vector<std::uint8_t>> pixels = copy->poll()) {
                 return *pixels;
             }
+
             device->commit();
         }
+
         ADD_FAILURE() << "The copy of the render target did not finish.";
         return {};
     }
@@ -80,16 +84,19 @@ TEST_F(VulkanDeviceTest, ResolvesAndKeepsAttachmentsThroughRenderPasses) {
 // The framebuffers of destroyed render targets go with them, while the frames in flight may still draw with them.
 TEST_F(VulkanDeviceTest, ReleasesTheFramebuffersOfDestroyedImages) {
     const std::vector<gpu::Device::Pool> before = device->getPools();
+
     for (int frame = 0; frame < 32; ++frame) {
         const gpu::Device::Image target = device->makeImage({.width = kSize, .height = kSize, .kind = gpu::Device::ImageKind::RenderTarget});
         clear(target, math::Color{1.0F, 0.0F, 0.0F, 1.0F});
         device->commit();
         device->destroy(target);
     }
+
     device->commit();
 
     const std::vector<gpu::Device::Pool> after = device->getPools();
     ASSERT_EQ(after.size(), before.size());
+
     for (std::size_t index = 0; index < after.size(); ++index) {
         EXPECT_EQ(after[index].used, before[index].used) << after[index].name;
     }

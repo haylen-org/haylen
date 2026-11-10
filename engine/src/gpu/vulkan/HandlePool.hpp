@@ -18,12 +18,14 @@ template <typename Record> class HandlePool final {
             if (slots.size() >= kMaxSlots) {
                 throw std::runtime_error("The Vulkan device has no room for another object of this kind.");
             }
+
             index = static_cast<std::uint32_t>(slots.size());
             slots.emplace_back();
         } else {
             index = free.back();
             free.pop_back();
         }
+
         Slot& slot = slots[index];
         slot.record = std::move(record);
         ++live;
@@ -35,6 +37,7 @@ template <typename Record> class HandlePool final {
         if (id == 0 || index >= slots.size() || slots[index].generation != id >> kIndexBits) {
             return nullptr;
         }
+
         return slots[index].record.get();
     }
 
@@ -43,6 +46,7 @@ template <typename Record> class HandlePool final {
         if (find(id) == nullptr) {
             return nullptr;
         }
+
         const std::uint32_t index = (id & kIndexMask) - 1;
         Slot& slot = slots[index];
         slot.generation = (slot.generation + 1) & kGenerationMask;

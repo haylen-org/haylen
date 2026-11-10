@@ -29,6 +29,7 @@ FrameTimer::FrameTimer(WGPUDevice device) {
     for (Slot& slot : slots) {
         slot.readback = wgpuDeviceCreateBuffer(device, &readbackDescriptor);
     }
+
     writes.querySet = queries;
 }
 
@@ -37,6 +38,7 @@ FrameTimer::~FrameTimer() {
         wgpuBufferDestroy(slot.readback);
         wgpuBufferRelease(slot.readback);
     }
+
     wgpuBufferDestroy(resolved);
     wgpuBufferRelease(resolved);
     wgpuQuerySetDestroy(queries);
@@ -55,10 +57,12 @@ const WGPUPassTimestampWrites* FrameTimer::nextPass() noexcept {
         collect();
         measuring = states[current] == State::Free;
     }
+
     Slot& slot = slots[current];
     if (!measuring || slot.passes == kMaxPasses) {
         return nullptr;
     }
+
     const std::uint32_t first = (current * kMaxPasses + slot.passes) * 2U;
     writes.beginningOfPassWriteIndex = first;
     writes.endOfPassWriteIndex = first + 1U;
@@ -71,6 +75,7 @@ void FrameTimer::resolve(WGPUCommandEncoder encoder) noexcept {
     if (slot.passes == 0) {
         return;
     }
+
     const std::uint64_t offset = current * kSlotBytes;
     wgpuCommandEncoderResolveQuerySet(encoder, queries, current * kMaxPasses * 2U, slot.passes * 2U, resolved, offset);
     wgpuCommandEncoderCopyBufferToBuffer(encoder, resolved, offset, slot.readback, 0, std::uint64_t{slot.passes} * 2U * sizeof(std::uint64_t));
@@ -90,6 +95,7 @@ void FrameTimer::submitted() noexcept {
         callback.userdata2 = reinterpret_cast<void*>(static_cast<std::uintptr_t>(current));
         wgpuBufferMapAsync(slot.readback, WGPUMapMode_Read, 0, static_cast<std::size_t>(kSlotBytes), callback);
     }
+
     current = (current + 1U) % kSlots;
     slots[current].passes = 0;
     started = false;
@@ -106,7 +112,9 @@ void FrameTimer::collect() noexcept {
             states[index] = State::Free;
         }
     }
+
     std::sort(mapped.begin(), mapped.begin() + static_cast<std::ptrdiff_t>(count), [](const Slot* first, const Slot* second) { return first->frame < second->frame; });
+
     for (std::size_t index = 0; index < count; ++index) {
         read(*mapped[index]);
     }
@@ -117,6 +125,7 @@ void FrameTimer::read(Slot& slot) noexcept {
     std::array<std::uint64_t, kMaxPasses * 2U> times{};
     std::memcpy(times.data(), wgpuBufferGetConstMappedRange(slot.readback, 0, static_cast<std::size_t>(kSlotBytes)), sizeof(times));
     wgpuBufferUnmap(slot.readback);
+
     if (const std::optional<double> frame = timeline.addFrame(slot.frame, std::span(times).first(std::size_t{slot.mapped} * 2U))) {
         seconds = frame;
     }

@@ -16,6 +16,7 @@ VkResult Instance::loaderResult = VK_ERROR_INITIALIZATION_FAILED;
 
 Instance::Instance(bool validation) {
     openLoader();
+
     if (loaderResult != VK_SUCCESS) {
         throw std::runtime_error("Vulkan is not installed on this machine.");
     }
@@ -24,9 +25,11 @@ Instance::Instance(bool validation) {
     if (vkEnumerateInstanceVersion != nullptr) {
         vkEnumerateInstanceVersion(&loaderVersion);
     }
+
     if (loaderVersion < VK_API_VERSION_1_1) {
         throw std::runtime_error("The Vulkan loader of this machine is older than Vulkan 1.1, which the Vulkan device needs.");
     }
+
     apiVersion = std::min<std::uint32_t>(loaderVersion, VK_API_VERSION_1_3);
 
     std::uint32_t count = 0;
@@ -84,6 +87,7 @@ Instance::Instance(bool validation) {
     if (result != VK_SUCCESS) {
         throw std::runtime_error(std::format("The Vulkan instance could not be created ({}).", Conversions::describe(result)));
     }
+
     volkLoadInstanceOnly(handle);
 
     if (validating && vkCreateDebugUtilsMessengerEXT(handle, &messengerInfo, nullptr, &messenger) != VK_SUCCESS) {
@@ -95,6 +99,7 @@ Instance::~Instance() {
     if (messenger != VK_NULL_HANDLE) {
         vkDestroyDebugUtilsMessengerEXT(handle, messenger, nullptr);
     }
+
     vkDestroyInstance(handle, nullptr);
 }
 
@@ -127,6 +132,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL Instance::report(VkDebugUtilsMessageSeverityFlagB
     } else {
         core::Log::warning("The Vulkan validation layers advise: {}", data->pMessage);
     }
+
     return VK_FALSE;
 }
 
@@ -168,6 +174,7 @@ VkSurfaceKHR Instance::createSurface(const Surface& surface) const {
     if (result != VK_SUCCESS) {
         throw std::runtime_error(std::format("The Vulkan device could not make the surface of the window ({}).", Conversions::describe(result)));
     }
+
     return made;
 }
 

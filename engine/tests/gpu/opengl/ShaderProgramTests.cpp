@@ -17,9 +17,11 @@ class ShaderProgramTest : public OpenGlTest {
   protected:
     void SetUp() override {
         OpenGlTest::SetUp();
+
         if (IsSkipped()) {
             return;
         }
+
         opened.gl.load(*context, GetParam());
         opened.state.reset();
         const std::string header = GetParam() == Device::Api::OpenGl ? "#version 430\n" : "#version 300 es\nprecision highp float;\n";
@@ -81,6 +83,7 @@ TEST_P(ShaderProgramTest, GivesEachTexturePairTheUnitOfItsIndex) {
 
 TEST_P(ShaderProgramTest, NamesTheStageThatDidNotCompile) {
     fragment = "#version 300 es\nvoid main() { broken }\n";
+
     try {
         const ShaderProgram program(opened.gl, opened.state, describe());
         FAIL() << "The program compiled.";

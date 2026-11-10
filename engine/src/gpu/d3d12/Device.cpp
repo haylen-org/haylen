@@ -37,6 +37,7 @@ std::unique_ptr<gpu::Device> Device::create(const std::optional<Surface>& target
             reasons += std::format(" On \"{}\": {}", name, error.what());
         }
     }
+
     throw std::runtime_error(std::format("Direct3D 12 runs on no GPU of this machine.{}", reasons.empty() ? " Windows lists no GPU." : reasons));
 }
 
@@ -45,6 +46,7 @@ void Device::enableDebugLayers(bool validation) {
     if (!validation) {
         return;
     }
+
     ComPtr<ID3D12Debug> debug;
     const HRESULT result = D3D12GetDebugInterface(IID_PPV_ARGS(debug.GetAddressOf()));
     if (SUCCEEDED(result)) {
@@ -90,6 +92,7 @@ Device::~Device() {
     if (queue != nullptr && idleFence != nullptr && fenceEvent.IsValid()) {
         waitIdle();
     }
+
     chains.clear();
 }
 
@@ -109,6 +112,7 @@ void Device::createDevice(bool validation) {
     HResult::check(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(fence.GetAddressOf())), "create the fence of the frames");
     HResult::check(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(idleFence.GetAddressOf())), "create the fence that waits for the GPU to finish");
     fenceEvent.Attach(CreateEventW(nullptr, FALSE, FALSE, nullptr));
+
     if (!fenceEvent.IsValid()) {
         throw std::runtime_error("The graphics device could not create the event that waits for the GPU.");
     }
@@ -203,6 +207,7 @@ void Device::loseDevice(HRESULT reason) noexcept {
     if (lost) {
         return;
     }
+
     lost = true;
     const HRESULT removed = device->GetDeviceRemovedReason();
     core::Log::error("Direct3D 12 lost its device, because {}.", HResult::describe(FAILED(removed) ? removed : reason));
@@ -215,6 +220,7 @@ void Device::describeRemoval() noexcept {
     if (!dred || FAILED(device.As(&data))) {
         return;
     }
+
     D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT breadcrumbs{};
     if (SUCCEEDED(data->GetAutoBreadcrumbsOutput(&breadcrumbs))) {
         for (const D3D12_AUTO_BREADCRUMB_NODE* node = breadcrumbs.pHeadAutoBreadcrumbNode; node != nullptr; node = node->pNext) {
@@ -225,6 +231,7 @@ void Device::describeRemoval() noexcept {
             }
         }
     }
+
     D3D12_DRED_PAGE_FAULT_OUTPUT fault{};
     if (SUCCEEDED(data->GetPageFaultAllocationOutput(&fault)) && fault.PageFaultVA != 0) {
         core::Log::error("The GPU read the address 0x{:X}, where Direct3D 12 held no memory.", fault.PageFaultVA);
@@ -249,6 +256,7 @@ void Device::waitFor(std::uint64_t value) {
     if (fence->GetCompletedValue() >= value) {
         return;
     }
+
     if (SUCCEEDED(fence->SetEventOnCompletion(value, fenceEvent.Get()))) {
         WaitForSingleObject(fenceEvent.Get(), INFINITE);
     }
@@ -260,6 +268,7 @@ void Device::waitIdle() {
     if (SUCCEEDED(queue->Signal(idleFence.Get(), idleValue)) && idleFence->GetCompletedValue() < idleValue && SUCCEEDED(idleFence->SetEventOnCompletion(idleValue, fenceEvent.Get()))) {
         WaitForSingleObject(fenceEvent.Get(), INFINITE);
     }
+
     release(fence->GetCompletedValue());
 }
 
@@ -272,9 +281,11 @@ void Device::release(std::uint64_t completedValue) {
         if (garbage.front().heap != nullptr) {
             garbage.front().heap->free(garbage.front().handle);
         }
+
         bufferArena->free(garbage.front().range);
         garbage.pop_front();
     }
+
     uploads->release(completedValue);
     textureTables->release(completedValue);
     samplerTables->release(completedValue);
@@ -292,6 +303,7 @@ void Device::openFrame() {
     if (frameOpen) {
         return;
     }
+
     Frame& frame = frames[frameIndex];
     waitFor(frame.fence);
     release(fence->GetCompletedValue());
@@ -311,10 +323,12 @@ void Device::openFrame() {
 
 ID3D12GraphicsCommandList4& Device::getTransferList() {
     openFrame();
+
     if (!transfersOpen) {
         checkFrame(transfers->Reset(frames[frameIndex].transfers.Get(), nullptr), "start the transfers of a frame");
         transfersOpen = true;
     }
+
     return *transfers.Get();
 }
 
@@ -340,6 +354,7 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
     if (size == 0) {
         throw std::logic_error(std::format("The buffer \"{}\" has no size.", desc.label));
     }
+
     if (desc.usage == Usage::Immutable && desc.data.empty()) {
         throw std::logic_error(std::format("The immutable buffer \"{}\" has no data.", desc.label));
     }
@@ -350,11 +365,13 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
     if (record.range.block == BufferArena::Range::kOwnResource) {
         setName(*record.resource.Get(), desc.label);
     }
+
     if (!desc.data.empty()) {
         const UploadAllocator::Allocation staged = uploads->allocate(size, 16);
         std::memcpy(staged.data, desc.data.data(), size);
         getTransferList().CopyBufferRegion(record.resource.Get(), record.range.offset, staged.resource, staged.offset, size);
     }
+
     return {buffers.insert(std::move(record))};
 }
 
@@ -378,6 +395,7 @@ void Device::makeTextureView(ImageRecord& image) {
         } else {
             view.Texture2DArray = {.MostDetailedMip = 0, .MipLevels = mips, .FirstArraySlice = 0, .ArraySize = layers, .PlaneSlice = 0, .ResourceMinLODClamp = 0.0F};
         }
+
         break;
     case TextureType::Cube:
         view.ViewDimension = layers > 6 ? D3D12_SRV_DIMENSION_TEXTURECUBEARRAY : D3D12_SRV_DIMENSION_TEXTURECUBE;
@@ -386,6 +404,7 @@ void Device::makeTextureView(ImageRecord& image) {
         } else {
             view.TextureCube = {.MostDetailedMip = 0, .MipLevels = mips, .ResourceMinLODClamp = 0.0F};
         }
+
         break;
     case TextureType::Volume:
         view.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
@@ -411,11 +430,13 @@ void Device::stagePixels(const ImageRecord& image, std::span<const std::span<con
         device->GetCopyableFootprints(&desc, first, count, total, footprints.data() + static_cast<std::size_t>(layer) * count, nullptr, nullptr, &bytes);
         total += (bytes + D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT - 1) / D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT * D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
     }
+
     const UploadAllocator::Allocation staged = uploads->allocate(total, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
 
     ID3D12GraphicsCommandList4& list = getTransferList();
     const D3D12_RESOURCE_BARRIER toCopy = makeTransition(image.resource.Get(), image.home, D3D12_RESOURCE_STATE_COPY_DEST);
     list.ResourceBarrier(1, &toCopy);
+
     for (UINT layer = 0; layer < layers; ++layer) {
         for (UINT index = 0; index < count; ++index) {
             const direct3d::MipLevels::Level level = direct3d::MipLevels::describe(image.type, image.width, image.height, image.layers, image.format, static_cast<int>(index));
@@ -436,6 +457,7 @@ void Device::stagePixels(const ImageRecord& image, std::span<const std::span<con
             list.CopyTextureRegion(&destination, 0, 0, 0, &from, nullptr);
         }
     }
+
     const D3D12_RESOURCE_BARRIER toHome = makeTransition(image.resource.Get(), D3D12_RESOURCE_STATE_COPY_DEST, image.home);
     list.ResourceBarrier(1, &toHome);
 }
@@ -444,10 +466,12 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     if (desc.width <= 0 || desc.height <= 0 || desc.width > capabilities.maxImageSize || desc.height > capabilities.maxImageSize) {
         throw std::logic_error(std::format("The image \"{}\" of {}x{} pixels does not fit the device.", desc.label, desc.width, desc.height));
     }
+
     const bool depth = Formats::isDepth(desc.format);
     if (depth != (desc.kind == ImageKind::DepthStencil)) {
         throw std::logic_error(std::format("The image \"{}\" needs a depth format exactly when it is a depth stencil image.", desc.label));
     }
+
     if (desc.kind == ImageKind::Texture) {
         direct3d::MipLevels::check(desc);
     } else if (!desc.levels.empty()) {
@@ -471,9 +495,11 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     HResult::check(device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &made, record.home, nullptr, IID_PPV_ARGS(record.resource.GetAddressOf())), std::format("create the {}x{} image \"{}\"", desc.width, desc.height, desc.label));
     setName(*record.resource.Get(), desc.label);
     makeTextureView(record);
+
     if (desc.kind == ImageKind::Texture) {
         stagePixels(record, desc.levels);
     }
+
     return {images.insert(std::move(record))};
 }
 
@@ -502,6 +528,7 @@ int Device::getSwapchainSampleCount() const noexcept {
 
 gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
     const ProgramRecord& program = programs.get(desc.program.id);
+
     if (desc.colors.empty() || desc.colors.size() > kMaxColorTargets || desc.buffers.size() > kMaxVertexBuffers) {
         throw std::logic_error(std::format("The pipeline \"{}\" needs one to {} color targets and at most {} vertex buffers.", desc.label, kMaxColorTargets, kMaxVertexBuffers));
     }
@@ -510,10 +537,12 @@ gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
     for (std::size_t index = 0; index < desc.buffers.size(); ++index) {
         record.strides[index] = static_cast<UINT>(desc.buffers[index].stride);
     }
+
     for (const VertexAttribute& attribute : desc.attributes) {
         if (attribute.buffer < 0 || attribute.buffer >= static_cast<int>(desc.buffers.size())) {
             throw std::logic_error(std::format("An attribute of the pipeline \"{}\" reads a vertex buffer it does not lay out.", desc.label));
         }
+
         const bool instanced = desc.buffers[static_cast<std::size_t>(attribute.buffer)].perInstance;
         record.elements.push_back({.SemanticName = "TEXCOORD", .SemanticIndex = static_cast<UINT>(attribute.location), .Format = Formats::getVertexFormat(attribute.format), .InputSlot = static_cast<UINT>(attribute.buffer), .AlignedByteOffset = static_cast<UINT>(attribute.offset), .InputSlotClass = instanced ? D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA : D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, .InstanceDataStepRate = instanced ? 1U : 0U});
     }
@@ -545,6 +574,7 @@ gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
         for (std::size_t index = 0; index < desc.colors.size(); ++index) {
             state.RTVFormats[index] = Formats::getViewFormat(desc.colors[index].format);
         }
+
         state.DSVFormat = desc.depthStencil.format ? Formats::getDepthFormat(*desc.depthStencil.format) : DXGI_FORMAT_UNKNOWN;
         state.SampleDesc.Count = static_cast<UINT>(std::max(1, desc.sampleCount));
     }
@@ -559,6 +589,7 @@ gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
         record.elements.clear();
         record.description = {};
     }
+
     return {pipelines.insert(std::move(record))};
 }
 
@@ -568,6 +599,7 @@ void Device::rebuildSwapchainPipelines() {
         if (!record.swapchain) {
             return;
         }
+
         record.description.SampleDesc.Count = static_cast<UINT>(pipelineSampleCount);
         ComPtr<ID3D12PipelineState> made;
         HResult::check(device->CreateGraphicsPipelineState(&record.description, IID_PPV_ARGS(made.GetAddressOf())), "make a pipeline of the swapchain again for its new sample count");
@@ -589,10 +621,13 @@ void Device::destroy(Image image) noexcept {
     if (!record) {
         return;
     }
+
     retire(nullptr, textureViews.get(), record->view);
+
     for (const Attachment& attachment : record->attachments) {
         retire(nullptr, record->kind == ImageKind::DepthStencil ? depthViews.get() : targetViews.get(), attachment.handle);
     }
+
     retire(std::move(record->resource));
 }
 
@@ -610,6 +645,7 @@ void Device::destroy(Pipeline pipeline) noexcept {
     if (std::optional<PipelineRecord> record = pipelines.erase(pipeline.id)) {
         retire(std::move(record->state));
     }
+
     if (bound.pipeline == pipeline.id) {
         bound.pipeline = 0;
     }
@@ -620,12 +656,15 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
     if (record.usage != Usage::Dynamic) {
         throw std::logic_error("Only a dynamic buffer takes new contents.");
     }
+
     if (offset + data.size() > record.size) {
         throw std::logic_error(std::format("The buffer of {} bytes cannot take {} bytes at {}.", record.size, data.size(), offset));
     }
+
     if (data.empty()) {
         return;
     }
+
     const UploadAllocator::Allocation staged = uploads->allocate(data.size(), 16);
     std::memcpy(staged.data, data.data(), data.size());
     getTransferList().CopyBufferRegion(record.resource.Get(), record.range.offset + offset, staged.resource, staged.offset, data.size());
@@ -637,10 +676,12 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
         if (image.kind != ImageKind::Dynamic) {
             throw std::logic_error("Only a dynamic image takes new pixels.");
         }
+
         const direct3d::MipLevels::Level level = direct3d::MipLevels::describe(image.type, image.width, image.height, image.layers, image.format, 0);
         if (write.pixels.size() != level.sliceBytes * level.layers) {
             throw std::logic_error(std::format("The pixels do not fill the image of {}x{} with {} layers.", image.width, image.height, image.layers));
         }
+
         const std::array<std::span<const std::byte>, 1> levels{write.pixels};
         stagePixels(image, levels);
     }
@@ -651,6 +692,7 @@ std::unique_ptr<Device::SurfaceChain> Device::makeChain(const std::optional<Surf
     for (D3D12_CPU_DESCRIPTOR_HANDLE& view : chain->backBufferViews) {
         view = targetViews->allocate();
     }
+
     chain->multisampleView = targetViews->allocate();
     chain->depthView = depthViews->allocate();
     return chain;
@@ -660,6 +702,7 @@ Device::SurfaceChain& Device::requireChain(int number) const {
     if (number < 0 || static_cast<std::size_t>(number) >= chains.size() || chains[static_cast<std::size_t>(number)] == nullptr) {
         throw std::logic_error(std::format("The device has no surface {}.", number));
     }
+
     return *chains[static_cast<std::size_t>(number)];
 }
 
@@ -667,6 +710,7 @@ Device::SurfaceChain& Device::requireAddedChain(int number) const {
     if (number == 0) {
         throw std::logic_error("The surface 0 is the window, which \"addSurface\" did not make.");
     }
+
     return requireChain(number);
 }
 
@@ -674,11 +718,13 @@ bool Device::prepareSwapchain(SurfaceChain& chain) {
     if (!chain.surface || chain.surface->size.width <= 0 || chain.surface->size.height <= 0 || lost) {
         return false;
     }
+
     if (chain.swapchain == nullptr) {
         chain.swapchain = std::make_unique<direct3d::Swapchain>(*factory.Get(), *queue.Get(), *chain.surface);
         makeSwapchainTargets(chain);
         return true;
     }
+
     // A new size applies from the first pass of a frame into the swapchain, so the passes of one frame draw into the same buffers.
     if (chain.presentPending || chain.swapchain->getSize() == chain.surface->size) {
         return true;
@@ -692,6 +738,7 @@ bool Device::prepareSwapchain(SurfaceChain& chain) {
         loseDevice(result);
         return false;
     }
+
     HResult::check(result, "resize the swapchain");
     makeSwapchainTargets(chain);
     return true;
@@ -734,6 +781,7 @@ void Device::releaseSwapchainTargets(SurfaceChain& chain) {
     for (ComPtr<ID3D12Resource>& buffer : chain.backBuffers) {
         buffer.Reset();
     }
+
     chain.multisampleColor.Reset();
     chain.depth.Reset();
 }
@@ -750,8 +798,10 @@ void Device::beginPass(const PassDesc& desc) {
     if (passOpen) {
         throw std::logic_error("A pass began while another pass was open.");
     }
+
     openFrame();
     pass.endBarrierCount = 0;
+
     if (desc.colors.empty() && !desc.depthStencil) {
         beginSwapchainPass(desc);
     } else {
@@ -808,6 +858,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
     if (desc.colors.size() > kMaxColorTargets) {
         throw std::logic_error(std::format("A pass draws into at most {} color attachments.", kMaxColorTargets));
     }
+
     std::array<D3D12_RESOURCE_BARRIER, kMaxColorTargets * 2 + 1> barriers{};
     UINT barrierCount = 0;
     std::array<D3D12_RENDER_PASS_RENDER_TARGET_DESC, kMaxColorTargets> colors{};
@@ -820,6 +871,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         if (image.kind != ImageKind::RenderTarget) {
             throw std::logic_error("A pass draws only into render targets.");
         }
+
         const UINT subresource = image.type == TextureType::Volume ? static_cast<UINT>(attachment.mipLevel) : static_cast<UINT>(attachment.mipLevel + attachment.layer * image.mipLevels);
         barriers[barrierCount++] = makeTransition(image.resource.Get(), image.home, D3D12_RESOURCE_STATE_RENDER_TARGET, subresource);
         pass.endBarriers[pass.endBarrierCount++] = makeTransition(image.resource.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, image.home, subresource);
@@ -831,6 +883,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         color.BeginningAccess.Type = attachment.load == Load::Clear ? D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR : (attachment.load == Load::Keep ? D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE : D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD);
         color.BeginningAccess.Clear.ClearValue = {.Format = Formats::getViewFormat(image.format), .Color = {attachment.clear.r, attachment.clear.g, attachment.clear.b, attachment.clear.a}};
         color.EndingAccess.Type = attachment.store == Store::Store ? D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE : D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_DISCARD;
+
         if (!attachment.resolve.isValid()) {
             continue;
         }
@@ -851,6 +904,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         if (image.kind != ImageKind::DepthStencil) {
             throw std::logic_error("A pass takes only a depth stencil image as its depth and stencil attachment.");
         }
+
         barriers[barrierCount++] = makeTransition(image.resource.Get(), image.home, D3D12_RESOURCE_STATE_DEPTH_WRITE);
         pass.endBarriers[pass.endBarrierCount++] = makeTransition(image.resource.Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, image.home);
         width = width > 0 ? width : image.width;
@@ -898,6 +952,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE Device::getAttachment(ImageRecord& image, int mipLev
                 view.Texture2DArray = {.MipSlice = mip, .FirstArraySlice = slice, .ArraySize = 1};
             }
         }
+
         const D3D12_CPU_DESCRIPTOR_HANDLE handle = depthViews->allocate();
         device->CreateDepthStencilView(image.resource.Get(), &view, handle);
         return image.attachments.emplace_back(Attachment{.mipLevel = mipLevel, .layer = layer, .handle = handle}).handle;
@@ -918,6 +973,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE Device::getAttachment(ImageRecord& image, int mipLev
         } else {
             view.Texture2DArray = {.MipSlice = mip, .FirstArraySlice = slice, .ArraySize = 1, .PlaneSlice = 0};
         }
+
         break;
     case TextureType::Volume:
         view.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
@@ -933,6 +989,7 @@ void Device::applyViewport(const math::Rect& pixels) {
     if (skipping) {
         return;
     }
+
     const D3D12_VIEWPORT viewport{.TopLeftX = pixels.x, .TopLeftY = pixels.y, .Width = pixels.width, .Height = pixels.height, .MinDepth = 0.0F, .MaxDepth = 1.0F};
     commands->RSSetViewports(1, &viewport);
 }
@@ -941,6 +998,7 @@ void Device::applyScissor(const math::Rect& pixels) {
     if (skipping) {
         return;
     }
+
     const D3D12_RECT scissor{.left = std::lround(pixels.x), .top = std::lround(pixels.y), .right = std::lround(pixels.x + pixels.width), .bottom = std::lround(pixels.y + pixels.height)};
     commands->RSSetScissorRects(1, &scissor);
 }
@@ -950,6 +1008,7 @@ void Device::applyPipeline(Pipeline pipeline) {
     if (skipping || bound.pipeline == pipeline.id) {
         return;
     }
+
     const PipelineRecord& record = pipelines.get(pipeline.id);
     bound.pipeline = pipeline.id;
     bound.indexed = record.indexFormat != DXGI_FORMAT_UNKNOWN;
@@ -958,12 +1017,14 @@ void Device::applyPipeline(Pipeline pipeline) {
         bound.state = record.state.Get();
         commands->SetPipelineState(bound.state);
     }
+
     if (bound.signature != record.layout.signature.Get()) {
         bound.signature = record.layout.signature.Get();
         commands->SetGraphicsRootSignature(bound.signature);
         bound.tablesSet = {};
         bound.tableCounts = {};
     }
+
     if (bound.topology != record.topology) {
         bound.topology = record.topology;
         commands->IASetPrimitiveTopology(bound.topology);
@@ -974,6 +1035,7 @@ void Device::applyBindings(const Bindings& bindings) {
     if (skipping) {
         return;
     }
+
     const PipelineRecord& pipeline = pipelines.get(bound.pipeline);
 
     std::array<D3D12_VERTEX_BUFFER_VIEW, kMaxVertexBuffers> views{};
@@ -982,6 +1044,7 @@ void Device::applyBindings(const Bindings& bindings) {
         const auto offset = static_cast<std::size_t>(bindings.vertexOffsets[index]);
         views[index] = {.BufferLocation = buffer.address + offset, .SizeInBytes = static_cast<UINT>(buffer.size - offset), .StrideInBytes = pipeline.strides[index]};
     }
+
     if (pipeline.bufferCount != bound.vertexBufferCount || std::memcmp(views.data(), bound.vertexBuffers.data(), sizeof(D3D12_VERTEX_BUFFER_VIEW) * pipeline.bufferCount) != 0) {
         commands->IASetVertexBuffers(0, pipeline.bufferCount, views.data());
         bound.vertexBuffers = views;
@@ -1012,6 +1075,7 @@ DescriptorRing* Device::applyTables(const PipelineRecord& pipeline, const Bindin
         for (std::size_t index = 0; index < textures.slots.size(); ++index) {
             handles[index] = images.get(bindings.textures[static_cast<std::size_t>(textures.slots[index])].id).view;
         }
+
         if (textures.parameter >= 0 && !applyTable(stage, textures.parameter, std::span(handles).first(textures.slots.size()))) {
             return textureTables.get();
         }
@@ -1020,10 +1084,12 @@ DescriptorRing* Device::applyTables(const PipelineRecord& pipeline, const Bindin
         for (std::size_t index = 0; index < samplersOfStage.slots.size(); ++index) {
             handles[index] = samplers.get(bindings.samplers[static_cast<std::size_t>(samplersOfStage.slots[index])].id);
         }
+
         if (samplersOfStage.parameter >= 0 && !applyTable(2 + stage, samplersOfStage.parameter, std::span(handles).first(samplersOfStage.slots.size()))) {
             return samplerTables.get();
         }
     }
+
     return nullptr;
 }
 
@@ -1032,11 +1098,13 @@ bool Device::applyTable(std::size_t table, int parameter, std::span<const D3D12_
     if (same) {
         return true;
     }
+
     DescriptorRing& ring = table < 2 ? *textureTables : *samplerTables;
     const std::optional<D3D12_GPU_DESCRIPTOR_HANDLE> written = ring.write(handles);
     if (!written) {
         return false;
     }
+
     commands->SetGraphicsRootDescriptorTable(static_cast<UINT>(parameter), *written);
     std::ranges::copy(handles, bound.tables[table].begin());
     bound.tableCounts[table] = static_cast<UINT>(handles.size());
@@ -1048,11 +1116,13 @@ void Device::applyUniforms(int slot, std::span<const std::byte> data) {
     if (skipping) {
         return;
     }
+
     const PipelineRecord& pipeline = pipelines.get(bound.pipeline);
     const bool known = slot >= 0 && slot < static_cast<int>(kMaxBlocks) && pipeline.layout.blockParameters[static_cast<std::size_t>(slot)] >= 0;
     if (!known || data.size() != pipeline.layout.blockSizes[static_cast<std::size_t>(slot)]) {
         throw std::logic_error(std::format("The program has no uniform block of {} bytes at slot {}.", data.size(), slot));
     }
+
     const UploadAllocator::Allocation staged = uploads->allocate(data.size(), kUniformAlignment);
     std::memcpy(staged.data, data.data(), data.size());
     commands->SetGraphicsRootConstantBufferView(static_cast<UINT>(pipeline.layout.blockParameters[static_cast<std::size_t>(slot)]), staged.address);
@@ -1076,10 +1146,12 @@ void Device::draw(int first, int count, int instances) {
     if (skipping || count <= 0 || instances <= 0) {
         return;
     }
+
     if (bound.indexed) {
         commands->DrawIndexedInstanced(static_cast<UINT>(count), static_cast<UINT>(instances), static_cast<UINT>(first), 0, 0);
         return;
     }
+
     commands->DrawInstanced(static_cast<UINT>(count), static_cast<UINT>(instances), static_cast<UINT>(first), 0);
 }
 
@@ -1087,15 +1159,19 @@ void Device::endPass() {
     if (!passOpen) {
         throw std::logic_error("A pass ended while no pass was open.");
     }
+
     if (pass.labeled) {
         popDebugGroup();
     }
+
     if (!skipping) {
         commands->EndRenderPass();
+
         if (pass.endBarrierCount > 0) {
             commands->ResourceBarrier(pass.endBarrierCount, pass.endBarriers.data());
         }
     }
+
     passOpen = false;
     skipping = false;
 }
@@ -1118,12 +1194,14 @@ void Device::commit() {
     if (passOpen) {
         throw std::logic_error("The frame was committed while a pass was open.");
     }
+
     openFrame();
 
     for (const std::unique_ptr<SurfaceChain>& chain : chains) {
         if (chain == nullptr || !chain->presentPending) {
             continue;
         }
+
         ID3D12Resource* backBuffer = chain->backBuffers[chain->backBufferIndex].Get();
         if (chain->multisampleColor != nullptr) {
             const std::array<D3D12_RESOURCE_BARRIER, 2> toResolve{makeTransition(chain->multisampleColor.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RESOLVE_SOURCE), makeTransition(backBuffer, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RESOLVE_DEST)};
@@ -1136,17 +1214,21 @@ void Device::commit() {
             commands->ResourceBarrier(1, &barrier);
         }
     }
+
     timer->end(*commands.Get(), frameIndex);
 
     // The transfer list runs before the passes, which read what it copied.
     if (transfersOpen) {
         submit(*transfers.Get());
     }
+
     submit(*commands.Get());
+
     for (const std::unique_ptr<SurfaceChain>& chain : chains) {
         if (chain == nullptr || !chain->presentPending) {
             continue;
         }
+
         chain->presentPending = false;
         const HRESULT result = chain->swapchain->present();
         if (HResult::isDeviceLoss(result)) {
@@ -1161,6 +1243,7 @@ void Device::commit() {
     } else {
         ++fenceValue;
     }
+
     frames[frameIndex].fence = fenceValue;
     uploads->endFrame(fenceValue);
     textureTables->endFrame(fenceValue);
@@ -1172,6 +1255,7 @@ void Device::commit() {
     if (!lost && FAILED(device->GetDeviceRemovedReason())) {
         loseDevice(device->GetDeviceRemovedReason());
     }
+
     drainMessages();
 }
 
@@ -1182,6 +1266,7 @@ void Device::submit(ID3D12GraphicsCommandList& list) {
         loseDevice(closed);
         return;
     }
+
     ID3D12CommandList* submitted = &list;
     queue->ExecuteCommandLists(1, &submitted);
 }
@@ -1191,6 +1276,7 @@ void Device::checkFrame(HRESULT result, std::string_view action) {
     if (HResult::isDeviceLoss(result)) {
         loseDevice(result);
     }
+
     HResult::check(result, action);
 }
 
@@ -1218,6 +1304,7 @@ void Device::detachSurface() {
 void Device::attachSurface(const Surface& target) {
     detachSurface();
     chains.front()->surface = target;
+
     if (getSwapchainSampleCount() != pipelineSampleCount) {
         pipelineSampleCount = getSwapchainSampleCount();
         rebuildSwapchainPipelines();
@@ -1229,6 +1316,7 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
     if (record.kind != ImageKind::RenderTarget || record.sampleCount > 1 || record.type == TextureType::Volume) {
         throw std::logic_error("Only a render target of one sample can be read.");
     }
+
     if (width <= 0 || height <= 0 || width > record.width || height > record.height) {
         throw std::logic_error(std::format("A region of {}x{} pixels does not fit the render target of {}x{}.", width, height, record.width, record.height));
     }
@@ -1267,6 +1355,7 @@ int Device::addSurface(const Surface& added) {
         *free = std::move(chain);
         return static_cast<int>(free - chains.begin());
     }
+
     chains.push_back(std::move(chain));
     return static_cast<int>(chains.size()) - 1;
 }
@@ -1282,12 +1371,15 @@ void Device::removeSurface(int number) {
     if (chain.presentPending) {
         throw std::logic_error("A surface goes between frames, after \"commit\".");
     }
+
     waitIdle();
     releaseSwapchainTargets(chain);
     chain.swapchain.reset();
+
     for (const D3D12_CPU_DESCRIPTOR_HANDLE view : chain.backBufferViews) {
         targetViews->free(view);
     }
+
     targetViews->free(chain.multisampleView);
     depthViews->free(chain.depthView);
     chains[static_cast<std::size_t>(number)].reset();
@@ -1297,9 +1389,11 @@ gpu::Device::CaptureSupport Device::getCaptureSupport() const {
     if (pix) {
         return {.tool = CaptureTool::Pix, .missing = {}};
     }
+
     if (renderDoc) {
         return {.tool = CaptureTool::RenderDoc, .missing = {}};
     }
+
     return {.tool = CaptureTool::None, .missing = std::string(kMissingCaptureTool)};
 }
 
@@ -1307,13 +1401,16 @@ void Device::beginCapture(const std::filesystem::path& path) {
     if (passOpen) {
         throw std::logic_error("A capture began while a pass was open.");
     }
+
     if (pix) {
         pix->begin(path);
         return;
     }
+
     if (!renderDoc) {
         throw std::logic_error(std::string(kMissingCaptureTool));
     }
+
     renderDoc->begin(device.Get(), path);
 }
 
@@ -1321,9 +1418,11 @@ std::filesystem::path Device::endCapture() {
     if (pix) {
         return pix->end();
     }
+
     if (!renderDoc) {
         throw std::logic_error("A capture ended while none records.");
     }
+
     return renderDoc->end(device.Get());
 }
 

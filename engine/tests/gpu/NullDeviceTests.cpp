@@ -68,8 +68,10 @@ TEST_F(NullDeviceTest, RunsOutOfRoomLikeARealDevice) {
     } catch (const std::runtime_error& failure) {
         error = failure.what();
     }
+
     EXPECT_EQ(error, "The graphics device has no room for another pipeline. At most 2048 pipelines can exist at once.");
     EXPECT_EQ(pipelines.size(), static_cast<std::size_t>(NullDevice::kPipelinePoolSize));
+
     for (const Device::Pool& pool : device.getPools()) {
         if (pool.name == "pipelines") {
             EXPECT_EQ(pool.used, NullDevice::kPipelinePoolSize);
@@ -126,9 +128,11 @@ TEST_F(NullDeviceTest, ChecksDrawsAndRecordsTheFramesWithoutAllocatingOnceSteady
     EXPECT_EQ(pass.draws, 1);
 
     const test::AllocationTracker tracker;
+
     for (int frame = 0; frame < 4; ++frame) {
         drawFrame(device, pipeline);
     }
+
     EXPECT_EQ(tracker.getTotal(), 0U);
 }
 

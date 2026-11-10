@@ -93,6 +93,7 @@ class Context final {
         if (!debugUtils || name.empty()) {
             return;
         }
+
         nameText.assign(name);
         const VkDebugUtilsObjectNameInfoEXT info{.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, .objectType = type, .objectHandle = toHandle(handle), .pObjectName = nameText.c_str()};
         vkSetDebugUtilsObjectNameEXT(device, &info);

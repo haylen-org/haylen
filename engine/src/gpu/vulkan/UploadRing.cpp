@@ -26,6 +26,7 @@ void UploadRing::begin(int frame) {
             destroyChunk(made);
             return true;
         }
+
         return false;
     });
     // clang-format on

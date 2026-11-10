@@ -28,6 +28,7 @@ void LoggedErrors::reportAsFailures() {
     for (const std::string& error : errors) {
         ADD_FAILURE() << "An error reached the log: " << error;
     }
+
     errors.clear();
 }
 

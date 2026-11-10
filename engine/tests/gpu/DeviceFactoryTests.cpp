@@ -20,6 +20,7 @@ TEST(DeviceFactoryTest, OrdersThePreferredCompiledApisFirst) {
     if (!compiled.empty()) {
         preferred.push_back(compiled.back());
     }
+
     const std::vector<Device::Api> ordered = DeviceFactory::order(preferred);
     EXPECT_EQ(ordered, std::vector<Device::Api>(compiled.rbegin(), compiled.rend()));
 }
@@ -38,6 +39,7 @@ TEST(DeviceFactoryTest, ReadsAndWritesTheNamesOfTheApis) {
         EXPECT_EQ(DeviceFactory::getApiName(api), name);
         EXPECT_EQ(DeviceFactory::findApi(name), api == Device::Api::None ? std::nullopt : std::optional<Device::Api>(api)) << name;
     }
+
     EXPECT_FALSE(DeviceFactory::findApi("Vulkan").has_value());
 }
 
@@ -56,6 +58,7 @@ TEST(DeviceFactoryTest, RefusesApisTheBuildDidNotCompile) {
         if (std::ranges::find(DeviceFactory::getCompiledApis(), api) != DeviceFactory::getCompiledApis().end()) {
             continue;
         }
+
         try {
             (void)DeviceFactory::create(api, std::nullopt, {});
             ADD_FAILURE() << "The factory made a device of \"" << name << "\".";

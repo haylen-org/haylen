@@ -197,15 +197,19 @@ MTLColorWriteMask Formats::toColorWriteMask(gpu::Device::ColorMask mask) noexcep
     if ((bits & static_cast<unsigned>(gpu::Device::ColorMask::Red)) != 0U) {
         written |= MTLColorWriteMaskRed;
     }
+
     if ((bits & static_cast<unsigned>(gpu::Device::ColorMask::Green)) != 0U) {
         written |= MTLColorWriteMaskGreen;
     }
+
     if ((bits & static_cast<unsigned>(gpu::Device::ColorMask::Blue)) != 0U) {
         written |= MTLColorWriteMaskBlue;
     }
+
     if ((bits & static_cast<unsigned>(gpu::Device::ColorMask::Alpha)) != 0U) {
         written |= MTLColorWriteMaskAlpha;
     }
+
     return written;
 }
 

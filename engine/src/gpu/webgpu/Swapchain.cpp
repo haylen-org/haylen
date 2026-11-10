@@ -13,6 +13,7 @@ Swapchain::Swapchain(WGPUInstance instance, WGPUAdapter adapter, WGPUDevice owne
     if (target.kind != Surface::Kind::WebCanvas) {
         throw std::runtime_error("The WebGPU device draws only into the canvas of a page.");
     }
+
     if (sampleCount != 1 && sampleCount != 4) {
         throw std::runtime_error("WebGPU draws into a canvas with one or four samples.");
     }
@@ -32,6 +33,7 @@ Swapchain::Swapchain(WGPUInstance instance, WGPUAdapter adapter, WGPUDevice owne
         format = capabilities.formats[0];
         wgpuSurfaceCapabilitiesFreeMembers(capabilities);
     }
+
     alphaMode = target.transparent ? WGPUCompositeAlphaMode_Premultiplied : WGPUCompositeAlphaMode_Opaque;
 }
 
@@ -39,9 +41,11 @@ Swapchain::~Swapchain() {
     release();
     releaseAttachments();
     scaled.reset();
+
     if (configured) {
         wgpuSurfaceUnconfigure(surface);
     }
+
     wgpuSurfaceRelease(surface);
 }
 
@@ -60,6 +64,7 @@ void Swapchain::resize(const Surface::Size& value) noexcept {
     if (value == size) {
         return;
     }
+
     size = value;
     stale = true;
 }
@@ -78,6 +83,7 @@ WGPUTexture Swapchain::makeAttachment(WGPUTextureFormat attachmentFormat, const 
 void Swapchain::configure() {
     releaseAttachments();
     stale = false;
+
     if (size.width <= 0 || size.height <= 0) {
         return;
     }
@@ -95,6 +101,7 @@ void Swapchain::configure() {
 
     depth = makeAttachment(Conversion::toTextureFormat(kDepthFormat), "haylen-swapchain-depth");
     depthView = wgpuTextureCreateView(depth, nullptr);
+
     if (sampleCount > 1) {
         multisampled = makeAttachment(format, "haylen-swapchain-color");
         multisampledView = wgpuTextureCreateView(multisampled, nullptr);
@@ -104,10 +111,12 @@ void Swapchain::configure() {
         scaled.reset();
         return;
     }
+
     if (scaled == nullptr) {
         scaled = std::make_unique<ScaledDrawable>(device, format, size);
         return;
     }
+
     scaled->resize(size);
 }
 
@@ -115,9 +124,11 @@ bool Swapchain::acquire() {
     if (frameView != nullptr) {
         return true;
     }
+
     if (stale) {
         configure();
     }
+
     if (depth == nullptr) {
         return false;
     }
@@ -128,9 +139,11 @@ bool Swapchain::acquire() {
         if (current.texture != nullptr) {
             wgpuTextureRelease(current.texture);
         }
+
         stale = true;
         return false;
     }
+
     frameTexture = current.texture;
     frameView = wgpuTextureCreateView(frameTexture, nullptr);
     return true;
@@ -140,6 +153,7 @@ void Swapchain::release() noexcept {
     if (frameView == nullptr) {
         return;
     }
+
     wgpuTextureViewRelease(frameView);
     wgpuTextureRelease(frameTexture);
     frameView = nullptr;
@@ -152,6 +166,7 @@ void Swapchain::releaseAttachments() noexcept {
         if (*texture == nullptr) {
             continue;
         }
+
         wgpuTextureViewRelease(*view);
         wgpuTextureDestroy(*texture);
         wgpuTextureRelease(*texture);
@@ -170,6 +185,7 @@ WGPUTextureView Swapchain::getColorView() const noexcept {
     if (multisampledView != nullptr) {
         return multisampledView;
     }
+
     return scaled != nullptr ? scaled->getView() : frameView;
 }
 
@@ -177,6 +193,7 @@ WGPUTextureView Swapchain::getResolveView() const noexcept {
     if (multisampledView == nullptr) {
         return nullptr;
     }
+
     return scaled != nullptr ? scaled->getView() : frameView;
 }
 

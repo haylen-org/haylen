@@ -18,8 +18,10 @@ D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeap::allocate() {
         for (UINT index = pageSize; index > 0; --index) {
             freed.push_back({start.ptr + static_cast<SIZE_T>(index - 1) * stride});
         }
+
         heaps.push_back(std::move(heap));
     }
+
     const D3D12_CPU_DESCRIPTOR_HANDLE handle = freed.back();
     freed.pop_back();
     return handle;

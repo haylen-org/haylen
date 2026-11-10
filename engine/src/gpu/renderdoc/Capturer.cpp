@@ -25,6 +25,7 @@ void* Capturer::findEntryPoint() {
     if (library == nullptr) {
         return nullptr;
     }
+
     void* entry = dlsym(library, "RENDERDOC_GetAPI");
     dlclose(library);
     return entry;
@@ -36,11 +37,13 @@ std::unique_ptr<Capturer> Capturer::find() {
     if (entry == nullptr) {
         return nullptr;
     }
+
     const auto getApi = reinterpret_cast<int (*)(int version, void** functions)>(entry);
     void* functions = nullptr;
     if (getApi(kVersion, &functions) != 1 || functions == nullptr) {
         return nullptr;
     }
+
     return std::unique_ptr<Capturer>(new Capturer(*static_cast<const Functions*>(functions)));
 }
 
@@ -48,13 +51,16 @@ void Capturer::begin(void* device, const std::filesystem::path& path) {
     if (capturing) {
         throw std::logic_error("A capture began while another one records.");
     }
+
     const std::u8string text = path.u8string();
     functions.setCaptureFilePathTemplate(reinterpret_cast<const char*>(text.c_str()));
     capturesBefore = functions.getNumCaptures();
     functions.startFrameCapture(device, nullptr);
+
     if (functions.isFrameCapturing() == 0) {
         throw std::runtime_error("RenderDoc did not start the capture, since it captures no device of the app.");
     }
+
     capturing = true;
 }
 
@@ -62,10 +68,13 @@ std::filesystem::path Capturer::end(void* device) {
     if (!capturing) {
         throw std::logic_error("A capture ended while none records.");
     }
+
     capturing = false;
+
     if (functions.endFrameCapture(device, nullptr) == 0) {
         throw std::runtime_error("RenderDoc failed to write the capture.");
     }
+
     const std::uint32_t captures = functions.getNumCaptures();
     if (captures == capturesBefore) {
         throw std::runtime_error("RenderDoc wrote no capture.");
@@ -75,6 +84,7 @@ std::filesystem::path Capturer::end(void* device) {
     if (functions.getCapture(captures - 1, nullptr, &length, nullptr) == 0 || length == 0) {
         throw std::runtime_error("RenderDoc gave no path for the capture it wrote.");
     }
+
     std::string name(length, '\0');
     functions.getCapture(captures - 1, name.data(), &length, nullptr);
     name.resize(name.find('\0') == std::string::npos ? name.size() : name.find('\0'));

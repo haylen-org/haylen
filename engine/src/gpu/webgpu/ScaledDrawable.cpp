@@ -48,6 +48,7 @@ void ScaledDrawable::resize(const Surface::Size& value) {
     if (value == size) {
         return;
     }
+
     releaseTexture();
     size = value;
     makeTexture();

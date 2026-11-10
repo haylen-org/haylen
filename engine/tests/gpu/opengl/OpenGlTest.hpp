@@ -29,6 +29,7 @@ class OpenGlTest : public ::testing::TestWithParam<Device::Api> {
         } catch (const std::runtime_error& error) {
             GTEST_SKIP() << error.what();
         }
+
         // clang-format off
         listener = core::Log::addListener([this](core::Log::Level level, std::string_view) {
             if (level == core::Log::Level::Error) {
@@ -42,6 +43,7 @@ class OpenGlTest : public ::testing::TestWithParam<Device::Api> {
         if (context == nullptr) {
             return;
         }
+
         core::Log::removeListener(listener);
         EXPECT_EQ(errors, 0) << "OpenGL reported errors during the test.";
     }

@@ -32,6 +32,7 @@ void GpuTestActivity::create(ANativeActivity* activity) {
     if (started) {
         return;
     }
+
     started = true;
     filesDirectory = activity->internalDataPath;
     ANativeActivity_setWindowFlags(activity, AWINDOW_FLAG_KEEP_SCREEN_ON, 0);
@@ -54,6 +55,7 @@ void GpuTestActivity::check(JNIEnv* env, const char* method) {
     if (env->ExceptionCheck() == JNI_FALSE) {
         return;
     }
+
     env->ExceptionDescribe();
     env->ExceptionClear();
     throw std::runtime_error(std::string("The Java method \"") + method + "\" of the GPU test app threw an exception.");
@@ -70,6 +72,7 @@ void GpuTestActivity::readEnvironment(ANativeActivity* activity) {
     check(env, "getStringArrayExtra");
     const auto values = static_cast<jobjectArray>(env->CallObjectMethod(intent, getExtra, env->NewStringUTF("environment")));
     check(env, "getStringArrayExtra");
+
     if (values == nullptr) {
         return;
     }
@@ -81,6 +84,7 @@ void GpuTestActivity::readEnvironment(ANativeActivity* activity) {
         if (const std::size_t equals = variable.find('='); equals != std::string_view::npos) {
             take(std::string(variable.substr(0, equals)), std::string(variable.substr(equals + 1)));
         }
+
         env->ReleaseStringUTFChars(value, characters);
         env->DeleteLocalRef(value);
     }
@@ -93,6 +97,7 @@ void GpuTestActivity::take(const std::string& name, const std::string& value) {
         setenv(name.c_str(), value.c_str(), 1);
         return;
     }
+
     std::string flag = "--gtest_" + name.substr(kGoogleTest.size()) + "=" + value;
     std::transform(flag.begin(), flag.begin() + static_cast<std::ptrdiff_t>(flag.find('=')), flag.begin(), [](char character) { return static_cast<char>(std::tolower(static_cast<unsigned char>(character))); });
     flags.push_back(std::move(flag));
@@ -120,6 +125,7 @@ void GpuTestActivity::forwardOutput() {
     if (pipe(ends.data()) != 0) {
         throw std::runtime_error("The GPU test app could not make the pipe of its output.");
     }
+
     dup2(ends[1], STDOUT_FILENO);
     dup2(ends[1], STDERR_FILENO);
     close(ends[1]);
@@ -135,8 +141,10 @@ void GpuTestActivity::forwardOutput() {
             if (!text.empty() && text.back() == '\n') {
                 text.pop_back();
             }
+
             __android_log_write(ANDROID_LOG_INFO, kLogTag, text.c_str());
         }
+
         std::fclose(stream);
     });
     // clang-format on
@@ -152,6 +160,7 @@ void GpuTestActivity::runTests() {
     for (std::string& flag : flags) {
         arguments.push_back(flag.data());
     }
+
     int count = static_cast<int>(arguments.size());
     arguments.push_back(nullptr);
     testing::InitGoogleTest(&count, arguments.data());

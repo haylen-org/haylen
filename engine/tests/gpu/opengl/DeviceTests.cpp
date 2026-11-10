@@ -54,9 +54,11 @@ class OpenGlDeviceTest : public OpenGlTest {
 
     void SetUp() override {
         OpenGlTest::SetUp();
+
         if (IsSkipped()) {
             return;
         }
+
         device = Device::create(GetParam(), context->getSurface(), {.validation = true});
         const std::string header = GetParam() == Device::Api::OpenGl ? "#version 430\n" : "#version 300 es\nprecision highp float;\n";
         vertex = header + "uniform vec4 shift[1];\nin vec2 position;\nin vec2 offset;\nvoid main() { gl_Position = vec4(position + offset + shift[0].xy, 0.0, 1.0); }\n";
@@ -111,6 +113,7 @@ class OpenGlDeviceTest : public OpenGlTest {
             device->applyUniforms(0, std::as_bytes(std::span(offsets)));
             device->draw(0, 3, 1);
         }
+
         device->endPass();
         device->beginPass({});
         device->endPass();
@@ -153,9 +156,11 @@ TEST_P(OpenGlDeviceTest, ReportsTheBottomRowAsTheFirstRow) {
 TEST_P(OpenGlDeviceTest, DrawsThroughAContextThatIsLostWhenTheGpuResets) {
     Context opened;
     opened.gl.load(*context, GetParam());
+
     if (!opened.gl.getFeatures().robustness) {
         GTEST_SKIP() << "The context reports no reset of the GPU.";
     }
+
     Gl::Int strategy = 0;
     opened.gl.getIntegerv(kResetNotificationStrategy, &strategy);
     EXPECT_EQ(strategy, kLoseContextOnReset);
@@ -184,9 +189,11 @@ TEST_P(OpenGlDeviceTest, TakesBackOnlyTheContextItWasMadeWith) {
 
 TEST_P(OpenGlDeviceTest, AllocatesNothingForAFrameThatRepeatsTheOneBeforeIt) {
     makeScene();
+
     for (std::size_t frame = 0; frame < Device::kFramesInFlight + 1; ++frame) {
         drawFrame();
     }
+
     const test::AllocationTracker tracker;
     drawFrame();
     EXPECT_EQ(tracker.getTotal(), 0U);
@@ -209,6 +216,7 @@ TEST_P(OpenGlDeviceTest, PresentsADrawableBeforeAPassLeavesIt) {
     } catch (const std::runtime_error& error) {
         GTEST_SKIP() << error.what();
     }
+
     std::vector<std::string> log;
     RecordedDrawable window(*context, "window", log);
     RecordedDrawable side(*board, "board", log);

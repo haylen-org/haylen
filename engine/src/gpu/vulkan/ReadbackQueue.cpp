@@ -25,8 +25,10 @@ ReadbackQueue::~ReadbackQueue() {
             context.getFunctions().vkWaitForFences(context.getDevice(), 1, &copy->fence, VK_TRUE, UINT64_MAX);
             update(*copy);
         }
+
         release(*copy);
     }
+
     context.getFunctions().vkDestroyCommandPool(context.getDevice(), pool, nullptr);
 }
 
@@ -34,6 +36,7 @@ std::shared_ptr<ReadbackQueue::Copy> ReadbackQueue::start(const Source& source) 
     if (ImageInfo::isDepth(source.format)) {
         throw std::invalid_argument("The Vulkan device reads back color images only.");
     }
+
     auto copy = std::make_shared<Copy>(Copy{.queue = this, .width = source.width, .height = source.height, .format = source.format});
     const VolkDeviceTable& vk = context.getFunctions();
     const VkDevice device = context.getDevice();
@@ -57,6 +60,7 @@ std::shared_ptr<ReadbackQueue::Copy> ReadbackQueue::start(const Source& source) 
         release(*copy);
         throw;
     }
+
     copies.push_back(copy);
     return copy;
 }
@@ -83,15 +87,18 @@ void ReadbackQueue::update(Copy& copy) {
     if (copy.fence == VK_NULL_HANDLE) {
         return;
     }
+
     const VkResult status = context.getFunctions().vkGetFenceStatus(context.getDevice(), copy.fence);
     if (status == VK_NOT_READY) {
         return;
     }
+
     if (status != VK_SUCCESS) {
         copy.failure = "The Vulkan device was lost before the copy of the render target finished.";
         release(copy);
         return;
     }
+
     finish(copy);
 }
 
@@ -108,6 +115,7 @@ void ReadbackQueue::sweep() {
         if (copy.use_count() == 1 && copy->fence != VK_NULL_HANDLE && context.getFunctions().vkGetFenceStatus(context.getDevice(), copy->fence) != VK_NOT_READY) {
             release(*copy);
         }
+
         return copy->fence == VK_NULL_HANDLE;
     });
     // clang-format on
@@ -119,16 +127,19 @@ void ReadbackQueue::release(Copy& copy) const {
         vk.vkDestroyFence(context.getDevice(), copy.fence, nullptr);
         copy.fence = VK_NULL_HANDLE;
     }
+
     if (copy.commands != VK_NULL_HANDLE) {
         vk.vkFreeCommandBuffers(context.getDevice(), pool, 1, &copy.commands);
         copy.commands = VK_NULL_HANDLE;
     }
+
     if (copy.buffer != VK_NULL_HANDLE) {
         vmaDestroyBuffer(context.getAllocator(), copy.buffer, copy.allocation);
         copy.buffer = VK_NULL_HANDLE;
         copy.allocation = VK_NULL_HANDLE;
         copy.data = nullptr;
     }
+
     copy.queue = nullptr;
 }
 
@@ -174,6 +185,7 @@ std::vector<std::uint8_t> ReadbackQueue::convert(const std::byte* data, int widt
             for (std::size_t channel = 0; channel < stride / 2; ++channel) {
                 channels[channel] = toFloat(halves[channel]);
             }
+
             break;
         case Device::PixelFormat::R32Float:
         case Device::PixelFormat::Rg32Float:
@@ -181,6 +193,7 @@ std::vector<std::uint8_t> ReadbackQueue::convert(const std::byte* data, int widt
             for (std::size_t channel = 0; channel < stride / 4; ++channel) {
                 channels[channel] = floats[channel];
             }
+
             break;
         default:
             break;
@@ -189,6 +202,7 @@ std::vector<std::uint8_t> ReadbackQueue::convert(const std::byte* data, int widt
             pixels[index * 4 + channel] = toByte(channels[channel]);
         }
     }
+
     return pixels;
 }
 
@@ -200,9 +214,11 @@ float ReadbackQueue::toFloat(std::uint16_t half) noexcept {
         const float value = std::ldexp(static_cast<float>(mantissa), -24);
         return sign != 0 ? -value : value;
     }
+
     if (exponent == 31) {
         return std::bit_cast<float>(sign | 0x7F800000U | (mantissa << 13));
     }
+
     return std::bit_cast<float>(sign | ((exponent + 112) << 23) | (mantissa << 13));
 }
 

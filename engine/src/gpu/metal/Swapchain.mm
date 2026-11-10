@@ -17,6 +17,7 @@ void Swapchain::attach(const Surface& surface) {
     if (surface.kind != Surface::Kind::MetalLayer || surface.layer == nullptr) {
         throw std::runtime_error("The Metal device draws only into a surface that holds a \"CAMetalLayer\".");
     }
+
     if (surface.sampleCount != sampleCount) {
         throw std::runtime_error(std::format("The surface asks for {} samples, and the swapchain of this device draws with {}.", surface.sampleCount, sampleCount));
     }
@@ -50,6 +51,7 @@ bool Swapchain::acquire() {
     if (drawable != nil) {
         return true;
     }
+
     if (layer == nil || width <= 0 || height <= 0) {
         return false;
     }
@@ -58,6 +60,7 @@ bool Swapchain::acquire() {
     if (!CGSizeEqualToSize(layer.drawableSize, size)) {
         layer.drawableSize = size;
     }
+
     @autoreleasepool {
         drawable = [layer nextDrawable];
     }
@@ -99,6 +102,7 @@ id<MTLTexture> Swapchain::makeAttachment(MTLPixelFormat format, int samples, NSU
     if (texture == nil) {
         throw std::runtime_error(std::format("The GPU has no memory for the attachments of a swapchain of {}x{} pixels.", pixelWidth, pixelHeight));
     }
+
     texture.label = label;
     return texture;
 }

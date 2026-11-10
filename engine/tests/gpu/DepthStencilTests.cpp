@@ -122,6 +122,7 @@ TEST_P(GpuDepthStencilTest, SamplesDepthThroughAComparison) {
     if (!capabilities().textureFormats[static_cast<std::size_t>(format)]) {
         GTEST_SKIP() << "The device samples no image of the depth format of the tests.";
     }
+
     const Device::Image depth = makeDepth(format);
     device().beginPass({.depthStencil = Device::DepthStencilAttachment{.image = depth, .depthStore = Device::Store::Store, .clearDepth = 0.5F}});
     device().endPass();
@@ -145,6 +146,7 @@ TEST_P(GpuDepthStencilTest, SamplesDepthThroughAComparison) {
         device().commit();
         EXPECT_TRUE(isNear(read(color, 1, 1).at(0, 0), lit ? math::Color::white() : math::Color::black())) << reference;
     }
+
     device().destroy(sampler);
     device().destroy(pipeline);
 }

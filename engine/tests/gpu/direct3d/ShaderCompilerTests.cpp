@@ -23,6 +23,7 @@ TEST(ShaderCompilerTest, ReleasesTheBytecodeThatNoProgramTookWhileItsLibraryStay
         std::this_thread::sleep_for(kCompileTime);
         compiler.reset();
     }
+
     SUCCEED();
 }
 

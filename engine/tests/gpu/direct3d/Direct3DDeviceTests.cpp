@@ -68,20 +68,27 @@ float4 main() : SV_Target0 { return color; }
         for (const Pipeline pipeline : pipelines) {
             device->destroy(pipeline);
         }
+
         for (const Program program : programs) {
             device->destroy(program);
         }
+
         for (const Buffer buffer : buffers) {
             device->destroy(buffer);
         }
+
         for (const Image image : images) {
             device->destroy(image);
         }
+
         device.reset();
+
         if (window != nullptr) {
             DestroyWindow(window);
         }
+
         core::Log::removeListener(listener);
+
         for (const std::string& error : errors) {
             ADD_FAILURE() << error;
         }
@@ -115,6 +122,7 @@ float4 main() : SV_Target0 { return color; }
             if (std::string(error.what()).find("no desktop") == std::string::npos) {
                 throw;
             }
+
             GTEST_SKIP() << error.what();
         }
     }
@@ -131,6 +139,7 @@ float4 main() : SV_Target0 { return color; }
         if (window == nullptr) {
             throw std::runtime_error("The test could not open a window.");
         }
+
         return {.kind = Surface::Kind::Win32, .window = window, .display = windowClass.hInstance, .size = {.width = width, .height = height, .windowWidth = width, .windowHeight = height}, .transparent = transparent};
     }
 
@@ -167,9 +176,11 @@ float4 main() : SV_Target0 { return color; }
             if (std::optional<std::vector<std::uint8_t>> pixels = readback->poll()) {
                 return *pixels;
             }
+
             device->commit();
             Sleep(1);
         }
+
         throw std::runtime_error("The copy of the render target never finished.");
     }
 
@@ -221,9 +232,11 @@ TEST_P(Direct3DDeviceTest, PresentsThroughResizesMinimizingAndNewSurfaces) {
     Surface surface = openWindow(160, 90, false);
     surface.sampleCount = 4;
     startOnWindow(surface);
+
     if (IsSkipped()) {
         return;
     }
+
     const Pipeline pipeline = makePipeline(true);
     const Buffer vertices = makeTriangle({-0.5F, -0.5F, 0.0F, 0.5F, 0.5F, -0.5F});
     drawFrames(pipeline, vertices, 3);
@@ -247,9 +260,11 @@ TEST_P(Direct3DDeviceTest, PresentsThroughResizesMinimizingAndNewSurfaces) {
 
 TEST_P(Direct3DDeviceTest, ComposesATransparentWindow) {
     startOnWindow(openWindow(160, 90, true));
+
     if (IsSkipped()) {
         return;
     }
+
     const Pipeline pipeline = makePipeline(true);
     const Buffer vertices = makeTriangle({-0.5F, -0.5F, 0.0F, 0.5F, 0.5F, -0.5F});
     drawFrames(pipeline, vertices, 3);
@@ -267,10 +282,13 @@ TEST_P(Direct3DDeviceTest, ReportsTheWarningsOfTheDebugLayerAsErrors) {
     if (GetParam() != Device::Api::Direct3D12) {
         GTEST_SKIP() << "Only the debug layer of Direct3D 12 warns about a scissor without pixels.";
     }
+
     start();
+
     if (std::ranges::any_of(warnings, [](const std::string& line) { return line.find("without its debug layer") != std::string::npos; })) {
         GTEST_SKIP() << "Windows lacks the Graphics Tools that bring the debug layer.";
     }
+
     images.push_back(device->makeImage({.width = kSize, .height = kSize, .kind = Device::ImageKind::RenderTarget, .label = "haylen-test-target"}));
     const Pipeline pipeline = makePipeline(false);
     const Buffer vertices = makeTriangle({-1.0F, -1.0F, -1.0F, 1.0F, 1.0F, -1.0F});
@@ -318,9 +336,11 @@ TEST_P(Direct3DDeviceTest, RepeatsAFrameWithoutAllocatingAndMeasuresTheGpu) {
         const Device::ColorAttachment color{.image = target};
         device->beginPass({.colors = std::span(&color, 1), .label = "haylen-test-frame"});
         device->pushDebugGroup("haylen-test-draws");
+
         for (int draw = 0; draw < 50; ++draw) {
             drawTriangle(pipeline, vertices, {1.0F, 1.0F, 1.0F, 1.0F});
         }
+
         device->popDebugGroup();
         device->endPass();
         device->commit();
@@ -329,11 +349,14 @@ TEST_P(Direct3DDeviceTest, RepeatsAFrameWithoutAllocatingAndMeasuresTheGpu) {
     for (int warm = 0; warm < 10; ++warm) {
         frame();
     }
+
     {
         const test::AllocationTracker tracker;
+
         for (int index = 0; index < 20; ++index) {
             frame();
         }
+
         EXPECT_EQ(tracker.getTotal(), 0U);
     }
     EXPECT_TRUE(device->getGpuFrameSeconds().has_value());

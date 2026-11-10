@@ -36,6 +36,7 @@ std::optional<D3D12_GPU_DESCRIPTOR_HANDLE> DescriptorRing::write(std::span<const
             vacant = vacant != nullptr ? vacant : &entry;
             continue;
         }
+
         if (matches(entry, sources)) {
             return locate(entry.position);
         }
@@ -47,6 +48,7 @@ std::optional<D3D12_GPU_DESCRIPTOR_HANDLE> DescriptorRing::write(std::span<const
     if (position % capacity + count > capacity) {
         position += capacity - position % capacity;
     }
+
     if (position + count - tail > capacity) {
         return std::nullopt;
     }
@@ -61,6 +63,7 @@ std::optional<D3D12_GPU_DESCRIPTOR_HANDLE> DescriptorRing::write(std::span<const
         vacant->position = position;
         std::ranges::transform(sources, vacant->key.begin(), &D3D12_CPU_DESCRIPTOR_HANDLE::ptr);
     }
+
     return locate(position);
 }
 
@@ -78,6 +81,7 @@ void DescriptorRing::endFrame(std::uint64_t fenceValue) {
         frames[(firstFrame + frameCount - 1) % kMaxFrames] = {.fence = fenceValue, .end = head};
         return;
     }
+
     frames[(firstFrame + frameCount) % kMaxFrames] = {.fence = fenceValue, .end = head};
     ++frameCount;
 }
@@ -95,6 +99,7 @@ std::size_t DescriptorRing::hash(std::span<const D3D12_CPU_DESCRIPTOR_HANDLE> so
     for (const D3D12_CPU_DESCRIPTOR_HANDLE& source : sources) {
         code = (code ^ source.ptr) * 1099511628211ULL;
     }
+
     return code;
 }
 

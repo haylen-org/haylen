@@ -73,6 +73,7 @@ std::optional<std::string_view> DriverIssues::find(const Driver& driver, Issue i
     if (entry == kEntries.end()) {
         return std::nullopt;
     }
+
     return entry->reason;
 }
 
@@ -112,9 +113,11 @@ bool DriverIssues::matches(const Entry& entry, const Driver& driver, Issue issue
     if (entry.api != driver.api || entry.issue != issue || driver.renderer.find(entry.renderer) == std::string_view::npos) {
         return false;
     }
+
     if (!entry.version.empty() && driver.version.find(entry.version) == std::string_view::npos) {
         return false;
     }
+
     return entry.lastVersionNumber == 0 || driver.versionNumber <= entry.lastVersionNumber;
 }
 

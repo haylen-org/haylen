@@ -15,10 +15,13 @@ class GpuTimerTest : public OpenGlTest {
   protected:
     void SetUp() override {
         OpenGlTest::SetUp();
+
         if (IsSkipped()) {
             return;
         }
+
         opened.gl.load(*context, GetParam());
+
         if (!opened.gl.getFeatures().timerQuery) {
             GTEST_SKIP() << "The context measures no time on the GPU.";
         }
@@ -27,12 +30,14 @@ class GpuTimerTest : public OpenGlTest {
     void drawFrame(GpuTimer& timer) {
         const std::array<Gl::Float, 4> black{0.0F, 0.0F, 0.0F, 1.0F};
         timer.beginFrame();
+
         for (int pass = 0; pass < 2; ++pass) {
             timer.beginPass();
             opened.gl.clearBufferfv(Gl::kColor, 0, black.data());
             timer.endPass();
             opened.gl.flush();
         }
+
         timer.endFrame();
     }
 
@@ -66,6 +71,7 @@ TEST_P(GpuTimerTest, MeasuresTheFramesWhosePassesFinished) {
     while (!timer.getSeconds() && std::chrono::steady_clock::now() < deadline) {
         drawFrame(timer);
     }
+
     ASSERT_TRUE(timer.getSeconds().has_value());
     EXPECT_GE(*timer.getSeconds(), 0.0);
 }
@@ -80,6 +86,7 @@ TEST_P(GpuTimerTest, MeasuresWithoutAskingForTheDisjointStateWhereTheDriverRefus
     while (!timer.getSeconds() && std::chrono::steady_clock::now() < deadline) {
         drawFrame(timer);
     }
+
     ASSERT_TRUE(timer.getSeconds().has_value());
     EXPECT_EQ(counter.getCalls(), 0);
     EXPECT_EQ(opened.gl.getError(), Gl::kNoError);

@@ -52,12 +52,14 @@ bool BufferArena::take(Block& block, UINT64 size, UINT64& offset) {
     if (found == block.available.end()) {
         return false;
     }
+
     offset = found->offset;
     found->offset += size;
     found->size -= size;
     if (found->size == 0) {
         block.available.erase(found);
     }
+
     return true;
 }
 
@@ -65,6 +67,7 @@ void BufferArena::free(const Range& range) {
     if (range.block == Range::kOwnResource) {
         return;
     }
+
     std::vector<Range>& ranges = blocks[range.block].available;
     const auto next = std::ranges::lower_bound(ranges, range.offset, {}, &Range::offset);
     const auto inserted = ranges.insert(next, range);
@@ -75,6 +78,7 @@ void BufferArena::free(const Range& range) {
         inserted->size += after->size;
         ranges.erase(after);
     }
+
     if (inserted != ranges.begin()) {
         const auto before = inserted - 1;
         if (before->offset + before->size == inserted->offset) {

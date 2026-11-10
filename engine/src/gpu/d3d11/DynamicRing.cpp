@@ -33,6 +33,7 @@ std::optional<DynamicRing::Piece> DynamicRing::write(ID3D11DeviceContext& contex
     if (direct3d::HResult::isDeviceLoss(result)) {
         return std::nullopt;
     }
+
     direct3d::HResult::check(result, "map the ring of dynamic data");
     std::memcpy(static_cast<std::byte*>(mapped.pData) + piece.offset, data.data(), data.size());
     context.Unmap(buffer.Get(), 0);

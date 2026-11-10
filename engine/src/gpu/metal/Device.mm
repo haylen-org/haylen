@@ -217,6 +217,7 @@ Device::Native::Native(id<MTLDevice> metal, int swapchainSamples, bool debug) : 
     if ([metal supportsFamily:MTLGPUFamilyApple1]) {
         uniformAlignment = 16;
     }
+
     if ([metal supportsFamily:MTLGPUFamilyApple1] && ![metal supportsFamily:MTLGPUFamilyApple4]) {
         textureBindings = kLegacyTextureBindings;
     }
@@ -226,12 +227,14 @@ Device::Native::Native(id<MTLDevice> metal, int swapchainSamples, bool debug) : 
     if (queue == nil) {
         throw std::runtime_error(std::format("The GPU \"{}\" gave no command queue to Metal.", metal.name.UTF8String));
     }
+
     queue.label = @"haylen-queue";
 
     rings.reserve(kFramesInFlight);
     for (int frame = 0; frame < kFramesInFlight; ++frame) {
         rings.emplace_back(metal, kUploadRingSize);
     }
+
     staged.reserve(16);
     debugGroups.reserve(16);
 
@@ -241,6 +244,7 @@ Device::Native::Native(id<MTLDevice> metal, int swapchainSamples, bool debug) : 
     if (debug) {
         commandsDesc.errorOptions = MTLCommandBufferErrorOptionEncoderExecutionStatus;
     }
+
     passDesc = [MTLRenderPassDescriptor new];
 }
 
@@ -256,6 +260,7 @@ gpu::Device::Capabilities Device::Native::describe(id<MTLDevice> metal) {
             break;
         }
     }
+
     made.originTopLeft = true;
     made.independentBlend = true;
     made.multisampledRenderTargets = true;
@@ -271,6 +276,7 @@ gpu::Device::Capabilities Device::Native::describe(id<MTLDevice> metal) {
         made.blendableFormats[index] = !Formats::isDepth(format) && (!wide || floats);
         made.filterableFormats[index] = !Formats::isDepth(format) && (!wide || floatFiltering);
     }
+
     return made;
 }
 
@@ -297,6 +303,7 @@ std::string Device::Native::describeError(id<MTLCommandBuffer> commands) {
             message += std::format(" The pass \"{}\" faulted.", info.label.UTF8String);
         }
     }
+
     return message;
 }
 
@@ -321,6 +328,7 @@ void Device::Native::complete(Signals& state, id<MTLCommandBuffer> commands, std
         if (lost && !state.lost.exchange(true)) {
             message += " The GPU stopped working, so the app starts again on a new device.";
         }
+
         const std::scoped_lock lock(state.mutex);
         state.errors.push_back(std::move(message));
     }
@@ -335,6 +343,7 @@ Swapchain& Device::Native::requireSwapchain(int surface) {
     if (surface == 0) {
         return swapchain;
     }
+
     return *requireAddedSurface(surface);
 }
 
@@ -342,6 +351,7 @@ std::unique_ptr<Swapchain>& Device::Native::requireAddedSurface(int surface) {
     if (surface < 1 || static_cast<std::size_t>(surface) > surfaces.size() || surfaces[static_cast<std::size_t>(surface - 1)] == nullptr) {
         throw std::logic_error(std::format("The device has no surface {}.", surface));
     }
+
     return surfaces[static_cast<std::size_t>(surface - 1)];
 }
 
@@ -350,6 +360,7 @@ Device::Native::BufferEntry& Device::Native::requireBuffer(Buffer buffer) {
     if (entry == nullptr) {
         throw std::logic_error(std::format("The buffer {} does not exist.", buffer.id));
     }
+
     return *entry;
 }
 
@@ -358,6 +369,7 @@ Device::Native::ImageEntry& Device::Native::requireImage(Image image) {
     if (entry == nullptr) {
         throw std::logic_error(std::format("The image {} does not exist.", image.id));
     }
+
     return *entry;
 }
 
@@ -366,6 +378,7 @@ Device::Native::ProgramEntry& Device::Native::requireProgram(Program program) {
     if (entry == nullptr) {
         throw std::logic_error(std::format("The program {} does not exist.", program.id));
     }
+
     return *entry;
 }
 
@@ -378,6 +391,7 @@ id<MTLBlitCommandEncoder> Device::Native::getTransferBlit() {
             transferBlit = [transfer blitCommandEncoder];
         }
     }
+
     return transferBlit;
 }
 
@@ -393,6 +407,7 @@ id<MTLDepthStencilState> Device::Native::getDepthStencilState(const DepthStencil
     if (tested) {
         key |= (1ULL << 4U) | (packFace(desc.stencilFront) << 5U) | (packFace(desc.stencilBack) << 17U) | (static_cast<std::uint64_t>(desc.stencilReadMask) << 29U) | (static_cast<std::uint64_t>(desc.stencilWriteMask) << 37U);
     }
+
     if (const auto found = depthStencilStates.find(key); found != depthStencilStates.end()) {
         return found->second;
     }
@@ -421,6 +436,7 @@ id<MTLDepthStencilState> Device::Native::getDepthStencilState(const DepthStencil
     if (state == nil) {
         throw std::runtime_error("Metal could not make the depth and stencil state of a pipeline.");
     }
+
     depthStencilStates.emplace(key, state);
     return state;
 }
@@ -434,18 +450,23 @@ void Device::Native::checkImage(const ImageDesc& desc) const {
     if (desc.width <= 0 || desc.height <= 0 || desc.width > maxSize || desc.height > maxSize || desc.layers <= 0 || desc.mipLevels <= 0) {
         throw std::logic_error(std::format("The image \"{}\" of {}x{} pixels does not fit the device.", desc.label, desc.width, desc.height));
     }
+
     if (desc.type == TextureType::Cube && desc.layers != 6) {
         throw std::logic_error(std::format("The cube image \"{}\" needs 6 layers, not {}.", desc.label, desc.layers));
     }
+
     if (desc.sampleCount > 1 && (desc.kind == ImageKind::Texture || desc.kind == ImageKind::Dynamic || desc.mipLevels > 1 || desc.type == TextureType::Volume || desc.type == TextureType::Cube || ![device supportsTextureSampleCount:static_cast<NSUInteger>(desc.sampleCount)])) {
         throw std::logic_error(std::format("The image \"{}\" cannot have {} samples, which only flat or array attachments of one level up to {} samples have.", desc.label, desc.sampleCount, capabilities.maxSampleCount));
     }
+
     if (Formats::isDepth(desc.format) != (desc.kind == ImageKind::DepthStencil)) {
         throw std::logic_error(std::format("The image \"{}\" needs a depth format exactly when it is a depth stencil image.", desc.label));
     }
+
     if ((desc.kind == ImageKind::Texture) != !desc.levels.empty()) {
         throw std::logic_error(std::format("The image \"{}\" comes with pixels exactly when it is a texture.", desc.label));
     }
+
     if (desc.kind == ImageKind::Texture && desc.levels.size() != static_cast<std::size_t>(desc.mipLevels)) {
         throw std::logic_error(std::format("The texture \"{}\" has {} levels and comes with the pixels of {}.", desc.label, desc.mipLevels, desc.levels.size()));
     }
@@ -455,14 +476,17 @@ void Device::Native::checkPipeline(const PipelineDesc& desc) {
     if (desc.colors.size() > kMaxColorTargets || (desc.colors.empty() && !desc.swapchain && !desc.depthStencil.format)) {
         throw std::logic_error(std::format("The pipeline \"{}\" needs a depth format or one to {} color targets.", desc.label, kMaxColorTargets));
     }
+
     if (desc.buffers.size() > kMaxVertexBuffers) {
         throw std::logic_error(std::format("The pipeline \"{}\" lays out more than {} vertex buffers.", desc.label, kMaxVertexBuffers));
     }
+
     for (const VertexAttribute& attribute : desc.attributes) {
         if (attribute.buffer < 0 || attribute.buffer >= static_cast<int>(desc.buffers.size()) || attribute.location < 0 || attribute.location >= static_cast<int>(kMaxAttributes)) {
             throw std::logic_error(std::format("An attribute of the pipeline \"{}\" reads a vertex buffer it does not lay out.", desc.label));
         }
     }
+
     if (!desc.swapchain && desc.depthStencil.format && !Formats::isDepth(*desc.depthStencil.format)) {
         throw std::logic_error(std::format("The depth format of the pipeline \"{}\" is a color format.", desc.label));
     }
@@ -500,6 +524,7 @@ void Device::Native::releaseLibraries(const ProgramEntry& entry) {
     if (entry.vertexLibrary != nil) {
         libraries.release(entry.vertexLibrary);
     }
+
     if (entry.fragmentLibrary != nil) {
         libraries.release(entry.fragmentLibrary);
     }
@@ -516,6 +541,7 @@ void Device::Native::copyLevel(id<MTLBlitCommandEncoder> blit, id<MTLBuffer> sou
         [blit copyFromBuffer:source sourceOffset:offset sourceBytesPerRow:rowBytes sourceBytesPerImage:layerBytes sourceSize:MTLSizeMake(width, height, depth) toTexture:image.texture destinationSlice:0 destinationLevel:static_cast<NSUInteger>(level) destinationOrigin:MTLOriginMake(0, 0, 0)];
         return;
     }
+
     for (int layer = 0; layer < image.layers; ++layer) {
         [blit copyFromBuffer:source sourceOffset:offset + static_cast<NSUInteger>(layer) * layerBytes sourceBytesPerRow:rowBytes sourceBytesPerImage:layerBytes sourceSize:MTLSizeMake(width, height, 1) toTexture:image.texture destinationSlice:static_cast<NSUInteger>(layer) destinationLevel:static_cast<NSUInteger>(level) destinationOrigin:MTLOriginMake(0, 0, 0)];
     }
@@ -540,6 +566,7 @@ std::unique_ptr<gpu::Device> Device::create(const std::optional<Surface>& surfac
     if (metal == nil) {
         metal = MTLCreateSystemDefaultDevice();
     }
+
     if (metal == nil) {
         throw std::runtime_error("This machine has no GPU that runs Metal.");
     }
@@ -553,6 +580,7 @@ std::unique_ptr<gpu::Device> Device::create(const std::optional<Surface>& surfac
     if (surface) {
         device->attachSurface(*surface);
     }
+
     core::Log::info("The Metal device draws on the GPU \"{}\".", metal.name.UTF8String);
     return device;
 }
@@ -564,6 +592,7 @@ Device::~Device() {
     if (native->encoder.get() != nil) {
         native->encoder.end();
     }
+
     if (native->transferBlit != nil) {
         [native->transferBlit endEncoding];
         [native->transfer commit];
@@ -573,9 +602,11 @@ Device::~Device() {
     for (int frame = taken; frame < kFramesInFlight; ++frame) {
         dispatch_semaphore_wait(native->signals->semaphore, DISPATCH_TIME_FOREVER);
     }
+
     for (int frame = 0; frame < kFramesInFlight; ++frame) {
         dispatch_semaphore_signal(native->signals->semaphore);
     }
+
     reportErrors();
 }
 
@@ -622,6 +653,7 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
     if (size == 0) {
         throw std::logic_error(std::format("The buffer \"{}\" has no size.", desc.label));
     }
+
     if (desc.usage == Usage::Immutable && desc.data.empty()) {
         throw std::logic_error(std::format("The immutable buffer \"{}\" has no data.", desc.label));
     }
@@ -648,9 +680,11 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
     if (entry.buffer == nil) {
         throw std::runtime_error(std::format("The GPU has no memory for the buffer \"{}\" of {} bytes.", desc.label, size));
     }
+
     if (native->labels && !desc.label.empty()) {
         entry.buffer.label = Native::toText(desc.label);
     }
+
     return {native->buffers.add(std::move(entry))};
 }
 
@@ -664,6 +698,7 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     if (entry.texture == nil) {
         throw std::runtime_error(std::format("The GPU has no memory for the image \"{}\" of {}x{} pixels.", desc.label, desc.width, desc.height));
     }
+
     if (native->labels && !desc.label.empty()) {
         entry.texture.label = Native::toText(desc.label);
     }
@@ -677,6 +712,7 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
             throw;
         }
     }
+
     return image;
 }
 
@@ -693,6 +729,7 @@ void Device::uploadLevels(Image image, std::span<const std::span<const std::byte
         if (levels[level].size() != expected) {
             throw std::logic_error(std::format("The level {} of a texture holds {} bytes instead of {}.", level, levels[level].size(), expected));
         }
+
         offsets[level] = total;
         total += (expected + 15U) & ~std::size_t{15U};
     }
@@ -702,6 +739,7 @@ void Device::uploadLevels(Image image, std::span<const std::span<const std::byte
         if (staging == nil) {
             throw std::runtime_error(std::format("The GPU has no memory to stage the {} bytes of a texture.", total));
         }
+
         auto* contents = static_cast<std::byte*>(staging.contents);
         const id<MTLBlitCommandEncoder> blit = native->getTransferBlit();
         for (std::size_t level = 0; level < levels.size(); ++level) {
@@ -727,14 +765,17 @@ gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
         if (desc.compare) {
             made.compareFunction = Formats::toCompareFunction(*desc.compare);
         }
+
         if (native->labels && !desc.label.empty()) {
             made.label = Native::toText(desc.label);
         }
+
         sampler = [native->device newSamplerStateWithDescriptor:made];
     }
     if (sampler == nil) {
         throw std::runtime_error(std::format("Metal could not make the sampler \"{}\".", desc.label));
     }
+
     return {native->samplers.add(sampler)};
 }
 
@@ -749,21 +790,27 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
         if (block.slot < 0 || block.slot >= static_cast<int>(kMaxBlocks) || block.size == 0 || block.binding < 0 || block.binding >= static_cast<int>(Native::kFirstVertexBuffer)) {
             throw std::logic_error(std::format("The program \"{}\" has a uniform block at slot {} that the device cannot bind.", desc.label, block.slot));
         }
+
         entry.blocks[static_cast<std::size_t>(block.slot)] = {.used = true, .stage = block.stage, .size = block.size, .binding = static_cast<NSUInteger>(block.binding)};
     }
+
     for (const TextureBinding& texture : desc.textures) {
         if (texture.slot < 0 || texture.slot >= static_cast<int>(kMaxTextures) || texture.binding < 0 || texture.binding >= static_cast<int>(EncoderState::kTextureSlots)) {
             throw std::logic_error(std::format("The program \"{}\" has a texture at slot {} that the device cannot bind.", desc.label, texture.slot));
         }
+
         if (texture.binding >= native->textureBindings) {
             throw std::runtime_error(std::format("The program \"{}\" binds a texture at index {}, and the GPU \"{}\" binds textures up to index {}.", desc.label, texture.binding, native->device.name.UTF8String, native->textureBindings - 1));
         }
+
         entry.textures.push_back({.slot = static_cast<std::size_t>(texture.slot), .stage = texture.stage, .binding = static_cast<NSUInteger>(texture.binding)});
     }
+
     for (const SamplerBinding& sampler : desc.samplers) {
         if (sampler.slot < 0 || sampler.slot >= static_cast<int>(kMaxSamplers) || sampler.binding < 0 || sampler.binding >= static_cast<int>(EncoderState::kSamplerSlots)) {
             throw std::logic_error(std::format("The program \"{}\" has a sampler at slot {} that the device cannot bind.", desc.label, sampler.slot));
         }
+
         entry.samplers.push_back({.slot = static_cast<std::size_t>(sampler.slot), .stage = sampler.stage, .binding = static_cast<NSUInteger>(sampler.binding)});
     }
 
@@ -773,6 +820,7 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
     if (entry.vertexLibrary == nil) {
         throw std::runtime_error(std::format("The vertex stage of the program \"{}\" does not compile for Metal. {}", desc.label, error));
     }
+
     entry.fragmentLibrary = native->libraries.acquire(desc.fragment.source, error);
     if (entry.fragmentLibrary == nil) {
         native->releaseLibraries(entry);
@@ -787,6 +835,7 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
         native->releaseLibraries(entry);
         throw std::runtime_error(std::format("The program \"{}\" has no function \"{}\" for its vertex stage or \"{}\" for its fragment stage.", desc.label, desc.vertex.entry, desc.fragment.entry));
     }
+
     if (native->labels && !desc.label.empty()) {
         entry.vertex.label = Native::toText(desc.label);
         entry.fragment.label = entry.vertex.label;
@@ -800,6 +849,7 @@ void Device::prepareProgram(const ProgramDesc& desc, core::JobSystem& jobs) {
     if (!desc.vertex.source.empty()) {
         native->libraries.prepare(desc.vertex.source, jobs);
     }
+
     if (!desc.fragment.source.empty()) {
         native->libraries.prepare(desc.fragment.source, jobs);
     }
@@ -833,11 +883,13 @@ gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
             described.offset = static_cast<NSUInteger>(attribute.offset);
             described.bufferIndex = Native::kFirstVertexBuffer + static_cast<NSUInteger>(attribute.buffer);
         }
+
         for (std::size_t index = 0; index < desc.buffers.size(); ++index) {
             MTLVertexBufferLayoutDescriptor* layout = vertices.layouts[Native::kFirstVertexBuffer + index];
             layout.stride = static_cast<NSUInteger>(desc.buffers[index].stride);
             layout.stepFunction = desc.buffers[index].perInstance ? MTLVertexStepFunctionPerInstance : MTLVertexStepFunctionPerVertex;
         }
+
         made.vertexDescriptor = vertices;
 
         const std::size_t targets = desc.swapchain ? 1U : desc.colors.size();
@@ -861,6 +913,7 @@ gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
         if (native->labels && !desc.label.empty()) {
             made.label = Native::toText(desc.label);
         }
+
         entry.state = [native->device newRenderPipelineStateWithDescriptor:made error:&error];
     }
     if (entry.state == nil) {
@@ -907,9 +960,11 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
     if (!entry.dynamic) {
         throw std::logic_error("Only a dynamic buffer takes new contents.");
     }
+
     if (native->passOpen) {
         throw std::logic_error("Buffers take new contents before the passes of a frame.");
     }
+
     if (offset + data.size() > entry.size) {
         throw std::logic_error(std::format("The buffer of {} bytes cannot take {} bytes at {}.", entry.size, data.size(), offset));
     }
@@ -923,11 +978,14 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
     if (native->frameOpen && native->passes > 0) {
         throw std::logic_error("Images take new pixels before the first pass of a frame.");
     }
+
     if (native->frameOpen && native->imagesWritten) {
         throw std::logic_error("The images of a frame take their pixels in one call, and this frame made it already.");
     }
+
     openFrame();
     native->imagesWritten = true;
+
     if (writes.empty()) {
         return;
     }
@@ -939,10 +997,12 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
         if (image.kind != ImageKind::Dynamic) {
             throw std::logic_error("Only a dynamic image takes new pixels.");
         }
+
         const std::size_t expected = static_cast<std::size_t>(image.width) * static_cast<std::size_t>(image.height) * static_cast<std::size_t>(image.layers) * Formats::getBytesPerPixel(image.format);
         if (write.pixels.size() != expected) {
             throw std::logic_error(std::format("The pixels do not fill the image of {}x{}.", image.width, image.height));
         }
+
         native->staged.push_back(ring.write(write.pixels, 16));
     }
 
@@ -951,6 +1011,7 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
         for (std::size_t index = 0; index < writes.size(); ++index) {
             Native::copyLevel(blit, native->staged[index].buffer, native->staged[index].offset, native->requireImage(writes[index].image), 0);
         }
+
         [blit endEncoding];
     }
 }
@@ -959,16 +1020,19 @@ void Device::beginPass(const PassDesc& desc) {
     if (native->passOpen) {
         throw std::logic_error("A pass began while another pass was open.");
     }
+
     openFrame();
 
     ++native->passSerial;
     native->applied = {};
     native->bindingsApplied = false;
+
     if (desc.colors.empty() && !desc.depthStencil) {
         beginSwapchainPass(desc);
     } else {
         beginOffscreenPass(desc);
     }
+
     native->passOpen = true;
     ++native->passes;
 }
@@ -982,8 +1046,10 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
         native->encoder.resetViewport();
         return;
     }
+
     endPendingPass();
     native->pendingSurface = desc.surface;
+
     if (!chain.acquire()) {
         return;
     }
@@ -992,9 +1058,11 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
     const id<MTLTexture> drawable = chain.getDrawable().texture;
     const id<MTLTexture> multisample = chain.getMultisampleTexture();
     const MTLLoadAction colorLoad = desc.load == Load::Keep && multisample != nil ? MTLLoadActionClear : Formats::toLoadAction(desc.load);
+
     for (NSUInteger index = 1; index < kMaxColorTargets; ++index) {
         pass.colorAttachments[index].texture = nil;
     }
+
     MTLRenderPassColorAttachmentDescriptor* color = pass.colorAttachments[0];
     color.texture = multisample != nil ? multisample : drawable;
     color.resolveTexture = multisample != nil ? drawable : nil;
@@ -1026,6 +1094,7 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
 void Device::beginOffscreenPass(const PassDesc& desc) {
     native->swapchainPass = false;
     endPendingPass();
+
     if (desc.colors.size() > kMaxColorTargets) {
         throw std::logic_error(std::format("A pass draws into at most {} color attachments.", kMaxColorTargets));
     }
@@ -1037,6 +1106,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         MTLRenderPassColorAttachmentDescriptor* color = pass.colorAttachments[index];
         color.texture = nil;
         color.resolveTexture = nil;
+
         if (index >= desc.colors.size()) {
             continue;
         }
@@ -1046,6 +1116,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         if (image.kind != ImageKind::RenderTarget) {
             throw std::logic_error("A pass draws its colors only into render targets.");
         }
+
         color.texture = image.texture;
         color.level = static_cast<NSUInteger>(attachment.mipLevel);
         color.slice = image.type == TextureType::Volume ? 0 : static_cast<NSUInteger>(attachment.layer);
@@ -1059,6 +1130,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
             color.resolveSlice = 0;
             color.storeAction = attachment.store == Store::Store ? MTLStoreActionStoreAndMultisampleResolve : MTLStoreActionMultisampleResolve;
         }
+
         width = std::max(1, image.width >> attachment.mipLevel);
         height = std::max(1, image.height >> attachment.mipLevel);
     }
@@ -1071,6 +1143,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         if (image.kind != ImageKind::DepthStencil) {
             throw std::logic_error("A pass draws its depth and stencil only into depth stencil images.");
         }
+
         pass.depthAttachment.texture = image.texture;
         pass.depthAttachment.loadAction = Formats::toLoadAction(attachment.depthLoad);
         pass.depthAttachment.storeAction = attachment.depthStore == Store::Store ? MTLStoreActionStore : MTLStoreActionDontCare;
@@ -1081,6 +1154,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
             pass.stencilAttachment.storeAction = attachment.stencilStore == Store::Store ? MTLStoreActionStore : MTLStoreActionDontCare;
             pass.stencilAttachment.clearStencil = attachment.clearStencil;
         }
+
         if (desc.colors.empty()) {
             width = image.width;
             height = image.height;
@@ -1103,6 +1177,7 @@ void Device::requirePass(const char* call) const {
 
 void Device::applyViewport(const math::Rect& pixels) {
     requirePass("applyViewport");
+
     if (native->encoder.get() != nil) {
         native->encoder.setViewport(pixels);
     }
@@ -1110,6 +1185,7 @@ void Device::applyViewport(const math::Rect& pixels) {
 
 void Device::applyScissor(const math::Rect& pixels) {
     requirePass("applyScissor");
+
     if (native->encoder.get() != nil) {
         native->encoder.setScissor(pixels);
     }
@@ -1127,6 +1203,7 @@ void Device::applyPipeline(Pipeline pipeline) {
     if (native->encoder.get() == nil) {
         return;
     }
+
     native->encoder.setPipeline(entry->state);
     native->encoder.setDepthStencil(entry->depthStencil);
     native->encoder.setRasterizer(entry->cull, entry->winding, entry->depthBias, entry->depthBiasSlope);
@@ -1136,9 +1213,11 @@ void Device::applyPipeline(Pipeline pipeline) {
 void Device::applyBindings(const Bindings& bindings) {
     static_assert(std::has_unique_object_representations_v<Bindings>, "Bindings compare as bytes.");
     requirePass("applyBindings");
+
     if (!native->applied.valid) {
         throw std::logic_error("Bindings were applied before a pipeline.");
     }
+
     if (native->encoder.get() == nil || (native->bindingsApplied && std::memcmp(&bindings, &native->bindings, sizeof(Bindings)) == 0)) {
         return;
     }
@@ -1147,11 +1226,13 @@ void Device::applyBindings(const Bindings& bindings) {
         const Native::BufferEntry& buffer = native->requireBuffer(bindings.vertexBuffers[index]);
         native->encoder.setBuffer(Stage::Vertex, buffer.buffer, native->getRegionOffset(buffer) + static_cast<NSUInteger>(bindings.vertexOffsets[index]), Native::kFirstVertexBuffer + index);
     }
+
     if (native->applied.indexSize != 0) {
         const Native::BufferEntry& buffer = native->requireBuffer(bindings.indexBuffer);
         if (!buffer.index) {
             throw std::logic_error("An indexed pipeline needs an index buffer.");
         }
+
         native->indexBuffer = buffer.buffer;
         native->indexOffset = native->getRegionOffset(buffer) + static_cast<NSUInteger>(bindings.indexOffset);
     }
@@ -1160,11 +1241,13 @@ void Device::applyBindings(const Bindings& bindings) {
     for (const Native::ResourceSlot& texture : program.textures) {
         native->encoder.setTexture(texture.stage, native->requireImage(bindings.textures[texture.slot]).texture, texture.binding);
     }
+
     for (const Native::ResourceSlot& sampler : program.samplers) {
         const id<MTLSamplerState>* state = native->samplers.get(bindings.samplers[sampler.slot].id);
         if (state == nullptr) {
             throw std::logic_error(std::format("The sampler slot {} of the program is empty.", sampler.slot));
         }
+
         native->encoder.setSampler(sampler.stage, *state, sampler.binding);
     }
 
@@ -1174,17 +1257,21 @@ void Device::applyBindings(const Bindings& bindings) {
 
 void Device::applyUniforms(int slot, std::span<const std::byte> data) {
     requirePass("applyUniforms");
+
     if (!native->applied.valid) {
         throw std::logic_error("Uniforms were applied before a pipeline.");
     }
+
     const Native::ProgramEntry& program = native->requireProgram(native->applied.program);
     if (slot < 0 || slot >= static_cast<int>(kMaxBlocks) || !program.blocks[static_cast<std::size_t>(slot)].used) {
         throw std::logic_error(std::format("The program has no uniform block at slot {}.", slot));
     }
+
     const Native::BlockSlot& block = program.blocks[static_cast<std::size_t>(slot)];
     if (data.size() != block.size) {
         throw std::logic_error(std::format("The uniform block at slot {} holds {} bytes, not {}.", slot, block.size, data.size()));
     }
+
     if (native->encoder.get() == nil) {
         return;
     }
@@ -1193,12 +1280,14 @@ void Device::applyUniforms(int slot, std::span<const std::byte> data) {
         native->encoder.setBytes(block.stage, data, block.binding);
         return;
     }
+
     const UploadRing::Allocation uploaded = native->rings[native->frameSlot].write(data, native->uniformAlignment);
     native->encoder.setBuffer(block.stage, uploaded.buffer, uploaded.offset, block.binding);
 }
 
 void Device::applyStencilReference(std::uint8_t value) {
     requirePass("applyStencilReference");
+
     if (native->encoder.get() != nil) {
         native->encoder.setStencilReference(value);
     }
@@ -1206,6 +1295,7 @@ void Device::applyStencilReference(std::uint8_t value) {
 
 void Device::applyBlendColor(math::Color value) {
     requirePass("applyBlendColor");
+
     if (native->encoder.get() != nil) {
         native->encoder.setBlendColor(value);
     }
@@ -1213,12 +1303,15 @@ void Device::applyBlendColor(math::Color value) {
 
 void Device::draw(int first, int count, int instances) {
     requirePass("draw");
+
     if (!native->applied.valid) {
         throw std::logic_error("A draw happened before a pipeline.");
     }
+
     if (first < 0 || count < 0 || instances < 0) {
         throw std::logic_error("A draw needs counts of zero or more.");
     }
+
     const id<MTLRenderCommandEncoder> encoder = native->encoder.get();
     if (encoder == nil || count == 0 || instances == 0) {
         return;
@@ -1229,6 +1322,7 @@ void Device::draw(int first, int count, int instances) {
         [encoder drawPrimitives:applied.primitive vertexStart:static_cast<NSUInteger>(first) vertexCount:static_cast<NSUInteger>(count) instanceCount:static_cast<NSUInteger>(instances)];
         return;
     }
+
     [encoder drawIndexedPrimitives:applied.primitive indexCount:static_cast<NSUInteger>(count) indexType:applied.indexType indexBuffer:native->indexBuffer indexBufferOffset:native->indexOffset + static_cast<NSUInteger>(first) * applied.indexSize instanceCount:static_cast<NSUInteger>(instances)];
 }
 
@@ -1239,10 +1333,12 @@ void Device::endPass() {
     if (native->encoder.get() == nil) {
         return;
     }
+
     if (native->swapchainPass) {
         native->swapchainPending = true;
         return;
     }
+
     native->encoder.end();
 }
 
@@ -1250,16 +1346,19 @@ void Device::pushDebugGroup(std::string_view name) {
     if (!native->labels) {
         return;
     }
+
     NSString* text = Native::toText(name);
     if (native->passOpen) {
         if (native->encoder.get() == nil) {
             native->debugGroups.push_back(Native::kClosedGroup);
             return;
         }
+
         [native->encoder.get() pushDebugGroup:text];
         native->debugGroups.push_back(native->passSerial);
         return;
     }
+
     openFrame();
     endPendingPass();
     [native->commands pushDebugGroup:text];
@@ -1271,13 +1370,16 @@ void Device::popDebugGroup() {
     if (!native->labels || native->debugGroups.empty()) {
         return;
     }
+
     const std::uint32_t owner = native->debugGroups.back();
     native->debugGroups.pop_back();
+
     if (owner == Native::kCommandBufferGroup) {
         endPendingPass();
         [native->commands popDebugGroup];
         return;
     }
+
     if (owner == native->passSerial && native->passOpen && native->encoder.get() != nil) {
         [native->encoder.get() popDebugGroup];
     }
@@ -1288,7 +1390,9 @@ void Device::closeDebugGroups(std::uint32_t owner) {
         if (group != owner) {
             continue;
         }
+
         group = Native::kClosedGroup;
+
         if (owner == Native::kCommandBufferGroup) {
             [native->commands popDebugGroup];
         } else if (native->encoder.get() != nil) {
@@ -1302,6 +1406,7 @@ void Device::openFrame() {
     if (native->frameOpen) {
         return;
     }
+
     dispatch_semaphore_wait(native->signals->semaphore, DISPATCH_TIME_FOREVER);
     native->graveyard.release(native->signals->completed.load(std::memory_order_acquire));
     reportErrors();
@@ -1314,6 +1419,7 @@ void Device::openFrame() {
     if (native->labels) {
         native->commands.label = @"haylen-frame";
     }
+
     native->frameOpen = true;
     native->passes = 0;
     native->imagesWritten = false;
@@ -1330,6 +1436,7 @@ void Device::submitTransfers() {
     if (native->transferBlit == nil) {
         return;
     }
+
     [native->transferBlit endEncoding];
     [native->transfer commit];
     native->transferBlit = nil;
@@ -1342,6 +1449,7 @@ void Device::reportErrors() {
     for (const std::string& error : signals.errors) {
         core::Log::error("{}", error);
     }
+
     signals.errors.clear();
 }
 
@@ -1350,13 +1458,17 @@ void Device::commit() {
     if (native->passOpen) {
         throw std::logic_error("The frame was committed while a pass was open.");
     }
+
     submitTransfers();
+
     if (!native->frameOpen) {
         return;
     }
+
     endPendingPass();
     closeDebugGroups(Native::kCommandBufferGroup);
     native->swapchain.present(native->commands);
+
     for (const std::unique_ptr<Swapchain>& chain : native->surfaces) {
         if (chain != nullptr) {
             chain->present(native->commands);
@@ -1396,6 +1508,7 @@ int Device::addSurface(const Surface& surface) {
         *free = std::move(chain);
         return static_cast<int>(free - native->surfaces.begin()) + 1;
     }
+
     native->surfaces.push_back(std::move(chain));
     return static_cast<int>(native->surfaces.size());
 }
@@ -1413,12 +1526,15 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
     if (entry.kind != ImageKind::RenderTarget) {
         throw std::logic_error("Only a render target can be read.");
     }
+
     if (entry.sampleCount > 1) {
         throw std::logic_error("A multisampled render target is read through the image it resolves into.");
     }
+
     if (width <= 0 || height <= 0 || width > entry.width || height > entry.height) {
         throw std::logic_error(std::format("The render target of {}x{} pixels has no {}x{} pixels to read.", entry.width, entry.height, width, height));
     }
+
     return std::make_unique<ImageReadback>(native->queue, entry.texture, entry.format, width, height);
 }
 
@@ -1426,6 +1542,7 @@ gpu::Device::CaptureSupport Device::getCaptureSupport() const {
     if (![[MTLCaptureManager sharedCaptureManager] supportsDestination:MTLCaptureDestinationGPUTraceDocument]) {
         return {.tool = CaptureTool::None, .missing = std::string(Native::kMissingCaptureTool)};
     }
+
     return {.tool = CaptureTool::MetalFrameCapture, .missing = {}};
 }
 
@@ -1434,9 +1551,11 @@ void Device::beginCapture(const std::filesystem::path& path) {
     if (native->passOpen) {
         throw std::logic_error("A capture began while a pass was open.");
     }
+
     if (native->capturePath) {
         throw std::logic_error("A capture began while another one records.");
     }
+
     MTLCaptureManager* manager = [MTLCaptureManager sharedCaptureManager];
     if (![manager supportsDestination:MTLCaptureDestinationGPUTraceDocument]) {
         throw std::logic_error(std::string(Native::kMissingCaptureTool));
@@ -1452,6 +1571,7 @@ void Device::beginCapture(const std::filesystem::path& path) {
     if (![manager startCaptureWithDescriptor:descriptor error:&error]) {
         throw std::runtime_error(std::format("Metal did not start the capture: {}", error == nil ? "it gave no reason." : error.localizedDescription.UTF8String));
     }
+
     native->capturePath = std::move(document);
 }
 
@@ -1459,12 +1579,14 @@ std::filesystem::path Device::endCapture() {
     if (!native->capturePath) {
         throw std::logic_error("A capture ended while none records.");
     }
+
     [[MTLCaptureManager sharedCaptureManager] stopCapture];
     std::filesystem::path document = *std::exchange(native->capturePath, std::nullopt);
     std::error_code error;
     if (!std::filesystem::exists(document, error)) {
         throw std::runtime_error(std::format("Metal wrote no GPU trace at \"{}\".", document.string()));
     }
+
     return document;
 }
 

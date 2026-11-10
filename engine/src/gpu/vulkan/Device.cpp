@@ -31,11 +31,13 @@ Device::Device(const std::optional<Surface>& surface, const Settings& settings) 
     try {
         const VkPipelineCacheCreateInfo cacheInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO};
         Context::check(vk.vkCreatePipelineCache(context->getDevice(), &cacheInfo, nullptr, &pipelineCache), "make its pipeline cache");
+
         if (dynamicRendering) {
             const bool core = context->getApiVersion() >= VK_API_VERSION_1_3;
             beginRenderingCommand = core ? vk.vkCmdBeginRendering : vk.vkCmdBeginRenderingKHR;
             endRenderingCommand = core ? vk.vkCmdEndRendering : vk.vkCmdEndRenderingKHR;
         }
+
         labels = instance->hasDebugUtils() && vkCmdBeginDebugUtilsLabelEXT != nullptr;
         createFrames();
         fillCapabilities();
@@ -53,6 +55,7 @@ Device::Device(const std::optional<Surface>& surface, const Settings& settings) 
         shutdown();
         throw;
     }
+
     core::Log::info("The Vulkan device draws with \"{}\" through Vulkan {}.{} with {}.", context->getProperties().deviceName, VK_API_VERSION_MAJOR(context->getApiVersion()), VK_API_VERSION_MINOR(context->getApiVersion()), dynamicRendering ? "dynamic rendering" : "render passes");
 }
 
@@ -63,6 +66,7 @@ void Device::readDriverIssues() {
     if (keptDepth) {
         core::Log::info("The Vulkan device works around its driver. {}", *keptDepth);
     }
+
     storeKeptDepth = keptDepth.has_value();
 }
 
@@ -76,6 +80,7 @@ std::vector<std::unique_ptr<Device::SurfaceChain>> Device::makeChains(const Inst
     if (surface) {
         made.front()->swapchain = std::make_unique<Swapchain>(owner.getHandle(), owner.createSurface(*surface));
     }
+
     return made;
 }
 
@@ -124,6 +129,7 @@ void Device::shutdown() noexcept {
     if (!context) {
         return;
     }
+
     vk.vkDeviceWaitIdle(context->getDevice());
     prepared->close();
 
@@ -135,9 +141,11 @@ void Device::shutdown() noexcept {
         for (const AttachmentView& view : record.attachmentViews) {
             vk.vkDestroyImageView(device, view.view, nullptr);
         }
+
         if (record.sampleView != VK_NULL_HANDLE) {
             vk.vkDestroyImageView(device, record.sampleView, nullptr);
         }
+
         vmaDestroyImage(allocator, record.image, record.allocation);
     });
     // clang-format on
@@ -160,6 +168,7 @@ void Device::shutdown() noexcept {
         vk.vkDestroyFence(device, frame.fence, nullptr);
         vk.vkDestroyCommandPool(device, frame.pool, nullptr);
     }
+
     frames = {};
     vk.vkDestroyPipelineCache(device, pipelineCache, nullptr);
     pipelineCache = VK_NULL_HANDLE;
@@ -201,6 +210,7 @@ bool Device::ensureFrame() {
     if (frameOpen) {
         return true;
     }
+
     if (lost) {
         return false;
     }
@@ -212,8 +222,10 @@ bool Device::ensureFrame() {
             markLost(waited);
             return false;
         }
+
         completeFrame(frame);
     }
+
     Context::check(vk.vkResetFences(context->getDevice(), 1, &frame.fence), "reset the fence of a frame");
     releases.collect(completedSerial);
     staging.begin(static_cast<int>(frameIndex));
@@ -223,6 +235,7 @@ bool Device::ensureFrame() {
     const VkCommandBufferBeginInfo begin{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
     Context::check(vk.vkBeginCommandBuffer(frame.uploads, &begin), "record the uploads of a frame");
     Context::check(vk.vkBeginCommandBuffer(frame.graphics, &begin), "record the passes of a frame");
+
     if (frame.timestamps != VK_NULL_HANDLE) {
         vk.vkCmdResetQueryPool(frame.uploads, frame.timestamps, 0, 2);
         vk.vkCmdWriteTimestamp(frame.uploads, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, frame.timestamps, 0);
@@ -231,11 +244,13 @@ bool Device::ensureFrame() {
     frame.serial = nextSerial;
     frameOpen = true;
     bufferCopies = false;
+
     for (const std::unique_ptr<SurfaceChain>& chain : chains) {
         if (chain != nullptr) {
             chain->drawn = false;
         }
     }
+
     bound.uniformBuffer = VK_NULL_HANDLE;
     bound.uniformMask = 0;
     return true;
@@ -245,13 +260,16 @@ bool Device::ensureFrame() {
 void Device::completeFrame(Frame& frame) {
     frame.submitted = false;
     completedSerial = std::max(completedSerial, frame.serial);
+
     if (frame.timestamps == VK_NULL_HANDLE) {
         return;
     }
+
     std::array<std::uint64_t, 2> ticks{};
     if (vk.vkGetQueryPoolResults(context->getDevice(), frame.timestamps, 0, 2, sizeof(ticks), ticks.data(), sizeof(std::uint64_t), VK_QUERY_RESULT_64_BIT) != VK_SUCCESS) {
         return;
     }
+
     const std::uint32_t bits = context->getTimestampBits();
     const std::uint64_t mask = bits >= 64 ? ~std::uint64_t{0} : (std::uint64_t{1} << bits) - 1;
     const std::uint64_t elapsed = ((ticks[1] & mask) - (ticks[0] & mask)) & mask;
@@ -263,6 +281,7 @@ void Device::pollFrames() {
         if (!frame.submitted) {
             continue;
         }
+
         const VkResult status = vk.vkGetFenceStatus(context->getDevice(), frame.fence);
         if (status == VK_SUCCESS) {
             completeFrame(frame);
@@ -277,6 +296,7 @@ void Device::markLost(VkResult result) {
     if (!lost) {
         core::Log::error("The Vulkan device stopped working ({}), so the app starts again on a new device.", Conversions::describe(result));
     }
+
     lost = true;
 }
 
@@ -286,6 +306,7 @@ void Device::waitIdle() {
         markLost(result);
         return;
     }
+
     for (Frame& frame : frames) {
         if (frame.submitted) {
             completeFrame(frame);
@@ -297,9 +318,11 @@ void Device::commit() {
     if (pass.open) {
         throw std::logic_error("A pass is still open. Call \"endPass\" before \"commit\".");
     }
+
     if (lost) {
         return;
     }
+
     if (!frameOpen) {
         pollFrames();
         releases.collect(completedSerial);
@@ -323,8 +346,10 @@ void Device::commit() {
         if (chain == nullptr || !chain->acquired) {
             continue;
         }
+
         waitSemaphores.push_back(chain->swapchain->getAcquired(frameIndex));
         signalSemaphores.push_back(chain->swapchain->getFinished(chain->imageIndex));
+
         if (chain->swapchain->isScaled()) {
             chain->swapchain->recordScale(frame.graphics, chain->imageIndex);
             waitStages.push_back(VK_PIPELINE_STAGE_TRANSFER_BIT);
@@ -334,12 +359,15 @@ void Device::commit() {
         waitStages.push_back(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
         imageBarriers.push_back({.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, .dstAccessMask = 0, .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = chain->swapchain->getImage(chain->imageIndex), .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1}});
     }
+
     if (!imageBarriers.empty()) {
         vk.vkCmdPipelineBarrier(frame.graphics, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, static_cast<std::uint32_t>(imageBarriers.size()), imageBarriers.data());
     }
+
     if (frame.timestamps != VK_NULL_HANDLE) {
         vk.vkCmdWriteTimestamp(frame.graphics, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, frame.timestamps, 1);
     }
+
     Context::check(vk.vkEndCommandBuffer(frame.uploads), "record the uploads of a frame");
     Context::check(vk.vkEndCommandBuffer(frame.graphics), "record the passes of a frame");
     staging.flush();
@@ -362,6 +390,7 @@ void Device::commit() {
         markLost(submitted);
         return;
     }
+
     Context::check(submitted, "submit a frame");
     frame.submitted = true;
 
@@ -369,12 +398,14 @@ void Device::commit() {
         if (chain == nullptr || !chain->acquired) {
             continue;
         }
+
         const VkResult presented = chain->swapchain->present(chain->imageIndex);
         if (presented == VK_ERROR_OUT_OF_DATE_KHR || presented == VK_SUBOPTIMAL_KHR || presented == VK_ERROR_SURFACE_LOST_KHR) {
             chain->dirty = true;
         } else if (presented == VK_ERROR_DEVICE_LOST) {
             markLost(presented);
         }
+
         chain->acquired = false;
     }
 
@@ -391,6 +422,7 @@ void Device::resizeSurface(const Surface::Size& size) {
     if (window.settings.size == size) {
         return;
     }
+
     window.settings.size = size;
     window.dirty = true;
 }
@@ -400,9 +432,11 @@ void Device::detachSurface() {
     if (!window.swapchain) {
         return;
     }
+
     if (window.acquired) {
         throw std::logic_error("The surface goes between frames, after \"commit\".");
     }
+
     waitIdle();
     forgetViews(*window.swapchain);
     releases.collect(completedSerial);
@@ -424,12 +458,15 @@ int Device::addSurface(const Surface& surface) {
     if (frameOpen) {
         throw std::logic_error("A surface is added between frames, after \"commit\".");
     }
+
     auto chain = std::make_unique<SurfaceChain>();
     chain->swapchain = std::make_unique<Swapchain>(instance->getHandle(), instance->createSurface(surface));
     chain->swapchain->attach(*context, frames.size());
+
     if (chain->swapchain->getFormat() != swapchainTarget.color) {
         throw std::runtime_error("The surface takes another color format than the swapchain of the window, whose pipelines the Vulkan device draws every surface with.");
     }
+
     chain->settings = {.size = surface.size, .sampleCount = chains.front()->settings.sampleCount, .vsync = surface.vsync, .transparent = surface.transparent};
     chain->dirty = true;
 
@@ -438,6 +475,7 @@ int Device::addSurface(const Surface& surface) {
         *free = std::move(chain);
         return static_cast<int>(free - chains.begin());
     }
+
     chains.push_back(std::move(chain));
     return static_cast<int>(chains.size()) - 1;
 }
@@ -447,6 +485,7 @@ void Device::resizeSurface(int number, const Surface::Size& size) {
     if (chain.settings.size == size) {
         return;
     }
+
     chain.settings.size = size;
     chain.dirty = true;
 }
@@ -457,6 +496,7 @@ void Device::removeSurface(int number) {
     if (chain.acquired) {
         throw std::logic_error("A surface goes between frames, after \"commit\".");
     }
+
     waitIdle();
     forgetViews(*chain.swapchain);
     releases.collect(completedSerial);
@@ -467,6 +507,7 @@ Device::SurfaceChain& Device::requireChain(int surface) const {
     if (surface < 0 || static_cast<std::size_t>(surface) >= chains.size() || chains[static_cast<std::size_t>(surface)] == nullptr) {
         throw std::logic_error(std::format("The device has no surface {}.", surface));
     }
+
     return *chains[static_cast<std::size_t>(surface)];
 }
 
@@ -474,6 +515,7 @@ Device::SurfaceChain& Device::requireAddedChain(int surface) const {
     if (surface == 0) {
         throw std::logic_error("The surface 0 is the window, which \"addSurface\" did not make.");
     }
+
     return requireChain(surface);
 }
 
@@ -486,9 +528,11 @@ void Device::forgetViews(const Swapchain& chain) {
 // The frames in flight may still draw into the old swapchain, so the device waits for them before it makes the new one.
 void Device::reconfigureSwapchain(SurfaceChain& chain) {
     waitIdle();
+
     if (lost) {
         return;
     }
+
     forgetViews(*chain.swapchain);
     releases.collect(completedSerial);
     chain.swapchain->configure(chain.settings);
@@ -503,6 +547,7 @@ void Device::updateSwapchainTarget() {
     if (!window.hasImages()) {
         return;
     }
+
     const SwapchainTarget next{.color = window.getFormat(), .depth = window.getDepthFormat(), .samples = window.getSamples(), .generation = swapchainTarget.generation};
     if (next.color != swapchainTarget.color || next.depth != swapchainTarget.depth || next.samples != swapchainTarget.samples) {
         swapchainTarget = next;
@@ -515,12 +560,15 @@ bool Device::acquireSwapchainImage(SurfaceChain& chain) {
     if (chain.acquired) {
         return true;
     }
+
     if (!chain.swapchain) {
         return false;
     }
+
     if (chain.dirty) {
         reconfigureSwapchain(chain);
     }
+
     if (lost || !chain.swapchain->hasImages()) {
         return false;
     }
@@ -528,11 +576,14 @@ bool Device::acquireSwapchainImage(SurfaceChain& chain) {
     VkResult result = chain.swapchain->acquire(frameIndex, chain.imageIndex);
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
         reconfigureSwapchain(chain);
+
         if (lost || !chain.swapchain->hasImages()) {
             return false;
         }
+
         result = chain.swapchain->acquire(frameIndex, chain.imageIndex);
     }
+
     if (result == VK_SUBOPTIMAL_KHR) {
         chain.dirty = true;
     } else if (result == VK_ERROR_DEVICE_LOST) {
@@ -542,6 +593,7 @@ bool Device::acquireSwapchainImage(SurfaceChain& chain) {
         chain.dirty = true;
         return false;
     }
+
     chain.acquired = true;
     return true;
 }
@@ -551,6 +603,7 @@ Device::BufferRecord& Device::requireBuffer(Buffer buffer) const {
     if (record == nullptr) {
         throw std::logic_error(std::format("The buffer {} does not exist.", buffer.id));
     }
+
     return *record;
 }
 
@@ -559,6 +612,7 @@ Device::ImageRecord& Device::requireImage(Image image) const {
     if (record == nullptr) {
         throw std::logic_error(std::format("The image {} does not exist.", image.id));
     }
+
     return *record;
 }
 
@@ -571,6 +625,7 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
     if (lost) {
         throw std::runtime_error("The Vulkan device stopped working, so it makes no buffer.");
     }
+
     const VkDeviceSize size = desc.size > 0 ? desc.size : desc.data.size();
     if (size == 0 || desc.data.size() > size) {
         throw std::invalid_argument(std::format("A buffer of {} bytes cannot hold {} bytes of data.", size, desc.data.size()));
@@ -584,11 +639,13 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
     if (!dynamic) {
         usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     }
+
     const VkBufferCreateInfo info{.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, .size = record->stride * record->copies, .usage = usage, .sharingMode = VK_SHARING_MODE_EXCLUSIVE};
     VmaAllocationCreateInfo memory{.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT, .usage = VMA_MEMORY_USAGE_AUTO};
     if (!dynamic) {
         memory.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT;
     }
+
     VmaAllocationInfo allocated{};
     Context::check(vmaCreateBuffer(context->getAllocator(), &info, &memory, &record->buffer, &record->allocation, &allocated), std::format("make a buffer of {} bytes", size));
     record->mapped = static_cast<std::byte*>(allocated.pMappedData);
@@ -598,6 +655,7 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
         if (!desc.data.empty()) {
             uploadBuffer(*record, desc.data);
         }
+
         return {buffers.add(std::move(record))};
     } catch (...) {
         releases.push(ReleaseQueue::Buffer{.buffer = record->buffer, .allocation = record->allocation}, nextSerial);
@@ -610,12 +668,15 @@ void Device::uploadBuffer(const BufferRecord& record, std::span<const std::byte>
         for (std::uint32_t copy = 0; copy < record.copies; ++copy) {
             std::memcpy(record.mapped + record.stride * copy, data.data(), data.size());
         }
+
         Context::check(vmaFlushAllocation(context->getAllocator(), record.allocation, 0, VK_WHOLE_SIZE), "write a buffer");
         return;
     }
+
     if (!ensureFrame()) {
         throw std::runtime_error("The Vulkan device stopped working, so it uploads no data.");
     }
+
     const UploadRing::Allocation source = staging.allocate(data.size(), 16);
     std::memcpy(source.data, data.data(), data.size());
     const VkBufferCopy region{.srcOffset = source.offset, .dstOffset = 0, .size = data.size()};
@@ -627,9 +688,11 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     if (lost) {
         throw std::runtime_error("The Vulkan device stopped working, so it makes no image.");
     }
+
     if (desc.width < 1 || desc.height < 1 || desc.width > capabilities.maxImageSize || desc.height > capabilities.maxImageSize) {
         throw std::invalid_argument(std::format("An image of {}x{} pixels is outside the sizes of the Vulkan device, from 1 to {}.", desc.width, desc.height, capabilities.maxImageSize));
     }
+
     if (desc.layers < 1 || desc.mipLevels < 1 || (desc.type == TextureType::Cube && desc.layers != 6)) {
         throw std::invalid_argument("An image needs one layer or more, one mip level or more, and a cube six layers.");
     }
@@ -645,17 +708,20 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     if (sampled) {
         usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
     }
+
     if (desc.kind == ImageKind::RenderTarget) {
         usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     } else if (desc.kind == ImageKind::DepthStencil) {
         usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
     }
+
     VkImageCreateFlags flags = 0;
     if (desc.type == TextureType::Cube) {
         flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
     } else if (desc.type == TextureType::Volume && attachment) {
         flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
     }
+
     const bool volume = desc.type == TextureType::Volume;
     const VkImageCreateInfo info{
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -680,6 +746,7 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     if (!sampled) {
         record->restLayout = depth ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     }
+
     const VmaAllocationCreateInfo memory{.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE};
     Context::check(vmaCreateImage(context->getAllocator(), &info, &memory, &record->image, &record->allocation, nullptr), std::format("make the image \"{}\"", desc.label));
     context->setName(VK_OBJECT_TYPE_IMAGE, record->image, desc.label);
@@ -692,14 +759,17 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
             Context::check(vk.vkCreateImageView(context->getDevice(), &viewInfo, nullptr, &record->sampleView), "make the view of an image");
             context->setName(VK_OBJECT_TYPE_IMAGE_VIEW, record->sampleView, desc.label);
         }
+
         if (!ensureFrame()) {
             throw std::runtime_error("The Vulkan device stopped working, so it makes no image.");
         }
+
         if (desc.kind == ImageKind::Texture && !desc.levels.empty()) {
             uploadLevels(*record, desc.levels);
         } else {
             clearImage(*record);
         }
+
         return {images.add(std::move(record))};
     } catch (...) {
         releaseImage(*record, nextSerial);
@@ -712,6 +782,7 @@ void Device::uploadLevels(const ImageRecord& record, std::span<const std::span<c
     if (levels.size() > static_cast<std::size_t>(record.mipLevels)) {
         throw std::invalid_argument(std::format("The image has {} mip levels, not {}.", record.mipLevels, levels.size()));
     }
+
     const bool volume = record.type == TextureType::Volume;
     const std::size_t pixelBytes = ImageInfo::getBytesPerPixel(record.pixelFormat);
     copyRegions.clear();
@@ -724,6 +795,7 @@ void Device::uploadLevels(const ImageRecord& record, std::span<const std::span<c
         if (levels[level].size() < bytes) {
             throw std::invalid_argument(std::format("The mip level {} of the image holds {} bytes, not the {} it needs.", level, levels[level].size(), bytes));
         }
+
         const UploadRing::Allocation source = staging.allocate(bytes, 16);
         std::memcpy(source.data, levels[level].data(), bytes);
         copyRegions.push_back({.bufferOffset = source.offset, .imageSubresource = {.aspectMask = record.aspects, .mipLevel = static_cast<std::uint32_t>(level), .layerCount = layers}, .imageExtent = {width, height, depth}});
@@ -734,6 +806,7 @@ void Device::uploadLevels(const ImageRecord& record, std::span<const std::span<c
             const VkImageMemoryBarrier toDestination{.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .srcAccessMask = 0, .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED, .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = record.image, .subresourceRange = {.aspectMask = record.aspects, .levelCount = VK_REMAINING_MIP_LEVELS, .layerCount = VK_REMAINING_ARRAY_LAYERS}};
             vk.vkCmdPipelineBarrier(commands, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &toDestination);
         }
+
         vk.vkCmdCopyBufferToImage(commands, source.buffer, record.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegions.back());
     }
 
@@ -744,6 +817,7 @@ void Device::uploadLevels(const ImageRecord& record, std::span<const std::span<c
         const VkImageSubresourceRange rest{.aspectMask = record.aspects, .baseMipLevel = static_cast<std::uint32_t>(levels.size()), .levelCount = VK_REMAINING_MIP_LEVELS, .layerCount = VK_REMAINING_ARRAY_LAYERS};
         vk.vkCmdClearColorImage(commands, record.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear, 1, &rest);
     }
+
     const VkImageSubresourceRange range{.aspectMask = record.aspects, .levelCount = VK_REMAINING_MIP_LEVELS, .layerCount = VK_REMAINING_ARRAY_LAYERS};
     const VkImageMemoryBarrier toRest = ImageLayouts::makeBarrier(record.image, range, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, record.restLayout);
     vk.vkCmdPipelineBarrier(commands, VK_PIPELINE_STAGE_TRANSFER_BIT, ImageLayouts::getStages(record.restLayout), 0, 0, nullptr, 0, nullptr, 1, &toRest);
@@ -772,6 +846,7 @@ gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
     if (lost) {
         throw std::runtime_error("The Vulkan device stopped working, so it makes no sampler.");
     }
+
     const bool anisotropic = desc.maxAnisotropy > 1 && context->getEnabledFeatures().samplerAnisotropy == VK_TRUE;
     const VkSamplerCreateInfo info{
         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
@@ -805,6 +880,7 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
     if (lost) {
         throw std::runtime_error("The Vulkan device stopped working, so it makes no program.");
     }
+
     for (const StageCode* stage : {&desc.vertex, &desc.fragment}) {
         if (stage->bytecode.empty() || stage->bytecode.size() % 4 != 0) {
             throw std::invalid_argument(std::format("The program \"{}\" has no SPIR-V code for a stage. Compile its shader again with the Haylen shader compiler.", desc.label));
@@ -822,13 +898,16 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
         if (block.size > context->getProperties().limits.maxUniformBufferRange) {
             throw std::invalid_argument(std::format("The uniform block at slot {} of the program \"{}\" is larger than the {} bytes that the GPU binds.", block.slot, desc.label, context->getProperties().limits.maxUniformBufferRange));
         }
+
         if (record->uniformSet != kNoSet && record->uniformSet != static_cast<std::uint32_t>(block.set)) {
             throw std::invalid_argument(std::format("The uniform blocks of the program \"{}\" lie in more than one descriptor set.", desc.label));
         }
+
         record->uniformSet = static_cast<std::uint32_t>(block.set);
         uniformBindings.push_back({.binding = static_cast<std::uint32_t>(block.binding), .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, .stages = Conversions::toStage(block.stage)});
         record->uniformBlocks.push_back({.binding = static_cast<std::uint32_t>(block.binding), .size = block.size});
     }
+
     std::ranges::sort(uniformBindings);
     std::ranges::sort(record->uniformBlocks, {}, &DescriptorCache::UniformBlock::binding);
     for (const BlockBinding& block : desc.blocks) {
@@ -842,6 +921,7 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
         if (record->resourceSet != kNoSet && record->resourceSet != static_cast<std::uint32_t>(set)) {
             throw std::invalid_argument(std::format("The textures and samplers of the program \"{}\" lie in more than one descriptor set.", desc.label));
         }
+
         record->resourceSet = static_cast<std::uint32_t>(set);
         resourceBindings.push_back({.binding = static_cast<std::uint32_t>(binding), .type = type, .stages = Conversions::toStage(stage)});
     };
@@ -850,11 +930,14 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
         addResource(texture.set, texture.binding, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, texture.stage);
         record->textures.push_back({.slot = texture.slot, .binding = static_cast<std::uint32_t>(texture.binding)});
     }
+
     for (const SamplerBinding& sampler : desc.samplers) {
         addResource(sampler.set, sampler.binding, VK_DESCRIPTOR_TYPE_SAMPLER, sampler.stage);
         record->samplers.push_back({.slot = sampler.slot, .binding = static_cast<std::uint32_t>(sampler.binding)});
     }
+
     std::ranges::sort(resourceBindings);
+
     if (record->uniformSet != kNoSet && record->uniformSet == record->resourceSet) {
         throw std::invalid_argument(std::format("The program \"{}\" puts its uniform blocks and its textures in the same descriptor set.", desc.label));
     }
@@ -862,17 +945,21 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
     if (record->uniformSet != kNoSet) {
         record->uniformLayout = layouts.getSetLayout(uniformBindings);
     }
+
     if (record->resourceSet != kNoSet) {
         record->resourceLayout = layouts.getSetLayout(resourceBindings);
     }
+
     const std::uint32_t setCount = std::max(record->uniformSet == kNoSet ? 0U : record->uniformSet + 1, record->resourceSet == kNoSet ? 0U : record->resourceSet + 1);
     std::vector<VkDescriptorSetLayout> sets(setCount, layouts.getSetLayout({}));
     if (record->uniformSet != kNoSet) {
         sets[record->uniformSet] = record->uniformLayout;
     }
+
     if (record->resourceSet != kNoSet) {
         sets[record->resourceSet] = record->resourceLayout;
     }
+
     record->layout = layouts.getPipelineLayout(sets);
 
     // The bytes of a module may lie anywhere, while Vulkan reads it as aligned words.
@@ -884,6 +971,7 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
         if (module != VK_NULL_HANDLE) {
             return module;
         }
+
         const VkShaderModuleCreateInfo info{.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO, .codeSize = bytecode.size(), .pCode = words.data()};
         Context::check(vk.vkCreateShaderModule(context->getDevice(), &info, nullptr, &module), std::format("make the shader modules of the program \"{}\"", desc.label));
         context->setName(VK_OBJECT_TYPE_SHADER_MODULE, module, desc.label);
@@ -920,10 +1008,12 @@ gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
     if (lost) {
         throw std::runtime_error("The Vulkan device stopped working, so it makes no pipeline.");
     }
+
     ProgramRecord* program = programs.find(desc.program.id);
     if (program == nullptr || program->destroyed) {
         throw std::logic_error(std::format("The program {} of the pipeline \"{}\" does not exist.", desc.program.id, desc.label));
     }
+
     if (desc.colors.size() > kMaxColorTargets || desc.buffers.size() > kMaxVertexBuffers || desc.attributes.size() > kMaxAttributes) {
         throw std::logic_error(std::format("The pipeline \"{}\" draws into at most {} color targets from at most {} vertex buffers with {} attributes.", desc.label, kMaxColorTargets, kMaxVertexBuffers, kMaxAttributes));
     }
@@ -932,6 +1022,7 @@ gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
     if (desc.swapchain) {
         record->stored = storePipeline(desc);
     }
+
     record->pipeline = buildPipeline(desc, *program);
     try {
         const std::uint32_t id = pipelines.add(std::move(record));
@@ -968,11 +1059,13 @@ VkPipeline Device::buildPipeline(const PipelineDesc& desc, const ProgramRecord& 
     for (std::size_t index = 0; index < desc.buffers.size(); ++index) {
         bindings[index] = {.binding = static_cast<std::uint32_t>(index), .stride = static_cast<std::uint32_t>(desc.buffers[index].stride), .inputRate = desc.buffers[index].perInstance ? VK_VERTEX_INPUT_RATE_INSTANCE : VK_VERTEX_INPUT_RATE_VERTEX};
     }
+
     std::array<VkVertexInputAttributeDescription, kMaxAttributes> attributes{};
     for (std::size_t index = 0; index < desc.attributes.size(); ++index) {
         const VertexAttribute& attribute = desc.attributes[index];
         attributes[index] = {.location = static_cast<std::uint32_t>(attribute.location), .binding = static_cast<std::uint32_t>(attribute.buffer), .format = Conversions::toFormat(attribute.format), .offset = static_cast<std::uint32_t>(attribute.offset)};
     }
+
     const VkPipelineVertexInputStateCreateInfo vertexInput{.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO, .vertexBindingDescriptionCount = static_cast<std::uint32_t>(desc.buffers.size()), .pVertexBindingDescriptions = bindings.data(), .vertexAttributeDescriptionCount = static_cast<std::uint32_t>(desc.attributes.size()), .pVertexAttributeDescriptions = attributes.data()};
 
     // Strips restart at the largest index, as on Metal and Direct3D.
@@ -1005,6 +1098,7 @@ VkPipeline Device::buildPipeline(const PipelineDesc& desc, const ProgramRecord& 
         blends[index] = {.blendEnable = blend.enabled ? VK_TRUE : VK_FALSE, .srcColorBlendFactor = Conversions::toBlendFactor(blend.sourceColor), .dstColorBlendFactor = Conversions::toBlendFactor(blend.destinationColor), .colorBlendOp = Conversions::toBlendOperation(blend.colorOperation), .srcAlphaBlendFactor = Conversions::toBlendFactor(blend.sourceAlpha), .dstAlphaBlendFactor = Conversions::toBlendFactor(blend.destinationAlpha), .alphaBlendOp = Conversions::toBlendOperation(blend.alphaOperation), .colorWriteMask = Conversions::toColorMask(target.writeMask)};
         colorFormats[index] = desc.swapchain ? swapchainTarget.color : resolveFormat(desc.colors[index].format);
     }
+
     const VkPipelineColorBlendStateCreateInfo colorBlend{.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO, .attachmentCount = colorCount, .pAttachments = blends.data()};
 
     const std::array<VkDynamicState, 4> dynamicStates{VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_BLEND_CONSTANTS, VK_DYNAMIC_STATE_STENCIL_REFERENCE};
@@ -1017,9 +1111,11 @@ VkPipeline Device::buildPipeline(const PipelineDesc& desc, const ProgramRecord& 
         for (std::uint32_t index = 0; index < colorCount; ++index) {
             key.colors[index] = {.format = colorFormats[index], .samples = samples};
         }
+
         if (depthFormat != VK_FORMAT_UNDEFINED) {
             key.depth = {.format = depthFormat, .samples = samples};
         }
+
         compatible = renderPasses.getRenderPass(key);
     }
 
@@ -1066,6 +1162,7 @@ void Device::destroy(Image image) noexcept {
     if (!record) {
         return;
     }
+
     descriptors.forgetImage(image.id, nextSerial);
     releaseImage(*record, nextSerial);
 }
@@ -1075,9 +1172,11 @@ void Device::releaseImage(ImageRecord& record, std::uint64_t serial) {
         renderPasses.forgetView(view.view, serial);
         releases.push(ReleaseQueue::ImageView{.view = view.view}, serial);
     }
+
     if (record.sampleView != VK_NULL_HANDLE) {
         releases.push(ReleaseQueue::ImageView{.view = record.sampleView}, serial);
     }
+
     releases.push(ReleaseQueue::Image{.image = record.image, .allocation = record.allocation}, serial);
 }
 
@@ -1086,6 +1185,7 @@ void Device::destroy(Sampler sampler) noexcept {
     if (!record) {
         return;
     }
+
     descriptors.forgetSampler(sampler.id, nextSerial);
     releases.push(ReleaseQueue::Sampler{.sampler = record->sampler}, nextSerial);
 }
@@ -1096,6 +1196,7 @@ void Device::destroy(Program program) noexcept {
     if (record == nullptr || record->destroyed) {
         return;
     }
+
     record->destroyed = true;
     if (record->pipelines == 0) {
         releaseProgram(*record, nextSerial);
@@ -1113,6 +1214,7 @@ void Device::forgetProgramUse(std::uint32_t program, std::uint64_t serial) noexc
     if (record == nullptr) {
         return;
     }
+
     --record->pipelines;
     if (record->destroyed && record->pipelines == 0) {
         releaseProgram(*record, serial);
@@ -1125,12 +1227,14 @@ void Device::destroy(Pipeline pipeline) noexcept {
     if (!record) {
         return;
     }
+
     if (bound.pipeline == record.get()) {
         bound.pipeline = nullptr;
         bound.program = nullptr;
         bound.uniformSetProgram = nullptr;
         bound.uniformSet = VK_NULL_HANDLE;
     }
+
     releases.push(ReleaseQueue::Pipeline{.pipeline = record->pipeline}, nextSerial);
     forgetProgramUse(record->program, nextSerial);
 }
@@ -1141,16 +1245,20 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
     if (record.usage != Usage::Dynamic) {
         throw std::logic_error(std::format("The buffer {} is immutable, so it takes no writes.", buffer.id));
     }
+
     if (offset + data.size() > record.size) {
         throw std::out_of_range(std::format("A write of {} bytes at {} goes past the end of the buffer of {} bytes.", data.size(), offset, record.size));
     }
+
     if (!ensureFrame()) {
         return;
     }
+
     if (record.writtenSerial != nextSerial) {
         record.writtenSerial = nextSerial;
         record.current = (record.current + 1) % record.copies;
     }
+
     const VkDeviceSize start = record.stride * record.current + offset;
     std::memcpy(record.mapped + start, data.data(), data.size());
     vmaFlushAllocation(context->getAllocator(), record.allocation, start, data.size());
@@ -1161,6 +1269,7 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
     if (writes.empty() || !ensureFrame()) {
         return;
     }
+
     const VkCommandBuffer commands = frames[frameIndex].uploads;
     copyRegions.clear();
     imageBarriers.clear();
@@ -1171,11 +1280,13 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
         if (record.kind != ImageKind::Dynamic) {
             throw std::logic_error(std::format("The image {} is not dynamic, so it takes no new pixels.", write.image.id));
         }
+
         const bool volume = record.type == TextureType::Volume;
         const std::size_t bytes = std::size_t{static_cast<std::uint32_t>(record.width)} * static_cast<std::uint32_t>(record.height) * static_cast<std::uint32_t>(record.layers) * ImageInfo::getBytesPerPixel(record.pixelFormat);
         if (write.pixels.size() != bytes) {
             throw std::invalid_argument(std::format("The pixels of the image {} hold {} bytes, not the {} it needs.", write.image.id, write.pixels.size(), bytes));
         }
+
         const UploadRing::Allocation source = staging.allocate(bytes, 16);
         std::memcpy(source.data, write.pixels.data(), bytes);
         sourceBuffers.push_back(source.buffer);
@@ -1184,9 +1295,11 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
     }
 
     vk.vkCmdPipelineBarrier(commands, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, static_cast<std::uint32_t>(imageBarriers.size()), imageBarriers.data());
+
     for (std::size_t index = 0; index < writes.size(); ++index) {
         vk.vkCmdCopyBufferToImage(commands, sourceBuffers[index], imageBarriers[index].image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegions[index]);
     }
+
     VkPipelineStageFlags restStages = 0;
     for (std::size_t index = 0; index < writes.size(); ++index) {
         VkImageMemoryBarrier& barrier = imageBarriers[index];
@@ -1196,6 +1309,7 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
         barrier.dstAccessMask = ImageLayouts::getAccess(barrier.newLayout);
         restStages |= ImageLayouts::getStages(barrier.newLayout);
     }
+
     vk.vkCmdPipelineBarrier(commands, VK_PIPELINE_STAGE_TRANSFER_BIT, restStages, 0, 0, nullptr, 0, nullptr, static_cast<std::uint32_t>(imageBarriers.size()), imageBarriers.data());
 }
 
@@ -1204,6 +1318,7 @@ void Device::beginPass(const PassDesc& desc) {
     if (pass.open) {
         throw std::logic_error("A pass is already open. Call \"endPass\" before \"beginPass\".");
     }
+
     pass.skipped = false;
     pass.labeled = false;
     pass.transitionCount = 0;
@@ -1212,6 +1327,7 @@ void Device::beginPass(const PassDesc& desc) {
         pass.open = true;
         return;
     }
+
     resetDrawState();
 
     const bool toSwapchain = desc.colors.empty() && !desc.depthStencil;
@@ -1220,11 +1336,13 @@ void Device::beginPass(const PassDesc& desc) {
     if (!continues) {
         endSwapchainRendering();
     }
+
     if (toSwapchain && !continues) {
         beginSwapchainPass(desc);
     } else if (!toSwapchain) {
         beginOffscreenPass(desc);
     }
+
     swapchainRendering = false;
     pass.open = true;
     if (pass.skipped) {
@@ -1238,6 +1356,7 @@ void Device::beginPass(const PassDesc& desc) {
         vkCmdBeginDebugUtilsLabelEXT(commands, &label);
         pass.labeled = true;
     }
+
     const VkViewport viewport{.x = 0.0F, .y = static_cast<float>(pass.extent.height), .width = static_cast<float>(pass.extent.width), .height = -static_cast<float>(pass.extent.height), .minDepth = 0.0F, .maxDepth = 1.0F};
     const VkRect2D scissor{.offset = {0, 0}, .extent = pass.extent};
     const std::array<float, 4> blendColor{};
@@ -1254,6 +1373,7 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
         pass.skipped = true;
         return;
     }
+
     const Swapchain& swapchain = *chain.swapchain;
     const std::uint32_t imageIndex = chain.imageIndex;
     const VkCommandBuffer commands = frames[frameIndex].graphics;
@@ -1270,6 +1390,7 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
     if (multisampled) {
         imageBarriers.push_back(ImageLayouts::makeBarrier(swapchain.getColorImage(), colorRange, colorLayout, VK_IMAGE_LAYOUT_UNDEFINED, colorLayout));
     }
+
     imageBarriers.push_back(ImageLayouts::makeBarrier(swapchain.getDepthImage(), {.aspectMask = Conversions::getAspects(swapchain.getDepthFormat()), .levelCount = 1, .layerCount = 1}, depthLayout, VK_IMAGE_LAYOUT_UNDEFINED, depthLayout));
     const VkPipelineStageFlags stages = ImageLayouts::getStages(colorLayout) | ImageLayouts::getStages(depthLayout);
     vk.vkCmdPipelineBarrier(commands, stages, stages, 0, 0, nullptr, 0, nullptr, static_cast<std::uint32_t>(imageBarriers.size()), imageBarriers.data());
@@ -1284,6 +1405,7 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
         color.resolveView = swapchain.getView(imageIndex);
         color.resolveFormat = swapchain.getFormat();
     }
+
     target.depth = {.view = swapchain.getDepthView(), .format = swapchain.getDepthFormat(), .samples = swapchain.getSamples(), .load = load, .store = VK_ATTACHMENT_STORE_OP_DONT_CARE, .stencilLoad = load, .stencilStore = VK_ATTACHMENT_STORE_OP_DONT_CARE};
     target.depth.clear.depthStencil = {.depth = desc.clearDepth, .stencil = desc.clearStencil};
     beginRendering(target);
@@ -1293,6 +1415,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
     if (desc.colors.size() > kMaxColorTargets) {
         throw std::logic_error(std::format("A pass draws into at most {} color attachments.", kMaxColorTargets));
     }
+
     PassTarget target{.colorCount = static_cast<std::uint32_t>(desc.colors.size())};
     for (std::size_t index = 0; index < desc.colors.size(); ++index) {
         const ColorAttachment& attachment = desc.colors[index];
@@ -1300,13 +1423,16 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         if (record.kind != ImageKind::RenderTarget) {
             throw std::logic_error(std::format("The image {} is not a render target, so no pass draws into it.", attachment.image.id));
         }
+
         AttachmentTarget& color = target.colors[index];
         color = {.view = getAttachmentView(record, attachment.mipLevel, attachment.layer), .format = record.format, .samples = record.samples, .load = Conversions::toLoad(attachment.load), .store = Conversions::toStore(attachment.store)};
         color.clear.color = {{attachment.clear.r, attachment.clear.g, attachment.clear.b, attachment.clear.a}};
         addTransition(record, attachment.mipLevel, attachment.layer, attachment.load == Load::Keep);
+
         if (index == 0) {
             target.extent = {static_cast<std::uint32_t>(std::max(record.width >> attachment.mipLevel, 1)), static_cast<std::uint32_t>(std::max(record.height >> attachment.mipLevel, 1))};
         }
+
         if (attachment.resolve.isValid()) {
             ImageRecord& resolve = requireImage(attachment.resolve);
             color.resolveView = getAttachmentView(resolve, 0, 0);
@@ -1314,12 +1440,14 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
             addTransition(resolve, 0, 0, false);
         }
     }
+
     if (desc.depthStencil) {
         const DepthStencilAttachment& attachment = *desc.depthStencil;
         ImageRecord& record = requireImage(attachment.image);
         if (record.kind != ImageKind::DepthStencil) {
             throw std::logic_error(std::format("The image {} is not a depth stencil image, so no pass tests against it.", attachment.image.id));
         }
+
         target.hasDepth = true;
         target.depth = {.view = getAttachmentView(record, 0, 0), .format = record.format, .samples = record.samples, .load = Conversions::toLoad(attachment.depthLoad), .store = Conversions::toStore(attachment.depthStore), .stencilLoad = Conversions::toLoad(attachment.stencilLoad), .stencilStore = Conversions::toStore(attachment.stencilStore)};
         target.depth.clear.depthStencil = {.depth = attachment.clearDepth, .stencil = attachment.clearStencil};
@@ -1328,8 +1456,10 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
             target.depth.stencilLoad = VK_ATTACHMENT_LOAD_OP_LOAD;
             target.depth.stencilStore = VK_ATTACHMENT_STORE_OP_STORE;
         }
+
         const bool keeps = attachment.depthLoad == Load::Keep || attachment.stencilLoad == Load::Keep;
         addTransition(record, 0, 0, keeps);
+
         if (desc.colors.empty()) {
             target.extent = {static_cast<std::uint32_t>(record.width), static_cast<std::uint32_t>(record.height)};
         }
@@ -1345,6 +1475,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         before |= ImageLayouts::getStages(transition.restLayout);
         after |= ImageLayouts::getStages(transition.attachmentLayout);
     }
+
     vk.vkCmdPipelineBarrier(frames[frameIndex].graphics, before, after, 0, 0, nullptr, 0, nullptr, static_cast<std::uint32_t>(imageBarriers.size()), imageBarriers.data());
     beginRendering(target);
 }
@@ -1367,9 +1498,11 @@ VkImageView Device::getAttachmentView(ImageRecord& record, int mipLevel, int lay
     if (found != record.attachmentViews.end()) {
         return found->view;
     }
+
     if (mipLevel < 0 || mipLevel >= record.mipLevels || layer < 0 || layer >= record.layers) {
         throw std::out_of_range(std::format("The image has no mip level {} with a layer {} to draw into.", mipLevel, layer));
     }
+
     const VkImageViewCreateInfo info{.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, .image = record.image, .viewType = VK_IMAGE_VIEW_TYPE_2D, .format = record.format, .subresourceRange = {.aspectMask = record.aspects, .baseMipLevel = static_cast<std::uint32_t>(mipLevel), .levelCount = 1, .baseArrayLayer = static_cast<std::uint32_t>(layer), .layerCount = 1}};
     VkImageView view = VK_NULL_HANDLE;
     Context::check(vk.vkCreateImageView(context->getDevice(), &info, nullptr, &view), "make the view of an attachment");
@@ -1381,12 +1514,14 @@ void Device::beginRendering(const PassTarget& target) {
     const VkCommandBuffer commands = frames[frameIndex].graphics;
     const VkRect2D area{.offset = {0, 0}, .extent = target.extent};
     pass.extent = target.extent;
+
     if (dynamicRendering) {
         std::array<VkRenderingAttachmentInfo, kMaxColorTargets> colors{};
         for (std::uint32_t index = 0; index < target.colorCount; ++index) {
             const AttachmentTarget& color = target.colors[index];
             colors[index] = {.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO, .imageView = color.view, .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, .resolveMode = color.resolveView != VK_NULL_HANDLE ? VK_RESOLVE_MODE_AVERAGE_BIT : VK_RESOLVE_MODE_NONE, .resolveImageView = color.resolveView, .resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, .loadOp = color.load, .storeOp = color.store, .clearValue = color.clear};
         }
+
         const AttachmentTarget& depth = target.depth;
         const VkRenderingAttachmentInfo depthInfo{.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO, .imageView = depth.view, .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, .loadOp = depth.load, .storeOp = depth.store, .clearValue = depth.clear};
         const VkRenderingAttachmentInfo stencilInfo{.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO, .imageView = depth.view, .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, .loadOp = depth.stencilLoad, .storeOp = depth.stencilStore, .clearValue = depth.clear};
@@ -1407,6 +1542,7 @@ void Device::beginRendering(const PassTarget& target) {
         views[count] = color.view;
         clears[count++] = color.clear;
     }
+
     for (std::uint32_t index = 0; index < target.colorCount; ++index) {
         const AttachmentTarget& color = target.colors[index];
         if (color.resolveView != VK_NULL_HANDLE) {
@@ -1414,12 +1550,14 @@ void Device::beginRendering(const PassTarget& target) {
             views[count++] = color.resolveView;
         }
     }
+
     if (target.hasDepth) {
         const AttachmentTarget& depth = target.depth;
         key.depth = {.format = depth.format, .samples = depth.samples, .load = depth.load, .store = depth.store, .stencilLoad = depth.stencilLoad, .stencilStore = depth.stencilStore};
         views[count] = depth.view;
         clears[count++] = depth.clear;
     }
+
     const VkRenderPass renderPass = renderPasses.getRenderPass(key);
     const VkFramebuffer framebuffer = renderPasses.getFramebuffer(renderPass, std::span(views.data(), count), target.extent);
     const VkRenderPassBeginInfo info{.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, .renderPass = renderPass, .framebuffer = framebuffer, .renderArea = area, .clearValueCount = count, .pClearValues = clears.data()};
@@ -1432,6 +1570,7 @@ void Device::endPass() {
     if (!pass.open) {
         throw std::logic_error("No pass is open. Call \"beginPass\" before \"endPass\".");
     }
+
     pass.open = false;
     if (pass.skipped) {
         return;
@@ -1441,10 +1580,12 @@ void Device::endPass() {
     if (pass.labeled) {
         vkCmdEndDebugUtilsLabelEXT(commands);
     }
+
     if (pass.swapchain) {
         swapchainRendering = true;
         return;
     }
+
     endRendering();
 
     imageBarriers.clear();
@@ -1456,6 +1597,7 @@ void Device::endPass() {
         before |= ImageLayouts::getStages(transition.attachmentLayout);
         after |= ImageLayouts::getStages(transition.restLayout);
     }
+
     vk.vkCmdPipelineBarrier(commands, before, after, 0, 0, nullptr, 0, nullptr, static_cast<std::uint32_t>(imageBarriers.size()), imageBarriers.data());
 }
 
@@ -1479,6 +1621,7 @@ void Device::applyViewport(const math::Rect& pixels) {
     if (!pass.open || pass.skipped) {
         return;
     }
+
     const VkViewport viewport{.x = pixels.x, .y = pixels.y + pixels.height, .width = pixels.width, .height = -pixels.height, .minDepth = 0.0F, .maxDepth = 1.0F};
     vk.vkCmdSetViewport(frames[frameIndex].graphics, 0, 1, &viewport);
 }
@@ -1488,6 +1631,7 @@ void Device::applyScissor(const math::Rect& pixels) {
     if (!pass.open || pass.skipped) {
         return;
     }
+
     const auto width = static_cast<long>(pass.extent.width);
     const auto height = static_cast<long>(pass.extent.height);
     const long left = std::clamp(std::lround(pixels.x), 0L, width);
@@ -1502,27 +1646,33 @@ void Device::applyPipeline(Pipeline pipeline) {
     if (!pass.open || pass.skipped) {
         return;
     }
+
     PipelineRecord* record = pipelines.find(pipeline.id);
     if (record == nullptr) {
         throw std::logic_error(std::format("The pipeline {} does not exist.", pipeline.id));
     }
+
     if (record->stored && record->generation != swapchainTarget.generation) {
         rebuildPipeline(*record);
     }
+
     if (bound.pipeline == record && bound.boundPipeline == record->pipeline) {
         return;
     }
 
     ProgramRecord* program = programs.find(record->program);
     vk.vkCmdBindPipeline(frames[frameIndex].graphics, VK_PIPELINE_BIND_POINT_GRAPHICS, record->pipeline);
+
     if (bound.program == nullptr || bound.program->layout != program->layout) {
         bound.resourcesDirty = true;
         bound.uniformsDirty = true;
     }
+
     if (bound.program == nullptr || !sharesUniforms(*bound.program, *program)) {
         bound.uniformMask = 0;
         bound.uniformSet = VK_NULL_HANDLE;
     }
+
     bound.vertexDirty = true;
     bound.indexDirty = true;
     bound.pipeline = record;
@@ -1534,16 +1684,20 @@ void Device::applyBindings(const Bindings& bindings) {
     if (!pass.open || pass.skipped) {
         return;
     }
+
     Bindings& current = bound.bindings;
     if (current.vertexBuffers != bindings.vertexBuffers || current.vertexOffsets != bindings.vertexOffsets) {
         bound.vertexDirty = true;
     }
+
     if (current.indexBuffer != bindings.indexBuffer || current.indexOffset != bindings.indexOffset) {
         bound.indexDirty = true;
     }
+
     if (current.textures != bindings.textures || current.samplers != bindings.samplers) {
         bound.resourcesDirty = true;
     }
+
     current = bindings;
 }
 
@@ -1551,17 +1705,21 @@ void Device::applyUniforms(int slot, std::span<const std::byte> data) {
     if (!pass.open || pass.skipped) {
         return;
     }
+
     if (bound.program == nullptr) {
         throw std::logic_error("A pipeline applies before its uniforms. Call \"applyPipeline\" first.");
     }
+
     const int index = slot >= 0 && slot < static_cast<int>(kMaxBlocks) ? bound.program->blockIndices[static_cast<std::size_t>(slot)] : -1;
     if (index < 0) {
         throw std::logic_error(std::format("The program \"{}\" has no uniform block at slot {}.", bound.program->label, slot));
     }
+
     const VkDeviceSize size = bound.program->uniformBlocks[static_cast<std::size_t>(index)].size;
     if (data.size() > size) {
         throw std::invalid_argument(std::format("The uniforms of {} bytes do not fit the block of {} bytes at slot {}.", data.size(), size, slot));
     }
+
     const UploadRing::Allocation allocation = allocateUniform(static_cast<std::size_t>(index), size);
     std::memcpy(allocation.data, data.data(), data.size());
 }
@@ -1575,6 +1733,7 @@ UploadRing::Allocation Device::allocateUniform(std::size_t index, VkDeviceSize s
             if (other == index || (bound.uniformMask & (1U << other)) == 0) {
                 continue;
             }
+
             const VkDeviceSize otherSize = bound.program->uniformBlocks[other].size;
             const UploadRing::Allocation moved = uniforms.allocate(otherSize, alignment);
             std::memcpy(moved.data, bound.uniformData[other], static_cast<std::size_t>(otherSize));
@@ -1582,10 +1741,12 @@ UploadRing::Allocation Device::allocateUniform(std::size_t index, VkDeviceSize s
             bound.uniformData[other] = moved.data;
         }
     }
+
     if (allocation.buffer != bound.uniformBuffer) {
         bound.uniformBuffer = allocation.buffer;
         bound.uniformSet = VK_NULL_HANDLE;
     }
+
     bound.uniformOffsets[index] = static_cast<std::uint32_t>(allocation.offset);
     bound.uniformData[index] = allocation.data;
     bound.uniformMask |= 1U << index;
@@ -1597,6 +1758,7 @@ void Device::applyStencilReference(std::uint8_t value) {
     if (!pass.open || pass.skipped) {
         return;
     }
+
     vk.vkCmdSetStencilReference(frames[frameIndex].graphics, VK_STENCIL_FACE_FRONT_AND_BACK, value);
 }
 
@@ -1604,6 +1766,7 @@ void Device::applyBlendColor(math::Color value) {
     if (!pass.open || pass.skipped) {
         return;
     }
+
     const std::array<float, 4> constants{value.r, value.g, value.b, value.a};
     vk.vkCmdSetBlendConstants(frames[frameIndex].graphics, constants.data());
 }
@@ -1612,23 +1775,29 @@ void Device::draw(int first, int count, int instances) {
     if (!pass.open) {
         throw std::logic_error("A draw happens inside a pass. Call \"beginPass\" first.");
     }
+
     if (pass.skipped || count <= 0 || instances <= 0) {
         return;
     }
+
     if (bound.pipeline == nullptr) {
         throw std::logic_error("A draw needs a pipeline. Call \"applyPipeline\" first.");
     }
 
     const bool indexed = bound.pipeline->indexType != IndexType::None;
+
     if (bound.vertexDirty) {
         bindVertexBuffers();
     }
+
     if (bound.indexDirty && indexed) {
         bindIndexBuffer();
     }
+
     if (bound.resourcesDirty) {
         bindResources();
     }
+
     if (bound.uniformsDirty) {
         bindUniforms();
     }
@@ -1669,9 +1838,11 @@ void Device::bindVertexBuffers() {
         handles[index] = record.buffer;
         offsets[index] = record.stride * record.current + static_cast<VkDeviceSize>(bound.bindings.vertexOffsets[index]);
     }
+
     if (count > 0) {
         vk.vkCmdBindVertexBuffers(frames[frameIndex].graphics, 0, count, handles.data(), offsets.data());
     }
+
     bound.vertexDirty = false;
 }
 
@@ -1686,6 +1857,7 @@ void Device::bindIndexBuffer() {
 void Device::bindResources() {
     const ProgramRecord& program = *bound.program;
     bound.resourcesDirty = false;
+
     if (program.resourceLayout == VK_NULL_HANDLE) {
         return;
     }
@@ -1694,9 +1866,11 @@ void Device::bindResources() {
     for (const SlotBinding& texture : program.textures) {
         key.images[static_cast<std::size_t>(texture.slot)] = bound.bindings.textures[static_cast<std::size_t>(texture.slot)].id;
     }
+
     for (const SlotBinding& sampler : program.samplers) {
         key.samplers[static_cast<std::size_t>(sampler.slot)] = bound.bindings.samplers[static_cast<std::size_t>(sampler.slot)].id;
     }
+
     VkDescriptorSet set = descriptors.findResourceSet(key, nextSerial);
     if (set == VK_NULL_HANDLE) {
         descriptorImages.resize(program.textures.size() + program.samplers.size());
@@ -1707,19 +1881,24 @@ void Device::bindResources() {
             if (image == nullptr || image->sampleView == VK_NULL_HANDLE) {
                 throw std::logic_error(std::format("The draw binds no texture that shaders sample at slot {}, which the program \"{}\" reads.", texture.slot, program.label));
             }
+
             descriptorImages[next] = {.imageView = image->sampleView, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
             descriptorWrites.push_back({.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, .dstBinding = texture.binding, .descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, .pImageInfo = &descriptorImages[next++]});
         }
+
         for (const SlotBinding& sampler : program.samplers) {
             const SamplerRecord* record = samplers.find(key.samplers[static_cast<std::size_t>(sampler.slot)]);
             if (record == nullptr) {
                 throw std::logic_error(std::format("The draw binds no sampler at slot {}, which the program \"{}\" reads.", sampler.slot, program.label));
             }
+
             descriptorImages[next] = {.sampler = record->sampler};
             descriptorWrites.push_back({.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, .dstBinding = sampler.binding, .descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER, .pImageInfo = &descriptorImages[next++]});
         }
+
         set = descriptors.addResourceSet(key, descriptorWrites, nextSerial);
     }
+
     vk.vkCmdBindDescriptorSets(frames[frameIndex].graphics, VK_PIPELINE_BIND_POINT_GRAPHICS, program.layout, program.resourceSet, 1, &set, 0, nullptr);
 }
 
@@ -1727,6 +1906,7 @@ void Device::bindResources() {
 void Device::bindUniforms() {
     const ProgramRecord& program = *bound.program;
     bound.uniformsDirty = false;
+
     if (program.uniformLayout == VK_NULL_HANDLE) {
         return;
     }
@@ -1737,10 +1917,12 @@ void Device::bindUniforms() {
             std::memset(allocation.data, 0, static_cast<std::size_t>(program.uniformBlocks[index].size));
         }
     }
+
     if (bound.uniformSet == VK_NULL_HANDLE || bound.uniformSetProgram == nullptr || !sharesUniforms(*bound.uniformSetProgram, program)) {
         bound.uniformSet = descriptors.getUniformSet(program.uniformLayout, bound.uniformBuffer, program.uniformBlocks);
         bound.uniformSetProgram = &program;
     }
+
     bound.uniformsDirty = false;
     vk.vkCmdBindDescriptorSets(frames[frameIndex].graphics, VK_PIPELINE_BIND_POINT_GRAPHICS, program.layout, program.uniformSet, 1, &bound.uniformSet, static_cast<std::uint32_t>(program.uniformBlocks.size()), bound.uniformOffsets.data());
 }
@@ -1749,9 +1931,11 @@ void Device::pushDebugGroup(std::string_view name) {
     if (!labels || !ensureFrame()) {
         return;
     }
+
     if (!pass.open) {
         endSwapchainRendering();
     }
+
     labelText.assign(name);
     const VkDebugUtilsLabelEXT label{.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT, .pLabelName = labelText.c_str()};
     vkCmdBeginDebugUtilsLabelEXT(frames[frameIndex].graphics, &label);
@@ -1761,9 +1945,11 @@ void Device::popDebugGroup() {
     if (!labels || !frameOpen) {
         return;
     }
+
     if (!pass.open) {
         endSwapchainRendering();
     }
+
     vkCmdEndDebugUtilsLabelEXT(frames[frameIndex].graphics);
 }
 
@@ -1771,13 +1957,16 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
     if (lost) {
         throw std::runtime_error("The Vulkan device stopped working, so it reads back no image.");
     }
+
     const ImageRecord& record = requireImage(image);
     if (record.kind != ImageKind::RenderTarget || record.samples != VK_SAMPLE_COUNT_1_BIT) {
         throw std::invalid_argument(std::format("The image {} is not a render target of one sample, so it cannot be read back.", image.id));
     }
+
     if (width < 1 || height < 1 || width > record.width || height > record.height) {
         throw std::invalid_argument(std::format("A readback of {}x{} pixels does not fit the render target of {}x{} pixels.", width, height, record.width, record.height));
     }
+
     return std::make_unique<ImageReadback>(readbacks.start({.image = record.image, .layout = record.restLayout, .width = width, .height = height, .format = record.pixelFormat}));
 }
 
@@ -1790,6 +1979,7 @@ gpu::Device::CaptureSupport Device::getCaptureSupport() const {
     if (!renderDoc) {
         return {.tool = CaptureTool::None, .missing = std::string(renderdoc::Capturer::kMissing)};
     }
+
     return {.tool = CaptureTool::RenderDoc, .missing = {}};
 }
 
@@ -1797,9 +1987,11 @@ void Device::beginCapture(const std::filesystem::path& path) {
     if (pass.open) {
         throw std::logic_error("A capture began while a pass was open.");
     }
+
     if (!renderDoc) {
         throw std::logic_error(std::string(renderdoc::Capturer::kMissing));
     }
+
     renderDoc->begin(getRenderDocDevice(), path);
 }
 
@@ -1807,6 +1999,7 @@ std::filesystem::path Device::endCapture() {
     if (!renderDoc) {
         throw std::logic_error("A capture ended while none records.");
     }
+
     return renderDoc->end(getRenderDocDevice());
 }
 

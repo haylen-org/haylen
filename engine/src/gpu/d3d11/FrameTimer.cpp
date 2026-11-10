@@ -21,6 +21,7 @@ void FrameTimer::begin(ID3D11DeviceContext& context) {
     if (!open) {
         return;
     }
+
     context.Begin(slot.disjoint.Get());
     context.End(slot.start.Get());
 }
@@ -29,6 +30,7 @@ void FrameTimer::end(ID3D11DeviceContext& context) {
     if (!open) {
         return;
     }
+
     Slot& slot = slots[current];
     context.End(slot.finish.Get());
     context.End(slot.disjoint.Get());
@@ -45,15 +47,18 @@ void FrameTimer::collect(ID3D11DeviceContext& context) {
         if (context.GetData(slot.disjoint.Get(), &clock, sizeof(clock), D3D11_ASYNC_GETDATA_DONOTFLUSH) != S_OK) {
             return;
         }
+
         // Some GPUs finish the disjoint query before its timestamps, so the slot waits for all three before it is used again.
         UINT64 start = 0;
         UINT64 finish = 0;
         if (context.GetData(slot.start.Get(), &start, sizeof(start), D3D11_ASYNC_GETDATA_DONOTFLUSH) != S_OK || context.GetData(slot.finish.Get(), &finish, sizeof(finish), D3D11_ASYNC_GETDATA_DONOTFLUSH) != S_OK) {
             return;
         }
+
         if (clock.Disjoint == FALSE && clock.Frequency > 0 && finish >= start) {
             seconds = static_cast<double>(finish - start) / static_cast<double>(clock.Frequency);
         }
+
         slot.pending = false;
         oldest = (oldest + 1) % kSlots;
     }

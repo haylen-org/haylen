@@ -25,9 +25,11 @@ template <typename Record> class ObjectTable final {
             if (slots.size() >= kIndexMask) {
                 throw std::runtime_error(std::format("The OpenGL device has no room for more {}.", name));
             }
+
             freeSlots.push_back(static_cast<std::uint32_t>(slots.size()));
             slots.emplace_back();
         }
+
         const std::uint32_t index = freeSlots.back();
         freeSlots.pop_back();
         Slot& slot = slots[index];
@@ -41,6 +43,7 @@ template <typename Record> class ObjectTable final {
         if (index >= slots.size()) {
             return nullptr;
         }
+
         Slot& slot = slots[index];
         return slot.record && slot.generation == id >> kIndexBits ? &*slot.record : nullptr;
     }
@@ -50,6 +53,7 @@ template <typename Record> class ObjectTable final {
         if (record == nullptr) {
             throw std::logic_error(std::format("The OpenGL device has none of its {} under the id {}.", name, id));
         }
+
         return *record;
     }
 
@@ -59,6 +63,7 @@ template <typename Record> class ObjectTable final {
         if (record == nullptr) {
             return std::nullopt;
         }
+
         const std::uint32_t index = (id & kIndexMask) - 1;
         Slot& slot = slots[index];
         std::optional<Record> taken(std::move(*record));

@@ -22,6 +22,7 @@ void MipLevels::check(const Device::ImageDesc& desc) {
     if (desc.levels.size() != static_cast<std::size_t>(desc.mipLevels)) {
         throw std::logic_error(std::format("The texture \"{}\" has {} mip levels and pixels for {}.", desc.label, desc.mipLevels, desc.levels.size()));
     }
+
     for (std::size_t index = 0; index < desc.levels.size(); ++index) {
         const Level level = describe(desc.type, desc.width, desc.height, desc.layers, desc.format, static_cast<int>(index));
         if (desc.levels[index].size() != level.sliceBytes * level.layers) {

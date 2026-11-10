@@ -43,6 +43,7 @@ void FrameTimer::collect(std::size_t frame) {
     if (!measured[frame] || frequency <= 0.0) {
         return;
     }
+
     const std::uint64_t start = mapped[frame * 2];
     const std::uint64_t finish = mapped[frame * 2 + 1];
     if (finish >= start) {

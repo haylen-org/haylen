@@ -55,9 +55,11 @@ class GpuTextureTest : public test::GpuFixture {
         const std::uint32_t sign = (bits >> 16U) & 0x8000U;
         const int exponent = static_cast<int>((bits >> 23U) & 0xFFU) - 127 + 15;
         const std::uint32_t mantissa = (bits >> 13U) & 0x3FFU;
+
         if (exponent <= 0) {
             return static_cast<std::uint16_t>(sign);
         }
+
         return static_cast<std::uint16_t>(sign | (static_cast<std::uint32_t>(exponent) << 10U) | mantissa);
     }
 
@@ -83,6 +85,7 @@ class GpuTextureTest : public test::GpuFixture {
             for (std::size_t channel = 0; channel < texel.size(); ++channel) {
                 put(toByte(channels[channel]), channel);
             }
+
             break;
         case Device::PixelFormat::Bgra8:
             put(std::array<std::uint8_t, 4>{toByte(color.b), toByte(color.g), toByte(color.r), toByte(color.a)}, 0);
@@ -96,11 +99,13 @@ class GpuTextureTest : public test::GpuFixture {
             for (std::size_t channel = 0; channel < texel.size() / 2; ++channel) {
                 put(toHalf(channels[channel]), channel * 2);
             }
+
             break;
         default:
             for (std::size_t channel = 0; channel < texel.size() / 4; ++channel) {
                 put(channels[channel], channel * 4);
             }
+
             break;
         }
         return texel;
@@ -148,6 +153,7 @@ class GpuTextureTest : public test::GpuFixture {
                 }
             }
         }
+
         return bytes;
     }
 
@@ -155,6 +161,7 @@ class GpuTextureTest : public test::GpuFixture {
         for (const Device::Sampler sampler : samplers) {
             device().destroy(sampler);
         }
+
         GpuFixture::TearDown();
     }
 
@@ -171,6 +178,7 @@ TEST_P(GpuTextureTest, SamplesEveryFormatTheDeviceSupports) {
         if (!capabilities().textureFormats[static_cast<std::size_t>(format)]) {
             continue;
         }
+
         const std::vector<std::byte> texel = encode(format);
         const std::array<std::span<const std::byte>, 1> levels{texel};
         const Device::Image texture = makeTexture(1, 1, levels, format);
@@ -178,6 +186,7 @@ TEST_P(GpuTextureTest, SamplesEveryFormatTheDeviceSupports) {
         if (format == Device::PixelFormat::Rgba8Srgb) {
             expected = {toLinear(expected.r), toLinear(expected.g), toLinear(expected.b), expected.a};
         }
+
         const Pixels pixels = sample(samplingProgram(format), texture, sampler, {0.0F, 0.0F, 0.0F, 1.0F});
         EXPECT_TRUE(isNear(pixels.at(0, 0), expected, 3)) << static_cast<int>(format);
     }
@@ -191,6 +200,7 @@ TEST_P(GpuTextureTest, FiltersEveryFormatTheDeviceFilters) {
         if (!capabilities().filterableFormats[static_cast<std::size_t>(format)]) {
             continue;
         }
+
         std::vector<std::byte> texels(ImageInfo::getBytesPerPixel(format));
         const std::vector<std::byte> texel = encode(format);
         texels.insert(texels.end(), texel.begin(), texel.end());
@@ -201,6 +211,7 @@ TEST_P(GpuTextureTest, FiltersEveryFormatTheDeviceFilters) {
         if (format == Device::PixelFormat::Rgba8Srgb) {
             full = {toLinear(full.r), toLinear(full.g), toLinear(full.b), full.a};
         }
+
         const math::Color empty = sampledColor(format) == storedColor(format) ? math::Color::transparent() : math::Color{0.0F, 0.0F, 0.0F, 1.0F};
         const math::Color expected{empty.r + (full.r - empty.r) * 0.75F, empty.g + (full.g - empty.g) * 0.75F, empty.b + (full.b - empty.b) * 0.75F, empty.a + (full.a - empty.a) * 0.75F};
         const Pixels pixels = sample("textured", texture, sampler, {0.0F, 0.0F, 0.0F, 1.0F}, 4, 1);
@@ -217,6 +228,7 @@ TEST_P(GpuTextureTest, RendersIntoEveryFormatTheDeviceRenders) {
         if (!capabilities().renderFormats[index] || !capabilities().textureFormats[index]) {
             continue;
         }
+
         const Device::Image target = makeTarget(1, 1, format);
         const std::array<Device::ColorAttachment, 1> colors{{{.image = target, .clear = storedColor(format)}}};
         device().beginPass({.colors = colors});
@@ -266,6 +278,7 @@ TEST_P(GpuTextureTest, ReadsEveryMipLevelWithinTheLevelsOfTheSampler) {
     for (int level = 0; level < 3; ++level) {
         EXPECT_TRUE(isNear(sample("textured", texture, sampler, {static_cast<float>(level), 0.0F, 0.0F, 1.0F}).at(0, 0), colors[static_cast<std::size_t>(level)])) << "Level " << level;
     }
+
     const Device::Sampler clamped = makeSampler({.minification = Device::Filter::Nearest, .magnification = Device::Filter::Nearest, .minLod = 1.0F, .maxLod = 1.0F});
     EXPECT_TRUE(isNear(sample("textured", texture, clamped, {0.0F, 0.0F, 0.0F, 1.0F}).at(0, 0), colors[1]));
     EXPECT_TRUE(isNear(sample("textured", texture, clamped, {2.0F, 0.0F, 0.0F, 1.0F}).at(0, 0), colors[1]));
@@ -290,6 +303,7 @@ TEST_P(GpuTextureTest, FiltersAndWrapsAsTheSamplerSays) {
         {Device::Wrap::MirroredRepeat, {math::Color::white(), math::Color::black()}},
         {Device::Wrap::ClampToEdge, {math::Color::white(), math::Color::white()}},
     }};
+
     for (const auto& [wrap, expected] : wraps) {
         const Device::Sampler sampler = makeSampler({.minification = Device::Filter::Nearest, .magnification = Device::Filter::Nearest, .wrapU = wrap, .wrapV = wrap});
         const Pixels pixels = sample("textured", texture, sampler, {0.0F, 0.0F, 0.0F, 2.0F}, 8, 1);
@@ -328,11 +342,13 @@ TEST_P(GpuTextureTest, SamplesEveryFormatThatDynamicImagesWrite) {
         if (!capabilities().textureFormats[static_cast<std::size_t>(format)]) {
             continue;
         }
+
         const std::vector<std::byte> texel = encode(format);
         std::vector<std::byte> texels;
         for (int index = 0; index < 64; ++index) {
             texels.insert(texels.end(), texel.begin(), texel.end());
         }
+
         const Device::Image texture = makeImage({.width = 8, .height = 8, .format = format, .kind = Device::ImageKind::Dynamic, .label = "haylen-test-dynamic"});
         const std::array<Device::ImageWrite, 1> writes{{{.image = texture, .pixels = texels}}};
         device().writeImages(writes);
@@ -340,6 +356,7 @@ TEST_P(GpuTextureTest, SamplesEveryFormatThatDynamicImagesWrite) {
         if (format == Device::PixelFormat::Rgba8Srgb) {
             expected = {toLinear(expected.r), toLinear(expected.g), toLinear(expected.b), expected.a};
         }
+
         const Pixels pixels = sample(samplingProgram(format), texture, sampler, {0.0F, 0.0F, 0.0F, 1.0F});
         EXPECT_TRUE(isNear(pixels.at(0, 0), expected, 3)) << static_cast<int>(format);
     }

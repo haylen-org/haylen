@@ -32,9 +32,11 @@ class GpuPrecompiledLibrariesTest : public test::GpuFixture {
         if (loaded == nil) {
             return ::testing::AssertionFailure() << "Metal does not load the library of the source " << stage.source << ": " << (failure == nil ? "no reason" : failure.localizedDescription.UTF8String);
         }
+
         if ([loaded newFunctionWithName:@(stage.entry.c_str())] == nil) {
             return ::testing::AssertionFailure() << "The library of the source " << stage.source << " has no function \"" << stage.entry << "\".";
         }
+
         return ::testing::AssertionSuccess();
     }
 };
@@ -63,6 +65,7 @@ TEST_P(GpuPrecompiledLibrariesTest, HoldsALibraryForEveryStageOfTheRenderer) {
             stages += 2;
         }
     }
+
     EXPECT_GT(stages, 0);
 }
 

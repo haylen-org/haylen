@@ -16,16 +16,20 @@ std::string Connection::failure;
 
 Connection::~Connection() {
     events->released = true;
+
     if (queue != nullptr) {
         wgpuQueueRelease(queue);
     }
+
     if (device != nullptr) {
         wgpuDeviceDestroy(device);
         wgpuDeviceRelease(device);
     }
+
     if (adapter != nullptr) {
         wgpuAdapterRelease(adapter);
     }
+
     if (instance != nullptr) {
         wgpuInstanceRelease(instance);
     }
@@ -43,6 +47,7 @@ Connection::Status Connection::request(const DeviceFactory::Options& options) {
         fail("The browser could not create a WebGPU instance.");
         return status;
     }
+
     status = Status::Pending;
 
     WGPURequestAdapterOptions adapterOptions = WGPU_REQUEST_ADAPTER_OPTIONS_INIT;
@@ -81,10 +86,12 @@ void Connection::receiveAdapter(WGPURequestAdapterStatus result, WGPUAdapter fou
     if (status != Status::Pending) {
         return;
     }
+
     if (result != WGPURequestAdapterStatus_Success || found == nullptr) {
         fail(std::format("The browser offers no WebGPU adapter: {}", Conversion::fromText(message)));
         return;
     }
+
     pending->adapter = found;
     pending->requestDevice();
 }
@@ -93,6 +100,7 @@ void Connection::receiveAdapter(WGPURequestAdapterStatus result, WGPUAdapter fou
 void Connection::requestDevice() {
     adapterName = describeAdapter(adapter);
     wgpuAdapterGetLimits(adapter, &limits);
+
     for (const WGPUFeatureName feature : kOptionalFeatures) {
         if (wgpuAdapterHasFeature(adapter, feature)) {
             features.push_back(feature);
@@ -120,10 +128,12 @@ void Connection::receiveDevice(WGPURequestDeviceStatus result, WGPUDevice create
     if (status != Status::Pending) {
         return;
     }
+
     if (result != WGPURequestDeviceStatus_Success || created == nullptr) {
         fail(std::format("The WebGPU adapter refused to create a device: {}", Conversion::fromText(message)));
         return;
     }
+
     pending->device = created;
     pending->queue = wgpuDeviceGetQueue(created);
     status = Status::Ready;
@@ -133,13 +143,16 @@ void Connection::receiveDevice(WGPURequestDeviceStatus result, WGPUDevice create
 void Connection::reportLoss(WGPUDevice const*, WGPUDeviceLostReason reason, WGPUStringView message, void* first, void*) {
     const std::unique_ptr<std::shared_ptr<Events>> events(static_cast<std::shared_ptr<Events>*>(first));
     (*events)->lost = true;
+
     if ((*events)->released) {
         return;
     }
+
     if (reason == WGPUDeviceLostReason_FailedCreation) {
         core::Log::error("The WebGPU device could not be created: {}", Conversion::fromText(message));
         return;
     }
+
     core::Log::error("The WebGPU device was lost: {}", Conversion::fromText(message));
 }
 
@@ -159,11 +172,13 @@ std::string Connection::describeAdapter(WGPUAdapter source) {
     if (name.empty()) {
         name = Conversion::fromText(info.device);
     }
+
     if (name.empty()) {
         const std::string_view vendor = Conversion::fromText(info.vendor);
         const std::string_view architecture = Conversion::fromText(info.architecture);
         name = architecture.empty() ? std::string(vendor) : std::format("{} {}", vendor, architecture);
     }
+
     wgpuAdapterInfoFreeMembers(info);
     return name;
 }

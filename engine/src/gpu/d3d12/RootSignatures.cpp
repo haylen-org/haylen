@@ -24,6 +24,7 @@ RootSignatures::Layout RootSignatures::make(const Device::ProgramDesc& desc) {
         if (block.slot < 0 || block.slot >= static_cast<int>(Device::kMaxBlocks) || block.size == 0 || block.binding < 0) {
             throw std::logic_error(std::format("The program \"{}\" has a uniform block at slot {} that the device cannot bind.", desc.label, block.slot));
         }
+
         D3D12_ROOT_PARAMETER1 parameter{};
         parameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
         parameter.Descriptor = {.ShaderRegister = static_cast<UINT>(block.binding), .RegisterSpace = 0, .Flags = D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC_WHILE_SET_AT_EXECUTE};
@@ -39,22 +40,27 @@ RootSignatures::Layout RootSignatures::make(const Device::ProgramDesc& desc) {
         if (texture.slot < 0 || texture.slot >= static_cast<int>(Device::kMaxTextures) || texture.binding < 0) {
             throw std::logic_error(std::format("The program \"{}\" has a texture at slot {} that the device cannot bind.", desc.label, texture.slot));
         }
+
         const std::size_t stage = texture.stage == Device::Stage::Vertex ? 0 : 1;
         layout.textures[stage].slots.push_back(texture.slot);
         ranges[stage].push_back({.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV, .NumDescriptors = 1, .BaseShaderRegister = static_cast<UINT>(texture.binding), .RegisterSpace = 0, .Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE, .OffsetInDescriptorsFromTableStart = static_cast<UINT>(ranges[stage].size())});
     }
+
     for (const Device::SamplerBinding& sampler : desc.samplers) {
         if (sampler.slot < 0 || sampler.slot >= static_cast<int>(Device::kMaxSamplers) || sampler.binding < 0) {
             throw std::logic_error(std::format("The program \"{}\" has a sampler at slot {} that the device cannot bind.", desc.label, sampler.slot));
         }
+
         const std::size_t stage = sampler.stage == Device::Stage::Vertex ? 0 : 1;
         layout.samplers[stage].slots.push_back(sampler.slot);
         ranges[2 + stage].push_back({.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, .NumDescriptors = 1, .BaseShaderRegister = static_cast<UINT>(sampler.binding), .RegisterSpace = 0, .Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE, .OffsetInDescriptorsFromTableStart = static_cast<UINT>(ranges[2 + stage].size())});
     }
+
     for (std::size_t table = 0; table < ranges.size(); ++table) {
         if (ranges[table].empty()) {
             continue;
         }
+
         Table& target = table < 2 ? layout.textures[table] : layout.samplers[table - 2];
         target.parameter = static_cast<int>(parameters.size());
         D3D12_ROOT_PARAMETER1 parameter{};
@@ -82,6 +88,7 @@ RootSignatures::Layout RootSignatures::make(const Device::ProgramDesc& desc) {
     if (shared == nullptr) {
         direct3d::HResult::check(device.CreateRootSignature(0, serialized->GetBufferPointer(), serialized->GetBufferSize(), IID_PPV_ARGS(shared.GetAddressOf())), std::format("create the root signature of the program \"{}\"", desc.label));
     }
+
     layout.signature = shared;
     return layout;
 }

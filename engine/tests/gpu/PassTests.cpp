@@ -96,6 +96,7 @@ TEST_P(GpuPassTest, DrawsIntoFourTargetsAtOnce) {
         targets[index] = makeTarget(kSize, kSize);
         colors[index] = {.image = targets[index], .clear = math::Color::transparent()};
     }
+
     const std::array<Device::ColorTarget, Device::kMaxColorTargets> formats{};
     const Device::Pipeline pipeline = device().makePipeline({.program = program("targets"), .colors = formats, .label = "haylen-test-targets"});
 
@@ -110,6 +111,7 @@ TEST_P(GpuPassTest, DrawsIntoFourTargetsAtOnce) {
     for (std::size_t index = 0; index < targets.size(); ++index) {
         EXPECT_TRUE(isNear(read(targets[index], kSize, kSize).at(3, 3), expected[index])) << index;
     }
+
     device().destroy(pipeline);
 }
 
@@ -118,6 +120,7 @@ TEST_P(GpuPassTest, ResolvesMultisampledTargets) {
     if (!capabilities().multisampledRenderTargets || capabilities().maxSampleCount < 4) {
         GTEST_SKIP() << "The device resolves no render target of four samples.";
     }
+
     const Device::Image samples = makeTarget(kSize, kSize, Device::PixelFormat::Rgba8, 4);
     const Device::Image resolved = makeTarget(kSize, kSize);
     const std::array<Device::ColorTarget, 1> formats{};
@@ -147,6 +150,7 @@ TEST_P(GpuPassTest, ResolvesMultisampledTargets) {
         const float gray = pixels.at(index, index).r;
         partial += gray > 0.1F && gray < 0.9F ? 1 : 0;
     }
+
     EXPECT_GT(partial, 0) << "No pixel on the edge of the triangle mixes its samples.";
     device().destroy(buffer);
     device().destroy(pipeline);
@@ -161,6 +165,7 @@ TEST_P(GpuPassTest, DrawsIntoMipLevelsAndLayers) {
         {{{.image = layered, .mipLevel = 1, .layer = 0, .clear = {0.0F, 0.0F, 1.0F, 1.0F}}}},
         {{{.image = layered, .mipLevel = 1, .layer = 1, .clear = {1.0F, 1.0F, 0.0F, 1.0F}}}},
     }};
+
     for (const std::array<Device::ColorAttachment, 1>& part : parts) {
         device().beginPass({.colors = part});
         device().endPass();
@@ -186,6 +191,7 @@ TEST_P(GpuPassTest, DrawsIntoMipLevelsAndLayers) {
         device().commit();
         EXPECT_TRUE(isNear(read(target, 1, 1).at(0, 0), expected[part])) << part;
     }
+
     device().destroy(sampler);
     device().destroy(pipeline);
 }
@@ -197,9 +203,11 @@ TEST_P(GpuPassTest, OpensNoPassWhenAPassFailsToBegin) {
     EXPECT_THROW(device().beginPass({.colors = notTarget}), std::logic_error);
 
     std::array<Device::ColorAttachment, Device::kMaxColorTargets + 1> tooMany{};
+
     for (Device::ColorAttachment& color : tooMany) {
         color.image = makeTarget(kSize, kSize);
     }
+
     EXPECT_THROW(device().beginPass({.colors = tooMany}), std::logic_error);
 
     const math::Color color{0.0F, 1.0F, 0.0F, 1.0F};

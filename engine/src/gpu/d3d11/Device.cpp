@@ -37,6 +37,7 @@ std::unique_ptr<gpu::Device> Device::create(const std::optional<Surface>& target
             reasons += std::format(" On \"{}\": {}", name, error.what());
         }
     }
+
     throw std::runtime_error(std::format("Direct3D 11 runs on no GPU of this machine.{}", reasons.empty() ? " Windows lists no GPU." : reasons));
 }
 
@@ -66,6 +67,7 @@ Device::~Device() {
         context->ClearState();
         context->Flush();
     }
+
     chains.clear();
 }
 
@@ -83,9 +85,11 @@ void Device::createDevice(bool validation) {
             core::Log::warning("Direct3D 11 runs without its debug layer, because {}. Add the optional feature \"Graphics Tools\" of Windows to validate it.", HResult::describe(result));
         }
     }
+
     if (FAILED(result)) {
         result = D3D11CreateDevice(adapter.Get(), D3D_DRIVER_TYPE_UNKNOWN, nullptr, flags, kLevels.data(), static_cast<UINT>(kLevels.size()), D3D11_SDK_VERSION, made.GetAddressOf(), nullptr, immediate.GetAddressOf());
     }
+
     HResult::check(result, "start Direct3D 11 at feature level 11_0");
     HResult::check(made.As(&device), "reach the runtime of Direct3D 11.1");
     HResult::check(immediate.As(&context), "reach the context of Direct3D 11.1");
@@ -101,9 +105,11 @@ void Device::createDevice(bool validation) {
     if (SUCCEEDED(device.As(&dxgiDevice))) {
         dxgiDevice->SetMaximumFrameLatency(static_cast<UINT>(kFramesInFlight));
     }
+
     if (validation && SUCCEEDED(device.As(&infoQueue))) {
         messages = std::make_unique<direct3d::DebugMessages>();
     }
+
     adapterName = direct3d::Adapter::getName(*adapter.Get());
 }
 
@@ -175,6 +181,7 @@ void Device::loseDevice(HRESULT reason) noexcept {
     if (lost) {
         return;
     }
+
     lost = true;
     const HRESULT removed = device->GetDeviceRemovedReason();
     core::Log::error("Direct3D 11 lost its device, because {}.", HResult::describe(FAILED(removed) ? removed : reason));
@@ -191,6 +198,7 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
     if (size == 0) {
         throw std::logic_error(std::format("The buffer \"{}\" has no size.", desc.label));
     }
+
     if (desc.usage == Usage::Immutable && desc.data.empty()) {
         throw std::logic_error(std::format("The immutable buffer \"{}\" has no data.", desc.label));
     }
@@ -219,10 +227,12 @@ std::vector<D3D11_SUBRESOURCE_DATA> Device::describeLevels(const ImageDesc& desc
             data[index] = {.pSysMem = desc.levels[index].data(), .SysMemPitch = static_cast<UINT>(level.rowBytes), .SysMemSlicePitch = static_cast<UINT>(level.sliceBytes)};
             continue;
         }
+
         for (std::size_t layer = 0; layer < level.layers; ++layer) {
             data[index + layer * desc.levels.size()] = {.pSysMem = desc.levels[index].data() + layer * level.sliceBytes, .SysMemPitch = static_cast<UINT>(level.rowBytes), .SysMemSlicePitch = static_cast<UINT>(level.sliceBytes)};
         }
     }
+
     return data;
 }
 
@@ -245,6 +255,7 @@ ComPtr<ID3D11ShaderResourceView> Device::makeTextureView(ID3D11Resource& resourc
         } else {
             view.Texture2DArray = {.MostDetailedMip = 0, .MipLevels = mips, .FirstArraySlice = 0, .ArraySize = layers};
         }
+
         break;
     case TextureType::Cube:
         view.ViewDimension = layers > 6 ? D3D11_SRV_DIMENSION_TEXTURECUBEARRAY : D3D11_SRV_DIMENSION_TEXTURECUBE;
@@ -253,6 +264,7 @@ ComPtr<ID3D11ShaderResourceView> Device::makeTextureView(ID3D11Resource& resourc
         } else {
             view.TextureCube = {.MostDetailedMip = 0, .MipLevels = mips};
         }
+
         break;
     case TextureType::Volume:
         view.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE3D;
@@ -269,10 +281,12 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     if (desc.width <= 0 || desc.height <= 0 || desc.width > capabilities.maxImageSize || desc.height > capabilities.maxImageSize) {
         throw std::logic_error(std::format("The image \"{}\" of {}x{} pixels does not fit the device.", desc.label, desc.width, desc.height));
     }
+
     const bool depth = Formats::isDepth(desc.format);
     if (depth != (desc.kind == ImageKind::DepthStencil)) {
         throw std::logic_error(std::format("The image \"{}\" needs a depth format exactly when it is a depth stencil image.", desc.label));
     }
+
     if (desc.kind != ImageKind::Texture && !desc.levels.empty()) {
         throw std::logic_error(std::format("The image \"{}\" starts without pixels, since only a texture is made with them.", desc.label));
     }
@@ -332,8 +346,10 @@ std::vector<Device::Register> Device::readRegisters(std::span<const TextureBindi
         if (texture.slot < 0 || texture.slot >= static_cast<int>(kMaxTextures) || texture.binding < 0 || texture.binding >= static_cast<int>(kMaxTextures)) {
             throw std::logic_error(std::format("A texture at slot {} binds where the device cannot bind it.", texture.slot));
         }
+
         registers.push_back({.slot = texture.slot, .stage = texture.stage == Stage::Vertex ? 0U : 1U, .number = static_cast<UINT>(texture.binding)});
     }
+
     return registers;
 }
 
@@ -343,8 +359,10 @@ std::vector<Device::Register> Device::readRegisters(std::span<const SamplerBindi
         if (sampler.slot < 0 || sampler.slot >= static_cast<int>(kMaxSamplers) || sampler.binding < 0 || sampler.binding >= static_cast<int>(kMaxSamplers)) {
             throw std::logic_error(std::format("A sampler at slot {} binds where the device cannot bind it.", sampler.slot));
         }
+
         registers.push_back({.slot = sampler.slot, .stage = sampler.stage == Stage::Vertex ? 0U : 1U, .number = static_cast<UINT>(sampler.binding)});
     }
+
     return registers;
 }
 
@@ -354,8 +372,10 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
         if (block.slot < 0 || block.slot >= static_cast<int>(kMaxBlocks) || block.size == 0 || block.size > kMaxBlockSize || block.binding < 0 || block.binding >= D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT) {
             throw std::logic_error(std::format("The program \"{}\" has a uniform block at slot {} that the device cannot bind.", desc.label, block.slot));
         }
+
         record.blocks[static_cast<std::size_t>(block.slot)] = Register{.slot = block.slot, .stage = block.stage == Stage::Vertex ? 0U : 1U, .number = static_cast<UINT>(block.binding), .size = block.size};
     }
+
     record.textures = readRegisters(desc.textures);
     record.samplers = readRegisters(desc.samplers);
 
@@ -374,6 +394,7 @@ void Device::prepareProgram(const ProgramDesc& desc, core::JobSystem&) {
 
 gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
     const ProgramRecord& program = programs.get(desc.program.id);
+
     if (desc.colors.empty() || desc.colors.size() > kMaxColorTargets || desc.buffers.size() > kMaxVertexBuffers) {
         throw std::logic_error(std::format("The pipeline \"{}\" needs one to {} color targets and at most {} vertex buffers.", desc.label, kMaxColorTargets, kMaxVertexBuffers));
     }
@@ -383,6 +404,7 @@ gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
         if (attribute.buffer < 0 || attribute.buffer >= static_cast<int>(desc.buffers.size())) {
             throw std::logic_error(std::format("An attribute of the pipeline \"{}\" reads a vertex buffer it does not lay out.", desc.label));
         }
+
         const bool instanced = desc.buffers[static_cast<std::size_t>(attribute.buffer)].perInstance;
         elements.push_back({.SemanticName = "TEXCOORD", .SemanticIndex = static_cast<UINT>(attribute.location), .Format = Formats::getVertexFormat(attribute.format), .InputSlot = static_cast<UINT>(attribute.buffer), .AlignedByteOffset = static_cast<UINT>(attribute.offset), .InputSlotClass = instanced ? D3D11_INPUT_PER_INSTANCE_DATA : D3D11_INPUT_PER_VERTEX_DATA, .InstanceDataStepRate = instanced ? 1U : 0U});
     }
@@ -392,6 +414,7 @@ gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
         HResult::check(device->CreateInputLayout(elements.data(), static_cast<UINT>(elements.size()), program.vertexCode->GetBufferPointer(), program.vertexCode->GetBufferSize(), record.layout.GetAddressOf()), std::format("create the vertex layout of the pipeline \"{}\"", desc.label));
         setName(*record.layout.Get(), desc.label);
     }
+
     record.blend = StateObjects::makeBlend(*device.Get(), desc);
     record.rasterizer = StateObjects::makeRasterizer(*device.Get(), desc);
     record.depthStencil = StateObjects::makeDepthStencil(*device.Get(), desc);
@@ -400,6 +423,7 @@ gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
     for (std::size_t index = 0; index < desc.buffers.size(); ++index) {
         record.strides[index] = static_cast<UINT>(desc.buffers[index].stride);
     }
+
     record.indexFormat = Formats::getIndexFormat(desc.indexType);
     return {pipelines.insert(std::move(record))};
 }
@@ -422,6 +446,7 @@ void Device::destroy(Program program) noexcept {
 
 void Device::destroy(Pipeline pipeline) noexcept {
     pipelines.erase(pipeline.id);
+
     if (bound.pipeline == pipeline.id) {
         bound.pipeline = 0;
     }
@@ -433,12 +458,15 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
     if (record.usage != Usage::Dynamic) {
         throw std::logic_error("Only a dynamic buffer takes new contents.");
     }
+
     if (offset + data.size() > record.size) {
         throw std::logic_error(std::format("The buffer of {} bytes cannot take {} bytes at {}.", record.size, data.size(), offset));
     }
+
     if (data.empty()) {
         return;
     }
+
     openFrame();
 
     const D3D11_MAP mode = record.writtenFrame == frameNumber ? D3D11_MAP_WRITE_NO_OVERWRITE : D3D11_MAP_WRITE_DISCARD;
@@ -448,6 +476,7 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
         loseDevice(result);
         return;
     }
+
     HResult::check(result, "map a dynamic buffer");
     std::memcpy(static_cast<std::byte*>(mapped.pData) + offset, data.data(), data.size());
     context->Unmap(record.buffer.Get(), 0);
@@ -457,11 +486,13 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
 // Direct3D 11 copies no buffer into a texture, so the driver stages the pixels, and replacing a whole image of one subresource lets it hand the GPU a fresh copy instead of waiting for the frames that read the old one.
 void Device::writeImages(std::span<const ImageWrite> writes) {
     openFrame();
+
     for (const ImageWrite& write : writes) {
         const ImageRecord& image = images.get(write.image.id);
         if (image.kind != ImageKind::Dynamic) {
             throw std::logic_error("Only a dynamic image takes new pixels.");
         }
+
         const std::size_t pixel = Formats::getBytesPerPixel(image.format);
         const std::size_t row = static_cast<std::size_t>(image.width) * pixel;
         const std::size_t slice = row * static_cast<std::size_t>(image.height);
@@ -474,6 +505,7 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
             context->UpdateSubresource1(image.resource.Get(), 0, nullptr, write.pixels.data(), static_cast<UINT>(row), static_cast<UINT>(slice), flags);
             continue;
         }
+
         for (int layer = 0; layer < image.layers; ++layer) {
             const UINT subresource = D3D11CalcSubresource(0, static_cast<UINT>(layer), static_cast<UINT>(image.mipLevels));
             context->UpdateSubresource1(image.resource.Get(), subresource, nullptr, write.pixels.data() + static_cast<std::size_t>(layer) * slice, static_cast<UINT>(row), static_cast<UINT>(slice), flags);
@@ -486,12 +518,15 @@ void Device::openFrame() {
     if (frameOpen) {
         return;
     }
+
     frameOpen = true;
+
     if (frameSubmitted[frameIndex]) {
         while (context->GetData(frameFinished[frameIndex].Get(), nullptr, 0, 0) == S_FALSE) {
             SwitchToThread();
         }
     }
+
     timer->begin(*context.Get());
 }
 
@@ -499,11 +534,13 @@ bool Device::prepareSwapchain(SurfaceChain& chain) {
     if (!chain.surface || chain.surface->size.width <= 0 || chain.surface->size.height <= 0 || lost) {
         return false;
     }
+
     if (chain.swapchain == nullptr) {
         chain.swapchain = std::make_unique<direct3d::Swapchain>(*factory.Get(), *device.Get(), *chain.surface);
         makeSwapchainTargets(chain);
         return true;
     }
+
     // A new size applies from the first pass of a frame into the swapchain, so the passes of one frame draw into the same buffers.
     if (chain.presentPending || chain.swapchain->getSize() == chain.surface->size) {
         return true;
@@ -518,6 +555,7 @@ bool Device::prepareSwapchain(SurfaceChain& chain) {
         loseDevice(result);
         return false;
     }
+
     HResult::check(result, "resize the swapchain");
 
     // The driver keeps the buffers of every earlier size until the device is trimmed, which piles them up while a drag resizes the window every frame.
@@ -577,6 +615,7 @@ Device::SurfaceChain& Device::requireChain(int number) const {
     if (number < 0 || static_cast<std::size_t>(number) >= chains.size() || chains[static_cast<std::size_t>(number)] == nullptr) {
         throw std::logic_error(std::format("The device has no surface {}.", number));
     }
+
     return *chains[static_cast<std::size_t>(number)];
 }
 
@@ -584,6 +623,7 @@ Device::SurfaceChain& Device::requireAddedChain(int number) const {
     if (number == 0) {
         throw std::logic_error("The surface 0 is the window, which \"addSurface\" did not make.");
     }
+
     return requireChain(number);
 }
 
@@ -593,9 +633,11 @@ void Device::unbindTextures() {
     if (bound.textureEnds[0] > 0) {
         context->VSSetShaderResources(0, bound.textureEnds[0], kNone.data());
     }
+
     if (bound.textureEnds[1] > 0) {
         context->PSSetShaderResources(0, bound.textureEnds[1], kNone.data());
     }
+
     bound.textures = {};
     bound.textureEnds = {};
 }
@@ -612,9 +654,11 @@ void Device::beginPass(const PassDesc& desc) {
     if (passOpen) {
         throw std::logic_error("A pass began while another pass was open.");
     }
+
     openFrame();
     pass = {};
     unbindTextures();
+
     if (desc.colors.empty() && !desc.depthStencil) {
         beginSwapchainPass(desc);
     } else {
@@ -622,6 +666,7 @@ void Device::beginPass(const PassDesc& desc) {
     }
 
     passOpen = true;
+
     if (annotation != nullptr && !desc.label.empty()) {
         annotation->BeginEvent(markerText.convert(desc.label));
         pass.labeled = true;
@@ -634,6 +679,7 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
     if (skipping) {
         return;
     }
+
     chain.presentPending = true;
     pass.colors[0] = chain.multisampleView != nullptr ? chain.multisampleView.Get() : chain.backBufferView.Get();
     pass.colorCount = 1;
@@ -648,6 +694,7 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
         context->DiscardView(pass.colors[0]);
         context->DiscardView(pass.depthStencil);
     }
+
     setViewportAndScissor(chain.swapchain->getSize().width, chain.swapchain->getSize().height);
 }
 
@@ -655,6 +702,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
     if (desc.colors.size() > kMaxColorTargets) {
         throw std::logic_error(std::format("A pass draws into at most {} color attachments.", kMaxColorTargets));
     }
+
     int width = 0;
     int height = 0;
 
@@ -664,6 +712,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         if (image.kind != ImageKind::RenderTarget) {
             throw std::logic_error("A pass draws only into render targets.");
         }
+
         ID3D11RenderTargetView* view = getAttachment(image, color.mipLevel, color.layer).color.Get();
         pass.colors[index] = view;
         pass.discardColors[index] = color.store == Store::Discard;
@@ -676,11 +725,13 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         } else if (color.load == Load::DontCare) {
             context->DiscardView(view);
         }
+
         if (color.resolve.isValid()) {
             const ImageRecord& resolve = images.get(color.resolve.id);
             pass.resolves[index] = {.source = image.resource.Get(), .sourceSubresource = static_cast<UINT>(color.layer), .destination = resolve.resource.Get(), .format = Formats::getViewFormat(image.format)};
         }
     }
+
     pass.colorCount = static_cast<UINT>(desc.colors.size());
 
     if (desc.depthStencil) {
@@ -689,6 +740,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         if (image.kind != ImageKind::DepthStencil) {
             throw std::logic_error("A pass takes only a depth stencil image as its depth and stencil attachment.");
         }
+
         pass.depthStencil = getAttachment(image, 0, 0).depth.Get();
         const bool stencil = Formats::hasStencil(image.format);
         pass.discardDepthStencil = attachment.depthStore == Store::Discard && (!stencil || attachment.stencilStore == Store::Discard);
@@ -735,6 +787,7 @@ Device::Attachment& Device::getAttachment(ImageRecord& image, int mipLevel, int 
                 view.Texture2DArray = {.MipSlice = mip, .FirstArraySlice = slice, .ArraySize = 1};
             }
         }
+
         HResult::check(device->CreateDepthStencilView(image.resource.Get(), &view, attachment.depth.GetAddressOf()), "create the depth stencil view of a pass");
         return image.attachments.emplace_back(std::move(attachment));
     }
@@ -754,6 +807,7 @@ Device::Attachment& Device::getAttachment(ImageRecord& image, int mipLevel, int 
         } else {
             view.Texture2DArray = {.MipSlice = mip, .FirstArraySlice = slice, .ArraySize = 1};
         }
+
         break;
     case TextureType::Volume:
         view.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE3D;
@@ -768,6 +822,7 @@ void Device::applyViewport(const math::Rect& pixels) {
     if (skipping) {
         return;
     }
+
     const D3D11_VIEWPORT viewport{.TopLeftX = pixels.x, .TopLeftY = pixels.y, .Width = pixels.width, .Height = pixels.height, .MinDepth = 0.0F, .MaxDepth = 1.0F};
     context->RSSetViewports(1, &viewport);
 }
@@ -776,15 +831,18 @@ void Device::applyScissor(const math::Rect& pixels) {
     if (skipping) {
         return;
     }
+
     const D3D11_RECT scissor{.left = std::lround(pixels.x), .top = std::lround(pixels.y), .right = std::lround(pixels.x + pixels.width), .bottom = std::lround(pixels.y + pixels.height)};
     context->RSSetScissorRects(1, &scissor);
 }
 
 void Device::applyPipeline(Pipeline pipeline) {
     blocksApplied = {};
+
     if (skipping || bound.pipeline == pipeline.id) {
         return;
     }
+
     const PipelineRecord& record = pipelines.get(pipeline.id);
     bound.pipeline = pipeline.id;
     bound.indexed = record.indexFormat != DXGI_FORMAT_UNKNOWN;
@@ -793,26 +851,32 @@ void Device::applyPipeline(Pipeline pipeline) {
         bound.layout = record.layout.Get();
         context->IASetInputLayout(bound.layout);
     }
+
     if (bound.topology != record.topology) {
         bound.topology = record.topology;
         context->IASetPrimitiveTopology(bound.topology);
     }
+
     if (bound.vertex != record.vertex.Get()) {
         bound.vertex = record.vertex.Get();
         context->VSSetShader(bound.vertex, nullptr, 0);
     }
+
     if (bound.fragment != record.fragment.Get()) {
         bound.fragment = record.fragment.Get();
         context->PSSetShader(bound.fragment, nullptr, 0);
     }
+
     if (bound.blend != record.blend.Get()) {
         bound.blend = record.blend.Get();
         context->OMSetBlendState(bound.blend, blendColor.data(), D3D11_DEFAULT_SAMPLE_MASK);
     }
+
     if (bound.rasterizer != record.rasterizer.Get()) {
         bound.rasterizer = record.rasterizer.Get();
         context->RSSetState(bound.rasterizer);
     }
+
     if (bound.depthStencil != record.depthStencil.Get()) {
         bound.depthStencil = record.depthStencil.Get();
         context->OMSetDepthStencilState(bound.depthStencil, stencilReference);
@@ -823,6 +887,7 @@ void Device::applyBindings(const Bindings& bindings) {
     if (skipping) {
         return;
     }
+
     const PipelineRecord& pipeline = pipelines.get(bound.pipeline);
 
     std::array<ID3D11Buffer*, kMaxVertexBuffers> vertexBuffers{};
@@ -833,6 +898,7 @@ void Device::applyBindings(const Bindings& bindings) {
         offsets[index] = static_cast<UINT>(bindings.vertexOffsets[index]);
         changed = changed || vertexBuffers[index] != bound.vertexBuffers[index] || offsets[index] != bound.vertexOffsets[index] || pipeline.strides[index] != bound.vertexStrides[index];
     }
+
     if (changed) {
         context->IASetVertexBuffers(0, pipeline.bufferCount, vertexBuffers.data(), pipeline.strides.data(), offsets.data());
         bound.vertexBuffers = vertexBuffers;
@@ -862,8 +928,10 @@ void Device::applyTextures(const PipelineRecord& pipeline, const Bindings& bindi
         if (held == view) {
             continue;
         }
+
         held = view;
         bound.textureEnds[texture.stage] = std::max(bound.textureEnds[texture.stage], texture.number + 1);
+
         if (texture.stage == 0) {
             context->VSSetShaderResources(texture.number, 1, &view);
         } else {
@@ -879,7 +947,9 @@ void Device::applySamplers(const PipelineRecord& pipeline, const Bindings& bindi
         if (held == state) {
             continue;
         }
+
         held = state;
+
         if (sampler.stage == 0) {
             context->VSSetSamplers(sampler.number, 1, &state);
         } else {
@@ -893,11 +963,13 @@ void Device::applyUniforms(int slot, std::span<const std::byte> data) {
     if (skipping) {
         return;
     }
+
     const PipelineRecord& pipeline = pipelines.get(bound.pipeline);
     const bool known = slot >= 0 && slot < static_cast<int>(kMaxBlocks) && pipeline.blocks[static_cast<std::size_t>(slot)].has_value();
     if (!known || data.size() != pipeline.blocks[static_cast<std::size_t>(slot)]->size) {
         throw std::logic_error(std::format("The program has no uniform block of {} bytes at slot {}.", data.size(), slot));
     }
+
     const auto index = static_cast<std::size_t>(slot);
     blockBytes[index].assign(data.begin(), data.end());
     blocksApplied[index] = true;
@@ -907,7 +979,9 @@ void Device::applyUniforms(int slot, std::span<const std::byte> data) {
         loseDevice(DXGI_ERROR_DEVICE_REMOVED);
         return;
     }
+
     bindBlock(*pipeline.blocks[index], piece->offset);
+
     if (piece->restarted) {
         rewriteBlocks(pipeline, index);
     }
@@ -931,11 +1005,13 @@ void Device::rewriteBlocks(const PipelineRecord& pipeline, std::size_t written) 
         if (index == written || !blocksApplied[index]) {
             continue;
         }
+
         const std::optional<DynamicRing::Piece> piece = uniforms->write(*context.Get(), blockBytes[index]);
         if (!piece) {
             loseDevice(DXGI_ERROR_DEVICE_REMOVED);
             return;
         }
+
         bindBlock(*pipeline.blocks[index], piece->offset);
     }
 }
@@ -958,10 +1034,12 @@ void Device::draw(int first, int count, int instances) {
     if (skipping || count <= 0 || instances <= 0) {
         return;
     }
+
     if (bound.indexed) {
         context->DrawIndexedInstanced(static_cast<UINT>(count), static_cast<UINT>(instances), static_cast<UINT>(first), 0, 0);
         return;
     }
+
     context->DrawInstanced(static_cast<UINT>(count), static_cast<UINT>(instances), static_cast<UINT>(first), 0);
 }
 
@@ -970,23 +1048,28 @@ void Device::endPass() {
     if (!passOpen) {
         throw std::logic_error("A pass ended while no pass was open.");
     }
+
     if (!skipping) {
         for (UINT index = 0; index < pass.colorCount; ++index) {
             const PassState::Resolve& resolve = pass.resolves[index];
             if (resolve.source != nullptr) {
                 context->ResolveSubresource(resolve.destination, 0, resolve.source, resolve.sourceSubresource, resolve.format);
             }
+
             if (pass.discardColors[index]) {
                 context->DiscardView(pass.colors[index]);
             }
         }
+
         if (pass.discardDepthStencil) {
             context->DiscardView(pass.depthStencil);
         }
     }
+
     if (pass.labeled) {
         annotation->EndEvent();
     }
+
     passOpen = false;
     skipping = false;
 }
@@ -1007,6 +1090,7 @@ void Device::commit() {
     if (passOpen) {
         throw std::logic_error("The frame was committed while a pass was open.");
     }
+
     openFrame();
 
     for (const std::unique_ptr<SurfaceChain>& chain : chains) {
@@ -1029,6 +1113,7 @@ void Device::commit() {
         if (chain == nullptr || !chain->presentPending) {
             continue;
         }
+
         chain->presentPending = false;
         const HRESULT result = chain->swapchain->present();
         if (HResult::isDeviceLoss(result)) {
@@ -1039,6 +1124,7 @@ void Device::commit() {
     if (!lost && FAILED(device->GetDeviceRemovedReason())) {
         loseDevice(device->GetDeviceRemovedReason());
     }
+
     drainMessages();
 }
 
@@ -1071,9 +1157,11 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
     if (record.kind != ImageKind::RenderTarget || record.sampleCount > 1 || record.type == TextureType::Volume) {
         throw std::logic_error("Only a render target of one sample can be read.");
     }
+
     if (width <= 0 || height <= 0 || width > record.width || height > record.height) {
         throw std::logic_error(std::format("A region of {}x{} pixels does not fit the render target of {}x{}.", width, height, record.width, record.height));
     }
+
     openFrame();
 
     D3D11_TEXTURE2D_DESC desc{};
@@ -1111,6 +1199,7 @@ int Device::addSurface(const Surface& added) {
         *free = std::move(chain);
         return static_cast<int>(free - chains.begin());
     }
+
     chains.push_back(std::move(chain));
     return static_cast<int>(chains.size()) - 1;
 }
@@ -1125,6 +1214,7 @@ void Device::removeSurface(int number) {
     if (chain.presentPending) {
         throw std::logic_error("A surface goes between frames, after \"commit\".");
     }
+
     releaseChain(chain);
     chains[static_cast<std::size_t>(number)].reset();
 }
@@ -1133,6 +1223,7 @@ gpu::Device::CaptureSupport Device::getCaptureSupport() const {
     if (!renderDoc) {
         return {.tool = CaptureTool::None, .missing = std::string(renderdoc::Capturer::kMissing)};
     }
+
     return {.tool = CaptureTool::RenderDoc, .missing = {}};
 }
 
@@ -1140,9 +1231,11 @@ void Device::beginCapture(const std::filesystem::path& path) {
     if (passOpen) {
         throw std::logic_error("A capture began while a pass was open.");
     }
+
     if (!renderDoc) {
         throw std::logic_error(std::string(renderdoc::Capturer::kMissing));
     }
+
     renderDoc->begin(device.Get(), path);
 }
 
@@ -1150,6 +1243,7 @@ std::filesystem::path Device::endCapture() {
     if (!renderDoc) {
         throw std::logic_error("A capture ended while none records.");
     }
+
     return renderDoc->end(device.Get());
 }
 

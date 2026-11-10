@@ -18,6 +18,7 @@ Gl::Uint FramebufferCache::get(const Key& key, std::string_view label) {
             return entry.framebuffer;
         }
     }
+
     const Gl::Uint framebuffer = make(key, label);
     entries.push_back({.key = key, .framebuffer = framebuffer});
     return framebuffer;
@@ -51,9 +52,11 @@ Gl::Uint FramebufferCache::make(const Key& key, std::string_view label) {
         drawBuffers[index] = Gl::kColorAttachment0 + static_cast<Gl::Enum>(index);
         attach(drawBuffers[index], key.colors[index]);
     }
+
     if (key.depthStencil.image != 0) {
         attach(key.stencil ? Gl::kDepthStencilAttachment : Gl::kDepthAttachment, key.depthStencil);
     }
+
     gl.drawBuffers(static_cast<Gl::Sizei>(key.colorCount), drawBuffers.data());
 
     const Gl::Enum status = gl.checkFramebufferStatus(Gl::kDrawFramebuffer);
@@ -62,6 +65,7 @@ Gl::Uint FramebufferCache::make(const Key& key, std::string_view label) {
         state.forgetFramebuffer(framebuffer);
         throw std::runtime_error(std::format("OpenGL cannot draw into the attachments of the pass \"{}\", whose framebuffer has the status 0x{:04X}.", label, status));
     }
+
     return framebuffer;
 }
 
@@ -72,10 +76,12 @@ void FramebufferCache::forgetImage(std::uint32_t image) {
         for (std::size_t index = 0; index < entry.key.colorCount; ++index) {
             holds = holds || entry.key.colors[index].image == image;
         }
+
         if (holds) {
             gl.deleteFramebuffers(1, &entry.framebuffer);
             state.forgetFramebuffer(entry.framebuffer);
         }
+
         return holds;
     });
     // clang-format on

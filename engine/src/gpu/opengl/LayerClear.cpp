@@ -55,9 +55,11 @@ void LayerClear::clear(std::size_t attachment, std::size_t colorCount, const mat
     buffers[attachment] = Gl::kColorAttachment0 + static_cast<Gl::Enum>(attachment);
     gl.drawBuffers(static_cast<Gl::Sizei>(colorCount), buffers.data());
     gl.drawArraysInstanced(Gl::kTriangles, 0, 3, 1);
+
     for (std::size_t index = 0; index < colorCount; ++index) {
         buffers[index] = Gl::kColorAttachment0 + static_cast<Gl::Enum>(index);
     }
+
     gl.drawBuffers(static_cast<Gl::Sizei>(colorCount), buffers.data());
 }
 

@@ -19,9 +19,11 @@ std::size_t BindGroupCache::KeyHash::operator()(const Key& key) const noexcept {
     for (const std::uint32_t id : key.images) {
         hash = (hash ^ id) * kPrime;
     }
+
     for (const std::uint32_t id : key.samplers) {
         hash = (hash ^ id) * kPrime;
     }
+
     return static_cast<std::size_t>(hash);
 }
 
@@ -30,6 +32,7 @@ WGPUBindGroup BindGroupCache::find(const Key& key, std::uint64_t frame) noexcept
     if (found == groups.end()) {
         return nullptr;
     }
+
     found->second.frame = frame;
     return found->second.group;
 }
@@ -61,6 +64,7 @@ void BindGroupCache::trim(std::uint64_t frame) noexcept {
     if (frame - lastTrim < kIdleFrames) {
         return;
     }
+
     lastTrim = frame;
     forgetWhere([frame](const Key&, const Entry& entry) { return frame - entry.frame > kIdleFrames; });
 }

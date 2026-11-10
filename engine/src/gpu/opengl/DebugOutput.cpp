@@ -10,6 +10,7 @@ DebugOutput::DebugOutput(Gl& functions, bool validation) : gl(functions), enable
     if (!messages) {
         return;
     }
+
     gl.getIntegerv(Gl::kMaxLabelLength, &maxLabelLength);
     gl.enable(Gl::kDebugOutput);
     gl.enable(Gl::kDebugOutputSynchronous);
@@ -41,6 +42,7 @@ void DebugOutput::label(Gl::Enum type, Gl::Uint name, std::string_view text) con
     if (!messages || text.empty()) {
         return;
     }
+
     gl.objectLabel(type, name, std::min(static_cast<Gl::Sizei>(text.size()), maxLabelLength - 1), text.data());
 }
 
@@ -60,6 +62,7 @@ void DebugOutput::checkErrors(std::string_view step) const {
     if (!enabled || messages) {
         return;
     }
+
     for (Gl::Enum error = gl.getError(); error != Gl::kNoError; error = gl.getError()) {
         core::Log::error("OpenGL reported the error 0x{:04X} during {}.", error, step);
     }

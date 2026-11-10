@@ -16,6 +16,7 @@ void GpuTimer::beginFrame() {
     if (!available) {
         return;
     }
+
     collect();
     measuring = !frames[next].pending;
     if (measuring) {
@@ -27,12 +28,14 @@ void GpuTimer::beginPass() {
     if (!measuring) {
         return;
     }
+
     Frame& frame = frames[next];
     if (frame.used == frame.queries.size()) {
         Gl::Uint query = 0;
         gl.genQueries(1, &query);
         frame.queries.push_back(query);
     }
+
     gl.beginQuery(Gl::kTimeElapsed, frame.queries[frame.used]);
     running = true;
 }
@@ -41,6 +44,7 @@ void GpuTimer::endPass() {
     if (!running) {
         return;
     }
+
     gl.endQuery(Gl::kTimeElapsed);
     running = false;
     ++frames[next].used;
@@ -50,6 +54,7 @@ void GpuTimer::endFrame() {
     if (!measuring || frames[next].used == 0) {
         return;
     }
+
     frames[next].pending = true;
     next = (next + 1) % kFrames;
     measuring = false;
@@ -73,13 +78,16 @@ void GpuTimer::collect() {
             gl.getQueryObjectui64v(frame.queries[index], Gl::kQueryResult, &nanoseconds);
             total += nanoseconds;
         }
+
         Gl::Int disjoint = 0;
         if (readsDisjoint) {
             gl.getIntegerv(Gl::kGpuDisjoint, &disjoint);
         }
+
         if (disjoint == 0) {
             seconds = static_cast<double>(total) * 1e-9;
         }
+
         frame.pending = false;
         oldest = (oldest + 1) % kFrames;
     }

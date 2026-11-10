@@ -38,6 +38,7 @@ UploadAllocator::Allocation UploadAllocator::allocate(UINT64 size, UINT64 alignm
         if (current.resource != nullptr) {
             filled.push_back(std::move(current));
         }
+
         if (size > kPageSize) {
             current = makePage((size + kPageSize - 1) / kPageSize * kPageSize);
         } else if (free.empty()) {
@@ -46,8 +47,10 @@ UploadAllocator::Allocation UploadAllocator::allocate(UINT64 size, UINT64 alignm
             current = std::move(free.back());
             free.pop_back();
         }
+
         offset = 0;
     }
+
     cursor = offset + size;
     return {.resource = current.resource.Get(), .offset = offset, .data = current.data + offset, .address = current.address + offset};
 }
@@ -58,10 +61,12 @@ void UploadAllocator::endFrame(std::uint64_t fenceValue) {
         filled.push_back(std::move(current));
         current = {};
     }
+
     for (Page& page : filled) {
         page.fence = fenceValue;
         retired.push_back(std::move(page));
     }
+
     filled.clear();
 }
 
@@ -72,6 +77,7 @@ void UploadAllocator::release(std::uint64_t completedValue) {
             free.push_back(std::move(*page));
         }
     }
+
     retired.erase(finished.begin(), finished.end());
 }
 

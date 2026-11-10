@@ -28,6 +28,7 @@ std::vector<gpu::Device::Api> GpuFixture::getTestedApis() {
         const std::span<const gpu::Device::Api> compiled = gpu::DeviceFactory::getCompiledApis();
         return {compiled.begin(), compiled.end()};
     }
+
     return {gpu::DeviceFactory::findApi(requested).value_or(gpu::Device::Api::None)};
 }
 
@@ -55,6 +56,7 @@ bool GpuFixture::isEnabled(const char* variable) {
             return ::testing::AssertionFailure() << "The color " << actual.toHex() << " is not within " << tolerance << " of " << expected.toHex() << ".";
         }
     }
+
     return ::testing::AssertionSuccess();
 }
 
@@ -63,6 +65,7 @@ std::unique_ptr<gpu::Device> GpuFixture::makeDevice(gpu::Device::Api api, std::u
     while (!gpu::DeviceFactory::prepare(api, getDeviceOptions())) {
         EventLoop::yield();
     }
+
     surface = std::make_unique<OffscreenSurface>(api);
     return gpu::DeviceFactory::create(api, surface->getSurface(), getDeviceOptions());
 }
@@ -80,8 +83,10 @@ void GpuFixture::SetUp() {
         if (isApiRequired()) {
             FAIL() << "The device of \"" << gpu::DeviceFactory::getApiName(GetParam()) << "\", which \"HAYLEN_TEST_GRAPHICS_API\" names, cannot start on this machine: " << error.what();
         }
+
         GTEST_SKIP() << "The device of \"" << gpu::DeviceFactory::getApiName(GetParam()) << "\" cannot start on this machine: " << error.what();
     }
+
     shaders = graphics::Shader::parse(core::EmbeddedFiles::getConformanceShader());
     shaders.getResource()->graveyard = graveyard;
 }
@@ -90,17 +95,22 @@ void GpuFixture::SetUp() {
 void GpuFixture::TearDown() {
     if (made) {
         shaders = {};
+
         for (const gpu::Device::Pipeline pipeline : planes) {
             made->destroy(pipeline);
         }
+
         for (const gpu::Device::Image image : images) {
             made->destroy(image);
         }
+
         graveyard->collect(*made);
         made->commit();
         made.reset();
     }
+
     surface.reset();
+
     if (errors && !IsSkipped()) {
         errors->reportAsFailures();
     }
@@ -115,6 +125,7 @@ int GpuFixture::attribute(std::string_view programName, std::string_view input) 
     if (found == nullptr) {
         throw std::invalid_argument(std::format("The program \"{}\" has no input \"{}\".", programName, input));
     }
+
     return found->location;
 }
 
@@ -152,6 +163,7 @@ GpuFixture::Pixels GpuFixture::read(gpu::Device::Image image, int width, int hei
             std::swap_ranges(read.bytes.begin() + static_cast<std::ptrdiff_t>(row * static_cast<std::size_t>(top)), read.bytes.begin() + static_cast<std::ptrdiff_t>(row * static_cast<std::size_t>(top + 1)), read.bytes.begin() + static_cast<std::ptrdiff_t>(row * static_cast<std::size_t>(bottom)));
         }
     }
+
     return read;
 }
 
@@ -162,9 +174,11 @@ std::vector<std::uint8_t> GpuFixture::finishCopy(gpu::Device::Readback& copy) {
         if (pixels) {
             return std::move(*pixels);
         }
+
         made->commit();
         EventLoop::yield();
     }
+
     throw std::runtime_error(std::format("The copy of a render target did not finish within {} seconds.", kReadTimeout.count()));
 }
 

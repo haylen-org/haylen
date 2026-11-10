@@ -80,6 +80,7 @@ TEST_P(GpuBlendTest, BlendsWithEveryFactor) {
             scaledSource[channel] = source[channel] * factorOf(factor, channel);
             scaledDestination[channel] = destination[channel] * factorOf(factor, channel);
         }
+
         const Device::Blend sourceBlend{.enabled = true, .sourceColor = factor, .destinationColor = Device::BlendFactor::Zero, .sourceAlpha = factor, .destinationAlpha = Device::BlendFactor::Zero};
         const Device::Blend destinationBlend{.enabled = true, .sourceColor = Device::BlendFactor::Zero, .destinationColor = factor, .sourceAlpha = Device::BlendFactor::Zero, .destinationAlpha = factor};
         EXPECT_TRUE(isNear(blend(sourceBlend), {scaledSource[0], scaledSource[1], scaledSource[2], scaledSource[3]}, 3)) << "Source factor " << static_cast<int>(factor);
@@ -116,6 +117,7 @@ TEST_P(GpuBlendTest, BlendsEachTargetApartWhereTheDeviceCan) {
     if (!capabilities().independentBlend) {
         GTEST_SKIP() << "The device blends every color target of a pipeline alike.";
     }
+
     const std::array<Device::Image, 4> targets{makeTarget(1, 1), makeTarget(1, 1), makeTarget(1, 1), makeTarget(1, 1)};
     const Device::Blend adding{.enabled = true, .sourceColor = Device::BlendFactor::One, .destinationColor = Device::BlendFactor::One, .sourceAlpha = Device::BlendFactor::One, .destinationAlpha = Device::BlendFactor::One};
     const std::array<Device::ColorTarget, 4> formats{{{.blend = adding}, {.writeMask = Device::ColorMask::Red}, {}, {}}};

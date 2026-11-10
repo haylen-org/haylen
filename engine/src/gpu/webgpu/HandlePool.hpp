@@ -22,6 +22,7 @@ template <typename Record> class HandlePool final {
             if (slots.size() >= kMaxSlots) {
                 throw std::runtime_error(std::format("The graphics device has no room for another {}. At most {} can exist at once.", kind, kMaxSlots));
             }
+
             index = static_cast<std::uint32_t>(slots.size());
             slots.emplace_back();
         } else {
@@ -41,6 +42,7 @@ template <typename Record> class HandlePool final {
         if (id == 0 || index >= slots.size()) {
             return nullptr;
         }
+
         Slot& slot = slots[index];
         return slot.live && slot.generation == id >> kIndexBits ? &slot.record : nullptr;
     }
@@ -54,6 +56,7 @@ template <typename Record> class HandlePool final {
         if (record == nullptr) {
             throw std::logic_error(std::format("The {} {} does not exist.", kind, id));
         }
+
         return *record;
     }
 
@@ -63,6 +66,7 @@ template <typename Record> class HandlePool final {
         if (record == nullptr) {
             return std::nullopt;
         }
+
         const std::uint32_t index = (id & kIndexMask) - 1U;
         Slot& slot = slots[index];
         std::optional<Record> removed(std::move(*record));

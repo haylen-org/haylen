@@ -26,6 +26,7 @@ TEST(CompileQueueTest, RunsEveryJobItIsGiven) {
         });
         // clang-format on
     }
+
     EXPECT_EQ(done.get_future().wait_for(std::chrono::seconds(10)), std::future_status::ready);
 }
 

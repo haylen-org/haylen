@@ -12,9 +12,11 @@ class UploadRingTest : public OpenGlTest {
   protected:
     void SetUp() override {
         OpenGlTest::SetUp();
+
         if (IsSkipped()) {
             return;
         }
+
         opened.gl.load(*context, GetParam());
         opened.state.reset();
     }

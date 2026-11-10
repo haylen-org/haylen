@@ -36,11 +36,13 @@ void UploadRing::grow(std::size_t needed) {
     if (grown == nil) {
         throw std::runtime_error(std::format("The GPU has no memory for the {} bytes that a frame uploads.", size));
     }
+
     grown.label = @"haylen-upload-ring";
 
     if (buffer != nil) {
         outgrown.push_back(buffer);
     }
+
     buffer = grown;
     contents = static_cast<std::byte*>(buffer.contents);
     capacity = size;

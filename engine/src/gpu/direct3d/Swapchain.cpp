@@ -14,6 +14,7 @@ Swapchain::Swapchain(IDXGIFactory6& factory, IUnknown& presenter, const Surface&
     if (surface.kind != Surface::Kind::Win32 || surface.window == nullptr) {
         throw std::runtime_error("Direct3D draws only into the window of a surface of Windows.");
     }
+
     const auto window = static_cast<HWND>(surface.window);
 
     // Composition swapchains never tear, so only the swapchains of windows take the flag, which every resize must repeat.
@@ -41,6 +42,7 @@ Swapchain::Swapchain(IDXGIFactory6& factory, IUnknown& presenter, const Surface&
         // The platform switches between windowed and fullscreen itself, so DXGI leaves Alt+Enter alone.
         HResult::check(factory.MakeWindowAssociation(window, DXGI_MWA_NO_ALT_ENTER), "take the window over from DXGI");
     }
+
     HResult::check(made.As(&swapchain), "reach the swapchain of DXGI 1.4");
 
     if (surface.transparent) {
@@ -52,6 +54,7 @@ Swapchain::~Swapchain() {
     visual.Reset();
     target.Reset();
     composition.Reset();
+
     if (compositionLibrary != nullptr) {
         FreeLibrary(compositionLibrary);
     }
@@ -63,10 +66,12 @@ void Swapchain::compose(HWND window) {
     if (compositionLibrary == nullptr) {
         throw std::runtime_error("The transparent window needs DirectComposition, and \"dcomp.dll\" is missing from the system.");
     }
+
     const auto create = reinterpret_cast<CreateComposition>(reinterpret_cast<void*>(GetProcAddress(compositionLibrary, "DCompositionCreateDevice2")));
     if (create == nullptr) {
         throw std::runtime_error("The transparent window needs DirectComposition, and \"dcomp.dll\" has no function \"DCompositionCreateDevice2\".");
     }
+
     HResult::check(create(nullptr, IID_PPV_ARGS(composition.GetAddressOf())), "start DirectComposition for the transparent window");
     HResult::check(composition->CreateTargetForHwnd(window, TRUE, target.GetAddressOf()), "compose the transparent window");
     HResult::check(composition->CreateVisual(visual.GetAddressOf()), "make the visual of the transparent window");
@@ -95,9 +100,11 @@ HRESULT Swapchain::resize(const Surface::Size& value) {
     }
 
     size = value;
+
     if (visual != nullptr) {
         scaleVisual();
     }
+
     return result;
 }
 

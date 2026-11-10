@@ -17,13 +17,17 @@ class DebugOutputTest : public OpenGlTest {
 
     void SetUp() override {
         OpenGlTest::SetUp();
+
         if (IsSkipped()) {
             return;
         }
+
         opened.gl.load(*context, GetParam());
+
         if (!opened.gl.getFeatures().debug) {
             GTEST_SKIP() << "The context has no debug output.";
         }
+
         installed = opened.gl.debugMessageCallback;
         opened.gl.debugMessageCallback = &DebugOutputTest::take;
     }
@@ -32,6 +36,7 @@ class DebugOutputTest : public OpenGlTest {
         if (installed != nullptr) {
             opened.gl.debugMessageCallback = installed;
         }
+
         OpenGlTest::TearDown();
     }
 

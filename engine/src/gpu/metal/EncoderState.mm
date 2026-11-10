@@ -52,10 +52,12 @@ void EncoderState::setRasterizer(MTLCullMode cull, MTLWinding winding, float dep
         rasterizer.cull = cull;
         [encoder setCullMode:cull];
     }
+
     if (winding != rasterizer.winding) {
         rasterizer.winding = winding;
         [encoder setFrontFacingWinding:winding];
     }
+
     if (depthBias != rasterizer.depthBias || depthBiasSlope != rasterizer.depthBiasSlope) {
         rasterizer.depthBias = depthBias;
         rasterizer.depthBiasSlope = depthBiasSlope;
@@ -73,14 +75,17 @@ void EncoderState::setBuffer(gpu::Device::Stage stage, id<MTLBuffer> buffer, NSU
 
     const bool moved = identity == bound.buffer;
     bound = {.buffer = identity, .offset = offset};
+
     if (stage == gpu::Device::Stage::Vertex) {
         if (moved) {
             [encoder setVertexBufferOffset:offset atIndex:index];
         } else {
             [encoder setVertexBuffer:buffer offset:offset atIndex:index];
         }
+
         return;
     }
+
     if (moved) {
         [encoder setFragmentBufferOffset:offset atIndex:index];
     } else {
@@ -91,6 +96,7 @@ void EncoderState::setBuffer(gpu::Device::Stage stage, id<MTLBuffer> buffer, NSU
 // The copy takes the index from whatever buffer the encoder bound there, so the next buffer at the index binds again.
 void EncoderState::setBytes(gpu::Device::Stage stage, std::span<const std::byte> data, NSUInteger index) {
     stages[static_cast<std::size_t>(stage)].buffers[index] = {};
+
     if (stage == gpu::Device::Stage::Vertex) {
         [encoder setVertexBytes:data.data() length:data.size() atIndex:index];
     } else {
@@ -104,7 +110,9 @@ void EncoderState::setTexture(gpu::Device::Stage stage, id<MTLTexture> texture, 
     if (identity == bound) {
         return;
     }
+
     bound = identity;
+
     if (stage == gpu::Device::Stage::Vertex) {
         [encoder setVertexTexture:texture atIndex:index];
     } else {
@@ -118,7 +126,9 @@ void EncoderState::setSampler(gpu::Device::Stage stage, id<MTLSamplerState> samp
     if (identity == bound) {
         return;
     }
+
     bound = identity;
+
     if (stage == gpu::Device::Stage::Vertex) {
         [encoder setVertexSamplerState:sampler atIndex:index];
     } else {
@@ -142,6 +152,7 @@ void EncoderState::setViewport(const MTLViewport& value) {
     if (value.originX == viewport.originX && value.originY == viewport.originY && value.width == viewport.width && value.height == viewport.height) {
         return;
     }
+
     viewport = value;
     [encoder setViewport:value];
 }
@@ -150,6 +161,7 @@ void EncoderState::setScissor(const MTLScissorRect& value) {
     if (value.x == scissor.x && value.y == scissor.y && value.width == scissor.width && value.height == scissor.height) {
         return;
     }
+
     scissor = value;
     [encoder setScissorRect:value];
 }
@@ -165,6 +177,7 @@ void EncoderState::setBlendColor(math::Color value) {
     if (value.r == blendColor.r && value.g == blendColor.g && value.b == blendColor.b && value.a == blendColor.a) {
         return;
     }
+
     blendColor = value;
     [encoder setBlendColorRed:value.r green:value.g blue:value.b alpha:value.a];
 }

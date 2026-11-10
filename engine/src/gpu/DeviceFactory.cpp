@@ -97,6 +97,7 @@ std::optional<Device::Api> DeviceFactory::findApi(std::string_view name) noexcep
     if (found == Device::kApiNames.end() || found->second == Device::Api::None) {
         return std::nullopt;
     }
+
     return found->second;
 }
 

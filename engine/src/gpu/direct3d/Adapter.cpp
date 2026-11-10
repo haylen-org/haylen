@@ -15,8 +15,10 @@ ComPtr<IDXGIFactory6> Adapter::createFactory(bool validation) {
         if (SUCCEEDED(result)) {
             return factory;
         }
+
         core::Log::warning("The graphics device runs without the debug layer of DXGI, because {}. Add the optional feature \"Graphics Tools\" of Windows to validate it.", HResult::describe(result));
     }
+
     HResult::check(CreateDXGIFactory2(0, IID_PPV_ARGS(factory.GetAddressOf())), "create the factory of DXGI, which needs Windows 10 version 1803 or later");
     return factory;
 }
@@ -29,6 +31,7 @@ std::vector<ComPtr<IDXGIAdapter1>> Adapter::list(IDXGIFactory6& factory, bool lo
         if (factory.EnumAdapterByGpuPreference(index, preference, IID_PPV_ARGS(adapter.GetAddressOf())) == DXGI_ERROR_NOT_FOUND) {
             break;
         }
+
         DXGI_ADAPTER_DESC1 desc{};
         adapter->GetDesc1(&desc);
         if ((desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) == 0) {
@@ -40,6 +43,7 @@ std::vector<ComPtr<IDXGIAdapter1>> Adapter::list(IDXGIFactory6& factory, bool lo
     if (SUCCEEDED(factory.EnumWarpAdapter(IID_PPV_ARGS(warp.GetAddressOf())))) {
         adapters.push_back(std::move(warp));
     }
+
     return adapters;
 }
 
@@ -47,6 +51,7 @@ std::vector<ComPtr<IDXGIAdapter1>> Adapter::choose(IDXGIFactory6& factory, bool 
     if (!software) {
         return list(factory, lowPower);
     }
+
     std::vector<ComPtr<IDXGIAdapter1>> adapters;
     adapters.push_back(getSoftware(factory));
     return adapters;

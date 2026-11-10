@@ -9,6 +9,7 @@ LayoutCache::~LayoutCache() {
     for (const auto& [key, layout] : pipelineLayouts) {
         vk.vkDestroyPipelineLayout(context.getDevice(), layout, nullptr);
     }
+
     for (const auto& [key, layout] : setLayouts) {
         vk.vkDestroyDescriptorSetLayout(context.getDevice(), layout, nullptr);
     }
@@ -25,6 +26,7 @@ VkDescriptorSetLayout LayoutCache::getSetLayout(std::span<const Binding> binding
     for (const Binding& binding : bindings) {
         described.push_back({.binding = binding.binding, .descriptorType = binding.type, .descriptorCount = 1, .stageFlags = binding.stages});
     }
+
     const VkDescriptorSetLayoutCreateInfo info{.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO, .bindingCount = static_cast<std::uint32_t>(described.size()), .pBindings = described.data()};
     VkDescriptorSetLayout layout = VK_NULL_HANDLE;
     Context::check(context.getFunctions().vkCreateDescriptorSetLayout(context.getDevice(), &info, nullptr, &layout), "make a descriptor set layout");
@@ -38,6 +40,7 @@ VkPipelineLayout LayoutCache::getPipelineLayout(std::span<const VkDescriptorSetL
     for (VkDescriptorSetLayout set : sets) {
         key.push_back(Context::toHandle(set));
     }
+
     if (const auto found = pipelineLayouts.find(key); found != pipelineLayouts.end()) {
         return found->second;
     }

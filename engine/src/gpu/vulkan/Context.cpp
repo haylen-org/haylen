@@ -26,16 +26,20 @@ Context::Context(const Instance& owner, VkSurfaceKHR surface, Preference prefere
     for (VkPhysicalDevice candidate : devices) {
         const Candidate rated = rate(candidate, surface, preference);
         avoided = rated.avoided.empty() ? avoided : rated.avoided;
+
         if (rated.score > best.score) {
             best = rated;
         }
     }
+
     if (best.score < 0 && !avoided.empty()) {
         throw std::runtime_error(std::string(avoided));
     }
+
     if (best.score < 0) {
         throw std::runtime_error(surface == VK_NULL_HANDLE ? "No GPU of this machine runs Vulkan 1.1." : "No GPU of this machine runs Vulkan 1.1 and presents to the window.");
     }
+
     physicalDevice = best.device;
     queueFamily = best.queueFamily;
     vkGetPhysicalDeviceProperties(physicalDevice, &properties);
@@ -57,6 +61,7 @@ Context::Candidate Context::rate(VkPhysicalDevice candidate, VkSurfaceKHR surfac
     if (described.apiVersion < VK_API_VERSION_1_1) {
         return {};
     }
+
     const DriverIssues::Driver driver{.api = gpu::Device::Api::Vulkan, .renderer = described.deviceName, .versionNumber = described.driverVersion};
     if (const std::optional<std::string_view> reason = DriverIssues::find(driver, DriverIssues::Issue::AvoidApi)) {
         return {.avoided = *reason};
@@ -70,16 +75,19 @@ Context::Candidate Context::rate(VkPhysicalDevice candidate, VkSurfaceKHR surfac
         if ((families[family].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) {
             continue;
         }
+
         VkBool32 presents = VK_TRUE;
         if (surface != VK_NULL_HANDLE && vkGetPhysicalDeviceSurfaceSupportKHR(candidate, family, surface, &presents) != VK_SUCCESS) {
             presents = VK_FALSE;
         }
+
         if (presents == VK_FALSE) {
             continue;
         }
 
         return {.device = candidate, .queueFamily = family, .score = score(described.deviceType, preference)};
     }
+
     return {};
 }
 
@@ -116,6 +124,7 @@ void Context::createDevice() {
     if (swapchain) {
         extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     }
+
     bool renderingExtension = false;
     if (apiVersion < VK_API_VERSION_1_3 && has(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)) {
         const bool before12 = apiVersion < VK_API_VERSION_1_2;
@@ -124,14 +133,17 @@ void Context::createDevice() {
             extensions.push_back(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME);
             extensions.push_back(VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME);
         }
+
         if (renderingExtension) {
             extensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
         }
     }
+
     memoryBudget = has(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
     if (memoryBudget) {
         extensions.push_back(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
     }
+
     // A driver that runs Vulkan over another API names the parts of Vulkan it lacks through this extension, which it then requires.
     if (has("VK_KHR_portability_subset")) {
         extensions.push_back("VK_KHR_portability_subset");
@@ -143,6 +155,7 @@ void Context::createDevice() {
     if (canRender) {
         supported.pNext = &renderingFeatures;
     }
+
     vkGetPhysicalDeviceFeatures2(physicalDevice, &supported);
     dynamicRendering = canRender && renderingFeatures.dynamicRendering == VK_TRUE;
     if (canRender && !dynamicRendering && renderingExtension) {

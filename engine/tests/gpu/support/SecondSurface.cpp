@@ -49,6 +49,7 @@ class SecondSurface::Native final {
         if (display == nullptr) {
             throw std::runtime_error("No display server of X11 runs, so the tests have no window for the surface.");
         }
+
         window = XCreateSimpleWindow(display, DefaultRootWindow(display), 0, 0, static_cast<unsigned int>(width), static_cast<unsigned int>(height), 0, 0, 0);
         XSync(display, False);
     }
@@ -87,6 +88,7 @@ SecondSurface::SecondSurface(gpu::Device::Api api, OffscreenSurface& offscreen, 
         native = std::make_unique<Native>(width, height);
         surface = native->describe();
     }
+
     surface.size = {.width = width, .height = height, .windowWidth = width, .windowHeight = height};
 }
 

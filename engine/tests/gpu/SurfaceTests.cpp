@@ -14,15 +14,18 @@ class GpuSurfaceTest : public test::GpuFixture {
   protected:
     void SetUp() override {
         GpuFixture::SetUp();
+
         if (IsSkipped() || HasFatalFailure()) {
             return;
         }
+
         try {
             first = std::make_unique<test::SecondSurface>(GetParam(), offscreen(), 64, 48);
             second = std::make_unique<test::SecondSurface>(GetParam(), offscreen(), 16, 16);
         } catch (const std::runtime_error& error) {
             GTEST_SKIP() << error.what();
         }
+
         const std::array<Device::ColorTarget, 1> formats{};
         plane = device().makePipeline({.program = program("plane"), .colors = formats, .swapchain = true, .label = "haylen-test-surface-plane"});
     }
@@ -32,6 +35,7 @@ class GpuSurfaceTest : public test::GpuFixture {
         if (plane.isValid()) {
             device().destroy(plane);
         }
+
         GpuFixture::TearDown();
         first.reset();
         second.reset();
@@ -65,9 +69,12 @@ TEST_P(GpuSurfaceTest, DrawsIntoSurfacesBeyondTheWindow) {
         if (std::string(error.what()).find("no desktop") == std::string::npos) {
             throw;
         }
+
         GTEST_SKIP() << error.what();
     }
+
     EXPECT_GE(board, 1);
+
     for (int frame = 0; frame < 3; ++frame) {
         drawInto(board, {0.1F, 0.2F, 0.3F, 1.0F});
         device().commit();
@@ -77,11 +84,13 @@ TEST_P(GpuSurfaceTest, DrawsIntoSurfacesBeyondTheWindow) {
     device().resizeSurface(board, {.width = 32, .height = 24, .windowWidth = 32, .windowHeight = 24});
     const int side = device().addSurface(second->getSurface());
     EXPECT_NE(side, board);
+
     for (int frame = 0; frame < 3; ++frame) {
         drawInto(board, {0.3F, 0.2F, 0.1F, 1.0F});
         drawInto(side, {0.0F, 0.5F, 0.0F, 1.0F});
         device().commit();
     }
+
     const Pixels pixels = clearAndRead({0.2F, 0.4F, 0.6F, 0.8F}, 4, 4);
     EXPECT_TRUE(isNear(pixels.at(2, 2), {0.2F, 0.4F, 0.6F, 0.8F}));
 
@@ -111,23 +120,29 @@ TEST_P(GpuSurfaceTest, StretchesADrawableSmallerThanItsWindow) {
         if (std::string(error.what()).find("no desktop") == std::string::npos) {
             throw;
         }
+
         GTEST_SKIP() << error.what();
     }
+
     for (int frame = 0; frame < 3; ++frame) {
         drawInto(board, {0.1F, 0.2F, 0.3F, 1.0F});
         device().commit();
     }
 
     device().resizeSurface(board, {.width = 21, .height = 16, .windowWidth = 64, .windowHeight = 48});
+
     for (int frame = 0; frame < 3; ++frame) {
         drawInto(board, {0.3F, 0.2F, 0.1F, 1.0F});
         device().commit();
     }
+
     device().resizeSurface(board, {.width = 64, .height = 48, .windowWidth = 64, .windowHeight = 48});
+
     for (int frame = 0; frame < 3; ++frame) {
         drawInto(board, {0.0F, 0.5F, 0.0F, 1.0F});
         device().commit();
     }
+
     device().resizeSurface(board, scaled.size);
     drawInto(board, {0.4F, 0.4F, 0.4F, 1.0F});
     device().commit();

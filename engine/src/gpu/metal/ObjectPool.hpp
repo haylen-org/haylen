@@ -19,6 +19,7 @@ template <typename T> class ObjectPool final {
             if (slots.size() >= kMaxSlots) {
                 throw std::runtime_error("The graphics device has no room for another object of this kind.");
             }
+
             index = static_cast<std::uint32_t>(slots.size());
             slots.emplace_back();
         } else {
@@ -82,6 +83,7 @@ template <typename T> class ObjectPool final {
         if (index >= slots.size()) {
             return nullptr;
         }
+
         Slot& slot = slots[index];
         return slot.alive && slot.generation == (id >> kIndexBits) ? &slot : nullptr;
     }

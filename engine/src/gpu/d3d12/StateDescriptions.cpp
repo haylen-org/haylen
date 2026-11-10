@@ -15,9 +15,11 @@ D3D12_BLEND_DESC StateDescriptions::makeBlend(const Device::PipelineDesc& desc) 
         target.BlendOp = target.BlendOpAlpha = D3D12_BLEND_OP_ADD;
         target.LogicOp = D3D12_LOGIC_OP_NOOP;
         target.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
         if (index >= desc.colors.size()) {
             continue;
         }
+
         const Device::ColorTarget& color = desc.colors[index];
         target.BlendEnable = color.blend.enabled ? TRUE : FALSE;
         target.SrcBlend = toBlend(color.blend.sourceColor);
@@ -28,6 +30,7 @@ D3D12_BLEND_DESC StateDescriptions::makeBlend(const Device::PipelineDesc& desc) 
         target.BlendOpAlpha = toBlendOperation(color.blend.alphaOperation);
         target.RenderTargetWriteMask = static_cast<UINT8>(color.writeMask);
     }
+
     return made;
 }
 
@@ -237,6 +240,7 @@ D3D12_FILTER StateDescriptions::toFilter(const Device::SamplerDesc& desc) noexce
     if (desc.maxAnisotropy > 1) {
         return static_cast<D3D12_FILTER>(0x55U | comparison);
     }
+
     const UINT mipmap = desc.mipmap == Device::Filter::Linear ? 0x1U : 0U;
     const UINT magnification = desc.magnification == Device::Filter::Linear ? 0x4U : 0U;
     const UINT minification = desc.minification == Device::Filter::Linear ? 0x10U : 0U;

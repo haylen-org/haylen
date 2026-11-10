@@ -23,6 +23,7 @@ std::unique_ptr<gpu::Device> Device::create(Api flavour, const std::optional<Sur
     if (!surface || surface->kind != Surface::Kind::Gl || surface->gl == nullptr) {
         throw std::runtime_error("The OpenGL device draws through an OpenGL context, and the platform gave it no surface with one.");
     }
+
     return std::make_unique<Device>(flavour, *surface, options.validation);
 }
 
@@ -37,13 +38,16 @@ std::shared_ptr<Context> Device::makeContext(Api flavour, const Surface& surface
 Device::Device(Api flavour, const Surface& surface, bool validation) : context(makeContext(flavour, surface)), gl(context->gl), state(context->state), api(flavour), surfaceContext(surface.gl), surfaceSize(surface.size), surfaceSamples(surface.sampleCount), surfaceAttached(true), surfaceVsync(surface.vsync), adapterName(gl.getString(Gl::kRenderer)), debug(gl, validation), timer(gl), framebuffers(gl, state) {
     gl.pixelStorei(Gl::kPackAlignment, 1);
     gl.pixelStorei(Gl::kUnpackAlignment, 1);
+
     if (gl.isDesktop()) {
         gl.enable(Gl::kProgramPointSize);
         gl.enable(Gl::kTextureCubeMapSeamless);
     }
+
     if (!gl.isWeb()) {
         ring = std::make_unique<UploadRing>(gl, state, kFramesInFlight);
     }
+
     gl.genVertexArrays(1, &uploadVertexArray);
     surfaceContext->setSwapInterval(surface.vsync ? 1 : 0);
     applyDriverIssues();
@@ -57,6 +61,7 @@ Device::~Device() {
             gl.deleteSync(fence);
         }
     }
+
     buffers.forEach([&](const BufferRecord& record) { gl.deleteBuffers(1, &record.name); });
     samplers.forEach([&](const Gl::Uint& sampler) { gl.deleteSamplers(1, &sampler); });
     // clang-format off
@@ -88,6 +93,7 @@ void Device::copyPixels(std::byte* destination, std::span<const std::byte> sourc
         std::memcpy(destination, source.data(), source.size());
         return;
     }
+
     for (std::size_t index = 0; index + 3 < source.size(); index += 4) {
         destination[index] = source[index + 2];
         destination[index + 1] = source[index + 1];
@@ -106,6 +112,7 @@ void Device::applyDriverIssues() {
     const std::optional<std::string_view> callingThread = DriverIssues::find(driver, DriverIssues::Issue::CompileOnCallingThread);
     const std::optional<std::string_view> layerClears = DriverIssues::find(driver, DriverIssues::Issue::ClearLayersByDrawing);
     const std::optional<std::string_view> noAnisotropy = DriverIssues::find(driver, DriverIssues::Issue::NoAnisotropy);
+
     for (const std::optional<std::string_view>& reason : {floatFiltering, passFlushes, noGpuDisjoint, callingThread, layerClears, noAnisotropy}) {
         if (reason) {
             core::Log::info("The OpenGL device works around its driver. {}", *reason);
@@ -115,12 +122,15 @@ void Device::applyDriverIssues() {
     noFloatFiltering = floatFiltering.has_value();
     anisotropic = !noAnisotropy.has_value();
     flushEachPass = passFlushes.has_value();
+
     if (noGpuDisjoint) {
         timer.setReadsDisjoint(false);
     }
+
     if (callingThread && gl.getFeatures().parallelShaderCompile) {
         gl.maxShaderCompilerThreads(0);
     }
+
     if (layerClears) {
         layerClear = std::make_unique<LayerClear>(gl, state);
     }
@@ -160,9 +170,11 @@ bool Device::isRenderable(const Conversions::Pixel& pixel) const noexcept {
     if (pixel.floating) {
         return gl.getFeatures().colorBufferFloat;
     }
+
     if (pixel.halfFloating) {
         return gl.getFeatures().colorBufferHalfFloat;
     }
+
     return true;
 }
 
@@ -202,6 +214,7 @@ Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
     if (size == 0) {
         throw std::logic_error(std::format("The buffer \"{}\" has no size.", desc.label));
     }
+
     if (desc.usage == Usage::Immutable && desc.data.empty()) {
         throw std::logic_error(std::format("The immutable buffer \"{}\" has no data.", desc.label));
     }
@@ -219,6 +232,7 @@ Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
         state.bindBuffer(Gl::kArrayBuffer, name);
         gl.bufferData(Gl::kArrayBuffer, static_cast<Gl::SizeiPtr>(size), data, usage);
     }
+
     debug.label(Gl::kBuffer, name, desc.label);
     return {buffers.add({.name = name, .size = size, .usage = desc.usage, .index = desc.index})};
 }
@@ -228,11 +242,14 @@ void Device::checkLevels(const ImageDesc& desc, const Conversions::Pixel& pixel)
         if (!desc.levels.empty()) {
             throw std::logic_error(std::format("The image \"{}\" starts without pixels, since only a texture is made with them.", desc.label));
         }
+
         return;
     }
+
     if (desc.levels.size() != static_cast<std::size_t>(desc.mipLevels)) {
         throw std::logic_error(std::format("The texture \"{}\" has {} mip levels and pixels for {}.", desc.label, desc.mipLevels, desc.levels.size()));
     }
+
     for (int level = 0; level < desc.mipLevels; ++level) {
         const int layers = desc.type == TextureType::Volume ? getLevelSize(desc.layers, level) : desc.layers;
         const std::size_t expected = static_cast<std::size_t>(getLevelSize(desc.width, level)) * static_cast<std::size_t>(getLevelSize(desc.height, level)) * static_cast<std::size_t>(layers) * pixel.bytes;
@@ -246,9 +263,11 @@ void Device::checkSampleCount(const ImageDesc& desc, const Conversions::Pixel& p
     if (desc.kind != ImageKind::RenderTarget && desc.kind != ImageKind::DepthStencil) {
         throw std::logic_error(std::format("The image \"{}\" takes {} samples, which only render targets and depth stencil images take.", desc.label, desc.sampleCount));
     }
+
     if (desc.type != TextureType::Flat || desc.mipLevels != 1) {
         throw std::logic_error(std::format("The multisampled image \"{}\" must be flat with one mip level.", desc.label));
     }
+
     Gl::Int largest = 0;
     gl.getInternalformativ(Gl::kRenderbuffer, pixel.internalFormat, Gl::kSamples, 1, &largest);
     if (desc.sampleCount > largest) {
@@ -269,6 +288,7 @@ Gl::Uint Device::makeTexture(const ImageDesc& desc, const Conversions::Pixel& pi
     Gl::Uint name = 0;
     gl.genTextures(1, &name);
     state.bindTexture(0, target, name);
+
     if (desc.type == TextureType::Flat || desc.type == TextureType::Cube) {
         gl.texStorage2D(target, desc.mipLevels, pixel.internalFormat, desc.width, desc.height);
     } else {
@@ -301,6 +321,7 @@ void Device::uploadLevel(const ImageRecord& record, int level, std::uintptr_t so
         for (Gl::Enum index = 0; index < 6; ++index) {
             gl.texSubImage2D(Gl::kTextureCubeMapPositiveX + index, level, 0, 0, width, height, pixel.format, pixel.type, reinterpret_cast<const void*>(source + face * index));
         }
+
         return;
     }
     case TextureType::Array:
@@ -335,6 +356,7 @@ void Device::checkImage(const ImageDesc& desc, const Conversions::Pixel& pixel) 
     }
 
     checkLevels(desc, pixel);
+
     if (desc.sampleCount > 1) {
         checkSampleCount(desc, pixel);
     }
@@ -342,6 +364,7 @@ void Device::checkImage(const ImageDesc& desc, const Conversions::Pixel& pixel) 
 
 void Device::uploadTexture(const ImageDesc& desc, const ImageRecord& record) {
     state.bindBuffer(Gl::kPixelUnpackBuffer, 0);
+
     for (int level = 0; level < desc.mipLevels; ++level) {
         std::span<const std::byte> pixels = desc.levels[static_cast<std::size_t>(level)];
         if (record.pixel.swapsRedBlue) {
@@ -349,6 +372,7 @@ void Device::uploadTexture(const ImageDesc& desc, const ImageRecord& record) {
             copyPixels(staging.data(), pixels, true);
             pixels = staging;
         }
+
         uploadLevel(record, level, toAddress(pixels.data()));
     }
 }
@@ -368,6 +392,7 @@ Device::Image Device::makeImage(const ImageDesc& desc) {
     if (desc.kind == ImageKind::Texture) {
         uploadTexture(desc, record);
     }
+
     debug.label(Gl::kTexture, record.name, desc.label);
     return {images.add(record)};
 }
@@ -382,13 +407,16 @@ Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
     gl.samplerParameteri(name, Gl::kTextureWrapR, static_cast<Gl::Int>(Conversions::toWrap(desc.wrapW)));
     gl.samplerParameterf(name, Gl::kTextureMinLod, desc.minLod);
     gl.samplerParameterf(name, Gl::kTextureMaxLod, desc.maxLod);
+
     if (desc.compare) {
         gl.samplerParameteri(name, Gl::kTextureCompareMode, static_cast<Gl::Int>(Gl::kCompareRefToTexture));
         gl.samplerParameteri(name, Gl::kTextureCompareFunc, static_cast<Gl::Int>(Conversions::toCompare(*desc.compare)));
     }
+
     if (desc.maxAnisotropy > 1 && maxAnisotropy > 1.0F) {
         gl.samplerParameterf(name, Gl::kTextureMaxAnisotropy, std::min(static_cast<float>(desc.maxAnisotropy), maxAnisotropy));
     }
+
     debug.label(Gl::kSampler, name, desc.label);
     return {samplers.add(name)};
 }
@@ -437,6 +465,7 @@ StateCache::Raster Device::toRaster(const PipelineDesc& desc) const {
 
 Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
     std::shared_ptr<ShaderProgram> shader = programs.get(desc.program.id);
+
     if (desc.colors.empty() || desc.colors.size() > kMaxColorTargets) {
         throw std::logic_error(std::format("The pipeline \"{}\" needs one to {} color targets.", desc.label, kMaxColorTargets));
     }
@@ -452,6 +481,7 @@ void Device::destroy(Buffer buffer) noexcept {
     if (!record) {
         return;
     }
+
     gl.deleteBuffers(1, &record->name);
     state.forgetBuffer(record->name);
     pipelines.forEach([&](PipelineRecord& pipeline) { pipeline.vertexArray->forgetBuffer(record->name); });
@@ -462,11 +492,14 @@ void Device::destroy(Image image) noexcept {
     if (!record) {
         return;
     }
+
     framebuffers.forgetImage(image.id);
+
     if (record->target == Gl::kRenderbuffer) {
         gl.deleteRenderbuffers(1, &record->name);
         return;
     }
+
     gl.deleteTextures(1, &record->name);
     state.forgetTexture(record->name);
 }
@@ -476,6 +509,7 @@ void Device::destroy(Sampler sampler) noexcept {
     if (!name) {
         return;
     }
+
     gl.deleteSamplers(1, &*name);
     state.forgetSampler(*name);
 }
@@ -489,6 +523,7 @@ void Device::destroy(Pipeline pipeline) noexcept {
     if (applied != nullptr && applied == pipelines.find(pipeline.id)) {
         applied = nullptr;
     }
+
     static_cast<void>(pipelines.remove(pipeline.id));
 }
 
@@ -496,12 +531,15 @@ void Device::beginFrame() {
     if (frameStarted) {
         return;
     }
+
     applySizes();
     frameStarted = true;
+
     if (ring) {
         waitForFrame(frameIndex % kFramesInFlight);
         ring->beginFrame(frameIndex);
     }
+
     timer.beginFrame();
 }
 
@@ -511,12 +549,14 @@ void Device::waitForFrame(std::size_t slot) {
     if (fence == nullptr) {
         return;
     }
+
     constexpr Gl::Uint64 kWaitNanoseconds = 100'000'000;
     Gl::Enum result = gl.clientWaitSync(fence, Gl::kSyncFlushCommandsBit, kWaitNanoseconds);
     while (result == Gl::kTimeoutExpired && !lost) {
         checkLost();
         result = gl.clientWaitSync(fence, 0, kWaitNanoseconds);
     }
+
     gl.deleteSync(fence);
     fence = nullptr;
 }
@@ -538,6 +578,7 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
     if (data.empty()) {
         return;
     }
+
     beginFrame();
 
     if (!ring) {
@@ -561,16 +602,20 @@ std::size_t Device::checkImageWrites(std::span<const ImageWrite> writes) {
         if (record.kind != ImageKind::Dynamic) {
             throw std::logic_error("Only a dynamic image takes new pixels.");
         }
+
         if (write.pixels.size() != getLevelBytes(record, 0)) {
             throw std::logic_error(std::format("The pixels do not fill the image of {}x{}.", record.width, record.height));
         }
+
         total += UploadRing::align(write.pixels.size());
     }
+
     return total;
 }
 
 void Device::uploadImagesFromMemory(std::span<const ImageWrite> writes) {
     state.bindBuffer(Gl::kPixelUnpackBuffer, 0);
+
     for (const ImageWrite& write : writes) {
         const ImageRecord& record = images.get(write.image.id);
         std::span<const std::byte> pixels = write.pixels;
@@ -579,6 +624,7 @@ void Device::uploadImagesFromMemory(std::span<const ImageWrite> writes) {
             copyPixels(staging.data(), pixels, true);
             pixels = staging;
         }
+
         uploadLevel(record, 0, toAddress(pixels.data()));
     }
 }
@@ -590,6 +636,7 @@ void Device::uploadImagesThroughRing(std::span<const ImageWrite> writes, std::si
         copyPixels(slice.data + cursor, write.pixels, images.get(write.image.id).pixel.swapsRedBlue);
         cursor += UploadRing::align(write.pixels.size());
     }
+
     ring->unmap();
 
     state.bindBuffer(Gl::kPixelUnpackBuffer, ring->getBuffer());
@@ -598,6 +645,7 @@ void Device::uploadImagesThroughRing(std::span<const ImageWrite> writes, std::si
         uploadLevel(images.get(write.image.id), 0, cursor);
         cursor += UploadRing::align(write.pixels.size());
     }
+
     state.bindBuffer(Gl::kPixelUnpackBuffer, 0);
 }
 
@@ -611,6 +659,7 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
     if (total == 0) {
         return;
     }
+
     beginFrame();
 
     if (ring) {
@@ -642,13 +691,16 @@ void Device::beginPass(const PassDesc& desc) {
     if (pass.open) {
         throw std::logic_error("A pass began while another pass was open.");
     }
+
     const bool swapchain = desc.colors.empty() && !desc.depthStencil;
     if (swapchain) {
         requireUnpresented(desc.surface);
     }
+
     beginFrame();
     pass = {};
     applied = nullptr;
+
     if (swapchain) {
         beginSwapchainPass(desc);
     } else {
@@ -664,6 +716,7 @@ void Device::beginPass(const PassDesc& desc) {
         debug.pushGroup(desc.label);
         pass.grouped = true;
     }
+
     state.setViewport({.x = 0, .y = 0, .width = pass.width, .height = pass.height});
     state.setScissorTest(false);
     state.applyStencilReference(0);
@@ -680,6 +733,7 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
             pass.skipped = true;
             return;
         }
+
         leaveDrawable(0);
         makeDrawableCurrent(0, *surfaceContext);
         pass.width = surfaceSize.width;
@@ -691,12 +745,14 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
             pass.skipped = true;
             return;
         }
+
         leaveDrawable(desc.surface);
         makeDrawableCurrent(desc.surface, *drawable.context);
         pass.width = drawable.size.width;
         pass.height = drawable.size.height;
         scaled = drawable.scaled.get();
     }
+
     timer.beginPass();
     state.bindDrawFramebuffer(scaled != nullptr ? scaled->getFramebuffer() : 0);
     state.setFramebufferSrgb(false);
@@ -706,11 +762,13 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
         gl.invalidateFramebuffer(Gl::kDrawFramebuffer, static_cast<Gl::Sizei>(attachments.size()), attachments.data());
         return;
     }
+
     if (desc.load == Load::DontCare) {
         const std::array<Gl::Enum, 3> attachments{Gl::kColor, Gl::kDepth, Gl::kStencil};
         gl.invalidateFramebuffer(Gl::kDrawFramebuffer, static_cast<Gl::Sizei>(attachments.size()), attachments.data());
         return;
     }
+
     if (desc.load == Load::Clear) {
         const std::array<Gl::Float, 4> color{desc.clear.r, desc.clear.g, desc.clear.b, desc.clear.a};
         state.prepareClear();
@@ -723,6 +781,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
     if (desc.colors.size() > kMaxColorTargets) {
         throw std::logic_error(std::format("A pass draws into at most {} color attachments.", kMaxColorTargets));
     }
+
     FramebufferCache::Key key{.colorCount = desc.colors.size()};
     bool srgb = false;
     for (std::size_t index = 0; index < desc.colors.size(); ++index) {
@@ -731,17 +790,21 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         if (record.kind != ImageKind::RenderTarget) {
             throw std::logic_error("A pass draws only into render targets.");
         }
+
         if (color.resolve.isValid() && (record.sampleCount == 1 || images.get(color.resolve.id).sampleCount != 1)) {
             throw std::logic_error("A pass resolves only a multisampled attachment into an image of one sample.");
         }
+
         key.colors[index] = toAttachment(color.image, color.mipLevel, color.layer);
         pass.colors[index] = color;
         srgb = srgb || record.pixel.srgb;
+
         if (index == 0) {
             pass.width = getLevelSize(record.width, color.mipLevel);
             pass.height = getLevelSize(record.height, color.mipLevel);
         }
     }
+
     pass.colorCount = desc.colors.size();
 
     if (desc.depthStencil) {
@@ -749,6 +812,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         if (record.kind != ImageKind::DepthStencil) {
             throw std::logic_error("A pass takes only a depth stencil image as its depth stencil attachment.");
         }
+
         key.depthStencil = toAttachment(desc.depthStencil->image, 0, 0);
         key.stencil = record.pixel.stencil;
         pass.depthStencil = desc.depthStencil;
@@ -776,8 +840,10 @@ void Device::loadAttachments() {
         if (load == Load::DontCare) {
             discarded[static_cast<std::size_t>(discardedCount++)] = Gl::kColorAttachment0 + static_cast<Gl::Enum>(index);
         }
+
         clears = clears || load == Load::Clear;
     }
+
     if (pass.depthStencil) {
         const DepthStencilAttachment& depth = *pass.depthStencil;
         if (depth.depthLoad == Load::DontCare && (!pass.stencil || depth.stencilLoad == Load::DontCare)) {
@@ -787,17 +853,21 @@ void Device::loadAttachments() {
         } else if (pass.stencil && depth.stencilLoad == Load::DontCare) {
             discarded[static_cast<std::size_t>(discardedCount++)] = Gl::kStencilAttachment;
         }
+
         clears = clears || depth.depthLoad == Load::Clear || (pass.stencil && depth.stencilLoad == Load::Clear);
     }
+
     if (discardedCount > 0) {
         gl.invalidateFramebuffer(Gl::kDrawFramebuffer, discardedCount, discarded.data());
     }
+
     if (!clears) {
         return;
     }
 
     clearLayersByDrawing();
     state.prepareClear();
+
     for (std::size_t index = 0; index < pass.colorCount; ++index) {
         const ColorAttachment& color = pass.colors[index];
         if (color.load == Load::Clear && !isClearedByDrawing(color)) {
@@ -805,18 +875,22 @@ void Device::loadAttachments() {
             gl.clearBufferfv(Gl::kColor, static_cast<Gl::Int>(index), value.data());
         }
     }
+
     if (!pass.depthStencil) {
         return;
     }
+
     const DepthStencilAttachment& depth = *pass.depthStencil;
     const bool clearsStencil = pass.stencil && depth.stencilLoad == Load::Clear;
     if (depth.depthLoad == Load::Clear && clearsStencil) {
         gl.clearBufferfi(Gl::kDepthStencil, 0, depth.clearDepth, depth.clearStencil);
         return;
     }
+
     if (depth.depthLoad == Load::Clear) {
         gl.clearBufferfv(Gl::kDepth, 0, &depth.clearDepth);
     }
+
     if (clearsStencil) {
         const Gl::Int stencil = depth.clearStencil;
         gl.clearBufferiv(Gl::kStencil, 0, &stencil);
@@ -836,6 +910,7 @@ bool Device::isClearedByDrawing(const ColorAttachment& color) {
     if (!layerClear || color.layer == 0) {
         return false;
     }
+
     const Gl::Enum target = images.get(color.image.id).target;
     return target == Gl::kTexture2dArray || target == Gl::kTexture3d;
 }
@@ -850,6 +925,7 @@ StateCache::Rectangle Device::toWindow(const math::Rect& pixels) const noexcept 
 
 void Device::applyViewport(const math::Rect& pixels) {
     requirePass("applyViewport");
+
     if (!pass.skipped) {
         state.setViewport(toWindow(pixels));
     }
@@ -857,6 +933,7 @@ void Device::applyViewport(const math::Rect& pixels) {
 
 void Device::applyScissor(const math::Rect& pixels) {
     requirePass("applyScissor");
+
     if (!pass.skipped) {
         state.setScissorTest(true);
         state.setScissor(toWindow(pixels));
@@ -865,9 +942,11 @@ void Device::applyScissor(const math::Rect& pixels) {
 
 void Device::applyPipeline(Pipeline pipeline) {
     requirePass("applyPipeline");
+
     if (pass.skipped) {
         return;
     }
+
     applied = &pipelines.get(pipeline.id);
     state.useProgram(applied->shader->getName());
     state.applyRaster(applied->raster);
@@ -875,9 +954,11 @@ void Device::applyPipeline(Pipeline pipeline) {
 
 void Device::applyBindings(const Bindings& bindings) {
     requirePass("applyBindings");
+
     if (pass.skipped) {
         return;
     }
+
     if (applied == nullptr) {
         throw std::logic_error("Bindings were applied before a pipeline.");
     }
@@ -886,15 +967,18 @@ void Device::applyBindings(const Bindings& bindings) {
     for (std::size_t index = 0; index < applied->bufferCount; ++index) {
         vertexBuffers[index] = buffers.get(bindings.vertexBuffers[index].id).name;
     }
+
     Gl::Uint indexBuffer = 0;
     if (applied->indexed) {
         const BufferRecord& record = buffers.get(bindings.indexBuffer.id);
         if (!record.index) {
             throw std::logic_error("An indexed pipeline needs an index buffer.");
         }
+
         indexBuffer = record.name;
         indexOffset = bindings.indexOffset;
     }
+
     applied->vertexArray->bind(vertexBuffers, bindings.vertexOffsets, indexBuffer);
 
     const std::span<const ShaderProgram::Unit> units = applied->shader->getUnits();
@@ -903,6 +987,7 @@ void Device::applyBindings(const Bindings& bindings) {
         if (image.target != units[unit].target) {
             throw std::logic_error(std::format("The texture slot {} takes a texture of another type than the one bound to it.", units[unit].texture));
         }
+
         state.bindTexture(unit, image.target, image.name);
         state.bindSampler(unit, samplers.get(bindings.samplers[units[unit].sampler].id));
     }
@@ -910,17 +995,21 @@ void Device::applyBindings(const Bindings& bindings) {
 
 void Device::applyUniforms(int slot, std::span<const std::byte> data) {
     requirePass("applyUniforms");
+
     if (pass.skipped) {
         return;
     }
+
     if (applied == nullptr) {
         throw std::logic_error("Uniforms were applied before a pipeline.");
     }
+
     applied->shader->applyUniforms(slot, data);
 }
 
 void Device::applyStencilReference(std::uint8_t value) {
     requirePass("applyStencilReference");
+
     if (!pass.skipped) {
         state.applyStencilReference(value);
     }
@@ -928,6 +1017,7 @@ void Device::applyStencilReference(std::uint8_t value) {
 
 void Device::applyBlendColor(math::Color value) {
     requirePass("applyBlendColor");
+
     if (!pass.skipped) {
         state.applyBlendColor(value);
     }
@@ -935,12 +1025,15 @@ void Device::applyBlendColor(math::Color value) {
 
 void Device::draw(int first, int count, int instances) {
     requirePass("draw");
+
     if (applied == nullptr && !pass.skipped) {
         throw std::logic_error("A draw happened before a pipeline.");
     }
+
     if (first < 0 || count < 0 || instances < 0) {
         throw std::logic_error("A draw needs counts of zero or more.");
     }
+
     if (pass.skipped || count == 0 || instances == 0) {
         return;
     }
@@ -949,6 +1042,7 @@ void Device::draw(int first, int count, int instances) {
         gl.drawArraysInstanced(applied->primitive, first, count, instances);
         return;
     }
+
     const std::uintptr_t start = static_cast<std::uintptr_t>(indexOffset) + static_cast<std::uintptr_t>(first) * applied->indexSize;
     gl.drawElementsInstanced(applied->primitive, count, applied->indexType, reinterpret_cast<const void*>(start), instances);
 }
@@ -961,6 +1055,7 @@ void Device::resolveAttachments() {
         if (!color.resolve.isValid()) {
             continue;
         }
+
         const Gl::Uint target = getSingleFramebuffer(color.resolve, "haylen-resolve");
         state.prepareClear();
         state.bindReadFramebuffer(pass.framebuffer);
@@ -969,6 +1064,7 @@ void Device::resolveAttachments() {
         gl.blitFramebuffer(0, 0, pass.width, pass.height, 0, 0, pass.width, pass.height, Gl::kColorBufferBit, Gl::kNearest);
         resolved = true;
     }
+
     if (resolved) {
         state.bindDrawFramebuffer(pass.framebuffer);
     }
@@ -982,6 +1078,7 @@ void Device::discardAttachments() {
             discarded[static_cast<std::size_t>(discardedCount++)] = Gl::kColorAttachment0 + static_cast<Gl::Enum>(index);
         }
     }
+
     if (pass.depthStencil) {
         const DepthStencilAttachment& depth = *pass.depthStencil;
         if (depth.depthStore == Store::Discard && (!pass.stencil || depth.stencilStore == Store::Discard)) {
@@ -992,6 +1089,7 @@ void Device::discardAttachments() {
             discarded[static_cast<std::size_t>(discardedCount++)] = Gl::kStencilAttachment;
         }
     }
+
     if (discardedCount > 0) {
         gl.invalidateFramebuffer(Gl::kDrawFramebuffer, discardedCount, discarded.data());
     }
@@ -999,25 +1097,32 @@ void Device::discardAttachments() {
 
 void Device::endPass() {
     requirePass("endPass");
+
     if (!pass.skipped && pass.swapchain && pass.surface == 0) {
         drewSwapchain = true;
     } else if (!pass.skipped && pass.swapchain) {
         drawables[static_cast<std::size_t>(pass.surface - 1)].drawn = true;
     }
+
     const bool offscreen = !pass.skipped && !pass.swapchain;
     if (offscreen) {
         resolveAttachments();
     }
+
     timer.endPass();
+
     if (offscreen) {
         discardAttachments();
     }
+
     if (flushEachPass) {
         gl.flush();
     }
+
     if (pass.grouped) {
         debug.popGroup();
     }
+
     debug.checkErrors("a pass");
     pass.open = false;
     applied = nullptr;
@@ -1036,21 +1141,27 @@ void Device::commit() {
     if (pass.open) {
         throw std::logic_error("The frame was committed while a pass was open.");
     }
+
     beginFrame();
     timer.endFrame();
     presentCurrentDrawable();
+
     for (Drawable& drawable : drawables) {
         drawable.drawn = false;
         drawable.presented = false;
     }
+
     drewSwapchain = false;
     presentedSwapchain = false;
+
     if (surfaceAttached) {
         makeDrawableCurrent(0, *surfaceContext);
     }
+
     if (ring) {
         frameFences[frameIndex % kFramesInFlight] = gl.fenceSync(Gl::kSyncGpuCommandsComplete, 0);
     }
+
     debug.checkErrors("the frame");
     checkLost();
 
@@ -1075,6 +1186,7 @@ void Device::checkLost() {
 // A size that changes during a frame applies from the next one, so the passes of a frame draw into one framebuffer.
 void Device::resizeSurface(const Surface::Size& size) {
     nextSurfaceSize = size;
+
     if (!frameStarted) {
         applySizes();
     }
@@ -1091,6 +1203,7 @@ void Device::attachSurface(const Surface& surface) {
     if (surface.kind != Surface::Kind::Gl || surface.gl != surfaceContext) {
         throw std::logic_error("The OpenGL device takes back only the context it was made with, which holds its objects.");
     }
+
     surfaceContext->makeCurrent();
     surfaceContext->setSwapInterval(surface.vsync ? 1 : 0);
     currentSurface = 0;
@@ -1105,9 +1218,11 @@ std::unique_ptr<Device::Readback> Device::readImage(Image image, int width, int 
     if (record.kind != ImageKind::RenderTarget || record.sampleCount != 1) {
         throw std::logic_error("Only a render target of one sample can be read.");
     }
+
     if (width <= 0 || height <= 0 || width > record.width || height > record.height) {
         throw std::logic_error(std::format("A region of {}x{} pixels does not fit the render target of {}x{}.", width, height, record.width, record.height));
     }
+
     const Gl::Uint framebuffer = getSingleFramebuffer(image, "haylen-readback");
     return std::make_unique<PixelReadback>(context, framebuffer, width, height, record.pixel.floating || record.pixel.halfFloating);
 }
@@ -1117,9 +1232,11 @@ int Device::addSurface(const Surface& added) {
     if (added.kind != Surface::Kind::Gl || added.gl == nullptr) {
         throw std::runtime_error("The OpenGL device draws only into a surface that holds another drawable of the context of the window, which the platform makes for it.");
     }
+
     added.gl->makeCurrent();
     added.gl->setSwapInterval(added.vsync ? 1 : 0);
     currentSurface = -1;
+
     if (surfaceAttached) {
         makeDrawableCurrent(0, *surfaceContext);
         surfaceContext->setSwapInterval(surfaceVsync ? 1 : 0);
@@ -1132,6 +1249,7 @@ int Device::addSurface(const Surface& added) {
         *free = std::move(made);
         return static_cast<int>(free - drawables.begin()) + 1;
     }
+
     drawables.push_back(std::move(made));
     return static_cast<int>(drawables.size());
 }
@@ -1139,6 +1257,7 @@ int Device::addSurface(const Surface& added) {
 void Device::resizeSurface(int number, const Surface::Size& size) {
     Drawable& drawable = requireDrawable(number);
     drawable.nextSize = size;
+
     if (!frameStarted) {
         applySizes();
     }
@@ -1150,6 +1269,7 @@ void Device::applySizes() {
         scaleDrawable(surfaceScaled, surfaceSize);
         nextSurfaceSize.reset();
     }
+
     for (Drawable& drawable : drawables) {
         if (drawable.nextSize) {
             drawable.size = *drawable.nextSize;
@@ -1165,12 +1285,15 @@ void Device::removeSurface(int number) {
     if (drawable.drawn) {
         throw std::logic_error("A surface goes between frames, after \"commit\".");
     }
+
     if (currentSurface == number) {
         currentSurface = -1;
+
         if (surfaceAttached) {
             makeDrawableCurrent(0, *surfaceContext);
         }
     }
+
     drawable = {};
 }
 
@@ -1178,6 +1301,7 @@ Device::Drawable& Device::requireDrawable(int number) {
     if (number < 1 || static_cast<std::size_t>(number) > drawables.size() || drawables[static_cast<std::size_t>(number - 1)].context == nullptr) {
         throw std::logic_error(std::format("The device has no surface {} beyond the window.", number));
     }
+
     return drawables[static_cast<std::size_t>(number - 1)];
 }
 
@@ -1187,10 +1311,12 @@ void Device::scaleDrawable(std::unique_ptr<ScaledDrawable>& scaled, const Surfac
         scaled.reset();
         return;
     }
+
     if (scaled == nullptr) {
         scaled = std::make_unique<ScaledDrawable>(gl, state, size, surfaceSamples);
         return;
     }
+
     scaled->resize(size);
 }
 
@@ -1222,6 +1348,7 @@ void Device::presentCurrentDrawable() {
         presentedSwapchain = true;
         return;
     }
+
     if (currentSurface > 0) {
         Drawable& drawable = requireDrawable(currentSurface);
         if (drawable.drawn) {
@@ -1235,6 +1362,7 @@ void Device::presentCurrentDrawable() {
 // The depth and stencil of a drawable are never kept past the frame, so they are invalidated before the swap, and a drawable that its window shows larger is drawn over the window first.
 void Device::presentDrawable(int number, GlContext& drawable, ScaledDrawable* scaled) {
     makeDrawableCurrent(number, drawable);
+
     if (scaled != nullptr) {
         state.bindDrawFramebuffer(scaled->getFramebuffer());
         const std::array<Gl::Enum, 1> depth{Gl::kDepthStencilAttachment};
@@ -1256,6 +1384,7 @@ gpu::Device::CaptureSupport Device::getCaptureSupport() const {
     if (!renderDoc) {
         return {.tool = CaptureTool::None, .missing = std::string(renderdoc::Capturer::kMissing)};
     }
+
     return {.tool = CaptureTool::RenderDoc, .missing = {}};
 #endif
 }
@@ -1271,6 +1400,7 @@ void Device::beginCapture(const std::filesystem::path& path) {
     if (!renderDoc) {
         throw std::logic_error(std::string(renderdoc::Capturer::kMissing));
     }
+
     renderDoc->begin(nullptr, path);
 #endif
 }
@@ -1282,6 +1412,7 @@ std::filesystem::path Device::endCapture() {
     if (!renderDoc) {
         throw std::logic_error("A capture ended while none records.");
     }
+
     return renderDoc->end(nullptr);
 #endif
 }

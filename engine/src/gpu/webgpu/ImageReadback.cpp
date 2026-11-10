@@ -74,6 +74,7 @@ std::optional<std::vector<std::uint8_t>> ImageReadback::poll() {
         const std::span<const std::byte> source(mapped + static_cast<std::size_t>(row) * rowBytes, rowBytes);
         convertRow(source, std::span<std::uint8_t>(pixels).subspan(static_cast<std::size_t>(row) * targetRow, targetRow));
     }
+
     wgpuBufferUnmap(buffer);
     state = State::Delivered;
     return pixels;
@@ -87,9 +88,11 @@ float ImageReadback::fromHalf(std::uint16_t bits) noexcept {
         const float value = std::ldexp(static_cast<float>(mantissa), -24);
         return sign != 0 ? -value : value;
     }
+
     if (exponent == 31) {
         return std::bit_cast<float>(sign | 0x7F800000U | (mantissa << 13U));
     }
+
     return std::bit_cast<float>(sign | ((exponent + 112U) << 23U) | (mantissa << 13U));
 }
 
@@ -106,6 +109,7 @@ void ImageReadback::convertRow(std::span<const std::byte> source, std::span<std:
     for (std::size_t pixel = 0; pixel < static_cast<std::size_t>(width); ++pixel) {
         std::uint8_t* out = target.data() + pixel * 4U;
         std::array<float, 4> channels{0.0F, 0.0F, 0.0F, 1.0F};
+
         switch (format) {
         case Device::PixelFormat::Rgba8:
         case Device::PixelFormat::Rgba8Srgb:
@@ -147,6 +151,7 @@ void ImageReadback::convertRow(std::span<const std::byte> source, std::span<std:
                 std::memcpy(&half, bytes + (pixel * count + channel) * 2U, 2U);
                 channels[channel] = fromHalf(half);
             }
+
             break;
         }
         case Device::PixelFormat::R32Float:

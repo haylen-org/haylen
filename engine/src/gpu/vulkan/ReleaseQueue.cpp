@@ -19,6 +19,7 @@ void ReleaseQueue::collect(std::uint64_t completed) {
     for (auto entry = pending.begin(); entry != end; ++entry) {
         destroy(entry->second);
     }
+
     pending.erase(pending.begin(), end);
 }
 
@@ -26,6 +27,7 @@ void ReleaseQueue::clear() {
     for (const auto& entry : pending) {
         destroy(entry.second);
     }
+
     pending.clear();
 }
 

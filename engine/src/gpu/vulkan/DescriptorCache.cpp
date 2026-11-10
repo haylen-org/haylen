@@ -24,9 +24,11 @@ std::size_t DescriptorCache::KeyHash::operator()(const ResourceKey& key) const n
     for (std::uint32_t image : key.images) {
         mix(image);
     }
+
     for (std::uint32_t sampler : key.samplers) {
         mix(sampler);
     }
+
     return static_cast<std::size_t>(hash ^ (hash >> 32));
 }
 
@@ -35,6 +37,7 @@ VkDescriptorSet DescriptorCache::findResourceSet(const ResourceKey& key, std::ui
     if (found == resourceSets.end()) {
         return VK_NULL_HANDLE;
     }
+
     found->second.used = serial;
     return found->second.set;
 }
@@ -44,6 +47,7 @@ VkDescriptorSet DescriptorCache::addResourceSet(const ResourceKey& key, std::spa
     for (VkWriteDescriptorSet& write : writes) {
         write.dstSet = set;
     }
+
     context.getFunctions().vkUpdateDescriptorSets(context.getDevice(), static_cast<std::uint32_t>(writes.size()), writes.data(), 0, nullptr);
     resourceSets.emplace(key, Entry{.pool = pool, .set = set, .used = serial});
     return set;
@@ -54,6 +58,7 @@ VkDescriptorSet DescriptorCache::getUniformSet(VkDescriptorSetLayout layout, VkB
     for (std::size_t index = 0; index < blocks.size(); ++index) {
         key.ranges[index] = blocks[index].size;
     }
+
     if (const auto found = uniformSets.find(key); found != uniformSets.end()) {
         return found->second;
     }
@@ -65,6 +70,7 @@ VkDescriptorSet DescriptorCache::getUniformSet(VkDescriptorSetLayout layout, VkB
         infos[index] = {.buffer = buffer, .offset = 0, .range = blocks[index].size};
         writes[index] = {.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, .dstSet = set, .dstBinding = blocks[index].binding, .descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, .pBufferInfo = &infos[index]};
     }
+
     context.getFunctions().vkUpdateDescriptorSets(context.getDevice(), static_cast<std::uint32_t>(blocks.size()), writes.data(), 0, nullptr);
     uniformSets.emplace(key, set);
     return set;
@@ -76,6 +82,7 @@ template <typename Predicate> void DescriptorCache::forget(Predicate&& holds, st
             ++entry;
             continue;
         }
+
         releaseQueue.push(ReleaseQueue::DescriptorSet{.pool = entry->second.pool, .set = entry->second.set}, serial);
         entry = resourceSets.erase(entry);
     }
@@ -93,11 +100,13 @@ void DescriptorCache::trim(std::uint64_t completed) {
     if (resourceSets.size() <= kMaxResourceSets) {
         return;
     }
+
     for (auto entry = resourceSets.begin(); entry != resourceSets.end();) {
         if (entry->second.used > completed) {
             ++entry;
             continue;
         }
+
         context.getFunctions().vkFreeDescriptorSets(context.getDevice(), entry->second.pool, 1, &entry->second.set);
         entry = resourceSets.erase(entry);
     }
@@ -113,6 +122,7 @@ std::pair<VkDescriptorPool, VkDescriptorSet> DescriptorCache::allocate(VkDescrip
         if (result == VK_SUCCESS) {
             return {*pool, set};
         }
+
         if (result != VK_ERROR_OUT_OF_POOL_MEMORY && result != VK_ERROR_FRAGMENTED_POOL) {
             Context::check(result, "allocate a descriptor set");
         }

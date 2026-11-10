@@ -196,6 +196,7 @@ Gl::Enum Conversions::toMinification(Device::Filter minification, Device::Filter
     if (mipmap == Device::Filter::Linear) {
         return linear ? Gl::kLinearMipmapLinear : Gl::kNearestMipmapLinear;
     }
+
     return linear ? Gl::kLinearMipmapNearest : Gl::kNearestMipmapNearest;
 }
 

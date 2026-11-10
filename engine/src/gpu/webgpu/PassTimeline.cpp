@@ -22,9 +22,11 @@ std::optional<double> PassTimeline::addFrame(std::uint64_t frame, std::span<cons
     // The end of a frame with timestamps that cannot be trusted bounds nothing, so the frame after it counts its first pass whole.
     lastFrame = written ? std::optional(frame) : std::nullopt;
     lastEnd = reached;
+
     if (!written) {
         return std::nullopt;
     }
+
     return static_cast<double>(busy) * 1e-9;
 }
 

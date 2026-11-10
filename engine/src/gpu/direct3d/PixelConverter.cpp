@@ -72,9 +72,11 @@ float PixelConverter::readHalf(const std::byte* bytes) noexcept {
         const float value = std::ldexp(static_cast<float>(fraction), -24);
         return sign != 0 ? -value : value;
     }
+
     if (exponent == 0x1FU) {
         return std::bit_cast<float>(sign | 0x7F800000U | (fraction << 13U));
     }
+
     return std::bit_cast<float>(sign | ((exponent + 112U) << 23U) | (fraction << 13U));
 }
 
@@ -88,6 +90,7 @@ std::uint8_t PixelConverter::toByte(float value) noexcept {
     if (!(value > 0.0F)) {
         return 0;
     }
+
     return static_cast<std::uint8_t>(std::lround(std::min(value, 1.0F) * 255.0F));
 }
 

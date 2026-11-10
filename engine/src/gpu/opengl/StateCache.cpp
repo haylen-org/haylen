@@ -56,6 +56,7 @@ void StateCache::reset() {
     gl.disable(Gl::kScissorTest);
     gl.disable(Gl::kDither);
     gl.blendColor(0.0F, 0.0F, 0.0F, 0.0F);
+
     if (gl.isDesktop()) {
         framebufferSrgb = false;
         gl.disable(Gl::kFramebufferSrgb);
@@ -73,17 +74,21 @@ void StateCache::reset() {
     readFramebuffer = 0;
     gl.useProgram(0);
     gl.bindVertexArray(0);
+
     for (const Gl::Enum target : {Gl::kArrayBuffer, Gl::kCopyReadBuffer, Gl::kCopyWriteBuffer, Gl::kPixelPackBuffer, Gl::kPixelUnpackBuffer}) {
         gl.bindBuffer(target, 0);
     }
+
     gl.bindFramebuffer(Gl::kFramebuffer, 0);
 
     units.fill({});
+
     for (std::size_t unit = 0; unit < kMaxUnits; ++unit) {
         gl.activeTexture(Gl::kTexture0 + static_cast<Gl::Enum>(unit));
         gl.bindTexture(Gl::kTexture2d, 0);
         gl.bindSampler(static_cast<Gl::Uint>(unit), 0);
     }
+
     activeUnit = 0;
     gl.activeTexture(Gl::kTexture0);
 }
@@ -96,6 +101,7 @@ void StateCache::setCapability(bool& current, Gl::Enum capability, bool value) {
     if (current == value) {
         return;
     }
+
     current = value;
     toggle(gl, capability, value);
 }
@@ -113,12 +119,15 @@ void StateCache::applyRaster(const Raster& raster) {
 void StateCache::applyBlends(const Raster& raster) {
     if (!raster.independent) {
         const Blend& wanted = raster.blends.front();
+
         if (std::ranges::all_of(blends, [&](const Blend& current) { return current == wanted; })) {
             return;
         }
+
         if (std::ranges::any_of(blends, [&](const Blend& current) { return current.enabled != wanted.enabled; })) {
             toggle(gl, Gl::kBlend, wanted.enabled);
         }
+
         gl.blendFuncSeparate(wanted.sourceColor, wanted.destinationColor, wanted.sourceAlpha, wanted.destinationAlpha);
         gl.blendEquationSeparate(wanted.colorOperation, wanted.alphaOperation);
         blends.fill(wanted);
@@ -131,6 +140,7 @@ void StateCache::applyBlends(const Raster& raster) {
         if (current == wanted) {
             continue;
         }
+
         const auto index = static_cast<Gl::Uint>(target);
         if (current.enabled != wanted.enabled) {
             if (wanted.enabled) {
@@ -139,6 +149,7 @@ void StateCache::applyBlends(const Raster& raster) {
                 gl.disablei(Gl::kBlend, index);
             }
         }
+
         gl.blendFuncSeparatei(index, wanted.sourceColor, wanted.destinationColor, wanted.sourceAlpha, wanted.destinationAlpha);
         gl.blendEquationSeparatei(index, wanted.colorOperation, wanted.alphaOperation);
         current = wanted;
@@ -148,9 +159,11 @@ void StateCache::applyBlends(const Raster& raster) {
 void StateCache::applyMasks(const Raster& raster) {
     if (!raster.independent) {
         const std::uint8_t wanted = raster.masks.front();
+
         if (std::ranges::all_of(masks, [&](std::uint8_t current) { return current == wanted; })) {
             return;
         }
+
         gl.colorMask((wanted & 1U) != 0, (wanted & 2U) != 0, (wanted & 4U) != 0, (wanted & 8U) != 0);
         masks.fill(wanted);
         return;
@@ -161,6 +174,7 @@ void StateCache::applyMasks(const Raster& raster) {
         if (masks[target] == wanted) {
             continue;
         }
+
         gl.colorMaski(static_cast<Gl::Uint>(target), (wanted & 1U) != 0, (wanted & 2U) != 0, (wanted & 4U) != 0, (wanted & 8U) != 0);
         masks[target] = wanted;
     }
@@ -168,16 +182,19 @@ void StateCache::applyMasks(const Raster& raster) {
 
 void StateCache::applyDepth(const Raster& raster) {
     setCapability(depthTest, Gl::kDepthTest, raster.depthTest);
+
     if (depthCompare != raster.depthCompare) {
         depthCompare = raster.depthCompare;
         gl.depthFunc(depthCompare);
     }
+
     if (depthWrite != raster.depthWrite) {
         depthWrite = raster.depthWrite;
         gl.depthMask(depthWrite ? 1 : 0);
     }
 
     setCapability(polygonOffset, Gl::kPolygonOffsetFill, raster.polygonOffset);
+
     if (polygonOffsetFactor != raster.polygonOffsetFactor || polygonOffsetUnits != raster.polygonOffsetUnits) {
         polygonOffsetFactor = raster.polygonOffsetFactor;
         polygonOffsetUnits = raster.polygonOffsetUnits;
@@ -187,6 +204,7 @@ void StateCache::applyDepth(const Raster& raster) {
 
 void StateCache::applyStencil(const Raster& raster) {
     setCapability(stencilTest, Gl::kStencilTest, raster.stencilTest);
+
     if (!raster.stencilTest) {
         return;
     }
@@ -197,9 +215,11 @@ void StateCache::applyStencil(const Raster& raster) {
         gl.stencilOpSeparate(Gl::kFront, raster.stencilFront.fail, raster.stencilFront.depthFail, raster.stencilFront.pass);
         gl.stencilOpSeparate(Gl::kBack, raster.stencilBack.fail, raster.stencilBack.depthFail, raster.stencilBack.pass);
     }
+
     stencilFront = raster.stencilFront;
     stencilBack = raster.stencilBack;
     stencilReadMask = raster.stencilReadMask;
+
     if (functionsChanged) {
         sendStencilFunctions();
     }
@@ -212,10 +232,12 @@ void StateCache::applyStencil(const Raster& raster) {
 
 void StateCache::applyFaces(const Raster& raster) {
     setCapability(cull, Gl::kCullFace, raster.cull);
+
     if (raster.cull && cullFace != raster.cullFace) {
         cullFace = raster.cullFace;
         gl.cullFace(cullFace);
     }
+
     if (frontFace != raster.frontFace) {
         frontFace = raster.frontFace;
         gl.frontFace(frontFace);
@@ -231,6 +253,7 @@ void StateCache::applyStencilReference(std::uint8_t value) {
     if (stencilReference == value) {
         return;
     }
+
     stencilReference = value;
     sendStencilFunctions();
 }
@@ -239,6 +262,7 @@ void StateCache::applyBlendColor(const math::Color& value) {
     if (blendColor.r == value.r && blendColor.g == value.g && blendColor.b == value.b && blendColor.a == value.a) {
         return;
     }
+
     blendColor = value;
     gl.blendColor(value.r, value.g, value.b, value.a);
 }
@@ -248,14 +272,17 @@ void StateCache::prepareClear() {
         gl.colorMask(1, 1, 1, 1);
         masks.fill(15);
     }
+
     if (!depthWrite) {
         depthWrite = true;
         gl.depthMask(1);
     }
+
     if (stencilWriteMask != 0xFF) {
         stencilWriteMask = 0xFF;
         gl.stencilMaskSeparate(Gl::kFrontAndBack, stencilWriteMask);
     }
+
     setScissorTest(false);
     useProgram(0);
 }
@@ -264,6 +291,7 @@ void StateCache::setViewport(const Rectangle& value) {
     if (viewport == value) {
         return;
     }
+
     viewport = value;
     gl.viewport(value.x, value.y, value.width, value.height);
 }
@@ -272,6 +300,7 @@ void StateCache::setScissor(const Rectangle& value) {
     if (scissor == value) {
         return;
     }
+
     scissor = value;
     gl.scissor(value.x, value.y, value.width, value.height);
 }
@@ -290,6 +319,7 @@ void StateCache::useProgram(Gl::Uint value) {
     if (program == value) {
         return;
     }
+
     program = value;
     gl.useProgram(value);
 }
@@ -298,6 +328,7 @@ void StateCache::bindVertexArray(Gl::Uint array) {
     if (vertexArray == array) {
         return;
     }
+
     vertexArray = array;
     gl.bindVertexArray(array);
 }
@@ -323,6 +354,7 @@ void StateCache::bindBuffer(Gl::Enum target, Gl::Uint buffer) {
     if (current == buffer) {
         return;
     }
+
     current = buffer;
     gl.bindBuffer(target, buffer);
 }
@@ -331,6 +363,7 @@ void StateCache::bindDrawFramebuffer(Gl::Uint framebuffer) {
     if (drawFramebuffer == framebuffer) {
         return;
     }
+
     drawFramebuffer = framebuffer;
     gl.bindFramebuffer(Gl::kDrawFramebuffer, framebuffer);
 }
@@ -339,6 +372,7 @@ void StateCache::bindReadFramebuffer(Gl::Uint framebuffer) {
     if (readFramebuffer == framebuffer) {
         return;
     }
+
     readFramebuffer = framebuffer;
     gl.bindFramebuffer(Gl::kReadFramebuffer, framebuffer);
 }
@@ -348,10 +382,12 @@ void StateCache::bindTexture(std::size_t unit, Gl::Enum target, Gl::Uint texture
     if (current.texture == texture && current.target == target) {
         return;
     }
+
     if (activeUnit != unit) {
         activeUnit = unit;
         gl.activeTexture(Gl::kTexture0 + static_cast<Gl::Enum>(unit));
     }
+
     current.target = target;
     current.texture = texture;
     gl.bindTexture(target, texture);
@@ -362,6 +398,7 @@ void StateCache::bindSampler(std::size_t unit, Gl::Uint sampler) {
     if (current.sampler == sampler) {
         return;
     }
+
     current.sampler = sampler;
     gl.bindSampler(static_cast<Gl::Uint>(unit), sampler);
 }
@@ -406,6 +443,7 @@ void StateCache::forgetFramebuffer(Gl::Uint framebuffer) noexcept {
     if (drawFramebuffer == framebuffer) {
         drawFramebuffer = 0;
     }
+
     if (readFramebuffer == framebuffer) {
         readFramebuffer = 0;
     }

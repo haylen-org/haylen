@@ -7,6 +7,7 @@ DebugMessages::DebugMessages() {
     if (library == nullptr) {
         return;
     }
+
     using GetInterface = HRESULT(WINAPI*)(UINT, REFIID, void**);
     const auto get = reinterpret_cast<GetInterface>(reinterpret_cast<void*>(GetProcAddress(library, "DXGIGetDebugInterface1")));
     if (get != nullptr) {
@@ -18,18 +19,21 @@ void DebugMessages::drainDxgi() {
     if (dxgi == nullptr) {
         return;
     }
+
     const UINT64 count = dxgi->GetNumStoredMessages(DXGI_DEBUG_ALL);
     for (UINT64 index = 0; index < count; ++index) {
         SIZE_T size = 0;
         if (FAILED(dxgi->GetMessage(DXGI_DEBUG_ALL, index, nullptr, &size))) {
             continue;
         }
+
         storage.resize(size);
         auto* message = reinterpret_cast<DXGI_INFO_QUEUE_MESSAGE*>(storage.data());
         if (SUCCEEDED(dxgi->GetMessage(DXGI_DEBUG_ALL, index, message, &size))) {
             write(static_cast<int>(message->Severity), "DXGI", std::string_view(message->pDescription, message->DescriptionByteLength > 0 ? message->DescriptionByteLength - 1 : 0));
         }
     }
+
     dxgi->ClearStoredMessages(DXGI_DEBUG_ALL);
 }
 
