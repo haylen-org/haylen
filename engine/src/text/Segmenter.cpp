@@ -26,10 +26,12 @@ std::vector<std::uint32_t> Segmenter::getScripts(std::u32string_view text) {
     const SBCodepointSequence sequence{SBStringEncodingUTF32, text.data(), text.size()};
     const std::unique_ptr<_SBScriptLocator, decltype(&SBScriptLocatorRelease)> locator(SBScriptLocatorCreate(), &SBScriptLocatorRelease);
     SBScriptLocatorLoadCodepoints(locator.get(), &sequence);
+
     while (SBScriptLocatorMoveNext(locator.get()) != 0) {
         const SBScriptAgent& agent = *SBScriptLocatorGetAgent(locator.get());
         std::fill_n(scripts.begin() + static_cast<std::ptrdiff_t>(agent.offset), agent.length, SBScriptGetUnicodeTag(agent.script));
     }
+
     return scripts;
 }
 
@@ -38,12 +40,14 @@ std::vector<bool> Segmenter::getGraphemeStarts(std::u32string_view text) {
     if (text.empty()) {
         return {};
     }
+
     std::vector<char> breaks(text.size());
     set_graphemebreaks_utf32(reinterpret_cast<const utf32_t*>(text.data()), text.size(), nullptr, breaks.data());
     std::vector<bool> starts(text.size(), false);
     for (std::size_t index = 0; index < text.size(); ++index) {
         starts[index] = index == 0 || breaks[index - 1] == GRAPHEMEBREAK_BREAK;
     }
+
     return starts;
 }
 
@@ -51,6 +55,7 @@ std::vector<Segmenter::Break> Segmenter::getLineBreaks(std::u32string_view text,
     if (text.empty()) {
         return {};
     }
+
     std::vector<char> breaks(text.size());
     const std::string tag(language);
     set_linebreaks_utf32(reinterpret_cast<const utf32_t*>(text.data()), text.size(), tag.empty() ? nullptr : tag.c_str(), breaks.data());
@@ -62,6 +67,7 @@ std::vector<Segmenter::Break> Segmenter::getLineBreaks(std::u32string_view text,
             found[index] = Break::Allowed;
         }
     }
+
     keepNames(text, found);
     addThaiPhrases(text, found);
     return found;
@@ -86,6 +92,7 @@ void Segmenter::keepCode(std::u32string_view text, std::size_t begin, std::size_
         if (indenting && found[index] == Break::Allowed) {
             found[index] = Break::Never;
         }
+
         indenting = indenting || found[index] == Break::Mandatory;
     }
 
@@ -93,16 +100,19 @@ void Segmenter::keepCode(std::u32string_view text, std::size_t begin, std::size_
         if (!isQuote(text[index]) || (index > 0 && isLetterOrDigit(text[index - 1]))) {
             continue;
         }
+
         std::size_t close = index + 1;
         while (close < end && text[close] != text[index] && found[close - 1] != Break::Mandatory) {
             close += text[close] == U'\\' && close + 1 < end ? 2 : 1;
         }
+
         close = std::min(close, end - 1);
         for (std::size_t inside = index; inside < close; ++inside) {
             if (found[inside] == Break::Allowed) {
                 found[inside] = Break::Overflow;
             }
         }
+
         index = close;
     }
 }
@@ -125,13 +135,16 @@ void Segmenter::addThaiPhrases(std::u32string_view text, std::vector<Break>& fou
             ++begin;
             continue;
         }
+
         std::size_t end = begin + 1;
         while (end < text.size() && PhraseBreaker::isThai(text[end])) {
             ++end;
         }
+
         if (graphemes.empty()) {
             graphemes = getGraphemeStarts(text);
         }
+
         const std::vector<bool> phrases = PhraseBreaker::findThaiPhrases(text.substr(begin, end - begin));
         for (std::size_t offset = 1; offset < phrases.size(); ++offset) {
             const std::size_t index = begin + offset;
@@ -139,6 +152,7 @@ void Segmenter::addThaiPhrases(std::u32string_view text, std::vector<Break>& fou
                 found[index - 1] = Break::Allowed;
             }
         }
+
         begin = end;
     }
 }

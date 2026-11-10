@@ -11,6 +11,7 @@ std::size_t LayoutCache::KeyHash::operator()(const Key& key) const noexcept {
     for (const std::size_t part : {std::hash<float>{}(key.size), std::hash<float>{}(key.maxWidth), std::hash<float>{}(key.maxHeight), std::hash<float>{}(key.minScale), std::hash<float>{}(key.lineSpacing), std::hash<std::string_view>{}(key.language), static_cast<std::size_t>(key.balance) << 12U | static_cast<std::size_t>(key.code) << 11U | static_cast<std::size_t>(key.ligatures) << 10U | static_cast<std::size_t>(key.underline) << 9U | static_cast<std::size_t>(key.strike) << 8U | static_cast<std::size_t>(key.wrap) << 7U | static_cast<std::size_t>(key.align) << 4U | static_cast<std::size_t>(key.direction) << 2U | static_cast<std::size_t>(key.bold) << 1U | static_cast<std::size_t>(key.italic)}) {
         hash ^= part + std::size_t{0x9E3779B9U} + (hash << 6U) + (hash >> 2U);
     }
+
     return hash;
 }
 
@@ -23,10 +24,12 @@ std::shared_ptr<const Layout> LayoutCache::find(std::string_view text, const Sty
     if (!std::isfinite(style.size) || !std::isfinite(style.maxWidth) || !std::isfinite(style.maxHeight) || !std::isfinite(style.minScale) || !std::isfinite(style.lineSpacing)) {
         throw std::invalid_argument("Text needs a finite size, maximum width, maximum height, minimum scale and line spacing.");
     }
+
     const auto found = index.find(makeKey(text, style));
     if (found == index.end()) {
         return nullptr;
     }
+
     entries.splice(entries.begin(), entries, found->second);
     return found->second->layout;
 }
@@ -41,6 +44,7 @@ std::shared_ptr<const Layout> LayoutCache::store(std::string_view text, const St
         index.erase(entries.back().key);
         entries.pop_back();
     }
+
     return layout;
 }
 
@@ -50,6 +54,7 @@ void LayoutCache::dropWaitingForFonts() {
             ++entry;
             continue;
         }
+
         index.erase(entry->key);
         entry = entries.erase(entry);
     }

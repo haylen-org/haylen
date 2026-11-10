@@ -23,6 +23,7 @@ std::uint8_t ColorGlyphImage::unpremultiply(unsigned int channel, unsigned int a
 graphics::Image ColorGlyphImage::rasterize(float scale) const {
     const auto [width, height] = graphics::VectorImage::getRasterSize(getSize(), scale);
     const std::unique_ptr<hb_raster_paint_t, decltype(&hb_raster_paint_destroy)> paint(hb_raster_paint_create_or_fail(), &hb_raster_paint_destroy);
+
     if (!paint) {
         throw std::bad_alloc();
     }
@@ -35,10 +36,13 @@ graphics::Image ColorGlyphImage::rasterize(float scale) const {
     const hb_raster_extents_t area{.x_origin = 0, .y_origin = 0, .width = static_cast<unsigned int>(width), .height = static_cast<unsigned int>(height), .stride = static_cast<unsigned int>(width) * 4U};
     hb_raster_paint_set_extents(paint.get(), &area);
     hb_raster_paint_set_foreground(paint.get(), HB_COLOR(255, 255, 255, 255));
+
     if (!hb_raster_paint_glyph_or_fail(paint.get(), font.get(), glyph)) {
         throw std::runtime_error("The color glyph " + std::to_string(glyph) + " of the font could not be painted.");
     }
+
     const std::unique_ptr<hb_raster_image_t, decltype(&hb_raster_image_destroy)> painted(hb_raster_paint_render(paint.get()), &hb_raster_image_destroy);
+
     if (!painted) {
         throw std::bad_alloc();
     }
@@ -57,6 +61,7 @@ graphics::Image ColorGlyphImage::rasterize(float scale) const {
             if (alpha == 0) {
                 continue;
             }
+
             to[pixel] = unpremultiply(from[pixel + 2], alpha);
             to[pixel + 1] = unpremultiply(from[pixel + 1], alpha);
             to[pixel + 2] = unpremultiply(from[pixel], alpha);

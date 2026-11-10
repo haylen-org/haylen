@@ -18,11 +18,13 @@ PhraseBreaker::Model PhraseBreaker::parse(std::span<const std::uint8_t> json) {
         if (group == document.end()) {
             continue;
         }
+
         for (const auto& [key, weight] : group->items()) {
             model.weights[feature].emplace(core::Utf8::decode(key), weight.get<int>());
             model.total += weight.get<int>();
         }
     }
+
     return model;
 }
 
@@ -62,6 +64,7 @@ std::vector<bool> PhraseBreaker::findThaiPhrases(std::u32string_view text) {
         score += twoAfter ? weigh(model, 12, text, index, 3) : 0;
         starts[index] = score * 2 > model.total;
     }
+
     return starts;
 }
 

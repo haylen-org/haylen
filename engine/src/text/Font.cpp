@@ -32,6 +32,7 @@ float Font::toDistance(float pixels, float size) const noexcept {
     if (metrics.spread <= 0.0F) {
         return 0.0F;
     }
+
     // The field falls from 1 to 0 across twice the spread at the native size, with the edge at 0.5.
     return pixels * metrics.nativeSize / size / (metrics.spread * 2.0F);
 }
@@ -40,6 +41,7 @@ std::shared_ptr<const Layout> Font::layout(std::string_view text, const Style& s
     if (std::shared_ptr<const Layout> cached = layouts->find(text, style)) {
         return cached;
     }
+
     return layouts->store(text, style, TextFit::layout(style, [this, text](const Style& laid) { return LayoutBuilder::layoutPlainText(text, laid, nullptr, this); }));
 }
 

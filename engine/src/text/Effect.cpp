@@ -20,6 +20,7 @@ Effect::Parameters::Parameters(std::string effectName, std::map<std::string, std
         if (error == std::errc{} && end == text.data() + text.size() && !text.empty() && std::isfinite(value)) {
             numbers.emplace(key, value);
         }
+
         if (const std::optional<math::Color> color = MarkupParser::parseColor(text)) {
             colors.emplace(key, *color);
         }
@@ -34,10 +35,12 @@ float Effect::Parameters::getNumber(std::string_view key, float byDefault) const
     if (const auto found = numbers.find(key); found != numbers.end()) {
         return found->second;
     }
+
     const auto found = values.find(key);
     if (found == values.end()) {
         return byDefault;
     }
+
     throw std::invalid_argument("The \"" + std::string(key) + "\" of \"[" + effect + "]\" must be a number, not \"" + found->second + "\".");
 }
 
@@ -45,10 +48,12 @@ math::Color Effect::Parameters::getColor(std::string_view key, math::Color byDef
     if (const auto found = colors.find(key); found != colors.end()) {
         return found->second;
     }
+
     const auto found = values.find(key);
     if (found == values.end()) {
         return byDefault;
     }
+
     throw std::invalid_argument("The \"" + std::string(key) + "\" of \"[" + effect + "]\" must be a color such as \"red\" or \"#RRGGBB\", not \"" + found->second + "\".");
 }
 
@@ -58,9 +63,11 @@ float Effect::ease(float value, float curve) noexcept {
     if (curve > 0.0F) {
         return curve < 1.0F ? 1.0F - std::pow(1.0F - x, 1.0F / curve) : std::pow(x, curve);
     }
+
     if (curve < 0.0F) {
         return x < 0.5F ? std::pow(x * 2.0F, -curve) * 0.5F : (1.0F - std::pow(1.0F - (x - 0.5F) * 2.0F, -curve)) * 0.5F + 0.5F;
     }
+
     return 0.0F;
 }
 
@@ -68,6 +75,7 @@ float Effect::pingPong(float value, float length) noexcept {
     if (length == 0.0F) {
         return 0.0F;
     }
+
     const float cycle = (value - length) / (length * 2.0F);
     return std::fabs((cycle - std::floor(cycle)) * length * 2.0F - length);
 }

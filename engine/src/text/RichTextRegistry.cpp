@@ -12,6 +12,7 @@ RichTextRegistry::RichTextRegistry(std::shared_ptr<FontFamily> defaultFamily) : 
     if (!family) {
         throw std::invalid_argument("A rich text registry needs the family of the default font.");
     }
+
     registerBuiltInEffects();
 }
 
@@ -28,15 +29,19 @@ void RichTextRegistry::registerEffect(std::string name, Effect::Function effect)
     if (name.empty() || name.find_first_of(" =[]/") != std::string::npos) {
         throw std::invalid_argument("A text effect name must be a single word, not \"" + name + "\".");
     }
+
     if (MarkupParser::isTag(name)) {
         throw std::invalid_argument("The name \"" + name + "\" belongs to a rich text tag, so no effect can take it.");
     }
+
     if (std::find(kBuiltInEffects.begin(), kBuiltInEffects.end(), name) != kBuiltInEffects.end()) {
         throw std::invalid_argument("The name \"" + name + "\" belongs to a built-in text effect, so no other effect can take it.");
     }
+
     if (!effect) {
         throw std::invalid_argument("The text effect \"" + name + "\" needs a function.");
     }
+
     effects.insert_or_assign(std::move(name), std::move(effect));
 }
 
@@ -50,6 +55,7 @@ std::vector<std::string> RichTextRegistry::getEffectNames() const {
     for (const auto& [name, effect] : effects) {
         names.push_back(name);
     }
+
     return names;
 }
 
@@ -57,12 +63,15 @@ void RichTextRegistry::registerIcon(std::string name, Icon icon) {
     if (name.empty()) {
         throw std::invalid_argument("A text icon needs a name.");
     }
+
     if (!icon.texture.isValid()) {
         throw std::invalid_argument("The text icon \"" + name + "\" needs a texture.");
     }
+
     if (icon.source.isEmpty()) {
         icon.source = {0.0F, 0.0F, icon.texture.getSize().x, icon.texture.getSize().y};
     }
+
     icons.insert_or_assign(std::move(name), std::move(icon));
 }
 

@@ -54,6 +54,7 @@ class FontFileTest : public ::testing::Test {
             const std::span<const std::uint8_t> data = core::EmbeddedFiles::getDefaultFont();
             return {data.begin(), data.end()};
         }
+
         std::ifstream file(std::string(HAYLEN_TEST_FONTS) + "/" + std::string(name), std::ios::binary);
         return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
     }
@@ -63,6 +64,7 @@ class FontFileTest : public ::testing::Test {
         if (!file) {
             throw std::runtime_error("The test font does not open.");
         }
+
         return std::move(*file);
     }
 
@@ -83,6 +85,7 @@ class FontFileTest : public ::testing::Test {
             const std::span<const std::uint8_t> from = rows.subspan(static_cast<std::size_t>(row) * extents.stride, static_cast<std::size_t>(coverage.width));
             coverage.pixels.insert(coverage.pixels.end(), from.begin(), from.end());
         }
+
         return coverage;
     }
 
@@ -112,6 +115,7 @@ class FontFileTest : public ::testing::Test {
                 filled[static_cast<std::size_t>(row * field.width + column)] = std::max(read(row, x - weight), read(row, x + weight)) > 0.5F;
             }
         }
+
         return filled;
     }
 
@@ -124,15 +128,18 @@ class FontFileTest : public ::testing::Test {
             if (seen[static_cast<std::size_t>(first)] || mask[static_cast<std::size_t>(first)] != value) {
                 continue;
             }
+
             bool touches = false;
             pending.assign(1, first);
             seen[static_cast<std::size_t>(first)] = true;
+
             while (!pending.empty()) {
                 const int at = pending.back();
                 pending.pop_back();
                 const int x = at % width;
                 const int y = at / width;
                 touches = touches || x == 0 || y == 0 || x == width - 1 || y == height - 1;
+
                 for (const auto [dx, dy] : {std::pair{1, 0}, std::pair{-1, 0}, std::pair{0, 1}, std::pair{0, -1}}) {
                     const int nx = x + dx;
                     const int ny = y + dy;
@@ -143,8 +150,10 @@ class FontFileTest : public ::testing::Test {
                     }
                 }
             }
+
             regions += inner && touches ? 0 : 1;
         }
+
         return regions;
     }
 };
@@ -267,6 +276,7 @@ TEST(FontTest, UploadsItsAtlasOncePerFrameForTheGlyphsOfEveryDraw) {
         (void)font.layout(line, {.size = 24.0F});
         font.sync();
     }
+
     fixture.frames(1);
     EXPECT_EQ(fixture.host().getGpu().getLastFrame().imageWrites, 1);
     EXPECT_EQ(fixture.host().getGpu().getLastFrame().imageWriteBytes, static_cast<std::size_t>(page.getWidth() * page.getHeight()) * sizeof(std::uint16_t));
@@ -383,6 +393,7 @@ TEST_F(FontFileTest, BuildsDistanceFieldsFromWholeOutlines) {
         {"crimson-text-regular.ttf", U"Sphinx&@8Og"},
         {"noto-sans-cjk-regular.otf", U"\u3072\u306A\u3089"},
     }};
+
     for (const auto& [name, characters] : fonts) {
         const FontFile file = open(read(name));
         const float scale = scaleFor(file, 64.0F);
@@ -401,13 +412,16 @@ TEST_F(FontFileTest, BuildsDistanceFieldsFromWholeOutlines) {
                     if (covered > 64 && covered < 192) {
                         continue;
                     }
+
                     const std::uint16_t distance = field->distances[static_cast<std::size_t>((row + coverage.y - field->offsetY) * field->width + column + coverage.x - field->offsetX)];
                     agreeing += (distance >= math::HalfFloat::fromFloat(0.5F)) == (covered >= 192) ? 1 : 0;
                     ++counted;
                 }
             }
+
             EXPECT_GE(agreeing, counted * 995 / 1000) << name << " " << static_cast<int>(character);
         }
+
         EXPECT_FALSE(DistanceField::build(file, file.findGlyph(' '), scale, 8, 4096).has_value());
     }
 }

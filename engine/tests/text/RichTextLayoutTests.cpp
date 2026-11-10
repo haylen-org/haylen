@@ -45,6 +45,7 @@ class RichTextLayoutTest : public ::testing::Test {
         if (!options.family) {
             options.family = registry()->getDefaultFamily();
         }
+
         return {markup, std::move(options), registry()};
     }
 
@@ -58,6 +59,7 @@ class RichTextLayoutTest : public ::testing::Test {
                 return glyph;
             }
         }
+
         throw std::out_of_range("The layout has no such glyph.");
     }
 
@@ -90,6 +92,7 @@ TEST_F(RichTextLayoutTest, WrapsMixedSizesOnOneBaselineAndAligns) {
     const Layout& lines = wrapped.getLayout();
     EXPECT_GT(lines.lineCount, 2U);
     EXPECT_FLOAT_EQ(lines.size.x, 150.0F);
+
     for (const Layout::Glyph& glyph : lines.glyphs) {
         EXPECT_LE(glyph.position.x + glyph.size.x, 155.0F);
     }
@@ -111,6 +114,7 @@ TEST_F(RichTextLayoutTest, WrapsMixedSizesOnOneBaselineAndAligns) {
             firstLineRight = std::max(firstLineRight, glyph.position.x + glyph.size.x);
         }
     }
+
     EXPECT_NEAR(firstLineRight, 200.0F, 6.0F);
     RichText unfilled = make("aaa bb cccc dd eeee ff gggggg h", {.size = 24.0F, .maxWidth = 200.0F});
     EXPECT_FLOAT_EQ(glyphOf(stretched, U'h').position.x, glyphOf(unfilled.getLayout(), U'h').position.x);
@@ -160,6 +164,7 @@ TEST_F(RichTextLayoutTest, LaysOutListsRulesTablesAndDropCaps) {
             belowLeft = std::min(belowLeft, glyph.position.x);
         }
     }
+
     EXPECT_LT(belowLeft, capital.position.x + capital.size.x);
 }
 
@@ -219,9 +224,11 @@ TEST_F(RichTextLayoutTest, HitTestsLinksAndHints) {
     RichText linked = make("go [url=home]to the home page[/url] or [hint=A tip]here[/hint]", {.size = 20.0F, .maxWidth = 120.0F});
     const Layout& laid = linked.getLayout();
     ASSERT_GE(laid.links.size(), 2U);
+
     for (const Layout::Area& area : laid.links) {
         EXPECT_EQ(linked.getLinkAt(area.rect.getCenter()), "home");
     }
+
     EXPECT_FALSE(linked.getLinkAt({1.0F, 1.0F}));
     ASSERT_EQ(laid.hints.size(), 1U);
     EXPECT_EQ(linked.getHintAt(laid.hints[0].rect.getCenter()), "A tip");
@@ -244,6 +251,7 @@ TEST_F(RichTextLayoutTest, RunsEffectsDeterministically) {
     for (std::size_t index = 0; index < moved.glyphs.size(); ++index) {
         EXPECT_NEAR(moved.glyphs[index].position.y, second.getFrame().glyphs[index].position.y, 0.0001F);
     }
+
     const Layout::Glyph& w = glyphOf(laid, U'w');
     EXPECT_NEAR(glyphOf(moved, U'w').position.y - w.position.y, std::sin(2.0F * 0.25F + w.position.x / 50.0F) * 5.0F, 0.001F);
     EXPECT_FLOAT_EQ(glyphOf(moved, U's').position.y, glyphOf(laid, U's').position.y);
@@ -271,6 +279,7 @@ TEST_F(RichTextLayoutTest, RunsEffectsDeterministically) {
     } catch (const std::invalid_argument& error) {
         EXPECT_STREQ(error.what(), "Rich text markup at line 2, column 3: The markup \"[nope]\" is neither a tag nor a registered text effect.");
     }
+
     RichText broken = make("[wave amp=loud]x[/wave]");
     EXPECT_THROW((void)broken.getFrame(), std::invalid_argument);
     EXPECT_THROW(registry()->registerEffect("wave", [](Effect::Glyph&, const Effect::Parameters&) {}), std::invalid_argument);
@@ -291,10 +300,12 @@ TEST_F(RichTextLayoutTest, HangsTheWrappedLinesOfAParagraph) {
     const Layout& layout = hung.getLayout();
     ASSERT_GT(layout.lines.size(), 2U);
     EXPECT_NEAR(layout.lines[0].box.x, 0.0F, 1.0F);
+
     for (std::size_t index = 1; index < layout.lines.size(); ++index) {
         EXPECT_NEAR(layout.lines[index].box.x, 2.0F * 1.5F * 20.0F, 1.0F) << index;
         EXPECT_LE(layout.lines[index].box.getRight(), 240.0F + 1.0F) << index;
     }
+
     EXPECT_THROW((void)make("[p hang=wide]x[/p]"), std::invalid_argument);
 }
 

@@ -31,10 +31,12 @@ Layout LayoutBuilder::layoutPlainText(std::string_view text, const Style& style,
         while (end < codePoints.size() && !endsParagraph(end)) {
             ++end;
         }
+
         RichTextDocument::Paragraph& paragraph = plain.paragraphs.emplace_back();
         if (end > start) {
             paragraph.inlines.push_back({.kind = RichTextDocument::Inline::Kind::Text, .text = codePoints.substr(start, end - start)});
         }
+
         start = end + 1;
     }
 
@@ -101,11 +103,14 @@ const LayoutBuilder::StyleFont& LayoutBuilder::getStyleFont(std::size_t style) {
             if (!named) {
                 throw std::invalid_argument("The rich text uses the font \"" + described.font + "\", which is not registered.");
             }
+
             layout.families.push_back(named);
             found = families.emplace(described.font, std::move(named)).first;
         }
+
         chosen = found->second.get();
     }
+
     cached = StyleFont{.family = chosen, .face = chosen->select(bold, italic, described.mono), .bold = bold, .italic = italic, .size = size};
     return *cached;
 }
@@ -129,17 +134,20 @@ std::size_t LayoutBuilder::getLook(std::size_t style, const FontFamily::Selectio
         .emboldenOffset = face.syntheticBold && !field ? size / face.font->getNativeSize() : 0.0F,
         .skew = face.syntheticItalic ? kSyntheticSkew : 0.0F,
     };
+
     if (described.shadow) {
         RichTextDocument::Shadow shadow = *described.shadow;
         shadow.offset = shadow.offset * options.scale;
         shadow.blur *= options.scale;
         look.shadow = shadow;
     }
+
     if (described.glow) {
         RichTextDocument::Glow glow = *described.glow;
         glow.width *= options.scale;
         look.glow = glow;
     }
+
     look.gradient = described.gradient;
 
     layout.looks.push_back(look);
@@ -184,6 +192,7 @@ void LayoutBuilder::shapeRun(const Source& source, std::size_t begin, std::size_
         while (last < byCluster.size() && shapedGlyphs[byCluster[last]].cluster == cluster) {
             ++last;
         }
+
         Piece piece{.kind = Piece::Kind::Cluster, .style = style, .look = look, .begin = cluster, .end = last < byCluster.size() ? shapedGlyphs[byCluster[last]].cluster : end, .firstGlyph = glyphs.size(), .level = level};
         const auto codePoints = std::u32string_view(source.text).substr(piece.begin, piece.end - piece.begin);
         const bool visible = !std::ranges::all_of(codePoints, &Segmenter::isInvisible);
@@ -194,6 +203,7 @@ void LayoutBuilder::shapeRun(const Source& source, std::size_t begin, std::size_
             glyphs.push_back({.glyph = drawing.getGlyph(shaped.index), .index = shaped.index, .factor = factor, .offset = math::Vec2{pen, 0.0F} + shaped.offset * factor});
             pen += shaped.advance * factor;
         }
+
         next = last;
         piece.glyphCount = glyphs.size() - piece.firstGlyph;
         piece.advance = visible ? pen + drawn.weight * 2.0F + drawn.emboldenOffset : 0.0F;
@@ -219,9 +229,11 @@ std::vector<LayoutBuilder::Piece> LayoutBuilder::shape(const Source& source, con
         while (codeEnd < text.size() && isCode(source.styles[codeEnd])) {
             ++codeEnd;
         }
+
         if (codeEnd > codeBegin) {
             Segmenter::keepCode(text, codeBegin, codeEnd, breaks);
         }
+
         codeBegin = codeEnd + 1;
     }
 
@@ -234,12 +246,15 @@ std::vector<LayoutBuilder::Piece> LayoutBuilder::shape(const Source& source, con
     const auto add = [&](Piece piece) {
         piece.breakBefore = piece.begin > 0 ? breaks[piece.begin - 1] : Segmenter::Break::Never;
         const std::size_t firstPause = pieces.size();
+
         for (; nextPause < source.pauses.size() && source.pauses[nextPause].first <= piece.begin; ++nextPause) {
             pieces.push_back({.kind = Piece::Kind::Pause, .style = piece.style, .begin = piece.begin, .end = piece.begin, .pause = source.pauses[nextPause].second});
         }
+
         if (pieces.size() > firstPause) {
             pieces[firstPause].breakBefore = std::exchange(piece.breakBefore, Segmenter::Break::Never);
         }
+
         pieces.push_back(std::move(piece));
     };
     // clang-format on
@@ -255,6 +270,7 @@ std::vector<LayoutBuilder::Piece> LayoutBuilder::shape(const Source& source, con
         while (clusterEnd < text.size() && !graphemes[clusterEnd]) {
             ++clusterEnd;
         }
+
         const std::u32string_view cluster = text.substr(index, clusterEnd - index);
         const bool object = text[index] == kObject && source.objects.contains(index);
         const bool lineBreak = text[index] == kLineSeparator;
@@ -273,10 +289,12 @@ std::vector<LayoutBuilder::Piece> LayoutBuilder::shape(const Source& source, con
         if (!continues && index > runBegin && runFace.font != nullptr) {
             shaped.clear();
             shapeRun(source, runBegin, index, runFace, bidi.getLevel(runBegin), scripts[runBegin], shaped, glyphs);
+
             for (Piece& piece : shaped) {
                 add(std::move(piece));
             }
         }
+
         if (!continues) {
             runBegin = index;
             runFace = face;
@@ -295,18 +313,23 @@ std::vector<LayoutBuilder::Piece> LayoutBuilder::shape(const Source& source, con
             runBegin = clusterEnd;
             runFace = {};
         }
+
         index = clusterEnd;
     }
+
     if (runFace.font != nullptr && runBegin < text.size()) {
         shaped.clear();
         shapeRun(source, runBegin, text.size(), runFace, bidi.getLevel(runBegin), scripts[runBegin], shaped, glyphs);
+
         for (Piece& piece : shaped) {
             add(std::move(piece));
         }
     }
+
     for (; nextPause < source.pauses.size(); ++nextPause) {
         pieces.push_back({.kind = Piece::Kind::Pause, .begin = text.size(), .end = text.size(), .pause = source.pauses[nextPause].second});
     }
+
     return pieces;
 }
 
@@ -325,6 +348,7 @@ LayoutBuilder::Piece LayoutBuilder::measureObject(std::size_t style, graphics::T
         piece.ascent = piece.lift + extent.y * 0.5F;
         piece.descent = extent.y * 0.5F - piece.lift;
     }
+
     return piece;
 }
 
@@ -333,15 +357,19 @@ LayoutBuilder::Piece LayoutBuilder::measureImage(const RichTextDocument::Inline&
     // clang-format off
     const auto fit = [this](math::Vec2 natural, std::optional<float> width, std::optional<float> height) {
         const float ratio = natural.y > 0.0F ? natural.x / natural.y : 1.0F;
+
         if (width && height) {
             return math::Vec2{*width, *height} * options.scale;
         }
+
         if (width) {
             return math::Vec2{*width, ratio > 0.0F ? *width / ratio : 0.0F} * options.scale;
         }
+
         if (height) {
             return math::Vec2{*height * ratio, *height} * options.scale;
         }
+
         return natural;
     };
     // clang-format on
@@ -351,10 +379,12 @@ LayoutBuilder::Piece LayoutBuilder::measureImage(const RichTextDocument::Inline&
         if (!options.images) {
             throw std::invalid_argument("The rich text has no image source for \"[img=" + image.path + "]\".");
         }
+
         graphics::Texture texture = options.images(image.path);
         if (!texture.isValid()) {
             layout.waitingForImages = true;
         }
+
         const math::Rect source = image.region.value_or(texture.isValid() ? math::Rect{0.0F, 0.0F, texture.getSize().x, texture.getSize().y} : math::Rect{});
         const math::Vec2 extent = fit(source.getSize() * options.scale, image.width, image.height);
         return measureObject(item.style, std::move(texture), source, extent, image.color, image.align);
@@ -365,6 +395,7 @@ LayoutBuilder::Piece LayoutBuilder::measureImage(const RichTextDocument::Inline&
     if (registered == nullptr) {
         throw std::invalid_argument("The rich text uses the icon \"" + icon.name + "\", which is not registered.");
     }
+
     const math::Vec2 shape = registered->source.getSize();
     const float textSize = getStyleFont(item.style).size;
     const math::Vec2 natural = registered->size.isZero() ? math::Vec2{shape.y > 0.0F ? textSize * shape.x / shape.y : textSize, textSize} : registered->size * options.scale;
@@ -400,6 +431,7 @@ std::vector<std::size_t> LayoutBuilder::orderPieces(const std::vector<Piece>& pi
             last = index + 1;
         }
     }
+
     if (first >= last) {
         return order;
     }
@@ -407,6 +439,7 @@ std::vector<std::size_t> LayoutBuilder::orderPieces(const std::vector<Piece>& pi
     order.reserve(last - first);
     for (const BidiParagraph::Run& run : bidi.getVisualRuns(pieces[first].begin, pieces[last - 1].end)) {
         const std::size_t start = order.size();
+
         for (std::size_t index = first; index < last; ++index) {
             const Piece& piece = pieces[index];
             const bool drawable = piece.kind == Piece::Kind::Cluster || piece.kind == Piece::Kind::Image;
@@ -414,10 +447,12 @@ std::vector<std::size_t> LayoutBuilder::orderPieces(const std::vector<Piece>& pi
                 order.push_back(index);
             }
         }
+
         if (run.level % 2 != 0) {
             std::reverse(order.begin() + static_cast<std::ptrdiff_t>(start), order.end());
         }
     }
+
     return order;
 }
 
@@ -434,10 +469,12 @@ void LayoutBuilder::closeLine(Flow& flow, Line& line, float& top) const {
             measured = true;
         }
     }
+
     if (!measured) {
         ascent = flow.emptyAscent;
         descent = flow.emptyDescent;
     }
+
     for (std::size_t index = line.begin; index < line.end; ++index) {
         const Piece& piece = flow.pieces[index];
         if (piece.kind == Piece::Kind::Image && piece.align == Align::Top) {
@@ -457,9 +494,11 @@ void LayoutBuilder::closeLine(Flow& flow, Line& line, float& top) const {
 // Lines wrap as far as they go, and then the balance of the text evens them out where it asks for it.
 void LayoutBuilder::breakLines(Flow& flow, float available) {
     wrapLines(flow, available, {});
+
     if (available <= 0.0F || flow.lines.size() < 2) {
         return;
     }
+
     switch (options.balance) {
     case Balance::None:
         break;
@@ -487,10 +526,12 @@ void LayoutBuilder::keepLastWords(Flow& flow, float available) {
         while (firstVisible < previous.end && !isVisible(pieces[firstVisible])) {
             ++firstVisible;
         }
+
         std::size_t word = previous.end - 1;
         while (word > firstVisible && breakBefore(pieces, word) != Segmenter::Break::Allowed) {
             --word;
         }
+
         if (word <= firstVisible) {
             continue;
         }
@@ -499,10 +540,12 @@ void LayoutBuilder::keepLastWords(Flow& flow, float available) {
         for (std::size_t piece = word; piece < line.visibleEnd; ++piece) {
             width += pieces[piece].advance;
         }
+
         if (width <= available - line.shift) {
             forcedBreaks.push_back(word);
         }
     }
+
     if (!forcedBreaks.empty()) {
         wrapLines(flow, available, forcedBreaks);
     }
@@ -516,12 +559,14 @@ void LayoutBuilder::evenLines(Flow& flow, float available) {
     for (int step = 0; step < kBalanceSteps; ++step) {
         const float middle = (narrow + wide) * 0.5F;
         wrapLines(flow, middle, {});
+
         if (flow.lines.size() > count) {
             narrow = middle;
         } else {
             wide = middle;
         }
     }
+
     wrapLines(flow, wide, {});
 }
 
@@ -536,6 +581,7 @@ std::size_t LayoutBuilder::countWords(const std::vector<Piece>& pieces, const Li
             apart = false;
         }
     }
+
     return words;
 }
 
@@ -556,9 +602,11 @@ void LayoutBuilder::wrapLines(Flow& flow, float available, std::span<const std::
     // clang-format off
     const auto start = [&](std::size_t begin) {
         const float hang = flow.lines.empty() ? 0.0F : flow.hangShift;
+
         if (flow.lines.size() == 1 && !flow.dropCap.empty()) {
             placeDropCap(flow);
         }
+
         const bool besideDropCap = !flow.dropCap.empty() && (flow.lines.empty() || top < flow.dropCapReach);
         line = Line{.begin = begin, .end = begin, .visibleEnd = begin, .top = top, .shift = std::max(besideDropCap ? flow.dropCapShift : 0.0F, hang)};
         penX = 0.0F;
@@ -580,9 +628,11 @@ void LayoutBuilder::wrapLines(Flow& flow, float available, std::span<const std::
             closeLine(flow, line, top);
             start(cursor);
         }
+
         while (nextForced < forced.size() && forced[nextForced] < cursor) {
             ++nextForced;
         }
+
         if (line.end > line.begin && nextForced < forced.size() && forced[nextForced] == cursor) {
             line.wrapped = true;
             closeLine(flow, line, top);
@@ -593,6 +643,7 @@ void LayoutBuilder::wrapLines(Flow& flow, float available, std::span<const std::
         while (segmentEnd < pieces.size() && pieces[segmentEnd].kind != Piece::Kind::LineBreak && !isBreak(breakBefore(pieces, segmentEnd))) {
             ++segmentEnd;
         }
+
         float total = 0.0F;
         float visible = 0.0F;
         float part = 0.0F;
@@ -612,6 +663,7 @@ void LayoutBuilder::wrapLines(Flow& flow, float available, std::span<const std::
             closeLine(flow, line, top);
             start(cursor);
         }
+
         if (bounded && line.end == line.begin && visible > available - line.shift) {
             std::size_t fit = cursor + 1;
             float width = pieces[cursor].advance;
@@ -622,17 +674,21 @@ void LayoutBuilder::wrapLines(Flow& flow, float available, std::span<const std::
                     joint = fit;
                     jointWidth = width;
                 }
+
                 width += pieces[fit].advance;
                 ++fit;
             }
+
             if (fit < segmentEnd && breakBefore(pieces, fit) == Segmenter::Break::Overflow) {
                 joint = fit;
                 jointWidth = width;
             }
+
             if (fit < segmentEnd && joint > cursor) {
                 fit = joint;
                 width = jointWidth;
             }
+
             if (fit < segmentEnd) {
                 line.end = fit;
                 line.visibleEnd = fit;
@@ -650,9 +706,11 @@ void LayoutBuilder::wrapLines(Flow& flow, float available, std::span<const std::
             line.width = penX + visible;
             line.visibleEnd = visibleEnd;
         }
+
         penX += total;
         cursor = segmentEnd;
     }
+
     closeLine(flow, line, top);
 }
 
@@ -667,6 +725,7 @@ void LayoutBuilder::placeDropCap(Flow& flow) {
             capHeight = std::max(capHeight, font.face.font->getCapHeight(font.size));
         }
     }
+
     const float capitalsTop = capHeight > 0.0F ? first.ascent - capHeight : 0.0F;
     flow.dropCapBaseline = first.top + capitalsTop + flow.dropCapCapHeight;
     flow.dropCapReach = flow.dropCapBaseline - capitalsTop;
@@ -688,6 +747,7 @@ std::vector<LayoutBuilder::Block> LayoutBuilder::measureBlocks(const std::vector
             break;
         }
     }
+
     return blocks;
 }
 
@@ -718,6 +778,7 @@ LayoutBuilder::Block LayoutBuilder::measureParagraph(const RichTextDocument::Par
             break;
         }
     }
+
     const BidiParagraph bidi(source.text, getDirection(paragraph));
     flow.rightToLeft = bidi.isRightToLeft();
     flow.pieces = shape(source, bidi, flow.glyphs);
@@ -731,6 +792,7 @@ LayoutBuilder::Block LayoutBuilder::measureParagraph(const RichTextDocument::Par
         emptyFont = first.face.font;
         emptySize = first.size;
     }
+
     flow.emptyAscent = emptyFont->getAscent(emptySize);
     flow.emptyDescent = emptyFont->getLineHeight(emptySize) - flow.emptyAscent;
 
@@ -745,8 +807,10 @@ LayoutBuilder::Block LayoutBuilder::measureParagraph(const RichTextDocument::Par
             flow.dropCapDescent = std::max(flow.dropCapDescent, piece.descent);
             flow.dropCapCapHeight = std::max(flow.dropCapCapHeight, font.face.font->getCapHeight(font.size));
         }
+
         flow.dropCapShift = dropCapWidth + paragraph.dropCap->margin * options.scale;
     }
+
     if (!paragraph.marker.empty()) {
         shapeAside(flow, paragraph.marker, paragraph.markerStyle, flow.marker, flow.markerOrder);
     }
@@ -754,6 +818,7 @@ LayoutBuilder::Block LayoutBuilder::measureParagraph(const RichTextDocument::Par
     const float indent = paragraph.indent * getIndentUnit();
     flow.hangShift = paragraph.hang * getIndentUnit();
     breakLines(flow, width > 0.0F ? std::max(width - indent, 1.0F) : 0.0F);
+
     for (Line& line : flow.lines) {
         line.order = orderPieces(flow.pieces, line.begin, line.end, bidi);
         flow.naturalWidth = std::max(flow.naturalWidth, line.shift + line.width);
@@ -791,6 +856,7 @@ LayoutBuilder::Block LayoutBuilder::measureTable(const RichTextDocument::Paragra
         for (const Block& block : measureBlocks(cell.paragraphs, 0.0F)) {
             natural[index % columns] = std::max(natural[index % columns], block.naturalWidth + padding);
             minimum[index % columns] = std::max(minimum[index % columns], block.minimumWidth + padding);
+
             if (!firstRightToLeft && block.paragraph->kind == RichTextDocument::Paragraph::Kind::Text) {
                 firstRightToLeft = block.flow.rightToLeft;
             }
@@ -818,9 +884,11 @@ LayoutBuilder::Block LayoutBuilder::measureTable(const RichTextDocument::Paragra
         for (const Block& block : blocks) {
             height += block.height;
         }
+
         if (!blocks.empty()) {
             height -= blocks.back().trailing;
         }
+
         laid.rows[index / columns] = std::max(laid.rows[index / columns], height);
         laid.cells.push_back(std::move(blocks));
     }
@@ -845,6 +913,7 @@ Layout LayoutBuilder::build() {
             width = std::max(width, block.naturalWidth);
         }
     }
+
     std::size_t glyphs = 0;
     std::size_t characters = 0;
     for (const Block& block : blocks) {
@@ -852,6 +921,7 @@ Layout LayoutBuilder::build() {
         glyphs += block.flow.glyphs.size();
         characters += block.flow.pieces.size() + block.flow.dropCap.size();
     }
+
     layout.glyphs.reserve(glyphs);
     layout.characters.reserve(characters);
 
@@ -875,6 +945,7 @@ float LayoutBuilder::emitBlocks(const std::vector<Block>& blocks, math::Vec2 ori
         }
         y += block.height;
     }
+
     return y - origin.y - (blocks.empty() ? 0.0F : blocks.back().trailing);
 }
 
@@ -901,6 +972,7 @@ void LayoutBuilder::emitParagraph(const Block& block, math::Vec2 origin, float w
         dropCharacters[index] = addCharacter(flow.dropCap[index], textOffset, rightToLeft);
         dropWidth += flow.dropCap[index].advance;
     }
+
     float dropX = rightToLeft ? left + room - dropWidth : left;
     const float dropBottom = flow.dropCapBaseline + flow.dropCapDescent;
     for (const std::size_t index : flow.dropCapOrder) {
@@ -923,6 +995,7 @@ void LayoutBuilder::emitParagraph(const Block& block, math::Vec2 origin, float w
         // Characters take their numbers in reading order before the line places them.
         std::vector<std::size_t> characters(line.end - line.begin, 0);
         const std::size_t firstCharacter = layout.characters.size();
+
         for (std::size_t index = line.begin; index < line.end; ++index) {
             const Piece& piece = flow.pieces[index];
             if (piece.kind == Piece::Kind::Pause) {
@@ -943,6 +1016,7 @@ void LayoutBuilder::emitParagraph(const Block& block, math::Vec2 origin, float w
         for (std::size_t index = line.visibleEnd; index < line.end; ++index) {
             trailing += flow.pieces[index].kind == Piece::Kind::Cluster ? flow.pieces[index].advance : 0.0F;
         }
+
         const float contentLeft = left + (rightToLeft ? 0.0F : line.shift) + alignOffset(resolved, lineRoom, line.width);
         float x = rightToLeft ? contentLeft - trailing : contentLeft;
 
@@ -952,6 +1026,7 @@ void LayoutBuilder::emitParagraph(const Block& block, math::Vec2 origin, float w
             for (const Piece& piece : flow.marker) {
                 markerWidth += piece.advance;
             }
+
             const float gap = options.size * options.scale * kMarkerGapEms;
             float markerX = rightToLeft ? left + room + gap : left - markerWidth - gap;
             for (const std::size_t index : flow.markerOrder) {
@@ -977,10 +1052,12 @@ void LayoutBuilder::emitParagraph(const Block& block, math::Vec2 origin, float w
         for (std::size_t index = line.begin; index < line.end; ++index) {
             lineEnd = std::max(lineEnd, flow.pieces[index].end);
         }
+
         layout.lines.push_back({.box = {contentLeft, lineTop, resolved == Alignment::Fill ? lineRoom : line.width, lineHeight}, .baseline = baseline, .firstCharacter = firstCharacter, .endCharacter = layout.characters.size(), .begin = textStart + lineStart, .end = textStart + lineEnd, .rightToLeft = rightToLeft});
         lineStart = lineEnd;
         emitDecorations(flow, line, placed, baseline);
     }
+
     textOffset = textStart + flow.text.size() + 1;
 }
 
@@ -995,11 +1072,13 @@ void LayoutBuilder::emitPiece(const Flow& flow, std::u32string_view text, const 
         } else if (piece.align == Align::Baseline) {
             top = pen.y - piece.extent.y;
         }
+
         if (piece.texture.isValid() && !piece.extent.isZero()) {
             math::Color tint = piece.tint;
             tint.a *= document.styles[piece.style].alpha;
             layout.images.push_back({.texture = piece.texture, .rect = {pen.x, top, piece.extent.x, piece.extent.y}, .source = piece.source, .color = tint, .character = character});
         }
+
         return;
     }
 
@@ -1009,6 +1088,7 @@ void LayoutBuilder::emitPiece(const Flow& flow, std::u32string_view text, const 
         if (!placed.glyph.visible) {
             continue;
         }
+
         layout.glyphs.push_back({
             .look = piece.look,
             .style = piece.style,
@@ -1045,11 +1125,13 @@ void LayoutBuilder::emitDecorations(const Flow& flow, const Line& line, const st
                 highest = std::max(highest, placed[end].character);
                 ++end;
             }
+
             if (key && placed[begin].piece < line.visibleEnd) {
                 const float x = placed[begin].x;
                 const float right = placed[end - 1].x + flow.pieces[placed[end - 1].piece].advance;
                 emit(*key, math::Rect{x, lineTop, right - x, lineHeight}, lowest, highest, first.level % 2 != 0);
             }
+
             begin = end;
         }
     };
@@ -1119,11 +1201,13 @@ void LayoutBuilder::emitTable(const Block& block, math::Vec2 origin, float width
         if (cell.background) {
             addBox(Layout::Box::Kind::CellBackground, area, *cell.background, next, next);
         }
+
         if (cell.border) {
             for (const math::Rect& edge : {math::Rect{area.x, area.y, area.width, border}, math::Rect{area.x, area.getBottom() - border, area.width, border}, math::Rect{area.x, area.y, border, area.height}, math::Rect{area.getRight() - border, area.y, border, area.height}}) {
                 addBox(Layout::Box::Kind::CellBorder, edge, *cell.border, next, next);
             }
         }
+
         const float padding = cell.padding * options.scale;
         emitBlocks(laid.cells[index], {area.x + padding, area.y + padding}, std::max(area.width - padding * 2.0F, 0.0F));
     }

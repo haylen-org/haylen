@@ -57,6 +57,7 @@ class ShapingTest : public ::testing::Test {
                 indices.push_back(glyph.index);
             }
         }
+
         std::ranges::sort(indices);
         return indices;
     }
@@ -96,6 +97,7 @@ TEST_F(ShapingTest, JoinsArabicLettersAndFormsTheLamAlefLigature) {
     arabic->shape({.text = word, .begin = 0, .end = word.size(), .script = kArab, .rightToLeft = true}, shaped);
     EXPECT_EQ(shaped.front().cluster, 2U);
     EXPECT_EQ(shaped.back().cluster, 0U);
+
     for (std::size_t index = 0; index < 3; ++index) {
         EXPECT_NE(clusterOf(shaped, index), isolated(*arabic, word[index], kArab)) << index;
     }
@@ -110,6 +112,7 @@ TEST_F(ShapingTest, JoinsArabicLettersAndFormsTheLamAlefLigature) {
             EXPECT_TRUE(layout.characters[glyph.character].rightToLeft);
             forms.push_back(glyph.index);
         }
+
         return forms;
     };
     // clang-format on
@@ -129,6 +132,7 @@ TEST_F(ShapingTest, JoinsArabicLettersAndFormsTheLamAlefLigature) {
             joined.push_back(glyph.index);
         }
     }
+
     std::ranges::sort(joined);
     EXPECT_NE(joined, isolated(*arabic, U'ب', kArab));
 }
@@ -214,6 +218,7 @@ TEST_F(ShapingTest, BreaksLinesByTheRulesOfEachScript) {
                 return false;
             }
         }
+
         return layout.lines.size() > 1;
     };
     // clang-format on
@@ -222,6 +227,7 @@ TEST_F(ShapingTest, BreaksLinesByTheRulesOfEachScript) {
         for (const char32_t codePoint : text) {
             core::Utf8::append(utf8, codePoint);
         }
+
         EXPECT_TRUE(startsAfterSpace(lay(utf8, {.size = 32.0F, .maxWidth = 220.0F}), text)) << utf8;
     }
 
@@ -252,6 +258,7 @@ TEST_F(ShapingTest, KeepsHyphenatedNamesOnOneLine) {
     const std::u32string text = U"Open native-sample and 2026-06-21 now";
     const Layout& lines = lay("Open native-sample and 2026-06-21 now", {.size = 32.0F, .maxWidth = 260.0F});
     ASSERT_GT(lines.lines.size(), 1U);
+
     for (std::size_t index = 1; index < lines.lines.size(); ++index) {
         const std::size_t first = lines.characters[lines.lines[index].firstCharacter].begin;
         EXPECT_EQ(text[first - 1], U' ') << index;
@@ -266,6 +273,7 @@ TEST_F(ShapingTest, KeepsPathsWholeWhileTheyFit) {
     const std::u32string text = U"Load levels/forest/map.json first";
     const Layout& lines = lay("Load levels/forest/map.json first", {.size = 32.0F, .maxWidth = path + 4.0F});
     ASSERT_GT(lines.lines.size(), 1U);
+
     for (std::size_t index = 1; index < lines.lines.size(); ++index) {
         const std::size_t first = lines.characters[lines.lines[index].firstCharacter].begin;
         EXPECT_EQ(text[first - 1], U' ') << index;
@@ -274,10 +282,12 @@ TEST_F(ShapingTest, KeepsPathsWholeWhileTheyFit) {
     const std::u32string longPath = U"levels/forest/caves/deep/map.json";
     const Layout& parts = lay("levels/forest/caves/deep/map.json", {.size = 32.0F, .maxWidth = lay("levels/forest/caves/").size.x + 4.0F});
     ASSERT_GT(parts.lines.size(), 1U);
+
     for (std::size_t index = 1; index < parts.lines.size(); ++index) {
         const std::size_t first = parts.characters[parts.lines[index].firstCharacter].begin;
         EXPECT_EQ(longPath[first - 1], U'/') << index;
     }
+
     EXPECT_EQ(parts.characters[parts.lines[1].firstCharacter].begin, 20U);
 }
 
@@ -356,6 +366,7 @@ TEST_F(ShapingTest, SpansStylesAcrossDirections) {
             underlines.push_back(&box);
         }
     }
+
     ASSERT_EQ(underlines.size(), 2U);
     EXPECT_NE(underlines[0]->rightToLeft, underlines[1]->rightToLeft);
     const auto red = std::ranges::count_if(layout.glyphs, [](const Layout::Glyph& glyph) { return glyph.color == math::Color::fromHex(0xFF0000FFU); });
@@ -378,9 +389,11 @@ TEST_F(ShapingTest, RevealsInReadingOrder) {
     ASSERT_GT(frame.characters.size(), 3U);
     EXPECT_GT(frame.characters[0].box.x, frame.characters[1].box.x);
     EXPECT_GT(frame.characters[1].box.x, frame.characters[2].box.x);
+
     for (const Layout::Glyph& glyph : frame.glyphs) {
         EXPECT_EQ(glyph.visible, glyph.character < 2) << glyph.character;
     }
+
     ASSERT_EQ(frame.boxes.size(), 1U);
     EXPECT_NEAR(frame.boxes[0].rect.getRight(), typed.getLayout().boxes[0].rect.getRight(), 0.01F);
     EXPECT_NEAR(frame.boxes[0].rect.x, frame.characters[1].box.x, 0.01F);
@@ -410,9 +423,11 @@ TEST_F(ShapingTest, CachesLayoutsByTextAndStyle) {
     Font& font = *fixture.engine().getDefaultFont();
     const std::shared_ptr<const Layout> plain = font.layout("cached", {.size = 24.0F});
     EXPECT_EQ(font.layout("cached", {.size = 24.0F}), plain);
+
     for (int index = 0; index < 600; ++index) {
         (void)font.layout(std::to_string(index), {.size = 24.0F});
     }
+
     EXPECT_NE(font.layout("cached", {.size = 24.0F}), plain);
 }
 

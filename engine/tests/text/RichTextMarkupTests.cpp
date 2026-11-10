@@ -24,6 +24,7 @@ class RichTextMarkupTest : public ::testing::Test {
         } catch (const std::invalid_argument& error) {
             return error.what();
         }
+
         return "no error";
     }
 };
@@ -36,10 +37,12 @@ TEST_F(RichTextMarkupTest, ReadsTheAlignmentAndDirectionNamesOfTheTextStyle) {
         EXPECT_EQ(RichText::parse("[p align=" + std::string(name) + "]x[/p]").paragraphs[0].align, alignment);
         EXPECT_EQ(Style::alignmentName(alignment), name);
     }
+
     for (const auto& [name, direction] : Style::kDirectionNames) {
         EXPECT_EQ(RichText::parse("[p dir=" + std::string(name) + "]x[/p]").paragraphs[0].direction, direction);
         EXPECT_EQ(Style::directionName(direction), name);
     }
+
     EXPECT_FALSE(Style::alignmentFromName("justify").has_value());
     EXPECT_FALSE(Style::directionFromName("up").has_value());
     EXPECT_NE(errorOf("[p dir=up]x[/p]").find("The \"dir\" of \"[p]\" must be \"auto\", \"leftToRight\" or \"rightToLeft\"."), std::string::npos);

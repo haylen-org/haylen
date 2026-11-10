@@ -49,6 +49,7 @@ class ColorGlyphTest : public ::testing::Test {
             const bool blue = std::abs(pixels[index + 2] - static_cast<int>(rgb & 0xFFU)) <= tolerance;
             count += pixels[index + 3] == 255 && red && green && blue ? 1 : 0;
         }
+
         return count;
     }
 
@@ -58,6 +59,7 @@ class ColorGlyphTest : public ::testing::Test {
         for (std::size_t index = 3; index < pixels.size(); index += 4) {
             count += pixels[index] == 255 ? 1 : 0;
         }
+
         return count;
     }
 
@@ -95,6 +97,7 @@ TEST_F(ColorGlyphTest, PaintsTheGradientsOfColorGlyphs) {
             yellows.insert(static_cast<std::uint32_t>(pixels[index]) << 16U | static_cast<std::uint32_t>(pixels[index + 1]) << 8U | pixels[index + 2]);
         }
     }
+
     EXPECT_GT(yellows.size(), 20U);
 }
 

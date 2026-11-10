@@ -10,6 +10,7 @@ Layout TextFit::layout(const Style& style, const Builder& build) {
     if (!style.wrap) {
         laid.maxWidth = 0.0F;
     }
+
     Layout full = build(laid);
     if (style.minScale >= 1.0F || fits(full, style)) {
         return full;
@@ -22,6 +23,7 @@ Layout TextFit::layout(const Style& style, const Builder& build) {
     if (!fits(best, style)) {
         return best;
     }
+
     for (int step = 0; step < kSteps; ++step) {
         laid.size = (low + high) * 0.5F;
         Layout tried = build(laid);
@@ -32,6 +34,7 @@ Layout TextFit::layout(const Style& style, const Builder& build) {
             high = laid.size;
         }
     }
+
     return best;
 }
 
@@ -39,6 +42,7 @@ bool TextFit::fits(const Layout& layout, const Style& style) noexcept {
     if (style.maxHeight > 0.0F && layout.size.y > style.maxHeight) {
         return false;
     }
+
     return style.wrap || style.maxWidth <= 0.0F || layout.size.x <= style.maxWidth;
 }
 

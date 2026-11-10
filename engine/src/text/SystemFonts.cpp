@@ -9,6 +9,7 @@ bool SystemFonts::request(char32_t codePoint) {
         pending.insert(codePoint);
         requests.push_back(codePoint);
     }
+
     return pending.contains(codePoint);
 }
 
@@ -37,6 +38,7 @@ std::vector<std::string> SystemFonts::getKnownNames() const {
     for (const Face& face : faces) {
         names.push_back(face.name);
     }
+
     return names;
 }
 

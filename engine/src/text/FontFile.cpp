@@ -14,6 +14,7 @@ std::optional<FontFile> FontFile::read(std::span<const std::uint8_t> bytes, unsi
     if (!std::in_range<unsigned int>(bytes.size())) {
         return std::nullopt;
     }
+
     const auto* const contents = reinterpret_cast<const char*>(bytes.data());
     const auto length = static_cast<unsigned int>(bytes.size());
     return open(Blob(hb_blob_create(contents, length, HB_MEMORY_MODE_READONLY, nullptr, nullptr), &hb_blob_destroy), length, face);
@@ -23,6 +24,7 @@ std::optional<FontFile> FontFile::read(std::vector<std::uint8_t> bytes, unsigned
     if (!std::in_range<unsigned int>(bytes.size())) {
         return std::nullopt;
     }
+
     auto owned = std::make_unique<std::vector<std::uint8_t>>(std::move(bytes));
     const auto* const contents = reinterpret_cast<const char*>(owned->data());
     const auto length = static_cast<unsigned int>(owned->size());
@@ -33,12 +35,14 @@ unsigned int FontFile::countFaces(std::span<const std::uint8_t> bytes) {
     if (!std::in_range<unsigned int>(bytes.size())) {
         return 0;
     }
+
     const auto* const contents = reinterpret_cast<const char*>(bytes.data());
     const auto length = static_cast<unsigned int>(bytes.size());
     const Blob blob(hb_blob_create(contents, length, HB_MEMORY_MODE_READONLY, nullptr, nullptr), &hb_blob_destroy);
     if (hb_blob_get_length(blob.get()) != length) {
         throw std::bad_alloc();
     }
+
     return hb_face_count(blob.get());
 }
 
@@ -51,13 +55,16 @@ std::optional<FontFile> FontFile::open(Blob fileBlob, unsigned int length, unsig
     if (hb_blob_get_length(fileBlob.get()) != length) {
         throw std::bad_alloc();
     }
+
     if (index >= hb_face_count(fileBlob.get())) {
         return std::nullopt;
     }
+
     FontFile file(std::move(fileBlob), index);
     if (!file.isUsable()) {
         return std::nullopt;
     }
+
     return file;
 }
 
@@ -118,6 +125,7 @@ std::optional<hb_glyph_extents_t> FontFile::getExtents(std::uint32_t glyph) cons
     if (reach > kMaxReach) {
         return std::nullopt;
     }
+
     return extents;
 }
 

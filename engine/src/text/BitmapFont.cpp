@@ -18,6 +18,7 @@ Font::Metrics BitmapFont::readMetrics(const Description& description) {
     if (!(description.size > 0.0F) || !(description.lineHeight > 0.0F)) {
         throw std::invalid_argument("A bitmap font needs a positive size and line height.");
     }
+
     const auto capital = std::ranges::find(description.characters, U'H', &Character::codePoint);
     const float capHeight = capital != description.characters.end() ? -capital->offset.y : description.base;
     return {.nativeSize = description.size, .ascent = description.base, .lineHeight = description.lineHeight, .capHeight = capHeight};
@@ -27,17 +28,21 @@ BitmapFont::BitmapFont(const Description& description, std::vector<graphics::Tex
     if (pages.size() != description.pages.size()) {
         throw std::invalid_argument("A bitmap font needs one texture for each of its " + std::to_string(description.pages.size()) + " pages.");
     }
+
     for (const graphics::Texture& page : pages) {
         if (!page.isValid()) {
             throw std::invalid_argument("A bitmap font page needs a texture.");
         }
     }
+
     for (const Character& character : description.characters) {
         if (character.page >= pages.size()) {
             throw std::invalid_argument("A bitmap font character lies on page " + std::to_string(character.page) + ", which the font does not have.");
         }
+
         glyphs[static_cast<std::uint32_t>(character.codePoint)] = {.source = character.source, .offset = character.offset, .advance = character.advance, .page = character.page, .visible = !character.source.isEmpty()};
     }
+
     for (const Kerning& kerning : description.kernings) {
         kernings[pairKey(kerning.left, kerning.right)] = kerning.amount;
     }
@@ -54,14 +59,17 @@ bool BitmapFont::hasGlyph(char32_t codePoint) {
 // A right-to-left run draws mirrored brackets and reads backwards, and the kerning pairs apply to glyphs in the order they stand on screen.
 void BitmapFont::shape(const Run& run, std::vector<ShapedGlyph>& shaped) {
     const std::size_t first = shaped.size();
+
     for (std::size_t index = run.begin; index < run.end; ++index) {
         const char32_t codePoint = run.rightToLeft ? Segmenter::getMirror(run.text[index]) : run.text[index];
         const auto glyph = static_cast<std::uint32_t>(codePoint);
         shaped.push_back({.index = glyph, .cluster = index, .advance = getGlyph(glyph).advance});
     }
+
     if (run.rightToLeft) {
         std::reverse(shaped.begin() + static_cast<std::ptrdiff_t>(first), shaped.end());
     }
+
     for (std::size_t index = first; index + 1 < shaped.size(); ++index) {
         shaped[index].advance += getKerning(static_cast<char32_t>(shaped[index].index), static_cast<char32_t>(shaped[index + 1].index));
     }
@@ -81,6 +89,7 @@ const graphics::Texture& BitmapFont::getPage(std::size_t index) const {
     if (index >= pages.size()) {
         throw std::out_of_range("The bitmap font has no page " + std::to_string(index) + ".");
     }
+
     return pages[index];
 }
 
@@ -100,6 +109,7 @@ BitmapFont::Description BitmapFont::parseText(std::string_view text) {
         const std::size_t end = std::min(text.find('\n'), text.size());
         std::string_view line = text.substr(0, end);
         text.remove_prefix(std::min(end + 1, text.size()));
+
         if (line.ends_with('\r')) {
             line.remove_suffix(1);
         }
@@ -113,10 +123,12 @@ BitmapFont::Description BitmapFont::parseText(std::string_view text) {
                 line.remove_prefix(1);
                 continue;
             }
+
             const std::size_t equals = line.find('=');
             if (equals == std::string_view::npos) {
                 break;
             }
+
             const std::string_view key = line.substr(0, equals);
             line.remove_prefix(equals + 1);
             std::size_t valueEnd = std::min(line.find(' '), line.size());
@@ -126,9 +138,11 @@ BitmapFont::Description BitmapFont::parseText(std::string_view text) {
                 if (valueEnd == std::string_view::npos) {
                     throw std::invalid_argument("BMFont line " + std::to_string(lineNumber) + " has a quote that never ends.");
                 }
+
                 value = line.substr(1, valueEnd - 1);
                 ++valueEnd;
             }
+
             values.insert_or_assign(key, value);
             line.remove_prefix(std::min(valueEnd, line.size()));
         }
@@ -140,6 +154,7 @@ BitmapFont::Description BitmapFont::parseText(std::string_view text) {
             if (found == values.end() || std::from_chars(found->second.data(), found->second.data() + found->second.size(), value).ec != std::errc{}) {
                 throw std::invalid_argument("BMFont line " + std::to_string(lineNumber) + " needs a whole number for \"" + std::string(key) + "\".");
             }
+
             return value;
         };
         // clang-format on
@@ -155,6 +170,7 @@ BitmapFont::Description BitmapFont::parseText(std::string_view text) {
             if (pages < 0 || pages > std::numeric_limits<std::uint16_t>::max()) {
                 throw std::invalid_argument("BMFont line " + std::to_string(lineNumber) + " needs a page count from 0 to 65535.");
             }
+
             description.pages.resize(static_cast<std::size_t>(pages));
             hasCommon = true;
         } else if (tag == "page") {
@@ -162,12 +178,14 @@ BitmapFont::Description BitmapFont::parseText(std::string_view text) {
             if (id < 0 || static_cast<std::size_t>(id) >= description.pages.size() || !values.contains("file")) {
                 throw std::invalid_argument("BMFont line " + std::to_string(lineNumber) + " names a page the \"common\" line does not count, or no file.");
             }
+
             description.pages[static_cast<std::size_t>(id)] = std::string(values.at("file"));
         } else if (tag == "char") {
             const int page = number("page");
             if (!std::in_range<std::uint16_t>(page)) {
                 throw std::invalid_argument("BMFont line " + std::to_string(lineNumber) + " needs a page from 0 to 65535.");
             }
+
             description.characters.push_back({
                 .codePoint = static_cast<char32_t>(number("id")),
                 .source = {static_cast<float>(number("x")), static_cast<float>(number("y")), static_cast<float>(number("width")), static_cast<float>(number("height"))},
@@ -183,11 +201,13 @@ BitmapFont::Description BitmapFont::parseText(std::string_view text) {
     if (!hasInfo || !hasCommon) {
         throw std::invalid_argument("A BMFont file needs its \"info\" and \"common\" lines.");
     }
+
     for (const std::string& page : description.pages) {
         if (page.empty()) {
             throw std::invalid_argument("A BMFont file must name the image of every page.");
         }
     }
+
     return description;
 }
 
@@ -202,10 +222,12 @@ BitmapFont::Description BitmapFont::parseBinary(std::span<const std::uint8_t> by
         if (offset + size > bytes.size()) {
             throw std::invalid_argument("The binary BMFont file ends in the middle of a block.");
         }
+
         std::uint32_t value = 0;
         for (std::size_t index = 0; index < size; ++index) {
             value |= static_cast<std::uint32_t>(bytes[offset + index]) << (index * 8U);
         }
+
         return value;
     };
     const auto readSigned = [&](std::size_t offset) {
@@ -225,6 +247,7 @@ BitmapFont::Description BitmapFont::parseBinary(std::span<const std::uint8_t> by
         if (size > bytes.size() - start) {
             throw std::invalid_argument("The binary BMFont file ends in the middle of a block.");
         }
+
         offset = start + size;
 
         switch (type) {
@@ -232,6 +255,7 @@ BitmapFont::Description BitmapFont::parseBinary(std::span<const std::uint8_t> by
             if (size < kInfoBlockSize) {
                 throw std::invalid_argument("The \"info\" block of the binary BMFont file is shorter than its " + std::to_string(kInfoBlockSize) + " bytes of fields.");
             }
+
             description.size = std::fabs(readSigned(start));
             hasInfo = true;
             break;
@@ -239,6 +263,7 @@ BitmapFont::Description BitmapFont::parseBinary(std::span<const std::uint8_t> by
             if (size < kCommonBlockSize) {
                 throw std::invalid_argument("The \"common\" block of the binary BMFont file is shorter than its " + std::to_string(kCommonBlockSize) + " bytes of fields.");
             }
+
             description.lineHeight = static_cast<float>(read(start, 2));
             description.base = static_cast<float>(read(start + 2, 2));
             description.pages.resize(read(start + 8, 2));
@@ -250,8 +275,10 @@ BitmapFont::Description BitmapFont::parseBinary(std::span<const std::uint8_t> by
                 while (cursor < offset && bytes[cursor] != 0) {
                     page += static_cast<char>(bytes[cursor++]);
                 }
+
                 ++cursor;
             }
+
             break;
         }
         case 4:
@@ -264,11 +291,13 @@ BitmapFont::Description BitmapFont::parseBinary(std::span<const std::uint8_t> by
                     .page = static_cast<std::uint16_t>(read(entry + 18, 1)),
                 });
             }
+
             break;
         case 5:
             for (std::size_t entry = start; entry + 10 <= offset; entry += 10) {
                 description.kernings.push_back({.left = static_cast<char32_t>(read(entry, 4)), .right = static_cast<char32_t>(read(entry + 4, 4)), .amount = readSigned(entry + 8)});
             }
+
             break;
         default:
             throw std::invalid_argument("The binary BMFont file has a block of unknown type " + std::to_string(type) + ".");
@@ -278,11 +307,13 @@ BitmapFont::Description BitmapFont::parseBinary(std::span<const std::uint8_t> by
     if (!hasInfo || !hasCommon) {
         throw std::invalid_argument("A BMFont file needs its \"info\" and \"common\" blocks.");
     }
+
     for (const std::string& page : description.pages) {
         if (page.empty()) {
             throw std::invalid_argument("A BMFont file must name the image of every page.");
         }
     }
+
     return description;
 }
 
@@ -291,13 +322,16 @@ BitmapFont::Description BitmapFont::describeGrid(const Grid& grid, math::Vec2 im
     if (!(grid.cellWidth >= 1.0F) || !(grid.cellHeight >= 1.0F)) {
         throw std::invalid_argument("A grid font needs cells at least one pixel wide and tall.");
     }
+
     if (!(grid.spacing.x >= 0.0F) || !(grid.spacing.y >= 0.0F) || !(grid.margin.x >= 0.0F) || !(grid.margin.y >= 0.0F)) {
         throw std::invalid_argument("A grid font cannot have a negative spacing or margin.");
     }
+
     const std::u32string characters = core::Utf8::decode(grid.characters);
     if (characters.empty()) {
         throw std::invalid_argument("A grid font needs the characters of its cells.");
     }
+
     const auto columns = static_cast<std::size_t>(std::max(0.0F, std::floor((imageSize.x - grid.margin.x * 2.0F + grid.spacing.x) / (grid.cellWidth + grid.spacing.x))));
     const auto rows = static_cast<std::size_t>(std::max(0.0F, std::floor((imageSize.y - grid.margin.y * 2.0F + grid.spacing.y) / (grid.cellHeight + grid.spacing.y))));
     if (columns == 0 || characters.size() > columns * rows) {
@@ -311,6 +345,7 @@ BitmapFont::Description BitmapFont::describeGrid(const Grid& grid, math::Vec2 im
         const float y = grid.margin.y + static_cast<float>(index / columns) * (grid.cellHeight + grid.spacing.y);
         description.characters.push_back({.codePoint = characters[index], .source = {x, y, grid.cellWidth, grid.cellHeight}, .offset = {0.0F, -baseline}, .advance = grid.advance > 0.0F ? grid.advance : grid.cellWidth});
     }
+
     return description;
 }
 

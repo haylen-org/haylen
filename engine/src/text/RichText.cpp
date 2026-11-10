@@ -16,6 +16,7 @@ RichText::RichText(std::string markup, RichTextOptions textOptions, std::shared_
     if (!registry) {
         throw std::invalid_argument("Rich text needs the registry of text effects and icons.");
     }
+
     validate(options);
     setMarkup(std::move(markup));
 }
@@ -28,10 +29,13 @@ void RichText::validate(const RichTextOptions& value) {
     if (!value.family) {
         throw std::invalid_argument("Rich text needs a font family.");
     }
+
     if (!isPositive(value.size) || !isPositive(value.scale) || !isPositive(value.lineSpacing)) {
         throw std::invalid_argument("Rich text needs a positive size, scale and line spacing.");
     }
+
     validateWidth(value.maxWidth);
+
     if (!(value.revealSpeed >= 0.0F)) {
         throw std::invalid_argument("Rich text cannot reveal at a negative speed.");
     }
@@ -65,6 +69,7 @@ void RichText::setMarkup(std::string value) {
         if (found == nullptr) {
             throw std::invalid_argument("Rich text markup at line " + std::to_string(effect.line) + ", column " + std::to_string(effect.column) + ": The markup \"[" + effect.name + "]\" is neither a tag nor a registered text effect.");
         }
+
         functions.push_back(*found);
         attributes.emplace_back(effect.name, effect.parameters);
     }
@@ -97,9 +102,11 @@ void RichText::setMaxWidth(float value) {
 
 void RichText::setScale(float value) {
     requireIdle();
+
     if (!isPositive(value)) {
         throw std::invalid_argument("Rich text needs a positive scale.");
     }
+
     options.scale = value;
     frameDirty = true;
 }
@@ -113,23 +120,28 @@ void RichText::resetReveal() noexcept {
 
 void RichText::update(float deltaSeconds) {
     requireIdle();
+
     if (!(deltaSeconds >= 0.0F && std::isfinite(deltaSeconds))) {
         throw std::invalid_argument("Rich text moves forward by a number of seconds that is finite and not negative.");
     }
+
     time += deltaSeconds;
 
     // A layout that waited for an image or a font of the system is built again at the next use, until it arrives.
     std::erase_if(layouts, [](const CachedLayout& entry) { return entry.layout.waitingForImages || entry.layout.waitingForFonts; });
+
     if (options.revealSpeed > 0.0F && visibleCharacters) {
         revealClock += deltaSeconds;
         visibleCharacters = countRevealed(revealClock);
     }
+
     frameDirty = true;
 }
 
 // Layouts stay cached for the last few widths, so a container that measures at one width and draws at another lays out once for each.
 RichText::CachedLayout& RichText::getCachedLayout(float maxWidth) {
     requireIdle();
+
     for (auto entry = layouts.begin(); entry != layouts.end(); ++entry) {
         if (entry->maxWidth == maxWidth && entry->scale == options.scale) {
             layouts.splice(layouts.begin(), layouts, entry);
@@ -140,9 +152,11 @@ RichText::CachedLayout& RichText::getCachedLayout(float maxWidth) {
     RichTextOptions at = options;
     at.maxWidth = maxWidth;
     layouts.push_front({.maxWidth = maxWidth, .scale = options.scale, .generation = ++builds, .layout = LayoutBuilder(document, at, *registry).build()});
+
     if (layouts.size() > kCachedLayouts) {
         layouts.pop_back();
     }
+
     return layouts.front();
 }
 
@@ -163,12 +177,14 @@ const std::vector<float>& RichText::getRevealTimes() {
     if (!revealDirty) {
         return revealTimes;
     }
+
     revealTimes.clear();
     float clock = 0.0F;
     for (const Layout::Character& character : getLayout().characters) {
         clock += character.pause + (options.revealSpeed > 0.0F ? 1.0F / (options.revealSpeed * character.speed) : 0.0F);
         revealTimes.push_back(clock);
     }
+
     revealDirty = false;
     return revealTimes;
 }
@@ -203,6 +219,7 @@ void RichText::setVisibleRatio(float value) {
     if (std::isnan(value)) {
         throw std::invalid_argument("The visible ratio of rich text must be a number.");
     }
+
     setVisibleCharacters(static_cast<std::size_t>(std::lround(std::clamp(value, 0.0F, 1.0F) * static_cast<float>(getCharacterCount()))));
 }
 
@@ -216,6 +233,7 @@ std::optional<std::string> RichText::getLinkAt(math::Vec2 point) {
             return document.links[area.index];
         }
     }
+
     return std::nullopt;
 }
 
@@ -225,6 +243,7 @@ std::optional<std::string> RichText::getHintAt(math::Vec2 point) {
             return document.hints[area.index];
         }
     }
+
     return std::nullopt;
 }
 
@@ -248,11 +267,13 @@ void RichText::applyEffects(Layout& moved) {
         if (tags.empty()) {
             continue;
         }
+
         Effect::Glyph moving{.character = glyph.character, .codePoint = glyph.codePoint, .position = {glyph.position.x, glyph.baseline}, .time = time, .color = glyph.color};
         for (const std::size_t effect : tags) {
             moving.index = glyph.character - std::min(effectStarts[effect], glyph.character);
             effects[effect](moving, parameters[effect]);
         }
+
         glyph.position += moving.offset;
         glyph.baseline += moving.offset.y;
         glyph.color = moving.color;
@@ -265,15 +286,18 @@ void RichText::applyReveal(Layout& revealed, std::size_t visible) {
     for (Layout::Glyph& glyph : revealed.glyphs) {
         glyph.visible = glyph.visible && glyph.character < visible;
     }
+
     for (Layout::Image& image : revealed.images) {
         image.visible = image.character < visible;
     }
+
     for (Layout::Box& box : revealed.boxes) {
         box.visible = box.firstCharacter < visible;
         const bool followsText = box.kind == Layout::Box::Kind::Background || box.kind == Layout::Box::Kind::Underline || box.kind == Layout::Box::Kind::Strike;
         if (!box.visible || !followsText || box.lastCharacter < visible) {
             continue;
         }
+
         const math::Rect& last = revealed.characters[visible - 1].box;
         if (box.rightToLeft) {
             const float right = box.rect.getRight();
@@ -292,6 +316,7 @@ const Layout& RichText::getFrame() {
     if (effects.empty() && !revealing) {
         return current.layout;
     }
+
     if (!frameDirty && framedGeneration == current.generation) {
         return frame;
     }
@@ -304,10 +329,13 @@ const Layout& RichText::getFrame() {
         applyingEffects = false;
         throw;
     }
+
     applyingEffects = false;
+
     if (revealing) {
         applyReveal(frame, visible);
     }
+
     framedGeneration = current.generation;
     frameDirty = false;
     return frame;

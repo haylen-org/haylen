@@ -207,6 +207,7 @@ TEST_F(TextLuaTest, MakesDrawsAndMeasuresRichText) {
     for (const char* call : {"typed:update(-1)", "typed:update(0 / 0)", "typed:update(1 / 0)"}) {
         EXPECT_NE(lua(call).find("Rich text moves forward by a number of seconds that is finite and not negative."), std::string::npos) << call;
     }
+
     EXPECT_NE(lua("typed.visibleRatio = 0 / 0").find("The visible ratio of rich text must be a number."), std::string::npos);
     EXPECT_EQ(lua("return typed.visibleCharacters .. ' ' .. string.format('%.2f', typed.time)"), "2 0.11");
 

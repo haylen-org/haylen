@@ -37,6 +37,7 @@ void DistanceField::moveTo(hb_draw_funcs_t* /*funcs*/, void* outline, hb_draw_st
     if (reading.contour == nullptr || !reading.contour->edges.empty()) {
         reading.contour = &reading.shape.addContour();
     }
+
     reading.penX = toX * reading.scale;
     reading.penY = -toY * reading.scale;
 }
@@ -48,6 +49,7 @@ void DistanceField::lineTo(hb_draw_funcs_t* /*funcs*/, void* outline, hb_draw_st
     if (end != pen) {
         reading.contour->addEdge(msdfgen::EdgeHolder(pen, end));
     }
+
     reading.penX = end.x;
     reading.penY = end.y;
 }
@@ -76,9 +78,11 @@ msdfgen::Shape DistanceField::readShape(const FontFile& font, std::uint32_t glyp
     msdfgen::Shape shape;
     Outline outline{.shape = shape, .scale = scale};
     hb_font_draw_glyph(&font.getFont(), glyph, getOutlineFuncs(), &outline);
+
     if (!shape.contours.empty() && shape.contours.back().edges.empty()) {
         shape.contours.pop_back();
     }
+
     return shape;
 }
 
@@ -91,6 +95,7 @@ bool DistanceField::mayOverlap(const msdfgen::Shape& shape) {
         contour.bound(box.l, box.b, box.r, box.t);
         contours.emplace_back(box, contour.winding());
     }
+
     for (std::size_t first = 0; first < contours.size(); ++first) {
         for (std::size_t second = first + 1; second < contours.size(); ++second) {
             const auto& [a, aWinding] = contours[first];
@@ -100,6 +105,7 @@ bool DistanceField::mayOverlap(const msdfgen::Shape& shape) {
             }
         }
     }
+
     return false;
 }
 
@@ -109,6 +115,7 @@ std::optional<DistanceField> DistanceField::measure(const FontFile& font, std::u
     if (!extents) {
         return std::nullopt;
     }
+
     const auto left = static_cast<int>(std::floor(static_cast<float>(extents->x_bearing) * scale));
     const auto top = static_cast<int>(std::floor(static_cast<float>(-extents->y_bearing) * scale));
     const auto right = static_cast<int>(std::ceil(static_cast<float>(extents->x_bearing + extents->width) * scale));
@@ -116,6 +123,7 @@ std::optional<DistanceField> DistanceField::measure(const FontFile& font, std::u
     if (left == right || top == bottom) {
         return std::nullopt;
     }
+
     return DistanceField{.width = right - left + spread * 2, .height = bottom - top + spread * 2, .offsetX = left - spread, .offsetY = top - spread};
 }
 
@@ -124,13 +132,16 @@ std::optional<DistanceField> DistanceField::build(const FontFile& font, std::uin
     if (!field) {
         return std::nullopt;
     }
+
     if (field->width > largest || field->height > largest) {
         throw std::runtime_error("The glyph is larger than the largest font atlas the device can hold.");
     }
+
     msdfgen::Shape shape = readShape(font, glyph, scale);
     if (shape.contours.empty()) {
         return std::nullopt;
     }
+
     shape.normalize();
     shape.setYAxisOrientation(msdfgen::Y_DOWNWARD);
 
@@ -180,6 +191,7 @@ bool DistanceField::fillsBackward(const msdfgen::Shape& shape) {
             }
         }
     }
+
     return area < 0.0;
 }
 

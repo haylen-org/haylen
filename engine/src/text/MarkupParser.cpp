@@ -28,6 +28,7 @@ std::pair<std::size_t, std::size_t> MarkupParser::locate(std::size_t offset) con
         if (before[index] == U'\r' && index + 1 < before.size() && before[index + 1] == U'\n') {
             continue;
         }
+
         if (Segmenter::isParagraphSeparator(before[index])) {
             ++line;
             column = 1;
@@ -35,6 +36,7 @@ std::pair<std::size_t, std::size_t> MarkupParser::locate(std::size_t offset) con
             ++column;
         }
     }
+
     return {line, column};
 }
 
@@ -54,6 +56,7 @@ MarkupParser::Tag MarkupParser::readTag(std::size_t open, std::size_t close) con
         if (tag.name.empty() || tag.name.find_first_of(" =") != std::string::npos) {
             fail(open, "The markup \"[" + std::string(content) + "]\" is not a closing tag.");
         }
+
         return tag;
     }
 
@@ -62,6 +65,7 @@ MarkupParser::Tag MarkupParser::readTag(std::size_t open, std::size_t close) con
     if (tag.name.empty()) {
         fail(open, "The markup \"[" + std::string(content) + "]\" has no tag name.");
     }
+
     content.remove_prefix(nameEnd);
 
     // clang-format off
@@ -71,10 +75,12 @@ MarkupParser::Tag MarkupParser::readTag(std::size_t open, std::size_t close) con
             if (end == std::string_view::npos) {
                 fail(open, "The tag \"[" + tag.name + "]\" has a quote that never ends.");
             }
+
             std::string value(rest.substr(1, end - 1));
             rest.remove_prefix(end + 1);
             return value;
         }
+
         const std::size_t end = std::min(rest.find(' '), rest.size());
         std::string value(rest.substr(0, end));
         rest.remove_prefix(end);
@@ -84,11 +90,13 @@ MarkupParser::Tag MarkupParser::readTag(std::size_t open, std::size_t close) con
 
     if (content.starts_with('=')) {
         content.remove_prefix(1);
+
         if (tag.name == "url" || tag.name == "hint") {
             const bool quoted = content.size() >= 2 && content.starts_with('"') && content.ends_with('"');
             tag.value = std::string(quoted ? content.substr(1, content.size() - 2) : content);
             return tag;
         }
+
         tag.value = token(content);
     }
 
@@ -97,15 +105,18 @@ MarkupParser::Tag MarkupParser::readTag(std::size_t open, std::size_t close) con
             content.remove_prefix(1);
             continue;
         }
+
         const std::size_t equals = content.find('=');
         const std::size_t space = std::min(content.find(' '), content.size());
         if (equals == std::string_view::npos || equals > space) {
             fail(open, "The attribute \"" + std::string(content.substr(0, space)) + "\" of \"[" + tag.name + "]\" needs a value.");
         }
+
         std::string key(content.substr(0, equals));
         content.remove_prefix(equals + 1);
         tag.attributes.insert_or_assign(std::move(key), token(content));
     }
+
     return tag;
 }
 
@@ -115,6 +126,7 @@ float MarkupParser::number(const Tag& tag, std::string_view text, std::string_vi
     if (error != std::errc{} || end != text.data() + text.size() || text.empty() || !std::isfinite(value)) {
         fail(tag.offset, "The value \"" + std::string(text) + "\" is not a number for the " + std::string(what) + " of \"[" + tag.name + "]\".");
     }
+
     return value;
 }
 
@@ -124,6 +136,7 @@ std::optional<math::Color> MarkupParser::parseColor(std::string_view text) noexc
             return math::Color::fromHex(rgba);
         }
     }
+
     return math::Color::parse(text);
 }
 
@@ -136,6 +149,7 @@ math::Color MarkupParser::color(const Tag& tag, std::string_view text) const {
     if (!parsed) {
         fail(tag.offset, "The value \"" + std::string(text) + "\" is not a color. Use a name such as \"red\" or \"#RRGGBB\" or \"#AARRGGBB\".");
     }
+
     return *parsed;
 }
 
@@ -144,6 +158,7 @@ math::Vec2 MarkupParser::pair(const Tag& tag, std::string_view text) const {
     if (comma == std::string_view::npos) {
         fail(tag.offset, "The value \"" + std::string(text) + "\" is not a pair of numbers like \"2,3\" for \"[" + tag.name + "]\".");
     }
+
     return {number(tag, text.substr(0, comma), "x"), number(tag, text.substr(comma + 1), "y")};
 }
 
@@ -153,6 +168,7 @@ Gradient MarkupParser::gradient(const Tag& tag) const {
     if (colors.size() > Gradient::kMaxStops) {
         fail(tag.offset, "A \"[gradient]\" holds at most 4 colors.");
     }
+
     std::array<Gradient::Stop, Gradient::kMaxStops> stops{};
     for (std::size_t index = 0; index < colors.size(); ++index) {
         stops[index].color = color(tag, colors[index]);
@@ -164,6 +180,7 @@ Gradient MarkupParser::gradient(const Tag& tag) const {
         if (offsets.size() != colors.size()) {
             fail(tag.offset, "The \"offsets\" of \"[gradient]\" give one offset for each color.");
         }
+
         for (std::size_t index = 0; index < offsets.size(); ++index) {
             stops[index].offset = number(tag, offsets[index], "offsets");
         }
@@ -174,6 +191,7 @@ Gradient MarkupParser::gradient(const Tag& tag) const {
     if (!inRange || !std::ranges::is_sorted(used, {}, &Gradient::Stop::offset)) {
         fail(tag.offset, "The \"offsets\" of \"[gradient]\" go from 0 to 1 in increasing order.");
     }
+
     const float angle = tag.attributes.contains("angle") ? number(tag, tag.attributes.at("angle"), "angle") : Gradient::kDown;
     return Gradient(used, angle);
 }
@@ -187,6 +205,7 @@ std::vector<std::string_view> MarkupParser::splitList(std::string_view text) {
         if (comma == std::string_view::npos) {
             return parts;
         }
+
         start = comma + 1;
     }
 }
@@ -196,6 +215,7 @@ float MarkupParser::size(const Tag& tag, std::string_view text) const {
     if (!(value > 0.0F)) {
         fail(tag.offset, "The size of \"[" + tag.name + "]\" must be positive.");
     }
+
     return value;
 }
 
@@ -207,6 +227,7 @@ RichTextDocument::VerticalAlign MarkupParser::verticalAlign(const Tag& tag, std:
             return align;
         }
     }
+
     fail(tag.offset, "The \"valign\" of \"[" + tag.name + "]\" must be \"top\", \"center\", \"baseline\" or \"bottom\".");
 }
 
@@ -214,6 +235,7 @@ std::string_view MarkupParser::requireValue(const Tag& tag) const {
     if (!tag.value || tag.value->empty()) {
         fail(tag.offset, "The tag \"[" + tag.name + "]\" needs a value, as in \"[" + tag.name + "=...]\".");
     }
+
     return *tag.value;
 }
 
@@ -239,9 +261,11 @@ std::u32string MarkupParser::romanNumeral(std::size_t number, bool upper) {
             for (const char letter : letters) {
                 result += static_cast<char32_t>(upper ? letter - 'a' + 'A' : letter);
             }
+
             number -= value;
         }
     }
+
     return result;
 }
 
@@ -255,6 +279,7 @@ std::u32string MarkupParser::listMarker(RichTextDocument::ListKind kind, std::si
         for (const char digit : std::to_string(number)) {
             label += static_cast<char32_t>(digit);
         }
+
         break;
     case Kind::LowerAlpha:
     case Kind::UpperAlpha:
@@ -262,6 +287,7 @@ std::u32string MarkupParser::listMarker(RichTextDocument::ListKind kind, std::si
         for (std::size_t rest = number; rest > 0; rest = (rest - 1) / 26) {
             label.insert(label.begin(), static_cast<char32_t>((kind == Kind::UpperAlpha ? U'A' : U'a') + (rest - 1) % 26));
         }
+
         break;
     case Kind::LowerRoman:
     case Kind::UpperRoman:
@@ -286,23 +312,29 @@ RichTextDocument MarkupParser::parse() {
             if (codePoint == U'\r' && index + 1 < text.size() && text[index + 1] == U'\n') {
                 continue;
             }
+
             const bool separator = Segmenter::isParagraphSeparator(codePoint);
             if (std::exchange(skipNewline, false) && separator) {
                 continue;
             }
+
             if (insideTableRows()) {
                 if (codePoint != U' ' && codePoint != U'\t' && !separator) {
                     fail(textStart, "Text inside a \"[table]\" must be inside a \"[cell]\".");
                 }
+
                 continue;
             }
+
             if (separator) {
                 appendText(std::exchange(pending, {}));
                 newline();
                 continue;
             }
+
             pending += codePoint;
         }
+
         appendText(pending);
     };
     // clang-format on
@@ -312,25 +344,30 @@ RichTextDocument MarkupParser::parse() {
             ++offset;
             continue;
         }
+
         flushText(offset);
         const std::size_t close = markup.find(']', offset + 1);
         if (close == std::string_view::npos) {
             fail(offset, "A tag has no closing bracket.");
         }
+
         skipNewline = false;
         handleTag(readTag(offset, close));
         offset = close + 1;
         textStart = offset;
     }
+
     flushText(markup.size());
 
     if (!openTags.empty()) {
         fail(openTags.back().offset, "The tag \"[" + openTags.back().name + "]\" is never closed.");
     }
+
     // A last paragraph that a newline began is an empty line, like a trailing newline of plain text.
     if (!paragraph.inlines.empty() || paragraph.dropCap || paragraphFromNewline || container().empty()) {
         finishParagraph();
     }
+
     return std::move(document);
 }
 
@@ -339,18 +376,23 @@ void MarkupParser::handleTag(const Tag& tag) {
         closeTag(tag);
         return;
     }
+
     if (tag.name == "lb" || tag.name == "rb") {
         requireNoValue(tag);
         checkAttributes(tag, {});
+
         if (insideTableRows()) {
             fail(tag.offset, "Text inside a \"[table]\" must be inside a \"[cell]\".");
         }
+
         appendText(tag.name == "lb" ? U"[" : U"]");
         return;
     }
+
     if (insideTableRows() && tag.name != "cell") {
         fail(tag.offset, "Only \"[cell]\" tags go directly inside a \"[table]\", not \"[" + tag.name + "]\".");
     }
+
     if (dropCap) {
         fail(tag.offset, "A \"[dropcap]\" holds plain text, not \"[" + tag.name + "]\".");
     }
@@ -362,9 +404,11 @@ void MarkupParser::handleTag(const Tag& tag) {
     } else if (tag.name == "pause") {
         const float seconds = number(tag, requireValue(tag), "seconds");
         checkAttributes(tag, {});
+
         if (seconds < 0.0F) {
             fail(tag.offset, "A \"[pause]\" cannot last a negative time.");
         }
+
         appendInline({.kind = RichTextDocument::Inline::Kind::Pause, .style = currentStyle(), .seconds = seconds});
     } else if (tag.name == "img") {
         addImage(tag);
@@ -429,9 +473,11 @@ void MarkupParser::openInline(const Tag& tag) {
         if (tag.attributes.contains("color")) {
             shadow.color = color(tag, tag.attributes.at("color"));
         }
+
         if (tag.attributes.contains("blur")) {
             shadow.blur = number(tag, tag.attributes.at("blur"), "blur");
         }
+
         style.shadow = shadow;
     } else if (name == "glow") {
         checkAttributes(tag, {"color"});
@@ -445,6 +491,7 @@ void MarkupParser::openInline(const Tag& tag) {
         if (alpha < 0.0F || alpha > 1.0F) {
             fail(tag.offset, "The alpha of \"[alpha]\" must be from 0 to 1.");
         }
+
         style.alpha *= alpha;
     } else if (name == "speed") {
         checkAttributes(tag, {});
@@ -452,6 +499,7 @@ void MarkupParser::openInline(const Tag& tag) {
         if (!(speed > 0.0F)) {
             fail(tag.offset, "The speed of \"[speed]\" must be positive.");
         }
+
         style.revealSpeed *= speed;
     } else if (name == "url") {
         checkAttributes(tag, {});
@@ -468,10 +516,12 @@ void MarkupParser::openInline(const Tag& tag) {
         if (tag.value) {
             effect.parameters.insert_or_assign("value", *tag.value);
         }
+
         std::tie(effect.line, effect.column) = locate(tag.offset);
         style.effects.push_back(document.effects.size());
         document.effects.push_back(std::move(effect));
     }
+
     styleIndex.reset();
 }
 
@@ -485,23 +535,29 @@ void MarkupParser::openBlock(const Tag& tag) {
     if (name == "p") {
         requireNoValue(tag);
         checkAttributes(tag, {"align", "dir", "indent", "hang"});
+
         if (tag.attributes.contains("align")) {
             const std::optional<Alignment> align = Style::alignmentFromName(tag.attributes.at("align"));
             if (!align) {
                 fail(tag.offset, "The \"align\" of \"[p]\" must be \"start\", \"end\", \"left\", \"center\", \"right\" or \"fill\".");
             }
+
             block.align = *align;
         }
+
         if (tag.attributes.contains("dir")) {
             const std::optional<Direction> direction = Style::directionFromName(tag.attributes.at("dir"));
             if (!direction) {
                 fail(tag.offset, "The \"dir\" of \"[p]\" must be \"auto\", \"leftToRight\" or \"rightToLeft\".");
             }
+
             block.direction = *direction;
         }
+
         if (tag.attributes.contains("indent")) {
             block.indent += number(tag, tag.attributes.at("indent"), "indent");
         }
+
         if (tag.attributes.contains("hang")) {
             block.hang = number(tag, tag.attributes.at("hang"), "hang");
         }
@@ -520,6 +576,7 @@ void MarkupParser::openBlock(const Tag& tag) {
         if (found == kTypes.end()) {
             fail(tag.offset, "The type of \"[ol]\" must be \"1\", \"a\", \"A\", \"i\" or \"I\".");
         }
+
         block.list = found->second;
         block.indent += 1.0F;
     } else {
@@ -539,6 +596,7 @@ void MarkupParser::openTable(const Tag& tag) {
     if (cell) {
         fail(tag.offset, "Tables cannot be nested.");
     }
+
     checkAttributes(tag, {});
     const float columns = number(tag, requireValue(tag), "column count");
     if (columns < 1.0F || columns > static_cast<float>(kMaxTableColumns) || columns != std::floor(columns)) {
@@ -557,15 +615,18 @@ void MarkupParser::openCell(const Tag& tag) {
     if (!table || cell) {
         fail(tag.offset, "A \"[cell]\" goes directly inside a \"[table]\".");
     }
+
     requireNoValue(tag);
     checkAttributes(tag, {"bg", "border", "padding"});
     RichTextDocument::Cell opened;
     if (tag.attributes.contains("bg")) {
         opened.background = color(tag, tag.attributes.at("bg"));
     }
+
     if (tag.attributes.contains("border")) {
         opened.border = color(tag, tag.attributes.at("border"));
     }
+
     if (tag.attributes.contains("padding")) {
         opened.padding = number(tag, tag.attributes.at("padding"), "padding");
     }
@@ -581,21 +642,26 @@ void MarkupParser::openDropCap(const Tag& tag) {
     if (!paragraph.inlines.empty() || paragraph.dropCap) {
         fail(tag.offset, "A \"[dropcap]\" must start its paragraph.");
     }
+
     requireNoValue(tag);
     checkAttributes(tag, {"font", "size", "color", "margin"});
     pushTag(tag, TagKind::DropCap);
+
     if (tag.attributes.contains("font")) {
         style.font = tag.attributes.at("font");
     }
+
     if (tag.attributes.contains("size")) {
         style.size = size(tag, tag.attributes.at("size"));
         style.sizeFactor = 1.0F;
     } else {
         style.sizeFactor *= 3.0F;
     }
+
     if (tag.attributes.contains("color")) {
         style.color = color(tag, tag.attributes.at("color"));
     }
+
     styleIndex.reset();
     dropCap = RichTextDocument::DropCap{.style = currentStyle(), .margin = tag.attributes.contains("margin") ? number(tag, tag.attributes.at("margin"), "margin") : 4.0F};
 }
@@ -606,25 +672,31 @@ void MarkupParser::addImage(const Tag& tag) {
     if (tag.attributes.contains("width")) {
         image.width = size(tag, tag.attributes.at("width"));
     }
+
     if (tag.attributes.contains("height")) {
         image.height = size(tag, tag.attributes.at("height"));
     }
+
     if (tag.attributes.contains("region")) {
         const std::string& region = tag.attributes.at("region");
         const std::size_t middle = region.find(',', region.find(',') + 1);
         if (middle == std::string::npos) {
             fail(tag.offset, "The region of \"[img]\" needs \"x,y,width,height\".");
         }
+
         const math::Vec2 origin = pair(tag, std::string_view(region).substr(0, middle));
         const math::Vec2 extent = pair(tag, std::string_view(region).substr(middle + 1));
         image.region = math::Rect{origin.x, origin.y, extent.x, extent.y};
     }
+
     if (tag.attributes.contains("color")) {
         image.color = color(tag, tag.attributes.at("color"));
     }
+
     if (tag.attributes.contains("valign")) {
         image.align = verticalAlign(tag, tag.attributes.at("valign"));
     }
+
     document.images.push_back(std::move(image));
     appendInline({.kind = RichTextDocument::Inline::Kind::Image, .style = currentStyle(), .object = document.images.size() - 1});
 }
@@ -635,15 +707,19 @@ void MarkupParser::addIcon(const Tag& tag) {
     if (tag.attributes.contains("width")) {
         icon.width = size(tag, tag.attributes.at("width"));
     }
+
     if (tag.attributes.contains("height")) {
         icon.height = size(tag, tag.attributes.at("height"));
     }
+
     if (tag.attributes.contains("color")) {
         icon.color = color(tag, tag.attributes.at("color"));
     }
+
     if (tag.attributes.contains("valign")) {
         icon.align = verticalAlign(tag, tag.attributes.at("valign"));
     }
+
     document.icons.push_back(std::move(icon));
     appendInline({.kind = RichTextDocument::Inline::Kind::Icon, .style = currentStyle(), .object = document.icons.size() - 1});
 }
@@ -657,11 +733,14 @@ void MarkupParser::addRule(const Tag& tag) {
         if (!width.ends_with('%')) {
             fail(tag.offset, "The width of \"[hr]\" is a percentage such as \"50%\".");
         }
+
         rule.ruleWidth = std::clamp(number(tag, std::string_view(width).substr(0, width.size() - 1), "width") / 100.0F, 0.0F, 1.0F);
     }
+
     if (tag.attributes.contains("height")) {
         rule.ruleThickness = size(tag, tag.attributes.at("height"));
     }
+
     if (tag.attributes.contains("color")) {
         rule.ruleColor = color(tag, tag.attributes.at("color"));
     }
@@ -676,12 +755,14 @@ void MarkupParser::closeTag(const Tag& tag) {
     if (openTags.empty()) {
         fail(tag.offset, "The tag \"[/" + tag.name + "]\" closes nothing.");
     }
+
     if (openTags.back().name != tag.name) {
         fail(tag.offset, "The tag \"[/" + tag.name + "]\" closes \"[" + openTags.back().name + "]\", which is still open.");
     }
 
     OpenTag closed = std::move(openTags.back());
     openTags.pop_back();
+
     switch (closed.kind) {
     case TagKind::Inline:
         break;
@@ -689,11 +770,13 @@ void MarkupParser::closeTag(const Tag& tag) {
         if (closed.captures) {
             document.links[*closed.link] = std::move(closed.captured);
         }
+
         break;
     case TagKind::DropCap:
         if (dropCap->text.empty()) {
             fail(tag.offset, "A \"[dropcap]\" needs some text.");
         }
+
         paragraph.dropCap = std::move(dropCap);
         dropCap.reset();
         break;
@@ -725,6 +808,7 @@ std::size_t MarkupParser::currentStyle() {
         styleIndex = document.styles.size();
         document.styles.push_back(style);
     }
+
     return *styleIndex;
 }
 
@@ -732,10 +816,12 @@ void MarkupParser::appendText(std::u32string_view text) {
     if (text.empty()) {
         return;
     }
+
     if (dropCap) {
         dropCap->text += text;
         return;
     }
+
     for (OpenTag& tag : openTags) {
         if (tag.captures) {
             for (const char32_t codePoint : text) {
@@ -749,6 +835,7 @@ void MarkupParser::appendText(std::u32string_view text) {
         paragraph.inlines.back().text += text;
         return;
     }
+
     paragraph.inlines.push_back({.kind = RichTextDocument::Inline::Kind::Text, .style = index, .text = std::u32string(text)});
 }
 
@@ -760,6 +847,7 @@ void MarkupParser::newline() {
     if (dropCap) {
         fail(openTags.back().offset, "A \"[dropcap]\" cannot hold a line break.");
     }
+
     finishParagraph();
     beginParagraph(true);
 }
@@ -777,6 +865,7 @@ void MarkupParser::finishParagraph() {
         paragraph.marker = *block.list == RichTextDocument::ListKind::Bullet ? block.bullet : listMarker(*block.list, block.items);
         paragraph.markerStyle = paragraph.inlines.empty() ? currentStyle() : paragraph.inlines.front().style;
     }
+
     container().push_back(std::move(paragraph));
     paragraph = {};
 }
@@ -787,6 +876,7 @@ void MarkupParser::discardOrFinishParagraph() {
         paragraph = {};
         return;
     }
+
     finishParagraph();
 }
 

@@ -64,6 +64,7 @@ TEST_F(SystemFontTest, DrawsWhatNoFontOfTheFamilyHoldsWithTheFontOfTheSystem) {
     const std::shared_ptr<const Layout> drawn = family->layout("日本語", style);
     EXPECT_FALSE(drawn->waitingForFonts);
     ASSERT_EQ(drawn->glyphs.size(), 3U);
+
     for (const Layout::Glyph& glyph : drawn->glyphs) {
         EXPECT_EQ(drawn->looks[glyph.look].font, systemFonts().getFaces()[0].font.get());
     }

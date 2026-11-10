@@ -16,16 +16,20 @@ struct BidiParagraph::Analysis {
 // An empty paragraph reads in the direction it was given, and left to right when that is automatic.
 BidiParagraph::BidiParagraph(std::u32string_view text, Direction direction) : analysis(std::make_unique<Analysis>()) {
     analysis->rightToLeft = direction == Direction::RightToLeft;
+
     if (text.empty()) {
         return;
     }
+
     const SBCodepointSequence sequence{SBStringEncodingUTF32, text.data(), text.size()};
     analysis->algorithm.reset(SBAlgorithmCreate(&sequence));
     const SBLevel base = direction == Direction::RightToLeft ? 1 : (direction == Direction::LeftToRight ? 0 : SBLevelDefaultLTR);
     analysis->paragraph.reset(SBAlgorithmCreateParagraph(analysis->algorithm.get(), 0, text.size(), base));
+
     if (SBParagraphGetLength(analysis->paragraph.get()) != text.size()) {
         throw std::invalid_argument("Text laid out as one paragraph cannot hold a paragraph separator before its end.");
     }
+
     analysis->rightToLeft = SBParagraphGetBaseLevel(analysis->paragraph.get()) % 2 != 0;
 }
 
@@ -44,6 +48,7 @@ std::vector<BidiParagraph::Run> BidiParagraph::getVisualRuns(std::size_t begin, 
     if (!analysis->paragraph || begin >= end) {
         return runs;
     }
+
     const std::unique_ptr<const _SBLine, decltype(&SBLineRelease)> line(SBParagraphCreateLine(analysis->paragraph.get(), begin, end - begin), &SBLineRelease);
     const SBRun* found = SBLineGetRunsPtr(line.get());
     const SBUInteger count = SBLineGetRunCount(line.get());
@@ -51,6 +56,7 @@ std::vector<BidiParagraph::Run> BidiParagraph::getVisualRuns(std::size_t begin, 
     for (SBUInteger index = 0; index < count; ++index) {
         runs.push_back({.begin = found[index].offset, .end = found[index].offset + found[index].length, .level = found[index].level});
     }
+
     return runs;
 }
 

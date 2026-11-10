@@ -17,6 +17,7 @@ FontFamily::FontFamily(Faces familyFaces) : faces(std::move(familyFaces)), layou
     if (!faces.regular) {
         throw std::invalid_argument("A font family needs a regular face.");
     }
+
     for (const std::shared_ptr<Font>& fallback : faces.fallbacks) {
         if (!fallback) {
             throw std::invalid_argument("A font family fallback must be a font.");
@@ -30,24 +31,31 @@ FontFamily::Selection FontFamily::select(bool bold, bool italic, bool mono) cons
     if (mono && faces.mono) {
         return {.font = faces.mono.get(), .syntheticBold = bold, .syntheticItalic = italic};
     }
+
     if (bold && italic) {
         if (faces.boldItalic) {
             return {.font = faces.boldItalic.get()};
         }
+
         if (faces.bold) {
             return {.font = faces.bold.get(), .syntheticItalic = true};
         }
+
         if (faces.italic) {
             return {.font = faces.italic.get(), .syntheticBold = true};
         }
+
         return {.font = faces.regular.get(), .syntheticBold = true, .syntheticItalic = true};
     }
+
     if (bold) {
         return faces.bold ? Selection{.font = faces.bold.get()} : Selection{.font = faces.regular.get(), .syntheticBold = true};
     }
+
     if (italic) {
         return faces.italic ? Selection{.font = faces.italic.get()} : Selection{.font = faces.regular.get(), .syntheticItalic = true};
     }
+
     return {.font = faces.regular.get()};
 }
 
@@ -62,14 +70,17 @@ template <typename Accept> const std::shared_ptr<Font>* FontFamily::findFallback
             return &font;
         }
     }
+
     if (!faces.systemFonts) {
         return nullptr;
     }
+
     for (const SystemFonts::Face& face : faces.systemFonts->getFaces()) {
         if (accept(*face.font)) {
             return &face.font;
         }
     }
+
     return nullptr;
 }
 
@@ -88,6 +99,7 @@ FontFamily::Selection FontFamily::resolve(const Selection& face, std::u32string_
         if (covers(*face.font, cluster) && face.font->hasColorGlyph(cluster.front()) == emoji) {
             return face;
         }
+
         if (const std::shared_ptr<Font>* presented = findFallback([cluster, emoji](Font& font) { return covers(font, cluster) && font.hasColorGlyph(cluster.front()) == emoji; })) {
             return fallback(presented);
         }
@@ -96,12 +108,15 @@ FontFamily::Selection FontFamily::resolve(const Selection& face, std::u32string_
     if (covers(*face.font, cluster)) {
         return face;
     }
+
     if (const std::shared_ptr<Font>* covering = findFallback([cluster](Font& font) { return covers(font, cluster); })) {
         return fallback(covering);
     }
+
     if (cluster.empty() || face.font->hasGlyph(cluster.front())) {
         return face;
     }
+
     if (const std::shared_ptr<Font>* letter = findFallback([cluster](Font& font) { return font.hasGlyph(cluster.front()); })) {
         return fallback(letter);
     }
@@ -117,9 +132,11 @@ std::shared_ptr<const Layout> FontFamily::layout(std::string_view text, const St
         systemRevision = faces.systemFonts->getRevision();
         layouts->dropWaitingForFonts();
     }
+
     if (std::shared_ptr<const Layout> cached = layouts->find(text, style)) {
         return cached;
     }
+
     return layouts->store(text, style, TextFit::layout(style, [this, text](const Style& laid) { return LayoutBuilder::layoutPlainText(text, laid, this, nullptr); }));
 }
 

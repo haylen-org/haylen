@@ -56,9 +56,11 @@ class BitmapFontTest : public ::testing::Test {
 
         bytes.push_back(2);
         writeNumber(bytes, 15, 4);
+
         for (const std::uint32_t value : {18U, 14U, 64U, 64U, 2U}) {
             writeNumber(bytes, value, 2);
         }
+
         bytes.insert(bytes.end(), 5, 0);
 
         const std::string pages = std::string("pixel_0.png") + '\0' + "pixel_1.png" + '\0';
@@ -68,6 +70,7 @@ class BitmapFontTest : public ::testing::Test {
 
         bytes.push_back(4);
         writeNumber(bytes, 60, 4);
+
         for (const auto& [id, x, xoffset, advance, page, width] : std::vector<std::tuple<std::uint32_t, std::uint32_t, std::uint32_t, std::uint32_t, std::uint32_t, std::uint32_t>>{{65, 0, 1, 10, 0, 8}, {66, 8, 0, 9, 1, 8}, {32, 0, 0, 5, 0, 0}}) {
             writeNumber(bytes, id, 4);
             writeNumber(bytes, x, 2);

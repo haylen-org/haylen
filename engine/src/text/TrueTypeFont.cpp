@@ -39,15 +39,19 @@ const TrueTypeFont::Options& TrueTypeFont::validate(const Options& value, const 
     if (!(value.bakeSize > 0.0F && value.bakeSize <= static_cast<float>(limit))) {
         throw std::invalid_argument("The bake size of a TrueType font must be " + bound);
     }
+
     if (value.spread <= 0 || value.spread > limit) {
         throw std::invalid_argument("The spread of a TrueType font must be " + bound);
     }
+
     if (value.atlasSize <= 0 || value.atlasSize > limit) {
         throw std::invalid_argument("The atlas size of a TrueType font must be " + bound);
     }
+
     if (value.face < 0) {
         throw std::invalid_argument("The face of a TrueType font is an index from 0.");
     }
+
     return value;
 }
 
@@ -62,6 +66,7 @@ std::unique_ptr<TrueTypeFont::Face> TrueTypeFont::open(std::vector<std::uint8_t>
     if (!file) {
         throw std::runtime_error("Font data is not a valid TrueType or OpenType font.");
     }
+
     const float scale = fontOptions.bakeSize / static_cast<float>(file->getUnitsPerEm());
     return std::make_unique<Face>(Face{.file = std::move(*file), .scale = scale});
 }
@@ -76,6 +81,7 @@ Font::Metrics TrueTypeFont::readMetrics(const Face& opened, const Options& fontO
             top = box->y_bearing;
         }
     }
+
     const std::uint32_t letterO = file.findGlyph('o');
     return {
         .nativeSize = fontOptions.bakeSize,
@@ -106,6 +112,7 @@ const graphics::Texture& TrueTypeFont::getPage(std::size_t index) const {
     if (index != 0) {
         throw std::out_of_range("A TrueType font has a single page.");
     }
+
     return texture;
 }
 
@@ -114,10 +121,12 @@ TrueTypeFont::Coverage TrueTypeFont::cover(char32_t codePoint) {
     if (!inserted) {
         return entry->second;
     }
+
     const std::uint32_t index = face->file.findGlyph(codePoint);
     if (index != 0) {
         entry->second = isColor(index) ? Coverage::Color : Coverage::Outline;
     }
+
     return entry->second;
 }
 
@@ -142,9 +151,11 @@ void TrueTypeFont::shape(const Run& run, std::vector<ShapedGlyph>& shaped) {
     hb_buffer_add_utf32(buffer, reinterpret_cast<const std::uint32_t*>(run.text.data()), static_cast<int>(run.text.size()), static_cast<unsigned int>(run.begin), static_cast<int>(run.end - run.begin));
     hb_buffer_set_direction(buffer, run.rightToLeft ? HB_DIRECTION_RTL : HB_DIRECTION_LTR);
     hb_buffer_set_script(buffer, hb_script_from_iso15924_tag(run.script));
+
     if (!run.language.empty()) {
         hb_buffer_set_language(buffer, hb_language_from_string(run.language.data(), static_cast<int>(run.language.size())));
     }
+
     if (run.ligatures) {
         hb_shape(&face->file.getFont(), buffer, nullptr, 0);
     } else {
@@ -171,9 +182,11 @@ const Font::Glyph& TrueTypeFont::getGlyph(std::uint32_t index) {
     if (const auto found = glyphs.find(index); found != glyphs.end()) {
         return found->second;
     }
+
     if (index >= face->file.getGlyphCount()) {
         throw std::out_of_range("The font has no glyph with index " + std::to_string(index) + ".");
     }
+
     return glyphs.emplace(index, rasterize(index)).first->second;
 }
 
@@ -188,6 +201,7 @@ Font::Glyph TrueTypeFont::rasterize(std::uint32_t index) {
     if (!field) {
         return glyph;
     }
+
     const int width = field->width;
     const int height = field->height;
 
@@ -200,6 +214,7 @@ Font::Glyph TrueTypeFont::rasterize(std::uint32_t index) {
             rowHeight = 0;
             continue;
         }
+
         grow();
     }
 
@@ -222,6 +237,7 @@ Font::Glyph TrueTypeFont::paintColors(Glyph glyph, std::uint32_t index) const {
     if (!hb_font_get_glyph_extents(&face->file.getFont(), index, &extents) || extents.width <= 0 || extents.height >= 0) {
         return glyph;
     }
+
     glyph.image = graphics::VectorImage(std::make_shared<ColorGlyphImage>(face->file.getFont(), index, extents, face->scale));
     glyph.source = {0.0F, 0.0F, glyph.image.getSize().x, glyph.image.getSize().y};
     glyph.offset = {static_cast<float>(extents.x_bearing) * face->scale, static_cast<float>(-extents.y_bearing) * face->scale};
@@ -242,6 +258,7 @@ void TrueTypeFont::grow() {
     for (int row = 0; row < atlasHeight; ++row) {
         std::copy_n(atlas.begin() + static_cast<std::ptrdiff_t>(row * atlasWidth), atlasWidth, grown.begin() + static_cast<std::ptrdiff_t>(row * width));
     }
+
     atlas = std::move(grown);
     atlasWidth = width;
     atlasHeight = height;
@@ -253,11 +270,13 @@ void TrueTypeFont::sync() {
     if (!dirty) {
         return;
     }
+
     if (texture.getWidth() == atlasWidth && texture.getHeight() == atlasHeight) {
         device.updateTexture(texture, std::span(reinterpret_cast<const std::uint8_t*>(atlas.data()), atlas.size() * sizeof(std::uint16_t)));
     } else {
         texture = device.createDynamicDistanceTexture(atlasWidth, atlasHeight, atlas, {.filter = graphics::Texture::Filter::Linear});
     }
+
     dirty = false;
 }
 
