@@ -11,9 +11,11 @@ CellTypes::CellTypes(const ComponentRegistry& registry, const core::Json& defini
     if (!definitions.is_object() || definitions.empty() || definitions.size() > kMaxTypes) {
         throw std::invalid_argument("The property \"types\" of a \"collection\" must map type names to type definitions.");
     }
+
     for (const auto& [name, definition] : definitions.items()) {
         templates.push_back(std::make_unique<CellTemplate>(registry, name, definition));
     }
+
     pools.resize(templates.size());
 }
 
@@ -22,6 +24,7 @@ std::optional<std::uint16_t> CellTypes::find(std::string_view name) const noexce
     if (found == templates.end()) {
         return std::nullopt;
     }
+
     return static_cast<std::uint16_t>(found - templates.begin());
 }
 
@@ -30,6 +33,7 @@ std::shared_ptr<CollectionCell> CellTypes::acquire(std::uint16_t type) {
     if (pool.empty()) {
         return templates[type]->build();
     }
+
     std::shared_ptr<CollectionCell> cell = std::move(pool.back());
     pool.pop_back();
     return cell;

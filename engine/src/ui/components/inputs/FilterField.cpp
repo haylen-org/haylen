@@ -22,10 +22,12 @@ void FilterField::render(Context& context, const math::Rect& bounds) {
     if (value.empty()) {
         return;
     }
+
     const math::Rect clear = context.mirror({bounds.getRight() - icon, bounds.y, icon, bounds.height}, bounds);
     const Widgets::Interaction state = Widgets::interact(context, clear, context.getMetric(Theme::Metric::ControlRadius), "##clear");
     const math::Vec2 center = clear.getCenter() - math::Vec2{context.isRightToLeft() ? -icon * 0.2F : icon * 0.2F, 0.0F};
     Widgets::cross(context, center, icon * 0.15F, stroke, context.getColor(state.hovered ? Theme::Color::Text : Theme::Color::TextMuted));
+
     if (state.clicked) {
         value.clear();
         context.playSound(Theme::Sound::Press);

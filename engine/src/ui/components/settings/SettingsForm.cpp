@@ -14,6 +14,7 @@ math::Vec2 SettingsForm::measureContent(Context& context, float availableWidth) 
         size = {std::max(size.x, measured.x), size.y + measured.y + getSpacingBefore(context, *child, first)};
         first = false;
     }
+
     return size;
 }
 
@@ -33,6 +34,7 @@ float SettingsForm::getSpacingBefore(Context& context, const Component& child, b
     if (first) {
         return 0.0F;
     }
+
     const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
     return child.getKind() == "sectionTitle" ? spacing * 2.0F : spacing * 0.5F;
 }

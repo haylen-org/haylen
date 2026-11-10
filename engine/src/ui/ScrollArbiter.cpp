@@ -15,6 +15,7 @@ void ScrollArbiter::addWheel(math::Vec2 scroll, bool precise, platform::Event::S
         pending.momentum += scroll;
         return;
     }
+
     pendingTouched = pendingTouched || phase == Phase::Began;
     pendingLifted = pendingLifted || phase == Phase::Ended;
     pendingPhased = pendingPhased || phase != Phase::None;
@@ -32,6 +33,7 @@ ImGuiID ScrollArbiter::choose(std::span<const Offer> offers) noexcept {
             best = &offer;
         }
     }
+
     return best != nullptr ? best->area : 0;
 }
 
@@ -44,6 +46,7 @@ void ScrollArbiter::chooseArea(math::Vec2 pointer) {
             wheelOffers.push_back({.area = area.id, .size = area.bounds.width * area.bounds.height, .movable = toward > 0.0F ? area.position > 0.0 : area.position < area.maximum});
         }
     }
+
     wheelArea = choose(wheelOffers);
 }
 
@@ -67,6 +70,7 @@ void ScrollArbiter::chooseEdge(math::Vec2 pointer) {
         } else if (along > length - area.edge && area.position < area.maximum) {
             factor = 1.0F - std::max(length - along, 0.0F) / area.edge;
         }
+
         const float size = area.bounds.width * area.bounds.height;
         if (factor != 0.0F && (edgeArea == 0 || size < smallest)) {
             edgeArea = area.id;
@@ -88,6 +92,7 @@ void ScrollArbiter::beginFrame(float seconds) {
     } else {
         edgeArea = 0;
     }
+
     wheel = std::exchange(pending, {});
     delivered = wheel;
     touched = std::exchange(pendingTouched, false);
@@ -98,10 +103,13 @@ void ScrollArbiter::beginFrame(float seconds) {
 
     // A gesture of a trackpad with phases lasts while its fingers are on it or its momentum goes on, until fingers touch it again. A wheel without phases that pauses, or that rests while the pointer moves on, ends its gesture. The next wheel starts a gesture along the axis it moves most.
     const bool scrolled = !isEmpty(wheel);
+
     if (gesture && !fingers && (touched || (phased && wheel.momentum.isZero()) || quiet > kGesturePause || (quiet > kPointerPause && (pointer - wheelPointer).getLengthSquared() > kPointerTravel * kPointerTravel))) {
         gesture = false;
     }
+
     fingers = (fingers || touched || (framePhased && scrolled)) && !lifted;
+
     if (scrolled && !gesture) {
         const math::Vec2 motion = wheel.lines.isZero() ? wheel.points : wheel.lines;
         gesture = true;
@@ -116,7 +124,9 @@ void ScrollArbiter::beginFrame(float seconds) {
         delivered.points += waiting.points;
         waiting = {};
     }
+
     quiet = scrolled ? 0.0F : quiet + seconds;
+
     if (scrolled) {
         wheelPointer = pointer;
     }
@@ -127,6 +137,7 @@ void ScrollArbiter::beginFrame(float seconds) {
     } else if (dragArea == 0 && !dragOffers.empty() && !itemDragged) {
         dragArea = choose(dragOffers);
     }
+
     dragOffers.clear();
 }
 
@@ -137,6 +148,7 @@ ScrollArbiter::AxisWheel ScrollArbiter::takeWheel(ImGuiID area, const math::Rect
     if (!gesture || vertical == horizontal || area != wheelArea) {
         return result;
     }
+
     result.lines = horizontal ? delivered.lines.x : delivered.lines.y;
     result.points = horizontal ? delivered.points.x : delivered.points.y;
     result.momentum = horizontal ? delivered.momentum.x : delivered.momentum.y;
@@ -149,20 +161,25 @@ bool ScrollArbiter::takeDrag(ImGuiID area, const math::Rect& bounds, bool horizo
     if (dragArea != 0) {
         return dragArea == area;
     }
+
     if (itemDragged) {
         return false;
     }
+
     const ImGuiIO& io = ImGui::GetIO();
     const ImVec2 press = io.MouseClickedPos[ImGuiMouseButton_Left];
+
     if (!io.MouseDown[ImGuiMouseButton_Left] || !bounds.contains(math::Vec2{press.x, press.y})) {
         return false;
     }
+
     const ImVec2 moved = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left, 0.0F);
     const float along = std::fabs(horizontal ? moved.x : moved.y);
     const float across = std::fabs(horizontal ? moved.y : moved.x);
     if (along >= kDragSlop && along > across) {
         dragOffers.push_back({.area = area, .size = bounds.width * bounds.height, .movable = true});
     }
+
     return false;
 }
 

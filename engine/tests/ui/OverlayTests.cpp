@@ -50,6 +50,7 @@ class OverlayTest : public ::testing::Test, public test::UiFixture {
         if (state.OpenPopupStack.Size == 0 || state.OpenPopupStack[0].Window == nullptr || state.OpenPopupStack[0].Window->DrawList->VtxBuffer.Size == 0) {
             return std::nullopt;
         }
+
         return static_cast<float>((state.OpenPopupStack[0].Window->DrawList->VtxBuffer[0].col >> IM_COL32_A_SHIFT) & 0xFFU) / 255.0F;
     }
 
@@ -103,6 +104,7 @@ TEST_F(OverlayTest, QueuesNoticesBeyondTheLimitOfTheStack) {
     for (const char* message : {"One", "Two", "Three", "Four"}) {
         gui->command(getUi().getContext(), "news", "show", {{"text", message}});
     }
+
     frames(getTransitionFrames());
     EXPECT_EQ(drawMessages().size(), 3U);
 
@@ -157,6 +159,7 @@ TEST_F(OverlayTest, StacksTheAnswersOfADialogThatDoNotFitInOneRow) {
     const math::Rect close = findElement("Close");
     EXPECT_LT(help.getBottom(), share.y);
     EXPECT_LT(share.getBottom(), close.y);
+
     for (const math::Rect& button : {help, share, close}) {
         EXPECT_EQ(button.x, help.x);
         EXPECT_EQ(button.width, help.width);
@@ -202,6 +205,7 @@ TEST_F(OverlayTest, PutsTheNewestNoticeOfADeckInFrontAndOpensTheDeckUnderThePoin
     for (const char* message : {"One", "Two", "Three"}) {
         gui->command(getUi().getContext(), "news", "show", {{"text", message}});
     }
+
     frames(getTransitionFrames() * 3);
 
     // The newest notice is in front at the edge, and the older ones peek out above it, a little smaller.
@@ -229,6 +233,7 @@ TEST_F(OverlayTest, KeepsADeckOpenWhileThePointerStaysInIt) {
     for (const char* message : {"One", "Two", "Three"}) {
         gui->command(getUi().getContext(), "news", "show", {{"text", message}});
     }
+
     frames(getTransitionFrames() * 3);
     const math::Rect front = getBounds(*gui, "news");
     const float peek = getUi().getTheme().getMetric(Theme::Metric::ToastPeek);
@@ -240,8 +245,10 @@ TEST_F(OverlayTest, KeepsADeckOpenWhileThePointerStaysInIt) {
 
     // The deck stays open in every frame with the pointer on the notice behind, in the gaps between the notices and just past the front one.
     const float gap = (opened[1].getBottom() + opened[0].y) * 0.5F;
+
     for (const float y : {front.y - peek * 0.5F, gap, front.getBottom() + 4.0F}) {
         pointer(platform::Event::Type::MouseMove, {front.getCenter().x, y});
+
         for (int frame = 0; frame < 20; ++frame) {
             std::vector<math::Rect> shown = drawMessages();
             ASSERT_EQ(shown.size(), 3U);
@@ -257,6 +264,7 @@ TEST_F(OverlayTest, TakesTheFrontNoticeOfADeckThatNeverOpensAwayWithEachPress) {
     for (const char* message : {"One", "Two", "Three"}) {
         gui->command(getUi().getContext(), "news", "show", {{"text", message}});
     }
+
     frames(getTransitionFrames() * 3);
     const math::Rect front = getBounds(*gui, "news");
     const float peek = getUi().getTheme().getMetric(Theme::Metric::ToastPeek);
@@ -275,6 +283,7 @@ TEST_F(OverlayTest, TakesTheFrontNoticeOfADeckThatNeverOpensAwayWithEachPress) {
         std::ranges::sort(shown, [](const math::Rect& first, const math::Rect& second) { return first.y > second.y; });
         EXPECT_NEAR(shown[0].getBottom(), closed[0].getBottom(), 1.0F);
     }
+
     EXPECT_EQ(findLastEvent("dismiss").value, (core::Json{{"reason", "clicked"}}));
 }
 

@@ -17,15 +17,19 @@ void Popover::render(Context& context, const math::Rect& bounds) {
     if (drawButton(context, bounds)) {
         ImGui::OpenPopup("##popover");
     }
+
     if (!ImGui::IsPopupOpen("##popover")) {
         return;
     }
+
     Component* body = getChildren().empty() ? nullptr : getChildren().front().get();
     const math::Vec2 size = body != nullptr ? body->measure(context, contentWidth) : math::Vec2{};
+
     if (const std::optional<math::Rect> box = popup.begin(context, "##popover", ImGuiWindowFlags_NoNavInputs, context.getMetric(Theme::Metric::PanelPadding), {std::max(size.x, contentWidth), size.y}, bounds, contentWidth)) {
         if (body != nullptr) {
             body->draw(context, *box);
         }
+
         popup.end(context);
     }
 }

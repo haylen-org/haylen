@@ -26,6 +26,7 @@ math::Vec2 PageHeader::measureContent(Context& context, float availableWidth) {
         const math::Vec2 captionSize = Typography::measureParagraph(context, Theme::Font::Body, captionText, width);
         size = {std::max(size.x, captionSize.x), size.y + captionSize.y + context.getMetric(Theme::Metric::ItemSpacing) * 0.25F};
     }
+
     return {size.x + padding.getHorizontal(), size.y + padding.getVertical()};
 }
 
@@ -33,10 +34,12 @@ void PageHeader::render(Context& context, const math::Rect& bounds) {
     if (banner) {
         Surfaces::draw(context, Theme::Surface::Banner, bounds, context.getColor(Theme::Color::Accent), std::nullopt);
     }
+
     const math::Rect inner = bounds.inset(getInsets(context));
     const std::string_view titleText = context.getText(title);
     const float titleHeight = Typography::measureParagraph(context, Theme::Font::Title, titleText, inner.width).y;
     Typography::drawParagraph(context, Theme::Font::Title, {inner.x, inner.y, inner.width, titleHeight}, context.getColor(banner ? Theme::Color::OnAccent : Theme::Color::Text), titleText, textAlign);
+
     if (const std::string_view captionText = context.getText(caption); !captionText.empty()) {
         const float top = inner.y + titleHeight + context.getMetric(Theme::Metric::ItemSpacing) * 0.25F;
         Typography::drawParagraph(context, Theme::Font::Body, {inner.x, top, inner.width, inner.getBottom() - top}, context.getColor(banner ? Theme::Color::OnAccent : Theme::Color::TextMuted), captionText, textAlign);
@@ -47,6 +50,7 @@ math::Insets PageHeader::getInsets(Context& context) const {
     if (!banner) {
         return {};
     }
+
     const math::Insets image = Surfaces::getPadding(context, Theme::Surface::Banner);
     const float x = context.getMetric(Theme::Metric::PanelPadding);
     const float y = context.getMetric(Theme::Metric::ControlPaddingY);

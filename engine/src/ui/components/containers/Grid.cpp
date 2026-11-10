@@ -12,17 +12,20 @@ void Grid::readProperties(PropertyReader& reader) {
         reader.read("columns", columns, 1, kMaxColumns);
         columnsSet = true;
     }
+
     reader.read("minColumnWidth", minColumnWidth, 0.0F, 10000.0F);
     if (reader.has("gap")) {
         float value = 0.0F;
         reader.read("gap", value, 0.0F, 10000.0F);
         gap = value;
     }
+
     if (reader.has("rowGap")) {
         float value = 0.0F;
         reader.read("rowGap", value, 0.0F, 10000.0F);
         rowGap = value;
     }
+
     reader.read("padding", padding);
     if (reader.has("alignItems")) {
         Alignment value = Alignment::Start;
@@ -48,6 +51,7 @@ std::size_t Grid::countColumns(Context& context, float width) const {
     if (minColumnWidth <= 0.0F || width >= CommonProperties::kUnbounded) {
         return static_cast<std::size_t>(columns);
     }
+
     const float spacing = getGap(context);
     const auto fitting = static_cast<int>(std::floor((width + spacing) / (minColumnWidth + spacing)));
     return static_cast<std::size_t>(std::clamp(fitting, 1, columnsSet ? columns : kMaxColumns));
@@ -61,6 +65,7 @@ math::Vec2 Grid::measureContent(Context& context, float availableWidth) {
     for (const float row : rows) {
         height += row;
     }
+
     height += rows.empty() ? 0.0F : getRowGap(context) * static_cast<float>(rows.size() - 1);
     const auto across = static_cast<float>(std::min<std::size_t>(count, static_cast<std::size_t>(std::ranges::distance(getLayoutChildren()))));
     const float width = across > 0.0F ? widest * across + getGap(context) * (across - 1.0F) : 0.0F;
@@ -80,6 +85,7 @@ void Grid::render(Context& context, const math::Rect& bounds) {
         if (column == 0 && row > 0) {
             y += rows[row - 1] + getRowGap(context);
         }
+
         ++index;
 
         const float height = rows[row];
@@ -89,6 +95,7 @@ void Grid::render(Context& context, const math::Rect& bounds) {
             child->draw(context, {std::floor(area.x), std::floor(area.y), std::min(child->clampWidth(cell), cell), std::min(child->clampHeight(height), height)});
             continue;
         }
+
         const math::Vec2 size = math::Vec2::min(child->measure(context, cell), area.getSize());
         child->draw(context, {std::floor(context.alignHorizontally(alignment, area.x, cell, size.x)), std::floor(align(alignment, area.y, height, size.y)), size.x, size.y});
     }
@@ -106,12 +113,15 @@ float Grid::measureRows(Context& context, float width) {
         const math::Vec2 size = child->measure(context, cell);
         const std::size_t row = index / count;
         ++index;
+
         if (row >= rows.size()) {
             rows.push_back(0.0F);
         }
+
         rows[row] = std::max(rows[row], size.y);
         widest = std::max(widest, size.x);
     }
+
     return cell;
 }
 

@@ -29,9 +29,11 @@ void Stepper::readProperties(PropertyReader& reader) {
     if (lowest > highest) {
         reader.fail("min", "must not be greater than \"max\"");
     }
+
     if (!(increment > 0.0)) {
         reader.fail("step", "must be greater than zero");
     }
+
     minimum = lowest;
     maximum = highest;
     value = std::clamp(value, minimum, maximum);
@@ -48,9 +50,11 @@ math::Vec2 Stepper::measureContent(Context& context, float availableWidth) {
     if (items.empty()) {
         widest = std::max(Typography::measure(context, Theme::Font::Body, Typography::formatNumber(minimum, decimals)).x, Typography::measure(context, Theme::Font::Body, Typography::formatNumber(maximum, decimals)).x);
     }
+
     for (const ChoiceItem& item : items) {
         widest = std::max(widest, Typography::measure(context, Theme::Font::Body, context.getText(item.text)).x);
     }
+
     const float height = context.getMetric(Theme::Metric::ControlHeight);
     return {std::min(availableWidth, widest + height * 2.0F + context.getMetric(Theme::Metric::ControlPaddingX) * 2.0F), height};
 }
@@ -71,22 +75,27 @@ void Stepper::render(Context& context, const math::Rect& bounds) {
         if (arrow.hovered && possible) {
             Surfaces::fill(context, area, context.getColor(arrow.held ? Theme::Color::Pressed : Theme::Color::Hover), radius);
         }
+
         Widgets::arrow(context, area.getCenter(), side * 0.28F, Widgets::mirror(context, direction < 0 ? ImGuiDir_Left : ImGuiDir_Right), context.getColor(possible ? Theme::Color::TextMuted : Theme::Color::TextDisabled));
         ImGui::PopID();
+
         if (arrow.clicked) {
             stepped = direction;
         }
     }
 
     const Widgets::Interaction body = Widgets::interact(context, bounds, radius, "##value");
+
     if (takeFocusRequest()) {
         Widgets::focusItem(context);
     }
+
     Typography::drawAligned(context, Theme::Font::Body, {bounds.x + side, bounds.y, std::max(0.0F, bounds.width - side * 2.0F), bounds.height}, context.getColor(Theme::Color::Text), getShownText(context), Alignment::Center);
 
     if (const std::optional<FocusDirection> direction = takeFocusDirection(context)) {
         stepped = Widgets::getStep(context, *direction);
     }
+
     if (stepped != 0 && canStep(stepped)) {
         step(context, stepped);
     } else if (body.clicked) {
@@ -101,6 +110,7 @@ std::string Stepper::getShownText(Context& context) const {
     if (items.empty()) {
         return Typography::formatNumber(value, decimals);
     }
+
     return std::string(context.getText(items[static_cast<std::size_t>(ChoiceItem::indexOf(items, selected))].text));
 }
 
@@ -108,15 +118,18 @@ bool Stepper::canStep(int direction) const {
     if (wrap) {
         return items.empty() ? minimum < maximum : std::ranges::count_if(items, [](const ChoiceItem& item) { return item.enabled; }) > 1;
     }
+
     if (items.empty()) {
         return direction < 0 ? value > minimum : value < maximum;
     }
+
     const int index = ChoiceItem::indexOf(items, selected);
     for (int other = index + direction; other >= 0 && other < static_cast<int>(items.size()); other += direction) {
         if (items[static_cast<std::size_t>(other)].enabled) {
             return true;
         }
     }
+
     return false;
 }
 
@@ -128,12 +141,14 @@ void Stepper::step(Context& context, int direction) {
         } else if (next < minimum - increment * 1e-9) {
             next = wrap && value <= minimum ? maximum : minimum;
         }
+
         next = std::clamp(next, minimum, maximum);
         if (next != value) {
             value = next;
             context.playSound(Theme::Sound::Step);
             context.emit(*this, "change", {{"value", value}});
         }
+
         return;
     }
 
@@ -144,6 +159,7 @@ void Stepper::step(Context& context, int direction) {
         if (!wrap && (other < 0 || other >= count)) {
             return;
         }
+
         const ChoiceItem& item = items[static_cast<std::size_t>((other % count + count) % count)];
         if (item.enabled) {
             selected = item.id;
@@ -161,6 +177,7 @@ bool Stepper::describe(Context& context, platform::AccessibilityElement& element
     } else if (const int index = ChoiceItem::indexOf(items, selected); index >= 0) {
         element.value.assign(context.getText(items[static_cast<std::size_t>(index)].text));
     }
+
     element.actions = platform::AccessibilityElement::Increment | platform::AccessibilityElement::Decrement;
     return true;
 }

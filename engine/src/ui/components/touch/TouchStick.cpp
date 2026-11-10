@@ -29,16 +29,19 @@ void TouchStick::render(Context& context, const math::Rect& bounds) {
         drawingStopped(context);
         return;
     }
+
     context.blockPointer(bounds);
 
     // A disabled stick rests at the center and waits for a new press once it is enabled again.
     if (!getCommon().enabled) {
         tracker.reset();
     }
+
     const std::optional<math::Vec2> pointer = getCommon().enabled ? tracker.update(context, bounds) : std::nullopt;
     if (!pointer) {
         held.reset();
     }
+
     const math::Vec2 center = pointer ? placeCenter(bounds, *pointer) : bounds.getCenter();
     math::Vec2 value;
     if (pointer) {
@@ -46,6 +49,7 @@ void TouchStick::render(Context& context, const math::Rect& bounds) {
         const float length = offset.getLength();
         value = length <= deadZone ? math::Vec2{} : offset * ((length - deadZone) / (1.0F - deadZone) / length);
     }
+
     context.setStick(action, value);
 
     const float knob = radius * 0.45F;
@@ -62,6 +66,7 @@ void TouchStick::drawBase(Context& context, math::Vec2 center, bool pressed) con
         Surfaces::draw(context, Theme::Surface::StickBase, ring, base.withAlpha(pressed ? 0.45F : 0.3F), context.getColor(Theme::Color::BorderStrong), radius);
         return;
     }
+
     const float border = context.getMetric(Theme::Metric::BorderWidth);
     Surfaces::drawShape(context, {.bounds = ring, .radii = {radius, radius, radius, radius}, .color = base.withAlpha(pressed ? 0.5F : 0.35F), .borderWidth = border * 1.5F, .borderColor = context.getColor(pressed ? Theme::Color::Accent : Theme::Color::BorderStrong)});
     const float guide = radius * 0.55F;
@@ -76,6 +81,7 @@ void TouchStick::drawKnob(Context& context, math::Vec2 center, float knob, bool 
         Surfaces::draw(context, Theme::Surface::StickKnob, area, fill, std::nullopt, knob);
         return;
     }
+
     Surfaces::drawShape(context, {.bounds = area.translated({0.0F, knob * 0.12F}), .radii = {knob, knob, knob, knob}, .color = context.getColor(Theme::Color::Shadow), .softness = knob * 0.3F});
     Surfaces::drawShape(context, {.bounds = area, .radii = {knob, knob, knob, knob}, .color = fill, .borderWidth = context.getMetric(Theme::Metric::BorderWidth) * 2.0F, .borderColor = context.getColor(Theme::Color::Accent)});
 }
@@ -85,6 +91,7 @@ math::Vec2 TouchStick::placeCenter(const math::Rect& bounds, math::Vec2 pointer)
     if (mode == Mode::Fixed) {
         return bounds.getCenter();
     }
+
     math::Vec2 center = held.value_or(tracker.getStart());
     const math::Vec2 offset = pointer - center;
     const float length = offset.getLength();
@@ -92,6 +99,7 @@ math::Vec2 TouchStick::placeCenter(const math::Rect& bounds, math::Vec2 pointer)
         center = pointer - offset * (radius / length);
         center = {std::clamp(center.x, bounds.x, bounds.getRight()), std::clamp(center.y, bounds.y, bounds.getBottom())};
     }
+
     held = center;
     return center;
 }

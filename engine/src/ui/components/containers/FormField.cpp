@@ -20,13 +20,16 @@ math::Vec2 FormField::measureContent(Context& context, float availableWidth) {
     if (!label.isEmpty()) {
         size.y += Typography::getLineHeight(context, Theme::Font::Caption) + spacing;
     }
+
     if (!getChildren().empty()) {
         const math::Vec2 control = getChildren().front()->measure(context, availableWidth);
         size = {control.x, size.y + control.y};
     }
+
     if (const std::string_view note = getNoteText(context); !note.empty()) {
         size.y += spacing + Typography::measureParagraph(context, Theme::Font::Caption, note, availableWidth).y;
     }
+
     return size;
 }
 
@@ -38,6 +41,7 @@ void FormField::render(Context& context, const math::Rect& bounds) {
         Typography::drawAligned(context, Theme::Font::Caption, {bounds.x, y, bounds.width, Typography::getLineHeight(context, Theme::Font::Caption)}, context.getColor(Theme::Color::TextMuted), labelText, Alignment::Start);
         y += Typography::getLineHeight(context, Theme::Font::Caption) + spacing;
     }
+
     if (!getChildren().empty()) {
         Component& control = *getChildren().front();
         const math::Vec2 size = control.measure(context, bounds.width);
@@ -45,6 +49,7 @@ void FormField::render(Context& context, const math::Rect& bounds) {
         control.draw(context, {context.alignHorizontally(Alignment::Start, bounds.x, bounds.width, width), y, width, size.y});
         y += size.y + spacing;
     }
+
     if (const std::string_view note = getNoteText(context); !note.empty()) {
         const math::Vec2 size = Typography::measureParagraph(context, Theme::Font::Caption, note, bounds.width);
         Typography::drawParagraph(context, Theme::Font::Caption, {bounds.x, y, bounds.width, size.y}, context.getColor(error.isEmpty() ? Theme::Color::TextMuted : Theme::Color::DangerText), note, Alignment::Start);

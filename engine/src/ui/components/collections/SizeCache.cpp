@@ -15,9 +15,11 @@ void SizeCache::setEstimates(std::span<const float> declared, float fallbackLeng
         estimates[type].declared = declared[type];
         estimates[type].learned = fallbackLength;
     }
+
     for (Item& item : items) {
         item.counted = false;
     }
+
     arranged = false;
     estimatesMoved = true;
 }
@@ -34,10 +36,12 @@ void SizeCache::assign(std::span<const std::uint16_t> types) {
     for (const Item& item : items) {
         forget(item);
     }
+
     items.assign(types.size(), Item{});
     for (std::size_t index = 0; index < types.size(); ++index) {
         items[index].type = types[index];
     }
+
     arranged = false;
 }
 
@@ -47,6 +51,7 @@ void SizeCache::insert(std::size_t index, std::span<const std::uint16_t> types) 
     for (std::size_t offset = 0; offset < types.size(); ++offset) {
         inserted[static_cast<std::ptrdiff_t>(offset)].type = types[offset];
     }
+
     arranged = false;
 }
 
@@ -54,6 +59,7 @@ void SizeCache::erase(std::size_t index, std::size_t count) {
     for (std::size_t offset = 0; offset < count; ++offset) {
         forget(items[index + offset]);
     }
+
     const auto first = items.begin() + static_cast<std::ptrdiff_t>(index);
     items.erase(first, first + static_cast<std::ptrdiff_t>(count));
     arranged = false;
@@ -67,6 +73,7 @@ void SizeCache::move(std::size_t from, std::size_t to) {
     } else {
         std::rotate(target, source, source + 1);
     }
+
     arranged = false;
 }
 
@@ -82,11 +89,13 @@ void SizeCache::remap(std::span<const std::size_t> previous, std::span<const std
             next[index] = Item{.type = types[index]};
         }
     }
+
     for (std::size_t index = 0; index < items.size(); ++index) {
         if (!kept[index]) {
             forget(items[index]);
         }
     }
+
     items = std::move(next);
     arranged = false;
 }
@@ -104,10 +113,12 @@ void SizeCache::learn(Item& item, float length) {
     if (item.type == kNoType) {
         return;
     }
+
     Estimate& estimate = estimates[item.type];
     if (estimate.declared > 0.0F || estimate.fixed) {
         return;
     }
+
     if (item.counted) {
         estimate.sum += length - item.length;
     } else {
@@ -115,6 +126,7 @@ void SizeCache::learn(Item& item, float length) {
         ++estimate.count;
         item.counted = true;
     }
+
     relearn(estimate);
 }
 
@@ -122,6 +134,7 @@ void SizeCache::relearn(Estimate& estimate) noexcept {
     if (estimate.count == 0) {
         return;
     }
+
     const auto mean = static_cast<float>(estimate.sum / static_cast<double>(estimate.count));
     if (std::fabs(mean - estimate.learned) >= kLearningStep) {
         estimate.learned = mean;
@@ -134,6 +147,7 @@ void SizeCache::forget(const Item& item) noexcept {
     if (!item.counted) {
         return;
     }
+
     Estimate& estimate = estimates[item.type];
     estimate.sum -= item.length;
     --estimate.count;
@@ -145,17 +159,21 @@ bool SizeCache::measure(std::size_t index, float length) {
     if (item.state == State::Measured && item.length == length) {
         return false;
     }
+
     learn(item, length);
     item.length = length;
     item.state = State::Measured;
+
     if (!arranged || layout == nullptr) {
         return false;
     }
+
     const std::size_t line = layout->getLine(index);
     const float measured = measureLine(line) + gap;
     if (measured == lines[line]) {
         return false;
     }
+
     add(line, static_cast<double>(measured) - static_cast<double>(lines[line]));
     lines[line] = measured;
     return true;
@@ -174,6 +192,7 @@ float SizeCache::getItemLength(std::size_t index) const noexcept {
     if (item.type != kNoType && estimates[item.type].fixed) {
         return *estimates[item.type].fixed;
     }
+
     return item.state == State::Unmeasured ? getEstimate(item.type) : item.length;
 }
 
@@ -190,10 +209,12 @@ float SizeCache::getEstimate(std::uint16_t type) const noexcept {
     if (type == kNoType) {
         return fallback;
     }
+
     const Estimate& estimate = estimates[type];
     if (estimate.fixed) {
         return *estimate.fixed;
     }
+
     return estimate.declared > 0.0F ? estimate.declared : estimate.learned;
 }
 
@@ -203,6 +224,7 @@ float SizeCache::measureLine(std::size_t line) const noexcept {
     for (std::size_t index = layout->getFirstIndex(line); index < end; ++index) {
         longest = std::max(longest, getItemLength(index));
     }
+
     return longest;
 }
 
@@ -213,6 +235,7 @@ void SizeCache::arrange(const CollectionLayout& value, float gapLength) {
     for (std::size_t line = 0; line < lines.size(); ++line) {
         lines[line] = measureLine(line) + gap;
     }
+
     build();
     arranged = true;
     estimatesMoved = false;
@@ -223,11 +246,13 @@ void SizeCache::arrangeFrom(const CollectionLayout& value, float gapLength, std:
         arrange(value, gapLength);
         return;
     }
+
     lines.resize(layout->getLineCount());
     const std::size_t first = std::min(firstLine, lines.size());
     for (std::size_t line = first; line < lines.size(); ++line) {
         lines[line] = measureLine(line) + gap;
     }
+
     buildFrom(first);
     arranged = true;
 }
@@ -250,11 +275,13 @@ void SizeCache::buildFrom(std::size_t firstLine) {
     for (std::size_t position = firstLine + 1; position < tree.size(); ++position) {
         tree[position] = lines[position - 1];
     }
+
     for (std::size_t position = firstLine; position > 0; position -= position & (~position + 1)) {
         if (const std::size_t parent = position + (position & (~position + 1)); parent < tree.size()) {
             tree[parent] += tree[position];
         }
     }
+
     for (std::size_t position = firstLine + 1; position < tree.size(); ++position) {
         if (const std::size_t parent = position + (position & (~position + 1)); parent < tree.size()) {
             tree[parent] += tree[position];
@@ -273,6 +300,7 @@ double SizeCache::getLineOffset(std::size_t line) const noexcept {
     for (std::size_t position = std::min(line, lines.size()); position > 0; position -= position & (~position + 1)) {
         sum += tree[position];
     }
+
     return sum;
 }
 
@@ -285,6 +313,7 @@ std::size_t SizeCache::findLine(double offset) const noexcept {
     if (lines.empty() || offset <= 0.0) {
         return 0;
     }
+
     std::size_t position = 0;
     double remaining = offset;
     for (std::size_t step = std::bit_floor(lines.size()); step > 0; step >>= 1U) {
@@ -293,6 +322,7 @@ std::size_t SizeCache::findLine(double offset) const noexcept {
             remaining -= tree[position];
         }
     }
+
     return std::min(position, lines.size() - 1);
 }
 

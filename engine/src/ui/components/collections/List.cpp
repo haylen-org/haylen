@@ -31,10 +31,12 @@ math::Vec2 List::measureContent(Context& context, float availableWidth) {
     if (availableWidth < CommonProperties::kUnbounded) {
         return {availableWidth, height};
     }
+
     float widest = 0.0F;
     for (const ChoiceItem& item : items) {
         widest = std::max(widest, ListRow::measure(context, item));
     }
+
     return {widest, height};
 }
 
@@ -55,9 +57,11 @@ void List::render(Context& context, const math::Rect& bounds) {
     const auto [from, to] = findRowRange(context, bounds, height);
     const auto extra = focusedIndex != items.end() ? std::optional(static_cast<std::size_t>(focusedIndex - items.begin())) : remembered;
     remembered.reset();
+
     if (extra && *extra < items.size() && (*extra < from || *extra >= to)) {
         drawRow(context, bounds, height, *extra, focused);
     }
+
     for (std::size_t index = from; index < to; ++index) {
         drawRow(context, bounds, height, index, focused);
     }
@@ -69,6 +73,7 @@ std::pair<std::size_t, std::size_t> List::findRowRange(const Context& context, c
     if (height <= 0.0F || shape.scale.x == 0.0F || shape.scale.y == 0.0F) {
         return {0, 0};
     }
+
     const math::Rect clip = Context::Reshape{.scale = math::Vec2{1.0F, 1.0F} / shape.scale, .offset = math::Vec2{} - shape.offset / shape.scale}.apply(ImGuiConverter::toRect(GImGui->CurrentWindow->ClipRect));
     const float top = std::floor((clip.y - bounds.y) / height) - 1.0F;
     const float bottom = std::ceil((clip.getBottom() - bounds.y) / height) + 1.0F;
@@ -87,17 +92,21 @@ void List::drawRow(Context& context, const math::Rect& bounds, float height, std
     context.getAccessibility().addPart(row, area, platform::AccessibilityElement::Role::Button, context.getText(item.text), (item.id == selected ? platform::AccessibilityElement::Selected : 0) | (item.enabled ? 0 : platform::AccessibilityElement::Disabled));
     const bool activated = GImGui->NavActivatePressedId == row;
     const bool choosing = draggable && activated && item.id != selected && !context.getFocus().getCarried();
+
     if (item.id == focused) {
         Widgets::focusItem(context);
     }
+
     if (GImGui->NavId == row) {
         remembered = index;
     }
+
     ListRow::drawContent(context, area, item);
     const DragAndDrop::Result moved = draggable ? DragAndDrop::handle(context, *this, item.id, item.image, area, !choosing) : DragAndDrop::Result{};
     if (moved.hovering) {
         Surfaces::outline(context, area, context.getColor(Theme::Color::Accent), context.getMetric(Theme::Metric::ControlRadius) * 0.5F, context.getMetric(Theme::Metric::FocusWidth));
     }
+
     DragAndDrop::drawCarried(context, row, area);
     ImGui::EndDisabled();
     ImGui::PopID();
@@ -106,6 +115,7 @@ void List::drawRow(Context& context, const math::Rect& bounds, float height, std
         dragging = item.id;
         context.emit(*this, "dragStart", {{"item", item.id}});
     }
+
     if (moved.picked) {
         context.emit(*this, "dragStart", {{"item", item.id}});
     } else if (moved.dropped) {

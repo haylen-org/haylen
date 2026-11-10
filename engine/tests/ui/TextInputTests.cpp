@@ -92,9 +92,11 @@ class TextInputTest : public ::testing::Test {
     // Presses a key the way a physical keyboard does, with the character it types in the same frame as the key.
     void press(input::Key key, char32_t character, input::KeyModifiers modifiers = {}) {
         getEngine().handleEvent({.type = platform::Event::Type::KeyDown, .key = key, .modifiers = modifiers});
+
         if (character != 0) {
             getEngine().handleEvent({.type = platform::Event::Type::Character, .modifiers = modifiers, .character = character});
         }
+
         fixture.frames(1);
         getEngine().handleEvent({.type = platform::Event::Type::KeyUp, .key = key, .modifiers = modifiers});
         fixture.frames(1);
@@ -153,6 +155,7 @@ TEST_F(TextInputTest, OpensTheNativeFieldOnceThePressOfAcceptEnds) {
         send({.type = platform::Event::Type::KeyDown, .key = input::Key::Down});
         send({.type = platform::Event::Type::KeyUp, .key = input::Key::Down});
     }
+
     ASSERT_EQ(fixture.lua("return require('haylen.ui').focused().id"), "name");
     ASSERT_FALSE(getInput().isEditing());
 
@@ -260,10 +263,12 @@ TEST_F(TextInputTest, WaitsForTheInputMethodToCommit) {
 // Keys held in play, with fields on screen that nobody edits, never turn on the text input of the platform, so no input method, such as the accent menu of macOS, opens for them.
 TEST_F(TextInputTest, LeavesTheTextInputOfThePlatformOffInPlay) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "button", "id": "jump", "text": "Jump"}, {"kind": "textField", "id": "name"}]})");
+
     for (int repeat = 0; repeat < 30; ++repeat) {
         getEngine().handleEvent({.type = platform::Event::Type::KeyDown, .key = input::Key::A, .repeat = repeat > 0});
         fixture.frames(1);
     }
+
     getEngine().handleEvent({.type = platform::Event::Type::KeyUp, .key = input::Key::A});
     fixture.frames(1);
     EXPECT_FALSE(getInput().isEditing());
@@ -486,6 +491,7 @@ TEST_F(TextInputTest, HoldsTheLiftedFieldStillOverAKeyboardBetweenTwoUnits) {
 
     const math::Rect lifted = gui->find("name")->getBounds();
     EXPECT_LE(lifted.getBottom(), 540.4F);
+
     for (int frame = 0; frame < 30; ++frame) {
         fixture.frames(1);
         ASSERT_EQ(gui->find("name")->getBounds(), lifted) << "The field moves in frame " << frame << " after the lift settled.";
@@ -536,10 +542,12 @@ TEST_F(TextInputTest, ScrollsOverAFieldBeingEditedAndKeepsEditing) {
     const float top = gui->find("content")->getBounds().y;
     touch(platform::Event::Type::TouchBegan, field);
     fixture.frames(2);
+
     for (int step = 1; step <= 10; ++step) {
         touch(platform::Event::Type::TouchMoved, field - math::Vec2{0.0F, 8.0F * static_cast<float>(step)});
         fixture.frames(1);
     }
+
     touch(platform::Event::Type::TouchEnded, field - math::Vec2{0.0F, 80.0F});
     fixture.frames(2);
     EXPECT_LT(gui->find("content")->getBounds().y, top - 40.0F);
@@ -555,10 +563,12 @@ TEST_F(TextInputTest, KeepsEditingWhenTheScreenTurns) {
 
     // The field edits in every frame of the turn, so the keyboard never closes.
     fixture.host().resize({1080.0F, 1920.0F});
+
     for (int frame = 0; frame < 3; ++frame) {
         fixture.frames(1);
         EXPECT_TRUE(getInput().isEditing());
     }
+
     EXPECT_EQ(getPublished().text, "Ada");
     EXPECT_NE(getPublished().bounds, wide) << "The native field follows the field to its new place.";
     edit("Ada L", 5, 5);
@@ -578,10 +588,12 @@ TEST_F(TextInputTest, KeepsEditingWhenTheGuiBuildsTheFieldAgain) {
 
     const std::uint64_t field = getPublished().id;
     gui->replaceChildren("content", core::Json::parse(R"([{"kind": "label", "text": "Filter"}, {"kind": "filterField", "value": "lamp"}])"));
+
     for (int frame = 0; frame < 3; ++frame) {
         fixture.frames(1);
         EXPECT_TRUE(getInput().isEditing());
     }
+
     EXPECT_EQ(getPublished().id, field);
     edit("lamps", 5, 5);
     EXPECT_EQ(getPublished().text, "lamps");

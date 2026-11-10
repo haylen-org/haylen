@@ -26,9 +26,11 @@ math::Vec2 RadioGroup::measureContent(Context& context, float availableWidth) {
         const math::Vec2 option = Widgets::measureChoice(context, context.getText(item.text), horizontal ? CommonProperties::kUnbounded : availableWidth);
         size = horizontal ? math::Vec2{size.x + option.x + spacing, std::max(size.y, option.y)} : math::Vec2{std::max(size.x, option.x), size.y + option.y};
     }
+
     if (horizontal && !items.empty()) {
         size.x -= spacing;
     }
+
     return size;
 }
 
@@ -46,16 +48,20 @@ void RadioGroup::render(Context& context, const math::Rect& bounds) {
         ImGui::BeginDisabled(!item.enabled);
         const bool picked = Widgets::radio(context, option, item.id == selected, text, "##option");
         context.getAccessibility().addPart(ImGui::GetItemID(), option, platform::AccessibilityElement::Role::RadioButton, text, (item.id == selected ? platform::AccessibilityElement::Checked : 0) | (item.enabled ? 0 : platform::AccessibilityElement::Disabled));
+
         if (!focused.empty() && item.id == focused) {
             Widgets::focusItem(context);
         }
+
         ImGui::EndDisabled();
         ImGui::PopID();
+
         if (picked && item.id != selected) {
             selected = item.id;
             context.playSound(Theme::Sound::Toggle);
             context.emit(*this, "change", {{"value", item.id}});
         }
+
         cursor = horizontal ? math::Vec2{cursor.x + size.x + spacing, cursor.y} : math::Vec2{cursor.x, cursor.y + size.y};
     }
 }
@@ -64,6 +70,7 @@ std::string RadioGroup::getFocusTarget() const {
     if (const int index = ChoiceItem::indexOf(items, selected); index >= 0 && items[static_cast<std::size_t>(index)].enabled) {
         return selected;
     }
+
     const auto enabled = std::ranges::find_if(items, [](const ChoiceItem& item) { return item.enabled; });
     return enabled != items.end() ? enabled->id : std::string();
 }

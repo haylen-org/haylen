@@ -74,6 +74,7 @@ TEST_F(FocusRingTest, FramesTheFocusWithTheImageOfTheTheme) {
             if (drawn.text || !drawn.label.empty()) {
                 framing = drawn.label == "ui/frame.png";
             }
+
             if (framing) {
                 frame.push_back(math::Geometry::bounds(drawn.corners));
             }
@@ -89,6 +90,7 @@ TEST_F(FocusRingTest, FramesTheFocusWithTheImageOfTheTheme) {
     for (const math::Rect& piece : frame) {
         covered = covered.merged(piece);
     }
+
     const float reach = getMetric(Theme::Metric::FocusGap) + getMetric(Theme::Metric::FocusWidth);
     const math::Rect expected = getBounds(*gui, "play").expanded(reach);
     EXPECT_NEAR(covered.x, expected.x, 1.0F);

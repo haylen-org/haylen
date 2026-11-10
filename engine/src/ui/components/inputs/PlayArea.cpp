@@ -33,9 +33,11 @@ void PlayArea::render(Context& context, const math::Rect& bounds) {
     if (takeFocusRequest() || here) {
         Widgets::focusItem(context);
     }
+
     if (radius > 0.0F) {
         drawCorners(context, bounds);
     }
+
     Widgets::drawFocusRing(context, bounds, itemId, radius);
 }
 

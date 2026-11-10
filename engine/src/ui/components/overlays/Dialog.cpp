@@ -41,6 +41,7 @@ void Dialog::render(Context& context, const math::Rect&) {
     if (open && !ImGui::IsPopupOpen("##dialog") && !isWaiting()) {
         ImGui::OpenPopup("##dialog");
     }
+
     if (!ImGui::IsPopupOpen("##dialog")) {
         shown = 0.0F;
         return;
@@ -75,6 +76,7 @@ void Dialog::render(Context& context, const math::Rect&) {
     const bool began = ImGui::BeginPopupModal("##dialog", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNavInputs);
     ImGui::PopStyleColor(2);
     ImGui::PopStyleVar(2);
+
     if (!began) {
         ImGui::PopStyleVar();
         return;
@@ -93,6 +95,7 @@ void Dialog::render(Context& context, const math::Rect&) {
         open = false;
         context.emit(*this, "dismiss");
     }
+
     context.popReshape();
     ImGui::EndPopup();
     ImGui::PopStyleVar();
@@ -125,6 +128,7 @@ bool Dialog::isWaiting() {
     if (state.OpenPopupStack.Size <= level) {
         return false;
     }
+
     const ImGuiWindow* shown = state.OpenPopupStack[level].Window;
     return shown != nullptr && (shown->Flags & ImGuiWindowFlags_Modal) != 0 && (shown->Active || shown->WasActive);
 }
@@ -133,29 +137,36 @@ std::vector<Dialog::Answer> Dialog::readButtons(PropertyReader& reader, const co
     if (!PropertyReader::isList(value)) {
         reader.fail("buttons", "must be a list");
     }
+
     std::vector<Answer> parsed;
     std::set<std::string, std::less<>> ids;
     for (const core::Json& entry : value) {
         if (!entry.is_object() || !entry.contains("id") || !entry.at("id").is_string()) {
             reader.fail("buttons", "must hold objects with an id");
         }
+
         core::JsonValidator::requireKnownKeys(entry, {"id", "text", "variant"}, "\"dialog.buttons\"");
         Answer button{.id = entry.at("id").get<std::string>()};
         if (!ids.insert(button.id).second) {
             reader.fail("buttons", "uses the id \"" + button.id + "\" more than once");
         }
+
         if (const auto text = entry.find("text"); text != entry.end()) {
             button.text = TextValue::fromJson(*text, "dialog.buttons.text");
         }
+
         if (const auto variant = entry.find("variant"); variant != entry.end()) {
             const auto found = std::ranges::find_if(Widgets::kButtonVariants, [&](const auto& choice) { return variant->is_string() && variant->get_ref<const std::string&>() == choice.first; });
             if (found == Widgets::kButtonVariants.end()) {
                 reader.fail("buttons", "has a variant other than \"default\", \"primary\", \"destructive\", \"toolbar\", \"icon\" or \"link\"");
             }
+
             button.variant = found->second;
         }
+
         parsed.push_back(std::move(button));
     }
+
     return parsed;
 }
 
@@ -173,12 +184,15 @@ float Dialog::getBodyHeight(Context& context, float width) {
         const math::Insets bar = Surfaces::getPadding(context, Theme::Surface::TitleBar);
         add(Typography::measureParagraph(context, Theme::Font::Heading, titleText, width - bar.getHorizontal()).y + bar.getVertical());
     }
+
     if (const std::string_view messageText = context.getText(message); !messageText.empty()) {
         add(Typography::measureParagraph(context, Theme::Font::Body, messageText, width).y);
     }
+
     for (Component* child : getLayoutChildren()) {
         add(child->measure(context, width).y);
     }
+
     return height;
 }
 
@@ -187,6 +201,7 @@ float Dialog::getContentHeight(Context& context, float width) {
     if (buttons.empty()) {
         return body;
     }
+
     return body + (body > 0.0F ? context.getMetric(Theme::Metric::ItemSpacing) : 0.0F) + getButtonsHeight(context, width);
 }
 
@@ -197,6 +212,7 @@ bool Dialog::isStacked(Context& context, float width) const {
     for (const Answer& button : buttons) {
         row += Widgets::measureButton(context, context.getText(button.text), false, button.variant, {}).x + (row > 0.0F ? spacing : 0.0F);
     }
+
     return row > width;
 }
 
@@ -210,11 +226,13 @@ float Dialog::getButtonsHeight(Context& context, float width) const {
     if (!isStacked(context, width)) {
         return context.getMetric(Theme::Metric::ControlHeight);
     }
+
     const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
     float height = 0.0F;
     for (const Answer& button : buttons) {
         height += getStackedButtonHeight(context, button, width) + (height > 0.0F ? spacing : 0.0F);
     }
+
     return height;
 }
 
@@ -229,9 +247,11 @@ void Dialog::drawContent(Context& context, const math::Rect& frame, const math::
     const math::Rect body = math::Rect::fromMinMax({frame.x + edge.left, inner.y}, {frame.getRight() - edge.right, std::max(inner.y, inner.getBottom() - (buttons.empty() ? 0.0F : buttonsHeight + spacing))});
     if (!body.isEmpty()) {
         ImGui::SetCursorScreenPos(ImGuiConverter::toImVec2(body.getMin()));
+
         if (context.getBackend().beginChild("##body", body.getSize(), ImGuiChildFlags_NavFlattened, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
             drawBody(context, body, inner, overflowing);
         }
+
         ImGui::EndChild();
     }
 
@@ -256,10 +276,13 @@ void Dialog::drawContent(Context& context, const math::Rect& frame, const math::
         ImGui::PushID(button->id.c_str());
         const bool pressed = Widgets::button(context, place, text, nullptr, button->variant, false, {}, {});
         context.getAccessibility().addPart(ImGui::GetItemID(), place, platform::AccessibilityElement::Role::Button, text, 0);
+
         if (button == buttons.rbegin() && ImGui::IsWindowAppearing()) {
             Widgets::focusItem(context);
         }
+
         ImGui::PopID();
+
         if (pressed && open) {
             open = false;
             context.playSound(Theme::Sound::Press);
@@ -292,22 +315,27 @@ void Dialog::drawBody(Context& context, const math::Rect& body, const math::Rect
         if (const Theme::Image* image = context.getSurface(Theme::Surface::TitleBar)) {
             Surfaces::drawNineSlice(context, *image, band, context.getColor(Theme::Color::Raised));
         }
+
         Typography::drawParagraph(context, Theme::Font::Heading, band.inset(bar), context.getColor(Theme::Color::Text), titleText, Alignment::Start);
         y += height + spacing;
     }
+
     if (const std::string_view messageText = context.getText(message); !messageText.empty()) {
         const float height = Typography::measureParagraph(context, Theme::Font::Body, messageText, column.width).y;
         Typography::drawParagraph(context, Theme::Font::Body, {column.x, y, column.width, height}, context.getColor(Theme::Color::TextMuted), messageText, Alignment::Start);
         y += height + spacing;
     }
+
     for (Component* child : getLayoutChildren()) {
         const math::Vec2 size = child->measure(context, column.width);
         child->draw(context, {column.x, y, column.width, size.y});
         y += size.y + spacing;
     }
+
     ImGui::PopClipRect();
     ImGui::SetCursorScreenPos(start);
     ImGui::Dummy({body.width, std::max(0.0F, y - spacing - start.y)});
+
     if (overflowing) {
         Scrollbar::takeWheel(context);
         scrollbar.draw(context, 1.0F);

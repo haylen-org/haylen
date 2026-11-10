@@ -21,6 +21,7 @@ class ScrollerTest : public ::testing::Test {
             scroller.update(kStep);
             ++steps;
         }
+
         return steps;
     }
 
@@ -34,6 +35,7 @@ TEST_F(ScrollerTest, FlingsAndComesToRest) {
     for (int step = 0; step < 10; ++step) {
         scroller.drag(50.0, kStep);
     }
+
     EXPECT_NEAR(scroller.getVelocity(), 3000.0, 1.0);
     scroller.release();
 
@@ -46,6 +48,7 @@ TEST_F(ScrollerTest, FlingsAndComesToRest) {
         offset = scroller.getOffset();
         speed = std::fabs(scroller.getVelocity());
     }
+
     EXPECT_GT(scroller.getOffset(), 1000.0);
     EXPECT_LT(scroller.getOffset(), 100000.0);
 }
@@ -55,6 +58,7 @@ TEST_F(ScrollerTest, SpringsBackFromBeyondTheEnds) {
     for (int step = 0; step < 4; ++step) {
         scroller.drag(-50.0, kStep);
     }
+
     EXPECT_LT(scroller.getOverscroll(), 0.0);
     EXPECT_GT(scroller.getOverscroll(), -200.0);
 
@@ -76,9 +80,11 @@ TEST_F(ScrollerTest, StretchesLessTheFartherItIsPulledAndReturnsAlongTheSameCurv
     const double first = -scroller.getOverscroll();
     EXPECT_GT(first, 10.0);
     EXPECT_LT(first, 11.0);
+
     for (int step = 0; step < 100; ++step) {
         scroller.drag(-20.0, kStep);
     }
+
     const double far = -scroller.getOverscroll();
     scroller.drag(-20.0, kStep);
     EXPECT_LT(-scroller.getOverscroll() - far, first / 4.0);
@@ -104,6 +110,7 @@ TEST_F(ScrollerTest, GlidesThroughTheStepsOfAWheel) {
         EXPECT_LE(scroller.getOffset(), 128.0);
         offset = scroller.getOffset();
     }
+
     EXPECT_DOUBLE_EQ(scroller.getOffset(), 128.0);
 }
 
@@ -120,6 +127,7 @@ TEST_F(ScrollerTest, FollowsFingersOnATrackpadAndSpringsBackTheMomentTheyLeave) 
         scroller.follow({.motion = Motion::Drag}, 1.0, kStep);
         scroller.update(kStep);
     }
+
     EXPECT_GT(scroller.getOverscroll(), 0.0);
     scroller.follow({.motion = Motion::Drag, .lifted = true}, 1.0, kStep);
     scroller.update(kStep);
@@ -133,10 +141,13 @@ TEST_F(ScrollerTest, FlingsWhenFingersLeaveATrackpadAndStopsWhenTheyTouchItAgain
     for (int step = 0; step < 6; ++step) {
         scroller.follow({.distance = 40.0F, .motion = Motion::Drag}, 1.0, kStep);
     }
+
     scroller.follow({.motion = Motion::Drag, .lifted = true}, 1.0, kStep);
+
     for (int step = 0; step < 10; ++step) {
         scroller.update(kStep);
     }
+
     const double flung = scroller.getOffset();
     EXPECT_GT(flung, 400.0);
     EXPECT_FALSE(scroller.isResting());
@@ -168,9 +179,11 @@ TEST_F(ScrollerTest, StopsAtTheEndsWhenItJumps) {
 TEST_F(ScrollerTest, FollowsATargetThatMovesWithoutOvershooting) {
     scroller.setRange(5000.0, 600.0);
     scroller.animateTo(500.0);
+
     for (int step = 0; step < 5; ++step) {
         scroller.update(kStep);
     }
+
     EXPECT_GT(scroller.getOffset(), 0.0);
     EXPECT_LT(scroller.getOffset(), 500.0);
 
@@ -182,6 +195,7 @@ TEST_F(ScrollerTest, FollowsATargetThatMovesWithoutOvershooting) {
         EXPECT_LE(scroller.getOffset(), 800.0);
         offset = scroller.getOffset();
     }
+
     EXPECT_DOUBLE_EQ(scroller.getOffset(), 800.0);
 }
 

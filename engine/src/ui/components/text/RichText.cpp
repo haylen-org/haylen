@@ -21,6 +21,7 @@ void RichText::readProperties(PropertyReader& reader) {
         reader.read("text", text);
         linked = text.key.empty() && !text::RichText::parse(text.literal).links.empty();
     }
+
     reader.readChoice<Theme::Font>("font", font, kFonts);
     reader.read("color", color);
     reader.readChoice<text::Alignment>("textAlign", textAlign, text::Style::kAlignmentNames);
@@ -57,16 +58,21 @@ text::RichText& RichText::refreshText(Context& context) {
         } else {
             richText = std::make_shared<text::RichText>(std::string(markup), std::move(options), context.getTextRegistry());
         }
+
         changed = true;
     }
+
     if (markup != richText->getMarkup()) {
         richText->setMarkup(std::string(markup));
         hoveredLink.reset();
     }
+
     linked = !richText->getDocument().links.empty();
+
     if (std::exchange(changed, false) && visibleCharacters >= 0) {
         richText->setVisibleCharacters(static_cast<std::size_t>(visibleCharacters));
     }
+
     return *richText;
 }
 
@@ -77,6 +83,7 @@ math::Vec2 RichText::measureContent(Context& context, float availableWidth) {
     if (!wrap || !(availableWidth > 0.0F) || natural.x <= availableWidth) {
         return natural;
     }
+
     return prepared.getLayout(availableWidth).size;
 }
 
@@ -86,6 +93,7 @@ void RichText::render(Context& context, const math::Rect& bounds) {
         updatedFrame = context.getFrame();
         prepared.update(context.getDeltaSeconds());
     }
+
     prepared.setMaxWidth(wrap ? bounds.width : 0.0F);
 
     // Text that does not wrap aligns as one block inside the bounds, where start and end follow the direction of the UI.
@@ -116,13 +124,16 @@ void RichText::interactWithLinks(Context& context, math::Vec2 origin) {
         reached[area.index] = true;
         const std::string label = "##link" + std::to_string(index);
         const Widgets::Interaction state = Widgets::interact(context, area.rect.translated(origin), context.getMetric(Theme::Metric::ControlRadius) * 0.5F, label, first ? ImGuiButtonFlags{ImGuiButtonFlags_None} : ImGuiButtonFlags{ImGuiButtonFlags_NoNavFocus});
+
         if (first && takesFocus && area.index == 0) {
             Widgets::focusItem(context);
         }
+
         if (state.hovered) {
             pointed = area.index;
             ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
         }
+
         if (state.clicked) {
             context.emit(*this, "link", {{"link", links[area.index]}});
         }
@@ -131,12 +142,15 @@ void RichText::interactWithLinks(Context& context, math::Vec2 origin) {
     if (pointed == hoveredLink) {
         return;
     }
+
     if (hoveredLink) {
         context.emit(*this, "linkHover", {{"link", links[*hoveredLink]}, {"hovered", false}});
     }
+
     if (pointed) {
         context.emit(*this, "linkHover", {{"link", links[*pointed]}, {"hovered", true}});
     }
+
     hoveredLink = pointed;
 }
 
@@ -144,6 +158,7 @@ void RichText::showHint(Context&, math::Vec2 origin) {
     if (!ImGui::IsWindowHovered()) {
         return;
     }
+
     for (const text::Layout::Area& area : richText->getLayout().hints) {
         const math::Rect rect = area.rect.translated(origin);
         if (ImGui::IsMouseHoveringRect(ImGuiConverter::toImVec2(rect.getMin()), ImGuiConverter::toImVec2(rect.getMax()))) {
@@ -162,16 +177,20 @@ bool RichText::describe(Context& context, platform::AccessibilityElement& elemen
             element.label.push_back(markup[index]);
             continue;
         }
+
         const std::size_t end = markup.find(']', index);
         if (end == std::string_view::npos) {
             break;
         }
+
         const std::string_view tag = markup.substr(index + 1, end - index - 1);
         if (tag == "lb" || tag == "rb") {
             element.label.push_back(tag == "lb" ? '[' : ']');
         }
+
         index = end;
     }
+
     return true;
 }
 

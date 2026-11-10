@@ -35,6 +35,7 @@ class LayoutTest : public ::testing::Test, public test::UiFixture {
                 }
             }
         }
+
         return false;
     }
 
@@ -64,6 +65,7 @@ TEST_F(LayoutTest, DistributesFreeSpaceWithEveryJustify) {
         {"spaceAround", {117.0F, 450.0F, 783.0F}},
         {"spaceEvenly", {175.0F, 450.0F, 725.0F}},
     }};
+
     for (const auto& [justify, places] : expected) {
         gui->set("row", {{"justify", justify}});
         frames();
@@ -387,10 +389,12 @@ TEST_F(LayoutTest, FlingsAScrollWithAFingerAndSpringsBackFromPastItsEnds) {
 
     touch(platform::Event::Type::TouchBegan, 1, center + math::Vec2{0.0F, 150.0F});
     frames();
+
     for (int step = 1; step <= 6; ++step) {
         touch(platform::Event::Type::TouchMoved, 1, center + math::Vec2{0.0F, 150.0F - 50.0F * static_cast<float>(step)});
         frames();
     }
+
     const float released = getBounds(*gui, "content").y;
     EXPECT_LT(released, top - 150.0F);
     touch(platform::Event::Type::TouchEnded, 1, center - math::Vec2{0.0F, 150.0F});
@@ -405,10 +409,12 @@ TEST_F(LayoutTest, ScrollsAListThatAFingerDragsFromOneOfItsFields) {
     const float top = getBounds(*gui, "content").y;
     touch(platform::Event::Type::TouchBegan, 1, field);
     frames(10);
+
     for (int step = 1; step <= 20; ++step) {
         touch(platform::Event::Type::TouchMoved, 1, field - math::Vec2{0.0F, 4.0F * static_cast<float>(step)});
         frames();
     }
+
     EXPECT_LT(getBounds(*gui, "content").y, top - 40.0F);
     touch(platform::Event::Type::TouchEnded, 1, field - math::Vec2{0.0F, 80.0F});
     frames(2);
@@ -420,10 +426,12 @@ TEST_F(LayoutTest, StretchesAScrollPulledPastItsStartAndSpringsBack) {
     const float top = getBounds(*gui, "content").y;
     touch(platform::Event::Type::TouchBegan, 1, center);
     frames();
+
     for (int step = 1; step <= 6; ++step) {
         touch(platform::Event::Type::TouchMoved, 1, center + math::Vec2{0.0F, 30.0F * static_cast<float>(step)});
         frames();
     }
+
     const float stretched = getBounds(*gui, "content").y - top;
     EXPECT_GT(stretched, 20.0F);
     EXPECT_LT(stretched, 150.0F);
@@ -469,6 +477,7 @@ TEST_F(LayoutTest, WrapsTheTextOfAnEmptyStateAtTheReadingWidth) {
             EXPECT_GE(text.origin.x, bounds.getCenter().x - reading * 0.5F - 1.0F);
         }
     }
+
     EXPECT_TRUE(found);
 }
 
@@ -489,6 +498,7 @@ TEST_F(LayoutTest, LinesUpTheTracksOfSlidersThatShowTheirValues) {
             tracks.push_back(shape.bounds.width);
         }
     }
+
     ASSERT_EQ(tracks.size(), 3U);
     EXPECT_EQ(tracks[0], tracks[1]);
     EXPECT_EQ(tracks[1], tracks[2]);
@@ -506,6 +516,7 @@ TEST_F(LayoutTest, DrawsTheLabelOfAProgressBarInTwoColorsAtTheEdgeOfItsFill) {
             colors.push_back(text.style.color);
         }
     }
+
     ASSERT_EQ(colors.size(), 2U);
     EXPECT_EQ(colors[0], theme.getColor(Theme::Color::OnSuccess));
     EXPECT_EQ(colors[1], theme.getColor(Theme::Color::Text));
@@ -529,6 +540,7 @@ TEST_F(LayoutTest, ShowsNumbersWithoutANegativeZeroAndDrawsTheSignsOfNumberField
     for (const Backend::Text& text : backend.getTexts()) {
         texts.emplace_back(backend.getContent(text));
     }
+
     EXPECT_NE(std::ranges::find(texts, "0.00"), texts.end());
     EXPECT_EQ(std::ranges::find(texts, "-0.00"), texts.end());
     EXPECT_EQ(std::ranges::find(texts, "-"), texts.end());
@@ -540,6 +552,7 @@ TEST_F(LayoutTest, ShowsNumbersWithoutANegativeZeroAndDrawsTheSignsOfNumberField
     for (const graphics2d::Shape& shape : backend.getShapes()) {
         strokes += shape.color == ink && field.contains(shape.bounds.getCenter()) ? 1 : 0;
     }
+
     EXPECT_EQ(strokes, 3);
 }
 

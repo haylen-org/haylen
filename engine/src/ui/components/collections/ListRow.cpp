@@ -19,6 +19,7 @@ Widgets::Interaction ListRow::draw(Context& context, const math::Rect& bounds, b
         const Theme::Color color = selected ? Theme::Color::Selection : state.held ? Theme::Color::Pressed : Theme::Color::Hover;
         Surfaces::draw(context, surface, bounds, context.getColor(color), std::nullopt, rounding < 0.0F ? context.getInnerRadii(bounds, radius) : Surfaces::getRadii(radius, ImDrawFlags_RoundAll));
     }
+
     return state;
 }
 
@@ -27,18 +28,21 @@ void ListRow::drawContent(Context& context, const math::Rect& bounds, const Choi
     if (!Widgets::isVisible(context, bounds)) {
         return;
     }
+
     float x = bounds.x + context.getMetric(Theme::Metric::RowPadding);
     if (!item.image.empty()) {
         const float icon = context.getMetric(Theme::Metric::IconSize);
         Surfaces::drawImage(context, context.getImage(item.image, {icon, icon}), context.mirror({x, std::floor(bounds.getCenter().y - icon * 0.5F), icon, icon}, bounds), item.iconColor.resolve(context, context.getColor(Theme::Color::Text)));
         x += icon + context.getMetric(Theme::Metric::RowPadding);
     }
+
     const math::Rect text = context.mirror(math::Rect::fromMinMax({x, bounds.y}, {bounds.getRight() - context.getMetric(Theme::Metric::RowPadding), bounds.getBottom()}), bounds);
     const std::string_view caption = context.getText(item.caption);
     if (caption.empty()) {
         Typography::drawAligned(context, Theme::Font::Body, text, context.getColor(Theme::Color::Text), context.getText(item.text), Alignment::Start);
         return;
     }
+
     const float body = Typography::getLineHeight(context, Theme::Font::Body);
     const float small = Typography::getLineHeight(context, Theme::Font::Caption);
     const float top = bounds.getCenter().y - (body + small) * 0.5F;

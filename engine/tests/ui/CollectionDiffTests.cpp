@@ -35,6 +35,7 @@ TEST(CollectionDiffTest, ComparesOneHundredThousandIdsWithAFewChanges) {
     for (std::size_t index = 0; index < ids.size(); ++index) {
         ids[index] = "item-" + std::to_string(index);
     }
+
     const std::vector<std::string_view> before(ids.begin(), ids.end());
     std::vector<std::string_view> after = before;
     std::swap(after[500], after[501]);

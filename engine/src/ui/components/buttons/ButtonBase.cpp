@@ -12,6 +12,7 @@ void ButtonBase::readProperties(PropertyReader& reader) {
     if (const core::Json* value = reader.take("iconColor")) {
         iconColor = IconColor::fromJson(*value, reader.getQualifiedName("iconColor"));
     }
+
     reader.readChoice<Widgets::ButtonVariant>("variant", variant, Widgets::kButtonVariants);
     reader.readChoice<Widgets::IconPlacement>("iconPlacement", content.iconPlacement, Widgets::kIconPlacements);
     reader.readChoice<Alignment>("justify", content.justify, Typography::kAlignments);
@@ -26,12 +27,15 @@ bool ButtonBase::drawButton(Context& context, const math::Rect& bounds, bool che
     const float iconSize = context.getMetric(Theme::Metric::IconSize);
     const graphics::Texture iconTexture = icon.empty() ? graphics::Texture{} : context.getImage(icon, {iconSize, iconSize});
     const bool clicked = Widgets::button(context, bounds, context.getText(text), icon.empty() ? nullptr : &iconTexture, variant, checked, iconColor, content);
+
     if (takeFocusRequest()) {
         Widgets::focusItem(context);
     }
+
     if (clicked) {
         context.playSound(Theme::Sound::Press);
     }
+
     return clicked;
 }
 

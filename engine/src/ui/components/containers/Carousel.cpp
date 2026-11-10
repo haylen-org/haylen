@@ -34,6 +34,7 @@ math::Vec2 Carousel::measureContent(Context& context, float availableWidth) {
     for (Component* child : getLayoutChildren()) {
         size = math::Vec2::max(size, child->measure(context, availableWidth));
     }
+
     return {availableWidth < CommonProperties::kUnbounded ? availableWidth : size.x, size.y + getIndicatorHeight(context)};
 }
 
@@ -42,6 +43,7 @@ void Carousel::render(Context& context, const math::Rect& bounds) {
     if (count == 0) {
         return;
     }
+
     page = std::clamp(page, 1, static_cast<int>(count));
     const math::Rect area{bounds.x, bounds.y, bounds.width, std::max(0.0F, bounds.height - getIndicatorHeight(context))};
 
@@ -53,6 +55,7 @@ void Carousel::render(Context& context, const math::Rect& bounds) {
     if (arrows) {
         target += drawArrows(context, area, count);
     }
+
     layers.SetCurrentChannel(&list, 0);
 
     const float goal = static_cast<float>(page - 1);
@@ -61,6 +64,7 @@ void Carousel::render(Context& context, const math::Rect& bounds) {
     if (std::fabs(goal - shown) < 0.001F) {
         shown = goal;
     }
+
     drawPages(context, area);
     layers.Merge(&list);
 
@@ -69,10 +73,13 @@ void Carousel::render(Context& context, const math::Rect& bounds) {
     if (indicators) {
         swiping |= ImGuiButtonFlags_NoNavFocus;
     }
+
     const Widgets::Interaction swipe = Widgets::interact(context, area, 0.0F, "##swipe", swiping);
+
     if (!indicators && takeFocusRequest()) {
         Widgets::focusItem(context);
     }
+
     if (swipe.held) {
         context.keepDrag(ImGui::GetItemID());
         dragged += ImGui::GetIO().MouseDelta.x;
@@ -81,6 +88,7 @@ void Carousel::render(Context& context, const math::Rect& bounds) {
         if (std::fabs(dragged) > area.width * kSwipeShare) {
             target = page + ((dragged < 0.0F) != context.isRightToLeft() ? 1 : -1);
         }
+
         shown -= (context.isRightToLeft() ? -dragged : dragged) / std::max(1.0F, area.width);
         dragged = 0.0F;
     }
@@ -90,9 +98,11 @@ void Carousel::render(Context& context, const math::Rect& bounds) {
             target = picked;
         }
     }
+
     if (const std::optional<FocusDirection> direction = takeFocusDirection(context)) {
         target = page + Widgets::getStep(context, *direction);
     }
+
     if (interval > 0.0F && !swipe.held && target == page) {
         waited += context.getDeltaSeconds();
         if (waited >= interval) {
@@ -102,6 +112,7 @@ void Carousel::render(Context& context, const math::Rect& bounds) {
             return;
         }
     }
+
     turn(context, target, count);
 }
 
@@ -114,9 +125,11 @@ void Carousel::drawPages(Context& context, const math::Rect& area) {
     for (Component* shownPage : getLayoutChildren()) {
         const float offset = static_cast<float>(index) - position;
         ++index;
+
         if (std::fabs(offset) >= 1.0F) {
             continue;
         }
+
         // A page that slides out leaves navigation, and so does every page of a carousel whose controls are already left out, such as one in a leaving view.
         const bool current = static_cast<int>(index) == page;
         const bool outside = context.getFocus().areTargetsSuspended();
@@ -125,6 +138,7 @@ void Carousel::drawPages(Context& context, const math::Rect& area) {
         shownPage->draw(context, {std::floor(placed.x), area.y, area.width, area.height});
         context.getFocus().suspendTargets(outside);
     }
+
     ImGui::PopClipRect();
 }
 
@@ -138,6 +152,7 @@ int Carousel::drawArrows(Context& context, const math::Rect& area, std::size_t c
         if (!loop && (next < 1 || next > static_cast<int>(count))) {
             continue;
         }
+
         const float x = direction < 0 ? area.x + margin + radius : area.getRight() - margin - radius;
         const math::Rect button = context.mirror({x - radius, area.getCenter().y - radius, radius * 2.0F, radius * 2.0F}, area);
         ImGui::PushID(direction);
@@ -147,10 +162,12 @@ int Carousel::drawArrows(Context& context, const math::Rect& area, std::size_t c
         const math::Color fill = state.held ? Widgets::mix(raised, context.getColor(Theme::Color::Pressed)) : state.hovered ? Widgets::mix(raised, context.getColor(Theme::Color::Hover)) : raised;
         Surfaces::draw(context, Theme::Surface::Button, button, fill, context.getColor(Theme::Color::Border), radius);
         Widgets::arrow(context, button.getCenter(), radius * 0.7F, Widgets::mirror(context, direction < 0 ? ImGuiDir_Left : ImGuiDir_Right), context.getColor(Theme::Color::Text));
+
         if (state.clicked) {
             moved = direction;
         }
     }
+
     return moved;
 }
 
@@ -166,6 +183,7 @@ int Carousel::drawIndicators(Context& context, const math::Rect& row, std::size_
         ImGui::PopID();
         const bool current = static_cast<int>(index) + 1 == page;
         Surfaces::fill(context, dot, context.getColor(current ? Theme::Color::Accent : state.hovered ? Theme::Color::TextMuted : Theme::Color::BorderStrong), size * 0.5F);
+
         if (state.clicked) {
             picked = static_cast<int>(index) + 1;
         }
@@ -173,9 +191,11 @@ int Carousel::drawIndicators(Context& context, const math::Rect& row, std::size_
 
     // The dots take the focus together, and left and right turn the pages from there.
     (void)Widgets::interact(context, dots.expanded(size), size, "##pages");
+
     if (takeFocusRequest()) {
         Widgets::focusItem(context);
     }
+
     return picked;
 }
 
@@ -185,6 +205,7 @@ void Carousel::turn(Context& context, int target, std::size_t count) {
     if (next == page) {
         return;
     }
+
     page = next;
     waited = 0.0F;
     context.emit(*this, "change", {{"page", page}});

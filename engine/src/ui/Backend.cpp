@@ -37,12 +37,15 @@ ImGuiKey Backend::toImGuiKey(input::Key key) noexcept {
     if (key >= input::Key::A && key <= input::Key::Z) {
         return static_cast<ImGuiKey>(ImGuiKey_A + (code - static_cast<int>(input::Key::A)));
     }
+
     if (key >= input::Key::Digit0 && key <= input::Key::Digit9) {
         return static_cast<ImGuiKey>(ImGuiKey_0 + (code - static_cast<int>(input::Key::Digit0)));
     }
+
     if (key >= input::Key::F1 && key <= input::Key::F24) {
         return static_cast<ImGuiKey>(ImGuiKey_F1 + (code - static_cast<int>(input::Key::F1)));
     }
+
     if (key >= input::Key::Keypad0 && key <= input::Key::Keypad9) {
         return static_cast<ImGuiKey>(ImGuiKey_Keypad0 + (code - static_cast<int>(input::Key::Keypad0)));
     }
@@ -205,6 +208,7 @@ graphics::Image Backend::toImage(ImTextureData& texture) {
     for (std::size_t index = 0; index < count; ++index) {
         expanded[index * 4U + 3U] = pixels[index];
     }
+
     return {texture.Width, texture.Height, std::move(expanded)};
 }
 
@@ -237,6 +241,7 @@ void Backend::runRenderCall(const ImDrawList* list, const ImDrawCmd* command) {
     if (clip.isEmpty()) {
         return;
     }
+
     owner.rendering->pushClip(clip);
     owner.renderCalls[call.index](*owner.rendering);
     owner.rendering->popClip();
@@ -257,10 +262,13 @@ void Backend::runDraws(const ImDrawList* list, const ImDrawCmd* command) {
     if (clip.isEmpty()) {
         return;
     }
+
     owner.rendering->pushClip(clip);
+
     for (std::size_t index = run.first; index < run.first + run.count; ++index) {
         owner.runDraw(owner.draws[index]);
     }
+
     owner.rendering->popClip();
 }
 
@@ -341,6 +349,7 @@ Backend::~Backend() {
     if (keyboardShown) {
         window.setKeyboardVisible(false);
     }
+
     ImGui::DestroyContext(imguiContext);
 }
 
@@ -370,6 +379,7 @@ float Backend::readHeight(const std::string& name, std::span<const std::uint8_t>
     if (!file) {
         throw std::runtime_error("The font \"" + name + "\" is not a TrueType or OpenType font.");
     }
+
     const text::FontFile::LineMetrics& lines = file->getLineMetrics();
     const float emScale = 1.0F / static_cast<float>(file->getUnitsPerEm());
     const float heightScale = 1.0F / static_cast<float>(lines.ascender - lines.descender);
@@ -378,17 +388,20 @@ float Backend::readHeight(const std::string& name, std::span<const std::uint8_t>
 
 ImFont* Backend::addFont(const std::string& name, FontFiles files) {
     makeCurrent();
+
     if (fonts.contains(name)) {
         throw std::invalid_argument("The UI already has a font named \"" + name + "\".");
     }
 
     // Every file is checked before any reaches ImGui, so a broken one registers nothing.
     (void)readHeight(name, files.regular);
+
     for (const std::vector<std::uint8_t>* face : {&files.bold, &files.italic, &files.boldItalic}) {
         if (!face->empty()) {
             (void)readHeight(name, *face);
         }
     }
+
     for (const std::vector<std::uint8_t>& fallback : files.fallbacks) {
         (void)readHeight(name, fallback);
     }
@@ -398,16 +411,20 @@ ImFont* Backend::addFont(const std::string& name, FontFiles files) {
     for (std::vector<std::uint8_t>& fallback : files.fallbacks) {
         fallbacks.emplace_back(fontData.emplace_back(std::move(fallback)));
     }
+
     Typeface typeface{.regular = addFace(name, std::move(files.regular), fallbacks)};
     if (!files.bold.empty()) {
         typeface.bold = addFace(name, std::move(files.bold), fallbacks);
     }
+
     if (!files.italic.empty()) {
         typeface.italic = addFace(name, std::move(files.italic), fallbacks);
     }
+
     if (!files.boldItalic.empty()) {
         typeface.boldItalic = addFace(name, std::move(files.boldItalic), fallbacks);
     }
+
     fonts.emplace(name, typeface);
     return typeface.regular.font;
 }
@@ -427,6 +444,7 @@ Backend::Face Backend::addFace(const std::string& name, std::vector<std::uint8_t
         merged.ExtraSizeScale = readHeight(name, fallback) / height;
         ImGui::GetIO().Fonts->AddFontFromMemoryTTF(fallback.data(), static_cast<int>(fallback.size()), kBaseFontSize, &merged);
     }
+
     return {.font = font, .height = height};
 }
 
@@ -435,16 +453,20 @@ const Backend::Face& Backend::findFace(std::string_view name, bool bold, bool it
     if (found == fonts.end()) {
         throw std::invalid_argument("The UI has no font named \"" + std::string(name) + "\".");
     }
+
     const Typeface& typeface = found->second;
     if (bold && italic && typeface.boldItalic.font != nullptr) {
         return typeface.boldItalic;
     }
+
     if (bold && typeface.bold.font != nullptr) {
         return typeface.bold;
     }
+
     if (italic && typeface.italic.font != nullptr) {
         return typeface.italic;
     }
+
     return typeface.regular;
 }
 
@@ -473,12 +495,14 @@ void Backend::handleEvent(const platform::Event& event, const graphics::Viewport
         if (key != ImGuiKey_None && !native) {
             io.AddKeyEvent(key, event.type == platform::Event::Type::KeyDown);
         }
+
         break;
     }
     case platform::Event::Type::Character:
         if (!textSession->isNativeEditing() && event.character >= 32 && event.character != 127) {
             io.AddInputCharacter(static_cast<unsigned int>(event.character));
         }
+
         break;
     case platform::Event::Type::TextEdited:
         textSession->receiveEdit(event.textEdit);
@@ -509,6 +533,7 @@ void Backend::handlePointer(const platform::Event& event, const graphics::Viewpo
     if (event.fromTouch) {
         return;
     }
+
     ImGuiIO& io = ImGui::GetIO();
     // clang-format off
     const auto place = [&](math::Vec2 framebufferPoint) {
@@ -553,6 +578,7 @@ void Backend::handlePointer(const platform::Event& event, const graphics::Viewpo
             if (primaryTouch && touch.changed && touch.id != *primaryTouch) {
                 touchShared = true;
             }
+
             if (!primaryTouch && touch.changed) {
                 primaryTouch = touch.id;
                 touchShared = false;
@@ -561,6 +587,7 @@ void Backend::handlePointer(const platform::Event& event, const graphics::Viewpo
                 io.AddMouseButtonEvent(0, true);
             }
         }
+
         break;
     case platform::Event::Type::TouchMoved:
         for (const platform::TouchPoint& touch : touches) {
@@ -569,6 +596,7 @@ void Backend::handlePointer(const platform::Event& event, const graphics::Viewpo
                 place(touch.position);
             }
         }
+
         break;
     case platform::Event::Type::TouchEnded:
     case platform::Event::Type::TouchCancelled:
@@ -583,6 +611,7 @@ void Backend::handlePointer(const platform::Event& event, const graphics::Viewpo
                 primaryTouch.reset();
             }
         }
+
         break;
     default:
         break;
@@ -602,6 +631,7 @@ void Backend::handleTextAction(const platform::Event& event) {
         textSession->receiveAction(action);
         return;
     }
+
     ImGuiIO& io = ImGui::GetIO();
     io.AddKeyEvent(ImGuiKey_Tab, true);
     io.AddKeyEvent(ImGuiKey_Tab, false);
@@ -647,6 +677,7 @@ void Backend::feedGamepad(const input::Input& input, const NavigationInput& navi
             pad = index;
         }
     }
+
     constexpr std::array<std::pair<input::GamepadButton, ImGuiKey>, 8> kButtons{{
         {input::GamepadButton::West, ImGuiKey_GamepadFaceLeft},
         {input::GamepadButton::North, ImGuiKey_GamepadFaceUp},
@@ -657,9 +688,11 @@ void Backend::feedGamepad(const input::Input& input, const NavigationInput& navi
         {input::GamepadButton::LeftStick, ImGuiKey_GamepadL3},
         {input::GamepadButton::RightStick, ImGuiKey_GamepadR3},
     }};
+
     for (const auto& [button, key] : kButtons) {
         io.AddKeyEvent(key, pad && input.isGamepadDown(*pad, button));
     }
+
     // clang-format off
     const auto analog = [&](ImGuiKey key, float value) {
         const float amount = std::clamp(value, 0.0F, 1.0F);
@@ -747,9 +780,11 @@ void Backend::releaseTravelledTouch() {
     if (!primaryTouch || state.ActiveId == 0 || state.ActiveId == dragKeeper || state.DragDropActive || state.ActiveIdWindow == nullptr) {
         return;
     }
+
     if (std::ranges::find(immediateWindows, state.ActiveIdWindow->RootWindow->ID) != immediateWindows.end()) {
         return;
     }
+
     const ImVec2 moved = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left, 0.0F);
     if (touchShared || std::hypot(moved.x, moved.y) >= ScrollArbiter::kDragSlop) {
         ImGui::ClearActiveID();
@@ -765,6 +800,7 @@ bool Backend::isUsingPointer() const {
     if (!state.IO.WantCaptureMouse) {
         return false;
     }
+
     if (state.HoveredWindow == nullptr || state.HoveredWindow->ID != transparentWindow) {
         return true;
     }
@@ -825,9 +861,11 @@ void Backend::addNineSlice(const graphics2d::NineSlice& slice, const math::Rect&
     patches.clear();
     slice.layout(area, borderScale, patches);
     const std::size_t first = sprites.size();
+
     for (const graphics2d::NineSlice::Patch& patch : patches) {
         sprites.push_back({.position = patch.area.getMin() * areaScale + offset, .size = patch.area.getSize() * areaScale, .source = patch.source, .pivot = {}, .color = color});
     }
+
     spriteDraws.push_back({.texture = slice.texture, .first = first, .count = patches.size()});
     addDraw(Draw::Kind::Sprites, spriteDraws.size() - 1);
 }
@@ -851,15 +889,18 @@ void Backend::addDraw(Draw::Kind kind, std::size_t index) {
             }
         }
     }
+
     DrawRun run{.owner = this, .first = draws.size() - 1, .count = 1};
     list.AddCallback(&runDraws, &run, sizeof(run));
 }
 
 ImTextureRef Backend::getTextureReference(const graphics::Texture& texture) {
     const ImTextureID id = kAppTextureBit | texture.getId();
+
     if (std::ranges::none_of(frameTextures, [&texture](const graphics::Texture& shown) { return shown.getId() == texture.getId(); })) {
         frameTextures.push_back(texture);
     }
+
     return ImTextureRef(id);
 }
 
@@ -868,6 +909,7 @@ const graphics::Texture* Backend::findTexture(ImTextureID id) const {
         const auto shown = std::ranges::find_if(frameTextures, [id](const graphics::Texture& texture) { return (kAppTextureBit | texture.getId()) == id; });
         return shown != frameTextures.end() ? &*shown : nullptr;
     }
+
     const auto found = atlasTextures.find(id);
     return found != atlasTextures.end() ? &found->second : nullptr;
 }
@@ -876,6 +918,7 @@ void Backend::updateTextures(ImDrawData& data) {
     if (data.Textures == nullptr) {
         return;
     }
+
     for (ImTextureData* texture : *data.Textures) {
         switch (texture->Status) {
         case ImTextureStatus_WantCreate: {
@@ -895,6 +938,7 @@ void Backend::updateTextures(ImDrawData& data) {
                 texture->SetTexID(ImTextureID_Invalid);
                 texture->SetStatus(ImTextureStatus_Destroyed);
             }
+
             break;
         default:
             break;
@@ -904,9 +948,11 @@ void Backend::updateTextures(ImDrawData& data) {
 
 void Backend::render(graphics2d::Renderer& renderer) {
     makeCurrent();
+
     if (!frameActive) {
         return;
     }
+
     releaseTravelledTouch();
     ImGui::Render();
     frameActive = false;
@@ -920,7 +966,9 @@ void Backend::render(graphics2d::Renderer& renderer) {
         keyboardShown = false;
         window.setKeyboardVisible(false);
     }
+
     textSession->publish();
+
     if (plainInput && !keyboardShown) {
         keyboardShown = true;
         window.setKeyboardVisible(true);
@@ -939,11 +987,13 @@ void Backend::renderWindow(graphics2d::Renderer& renderer, const ImGuiWindow& ro
     makeCurrent();
     drawnLists.clear();
     collectLists(root, drawnLists);
+
     for (const ImGuiPopupData& popup : GImGui->OpenPopupStack) {
         if (popup.Window != nullptr && popup.Window->RootWindowPopupTree == &root && popup.Window != &root) {
             collectLists(*popup.Window, drawnLists);
         }
     }
+
     drawLists(renderer, drawnLists);
 }
 
@@ -981,6 +1031,7 @@ void Backend::collectLists(const ImGuiWindow& window, std::vector<const ImDrawLi
     if (!window.Active || window.Hidden) {
         return;
     }
+
     lists.push_back(window.DrawList);
     for (const ImGuiWindow* child : window.DC.ChildWindows) {
         collectLists(*child, lists);
@@ -993,15 +1044,18 @@ void Backend::drawLists(graphics2d::Renderer& renderer, std::span<const ImDrawLi
     if (empty && renderCalls.empty() && draws.empty()) {
         return;
     }
+
     // The canvas maps UI coordinates to the visible area at the scale of the UI, so the meshes of ImGui and the draws of the components keep their UI coordinates. The debug drawings, in the units of the worlds of the app, stay out of it.
     graphics2d::Camera camera;
     camera.anchor = graphics2d::Camera::Anchor::TopLeft;
     camera.setZoom({scale, scale});
     renderer.beginWorld(camera, {.debugDrawings = false});
     rendering = &renderer;
+
     for (const ImDrawList* list : lists) {
         drawList(*list);
     }
+
     rendering = nullptr;
 }
 
@@ -1009,7 +1063,9 @@ void Backend::drawWindow(const ImGuiWindow& imguiWindow) {
     if (!imguiWindow.Active || imguiWindow.Hidden) {
         return;
     }
+
     drawList(*imguiWindow.DrawList);
+
     for (const ImGuiWindow* child : imguiWindow.DC.ChildWindows) {
         drawWindow(*child);
     }
@@ -1020,6 +1076,7 @@ void Backend::drawList(const ImDrawList& list) {
     if (std::ranges::find(renderedLists, &list) != renderedLists.end() || std::ranges::find(deferredLists, &list) != deferredLists.end()) {
         return;
     }
+
     renderedLists.push_back(&list);
 
     for (const ImDrawCmd& command : list.CmdBuffer) {
@@ -1044,6 +1101,7 @@ void Backend::drawList(const ImDrawList& list) {
             const ImDrawVert& vertex = list.VtxBuffer[static_cast<int>(index)];
             meshVertices.push_back({.position = {vertex.pos.x, vertex.pos.y}, .uv = {vertex.uv.x, vertex.uv.y}, .color = toColor(vertex.col)});
         }
+
         meshIndices.clear();
         for (const ImDrawIdx index : used) {
             meshIndices.push_back(static_cast<std::uint32_t>(index - lowest));

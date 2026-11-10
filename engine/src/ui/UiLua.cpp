@@ -62,6 +62,7 @@ template <> struct EnumNames<ui::FocusNavigator::Owner> {
                 return owner;
             }
         }
+
         return std::nullopt;
     }
 
@@ -71,6 +72,7 @@ template <> struct EnumNames<ui::FocusNavigator::Owner> {
                 return candidate;
             }
         }
+
         return kOwners.front().first;
     }
 };
@@ -114,10 +116,12 @@ std::optional<std::string> UiLua::handlerEvent(lua_State* L, int key, int value)
     if (lua_type(L, key) != LUA_TSTRING || !lua_isfunction(L, value)) {
         return std::nullopt;
     }
+
     const std::string_view name = lua::Stack::read<std::string_view>(L, key);
     if (name.size() < 3 || !name.starts_with("on") || std::isupper(static_cast<unsigned char>(name[2])) == 0) {
         return std::nullopt;
     }
+
     std::string event(name.substr(2));
     event[0] = static_cast<char>(std::tolower(static_cast<unsigned char>(event[0])));
     return event;
@@ -131,6 +135,7 @@ void UiLua::storeHandler(lua_State* L, int handlers, const std::string& id, cons
         lua_pushvalue(L, -1);
         lua_setfield(L, handlers, id.c_str());
     }
+
     lua_pushvalue(L, value);
     lua_setfield(L, -2, event.c_str());
     lua_pop(L, 1);
@@ -153,6 +158,7 @@ core::Json UiLua::convertNode(lua_State* L, int index, int handlers, std::size_t
     if (depth >= Gui::kMaxDepth || ++count > Gui::kMaxNodes) {
         luaL_error(L, "A GUI is limited to %d levels and %d nodes.", static_cast<int>(Gui::kMaxDepth), static_cast<int>(Gui::kMaxNodes));
     }
+
     luaL_checkstack(L, LUA_MINSTACK, "the UI tree is nested too deeply");
     const int node = lua_absindex(L, index);
     const int base = lua_gettop(L);
@@ -172,32 +178,39 @@ core::Json UiLua::convertNode(lua_State* L, int index, int handlers, std::size_t
             lua_pop(L, 1);
             continue;
         }
+
         if (lua_type(L, key) != LUA_TSTRING) {
             luaL_error(L, "UI node keys must be strings.");
         }
+
         if (const std::optional<std::string> event = handlerEvent(L, key, value)) {
             if (handlers == 0) {
                 luaL_error(L, "A collection template takes no handlers. Handle the events of its parts on the collection, where they arrive with \"part\" and \"cell\".");
             }
+
             lua_pushvalue(L, value);
             lua_setfield(L, collected, event->c_str());
             hasHandlers = true;
         } else if (const std::string name = lua::Stack::read<std::string>(L, key); name != "children") {
             json[name] = collection && name == "types" ? convertTypes(L, value, depth, count) : lua::JsonConverter::read(L, value);
         }
+
         lua_pop(L, 1);
     }
 
     if (json.contains("id") && json["id"].is_string() && json["id"].get<std::string>().starts_with('#')) {
         luaL_error(L, "UI ids starting with \"#\" are reserved for nodes the engine names.");
     }
+
     if (hasHandlers) {
         if (!json.contains("id")) {
             json["id"] = nextGeneratedId(L);
         }
+
         if (!json["id"].is_string()) {
             luaL_error(L, "A UI node with handlers needs a string id.");
         }
+
         const std::string id = json["id"].get<std::string>();
         lua_pushnil(L);
         while (lua_next(L, collected) != 0) {
@@ -205,6 +218,7 @@ core::Json UiLua::convertNode(lua_State* L, int index, int handlers, std::size_t
             lua_pop(L, 1);
         }
     }
+
     lua_settop(L, base);
 
     const auto arrayLength = static_cast<lua_Integer>(lua_rawlen(L, node));
@@ -212,6 +226,7 @@ core::Json UiLua::convertNode(lua_State* L, int index, int handlers, std::size_t
     if (listed && arrayLength > 0) {
         luaL_error(L, "A UI node takes children either in its \"children\" list or in its array part, not both.");
     }
+
     if (listed || arrayLength > 0) {
         const int children = listed ? lua_gettop(L) : node;
         luaL_checktype(L, children, LUA_TTABLE);
@@ -222,8 +237,10 @@ core::Json UiLua::convertNode(lua_State* L, int index, int handlers, std::size_t
             list.push_back(convertNode(L, -1, handlers, depth + 1, count));
             lua_pop(L, 1);
         }
+
         json["children"] = std::move(list);
     }
+
     lua_settop(L, base);
     return json;
 }
@@ -233,6 +250,7 @@ core::Json UiLua::convertTypes(lua_State* L, int index, std::size_t depth, std::
     if (lua_type(L, index) != LUA_TTABLE) {
         return lua::JsonConverter::read(L, index);
     }
+
     const int types = lua_absindex(L, index);
     core::Json json = core::Json::object();
     lua_pushnil(L);
@@ -243,6 +261,7 @@ core::Json UiLua::convertTypes(lua_State* L, int index, std::size_t depth, std::
             lua_pop(L, 1);
             continue;
         }
+
         const int definition = lua_gettop(L);
         core::Json converted = core::Json::object();
         lua_pushnil(L);
@@ -251,9 +270,11 @@ core::Json UiLua::convertTypes(lua_State* L, int index, std::size_t depth, std::
             converted[key] = key == "template" && lua_istable(L, -1) ? convertNode(L, -1, 0, depth + 1, count) : lua::JsonConverter::read(L, -1);
             lua_pop(L, 1);
         }
+
         json[name] = std::move(converted);
         lua_pop(L, 1);
     }
+
     return json;
 }
 
@@ -275,8 +296,10 @@ core::Json UiLua::convertProperties(lua_State* L, int index, int collected, bool
             std::size_t count = 0;
             json[name] = collection && name == "types" ? convertTypes(L, value, 1, count) : lua::JsonConverter::read(L, value);
         }
+
         lua_pop(L, 1);
     }
+
     return json;
 }
 
@@ -284,6 +307,7 @@ void UiLua::collectIds(const core::Json& node, std::vector<std::string>& ids) {
     if (const auto id = node.find("id"); id != node.end() && id->is_string()) {
         ids.push_back(id->get<std::string>());
     }
+
     if (const auto children = node.find("children"); children != node.end()) {
         for (const core::Json& child : *children) {
             collectIds(child, ids);
@@ -300,6 +324,7 @@ bool UiLua::pushHandlers(lua_State* L, const Gui& gui) {
         lua_pop(L, 1);
         return false;
     }
+
     lua_getfield(L, -1, "handlers");
     lua_remove(L, -2);
     return true;
@@ -313,8 +338,10 @@ void UiLua::pruneHandlers(lua_State* L, int handlers, const Gui& gui) {
         if (lua_type(L, -2) == LUA_TSTRING && gui.find(lua::Stack::read<std::string_view>(L, -2)) == nullptr) {
             stale.push_back(lua::Stack::read<std::string>(L, -2));
         }
+
         lua_pop(L, 1);
     }
+
     for (const std::string& id : stale) {
         lua_pushnil(L);
         lua_setfield(L, handlers, id.c_str());
@@ -336,6 +363,7 @@ void UiLua::listenToEvents(lua_State* L, Gui& gui, std::string_view id, int even
         if (const std::optional<Component::Notice> notice = Component::noticeFromName(lua::Stack::read<std::string_view>(L, -2))) {
             gui.listen(id, *notice, true);
         }
+
         lua_pop(L, 1);
     }
 }
@@ -353,6 +381,7 @@ void UiLua::pushEventTable(lua_State* L, const Gui& gui, const Event& event) {
     } else {
         lua_pushnil(L);
     }
+
     lua_setfield(L, -4, "gui");
     lua_pop(L, 2);
 }
@@ -399,16 +428,21 @@ int UiLua::mount(lua_State* L) {
             if (!named || *named == Placement::Region) {
                 return luaL_error(L, "The \"placement\" option must be \"safe\", \"screen\" or a region such as {gui = frame, id = \"content\"}.");
             }
+
             placement = *named;
         }
+
         lua_pop(L, 1);
+
         if (region) {
             const bool layered = lua_getfield(L, 2, "layer") != LUA_TNIL;
             lua_pop(L, 1);
+
             if (layered) {
                 return luaL_error(L, "A GUI in a region draws right after the GUI of its region, so it takes no \"layer\".");
             }
         }
+
         lua::Table::readField(L, 2, "layer", layer);
         lua::Table::readField(L, 2, "sharedFocus", sharedFocus);
         if (lua_getfield(L, 2, "owner") != LUA_TNIL) {
@@ -416,6 +450,7 @@ int UiLua::mount(lua_State* L) {
             owner = lua_gettop(L);
         }
     }
+
     if (owner == 0) {
         owner = lua::Owners::pushDefault(L);
     }
@@ -443,9 +478,11 @@ int UiLua::mount(lua_State* L) {
     // A GUI owned by a scene of the stack belongs to that scene, so it shows and leaves with it.
     const std::shared_ptr<const core::Scene> scene = owner != 0 ? lua::ScriptedScene::find(L, owner) : nullptr;
     getPlugin(L).mount(created, layer, scene, region);
+
     if (owner != 0) {
         lua::Owners::add(L, owner, std::make_shared<MountLink>(getPlugin(L), created));
     }
+
     lua_pushvalue(L, userdata);
     return 1;
 }
@@ -458,6 +495,7 @@ void UiLua::pushGui(lua_State* L, const std::shared_ptr<Gui>& gui) {
     } else {
         lua_pushnil(L);
     }
+
     lua_replace(L, -3);
     lua_pop(L, 1);
 }
@@ -472,9 +510,11 @@ void UiLua::pushGuiEvent(lua_State* L, const std::shared_ptr<Gui>& gui) {
 int UiLua::guiSet(lua_State* L) {
     Gui& self = checkGui(L);
     const std::string id = lua::Stack::read<std::string>(L, 2);
+
     if (!pushHandlers(L, self)) {
         return luaL_error(L, "The GUI is not mounted.");
     }
+
     const int handlers = lua_gettop(L);
     lua_newtable(L);
     const int collected = lua_gettop(L);
@@ -486,6 +526,7 @@ int UiLua::guiSet(lua_State* L) {
         storeHandler(L, handlers, id, lua::Stack::read<std::string>(L, -2), lua_gettop(L));
         lua_pop(L, 1);
     }
+
     listenToEvents(L, self, id, collected);
     return 0;
 }
@@ -498,6 +539,7 @@ int UiLua::guiReplaceChildren(lua_State* L) {
     if (!pushHandlers(L, self)) {
         return luaL_error(L, "The GUI is not mounted.");
     }
+
     const int handlers = lua_gettop(L);
     lua_newtable(L);
     const int collected = lua_gettop(L);
@@ -510,6 +552,7 @@ int UiLua::guiReplaceChildren(lua_State* L) {
         children.push_back(convertNode(L, -1, collected, 1, count));
         lua_pop(L, 1);
     }
+
     self.replaceChildren(id, children);
     CollectionLua::prune(L, self);
 
@@ -517,10 +560,12 @@ int UiLua::guiReplaceChildren(lua_State* L) {
     for (const core::Json& child : children) {
         collectIds(child, rebuilt);
     }
+
     for (const std::string& node : rebuilt) {
         lua_pushnil(L);
         lua_setfield(L, handlers, node.c_str());
     }
+
     pruneHandlers(L, handlers, self);
     lua_pushnil(L);
     while (lua_next(L, collected) != 0) {
@@ -528,6 +573,7 @@ int UiLua::guiReplaceChildren(lua_State* L) {
         lua_insert(L, -2);
         lua_settable(L, handlers);
     }
+
     listenToHandlers(L, self, collected);
     return 0;
 }
@@ -537,23 +583,29 @@ int UiLua::guiRemoveHandler(lua_State* L) {
     Gui& self = checkGui(L);
     const std::string id = lua::Stack::read<std::string>(L, 2);
     const std::string event = lua::Stack::read<std::string>(L, 3);
+
     if (!pushHandlers(L, self)) {
         return luaL_error(L, "The GUI is not mounted.");
     }
+
     if (self.find(id) == nullptr) {
         return luaL_error(L, "The GUI has no node with the id \"%s\".", id.c_str());
     }
+
     if (lua_getfield(L, -1, id.c_str()) != LUA_TTABLE) {
         lua::Stack::push(L, false);
         return 1;
     }
+
     const bool found = lua_getfield(L, -1, event.c_str()) == LUA_TFUNCTION;
     lua_pop(L, 1);
     lua_pushnil(L);
     lua_setfield(L, -2, event.c_str());
+
     if (const std::optional<Component::Notice> notice = Component::noticeFromName(event)) {
         self.listen(id, *notice, false);
     }
+
     lua::Stack::push(L, found);
     return 1;
 }
@@ -564,6 +616,7 @@ int UiLua::guiGet(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::JsonConverter::push(L, *properties);
     return 1;
 }
@@ -575,6 +628,7 @@ int UiLua::guiBounds(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, getPlugin(L).getContext().toDesign(component->getBounds()));
     return 1;
 }
@@ -632,9 +686,11 @@ int UiLua::guiTransform(lua_State* L) {
     // The GUI keeps one handle per node, so a tween, which holds its target weakly, runs for as long as the GUI does.
     const std::string key = "transform " + id;
     lua::Userdata::pushField(L, 1, key.c_str());
+
     if (lua::Userdata::test<Transform>(L, -1) == component->getTransform().get()) {
         return 1;
     }
+
     lua_pop(L, 1);
     TransformLua::push(L, component->getTransform());
     lua::Userdata::setField(L, 1, key.c_str(), -1);
@@ -647,6 +703,7 @@ int UiLua::guiCollection(lua_State* L) {
     if (!getPlugin(L).isMounted(*gui)) {
         return luaL_error(L, "The GUI is not mounted.");
     }
+
     CollectionLua::push(L, gui, gui->getCollection(lua::Stack::read<std::string_view>(L, 2)));
     return 1;
 }
@@ -662,12 +719,14 @@ int UiLua::node(lua_State* L) {
     if (!getPlugin(L).getComponents().contains(kind)) {
         return luaL_error(L, "There is no UI component kind named \"%s\".", kind.c_str());
     }
+
     if (lua_isnoneornil(L, 2)) {
         lua_newtable(L);
     } else {
         luaL_checktype(L, 2, LUA_TTABLE);
         lua_pushvalue(L, 2);
     }
+
     lua::Stack::push(L, kind);
     lua_setfield(L, -2, "kind");
     return 1;
@@ -685,6 +744,7 @@ int UiLua::moduleIndex(lua_State* L) {
     if (!getPlugin(L).getComponents().contains(key)) {
         return luaL_error(L, "The module \"haylen.ui\" has no member \"%s\".", std::string(key).c_str());
     }
+
     lua_pushvalue(L, 2);
     lua_pushcclosure(L, &lua::Binding::native<&kindBuilder>, 1);
     return 1;
@@ -726,6 +786,7 @@ int UiLua::themeColor(lua_State* L) {
     if (!role) {
         return luaL_error(L, "The theme has no color role named \"%s\".", name.c_str());
     }
+
     lua::Stack::push(L, getPlugin(L).getTheme().getColor(*role));
     return 1;
 }
@@ -736,6 +797,7 @@ int UiLua::themeMetric(lua_State* L) {
     if (!role) {
         return luaL_error(L, "The theme has no metric named \"%s\".", name.c_str());
     }
+
     lua::Stack::push(L, getPlugin(L).getTheme().getMetric(*role));
     return 1;
 }
@@ -758,6 +820,7 @@ int UiLua::setImage(lua_State* L) {
     } else {
         library.setTexture(name, lua::Userdata::check<graphics::Texture>(L, 2));
     }
+
     return 0;
 }
 
@@ -773,6 +836,7 @@ int UiLua::themeFont(lua_State* L) {
     if (!role) {
         return luaL_error(L, "The theme has no font role named \"%s\".", name.c_str());
     }
+
     plugins::UiPlugin& plugin = getPlugin(L);
     const Theme::FontStyle& style = plugin.getTheme().getFont(*role);
     const text::Font& face = *plugin.getContext().getFontFamily(style.font)->select(style.bold, style.italic, false).font;
@@ -799,11 +863,13 @@ int UiLua::themeSurface(lua_State* L) {
     if (!role) {
         return luaL_error(L, "The theme has no surface named \"%s\".", name.c_str());
     }
+
     const Theme::Image* image = getPlugin(L).getTheme().getSurface(*role);
     if (image == nullptr) {
         lua_pushnil(L);
         return 1;
     }
+
     lua_createtable(L, 0, 6);
     if (image->vector.empty()) {
         lua::Stack::push(L, image->slice);
@@ -816,10 +882,12 @@ int UiLua::themeSurface(lua_State* L) {
         lua::Stack::push(L, raster.scale);
         lua_setfield(L, -2, "scale");
     }
+
     if (!image->vector.empty()) {
         lua::Stack::push(L, image->vector);
         lua_setfield(L, -2, "vector");
     }
+
     lua::Stack::push(L, std::vector<float>{image->padding.top, image->padding.right, image->padding.bottom, image->padding.left});
     lua_setfield(L, -2, "padding");
     lua::Stack::push(L, image->tint);
@@ -836,11 +904,13 @@ int UiLua::themeSound(lua_State* L) {
     if (!role) {
         return luaL_error(L, "The theme has no sound named \"%s\".", name.c_str());
     }
+
     const Theme::Cue* cue = getPlugin(L).getTheme().getSound(*role);
     if (cue == nullptr) {
         lua_pushnil(L);
         return 1;
     }
+
     lua_createtable(L, 0, 4);
     lua::Stack::push(L, cue->sound);
     lua_setfield(L, -2, "sound");
@@ -865,10 +935,12 @@ int UiLua::onEvent(lua_State* L) {
             owner = lua_gettop(L);
         }
     }
+
     core::Signal<Gui&, const Event&>::Options options;
     if (owner != 0) {
         options.owner = lua::Owners::getLifetime(L, owner);
     }
+
     auto function = std::make_shared<lua::Owners::Function>(L, 1, owner);
     lua_State* main = lua::Runtime::getMainThread(L);
 
@@ -876,9 +948,11 @@ int UiLua::onEvent(lua_State* L) {
     core::Connection connection = getPlugin(L).events.connect([function, main](Gui& gui, const Event& event) {
         lua::Runtime::runReporting(main, [&] {
             const lua::StackScope scope(main);
+
             if (!function->push(main)) {
                 return;
             }
+
             pushEventTable(main, gui, event);
             lua::Runtime::protectedCall(main, 1, 0);
         });
@@ -888,6 +962,7 @@ int UiLua::onEvent(lua_State* L) {
     if (owner != 0) {
         lua::Owners::add(L, owner, connection);
     }
+
     lua::Userdata::emplace<core::Connection>(L, std::move(connection));
     return 1;
 }
@@ -898,6 +973,7 @@ int UiLua::addFont(lua_State* L) {
         getPlugin(L).addFont(lua::Runtime::getEngine(L), lua::Stack::read<std::string>(L, 1), lua::Stack::read<std::string_view>(L, 2));
         return 0;
     }
+
     getPlugin(L).addFontFamily(lua::Stack::read<std::string>(L, 1), graphics::FontLua::readFamily(L, 2));
     return 0;
 }
@@ -931,6 +1007,7 @@ int UiLua::focused(lua_State* L) {
             lua_setfield(L, -2, key);
         }
     }
+
     return 1;
 }
 
@@ -977,6 +1054,7 @@ int UiLua::setScaleMode(lua_State* L) {
     if (!mode) {
         return luaL_error(L, "The UI scale mode \"%s\" is unknown. It is \"design\" or \"physical\".", std::string(name).c_str());
     }
+
     plugins::UiPlugin& plugin = getPlugin(L);
     Scaling scaling = plugin.getScaling();
     scaling.mode = *mode;
@@ -994,6 +1072,7 @@ int UiLua::setScale(lua_State* L) {
     if (!(factor >= Scaling::kMinimumFactor && factor <= Scaling::kMaximumFactor)) {
         return luaL_error(L, "The UI scale must be from 0.25 to 4.");
     }
+
     plugins::UiPlugin& plugin = getPlugin(L);
     Scaling scaling = plugin.getScaling();
     scaling.factor = factor;
@@ -1017,13 +1096,16 @@ int UiLua::setTextScale(lua_State* L) {
         plugin.setTextScale(std::nullopt);
         return 0;
     }
+
     if (lua_type(L, 1) != LUA_TNUMBER) {
         return luaL_error(L, "The text scale of the UI is a number from 0.5 to 4, or \"system\" to follow the text size of the system.");
     }
+
     const auto factor = lua::Stack::read<float>(L, 1);
     if (!(factor >= kMinimumTextScale && factor <= kMaximumTextScale)) {
         return luaL_error(L, "The text scale of the UI is a number from 0.5 to 4, or \"system\" to follow the text size of the system.");
     }
+
     plugin.setTextScale(factor);
     return 0;
 }
@@ -1075,10 +1157,12 @@ void UiLua::deliverEvent(lua_State* L, Gui& gui, const Event& event) {
     if (!lua_istable(L, -1)) {
         return;
     }
+
     lua_getfield(L, -1, "handlers");
     if (lua_getfield(L, -1, event.id.c_str()) != LUA_TTABLE || lua_getfield(L, -1, event.name.c_str()) != LUA_TFUNCTION) {
         return;
     }
+
     pushEventTable(L, gui, event);
     lua::Runtime::protectedCall(L, 1, 0);
 }
@@ -1090,10 +1174,12 @@ void UiLua::forgetGui(lua_State* L, const Gui& gui) {
     if (!lua_istable(L, -1)) {
         return;
     }
+
     const int root = lua_gettop(L);
     if (lua_rawgetp(L, root, &gui) == LUA_TTABLE && lua_getfield(L, -1, "gui") == LUA_TUSERDATA) {
         lua::Owners::release(L, -1);
     }
+
     lua_pushnil(L);
     lua_rawsetp(L, root, &gui);
     CollectionLua::forget(L, gui);

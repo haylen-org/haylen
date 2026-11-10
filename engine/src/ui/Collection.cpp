@@ -55,6 +55,7 @@ void Collection::readProperties(PropertyReader& reader) {
     for (const std::string_view property : {"axis", "layout", "lanes", "minCellSize", "cellAspect", "gap", "padding", "types", "placeholder"}) {
         layoutDirty = layoutDirty || reader.has(property);
     }
+
     typesChanged = typesChanged || reader.has("types") || reader.has("placeholder") || reader.has("layout");
     reader.readChoice<Axis>("axis", axis, kAxes);
     reader.readChoice<Arrangement>("layout", arrangement, kArrangements);
@@ -66,10 +67,12 @@ void Collection::readProperties(PropertyReader& reader) {
         reader.read("gap", value, 0.0F, 10000.0F);
         gap = value;
     }
+
     reader.read("padding", padding);
     if (const core::Json* definitions = reader.take("types")) {
         typeDefinitions = *definitions;
     }
+
     reader.read("placeholder", placeholder);
     reader.read("stickToEnd", stickToEnd);
     reader.readChoice<Snap>("snap", snap, kSnaps);
@@ -77,15 +80,18 @@ void Collection::readProperties(PropertyReader& reader) {
     reader.read("prefetch", prefetch, 0.0F, kMaxPrefetch);
     reader.read("poolSize", poolSize, 0, kMaxPool);
     reader.readChoice<Selection>("selection", selection, kSelections);
+
     if (const core::Json* chosen = reader.take("selected")) {
         if (!PropertyReader::isList(*chosen) || !std::ranges::all_of(*chosen, &core::Json::is_string)) {
             reader.fail("selected", "must be a list of item ids");
         }
+
         requestedSelection.emplace();
         for (const core::Json& item : *chosen) {
             requestedSelection->push_back(item.get<std::string>());
         }
     }
+
     reader.read("selectionFollowsFocus", selectionFollowsFocus);
     reader.readChoice<ScrollAlign>("focusAlign", focusAlign, kScrollAligns);
     reader.read("rememberFocus", rememberFocus);
@@ -98,6 +104,7 @@ void Collection::readProperties(PropertyReader& reader) {
 
 void Collection::compile(const ComponentRegistry& components) {
     registry = &components;
+
     if (!binding) {
         rebuildTypes();
     }
@@ -108,6 +115,7 @@ void Collection::checkReplacement(const Component& replacement) const {
     if (!source) {
         return;
     }
+
     const auto& next = dynamic_cast<const Collection&>(replacement);
     std::vector<std::uint16_t> found;
     readTypes(0, source->getCount(), *next.types, next.placeholderType, found);
@@ -118,9 +126,11 @@ void Collection::rebuildTypes() {
     if (!typesChanged) {
         return;
     }
+
     if (typeDefinitions.is_null()) {
         throw std::invalid_argument("A \"collection\" needs at least one type in \"types\".");
     }
+
     auto built = std::make_unique<CellTypes>(*registry, typeDefinitions);
     std::optional<std::uint16_t> placeholderIndex;
     if (!placeholder.empty()) {
@@ -129,6 +139,7 @@ void Collection::rebuildTypes() {
             throw std::invalid_argument("The property \"placeholder\" of a \"collection\" names the type \"" + placeholder + "\", which it does not declare.");
         }
     }
+
     for (std::uint16_t type = 0; type < built->size(); ++type) {
         const CellTemplate& definition = built->get(type);
         if (arrangement == Arrangement::Grid && definition.isSticky() && definition.getSpan() != 0) {
@@ -147,6 +158,7 @@ void Collection::rebuildTypes() {
             kept[*found] = std::move(binders[type]);
         }
     }
+
     cells.clear();
     released.clear();
     waiting.clear();
@@ -157,6 +169,7 @@ void Collection::rebuildTypes() {
     typesChanged = false;
     estimatesDirty = true;
     layoutDirty = true;
+
     if (source) {
         sizes->assign(typeScratch);
     }
@@ -170,6 +183,7 @@ void Collection::checkType(std::string_view item, std::string_view type, const C
     if (type.empty() && table.size() != 1) {
         throw std::invalid_argument("The item \"" + std::string(item) + "\" of the collection \"" + getId() + "\" needs a type, because the collection declares several.");
     }
+
     if (!type.empty() && !table.find(type)) {
         throw std::invalid_argument("The item \"" + std::string(item) + "\" of the collection \"" + getId() + "\" has the type \"" + std::string(type) + "\", which the collection does not declare.");
     }
@@ -181,6 +195,7 @@ std::uint16_t Collection::readType(std::size_t index, const CellTypes& table, st
     if (itemId.empty()) {
         return placeholderIndex.value_or(SizeCache::kNoType);
     }
+
     const std::string_view name = source->getType(index);
     checkType(itemId, name, table);
     return name.empty() ? 0 : *table.find(name);
@@ -197,6 +212,7 @@ void Collection::setSource(std::shared_ptr<CollectionSource> value) {
     if (isBusy()) {
         throw std::logic_error("The collection \"" + getId() + "\" cannot change its items while it binds cells or loads them.");
     }
+
     std::vector<std::string_view> before;
     if (source) {
         before.reserve(source->getCount());
@@ -204,11 +220,13 @@ void Collection::setSource(std::shared_ptr<CollectionSource> value) {
             before.push_back(source->getId(index));
         }
     }
+
     std::vector<std::string_view> after;
     after.reserve(value->getCount());
     for (std::size_t index = 0; index < value->getCount(); ++index) {
         after.push_back(value->getId(index));
     }
+
     const CollectionDiff::Result result = CollectionDiff::compare(before, after, getId());
 
     const std::shared_ptr<CollectionSource> previous = std::exchange(source, std::move(value));
@@ -219,15 +237,19 @@ void Collection::setSource(std::shared_ptr<CollectionSource> value) {
 // Every change applies at once, so the collection, its sizes, its selection and its focus always match the source, and the view keeps the item it showed in place.
 void Collection::applyChange(const CollectionSource::Change& change) {
     using Kind = CollectionSource::Change::Kind;
+
     if (binding) {
         throw std::logic_error("The collection \"" + getId() + "\" cannot change its items while it binds cells or loads them.");
     }
+
     holdView();
+
     for (const std::shared_ptr<CollectionCell>& cell : cells) {
         if (isAnimating(*cell) && !cell->origin) {
             cell->origin = cell->placed.getMin();
         }
     }
+
     const std::size_t before = sizes->size();
     const auto first = static_cast<std::ptrdiff_t>(change.index);
     const auto count = static_cast<std::ptrdiff_t>(change.count);
@@ -244,11 +266,13 @@ void Collection::applyChange(const CollectionSource::Change& change) {
         break;
     case Kind::Moved:
         sizes->move(change.index, change.target);
+
         if (change.index < change.target) {
             std::rotate(selected.begin() + first, selected.begin() + first + 1, selected.begin() + static_cast<std::ptrdiff_t>(change.target) + 1);
         } else {
             std::rotate(selected.begin() + static_cast<std::ptrdiff_t>(change.target), selected.begin() + first, selected.begin() + first + 1);
         }
+
         break;
     case Kind::Changed:
         for (std::size_t index = change.index; index < change.index + change.count; ++index) {
@@ -256,6 +280,7 @@ void Collection::applyChange(const CollectionSource::Change& change) {
             layoutDirty = layoutDirty || type != sizes->getType(index);
             sizes->setType(index, type);
         }
+
         break;
     case Kind::Replaced: {
         readTypes(0, change.previous.size(), *types, placeholderType, typeScratch);
@@ -268,17 +293,21 @@ void Collection::applyChange(const CollectionSource::Change& change) {
                 remapping[change.previous[index]] = index;
             }
         }
+
         selected = std::move(next);
+
         for (std::size_t index = 0; index < change.previous.size(); ++index) {
             if (change.previous[index] == CollectionSource::Change::kNew) {
                 noteEntering(index, 1);
             }
         }
+
         layoutDirty = true;
         break;
     }
     }
     remapIndices(change, before);
+
     if (!layoutDirty && change.kind != Kind::Changed) {
         arrangeChange(change);
     }
@@ -294,6 +323,7 @@ void Collection::arrangeChange(const CollectionSource::Change& change) {
         for (auto entry = from; entry != stickyItems.end(); ++entry) {
             *entry += change.count;
         }
+
         auto position = from;
         for (std::size_t index = change.index; index < change.index + change.count; ++index) {
             if (isSticky(index)) {
@@ -338,6 +368,7 @@ void Collection::arrangeChange(const CollectionSource::Change& change) {
         layoutDirty = true;
         return;
     }
+
     layout->arrange({.count = count, .crossLength = std::max(0.0F, crossLength), .gap = gapLength, .lanes = laneCount, .spans = spans}, first);
     sizes->arrangeFrom(*layout, gapLength, layout->getLine(std::min(first, count - 1)));
     scroller->setRange(getContentLength() - getMainLength(), getMainLength());
@@ -352,20 +383,25 @@ std::optional<std::size_t> Collection::mapIndex(std::size_t index, const Collect
         if (index < change.index) {
             return index;
         }
+
         if (index >= change.index + change.count) {
             return index - change.count;
         }
+
         return std::nullopt;
     case Kind::Moved:
         if (index == change.index) {
             return change.target;
         }
+
         if (change.index < change.target && index > change.index && index <= change.target) {
             return index - 1;
         }
+
         if (change.target < change.index && index >= change.target && index < change.index) {
             return index + 1;
         }
+
         return index;
     case Kind::Changed:
         return index;
@@ -391,13 +427,16 @@ void Collection::remapIndices(const CollectionSource::Change& change, std::size_
             } else {
                 release(cell);
             }
+
             return true;
         }
+
         const bool changedHere = change.kind == Kind::Changed && cell->index >= change.index && cell->index < change.index + change.count;
         cell->stale = cell->stale || changedHere || change.kind == Kind::Replaced;
         if (*index != cell->index) {
             cell->type.bindIndex(*cell, *index);
         }
+
         return false;
     });
     // clang-format on
@@ -406,6 +445,7 @@ void Collection::remapIndices(const CollectionSource::Change& change, std::size_
     if (pendingFocus) {
         pendingFocus = mapIndex(*pendingFocus, change);
     }
+
     if (lift) {
         const std::optional<std::size_t> index = mapIndex(lift->index, change);
         if (index) {
@@ -414,6 +454,7 @@ void Collection::remapIndices(const CollectionSource::Change& change, std::size_
             lift.reset();
         }
     }
+
     if (pendingScroll) {
         const std::optional<std::size_t> index = mapIndex(pendingScroll->index, change);
         if (index) {
@@ -422,21 +463,25 @@ void Collection::remapIndices(const CollectionSource::Change& change, std::size_
             pendingScroll.reset();
         }
     }
+
     // A held item that moves leaves its place to the item that takes it, so the view stays where it was.
     if (hold && !hold->end) {
         std::optional<std::size_t> index;
         if (change.kind == Kind::Moved && hold->index == change.index) {
             index = hold->index;
         }
+
         for (std::size_t next = hold->index; !index && next < before; ++next) {
             index = mapIndex(next, change);
         }
+
         if (index) {
             hold->index = *index;
         } else {
             hold.reset();
         }
     }
+
     if (focusedIndex) {
         const std::size_t old = *focusedIndex;
         focusedIndex = mapIndex(old, change);
@@ -451,9 +496,11 @@ void Collection::resolveSelection() {
     if (!requestedSelection || !source) {
         return;
     }
+
     std::vector<std::string> ids = std::move(*requestedSelection);
     requestedSelection.reset();
     std::ranges::sort(ids);
+
     for (std::size_t index = 0; index < selected.size(); ++index) {
         select(index, std::ranges::binary_search(ids, source->getId(index)));
     }
@@ -467,6 +514,7 @@ float Collection::getPaddingStart() const noexcept {
     if (isVertical()) {
         return padding.top;
     }
+
     return rightToLeft ? padding.right : padding.left;
 }
 
@@ -474,6 +522,7 @@ float Collection::getPaddingEnd() const noexcept {
     if (isVertical()) {
         return padding.bottom;
     }
+
     return rightToLeft ? padding.left : padding.right;
 }
 
@@ -481,6 +530,7 @@ float Collection::getLaneReserve(const Context& context) const {
     if (!laneReserved) {
         return 0.0F;
     }
+
     const float edge = isVertical() ? (context.isRightToLeft() ? padding.left : padding.right) : padding.bottom;
     return Scrollbar::getReserve(context, edge);
 }
@@ -522,10 +572,12 @@ void Collection::updateGeometry(Context& context, float cross) {
         for (std::uint16_t type = 0; type < types->size(); ++type) {
             declared[type] = types->get(type).getEstimatedSize();
         }
+
         sizes->setEstimates(declared, fallback);
         estimateFallback = fallback;
         estimatesDirty = false;
     }
+
     const float spacing = getGap(context);
     if (cross != crossLength || spacing != gapLength) {
         crossLength = cross;
@@ -533,6 +585,7 @@ void Collection::updateGeometry(Context& context, float cross) {
         sizes->markStale();
         layoutDirty = true;
     }
+
     ensureArranged();
 }
 
@@ -548,12 +601,14 @@ void Collection::arrange() {
         layout = arrangement == Arrangement::Grid ? std::unique_ptr<CollectionLayout>(std::make_unique<GridLayout>()) : std::make_unique<LinearLayout>();
         builtLayout = arrangement;
     }
+
     const std::size_t count = sizes->size();
     const float cross = std::max(0.0F, crossLength);
     laneCount = 1;
     if (arrangement == Arrangement::Grid) {
         laneCount = minCellSize > 0.0F ? GridLayout::fitLanes(cross, minCellSize, gapLength) : static_cast<std::size_t>(lanes);
     }
+
     const auto lanesAcross = static_cast<float>(laneCount);
     const float laneLength = std::max(0.0F, (cross - gapLength * (lanesAcross - 1.0F)) / lanesAcross);
 
@@ -566,25 +621,32 @@ void Collection::arrange() {
             const auto spanLanes = static_cast<float>(std::min<std::size_t>(span, laneCount));
             fixed = (laneLength * spanLanes + gapLength * (spanLanes - 1.0F)) * cellAspect;
         }
+
         sizes->setFixedLength(type, fixed);
     }
+
     spans.clear();
     stickyItems.clear();
+
     if (spanned) {
         spans.resize(count, 1);
     }
+
     for (std::size_t index = 0; index < count; ++index) {
         const std::uint16_t type = sizes->getType(index);
         if (type == SizeCache::kNoType) {
             continue;
         }
+
         if (spanned) {
             spans[index] = types->get(type).getSpan();
         }
+
         if (types->get(type).isSticky()) {
             stickyItems.push_back(index);
         }
     }
+
     layout->arrange({.count = count, .crossLength = cross, .gap = gapLength, .lanes = laneCount, .spans = spans}, 0);
     sizes->arrange(*layout, gapLength);
     layoutDirty = false;
@@ -596,6 +658,7 @@ std::size_t Collection::findFirstFrom(double offset) const {
     if (sizes->getLineOffset(line) < offset - kSettleDistance && line + 1 < sizes->getLineCount()) {
         ++line;
     }
+
     return layout->getFirstIndex(line);
 }
 
@@ -609,6 +672,7 @@ math::Rect Collection::getItemRect(std::size_t index) const {
         const float cross = rightToLeft ? viewport.getRight() - padding.right - slot.crossStart - slot.crossLength : viewport.x + padding.left + slot.crossStart;
         return {std::floor(cross), std::floor(viewport.y + main), slot.crossLength, length};
     }
+
     const float along = rightToLeft ? viewport.getRight() - main - length : viewport.x + main;
     return {std::floor(along), std::floor(viewport.y + padding.top + slot.crossStart), length, slot.crossLength};
 }
@@ -619,6 +683,7 @@ std::optional<Collection::Range> Collection::findWindow(float prefetchLength) co
     if (lines == 0) {
         return std::nullopt;
     }
+
     const double start = getViewStart();
     const double end = start + getMainLength() - kSettleDistance;
     const double velocity = scroller->getVelocity();
@@ -634,6 +699,7 @@ std::optional<Collection::Range> Collection::findWindow(float prefetchLength) co
             last = std::max(last, std::min(line + 1, lines - 1));
         }
     }
+
     return Range{.first = layout->getFirstIndex(first), .last = layout->getFirstIndex(last + 1) - 1};
 }
 
@@ -642,11 +708,13 @@ std::optional<std::size_t> Collection::findSticky() const {
     if (stickyItems.empty()) {
         return std::nullopt;
     }
+
     const double start = getViewStart();
     const auto after = std::ranges::upper_bound(stickyItems, start, {}, [this](std::size_t index) { return sizes->getLineOffset(layout->getLine(index)); });
     if (after == stickyItems.begin()) {
         return std::nullopt;
     }
+
     const std::size_t item = *(after - 1);
     return sizes->getLineOffset(layout->getLine(item)) < start ? std::optional<std::size_t>(item) : std::nullopt;
 }
@@ -655,9 +723,11 @@ std::optional<Collection::Hold> Collection::findHold() const {
     if (sizes->getLineCount() == 0 || renderedFrame == 0) {
         return std::nullopt;
     }
+
     if (stickToEnd && scroller->getOffset() >= scroller->getMaximum() - kSettleDistance) {
         return Hold{.index = 0, .distance = 0.0, .end = true};
     }
+
     // The hold prefers the focused item, then the first measured item in view, so an item that grows when it is measured for the first time grows away from what the player already saw.
     const double viewEnd = getViewStart() + getMainLength();
     std::size_t index = layout->getFirstIndex(sizes->findLine(getViewStart()));
@@ -667,9 +737,11 @@ std::optional<Collection::Hold> Collection::findHold() const {
             break;
         }
     }
+
     if (focusedIndex && *focusedIndex < sizes->size() && getItemRect(*focusedIndex).intersects(viewport)) {
         index = *focusedIndex;
     }
+
     return Hold{.index = index, .distance = getItemStart(index) - scroller->getOffset(), .end = false};
 }
 
@@ -683,6 +755,7 @@ void Collection::restoreHold() {
     if (!hold) {
         return;
     }
+
     const Hold kept = *std::exchange(hold, std::nullopt);
     scroller->setRange(getContentLength() - getMainLength(), getMainLength());
     if (kept.end) {
@@ -712,6 +785,7 @@ void Collection::noteEntering(std::size_t first, std::size_t count) {
     if (!animateChanges || cells.empty() || renderedFrame == 0) {
         return;
     }
+
     const std::size_t low = cells.front()->index == CollectionCell::kNoIndex ? 0 : cells.front()->index;
     const std::size_t high = low + cells.size();
     for (std::size_t index = std::max(first, low); index < first + count && index <= high; ++index) {
@@ -756,6 +830,7 @@ void Collection::animate() {
         if (cell->opacity > 0.0F) {
             return false;
         }
+
         cell->opacity = 1.0F;
         types->release(cell);
         released.push_back(cell);
@@ -779,6 +854,7 @@ bool Collection::isCovered(const CollectionCell& cell) const {
             return true;
         }
     }
+
     return false;
 }
 
@@ -795,6 +871,7 @@ void Collection::releaseOutside(const Range& window, std::optional<std::size_t> 
         if (!kept) {
             release(cell);
         }
+
         return !kept;
     });
     // clang-format on
@@ -804,11 +881,13 @@ void Collection::bindCell(const std::shared_ptr<CollectionCell>& cell, std::size
     const std::uint16_t type = sizes->getType(index);
     const bool rebinding = cell->index == index;
     cell->type.bind(*cell, *source, index, selection != Selection::None && selected[index] != 0);
+
     if (!rebinding) {
         cell->slide = {};
         cell->origin.reset();
         cell->opacity = std::ranges::find(entering, cell->item) != entering.end() ? 0.0F : 1.0F;
     }
+
     cell->waiting = static_cast<bool>(binders[type]);
     if (cell->waiting && withBinders) {
         waiting.push_back(cell);
@@ -824,13 +903,16 @@ void Collection::bindRange(std::size_t first, std::size_t last, bool withBinders
             if (cell->stale && (withBinders || !binders[sizes->getType(index)])) {
                 bindCell(cell, index, withBinders);
             }
+
             ++position;
             continue;
         }
+
         const std::uint16_t type = sizes->getType(index);
         if (type == SizeCache::kNoType || (!withBinders && binders[type])) {
             continue;
         }
+
         std::shared_ptr<CollectionCell> cell = types->acquire(type);
         bindCell(cell, index, withBinders);
         position = cells.insert(position, std::move(cell)) + 1;
@@ -848,6 +930,7 @@ void Collection::runBinders() {
             }
         }
     }
+
     binderQueue.clear();
 }
 
@@ -858,11 +941,13 @@ void Collection::measureCells(Context& context) {
         if (cell->waiting || sizes->isFixed(index)) {
             continue;
         }
+
         const float available = isVertical() ? layout->getSlot(index).crossLength : CommonProperties::kUnbounded;
         const math::Vec2 size = cell->root->measure(context, available);
         if (!isVertical()) {
             tallest = std::max(tallest, size.y);
         }
+
         sizes->measure(index, isVertical() ? size.y : size.x);
     }
 }
@@ -871,6 +956,7 @@ void Collection::prepare(Context& context) {
     if (!source || renderedFrame == 0 || renderedFrame + 1 != context.getFrame()) {
         return;
     }
+
     rebuildTypes();
     resolveSelection();
     ensureArranged();
@@ -885,18 +971,22 @@ void Collection::prepare(Context& context) {
         }
         ensureArranged();
     }
+
     const std::optional<Range> window = findWindow(ahead);
     if (!window) {
         return;
     }
+
     const std::optional<std::size_t> sticky = findSticky();
     releaseOutside(*window, sticky);
     {
         const FlagScope scope(binding);
         bindRange(window->first, window->last, true);
+
         if (sticky) {
             bindRange(*sticky, *sticky, true);
         }
+
         runBinders();
     }
     types->trim(static_cast<std::size_t>(poolSize));
@@ -909,12 +999,15 @@ math::Vec2 Collection::measureContent(Context& context, float availableWidth) {
     if (getCount() == 0 && !placeholders.empty()) {
         return placeholders.front()->measure(context, availableWidth);
     }
+
     if (isVertical()) {
         if (bounded && types) {
             updateGeometry(context, std::max(0.0F, availableWidth - padding.getHorizontal() - getLaneReserve(context)));
         }
+
         return {bounded ? availableWidth : 0.0F, static_cast<float>(getContentLength())};
     }
+
     const float height = (tallest > 0.0F ? tallest : context.getMetric(Theme::Metric::ListRowHeight)) + padding.getVertical() + getLaneReserve(context);
     return {static_cast<float>(getContentLength()), height};
 }
@@ -927,6 +1020,7 @@ void Collection::render(Context& context, const math::Rect& bounds) {
     context.getFocus().beginCollection(bounds, !isVertical(), rememberFocus ? rememberedTarget : 0);
     updateGeometry(context, (isVertical() ? bounds.width - padding.getHorizontal() : bounds.height - padding.getVertical()) - getLaneReserve(context));
     scroller->setRange(getContentLength() - getMainLength(), getMainLength());
+
     if (getCount() == 0) {
         laneReserved = false;
         animate();
@@ -938,6 +1032,7 @@ void Collection::render(Context& context, const math::Rect& bounds) {
         noticeHiddenCells(context);
         return;
     }
+
     resolveSelection();
     restoreHold();
     takeInput(context);
@@ -951,19 +1046,24 @@ void Collection::render(Context& context, const math::Rect& bounds) {
         releaseOutside(*findWindow(prefetch * getMainLength()), sticky);
         const std::optional<Range> window = findWindow(0.0F);
         bindRange(window->first, window->last, false);
+
         if (sticky) {
             bindRange(*sticky, *sticky, false);
         }
+
         if (pendingFocus && *pendingFocus < getCount()) {
             bindRange(*pendingFocus, *pendingFocus, false);
         }
+
         if (lift) {
             bindRange(lift->index, lift->index, false);
         }
+
         measureCells(context);
         ensureArranged();
         restoreHold();
     }
+
     types->trim(static_cast<std::size_t>(poolSize));
     settle();
     animate();
@@ -987,20 +1087,26 @@ void Collection::render(Context& context, const math::Rect& bounds) {
     drawCells(context, *window, sticky);
     drawLeaving(context);
     drawRefresh(context);
+
     if (faded) {
         ScrollFade::end(context);
     }
+
     ImGui::PopClipRect();
+
     if (barShown) {
         const bool touch = context.getInput().getLastDevice() == input::InputDevice::Touch;
         scrollbar->draw(context, touch ? std::clamp(1.0F - (idle - kScrollbarFadeDelay) / kScrollbarFade, 0.0F, 1.0F) : 1.0F);
     }
+
     ImGui::PopClipRect();
+
     if (dragged) {
         scroller->jumpTo(*dragged);
         pendingScroll.reset();
         idle = 0.0F;
     }
+
     context.blockPointer(bounds);
     report(context);
     noticeHiddenCells(context);
@@ -1018,6 +1124,7 @@ void Collection::takeInput(Context& context) {
     const double position = mirrored ? scroller->getMaximum() - scroller->getOffset() : scroller->getOffset();
     const Context::WheelScroll wheel = context.takeWheel(ImGui::GetID(this), viewport, !isVertical(), position, scroller->getMaximum(), underPointer);
     scroller->follow(wheel, mirrored ? 1.0 : -1.0, delta);
+
     if (wheel.motion != Context::WheelScroll::Motion::None) {
         pendingScroll.reset();
         idle = 0.0F;
@@ -1036,24 +1143,30 @@ void Collection::takeInput(Context& context) {
         dragging = false;
         pressCandidate.clear();
     }
+
     if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
         if (lift) {
             finishLift(context);
         }
+
         if (dragging) {
             finishDrag(context);
         }
+
         pressed = false;
         pressCandidate.clear();
         return;
     }
+
     if (lift) {
         context.carryItem();
         return;
     }
+
     if (reorderable && pressed && !dragging && takeLift(context)) {
         return;
     }
+
     if (!pressed || io.MouseSource != ImGuiMouseSource_TouchScreen) {
         return;
     }
@@ -1063,13 +1176,16 @@ void Collection::takeInput(Context& context) {
         if ((scroller->getMaximum() <= 0.0 && !(refreshable && isVertical())) || !context.takeDrag(ImGui::GetID(this), viewport, !isVertical())) {
             return;
         }
+
         // A field being edited keeps editing while the finger scrolls the list, and any other item lets the finger go.
         if (state.ActiveId != 0 && !io.WantTextInput) {
             ImGui::ClearActiveID();
         }
+
         dragging = true;
         pendingScroll.reset();
     }
+
     const float step = isVertical() ? -io.MouseDelta.y : (rightToLeft ? io.MouseDelta.x : -io.MouseDelta.x);
     scroller->drag(step, delta);
     idle = 0.0F;
@@ -1082,6 +1198,7 @@ bool Collection::takeLift(Context& context) {
     if (!index) {
         return false;
     }
+
     const ImVec2 moved = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left, 0.0F);
     const float distance = std::sqrt(moved.x * moved.x + moved.y * moved.y);
     const bool touch = io.MouseSource == ImGuiMouseSource_TouchScreen;
@@ -1089,13 +1206,16 @@ bool Collection::takeLift(Context& context) {
     if (!lifting) {
         return false;
     }
+
     const CollectionCell& cell = *findCell(*index);
     lift = Lift{.index = *index, .item = cell.item, .grab = math::Vec2{io.MouseClickedPos[0].x, io.MouseClickedPos[0].y} - cell.placed.getMin()};
     pressCandidate.clear();
     pendingScroll.reset();
+
     if (GImGui->ActiveId != 0) {
         ImGui::ClearActiveID();
     }
+
     context.emit(*this, "dragStart", {{"item", lift->item}, {"index", lift->index + 1}});
     return true;
 }
@@ -1114,6 +1234,7 @@ std::optional<std::size_t> Collection::findItemAt(math::Vec2 point) const {
     if (getCount() == 0) {
         return std::nullopt;
     }
+
     const float along = isVertical() ? point.y - viewport.y : (rightToLeft ? viewport.getRight() - point.x : point.x - viewport.x);
     const std::size_t line = sizes->findLine(getViewStart() + static_cast<double>(along));
     const std::size_t first = layout->getFirstIndex(line);
@@ -1125,6 +1246,7 @@ std::optional<std::size_t> Collection::findItemAt(math::Vec2 point) const {
             return index;
         }
     }
+
     return last;
 }
 
@@ -1138,12 +1260,15 @@ bool Collection::takeCarry(Context& context, const CollectionCell& cell) {
                 context.emit(*this, "reorder", {{"item", carried->item}, {"from", *from + 1}, {"to", cell.index + 1}});
             }
         }
+
         focus.dropCarried();
         return true;
     }
+
     if (carried || lastPressed != cell.item) {
         return false;
     }
+
     focus.carry({.source = getId(), .item = cell.item, .image = {}});
     context.emit(*this, "dragStart", {{"item", cell.item}, {"index", cell.index + 1}});
     return true;
@@ -1160,17 +1285,22 @@ bool Collection::drawLifted(Context& context, ImGuiID reveal) {
     if (cell == nullptr || cell->waiting) {
         return false;
     }
+
     const ImVec2 pointer = ImGui::GetIO().MousePos;
+
     if (const std::optional<std::size_t> target = findItemAt({pointer.x, pointer.y}); target && *target != lift->index) {
         drawDropMark(context, getItemRect(*target), *target < lift->index);
     }
+
     math::Rect rect = getItemRect(lift->index);
     if (arrangement == Arrangement::Grid || !isVertical()) {
         rect.x = pointer.x - lift->grab.x;
     }
+
     if (arrangement == Arrangement::Grid || isVertical()) {
         rect.y = pointer.y - lift->grab.y;
     }
+
     const float radius = context.getMetric(Theme::Metric::CellRadius);
     Surfaces::fill(context, rect, context.getColor(Theme::Color::Raised), radius);
     const bool focused = drawCell(context, *cell, rect.translated(math::Vec2{} - cell->slide), reveal);
@@ -1189,6 +1319,7 @@ void Collection::drawDropMark(Context& context, const math::Rect& target, bool b
         Surfaces::fill(context, {target.x, y, target.width, width}, color, width * 0.5F);
         return;
     }
+
     const bool startSide = before != rightToLeft;
     const float x = startSide ? target.x - half : target.getRight() + half - width;
     Surfaces::fill(context, {x, target.y, width, target.height}, color, width * 0.5F);
@@ -1201,9 +1332,11 @@ void Collection::drawCarryMarks(Context& context, const CollectionCell& cell, co
         Surfaces::outline(context, rect, context.getColor(Theme::Color::Accent), context.getMetric(Theme::Metric::CellRadius), context.getMetric(Theme::Metric::FocusWidth));
         return;
     }
+
     if (GImGui->NavId != item) {
         return;
     }
+
     if (const std::optional<std::size_t> from = findCellIndex(carried)) {
         drawDropMark(context, rect, cell.index < *from);
     }
@@ -1214,6 +1347,7 @@ void Collection::finishDrag(Context& context) {
     const double pull = -scroller->getOverscroll();
     scroller->release();
     dragging = false;
+
     if (refreshable && isVertical() && !refreshing && pull >= context.getMetric(Theme::Metric::RefreshDistance)) {
         refreshing = true;
         context.emit(*this, "refresh");
@@ -1226,6 +1360,7 @@ void Collection::takePaging(Context& context) {
     if (!paging) {
         return;
     }
+
     using Kind = FocusNavigator::Paging::Kind;
     const std::size_t last = getCount() - 1;
     std::size_t target = 0;
@@ -1243,6 +1378,7 @@ void Collection::takePaging(Context& context) {
         target = forward ? 0 : last;
         align = forward ? ScrollAlign::Start : ScrollAlign::End;
     }
+
     pendingFocus = target;
     requestScroll(target, {.align = align, .offset = 0.0F, .animated = true});
 }
@@ -1256,6 +1392,7 @@ double Collection::findScrollTarget(const PendingScroll& pending) const {
     if (pending.distance) {
         return start - *pending.distance;
     }
+
     const double length = sizes->getLineLength(layout->getLine(pending.index));
     const double view = getMainLength();
     const double inset = pending.request.offset;
@@ -1275,6 +1412,7 @@ double Collection::findScrollTarget(const PendingScroll& pending) const {
     if (offset > toStart) {
         return toStart;
     }
+
     return offset < toEnd ? toEnd : offset;
 }
 
@@ -1283,11 +1421,13 @@ void Collection::resolveScroll() {
     if (!pendingScroll) {
         return;
     }
+
     PendingScroll& pending = *pendingScroll;
     if (pending.index >= getCount()) {
         pendingScroll.reset();
         return;
     }
+
     const double target = std::clamp(findScrollTarget(pending), 0.0, scroller->getMaximum());
     const bool steady = std::fabs(target - pending.target) < kSettleDistance && sizes->isMeasured(pending.index);
     const bool arrived = std::fabs(scroller->getOffset() - target) < kSettleDistance;
@@ -1298,11 +1438,13 @@ void Collection::resolveScroll() {
     if (pending.request.animated && std::fabs(target - scroller->getOffset()) > far) {
         scroller->jumpTo(target + (target > scroller->getOffset() ? -getMainLength() : getMainLength()));
     }
+
     if (!pending.request.animated) {
         scroller->jumpTo(target);
     } else if (!arrived || !scroller->isResting()) {
         scroller->animateTo(target);
     }
+
     if (pending.stableFrames >= kStableFrames && arrived && scroller->isResting()) {
         pendingScroll.reset();
     }
@@ -1313,6 +1455,7 @@ void Collection::settle() {
     if (snap == Snap::None || pendingScroll || dragging || !scroller->isResting() || idle < kSnapDelay) {
         return;
     }
+
     const double point = std::clamp(findSnapPoint(), 0.0, scroller->getMaximum());
     if (std::fabs(point - scroller->getOffset()) > kSettleDistance) {
         scroller->animateTo(point);
@@ -1325,15 +1468,18 @@ double Collection::findSnapPoint() const {
     if (snap == Snap::Page) {
         return view > 0.0 ? std::round(offset / view) * view : offset;
     }
+
     if (snap == Snap::Center) {
         const std::size_t line = sizes->findLine(getViewStart() + view * 0.5);
         return getPaddingStart() + sizes->getLineOffset(line) + (sizes->getLineLength(line) - view) * 0.5;
     }
+
     const std::size_t line = sizes->findLine(offset);
     const double before = sizes->getLineOffset(line);
     if (line + 1 >= sizes->getLineCount()) {
         return before;
     }
+
     const double after = sizes->getLineOffset(line + 1);
     return offset - before <= after - offset ? before : after;
 }
@@ -1347,6 +1493,7 @@ void Collection::drawCells(Context& context, const Range& window, std::optional<
             focusDrawn = drawCell(context, *cell, getItemRect(cell->index), reveal) || focusDrawn;
         }
     }
+
     if (sticky) {
         if (CollectionCell* cell = findCell(*sticky); cell != nullptr && !cell->waiting) {
             math::Rect rect = getItemRect(*sticky);
@@ -1357,23 +1504,28 @@ void Collection::drawCells(Context& context, const Range& window, std::optional<
                 const math::Rect following = getItemRect(*next);
                 pinned = std::min(0.0F, isVertical() ? following.y - viewport.y - length : (rightToLeft ? viewport.getRight() - following.getRight() - length : following.x - viewport.x - length));
             }
+
             if (isVertical()) {
                 rect.y = viewport.y + pinned;
             } else {
                 rect.x = rightToLeft ? viewport.getRight() - length - pinned : viewport.x + pinned;
             }
+
             focusDrawn = drawCell(context, *cell, rect, reveal) || focusDrawn;
         }
     }
+
     // The item that waits for the focus takes it wherever it lies, and the next direction brings it into view.
     if (pendingFocus && (*pendingFocus < window.first || *pendingFocus > window.last) && *pendingFocus != sticky && (!lift || *pendingFocus != lift->index)) {
         if (CollectionCell* cell = findCell(*pendingFocus); cell != nullptr && !cell->waiting) {
             focusDrawn = drawCell(context, *cell, getItemRect(cell->index), reveal) || focusDrawn;
         }
     }
+
     if (lift) {
         focusDrawn = drawLifted(context, reveal) || focusDrawn;
     }
+
     drawProxy(context, focusDrawn, reveal);
 }
 
@@ -1387,30 +1539,37 @@ bool Collection::drawCell(Context& context, CollectionCell& cell, const math::Re
     } else {
         ImGui::PushID(cell.item.data(), cell.item.data() + cell.item.size());
     }
+
     const std::size_t firstTarget = focus.getTargetCount();
     bool clicked = false;
     {
         const Context::EventRedirect redirect(context, *this, cell);
         focus.enterCell(*this, cell.item);
+
         if (cell.type.isInteractive() && !cell.item.empty()) {
             const float radius = context.getMetric(Theme::Metric::CellRadius);
             ImGui::SetNextItemAllowOverlap();
             const Widgets::Interaction state = Widgets::interact(context, rect, radius, "##cell");
             const ImGuiID item = ImGui::GetItemID();
             const bool chosen = selection != Selection::None && selected[index] != 0;
+
             if (context.getSurface(Theme::Surface::Cell) != nullptr) {
                 Surfaces::draw(context, Theme::Surface::Cell, rect, context.getColor(Theme::Color::Raised), std::nullopt, radius);
             }
+
             if (chosen || state.held || state.hovered) {
                 const Theme::Surface surface = chosen ? Theme::Surface::CellSelected : state.held ? Theme::Surface::CellPressed : Theme::Surface::CellHover;
                 const Theme::Color color = chosen ? Theme::Color::Selection : state.held ? Theme::Color::Pressed : Theme::Color::Hover;
                 Surfaces::draw(context, surface, rect, context.getColor(color), std::nullopt, context.getInnerRadii(rect, radius));
             }
+
             clicked = state.clicked && !(reorderable && GImGui->NavActivatePressedId == item && takeCarry(context, cell));
+
             if (reorderable && focus.getCarried() && focus.getCarried()->source == getId()) {
                 drawCarryMarks(context, cell, rect, item);
             }
         }
+
         drawFaded(context, cell, rect);
         focus.leaveCell();
     }
@@ -1424,29 +1583,37 @@ bool Collection::drawCell(Context& context, CollectionCell& cell, const math::Re
     if (clicked) {
         press(context, index);
     }
+
     if (reveal != 0 && focus.hasTargetSince(firstTarget, reveal)) {
         requestScroll(index, {.align = focusAlign, .offset = 0.0F, .animated = true});
     }
+
     if (pendingScroll && pendingScroll->index == index) {
         focus.markShownSince(firstTarget);
     }
+
     if (pendingFocus == index && focus.focusFirstSince(firstTarget)) {
         pendingFocus.reset();
     }
+
     const std::optional<ImGuiID> focused = focus.findFocusedSince(firstTarget);
     if (!focused) {
         return false;
     }
+
     focusedTarget = *focused;
     rememberedTarget = *focused;
+
     if (focusedIndex != index || focusedItem != cell.item) {
         focusedIndex = index;
         focusedItem = cell.item;
         context.emit(*this, "itemFocus", {{"item", cell.item}, {"index", index + 1}});
+
         if (selectionFollowsFocus && selection == Selection::Single && selected[index] == 0) {
             press(context, index);
         }
     }
+
     return true;
 }
 
@@ -1458,11 +1625,13 @@ void Collection::press(Context& context, std::size_t index) {
         for (std::size_t other = 0; other < selected.size(); ++other) {
             select(other, other == index);
         }
+
         values["selected"] = true;
     } else if (selection == Selection::Multiple) {
         select(index, selected[index] == 0);
         values["selected"] = selected[index] != 0;
     }
+
     context.playSound(Theme::Sound::Press);
     context.emit(*this, "select", std::move(values));
 }
@@ -1471,7 +1640,9 @@ void Collection::select(std::size_t index, bool value) {
     if ((selected[index] != 0) == value) {
         return;
     }
+
     selected[index] = value ? 1 : 0;
+
     if (CollectionCell* cell = findCell(index)) {
         cell->type.bindSelection(*cell, value);
     }
@@ -1482,16 +1653,19 @@ void Collection::drawProxy(Context& context, bool focusDrawn, ImGuiID reveal) {
     if (focusDrawn) {
         return;
     }
+
     if (focusedTarget == 0 || GImGui->NavId != focusedTarget || !focusedIndex || *focusedIndex >= getCount() || source->getId(*focusedIndex) != focusedItem) {
         focusedTarget = 0;
         focusedIndex.reset();
         focusedItem.clear();
         return;
     }
+
     FocusNavigator& focus = context.getFocus();
     focus.enterCell(*this, focusedItem);
     focus.addProxyTarget(focusedTarget, getItemRect(*focusedIndex));
     focus.leaveCell();
+
     if (reveal == focusedTarget) {
         requestScroll(*focusedIndex, {.align = focusAlign, .offset = 0.0F, .animated = true});
     }
@@ -1504,6 +1678,7 @@ void Collection::drawFaded(Context& context, CollectionCell& cell, const math::R
         cell.root->draw(context, rect);
         return;
     }
+
     Transform faded;
     faded.opacity = cell.opacity;
     ImDrawList& list = *ImGui::GetWindowDrawList();
@@ -1522,6 +1697,7 @@ void Collection::drawLeaving(Context& context) {
         } else {
             ImGui::PushID(cell->item.data(), cell->item.data() + cell->item.size());
         }
+
         const Context::EventRedirect redirect(context, *this, *cell);
         ImGui::BeginDisabled();
         drawFaded(context, *cell, cell->placed);
@@ -1543,6 +1719,7 @@ void Collection::drawRefresh(Context& context) {
     if (!refreshable || !isVertical() || (!refreshing && pull <= 0.0)) {
         return;
     }
+
     const float distance = context.getMetric(Theme::Metric::RefreshDistance);
     const float reached = refreshing ? 1.0F : std::min(1.0F, static_cast<float>(pull) / std::max(1.0F, distance));
     const float radius = context.getMetric(Theme::Metric::ControlHeight) * 0.3F;
@@ -1562,14 +1739,18 @@ void Collection::report(Context& context) {
         const std::size_t last = layout->getFirstIndex(sizes->findLine(start + getMainLength() - kSettleDistance) + 1) - 1;
         range = std::pair{first, last};
     }
+
     if (range && range != visibleRange) {
         context.emit(*this, "visibleChange", {{"first", range->first + 1}, {"last", range->second + 1}});
     }
+
     visibleRange = range;
+
     if (range && range->second + static_cast<std::size_t>(endThreshold) + 1 >= count && endReported != count) {
         endReported = count;
         context.emit(*this, "endReached", {{"count", count}});
     }
+
     if (range && range->first <= static_cast<std::size_t>(endThreshold) && startReported != count) {
         startReported = count;
         context.emit(*this, "startReached", {{"count", count}});
@@ -1580,6 +1761,7 @@ void Collection::report(Context& context) {
         const std::size_t first = std::min(findFirstFrom(getViewStart()), count - 1);
         context.emit(*this, "scrollEnd", {{"offset", core::JsonNumber::fromFloat(static_cast<float>(scroller->getOffset()))}, {"item", source->getId(first)}});
     }
+
     moving = scrolling;
 }
 
@@ -1589,7 +1771,9 @@ void Collection::noticeHiddenCells(Context& context) {
         const Context::EventRedirect redirect(context, *this, *cell);
         cell->root->noticeStoppedDrawing(context);
     }
+
     released.clear();
+
     for (const std::shared_ptr<CollectionCell>& cell : cells) {
         if (cell->root->drawnFrame + 1 == context.getFrame()) {
             const Context::EventRedirect redirect(context, *this, *cell);
@@ -1604,17 +1788,22 @@ void Collection::drawingStopped(Context& context) {
     if (focus.getCarried() && focus.getCarried()->source == getId()) {
         focus.dropCarried();
     }
+
     for (const std::shared_ptr<CollectionCell>& cell : leaving) {
         cell->opacity = 1.0F;
         types->release(cell);
         released.push_back(cell);
     }
+
     leaving.clear();
+
     for (const std::shared_ptr<CollectionCell>& cell : released) {
         const Context::EventRedirect redirect(context, *this, *cell);
         cell->root->noticeStoppedDrawing(context);
     }
+
     released.clear();
+
     for (const std::shared_ptr<CollectionCell>& cell : cells) {
         const Context::EventRedirect redirect(context, *this, *cell);
         cell->root->noticeStoppedDrawing(context);
@@ -1625,10 +1814,12 @@ Event Collection::toCellEvent(CollectionCell& cell, const Component& component, 
     if (!value.is_object()) {
         value = core::Json::object();
     }
+
     const bool notice = name == "focus" || name == "blur" || name == "cancel";
     if (!notice && cell.index != CollectionCell::kNoIndex) {
         cell.type.writeBack(cell, component, *source);
     }
+
     value["part"] = component.getId();
     value["cell"] = {{"item", cell.item}, {"index", cell.index == CollectionCell::kNoIndex ? core::Json() : core::Json(cell.index + 1)}, {"type", cell.getType()}};
     return {.id = getId(), .name = std::move(name), .value = std::move(value)};
@@ -1639,9 +1830,11 @@ void Collection::command(Context& context, std::string_view name, const core::Js
         Component::command(context, name, arguments);
         return;
     }
+
     if (!arguments.is_null() && !(arguments.is_object() && arguments.empty())) {
         throw std::invalid_argument("The \"focus\" command takes no arguments.");
     }
+
     if (getCount() > 0) {
         focusItem(std::min(focusedIndex.value_or(visibleRange ? visibleRange->first : 0), getCount() - 1));
     }
@@ -1652,7 +1845,9 @@ void Collection::setBinder(std::string_view type, Binder binder) {
     if (!found) {
         throw std::invalid_argument("The collection \"" + getId() + "\" has no type named \"" + std::string(type) + "\".");
     }
+
     binders[*found] = std::move(binder);
+
     for (const std::shared_ptr<CollectionCell>& cell : cells) {
         cell->stale = cell->stale || &cell->type == &types->get(*found);
     }
@@ -1664,6 +1859,7 @@ std::optional<std::size_t> Collection::findItem(std::string_view itemId) const {
             return index;
         }
     }
+
     return std::nullopt;
 }
 
@@ -1675,6 +1871,7 @@ void Collection::scrollTo(std::size_t index, const ScrollRequest& request) {
 // An offset the app asks for applies to the items as they are now, so the lines of a change it made meanwhile arrange first, and the view no longer holds what it showed.
 void Collection::refreshRange() {
     hold.reset();
+
     if (renderedFrame > 0) {
         ensureArranged();
         scroller->setRange(getContentLength() - getMainLength(), getMainLength());
@@ -1714,6 +1911,7 @@ std::vector<std::size_t> Collection::getSelected() const {
             indices.push_back(index);
         }
     }
+
     return indices;
 }
 
@@ -1724,6 +1922,7 @@ Collection::State Collection::saveState() const {
         saved.item = source->getId(first);
         saved.distance = static_cast<float>(getItemStart(first) - scroller->getOffset());
     }
+
     saved.focused = focusedItem;
     return saved;
 }
@@ -1733,6 +1932,7 @@ void Collection::restoreState(const State& value) {
     if (const std::optional<std::size_t> index = findItem(value.item)) {
         pendingScroll = PendingScroll{.index = *index, .request = {.align = ScrollAlign::Start, .offset = 0.0F, .animated = false}, .distance = value.distance, .target = -1.0, .stableFrames = 0};
     }
+
     if (const std::optional<std::size_t> focused = value.focused.empty() ? std::nullopt : findItem(value.focused)) {
         pendingFocus = focused;
     }

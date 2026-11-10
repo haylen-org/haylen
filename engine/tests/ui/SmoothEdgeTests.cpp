@@ -65,6 +65,7 @@ TEST_F(SmoothEdgeTest, ClipsTheFocusRingOfAScaledControlAroundItsShape) {
             clippedAround = clippedAround || (command.UserCallback != nullptr && clip.contains(ring->bounds));
         }
     }
+
     EXPECT_TRUE(clippedAround);
 }
 

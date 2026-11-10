@@ -18,6 +18,7 @@ std::optional<std::string> PopupList::draw(Context& context, Popup& popup, std::
     if (!ImGui::IsPopupOpen(id.c_str())) {
         return std::nullopt;
     }
+
     const float padding = context.getMetric(Theme::Metric::MenuPadding);
     const float height = context.getMetric(Theme::Metric::ListRowHeight) * 0.75F;
     const float width = std::max(minimumWidth - padding * 2.0F, measureWidth(context, items));
@@ -34,19 +35,24 @@ std::optional<std::string> PopupList::draw(Context& context, Popup& popup, std::
         ImGui::PushID(item.id.c_str());
         ImGui::BeginDisabled(!item.enabled);
         const Widgets::Interaction state = ListRow::draw(context, row, item.id == current, rowRadius);
+
         if (item.id == current && ImGui::IsWindowAppearing()) {
             Widgets::focusItem(context);
         }
+
         ListRow::drawContent(context, row, item);
         ImGui::EndDisabled();
         ImGui::PopID();
+
         if (state.clicked) {
             picked = item.id;
         }
     }
+
     if (picked) {
         ImGui::CloseCurrentPopup();
     }
+
     popup.end(context);
     return picked;
 }
@@ -56,6 +62,7 @@ float PopupList::measureWidth(Context& context, const std::vector<ChoiceItem>& i
     for (const ChoiceItem& item : items) {
         widest = std::max(widest, ListRow::measure(context, item));
     }
+
     return widest;
 }
 

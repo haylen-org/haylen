@@ -27,6 +27,7 @@ void Scroll::readProperties(PropertyReader& reader) {
     if (axis != "vertical" && axis != "horizontal") {
         reader.fail("axis", "must be \"vertical\" or \"horizontal\"");
     }
+
     horizontal = axis == "horizontal";
 }
 
@@ -35,9 +36,11 @@ void Scroll::command(Context& context, std::string_view name, const core::Json& 
         Component::command(context, name, arguments);
         return;
     }
+
     if (!arguments.is_object() || arguments.contains("node") == arguments.contains("offset")) {
         throw std::invalid_argument("The \"scrollTo\" command of a \"scroll\" takes a table with either \"node\" or \"offset\".");
     }
+
     core::JsonValidator::requireKnownKeys(arguments, {"node", "offset", "align", "animated"}, "the \"scrollTo\" command of a \"scroll\"");
     PropertyReader reader(arguments, getKind());
     Request next;
@@ -47,11 +50,13 @@ void Scroll::command(Context& context, std::string_view name, const core::Json& 
     reader.readChoice<Align>("align", next.align, kAligns);
     reader.read("animated", next.animated);
     reader.finish();
+
     if (arguments.contains("offset")) {
         next.offset = offset;
     } else if (next.node.empty() || findNode(*this, next.node) == nullptr) {
         throw std::invalid_argument("The scroll \"" + getId() + "\" holds no node with the id \"" + next.node + "\".");
     }
+
     request = std::move(next);
 }
 
@@ -60,10 +65,12 @@ const Component* Scroll::findNode(const Component& parent, std::string_view id) 
         if (child->getId() == id) {
             return child.get();
         }
+
         if (const Component* found = findNode(*child, id)) {
             return found;
         }
     }
+
     return nullptr;
 }
 
@@ -73,6 +80,7 @@ math::Vec2 Scroll::measureContent(Context& context, float availableWidth) {
     if (visible.empty()) {
         return {};
     }
+
     const math::Vec2 size = visible.front()->measure(context, horizontal ? CommonProperties::kUnbounded : availableWidth);
     const float lane = horizontal && scrollbarShown && size.x > availableWidth ? Scrollbar::getLane(context) : 0.0F;
     return {std::min(size.x, availableWidth), size.y + lane};
@@ -83,6 +91,7 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
     if (bounds.isEmpty()) {
         return;
     }
+
     auto visible = getLayoutChildren();
     Component* child = visible.empty() ? nullptr : visible.front();
 
@@ -99,6 +108,7 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
     if (horizontal) {
         flags |= ImGuiWindowFlags_HorizontalScrollbar;
     }
+
     if (context.getBackend().beginChild("##scroll", bounds.getSize(), ImGuiChildFlags_NavFlattened, flags)) {
         const float view = horizontal ? box.width : box.height;
         const ImVec2 start = ImGui::GetCursorScreenPos();
@@ -111,20 +121,25 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
         const Context::WheelScroll wheel = context.takeWheel(ImGui::GetCurrentWindow()->ID, bounds, horizontal, scroller.getOffset(), scroller.getMaximum(), underPointer);
         const bool wheeled = wheel.motion != Context::WheelScroll::Motion::None;
         scroller.follow(wheel, -1.0, context.getDeltaSeconds());
+
         if (wheeled) {
             request.reset();
         }
+
         if (const float edge = context.takeEdgeScroll(ImGui::GetCurrentWindow()->ID, bounds, horizontal, scroller.getOffset(), scroller.getMaximum()); edge != 0.0F) {
             scroller.jumpTo(scroller.getOffset() + static_cast<double>(edge));
             request.reset();
         }
+
         followFinger(context, bounds, underPointer);
+
         if (overflowing) {
             if (const std::optional<double> offset = scrollbar.interact(context, bounds, horizontal, false, scroller.getOffset(), scroller.getMaximum(), view)) {
                 scroller.jumpTo(*offset);
                 request.reset();
             }
         }
+
         const bool touched = (underPointer && (wheeled || ImGui::IsMouseDown(ImGuiMouseButton_Left))) || ImGui::GetActiveID() != 0;
         idle = touched ? 0.0F : idle + context.getDeltaSeconds();
         scroller.update(context.getDeltaSeconds());
@@ -146,9 +161,11 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
             ImGui::PushClipRect(ImGuiConverter::toImVec2(box.getMin()), ImGuiConverter::toImVec2(box.getMax()), true);
             const bool faded = ScrollFade::begin(context, box, horizontal, shownOffset, scroller.getMaximum() - shownOffset);
             child->draw(context, area);
+
             if (faded) {
                 ScrollFade::end(context);
             }
+
             ImGui::PopClipRect();
             ImGui::SetCursorScreenPos(start);
             const math::Vec2 end = math::Vec2::max(area.getMax(), origin + box.getSize()) - shift;
@@ -174,13 +191,17 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
             } else {
                 scroller.animateTo(*target);
             }
+
             idle = 0.0F;
         }
+
         settle();
+
         if (overflowing) {
             scrollbar.draw(context, 1.0F);
         }
     }
+
     ImGui::EndChild();
 }
 
@@ -191,6 +212,7 @@ math::Rect Scroll::place(Context& context, Component& child, math::Vec2 size, co
         const float height = alignment == Alignment::Stretch ? std::min(child.clampHeight(view.height), view.height) : std::min(size.y, view.height);
         return {view.x, std::floor(align(alignment, view.y, view.height, height)), fill ? std::max(size.x, view.width) : size.x, height};
     }
+
     const float width = alignment == Alignment::Stretch ? std::min(child.clampWidth(view.width), view.width) : std::min(size.x, view.width);
     return {std::floor(context.alignHorizontally(alignment, view.x, view.width, width)), view.y, width, fill ? std::max(size.y, view.height) : size.y};
 }
@@ -208,18 +230,22 @@ void Scroll::followWindow() {
 void Scroll::followFinger(Context& context, const math::Rect& bounds, bool underPointer) {
     const ImGuiIO& io = ImGui::GetIO();
     const ImGuiContext& state = *GImGui;
+
     if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
         pressed = underPointer;
         dragging = false;
     }
+
     if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
         if (dragging) {
             scroller.release();
         }
+
         pressed = false;
         dragging = false;
         return;
     }
+
     if (!pressed || io.MouseSource != ImGuiMouseSource_TouchScreen) {
         return;
     }
@@ -229,12 +255,15 @@ void Scroll::followFinger(Context& context, const math::Rect& bounds, bool under
         if (scroller.getMaximum() <= 0.0 || !context.takeDrag(ImGui::GetCurrentWindow()->ID, bounds, horizontal)) {
             return;
         }
+
         if (state.ActiveId != 0 && !io.WantTextInput) {
             ImGui::ClearActiveID();
         }
+
         dragging = true;
         request.reset();
     }
+
     scroller.drag(-static_cast<double>(horizontal ? io.MouseDelta.x : io.MouseDelta.y), context.getDeltaSeconds());
 }
 
@@ -243,10 +272,12 @@ std::optional<double> Scroll::findTarget(const Request& value, math::Vec2 origin
     if (value.offset) {
         return std::clamp(static_cast<double>(*value.offset), 0.0, scroller.getMaximum());
     }
+
     const Component* node = findNode(*this, value.node);
     if (node == nullptr || !node->getCommon().visible) {
         return std::nullopt;
     }
+
     const math::Rect area = node->getBounds();
     const double position = horizontal ? area.x - origin.x : area.y - origin.y;
     const double length = horizontal ? area.width : area.height;
@@ -268,6 +299,7 @@ std::optional<double> Scroll::findTarget(const Request& value, math::Vec2 origin
         } else if (position + length > current + view) {
             target = position + length - view;
         }
+
         break;
     }
     return std::clamp(target, 0.0, scroller.getMaximum());
@@ -278,6 +310,7 @@ void Scroll::settle() {
     if (!snap || points.empty() || dragging || request || !scroller.isResting() || idle < kSnapDelay) {
         return;
     }
+
     const double position = scroller.getOffset();
     double target = std::clamp(static_cast<double>(points.front()), 0.0, scroller.getMaximum());
     for (const float point : points) {
@@ -286,6 +319,7 @@ void Scroll::settle() {
             target = candidate;
         }
     }
+
     if (std::fabs(target - position) > kSettleDistance) {
         scroller.animateTo(target);
     }

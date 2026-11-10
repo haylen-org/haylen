@@ -14,10 +14,12 @@ IconColor IconColor::fromJson(const core::Json& value, std::string_view path) {
         color.ownColors = true;
         return color;
     }
+
     color.role = value.is_string() ? Theme::colorFromName(value.get_ref<const std::string&>()) : std::nullopt;
     if (!color.role) {
         throw std::invalid_argument(PropertyReader::describeProperty(path) + " must name a theme color such as \"accent\" or \"textMuted\", or be \"false\".");
     }
+
     return color;
 }
 
@@ -25,6 +27,7 @@ math::Color IconColor::resolve(const Context& context, math::Color fallback) con
     if (ownColors) {
         return math::Color::white();
     }
+
     return role ? context.getColor(*role) : fallback;
 }
 

@@ -274,6 +274,7 @@ TEST_F(PlayAreaTest, CoversTheCornersOfARoundedPlayArea) {
             EXPECT_EQ(shape.color.a, 0.0F);
         }
     }
+
     EXPECT_TRUE(covered);
 }
 

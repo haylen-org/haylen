@@ -33,6 +33,7 @@ math::Vec2 Splitter::measureContent(Context& context, float availableWidth) {
     if (vertical) {
         return {std::max(before.x, after.x), before.y + gutter + after.y};
     }
+
     return {shared ? availableWidth : before.x + gutter + after.x, std::max(before.y, after.y)};
 }
 
@@ -46,6 +47,7 @@ void Splitter::render(Context& context, const math::Rect& bounds) {
     if (state.hovered || state.held) {
         ImGui::SetMouseCursor(vertical ? ImGuiMouseCursor_ResizeNS : ImGuiMouseCursor_ResizeEW);
     }
+
     if (state.held) {
         context.keepDrag(ImGui::GetItemID());
         const ImVec2 mouse = ImGui::GetIO().MousePos;
@@ -55,11 +57,13 @@ void Splitter::render(Context& context, const math::Rect& bounds) {
     } else if (std::exchange(dragging, false)) {
         context.emit(*this, "resize", {{"ratio", core::JsonNumber::fromFloat(ratio)}});
     }
+
     if (const std::optional<FocusDirection> direction = takeFocusDirection(context)) {
         const bool backward = direction == FocusDirection::Up || (direction != FocusDirection::Down && Widgets::getStep(context, *direction) < 0);
         ratio = std::clamp(ratio + (backward ? -kFocusStep : kFocusStep), 0.05F, 0.95F);
         context.emit(*this, "resize", {{"ratio", core::JsonNumber::fromFloat(ratio)}});
     }
+
     const float thickness = context.getMetric(Theme::Metric::BorderWidth);
     const math::Vec2 start = handle.getCenter() - math::Vec2{thickness * 0.5F, thickness * 0.5F};
     const math::Color color = context.getColor(state.held ? Theme::Color::Accent : Theme::Color::BorderStrong);
@@ -69,9 +73,11 @@ void Splitter::render(Context& context, const math::Rect& bounds) {
     const auto second = std::ranges::next(visible.begin(), 1, visible.end());
     const math::Rect before = vertical ? math::Rect{bounds.x, bounds.y, bounds.width, first} : context.mirror({bounds.x, bounds.y, first, bounds.height}, bounds);
     const math::Rect after = vertical ? math::Rect::fromMinMax({bounds.x, handle.getBottom()}, bounds.getMax()) : context.mirror(math::Rect::fromMinMax({bounds.x + first + gutter, bounds.y}, bounds.getMax()), bounds);
+
     if (!visible.empty()) {
         visible.front()->draw(context, before);
     }
+
     if (second != visible.end()) {
         (*second)->draw(context, after);
     }

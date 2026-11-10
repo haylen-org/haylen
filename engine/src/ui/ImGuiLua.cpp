@@ -34,6 +34,7 @@ Backend& ImGuiLua::requireFrame(lua_State* L) {
     if (!backend.isFrameActive()) {
         luaL_error(L, "The module \"haylen.imgui\" can only be used while a frame is running.");
     }
+
     backend.makeCurrent();
     return backend;
 }
@@ -51,6 +52,7 @@ void ImGuiLua::hideBars() {
     for (const ImGuiCol color : {ImGuiCol_ScrollbarGrab, ImGuiCol_ScrollbarGrabHovered, ImGuiCol_ScrollbarGrabActive}) {
         ImGui::PushStyleColor(color, ImVec4(0.0F, 0.0F, 0.0F, 0.0F));
     }
+
     ImGui::PushStyleVar(ImGuiStyleVar_GrabMinSize, Scrollbar::kMinThumb);
 }
 
@@ -67,6 +69,7 @@ void ImGuiLua::paintBars(lua_State* L, bool visible) {
     Context& context = lua::Runtime::getEngine(L).getPlugin<plugins::UiPlugin>().getContext();
     const ImGuiContext& state = *GImGui;
     window.DrawList->PushClipRect(window.OuterRectClipped.Min, window.OuterRectClipped.Max);
+
     for (const ImGuiAxis axis : {ImGuiAxis_X, ImGuiAxis_Y}) {
         const auto along = static_cast<std::size_t>(axis);
         const ImRect frame = ImGui::GetWindowScrollbarRect(&window, axis);
@@ -86,6 +89,7 @@ void ImGuiLua::paintBars(lua_State* L, bool visible) {
         const ImGuiID id = ImGui::GetWindowScrollbarID(&window, axis);
         Scrollbar::paint(context, ImGuiConverter::toRect(groove), handle, state.HoveredId == id || state.ActiveId == id);
     }
+
     window.DrawList->PopClipRect();
 }
 
@@ -120,17 +124,21 @@ int ImGuiLua::beginWindow(lua_State* L) {
         lua::Table::readField(L, 2, "noResize", noResize);
         lua::Table::readField(L, 2, "noMove", noMove);
         lua::Table::readField(L, 2, "autoResize", autoResize);
+
         if (x && y) {
             ImGui::SetNextWindowPos({*x, *y}, ImGuiCond_FirstUseEver);
         }
+
         if (width && height) {
             ImGui::SetNextWindowSize({*width, *height}, ImGuiCond_FirstUseEver);
         }
+
         flags |= noTitleBar ? ImGuiWindowFlags_NoTitleBar : ImGuiWindowFlags_None;
         flags |= noResize ? ImGuiWindowFlags_NoResize : ImGuiWindowFlags_None;
         flags |= noMove ? ImGuiWindowFlags_NoMove : ImGuiWindowFlags_None;
         flags |= autoResize ? ImGuiWindowFlags_AlwaysAutoResize : ImGuiWindowFlags_None;
     }
+
     bool open = true;
     const char* name = readLabel(L, 1);
     hideBars();
@@ -194,14 +202,17 @@ const char* ImGuiLua::readNumberFormat(lua_State* L, int index) {
             ++position;
             continue;
         }
+
         position = format.find_first_not_of("-+ #0123456789.", position + 1);
         if (position != std::string_view::npos && format[position] == 'l') {
             ++position;
         }
+
         if (position >= format.size() || std::string_view("fFeEgGaA").find(format[position]) == std::string_view::npos || ++conversions > 1) {
             luaL_argerror(L, index, "the format may convert the number once, as in '%.1f', and writes a percent sign as '%%'");
         }
     }
+
     return format.data();
 }
 
@@ -272,6 +283,7 @@ int ImGuiLua::combo(lua_State* L) {
         joined += item;
         joined += '\0';
     }
+
     joined += '\0';
     const bool changed = ImGui::Combo(readLabel(L, 1), &current, joined.c_str());
     lua::Stack::push(L, current + 1);
@@ -296,6 +308,7 @@ int ImGuiLua::treePop(lua_State* L) {
     if (ImGui::GetCurrentWindow()->DC.TreeDepth <= 0) {
         return luaL_error(L, "There is no open tree node for \"imgui.treePop\" to close.");
     }
+
     ImGui::TreePop();
     return 0;
 }
@@ -401,6 +414,7 @@ int ImGuiLua::tableNextRow(lua_State* L) {
     if (ImGui::GetCurrentTable() == nullptr) {
         return luaL_error(L, "There is no open table for \"imgui.tableNextRow\" to add a row to.");
     }
+
     ImGui::TableNextRow();
     return 0;
 }
@@ -430,6 +444,7 @@ int ImGuiLua::plot(lua_State* L, bool histogram) {
     } else {
         ImGui::PlotLines(readLabel(L, 1), values.data(), static_cast<int>(values.size()), 0, overlay, minimum, maximum, size);
     }
+
     return 0;
 }
 

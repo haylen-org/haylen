@@ -29,6 +29,7 @@ std::string KeyCapture::describe(std::string_view binding, input::GamepadLabels 
     if (constexpr std::string_view digit = "digit"; kind == "key" && name.starts_with(digit)) {
         return name.substr(digit.size());
     }
+
     std::string label;
     for (std::size_t index = 0; index < name.size(); ++index) {
         const auto letter = static_cast<unsigned char>(name[index]);
@@ -36,20 +37,26 @@ std::string KeyCapture::describe(std::string_view binding, input::GamepadLabels 
         if (index > 0 && (std::isupper(letter) != 0 || number)) {
             label += ' ';
         }
+
         label += static_cast<char>(index == 0 ? std::toupper(letter) : letter);
     }
+
     if (kind == "mouse") {
         return "Mouse " + label;
     }
+
     if (constexpr std::string_view dpad = "Dpad "; kind == "button" && label.starts_with(dpad)) {
         return "D-pad " + label.substr(dpad.size());
     }
+
     if (kind == "button") {
         return "Button " + getFaceLabel(name, labels).value_or(label);
     }
+
     if (kind == "stick") {
         return label + " Stick";
     }
+
     return label + sign;
 }
 
@@ -59,6 +66,7 @@ std::optional<std::string> KeyCapture::getFaceLabel(std::string_view place, inpu
     if (index == kFacePlaces.size()) {
         return std::nullopt;
     }
+
     switch (labels) {
     case input::GamepadLabels::Letters:
         return std::string(kLetters[index]);
@@ -79,6 +87,7 @@ input::GamepadLabels KeyCapture::getLabels(const input::Input& devices) {
             return gamepad.labels;
         }
     }
+
     return input::GamepadLabels::Unknown;
 }
 
@@ -86,13 +95,16 @@ std::vector<std::string> KeyCapture::readBindings(PropertyReader& reader, std::s
     if (!PropertyReader::isList(listed)) {
         reader.fail(key, "must be a list of bindings");
     }
+
     std::vector<std::string> bindings;
     for (const core::Json& entry : listed) {
         if (!entry.is_string() || !input::ActionMap::Binding::parse(entry.get<std::string>())) {
             reader.fail(key, "must be a list of bindings such as \"key:escape\"");
         }
+
         bindings.push_back(entry.get<std::string>());
     }
+
     return bindings;
 }
 
@@ -101,17 +113,20 @@ void KeyCapture::readProperties(PropertyReader& reader) {
     if (!value.empty() && !input::ActionMap::Binding::parse(value)) {
         reader.fail("value", "must be a binding such as \"key:space\"");
     }
+
     reader.read("placeholder", placeholder);
     reader.read("prompt", prompt);
     if (const core::Json* listed = reader.take("sources")) {
         if (!PropertyReader::isList(*listed) || !std::ranges::all_of(*listed, [](const core::Json& entry) { return entry.is_string() && std::ranges::find(kSourceNames, entry.get<std::string>()) != kSourceNames.end(); })) {
             reader.fail("sources", "must list \"key\", \"mouse\", \"button\" or \"axis\"");
         }
+
         sources.clear();
         for (const core::Json& entry : *listed) {
             sources.push_back(entry.get<std::string>());
         }
     }
+
     if (const core::Json* listed = reader.take("cancelWith")) {
         cancelWith = readBindings(reader, "cancelWith", *listed);
     }
@@ -125,9 +140,11 @@ void KeyCapture::render(Context& context, const math::Rect& bounds) {
     const float radius = context.getMetric(Theme::Metric::ControlRadius);
     const Widgets::Interaction state = Widgets::interact(context, bounds, radius, "##capture");
     const ImGuiID itemId = ImGui::GetItemID();
+
     if (takeFocusRequest()) {
         Widgets::focusItem(context);
     }
+
     if (state.clicked && !capturing) {
         start(context.getInput(), context.getFrame());
     }
@@ -136,9 +153,11 @@ void KeyCapture::render(Context& context, const math::Rect& bounds) {
     if (capturing) {
         ImGui::SetActiveID(itemId, ImGui::GetCurrentWindow());
         ImGui::SetActiveIdUsingAllKeyboardKeys();
+
         for (const ImGuiKey held : {ImGuiKey_GamepadFaceDown, ImGuiKey_GamepadFaceRight, ImGuiKey_GamepadDpadLeft, ImGuiKey_GamepadDpadRight, ImGuiKey_GamepadDpadUp, ImGuiKey_GamepadDpadDown, ImGuiKey_MouseLeft}) {
             ImGui::SetKeyOwner(held, itemId);
         }
+
         if (context.getFrame() > startedFrame) {
             if (const std::optional<std::string> binding = listen(context.getInput())) {
                 finish(context, *binding);
@@ -152,6 +171,7 @@ void KeyCapture::render(Context& context, const math::Rect& bounds) {
     if (capturing && shown.empty()) {
         shown = "\xE2\x80\xA6";
     }
+
     const bool muted = capturing || value.empty();
     Typography::drawAligned(context, Theme::Font::Body, inner, context.getColor(muted ? Theme::Color::TextMuted : Theme::Color::Text), shown, Alignment::Center);
 }
@@ -167,6 +187,7 @@ bool KeyCapture::accepts(Source source) const {
 void KeyCapture::start(const input::Input& devices, std::uint64_t frame) {
     capturing = true;
     startedFrame = frame;
+
     for (std::size_t pad = 0; pad < input::Input::kMaxGamepads; ++pad) {
         resting[pad] = devices.getGamepad(pad).axes;
     }
@@ -180,11 +201,13 @@ std::optional<std::string> KeyCapture::listen(const input::Input& devices) const
             return "key:" + std::string(input::Controls::keyName(pressed));
         }
     }
+
     for (const input::MouseButton button : {input::MouseButton::Left, input::MouseButton::Right, input::MouseButton::Middle}) {
         if (devices.isMousePressed(button)) {
             return "mouse:" + std::string(input::Controls::mouseButtonName(button));
         }
     }
+
     for (std::size_t pad = 0; pad < input::Input::kMaxGamepads; ++pad) {
         for (std::size_t index = 0; index < input::Controls::kGamepadButtonCount; ++index) {
             const auto button = static_cast<input::GamepadButton>(index);
@@ -192,6 +215,7 @@ std::optional<std::string> KeyCapture::listen(const input::Input& devices) const
                 return "button:" + std::string(input::Controls::gamepadButtonName(button));
             }
         }
+
         for (std::size_t index = 0; index < input::Controls::kGamepadAxisCount; ++index) {
             const float travel = devices.getGamepad(pad).axes[index] - resting[pad][index];
             if (std::abs(travel) > kAxisTravel) {
@@ -199,6 +223,7 @@ std::optional<std::string> KeyCapture::listen(const input::Input& devices) const
             }
         }
     }
+
     return std::nullopt;
 }
 
@@ -210,11 +235,13 @@ void KeyCapture::finish(Context& context, const std::string& binding) {
         context.emit(*this, "cancel");
         return;
     }
+
     const std::string_view kind = std::string_view(binding).substr(0, binding.find(':'));
     const auto source = static_cast<Source>(std::ranges::find(kSourceNames, kind) - kSourceNames.begin());
     if (!accepts(source)) {
         return;
     }
+
     capturing = false;
     ImGui::ClearActiveID();
     value = binding;

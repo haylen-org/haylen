@@ -26,6 +26,7 @@ class ScrollArbiterTest : public ::testing::Test, public test::UiFixture {
         for (int index = 1; index <= count; ++index) {
             list += (index > 1 ? ", " : "") + std::string(R"({"kind": "label", "text": "Line )") + std::to_string(index) + R"("})";
         }
+
         return list;
     }
 
@@ -75,6 +76,7 @@ class ScrollArbiterTest : public ::testing::Test, public test::UiFixture {
         for (int index = 1; index <= 40; ++index) {
             items += (index > 1 ? ", " : "") + std::string(R"({"id": "r)") + std::to_string(index) + R"(", "text": "Row )" + std::to_string(index) + R"("})";
         }
+
         return mount(R"({"kind": "scroll", "id": "page", "width": 600, "height": 360, "children": [{"kind": "list", "id": "rows", "draggable": true, "items": [)" + items + "]}]}");
     }
 
@@ -86,10 +88,12 @@ class ScrollArbiterTest : public ::testing::Test, public test::UiFixture {
     void swipe(math::Vec2 from, math::Vec2 to, int steps = 10) {
         touch(platform::Event::Type::TouchBegan, 1, from);
         frames();
+
         for (int step = 1; step <= steps; ++step) {
             touch(platform::Event::Type::TouchMoved, 1, from + (to - from) * (static_cast<float>(step) / static_cast<float>(steps)));
             frames();
         }
+
         frames(20);
         touch(platform::Event::Type::TouchEnded, 1, to);
         frames(kRest);
@@ -154,6 +158,7 @@ TEST_F(ScrollArbiterTest, AGestureStaysWithTheAreaItStartedInWhileTheContentMove
     for (int step = 0; step < 5; ++step) {
         trackpad(point, {0.0F, -40.0F});
     }
+
     frames(kRest);
     EXPECT_TRUE(getBounds(*gui, "inner").contains(point));
     EXPECT_NEAR(getBounds(*gui, "pageContent").y, page - 200.0F, 0.5F);
@@ -208,9 +213,11 @@ TEST_F(ScrollArbiterTest, SpringsBackTheMomentFingersLeaveATrackpadWhileItsMomen
     const math::Vec2 inside = getBounds(*gui, "page").getCenter();
     const float top = getBounds(*gui, "content").y;
     phase(inside, 0.0F, Phase::Began);
+
     for (int step = 0; step < 6; ++step) {
         phase(inside, 40.0F, Phase::Changed);
     }
+
     const float stretched = getBounds(*gui, "content").y - top;
     EXPECT_GT(stretched, 40.0F);
     EXPECT_LT(stretched, 240.0F);
@@ -222,10 +229,12 @@ TEST_F(ScrollArbiterTest, SpringsBackTheMomentFingersLeaveATrackpadWhileItsMomen
         phase(inside, 20.0F, Phase::Momentum);
         const float now = getBounds(*gui, "content").y - top;
         peak = std::max(peak, now);
+
         if (step == 0) {
             EXPECT_GT(now, stretched * 0.5F);
         }
     }
+
     EXPECT_LT(peak, stretched + 20.0F);
     EXPECT_NEAR(getBounds(*gui, "content").y, top, 0.5F);
 }
@@ -238,14 +247,18 @@ TEST_F(ScrollArbiterTest, FlingsWithItsOwnMotionWhenFingersLeaveATrackpad) {
     trackpad(inside, {0.0F, -1000.0F});
     frames(kRest);
     phase(inside, 0.0F, Phase::Began);
+
     for (int step = 0; step < 6; ++step) {
         phase(inside, -40.0F, Phase::Changed);
     }
+
     phase(inside, 0.0F, Phase::Ended);
     const float released = getBounds(*gui, "content").y;
+
     for (int step = 0; step < 10; ++step) {
         phase(inside, 300.0F, Phase::Momentum);
     }
+
     const float flung = getBounds(*gui, "content").y;
     EXPECT_LT(flung, released - 100.0F);
 
@@ -326,10 +339,12 @@ TEST_F(ScrollArbiterTest, PicksUpADraggableRowAfterALongPress) {
     const math::Vec2 grab = {page.getCenter().x, page.y + 20.0F};
     touch(platform::Event::Type::TouchBegan, 1, grab);
     frames(static_cast<int>(getUi().getTheme().getMetric(Theme::Metric::LongPressDuration) * 60.0F) + 4);
+
     for (int step = 1; step <= 6; ++step) {
         touch(platform::Event::Type::TouchMoved, 1, grab + math::Vec2{0.0F, 20.0F * static_cast<float>(step)});
         frames();
     }
+
     EXPECT_EQ(findLastEvent("dragStart").value, (core::Json{{"item", "r1"}}));
     EXPECT_EQ(getBounds(*gui, "rows").y, top);
     touch(platform::Event::Type::TouchEnded, 1, grab + math::Vec2{0.0F, 120.0F});
@@ -350,6 +365,7 @@ TEST_F(ScrollArbiterTest, ScrollsThePageAroundACollectionUnderItsLiftedItem) {
     for (int index = 1; index <= 6; ++index) {
         items.push_back({.id = "i" + std::to_string(index), .type = "row", .fields = core::Json{{"title", "Item " + std::to_string(index)}}});
     }
+
     auto source = std::make_shared<CollectionItems>();
     source->assign(std::move(items));
     queue.setSource(source);
@@ -420,6 +436,7 @@ TEST_F(ScrollArbiterTest, ASidewaysGestureOverAHorizontalCollectionScrollsTheCol
     for (int index = 1; index <= 40; ++index) {
         items.push_back({.id = "c" + std::to_string(index), .type = "cover", .fields = core::Json{{"title", "Cover " + std::to_string(index)}}});
     }
+
     auto source = std::make_shared<CollectionItems>();
     source->assign(std::move(items));
     shelf.setSource(source);
@@ -440,9 +457,11 @@ TEST_F(ScrollArbiterTest, ASidewaysGestureOverAHorizontalCollectionScrollsTheCol
     using Phase = platform::Event::ScrollPhase;
     const math::Vec2 inside = shelf.getBounds().getCenter();
     sideways(inside, 0.0F, Phase::Began);
+
     for (int step = 0; step < 5; ++step) {
         sideways(inside, -20.0F, Phase::Changed);
     }
+
     sideways(inside, 0.0F, Phase::Ended);
     frames(kRest);
     EXPECT_GT(shelf.getScrollOffset(), 190.0);
@@ -463,9 +482,11 @@ TEST_F(ScrollArbiterTest, ASidewaysGestureOverAHorizontalCollectionScrollsTheCol
     momentum.scrollPhase = Phase::Momentum;
     getEngine().handleEvent(momentum);
     sideways(getBounds(*gui, "shelf").getCenter(), 0.0F, Phase::Began);
+
     for (int step = 0; step < 5; ++step) {
         sideways(getBounds(*gui, "shelf").getCenter(), -20.0F, Phase::Changed);
     }
+
     sideways(getBounds(*gui, "shelf").getCenter(), 0.0F, Phase::Ended);
     frames(kRest);
     EXPECT_GT(shelf.getScrollOffset(), before + 90.0);

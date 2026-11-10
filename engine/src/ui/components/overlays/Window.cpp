@@ -32,16 +32,19 @@ void Window::readMore(PropertyReader& reader) {
         requestedX = position->x;
         requestedY = position->y;
     }
+
     if (reader.has("x")) {
         float x = 0.0F;
         reader.read("x", x);
         requestedX = x;
     }
+
     if (reader.has("y")) {
         float y = 0.0F;
         reader.read("y", y);
         requestedY = y;
     }
+
     position.reset();
 }
 
@@ -87,6 +90,7 @@ void Window::render(Context& context, const math::Rect&) {
     // The window takes its name from the items of the node, so a window that its GUI builds again stays the same ImGui window.
     const bool shown = ImGui::Begin(std::format("##window{}", ImGui::GetID("##window")).c_str(), nullptr, flags);
     ImGui::PopStyleVar(2);
+
     if (shown) {
         context.pushPlainReshape();
         const math::Rect frame{placed.x, placed.y, size.x, size.y};
@@ -98,11 +102,14 @@ void Window::render(Context& context, const math::Rect&) {
         Surfaces::draw(context, Theme::Surface::Window, body, context.getColor(Theme::Color::Panel), context.getColor(Theme::Color::Border), context.getMetric(Theme::Metric::PanelRadius));
         drawTitle(context, {frame.x, frame.y, frame.width, header});
         Linear::render(context, {frame.x, frame.y + header, frame.width, std::max(0.0F, frame.height - header)});
+
         if (open && closable && context.getFocus().answerCancel(ImGui::GetCurrentWindow())) {
             close(context);
         }
+
         context.popReshape();
     }
+
     ImGui::End();
 }
 
@@ -124,6 +131,7 @@ void Window::drawTitle(Context& context, const math::Rect& bar) {
         Surfaces::fill(context, fill, context.getColor(Theme::Color::Raised), Surfaces::getInnerRadius(context.getMetric(Theme::Metric::PanelRadius), border), ImDrawFlags_RoundTop);
         Widgets::line(context, {bar.x, bar.getBottom()}, {bar.getRight(), bar.getBottom()}, border, context.getColor(Theme::Color::Border));
     }
+
     const math::Rect text = grip.inset(Surfaces::getPadding(context, Theme::Surface::TitleBar));
     const float inset = context.getMetric(Theme::Metric::ControlPaddingX);
     Typography::drawAligned(context, Theme::Font::Button, {text.x + inset, text.y, std::max(0.0F, text.width - inset * 2.0F), text.height}, context.getColor(Theme::Color::Text), context.getText(title), Alignment::Start);
@@ -135,12 +143,15 @@ void Window::drawTitle(Context& context, const math::Rect& bar) {
             if (state.hovered) {
                 Surfaces::fill(context, cross, context.getColor(Theme::Color::Hover), radius);
             }
+
             Widgets::cross(context, cross.getCenter(), cross.width * 0.2F, context.getMetric(Theme::Metric::StrokeWidth), context.getColor(state.hovered ? Theme::Color::DangerText : Theme::Color::TextMuted));
         }
+
         if (state.clicked) {
             close(context);
         }
     }
+
     if (!movable) {
         return;
     }

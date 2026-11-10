@@ -49,6 +49,7 @@ class PropertyReader final {
         if (value == nullptr) {
             return;
         }
+
         if (value->is_string()) {
             for (const auto& [name, choice] : choices) {
                 if (value->get_ref<const std::string&>() == name) {
@@ -63,6 +64,7 @@ class PropertyReader final {
             names += index == 0 ? "" : (index + 1 == choices.size() ? " or " : ", ");
             names += "\"" + std::string(choices[index].first) + "\"";
         }
+
         fail(key, "must be " + names);
     }
 

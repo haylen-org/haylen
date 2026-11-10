@@ -25,6 +25,7 @@ std::uint16_t LuaItemSource::internType(std::string_view type) {
     if (found != typeNames.end()) {
         return static_cast<std::uint16_t>(found - typeNames.begin());
     }
+
     typeNames.emplace_back(type);
     return static_cast<std::uint16_t>(typeNames.size() - 1);
 }
@@ -44,6 +45,7 @@ void LuaItemSource::assign(lua_State* L, int list) {
         std::tie(nextIds[index], nextTypes[index]) = readItem(L, -1, index + 1);
         lua_pop(L, 1);
     }
+
     const std::vector<std::string_view> before(ids.begin(), ids.end());
     const std::vector<std::string_view> after(nextIds.begin(), nextIds.end());
     const CollectionDiff::Result result = CollectionDiff::compare(before, after, collection.getId());
@@ -66,8 +68,10 @@ void LuaItemSource::insert(lua_State* L, std::size_t index, int added) {
         std::tie(newIds[offset], newTypes[offset]) = readItem(L, -1, index + offset + 1);
         lua_pop(L, 1);
     }
+
     const std::vector<std::string_view> addedIds(newIds.begin(), newIds.end());
     known.check(addedIds, {}, collection.getId());
+
     for (const std::string_view id : addedIds) {
         known.add(id);
     }
@@ -79,10 +83,12 @@ void LuaItemSource::insert(lua_State* L, std::size_t index, int added) {
         lua_rawgeti(L, list, position);
         lua_rawseti(L, list, position + shift);
     }
+
     for (std::size_t offset = 0; offset < count; ++offset) {
         lua_rawgeti(L, source, static_cast<lua_Integer>(offset + 1));
         lua_rawseti(L, list, static_cast<lua_Integer>(index + offset + 1));
     }
+
     lua_pop(L, 1);
     ids.insert(ids.begin() + static_cast<std::ptrdiff_t>(index), std::make_move_iterator(newIds.begin()), std::make_move_iterator(newIds.end()));
     types.insert(types.begin() + static_cast<std::ptrdiff_t>(index), newTypes.begin(), newTypes.end());
@@ -99,14 +105,18 @@ void LuaItemSource::remove(lua_State* L, std::size_t index, std::size_t count) {
         lua_rawgeti(L, list, position);
         lua_rawseti(L, list, position - shift);
     }
+
     for (lua_Integer position = total - shift + 1; position <= total; ++position) {
         lua_pushnil(L);
         lua_rawseti(L, list, position);
     }
+
     lua_pop(L, 1);
+
     for (std::size_t offset = 0; offset < removed; ++offset) {
         known.remove(ids[index + offset]);
     }
+
     const auto first = static_cast<std::ptrdiff_t>(index);
     ids.erase(ids.begin() + first, ids.begin() + first + static_cast<std::ptrdiff_t>(removed));
     types.erase(types.begin() + first, types.begin() + first + static_cast<std::ptrdiff_t>(removed));
@@ -122,6 +132,7 @@ void LuaItemSource::move(lua_State* L, std::size_t from, std::size_t to) {
         lua_rawgeti(L, list, position + step);
         lua_rawseti(L, list, position);
     }
+
     lua_rawseti(L, list, static_cast<lua_Integer>(to + 1));
     lua_pop(L, 1);
 
@@ -136,6 +147,7 @@ void LuaItemSource::move(lua_State* L, std::size_t from, std::size_t to) {
         std::rotate(target, source, source + 1);
         std::rotate(typeTarget, typeSource, typeSource + 1);
     }
+
     changed.emit({.kind = Change::Kind::Moved, .index = from, .count = 1, .target = to});
 }
 
@@ -155,10 +167,12 @@ void LuaItemSource::replace(lua_State* L, std::size_t index, int item) {
     known.add(id);
     ids[index] = std::move(id);
     types[index] = type;
+
     if (same) {
         changed.emit({.kind = Change::Kind::Changed, .index = index, .count = 1});
         return;
     }
+
     changed.emit({.kind = Change::Kind::Removed, .index = index, .count = 1});
     changed.emit({.kind = Change::Kind::Inserted, .index = index, .count = 1});
 }

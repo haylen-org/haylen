@@ -31,15 +31,18 @@ void LuaPageSource::configure(const Options& value) {
             dropped.push_back(page);
         }
     }
+
     for (const std::size_t page : dropped) {
         drop(page);
     }
+
     const std::size_t before = options.count;
     options = value;
     std::vector<std::size_t> previous(options.count);
     for (std::size_t index = 0; index < previous.size(); ++index) {
         previous[index] = index < before ? index : Change::kNew;
     }
+
     changed.emit({.kind = Change::Kind::Replaced, .index = 0, .count = options.count, .target = 0, .previous = previous});
 }
 
@@ -68,6 +71,7 @@ void LuaPageSource::request(std::size_t first, std::size_t count) {
     if (count == 0 || first >= options.count) {
         return;
     }
+
     neededFirst = first / options.pageSize;
     neededLast = (std::min(first + count, options.count) - 1) / options.pageSize;
     for (std::size_t page = neededFirst; page <= neededLast; ++page) {
@@ -75,6 +79,7 @@ void LuaPageSource::request(std::size_t first, std::size_t count) {
             load(page);
         }
     }
+
     dropFarthest();
 }
 
@@ -92,15 +97,18 @@ void LuaPageSource::load(std::size_t page) {
         store(L, page, ticket, -1);
         return;
     }
+
     if (!lua::Promise::isPromise(L, -1)) {
         throw std::invalid_argument("The page loader of the collection \"" + collection.getId() + "\" must return a list of items or a promise of one.");
     }
+
     const int promise = lua_gettop(L);
     new (lua_newuserdatauv(L, sizeof(Request), 0)) Request{.source = weak_from_this(), .page = page, .ticket = ticket};
     if (lua::Userdata::newMetatable(L, kRequestType)) {
         lua_pushcfunction(L, &collectRequest);
         lua_setfield(L, -2, "__gc");
     }
+
     lua_setmetatable(L, -2);
     lua_pushcclosure(L, &awaitPage, 1);
     lua_pushvalue(L, promise);
@@ -130,9 +138,11 @@ int LuaPageSource::finishPage(lua_State* L, int, lua_KContext) {
         if (!source) {
             return 0;
         }
+
         if (!lua_isnil(L, -1)) {
             throw std::runtime_error("The page loader of the collection \"" + source->collection.getId() + "\" failed. " + luaL_tolstring(L, -1, nullptr));
         }
+
         source->store(L, request.page, request.ticket, -2);
         return 0;
     });
@@ -151,11 +161,14 @@ void LuaPageSource::store(lua_State* L, std::size_t page, std::uint64_t ticket, 
     if (found == pages.end() || found->second.ticket != ticket || found->second.loaded) {
         return;
     }
+
     const int table = lua_absindex(L, list);
     const std::size_t length = getPageLength(page);
+
     if (!lua_istable(L, table)) {
         throw std::invalid_argument("The page loader of the collection \"" + collection.getId() + "\" must return a list of items or a promise of one.");
     }
+
     if (lua_rawlen(L, table) != length) {
         throw std::invalid_argument("The page loader of the collection \"" + collection.getId() + "\" returned " + std::to_string(lua_rawlen(L, table)) + " items for a page of " + std::to_string(length) + ".");
     }
@@ -167,10 +180,12 @@ void LuaPageSource::store(lua_State* L, std::size_t page, std::uint64_t ticket, 
         std::tie(loaded.ids[offset], loaded.types[offset]) = CollectionLua::readItem(L, -1, first + offset + 1, collection);
         lua_pop(L, 1);
     }
+
     std::vector<std::string_view> ids;
     for (const auto& [index, kept] : pages) {
         ids.insert(ids.end(), kept.ids.begin(), kept.ids.end());
     }
+
     ids.insert(ids.end(), loaded.ids.begin(), loaded.ids.end());
     CollectionDiff::checkUnique(ids, collection.getId());
 
@@ -185,6 +200,7 @@ void LuaPageSource::drop(std::size_t page) {
     const bool loaded = found->second.loaded;
     pages.erase(found);
     CollectionLua::setPage(state, gui, collection, page, 0);
+
     if (loaded) {
         changed.emit({.kind = Change::Kind::Changed, .index = page * options.pageSize, .count = getPageLength(page)});
     }
@@ -198,6 +214,7 @@ void LuaPageSource::dropFarthest() {
         if (distance(farthest->first) == 0) {
             return;
         }
+
         drop(farthest->first);
     }
 }
@@ -207,6 +224,7 @@ void LuaPageSource::pushItem(lua_State* L, std::size_t index) const {
         lua_pushnil(L);
         return;
     }
+
     CollectionLua::pushPage(L, gui, collection, index / options.pageSize);
     lua_rawgeti(L, -1, static_cast<lua_Integer>(index % options.pageSize + 1));
     lua_remove(L, -2);

@@ -55,6 +55,7 @@ void Toast::restart() {
             notice.reason = open ? std::nullopt : std::optional<Reason>(Reason::Hidden);
         }
     }
+
     if (open) {
         notices.push_back({.own = true});
     }
@@ -69,6 +70,7 @@ core::Json Toast::describeNotice(const Notice& notice) {
     if (!notice.id.empty()) {
         payload["notice"] = notice.id;
     }
+
     return payload;
 }
 
@@ -83,9 +85,11 @@ void Toast::command(Context& context, std::string_view name, const core::Json& a
         Component::command(context, name, arguments);
         return;
     }
+
     if (!arguments.is_object()) {
         throw std::invalid_argument("The \"" + std::string(name) + "\" command of a \"toast\" takes a table.");
     }
+
     const std::string where = "the \"" + std::string(name) + "\" command of a \"toast\"";
     PropertyReader reader(arguments, getKind());
     std::string noticeId;
@@ -98,12 +102,14 @@ void Toast::command(Context& context, std::string_view name, const core::Json& a
         if (!noticeId.empty() && found == nullptr) {
             throw std::invalid_argument("The toast \"" + getId() + "\" shows no notice \"" + noticeId + "\".");
         }
+
         for (Notice& notice : notices) {
             if (!notice.leaving && (found == nullptr || &notice == found)) {
                 notice.leaving = true;
                 notice.reason = Reason::Hidden;
             }
         }
+
         return;
     }
 
@@ -113,6 +119,7 @@ void Toast::command(Context& context, std::string_view name, const core::Json& a
         if (found == nullptr) {
             throw std::invalid_argument(noticeId.empty() ? "The \"update\" command of a \"toast\" needs the \"notice\" it changes." : "The toast \"" + getId() + "\" shows no notice \"" + noticeId + "\".");
         }
+
         readContent(reader, found->content);
         reader.finish();
         found->elapsed = arguments.contains("duration") ? 0.0F : found->elapsed;
@@ -125,11 +132,13 @@ void Toast::command(Context& context, std::string_view name, const core::Json& a
     shown.action = {};
     readContent(reader, shown);
     reader.finish();
+
     if (found != nullptr) {
         found->content = std::move(shown);
         found->elapsed = 0.0F;
         return;
     }
+
     notices.push_back({.id = std::move(noticeId), .content = std::move(shown)});
 }
 
@@ -145,11 +154,14 @@ void Toast::render(Context& context, const math::Rect&) {
             ++index;
             continue;
         }
+
         const Notice gone = std::move(notices[index]);
         notices.erase(notices.begin() + static_cast<std::ptrdiff_t>(index));
+
         if (!gone.reason) {
             continue;
         }
+
         core::Json payload = describeNotice(gone);
         payload["reason"] = getReasonName(*gone.reason);
         open = open && !gone.own;
@@ -186,18 +198,22 @@ Toast::Layout Toast::layOut(Context& context, const Content& shown, float width,
     const float middle = (edge.top + layout.size.y - edge.bottom) * 0.5F;
     float start = edge.left + padding;
     float end = layout.size.x - edge.right - padding;
+
     if (indicator > 0.0F) {
         layout.indicator = {start, middle - indicator * 0.5F, indicator, indicator};
         start += indicator + gap;
     }
+
     if (close > 0.0F) {
         layout.close = {end - close, middle - close * 0.5F, close, close};
         end -= close + gap;
     }
+
     if (actionSize.x > 0.0F) {
         layout.action = {end - actionSize.x, middle - actionSize.y * 0.5F, actionSize.x, actionSize.y};
         end -= actionSize.x + gap;
     }
+
     const float top = middle - block * 0.5F;
     layout.title = {start, top, std::max(0.0F, end - start), titleSize.y};
     layout.text = {start, top + titleSize.y + between, std::max(0.0F, end - start), textSize.y};
@@ -212,6 +228,7 @@ Toast::Colors Toast::getColors(Context& context, const Content& shown) {
         const math::Color ink = context.getColor(Theme::Color::OnTooltip);
         return {.fill = context.getColor(Theme::Color::Tooltip), .border = std::nullopt, .ink = ink, .accent = neutral ? ink : context.getColor(tone.fill), .accentInk = neutral ? context.getColor(Theme::Color::Tooltip) : context.getColor(tone.ink)};
     }
+
     switch (shown.variant) {
     case Variant::Soft: {
         // The pale color of a tone lies over the raised color, so the notice stays opaque over whatever it covers.
@@ -239,9 +256,11 @@ bool Toast::drawNotice(Context& context, Notice& notice) {
     if (notice.key == 0) {
         notice.key = stack.createKey();
     }
+
     if (notice.since < 0.0) {
         notice.since = context.getTime();
     }
+
     const Content& shown = getContent(notice);
     // A notice grows with the text scale, within the safe area. The stacks of an edge that has no room for its start, middle and end stacks side by side form one stack, in which every notice keeps its side, so they never cover each other.
     const math::Rect safe = context.getBackend().getLiftedSafeRect();
@@ -276,10 +295,12 @@ bool Toast::drawNotice(Context& context, Notice& notice) {
     if (!notice.leaving && !stack.isHeld(stacked)) {
         notice.elapsed += context.getDeltaSeconds();
     }
+
     if (!notice.leaving && shown.duration > 0.0F && notice.elapsed >= shown.duration) {
         notice.leaving = true;
         notice.reason = Reason::Timeout;
     }
+
     const float transition = context.getMetric(Theme::Metric::TransitionDuration);
     const float step = transition > 0.0F ? context.getDeltaSeconds() / transition : 1.0F;
     notice.appear = notice.leaving ? std::max(0.0F, notice.appear - step) : std::min(1.0F, notice.appear + step);
@@ -296,6 +317,7 @@ bool Toast::drawNotice(Context& context, Notice& notice) {
     if (start || end) {
         x = (start != context.isRightToLeft()) ? safe.x + margin : safe.getRight() - margin - layout.size.x;
     }
+
     const float slide = (1.0F - notice.appear) * margin;
     const float y = bottom ? safe.getBottom() - margin - notice.offset - layout.size.y + slide : safe.y + margin + notice.offset - slide;
     const math::Rect frame{std::floor(x + notice.swipe), std::floor(y), layout.size.x, layout.size.y};
@@ -317,6 +339,7 @@ bool Toast::drawNotice(Context& context, Notice& notice) {
     if (fade < 1.0F || notice.leaving || (deck && !expandable && place->depth > 0)) {
         flags |= ImGuiWindowFlags_NoInputs;
     }
+
     if (ImGui::Begin(name.data(), nullptr, flags)) {
         ImGuiWindow& window = *ImGui::GetCurrentWindow();
         stack.attach(notice.key, window.ID);
@@ -332,9 +355,11 @@ bool Toast::drawNotice(Context& context, Notice& notice) {
         context.pushReshape(look, anchor);
         drawParts(context, notice, layout, frame.getMin());
         context.popReshape();
+
         if (look.isReshaping()) {
             reshape(*window.DrawList, firstVertex, look, anchor, false);
         }
+
         context.popReshape();
         window.DrawList->PopClipRect();
 
@@ -344,6 +369,7 @@ bool Toast::drawNotice(Context& context, Notice& notice) {
             stack.hold(stacked);
         }
     }
+
     ImGui::End();
     ImGui::PopStyleVar(2);
     return false;
@@ -364,17 +390,20 @@ void Toast::drawParts(Context& context, Notice& notice, const Layout& layout, ma
     // The whole notice takes the press that swipes it, and the action and the close button over it take theirs first.
     ImGui::SetCursorScreenPos(ImGuiConverter::toImVec2(frame.getMin()));
     ImGui::SetNextItemAllowOverlap();
+
     if (ImGui::InvisibleButton("##body", ImGuiConverter::toImVec2(frame.getSize())) && !notice.swiping && !notice.leaving) {
         context.playSound(Theme::Sound::Press);
         context.emit(*this, "click", describeNotice(notice));
         notice.leaving = true;
         notice.reason = Reason::Clicked;
     }
+
     followSwipe(context, notice, frame.width);
 
     if (shown.indicator != Indicator::None) {
         drawIndicator(context, shown, colors, place(layout.indicator));
     }
+
     Typography::drawParagraph(context, Theme::Font::Button, place(layout.title), colors.ink, context.getText(shown.title), Alignment::Start);
     Typography::drawParagraph(context, Theme::Font::Body, place(layout.text), colors.ink, context.getText(shown.text), Alignment::Start);
 
@@ -385,7 +414,9 @@ void Toast::drawParts(Context& context, Notice& notice, const Layout& layout, ma
         if (pressed.hovered) {
             Surfaces::fill(context, area, colors.ink.withAlpha(colors.ink.a * (pressed.held ? 0.24F : 0.14F)), radius);
         }
+
         Typography::drawAligned(context, Theme::Font::Button, area, colors.ink, context.getText(shown.action), Alignment::Center);
+
         if (pressed.clicked && !notice.leaving) {
             context.playSound(Theme::Sound::Press);
             context.emit(*this, "action", describeNotice(notice));
@@ -393,6 +424,7 @@ void Toast::drawParts(Context& context, Notice& notice, const Layout& layout, ma
             notice.reason = Reason::Action;
         }
     }
+
     if (!layout.close.isEmpty()) {
         const math::Rect area = place(layout.close);
         if (!layout.action.isEmpty()) {
@@ -400,10 +432,12 @@ void Toast::drawParts(Context& context, Notice& notice, const Layout& layout, ma
             const float divider = context.isRightToLeft() ? area.getRight() + gap * 0.5F : area.x - gap * 0.5F;
             Widgets::line(context, {divider, area.y}, {divider, area.getBottom()}, context.getMetric(Theme::Metric::BorderWidth), colors.ink.withAlpha(colors.ink.a * 0.3F));
         }
+
         const Widgets::Interaction pressed = Widgets::interact(context, area, area.height * 0.5F, "##close", ImGuiButtonFlags_NoNavFocus);
         if (!Widgets::closeImage(context, area, pressed)) {
             Widgets::cross(context, area.getCenter(), area.height * 0.28F, context.getMetric(Theme::Metric::StrokeWidth), colors.ink.withAlpha(colors.ink.a * (pressed.hovered ? 1.0F : 0.75F)));
         }
+
         if (pressed.clicked && !notice.leaving) {
             notice.leaving = true;
             notice.reason = Reason::Closed;
@@ -425,9 +459,11 @@ void Toast::drawIndicator(Context& context, const Content& shown, const Colors& 
         constexpr float kTop = -std::numbers::pi_v<float> * 0.5F;
         const math::Rect ring = area.inset(math::Insets::uniform(stroke * 0.5F));
         Surfaces::drawShape(context, {.bounds = ring, .radii = round, .color = math::Color::transparent(), .borderWidth = stroke, .borderColor = colors.accent.withAlpha(colors.accent.a * 0.3F)});
+
         if (shown.progress > 0.0F) {
             Surfaces::drawShape(context, {.bounds = ring, .radii = round, .startAngle = kTop, .sweep = std::numbers::pi_v<float> * 2.0F * shown.progress, .color = math::Color::transparent(), .borderWidth = stroke, .borderColor = colors.accent});
         }
+
         return;
     }
     case Indicator::Icon:
@@ -436,6 +472,7 @@ void Toast::drawIndicator(Context& context, const Content& shown, const Colors& 
     }
 
     Surfaces::fill(context, area, colors.accent, radius);
+
     switch (shown.tone) {
     case Widgets::Tone::Success: {
         const float side = radius;
@@ -465,12 +502,15 @@ void Toast::followSwipe(Context& context, Notice& notice, float width) {
         if (!notice.swiping && std::fabs(dragged.x) >= ScrollArbiter::kDragSlop && std::fabs(dragged.x) > std::fabs(dragged.y)) {
             notice.swiping = true;
         }
+
         if (notice.swiping) {
             notice.swipe = dragged.x;
             context.keepDrag(ImGui::GetItemID());
         }
+
         return;
     }
+
     if (notice.swiping) {
         notice.swiping = false;
         if (!notice.leaving && std::fabs(notice.swipe) > width * kSwipeShare) {
@@ -478,6 +518,7 @@ void Toast::followSwipe(Context& context, Notice& notice, float width) {
             notice.reason = Reason::Swiped;
         }
     }
+
     const float target = notice.leaving && notice.reason == Reason::Swiped ? std::copysign(width, notice.swipe) : 0.0F;
     notice.swipe += (target - notice.swipe) * std::min(1.0F, context.getDeltaSeconds() * kSwipeSpeed);
 }
@@ -491,13 +532,16 @@ bool Toast::describe(Context& context, platform::AccessibilityElement& element) 
             const std::string_view title = context.getText(shown.title);
             const std::string_view text = context.getText(shown.text);
             element.label.assign(title);
+
             if (!title.empty() && !text.empty()) {
                 element.label += ". ";
             }
+
             element.label += text;
             return true;
         }
     }
+
     return false;
 }
 

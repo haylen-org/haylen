@@ -33,7 +33,9 @@ void FocusNavigator::setFocus(ImGuiID item, ImGuiWindow* window, const math::Rec
     if ((window->RootWindow->Flags & ImGuiWindowFlags_Popup) == 0 && (current == nullptr || current->RootWindow != window->RootWindow)) {
         ImGui::FocusWindow(window);
     }
+
     ImGui::SetFocusID(item, window);
+
     if ((window->Flags & ImGuiWindowFlags_ChildWindow) != 0) {
         ImGui::ScrollToRectEx(window, ImGuiConverter::toImRect(bounds), ImGuiScrollFlags_KeepVisibleEdgeX | ImGuiScrollFlags_KeepVisibleEdgeY | ImGuiScrollFlags_NoScrollParent);
     }
@@ -57,14 +59,17 @@ void FocusNavigator::update(const NavigationInput& navigation, input::InputDevic
     const Target* current = find(drawn, g.NavId);
     cancelPressed = false;
     menuPressed = false;
+
     if (g.NavWindow != nullptr && !isManaged(g.NavWindow)) {
         return;
     }
+
     menuPressed = activeAtEnd == 0 && g.ActiveId == 0 && navigation.isPressed(NavigationInput::Action::Menu);
 
     // Cancel belongs to a control being edited when the frame starts with one, which ImGui already let go of.
     cancelPressed = activeAtEnd == 0 && g.ActiveId == 0 && ImGui::IsKeyPressed(ImGuiKey_GamepadFaceRight, ImGuiInputFlags_None, ImGuiKeyOwner_NoOwner);
     const bool accept = ImGui::IsKeyPressed(ImGuiKey_GamepadFaceDown, ImGuiInputFlags_None, ImGuiKeyOwner_NoOwner);
+
     if (current != nullptr && g.ActiveId == current->id && ImGui::IsKeyDown(ImGuiKey_GamepadFaceDown, ImGuiKeyOwner_NoOwner)) {
         g.NavActivateDownId = current->id;
     }
@@ -75,13 +80,16 @@ void FocusNavigator::update(const NavigationInput& navigation, input::InputDevic
         tab(*current, g.IO.KeyShift);
         return;
     }
+
     if (tabbing && current == nullptr && g.ActiveId == 0) {
         enter(g.IO.KeyShift);
         return;
     }
+
     if (g.ActiveId != 0) {
         return;
     }
+
     if (navigation.isPressed(NavigationInput::Action::Focus)) {
         switchFocus(current);
         return;
@@ -96,18 +104,22 @@ void FocusNavigator::update(const NavigationInput& navigation, input::InputDevic
     if (cancelPressed && popupsAtEnd == 0 && g.OpenPopupStack.Size == 0) {
         cancel(current);
     }
+
     // The directions, accept and menu of a play area belong to the game, which reads them from the action map.
     if (current == nullptr || current->play || takeRevealing(*current, accept)) {
         return;
     }
+
     if (accept) {
         ringVisible = true;
         activate(*current);
         return;
     }
+
     if (takePageAction(navigation, *current)) {
         return;
     }
+
     for (const auto& [key, direction] : kDirectionKeys) {
         if (ImGui::IsKeyPressed(key, kRepeat, ImGuiKeyOwner_NoOwner)) {
             move(*current, direction);
@@ -121,10 +133,12 @@ bool FocusNavigator::takeRevealing(const Target& current, bool accept) {
     if (current.shown) {
         return false;
     }
+
     const bool pressed = accept || std::ranges::any_of(kDirectionKeys, [](const auto& entry) { return ImGui::IsKeyPressed(entry.first, kRepeat, ImGuiKeyOwner_NoOwner); });
     if (!pressed) {
         return false;
     }
+
     ringVisible = true;
     reveal = current.id;
     setFocus(current.id, current.window, current.bounds);
@@ -139,17 +153,21 @@ bool FocusNavigator::takePageAction(const NavigationInput& navigation, const Tar
         {NavigationInput::Action::First, Paging::Kind::First},
         {NavigationInput::Action::Last, Paging::Kind::Last},
     }};
+
     for (const auto& [action, kind] : kPages) {
         if (!navigation.isPressed(action)) {
             continue;
         }
+
         if (const std::optional<std::size_t> scope = findCollection(drawn.nodes[current.node].scope)) {
             ringVisible = true;
             navigated = true;
             pendingPaging = {drawn.scopes[*scope].id, Paging{.kind = kind}};
         }
+
         return true;
     }
+
     return false;
 }
 
@@ -177,15 +195,18 @@ void FocusNavigator::enter(const Component& component, ImGuiID node, const math:
         level.ring = levels.back().ring;
         level.scope = levels.back().scope;
     }
+
     level.focusable = level.focusable && common.focusable;
     level.ring = level.ring && common.focusRing;
     if (common.focusScope || common.focusWrap != FocusWrap::None) {
         building.scopes.push_back({.id = node, .bounds = bounds, .trap = common.focusScope, .wrap = common.focusWrap, .parent = level.scope});
         level.scope = building.scopes.size() - 1;
     }
+
     if (!building.guis.empty() && building.guis.back().root == 0) {
         building.guis.back().root = node;
     }
+
     levels.push_back(level);
 }
 
@@ -219,6 +240,7 @@ void FocusNavigator::addItem(ImGuiID item, const math::Rect& bounds, bool play, 
         if (building.nodeCount == building.nodes.size()) {
             building.nodes.emplace_back();
         }
+
         Node& node = building.nodes[building.nodeCount];
         node.id = level.id;
         node.gui = currentGui;
@@ -233,8 +255,10 @@ void FocusNavigator::addItem(ImGuiID item, const math::Rect& bounds, bool play, 
                 node.usedDirections |= toBit(direction);
             }
         }
+
         level.node = building.nodeCount++;
     }
+
     const bool inputable = GImGui->LastItemData.ID == item && (GImGui->LastItemData.ItemFlags & ImGuiItemFlags_Inputable) != 0;
     building.targets.push_back({.id = item, .window = ImGui::GetCurrentWindow(), .bounds = bounds, .node = *level.node, .inputable = inputable, .play = play, .shown = shown});
 }
@@ -246,6 +270,7 @@ void FocusNavigator::beginCollection(const math::Rect& bounds, bool horizontal, 
         building.scopes.push_back({.id = level.id, .bounds = bounds, .trap = false, .wrap = FocusWrap::None, .parent = level.scope});
         level.scope = building.scopes.size() - 1;
     }
+
     Scope& scope = building.scopes[*level.scope];
     scope.bounds = bounds;
     scope.collection = true;
@@ -257,6 +282,7 @@ std::optional<FocusNavigator::Paging> FocusNavigator::takePaging() {
     if (!pendingPaging || levels.empty() || !levels.back().scope || building.scopes[*levels.back().scope].id != pendingPaging->first) {
         return std::nullopt;
     }
+
     return std::exchange(pendingPaging, std::nullopt)->second;
 }
 
@@ -275,6 +301,7 @@ std::optional<ImGuiID> FocusNavigator::findFocusedSince(std::size_t first) const
     if (focused == 0 || !hasTargetSince(first, focused)) {
         return std::nullopt;
     }
+
     return focused;
 }
 
@@ -292,6 +319,7 @@ bool FocusNavigator::focusFirstSince(std::size_t first) {
     if (first >= building.targets.size()) {
         return false;
     }
+
     const Target target = building.targets[first];
     focus(target.id, target.bounds);
     return true;
@@ -312,8 +340,10 @@ void FocusNavigator::endDraw() {
             std::erase_if(parked, [this](const auto& entry) { return entry.first == focusedGui; });
             parked.emplace_back(focusedGui, focusedItem);
         }
+
         restore();
     }
+
     focusPopup();
     unpark();
 
@@ -324,12 +354,15 @@ void FocusNavigator::endDraw() {
         if (focusedNode != 0) {
             notify(focusedNode, "blur");
         }
+
         if (owner != 0) {
             notify(owner, "focus");
         }
+
         arrival = navigated ? owner : 0;
         focusedNode = owner;
     }
+
     navigated = false;
     focusedItem = focused != nullptr ? focused->id : 0;
     focusedPlay = focused != nullptr && focused->play;
@@ -351,6 +384,7 @@ FocusNavigator::Owner FocusNavigator::getOwner() const noexcept {
     if (focusedItem == 0) {
         return Owner::None;
     }
+
     return focusedPlay ? Owner::PlayArea : Owner::Control;
 }
 
@@ -358,10 +392,12 @@ void FocusNavigator::focus(ImGuiID item, const math::Rect& bounds) {
     ImGuiWindow* window = ImGui::GetCurrentWindow();
     reveal = item;
     ringVisible = ringVisible || lastInput == input::InputDevice::Gamepad || !pointerAvailable;
+
     if (const Target* target = find(building, item)) {
         remember(building, *target);
         keepControl(*target);
     }
+
     setFocus(item, window, bounds);
     focusedGui = currentGui;
     focusedRoot = window->RootWindow;
@@ -373,12 +409,14 @@ void FocusNavigator::forget(const Gui& gui) {
     if (focusedGui == &gui) {
         focusedGui = nullptr;
     }
+
     for (Frame* frame : {&drawn, &building}) {
         for (Node& node : frame->nodes) {
             if (node.gui == &gui) {
                 node.gui = nullptr;
             }
         }
+
         for (GuiEntry& entry : frame->guis) {
             if (entry.gui == &gui) {
                 entry.gui = nullptr;
@@ -392,6 +430,7 @@ void FocusNavigator::clear() {
     if (find(drawn, g.NavId) != nullptr || find(building, g.NavId) != nullptr) {
         g.NavId = 0;
     }
+
     history.clear();
 }
 
@@ -412,10 +451,13 @@ bool FocusNavigator::answerCancel(const ImGuiWindow* window) {
     if (window == nullptr) {
         return false;
     }
+
     cancelWindows.push_back(window->RootWindow);
+
     if (!cancelPressed) {
         return false;
     }
+
     return popupAtEnd != nullptr ? popupAtEnd == window : focusedRoot == window->RootWindow;
 }
 
@@ -423,6 +465,7 @@ std::optional<math::Rect> FocusNavigator::findFocusIn(const math::Rect& area) co
     if (focusedItem == 0 || focusedRoot != ImGui::GetCurrentWindow()->RootWindow || !area.contains(focusedBounds.getCenter())) {
         return std::nullopt;
     }
+
     return focusedBounds;
 }
 
@@ -434,6 +477,7 @@ std::optional<FocusDirection> FocusNavigator::takeDirection(ImGuiID node) {
     if (!pendingDirection || pendingDirection->first != node) {
         return std::nullopt;
     }
+
     return std::exchange(pendingDirection, std::nullopt)->second;
 }
 
@@ -441,6 +485,7 @@ bool FocusNavigator::takeArrival(ImGuiID node) noexcept {
     if (node != arrival) {
         return false;
     }
+
     arrival = 0;
     return true;
 }
@@ -450,11 +495,13 @@ std::vector<std::string_view> FocusNavigator::takeNotices(ImGuiID node) {
     if (notices.empty()) {
         return names;
     }
+
     for (const auto& [target, name] : notices) {
         if (target == node) {
             names.push_back(name);
         }
     }
+
     std::erase_if(notices, [node](const auto& notice) { return notice.first == node; });
     return names;
 }
@@ -479,6 +526,7 @@ const FocusNavigator::Target* FocusNavigator::find(const Frame& frame, ImGuiID i
     if (item == 0) {
         return nullptr;
     }
+
     const auto found = std::ranges::find(frame.targets, item, &Target::id);
     return found != frame.targets.end() ? &*found : nullptr;
 }
@@ -492,6 +540,7 @@ std::optional<std::size_t> FocusNavigator::findTrap(std::optional<std::size_t> s
     while (scope && !drawn.scopes[*scope].trap) {
         scope = drawn.scopes[*scope].parent;
     }
+
     return scope;
 }
 
@@ -500,10 +549,12 @@ std::optional<std::size_t> FocusNavigator::findWrap(std::optional<std::size_t> s
         if (wrapsAlong(drawn.scopes[*scope].wrap, direction)) {
             return scope;
         }
+
         if (scope == trap) {
             break;
         }
     }
+
     return std::nullopt;
 }
 
@@ -511,11 +562,13 @@ bool FocusNavigator::isInside(const Target& target, std::optional<std::size_t> s
     if (!scope) {
         return true;
     }
+
     for (std::optional<std::size_t> current = drawn.nodes[target.node].scope; current; current = drawn.scopes[*current].parent) {
         if (current == scope) {
             return true;
         }
     }
+
     return false;
 }
 
@@ -524,6 +577,7 @@ bool FocusNavigator::isSameSpace(const Gui* first, const Gui* second) noexcept {
     if (first == nullptr || second == nullptr) {
         return false;
     }
+
     return first == second || (first->hasSharedFocus() && second->hasSharedFocus());
 }
 
@@ -544,6 +598,7 @@ const FocusNavigator::Target* FocusNavigator::search(const Target& source, const
             candidates.push_back(&target);
         }
     }
+
     const std::optional<std::size_t> found = FocusSearch::find(from, bounds, direction);
     return found ? candidates[*found] : nullptr;
 }
@@ -556,15 +611,18 @@ const FocusNavigator::Target* FocusNavigator::searchAround(const Target& source,
     if (!wrap) {
         return search(source, source.bounds, trap, direction);
     }
+
     if (const Target* ahead = search(source, source.bounds, wrap, direction)) {
         return ahead;
     }
+
     const Scope& scope = drawn.scopes[*wrap];
     const bool horizontal = direction == FocusDirection::Left || direction == FocusDirection::Right;
     if (scope.collection && horizontal == scope.horizontal) {
         pendingPaging = {scope.id, Paging{.kind = Paging::Kind::Wrap, .direction = direction}};
         return nullptr;
     }
+
     return search(source, FocusSearch::wrap(source.bounds, scope.bounds, direction), wrap, direction);
 }
 
@@ -572,6 +630,7 @@ std::optional<std::size_t> FocusNavigator::findCollection(std::optional<std::siz
     while (scope && !drawn.scopes[*scope].collection) {
         scope = drawn.scopes[*scope].parent;
     }
+
     return scope;
 }
 
@@ -581,6 +640,7 @@ const FocusNavigator::Target& FocusNavigator::prefer(const Target& source, const
     if (!scope || drawn.scopes[*scope].preferred == 0 || isInside(source, scope)) {
         return target;
     }
+
     const Target* preferred = find(drawn, drawn.scopes[*scope].preferred);
     return preferred != nullptr ? *preferred : target;
 }
@@ -592,11 +652,13 @@ const FocusNavigator::Target* FocusNavigator::findPlayArea(const Target* source)
     for (const Target& target : drawn.targets) {
         if (target.play && (gui == nullptr || drawn.nodes[target.node].gui == gui)) {
             found = &target;
+
             if (gui != nullptr) {
                 break;
             }
         }
     }
+
     return found;
 }
 
@@ -606,6 +668,7 @@ const FocusNavigator::Target* FocusNavigator::findControl(const Target& playArea
     if (const Target* remembered = find(drawn, returnControl); remembered != nullptr && drawn.nodes[remembered->node].gui == gui) {
         return remembered;
     }
+
     const auto first = std::ranges::find_if(drawn.targets, [&](const Target& target) { return !target.play && drawn.nodes[target.node].gui == gui; });
     return first != drawn.targets.end() ? &*first : nullptr;
 }
@@ -616,6 +679,7 @@ ImGuiID FocusNavigator::getTrapId(const Frame& frame, const Target& target) cons
             return frame.scopes[*scope].id;
         }
     }
+
     return 0;
 }
 
@@ -625,6 +689,7 @@ void FocusNavigator::switchFocus(const Target* source) {
     if (target == nullptr) {
         return;
     }
+
     ringVisible = true;
     navigated = true;
     apply(*target);
@@ -642,6 +707,7 @@ void FocusNavigator::move(const Target& source, FocusDirection direction) {
         pendingDirection = {node.id, direction};
         return;
     }
+
     navigated = true;
 
     // A neighbor named explicitly wins over the search, and a node that names itself keeps the focus.
@@ -649,12 +715,14 @@ void FocusNavigator::move(const Target& source, FocusDirection direction) {
     if (!neighbor.empty() && neighbor == node.name) {
         return;
     }
+
     if (!neighbor.empty()) {
         if (const Target* target = findNamed(node.gui, neighbor)) {
             apply(*target);
             return;
         }
     }
+
     if (const Target* target = searchAround(source, direction)) {
         apply(prefer(source, *target));
     }
@@ -668,19 +736,24 @@ void FocusNavigator::tab(const Target& source, bool backward) {
             peers.push_back(&target);
         }
     }
+
     // A source whose GUI was unmounted since the last frame belongs to no GUI anymore, so it has no peers to move to.
     const auto found = std::ranges::find(peers, &source);
     if (found == peers.end()) {
         return;
     }
+
     const auto position = static_cast<std::size_t>(found - peers.begin());
     const Target& next = *peers[(position + (backward ? peers.size() - 1 : 1)) % peers.size()];
+
     if (GImGui->ActiveId != 0) {
         ImGui::ClearActiveID();
     }
+
     ringVisible = true;
     navigated = true;
     apply(next);
+
     if (next.inputable) {
         activate(next);
     }
@@ -692,6 +765,7 @@ void FocusNavigator::enter(bool backward) {
     if (withGui == drawn.targets.rend()) {
         return;
     }
+
     const Gui* gui = drawn.nodes[withGui->node].gui;
     const Target* chosen = nullptr;
     for (const Target& target : drawn.targets) {
@@ -699,9 +773,11 @@ void FocusNavigator::enter(bool backward) {
             chosen = &target;
         }
     }
+
     ringVisible = true;
     navigated = true;
     apply(*chosen);
+
     if (chosen->inputable) {
         activate(*chosen);
     }
@@ -722,6 +798,7 @@ bool FocusNavigator::focusTarget(ImGuiID item) {
     if (target == nullptr) {
         return false;
     }
+
     ringVisible = true;
     apply(*target);
     return true;
@@ -732,6 +809,7 @@ bool FocusNavigator::pressTarget(ImGuiID item) {
     if (target == nullptr) {
         return false;
     }
+
     ringVisible = true;
     apply(*target);
     activate(*target);
@@ -743,12 +821,14 @@ bool FocusNavigator::stepTarget(ImGuiID item, FocusDirection direction) {
     if (target == nullptr) {
         return false;
     }
+
     ringVisible = true;
     apply(*target);
     const Node& node = drawn.nodes[target->node];
     if ((node.usedDirections & toBit(direction)) != 0) {
         pendingDirection = {node.id, direction};
     }
+
     return true;
 }
 
@@ -771,9 +851,11 @@ void FocusNavigator::cancel(const Target* source) {
             return;
         }
     }
+
     if (drawn.guis.empty()) {
         return;
     }
+
     const Gui* gui = node != nullptr ? node->gui : drawn.guis.back().gui;
     const auto entry = std::ranges::find(drawn.guis, gui, &GuiEntry::gui);
     if (entry != drawn.guis.end() && entry->root != 0 && (source == nullptr || source->window->RootWindow == entry->window)) {
@@ -787,10 +869,12 @@ void FocusNavigator::remember(const Frame& frame, const Target& next) {
     if (current == nullptr || current->id == next.id) {
         return;
     }
+
     const bool elsewhere = !isSameSpace(drawn.nodes[current->node].gui, frame.nodes[next.node].gui) || current->window->RootWindow != next.window->RootWindow || getTrapId(drawn, *current) != getTrapId(frame, next);
     if (!elsewhere) {
         return;
     }
+
     std::erase(history, current->id);
     history.push_back(current->id);
     if (history.size() > kHistoryLimit) {
@@ -809,14 +893,17 @@ void FocusNavigator::keepControl(const Target& next) {
 
 void FocusNavigator::restore() {
     ImGuiContext& g = *GImGui;
+
     while (ringVisible && !history.empty()) {
         const ImGuiID item = history.back();
         history.pop_back();
+
         if (const Target* target = find(drawn, item)) {
             setFocus(target->id, target->window, target->bounds);
             return;
         }
     }
+
     g.NavId = 0;
 }
 
@@ -832,10 +919,12 @@ void FocusNavigator::unpark() {
             ++entry;
             continue;
         }
+
         const Target* target = find(drawn, entry->second);
         if (target != nullptr && find(drawn, g.NavId) == nullptr) {
             setFocus(target->id, target->window, target->bounds);
         }
+
         entry = parked.erase(entry);
     }
 }
@@ -846,11 +935,13 @@ void FocusNavigator::focusPopup() {
     if (g.OpenPopupStack.Size == 0) {
         return;
     }
+
     ImGuiWindow* popup = g.OpenPopupStack.back().Window;
     const Target* focused = find(drawn, g.NavId);
     if (!isManaged(popup) || (focused != nullptr && focused->window->RootWindow == popup)) {
         return;
     }
+
     const auto first = std::ranges::find_if(drawn.targets, [popup](const Target& target) { return target.window->RootWindow == popup; });
     if (first != drawn.targets.end()) {
         remember(drawn, *first);

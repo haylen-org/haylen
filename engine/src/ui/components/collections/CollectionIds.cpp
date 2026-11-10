@@ -9,6 +9,7 @@ namespace haylen::ui {
 void CollectionIds::assign(std::span<const std::string_view> values) {
     ids.clear();
     ids.reserve(values.size());
+
     for (const std::string_view id : values) {
         add(id);
     }
@@ -16,6 +17,7 @@ void CollectionIds::assign(std::span<const std::string_view> values) {
 
 void CollectionIds::check(std::span<const std::string_view> added, std::span<const std::string_view> leaving, std::string_view collection) const {
     CollectionDiff::checkUnique(added, collection);
+
     for (const std::string_view id : added) {
         if (!id.empty() && ids.contains(id) && std::ranges::find(leaving, id) == leaving.end()) {
             CollectionDiff::failRepeated(id, collection);

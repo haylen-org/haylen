@@ -16,6 +16,7 @@ std::size_t CollectionCell::requirePart(std::string_view part) const {
     if (!node) {
         throw std::invalid_argument("The template of the type \"" + type.getName() + "\" has no part named \"" + std::string(part) + "\".");
     }
+
     return *node;
 }
 
@@ -41,6 +42,7 @@ std::optional<math::Rect> CollectionCell::getBounds(const Context& context, std:
     if (node.getDrawnFrame() == 0 || node.getDrawnFrame() + 1 < context.getFrame()) {
         return std::nullopt;
     }
+
     return node.getBounds();
 }
 

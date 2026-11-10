@@ -9,6 +9,7 @@ std::size_t GridLayout::fitLanes(float crossLength, float minimum, float gap) no
     if (minimum <= 0.0F) {
         return 1;
     }
+
     const float fitting = std::floor((crossLength + gap) / (minimum + gap));
     return static_cast<std::size_t>(std::clamp(fitting, 1.0F, static_cast<float>(kMaxLanes)));
 }
@@ -21,6 +22,7 @@ void GridLayout::arrange(const Input& input, std::size_t firstChanged) {
     crossLength = input.crossLength;
     gap = input.gap;
     laneLength = std::max(0.0F, (crossLength - gap * static_cast<float>(lanes - 1)) / static_cast<float>(lanes));
+
     if (std::ranges::all_of(input.spans, [](std::uint16_t span) { return span == 1; })) {
         spans.clear();
         lineStarts.clear();
@@ -34,6 +36,7 @@ void GridLayout::arrange(const Input& input, std::size_t firstChanged) {
         kept = found == lineStarts.begin() ? 0 : static_cast<std::size_t>(found - lineStarts.begin() - 1);
         start = lineStarts[kept];
     }
+
     spans.assign(input.spans.begin(), input.spans.end());
     lineStarts.resize(kept);
 
@@ -44,6 +47,7 @@ void GridLayout::arrange(const Input& input, std::size_t firstChanged) {
             lineStarts.push_back(index);
             used = 0;
         }
+
         used += span;
     }
 }
@@ -61,6 +65,7 @@ std::size_t GridLayout::getLine(std::size_t index) const {
     if (isUniform()) {
         return index / lanes;
     }
+
     const auto found = std::ranges::upper_bound(lineStarts, index);
     return found == lineStarts.begin() ? 0 : static_cast<std::size_t>(found - lineStarts.begin() - 1);
 }
@@ -69,6 +74,7 @@ std::size_t GridLayout::getFirstIndex(std::size_t line) const {
     if (isUniform()) {
         return std::min(line * lanes, count);
     }
+
     return line < lineStarts.size() ? lineStarts[line] : count;
 }
 
@@ -80,8 +86,10 @@ CollectionLayout::Slot GridLayout::getSlot(std::size_t index) const {
         for (std::size_t before = lineStarts[getLine(index)]; before < index; ++before) {
             position += getSpan(before);
         }
+
         span = getSpan(index);
     }
+
     const auto start = static_cast<float>(position);
     const auto lanesSpanned = static_cast<float>(span);
     return {.crossStart = start * (laneLength + gap), .crossLength = lanesSpanned * laneLength + (lanesSpanned - 1.0F) * gap};

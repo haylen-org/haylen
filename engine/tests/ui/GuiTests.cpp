@@ -36,6 +36,7 @@ class GuiTest : public ::testing::Test {
         } catch (const std::exception& error) {
             return error.what();
         }
+
         return {};
     }
 
@@ -76,6 +77,7 @@ TEST_F(GuiTest, BuildsTreesWithUniqueIds) {
         for (int level = 1; level < levels; ++level) {
             tree = R"({"kind": "stack", "children": [)" + tree + "]}";
         }
+
         return tree;
     };
     // clang-format on
@@ -121,6 +123,7 @@ TEST_F(GuiTest, ReplacesChildrenWithinTheLimitsOfTheGui) {
     for (std::size_t depth = 1; depth < Gui::kMaxDepth; ++depth) {
         chain.replaceChildren(std::to_string(depth - 1), column(depth));
     }
+
     EXPECT_NE(captureError([&] { chain.replaceChildren(std::to_string(Gui::kMaxDepth - 1), column(Gui::kMaxDepth)); }).find("limited to 64 levels"), std::string::npos);
 
     // clang-format off
@@ -129,6 +132,7 @@ TEST_F(GuiTest, ReplacesChildrenWithinTheLimitsOfTheGui) {
         for (std::size_t index = 0; index < count; ++index) {
             list.push_back(named ? core::Json{{"kind", "label"}, {"id", "row" + std::to_string(index)}} : core::Json{{"kind", "label"}});
         }
+
         return list;
     };
     // clang-format on
@@ -212,9 +216,11 @@ TEST(GuiReplaceTest, DrawsReplacedChildrenInTheFrameTheyArrive) {
         for (const graphics2d::Shape& shape : backend.getShapes()) {
             drawn.push_back("shape " + std::to_string(shape.bounds.x) + " " + std::to_string(shape.bounds.y) + " " + std::to_string(shape.bounds.width) + " " + std::to_string(shape.bounds.height) + " " + shape.color.toHex());
         }
+
         for (const ui::Backend::Text& text : backend.getTexts()) {
             drawn.push_back("text " + std::string(backend.getContent(text)) + " " + std::to_string(text.origin.x) + " " + std::to_string(text.origin.y));
         }
+
         return drawn;
     };
     // clang-format on

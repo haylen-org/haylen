@@ -209,6 +209,7 @@ TEST_F(UiLuaTest, HandsEventValuesAndListenersToLua) {
         getEngine().handleEvent({.type = type, .key = input::Key::Enter});
         fixture.frames(1);
     }
+
     fixture.frames(2);
     click("menu", "slots");
     EXPECT_EQ(fixture.lua("return table.concat(seen, ',')"), "quit leave,slots select slot1");
@@ -518,6 +519,7 @@ TEST(UiLuaThemeTest, ScalesTheTextWithTheSystemUnlessTheAppSetsAScale) {
     fixture.runLua("ui.setTextScale('system')");
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return ui.textScale()"), "2.0");
+
     for (const char* value : {"0.25", "5", "'large'", "nil"}) {
         EXPECT_NE(fixture.lua(std::string("ui.setTextScale(") + value + ")").find("The text scale of the UI is a number from 0.5 to 4, or \"system\" to follow the text size of the system."), std::string::npos) << value;
     }

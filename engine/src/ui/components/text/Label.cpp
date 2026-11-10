@@ -21,6 +21,7 @@ void Label::readProperties(PropertyReader& reader) {
         reader.read("outline", outlineColor);
         outline = outlineColor;
     }
+
     reader.read("outlineWidth", outlineWidth, 0.0F, 16.0F);
     reader.read("gradient", gradient);
     reader.read("minScale", minScale, 0.25F, 1.0F);
@@ -37,6 +38,7 @@ void Label::render(Context& context, const math::Rect& bounds) {
         Typography::drawParagraph(context, font, bounds, context.getColor(color.value_or(Theme::Color::Text)), full, textAlign, {.outline = outline, .outlineWidth = outlineWidth, .gradient = gradient}, 1.0F, minScale);
         return;
     }
+
     std::string_view shown = full;
     const float natural = Typography::measure(context, font, full).x;
     const float scale = natural > bounds.width ? std::max(minScale, bounds.width / natural) : 1.0F;
@@ -50,10 +52,13 @@ void Label::render(Context& context, const math::Rect& bounds) {
             if (end < full.size()) {
                 lines += '\n';
             }
+
             start = end + 1;
         }
+
         shown = lines;
     }
+
     const float height = Typography::measureParagraph(context, font, shown, -1.0F).y * scale;
     const math::Rect block{bounds.x, std::floor(bounds.y + (bounds.height - height) * 0.5F), bounds.width, height};
     Typography::drawParagraph(context, font, block, context.getColor(color.value_or(Theme::Color::Text)), shown, textAlign, {.outline = outline, .outlineWidth = outlineWidth, .gradient = gradient}, scale);

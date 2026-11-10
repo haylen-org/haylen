@@ -33,20 +33,25 @@ void AccessibilityTree::enter(Context& context, const Component& component, ImGu
         levels.push_back({.firstTarget = context.getFocus().getTargetCount()});
         return;
     }
+
     if (common.accessibilityRole) {
         element.role = *common.accessibilityRole;
     }
+
     if (!common.accessibilityLabel.isEmpty()) {
         element.label.assign(context.getText(common.accessibilityLabel));
     }
+
     if (!common.accessibilityHint.isEmpty()) {
         element.hint.assign(context.getText(common.accessibilityHint));
     } else if (!common.tooltip.isEmpty()) {
         element.hint.assign(context.getText(common.tooltip));
     }
+
     if (!common.enabled) {
         element.states |= Element::Disabled;
     }
+
     levels.push_back({.element = index, .firstTarget = context.getFocus().getTargetCount()});
 }
 
@@ -54,20 +59,25 @@ void AccessibilityTree::enter(Context& context, const Component& component, ImGu
 void AccessibilityTree::leave(const FocusNavigator& focus) {
     const Level level = levels.back();
     levels.pop_back();
+
     if (!level.element) {
         return;
     }
+
     Element& element = elements[*level.element];
     if (element.actions == 0) {
         return;
     }
+
     if (targets[*level.element] == 0 && focus.getTargetCount() > level.firstTarget) {
         targets[*level.element] = focus.getTargetId(level.firstTarget);
     }
+
     if (targets[*level.element] == 0) {
         element.actions = 0;
         return;
     }
+
     element.actions |= Element::Focus;
 }
 
@@ -75,6 +85,7 @@ void AccessibilityTree::addPart(ImGuiID target, const math::Rect& bounds, Elemen
     if (!enabled || (!levels.empty() && levels.back().hidden)) {
         return;
     }
+
     Element& element = add(target, bounds);
     element.role = role;
     element.label.assign(label);
@@ -89,6 +100,7 @@ void AccessibilityTree::endFrame(ImGuiID focusedItem) {
     if (focusedItem == 0) {
         return;
     }
+
     for (std::size_t index = 0; index < count; ++index) {
         if (targets[index] == focusedItem) {
             elements[index].states |= Element::Focused;
@@ -110,9 +122,11 @@ void AccessibilityTree::appendParts(std::string& text, std::initializer_list<std
         if (part.empty()) {
             continue;
         }
+
         if (text.size() > start) {
             text.append(", ");
         }
+
         text.append(part);
     }
 }
@@ -123,6 +137,7 @@ std::optional<ImGuiID> AccessibilityTree::findTarget(std::uint64_t element) cons
             return targets[index];
         }
     }
+
     return std::nullopt;
 }
 
@@ -131,6 +146,7 @@ Element& AccessibilityTree::add(std::uint64_t id, const math::Rect& bounds) {
         elements.emplace_back();
         targets.push_back(0);
     }
+
     Element& element = elements[count];
     element.id = id;
     element.parent = getParent();
@@ -152,6 +168,7 @@ std::uint64_t AccessibilityTree::getParent() const noexcept {
             return elements[*level->element].id;
         }
     }
+
     return 0;
 }
 

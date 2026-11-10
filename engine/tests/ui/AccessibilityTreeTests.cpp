@@ -26,11 +26,13 @@ class AccessibilityTreeTest : public ::testing::Test {
         if (trees.empty()) {
             return nullptr;
         }
+
         for (const Element& element : trees.back().elements) {
             if (element.label == label) {
                 return &element;
             }
         }
+
         return nullptr;
     }
 
@@ -100,6 +102,7 @@ TEST_F(AccessibilityTreeTest, DescribesEveryKindWithItsRoleLabelValueAndState) {
     for (const Element& element : fixture.host().getAccessibilityTrees().back().elements) {
         images += element.role == Element::Role::Image ? 1U : 0U;
     }
+
     EXPECT_EQ(images, 1U);
 }
 

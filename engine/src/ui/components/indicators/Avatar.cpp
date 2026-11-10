@@ -32,6 +32,7 @@ void Avatar::render(Context& context, const math::Rect& bounds) {
         list.AddImageRounded(context.getTextureReference(texture), ImGuiConverter::toImVec2(circle.getMin()), ImGuiConverter::toImVec2(circle.getMax()), {0.0F, 0.0F}, {1.0F, 1.0F}, ImGuiConverter::toImU32(math::Color::white()), side * 0.5F);
         return;
     }
+
     Surfaces::fill(context, circle, context.getColor(Theme::Color::AccentBackground), side * 0.5F);
     Typography::drawAligned(context, Theme::Font::Button, circle, context.getColor(Theme::Color::AccentText), getInitials(context.getText(name)), Alignment::Center);
 }
@@ -49,6 +50,7 @@ std::string Avatar::getInitials(std::string_view fullName) {
             start = false;
         }
     }
+
     return letters;
 }
 

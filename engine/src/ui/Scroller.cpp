@@ -14,6 +14,7 @@ double Scroller::stretch(double pull) const noexcept {
     if (view <= 0.0) {
         return 0.0;
     }
+
     return std::copysign(view * (1.0 - 1.0 / (std::fabs(pull) * kElasticity / view + 1.0)), pull);
 }
 
@@ -21,6 +22,7 @@ double Scroller::unstretch(double overscroll) const noexcept {
     if (view <= 0.0) {
         return 0.0;
     }
+
     const double reach = std::min(std::fabs(overscroll), view * 0.999);
     return std::copysign(reach * view / (kElasticity * (view - reach)), overscroll);
 }
@@ -36,6 +38,7 @@ void Scroller::setRange(double maximumValue, double viewLength) noexcept {
     maximum = std::max(0.0, maximumValue);
     view = std::max(0.0, viewLength);
     target = clamp(target);
+
     if (motion == Motion::Resting) {
         offset = clamp(offset);
     } else if (motion == Motion::Flinging && offset != clamp(offset)) {
@@ -57,6 +60,7 @@ void Scroller::jumpTo(double value) noexcept {
 void Scroller::shift(double delta) noexcept {
     offset += delta;
     target = clamp(target + delta);
+
     if (motion == Motion::Resting) {
         offset = clamp(offset);
     }
@@ -67,9 +71,11 @@ void Scroller::drag(double delta, float seconds) noexcept {
         motion = Motion::Dragging;
         velocity = 0.0;
     }
+
     // The speed follows the content, which moves less than the finger past an end, so a release there springs back without flinging further out.
     const double before = offset;
     pull(delta);
+
     if (seconds > 0.0F) {
         velocity = velocity * 0.4 + (offset - before) / static_cast<double>(seconds) * 0.6;
     }
@@ -90,6 +96,7 @@ void Scroller::follow(const Context::WheelScroll& wheel, double toward, float se
         if (delta != 0.0 || !wheel.lifted) {
             drag(delta, seconds);
         }
+
         break;
     case Context::WheelScroll::Motion::Free:
         jumpTo(offset + delta);
@@ -116,6 +123,7 @@ void Scroller::release() noexcept {
 
 void Scroller::animateTo(double value) noexcept {
     target = clamp(value);
+
     if (motion != Motion::Animating) {
         velocity = motion == Motion::Dragging ? 0.0 : velocity;
         motion = Motion::Animating;
@@ -144,6 +152,7 @@ void Scroller::spring(double goal, float seconds) noexcept {
 
 bool Scroller::update(float seconds) noexcept {
     const double before = offset;
+
     switch (motion) {
     case Motion::Flinging: {
         const double decay = std::exp(-kFriction * static_cast<double>(seconds));
@@ -154,6 +163,7 @@ bool Scroller::update(float seconds) noexcept {
         } else if (std::fabs(velocity) < kStopSpeed) {
             stop();
         }
+
         break;
     }
     case Motion::Returning:

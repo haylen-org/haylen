@@ -17,6 +17,7 @@ float Scaling::resolve(float pixelsPerUnit, float pixelsPerPoint, math::Vec2 vis
     if (mode == Mode::Design || pixelsPerUnit <= 0.0F) {
         return factor;
     }
+
     const float physical = pixelsPerPoint * kPointsPerUnit * factor / pixelsPerUnit;
     return std::min(physical, std::min(visibleSize.x, visibleSize.y) / kMinimumShortSide);
 }

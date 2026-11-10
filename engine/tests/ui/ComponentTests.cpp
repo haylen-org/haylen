@@ -134,6 +134,7 @@ class ComponentTest : public ::testing::Test {
         for (const Event& event : events) {
             list.push_back(event.id + ":" + event.name);
         }
+
         return list;
     }
 
@@ -455,6 +456,7 @@ TEST_F(ComponentTest, ScrollsTheContentOfDialogsTallerThanTheScreen) {
     for (int index = 0; index < 30; ++index) {
         buttons += std::string(index == 0 ? "" : ", ") + R"({"kind": "button", "id": "b)" + std::to_string(index) + R"(", "text": "Rule"})";
     }
+
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "dialog", "id": "rules", "open": true, "title": "Rules", "buttons": [{"id": "ok", "text": "OK"}], "children": [)" + buttons + "]}]}");
     frames(2);
     const math::Rect dialog = getBounds(*gui, "rules");
@@ -478,6 +480,7 @@ TEST_F(ComponentTest, ScrollsAScrollToAnOffsetOrANodeOnCommand) {
     for (int index = 1; index <= 100; ++index) {
         lines.push_back({{"kind", "label"}, {"id", "line-" + std::to_string(index)}, {"text", "Line " + std::to_string(index)}});
     }
+
     const core::Json tree = {{"kind", "scroll"}, {"id", "log"}, {"scrollbar", false}, {"children", {{{"kind", "column"}, {"gap", 0}, {"children", lines}}}}};
     auto gui = mount(tree.dump());
     Context& context = getUi().getContext();
@@ -606,15 +609,18 @@ TEST_F(ComponentTest, WrapsTheLinesOfATextArea) {
         if (!content.starts_with("The tide")) {
             continue;
         }
+
         drawn = true;
         const std::shared_ptr<const text::Layout> laid = text.family->layout(content, text.style);
         EXPECT_GT(laid->lines.size(), 2U);
+
         for (const text::Layout::Line& line : laid->lines) {
             const math::Rect box = line.box.translated(text.origin);
             EXPECT_GE(box.x, field.x);
             EXPECT_LE(box.getRight(), field.getRight());
         }
     }
+
     EXPECT_TRUE(drawn);
 }
 
@@ -647,6 +653,7 @@ TEST_F(ComponentTest, StacksTheActionsOfANarrowSettingsForm) {
     const math::Rect defaults = getBounds(*gui, "defaults");
     EXPECT_LT(save.getBottom(), cancel.y);
     EXPECT_LT(cancel.getBottom(), defaults.y);
+
     for (const math::Rect& action : {save, cancel, defaults}) {
         EXPECT_EQ(action.x, save.x);
         EXPECT_EQ(action.width, save.width);
@@ -663,6 +670,7 @@ TEST_F(ComponentTest, DrawsOnlyTheRowsOfAScrolledListInView) {
         for (int index = 0; index < rows; ++index) {
             items += std::string(index == 0 ? "" : ", ") + R"({"id": "i)" + std::to_string(index) + R"(", "text": "Row )" + std::to_string(index) + R"("})";
         }
+
         auto gui = mount(R"({"kind": "scroll", "height": 300, "align": "start", "children": [{"kind": "list", "id": "list", "items": [)" + items + "]}]}");
         const int drawn = countDrawn();
         getUi().unmount(*gui);
@@ -683,6 +691,7 @@ TEST_F(ComponentTest, DrawsAFlatStickWithARaisedKnob) {
         rims += shape.borderColor == theme.getColor(Theme::Color::Accent) && shape.bounds.width == 90.0F ? 1 : 0;
         rings += shape.borderWidth > 0.0F && shape.bounds.width == 110.0F ? 1 : 0;
     }
+
     EXPECT_EQ(rims, 1);
     EXPECT_EQ(rings, 1);
 }
@@ -803,6 +812,7 @@ TEST_F(ComponentTest, PlacesTheRingOfAStickByItsMode) {
     for (const auto& [finger, id] : {std::pair{1U, "fixed"}, std::pair{2U, "floating"}, std::pair{3U, "following"}}) {
         touch(platform::Event::Type::TouchBegan, finger, getBounds(*gui, id).getMin() + start);
     }
+
     frames(2);
     EXPECT_NEAR(controls.getStick("walk").x, -1.0F, 0.01F);
     EXPECT_EQ(controls.getStick("aim"), math::Vec2());
@@ -812,12 +822,15 @@ TEST_F(ComponentTest, PlacesTheRingOfAStickByItsMode) {
     for (const auto& [finger, id] : {std::pair{2U, "floating"}, std::pair{3U, "following"}}) {
         touch(platform::Event::Type::TouchMoved, finger, getBounds(*gui, id).getMin() + start + math::Vec2{150.0F, 0.0F});
     }
+
     frames(2);
     EXPECT_NEAR(controls.getStick("aim").x, 1.0F, 0.01F);
     EXPECT_NEAR(controls.getStick("look").x, 1.0F, 0.01F);
+
     for (const auto& [finger, id] : {std::pair{2U, "floating"}, std::pair{3U, "following"}}) {
         touch(platform::Event::Type::TouchMoved, finger, getBounds(*gui, id).getMin() + start + math::Vec2{100.0F, 0.0F});
     }
+
     frames(2);
     EXPECT_NEAR(controls.getStick("aim").x, 1.0F, 0.01F);
     EXPECT_NEAR(controls.getStick("look").x, 0.0F, 0.01F);
@@ -970,6 +983,7 @@ TEST_F(ComponentTest, KeepsPressesTheInterfaceAnswersFromActions) {
             frames();
             reached = reached || getEngine().getActions().isDown(action);
         }
+
         event.type = platform::Event::Type::KeyUp;
         getEngine().handleEvent(event);
         frames();
@@ -984,6 +998,7 @@ TEST_F(ComponentTest, KeepsPressesTheInterfaceAnswersFromActions) {
             frames();
             reached = reached || getEngine().getActions().isDown(action);
         }
+
         fixture.host().setGamepad(0, input::GamepadState{.connected = true});
         frames();
         return reached;
@@ -1159,10 +1174,12 @@ TEST_F(ComponentTest, DrawsChoiceLabelsWholeAtTheirMeasuredSize) {
             const std::string node = R"({"kind": ")" + kind + R"(", "text": ")" + text + R"(")";
             EXPECT_EQ(count(node + R"(, "align": "start"})"), count(node + R"(, "align": "stretch"})")) << kind << " " << text;
         }
+
         // A label wider than a cramped choice wraps onto more lines and still draws every letter.
         const std::string cramped = R"({"kind": ")" + kind + R"(", "text": "Fullscreen", "width": 130)";
         EXPECT_EQ(count(cramped + "}"), count(cramped + R"(, "width": 900})")) << kind;
     }
+
     EXPECT_EQ(count(R"({"kind": "statusIndicator", "text": "State: open", "align": "start"})"), count(R"({"kind": "statusIndicator", "text": "State: open", "align": "stretch"})"));
     EXPECT_EQ(count(R"({"kind": "radioGroup", "horizontal": true, "items": [{"id": "a", "text": "Music"}, {"id": "b", "text": "Spin"}]})"), count(R"({"kind": "radioGroup", "items": [{"id": "a", "text": "Music"}, {"id": "b", "text": "Spin"}]})"));
 }
@@ -1239,6 +1256,7 @@ TEST_F(ComponentTest, GrowsChildrenIntoTheRoomTheirParentLeaves) {
     for (int index = 0; index < 60; ++index) {
         rows += std::string(index == 0 ? "" : ", ") + R"({"kind": "label", "text": "Row )" + std::to_string(index) + R"("})";
     }
+
     // clang-format off
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "panel", "id": "panel", "grow": 1, "children": [
         {"kind": "label", "text": "Title"},
@@ -1270,6 +1288,7 @@ TEST_F(ComponentTest, AcceptsEmptyObjectsAsEmptyLists) {
     // clang-format on
     EXPECT_EQ(getEngine().getError(), nullptr);
     EXPECT_THROW(gui->set("list", core::Json::parse(R"({"items": {"id": "a"}})")), std::invalid_argument);
+
     try {
         gui->set("list", core::Json::parse(R"({"items": [{"id": "a"}, {"id": "a"}]})"));
         FAIL() << "A repeated item id was accepted.";
@@ -1332,6 +1351,7 @@ class ComponentAssetTest : public ComponentTest {
                     current.clear();
                     return;
                 }
+
                 current = quad.label.empty() ? current : std::string(quad.label);
                 const math::Rect bounds = math::Geometry::bounds(quad.corners);
                 const auto found = drawn.find(current);
@@ -1401,6 +1421,7 @@ TEST_F(ComponentAssetTest, DrawsCarouselArrowsAbovePagesThatFillIt) {
         for (int index = 0; index < commands.Size; ++index) {
             found = (shapes ? commands[index].UserCallback != nullptr : commands[index].ElemCount > 0) ? index : found;
         }
+
         return found;
     };
     // clang-format on
@@ -1500,11 +1521,13 @@ TEST_F(ComponentAssetTest, KeepsTheTrackOfASwitchStillWhileItTurns) {
         const auto turning = drawFrame();
         ASSERT_TRUE(turning.contains("ui/panel.png"));
         EXPECT_EQ(turning.at("ui/panel.png"), track) << frame;
+
         if (turning.contains("ui/fill.png")) {
             EXPECT_EQ(turning.at("ui/fill.png"), groove) << frame;
             ++faded;
         }
     }
+
     EXPECT_GT(faded, 0);
     EXPECT_FALSE(drawFrame().contains("ui/fill.png"));
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"sound:change"}));

@@ -29,6 +29,7 @@ std::string_view TextEditor::writeBullets(std::string_view value, std::string& b
     for (std::size_t index = core::Utf8::countCodePoints(value); index > 0; --index) {
         bullets += kBullet;
     }
+
     return bullets;
 }
 
@@ -56,14 +57,17 @@ void TextEditor::follow(math::Vec2& scroll, const TextFieldLayout& field, const 
         } else if (caret.getBottom() > area.getBottom()) {
             scroll.y += caret.getBottom() - area.getBottom();
         }
+
         scroll = {0.0F, std::clamp(scroll.y, 0.0F, std::max(0.0F, size.y - area.height))};
         return;
     }
+
     if (caret.x > area.getRight() - kCaretMargin) {
         scroll.x -= caret.x - (area.getRight() - kCaretMargin);
     } else if (caret.x < area.x + kCaretMargin) {
         scroll.x += area.x + kCaretMargin - caret.x;
     }
+
     const float overflow = std::max(0.0F, size.x + kCaretMargin * 2.0F - area.width);
     scroll.x = rightToLeft ? std::clamp(scroll.x, 0.0F, overflow) : std::clamp(scroll.x, -overflow, 0.0F);
 }
@@ -73,6 +77,7 @@ int TextEditor::callback(ImGuiInputTextCallbackData* data) {
     if (data->EventFlag != ImGuiInputTextFlags_CallbackEdit) {
         placeCaret(*data, editing);
     }
+
     editing.session->synchronize(*data);
     return 0;
 }
@@ -120,9 +125,11 @@ void TextEditor::placeCaret(ImGuiInputTextCallbackData& data, const Editing& edi
             select(toBytes(begin), toBytes(end));
             return;
         }
+
         select(io.KeyShift && editing.anchor >= 0 ? editing.anchor : caret, caret);
         return;
     }
+
     if (dragged) {
         select(data.SelectionStart, toBytes(field.hitTest(pointer - origin)));
         return;
@@ -178,9 +185,11 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     const ImVec4 hidden(0.0F, 0.0F, 0.0F, 0.0F);
     ImGui::SetCursorScreenPos(ImGuiConverter::toImVec2(inner.getMin()));
     ImGui::PushFont(context.getFont(Theme::Font::Body), fontSize);
+
     for (const ImGuiCol color : {ImGuiCol_FrameBg, ImGuiCol_Text, ImGuiCol_TextDisabled, ImGuiCol_TextSelectedBg, ImGuiCol_InputTextCursor, ImGuiCol_NavCursor}) {
         ImGui::PushStyleColor(color, hidden);
     }
+
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {paddingX, paddingY});
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0F);
     ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, 0.0F);
@@ -204,6 +213,7 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     if (password) {
         flags |= ImGuiInputTextFlags_Password;
     }
+
     bool submitted = false;
     if (fingerPress) {
         if (ImGui::InvisibleButton("##press", ImGuiConverter::toImVec2(inner.getSize()))) {
@@ -217,7 +227,9 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
         ImGui::SetNextItemWidth(inner.width);
         submitted = ImGui::InputText("##field", &value, flags | ImGuiInputTextFlags_EnterReturnsTrue, &callback, &editing);
     }
+
     const bool edited = ImGui::IsItemEdited();
+
     if (ImGui::IsItemActive()) {
         context.keepDrag(ImGui::GetItemID());
     }
@@ -227,6 +239,7 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
         submitted = submitted || action == platform::TextInput::Action::Submit;
         ImGui::ClearActiveID();
     }
+
     ImGui::PopStyleVar(3);
     ImGui::PopStyleColor(6);
     ImGui::PopFont();
@@ -245,28 +258,34 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
         const Context::WheelScroll wheel = context.takeWheel(id, bounds, false, scroll.y, overflow, hovered);
         scroll.y = std::clamp(scroll.y - wheel.distance - wheel.momentum, 0.0F, overflow);
     }
+
     if (state != nullptr) {
         follow(scroll, *field, field->getCaret(toPosition(state->GetCursorPos())).translated(getOrigin(*laid, area, scroll, rightToLeft, multiline, options.centered)), area, rightToLeft, multiline);
     } else if (!multiline) {
         scroll = {};
     }
+
     if (barShown) {
         const float radius = Surfaces::getInnerRadius(context.getMetric(Theme::Metric::ControlRadius), rightToLeft ? frame.left : frame.right);
         if (const std::optional<double> offset = options.scrollbar->interact(context, barArea, false, false, scroll.y, overflow, area.height, radius)) {
             scroll.y = static_cast<float>(*offset);
         }
     }
+
     storage.SetFloat(scrollX, scroll.x);
     storage.SetFloat(scrollY, scroll.y);
+
     if (multiline) {
         storage.SetBool(overflowed, overflow > 0.0F);
     }
+
     const math::Vec2 origin = getOrigin(*laid, area, scroll, rightToLeft, multiline, options.centered);
 
     // Lines that continue past the area fade out along its edges, as the content of the other areas that scroll does.
     ImDrawList& list = *ImGui::GetWindowDrawList();
     list.PushClipRect(ImGuiConverter::toImVec2(inner.getMin()), ImGuiConverter::toImVec2(inner.getMax()), true);
     const bool faded = multiline && ScrollFade::begin(context, inner, false, scroll.y, overflow - scroll.y);
+
     if (state != nullptr && state->HasSelection()) {
         const std::size_t first = toPosition(std::min(state->GetSelectionStart(), state->GetSelectionEnd()));
         const std::size_t last = toPosition(std::max(state->GetSelectionStart(), state->GetSelectionEnd()));
@@ -284,6 +303,7 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
         const float x = isCentered(size, area, multiline, options.centered) ? area.x + (area.width - size.x) * 0.5F : rightToLeft ? area.getRight() - size.x : area.x;
         const math::Vec2 start{std::floor(x), multiline ? area.y : area.y + (area.height - size.y) * 0.5F};
         Typography::drawLayout(context, Theme::Font::Body, options.placeholder, ink, start);
+
         if (!options.placeholder.empty()) {
             placeholderEdge = rightToLeft ? start.x + size.x : start.x;
         }
@@ -299,10 +319,12 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
         if (placeholderEdge) {
             caret.x = *placeholderEdge + (rightToLeft ? width * 1.5F : -width * 1.5F);
         }
+
         const bool lit = !ImGui::GetIO().ConfigInputTextCursorBlink || state->CursorAnim <= 0.0F || std::fmod(state->CursorAnim, 1.20F) <= 0.80F;
         if (lit) {
             Surfaces::fill(context, {caret.x - width * 0.5F, caret.y, width, caret.height}, context.getColor(Theme::Color::Caret), 0.0F);
         }
+
         session.setCaret({caret.x, caret.y, 1.0F, caret.height});
         if (!password) {
             drawComposition(context, session, id, *field, origin);
@@ -312,7 +334,9 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     if (faded) {
         ScrollFade::end(context);
     }
+
     list.PopClipRect();
+
     if (barShown) {
         options.scrollbar->draw(context, 1.0F);
     }
@@ -327,6 +351,7 @@ void TextEditor::drawComposition(Context& context, const TextSession& session, I
     if (!composition) {
         return;
     }
+
     const float thickness = std::max(1.0F, ImGui::GetFontSize() / 14.0F);
     for (const math::Rect& box : field.getSelection(static_cast<std::size_t>(composition->first), static_cast<std::size_t>(composition->second))) {
         const math::Rect placed = box.translated(origin);
@@ -339,10 +364,12 @@ bool TextEditor::limit(std::string& value, int maxLength) {
     if (maxLength <= 0) {
         return false;
     }
+
     const std::size_t end = core::Utf8::getOffset(value, static_cast<std::size_t>(maxLength));
     if (end >= value.size()) {
         return false;
     }
+
     value.resize(end);
     return true;
 }

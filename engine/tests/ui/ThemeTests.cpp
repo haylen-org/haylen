@@ -137,12 +137,14 @@ TEST(ThemeTest, RejectsBrokenThemes) {
     EXPECT_THROW(read(R"([1])"), std::invalid_argument);
     EXPECT_THROW(read(R"({"colors": {}})"), std::invalid_argument);
     EXPECT_THROW(read(R"({"name": "x", "shadows": {}})"), std::invalid_argument);
+
     try {
         (void)read(R"({"name": "x", "imageFilter": "blurry"})");
         ADD_FAILURE() << "An unknown image filter was accepted.";
     } catch (const std::invalid_argument& error) {
         EXPECT_STREQ(error.what(), "The image filter of the theme must be \"nearest\" or \"linear\".");
     }
+
     EXPECT_THROW(read(R"({"name": "x", "imageFilter": 1})"), std::invalid_argument);
     EXPECT_THROW(read(R"({"name": "x", "colors": {"purple": "#FFFFFF"}})"), std::invalid_argument);
     EXPECT_THROW(read(R"({"name": "x", "colors": {"text": "white"}})"), std::invalid_argument);
@@ -170,6 +172,7 @@ TEST(ThemeTest, RejectsBrokenThemes) {
     } catch (const std::invalid_argument& error) {
         EXPECT_STREQ(error.what(), "The tiled edges and center of the theme surface \"panel\" must each be at least 1 unit wide and tall at its scale.");
     }
+
     EXPECT_THROW(read(R"({"name": "x", "surfaces": {"panel": {"image": "a.png", "pieces": [[0,0,4,4],[4,0,0.5,4],[8,0,4,4],[0,4,4,4],[4,4,4,4],[8,4,4,4],[0,8,4,4],[4,8,4,4],[8,8,4,4]], "fill": "tile"}}})"), std::invalid_argument);
     EXPECT_NO_THROW(read(R"({"name": "x", "surfaces": {"panel": {"image": "a.png", "slice": [0, 4], "fill": "tile", "scale": 0.5}}})"));
     EXPECT_THROW(read(R"({"name": "x", "surfaces": {"panel": {"image": "a.png", "scale": 0}}})"), std::invalid_argument);

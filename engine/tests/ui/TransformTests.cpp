@@ -48,11 +48,13 @@ class UiTransformTest : public ::testing::Test {
                 add({vertex.pos.x, vertex.pos.y}, {vertex.pos.x, vertex.pos.y}, vertex.col);
             }
         }
+
         for (const graphics2d::Shape& shape : plugin.getBackend().getShapes()) {
             for (const math::Color color : {shape.color, shape.borderColor}) {
                 add(shape.bounds.getMin(), shape.bounds.getMax(), color.toRgba8());
             }
         }
+
         drawn.box = math::Rect::fromMinMax(lowest, highest);
         return drawn;
     }

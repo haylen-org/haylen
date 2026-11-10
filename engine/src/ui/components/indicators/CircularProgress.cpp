@@ -40,6 +40,7 @@ void CircularProgress::render(Context& context, const math::Rect& bounds) {
     if (shown.empty()) {
         return;
     }
+
     const Theme::Font font = radius < 40.0F ? Theme::Font::Caption : Theme::Font::Body;
     const float line = Typography::getLineHeight(context, font);
     const math::Rect label{center.x - radius, center.y - line * 0.5F, radius * 2.0F, line};
@@ -56,6 +57,7 @@ void CircularProgress::drawRing(Context& context, math::Vec2 center, float radiu
     const math::Rect circle = math::Rect::fromCenter(center, {radius * 2.0F, radius * 2.0F});
     const std::array<float, 4> round{radius, radius, radius, radius};
     Surfaces::drawShape(context, {.bounds = circle, .radii = round, .color = math::Color::transparent(), .borderWidth = width, .borderColor = context.getColor(Theme::Color::Border)});
+
     if (value <= 0.0F) {
         return;
     }
@@ -73,6 +75,7 @@ void CircularProgress::drawCooldown(Context& context, math::Vec2 center, float r
     } else {
         Surfaces::draw(context, Theme::Surface::Badge, square, context.getColor(Widgets::getToneColors(tone).background), std::nullopt, radius);
     }
+
     if (value <= 0.0F) {
         return;
     }

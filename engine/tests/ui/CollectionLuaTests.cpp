@@ -38,6 +38,7 @@ class CollectionLuaTest : public ::testing::Test {
             getEngine().handleEvent(event);
             fixture.frames(1);
         }
+
         fixture.frames(1);
     }
 
@@ -56,9 +57,11 @@ class CollectionLuaTest : public ::testing::Test {
         // clang-format on
         send(platform::Event::Type::MouseMove, static_cast<float>(from));
         send(platform::Event::Type::MouseDown, static_cast<float>(from));
+
         for (int step = 1; step <= 8; ++step) {
             send(platform::Event::Type::MouseMove, static_cast<float>(from) + static_cast<float>(to - from) * static_cast<float>(step) / 8.0F);
         }
+
         send(platform::Event::Type::MouseUp, static_cast<float>(to));
     }
 
@@ -81,6 +84,7 @@ class CollectionLuaTest : public ::testing::Test {
         if (!fixture.frameUntil([&] { return getEngine().getError() != nullptr; }, std::chrono::seconds(5))) {
             return "no error";
         }
+
         return getEngine().getError()->what();
     }
 

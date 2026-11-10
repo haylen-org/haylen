@@ -34,16 +34,19 @@ void TouchButton::render(Context& context, const math::Rect& bounds) {
         drawingStopped(context);
         return;
     }
+
     context.blockPointer(bounds);
 
     // A disabled button lets go of what it held and waits for a new press once it is enabled again.
     if (!getCommon().enabled) {
         tracker.reset();
     }
+
     const bool pressed = getCommon().enabled && tracker.update(context, bounds, slideIn).has_value();
     if (pressed) {
         context.holdButton(action);
     }
+
     if (pressed != down) {
         down = pressed;
         context.emit(*this, pressed ? "press" : "release");
@@ -58,6 +61,7 @@ void TouchButton::render(Context& context, const math::Rect& bounds) {
         const float icon = radius;
         Surfaces::drawImage(context, context.getImage(image, {icon, icon}), {content.getCenter().x - icon * 0.5F, content.getCenter().y - icon * 0.5F, icon, icon});
     }
+
     if (const std::string_view shown = context.getText(text); !shown.empty()) {
         drawLabel(context, content, shown);
     }
@@ -79,6 +83,7 @@ void TouchButton::drawLabel(Context& context, const math::Rect& circle, std::str
 
 void TouchButton::drawingStopped(Context& context) {
     tracker.reset();
+
     if (std::exchange(down, false)) {
         context.emit(*this, "release");
     }

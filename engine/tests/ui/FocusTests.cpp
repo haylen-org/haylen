@@ -285,6 +285,7 @@ TEST_F(FocusTest, NeverOpensTheWindowSwitcherOfImGui) {
         event.key = code;
         getEngine().handleEvent(event);
     }
+
     frames(30);
     getUi().getBackend().makeCurrent();
     EXPECT_EQ(GImGui->NavWindowingTarget, nullptr);
@@ -296,13 +297,16 @@ TEST_F(FocusTest, ScrollsTheFocusedControlIntoView) {
     for (int index = 0; index < 12; ++index) {
         buttons += (index > 0 ? ", " : "") + std::string(R"({"kind": "button", "id": "b)") + std::to_string(index) + R"(", "text": "Item"})";
     }
+
     auto gui = mount(R"({"kind": "scroll", "id": "list", "height": 300, "width": 400, "align": "start", "children": [{"kind": "column", "children": [)" + buttons + R"(]}]})");
     gui->command(getUi().getContext(), "b0", "focus", core::Json::object());
     frames(2);
     key(input::Key::Down);
+
     for (int index = 0; index < 9; ++index) {
         key(input::Key::Down);
     }
+
     frames(2);
     ASSERT_TRUE(isFocused(*gui, "b9"));
     const math::Rect list = getBounds(*gui, "list");

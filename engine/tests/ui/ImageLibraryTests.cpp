@@ -58,6 +58,7 @@ class ImageLibraryTest : public ::testing::Test, public test::UiFixture {
                 maximum = {std::max(maximum.x, vertex.pos.x), std::max(maximum.y, vertex.pos.y)};
             }
         }
+
         return math::Rect::fromMinMax(minimum, maximum);
     }
 
@@ -71,6 +72,7 @@ class ImageLibraryTest : public ::testing::Test, public test::UiFixture {
                 return list.VtxBuffer[static_cast<int>(command.VtxOffset + list.IdxBuffer[static_cast<int>(command.IdxOffset)])].col;
             }
         }
+
         return 0;
     }
 

@@ -90,6 +90,7 @@ class ScrollbarTest : public ::testing::Test, public test::UiFixture {
         for (int index = 1; index <= count; ++index) {
             list += (index > 1 ? ", " : "") + std::string(R"({"kind": "label", "text": "Line )") + std::to_string(index) + R"("})";
         }
+
         return list;
     }
 
@@ -133,6 +134,7 @@ class ScrollbarTest : public ::testing::Test, public test::UiFixture {
                 }
             }
         }
+
         for (const graphics2d::Shape& shape : getUi().getBackend().getShapes()) {
             const std::uint32_t packed = shape.color.toRgba8();
             const math::Rect inside = shape.bounds.intersection(reach);
@@ -140,6 +142,7 @@ class ScrollbarTest : public ::testing::Test, public test::UiFixture {
                 add(inside.getMin(), inside.getMax());
             }
         }
+
         return found ? std::optional(math::Rect::fromMinMax(low, high)) : std::nullopt;
     }
 
@@ -148,6 +151,7 @@ class ScrollbarTest : public ::testing::Test, public test::UiFixture {
         if (!bar) {
             throw std::logic_error("No scroll bar was drawn in the area.");
         }
+
         return *bar;
     }
 
@@ -173,6 +177,7 @@ class ScrollbarTest : public ::testing::Test, public test::UiFixture {
         for (std::size_t index = 0; index < count; ++index) {
             items[index] = {.id = "i" + std::to_string(index), .type = {}, .fields = {{"title", "Item " + std::to_string(index)}}};
         }
+
         auto source = std::make_shared<CollectionItems>();
         source->assign(std::move(items));
         return source;
@@ -183,6 +188,7 @@ class ScrollbarTest : public ::testing::Test, public test::UiFixture {
         for (const math::Rect& piece : pieces) {
             box = box.merged(piece);
         }
+
         return box;
     }
 
@@ -196,6 +202,7 @@ class ScrollbarTest : public ::testing::Test, public test::UiFixture {
                 }
             }
         }
+
         throw std::logic_error("The field drew no text.");
     }
 };
@@ -282,6 +289,7 @@ TEST_F(ScrollbarTest, PutsTheBarOfAHorizontalScrollBelowItsContent) {
     for (int index = 1; index <= 20; ++index) {
         buttons += (index > 1 ? ", " : "") + std::string(R"({"kind": "button", "text": "Item )") + std::to_string(index) + R"("})";
     }
+
     auto gui = mount(marked(R"({"kind": "scroll", "id": "area", "axis": "horizontal", "width": 300, "align": "start", "children": [{"kind": "row", "id": "content", "children": [)" + buttons + "]}]}"));
     for (const Screen& screen : kScreens) {
         SCOPED_TRACE(screen.name);
@@ -441,9 +449,11 @@ TEST_F(ScrollbarTest, ScrollsATextAreaWithTheMomentumOfATrackpad) {
     scroll(-10.0F, Phase::Changed);
     scroll(0.0F, Phase::Ended);
     const float lifted = top;
+
     for (int step = 0; step < 5; ++step) {
         scroll(-10.0F, Phase::Momentum);
     }
+
     renderer.removeCanvasOverlay(overlay);
     EXPECT_NEAR(top, lifted - 50.0F, 1.0F);
 }
@@ -453,6 +463,7 @@ TEST_F(ScrollbarTest, ScrollsTheRowsOfALongComboBesideItsBar) {
     for (int index = 1; index <= 120; ++index) {
         items += (index > 1 ? ", " : "") + std::string(R"({"id": "i)") + std::to_string(index) + R"(", "text": "Choice )" + std::to_string(index) + R"("})";
     }
+
     auto gui = mount(marked(R"({"kind": "combo", "id": "pick", "width": 300, "selected": "i1", "items": [)" + items + "]}"));
     for (const Screen& screen : kScreens) {
         SCOPED_TRACE(screen.name);
@@ -473,6 +484,7 @@ TEST_F(ScrollbarTest, KeepsALongPopupInsideTheDisplayOnTheSideOfItsAnchorWithMor
     for (int index = 1; index <= 120; ++index) {
         items += (index > 1 ? ", " : "") + std::string(R"({"id": "i)") + std::to_string(index) + R"(", "text": "Choice )" + std::to_string(index) + R"("})";
     }
+
     auto gui = mount(marked(R"({"kind": "column", "justify": "spaceBetween", "height": 1080, "children": [{"kind": "combo", "id": "top", "width": 300, "items": [)" + items + R"(]}, {"kind": "combo", "id": "bottom", "width": 300, "items": [)" + items + "]}]}"));
     const math::Rect display = getUi().getBackend().getDisplayRect();
     for (const char* id : {"top", "bottom"}) {
@@ -561,13 +573,16 @@ TEST_F(ScrollbarTest, KeepsTheGapInImmediateWindowsAndTheirChildren) {
     for (const Screen& screen : kScreens) {
         SCOPED_TRACE(screen.name);
         use(screen);
+
         for (const char* name : {"Tool", "Inspector"}) {
             SCOPED_TRACE(name);
             ImGuiWindow* window = ImGui::FindWindowByName(name);
             ASSERT_NE(window, nullptr);
+
             if (std::string(name) == "Inspector") {
                 window = window->DC.ChildWindows[0];
             }
+
             const math::Rect area{window->Pos.x, window->Pos.y, window->Size.x, window->Size.y};
             const math::Rect content = math::Rect::fromMinMax({window->WorkRect.Min.x, area.y}, {window->WorkRect.Max.x, area.getBottom()});
             expectApart(content, findBar(area), area, Side::End);
@@ -622,6 +637,7 @@ TEST_F(ScrollbarTest, KeepsTheGapForBarsDrawnWithThemeImages) {
             if (drawn.text || !drawn.label.empty()) {
                 image = drawn.label == "ui/thumb.png" ? &thumbs : drawn.label == "ui/groove.png" ? &grooves : nullptr;
             }
+
             if (image != nullptr) {
                 image->push_back(math::Geometry::bounds(drawn.corners));
             }

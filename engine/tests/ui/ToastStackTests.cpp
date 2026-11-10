@@ -75,18 +75,22 @@ TEST_F(ToastStackTest, ShowsEveryNoticeWithALimitOfZero) {
     std::optional<float> last;
     for (int frame = 0; frame < 2; ++frame) {
         stack.beginFrame();
+
         for (int index = 0; index < 3; ++index) {
             last = place(keys[index], ToastStack::Position::Top, 30.0F, index, 0);
         }
     }
+
     EXPECT_EQ(last, 60.0F);
 }
 
 TEST_F(ToastStackTest, PutsTheNewestNoticeOfADeckInFrontAndOpensTheDeckWhileItIsHeld) {
     const std::uint64_t keys[] = {stack.createKey(), stack.createKey(), stack.createKey()};
     ToastStack::Placement placements[3];
+
     for (int frame = 0; frame < 2; ++frame) {
         stack.beginFrame();
+
         for (int index = 0; index < 3; ++index) {
             placements[index] = placeInDeck(keys[index], 50.0F + static_cast<float>(index) * 10.0F, index, 2);
         }
@@ -106,9 +110,11 @@ TEST_F(ToastStackTest, PutsTheNewestNoticeOfADeckInFrontAndOpensTheDeckWhileItIs
     stack.beginFrame();
     EXPECT_TRUE(stack.isHeld(ToastStack::Position::Bottom));
     EXPECT_FALSE(stack.isHeld(ToastStack::Position::Top));
+
     for (int index = 0; index < 3; ++index) {
         placements[index] = placeInDeck(keys[index], 50.0F + static_cast<float>(index) * 10.0F, index, 2);
     }
+
     EXPECT_EQ(placements[2].offset, 0.0F);
     EXPECT_EQ(placements[1].offset, 70.0F);
     EXPECT_EQ(placements[0].offset, 130.0F);

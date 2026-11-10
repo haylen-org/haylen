@@ -40,9 +40,11 @@ class LabelTest : public ::testing::Test, public test::UiFixture {
         // clang-format on
         frames();
         renderer.removeCanvasOverlay(overlay);
+
         for (math::Rect& block : blocks) {
             block = block.translated(-getEngine().getViewport().getVisibleRect().getMin());
         }
+
         return blocks;
     }
 };
@@ -141,11 +143,13 @@ TEST_F(LabelTest, WrapsTheLabelsOfChoicesAndButtons) {
         EXPECT_GT(getBounds(*gui, id).height, control) << id;
         EXPECT_LE(getBounds(*gui, id).width, 420.0F) << id;
     }
+
     Backend& backend = getUi().getBackend();
     int whole = 0;
     for (const Backend::Text& drawn : backend.getTexts()) {
         whole += backend.getContent(drawn) == text ? 1 : 0;
     }
+
     EXPECT_EQ(whole, 4);
 }
 
@@ -166,6 +170,7 @@ TEST_F(LabelTest, KeepsTheLettersOfCodeAndNamesApart) {
     for (const Backend::Text& drawn : texts) {
         glyphs.push_back(drawn.family->layout(backend.getContent(drawn), drawn.style)->glyphs.size());
     }
+
     EXPECT_LT(glyphs[0], 3U);
     EXPECT_EQ(glyphs[1], 3U);
     EXPECT_EQ(glyphs[2], 3U);

@@ -23,10 +23,12 @@ math::Vec2 Tabs::measureContent(Context& context, float availableWidth) {
     for (const ChoiceItem& item : items) {
         strip += getTabWidth(context, item);
     }
+
     math::Vec2 content;
     if (Component* child = getSelectedChild()) {
         content = child->measure(context, availableWidth);
     }
+
     return {std::max(strip, content.x), context.getMetric(Theme::Metric::ControlHeight) + context.getMetric(Theme::Metric::ItemSpacing) + content.y};
 }
 
@@ -54,10 +56,12 @@ void Tabs::render(Context& context, const math::Rect& bounds) {
         } else if (state.hovered) {
             Surfaces::fill(context, tab, context.getColor(Theme::Color::Hover), context.getMetric(Theme::Metric::ControlRadius) * 0.5F);
         }
+
         if (current && context.getSurface(surface) == nullptr) {
             const float thickness = context.getMetric(Theme::Metric::FocusWidth);
             Surfaces::fill(context, {tab.x, tab.getBottom() - thickness, tab.width, thickness}, context.getColor(Theme::Color::Accent), 0.0F);
         }
+
         Typography::drawAligned(context, Theme::Font::Button, tab, context.getColor(current ? Theme::Color::Text : Theme::Color::TextMuted), context.getText(item.text), Alignment::Center);
 
         if (state.clicked && !current) {

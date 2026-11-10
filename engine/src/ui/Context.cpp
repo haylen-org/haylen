@@ -40,10 +40,12 @@ template <typename Value, typename FromStyle, typename FromTheme> Value Context:
                 return *found;
             }
         }
+
         if (layer->theme != nullptr) {
             return fromTheme(*layer->theme);
         }
     }
+
     return fromTheme(*layers.front().theme);
 }
 
@@ -56,13 +58,17 @@ void Context::pushStyle(std::string_view themeName, const Style* style, bool dra
             throw std::invalid_argument("The UI has no theme named \"" + std::string(themeName) + "\".");
         }
     }
+
     layers.push_back({.theme = theme, .style = style, .imgui = drawing});
+
     if (!drawing) {
         return;
     }
+
     if (style != nullptr) {
         style->loadSounds(sources.soundFiles);
     }
+
     ImGui::PushStyleVar(ImGuiStyleVar_DisabledAlpha, getMetric(Theme::Metric::DisabledOpacity));
 }
 
@@ -70,9 +76,11 @@ void Context::popStyle() {
     if (layers.size() <= 1) {
         return;
     }
+
     if (layers.back().imgui) {
         ImGui::PopStyleVar();
     }
+
     layers.pop_back();
 }
 
@@ -89,14 +97,17 @@ math::Color Context::findColor(Theme::Color role, std::size_t end) const noexcep
                 if (const auto* own = std::get_if<math::Color>(&*color)) {
                     return *own;
                 }
+
                 const Theme::Color named = *std::get_if<Theme::Color>(&*color);
                 return layer.theme != nullptr ? layer.theme->getColor(named) : findColor(named, index);
             }
         }
+
         if (layer.theme != nullptr) {
             return layer.theme->getColor(role);
         }
     }
+
     return layers.front().theme->getColor(role);
 }
 
@@ -120,6 +131,7 @@ Context::WheelScroll Context::takeWheel(ImGuiID area, const math::Rect& bounds, 
     } else if (wheel.points != 0.0F) {
         motion = Motion::Free;
     }
+
     return {.distance = wheel.lines * getMetric(Theme::Metric::ScrollLine) + wheel.points / getBackend().getPointsPerUnit(), .momentum = wheel.momentum / getBackend().getPointsPerUnit(), .motion = motion, .touched = wheel.touched, .lifted = wheel.lifted};
 }
 
@@ -146,10 +158,12 @@ const Theme::Image* Context::getSurface(Theme::Surface role) const {
         if (layer->style != nullptr && layer->style->hasSurface(role)) {
             return layer->style->findSurface(role, sources.textures);
         }
+
         if (layer->theme != nullptr) {
             return layer->theme->getSurface(role);
         }
     }
+
     return layers.front().theme->getSurface(role);
 }
 
@@ -170,6 +184,7 @@ const Theme::Cue* Context::findSound(Theme::Sound role) const noexcept {
             return layer->theme->getSound(role);
         }
     }
+
     return layers.front().theme->getSound(role);
 }
 
@@ -205,6 +220,7 @@ std::string_view Context::getText(const TextValue& value) {
     if (value.key.empty()) {
         return value.literal;
     }
+
     std::string& translated = getFrameText();
     translated = catalog.getText(value.key, value.arguments);
     return translated;
@@ -214,6 +230,7 @@ std::u32string_view Context::getFrameCodePoints(std::string_view text) {
     if (frameCodePointCount == frameCodePoints.size()) {
         frameCodePoints.emplace_back();
     }
+
     std::u32string& codePoints = frameCodePoints[frameCodePointCount++];
     core::Utf8::decode(text, codePoints);
     return codePoints;
@@ -223,6 +240,7 @@ std::string& Context::getFrameText() {
     if (frameTextCount == frameTexts.size()) {
         frameTexts.emplace_back();
     }
+
     std::string& text = frameTexts[frameTextCount++];
     text.clear();
     return text;
@@ -234,6 +252,7 @@ graphics::Texture Context::getImage(std::string_view path, math::Vec2 size) cons
     if (natural.x <= 0.0F || natural.y <= 0.0F) {
         return {};
     }
+
     const math::Vec2 density = backend.getDensity();
     const math::Vec2 scale = getReshape().scale;
     const math::Vec2 shown{size.x * std::fabs(scale.x), size.y * std::fabs(scale.y)};
@@ -257,6 +276,7 @@ std::shared_ptr<text::FontFamily> Context::getFontFamily(std::string_view name) 
     if (!family) {
         throw std::invalid_argument("The UI has no font named \"" + std::string(name) + "\".");
     }
+
     return family;
 }
 
@@ -302,10 +322,12 @@ void Context::emit(const Component& component, std::string name, core::Json valu
     if (events == nullptr) {
         throw std::logic_error("A component emitted an event outside of a GUI.");
     }
+
     if (redirectCell != nullptr) {
         events->push_back(redirectCollection->toCellEvent(*redirectCell, component, std::move(name), std::move(value)));
         return;
     }
+
     events->push_back({.id = component.getId(), .name = std::move(name), .value = std::move(value)});
 }
 
@@ -327,6 +349,7 @@ std::array<float, 4> Context::getInnerRadii(const math::Rect& bounds, float radi
     if (enclosures.empty() || enclosures.back().radius <= 0.0F || enclosures.back().window != ImGui::GetCurrentWindow()->RootWindow) {
         return radii;
     }
+
     const Enclosure& outer = enclosures.back();
     const float left = bounds.x - outer.bounds.x;
     const float top = bounds.y - outer.bounds.y;
@@ -339,6 +362,7 @@ std::array<float, 4> Context::getInnerRadii(const math::Rect& bounds, float radi
             radii[corner] = outer.radius - inset;
         }
     }
+
     return radii;
 }
 
@@ -389,6 +413,7 @@ math::Rect Context::mirror(const math::Rect& rect, const math::Rect& area) const
     if (!isRightToLeft()) {
         return rect;
     }
+
     return {area.x + area.getRight() - rect.getRight(), rect.y, rect.width, rect.height};
 }
 
@@ -396,6 +421,7 @@ float Context::alignHorizontally(Alignment alignment, float start, float availab
     if (isRightToLeft() && (alignment == Alignment::Start || alignment == Alignment::End)) {
         return Component::align(alignment == Alignment::Start ? Alignment::End : Alignment::Start, start, available, size);
     }
+
     return Component::align(alignment, start, available, size);
 }
 

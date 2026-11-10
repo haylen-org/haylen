@@ -43,9 +43,11 @@ void ImageLibrary::checkName(std::string_view name) {
 
 void ImageLibrary::setTexture(std::string_view name, graphics::Texture texture) {
     checkName(name);
+
     if (!texture.isValid()) {
         throw std::invalid_argument("The UI image \"" + std::string(name) + "\" needs a texture.");
     }
+
     remove(name);
     named.insert_or_assign(std::string(name), std::move(texture));
 }
@@ -53,9 +55,11 @@ void ImageLibrary::setTexture(std::string_view name, graphics::Texture texture) 
 // A vector image set in code rasterizes for the pixels it covers like an SVG file of the package.
 void ImageLibrary::setVector(std::string_view name, graphics::VectorImage image) {
     checkName(name);
+
     if (!image.isValid()) {
         throw std::invalid_argument("The UI image \"" + std::string(name) + "\" needs a vector image.");
     }
+
     remove(name);
     vectors.insert_or_assign(std::string(name), Vector{.image = std::move(image)});
 }
@@ -64,10 +68,12 @@ void ImageLibrary::remove(std::string_view name) {
     if (const auto found = named.find(name); found != named.end()) {
         named.erase(found);
     }
+
     if (const auto found = vectors.find(name); found != vectors.end()) {
         for (const auto& [step, raster] : found->second.rasters) {
             rasterBytes -= raster.bytes;
         }
+
         vectors.erase(found);
     }
 }
@@ -77,6 +83,7 @@ const graphics::Texture& ImageLibrary::requireTexture(std::string_view name) con
     if (found == named.end()) {
         throw std::runtime_error("The UI image \"" + std::string(name) + "\" could not be loaded. No image of that name was set with \"ui.setImage\".");
     }
+
     return found->second;
 }
 
@@ -84,13 +91,16 @@ graphics::Texture ImageLibrary::getTexture(std::string_view path, graphics::Text
     if (isNamed(path) && !vectors.contains(path)) {
         return requireTexture(path);
     }
+
     if (!isVector(path) && !isNamed(path)) {
         const graphics::Texture& texture = requestFile(path, filter).texture;
         if (!texture.isValid()) {
             waitedFrame = frame;
         }
+
         return texture;
     }
+
     Vector& vector = requestVector(path);
     if (!vector.image.isValid()) {
         waitedFrame = frame;
@@ -103,7 +113,9 @@ graphics::Texture ImageLibrary::getTexture(std::string_view path, graphics::Text
         exact->second.frame = frame;
         return exact->second.texture;
     }
+
     requestRaster(std::string(path), vector, step);
+
     if (vector.rasters.empty()) {
         waitedFrame = frame;
         return {};
@@ -121,24 +133,29 @@ math::Vec2 ImageLibrary::getSize(std::string_view path, graphics::Texture::Filte
     if (isNamed(path) && !vectors.contains(path)) {
         return requireTexture(path).getSize();
     }
+
     if (!isVector(path) && !isNamed(path)) {
         const graphics::Texture& texture = requestFile(path, filter).texture;
         if (!texture.isValid()) {
             waitedFrame = frame;
             return {};
         }
+
         return texture.getSize();
     }
+
     const Vector& vector = requestVector(path);
     if (!vector.image.isValid()) {
         waitedFrame = frame;
         return {};
     }
+
     return vector.image.getSize();
 }
 
 void ImageLibrary::beginFrame() {
     ++frame;
+
     if (rasterBytes > rasterBudget) {
         release();
     }
@@ -151,14 +168,17 @@ ImageLibrary::File& ImageLibrary::requestFile(std::string_view path, graphics::T
         if (!found->second.error.empty()) {
             throw std::runtime_error("The UI image \"" + std::string(path) + "\" could not be loaded. " + found->second.error);
         }
+
         return found->second;
     }
+
     File& file = loaded.emplace(std::string(path), File{}).first->second;
     // clang-format off
     assets.textureAsync(path, [this, owner = std::weak_ptr<bool>(alive), key = std::string(path), filter](graphics::Texture texture, std::string error) {
         if (owner.expired()) {
             return;
         }
+
         File& entry = files[static_cast<std::size_t>(filter)][key];
         entry.texture = std::move(texture);
         entry.error = std::move(error);
@@ -172,14 +192,17 @@ ImageLibrary::Vector& ImageLibrary::requestVector(std::string_view path) {
         if (!found->second.error.empty()) {
             throw std::runtime_error("The UI image \"" + std::string(path) + "\" could not be loaded. " + found->second.error);
         }
+
         return found->second;
     }
+
     Vector& vector = vectors.emplace(std::string(path), Vector{}).first->second;
     // clang-format off
     assets.loadAsync("vectorImage", path, [this, owner = std::weak_ptr<bool>(alive), key = std::string(path)](std::shared_ptr<void> asset, std::string error) {
         if (owner.expired()) {
             return;
         }
+
         Vector& entry = vectors[key];
         entry.image = asset ? graphics::VectorImage(std::static_pointer_cast<graphics::VectorImageResource>(asset)) : graphics::VectorImage{};
         entry.error = std::move(error);
@@ -192,18 +215,22 @@ void ImageLibrary::requestRaster(const std::string& path, Vector& vector, int st
     if (!vector.pending.insert(step).second) {
         return;
     }
+
     // clang-format off
     jobs.run([image = vector.image, step] { return image.rasterize(getStepScale(step)); }, [this, owner = std::weak_ptr<bool>(alive), path, step, image = vector.image](core::JobSystem::Result<graphics::Image> result) {
         const auto found = owner.expired() ? vectors.end() : vectors.find(path);
         if (found == vectors.end() || !(found->second.image == image)) {
             return;
         }
+
         Vector& entry = found->second;
         entry.pending.erase(step);
+
         if (!result.isOk()) {
             entry.error = std::move(result.error);
             return;
         }
+
         const graphics::Image& pixels = *result.value;
         // A raster draws at the scale it was made for, so it needs no smaller copies.
         Raster raster{.texture = device.createTexture(pixels, {.filter = graphics::Texture::Filter::Linear, .wrap = graphics::Texture::Wrap::Clamp, .mipmaps = false}), .bytes = pixels.getPixels().size(), .frame = frame};
@@ -235,11 +262,13 @@ void ImageLibrary::release() {
             }
         }
     }
+
     std::ranges::sort(candidates, {}, &Candidate::frame);
     for (const Candidate& candidate : candidates) {
         if (rasterBytes <= rasterBudget) {
             return;
         }
+
         const auto raster = candidate.vector->rasters.find(candidate.step);
         rasterBytes -= raster->second.bytes;
         candidate.vector->rasters.erase(raster);

@@ -31,10 +31,12 @@ math::Vec2 EmptyState::measureContent(Context& context, float availableWidth) {
         size = {std::max(size.x, measured.x), size.y + gap + measured.y};
         gap = spacing * 0.5F;
     }
+
     if (!messageText.empty()) {
         const math::Vec2 measured = Typography::measureParagraph(context, Theme::Font::Body, messageText, lines);
         size = {std::max(size.x, measured.x), size.y + gap + measured.y};
     }
+
     return size;
 }
 
@@ -49,6 +51,7 @@ void EmptyState::render(Context& context, const math::Rect& bounds) {
         y += imageSize;
         gap = spacing;
     }
+
     if (const std::string_view titleText = context.getText(title); !titleText.empty()) {
         y += gap;
         const float titleHeight = Typography::measureParagraph(context, Theme::Font::Heading, titleText, column.width).y;
@@ -56,6 +59,7 @@ void EmptyState::render(Context& context, const math::Rect& bounds) {
         y += titleHeight;
         gap = spacing * 0.5F;
     }
+
     if (const std::string_view messageText = context.getText(message); !messageText.empty()) {
         y += gap;
         Typography::drawParagraph(context, Theme::Font::Body, {column.x, y, column.width, bounds.getBottom() - y}, context.getColor(Theme::Color::TextMuted), messageText, Alignment::Center);

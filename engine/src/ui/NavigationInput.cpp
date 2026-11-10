@@ -27,6 +27,7 @@ NavigationInput::NavigationInput() {
 
 void NavigationInput::update(const input::ActionMap& actions, const input::Input& devices, const input::VirtualInput& virtualInput, bool blocked, bool playing) {
     wasDown = down;
+
     for (const std::string_view name : kNames) {
         const input::ActionMap::Action* remapped = actions.findAction(name);
         const input::ActionMap::Action& wanted = remapped != nullptr ? *remapped : *defaults.findAction(name);
@@ -34,6 +35,7 @@ void NavigationInput::update(const input::ActionMap& actions, const input::Input
             resolved.define(wanted);
         }
     }
+
     resolved.update(devices, virtualInput, blocked);
     for (std::size_t index = 0; index < kActionCount; ++index) {
         const bool pressed = resolved.isDown(kNames[index]);

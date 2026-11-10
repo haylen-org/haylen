@@ -31,6 +31,7 @@ class NodeEventTest : public ::testing::Test, public test::UiFixture {
                 gui->listen(id, notice, true);
             }
         }
+
         getUi().mount(gui, 0);
         frames(2);
         return gui;
@@ -125,10 +126,12 @@ TEST_F(NodeEventTest, NeverClicksAButtonAFingerSwipedOrPinched) {
 
     touch(platform::Event::Type::TouchBegan, 1, center);
     frames(2);
+
     for (int step = 1; step <= 4; ++step) {
         touch(platform::Event::Type::TouchMoved, 1, center + math::Vec2{20.0F * static_cast<float>(step), 0.0F});
         frames();
     }
+
     touch(platform::Event::Type::TouchEnded, 1, center + math::Vec2{80.0F, 0.0F});
     frames(3);
     EXPECT_EQ(countEvents("wide:click"), 0);
@@ -157,10 +160,12 @@ TEST_F(NodeEventTest, KeepsTheFingerThatDragsASlider) {
     const math::Rect track = getBounds(*gui, "volume");
     touch(platform::Event::Type::TouchBegan, 1, {track.x + 4.0F, track.getCenter().y});
     frames(2);
+
     for (int step = 1; step <= 6; ++step) {
         touch(platform::Event::Type::TouchMoved, 1, {track.x + 4.0F + 50.0F * static_cast<float>(step), track.getCenter().y});
         frames();
     }
+
     touch(platform::Event::Type::TouchEnded, 1, {track.x + 304.0F, track.getCenter().y});
     frames(2);
     EXPECT_GT(findLastEvent("change").value["value"].get<double>(), 0.4);
@@ -248,6 +253,7 @@ TEST_F(NodeEventTest, NamesTheEventsEveryKindReports) {
     for (std::size_t index = 0; index < Component::kNoticeNames.size(); ++index) {
         EXPECT_EQ(Component::noticeFromName(Component::kNoticeNames[index]), static_cast<Notice>(index));
     }
+
     EXPECT_FALSE(Component::noticeFromName("click").has_value());
 }
 

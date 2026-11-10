@@ -26,6 +26,7 @@ math::Vec2 SegmentedControl::measureContent(Context& context, float availableWid
     for (const ChoiceItem& item : items) {
         widest = std::max(widest, Typography::measure(context, Theme::Font::Button, context.getText(item.text)).x);
     }
+
     const math::Insets padding = getPadding(context);
     const float segment = widest + context.getMetric(Theme::Metric::TabPaddingX) * 2.0F;
     const float width = std::min(availableWidth, segment * static_cast<float>(items.size()) + padding.getHorizontal());
@@ -35,6 +36,7 @@ math::Vec2 SegmentedControl::measureContent(Context& context, float availableWid
         const float room = std::max(1.0F, widths[index] - labelPadding * 2.0F);
         tallest = std::max(tallest, Typography::layout(context, Theme::Font::Button, context.getText(items[index].text), getLabelStyle(context, room))->size.y);
     }
+
     const float height = std::max(context.getMetric(Theme::Metric::ControlHeight), tallest + context.getMetric(Theme::Metric::ControlPaddingY) + padding.getVertical());
     return {width, height};
 }
@@ -44,6 +46,7 @@ math::Insets SegmentedControl::getPadding(Context& context) const {
     if (context.getSurface(Theme::Surface::Segment) != nullptr) {
         return Surfaces::getPadding(context, Theme::Surface::Segment);
     }
+
     return math::Insets::uniform(context.getMetric(Theme::Metric::BorderWidth) + context.getMetric(Theme::Metric::ToggleKnobInset));
 }
 
@@ -59,25 +62,30 @@ float SegmentedControl::layOut(Context& context, float width) {
         labels += widths.back();
         widest = std::max(widest, widths.back());
     }
+
     const auto count = static_cast<float>(items.size());
     const float tab = context.getMetric(Theme::Metric::TabPaddingX);
     if ((widest + tab * 2.0F) * count <= width) {
         std::ranges::fill(widths, width / count);
         return tab;
     }
+
     const float padding = std::max(context.getMetric(Theme::Metric::ContentSpacing), std::min(tab, (width - labels) / (count * 2.0F)));
     const float room = std::max(0.0F, width - padding * 2.0F * count);
     if (labels <= room) {
         for (float& segment : widths) {
             segment += (room - labels) / count + padding * 2.0F;
         }
+
         return padding;
     }
+
     if (room >= labels * kMinLabelScale) {
         labelScale = room / labels;
         for (float& segment : widths) {
             segment = segment * labelScale + padding * 2.0F;
         }
+
         return padding;
     }
 
@@ -87,6 +95,7 @@ float SegmentedControl::layOut(Context& context, float width) {
         words.push_back(getLongestWord(context, context.getText(item.text)));
         longest += words.back();
     }
+
     labelScale = longest > 0.0F ? std::min(kMinLabelScale, room / longest) : kMinLabelScale;
     labelsWrap = true;
     const float spare = std::max(0.0F, room - longest * labelScale);
@@ -95,6 +104,7 @@ float SegmentedControl::layOut(Context& context, float width) {
         const float share = rest > 0.0F ? (widths[index] - words[index]) / rest : 1.0F / count;
         widths[index] = words[index] * labelScale + spare * share + padding * 2.0F;
     }
+
     return padding;
 }
 
@@ -106,6 +116,7 @@ float SegmentedControl::getLongestWord(Context& context, std::string_view label)
         longest = std::max(longest, Typography::measure(context, Theme::Font::Button, label.substr(0, end)).x);
         label = end == std::string_view::npos ? std::string_view() : label.substr(end + 1);
     }
+
     return longest + 1.0F;
 }
 
@@ -119,6 +130,7 @@ text::Style SegmentedControl::getLabelStyle(Context& context, float width) const
 void SegmentedControl::render(Context& context, const math::Rect& bounds) {
     const float outer = context.getMetric(Theme::Metric::ControlRadius);
     Surfaces::draw(context, Theme::Surface::Segment, bounds, context.getColor(Theme::Color::Raised), context.getColor(Theme::Color::Border), outer);
+
     if (items.empty()) {
         return;
     }
@@ -145,20 +157,24 @@ void SegmentedControl::render(Context& context, const math::Rect& bounds) {
         } else if (state.hovered) {
             Surfaces::fill(context, segment, context.getColor(state.held ? Theme::Color::Pressed : Theme::Color::Hover), radius);
         }
+
         if (index > 0 && !chosen && static_cast<int>(index) != current + 1) {
             const float thickness = context.getMetric(Theme::Metric::BorderWidth);
             const float edge = (context.isRightToLeft() ? segment.getRight() : segment.x) - thickness * 0.5F;
             Widgets::line(context, {edge, segment.y + segment.height * 0.25F}, {edge, segment.getBottom() - segment.height * 0.25F}, thickness, context.getColor(Theme::Color::Border));
         }
+
         drawLabel(context, segment.inset({labelPadding, 0.0F, labelPadding, 0.0F}), context.getText(item.text), context.getColor(chosen ? Theme::Color::OnAccent : Theme::Color::Text));
         ImGui::EndDisabled();
         ImGui::PopID();
+
         if (state.clicked) {
             clicked = static_cast<int>(index);
         }
     }
 
     const Widgets::Interaction body = Widgets::interact(context, bounds, outer, "##segments");
+
     if (takeFocusRequest()) {
         Widgets::focusItem(context);
     }
@@ -191,10 +207,12 @@ int SegmentedControl::findNext(int from, int direction, bool wrap) const {
         if (!wrap && (index < 0 || index >= count)) {
             break;
         }
+
         if (items[static_cast<std::size_t>((index % count + count) % count)].enabled) {
             return (index % count + count) % count;
         }
     }
+
     return from;
 }
 
@@ -202,6 +220,7 @@ void SegmentedControl::select(Context& context, int index) {
     if (index < 0 || items[static_cast<std::size_t>(index)].id == selected) {
         return;
     }
+
     selected = items[static_cast<std::size_t>(index)].id;
     context.playSound(Theme::Sound::Toggle);
     context.emit(*this, "change", {{"value", selected}});
@@ -212,6 +231,7 @@ bool SegmentedControl::describe(Context& context, platform::AccessibilityElement
     if (const int index = ChoiceItem::indexOf(items, selected); index >= 0) {
         element.value.assign(context.getText(items[static_cast<std::size_t>(index)].text));
     }
+
     element.actions = platform::AccessibilityElement::Increment | platform::AccessibilityElement::Decrement;
     return true;
 }

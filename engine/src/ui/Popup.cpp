@@ -36,9 +36,11 @@ std::optional<math::Rect> Popup::begin(Context& context, const char* name, ImGui
     const bool open = ImGui::BeginPopup(name, flags | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
     ImGui::PopStyleVar(2);
     ImGui::PopStyleColor();
+
     if (!open) {
         return std::nullopt;
     }
+
     context.pushPlainReshape();
 
     const ImGuiWindow& window = *ImGui::GetCurrentWindow();
@@ -53,12 +55,15 @@ std::optional<math::Rect> Popup::begin(Context& context, const char* name, ImGui
     if (overflowing) {
         const math::Rect area = frame.inset(edge);
         box = Scrollbar::getContentBox(context, area, box, false);
+
         if (const std::optional<double> offset = scrollbar.interact(context, area, false, false, ImGui::GetScrollY(), ImGui::GetScrollMaxY(), frame.height, Surfaces::getInnerRadius(radius, rightToLeft ? edge.left : edge.right))) {
             ImGui::SetScrollY(static_cast<float>(*offset));
         }
+
         const math::Rect clip = Scrollbar::getContentBox(context, area, area, false);
         ImGui::PushClipRect(ImGuiConverter::toImVec2(clip.getMin()), ImGuiConverter::toImVec2(clip.getMax()), true);
     }
+
     return box;
 }
 
@@ -68,6 +73,7 @@ void Popup::end(Context& context) {
         Scrollbar::takeWheel(context);
         scrollbar.draw(context, 1.0F);
     }
+
     ImGui::SetCursorScreenPos(ImGuiConverter::toImVec2(box.getMin()));
     ImGui::Dummy(ImGuiConverter::toImVec2(box.getSize()));
     context.popReshape();

@@ -19,6 +19,7 @@ class WheelTest : public ::testing::Test, public test::UiFixture {
         for (int index = 1; index <= count; ++index) {
             list += (index > 1 ? ", " : "") + std::string(R"({"kind": "label", "text": "Line )") + std::to_string(index) + R"("})";
         }
+
         return list;
     }
 

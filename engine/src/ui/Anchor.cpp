@@ -12,6 +12,7 @@ std::optional<Anchor> Anchor::fromName(std::string_view name) noexcept {
     if (found == kPresets.end()) {
         return std::nullopt;
     }
+
     return Anchor{.horizontal = found->horizontal, .vertical = found->vertical};
 }
 

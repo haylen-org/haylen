@@ -17,8 +17,10 @@ void Linear::readProperties(PropertyReader& reader) {
         reader.read("gap", value, 0.0F, 10000.0F);
         gap = value;
     }
+
     reader.read("padding", padding);
     reader.readChoice<Justify>("justify", justify, kJustify);
+
     if (reader.has("alignItems")) {
         Alignment value = Alignment::Start;
         reader.readChoice<Alignment>("alignItems", value, kAlignments);
@@ -34,6 +36,7 @@ void Linear::readProperties(PropertyReader& reader) {
             lineGap = value;
         }
     }
+
     readMore(reader);
 }
 
@@ -53,9 +56,11 @@ Alignment Linear::getChildAlignment(const Component& child) const noexcept {
     if (child.getCommon().align) {
         return *child.getCommon().align;
     }
+
     if (alignItems) {
         return *alignItems;
     }
+
     return horizontal ? child.getRowAlignment() : child.getAlignment();
 }
 
@@ -86,6 +91,7 @@ math::Vec2 Linear::measureContent(Context& context, float availableWidth) {
             growth += child->getCommon().grow;
             continue;
         }
+
         const math::Vec2 measured = child->measure(context, inner);
         length += horizontal ? measured.x : measured.y;
         breadth = std::max(breadth, horizontal ? measured.y : measured.x);
@@ -99,11 +105,13 @@ math::Vec2 Linear::measureContent(Context& context, float availableWidth) {
         if (factor <= 0.0F) {
             continue;
         }
+
         const float width = horizontal ? free * factor / growth : inner;
         const math::Vec2 measured = child->measure(context, width);
         share = std::max(share, (horizontal ? measured.x : measured.y) / factor);
         breadth = std::max(breadth, horizontal ? measured.y : measured.x);
     }
+
     length += share * growth;
     return horizontal ? math::Vec2{length + insets.getHorizontal(), breadth + insets.getVertical()} : math::Vec2{breadth + insets.getHorizontal(), length + insets.getVertical()};
 }
@@ -122,9 +130,11 @@ math::Vec2 Linear::measureWrapped(Context& context, float inner) {
             const Slot& slot = slots[index];
             used += slot.child->getCommon().grow > 0.0F ? slot.child->measure(context, slot.length).x : slot.length;
         }
+
         width = std::max(width, used);
         height += measureLine(context, first, last) + (line > 0 ? getLineGap(context) : 0.0F);
     }
+
     return {width, height};
 }
 
@@ -143,8 +153,10 @@ void Linear::breakLines(Context& context, float inner) {
         } else {
             used += spacing + length;
         }
+
         slots.push_back({.child = child, .base = length, .length = length, .growing = growing});
     }
+
     for (std::size_t line = 0; line < lineStarts.size(); ++line) {
         grow(lineStarts[line], getLineEnd(line), inner, spacing);
     }
@@ -155,6 +167,7 @@ float Linear::measureLine(Context& context, std::size_t first, std::size_t last)
     for (std::size_t index = first; index < last; ++index) {
         height = std::max(height, slots[index].child->measure(context, slots[index].length).y);
     }
+
     return height;
 }
 
@@ -172,6 +185,7 @@ void Linear::grow(std::size_t first, std::size_t last, float available, float sp
             used += slot.growing ? slot.base : slot.length;
             growth += slot.growing ? slot.child->getCommon().grow : 0.0F;
         }
+
         if (growth <= 0.0F) {
             return;
         }
@@ -183,6 +197,7 @@ void Linear::grow(std::size_t first, std::size_t last, float available, float sp
             if (!slot.growing) {
                 continue;
             }
+
             slot.length = slot.base + free * slot.child->getCommon().grow / growth;
             const float allowed = boundLength(*slot.child, slot.length);
             if (allowed != slot.length) {
@@ -191,6 +206,7 @@ void Linear::grow(std::size_t first, std::size_t last, float available, float sp
                 bounded = true;
             }
         }
+
         if (!bounded) {
             return;
         }
@@ -204,6 +220,7 @@ void Linear::place(Context& context, const math::Rect& line, std::size_t first, 
     for (std::size_t index = first; index < last; ++index) {
         used += slots[index].length;
     }
+
     const float extra = std::max(0.0F, (horizontal ? line.width : line.height) - used);
     float cursor = horizontal ? line.x : line.y;
     switch (justify) {
@@ -240,6 +257,7 @@ void Linear::place(Context& context, const math::Rect& line, std::size_t first, 
             const float width = alignment == Alignment::Stretch ? std::min(child.clampWidth(line.width), line.width) : std::min(child.measure(context, line.width).x, line.width);
             child.draw(context, {std::floor(context.alignHorizontally(alignment, line.x, line.width, width)), std::round(cursor), width, length});
         }
+
         cursor += length + spacing;
     }
 }
@@ -253,6 +271,7 @@ void Linear::renderLines(Context& context, const math::Rect& bounds, const math:
         lineHeights.push_back(measureLine(context, lineStarts[line], getLineEnd(line)));
         total += lineHeights.back();
     }
+
     const float extra = std::max(0.0F, inner.height - total) / static_cast<float>(lineStarts.size());
     const bool overflowing = total > inner.height;
     if (overflowing) {
@@ -268,6 +287,7 @@ void Linear::renderLines(Context& context, const math::Rect& bounds, const math:
         place(context, {inner.x, std::floor(y), inner.width, height}, lineStarts[line], getLineEnd(line), spacing);
         y += height + getLineGap(context);
     }
+
     if (overflowing) {
         ImGui::PopClipRect();
     }
@@ -281,7 +301,9 @@ void Linear::render(Context& context, const math::Rect& bounds) {
         const math::Rect clip = context.getReshape().apply(bounds);
         ImGui::PushClipRect(ImGuiConverter::toImVec2(clip.getMin()), ImGuiConverter::toImVec2(clip.getMax()), true);
     }
+
     layOut(context, bounds);
+
     if (clipped) {
         ImGui::PopClipRect();
     }
@@ -294,8 +316,10 @@ void Linear::layOut(Context& context, const math::Rect& bounds) {
         if (!getLayoutChildren().empty()) {
             renderLines(context, bounds, inner);
         }
+
         return;
     }
+
     slots.clear();
     for (Component* child : getLayoutChildren()) {
         const bool growing = child->getCommon().grow > 0.0F;
@@ -303,9 +327,11 @@ void Linear::layOut(Context& context, const math::Rect& bounds) {
         const float length = growing ? margin : measureLength(context, *child, inner.width);
         slots.push_back({.child = child, .base = length, .length = length, .growing = growing});
     }
+
     if (slots.empty()) {
         return;
     }
+
     const float spacing = getGap(context);
     grow(0, slots.size(), horizontal ? inner.width : inner.height, spacing);
     place(context, inner, 0, slots.size(), spacing);

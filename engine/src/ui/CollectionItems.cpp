@@ -27,11 +27,13 @@ void CollectionItems::checkIds(const std::vector<Item>& added, std::size_t first
     for (const Item& item : added) {
         addedIds.emplace_back(item.id);
     }
+
     std::vector<std::string_view> leaving;
     leaving.reserve(last - first);
     for (std::size_t index = first; index < last; ++index) {
         leaving.emplace_back(items[index].id);
     }
+
     known->check(addedIds, leaving, {});
 }
 
@@ -41,11 +43,13 @@ void CollectionItems::assign(std::vector<Item> value) {
     for (const Item& item : items) {
         before.emplace_back(item.id);
     }
+
     std::vector<std::string_view> after;
     after.reserve(value.size());
     for (const Item& item : value) {
         after.emplace_back(item.id);
     }
+
     const CollectionDiff::Result result = CollectionDiff::compare(before, after, {});
     known->assign(after);
     items = std::move(value);
@@ -56,9 +60,11 @@ void CollectionItems::insert(std::size_t index, std::vector<Item> added) {
     checkIndex(index, items.size() + 1);
     checkIds(added, index, index);
     const std::size_t count = added.size();
+
     for (const Item& item : added) {
         known->add(item.id);
     }
+
     items.insert(items.begin() + static_cast<std::ptrdiff_t>(index), std::make_move_iterator(added.begin()), std::make_move_iterator(added.end()));
     changed.emit({.kind = Change::Kind::Inserted, .index = index, .count = count});
 }
@@ -69,6 +75,7 @@ void CollectionItems::remove(std::size_t index, std::size_t count) {
     for (std::size_t offset = 0; offset < removed; ++offset) {
         known->remove(items[index + offset].id);
     }
+
     const auto first = items.begin() + static_cast<std::ptrdiff_t>(index);
     items.erase(first, first + static_cast<std::ptrdiff_t>(removed));
     changed.emit({.kind = Change::Kind::Removed, .index = index, .count = removed});
@@ -84,6 +91,7 @@ void CollectionItems::move(std::size_t from, std::size_t to) {
     } else {
         std::rotate(target, source, source + 1);
     }
+
     changed.emit({.kind = Change::Kind::Moved, .index = from, .count = 1, .target = to});
 }
 
@@ -96,10 +104,12 @@ void CollectionItems::replace(std::size_t index, Item value) {
     known->remove(items[index].id);
     known->add(value.id);
     items[index] = std::move(value);
+
     if (same) {
         changed.emit({.kind = Change::Kind::Changed, .index = index, .count = 1});
         return;
     }
+
     changed.emit({.kind = Change::Kind::Removed, .index = index, .count = 1});
     changed.emit({.kind = Change::Kind::Inserted, .index = index, .count = 1});
 }

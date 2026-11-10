@@ -27,10 +27,12 @@ math::Vec2 Alert::measureContent(Context& context, float availableWidth) {
     if (const std::string_view titleText = context.getText(title); !titleText.empty()) {
         size = Typography::measureParagraph(context, Theme::Font::Button, titleText, width);
     }
+
     if (const std::string_view messageText = context.getText(message); !messageText.empty()) {
         const math::Vec2 body = Typography::measureParagraph(context, Theme::Font::Body, messageText, width);
         size = {std::max(size.x, body.x), size.y + body.y};
     }
+
     return {size.x + padding * 2.0F + context.getMetric(Theme::Metric::ToneBarWidth), size.y + context.getMetric(Theme::Metric::ControlPaddingY) * 2.0F};
 }
 
@@ -54,6 +56,7 @@ void Alert::render(Context& context, const math::Rect& bounds) {
         Typography::drawParagraph(context, Theme::Font::Button, {inner.x, y, inner.width, height}, context.getColor(colors.text), titleText, Alignment::Start);
         y += height;
     }
+
     Typography::drawParagraph(context, Theme::Font::Body, {inner.x, y, inner.width, inner.getBottom() - y}, context.getColor(Theme::Color::Text), context.getText(message), Alignment::Start);
 }
 

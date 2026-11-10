@@ -26,9 +26,11 @@ void ContextMenu::command(Context& context, std::string_view name, const core::J
         Component::command(context, name, arguments);
         return;
     }
+
     if (!arguments.is_null() && !(arguments.is_object() && arguments.empty())) {
         throw std::invalid_argument("The \"open\" command takes no arguments.");
     }
+
     openRequested = true;
 }
 
@@ -41,6 +43,7 @@ void ContextMenu::render(Context& context, const math::Rect& bounds) {
         ImGui::OpenPopup("##context");
         openedAt = *opening;
     }
+
     if (const std::optional<std::string> picked = PopupList::draw(context, popup, "##context", items, {}, {openedAt.x, openedAt.y, 0.0F, 0.0F}, 0.0F)) {
         context.playSound(Theme::Sound::Press);
         context.emit(*this, "select", {{"item", *picked}});
@@ -52,9 +55,11 @@ std::optional<math::Vec2> ContextMenu::findOpening(Context& context, const math:
     const ImGuiIO& io = ImGui::GetIO();
     const math::Vec2 pointer{io.MousePos.x, io.MousePos.y};
     const bool over = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) && bounds.contains(pointer);
+
     if (std::exchange(openRequested, false)) {
         return math::Vec2{context.isRightToLeft() ? bounds.getRight() : bounds.x, bounds.getBottom()};
     }
+
     if (over && ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
         return pointer;
     }
@@ -73,6 +78,7 @@ std::optional<math::Vec2> ContextMenu::findOpening(Context& context, const math:
             return math::Vec2{context.isRightToLeft() ? focused->getRight() : focused->x, focused->getBottom()};
         }
     }
+
     return std::nullopt;
 }
 

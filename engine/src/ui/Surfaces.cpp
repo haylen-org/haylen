@@ -12,12 +12,14 @@ void Surfaces::drawPiece(ImDrawList& list, ImTextureRef texture, const math::Rec
     if (destination.width <= 0.0F || destination.height <= 0.0F || source.width <= 0.0F || source.height <= 0.0F) {
         return;
     }
+
     const ImVec2 uvMin{source.x / textureSize.x, source.y / textureSize.y};
     const ImVec2 uvMax{source.getRight() / textureSize.x, source.getBottom() / textureSize.y};
     if (radius > 0.0F) {
         list.AddImageRounded(texture, ImGuiConverter::toImVec2(destination.getMin()), ImGuiConverter::toImVec2(destination.getMax()), uvMin, uvMax, color, std::min(radius, std::min(destination.width, destination.height) * 0.5F));
         return;
     }
+
     list.AddImage(texture, ImGuiConverter::toImVec2(destination.getMin()), ImGuiConverter::toImVec2(destination.getMax()), uvMin, uvMax, color);
 }
 
@@ -26,6 +28,7 @@ void Surfaces::drawNineSlice(Context& context, const Theme::Image& image, const 
     if (bounds.isEmpty()) {
         return;
     }
+
     const Context::Reshape shape = context.getReshape();
     const bool vector = !image.vector.empty();
     const Frame raster = vector ? rasterSlice(context, image) : Frame{};
@@ -33,6 +36,7 @@ void Surfaces::drawNineSlice(Context& context, const Theme::Image& image, const 
     if (!slice.isValid()) {
         return;
     }
+
     const math::Color tinted = (image.colorize ? image.tint * fill : image.tint) * shape.color;
     const math::Color color = tinted.withAlpha(tinted.a * ImGui::GetStyle().Alpha);
 
@@ -50,17 +54,20 @@ Surfaces::Frame Surfaces::rasterSlice(Context& context, const Theme::Image& imag
     if (natural.x <= 0.0F || natural.y <= 0.0F) {
         return {};
     }
+
     const math::Vec2 density = context.getBackend().getDensity();
     const float pixels = image.scale * std::max(std::fabs(shape.scale.x) * density.x, std::fabs(shape.scale.y) * density.y);
     graphics::Texture texture = context.getImageAtScale(image.vector, pixels);
     if (!texture.isValid()) {
         return {};
     }
+
     const math::Vec2 ratio = texture.getSize() / natural;
     graphics2d::NineSlice slice = image.whole ? graphics2d::NineSlice::fromBorders({}, {0.0F, 0.0F, natural.x, natural.y}, image.borders) : image.slice;
     for (math::Rect& piece : slice.pieces) {
         piece = {piece.x * ratio.x, piece.y * ratio.y, piece.width * ratio.x, piece.height * ratio.y};
     }
+
     slice.texture = std::move(texture);
     slice.fill = image.slice.fill;
     return {.slice = std::move(slice), .scale = image.scale / ratio.x};
@@ -72,6 +79,7 @@ void Surfaces::draw(Context& context, Theme::Surface role, const math::Rect& bou
         drawNineSlice(context, *image, bounds, fill);
         return;
     }
+
     const float rounding = std::min(radius < 0.0F ? context.getMetric(Theme::Metric::ControlRadius) : radius, std::min(bounds.width, bounds.height) * 0.5F);
     draw(context, role, bounds, fill, border, getRadii(rounding, corners));
 }
@@ -81,11 +89,13 @@ void Surfaces::draw(Context& context, Theme::Surface role, const math::Rect& bou
         drawNineSlice(context, *image, bounds, fill);
         return;
     }
+
     const float width = context.getMetric(Theme::Metric::BorderWidth);
     const bool bordered = border && border->a > 0.0F && width > 0.0F;
     if (fill.a <= 0.0F && !bordered) {
         return;
     }
+
     drawShape(context, {.bounds = bounds, .radii = radii, .color = fill, .borderWidth = bordered ? width : 0.0F, .borderColor = bordered ? *border : math::Color::transparent()});
 }
 
@@ -110,6 +120,7 @@ void Surfaces::drawShape(Context& context, graphics2d::Shape shape) {
     for (float& radius : shape.radii) {
         radius *= scale;
     }
+
     shape.borderWidth *= scale;
     shape.softness *= scale;
     shape.color = shape.color * tint;
@@ -134,6 +145,7 @@ void Surfaces::drawShadow(Context& context, const math::Rect& bounds, float radi
     if (size <= 0.0F || color.a <= 0.0F) {
         return;
     }
+
     const math::Rect cast = bounds.translated({0.0F, context.getMetric(Theme::Metric::ShadowOffset) * lift});
     ImDrawList& list = *ImGui::GetWindowDrawList();
     const math::Rect reach = context.getReshape().apply(cast.expanded(size));
@@ -156,6 +168,7 @@ void Surfaces::drawImage(Context& context, const graphics::Texture& texture, con
     if (!texture.isValid()) {
         return;
     }
+
     const math::Rect area = source.isEmpty() ? math::Rect{0.0F, 0.0F, texture.getSize().x, texture.getSize().y} : source;
     drawPiece(*ImGui::GetWindowDrawList(), context.getTextureReference(texture), bounds, area, texture.getSize(), ImGuiConverter::toImU32(tint), radius);
 }

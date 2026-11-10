@@ -144,10 +144,12 @@ TEST_F(AnchorTest, WritesTheInsetsOfTheSafeAreaOutsideIt) {
             if (vertex.col != color || (vertex.uv.x == white.x && vertex.uv.y == white.y)) {
                 continue;
             }
+
             ++glyphs;
             EXPECT_FALSE(safe.inset({4.0F, 4.0F, 4.0F, 4.0F}).contains(math::Vec2{vertex.pos.x, vertex.pos.y}));
         }
     }
+
     EXPECT_GT(glyphs, 0);
     EXPECT_FALSE(getBounds(*gui, "back").isEmpty());
 }
@@ -166,6 +168,7 @@ TEST_F(AnchorTest, KeepsWindowsInsideTheSafeAreaOnADeepShadow) {
     for (const graphics2d::Shape& shape : getUi().getBackend().getShapes()) {
         deepest = std::max(deepest, shape.softness);
     }
+
     EXPECT_GT(deepest, shadow * 2.0F);
 }
 

@@ -25,9 +25,11 @@ void SlotGrid::readProperties(PropertyReader& reader) {
         reader.read("gap", value, 0.0F, 1024.0F);
         gap = value;
     }
+
     if (const core::Json* parsed = reader.take("slots")) {
         slots = readSlots(reader, *parsed);
     }
+
     reader.read("selected", selected);
     reader.read("draggable", draggable);
 }
@@ -36,34 +38,43 @@ std::vector<SlotGrid::Slot> SlotGrid::readSlots(PropertyReader& reader, const co
     if (!PropertyReader::isList(value)) {
         reader.fail("slots", "must be a list");
     }
+
     std::vector<Slot> parsed;
     std::set<std::string, std::less<>> ids;
     for (const core::Json& entry : value) {
         if (!entry.is_object() || !entry.contains("id") || !entry.at("id").is_string() || entry.at("id").get<std::string>().empty()) {
             reader.fail("slots", "must hold objects with an id");
         }
+
         core::JsonValidator::requireKnownKeys(entry, {"id", "image", "count", "enabled"}, "\"slotGrid.slots\"");
         Slot slot{.id = entry.at("id").get<std::string>()};
         if (!ids.insert(slot.id).second) {
             reader.fail("slots", "uses the slot id \"" + slot.id + "\" more than once");
         }
+
         if (const auto image = entry.find("image"); image != entry.end()) {
             if (!image->is_string()) {
                 reader.fail("slots", "has an image that is not a path");
             }
+
             slot.image = image->get<std::string>();
         }
+
         if (const auto count = entry.find("count"); count != entry.end()) {
             slot.count = TextValue::fromJson(*count, "slotGrid.slots.count");
         }
+
         if (const auto enabled = entry.find("enabled"); enabled != entry.end()) {
             if (!enabled->is_boolean()) {
                 reader.fail("slots", "has an \"enabled\" that is not \"true\" or \"false\"");
             }
+
             slot.enabled = enabled->get<bool>();
         }
+
         parsed.push_back(std::move(slot));
     }
+
     return parsed;
 }
 
@@ -111,6 +122,7 @@ void SlotGrid::drawSlot(Context& context, const Slot& slot, const math::Rect& ar
     const Widgets::Interaction state = Widgets::interact(context, area, radius, "##slot");
     const ImGuiID item = ImGui::GetItemID();
     const bool activated = GImGui->NavActivatePressedId == item;
+
     if (focusTarget) {
         Widgets::focusItem(context);
     }
@@ -123,6 +135,7 @@ void SlotGrid::drawSlot(Context& context, const Slot& slot, const math::Rect& ar
     if (moved.hovering) {
         Surfaces::outline(context, area, context.getColor(Theme::Color::Accent), radius, context.getMetric(Theme::Metric::FocusWidth));
     }
+
     DragAndDrop::drawCarried(context, item, area);
     ImGui::EndDisabled();
     ImGui::PopID();
@@ -131,6 +144,7 @@ void SlotGrid::drawSlot(Context& context, const Slot& slot, const math::Rect& ar
         dragging = slot.id;
         context.emit(*this, "dragStart", {{"item", slot.id}});
     }
+
     if (moved.picked) {
         context.emit(*this, "dragStart", {{"item", slot.id}});
     } else if (moved.dropped) {
@@ -151,6 +165,7 @@ void SlotGrid::drawContent(Context& context, const Slot& slot, const math::Rect&
         const math::Rect picture = area.expanded(-area.width * 0.12F);
         Surfaces::drawImage(context, context.getImage(slot.image, picture.getSize()), picture, math::Color::white().withAlpha(leaving ? 0.35F : 1.0F));
     }
+
     if (const std::string_view count = context.getText(slot.count); !count.empty()) {
         drawCount(context, count, area);
     }

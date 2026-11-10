@@ -20,6 +20,7 @@ void TextEntry::readProperties(PropertyReader& reader) {
         reader.readChoice<platform::TextInput::Capitalization>("autocapitalize", mode, platform::TextInput::kCapitalizations);
         capitalization = mode;
     }
+
     readMore(reader);
 }
 
@@ -39,6 +40,7 @@ void TextEntry::drawEntry(Context& context, const math::Rect& bounds, platform::
         context.playSound(Theme::Sound::Type);
         context.emit(*this, "change", {{"value", value}});
     }
+
     if (result.submitted) {
         context.emit(*this, "submit", {{"value", value}});
     }
@@ -48,6 +50,7 @@ void TextEntry::drawEntry(Context& context, const math::Rect& bounds, platform::
 bool TextEntry::describe(Context& context, platform::AccessibilityElement& element) const {
     element.role = platform::AccessibilityElement::Role::TextField;
     element.label.assign(context.getText(placeholder));
+
     if (getKind() == "secretField") {
         for (std::size_t count = core::Utf8::countCodePoints(value); count > 0; --count) {
             element.value.append("\u2022");
@@ -55,6 +58,7 @@ bool TextEntry::describe(Context& context, platform::AccessibilityElement& eleme
     } else {
         element.value.assign(value);
     }
+
     element.actions = platform::AccessibilityElement::Activate;
     return true;
 }

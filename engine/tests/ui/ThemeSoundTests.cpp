@@ -58,6 +58,7 @@ class ThemeSoundTest : public ::testing::Test, public test::UiFixture {
                 return stats.playing;
             }
         }
+
         ADD_FAILURE() << "No bus is named " << bus << ".";
         return 0;
     }

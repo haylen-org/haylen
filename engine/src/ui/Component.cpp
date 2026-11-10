@@ -36,6 +36,7 @@ std::optional<Component::Notice> Component::noticeFromName(std::string_view name
     if (found == kNoticeNames.end()) {
         return std::nullopt;
     }
+
     return static_cast<Notice>(found - kNoticeNames.begin());
 }
 
@@ -55,6 +56,7 @@ void Component::readCommon(PropertyReader& reader) {
         reader.read("aspectRatio", ratio, kMinAspectRatio, kMaxAspectRatio);
         common.aspectRatio = ratio;
     }
+
     reader.read("minWidth", common.minWidth, 0.0F);
     reader.read("maxWidth", common.maxWidth, 0.0F);
     reader.read("minHeight", common.minHeight, 0.0F);
@@ -76,6 +78,7 @@ void Component::readCommon(PropertyReader& reader) {
             reader.fail("anchor", "must be \"none\" or an anchor name such as \"topLeft\", \"center\" or \"stretchHorizontal\"");
         }
     }
+
     reader.readChoice<Anchor::Area>("anchorTo", common.anchorArea, kAnchorAreas);
     reader.read("margin", common.margin);
     reader.readChoice<std::optional<text::Direction>>("direction", common.direction, kDirections);
@@ -84,11 +87,13 @@ void Component::readCommon(PropertyReader& reader) {
     if (const core::Json* style = reader.take("style")) {
         common.style = style->is_null() ? nullptr : std::make_shared<const Style>(Style::fromJson(*style, reader.getQualifiedName("style")));
     }
+
     if (reader.has("cursor")) {
         platform::Window::Cursor cursor = platform::Window::Cursor::Default;
         reader.readChoice<platform::Window::Cursor>("cursor", cursor, platform::Window::kCursorNames);
         common.cursor = cursor;
     }
+
     readFocus(reader);
     reader.read("accessibilityLabel", common.accessibilityLabel);
     reader.read("accessibilityHint", common.accessibilityHint);
@@ -105,6 +110,7 @@ bool Component::pushStyle(Context& context, bool drawing) const {
     if (common.theme.empty() && !common.style) {
         return false;
     }
+
     context.pushStyle(common.theme, common.style.get(), drawing);
     return true;
 }
@@ -114,6 +120,7 @@ bool Component::pushWriting(Context& context) const {
     if (!common.direction && common.language.empty()) {
         return false;
     }
+
     context.pushWriting(common.direction, common.language.empty() ? std::nullopt : std::optional<std::string>(common.language));
     return true;
 }
@@ -124,6 +131,7 @@ void Component::readFocus(PropertyReader& reader) {
     reader.read("focusScope", common.focusScope);
     reader.read("focusRing", common.focusRing);
     reader.readChoice<FocusWrap>("focusWrap", common.focusWrap, kFocusWraps);
+
     for (std::size_t index = 0; index < kNeighborKeys.size(); ++index) {
         reader.read(kNeighborKeys[index], common.focusNeighbors[index]);
     }
@@ -174,18 +182,22 @@ math::Vec2 Component::measure(Context& context, float availableWidth) {
     if (measuredFrame == context.getFrame() && measuredWidth == availableWidth) {
         return measuredSize;
     }
+
     const math::Insets& margin = common.margin;
     const float inner = std::max(0.0F, availableWidth - margin.getHorizontal());
     const float offered = common.width.value_or(getBoundedWidth(inner));
     const bool writing = pushWriting(context);
     const bool styled = pushStyle(context, false);
     const math::Vec2 content = measureContent(context, offered);
+
     if (styled) {
         context.popStyle();
     }
+
     if (writing) {
         context.popWriting();
     }
+
     math::Vec2 size{common.width.value_or(getBoundedWidth(content.x)), common.height.value_or(getBoundedHeight(content.y))};
 
     // A node with an aspect ratio takes its height from its width, its width from a fixed height, or the whole width it is offered when neither is fixed.
@@ -198,6 +210,7 @@ math::Vec2 Component::measure(Context& context, float availableWidth) {
             size.y = getBoundedHeight(size.x / ratio);
         }
     }
+
     measuredSize = {size.x + margin.getHorizontal(), size.y + margin.getVertical()};
     measuredFrame = context.getFrame();
     measuredWidth = availableWidth;
@@ -208,10 +221,12 @@ void Component::draw(Context& context, const math::Rect& layout) {
     if (!common.visible) {
         return;
     }
+
     math::Rect bounds = layout.inset(common.margin).translated(transform->offset);
     if (common.aspectRatio) {
         bounds = fitAspect(bounds, *common.aspectRatio);
     }
+
     const bool appeared = drawnFrame == 0 || drawnFrame + 1 != context.getFrame();
     drawnBounds = bounds;
     drawnFrame = context.getFrame();
@@ -224,9 +239,11 @@ void Component::draw(Context& context, const math::Rect& layout) {
     if (accessibility.isEnabled()) {
         accessibility.enter(context, *this, drawId, bounds);
     }
+
     for (const std::string_view notice : focus.takeNotices(drawId)) {
         context.emit(*this, std::string(notice));
     }
+
     if (appeared && isListening(Notice::Show)) {
         context.emit(*this, "show");
     }
@@ -237,6 +254,7 @@ void Component::draw(Context& context, const math::Rect& layout) {
     }
 
     const bool styled = pushStyle(context, true);
+
     if (focus.takeArrival(drawId)) {
         context.playSound(Theme::Sound::Focus);
     }
@@ -244,46 +262,60 @@ void Component::draw(Context& context, const math::Rect& layout) {
     if (!common.enabled) {
         ImGui::BeginDisabled();
     }
+
     const bool writing = pushWriting(context);
+
     if (common.cursor && isPointerOver(bounds)) {
         context.getBackend().setCursor(*common.cursor);
     }
+
     // The context carries the transform to the draws of the node that go around the ImGui vertices, such as rich text. The vertices the node draws in its window and in the child windows it begins, such as scroll areas, take the transform once it drew them, while popups, tooltips and the other windows of their own keep their look.
     const bool reshaping = transform->isReshaping();
     ImGuiWindow* window = ImGui::GetCurrentWindow();
     const int firstVertex = window->DrawList->VtxBuffer.Size;
     const int firstWindow = GImGui->WindowsActiveCount;
+
     if (reshaping) {
         context.pushReshape(*transform, bounds.getCenter());
     }
+
     render(context, bounds);
+
     if (reshaping) {
         context.popReshape();
         reshape(*window->DrawList, firstVertex, *transform, bounds.getCenter(), false);
+
         for (ImGuiWindow* child : GImGui->Windows) {
             if (child != window && child->RootWindow == window->RootWindow && child->BeginOrderWithinContext >= firstWindow && child->LastFrameActive == GImGui->FrameCount) {
                 reshape(*child->DrawList, 0, *transform, bounds.getCenter(), true);
             }
         }
     }
+
     drawDetachedChildren(context, bounds);
     // A node that is disabled, itself or through a node around it, reports nothing of the pointer.
     if (isListeningToPointer() && (ImGui::GetCurrentContext()->CurrentItemFlags & ImGuiItemFlags_Disabled) == 0) {
         reportPointer(context, bounds);
     }
+
     if (!common.enabled) {
         ImGui::EndDisabled();
     }
+
     drawTooltip(context, bounds);
+
     if (writing) {
         context.popWriting();
     }
+
     if (styled) {
         context.popStyle();
     }
+
     if (accessibility.isEnabled()) {
         accessibility.leave(focus);
     }
+
     focus.leave();
     ImGui::PopID();
 }
@@ -296,6 +328,7 @@ math::Rect Component::getAnchoredBounds(Context& context, const math::Rect& pare
     } else if (common.anchorArea == Anchor::Area::Screen) {
         area = backend.getLiftedDisplayRect();
     }
+
     return common.anchor.value_or(Anchor{}).place(measure(context, area.width), area);
 }
 
@@ -306,6 +339,7 @@ void Component::reshape(ImDrawList& list, int firstVertex, const Transform& shap
         {IM_COL32_B_SHIFT, shape.tint.b},
         {IM_COL32_A_SHIFT, shape.tint.a * shape.opacity},
     }};
+
     for (int index = firstVertex; index < list.VtxBuffer.Size; ++index) {
         ImDrawVert& vertex = list.VtxBuffer[index];
         vertex.pos = {center.x + (vertex.pos.x - center.x) * shape.scale.x, center.y + (vertex.pos.y - center.y) * shape.scale.y};
@@ -315,11 +349,14 @@ void Component::reshape(ImDrawList& list, int firstVertex, const Transform& shap
             const float value = static_cast<float>((vertex.col >> shift) & 0xFFU) * std::clamp(factor, 0.0F, 1.0F);
             color |= static_cast<ImU32>(std::lround(value)) << shift;
         }
+
         vertex.col = color;
     }
+
     if (!clips) {
         return;
     }
+
     for (ImDrawCmd& command : list.CmdBuffer) {
         const ImVec2 first{center.x + (command.ClipRect.x - center.x) * shape.scale.x, center.y + (command.ClipRect.y - center.y) * shape.scale.y};
         const ImVec2 second{center.x + (command.ClipRect.z - center.x) * shape.scale.x, center.y + (command.ClipRect.w - center.y) * shape.scale.y};
@@ -333,6 +370,7 @@ void Component::drawDetachedChildren(Context& context, const math::Rect& bounds)
         if (!child->common.visible) {
             continue;
         }
+
         if (child->common.anchor) {
             child->draw(context, child->getAnchoredBounds(context, bounds));
         } else if (child->isFloating()) {
@@ -355,10 +393,12 @@ void Component::reportPointer(Context& context, const math::Rect& bounds) {
     const bool over = isPointerOver(bounds);
     if (over != hovered) {
         hovered = over;
+
         if (isListening(Notice::Hover)) {
             context.emit(*this, "hover", {{"hovered", over}});
         }
     }
+
     if (!reportsPresses()) {
         reportPress(context, over);
     }
@@ -378,12 +418,16 @@ void Component::reportPress(Context& context, bool over) {
             if (!over || !ImGui::IsMouseClicked(button)) {
                 continue;
             }
+
             pressedButton = button;
+
             if (isListening(Notice::Press)) {
                 context.emit(*this, "press", {{"x", point.x}, {"y", point.y}, {"button", getButtonName(button)}});
             }
+
             break;
         }
+
         return;
     }
 
@@ -392,9 +436,12 @@ void Component::reportPress(Context& context, bool over) {
         if (isListening(Notice::Drag) && (io.MouseDelta.x != 0.0F || io.MouseDelta.y != 0.0F)) {
             context.emit(*this, "drag", {{"x", point.x}, {"y", point.y}, {"deltaX", io.MouseDelta.x}, {"deltaY", io.MouseDelta.y}, {"button", getButtonName(button)}});
         }
+
         return;
     }
+
     pressedButton.reset();
+
     if (isListening(Notice::Release)) {
         context.emit(*this, "release", {{"x", point.x}, {"y", point.y}, {"button", getButtonName(button)}, {"inside", over}});
     }
@@ -409,9 +456,11 @@ void Component::drawTooltip(Context& context, const math::Rect& bounds) {
         hoverStarted = -1.0;
         return;
     }
+
     if (hoverStarted < 0.0) {
         hoverStarted = context.getTime();
     }
+
     if (context.getTime() - hoverStarted < context.getMetric(Theme::Metric::TooltipDelay)) {
         return;
     }
@@ -422,6 +471,7 @@ void Component::drawTooltip(Context& context, const math::Rect& bounds) {
     ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.0F, 0.0F, 0.0F, 0.0F));
     ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, 0.0F);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {spacing.x + std::max(padding.left, padding.right), spacing.y + std::max(padding.top, padding.bottom)});
+
     if (ImGui::BeginTooltip()) {
         context.pushPlainReshape();
         const ImVec2 position = ImGui::GetWindowPos();
@@ -437,6 +487,7 @@ void Component::drawTooltip(Context& context, const math::Rect& bounds) {
         context.popReshape();
         ImGui::EndTooltip();
     }
+
     ImGui::PopStyleVar(2);
     ImGui::PopStyleColor();
 }
@@ -445,9 +496,11 @@ void Component::command(Context&, std::string_view name, const core::Json& argum
     if (name != "focus" || !isFocusable()) {
         throw std::invalid_argument("The component kind \"" + std::string(getKind()) + "\" does not answer the command \"" + std::string(name) + "\".");
     }
+
     if (!arguments.is_null() && !(arguments.is_object() && arguments.empty())) {
         throw std::invalid_argument("The \"focus\" command takes no arguments.");
     }
+
     focusRequested = true;
 }
 
@@ -455,17 +508,21 @@ void Component::command(Context&, std::string_view name, const core::Json& argum
 void Component::noticeStoppedDrawing(Context& context) {
     if (drawnFrame != 0 && drawnFrame + 1 == context.getFrame()) {
         drawingStopped(context);
+
         if (std::exchange(hovered, false) && isListening(Notice::Hover)) {
             context.emit(*this, "hover", {{"hovered", false}});
         }
+
         if (const std::optional<int> button = std::exchange(pressedButton, std::nullopt); button && isListening(Notice::Release)) {
             const math::Vec2 point = context.toDesign(math::Vec2{ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y});
             context.emit(*this, "release", {{"x", point.x}, {"y", point.y}, {"button", getButtonName(*button)}, {"inside", false}});
         }
+
         if (isListening(Notice::Hide)) {
             context.emit(*this, "hide");
         }
     }
+
     for (const auto& child : children) {
         child->noticeStoppedDrawing(context);
     }
@@ -485,6 +542,7 @@ math::Rect Component::fitAspect(const math::Rect& area, float ratio) noexcept {
         const float width = area.height * ratio;
         return {std::floor(area.x + (area.width - width) * 0.5F), area.y, width, area.height};
     }
+
     const float height = area.width / ratio;
     return {area.x, std::floor(area.y + (area.height - height) * 0.5F), area.width, height};
 }

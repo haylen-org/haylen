@@ -21,6 +21,7 @@ math::Vec2 Stack::measureContent(Context& context, float availableWidth) {
     for (Component* child : getLayoutChildren()) {
         size = math::Vec2::max(size, child->measure(context, std::max(0.0F, availableWidth - padding.getHorizontal())));
     }
+
     return {size.x + padding.getHorizontal(), size.y + padding.getVertical()};
 }
 
@@ -33,6 +34,7 @@ void Stack::render(Context& context, const math::Rect& bounds) {
             child->draw(context, {inner.x, inner.y, std::min(child->clampWidth(inner.width), inner.width), std::min(child->clampHeight(inner.height), inner.height)});
             continue;
         }
+
         const math::Vec2 fitted = math::Vec2::min(child->measure(context, inner.width), inner.getSize());
         child->draw(context, {std::floor(context.alignHorizontally(alignment, inner.x, inner.width, fitted.x)), std::floor(align(alignment, inner.y, inner.height, fitted.y)), fitted.x, fitted.y});
     }

@@ -16,6 +16,7 @@ const core::Json& Style::readSection(const core::Json& value, const char* key, c
     if (!section.is_object()) {
         throw std::invalid_argument(subject + " must hold a table in \"" + key + "\".");
     }
+
     return section;
 }
 
@@ -24,10 +25,12 @@ Style::Color Style::readColor(const core::Json& value, const std::string& contex
     if (!value.is_string() || value.get_ref<const std::string&>().starts_with('#')) {
         return Theme::readColor(value, context);
     }
+
     const std::optional<Theme::Color> role = Theme::colorFromName(value.get_ref<const std::string&>());
     if (!role) {
         throw std::invalid_argument(context + " must name a theme color such as \"accent\" or \"textMuted\".");
     }
+
     return *role;
 }
 
@@ -35,9 +38,11 @@ Style::Color Style::readColor(const core::Json& value, const std::string& contex
 Style Style::fromJson(const core::Json& value, std::string_view path) {
     const std::string subject = PropertyReader::describeProperty(path);
     const std::string inside = "t" + subject.substr(1);
+
     if (!value.is_object()) {
         throw std::invalid_argument(subject + " must be a table with \"colors\", \"metrics\", \"fonts\", \"surfaces\" or \"sounds\".");
     }
+
     core::JsonValidator::requireKnownKeys(value, {"colors", "metrics", "fonts", "surfaces", "sounds"}, inside);
 
     Style style;
@@ -46,31 +51,39 @@ Style Style::fromJson(const core::Json& value, std::string_view path) {
         if (!role) {
             throw std::invalid_argument(subject + " has no color role named \"" + key + "\".");
         }
+
         style.colors[static_cast<std::size_t>(*role)] = readColor(color, "The color \"" + key + "\" of " + inside);
     }
+
     for (const auto& [key, metric] : readSection(value, "metrics", subject).items()) {
         const std::optional<Theme::Metric> role = Theme::metricFromName(key);
         if (!role) {
             throw std::invalid_argument(subject + " has no metric named \"" + key + "\".");
         }
+
         style.metrics[static_cast<std::size_t>(*role)] = Theme::readNumber(metric, "The metric \"" + key + "\" of " + inside);
     }
+
     readFonts(style, readSection(value, "fonts", subject), subject, inside);
     for (const auto& [key, surface] : readSection(value, "surfaces", subject).items()) {
         const std::optional<Theme::Surface> role = Theme::surfaceFromName(key);
         if (!role) {
             throw std::invalid_argument(subject + " has no surface named \"" + key + "\".");
         }
+
         const bool flat = surface.is_null() || (surface.is_boolean() && !surface.get<bool>());
         Surface entry{.definition = flat ? core::Json() : surface, .context = "the surface \"" + key + "\" of " + inside, .image = std::nullopt};
         if (!flat) {
             core::JsonValidator::requireKnownKeys(surface, {"image", "source", "slice", "pieces", "scale", "padding", "tint", "colorize", "filter", "fill"}, entry.context);
+
             if (!surface.contains("image") || !surface.at("image").is_string()) {
                 throw std::invalid_argument("The image of " + entry.context + " must be a path.");
             }
         }
+
         style.surfaces[static_cast<std::size_t>(*role)] = std::move(entry);
     }
+
     readSounds(style, readSection(value, "sounds", subject), subject, inside);
     return style;
 }
@@ -94,6 +107,7 @@ void Style::readSounds(Style& style, const core::Json& section, const std::strin
         if (!value.is_object()) {
             throw std::invalid_argument("T" + sound.substr(1) + " must be a table or \"false\".");
         }
+
         style.sounds[index] = Theme::readCue(value, sound);
     }
 }
@@ -104,31 +118,38 @@ void Style::readFonts(Style& style, const core::Json& section, const std::string
         if (!role) {
             throw std::invalid_argument(subject + " has no font role named \"" + key + "\".");
         }
+
         const std::string font = "the font \"" + key + "\" of " + inside;
         if (!value.is_object()) {
             throw std::invalid_argument("T" + font.substr(1) + " must be a table.");
         }
+
         core::JsonValidator::requireKnownKeys(value, {"font", "size", "bold", "italic", "ligatures"}, font);
         Font& entry = style.fonts[static_cast<std::size_t>(*role)];
         if (value.contains("font")) {
             if (!value.at("font").is_string() || value.at("font").get_ref<const std::string&>().empty()) {
                 throw std::invalid_argument("T" + font.substr(1) + " must name its font with a string.");
             }
+
             entry.font = value.at("font").get<std::string>();
         }
+
         if (value.contains("size")) {
             entry.size = Theme::readNumber(value.at("size"), "The size of " + font);
             if (*entry.size <= 0.0F) {
                 throw std::invalid_argument("The size of " + font + " must be positive.");
             }
         }
+
         for (const auto& [flag, field] : {std::pair{"bold", &entry.bold}, std::pair{"italic", &entry.italic}, std::pair{"ligatures", &entry.ligatures}}) {
             if (!value.contains(flag)) {
                 continue;
             }
+
             if (!value.at(flag).is_boolean()) {
                 throw std::invalid_argument("T" + font.substr(1) + " must set \"" + flag + "\" to \"true\" or \"false\".");
             }
+
             *field = value.at(flag).get<bool>();
         }
     }
@@ -143,6 +164,7 @@ void Style::loadSounds(const std::function<void(std::string_view path)>& load) c
     if (soundsLoaded) {
         return;
     }
+
     soundsLoaded = true;
 
     for (const std::optional<Theme::Cue>& cue : sounds) {
@@ -158,17 +180,21 @@ const Theme::Image* Style::findSurface(Theme::Surface role, const Theme::Texture
     if (!surface || surface->definition.is_null()) {
         return nullptr;
     }
+
     if (!surface->image) {
         graphics::Texture::Options options;
         if (const auto filter = surface->definition.find("filter"); filter != surface->definition.end() && filter->is_string()) {
             options.filter = graphics::Texture::filterFromName(filter->get_ref<const std::string&>()).value_or(options.filter);
         }
+
         const std::string& path = surface->definition.at("image").get_ref<const std::string&>();
         if (!ImageLibrary::isVector(path) && !loadTexture(path, options).isValid()) {
             return nullptr;
         }
+
         surface->image = Theme::readImage(surface->definition, surface->context, loadTexture);
     }
+
     return &*surface->image;
 }
 

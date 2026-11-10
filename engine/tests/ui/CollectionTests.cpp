@@ -50,6 +50,7 @@ class CollectionTest : public ::testing::Test, public test::UiFixture {
             const std::string id = "i" + std::to_string(first + index);
             items[index] = {.id = id, .type = type, .fields = {{"title", id}}};
         }
+
         return items;
     }
 
@@ -74,6 +75,7 @@ class CollectionTest : public ::testing::Test, public test::UiFixture {
         if (cell == nullptr) {
             throw std::logic_error("The item " + std::to_string(index) + " has no cell.");
         }
+
         return cell->getRoot().getBounds();
     }
 
@@ -96,6 +98,7 @@ class CollectionTest : public ::testing::Test, public test::UiFixture {
                 return text.style.color.a;
             }
         }
+
         return -1.0F;
     }
 
@@ -121,10 +124,12 @@ TEST_F(CollectionTest, KeepsTheCellsBoundedWhileScrollingOneHundredThousandItems
         wheel(area.getCenter(), -600.0F / 64.0F);
         frames();
         EXPECT_LE(getCells().alive - before.alive, 18U) << step;
+
         if (step == 4) {
             created = getCells().created - before.created;
         }
     }
+
     EXPECT_EQ(getCells().created - before.created, created);
 
     list.setScrollOffset(1.0e12);
@@ -162,7 +167,9 @@ TEST_F(CollectionTest, RecyclesCellsOfTheRightType) {
     for (std::size_t index = 0; index < items.size(); index += 10) {
         items[index].type = "header";
     }
+
     show(list, items);
+
     for (int step = 0; step < 30; ++step) {
         wheel(list.getBounds().getCenter(), -5.0F);
         frames();
@@ -306,9 +313,11 @@ TEST_F(CollectionTest, MovesTheFocusPastTheVisibleItems) {
     list.focusItem(0);
     frames(3);
     showRing();
+
     for (int step = 0; step < 40; ++step) {
         key(input::Key::Down);
     }
+
     frames(40);
     EXPECT_EQ(getFocusedItem(), "i41");
     EXPECT_TRUE(list.getBounds().contains(getItemBounds(list, 40)));
@@ -363,10 +372,12 @@ TEST_F(CollectionTest, PlacesGridSpansAndFullWidthHeaders) {
     std::vector<CollectionItems::Item> items = makeItems(30, 1, "cell");
     for (std::size_t index = 0; index < items.size(); ++index) {
         items[index].fields["size"] = index == 2 ? 90 : 50;
+
         if (index % 7 == 0) {
             items[index].type = "header";
         }
     }
+
     show(list, items);
     const math::Rect area = list.getBounds();
     const float width = getCellsWidth(list);
@@ -374,10 +385,12 @@ TEST_F(CollectionTest, PlacesGridSpansAndFullWidthHeaders) {
 
     EXPECT_FLOAT_EQ(getItemBounds(list, 0).width, width);
     EXPECT_FLOAT_EQ(getItemBounds(list, 0).x, area.x);
+
     for (const std::size_t index : {1U, 2U, 3U}) {
         EXPECT_NEAR(getItemBounds(list, index).width, lane, 1.0F);
         EXPECT_FLOAT_EQ(getItemBounds(list, index).height, 90.0F);
     }
+
     EXPECT_NEAR(getItemBounds(list, 2).x, area.x + (lane + 10.0F) * 1.0F, 1.0F);
     EXPECT_FLOAT_EQ(getItemBounds(list, 4).height, 50.0F);
     EXPECT_NEAR(getItemBounds(list, 4).y, getItemBounds(list, 1).getBottom() + 10.0F, 0.5F);
@@ -394,6 +407,7 @@ TEST_F(CollectionTest, PinsTheCurrentSectionHeader) {
     for (std::size_t index = 0; index < items.size(); index += 20) {
         items[index].type = "header";
     }
+
     show(list, items);
     const math::Rect area = list.getBounds();
     const double section = 40.0 + 19.0 * 60.0;
@@ -424,6 +438,7 @@ TEST_F(CollectionTest, KeepsSelectionAndFocusThroughAReorder) {
     for (const std::size_t index : list.getSelected()) {
         chosen.insert(std::string(source->getId(index)));
     }
+
     EXPECT_EQ(chosen, (std::set<std::string>{"i2", "i9"}));
     EXPECT_EQ(getFocusedItem(), "i9");
     EXPECT_EQ(list.getFocusedIndex(), 11U);
@@ -456,6 +471,7 @@ TEST_F(CollectionTest, ResetsPlayerChangedPartsWhenACellIsReused) {
     for (CollectionItems::Item& item : items) {
         item.fields["on"] = false;
     }
+
     const std::shared_ptr<CountingSource> source = show(list, items);
 
     // The value the player changed goes back to the item before the handlers hear it.
@@ -526,12 +542,14 @@ TEST_F(CollectionTest, MovesANewItemInWithTheItemBeforeIt) {
 
     source->insert(20, makeItems(1, 21));
     source->remove(0);
+
     for (int frame = 0; frame < 30; ++frame) {
         frames();
         const math::Rect before = getItemBounds(list, 18);
         const math::Rect added = getItemBounds(list, 19);
         EXPECT_FLOAT_EQ(added.y, before.getBottom()) << frame;
     }
+
     EXPECT_FLOAT_EQ(getItemBounds(list, 19).getBottom(), bottom);
 }
 
@@ -550,6 +568,7 @@ TEST_F(CollectionTest, WaitsForTheItemsThatLeaveThePlaceOfANewItem) {
             EXPECT_EQ(shown, 0.0F) << frame;
         }
     }
+
     EXPECT_TRUE(waited);
     EXPECT_EQ(getTextAlpha("i21"), 1.0F);
 }
@@ -618,10 +637,12 @@ TEST_F(CollectionTest, PullsToRefreshWithATouchDrag) {
 
     // A pull shorter than the refresh distance springs back without asking.
     touch(platform::Event::Type::TouchBegan, 1, start);
+
     for (int step = 1; step <= 4; ++step) {
         frames();
         touch(platform::Event::Type::TouchMoved, 1, start + math::Vec2{0.0F, 20.0F * static_cast<float>(step)});
     }
+
     frames();
     touch(platform::Event::Type::TouchEnded, 1, start + math::Vec2{0.0F, 80.0F});
     frames(60);
@@ -629,10 +650,12 @@ TEST_F(CollectionTest, PullsToRefreshWithATouchDrag) {
     EXPECT_DOUBLE_EQ(list.getScrollOffset(), 0.0);
 
     touch(platform::Event::Type::TouchBegan, 1, start);
+
     for (int step = 1; step <= 8; ++step) {
         frames();
         touch(platform::Event::Type::TouchMoved, 1, start + math::Vec2{0.0F, 50.0F * static_cast<float>(step)});
     }
+
     frames();
     touch(platform::Event::Type::TouchEnded, 1, start + math::Vec2{0.0F, 400.0F});
     frames(60);
@@ -646,10 +669,12 @@ TEST_F(CollectionTest, FlingsWithATouchDragAlongItsAxis) {
     show(list, makeItems(1000));
     const math::Vec2 start = list.getBounds().getCenter() + math::Vec2{0.0F, 200.0F};
     touch(platform::Event::Type::TouchBegan, 1, start);
+
     for (int step = 1; step <= 6; ++step) {
         frames();
         touch(platform::Event::Type::TouchMoved, 1, start - math::Vec2{0.0F, 60.0F * static_cast<float>(step)});
     }
+
     frames();
     const double released = list.getScrollOffset();
     EXPECT_GT(released, 200.0);
@@ -688,10 +713,12 @@ TEST_F(CollectionTest, LeavesGesturesAcrossItsAxisToTheScrollAroundIt) {
     const math::Vec2 start = shelf.getBounds().getCenter();
     touch(platform::Event::Type::TouchBegan, 1, start);
     frames();
+
     for (int step = 1; step <= 10; ++step) {
         touch(platform::Event::Type::TouchMoved, 1, start - math::Vec2{3.0F, 10.0F * static_cast<float>(step)});
         frames();
     }
+
     frames(20);
     touch(platform::Event::Type::TouchEnded, 1, start - math::Vec2{3.0F, 100.0F});
     frames(60);
@@ -956,6 +983,7 @@ TEST_F(CollectionTest, ReportsProblemsOfTypesAndTemplates) {
         } catch (const std::invalid_argument& error) {
             return std::string(error.what());
         }
+
         return std::string("no error");
     };
     // clang-format on
@@ -980,12 +1008,14 @@ TEST_F(CollectionTest, RejectsItemsOfUndeclaredTypes) {
     auto source = std::make_shared<CollectionItems>();
     source->assign({{.id = "x", .type = "c", .fields = core::Json::object()}});
     EXPECT_THROW(list.setSource(source), std::invalid_argument);
+
     try {
         list.checkType("y", "");
         FAIL() << "An item without a type was accepted.";
     } catch (const std::invalid_argument& error) {
         EXPECT_STREQ(error.what(), "The item \"y\" of the collection \"list\" needs a type, because the collection declares several.");
     }
+
     EXPECT_THROW(list.setBinder("c", {}), std::invalid_argument);
     EXPECT_THROW((void)gui->getCollection("missing"), std::invalid_argument);
 }

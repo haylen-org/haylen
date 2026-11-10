@@ -61,6 +61,7 @@ class BackendTest : public ::testing::Test {
             const std::span<const std::uint8_t> data = core::EmbeddedFiles::getDefaultFont();
             return {data.begin(), data.end()};
         }
+
         std::ifstream file(std::string(HAYLEN_TEST_FONTS) + "/" + name, std::ios::binary);
         return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
     }
@@ -143,6 +144,7 @@ TEST_F(BackendTest, FadesCurvesOverOnePixelAtEveryScale) {
             EXPECT_EQ(outer.col >> IM_COL32_A_SHIFT, 0U);
             EXPECT_EQ(inner.col >> IM_COL32_A_SHIFT, 255U);
         }
+
         const float stray = kRadius * (1.0F - std::cos(std::numbers::pi_v<float> / static_cast<float>(count)));
         EXPECT_LE(stray * pixels, 0.2F) << scale;
     }
@@ -154,15 +156,18 @@ TEST_F(BackendTest, TypesTextThroughKeyboardEvents) {
     // clang-format off
     const auto build = [&] {
         beginWindow("form", {0.0F, 0.0F});
+
         if (std::exchange(focus, false)) {
             ImGui::SetKeyboardFocusHere();
         }
+
         ImGui::InputText("##name", &name);
         ImGui::End();
     };
     // clang-format on
     frame(build);
     frame(build);
+
     for (const char32_t character : std::u32string(U"Ana é")) {
         platform::Event event;
         event.type = platform::Event::Type::Character;
@@ -170,6 +175,7 @@ TEST_F(BackendTest, TypesTextThroughKeyboardEvents) {
         backend.handleEvent(event, getEngine().getViewport());
         frame(build);
     }
+
     frame(build);
     EXPECT_EQ(name, "Ana \xC3\xA9");
     EXPECT_TRUE(backend.isUsingKeyboard());
@@ -252,14 +258,18 @@ TEST_F(BackendTest, DrawsChildWindowsBetweenTheItemsAroundThem) {
     const auto build = [&] {
         beginWindow("page", {0.0F, 0.0F});
         mark("before");
+
         if (backend.beginChild("##list", {200.0F, 100.0F}, ImGuiChildFlags_None, ImGuiWindowFlags_None)) {
             mark("list");
+
             if (backend.beginChild("##row", {100.0F, 40.0F}, ImGuiChildFlags_None, ImGuiWindowFlags_None)) {
                 mark("row");
             }
+
             ImGui::EndChild();
             mark("list end");
         }
+
         ImGui::EndChild();
         mark("after");
         ImGui::End();
@@ -290,6 +300,7 @@ TEST_F(BackendTest, DrawsMissingCharactersFromFallbacksAtTheEmSize) {
             EXPECT_TRUE(face->IsGlyphInFont(U'☀'));
             EXPECT_NEAR(face->GetFontBaked(backend.getFontHeight("story", 24.0F, bold))->GetCharAdvance(U'日'), 24.0F, 0.5F);
         }
+
         EXPECT_FALSE(backend.getFont(Backend::kDefaultFontName)->IsGlyphInFont(U'日'));
     });
     // clang-format on
@@ -311,11 +322,13 @@ TEST_F(BackendTest, DrawsDamagedFontsAsMissingGlyphs) {
     // clang-format off
     frame([&] {
         beginWindow("damaged", {0.0F, 0.0F});
+
         for (const char* name : {"itself", "moved", "counted"}) {
             ImGui::PushFont(backend.getFont(name), 24.0F);
             ImGui::TextUnformatted("A quick fox");
             ImGui::PopFont();
         }
+
         ImGui::End();
     });
     // clang-format on

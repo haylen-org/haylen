@@ -33,6 +33,7 @@ void RangeSlider::readProperties(PropertyReader& reader) {
     if (lowest >= highest) {
         reader.fail("min", "must be smaller than \"max\"");
     }
+
     if (reader.has("low") && reader.has("high") && from > to) {
         reader.fail("low", "must not be greater than \"high\"");
     }
@@ -45,6 +46,7 @@ void RangeSlider::readProperties(PropertyReader& reader) {
     if (low > high && !reader.has("low")) {
         low = high;
     }
+
     high = std::max(low, high);
 }
 
@@ -62,12 +64,15 @@ void RangeSlider::render(Context& context, const math::Rect& bounds) {
 
     bool changed = follow(context, area, track);
     const ImGuiID itemId = ImGui::GetItemID();
+
     if (takeFocusRequest()) {
         Widgets::focusItem(context);
     }
+
     if (GImGui->NavActivatePressedId == itemId) {
         highActive = !highActive;
     }
+
     if (const std::optional<FocusDirection> direction = takeFocusDirection(context)) {
         const double amount = (step > 0.0 ? step : (maximum - minimum) / kFocusSteps) * Widgets::getStep(context, *direction);
         double& moved = highActive ? high : low;
@@ -86,11 +91,14 @@ void RangeSlider::render(Context& context, const math::Rect& bounds) {
     if (pressed) {
         context.keepDrag(itemId);
     }
+
     drawKnob(context, area, toPosition(context, low, track), ring && !highActive, pressed && !highActive);
     drawKnob(context, area, toPosition(context, high, track), ring && highActive, pressed && highActive);
+
     if (showValue) {
         Typography::drawAligned(context, Theme::Font::Body, context.mirror({bounds.getRight() - label, bounds.y, label, bounds.height}, bounds), context.getColor(Theme::Color::TextMuted), range, Alignment::End);
     }
+
     if (changed) {
         context.playSound(Theme::Sound::Step);
         context.emit(*this, "change", {{"low", low}, {"high", high}});
@@ -120,6 +128,7 @@ bool RangeSlider::follow(Context& context, const math::Rect& bounds, const math:
     const ImRect box = ImGuiConverter::toImRect(bounds);
     const bool shown = ImGui::ItemAdd(box, itemId);
     context.getFocus().addTarget(itemId, bounds);
+
     if (!shown) {
         return false;
     }
@@ -128,19 +137,24 @@ bool RangeSlider::follow(Context& context, const math::Rect& bounds, const math:
     if (ImGui::ItemHoverable(box, itemId, state.LastItemData.ItemFlags) && ImGui::IsMouseClicked(0, ImGuiInputFlags_None, itemId)) {
         ImGui::SetKeyOwner(ImGuiKey_MouseLeft, itemId);
         ImGui::SetActiveID(itemId, window);
+
         if (context.getFocus().isFocusable()) {
             ImGui::SetFocusID(itemId, window);
         }
+
         ImGui::FocusWindow(window);
         const float highX = toPosition(context, high, track);
         const float toLow = std::fabs(pointer - toPosition(context, low, track));
         const float toHigh = std::fabs(pointer - highX);
         highActive = toHigh < toLow || (toHigh == toLow && (context.isRightToLeft() ? pointer < highX : pointer > highX));
     }
+
     Widgets::drawFocusRing(context, bounds, itemId, bounds.height * 0.5F);
+
     if (state.ActiveId != itemId) {
         return false;
     }
+
     if (!state.IO.MouseDown[0]) {
         ImGui::ClearActiveID();
         return false;
@@ -160,6 +174,7 @@ void RangeSlider::drawKnob(Context& context, const math::Rect& bounds, float x, 
     const math::Rect area{x - knob * 0.5F, std::floor(bounds.getCenter().y - knob * 0.5F), knob, knob};
     const math::Color fill = context.getColor(Theme::Color::OnAccent);
     Surfaces::draw(context, Theme::Surface::Knob, area, pressed ? math::Color{fill.r * 0.85F, fill.g * 0.85F, fill.b * 0.85F, fill.a} : fill, context.getColor(Theme::Color::Accent), knob * 0.5F);
+
     if (active) {
         const float width = context.getMetric(Theme::Metric::FocusWidth);
         const float outer = knob * 0.5F + 4.0F + width * 0.5F;

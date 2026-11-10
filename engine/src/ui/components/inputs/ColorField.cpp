@@ -27,9 +27,11 @@ math::Vec2 ColorField::measureContent(Context& context, float availableWidth) {
 
 void ColorField::render(Context& context, const math::Rect& bounds) {
     const Widgets::Interaction state = Widgets::interact(context, bounds, context.getMetric(Theme::Metric::ControlRadius), "##color");
+
     if (takeFocusRequest()) {
         Widgets::focusItem(context);
     }
+
     Surfaces::draw(context, Theme::Surface::Field, bounds, context.getColor(state.hovered ? Theme::Color::BorderStrong : Theme::Color::Raised), context.getColor(Theme::Color::Border));
 
     const float padding = context.getMetric(Theme::Metric::ControlPaddingY);
@@ -42,27 +44,34 @@ void ColorField::render(Context& context, const math::Rect& bounds) {
     if (!alpha) {
         text.erase(1, 2);
     }
+
     Typography::drawAligned(context, Theme::Font::Monospace, context.mirror(math::Rect::fromMinMax({bounds.x + bounds.height, bounds.y}, {bounds.getRight() - padding, bounds.getBottom()}), bounds), context.getColor(Theme::Color::Text), text, Alignment::Start);
 
     if (state.clicked) {
         ImGui::OpenPopup("##picker");
     }
+
     if (!ImGui::IsPopupOpen("##picker")) {
         return;
     }
+
     if (const std::optional<math::Rect> box = popup.begin(context, "##picker", ImGuiWindowFlags_None, context.getMetric(Theme::Metric::PanelPadding), {kPickerWidth, pickerHeight}, bounds, kPickerWidth)) {
         std::array<float, 4> channels{value.r, value.g, value.b, value.a};
         const ImGuiColorEditFlags flags = ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoSmallPreview | (alpha ? ImGuiColorEditFlags_AlphaBar : ImGuiColorEditFlags_NoAlpha);
         ImGui::SetCursorScreenPos(ImGuiConverter::toImVec2(box->getMin()));
         ImGui::SetNextItemWidth(kPickerWidth);
+
         if (ImGui::ColorPicker4("##pick", channels.data(), flags)) {
             value = {channels[0], channels[1], channels[2], alpha ? channels[3] : 1.0F};
             context.emit(*this, "change", {{"value", value.toHex()}});
         }
+
         pickerHeight = ImGui::GetItemRectSize().y;
+
         if (GImGui->ActiveId != 0 && GImGui->ActiveIdWindow == ImGui::GetCurrentWindow()) {
             context.keepDrag(GImGui->ActiveId);
         }
+
         popup.end(context);
     }
 }

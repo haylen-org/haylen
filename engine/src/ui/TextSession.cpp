@@ -15,11 +15,13 @@ bool TextSession::limit(ImGuiInputTextCallbackData& data, int maxLength) {
     if (maxLength <= 0) {
         return false;
     }
+
     const std::string_view buffer(data.Buf, static_cast<std::size_t>(data.BufTextLen));
     const std::size_t end = core::Utf8::getOffset(buffer, static_cast<std::size_t>(maxLength));
     if (end >= buffer.size()) {
         return false;
     }
+
     data.DeleteChars(static_cast<int>(end), data.BufTextLen - static_cast<int>(end));
     return true;
 }
@@ -27,6 +29,7 @@ bool TextSession::limit(ImGuiInputTextCallbackData& data, int maxLength) {
 void TextSession::apply(ImGuiInputTextCallbackData& data, const platform::TextInput::Edit& edit) {
     if (std::string_view(data.Buf, static_cast<std::size_t>(data.BufTextLen)) != edit.text) {
         data.DeleteChars(0, data.BufTextLen);
+
         if (!edit.text.empty()) {
             data.InsertChars(0, edit.text.data(), edit.text.data() + edit.text.size());
         }
@@ -49,6 +52,7 @@ std::pair<int, int> TextSession::getSelection(const ImGuiInputTextCallbackData& 
         const int caret = toIndex(data.CursorPos);
         return {caret, caret};
     }
+
     return {toIndex(std::min(data.SelectionStart, data.SelectionEnd)), toIndex(std::max(data.SelectionStart, data.SelectionEnd))};
 }
 
@@ -76,10 +80,12 @@ void TextSession::beginFrame(const graphics::Viewport& frameViewport, float uiSc
         const float overlap = bounds.getBottom() + keyboardOffset + kKeyboardMargin - keyboard.getTop();
         target = std::clamp(overlap, 0.0F, std::max(0.0F, top - kKeyboardMargin));
     }
+
     keyboardLift += (target - keyboardLift) * std::min(1.0F, deltaSeconds * kKeyboardSpeed);
     if (std::abs(target - keyboardLift) < 0.5F) {
         keyboardLift = target;
     }
+
     // The layout places nodes on whole units, so the UI moves by whole units too, and the place of the field without the offset then stays the same whatever the offset is, instead of following the rounding of its own lift.
     keyboardOffset = std::round(keyboardLift);
 }
@@ -93,6 +99,7 @@ void TextSession::synchronize(ImGuiInputTextCallbackData& data) {
     if (entry == fields.end()) {
         return;
     }
+
     const bool activated = data.EventActivated || data.ID != active;
     if (activated) {
         active = data.ID;
@@ -105,6 +112,7 @@ void TextSession::synchronize(ImGuiInputTextCallbackData& data) {
         caretRect = entry->bounds;
         original.assign(data.Buf, static_cast<std::size_t>(data.BufTextLen));
     }
+
     options = entry->options;
     bounds = entry->bounds;
     activeThisFrame = true;
@@ -119,6 +127,7 @@ void TextSession::synchronize(ImGuiInputTextCallbackData& data) {
             compositionEnd = pending->compositionEnd;
             applied = true;
         }
+
         pending.reset();
     }
 
@@ -139,6 +148,7 @@ void TextSession::synchronize(ImGuiInputTextCallbackData& data) {
         compositionStart = -1;
         compositionEnd = -1;
     }
+
     text.assign(current);
     selectionStart = start;
     selectionEnd = end;
@@ -148,6 +158,7 @@ std::optional<platform::TextInput::Action> TextSession::takeAction(ImGuiID id) {
     if (id != active) {
         return std::nullopt;
     }
+
     return std::exchange(action, std::nullopt);
 }
 
@@ -155,6 +166,7 @@ std::optional<std::pair<int, int>> TextSession::getComposition(ImGuiID id) const
     if (id != active || compositionStart < 0 || compositionEnd <= compositionStart) {
         return std::nullopt;
     }
+
     return std::pair{compositionStart, compositionEnd};
 }
 
@@ -173,6 +185,7 @@ void TextSession::publish() {
         action.reset();
         compositionStart = -1;
         compositionEnd = -1;
+
         if (published) {
             published.reset();
             input.finish();
@@ -188,6 +201,7 @@ void TextSession::publish() {
             published = std::move(field);
         }
     }
+
     publishVisibleFields();
 }
 
@@ -207,6 +221,7 @@ void TextSession::publishVisibleFields() {
     for (const Entry& entry : fields) {
         visibleFields.push_back({.id = entry.id, .bounds = toFramebuffer(entry.bounds), .options = entry.options});
     }
+
     if (visibleFields != sentFields) {
         input.setVisibleFields(visibleFields);
         sentFields = visibleFields;

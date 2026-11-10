@@ -20,6 +20,7 @@ class SizeCacheTest : public ::testing::Test {
         sizes.setEstimates(std::vector<float>{kEstimate}, kFallback);
         sizes.assign(std::vector<std::uint16_t>(lengths.size(), 0));
         arrange();
+
         for (std::size_t index = 0; index < lengths.size(); ++index) {
             sizes.measure(index, lengths[index]);
         }
@@ -46,16 +47,20 @@ TEST_F(SizeCacheTest, FindsLinesByOffset) {
     for (float& value : lengths) {
         value = length(random);
     }
+
     measureAll(lengths);
 
     double expected = 0.0;
     for (std::size_t line = 0; line < lengths.size(); ++line) {
         ASSERT_NEAR(sizes.getLineOffset(line), expected, 0.01) << line;
+
         if (line % 97 == 0) {
             EXPECT_EQ(sizes.findLine(expected + 0.5), line);
         }
+
         expected += lengths[line];
     }
+
     EXPECT_NEAR(sizes.getTotal(), expected, 0.01);
     EXPECT_EQ(sizes.findLine(-10.0), 0U);
     EXPECT_EQ(sizes.findLine(expected + 1000.0), lengths.size() - 1);
@@ -77,6 +82,7 @@ TEST_F(SizeCacheTest, KeepsOffsetsAfterInsertingAndErasingLines) {
     for (std::size_t index = 0; index < lengths.size(); ++index) {
         lengths[index] = 30.0F + static_cast<float>(index % 7) * 10.0F;
     }
+
     measureAll(lengths);
 
     // Inserted items take the estimate of their type, and the measured items keep their lengths wherever they moved.
@@ -102,6 +108,7 @@ TEST_F(SizeCacheTest, ArrangesFromTheFirstChangedLineLikeEveryLine) {
     for (float& value : lengths) {
         value = static_cast<float>(lengthOf(random));
     }
+
     measureAll(lengths);
     GridLayout grid;
     for (int round = 0; round < 60; ++round) {
@@ -129,6 +136,7 @@ TEST_F(SizeCacheTest, ArrangesFromTheFirstChangedLineLikeEveryLine) {
             ASSERT_FALSE(sizes.needsArrange());
             continue;
         }
+
         arrangeWith(first);
         ASSERT_FALSE(sizes.needsArrange());
 
@@ -137,14 +145,17 @@ TEST_F(SizeCacheTest, ArrangesFromTheFirstChangedLineLikeEveryLine) {
         full.setEstimates(std::vector<float>{kEstimate}, kFallback);
         full.assign(std::vector<std::uint16_t>(sizes.size(), 0));
         full.arrange(active, 4.0F);
+
         for (std::size_t index = 0; index < sizes.size(); ++index) {
             if (sizes.isMeasured(index)) {
                 full.measure(index, sizes.getItemLength(index));
             }
         }
+
         for (std::size_t line = 0; line < active.getLineCount(); ++line) {
             ASSERT_NEAR(sizes.getLineOffset(line), full.getLineOffset(line), 0.01) << round << " " << line;
         }
+
         ASSERT_NEAR(sizes.getTotal(), full.getTotal(), 0.01);
     }
 }
@@ -172,6 +183,7 @@ TEST_F(SizeCacheTest, EstimatesUnmeasuredItemsWithTheMeanOfTheirType) {
     for (std::size_t index = 0; index < 10; ++index) {
         sizes.measure(index, 80.0F);
     }
+
     EXPECT_TRUE(sizes.needsArrange());
     arrange();
     EXPECT_FLOAT_EQ(sizes.getItemLength(10), 80.0F);

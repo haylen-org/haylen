@@ -42,9 +42,11 @@ math::Rect Scrollbar::getContentBox(const Context& context, const math::Rect& ar
     if (horizontal) {
         return math::Rect::fromMinMax(box.getMin(), {box.getRight(), std::max(box.y, std::min(box.getBottom(), area.getBottom() - lane))});
     }
+
     if (context.isRightToLeft()) {
         return math::Rect::fromMinMax({std::min(box.getRight(), std::max(box.x, area.x + lane)), box.y}, box.getMax());
     }
+
     return math::Rect::fromMinMax(box.getMin(), {std::max(box.x, std::min(box.getRight(), area.getRight() - lane)), box.getBottom()});
 }
 
@@ -77,6 +79,7 @@ std::optional<double> Scrollbar::interact(Context& context, const math::Rect& ar
         hovered = held = grabbing = false;
         return std::nullopt;
     }
+
     const bool pressed = ImGui::ButtonBehavior(box, id, &hovered, &held, ImGuiButtonFlags_NoNavFocus | ImGuiButtonFlags_PressedOnClick);
     const ImVec2 mouse = ImGui::GetIO().MousePos;
     const float along = horizontal ? mouse.x - track.x : mouse.y - track.y;
@@ -85,19 +88,23 @@ std::optional<double> Scrollbar::interact(Context& context, const math::Rect& ar
     if (pressed) {
         grabbing = along >= start && along <= start + length;
         grab = along - start;
+
         if (!grabbing) {
             const bool backward = (along < start) != reversed;
             return std::clamp(offset + (backward ? -viewLength : viewLength), 0.0, maximum);
         }
     }
+
     if (held) {
         context.keepDrag(id);
     } else {
         grabbing = false;
     }
+
     if (!grabbing || travel <= 0.0F) {
         return std::nullopt;
     }
+
     const double ratio = std::clamp(static_cast<double>((along - grab) / travel), 0.0, 1.0);
     return (reversed ? 1.0 - ratio : ratio) * maximum;
 }
@@ -106,6 +113,7 @@ void Scrollbar::draw(Context& context, float alpha) const {
     if (alpha <= 0.0F || thumb.isEmpty()) {
         return;
     }
+
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * alpha);
     paint(context, track, thumb, hovered || held);
     ImGui::PopStyleVar();
@@ -119,6 +127,7 @@ void Scrollbar::paint(Context& context, const math::Rect& groove, const math::Re
     } else if (const math::Color color = context.getColor(Theme::Color::ScrollbarTrack); color.a > 0.0F) {
         Surfaces::fill(context, groove, color, radius);
     }
+
     const Theme::Surface surface = active && context.getSurface(Theme::Surface::ScrollbarHover) != nullptr ? Theme::Surface::ScrollbarHover : Theme::Surface::Scrollbar;
     Surfaces::draw(context, surface, handle, context.getColor(active ? Theme::Color::ScrollbarHover : Theme::Color::Scrollbar), std::nullopt, radius);
 }

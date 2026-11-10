@@ -22,10 +22,12 @@ math::Vec2 SettingsRow::measureContent(Context& context, float availableWidth) {
     if (const std::string_view captionText = context.getText(caption); !captionText.empty()) {
         text.y += Typography::measureParagraph(context, Theme::Font::Caption, captionText, labelWidth).y;
     }
+
     math::Vec2 control;
     if (!getChildren().empty()) {
         control = getChildren().front()->measure(context, std::max(0.0F, availableWidth - labelWidth - spacing));
     }
+
     const float padding = context.getMetric(Theme::Metric::ControlPaddingY);
     return {std::max(labelWidth * 2.0F, labelWidth + spacing + control.x), std::max({text.y, control.y, context.getMetric(Theme::Metric::ListRowHeight)}) + padding * 2.0F};
 }
@@ -42,6 +44,7 @@ void SettingsRow::render(Context& context, const math::Rect& bounds) {
     const float top = std::floor(inner.getCenter().y - (labelHeight + captionHeight) * 0.5F);
     // The label stands at the start of the row and the control at its end, which swap sides in a right-to-left UI.
     Typography::drawParagraph(context, Theme::Font::Body, context.mirror({inner.x, top, labelWidth, labelHeight}, inner), context.getColor(Theme::Color::Text), labelText, Alignment::Start);
+
     if (!captionText.empty()) {
         Typography::drawParagraph(context, Theme::Font::Caption, context.mirror({inner.x, top + labelHeight, labelWidth, captionHeight}, inner), context.getColor(Theme::Color::TextMuted), captionText, Alignment::Start);
     }

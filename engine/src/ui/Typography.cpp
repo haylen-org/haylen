@@ -25,6 +25,7 @@ text::Style Typography::getStyle(Context& context, Theme::Font font, float wrapW
     if (align == text::Alignment::Start || align == text::Alignment::End) {
         align = (align == text::Alignment::Start) != rightToLeft ? text::Alignment::Left : text::Alignment::Right;
     }
+
     return {.size = context.getFontSize(font), .align = align, .maxWidth = wrapWidth > 0.0F ? wrapWidth : 0.0F, .lineSpacing = 1.0F, .bold = context.isFontBold(font), .italic = context.isFontItalic(font), .direction = text::Direction::Auto, .language = context.getLanguage(), .ligatures = context.hasLigatures(font), .code = font == Theme::Font::Monospace};
 }
 
@@ -37,11 +38,13 @@ math::Vec2 Typography::measure(Context& context, Theme::Font font, std::string_v
     if (text.empty()) {
         return {0.0F, getLineHeight(context, font)};
     }
+
     const std::shared_ptr<const text::Layout> laid = layout(context, font, text, getStyle(context, font, wrapWidth));
     float width = 0.0F;
     for (const text::Layout::Line& line : laid->lines) {
         width = std::max(width, line.box.width);
     }
+
     return {std::ceil(width), laid->size.y};
 }
 
@@ -50,6 +53,7 @@ void Typography::drawLayout(Context& context, Theme::Font font, std::string_view
     if (text.empty()) {
         return;
     }
+
     // The text fades with the transforms around it and with the alpha of ImGui, which disabled nodes and fading overlays lower.
     const Context::Reshape shape = context.getReshape();
     const math::Color faded = shape.color.withAlpha(shape.color.a * ImGui::GetStyle().Alpha);
@@ -77,6 +81,7 @@ std::string_view Typography::elide(Context& context, Theme::Font font, std::stri
         used += full->characters[kept].box.width;
         ++kept;
     }
+
     while (true) {
         const std::size_t cut = kept < full->characters.size() ? full->characters[kept].begin : core::Utf8::countCodePoints(text);
         shortened.assign(text.substr(0, core::Utf8::getOffset(text, cut)));
@@ -84,6 +89,7 @@ std::string_view Typography::elide(Context& context, Theme::Font font, std::stri
         if (kept == 0 || layout(context, font, shortened, style)->size.x <= width) {
             return shortened;
         }
+
         --kept;
     }
 }
@@ -104,11 +110,13 @@ void Typography::drawParagraph(Context& context, Theme::Font font, const math::R
         style.maxHeight = bounds.height;
         style.minScale = minScale;
     }
+
     style.color = color;
     if (paint.outline) {
         style.outlineWidth = paint.outlineWidth;
         style.outlineColor = *paint.outline;
     }
+
     style.gradient = paint.gradient;
     drawLayout(context, font, text, style, bounds.getMin());
 }
@@ -129,6 +137,7 @@ std::string Typography::formatNumber(double value, int decimals) {
     if (formatted.front() == '-' && formatted.find_first_not_of("-0.") == std::string::npos) {
         formatted.erase(0, 1);
     }
+
     return formatted;
 }
 

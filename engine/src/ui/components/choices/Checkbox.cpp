@@ -19,6 +19,7 @@ void Checkbox::render(Context& context, const math::Rect& bounds) {
         context.playSound(Theme::Sound::Toggle);
         context.emit(*this, "change", {{"checked", checked}});
     }
+
     if (takeFocusRequest()) {
         Widgets::focusItem(context);
     }

@@ -23,9 +23,11 @@ void NumberField::readProperties(PropertyReader& reader) {
     reader.read("step", step, 0.0);
     reader.read("decimals", decimals, 0, 6);
     reader.readChoice<platform::TextInput::ReturnKey>("returnKey", returnKey, platform::TextInput::kReturnKeys);
+
     if (lowest > highest) {
         reader.fail("min", "must not be greater than \"max\"");
     }
+
     minimum = lowest;
     maximum = highest;
     value = std::clamp(value, minimum, maximum);
@@ -44,6 +46,7 @@ void NumberField::drawSign(Context& context, const math::Rect& button, bool plus
     const float width = std::round(context.getMetric(Theme::Metric::StrokeWidth) * kSignWeight);
     const math::Color color = context.getColor(Theme::Color::Text);
     Widgets::line(context, {center.x - arm, center.y - width * 0.5F}, {center.x + arm, center.y - width * 0.5F}, width, color);
+
     if (plus) {
         Widgets::line(context, {center.x - width * 0.5F, center.y - arm}, {center.x - width * 0.5F, center.y + arm}, width, color);
     }
@@ -86,9 +89,11 @@ void NumberField::render(Context& context, const math::Rect& bounds) {
             next = std::clamp(parsed, minimum, maximum);
         }
     }
+
     if (!editing) {
         text = Typography::formatNumber(next, decimals);
     }
+
     if (next != value) {
         value = next;
         context.emit(*this, "change", {{"value", value}});

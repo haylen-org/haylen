@@ -11,10 +11,12 @@ std::optional<std::size_t> FocusSearch::find(const math::Rect& source, std::span
         if (!isCandidate(source, candidates[index], direction)) {
             continue;
         }
+
         if (!best || isBetter(source, candidates[index], candidates[*best], direction)) {
             best = index;
         }
     }
+
     return best;
 }
 
@@ -60,6 +62,7 @@ bool FocusSearch::beamsOverlap(const math::Rect& source, const math::Rect& targe
     if (isHorizontal(direction)) {
         return target.getBottom() > source.y && target.y < source.getBottom();
     }
+
     return target.getRight() > source.x && target.x < source.getRight();
 }
 
@@ -109,6 +112,7 @@ float FocusSearch::getMinorAxisDistance(const math::Rect& source, const math::Re
     if (isHorizontal(direction)) {
         return std::fabs(source.getCenter().y - target.getCenter().y);
     }
+
     return std::fabs(source.getCenter().x - target.getCenter().x);
 }
 
@@ -117,9 +121,11 @@ bool FocusSearch::beamBeats(const math::Rect& source, const math::Rect& first, c
     if (beamsOverlap(source, second, direction) || !beamsOverlap(source, first, direction)) {
         return false;
     }
+
     if (!isToDirectionOf(source, second, direction) || isHorizontal(direction)) {
         return true;
     }
+
     return getMajorAxisDistance(source, first, direction) < getMajorAxisDistanceToFarEdge(source, second, direction);
 }
 
@@ -127,9 +133,11 @@ bool FocusSearch::isBetter(const math::Rect& source, const math::Rect& first, co
     if (!isCandidate(source, first, direction)) {
         return false;
     }
+
     if (!isCandidate(source, second, direction) || beamBeats(source, first, second, direction)) {
         return true;
     }
+
     if (beamBeats(source, second, first, direction)) {
         return false;
     }
@@ -139,6 +147,7 @@ bool FocusSearch::isBetter(const math::Rect& source, const math::Rect& first, co
         if (getMajorAxisDistanceToFarEdge(source, first, direction) <= getMajorAxisDistance(source, second, direction)) {
             return true;
         }
+
         if (getMajorAxisDistanceToFarEdge(source, second, direction) <= getMajorAxisDistance(source, first, direction)) {
             return false;
         }

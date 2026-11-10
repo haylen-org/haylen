@@ -13,6 +13,7 @@ void MountLink::disconnect() {
     if (const std::shared_ptr<Gui> mounted = gui.lock()) {
         plugin.unmount(*mounted);
     }
+
     gui.reset();
 }
 

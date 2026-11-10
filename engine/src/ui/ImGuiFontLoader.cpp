@@ -39,17 +39,21 @@ bool ImGuiFontLoader::initSource(ImFontAtlas* /*atlas*/, ImFontConfig* source) {
     if (source->MergeMode && source->SizePixels == 0.0F) {
         source->SizePixels = referenceSize;
     }
+
     float scale = 1.0F / static_cast<float>(lines.ascender - lines.descender);
     if (source->MergeMode && source->SizePixels != 0.0F && referenceSize != 0.0F) {
         scale *= source->SizePixels / referenceSize;
     }
+
     scale *= source->ExtraSizeScale;
 
     auto loaded = std::make_unique<Source>(Source{.file = std::move(*file), .scale = scale});
     loaded->raster.reset(hb_raster_draw_create_or_fail());
+
     if (!loaded->raster) {
         throw std::bad_alloc();
     }
+
     source->FontLoaderData = loaded.release();
     return true;
 }
@@ -73,6 +77,7 @@ bool ImGuiFontLoader::initBaked(ImFontAtlas* /*atlas*/, ImFontConfig* source, Im
     if (source->MergeMode) {
         return true;
     }
+
     const Source& loaded = *static_cast<const Source*>(source->FontLoaderData);
     const text::FontFile::LineMetrics& lines = loaded.file.getLineMetrics();
     const float layoutScale = loaded.scale * baked->Size / source->ExtraSizeScale;
@@ -97,24 +102,29 @@ bool ImGuiFontLoader::loadGlyph(ImFontAtlas* atlas, ImFontConfig* source, ImFont
         *advance = advanceX;
         return true;
     }
+
     loaded->AdvanceX = advanceX;
 
     Box box;
     if (!measure(font, index, scaleX, scaleY, box)) {
         return false;
     }
+
     if (box.left == box.right || box.top == box.bottom) {
         return true;
     }
+
     const int width = box.right - box.left + oversampleX - 1;
     const int height = box.bottom - box.top + oversampleY - 1;
     if (width > atlas->TexMaxWidth || height > atlas->TexMaxHeight) {
         return false;
     }
+
     const ImFontAtlasRectId pack = ImFontAtlasPackAddRect(atlas, width, height);
     if (pack == ImFontAtlasRectId_Invalid) {
         return false;
     }
+
     ImTextureRect* rect = ImFontAtlasPackGetRect(atlas, pack);
 
     // The glyph fills the top left of the buffer, and the box filters of the oversampling spread it over the rest.
@@ -155,9 +165,11 @@ bool ImGuiFontLoader::measure(const Source& source, std::uint32_t glyph, float s
     const float top = std::floor(static_cast<float>(-extents->y_bearing) * scaleY);
     const float right = std::ceil(static_cast<float>(extents->x_bearing + extents->width) * scaleX);
     const float bottom = std::ceil(static_cast<float>(-(extents->y_bearing + extents->height)) * scaleY);
+
     if (std::max({std::fabs(left), std::fabs(top), std::fabs(right), std::fabs(bottom)}) > kMaxPixel) {
         return false;
     }
+
     box = {.left = static_cast<int>(left), .top = static_cast<int>(top), .right = static_cast<int>(right), .bottom = static_cast<int>(bottom)};
     return true;
 }
@@ -172,6 +184,7 @@ void ImGuiFontLoader::rasterize(Source& source, std::uint32_t glyph, float scale
     hb_raster_draw_set_extents(raster, &area);
     hb_raster_draw_glyph(raster, &source.file.getFont(), glyph);
     std::unique_ptr<hb_raster_image_t, decltype(&hb_raster_image_destroy)> image(hb_raster_draw_render(raster), &hb_raster_image_destroy);
+
     if (!image) {
         throw std::bad_alloc();
     }
@@ -183,6 +196,7 @@ void ImGuiFontLoader::rasterize(Source& source, std::uint32_t glyph, float scale
         const std::span<const std::uint8_t> from = coverage.subspan(static_cast<std::size_t>(height - 1 - row) * rendered.stride, static_cast<std::size_t>(width));
         std::ranges::copy(from, pixels.begin() + static_cast<std::ptrdiff_t>(row) * stride);
     }
+
     hb_raster_draw_recycle_image(raster, image.release());
 }
 
@@ -191,12 +205,14 @@ void ImGuiFontLoader::filterRows(std::span<std::uint8_t> pixels, int width, int 
     if (kernel <= 1) {
         return;
     }
+
     for (int row = 0; row < height; ++row) {
         const std::span<std::uint8_t> line = pixels.subspan(static_cast<std::size_t>(row) * static_cast<std::size_t>(width), static_cast<std::size_t>(width));
         unsigned int total = 0;
         for (int column = std::max(0, width - kernel); column < width; ++column) {
             total += line[static_cast<std::size_t>(column)];
         }
+
         for (int column = width - 1; column >= 0; --column) {
             const unsigned int value = line[static_cast<std::size_t>(column)];
             line[static_cast<std::size_t>(column)] = static_cast<std::uint8_t>(total / static_cast<unsigned int>(kernel));
@@ -212,12 +228,14 @@ void ImGuiFontLoader::filterColumns(std::span<std::uint8_t> pixels, int width, i
     if (kernel <= 1) {
         return;
     }
+
     const auto at = [width](int row, int column) { return static_cast<std::size_t>(row) * static_cast<std::size_t>(width) + static_cast<std::size_t>(column); };
     for (int column = 0; column < width; ++column) {
         unsigned int total = 0;
         for (int row = std::max(0, height - kernel); row < height; ++row) {
             total += pixels[at(row, column)];
         }
+
         for (int row = height - 1; row >= 0; --row) {
             const unsigned int value = pixels[at(row, column)];
             pixels[at(row, column)] = static_cast<std::uint8_t>(total / static_cast<unsigned int>(kernel));

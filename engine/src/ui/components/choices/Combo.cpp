@@ -26,15 +26,18 @@ math::Vec2 Combo::measureContent(Context& context, float) {
     for (const ChoiceItem& item : items) {
         widest = std::max(widest, Typography::measure(context, Theme::Font::Body, context.getText(item.text)).x);
     }
+
     const float height = context.getMetric(Theme::Metric::ControlHeight);
     return {widest + context.getMetric(Theme::Metric::ControlPaddingX) * 2.0F + height * 0.5F, height};
 }
 
 void Combo::render(Context& context, const math::Rect& bounds) {
     const Widgets::Interaction state = Widgets::interact(context, bounds, context.getMetric(Theme::Metric::ControlRadius), "##combo");
+
     if (takeFocusRequest()) {
         Widgets::focusItem(context);
     }
+
     const bool open = ImGui::IsPopupOpen("##list");
     Surfaces::draw(context, open ? Theme::Surface::FieldFocused : Theme::Surface::Field, bounds, context.getColor(state.hovered ? Theme::Color::BorderStrong : Theme::Color::Raised), context.getColor(open ? Theme::Color::Focus : Theme::Color::Border));
 
@@ -52,6 +55,7 @@ void Combo::render(Context& context, const math::Rect& bounds) {
         context.playSound(Theme::Sound::Press);
         ImGui::OpenPopup("##list");
     }
+
     if (const std::optional<std::string> picked = PopupList::draw(context, popup, "##list", items, selected, bounds, bounds.width); picked && *picked != selected) {
         selected = *picked;
         context.playSound(Theme::Sound::Toggle);

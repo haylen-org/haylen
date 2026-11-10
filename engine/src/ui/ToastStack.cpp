@@ -15,7 +15,9 @@ void ToastStack::beginFrame() {
             order.push_back(&entry);
         }
     }
+
     std::ranges::sort(order, [](const Entry* first, const Entry* second) { return first->depth != second->depth ? first->depth > second->depth : first->key < second->key; });
+
     for (const Entry* entry : order) {
         if (ImGuiWindow* window = ImGui::FindWindowByID(entry->window)) {
             ImGui::BringWindowToDisplayFront(window);
@@ -44,8 +46,10 @@ std::optional<ToastStack::Placement> ToastStack::place(std::uint64_t key, Positi
         if (entry.position != position || entry.key == key || isBefore(entry, key, since) == deck) {
             return;
         }
+
         ++ahead;
         offset += entry.extent;
+
         if (entry.since >= newest) {
             newest = entry.since;
             front = entry.extent;
@@ -55,6 +59,7 @@ std::optional<ToastStack::Placement> ToastStack::place(std::uint64_t key, Positi
     for (const Entry& entry : previous) {
         count(entry);
     }
+
     for (const Entry& entry : current) {
         if (std::ranges::none_of(previous, [&entry](const Entry& other) { return other.key == entry.key; })) {
             count(entry);
@@ -64,9 +69,11 @@ std::optional<ToastStack::Placement> ToastStack::place(std::uint64_t key, Positi
     const bool open = expandable && isHeld(position);
     const Placement placement = !deck || open ? Placement{.offset = offset, .depth = 0, .front = 0.0F} : Placement{.offset = static_cast<float>(ahead) * peek, .depth = ahead, .front = front};
     current.push_back({.key = key, .position = position, .extent = extent, .since = since, .depth = placement.depth});
+
     if (!deck && limit > 0 && ahead >= limit) {
         return std::nullopt;
     }
+
     return placement;
 }
 

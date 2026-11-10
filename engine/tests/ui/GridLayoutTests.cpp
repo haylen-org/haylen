@@ -51,6 +51,7 @@ TEST(GridLayoutTest, ArrangesAgainFromTheFirstChangedItem) {
     for (std::size_t index = 0; index < spans.size(); index += 9) {
         spans[index] = 0;
     }
+
     GridLayout grid;
     grid.arrange({.count = spans.size(), .crossLength = 400.0F, .gap = 0.0F, .lanes = 4, .spans = spans}, 0);
     std::vector<std::size_t> starts;
@@ -69,6 +70,7 @@ TEST(GridLayoutTest, ArrangesAgainFromTheFirstChangedItem) {
     GridLayout fresh;
     fresh.arrange({.count = spans.size(), .crossLength = 400.0F, .gap = 0.0F, .lanes = 4, .spans = spans}, 0);
     ASSERT_EQ(grid.getLineCount(), fresh.getLineCount());
+
     for (std::size_t line = 0; line < fresh.getLineCount(); ++line) {
         EXPECT_EQ(grid.getFirstIndex(line), fresh.getFirstIndex(line));
     }

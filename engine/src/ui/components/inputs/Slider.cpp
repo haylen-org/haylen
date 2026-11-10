@@ -22,6 +22,7 @@ void Slider::readProperties(PropertyReader& reader) {
     if (lowest >= highest) {
         reader.fail("min", "must be smaller than \"max\"");
     }
+
     minimum = lowest;
     maximum = highest;
     value = std::clamp(value, minimum, maximum);
@@ -43,13 +44,16 @@ void Slider::render(Context& context, const math::Rect& bounds) {
         changed = changed || moved != value;
         value = moved;
     }
+
     if (changed) {
         context.playSound(Theme::Sound::Step);
         context.emit(*this, "change", {{"value", value}});
     }
+
     if (takeFocusRequest()) {
         Widgets::focusItem(context);
     }
+
     if (showValue) {
         Typography::drawAligned(context, Theme::Font::Body, context.mirror({bounds.getRight() - label, bounds.y, label, bounds.height}, bounds), context.getColor(Theme::Color::TextMuted), Typography::formatNumber(value, decimals), Alignment::End);
     }

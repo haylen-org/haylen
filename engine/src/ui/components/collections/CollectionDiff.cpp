@@ -24,6 +24,7 @@ std::size_t CollectionDiff::Table::add(std::size_t position) {
             slots[slot] = position;
             return kEmpty;
         }
+
         if (ids[slots[slot]] == id) {
             return slots[slot];
         }
@@ -65,6 +66,7 @@ CollectionDiff::Result CollectionDiff::compare(std::span<const std::string_view>
             ++kept;
         }
     }
+
     result.removed = static_cast<std::size_t>(std::ranges::count_if(before, [](std::string_view id) { return !id.empty(); })) - kept;
     return result;
 }

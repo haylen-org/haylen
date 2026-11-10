@@ -31,6 +31,7 @@ void Progress::render(Context& context, const math::Rect& bounds) {
     if (shown.empty()) {
         return;
     }
+
     const float lineHeight = Typography::getLineHeight(context, Theme::Font::Caption);
     const math::Rect line{bounds.x, bounds.getCenter().y - lineHeight * 0.5F, bounds.width, lineHeight};
     const float edge = filled.isEmpty() ? (context.isRightToLeft() ? bounds.getRight() : bounds.x) : (context.isRightToLeft() ? filled.x : filled.getRight());
@@ -38,10 +39,12 @@ void Progress::render(Context& context, const math::Rect& bounds) {
     const math::Rect end = math::Rect::fromMinMax({edge, bounds.y}, bounds.getMax());
     const math::Color ink = context.getColor(Widgets::getToneColors(tone == Widgets::Tone::Neutral ? Widgets::Tone::Accent : tone).ink);
     const math::Color plain = context.getColor(Theme::Color::Text);
+
     for (const auto& [part, color] : {std::pair{start, context.isRightToLeft() ? plain : ink}, std::pair{end, context.isRightToLeft() ? ink : plain}}) {
         if (part.width <= 0.0F) {
             continue;
         }
+
         const math::Rect clip = context.getReshape().apply(part);
         ImGui::PushClipRect(ImGuiConverter::toImVec2(clip.getMin()), ImGuiConverter::toImVec2(clip.getMax()), true);
         Typography::drawParagraph(context, Theme::Font::Caption, line, color, shown, Alignment::Center);

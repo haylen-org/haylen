@@ -21,6 +21,7 @@ void Tree::readProperties(PropertyReader& reader) {
         if (!PropertyReader::isList(*listed) || !std::ranges::all_of(*listed, [](const core::Json& entry) { return entry.is_string(); })) {
             reader.fail("expanded", "must be a list of item ids");
         }
+
         expanded.clear();
         for (const core::Json& entry : *listed) {
             expanded.insert(entry.get<std::string>());
@@ -43,6 +44,7 @@ void Tree::render(Context& context, const math::Rect& bounds) {
         target = target != nullptr ? target : findShown(items, {});
         focused = target != nullptr ? target->id : std::string();
     }
+
     float y = bounds.y;
     drawItems(context, bounds, items, 0, y);
 }
@@ -56,6 +58,7 @@ float Tree::measureWidth(Context& context, const std::vector<ChoiceItem>& branch
             widest = std::max(widest, measureWidth(context, item.children, depth + 1));
         }
     }
+
     return widest;
 }
 
@@ -64,12 +67,14 @@ const ChoiceItem* Tree::findShown(const std::vector<ChoiceItem>& branch, std::st
         if (item.enabled && (wanted.empty() || item.id == wanted)) {
             return &item;
         }
+
         if (expanded.contains(item.id)) {
             if (const ChoiceItem* found = findShown(item.children, wanted)) {
                 return found;
             }
         }
     }
+
     return nullptr;
 }
 
@@ -80,6 +85,7 @@ std::size_t Tree::countVisible(const std::vector<ChoiceItem>& branch) const {
             count += countVisible(item.children);
         }
     }
+
     return count;
 }
 
@@ -99,16 +105,20 @@ void Tree::drawItems(Context& context, const math::Rect& bounds, const std::vect
         const math::Rect arrow = context.mirror({left, area.y, indent, height}, area);
         bool toggled = !item.children.empty() && Widgets::interact(context, arrow, context.getMetric(Theme::Metric::ControlRadius) * 0.5F, "##toggle", ImGuiButtonFlags_NoNavFocus).clicked;
         const Widgets::Interaction state = ListRow::draw(context, area, item.id == selected);
+
         if (item.id == focused) {
             Widgets::focusItem(context);
         }
+
         if (pressedDirection && ImGui::GetItemID() == ImGui::GetFocusID() && !item.children.empty() && open == (Widgets::getStep(context, *pressedDirection) < 0)) {
             toggled = true;
             pressedDirection.reset();
         }
+
         if (!item.children.empty()) {
             Widgets::arrow(context, arrow.getCenter(), indent * 0.4F, Widgets::mirror(context, open ? ImGuiDir_Down : ImGuiDir_Right), context.getColor(Theme::Color::TextMuted));
         }
+
         ListRow::drawContent(context, context.mirror(math::Rect::fromMinMax({left + indent - context.getMetric(Theme::Metric::RowPadding), area.y}, area.getMax()), area), item);
         ImGui::EndDisabled();
         ImGui::PopID();
@@ -120,6 +130,7 @@ void Tree::drawItems(Context& context, const math::Rect& bounds, const std::vect
             context.playSound(Theme::Sound::Press);
             context.emit(*this, "select", {{"item", item.id}});
         }
+
         if (open && !toggled) {
             drawItems(context, bounds, item.children, depth + 1, y);
         }
@@ -133,6 +144,7 @@ void Tree::toggle(Context& context, const ChoiceItem& item) {
     } else {
         expanded.erase(item.id);
     }
+
     context.playSound(Theme::Sound::Press);
     context.emit(*this, "toggle", {{"item", item.id}, {"expanded", open}});
 }

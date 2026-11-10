@@ -24,6 +24,7 @@ template <typename Enum, typename Table, typename Projection> std::optional<Enum
     if (found == names.end()) {
         return std::nullopt;
     }
+
     return static_cast<Enum>(found - names.begin());
 }
 
@@ -32,6 +33,7 @@ math::Color Theme::readColor(const core::Json& value, const std::string& context
     if (!color) {
         throw std::invalid_argument(context + " must be a color such as \"#FF2E7D32\".");
     }
+
     return *color;
 }
 
@@ -39,6 +41,7 @@ float Theme::readNumber(const core::Json& value, const std::string& context) {
     if (!value.is_number() || !std::isfinite(value.get<double>()) || value.get<double>() < 0.0) {
         throw std::invalid_argument(context + " must be a non-negative number.");
     }
+
     return core::JsonNumber::toFloat(value);
 }
 
@@ -54,9 +57,11 @@ math::Insets Theme::readInsets(const core::Json& value, const std::string& conte
     } else {
         throw std::invalid_argument(context + " must be one, two or four numbers.");
     }
+
     if (sides.size() == 2) {
         return {.left = sides[1], .top = sides[0], .right = sides[1], .bottom = sides[0]};
     }
+
     return {.left = sides[3], .top = sides[0], .right = sides[1], .bottom = sides[2]};
 }
 
@@ -64,11 +69,13 @@ math::Rect Theme::readRect(const core::Json& value, const std::string& context) 
     if (!value.is_array() || value.size() != 4) {
         throw std::invalid_argument(context + " must be four numbers: x, y, width and height.");
     }
+
     return {readNumber(value[0], context), readNumber(value[1], context), readNumber(value[2], context), readNumber(value[3], context)};
 }
 
 Theme::Image Theme::readImage(const core::Json& value, const std::string& context, const TextureLoader& loadTexture) {
     core::JsonValidator::requireKnownKeys(value, {"image", "source", "slice", "pieces", "scale", "padding", "tint", "colorize", "filter", "fill"}, context);
+
     if (!value.contains("image") || !value.at("image").is_string()) {
         throw std::invalid_argument("The image of " + context + " must be a path.");
     }
@@ -79,67 +86,83 @@ Theme::Image Theme::readImage(const core::Json& value, const std::string& contex
         if (!filter) {
             throw std::invalid_argument("The filter of " + context + " must be \"nearest\" or \"linear\".");
         }
+
         options.filter = *filter;
     }
+
     // An SVG document rasters while it draws, at the pixels its borders cover, so it loads no texture here.
     const std::string& path = value.at("image").get_ref<const std::string&>();
     Image image;
     const graphics::Texture texture = ImageLibrary::isVector(path) ? graphics::Texture{} : loadTexture(path, options);
+
     if (ImageLibrary::isVector(path)) {
         image.vector = path;
         image.whole = !value.contains("pieces") && !value.contains("source");
         image.borders = value.contains("slice") ? readInsets(value.at("slice"), "The slice of " + context) : math::Insets{};
     }
+
     if (value.contains("pieces")) {
         const core::Json& pieces = value.at("pieces");
         if (!pieces.is_array() || pieces.size() != 9) {
             throw std::invalid_argument("The pieces of " + context + " must hold nine rectangles.");
         }
+
         std::array<math::Rect, 9> rects{};
         for (std::size_t index = 0; index < rects.size(); ++index) {
             rects[index] = readRect(pieces[index], "Each piece of " + context);
         }
+
         image.slice = graphics2d::NineSlice::fromPieces(texture, rects);
     } else if (!image.whole) {
         const math::Rect source = value.contains("source") ? readRect(value.at("source"), "The source of " + context) : math::Rect{0.0F, 0.0F, texture.getSize().x, texture.getSize().y};
         const math::Insets borders = value.contains("slice") ? readInsets(value.at("slice"), "The slice of " + context) : math::Insets{};
         image.slice = graphics2d::NineSlice::fromBorders(texture, source, borders);
     }
+
     if (value.contains("fill")) {
         const core::Json& fill = value.at("fill");
         const std::optional<graphics2d::NineSlice::Fill> named = fill.is_string() ? graphics2d::NineSlice::fillFromName(fill.get<std::string>()) : std::nullopt;
         if (!named) {
             throw std::invalid_argument("The fill of " + context + " must be \"stretch\" or \"tile\".");
         }
+
         image.slice.fill = *named;
     }
+
     if (value.contains("scale")) {
         image.scale = readNumber(value.at("scale"), "The scale of " + context);
         if (image.scale <= 0.0F) {
             throw std::invalid_argument("The scale of " + context + " must be positive.");
         }
     }
+
     if (value.contains("padding")) {
         image.padding = readInsets(value.at("padding"), "The padding of " + context);
     }
+
     if (value.contains("tint")) {
         image.tint = readColor(value.at("tint"), "The tint of " + context);
     }
+
     if (value.contains("colorize")) {
         if (!value.at("colorize").is_boolean()) {
             throw std::invalid_argument("The \"colorize\" of " + context + " must be \"true\" or \"false\".");
         }
+
         image.colorize = value.at("colorize").get<bool>();
     }
+
     if (image.slice.fill == graphics2d::NineSlice::Fill::Tile) {
         checkTiles(image, context);
     }
+
     return image;
 }
 
 // A cue names its sound file and may set the bus, the volume and the interval, whose defaults are those of `Cue`.
 Theme::Cue Theme::readCue(const core::Json& value, const std::string& context) {
     core::JsonValidator::requireKnownKeys(value, {"sound", "bus", "volume", "interval"}, context);
+
     if (!value.contains("sound") || !value.at("sound").is_string() || value.at("sound").get_ref<const std::string&>().empty()) {
         throw std::invalid_argument("T" + context.substr(1) + " must name a sound file in \"sound\".");
     }
@@ -149,6 +172,7 @@ Theme::Cue Theme::readCue(const core::Json& value, const std::string& context) {
         if (!value.at("bus").is_string() || value.at("bus").get_ref<const std::string&>().empty()) {
             throw std::invalid_argument("The bus of " + context + " must be the name of an audio bus.");
         }
+
         cue.bus = value.at("bus").get<std::string>();
     }
 
@@ -159,6 +183,7 @@ Theme::Cue Theme::readCue(const core::Json& value, const std::string& context) {
     if (value.contains("interval")) {
         cue.interval = readNumber(value.at("interval"), "The interval of " + context);
     }
+
     return cue;
 }
 
@@ -179,6 +204,7 @@ const core::Json& Theme::readSection(const core::Json& document, const char* key
     if (!value.is_object()) {
         throw std::invalid_argument(std::string("The section \"") + key + "\" of the theme must be an object.");
     }
+
     return value;
 }
 
@@ -209,12 +235,15 @@ Theme Theme::dark() {
     for (std::size_t index = 0; index < kColorCount; ++index) {
         theme.colors[index] = math::Color::fromHex(kColorRoles[index].dark);
     }
+
     for (std::size_t index = 0; index < kMetricCount; ++index) {
         theme.metrics[index] = kMetricRoles[index].value;
     }
+
     for (std::size_t index = 0; index < kFontCount; ++index) {
         theme.fonts[index].size = kFontSizes[index];
     }
+
     // Code and columns of numbers keep a glyph for every letter.
     FontStyle& monospace = theme.fonts[static_cast<std::size_t>(Font::Monospace)];
     monospace.font = Backend::kMonospaceFontName;
@@ -229,6 +258,7 @@ Theme Theme::light() {
     for (std::size_t index = 0; index < kColorCount; ++index) {
         theme.colors[index] = math::Color::fromHex(kColorRoles[index].light);
     }
+
     return theme;
 }
 
@@ -236,9 +266,11 @@ Theme Theme::darkHighContrast() {
     Theme theme = dark();
     theme.name = "darkHighContrast";
     theme.highContrast.clear();
+
     for (std::size_t index = 0; index < kColorCount; ++index) {
         theme.colors[index] = math::Color::fromHex(kColorRoles[index].darkHighContrast);
     }
+
     return theme;
 }
 
@@ -246,9 +278,11 @@ Theme Theme::lightHighContrast() {
     Theme theme = dark();
     theme.name = "lightHighContrast";
     theme.highContrast.clear();
+
     for (std::size_t index = 0; index < kColorCount; ++index) {
         theme.colors[index] = math::Color::fromHex(kColorRoles[index].lightHighContrast);
     }
+
     return theme;
 }
 
@@ -262,7 +296,9 @@ Theme Theme::fromJson(const core::Json& document, const Theme& base, const Textu
     if (!document.is_object()) {
         throw std::invalid_argument("A theme must be a JSON object.");
     }
+
     core::JsonValidator::requireKnownKeys(document, {"name", "colors", "metrics", "fonts", "fontFiles", "surfaces", "sounds", "imageFilter", "highContrast"}, "the theme");
+
     if (!document.contains("name") || !document.at("name").is_string() || document.at("name").get<std::string>().empty()) {
         throw std::invalid_argument("A theme needs a name.");
     }
@@ -275,8 +311,10 @@ Theme Theme::fromJson(const core::Json& document, const Theme& base, const Textu
         if (!filter) {
             throw std::invalid_argument("The image filter of the theme must be \"nearest\" or \"linear\".");
         }
+
         theme.setImageFilter(*filter);
     }
+
     if (document.contains("highContrast")) {
         const core::Json& value = document.at("highContrast");
         if (value.is_boolean() && !value.get<bool>()) {
@@ -293,62 +331,80 @@ Theme Theme::fromJson(const core::Json& document, const Theme& base, const Textu
         if (!role) {
             throw std::invalid_argument("The theme has no color role named \"" + key + "\".");
         }
+
         theme.setColor(*role, readColor(value, "The theme color \"" + key + "\""));
     }
+
     for (const auto& [key, value] : readSection(document, "metrics").items()) {
         const std::optional<Metric> role = metricFromName(key);
         if (!role) {
             throw std::invalid_argument("The theme has no metric named \"" + key + "\".");
         }
+
         theme.setMetric(*role, readNumber(value, "The theme metric \"" + key + "\""));
     }
+
     for (const auto& [key, value] : readSection(document, "fontFiles").items()) {
         if (!value.is_string()) {
             throw std::invalid_argument("The theme font file \"" + key + "\" must be a path.");
         }
+
         theme.fontFiles[key] = value.get<std::string>();
     }
+
     for (const auto& [key, value] : readSection(document, "fonts").items()) {
         const std::optional<Font> role = fontFromName(key);
         if (!role || !value.is_object()) {
             throw std::invalid_argument("The theme font \"" + key + "\" must be a known role with an object value.");
         }
+
         core::JsonValidator::requireKnownKeys(value, {"font", "size", "bold", "italic", "ligatures"}, "the theme font \"" + key + "\"");
         FontStyle style = theme.getFont(*role);
         if (value.contains("font")) {
             if (!value.at("font").is_string()) {
                 throw std::invalid_argument("The theme font \"" + key + "\" must name its font with a string.");
             }
+
             style.font = value.at("font").get<std::string>();
         }
+
         if (value.contains("size")) {
             style.size = readNumber(value.at("size"), "The size of the theme font \"" + key + "\"");
         }
+
         for (const auto& [flag, field] : {std::pair{"bold", &style.bold}, std::pair{"italic", &style.italic}, std::pair{"ligatures", &style.ligatures}}) {
             if (!value.contains(flag)) {
                 continue;
             }
+
             if (!value.at(flag).is_boolean()) {
                 throw std::invalid_argument("The theme font \"" + key + "\" must set \"" + flag + "\" to \"true\" or \"false\".");
             }
+
             *field = value.at(flag).get<bool>();
         }
+
         theme.setFont(*role, std::move(style));
     }
+
     for (const auto& [key, value] : readSection(document, "surfaces").items()) {
         const std::optional<Surface> role = surfaceFromName(key);
         if (!role) {
             throw std::invalid_argument("The theme has no surface named \"" + key + "\".");
         }
+
         if (value.is_null()) {
             theme.setSurface(*role, std::nullopt);
             continue;
         }
+
         if (!loadTexture) {
             throw std::invalid_argument("The theme surface \"" + key + "\" needs a texture loader.");
         }
+
         theme.setSurface(*role, readImage(value, "the theme surface \"" + key + "\"", loadTexture));
     }
+
     for (const auto& [key, value] : readSection(document, "sounds").items()) {
         const std::optional<Sound> role = soundFromName(key);
         if (!role) {
@@ -363,8 +419,10 @@ Theme Theme::fromJson(const core::Json& document, const Theme& base, const Textu
         if (!value.is_object()) {
             throw std::invalid_argument("The theme sound \"" + key + "\" must be an object, \"null\" or \"false\".");
         }
+
         theme.setSound(*role, readCue(value, "the theme sound \"" + key + "\""));
     }
+
     return theme;
 }
 
@@ -382,6 +440,7 @@ void Theme::setMetric(Metric role, float value) {
     if (!(value >= 0.0F) || !std::isfinite(value)) {
         throw std::invalid_argument("A theme metric must be a non-negative number.");
     }
+
     metrics[static_cast<std::size_t>(role)] = value;
 }
 
@@ -389,6 +448,7 @@ void Theme::setFont(Font role, FontStyle value) {
     if (value.font.empty() || !(value.size > 0.0F)) {
         throw std::invalid_argument("A theme font needs a font name and a positive size.");
     }
+
     fonts[static_cast<std::size_t>(role)] = std::move(value);
 }
 
@@ -401,6 +461,7 @@ void Theme::setSound(Sound role, std::optional<Cue> value) {
     if (!valid) {
         throw std::invalid_argument("A theme sound needs a sound file, a bus, and a volume and an interval that are non-negative numbers.");
     }
+
     sounds[static_cast<std::size_t>(role)] = std::move(value);
 }
 

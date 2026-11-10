@@ -28,6 +28,7 @@ DragAndDrop::Result DragAndDrop::handle(Context& context, const Component& compo
         if (!image.empty()) {
             Surfaces::drawImage(context, context.getImage(image, {side, side}), {origin.x, origin.y, side, side});
         }
+
         ImGui::Dummy({side, side});
         ImGui::EndDragDropSource();
         result.dragged = true;
@@ -41,6 +42,7 @@ DragAndDrop::Result DragAndDrop::handle(Context& context, const Component& compo
                 result.dropped = std::pair{dropped.at("source").get<std::string>(), dropped.at("item").get<std::string>()};
             }
         }
+
         ImGui::EndDragDropTarget();
     }
 
@@ -51,14 +53,17 @@ DragAndDrop::Result DragAndDrop::handle(Context& context, const Component& compo
     if (item == 0 || state.NavActivatePressedId != item || !carries) {
         return result;
     }
+
     if (!carried) {
         focus.carry({.source = component.getId(), .item = std::string(entry), .image = std::string(image)});
         result.picked = true;
         return result;
     }
+
     if (carried->source != component.getId() || carried->item != entry) {
         result.dropped = std::pair{carried->source, carried->item};
     }
+
     focus.dropCarried();
     return result;
 }
@@ -68,6 +73,7 @@ void DragAndDrop::drawCarried(Context& context, ImGuiID item, const math::Rect& 
     if (!carried || carried->image.empty() || GImGui->NavId != item) {
         return;
     }
+
     const float side = std::min(bounds.width, bounds.height) * 0.6F;
     Surfaces::drawImage(context, context.getImage(carried->image, {side, side}), {bounds.getRight() - side * 0.75F, bounds.y - side * 0.25F, side, side}, math::Color::white().withAlpha(0.85F));
 }

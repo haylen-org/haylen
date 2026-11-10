@@ -18,6 +18,7 @@ std::size_t TextFieldLayout::findLine(std::size_t position) const {
             return index;
         }
     }
+
     return layout->lines.size() - 1;
 }
 
@@ -27,22 +28,26 @@ float TextFieldLayout::getCaretX(const text::Layout::Line& line, std::size_t pos
     if (characters.empty()) {
         return line.box.x;
     }
+
     if (position <= line.begin || position >= line.end) {
         const bool leftEnd = (position <= line.begin) != line.rightToLeft;
         const auto left = std::ranges::min_element(characters, {}, [](const text::Layout::Character& character) { return character.box.x; });
         const auto right = std::ranges::max_element(characters, {}, [](const text::Layout::Character& character) { return character.box.getRight(); });
         return leftEnd ? left->box.x : right->box.getRight();
     }
+
     for (const text::Layout::Character& character : characters) {
         if (character.begin <= position && position < character.end) {
             return character.rightToLeft ? character.box.getRight() : character.box.x;
         }
     }
+
     for (const text::Layout::Character& character : characters) {
         if (character.end == position) {
             return character.rightToLeft ? character.box.x : character.box.getRight();
         }
     }
+
     return line.box.x;
 }
 
@@ -57,12 +62,14 @@ std::size_t TextFieldLayout::hitLine(const text::Layout::Line& line, float x) co
     if (characters.empty()) {
         return line.begin;
     }
+
     for (const text::Layout::Character& character : characters) {
         if (character.box.x <= x && x < character.box.getRight()) {
             const bool leftSide = x < character.box.getCenter().x;
             return leftSide != character.rightToLeft ? character.begin : character.end;
         }
     }
+
     const auto left = std::ranges::min_element(characters, {}, [](const text::Layout::Character& character) { return character.box.x; });
     const bool pastLeft = x < left->box.x;
     return pastLeft != line.rightToLeft ? line.begin : line.end;
@@ -74,6 +81,7 @@ std::size_t TextFieldLayout::hitTest(math::Vec2 point) const {
             return hitLine(line, point.x);
         }
     }
+
     return hitLine(layout->lines.back(), point.x);
 }
 
@@ -87,6 +95,7 @@ std::size_t TextFieldLayout::moveAcross(std::size_t position, bool right) const 
         stops.push_back(layout->characters[index].begin);
         stops.push_back(layout->characters[index].end);
     }
+
     std::optional<std::pair<float, std::size_t>> best;
     for (const std::size_t stop : stops) {
         const float x = getCaretX(line, stop);
@@ -95,6 +104,7 @@ std::size_t TextFieldLayout::moveAcross(std::size_t position, bool right) const 
             best = std::pair{x, stop};
         }
     }
+
     if (best) {
         return best->second;
     }
@@ -103,9 +113,11 @@ std::size_t TextFieldLayout::moveAcross(std::size_t position, bool right) const 
     if (forward && lineIndex + 1 < layout->lines.size()) {
         return layout->lines[lineIndex + 1].begin;
     }
+
     if (!forward && lineIndex > 0) {
         return layout->lines[lineIndex - 1].end;
     }
+
     return position;
 }
 
@@ -114,6 +126,7 @@ std::size_t TextFieldLayout::moveAlong(std::size_t position, bool down) const {
     if (down ? lineIndex + 1 >= layout->lines.size() : lineIndex == 0) {
         return down ? content.size() : 0;
     }
+
     return hitLine(layout->lines[down ? lineIndex + 1 : lineIndex - 1], getCaretX(layout->lines[lineIndex], position));
 }
 
@@ -127,6 +140,7 @@ std::vector<math::Rect> TextFieldLayout::getSelection(std::size_t begin, std::si
                 covered.push_back({character.box.x, line.box.y, character.box.width, line.box.height});
             }
         }
+
         std::ranges::sort(covered, {}, &math::Rect::x);
         for (const math::Rect& box : covered) {
             if (!boxes.empty() && boxes.back().y == box.y && std::abs(boxes.back().getRight() - box.x) < 0.5F) {
@@ -136,18 +150,22 @@ std::vector<math::Rect> TextFieldLayout::getSelection(std::size_t begin, std::si
             }
         }
     }
+
     return boxes;
 }
 
 std::pair<std::size_t, std::size_t> TextFieldLayout::getWord(std::size_t position) const {
     std::size_t begin = std::min(position, content.size());
     std::size_t end = begin;
+
     while (begin > 0 && !text::Segmenter::isSpace(content[begin - 1]) && content[begin - 1] != U'\n') {
         --begin;
     }
+
     while (end < content.size() && !text::Segmenter::isSpace(content[end]) && content[end] != U'\n') {
         ++end;
     }
+
     return {begin, end};
 }
 

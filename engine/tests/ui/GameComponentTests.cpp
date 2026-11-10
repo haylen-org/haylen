@@ -72,9 +72,11 @@ TEST_F(GameComponentTest, StepsNumbersAndOptions) {
     const math::Rect players = getBounds(*gui, "players");
     click({players.getRight() - players.height * 0.5F, players.getCenter().y});
     EXPECT_EQ(findLastEvent("change").value, (core::Json{{"value", 3.0}}));
+
     for (int press = 0; press < 3; ++press) {
         click({players.x + players.height * 0.5F, players.getCenter().y});
     }
+
     EXPECT_EQ(findLastEvent("change").value, (core::Json{{"value", 1.0}}));
     EXPECT_EQ(count("change"), 3U);
 
@@ -159,11 +161,14 @@ TEST_F(GameComponentTest, DrawsTheArrowsOfAStepperAsChevrons) {
             arms.push_back(shape);
         }
     }
+
     ASSERT_EQ(arms.size(), 4U);
+
     for (const graphics2d::Shape& arm : arms) {
         EXPECT_FLOAT_EQ(arm.radii[0], arm.bounds.height * 0.5F);
         EXPECT_GT(arm.bounds.width, arm.bounds.height * 2.0F);
     }
+
     EXPECT_NEAR(arms[0].rotation + arms[1].rotation, 0.0F, 1e-4F);
     EXPECT_NEAR(arms[2].rotation + arms[3].rotation, 0.0F, 1e-4F);
 }
@@ -184,6 +189,7 @@ TEST_F(GameComponentTest, LinesUpTheTrackOfARangeWithTheTrackOfASlider) {
             tracks.push_back(shape.bounds);
         }
     }
+
     ASSERT_EQ(tracks.size(), 2U);
     EXPECT_FLOAT_EQ(tracks[0].x, tracks[1].x);
     EXPECT_FLOAT_EQ(tracks[0].width, tracks[1].width);
@@ -347,11 +353,13 @@ TEST_F(GameComponentTest, LightsTheDotOfTheShownPage) {
                 dots.emplace_back(shape.bounds.x, shape.color == accent);
             }
         }
+
         std::ranges::sort(dots);
         const auto lit = std::ranges::find_if(dots, [](const auto& dot) { return dot.second; });
         if (dots.size() != 3 || lit == dots.end()) {
             return std::nullopt;
         }
+
         return static_cast<std::size_t>(lit - dots.begin());
     };
     // clang-format on
@@ -430,6 +438,7 @@ TEST_F(GameComponentTest, DrawsAndRegistersOnlyTheRowsOfAListInView) {
         for (int index = 0; index < rows; ++index) {
             items.push_back({{"id", "i" + std::to_string(index)}, {"text", "Row " + std::to_string(index)}});
         }
+
         auto gui = mount(core::Json{{"kind", "scroll"}, {"id", "box"}, {"height", 300}, {"align", "start"}, {"children", {{{"kind", "list"}, {"id", "list"}, {"draggable", true}, {"items", items}}}}}.dump());
         frames(2);
         const std::size_t count = getUi().getFocus().getTargetCount();
@@ -444,14 +453,17 @@ TEST_F(GameComponentTest, DrawsAndRegistersOnlyTheRowsOfAListInView) {
     for (int index = 0; index < 2000; ++index) {
         items.push_back({{"id", "i" + std::to_string(index)}, {"text", "Row " + std::to_string(index)}});
     }
+
     auto gui = mount(core::Json{{"kind", "scroll"}, {"height", 300}, {"align", "start"}, {"children", {{{"kind", "list"}, {"id", "list"}, {"items", items}}}}}.dump());
     focus(*gui, "list");
     key(input::Key::Down);
     key(input::Key::Enter);
     const int start = std::stoi(findLastEvent("select").value.at("item").get<std::string>().substr(1));
+
     for (int step = 0; step < 30; ++step) {
         key(input::Key::Down);
     }
+
     key(input::Key::Enter);
     EXPECT_EQ(findLastEvent("select").value, (core::Json{{"item", "i" + std::to_string(start + 30)}}));
 }
@@ -498,14 +510,17 @@ TEST_F(GameComponentTest, SnapsScrolledItemsIntoPlace) {
     for (int index = 0; index < 6; ++index) {
         buttons += (index > 0 ? ", " : "") + std::string(R"({"kind": "button", "id": "b)") + std::to_string(index) + R"(", "text": "Card", "width": 150})";
     }
+
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "scroll", "id": "shelf", "axis": "horizontal", "snap": true, "width": 400, "height": 120, "align": "start", "scrollbar": false, "children": [{"kind": "row", "gap": 10, "children": [)" + buttons + R"(]}]}]})");
     const math::Rect shelf = getBounds(*gui, "shelf");
     touch(platform::Event::Type::TouchBegan, 1, {shelf.x + 350.0F, shelf.y + 60.0F});
     frames();
+
     for (int step = 1; step <= 5; ++step) {
         touch(platform::Event::Type::TouchMoved, 1, {shelf.x + 350.0F - 44.0F * static_cast<float>(step), shelf.y + 60.0F});
         frames();
     }
+
     frames(20);
     touch(platform::Event::Type::TouchEnded, 1, {shelf.x + 130.0F, shelf.y + 60.0F});
     frames(60);
@@ -575,6 +590,7 @@ TEST_F(GameComponentTest, KeepsAPaddingAroundTheLabelsOfSegments) {
         boxes.push_back(laid->lines.front().box.translated(text.origin));
         EXPECT_EQ(backend.getContent(text).find("\xE2\x80\xA6"), std::string_view::npos);
     }
+
     ASSERT_EQ(boxes.size(), 3U);
     EXPECT_GE(boxes[0].x, control.x + spacing);
     EXPECT_GE(boxes[1].x - boxes[0].getRight(), spacing * 2.0F - 1.0F);
@@ -592,6 +608,7 @@ TEST_F(GameComponentTest, KeepsAPaddingAroundTheLabelsOfSegments) {
             EXPECT_LE(shape.bounds.getBottom(), control.getBottom() - border);
         }
     }
+
     EXPECT_TRUE(picked);
 }
 
@@ -625,6 +642,7 @@ TEST_F(GameComponentTest, WrapsTheLabelsOfAVeryNarrowSegmentedControl) {
     const math::Rect control = getBounds(*gui, "light");
     EXPECT_GT(control.height, getMetric(Theme::Metric::ControlHeight));
     ASSERT_EQ(backend.getTexts().size(), 3U);
+
     for (const Backend::Text& text : backend.getTexts()) {
         const std::string_view content = backend.getContent(text);
         EXPECT_EQ(content.find("\xE2\x80\xA6"), std::string_view::npos) << content;
@@ -652,6 +670,7 @@ TEST_F(GameComponentTest, RoundsChipsWithTheChipRadius) {
             radii.push_back(shape.radii[0]);
         }
     }
+
     ASSERT_EQ(radii.size(), 2U);
     EXPECT_FLOAT_EQ(radii[0], pill.height * 0.5F);
     EXPECT_FLOAT_EQ(radii[1], 8.0F);
@@ -665,12 +684,14 @@ TEST_F(GameComponentTest, KeepsTheLabelsOfSnugSegmentsWhole) {
     for (const std::string_view text : {"Fixed", "Floating", "Following"}) {
         labels += Typography::measure(getUi().getContext(), Theme::Font::Button, text).x;
     }
+
     const float padding = (theme.getMetric(Theme::Metric::ContentSpacing) + theme.getMetric(Theme::Metric::TabPaddingX)) * 3.0F;
     const float border = (theme.getMetric(Theme::Metric::BorderWidth) + theme.getMetric(Theme::Metric::ToggleKnobInset)) * 2.0F;
     for (float offset = 0.0F; offset < 1.0F; offset += 0.125F) {
         const float width = labels + padding + border + offset * 3.0F;
         auto gui = mount(std::format(R"({{"kind": "column", "padding": {}, "children": [{{"kind": "segmentedControl", "width": {}, "selected": "floating", "items": [{{"id": "fixed", "text": "Fixed"}}, {{"id": "floating", "text": "Floating"}}, {{"id": "following", "text": "Following"}}]}}]}})", 20.0F + offset, width));
         frames(2);
+
         for (const Backend::Text& text : getUi().getBackend().getTexts()) {
             EXPECT_EQ(getUi().getBackend().getContent(text).find("\xE2\x80\xA6"), std::string_view::npos) << width;
         }
@@ -691,6 +712,7 @@ TEST_F(GameComponentTest, DrawsTheArrowsOfACarouselAsButtonsOfTheTheme) {
             ++arrows;
         }
     }
+
     EXPECT_EQ(arrows, 2U);
 }
 
@@ -732,6 +754,7 @@ TEST_F(GameComponentTest, WritesTheOpacityOfAColorOnlyWhenTheFieldHasOne) {
     for (const Backend::Text& text : getUi().getBackend().getTexts()) {
         texts.emplace_back(getUi().getBackend().getContent(text));
     }
+
     EXPECT_NE(std::ranges::find(texts, "#802E7D32"), texts.end());
     EXPECT_NE(std::ranges::find(texts, "#2E7D32"), texts.end());
     EXPECT_EQ(std::ranges::find(texts, "#FF2E7D32"), texts.end());

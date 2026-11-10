@@ -49,6 +49,7 @@ class HaylenUITestCase: XCTestCase {
                 XCTFail(message(), file: file, line: line)
                 return
             }
+
             RunLoop.current.run(until: Date().addingTimeInterval(0.5))
         }
     }

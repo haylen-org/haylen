@@ -16,6 +16,7 @@ math::Vec2 SettingsActions::measureContent(Context& context, float availableWidt
         for (Component* child : getLayoutChildren()) {
             height += child->measure(context, availableWidth).y + spacing;
         }
+
         return {availableWidth, height};
     }
 
@@ -24,6 +25,7 @@ math::Vec2 SettingsActions::measureContent(Context& context, float availableWidt
         const math::Vec2 measured = child->measure(context, CommonProperties::kUnbounded);
         size = {size.x + measured.x + spacing, std::max(size.y, measured.y)};
     }
+
     return {std::max(0.0F, size.x - spacing), size.y + spacing};
 }
 
@@ -38,6 +40,7 @@ void SettingsActions::render(Context& context, const math::Rect& bounds) {
             child->draw(context, {bounds.x, y, bounds.width, height});
             y += height + spacing;
         }
+
         return;
     }
 
@@ -57,6 +60,7 @@ bool SettingsActions::isStacked(Context& context, float width) {
     for (Component* child : getLayoutChildren()) {
         row += child->measure(context, CommonProperties::kUnbounded).x + (row > 0.0F ? spacing : 0.0F);
     }
+
     return row > width;
 }
 

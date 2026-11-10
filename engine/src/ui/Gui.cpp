@@ -64,6 +64,7 @@ void Gui::collectPreparations(Component& component, std::vector<Component*>& fou
     if (component.hasPreparation()) {
         found.push_back(&component);
     }
+
     for (const auto& child : component.getChildren()) {
         collectPreparations(*child, found);
     }
@@ -73,6 +74,7 @@ void Gui::collectIds(const Component& component, std::vector<std::string>& found
     if (!component.getId().empty()) {
         found.push_back(component.getId());
     }
+
     for (const auto& child : component.getChildren()) {
         collectIds(*child, found);
     }
@@ -83,6 +85,7 @@ std::size_t Gui::countNodes(const Component& component) {
     for (const auto& child : component.getChildren()) {
         count += countNodes(*child);
     }
+
     return count;
 }
 
@@ -90,11 +93,13 @@ std::optional<std::size_t> Gui::findDepth(const Component& component, const Comp
     if (&component == &target) {
         return depth;
     }
+
     for (const auto& child : component.getChildren()) {
         if (const std::optional<std::size_t> found = findDepth(*child, target, depth + 1)) {
             return found;
         }
     }
+
     return std::nullopt;
 }
 
@@ -102,6 +107,7 @@ math::Rect Gui::place(const Context& context, const Component& component, math::
     if (component.getAlignment() == Alignment::Stretch) {
         return area;
     }
+
     return {context.alignHorizontally(component.getAlignment(), area.x, area.width, size.x), Component::align(component.getAlignment(), area.y, area.height, size.y), size.x, size.y};
 }
 
@@ -110,9 +116,11 @@ Gui::Built Gui::build(const core::Json& node, std::size_t depth, std::size_t& co
     if (!node.is_object()) {
         throw std::invalid_argument("A UI node must be an object with a kind.");
     }
+
     if (depth >= kMaxDepth || ++count > kMaxNodes) {
         throw std::invalid_argument("A GUI is limited to " + std::to_string(kMaxDepth) + " levels and " + std::to_string(kMaxNodes) + " nodes.");
     }
+
     const auto kind = node.find("kind");
     if (kind == node.end() || !kind->is_string()) {
         throw std::invalid_argument("A UI node needs a kind.");
@@ -126,10 +134,12 @@ Gui::Built Gui::build(const core::Json& node, std::size_t depth, std::size_t& co
         if (!id->is_string() || id->get<std::string>().empty()) {
             throw std::invalid_argument("The id of " + PropertyReader::describeKind(kind->get<std::string>()) + " must be a non-empty string.");
         }
+
         component.id = id->get<std::string>();
         if (!component.id.starts_with('#')) {
             component.key = ImHashStr(component.id.data(), component.id.size());
         }
+
         built.ids.emplace(component.id, &component);
 
         core::Json values = node;
@@ -138,6 +148,7 @@ Gui::Built Gui::build(const core::Json& node, std::size_t depth, std::size_t& co
         values.erase("children");
         built.properties.emplace(component.id, std::move(values));
     }
+
     component.apply(node);
     component.compile(registry);
 
@@ -145,12 +156,15 @@ Gui::Built Gui::build(const core::Json& node, std::size_t depth, std::size_t& co
     if (children == node.end()) {
         return built;
     }
+
     if (!children->is_array()) {
         throw std::invalid_argument("The children of " + PropertyReader::describeKind(kind->get<std::string>()) + " must be a list.");
     }
+
     if (children->size() > component.getChildLimit()) {
         throw std::invalid_argument("The component kind \"" + kind->get<std::string>() + "\" takes at most " + std::to_string(component.getChildLimit()) + " children.");
     }
+
     for (const core::Json& child : *children) {
         Built nested = build(child, depth + 1, count, static_cast<int>(component.children.size()));
         for (auto& [nestedId, target] : nested.ids) {
@@ -158,9 +172,11 @@ Gui::Built Gui::build(const core::Json& node, std::size_t depth, std::size_t& co
                 throw std::invalid_argument("The UI id \"" + nestedId + "\" is used more than once.");
             }
         }
+
         built.properties.merge(nested.properties);
         component.children.push_back(std::move(nested.component));
     }
+
     return built;
 }
 
@@ -179,6 +195,7 @@ Component& Gui::require(std::string_view id) const {
     if (component == nullptr) {
         throw std::invalid_argument("The GUI has no node with the id \"" + std::string(id) + "\".");
     }
+
     return *component;
 }
 
@@ -188,6 +205,7 @@ Collection& Gui::getCollection(std::string_view id) const {
     if (collection == nullptr) {
         throw std::invalid_argument("The node \"" + std::string(id) + "\" is " + PropertyReader::describeKind(component.getKind()) + ", not a \"collection\".");
     }
+
     return *collection;
 }
 
@@ -201,6 +219,7 @@ void Gui::checkNotPreparing() const {
 void Gui::prepare(Context& context) {
     checkNotPreparing();
     const PreparingScope scope(preparing);
+
     for (Component* component : preparations) {
         component->prepare(context);
     }
@@ -208,6 +227,7 @@ void Gui::prepare(Context& context) {
 
 void Gui::set(std::string_view id, const core::Json& changes) {
     Component& component = require(id);
+
     if (!changes.is_object() || changes.contains("kind") || changes.contains("id") || changes.contains("children")) {
         throw std::invalid_argument("The \"set\" method of a GUI changes properties only, so it takes an object without \"kind\", \"id\" or \"children\".");
     }
@@ -227,9 +247,11 @@ void Gui::set(std::string_view id, const core::Json& changes) {
 void Gui::replaceChildren(std::string_view id, const core::Json& trees) {
     checkNotPreparing();
     Component& component = require(id);
+
     if (!trees.is_array()) {
         throw std::invalid_argument("The \"replaceChildren\" method of a GUI takes a list of nodes.");
     }
+
     if (trees.size() > component.getChildLimit()) {
         throw std::invalid_argument("The component kind \"" + std::string(component.getKind()) + "\" takes at most " + std::to_string(component.getChildLimit()) + " children.");
     }
@@ -241,6 +263,7 @@ void Gui::replaceChildren(std::string_view id, const core::Json& trees) {
         collectIds(*child, removed);
         count -= countNodes(*child);
     }
+
     std::map<std::string, Component*, std::less<>> remainingIds = ids;
     std::map<std::string, core::Json, std::less<>> remainingProperties = properties;
     for (const std::string& gone : removed) {
@@ -257,6 +280,7 @@ void Gui::replaceChildren(std::string_view id, const core::Json& trees) {
                 throw std::invalid_argument("The UI id \"" + childId + "\" is used more than once.");
             }
         }
+
         remainingProperties.merge(nested.properties);
         built.push_back(std::move(nested.component));
     }
@@ -272,11 +296,13 @@ void Gui::replaceChildren(std::string_view id, const core::Json& trees) {
     if (!delivery) {
         return;
     }
+
     arrived = true;
     std::vector<Event> unmounts;
     for (const auto& child : leaving) {
         collectUnmounts(*child, unmounts);
     }
+
     deliver(unmounts);
 }
 
@@ -303,6 +329,7 @@ void Gui::collectUnmounts(Component& component, std::vector<Event>& found) {
     if (std::exchange(component.mountReported, false) && component.isListening(Component::Notice::Unmount)) {
         found.push_back({.id = component.getId(), .name = "unmount"});
     }
+
     for (const auto& child : component.getChildren()) {
         collectUnmounts(*child, found);
     }
@@ -312,6 +339,7 @@ void Gui::reportMounts(Component& component) {
     if (!std::exchange(component.mountReported, true) && component.isListening(Component::Notice::Mount)) {
         events.push_back({.id = component.getId(), .name = "mount"});
     }
+
     for (const auto& child : component.getChildren()) {
         reportMounts(*child);
     }
@@ -334,16 +362,20 @@ void Gui::draw(Context& context, const math::Rect& area) {
         skip(context);
         return;
     }
+
     if (std::exchange(arrived, false)) {
         reportMounts(*root);
     }
+
     const EventScope scope(context, events);
     context.getFocus().beginGui(*this);
     const bool writing = root->pushWriting(context);
     const math::Rect placed = root->getCommon().anchor ? root->getAnchoredBounds(context, area) : place(context, *root, root->measure(context, area.width), area);
+
     if (writing) {
         context.popWriting();
     }
+
     root->draw(context, placed);
     root->noticeStoppedDrawing(context);
 }
@@ -352,6 +384,7 @@ void Gui::skip(Context& context) {
     if (std::exchange(arrived, false)) {
         reportMounts(*root);
     }
+
     const EventScope scope(context, events);
     root->noticeStoppedDrawing(context);
 }

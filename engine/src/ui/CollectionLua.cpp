@@ -35,16 +35,19 @@ bool CollectionLua::pushEntry(lua_State* L, const Gui& gui, const Collection& co
             lua_pop(L, 1);
             return false;
         }
+
         lua_newtable(L);
         lua_pushvalue(L, -1);
         lua_rawsetp(L, -3, &gui);
     }
+
     if (lua_rawgetp(L, -1, &collection) != LUA_TTABLE) {
         lua_pop(L, 1);
         if (!create) {
             lua_pop(L, 2);
             return false;
         }
+
         lua_createtable(L, 0, 6);
         lua::Stack::push(L, collection.getId());
         lua_setfield(L, -2, "id");
@@ -53,6 +56,7 @@ bool CollectionLua::pushEntry(lua_State* L, const Gui& gui, const Collection& co
         lua_pushvalue(L, -1);
         lua_rawsetp(L, -3, &collection);
     }
+
     lua_replace(L, -3);
     lua_pop(L, 1);
     return true;
@@ -63,6 +67,7 @@ void CollectionLua::pushValue(lua_State* L, const Gui& gui, const Collection& co
         lua_pushnil(L);
         return;
     }
+
     lua_getfield(L, -1, field);
     lua_remove(L, -2);
 }
@@ -75,6 +80,7 @@ void CollectionLua::setValue(lua_State* L, const Gui& gui, const Collection& col
     } else {
         lua_pushvalue(L, stored);
     }
+
     lua_setfield(L, -2, field);
     lua_pop(L, 1);
 }
@@ -91,20 +97,24 @@ void CollectionLua::pushPage(lua_State* L, const Gui& gui, const Collection& col
 void CollectionLua::setPage(lua_State* L, const Gui& gui, const Collection& collection, std::size_t page, int list) {
     const int stored = list == 0 ? 0 : lua_absindex(L, list);
     const lua::StackScope scope(L);
+
     if (!pushEntry(L, gui, collection, false)) {
         return;
     }
+
     if (lua_getfield(L, -1, "pages") != LUA_TTABLE) {
         lua_pop(L, 1);
         lua_newtable(L);
         lua_pushvalue(L, -1);
         lua_setfield(L, -3, "pages");
     }
+
     if (stored == 0) {
         lua_pushnil(L);
     } else {
         lua_pushvalue(L, stored);
     }
+
     lua_rawseti(L, -2, static_cast<lua_Integer>(page + 1));
 }
 
@@ -114,10 +124,12 @@ std::pair<std::string, std::string> CollectionLua::readItem(lua_State* L, int ta
     if (lua_type(L, item) != LUA_TTABLE) {
         throw std::invalid_argument(where + "must be a table.");
     }
+
     lua_pushliteral(L, "id");
     const bool named = lua_rawget(L, item) == LUA_TSTRING && lua_rawlen(L, -1) > 0;
     std::string id = named ? lua_tostring(L, -1) : std::string();
     lua_pop(L, 1);
+
     if (!named) {
         throw std::invalid_argument(where + "needs a non-empty string id.");
     }
@@ -127,6 +139,7 @@ std::pair<std::string, std::string> CollectionLua::readItem(lua_State* L, int ta
     if (kind != LUA_TNIL && kind != LUA_TSTRING) {
         throw std::invalid_argument("The type of the item \"" + id + "\" of the collection \"" + collection.getId() + "\" must be a string.");
     }
+
     std::string type = kind == LUA_TSTRING ? lua_tostring(L, -1) : std::string();
     lua_pop(L, 1);
     collection.checkType(id, type);
@@ -147,6 +160,7 @@ void CollectionLua::prune(lua_State* L, const Gui& gui) {
     if (lua_rawgetp(L, -1, &gui) != LUA_TTABLE) {
         return;
     }
+
     const int entries = lua_gettop(L);
     std::vector<const void*> stale;
     lua_pushnil(L);
@@ -156,8 +170,10 @@ void CollectionLua::prune(lua_State* L, const Gui& gui) {
         if (found != lua_touserdata(L, -3)) {
             stale.push_back(lua_touserdata(L, -3));
         }
+
         lua_pop(L, 2);
     }
+
     for (const void* key : stale) {
         lua_pushnil(L);
         lua_rawsetp(L, entries, key);
@@ -170,6 +186,7 @@ void CollectionLua::push(lua_State* L, const std::shared_ptr<Gui>& gui, Collecti
         lua_remove(L, -2);
         return;
     }
+
     lua_pop(L, 1);
     lua::Userdata::emplace<Handle>(L, Handle{.gui = gui, .collection = &collection, .id = collection.getId()});
     lua_pushvalue(L, -1);
@@ -183,9 +200,11 @@ std::shared_ptr<Gui> CollectionLua::checkGui(lua_State* L) {
     if (!gui || !lua::Runtime::getEngine(L).getPlugin<plugins::UiPlugin>().isMounted(*gui)) {
         luaL_error(L, "The GUI is not mounted.");
     }
+
     if (gui->find(handle.id) != handle.collection) {
         luaL_error(L, "This \"%s\" was already released.", lua::Type<Handle>::name);
     }
+
     return gui;
 }
 
@@ -199,6 +218,7 @@ std::size_t CollectionLua::readIndex(lua_State* L, int index, const Collection& 
     if (value < 1 || static_cast<std::size_t>(value) > limit) {
         luaL_error(L, "The index %d is outside the items of the collection \"%s\", which holds %d.", static_cast<int>(value), collection.getId().c_str(), static_cast<int>(collection.getCount()));
     }
+
     return static_cast<std::size_t>(value - 1);
 }
 
@@ -207,11 +227,13 @@ std::size_t CollectionLua::readTarget(lua_State* L, int index, const Collection&
     if (lua_type(L, index) == LUA_TNUMBER) {
         return readIndex(L, index, collection, collection.getCount());
     }
+
     const std::string id = lua::Stack::read<std::string>(L, index);
     const std::optional<std::size_t> found = collection.findItem(id);
     if (!found) {
         luaL_error(L, "The collection \"%s\" has no item with the id \"%s\".", collection.getId().c_str(), id.c_str());
     }
+
     return *found;
 }
 
@@ -226,10 +248,12 @@ LuaItemSource& CollectionLua::requireList(lua_State* L, Collection& collection) 
     if (std::dynamic_pointer_cast<LuaPageSource>(collection.getSource())) {
         luaL_error(L, "The collection \"%s\" pages its items, so it changes them with \"setPages\".", collection.getId().c_str());
     }
+
     auto* list = dynamic_cast<LuaItemSource*>(collection.getSource().get());
     if (list == nullptr) {
         luaL_error(L, "The collection \"%s\" has no list of items. Give it one with \"setItems\".", collection.getId().c_str());
     }
+
     return *list;
 }
 
@@ -253,6 +277,7 @@ CollectionCell& CollectionLua::checkCell(lua_State* L) {
     if (!cell || cell->getGeneration() != handle.generation) {
         luaL_error(L, "This cell no longer shows the item \"%s\".", handle.item.c_str());
     }
+
     return *cell;
 }
 
@@ -262,6 +287,7 @@ void CollectionLua::callBinder(lua_State* L, const Gui& gui, const Collection& c
     if (!lua_istable(L, -1) || lua_getfield(L, -1, type.c_str()) != LUA_TFUNCTION) {
         return;
     }
+
     pushCell(L, cell);
     pushItem(L, collection, index);
     lua_pushinteger(L, static_cast<lua_Integer>(index + 1));
@@ -274,10 +300,12 @@ int CollectionLua::setItems(lua_State* L) {
     Collection& collection = check(L);
     luaL_checktype(L, 2, LUA_TTABLE);
     checkUnbound(L, collection);
+
     if (const auto list = std::dynamic_pointer_cast<LuaItemSource>(collection.getSource())) {
         list->assign(L, 2);
         return 0;
     }
+
     auto created = std::make_shared<LuaItemSource>(L, *gui, collection);
     created->assign(L, 2);
     collection.setSource(created);
@@ -294,9 +322,11 @@ int CollectionLua::setPages(lua_State* L) {
     lua::Table::checkFields(L, 2, {kPageFields});
     checkUnbound(L, collection);
     LuaPageSource::Options options;
+
     if (lua_getfield(L, 2, "count") == LUA_TNIL) {
         return luaL_error(L, "The option \"count\" is required.");
     }
+
     lua_pop(L, 1);
     lua_Integer count = 0;
     lua_Integer pageSize = static_cast<lua_Integer>(options.pageSize);
@@ -307,22 +337,28 @@ int CollectionLua::setPages(lua_State* L) {
     if (count < 0) {
         return luaL_error(L, "The option \"count\" must be at least 0.");
     }
+
     if (pageSize < 1 || maxPages < 1) {
         return luaL_error(L, "The option \"%s\" must be at least 1.", pageSize < 1 ? "pageSize" : "maxPages");
     }
+
     options = {.count = static_cast<std::size_t>(count), .pageSize = static_cast<std::size_t>(pageSize), .maxPages = static_cast<std::size_t>(maxPages)};
+
     if (lua_getfield(L, 2, "load") != LUA_TFUNCTION) {
         return luaL_error(L, "The option \"load\" must be a function.");
     }
+
     const int load = lua_gettop(L);
 
     pushValue(L, *gui, collection, "load");
     const bool sameLoader = lua_rawequal(L, -1, load) != 0;
     lua_pop(L, 1);
+
     if (const auto pages = std::dynamic_pointer_cast<LuaPageSource>(collection.getSource()); pages && sameLoader) {
         pages->configure(options);
         return 0;
     }
+
     auto created = std::make_shared<LuaPageSource>(L, *gui, collection);
     setValue(L, *gui, collection, "load", load);
     lua_newtable(L);
@@ -360,6 +396,7 @@ int CollectionLua::move(lua_State* L) {
     if (from != to) {
         list.move(L, from, to);
     }
+
     return 0;
 }
 
@@ -379,12 +416,14 @@ int CollectionLua::reload(lua_State* L) {
         list.reload(L, readTarget(L, 2, collection));
         return 0;
     }
+
     const auto length = static_cast<lua_Integer>(lua_rawlen(L, 2));
     for (lua_Integer position = 1; position <= length; ++position) {
         lua_rawgeti(L, 2, position);
         list.reload(L, readTarget(L, -1, collection));
         lua_pop(L, 1);
     }
+
     return 0;
 }
 
@@ -400,6 +439,7 @@ int CollectionLua::setBinder(lua_State* L) {
         lua_setfield(L, -2, type.c_str());
         return 0;
     }
+
     luaL_checktype(L, 3, LUA_TFUNCTION);
     lua_State* main = lua::Runtime::getMainThread(L);
     const Gui* owner = gui.get();
@@ -427,12 +467,15 @@ int CollectionLua::scrollTo(lua_State* L) {
             if (found == Collection::kScrollAligns.end()) {
                 return luaL_error(L, "The option \"align\" must be \"nearest\", \"start\", \"center\" or \"end\".");
             }
+
             request.align = found->second;
         }
+
         lua_pop(L, 1);
         lua::Table::readField(L, 3, "offset", request.offset);
         lua::Table::readField(L, 3, "animated", request.animated);
     }
+
     collection.scrollTo(index, request);
     return 0;
 }
@@ -446,6 +489,7 @@ int CollectionLua::scrollBy(lua_State* L) {
         lua::Table::checkFields(L, 3, {kAnimationFields});
         lua::Table::readField(L, 3, "animated", animated);
     }
+
     collection.scrollBy(distance, animated);
     return 0;
 }
@@ -464,6 +508,7 @@ int CollectionLua::indexOf(lua_State* L) {
     } else {
         lua_pushnil(L);
     }
+
     return 1;
 }
 
@@ -474,6 +519,7 @@ int CollectionLua::cellOf(lua_State* L) {
     } else {
         lua_pushnil(L);
     }
+
     return 1;
 }
 
@@ -483,6 +529,7 @@ int CollectionLua::visibleRange(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua_pushinteger(L, static_cast<lua_Integer>(range->first + 1));
     lua_pushinteger(L, static_cast<lua_Integer>(range->second + 1));
     return 2;
@@ -495,12 +542,14 @@ int CollectionLua::saveState(lua_State* L) {
         lua::Stack::push(L, state.item);
         lua_setfield(L, -2, "item");
     }
+
     lua_pushnumber(L, state.distance);
     lua_setfield(L, -2, "distance");
     if (!state.focused.empty()) {
         lua::Stack::push(L, state.focused);
         lua_setfield(L, -2, "focused");
     }
+
     return 1;
 }
 
@@ -548,6 +597,7 @@ int CollectionLua::focusedItem(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, collection.getSource()->getId(*index));
     return 1;
 }
@@ -561,6 +611,7 @@ int CollectionLua::selected(lua_State* L) {
         lua::Stack::push(L, collection.getSource()->getId(index));
         lua_rawseti(L, -2, ++position);
     }
+
     return 1;
 }
 
@@ -593,6 +644,7 @@ int CollectionLua::cellBounds(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, context.toDesign(*bounds));
     return 1;
 }

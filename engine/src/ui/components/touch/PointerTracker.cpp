@@ -19,17 +19,22 @@ std::optional<math::Vec2> PointerTracker::update(Context& context, const math::R
         if (!left) {
             return context.toUi(touch->position);
         }
+
         touchId.reset();
+
         if (!slideIn) {
             return std::nullopt;
         }
     }
+
     if (mouseHeld) {
         const bool left = !devices.isMouseDown(input::MouseButton::Left) || (slideIn && !bounds.contains(context.toUi(devices.getMousePosition())));
         if (!left) {
             return context.toUi(devices.getMousePosition());
         }
+
         mouseHeld = false;
+
         if (!slideIn) {
             return std::nullopt;
         }
@@ -45,12 +50,14 @@ std::optional<math::Vec2> PointerTracker::update(Context& context, const math::R
             return position;
         }
     }
+
     const bool mouseTakes = slideIn ? devices.isMouseDown(input::MouseButton::Left) : devices.isMousePressed(input::MouseButton::Left);
     if (devices.getTouches().empty() && mouseTakes && bounds.contains(context.toUi(devices.getMousePosition()))) {
         mouseHeld = true;
         startPosition = context.toUi(devices.getMousePosition());
         return startPosition;
     }
+
     return std::nullopt;
 }
 
