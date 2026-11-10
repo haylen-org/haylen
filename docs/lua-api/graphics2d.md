@@ -3614,6 +3614,8 @@ scene.push({
 
 Calls the function `drawShape` at once to draw the shape of a mask with any draws, such as circles, sprites, text or meshes. Then everything until `graphics2d.popMask()` draws only inside that shape, or outside it with `mode = 'outside'`, as for round avatars, reveals, fog of war and shaped panels. The masked draws composite as one image like a group. The table `options` is optional and takes `mode`, `'inside'` by default or `'outside'`, and the keys of the [draw order](#draw-order) but `material`. In C++, `Renderer::pushMask(mode, order)` begins the shape, `Renderer::endMaskShape()` ends it and `Renderer::popMask()` ends the content.
 
+The function `drawShape` cannot yield. An error that it raises goes on with its whole stack, and the mask it began ends with empty content as the error leaves `pushMask`, so the draws after a protected call that catches the error draw as they would without the mask. Inside a coroutine that the error ends, the mask ends when the coroutine closes.
+
 ```lua
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')

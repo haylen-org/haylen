@@ -555,6 +555,31 @@ TEST_F(Graphics2DLuaTest, DrawsGroupsAndMasks) {
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.pushMask(5)").find("function expected"), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.pushMask(function() error('Shape failed.') end)").find("Shape failed."), std::string::npos);
 
+    // A shape function that fails ends its mask, so what the app draws after it catches the error is no longer the shape of a mask.
+    // clang-format off
+    EXPECT_EQ(render(R"(
+        graphics2d.beginScreen()
+        local ok, message = pcall(graphics2d.pushMask, function()
+            graphics2d.draw(hero, 1, 1)
+            error('Shape failed.', 0)
+        end)
+        graphics2d.draw(hero, 5, 5)
+        local drawn = graphics2d.drawn()
+        local popped = pcall(graphics2d.popMask)
+        error(tostring(ok) .. ' ' .. message .. ' ' .. #drawn .. ' ' .. tostring(drawn[#drawn].x) .. ' ' .. tostring(popped), 0)
+    )"), "false Shape failed. 1 -3.0 false");
+
+    // A shape function cannot yield, and the coroutine that tried ends the mask when it closes.
+    EXPECT_EQ(render(R"(
+        graphics2d.beginScreen()
+        local co = coroutine.create(function() graphics2d.pushMask(function() coroutine.yield() end) end)
+        local resumed, reason = coroutine.resume(co)
+        coroutine.close(co)
+        graphics2d.draw(hero, 5, 5)
+        error(tostring(resumed) .. ' ' .. reason .. ' ' .. #graphics2d.drawn(), 0)
+    )"), "false attempt to yield across a C-call boundary 1");
+    // clang-format on
+
     // Groups take every blend mode, and the modes that mix with what lies below take a group.
     // clang-format off
     EXPECT_EQ(render(R"(

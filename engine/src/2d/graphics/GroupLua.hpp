@@ -30,16 +30,25 @@ class GroupLua final {
     static int beginGroup(lua_State* L);
     static int endGroup(lua_State* L);
 
-    // Runs `pushMask(drawShape, options)` as three steps, so the function that draws the shape runs between them as a plain Lua call: the mask begins, the function draws its shape, and its content begins.
+    // Runs `pushMask(drawShape, options)` as three steps, so the function that draws the shape runs between them as a plain Lua call: the mask begins, the function draws its shape, and its content begins. A shape function that fails ends the mask it began, even when a protected call of the app catches the error.
     static int pushMask(lua_State* L);
     static int popMask(lua_State* L);
 
   private:
+    // The state of one running `pushMask`, which a to-be-closed value on its stack holds. The closers stay in a table of the registry for the next calls, one for each level of masks that nest while their shapes draw, next to their metatable, which no script reaches.
+    struct MaskCloser {
+        bool busy = false;
+        bool shapeOpen = false;
+    };
+
     static constexpr std::array<std::string_view, 1> kGroupFields{"opacity"};
     static constexpr std::array<std::string_view, 1> kMaskFields{"mode"};
+    static constexpr const char* kClosersKey = "haylen.maskClosers";
 
     static int beginMask(lua_State* L);
     static int endMaskShape(lua_State* L);
+    [[nodiscard]] static MaskCloser& pushCloser(lua_State* L);
+    static int closeMask(lua_State* L);
 };
 
 } // namespace haylen::graphics2d
