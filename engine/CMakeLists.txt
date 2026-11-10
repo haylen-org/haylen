@@ -612,6 +612,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/text/Effect.cpp
   src/text/Font.cpp
   src/text/FontFamily.cpp
+  src/text/FontFile.cpp
   src/text/Gradient.cpp
   src/text/LayoutBuilder.cpp
   src/text/LayoutCache.cpp
@@ -714,6 +715,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/IconColor.cpp
   src/ui/Gui.cpp
   src/ui/ImGuiConverter.cpp
+  src/ui/ImGuiFontLoader.cpp
   src/ui/ImGuiLua.cpp
   src/ui/ImageLibrary.cpp
   src/ui/LuaItemSource.cpp

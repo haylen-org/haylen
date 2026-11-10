@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <array>
-#include <new>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -13,13 +12,11 @@
 #include "haylen/graphics/Device.hpp"
 #include "text/ColorGlyphImage.hpp"
 #include "text/DistanceField.hpp"
-
-#define STB_TRUETYPE_IMPLEMENTATION
-#include "stb_truetype.h"
+#include "text/FontFile.hpp"
 
 namespace haylen::text {
 
-// The parsed font file, sized by its em square at the bake size. The stb_truetype library reads the outlines, and HarfBuzz shapes and paints color glyphs in font units, with a buffer kept for every run. The blob of HarfBuzz owns the bytes of the file, so the images of color glyphs keep them alive after the font.
+// The font file, sized by its em square at the bake size. HarfBuzz reads its outlines and metrics, shapes in font units with a buffer kept for every run and paints color glyphs. The blob of the file owns its bytes, so the images of color glyphs keep them alive after the font.
 struct TrueTypeFont::Face {
     // The features that a run without ligatures turns off: the standard and contextual ligatures and the contextual alternates, which programming fonts draw their ligatures with. The required ligatures of a script stay, since its text needs them.
     static constexpr std::array<hb_feature_t, 3> kWithoutLigatures{{
@@ -28,16 +25,8 @@ struct TrueTypeFont::Face {
         {.tag = HB_TAG('c', 'a', 'l', 't'), .value = 0, .start = HB_FEATURE_GLOBAL_START, .end = HB_FEATURE_GLOBAL_END},
     }};
 
-    static void release(void* bytes) {
-        delete static_cast<std::vector<std::uint8_t>*>(bytes);
-    }
-
-    std::span<const std::uint8_t> ttf;
-    stbtt_fontinfo info{};
+    FontFile file;
     float scale = 1.0F;
-    std::unique_ptr<hb_blob_t, decltype(&hb_blob_destroy)> blob{nullptr, &hb_blob_destroy};
-    std::unique_ptr<hb_face_t, decltype(&hb_face_destroy)> shapingFace{nullptr, &hb_face_destroy};
-    std::unique_ptr<hb_font_t, decltype(&hb_font_destroy)> shapingFont{nullptr, &hb_font_destroy};
     std::unique_ptr<hb_buffer_t, decltype(&hb_buffer_destroy)> buffer{hb_buffer_create(), &hb_buffer_destroy};
 };
 
@@ -59,78 +48,33 @@ const TrueTypeFont::Options& TrueTypeFont::validate(const Options& value, const 
     return value;
 }
 
-// The stb_truetype reader finds tables through the table directory without checking their bounds, so the directory and every table it lists must lie inside the file.
-bool TrueTypeFont::hasTables(std::span<const std::uint8_t> ttf, std::size_t start) noexcept {
-    // clang-format off
-    const auto read = [&ttf](std::size_t offset, std::size_t size) {
-        std::uint64_t value = 0;
-        for (std::size_t index = 0; index < size; ++index) {
-            value = value << 8U | static_cast<std::uint64_t>(ttf[offset + index]);
-        }
-        return value;
-    };
-    // clang-format on
-
-    if (start > ttf.size() || ttf.size() - start < kOffsetTableSize) {
-        return false;
-    }
-    const auto count = static_cast<std::size_t>(read(start + 4, 2));
-    if ((ttf.size() - start - kOffsetTableSize) / kTableRecordSize < count) {
-        return false;
-    }
-    for (std::size_t record = start + kOffsetTableSize; record < start + kOffsetTableSize + count * kTableRecordSize; record += kTableRecordSize) {
-        if (read(record + 8, 4) + read(record + 12, 4) > ttf.size()) {
-            return false;
-        }
-    }
-    return true;
-}
-
 std::unique_ptr<TrueTypeFont::Face> TrueTypeFont::open(std::vector<std::uint8_t> ttf, const Options& fontOptions) {
-    auto opened = std::make_unique<Face>();
-    auto bytes = std::make_unique<std::vector<std::uint8_t>>(std::move(ttf));
-    opened->ttf = *bytes;
-    const auto* const contents = reinterpret_cast<const char*>(bytes->data());
-    const auto length = static_cast<unsigned int>(bytes->size());
-    opened->blob.reset(hb_blob_create(contents, length, HB_MEMORY_MODE_READONLY, bytes.release(), &Face::release));
-    if (hb_blob_get_length(opened->blob.get()) != length) {
-        throw std::bad_alloc();
-    }
-
-    const int offset = opened->ttf.size() < kHeaderSize ? -1 : stbtt_GetFontOffsetForIndex(opened->ttf.data(), 0);
-    if (offset < 0 || !hasTables(opened->ttf, static_cast<std::size_t>(offset)) || stbtt_InitFont(&opened->info, opened->ttf.data(), offset) == 0) {
+    std::optional<FontFile> file = FontFile::read(std::move(ttf));
+    if (!file) {
         throw std::runtime_error("Font data is not a valid TrueType or OpenType font.");
     }
-    opened->scale = stbtt_ScaleForMappingEmToPixels(&opened->info, fontOptions.bakeSize);
-
-    // HarfBuzz positions glyphs in font units, which the scale of the em square turns into pixels.
-    opened->shapingFace.reset(hb_face_create(opened->blob.get(), 0));
-    opened->shapingFont.reset(hb_font_create(opened->shapingFace.get()));
-    const auto units = static_cast<int>(hb_face_get_upem(opened->shapingFace.get()));
-    hb_font_set_scale(opened->shapingFont.get(), units, units);
-    return opened;
+    const float scale = fontOptions.bakeSize / static_cast<float>(file->getUnitsPerEm());
+    return std::make_unique<Face>(Face{.file = std::move(*file), .scale = scale});
 }
 
+// The capital H reaches the cap height, which is the ascent in a font without one.
 Font::Metrics TrueTypeFont::readMetrics(const Face& opened, const Options& fontOptions) {
-    int ascent = 0;
-    int descent = 0;
-    int lineGap = 0;
-    stbtt_GetFontVMetrics(&opened.info, &ascent, &descent, &lineGap);
-    int left = 0;
-    int bottom = 0;
-    int right = 0;
-    int top = ascent;
-    if (stbtt_FindGlyphIndex(&opened.info, 'H') != 0) {
-        stbtt_GetCodepointBox(&opened.info, 'H', &left, &bottom, &right, &top);
+    const FontFile& file = opened.file;
+    const FontFile::LineMetrics& lines = file.getLineMetrics();
+    int top = lines.ascender;
+    if (const std::uint32_t capital = file.findGlyph('H'); capital != 0) {
+        if (const std::optional<hb_glyph_extents_t> box = file.getExtents(capital)) {
+            top = box->y_bearing;
+        }
     }
-    const int letterO = stbtt_FindGlyphIndex(&opened.info, 'o');
+    const std::uint32_t letterO = file.findGlyph('o');
     return {
         .nativeSize = fontOptions.bakeSize,
-        .ascent = static_cast<float>(ascent) * opened.scale,
-        .lineHeight = static_cast<float>(ascent - descent + lineGap) * opened.scale,
+        .ascent = static_cast<float>(lines.ascender) * opened.scale,
+        .lineHeight = static_cast<float>(lines.ascender - lines.descender + lines.lineGap) * opened.scale,
         .capHeight = static_cast<float>(top) * opened.scale,
         .spread = static_cast<float>(fontOptions.spread),
-        .counter = letterO != 0 ? DistanceField::measureHole(opened.info, letterO, opened.scale) : 0.0F,
+        .counter = letterO != 0 ? DistanceField::measureHole(file, letterO, opened.scale) : 0.0F,
     };
 }
 
@@ -146,7 +90,7 @@ TrueTypeFont::TrueTypeFont(graphics::Device& graphicsDevice, std::unique_ptr<Fac
 TrueTypeFont::~TrueTypeFont() = default;
 
 std::span<const std::uint8_t> TrueTypeFont::getData() const noexcept {
-    return face->ttf;
+    return face->file.getBytes();
 }
 
 const graphics::Texture& TrueTypeFont::getPage(std::size_t index) const {
@@ -161,9 +105,9 @@ TrueTypeFont::Coverage TrueTypeFont::cover(char32_t codePoint) {
     if (!inserted) {
         return entry->second;
     }
-    const int index = stbtt_FindGlyphIndex(&face->info, static_cast<int>(codePoint));
+    const std::uint32_t index = face->file.findGlyph(codePoint);
     if (index != 0) {
-        entry->second = isColor(static_cast<std::uint32_t>(index)) ? Coverage::Color : Coverage::Outline;
+        entry->second = isColor(index) ? Coverage::Color : Coverage::Outline;
     }
     return entry->second;
 }
@@ -178,7 +122,7 @@ bool TrueTypeFont::hasColorGlyph(char32_t codePoint) {
 
 // A glyph has colors when the `COLR` table paints it, through a paint graph of version 1 or the layers of version 0.
 bool TrueTypeFont::isColor(std::uint32_t index) const noexcept {
-    hb_face_t* shaping = face->shapingFace.get();
+    hb_face_t* shaping = &face->file.getFace();
     return hb_ot_color_glyph_has_paint(shaping, index) || hb_ot_color_glyph_get_layers(shaping, index, 0, nullptr, nullptr) > 0;
 }
 
@@ -193,9 +137,9 @@ void TrueTypeFont::shape(const Run& run, std::vector<ShapedGlyph>& shaped) {
         hb_buffer_set_language(buffer, hb_language_from_string(run.language.data(), static_cast<int>(run.language.size())));
     }
     if (run.ligatures) {
-        hb_shape(face->shapingFont.get(), buffer, nullptr, 0);
+        hb_shape(&face->file.getFont(), buffer, nullptr, 0);
     } else {
-        hb_shape(face->shapingFont.get(), buffer, Face::kWithoutLigatures.data(), static_cast<unsigned int>(Face::kWithoutLigatures.size()));
+        hb_shape(&face->file.getFont(), buffer, Face::kWithoutLigatures.data(), static_cast<unsigned int>(Face::kWithoutLigatures.size()));
     }
 
     unsigned int count = 0;
@@ -205,7 +149,7 @@ void TrueTypeFont::shape(const Run& run, std::vector<ShapedGlyph>& shaped) {
     for (unsigned int index = 0; index < count; ++index) {
         const hb_glyph_position_t& position = positions[index];
         shaped.push_back({
-            .index = infos[index].codepoint,
+            .index = face->file.getHeldGlyph(infos[index].codepoint),
             .cluster = infos[index].cluster,
             .advance = static_cast<float>(position.x_advance) * face->scale,
             .offset = {static_cast<float>(position.x_offset) * face->scale, static_cast<float>(-position.y_offset) * face->scale},
@@ -218,29 +162,20 @@ const Font::Glyph& TrueTypeFont::getGlyph(std::uint32_t index) {
     if (const auto found = glyphs.find(index); found != glyphs.end()) {
         return found->second;
     }
-    if (index >= static_cast<std::uint32_t>(face->info.numGlyphs)) {
+    if (index >= face->file.getGlyphCount()) {
         throw std::out_of_range("The font has no glyph with index " + std::to_string(index) + ".");
     }
     return glyphs.emplace(index, rasterize(index)).first->second;
 }
 
 Font::Glyph TrueTypeFont::rasterize(std::uint32_t index) {
-    int advance = 0;
-    int bearing = 0;
-    stbtt_GetGlyphHMetrics(&face->info, static_cast<int>(index), &advance, &bearing);
-    Glyph glyph{.advance = static_cast<float>(advance) * face->scale};
+    Glyph glyph{.advance = static_cast<float>(face->file.getAdvance(index)) * face->scale};
     if (isColor(index)) {
         return paintColors(glyph, index);
     }
 
-    // A glyph that no atlas could hold, with its pixel of padding on each side, fails before its field is built, which takes long at such sizes.
-    const std::optional<DistanceField> box = DistanceField::measure(face->info, static_cast<int>(index), face->scale, options.spread);
-    const int largest = device.getMaxTextureSize() - 2;
-    if (box && (box->width > largest || box->height > largest)) {
-        throw std::runtime_error("The glyph is larger than the largest font atlas the device can hold.");
-    }
-
-    const std::optional<DistanceField> field = DistanceField::build(face->info, static_cast<int>(index), face->scale, options.spread);
+    // A glyph that no atlas could hold, with its pixel of padding on each side, fails before its field is built.
+    const std::optional<DistanceField> field = DistanceField::build(face->file, index, face->scale, options.spread, device.getMaxTextureSize() - 2);
     if (!field) {
         return glyph;
     }
@@ -275,10 +210,10 @@ Font::Glyph TrueTypeFont::rasterize(std::uint32_t index) {
 // A color glyph draws its own image instead of a distance field, so it takes no room in the atlas. Its box is the extent of what its layers paint.
 Font::Glyph TrueTypeFont::paintColors(Glyph glyph, std::uint32_t index) const {
     hb_glyph_extents_t extents{};
-    if (!hb_font_get_glyph_extents(face->shapingFont.get(), index, &extents) || extents.width <= 0 || extents.height >= 0) {
+    if (!hb_font_get_glyph_extents(&face->file.getFont(), index, &extents) || extents.width <= 0 || extents.height >= 0) {
         return glyph;
     }
-    glyph.image = graphics::VectorImage(std::make_shared<ColorGlyphImage>(*face->shapingFont, index, extents, face->scale));
+    glyph.image = graphics::VectorImage(std::make_shared<ColorGlyphImage>(face->file.getFont(), index, extents, face->scale));
     glyph.source = {0.0F, 0.0F, glyph.image.getSize().x, glyph.image.getSize().y};
     glyph.offset = {static_cast<float>(extents.x_bearing) * face->scale, static_cast<float>(-extents.y_bearing) * face->scale};
     glyph.visible = true;

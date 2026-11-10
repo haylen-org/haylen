@@ -25,7 +25,9 @@
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/NavigationInput.hpp"
 #include "platform/headless/HeadlessHost.hpp"
+#include "support/DamagedFonts.hpp"
 #include "support/EngineFixture.hpp"
+#include "text/FontFile.hpp"
 
 namespace haylen::ui {
 
@@ -291,6 +293,35 @@ TEST_F(BackendTest, DrawsMissingCharactersFromFallbacksAtTheEmSize) {
         EXPECT_FALSE(backend.getFont(Backend::kDefaultFontName)->IsGlyphInFont(U'日'));
     });
     // clang-format on
+}
+
+// ImGui reads the fonts of the UI through HarfBuzz, so a glyph made of itself keeps its advance, an outline past the end of its table draws nothing and a character map that counts more segments than it holds maps no character.
+TEST_F(BackendTest, DrawsDamagedFontsAsMissingGlyphs) {
+    std::vector<std::uint8_t> itself = readFont("crimson-text-regular.ttf");
+    const std::uint32_t glyph = text::FontFile::read(itself)->findGlyph('A');
+    test::DamagedFonts::makeGlyphOfItself(itself, glyph);
+    std::vector<std::uint8_t> moved = readFont("crimson-text-regular.ttf");
+    test::DamagedFonts::moveOutlinePastTheEnd(moved, glyph);
+    std::vector<std::uint8_t> counted = readFont("crimson-text-regular.ttf");
+    test::DamagedFonts::overcountSegments(counted);
+    backend.addFont("itself", {.regular = std::move(itself)});
+    backend.addFont("moved", {.regular = std::move(moved)});
+    backend.addFont("counted", {.regular = std::move(counted)});
+
+    // clang-format off
+    frame([&] {
+        beginWindow("damaged", {0.0F, 0.0F});
+        for (const char* name : {"itself", "moved", "counted"}) {
+            ImGui::PushFont(backend.getFont(name), 24.0F);
+            ImGui::TextUnformatted("A quick fox");
+            ImGui::PopFont();
+        }
+        ImGui::End();
+    });
+    // clang-format on
+    EXPECT_GT(backend.getFont("itself")->GetFontBaked(24.0F)->GetCharAdvance(U'A'), 0.0F);
+    EXPECT_FALSE(backend.getFont("moved")->GetFontBaked(24.0F)->FindGlyph(U'A')->Visible);
+    EXPECT_FALSE(backend.getFont("counted")->IsGlyphInFont(U'A'));
 }
 
 } // namespace haylen::ui

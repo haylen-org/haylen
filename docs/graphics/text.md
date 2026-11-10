@@ -36,13 +36,30 @@ Fonts live in `engine/include/haylen/text/`. Both kinds sit behind one interface
 
 The class `text::TrueTypeFont` shapes text with HarfBuzz and draws through the distance field, except the color glyphs that [color emoji](#color-emoji) describes:
 
-- A glyph is made by its index in the font the first time a string uses it. The reader `stb_truetype` reads its outline: lines, quadratic curves and the cubic curves of CFF fonts.
+- A glyph is made by its index in the font the first time a string uses it. HarfBuzz reads its outline: lines, quadratic curves and the cubic curves of CFF fonts.
 - The core of msdfgen turns the outline into its exact distance field. It works at the `bakeSize` of the font, 48 by default, which is the size of the em square, with a distance `spread` of 8 pixels.
 - The field comes from the whole outline. The quadratic curves of TrueType fonts and the cubic curves of the `CFF` outlines of many `.otf` files work alike, so both kinds draw cleanly at every size. Contours that overlap, as in the glyphs of many variable fonts, keep their shared inside whole.
 - The fields are packed in shelves into a single-channel atlas of half floats that starts at `atlasSize` pixels square, 512 by default. Half floats keep the distances finer than a byte, and every GPU filters them in full precision. A byte would put steps into the filtered distance, which the sharp edge of the text shader turns into visible differences between GPUs. A full atlas doubles its shorter side and keeps every glyph where it was, up to the maximum texture size of the device. Past that, layout raises `The font atlas exceeded the maximum texture size.`. A single glyph whose field could not fit even the largest atlas raises `The glyph is larger than the largest font atlas the device can hold.` before its field is computed.
 - The atlas is a dynamic texture. A draw that added glyphs hands the atlas to `Device::updateTexture`, and the renderer sends the whole atlas once per frame before its passes, however many draws added glyphs. An atlas that grew becomes a new texture, so text drawn earlier in the frame keeps the image its coordinates were made for. The atlas of the Dear ImGui interface changes in place the same way.
 
 The class `text::BitmapFont` draws BMFont files and grids of equal cells from their own RGBA pages, pixel for pixel at their native size, through the sprite program.
+
+## Fonts from any package
+
+A font file is data that anyone can make, and an app may download and launch another app with fonts of its own. So the engine reads every TrueType and OpenType file through HarfBuzz alone, which checks every table, offset and count of a file before it uses them. The private class `text::FontFile` opens a file with HarfBuzz for both places that draw fonts: the distance fields of `text::TrueTypeFont`, and the Dear ImGui windows of `haylen.imgui` and the debug overlay, whose font loader `ui::ImGuiFontLoader` measures glyphs and rasterizes them with HarfBuzz. The reader that Dear ImGui ships trusts the bytes of a font, so it stays out of the build.
+
+- A file must hold glyphs, a character map, outlines in a `glyf`, `CFF` or `CFF2` table, and an ascender above its descender. Any other file raises `Font data is not a valid TrueType or OpenType font.` from `assets.font`, and `The font "<name>" is not a TrueType or OpenType font.` from `ui.addFont`.
+- A table that a file damages reads as missing. A glyph whose outline lies outside its table, or whose parts are made of the glyph itself, draws nothing, and a character map that counts more entries than it holds maps no character. A glyph that the character map or a substitution names past the glyphs of the file is the glyph of missing characters.
+- A glyph whose box reaches more than 65536 font units from its origin, farther than any coordinate of a font file can reach, has no box and draws nothing.
+
+```lua
+local assets = require('haylen.assets')
+
+local loaded, font = pcall(assets.font, 'downloads/fonts/title.ttf')
+if not loaded then
+    print('The downloaded font could not be read: ' .. tostring(font))
+end
+```
 
 The text program draws the glyphs of distance field fonts. It smooths the edge over how much the field changes across one pixel of the screen, which keeps edges crisp when text is scaled. It reads that change from the field half a pixel to each side of the point. The point moves linearly across the glyph, so its own derivatives are exact on every GPU, while the derivatives of the field itself differ between GPUs that take them for each pixel and GPUs that take them once for each block of four pixels. It reads four values of every glyph from its instance:
 

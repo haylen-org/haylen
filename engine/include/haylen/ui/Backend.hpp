@@ -301,7 +301,6 @@ class Backend final {
     static constexpr float kBaseFontSize = 28.0F;
     // ImGui windows of the app scroll by this many font sizes for each step of a wheel.
     static constexpr float kImGuiScrollFonts = 5.0F;
-    static constexpr std::size_t kFontHeaderSize = 12;
 
     // The farthest in pixels of the screen that ImGui lets the segments of a curve stray from the true curve.
     static constexpr float kCurveTolerance = 0.2F;

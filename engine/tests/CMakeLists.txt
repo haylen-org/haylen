@@ -216,6 +216,7 @@ set(HAYLEN_TEST_SOURCES
   support/ContentParsers.cpp
   support/ContentServer.cpp
   support/CountingPackage.cpp
+  support/DamagedFonts.cpp
   support/DebugClient.cpp
   support/EngineFixture.cpp
   support/EventLoop.cpp
@@ -276,7 +277,7 @@ set_target_properties(haylen-tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_
 if(WIN32)
   target_sources(haylen-tests PRIVATE "${HAYLEN_ENGINE_DIR}/src/gpu/GpuPreferenceExports.cpp")
 endif()
-target_link_libraries(haylen-tests PRIVATE haylen::engine haylen::headless haylen::gpu haylen-content-tool SDL3::SDL3-static haylen-miniaudio haylen-stb haylen-monocypher libzip::zip ZLIB::ZLIB libzstd_static Poco::Net GTest::gtest_main)
+target_link_libraries(haylen-tests PRIVATE haylen::engine haylen::headless haylen::gpu haylen-content-tool SDL3::SDL3-static haylen-harfbuzz haylen-miniaudio haylen-stb haylen-monocypher libzip::zip ZLIB::ZLIB libzstd_static Poco::Net GTest::gtest_main)
 # The tests reach into the engine's private headers on purpose, to check internals the public API hides.
 target_include_directories(haylen-tests PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${HAYLEN_ENGINE_DIR}/src")
 # The queue of the compilations of Direct3D holds plain threads, so its tests run on every desktop, with its source from the GPU library on Windows and compiled into the tests elsewhere.
@@ -327,7 +328,7 @@ gtest_discover_tests(haylen-tests
   PROPERTIES TIMEOUT 120
 )
 
-# The fuzzers of the content formats, of input recordings, of MessagePack, of image placeholders, of image files, of SVG documents, of Ogg pages and of BMFont files run their parsers on the inputs libFuzzer generates.
+# The fuzzers of the content formats, of input recordings, of MessagePack, of image placeholders, of image files, of SVG documents, of Ogg pages, of TrueType fonts and of BMFont files run their parsers on the inputs libFuzzer generates.
 if(HAYLEN_BUILD_FUZZERS)
   add_executable(haylen-content-fuzzer fuzz/ContentFuzzer.cpp support/ContentParsers.cpp support/ReleaseFixture.cpp support/TemporaryDirectory.cpp support/TestFiles.cpp)
   set_target_properties(haylen-content-fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
@@ -372,6 +373,13 @@ if(HAYLEN_BUILD_FUZZERS)
   target_link_libraries(haylen-ogg-fuzzer PRIVATE haylen::engine)
   target_link_options(haylen-ogg-fuzzer PRIVATE -fsanitize=fuzzer)
   haylen_enable_warnings(haylen-ogg-fuzzer)
+
+  add_executable(haylen-font-fuzzer fuzz/FontFuzzer.cpp)
+  set_target_properties(haylen-font-fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+  target_include_directories(haylen-font-fuzzer PRIVATE "${HAYLEN_ENGINE_DIR}/src")
+  target_link_libraries(haylen-font-fuzzer PRIVATE haylen::engine haylen::headless haylen-harfbuzz)
+  target_link_options(haylen-font-fuzzer PRIVATE -fsanitize=fuzzer)
+  haylen_enable_warnings(haylen-font-fuzzer)
 
   add_executable(haylen-bitmap-font-fuzzer fuzz/BitmapFontFuzzer.cpp)
   set_target_properties(haylen-bitmap-font-fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")

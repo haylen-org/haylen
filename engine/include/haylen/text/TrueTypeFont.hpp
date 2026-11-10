@@ -61,15 +61,9 @@ class TrueTypeFont final : public Font {
 
     static const Options kDefaultOptions;
 
-    // A font collection header takes this many bytes, the most stb_truetype reads to find where the first font starts. The offset table of a font and each record of its table directory follow with their own sizes.
-    static constexpr std::size_t kHeaderSize = 16;
-    static constexpr std::size_t kOffsetTableSize = 12;
-    static constexpr std::size_t kTableRecordSize = 16;
-
     TrueTypeFont(graphics::Device& graphicsDevice, std::unique_ptr<Face> opened, const Options& fontOptions);
 
     [[nodiscard]] static const Options& validate(const Options& value, const graphics::Device& graphicsDevice);
-    [[nodiscard]] static bool hasTables(std::span<const std::uint8_t> ttf, std::size_t start) noexcept;
     [[nodiscard]] static std::unique_ptr<Face> open(std::vector<std::uint8_t> ttf, const Options& fontOptions);
     [[nodiscard]] static Metrics readMetrics(const Face& opened, const Options& fontOptions);
 

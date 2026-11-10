@@ -11,33 +11,71 @@
 #include <msdfgen.h>
 
 #include "math/HalfFloat.hpp"
+#include "text/FontFile.hpp"
 
 namespace haylen::text {
 
-// The outline in pixels, with y pointing down like the rows of the field. Lines, quadratic curves and cubic curves keep their exact shape. A malformed CFF outline may draw before its first move, which starts a contour at the origin.
-msdfgen::Shape DistanceField::readShape(const stbtt_fontinfo& font, int glyph, float scale) {
-    stbtt_vertex* vertices = nullptr;
-    const int count = stbtt_GetGlyphShape(&font, glyph, &vertices);
-    msdfgen::Shape shape;
-    msdfgen::Contour* contour = nullptr;
-    msdfgen::Point2 pen;
-    for (int index = 0; index < count; ++index) {
-        const stbtt_vertex& vertex = vertices[index];
-        const msdfgen::Point2 end(vertex.x * scale, -vertex.y * scale);
-        const msdfgen::Point2 control(vertex.cx * scale, -vertex.cy * scale);
-        if (contour == nullptr || (vertex.type == STBTT_vmove && !contour->edges.empty())) {
-            contour = &shape.addContour();
-        }
-        if (vertex.type == STBTT_vline && end != pen) {
-            contour->addEdge(msdfgen::EdgeHolder(pen, end));
-        } else if (vertex.type == STBTT_vcurve) {
-            contour->addEdge(msdfgen::EdgeHolder(pen, control, end));
-        } else if (vertex.type == STBTT_vcubic) {
-            contour->addEdge(msdfgen::EdgeHolder(pen, control, msdfgen::Point2(vertex.cx1 * scale, -vertex.cy1 * scale), end));
-        }
-        pen = end;
+// The functions never change once made, so every thread shares them for as long as the process runs.
+hb_draw_funcs_t* DistanceField::getOutlineFuncs() {
+    static hb_draw_funcs_t* const funcs = makeOutlineFuncs();
+    return funcs;
+}
+
+hb_draw_funcs_t* DistanceField::makeOutlineFuncs() {
+    hb_draw_funcs_t* funcs = hb_draw_funcs_create();
+    hb_draw_funcs_set_move_to_func(funcs, &moveTo, nullptr, nullptr);
+    hb_draw_funcs_set_line_to_func(funcs, &lineTo, nullptr, nullptr);
+    hb_draw_funcs_set_quadratic_to_func(funcs, &quadraticTo, nullptr, nullptr);
+    hb_draw_funcs_set_cubic_to_func(funcs, &cubicTo, nullptr, nullptr);
+    hb_draw_funcs_make_immutable(funcs);
+    return funcs;
+}
+
+// A move starts a contour, unless the contour before it has no edge yet, and HarfBuzz closes every contour with a line back to its start.
+void DistanceField::moveTo(hb_draw_funcs_t* /*funcs*/, void* outline, hb_draw_state_t* /*state*/, float toX, float toY, void* /*user*/) {
+    auto& reading = *static_cast<Outline*>(outline);
+    if (reading.contour == nullptr || !reading.contour->edges.empty()) {
+        reading.contour = &reading.shape.addContour();
     }
-    stbtt_FreeShape(&font, vertices);
+    reading.penX = toX * reading.scale;
+    reading.penY = -toY * reading.scale;
+}
+
+void DistanceField::lineTo(hb_draw_funcs_t* /*funcs*/, void* outline, hb_draw_state_t* /*state*/, float toX, float toY, void* /*user*/) {
+    auto& reading = *static_cast<Outline*>(outline);
+    const msdfgen::Point2 pen(reading.penX, reading.penY);
+    const msdfgen::Point2 end(toX * reading.scale, -toY * reading.scale);
+    if (end != pen) {
+        reading.contour->addEdge(msdfgen::EdgeHolder(pen, end));
+    }
+    reading.penX = end.x;
+    reading.penY = end.y;
+}
+
+void DistanceField::quadraticTo(hb_draw_funcs_t* /*funcs*/, void* outline, hb_draw_state_t* /*state*/, float controlX, float controlY, float toX, float toY, void* /*user*/) {
+    auto& reading = *static_cast<Outline*>(outline);
+    const msdfgen::Point2 control(controlX * reading.scale, -controlY * reading.scale);
+    const msdfgen::Point2 end(toX * reading.scale, -toY * reading.scale);
+    reading.contour->addEdge(msdfgen::EdgeHolder(msdfgen::Point2(reading.penX, reading.penY), control, end));
+    reading.penX = end.x;
+    reading.penY = end.y;
+}
+
+void DistanceField::cubicTo(hb_draw_funcs_t* /*funcs*/, void* outline, hb_draw_state_t* /*state*/, float firstX, float firstY, float secondX, float secondY, float toX, float toY, void* /*user*/) {
+    auto& reading = *static_cast<Outline*>(outline);
+    const msdfgen::Point2 first(firstX * reading.scale, -firstY * reading.scale);
+    const msdfgen::Point2 second(secondX * reading.scale, -secondY * reading.scale);
+    const msdfgen::Point2 end(toX * reading.scale, -toY * reading.scale);
+    reading.contour->addEdge(msdfgen::EdgeHolder(msdfgen::Point2(reading.penX, reading.penY), first, second, end));
+    reading.penX = end.x;
+    reading.penY = end.y;
+}
+
+// The outline in pixels, with y pointing down like the rows of the field. Lines, quadratic curves and cubic curves keep their exact shape.
+msdfgen::Shape DistanceField::readShape(const FontFile& font, std::uint32_t glyph, float scale) {
+    msdfgen::Shape shape;
+    Outline outline{.shape = shape, .scale = scale};
+    hb_font_draw_glyph(&font.getFont(), glyph, getOutlineFuncs(), &outline);
     if (!shape.contours.empty() && shape.contours.back().edges.empty()) {
         shape.contours.pop_back();
     }
@@ -65,25 +103,29 @@ bool DistanceField::mayOverlap(const msdfgen::Shape& shape) {
     return false;
 }
 
-std::optional<DistanceField> DistanceField::measure(const stbtt_fontinfo& font, int glyph, float scale, int spread) {
-    int left = 0;
-    int top = 0;
-    int right = 0;
-    int bottom = 0;
-    stbtt_GetGlyphBitmapBox(&font, glyph, scale, scale, &left, &top, &right, &bottom);
-    if (right < left || bottom < top) {
-        throw std::runtime_error("The glyph " + std::to_string(glyph) + " of the font has a box that ends before it starts.");
+// The box of the outline rounds out to whole pixels, with y pointing down.
+std::optional<DistanceField> DistanceField::measure(const FontFile& font, std::uint32_t glyph, float scale, int spread) {
+    const std::optional<hb_glyph_extents_t> extents = font.getExtents(glyph);
+    if (!extents) {
+        return std::nullopt;
     }
+    const auto left = static_cast<int>(std::floor(static_cast<float>(extents->x_bearing) * scale));
+    const auto top = static_cast<int>(std::floor(static_cast<float>(-extents->y_bearing) * scale));
+    const auto right = static_cast<int>(std::ceil(static_cast<float>(extents->x_bearing + extents->width) * scale));
+    const auto bottom = static_cast<int>(std::ceil(static_cast<float>(-(extents->y_bearing + extents->height)) * scale));
     if (left == right || top == bottom) {
         return std::nullopt;
     }
     return DistanceField{.width = right - left + spread * 2, .height = bottom - top + spread * 2, .offsetX = left - spread, .offsetY = top - spread};
 }
 
-std::optional<DistanceField> DistanceField::build(const stbtt_fontinfo& font, int glyph, float scale, int spread) {
+std::optional<DistanceField> DistanceField::build(const FontFile& font, std::uint32_t glyph, float scale, int spread, int largest) {
     std::optional<DistanceField> field = measure(font, glyph, scale, spread);
     if (!field) {
         return std::nullopt;
+    }
+    if (field->width > largest || field->height > largest) {
+        throw std::runtime_error("The glyph is larger than the largest font atlas the device can hold.");
     }
     msdfgen::Shape shape = readShape(font, glyph, scale);
     if (shape.contours.empty()) {
@@ -111,7 +153,7 @@ std::optional<DistanceField> DistanceField::build(const stbtt_fontinfo& font, in
 }
 
 // The distance takes the sign of the side of the outline a point lies on, so the middle lies in a hole when its sign matches the sign of a point outside the box.
-float DistanceField::measureHole(const stbtt_fontinfo& font, int glyph, float scale) {
+float DistanceField::measureHole(const FontFile& font, std::uint32_t glyph, float scale) {
     msdfgen::Shape shape = readShape(font, glyph, scale);
     if (shape.contours.empty()) {
         return 0.0F;

@@ -15,7 +15,8 @@
 #include <utility>
 #include <vector>
 
-#include <stb_truetype.h>
+#include <hb-raster.h>
+#include <hb.h>
 
 #include "core/EmbeddedFiles.hpp"
 #include "graphics/TextureResource.hpp"
@@ -25,17 +26,28 @@
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
 #include "math/HalfFloat.hpp"
+#include "support/DamagedFonts.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
 #include "text/DistanceField.hpp"
+#include "text/FontFile.hpp"
 
 namespace haylen::text {
 
 namespace {
 
-// Reads the test fonts next to the built-in font, and opens them with stb_truetype to compare against.
+// Reads the test fonts next to the built-in font, and opens them with HarfBuzz to compare against.
 class FontFileTest : public ::testing::Test {
   protected:
+    // The pixels that the rasterizer of HarfBuzz covers for a glyph, in rows from the top, with the place of its top left corner from the pen on the baseline.
+    struct Coverage {
+        std::vector<std::uint8_t> pixels;
+        int width = 0;
+        int height = 0;
+        int x = 0;
+        int y = 0;
+    };
+
     [[nodiscard]] static std::vector<std::uint8_t> read(std::string_view name) {
         if (name == "default") {
             const std::span<const std::uint8_t> data = core::EmbeddedFiles::getDefaultFont();
@@ -45,10 +57,32 @@ class FontFileTest : public ::testing::Test {
         return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
     }
 
-    [[nodiscard]] static stbtt_fontinfo open(const std::vector<std::uint8_t>& data) {
-        stbtt_fontinfo info{};
-        EXPECT_NE(stbtt_InitFont(&info, data.data(), stbtt_GetFontOffsetForIndex(data.data(), 0)), 0);
-        return info;
+    [[nodiscard]] static FontFile open(const std::vector<std::uint8_t>& data) {
+        std::optional<FontFile> file = FontFile::read(data);
+        if (!file) {
+            throw std::runtime_error("The test font does not open.");
+        }
+        return std::move(*file);
+    }
+
+    [[nodiscard]] static float scaleFor(const FontFile& file, float size) {
+        return size / static_cast<float>(file.getUnitsPerEm());
+    }
+
+    [[nodiscard]] static Coverage cover(const FontFile& file, std::uint32_t glyph, float scale) {
+        const std::unique_ptr<hb_raster_draw_t, decltype(&hb_raster_draw_destroy)> raster(hb_raster_draw_create_or_fail(), &hb_raster_draw_destroy);
+        hb_raster_draw_set_transform(raster.get(), scale, 0.0F, 0.0F, scale, 0.0F, 0.0F);
+        hb_raster_draw_glyph(raster.get(), &file.getFont(), glyph);
+        const std::unique_ptr<hb_raster_image_t, decltype(&hb_raster_image_destroy)> image(hb_raster_draw_render(raster.get()), &hb_raster_image_destroy);
+        hb_raster_extents_t extents{};
+        hb_raster_image_get_extents(image.get(), &extents);
+        Coverage coverage{.width = static_cast<int>(extents.width), .height = static_cast<int>(extents.height), .x = extents.x_origin, .y = -(extents.y_origin + static_cast<int>(extents.height))};
+        const std::span<const std::uint8_t> rows(hb_raster_image_get_buffer(image.get()), static_cast<std::size_t>(extents.stride) * extents.height);
+        for (int row = coverage.height - 1; row >= 0; --row) {
+            const std::span<const std::uint8_t> from = rows.subspan(static_cast<std::size_t>(row) * extents.stride, static_cast<std::size_t>(coverage.width));
+            coverage.pixels.insert(coverage.pixels.end(), from.begin(), from.end());
+        }
+        return coverage;
     }
 
     // Reads a distance of a field, a half float from 0 to 1.
@@ -267,115 +301,107 @@ TEST_F(FontFileTest, KeepsTheHolesOfLettersInSyntheticBold) {
     EXPECT_FLOAT_EQ(light->layout("o", {.size = 48.0F, .bold = true})->looks[0].weight, 48.0F * 0.03F);
 
     // The fonts bake at 48 pixels, so a pixel of the field is a pixel of the text at that size.
-    const stbtt_fontinfo info = open(data);
-    const float scale = stbtt_ScaleForMappingEmToPixels(&info, 48.0F);
-    const std::optional<DistanceField> dotted = DistanceField::build(info, stbtt_FindGlyphIndex(&info, 'i'), scale, 8);
-    const std::optional<DistanceField> round = DistanceField::build(info, stbtt_FindGlyphIndex(&info, 'o'), scale, 8);
+    const FontFile file = open(data);
+    const float scale = scaleFor(file, 48.0F);
+    const std::optional<DistanceField> dotted = DistanceField::build(file, file.findGlyph('i'), scale, 8, 4096);
+    const std::optional<DistanceField> round = DistanceField::build(file, file.findGlyph('o'), scale, 8, 4096);
     ASSERT_TRUE(dotted && round);
     EXPECT_EQ(countRegions(spread(*dotted, weight), dotted->width, dotted->height, true, false), 2);
     EXPECT_EQ(countRegions(spread(*round, weight), round->width, round->height, false, true), 1);
 }
 
-// The table directory of a font, and every table it lists, must lie inside the file before stb_truetype reads them.
-TEST_F(FontFileTest, RejectsTablesOutsideTheFile) {
+// A file that holds no font, or whose character map lies outside the file, is not a font.
+TEST_F(FontFileTest, RejectsFilesWithoutAFont) {
     test::EngineFixture fixture;
     graphics::Device& device = fixture.engine().getGraphics();
+    EXPECT_THROW(TrueTypeFont(device, {}), std::runtime_error);
     EXPECT_THROW(TrueTypeFont(device, {0, 1, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}), std::runtime_error);
 
     std::vector<std::uint8_t> data = read("default");
-    const std::size_t tables = static_cast<std::size_t>(data[4]) << 8U | data[5];
-    for (std::size_t record = 12; record < 12 + tables * 16; record += 16) {
-        if (std::string_view(reinterpret_cast<const char*>(&data[record]), 4) == "cmap") {
-            std::fill_n(data.begin() + static_cast<std::ptrdiff_t>(record + 8), 3, std::uint8_t{0xFF});
-        }
-    }
+    test::DamagedFonts::moveTablePastTheEnd(data, "cmap");
     EXPECT_THROW(TrueTypeFont(device, data), std::runtime_error);
 }
 
-// A glyph header whose box ends before it starts would give the glyph a negative size in the atlas, so the font refuses the glyph.
-TEST_F(FontFileTest, RejectsGlyphsWhoseBoxEndsBeforeItStarts) {
+// A composite glyph made of itself would draw forever, so it draws nothing while the glyph keeps its advance.
+TEST_F(FontFileTest, DrawsNothingForAGlyphMadeOfItself) {
     test::EngineFixture fixture;
     std::vector<std::uint8_t> data = read("crimson-text-regular.ttf");
-    const stbtt_fontinfo info = open(data);
-    const int glyph = stbtt_FindGlyphIndex(&info, 'A');
-    ASSERT_EQ(info.indexToLocFormat, 0);
-    const std::size_t loca = static_cast<std::size_t>(info.loca) + static_cast<std::size_t>(glyph) * 2;
-    const std::size_t header = static_cast<std::size_t>(info.glyf) + (static_cast<std::size_t>(data[loca]) << 8U | data[loca + 1]) * 2;
-
-    // The header holds the count of contours and then the left, bottom, right and top of the box, which trade places.
-    std::swap_ranges(data.begin() + static_cast<std::ptrdiff_t>(header + 2), data.begin() + static_cast<std::ptrdiff_t>(header + 6), data.begin() + static_cast<std::ptrdiff_t>(header + 6));
+    const std::uint32_t glyph = open(data).findGlyph('A');
+    test::DamagedFonts::makeGlyphOfItself(data, glyph);
     TrueTypeFont font(fixture.engine().getGraphics(), data);
-    try {
-        (void)font.getGlyph(static_cast<std::uint32_t>(glyph));
-        FAIL() << "A glyph whose box ends before it starts must be refused.";
-    } catch (const std::runtime_error& error) {
-        EXPECT_EQ(std::string(error.what()), "The glyph " + std::to_string(glyph) + " of the font has a box that ends before it starts.");
-    }
+    EXPECT_FALSE(font.getGlyph(glyph).visible);
+    EXPECT_GT(font.measure("A", {.size = 20.0F}).x, 0.0F);
 }
 
-// A CFF charstring may draw lines before its first move, which start a contour at the origin. The one of the ampersand becomes two lines of 500 units that the end of the charstring closes into a triangle.
-TEST_F(FontFileTest, ReadsOutlinesThatDrawBeforeTheirFirstMove) {
-    std::vector<std::uint8_t> data = read("fira-sans-regular.otf");
-    const stbtt_fontinfo info = open(data);
-    const int glyph = stbtt_FindGlyphIndex(&info, '&');
+// The location of an outline past the end of the table of outlines reads as a glyph without an outline, and a character map that counts more segments than it holds reads as a font without characters.
+TEST_F(FontFileTest, ReadsOffsetsAndCountsPastTheirTablesAsMissing) {
+    test::EngineFixture fixture;
+    std::vector<std::uint8_t> data = read("crimson-text-regular.ttf");
+    const std::uint32_t glyph = open(data).findGlyph('A');
+    test::DamagedFonts::moveOutlinePastTheEnd(data, glyph);
+    TrueTypeFont font(fixture.engine().getGraphics(), data);
+    EXPECT_FALSE(font.getGlyph(glyph).visible);
 
-    // The CharStrings INDEX holds a count, the size of its offsets, the offsets counted from 1 and then the charstrings.
-    const auto index = static_cast<std::size_t>(info.charstrings.data - data.data());
-    const std::size_t count = static_cast<std::size_t>(data[index]) << 8U | data[index + 1];
-    const std::size_t offsetSize = data[index + 2];
-    // clang-format off
-    const auto offsetAt = [&](std::size_t at) {
-        std::size_t value = 0;
-        for (std::size_t byte = 0; byte < offsetSize; ++byte) {
-            value = value << 8U | data[index + 3 + at * offsetSize + byte];
-        }
-        return value;
-    };
-    // clang-format on
-    const std::size_t offset = offsetAt(static_cast<std::size_t>(glyph));
-    const std::vector<std::uint8_t> lines{248, 136, 139, 5, 139, 248, 136, 5, 14};
-    ASSERT_GE(offsetAt(static_cast<std::size_t>(glyph) + 1) - offset, lines.size());
-    std::ranges::copy(lines, data.begin() + static_cast<std::ptrdiff_t>(index + 3 + (count + 1) * offsetSize - 1 + offset));
+    std::vector<std::uint8_t> counted = read("crimson-text-regular.ttf");
+    test::DamagedFonts::overcountSegments(counted);
+    TrueTypeFont unmapped(fixture.engine().getGraphics(), counted);
+    EXPECT_FALSE(unmapped.hasGlyph(U'A'));
+}
 
-    const std::optional<DistanceField> field = DistanceField::build(open(data), glyph, stbtt_ScaleForMappingEmToPixels(&info, 64.0F), 8);
-    ASSERT_TRUE(field.has_value());
-    EXPECT_TRUE(std::ranges::any_of(field->distances, [](std::uint16_t distance) { return distance >= math::HalfFloat::fromFloat(0.5F); }));
+// A character map that names glyphs past the count of glyphs of the file maps no character, and text that the shaper turns into such glyphs lays out with the glyph of missing characters.
+TEST_F(FontFileTest, LaysOutGlyphsPastTheCountOfTheFileAsMissing) {
+    test::EngineFixture fixture;
+    std::vector<std::uint8_t> data = read("crimson-text-regular.ttf");
+    test::DamagedFonts::shrinkGlyphCount(data, 1);
+    TrueTypeFont font(fixture.engine().getGraphics(), data);
+    EXPECT_FALSE(font.hasGlyph(U'A'));
+    const float width = font.measure("Zebra", {.size = 20.0F}).x;
+    EXPECT_TRUE(std::isfinite(width));
+    EXPECT_GE(width, 0.0F);
+}
+
+// A table of advances shorter than the count of advances it claims, and an em square of no units, still measure finite text.
+TEST_F(FontFileTest, MeasuresFontsWithTruncatedAdvancesAndNoEmSquare) {
+    test::EngineFixture fixture;
+    std::vector<std::uint8_t> data = read("crimson-text-regular.ttf");
+    test::DamagedFonts::overcountAdvances(data);
+    test::DamagedFonts::removeEmSquare(data);
+    TrueTypeFont font(fixture.engine().getGraphics(), data);
+    EXPECT_TRUE(std::isfinite(font.getAscent(20.0F)));
+    EXPECT_TRUE(std::isfinite(font.getLineHeight(20.0F)));
+    const float width = font.measure("Zebra", {.size = 20.0F}).x;
+    EXPECT_TRUE(std::isfinite(width));
+    EXPECT_GT(width, 0.0F);
 }
 
 // The inside of a distance field covers the pixels the glyph covers, for the quadratic curves of TrueType outlines and the cubic curves of CFF outlines alike.
 TEST_F(FontFileTest, BuildsDistanceFieldsFromWholeOutlines) {
     for (const std::string_view name : {"default", "fira-sans-regular.otf", "crimson-text-regular.ttf"}) {
-        const std::vector<std::uint8_t> data = read(name);
-        const stbtt_fontinfo info = open(data);
-        const float scale = stbtt_ScaleForMappingEmToPixels(&info, 64.0F);
+        const FontFile file = open(read(name));
+        const float scale = scaleFor(file, 64.0F);
         for (const char32_t character : std::u32string_view(U"Sphinx&@8Og")) {
-            const int glyph = stbtt_FindGlyphIndex(&info, static_cast<int>(character));
-            const std::optional<DistanceField> field = DistanceField::build(info, glyph, scale, 8);
+            const std::uint32_t glyph = file.findGlyph(character);
+            const std::optional<DistanceField> field = DistanceField::build(file, glyph, scale, 8, 4096);
             ASSERT_TRUE(field.has_value()) << name;
 
             // Pixels the edge crosses may go either way, so only clearly covered and clearly empty pixels count.
-            int width = 0;
-            int height = 0;
-            int x = 0;
-            int y = 0;
-            unsigned char* coverage = stbtt_GetGlyphBitmap(&info, scale, scale, glyph, &width, &height, &x, &y);
+            const Coverage coverage = cover(file, glyph, scale);
             int agreeing = 0;
             int counted = 0;
-            for (int row = 0; row < height; ++row) {
-                for (int column = 0; column < width; ++column) {
-                    const int covered = coverage[row * width + column];
+            for (int row = 0; row < coverage.height; ++row) {
+                for (int column = 0; column < coverage.width; ++column) {
+                    const int covered = coverage.pixels[static_cast<std::size_t>(row * coverage.width + column)];
                     if (covered > 64 && covered < 192) {
                         continue;
                     }
-                    const std::uint16_t distance = field->distances[static_cast<std::size_t>((row + y - field->offsetY) * field->width + column + x - field->offsetX)];
+                    const std::uint16_t distance = field->distances[static_cast<std::size_t>((row + coverage.y - field->offsetY) * field->width + column + coverage.x - field->offsetX)];
                     agreeing += (distance >= math::HalfFloat::fromFloat(0.5F)) == (covered >= 192) ? 1 : 0;
                     ++counted;
                 }
             }
-            stbtt_FreeBitmap(coverage, nullptr);
             EXPECT_GE(agreeing, counted * 995 / 1000) << name << " " << static_cast<int>(character);
         }
-        EXPECT_FALSE(DistanceField::build(info, stbtt_FindGlyphIndex(&info, ' '), scale, 8).has_value());
+        EXPECT_FALSE(DistanceField::build(file, file.findGlyph(' '), scale, 8, 4096).has_value());
     }
 }
 
@@ -384,21 +410,16 @@ TEST_F(FontFileTest, SizesEveryFaceByItsEm) {
     test::EngineFixture fixture;
     for (const std::string_view name : {"default", "noto-sans-symbols-2-regular.ttf", "fira-sans-regular.otf"}) {
         const std::vector<std::uint8_t> data = read(name);
-        const stbtt_fontinfo info = open(data);
-        int ascent = 0;
-        int descent = 0;
-        int gap = 0;
-        stbtt_GetFontVMetrics(&info, &ascent, &descent, &gap);
-        int advance = 0;
-        int bearing = 0;
-        const int glyph = stbtt_FindGlyphIndex(&info, name == "noto-sans-symbols-2-regular.ttf" ? 0x2600 : 'M');
-        stbtt_GetGlyphHMetrics(&info, glyph, &advance, &bearing);
-        const float em = stbtt_ScaleForMappingEmToPixels(&info, 100.0F);
+        const FontFile file = open(data);
+        const FontFile::LineMetrics& lines = file.getLineMetrics();
+        const bool symbols = name == "noto-sans-symbols-2-regular.ttf";
+        const int advance = file.getAdvance(file.findGlyph(symbols ? U'☀' : U'M'));
+        const float em = scaleFor(file, 100.0F);
 
         TrueTypeFont font(fixture.engine().getGraphics(), data);
-        EXPECT_NEAR(font.getAscent(100.0F), static_cast<float>(ascent) * em, 0.01F) << name;
-        EXPECT_NEAR(font.getLineHeight(100.0F), static_cast<float>(ascent - descent + gap) * em, 0.01F) << name;
-        EXPECT_NEAR(font.measure(name == "noto-sans-symbols-2-regular.ttf" ? "\xE2\x98\x80" : "M", {.size = 100.0F}).x, static_cast<float>(advance) * em, 0.01F) << name;
+        EXPECT_NEAR(font.getAscent(100.0F), static_cast<float>(lines.ascender) * em, 0.01F) << name;
+        EXPECT_NEAR(font.getLineHeight(100.0F), static_cast<float>(lines.ascender - lines.descender + lines.lineGap) * em, 0.01F) << name;
+        EXPECT_NEAR(font.measure(symbols ? "\xE2\x98\x80" : "M", {.size = 100.0F}).x, static_cast<float>(advance) * em, 0.01F) << name;
     }
 }
 

@@ -5,11 +5,11 @@
 #include <cfloat>
 #include <cmath>
 #include <cstring>
+#include <optional>
 #include <stdexcept>
 #include <utility>
 
 #include <imgui_internal.h>
-#include <stb_truetype.h>
 
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/graphics/Device.hpp"
@@ -21,6 +21,8 @@
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/text/RichText.hpp"
 #include "haylen/ui/NavigationInput.hpp"
+#include "text/FontFile.hpp"
+#include "ui/ImGuiFontLoader.hpp"
 #include "ui/ScrollArbiter.hpp"
 #include "ui/TextSession.hpp"
 
@@ -308,6 +310,7 @@ Backend::Backend(graphics::Device& graphicsDevice, platform::Window& hostWindow,
     io.BackendPlatformName = "haylen";
     io.BackendRendererName = "haylen-renderer2d";
     io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures | ImGuiBackendFlags_RendererHasVtxOffset | ImGuiBackendFlags_HasMouseCursors | ImGuiBackendFlags_HasGamepad;
+    io.Fonts->SetFontLoader(&ImGuiFontLoader::get());
 
     // The navigation actions reach ImGui as gamepad keys, so a remapped action moves the focus like its keys, and cancel never drops the focus.
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_NavEnableGamepad;
@@ -361,14 +364,16 @@ math::Rect Backend::getLiftedSafeRect() const noexcept {
     return safeRect.translated({0.0F, -getKeyboardOffset()});
 }
 
-// ImGui only parses a font when it first draws with it, so broken data is caught here while the caller can still hear about it.
+// ImGui only reads a font when it first draws with it, so broken data is caught here while the caller can still hear about it. The height divides the scale of the em square by the scale of the height, as ImGui sizes a face.
 float Backend::readHeight(const std::string& name, std::span<const std::uint8_t> data) {
-    stbtt_fontinfo info;
-    const int offset = data.size() < kFontHeaderSize ? -1 : stbtt_GetFontOffsetForIndex(data.data(), 0);
-    if (offset < 0 || stbtt_InitFont(&info, data.data(), offset) == 0) {
+    const std::optional<text::FontFile> file = text::FontFile::read(data);
+    if (!file) {
         throw std::runtime_error("The font \"" + name + "\" is not a TrueType or OpenType font.");
     }
-    return stbtt_ScaleForMappingEmToPixels(&info, 1.0F) / stbtt_ScaleForPixelHeight(&info, 1.0F);
+    const text::FontFile::LineMetrics& lines = file->getLineMetrics();
+    const float emScale = 1.0F / static_cast<float>(file->getUnitsPerEm());
+    const float heightScale = 1.0F / static_cast<float>(lines.ascender - lines.descender);
+    return emScale / heightScale;
 }
 
 ImFont* Backend::addFont(const std::string& name, FontFiles files) {

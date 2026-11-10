@@ -717,6 +717,7 @@ end
 | `The texture wrap must be "clamp", "repeat" or "mirror", not <wrap>.` | The `wrap` option is not `clamp`, `repeat` or `mirror`. The message shows it as JSON. |
 | `The texture option "mipmaps" must be true or false, not <value>.` | The `mipmaps` option is not a boolean. The message shows it as JSON. |
 | `The font option "<option>" must be a number, not <value>.` | The `bakeSize`, `spread` or `atlasSize` of a font is not a number. |
+| `Font data is not a valid TrueType or OpenType font.` | A `.ttf` or `.otf` file has no glyphs, no character map, no outlines or no ascender above its descender, as the [text guide](../graphics/text.md#fonts-from-any-package) explains. |
 | `The upload budget cannot be negative.` | The budget of `assets.setUploadBudget` is below `0`. |
 | `The asset group "<name>" is not defined.` | A group function names a group that was never defined. |
 | `Unknown key "<key>" in the asset group manifest.` | A manifest has a key other than `groups`. |
