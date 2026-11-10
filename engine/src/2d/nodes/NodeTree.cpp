@@ -40,33 +40,42 @@ std::optional<math::Rect> NodeTree::measure(const NodeContent& content) {
         if (!sprite->texture.isValid()) {
             throw std::invalid_argument("A sprite node needs a texture.");
         }
+
         const math::Vec2 source = sprite->source.isEmpty() ? sprite->texture.getSize() : sprite->source.getSize();
         const math::Vec2 size = sprite->size.isZero() ? source : sprite->size;
         return transformBounds(math::Transform2D::compose(sprite->position, sprite->rotation, sprite->scale), {-sprite->pivot.x * size.x, -sprite->pivot.y * size.y, size.x, size.y});
     }
+
     if (const auto* text = std::get_if<NodeContent::Text>(&content.value)) {
         if (!text->font) {
             throw std::invalid_argument("A text node needs a font.");
         }
+
         const math::Vec2 size = text->font->measure(text->content, text->style);
         const math::Vec2 block = size / text->style.scale;
         return transformBounds(math::Transform2D::compose({}, text->style.rotation, text->style.scale), {-text->style.anchor.x * block.x, -text->style.anchor.y * block.y, block.x, block.y});
     }
+
     if (const auto* frame = std::get_if<NodeContent::Frame>(&content.value)) {
         if (!frame->slice.isValid()) {
             throw std::invalid_argument("A frame node needs a nine-slice with a texture.");
         }
+
         if (!(frame->size.x >= 0.0F && frame->size.y >= 0.0F && frame->borderScale > 0.0F)) {
             throw std::invalid_argument("A frame node needs a size of at least 0 and a positive border scale.");
         }
+
         return math::Rect{-frame->pivot.x * frame->size.x, -frame->pivot.y * frame->size.y, frame->size.x, frame->size.y};
     }
+
     if (const auto* emitter = std::get_if<std::shared_ptr<particles2d::Emitter>>(&content.value); emitter != nullptr && !*emitter) {
         throw std::invalid_argument("A particle node needs an emitter.");
     }
+
     if (const auto* system = std::get_if<std::shared_ptr<particles2d::System>>(&content.value); system != nullptr && !*system) {
         throw std::invalid_argument("A particle node needs a particle system.");
     }
+
     return std::nullopt;
 }
 
@@ -82,6 +91,7 @@ Node NodeTree::insert(std::int32_t parent, const NodeProperties& properties) {
     if (count >= kMaxNodes) {
         throw std::length_error("A node tree holds at most 16777216 nodes.");
     }
+
     const std::optional<math::Rect> bounds = measure(properties.content);
 
     const std::int32_t index = allocate();
@@ -117,6 +127,7 @@ std::vector<Node> NodeTree::getRoots() const {
     for (std::int32_t index = firstRoot; index != kNone; index = details[static_cast<std::size_t>(index)].next) {
         roots.push_back(handle(index));
     }
+
     return roots;
 }
 
@@ -141,7 +152,9 @@ void NodeTree::refresh(core::JobSystem* jobs) {
     if (!pending && followers == 0) {
         return;
     }
+
     pending = false;
+
     if (jobs != nullptr && count >= kParallelNodes && chunks.size() > 1) {
         // clang-format off
         jobs->parallelFor(0, chunks.size(), 1, [this](std::size_t begin, std::size_t end) {
@@ -152,6 +165,7 @@ void NodeTree::refresh(core::JobSystem* jobs) {
         // clang-format on
         return;
     }
+
     updateRange(0, order.size(), lastBlend);
 }
 
@@ -166,6 +180,7 @@ void NodeTree::follow(Slot& slot, const physics2d::Body& body, float blend) cons
         slot.position = parent.getInverse().apply(placed.position);
         slot.rotation = placed.rotation - placementOf(parent).rotation;
     }
+
     slot.changed = true;
 }
 
@@ -194,6 +209,7 @@ void NodeTree::updateRange(std::size_t begin, std::size_t end, float blend) {
         if (slot.bounded) {
             slot.bounds = transformBounds(slot.world, slot.localBounds);
         }
+
         slot.changed = false;
         slot.moved = true;
     }
@@ -244,17 +260,22 @@ void NodeTree::draw(graphics2d::Renderer& renderer) {
             place = subtreeEnds[place];
             continue;
         }
+
         ++place;
+
         if (details[index].content.isEmpty()) {
             continue;
         }
+
         if (slot.bounded && !slot.bounds.intersects(view)) {
             ++culled;
             continue;
         }
+
         drawNode(renderer, index);
         ++drawn;
     }
+
     flushSprites(renderer);
     runTexture = {};
     runOrder = {};
@@ -294,9 +315,11 @@ void NodeTree::drawNode(graphics2d::Renderer& renderer, std::uint32_t index) {
             renderer.draw(placed);
             return;
         }
+
         if (!run.empty() && (!(runTexture == sprite->texture) || !(runOrder == placedOrder))) {
             flushSprites(renderer);
         }
+
         const math::Rect source = sprite->source.isEmpty() ? math::Rect{0.0F, 0.0F, sprite->texture.getSize().x, sprite->texture.getSize().y} : sprite->source;
         runTexture = sprite->texture;
         runOrder = placedOrder;
@@ -305,6 +328,7 @@ void NodeTree::drawNode(graphics2d::Renderer& renderer, std::uint32_t index) {
     }
 
     flushSprites(renderer);
+
     if (const auto* text = std::get_if<NodeContent::Text>(&content.value)) {
         const Placement placement = placementOf(slot.world * math::Transform2D::compose({}, text->style.rotation, text->style.scale));
         text::Style style = text->style;
@@ -323,6 +347,7 @@ void NodeTree::drawNode(graphics2d::Renderer& renderer, std::uint32_t index) {
         for (const graphics2d::NineSlice::Patch& patch : patches) {
             pieces.push_back({.position = slot.world.apply(patch.area.getCenter()), .size = patch.area.getSize() * placement.scale, .source = patch.source, .rotation = placement.rotation, .color = frame->color * slot.worldColor});
         }
+
         renderer.drawBatch(frame->slice.texture, pieces, place(frame->order));
     } else if (slot.worldLayer != 0) {
         renderer.pushLayerOffset(slot.worldLayer);
@@ -347,6 +372,7 @@ core::Connection NodeTree::onDestroyed(const Node& node, core::Signal<const Node
     if (!watcher) {
         watcher = std::make_unique<core::Signal<const Node&>>();
     }
+
     return watcher->connect(std::move(slot), std::move(options));
 }
 
@@ -354,6 +380,7 @@ void NodeTree::writeTransforms(std::span<const Node> nodes, std::span<const floa
     if (values.size() != nodes.size() * 3) {
         throw std::invalid_argument("The values hold three floats for each node: x, y and rotation.");
     }
+
     for (std::size_t place = 0; place < nodes.size(); ++place) {
         const std::uint32_t index = check(nodes[place]);
         Slot& slot = slots[index];
@@ -367,6 +394,7 @@ void NodeTree::readTransforms(std::span<const Node> nodes, std::span<float> valu
     if (values.size() != nodes.size() * 3) {
         throw std::invalid_argument("The values hold three floats for each node: x, y and rotation.");
     }
+
     for (std::size_t place = 0; place < nodes.size(); ++place) {
         const Slot& slot = slots[check(nodes[place])];
         const Placement placement = placementOf(slot.world);
@@ -380,9 +408,11 @@ std::uint32_t NodeTree::check(const Node& node) const {
     if (node.tree.lock().get() != this) {
         throw std::logic_error("The node belongs to another tree.");
     }
+
     if (node.index >= slots.size() || !slots[node.index].alive || details[node.index].generation != node.generation) {
         throw std::logic_error("The node was destroyed.");
     }
+
     return node.index;
 }
 
@@ -398,6 +428,7 @@ std::int32_t NodeTree::allocate() {
         slots[static_cast<std::size_t>(index)] = Slot{.alive = true};
         return index;
     }
+
     slots.push_back(Slot{.alive = true});
     details.emplace_back();
     return static_cast<std::int32_t>(slots.size() - 1);
@@ -415,6 +446,7 @@ void NodeTree::link(std::int32_t index, std::int32_t parent) {
     } else {
         first = index;
     }
+
     last = index;
 }
 
@@ -423,16 +455,19 @@ void NodeTree::unlink(std::int32_t index) noexcept {
     const std::int32_t parent = slots[static_cast<std::size_t>(index)].parent;
     std::int32_t& first = parent == kNone ? firstRoot : details[static_cast<std::size_t>(parent)].firstChild;
     std::int32_t& last = parent == kNone ? lastRoot : details[static_cast<std::size_t>(parent)].lastChild;
+
     if (detail.previous != kNone) {
         details[static_cast<std::size_t>(detail.previous)].next = detail.next;
     } else {
         first = detail.next;
     }
+
     if (detail.next != kNone) {
         details[static_cast<std::size_t>(detail.next)].previous = detail.previous;
     } else {
         last = detail.previous;
     }
+
     detail.previous = kNone;
     detail.next = kNone;
 }
@@ -444,28 +479,34 @@ void NodeTree::release(std::int32_t index) {
     while (holds(slot, generation) && details[slot].firstChild != kNone) {
         release(details[slot].firstChild);
     }
+
     if (!holds(slot, generation)) {
         return;
     }
 
     const Node node = handle(index);
     destroyed.emit(node);
+
     if (const auto watched = watchers.find(node.getKey()); watched != watchers.end() && holds(slot, generation)) {
         const std::unique_ptr<core::Signal<const Node&>> watcher = std::move(watched->second);
         watchers.erase(watched);
         watcher->emit(node);
     }
+
     while (holds(slot, generation) && details[slot].firstChild != kNone) {
         release(details[slot].firstChild);
     }
+
     if (!holds(slot, generation)) {
         return;
     }
 
     unlink(index);
+
     if (slots[slot].following) {
         --followers;
     }
+
     details[slot] = Detail{.generation = generation + 1};
     slots[slot] = Slot{};
     freeSlots.push_back(index);
@@ -489,6 +530,7 @@ void NodeTree::setContent(std::uint32_t index, NodeContent content) {
     if (isParticles(detail.content) != isParticles(content)) {
         orderChanged = true;
     }
+
     detail.content = std::move(content);
     slots[index].bounded = bounds.has_value();
     slots[index].localBounds = bounds.value_or(math::Rect{});
@@ -501,6 +543,7 @@ void NodeTree::setParent(std::uint32_t index, std::int32_t parent) {
             throw std::invalid_argument("A node cannot move under itself or under one of its descendants.");
         }
     }
+
     unlink(static_cast<std::int32_t>(index));
     link(static_cast<std::int32_t>(index), parent);
     orderChanged = true;
@@ -512,6 +555,7 @@ std::int32_t NodeTree::findChild(std::int32_t parent, std::string_view name) con
     while (child != kNone && details[static_cast<std::size_t>(child)].name != name) {
         child = details[static_cast<std::size_t>(child)].next;
     }
+
     return child;
 }
 
@@ -523,8 +567,10 @@ std::int32_t NodeTree::findPath(std::int32_t from, std::string_view path) const 
         if (current == kNone) {
             return kNone;
         }
+
         path = slash == std::string_view::npos ? std::string_view{} : path.substr(slash + 1);
     }
+
     return current;
 }
 
@@ -539,14 +585,17 @@ void NodeTree::rebuildOrder() {
     for (std::int32_t root = lastRoot; root != kNone; root = details[static_cast<std::size_t>(root)].previous) {
         walk.push_back(root);
     }
+
     while (!walk.empty()) {
         const auto index = static_cast<std::uint32_t>(walk.back());
         walk.pop_back();
         places[index] = static_cast<std::uint32_t>(order.size());
         order.push_back(index);
+
         if (isParticles(details[index].content)) {
             particles.push_back(index);
         }
+
         for (std::int32_t child = details[index].lastChild; child != kNone; child = details[static_cast<std::size_t>(child)].previous) {
             walk.push_back(child);
         }
@@ -573,6 +622,7 @@ void NodeTree::rebuildOrder() {
             begin = place;
         }
     }
+
     orderChanged = false;
 }
 

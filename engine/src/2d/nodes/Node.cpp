@@ -18,6 +18,7 @@ std::shared_ptr<NodeTree> Node::lock() const {
     if (!owner) {
         throw std::logic_error("The tree of the node is gone.");
     }
+
     (void)owner->check(*this);
     return owner;
 }
@@ -163,6 +164,7 @@ const graphics2d::Sprite& Node::getSprite() const {
     if (sprite == nullptr) {
         throw std::logic_error("The node shows no sprite.");
     }
+
     return *sprite;
 }
 
@@ -171,6 +173,7 @@ void Node::setSprite(const graphics2d::Sprite& value) {
     if (!std::holds_alternative<graphics2d::Sprite>(owner->details[index].content.value)) {
         throw std::logic_error("The node shows no sprite.");
     }
+
     NodeContent content{.value = value, .path = owner->details[index].content.path};
     owner->setContent(index, std::move(content));
 }
@@ -182,6 +185,7 @@ void Node::follow(const physics2d::Body& body) {
     if (slot.following != following) {
         owner->followers = following ? owner->followers + 1 : owner->followers - 1;
     }
+
     slot.following = following;
     owner->details[index].followed = following ? body : physics2d::Body{};
     owner->touch(index);
@@ -208,6 +212,7 @@ std::vector<Node> Node::getChildren() const {
     for (std::int32_t child = owner->details[index].firstChild; child != NodeTree::kNone; child = owner->details[static_cast<std::size_t>(child)].next) {
         children.push_back(owner->handle(child));
     }
+
     return children;
 }
 
@@ -217,6 +222,7 @@ std::size_t Node::getChildCount() const {
     for (std::int32_t child = owner->details[index].firstChild; child != NodeTree::kNone; child = owner->details[static_cast<std::size_t>(child)].next) {
         ++children;
     }
+
     return children;
 }
 
@@ -236,6 +242,7 @@ std::string Node::getPath() const {
     for (std::int32_t parent = owner->slots[index].parent; parent != NodeTree::kNone; parent = owner->slots[static_cast<std::size_t>(parent)].parent) {
         path = owner->details[static_cast<std::size_t>(parent)].name + "/" + path;
     }
+
     return path;
 }
 

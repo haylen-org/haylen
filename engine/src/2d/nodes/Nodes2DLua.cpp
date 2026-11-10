@@ -52,6 +52,7 @@ bool Nodes2DLua::pushTree(lua_State* L, const NodeTree* tree) {
         lua_pop(L, 1);
         return false;
     }
+
     return true;
 }
 
@@ -60,7 +61,9 @@ void Nodes2DLua::pushNode(lua_State* L, const Node& node) {
         lua_pushnil(L);
         return;
     }
+
     lua::Userdata::emplace<Node>(L, node);
+
     if (pushTree(L, &node.getTree())) {
         lua_setiuservalue(L, -2, 1);
     }
@@ -80,11 +83,13 @@ bool Nodes2DLua::pushTreeTable(lua_State* L, int node, const char* field, bool c
         lua_pop(L, 1);
         return false;
     }
+
     lua::Userdata::pushField(L, -1, field);
     lua_remove(L, -2);
     if (!lua_isnil(L, -1) || !create) {
         return !lua_isnil(L, -1);
     }
+
     lua_pop(L, 1);
     lua_newtable(L);
     lua_getiuservalue(L, position, 1);
@@ -97,14 +102,17 @@ void Nodes2DLua::clearData(lua_State* L, const NodeTree* tree, std::uint64_t key
     if (!pushTree(L, tree)) {
         return;
     }
+
     for (const char* field : {"data", "bodies"}) {
         lua::Userdata::pushField(L, -1, field);
         if (lua_istable(L, -1)) {
             lua_pushnil(L);
             lua_rawseti(L, -2, static_cast<lua_Integer>(key));
         }
+
         lua_pop(L, 1);
     }
+
     lua_pop(L, 1);
 }
 
@@ -117,6 +125,7 @@ NodeContent Nodes2DLua::readContent(lua_State* L, int index) {
         content.value = lua::Userdata::check<graphics2d::Sprite>(L, -1);
         ++shown;
     }
+
     lua_pop(L, 1);
 
     if (lua_getfield(L, table, "text") != LUA_TNIL) {
@@ -134,8 +143,10 @@ NodeContent Nodes2DLua::readContent(lua_State* L, int index) {
             lua_pop(L, 1);
             content.value = std::move(shownText);
         }
+
         ++shown;
     }
+
     lua_pop(L, 1);
 
     if (lua_getfield(L, table, "frame") != LUA_TNIL) {
@@ -145,6 +156,7 @@ NodeContent Nodes2DLua::readContent(lua_State* L, int index) {
         if (lua_getfield(L, frame, "slice") == LUA_TNIL) {
             luaL_error(L, "A frame needs the nine-slice it draws in \"slice\".");
         }
+
         shownFrame.slice = lua::Userdata::check<graphics2d::NineSlice>(L, -1);
         lua_pop(L, 1);
         lua::Table::readField(L, frame, "width", shownFrame.size.x);
@@ -156,6 +168,7 @@ NodeContent Nodes2DLua::readContent(lua_State* L, int index) {
         content.value = std::move(shownFrame);
         ++shown;
     }
+
     lua_pop(L, 1);
 
     if (lua_getfield(L, table, "particles") != LUA_TNIL) {
@@ -167,13 +180,16 @@ NodeContent Nodes2DLua::readContent(lua_State* L, int index) {
         } else {
             content.value = lua::Userdata::checkShared<particles2d::System>(L, -1);
         }
+
         ++shown;
     }
+
     lua_pop(L, 1);
 
     if (shown > 1) {
         luaL_error(L, "A node shows one of \"sprite\", \"text\", \"frame\" and \"particles\".");
     }
+
     return content;
 }
 
@@ -207,6 +223,7 @@ Node Nodes2DLua::addNode(lua_State* L, NodeTree& tree, const Node& parent, int p
     } else {
         lua_pop(L, 1);
     }
+
     if (lua_getfield(L, table, "data") != LUA_TNIL) {
         luaL_checktype(L, -1, LUA_TTABLE);
         pushTreeTable(L, pushed, "data", true);
@@ -214,6 +231,7 @@ Node Nodes2DLua::addNode(lua_State* L, NodeTree& tree, const Node& parent, int p
         lua_rawseti(L, -2, static_cast<lua_Integer>(node.getKey()));
         lua_pop(L, 1);
     }
+
     lua_pop(L, 1);
 
     if (lua_getfield(L, table, "children") != LUA_TNIL) {
@@ -226,6 +244,7 @@ Node Nodes2DLua::addNode(lua_State* L, NodeTree& tree, const Node& parent, int p
             lua_pop(L, 2);
         }
     }
+
     lua_pop(L, 1);
     return node;
 }
@@ -240,6 +259,7 @@ std::vector<Node> Nodes2DLua::readNodes(lua_State* L, int index) {
         nodes.push_back(lua::Userdata::check<Node>(L, -1));
         lua_pop(L, 1);
     }
+
     return nodes;
 }
 
@@ -411,6 +431,7 @@ int Nodes2DLua::nodeGetText(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, text->content);
     return 1;
 }
@@ -424,6 +445,7 @@ int Nodes2DLua::nodeSetText(lua_State* L) {
     } else {
         content = {.value = NodeContent::Text{.font = lua::Runtime::getEngine(L).getDefaultFont(), .content = lua::Stack::read<std::string>(L, 3)}};
     }
+
     node.setContent(std::move(content));
     return 0;
 }
@@ -434,6 +456,7 @@ int Nodes2DLua::nodeGetBody(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua_rawgeti(L, -1, static_cast<lua_Integer>(node.getKey()));
     return 1;
 }
@@ -446,6 +469,7 @@ int Nodes2DLua::nodeSetBody(lua_State* L) {
     } else {
         node.follow(lua::Userdata::check<physics2d::ScriptedHandle<physics2d::Body>>(L, 3).handle);
     }
+
     pushTreeTable(L, 1, "bodies", true);
     lua_pushvalue(L, 3);
     lua_rawseti(L, -2, static_cast<lua_Integer>(node.getKey()));
@@ -462,6 +486,7 @@ int Nodes2DLua::nodeData(lua_State* L) {
         lua_pushvalue(L, -1);
         lua_rawseti(L, -3, static_cast<lua_Integer>(node.getKey()));
     }
+
     return 1;
 }
 
@@ -487,6 +512,7 @@ int Nodes2DLua::nodeShow(lua_State* L) {
         node.setContent({});
         return 0;
     }
+
     luaL_checktype(L, 2, LUA_TTABLE);
     lua::Table::checkFields(L, 2, {kContentFields});
     node.setContent(readContent(L, 2));
@@ -526,6 +552,7 @@ int Nodes2DLua::nodeOn(lua_State* L) {
     if (event != "destroyed") {
         return luaL_error(L, "Unknown node event \"%s\". Nodes report \"destroyed\".", std::string(event).c_str());
     }
+
     luaL_checktype(L, 3, LUA_TFUNCTION);
     int owner = 0;
     if (!lua_isnoneornil(L, 4)) {
@@ -536,9 +563,11 @@ int Nodes2DLua::nodeOn(lua_State* L) {
             owner = lua_gettop(L);
         }
     }
+
     if (owner == 0) {
         owner = lua::Owners::pushDefault(L);
     }
+
     const std::weak_ptr<const void> lifetime = owner != 0 ? lua::Owners::getLifetime(L, owner) : std::weak_ptr<const void>();
     auto function = std::make_shared<lua::Owners::Function>(L, 3, owner);
     lua_State* main = lua::Runtime::getMainThread(L);
@@ -554,6 +583,7 @@ int Nodes2DLua::nodeOn(lua_State* L) {
             });
             return;
         }
+
         if (function->push(destroying)) {
             pushNode(destroying, gone);
             lua_call(destroying, 1, 0);
@@ -563,6 +593,7 @@ int Nodes2DLua::nodeOn(lua_State* L) {
     if (owner != 0) {
         lua::Owners::add(L, owner, connection);
     }
+
     lua::Userdata::emplace<core::Connection>(L, std::move(connection));
     return 1;
 }

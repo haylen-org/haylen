@@ -19,6 +19,7 @@ std::string NodeSerializer::describe(std::string_view node, std::string_view par
     if (!part.empty()) {
         where += " of the " + std::string(part);
     }
+
     return where + " of the node \"" + std::string(node) + "\"";
 }
 
@@ -26,6 +27,7 @@ void NodeSerializer::requireKeys(const core::Json& object, std::string_view node
     if (!object.is_object()) {
         throw std::invalid_argument(part.empty() ? "The description of the node \"" + std::string(node) + "\" must be an object." : "The " + std::string(part) + " of the node \"" + std::string(node) + "\" must be an object.");
     }
+
     for (const auto& [key, value] : object.items()) {
         const bool known = std::ranges::any_of(allowed, [&key](std::span<const std::string_view> names) { return std::ranges::find(names, key) != names.end(); });
         if (!known) {
@@ -39,9 +41,11 @@ float NodeSerializer::number(const core::Json& object, std::string_view key, flo
     if (found == object.end()) {
         return fallback;
     }
+
     if (!found->is_number()) {
         throw std::invalid_argument(describe(node, part, key) + " must be a number.");
     }
+
     return core::JsonNumber::toFloat(*found);
 }
 
@@ -51,10 +55,12 @@ int NodeSerializer::integer(const core::Json& object, std::string_view key, int 
     if (found == object.end()) {
         return fallback;
     }
+
     const bool fits = found->is_number_unsigned() ? std::in_range<int>(found->get<std::uint64_t>()) : found->is_number_integer() && std::in_range<int>(found->get<std::int64_t>());
     if (!fits) {
         throw std::invalid_argument(describe(node, part, key) + " must be an integer from -2147483648 to 2147483647.");
     }
+
     return found->get<int>();
 }
 
@@ -63,9 +69,11 @@ bool NodeSerializer::flag(const core::Json& object, std::string_view key, bool f
     if (found == object.end()) {
         return fallback;
     }
+
     if (!found->is_boolean()) {
         throw std::invalid_argument(describe(node, part, key) + " must be true or false.");
     }
+
     return found->get<bool>();
 }
 
@@ -74,9 +82,11 @@ std::string NodeSerializer::text(const core::Json& object, std::string_view key,
     if (found == object.end()) {
         return {};
     }
+
     if (!found->is_string()) {
         throw std::invalid_argument(describe(node, part, key) + " must be a string.");
     }
+
     return found->get<std::string>();
 }
 
@@ -85,10 +95,12 @@ math::Color NodeSerializer::color(const core::Json& object, std::string_view key
     if (found == object.end()) {
         return fallback;
     }
+
     const std::optional<math::Color> parsed = found->is_string() ? math::Color::parse(found->get<std::string>()) : std::nullopt;
     if (!parsed) {
         throw std::invalid_argument(describe(node, part, key) + " must be a color such as \"#FFFFFFFF\".");
     }
+
     return *parsed;
 }
 
@@ -97,9 +109,11 @@ math::Vec2 NodeSerializer::pair(const core::Json& object, std::string_view key, 
     if (found == object.end()) {
         return fallback;
     }
+
     if (!found->is_array() || found->size() != 2 || !(*found)[0].is_number() || !(*found)[1].is_number()) {
         throw std::invalid_argument(describe(node, part, key) + " must be a list of two numbers.");
     }
+
     return {core::JsonNumber::toFloat((*found)[0]), core::JsonNumber::toFloat((*found)[1])};
 }
 
@@ -108,10 +122,12 @@ math::Rect NodeSerializer::rect(const core::Json& object, std::string_view key, 
     if (found == object.end()) {
         return {};
     }
+
     const bool numbers = found->is_array() && found->size() == 4 && std::ranges::all_of(*found, [](const core::Json& value) { return value.is_number(); });
     if (!numbers) {
         throw std::invalid_argument(describe(node, part, key) + " must be a list of four numbers: x, y, width and height.");
     }
+
     return {core::JsonNumber::toFloat((*found)[0]), core::JsonNumber::toFloat((*found)[1]), core::JsonNumber::toFloat((*found)[2]), core::JsonNumber::toFloat((*found)[3])};
 }
 
@@ -122,15 +138,19 @@ graphics::Texture::Options NodeSerializer::textureOptions(const core::Json& obje
         if (!found) {
             throw std::invalid_argument(describe(node, part, "filter") + " must be \"nearest\" or \"linear\".");
         }
+
         options.filter = *found;
     }
+
     if (const std::string wrap = text(object, "wrap", node, part); !wrap.empty()) {
         const auto found = graphics::Texture::wrapFromName(wrap);
         if (!found) {
             throw std::invalid_argument(describe(node, part, "wrap") + " must be \"clamp\", \"repeat\" or \"mirror\".");
         }
+
         options.wrap = *found;
     }
+
     return options;
 }
 
@@ -145,9 +165,11 @@ void NodeSerializer::validateNode(const core::Json& description, const std::stri
     if (children == description.end()) {
         return;
     }
+
     if (!children->is_array()) {
         throw std::invalid_argument(describe(path, {}, "children") + " must be a list of descriptions.");
     }
+
     for (const core::Json& child : *children) {
         validateNode(child, path + "/" + text(child.is_object() ? child : core::Json::object(), "name", path, {}));
     }
@@ -176,6 +198,7 @@ NodeContent NodeSerializer::readContent(const core::Json& description, const std
     if (shown > 1) {
         throw std::invalid_argument("The node \"" + path + "\" shows more than one of \"sprite\", \"text\", \"frame\" and \"particles\".");
     }
+
     const bool resolve = static_cast<bool>(assets.texture);
 
     if (const auto found = description.find("sprite"); found != description.end()) {
@@ -184,6 +207,7 @@ NodeContent NodeSerializer::readContent(const core::Json& description, const std
         if (texture.empty()) {
             throw std::invalid_argument("The sprite of the node \"" + path + "\" needs the path of its texture.");
         }
+
         graphics2d::Sprite sprite{
             .source = rect(*found, "source", path, "sprite"),
             .position = {number(*found, "x", 0.0F, path, "sprite"), number(*found, "y", 0.0F, path, "sprite")},
@@ -196,9 +220,11 @@ NodeContent NodeSerializer::readContent(const core::Json& description, const std
             .order = {.layer = integer(*found, "layer", 0, path, "sprite")},
         };
         const graphics::Texture::Options options = textureOptions(*found, path, "sprite");
+
         if (!resolve) {
             return {};
         }
+
         sprite.texture = assets.texture(texture, options);
         return {.value = std::move(sprite)};
     }
@@ -220,21 +246,27 @@ NodeContent NodeSerializer::readContent(const core::Json& description, const std
             .lineSpacing = number(*found, "lineSpacing", 1.2F, path, "text"),
             .anchor = pair(*found, "anchor", {}, path, "text"),
         };
+
         if (!(style.minScale > 0.0F && style.minScale <= 1.0F)) {
             throw std::invalid_argument(describe(path, "text", "minScale") + " must be above 0 and at most 1.");
         }
+
         if (const std::string align = text(*found, "align", path, "text"); !align.empty()) {
             const auto alignment = text::Style::alignmentFromName(align);
             if (!alignment) {
                 throw std::invalid_argument(describe(path, "text", "align") + " must be \"start\", \"end\", \"left\", \"center\", \"right\" or \"fill\".");
             }
+
             style.align = *alignment;
         }
+
         const std::string font = text(*found, "font", path, "text");
         NodeContent::Text block{.content = text(*found, "text", path, "text"), .style = style, .order = {.layer = integer(*found, "layer", 0, path, "text")}};
+
         if (!resolve) {
             return {};
         }
+
         block.font = assets.font(font);
         return {.value = std::move(block), .path = font};
     }
@@ -245,6 +277,7 @@ NodeContent NodeSerializer::readContent(const core::Json& description, const std
         if (texture.empty()) {
             throw std::invalid_argument("The frame of the node \"" + path + "\" needs the path of its texture.");
         }
+
         const math::Rect borders = rect(*found, "borders", path, "frame");
         NodeContent::Frame frame{
             .size = {number(*found, "width", 0.0F, path, "frame"), number(*found, "height", 0.0F, path, "frame")},
@@ -260,12 +293,16 @@ NodeContent NodeSerializer::readContent(const core::Json& description, const std
             if (!parsed) {
                 throw std::invalid_argument(describe(path, "frame", "fill") + " must be \"stretch\" or \"tile\".");
             }
+
             fill = *parsed;
         }
+
         const graphics::Texture::Options options = textureOptions(*found, path, "frame");
+
         if (!resolve) {
             return {};
         }
+
         frame.slice = graphics2d::NineSlice::fromBorders(assets.texture(texture, options), source, {.left = borders.x, .top = borders.y, .right = borders.width, .bottom = borders.height});
         frame.slice.fill = fill;
         return {.value = std::move(frame)};
@@ -276,11 +313,14 @@ NodeContent NodeSerializer::readContent(const core::Json& description, const std
         if (effect.empty()) {
             throw std::invalid_argument("The particles of the node \"" + path + "\" need the path of their effect file.");
         }
+
         if (!resolve) {
             return {};
         }
+
         return {.value = assets.particles(effect), .path = effect};
     }
+
     return {};
 }
 
@@ -306,10 +346,12 @@ Node NodeSerializer::loadNode(NodeTree& tree, const Node& parent, const core::Js
     } catch (...) {
         failure = std::current_exception();
     }
+
     if (failure) {
         node.destroy();
         std::rethrow_exception(failure);
     }
+
     return node;
 }
 
@@ -317,6 +359,7 @@ std::string NodeSerializer::texturePath(const graphics::Texture& texture, std::s
     if (texture.getResource()->label.empty()) {
         throw std::invalid_argument("The node \"" + std::string(node) + "\" shows a texture that no package path names, so it cannot be saved.");
     }
+
     return texture.getResource()->label;
 }
 
@@ -326,6 +369,7 @@ void NodeSerializer::writeTexture(core::Json& object, const graphics::Texture& t
     if (options.filter != graphics::Texture::Filter::Nearest) {
         object["filter"] = graphics::Texture::filterName(options.filter);
     }
+
     if (options.wrap != graphics::Texture::Wrap::Clamp) {
         object["wrap"] = graphics::Texture::wrapName(options.wrap);
     }
@@ -346,9 +390,11 @@ core::Json NodeSerializer::save(const Node& node, const std::shared_ptr<text::Fo
     put("rotation", node.getRotation(), 0.0F);
     put("scaleX", node.getScaleX(), 1.0F);
     put("scaleY", node.getScaleY(), 1.0F);
+
     if (node.getColor() != math::Color::white()) {
         description["color"] = node.getColor().toHex();
     }
+
     put("visible", node.isVisible(), true);
     put("layer", node.getLayer(), 0);
     put("depth", node.getDepth(), 0.0F);
@@ -361,8 +407,10 @@ core::Json NodeSerializer::save(const Node& node, const std::shared_ptr<text::Fo
         for (const Node& child : children) {
             list.push_back(save(child, defaultFont));
         }
+
         description["children"] = std::move(list);
     }
+
     return description;
 }
 
@@ -387,9 +435,11 @@ void NodeSerializer::writeContent(core::Json& object, const Node& node, const st
 
     if (const auto* sprite = std::get_if<graphics2d::Sprite>(&content.value)) {
         writeTexture(part, sprite->texture, path);
+
         if (!sprite->source.isEmpty()) {
             part["source"] = {sprite->source.x, sprite->source.y, sprite->source.width, sprite->source.height};
         }
+
         put("x", sprite->position.x, 0.0F);
         put("y", sprite->position.y, 0.0F);
         put("width", sprite->size.x, 0.0F);
@@ -409,30 +459,38 @@ void NodeSerializer::writeContent(core::Json& object, const Node& node, const st
             if (content.path.empty()) {
                 throw std::invalid_argument("The node \"" + path + "\" shows text in a font that no package path names, so it cannot be saved.");
             }
+
             part["font"] = content.path;
         }
+
         part["text"] = shown->content;
         const text::Style& style = shown->style;
         put("size", style.size, 32.0F);
         putColor("color", style.color, math::Color::white());
         put("outlineWidth", style.outlineWidth, 0.0F);
         putColor("outlineColor", style.outlineColor, math::Color::black());
+
         if (!style.shadowOffset.isZero()) {
             part["shadowOffset"] = {style.shadowOffset.x, style.shadowOffset.y};
         }
+
         putColor("shadowColor", style.shadowColor, math::Color::transparent());
         put("shadowBlur", style.shadowBlur, 0.0F);
+
         if (style.align != text::Alignment::Start) {
             part["align"] = text::Style::alignmentName(style.align);
         }
+
         put("maxWidth", style.maxWidth, 0.0F);
         put("maxHeight", style.maxHeight, 0.0F);
         put("minScale", style.minScale, 1.0F);
         put("wrap", style.wrap, true);
         put("lineSpacing", style.lineSpacing, 1.2F);
+
         if (!style.anchor.isZero()) {
             part["anchor"] = {style.anchor.x, style.anchor.y};
         }
+
         put("layer", shown->order.layer, 0);
         object["text"] = std::move(part);
     } else if (const auto* frame = std::get_if<NodeContent::Frame>(&content.value)) {
@@ -442,12 +500,15 @@ void NodeSerializer::writeContent(core::Json& object, const Node& node, const st
         if (graphics2d::NineSlice::fromBorders(frame->slice.texture, source, borders).pieces != frame->slice.pieces) {
             throw std::invalid_argument("The node \"" + path + "\" shows a frame of separate pieces, which only a source and borders describe, so it cannot be saved.");
         }
+
         writeTexture(part, frame->slice.texture, path);
         part["source"] = {source.x, source.y, source.width, source.height};
         part["borders"] = {borders.left, borders.top, borders.right, borders.bottom};
+
         if (frame->slice.fill != graphics2d::NineSlice::Fill::Stretch) {
             part["fill"] = graphics2d::NineSlice::fillName(frame->slice.fill);
         }
+
         put("width", frame->size.x, 0.0F);
         put("height", frame->size.y, 0.0F);
         put("pivotX", frame->pivot.x, 0.5F);
@@ -460,6 +521,7 @@ void NodeSerializer::writeContent(core::Json& object, const Node& node, const st
         if (content.path.empty()) {
             throw std::invalid_argument("The node \"" + path + "\" shows particles that no effect file names, so it cannot be saved.");
         }
+
         object["particles"] = content.path;
     }
 }

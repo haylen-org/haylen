@@ -118,6 +118,7 @@ TEST_F(NodeTreeTest, InvalidatesHandlesOfDestroyedNodesAndOfGoneTrees) {
 
     tree.reset();
     EXPECT_FALSE(reused.isValid());
+
     try {
         (void)reused.getPosition();
         FAIL();
@@ -153,12 +154,14 @@ TEST_F(NodeTreeTest, MovesManyNodesFromBuffersAndUpdatesLargeTreesInParallel) {
         const Node root = tree->add({.position = {static_cast<float>(index), 0.0F}});
         nodes.push_back(root.add({.position = {0.0F, 1.0F}}));
     }
+
     std::vector<float> values(nodes.size() * 3);
     for (std::size_t index = 0; index < nodes.size(); ++index) {
         values[index * 3] = 2.0F;
         values[index * 3 + 1] = 3.0F;
         values[index * 3 + 2] = 0.0F;
     }
+
     tree->writeTransforms(nodes, values);
     tree->update(0.0F, 1.0F, &fixture.engine().getJobs());
 
@@ -178,6 +181,7 @@ TEST_F(NodeTreeTest, DrawsVisibleNodesAndCullsTheOthers) {
     for (int index = 0; index < 10; ++index) {
         row.add({.position = {static_cast<float>(index) * 400.0F, 0.0F}, .content = {.value = graphics2d::Sprite{.texture = texture}}});
     }
+
     Node hidden = tree->add({.visible = false});
     hidden.add({.content = {.value = graphics2d::Sprite{.texture = texture}}});
 
@@ -191,6 +195,7 @@ TEST_F(NodeTreeTest, DrawsVisibleNodesAndCullsTheOthers) {
         for (int index = 0; index < 10; ++index) {
             inside += view.intersects(math::Rect::fromCenter({static_cast<float>(index) * 400.0F, 0.0F}, {16.0F, 16.0F})) ? 1U : 0U;
         }
+
         tree->draw(engine.getRenderer2D());
     });
     // clang-format on
@@ -234,6 +239,7 @@ TEST_F(NodeTreeTest, RejectsContentItCannotDraw) {
     } catch (const std::invalid_argument& error) {
         EXPECT_STREQ(error.what(), "A sprite node needs a texture.");
     }
+
     EXPECT_THROW((void)tree->add({.content = {.value = NodeContent::Text{.content = "Hello"}}}), std::invalid_argument);
     EXPECT_THROW((void)tree->add({.content = {.value = std::shared_ptr<particles2d::Emitter>()}}), std::invalid_argument);
     EXPECT_EQ(tree->size(), 0U);
@@ -289,6 +295,7 @@ TEST_F(NodeSerializerTest, NamesTheNodeAndTheKeyOfBadDescriptions) {
         } catch (const std::invalid_argument& error) {
             return std::string(error.what());
         }
+
         return std::string();
     };
     // clang-format on
