@@ -99,6 +99,7 @@ int ConsoleLua::addCommand(lua_State* L) {
         return text;
     };
     // clang-format on
+
     core::Connection connection = getConsole(L).addCommand(std::move(command));
     if (owner != 0) {
         lua::Owners::add(L, owner, connection);

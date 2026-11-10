@@ -274,6 +274,7 @@ std::string Inspector::describeValue(lua_State* L, int index) {
     default:
         break;
     }
+
     return text;
 }
 

@@ -44,7 +44,8 @@ core::Connection Console::addCommand(Command command) {
     auto entry = std::make_shared<Entry>();
     entry->console = this;
     entry->command = std::move(command);
-    entries.insert(std::ranges::upper_bound(entries, entry->command.name, {}, [](const std::shared_ptr<Entry>& item) -> const std::string& { return item->command.name; }), entry);
+    const auto position = std::ranges::upper_bound(entries, entry->command.name, {}, [](const std::shared_ptr<Entry>& item) -> const std::string& { return item->command.name; });
+    entries.insert(position, entry);
     return core::Connection(std::weak_ptr<core::Connection::Link>(entry));
 }
 
@@ -187,13 +188,15 @@ core::Json Console::readArgument(const Command& command, std::size_t index, cons
     case Kind::Text:
         return text;
     }
+
     throw std::invalid_argument(std::format("The command \"{}\" needs {} as its {} argument, not \"{}\". Type it as \"{}\".", command.name, describeKind(parameter.kind), describePosition(index), text, describeUsage(command)));
 }
 
 std::string Console::describeUsage(const Command& command) {
     std::string usage = command.name;
     for (const Parameter& parameter : command.parameters) {
-        const std::string_view kind = describeKind(parameter.kind).substr(describeKind(parameter.kind).find(' ') + 1);
+        const std::string_view described = describeKind(parameter.kind);
+        const std::string_view kind = described.substr(described.find(' ') + 1);
         usage += parameter.optional ? std::format(" [{}]", kind) : std::format(" <{}>", kind);
     }
 
@@ -217,6 +220,7 @@ std::string_view Console::describeKind(Kind kind) noexcept {
     case Kind::Text:
         return "a text";
     }
+
     return "a word";
 }
 

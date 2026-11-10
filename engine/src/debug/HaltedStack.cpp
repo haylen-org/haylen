@@ -91,10 +91,36 @@ core::Json HaltedStack::getVariables(int reference, int start, int count) {
         return nullptr;
     }
 
-    luaL_checkstack(state, 8, "The stack is too deep to inspect.");
-    const int top = lua_gettop(state);
     const Handle handle = handles[static_cast<std::size_t>(reference) - 1];
     std::vector<Child> children;
+    listChildren(handle, children);
+
+    // Locals and upvalues keep the order of the code, and the values of a table sort by their keys.
+    if (handle.kind != Kind::Locals && handle.kind != Kind::Upvalues) {
+        // clang-format off
+        std::ranges::stable_sort(children, [](const Child& left, const Child& right) {
+            if (left.numbered != right.numbered) {
+                return left.numbered;
+            }
+
+            return left.numbered ? left.number < right.number : left.name < right.name;
+        });
+        // clang-format on
+    }
+
+    core::Json variables = core::Json::array();
+    const int from = std::max(start, 0);
+    const int limit = count > 0 ? count : kMaxChildren;
+    for (int index = from; index < static_cast<int>(children.size()) && static_cast<int>(variables.size()) < limit; ++index) {
+        variables.push_back(std::move(children[static_cast<std::size_t>(index)].variable));
+    }
+
+    return {{"variables", std::move(variables)}};
+}
+
+void HaltedStack::listChildren(const Handle& handle, std::vector<Child>& children) {
+    luaL_checkstack(state, 8, "The stack is too deep to inspect.");
+    const int top = lua_gettop(state);
     if (handle.kind == Kind::Locals) {
         listLocals(handle, children);
     } else if (handle.kind == Kind::Value) {
@@ -122,28 +148,6 @@ core::Json HaltedStack::getVariables(int reference, int start, int count) {
     }
 
     lua_settop(state, top);
-
-    // Locals and upvalues keep the order of the code, and the values of a table sort by their keys.
-    if (handle.kind != Kind::Locals && handle.kind != Kind::Upvalues) {
-        // clang-format off
-        std::ranges::stable_sort(children, [](const Child& left, const Child& right) {
-            if (left.numbered != right.numbered) {
-                return left.numbered;
-            }
-
-            return left.numbered ? left.number < right.number : left.name < right.name;
-        });
-        // clang-format on
-    }
-
-    core::Json variables = core::Json::array();
-    const int from = std::max(start, 0);
-    const int limit = count > 0 ? count : kMaxChildren;
-    for (int index = from; index < static_cast<int>(children.size()) && static_cast<int>(variables.size()) < limit; ++index) {
-        variables.push_back(std::move(children[static_cast<std::size_t>(index)].variable));
-    }
-
-    return {{"variables", std::move(variables)}};
 }
 
 // Names in parentheses are the temporaries of Lua, while the extra arguments of a function with `...` count from 1.
@@ -187,7 +191,6 @@ void HaltedStack::listTable(int table, std::vector<Child>& children) {
     }
 
     lua_pushnil(state);
-
     while (lua_next(state, table) != 0) {
         Child child{.numbered = lua_isinteger(state, -2) != 0, .name = describeKey(state, -2)};
         if (child.numbered) {
@@ -224,7 +227,6 @@ void HaltedStack::listUserdata(int userdata, std::vector<Child>& children) {
 
 void HaltedStack::listProperties(int userdata, int getters, std::vector<Child>& children) {
     lua_pushnil(state);
-
     while (lua_next(state, getters) != 0) {
         if (lua_type(state, -2) != LUA_TSTRING || lua_iscfunction(state, -1) == 0) {
             lua_pop(state, 1);
@@ -378,6 +380,7 @@ bool HaltedStack::pushEnvironment(int frameId) {
         lua_rawset(state, environment);
     };
     // clang-format on
+
     for (int slot = 1; const char* name = lua_getupvalue(state, function, slot); ++slot) {
         if (name[0] != '\0' && std::string_view(name) != "_ENV") {
             add(name);

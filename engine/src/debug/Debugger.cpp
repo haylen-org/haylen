@@ -112,31 +112,7 @@ void Debugger::halt(const Tracer::Halt& value) {
 
     sendEvent("stopped", std::move(body));
 
-    bool released = false;
-    while (next == Resume::None) {
-        if (host.pumpHaltedEvents()) {
-            tracer.suspendUntilFrame();
-            output("The app goes on to the end of its frame without halting, since the platform asked it to finish.\n");
-            next = Resume::Continue;
-            released = true;
-            break;
-        }
-
-        pump();
-
-        while (!inbox.empty() && next == Resume::None) {
-            const core::Json request = std::move(inbox.front());
-            inbox.pop_front();
-            handle(request, value.thread);
-        }
-
-        if (next == Resume::None && inbox.empty()) {
-            std::this_thread::sleep_for(kHaltPoll);
-        }
-    }
-
-    released = released || !attached;
-
+    const bool released = waitForResume(value.thread) || !attached;
     stack.reset();
 
     if (collecting) {
@@ -154,6 +130,31 @@ void Debugger::halt(const Tracer::Halt& value) {
     if (released && attached) {
         sendEvent("continued", {{"threadId", kThreadId}, {"allThreadsContinued", true}});
     }
+}
+
+bool Debugger::waitForResume(lua_State* thread) {
+    while (next == Resume::None) {
+        if (host.pumpHaltedEvents()) {
+            tracer.suspendUntilFrame();
+            output("The app goes on to the end of its frame without halting, since the platform asked it to finish.\n");
+            next = Resume::Continue;
+            return true;
+        }
+
+        pump();
+
+        while (!inbox.empty() && next == Resume::None) {
+            const core::Json request = std::move(inbox.front());
+            inbox.pop_front();
+            handle(request, thread);
+        }
+
+        if (next == Resume::None && inbox.empty()) {
+            std::this_thread::sleep_for(kHaltPoll);
+        }
+    }
+
+    return false;
 }
 
 // A request whose fields have other types than the protocol gives them fails with a message that names the field, and nothing of it takes effect.

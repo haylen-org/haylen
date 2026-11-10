@@ -5,13 +5,13 @@
 namespace haylen::debug {
 
 TraceSpan::TraceSpan(std::string_view actionName, std::string_view subjectName) noexcept : recorder(TraceRecorder::getThreadRecorder()), action(actionName), subject(subjectName) {
-    if (recorder) {
+    if (recorder != nullptr) {
         start = TraceRecorder::now();
     }
 }
 
 TraceSpan::~TraceSpan() {
-    if (!recorder) {
+    if (recorder == nullptr) {
         return;
     }
 

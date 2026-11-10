@@ -90,6 +90,8 @@ class Debugger final {
         Out,
     };
 
+    // Handles the requests of the client until it tells the halted app what to do next, and returns whether the platform released the halt instead.
+    [[nodiscard]] bool waitForResume(lua_State* thread);
     void handle(const core::Json& request, lua_State* L);
     void dispatch(const core::Json& request, const core::Json& arguments, lua_State* L);
     void respond(const core::Json& request, core::Json body = core::Json::object());

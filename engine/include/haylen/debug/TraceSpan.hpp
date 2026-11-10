@@ -9,7 +9,7 @@ namespace haylen::debug {
 // Records a span named after what the calling thread does and what it does it to, such as `decode sprites/hero.png`, into the recorder of the thread for as long as it lives. A thread without a recorder records nothing, and the span then costs one read of a thread-local value. Both texts must outlive the span.
 class TraceSpan final {
   public:
-    TraceSpan(std::string_view action, std::string_view subject) noexcept;
+    TraceSpan(std::string_view actionName, std::string_view subjectName) noexcept;
     ~TraceSpan();
 
     TraceSpan(const TraceSpan&) = delete;

@@ -53,6 +53,7 @@ bool Breakpoints::HitCondition::passes(int hits) const noexcept {
     case Operator::Multiple:
         return hits % count == 0;
     }
+
     return true;
 }
 

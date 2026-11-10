@@ -45,6 +45,7 @@ void Tracer::setStep(Step value, lua_State* thread, int level) {
     stepThread = thread;
     stepDepth = thread != nullptr ? getDepth(thread) - level : 0;
     stepAnchor.reset();
+
     if (thread != nullptr) {
         lua_pushthread(thread);
         stepAnchor = lua::Reference(thread, -1);
@@ -108,6 +109,7 @@ bool Tracer::needsAllLines(lua_State* L) const noexcept {
     case Step::None:
         return false;
     }
+
     return false;
 }
 
@@ -245,6 +247,7 @@ bool Tracer::isStepDone(lua_State* L) {
     case Step::None:
         return false;
     }
+
     return false;
 }
 
@@ -258,31 +261,14 @@ int Tracer::getDepth(lua_State* L) {
     return depth;
 }
 
-// The condition and the message of a log point run in the frame of the line, and a condition that fails halts with its error, so the person sees why.
+// The condition and the message of a log point run in the frame of the line.
 bool Tracer::takeBreakpoint(lua_State* L, Breakpoints::Breakpoint& breakpoint) {
-    if (!breakpoint.condition.empty()) {
-        const Busy guard(*this);
-        HaltedStack stack(L, 0);
-        bool holds = false;
-        if (stack.pushEnvironment(1)) {
-            const Evaluation::Result result = Evaluation::run(L, -1, breakpoint.condition);
-            if (!result.ok) {
-                debugger.output("The condition \"" + breakpoint.condition + "\" of the breakpoint at line " + std::to_string(breakpoint.line) + " failed: " + result.error + "\n");
-                holds = true;
-            } else {
-                holds = result.count > 0 && lua_toboolean(L, -result.count) != 0;
-                lua_pop(L, result.count);
-            }
-
-            lua_pop(L, 1);
-        }
-
-        if (!holds) {
-            return false;
-        }
+    if (!breakpoint.condition.empty() && !conditionHolds(L, breakpoint)) {
+        return false;
     }
 
     ++breakpoint.hits;
+
     if (!breakpoint.hit.passes(breakpoint.hits)) {
         return false;
     }
@@ -294,6 +280,26 @@ bool Tracer::takeBreakpoint(lua_State* L, Breakpoints::Breakpoint& breakpoint) {
     const Busy guard(*this);
     debugger.output(interpolate(L, breakpoint.logMessage) + "\n");
     return false;
+}
+
+// A condition whose evaluation fails holds, so the app halts with its error and the person sees why.
+bool Tracer::conditionHolds(lua_State* L, const Breakpoints::Breakpoint& breakpoint) {
+    const Busy guard(*this);
+    HaltedStack stack(L, 0);
+    if (!stack.pushEnvironment(1)) {
+        return false;
+    }
+
+    const Evaluation::Result result = Evaluation::run(L, -1, breakpoint.condition);
+    if (!result.ok) {
+        debugger.output("The condition \"" + breakpoint.condition + "\" of the breakpoint at line " + std::to_string(breakpoint.line) + " failed: " + result.error + "\n");
+        lua_pop(L, 1);
+        return true;
+    }
+
+    const bool holds = result.count > 0 && lua_toboolean(L, -result.count) != 0;
+    lua_pop(L, result.count + 1);
+    return holds;
 }
 
 // Every expression between braces turns into the text of its first value, or of its error.
@@ -341,6 +347,7 @@ void Tracer::halt(Halt value) {
         const Busy guard(*this);
         debugger.halt(value);
     }
+
     refresh(thread);
 }
 

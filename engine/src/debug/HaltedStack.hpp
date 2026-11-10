@@ -76,6 +76,7 @@ class HaltedStack final {
     // Pushes the `_ENV` of the function at the index, or the global table when it has none.
     static void pushGlobals(lua_State* L, int function);
 
+    void listChildren(const Handle& handle, std::vector<Child>& children);
     void listLocals(const Handle& handle, std::vector<Child>& children);
     void listUpvalues(int function, std::vector<Child>& children);
     void listTable(int table, std::vector<Child>& children);

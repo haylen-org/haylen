@@ -96,6 +96,7 @@ void Profiler::endScope() {
     const double end = clock();
     ProfileSample& sample = current[static_cast<std::size_t>(scope.sample)];
     sample.milliseconds += (end - scope.start) * 1000.0;
+
     if (tracer) {
         tracer->record(sample.name, scope.start, end);
     }

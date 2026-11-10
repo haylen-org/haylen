@@ -69,6 +69,7 @@ std::vector<ObjectCounter::Snapshot> ObjectCounter::list() {
             snapshots.push_back(counter->getSnapshot());
         }
     }
+
     std::ranges::sort(snapshots, {}, &Snapshot::name);
     return snapshots;
 }
@@ -95,6 +96,7 @@ void ObjectCounter::notify(bool wasCreated, std::size_t count) const {
         const std::scoped_lock lock(registry.mutex);
         observer = registry.observer;
     }
+
     if (observer) {
         (*observer)(name, wasCreated, count);
     }

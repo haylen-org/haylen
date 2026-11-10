@@ -87,7 +87,8 @@ int DebugLua::statsItems(lua_State* L) {
 
 // Picks the key that cycles the statistics with `setToggleKey(name)`, or turns the shortcut off with `nil`.
 int DebugLua::setToggleKey(lua_State* L) {
-    getPlugin(L).setToggleKey(lua_isnoneornil(L, 1) ? std::nullopt : std::optional<input::Key>(lua::Stack::read<input::Key>(L, 1)));
+    const std::optional<input::Key> key = lua_isnoneornil(L, 1) ? std::nullopt : std::optional<input::Key>(lua::Stack::read<input::Key>(L, 1));
+    getPlugin(L).setToggleKey(key);
     return 0;
 }
 
@@ -117,7 +118,8 @@ int DebugLua::drawingNames(lua_State* L) {
 }
 
 int DebugLua::setDrawKey(lua_State* L) {
-    getPlugin(L).setDrawKey(lua_isnoneornil(L, 1) ? std::nullopt : std::optional<input::Key>(lua::Stack::read<input::Key>(L, 1)));
+    const std::optional<input::Key> key = lua_isnoneornil(L, 1) ? std::nullopt : std::optional<input::Key>(lua::Stack::read<input::Key>(L, 1));
+    getPlugin(L).setDrawKey(key);
     return 0;
 }
 
@@ -155,6 +157,7 @@ int DebugLua::addDrawer(lua_State* L) {
         }
     });
     // clang-format on
+
     if (owner != 0) {
         lua::Owners::add(L, owner, connection);
     }
@@ -361,6 +364,7 @@ int DebugLua::addMonitor(lua_State* L) {
         return static_cast<double>(value);
     });
     // clang-format on
+
     if (owner != 0) {
         lua::Owners::add(L, owner, connection);
     }
@@ -403,6 +407,7 @@ int DebugLua::frame(lua_State* L) {
     lua_setfield(L, -2, "average");
     lua::Stack::push(L, profiler.getFramesPerSecond());
     lua_setfield(L, -2, "fps");
+
     if (const std::optional<double> gpu = lua::Runtime::getEngine(L).getGraphics().getGpuFrameSeconds()) {
         lua::Stack::push(L, *gpu * 1000.0);
         lua_setfield(L, -2, "gpuMilliseconds");

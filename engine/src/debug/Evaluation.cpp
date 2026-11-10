@@ -4,7 +4,7 @@ namespace haylen::debug {
 
 // The coroutine of the evaluation stands on the stack of `L` until its results moved over, and an evaluation that yields is closed, since nothing resumes it.
 Evaluation::Result Evaluation::run(lua_State* L, int environment, std::string_view source, std::chrono::milliseconds limit) {
-    const int env = lua_absindex(L, environment);
+    const int environmentIndex = lua_absindex(L, environment);
     lua_State* thread = lua_newthread(L);
     const int threadIndex = lua_gettop(L);
 
@@ -19,7 +19,7 @@ Evaluation::Result Evaluation::run(lua_State* L, int environment, std::string_vi
         }
     }
 
-    lua_pushvalue(L, env);
+    lua_pushvalue(L, environmentIndex);
     lua_xmove(L, thread, 1);
     (void)lua_setupvalue(thread, -2, 1);
 

@@ -126,6 +126,7 @@ class Tracer final {
 
     // Whether a breakpoint whose line runs halts, after its condition and its count of hits, which writes the message of a log point instead.
     [[nodiscard]] bool takeBreakpoint(lua_State* L, Breakpoints::Breakpoint& breakpoint);
+    [[nodiscard]] bool conditionHolds(lua_State* L, const Breakpoints::Breakpoint& breakpoint);
     [[nodiscard]] std::string interpolate(lua_State* L, const std::string& message);
 
     void halt(Halt value);

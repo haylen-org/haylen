@@ -33,7 +33,8 @@ int InspectorLua::unwatch(lua_State* L) {
 
 // Returns `{key, type, value, editable, expandable}` for every value at a path such as `'watched.player'`, or the roots without one.
 int InspectorLua::inspect(lua_State* L) {
-    const std::vector<std::string> path = Inspector::splitPath(lua_isnoneornil(L, 1) ? std::string_view() : lua::Stack::read<std::string_view>(L, 1));
+    const std::string_view text = lua_isnoneornil(L, 1) ? std::string_view() : lua::Stack::read<std::string_view>(L, 1);
+    const std::vector<std::string> path = Inspector::splitPath(text);
     const std::vector<Inspector::Entry> entries = Inspector::list(L, path);
     lua_createtable(L, static_cast<int>(entries.size()), 0);
     for (std::size_t index = 0; index < entries.size(); ++index) {
@@ -67,7 +68,8 @@ int InspectorLua::inspectorVisible(lua_State* L) {
 
 // Picks the key that shows and hides the inspector with `setInspectorKey(name)`, or turns the shortcut off with `nil`.
 int InspectorLua::setInspectorKey(lua_State* L) {
-    lua::Runtime::getEngine(L).getPlugin<plugins::DebugPlugin>().setInspectorKey(lua_isnoneornil(L, 1) ? std::nullopt : std::optional<input::Key>(lua::Stack::read<input::Key>(L, 1)));
+    const std::optional<input::Key> key = lua_isnoneornil(L, 1) ? std::nullopt : std::optional<input::Key>(lua::Stack::read<input::Key>(L, 1));
+    lua::Runtime::getEngine(L).getPlugin<plugins::DebugPlugin>().setInspectorKey(key);
     return 0;
 }
 

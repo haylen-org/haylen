@@ -65,6 +65,7 @@ Stats Stats::capture(core::Engine& engine, const graphics2d::Renderer::Stats& la
         return found != nullptr ? found->alive : 0;
     };
     // clang-format on
+
     stats.memory.textures = bytesOf("Texture");
     stats.memory.targets = bytesOf("RenderTarget");
     stats.memory.batches = bytesOf("StaticSpriteBatch");

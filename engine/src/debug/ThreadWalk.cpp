@@ -47,6 +47,7 @@ void ThreadWalk::run(lua_State* L, const std::function<void(lua_State* thread)>&
         default:
             break;
         }
+
         lua_settop(L, value - 1);
     }
 
@@ -76,7 +77,6 @@ void ThreadWalk::visitTable(int index) {
     }
 
     lua_pushnil(state);
-
     while (lua_next(state, index) != 0) {
         enqueue(-2);
         enqueue(-1);

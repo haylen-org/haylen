@@ -30,6 +30,7 @@ ImVec4 OverlayWindow::getLevelColor(core::Log::Level level) noexcept {
     case core::Log::Level::Info:
         break;
     }
+
     return {0.91F, 0.92F, 0.95F, 1.0F};
 }
 
