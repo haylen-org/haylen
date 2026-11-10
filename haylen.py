@@ -940,6 +940,8 @@ WEB_ERROR_SCREEN_BROWSERS = {"granted": "lets the page write the clipboard", "re
 WEB_UNKNOWN_API_STEPS = ["reported", "shown"]
 # The graphics APIs of the web, which the pages of the checks of the web draw through, each one or the one that "--graphics-api" names.
 WEB_GRAPHICS_APIS = ("webGpu", "webGl2")
+# A headless browser and its helper processes end within this time of the request to end, since the helpers write its profile until they exit.
+BROWSER_EXIT_SECONDS = 30
 CHROME_PATHS = ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "google-chrome", "google-chrome-stable", "chromium", "chromium-browser", r"C:\Program Files\Google\Chrome\Application\chrome.exe"]
 
 
@@ -1092,10 +1094,10 @@ def check_web_memory_pages(args: argparse.Namespace, target) -> None:
 
 @contextlib.contextmanager
 def headless_browser(arguments: list[str], purpose: str):
-    """Starts a headless Chrome of its own with a profile that goes away with it, and yields the port of its debugging protocol once it answers."""
+    """Starts a headless Chrome of its own with a profile that goes away with it, and yields the port of its debugging protocol once it answers. The browser runs in a process group of its own, so the profile goes away only once the browser and every helper process it started have ended."""
     debugging = free_port()
     profile = Path(tempfile.mkdtemp())
-    browser = subprocess.Popen([find_chrome(), "--headless=new", f"--remote-debugging-port={debugging}", f"--user-data-dir={profile}", "--no-first-run", *arguments, "about:blank"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    browser = subprocess.Popen([find_chrome(), "--headless=new", f"--remote-debugging-port={debugging}", f"--user-data-dir={profile}", "--no-first-run", *arguments, "about:blank"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
     try:
         deadline = time.monotonic() + 30
         while True:
@@ -1108,9 +1110,31 @@ def headless_browser(arguments: list[str], purpose: str):
                 time.sleep(0.2)
         yield debugging
     finally:
-        browser.terminate()
-        browser.wait()
+        end_process_tree(browser, f"the headless browser of {purpose}")
         remove_folder(profile)
+
+
+def end_process_tree(process: subprocess.Popen, name: str) -> None:
+    """Ends a process that leads a process group of its own and every process it started, and returns once none of them is left. On Windows, the processes are the tree of the process, which "taskkill" ends as a whole."""
+    if host_name() == "windows":
+        if process.poll() is None:
+            run(["taskkill", "/PID", str(process.pid), "/T", "/F"])
+        process.wait()
+        return
+
+    with contextlib.suppress(ProcessLookupError):
+        os.killpg(process.pid, signal.SIGTERM)
+    process.wait()
+
+    deadline = time.monotonic() + BROWSER_EXIT_SECONDS
+    while True:
+        try:
+            os.killpg(process.pid, 0)
+        except ProcessLookupError:
+            return
+        if time.monotonic() > deadline:
+            raise BuildError(f"The processes of {name} were still running {BROWSER_EXIT_SECONDS} seconds after the request to end. End them, and try again.")
+        time.sleep(0.1)
 
 
 def emsdk_node() -> Path:

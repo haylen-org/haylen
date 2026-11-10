@@ -3415,6 +3415,43 @@ class WebMemoryTest(unittest.TestCase):
                 haylen.check_web_memory_without_files({**refused, **change})
 
 
+class HeadlessBrowserTest(unittest.TestCase):
+    @unittest.skipIf(sys.platform == "win32", "The browser of the test is a shell script.")
+    def test_removes_the_profile_only_once_every_process_of_the_browser_ended(self):
+        with tempfile.TemporaryDirectory() as folder:
+            # A browser that leaves a helper behind, which writes the profile until it ends, as the helpers of Chrome do while it exits.
+            chrome = Path(folder) / "chrome"
+            helper = Path(folder) / "helper"
+            chrome.write_text(textwrap.dedent(f"""\
+                #!/bin/sh
+                for argument in "$@"; do
+                    case "$argument" in --user-data-dir=*) profile="${{argument#--user-data-dir=}}" ;; esac
+                done
+                sh -c 'trap "touch \\"$1/late\\"; exit" TERM; while :; do sleep 0.05; done' helper "$profile" &
+                echo $! > "{helper}"
+                exec sleep 60
+                """), encoding="utf-8")
+            chrome.chmod(0o755)
+            profile = Path(folder) / "profile"
+            profile.mkdir()
+            with mock.patch.dict(os.environ, {"HAYLEN_CHROME": str(chrome)}), mock.patch.object(haylen.tempfile, "mkdtemp", return_value=str(profile)), mock.patch.object(haylen.urllib.request, "urlopen"):
+                with haylen.headless_browser([], "the test") as _:
+                    deadline = time.monotonic() + 10
+                    while not helper.exists() or not helper.read_text(encoding="utf-8").strip():
+                        self.assertLess(time.monotonic(), deadline, "The browser of the test did not start its helper.")
+                        time.sleep(0.05)
+                    helper_id = int(helper.read_text(encoding="utf-8"))
+                    self.addCleanup(self.end_helper, helper_id)
+            with self.assertRaises(ProcessLookupError):
+                os.kill(helper_id, 0)
+            self.assertFalse(profile.exists())
+
+    @staticmethod
+    def end_helper(helper_id: int) -> None:
+        with contextlib.suppress(ProcessLookupError):
+            os.kill(helper_id, signal.SIGKILL)
+
+
 class WebErrorScreenTest(unittest.TestCase):
     def test_the_browsers_of_the_check_draw_through_swiftshader_so_webgpu_starts_without_a_gpu(self):
         target = mock.Mock(plugins="web")
