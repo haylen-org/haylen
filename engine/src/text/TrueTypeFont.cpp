@@ -45,11 +45,20 @@ const TrueTypeFont::Options& TrueTypeFont::validate(const Options& value, const 
     if (value.atlasSize <= 0 || value.atlasSize > limit) {
         throw std::invalid_argument("The atlas size of a TrueType font must be " + bound);
     }
+    if (value.face < 0) {
+        throw std::invalid_argument("The face of a TrueType font is an index from 0.");
+    }
     return value;
 }
 
 std::unique_ptr<TrueTypeFont::Face> TrueTypeFont::open(std::vector<std::uint8_t> ttf, const Options& fontOptions) {
-    std::optional<FontFile> file = FontFile::read(std::move(ttf));
+    const auto index = static_cast<unsigned int>(fontOptions.face);
+    const unsigned int faces = FontFile::countFaces(ttf);
+    if (faces > 0 && index >= faces) {
+        throw std::runtime_error("The font data holds " + std::to_string(faces) + (faces == 1 ? " face" : " faces") + ", so it has no face " + std::to_string(index) + ".");
+    }
+
+    std::optional<FontFile> file = FontFile::read(std::move(ttf), index);
     if (!file) {
         throw std::runtime_error("Font data is not a valid TrueType or OpenType font.");
     }

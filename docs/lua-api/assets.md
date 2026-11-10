@@ -22,7 +22,7 @@ The file extension picks the asset type, and the type decides what Lua receives.
 | Type | Extensions | Lua value | Options |
 | --- | --- | --- | --- |
 | `texture` | `.png`, `.jpg`, `.jpeg`, `.tga`, `.bmp`, `.gif` | Texture from [`haylen.graphics`](graphics.md). | The option `filter` is `'nearest'` (default) or `'linear'`. The option `wrap` is `'clamp'` (default), `'repeat'` or `'mirror'`. The option `mipmaps` is `true` or `false`, and by default `true` with the `'linear'` filter and `false` with `'nearest'`. |
-| `font` | `.ttf`, `.otf` | Font from [`haylen.graphics`](graphics.md). | The option `bakeSize` is the em size that the glyphs are baked at in the distance field atlas (default `48`). The option `spread` is how far the distance field reaches past a glyph, in pixels at the bake size (default `8`). The option `atlasSize` is the starting side of the glyph atlas in pixels, which grows as new glyphs are used (default `512`). |
+| `font` | `.ttf`, `.otf`, `.ttc` | Font from [`haylen.graphics`](graphics.md). | The option `bakeSize` is the em size that the glyphs are baked at in the distance field atlas (default `48`). The option `spread` is how far the distance field reaches past a glyph, in pixels at the bake size (default `8`). The option `atlasSize` is the starting side of the glyph atlas in pixels, which grows as new glyphs are used (default `512`). The option `face` is the index from 0 of the face that a collection, a `.ttc` file, holds (default `0`). |
 | `bitmapFont` | `.fnt` | Bitmap Font from a BMFont file in its text or binary format, whose page images sit next to it. | The `filter` and `wrap` of its page textures. |
 | `gridFont` | None, so load an image with the type `'gridFont'` | Bitmap Font from an image of equal cells. | The options `characters`, `cellWidth` and `cellHeight`, which it needs, and `spacing`, `margin`, `advance`, `lineHeight` and `baseline`, like `graphics.newGridFont` from [`haylen.graphics`](graphics.md), plus the `filter` and `wrap` of its texture. |
 | `shader` | `.shader` | Shader from [`haylen.graphics`](graphics.md), compiled by `haylen.py shaders` as the [shader guide](../graphics/shaders.md) explains. | None. |
@@ -85,9 +85,9 @@ scene.push({
 
 ### assets.font(path, options)
 
-Loads a font at once and returns it. It takes a TrueType or OpenType font with the options `bakeSize`, `spread` and `atlasSize`, or a BMFont `.fnt` file with the `filter` and `wrap` of its pages. Load a grid font with `assets.load(path, 'gridFont', options)` instead.
+Loads a font at once and returns it. It takes a TrueType or OpenType font, or a collection of them, with the options `bakeSize`, `spread`, `atlasSize` and `face`, or a BMFont `.fnt` file with the `filter` and `wrap` of its pages. Load a grid font with `assets.load(path, 'gridFont', options)` instead.
 
-A file whose extension no asset type handles, such as `.woff`, raises `No asset type handles the file "<path>". Pass its type or use an extension that an asset type handles.`. A file of another asset type, such as an image, raises the `bad argument` error of Lua with `expected a .ttf, .otf or .fnt file`. A font option that is not a number raises `The font option "<option>" must be a number, not <value>.`, with the value as JSON.
+A file whose extension no asset type handles, such as `.woff`, raises `No asset type handles the file "<path>". Pass its type or use an extension that an asset type handles.`. A file of another asset type, such as an image, raises the `bad argument` error of Lua with `expected a .ttf, .otf, .ttc or .fnt file`. A font option that is not a number raises `The font option "<option>" must be a number, not <value>.`, with the value as JSON.
 
 ```lua
 local assets = require('haylen.assets')
@@ -716,8 +716,9 @@ end
 | `The texture filter must be "nearest" or "linear", not <filter>.` | The `filter` option is not `nearest` or `linear`. The message shows it as JSON, such as `"blurry"` or `3`. |
 | `The texture wrap must be "clamp", "repeat" or "mirror", not <wrap>.` | The `wrap` option is not `clamp`, `repeat` or `mirror`. The message shows it as JSON. |
 | `The texture option "mipmaps" must be true or false, not <value>.` | The `mipmaps` option is not a boolean. The message shows it as JSON. |
-| `The font option "<option>" must be a number, not <value>.` | The `bakeSize`, `spread` or `atlasSize` of a font is not a number. |
+| `The font option "<option>" must be a number, not <value>.` | The `bakeSize`, `spread`, `atlasSize` or `face` of a font is not a number. |
 | `Font data is not a valid TrueType or OpenType font.` | A `.ttf` or `.otf` file has no glyphs, no character map, no outlines or no ascender above its descender, as the [text guide](../graphics/text.md#fonts-from-any-package) explains. |
+| `The font data holds <count> faces, so it has no face <face>.` | The `face` of a font is past the faces of its collection. |
 | `The upload budget cannot be negative.` | The budget of `assets.setUploadBudget` is below `0`. |
 | `The asset group "<name>" is not defined.` | A group function names a group that was never defined. |
 | `Unknown key "<key>" in the asset group manifest.` | A manifest has a key other than `groups`. |

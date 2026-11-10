@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -11,6 +12,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -21,6 +23,7 @@
 #include "platform/Host.hpp"
 #include "platform/NativeViews.hpp"
 #include "platform/PixelDensityCap.hpp"
+#include "platform/SystemFontReader.hpp"
 #include "platform/SystemState.hpp"
 #include "platform/headless/HeadlessTextInput.hpp"
 
@@ -372,6 +375,20 @@ class HeadlessHost final : public Host {
     [[nodiscard]] std::unique_ptr<VideoDecoder> openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) override {
         return videoOpener ? videoOpener(std::move(file), path) : nullptr;
     }
+    // The headless platform has no font of the system until a test gives it one, which draws the code points the test names from a font file.
+    [[nodiscard]] std::optional<SystemFont> findSystemFont(char32_t codePoint) override {
+        ++systemFontLookups;
+        for (const TestSystemFont& font : systemFonts) {
+            if (font.codePoints.contains(codePoint)) {
+                return font.font;
+            }
+        }
+        return std::nullopt;
+    }
+    [[nodiscard]] std::vector<std::uint8_t> readSystemFont(const SystemFont& font) override {
+        ++systemFontReads;
+        return SystemFontReader::read(font.file);
+    }
     void rumbleGamepad(std::size_t index, float low, float high, float seconds) override {
         rumbles.push_back({.index = index, .low = low, .high = high, .seconds = seconds});
     }
@@ -542,6 +559,19 @@ class HeadlessHost final : public Host {
         videoOpener = std::move(value);
     }
 
+    // Makes the face of the file a font of the system that draws the code points, before the app looks any of them up from the I/O pool.
+    void addSystemFont(std::u32string_view codePoints, const std::filesystem::path& file, int face = 0) {
+        systemFonts.push_back({.font = {.name = file.string() + "#" + std::to_string(face), .file = file, .face = face}, .codePoints = {codePoints.begin(), codePoints.end()}});
+    }
+
+    // How many code points the engine looked up and how many font files it read.
+    [[nodiscard]] int getSystemFontLookups() const noexcept {
+        return systemFontLookups;
+    }
+    [[nodiscard]] int getSystemFontReads() const noexcept {
+        return systemFontReads;
+    }
+
     // Whether the headless platform wants the tree of accessible elements, as a platform does while a screen reader runs.
     void setAccessibilityTreeWanted(bool value) noexcept {
         accessibilityWanted = value;
@@ -706,6 +736,14 @@ class HeadlessHost final : public Host {
     bool backgroundAudio = false;
     bool accessibilityWanted = false;
     VideoOpener videoOpener;
+
+    struct TestSystemFont {
+        SystemFont font;
+        std::unordered_set<char32_t> codePoints;
+    };
+    std::vector<TestSystemFont> systemFonts;
+    std::atomic<int> systemFontLookups = 0;
+    std::atomic<int> systemFontReads = 0;
     std::vector<ScreenRequest> screenRequests;
     std::vector<std::uint64_t> cancelledScreens;
     std::filesystem::path crashReport;

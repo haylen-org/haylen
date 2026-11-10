@@ -125,6 +125,9 @@ struct Layout {
     // An image that was still loading took no room, so the layout must be built again once it arrives.
     bool waitingForImages = false;
 
+    // A character that no font of the text holds waited for the font of the system that draws it, so the layout must be built again once that font arrives.
+    bool waitingForFonts = false;
+
     // The families of the fonts the looks of rich text point to, which stay alive as long as the layout. A layout of plain text points to the fonts of the font or family that made it, which must outlive it.
     std::vector<std::shared_ptr<FontFamily>> families;
 };

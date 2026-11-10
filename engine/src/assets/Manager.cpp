@@ -49,7 +49,7 @@ std::string Manager::describe(const core::Json& value) {
 }
 
 text::TrueTypeFont::Options Manager::fontOptionsFromJson(const core::Json& options) {
-    core::JsonValidator::requireKnownOptions(options, {"bakeSize", "spread", "atlasSize"}, "font options");
+    core::JsonValidator::requireKnownOptions(options, {"bakeSize", "spread", "atlasSize", "face"}, "font options");
     // clang-format off
     const auto number = [&options](const char* key, auto value) {
         if (!options.contains(key)) {
@@ -66,11 +66,12 @@ text::TrueTypeFont::Options Manager::fontOptionsFromJson(const core::Json& optio
     result.bakeSize = number("bakeSize", result.bakeSize);
     result.spread = number("spread", result.spread);
     result.atlasSize = number("atlasSize", result.atlasSize);
+    result.face = number("face", result.face);
     return result;
 }
 
 core::Json Manager::fontOptionsToJson(const text::TrueTypeFont::Options& options) {
-    return {{"bakeSize", core::JsonNumber::fromFloat(options.bakeSize)}, {"spread", options.spread}, {"atlasSize", options.atlasSize}};
+    return {{"bakeSize", core::JsonNumber::fromFloat(options.bakeSize)}, {"spread", options.spread}, {"atlasSize", options.atlasSize}, {"face", options.face}};
 }
 
 graphics::Texture::Options Manager::textureOptionsFromJson(const core::Json& options) {
@@ -140,7 +141,7 @@ Manager::Manager(io::Package& contentPackage, core::JobSystem& jobSystem, graphi
     });
     registerType({
         .name = "font",
-        .extensions = {".ttf", ".otf"},
+        .extensions = {".ttf", ".otf", ".ttc"},
         .normalize = [](const core::Json& options) { return fontOptionsToJson(fontOptionsFromJson(options)); },
         .decode = [](Request& request) -> std::shared_ptr<void> {
             return std::make_shared<std::vector<std::uint8_t>>(std::move(request.bytes));

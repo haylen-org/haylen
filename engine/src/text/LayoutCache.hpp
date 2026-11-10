@@ -21,6 +21,9 @@ class LayoutCache final {
     // Caches the layout of the text in the style and returns it.
     std::shared_ptr<const Layout> store(std::string_view text, const Style& style, Layout layout);
 
+    // Drops the layouts that waited for a font of the system, so they are laid out again with the faces that arrived since.
+    void dropWaitingForFonts();
+
   private:
     // The text and the language are views: a lookup views what it is given, and a cached key views the strings of its entry, which stays where the list built it.
     struct Key {

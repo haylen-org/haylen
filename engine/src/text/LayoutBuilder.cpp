@@ -265,6 +265,7 @@ std::vector<LayoutBuilder::Piece> LayoutBuilder::shape(const Source& source, con
             const bool common = std::ranges::all_of(cluster, &Segmenter::isCommon);
             face = font.family != nullptr ? font.family->resolve(font.face, cluster, font.bold, font.italic, common ? previous : nullptr) : font.face;
             previous = face.font;
+            layout.waitingForFonts = layout.waitingForFonts || face.waiting;
         }
 
         // A run ends before an object, a line break, or a change of style, font, level or script.

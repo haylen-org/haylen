@@ -49,7 +49,7 @@ int AssetsLua::texture(lua_State* L) {
 int AssetsLua::font(lua_State* L) {
     const std::string_view path = lua::Stack::read<std::string_view>(L, 1);
     const std::string type = getAssets(L).getTypeForPath(path);
-    luaL_argcheck(L, type == "font" || type == "bitmapFont", 1, "expected a .ttf, .otf or .fnt file");
+    luaL_argcheck(L, type == "font" || type == "bitmapFont", 1, "expected a .ttf, .otf, .ttc or .fnt file");
     lua::Stack::push(L, std::static_pointer_cast<text::Font>(getAssets(L).load(type, path, readOptions(L, 2))));
     return 1;
 }

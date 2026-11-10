@@ -6,18 +6,23 @@
 #include <cstdint>
 #include <functional>
 #include <limits>
+#include <span>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "haylen/core/Engine.hpp"
 #include "haylen/core/Utf8.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
+#include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
+#include "haylen/plugins/TextPlugin.hpp"
 #include "haylen/text/BitmapFont.hpp"
+#include "haylen/text/SystemFonts.hpp"
 #include "text/BidiParagraph.hpp"
 #include "text/Segmenter.hpp"
 
@@ -28,7 +33,7 @@ std::shared_ptr<text::FontFamily> FontLua::readFamily(lua_State* L, int index) {
         return lua::Userdata::checkShared<text::FontFamily>(L, index);
     }
     if (lua::Userdata::test<text::Font>(L, index) != nullptr) {
-        return std::make_shared<text::FontFamily>(text::FontFamily::Faces{.regular = lua::Userdata::checkShared<text::Font>(L, index)});
+        return std::make_shared<text::FontFamily>(text::FontFamily::Faces{.regular = lua::Userdata::checkShared<text::Font>(L, index), .systemFonts = getSystemFonts(L)});
     }
     luaL_argerror(L, index, "expected a FontFamily or a Font");
     return nullptr;
@@ -45,7 +50,7 @@ char32_t FontLua::readCharacter(lua_State* L, int index) {
     return decoded.front();
 }
 
-// Creates a family with `newFontFamily({regular = font, bold = font, italic = font, boldItalic = font, mono = font, fallbacks = {font, ...}})`.
+// Creates a family with `newFontFamily({regular = font, bold = font, italic = font, boldItalic = font, mono = font, fallbacks = {font, ...}, systemFonts = true})`, which draws what none of its fonts holds with the fonts of the system unless `systemFonts` is false.
 int FontLua::newFontFamily(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     lua::Table::checkFields(L, 1, {kFamilyFields});
@@ -56,8 +61,28 @@ int FontLua::newFontFamily(lua_State* L) {
     lua::Table::readField(L, 1, "boldItalic", faces.boldItalic);
     lua::Table::readField(L, 1, "mono", faces.mono);
     lua::Table::readField(L, 1, "fallbacks", faces.fallbacks);
+    bool system = true;
+    lua::Table::readField(L, 1, "systemFonts", system);
+    if (system) {
+        faces.systemFonts = getSystemFonts(L);
+    }
     lua::Stack::push(L, std::make_shared<text::FontFamily>(std::move(faces)));
     return 1;
+}
+
+// Returns the names of the faces of the system that families loaded so far, in the order they arrived.
+int FontLua::systemFonts(lua_State* L) {
+    const std::span<const text::SystemFonts::Face> faces = getSystemFonts(L)->getFaces();
+    lua_createtable(L, static_cast<int>(faces.size()), 0);
+    for (std::size_t index = 0; index < faces.size(); ++index) {
+        lua::Stack::push(L, faces[index].name);
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index) + 1);
+    }
+    return 1;
+}
+
+const std::shared_ptr<text::SystemFonts>& FontLua::getSystemFonts(lua_State* L) {
+    return lua::Runtime::getEngine(L).getPlugin<plugins::TextPlugin>().getSystemFonts();
 }
 
 // Creates a BMFont from the text or binary contents of a `.fnt` file and one texture per page with `newBitmapFont(data, {page, ...})`.
@@ -288,6 +313,14 @@ std::shared_ptr<text::Font> FontLua::findFace(const text::FontFamily& family, co
             return fallback;
         }
     }
+    if (!faces.systemFonts) {
+        return nullptr;
+    }
+    for (const text::SystemFonts::Face& system : faces.systemFonts->getFaces()) {
+        if (system.font.get() == font) {
+            return system.font;
+        }
+    }
     return nullptr;
 }
 
@@ -295,7 +328,13 @@ int FontLua::pushSelection(lua_State* L, const text::FontFamily& family, const t
     lua::Stack::push(L, findFace(family, selection.font));
     lua::Stack::push(L, selection.syntheticBold);
     lua::Stack::push(L, selection.syntheticItalic);
-    return 3;
+    lua::Stack::push(L, selection.waiting);
+    return 4;
+}
+
+int FontLua::familySystemFonts(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<text::FontFamily>(L, 1).getFaces().systemFonts != nullptr);
+    return 1;
 }
 
 // Reads the faces as properties named like the fields of `newFontFamily`, which are `nil` for the faces the family lacks.
@@ -362,7 +401,7 @@ int FontLua::familyLayout(lua_State* L) {
 
 void FontLua::install(lua_State* L) {
     lua::ClassBuilder<text::Font>(L).function("measure", &lua::Binding::native<&measure>).function("layout", &lua::Binding::native<&layout>).function("lineHeight", &lua::Binding::function<&lineHeight>).function("ascent", &lua::Binding::function<&ascent>).function("capHeight", &lua::Binding::function<&capHeight>).function("toDistance", &lua::Binding::function<&toDistance>).function("hasGlyph", &lua::Binding::native<&hasGlyph>).function("hasColorGlyph", &lua::Binding::native<&hasColorGlyph>).function("glyph", &lua::Binding::native<&glyph>).function("glyphByIndex", &lua::Binding::native<&glyphByIndex>).function("shape", &lua::Binding::native<&shape>).function("page", &lua::Binding::native<&page>).property("nativeSize", &nativeSize).property("distanceField", &distanceField).property("pageCount", &pageCount).meta("__eq", &lua::Userdata::equal<text::Font>).install();
-    lua::ClassBuilder<text::FontFamily>(L).property("regular", &familyFace).property("bold", &familyFace).property("italic", &familyFace).property("boldItalic", &familyFace).property("mono", &familyFace).property("fallbacks", &familyFallbacks).function("select", &lua::Binding::native<&familySelect>).function("resolve", &lua::Binding::native<&familyResolve>).function("measure", &lua::Binding::native<&familyMeasure>).function("layout", &lua::Binding::native<&familyLayout>).meta("__eq", &lua::Userdata::equal<text::FontFamily>).install();
+    lua::ClassBuilder<text::FontFamily>(L).property("regular", &familyFace).property("bold", &familyFace).property("italic", &familyFace).property("boldItalic", &familyFace).property("mono", &familyFace).property("fallbacks", &familyFallbacks).property("systemFonts", &familySystemFonts).function("select", &lua::Binding::native<&familySelect>).function("resolve", &lua::Binding::native<&familyResolve>).function("measure", &lua::Binding::native<&familyMeasure>).function("layout", &lua::Binding::native<&familyLayout>).meta("__eq", &lua::Userdata::equal<text::FontFamily>).install();
 }
 
 } // namespace haylen::graphics

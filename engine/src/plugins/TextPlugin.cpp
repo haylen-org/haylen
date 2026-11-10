@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -16,6 +17,7 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/JsonNumber.hpp"
 #include "haylen/core/JsonValidator.hpp"
+#include "haylen/core/Log.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/io/Package.hpp"
@@ -25,6 +27,8 @@
 #include "haylen/plugins/AssetsPlugin.hpp"
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
+#include "platform/Host.hpp"
+#include "text/FontFile.hpp"
 
 namespace haylen::plugins {
 
@@ -92,7 +96,9 @@ core::Json TextPlugin::normalizeGrid(const core::Json& options) {
 void TextPlugin::start(core::Engine& engine) {
     const std::span<const std::uint8_t> monospace = core::EmbeddedFiles::getMonospaceFont();
     std::shared_ptr<text::Font> mono = std::make_shared<text::TrueTypeFont>(engine.getGraphics(), std::vector<std::uint8_t>(monospace.begin(), monospace.end()));
-    registry = std::make_shared<text::RichTextRegistry>(std::make_shared<text::FontFamily>(text::FontFamily::Faces{.regular = engine.getDefaultFont(), .mono = std::move(mono)}));
+    systemFonts = std::make_shared<text::SystemFonts>();
+    started = std::make_shared<bool>(true);
+    registry = std::make_shared<text::RichTextRegistry>(std::make_shared<text::FontFamily>(text::FontFamily::Faces{.regular = engine.getDefaultFont(), .mono = std::move(mono), .systemFonts = systemFonts}));
     assets::Manager& manager = engine.getAssets();
     graphics::Device& device = engine.getGraphics();
 
@@ -155,6 +161,90 @@ void TextPlugin::stop(core::Engine&) {
     drawnTexts.clear();
     registry->clear();
     images.clear();
+    systemFonts.reset();
+    started.reset();
+    lookingUp = false;
+}
+
+void TextPlugin::beginFrame(core::Engine& engine, float) {
+    if (!lookingUp) {
+        lookUpSystemFonts(engine);
+    }
+}
+
+// The lookup runs on the I/O pool, one at a time, and skips the faces that arrived or were refused before.
+void TextPlugin::lookUpSystemFonts(core::Engine& engine) {
+    systemFonts->takeRequests(requested);
+    if (requested.empty()) {
+        return;
+    }
+
+    std::vector<std::string> known = systemFonts->getKnownNames();
+    lookingUp = true;
+    // clang-format off
+    engine.getJobs().runIo(
+        [&target = host, codePoints = requested, known = std::move(known)]() mutable {
+            return findSystemFaces(target, codePoints, std::move(known));
+        },
+        [this, &engine, alive = std::weak_ptr<bool>(started)](core::JobSystem::Result<SystemLookup> lookup) {
+            if (alive.lock()) {
+                addSystemFonts(engine, std::move(lookup));
+            }
+        });
+    // clang-format on
+}
+
+// Each face is read once, so a run of Chinese reads its font once. A face counts only when HarfBuzz reads it, the engine draws its tables and it holds the character, so the bitmaps of an emoji face and a face that the platform names for a character it lacks are refused.
+TextPlugin::SystemLookup TextPlugin::findSystemFaces(platform::Host& target, std::span<const char32_t> codePoints, std::vector<std::string> known) {
+    SystemLookup lookup;
+    for (const char32_t codePoint : codePoints) {
+        const std::optional<platform::SystemFont> font = target.findSystemFont(codePoint);
+        if (!font || std::ranges::find(known, font->name) != known.end()) {
+            continue;
+        }
+        known.push_back(font->name);
+
+        std::vector<std::uint8_t> bytes;
+        try {
+            bytes = target.readSystemFont(*font);
+        } catch (const std::runtime_error& error) {
+            lookup.failures.emplace_back(error.what());
+            lookup.refused.push_back(font->name);
+            continue;
+        }
+
+        const std::optional<text::FontFile> file = text::FontFile::read(std::span<const std::uint8_t>(bytes), static_cast<unsigned int>(font->face));
+        const bool drawn = file && file->isDrawable() && file->findGlyph(codePoint) != 0;
+        if (!drawn) {
+            lookup.refused.push_back(font->name);
+            continue;
+        }
+        lookup.faces.push_back({.name = font->name, .face = font->face, .bytes = std::move(bytes)});
+    }
+    return lookup;
+}
+
+// A face that the system did not hand over logs why, and the characters of the faces that were refused draw the missing glyph of their font.
+void TextPlugin::addSystemFonts(core::Engine& engine, core::JobSystem::Result<SystemLookup> lookup) {
+    lookingUp = false;
+    if (!lookup.isOk()) {
+        core::Log::warning("The fonts of the system could not be looked up: {}", lookup.error);
+        systemFonts->finish(requested);
+        return;
+    }
+
+    for (const std::string& failure : lookup.value->failures) {
+        core::Log::warning("{}", failure);
+    }
+    for (std::string& name : lookup.value->refused) {
+        core::Log::debug("The font of the system \"{}\" holds no glyph that the engine draws for the characters it was found for.", name);
+        systemFonts->refuse(std::move(name));
+    }
+    for (SystemLookup::Found& found : lookup.value->faces) {
+        const text::TrueTypeFont::Options options{.face = found.face};
+        systemFonts->add({.name = found.name, .font = std::make_shared<text::TrueTypeFont>(engine.getGraphics(), std::move(found.bytes), options)});
+    }
+    systemFonts->finish(requested);
 }
 
 void TextPlugin::endFrame(core::Engine&) {

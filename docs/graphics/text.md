@@ -161,7 +161,7 @@ print(font.nativeSize, font:lineHeight(32))
 
 A family groups the faces of one typeface: regular, bold, italic, bold italic and mono. It adds fallback fonts for the characters its faces lack. A fallback can be an Arabic, Hebrew, Devanagari or Thai font, a CJK font for Chinese and Japanese, or a symbol font for arrows and stars.
 
-Layout picks the font of each run from its style and from each character, where a character is a letter with its marks as one unit. It takes the first font that has every code point of the character: the face, then each fallback in order. When none has it, the face draws its missing glyph box. Spaces, punctuation and digits keep the font of the text before them, so an Arabic sentence stays in the Arabic font up to its full stop. The fonts of the Noto family cover every script with a consistent look, and a fallback for each script the game shows is enough.
+Layout picks the font of each run from its style and from each character, where a character is a letter with its marks as one unit. It takes the first font that has every code point of the character: the face, then each fallback in order, then the [fonts of the system](#fonts-of-the-system) that arrived. When none has it, the face draws its missing glyph box. Spaces, punctuation and digits keep the font of the text before them, so an Arabic sentence stays in the Arabic font up to its full stop. The fonts of the Noto family cover every script with a consistent look, and a fallback for each script the game shows is enough.
 
 A style that the family has no face for is synthesized from the face it has:
 
@@ -184,6 +184,40 @@ local story = graphics.newFontFamily({
     fallbacks = {assets.font('fonts/cjk.ttf')},
 })
 local face, syntheticBold, syntheticItalic = story:select({bold = true, italic = true})
+```
+
+## Fonts of the system
+
+A person types what an app never planned for, such as a name in Chinese in a game that ships only a Latin font. So a family draws what none of its fonts holds with the fonts of the system. Layout asks the system for the font of each character that no font of the family holds, once for each character. The engine looks the font up on the I/O pool, through the API of each platform, and reads the face it names there once, so a run of Chinese reads its font once. Until the face arrives, the character draws the missing glyph box of the face, and the text lays itself out again when it arrives, plain text at its next draw and rich text at its next update. A character that no font of the system draws keeps the box and is never asked for again. The function `graphics.systemFonts()` lists the faces that arrived.
+
+Every family that the engine and the app make uses the fonts of the system: the default family, the families of the UI and of `ui.addFont`, the families of `graphics.newFontFamily` and the family that a font becomes when rich text takes it. A family made with `systemFonts = false` draws the box instead, which keeps the look of the text the same on every device. A `Font` drawn on its own, such as `graphics2d.drawText(font, ...)`, uses only itself.
+
+| Platform | How the engine finds the font | What it reads |
+| --- | --- | --- |
+| macOS, iOS, iPadOS, Mac Catalyst, tvOS and visionOS | The font cascade of CoreText, from the font of the interface of the system, in the languages the person prefers. The first face of the cascade that holds the character and whose outlines the engine reads answers, since the Chinese faces of recent versions of macOS keep their outlines in a table the engine does not read. | The tables of the face, which CoreText copies, since the files of system fonts may lie where an app cannot read them. |
+| Windows | The font fallback of DirectWrite, from Segoe UI, in the locale of the person. | The file of the face in the fonts folder of Windows. |
+| Android 10 and later | The font matcher of the NDK, from the font of the system, in the locales of the device. | The file of the face in the fonts folder of the system. Android 8.1 and 9 have no font matcher, so apps there find no font of the system. |
+| Linux | fontconfig, which the engine loads at run time, with the languages of the environment. A system without fontconfig finds no font of the system, and the apps run as before. | The file of the face that fontconfig names. |
+| Web | None. A page reads no file of the fonts of the system, and the API of the browser that lists local fonts asks the person for a permission first, so a page that needs a script ships a font for it. | Nothing. |
+| Headless | None, unless a test gives the host a font. | Nothing. |
+
+A face whose glyphs are bitmaps alone, such as many emoji fonts of the systems, draws nothing in the engine, so it is never an answer. The engine reads every face of the system through HarfBuzz, like the fonts of the app, and refuses one whose tables it does not draw or that lacks the character it was named for, and it never reads a refused face again, and an app that shows emoji ships a font with [color glyphs](#color-emoji). The faces of the systems are large, often several megabytes for a CJK font, and a face stays in memory while the app runs. Ship the fonts of the scripts that an app shows on purpose, and let the fonts of the system cover what people type.
+
+```lua
+local graphics = require('haylen.graphics')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local family = graphics.newFontFamily({regular = graphics2d.defaultFont()})
+local fixed = graphics.newFontFamily({regular = graphics2d.defaultFont(), systemFonts = false})
+
+scene.push({
+    renderUi = function(self)
+        graphics2d.beginScreen()
+        graphics2d.drawText(family, 'Ana 安娜', 100, 100, {size = 48})
+        graphics2d.drawText(fixed, 'Ana 安娜', 100, 180, {size = 48})
+    end,
+})
 ```
 
 ## Color emoji
@@ -618,7 +652,7 @@ The text types live in `haylen::text` under `engine/include/haylen/text/`:
 
 - The class `text::Font` is the interface of both kinds of font, with `text::TrueTypeFont` and `text::BitmapFont` behind it. The methods `BitmapFont::parse` and `BitmapFont::describeGrid` read BMFont files and grids.
 - The method `Font::shape` shapes one run into `Font::ShapedGlyph` values. The methods `Font::layout` and `FontFamily::layout` lay plain text out into a cached `text::Layout` of glyphs, characters and lines.
-- The class `text::FontFamily` selects faces and resolves fallbacks.
+- The class `text::FontFamily` selects faces and resolves fallbacks. Its `Faces::systemFonts` takes the `text::SystemFonts` of `plugins::TextPlugin::getSystemFonts`, which the engine fills with the fonts of the system that the families ask for.
 - The class `text::Gradient` holds the 1 to 4 color stops and the angle of the `gradient` of a `text::Style`, of a run of rich text and of a `text::Layout::Look`.
 - The types `text::Direction` and `text::Alignment` set the direction and alignment of a `text::Style`. The style also owns their names, `Style::alignmentFromName`, `Style::directionName` and the tables behind them, for Lua, markup and GUIs.
 - The method `text::RichText::parse` reads markup into a `text::RichTextDocument` of paragraphs, runs, objects, links, hints and effects. A `text::RichText` made from markup, `text::RichTextOptions` and the `text::RichTextRegistry` of effects and icons lays it out into a `text::Layout` and animates it.
@@ -648,6 +682,7 @@ engine.getRenderer2D().drawText(world, "مرحبا 42 (Harbor)", {48.0F, 160.0F}
 ## Limits
 
 - Bitmap fonts draw one glyph per code point, so Arabic, Indic and other scripts that join or combine their letters need a TrueType or OpenType font.
+- The fonts of the system reach only families, the web has none, Android has them from Android 10 on and Linux through fontconfig, as [fonts of the system](#fonts-of-the-system) explains.
 - Lao, Khmer and Burmese lines break only at spaces and punctuation, since the engine has a phrase model for Thai alone.
 - Every line is shaped as part of its paragraph and never shaped again after it wraps. So a letter at the end of a wrapped line keeps the joining form it had before the break.
 - Color glyphs come from the `COLR` table alone. The engine builds HarfBuzz without the readers of the bitmap tables `CBDT` and `sbix` and of the `SVG` table, so a font that holds its emoji only as bitmaps or SVG documents, such as the bitmap build of Noto Color Emoji, draws them from their outlines, and the emoji of such fonts have none, so they draw nothing. Bitmaps blur when they scale and take far more room than the curves of `COLR`, which suit text drawn at any size, so use the `COLR` build of such a font.

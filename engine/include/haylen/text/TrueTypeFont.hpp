@@ -19,14 +19,15 @@ namespace haylen::text {
 // A TrueType or OpenType font shaped by HarfBuzz and rendered through a signed distance field atlas that grows as new glyphs are used, so text stays sharp at any size and takes outlines, weights and soft edges. The glyphs that its `COLR` table paints, such as color emoji, draw in their own colors as vector images instead.
 class TrueTypeFont final : public Font {
   public:
-    // The spread is how far in pixels at the bake size the distance field reaches past the edge of a glyph, which bounds outlines, weights, glows and blurred shadows. The bake size, the spread and the atlas size must be positive and at most the maximum texture size of the device.
+    // The spread is how far in pixels at the bake size the distance field reaches past the edge of a glyph, which bounds outlines, weights, glows and blurred shadows. The bake size, the spread and the atlas size must be positive and at most the maximum texture size of the device. The face picks a font of a collection, a `.ttc` file, by its index from 0, and a file of one font has only the face 0.
     struct Options {
         float bakeSize = 48.0F;
         int spread = 8;
         int atlasSize = 512;
+        int face = 0;
     };
 
-    // Reads the font file, which throws `std::runtime_error` when it is not a TrueType or OpenType font, and `std::invalid_argument` for options out of range.
+    // Reads the font file, which throws `std::runtime_error` when it is not a TrueType or OpenType font or holds no such face, and `std::invalid_argument` for options out of range.
     TrueTypeFont(graphics::Device& graphicsDevice, std::vector<std::uint8_t> ttf, const Options& fontOptions = kDefaultOptions);
     ~TrueTypeFont() override;
 

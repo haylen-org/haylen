@@ -14,8 +14,10 @@
 #include "platform/BridgeRelay.hpp"
 #include "platform/NativeWindow.hpp"
 #include "platform/ScreenRelay.hpp"
+#include "platform/SystemFontReader.hpp"
 #include "platform/linux/LinuxAccessibility.hpp"
 #include "platform/linux/LinuxDesktop.hpp"
+#include "platform/linux/LinuxFonts.hpp"
 #include "platform/linux/LinuxGlib.hpp"
 #include "platform/linux/LinuxLinks.hpp"
 #include "platform/linux/LinuxMonitors.hpp"
@@ -218,6 +220,14 @@ void Services::updateAccessibility(std::span<const AccessibilityElement> element
 
 void Services::announce(std::string_view text, bool interrupt) {
     LinuxAccessibility::announce(text, interrupt);
+}
+
+std::optional<SystemFont> Services::findSystemFont(char32_t codePoint) {
+    return LinuxFonts::find(codePoint);
+}
+
+std::vector<std::uint8_t> Services::readSystemFont(const SystemFont& font) {
+    return SystemFontReader::read(font.file);
 }
 
 // Linux has no decoder of video files that every distribution ships, as the video reference explains.

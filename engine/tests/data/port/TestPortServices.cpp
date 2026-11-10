@@ -153,6 +153,14 @@ void Services::updateAccessibility(std::span<const AccessibilityElement>, std::u
 
 void Services::announce(std::string_view, bool) {}
 
+std::optional<SystemFont> Services::findSystemFont(char32_t) {
+    return std::nullopt;
+}
+
+std::vector<std::uint8_t> Services::readSystemFont(const SystemFont& font) {
+    throw std::logic_error("The test port has no font of the system to read, such as \"" + font.name + "\".");
+}
+
 std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader>, std::string_view) {
     return nullptr;
 }

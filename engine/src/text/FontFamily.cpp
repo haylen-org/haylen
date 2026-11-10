@@ -56,13 +56,28 @@ bool FontFamily::covers(Font& font, std::u32string_view cluster) {
     return std::ranges::all_of(cluster, [&font](char32_t codePoint) { return Segmenter::isInvisible(codePoint) || font.hasGlyph(codePoint); });
 }
 
+template <typename Accept> const std::shared_ptr<Font>* FontFamily::findFallback(Accept&& accept) const {
+    for (const std::shared_ptr<Font>& font : faces.fallbacks) {
+        if (accept(*font)) {
+            return &font;
+        }
+    }
+    if (!faces.systemFonts) {
+        return nullptr;
+    }
+    for (const SystemFonts::Face& face : faces.systemFonts->getFaces()) {
+        if (accept(*face.font)) {
+            return &face.font;
+        }
+    }
+    return nullptr;
+}
+
 FontFamily::Selection FontFamily::resolve(const Selection& face, std::u32string_view cluster, bool bold, bool italic, Font* previous) const {
-    const auto fallback = [bold, italic](const std::shared_ptr<Font>& font) { return Selection{.font = font.get(), .syntheticBold = bold, .syntheticItalic = italic}; };
+    const auto fallback = [bold, italic](const std::shared_ptr<Font>* font) { return Selection{.font = font->get(), .syntheticBold = bold, .syntheticItalic = italic}; };
     if (previous != nullptr && previous != face.font && covers(*previous, cluster)) {
-        for (const std::shared_ptr<Font>& font : faces.fallbacks) {
-            if (font.get() == previous) {
-                return fallback(font);
-            }
+        if (const std::shared_ptr<Font>* kept = findFallback([previous](Font& font) { return &font == previous; })) {
+            return fallback(kept);
         }
     }
 
@@ -73,33 +88,35 @@ FontFamily::Selection FontFamily::resolve(const Selection& face, std::u32string_
         if (covers(*face.font, cluster) && face.font->hasColorGlyph(cluster.front()) == emoji) {
             return face;
         }
-        for (const std::shared_ptr<Font>& font : faces.fallbacks) {
-            if (covers(*font, cluster) && font->hasColorGlyph(cluster.front()) == emoji) {
-                return fallback(font);
-            }
+        if (const std::shared_ptr<Font>* presented = findFallback([cluster, emoji](Font& font) { return covers(font, cluster) && font.hasColorGlyph(cluster.front()) == emoji; })) {
+            return fallback(presented);
         }
     }
 
     if (covers(*face.font, cluster)) {
         return face;
     }
-    for (const std::shared_ptr<Font>& font : faces.fallbacks) {
-        if (covers(*font, cluster)) {
-            return fallback(font);
-        }
+    if (const std::shared_ptr<Font>* covering = findFallback([cluster](Font& font) { return covers(font, cluster); })) {
+        return fallback(covering);
     }
     if (cluster.empty() || face.font->hasGlyph(cluster.front())) {
         return face;
     }
-    for (const std::shared_ptr<Font>& font : faces.fallbacks) {
-        if (font->hasGlyph(cluster.front())) {
-            return fallback(font);
-        }
+    if (const std::shared_ptr<Font>* letter = findFallback([cluster](Font& font) { return font.hasGlyph(cluster.front()); })) {
+        return fallback(letter);
     }
-    return face;
+
+    // No font holds the letter, so the family asks the fonts of the system for one and draws the missing glyph of the face until it arrives.
+    Selection missing = face;
+    missing.waiting = faces.systemFonts && faces.systemFonts->request(cluster.front());
+    return missing;
 }
 
 std::shared_ptr<const Layout> FontFamily::layout(std::string_view text, const Style& style) {
+    if (faces.systemFonts && faces.systemFonts->getRevision() != systemRevision) {
+        systemRevision = faces.systemFonts->getRevision();
+        layouts->dropWaitingForFonts();
+    }
     if (std::shared_ptr<const Layout> cached = layouts->find(text, style)) {
         return cached;
     }

@@ -711,18 +711,18 @@ void UiPlugin::addFontFamily(const std::string& name, std::shared_ptr<text::Font
     fontFamilies.emplace(name, std::move(family));
 }
 
-// A font registered from a file becomes a family with that font as its regular face the first time text asks for it, and the built-in monospace font is the mono face of the default family of the engine.
+// A font registered from a file becomes a family with that font as its regular face the first time text asks for it, and the built-in monospace font is the mono face of the default family of the engine. Each draws what it lacks with the fonts of the system.
 std::shared_ptr<text::FontFamily> UiPlugin::getFontFamily(core::Engine& engine, std::string_view name) {
     if (const auto found = fontFamilies.find(name); found != fontFamilies.end()) {
         return found->second;
     }
     std::shared_ptr<text::FontFamily> family;
     if (const auto path = fontPaths.find(name); path != fontPaths.end()) {
-        family = std::make_shared<text::FontFamily>(text::FontFamily::Faces{.regular = engine.getAssets().font(path->second)});
+        family = std::make_shared<text::FontFamily>(text::FontFamily::Faces{.regular = engine.getAssets().font(path->second), .systemFonts = engine.getPlugin<TextPlugin>().getSystemFonts()});
     } else if (name == ui::Backend::kDefaultFontName) {
         family = engine.getPlugin<TextPlugin>().getRegistry()->getDefaultFamily();
     } else if (name == ui::Backend::kMonospaceFontName) {
-        family = std::make_shared<text::FontFamily>(text::FontFamily::Faces{.regular = engine.getPlugin<TextPlugin>().getRegistry()->getDefaultFamily()->getFaces().mono});
+        family = std::make_shared<text::FontFamily>(text::FontFamily::Faces{.regular = engine.getPlugin<TextPlugin>().getRegistry()->getDefaultFamily()->getFaces().mono, .systemFonts = engine.getPlugin<TextPlugin>().getSystemFonts()});
     } else {
         return nullptr;
     }

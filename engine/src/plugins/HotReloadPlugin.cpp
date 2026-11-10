@@ -82,7 +82,7 @@ HotReloadPlugin::Batch HotReloadPlugin::classify(core::Engine& engine, const std
             continue;
         }
         const std::string_view extension = io::Path::extension(path);
-        const bool font = extension == ".ttf" || extension == ".otf";
+        const bool font = extension == ".ttf" || extension == ".otf" || extension == ".ttc";
         if (io::Path::isInside(path, io::Path::kContentDirectory) && font) {
             batch.restart = "The font file \"" + path + "\" changed, restarting the app, because the text and the UI bake their fonts into atlases.";
             return batch;

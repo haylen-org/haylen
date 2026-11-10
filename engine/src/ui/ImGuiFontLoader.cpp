@@ -29,7 +29,7 @@ ImFontLoader ImGuiFontLoader::make() {
 // ImGui sizes a font by its height from ascent to descent, and a source merged into a font of another size scales by the ratio of the sizes and by its own extra scale.
 bool ImGuiFontLoader::initSource(ImFontAtlas* /*atlas*/, ImFontConfig* source) {
     const std::span<const std::uint8_t> bytes(static_cast<const std::uint8_t*>(source->FontData), static_cast<std::size_t>(source->FontDataSize));
-    std::optional<text::FontFile> file = text::FontFile::read(bytes);
+    std::optional<text::FontFile> file = text::FontFile::read(bytes, static_cast<unsigned int>(source->FontNo));
     if (!file) {
         return false;
     }

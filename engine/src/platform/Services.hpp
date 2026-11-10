@@ -29,6 +29,7 @@
 #include "haylen/platform/VideoDecoder.hpp"
 #include "haylen/platform/Window.hpp"
 #include "haylen/platform/native/HaylenNative.h"
+#include "platform/SystemFont.hpp"
 #include "platform/WindowStyle.hpp"
 #include "varn/dataview/DataView.h"
 
@@ -154,6 +155,10 @@ class Services final {
 
     // Opens a decoder of a video file with the decoder of the platform, from any thread, as `Host::openVideo` describes.
     [[nodiscard]] static std::unique_ptr<VideoDecoder> openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path);
+
+    // Finds the face of the system that draws a code point and reads its font file, from any thread, as `Host::findSystemFont` and `Host::readSystemFont` describe.
+    [[nodiscard]] static std::optional<SystemFont> findSystemFont(char32_t codePoint);
+    [[nodiscard]] static std::vector<std::uint8_t> readSystemFont(const SystemFont& font);
 
     // Opens the screen of a plugin and ends it exactly once through `ScreenRelay::finish`, from any thread, as `Host::openScreen` describes, and dismisses a screen that the app gave up where the platform can.
     static void openScreen(const ScreenRequest& request);

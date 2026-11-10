@@ -28,6 +28,7 @@
 #include "haylen/platform/Theme.hpp"
 #include "haylen/platform/VideoDecoder.hpp"
 #include "haylen/platform/Window.hpp"
+#include "platform/SystemFont.hpp"
 #include "varn/dataview/DataView.h"
 
 namespace haylen::io {
@@ -123,6 +124,12 @@ class Host : public Window {
 
     // Opens a decoder of the video file that the reader reads, which the engine calls on a worker of the I/O pool, so several may open at once. Returns null where the platform has no decoder of video files, and throws `std::runtime_error` for a file the platform cannot decode.
     [[nodiscard]] virtual std::unique_ptr<VideoDecoder> openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) = 0;
+
+    // Finds the face of the system that draws the code point, which the engine calls on a worker of the I/O pool, one lookup at a time. Answers none where no font of the system draws it, where the face holds bitmaps alone, which the engine cannot draw, and where the platform lets apps use no font of the system, as a web page.
+    [[nodiscard]] virtual std::optional<SystemFont> findSystemFont(char32_t codePoint) = 0;
+
+    // Reads the font file of a face that `findSystemFont` found, on a worker of the I/O pool, which throws `std::runtime_error` when the system does not hand it over.
+    [[nodiscard]] virtual std::vector<std::uint8_t> readSystemFont(const SystemFont& font) = 0;
 
     // Tells the platform whether the app plays audio in the background, as `audio.background` of `app.json` declares, when an app starts. The platform then keeps running the frames of the app in the background while the system lets it, and on Android keeps the app in the foreground with its media notification while what plays shows as playing. A project of the app that lacks what the platform needs for it, such as the mode `audio` of `UIBackgroundModes`, logs once what is missing and how to add it.
     virtual void setBackgroundAudio(bool value) = 0;

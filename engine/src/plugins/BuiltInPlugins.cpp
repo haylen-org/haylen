@@ -42,7 +42,7 @@ void BuiltInPlugins::registerAll(PluginRegistry& registry, platform::Host& host)
     registry.add(std::make_unique<Graphics2DPlugin>());
     registry.add(std::make_unique<AssetsPlugin>());
     registry.add(std::make_unique<ContentPlugin>());
-    registry.add(std::make_unique<TextPlugin>());
+    registry.add(std::make_unique<TextPlugin>(host));
     registry.add(std::make_unique<Animation2DPlugin>());
     registry.add(std::make_unique<Particles2DPlugin>());
     registry.add(std::make_unique<AudioPlugin>());

@@ -729,7 +729,7 @@ A `Font` is a TrueType or OpenType font drawn through a signed distance field, o
 
 The function `assets.font(path, options)` of [`haylen.assets`](assets.md#assetsfontpath-options) loads either kind by the extension of the file:
 
-- A `.ttf` or `.otf` file takes `bakeSize`, the em size of the glyphs in the atlas, 48 by default. It takes `spread`, how far the distance field reaches past a glyph in pixels at the bake size, 8 by default, which bounds outlines, glows and blurred shadows. It takes `atlasSize`, the first size of the atlas, 512 by default. Each one must be positive and at most the maximum texture size of the device, or it raises an error such as `The bake size of a TrueType font must be positive and at most the maximum texture size of 4096.`.
+- A `.ttf` or `.otf` file takes `bakeSize`, the em size of the glyphs in the atlas, 48 by default. It takes `spread`, how far the distance field reaches past a glyph in pixels at the bake size, 8 by default, which bounds outlines, glows and blurred shadows. It takes `atlasSize`, the first size of the atlas, 512 by default. It takes `face`, the index from 0 of the face of a collection, a `.ttc` file, 0 by default. Each one must be positive and at most the maximum texture size of the device, or it raises an error such as `The bake size of a TrueType font must be positive and at most the maximum texture size of 4096.`.
 - A `.fnt` BMFont file takes the `filter` and `wrap` of its page textures.
 
 The functions `graphics.newGridFont` and `graphics.newBitmapFont` make bitmap fonts from textures, and `graphics2d.defaultFont()` returns the font of the engine.
@@ -995,6 +995,7 @@ Makes a `FontFamily` from the table `faces`:
 | `regular` | Font | The regular face, which every family needs. |
 | `bold`, `italic`, `boldItalic`, `mono` | Font | The other faces, each one optional. |
 | `fallbacks` | list of Font | Fonts for the characters a face lacks, such as a CJK, Arabic, Devanagari or symbol font, tried in order. |
+| `systemFonts` | boolean | Draws what none of its fonts holds with the fonts of the system, `true` by default, as [fonts of the system](../graphics/text.md#fonts-of-the-system) explains. The value `false` draws the missing glyph of the face instead, which keeps the look of the text the same on every device. |
 
 A family picks the font of every character with its marks as one unit, so a letter and its marks always come from one font. Each run of one font is shaped on its own. Rich text draws `[b]` and `[i]` with the real faces the family has and synthesizes the others. A TrueType face grows its strokes and leans its glyphs through its distance field. A bitmap face draws a bold glyph twice a native pixel apart and leans italic ones. The tag `[code]` uses the mono face, or the regular faces when the family has none.
 
@@ -1019,6 +1020,7 @@ local serif = graphics.newFontFamily({
 | `regular` | Font | read | The regular face. |
 | `bold`, `italic`, `boldItalic`, `mono` | Font or `nil` | read | The other faces, `nil` for the faces the family lacks. |
 | `fallbacks` | list of Font | read | The fallback fonts. |
+| `systemFonts` | boolean | read | Whether the family draws what none of its fonts holds with the fonts of the system. |
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -1043,11 +1045,12 @@ print(face == family.regular, syntheticBold, syntheticItalic)
 
 ### family:resolve(character, style)
 
-Returns the font that draws `character` in a style, followed by whether bold and italic are synthesized. The font is the first of these that fits:
+Returns the font that draws `character` in a style, followed by whether bold and italic are synthesized and whether a font of the system that draws it is still loading. The font is the first of these that fits:
 
 - The selected face, when it has the glyph.
 - The first fallback that has the glyph, which synthesizes the styles asked for.
-- The selected face again, which draws its missing glyph. The character is a code point or a string, which may hold a letter with its marks. A font draws the string only when it has a glyph for every character of it. The table `style` takes `bold`, `italic` and `mono`, and an empty string raises a `bad argument` error that ends with `expected a character`.
+- The first font of the system that arrived and has the glyph, in a family that uses them.
+- The selected face again, which draws its missing glyph. A family that uses the fonts of the system asks them for the character then, once, and the fourth value is `true` until the answer comes. The character is a code point or a string, which may hold a letter with its marks. A font draws the string only when it has a glyph for every character of it. The table `style` takes `bold`, `italic` and `mono`, and an empty string raises a `bad argument` error that ends with `expected a character`.
 
 ```lua
 local assets = require('haylen.assets')
@@ -1057,6 +1060,18 @@ local graphics2d = require('haylen.graphics2d')
 local family = graphics.newFontFamily({regular = graphics2d.defaultFont(), fallbacks = {assets.font('fonts/cjk.ttf')}})
 local font, syntheticBold = family:resolve('世', {bold = true})
 print(font == family.fallbacks[1], syntheticBold)
+```
+
+### graphics.systemFonts()
+
+Returns the names of the faces of the system that families loaded so far, in the order they arrived, such as `'PingFangSC-Regular'` on Apple platforms, where a face is named by its PostScript name, or `'/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc#2'` elsewhere, where it is named by its file and its index in the file. The list is empty until a family asks for a character none of its fonts holds, and on the web, which has no fonts of the system, as [fonts of the system](../graphics/text.md#fonts-of-the-system) explains.
+
+```lua
+local graphics = require('haylen.graphics')
+
+for _, name in ipairs(graphics.systemFonts()) do
+    print(name)
+end
 ```
 
 ### family:measure(text, style)

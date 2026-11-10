@@ -11,6 +11,7 @@
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
 #include "haylen/plugins/TextPlugin.hpp"
+#include "platform/headless/HeadlessHost.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
@@ -84,7 +85,7 @@ TEST_F(TextLuaTest, InspectsFontsAndBuildsFamilies) {
     EXPECT_EQ(lua("return pixel:capHeight(16) .. ' ' .. pixel:ascent(16)"), "16.0 16.0");
     EXPECT_EQ(lua("local loaded = assets.load('images/coin.png', 'gridFont', {characters = 'XY', cellWidth = 16, cellHeight = 16}) return tostring(loaded:hasGlyph('Y'))"), "true");
     EXPECT_EQ(lua("local data = assets.text('fonts/pixel.fnt') local made = graphics.newBitmapFont(data, {assets.texture('fonts/pixel.png')}) return made:measure('AB', {size = 8})"), "17.0");
-    EXPECT_NE(lua("assets.font('images/coin.png')").find("expected a .ttf, .otf or .fnt file"), std::string::npos);
+    EXPECT_NE(lua("assets.font('images/coin.png')").find("expected a .ttf, .otf, .ttc or .fnt file"), std::string::npos);
     EXPECT_NE(lua("graphics.newBitmapFont('garbage', {})").find("\"info\" and \"common\""), std::string::npos);
 
     lua("family = graphics.newFontFamily({regular = font, bold = pixel, fallbacks = {grid}})");
@@ -319,7 +320,8 @@ TEST_F(TextLuaTest, RegistersEffectsIconsAndFonts) {
 }
 
 TEST(TextPluginTest, RequiresAStartedEngine) {
-    plugins::TextPlugin plugin;
+    test::EngineFixture fixture;
+    plugins::TextPlugin plugin(fixture.host());
     EXPECT_THROW((void)plugin.getRegistry(), std::logic_error);
 }
 

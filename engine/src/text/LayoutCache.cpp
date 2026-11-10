@@ -44,4 +44,15 @@ std::shared_ptr<const Layout> LayoutCache::store(std::string_view text, const St
     return layout;
 }
 
+void LayoutCache::dropWaitingForFonts() {
+    for (auto entry = entries.begin(); entry != entries.end();) {
+        if (!entry->layout->waitingForFonts) {
+            ++entry;
+            continue;
+        }
+        index.erase(entry->key);
+        entry = entries.erase(entry);
+    }
+}
+
 } // namespace haylen::text

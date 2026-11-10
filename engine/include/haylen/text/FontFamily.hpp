@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <string_view>
 #include <vector>
@@ -10,12 +11,13 @@
 #include "haylen/text/Font.hpp"
 #include "haylen/text/Layout.hpp"
 #include "haylen/text/Style.hpp"
+#include "haylen/text/SystemFonts.hpp"
 
 namespace haylen::text {
 
 class LayoutCache;
 
-// The faces of one typeface: regular, bold, italic, bold italic and mono, plus fallback fonts for the code points a face lacks, such as an Arabic, Devanagari, CJK or symbol font. A style the family has no face for is synthesized from a face it has, which only fonts with a distance field do well.
+// The faces of one typeface: regular, bold, italic, bold italic and mono, plus fallback fonts for the code points a face lacks, such as an Arabic, Devanagari, CJK or symbol font, and the fonts of the system for what none of them holds. A style the family has no face for is synthesized from a face it has, which only fonts with a distance field do well.
 class FontFamily final {
   public:
     struct Faces {
@@ -25,13 +27,15 @@ class FontFamily final {
         std::shared_ptr<Font> boldItalic;
         std::shared_ptr<Font> mono;
         std::vector<std::shared_ptr<Font>> fallbacks;
+        std::shared_ptr<SystemFonts> systemFonts;
     };
 
-    // The face that draws a style, and the styles it must synthesize because the family lacks the real face.
+    // The face that draws a style, the styles it must synthesize because the family lacks the real face, and whether a font of the system that draws the character is still to come.
     struct Selection {
         Font* font = nullptr;
         bool syntheticBold = false;
         bool syntheticItalic = false;
+        bool waiting = false;
     };
 
     explicit FontFamily(Faces familyFaces);
@@ -47,10 +51,10 @@ class FontFamily final {
     // Picks the face for a style. Mono text uses the mono face, or the regular faces when the family has none, and the mono face synthesizes bold and italic.
     [[nodiscard]] Selection select(bool bold, bool italic, bool mono) const noexcept;
 
-    // Picks the font that draws one character, a letter with the marks and joiners of its cluster: the selected face when it has every code point that shows, otherwise the first fallback that has them all, which synthesizes the requested styles, then the first font that has the letter itself, and otherwise the selected face, which draws its missing glyph. A character that shows as an emoji by default, such as a face or a star, or through the variation selector U+FE0F first looks for a font that draws it as a color glyph, and one with U+FE0E for a font that draws it in the color of the text. Spaces, punctuation and digits pass the font of the text before them, which they keep when it is a fallback that has them, so a run of another script keeps its own spaces and punctuation.
+    // Picks the font that draws one character, a letter with the marks and joiners of its cluster: the selected face when it has every code point that shows, otherwise the first fallback that has them all, which synthesizes the requested styles, then the first font that has the letter itself, and otherwise the selected face, which draws its missing glyph. The fonts of the system that arrived count as fallbacks after those of the family, and a letter that no font holds asks the fonts of the system for one. A character that shows as an emoji by default, such as a face or a star, or through the variation selector U+FE0F first looks for a font that draws it as a color glyph, and one with U+FE0E for a font that draws it in the color of the text. Spaces, punctuation and digits pass the font of the text before them, which they keep when it is a fallback that has them, so a run of another script keeps its own spaces and punctuation.
     [[nodiscard]] Selection resolve(const Selection& face, std::u32string_view cluster, bool bold, bool italic, Font* previous = nullptr) const;
 
-    // Lays UTF-8 text out like a font does, with the faces the bold and italic of the style pick and the fallbacks for what they lack. Layouts are cached by text and style.
+    // Lays UTF-8 text out like a font does, with the faces the bold and italic of the style pick and the fallbacks for what they lack. Layouts are cached by text and style, and a layout that waited for a font of the system is laid out again once one arrives.
     [[nodiscard]] std::shared_ptr<const Layout> layout(std::string_view text, const Style& style);
     // Returns the size of the block that drawing the text covers, stretched by the scale of the style.
     [[nodiscard]] math::Vec2 measure(std::string_view text, const Style& style);
@@ -63,8 +67,12 @@ class FontFamily final {
 
     [[nodiscard]] static bool covers(Font& font, std::u32string_view cluster);
 
+    // Returns the first fallback of the family, or font of the system, that the predicate accepts.
+    template <typename Accept> [[nodiscard]] const std::shared_ptr<Font>* findFallback(Accept&& accept) const;
+
     Faces faces;
     std::unique_ptr<LayoutCache> layouts;
+    std::uint64_t systemRevision = 0;
     debug::TrackedObject tracked{counter};
 };
 

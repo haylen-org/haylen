@@ -118,8 +118,8 @@ void RichText::update(float deltaSeconds) {
     }
     time += deltaSeconds;
 
-    // A layout that waited for an image is built again at the next use, until the image arrives.
-    std::erase_if(layouts, [](const CachedLayout& entry) { return entry.layout.waitingForImages; });
+    // A layout that waited for an image or a font of the system is built again at the next use, until it arrives.
+    std::erase_if(layouts, [](const CachedLayout& entry) { return entry.layout.waitingForImages || entry.layout.waitingForFonts; });
     if (options.revealSpeed > 0.0F && visibleCharacters) {
         revealClock += deltaSeconds;
         visibleCharacters = countRevealed(revealClock);

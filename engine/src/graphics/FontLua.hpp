@@ -32,12 +32,13 @@ class FontLua final {
     static int newFontFamily(lua_State* L);
     static int newBitmapFont(lua_State* L);
     static int newGridFont(lua_State* L);
+    static int systemFonts(lua_State* L);
 
-    // Reads a `FontFamily`, or a `Font`, which becomes the regular face of a family of its own.
+    // Reads a `FontFamily`, or a `Font`, which becomes the regular face of a family of its own that draws what the font lacks with the fonts of the system.
     [[nodiscard]] static std::shared_ptr<text::FontFamily> readFamily(lua_State* L, int index);
 
   private:
-    static constexpr std::array<std::string_view, 6> kFamilyFields{"regular", "bold", "italic", "boldItalic", "mono", "fallbacks"};
+    static constexpr std::array<std::string_view, 7> kFamilyFields{"regular", "bold", "italic", "boldItalic", "mono", "fallbacks", "systemFonts"};
     static constexpr std::array<std::string_view, 8> kGridFields{"characters", "cellWidth", "cellHeight", "spacing", "margin", "advance", "lineHeight", "baseline"};
     static constexpr std::array<std::string_view, 3> kStyleFields{"bold", "italic", "mono"};
     static constexpr std::array<std::string_view, 3> kShapeFields{"size", "direction", "language"};
@@ -68,6 +69,8 @@ class FontLua final {
 
     static int familyFace(lua_State* L);
     static int familyFallbacks(lua_State* L);
+    static int familySystemFonts(lua_State* L);
+    [[nodiscard]] static const std::shared_ptr<text::SystemFonts>& getSystemFonts(lua_State* L);
     static int familySelect(lua_State* L);
     static int familyResolve(lua_State* L);
     static int familyMeasure(lua_State* L);

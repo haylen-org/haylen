@@ -26,12 +26,14 @@
 #include "platform/NativeWindow.hpp"
 #include "platform/Player.hpp"
 #include "platform/ScreenRelay.hpp"
+#include "platform/SystemFontReader.hpp"
 #include "platform/android/AndroidActivity.hpp"
 #include "platform/android/AndroidAssetPackage.hpp"
 #include "platform/android/AndroidAssetReader.hpp"
 #include "platform/android/AndroidBatteryStatus.hpp"
 #include "platform/android/AndroidDeviceInfo.hpp"
 #include "platform/android/AndroidDisplays.hpp"
+#include "platform/android/AndroidFonts.hpp"
 #include "platform/android/AndroidGamepads.hpp"
 #include "platform/android/AndroidKeys.hpp"
 #include "platform/android/AndroidMouseWheel.hpp"
@@ -239,6 +241,14 @@ void Services::announce(std::string_view text, bool interrupt) {
 }
 
 // Android 8.1 lacks the media data source that the decoder reads the package through, so it plays no video.
+std::optional<SystemFont> Services::findSystemFont(char32_t codePoint) {
+    return AndroidFonts::find(codePoint);
+}
+
+std::vector<std::uint8_t> Services::readSystemFont(const SystemFont& font) {
+    return SystemFontReader::read(font.file);
+}
+
 std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) {
     if (!AndroidVideoDecoder::isAvailable()) {
         return nullptr;

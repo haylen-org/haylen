@@ -97,6 +97,8 @@ class NativeHost : public Host {
     void setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) override;
     void announce(std::string_view text, bool interrupt) override;
     [[nodiscard]] std::unique_ptr<VideoDecoder> openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) override;
+    [[nodiscard]] std::optional<SystemFont> findSystemFont(char32_t codePoint) override;
+    [[nodiscard]] std::vector<std::uint8_t> readSystemFont(const SystemFont& font) override;
     void guardCrashes(const std::filesystem::path& report) override;
     void setCrashContext(std::string_view json) override;
     void checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) override;

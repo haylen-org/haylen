@@ -23,11 +23,14 @@ class FontFile final {
     // No coordinate of a font file reaches this many font units from the origin of its glyph, so a box that does comes from a broken file.
     static constexpr int kMaxReach = 1 << 16;
 
-    // Reads bytes that stay where they are while the file and every font made from it live. Returns nothing for bytes that are not a font with glyphs, a character map and outlines whose ascender rises above its descender.
-    [[nodiscard]] static std::optional<FontFile> read(std::span<const std::uint8_t> bytes);
+    // Reads the face of the bytes that stay where they are while the file and every font made from it live. The face picks a font of a collection, a `.ttc` file, by its index from 0, and a file of one font has only the face 0. Returns nothing for bytes without that face or whose face is not a font with glyphs, a character map and outlines whose ascender rises above its descender.
+    [[nodiscard]] static std::optional<FontFile> read(std::span<const std::uint8_t> bytes, unsigned int face = 0);
 
-    // Reads bytes that the file takes along, which live while HarfBuzz holds any font made from them.
-    [[nodiscard]] static std::optional<FontFile> read(std::vector<std::uint8_t> bytes);
+    // Reads the face of bytes that the file takes along, which live while HarfBuzz holds any font made from them.
+    [[nodiscard]] static std::optional<FontFile> read(std::vector<std::uint8_t> bytes, unsigned int face = 0);
+
+    // Returns how many faces the bytes hold: the fonts of a collection, 1 for a font file and 0 for bytes that are neither.
+    [[nodiscard]] static unsigned int countFaces(std::span<const std::uint8_t> bytes);
 
     [[nodiscard]] std::span<const std::uint8_t> getBytes() const noexcept {
         return bytes;
@@ -61,12 +64,15 @@ class FontFile final {
     // Returns the box of the outline of a glyph in font units, or nothing for a glyph without one, such as a space, or with a box that reaches past `kMaxReach`.
     [[nodiscard]] std::optional<hb_glyph_extents_t> getExtents(std::uint32_t glyph) const noexcept;
 
+    // Whether the engine draws the glyphs of the face, as `GlyphTables::isDrawable` decides from its tables.
+    [[nodiscard]] bool isDrawable() const;
+
   private:
     using Blob = std::unique_ptr<hb_blob_t, decltype(&hb_blob_destroy)>;
 
-    explicit FontFile(Blob fileBlob);
+    FontFile(Blob fileBlob, unsigned int index);
 
-    [[nodiscard]] static std::optional<FontFile> open(Blob fileBlob, unsigned int length);
+    [[nodiscard]] static std::optional<FontFile> open(Blob fileBlob, unsigned int length, unsigned int index);
     static void release(void* owned);
 
     [[nodiscard]] bool hasTable(hb_tag_t tag) const;

@@ -359,6 +359,14 @@ std::unique_ptr<VideoDecoder> NativeHost::openVideo(std::shared_ptr<io::PackageR
     return Services::openVideo(std::move(file), path);
 }
 
+std::optional<SystemFont> NativeHost::findSystemFont(char32_t codePoint) {
+    return Services::findSystemFont(codePoint);
+}
+
+std::vector<std::uint8_t> NativeHost::readSystemFont(const SystemFont& font) {
+    return Services::readSystemFont(font);
+}
+
 void NativeHost::guardCrashes(const std::filesystem::path& report) {
     CrashGuard::setReport(report);
 }

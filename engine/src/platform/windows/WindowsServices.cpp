@@ -20,8 +20,10 @@
 #include "platform/BridgeRelay.hpp"
 #include "platform/NativeWindow.hpp"
 #include "platform/ScreenRelay.hpp"
+#include "platform/SystemFontReader.hpp"
 #include "platform/windows/WindowsAccessibility.hpp"
 #include "platform/windows/WindowsDesktop.hpp"
+#include "platform/windows/WindowsFonts.hpp"
 #include "platform/windows/WindowsLinks.hpp"
 #include "platform/windows/WindowsMediaSession.hpp"
 #include "platform/windows/WindowsMemory.hpp"
@@ -235,6 +237,14 @@ void Services::updateAccessibility(std::span<const AccessibilityElement> element
 
 void Services::announce(std::string_view text, bool interrupt) {
     WindowsAccessibility::announce(text, interrupt);
+}
+
+std::optional<SystemFont> Services::findSystemFont(char32_t codePoint) {
+    return WindowsFonts::find(codePoint);
+}
+
+std::vector<std::uint8_t> Services::readSystemFont(const SystemFont& font) {
+    return SystemFontReader::read(font.file);
 }
 
 std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) {

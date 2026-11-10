@@ -29,6 +29,7 @@
 #import "platform/apple/AppleDesktop.hpp"
 #import "platform/apple/AppleDisplays.hpp"
 #import "platform/apple/AppleFold.hpp"
+#import "platform/apple/AppleFonts.hpp"
 #import "platform/apple/AppleGamepads.hpp"
 #import "platform/apple/AppleKeyboard.hpp"
 #import "platform/apple/AppleLanguages.hpp"
@@ -380,6 +381,14 @@ void Services::updateAccessibility(std::span<const AccessibilityElement> element
 
 void Services::announce(std::string_view text, bool interrupt) {
     [HaylenAccessibilityView.shared announce:[[NSString alloc] initWithBytes:text.data() length:text.size() encoding:NSUTF8StringEncoding] interrupt:interrupt];
+}
+
+std::optional<SystemFont> Services::findSystemFont(char32_t codePoint) {
+    return AppleFonts::find(codePoint);
+}
+
+std::vector<std::uint8_t> Services::readSystemFont(const SystemFont& font) {
+    return AppleFonts::read(font);
 }
 
 std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) {

@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <optional>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -317,6 +318,15 @@ void Services::updateAccessibility(std::span<const AccessibilityElement> element
 
 void Services::announce(std::string_view text, bool interrupt) {
     haylen_js_announce(std::string(text).c_str(), interrupt ? 1 : 0);
+}
+
+// A page reads no file of the fonts of the system, and the API of the browser that lists them asks the person for a permission first, so a page finds none.
+std::optional<SystemFont> Services::findSystemFont(char32_t) {
+    return std::nullopt;
+}
+
+std::vector<std::uint8_t> Services::readSystemFont(const SystemFont& font) {
+    throw std::logic_error("A web page has no font of the system to read, such as \"" + font.name + "\".");
 }
 
 std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) {

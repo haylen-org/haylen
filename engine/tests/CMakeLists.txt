@@ -172,6 +172,7 @@ set(HAYLEN_TEST_SOURCES
   platform/AndroidBatteryStatusTests.cpp
   platform/AndroidDeviceInfoTests.cpp
   platform/AndroidFramePacerTests.cpp
+  platform/SystemFontReaderTests.cpp
   platform/FrameRateGateTests.cpp
   platform/PixelDensityCapTests.cpp
   platform/AndroidGamepadStatesTests.cpp
@@ -217,6 +218,7 @@ set(HAYLEN_TEST_SOURCES
   support/ContentServer.cpp
   support/CountingPackage.cpp
   support/DamagedFonts.cpp
+  support/FontCollection.cpp
   support/DebugClient.cpp
   support/EngineFixture.cpp
   support/EventLoop.cpp
@@ -231,6 +233,7 @@ set(HAYLEN_TEST_SOURCES
   text/RichTextLayoutTests.cpp
   text/RichTextMarkupTests.cpp
   text/ShapingTests.cpp
+  text/SystemFontTests.cpp
   text/TextLuaTests.cpp
   ui/AccessibilityTreeTests.cpp
   ui/AnchorTests.cpp
@@ -287,10 +290,21 @@ endif()
 # The shader tests compile a material with `haylen.py shaders`, the way apps compile theirs, the font tests read subsets of open fonts in `data/fonts` that keep the characters the tests use, the audio tests read short tones made for them in `data/audio`, in every compressed format the engine decodes, and the video tests read a clip made for them in `data/video`.
 find_package(Python3 3.12 REQUIRED COMPONENTS Interpreter)
 target_compile_definitions(haylen-tests PRIVATE HAYLEN_PYTHON="${Python3_EXECUTABLE}" HAYLEN_TOOL_SCRIPT="${HAYLEN_ENGINE_DIR}/../haylen.py" HAYLEN_SHADER_COMPILER="${HAYLEN_SHADERC}" HAYLEN_TEST_FONTS="${CMAKE_CURRENT_LIST_DIR}/data/fonts" HAYLEN_TEST_AUDIO="${CMAKE_CURRENT_LIST_DIR}/data/audio" HAYLEN_TEST_VIDEO="${CMAKE_CURRENT_LIST_DIR}/data/video" HAYLEN_DOCS_DIR="${HAYLEN_ENGINE_DIR}/../docs")
-# On Windows the tests also run the decoder of Media Foundation and the reader of the accessibility settings, which need no window, on the clip made for the tests in `data/video`.
+# On Windows the tests also run the decoder of Media Foundation, the font fallback of DirectWrite and the reader of the accessibility settings, which need no window, on the clip made for the tests in `data/video`.
 if(WIN32)
-  target_sources(haylen-tests PRIVATE platform/WindowsAccessibilityTests.cpp platform/WindowsSettingsTests.cpp platform/WindowsVideoDecoderTests.cpp "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsAccessibilityElement.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsAccessibilityRoot.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsAccessibilityTree.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsSettings.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsVideoDecoder.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsPackageStream.cpp")
-  target_link_libraries(haylen-tests PRIVATE advapi32 ole32 oleaut32 mfplat mfreadwrite mfuuid uiautomationcore)
+  target_sources(haylen-tests PRIVATE platform/WindowsAccessibilityTests.cpp platform/WindowsFontsTests.cpp platform/WindowsSettingsTests.cpp platform/WindowsVideoDecoderTests.cpp "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsAccessibilityElement.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsAccessibilityRoot.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsAccessibilityTree.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsFonts.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsFontText.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsSettings.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsText.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsVideoDecoder.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsPackageStream.cpp")
+  target_link_libraries(haylen-tests PRIVATE advapi32 dwrite ole32 oleaut32 mfplat mfreadwrite mfuuid uiautomationcore)
+endif()
+# On Linux the tests also find the fonts of the system through fontconfig, where the system has it.
+if(HAYLEN_PLATFORM STREQUAL "linux")
+  target_sources(haylen-tests PRIVATE platform/LinuxFontsTests.cpp "${HAYLEN_ENGINE_DIR}/src/platform/linux/LinuxFonts.cpp")
+  target_link_libraries(haylen-tests PRIVATE ${CMAKE_DL_LIBS})
+endif()
+# On Apple platforms the tests also find the fonts of the system through CoreText.
+if(APPLE)
+  target_sources(haylen-tests PRIVATE platform/AppleFontsTests.mm "${HAYLEN_ENGINE_DIR}/src/platform/apple/AppleFonts.mm")
+  set_source_files_properties(platform/AppleFontsTests.mm "${HAYLEN_ENGINE_DIR}/src/platform/apple/AppleFonts.mm" PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+  target_link_libraries(haylen-tests PRIVATE "-framework CoreText" "-framework Foundation")
 endif()
 haylen_enable_warnings(haylen-tests)
 haylen_enable_coverage(haylen-tests)
