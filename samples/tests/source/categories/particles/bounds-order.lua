@@ -21,6 +21,8 @@ BoundsOrder.cloud = -480
 BoundsOrder.snowBox = {-220, -330, 520, 600}
 BoundsOrder.order = {layer = 1}
 BoundsOrder.captionY = 400
+-- The two smokes stand closer than the length of their option, which their captions break after its name.
+BoundsOrder.smoke = {440, 820}
 BoundsOrder.tile = 140
 
 function BoundsOrder:init(entry)
@@ -42,8 +44,8 @@ function BoundsOrder:init(entry)
     self.oldestFirst = particles2d.newEmitter(smoke)
     smoke.particleOrder, smoke.seed = 'newestFirst', 244
     self.newestFirst = particles2d.newEmitter(smoke)
-    self.oldestFirst.x, self.oldestFirst.y = 460, 330
-    self.newestFirst.x, self.newestFirst.y = 860, 330
+    self.oldestFirst.x, self.oldestFirst.y = BoundsOrder.smoke[1], 330
+    self.newestFirst.x, self.newestFirst.y = BoundsOrder.smoke[2], 330
 
     self.emitters = {self.rain, self.snow, self.oldestFirst, self.newestFirst}
 end
@@ -102,8 +104,8 @@ function BoundsOrder:draw(area)
     ParticleTest.drawAll(self.emitters)
     ParticleTest.label('Rain that dies', -600, BoundsOrder.captionY, "boundsMode = 'kill'")
     ParticleTest.label('Snow that wraps', 40, BoundsOrder.captionY, "boundsMode = 'wrap'")
-    ParticleTest.label('New on top', 460, BoundsOrder.captionY, "particleOrder = 'oldestFirst'")
-    ParticleTest.label('New below', 860, BoundsOrder.captionY, "particleOrder = 'newestFirst'")
+    ParticleTest.label('New on top', BoundsOrder.smoke[1], BoundsOrder.captionY, "particleOrder =\n'oldestFirst'")
+    ParticleTest.label('New below', BoundsOrder.smoke[2], BoundsOrder.captionY, "particleOrder =\n'newestFirst'")
 end
 
 return BoundsOrder

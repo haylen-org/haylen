@@ -106,21 +106,21 @@ end
 function ParticleTest.legend(lines)
     local area = graphics2d.canvasBounds()
     for index, line in ipairs(lines) do
-        local x, y = area.x + 40, area.y + 40 + (index - 1) * 64
-        local width = graphics2d.measureText(nil, line.text, {size = 26}) + (line.color and 72 or 48)
-        graphics2d.drawShape({x, y, width, 50}, {radius = 25, color = '#D02F3352', borderWidth = 3, borderColor = '#FF15172A', layer = 30})
+        local x, y = area.x + 40, area.y + 40 + (index - 1) * 76
+        local width = graphics2d.measureText(nil, line.text, {size = 32}) + (line.color and 84 or 56)
+        graphics2d.drawShape({x, y, width, 60}, {radius = 30, color = '#D02F3352', borderWidth = 3, borderColor = '#FF15172A', layer = 30})
         if line.color then
-            graphics2d.drawCircle(x + 28, y + 25, 11, line.color, {layer = 31})
+            graphics2d.drawCircle(x + 32, y + 30, 13, line.color, {layer = 31})
         end
-        graphics2d.drawText(nil, line.text, x + (line.color and 52 or 24), y + 25, {size = 26, anchor = {0, 0.5}, layer = 31})
+        graphics2d.drawText(nil, line.text, x + (line.color and 60 or 28), y + 30, {size = 32, anchor = {0, 0.5}, layer = 31})
     end
 end
 
--- Draws a caption centered under a point of the world, in words for people with the name of the option in a smaller second line when one is given.
-function ParticleTest.label(text, x, y, option)
+-- Draws a caption centered under a point of the world, in words for people with the name of the option in a smaller second line when one is given, which wraps within `width` world units when a neighbor stands closer than its length.
+function ParticleTest.label(text, x, y, option, width)
     graphics2d.drawText(nil, text, x, y, {size = 40, anchor = {0.5, 0}, outlineWidth = 4, layer = 20})
     if option then
-        graphics2d.drawText(nil, option, x, y + 50, {size = 32, anchor = {0.5, 0}, outlineWidth = 3, color = '#FFC8D0E8', layer = 20})
+        graphics2d.drawText(nil, option, x, y + 50, {size = 32, anchor = {0.5, 0}, align = 'center', maxWidth = width or 0, outlineWidth = 3, color = '#FFC8D0E8', layer = 20})
     end
 end
 

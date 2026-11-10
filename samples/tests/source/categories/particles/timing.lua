@@ -20,6 +20,8 @@ flame:restart()  -- Arms the delay again.]]
 Timing.launch = {-720, 280}
 Timing.floor = 310
 Timing.captionY = 360
+-- The times of the launch wrap within this width, so they never reach the caption of the crackle.
+Timing.captionWidth = 420
 Timing.rest = 1.2
 -- The crackle sparks from a campfire, the sputter coughs out of a cannon and the pulses spout from a fountain, all standing on the floor.
 Timing.campfire = {x = -240, scale = 0.42}
@@ -134,7 +136,7 @@ function Timing:draw(area)
     ParticleTest.prop('cannon', Timing.cannon.x, Timing.floor + 6, Timing.cannon.scale, {pivotY = 1, layer = 4})
     ParticleTest.prop('fountain', Timing.fountain.x, Timing.floor + 20, Timing.fountain.scale, {pivotY = 1, layer = 2})
     ParticleTest.drawAll(self.emitters)
-    ParticleTest.label('Launch in sequence', Timing.launch[1], Timing.captionY, self.launchTimes)
+    ParticleTest.label('Launch in sequence', Timing.launch[1], Timing.captionY, self.launchTimes, Timing.captionWidth)
     ParticleTest.label('Crackle', self.crackle.x, Timing.captionY, 'Cycles and a probability')
     ParticleTest.label('Sputter', Timing.cannon.x, Timing.captionY, 'Small coughs, then a puff')
     ParticleTest.label('Pulses', Timing.fountain.x, Timing.captionY, 'Three bursts a cycle')
