@@ -26,6 +26,8 @@ Terrain.cellSize = 5
 Terrain.columns, Terrain.rows = 481, 161
 Terrain.origin = {x = -1200, y = -380}
 Terrain.tools = {bomb = 60, dig = 36, fill = 36}
+-- The noise of the hills, whose valleys and crests bend no tighter than the bands of grass and dirt that follow them are wide, so neither band folds over itself.
+Terrain.hills = {scale = 110, persistence = 0.3, octaves = 2, height = 140}
 -- Pockets dug into the ground when it grows, as `{x, y, radius}`, which show the earth behind it.
 Terrain.caves = {{-560, 250, 46}, {90, 310, 58}, {600, 270, 40}}
 -- The earth behind the ground is the same soil in the shade.
@@ -73,7 +75,7 @@ function Terrain:build()
     local size = Terrain.cellSize
     local surface, backfill, above, top = {}, {}, {}, {}
     for column = 0, Terrain.columns - 1 do
-        surface[column] = 260 + noise:fractal(column / 70, 0.3, 4) * 140
+        surface[column] = 260 + noise:fractal(column / Terrain.hills.scale, Terrain.hills.persistence, Terrain.hills.octaves) * Terrain.hills.height
         local x, y = Terrain.origin.x + column * size, Terrain.origin.y + surface[column]
         backfill[#backfill + 1] = {x, y + 6}
         above[#above + 1] = {x, y + 2}
@@ -154,7 +156,7 @@ function Terrain:isLawn(a, b)
     return row < 0 or self.terrain:sample(column, row) < 0.5
 end
 
--- Finds the runs of top faces along the solid outlines and joins the runs that meet at the edges of chunks, so each stretch of lawn draws as one band of grass.
+-- Finds the runs of top faces along the solid outlines and joins the runs that meet at the edges of chunks, so each stretch of lawn draws as one band of grass. A lawn ends square where a crater cuts it, since a round end would reach over the crater.
 function Terrain:growGrass()
     local runs = {}
     for _, outline in ipairs(self.ground) do
@@ -198,7 +200,9 @@ function Terrain:growGrass()
     self.lawns = {}
     for _, run in ipairs(joined) do
         if run[#run][1] - run[1][1] > 8 then
-            self.lawns[#self.lawns + 1] = Scenery.newGrass(run)
+            local lawn = Scenery.newGrass(run)
+            lawn.stroke.cap = 'butt'
+            self.lawns[#self.lawns + 1] = lawn
         end
     end
 end
