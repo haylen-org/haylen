@@ -15,7 +15,8 @@ local Scenery = require('categories.physics.scenery')
 local Explosions = haylen.class('Explosions', PhysicsTest)
 
 Explosions.code = [[
-local hits = physics2d.explode(world, {x = x, y = y, radius = 280, impulse = 900, falloff = 'quadratic', occlusion = true})
+local blast = {x = x, y = y, radius = 280, impulse = 900, falloff = 'quadratic', occlusion = true}
+local hits = physics2d.explode(world, blast)
 for _, hit in ipairs(hits) do
     arrow(hit.x, hit.y, hit.impulseX, hit.impulseY)  -- The impulse each body took.
 end

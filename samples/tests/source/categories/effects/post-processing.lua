@@ -14,8 +14,9 @@ local PostProcessing = haylen.class('PostProcessing', ParticleTest)
 PostProcessing.code = [[
 local lut = graphics.newTexture(256, 16, {pixels = strip, filter = 'linear'})  -- One 16 by 16 cell per step of blue.
 graphics2d.beginWorld(camera, {postProcess = {
-    bloomStrength = 0.7, bloomThreshold = 0.75, bloomRadius = 20, vignetteStrength = 0.3, saturation = 1.2,
-    colorLut = lut, colorLutStrength = 0.8, chromaticAberration = 3, pixelate = 6, blur = 0.8, grain = 0.12, dither = true,
+    bloomStrength = 0.7, bloomThreshold = 0.75, bloomRadius = 20, vignetteStrength = 0.3,
+    saturation = 1.2, colorLut = lut, colorLutStrength = 0.8, chromaticAberration = 3,
+    pixelate = 6, blur = 0.8, grain = 0.12, dither = true,
 }})]]
 
 PostProcessing.library = 'particles/library/'
