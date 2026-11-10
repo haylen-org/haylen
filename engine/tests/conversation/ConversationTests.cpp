@@ -106,25 +106,52 @@ TEST(ExpressionTest, ReadsAndComputesIntegersAsLuaDoes) {
     EXPECT_EQ(Expression::parse("99999999999999999999").evaluate(lookup), 1e20);
 }
 
-// Reading and evaluating recurse through the levels of an expression, so a deeper one is refused instead of running out of the native stack.
-TEST(ExpressionTest, RefusesExpressionsThatNestTooDeeply) {
-    const std::string parentheses = std::string(100000, '(') + "1" + std::string(100000, ')');
+// Reading and evaluating keep their place in lists instead of recursing, so an expression of any depth stays within the smallest native stack, the one of a Windows thread.
+TEST(ExpressionTest, ReadsAndEvaluatesExpressionsOfAnyDepth) {
+    const Expression::Lookup lookup = [](std::string_view) { return core::Json(); };
+    constexpr int kLevels = 100000;
     std::string negations;
+    std::string minuses;
     std::string chain = "1";
-    for (int index = 0; index < 100000; ++index) {
+    for (int index = 0; index < kLevels; ++index) {
         negations += "not ";
+        minuses += "-";
         chain += " + 1";
     }
-    negations += "true";
-    for (const std::string& text : {parentheses, negations, chain}) {
+
+    EXPECT_EQ(Expression::parse(std::string(kLevels, '(') + "1" + std::string(kLevels, ')')).evaluate(lookup), 1);
+    EXPECT_EQ(Expression::parse(negations + "nil").evaluate(lookup), false);
+    EXPECT_EQ(Expression::parse(minuses + "1").evaluate(lookup), 1);
+    EXPECT_EQ(Expression::parse(chain).evaluate(lookup), kLevels + 1);
+}
+
+// Operators bind as in Lua, a comparison takes no second comparison beside it and `not` begins only a whole condition.
+TEST(ExpressionTest, BindsOperatorsAsLuaDoes) {
+    const Expression::Lookup lookup = [](std::string_view) { return core::Json(); };
+    EXPECT_EQ(Expression::parse("not 1 == 2").evaluate(lookup), true);
+    EXPECT_EQ(Expression::parse("not nil and false").evaluate(lookup), false);
+    EXPECT_EQ(Expression::parse("2 - 3 - 4 * -2 / 4").evaluate(lookup), 1.0);
+    EXPECT_EQ(Expression::parse("1 < 2 and 2 < 3 or false").evaluate(lookup), true);
+    EXPECT_EQ(Expression::parse("1 < (2 < 3 and 4)").evaluate(lookup), true);
+    EXPECT_EQ(Expression::parse("false and 1 + 'a' or 5").evaluate(lookup), 5);
+
+    // clang-format off
+    const auto refusal = [](std::string_view text) -> std::string {
         try {
             (void)Expression::parse(text);
-            ADD_FAILURE() << "An expression nested too deeply was read.";
         } catch (const std::invalid_argument& error) {
-            EXPECT_NE(std::string(error.what()).find("nests deeper than 200 levels"), std::string::npos);
+            return error.what();
         }
-    }
-    EXPECT_EQ(Expression::parse(std::string(150, '(') + "1" + std::string(150, ')')).evaluate([](std::string_view) { return core::Json(); }), 1);
+        return {};
+    };
+    // clang-format on
+    EXPECT_EQ(refusal("1 < 2 < 3"), "The expression \"1 < 2 < 3\" has text after its end.");
+    EXPECT_EQ(refusal("(1 < 2 < 3)"), "The expression \"(1 < 2 < 3)\" misses a closing parenthesis at character 8.");
+    EXPECT_EQ(refusal("1 < (2) < 3"), "The expression \"1 < (2) < 3\" has text after its end.");
+    EXPECT_EQ(refusal("1 == not 2"), "The expression \"1 == not 2\" has \"not\" where a value belongs at character 6.");
+    EXPECT_EQ(refusal("-not 2"), "The expression \"-not 2\" has \"not\" where a value belongs at character 2.");
+    EXPECT_EQ(refusal("((1)"), "The expression \"((1)\" misses a closing parenthesis at character 5.");
+    EXPECT_EQ(refusal("1 +"), "The expression \"1 +\" ends where a value belongs at character 4.");
 }
 
 TEST_F(ConversationTest, NamesTheNodeAndTheFieldOfAMistake) {

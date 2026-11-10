@@ -208,7 +208,6 @@ An expression that cannot be read gives one of these errors, which the messages 
 | `The expression "<text>" has a number it cannot read at character <number>.` | A number is broken. |
 | `The expression "<text>" has "<word>" where a value belongs at character <number>.` | A word or a sign stands where a value belongs, such as `gold > and`. |
 | `The expression "<text>" has text after its end.` | Something follows a whole expression, such as `gold 5` or a second comparison. |
-| `The expression "<text>" nests deeper than 200 levels at character <number>.` | Parentheses, `not`, minus signs or a chain of operators, such as `1 + 1 + 1`, go deeper than 200 levels. |
 
 ```lua
 local conversation = require('haylen.conversation')

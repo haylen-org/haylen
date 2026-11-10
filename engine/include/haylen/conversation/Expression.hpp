@@ -43,33 +43,54 @@ class Expression final {
         core::Json value;
         std::size_t left = 0;
         std::size_t right = 0;
-
-        // The levels of terms that the evaluation of this term goes through, itself included.
-        std::size_t depth = 1;
     };
 
-    // Terms and parentheses nest at most this deep, so neither reading nor evaluating an expression runs out of the native stack.
-    static constexpr std::size_t kMaxDepth = 200;
+    // A term that the evaluation reached, and the operands of it that it has evaluated so far.
+    struct Visit {
+        enum class Stage : std::uint8_t {
+            Enter,
+            Left,
+            Right,
+        };
 
-    // Reads one expression from the text, keeping the position of the next character.
+        std::size_t index = 0;
+        Stage stage = Stage::Enter;
+    };
+
+    // Reads one expression from the text, keeping the position of the next character. It keeps the operators that wait for their operands in lists instead of recursing, so an expression of any depth reads within any native stack.
     class Reader final {
       public:
         Reader(std::string_view source, std::vector<Term>& output) : text(source), terms(output) {}
 
-        [[nodiscard]] std::size_t readOr();
+        [[nodiscard]] std::size_t read();
         [[nodiscard]] bool isDone();
 
       private:
-        [[nodiscard]] std::size_t readAnd();
-        [[nodiscard]] std::size_t readNot();
-        [[nodiscard]] std::size_t readComparison();
-        [[nodiscard]] std::size_t readSum();
-        [[nodiscard]] std::size_t readProduct();
-        [[nodiscard]] std::size_t readUnary();
-        [[nodiscard]] std::size_t readPrimary();
+        // An operator that waits for its right operand, or an open parenthesis, which keeps whether the comparison around it already compared.
+        struct Pending {
+            Kind kind = Kind::Binary;
+            std::string operation;
+            int level = 0;
+            bool parenthesis = false;
+            bool compared = false;
+        };
+
+        // The levels at which operators bind, from the loosest to the tightest.
+        static constexpr int kOrLevel = 1;
+        static constexpr int kAndLevel = 2;
+        static constexpr int kNotLevel = 3;
+        static constexpr int kComparisonLevel = 4;
+        static constexpr int kSumLevel = 5;
+        static constexpr int kProductLevel = 6;
+        static constexpr int kNegateLevel = 7;
+
+        void readOperand(bool allowsNot);
+        [[nodiscard]] std::size_t readValue();
+        [[nodiscard]] std::string takeOperation();
+        [[nodiscard]] static int getLevel(std::string_view operation) noexcept;
+        void reduce(int level);
+        void closeParenthesis();
         [[nodiscard]] std::size_t add(Term term);
-        void enterLevel();
-        [[nodiscard]] std::size_t binary(std::string operation, std::size_t left, std::size_t right);
         [[nodiscard]] bool takeWord(std::string_view word);
         [[nodiscard]] bool takeSymbol(std::string_view symbol);
         [[nodiscard]] std::invalid_argument fail(std::string_view problem) const;
@@ -77,11 +98,15 @@ class Expression final {
 
         std::string_view text;
         std::vector<Term>& terms;
+        std::vector<Pending> pending;
+        std::vector<std::size_t> operands;
         std::size_t position = 0;
-        std::size_t nesting = 0;
+        std::size_t parentheses = 0;
+        bool compared = false;
     };
 
-    [[nodiscard]] core::Json evaluate(std::size_t index, const Lookup& lookup) const;
+    [[nodiscard]] core::Json negate(const core::Json& value) const;
+    [[nodiscard]] core::Json combine(const std::string& operation, const core::Json& left, const core::Json& right) const;
     [[nodiscard]] static bool isTrue(const core::Json& value) noexcept;
     [[nodiscard]] double number(const core::Json& value, std::string_view operation) const;
 

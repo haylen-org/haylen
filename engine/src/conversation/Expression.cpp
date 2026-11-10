@@ -16,19 +16,15 @@ Expression Expression::parse(std::string_view text) {
     Expression expression;
     expression.text = std::string(text);
     Reader reader(expression.text, expression.terms);
-    expression.root = reader.readOr();
+    expression.root = reader.read();
     if (!reader.isDone()) {
         throw std::invalid_argument(std::format("The expression \"{}\" has text after its end.", text));
     }
     return expression;
 }
 
-core::Json Expression::evaluate(const Lookup& lookup) const {
-    return evaluate(root, lookup);
-}
-
 bool Expression::test(const Lookup& lookup) const {
-    return isTrue(evaluate(root, lookup));
+    return isTrue(evaluate(lookup));
 }
 
 bool Expression::isTrue(const core::Json& value) noexcept {
@@ -42,33 +38,67 @@ double Expression::number(const core::Json& value, std::string_view operation) c
     return value.get<double>();
 }
 
-// Integers stay integers through addition, subtraction and multiplication, so counters keep their type, and they wrap around past the range of 64 bits, as in Lua.
-core::Json Expression::evaluate(std::size_t index, const Lookup& lookup) const {
-    const Term& term = terms[index];
-    switch (term.kind) {
-    case Kind::Literal:
-        return term.value;
-    case Kind::Name:
-        return lookup(term.value.get_ref<const std::string&>());
-    case Kind::Not:
-        return !isTrue(evaluate(term.left, lookup));
-    case Kind::Negate: {
-        const core::Json value = evaluate(term.left, lookup);
-        return value.is_number_integer() ? core::Json(static_cast<std::int64_t>(0U - static_cast<std::uint64_t>(value.get<std::int64_t>()))) : core::Json(-number(value, "-"));
-    }
-    case Kind::Binary:
-        break;
-    }
+// Each term is visited from a list instead of a recursion, so an expression of any depth evaluates within any native stack. The value of every evaluated operand waits in a list until its operator takes it, and `and` and `or` evaluate their right operand only when the left one does not settle them.
+core::Json Expression::evaluate(const Lookup& lookup) const {
+    std::vector<Visit> visits{{.index = root, .stage = Visit::Stage::Enter}};
+    std::vector<core::Json> values;
+    while (!visits.empty()) {
+        const Visit visit = visits.back();
+        const Term& term = terms[visit.index];
 
-    const std::string& operation = term.operation;
-    const core::Json left = evaluate(term.left, lookup);
-    if (operation == "and") {
-        return isTrue(left) ? evaluate(term.right, lookup) : left;
+        if (term.kind == Kind::Literal || term.kind == Kind::Name) {
+            visits.pop_back();
+            values.push_back(term.kind == Kind::Literal ? term.value : lookup(term.value.get_ref<const std::string&>()));
+            continue;
+        }
+
+        if (visit.stage == Visit::Stage::Enter) {
+            visits.back().stage = Visit::Stage::Left;
+            visits.push_back({.index = term.left, .stage = Visit::Stage::Enter});
+            continue;
+        }
+
+        if (term.kind == Kind::Not || term.kind == Kind::Negate) {
+            visits.pop_back();
+            values.back() = term.kind == Kind::Not ? core::Json(!isTrue(values.back())) : negate(values.back());
+            continue;
+        }
+
+        const bool logical = term.operation == "and" || term.operation == "or";
+        if (visit.stage == Visit::Stage::Left && logical) {
+            const bool settled = term.operation == "and" ? !isTrue(values.back()) : isTrue(values.back());
+            if (settled) {
+                visits.pop_back();
+                continue;
+            }
+            values.pop_back();
+            visits.back() = {.index = term.right, .stage = Visit::Stage::Enter};
+            continue;
+        }
+
+        if (visit.stage == Visit::Stage::Left) {
+            visits.back().stage = Visit::Stage::Right;
+            visits.push_back({.index = term.right, .stage = Visit::Stage::Enter});
+            continue;
+        }
+
+        visits.pop_back();
+        const core::Json right = std::move(values.back());
+        values.pop_back();
+        values.back() = combine(term.operation, values.back(), right);
     }
-    if (operation == "or") {
-        return isTrue(left) ? left : evaluate(term.right, lookup);
+    return std::move(values.back());
+}
+
+core::Json Expression::negate(const core::Json& value) const {
+    if (value.is_number_integer()) {
+        return static_cast<std::int64_t>(0U - static_cast<std::uint64_t>(value.get<std::int64_t>()));
     }
-    const core::Json right = evaluate(term.right, lookup);
+    return -number(value, "-");
+}
+
+// Integers stay integers through addition, subtraction and multiplication, so counters keep their type, and they wrap around past the range of 64 bits, as in Lua.
+core::Json Expression::combine(const std::string& operation, const core::Json& left, const core::Json& right) const {
     if (operation == "==") {
         return left.is_number() && right.is_number() ? left.get<double>() == right.get<double>() : left == right;
     }
@@ -111,93 +141,125 @@ bool Expression::Reader::isDone() {
     return position == text.size();
 }
 
-std::size_t Expression::Reader::readOr() {
-    std::size_t left = readAnd();
-    while (takeWord("or")) {
-        left = binary("or", left, readAnd());
-    }
-    return left;
-}
-
-std::size_t Expression::Reader::readAnd() {
-    std::size_t left = readNot();
-    while (takeWord("and")) {
-        left = binary("and", left, readNot());
-    }
-    return left;
-}
-
-std::size_t Expression::Reader::readNot() {
-    if (takeWord("not")) {
-        enterLevel();
-        const std::size_t operand = readNot();
-        --nesting;
-        return add({.kind = Kind::Not, .operation = {}, .value = {}, .left = operand, .right = 0});
-    }
-    return readComparison();
-}
-
-std::size_t Expression::Reader::readComparison() {
-    const std::size_t left = readSum();
-    for (const std::string_view operation : {"==", "~=", "!=", "<=", ">=", "<", ">"}) {
-        if (takeSymbol(operation)) {
-            return binary(operation == "!=" ? "~=" : std::string(operation), left, readSum());
-        }
-    }
-    return left;
-}
-
-std::size_t Expression::Reader::readSum() {
-    std::size_t left = readProduct();
+// Operators wait in a list until an operator that binds as loosely or more loosely arrives, and a closing parenthesis applies those of its level. A comparison takes no second comparison beside it, and `not` stands only where a whole condition begins: at the start, after `(`, `and`, `or` and another `not`.
+std::size_t Expression::Reader::read() {
+    readOperand(true);
     while (true) {
-        if (takeSymbol("+")) {
-            left = binary("+", left, readProduct());
-        } else if (takeSymbol("-")) {
-            left = binary("-", left, readProduct());
-        } else {
-            return left;
+        const std::string operation = takeOperation();
+        if (!operation.empty()) {
+            const int level = getLevel(operation);
+            reduce(level);
+            pending.push_back({.kind = Kind::Binary, .operation = operation, .level = level, .parenthesis = false, .compared = false});
+            const bool logical = level == kOrLevel || level == kAndLevel;
+            compared = !logical && (compared || level == kComparisonLevel);
+            readOperand(logical);
+            continue;
         }
-    }
-}
 
-std::size_t Expression::Reader::readProduct() {
-    std::size_t left = readUnary();
-    while (true) {
-        if (takeSymbol("*")) {
-            left = binary("*", left, readUnary());
-        } else if (takeSymbol("/")) {
-            left = binary("/", left, readUnary());
-        } else {
-            return left;
+        if (parentheses == 0) {
+            break;
         }
-    }
-}
-
-std::size_t Expression::Reader::readUnary() {
-    if (takeSymbol("-")) {
-        enterLevel();
-        const std::size_t operand = readUnary();
-        --nesting;
-        return add({.kind = Kind::Negate, .operation = {}, .value = {}, .left = operand, .right = 0});
-    }
-    return readPrimary();
-}
-
-std::size_t Expression::Reader::readPrimary() {
-    skipSpaces();
-    if (position == text.size()) {
-        throw fail("ends where a value belongs");
-    }
-    if (takeSymbol("(")) {
-        enterLevel();
-        const std::size_t inner = readOr();
         if (!takeSymbol(")")) {
             throw fail("misses a closing parenthesis");
         }
-        --nesting;
-        return inner;
+        closeParenthesis();
     }
 
+    reduce(0);
+    return operands.back();
+}
+
+void Expression::Reader::readOperand(bool allowsNot) {
+    while (true) {
+        if (allowsNot && takeWord("not")) {
+            pending.push_back({.kind = Kind::Not, .operation = {}, .level = kNotLevel, .parenthesis = false, .compared = false});
+            continue;
+        }
+        if (takeSymbol("-")) {
+            pending.push_back({.kind = Kind::Negate, .operation = {}, .level = kNegateLevel, .parenthesis = false, .compared = false});
+            allowsNot = false;
+            continue;
+        }
+
+        skipSpaces();
+        if (position == text.size()) {
+            throw fail("ends where a value belongs");
+        }
+        if (takeSymbol("(")) {
+            pending.push_back({.kind = Kind::Binary, .operation = {}, .level = 0, .parenthesis = true, .compared = compared});
+            ++parentheses;
+            compared = false;
+            allowsNot = true;
+            continue;
+        }
+
+        operands.push_back(readValue());
+        return;
+    }
+}
+
+std::string Expression::Reader::takeOperation() {
+    for (const std::string_view operation : {"*", "/", "+", "-"}) {
+        if (takeSymbol(operation)) {
+            return std::string(operation);
+        }
+    }
+    if (!compared) {
+        for (const std::string_view operation : {"==", "~=", "!=", "<=", ">=", "<", ">"}) {
+            if (takeSymbol(operation)) {
+                return operation == "!=" ? "~=" : std::string(operation);
+            }
+        }
+    }
+    for (const std::string_view operation : {"and", "or"}) {
+        if (takeWord(operation)) {
+            return std::string(operation);
+        }
+    }
+    return {};
+}
+
+int Expression::Reader::getLevel(std::string_view operation) noexcept {
+    if (operation == "or") {
+        return kOrLevel;
+    }
+    if (operation == "and") {
+        return kAndLevel;
+    }
+    if (operation == "+" || operation == "-") {
+        return kSumLevel;
+    }
+    if (operation == "*" || operation == "/") {
+        return kProductLevel;
+    }
+    return kComparisonLevel;
+}
+
+// Applies the waiting operators that bind at least as tightly as the level, down to the innermost open parenthesis, to the operands they wait for.
+void Expression::Reader::reduce(int level) {
+    while (!pending.empty() && !pending.back().parenthesis && pending.back().level >= level) {
+        Pending applied = std::move(pending.back());
+        pending.pop_back();
+
+        if (applied.kind != Kind::Binary) {
+            operands.back() = add({.kind = applied.kind, .operation = {}, .value = {}, .left = operands.back(), .right = 0});
+            continue;
+        }
+
+        const std::size_t right = operands.back();
+        operands.pop_back();
+        operands.back() = add({.kind = Kind::Binary, .operation = std::move(applied.operation), .value = {}, .left = operands.back(), .right = right});
+    }
+}
+
+void Expression::Reader::closeParenthesis() {
+    reduce(0);
+    compared = pending.back().compared;
+    pending.pop_back();
+    --parentheses;
+}
+
+std::size_t Expression::Reader::readValue() {
     const char first = text[position];
     if (first == '"' || first == '\'') {
         const std::size_t end = text.find(first, position + 1);
@@ -244,27 +306,8 @@ std::size_t Expression::Reader::readPrimary() {
 }
 
 std::size_t Expression::Reader::add(Term term) {
-    if (term.kind == Kind::Not || term.kind == Kind::Negate) {
-        term.depth = terms[term.left].depth + 1;
-    } else if (term.kind == Kind::Binary) {
-        term.depth = std::max(terms[term.left].depth, terms[term.right].depth) + 1;
-    }
-    if (term.depth > kMaxDepth) {
-        throw fail(std::format("nests deeper than {} levels", kMaxDepth));
-    }
     terms.push_back(std::move(term));
     return terms.size() - 1;
-}
-
-void Expression::Reader::enterLevel() {
-    ++nesting;
-    if (nesting > kMaxDepth) {
-        throw fail(std::format("nests deeper than {} levels", kMaxDepth));
-    }
-}
-
-std::size_t Expression::Reader::binary(std::string operation, std::size_t left, std::size_t right) {
-    return add({.kind = Kind::Binary, .operation = std::move(operation), .value = {}, .left = left, .right = right});
 }
 
 // A word only counts as a whole word, so `order` never starts with `or`.
