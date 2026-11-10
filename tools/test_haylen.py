@@ -2206,6 +2206,28 @@ class AppShadersTest(unittest.TestCase):
                 haylen.compile_app_shaders(app)
             compile_shader.assert_called_once_with(source, compiled)
 
+    def test_a_shader_file_that_goes_away_while_the_watcher_reads_it_keeps_the_watcher_running(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            app = Path(scratch) / "app"
+            shaders = app / "content" / "shaders"
+            shaders.mkdir(parents=True)
+            source = shaders / "glow.glsl"
+            source.write_text("@program glow haylen_vs glow_fs\n", encoding="utf-8")
+            # An editor deletes its scratch file between the listing of the folder and the read or the time of the file.
+            vanished = shaders / "glow.glsl~.glsl"
+            listing = Path.rglob
+
+            def listed(folder: Path, pattern: str) -> list[Path]:
+                found = list(listing(folder, pattern))
+                return [*found, vanished] if folder == shaders else found
+
+            with mock.patch.object(haylen.Path, "rglob", listed):
+                self.assertEqual(haylen.shader_sources(app), [source])
+                self.assertGreaterEqual(haylen.newest_shader_source(app), source.stat().st_mtime)
+            with mock.patch.object(haylen, "ensure_shaderc") as compiler:
+                haylen.compile_shader(vanished, vanished.with_suffix(".shader"))
+            compiler.assert_not_called()
+
 
 class ShaderCompilerTest(unittest.TestCase):
     def setUp(self):

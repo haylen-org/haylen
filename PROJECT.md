@@ -2376,7 +2376,7 @@ Achados da revisão geral, decididos pelo dono em 10/11/2026:
 - [ ] O `GroupLua::pushMask` deixa o modo de máscara ligado depois de um erro capturado: restaurar em todos os caminhos, sem locais destrutíveis atravessando chamadas do Lua.
 - [ ] O `ReleasePackage::acquireKey` chama de volta com o mutex preso: soltar a trava antes da chamada.
 - [ ] Um registro parcial guardado e estragado no armazenamento de conteúdo bloqueia esse registro para sempre: descartar e baixar de novo.
-- [ ] O observador de shaders tem a mesma corrida do arquivo que some que o observador do hot reload tinha: corrigir do mesmo jeito.
+- [x] O observador de shaders tem a mesma corrida do arquivo que some que o observador do hot reload tinha: corrigir do mesmo jeito. Feito: `shader_sources`, `newest_shader_source`, `compile_app_shaders` e `compile_shader` ignoram um arquivo que some entre a listagem e o `stat` ou a leitura, como o observador do hot reload, e um teste de `tools/test_haylen.py` lista um arquivo que já sumiu e confirma que nada falha, teste que falha sem a correção.
 - [ ] O `VectorAtlas` pode criar uma página de cerca de 1 GiB: limitar. O `PathTessellation` e vários bindings de desenho alocam a cada quadro: corrigir e cobrir com testes do `test::AllocationTracker`.
 - [ ] API pública sem uso (`Gui::isPreparing`, `Theme::setHighContrast`, `Theme::setImageFilter` e `Collection::setLayout`): remover o que ninguém usa, ou ligar ao Lua e documentar o que for uma capacidade de verdade.
 - [ ] O `native.findSymbol` não acha os símbolos do próprio app nos builds Release da Apple, e o `docs/tools/build.md` exagera quão poucos símbolos um app exporta: deixar a documentação exata.

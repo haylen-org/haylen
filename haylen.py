@@ -3256,8 +3256,11 @@ def plugin_file(app: App, plugin: Plugin, value: str) -> Path | None:
 
 
 def compile_shader(source: Path, output: Path) -> None:
-    """Compiles one shader source of an app into a `.shader` package with every program the engine draws with, for every shader language the engine runs."""
-    text = source.read_text(encoding="utf-8")
+    """Compiles one shader source of an app into a `.shader` package with every program the engine draws with, for every shader language the engine runs. A source that went away since it was listed, such as the scratch file of an editor, compiles to nothing."""
+    try:
+        text = source.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return
     declared = re.findall(r"^\s*@program\s+(\w+)\s+(\w+)\s+(\w+)", text, re.MULTILINE)
     if len(declared) != 1 or declared[0][1] != "haylen_vs":
         raise BuildError(f'The shader `{shown_path(source)}` must declare exactly one "@program" whose vertex shader is "haylen_vs" from "haylen/material.glsl".')
@@ -3269,14 +3272,25 @@ def compile_shader(source: Path, output: Path) -> None:
 
 
 def shader_sources(folder: Path) -> list[Path]:
-    """Lists the sources of an app that declare a program, which are the ones `haylen.py` compiles, while the others are files they include."""
-    shaders = folder / "content" / "shaders"
-    return sorted(path for path in shaders.rglob("*.glsl") if re.search(r"^\s*@program\b", path.read_text(encoding="utf-8"), re.MULTILINE)) if shaders.is_dir() else []
+    """Lists the sources of an app that declare a program, which are the ones `haylen.py` compiles, while the others are files they include. A file that goes away while the folder is listed is no source."""
+    sources = []
+    for path in sorted((folder / "content" / "shaders").rglob("*.glsl")):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            continue
+        if re.search(r"^\s*@program\b", text, re.MULTILINE):
+            sources.append(path)
+    return sources
 
 
 def newest_shader_source(folder: Path) -> float:
-    """Returns the time of the newest shader source of an app or the shader library, or of the pin of the shader compiler, which every compiled shader of the app must be newer than."""
-    return max(path.stat().st_mtime for path in [*(folder / "content" / "shaders").rglob("*.glsl"), *SHADER_LIBRARY_DIR.rglob("*.glsl"), SHADER_COMPILER_PIN])
+    """Returns the time of the newest shader source of an app or the shader library, or of the pin of the shader compiler, which every compiled shader of the app must be newer than. A file that goes away while the folders are listed has no time."""
+    newest = SHADER_COMPILER_PIN.stat().st_mtime
+    for path in [*(folder / "content" / "shaders").rglob("*.glsl"), *SHADER_LIBRARY_DIR.rglob("*.glsl")]:
+        with contextlib.suppress(FileNotFoundError):
+            newest = max(newest, path.stat().st_mtime)
+    return newest
 
 
 def compile_app_shaders(folder: Path) -> None:
@@ -3286,7 +3300,11 @@ def compile_app_shaders(folder: Path) -> None:
     newest = newest_shader_source(folder)
     for source in shader_sources(folder):
         output = source.with_suffix(".shader")
-        if not output.is_file() or output.stat().st_mtime < newest:
+        try:
+            current = output.stat().st_mtime >= newest
+        except FileNotFoundError:
+            current = False
+        if not current:
             compile_shader(source, output)
 
 
