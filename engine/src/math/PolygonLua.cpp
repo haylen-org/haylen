@@ -31,9 +31,11 @@ bool PolygonLua::isPoint(lua_State* L, int index) {
     if (lua::Userdata::test<Vec2>(L, index) != nullptr) {
         return true;
     }
+
     if (!lua_istable(L, index)) {
         return false;
     }
+
     const int table = lua_absindex(L, index);
     const bool named = lua_getfield(L, table, "x") == LUA_TNUMBER;
     const bool listed = lua_rawgeti(L, table, 1) == LUA_TNUMBER;
@@ -47,9 +49,11 @@ std::vector<std::vector<Vec2>> PolygonLua::readShape(lua_State* L, int index) {
     lua_rawgeti(L, table, 1);
     const bool outline = isPoint(L, -1);
     lua_pop(L, 1);
+
     if (outline) {
         return {lua::Stack::read<std::vector<Vec2>>(L, table)};
     }
+
     return lua::Stack::read<std::vector<std::vector<Vec2>>>(L, table);
 }
 
@@ -61,6 +65,7 @@ void PolygonLua::readShape(lua_State* L, int index, std::vector<Vec2>& points, s
     lua_rawgeti(L, table, 1);
     const bool outline = isPoint(L, -1);
     lua_pop(L, 1);
+
     if (outline) {
         appendOutline(L, table, points);
         counts.push_back(static_cast<std::uint32_t>(points.size()));
@@ -124,6 +129,7 @@ int PolygonLua::offset(lua_State* L) {
         lua::Table::readField(L, 3, "join", join);
         lua::Table::readField(L, 3, "miterLimit", miterLimit);
     }
+
     lua::Stack::push(L, Polygon::offset(shape, distance, join, miterLimit));
     return 1;
 }
@@ -161,6 +167,7 @@ int PolygonLua::trace(lua_State* L) {
         lua::Table::readField(L, 4, "spacing", options.spacing);
         lua::Table::readField(L, 4, "origin", options.origin);
     }
+
     lua::Stack::push(L, MarchingSquares::trace(values, width, height, options));
     return 1;
 }
@@ -186,6 +193,7 @@ int PolygonLua::traceBitmap(lua_State* L) {
         pixels[pixel] = (type == LUA_TBOOLEAN ? lua_toboolean(L, -1) != 0 : lua_tonumber(L, -1) != 0.0) ? 1 : 0;
         lua_pop(L, 1);
     }
+
     lua::Stack::push(L, MarchingSquares::traceBitmap(pixels, width, height, spacing, origin));
     return 1;
 }

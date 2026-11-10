@@ -38,6 +38,7 @@ int MathLua::vec2New(lua_State* L) {
         lua::Stack::push(L, lua::Stack::read<Vec2>(L, 1));
         return 1;
     }
+
     lua::Stack::push(L, Vec2{lua::Converter<float>::readOr(L, 1, 0.0), lua::Converter<float>::readOr(L, 2, 0.0)});
     return 1;
 }
@@ -64,6 +65,7 @@ int MathLua::vec2Multiply(lua_State* L) {
     } else {
         lua::Stack::push(L, lua::Stack::read<Vec2>(L, 1) * lua::Stack::read<Vec2>(L, 2));
     }
+
     return 1;
 }
 
@@ -73,6 +75,7 @@ int MathLua::vec2Divide(lua_State* L) {
     } else {
         lua::Stack::push(L, lua::Stack::read<Vec2>(L, 1) / lua::Stack::read<Vec2>(L, 2));
     }
+
     return 1;
 }
 
@@ -108,6 +111,7 @@ int MathLua::rectNew(lua_State* L) {
         lua::Stack::push(L, lua::Stack::read<Rect>(L, 1));
         return 1;
     }
+
     lua::Stack::push(L, Rect{lua::Converter<float>::readOr(L, 1, 0.0), lua::Converter<float>::readOr(L, 2, 0.0), lua::Converter<float>::readOr(L, 3, 0.0), lua::Converter<float>::readOr(L, 4, 0.0)});
     return 1;
 }
@@ -132,6 +136,7 @@ int MathLua::rectContains(lua_State* L) {
         rectangle = lua_getfield(L, 2, "width") != LUA_TNIL;
         lua_pop(L, 1);
     }
+
     lua_pushboolean(L, (rectangle ? self.contains(lua::Stack::read<Rect>(L, 2)) : self.contains(lua::Stack::read<Vec2>(L, 2))) ? 1 : 0);
     return 1;
 }
@@ -157,6 +162,7 @@ int MathLua::colorNew(lua_State* L) {
         lua::Stack::push(L, lua::Stack::read<Color>(L, 1));
         return 1;
     }
+
     lua::Stack::push(L, Color{lua::Converter<float>::readOr(L, 1, 1.0), lua::Converter<float>::readOr(L, 2, 1.0), lua::Converter<float>::readOr(L, 3, 1.0), lua::Converter<float>::readOr(L, 4, 1.0)});
     return 1;
 }
@@ -251,6 +257,7 @@ int MathLua::randomNew(lua_State* L) {
         lua::Userdata::emplace<Random>(L);
         return 1;
     }
+
     lua::Userdata::emplace<Random>(L, static_cast<std::uint64_t>(luaL_checkinteger(L, 1)));
     return 1;
 }
@@ -281,6 +288,7 @@ int MathLua::randomWeightedIndex(lua_State* L) {
     if (weights.empty()) {
         return luaL_argerror(L, 2, "expected at least one weight");
     }
+
     lua_pushinteger(L, static_cast<lua_Integer>(self.weightedIndex(weights) + 1));
     return 1;
 }
@@ -296,6 +304,7 @@ int MathLua::randomShuffle(lua_State* L) {
         lua_rawseti(L, 2, index);
         lua_rawseti(L, 2, other);
     }
+
     lua_settop(L, 2);
     return 1;
 }
@@ -309,6 +318,7 @@ int MathLua::randomState(lua_State* L) {
             bytes[word * 8 + byte] = static_cast<char>((state[word] >> (byte * 8)) & 0xFFU);
         }
     }
+
     lua_pushlstring(L, bytes.data(), bytes.size());
     return 1;
 }
@@ -319,12 +329,14 @@ int MathLua::randomSetState(lua_State* L) {
     if (bytes.size() != kRandomStateSize) {
         return luaL_error(L, "A random state needs %d bytes.", static_cast<int>(kRandomStateSize));
     }
+
     std::array<std::uint64_t, 4> state{};
     for (std::size_t word = 0; word < state.size(); ++word) {
         for (std::size_t byte = 0; byte < 8; ++byte) {
             state[word] |= static_cast<std::uint64_t>(static_cast<unsigned char>(bytes[word * 8 + byte])) << (byte * 8);
         }
     }
+
     self.setState(state);
     return 0;
 }
@@ -368,17 +380,20 @@ int MathLua::checkOctaves(int octaves) {
     if (octaves < 1 || octaves > kMaxOctaves) {
         throw std::invalid_argument(std::format("The octaves must be a whole number from 1 to {}.", kMaxOctaves));
     }
+
     return octaves;
 }
 
 // A grid needs its columns and rows, and its other options take the defaults of `Noise2D::Grid`.
 Noise2D::Grid MathLua::readGrid(lua_State* L, bool intoAllowed, std::shared_ptr<core::FloatBuffer>& into) {
     luaL_checktype(L, 2, LUA_TTABLE);
+
     if (intoAllowed) {
         lua::Table::checkFields(L, 2, {kGridFields});
     } else {
         lua::Table::checkFields(L, 2, {std::span<const std::string_view>(kGridFields).first(kGridFields.size() - 1)});
     }
+
     Noise2D::Grid grid;
     std::string kind = "fractal";
     lua::Table::readField(L, 2, "kind", kind);
@@ -386,21 +401,26 @@ Noise2D::Grid MathLua::readGrid(lua_State* L, bool intoAllowed, std::shared_ptr<
     if (!named) {
         luaL_error(L, "The option \"kind\" must be \"perlin\", \"simplex\", \"fractal\" or \"worley\".");
     }
+
     grid.kind = *named;
     for (const char* side : {"columns", "rows"}) {
         lua_getfield(L, 2, side);
         if (lua_isnil(L, -1)) {
             luaL_error(L, "The option \"%s\" is required.", side);
         }
+
         if (!lua_isinteger(L, -1) || lua_tointeger(L, -1) < 1 || lua_tointeger(L, -1) > static_cast<lua_Integer>(kMaxGridSide)) {
             luaL_error(L, "The option \"%s\" must be a whole number from 1 to %d.", side, static_cast<int>(kMaxGridSide));
         }
+
         (side[0] == 'c' ? grid.columns : grid.rows) = static_cast<std::size_t>(lua_tointeger(L, -1));
         lua_pop(L, 1);
     }
+
     if (grid.columns * grid.rows > kMaxGridSamples) {
         luaL_error(L, "The grid holds %d samples, more than the limit of %d.", static_cast<int>(grid.columns * grid.rows), static_cast<int>(kMaxGridSamples));
     }
+
     lua::Table::readField(L, 2, "x", grid.origin.x);
     lua::Table::readField(L, 2, "y", grid.origin.y);
     lua_getfield(L, 2, "step");
@@ -410,11 +430,13 @@ Noise2D::Grid MathLua::readGrid(lua_State* L, bool intoAllowed, std::shared_ptr<
     } else if (!lua_isnil(L, -1)) {
         lua::Table::readValue(L, "step", grid.step);
     }
+
     lua_pop(L, 1);
     lua::Table::readField(L, 2, "octaves", grid.octaves);
     if (grid.octaves < 1 || grid.octaves > kMaxOctaves) {
         luaL_error(L, "The option \"octaves\" must be a whole number from 1 to %d.", kMaxOctaves);
     }
+
     lua::Table::readField(L, 2, "lacunarity", grid.lacunarity);
     lua::Table::readField(L, 2, "gain", grid.gain);
     if (intoAllowed) {
@@ -425,8 +447,10 @@ Noise2D::Grid MathLua::readGrid(lua_State* L, bool intoAllowed, std::shared_ptr<
                 luaL_error(L, "The buffer of \"into\" holds %d floats, fewer than the %d samples of the grid.", static_cast<int>(into->size()), static_cast<int>(grid.columns * grid.rows));
             }
         }
+
         lua_pop(L, 1);
     }
+
     return grid;
 }
 
@@ -438,6 +462,7 @@ int MathLua::noiseSampleGrid(lua_State* L) {
     if (!into) {
         into = std::make_shared<core::FloatBuffer>(grid.columns * grid.rows);
     }
+
     const std::span<float> values = into->getValues();
     const std::size_t grain = std::max<std::size_t>(1, kGridGrain / grid.columns);
     // clang-format off
@@ -517,6 +542,7 @@ int MathLua::triangulatePolygon(lua_State* L) {
         lua_pushinteger(L, static_cast<lua_Integer>(indices[index] + 1));
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
@@ -537,6 +563,7 @@ int MathLua::poissonDisk(lua_State* L) {
     if (!lua_isnil(L, -1)) {
         random = &lua::Userdata::check<Random>(L, -1);
     }
+
     lua_Integer seed = 0;
     lua::Table::readField(L, 1, "seed", seed);
     local.reseed(static_cast<std::uint64_t>(seed));
@@ -570,6 +597,7 @@ int MathLua::poissonDisk(lua_State* L) {
             if (isNumber == 0) {
                 luaL_error(L, "A Poisson distance function must return a number, not %s.", luaL_typename(L, -1));
             }
+
             lua_pop(L, 1);
             return distance;
         };

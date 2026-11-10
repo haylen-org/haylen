@@ -33,6 +33,7 @@ std::optional<Vec2> Geometry::intersection(const Segment& lhs, const Segment& rh
     if (t < 0.0F || t > 1.0F || u < 0.0F || u > 1.0F) {
         return std::nullopt;
     }
+
     return lhs.start + r * t;
 }
 
@@ -61,6 +62,7 @@ bool Geometry::contains(std::span<const Vec2> polygon, Vec2 point) noexcept {
             inside = !inside;
         }
     }
+
     return inside;
 }
 
@@ -69,6 +71,7 @@ float Geometry::signedArea(std::span<const Vec2> polygon) noexcept {
     for (std::size_t current = 0, previous = polygon.size() - 1; current < polygon.size(); previous = current++) {
         area += Vec2::cross(polygon[previous], polygon[current]);
     }
+
     return area * 0.5F;
 }
 
@@ -84,6 +87,7 @@ Vec2 Geometry::centroid(std::span<const Vec2> polygon) noexcept {
         const float factor = Vec2::cross(polygon[previous], polygon[current]);
         center += (polygon[previous] + polygon[current]) * factor;
     }
+
     return center / (6.0F * area);
 }
 
@@ -102,9 +106,11 @@ bool Geometry::isConvex(std::span<const Vec2> polygon) noexcept {
         if (turn == 0.0F) {
             continue;
         }
+
         if (winding != 0.0F && (turn > 0.0F) != (winding > 0.0F)) {
             return false;
         }
+
         winding = turn;
         turning += std::atan2(turn, Vec2::dot(b - a, c - b));
     }
@@ -124,6 +130,7 @@ Rect Geometry::bounds(std::span<const Vec2> points) noexcept {
         minimum = Vec2::min(minimum, point);
         maximum = Vec2::max(maximum, point);
     }
+
     return Rect::fromMinMax(minimum, maximum);
 }
 
@@ -148,6 +155,7 @@ std::vector<Vec2> Geometry::convexHull(std::span<const Vec2> points) {
         while (count >= 2 && Vec2::cross(hull[count - 1] - hull[count - 2], point - hull[count - 2]) <= 0.0F) {
             --count;
         }
+
         hull[count++] = point;
     }
 
@@ -157,6 +165,7 @@ std::vector<Vec2> Geometry::convexHull(std::span<const Vec2> points) {
         while (count >= lowerCount && Vec2::cross(hull[count - 1] - hull[count - 2], point - hull[count - 2]) <= 0.0F) {
             --count;
         }
+
         hull[count++] = point;
     }
 
@@ -178,6 +187,7 @@ std::vector<std::uint32_t> Geometry::triangulate(std::span<const std::vector<Vec
         points.insert(points.end(), outline.begin(), outline.end());
         counts.push_back(static_cast<std::uint32_t>(outline.size()));
     }
+
     Triangulator triangulator;
     triangulator.triangulate(points, counts);
     return triangulator.getTriangles();

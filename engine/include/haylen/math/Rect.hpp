@@ -75,6 +75,7 @@ struct Rect {
         if (maximum.x <= minimum.x || maximum.y <= minimum.y) {
             return {};
         }
+
         return fromMinMax(minimum, maximum);
     }
 

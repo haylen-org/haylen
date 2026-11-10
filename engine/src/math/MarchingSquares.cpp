@@ -22,6 +22,7 @@ class MarchingSquares::Tracer final {
                 march(column, row);
             }
         }
+
         return link();
     }
 
@@ -66,6 +67,7 @@ class MarchingSquares::Tracer final {
         if (count > static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max())) {
             throw std::invalid_argument("The field is too large to trace.");
         }
+
         return count;
     }
 
@@ -99,6 +101,7 @@ class MarchingSquares::Tracer final {
             const float to = valueAt(toColumn, toRow);
             t = std::clamp((options.threshold - from) / (to - from), 0.0F, 1.0F);
         }
+
         const Vec2 local{static_cast<float>(fromColumn - 1) + static_cast<float>(toColumn - fromColumn) * t, static_cast<float>(fromRow - 1) + static_cast<float>(toRow - fromRow) * t};
         return options.origin + local * options.spacing;
     }
@@ -154,16 +157,19 @@ class MarchingSquares::Tracer final {
                 if (outline.empty() || outline.back() != point) {
                     outline.push_back(point);
                 }
+
                 current = std::exchange(next[static_cast<std::size_t>(current)], -1);
             }
 
             if (outline.size() > 1 && outline.back() == outline.front()) {
                 outline.pop_back();
             }
+
             if (outline.size() >= 3) {
                 outlines.push_back(std::move(outline));
             }
         }
+
         return outlines;
     }
 
@@ -180,9 +186,11 @@ std::vector<std::vector<Vec2>> MarchingSquares::trace(std::span<const float> val
     if (width < 0 || height < 0 || values.size() != static_cast<std::size_t>(width) * static_cast<std::size_t>(height)) {
         throw std::invalid_argument("The field needs width times height values.");
     }
+
     if (width == 0 || height == 0) {
         return {};
     }
+
     return Tracer(values, width, height, options).run();
 }
 
@@ -190,6 +198,7 @@ std::vector<std::vector<Vec2>> MarchingSquares::traceBitmap(std::span<const std:
     if (width < 0 || height < 0 || pixels.size() != static_cast<std::size_t>(width) * static_cast<std::size_t>(height)) {
         throw std::invalid_argument("The bitmap needs width times height pixels.");
     }
+
     if (width == 0 || height == 0) {
         return {};
     }
@@ -204,6 +213,7 @@ std::vector<std::vector<Vec2>> MarchingSquares::traceBitmap(std::span<const std:
             field[static_cast<std::size_t>(y + 1) * static_cast<std::size_t>(columns) + static_cast<std::size_t>(x + 1)] = pixels[pixel] != 0 ? 1.0F : 0.0F;
         }
     }
+
     const Options options{.threshold = 0.5F, .spacing = spacing, .origin = origin - Vec2{spacing, spacing} * 0.5F};
     return Tracer(field, columns, rows, options).run();
 }

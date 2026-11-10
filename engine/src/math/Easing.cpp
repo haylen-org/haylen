@@ -26,14 +26,17 @@ float Easing::bounceOut(float t) noexcept {
     if (t < 1.0F / d) {
         return n * t * t;
     }
+
     if (t < 2.0F / d) {
         t -= 1.5F / d;
         return n * t * t + 0.75F;
     }
+
     if (t < 2.5F / d) {
         t -= 2.25F / d;
         return n * t * t + 0.9375F;
     }
+
     t -= 2.625F / d;
     return n * t * t + 0.984375F;
 }
@@ -87,6 +90,7 @@ float Easing::elasticIn(float t, float amplitude, float period) noexcept {
     if (t <= 0.0F || t >= 1.0F) {
         return t;
     }
+
     const float safePeriod = std::max(period, 1e-4F);
     const float safeAmplitude = std::max(amplitude, 1.0F);
     const float shift = safePeriod / Math::kTau * std::asin(1.0F / safeAmplitude);
@@ -196,6 +200,7 @@ float Easing::steps(float t, int count, StepPosition position) noexcept {
     if (std::isnan(t)) {
         return t;
     }
+
     t = Math::saturate(t);
     const std::int64_t stepCount = std::max(count, 1);
     auto step = static_cast<std::int64_t>(std::floor(t * static_cast<float>(stepCount)));
@@ -209,6 +214,7 @@ float Easing::steps(float t, int count, StepPosition position) noexcept {
     } else if (position == StepPosition::None) {
         jumps = std::max<std::int64_t>(stepCount - 1, 1);
     }
+
     return std::clamp(static_cast<float>(step) / static_cast<float>(jumps), 0.0F, 1.0F);
 }
 
@@ -222,12 +228,15 @@ float Easing::cubicBezier(float t, float x1, float y1, float x2, float y2) noexc
     for (int iteration = 0; iteration < 8; ++iteration) {
         const float error = bezierComponent(u, x1, x2) - t;
         const float slope = bezierSlope(u, x1, x2);
+
         if (std::fabs(error) < 1e-6F) {
             return bezierComponent(u, y1, y2);
         }
+
         if (std::fabs(slope) < 1e-6F) {
             break;
         }
+
         u -= error / slope;
     }
 
@@ -239,13 +248,16 @@ float Easing::cubicBezier(float t, float x1, float y1, float x2, float y2) noexc
         if (std::fabs(x - t) < 1e-6F) {
             break;
         }
+
         if (x < t) {
             low = u;
         } else {
             high = u;
         }
+
         u = (low + high) * 0.5F;
     }
+
     return bezierComponent(u, y1, y2);
 }
 
@@ -255,6 +267,7 @@ std::optional<Easing::StepPosition> Easing::parseStepPosition(std::string_view t
             return position;
         }
     }
+
     return std::nullopt;
 }
 
@@ -268,6 +281,7 @@ std::optional<Easing::Type> Easing::parse(std::string_view text) noexcept {
             return curve;
         }
     }
+
     return std::nullopt;
 }
 

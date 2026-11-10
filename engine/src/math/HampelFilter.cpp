@@ -13,12 +13,15 @@ HampelFilter::HampelFilter(int size, float limit, int count) : window(size), thr
     if (size < 1 || size > kMaxWindow) {
         throw std::invalid_argument("The window of a filter holds from 1 to " + std::to_string(kMaxWindow) + " updates, not " + std::to_string(size) + ".");
     }
+
     if (count < 1 || count > kMaxDimensions) {
         throw std::invalid_argument("A filter has from 1 to " + std::to_string(kMaxDimensions) + " dimensions, not " + std::to_string(count) + ".");
     }
+
     if (!(limit > 0.0F) || !std::isfinite(limit)) {
         throw std::invalid_argument("The threshold of a Hampel filter is a positive number of spreads.");
     }
+
     history.resize(static_cast<std::size_t>(size * count));
     scratch.resize(static_cast<std::size_t>(size));
 }
@@ -30,6 +33,7 @@ void HampelFilter::update(std::span<float> values) noexcept {
     for (std::size_t index = 0; index < used; ++index) {
         history[next * count + index] = values[index];
     }
+
     next = (next + 1) % static_cast<std::size_t>(window);
     filled = std::min(filled + 1, static_cast<std::size_t>(window));
 
@@ -39,10 +43,12 @@ void HampelFilter::update(std::span<float> values) noexcept {
         for (std::size_t slot = 0; slot < filled; ++slot) {
             slots[slot] = history[slot * count + index];
         }
+
         const float center = MedianFilter::median(slots);
         for (std::size_t slot = 0; slot < filled; ++slot) {
             slots[slot] = std::abs(history[slot * count + index] - center);
         }
+
         const float spread = kSpreadScale * MedianFilter::median(slots);
         if (std::abs(values[index] - center) > threshold * spread) {
             values[index] = center;

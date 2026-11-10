@@ -40,6 +40,7 @@ TEST(ColorTest, ConvertsEveryHueSector) {
     EXPECT_EQ(Color::fromHsv(0.0F, 1.0F, 1.0F), (Color{1.0F, 0.0F, 0.0F, 1.0F}));
     EXPECT_EQ(Color::fromHsv(1.0F / 3.0F, 1.0F, 1.0F).g, 1.0F);
     EXPECT_EQ(Color::fromHsv(2.0F / 3.0F, 1.0F, 1.0F).b, 1.0F);
+
     for (int sector = 0; sector < 6; ++sector) {
         const float hue = (static_cast<float>(sector) + 0.5F) / 6.0F;
         const Color color = Color::fromHsv(hue, 1.0F, 1.0F, 0.25F);

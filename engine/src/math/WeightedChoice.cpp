@@ -13,8 +13,10 @@ WeightedChoice::WeightedChoice(std::span<const float> weights) : probabilities(w
         if (!std::isfinite(weight) || weight < 0.0F) {
             throw std::invalid_argument("Weights must be finite and not negative.");
         }
+
         total += static_cast<double>(weight);
     }
+
     if (total <= 0.0) {
         throw std::invalid_argument("A weighted choice needs at least one positive weight.");
     }
@@ -41,9 +43,11 @@ WeightedChoice::WeightedChoice(std::span<const float> weights) : probabilities(w
         scaled[heavier] += scaled[lighter] - 1.0;
         (scaled[heavier] < 1.0 ? small : large).push_back(heavier);
     }
+
     for (const std::uint32_t index : small) {
         aliases[index] = index;
     }
+
     for (const std::uint32_t index : large) {
         aliases[index] = index;
     }

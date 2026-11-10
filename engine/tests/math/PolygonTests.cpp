@@ -27,6 +27,7 @@ class PolygonTest : public ::testing::Test {
         for (int index = 0; index < segments; ++index) {
             outline.push_back(center + Vec2::fromAngle(Math::kTau * static_cast<float>(index) / static_cast<float>(segments), radius));
         }
+
         return outline;
     }
 
@@ -35,6 +36,7 @@ class PolygonTest : public ::testing::Test {
         for (const Polygon::Outline& outline : shape) {
             total += Geometry::signedArea(outline);
         }
+
         return total;
     }
 };
@@ -91,9 +93,11 @@ TEST_F(PolygonTest, SimplifyDropsPointsWithinTheTolerance) {
     for (int index = 0; index < 40; ++index) {
         dense.push_back({static_cast<float>(index), 0.0F});
     }
+
     for (int index = 0; index < 40; ++index) {
         dense.push_back({40.0F, static_cast<float>(index)});
     }
+
     dense.push_back({0.0F, 40.0F});
     const Polygon::Outline corners = Polygon::simplify(dense, 0.5F);
     EXPECT_EQ(corners.size(), 4U);
@@ -120,6 +124,7 @@ TEST_F(PolygonTest, DecompositionCoversTheShapeWithConvexPieces) {
         EXPECT_GT(Geometry::signedArea(piece), 0.0F);
         total += Geometry::signedArea(piece);
     }
+
     EXPECT_NEAR(total, Polygon::getArea(shape), 0.05F);
     EXPECT_NEAR(area(Polygon::unite(pieces)), Polygon::getArea(shape), 0.05F);
     EXPECT_LT(pieces.size(), Polygon::decompose(shape, 3).size());
@@ -136,6 +141,7 @@ TEST(MarchingSquaresTest, TracesClosedOutlinesAroundAField) {
             field[static_cast<std::size_t>(y * 7 + x)] = 1.0F;
         }
     }
+
     const std::vector<std::vector<Vec2>> outlines = MarchingSquares::trace(field, 7, 7, {.threshold = 0.5F, .spacing = 2.0F, .origin = {10.0F, 0.0F}});
     ASSERT_EQ(outlines.size(), 1U);
     EXPECT_GT(Geometry::signedArea(outlines[0]), 0.0F);
@@ -172,6 +178,7 @@ TEST(MarchingSquaresTest, TracesHolesAndSeparateIslandsOfABitmap) {
             EXPECT_NE(outline[index], outline[(index + 1) % outline.size()]);
         }
     }
+
     EXPECT_EQ(holes, 1);
     // Outlines cut an eighth of a pixel from every outer corner, so the ring covers 9 - 0.5 around a hole of 0.5, and the lone pixel covers 0.5.
     EXPECT_NEAR(total, 8.5F, 1e-4F);
@@ -216,9 +223,11 @@ TEST(SplineTest, SamplesEvenlyByDistance) {
     const Spline curve({{0.0F, 0.0F}, {50.0F, 80.0F}, {150.0F, -40.0F}, {200.0F, 30.0F}}, Spline::Kind::Bezier);
     const std::vector<Vec2> points = curve.sampleByDistance(10.0F);
     ASSERT_GT(points.size(), 10U);
+
     for (std::size_t index = 1; index + 1 < points.size(); ++index) {
         EXPECT_NEAR(Vec2::distance(points[index - 1], points[index]), 10.0F, 0.2F);
     }
+
     EXPECT_EQ(points.back(), curve.getPoint(1.0F));
     EXPECT_EQ(curve.getPoint(0.0F), Vec2(0.0F, 0.0F));
     EXPECT_NEAR(curve.getPoint(1.0F).x, 200.0F, 1e-3F);
@@ -243,13 +252,16 @@ TEST(SplineTest, FlattensWithinTheTolerance) {
     curve.flatten(0.25F, fine);
     EXPECT_EQ(fine.front(), curve.getPoint(0.0F));
     EXPECT_EQ(fine.back(), curve.getPoint(1.0F));
+
     for (const Vec2 point : curve.sample(2000)) {
         float nearest = std::numeric_limits<float>::max();
         for (std::size_t index = 1; index < fine.size(); ++index) {
             nearest = std::min(nearest, Geometry::distanceToSegment({fine[index - 1], fine[index]}, point));
         }
+
         EXPECT_LE(nearest, 0.3F);
     }
+
     std::vector<Vec2> coarse;
     curve.flatten(4.0F, coarse);
     EXPECT_LT(coarse.size(), fine.size());

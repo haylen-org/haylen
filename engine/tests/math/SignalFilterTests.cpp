@@ -41,6 +41,7 @@ TEST(SignalFilterTest, MovingAverageAveragesTheUpdatesOfItsWindow) {
     for (const float value : {1.0F, 2.0F, 3.0F, 4.0F, 8.0F}) {
         results.push_back(average.update(value));
     }
+
     EXPECT_EQ(results, (std::vector<float>{1.0F, 1.5F, 2.0F, 3.0F, 5.0F}));
 
     MovingAverage positions(2, 2);
@@ -59,6 +60,7 @@ TEST(SignalFilterTest, MedianDropsSingleSpikesAndKeepsSteps) {
     for (const float value : {1.0F, 1.0F, 90.0F, 1.0F, 5.0F, 5.0F, 5.0F}) {
         results.push_back(filter.update(value));
     }
+
     EXPECT_EQ(results, (std::vector<float>{1.0F, 1.0F, 1.0F, 1.0F, 5.0F, 5.0F, 5.0F}));
     std::array<float, 4> even{4.0F, 1.0F, 3.0F, 2.0F};
     EXPECT_FLOAT_EQ(MedianFilter::median(even), 2.5F);
@@ -71,6 +73,7 @@ TEST(SignalFilterTest, HampelReplacesOnlyOutliers) {
         EXPECT_FLOAT_EQ(filter.update(value), value);
         EXPECT_FALSE(filter.isOutlier());
     }
+
     EXPECT_FLOAT_EQ(filter.update(60.0F), 10.1F);
     EXPECT_TRUE(filter.isOutlier());
     EXPECT_FLOAT_EQ(filter.update(10.05F), 10.05F);
@@ -88,14 +91,17 @@ TEST(SignalFilterTest, KalmanEstimatesASteadyValueFromNoisyMeasurements) {
     for (int step = 0; step < 400; ++step) {
         const float measured = 5.0F + random.range(-3.0F, 3.0F);
         const float estimated = filter.update(measured);
+
         if (step == 10) {
             uncertainty = filter.getUncertainty();
         }
+
         if (step >= 100) {
             measuredError += std::abs(measured - 5.0F);
             estimatedError += std::abs(estimated - 5.0F);
         }
     }
+
     EXPECT_LT(estimatedError, measuredError * 0.25F);
     EXPECT_LT(filter.getUncertainty(), uncertainty);
     EXPECT_THROW(KalmanFilter(0.0F, 1.0F, 1), std::invalid_argument);
@@ -109,6 +115,7 @@ TEST(SignalFilterTest, UpdatesWithoutAllocating) {
     KalmanFilter kalman(0.01F, 1.0F, 2);
     LowPassFilter lowPass(4.0F, 2);
     const test::AllocationTracker tracker;
+
     for (int step = 0; step < 100; ++step) {
         std::array<float, 2> values{static_cast<float>(step), static_cast<float>(step % 7)};
         average.update(values);
@@ -117,6 +124,7 @@ TEST(SignalFilterTest, UpdatesWithoutAllocating) {
         kalman.update(values);
         lowPass.update(1.0F / 60.0F, values);
     }
+
     EXPECT_EQ(tracker.getTotal(), 0U);
 }
 

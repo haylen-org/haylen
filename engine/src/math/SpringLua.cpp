@@ -39,6 +39,7 @@ int SpringLua::smoothDamp(lua_State* L) {
         lua::Stack::push(L, velocity);
         return 2;
     }
+
     auto velocity = lua::Stack::read<Vec2>(L, 3);
     lua::Stack::push(L, Spring::smoothDamp(lua::Stack::read<Vec2>(L, 1), lua::Stack::read<Vec2>(L, 2), velocity, smoothTime, deltaSeconds));
     lua::Stack::push(L, velocity);

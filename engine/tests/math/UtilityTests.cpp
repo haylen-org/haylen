@@ -25,6 +25,7 @@ TEST(SpringTest, ReachesTheTargetWithoutOvershooting) {
         EXPECT_LE(value, 10.0F);
         previous = value;
     }
+
     EXPECT_NEAR(spring.getValue(), 10.0F, 0.01F);
 
     // Frame rate barely changes the path.
@@ -35,6 +36,7 @@ TEST(SpringTest, ReachesTheTargetWithoutOvershooting) {
         (void)fast.update(10.0F, 1.0F / 120.0F);
         (void)slow.update(10.0F, 1.0F / 60.0F);
     }
+
     EXPECT_NEAR(fast.getValue(), slow.getValue(), 0.05F);
 
     spring.setSmoothTime(0.0F);
@@ -58,6 +60,7 @@ TEST(SpringTest, DampsVectors) {
     for (int frame = 0; frame < 180; ++frame) {
         position = Spring::smoothDamp(position, {30.0F, -40.0F}, velocity, 0.3F, 1.0F / 60.0F);
     }
+
     EXPECT_NEAR(position.x, 30.0F, 0.01F);
     EXPECT_NEAR(position.y, -40.0F, 0.01F);
 
@@ -94,6 +97,7 @@ TEST(ShuffleBagTest, DealsEveryItemOncePerRound) {
         for (int draw = 0; draw < 6; ++draw) {
             ++seen[bag.next(random)];
         }
+
         EXPECT_EQ(seen, (std::array<int, 3>{1, 2, 3}));
         EXPECT_EQ(bag.getRemaining(), 0U);
     }
@@ -115,6 +119,7 @@ TEST(WeightedChoiceTest, PicksInProportionToTheWeights) {
     for (int pick = 0; pick < 100000; ++pick) {
         ++counts[choice.pick(random)];
     }
+
     EXPECT_EQ(counts[1], 0);
     EXPECT_NEAR(counts[0] / 100000.0, 0.1, 0.01);
     EXPECT_NEAR(counts[2] / 100000.0, 0.3, 0.01);
@@ -142,6 +147,7 @@ TEST(NoiseTest, WorleyMeasuresTheDistanceToFeaturePoints) {
         EXPECT_LT(value.cell, 1.0F);
         closest = std::min(closest, value.nearest);
     }
+
     EXPECT_LT(closest, 0.2F);
 }
 
@@ -155,6 +161,7 @@ TEST(NoiseTest, WarpMovesPointsWithinTheAmplitude) {
         EXPECT_LE(std::fabs(warped.y - point.y), 5.0F);
         moved += Vec2::distance(point, warped);
     }
+
     EXPECT_GT(moved, 10.0F);
     EXPECT_EQ(noise.warp(2.0F, 3.0F, 4.0F), Noise2D(9).warp(2.0F, 3.0F, 4.0F));
 }
@@ -169,11 +176,13 @@ TEST(PoissonDiskTest, VariesTheSpacingWithADistanceMap) {
     std::size_t left = 0;
     for (std::size_t first = 0; first < points.size(); ++first) {
         left += points[first].x < 200.0F ? 1U : 0U;
+
         for (std::size_t second = first + 1; second < points.size(); ++second) {
             const float limit = points[first].x < 200.0F && points[second].x < 200.0F ? 10.0F : 30.0F;
             EXPECT_GE(Vec2::distance(points[first], points[second]), limit - 1e-3F);
         }
     }
+
     EXPECT_GT(left, (points.size() - left) * 4);
 
     options.maximumDistance = 5.0F;

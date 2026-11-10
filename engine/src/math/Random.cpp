@@ -27,6 +27,7 @@ void Random::setState(const std::array<std::uint64_t, 4>& value) {
     if (value == std::array<std::uint64_t, 4>{}) {
         throw std::invalid_argument("A random state cannot be all zeros.");
     }
+
     state = value;
 }
 
@@ -59,6 +60,7 @@ int Random::range(int minimum, int maximum) noexcept {
     if (maximum <= minimum) {
         return minimum;
     }
+
     const auto span = static_cast<std::uint64_t>(static_cast<std::int64_t>(maximum) - minimum + 1);
     return static_cast<int>(static_cast<std::int64_t>(minimum) + static_cast<std::int64_t>(nextU64() % span));
 }
@@ -73,8 +75,10 @@ std::size_t Random::weightedIndex(std::span<const float> weights) {
         if (!std::isfinite(weight) || weight < 0.0F) {
             throw std::invalid_argument("Weights must be finite and not negative.");
         }
+
         total += static_cast<double>(weight);
     }
+
     if (total <= 0.0) {
         throw std::invalid_argument("A weighted pick needs at least one positive weight.");
     }
@@ -86,12 +90,15 @@ std::size_t Random::weightedIndex(std::span<const float> weights) {
         if (weights[index] <= 0.0F) {
             continue;
         }
+
         if (target < static_cast<double>(weights[index])) {
             return index;
         }
+
         target -= static_cast<double>(weights[index]);
         lastPositive = index;
     }
+
     return lastPositive;
 }
 

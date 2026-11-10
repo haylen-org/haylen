@@ -54,10 +54,12 @@ class Raycast final {
             }
 
             hits.push_back(*hit);
+
             if (reflection >= bounces || hit->normal.isZero()) {
                 ray.length = hit->distance;
                 return ray;
             }
+
             const Vec2 direction = reflect(ray.direction, hit->normal);
             ray = {hit->point + hit->normal * kSurfaceOffset, direction, ray.length - hit->distance};
         }

@@ -24,6 +24,7 @@ class TriangulatorTest : public ::testing::Test {
         if (reversed) {
             std::reverse(outline.begin(), outline.end());
         }
+
         return outline;
     }
 
@@ -33,6 +34,7 @@ class TriangulatorTest : public ::testing::Test {
             const float turn = Math::kTau * static_cast<float>(index) / static_cast<float>(segments);
             outline.push_back(center + Vec2::fromAngle(reversed ? -turn : turn, radius));
         }
+
         return outline;
     }
 
@@ -43,6 +45,7 @@ class TriangulatorTest : public ::testing::Test {
             points.insert(points.end(), outline.begin(), outline.end());
             counts.push_back(static_cast<std::uint32_t>(outline.size()));
         }
+
         triangulator.triangulate(points, counts);
     }
 
@@ -55,6 +58,7 @@ class TriangulatorTest : public ::testing::Test {
             EXPECT_GE(Geometry::signedArea(triangle), 0.0F);
             area += Geometry::signedArea(triangle);
         }
+
         return area;
     }
 
@@ -64,6 +68,7 @@ class TriangulatorTest : public ::testing::Test {
         for (std::size_t outline = 0, first = 0; outline < counts.size(); first += counts[outline++]) {
             area += Geometry::signedArea(std::span(points).subspan(first, counts[outline]));
         }
+
         return area;
     }
 
@@ -76,6 +81,7 @@ class TriangulatorTest : public ::testing::Test {
                 return true;
             }
         }
+
         return false;
     }
 

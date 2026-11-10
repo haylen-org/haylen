@@ -36,6 +36,7 @@ bool Triangulator::crosses(Vec2 firstStart, Vec2 firstEnd, Vec2 secondStart, Vec
     if (first != second && third != fourth) {
         return true;
     }
+
     return (first == 0 && inBox(firstStart, secondStart, firstEnd)) || (second == 0 && inBox(firstStart, secondEnd, firstEnd)) || (third == 0 && inBox(secondStart, firstStart, secondEnd)) || (fourth == 0 && inBox(secondStart, firstEnd, secondEnd));
 }
 
@@ -49,6 +50,7 @@ void Triangulator::triangulate(std::span<const Vec2> shapePoints, std::span<cons
         if (kinds[outer] != Kind::Outer) {
             continue;
         }
+
         nodes.clear();
         std::uint32_t ring = link(outlines[outer], true);
         holes.clear();
@@ -57,6 +59,7 @@ void Triangulator::triangulate(std::span<const Vec2> shapePoints, std::span<cons
                 holes.push_back(getLeftmost(link(outlines[hole], false)));
             }
         }
+
         // clang-format off
         std::sort(holes.begin(), holes.end(), [this](std::uint32_t lhs, std::uint32_t rhs) {
             const Vec2 left = at(lhs);
@@ -67,6 +70,7 @@ void Triangulator::triangulate(std::span<const Vec2> shapePoints, std::span<cons
         for (const std::uint32_t hole : holes) {
             ring = joinHole(hole, ring);
         }
+
         clip(ring);
     }
 }
@@ -83,10 +87,12 @@ void Triangulator::classify(std::span<const std::uint32_t> counts) {
             outline.low = Vec2::min(outline.low, point);
             outline.high = Vec2::max(outline.high, point);
         }
+
         outlines.push_back(outline);
         order.push_back(static_cast<std::uint32_t>(order.size()));
         first += count;
     }
+
     // clang-format off
     std::sort(order.begin(), order.end(), [this](std::uint32_t lhs, std::uint32_t rhs) {
         return std::fabs(outlines[lhs].area) > std::fabs(outlines[rhs].area);
@@ -128,12 +134,14 @@ bool Triangulator::encloses(const Outline& outer, const Outline& inner) const no
     if (outer.area == 0.0F || !within) {
         return false;
     }
+
     for (const Vec2 point : points.subspan(inner.first, inner.count)) {
         const Side side = locate(outer, point);
         if (side != Side::Edge) {
             return side == Side::Inside;
         }
     }
+
     return false;
 }
 
@@ -150,10 +158,12 @@ Triangulator::Side Triangulator::locate(const Outline& outline, Vec2 point) cons
         if (std::fabs(Vec2::cross(edge, point - a)) <= tolerance * length && along >= -tolerance * length && along <= length * (length + tolerance)) {
             return Side::Edge;
         }
+
         if ((a.y > point.y) != (b.y > point.y) && point.x < edge.x * (point.y - a.y) / edge.y + a.x) {
             inside = !inside;
         }
     }
+
     return inside ? Side::Inside : Side::Outside;
 }
 
@@ -165,6 +175,7 @@ std::uint32_t Triangulator::link(const Outline& outline, bool positive) {
         const std::uint32_t index = static_cast<std::uint32_t>(nodes.size());
         nodes.push_back({.point = outline.first + (forward ? step : outline.count - 1 - step), .previous = index - 1, .next = index + 1});
     }
+
     const auto last = static_cast<std::uint32_t>(nodes.size() - 1);
     nodes[first].previous = last;
     nodes[last].next = first;
@@ -180,6 +191,7 @@ std::uint32_t Triangulator::getLeftmost(std::uint32_t start) const noexcept {
         if (point.x < best.x || (point.x == best.x && point.y < best.y)) {
             leftmost = node;
         }
+
         node = nodes[node].next;
     } while (node != start);
     return leftmost;
@@ -191,6 +203,7 @@ std::uint32_t Triangulator::joinHole(std::uint32_t hole, std::uint32_t ring) {
     if (bridge == kNone) {
         return ring;
     }
+
     const std::uint32_t back = split(bridge, hole);
     static_cast<void>(filter(back, nodes[back].next));
     return filter(bridge, nodes[bridge].next);
@@ -202,9 +215,11 @@ std::uint32_t Triangulator::findBridge(std::uint32_t hole, std::uint32_t ring) c
     std::uint32_t node = ring;
     std::uint32_t bridge = kNone;
     float reach = -std::numeric_limits<float>::infinity();
+
     if (from == at(node)) {
         return node;
     }
+
     do {
         const std::uint32_t next = nodes[node].next;
         const Vec2 start = at(node);
@@ -212,6 +227,7 @@ std::uint32_t Triangulator::findBridge(std::uint32_t hole, std::uint32_t ring) c
         if (from == end) {
             return next;
         }
+
         if (from.y <= start.y && from.y >= end.y && end.y != start.y) {
             const float x = start.x + (from.y - start.y) * (end.x - start.x) / (end.y - start.y);
             if (x <= from.x && x > reach) {
@@ -222,8 +238,10 @@ std::uint32_t Triangulator::findBridge(std::uint32_t hole, std::uint32_t ring) c
                 }
             }
         }
+
         node = next;
     } while (node != ring);
+
     if (bridge == kNone) {
         return kNone;
     }
@@ -243,6 +261,7 @@ std::uint32_t Triangulator::findBridge(std::uint32_t hole, std::uint32_t ring) c
                 least = tangent;
             }
         }
+
         node = nodes[node].next;
     } while (node != stop);
     return bridge;
@@ -281,6 +300,7 @@ std::uint32_t Triangulator::filter(std::uint32_t start, std::uint32_t end) noexc
             if (node == nodes[node].next) {
                 break;
             }
+
             again = true;
         } else {
             node = next;
@@ -302,6 +322,7 @@ std::uint32_t Triangulator::cureCrossings(std::uint32_t start) {
             remove(next);
             node = start = after;
         }
+
         node = nodes[node].next;
     } while (node != start);
     return filter(node, node);
@@ -328,12 +349,14 @@ void Triangulator::clip(std::uint32_t ear) {
                 stop = ear;
                 continue;
             }
+
             ear = next;
             if (ear == stop) {
                 stuck = true;
                 break;
             }
         }
+
         if (!stuck) {
             return;
         }
@@ -359,6 +382,7 @@ bool Triangulator::isEar(std::uint32_t ear) const noexcept {
             return false;
         }
     }
+
     return true;
 }
 
@@ -369,6 +393,7 @@ bool Triangulator::isLocallyInside(std::uint32_t from, std::uint32_t to) const n
     if (turnAt(previous, from, next) > 0.0F) {
         return turnAt(from, to, next) <= 0.0F && turnAt(from, previous, to) <= 0.0F;
     }
+
     return turnAt(from, to, previous) > 0.0F || turnAt(from, next, to) > 0.0F;
 }
 

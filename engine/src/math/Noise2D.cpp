@@ -87,6 +87,7 @@ float Noise2D::simplex(float x, float y) const noexcept {
         if (falloff <= 0.0F) {
             return 0.0F;
         }
+
         const float squared = falloff * falloff;
         return squared * squared * gradientDot(cornerHash, cx, cy);
     };
@@ -108,6 +109,7 @@ float Noise2D::fractal(float x, float y, int octaves, float lacunarity, float ga
         amplitude *= gain;
         frequency *= lacunarity;
     }
+
     return normalization > 0.0F ? sum / normalization : 0.0F;
 }
 
@@ -137,6 +139,7 @@ Noise2D::Cellular Noise2D::worley(float x, float y) const noexcept {
             }
         }
     }
+
     return result;
 }
 

@@ -38,6 +38,7 @@ class Polygon::Clipper final {
                 path.emplace_back(static_cast<double>(point.x), static_cast<double>(point.y));
             }
         }
+
         return paths;
     }
 
@@ -51,6 +52,7 @@ class Polygon::Clipper final {
                 outline.push_back({static_cast<float>(point.x), static_cast<float>(point.y)});
             }
         }
+
         return shape;
     }
 
@@ -64,6 +66,7 @@ class Polygon::Clipper final {
                 path.emplace_back(std::llround(static_cast<double>(point.x) * kScale), std::llround(static_cast<double>(point.y) * kScale));
             }
         }
+
         return paths;
     }
 
@@ -90,14 +93,17 @@ class Polygon::Merger final {
             if (triangle.size() != 3) {
                 continue;
             }
+
             std::vector<std::uint32_t> piece{vertexOf(triangle[0]), vertexOf(triangle[1]), vertexOf(triangle[2])};
             const double turn = cross(piece[0], piece[1], piece[2]);
             if (turn == 0.0) {
                 continue;
             }
+
             if (turn < 0.0) {
                 std::swap(piece[1], piece[2]);
             }
+
             addPiece(std::move(piece));
         }
     }
@@ -119,6 +125,7 @@ class Polygon::Merger final {
                 shared.push_back({from, to, dx * dx + dy * dy});
             }
         }
+
         // clang-format off
         std::sort(shared.begin(), shared.end(), [](const SharedEdge& lhs, const SharedEdge& rhs) {
             return lhs.lengthSquared > rhs.lengthSquared || (lhs.lengthSquared == rhs.lengthSquared && std::pair(lhs.from, lhs.to) < std::pair(rhs.from, rhs.to));
@@ -131,6 +138,7 @@ class Polygon::Merger final {
             if (first == owners.end() || second == owners.end() || first->second == second->second) {
                 continue;
             }
+
             tryMerge(first->second, second->second, edge.from, edge.to, maxVertices);
         }
     }
@@ -141,6 +149,7 @@ class Polygon::Merger final {
             if (!alive[index]) {
                 continue;
             }
+
             const std::vector<std::uint32_t> corners = withoutCollinear(pieces[index]);
             Outline& outline = result.emplace_back();
             outline.reserve(corners.size());
@@ -148,6 +157,7 @@ class Polygon::Merger final {
                 outline.push_back({static_cast<float>(static_cast<double>(vertices[vertex].x) / kScale), static_cast<float>(static_cast<double>(vertices[vertex].y) / kScale)});
             }
         }
+
         return result;
     }
 
@@ -161,6 +171,7 @@ class Polygon::Merger final {
         if (inserted) {
             vertices.push_back(point);
         }
+
         return found->second;
     }
 
@@ -176,6 +187,7 @@ class Polygon::Merger final {
         for (std::size_t corner = 0; corner < piece.size(); ++corner) {
             owners[edgeKey(piece[corner], piece[(corner + 1) % piece.size()])] = index;
         }
+
         pieces.push_back(std::move(piece));
         alive.push_back(true);
     }
@@ -190,6 +202,7 @@ class Polygon::Merger final {
                 corners.push_back(piece[corner]);
             }
         }
+
         return corners;
     }
 
@@ -219,6 +232,7 @@ class Polygon::Merger final {
         for (std::size_t corner = 0; corner + 1 < second.size(); ++corner) {
             owners[edgeKey(second[corner], second[corner + 1])] = firstIndex;
         }
+
         pieces[firstIndex] = std::move(merged);
         alive[secondIndex] = false;
     }
@@ -276,6 +290,7 @@ float Polygon::distanceSquaredToSegment(Vec2 point, Vec2 start, Vec2 end) noexce
     if (lengthSquared <= 0.0F) {
         return Vec2::distanceSquared(point, start);
     }
+
     const float t = std::clamp(Vec2::dot(point - start, direction) / lengthSquared, 0.0F, 1.0F);
     return Vec2::distanceSquared(point, start + direction * t);
 }
@@ -326,6 +341,7 @@ Polygon::Outline Polygon::simplify(std::span<const Vec2> points, float tolerance
     const float toleranceSquared = tolerance * tolerance;
     simplifyRange(line, 0, middle, toleranceSquared, kept);
     simplifyRange(line, middle, line.size() - 1, toleranceSquared, kept);
+
     if (closed) {
         kept.pop_back();
         line.pop_back();
@@ -342,6 +358,7 @@ Polygon::Outline Polygon::simplify(std::span<const Vec2> points, float tolerance
                 extra = index;
             }
         }
+
         kept[extra] = true;
     }
 
@@ -351,6 +368,7 @@ Polygon::Outline Polygon::simplify(std::span<const Vec2> points, float tolerance
             result.push_back(line[index]);
         }
     }
+
     return result;
 }
 
@@ -379,6 +397,7 @@ float Polygon::getArea(std::span<const Outline> shape) {
     for (const Outline& outline : unite(shape)) {
         area += Geometry::signedArea(outline);
     }
+
     return area;
 }
 

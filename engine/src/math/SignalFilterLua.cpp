@@ -62,12 +62,15 @@ bool SignalFilterLua::readValues(lua_State* L, int index, int dimensions, std::s
         values[1] = vector.y;
         return true;
     }
+
     if (lua_gettop(L) - index + 1 != dimensions) {
         luaL_error(L, "The filter takes %d values, not %d.", dimensions, lua_gettop(L) - index + 1);
     }
+
     for (int offset = 0; offset < dimensions; ++offset) {
         values[static_cast<std::size_t>(offset)] = lua::Stack::read<float>(L, index + offset);
     }
+
     return false;
 }
 
@@ -76,9 +79,11 @@ int SignalFilterLua::pushValues(lua_State* L, std::span<const float> values, boo
         lua::Stack::push(L, Vec2{values[0], values[1]});
         return 1;
     }
+
     for (const float value : values) {
         lua::Stack::push(L, value);
     }
+
     return static_cast<int>(values.size());
 }
 
@@ -90,6 +95,7 @@ int SignalFilterLua::newLowPass(lua_State* L) {
         lua::Table::readField(L, 1, "cutoff", cutoff);
         lua::Table::readField(L, 1, "dimensions", dimensions);
     }
+
     lua::Userdata::emplace<LowPassFilter>(L, cutoff, dimensions);
     return 1;
 }
@@ -102,6 +108,7 @@ int SignalFilterLua::newMovingAverage(lua_State* L) {
         lua::Table::readField(L, 1, "window", window);
         lua::Table::readField(L, 1, "dimensions", dimensions);
     }
+
     lua::Userdata::emplace<MovingAverage>(L, window, dimensions);
     return 1;
 }
@@ -114,6 +121,7 @@ int SignalFilterLua::newMedian(lua_State* L) {
         lua::Table::readField(L, 1, "window", window);
         lua::Table::readField(L, 1, "dimensions", dimensions);
     }
+
     lua::Userdata::emplace<MedianFilter>(L, window, dimensions);
     return 1;
 }
@@ -128,6 +136,7 @@ int SignalFilterLua::newHampel(lua_State* L) {
         lua::Table::readField(L, 1, "threshold", threshold);
         lua::Table::readField(L, 1, "dimensions", dimensions);
     }
+
     lua::Userdata::emplace<HampelFilter>(L, window, threshold, dimensions);
     return 1;
 }
@@ -142,6 +151,7 @@ int SignalFilterLua::newKalman(lua_State* L) {
         lua::Table::readField(L, 1, "measurementNoise", measurementNoise);
         lua::Table::readField(L, 1, "dimensions", dimensions);
     }
+
     lua::Userdata::emplace<KalmanFilter>(L, processNoise, measurementNoise, dimensions);
     return 1;
 }

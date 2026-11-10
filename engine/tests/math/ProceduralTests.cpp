@@ -48,6 +48,7 @@ TEST(EasingTest, BouncesLandOnTheEndValue) {
     for (const float landing : {1.0F, 2.0F, 2.5F}) {
         EXPECT_NEAR(Easing::apply(Easing::Type::BounceOut, landing / 2.75F), 1.0F, 1e-5F) << landing;
     }
+
     EXPECT_NEAR(Easing::apply(Easing::Type::BounceOut, 2.25F / 2.75F), 0.9375F, 1e-5F);
 }
 
@@ -105,6 +106,7 @@ TEST(RandomTest, RangesStayInBounds) {
         EXPECT_GE(real, 5.0F);
         EXPECT_LE(real, 6.0F);
     }
+
     EXPECT_EQ(random.range(5, 5), 5);
     EXPECT_EQ(random.range(9, 2), 9);
     EXPECT_FALSE(random.chance(0.0F));
@@ -117,6 +119,7 @@ TEST(RandomTest, WeightedIndexFollowsWeights) {
     for (int index = 0; index < 50; ++index) {
         EXPECT_EQ(random.weightedIndex(weights), 1U);
     }
+
     EXPECT_THROW((void)random.weightedIndex(std::span<const float>{}), std::invalid_argument);
     EXPECT_THROW((void)random.weightedIndex(std::array<float, 2>{0.0F, 0.0F}), std::invalid_argument);
     EXPECT_THROW((void)random.weightedIndex(std::array<float, 2>{2.0F, -1.0F}), std::invalid_argument);
@@ -143,6 +146,7 @@ TEST(NoiseTest, IsDeterministicAndBounded) {
             EXPECT_LE(noise.fractal(x, y), 1.0F);
         }
     }
+
     EXPECT_EQ(noise.fractal(1.0F, 1.0F, 0), 0.0F);
     EXPECT_NE(Noise2D(1).simplex(0.3F, 0.7F), Noise2D(2).simplex(0.3F, 0.7F));
 }
@@ -204,9 +208,11 @@ TEST(GeometryTest, Polygons) {
 TEST(GeometryTest, StarsThatTurnOneWayAreNotConvex) {
     std::vector<Vec2> hexagon;
     std::vector<Vec2> pentagram;
+
     for (int index = 0; index < 6; ++index) {
         hexagon.push_back(Vec2::fromAngle(Math::kTau * static_cast<float>(index) / 6.0F, 10.0F));
     }
+
     for (int index = 0; index < 5; ++index) {
         pentagram.push_back(Vec2::fromAngle(Math::kTau * static_cast<float>(index * 2) / 5.0F, 10.0F));
     }
@@ -242,6 +248,7 @@ TEST(GeometryTest, TriangulatesConcavePolygonsInEitherWinding) {
         EXPECT_GT(Geometry::signedArea(triangle), 0.0F);
         area += Geometry::signedArea(triangle);
     }
+
     EXPECT_NEAR(area, Geometry::signedArea(arrow), 1e-3F);
 
     std::reverse(arrow.begin(), arrow.end());
@@ -252,6 +259,7 @@ TEST(GeometryTest, TriangulatesConcavePolygonsInEitherWinding) {
 TEST(PoissonDiskTest, RefusesAnAreaWithEdgesThatAreNotFinite) {
     Random random(5);
     const float infinity = std::numeric_limits<float>::infinity();
+
     for (const Rect area : {Rect{-infinity, 0.0F, 100.0F, 100.0F}, Rect{0.0F, 0.0F, 100.0F, std::numeric_limits<float>::quiet_NaN()}}) {
         try {
             (void)PoissonDisk::sample({.area = area, .minimumDistance = 10.0F}, random);
@@ -272,9 +280,11 @@ TEST(PoissonDiskTest, KeepsMinimumDistanceAndPredicate) {
     const std::vector<Vec2> points = PoissonDisk::sample(options, random);
 
     ASSERT_GT(points.size(), 20U);
+
     for (std::size_t first = 0; first < points.size(); ++first) {
         EXPECT_LT(points[first].x, 400.0F);
         EXPECT_TRUE(options.area.contains(points[first]));
+
         for (std::size_t second = first + 1; second < points.size(); ++second) {
             EXPECT_GE(Vec2::distance(points[first], points[second]), 40.0F - 1e-3F);
         }
@@ -299,6 +309,7 @@ TEST(PoissonDiskTest, BoundsHugeDistancesAndRejectsOnesThatAreNotFinite) {
     for (const float maximum : {1e30F, std::numeric_limits<float>::max()}) {
         const std::vector<Vec2> points = PoissonDisk::sample(PoissonDisk::Options{.area = area, .minimumDistance = 10.0F, .maximumDistance = maximum, .distance = [](Vec2) { return 10.0F; }}, random);
         ASSERT_GT(points.size(), 10U);
+
         for (std::size_t first = 0; first < points.size(); ++first) {
             for (std::size_t second = first + 1; second < points.size(); ++second) {
                 EXPECT_GE(Vec2::distance(points[first], points[second]), 10.0F - 1e-3F);

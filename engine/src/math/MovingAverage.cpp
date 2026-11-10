@@ -10,9 +10,11 @@ MovingAverage::MovingAverage(int size, int count) : window(size), dimensions(cou
     if (size < 1 || size > kMaxWindow) {
         throw std::invalid_argument("The window of a filter holds from 1 to " + std::to_string(kMaxWindow) + " updates, not " + std::to_string(size) + ".");
     }
+
     if (count < 1 || count > kMaxDimensions) {
         throw std::invalid_argument("A filter has from 1 to " + std::to_string(kMaxDimensions) + " dimensions, not " + std::to_string(count) + ".");
     }
+
     history.resize(static_cast<std::size_t>(size * count));
 }
 
@@ -25,9 +27,11 @@ void MovingAverage::update(std::span<float> values) noexcept {
         if (filled == static_cast<std::size_t>(window)) {
             sums[index] -= slot;
         }
+
         slot = values[index];
         sums[index] += slot;
     }
+
     next = (next + 1) % static_cast<std::size_t>(window);
     filled = std::min(filled + 1, static_cast<std::size_t>(window));
     for (std::size_t index = 0; index < used; ++index) {

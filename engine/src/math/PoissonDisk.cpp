@@ -33,6 +33,7 @@ class PoissonDisk::Grid final {
                 if (sample < 0) {
                     continue;
                 }
+
                 const auto index = static_cast<std::size_t>(sample);
                 const float limit = std::max(distance, distances[index]);
                 if (Vec2::distanceSquared(samples[index], point) < limit * limit) {
@@ -40,6 +41,7 @@ class PoissonDisk::Grid final {
                 }
             }
         }
+
         return true;
     }
 
@@ -53,6 +55,7 @@ class PoissonDisk::Grid final {
         if (count * otherCount > kMaxCells) {
             throw std::invalid_argument("The minimum distance is too small for the area, whose sampling grid would need more than 16777216 cells.");
         }
+
         return static_cast<int>(count);
     }
 
@@ -86,12 +89,15 @@ std::vector<Vec2> PoissonDisk::sample(const Options& options, Random& random) {
     if (!std::isfinite(options.minimumDistance) || !std::isfinite(largest)) {
         throw std::invalid_argument("Poisson distances must be finite.");
     }
+
     if (!std::isfinite(options.area.x) || !std::isfinite(options.area.y) || !std::isfinite(options.area.getRight()) || !std::isfinite(options.area.getBottom())) {
         throw std::invalid_argument("Poisson sampling needs an area whose edges are finite.");
     }
+
     if (largest < options.minimumDistance) {
         throw std::invalid_argument("A varying Poisson distance needs a maximum distance of at least the minimum distance.");
     }
+
     if (options.attempts < 1 || options.attempts > kMaxAttempts) {
         throw std::invalid_argument("Poisson sampling needs between 1 and 1000 attempts.");
     }
@@ -109,10 +115,12 @@ std::vector<Vec2> PoissonDisk::sample(const Options& options, Random& random) {
         if (!variable) {
             return options.minimumDistance;
         }
+
         const float distance = options.distance(point);
         if (!std::isfinite(distance)) {
             throw std::invalid_argument("A Poisson distance function must return finite distances.");
         }
+
         return std::clamp(distance, options.minimumDistance, largest);
     };
     const auto addSample = [&](Vec2 point, float distance) {
@@ -146,6 +154,7 @@ std::vector<Vec2> PoissonDisk::sample(const Options& options, Random& random) {
             if (!accepted(candidate)) {
                 continue;
             }
+
             const float distance = distanceAt(candidate);
             if (grid.isFarEnough(candidate, distance, reach, samples, distances)) {
                 addSample(candidate, distance);
@@ -159,6 +168,7 @@ std::vector<Vec2> PoissonDisk::sample(const Options& options, Random& random) {
             active.pop_back();
         }
     }
+
     return samples;
 }
 

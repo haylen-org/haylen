@@ -11,9 +11,11 @@ ShuffleBag::ShuffleBag(std::span<const std::uint32_t> counts) {
     for (std::size_t item = 0; item < counts.size(); ++item) {
         items.insert(items.end(), counts[item], item);
     }
+
     if (items.empty()) {
         throw std::invalid_argument("A shuffle bag needs at least one item.");
     }
+
     remaining = items.size();
 }
 
@@ -22,6 +24,7 @@ std::size_t ShuffleBag::next(Random& random) noexcept {
     if (remaining == 0) {
         remaining = items.size();
     }
+
     const auto chosen = static_cast<std::size_t>(random.nextU64() % remaining);
     --remaining;
     std::swap(items[chosen], items[remaining]);

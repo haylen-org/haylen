@@ -13,6 +13,7 @@ std::optional<Color> Color::parse(std::string_view text) noexcept {
     if (text.starts_with('#')) {
         text.remove_prefix(1);
     }
+
     if (text.size() != 6 && text.size() != 8) {
         return std::nullopt;
     }
@@ -47,6 +48,7 @@ Color Color::fromHsv(float hue, float saturation, float value, float alpha) noex
         const float unknown = std::numeric_limits<float>::quiet_NaN();
         return {unknown, unknown, unknown, alpha};
     }
+
     const float fraction = sector - std::floor(sector);
     const float p = value * (1.0F - saturation);
     const float q = value * (1.0F - saturation * fraction);
@@ -111,6 +113,7 @@ Color::Hsv Color::toHsv() const noexcept {
     } else {
         sector = 4.0F + (r - g) / range;
     }
+
     result.hue = sector / 6.0F - std::floor(sector / 6.0F);
     return result;
 }
@@ -123,6 +126,7 @@ Color Color::lerpHsv(const Color& from, const Color& to, float t) noexcept {
     if (start.saturation <= 0.0F) {
         start.hue = end.hue;
     }
+
     if (end.saturation <= 0.0F) {
         end.hue = start.hue;
     }

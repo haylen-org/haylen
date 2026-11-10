@@ -37,6 +37,7 @@ int SplineLua::newSpline(lua_State* L) {
         lua::Table::readField(L, 2, "kind", kind);
         lua::Table::readField(L, 2, "closed", closed);
     }
+
     lua::Userdata::emplace<Spline>(L, std::move(points), kind, closed);
     return 1;
 }

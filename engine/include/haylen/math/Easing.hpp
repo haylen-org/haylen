@@ -85,9 +85,11 @@ class Easing final {
         if (variant == 0) {
             return in(t);
         }
+
         if (variant == 1) {
             return 1.0F - in(1.0F - t);
         }
+
         return t < 0.5F ? in(t * 2.0F) * 0.5F : 1.0F - in((1.0F - t) * 2.0F) * 0.5F;
     }
 

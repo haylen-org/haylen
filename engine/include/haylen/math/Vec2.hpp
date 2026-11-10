@@ -69,6 +69,7 @@ struct Vec2 {
         if (magnitude <= 1e-6F) {
             return {};
         }
+
         return *this / magnitude;
     }
 
@@ -87,6 +88,7 @@ struct Vec2 {
         if (squared <= maximum * maximum) {
             return *this;
         }
+
         return *this * (maximum / std::sqrt(squared));
     }
 

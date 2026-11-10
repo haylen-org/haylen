@@ -52,6 +52,7 @@ int ChoiceLua::newShuffleBag(lua_State* L) {
         lua::Table::readField(L, 2, "counts", counts);
         lua::Table::readField(L, 2, "seed", seed);
     }
+
     if (counts.size() != size) {
         return luaL_argerror(L, 2, "expected one count per item");
     }
@@ -59,11 +60,13 @@ int ChoiceLua::newShuffleBag(lua_State* L) {
     lua::Userdata::emplace<ShuffleBag>(L, counts);
     const int bag = lua_gettop(L);
     lua::Userdata::setField(L, bag, "items", 1);
+
     if (seed) {
         lua::Userdata::emplace<Random>(L, static_cast<std::uint64_t>(*seed));
     } else {
         lua::Userdata::emplace<Random>(L);
     }
+
     lua::Userdata::setField(L, bag, "random", -1);
     lua_settop(L, bag);
     return 1;
@@ -99,16 +102,19 @@ int ChoiceLua::newWeightedChoice(lua_State* L) {
     if (weights.size() != static_cast<std::size_t>(luaL_len(L, 1))) {
         return luaL_argerror(L, 2, "expected one weight per item");
     }
+
     const std::optional<lua_Integer> seed = lua_isnoneornil(L, 3) ? std::nullopt : std::optional(luaL_checkinteger(L, 3));
 
     lua::Userdata::emplace<WeightedChoice>(L, weights);
     const int choice = lua_gettop(L);
     lua::Userdata::setField(L, choice, "items", 1);
+
     if (seed) {
         lua::Userdata::emplace<Random>(L, static_cast<std::uint64_t>(*seed));
     } else {
         lua::Userdata::emplace<Random>(L);
     }
+
     lua::Userdata::setField(L, choice, "random", -1);
     lua_settop(L, choice);
     return 1;

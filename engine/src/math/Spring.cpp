@@ -45,6 +45,7 @@ float Spring::smoothDamp(float current, float target, float& currentVelocity, fl
         currentVelocity = 0.0F;
         return target;
     }
+
     return result;
 }
 
@@ -64,6 +65,7 @@ Vec2 Spring::smoothDamp(Vec2 current, Vec2 target, Vec2& currentVelocity, float 
         currentVelocity = {};
         return target;
     }
+
     return result;
 }
 

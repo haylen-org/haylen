@@ -40,7 +40,9 @@ void RaycastLua::pushResult(lua_State* L, const std::optional<RayHit>& hit, floa
         lua_pushnil(L);
         return;
     }
+
     pushHit(L, *hit, length);
+
     if (indexed) {
         setIndex(L, *hit);
     }
@@ -97,6 +99,7 @@ int RaycastLua::raycastSegmentsAll(lua_State* L) {
         setIndex(L, hits[index]);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
@@ -123,6 +126,7 @@ int RaycastLua::bounceRay(lua_State* L) {
         setIndex(L, along);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     const Vec2 end = last.getEnd();
     lua::Stack::push(L, end.x);
     lua::Stack::push(L, end.y);
@@ -149,8 +153,10 @@ int RaycastLua::rayFan(lua_State* L) {
         } else {
             lua_pushboolean(L, 0);
         }
+
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 

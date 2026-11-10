@@ -11,6 +11,7 @@ std::uint16_t HalfFloat::fromFloat(float value) noexcept {
     if (clamped < kSmallestNormal) {
         return static_cast<std::uint16_t>(std::lround(clamped * kSubnormalSteps));
     }
+
     const auto bits = std::bit_cast<std::uint32_t>(clamped);
     const std::uint32_t rounded = bits + 0x0FFFU + ((bits >> 13U) & 1U);
     return static_cast<std::uint16_t>((rounded - 0x38000000U) >> 13U);

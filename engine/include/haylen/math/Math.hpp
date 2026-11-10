@@ -34,6 +34,7 @@ class Math final {
         if (edge0 == edge1) {
             return value < edge0 ? 0.0F : 1.0F;
         }
+
         const float t = saturate(inverseLerp(edge0, edge1, value));
         return t * t * (3.0F - 2.0F * t);
     }
@@ -42,6 +43,7 @@ class Math final {
         if (current < target) {
             return std::min(current + maxDelta, target);
         }
+
         return std::max(current - maxDelta, target);
     }
 

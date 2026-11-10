@@ -29,14 +29,17 @@ std::size_t Spline::countSegments(std::size_t pointCount, Kind curveKind, bool l
         if (loop && pointCount >= 3 && pointCount % 3 == 0) {
             return pointCount / 3;
         }
+
         if (!loop && pointCount >= 4 && (pointCount - 1) % 3 == 0) {
             return (pointCount - 1) / 3;
         }
+
         throw std::invalid_argument("A Bezier spline needs 3n + 1 points when open and 3n points when closed.");
     case Kind::BSpline:
         if (pointCount < (loop ? 3U : 2U)) {
             throw std::invalid_argument("A B-spline needs at least two points when open and three when closed.");
         }
+
         // Open B-splines repeat their end points three times so the curve reaches them, which adds two segments.
         return loop ? pointCount : pointCount + 1;
     case Kind::CatmullRom:
@@ -45,6 +48,7 @@ std::size_t Spline::countSegments(std::size_t pointCount, Kind curveKind, bool l
     if (pointCount < (loop ? 3U : 2U)) {
         throw std::invalid_argument("A Catmull-Rom spline needs at least two points when open and three when closed.");
     }
+
     return loop ? pointCount : pointCount - 1;
 }
 
@@ -54,6 +58,7 @@ Vec2 Spline::controlPoint(std::ptrdiff_t index) const noexcept {
     if (closed) {
         return points[static_cast<std::size_t>(((index % count) + count) % count)];
     }
+
     return points[static_cast<std::size_t>(std::clamp<std::ptrdiff_t>(index, 0, count - 1))];
 }
 
@@ -173,6 +178,7 @@ std::vector<Vec2> Spline::sample(std::size_t count) const {
     for (std::size_t index = 0; index < count; ++index) {
         result.push_back(getPoint(count == 1 ? 0.0F : static_cast<float>(index) / static_cast<float>(count - 1)));
     }
+
     return result;
 }
 
@@ -188,9 +194,11 @@ std::vector<Vec2> Spline::sampleByDistance(float spacing) const {
     for (std::size_t index = 0; index < count; ++index) {
         result.push_back(getPointAtDistance(static_cast<float>(index) * spacing));
     }
+
     if (!closed) {
         result.push_back(getPoint(1.0F));
     }
+
     return result;
 }
 
@@ -198,11 +206,13 @@ void Spline::flatten(float tolerance, std::vector<Vec2>& target) const {
     if (!std::isfinite(tolerance) || tolerance <= 0.0F) {
         throw std::invalid_argument("Flattening a spline needs a finite tolerance above 0.");
     }
+
     target.clear();
     target.push_back(evaluate(0, 0.0F));
     for (std::size_t segment = 0; segment < segmentCount; ++segment) {
         subdivide(segment, 0.0F, 1.0F, evaluate(segment, 0.0F), evaluate(segment, 1.0F), tolerance, 0, target);
     }
+
     if (closed) {
         target.pop_back();
     }
@@ -219,6 +229,7 @@ void Spline::subdivide(std::size_t segment, float from, float to, Vec2 start, Ve
         target.push_back(end);
         return;
     }
+
     subdivide(segment, from, middle, start, point, tolerance, depth + 1, target);
     subdivide(segment, middle, to, point, end, tolerance, depth + 1, target);
 }

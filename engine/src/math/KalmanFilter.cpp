@@ -12,6 +12,7 @@ KalmanFilter::KalmanFilter(float process, float measurement, int count) : proces
     if (!(process > 0.0F) || !std::isfinite(process) || !(measurement > 0.0F) || !std::isfinite(measurement)) {
         throw std::invalid_argument("The process noise and the measurement noise of a Kalman filter are positive numbers.");
     }
+
     if (count < 1 || count > kMaxDimensions) {
         throw std::invalid_argument("A filter has from 1 to " + std::to_string(kMaxDimensions) + " dimensions, not " + std::to_string(count) + ".");
     }
@@ -22,12 +23,15 @@ void KalmanFilter::update(std::span<float> values) noexcept {
     const std::size_t used = std::min(values.size(), static_cast<std::size_t>(dimensions));
     if (!started) {
         started = true;
+
         for (std::size_t index = 0; index < used; ++index) {
             estimate[index] = values[index];
             covariance[index] = measurementNoise;
         }
+
         return;
     }
+
     for (std::size_t index = 0; index < used; ++index) {
         const float predicted = covariance[index] + processNoise;
         const float gain = predicted / (predicted + measurementNoise);
