@@ -48,6 +48,7 @@ class FrameDataTest : public ::testing::Test {
         for (std::uint32_t index = 0; index < 4; ++index) {
             animation.frames.push_back({.source = {static_cast<float>(index) * 16.0F, 0.0F, 16.0F, 16.0F}, .originalSize = {16.0F, 16.0F}, .duration = 0.1F, .ticks = ticks ? index + 1 : 0, .events = {"enter" + std::to_string(index)}});
         }
+
         return animation;
     }
 };
@@ -82,8 +83,10 @@ TEST_F(FrameDataTest, RefusesFramesOutsideTheImageOfTheAtlas) {
     };
     // clang-format on
     EXPECT_NO_THROW((void)parse(R"({"x": 32, "y": 0, "w": 32, "h": 32})"));
+
     for (const char* frame : {R"({"x": 32, "y": 2, "w": 32, "h": 32})", R"({"x": 40, "y": 0, "w": 32, "h": 32})", R"({"x": -1, "y": 0, "w": 8, "h": 8})", R"({"x": 0, "y": 0, "w": 0, "h": 8})"}) {
         SCOPED_TRACE(frame);
+
         try {
             (void)parse(frame);
             ADD_FAILURE() << "The atlas took a frame outside its image.";
@@ -121,6 +124,7 @@ TEST_F(FrameDataTest, RunsTheEventsOfEveryFrameItPassesInOrder) {
     // clang-format off
     animator.onEvent = [&](std::string_view animation, std::string_view event, std::size_t) {
         heard.push_back(std::string(animation) + ":" + std::string(event));
+
         if (event == "enter1") {
             animator.play("bounce", true);
         }
@@ -146,12 +150,15 @@ TEST_F(FrameDataTest, StepsTickAnimationsExactly) {
     for (int step = 0; step < 10000; ++step) {
         if (animator.getFrame() != previous) {
             previous = animator.getFrame();
+
             if (step < 10) {
                 starts.push_back(static_cast<std::size_t>(step));
             }
         }
+
         animator.step(1);
     }
+
     EXPECT_EQ(starts, (std::vector<std::size_t>{0, 1, 3, 6}));
     EXPECT_EQ(animator.getFrame(), 0U);
     EXPECT_FLOAT_EQ(animator.getTime(), 10000.0F);
@@ -162,6 +169,7 @@ TEST_F(FrameDataTest, StepsTickAnimationsExactly) {
     } catch (const std::logic_error& error) {
         EXPECT_STREQ(error.what(), "The animation \"combo\" counts ticks, so it advances with \"step\".");
     }
+
     animator.play("idle");
     EXPECT_THROW(animator.step(1), std::logic_error);
 

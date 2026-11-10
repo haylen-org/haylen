@@ -35,6 +35,7 @@ SpriteFrame SpriteAtlas::readFrame(const Document& entry) {
         frame.offset = readRect(entry.at("spriteSourceSize")).getMin();
         frame.originalSize = {core::JsonNumber::toFloat(entry.at("sourceSize").at("w")), core::JsonNumber::toFloat(entry.at("sourceSize").at("h"))};
     }
+
     if (entry.contains("duration")) {
         frame.duration = core::JsonNumber::toFloat(entry.at("duration")) / 1000.0F;
     }
@@ -48,8 +49,10 @@ SpriteFrame SpriteAtlas::readFrame(const Document& entry) {
         if (first < end) {
             frame.events.push_back(data.substr(first, data.find_last_not_of(' ', end - 1) - first + 1));
         }
+
         begin = end + 1;
     }
+
     return frame;
 }
 
@@ -65,10 +68,12 @@ void SpriteAtlas::readFrameSlice(const Document& slice) {
         if (first >= frameOrder.size() || end > frameOrder.size() || end < first) {
             throw std::out_of_range("The slice \"" + name + "\" has a key for a frame that does not exist.");
         }
+
         const math::Rect bounds = readRect(key.at("bounds"));
         if (bounds.width <= 0.0F || bounds.height <= 0.0F) {
             continue;
         }
+
         const std::optional<math::Vec2> pivot = key.contains("pivot") ? std::optional(bounds.getMin() + math::Vec2{core::JsonNumber::toFloat(key.at("pivot").at("x")), core::JsonNumber::toFloat(key.at("pivot").at("y"))}) : std::nullopt;
         for (std::size_t place = first; place < end; ++place) {
             SpriteFrame& frame = frames.at(frameOrder[place]);
@@ -76,7 +81,9 @@ void SpriteAtlas::readFrameSlice(const Document& slice) {
                 frame.points.push_back({.name = name, .position = pivot.value_or(bounds.getCenter())});
                 continue;
             }
+
             frame.boxes.push_back({.name = name, .area = bounds});
+
             if (pivot) {
                 frame.pivot = pivot;
             }
@@ -95,9 +102,11 @@ Animation::Loop SpriteAtlas::readTagLoop(const Document& tag) {
     if (repeats > 1) {
         throw std::invalid_argument("The frame tag \"" + tag.at("name").get<std::string>() + "\" repeats more than once, which atlases do not support. Leave its repeat count empty to loop forever or set it to 1 to play once.");
     }
+
     if (repeats == 1) {
         return Animation::Loop::Once;
     }
+
     return direction.starts_with("pingpong") ? Animation::Loop::PingPong : Animation::Loop::Loop;
 }
 
@@ -105,21 +114,26 @@ SpriteAtlas SpriteAtlas::assemble(graphics::Texture image, std::vector<std::pair
     if (!image.isValid()) {
         throw std::invalid_argument("A sprite atlas needs its texture.");
     }
+
     SpriteAtlas atlas;
     atlas.texture = std::move(image);
     for (auto& [name, frame] : frameList) {
         checkFrame(name, frame.source, atlas.texture);
+
         if (!atlas.frames.emplace(name, std::move(frame)).second) {
             throw std::invalid_argument("The atlas has the frame \"" + name + "\" twice.");
         }
+
         atlas.frameOrder.push_back(name);
     }
+
     for (auto& [name, animation] : animationList) {
         animation.texture = atlas.texture;
         if (!atlas.animations.emplace(name, std::move(animation)).second) {
             throw std::invalid_argument("The atlas has the animation \"" + name + "\" twice.");
         }
     }
+
     return atlas;
 }
 
@@ -132,16 +146,19 @@ SpriteAtlas SpriteAtlas::subset(std::string_view prefix) const {
             result.frameOrder.push_back(name.substr(prefix.size()));
         }
     }
+
     for (const auto& [name, animation] : animations) {
         if (name.starts_with(prefix)) {
             result.animations.emplace(name.substr(prefix.size()), animation);
         }
     }
+
     for (const auto& [name, slice] : slices) {
         if (name.starts_with(prefix)) {
             result.slices.emplace(name.substr(prefix.size()), slice);
         }
     }
+
     return result;
 }
 
@@ -166,6 +183,7 @@ SpriteAtlas SpriteAtlas::parse(const Document& document, graphics::Texture image
             atlas.frameOrder.push_back(name);
         }
     }
+
     for (const std::string& name : atlas.frameOrder) {
         checkFrame(name, atlas.frames.find(name)->second.source, atlas.texture);
     }
@@ -185,9 +203,11 @@ SpriteAtlas SpriteAtlas::parse(const Document& document, graphics::Texture image
         const SpriteFrame& frame = atlas.frames.at(atlas.frameOrder.at(key.value("frame", std::size_t{0})));
         const math::Rect bounds = readRect(key.at("bounds"));
         const math::Rect center = readRect(key.at("center"));
+
         if (!math::Rect{frame.offset.x, frame.offset.y, frame.source.width, frame.source.height}.contains(bounds)) {
             throw std::invalid_argument("The slice \"" + name + "\" reaches past the pixels its frame keeps in the atlas. Keep the slice inside the opaque pixels of the frame or export the atlas without trimming.");
         }
+
         const math::Rect source{frame.source.x - frame.offset.x + bounds.x, frame.source.y - frame.offset.y + bounds.y, bounds.width, bounds.height};
         const math::Insets borders{.left = center.x, .top = center.y, .right = bounds.width - center.getRight(), .bottom = bounds.height - center.getBottom()};
         atlas.slices.insert_or_assign(name, graphics2d::NineSlice::fromBorders(atlas.texture, source, borders));
@@ -204,12 +224,15 @@ SpriteAtlas SpriteAtlas::parse(const Document& document, graphics::Texture image
         for (std::size_t index = from; index <= to; ++index) {
             animation.frames.push_back(atlas.frames.at(atlas.frameOrder[index]));
         }
+
         const std::string direction = tag.value("direction", std::string("forward"));
         if (direction == "reverse" || direction == "pingpong_reverse") {
             std::reverse(animation.frames.begin(), animation.frames.end());
         }
+
         atlas.animations.insert_or_assign(tag.at("name").get<std::string>(), std::move(animation));
     }
+
     return atlas;
 }
 
@@ -226,6 +249,7 @@ const SpriteFrame& SpriteAtlas::getFrame(std::string_view name) const {
     if (found == frames.end()) {
         throw std::invalid_argument("The frame \"" + std::string(name) + "\" does not exist in this atlas.");
     }
+
     return found->second;
 }
 
@@ -238,6 +262,7 @@ const Animation& SpriteAtlas::getAnimation(std::string_view name) const {
     if (found == animations.end()) {
         throw std::invalid_argument("The animation \"" + std::string(name) + "\" does not exist in this atlas.");
     }
+
     return found->second;
 }
 
@@ -246,6 +271,7 @@ std::vector<std::string> SpriteAtlas::getAnimationNames() const {
     for (const auto& [name, animation] : animations) {
         names.push_back(name);
     }
+
     return names;
 }
 
@@ -258,6 +284,7 @@ const graphics2d::NineSlice& SpriteAtlas::getSlice(std::string_view name) const 
     if (found == slices.end()) {
         throw std::invalid_argument("The slice \"" + std::string(name) + "\" does not exist in this atlas.");
     }
+
     return found->second;
 }
 
@@ -266,6 +293,7 @@ std::vector<std::string> SpriteAtlas::getSliceNames() const {
     for (const auto& [name, slice] : slices) {
         names.push_back(name);
     }
+
     return names;
 }
 
@@ -280,6 +308,7 @@ Animation SpriteAtlas::animationFromFrames(const std::vector<std::string>& names
         copy.duration = 1.0F / framesPerSecond;
         animation.frames.push_back(copy);
     }
+
     return animation;
 }
 

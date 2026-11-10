@@ -33,12 +33,15 @@ int ChainLua::create(lua_State* L) {
     if (even == !options.lengths.empty()) {
         return luaL_error(L, "A chain takes the lengths of its segments either as \"lengths\" or as \"segments\" of the same \"length\".");
     }
+
     if (even) {
         if (segments < 1) {
             return luaL_error(L, "A chain needs at least one segment in \"segments\".");
         }
+
         options.lengths.assign(static_cast<std::size_t>(segments), length);
     }
+
     lua::Userdata::emplace<Chain>(L, std::make_shared<Chain>(options));
     return 1;
 }
@@ -71,6 +74,7 @@ int ChainLua::reach(lua_State* L) {
         // clang-format on
         luaL_argcheck(L, options.iterations >= 1, 4, "a reach needs at least one iteration");
     }
+
     lua::Stack::push(L, chain.reach(target, options));
     return 1;
 }
@@ -119,11 +123,13 @@ int ChainLua::writePoints(lua_State* L) {
     if (start + chain.size() * 2 > buffer.size()) {
         return luaL_error(L, "The buffer holds %d values, and the %d points of the chain need %d from value %d on.", static_cast<int>(buffer.size()), static_cast<int>(chain.size()), static_cast<int>(chain.size() * 2), static_cast<int>(first));
     }
+
     const std::span<float> values = buffer.getValues().subspan(start);
     for (std::size_t index = 0; index < chain.size(); ++index) {
         values[index * 2] = chain.getPoints()[index].x;
         values[index * 2 + 1] = chain.getPoints()[index].y;
     }
+
     return 0;
 }
 

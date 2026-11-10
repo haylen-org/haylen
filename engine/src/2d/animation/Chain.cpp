@@ -11,6 +11,7 @@ Chain::Chain(const Options& options) : points(options.lengths.size() + 1), lengt
     if (lengths.empty()) {
         throw std::invalid_argument("A chain needs at least one segment.");
     }
+
     if (std::ranges::any_of(lengths, [](float length) { return !(length > 0.0F) || !std::isfinite(length); })) {
         throw std::invalid_argument("Every segment of a chain needs a finite length greater than zero.");
     }
@@ -28,19 +29,23 @@ bool Chain::reach(math::Vec2 target, const Reach& options) {
         for (std::size_t index = 0; index < lengths.size(); ++index) {
             points[index + 1] = points[index] + direction * lengths[index];
         }
+
         return math::Vec2::distance(points.back(), target) <= options.tolerance;
     }
 
     if (options.pole) {
         bendTowardPole(target, *options.pole);
     }
+
     for (int iteration = 0; iteration < options.iterations; ++iteration) {
         if (math::Vec2::distance(points.back(), target) <= options.tolerance) {
             return true;
         }
+
         pullToward(target);
         pushFromRoot(root);
     }
+
     return math::Vec2::distance(points.back(), target) <= options.tolerance;
 }
 
@@ -74,6 +79,7 @@ math::Vec2 Chain::directionOr(math::Vec2 value, math::Vec2 fallback) noexcept {
     if (!value.isZero()) {
         return value.getNormalized();
     }
+
     return fallback.isZero() ? math::Vec2{1.0F, 0.0F} : fallback.getNormalized();
 }
 
@@ -82,12 +88,14 @@ math::Vec2 Chain::limitBend(math::Vec2 direction, math::Vec2 previous) const noe
     if (std::abs(bend) <= maxBend) {
         return direction;
     }
+
     return previous.rotated(std::copysign(maxBend, bend));
 }
 
 // Places the end on the target and every point before it at the length of its segment from the next one.
 void Chain::pullToward(math::Vec2 target) {
     points.back() = target;
+
     for (std::size_t index = lengths.size(); index-- > 0;) {
         const math::Vec2 fallback = index + 2 < points.size() ? points[index + 1] - points[index + 2] : math::Vec2{-1.0F, 0.0F};
         points[index] = points[index + 1] + directionOr(points[index] - points[index + 1], fallback) * lengths[index];
@@ -97,6 +105,7 @@ void Chain::pullToward(math::Vec2 target) {
 // Places the first point on the root and every point after it at the length of its segment from the one before, within the bend limit.
 void Chain::pushFromRoot(math::Vec2 root) {
     points.front() = root;
+
     for (std::size_t index = 1; index < points.size(); ++index) {
         math::Vec2 direction;
         if (index == 1) {
@@ -105,6 +114,7 @@ void Chain::pushFromRoot(math::Vec2 root) {
             const math::Vec2 previous = (points[index - 1] - points[index - 2]) / lengths[index - 2];
             direction = limitBend(directionOr(points[index] - points[index - 1], previous), previous);
         }
+
         points[index] = points[index - 1] + direction * lengths[index - 1];
     }
 }
@@ -125,6 +135,7 @@ void Chain::bendTowardPole(math::Vec2 target, math::Vec2 pole) {
         if (distance > 0.0F) {
             continue;
         }
+
         points[index] = distance == 0.0F ? points[index] + across * lengths[index - 1] * 0.5F : root + axis * (math::Vec2::dot(offset, axis) * 2.0F) - offset;
     }
 }

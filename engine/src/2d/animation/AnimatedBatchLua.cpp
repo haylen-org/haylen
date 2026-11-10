@@ -37,6 +37,7 @@ int AnimatedBatchLua::create(lua_State* L) {
         batch->addAnimation(lua::Stack::read<std::string>(L, -2), lua::Stack::read<Animation>(L, -1));
         lua_pop(L, 1);
     }
+
     lua::Userdata::emplace<AnimatedBatch>(L, std::move(batch));
     return 1;
 }
@@ -45,6 +46,7 @@ void AnimatedBatchLua::readAnimationFields(lua_State* L, int table, AnimatedBatc
     if (lua_getfield(L, table, "animation") != LUA_TNIL) {
         batch.play(index, lua::Stack::read<std::string_view>(L, -1));
     }
+
     lua_pop(L, 1);
     float speed = batch.getSpeed(index);
     lua::Table::readField(L, table, "speed", speed);
@@ -56,6 +58,7 @@ void AnimatedBatchLua::readAnimationFields(lua_State* L, int table, AnimatedBatc
     if (lua_getfield(L, table, "partColors") != LUA_TNIL) {
         batch.setPartColors(index, lua::Stack::read<graphics2d::PartColors>(L, -1));
     }
+
     lua_pop(L, 1);
 }
 
@@ -70,8 +73,10 @@ int AnimatedBatchLua::add(lua_State* L) {
         if (names.empty()) {
             return luaL_error(L, "The animated batch has no animation to play.");
         }
+
         animation = names.front();
     }
+
     const std::size_t index = batch.add(sprite, animation);
     readAnimationFields(L, 2, batch, index);
     lua::Stack::push(L, index + 1);
@@ -208,6 +213,7 @@ int AnimatedBatchLua::finished(lua_State* L) {
         lua_pushinteger(L, static_cast<lua_Integer>(ended[place] + 1));
         lua_rawseti(L, -2, static_cast<lua_Integer>(place + 1));
     }
+
     return 1;
 }
 
@@ -228,6 +234,7 @@ int AnimatedBatchLua::on(lua_State* L) {
     if (event != "complete") {
         return luaL_error(L, "Unknown animated batch event \"%s\". Animated batches report \"complete\".", std::string(event).c_str());
     }
+
     luaL_checktype(L, 3, LUA_TFUNCTION);
     int owner = 0;
     if (!lua_isnoneornil(L, 4)) {
@@ -238,9 +245,11 @@ int AnimatedBatchLua::on(lua_State* L) {
             owner = lua_gettop(L);
         }
     }
+
     if (owner == 0) {
         owner = lua::Owners::pushDefault(L);
     }
+
     const std::weak_ptr<const void> lifetime = owner != 0 ? lua::Owners::getLifetime(L, owner) : std::weak_ptr<const void>();
     auto function = std::make_shared<lua::Owners::Function>(L, 3, owner);
     lua_State* main = lua::Runtime::getMainThread(L);
@@ -251,11 +260,14 @@ int AnimatedBatchLua::on(lua_State* L) {
             if (!function->push(state)) {
                 return;
             }
+
             lua_createtable(state, static_cast<int>(ended.size()), 0);
+
             for (std::size_t place = 0; place < ended.size(); ++place) {
                 lua_pushinteger(state, static_cast<lua_Integer>(ended[place] + 1));
                 lua_rawseti(state, -2, static_cast<lua_Integer>(place + 1));
             }
+
             if (reported) {
                 lua::Runtime::protectedCall(state, 1, 0);
             } else {
@@ -266,12 +278,14 @@ int AnimatedBatchLua::on(lua_State* L) {
             call(advancing, false);
             return;
         }
+
         lua::Runtime::runReporting(main, [&] { call(main, true); });
     }, {.owner = lifetime});
     // clang-format on
     if (owner != 0) {
         lua::Owners::add(L, owner, connection);
     }
+
     lua::Userdata::emplace<core::Connection>(L, std::move(connection));
     return 1;
 }

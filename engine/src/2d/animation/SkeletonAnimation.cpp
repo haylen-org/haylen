@@ -27,10 +27,12 @@ std::pair<std::size_t, float> SkeletonAnimation::locate(const std::vector<Key>& 
     if (next == keys.begin()) {
         return {0, 0.0F};
     }
+
     const auto index = static_cast<std::size_t>(next - keys.begin()) - 1;
     if (next == keys.end()) {
         return {index, 0.0F};
     }
+
     const float span = next->time - keys[index].time;
     return {index, keys[index].curve.apply(span > 0.0F ? (time - keys[index].time) / span : 0.0F)};
 }
@@ -44,6 +46,7 @@ float SkeletonAnimation::mixAngle(float from, float to, float alpha) noexcept {
     } else if (delta < -std::numbers::pi_v<float>) {
         delta += kTurn;
     }
+
     return from + delta * alpha;
 }
 
@@ -51,6 +54,7 @@ float SkeletonAnimation::localTime(float time, bool loop) const noexcept {
     if (duration <= 0.0F) {
         return 0.0F;
     }
+
     return loop ? std::fmod(std::max(0.0F, time), duration) : std::clamp(time, 0.0F, duration);
 }
 
@@ -63,6 +67,7 @@ void SkeletonAnimation::apply(Skeleton& skeleton, float time, bool loop, float a
         if (timeline.keys.empty()) {
             continue;
         }
+
         const auto [index, share] = locate(timeline.keys, at);
         const Key& key = timeline.keys[index];
         const Key& next = timeline.keys[std::min(index + 1, timeline.keys.size() - 1)];
@@ -96,19 +101,23 @@ void SkeletonAnimation::apply(Skeleton& skeleton, float time, bool loop, float a
                 const std::string& attachment = timeline.names[index];
                 skeleton.slots[timeline.target].attachment = attachment.empty() ? nullptr : data.findAttachment(skeleton.skin, timeline.target, attachment);
             }
+
             break;
         case Property::Deform: {
             Skeleton::SlotPose& slot = skeleton.slots[timeline.target];
             if (slot.attachment == nullptr || slot.attachment->name != timeline.attachment) {
                 break;
             }
+
             const std::vector<float>& from = timeline.offsets[index];
             const std::vector<float>& to = timeline.offsets[std::min(index + 1, timeline.offsets.size() - 1)];
             slot.deform.resize(from.size(), 0.0F);
+
             for (std::size_t place = 0; place < from.size(); ++place) {
                 const float keyed = from[place] + (to[place] - from[place]) * share;
                 slot.deform[place] += (keyed - slot.deform[place]) * alpha;
             }
+
             break;
         }
         case Property::IkMix:
@@ -116,6 +125,7 @@ void SkeletonAnimation::apply(Skeleton& skeleton, float time, bool loop, float a
             if (switches) {
                 skeleton.ikBends[timeline.target] = key.values[1] != 0.0F;
             }
+
             break;
         }
     }
@@ -132,12 +142,14 @@ void SkeletonAnimation::collectEvents(float from, float to, bool loop, std::vect
     if (events.empty() || to <= from) {
         return;
     }
+
     if (!loop || duration <= 0.0F) {
         for (const Event& event : events) {
             if (event.time > from && event.time <= to) {
                 found.push_back(&event);
             }
         }
+
         return;
     }
 

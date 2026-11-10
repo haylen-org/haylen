@@ -35,9 +35,11 @@ int SkeletonLua::newSkeleton(lua_State* L) {
         lua::Table::checkFields(L, 2, {kSkeletonFields});
         std::string skin;
         lua::Table::readField(L, 2, "skin", skin);
+
         if (!skin.empty()) {
             skeleton->setSkin(skin);
         }
+
         lua::Table::readField(L, 2, "x", skeleton->position.x);
         lua::Table::readField(L, 2, "y", skeleton->position.y);
         lua::Table::readField(L, 2, "rotation", skeleton->rotation);
@@ -45,6 +47,7 @@ int SkeletonLua::newSkeleton(lua_State* L) {
         lua::Table::readField(L, 2, "scaleY", skeleton->scale.y);
         lua::Table::readField(L, 2, "color", skeleton->color);
     }
+
     skeleton->pose();
     lua::Userdata::emplace<Skeleton>(L, std::move(skeleton));
     return 1;
@@ -66,6 +69,7 @@ Skeleton::PlayOptions SkeletonLua::readPlayOptions(lua_State* L, int index) {
     if (lua_isnoneornil(L, index)) {
         return options;
     }
+
     luaL_checktype(L, index, LUA_TTABLE);
     lua::Table::checkFields(L, index, {kPlayFields});
     lua_Integer track = 1;
@@ -85,21 +89,25 @@ int SkeletonLua::dataNames(lua_State* L, int kind) {
         for (const SkeletonData::Bone& entry : data.getBones()) {
             names.push_back(entry.name);
         }
+
         break;
     case 1:
         for (const SkeletonData::Slot& entry : data.getSlots()) {
             names.push_back(entry.name);
         }
+
         break;
     case 2:
         for (const SkeletonData::Skin& entry : data.getSkins()) {
             names.push_back(entry.name);
         }
+
         break;
     default:
         for (const SkeletonAnimation& entry : data.getAnimations()) {
             names.push_back(entry.name);
         }
+
         break;
     }
     lua::Stack::push(L, names);
@@ -133,6 +141,7 @@ int SkeletonLua::dataDuration(lua_State* L) {
     if (animation == nullptr) {
         return luaL_error(L, "The skeleton has no animation \"%s\".", std::string(name).c_str());
     }
+
     lua::Stack::push(L, animation->duration);
     return 1;
 }
@@ -166,6 +175,7 @@ int SkeletonLua::trackAnimation(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, name);
     return 1;
 }
@@ -198,6 +208,7 @@ int SkeletonLua::bone(lua_State* L) {
     if (!found) {
         return luaL_error(L, "The skeleton has no bone \"%s\".", std::string(name).c_str());
     }
+
     const math::Transform2D& world = skeleton.getBoneWorld(*found);
     const Skeleton::BonePose& local = skeleton.getBonePose(*found);
     lua_createtable(L, 0, 9);
@@ -212,10 +223,12 @@ int SkeletonLua::bone(lua_State* L) {
         {"worldRotation", std::atan2(world.b, world.a)},
         {"worldScaleX", math::Vec2{world.a, world.b}.getLength()},
     }};
+
     for (const auto& [key, value] : fields) {
         lua::Stack::push(L, value);
         lua_setfield(L, -2, key);
     }
+
     return 1;
 }
 
@@ -259,6 +272,7 @@ int SkeletonLua::point(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, found->x);
     lua::Stack::push(L, found->y);
     return 2;
@@ -286,6 +300,7 @@ int SkeletonLua::on(lua_State* L) {
     if (event != "event") {
         return luaL_error(L, "Unknown skeleton event \"%s\". Skeletons report \"event\".", std::string(event).c_str());
     }
+
     luaL_checktype(L, 3, LUA_TFUNCTION);
     int owner = 0;
     if (!lua_isnoneornil(L, 4)) {
@@ -296,9 +311,11 @@ int SkeletonLua::on(lua_State* L) {
             owner = lua_gettop(L);
         }
     }
+
     if (owner == 0) {
         owner = lua::Owners::pushDefault(L);
     }
+
     const std::weak_ptr<const void> lifetime = owner != 0 ? lua::Owners::getLifetime(L, owner) : std::weak_ptr<const void>();
     auto function = std::make_shared<lua::Owners::Function>(L, 3, owner);
     lua_State* main = lua::Runtime::getMainThread(L);
@@ -309,6 +326,7 @@ int SkeletonLua::on(lua_State* L) {
             if (!function->push(state)) {
                 return;
             }
+
             lua_createtable(state, 0, 5);
             lua::Stack::push(state, fired.name);
             lua_setfield(state, -2, "name");
@@ -320,6 +338,7 @@ int SkeletonLua::on(lua_State* L) {
             lua_setfield(state, -2, "text");
             lua::Stack::push(state, fired.number);
             lua_setfield(state, -2, "number");
+
             if (reported) {
                 lua::Runtime::protectedCall(state, 1, 0);
             } else {
@@ -330,12 +349,14 @@ int SkeletonLua::on(lua_State* L) {
             call(updating, false);
             return;
         }
+
         lua::Runtime::runReporting(main, [&] { call(main, true); });
     }, {.owner = lifetime});
     // clang-format on
     if (owner != 0) {
         lua::Owners::add(L, owner, connection);
     }
+
     lua::Userdata::emplace<core::Connection>(L, std::move(connection));
     return 1;
 }

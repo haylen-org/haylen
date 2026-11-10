@@ -13,28 +13,34 @@ StateGraphPlayer::StateGraphPlayer(std::shared_ptr<const StateGraph> stateGraph,
     if (const auto* animator = std::get_if<std::shared_ptr<Animator>>(&target); animator != nullptr && !*animator) {
         throw std::invalid_argument("A state graph player needs an animator or an animated batch.");
     }
+
     if (const auto* sprite = std::get_if<BatchSprite>(&target); sprite != nullptr && (!sprite->batch || sprite->index >= sprite->batch->size())) {
         throw std::invalid_argument("A state graph player needs a sprite of its animated batch.");
     }
+
     if (const auto* track = std::get_if<SkeletonTrack>(&target); track != nullptr && !track->skeleton) {
         throw std::invalid_argument("A state graph player needs a skeleton.");
     }
+
     for (const std::string& name : graph->getAnimationNames()) {
         if (!hasAnimation(name)) {
             throw std::invalid_argument("The state graph plays the animation \"" + name + "\", which its target lacks.");
         }
     }
+
     for (const StateGraph::Parameter& parameter : graph->getParameters()) {
         values[parameter.slot] = parameter.value[0];
         if (parameter.kind == StateGraph::Kind::Vector) {
             values[parameter.slot + 1] = parameter.value[1];
         }
     }
+
     current = graph->getInitial();
     const StateGraph::State& start = graph->getStates()[current];
     if (start.by) {
         direction = graph->pickDirection(start, values, direction);
     }
+
     playOnTarget(animationOf(start), false, 0.0F);
 }
 
@@ -43,9 +49,11 @@ const StateGraph::Parameter& StateGraphPlayer::find(std::string_view name, State
     if (parameter == nullptr) {
         throw std::invalid_argument("The state graph has no parameter \"" + std::string(name) + "\".");
     }
+
     if (parameter->kind != kind) {
         throw std::invalid_argument("The parameter \"" + std::string(name) + "\" is a " + std::string(StateGraph::kindName(parameter->kind)) + ", not a " + std::string(StateGraph::kindName(kind)) + ".");
     }
+
     return *parameter;
 }
 
@@ -84,9 +92,11 @@ bool StateGraphPlayer::hasAnimation(const std::string& name) const {
     if (const auto* animator = std::get_if<std::shared_ptr<Animator>>(&target)) {
         return (*animator)->has(name);
     }
+
     if (const auto* sprite = std::get_if<BatchSprite>(&target)) {
         return sprite->batch->hasAnimation(name);
     }
+
     return std::get<SkeletonTrack>(target).skeleton->getData().findAnimation(name) != nullptr;
 }
 
@@ -94,9 +104,11 @@ float StateGraphPlayer::getTargetTime() const {
     if (const auto* animator = std::get_if<std::shared_ptr<Animator>>(&target)) {
         return (*animator)->getTime();
     }
+
     if (const auto* sprite = std::get_if<BatchSprite>(&target)) {
         return sprite->batch->getTime(sprite->index);
     }
+
     const SkeletonTrack& track = std::get<SkeletonTrack>(target);
     return track.skeleton->getTrackTime(track.track);
 }
@@ -105,31 +117,41 @@ float StateGraphPlayer::getTargetCycle() const {
     if (const auto* animator = std::get_if<std::shared_ptr<Animator>>(&target)) {
         return (*animator)->getAnimation(playing).getCycleDuration();
     }
+
     if (const auto* sprite = std::get_if<BatchSprite>(&target)) {
         return sprite->batch->getCycleDuration(sprite->index);
     }
+
     return std::get<SkeletonTrack>(target).skeleton->getData().findAnimation(playing)->duration;
 }
 
 void StateGraphPlayer::playOnTarget(const std::string& name, bool keepTime, float fade) {
     const float time = keepTime ? getTargetTime() : 0.0F;
     playing = name;
+
     if (const auto* animator = std::get_if<std::shared_ptr<Animator>>(&target)) {
         (*animator)->play(name, true);
+
         if (keepTime) {
             (*animator)->seek(time);
         }
+
         return;
     }
+
     if (const auto* sprite = std::get_if<BatchSprite>(&target)) {
         sprite->batch->play(sprite->index, name, true);
+
         if (keepTime) {
             sprite->batch->seek(sprite->index, time);
         }
+
         return;
     }
+
     const SkeletonTrack& track = std::get<SkeletonTrack>(target);
     track.skeleton->play(name, {.track = track.track, .loop = true, .fade = fade});
+
     if (keepTime) {
         track.skeleton->seekTrack(track.track, time);
     }
@@ -148,6 +170,7 @@ void StateGraphPlayer::enterState(std::size_t state, float fade) {
     if (entered.by) {
         direction = graph->pickDirection(entered, values, entered.directions[direction].empty() ? static_cast<std::size_t>(StateGraph::Direction::Down) : direction);
     }
+
     playOnTarget(animationOf(entered), false, fade);
     stateChanged.emit(from, entered.name);
 }
@@ -157,6 +180,7 @@ void StateGraphPlayer::enter(std::string_view state) {
     if (!found) {
         throw std::invalid_argument("The state graph has no state \"" + std::string(state) + "\".");
     }
+
     enterState(*found, 0.0F);
 }
 
@@ -176,15 +200,19 @@ void StateGraphPlayer::update(float deltaSeconds) {
         if (transition.from ? *transition.from != current : transition.to == current) {
             continue;
         }
+
         if (transition.exitTime > 0.0F && getTargetTime() < transition.exitTime * getTargetCycle()) {
             continue;
         }
+
         if (transition.condition && !graph->evaluate(*transition.condition, values)) {
             continue;
         }
+
         for (const std::size_t slot : transition.triggers) {
             values[slot] = 0.0F;
         }
+
         enterState(transition.to, transition.fade);
         return;
     }

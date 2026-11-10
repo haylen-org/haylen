@@ -39,6 +39,7 @@ struct SpriteFrame {
                 return &box;
             }
         }
+
         return nullptr;
     }
 
@@ -48,6 +49,7 @@ struct SpriteFrame {
                 return &point;
             }
         }
+
         return nullptr;
     }
 };

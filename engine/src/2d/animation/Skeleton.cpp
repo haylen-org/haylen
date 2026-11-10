@@ -15,14 +15,17 @@ Skeleton::Skeleton(std::shared_ptr<const SkeletonData> skeletonData) : data(std:
     if (!data) {
         throw std::invalid_argument("A skeleton needs its data.");
     }
+
     skin = *data->findSkin("default");
     bones.resize(data->getBones().size());
     worlds.resize(bones.size());
     slots.resize(data->getSlots().size());
     ikMixes.resize(data->getIkConstraints().size());
+
     for (const SkeletonData::IkConstraint& constraint : data->getIkConstraints()) {
         ikSetupMixes.push_back(constraint.mix);
     }
+
     ikBends.resize(ikMixes.size());
     ikTargets.resize(ikMixes.size());
     setToSetupPose();
@@ -34,6 +37,7 @@ void Skeleton::setSkin(std::string_view name) {
     if (!found) {
         throw std::invalid_argument("The skeleton has no skin \"" + std::string(name) + "\".");
     }
+
     skin = *found;
     for (std::size_t slot = 0; slot < slots.size(); ++slot) {
         const std::string& setup = data->getSlots()[slot].attachment;
@@ -50,14 +54,17 @@ void Skeleton::setAttachment(std::string_view slot, std::string_view name) {
     if (!found) {
         throw std::invalid_argument("The skeleton has no slot \"" + std::string(slot) + "\".");
     }
+
     if (name.empty()) {
         slots[*found].attachment = nullptr;
         return;
     }
+
     const SkeletonData::Attachment* attachment = data->findAttachment(skin, *found, name);
     if (attachment == nullptr) {
         throw std::invalid_argument("The slot \"" + std::string(slot) + "\" has no attachment \"" + std::string(name) + "\" in the skin \"" + getSkin() + "\".");
     }
+
     slots[*found].attachment = attachment;
 }
 
@@ -65,9 +72,11 @@ Skeleton::Track& Skeleton::getTrack(std::size_t index) {
     if (index >= kMaxTracks) {
         throw std::out_of_range("A skeleton has at most " + std::to_string(kMaxTracks) + " tracks.");
     }
+
     if (index >= tracks.size()) {
         tracks.resize(index + 1);
     }
+
     return tracks[index];
 }
 
@@ -76,9 +85,11 @@ void Skeleton::play(std::string_view animation, const PlayOptions& options) {
     if (found == nullptr) {
         throw std::invalid_argument("The skeleton has no animation \"" + std::string(animation) + "\".");
     }
+
     if (!(options.fade >= 0.0F)) {
         throw std::invalid_argument("A fade lasts zero seconds or more.");
     }
+
     Track& track = getTrack(options.track);
     track.previous = options.fade > 0.0F ? track.current : std::nullopt;
     track.current = Entry{.animation = found, .loop = options.loop};
@@ -120,6 +131,7 @@ std::size_t Skeleton::findIkConstraint(std::string_view name) const {
     if (!found) {
         throw std::invalid_argument("The skeleton has no inverse kinematics constraint \"" + std::string(name) + "\".");
     }
+
     return *found;
 }
 
@@ -140,6 +152,7 @@ void Skeleton::setToSetupPose() {
         const SkeletonData::Bone& setup = data->getBones()[bone];
         bones[bone] = {.position = setup.position, .rotation = setup.rotation, .scale = setup.scale};
     }
+
     drawOrder.resize(slots.size());
     for (std::size_t slot = 0; slot < slots.size(); ++slot) {
         const SkeletonData::Slot& setup = data->getSlots()[slot];
@@ -148,6 +161,7 @@ void Skeleton::setToSetupPose() {
         slots[slot].deform.clear();
         drawOrder[slot] = slot;
     }
+
     for (std::size_t constraint = 0; constraint < ikMixes.size(); ++constraint) {
         ikMixes[constraint] = ikSetupMixes[constraint];
         ikBends[constraint] = data->getIkConstraints()[constraint].bendPositive;
@@ -184,6 +198,7 @@ void Skeleton::crossfade(const Track& track, float mix) {
         const BonePose blended{.position = math::Vec2::lerp(from.position, to.position, mix), .rotation = from.rotation + std::remainder(to.rotation - from.rotation, std::numbers::pi_v<float> * 2.0F) * mix, .scale = math::Vec2::lerp(from.scale, to.scale, mix)};
         to = {.position = math::Vec2::lerp(base.position, blended.position, weight), .rotation = base.rotation + std::remainder(blended.rotation - base.rotation, std::numbers::pi_v<float> * 2.0F) * weight, .scale = math::Vec2::lerp(base.scale, blended.scale, weight)};
     }
+
     const bool switched = mix * weight >= 0.5F;
     for (std::size_t slot = 0; slot < slots.size(); ++slot) {
         SlotPose& to = slots[slot];
@@ -192,15 +207,18 @@ void Skeleton::crossfade(const Track& track, float mix) {
         if (!switched) {
             to.attachment = weight * (1.0F - mix) >= 0.5F ? from.attachment : before.slots[slot].attachment;
         }
+
         if (to.deform.size() == from.deform.size()) {
             for (std::size_t place = 0; place < to.deform.size(); ++place) {
                 to.deform[place] = from.deform[place] + (to.deform[place] - from.deform[place]) * mix;
             }
         }
     }
+
     if (!switched) {
         drawOrder = weight * (1.0F - mix) >= 0.5F ? faded.drawOrder : before.drawOrder;
     }
+
     for (std::size_t constraint = 0; constraint < ikMixes.size(); ++constraint) {
         ikMixes[constraint] = before.ikMixes[constraint] + (faded.ikMixes[constraint] + (ikMixes[constraint] - faded.ikMixes[constraint]) * mix - before.ikMixes[constraint]) * weight;
     }
@@ -233,6 +251,7 @@ void Skeleton::aimBone(std::size_t bone, float worldAngle, float mix) {
     } else if (delta < -std::numbers::pi_v<float>) {
         delta += kTurn;
     }
+
     bones[bone].rotation += delta * mix;
 }
 
@@ -243,6 +262,7 @@ void Skeleton::solveIk(std::size_t index) {
     if (mix <= 0.0F) {
         return;
     }
+
     const math::Vec2 target = ikTargets[index].value_or(worlds[constraint.target].getTranslation());
     const std::size_t first = constraint.bones.front();
     const math::Vec2 origin = worlds[first].getTranslation();
@@ -275,22 +295,26 @@ void Skeleton::solveTransform(const SkeletonData::TransformConstraint& constrain
         if (constraint.rotateMix > 0.0F) {
             aimBone(bone, worldAngleOf(constraint.target) + constraint.rotation, constraint.rotateMix);
         }
+
         if (constraint.translateMix > 0.0F) {
             const std::optional<std::size_t> parent = data->getBones()[bone].parent;
             const math::Transform2D parentWorld = parent ? worlds[*parent] : math::Transform2D::compose(position, rotation, scale);
             const math::Vec2 wanted = parentWorld.getInverse().apply(target.apply(constraint.offset));
             bones[bone].position += (wanted - bones[bone].position) * constraint.translateMix;
         }
+
         computeWorld();
     }
 }
 
 void Skeleton::pose() {
     setToSetupPose();
+
     for (const Track& track : tracks) {
         if (!track.current || track.weight <= 0.0F) {
             continue;
         }
+
         const float mix = track.previous && track.fadeDuration > 0.0F ? std::min(1.0F, track.fade / track.fadeDuration) : 1.0F;
         if (mix < 1.0F) {
             crossfade(track, mix);
@@ -298,10 +322,13 @@ void Skeleton::pose() {
             track.current->animation->apply(*this, track.current->time, track.current->loop, track.weight);
         }
     }
+
     computeWorld();
+
     for (std::size_t constraint = 0; constraint < ikMixes.size(); ++constraint) {
         solveIk(constraint);
     }
+
     for (const SkeletonData::TransformConstraint& constraint : data->getTransformConstraints()) {
         solveTransform(constraint);
     }
@@ -312,6 +339,7 @@ void Skeleton::update(float deltaSeconds) {
         if (!track.current) {
             continue;
         }
+
         track.current->previousTime = track.current->time;
         track.current->time += deltaSeconds;
         if (track.previous) {
@@ -322,6 +350,7 @@ void Skeleton::update(float deltaSeconds) {
             }
         }
     }
+
     pose();
 
     // Listeners may play other animations, so the events of a track come from what it played when the update began, and they may update the skeleton again, so the events wait in a list of their own that the next update reuses.
@@ -330,13 +359,16 @@ void Skeleton::update(float deltaSeconds) {
         if (!tracks[index].current) {
             continue;
         }
+
         const Entry entry = *tracks[index].current;
         events.clear();
         entry.animation->collectEvents(entry.previousTime, entry.time, entry.loop, events);
+
         for (const SkeletonAnimation::Event* event : events) {
             eventFired.emit({.track = index, .animation = entry.animation->name, .name = event->name, .text = event->text, .number = event->number});
         }
     }
+
     events.clear();
     passed = std::move(events);
 }
@@ -346,10 +378,12 @@ std::optional<math::Vec2> Skeleton::getPoint(std::string_view slot) const {
     if (!found) {
         throw std::invalid_argument("The skeleton has no slot \"" + std::string(slot) + "\".");
     }
+
     const SkeletonData::Attachment* attachment = slots[*found].attachment;
     if (attachment == nullptr || attachment->kind != SkeletonData::Attachment::Kind::Point) {
         return std::nullopt;
     }
+
     return worlds[data->getSlots()[*found].bone].apply(attachment->position);
 }
 
@@ -374,9 +408,11 @@ void Skeleton::appendSlot(std::size_t slot) {
         for (const math::Vec2 share : shares) {
             vertices.push_back({.position = place.apply(corner + extent * share), .uv = uvOf(share), .color = tint});
         }
+
         for (const std::uint32_t index : {0U, 1U, 2U, 0U, 2U, 3U}) {
             indices.push_back(first + index);
         }
+
         return;
     }
 
@@ -393,8 +429,10 @@ void Skeleton::appendSlot(std::size_t slot) {
             const math::Vec2 offset = pose.deform.size() > vertex * 2 + 1 ? math::Vec2{pose.deform[vertex * 2], pose.deform[vertex * 2 + 1]} : math::Vec2{};
             placed = bone.apply(attachment.vertices[vertex] + offset);
         }
+
         vertices.push_back({.position = placed, .uv = uvOf(attachment.uvs[vertex]), .color = tint});
     }
+
     for (const std::uint32_t index : attachment.triangles) {
         indices.push_back(first + index);
     }
@@ -403,19 +441,23 @@ void Skeleton::appendSlot(std::size_t slot) {
 math::Rect Skeleton::getBounds() {
     vertices.clear();
     indices.clear();
+
     for (const std::size_t slot : drawOrder) {
         const SkeletonData::Attachment* attachment = slots[slot].attachment;
         if (attachment != nullptr && (attachment->kind == SkeletonData::Attachment::Kind::Region || attachment->kind == SkeletonData::Attachment::Kind::Mesh)) {
             appendSlot(slot);
         }
     }
+
     if (vertices.empty()) {
         return math::Rect::fromCenter(position, {});
     }
+
     math::Rect bounds = math::Rect::fromCenter(vertices.front().position, {});
     for (const graphics2d::MeshVertex& vertex : vertices) {
         bounds = bounds.merged(math::Rect::fromCenter(vertex.position, {}));
     }
+
     return bounds;
 }
 
@@ -430,15 +472,18 @@ void Skeleton::draw(graphics2d::Renderer& renderer, const graphics2d::DrawOrder&
         if (attachment == nullptr || (attachment->kind != SkeletonData::Attachment::Kind::Region && attachment->kind != SkeletonData::Attachment::Kind::Mesh)) {
             continue;
         }
+
         const graphics::BlendMode::Type blend = data->getSlots()[slot].blend == graphics::BlendMode::Type::Alpha ? order.blend : data->getSlots()[slot].blend;
         if (!indices.empty() && blend != run.blend) {
             renderer.drawMesh(data->getAtlas().getTexture(), vertices, indices, run, false);
             vertices.clear();
             indices.clear();
         }
+
         run.blend = blend;
         appendSlot(slot);
     }
+
     if (!indices.empty()) {
         renderer.drawMesh(data->getAtlas().getTexture(), vertices, indices, run, false);
     }

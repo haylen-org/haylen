@@ -12,13 +12,16 @@ void AtlasBuilder::add(std::string name, std::shared_ptr<const graphics::Image> 
     if (!image || image->isEmpty()) {
         throw std::invalid_argument("The frame \"" + name + "\" of an atlas needs an image.");
     }
+
     const graphics::Image::Area region = area.value_or(image->getArea());
     if (region.x < 0 || region.y < 0 || region.width < 1 || region.height < 1 || region.x + region.width > image->getWidth() || region.y + region.height > image->getHeight()) {
         throw std::invalid_argument("The area of the frame \"" + name + "\" of an atlas is not inside its image.");
     }
+
     if (!names.emplace(name, entries.size()).second) {
         throw std::invalid_argument("The atlas has the frame \"" + name + "\" twice.");
     }
+
     entries.push_back({.name = std::move(name), .image = std::move(image), .area = region, .frame = {.originalSize = {static_cast<float>(region.width), static_cast<float>(region.height)}}});
 }
 
@@ -27,6 +30,7 @@ void AtlasBuilder::addAtlas(std::string_view prefix, const SpriteAtlas& atlas, s
     if (!image || image->getWidth() != static_cast<int>(atlas.getTexture().getSize().x) || image->getHeight() != static_cast<int>(atlas.getTexture().getSize().y)) {
         throw std::invalid_argument("The image of an atlas added to an atlas builder has the size of the texture of the atlas.");
     }
+
     std::map<std::tuple<int, int, int, int>, std::size_t> bySource;
     for (const std::string& frameName : atlas.getFrameNames()) {
         const SpriteFrame& frame = atlas.getFrame(frameName);
@@ -46,8 +50,10 @@ void AtlasBuilder::addAtlas(std::string_view prefix, const SpriteAtlas& atlas, s
             if (found == bySource.end()) {
                 throw std::invalid_argument("The animation \"" + animationName + "\" of an atlas shows a region that no frame of the atlas holds.");
             }
+
             frameEntries.push_back(found->second);
         }
+
         animations.emplace_back(std::string(prefix) + animationName, animation);
         animationEntries.push_back(std::move(frameEntries));
     }
@@ -68,6 +74,7 @@ graphics::Image::Area AtlasBuilder::trimmed(const graphics::Image& image, const 
             }
         }
     }
+
     return right < left ? graphics::Image::Area{area.x, area.y, 1, 1} : graphics::Image::Area{left, top, right - left + 1, bottom - top + 1};
 }
 
@@ -78,6 +85,7 @@ std::optional<int> AtlasBuilder::skyline(const std::vector<graphics::Image::Area
     for (const std::size_t cell : order) {
         const int cellWidth = cells[cell].width;
         const int cellHeight = cells[cell].height;
+
         if (cellWidth > width) {
             return std::nullopt;
         }
@@ -90,12 +98,14 @@ std::optional<int> AtlasBuilder::skyline(const std::vector<graphics::Image::Area
             for (std::size_t covered = start; covered < spans.size() && spans[covered].x < spans[start].x + cellWidth; ++covered) {
                 y = std::max(y, spans[covered].y);
             }
+
             if (y < chosenY) {
                 chosen = start;
                 chosenX = spans[start].x;
                 chosenY = y;
             }
         }
+
         placements[cell].x = chosenX;
         placements[cell].y = chosenY;
         reach = std::max(reach, chosenY + cellHeight);
@@ -110,19 +120,23 @@ std::optional<int> AtlasBuilder::skyline(const std::vector<graphics::Image::Area
                 spans.erase(spans.begin() + static_cast<std::ptrdiff_t>(next));
                 continue;
             }
+
             spans[next].x += overlap;
             spans[next].width -= overlap;
             break;
         }
+
         for (std::size_t index = 1; index < spans.size();) {
             if (spans[index].y == spans[index - 1].y) {
                 spans[index - 1].width += spans[index].width;
                 spans.erase(spans.begin() + static_cast<std::ptrdiff_t>(index));
                 continue;
             }
+
             ++index;
         }
     }
+
     return reach;
 }
 
@@ -130,6 +144,7 @@ AtlasBuilder::Packed AtlasBuilder::pack(const Options& options) const {
     if (options.padding < 0 || options.extrude < 0 || options.extrude > options.padding / 2 || options.maxSize < 1) {
         throw std::invalid_argument("An atlas needs a padding of zero or more, an extrusion of at most half the padding and a positive largest size.");
     }
+
     if (entries.empty()) {
         throw std::invalid_argument("An atlas needs at least one image.");
     }
@@ -147,6 +162,7 @@ AtlasBuilder::Packed AtlasBuilder::pack(const Options& options) const {
             areas.push_back(area);
             sources.push_back(entry.image.get());
         }
+
         cellOf[index] = found->second;
     }
 
@@ -156,6 +172,7 @@ AtlasBuilder::Packed AtlasBuilder::pack(const Options& options) const {
         cells.push_back({0, 0, area.width + options.padding, area.height + options.padding});
         widest = std::max(widest, cells.back().width);
     }
+
     std::vector<std::size_t> order(cells.size());
     std::iota(order.begin(), order.end(), std::size_t{0});
     std::ranges::sort(order, [&cells](std::size_t lhs, std::size_t rhs) { return cells[lhs].height != cells[rhs].height ? cells[lhs].height > cells[rhs].height : cells[lhs].width > cells[rhs].width; });
@@ -176,10 +193,12 @@ AtlasBuilder::Packed AtlasBuilder::pack(const Options& options) const {
                 bestHeight = *height;
             }
         }
+
         if (width == options.maxSize) {
             break;
         }
     }
+
     if (best.empty()) {
         throw std::runtime_error("The images of the atlas need more room than a texture of " + std::to_string(options.maxSize) + " pixels.");
     }
@@ -193,9 +212,11 @@ AtlasBuilder::Packed AtlasBuilder::pack(const Options& options) const {
         packed.image.extrude(placed, options.extrude);
         best[cell].area = placed;
     }
+
     if (options.texture.filter == graphics::Texture::Filter::Linear) {
         packed.image.bleed();
     }
+
     if (options.texture.hasMipmaps()) {
         packed.image.buildMipmaps();
     }
@@ -210,6 +231,7 @@ AtlasBuilder::Packed AtlasBuilder::pack(const Options& options) const {
         frame.offset += math::Vec2{static_cast<float>(areas[cell].x - entry.area.x), static_cast<float>(areas[cell].y - entry.area.y)};
         packed.frames.emplace_back(entry.name, std::move(frame));
     }
+
     for (std::size_t index = 0; index < animations.size(); ++index) {
         Animation animation = animations[index].second;
         for (std::size_t frame = 0; frame < animation.frames.size(); ++frame) {
@@ -218,9 +240,11 @@ AtlasBuilder::Packed AtlasBuilder::pack(const Options& options) const {
             animation.frames[frame].offset = placed.offset;
             animation.frames[frame].originalSize = placed.originalSize;
         }
+
         animation.texture = {};
         packed.animations.emplace_back(animations[index].first, std::move(animation));
     }
+
     return packed;
 }
 

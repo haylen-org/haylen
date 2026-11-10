@@ -45,6 +45,7 @@ class StateGraphTest : public ::testing::Test {
         for (const char* name : {"idleDown", "idleUp", "idleLeft", "idleRight", "runDown", "runUp", "runLeft", "runRight", "fall"}) {
             animator->add(name, Animation::fromGrid(texture, {.frameSize = {16.0F, 16.0F}, .framesPerSecond = 10.0F}));
         }
+
         animator->add("slash", Animation::fromGrid(texture, {.frameSize = {16.0F, 16.0F}, .framesPerSecond = 10.0F, .loop = Animation::Loop::Once}));
         return animator;
     }
@@ -55,6 +56,7 @@ class StateGraphTest : public ::testing::Test {
         } catch (const std::invalid_argument& failure) {
             return failure.what();
         }
+
         return {};
     }
 };
@@ -140,6 +142,7 @@ TEST_F(StateGraphTest, DrivesASpriteOfAnAnimatedBatch) {
     for (const char* name : {"idle", "walk"}) {
         batch->addAnimation(name, Animation::fromGrid(texture, {.frameSize = {16.0F, 16.0F}}));
     }
+
     (void)batch->add({}, "idle");
     (void)batch->add({}, "idle");
     const auto graph = std::make_shared<StateGraph>(StateGraph::parse(core::Json::parse(R"({"parameters": {"moving": false}, "states": {"idle": {"animation": "idle"}, "walk": {"animation": "walk"}}, "transitions": [{"from": "idle", "to": "walk", "when": "moving"}]})")));

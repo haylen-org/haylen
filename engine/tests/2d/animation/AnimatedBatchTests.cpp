@@ -26,6 +26,7 @@ class AnimatedBatchTest : public ::testing::Test {
         for (int index = 0; index < 4; ++index) {
             animation.frames.push_back({.source = {static_cast<float>(index) * 16.0F, 0.0F, 16.0F, 16.0F}, .originalSize = {16.0F, 16.0F}, .duration = 0.1F});
         }
+
         animation.frames[2].source = {40.0F, 0.0F, 8.0F, 16.0F};
         animation.frames[2].offset = {8.0F, 0.0F};
         animation.frames[2].pivot = math::Vec2{8.0F, 16.0F};
@@ -109,16 +110,20 @@ TEST_F(AnimatedBatchTest, UpdatesLargeBatchesOnTheJobSystemLikeOnOneThread) {
     const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 16));
     AnimatedBatch serial(texture);
     AnimatedBatch parallel(texture);
+
     for (AnimatedBatch* batch : {&serial, &parallel}) {
         batch->addAnimation("walk", makeStrip(texture, Animation::Loop::PingPong));
+
         for (int index = 0; index < 10000; ++index) {
             (void)batch->add({}, "walk", 0.5F + static_cast<float>(index % 7) * 0.25F);
         }
     }
+
     for (int frame = 0; frame < 30; ++frame) {
         serial.update(1.0F / 60.0F);
         parallel.update(1.0F / 60.0F, &fixture.engine().getJobs());
     }
+
     for (std::size_t index = 0; index < serial.size(); index += 97) {
         EXPECT_EQ(serial.getFrame(index), parallel.getFrame(index));
         EXPECT_EQ(serial.get(index).source, parallel.get(index).source);
@@ -130,9 +135,11 @@ TEST_F(AnimatedBatchTest, DrawsEverySpriteInOneCall) {
     const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 16));
     AnimatedBatch batch(texture);
     batch.addAnimation("walk", makeStrip(texture, Animation::Loop::Loop));
+
     for (int index = 0; index < 500; ++index) {
         (void)batch.add({.position = {static_cast<float>(index), 0.0F}}, "walk", static_cast<float>(index % 3));
     }
+
     std::vector<float> places{1.0F, 2.0F, 3.0F, 4.0F};
     batch.writeFields(places, graphics2d::SpriteLayout(std::array{graphics2d::SpriteLayout::Field::X, graphics2d::SpriteLayout::Field::Y}), 10);
     EXPECT_EQ(batch.get(11).position, math::Vec2(3.0F, 4.0F));
@@ -159,13 +166,16 @@ TEST_F(AnimatedBatchTest, RefusesAnimationsItCannotPlay) {
     for (SpriteFrame& frame : ticked.frames) {
         frame.ticks = 2;
     }
+
     EXPECT_THROW(batch.addAnimation("ticked", ticked), std::invalid_argument);
+
     try {
         (void)batch.add({}, "run");
         FAIL();
     } catch (const std::invalid_argument& error) {
         EXPECT_STREQ(error.what(), "The animation \"run\" does not exist in this animated batch.");
     }
+
     EXPECT_THROW(batch.step(1), std::logic_error);
     EXPECT_THROW(batch.play(4, "walk"), std::out_of_range);
 

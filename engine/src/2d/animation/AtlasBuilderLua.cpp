@@ -32,6 +32,7 @@ AtlasBuilder::Options AtlasBuilderLua::readOptions(lua_State* L, int index) {
     if (lua_isnoneornil(L, index)) {
         return options;
     }
+
     options.texture = lua::TypeConverter::readTextureOptions(L, index, {kOptionFields});
     lua::Table::readField(L, index, "padding", options.padding);
     lua::Table::readField(L, index, "extrude", options.extrude);
@@ -51,6 +52,7 @@ int AtlasBuilderLua::add(lua_State* L) {
         const auto rect = lua::Stack::read<math::Rect>(L, 4);
         area = graphics::Image::Area{static_cast<int>(std::lround(rect.x)), static_cast<int>(std::lround(rect.y)), static_cast<int>(std::lround(rect.width)), static_cast<int>(std::lround(rect.height))};
     }
+
     builder.add(std::move(name), image, area);
     return 0;
 }
@@ -81,6 +83,7 @@ int AtlasBuilderLua::buildAsync(lua_State* L) {
             promise->reject(result.error);
             return;
         }
+
         std::shared_ptr<SpriteAtlas> atlas;
         try {
             graphics::Texture texture = device->createTexture(result.value->image, options.texture);
@@ -89,6 +92,7 @@ int AtlasBuilderLua::buildAsync(lua_State* L) {
             promise->reject(error.what());
             return;
         }
+
         promise->resolveCustom([atlas](lua_State* state) { lua::Stack::push(state, atlas); });
     });
     // clang-format on

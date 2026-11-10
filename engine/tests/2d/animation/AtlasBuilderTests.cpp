@@ -42,6 +42,7 @@ TEST_F(AtlasBuilderTest, PacksTrimmedFramesWithoutOverlapAndKeepsTheirPlace) {
     for (int index = 0; index < 20; ++index) {
         builder.add("dot" + std::to_string(index), sprite(16, 16, {index % 8, 4, 8, 8}, math::Color::white()));
     }
+
     const auto shared = sprite(16, 16, {0, 0, 16, 16}, red);
     builder.add("first", shared);
     builder.add("second", shared);
@@ -57,15 +58,18 @@ TEST_F(AtlasBuilderTest, PacksTrimmedFramesWithoutOverlapAndKeepsTheirPlace) {
 
     // Identical pixels share one place, every other frame has its own with the padding around it, and the extrusion repeats the edges into it.
     EXPECT_EQ(frames.at("first").source, frames.at("second").source);
+
     for (const auto& [name, frame] : packed.frames) {
         EXPECT_GE(frame.source.x, 2.0F) << name;
         EXPECT_LE(frame.source.getRight(), static_cast<float>(packed.image.getWidth()) - 2.0F) << name;
+
         for (const auto& [other, placed] : packed.frames) {
             if (other != name && !(name == "first" && other == "second") && !(name == "second" && other == "first")) {
                 EXPECT_FALSE(overlaps(frame.source.expanded(1.0F), placed.source)) << name << " " << other;
             }
         }
     }
+
     EXPECT_EQ(packed.image.getPixel(static_cast<int>(ring.source.x) - 2, static_cast<int>(ring.source.y) - 2), red);
     EXPECT_LE(packed.image.getWidth(), 256);
 

@@ -32,6 +32,7 @@ int StateGraphLua::states(lua_State* L) {
     for (const StateGraph::State& entry : lua::Userdata::check<StateGraph>(L, 1).getStates()) {
         names.push_back(entry.name);
     }
+
     lua::Stack::push(L, names);
     return 1;
 }
@@ -42,6 +43,7 @@ int StateGraphLua::parameters(lua_State* L) {
         lua::Stack::push(L, StateGraph::kindName(parameter.kind));
         lua_setfield(L, -2, parameter.name.c_str());
     }
+
     return 1;
 }
 
@@ -58,6 +60,7 @@ int StateGraphLua::newPlayer(lua_State* L) {
             lua::Table::checkFields(L, 3, {kPlayerFields});
             lua::Table::readField(L, 3, "track", track);
         }
+
         luaL_argcheck(L, track >= 1, 3, "tracks are numbered from one");
         target = StateGraphPlayer::SkeletonTrack{.skeleton = lua::Userdata::checkShared<Skeleton>(L, 2), .track = static_cast<std::size_t>(track - 1)};
     } else {
@@ -68,11 +71,14 @@ int StateGraphLua::newPlayer(lua_State* L) {
             lua::Table::checkFields(L, 3, {kPlayerFields});
             lua::Table::readField(L, 3, "sprite", sprite);
         }
+
         if (sprite < 1 || static_cast<std::size_t>(sprite) > batch->size()) {
             return luaL_error(L, "A state graph player of an animated batch needs the number of one of its sprites in \"sprite\".");
         }
+
         target = StateGraphPlayer::BatchSprite{.batch = batch, .index = static_cast<std::size_t>(sprite - 1)};
     }
+
     lua::Userdata::emplace<StateGraphPlayer>(L, std::make_shared<StateGraphPlayer>(graph, std::move(target)));
     return 1;
 }
@@ -85,6 +91,7 @@ int StateGraphLua::set(lua_State* L) {
     if (parameter == nullptr) {
         return luaL_error(L, "The state graph has no parameter \"%s\".", std::string(name).c_str());
     }
+
     switch (parameter->kind) {
     case StateGraph::Kind::Number:
         player.setNumber(name, lua::Stack::read<float>(L, 3));
@@ -96,6 +103,7 @@ int StateGraphLua::set(lua_State* L) {
         if (lua_toboolean(L, 3) != 0) {
             player.trigger(name);
         }
+
         break;
     case StateGraph::Kind::Vector:
         player.setVector(name, lua::Stack::read<math::Vec2>(L, 3));
@@ -111,6 +119,7 @@ int StateGraphLua::get(lua_State* L) {
     if (parameter == nullptr) {
         return luaL_error(L, "The state graph has no parameter \"%s\".", std::string(name).c_str());
     }
+
     switch (parameter->kind) {
     case StateGraph::Kind::Number:
         lua::Stack::push(L, player.getNumber(name));
@@ -178,6 +187,7 @@ int StateGraphLua::on(lua_State* L) {
     if (event != "stateChanged") {
         return luaL_error(L, "Unknown state graph player event \"%s\". Players report \"stateChanged\".", std::string(event).c_str());
     }
+
     luaL_checktype(L, 3, LUA_TFUNCTION);
     int owner = 0;
     if (!lua_isnoneornil(L, 4)) {
@@ -188,9 +198,11 @@ int StateGraphLua::on(lua_State* L) {
             owner = lua_gettop(L);
         }
     }
+
     if (owner == 0) {
         owner = lua::Owners::pushDefault(L);
     }
+
     const std::weak_ptr<const void> lifetime = owner != 0 ? lua::Owners::getLifetime(L, owner) : std::weak_ptr<const void>();
     auto function = std::make_shared<lua::Owners::Function>(L, 3, owner);
     lua_State* main = lua::Runtime::getMainThread(L);
@@ -203,8 +215,10 @@ int StateGraphLua::on(lua_State* L) {
                 lua::Stack::push(moving, to);
                 lua_call(moving, 2, 0);
             }
+
             return;
         }
+
         lua::Runtime::runReporting(main, [&] {
             if (function->push(main)) {
                 lua::Stack::push(main, from);
@@ -217,6 +231,7 @@ int StateGraphLua::on(lua_State* L) {
     if (owner != 0) {
         lua::Owners::add(L, owner, connection);
     }
+
     lua::Userdata::emplace<core::Connection>(L, std::move(connection));
     return 1;
 }

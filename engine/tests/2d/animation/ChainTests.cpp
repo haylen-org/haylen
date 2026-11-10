@@ -27,6 +27,7 @@ class ChainTest : public ::testing::Test {
             const math::Vec2 next = chain.getPoints()[index] - chain.getPoints()[index - 1];
             largest = std::max(largest, std::abs(std::atan2(math::Vec2::cross(previous, next), math::Vec2::dot(previous, next))));
         }
+
         return largest;
     }
 };
@@ -73,6 +74,7 @@ TEST_F(ChainTest, FollowsAHeadWithinTheBendLimit) {
         body.follow({std::cos(turn) * 60.0F, std::sin(turn) * 60.0F});
         ASSERT_LE(largestBend(body), 0.4F + 1e-3F) << "Step " << step;
     }
+
     EXPECT_NEAR(body.getRoot().x, std::cos(239.0F * 0.08F) * 60.0F, 1e-4F);
     expectLengths(body);
 
@@ -91,10 +93,12 @@ TEST_F(ChainTest, FollowsAHeadWithinTheBendLimit) {
 TEST_F(ChainTest, ReachingAndFollowingNeverAllocate) {
     Chain tail({.lengths = std::vector<float>(30, 8.0F), .maxBend = 0.5F});
     const test::AllocationTracker tracker;
+
     for (int step = 0; step < 100; ++step) {
         (void)tail.reach({100.0F, static_cast<float>(step)}, {.pole = math::Vec2{0.0F, -50.0F}});
         tail.follow({static_cast<float>(step), 0.0F});
     }
+
     EXPECT_EQ(tracker.getTotal(), 0U);
 }
 

@@ -47,9 +47,11 @@ int Animation2DLua::fromGrid(lua_State* L) {
     options.framesPerSecond = readFramesPerSecond(L, 2);
     std::vector<int> cells;
     lua::Table::readField(L, 2, "cells", cells);
+
     for (const int cell : cells) {
         options.cells.push_back(cell - 1);
     }
+
     lua::Userdata::emplace<Animation>(L, Animation::fromGrid(std::move(texture), options));
     return 1;
 }
@@ -65,6 +67,7 @@ int Animation2DLua::fromFrames(lua_State* L) {
         fps = readFramesPerSecond(L, 3);
         lua::Table::readField(L, 3, "loop", animation.loop);
     }
+
     const auto count = static_cast<lua_Integer>(luaL_len(L, 2));
     luaL_argcheck(L, count > 0, 2, "expected at least one frame");
     for (lua_Integer index = 1; index <= count; ++index) {
@@ -72,6 +75,7 @@ int Animation2DLua::fromFrames(lua_State* L) {
         animation.frames.push_back(readFrame(L, -1, 1.0F / fps));
         lua_pop(L, 1);
     }
+
     animation.validate();
     lua::Userdata::emplace<Animation>(L, std::move(animation));
     return 1;
@@ -83,9 +87,11 @@ SpriteFrame Animation2DLua::readFrame(lua_State* L, int index, float duration) {
         if (lua_type(L, table) == LUA_TTABLE) {
             lua_pop(L, 1);
         }
+
         const math::Rect source = lua::Stack::read<math::Rect>(L, table);
         return {.source = source, .originalSize = source.getSize(), .duration = duration};
     }
+
     lua_pop(L, 1);
     lua::Table::checkFields(L, table, {kFrameFields});
     SpriteFrame frame{.duration = duration};
@@ -96,6 +102,7 @@ SpriteFrame Animation2DLua::readFrame(lua_State* L, int index, float duration) {
     if (lua_getfield(L, table, "pivot") != LUA_TNIL) {
         frame.pivot = lua::Stack::read<math::Vec2>(L, -1);
     }
+
     lua_pop(L, 1);
     lua::Table::readField(L, table, "events", frame.events);
 
@@ -116,6 +123,7 @@ SpriteFrame Animation2DLua::readFrame(lua_State* L, int index, float duration) {
             lua_pop(L, 1);
         }
     }
+
     lua_pop(L, 1);
 
     if (lua_getfield(L, table, "points") != LUA_TNIL) {
@@ -133,6 +141,7 @@ SpriteFrame Animation2DLua::readFrame(lua_State* L, int index, float duration) {
             lua_pop(L, 1);
         }
     }
+
     lua_pop(L, 1);
     return frame;
 }
@@ -154,6 +163,7 @@ void Animation2DLua::pushFrame(lua_State* L, const SpriteFrame& frame) {
         lua::Stack::push(L, *frame.pivot);
         lua_setfield(L, -2, "pivot");
     }
+
     lua_createtable(L, static_cast<int>(frame.boxes.size()), 0);
     for (std::size_t index = 0; index < frame.boxes.size(); ++index) {
         lua_createtable(L, 0, 5);
@@ -169,6 +179,7 @@ void Animation2DLua::pushFrame(lua_State* L, const SpriteFrame& frame) {
         lua_setfield(L, -2, "height");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     lua_setfield(L, -2, "boxes");
     lua_createtable(L, static_cast<int>(frame.points.size()), 0);
     for (std::size_t index = 0; index < frame.points.size(); ++index) {
@@ -181,6 +192,7 @@ void Animation2DLua::pushFrame(lua_State* L, const SpriteFrame& frame) {
         lua_setfield(L, -2, "y");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     lua_setfield(L, -2, "points");
     lua::Stack::push(L, frame.events);
     lua_setfield(L, -2, "events");
@@ -190,6 +202,7 @@ graphics2d::Sprite Animation2DLua::readSprite(lua_State* L, int index) {
     if (const nodes2d::Node* node = lua::Userdata::test<nodes2d::Node>(L, index)) {
         return node->getSprite();
     }
+
     return lua::Userdata::check<graphics2d::Sprite>(L, index);
 }
 
@@ -302,10 +315,13 @@ void Animation2DLua::callCallback(lua_State* L, const char* name, std::string_vi
     if (!lua::Userdata::pushFunction(L, 1, name)) {
         return;
     }
+
     lua::Stack::push(L, animation);
+
     if (frame) {
         lua::Stack::push(L, *frame + 1);
     }
+
     lua_call(L, frame ? 2 : 1, 0);
 }
 
@@ -313,6 +329,7 @@ void Animation2DLua::callEvent(lua_State* L, std::string_view animation, std::st
     if (!lua::Userdata::pushFunction(L, 1, "onEvent")) {
         return;
     }
+
     lua::Stack::push(L, animation);
     lua::Stack::push(L, event);
     lua::Stack::push(L, frame + 1);
@@ -357,6 +374,7 @@ int Animation2DLua::animatorBox(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, *box);
     return 1;
 }
@@ -367,6 +385,7 @@ int Animation2DLua::animatorPoint(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, point->x);
     lua::Stack::push(L, point->y);
     return 2;
@@ -381,6 +400,7 @@ int Animation2DLua::animatorApply(lua_State* L) {
         node->setSprite(sprite);
         return 0;
     }
+
     animator.apply(lua::Userdata::check<graphics2d::Sprite>(L, 2));
     return 0;
 }
@@ -391,6 +411,7 @@ int Animation2DLua::animatorCurrent(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     lua::Stack::push(L, current);
     return 1;
 }
@@ -423,9 +444,11 @@ int Animation2DLua::getCallback(lua_State* L, const char* name) {
 
 int Animation2DLua::setCallback(lua_State* L, const char* name) {
     (void)lua::Userdata::check<Animator>(L, 1);
+
     if (!lua_isnil(L, 3)) {
         luaL_checktype(L, 3, LUA_TFUNCTION);
     }
+
     lua::Userdata::setField(L, 1, name, 3);
     return 0;
 }
@@ -538,6 +561,7 @@ int Animation2DLua::atlasAnimationFromFrames(lua_State* L) {
         fps = readFramesPerSecond(L, 3);
         lua::Table::readField(L, 3, "loop", loop);
     }
+
     lua::Userdata::emplace<Animation>(L, atlas.animationFromFrames(names, fps, loop));
     return 1;
 }

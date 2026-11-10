@@ -17,6 +17,7 @@ std::optional<Animation::Loop> Animation::loopFromName(std::string_view name) no
             return mode;
         }
     }
+
     return std::nullopt;
 }
 
@@ -26,6 +27,7 @@ std::string_view Animation::loopName(Loop mode) noexcept {
             return text;
         }
     }
+
     return kLoopNames.front().first;
 }
 
@@ -55,9 +57,11 @@ Animation Animation::fromGrid(graphics::Texture image, const GridOptions& option
         if (cell < 0 || cell >= cellCount) {
             throw std::out_of_range("A grid animation refers to a cell outside the texture.");
         }
+
         const math::Vec2 origin = options.margin + math::Vec2{static_cast<float>(cell % columns) * step.x, static_cast<float>(cell / columns) * step.y};
         animation.frames.push_back({.source = {origin.x, origin.y, options.frameSize.x, options.frameSize.y}, .originalSize = options.frameSize, .duration = 1.0F / options.framesPerSecond, .ticks = options.ticksPerFrame});
     }
+
     return animation;
 }
 
@@ -67,6 +71,7 @@ void Animation::validate() const {
         if ((frame.ticks > 0) != ticked) {
             throw std::invalid_argument("Every frame of an animation counts ticks, or none does.");
         }
+
         if (!ticked && !(frame.duration > 0.0F && std::isfinite(frame.duration))) {
             throw std::invalid_argument("A frame lasts a positive number of seconds.");
         }
@@ -77,6 +82,7 @@ void Animation::addEvent(std::size_t frame, std::string name) {
     if (frame >= frames.size()) {
         throw std::out_of_range("The animation has no frame " + std::to_string(frame + 1) + ".");
     }
+
     frames[frame].events.push_back(std::move(name));
 }
 
@@ -89,6 +95,7 @@ float Animation::getDuration() const noexcept {
     for (std::size_t index = 0; index < frames.size(); ++index) {
         total += getLength(index);
     }
+
     return total;
 }
 
@@ -97,6 +104,7 @@ float Animation::getCycleDuration() const noexcept {
     if (loop != Loop::PingPong || frames.size() <= 1) {
         return total;
     }
+
     // The way back skips the two end frames so they do not show twice in a row.
     return total + std::max(0.0F, total - getLength(0) - getLength(frames.size() - 1));
 }
@@ -114,6 +122,7 @@ std::size_t Animation::frameAt(float time) const noexcept {
         if (local >= total) {
             return frames.size() - 1;
         }
+
         break;
     case Loop::Loop:
         local = std::fmod(local, total);
@@ -124,6 +133,7 @@ std::size_t Animation::frameAt(float time) const noexcept {
             local -= total;
             reversed = true;
         }
+
         break;
     }
 
@@ -132,8 +142,10 @@ std::size_t Animation::frameAt(float time) const noexcept {
             if (local < getLength(index)) {
                 return index;
             }
+
             local -= getLength(index);
         }
+
         return 1;
     }
 
@@ -141,8 +153,10 @@ std::size_t Animation::frameAt(float time) const noexcept {
         if (local < getLength(index)) {
             return index;
         }
+
         local -= getLength(index);
     }
+
     return frames.size() - 1;
 }
 
@@ -153,6 +167,7 @@ Animation::Change Animation::getNextChange(float time) const noexcept {
     if (count <= 1 || cycle <= 0.0F) {
         return {.time = std::numeric_limits<float>::infinity(), .frame = 0};
     }
+
     const float clamped = std::max(0.0F, time);
     if (loop == Loop::Once && clamped >= getDuration() - getLength(count - 1)) {
         return {.time = std::numeric_limits<float>::infinity(), .frame = count - 1};
@@ -170,8 +185,10 @@ Animation::Change Animation::getNextChange(float time) const noexcept {
                 return {.time = end, .frame = step + 1 < steps ? frameOf(step + 1) : 0};
             }
         }
+
         start = end;
     }
+
     return {.time = std::nextafter(clamped, std::numeric_limits<float>::infinity()), .frame = frameOf(1)};
 }
 

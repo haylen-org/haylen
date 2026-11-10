@@ -78,6 +78,7 @@ TEST_F(AnimationTest, CutsGridsAndPicksFramesOverTime) {
     for (int step = 0; step < 8; ++step) {
         sequence.push_back(bounce.frameAt(static_cast<float>(step) * 0.1F + 0.05F));
     }
+
     EXPECT_EQ(sequence, (std::vector<std::size_t>{0, 1, 2, 3, 2, 1, 0, 1}));
 
     bounce.frames.resize(1);
@@ -95,9 +96,11 @@ TEST_F(AnimationTest, CutsGridsAndPicksFramesOverTime) {
 TEST_F(AnimationTest, FindsALaterChangeAtTheRoundedEndOfAPass) {
     Animation animation;
     animation.frames.resize(2);
+
     for (SpriteFrame& frame : animation.frames) {
         frame.duration = 1.0F / 5.0F;
     }
+
     const float time = 84000 * 0.0001F;
     EXPECT_GT(animation.getNextChange(time).time, time);
 }
@@ -169,6 +172,7 @@ TEST_F(AnimatorTest, StopsTheStepWhenACallbackReplacesTheAnimation) {
     // clang-format off
     animator.onFrame = [&](std::string_view name, std::size_t frame) {
         events.push_back(std::string(name) + ":" + std::to_string(frame));
+
         if (frame == 3) {
             animator.add("run", animation2d::Animation::fromGrid(texture, {.frameSize = {16.0F, 16.0F}, .cells = {0, 1}, .framesPerSecond = 100.0F}));
         }
@@ -371,6 +375,7 @@ TEST_F(SpriteAtlasTest, KeepsHashFramesInFileOrder) {
     for (int index = 0; index < 12; ++index) {
         frames += (index == 0 ? "" : ", ") + std::string(R"("hero )") + std::to_string(index) + R"(": {"frame": {"x": )" + std::to_string(index * 8) + R"(, "y": 0, "w": 8, "h": 8}})";
     }
+
     const std::vector<std::uint8_t> image = test::TestFiles::pngImage(96, 8, 0xFFFFFFFFU);
     test::EngineFixture fixture({{"content/hero.json", R"({"frames": {)" + frames + R"(}, "meta": {"image": "hero.png", "frameTags": [{"name": "walk", "from": 0, "to": 11}]}})"}, {"content/hero.png", std::string(image.begin(), image.end())}});
 
@@ -378,6 +383,7 @@ TEST_F(SpriteAtlasTest, KeepsHashFramesInFileOrder) {
     EXPECT_EQ(atlas->getFrameNames()[10], "hero 10");
     const animation2d::Animation& walk = atlas->getAnimation("walk");
     ASSERT_EQ(walk.frames.size(), 12U);
+
     for (std::size_t index = 0; index < walk.frames.size(); ++index) {
         EXPECT_EQ(walk.frames[index].source.x, static_cast<float>(index * 8)) << index;
     }

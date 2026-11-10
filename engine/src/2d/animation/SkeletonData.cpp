@@ -18,16 +18,19 @@ class SkeletonData::Reader final {
 
     void read(const core::Json& document) {
         requireObject(document, "A skeleton file");
+
         for (const auto& [key, value] : document.items()) {
             if (key != "atlas" && key != "bones" && key != "slots" && key != "skins" && key != "ik" && key != "transform" && key != "animations") {
                 throw std::invalid_argument("A skeleton file has the unknown key \"" + key + "\".");
             }
         }
+
         readBones(document.value("bones", core::Json::array()));
         readSlots(document.value("slots", core::Json::array()));
         readSkins(document.value("skins", core::Json::object()));
         readIk(document.value("ik", core::Json::array()));
         readTransforms(document.value("transform", core::Json::array()));
+
         for (const auto& [name, value] : sorted(document.value("animations", core::Json::object()), "The animations of a skeleton")) {
             data.animations.push_back(readAnimation(name, value));
         }
@@ -52,9 +55,11 @@ class SkeletonData::Reader final {
         if (found == object.end()) {
             return fallback;
         }
+
         if (!found->is_number()) {
             throw std::invalid_argument("The key \"" + std::string(key) + "\" of " + where + " must be a number.");
         }
+
         return core::JsonNumber::toFloat(*found);
     }
 
@@ -63,9 +68,11 @@ class SkeletonData::Reader final {
         if (found == object.end()) {
             return {};
         }
+
         if (!found->is_string()) {
             throw std::invalid_argument("The key \"" + std::string(key) + "\" of " + where + " must be a string.");
         }
+
         return found->get<std::string>();
     }
 
@@ -74,10 +81,12 @@ class SkeletonData::Reader final {
         if (value.empty()) {
             return math::Color::white();
         }
+
         const std::optional<math::Color> parsed = math::Color::parse(value);
         if (!parsed) {
             throw std::invalid_argument("The key \"" + std::string(key) + "\" of " + where + " must be a color such as \"#FFFFFFFF\".");
         }
+
         return *parsed;
     }
 
@@ -86,9 +95,11 @@ class SkeletonData::Reader final {
         if (found == object.end()) {
             return {};
         }
+
         if (!found->is_array() || !std::ranges::all_of(*found, [](const core::Json& value) { return value.is_number(); })) {
             throw std::invalid_argument("The key \"" + std::string(key) + "\" of " + where + " must be a list of numbers.");
         }
+
         return found->get<std::vector<float>>();
     }
 
@@ -98,10 +109,12 @@ class SkeletonData::Reader final {
         if (found == object.end()) {
             return {};
         }
+
         const auto index = [](const core::Json& value) { return value.is_number_unsigned() && std::in_range<std::uint32_t>(value.get<std::uint64_t>()); };
         if (!found->is_array() || !std::ranges::all_of(*found, index)) {
             throw std::invalid_argument("The key \"" + std::string(key) + "\" of " + where + " must be a list of whole numbers from 0 to 4294967295.");
         }
+
         return found->get<std::vector<std::uint32_t>>();
     }
 
@@ -110,6 +123,7 @@ class SkeletonData::Reader final {
         if (!found) {
             throw std::invalid_argument(where + " names the unknown bone \"" + name + "\".");
         }
+
         return *found;
     }
 
@@ -118,6 +132,7 @@ class SkeletonData::Reader final {
         if (!found) {
             throw std::invalid_argument(where + " names the unknown slot \"" + name + "\".");
         }
+
         return *found;
     }
 
@@ -126,9 +141,11 @@ class SkeletonData::Reader final {
             requireObject(entry, "Every bone of a skeleton");
             const std::string name = text(entry, "name", "a bone");
             const std::string where = "the bone \"" + name + "\"";
+
             if (name.empty() || data.findBone(name)) {
                 throw std::invalid_argument("Every bone of a skeleton needs a name of its own, and \"" + name + "\" is empty or taken.");
             }
+
             Bone parsed{
                 .name = name,
                 .position = {number(entry, "x", 0.0F, where), number(entry, "y", 0.0F, where)},
@@ -142,8 +159,10 @@ class SkeletonData::Reader final {
             } else if (!data.bones.empty()) {
                 throw std::invalid_argument("The bone \"" + name + "\" needs a parent, since only the first bone is the root.");
             }
+
             data.bones.push_back(std::move(parsed));
         }
+
         if (data.bones.empty()) {
             throw std::invalid_argument("A skeleton needs at least one bone.");
         }
@@ -154,20 +173,25 @@ class SkeletonData::Reader final {
             requireObject(entry, "Every slot of a skeleton");
             const std::string name = text(entry, "name", "a slot");
             const std::string where = "the slot \"" + name + "\"";
+
             if (name.empty() || data.findSlot(name)) {
                 throw std::invalid_argument("Every slot of a skeleton needs a name of its own, and \"" + name + "\" is empty or taken.");
             }
+
             Slot parsed{.name = name, .bone = bone(text(entry, "bone", where), "The slot \"" + name + "\""), .color = color(entry, "color", where), .attachment = text(entry, "attachment", where)};
             if (const std::string blend = text(entry, "blend", where); !blend.empty()) {
                 const std::optional<graphics::BlendMode::Type> found = graphics::BlendMode::parse(blend);
                 if (!found) {
                     throw std::invalid_argument("The slot \"" + name + "\" has the unknown blend mode \"" + blend + "\".");
                 }
+
                 if (graphics::BlendMode::readsBackdrop(*found)) {
                     throw std::invalid_argument("The slot \"" + name + "\" has the blend mode \"" + blend + "\", which mixes with what lies below and blends groups alone.");
                 }
+
                 parsed.blend = *found;
             }
+
             data.slots.push_back(std::move(parsed));
         }
     }
@@ -181,12 +205,15 @@ class SkeletonData::Reader final {
                     skin.slots[index].emplace(name, readAttachment(name, entry, "the attachment \"" + name + "\" of the slot \"" + slotName + "\""));
                 }
             }
+
             data.skins.push_back(std::move(skin));
         }
+
         // The default skin always exists, so a slot without skins shows nothing rather than fail.
         if (!data.findSkin("default")) {
             data.skins.insert(data.skins.begin(), Skin{.name = "default", .slots = std::vector<std::map<std::string, Attachment, std::less<>>>(data.slots.size())});
         }
+
         for (const Slot& entry : data.slots) {
             const std::size_t index = static_cast<std::size_t>(&entry - data.slots.data());
             if (!entry.attachment.empty() && data.findAttachment(*data.findSkin("default"), index, entry.attachment) == nullptr && std::ranges::none_of(data.skins, [&](const Skin& skin) { return skin.slots[index].contains(entry.attachment); })) {
@@ -203,6 +230,7 @@ class SkeletonData::Reader final {
         if (kind == kKinds.end()) {
             throw std::invalid_argument("The type of " + where + " must be \"region\", \"mesh\", \"point\" or \"boundingBox\".");
         }
+
         Attachment attachment{
             .kind = kind->second,
             .name = name,
@@ -213,20 +241,25 @@ class SkeletonData::Reader final {
             .size = {number(entry, "width", 0.0F, where), number(entry, "height", 0.0F, where)},
             .color = color(entry, "color", where),
         };
+
         if (attachment.kind == Attachment::Kind::Region || attachment.kind == Attachment::Kind::Mesh) {
             if (attachment.frame.empty()) {
                 attachment.frame = name;
             }
+
             if (!data.atlas->hasFrame(attachment.frame)) {
                 throw std::invalid_argument("The frame \"" + attachment.frame + "\" of " + where + " does not exist in the atlas of the skeleton.");
             }
         }
+
         if (attachment.kind == Attachment::Kind::BoundingBox) {
             attachment.vertices = pairs(numbers(entry, "vertices", where), where);
         }
+
         if (attachment.kind == Attachment::Kind::Mesh) {
             readMesh(attachment, entry, where);
         }
+
         return attachment;
     }
 
@@ -234,10 +267,12 @@ class SkeletonData::Reader final {
         if (flat.size() % 2 != 0) {
             throw std::invalid_argument("The vertices of " + where + " need an even count of numbers, an x and a y each.");
         }
+
         std::vector<math::Vec2> points;
         for (std::size_t index = 0; index < flat.size(); index += 2) {
             points.push_back({flat[index], flat[index + 1]});
         }
+
         return points;
     }
 
@@ -247,20 +282,24 @@ class SkeletonData::Reader final {
         attachment.triangles = indices(entry, "triangles", where);
         if (const auto weights = entry.find("weights"); weights != entry.end()) {
             attachment.influenceStarts.push_back(0);
+
             for (const core::Json& vertex : *weights) {
                 for (const core::Json& influence : vertex) {
                     requireObject(influence, "Every weight of " + where);
                     attachment.influences.push_back({.bone = bone(text(influence, "bone", where), "A weight of " + where), .position = {number(influence, "x", 0.0F, where), number(influence, "y", 0.0F, where)}, .weight = number(influence, "weight", 1.0F, where)});
                 }
+
                 attachment.influenceStarts.push_back(attachment.influences.size());
             }
         } else {
             attachment.vertices = pairs(numbers(entry, "vertices", where), where);
         }
+
         const std::size_t count = attachment.getVertexCount();
         if (count < 3 || attachment.uvs.size() != count || attachment.triangles.empty() || attachment.triangles.size() % 3 != 0) {
             throw std::invalid_argument("The mesh " + where.substr(4) + " needs three vertices or more, one pair of texture coordinates for each and whole triangles.");
         }
+
         if (std::ranges::any_of(attachment.triangles, [count](std::uint32_t index) { return index >= count; })) {
             throw std::invalid_argument("A triangle of " + where + " refers to a vertex that does not exist.");
         }
@@ -275,9 +314,11 @@ class SkeletonData::Reader final {
             for (const core::Json& member : entry.value("bones", core::Json::array())) {
                 constraint.bones.push_back(bone(member.is_string() ? member.get<std::string>() : std::string(), where));
             }
+
             if (constraint.bones.empty() || constraint.bones.size() > 2 || (constraint.bones.size() == 2 && data.bones[constraint.bones[1]].parent != constraint.bones[0])) {
                 throw std::invalid_argument(where + " bends one bone, or a bone and its child.");
             }
+
             data.ikConstraints.push_back(std::move(constraint));
         }
     }
@@ -295,9 +336,11 @@ class SkeletonData::Reader final {
                 .rotation = number(entry, "rotation", 0.0F, where) * kDegrees,
                 .offset = {number(entry, "x", 0.0F, where), number(entry, "y", 0.0F, where)},
             };
+
             for (const core::Json& member : entry.value("bones", core::Json::array())) {
                 constraint.bones.push_back(bone(member.is_string() ? member.get<std::string>() : std::string(), where));
             }
+
             data.transformConstraints.push_back(std::move(constraint));
         }
     }
@@ -307,20 +350,25 @@ class SkeletonData::Reader final {
         if (found == key.end()) {
             return {};
         }
+
         if (found->is_array() && found->size() == 4 && std::ranges::all_of(*found, [](const core::Json& value) { return value.is_number(); })) {
             return {.kind = SkeletonAnimation::Curve::Kind::Bezier, .bezier = {core::JsonNumber::toFloat((*found)[0]), core::JsonNumber::toFloat((*found)[1]), core::JsonNumber::toFloat((*found)[2]), core::JsonNumber::toFloat((*found)[3])}};
         }
+
         const std::string name = found->is_string() ? found->get<std::string>() : std::string();
         if (name == "linear") {
             return {};
         }
+
         if (name == "stepped") {
             return {.kind = SkeletonAnimation::Curve::Kind::Stepped};
         }
+
         const std::optional<math::Easing::Type> easing = math::Easing::parse(name);
         if (!easing) {
             throw std::invalid_argument("The curve of a key of " + where + " must be \"linear\", \"stepped\", the name of an easing or four numbers of a Bezier curve.");
         }
+
         return {.kind = SkeletonAnimation::Curve::Kind::Eased, .easing = *easing};
     }
 
@@ -329,16 +377,20 @@ class SkeletonData::Reader final {
         if (!list.is_array() || list.empty()) {
             throw std::invalid_argument("The timeline of " + where + " needs a list of keys.");
         }
+
         std::vector<SkeletonAnimation::Key> parsed;
         for (const core::Json& entry : list) {
             requireObject(entry, "Every key of " + where);
             SkeletonAnimation::Key key{.time = number(entry, "time", 0.0F, where), .curve = curve(entry, where)};
             values(entry, key.values);
+
             if (!parsed.empty() && key.time < parsed.back().time) {
                 throw std::invalid_argument("The keys of " + where + " must follow each other in time.");
             }
+
             parsed.push_back(key);
         }
+
         return parsed;
     }
 
@@ -388,6 +440,7 @@ class SkeletonData::Reader final {
                     for (const core::Json& key : list) {
                         timeline.names.push_back(text(key, "name", where));
                     }
+
                     animation.timelines.push_back(std::move(timeline));
                 } else {
                     throw std::invalid_argument("The slot \"" + slotName + "\"" + in + " has the unknown timeline \"" + property + "\". Slots take \"attachment\" and \"color\".");
@@ -405,16 +458,20 @@ class SkeletonData::Reader final {
                     const auto found = skin.slots[target].find(attachmentName);
                     mesh = found != skin.slots[target].end() ? &found->second : mesh;
                 }
+
                 if (mesh == nullptr || mesh->kind != Attachment::Kind::Mesh) {
                     throw std::invalid_argument("The deform" + in + " names \"" + attachmentName + "\" of the slot \"" + slotName + "\", which is no mesh.");
                 }
+
                 const std::size_t expected = (mesh->isWeighted() ? mesh->influences.size() : mesh->vertices.size()) * 2;
                 for (const core::Json& key : list) {
                     timeline.offsets.push_back(numbers(key, "offsets", where));
+
                     if (timeline.offsets.back().size() != expected) {
                         throw std::invalid_argument("Every key of " + where + " needs " + std::to_string(expected) + " offsets, two for each vertex or weight of the mesh.");
                     }
                 }
+
                 animation.timelines.push_back(std::move(timeline));
             }
         }
@@ -424,6 +481,7 @@ class SkeletonData::Reader final {
             if (!target) {
                 throw std::invalid_argument("The animation \"" + name + "\" names the unknown inverse kinematics constraint \"" + constraintName + "\".");
             }
+
             const std::string where = "the constraint \"" + constraintName + "\"" + in;
             animation.timelines.push_back({.property = SkeletonAnimation::Property::IkMix, .target = *target, .keys = keys(list, where, [&where](const core::Json& key, auto& values) { readIkKey(key, values, where); })});
         }
@@ -433,16 +491,20 @@ class SkeletonData::Reader final {
             for (const core::Json& member : key.value("order", core::Json::array())) {
                 order.order.push_back(slot(member.is_string() ? member.get<std::string>() : std::string(), "A draw order key" + in));
             }
+
             std::vector<bool> listed(data.slots.size());
             for (const std::size_t slot : order.order) {
                 listed[slot] = true;
             }
+
             if (order.order.size() != data.slots.size() || std::ranges::find(listed, false) != listed.end()) {
                 throw std::invalid_argument("Every draw order key" + in + " lists every slot once.");
             }
+
             if (!animation.drawOrder.empty() && order.time < animation.drawOrder.back().time) {
                 throw std::invalid_argument("The draw order keys" + in + " must follow each other in time.");
             }
+
             animation.drawOrder.push_back(std::move(order));
         }
 
@@ -452,11 +514,14 @@ class SkeletonData::Reader final {
             if (event.name.empty()) {
                 throw std::invalid_argument("Every event" + in + " needs a name.");
             }
+
             if (std::ranges::find(data.events, event.name) == data.events.end()) {
                 data.events.push_back(event.name);
             }
+
             animation.events.push_back(std::move(event));
         }
+
         std::ranges::sort(animation.events, {}, &SkeletonAnimation::Event::time);
 
         // An animation lasts its duration, or until its last key.
@@ -464,12 +529,15 @@ class SkeletonData::Reader final {
         for (const SkeletonAnimation::Timeline& timeline : animation.timelines) {
             last = std::max(last, timeline.keys.back().time);
         }
+
         for (const SkeletonAnimation::DrawOrderKey& order : animation.drawOrder) {
             last = std::max(last, order.time);
         }
+
         for (const SkeletonAnimation::Event& event : animation.events) {
             last = std::max(last, event.time);
         }
+
         animation.duration = number(entry, "duration", last, "the animation \"" + name + "\"");
         return animation;
     }
@@ -481,6 +549,7 @@ SkeletonData SkeletonData::parse(const core::Json& document, std::shared_ptr<con
     if (!frames) {
         throw std::invalid_argument("A skeleton needs the atlas its attachments show.");
     }
+
     SkeletonData data;
     data.atlas = std::move(frames);
     Reader(data).read(document);
@@ -491,6 +560,7 @@ std::string SkeletonData::atlasPath(const core::Json& document) {
     if (!document.is_object() || !document.contains("atlas") || !document.at("atlas").is_string()) {
         throw std::invalid_argument("A skeleton file needs \"atlas\", the path of the atlas of its attachments.");
     }
+
     return document.at("atlas").get<std::string>();
 }
 
@@ -524,11 +594,13 @@ const SkeletonData::Attachment* SkeletonData::findAttachment(std::size_t skin, s
         if (!source) {
             continue;
         }
+
         const auto& attachments = skins[*source].slots[slot];
         if (const auto found = attachments.find(name); found != attachments.end()) {
             return &found->second;
         }
     }
+
     return nullptr;
 }
 

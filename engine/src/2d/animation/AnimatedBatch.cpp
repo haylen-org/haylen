@@ -18,10 +18,13 @@ void AnimatedBatch::addAnimation(std::string name, Animation animation) {
     if (name.empty() || animation.frames.empty() || !(animation.texture == batch.getTexture())) {
         throw std::invalid_argument("An animation of an animated batch needs a name, at least one frame and the texture of the batch.");
     }
+
     animation.validate();
+
     if (!animations.empty() && animation.countsTicks() != ticks) {
         throw std::invalid_argument("The animations of an animated batch all count seconds or all count ticks.");
     }
+
     ticks = animation.countsTicks();
 
     const auto found = std::ranges::find(names, name);
@@ -34,8 +37,10 @@ void AnimatedBatch::addAnimation(std::string name, Animation animation) {
                 show(index);
             }
         }
+
         return;
     }
+
     names.push_back(std::move(name));
     animations.push_back(std::move(animation));
 }
@@ -53,6 +58,7 @@ std::uint32_t AnimatedBatch::findAnimation(std::string_view name) const {
     if (found == names.end()) {
         throw std::invalid_argument("The animation \"" + std::string(name) + "\" does not exist in this animated batch.");
     }
+
     return static_cast<std::uint32_t>(found - names.begin());
 }
 
@@ -94,6 +100,7 @@ void AnimatedBatch::play(std::size_t index, std::string_view animation, bool res
     if (state.animation == slot && !restart) {
         return;
     }
+
     state = {.animation = slot, .speed = state.speed, .scale = state.scale};
     show(index);
 }
@@ -185,6 +192,7 @@ void AnimatedBatch::update(float deltaSeconds, core::JobSystem* jobs) {
     if (ticks) {
         throw std::logic_error("The animations of the animated batch count ticks, so it advances with \"step\".");
     }
+
     advance(deltaSeconds, jobs);
 }
 
@@ -192,6 +200,7 @@ void AnimatedBatch::step(std::uint32_t count, core::JobSystem* jobs) {
     if (!ticks && !animations.empty()) {
         throw std::logic_error("The animations of the animated batch count seconds, so it cannot step by ticks.");
     }
+
     advance(static_cast<float>(count), jobs);
 }
 
@@ -224,6 +233,7 @@ void AnimatedBatch::advance(float amount, core::JobSystem* jobs) {
             endedSprites.push_back(index);
         }
     }
+
     // A listener may update the batch again, which fills the list anew, so the listeners hear a copy of it.
     if (!endedSprites.empty()) {
         const std::vector<std::size_t> ended = endedSprites;
@@ -242,9 +252,11 @@ void AnimatedBatch::show(std::size_t index) {
     if (sprite.flip.horizontal) {
         pivot.x = 1.0F - pivot.x;
     }
+
     if (sprite.flip.vertical) {
         pivot.y = 1.0F - pivot.y;
     }
+
     sprite.pivot = pivot;
     batch.set(index, sprite);
 }

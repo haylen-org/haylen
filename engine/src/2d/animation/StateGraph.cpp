@@ -50,9 +50,11 @@ class StateGraph::Parser final {
     std::size_t parse() {
         const std::size_t root = disjunction();
         skipSpaces();
+
         if (position < text.size()) {
             fail("has an unexpected \"" + std::string(text.substr(position)) + "\"");
         }
+
         return root;
     }
 
@@ -75,6 +77,7 @@ class StateGraph::Parser final {
         while (end < text.size() && (std::isalnum(static_cast<unsigned char>(text[end])) != 0 || text[end] == '_' || text[end] == '.')) {
             ++end;
         }
+
         return text.substr(position, end - position);
     }
 
@@ -82,6 +85,7 @@ class StateGraph::Parser final {
         if (peekWord() != word) {
             return false;
         }
+
         position += word.size();
         return true;
     }
@@ -96,6 +100,7 @@ class StateGraph::Parser final {
         while (acceptWord("or")) {
             left = add({.op = Term::Op::Or, .left = left, .right = conjunction()});
         }
+
         return left;
     }
 
@@ -104,6 +109,7 @@ class StateGraph::Parser final {
         while (acceptWord("and")) {
             left = add({.op = Term::Op::And, .left = left, .right = negation()});
         }
+
         return left;
     }
 
@@ -111,6 +117,7 @@ class StateGraph::Parser final {
         if (acceptWord("not")) {
             return add({.op = Term::Op::Not, .left = negation()});
         }
+
         return comparison();
     }
 
@@ -124,18 +131,22 @@ class StateGraph::Parser final {
                 return add({.op = op, .left = left, .right = operand()});
             }
         }
+
         return left;
     }
 
     std::size_t operand() {
         skipSpaces();
+
         if (position < text.size() && text[position] == '(') {
             ++position;
             const std::size_t inner = disjunction();
             skipSpaces();
+
             if (position >= text.size() || text[position] != ')') {
                 fail("misses a closing parenthesis");
             }
+
             ++position;
             return inner;
         }
@@ -144,10 +155,13 @@ class StateGraph::Parser final {
         if (word.empty()) {
             fail(position < text.size() ? "has an unexpected \"" + std::string(text.substr(position, 1)) + "\"" : "ends too early");
         }
+
         position += word.size();
+
         if (word == "true" || word == "false") {
             return add({.op = Term::Op::Constant, .constant = word == "true" ? 1.0F : 0.0F});
         }
+
         if (std::isdigit(static_cast<unsigned char>(word.front())) != 0 || word.front() == '.') {
             const std::string digits(word);
             char* end = nullptr;
@@ -155,6 +169,7 @@ class StateGraph::Parser final {
             if (end != digits.c_str() + digits.size() || !std::isfinite(number)) {
                 fail("has a number it cannot read, \"" + digits + "\"");
             }
+
             return add({.op = Term::Op::Constant, .constant = number});
         }
 
@@ -165,19 +180,23 @@ class StateGraph::Parser final {
         if (parameter == nullptr) {
             fail("names the unknown parameter \"" + std::string(name) + "\"");
         }
+
         std::size_t slot = parameter->slot;
         if (parameter->kind == Kind::Vector) {
             const std::string_view component = dot == std::string_view::npos ? std::string_view{} : word.substr(dot + 1);
             if (component != "x" && component != "y") {
                 fail("reads the vector \"" + std::string(name) + "\" without \".x\" or \".y\"");
             }
+
             slot += component == "y" ? 1U : 0U;
         } else if (dot != std::string_view::npos) {
             fail("reads a component of \"" + std::string(name) + "\", which is no vector");
         }
+
         if (parameter->kind == Kind::Trigger && std::ranges::find(triggers, parameter->slot) == triggers.end()) {
             triggers.push_back(parameter->slot);
         }
+
         return add({.op = Term::Op::Value, .slot = slot});
     }
 
@@ -191,6 +210,7 @@ StateGraph StateGraph::parse(const core::Json& description) {
     if (!description.is_object()) {
         throw std::invalid_argument("A state graph description must be an object with \"parameters\", \"states\" and \"transitions\".");
     }
+
     for (const auto& [key, value] : description.items()) {
         if (key != "parameters" && key != "states" && key != "transitions" && key != "initial") {
             throw std::invalid_argument("Unknown option \"" + key + "\".");
@@ -215,6 +235,7 @@ StateGraph StateGraph::parse(const core::Json& description) {
         } else {
             throw std::invalid_argument("The parameter \"" + name + "\" must start as a number, a boolean, \"trigger\" or a vector of two numbers.");
         }
+
         graph.valueCount += parameter.kind == Kind::Vector ? 2 : 1;
         graph.parameters.push_back(std::move(parameter));
     }
@@ -223,19 +244,24 @@ StateGraph StateGraph::parse(const core::Json& description) {
     if (!stateList.is_object() || stateList.empty()) {
         throw std::invalid_argument("A state graph needs at least one state.");
     }
+
     for (const auto& [name, value] : stateList.get<std::map<std::string, core::Json>>()) {
         State state{.name = name};
+
         if (!value.is_object()) {
             throw std::invalid_argument("The state \"" + name + "\" must be an object with an \"animation\" or \"directions\".");
         }
+
         for (const auto& [key, field] : value.items()) {
             if (key != "animation" && key != "directions" && key != "by") {
                 throw std::invalid_argument("The state \"" + name + "\" has the unknown key \"" + key + "\".");
             }
         }
+
         if (value.contains("animation") == value.contains("directions")) {
             throw std::invalid_argument("The state \"" + name + "\" plays an \"animation\" or a set of \"directions\", one of the two.");
         }
+
         if (value.contains("animation")) {
             state.animation = value.at("animation").get<std::string>();
         } else {
@@ -244,14 +270,17 @@ StateGraph StateGraph::parse(const core::Json& description) {
             if (by == nullptr || by->kind != Kind::Vector) {
                 throw std::invalid_argument("The directions of the state \"" + name + "\" need \"by\", the name of a vector parameter.");
             }
+
             state.by = by->slot;
             for (const auto& [direction, animation] : set.items()) {
                 const std::optional<Direction> found = directionFromName(direction);
                 if (!found || !animation.is_string()) {
                     throw std::invalid_argument("The state \"" + name + "\" names the direction \"" + direction + "\". Directions are \"right\", \"down\", \"left\" and \"up\", with \"downRight\", \"downLeft\", \"upLeft\" and \"upRight\" for eight, each with the name of an animation.");
                 }
+
                 state.directions[static_cast<std::size_t>(*found)] = animation.get<std::string>();
             }
+
             std::size_t straight = 0;
             std::size_t diagonals = 0;
             for (std::size_t index = 0; index < state.directions.size(); ++index) {
@@ -259,11 +288,14 @@ StateGraph StateGraph::parse(const core::Json& description) {
                 straight += named && index % 2 == 0 ? 1 : 0;
                 diagonals += named && index % 2 == 1 ? 1 : 0;
             }
+
             if (straight != 4 || (diagonals != 0 && diagonals != 4)) {
                 throw std::invalid_argument("The directions of the state \"" + name + "\" name the four straight directions, or all eight.");
             }
+
             state.eightWays = diagonals == 4;
         }
+
         graph.states.push_back(std::move(state));
     }
 
@@ -272,20 +304,24 @@ StateGraph StateGraph::parse(const core::Json& description) {
     if (!start) {
         throw std::invalid_argument("The initial state \"" + initial + "\" does not exist.");
     }
+
     graph.initial = *start;
 
     std::size_t number = 0;
     for (const core::Json& entry : description.value("transitions", core::Json::array())) {
         ++number;
         const std::string where = "the transition " + std::to_string(number);
+
         if (!entry.is_object()) {
             throw std::invalid_argument("The transition " + std::to_string(number) + " must be an object with \"from\" and \"to\".");
         }
+
         for (const auto& [key, field] : entry.items()) {
             if (key != "from" && key != "to" && key != "when" && key != "exitTime" && key != "atEnd" && key != "fade") {
                 throw std::invalid_argument("The transition " + std::to_string(number) + " has the unknown key \"" + key + "\".");
             }
         }
+
         Transition transition;
         const std::string from = entry.value("from", std::string("any"));
         if (from != "any") {
@@ -294,11 +330,13 @@ StateGraph StateGraph::parse(const core::Json& description) {
                 throw std::invalid_argument("The transition " + std::to_string(number) + " starts from the unknown state \"" + from + "\".");
             }
         }
+
         const std::string to = entry.value("to", std::string());
         const std::optional<std::size_t> target = graph.findState(to);
         if (!target) {
             throw std::invalid_argument("The transition " + std::to_string(number) + " goes to the unknown state \"" + to + "\".");
         }
+
         transition.to = *target;
         if (entry.contains("when")) {
             const std::string condition = entry.at("when").get<std::string>();
@@ -306,13 +344,16 @@ StateGraph StateGraph::parse(const core::Json& description) {
             transition.condition = parser.parse();
             transition.triggers = std::move(parser.triggers);
         }
+
         transition.exitTime = entry.value("atEnd", false) ? 1.0F : core::JsonNumber::toFloat(entry, "exitTime", 0.0F);
         transition.fade = core::JsonNumber::toFloat(entry, "fade", 0.0F);
         if (!(transition.exitTime >= 0.0F && transition.fade >= 0.0F)) {
             throw std::invalid_argument("The transition " + std::to_string(number) + " needs an exit time and a fade of at least 0.");
         }
+
         graph.transitions.push_back(std::move(transition));
     }
+
     return graph;
 }
 
@@ -368,12 +409,14 @@ std::size_t StateGraph::pickDirection(const State& state, const std::vector<floa
     if (x == 0.0F && y == 0.0F) {
         return current;
     }
+
     const std::size_t sectors = state.eightWays ? 8 : 4;
     const float width = std::numbers::pi_v<float> * 2.0F / static_cast<float>(sectors);
     float angle = std::atan2(y, x);
     if (angle < 0.0F) {
         angle += std::numbers::pi_v<float> * 2.0F;
     }
+
     const std::size_t step = 8 / sectors;
     if (current % step == 0 && !state.directions[current].empty()) {
         float distance = std::fabs(angle - static_cast<float>(current / step) * width);
@@ -382,6 +425,7 @@ std::size_t StateGraph::pickDirection(const State& state, const std::vector<floa
             return current;
         }
     }
+
     return (static_cast<std::size_t>(std::lround(angle / width)) % sectors) * step;
 }
 
@@ -393,10 +437,12 @@ std::vector<std::string> StateGraph::getAnimationNames() const {
                 names.push_back(name);
             }
         }
+
         if (!state.animation.empty() && std::ranges::find(names, state.animation) == names.end()) {
             names.push_back(state.animation);
         }
     }
+
     return names;
 }
 

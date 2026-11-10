@@ -15,6 +15,7 @@ void Animator::add(std::string name, Animation animation) {
     if (name.empty() || animation.frames.empty() || !animation.texture.isValid()) {
         throw std::invalid_argument("An animation needs a name, a texture and at least one frame.");
     }
+
     animation.validate();
 
     // Replacing the animation that plays keeps its time, so its frame is looked up again among the new frames, and a step that a callback of the old frames runs in stops there.
@@ -22,6 +23,7 @@ void Animator::add(std::string name, Animation animation) {
         frame = animation.frameAt(time);
         ++plays;
     }
+
     animations.insert_or_assign(std::move(name), std::move(animation));
 }
 
@@ -34,12 +36,14 @@ const Animation& Animator::getAnimation(std::string_view name) const {
     if (found == animations.end()) {
         throw std::invalid_argument("The animation \"" + std::string(name) + "\" does not exist in this animator.");
     }
+
     return found->second;
 }
 
 void Animator::play(std::string_view name, bool restart) {
     (void)getAnimation(name);
     pending.clear();
+
     if (current == name && !restart) {
         playing = true;
         return;
@@ -56,10 +60,12 @@ void Animator::play(std::string_view name, bool restart) {
 
 void Animator::queue(std::string_view name) {
     (void)getAnimation(name);
+
     if (current.empty() || isFinished()) {
         play(name, true);
         return;
     }
+
     pending.emplace_back(name);
 }
 
@@ -67,9 +73,11 @@ void Animator::seek(float value) {
     if (current.empty()) {
         return;
     }
+
     if (!std::isfinite(value)) {
         throw std::invalid_argument("An animator seeks only to a finite time.");
     }
+
     time = value;
     frame = getAnimation(current).frameAt(time);
 }
@@ -82,10 +90,12 @@ void Animator::update(float deltaSeconds) {
     if (!playing || current.empty()) {
         return;
     }
+
     const Animation& active = getAnimation(current);
     if (active.countsTicks()) {
         throw std::logic_error("The animation \"" + current + "\" counts ticks, so it advances with \"step\".");
     }
+
     advance(active, deltaSeconds);
 }
 
@@ -93,10 +103,12 @@ void Animator::step(std::uint32_t ticks) {
     if (!playing || current.empty()) {
         return;
     }
+
     const Animation& active = getAnimation(current);
     if (!active.countsTicks()) {
         throw std::logic_error("The animation \"" + current + "\" counts seconds, so it cannot step by ticks.");
     }
+
     advance(active, static_cast<float>(ticks));
 }
 
@@ -105,12 +117,15 @@ void Animator::enter(std::size_t shown) {
     frame = shown;
     const std::string name = current;
     const std::uint64_t played = plays;
+
     if (onFrame) {
         onFrame(name, frame);
     }
+
     if (plays != played) {
         return;
     }
+
     const std::vector<std::string> events = getAnimation(name).frames[shown].events;
     for (std::size_t index = 0; index < events.size() && onEvent && plays == played; ++index) {
         onEvent(name, events[index], shown);
@@ -124,6 +139,7 @@ void Animator::advance(const Animation& active, float amount) {
         const std::vector<std::string> events = active.frames[frame].events;
         for (std::size_t index = 0; index < events.size() && onEvent; ++index) {
             onEvent(current, events[index], frame);
+
             if (plays != played) {
                 return;
             }
@@ -135,6 +151,7 @@ void Animator::advance(const Animation& active, float amount) {
     if (!std::isfinite(next)) {
         throw std::invalid_argument("An animator advances only to a finite time, so its speed and its steps are finite numbers.");
     }
+
     time = next;
     const float cycle = active.getCycleDuration();
     if (time < previous) {
@@ -152,6 +169,7 @@ void Animator::advance(const Animation& active, float amount) {
             }
         }
     }
+
     if (plays != played) {
         return;
     }
@@ -159,6 +177,7 @@ void Animator::advance(const Animation& active, float amount) {
     if (isFinished() && !completeReported) {
         completeReported = true;
         playing = false;
+
         if (onComplete) {
             onComplete(current);
         }
@@ -184,6 +203,7 @@ void Animator::apply(graphics2d::Sprite& sprite) const {
     if (shown == nullptr) {
         return;
     }
+
     sprite.texture = getAnimation(current).texture;
     sprite.source = shown->source;
     sprite.size = shown->source.getSize();
@@ -192,9 +212,11 @@ void Animator::apply(graphics2d::Sprite& sprite) const {
     if (sprite.flip.horizontal) {
         placed.x = 1.0F - placed.x;
     }
+
     if (sprite.flip.vertical) {
         placed.y = 1.0F - placed.y;
     }
+
     sprite.pivot = placed;
 }
 
@@ -206,9 +228,11 @@ math::Vec2 Animator::place(math::Vec2 point, const graphics2d::Sprite& sprite) c
     if (sprite.flip.horizontal) {
         share.x = 1.0F - share.x;
     }
+
     if (sprite.flip.vertical) {
         share.y = 1.0F - share.y;
     }
+
     const math::Vec2 size = (sprite.size.isZero() ? sourceSize : sprite.size) * sprite.scale;
     return sprite.position + ((share - sprite.pivot) * size).rotated(sprite.rotation);
 }
@@ -219,6 +243,7 @@ std::optional<math::Rect> Animator::getBox(std::string_view name, const graphics
     if (box == nullptr) {
         return std::nullopt;
     }
+
     const math::Rect& area = box->area;
     const std::array<math::Vec2, 4> corners{place(area.getMin(), sprite), place({area.getRight(), area.y}, sprite), place(area.getMax(), sprite), place({area.x, area.getBottom()}, sprite)};
     return math::Geometry::bounds(corners);
@@ -230,6 +255,7 @@ std::optional<math::Vec2> Animator::getPoint(std::string_view name, const graphi
     if (point == nullptr) {
         return std::nullopt;
     }
+
     return place(point->position, sprite);
 }
 
@@ -237,6 +263,7 @@ bool Animator::isFinished() const noexcept {
     if (current.empty()) {
         return false;
     }
+
     const Animation& active = animations.find(current)->second;
     return active.loop == Animation::Loop::Once && time >= active.getDuration();
 }
