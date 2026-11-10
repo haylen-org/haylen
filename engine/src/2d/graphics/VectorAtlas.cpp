@@ -24,10 +24,10 @@ float VectorAtlas::scaleOf(int step) noexcept {
     return std::exp2(static_cast<float>(step) / static_cast<float>(kStepsPerOctave));
 }
 
-// A raster never outgrows the largest texture of the device, with a pixel to spare on each side.
+// A raster never outgrows the largest page, nor the largest texture of the device, with a pixel to spare on each side.
 int VectorAtlas::clampStep(const graphics::VectorImage& image, int step) const noexcept {
     const math::Vec2 size = image.getSize();
-    const float largest = static_cast<float>(device.getMaxTextureSize() - 2);
+    const float largest = static_cast<float>(std::min(device.getMaxTextureSize(), kMaxPageSize) - 2);
     return std::min(step, static_cast<int>(std::floor(std::log2(largest / std::max(size.x, size.y)) * static_cast<float>(kStepsPerOctave))));
 }
 

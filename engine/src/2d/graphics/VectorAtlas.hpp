@@ -24,7 +24,7 @@ class Device;
 
 namespace haylen::graphics2d {
 
-// Keeps the rasters of vector images in pages of one dynamic texture each, so the draws of many images at many sizes share a few textures and batch together. Scales come in steps a quarter of an octave apart, and every draw takes the raster of the step that covers its scale. The first raster of an image is made at once on the frame thread, so the image shows from its first draw, and every other step is made on the task pool while the nearest step the atlas holds draws in its place. Pages pack their rasters in shelves, a page that fills up starts another one, and once the atlas holds as many pages as it may, the page that drew longest ago starts over with a new texture.
+// Keeps the rasters of vector images in pages of one dynamic texture each, so the draws of many images at many sizes share a few textures and batch together. Scales come in steps a quarter of an octave apart, and every draw takes the raster of the step that covers its scale. The first raster of an image is made at once on the frame thread, so the image shows from its first draw, and every other step is made on the task pool while the nearest step the atlas holds draws in its place. Pages pack their rasters in shelves, and a raster larger than a page takes a page of its own. No page is larger than `kMaxPageSize` pixels on a side, so an image drawn larger than that draws the raster of the largest step that fits, stretched. A page that fills up starts another one, and once the atlas holds as many pages as it may, the page that drew longest ago starts over with a new texture.
 class VectorAtlas final {
   public:
     struct Raster {
@@ -34,6 +34,7 @@ class VectorAtlas final {
 
     static constexpr int kStepsPerOctave = 4;
     static constexpr int kPageSize = 1024;
+    static constexpr int kMaxPageSize = 4096;
     static constexpr std::size_t kMaxPages = 8;
 
     VectorAtlas(graphics::Device& graphicsDevice, core::JobSystem& jobSystem);

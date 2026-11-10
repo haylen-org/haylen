@@ -107,6 +107,20 @@ TEST_F(VectorAtlasTest, KeepsOnePlaceForARasterThatCameBackWhileItWasMade) {
     EXPECT_TRUE(atlas.find(image, larger, ++frame).texture.isValid());
 }
 
+// An image drawn far larger than the largest page draws the largest raster that fits in one, so no page outgrows the bound, whatever the device holds.
+TEST_F(VectorAtlasTest, BoundsThePagesOfImagesDrawnHuge) {
+    VectorAtlas atlas(fixture.engine().getGraphics(), fixture.engine().getJobs());
+    ASSERT_GT(fixture.engine().getGraphics().getMaxTextureSize(), VectorAtlas::kMaxPageSize);
+    const graphics::VectorImage image = square();
+    const VectorAtlas::Raster huge = atlas.find(image, 4000.0F, 1);
+    EXPECT_LE(huge.texture.getSize().x, static_cast<float>(VectorAtlas::kMaxPageSize));
+    EXPECT_LE(huge.texture.getSize().y, static_cast<float>(VectorAtlas::kMaxPageSize));
+    EXPECT_LE(huge.source.width, static_cast<float>(VectorAtlas::kMaxPageSize - 2));
+    EXPECT_GT(huge.source.width, static_cast<float>(VectorAtlas::kMaxPageSize) / 2.0F);
+    EXPECT_EQ(atlas.find(image, 400000.0F, 2).source, huge.source);
+    EXPECT_EQ(atlas.getPendingCount(), 0U);
+}
+
 TEST_F(VectorAtlasTest, DrawsVectorImagesFromLua) {
     // clang-format off
     fixture.runLua(R"(

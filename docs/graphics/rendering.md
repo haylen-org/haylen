@@ -737,7 +737,7 @@ The function `graphics2d.drawVector`, `Renderer::drawVector(image, sprite)` in C
 
 - Scales come in steps a quarter of an octave apart, about 19 percent. An image drawn at a size between two steps takes the larger raster and never blurs. An image that grows or zooms takes a sharper raster as it reaches each step.
 - The first raster of an image is made at once on the frame thread, so the image shows from its first draw. Every other step is made on the task pool, and until it arrives the nearest step that the atlas holds draws in its place.
-- Rasters live in pages of 1024 by 1024 pixels, one dynamic texture each, packed in shelves with a pixel between them. So the draws of many images at many sizes share a few textures and batch into few draw calls. A raster larger than a page takes a page of its own.
+- Rasters live in pages of 1024 by 1024 pixels, one dynamic texture each, packed in shelves with a pixel between them. So the draws of many images at many sizes share a few textures and batch into few draw calls. A raster larger than a page takes a page of its own. No page is larger than 4096 pixels on a side, or the largest texture of the device when that is smaller, with a pixel to spare around the raster. So an image drawn larger than 4094 pixels draws the raster of the largest step that fits, stretched, and the eight pages of the atlas never hold more than 512 MiB of pixels.
 - Once the atlas holds eight pages, the page that drew longest ago starts over with a new texture, and its images make their rasters again when they draw.
 - A page whose rasters changed uploads once per frame, before the passes.
 
