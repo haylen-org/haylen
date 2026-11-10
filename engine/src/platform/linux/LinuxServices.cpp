@@ -40,6 +40,7 @@ void Services::initialize() {
 
 void Services::shutdown() noexcept {
     LinuxDesktop::release();
+    LinuxFonts::release();
 }
 
 void Services::reportError(const core::Json&) {}

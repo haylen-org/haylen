@@ -8,11 +8,14 @@
 
 namespace haylen::platform {
 
-std::once_flag& LinuxFonts::loaded = *new std::once_flag();
+std::mutex& LinuxFonts::lock = *new std::mutex();
+bool LinuxFonts::loaded = false;
 std::optional<LinuxFonts::Library>& LinuxFonts::library = *new std::optional<Library>();
+void* LinuxFonts::config = nullptr;
 
 // The pattern asks for the character alone, so fontconfig fills in the languages of the person and the family of the system and picks the face that draws it best, and the face counts only when its character set holds the character.
 std::optional<SystemFont> LinuxFonts::find(char32_t codePoint) {
+    const std::scoped_lock guard(lock);
     const Library* fontconfig = open();
     if (fontconfig == nullptr) {
         return std::nullopt;
@@ -23,10 +26,11 @@ std::optional<SystemFont> LinuxFonts::find(char32_t codePoint) {
     fontconfig->addChar(characters, codePoint);
     fontconfig->addCharSet(pattern, "charset", characters);
     fontconfig->destroyCharSet(characters);
-    fontconfig->substitute(fontconfig->config, pattern, kMatchPattern);
-    fontconfig->substituteDefaults(pattern);
+    fontconfig->substitute(config, pattern, kMatchPattern);
+    fillDefaults(*fontconfig, pattern);
+
     int result = 0;
-    void* matched = fontconfig->match(fontconfig->config, pattern, &result);
+    void* matched = fontconfig->match(config, pattern, &result);
     fontconfig->destroyPattern(pattern);
     if (matched == nullptr) {
         return std::nullopt;
@@ -47,9 +51,27 @@ std::optional<SystemFont> LinuxFonts::find(char32_t codePoint) {
     return font;
 }
 
+void LinuxFonts::release() noexcept {
+    const std::scoped_lock guard(lock);
+    if (config != nullptr) {
+        library->destroyConfig(config);
+        config = nullptr;
+    }
+}
+
 const LinuxFonts::Library* LinuxFonts::open() {
-    std::call_once(loaded, [] { library = load(); });
-    return library ? &*library : nullptr;
+    if (!loaded) {
+        library = load();
+        loaded = true;
+    }
+    if (!library) {
+        return nullptr;
+    }
+
+    if (config == nullptr) {
+        config = library->createConfig();
+    }
+    return config != nullptr ? &*library : nullptr;
 }
 
 std::optional<LinuxFonts::Library> LinuxFonts::load() {
@@ -59,9 +81,9 @@ std::optional<LinuxFonts::Library> LinuxFonts::load() {
     }
 
     Library loading;
-    void* (*initialize)() = nullptr;
     bool complete = true;
-    complete = LinuxGlib::find(handle, initialize, "FcInitLoadConfigAndFonts") && complete;
+    complete = LinuxGlib::find(handle, loading.createConfig, "FcInitLoadConfigAndFonts") && complete;
+    complete = LinuxGlib::find(handle, loading.destroyConfig, "FcConfigDestroy") && complete;
     complete = LinuxGlib::find(handle, loading.createPattern, "FcPatternCreate") && complete;
     complete = LinuxGlib::find(handle, loading.destroyPattern, "FcPatternDestroy") && complete;
     complete = LinuxGlib::find(handle, loading.createCharSet, "FcCharSetCreate") && complete;
@@ -76,13 +98,22 @@ std::optional<LinuxFonts::Library> LinuxFonts::load() {
     complete = LinuxGlib::find(handle, loading.getCharSet, "FcPatternGetCharSet") && complete;
     complete = LinuxGlib::find(handle, loading.hasChar, "FcCharSetHasChar") && complete;
     if (!complete) {
+        dlclose(handle);
         return std::nullopt;
     }
-    loading.config = initialize();
-    if (loading.config == nullptr) {
-        return std::nullopt;
-    }
+
+    // Fontconfig adds this function in the version whose default substitution reads a configuration, so earlier versions lack it and read none there.
+    LinuxGlib::find(handle, loading.substituteConfigDefaults, "FcConfigSetDefaultSubstitute");
     return loading;
+}
+
+// The default substitution of recent versions of fontconfig reads a configuration, and without one it loads the implicit configuration of the process, which nothing frees, so the lookup hands it its own.
+void LinuxFonts::fillDefaults(const Library& fontconfig, void* pattern) {
+    if (fontconfig.substituteConfigDefaults != nullptr) {
+        fontconfig.substituteConfigDefaults(config, pattern);
+        return;
+    }
+    fontconfig.substituteDefaults(pattern);
 }
 
 } // namespace haylen::platform

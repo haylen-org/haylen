@@ -12,7 +12,7 @@
 
 namespace haylen::platform {
 
-// A system with fontconfig names the file and the face that draws a letter, which the engine draws, and so for Chinese where the system has a font for it.
+// A system with fontconfig names the file and the face that draws a letter, which the engine draws, and so for Chinese where the system has a font for it. The release frees everything fontconfig allocated, which the address sanitizer checks, and the next lookup loads it again.
 TEST(LinuxFontsTest, FindsTheFilesOfTheFacesOfCharacters) {
     void* fontconfig = dlopen("libfontconfig.so.1", RTLD_NOW | RTLD_LOCAL);
     if (fontconfig == nullptr) {
@@ -31,6 +31,13 @@ TEST(LinuxFontsTest, FindsTheFilesOfTheFacesOfCharacters) {
         text::TrueTypeFont font(fixture.engine().getGraphics(), SystemFontReader::read(face->file), {.face = face->face});
         EXPECT_TRUE(font.hasGlyph(character)) << face->name;
     }
+
+    const std::optional<SystemFont> before = LinuxFonts::find(U'A');
+    LinuxFonts::release();
+    const std::optional<SystemFont> after = LinuxFonts::find(U'A');
+    LinuxFonts::release();
+    EXPECT_EQ(before.has_value(), after.has_value());
+
     if (found == 0) {
         GTEST_SKIP() << "This system has fontconfig but no font with outlines for these characters.";
     }
