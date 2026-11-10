@@ -17,9 +17,11 @@ Expression Expression::parse(std::string_view text) {
     expression.text = std::string(text);
     Reader reader(expression.text, expression.terms);
     expression.root = reader.read();
+
     if (!reader.isDone()) {
         throw std::invalid_argument(std::format("The expression \"{}\" has text after its end.", text));
     }
+
     return expression;
 }
 
@@ -35,6 +37,7 @@ double Expression::number(const core::Json& value, std::string_view operation) c
     if (!value.is_number()) {
         throw std::invalid_argument(std::format("The expression \"{}\" uses \"{}\" with a value that is not a number.", text, operation));
     }
+
     return value.get<double>();
 }
 
@@ -71,6 +74,7 @@ core::Json Expression::evaluate(const Lookup& lookup) const {
                 visits.pop_back();
                 continue;
             }
+
             values.pop_back();
             visits.back() = {.index = term.right, .stage = Visit::Stage::Enter};
             continue;
@@ -87,6 +91,7 @@ core::Json Expression::evaluate(const Lookup& lookup) const {
         values.pop_back();
         values.back() = combine(term.operation, values.back(), right);
     }
+
     return std::move(values.back());
 }
 
@@ -94,6 +99,7 @@ core::Json Expression::negate(const core::Json& value) const {
     if (value.is_number_integer()) {
         return static_cast<std::int64_t>(0U - static_cast<std::uint64_t>(value.get<std::int64_t>()));
     }
+
     return -number(value, "-");
 }
 
@@ -102,37 +108,47 @@ core::Json Expression::combine(const std::string& operation, const core::Json& l
     if (operation == "==") {
         return left.is_number() && right.is_number() ? left.get<double>() == right.get<double>() : left == right;
     }
+
     if (operation == "~=") {
         return left.is_number() && right.is_number() ? left.get<double>() != right.get<double>() : left != right;
     }
+
     if ((operation == "+" || operation == "-" || operation == "*") && left.is_number_integer() && right.is_number_integer()) {
         const auto a = static_cast<std::uint64_t>(left.get<std::int64_t>());
         const auto b = static_cast<std::uint64_t>(right.get<std::int64_t>());
         return static_cast<std::int64_t>(operation == "+" ? a + b : operation == "-" ? a - b : a * b);
     }
+
     const double a = number(left, operation);
     const double b = number(right, operation);
     if (operation == "+") {
         return a + b;
     }
+
     if (operation == "-") {
         return a - b;
     }
+
     if (operation == "*") {
         return a * b;
     }
+
     if (operation == "/") {
         return a / b;
     }
+
     if (operation == "<") {
         return a < b;
     }
+
     if (operation == "<=") {
         return a <= b;
     }
+
     if (operation == ">") {
         return a > b;
     }
+
     return a >= b;
 }
 
@@ -144,6 +160,7 @@ bool Expression::Reader::isDone() {
 // Operators wait in a list until an operator that binds as loosely or more loosely arrives, and a closing parenthesis applies those of its level. A comparison takes no second comparison beside it, and `not` stands only where a whole condition begins: at the start, after `(`, `and`, `or` and another `not`.
 std::size_t Expression::Reader::read() {
     readOperand(true);
+
     while (true) {
         const std::string operation = takeOperation();
         if (!operation.empty()) {
@@ -159,9 +176,11 @@ std::size_t Expression::Reader::read() {
         if (parentheses == 0) {
             break;
         }
+
         if (!takeSymbol(")")) {
             throw fail("misses a closing parenthesis");
         }
+
         closeParenthesis();
     }
 
@@ -175,6 +194,7 @@ void Expression::Reader::readOperand(bool allowsNot) {
             pending.push_back({.kind = Kind::Not, .operation = {}, .level = kNotLevel, .parenthesis = false, .compared = false});
             continue;
         }
+
         if (takeSymbol("-")) {
             pending.push_back({.kind = Kind::Negate, .operation = {}, .level = kNegateLevel, .parenthesis = false, .compared = false});
             allowsNot = false;
@@ -182,9 +202,11 @@ void Expression::Reader::readOperand(bool allowsNot) {
         }
 
         skipSpaces();
+
         if (position == text.size()) {
             throw fail("ends where a value belongs");
         }
+
         if (takeSymbol("(")) {
             pending.push_back({.kind = Kind::Binary, .operation = {}, .level = 0, .parenthesis = true, .compared = compared});
             ++parentheses;
@@ -204,6 +226,7 @@ std::string Expression::Reader::takeOperation() {
             return std::string(operation);
         }
     }
+
     if (!compared) {
         for (const std::string_view operation : {"==", "~=", "!=", "<=", ">=", "<", ">"}) {
             if (takeSymbol(operation)) {
@@ -211,11 +234,13 @@ std::string Expression::Reader::takeOperation() {
             }
         }
     }
+
     for (const std::string_view operation : {"and", "or"}) {
         if (takeWord(operation)) {
             return std::string(operation);
         }
     }
+
     return {};
 }
 
@@ -223,15 +248,19 @@ int Expression::Reader::getLevel(std::string_view operation) noexcept {
     if (operation == "or") {
         return kOrLevel;
     }
+
     if (operation == "and") {
         return kAndLevel;
     }
+
     if (operation == "+" || operation == "-") {
         return kSumLevel;
     }
+
     if (operation == "*" || operation == "/") {
         return kProductLevel;
     }
+
     return kComparisonLevel;
 }
 
@@ -266,16 +295,19 @@ std::size_t Expression::Reader::readValue() {
         if (end == std::string_view::npos) {
             throw fail("has a string that is not closed");
         }
+
         std::string value(text.substr(position + 1, end - position - 1));
         position = end + 1;
         return add({.kind = Kind::Literal, .operation = {}, .value = std::move(value), .left = 0, .right = 0});
     }
+
     if (std::isdigit(static_cast<unsigned char>(first)) != 0) {
         double value = 0.0;
         const auto [end, error] = fast_float::from_chars(text.data() + position, text.data() + text.size(), value);
         if (error != std::errc{}) {
             throw fail("has a number it cannot read");
         }
+
         const std::string_view digits = text.substr(position, static_cast<std::size_t>(end - (text.data() + position)));
         position += digits.size();
 
@@ -284,24 +316,31 @@ std::size_t Expression::Reader::readValue() {
         const bool integral = digits.find_first_of(".eE") == std::string_view::npos && std::from_chars(digits.data(), digits.data() + digits.size(), whole).ec == std::errc{};
         return add({.kind = Kind::Literal, .operation = {}, .value = integral ? core::Json(whole) : core::Json(value), .left = 0, .right = 0});
     }
+
     if (std::isalpha(static_cast<unsigned char>(first)) != 0 || first == '_') {
         const std::size_t start = position;
+
         while (position < text.size() && (std::isalnum(static_cast<unsigned char>(text[position])) != 0 || text[position] == '_' || text[position] == '.')) {
             ++position;
         }
+
         const std::string_view name = text.substr(start, position - start);
         if (name == "true" || name == "false") {
             return add({.kind = Kind::Literal, .operation = {}, .value = name == "true", .left = 0, .right = 0});
         }
+
         if (name == "nil") {
             return add({.kind = Kind::Literal, .operation = {}, .value = nullptr, .left = 0, .right = 0});
         }
+
         if (name == "and" || name == "or" || name == "not") {
             position = start;
             throw fail(std::format("has \"{}\" where a value belongs", name));
         }
+
         return add({.kind = Kind::Name, .operation = {}, .value = std::string(name), .left = 0, .right = 0});
     }
+
     throw fail(std::format("has \"{}\" where a value belongs", first));
 }
 
@@ -313,22 +352,27 @@ std::size_t Expression::Reader::add(Term term) {
 // A word only counts as a whole word, so `order` never starts with `or`.
 bool Expression::Reader::takeWord(std::string_view word) {
     skipSpaces();
+
     if (!text.substr(position).starts_with(word)) {
         return false;
     }
+
     const std::size_t end = position + word.size();
     if (end < text.size() && (std::isalnum(static_cast<unsigned char>(text[end])) != 0 || text[end] == '_')) {
         return false;
     }
+
     position = end;
     return true;
 }
 
 bool Expression::Reader::takeSymbol(std::string_view symbol) {
     skipSpaces();
+
     if (!text.substr(position).starts_with(symbol)) {
         return false;
     }
+
     position += symbol.size();
     return true;
 }

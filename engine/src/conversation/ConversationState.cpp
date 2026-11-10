@@ -12,6 +12,7 @@ ConversationState::ConversationState(std::shared_ptr<const Conversation> graph, 
     if (!values.is_null() && !values.is_object()) {
         throw std::invalid_argument("The variables of a conversation are an object of values by name.");
     }
+
     if (values.is_object()) {
         variables.update(values);
     }
@@ -22,6 +23,7 @@ void ConversationState::start(std::string_view name) {
     if (!found) {
         throw std::invalid_argument(std::format("The conversation has no node \"{}\".", name));
     }
+
     started = true;
     finished = false;
     enter(*found);
@@ -32,9 +34,11 @@ void ConversationState::advance() {
     if (finished || !started) {
         throw std::logic_error("The conversation has finished. Start it again to go on.");
     }
+
     if (!choices.empty()) {
         throw std::logic_error("The conversation waits for a choice. Call \"choose\" with one of its choices.");
     }
+
     run();
 }
 
@@ -42,19 +46,24 @@ void ConversationState::choose(std::size_t place) {
     if (choices.empty()) {
         throw std::logic_error("The conversation offers no choices now.");
     }
+
     if (place >= choices.size()) {
         throw std::out_of_range(std::format("The conversation offers {} choices, so there is no choice {}.", choices.size(), place + 1));
     }
+
     const Conversation::Choice& choice = conversation->getNode(node).choices[choices[place].index];
     if (choice.once) {
         chosen.push_back(std::format("{}:{}", conversation->getNode(node).name, choices[place].index));
     }
+
     choices.clear();
     line.reset();
+
     if (!choice.next) {
         finished = true;
         return;
     }
+
     enter(*choice.next);
     run();
 }
@@ -71,14 +80,17 @@ void ConversationState::run() {
         const Conversation::Node& current = conversation->getNode(node);
         if (step >= current.steps.size()) {
             offerChoices();
+
             if (!choices.empty()) {
                 return;
             }
+
             if (!current.next) {
                 finished = true;
                 line.reset();
                 return;
             }
+
             enter(*current.next);
             continue;
         }
@@ -87,6 +99,7 @@ void ConversationState::run() {
         if (!allows(action.condition)) {
             continue;
         }
+
         switch (action.kind) {
         case Conversation::Step::Kind::Line: {
             const std::size_t pick = action.texts.size() == 1 ? 0 : static_cast<std::size_t>(random.range(0, static_cast<int>(action.texts.size()) - 1));
@@ -100,12 +113,14 @@ void ConversationState::run() {
             for (const auto& [name, expression] : action.assignments) {
                 variables[name] = expression.evaluate([this](std::string_view key) { return lookup(key); });
             }
+
             break;
         case Conversation::Step::Kind::Jump:
             enter(action.target);
             break;
         }
     }
+
     finished = true;
     line.reset();
     throw std::logic_error(std::format("The conversation ran {} steps without a line in the node \"{}\", which looks like a loop of jumps.", kMaxSteps, conversation->getNode(node).name));
@@ -127,6 +142,7 @@ core::Json ConversationState::lookup(std::string_view name) const {
     if (name.starts_with("visits.")) {
         return getVisits(name.substr(7));
     }
+
     const auto found = variables.find(name);
     return found == variables.end() ? core::Json() : *found;
 }
@@ -153,6 +169,7 @@ void ConversationState::deliverCommands() {
     if (delivering || commanded.empty()) {
         return;
     }
+
     delivering = true;
     try {
         while (!commands.empty()) {
@@ -164,6 +181,7 @@ void ConversationState::deliverCommands() {
         delivering = false;
         throw;
     }
+
     delivering = false;
 }
 
@@ -174,14 +192,17 @@ core::Json ConversationState::save() const {
             visited[conversation->getNode(index).name] = visits[index];
         }
     }
+
     core::Json shown = nullptr;
     if (line) {
         shown = {{"speaker", line->speaker}, {"text", line->text}, {"tags", line->tags}};
     }
+
     core::Json offered = core::Json::array();
     for (const Choice& choice : choices) {
         offered.push_back(choice.index);
     }
+
     const std::array<std::uint64_t, 4>& state = random.getState();
     return {{"node", conversation->getNode(node).name}, {"step", step}, {"started", started}, {"finished", finished}, {"variables", variables}, {"visits", std::move(visited)}, {"chosen", chosen}, {"line", std::move(shown)}, {"choices", std::move(offered)}, {"random", std::vector<std::string>{std::to_string(state[0]), std::to_string(state[1]), std::to_string(state[2]), std::to_string(state[3])}}};
 }
@@ -194,6 +215,7 @@ std::shared_ptr<ConversationState> ConversationState::restore(std::shared_ptr<co
         if (!found) {
             throw std::invalid_argument(std::format("the conversation has no node \"{}\"", saved.at("node").get<std::string>()));
         }
+
         state.node = *found;
         state.step = std::min(saved.at("step").get<std::size_t>(), state.conversation->getNode(state.node).steps.size());
         state.started = saved.at("started").get<bool>();
@@ -204,27 +226,34 @@ std::shared_ptr<ConversationState> ConversationState::restore(std::shared_ptr<co
                 state.visits[*visited] = count.get<std::int64_t>();
             }
         }
+
         state.chosen = readList(saved, "chosen").get<std::vector<std::string>>();
         if (saved.contains("line") && saved.at("line").is_object()) {
             const core::Json& shown = saved.at("line");
             state.line = Line{.speaker = shown.at("speaker").get<std::string>(), .text = shown.at("text").get<std::string>(), .tags = readList(shown, "tags").get<std::vector<std::string>>()};
         }
+
         const std::vector<Conversation::Choice>& offered = state.conversation->getNode(state.node).choices;
         for (const core::Json& index : readList(saved, "choices")) {
             const std::size_t place = index.get<std::size_t>();
             if (place >= offered.size()) {
                 throw std::invalid_argument(std::format("the node \"{}\" has no choice {}", saved.at("node").get<std::string>(), place + 1));
             }
+
             state.choices.push_back({.index = place, .text = offered[place].text});
         }
+
         const std::vector<std::string> numbers = saved.at("random").get<std::vector<std::string>>();
         if (numbers.size() != 4) {
             throw std::invalid_argument("the state of its generator has the wrong size");
         }
+
         state.random.setState({std::stoull(numbers[0]), std::stoull(numbers[1]), std::stoull(numbers[2]), std::stoull(numbers[3])});
+
         if (!state.variables.is_object()) {
             throw std::invalid_argument("its variables are not an object");
         }
+
         return restored;
     } catch (const std::exception& error) {
         throw std::invalid_argument(std::format("The saved conversation does not fit this conversation: {}.", error.what()));
@@ -236,6 +265,7 @@ core::Json ConversationState::readList(const core::Json& saved, const char* key)
     if (!saved.contains(key) || (saved.at(key).is_object() && saved.at(key).empty())) {
         return core::Json::array();
     }
+
     return saved.at(key);
 }
 

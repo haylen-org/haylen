@@ -61,10 +61,12 @@ int ConversationLua::start(lua_State* L) {
         if (lua_getfield(L, 3, "variables") != LUA_TNIL) {
             values = lua::JsonConverter::read(L, -1);
         }
+
         if (lua_getfield(L, 3, "seed") != LUA_TNIL) {
             seed = static_cast<std::uint64_t>(luaL_checkinteger(L, -1));
         }
     }
+
     auto state = std::make_shared<ConversationState>(graph, values, seed);
     state->start(node);
     pushState(L, std::move(state));
@@ -90,6 +92,7 @@ int ConversationLua::nodes(lua_State* L) {
         lua::Stack::push(L, all[index].name);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
@@ -100,6 +103,7 @@ int ConversationLua::line(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
+
     const ConversationState::Line& shown = *state.getLine();
     lua_createtable(L, 0, 4);
     lua::Stack::push(L, shown.speaker);
@@ -126,6 +130,7 @@ int ConversationLua::choices(lua_State* L) {
         lua_setfield(L, -2, "key");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
+
     return 1;
 }
 
@@ -158,6 +163,7 @@ int ConversationLua::choose(lua_State* L) {
     if (index < 1) {
         return luaL_argerror(L, 2, "expected a choice from 1");
     }
+
     state.choose(static_cast<std::size_t>(index - 1));
     deliver(state);
     return 0;
@@ -185,6 +191,7 @@ int ConversationLua::on(lua_State* L) {
     if (event != "command") {
         return luaL_error(L, "Unknown conversation event \"%s\". Conversations report \"command\".", std::string(event).c_str());
     }
+
     luaL_checktype(L, 3, LUA_TFUNCTION);
     int owner = 0;
     if (!lua_isnoneornil(L, 4)) {
@@ -195,9 +202,11 @@ int ConversationLua::on(lua_State* L) {
             owner = lua_gettop(L);
         }
     }
+
     if (owner == 0) {
         owner = lua::Owners::pushDefault(L);
     }
+
     const std::weak_ptr<const void> lifetime = owner != 0 ? lua::Owners::getLifetime(L, owner) : std::weak_ptr<const void>();
     auto function = std::make_shared<lua::Owners::Function>(L, 3, owner);
     lua_State* main = lua::Runtime::getMainThread(L);
@@ -214,6 +223,7 @@ int ConversationLua::on(lua_State* L) {
     if (owner != 0) {
         lua::Owners::add(L, owner, connection);
     }
+
     lua::Userdata::emplace<core::Connection>(L, std::move(connection));
     deliver(*state);
     return 1;

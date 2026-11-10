@@ -27,6 +27,7 @@ class ConversationTest : public ::testing::Test {
         } catch (const std::invalid_argument& error) {
             return error.what();
         }
+
         return {};
     }
 
@@ -63,9 +64,11 @@ TEST(ExpressionTest, EvaluatesWithTheTruthOfLua) {
         if (name == "gold") {
             return 30;
         }
+
         if (name == "visits.greeting") {
             return 2;
         }
+
         return name == "title" ? core::Json("Sir") : core::Json();
     };
     // clang-format on
@@ -86,6 +89,7 @@ TEST(ExpressionTest, EvaluatesWithTheTruthOfLua) {
         } catch (const std::invalid_argument& error) {
             return std::string(error.what());
         }
+
         return std::string();
     };
     // clang-format on
@@ -142,6 +146,7 @@ TEST(ExpressionTest, BindsOperatorsAsLuaDoes) {
         } catch (const std::invalid_argument& error) {
             return error.what();
         }
+
         return {};
     };
     // clang-format on
@@ -219,6 +224,7 @@ TEST_F(ConversationTest, PicksTheSameVariantsForTheSameSeedAndStopsLoops) {
             picked += state.getLine()->text + " ";
             state.advance();
         }
+
         return picked;
     };
     // clang-format on
@@ -238,6 +244,7 @@ TEST_F(ConversationTest, DeliversCommandsInOrderWhenAListenerAdvances) {
     // clang-format off
     const core::Connection listening = state.commanded.connect([&heard, &state](std::string_view name, const core::Json&) {
         heard.emplace_back(name);
+
         if (name == "first") {
             state.advance();
             state.deliverCommands();
