@@ -650,7 +650,7 @@ A nine-slice, `graphics2d::NineSlice` (`engine/include/haylen/2d/graphics/NineSl
 The method `NineSlice::layout(area, borderScale, patches)`, `slice:layout(rect, borderScale)` in Lua, cuts an area into the quads of the frame. The method `Renderer::drawNineSlice(slice, area, color, order, borderScale)`, `graphics2d.drawNineSlice(slice, rect, color, options)` in Lua, draws them by these rules:
 
 - Each border is as wide as the widest piece of its side column, or as tall as the tallest piece of its side row. So separate pieces of different sizes, such as the ones an atlas packs, keep their corners whole.
-- The corners keep their size times `borderScale`. When the area is narrower or shorter than the scaled borders of an axis, those borders shrink in proportion until they meet, and the pieces between them draw nothing.
+- The corners keep their size times `borderScale`. When the area is narrower or shorter than the scaled borders of an axis, every border shrinks by the same factor until the borders of that axis meet, and the pieces between them draw nothing. So a corner keeps its shape, and the round end of a bar that draws thinner than its image stays round.
 - With the `stretch` fill, the edges and the center stretch over their part.
 - With the `tile` fill, an edge repeats along its length at the scale its border gives its piece. A piece thinner than its border stretches across the border and keeps its shape along it. The center repeats at the scaled size of its piece.
 - Copies are placed by their index, and the last copy of a row or column is cropped from the start of its piece. A last copy thinner than a thousandth of a tile, which is a rounding error of the length, is left out.

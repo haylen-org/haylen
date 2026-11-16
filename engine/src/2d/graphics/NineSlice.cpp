@@ -70,13 +70,19 @@ void NineSlice::layout(const math::Rect& area, float borderScale, std::vector<Pa
         return;
     }
 
+    // An area too small for the borders of an axis shrinks every border by the same factor, so a corner keeps its shape, such as the round end of a bar that draws thinner than its image.
     const math::Insets borders = getBorders();
-    const float horizontal = borders.getHorizontal() * borderScale;
-    const float vertical = borders.getVertical() * borderScale;
-    const float scaleX = horizontal > area.width ? area.width / borders.getHorizontal() : borderScale;
-    const float scaleY = vertical > area.height ? area.height / borders.getVertical() : borderScale;
-    const std::array<float, 4> columns{area.getLeft(), area.getLeft() + borders.left * scaleX, area.getRight() - borders.right * scaleX, area.getRight()};
-    const std::array<float, 4> rows{area.getTop(), area.getTop() + borders.top * scaleY, area.getBottom() - borders.bottom * scaleY, area.getBottom()};
+    float scale = borderScale;
+    if (borders.getHorizontal() * scale > area.width) {
+        scale = area.width / borders.getHorizontal();
+    }
+
+    if (borders.getVertical() * scale > area.height) {
+        scale = area.height / borders.getVertical();
+    }
+
+    const std::array<float, 4> columns{area.getLeft(), area.getLeft() + borders.left * scale, area.getRight() - borders.right * scale, area.getRight()};
+    const std::array<float, 4> rows{area.getTop(), area.getTop() + borders.top * scale, area.getBottom() - borders.bottom * scale, area.getBottom()};
 
     for (std::size_t row = 0; row < 3; ++row) {
         for (std::size_t column = 0; column < 3; ++column) {
@@ -92,8 +98,8 @@ void NineSlice::layout(const math::Rect& area, float borderScale, std::vector<Pa
             }
 
             // An edge repeats along its length at the scale its border gives its piece, and the center at the scale of the borders.
-            const float width = column == 1 ? source.width * (row == 1 ? scaleX : part.height / source.height) : part.width;
-            const float height = row == 1 ? source.height * (column == 1 ? scaleY : part.width / source.width) : part.height;
+            const float width = column == 1 ? source.width * (row == 1 ? scale : part.height / source.height) : part.width;
+            const float height = row == 1 ? source.height * (column == 1 ? scale : part.width / source.width) : part.height;
             tile(part, source, {width, height}, patches);
         }
     }

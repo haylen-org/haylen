@@ -2453,7 +2453,7 @@ print(title.font, title.size, title.lineHeight, title.bold, title.italic, title.
 
 ### Theme surfaces
 
-A surface paints a part of a component with a nine-slice image instead of flat colors, such as the wooden panels and ribbons of a textured game. A nine-slice image keeps its corners at their size times `scale`, while its edges and its center stretch or tile. When the bounds are too small for both borders, the borders shrink together. The built-in themes have no surfaces. A hover or pressed surface that a theme leaves out falls back to the normal surface of the same button.
+A surface paints a part of a component with a nine-slice image instead of flat colors, such as the wooden panels and ribbons of a textured game. A nine-slice image keeps its corners at their size times `scale`, while its edges and its center stretch or tile. When the bounds are too small for the borders of an axis, every border shrinks by the same factor, so the corners keep their shape and a round bar thinner than its image keeps round ends. The built-in themes have no surfaces. A hover or pressed surface that a theme leaves out falls back to the normal surface of the same button.
 
 | Surface | Used by |
 | --- | --- |

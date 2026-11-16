@@ -48,7 +48,7 @@ struct NineSlice {
         return texture.isValid();
     }
 
-    // Cuts an area into the quads that draw the frame and appends them to `patches`. Corners keep their size times the border scale, and the borders of an axis shrink in proportion when the area is smaller than they are. Stretched edges and centers cover their part. Tiled edges repeat along their length, keeping the shape of their piece across the border, the tiled center repeats at the scaled size of its piece, and the last copy of a row or column is cropped. A row or column holds at most `kMaxCopies` copies, which grow to fill it, so an area squeezed far below its borders costs a bounded number of quads. An area without a positive width and height adds nothing, and a border scale that is not positive throws `std::invalid_argument`.
+    // Cuts an area into the quads that draw the frame and appends them to `patches`. Corners keep their size times the border scale, and when the area is smaller than the borders of an axis, every border shrinks by the same factor until those borders meet, so the corners keep their shape. Stretched edges and centers cover their part. Tiled edges repeat along their length, keeping the shape of their piece across the border, the tiled center repeats at the scaled size of its piece, and the last copy of a row or column is cropped. A row or column holds at most `kMaxCopies` copies, which grow to fill it, so an area squeezed far below its borders costs a bounded number of quads. An area without a positive width and height adds nothing, and a border scale that is not positive throws `std::invalid_argument`.
     void layout(const math::Rect& area, float borderScale, std::vector<Patch>& patches) const;
 
   private:

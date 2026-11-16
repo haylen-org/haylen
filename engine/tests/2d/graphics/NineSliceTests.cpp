@@ -74,16 +74,23 @@ TEST_F(NineSliceTest, LaysOutCornersEdgesAndCenterAtTheBorderScale) {
     }
 }
 
-// The borders of an axis shrink together until they meet, and the pieces between them draw nothing.
+// Every border shrinks by the same factor until the borders of the tighter axis meet, so the corners keep their shape, and the pieces between the borders that meet draw nothing.
 TEST_F(NineSliceTest, ShrinksBordersThatDoNotFitTheArea) {
     const NineSlice slice = NineSlice::fromBorders(makeTexture(30, 20), {}, {5.0F, 4.0F, 6.0F, 3.0F});
     const std::vector<NineSlice::Patch> patches = layout(slice, {0.0F, 0.0F, 11.0F, 100.0F}, 2.0F);
     ASSERT_EQ(patches.size(), 6U);
-    EXPECT_EQ(patches[0].area, (math::Rect{0.0F, 0.0F, 5.0F, 8.0F}));
-    EXPECT_EQ(patches[1].area, (math::Rect{5.0F, 0.0F, 6.0F, 8.0F}));
-    EXPECT_EQ(patches[2].area, (math::Rect{0.0F, 8.0F, 5.0F, 86.0F}));
+    EXPECT_EQ(patches[0].area, (math::Rect{0.0F, 0.0F, 5.0F, 4.0F}));
+    EXPECT_EQ(patches[1].area, (math::Rect{5.0F, 0.0F, 6.0F, 4.0F}));
+    EXPECT_EQ(patches[2].area, (math::Rect{0.0F, 4.0F, 5.0F, 93.0F}));
     EXPECT_EQ(patches[2].source, slice.pieces[3]);
-    EXPECT_EQ(patches[5].area, (math::Rect{5.0F, 94.0F, 6.0F, 6.0F}));
+    EXPECT_EQ(patches[5].area, (math::Rect{5.0F, 97.0F, 6.0F, 3.0F}));
+
+    // A round bar drawn thinner than its image keeps round ends: its end pieces stay as wide as they are tall.
+    const NineSlice bar = NineSlice::fromBorders(makeTexture(64, 40), {}, math::Insets::uniform(16.0F));
+    const std::vector<NineSlice::Patch> thin = layout(bar, {0.0F, 0.0F, 200.0F, 16.0F}, 1.2F);
+    ASSERT_EQ(thin.size(), 6U);
+    EXPECT_EQ(thin[0].area, (math::Rect{0.0F, 0.0F, 8.0F, 8.0F}));
+    EXPECT_EQ(thin[5].area, (math::Rect{192.0F, 8.0F, 8.0F, 8.0F}));
 
     EXPECT_TRUE(layout(slice, {0.0F, 0.0F, 0.0F, 10.0F}).empty());
     EXPECT_TRUE(layout(slice, {0.0F, 0.0F, 10.0F, -5.0F}).empty());
