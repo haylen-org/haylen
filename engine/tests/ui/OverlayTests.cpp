@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -10,6 +11,7 @@
 #include <imgui_internal.h>
 
 #include "haylen/2d/graphics/Renderer.hpp"
+#include "haylen/2d/graphics/Shape.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/math/Geometry.hpp"
 #include "haylen/math/Rect.hpp"
@@ -198,6 +200,32 @@ TEST_F(OverlayTest, FitsNoticesOfAListToTheirTextAndLinesUpTheNoticesOfADeck) {
 
     // A single line rounds into a pill.
     EXPECT_GT(getBounds(*gui, "short").width, getBounds(*gui, "short").height);
+}
+
+// The indicator of a pill nests in its round end, as far from the start as from the top and the bottom.
+TEST_F(OverlayTest, NestsTheIndicatorOfAToastInTheRoundEndOfItsPill) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "toast", "id": "profile", "text": "Your profile is up to date.", "indicator": "icon", "duration": 0, "open": true}]})");
+    frames(getTransitionFrames());
+
+    // A neutral notice fills its frame with the tooltip color and its indicator with the color of the text on it, and the frame is the largest shape of its color.
+    const Theme& theme = getUi().getTheme();
+    std::optional<math::Rect> frame;
+    std::optional<math::Rect> indicator;
+    for (const graphics2d::Shape& shape : getUi().getBackend().getShapes()) {
+        const float area = shape.bounds.width * shape.bounds.height;
+        if (shape.color == theme.getColor(Theme::Color::Tooltip) && (!frame || area > frame->width * frame->height)) {
+            frame = shape.bounds;
+        }
+        if (shape.color == theme.getColor(Theme::Color::OnTooltip) && (!indicator || area > indicator->width * indicator->height)) {
+            indicator = shape.bounds;
+        }
+    }
+    ASSERT_TRUE(frame.has_value());
+    ASSERT_TRUE(indicator.has_value());
+    const float top = indicator->y - frame->y;
+    EXPECT_GT(top, 0.0F);
+    EXPECT_NEAR(frame->getBottom() - indicator->getBottom(), top, 1.0F);
+    EXPECT_NEAR(indicator->x - frame->x, top, 1.0F);
 }
 
 TEST_F(OverlayTest, PutsTheNewestNoticeOfADeckInFrontAndOpensTheDeckUnderThePointer) {

@@ -183,7 +183,13 @@ Toast::Layout Toast::layOut(Context& context, const Content& shown, float width,
     const float indicator = shown.indicator == Indicator::None ? 0.0F : std::round(line * 1.5F);
     const float close = shown.closable ? line : 0.0F;
     const math::Vec2 actionSize = action.empty() ? math::Vec2{} : Typography::measure(context, Theme::Font::Button, action) + math::Vec2{padding, paddingY};
-    const float fixed = padding * 2.0F + edge.getHorizontal() + (indicator > 0.0F ? indicator + gap : 0.0F) + (actionSize.x > 0.0F ? actionSize.x + gap : 0.0F) + (close > 0.0F ? close + gap : 0.0F);
+    const float tallest = std::max({indicator, close, actionSize.y});
+    const float row = std::max(line, tallest) + paddingY * 2.0F;
+
+    // The indicator lies as far from the start as from the top and the bottom of a row, so it nests in the round end of a pill with the same margin all around.
+    const float inset = (row - indicator) * 0.5F;
+    const float lead = indicator > 0.0F ? inset + indicator + gap : padding;
+    const float fixed = lead + padding + edge.getHorizontal() + (actionSize.x > 0.0F ? actionSize.x + gap : 0.0F) + (close > 0.0F ? close + gap : 0.0F);
     const float room = std::max(0.0F, width - fixed);
     const math::Vec2 titleSize = title.empty() ? math::Vec2{} : Typography::measure(context, Theme::Font::Button, title, room);
     const math::Vec2 textSize = text.empty() ? math::Vec2{} : Typography::measure(context, Theme::Font::Body, text, room);
@@ -191,17 +197,15 @@ Toast::Layout Toast::layOut(Context& context, const Content& shown, float width,
     const float block = titleSize.y + between + textSize.y;
 
     Layout layout;
-    const float tallest = std::max({indicator, close, actionSize.y});
     layout.size = {fill ? width : std::min(width, fixed + std::max(titleSize.x, textSize.x)), std::max(block, tallest) + paddingY * 2.0F + edge.getVertical()};
-    layout.radius = std::min(context.getMetric(Theme::Metric::ToastRadius), (std::max(line, tallest) + paddingY * 2.0F + edge.getVertical()) * 0.5F);
+    layout.radius = std::min(context.getMetric(Theme::Metric::ToastRadius), (row + edge.getVertical()) * 0.5F);
 
     const float middle = (edge.top + layout.size.y - edge.bottom) * 0.5F;
-    float start = edge.left + padding;
+    const float start = edge.left + lead;
     float end = layout.size.x - edge.right - padding;
 
     if (indicator > 0.0F) {
-        layout.indicator = {start, middle - indicator * 0.5F, indicator, indicator};
-        start += indicator + gap;
+        layout.indicator = {edge.left + inset, middle - indicator * 0.5F, indicator, indicator};
     }
 
     if (close > 0.0F) {
