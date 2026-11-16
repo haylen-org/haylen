@@ -1,4 +1,4 @@
--- The rule "delivery/later/**" of "app.json" delivers the maps of the folder on demand: they reach the device only when the app asks for them. A synchronous load never waits for a download, so it refuses a map that is not on the device, while "assets.loadAsync" brings the map first and then loads it. In development the folder holds every file and a request takes one frame, so a mistake shows long before a release.
+-- The rule "delivery/later/**" of "haylen.json" delivers the maps of the folder on demand: they reach the device only when the app asks for them. A synchronous load never waits for a download, so it refuses a map that is not on the device, while "assets.loadAsync" brings the map first and then loads it. In development the folder holds every file and a request takes one frame, so a mistake shows long before a release.
 local assets = require('haylen.assets')
 local content = require('haylen.content')
 local haylen = require('haylen')

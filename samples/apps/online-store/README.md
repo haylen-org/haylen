@@ -8,13 +8,13 @@ The commands run from the root of the repository:
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `haylen run samples/apps/online-store` |
-| macOS app | `haylen run samples/apps/online-store --platform macos` |
-| iPhone and iPad simulator | `haylen run samples/apps/online-store --platform ios-simulator` |
-| Apple TV simulator | `haylen run samples/apps/online-store --platform tvos-simulator` |
-| Android device or emulator | `haylen run samples/apps/online-store --platform android --device <serial>` |
-| Browser | `haylen run samples/apps/online-store --platform web` |
-| Headless player | `build/macos-debug/bin/haylen-headless samples/apps/online-store` |
+| Desktop player with hot reload | `haylen app run samples/apps/online-store` |
+| macOS app | `haylen app run samples/apps/online-store --target macos` |
+| iPhone and iPad simulator | `haylen app run samples/apps/online-store --target ios-simulator` |
+| Apple TV simulator | `haylen app run samples/apps/online-store --target tvos-simulator` |
+| Android device or emulator | `haylen app run samples/apps/online-store --target android --device <serial>` |
+| Browser | `haylen app run samples/apps/online-store --target web` |
+| Headless player | `build/engine/macos-debug/bin/haylen-headless samples/apps/online-store` |
 
 On the headless platform the app runs a tour by itself: it browses a category with filters, opens a product, shares it, picks a color and a size, fills the bag, applies a promo code, removes a product, asks before emptying the bag, checks out once without a street and once with it, follows the order through its stages, saves products, opens the account and opens links of the scheme and of the web, logs every step and quits.
 
@@ -92,7 +92,7 @@ The app follows the [navigation](../../../docs/ui/navigation.md) of the engine, 
 
 ```text
 online-store/
-  app.json               Window, physical UI scale, any orientation, the orders autoload and the identifier.
+  haylen.json               Window, physical UI scale, any orientation, the orders autoload and the identifier.
   source/
     main.lua             Registers the theme and the swatches, and starts the shell.
     style.lua            The palette, the type scale, the spacing scale, the shapes and the theme.

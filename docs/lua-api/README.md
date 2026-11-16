@@ -6,7 +6,7 @@ The reference lists every Lua module of Haylen: each function, type, method, pro
 
 | Name | Description | Link |
 | --- | --- | --- |
-| `haylen` | Engine version, platform, graphics API, every field of `app.json` with its default, the app clock, time scale, the game pause, app states with the cover of native UI, lifecycle options, autoloads, classes, quitting with an exit status and fatal errors. | [`haylen.md`](haylen.md) |
+| `haylen` | Engine version, platform, graphics API, every field of `haylen.json` with its default, the app clock, time scale, the game pause, app states with the cover of native UI, lifecycle options, autoloads, classes, quitting with an exit status and fatal errors. | [`haylen.md`](haylen.md) |
 | `haylen.accessibility` | The accessibility settings of the system with their changes: text scale, reduced motion, high contrast, reduced transparency and screen readers. | [`accessibility.md`](accessibility.md) |
 | `haylen.ai` | Finite state machines, behavior trees, utility selectors and influence maps. | [`ai.md`](ai.md) |
 | `haylen.animation2d` | Frame animations from grids and atlases with frame data, animators, animated sprite batches, state graphs, skeletal and cutout animation, chains for procedural motion and atlases packed at run time. | [`animation2d.md`](animation2d.md) |

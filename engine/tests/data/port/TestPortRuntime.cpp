@@ -11,8 +11,11 @@
 
 namespace haylen::platform {
 
+std::filesystem::path TestPortRuntime::executableFolder;
+
 int TestPortRuntime::run(int argc, char* argv[]) {
     CrashGuard::install();
+    executableFolder = std::filesystem::absolute(argv[0]).parent_path();
     TestPortRuntime runtime;
     Player::create(argc, argv, std::make_unique<TestPortHost>(runtime));
     NativeWindow::install(&runtime.window);

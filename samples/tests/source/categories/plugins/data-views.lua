@@ -33,7 +33,7 @@ function DataViews:enter()
         focus = 'shared',
         controls = {
             ui.button{id = 'shared', text = 'Share a view again', variant = 'primary', onClick = function() self:act(function() self:share() end) end},
-            ui.label{text = 'A view is memory with a reference in each language. The JSON names it with a token, so the bytes never cross as text or as a copy. Swift and Objective-C hold "VarnDataView", Kotlin and Java "com.varn.VarnDataView", JavaScript "context.VarnDataView" and C the "varn_dataview" of "HaylenNativeApi".', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'A view is memory with a reference in each language. The JSON names it with a token, so the bytes never cross as text or as a copy. Swift and Objective-C hold "VarnDataView", Kotlin and Java "com.varn.VarnDataView", JavaScript "context.VarnDataView" and C++ the "varn_dataview" of "HaylenNativeApi".', color = 'textMuted', font = 'caption'},
         },
         showcase = {
             ui.card{grow = 1, align = 'stretch', gap = 12,

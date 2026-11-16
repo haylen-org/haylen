@@ -114,7 +114,7 @@ TEST(ReservedInsetsTest, WidensTheSafeAreaAndPublishesEveryChange) {
 }
 
 TEST(ReservedInsetsTest, ReadsTheReservationsFromLuaInDesignUnits) {
-    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "design": {"width": 960, "height": 540, "scaling": "fit"}})"}});
+    test::EngineFixture fixture({{"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "design": {"width": 960, "height": 540, "scaling": "fit"}})"}});
     fixture.host().getNativeViews().reserveInsets("banner", {.left = 20.0F, .bottom = 100.0F});
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("local insets = require('haylen.viewport').reservedInsets() return table.concat({insets.left, insets.top, insets.right, insets.bottom}, ',')"), "10.0,0.0,0.0,50.0");
@@ -124,7 +124,7 @@ TEST(ReservedInsetsTest, ReadsTheReservationsFromLuaInDesignUnits) {
 TEST_F(SafeAreaTest, KeepsTheWholeWindowSafeWhereNothingCoversIt) {
     // A window without a cutout, rounded corners or bars of the system over it has no device insets, so every scaling keeps its whole visible area safe, letterboxed or not.
     for (const std::string_view scaling : {"fit", "fill", "stretch", "expand", "pixelPerfect"}) {
-        test::EngineFixture fixture({{"app.json", app(scaling)}});
+        test::EngineFixture fixture({{"haylen.json", app(scaling)}});
         for (const math::Vec2 size : {math::Vec2{1920.0F, 1080.0F}, math::Vec2{2400.0F, 1080.0F}, math::Vec2{1080.0F, 1920.0F}}) {
             fixture.host().resize(size);
             fixture.frames(1);
@@ -133,7 +133,7 @@ TEST_F(SafeAreaTest, KeepsTheWholeWindowSafeWhereNothingCoversIt) {
     }
 
     // Insets of the device that fall in the bars of a letterboxed design leave the design whole, and a reservation takes only its own edge.
-    test::EngineFixture fixture({{"app.json", app("fit")}});
+    test::EngineFixture fixture({{"haylen.json", app("fit")}});
     fixture.host().resize({2400.0F, 1080.0F});
     fixture.host().setSafeAreaInsets({.left = 120.0F, .right = 200.0F});
     fixture.host().getNativeViews().reserveInsets("banner", {.bottom = 108.0F});
@@ -148,7 +148,7 @@ TEST_F(SafeAreaTest, KeepsTheWholeWindowSafeWhereNothingCoversIt) {
 
 TEST_F(SafeAreaTest, ReportsTheCutoutsOfTheScreenInDesignUnits) {
     // The cutouts of the device reach Lua in design units, and the event announces each change with the new list.
-    test::EngineFixture fixture({{"app.json", app("fit")}});
+    test::EngineFixture fixture({{"haylen.json", app("fit")}});
     fixture.host().resize({1920.0F, 1080.0F});
     fixture.frames(1);
     fixture.runLua("heard = {} require('haylen.events').on('windowCutoutsChanged', function(info) heard[#heard + 1] = #info.cutouts end)");

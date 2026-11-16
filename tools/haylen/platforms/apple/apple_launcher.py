@@ -1,0 +1,78 @@
+import json
+import re
+import signal
+import subprocess
+
+from haylen.core.tooling_context import ToolingContext
+from haylen.development.app_run import AppRun
+from haylen.development.development_reach import DevelopmentReach
+from haylen.engine.unified_log import UnifiedLog
+from haylen.platforms.apple.app_bundle import AppBundle
+from haylen.platforms.apple.apple_devices import AppleDevices
+from haylen.platforms.apple.apple_target import AppleTarget
+from haylen.platforms.build_product import BuildProduct
+from haylen.platforms.launch_request import LaunchRequest
+from haylen.toolchains.apple_simulators import AppleSimulators
+
+
+class AppleLauncher:
+    """Launches a built Apple app on this Mac, a simulator or a device and follows it until it ends or the developer quits. The engine writes to the standard output of a macOS app and to the unified log elsewhere, which the launcher relays next to the output of the process. A development launch starts the app with the frame capture of Metal, which simulators take through variables that start with `SIMCTL_CHILD_` and devices through the variables of devicectl."""
+
+    CAPTURE = {"MTL_CAPTURE_ENABLED": "1"}
+
+    def __init__(self, context: ToolingContext) -> None:
+        self.context = context
+
+    def run(self, product: BuildProduct, launch: LaunchRequest, target: AppleTarget) -> None:
+        bundle = AppBundle(self.context, product.path, target.runs_on_mac)
+        if target.runs_on_mac:
+            self.run_on_mac(product, launch, target, bundle)
+        elif target.simulator:
+            self.run_on_simulator(product, launch, target, bundle)
+        else:
+            self.run_on_device(product, launch, target, bundle)
+
+    def run_on_mac(self, product: BuildProduct, launch: LaunchRequest, target: AppleTarget, bundle: AppBundle) -> None:
+        with AppRun(self.context, product, launch, DevelopmentReach.LOOPBACK, bundle.package) as run:
+            environment = AppleLauncher.CAPTURE if run.developing else None
+            command = [bundle.executable, *run.arguments]
+            if target.name == "macos":
+                run.show("This Mac")
+                run.follow(command, environment=environment)
+                return
+            with UnifiedLog(self.context.terminal, bundle.executable.name, []):
+                run.show("This Mac, with Mac Catalyst")
+                run.follow(command, environment=environment)
+
+    def run_on_simulator(self, product: BuildProduct, launch: LaunchRequest, target: AppleTarget, bundle: AppBundle) -> None:
+        with AppleSimulators(self.context).booted(str(target.family), launch.device) as simulator:
+            udid = simulator["udid"]
+            self.context.terminal.step(f'Installing the app on the simulator "{simulator["name"]}"')
+            self.context.process.run(["xcrun", "simctl", "install", udid, product.path])
+            with AppRun(self.context, product, launch, DevelopmentReach.LOOPBACK, bundle.package) as run, UnifiedLog(self.context.terminal, bundle.executable.name, ["xcrun", "simctl", "spawn", udid]):
+                environment = {f"SIMCTL_CHILD_{name}": value for name, value in AppleLauncher.CAPTURE.items()} if run.developing else None
+                identifier = bundle.identifier
+                run.show(f"{simulator['name']}, simulator", lambda: AppleLauncher.terminate(udid, identifier))
+                command = ["xcrun", "simctl", "launch", "--console-pty", "--terminate-running-process", udid, identifier, *run.arguments]
+                run.follow(command, line=lambda line: AppleLauncher.simulator_line(identifier, line), environment=environment)
+
+    def run_on_device(self, product: BuildProduct, launch: LaunchRequest, target: AppleTarget, bundle: AppBundle) -> None:
+        device = AppleDevices(self.context).device(launch.device, target.name)
+        self.context.terminal.step(f'Installing the app on "{device.name}"')
+        self.context.process.run(["xcrun", "devicectl", "device", "install", "app", "--device", device.identifier, product.path])
+        with AppRun(self.context, product, launch, DevelopmentReach.NETWORK, bundle.package) as run:
+            variables = ["--environment-variables", json.dumps(AppleLauncher.CAPTURE)] if run.developing else []
+            # The launch ends the app when it stops, as Ctrl+C does.
+            run.show(f"{device.name}, device", lambda: run.process.send_signal(signal.SIGINT))
+            run.follow(["xcrun", "devicectl", "device", "process", "launch", "--console", "--device", device.identifier, *variables, bundle.identifier, *run.arguments])
+
+    @staticmethod
+    def terminate(udid: str, identifier: str) -> None:
+        subprocess.run(["xcrun", "simctl", "terminate", udid, identifier], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+
+    @staticmethod
+    def simulator_line(identifier: str, line: str) -> str | None:
+        """Leaves out the lines that the launcher of a simulator adds to the output of the app: the process it started and the signal that ended it."""
+        if re.fullmatch(rf"{re.escape(identifier)}: \d+", line.strip()) or line.startswith("Child process terminated with signal"):
+            return None
+        return line

@@ -11,7 +11,7 @@ A release is the form in which an app ships its files. No archive tool opens it,
 - The chunks live in shards, large files that never change once written.
 - A manifest, signed by the publisher, carries an encrypted catalog that says which chunks make which file.
 
-The same format serves an app of a few megabytes and one of hundreds of gigabytes, since only the number of shards and chunks grows. An update adds new shards next to the old ones and never rewrites them. The engine reads a release through the same `io::Package` interface as a folder, so asset loading, `require` and `app.json` work the same on it.
+The same format serves an app of a few megabytes and one of hundreds of gigabytes, since only the number of shards and chunks grows. An update adds new shards next to the old ones and never rewrites them. The engine reads a release through the same `io::Package` interface as a folder, so asset loading, `require` and `haylen.json` work the same on it.
 
 The code lives in `engine/src/content/`, in the namespace `haylen::content`. The cryptography is in `crypto/`, the wire formats are in `format/`, and the bootstrap that release builds compile in is in `engine/include/haylen/content/`. The content tool lives in `engine/tools/content/`. One implementation serves both the side that writes content and the side that reads it.
 
@@ -32,7 +32,7 @@ A digest is a short fingerprint of some bytes: change one byte, and the digest c
 
 A release has two domains, each with its own manifest.
 
-- The app domain, `app.hmanifest`, holds `app.json`, the Lua modules under `source` and the manifest and Lua modules of every plugin under `plugins`. They belong to one build of the app, and every Lua module is compiled into bytecode.
+- The app domain, `app.hmanifest`, holds `haylen.json`, the Lua modules under `source` and the manifest and Lua modules of every plugin under `plugins`. They belong to one build of the app, and every Lua module is compiled into bytecode.
 - The content domain, `content.hmanifest`, holds the assets under `content`, which updates may replace.
 
 Reading a catalog checks that every file belongs to the domain of its manifest, so a content manifest can never carry code. It also checks that every file of the app domain is required.
@@ -47,7 +47,7 @@ std::unique_ptr<io::Package> package = content::ReleasePackage::open(files, keys
 const std::vector<std::uint8_t> map = package->readAsset("maps/island.tmj");
 ```
 
-The function `ReleasePackage::open` reads `app.hmanifest` and `content.hmanifest` from a package of release files. For each manifest it verifies the signature with the trusted verifying keys and checks the manifest against the `Compatibility` of the running build. Then it decrypts the catalogs with the `KeyRing` of the app. It returns one package that shows `app.json`, `source` and `plugins` from the app domain and `content` from the content domain, exactly as a folder would. It finds the shards by their names in the same package of files. A manifest of the wrong domain raises `CorruptManifest`. Nothing in the files is trusted before the signature that covers it is verified.
+The function `ReleasePackage::open` reads `app.hmanifest` and `content.hmanifest` from a package of release files. For each manifest it verifies the signature with the trusted verifying keys and checks the manifest against the `Compatibility` of the running build. Then it decrypts the catalogs with the `KeyRing` of the app. It returns one package that shows `haylen.json`, `source` and `plugins` from the app domain and `content` from the content domain, exactly as a folder would. It finds the shards by their names in the same package of files. A manifest of the wrong domain raises `CorruptManifest`. Nothing in the files is trusted before the signature that covers it is verified.
 
 The package of each manifest is a `content::HpakPackage`. Lookups, `exists`, `getFileSize` and listings read the decrypted catalog alone. A lookup is a binary search over the sorted paths, and a folder is one range of them.
 
@@ -97,7 +97,7 @@ Every other consumer reads a file whole, within `Package::kMaxReadSize`, because
 | --- | --- |
 | Textures, and the images of atlases, particles, bitmap fonts and Tiled tilesets | The image decoder needs the whole compressed image, and the pixels it uploads take more memory than the file. |
 | Fonts, of the `font` asset type and of the UI | The rasterizer and the shaper look up tables anywhere in the file for as long as the font lives. |
-| Tiled maps and worlds, JSON, localization tables, shaders, SVG images, `app.json` and plugin manifests | The parser builds a document from the whole text, and the document takes more memory than the text, so reading the text in ranges would not lower the peak. |
+| Tiled maps and worlds, JSON, localization tables, shaders, SVG images, `haylen.json` and plugin manifests | The parser builds a document from the whole text, and the document takes more memory than the text, so reading the text in ranges would not lower the peak. |
 | Lua modules | A module compiles or loads as one chunk. |
 | `assets.bytes(path)` without a range | It returns the whole file as one Lua string, and the ranges of the same function serve large files. |
 | Video streams | They carry frames that native code pushes, such as a camera or a decoder of a plugin, so no video file passes through a package. |
@@ -111,7 +111,7 @@ content::ReleaseBuilder builder(keys, activeKeyId, signingKey, std::make_shared<
 content::ReleaseBuilder::Result result = builder.build(*io::Package::openDirectory(appFolder), releaseFolder, earlierReleaseFolder, {.profile = "apple", .appBuild = 14});
 ```
 
-The app domain takes `app.json`, every file under `source` and, for every plugin that `app.json` lists, its `plugin.json` and the files under its `source`. The content domain takes every file under `content`. Nothing else of the package folder takes part, so platform projects, notes, plugins that the app does not list and the `.DS_Store` files of file managers never reach a release. The builder decides the domain of every file by its folder, so no file of `source` can ever become content. The file `app.json` must be valid, as the engine reads it.
+The app domain takes `haylen.json`, every file under `source` and, for every plugin that `haylen.json` lists, its `plugin.json` and the files under its `source`. The content domain takes every file under `content`. Nothing else of the package folder takes part, so native sources, notes, plugins that the app does not list and the `.DS_Store` files of file managers never reach a release. The builder decides the domain of every file by its folder, so no file of `source` can ever become content. The file `haylen.json` must be valid, as the engine reads it.
 
 The output folder must not exist yet. A release that ships with an app serves its build alone. So both manifests name that build as their whole range of app builds, with generation 1 and no channel.
 
@@ -141,13 +141,13 @@ The result of a build reports the new chunks with their plain and stored bytes, 
 
 A build follows the release before it with `haylen-content build --previous <folder>`. That folder may hold the release in any layout: the tool finds `app.hmanifest`, `content.hmanifest` and the shard files anywhere under it. So the folder of the last build that shipped serves as it is. It may be the files of its Steam depots, where the shards of each pack sit in a folder of their own, an unpacked APK, an app bundle or a copy of a release folder. A folder without the two manifests, or with one of them twice, stops the build.
 
-A shard can be kept only when its file is there. So the content of the shards that the folder lacks, such as the shards that only a content server holds, is built again, and the tool reports how many were missing. A clean machine, such as continuous integration, has no release in its build folder. It names the last build that shipped with `--previous-release` of `run`, `prepare`, `distribution steam`, `distribution installer` and `content build`, or with `HAYLEN_PREVIOUS_RELEASE` of the CMake project of a C++ app. Its release then keeps the shards of unchanged content byte for byte, which keeps the patches of stores small.
+A shard can be kept only when its file is there. So the content of the shards that the folder lacks, such as the shards that only a content server holds, is built again, and the tool reports how many were missing. A clean machine, such as continuous integration, has no release in its build folder. It names the last build that shipped with `--previous-release` of `haylen app build`, `app run`, `app package` or `app prepare`, whose Release build then follows its release, or of `haylen content build`, whose release the next Release build of the app follows. Its release then keeps the shards of unchanged content byte for byte, which keeps the patches of stores small.
 
 ### Build cache
 
 The class `content::RecordCache` keeps the sealed records of earlier builds in a folder. It files each one under the ID of the content key that sealed it, the encoder, which names the version of Zstandard and the compression profile, and the content ID of its chunk. A build that finds the record of a chunk there copies it into the new shard instead of compressing and encrypting the chunk again, which is most of the work of a build.
 
-Records hold only ciphertext, so the cache holds no plain content. Sealing is deterministic, so a cached record is the record a fresh build writes: a build with a warm cache, a cold one or none writes the same bytes. An entry serves only when it authenticates under the key and decodes to the chunk it names. So a damaged or foreign entry only costs the time to seal its chunk again, and deleting the cache never changes a build. The script `haylen.py` keeps the cache of each app in `build/apps/<app>-<hash>/content-cache/`.
+Records hold only ciphertext, so the cache holds no plain content. Sealing is deterministic, so a cached record is the record a fresh build writes: a build with a warm cache, a cold one or none writes the same bytes. An entry serves only when it authenticates under the key and decodes to the chunk it names. So a damaged or foreign entry only costs the time to seal its chunk again, and deleting the cache never changes a build. The tooling keeps the cache of each app in `build/apps/<app>-<hash>/content-cache/`.
 
 ## Lua bytecode
 
@@ -230,7 +230,7 @@ An app opens the release it ships with the bootstrap that its release build comp
 - The public keys that sign its manifests.
 - The `content::KeyProvider` of its content keys.
 
-The content tool writes the bootstrap of each app from its key folder as C++ source, `HaylenBootstrap.cpp`. The script `haylen.py` compiles it into the release build of every platform, and a static member of that source installs it with `Bootstrap::install` before `main`. So every app carries keys of its own, and no key sits in a resource, a manifest, `app.json`, `Info.plist`, the Android manifest, `BuildConfig` or a script.
+The content tool writes the bootstrap of each app from its key folder as C++ source, `HaylenBootstrap.cpp`. The backend of every target compiles it into the release build of the app, and a static member of that source installs it with `Bootstrap::install` before `main`. So every app carries keys of its own, and no key sits in a resource, a manifest, `haylen.json`, `Info.plist`, the Android manifest, `BuildConfig` or a script.
 
 The bootstrap holds the content keys in a `content::EmbeddedKeyProvider`, with each key as two binary constants. One is a mask, BLAKE2b-256 keyed with the key over the label `haylen/bootstrap/v1/mask`. The other is the key combined byte by byte with the BLAKE2b-256 digest of the label `haylen/bootstrap/v1/pad`, the mask and the key ID. So the binary never holds a key, nor its hexadecimal or Base64 text, and the same keys always write the same bootstrap, so an unchanged app builds the same binary. This hides the keys from tools that search binaries for them. It is no cryptographic protection: the app must hold its keys to run offline, and someone who studies its code can recover them, which the [security](#security) section accepts. The real protection of content is the authenticated encryption of its chunks and the signatures of its manifests.
 
@@ -439,36 +439,36 @@ The tool `haylen-content` is the host tool that builds, verifies, inspects, comp
 - The engine library holds the reading side: the parsers, the verification, the decryption, the decoding, the downloads and the local store.
 - The library `haylen-content-writer` holds the writing side: the builders, the writers of shards, catalogs, manifests and channels, the sealing of records, the compressor, the chunker, the record cache, the Lua compiler and the signing key. The tool, the tests and the benchmarks link it, and no app does. So an app carries no code that signs, seals or compresses content.
 
-The command `haylen.py engine --platform desktop` builds the tool into `build/artifacts/desktop/<os>-<arch>/` next to the desktop player. A developer runs it through the `content` commands of `haylen.py`, and the release builds of the platforms run it on their own.
+The desktop SDK of each machine carries the tool as a host tool, next to the desktop player, so `haylen sdk build --target player` on a Mac, or with the target `windows` or `linux` on those systems, installs it in `build/sdk/desktop-release/<system>-<architecture>/bin/`. The tooling runs only the tool of the system and architecture of this machine, from an SDK of the current engine sources, and stops with the `haylen sdk build` command to run when it is missing. A developer runs it through the `content` commands, and the release builds of every target run it on their own.
 
-| Command of `haylen.py` | What it does |
+| Command of `haylen` | What it does |
 | --- | --- |
-| `content build <app> --platform <platform> [--previous-release <folder>]` | Builds the release of the app for the content profile of the platform into `build/apps/<app>-<hash>/release/<profile>/`. It reuses the release before it and the build cache of the app. The release before it is the last one of the build folder, or the one under the folder of `--previous-release`. |
-| `content verify <app> --platform <platform> [--release <folder>]` | Checks that the release folder holds the two manifests, the shards they name and nothing else. It checks every shard against the size and digest that its manifest signs, and reads every file whole, which authenticates every chunk. |
-| `content inspect <app> --platform <platform> [--release <folder>] [--chunks]` | Lists each manifest with its generation, profile, range of app builds and shards, and each file with its delivery, size, chunks, stored bytes and shards, with the savings of deduplication. With `--chunks` it also lists every chunk with its offset and IDs. It needs the keys of the app, since the paths are encrypted. |
+| `content build <app> --target <target> [--previous-release <folder>]` | Builds the release of the app for the content profile of the target into `build/apps/<app>-<hash>/release/<profile>/`. It reuses the release before it and the build cache of the app. The release before it is the last one of the build folder, or the one under the folder of `--previous-release`. |
+| `content verify <app> --target <target> [--release <folder>]` | Checks that the release folder holds the two manifests, the shards they name and nothing else. It checks every shard against the size and digest that its manifest signs, and reads every file whole, which authenticates every chunk. |
+| `content inspect <app> --target <target> [--release <folder>] [--chunks]` | Lists each manifest with its generation, profile, range of app builds and shards, and each file with its delivery, size, chunks, stored bytes and shards, with the savings of deduplication. With `--chunks` it also lists every chunk with its offset and IDs. It needs the keys of the app, since the paths are encrypted. |
 | `content diff <app> <earlier> <later>` | Compares two releases domain by domain: the chunks they share, add and drop, the new shards, the files added, changed and removed, the files whose delivery changed, and the bytes that an app holding the earlier release downloads to reach the later one. |
-| `content publish <app> --platform <platform> --output <tree> [--channel stable]` | Publishes the content domain as the next generation of an update channel in a tree of static files. |
+| `content publish <app> --target <target> --channel <channel> --output <tree>` | Publishes the content domain as the next generation of the update channel that `content.updates.channel` of `haylen.json` names in a tree of static files. |
 | `content compact <app> <tree> [--keep 2]` | Deletes the manifests and packs of a publication tree that no channel reaches within its last generations. |
 | `content keys <app> [--rotate]` | Shows the key folder of the app with the IDs of its keys and its public key, and with `--rotate` adds a content key. |
 
 ```sh
-haylen content build ~/apps/my-game --platform android
-haylen content inspect ~/apps/my-game --platform android
+haylen content build ~/apps/my-game --target android
+haylen content inspect ~/apps/my-game --target android
 haylen content diff ~/apps/my-game old-release build/apps/my-game-1a2b3c4d/release/android
-haylen content publish ~/apps/my-game --platform android --channel stable --output ~/cdn/my-game
+haylen content publish ~/apps/my-game --target android --channel production --output ~/cdn/my-game
 ```
 
-The profile of a release names the platform family it was made for: `apple` for every target of the Apple project, `android`, `windows`, `linux` and `web`. The build number of a release is the `build` of `app.json`, the same number that the stores receive, as [the version and build number](../tools/distribution.md#version-and-build-number) of the platforms describe.
+The profile of a release names the platform family it was made for, which every target declares and the targets of one store share: `apple` for every target of the Apple backend, `android`, `windows`, `linux` and `web`. The target `player` has none, since it runs apps in development alone. The build number of a release is the `build` of `haylen.json`, the same number that the stores receive, as the [distribution guide](../tools/distribution.md) describes.
 
 ### Staging and the bootstrap
 
 The command `content build` of an app with a content server also lays out the part of the release that ships with the app in `build/apps/<app>-<hash>/release/<profile>.shipped/`, which the release builds of the platforms ship. It does so with `haylen-content stage <release> --keys <folder> --output <folder> [--deferred <folder>] [--packs <folder>] [--app <folder>] [--ship-deferred | --app-only]`:
 
-- It reads the packs from the `app.json` of `--app` and puts the shards of each pack into a folder of the pack under `--packs`.
+- It reads the packs from the `haylen.json` of `--app` and puts the shards of each pack into a folder of the pack under `--packs`.
 - With `--ship-deferred`, for an app without a server, it ships the deferred shards too.
 - With `--app-only`, for a web page, it ships only the manifests and the app domain.
 
-The whole release stays for `content publish`, which puts the shards that stay behind on the server. The tool also writes the bootstrap of an app with `haylen-content bootstrap --keys <folder> --profile <profile> --build <number> --output <file>`, which the release builds of `haylen.py` run on their own. It writes a file that only its owner reads and that keeps its bytes when nothing changed.
+The whole release stays for `content publish`, which puts the shards that stay behind on the server. The tool also writes the bootstrap of an app with `haylen-content bootstrap --keys <folder> --profile <profile> --build <number> --output <file>`, which the release builds of every backend run on their own. It writes a file that only its owner reads and that keeps its bytes when nothing changed.
 
 ### Key folders
 
@@ -488,7 +488,7 @@ The folder holds these files:
 
 Only its owner can read the folder: `0700` for the folder and `0600` for its files on macOS and Linux. On Windows its access list grants the user who created it alone and drops the entries that the folders above it pass down. No command prints a key: the commands show IDs and the public key only.
 
-The script `haylen.py` creates the keys of an app the first time a command needs them, from the random generator of the system. Every later release of the app must be built with the same keys, or installed apps cannot read it, so it warns that the folder needs a backup. In continuous integration, `HAYLEN_KEYS_DIR` names the parent folder of the key folders, and there `haylen.py` never creates keys, so a missing folder stops the build instead of producing a release that no installed app can read. The [loading guide](loading.md#keys) shows how to back the folder up, rotate a key and hand the keys to continuous integration.
+The tooling creates the keys of an app the first time a command needs them, from the random generator of the system. Every later release of the app must be built with the same keys, or installed apps cannot read it, so it warns that the folder needs a backup. In continuous integration, `HAYLEN_KEYS_DIR` names the parent folder of the key folders, and there the tooling never creates keys, so a missing folder stops the build instead of producing a release that no installed app can read. The [loading guide](loading.md#keys) shows how to back the folder up, rotate a key and hand the keys to continuous integration.
 
 ### Publication trees
 
@@ -532,7 +532,7 @@ A server of protected content serves byte ranges of its files, sends `ETag` for 
 
 ## Delivery
 
-The delivery of an asset says when its encrypted bytes must be on the device: `required`, `prefetch` or `onDemand`, as the [loading guide](loading.md#delivery) explains with examples. Every asset is `required` unless the `content` section of `app.json` says otherwise. That section names the server of the content and the assets that may arrive later, and an app without it needs no configuration at all.
+The delivery of an asset says when its encrypted bytes must be on the device: `required`, `prefetch` or `onDemand`, as the [loading guide](loading.md#delivery) explains with examples. Every asset is `required` unless the `content` section of `haylen.json` says otherwise. That section names the server of the content and the assets that may arrive later, and an app without it needs no configuration at all.
 
 ```json
 {
@@ -568,20 +568,20 @@ A wrong setting stops the app before any Lua runs, on the error screen, with one
 
 | Problem | Message |
 | --- | --- |
-| A key that the section does not know | `Unknown key "<key>" in the "content" section of "app.json".`, and the same for `content.updates` and for a rule of `content.delivery`. |
-| A server that is not `https` and not this machine, or one without the ending slash | `The "content.updates.baseUrl" in "app.json" must be an "https" address that ends with a slash, such as "https://cdn.example.com/my-game/", or an "http" address of this machine, not "<value>".` |
-| A channel with other characters or longer than 64 | `The "content.updates.channel" in "app.json" must have at most 64 lowercase letters, digits, dashes and dots, not "<value>".` |
-| A `delivery` that is not a list of rules | `The "content.delivery" section of "app.json" must be a list of rules with "match" or "group" and a "mode" or a "pack".` |
-| A rule with both or neither of `match` and `group` | `A rule of "content.delivery" in "app.json" needs either a "match" pattern or the name of a preload "group".` |
-| A rule that names a group without `groups` | `A rule of "content.delivery" in "app.json" names the group "<name>", so "content.groups" must name the group manifest that defines it.` |
-| A `groups` path that is empty, absolute or leaves `content/` | `The "content.groups" in "app.json" must name a file relative to the "content" folder, such as "groups.json", not "<value>".` |
-| A group manifest that the package lacks | `The group manifest "content/<path>" that "content.groups" in "app.json" names is not in the package.`, and a manifest that does not follow the [format of groups](../lua-api/assets.md#preload-groups) fails with the message of `assets.defineGroups`. |
-| A group that the manifest does not define | `A rule of "content.delivery" in "app.json" names the group "<name>", which "content/<path>" does not define.` |
+| A key that the section does not know | `Unknown key "<key>" in the "content" section of "haylen.json".`, and the same for `content.updates` and for a rule of `content.delivery`. |
+| A server that is not `https` and not this machine, or one without the ending slash | `The "content.updates.baseUrl" in "haylen.json" must be an "https" address that ends with a slash, such as "https://cdn.example.com/my-game/", or an "http" address of this machine, not "<value>".` |
+| A channel with other characters or longer than 64 | `The "content.updates.channel" in "haylen.json" must have at most 64 lowercase letters, digits, dashes and dots, not "<value>".` |
+| A `delivery` that is not a list of rules | `The "content.delivery" section of "haylen.json" must be a list of rules with "match" or "group" and a "mode" or a "pack".` |
+| A rule with both or neither of `match` and `group` | `A rule of "content.delivery" in "haylen.json" needs either a "match" pattern or the name of a preload "group".` |
+| A rule that names a group without `groups` | `A rule of "content.delivery" in "haylen.json" names the group "<name>", so "content.groups" must name the group manifest that defines it.` |
+| A `groups` path that is empty, absolute or leaves `content/` | `The "content.groups" in "haylen.json" must name a file relative to the "content" folder, such as "groups.json", not "<value>".` |
+| A group manifest that the package lacks | `The group manifest "content/<path>" that "content.groups" in "haylen.json" names is not in the package.`, and a manifest that does not follow the [format of groups](../lua-api/assets.md#preload-groups) fails with the message of `assets.defineGroups`. |
+| A group that the manifest does not define | `A rule of "content.delivery" in "haylen.json" names the group "<name>", which "content/<path>" does not define.` |
 | An entry of a group that leaves `content/` | `The group "<name>" of "content/<path>" has the path "<path>", which is not relative to the "content" folder.` |
-| A rule with both or neither of `mode` and `pack` | `A rule of "content.delivery" in "app.json" needs either a "mode" or a "pack", since a store delivers a pack on its own.` |
-| A pattern that is empty, absolute, or leaves `content/` | `A rule of "content.delivery" in "app.json" must match paths relative to the "content" folder, such as "world/asia/**", not "<value>".` |
-| A mode other than the three | `The "mode" of a rule of "content.delivery" in "app.json" must be "required", "prefetch" or "onDemand", not "<value>".` |
-| A pack name with other characters or longer than 64 | `The "pack" of a rule of "content.delivery" in "app.json" must have at most 64 lowercase letters, digits, dashes and dots, not "<value>".` |
+| A rule with both or neither of `mode` and `pack` | `A rule of "content.delivery" in "haylen.json" needs either a "mode" or a "pack", since a store delivers a pack on its own.` |
+| A pattern that is empty, absolute, or leaves `content/` | `A rule of "content.delivery" in "haylen.json" must match paths relative to the "content" folder, such as "world/asia/**", not "<value>".` |
+| A mode other than the three | `The "mode" of a rule of "content.delivery" in "haylen.json" must be "required", "prefetch" or "onDemand", not "<value>".` |
+| A pack name with other characters or longer than 64 | `The "pack" of a rule of "content.delivery" in "haylen.json" must have at most 64 lowercase letters, digits, dashes and dots, not "<value>".` |
 
 ### How a release groups its shards
 
@@ -595,12 +595,12 @@ Without a server, the whole release ships with the app except its packs, and eve
 
 ### Packs
 
-A pack is content that a store installs apart from the app. The runtime reads its shards where the store puts them. On Windows, Linux and macOS it reads them from `packs/` next to the executable or the bundle, where the depots of [`haylen.py distribution steam`](../tools/distribution.md#distribution-steam) install them. It also reads them from any folder that `ContentManager::addPackFolder`, or `content.addPackFolder` in Lua, names while the app runs.
+A pack is content that a store installs apart from the app. The runtime reads its shards where the store puts them. On Windows, Linux and macOS it reads them from `packs/` next to the executable or the bundle, where the Steam depots that [`haylen app package --format steam`](../tools/distribution.md) lays out for Windows and Linux install them. It also reads them from any folder that `ContentManager::addPackFolder`, or `content.addPackFolder` in Lua, names while the app runs.
 
 A store that delivers packs on request, such as the asset packs of Google Play, does so through a `content::PackSource`. Its native plugin adds the source with `ContentManager::addPackSource`, or `content.addPackSource` in Lua. When the app loads an asset of a pack that the device lacks, the content manager asks each source in turn for the pack, before the content server. A source answers with the folder where the store installed the pack, which joins the release, or with nothing, which passes the pack on to the next source. So the code of the app loads the assets of packs the way it loads any other asset. The store stays a detail of its plugin, which needs the library of the store and so lives in a repository of its own.
 
-- On Android, a plugin that declares `assetPacks` in its `plugin.json`, such as `play-asset-delivery`, makes the release build turn each pack into an asset pack of Google Play, `fast-follow` or `on-demand`, as the [distribution guide](../tools/distribution.md#release-builds) describes. Its source of packs fetches the pack from Google Play.
-- On iOS, tvOS, visionOS and macOS, a plugin that declares `assetPacks` in its `apple` section, such as `background-assets`, makes the Apple release build pack each one as an asset pack of Background Assets that the App Store hosts.
+- On Android, a plugin that declares an `assetPacks` contribution for `android` in its `plugin.json`, such as `play-asset-delivery`, makes the release build turn each pack into an asset pack of Google Play, `fast-follow` or `on-demand`, as the [distribution guide](../tools/distribution.md) describes. Its source of packs fetches the pack from Google Play.
+- On iOS, tvOS, visionOS and macOS, a plugin that declares an `assetPacks` contribution for them, such as `background-assets`, makes the Apple release build pack each one as an asset pack of Background Assets that the App Store hosts.
 
 An asset of a pack that is not installed is unavailable, and an asynchronous load of it fails with `storeAssetUnavailable`. The exception is an app with a server, which `content publish` fills with the shards of the packs too. So an app that sells a pack keeps it off a public server.
 
@@ -679,13 +679,13 @@ The manager publishes `contentUpdateAvailable`, `contentUpdateReady`, `contentUp
 
 ### The update screen
 
-While the app waits for required content that downloads, the engine draws the update screen in the background color, with the name and the logo of the [splash screen](../tools/distribution.md#splash-screens) of `app.json`. It shows the logo only once the logo is on the device. A round bar fills as the download goes on, with the bytes received and the size of the download under it. After a failure, the screen gives the reason in plain words, such as an offline device, or a device without room and the room it needs. It then offers a button that tries again and a button that quits, except on iOS, iPadOS and tvOS, which never let apps close themselves.
+While the app waits for required content that downloads, the engine draws the update screen in the background color, with the name and the logo of the [splash screen](../tools/distribution.md) of `haylen.json`. It shows the logo only once the logo is on the device. A round bar fills as the download goes on, with the bytes received and the size of the download under it. After a failure, the screen gives the reason in plain words, such as an offline device, or a device without room and the room it needs. It then offers a button that tries again and a button that quits, except on iOS, iPadOS and tvOS, which never let apps close themselves.
 
 A mouse, a finger, Enter, the south button of a gamepad and the select button of a TV remote press the focused button, and the arrow keys and the directional pad move the focus. No screen shows while the manager only finds the content on the device, and apps never draw a screen of their own to download their required content.
 
 ## The web
 
-A web page ships the same protected release as every other platform, built for the `web` profile, and nothing of the package as it is. The [loading guide](loading.md#web) lists the files of the site. The page downloads the runtime, the two manifests and the shards of the app domain before the app starts. Those shards hold `app.json` and the Lua bytecode and are small. Everything else comes through the content manager, the content that the engine reads before any Lua runs included, as [what the manager does on its own](#what-the-manager-does-on-its-own) describes.
+A web page ships the same protected release as every other platform, built for the `web` profile, and nothing of the package as it is. The [loading guide](loading.md#web) lists the files of the site. The page downloads the runtime, the two manifests and the shards of the app domain before the app starts. Those shards hold `haylen.json` and the Lua bytecode and are small. Everything else comes through the content manager, the content that the engine reads before any Lua runs included, as [what the manager does on its own](#what-the-manager-does-on-its-own) describes.
 
 The content never downloads whole. The content manager reads the encrypted index of each shard it needs, and then only the records of the assets that the app needs, by byte range from `app/`. So a page of a game of many gigabytes starts after a download of a few megabytes. The required content comes down while the update screen shows, the prefetched content follows in the background, and on-demand assets come when the app loads them, exactly as on the other platforms. WebGPU and WebGL2 share the same release and the same store, since only the runtime differs.
 
@@ -695,7 +695,7 @@ What the page downloads stays in the content store of the app, in the private fi
 
 The next visit reads the small files of the store before the app starts: its state, journal, manifests and shard indexes. It reads in a record only when the app needs it, so a store of many gigabytes never enters memory. The required content stays in memory for the whole visit. Other records in memory stay within 64 MiB, and the ones read least recently go first, except a record read in the last 5 seconds. A record that a download appends holds no claim to stay until something reads it, so a large download or prefetch never holds more than that. A download that a load waits for reads its records in again before it ends, through `Downloader::Use::Read`, while a prefetch keeps its records on the device only.
 
-Downloads hold back their next transfers while the records that wait to be checked and the bytes that the worker has not written yet pass 16 MiB. So neither the checks nor the writes fall behind the network without a bound. The command `haylen.py test --platform web` checks this in a headless browser. A page downloads a file of 384 MiB of a protected release. The check fails when the memory of WebAssembly grows past half of the file, or when the page and its workers keep more than 64 MiB of array buffers after a collection.
+Downloads hold back their next transfers while the records that wait to be checked and the bytes that the worker has not written yet pass 16 MiB. So neither the checks nor the writes fall behind the network without a bound. The command `haylen test --platform web` checks this in a headless browser. A page downloads a file of 384 MiB of a protected release. The check fails when the memory of WebAssembly grows past half of the file, or when the page and its workers keep more than 64 MiB of array buffers after a collection.
 
 A browser that keeps no files for the page, or whose files another tab of the app holds, gives the page a store in memory for the visit instead. The records it downloads stay in memory, since nothing else holds them, within a room of 256 MiB, past which a download fails with `InsufficientStorage`. The next visit downloads them again, and the page says so in the console. Such a page reports no room, so it installs no update, which fails with `insufficientStorage`, and it downloads on-demand content into memory for the visit. The saves of the app live apart, in IndexedDB, so clearing the content store never touches them.
 
@@ -703,7 +703,7 @@ The page asks the browser to keep its storage with `navigator.storage.persist()`
 
 ### Serving a release
 
-A server of the site serves the files of `app/` by byte range, with `206` and `Content-Range`, a strong `ETag` and `If-Range`, and without content encoding for `.hpak` files, which are encrypted and do not compress. The command `haylen run --platform web --config Release` serves the site that way on this machine. A content delivery network does it by default. The files take long cache lifetimes, since a shard and a manifest never change under their name:
+A server of the site serves the files of `app/` by byte range, with `206` and `Content-Range`, a strong `ETag` and `If-Range`, and without content encoding for `.hpak` files, which are encrypted and do not compress. The command `haylen app run --target web --config Release` serves the site that way on this machine. A content delivery network does it by default. The files take long cache lifetimes, since a shard and a manifest never change under their name:
 
 ```text
 app/*.hpak, app/*.hmanifest      Cache-Control: public, max-age=31536000, immutable
@@ -744,7 +744,7 @@ Every record of the store passes the same checks on every read as a record of a 
 
 ## Performance
 
-The command `haylen bench --suite content` measures the work of protected content on this machine. It prints the largest single allocation of each measurement, so a reader that starts to hold whole files shows at once. These are the results of one Release build on an Apple M5 Pro with the machine loaded by other work, so they are a ceiling, and absolute values vary from machine to machine.
+The command `haylen engine bench --suite content` measures the work of protected content on this machine. It prints the largest single allocation of each measurement, so a reader that starts to hold whole files shows at once. These are the results of one Release build on an Apple M5 Pro with the machine loaded by other work, so they are a ceiling, and absolute values vary from machine to machine.
 
 | Measurement | Result | Largest allocation |
 | --- | --- | --- |
@@ -776,7 +776,7 @@ The command `haylen bench --suite content` measures the work of protected conten
 | Opening it | 10.8 ms | 3.3 MiB |
 | Finding and reading its 20 thousand files | 91 ms | 1.2 MiB |
 
-The reads from the folder of the app come from the file cache of the system, as the reads of the release do. So the difference between them is what protection adds: each chunk is authenticated, decrypted and checked against its content ID before a byte reaches the app. The command `haylen bench --suite sprites` measures, with the GPU of the machine, what finishing loaded textures on the frame thread costs. While 100 thousand sprites move, a frame takes 8.57 ms on average with 0.36 ms of work on the frame thread. While 48 textures of 1024 by 1024 pixels load in the background and finish within the upload budget of the asset manager, a frame takes 8.69 ms on average and 12.46 ms at most with 0.55 ms of work, and all 48 are ready after 9 frames.
+The reads from the folder of the app come from the file cache of the system, as the reads of the release do. So the difference between them is what protection adds: each chunk is authenticated, decrypted and checked against its content ID before a byte reaches the app. The command `haylen engine bench --suite sprites` measures, with the GPU of the machine, what finishing loaded textures on the frame thread costs. While 100 thousand sprites move, a frame takes 8.57 ms on average with 0.36 ms of work on the frame thread. While 48 textures of 1024 by 1024 pixels load in the background and finish within the upload budget of the asset manager, a frame takes 8.69 ms on average and 12.46 ms at most with 0.55 ms of work, and all 48 are ready after 9 frames.
 
 Measured this way, protected content does three things:
 
@@ -795,7 +795,7 @@ A change of the content system keeps these criteria, which the benchmark shows a
 - An update stores only the chunks that changed and reuses every other one, so a change of a line and of a small file stores 2.5 KiB, and the shards of unchanged content keep their bytes for the patches of stores.
 - Lua modules load from bytecode about three times faster than from their text, which is one reason a release ships bytecode.
 - The web never holds more of a download than its budget, as the [memory check of the web](../tools/testing.md#the-memory-check-of-the-web) checks in a browser.
-- Assets that finish loading on the frame thread, such as textures that upload, stay within the upload budget of the asset manager each frame. The `sprites` suite of `haylen bench` measures it with textures on the GPU, and the `core` suite with JSON assets loaded in the background and on the frame thread.
+- Assets that finish loading on the frame thread, such as textures that upload, stay within the upload budget of the asset manager each frame. The `sprites` suite of `haylen engine bench` measures it with textures on the GPU, and the `core` suite with JSON assets loaded in the background and on the frame thread.
 
 ### Cooking assets
 

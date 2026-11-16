@@ -281,7 +281,7 @@ TEST_F(InputLuaTest, ForgetsTheEmulatedPressWhenTheWindowLosesTheFocus) {
 }
 
 TEST(InputLuaAppTest, TakesThePointerDevicesFromTheAppSettings) {
-    test::EngineFixture fixture({{"app.json", R"({"input": {"mouseAsTouch": true, "touchAsMouse": true}})"}});
+    test::EngineFixture fixture({{"haylen.json", R"({"input": {"mouseAsTouch": true, "touchAsMouse": true}})"}});
     EXPECT_EQ(fixture.lua("local input = require('haylen.input') return tostring(input.mouseAsTouch()) .. ' ' .. tostring(input.touchAsMouse())"), "true true");
 }
 
@@ -357,7 +357,7 @@ TEST_F(InputLuaTest, DefinesActionsOneByOne) {
 }
 
 TEST(InputStepLuaTest, CountsEveryPressOnceInFixedSteps) {
-    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "fixedRate": 30})"}});
+    test::EngineFixture fixture({{"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "fixedRate": 30})"}});
     // clang-format off
     fixture.runLua(R"(
         input = require('haylen.input')

@@ -33,7 +33,7 @@ function Events:enter()
         focus = 'ticks',
         controls = {
             ui.button{id = 'ticks', text = 'Start the native ticks', variant = 'primary', onClick = function() self:toggleTicks() end},
-            ui.label{text = 'Swift runs a "Timer" on the main run loop, Kotlin posts to the main "Handler", JavaScript uses "setInterval" and C a thread of the library. The native part sent "loaded" retained when it loaded, before any Lua ran, and the bridge kept it for the first listener.', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'Swift runs a "Timer" on the main run loop, Kotlin posts to the main "Handler", JavaScript uses "setInterval" and C++ a thread of the library. The native part sent "loaded" retained when it loaded, before any Lua ran, and the bridge kept it for the first listener.', color = 'textMuted', font = 'caption'},
         },
         showcase = {
             ui.card{grow = 1, align = 'stretch', gap = 20, justify = 'center',

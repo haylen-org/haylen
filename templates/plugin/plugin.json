@@ -1,23 +1,15 @@
 {
+    "interface": 1,
     "id": "{{ID}}",
     "name": "{{TITLE}}",
     "version": "1.0.0",
     "description": "Echoes messages through the native code of every platform.",
-    "platforms": ["ios", "catalyst", "tvos", "visionos", "macos", "android", "web", "windows", "linux"],
-    "requires": [],
-    "parameters": {},
-    "apple": {
-        "class": "{{NAME}}Plugin",
-        "sources": "apple"
-    },
-    "android": {
-        "module": "android"
-    },
-    "web": {
-        "module": "web/{{ID}}.js"
-    },
-    "native": {
-        "cmake": "native",
-        "platforms": ["macos", "windows", "linux"]
-    }
+    "implementations": {"ios": "native", "catalyst": "native", "tvos": "native", "visionos": "native", "macos": "native", "android": "native", "web": "native", "windows": "native", "linux": "native"},
+    "contributions": [
+        {"type": "appleClass", "platforms": ["ios", "catalyst", "tvos", "visionos", "macos"], "name": "{{NAME}}Plugin"},
+        {"type": "appleSources", "platforms": ["ios", "catalyst", "tvos", "visionos", "macos"], "path": "apple"},
+        {"type": "gradleModule", "platforms": ["android"], "path": "android"},
+        {"type": "webModule", "platforms": ["web"], "path": "web/{{ID}}.js"},
+        {"type": "nativeLibrary", "platforms": ["macos", "windows", "linux"], "cmake": "native"}
+    ]
 }

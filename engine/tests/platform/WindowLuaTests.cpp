@@ -44,9 +44,9 @@ TEST(WindowLuaTest, ShowsTheStatusBarWithItsContentAndColor) {
     EXPECT_NE(fixture.lua("window.setStatusBar('white')").find("error: "), std::string::npos);
 }
 
-// The screen stays on from the start when app.json asks for it, a script changes that later, and a restarted app starts again with the value of app.json.
+// The screen stays on from the start when haylen.json asks for it, a script changes that later, and a restarted app starts again with the value of haylen.json.
 TEST(WindowLuaTest, KeepsTheScreenOnAsTheAppAsks) {
-    test::EngineFixture fixture({{"app.json", R"({"window": {"keepScreenOn": true}})"}});
+    test::EngineFixture fixture({{"haylen.json", R"({"window": {"keepScreenOn": true}})"}});
     fixture.runLua("window = require('haylen.window')");
     EXPECT_TRUE(fixture.host().isScreenKeptOn());
     EXPECT_EQ(fixture.lua("return window.keepScreenOn()"), "true");
@@ -92,9 +92,9 @@ TEST(WindowLuaTest, AnswersFullscreenThePointerAndTheScreenOrSaysWhyNot) {
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
-// The system gestures start as app.json asks, a script changes them later, and a restarted app starts again with the value of app.json.
+// The system gestures start as haylen.json asks, a script changes them later, and a restarted app starts again with the value of haylen.json.
 TEST(WindowLuaTest, AppliesTheSystemGesturesTheAppAsksFor) {
-    test::EngineFixture fixture({{"app.json", R"({"window": {"systemGestures": "autoHideIndicator"}})"}});
+    test::EngineFixture fixture({{"haylen.json", R"({"window": {"systemGestures": "autoHideIndicator"}})"}});
     fixture.runLua("window = require('haylen.window')");
     EXPECT_EQ(fixture.host().getSystemGestures(), Window::SystemGestures::AutoHideIndicator);
     EXPECT_EQ(fixture.lua("return window.systemGestures()"), "autoHideIndicator");
@@ -108,9 +108,9 @@ TEST(WindowLuaTest, AppliesTheSystemGesturesTheAppAsksFor) {
     EXPECT_EQ(fixture.host().getSystemGestures(), Window::SystemGestures::AutoHideIndicator);
 }
 
-// The app plays at the frame rate of app.json from the start, a script lowers it for a calm screen or brings back every refresh, and a restarted app starts again with the value of app.json.
+// The app plays at the frame rate of haylen.json from the start, a script lowers it for a calm screen or brings back every refresh, and a restarted app starts again with the value of haylen.json.
 TEST(WindowLuaTest, AimsForTheFrameRateTheAppAsks) {
-    test::EngineFixture fixture({{"app.json", R"({"window": {"frameRate": 30}})"}});
+    test::EngineFixture fixture({{"haylen.json", R"({"window": {"frameRate": 30}})"}});
     fixture.runLua("window = require('haylen.window')");
     EXPECT_EQ(fixture.host().getFrameRate(), 30);
     EXPECT_EQ(fixture.lua("return window.frameRate()"), "30");
@@ -124,9 +124,9 @@ TEST(WindowLuaTest, AimsForTheFrameRateTheAppAsks) {
     EXPECT_EQ(fixture.host().getFrameRate(), 30);
 }
 
-// A dense screen draws a framebuffer of the cap of app.json, which a script lowers or lifts, while the window keeps its size, the points of the window stay the same and the GPU device takes the smaller drawable with the size of its window. A restarted app starts again with the cap of app.json.
+// A dense screen draws a framebuffer of the cap of haylen.json, which a script lowers or lifts, while the window keeps its size, the points of the window stay the same and the GPU device takes the smaller drawable with the size of its window. A restarted app starts again with the cap of haylen.json.
 TEST(WindowLuaTest, CapsThePixelDensityOfTheFramebuffer) {
-    test::EngineFixture fixture({{"app.json", R"({"window": {"maxPixelDensity": 2}})"}});
+    test::EngineFixture fixture({{"haylen.json", R"({"window": {"maxPixelDensity": 2}})"}});
     fixture.host().setDpiScale(3.0F);
     fixture.host().resize({2400.0F, 1080.0F});
     fixture.restart();
@@ -168,7 +168,7 @@ TEST(WindowLuaTest, GivesARestartedAppTheMouseCursorAndKeyboardOfANewWindow) {
 }
 
 TEST(WindowLuaTest, TurnsTransparencyOffAndOn) {
-    test::EngineFixture fixture({{"app.json", R"({"window": {"transparent": true}})"}});
+    test::EngineFixture fixture({{"haylen.json", R"({"window": {"transparent": true}})"}});
     fixture.runLua("window = require('haylen.window')");
     EXPECT_EQ(fixture.lua("return tostring(window.canBeTransparent()) .. ' ' .. tostring(window.transparent())"), "true true");
     fixture.runLua("window.setTransparent(false)");

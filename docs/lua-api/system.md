@@ -380,7 +380,7 @@ This table tells where each platform shows what plays, and which keys and button
 
 | Platform | Controls | Media keys and buttons |
 | --- | --- | --- |
-| iOS and iPadOS | The lock screen, the control center and the Dynamic Island, through the info center and the remote commands of MediaPlayer, which the engine loads at run time. The lock screen shows an app whose audio session plays. So an app that plays in the background sets `audio.iosSession` of `app.json` to `playback` and `audio.background` to `true`, as the [audio guide](../audio/audio.md#playing-in-the-background) describes. | Headsets, CarPlay and the other accessories. |
+| iOS and iPadOS | The lock screen, the control center and the Dynamic Island, through the info center and the remote commands of MediaPlayer, which the engine loads at run time. The lock screen shows an app whose audio session plays. So an app that plays in the background sets `audio.iosSession` of `haylen.json` to `playback` and `audio.background` to `true`, as the [audio guide](../audio/audio.md#playing-in-the-background) describes. | Headsets, CarPlay and the other accessories. |
 | tvOS | The now-playing screen of the Apple TV. | The play and pause button of the Siri Remote and of other remotes. |
 | macOS and Mac Catalyst | The now-playing item of the control center and of the menu bar, with the playback state that the media keys follow. | The media keys of the keyboard and the buttons of headsets. |
 | Android | The media notification of the shade and the lock screen, of a media session. Android 13 and later draw the controls from the commands. The notifications of a media session need no permission. The notification channel takes its name from the string `haylen_media_channel` of the resources of the app, `Playback` by default. In an app that [plays in the background](../audio/audio.md#playing-in-the-background), the notification of what plays keeps the app in the foreground while it shows as playing. | Headsets, Bluetooth devices and the media buttons of TV remotes. The button that toggles reaches the app as `'togglePlayPause'`. |
@@ -392,7 +392,7 @@ The browser and Windows have no toggle button. So an app that offers `'togglePla
 
 ## Android permissions
 
-The engine library of Android declares no permission, so the manifest of the app declares the ones that its features need. The manifest of the Android template declares these four as visible defaults, and an app deletes the ones it does not use. The [permissions](#permissions) that plugins use, such as `android.permission.CAMERA`, come with the manifest of their module. A feature whose permission is missing never crashes the app. It logs once, with the tag `haylen`, what is missing and the line that adds it to `app/src/main/AndroidManifest.xml`, and goes on without it.
+The engine library of Android declares no permission, so the manifest of the app declares the ones that its features need. The Android backend declares these four in the manifest of every app that it generates, and an app that does not use one names it in `platforms.android.manifest.removedPermissions` of `haylen.json`, which leaves it out of the merged manifest. The [permissions](#permissions) that plugins use, such as `android.permission.CAMERA`, come with the manifest of their module. A feature whose permission is missing never crashes the app. It logs once, with the tag `haylen`, what is missing, and goes on without it.
 
 | Permission | Feature | Without it |
 | --- | --- | --- |

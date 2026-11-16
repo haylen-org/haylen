@@ -39,9 +39,9 @@ class SystemTest : public ::testing::Test {
     // An app whose plugin "cam-kit" owns the camera and the microphone and whose plugin "notes" owns the notifications.
     [[nodiscard]] static std::map<std::string, std::string> makePluginApp() {
         return {
-            {"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"cam-kit": {}, "notes": {}}})"},
-            {"plugins/cam-kit/plugin.json", R"({"id": "cam-kit", "version": "1.0.0", "permissions": ["camera", "microphone"]})"},
-            {"plugins/notes/plugin.json", R"({"id": "notes", "version": "1.0.0", "permissions": ["notifications"]})"},
+            {"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"cam-kit": {}, "notes": {}}})"},
+            {"plugins/cam-kit/plugin.json", R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["camera", "microphone"]})"},
+            {"plugins/notes/plugin.json", R"({"id": "notes", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["notifications"]})"},
         };
     }
 
@@ -52,7 +52,7 @@ class SystemTest : public ::testing::Test {
 
     // The message of the error that reading the plugins of the manifest throws, or an empty text.
     [[nodiscard]] static std::string readPluginsFailure(const std::string& manifest) {
-        io::MemoryPackage package("app", {{"plugins/cam-kit/plugin.json", test::TestFiles::bytes(manifest)}, {"plugins/notes/plugin.json", test::TestFiles::bytes(R"({"id": "notes", "version": "1.0.0", "permissions": ["camera"]})")}});
+        io::MemoryPackage package("app", {{"plugins/cam-kit/plugin.json", test::TestFiles::bytes(manifest)}, {"plugins/notes/plugin.json", test::TestFiles::bytes(R"({"id": "notes", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["camera"]})")}});
         try {
             (void)AppPlugin::readAll(package, {{"cam-kit", {}}});
             return {};
@@ -239,7 +239,7 @@ TEST_F(SystemTest, AsksThePluginThatOwnsAPermissionThroughTheBridge) {
     });
     bridge.registerHandler("cam-kit.requestPermission", [&calls](const Bridge::Payload& params, const Bridge::Reply& reply) {
         calls.push_back("requestPermission " + params.json.dump());
-        reply({.ok = true, .value = {.json = core::Json::parse(R"({"state": "unsupported", "message": "The project lacks the usage description.", "missing": [{"kind": "usageDescription", "name": "NSCameraUsageDescription", "file": "ios/Info.plist", "snippet": "<key/>"}]})")}});
+        reply({.ok = true, .value = {.json = core::Json::parse(R"({"state": "unsupported", "message": "The app lacks the usage description.", "missing": [{"kind": "usageDescription", "name": "NSCameraUsageDescription", "file": "haylen.json", "snippet": "{}"}]})")}});
     });
     // clang-format on
 
@@ -253,7 +253,7 @@ TEST_F(SystemTest, AsksThePluginThatOwnsAPermissionThroughTheBridge) {
     EXPECT_EQ(calls, (std::vector<std::string>{R"(permission {"name":"camera"})", R"(requestPermission {"name":"microphone"})"}));
     EXPECT_EQ(answers.at("camera").state, Permission::State::Prompt);
     EXPECT_EQ(answers.at("microphone").state, Permission::State::Unsupported);
-    EXPECT_EQ(answers.at("microphone").message, "The project lacks the usage description.");
+    EXPECT_EQ(answers.at("microphone").message, "The app lacks the usage description.");
     ASSERT_EQ(answers.at("microphone").missing.size(), 1U);
     EXPECT_EQ(answers.at("microphone").missing.front().name, "NSCameraUsageDescription");
     EXPECT_EQ(answers.at("notifications").state, Permission::State::Unsupported);
@@ -304,14 +304,14 @@ TEST_F(SystemTest, NamesThePermissionsOfTheEngineAndHowToAskAgain) {
 
 // Each permission has one owner, so the plugins of an app refuse a permission of the engine, a name that is not "camelCase" and a permission that another plugin declares.
 TEST_F(SystemTest, RefusesPluginPermissionsWithoutOneOwner) {
-    EXPECT_EQ(readPluginsFailure(R"({"id": "cam-kit", "version": "1.0.0", "permissions": ["microphone"]})"), "");
-    EXPECT_EQ(readPluginsFailure(R"({"id": "cam-kit", "version": "1.0.0", "permissions": "camera"})"), "The \"permissions\" of \"plugins/cam-kit/plugin.json\" in the package is not a list of permission names, such as [\"camera\"].");
-    EXPECT_EQ(readPluginsFailure(R"({"id": "cam-kit", "version": "1.0.0", "permissions": ["screens"]})"), "The \"permissions\" of \"plugins/cam-kit/plugin.json\" in the package declare \"screens\", which is a permission of the engine.");
-    EXPECT_EQ(readPluginsFailure(R"({"id": "cam-kit", "version": "1.0.0", "permissions": ["front-camera"]})"), "The \"permissions\" of \"plugins/cam-kit/plugin.json\" in the package declare \"front-camera\", which is not a \"camelCase\" name, such as \"camera\" or \"backgroundLocation\".");
-    EXPECT_EQ(readPluginsFailure(R"({"id": "cam-kit", "version": "1.0.0", "permissions": [3]})"), "The \"permissions\" of \"plugins/cam-kit/plugin.json\" in the package declare \"3\", which is not a \"camelCase\" name, such as \"camera\" or \"backgroundLocation\".");
-    EXPECT_EQ(readPluginsFailure(R"({"id": "cam-kit", "version": "1.0.0", "permissions": ["camera", "camera"]})"), "The \"permissions\" of \"plugins/cam-kit/plugin.json\" in the package declare \"camera\" twice.");
+    EXPECT_EQ(readPluginsFailure(R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["microphone"]})"), "");
+    EXPECT_EQ(readPluginsFailure(R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": "camera"})"), "The \"permissions\" of \"plugins/cam-kit/plugin.json\" in the package is not a list of permission names, such as [\"camera\"].");
+    EXPECT_EQ(readPluginsFailure(R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["screens"]})"), "The \"permissions\" of \"plugins/cam-kit/plugin.json\" in the package declare \"screens\", which is a permission of the engine.");
+    EXPECT_EQ(readPluginsFailure(R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["front-camera"]})"), "The \"permissions\" of \"plugins/cam-kit/plugin.json\" in the package declare \"front-camera\", which is not a \"camelCase\" name, such as \"camera\" or \"backgroundLocation\".");
+    EXPECT_EQ(readPluginsFailure(R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": [3]})"), "The \"permissions\" of \"plugins/cam-kit/plugin.json\" in the package declare \"3\", which is not a \"camelCase\" name, such as \"camera\" or \"backgroundLocation\".");
+    EXPECT_EQ(readPluginsFailure(R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["camera", "camera"]})"), "The \"permissions\" of \"plugins/cam-kit/plugin.json\" in the package declare \"camera\" twice.");
 
-    io::MemoryPackage package("app", {{"plugins/cam-kit/plugin.json", test::TestFiles::bytes(R"({"id": "cam-kit", "version": "1.0.0", "permissions": ["camera"]})")}, {"plugins/notes/plugin.json", test::TestFiles::bytes(R"({"id": "notes", "version": "1.0.0", "permissions": ["camera"]})")}});
+    io::MemoryPackage package("app", {{"plugins/cam-kit/plugin.json", test::TestFiles::bytes(R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["camera"]})")}, {"plugins/notes/plugin.json", test::TestFiles::bytes(R"({"id": "notes", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["camera"]})")}});
     EXPECT_EQ(AppPlugin::readAll(package, {{"cam-kit", {}}}).front().permissions, (std::vector<std::string>{"camera"}));
 
     try {
@@ -324,12 +324,12 @@ TEST_F(SystemTest, RefusesPluginPermissionsWithoutOneOwner) {
 
 // Native code answers with JSON, whose broken parts read as missing so the request fails instead of the engine.
 TEST_F(SystemTest, ReadsTheAnswersOfNativeCode) {
-    const Permission::Answer answer = Permission::Answer::fromJson(core::Json::parse(R"({"state": "denied", "message": "The engine needs a line.", "missing": [{"kind": "permission", "name": "android.permission.ACCESS_LOCAL_NETWORK", "file": "app/src/main/AndroidManifest.xml", "snippet": "<uses-permission />"}, 3]})"));
+    const Permission::Answer answer = Permission::Answer::fromJson(core::Json::parse(R"({"state": "denied", "message": "The engine needs a line.", "missing": [{"kind": "permission", "name": "android.permission.ACCESS_LOCAL_NETWORK", "file": "haylen.json", "snippet": "{\"platforms\": {}}"}, 3]})"));
     EXPECT_EQ(answer.state, Permission::State::Denied);
     EXPECT_EQ(answer.message, "The engine needs a line.");
     ASSERT_EQ(answer.missing.size(), 1U);
     EXPECT_EQ(answer.missing.front().name, "android.permission.ACCESS_LOCAL_NETWORK");
-    EXPECT_EQ(answer.missingToJson().at(0).at("snippet"), "<uses-permission />");
+    EXPECT_EQ(answer.missingToJson().at(0).at("snippet"), R"({"platforms": {}})");
 
     EXPECT_EQ(Permission::Answer::fromJson(core::Json::parse(R"({"state": 5})")).state, Permission::State::Unknown);
     EXPECT_EQ(Permission::Answer::fromJson(core::Json::array()).state, Permission::State::Unsupported);
@@ -431,7 +431,7 @@ TEST(SystemLuaTest, WritesAndReadsTheClipboardOrSaysWhyNot) {
 }
 
 TEST(SystemLuaTest, ChecksAndAsksForPermissions) {
-    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"cam-kit": {}}})"}, {"plugins/cam-kit/plugin.json", R"({"id": "cam-kit", "version": "1.0.0", "permissions": ["camera"]})"}});
+    test::EngineFixture fixture({{"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"cam-kit": {}}})"}, {"plugins/cam-kit/plugin.json", R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["camera"]})"}});
     fixture.host().setNativePlugins({"cam-kit"});
     // clang-format off
     fixture.runLua(R"(
@@ -461,7 +461,7 @@ TEST(SystemLuaTest, ChecksAndAsksForPermissions) {
     fixture.runLua("remember('screens', system.permission('screens'))");
     // clang-format off
     fixture.engine().getPlatform().registerHandler("cam-kit.requestPermission", [](const Bridge::Payload&, const Bridge::Reply& reply) {
-        reply({.ok = true, .value = {.json = core::Json::parse(R"({"state": "unsupported", "message": "The plugin needs the permission, which the app lacks.", "missing": [{"kind": "permission", "name": "android.permission.CAMERA", "file": "app/src/main/AndroidManifest.xml", "snippet": "<uses-permission />"}]})")}});
+        reply({.ok = true, .value = {.json = core::Json::parse(R"({"state": "unsupported", "message": "The plugin needs the permission, which the app lacks.", "missing": [{"kind": "permission", "name": "android.permission.CAMERA", "file": "haylen.json", "snippet": "{}"}]})")}});
     });
     // clang-format on
     fixture.runLua("remember('missing', system.requestPermission('camera'))");

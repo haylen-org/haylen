@@ -122,14 +122,14 @@ TEST(ConsoleLuaTest, RunsLinesFromOutsideOnlyInDevelopmentOrWhenTheAppTurnsItOn)
         platform::ConsoleRelay::submit("help", [&answer](const Console::Result& result) { answer = result.output; });
         platform::ConsoleRelay::requestCommands([&commands](const core::Json& list) { commands = list; });
         fixture.frames(1);
-        EXPECT_EQ(answer, "The console is off outside development runs. Set \"debug.console\" to true in \"app.json\" to turn it on.");
+        EXPECT_EQ(answer, "The console is off outside development runs. Set \"debug.console\" to true in \"haylen.json\" to turn it on.");
         EXPECT_EQ(commands, core::Json::array());
         EXPECT_EQ(fixture.lua("local ok, output = require('haylen.debug').runCommand('timeScale 0.5') return output"), "The time scale is 0.5.");
         EXPECT_DOUBLE_EQ(fixture.engine().getClock().getTimeScale(), 0.5);
     }
 
     {
-        test::EngineFixture fixture({{"app.json", R"({"name": "Console", "identifier": "com.haylen.console", "debug": {"console": true}})"}});
+        test::EngineFixture fixture({{"haylen.json", R"({"name": "Console", "identifier": "com.haylen.console", "debug": {"console": true}})"}});
         std::string answer;
         core::Json commands;
         platform::ConsoleRelay::submit("pause true", [&answer](const Console::Result& result) { answer = result.output; });

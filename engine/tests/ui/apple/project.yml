@@ -23,8 +23,6 @@ targets:
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "1,2"
-    scheme:
-      testTargets: [iOS]
   tvOS:
     type: bundle.ui-testing
     platform: tvOS
@@ -32,8 +30,6 @@ targets:
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "3"
-    scheme:
-      testTargets: [tvOS]
   visionOS:
     type: bundle.ui-testing
     platform: visionOS
@@ -41,5 +37,26 @@ targets:
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "7"
-    scheme:
-      testTargets: [visionOS]
+# The test action of every scheme runs the runner without a debugger, since a runner that xcodebuild launches under the debugger waits for it to attach, and nothing attaches in a run from the command line.
+schemes:
+  iOS:
+    build:
+      targets:
+        iOS: [test]
+    test:
+      targets: [iOS]
+      debugEnabled: false
+  tvOS:
+    build:
+      targets:
+        tvOS: [test]
+    test:
+      targets: [tvOS]
+      debugEnabled: false
+  visionOS:
+    build:
+      targets:
+        visionOS: [test]
+    test:
+      targets: [visionOS]
+      debugEnabled: false

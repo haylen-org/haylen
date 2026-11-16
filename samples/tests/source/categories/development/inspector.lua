@@ -23,7 +23,7 @@ function Inspector:enter()
     debugging.watch('player', self.player)
     debugging.watch('camera', self.lens)
     self:frame{
-        hint = 'Open the inspector with F2, the key "i" of "haylen run" or the button, and edit "watched.player.speed".',
+        hint = 'Open the inspector with F2, the key "i" of "haylen app run" or the button, and edit "watched.player.speed".',
         code = Inspector.code,
         content = {ui.row{wrap = true, grow = 1, gap = 24, alignItems = 'stretch',
             ui.panel{width = 600, grow = 1, gap = 12,
@@ -76,7 +76,7 @@ end
 
 function Inspector:open()
     if not debugging.consoleEnabled() then
-        self.edits:add('The inspector is off', 'The app runs outside development without "debug.console" in "app.json".', 'danger')
+        self.edits:add('The inspector is off', 'The app runs outside development without "debug.console" in "haylen.json".', 'danger')
         return
     end
     debugging.setInspectorVisible(true)

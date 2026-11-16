@@ -11,7 +11,7 @@ Every place runs the same suites:
 - The engine tests: `haylen test`.
 - The GPU tests, the conformance suite and the reference scenes of the 2D renderer on each graphics API: `haylen test --gpu`, or one API with `--graphics-api <name>`.
 - The test project in its run-all mode, which runs every test of `samples/tests` for two seconds each and ends with the line "Ran N tests, and none failed.".
-- The benchmarks on each API: `haylen bench --gpu`, described in [Benchmarks](benchmarks.md).
+- The benchmarks on each API: `haylen engine bench --gpu`, described in [Benchmarks](benchmarks.md).
 - The stress samples in `samples/stress`, whose readout shows the API and the GPU time.
 
 Two variables change which GPU a device takes:
@@ -47,7 +47,7 @@ The windowed runs of the test project need a desktop session that nobody is usin
 
 The UI tests of an app run on the iOS, iPadOS and visionOS simulators with `haylen test --ui <app> --platform ios-simulator|visionos-simulator --device <name>`, which taps, drags and arranges windows there without a window on the Mac, as [the UI tests](testing.md#the-ui-tests) describe.
 
-Run the test project with `haylen run samples/tests --platform <target>`. Start its run-all mode from the developer console of the run with `lua require('harness.runner').start()`, so no input reaches the device.
+Run the test project with `haylen app run samples/tests --target <target>`. Start its run-all mode from the developer console of the run with `lua require('harness.runner').start()`, so no input reaches the device.
 
 ### Real devices
 
@@ -62,15 +62,15 @@ Each run installs a signed test app, runs it, copies the results back and uninst
 
 ## Browser
 
-The web runs in Chrome, which `haylen.py` starts without a window. Install Chrome or Chromium first.
+The web runs in Chrome, which `haylen test` starts without a window. Install Chrome or Chromium first.
 
 | What | Command |
 | --- | --- |
 | GPU tests on WebGPU and WebGL2 | `haylen test --gpu --platform web` builds the GPU tests to WebAssembly, opens them in a page and reads the results back. Add `--graphics-api webGpu` or `--graphics-api webGl2` for one API. |
 | The checks of the page | `haylen test --platform web` runs the error screen check, the wake lock check, the fullscreen check, the plugin check and the memory check, which only a browser can show. Add `--graphics-api webGpu` or `--graphics-api webGl2` for one API. Headless Chrome on Linux cannot present a WebGPU canvas, so there they take `--graphics-api webGl2`. |
-| The test project | `haylen run samples/tests --platform web` serves the page. Open the address it prints, add `?graphicsApi=webGl2` to choose WebGL2, and start run-all from the menu. |
+| The test project | `haylen app run samples/tests --target web` serves the page. Open the address it prints, add `?graphicsApi=webGl2` to choose WebGL2, and start run-all from the menu. |
 
-Headless Chrome draws through SwiftShader, its software rasterizer, so its GPU times measure the processor. To draw on the real GPU of the machine, start Chrome with `--enable-gpu`, and with `--use-angle=metal` on a Mac, then open the same pages. Safari and Firefox open the page of `haylen run` too, for a check by hand.
+Headless Chrome draws through SwiftShader, its software rasterizer, so its GPU times measure the processor. To draw on the real GPU of the machine, start Chrome with `--enable-gpu`, and with `--use-angle=metal` on a Mac, then open the same pages. Safari and Firefox open the page of `haylen app run` too, for a check by hand.
 
 ## Cloud
 
@@ -90,7 +90,7 @@ Every platform but the Apple TV and the Apple Vision Pro, which no cloud rents a
 | Android, real devices | Device Farm | [Real devices on Device Farm](#real-devices-on-device-farm) | About US$ 0.17 per device minute |
 | Browser, software | Any small Linux machine with Chrome | `haylen test --gpu --platform web` and `haylen test --platform web --graphics-api webGl2` | About US$ 0.08 to 0.10 an hour |
 | Browser, real GPU | EC2 `g4dn.xlarge` or Azure `Standard_NG8ads_V620_v1`, with Chrome started with `--enable-gpu` | The same pages as [Browser](#browser). | The price of the machine |
-| Browsers on Device Farm | Device Farm desktop browsers, such as Chrome, Firefox and Edge | A Selenium session that opens the page of `haylen run --platform web`, served where the browsers reach it. | About US$ 0.005 per browser minute |
+| Browsers on Device Farm | Device Farm desktop browsers, such as Chrome, Firefox and Edge | A Selenium session that opens the page of `haylen app run --target web`, served where the browsers reach it. | About US$ 0.005 per browser minute |
 
 ### Amazon Web Services
 
@@ -123,7 +123,7 @@ The paravirtual GPU of a virtual Mac is not the GPU of a real one, while an EC2 
 
 Device Farm runs in `us-west-2` and costs about US$ 0.17 per device minute. A run of the test project and the GPU app on one device takes about 5 to 20 minutes. It rents real iPhones and iPads too: build the test project and the GPU test app as signed `.ipa` files for your team, upload them, and run them the same way.
 
-1. Build the debug APK of the test project with `haylen run samples/tests --platform android --build-only`, and the GPU test app with `haylen test --gpu --platform android`.
+1. Build the debug APK of the test project with `haylen app build samples/tests --target android`, and the GPU test app with `haylen test --gpu --platform android`.
 2. Create a project, upload the APKs and a custom test spec that starts the app in its run-all mode, and collect logcat.
 3. Choose devices of different GPUs, such as Adreno, Mali, PowerVR and Xclipse, and of old and new Android versions. The free call `aws devicefarm get-device-pool-compatibility` shows which devices accept the app before you pay.
 4. Give every job a short timeout, so a hang cannot bill its full default time.

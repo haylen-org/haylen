@@ -1,4 +1,4 @@
-// Native part of the sign-in of Tiny Island on the web. It answers `sign-in.signIn` with the identity service of the account, whose script it loads when the player first signs in, and needs a server that sends no embedder policy that blocks that script, as the one of `haylen.py run --platform web` does.
+// Native part of the sign-in of Tiny Island on the web. It answers `sign-in.signIn` with the identity service of the account, whose script it loads when the player first signs in, and needs a server that sends no embedder policy that blocks that script, as the one of `haylen app run --target web` does by default.
 export default function load(context) {
     let library;
     const loadLibrary = () => {
@@ -15,7 +15,7 @@ export default function load(context) {
 
     context.register("signIn", async () => {
         if (!context.config.clientId) {
-            throw new Error('Sign-in needs the web client id that the identity service gives the game. Set "plugins.sign-in.clientId" in the "app.json" of the game.');
+            throw new Error('Sign-in needs the web client id that the identity service gives the game. Set "plugins.sign-in.clientId" in the "haylen.json" of the game.');
         }
         await loadLibrary();
         return new Promise((resolve, reject) => {

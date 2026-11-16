@@ -8,13 +8,13 @@ The commands run from the root of the repository:
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `haylen run samples/apps/photo-social` |
-| macOS app | `haylen run samples/apps/photo-social --platform macos` |
-| iPhone and iPad simulator | `haylen run samples/apps/photo-social --platform ios-simulator` |
-| Apple TV simulator | `haylen run samples/apps/photo-social --platform tvos-simulator` |
-| Android device or emulator | `haylen run samples/apps/photo-social --platform android --device <serial>` |
-| Browser | `haylen run samples/apps/photo-social --platform web` |
-| Headless player | `build/macos-debug/bin/haylen-headless samples/apps/photo-social` |
+| Desktop player with hot reload | `haylen app run samples/apps/photo-social` |
+| macOS app | `haylen app run samples/apps/photo-social --target macos` |
+| iPhone and iPad simulator | `haylen app run samples/apps/photo-social --target ios-simulator` |
+| Apple TV simulator | `haylen app run samples/apps/photo-social --target tvos-simulator` |
+| Android device or emulator | `haylen app run samples/apps/photo-social --target android --device <serial>` |
+| Browser | `haylen app run samples/apps/photo-social --target web` |
+| Headless player | `build/engine/macos-debug/bin/haylen-headless samples/apps/photo-social` |
 
 On the headless platform the app runs a tour by itself: it likes a post, watches and answers a story, shares a post with a friend, whose answer drops in as a banner, comments on a post and deletes the comment after the alert, follows and unfollows a person, searches people, chats, makes a post with a filter and a crop and deletes it after the alert, edits the profile, saves posts, opens links of the scheme and of the web and sends a post to a friend, logs every step and quits.
 
@@ -93,7 +93,7 @@ The app follows the [navigation](../../../docs/ui/navigation.md) of the engine, 
 
 ```text
 photo-social/
-  app.json               Window, physical UI scale, any orientation and the identifier.
+  haylen.json               Window, physical UI scale, any orientation and the identifier.
   source/
     main.lua             Registers the theme, the actions of the stories and the pictures, and starts the shell.
     style.lua            The palette, the type scale, the spacing scale, the shapes and the theme.

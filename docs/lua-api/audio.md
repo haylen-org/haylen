@@ -871,7 +871,7 @@ end)
 
 ### audio.outputLatency()
 
-Returns the seconds of sound that the buffers of the device hold between the mix and the speaker, or `0` without an output. The key `audio.latency` of `app.json` trades this delay for power:
+Returns the seconds of sound that the buffers of the device hold between the mix and the speaker, or `0` without an output. The key `audio.latency` of `haylen.json` trades this delay for power:
 
 - `'low'` asks for short buffers and, on Android, the low latency mode of AAudio.
 - `'balanced'`, the default, keeps the default of the platform.
@@ -922,7 +922,7 @@ audio.restartOutput()
 
 ### audio.setBackground(enabled)
 
-Turns on or off whether the sound keeps playing while the app is in the background, as the [audio guide](../audio/audio.md#playing-in-the-background) describes. It starts as `audio.background` of `app.json` sets it, and only an app that declares `"background": true` there may turn it on, since the settings that each platform needs come from that declaration. Turning it on in another app raises `The app plays in the background only when "audio.background" of "app.json" is true, which brings the settings of each platform that it needs.`. An app in the background follows the change at once. Its output stops when the sound may no longer play there, and plays again when a voice plays.
+Turns on or off whether the sound keeps playing while the app is in the background, as the [audio guide](../audio/audio.md#playing-in-the-background) describes. It starts as `audio.background` of `haylen.json` sets it, and only an app that declares `"background": true` there may turn it on, since the settings that each platform needs come from that declaration. Turning it on in another app raises `The app plays in the background only when "audio.background" of "haylen.json" is true, which brings the settings of each platform that it needs.`. An app in the background follows the change at once. Its output stops when the sound may no longer play there, and plays again when a voice plays.
 
 ```lua
 local audio = require('haylen.audio')
@@ -936,7 +936,7 @@ print(audio.background())
 
 ### audio.background()
 
-Returns whether the sound keeps playing while the app is in the background, as `audio.background` of `app.json` and [`audio.setBackground`](#audiosetbackgroundenabled) set it.
+Returns whether the sound keeps playing while the app is in the background, as `audio.background` of `haylen.json` and [`audio.setBackground`](#audiosetbackgroundenabled) set it.
 
 ```lua
 local audio = require('haylen.audio')
@@ -1061,7 +1061,7 @@ print(room.tail)
 
 ## Limiter
 
-A `Limiter`, named `haylen.Limiter`, keeps every sample under its `threshold`, so thirty explosions at once never clip and crackle. Its gain drops at once to fit a peak, then comes back toward `1` over `release` seconds. The function `audio.newEffect('limiter')` makes one. The engine also puts one with the defaults on the `master` bus of every app, unless the key `audio.limiter` of `app.json` is `false`, and `audio.busEffects('master')[1]` returns it.
+A `Limiter`, named `haylen.Limiter`, keeps every sample under its `threshold`, so thirty explosions at once never clip and crackle. Its gain drops at once to fit a peak, then comes back toward `1` over `release` seconds. The function `audio.newEffect('limiter')` makes one. The engine also puts one with the defaults on the `master` bus of every app, unless the key `audio.limiter` of `haylen.json` is `false`, and `audio.busEffects('master')[1]` returns it.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |

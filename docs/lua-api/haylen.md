@@ -1,6 +1,6 @@
 # 📖 `haylen`
 
-The root module `haylen` tells an app about the engine and the device it runs on, and it controls the app as a whole. Use it to read the engine version, the platform, the graphics API and the settings of `app.json`, to read and scale the clock of the app, to pause the game, to follow the app state, to add autoloads and classes, and to quit, restart or stop the app with an error. The [Lua guide](../core/lua.md) and the [lifecycle guide](../core/lifecycle.md) explain the ideas behind it.
+The root module `haylen` tells an app about the engine and the device it runs on, and it controls the app as a whole. Use it to read the engine version, the platform, the graphics API and the settings of `haylen.json`, to read and scale the clock of the app, to pause the game, to follow the app state, to add autoloads and classes, and to quit, restart or stop the app with an error. The [Lua guide](../core/lua.md) and the [lifecycle guide](../core/lifecycle.md) explain the ideas behind it.
 
 ```lua
 local haylen = require('haylen')
@@ -55,9 +55,9 @@ print('Runs in a browser: ' .. tostring(web) .. '.')
 
 ### haylen.config
 
-A table with the settings of `app.json`, with the default filled in for every field that the file leaves out. The table is a copy, so changing it changes nothing in the engine. The [Lua guide](../core/lua.md#appjson) explains what `app.json` is for. The tables below list every field of `app.json`, which is also every key of `haylen.config`.
+A table with the settings of `haylen.json`, with the default filled in for every field that the file leaves out. The table is a copy, so changing it changes nothing in the engine. The [Lua guide](../core/lua.md#haylenjson) explains what `haylen.json` is for. The tables below list every field of `haylen.json`, which is also every key of `haylen.config`.
 
-Every field is optional. A field marked "absent" has no value in `haylen.config` until `app.json` sets it. Colors are written as `"#RRGGBB"` or `"#AARRGGBB"`, and `haylen.config` gives them back as `#AARRGGBB`.
+Every field is optional. A field marked "absent" has no value in `haylen.config` until `haylen.json` sets it. Colors are written as `"#RRGGBB"` or `"#AARRGGBB"`, and `haylen.config` gives them back as `#AARRGGBB`.
 
 ```json
 {
@@ -88,7 +88,7 @@ print('Halts in the background: ' .. tostring(config.lifecycle.pauseOnBackground
 | `name` | string | `"Haylen App"` | The name of the app that people see. |
 | `identifier` | string | `"com.haylen.app"` | A unique id in reverse domain form. It also names the folder where [`haylen.storage`](storage.md) and [`haylen.preferences`](preferences.md) keep their files. |
 | `version` | string | `"1.0.0"` | The version of the app that people see, such as `"1.2.0"`. |
-| `build` | integer | `1` | The build number of the app, a whole number from 1 to 2100000000 that grows with every upload to a store, such as 1, 2 and 3. Every platform takes its build number from it, as [the version and build number](../tools/distribution.md#version-and-build-number) describe. Another value stops the start with `The "build" value <value> in "app.json" is not a build number. It is a whole number from 1 to 2100000000 that grows with every upload of the app.` |
+| `build` | integer | `1` | The build number of the app, a whole number from 1 to 2100000000 that grows with every upload to a store, such as 1, 2 and 3. Every platform takes its build number from it, as the [distribution guide](../tools/distribution.md) describes. Another value stops the start with `The "build" value <value> in "haylen.json" is not a build number. It is a whole number from 1 to 2100000000 that grows with every upload of the app.` |
 | `description` | string | The value of `name` | One sentence about the app. The Windows and Linux templates give it to the executable, the desktop entry, the AppStream metainfo and the packages. |
 | `company` | string | The value of `name` | The person or company that publishes the app, in the same places. |
 | `copyright` | string | `"Copyright © <company>"` | The copyright notice of the app, which the Windows executable and the installer show. |
@@ -128,21 +128,21 @@ The desktop options of `window` change later through [`haylen.window`](window.md
 | --- | --- | --- | --- |
 | `design.width`, `design.height` | number | `1920`, `1080` | The design resolution: the space of units that the app draws in and receives input in. |
 | `design.scaling` | string | `"expand"` | How the design resolution fits the screen: `"fit"`, `"fill"`, `"stretch"`, `"expand"`, `"pixelPerfect"`, `"fitWidth"` or `"none"`, as [`haylen.viewport`](viewport.md) describes. |
-| `orientation` | string | `"landscape"` | The orientation of a mobile app: `"landscape"`, `"portrait"` or `"any"`. The tool `haylen.py` writes it into the manifest of the Android template. On iPhones and iPads the `Info.plist` lists every orientation and the runtime allows the ones of `orientation`, as the [distribution guide](../tools/distribution.md) describes. Desktop windows and the web ignore it. |
+| `orientation` | string | `"landscape"` | The orientation of a mobile app: `"landscape"`, `"portrait"` or `"any"`. The Android backend writes it into the manifest of the project that it generates. On iPhones and iPads the `Info.plist` lists every orientation and the runtime allows the ones of `orientation`, as the [distribution guide](../tools/distribution.md) describes. Desktop windows and the web ignore it. |
 | `fixedRate` | number | `60` | Fixed updates per second. [`haylen.fixedStep()`](#haylenfixedstep) returns the length of one step in seconds. |
 | `maxFrameTime` | number | `0.25` | The longest frame time in seconds that the clock accepts, so a stall never causes a burst of fixed steps. |
 | `clearColor` | string | `"#FF000000"`, or `"#00000000"` for a transparent window | The background color. |
 
 #### Splash screen
 
-The splash screen is the launch screen that iOS, tvOS, Mac Catalyst and Android show while the app starts, and the loading page of the web. The tool `haylen.py` builds it from the platform templates, as the [distribution guide](../tools/distribution.md#splash-screens) describes.
+The splash screen is the launch screen that iOS, tvOS, Mac Catalyst and Android show while the app starts, and the loading page of the web. The backend of each target builds it into the project that it generates, as the [distribution guide](../tools/distribution.md) describes.
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `splash.logo` | string | The Haylen symbol, `''` in `haylen.config` | The image of the launch screen, relative to `content/`, such as `"ui/splash.png"`. |
 | `splash.background` | string | The value of `clearColor` | The background color of the launch screen. |
 | `splash.darkBackground` | string | The value of `splash.background`, absent in `haylen.config` | The background color of the launch screen while the system uses dark colors. |
-| `splash.duration` | number | `0` | The least seconds that the launch screen stays from the launch. It always lasts until the first complete frame of the app, as the [distribution guide](../tools/distribution.md#splash-screens) explains. |
+| `splash.duration` | number | `0` | The least seconds that the launch screen stays from the launch. It always lasts until the first complete frame of the app. |
 | `splash.fadeOut` | number | `0.25` | The seconds that the launch screen takes to fade out into the app. |
 
 #### Lifecycle
@@ -209,10 +209,13 @@ These fields load the texts of the app before any Lua runs, as the [localization
 | `content.delivery` | list of objects | `[]` | The rules that let assets arrive after the start of the app. Each rule has `match`, a pattern of paths relative to `content/`, or `group`, the name of a preload group, and either `mode`, which is `"required"`, `"prefetch"` or `"onDemand"`, or `pack`, the name of a pack that a store delivers on its own. The first rule that matches an asset decides. Without rules every asset is required. In `haylen.config` a rule that names a group becomes one rule with `match` for each entry of the group. See [`haylen.content`](content.md) and the [delivery settings](../content/content.md#delivery). |
 | `content.groups` | string | Absent | The group manifest that defines the groups the rules name, relative to `content/`, such as `"groups.json"`. |
 | `autoload` | list of strings | `[]` | The modules that load as [autoloads](#haylenautoloadname-module) before `source/main.lua`, such as `"state.player-data"`. |
-| `native` | object | `{}` | The native libraries that the app ships, by name, as the [native code guide](../platform/native.md#packaging-libraries-with-an-app) describes. The engine keeps the section as `app.json` wrote it. |
-| `plugins` | object | `{}` | The [plugins](../platform/plugins.md) that the app uses, by id in `dash-case`, each with its entry: the values of its parameters under `parameters`, and the `path` or the `git` repository at `ref` that `haylen.py` takes it from, such as `{"ads": {"parameters": {"testMode": true}}, "camera": {"path": "../plugins/camera"}}`. Every id needs `plugins/<id>/plugin.json` in the package, which `haylen.py` places there wherever the plugin comes from. The field [`platform.plugin(id).config`](platform.md#appplugin) adds the defaults of their parameters. |
+| `kind` | string | `"lua"` | The kind of the app: `"lua"`, whose code is Lua that the player of the engine runs, or `"cpp"`, whose C++ code of the `cpp` section compiles against the engine SDK. The engine checks only its value, and the tooling builds the app from it. |
+| `cpp` | object | Absent | The C++ code of a C++ app, which the backend of every target compiles: `sources`, the folders and files of its sources relative to the app folder, `includeDirectories` and `definitions`. The engine checks only that it is an object. |
+| `platforms` | object | `{}` | The settings and files of the generated projects of the targets, by the name of a section that a backend reads, such as `apple`, `ios` or `android`, as the [distribution guide](../tools/distribution.md) lists. The engine checks only that each section is an object. |
+| `native` | object | `{}` | The native libraries that the app ships, by name, as the [native code guide](../platform/native.md#packaging-libraries-with-an-app) describes. The engine keeps the section as `haylen.json` wrote it. |
+| `plugins` | object | `{}` | The [plugins](../platform/plugins.md) that the app uses, by id in `dash-case`, each with its entry: the values of its parameters under `parameters`, and the `path` or the `git` repository at `ref` that the tooling takes it from, such as `{"ads": {"parameters": {"testMode": true}}, "camera": {"path": "../plugins/camera"}}`. Every id needs `plugins/<id>/plugin.json` in the package, which the tooling places there wherever the plugin comes from, and `haylen.lock` pins a plugin of a git repository to a commit. The field [`platform.plugin(id).config`](platform.md#appplugin) adds the defaults of their parameters. |
 
-The [errors](#errors-of-appjson) section lists the message of every value that `app.json` refuses.
+The [errors](#errors-of-haylenjson) section lists the message of every value that `haylen.json` refuses.
 
 ## Time
 
@@ -448,7 +451,7 @@ print('Halted: ' .. tostring(haylen.halted()) .. '.')
 
 ### haylen.lifecycle()
 
-Returns a new table with the current lifecycle options: `pauseOnBackground`, `pauseOnFocusLoss` and `muteOnFocusLoss`. They start with the `lifecycle` section of `app.json`, whose [table](#lifecycle) says what each one does.
+Returns a new table with the current lifecycle options: `pauseOnBackground`, `pauseOnFocusLoss` and `muteOnFocusLoss`. They start with the `lifecycle` section of `haylen.json`, whose [table](#lifecycle) says what each one does.
 
 ```lua
 local haylen = require('haylen')
@@ -511,7 +514,7 @@ end
 
 Loads the Lua module `module` as an autoload, calls its `start` hook and returns its table. An autoload is a module whose table lives for the whole app and receives the hooks that the [lifecycle guide](../core/lifecycle.md#autoloads) lists. The table is kept in `haylen.autoloads` under `name`.
 
-With one argument, `haylen.autoload(module)`, the name is the last part of the module in camel case. So `haylen.autoload('state.player-data')` names it `playerData`. The autoloads that the `autoload` list of `app.json` names load in its order before `source/main.lua` runs.
+With one argument, `haylen.autoload(module)`, the name is the last part of the module in camel case. So `haylen.autoload('state.player-data')` names it `playerData`. The autoloads that the `autoload` list of `haylen.json` names load in its order before `source/main.lua` runs.
 
 Adding the same module under the same name again returns the autoload that exists. So a module that adds an autoload at its top level runs again unchanged when it [reloads](hotReload.md). What `start` registers without an `owner` then lives as long as the autoload, instead of ending with that reload. Starting an autoload publishes the event `autoloadStarted` with its name.
 
@@ -661,7 +664,7 @@ haylen.quit({status = broken == 0 and 0 or 1})
 
 ### haylen.launch(path, options)
 
-Runs another app package in place of this app, once the current frame ends. The string `path` names a folder or a zip file of the file system that holds an `app.json`. The launched app starts with a new engine and a new Lua state. Use it for an app that opens other apps, such as one that downloads a package and plays it.
+Runs another app package in place of this app, once the current frame ends. The string `path` names a folder or a zip file of the file system that holds a `haylen.json`. The launched app starts with a new engine and a new Lua state. Use it for an app that opens other apps, such as one that downloads a package and plays it.
 
 When the launched app quits, this app starts again from its own package. The launched app quits through [`haylen.quit`](#haylenquitoptions), the Close button of its error screen, the back button at the root of the app on Android and Apple TV, or a hold that the launched app cannot take, which works on every device:
 
@@ -688,7 +691,7 @@ An app launched without native access passes that limit on: every app it launche
 
 Each app plays with its own development session. A launched app that names a server plays in development even when the app that launched it ships as a release, and an app that names none plays without the files that a development server sends to the app that launched it. The app that launched it starts again with its own session, or with none.
 
-A path with nothing at it raises `No app package is at "<path>". Launch a folder or a zip file that holds "app.json".`, and a `developmentServer` of another kind raises `The development server "<address>" is not an address that starts with "ws://" or "wss://".`. An unknown key raises `Unknown option "<key>".`. A package that cannot open, such as one without a valid `app.json`, shows the error screen in place of the launched app. A launched app whose engine cannot start, such as one whose storage folder cannot be made, has no error screen, so its error goes to the log and this app starts again. The [headless player](../tools/testing.md#the-test-project) then exits with `1`.
+A path with nothing at it raises `No app package is at "<path>". Launch a folder or a zip file that holds "haylen.json".`, and a `developmentServer` of another kind raises `The development server "<address>" is not an address that starts with "ws://" or "wss://".`. An unknown key raises `Unknown option "<key>".`. A package that cannot open, such as one without a valid `haylen.json`, shows the error screen in place of the launched app. A launched app whose engine cannot start, such as one whose storage folder cannot be made, has no error screen, so its error goes to the log and this app starts again. The [headless player](../tools/testing.md#the-test-project) then exits with `1`.
 
 ```lua
 local async = require('async')
@@ -714,7 +717,7 @@ end)
 local haylen = require('haylen')
 local storage = require('haylen.storage')
 
--- Plays a downloaded package in development, connected to the server that "haylen serve" runs for the app on the computer of the developer.
+-- Plays a downloaded package in development, connected to the server that "haylen app serve" runs for the app on the computer of the developer.
 haylen.launch(storage.root() .. '/demo.zip', {developmentServer = 'ws://192.168.0.10:8000/haylen/development?token=3f9a1c2b7d4e'})
 ```
 
@@ -741,18 +744,18 @@ end
 
 ### haylen.packageInfo(path)
 
-Reads what an app package says about itself, such as the name and the logo that a list of downloaded apps shows, without running it. The string `path` names a folder or a zip file of the file system that holds an `app.json`. It returns a Varn promise that resolves on a later frame with a table, since it opens the package on the I/O pool.
+Reads what an app package says about itself, such as the name and the logo that a list of downloaded apps shows, without running it. The string `path` names a folder or a zip file of the file system that holds a `haylen.json`. It returns a Varn promise that resolves on a later frame with a table, since it opens the package on the I/O pool.
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| `name` | string | The `name` of `app.json`. |
-| `identifier` | string | The `identifier` of `app.json`. |
-| `version` | string | The `version` of `app.json`. |
-| `build` | integer | The `build` of `app.json`, 1 when it gives none. |
-| `logo` | string or nil | The path of `splash.logo`, relative to `content/`, or nil when `app.json` names none. |
+| `name` | string | The `name` of `haylen.json`. |
+| `identifier` | string | The `identifier` of `haylen.json`. |
+| `version` | string | The `version` of `haylen.json`. |
+| `build` | integer | The `build` of `haylen.json`, 1 when it gives none. |
+| `logo` | string or nil | The path of `splash.logo`, relative to `content/`, or nil when `haylen.json` names none. |
 | `logoBytes` | string or nil | The bytes of that file, such as the text of an SVG document or the bytes of a PNG image, which [`graphics.newTexture`](graphics.md#graphicsnewtexturebytes-options) or [`graphics.newVectorImage`](graphics.md#graphicsnewvectorimagetext) turn into a picture. |
 
-A path with nothing at it rejects with `The app package could not be read. No app package is at "<path>". Name a folder or a zip file that holds "app.json".`, and a package that cannot open, or whose `app.json` is not valid, rejects with the reason after the same first sentence.
+A path with nothing at it rejects with `The app package could not be read. No app package is at "<path>". Name a folder or a zip file that holds "haylen.json".`, and a package that cannot open, or whose `haylen.json` is not valid, rejects with the reason after the same first sentence.
 
 ```lua
 local async = require('async')
@@ -777,7 +780,7 @@ end)
 
 ### haylen.requestRestart()
 
-Starts the app again from its package once the current frame ends, the way a hot reload of an edited `app.json` does. The scenes, the autoloads and the plugins stop, and a new Lua state runs `source/main.lua`. What belongs to the platform outlives the restart: the covers of native UI, the edges that native views reserve, the streams of plugins, and a [screen](platform.md#screens) that shows. The end of that screen reaches the restarted app as `screenRestored`.
+Starts the app again from its package once the current frame ends, the way a hot reload of an edited `haylen.json` does. The scenes, the autoloads and the plugins stop, and a new Lua state runs `source/main.lua`. What belongs to the platform outlives the restart: the covers of native UI, the edges that native views reserve, the streams of plugins, and a [screen](platform.md#screens) that shows. The end of that screen reaches the restarted app as `screenRestored`.
 
 ```lua
 local haylen = require('haylen')
@@ -868,7 +871,7 @@ These messages are raised by the functions of the module.
 | `The time scale must be a finite number.` | The scale of `haylen.setTimeScale` is not finite. |
 | `Unknown option "<key>".` | The table of `haylen.setLifecycle` or `haylen.quit` has a key that the function does not take. |
 | `The option "status" of "quit" is invalid: <reason>.` | The `status` of `haylen.quit` is not an integer from `0` to `255`. |
-| `No app package is at "<path>". Launch a folder or a zip file that holds "app.json".` | Nothing is at the path of `haylen.launch`. |
+| `No app package is at "<path>". Launch a folder or a zip file that holds "haylen.json".` | Nothing is at the path of `haylen.launch`. |
 | `The development server "<address>" is not an address that starts with "ws://" or "wss://".` | The option `developmentServer` of `haylen.launch` is not the address of a development server. |
 | `The app package could not be read. <reason>` | The promise of `haylen.packageInfo` rejects, such as for a path with nothing at it. |
 | `An autoload needs a name.` | The name of `haylen.autoload` is empty. |
@@ -879,55 +882,55 @@ These messages are raised by the functions of the module.
 | `bad argument #2 to 'class' (class expected, got <type>)` | The parent of `haylen.class` is not a class. |
 | `bad argument #1 to 'include' (table expected, got <type>)` | The mixin of `Class:include` is not a table. |
 
-### Errors of app.json
+### Errors of haylen.json
 
-The engine checks `app.json` before any Lua runs. A package whose `app.json` fails to load shows `The app could not be loaded.` and the reason on the screen. In development the app still runs, so saving a fixed `app.json` restarts it.
+The engine checks `haylen.json` before any Lua runs. A package whose `haylen.json` fails to load shows `The app could not be loaded.` and the reason on the screen. In development the app still runs, so saving a fixed `haylen.json` restarts it.
 
 | Message | Cause |
 | --- | --- |
-| `Unknown key "<key>" in "app.json".` | The file has a field that the engine does not know. A field of a section names its section, such as `Unknown key "widht" in the "window" section of "app.json".` |
-| `The value of "<key>" in "app.json" has the wrong type.` | A value is not of the type that the tables above give. |
-| `The value of "<key>" in "app.json" must be a whole number from <minimum> to <maximum>.` | A whole number, such as `window.width` or `window.frameRate`, has a fraction, such as `800.5`, or lies outside the numbers it can hold, such as `1e20`. |
-| `The value of "<key>" in "app.json" must be a number from <minimum> to <maximum>.` | A number with a fraction, such as `splash.duration`, lies outside the numbers it can hold. |
-| `The value of "<key>" in "app.json" must be positive.` | One of `window.width`, `window.height`, `window.sampleCount`, `design.width`, `design.height`, `fixedRate` and `maxFrameTime` is `0` or less. |
-| `The value of "<key>" in "app.json" must be a number of at least 0.` | The `splash.duration` or `splash.fadeOut` is negative or not finite. |
-| `The "window.maxPixelDensity" value in "app.json" is out of range. It is 0 for every pixel of the display, or a positive number of framebuffer pixels in each point.` | The cap of the pixel density is negative or not finite. |
-| `The "<key>" value "<value>" in "app.json" is not a color such as "#RRGGBB" or "#AARRGGBB".` | The `clearColor`, `window.statusBarColor`, `splash.background` or `splash.darkBackground` is not a color. |
-| `The "window.statusBar" value "<value>" in "app.json" is unknown. It is "hidden", "auto", "light" or "dark".` | The status bar has another value. |
-| `The "window.graphicsApis" value "<value>" in "app.json" is not a graphics API. It is "metal", "direct3D12", "direct3D11", "vulkan", "openGl", "openGlEs", "webGpu", "webGl2" or "port".` | The list names something else, or `"none"`. |
-| `The "window.graphicsApis" of "app.json" names "<value>" twice.` | The list repeats an API. |
-| `The "window.graphicsApis" of "app.json" is not an array of graphics API names, such as ["vulkan", "openGl"].` | The value is not an array. |
-| `The "window.position" in "app.json" is invalid. <reason>` | The placement of the window is wrong, for the reason that follows. |
-| `The "design.scaling" value "<value>" in "app.json" is unknown. It is "fit", "fill", "stretch", "expand", "pixelPerfect", "fitWidth" or "none".` | The scaling policy has another value. |
-| `The orientation "<value>" in "app.json" is unknown. It is "landscape", "portrait" or "any".` | The orientation has another value. |
-| `The "audio.iosSession" value "<value>" in "app.json" is unknown. It is "ambient", "soloAmbient" or "playback".` | The audio session has another value. |
-| `The "audio.mixWithOthers" option in "app.json" needs the "iosSession" value "playback".` | The option `mixWithOthers` is `true` with another session. |
-| `The "audio.background" option in "app.json" needs the "iosSession" value "playback", the only session that iOS and tvOS play in the background.` | The option `background` is `true` with another session. |
-| `The "audio.latency" value "<value>" in "app.json" is unknown. It is "low", "balanced" or "powerSaving".` | The latency has another value. |
-| `The "input.scrollSpeed" value in "app.json" must be a positive number.` | The scroll speed is not a positive finite number. |
-| `The "ui.scaleMode" value "<value>" in "app.json" is unknown. It is "design" or "physical".` | The scale mode has another value. |
-| `The "ui.scale" value in "app.json" must be from 0.25 to 4.` | The scale of the interface is out of its range. |
-| `The "debug.stats" value "<value>" in "app.json" is unknown. It is "off", "compact" or "full".` | The debug statistics have another value. |
-| `The "debug.statsItems" item "<item>" in "app.json" is unknown. It is "frameRate", "drawCalls", "geometry", "memory", "counters", "physics", "particles" or "audio".` | An item of the compact statistics is unknown. |
-| `The "debug.drawings" list in "app.json" has an empty drawing name.` | A debug drawing has an empty name. |
-| `The "debug.safeArea" in "app.json" is invalid. <reason>` | The simulated safe area is wrong, for the reason that follows. |
-| `The "debug.fold" in "app.json" is invalid. <reason>` | The simulated fold is wrong, for the reason that follows. |
+| `Unknown key "<key>" in "haylen.json".` | The file has a field that the engine does not know. A field of a section names its section, such as `Unknown key "widht" in the "window" section of "haylen.json".` |
+| `The value of "<key>" in "haylen.json" has the wrong type.` | A value is not of the type that the tables above give. |
+| `The value of "<key>" in "haylen.json" must be a whole number from <minimum> to <maximum>.` | A whole number, such as `window.width` or `window.frameRate`, has a fraction, such as `800.5`, or lies outside the numbers it can hold, such as `1e20`. |
+| `The value of "<key>" in "haylen.json" must be a number from <minimum> to <maximum>.` | A number with a fraction, such as `splash.duration`, lies outside the numbers it can hold. |
+| `The value of "<key>" in "haylen.json" must be positive.` | One of `window.width`, `window.height`, `window.sampleCount`, `design.width`, `design.height`, `fixedRate` and `maxFrameTime` is `0` or less. |
+| `The value of "<key>" in "haylen.json" must be a number of at least 0.` | The `splash.duration` or `splash.fadeOut` is negative or not finite. |
+| `The "window.maxPixelDensity" value in "haylen.json" is out of range. It is 0 for every pixel of the display, or a positive number of framebuffer pixels in each point.` | The cap of the pixel density is negative or not finite. |
+| `The "<key>" value "<value>" in "haylen.json" is not a color such as "#RRGGBB" or "#AARRGGBB".` | The `clearColor`, `window.statusBarColor`, `splash.background` or `splash.darkBackground` is not a color. |
+| `The "window.statusBar" value "<value>" in "haylen.json" is unknown. It is "hidden", "auto", "light" or "dark".` | The status bar has another value. |
+| `The "window.graphicsApis" value "<value>" in "haylen.json" is not a graphics API. It is "metal", "direct3D12", "direct3D11", "vulkan", "openGl", "openGlEs", "webGpu", "webGl2" or "port".` | The list names something else, or `"none"`. |
+| `The "window.graphicsApis" of "haylen.json" names "<value>" twice.` | The list repeats an API. |
+| `The "window.graphicsApis" of "haylen.json" is not an array of graphics API names, such as ["vulkan", "openGl"].` | The value is not an array. |
+| `The "window.position" in "haylen.json" is invalid. <reason>` | The placement of the window is wrong, for the reason that follows. |
+| `The "design.scaling" value "<value>" in "haylen.json" is unknown. It is "fit", "fill", "stretch", "expand", "pixelPerfect", "fitWidth" or "none".` | The scaling policy has another value. |
+| `The orientation "<value>" in "haylen.json" is unknown. It is "landscape", "portrait" or "any".` | The orientation has another value. |
+| `The "audio.iosSession" value "<value>" in "haylen.json" is unknown. It is "ambient", "soloAmbient" or "playback".` | The audio session has another value. |
+| `The "audio.mixWithOthers" option in "haylen.json" needs the "iosSession" value "playback".` | The option `mixWithOthers` is `true` with another session. |
+| `The "audio.background" option in "haylen.json" needs the "iosSession" value "playback", the only session that iOS and tvOS play in the background.` | The option `background` is `true` with another session. |
+| `The "audio.latency" value "<value>" in "haylen.json" is unknown. It is "low", "balanced" or "powerSaving".` | The latency has another value. |
+| `The "input.scrollSpeed" value in "haylen.json" must be a positive number.` | The scroll speed is not a positive finite number. |
+| `The "ui.scaleMode" value "<value>" in "haylen.json" is unknown. It is "design" or "physical".` | The scale mode has another value. |
+| `The "ui.scale" value in "haylen.json" must be from 0.25 to 4.` | The scale of the interface is out of its range. |
+| `The "debug.stats" value "<value>" in "haylen.json" is unknown. It is "off", "compact" or "full".` | The debug statistics have another value. |
+| `The "debug.statsItems" item "<item>" in "haylen.json" is unknown. It is "frameRate", "drawCalls", "geometry", "memory", "counters", "physics", "particles" or "audio".` | An item of the compact statistics is unknown. |
+| `The "debug.drawings" list in "haylen.json" has an empty drawing name.` | A debug drawing has an empty name. |
+| `The "debug.safeArea" in "haylen.json" is invalid. <reason>` | The simulated safe area is wrong, for the reason that follows. |
+| `The "debug.fold" in "haylen.json" is invalid. <reason>` | The simulated fold is wrong, for the reason that follows. |
 | `The "debug.reload" option must be "module" or "restart".` | The reload mode has another value. |
-| `The "localization.<key>" value "<value>" in "app.json" is no language tag. Write a language such as "en", "pt-BR" or "pt_BR".` | The `localization.fallback` or `localization.language` is not a language tag. |
-| `The "localization.fallback" of "app.json" needs a "localization.folder" that holds its language file.` | The fallback is set without the folder. |
-| `The folder "<folder>" of "localization.folder" in "app.json" holds no language file. Add a file such as "<folder>/en.json".` | The folder has no `.json` file. The app shows it on the error screen once it starts. |
-| `The "localization.fallback" of "app.json" names "<language>", whose file the folder "<folder>" lacks.` | The folder has no file of the fallback language. The app shows it on the error screen once it starts. |
-| `The "autoload" list in "app.json" has an empty module name.` | An autoload has an empty name. |
-| `The "native" section of "app.json" must be an object of libraries.` | The section `native` is not an object. |
-| `The "plugins" section of "app.json" must be an object of plugins by id.` | The section `plugins` is not an object. |
-| `The plugin id "<id>" in "app.json" is not in "dash-case", such as "cloud-analytics".` | A plugin id has other characters. |
-| `The plugin "<id>" in "app.json" must be an object with the optional keys "path", "git", "ref" and "parameters".` | The entry of a plugin is not an object. |
-| `Unknown key "<key>" in the plugin "<id>" of "app.json".` | The entry of a plugin has a key other than `path`, `git`, `ref` and `parameters`. |
-| `The "<key>" of the plugin "<id>" in "app.json" must be a text.` | A `path`, `git` or `ref` is empty or not a text. |
-| `The plugin "<id>" in "app.json" names both a "path" and a "git" repository. Keep the one that the plugin comes from.` | An entry names both sources. |
-| `The "ref" of the plugin "<id>" in "app.json" picks a branch, tag or commit of a git repository, so it needs "git".` | An entry has a `ref` without `git`. |
-| `The "parameters" of the plugin "<id>" in "app.json" must be an object of parameter values.` | The values of a plugin are not an object. |
-| `The plugin "<id>" in "app.json" has no "plugins/<id>/plugin.json" in the package.` | The package lacks the manifest of a plugin that `app.json` lists. |
-| `The plugin "<id>" in "app.json" comes from a "path" or a "git" repository, so the package has no "plugins/<id>/plugin.json". Run the app with "haylen run", which places every plugin in the package wherever it comes from.` | A player runs an app folder directly, which lacks a plugin that `app.json` references elsewhere. |
+| `The "localization.<key>" value "<value>" in "haylen.json" is no language tag. Write a language such as "en", "pt-BR" or "pt_BR".` | The `localization.fallback` or `localization.language` is not a language tag. |
+| `The "localization.fallback" of "haylen.json" needs a "localization.folder" that holds its language file.` | The fallback is set without the folder. |
+| `The folder "<folder>" of "localization.folder" in "haylen.json" holds no language file. Add a file such as "<folder>/en.json".` | The folder has no `.json` file. The app shows it on the error screen once it starts. |
+| `The "localization.fallback" of "haylen.json" names "<language>", whose file the folder "<folder>" lacks.` | The folder has no file of the fallback language. The app shows it on the error screen once it starts. |
+| `The "autoload" list in "haylen.json" has an empty module name.` | An autoload has an empty name. |
+| `The "native" section of "haylen.json" must be an object of libraries.` | The section `native` is not an object. |
+| `The "plugins" section of "haylen.json" must be an object of plugins by id.` | The section `plugins` is not an object. |
+| `The plugin id "<id>" in "haylen.json" is not in "dash-case", such as "cloud-analytics".` | A plugin id has other characters. |
+| `The plugin "<id>" in "haylen.json" must be an object with the optional keys "path", "git", "ref" and "parameters".` | The entry of a plugin is not an object. |
+| `Unknown key "<key>" in the plugin "<id>" of "haylen.json".` | The entry of a plugin has a key other than `path`, `git`, `ref` and `parameters`. |
+| `The "<key>" of the plugin "<id>" in "haylen.json" must be a text.` | A `path`, `git` or `ref` is empty or not a text. |
+| `The plugin "<id>" in "haylen.json" names both a "path" and a "git" repository. Keep the one that the plugin comes from.` | An entry names both sources. |
+| `The "ref" of the plugin "<id>" in "haylen.json" picks a branch, tag or commit of a git repository, so it needs "git".` | An entry has a `ref` without `git`. |
+| `The "parameters" of the plugin "<id>" in "haylen.json" must be an object of parameter values.` | The values of a plugin are not an object. |
+| `The plugin "<id>" in "haylen.json" has no "plugins/<id>/plugin.json" in the package.` | The package lacks the manifest of a plugin that `haylen.json` lists. |
+| `The plugin "<id>" in "haylen.json" comes from a "path" or a "git" repository, so the package has no "plugins/<id>/plugin.json". Run the app with "haylen app run", which places every plugin in the package wherever it comes from.` | A player runs an app folder directly, which lacks a plugin that `haylen.json` references elsewhere. |
 
 The [delivery settings](../content/content.md#delivery) list the messages of the `content` section.

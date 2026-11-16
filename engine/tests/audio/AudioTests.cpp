@@ -475,7 +475,7 @@ TEST_F(MixerTest, ManagesBusesAndRejectsInvalidUse) {
     mixer.resume();
 }
 
-TEST_F(SoundTest, ReadsTheSessionFromAppJson) {
+TEST_F(SoundTest, ReadsTheSessionFromHaylenJson) {
     const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({"audio": {"iosSession": "playback", "mixWithOthers": true}})"));
     EXPECT_EQ(config.audioSession.category, Session::Category::Playback);
     EXPECT_TRUE(config.audioSession.mixWithOthers);

@@ -622,7 +622,7 @@ TEST_F(ModuleReloadTest, ReloadsChangedModulesInDependencyOrder) {
 }
 
 TEST_F(ModuleReloadTest, CallsReloadedOnModulesDependentsAutoloadsScenesAndInstances) {
-    start({{"app.json", R"({"name": "Hooks", "autoload": ["service"]})"},
+    start({{"haylen.json", R"({"name": "Hooks", "autoload": ["service"]})"},
         {"source/core.lua", R"(
 local haylen = require('haylen')
 local M = {}
@@ -815,8 +815,8 @@ TEST_F(ModuleReloadTest, RestartsOnceAModuleWhoseFirstLoadFailedInALifecycleStep
     EXPECT_TRUE(restarted());
 }
 
-TEST_F(ModuleReloadTest, RestartsForAppJsonMainAndPluginManifests) {
-    for (const std::string path : {"app.json", "source/main.lua", "plugins/ads/plugin.json"}) {
+TEST_F(ModuleReloadTest, RestartsForHaylenJsonMainAndPluginManifests) {
+    for (const std::string path : {"haylen.json", "source/main.lua", "plugins/ads/plugin.json"}) {
         start({{"source/main.lua", ""}});
         recordLog();
         edit({{path, "{}"}});
@@ -827,7 +827,7 @@ TEST_F(ModuleReloadTest, RestartsForAppJsonMainAndPluginManifests) {
 }
 
 TEST_F(ModuleReloadTest, RestartsInTheRestartModeAndForMarkedModules) {
-    start({{"app.json", R"({"name": "Restart", "debug": {"reload": "restart"}})"}, {"source/a.lua", "return {}"}, {"source/main.lua", "require('a')"}});
+    start({{"haylen.json", R"({"name": "Restart", "debug": {"reload": "restart"}})"}, {"source/a.lua", "return {}"}, {"source/main.lua", "require('a')"}});
     EXPECT_EQ(lua("return require('haylen.hotReload').mode()"), "restart");
     edit({{"source/a.lua", "return {edited = true}"}});
     EXPECT_TRUE(restarted());

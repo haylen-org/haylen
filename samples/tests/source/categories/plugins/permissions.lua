@@ -112,7 +112,7 @@ function Permissions:startCamera()
         local name = 'The camera of the plugin follows the permission'
         local started, err = demo.startCamera():await()
         if err and err.code == 'noHandler' then
-            self.results:set('start', 'skip', name, 'The C library of the desktops has no camera.')
+            self.results:set('start', 'skip', name, 'The C++ library of the desktops has no camera.')
             return
         elseif err and err.code == 'denied' then
             self:show('camera', 'denied')
@@ -133,7 +133,7 @@ function Permissions:notify()
         local name = 'A local notification is scheduled'
         local scheduled, err = demo.notify(Permissions.notifySeconds):await()
         if err and err.code == 'noHandler' then
-            self.results:set('notify', 'skip', name, 'The C library of the desktops shows no notifications.')
+            self.results:set('notify', 'skip', name, 'The C++ library of the desktops shows no notifications.')
             return
         elseif err then
             self.results:failure('notify', name, err)

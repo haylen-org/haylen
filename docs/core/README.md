@@ -8,14 +8,14 @@ The core runs an app: the engine and its plugins, the frame, the threads, the Lu
 | --- | --- | --- |
 | Architecture | The libraries the engine builds, the source layout, plugins, the host boundary, the platform layers, the GPU devices and the renderers, the frame, threads, resource ownership, app packages, the web runtime and how hot reload works. | [`architecture.md`](architecture.md) |
 | Lifecycle | What happens from start to stop: app states on each platform, the scene lifecycle, the game pause and process modes, autoloads and the owners that end listeners, timers and tasks. | [`lifecycle.md`](lifecycle.md) |
-| Localization | Texts per language, the `localization` section of `app.json`, language tags in any form and their canonical form, the order in which the language is picked from the device or the app, where each platform keeps the languages of the person, and the events of a change. | [`localization.md`](localization.md) |
-| Lua | The first steps of a Lua app: the app package and `app.json`, modules and asset paths, scenes, autoloads, classes, owners, disk access, asynchronous code, errors, hot reload, performance and Lua modules written in C++. | [`lua.md`](lua.md) |
+| Localization | Texts per language, the `localization` section of `haylen.json`, language tags in any form and their canonical form, the order in which the language is picked from the device or the app, where each platform keeps the languages of the person, and the events of a change. | [`localization.md`](localization.md) |
+| Lua | The first steps of a Lua app: the app package and `haylen.json`, modules and asset paths, scenes, autoloads, classes, owners, disk access, asynchronous code, errors, hot reload, performance and Lua modules written in C++. | [`lua.md`](lua.md) |
 
 ## Lua API
 
 | Name | Description | Link |
 | --- | --- | --- |
-| `haylen` | Engine version, platform, graphics API, every field of `app.json` with its default, the app clock, time scale, the game pause, app states with the cover of native UI, lifecycle options, autoloads, classes, quitting with an exit status and fatal errors. | [`lua-api/haylen.md`](../lua-api/haylen.md) |
+| `haylen` | Engine version, platform, graphics API, every field of `haylen.json` with its default, the app clock, time scale, the game pause, app states with the cover of native UI, lifecycle options, autoloads, classes, quitting with an exit status and fatal errors. | [`lua-api/haylen.md`](../lua-api/haylen.md) |
 | `haylen.ai` | Finite state machines, behavior trees, utility selectors and influence maps. | [`lua-api/ai.md`](../lua-api/ai.md) |
 | `haylen.collections` | Object pools that recycle Lua values, ring buffers of the newest values and float buffers shared with C++. | [`lua-api/collections.md`](../lua-api/collections.md) |
 | `haylen.conversation` | Branching conversations with lines, choices, conditions, variables, commands, variants and saves. | [`lua-api/conversation.md`](../lua-api/conversation.md) |

@@ -8,8 +8,8 @@ namespace haylen::io {
 // Package paths: relative, separated by forward slashes and never leaving their root folder.
 class Path final {
   public:
-    // A package holds `app.json`, the Lua modules under `source`, the assets under `content` and, for every plugin that `app.json` lists, `plugins/<id>/plugin.json` with the Lua modules of the plugin under `plugins/<id>/source`.
-    static constexpr std::string_view kAppConfigFile = "app.json";
+    // A package holds `haylen.json`, the Lua modules under `source`, the assets under `content` and, for every plugin that `haylen.json` lists, `plugins/<id>/plugin.json` with the Lua modules of the plugin under `plugins/<id>/source`.
+    static constexpr std::string_view kAppConfigFile = "haylen.json";
     static constexpr std::string_view kSourceDirectory = "source";
     static constexpr std::string_view kContentDirectory = "content";
     static constexpr std::string_view kPluginsDirectory = "plugins";

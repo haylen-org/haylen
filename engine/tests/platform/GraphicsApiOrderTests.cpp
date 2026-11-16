@@ -11,7 +11,7 @@
 
 namespace haylen::platform {
 
-// The command line overrides the APIs of `app.json`, and both only move the APIs of the build to the front of the order of the platform.
+// The command line overrides the APIs of `haylen.json`, and both only move the APIs of the build to the front of the order of the platform.
 TEST(GraphicsApiOrderTest, PutsTheCommandLineBeforeTheAppAndThePlatform) {
     const std::array<gpu::Device::Api, 2> configured{gpu::Device::Api::OpenGl, gpu::Device::Api::Vulkan};
     EXPECT_EQ(GraphicsApiOrder::resolve("", configured), gpu::DeviceFactory::order(configured));

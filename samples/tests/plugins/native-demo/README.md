@@ -8,7 +8,7 @@ A Haylen plugin that exercises every capability of native plugins with the APIs 
 haylen plugin add samples/tests/plugins/native-demo --app my-app
 ```
 
-The command `plugin add` copies the plugin into `plugins/native-demo/` of the app and lists it in the `plugins` section of its `app.json`. Every [parameter](#parameters) that the entry leaves out takes its default, and the values of the app go under `parameters`:
+The command `plugin add` copies the plugin into `plugins/native-demo/` of the app and lists it in the `plugins` section of its `haylen.json`. Every [parameter](#parameters) that the entry leaves out takes its default, and the values of the app go under `parameters`:
 
 ```json
 {
@@ -22,14 +22,14 @@ The command `plugin add` copies the plugin into `plugins/native-demo/` of the ap
 
 | Platform | Native part | What it uses |
 | --- | --- | --- |
-| iOS, iPadOS, Mac Catalyst | `apple/`, Swift | `NativeDemoDevice.swift` with AVFoundation for the camera and the microphone, Core Location, a MapKit view over the app, `UIActivityViewController` and the links of other apps, `NativeDemoStore.swift` with the fake store, ads and sign-in as screens of the plugin in alerts of `NativeDemoSheet.swift`, UIKit views over the app, a presented view controller, `UIDocumentPickerViewController`, a UIKit and a SwiftUI screen, the latter in a window of its own on Mac Catalyst, `CVPixelBuffer`s drawn with CoreGraphics and floats from dispatch queues for the streams, `NativeDemoPermissions.swift`, which registers the permissions that the plugin owns as `HaylenPermission` objects and asks for them through `context.requirePermission`, `UNUserNotificationCenter` for the notification, with `AVFoundation.framework` and `UserNotifications.framework` in the `frameworks` of `plugin.json` and the plugin class a `HaylenNotificationPlugin`, `CFBundleURLTypes`, `scene(_:openURLContexts:)`, `context.require` for the requirements and CoreGraphics with ImageIO for the image. |
+| iOS, iPadOS, Mac Catalyst, visionOS | `apple/`, Swift | `NativeDemoDevice.swift` with AVFoundation for the camera and the microphone, Core Location, a MapKit view over the app, `UIActivityViewController` and the links of other apps, `NativeDemoStore.swift` with the fake store, ads and sign-in as screens of the plugin in alerts of `NativeDemoSheet.swift`, UIKit views over the app, a presented view controller, `UIDocumentPickerViewController`, a UIKit and a SwiftUI screen, the latter in a window of its own on Mac Catalyst, `CVPixelBuffer`s drawn with CoreGraphics and floats from dispatch queues for the streams, `NativeDemoPermissions.swift`, which registers the permissions that the plugin owns as `HaylenPermission` objects and asks for them through `context.requirePermission`, `UNUserNotificationCenter` for the notification, with `AVFoundation.framework` and `UserNotifications.framework` in `framework` contributions of `plugin.json` and the plugin class a `HaylenNotificationPlugin`, `CFBundleURLTypes`, `scene(_:openURLContexts:)`, `context.require` for the requirements and CoreGraphics with ImageIO for the image. |
 | tvOS | `apple/`, Swift | The same, without a file picker, a camera, a microphone for apps, a share sheet and notifications that show, so `pickFile`, `startCamera`, `takePhoto`, `startMicrophone`, `share` and `notify` fail with the code `unsupported`. |
 | macOS app | `apple/`, Swift | The simulations of iOS with `NSSharingServicePicker`, `NSWorkspace` and `NSAlert` sheets, with the entitlements of the hardened runtime that the camera, the microphone and the location need, AppKit views over the app, a sheet, `NSOpenPanel`, an AppKit sheet and a SwiftUI window for the screens, the streams, the permissions and the notification as on iOS, `CFBundleURLTypes`, `application(_:open:)` and CoreGraphics with ImageIO for the image. |
 | Android | `android/`, a Kotlin library module | `NativeDemoDevice.kt` with Camera2, `AudioRecord` and `LocationManager`, a drawn map in `NativeDemoMap.kt`, the share sheet and other apps through intents, `NativeDemoStore.kt` with the fake store, ads and sign-in as screens of the plugin in dialogs, the permissions `RECORD_AUDIO`, `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION` next to the others, views of the overlay over the app, a full screen `Dialog`, an `AppCompatActivity` of its own for the confirm screen, `ActivityResultContracts.OpenDocument` through the Activity Result API, `NativeDemoPermissions.kt`, which registers the permissions that the plugin owns as `HaylenPermission` objects for `context.requirePermission`, an intent filter of `HaylenLinkActivity` of `dev.haylen:haylen-links` for the URL scheme and the taps on notifications, an alarm and `NotificationManagerCompat` for the notification, `HaylenRequirements` for the permissions, a `Bitmap` and a `Canvas` for the image and the video stream, and the streams of the context. |
 | Web | `web/native-demo.js`, `web/simulations.js`, `web/permissions.js` and `web/screen.html` | `getUserMedia` with an audio worklet for the camera and the microphone, the Geolocation API, a drawn map in the overlay, the Web Share API, links of other apps, and `<dialog>` elements for the fake store, ads and sign-in as screens of the plugin, all through `context.require` for a secure context and the API, DOM elements in the overlay, a modal `<dialog>`, a popup and a redirect to `screen.html` for the confirm screen, an `<input type="file">`, the hash of the page address, a `<canvas>` with `toBlob` for the image and the video stream, timers of the page for the tone and the bursts, `context.registerPermission` in `permissions.js` for the permissions that the plugin owns and `context.requirePermission` before it uses them, the Notification API for the notification, and `context.require` for the requirements. |
-| Desktop player, Windows, Linux | `native/`, a C library | Threads of the system and `HaylenNativeApi`, with a PNG encoder of its own, the video and audio streams of the engine and a window of its own for the confirm screen: a sheet with AppKit on macOS, an owned window with Win32 on Windows and a transient window with Xlib on Linux. The same windows show the fake store, ads and sign-in, and the shell of the system opens other apps. The desktops place no views of native libraries over the app, so `showBanner`, `setBannerVisible`, `removeBanner`, `showScreen`, `showMap` and `pickFile` fail with the code `unsupported`, and so do the camera, the microphone, the location and `share`, whose desktop APIs differ on each system, and `nativeConfig`, since native libraries receive no plugin parameters. The desktops open no URLs of the scheme either. |
+| Desktop player, Windows, Linux | `native/`, a C++ library | Threads of the system and `HaylenNativeApi`, with a PNG encoder of its own, the video and audio streams of the engine and a window of its own for the confirm screen: a sheet with AppKit on macOS, an owned window with Win32 on Windows and a transient window with Xlib on Linux. The same windows show the fake store, ads and sign-in, and the shell of the system opens other apps. The desktops place no views of native libraries over the app, so `showBanner`, `setBannerVisible`, `removeBanner`, `showScreen`, `showMap` and `pickFile` fail with the code `unsupported`, and so do the camera, the microphone, the location and `share`, whose desktop APIs differ on each system, and `nativeConfig`, since native libraries receive no plugin parameters. The desktops open no URLs of the scheme either. |
 
-The Lua API loads the C library with `native.load('native-demo', {init = 'native_demo_haylen_init'})` when it runs on macOS, Windows or Linux and no other native part loaded, which is the case of the desktop player and of Windows and Linux apps. The macOS app built from the Apple template runs the Swift part, which loads before any Lua runs.
+The Lua API loads the C++ library with `native.load('native-demo', {init = 'native_demo_haylen_init'})` when it runs on macOS, Windows or Linux and no other native part loaded, which is the case of the desktop player and of Windows and Linux apps. The macOS app of the target `macos` runs the Swift part, which loads before any Lua runs.
 
 ## Parameters
 
@@ -66,7 +66,7 @@ end
 
 ### demo.config()
 
-Returns the parameters of the plugin, the values of `app.json` over the defaults of `plugin.json`. The fields `demo.id` and `demo.version` are the id and the version of the plugin.
+Returns the parameters of the plugin, the values of `haylen.json` over the defaults of `plugin.json`. The fields `demo.id` and `demo.version` are the id and the version of the plugin.
 
 ```lua
 local demo = require('native-demo')
@@ -90,7 +90,7 @@ end)
 
 ### demo.echo(value)
 
-Sends any JSON value to the native part, which answers on the main thread with `{echo, thread, language}`, where `thread` is `'main'`, or `'frame'` for the C library, whose handlers run on the frame thread.
+Sends any JSON value to the native part, which answers on the main thread with `{echo, thread, language}`, where `thread` is `'main'`, or `'frame'` for the C++ library, whose handlers run on the frame thread.
 
 ```lua
 local async = require('async')
@@ -118,7 +118,7 @@ end)
 
 ### demo.echoBytes(data)
 
-Sends the bytes of the string `data` to the native part as a byte buffer, marked with `platform.bytes`, and the native part answers with `{data, size, thread, language}`, where `data` holds the same bytes as a Lua string. Swift reads and answers `Data`, Kotlin a `ByteArray`, JavaScript a `Uint8Array` and C the `HaylenNativeBuffer` of its handler. Without bytes it fails with the code `invalidParams`.
+Sends the bytes of the string `data` to the native part as a byte buffer, marked with `platform.bytes`, and the native part answers with `{data, size, thread, language}`, where `data` holds the same bytes as a Lua string. Swift reads and answers `Data`, Kotlin a `ByteArray`, JavaScript a `Uint8Array` and C++ the `HaylenNativeBuffer` of its handler. Without bytes it fails with the code `invalidParams`.
 
 ```lua
 local async = require('async')
@@ -149,7 +149,7 @@ end)
 
 ### demo.captureFrame(width, height)
 
-Fills a frame of `width` by `height` RGBA pixels, from 1 to 2048, whose colors move with the index of the frame, the way a camera hands over its frames, and answers with `{frame, width, height, index, language}`. The value `frame` is a [data view](../../../../docs/platform/platform-bridge.md#data-views) that the native part made, whose memory the app reads in place: with `VarnDataView(length:)` in Swift, `VarnDataView.allocate` in Kotlin, `context.VarnDataView.allocate` in JavaScript and `newView` of `HaylenNativeApi` in C. Another size fails with the code `invalidParams`.
+Fills a frame of `width` by `height` RGBA pixels, from 1 to 2048, whose colors move with the index of the frame, the way a camera hands over its frames, and answers with `{frame, width, height, index, language}`. The value `frame` is a [data view](../../../../docs/platform/platform-bridge.md#data-views) that the native part made, whose memory the app reads in place: with `VarnDataView(length:)` in Swift, `VarnDataView.allocate` in Kotlin, `context.VarnDataView.allocate` in JavaScript and `newView` of `HaylenNativeApi` in C++. Another size fails with the code `invalidParams`.
 
 ```lua
 local async = require('async')
@@ -218,7 +218,7 @@ end)
 
 ### demo.setTicking(enabled)
 
-Starts or stops the native timer that sends `tick` every `tickInterval` seconds, and answers with `{enabled, interval}`. Swift runs a `Timer` on the main run loop, Kotlin posts to the main `Handler`, JavaScript uses `setInterval` and C a thread of the library.
+Starts or stops the native timer that sends `tick` every `tickInterval` seconds, and answers with `{enabled, interval}`. Swift runs a `Timer` on the main run loop, Kotlin posts to the main `Handler`, JavaScript uses `setInterval` and C++ a thread of the library.
 
 ### demo.onTick(listener)
 
@@ -233,7 +233,7 @@ demo.setTicking(true)
 
 ### demo.burst(count, ticks)
 
-Sends `count` events of the name `burst` 30 times per second for `ticks` ticks, each marked batched, and then `burstDone` with `{events, ticks, language}`, and answers at once with `{count, ticks, language}`. Swift sends from a `Timer`, Kotlin from the main `Handler`, JavaScript from `setInterval` and C from a thread of the library.
+Sends `count` events of the name `burst` 30 times per second for `ticks` ticks, each marked batched, and then `burstDone` with `{events, ticks, language}`, and answers at once with `{count, ticks, language}`. Swift sends from a `Timer`, Kotlin from the main `Handler`, JavaScript from `setInterval` and C++ from a thread of the library.
 
 ### demo.onBurst(listener), demo.onBurstDone(listener)
 
@@ -302,7 +302,7 @@ end)
 
 ### demo.onLoaded(listener)
 
-The native part sends `loaded` with `{language, platform}` retained when it loads, once per process, before any Lua runs on Apple platforms, Android and the web, and when the Lua API loads the C library on the desktops. The first listener of the process receives it however late it connects, and an app that restarted in the same process does not receive it again.
+The native part sends `loaded` with `{language, platform}` retained when it loads, once per process, before any Lua runs on Apple platforms, Android and the web, and when the Lua API loads the C++ library on the desktops. The first listener of the process receives it however late it connects, and an app that restarted in the same process does not receive it again.
 
 ```lua
 local demo = require('native-demo')
@@ -424,7 +424,7 @@ end)
 
 ### Permissions
 
-The plugin owns the permissions `camera`, `microphone`, `location` and `notifications`, which the `permissions` of its `plugin.json` declare, and every native part registers them, so the app checks and asks for them through [`system.permission` and `system.requestPermission`](../../../../docs/lua-api/system.md#systempermissionname) and the runtime of each platform answers them with the prompt of the system. Every native part asks for the permission it needs through `context.requirePermission` before it uses the capability, where the app does not hold it yet. Apple TV registers only the location, and the C library of the desktops registers none, so their other permissions answer `unsupported`. A call whose permission the person refused fails with the code `denied` and the sentence that names it and how to ask again, and a project that lacks a requirement, such as the usage description of the `Info.plist` or the line of the Android manifest, fails with `unsupported` and `data.missing`.
+The plugin owns the permissions `camera`, `microphone`, `location` and `notifications`, which the `permissions` of its `plugin.json` declare, and every native part registers them, so the app checks and asks for them through [`system.permission` and `system.requestPermission`](../../../../docs/lua-api/system.md#systempermissionname) and the runtime of each platform answers them with the prompt of the system. Every native part asks for the permission it needs through `context.requirePermission` before it uses the capability, where the app does not hold it yet. Apple TV registers only the location, and the C++ library of the desktops registers none, so their other permissions answer `unsupported`. A call whose permission the person refused fails with the code `denied` and the sentence that names it and how to ask again, and a project that lacks a requirement, such as the usage description of the `Info.plist` or the line of the Android manifest, fails with `unsupported` and `data.missing`.
 
 ```lua
 local async = require('async')
@@ -460,7 +460,7 @@ end)
 
 ### demo.requirementCheck()
 
-Calls a method whose native part needs something that the plugin leaves out of the project of the app on purpose, to show how a plugin checks its [requirements](../../../../docs/platform/plugins.md#requirements). On Android it needs the permission `android.permission.READ_CONTACTS`, which the manifest of its module never declares, on Apple platforms the usage description `NSContactsUsageDescription`, which the `infoPlist` of its `plugin.json` never gives, and on the web the Contact Picker API `navigator.contacts` in a secure context, which only browsers of phones offer. The call fails with the code `unsupported` and `data.missing` lists what is missing as `{kind, name, file, snippet}`, while the log tells once what is missing and how to add it. A web requirement has no file of a project, so its `file` and `snippet` are empty. An app whose project has the requirement, and a phone browser with the API, get `{met, language}` instead, and the desktops, whose C library checks no requirements, answer with the code `noHandler`.
+Calls a method whose native part needs something that the plugin leaves out of its contributions on purpose, to show how a plugin checks its [requirements](../../../../docs/platform/plugins.md#requirements). On Android it needs the permission `android.permission.READ_CONTACTS`, which the manifest of its module never declares, on Apple platforms the usage description `NSContactsUsageDescription`, which the `infoPlist` of its `plugin.json` never gives, and on the web the Contact Picker API `navigator.contacts` in a secure context, which only browsers of phones offer. The call fails with the code `unsupported` and `data.missing` lists what is missing as `{kind, name, file, snippet}`, while the log tells once what is missing and how to add it. A web requirement has no file of a project, so its `file` and `snippet` are empty. An app that brings the requirement through `haylen.json`, and a phone browser with the API, get `{met, language}` instead, and the desktops, whose C++ library checks no requirements, answer with the code `noHandler`.
 
 ```lua
 local async = require('async')
@@ -504,7 +504,7 @@ The functions below stand in for the SDKs that real plugins bring. Each answers 
 
 ### demo.startCamera(facing), demo.stopCamera(), demo.cameraStream(), demo.takePhoto()
 
-Starts the camera, `'back'` by default or `'front'`, after the permission `camera` of the person, and answers with `{width, height, facing, language}` once frames flow. The native part pushes its frames into the video stream `camera`, which `demo.cameraStream()` returns, and `takePhoto` answers with `{jpeg, width, height, language}`, the newest frame as the bytes of a JPEG file. A device without a camera, Apple TV and the desktops of the C library fail with `unsupported`, a refused permission with `denied`, and `takePhoto` without a camera with `cameraOff`.
+Starts the camera, `'back'` by default or `'front'`, after the permission `camera` of the person, and answers with `{width, height, facing, language}` once frames flow. The native part pushes its frames into the video stream `camera`, which `demo.cameraStream()` returns, and `takePhoto` answers with `{jpeg, width, height, language}`, the newest frame as the bytes of a JPEG file. A device without a camera, Apple TV and the desktops of the C++ library fail with `unsupported`, a refused permission with `denied`, and `takePhoto` without a camera with `cameraOff`.
 
 ```lua
 local async = require('async')
@@ -554,7 +554,7 @@ end)
 
 ### demo.share(text, url), demo.openApp(kind)
 
-The call `share` opens the share sheet of the platform with the text and the url, which may be `nil`, and answers with `{shared, language}`, where `shared` tells whether the person shared, or is `nil` on Android, whose share sheet tells nothing. The call `openApp` opens the settings of the app for `'settings'`, a map app at a place for `'maps'` and a new message of the mail app for `'mail'`, and answers with `{opened, language}`. A web page cannot open the settings, and the C library opens no map app on Windows and Linux, which fail with `unsupported`.
+The call `share` opens the share sheet of the platform with the text and the url, which may be `nil`, and answers with `{shared, language}`, where `shared` tells whether the person shared, or is `nil` on Android, whose share sheet tells nothing. The call `openApp` opens the settings of the app for `'settings'`, a map app at a place for `'maps'` and a new message of the mail app for `'mail'`, and answers with `{opened, language}`. A web page cannot open the settings, and the C++ library opens no map app on Windows and Linux, which fail with `unsupported`.
 
 ```lua
 local demo = require('native-demo')
@@ -565,7 +565,7 @@ demo.openApp('mail')
 
 ### demo.products(), demo.purchase(productId, options), demo.restorePurchases(), demo.onPurchaseUpdated(listener)
 
-The fake store lists three products, `coins.small` and `coins.large`, which the person buys again and again, and `ads.remove`, which the device keeps, each `{id, title, description, price, currency, kind}`. The screen `purchase` shows a sheet with the product and answers with `{productId, transactionId, receipt, language}` once the person buys it, or fails with `cancelled`, and `restorePurchases` answers with the kept purchases, each `{productId, transactionId}`. Every purchase and every restored one sends `purchaseUpdated` with `{productId, transactionId, state, language}`, where `state` is `'purchased'` or `'restored'`. Nothing is charged. The device keeps the purchases in `UserDefaults`, `SharedPreferences` and the local storage of the page, and the C library for the life of the process.
+The fake store lists three products, `coins.small` and `coins.large`, which the person buys again and again, and `ads.remove`, which the device keeps, each `{id, title, description, price, currency, kind}`. The screen `purchase` shows a sheet with the product and answers with `{productId, transactionId, receipt, language}` once the person buys it, or fails with `cancelled`, and `restorePurchases` answers with the kept purchases, each `{productId, transactionId}`. Every purchase and every restored one sends `purchaseUpdated` with `{productId, transactionId, state, language}`, where `state` is `'purchased'` or `'restored'`. Nothing is charged. The device keeps the purchases in `UserDefaults`, `SharedPreferences` and the local storage of the page, and the C++ library for the life of the process.
 
 ```lua
 local async = require('async')
@@ -657,7 +657,7 @@ end)
 
 | Stream | Kind | Format |
 | --- | --- | --- |
-| `island` | Video | BGRA frames of 320 by 180 pixels, 30 per second, from C, RGBA bitmaps of the same size from Kotlin, and RGBA frames of the canvas on the web. |
-| `tone` | Audio | 16-bit mono samples at 44100 Hz from C, and float mono samples at 44100 Hz from Kotlin and on the web. |
+| `island` | Video | BGRA frames of 320 by 180 pixels, 30 per second, from C++, RGBA bitmaps of the same size from Kotlin, and RGBA frames of the canvas on the web. |
+| `tone` | Audio | 16-bit mono samples at 44100 Hz from C++, and float mono samples at 44100 Hz from Kotlin and on the web. |
 | `camera` | Video | BGRA pixel buffers of 640 by 480 pixels from Swift, RGBA frames of 640 by 480 pixels from Kotlin, and RGBA frames of the video of the camera on the web. |
 | `microphone` | Audio | Float mono samples at the rate of the input of the device from Swift and on the web, and at 44100 Hz from Kotlin. |

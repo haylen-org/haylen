@@ -10,7 +10,7 @@ local language = {}
 language.tags = {'en', 'pt-BR', 'es', 'ja', 'ar', 'hi'}
 language.folder = 'localization/locale'
 
--- Gives every theme font role its family, lets the UI take the direction of the language and starts in English. The section "localization" of "app.json" loaded the translations of the folder when the project started. Returns what the app used before, which `restore` puts back.
+-- Gives every theme font role its family, lets the UI take the direction of the language and starts in English. The section "localization" of "haylen.json" loaded the translations of the folder when the project started. Returns what the app used before, which `restore` puts back.
 function language.setup()
     local previous = {language = localization.language(), followingSystem = localization.followingSystem(), fallback = localization.fallback(), theme = ui.theme(), direction = ui.direction()}
     if not language.family then

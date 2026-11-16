@@ -1,6 +1,6 @@
 # 🌙 Lua guide
 
-This guide is the first page to read after the [quick start](../../README.md#quick-start). It walks you through how a Haylen app is made in Lua: the app package, `app.json`, modules, scenes, owners, asynchronous code, errors and hot reload. Each section explains one idea with a short example and links to the reference for the details. The last sections cover performance and how a C++ project adds its own Lua modules.
+This guide is the first page to read after the [quick start](../../README.md#quick-start). It walks you through how a Haylen app is made in Lua: the app package, `haylen.json`, modules, scenes, owners, asynchronous code, errors and hot reload. Each section explains one idea with a short example and links to the reference for the details. The last sections cover performance and how a C++ project adds its own Lua modules.
 
 Haylen apps are written in Lua 5.5. The engine runs them through [Varn](https://github.com/varn-org/varn), a Lua runtime with an event loop, worker threads and modules for the network and the file system. Every engine module has a reference page in the [Lua API reference](../lua-api/README.md), and the [architecture guide](architecture.md) explains what happens underneath.
 
@@ -8,16 +8,16 @@ Haylen apps are written in Lua 5.5. The engine runs them through [Varn](https://
 
 An app is a package. A package is a folder, or the same folder zipped, that holds these entries:
 
-- `app.json` at the root, with the settings of the app.
+- `haylen.json` at the root, with the settings of the app.
 - `source/`, with the Lua modules of the app.
 - `content/`, with the assets: images, sounds, fonts, maps and data files.
 - `plugins/`, with the manifest and the Lua modules of every [plugin](../platform/plugins.md) that the app uses.
 
-Nothing else in the folder belongs to the package. So platform projects, notes, build files and the native parts of plugins can live next to it.
+Nothing else in the folder belongs to the package. So the native sources that `haylen.json` names, notes, build files and the native parts of plugins can live next to it.
 
 ```text
 my-app/
-  app.json             Window, design resolution and identity, read before any Lua runs.
+  haylen.json             Window, design resolution and identity, read before any Lua runs.
   source/
     main.lua           Entry point.
     config.lua         Any other Lua module.
@@ -28,18 +28,18 @@ my-app/
     preload.json
   plugins/
     ads/
-      plugin.json      The manifest of a plugin that app.json lists.
+      plugin.json      The manifest of a plugin that haylen.json lists.
       source/
         init.lua       Loaded with require('ads').
 ```
 
 Lua files take `dash-case` names, such as `main-menu.lua`. Asset files and folders take lowercase names with dashes, such as `audio/fire-loop.ogg`.
 
-The desktop player runs a folder with `haylen my-app` and a zip file with `haylen my-app.zip`. To make the zip file, run `haylen package my-app -o my-app.zip`. It zips `app.json`, `source/`, `content/` and the `plugin.json` and `source/` of every plugin, with `app.json` at the root of the archive. The [distribution guide](../tools/distribution.md) shows how to run a package on every platform and in the browser.
+The command `haylen app run my-app` plays a folder in the desktop player of the desktop SDK, whose executable `haylen` also plays a zip file, such as `build/sdk/desktop-release/macos-arm64/bin/haylen my-app.zip` on a Mac. To make the zip file, run `haylen app zip my-app -o my-app.zip`. It zips `haylen.json`, `source/`, `content/` and the `plugin.json` and `source/` of every plugin, with `haylen.json` at the root of the archive. The [distribution guide](../tools/distribution.md) shows how to run a package on every platform and in the browser.
 
-## app.json
+## haylen.json
 
-The file `app.json` holds the settings that the engine needs before any Lua runs, such as the size of the window. The runtime reads it before the window exists. Every field is optional, so an app may start with a name and an identifier and add the rest when it needs it.
+The file `haylen.json` holds the settings that the engine needs before any Lua runs, such as the size of the window. The runtime reads it before the window exists. Every field is optional, so an app may start with a name and an identifier and add the rest when it needs it.
 
 ```json
 {
@@ -54,7 +54,7 @@ The file `app.json` holds the settings that the engine needs before any Lua runs
 }
 ```
 
-These are the parts of `app.json` that most apps set.
+These are the parts of `haylen.json` that most apps set.
 
 | Part | What it sets |
 | --- | --- |
@@ -69,7 +69,7 @@ These are the parts of `app.json` that most apps set.
 
 The reference of [`haylen.config`](../lua-api/haylen.md#haylenconfig) lists every field with its default. Scripts read the same settings, with every default filled in, from `require('haylen').config`.
 
-The engine checks the file strictly. An unknown key is an error, so a misspelled field never goes unnoticed. A value of the wrong type or out of its range is an error too. A package whose `app.json` fails shows the reason on the screen instead of the app, and the reference lists [every message](../lua-api/haylen.md#errors-of-appjson).
+The engine checks the file strictly. An unknown key is an error, so a misspelled field never goes unnoticed. A value of the wrong type or out of its range is an error too. A package whose `haylen.json` fails shows the reason on the screen instead of the app, and the reference lists [every message](../lua-api/haylen.md#errors-of-haylenjson).
 
 ## source/main.lua
 
@@ -101,7 +101,7 @@ Split an app into modules: one Lua file per scene, system or kind of object. The
 2. A module of `package.preload`. These are the engine modules, such as `haylen.graphics`, and the modules that the plugins of a C++ project add.
 3. A module of the app, in the `source/` folder. The name `scenes.main-menu` loads `source/scenes/main-menu.lua`, and when that file is missing, `source/scenes/main-menu/init.lua`.
 
-A module whose first part is the id of a plugin in `app.json` comes from the `source/` folder of that plugin instead. So `require('ads')` loads `plugins/ads/source/init.lua`, and `require('ads.consent')` loads `plugins/ads/source/consent.lua`. A module of the app named after a plugin is therefore an error when the app starts, as the [plugin guide](../platform/plugins.md#modules) explains.
+A module whose first part is the id of a plugin in `haylen.json` comes from the `source/` folder of that plugin instead. So `require('ads')` loads `plugins/ads/source/init.lua`, and `require('ads.consent')` loads `plugins/ads/source/consent.lua`. A module of the app named after a plugin is therefore an error when the app starts, as the [plugin guide](../platform/plugins.md#modules) explains.
 
 ```lua
 -- The file `source/config.lua`.
@@ -204,7 +204,7 @@ A scene can also load what it needs in its `load` hook before it shows, with pro
 
 ## Autoloads
 
-Some things live longer than any scene, such as the profile of the player, the music or a connection to a server. Make such a module an autoload: list it in the `autoload` array of `app.json`, and it loads before `source/main.lua` runs and lives for the whole app. An autoload is the table that its module returns. It receives hooks like a scene, such as `start`, `update` and `stop`.
+Some things live longer than any scene, such as the profile of the player, the music or a connection to a server. Make such a module an autoload: list it in the `autoload` array of `haylen.json`, and it loads before `source/main.lua` runs and lives for the whole app. An autoload is the table that its module returns. It receives hooks like a scene, such as `start`, `update` and `stop`.
 
 ```json
 {
@@ -511,11 +511,11 @@ Warnings of Lua, such as an error in a `__gc` metamethod or a call of `warn`, go
 
 ### The execution budget
 
-Code that never ends, such as a loop without an exit, would hold the frame thread forever, and a browser page or a window would freeze with it. So an app in development runs its code under an execution budget: each time the platform enters the engine, such as for one frame, the start of the app, an event or the stop of the app, the code of the app may run for `debug.executionBudget` seconds of `app.json`, 5 by default. That covers everything the app runs in that call: the start of the app and `source/main.lua`, the modules it requires, scene hooks, `update`, `fixedUpdate` and `render`, timers, tweens, listeners, the callbacks of promises and tasks, hot reload and the code that runs while the app stops.
+Code that never ends, such as a loop without an exit, would hold the frame thread forever, and a browser page or a window would freeze with it. So an app in development runs its code under an execution budget: each time the platform enters the engine, such as for one frame, the start of the app, an event or the stop of the app, the code of the app may run for `debug.executionBudget` seconds of `haylen.json`, 5 by default. That covers everything the app runs in that call: the start of the app and `source/main.lua`, the modules it requires, scene hooks, `update`, `fixedUpdate` and `render`, timers, tweens, listeners, the callbacks of promises and tasks, hot reload and the code that runs while the app stops.
 
 When the time runs out, the engine stops the app for good. The error screen shows the error with the code `executionBudget`, the file and line that ran when the time ran out, its stack, and the step of the engine it ran in, such as `update`, `render` or `reload`, which the error carries as `callback`. Every instruction of the app raises that error again from then on. So a `pcall`, an `xpcall` or a coroutine of the app catches it only to raise it again at its next instruction, the message handler of an `xpcall` never sees it, and the app cannot reset the budget. No fix resumes the app and it cannot go back from the error screen. Saving a file restarts it, and so do `R` and `run` of a web page. The page and every editor also receive the error, as [where the report goes](#where-the-report-goes) describes.
 
-The Lua state of an app in development has a memory budget too, `debug.memoryBudget` megabytes of `app.json`, 1024 by default. Once the state holds that much and a full collection of its garbage cannot make room, the allocation fails and the engine stops the app the same way, with the code `memory`.
+The Lua state of an app in development has a memory budget too, `debug.memoryBudget` megabytes of `haylen.json`, 1024 by default. Once the state holds that much and a full collection of its garbage cannot make room, the allocation fails and the engine stops the app the same way, with the code `memory`.
 
 ```json
 {
@@ -547,17 +547,18 @@ end)
 
 Hot reload applies the files that you save to the app while it runs, so you see a change without starting the app again. It works while the app runs in development:
 
-- The desktop player runs an app in development with `--dev` and the package folder, as in `haylen --dev samples/games/tiny-island`, and so does `haylen run samples/games/tiny-island`.
-- The page of `haylen run samples/games/tiny-island --platform web` runs in development too.
+- The desktop player of the desktop SDK runs an app in development with `--dev` and the package folder, which it watches itself.
+- The command `haylen app run samples/games/tiny-island` runs the app in that player connected to the development server of the run, which pushes every saved file.
+- The page of `haylen app run samples/games/tiny-island --target web` runs in development too.
 
-The player checks `app.json`, `source/`, `content/` and the `plugin.json` and `source/` of every plugin for changes every half second of real time. It checks on the I/O pool, so frames never wait for the file system, and it ignores everything else in the folder. Every save reaches the app at the start of a frame, also while the error screen shows and while the app is halted, such as an app that pauses while the editor has the focus.
+The player checks `haylen.json`, `source/`, `content/` and the `plugin.json` and `source/` of every plugin for changes every half second of real time. It checks on the I/O pool, so frames never wait for the file system, and it ignores everything else in the folder. Every save reaches the app at the start of a frame, also while the error screen shows and while the app is halted, such as an app that pauses while the editor has the focus.
 
 ### What a save does
 
 - **A Lua module that the app loaded** reloads in place. Its functions run the new code everywhere, while the state of the app stays, as [`haylen.hotReload`](../lua-api/hotReload.md#how-a-module-reloads) describes. A module that fails to compile or to run changes nothing and shows its error, while the other changed modules of the save still reload. Saving the fix reloads it. Saving the text that the module runs, such as an undo of the broken save, needs no reload, so the module counts as restored and the error screen goes away as it does after a fix. A module keeps the text it loaded, so a save while its first load runs reloads it like any later save.
 - **A file under `content/`** reloads the assets read from it without a restart. Textures, shaders and JSON change in place, so sprites that already use a texture show the new pixels. Other asset types leave the cache, so the next load reads the new file, and every live asset that went stale gets the event `assetChanged`, as [`haylen.assets`](../lua-api/assets.md#hot-reload-of-assets) describes. The texts of a folder that `localization.loadFolder` loaded and the themes that `ui.loadTheme` loaded rebuild from their changed files. A changed font file restarts the app.
 - **A Lua file that no module loaded yet** changes nothing, because the next `require` reads it. While an error shows, such as one of a module whose first load failed, saving the file resumes the app, so the code that failed requires it again, or restarts the app when the error cannot resume.
-- **A change that cannot apply in place** restarts the app with a fresh Lua state, and `source/main.lua` runs again. The log names the reason. These changes restart the app: a changed `app.json`, `source/main.lua` or `plugin.json`, a removed module, a module that now returns another kind of value, a module that returns another value that is neither a table nor a function, such as a string, a module whose functions capture two different variables with the same name, a module that called `hotReload.restartOnChange()`, a save that touches more than 32 loaded modules, and every changed module while `debug.reload` of `app.json` is `"restart"`. A restart works even from an app whose `app.json` failed to load, so fixing the file restarts it.
+- **A change that cannot apply in place** restarts the app with a fresh Lua state, and `source/main.lua` runs again. The log names the reason. These changes restart the app: a changed `haylen.json`, `source/main.lua` or `plugin.json`, a removed module, a module that now returns another kind of value, a module that returns another value that is neither a table nor a function, such as a string, a module whose functions capture two different variables with the same name, a module that called `hotReload.restartOnChange()`, a save that touches more than 32 loaded modules, and every changed module while `debug.reload` of `haylen.json` is `"restart"`. A restart works even from an app whose `haylen.json` failed to load, so fixing the file restarts it.
 - **Other files** never count: hidden files, backup files and files under `source/` that are not Lua. So the swap and backup files that editors write change nothing. A file that is still being written waits for the next check, and a change saved while the app restarts reaches the app that starts.
 
 ### Resume or restart
@@ -582,7 +583,7 @@ State that must survive a restart belongs in [`haylen.storage`](../lua-api/stora
 
 ### Devices, browsers and editors
 
-Zip packages and shipped apps are never watched. The command `haylen run <app> --platform web` serves the page in development, connected to a development server that pushes every file saved in the app to the open pages, which reload it the same way. The command `run` with `--platform android`, `ios-simulator`, `tvos-simulator`, `ios`, `tvos`, `macos` or `catalyst` launches the app connected to such a server, so the emulator, the simulators and the devices reload every save too, as the [distribution guide](../tools/distribution.md#development-mode) describes. A browser editor turns development on with `Module.haylen.development`, sends changed files with the request `edit` of its editor contract and applies them with `applyChanges`, as the [build guide](../tools/build.md#the-editor-contract) describes.
+Zip packages and shipped apps are never watched. The command `haylen app run <app> --target web` serves the page in development, connected to a development server that pushes every file saved in the app to the open pages, which reload it the same way. The command `app run` in the Debug configuration with the target `android`, `ios-simulator`, `tvos-simulator`, `visionos-simulator`, `ios`, `tvos`, `visionos`, `macos`, `catalyst`, `windows` or `linux` launches the app connected to such a server, so the emulator, the simulators and the devices reload every save too, as the [distribution guide](../tools/distribution.md) describes. A browser editor turns development on with `Module.haylen.development`, sends changed files with the request `edit` of its editor contract and applies them with `applyChanges`, as the [build guide](../tools/build.md#the-editor-contract) describes.
 
 ## Native work and its bounds
 
@@ -660,7 +661,7 @@ scene.push({
 
 ### The cost of each way
 
-The command `haylen bench --suite lua` runs the Lua sprite benchmark `engine/bench/lua-benchmark` on the headless host. Every sprite falls and bounces off the edges of the screen, and the benchmark times Lua moving and drawing them in five ways.
+The command `haylen engine bench --suite lua` runs the Lua sprite benchmark `engine/bench/lua-benchmark` on the headless host. Every sprite falls and bounces off the edges of the screen, and the benchmark times Lua moving and drawing them in five ways.
 
 | Mode | How it moves and draws the sprites |
 | --- | --- |

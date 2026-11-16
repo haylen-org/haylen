@@ -6,7 +6,7 @@ The module `haylen.content` tells which content the app plays and which of its a
 local content = require('haylen.content')
 ```
 
-In development the app plays its folder, without downloads or updates, while the delivery rules of `app.json` still apply, as [development](../content/loading.md#development) describes.
+In development the app plays its folder, without downloads or updates, while the delivery rules of `haylen.json` still apply, as [development](../content/loading.md#development) describes.
 
 ## State
 
@@ -32,7 +32,7 @@ print('Content generation ' .. content.generation() .. '.')
 
 ### content.channel()
 
-Returns the update channel that `content.updates` of `app.json` names, such as `'stable'`, or `nil` for an app without a content server.
+Returns the update channel that `content.updates` of `haylen.json` names, such as `'stable'`, or `nil` for an app without a content server.
 
 ```lua
 local content = require('haylen.content')
@@ -202,7 +202,7 @@ Brings assets onto the device without loading them, and returns a promise that r
 - The optional `progress` function receives a table with `receivedBytes` and `totalBytes` as bytes arrive.
 - The optional `options` table takes `owner`, which ends the progress function with its owner. Any other key raises `Unknown option "<key>".`.
 
-The assets download as foreground work, ahead of the prefetched content of `app.json`. In development they are there in the next frame. The promise rejects with the failure, its message and the table of [`content.error`](#contenterror), such as for a device that is offline, or one without room for the assets and the margin that the store keeps free. An asset that does not exist raises `The asset "<path>" does not exist.`, and a group that is not defined raises `The asset group "<name>" is not defined.`.
+The assets download as foreground work, ahead of the prefetched content of `haylen.json`. In development they are there in the next frame. The promise rejects with the failure, its message and the table of [`content.error`](#contenterror), such as for a device that is offline, or one without room for the assets and the margin that the store keeps free. An asset that does not exist raises `The asset "<path>" does not exist.`, and a group that is not defined raises `The asset group "<name>" is not defined.`.
 
 ```lua
 local async = require('async')
@@ -266,7 +266,7 @@ An app with a content server and `enabled` updates checks its channel when it st
 
 Asks the channel for newer content and returns a promise. It resolves to a table with `generation` and `downloadBytes`, or to `nil` when the app plays the newest content. It rejects with the failure, its message and the table of [`content.error`](#contenterror), such as `manifestRollbackRejected` for a server that offers an older generation, or `manifestIncompatible` for content that needs a newer build of the app.
 
-In development it raises `The app plays its folder in development, which has no updates. Build it in the Release configuration to check for updates.`. In a release without a content server it raises `The app names no content server, so it has no updates. Name one in "content.updates" of "app.json".`.
+In development it raises `The app plays its folder in development, which has no updates. Build it in the Release configuration to check for updates.`. In a release without a content server it raises `The app names no content server, so it has no updates. Name one in "content.updates" of "haylen.json".`.
 
 ```lua
 local async = require('async')
@@ -373,7 +373,7 @@ These messages are raised by the functions, or reach the promise of a load throu
 | `The asset group "<name>" is not defined.` | The functions `content.prefetch` or `content.isGroupLocal` name a group that was never defined. |
 | `The pack folder "<path>" does not exist.` | The function `content.addPackFolder` names a path that is no folder, in a release. |
 | `The app plays its folder in development, which has no updates. Build it in the Release configuration to check for updates.` | The functions `content.check` or `content.download` ran in development. |
-| `The app names no content server, so it has no updates. Name one in "content.updates" of "app.json".` | The functions `content.check` or `content.download` ran in a release without a content server. |
+| `The app names no content server, so it has no updates. Name one in "content.updates" of "haylen.json".` | The functions `content.check` or `content.download` ran in a release without a content server. |
 | `No content update is ready to apply. Download one first.` | The function `content.apply` ran before an update was installed. |
 | `The source of packs must return the folder of the pack, nil or a promise of either.` | A function of `content.addPackSource` returned another value. |
 | `The source of packs failed to deliver the pack "<pack>". <reason>` | A function of `content.addPackSource` raised an error, or its promise rejected. The load fails with `storeAssetUnavailable`. |

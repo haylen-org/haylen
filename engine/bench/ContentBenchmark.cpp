@@ -171,7 +171,7 @@ class ContentBenchmark final {
     // An app with one large incompressible file, one large text file that compresses well and many small files.
     static void writeSource(const std::filesystem::path& folder) {
         const std::string app = R"({"name": "Content Benchmark", "identifier": "com.haylen.contentbenchmark"})";
-        writeFile(folder / "app.json", {app.begin(), app.end()});
+        writeFile(folder / "haylen.json", {app.begin(), app.end()});
         writeFile(folder / "source" / "main.lua", {});
         writeFile(folder / "content" / "media" / "large.bin", randomBytes(kLargeFile, 1));
         std::vector<std::uint8_t> text;
@@ -329,7 +329,7 @@ class ContentBenchmark final {
 
     static void writeManyFiles(const std::filesystem::path& folder) {
         const std::string app = R"({"name": "Many Files", "identifier": "com.haylen.contentbenchmark"})";
-        writeFile(folder / "app.json", {app.begin(), app.end()});
+        writeFile(folder / "haylen.json", {app.begin(), app.end()});
         writeFile(folder / "source" / "main.lua", {});
 
         for (int index = 0; index < kManyFiles; ++index) {

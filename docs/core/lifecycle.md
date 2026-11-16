@@ -6,8 +6,8 @@ This guide explains what happens to an app from its start to its stop. It covers
 
 The engine starts an app in a fixed order.
 
-1. The runtime reads `app.json` and creates the window and the engine. Every built-in plugin starts and installs its Lua modules, and each one publishes `pluginStarted`.
-2. The autoloads that `app.json` lists load in order. Each one gets its `start` hook and publishes `autoloadStarted`.
+1. The runtime reads `haylen.json` and creates the window and the engine. Every built-in plugin starts and installs its Lua modules, and each one publishes `pluginStarted`.
+2. The autoloads that `haylen.json` lists load in order. Each one gets its `start` hook and publishes `autoloadStarted`.
 3. The file `source/main.lua` runs. It usually adds listeners and pushes the first scene.
 4. The engine publishes `appStarted`, and the first frame begins.
 
@@ -35,7 +35,7 @@ When the app stops, the engine does these steps in order:
 3. It stops the autoloads from the last to the first.
 4. It stops the plugins in reverse order.
 
-A restart stops the app the same way, even in the middle of a load. Then it creates a new engine with a fresh Lua state that runs the whole start again. A hot reload of an edited `app.json` is such a restart. A hot reload of an edited Lua module runs none of this: the module reloads in place, and the modules that require it, the autoloads, the scenes of the stack and the objects of its classes hear the `reloaded` hook, as [`haylen.hotReload`](../lua-api/hotReload.md) describes.
+A restart stops the app the same way, even in the middle of a load. Then it creates a new engine with a fresh Lua state that runs the whole start again. A hot reload of an edited `haylen.json` is such a restart. A hot reload of an edited Lua module runs none of this: the module reloads in place, and the modules that require it, the autoloads, the scenes of the stack and the objects of its classes hear the `reloaded` hook, as [`haylen.hotReload`](../lua-api/hotReload.md) describes.
 
 An app restarts in the state that the platform holds it in:
 
@@ -65,7 +65,7 @@ scene.push({
 
 ### Launching another app
 
-An app can launch another app package with [`haylen.launch(path, options)`](../lua-api/haylen.md#haylenlaunchpath-options), such as one that it downloaded. Once the frame ends, the app stops the way a restart does, and the launched package starts with a new engine. The launched app may stop through `haylen.quit()`, through the Close button of its error screen, through the back button at its root on Android and Apple TV, or through a hold of Escape, of play and pause of a TV remote, of the back button of Android or a gamepad, or of three still fingers, which the launched app cannot take, as [`haylen.launch`](../lua-api/haylen.md#haylenlaunchpath-options) lists. Then the launcher starts again from its own package, as a new run of the whole start. The function [`haylen.launched()`](../lua-api/haylen.md#haylenlaunched) tells an app which way it started. A launched app plays in development when the app that launches it names a development server, such as the one that [`haylen serve`](../tools/distribution.md#serving-an-app) runs for an app, and the launcher keeps its own development session for its return.
+An app can launch another app package with [`haylen.launch(path, options)`](../lua-api/haylen.md#haylenlaunchpath-options), such as one that it downloaded. Once the frame ends, the app stops the way a restart does, and the launched package starts with a new engine. The launched app may stop through `haylen.quit()`, through the Close button of its error screen, through the back button at its root on Android and Apple TV, or through a hold of Escape, of play and pause of a TV remote, of the back button of Android or a gamepad, or of three still fingers, which the launched app cannot take, as [`haylen.launch`](../lua-api/haylen.md#haylenlaunchpath-options) lists. Then the launcher starts again from its own package, as a new run of the whole start. The function [`haylen.launched()`](../lua-api/haylen.md#haylenlaunched) tells an app which way it started. A launched app plays in development when the app that launches it names a development server, such as the one that [`haylen app serve`](../tools/commands.md) runs for an app, and the launcher keeps its own development session for its return.
 
 ## The whole lifecycle
 
@@ -125,7 +125,7 @@ The engine takes care of what every app needs when the state changes.
 
 ### Halting the app
 
-The lifecycle options decide whether the app keeps running while it is not active. The `lifecycle` section of `app.json` sets them, and `haylen.setLifecycle` changes them while the app runs. A halted app lets no time pass: scenes, autoloads, timers, tweens and fixed steps stand still, and input is held back. Varn's event loop still delivers network replies and the results of `async` tasks. The function `haylen.halted()` tells whether the app is halted right now.
+The lifecycle options decide whether the app keeps running while it is not active. The `lifecycle` section of `haylen.json` sets them, and `haylen.setLifecycle` changes them while the app runs. A halted app lets no time pass: scenes, autoloads, timers, tweens and fixed steps stand still, and input is held back. Varn's event loop still delivers network replies and the results of `async` tasks. The function `haylen.halted()` tells whether the app is halted right now.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
@@ -163,7 +163,7 @@ print(haylen.lifecycle().pauseOnFocusLoss, haylen.halted())
 
 ### Keeping the screen on
 
-The system dims, locks or covers an app that gets no input for a while: the screen saver of a desktop or an Apple TV, the lock of an iPhone or an iPad and the screen timeout of Android. On iOS and tvOS the app then turns `'inactive'` or goes to the background, so a game that players drive with a controller would stop in the middle of a level, since the system counts no controller input as activity. An app that plays without touches or keys keeps the screen on with `"keepScreenOn": true` in the `window` section of `app.json`, or turns it on and off with [`window.setKeepScreenOn`](../lua-api/window.md#windowsetkeepscreenonenabled), such as only during a level or a cutscene. Menus and pause screens can leave the screen to the system, so the device still sleeps when the player walks away.
+The system dims, locks or covers an app that gets no input for a while: the screen saver of a desktop or an Apple TV, the lock of an iPhone or an iPad and the screen timeout of Android. On iOS and tvOS the app then turns `'inactive'` or goes to the background, so a game that players drive with a controller would stop in the middle of a level, since the system counts no controller input as activity. An app that plays without touches or keys keeps the screen on with `"keepScreenOn": true` in the `window` section of `haylen.json`, or turns it on and off with [`window.setKeepScreenOn`](../lua-api/window.md#windowsetkeepscreenonenabled), such as only during a level or a cutscene. Menus and pause screens can leave the screen to the system, so the device still sleeps when the player walks away.
 
 ```lua
 local events = require('haylen.events')
@@ -288,7 +288,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `appBackground` | The window minimized into the taskbar. The app comes back when the window is restored. |
 | `appLowMemory` | The memory resource notification of the system, once each time the available memory falls below its low threshold, as `'warning'`, since Windows tells no critical level. |
 | `appQuitRequested` | The close button of the window and Alt+F4. |
-| `linkOpened` | The links of the schemes that the installer or `run` registers, which a new process of the app hands to the one that runs through its named pipe, as [links on Windows and Linux](../tools/distribution.md#links-on-windows-and-linux) describes. |
+| `linkOpened` | The links of the schemes that the installer or `run` registers, which a new process of the app hands to the one that runs through its named pipe, as the [distribution guide](../tools/distribution.md) describes. |
 | `windowResized`, `windowFocusGained`, `windowFocusLost`, `windowFullscreenChanged` | The window, resized by the player or the app, its focus and its full screen mode. |
 | `windowOrientationChanged`, `windowFoldChanged` | Never, because a desktop window counts as landscape and Windows offers desktop apps no API for the fold of a device. |
 | `windowSafeAreaChanged` | Only the native views of plugins and the simulation, because nothing of the system covers a window. |
@@ -311,7 +311,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `appBackground` | The window minimized, which X11 reports as hidden. The app comes back when the window is restored. |
 | `appLowMemory` | The memory monitor of GIO, from GLib 2.64 on, whose low and medium levels arrive as `'warning'` and whose critical level as `'critical'`. |
 | `appQuitRequested` | The close button of the window and the close shortcut of the window manager, usually Alt+F4. |
-| `linkOpened` | The links of the schemes of the desktop entry, which a new process of the app hands to the one that runs through the session bus, as [links on Windows and Linux](../tools/distribution.md#links-on-windows-and-linux) describes. |
+| `linkOpened` | The links of the schemes of the desktop entry, which a new process of the app hands to the one that runs through the session bus, as the [distribution guide](../tools/distribution.md) describes. |
 | `windowResized`, `windowFocusGained`, `windowFocusLost`, `windowFullscreenChanged` | The window, resized by the player or the app, its focus and its full screen mode. |
 | `windowOrientationChanged`, `windowFoldChanged` | Never, because a desktop window counts as landscape and Linux desktops report no folds to windows. |
 | `windowSafeAreaChanged` | Only the native views of plugins and the simulation, because nothing of the system covers a window. |
@@ -459,7 +459,7 @@ Assets, sockets and engine objects announce their life as events as well.
 
 - **Assets.** The event `assetLoaded` follows an asset into the cache of [`haylen.assets`](../lua-api/assets.md). The event `assetUnloaded` follows the moment its last holder lets it go, whether a script, a sprite or the last preload group that held it. The event `assetReloaded` follows a changed file that hot reload applied to a live asset. The event `assetChanged` follows a changed file that left behind a live asset of a type that cannot update in place. The asset manager learns about a release wherever it happens, even inside the garbage collector or on a worker thread. So these events are queued and arrive at the end of the frame, in the order they happened.
 - **WebSockets.** Every WebSocket of [`haylen.net`](../lua-api/net.md) publishes `webSocketConnected` when it opens and `webSocketDisconnected` when an open connection ends. A socket opened with reconnection publishes `webSocketReconnecting` each time it plans an attempt, with the attempt number and the wait before it, until a connection opens again or it gives up.
-- **Objects.** The debug statistics count objects by type: every userdata type exported to Lua, and engine resources such as textures, fonts, sounds, bodies, emitters, GUIs and tweens. While object events are on, every creation and destruction also publishes `objectCreated` or `objectDestroyed` with the type name, queued for the end of the frame. Turn them on with `debug.setObjectEvents(true)` or `debug.objectEvents` in `app.json`. They are off by default, because a busy app creates many objects every frame.
+- **Objects.** The debug statistics count objects by type: every userdata type exported to Lua, and engine resources such as textures, fonts, sounds, bodies, emitters, GUIs and tweens. While object events are on, every creation and destruction also publishes `objectCreated` or `objectDestroyed` with the type name, queued for the end of the frame. Turn them on with `debug.setObjectEvents(true)` or `debug.objectEvents` in `haylen.json`. They are off by default, because a busy app creates many objects every frame.
 
 ```lua
 local debugging = require('haylen.debug')
@@ -710,7 +710,7 @@ Autoloads are Lua modules that load before the first scene and live for the whol
 
 How autoloads are added and named:
 
-- The `autoload` list of `app.json` names the modules, which load in its order before `source/main.lua` runs.
+- The `autoload` list of `haylen.json` names the modules, which load in its order before `source/main.lua` runs.
 - The function `haylen.autoload(module)` adds one later, and `haylen.autoload(name, module)` gives it a name of its own.
 - The name defaults to the last part of the module in camel case, so `state.player-data` becomes `playerData`. Then `haylen.autoloads.playerData` holds the table, which `require('state.player-data')` returns too.
 - The `processMode` field of the table sets its process mode. Without one, an autoload counts as `'pausable'`.

@@ -13,7 +13,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "tools"))
 
-from png_image import Image, read, write  # noqa: E402
+from png_image import Image  # noqa: E402
 
 THEME = Path(__file__).resolve().parents[2] / "content" / "interface" / "themes" / "fantasy"
 ATLAS = "interface/themes/fantasy/atlas.png"
@@ -114,7 +114,7 @@ def solidify(image: Image) -> Image:
 
 def pack(folder: Path) -> tuple[Image, dict[str, list[int]]]:
     """Drops the pieces from the tallest down onto the skyline of the atlas, each where it rests lowest, and returns the atlas with the region of every piece."""
-    pieces = {name: solidify(read(folder / f"{name}.png")) for name in PIECES}
+    pieces = {name: solidify(Image.read(folder / f"{name}.png")) for name in PIECES}
     order = sorted(pieces, key=lambda name: (-pieces[name].height, -pieces[name].width, name))
     skyline = [0] * ATLAS_WIDTH
     regions: dict[str, list[int]] = {}
@@ -176,9 +176,9 @@ def main() -> None:
     for name, uses in PIECES.items():
         for surface, values in uses.items():
             surfaces[surface] = {"image": ATLAS, "source": regions[name], **values}
-    write(atlas, THEME / "atlas.png")
-    for name, icon in cut_icons(read(Path(sys.argv[1]) / "icons.png")).items():
-        write(icon, THEME / "icons" / f"{name}.png")
+    Image.write(atlas, THEME / "atlas.png")
+    for name, icon in cut_icons(Image.read(Path(sys.argv[1]) / "icons.png")).items():
+        Image.write(icon, THEME / "icons" / f"{name}.png")
     (THEME / "theme.json").write_text(document({**DOCUMENT, "surfaces": dict(sorted(surfaces.items()))}))
 
 

@@ -284,7 +284,7 @@ int PlatformLua::hasHandler(lua_State* L) {
     return 1;
 }
 
-// Lists the plugins of `app.json` as tables with `id`, `version` and `native`.
+// Lists the plugins of `haylen.json` as tables with `id`, `version` and `native`.
 int PlatformLua::plugins(lua_State* L) {
     const std::vector<AppPlugin> all = lua::Runtime::getEngine(L).getAppPlugins();
     lua_createtable(L, static_cast<int>(all.size()), 0);
@@ -302,7 +302,7 @@ int PlatformLua::plugins(lua_State* L) {
     return 1;
 }
 
-// Returns the handle of a plugin of `app.json` with `plugin(id)`, which the Lua modules of the plugin use to reach its native part.
+// Returns the handle of a plugin of `haylen.json` with `plugin(id)`, which the Lua modules of the plugin use to reach its native part.
 int PlatformLua::plugin(lua_State* L) {
     const std::string id = lua::Stack::read<std::string>(L, 1);
     for (AppPlugin& found : lua::Runtime::getEngine(L).getAppPlugins()) {
@@ -312,7 +312,7 @@ int PlatformLua::plugin(lua_State* L) {
         }
     }
 
-    throw std::invalid_argument("The plugin \"" + id + "\" is not among the plugins of \"app.json\".");
+    throw std::invalid_argument("The plugin \"" + id + "\" is not among the plugins of \"haylen.json\".");
 }
 
 int PlatformLua::getPluginId(lua_State* L) {

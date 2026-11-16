@@ -75,7 +75,7 @@ bool AppConfig::isServerAddress(std::string_view url) noexcept {
     return false;
 }
 
-// A tag that `app.json` leaves out stays empty, and any other comes back in its canonical form.
+// A tag that `haylen.json` leaves out stays empty, and any other comes back in its canonical form.
 std::string AppConfig::readLanguageTag(const Json& section, const char* key) {
     std::string tag;
     readValue(section, key, tag);
@@ -86,7 +86,7 @@ std::string AppConfig::readLanguageTag(const Json& section, const char* key) {
 
     std::optional<std::string> canonical = localization::LanguageTag::parse(tag);
     if (!canonical) {
-        throw std::invalid_argument("The \"localization." + std::string(key) + "\" value \"" + tag + "\" in \"app.json\" is no language tag. Write a language such as \"en\", \"pt-BR\" or \"pt_BR\".");
+        throw std::invalid_argument("The \"localization." + std::string(key) + "\" value \"" + tag + "\" in \"haylen.json\" is no language tag. Write a language such as \"en\", \"pt-BR\" or \"pt_BR\".");
     }
 
     return std::move(*canonical);
@@ -94,7 +94,7 @@ std::string AppConfig::readLanguageTag(const Json& section, const char* key) {
 
 // The fallback names a file of the folder, which the localization plugin checks once it loaded the folder.
 void AppConfig::readLocalization(const Json& section, AppConfig& config) {
-    JsonValidator::requireKnownKeys(section, {"folder", "fallback", "language"}, "the \"localization\" section of \"app.json\"");
+    JsonValidator::requireKnownKeys(section, {"folder", "fallback", "language"}, "the \"localization\" section of \"haylen.json\"");
     Localization& localization = config.localization;
     readValue(section, "folder", localization.folder);
 
@@ -106,30 +106,30 @@ void AppConfig::readLocalization(const Json& section, AppConfig& config) {
     localization.language = readLanguageTag(section, "language");
 
     if (!localization.fallback.empty() && localization.folder.empty()) {
-        throw std::invalid_argument("The \"localization.fallback\" of \"app.json\" needs a \"localization.folder\" that holds its language file.");
+        throw std::invalid_argument("The \"localization.fallback\" of \"haylen.json\" needs a \"localization.folder\" that holds its language file.");
     }
 }
 
 AppConfig::Content::Updates AppConfig::readUpdates(const Json& section) {
-    JsonValidator::requireKnownKeys(section, {"baseUrl", "channel", "enabled"}, "the \"content.updates\" section of \"app.json\"");
+    JsonValidator::requireKnownKeys(section, {"baseUrl", "channel", "enabled"}, "the \"content.updates\" section of \"haylen.json\"");
     Content::Updates updates;
     readValue(section, "baseUrl", updates.baseUrl);
     readValue(section, "channel", updates.channel);
     readValue(section, "enabled", updates.enabled);
 
     if (!isServerAddress(updates.baseUrl)) {
-        throw std::invalid_argument("The \"content.updates.baseUrl\" in \"app.json\" must be an \"https\" address that ends with a slash, such as \"https://cdn.example.com/my-game/\", or an \"http\" address of this machine, not \"" + updates.baseUrl + "\".");
+        throw std::invalid_argument("The \"content.updates.baseUrl\" in \"haylen.json\" must be an \"https\" address that ends with a slash, such as \"https://cdn.example.com/my-game/\", or an \"http\" address of this machine, not \"" + updates.baseUrl + "\".");
     }
 
     if (!content::Manifest::isValidName(updates.channel)) {
-        throw std::invalid_argument("The \"content.updates.channel\" in \"app.json\" must have at most 64 lowercase letters, digits, dashes and dots, not \"" + updates.channel + "\".");
+        throw std::invalid_argument("The \"content.updates.channel\" in \"haylen.json\" must have at most 64 lowercase letters, digits, dashes and dots, not \"" + updates.channel + "\".");
     }
 
     return updates;
 }
 
 AppConfig::Content::Rule AppConfig::readDeliveryRule(const Json& section, std::string_view groups) {
-    JsonValidator::requireKnownKeys(section, {"match", "group", "mode", "pack"}, "a rule of \"content.delivery\" in \"app.json\"");
+    JsonValidator::requireKnownKeys(section, {"match", "group", "mode", "pack"}, "a rule of \"content.delivery\" in \"haylen.json\"");
     Content::Rule rule;
     std::string mode = "required";
     readValue(section, "match", rule.match);
@@ -138,28 +138,28 @@ AppConfig::Content::Rule AppConfig::readDeliveryRule(const Json& section, std::s
     readValue(section, "pack", rule.pack);
 
     if (section.contains("match") == section.contains("group")) {
-        throw std::invalid_argument("A rule of \"content.delivery\" in \"app.json\" needs either a \"match\" pattern or the name of a preload \"group\".");
+        throw std::invalid_argument("A rule of \"content.delivery\" in \"haylen.json\" needs either a \"match\" pattern or the name of a preload \"group\".");
     }
 
     if (section.contains("group") && groups.empty()) {
-        throw std::invalid_argument("A rule of \"content.delivery\" in \"app.json\" names the group \"" + rule.group + "\", so \"content.groups\" must name the group manifest that defines it.");
+        throw std::invalid_argument("A rule of \"content.delivery\" in \"haylen.json\" names the group \"" + rule.group + "\", so \"content.groups\" must name the group manifest that defines it.");
     }
 
     if (section.contains("mode") == section.contains("pack")) {
-        throw std::invalid_argument("A rule of \"content.delivery\" in \"app.json\" needs either a \"mode\" or a \"pack\", since a store delivers a pack on its own.");
+        throw std::invalid_argument("A rule of \"content.delivery\" in \"haylen.json\" needs either a \"mode\" or a \"pack\", since a store delivers a pack on its own.");
     }
 
     if (section.contains("pack") && !content::Manifest::isValidName(rule.pack)) {
-        throw std::invalid_argument("The \"pack\" of a rule of \"content.delivery\" in \"app.json\" must have at most 64 lowercase letters, digits, dashes and dots, not \"" + rule.pack + "\".");
+        throw std::invalid_argument("The \"pack\" of a rule of \"content.delivery\" in \"haylen.json\" must have at most 64 lowercase letters, digits, dashes and dots, not \"" + rule.pack + "\".");
     }
 
     if (section.contains("match") && !isContentPattern(rule.match)) {
-        throw std::invalid_argument("A rule of \"content.delivery\" in \"app.json\" must match paths relative to the \"content\" folder, such as \"world/asia/**\", not \"" + rule.match + "\".");
+        throw std::invalid_argument("A rule of \"content.delivery\" in \"haylen.json\" must match paths relative to the \"content\" folder, such as \"world/asia/**\", not \"" + rule.match + "\".");
     }
 
     const std::optional<content::Delivery> delivery = deliveryFromName(mode);
     if (!delivery) {
-        throw std::invalid_argument("The \"mode\" of a rule of \"content.delivery\" in \"app.json\" must be \"required\", \"prefetch\" or \"onDemand\", not \"" + mode + "\".");
+        throw std::invalid_argument("The \"mode\" of a rule of \"content.delivery\" in \"haylen.json\" must be \"required\", \"prefetch\" or \"onDemand\", not \"" + mode + "\".");
     }
 
     rule.mode = *delivery;
@@ -167,11 +167,11 @@ AppConfig::Content::Rule AppConfig::readDeliveryRule(const Json& section, std::s
 }
 
 void AppConfig::readContent(const Json& section, AppConfig& config) {
-    JsonValidator::requireKnownKeys(section, {"updates", "delivery", "groups"}, "the \"content\" section of \"app.json\"");
+    JsonValidator::requireKnownKeys(section, {"updates", "delivery", "groups"}, "the \"content\" section of \"haylen.json\"");
     readValue(section, "groups", config.content.groups);
 
     if (section.contains("groups") && !isContentPattern(config.content.groups)) {
-        throw std::invalid_argument("The \"content.groups\" in \"app.json\" must name a file relative to the \"content\" folder, such as \"groups.json\", not \"" + config.content.groups + "\".");
+        throw std::invalid_argument("The \"content.groups\" in \"haylen.json\" must name a file relative to the \"content\" folder, such as \"groups.json\", not \"" + config.content.groups + "\".");
     }
 
     if (section.contains("updates")) {
@@ -184,7 +184,7 @@ void AppConfig::readContent(const Json& section, AppConfig& config) {
 
     const Json& rules = section.at("delivery");
     if (!rules.is_array()) {
-        throw std::invalid_argument("The \"content.delivery\" section of \"app.json\" must be a list of rules with \"match\" or \"group\" and a \"mode\" or a \"pack\".");
+        throw std::invalid_argument("The \"content.delivery\" section of \"haylen.json\" must be a list of rules with \"match\" or \"group\" and a \"mode\" or a \"pack\".");
     }
 
     for (const Json& rule : rules) {
@@ -211,21 +211,21 @@ template <typename T> void AppConfig::readValue(const Json& object, const char* 
     if constexpr (std::is_integral_v<T> && !std::is_same_v<T, bool>) {
         const bool fits = value.is_number_unsigned() ? std::in_range<T>(value.get<std::uint64_t>()) : value.is_number_integer() && std::in_range<T>(value.get<std::int64_t>());
         if (!fits) {
-            throw std::invalid_argument(std::format("The value of \"{}\" in \"app.json\" must be a whole number from {} to {}.", key, std::numeric_limits<T>::min(), std::numeric_limits<T>::max()));
+            throw std::invalid_argument(std::format("The value of \"{}\" in \"haylen.json\" must be a whole number from {} to {}.", key, std::numeric_limits<T>::min(), std::numeric_limits<T>::max()));
         }
     }
 
     if constexpr (std::is_floating_point_v<T>) {
         const bool fits = value.is_number() && std::isfinite(value.get<double>()) && std::abs(value.get<double>()) <= std::numeric_limits<T>::max();
         if (!fits) {
-            throw std::invalid_argument(std::format("The value of \"{}\" in \"app.json\" must be a number from {:g} to {:g}.", key, std::numeric_limits<T>::lowest(), std::numeric_limits<T>::max()));
+            throw std::invalid_argument(std::format("The value of \"{}\" in \"haylen.json\" must be a number from {:g} to {:g}.", key, std::numeric_limits<T>::lowest(), std::numeric_limits<T>::max()));
         }
     }
 
     try {
         target = value.get<T>();
     } catch (const Json::exception&) {
-        throw std::invalid_argument(std::string("The value of \"") + key + "\" in \"app.json\" has the wrong type.");
+        throw std::invalid_argument(std::string("The value of \"") + key + "\" in \"haylen.json\" has the wrong type.");
     }
 }
 
@@ -237,7 +237,7 @@ std::uint32_t AppConfig::readBuild(const Json& document) {
     const Json& value = document.at("build");
     const std::int64_t number = value.is_number_integer() ? value.get<std::int64_t>() : 0;
     if (number < 1 || number > kMaxBuild) {
-        throw std::invalid_argument("The \"build\" value " + value.dump() + " in \"app.json\" is not a build number. It is a whole number from 1 to " + std::to_string(kMaxBuild) + " that grows with every upload of the app.");
+        throw std::invalid_argument("The \"build\" value " + value.dump() + " in \"haylen.json\" is not a build number. It is a whole number from 1 to " + std::to_string(kMaxBuild) + " that grows with every upload of the app.");
     }
 
     return static_cast<std::uint32_t>(number);
@@ -245,13 +245,13 @@ std::uint32_t AppConfig::readBuild(const Json& document) {
 
 void AppConfig::requirePositive(double value, const char* key) {
     if (value <= 0.0) {
-        throw std::invalid_argument(std::string("The value of \"") + key + "\" in \"app.json\" must be positive.");
+        throw std::invalid_argument(std::string("The value of \"") + key + "\" in \"haylen.json\" must be positive.");
     }
 }
 
 void AppConfig::requireNonNegative(double value, const char* key) {
     if (!(value >= 0.0) || !std::isfinite(value)) {
-        throw std::invalid_argument(std::string("The value of \"") + key + "\" in \"app.json\" must be a number of at least 0.");
+        throw std::invalid_argument(std::string("The value of \"") + key + "\" in \"haylen.json\" must be a number of at least 0.");
     }
 }
 
@@ -260,7 +260,7 @@ math::Color AppConfig::readColor(const Json& object, const char* key, const char
     readValue(object, key, text);
     const auto color = math::Color::parse(text);
     if (!color) {
-        throw std::invalid_argument(std::string("The \"") + name + "\" value \"" + text + "\" in \"app.json\" is not a color such as \"#RRGGBB\" or \"#AARRGGBB\".");
+        throw std::invalid_argument(std::string("The \"") + name + "\" value \"" + text + "\" in \"haylen.json\" is not a color such as \"#RRGGBB\" or \"#AARRGGBB\".");
     }
 
     return *color;
@@ -269,7 +269,7 @@ math::Color AppConfig::readColor(const Json& object, const char* key, const char
 platform::Orientation AppConfig::orientationFromName(const std::string& text) {
     const std::optional<platform::Orientation> orientation = platform::Window::orientationFromName(text);
     if (!orientation) {
-        throw std::invalid_argument("The orientation \"" + text + "\" in \"app.json\" is unknown. It is \"landscape\", \"portrait\" or \"any\".");
+        throw std::invalid_argument("The orientation \"" + text + "\" in \"haylen.json\" is unknown. It is \"landscape\", \"portrait\" or \"any\".");
     }
 
     return *orientation;
@@ -278,7 +278,7 @@ platform::Orientation AppConfig::orientationFromName(const std::string& text) {
 audio::Session::Category AppConfig::sessionCategoryFromName(const std::string& text) {
     const std::optional<audio::Session::Category> category = audio::Session::categoryFromName(text);
     if (!category) {
-        throw std::invalid_argument("The \"audio.iosSession\" value \"" + text + "\" in \"app.json\" is unknown. It is \"ambient\", \"soloAmbient\" or \"playback\".");
+        throw std::invalid_argument("The \"audio.iosSession\" value \"" + text + "\" in \"haylen.json\" is unknown. It is \"ambient\", \"soloAmbient\" or \"playback\".");
     }
 
     return *category;
@@ -306,7 +306,7 @@ bool AppConfig::isPluginId(std::string_view text) noexcept {
 // The names are the ones of `gpu::Device::kApiNames`, each once, and the name that means none draws nothing.
 std::vector<gpu::Device::Api> AppConfig::readGraphicsApis(const Json& value) {
     if (!value.is_array()) {
-        throw std::invalid_argument("The \"window.graphicsApis\" of \"app.json\" is not an array of graphics API names, such as [\"vulkan\", \"openGl\"].");
+        throw std::invalid_argument("The \"window.graphicsApis\" of \"haylen.json\" is not an array of graphics API names, such as [\"vulkan\", \"openGl\"].");
     }
 
     std::vector<gpu::Device::Api> apis;
@@ -314,11 +314,11 @@ std::vector<gpu::Device::Api> AppConfig::readGraphicsApis(const Json& value) {
         const std::string name = entry.is_string() ? entry.get<std::string>() : entry.dump();
         const auto found = std::ranges::find(gpu::Device::kApiNames, name, &std::pair<std::string_view, gpu::Device::Api>::first);
         if (found == gpu::Device::kApiNames.end() || found->second == gpu::Device::Api::None) {
-            throw std::invalid_argument("The \"window.graphicsApis\" value \"" + name + "\" in \"app.json\" is not a graphics API. It is \"metal\", \"direct3D12\", \"direct3D11\", \"vulkan\", \"openGl\", \"openGlEs\", \"webGpu\", \"webGl2\" or \"port\".");
+            throw std::invalid_argument("The \"window.graphicsApis\" value \"" + name + "\" in \"haylen.json\" is not a graphics API. It is \"metal\", \"direct3D12\", \"direct3D11\", \"vulkan\", \"openGl\", \"openGlEs\", \"webGpu\", \"webGl2\" or \"port\".");
         }
 
         if (std::ranges::find(apis, found->second) != apis.end()) {
-            throw std::invalid_argument("The \"window.graphicsApis\" of \"app.json\" names \"" + name + "\" twice.");
+            throw std::invalid_argument("The \"window.graphicsApis\" of \"haylen.json\" names \"" + name + "\" twice.");
         }
 
         apis.push_back(found->second);
@@ -329,12 +329,12 @@ std::vector<gpu::Device::Api> AppConfig::readGraphicsApis(const Json& value) {
 
 void AppConfig::readPlugins(const Json& section, AppConfig& config) {
     if (!section.is_object()) {
-        throw std::invalid_argument("The \"plugins\" section of \"app.json\" must be an object of plugins by id.");
+        throw std::invalid_argument("The \"plugins\" section of \"haylen.json\" must be an object of plugins by id.");
     }
 
     for (const auto& [id, entry] : section.items()) {
         if (!isPluginId(id)) {
-            throw std::invalid_argument("The plugin id \"" + id + "\" in \"app.json\" is not in \"dash-case\", such as \"cloud-analytics\".");
+            throw std::invalid_argument("The plugin id \"" + id + "\" in \"haylen.json\" is not in \"dash-case\", such as \"cloud-analytics\".");
         }
 
         config.plugins[id] = readPlugin(id, entry);
@@ -343,10 +343,10 @@ void AppConfig::readPlugins(const Json& section, AppConfig& config) {
 
 AppConfig::Plugin AppConfig::readPlugin(const std::string& id, const Json& entry) {
     if (!entry.is_object()) {
-        throw std::invalid_argument("The plugin \"" + id + "\" in \"app.json\" must be an object with the optional keys \"path\", \"git\", \"ref\" and \"parameters\".");
+        throw std::invalid_argument("The plugin \"" + id + "\" in \"haylen.json\" must be an object with the optional keys \"path\", \"git\", \"ref\" and \"parameters\".");
     }
 
-    JsonValidator::requireKnownKeys(entry, {"path", "git", "ref", "parameters"}, "the plugin \"" + id + "\" of \"app.json\"");
+    JsonValidator::requireKnownKeys(entry, {"path", "git", "ref", "parameters"}, "the plugin \"" + id + "\" of \"haylen.json\"");
 
     Plugin plugin;
     readPluginText(entry, id, "path", plugin.path);
@@ -354,11 +354,11 @@ AppConfig::Plugin AppConfig::readPlugin(const std::string& id, const Json& entry
     readPluginText(entry, id, "ref", plugin.ref);
 
     if (!plugin.path.empty() && !plugin.git.empty()) {
-        throw std::invalid_argument("The plugin \"" + id + "\" in \"app.json\" names both a \"path\" and a \"git\" repository. Keep the one that the plugin comes from.");
+        throw std::invalid_argument("The plugin \"" + id + "\" in \"haylen.json\" names both a \"path\" and a \"git\" repository. Keep the one that the plugin comes from.");
     }
 
     if (!plugin.ref.empty() && plugin.git.empty()) {
-        throw std::invalid_argument("The \"ref\" of the plugin \"" + id + "\" in \"app.json\" picks a branch, tag or commit of a git repository, so it needs \"git\".");
+        throw std::invalid_argument("The \"ref\" of the plugin \"" + id + "\" in \"haylen.json\" picks a branch, tag or commit of a git repository, so it needs \"git\".");
     }
 
     const auto parameters = entry.find("parameters");
@@ -367,11 +367,37 @@ AppConfig::Plugin AppConfig::readPlugin(const std::string& id, const Json& entry
     }
 
     if (!parameters->is_object()) {
-        throw std::invalid_argument("The \"parameters\" of the plugin \"" + id + "\" in \"app.json\" must be an object of parameter values.");
+        throw std::invalid_argument("The \"parameters\" of the plugin \"" + id + "\" in \"haylen.json\" must be an object of parameter values.");
     }
 
     plugin.parameters = *parameters;
     return plugin;
+}
+
+// The tooling builds the app from `kind`, `cpp` and `platforms`, so the engine checks only their types.
+void AppConfig::requireToolingSections(const Json& document) {
+    const auto kind = document.find("kind");
+    if (kind != document.end() && *kind != "lua" && *kind != "cpp") {
+        throw std::invalid_argument("The \"kind\" of \"haylen.json\" must be \"lua\" or \"cpp\", not " + kind->dump() + ".");
+    }
+
+    const auto cpp = document.find("cpp");
+    if (cpp != document.end() && !cpp->is_object()) {
+        throw std::invalid_argument("The \"cpp\" section of \"haylen.json\" must be an object with the \"sources\" of the C++ app.");
+    }
+
+    const auto platforms = document.find("platforms");
+    if (platforms == document.end()) {
+        return;
+    }
+    if (!platforms->is_object()) {
+        throw std::invalid_argument("The \"platforms\" section of \"haylen.json\" must be an object of platform sections by name, such as \"ios\" or \"android\".");
+    }
+    for (const auto& [name, section] : platforms->items()) {
+        if (!section.is_object()) {
+            throw std::invalid_argument("The section \"" + name + "\" of \"platforms\" in \"haylen.json\" must be an object.");
+        }
+    }
 }
 
 void AppConfig::readPluginText(const Json& entry, const std::string& id, const char* key, std::string& target) {
@@ -381,7 +407,7 @@ void AppConfig::readPluginText(const Json& entry, const std::string& id, const c
     }
 
     if (!found->is_string() || found->get_ref<const std::string&>().empty()) {
-        throw std::invalid_argument("The \"" + std::string(key) + "\" of the plugin \"" + id + "\" in \"app.json\" must be a text.");
+        throw std::invalid_argument("The \"" + std::string(key) + "\" of the plugin \"" + id + "\" in \"haylen.json\" must be a text.");
     }
 
     target = found->get<std::string>();
@@ -403,7 +429,7 @@ void AppConfig::Content::expandGroups(const io::Package& package) {
 
     const std::string manifest = io::Path::asset(groups);
     if (!package.exists(manifest)) {
-        throw std::invalid_argument("The group manifest \"" + manifest + "\" that \"content.groups\" in \"app.json\" names is not in the package.");
+        throw std::invalid_argument("The group manifest \"" + manifest + "\" that \"content.groups\" in \"haylen.json\" names is not in the package.");
     }
 
     const std::map<std::string, std::vector<assets::GroupManifest::Entry>> defined = assets::GroupManifest::read(Json::parse(package.readText(manifest)));
@@ -416,7 +442,7 @@ void AppConfig::Content::expandGroups(const io::Package& package) {
 
         const auto found = defined.find(rule.group);
         if (found == defined.end()) {
-            throw std::invalid_argument("A rule of \"content.delivery\" in \"app.json\" names the group \"" + rule.group + "\", which \"" + manifest + "\" does not define.");
+            throw std::invalid_argument("A rule of \"content.delivery\" in \"haylen.json\" names the group \"" + rule.group + "\", which \"" + manifest + "\" does not define.");
         }
 
         for (const assets::GroupManifest::Entry& entry : found->second) {
@@ -440,19 +466,19 @@ AppConfig AppConfig::fromPackage(const io::Package& package) {
             continue;
         }
 
-        // The package holds a referenced plugin only when `haylen.py` made it, so a folder that the player runs directly lacks it.
+        // The package holds a referenced plugin only when the tooling staged it, so a folder that the player runs directly lacks it.
         if (!plugin.path.empty() || !plugin.git.empty()) {
-            throw std::invalid_argument("The plugin \"" + id + "\" in \"app.json\" comes from a \"path\" or a \"git\" repository, so the package has no \"" + manifest + "\". Run the app with \"haylen run\", which places every plugin in the package wherever it comes from.");
+            throw std::invalid_argument("The plugin \"" + id + "\" in \"haylen.json\" comes from a \"path\" or a \"git\" repository, so the package has no \"" + manifest + "\". Run the app with \"haylen app run\", which places every plugin in the package wherever it comes from.");
         }
 
-        throw std::invalid_argument("The plugin \"" + id + "\" in \"app.json\" has no \"" + manifest + "\" in the package.");
+        throw std::invalid_argument("The plugin \"" + id + "\" in \"haylen.json\" has no \"" + manifest + "\" in the package.");
     }
 
     return config;
 }
 
 void AppConfig::readWindow(const Json& section, AppConfig& config) {
-    JsonValidator::requireKnownKeys(section, {"title", "width", "height", "fullscreen", "maxPixelDensity", "resizable", "vsync", "frameRate", "sampleCount", "decorated", "transparent", "alwaysOnTop", "showInTaskbar", "focusable", "mousePassthrough", "keepScreenOn", "position", "statusBar", "statusBarColor", "systemGestures", "graphicsApis", "lowPowerGpu"}, "the \"window\" section of \"app.json\"");
+    JsonValidator::requireKnownKeys(section, {"title", "width", "height", "fullscreen", "maxPixelDensity", "resizable", "vsync", "frameRate", "sampleCount", "decorated", "transparent", "alwaysOnTop", "showInTaskbar", "focusable", "mousePassthrough", "keepScreenOn", "position", "statusBar", "statusBarColor", "systemGestures", "graphicsApis", "lowPowerGpu"}, "the \"window\" section of \"haylen.json\"");
     readValue(section, "title", config.window.title);
     readValue(section, "width", config.window.width);
     readValue(section, "height", config.window.height);
@@ -475,11 +501,11 @@ void AppConfig::readWindow(const Json& section, AppConfig& config) {
     requirePositive(config.window.sampleCount, "window.sampleCount");
 
     if (!std::isfinite(config.window.maxPixelDensity) || config.window.maxPixelDensity < 0.0F) {
-        throw std::invalid_argument("The \"window.maxPixelDensity\" value in \"app.json\" is out of range. It is 0 for every pixel of the display, or a positive number of framebuffer pixels in each point.");
+        throw std::invalid_argument("The \"window.maxPixelDensity\" value in \"haylen.json\" is out of range. It is 0 for every pixel of the display, or a positive number of framebuffer pixels in each point.");
     }
 
     if (config.window.frameRate < 0 || config.window.frameRate > platform::Window::kMaxFrameRate) {
-        throw std::invalid_argument("The \"window.frameRate\" value " + std::to_string(config.window.frameRate) + " in \"app.json\" is out of range. It is 0 for every refresh of the display, or from 1 to " + std::to_string(platform::Window::kMaxFrameRate) + " frames per second.");
+        throw std::invalid_argument("The \"window.frameRate\" value " + std::to_string(config.window.frameRate) + " in \"haylen.json\" is out of range. It is 0 for every refresh of the display, or from 1 to " + std::to_string(platform::Window::kMaxFrameRate) + " frames per second.");
     }
 
     std::string statusBarText;
@@ -488,7 +514,7 @@ void AppConfig::readWindow(const Json& section, AppConfig& config) {
     if (!statusBarText.empty()) {
         const std::optional<platform::Window::StatusBar> statusBar = platform::Window::statusBarFromName(statusBarText);
         if (!statusBar) {
-            throw std::invalid_argument("The \"window.statusBar\" value \"" + statusBarText + "\" in \"app.json\" is unknown. It is \"hidden\", \"auto\", \"light\" or \"dark\".");
+            throw std::invalid_argument("The \"window.statusBar\" value \"" + statusBarText + "\" in \"haylen.json\" is unknown. It is \"hidden\", \"auto\", \"light\" or \"dark\".");
         }
 
         config.window.statusBar = *statusBar;
@@ -499,7 +525,7 @@ void AppConfig::readWindow(const Json& section, AppConfig& config) {
         readValue(section, "systemGestures", systemGesturesText);
         const std::optional<platform::Window::SystemGestures> systemGestures = platform::Window::systemGesturesFromName(systemGesturesText);
         if (!systemGestures) {
-            throw std::invalid_argument("The \"window.systemGestures\" value \"" + systemGesturesText + "\" in \"app.json\" is unknown. It is \"system\", \"deferred\" or \"autoHideIndicator\".");
+            throw std::invalid_argument("The \"window.systemGestures\" value \"" + systemGesturesText + "\" in \"haylen.json\" is unknown. It is \"system\", \"deferred\" or \"autoHideIndicator\".");
         }
 
         config.window.systemGestures = *systemGestures;
@@ -511,7 +537,7 @@ void AppConfig::readWindow(const Json& section, AppConfig& config) {
     if (!statusBarColorText.empty()) {
         config.window.statusBarColor = math::Color::parse(statusBarColorText);
         if (!config.window.statusBarColor) {
-            throw std::invalid_argument("The \"window.statusBarColor\" value \"" + statusBarColorText + "\" in \"app.json\" is not a color such as \"#RRGGBB\" or \"#AARRGGBB\".");
+            throw std::invalid_argument("The \"window.statusBarColor\" value \"" + statusBarColorText + "\" in \"haylen.json\" is not a color such as \"#RRGGBB\" or \"#AARRGGBB\".");
         }
     }
 
@@ -523,13 +549,13 @@ void AppConfig::readWindow(const Json& section, AppConfig& config) {
         try {
             config.window.position = platform::WindowPlacement::fromJson(section.at("position"));
         } catch (const std::invalid_argument& error) {
-            throw std::invalid_argument(std::string("The \"window.position\" in \"app.json\" is invalid. ") + error.what());
+            throw std::invalid_argument(std::string("The \"window.position\" in \"haylen.json\" is invalid. ") + error.what());
         }
     }
 }
 
 void AppConfig::readDesign(const Json& section, AppConfig& config) {
-    JsonValidator::requireKnownKeys(section, {"width", "height", "scaling"}, "the \"design\" section of \"app.json\"");
+    JsonValidator::requireKnownKeys(section, {"width", "height", "scaling"}, "the \"design\" section of \"haylen.json\"");
     readValue(section, "width", config.designSize.x);
     readValue(section, "height", config.designSize.y);
     requirePositive(config.designSize.x, "design.width");
@@ -541,7 +567,7 @@ void AppConfig::readDesign(const Json& section, AppConfig& config) {
     if (!scalingText.empty()) {
         const auto policy = graphics::Viewport::scalingPolicyFromName(scalingText);
         if (!policy) {
-            throw std::invalid_argument("The \"design.scaling\" value \"" + scalingText + "\" in \"app.json\" is unknown. It is \"fit\", \"fill\", \"stretch\", \"expand\", \"pixelPerfect\", \"fitWidth\" or \"none\".");
+            throw std::invalid_argument("The \"design.scaling\" value \"" + scalingText + "\" in \"haylen.json\" is unknown. It is \"fit\", \"fill\", \"stretch\", \"expand\", \"pixelPerfect\", \"fitWidth\" or \"none\".");
         }
 
         config.scaling = *policy;
@@ -549,7 +575,7 @@ void AppConfig::readDesign(const Json& section, AppConfig& config) {
 }
 
 void AppConfig::readSplash(const Json& section, AppConfig& config) {
-    JsonValidator::requireKnownKeys(section, {"logo", "background", "darkBackground", "duration", "fadeOut"}, "the \"splash\" section of \"app.json\"");
+    JsonValidator::requireKnownKeys(section, {"logo", "background", "darkBackground", "duration", "fadeOut"}, "the \"splash\" section of \"haylen.json\"");
     readValue(section, "logo", config.splash.logo);
 
     if (section.contains("background")) {
@@ -567,21 +593,21 @@ void AppConfig::readSplash(const Json& section, AppConfig& config) {
 }
 
 void AppConfig::readLifecycle(const Json& section, AppConfig& config) {
-    JsonValidator::requireKnownKeys(section, {"pauseOnBackground", "pauseOnFocusLoss", "muteOnFocusLoss"}, "the \"lifecycle\" section of \"app.json\"");
+    JsonValidator::requireKnownKeys(section, {"pauseOnBackground", "pauseOnFocusLoss", "muteOnFocusLoss"}, "the \"lifecycle\" section of \"haylen.json\"");
     readValue(section, "pauseOnBackground", config.lifecycle.pauseOnBackground);
     readValue(section, "pauseOnFocusLoss", config.lifecycle.pauseOnFocusLoss);
     readValue(section, "muteOnFocusLoss", config.lifecycle.muteOnFocusLoss);
 }
 
 void AppConfig::readAudio(const Json& section, AppConfig& config) {
-    JsonValidator::requireKnownKeys(section, {"iosSession", "mixWithOthers", "background", "latency", "limiter"}, "the \"audio\" section of \"app.json\"");
+    JsonValidator::requireKnownKeys(section, {"iosSession", "mixWithOthers", "background", "latency", "limiter"}, "the \"audio\" section of \"haylen.json\"");
 
     if (section.contains("latency")) {
         std::string latency;
         readValue(section, "latency", latency);
         const std::optional<audio::OutputSettings::Latency> found = audio::OutputSettings::latencyFromName(latency);
         if (!found) {
-            throw std::invalid_argument("The \"audio.latency\" value \"" + latency + "\" in \"app.json\" is unknown. It is \"low\", \"balanced\" or \"powerSaving\".");
+            throw std::invalid_argument("The \"audio.latency\" value \"" + latency + "\" in \"haylen.json\" is unknown. It is \"low\", \"balanced\" or \"powerSaving\".");
         }
 
         config.audioOutput.latency = *found;
@@ -598,36 +624,36 @@ void AppConfig::readAudio(const Json& section, AppConfig& config) {
     readValue(section, "mixWithOthers", config.audioSession.mixWithOthers);
 
     if (config.audioSession.mixWithOthers && config.audioSession.category != audio::Session::Category::Playback) {
-        throw std::invalid_argument("The \"audio.mixWithOthers\" option in \"app.json\" needs the \"iosSession\" value \"playback\".");
+        throw std::invalid_argument("The \"audio.mixWithOthers\" option in \"haylen.json\" needs the \"iosSession\" value \"playback\".");
     }
 
     readValue(section, "background", config.audioSession.background);
 
     if (config.audioSession.background && config.audioSession.category != audio::Session::Category::Playback) {
-        throw std::invalid_argument("The \"audio.background\" option in \"app.json\" needs the \"iosSession\" value \"playback\", the only session that iOS and tvOS play in the background.");
+        throw std::invalid_argument("The \"audio.background\" option in \"haylen.json\" needs the \"iosSession\" value \"playback\", the only session that iOS and tvOS play in the background.");
     }
 }
 
 void AppConfig::readInput(const Json& section, AppConfig& config) {
-    JsonValidator::requireKnownKeys(section, {"mouseAsTouch", "touchAsMouse", "scrollSpeed"}, "the \"input\" section of \"app.json\"");
+    JsonValidator::requireKnownKeys(section, {"mouseAsTouch", "touchAsMouse", "scrollSpeed"}, "the \"input\" section of \"haylen.json\"");
     readValue(section, "mouseAsTouch", config.input.mouseAsTouch);
     readValue(section, "touchAsMouse", config.input.touchAsMouse);
     readValue(section, "scrollSpeed", config.input.scrollSpeed);
 
     if (!(config.input.scrollSpeed > 0.0F && std::isfinite(config.input.scrollSpeed))) {
-        throw std::invalid_argument("The \"input.scrollSpeed\" value in \"app.json\" must be a positive number.");
+        throw std::invalid_argument("The \"input.scrollSpeed\" value in \"haylen.json\" must be a positive number.");
     }
 }
 
 void AppConfig::readUi(const Json& section, AppConfig& config) {
-    JsonValidator::requireKnownKeys(section, {"scaleMode", "scale"}, "the \"ui\" section of \"app.json\"");
+    JsonValidator::requireKnownKeys(section, {"scaleMode", "scale"}, "the \"ui\" section of \"haylen.json\"");
     std::string mode;
     readValue(section, "scaleMode", mode);
 
     if (!mode.empty()) {
         const std::optional<ui::Scaling::Mode> found = ui::Scaling::modeFromName(mode);
         if (!found) {
-            throw std::invalid_argument("The \"ui.scaleMode\" value \"" + mode + "\" in \"app.json\" is unknown. It is \"design\" or \"physical\".");
+            throw std::invalid_argument("The \"ui.scaleMode\" value \"" + mode + "\" in \"haylen.json\" is unknown. It is \"design\" or \"physical\".");
         }
 
         config.uiScaling.mode = *found;
@@ -636,19 +662,19 @@ void AppConfig::readUi(const Json& section, AppConfig& config) {
     readValue(section, "scale", config.uiScaling.factor);
 
     if (config.uiScaling.factor < ui::Scaling::kMinimumFactor || config.uiScaling.factor > ui::Scaling::kMaximumFactor) {
-        throw std::invalid_argument("The \"ui.scale\" value in \"app.json\" must be from 0.25 to 4.");
+        throw std::invalid_argument("The \"ui.scale\" value in \"haylen.json\" must be from 0.25 to 4.");
     }
 }
 
 void AppConfig::readDebug(const Json& section, AppConfig& config) {
-    JsonValidator::requireKnownKeys(section, {"stats", "statsItems", "drawings", "objectEvents", "console", "safeArea", "fold", "showSafeArea", "reload", "executionBudget", "memoryBudget"}, "the \"debug\" section of \"app.json\"");
+    JsonValidator::requireKnownKeys(section, {"stats", "statsItems", "drawings", "objectEvents", "console", "safeArea", "fold", "showSafeArea", "reload", "executionBudget", "memoryBudget"}, "the \"debug\" section of \"haylen.json\"");
     std::string stats;
     readValue(section, "stats", stats);
 
     if (!stats.empty()) {
         const auto mode = debug::StatsDisplay::modeFromName(stats);
         if (!mode) {
-            throw std::invalid_argument("The \"debug.stats\" value \"" + stats + "\" in \"app.json\" is unknown. It is \"off\", \"compact\" or \"full\".");
+            throw std::invalid_argument("The \"debug.stats\" value \"" + stats + "\" in \"haylen.json\" is unknown. It is \"off\", \"compact\" or \"full\".");
         }
 
         config.debug.stats = *mode;
@@ -662,7 +688,7 @@ void AppConfig::readDebug(const Json& section, AppConfig& config) {
         for (const std::string& name : items) {
             const std::optional<debug::StatsDisplay::Item> item = debug::StatsDisplay::itemFromName(name);
             if (!item) {
-                throw std::invalid_argument("The \"debug.statsItems\" item \"" + name + "\" in \"app.json\" is unknown. It is \"frameRate\", \"drawCalls\", \"geometry\", \"memory\", \"counters\", \"physics\", \"particles\" or \"audio\".");
+                throw std::invalid_argument("The \"debug.statsItems\" item \"" + name + "\" in \"haylen.json\" is unknown. It is \"frameRate\", \"drawCalls\", \"geometry\", \"memory\", \"counters\", \"physics\", \"particles\" or \"audio\".");
             }
 
             config.debug.statsItems.push_back(*item);
@@ -672,7 +698,7 @@ void AppConfig::readDebug(const Json& section, AppConfig& config) {
     readValue(section, "drawings", config.debug.drawings);
 
     if (std::ranges::any_of(config.debug.drawings, [](const std::string& drawing) { return drawing.empty(); })) {
-        throw std::invalid_argument("The \"debug.drawings\" list in \"app.json\" has an empty drawing name.");
+        throw std::invalid_argument("The \"debug.drawings\" list in \"haylen.json\" has an empty drawing name.");
     }
 
     readValue(section, "objectEvents", config.debug.objectEvents);
@@ -682,7 +708,7 @@ void AppConfig::readDebug(const Json& section, AppConfig& config) {
         try {
             config.debug.safeArea = platform::SafeAreaSimulation::fromJson(section.at("safeArea"));
         } catch (const std::invalid_argument& error) {
-            throw std::invalid_argument(std::string("The \"debug.safeArea\" in \"app.json\" is invalid. ") + error.what());
+            throw std::invalid_argument(std::string("The \"debug.safeArea\" in \"haylen.json\" is invalid. ") + error.what());
         }
     }
 
@@ -690,7 +716,7 @@ void AppConfig::readDebug(const Json& section, AppConfig& config) {
         try {
             config.debug.fold = platform::FoldSimulation::fromJson(section.at("fold"));
         } catch (const std::invalid_argument& error) {
-            throw std::invalid_argument(std::string("The \"debug.fold\" in \"app.json\" is invalid. ") + error.what());
+            throw std::invalid_argument(std::string("The \"debug.fold\" in \"haylen.json\" is invalid. ") + error.what());
         }
     }
 
@@ -711,7 +737,7 @@ void AppConfig::readDebug(const Json& section, AppConfig& config) {
         double seconds = 0.0;
         readValue(section, "executionBudget", seconds);
         if (!(seconds >= kMinExecutionBudget && seconds <= kMaxExecutionBudget)) {
-            throw std::invalid_argument("The \"debug.executionBudget\" value in \"app.json\" must be a number of seconds from 0.1 to 600.");
+            throw std::invalid_argument("The \"debug.executionBudget\" value in \"haylen.json\" must be a number of seconds from 0.1 to 600.");
         }
 
         config.debug.executionBudget = std::chrono::milliseconds(std::llround(seconds * 1000.0));
@@ -721,7 +747,7 @@ void AppConfig::readDebug(const Json& section, AppConfig& config) {
         double megabytes = 0.0;
         readValue(section, "memoryBudget", megabytes);
         if (!(megabytes >= kMinMemoryBudget && megabytes <= kMaxMemoryBudget)) {
-            throw std::invalid_argument("The \"debug.memoryBudget\" value in \"app.json\" must be a number of megabytes from 16 to 4096.");
+            throw std::invalid_argument("The \"debug.memoryBudget\" value in \"haylen.json\" must be a number of megabytes from 16 to 4096.");
         }
 
         config.debug.memoryBudget = static_cast<std::size_t>(std::llround(megabytes * 1024.0 * 1024.0));
@@ -729,7 +755,7 @@ void AppConfig::readDebug(const Json& section, AppConfig& config) {
 }
 
 AppConfig AppConfig::fromJson(const Json& document) {
-    JsonValidator::requireKnownKeys(document, {"name", "identifier", "version", "build", "description", "company", "copyright", "website", "window", "design", "orientation", "fixedRate", "maxFrameTime", "clearColor", "splash", "lifecycle", "audio", "input", "ui", "debug", "content", "localization", "autoload", "native", "plugins"}, "\"app.json\"");
+    JsonValidator::requireKnownKeys(document, {"name", "identifier", "version", "build", "description", "company", "copyright", "website", "window", "design", "orientation", "fixedRate", "maxFrameTime", "clearColor", "splash", "lifecycle", "audio", "input", "ui", "debug", "content", "localization", "autoload", "native", "plugins", "kind", "cpp", "platforms"}, "\"haylen.json\"");
 
     AppConfig config;
     readValue(document, "name", config.name);
@@ -776,7 +802,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
     if (!clearColorText.empty()) {
         const auto color = math::Color::parse(clearColorText);
         if (!color) {
-            throw std::invalid_argument("The \"clearColor\" value \"" + clearColorText + "\" in \"app.json\" is not a color such as \"#RRGGBB\" or \"#AARRGGBB\".");
+            throw std::invalid_argument("The \"clearColor\" value \"" + clearColorText + "\" in \"haylen.json\" is not a color such as \"#RRGGBB\" or \"#AARRGGBB\".");
         }
 
         config.clearColor = *color;
@@ -811,13 +837,13 @@ AppConfig AppConfig::fromJson(const Json& document) {
 
     for (const std::string& module : config.autoloads) {
         if (module.empty()) {
-            throw std::invalid_argument("The \"autoload\" list in \"app.json\" has an empty module name.");
+            throw std::invalid_argument("The \"autoload\" list in \"haylen.json\" has an empty module name.");
         }
     }
 
     if (document.contains("native")) {
         if (!document.at("native").is_object()) {
-            throw std::invalid_argument("The \"native\" section of \"app.json\" must be an object of libraries.");
+            throw std::invalid_argument("The \"native\" section of \"haylen.json\" must be an object of libraries.");
         }
 
         config.native = document.at("native");
@@ -826,6 +852,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
     if (document.contains("plugins")) {
         readPlugins(document.at("plugins"), config);
     }
+    requireToolingSections(document);
 
     if (document.contains("content")) {
         readContent(document.at("content"), config);

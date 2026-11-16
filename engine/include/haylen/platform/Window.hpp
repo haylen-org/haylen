@@ -91,15 +91,15 @@ class Window {
     // Throws `std::invalid_argument` for a pixel density cap that is not 0 or a positive finite number.
     static void requireMaxPixelDensity(float value);
 
-    // Resolves the orientation names `landscape`, `portrait` and `any` that `app.json` and Lua share.
+    // Resolves the orientation names `landscape`, `portrait` and `any` that `haylen.json` and Lua share.
     [[nodiscard]] static std::optional<Orientation> orientationFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view orientationName(Orientation value) noexcept;
 
-    // Resolves the status bar names `hidden`, `auto`, `light` and `dark` that `app.json` and Lua share.
+    // Resolves the status bar names `hidden`, `auto`, `light` and `dark` that `haylen.json` and Lua share.
     [[nodiscard]] static std::optional<StatusBar> statusBarFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view statusBarName(StatusBar value) noexcept;
 
-    // Resolves the system gesture names `system`, `deferred` and `autoHideIndicator` that `app.json` and Lua share.
+    // Resolves the system gesture names `system`, `deferred` and `autoHideIndicator` that `haylen.json` and Lua share.
     [[nodiscard]] static std::optional<SystemGestures> systemGesturesFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view systemGesturesName(SystemGestures value) noexcept;
 
@@ -163,7 +163,7 @@ class Window {
     // Whether the player can point at the screen with a mouse or a touch screen, which a TV remote cannot.
     [[nodiscard]] virtual bool hasPointerDevice() const noexcept = 0;
 
-    // Whether the desktop shows through the transparent pixels of the window. Only a window that opened able to be transparent, which `window.transparent` in `app.json` decides, can turn transparent again after it turned opaque, and turning such a window transparent otherwise throws `std::logic_error`. An opaque window shows alpha 1 everywhere, whatever the app draws.
+    // Whether the desktop shows through the transparent pixels of the window. Only a window that opened able to be transparent, which `window.transparent` in `haylen.json` decides, can turn transparent again after it turned opaque, and turning such a window transparent otherwise throws `std::logic_error`. An opaque window shows alpha 1 everywhere, whatever the app draws.
     [[nodiscard]] virtual bool canBeTransparent() const noexcept = 0;
     [[nodiscard]] virtual bool isTransparent() const noexcept = 0;
     virtual void setTransparent(bool value) = 0;

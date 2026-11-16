@@ -10,22 +10,22 @@
 
 namespace haylen::platform {
 
-TEST(PluginLoadOrderTest, KeepsTheOrderOfAppJsonWithRequiredPluginsFirst) {
-    // The order of `app.json` is not alphabetical, and "analytics" requires "cloud", which `app.json` lists after it.
+TEST(PluginLoadOrderTest, KeepsTheOrderOfHaylenJsonWithDependenciesFirst) {
+    // The order of `haylen.json` is not alphabetical, and "analytics" depends on "cloud", which `haylen.json` lists after it.
     io::MemoryPackage package("order");
-    package.setFile("app.json", test::TestFiles::bytes(R"({"name": "Order", "plugins": {"zoo-ads": {}, "analytics": {}, "cloud": {}, "camera": {}}})"));
-    package.setFile("plugins/zoo-ads/plugin.json", test::TestFiles::bytes(R"({"id": "zoo-ads", "version": "1"})"));
-    package.setFile("plugins/analytics/plugin.json", test::TestFiles::bytes(R"({"id": "analytics", "version": "1", "requires": ["cloud", "absent"]})"));
-    package.setFile("plugins/cloud/plugin.json", test::TestFiles::bytes(R"({"id": "cloud", "version": "1"})"));
-    package.setFile("plugins/camera/plugin.json", test::TestFiles::bytes(R"({"id": "camera", "version": "1", "requires": ["zoo-ads"]})"));
+    package.setFile("haylen.json", test::TestFiles::bytes(R"({"name": "Order", "plugins": {"zoo-ads": {}, "analytics": {}, "cloud": {}, "camera": {}}})"));
+    package.setFile("plugins/zoo-ads/plugin.json", test::TestFiles::bytes(R"({"id": "zoo-ads", "version": "1", "implementations": {"ios": "lua"}})"));
+    package.setFile("plugins/analytics/plugin.json", test::TestFiles::bytes(R"({"id": "analytics", "version": "1", "implementations": {"ios": "lua"}, "dependencies": {"cloud": "1.0", "absent": "2"}})"));
+    package.setFile("plugins/cloud/plugin.json", test::TestFiles::bytes(R"({"id": "cloud", "version": "1", "implementations": {"ios": "lua"}})"));
+    package.setFile("plugins/camera/plugin.json", test::TestFiles::bytes(R"({"id": "camera", "version": "1", "implementations": {"ios": "lua"}, "dependencies": {"zoo-ads": "1"}})"));
 
-    // A required plugin that `app.json` does not list loads nowhere, so it takes no place in the order.
+    // A dependency that `haylen.json` does not list loads nowhere, so it takes no place in the order.
     EXPECT_EQ(PluginLoadOrder::read(package), (std::vector<std::string>{"zoo-ads", "cloud", "analytics", "camera"}));
 }
 
-TEST(PluginLoadOrderTest, ReadsNoPluginsWithoutThePluginsOfAppJson) {
+TEST(PluginLoadOrderTest, ReadsNoPluginsWithoutThePluginsOfHaylenJson) {
     io::MemoryPackage package("empty");
-    package.setFile("app.json", test::TestFiles::bytes(R"({"name": "Empty"})"));
+    package.setFile("haylen.json", test::TestFiles::bytes(R"({"name": "Empty"})"));
     EXPECT_TRUE(PluginLoadOrder::read(package).empty());
 }
 
@@ -42,9 +42,9 @@ TEST(PluginLoadOrderTest, RejectsFilesThatAreNotJsonObjects) {
     };
     // clang-format on
 
-    package.setFile("app.json", test::TestFiles::bytes("["));
-    rejects("The file \"app.json\" of the package is not a JSON object.");
-    package.setFile("app.json", test::TestFiles::bytes(R"({"plugins": {"broken": {}}})"));
+    package.setFile("haylen.json", test::TestFiles::bytes("["));
+    rejects("The file \"haylen.json\" of the package is not a JSON object.");
+    package.setFile("haylen.json", test::TestFiles::bytes(R"({"plugins": {"broken": {}}})"));
     package.setFile("plugins/broken/plugin.json", test::TestFiles::bytes("{"));
     rejects("The file \"plugins/broken/plugin.json\" of the package is not a JSON object.");
 }

@@ -8,13 +8,13 @@ The commands run from the root of the repository:
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `haylen run samples/apps/car-dashboard` |
-| macOS app | `haylen run samples/apps/car-dashboard --platform macos` |
-| iPhone and iPad simulator | `haylen run samples/apps/car-dashboard --platform ios-simulator` |
-| Apple TV simulator | `haylen run samples/apps/car-dashboard --platform tvos-simulator` |
-| Android device or emulator | `haylen run samples/apps/car-dashboard --platform android --device <serial>` |
-| Browser | `haylen run samples/apps/car-dashboard --platform web` |
-| Headless player | `build/macos-debug/bin/haylen-headless samples/apps/car-dashboard` |
+| Desktop player with hot reload | `haylen app run samples/apps/car-dashboard` |
+| macOS app | `haylen app run samples/apps/car-dashboard --target macos` |
+| iPhone and iPad simulator | `haylen app run samples/apps/car-dashboard --target ios-simulator` |
+| Apple TV simulator | `haylen app run samples/apps/car-dashboard --target tvos-simulator` |
+| Android device or emulator | `haylen app run samples/apps/car-dashboard --target android --device <serial>` |
+| Browser | `haylen app run samples/apps/car-dashboard --target web` |
+| Headless player | `build/engine/macos-debug/bin/haylen-headless samples/apps/car-dashboard` |
 
 On the headless platform the app runs a tour by itself: it drives, warms the cabin, heats the seat of the passenger and goes through the apps of the dock, logs every step with the speed, the distance to the turn, the battery and the energy use, and quits.
 
@@ -69,11 +69,11 @@ The art follows the style of [Tiny Island](../../games/tiny-island/README.md#art
 
 ## Package layout
 
-The sample folder is the package. Only `app.json`, `source/` and `content/` ship, and this README stays behind.
+The sample folder is the package. Only `haylen.json`, `source/` and `content/` ship, and this README stays behind.
 
 ```text
 car-dashboard/
-  app.json               Window, design size of 1920 by 1080 with expand scaling, any orientation and the identifier.
+  haylen.json               Window, design size of 1920 by 1080 with expand scaling, any orientation and the identifier.
   source/
     main.lua             Registers the theme and opens the dashboard.
     style.lua            The palette, the gradients, the theme and the drawing helpers.

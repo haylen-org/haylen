@@ -8,13 +8,13 @@ The commands run from the root of the repository:
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `haylen run samples/stress/many-bodies` |
-| macOS app | `haylen run samples/stress/many-bodies --platform macos` |
-| iPhone and iPad simulator | `haylen run samples/stress/many-bodies --platform ios-simulator` |
-| Apple TV simulator | `haylen run samples/stress/many-bodies --platform tvos-simulator` |
-| Android device or emulator | `haylen run samples/stress/many-bodies --platform android --device <serial>` |
-| Browser | `haylen run samples/stress/many-bodies --platform web` |
-| Headless player | `build/macos-debug/bin/haylen-headless samples/stress/many-bodies --frames 900` |
+| Desktop player with hot reload | `haylen app run samples/stress/many-bodies` |
+| macOS app | `haylen app run samples/stress/many-bodies --target macos` |
+| iPhone and iPad simulator | `haylen app run samples/stress/many-bodies --target ios-simulator` |
+| Apple TV simulator | `haylen app run samples/stress/many-bodies --target tvos-simulator` |
+| Android device or emulator | `haylen app run samples/stress/many-bodies --target android --device <serial>` |
+| Browser | `haylen app run samples/stress/many-bodies --target web` |
+| Headless player | `build/engine/macos-debug/bin/haylen-headless samples/stress/many-bodies --frames 900` |
 
 On the headless platform the app runs a short tour by itself: it pours, sets off blasts, shakes the bin, removes toys, empties the bin, pours again, logs the frame numbers of every step and quits.
 
@@ -36,7 +36,7 @@ The bin is one kinematic body made of the boxes of its floor, walls and lid, whi
 
 The chutes drop a row of ten toys every second fixed step, each a block, a ball, a hexagonal gem or a capsule pill, whose shape matches its art exactly. Toys raise no contact, hit or sensor events, since nothing reads them, and a little spin damping with a sleep speed of a tenth of a meter per second lets a settled pile fall asleep, after which it costs nothing until a blast, a shake or a new toy wakes it. The world interpolates, steps at the fixed rate on the threads of the job system once enough of its bodies are awake, and the [physics guide](../../../docs/2d/physics.md) explains each of these choices.
 
-The option `maxFrameTime` of `app.json` is 0.05 seconds, so a frame runs at most three fixed steps: past the limit of the machine the simulation slows down instead of every frame falling further behind.
+The option `maxFrameTime` of `haylen.json` is 0.05 seconds, so a frame runs at most three fixed steps: past the limit of the machine the simulation slows down instead of every frame falling further behind.
 
 Every toy is a sprite of one batch whose size and source the app sets once when the toy appears. Each frame, `world:readTransforms(bodies, buffer, 1, true)` copies the interpolated position and rotation of every body into a float buffer and `batch:writeFields(buffer, {'x', 'y', 'rotation'})` moves the sprites, so no Lua runs for each body, and the pile is one draw call.
 
@@ -81,7 +81,7 @@ Every image of the sample is painted for it with the `codex` command line and it
 
 ```text
 many-bodies/
-  app.json               Window, design resolution of 1920 by 1080 in landscape and identifier.
+  haylen.json               Window, design resolution of 1920 by 1080 in landscape and identifier.
   source/
     main.lua             Sets the playroom theme of the panel and opens the playroom.
     scenes/playroom.lua  The playroom: textures, the camera, input, blasts, the panel and the drawing.

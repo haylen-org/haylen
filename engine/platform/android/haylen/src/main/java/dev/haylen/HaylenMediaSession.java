@@ -35,7 +35,7 @@ final class HaylenMediaSession extends MediaSession.Callback {
 
     private static HaylenMediaSession current;
 
-    // Whether the app plays in the background, as `audio.background` of `app.json` declares and the project of the app allows, which the frame thread sets when an app starts.
+    // Whether the app plays in the background, as `audio.background` of `haylen.json` declares and the project of the app allows, which the frame thread sets when an app starts.
     private static volatile boolean background;
 
     // The notification shown last, which the service shows while it runs, whether it shows what plays as playing, and whether the service keeps the app in the foreground, all on the UI thread.
@@ -97,7 +97,7 @@ final class HaylenMediaSession extends MediaSession.Callback {
     private static boolean isDeclared(HaylenActivity activity) {
         HaylenRequirements requirements = new HaylenRequirements(activity, "The audio that plays in the background");
         try {
-            requirements.require(HaylenRequirements.Requirement.service(HaylenPlaybackService.class.getName()), HaylenRequirements.Requirement.permission("android.permission.FOREGROUND_SERVICE"), HaylenRequirements.Requirement.permission("android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"));
+            requirements.require(HaylenRequirements.Requirement.backgroundAudio(), HaylenRequirements.Requirement.permission("android.permission.FOREGROUND_SERVICE"), HaylenRequirements.Requirement.permission("android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"));
             return true;
         } catch (HaylenBridge.Failure missing) {
             return false;

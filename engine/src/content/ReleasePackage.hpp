@@ -26,7 +26,7 @@
 
 namespace haylen::content {
 
-// The protected release of an app as one package, from the files that ship with it: the app manifest, the content manifest and the shards both name. Each manifest is verified and checked against the build of the app before its catalog is decrypted, and the package shows `app.json`, `source` and `plugins` from the app domain and `content` from the content domain, exactly as a folder package would. With a local store, the content domain may be an update that downloads brought instead of the content that ships with the app: opening picks the content the app played last when it is still whole, and falls back to the one before it and then to the content that ships with the app, so damaged downloads never keep an app from starting.
+// The protected release of an app as one package, from the files that ship with it: the app manifest, the content manifest and the shards both name. Each manifest is verified and checked against the build of the app before its catalog is decrypted, and the package shows `haylen.json`, `source` and `plugins` from the app domain and `content` from the content domain, exactly as a folder package would. With a local store, the content domain may be an update that downloads brought instead of the content that ships with the app: opening picks the content the app played last when it is still whole, and falls back to the one before it and then to the content that ships with the app, so damaged downloads never keep an app from starting.
 class ReleasePackage final : public io::Package {
   public:
     static constexpr std::string_view kAppManifestFile = "app.hmanifest";

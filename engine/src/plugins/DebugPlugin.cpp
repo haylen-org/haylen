@@ -351,7 +351,7 @@ void DebugPlugin::renderUi(core::Engine& engine, const core::SceneView& view) {
 
 void DebugPlugin::setInspectorVisible(bool value) {
     if (value && !consoleEnabled) {
-        throw std::logic_error("The inspector is off outside development runs. Set \"debug.console\" to true in \"app.json\" to turn it on.");
+        throw std::logic_error("The inspector is off outside development runs. Set \"debug.console\" to true in \"haylen.json\" to turn it on.");
     }
 
     inspectorVisible = value;
@@ -369,7 +369,7 @@ void DebugPlugin::beginFrame(core::Engine&, float) {
 void DebugPlugin::runRelayedLines() {
     for (const platform::ConsoleRelay::Request& request : platform::ConsoleRelay::take()) {
         if (!consoleEnabled) {
-            request.reply({.ok = false, .output = "The console is off outside development runs. Set \"debug.console\" to true in \"app.json\" to turn it on."});
+            request.reply({.ok = false, .output = "The console is off outside development runs. Set \"debug.console\" to true in \"haylen.json\" to turn it on."});
             continue;
         }
 
@@ -387,7 +387,7 @@ void DebugPlugin::runRelayedLines() {
 // Inspecting reads the values of the app and never changes them, so a tool may look at the app while it runs.
 void DebugPlugin::answerInspection(const std::vector<std::string>& path, const std::function<void(bool ok, const core::Json& result)>& reply) const {
     if (!consoleEnabled) {
-        reply(false, {{"code", "unsupported"}, {"message", "The inspector is off outside development runs. Set \"debug.console\" to true in \"app.json\" to turn it on."}});
+        reply(false, {{"code", "unsupported"}, {"message", "The inspector is off outside development runs. Set \"debug.console\" to true in \"haylen.json\" to turn it on."}});
         return;
     }
 

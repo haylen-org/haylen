@@ -8,13 +8,13 @@ The commands run from the root of the repository:
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `haylen run samples/apps/smart-home` |
-| macOS app | `haylen run samples/apps/smart-home --platform macos` |
-| iPhone and iPad simulator | `haylen run samples/apps/smart-home --platform ios-simulator` |
-| Apple TV simulator | `haylen run samples/apps/smart-home --platform tvos-simulator` |
-| Android device or emulator | `haylen run samples/apps/smart-home --platform android --device <serial>` |
-| Browser | `haylen run samples/apps/smart-home --platform web` |
-| Headless player | `build/macos-debug/bin/haylen-headless samples/apps/smart-home` |
+| Desktop player with hot reload | `haylen app run samples/apps/smart-home` |
+| macOS app | `haylen app run samples/apps/smart-home --target macos` |
+| iPhone and iPad simulator | `haylen app run samples/apps/smart-home --target ios-simulator` |
+| Apple TV simulator | `haylen app run samples/apps/smart-home --target tvos-simulator` |
+| Android device or emulator | `haylen app run samples/apps/smart-home --target android --device <serial>` |
+| Browser | `haylen app run samples/apps/smart-home --target web` |
+| Headless player | `build/engine/macos-debug/bin/haylen-headless samples/apps/smart-home` |
 
 On the headless platform the app runs a tour by itself: it goes through the scenes, dims a room, warms the climate and unlocks a door, logs every step with the time, the lights, the climate, the sun, the home and the battery, and quits.
 
@@ -65,11 +65,11 @@ The panel has a light look of its own, warm like a wall of a home, apart from th
 
 ## Package layout
 
-The sample folder is the package. Only `app.json`, `source/` and `content/` ship, and this README stays behind.
+The sample folder is the package. Only `haylen.json`, `source/` and `content/` ship, and this README stays behind.
 
 ```text
 smart-home/
-  app.json               Window, physical UI scale, any orientation and the identifier.
+  haylen.json               Window, physical UI scale, any orientation and the identifier.
   source/
     main.lua             Registers the theme and opens the panel.
     style.lua            The palette, the gradients and the theme.

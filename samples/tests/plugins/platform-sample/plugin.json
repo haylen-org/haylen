@@ -1,17 +1,14 @@
 {
+    "interface": 1,
     "id": "platform-sample",
     "name": "Platform Sample",
     "version": "1.0.0",
     "description": "The native code of the platform tests of the test project, which answers its methods and sends its events in Objective-C, Java and JavaScript.",
-    "platforms": ["ios", "catalyst", "tvos", "visionos", "macos", "android", "web"],
-    "apple": {
-        "class": "PlatformSamplePlugin",
-        "sources": "apple"
-    },
-    "android": {
-        "module": "android"
-    },
-    "web": {
-        "module": "web/platform-sample.js"
-    }
+    "implementations": {"ios": "native", "catalyst": "native", "tvos": "native", "visionos": "native", "macos": "native", "android": "native", "web": "native", "windows": "lua", "linux": "lua"},
+    "contributions": [
+        {"type": "appleClass", "platforms": ["ios", "catalyst", "tvos", "visionos", "macos"], "name": "PlatformSamplePlugin"},
+        {"type": "appleSources", "platforms": ["ios", "catalyst", "tvos", "visionos", "macos"], "path": "apple"},
+        {"type": "gradleModule", "platforms": ["android"], "path": "android"},
+        {"type": "webModule", "platforms": ["web"], "path": "web/platform-sample.js"}
+    ]
 }

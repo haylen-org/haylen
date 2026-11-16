@@ -8,7 +8,7 @@
 
 namespace haylen::audio {
 
-// How the audio output of an app trades latency for power and whether a limiter guards the `master` bus, which `app.json` sets in its `audio` object. Low latency plays a tap sooner with short periods of the device and the low latency mode of AAudio on Android, balanced is the default of the platform, and power saving plays with long periods that wake the processor less often.
+// How the audio output of an app trades latency for power and whether a limiter guards the `master` bus, which `haylen.json` sets in its `audio` object. Low latency plays a tap sooner with short periods of the device and the low latency mode of AAudio on Android, balanced is the default of the platform, and power saving plays with long periods that wake the processor less often.
 struct OutputSettings {
     enum class Latency : std::uint8_t {
         Low,

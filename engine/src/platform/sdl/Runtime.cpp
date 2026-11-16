@@ -266,7 +266,7 @@ bool Runtime::isHiddenUntilComplete() noexcept {
     return Services::hasDesktop() && !WaylandDisplays::isSession();
 }
 
-// Each graphics API in the order of the app opens a window with what it draws through and starts its device, and the first that starts keeps the window. The reasons of the ones that failed reach the log, so a machine that falls back says why. The services of the platform place the window where `app.json` puts it on the desktop, since they know the desktop points of each monitor.
+// Each graphics API in the order of the app opens a window with what it draws through and starts its device, and the first that starts keeps the window. The reasons of the ones that failed reach the log, so a machine that falls back says why. The services of the platform place the window where `haylen.json` puts it on the desktop, since they know the desktop points of each monitor.
 bool Runtime::openWindow() {
     const core::AppConfig& config = Player::getOpeningConfig();
 #if defined(__APPLE__)

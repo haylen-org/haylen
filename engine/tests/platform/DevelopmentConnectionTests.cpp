@@ -174,7 +174,7 @@ TEST(DevelopmentConnectionTest, AppliesPushedFilesAndRefusesPathsOutsideThePacka
 TEST(DevelopmentConnectionTest, PlaysALaunchedAppInDevelopmentWithTheServerItNames) {
     PushingServer server;
     test::TemporaryDirectory guest;
-    guest.write("app.json", R"({"name": "Guest", "identifier": "com.haylen.tests"})");
+    guest.write("haylen.json", R"({"name": "Guest", "identifier": "com.haylen.tests"})");
     guest.write("source/counter.lua", "return {value = 'packaged'}");
     // clang-format off
     guest.write("source/main.lua", R"(
@@ -190,7 +190,7 @@ TEST(DevelopmentConnectionTest, PlaysALaunchedAppInDevelopmentWithTheServerItNam
         end})
     )");
     test::TemporaryDirectory launcher;
-    launcher.write("app.json", R"({"name": "Launcher", "identifier": "com.haylen.tests"})");
+    launcher.write("haylen.json", R"({"name": "Launcher", "identifier": "com.haylen.tests"})");
     launcher.write("source/main.lua", R"(
         local haylen = require('haylen')
         local preferences = require('haylen.preferences')

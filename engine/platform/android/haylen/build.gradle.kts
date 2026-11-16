@@ -1,13 +1,13 @@
 // Android side of the Haylen runtime: the Lua player library, the activity with its splash screen, the platform bridge, the plugin API, the Kotlin transport of the Varn HTTP client and the Java class of Varn data views. Its manifest declares only what every app needs, so permissions and the components of plugins and links come from the app and from the libraries that need them.
-// The command `haylen.py engine --platform android` builds the player with the engine CMake project for every ABI and publishes this library as `dev.haylen:haylen` to a local Maven repository, so apps made from the Android template depend on it without compiling C++.
+// The command `haylen sdk build --target android` builds the player with the engine CMake project for every ABI of the SDK and publishes this library as `dev.haylen:haylen` to the local Maven repository of the SDK, so the generated projects of Lua apps depend on it without compiling C++.
 plugins {
     id("com.android.library")
 }
 
 val nativeLibraries = providers.gradleProperty("haylenNativeLibraries").orNull
-    ?: error("Pass \"-PhaylenNativeLibraries\" with the folder that holds \"libhaylen.so\" in a subfolder for each ABI. The script \"haylen.py\" builds it with the engine CMake project.")
+    ?: error("Pass \"-PhaylenNativeLibraries\" with the folder that holds \"libhaylen.so\" in a subfolder for each ABI. The command \"haylen sdk build --target android\" builds it with the engine CMake project.")
 val varnSourceDir = providers.gradleProperty("haylenVarnSourceDir").orNull
-    ?: error("Pass \"-PhaylenVarnSourceDir\" with the Varn source folder. The script \"haylen.py\" resolves it from the native build.")
+    ?: error("Pass \"-PhaylenVarnSourceDir\" with the Varn source folder. The command \"haylen sdk build --target android\" resolves it from the native build.")
 
 android {
     namespace = "dev.haylen"
@@ -16,7 +16,7 @@ android {
             minorApiLevel = 2
         }
     }
-    // Gradle strips the players with the tools of the NDK that `haylen.py` builds them with.
+    // Gradle strips the players with the tools of the NDK that the SDK builds them with.
     ndkVersion = "30.0.16248370"
 
     // The miniaudio library plays through AAudio from Android 8.1 on, because AAudio of Android 8.0 has known faults, and the engine builds it without OpenSL ES.

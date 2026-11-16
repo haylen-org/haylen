@@ -1,10 +1,13 @@
-# Imports a Haylen SDK built for `@HAYLEN_PLATFORM@` with the GPU devices of `@HAYLEN_GRAPHICS_APIS@`, and defines `haylen::engine`, `haylen::runtime` and `haylen_add_app`.
+# Imports a Haylen SDK built for `@HAYLEN_PLATFORM@` with the GPU devices of `@HAYLEN_GRAPHICS_APIS@`, and defines `haylen::engine`, `haylen::runtime`, `haylen::player`, `haylen::native` and `haylen_add_app`.
 
 get_filename_component(_haylen_prefix "${CMAKE_CURRENT_LIST_DIR}/@HAYLEN_SDK_PREFIX_FROM_CONFIG@" ABSOLUTE)
 
 set(HAYLEN_PLATFORM "@HAYLEN_PLATFORM@")
 set(HAYLEN_GRAPHICS_APIS "@HAYLEN_GRAPHICS_APIS@")
 set(HAYLEN_DESKTOP @HAYLEN_DESKTOP@)
+set(HAYLEN_PORT_PLATFORM "@HAYLEN_PORT_PLATFORM@")
+set(HAYLEN_PORT_CAPABILITIES "@HAYLEN_PORT_CAPABILITIES@")
+set(HAYLEN_PORT_APP_FUNCTION "@HAYLEN_PORT_APP_FUNCTION@")
 set(HAYLEN_ENGINE_DIR "${_haylen_prefix}/@HAYLEN_SDK_SHARE_DIR@")
 set(HAYLEN_CMAKE_DIR "${HAYLEN_ENGINE_DIR}/cmake")
 set(HAYLEN_VARN_DATAVIEW_SCRIPT "${HAYLEN_ENGINE_DIR}/platform/web/varn-dataview.js")
@@ -32,8 +35,23 @@ if(NOT TARGET haylen::engine)
     INTERFACE_LINK_OPTIONS "@HAYLEN_SDK_RUNTIME_LINK_OPTIONS@"
   )
 
+  # The Lua player is one object, which defines the app of a Lua app, so a C++ app that defines its own never links it.
+  add_library(haylen::player OBJECT IMPORTED)
+  set_target_properties(haylen::player PROPERTIES
+    IMPORTED_OBJECTS "${_haylen_prefix}/@CMAKE_INSTALL_LIBDIR@/@HAYLEN_SDK_PLAYER_FILE@"
+    INTERFACE_LINK_LIBRARIES haylen::engine
+  )
+
+  # Native libraries compile against the native API and nlohmann/json of the SDK without linking the engine.
+  add_library(haylen::native INTERFACE IMPORTED)
+  set_target_properties(haylen::native PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${_haylen_prefix}/@CMAKE_INSTALL_INCLUDEDIR@")
+
   include("${HAYLEN_CMAKE_DIR}/haylen-app.cmake")
-  haylen_link_runtime_platform(haylen::runtime INTERFACE)
+  @HAYLEN_SDK_PORT_MODULE@
+  # The runtime of a port links the libraries of its platform itself.
+  if(NOT HAYLEN_PORT_PLATFORM)
+    haylen_link_runtime_platform(haylen::runtime INTERFACE)
+  endif()
 endif()
 
 unset(_haylen_prefix)

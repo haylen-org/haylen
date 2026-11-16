@@ -25,7 +25,7 @@ EngineFixture::EngineFixture(std::map<std::string, std::string> files, std::uniq
         headlessHost.setGpuDeviceMaker(std::move(options.gpuDevice));
     }
 
-    files.try_emplace("app.json", R"({"name": "Test App", "identifier": "com.haylen.tests"})");
+    files.try_emplace("haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests"})");
     files.try_emplace("source/main.lua", "");
 
     std::map<std::string, std::vector<std::uint8_t>> contents;

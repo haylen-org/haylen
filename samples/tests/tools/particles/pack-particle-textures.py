@@ -15,7 +15,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "tools"))
 
-from png_image import Image, read, write  # noqa: E402
+from png_image import Image  # noqa: E402
 
 CONTENT = Path(__file__).resolve().parents[2] / "content"
 TEXTURES = CONTENT / "particles" / "library" / "textures"
@@ -133,22 +133,22 @@ def main() -> None:
     folder = Path(sys.argv[1])
     for atlas, pieces in (("effects", SMOOTH), ("sequences", SEQUENCES), ("pixel", PIXEL)):
         order = names(pieces)
-        images = {name: read(folder / f"{name}.png") for name in order}
+        images = {name: Image.read(folder / f"{name}.png") for name in order}
         if atlas == "effects":
             images[PREMULTIPLIED[1]] = premultiply(images[PREMULTIPLIED[0]])
             order.insert(1, PREMULTIPLIED[1])
         image, regions = pack(images, WIDTH[atlas], GAP[atlas])
         before = previous(atlas)
-        write(image, TEXTURES / f"{atlas}.png")
+        Image.write(image, TEXTURES / f"{atlas}.png")
         (TEXTURES / f"{atlas}.json").write_text(document(atlas, regions, order))
         move_frames(atlas, before, regions)
 
-    write(glow_line(), TEXTURES / f"{GLOW_LINE}.png")
-    runes = [read(folder / f"{RUNES[0]}-{frame}.png") for frame in range(1, RUNES[1] + 1)]
+    Image.write(glow_line(), TEXTURES / f"{GLOW_LINE}.png")
+    runes = [Image.read(folder / f"{RUNES[0]}-{frame}.png") for frame in range(1, RUNES[1] + 1)]
     sheet = Image.blank(sum(rune.width for rune in runes), runes[0].height)
     for index, rune in enumerate(runes):
         sheet.paste(rune, index * runes[0].width, 0)
-    write(sheet, TEXTURES / f"{RUNES[0]}-sheet.png")
+    Image.write(sheet, TEXTURES / f"{RUNES[0]}-sheet.png")
 
 
 if __name__ == "__main__":

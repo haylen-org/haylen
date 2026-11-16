@@ -21,7 +21,7 @@ The engine for games, multimedia apps and applications, with a fast C++20 core, 
 
 Haylen is a reusable engine for games, multimedia apps and applications. It is 2D today and organized so that 3D grows next to it. Its core is C++20, and its whole API is exported to Lua through the [Varn](https://github.com/varn-org/varn) runtime, so apps are written in Lua while every capability stays usable from C++.
 
-An app is a package: a folder or a zip file with `app.json`, its Lua modules under `source/` and its assets under `content/`. The same package runs on every platform, the engine is built once into prebuilt artifacts, and the project of each platform belongs to the developer, who edits it like any native project.
+An app is a package: a folder or a zip file with `haylen.json`, its Lua modules under `source/` and its assets under `content/`. The same package runs on every platform. The engine is built once into an SDK for each target, and apps link it without compiling it. The native project of each platform is generated for every build from `haylen.json`, so an app keeps only its own code, assets and settings.
 
 ## Made with AI in mind
 
@@ -64,26 +64,32 @@ The guide to distribution in the documentation lists the minimum versions and ho
 
 ## Quick start
 
-Haylen builds with CMake, Ninja, Python and a C++20 compiler, and `haylen.py` downloads the other tools it needs. Apple platforms need Xcode, and Android needs the Android SDK.
+The command line of Haylen needs only [uv](https://docs.astral.sh/uv), which brings the Python it runs on and its packages. Building the engine needs CMake, Ninja and a C++20 compiler, Apple platforms need Xcode, and Android needs the Android SDK. The command `haylen doctor` shows what this machine has and lacks for every target, and the other tools download when a build first needs them.
 
-The command `haylen` at the root of the repository runs `haylen.py` on macOS, Linux and Windows, so put the root on `PATH` once:
-
-```sh
-export PATH="$HOME/path/to/haylen:$PATH"
-```
+The script `haylen` at the root of the repository, or `haylen.cmd` on Windows, runs the tooling through uv. From the root, build the desktop player once, then create an app and run it:
 
 ```sh
-haylen new ~/apps/my-app --name "My App" --identifier com.example.myapp
-haylen run ~/apps/my-app
-haylen run ~/apps/my-app --platform web
+./haylen sdk build --target player
+./haylen new ~/apps/my-app --name "My App" --identifier com.example.myapp
+./haylen app run ~/apps/my-app
 ```
 
-The command `new` writes a starter app with a project of every platform, and `run` opens it in the desktop player with hot reload, or builds it for a platform with `--platform`, such as `ios-simulator`, `android` or `web`. An app written in C++ starts the same way and compiles the engine itself:
+The command `sdk build` compiles the engine into the SDK that the apps of a target link, and no other command compiles the engine for apps. The command `new` writes a starter app with its `haylen.json`, and `app run` plays it in the desktop player with hot reload. For another target, build its SDK once and name the target, such as `ios-simulator`, `android` or `web`:
 
 ```sh
-haylen new ~/apps/my-cpp-app --kind cpp
-haylen run ~/apps/my-cpp-app --platform ios-simulator
+./haylen sdk build --target web
+./haylen app run ~/apps/my-app --target web
 ```
+
+An app written in C++ starts the same way and goes through the same targets, with its C++ code compiled against the SDK:
+
+```sh
+./haylen sdk build --target ios-simulator
+./haylen new ~/apps/my-cpp-app --kind cpp
+./haylen app run ~/apps/my-cpp-app --target ios-simulator
+```
+
+Put the root of the repository on `PATH` to run `haylen` from any folder.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')

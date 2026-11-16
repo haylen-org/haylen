@@ -56,7 +56,7 @@ TEST(FoldSimulationTest, PlacesTheFoldOfAPresetOrAnObjectInTheMiddleOfTheWindow)
 }
 
 TEST(FoldLuaTest, ReportsTheFoldOfTheDeviceInDesignUnits) {
-    test::EngineFixture fixture({{"app.json", R"({"design": {"width": 960, "height": 540}})"}});
+    test::EngineFixture fixture({{"haylen.json", R"({"design": {"width": 960, "height": 540}})"}});
     fixture.runLua("window = require('haylen.window')");
     EXPECT_EQ(fixture.lua("return tostring(window.fold()) .. ' ' .. window.posture() .. ' ' .. #window.segments() .. ' ' .. tostring(window.segments()[1])"), "nil flat 1 Rect(0.0, 0.0, 960.0, 540.0)");
 
@@ -81,7 +81,7 @@ TEST(FoldLuaTest, PublishesEveryChangeOfTheFoldOnce) {
 }
 
 TEST(FoldLuaTest, SimulatesAFoldOverTheOneOfTheDevice) {
-    test::EngineFixture fixture({{"app.json", R"({"debug": {"fold": "tabletop"}})"}});
+    test::EngineFixture fixture({{"haylen.json", R"({"debug": {"fold": "tabletop"}})"}});
     fixture.runLua("window = require('haylen.window') changes = {} require('haylen.events').on('windowFoldChanged', function(change) changes[#changes + 1] = change.posture end)");
     EXPECT_EQ(fixture.lua("return window.foldSimulation() .. ' ' .. window.posture() .. ' ' .. tostring(window.fold().bounds)"), "tabletop tabletop Rect(0.0, 540.0, 1920.0, 0.0)");
 
@@ -96,12 +96,12 @@ TEST(FoldLuaTest, SimulatesAFoldOverTheOneOfTheDevice) {
     EXPECT_NE(fixture.lua("window.setFoldSimulation('laptop')").find("There is no simulated fold named \"laptop\"."), std::string::npos);
 }
 
-TEST(FoldSimulationTest, RejectsAnInvalidFoldInAppJson) {
+TEST(FoldSimulationTest, RejectsAnInvalidFoldInHaylenJson) {
     try {
         (void)core::AppConfig::fromJson(core::Json::parse(R"({"debug": {"fold": {"axis": "diagonal"}}})"));
         FAIL() << "An invalid fold must fail to load.";
     } catch (const std::invalid_argument& error) {
-        EXPECT_EQ(std::string(error.what()), "The \"debug.fold\" in \"app.json\" is invalid. The axis of a simulated fold is \"vertical\" or \"horizontal\", not \"diagonal\".");
+        EXPECT_EQ(std::string(error.what()), "The \"debug.fold\" in \"haylen.json\" is invalid. The axis of a simulated fold is \"vertical\" or \"horizontal\", not \"diagonal\".");
     }
 
     EXPECT_EQ(core::AppConfig::fromJson(core::Json::parse(R"({"debug": {"fold": "book"}})")).toJson()["debug"]["fold"], core::Json("book"));

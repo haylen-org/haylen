@@ -38,7 +38,7 @@ std::string BootstrapWriter::write(const KeyStore& keys, std::string_view profil
     }
 
     const VerifyingKey& verifying = keys.getSigningKey()->getVerifyingKey();
-    return std::format(R"(// Written by haylen.py from the key folder of the app for its release builds. It opens the protected release of the app, holds no key in plain form and never belongs in a repository.
+    return std::format(R"(// Written by the content tool from the key folder of the app for its release builds. It opens the protected release of the app, holds no key in plain form and never belongs in a repository.
 #include <memory>
 #include <utility>
 #include <vector>

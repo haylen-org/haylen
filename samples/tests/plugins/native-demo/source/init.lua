@@ -1,4 +1,4 @@
--- Lua API of the Native Demo plugin, which an app loads with `require('native-demo')`. Swift on Apple platforms, Kotlin on Android, JavaScript on the web and a C library on the desktops answer its calls and send its events, with the APIs of each platform alone.
+-- Lua API of the Native Demo plugin, which an app loads with `require('native-demo')`. Swift on Apple platforms, Kotlin on Android, JavaScript on the web and a C++ library on the desktops answer its calls and send its events, with the APIs of each platform alone.
 local haylen = require('haylen')
 local native = require('haylen.native')
 local platform = require('haylen.platform')
@@ -8,7 +8,7 @@ local demo = {}
 
 local kDesktops = {macos = true, windows = true, linux = true}
 
--- Apple platforms, Android and the web load their native parts before any Lua runs. The desktop player and the Windows and Linux apps run the C library of `native/`, which `haylen.py` places next to them and which declares itself the native part of the plugin in its init function, once per process.
+-- Apple platforms, Android and the web load their native parts before any Lua runs. The desktop player and the Windows and Linux apps run the C++ library of `native/`, which the tooling builds against the SDK and places next to them and which declares itself the native part of the plugin in its init function, once per process.
 if not handle.native and kDesktops[haylen.platform] then
     native.load('native-demo', {init = 'native_demo_haylen_init'})
 end
@@ -26,7 +26,7 @@ function demo.available()
     return handle.native
 end
 
--- The parameters of the plugin: the values of `app.json` over the defaults of `plugin.json`.
+-- The parameters of the plugin: the values of `haylen.json` over the defaults of `plugin.json`.
 function demo.config()
     return handle.config
 end

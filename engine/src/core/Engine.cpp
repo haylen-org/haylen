@@ -243,7 +243,7 @@ bool Engine::isStartHeld() const noexcept {
     return !state->startHolds.empty();
 }
 
-// Every start applies the window options of app.json again, so an app that restarts from its package gets the window it asks for, with the mouse, the cursor and the keyboard as a new window has them. The position only applies when the window opens, so a restart leaves the window where the player moved it.
+// Every start applies the window options of haylen.json again, so an app that restarts from its package gets the window it asks for, with the mouse, the cursor and the keyboard as a new window has them. The position only applies when the window opens, so a restart leaves the window where the player moved it.
 void Engine::applyWindowOptions() {
     EngineState& current = *state;
     const AppConfig::Window& window = current.config.window;
@@ -260,7 +260,7 @@ void Engine::applyWindowOptions() {
     // clang-format off
     host.setKeepScreenOn(window.keepScreenOn, [](const platform::Permission::Answer& answer) {
         if (answer.state != platform::Permission::State::Granted) {
-            Log::warning("The screen follows the settings of the system instead of the \"window.keepScreenOn\" of \"app.json\". {}", answer.message);
+            Log::warning("The screen follows the settings of the system instead of the \"window.keepScreenOn\" of \"haylen.json\". {}", answer.message);
         }
     });
     // clang-format on
@@ -1006,7 +1006,7 @@ void Engine::setLifecycle(const AppConfig::Lifecycle& value) {
 void Engine::setBackgroundAudio(bool value) {
     EngineState& current = *state;
     if (value && !current.config.audioSession.background) {
-        throw std::invalid_argument("The app plays in the background only when \"audio.background\" of \"app.json\" is true, which brings the settings of each platform that it needs.");
+        throw std::invalid_argument("The app plays in the background only when \"audio.background\" of \"haylen.json\" is true, which brings the settings of each platform that it needs.");
     }
 
     if (value == current.backgroundAudio) {
@@ -1335,7 +1335,7 @@ bool Engine::isRestartRequested() const noexcept {
 void Engine::requestLaunch(Launch launch) {
     std::error_code error;
     if (!std::filesystem::exists(launch.package, error)) {
-        throw std::invalid_argument("No app package is at \"" + launch.package.string() + "\". Launch a folder or a zip file that holds \"app.json\".");
+        throw std::invalid_argument("No app package is at \"" + launch.package.string() + "\". Launch a folder or a zip file that holds \"haylen.json\".");
     }
 
     const std::string_view server = launch.developmentServer;

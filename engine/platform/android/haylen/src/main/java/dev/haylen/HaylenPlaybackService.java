@@ -6,7 +6,7 @@ import android.content.pm.ServiceInfo;
 import android.os.IBinder;
 import androidx.core.app.ServiceCompat;
 
-// Keeps an app that plays audio in the background in the foreground while what it plays shows as playing, with the media notification of its media session as the notification of the service, so Android neither freezes nor ends the process while the sound plays. The library `haylen-playback` declares it with the type `mediaPlayback` and its permissions, and `haylen.py` adds the library to the apps whose `app.json` sets `audio.background`.
+// Keeps an app that plays audio in the background in the foreground while what it plays shows as playing, with the media notification of its media session as the notification of the service, so Android neither freezes nor ends the process while the sound plays. The library `haylen-playback` declares it with the type `mediaPlayback` and its permissions, and the tooling adds the library to the apps whose `haylen.json` sets `audio.background`.
 public final class HaylenPlaybackService extends Service {
     // Android expects the notification of the service at once, also when the app paused in between, so the service shows it and then leaves the foreground again.
     @Override

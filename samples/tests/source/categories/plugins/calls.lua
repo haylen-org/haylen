@@ -28,7 +28,7 @@ function Calls:enter()
         checksTitle = 'Calls to the native part',
         controls = {
             ui.button{id = 'run', text = 'Run the calls again', variant = 'primary', onClick = function() self:run() end},
-            ui.label{text = 'Every call crosses the bridge to the native part and back while a coroutine awaits its answer. Swift answers on Apple platforms, Kotlin on Android, JavaScript on the web and C on the desktops.', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'Every call crosses the bridge to the native part and back while a coroutine awaits its answer. Swift answers on Apple platforms, Kotlin on Android, JavaScript on the web and C++ on the desktops.', color = 'textMuted', font = 'caption'},
         },
     }
     self:run()
@@ -60,7 +60,7 @@ function Calls:echo()
     end
     local value = echoed.echo
     local same = value.text == 'hello' and value.number == 42 and #value.list == 3
-    local thread = echoed.thread == 'main' or (echoed.language == 'C' and echoed.thread == 'frame')
+    local thread = echoed.thread == 'main' or (echoed.language == 'C++' and echoed.thread == 'frame')
     self.results:set('echo', (same and thread) and 'pass' or 'fail', name, string.format('%s sent back the text "%s", the number %s and a list of %d on the thread "%s".', echoed.language, tostring(value.text), tostring(value.number), #(value.list or {}), echoed.thread))
 end
 

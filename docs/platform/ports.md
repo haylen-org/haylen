@@ -1,15 +1,29 @@
 # 🎮 Ports
 
-This guide explains how someone with access to the SDK of a platform that the repository does not hold, such as a game console, adds that platform to Haylen. It covers what a port is, what the repository can and cannot hold, the folder of a port and its `port.cmake`, the platform runtime, the GPU device with its graphics API and shader language, the shader tools, building and testing, continuous integration, how a studio gets the SDK of a console, a port step by step, the paths for Xbox, Nintendo Switch and PlayStation 4 and 5, why a desktop cannot test an Xbox port, and what a port of any other platform implements.
+This guide explains how someone with access to the SDK of a platform that the repository does not hold, such as a game console, adds that platform to Haylen. It covers the three layers that a console needs, what the repository can and cannot hold, the folder of a port and its `port.cmake`, the SDK of a port, the engine port and the backend that the tooling installs from outside the repository, the platform runtime, the GPU device with its graphics API and shader language, the shader tools, testing, continuous integration, a port step by step and the parts that every port implements.
+
+## Three layers
+
+A console reaches Haylen through three layers, and each one lives where its license allows:
+
+| Layer | What it holds | Where it lives |
+| --- | --- | --- |
+| The engine | Only what is general to every platform: the player, the renderers, the Lua API, the contracts of hosts, windows, services and GPU devices, the mechanism of ports and the plugin contract. | This repository. |
+| The console port | The runtime, the window, the GPU device, the audio output, the files and the packaging of the console, with its engine port and its backend for the tooling. | A private repository. |
+| The console plugin | The services that only the console offers to games: users and sign-in, achievements, the store, saves of each user, the storage quota, the setup of controllers and their glyphs, with a C++ API and a Lua API. | A private repository. |
+
+The engine never holds a piece of one console, so a console plugs in without a rewrite of the engine. The console plugin is a native plugin like any other, with its `plugin.json`, its Lua API and its native part, as the [plugin guide](plugins.md) describes, and the backend of the port reads its contributions for the platform of the console. This repository only documents the two private layers.
 
 ## What a port is
 
-A port is a folder outside the repository that adds a platform to the engine. The cache path `HAYLEN_PORT_DIR` of the engine names it, and the engine then builds for the platform of the port instead of the platform of the toolchain. The port brings two things, and the engine stays as it is:
+A port is a folder outside the repository that adds a platform to the engine. The cache path `HAYLEN_PORT_DIR` of the engine names it, and the engine then builds for the platform of the port instead of the platform of the toolchain. The port brings two things to the engine, and the engine stays as it is:
 
 - **A platform runtime**: a host, a window and the services of the platform, with the entry point of the process. It takes the place of the [SDL platform layer and the Android runtime](../core/architecture.md#layers).
 - **A GPU device**, when the graphics API of the platform is not one of the engine. The device implements the [render hardware interface](../graphics/rhi.md) and draws through the graphics API `port` with the shader language `port`. A platform whose graphics API the engine already has names that API instead.
 
 Everything above those layers, the player, the engine, the renderers and the whole Lua API, is the same as on every other platform. An app runs on a port without a change, and a script sees the port only through [`haylen.platform`](../lua-api/haylen.md#haylenplatform), which names its platform, and [`haylen.graphicsApi`](../lua-api/haylen.md#haylengraphicsapi), which is `'port'` on the device of a port.
+
+The tooling reaches a port through two more pieces, which a Python package of the port installs: an engine port, which builds the SDK of the platform, and a backend, which builds apps against that SDK. [The tooling of a port](#the-tooling-of-a-port) describes them.
 
 ## What the repository holds
 
@@ -18,9 +32,11 @@ The SDKs of game consoles, their headers, their graphics APIs, their shader comp
 | In the repository | In the private repository of the port |
 | --- | --- |
 | The mechanism of ports: `HAYLEN_PORT_DIR`, `haylen_port`, `gpu::PortDevice`, the reserved values `Api::Port`, `Language::Port`, `Surface::Kind::Port` and `SystemInfo::Os::Port`, and the `port` targets of shader packages. | The `port.cmake` of the port. |
+| The contracts of the tooling: `EnginePort`, `PlatformBackend`, the entry point groups `haylen.engine_ports` and `haylen.backends`, and the SDK manifest. | The engine port and the backend of the console, in a Python package. |
 | The engine, the player, the renderers, the Lua API and the devices of the public graphics APIs. | The runtime, the host, the window and the services of the console. |
 | The test port in `engine/tests/data/port`, which checks the mechanism on a desktop. | The GPU device of the console, its shader tool and its tests. |
-| This guide, which names only platforms, SDKs and public APIs. | The build scripts, the private runners of continuous integration and everything else the license of the SDK covers. |
+| The plugin contract, with its C++ and Lua APIs. | The console plugin. |
+| This guide, which names no console and no private SDK. | The build scripts, the private runners of continuous integration and everything else the license of the SDK covers. |
 
 A port never patches the engine in its private repository to work around a missing piece. When a port needs something the mechanism lacks, the mechanism gains it here, in public terms, and every port profits.
 
@@ -30,7 +46,9 @@ The folder holds a `port.cmake`, which describes the port with one call of `hayl
 
 ```cmake
 haylen_port(
+  CONTRACT 1
   PLATFORM console
+  CAPABILITIES dynamicLibraries
   RUNTIME_SOURCES
     "${CMAKE_CURRENT_LIST_DIR}/runtime/ConsoleHost.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/runtime/ConsoleRuntime.cpp"
@@ -41,12 +59,20 @@ haylen_port(
   DEVICE_LIBRARIES console-sdk::graphics
   SHADER_LANGUAGES spirv
   SHADER_COMMAND "${CMAKE_CURRENT_LIST_DIR}/tools/port-shaders" --sdk "$ENV{CONSOLE_SDK}"
+  HOST_TOOLS "${CMAKE_CURRENT_LIST_DIR}/tools/port-shaders"
+  APP_FUNCTION console_add_app
+  APP_MODULE "${CMAKE_CURRENT_LIST_DIR}/cmake/console-app.cmake"
+  RELEASE_PROFILE console
+  PLUGIN_PART console
+  SDK ON
 )
 ```
 
 | Argument | What it gives |
 | --- | --- |
+| `CONTRACT` | The version of the contract of ports that the port follows. It must be `HAYLEN_PORT_CONTRACT_VERSION` of `engine/cmake/haylen-port.cmake`, which grows whenever `haylen_port`, `platform::NativeHost`, `platform::Services` or `gpu::PortDevice` change in a way that a port must follow, so a port of an older contract stops with a sentence that names both versions. |
 | `PLATFORM` | The name of the platform in lowercase dash-case, which `HAYLEN_PLATFORM` takes and the services of the port report. It cannot be the name of a platform of the engine. |
+| `CAPABILITIES` | What the platform allows apps to do, any of `dynamicLibraries`, which loads libraries at run time, `executableMemory`, which writes code into memory, and `processes`, which starts other processes. The SDK of the port records them, and the registry of the tooling checks them against what the backend of a target needs. |
 | `RUNTIME_SOURCES` | The sources of the runtime of the platform, which `haylen-runtime` compiles instead of the SDL platform layer, the Android runtime and the services of the engine. |
 | `RUNTIME_LIBRARIES` | The libraries that the runtime links, such as the targets of the SDK. |
 | `GRAPHICS_APIS` | The graphics APIs of the engine whose devices the port compiles, by their names in `gpu::Device::kApiNames`, such as `openGl`. |
@@ -54,8 +80,14 @@ haylen_port(
 | `DEVICE_LIBRARIES` | The libraries that the device links. |
 | `SHADER_LANGUAGES` | The languages of `haylen-shaderc` that the shader tool of the port reads, such as `spirv` or `hlsl5`. The shader packages of the engine carry them. |
 | `SHADER_COMMAND` | The command that runs on every shader package of the engine after `haylen-shaderc` wrote it, with the path of the package after its last argument. It writes the code of the device of the port into the package. |
+| `HOST_TOOLS` | The programs of the port that run on the build machine, such as its shader tool, which the SDK of the port installs in `bin/`. |
+| `APP_FUNCTION` | The CMake function that [`haylen_add_app`](../tools/embedding.md) calls to build an app of the platform, instead of the branches of the platforms of the engine. It receives the target, `SOURCES` with the sources of the app and its bootstrap, `LIBRARIES` with `haylen::runtime` and, for a Lua app, `haylen::player`, `CONTENT` with the folder that the app ships, and `RELEASE` when that folder is a protected release. |
+| `APP_MODULE` | The CMake file that defines `APP_FUNCTION`, which the engine includes and the SDK of the port installs. |
+| `RELEASE_PROFILE` | The content profile of the protected releases of the platform, in lowercase dash-case, which the targets of the backend of the port name so the tooling builds their releases for it. |
+| `PLUGIN_PART` | The name of the part of plugins that the backend of the port reads, in lowercase dash-case, which plugins list in `implementations` and in the `platforms` of their contributions. |
+| `SDK` | `ON` when the port builds and installs the SDK of its platform with `HAYLEN_BUILD_SDK`, which stops with a clear sentence otherwise. |
 
-The runtime of a port compiles with the definition `HAYLEN_PORT`, which keeps the platform folders of the repository out of the shared player even where the compiler of the port targets their system, and `haylen-gpu` compiles with `HAYLEN_GPU_PORT` when the port has a device. A port needs `RUNTIME_SOURCES` and at least one graphics API: its own device, the devices of the engine it names, or both. A port with a device of its own needs `SHADER_LANGUAGES` and `SHADER_COMMAND`. The configuration stops with a clear sentence when one is missing.
+The runtime of a port compiles with the definition `HAYLEN_PORT`, which keeps the platform folders of the repository out of the shared player even where the compiler of the port targets their system, and `haylen-gpu` compiles with `HAYLEN_GPU_PORT` when the port has a device. A port needs `CONTRACT`, `RUNTIME_SOURCES` and at least one graphics API: its own device, the devices of the engine it names, or both. A port with a device of its own needs `SHADER_LANGUAGES` and `SHADER_COMMAND`, and an `APP_FUNCTION` needs its `APP_MODULE`. The configuration stops with a clear sentence when one is missing, when a capability or a host tool is unknown, and when a port without an `APP_FUNCTION` builds an app.
 
 Build the engine with the port through CMake:
 
@@ -64,7 +96,53 @@ cmake -S path/to/haylen -B build/console -DHAYLEN_PORT_DIR=path/to/haylen-consol
 cmake --build build/console --target haylen
 ```
 
-A port builds the engine and its apps in one CMake project, so the SDK that `HAYLEN_BUILD_SDK` installs and the artifacts of `haylen.py engine` cover the platforms of the repository only.
+### The SDK of a port
+
+A port with `SDK ON` installs the SDK of its platform like any other platform, with `-DHAYLEN_BUILD_SDK=ON` and `cmake --install <build> --component haylen-sdk`. The SDK records the port in `share/haylen/haylen-port.json`, installs its host tools in `bin/` and its `APP_MODULE` in `share/haylen/cmake/port/`, and its package config sets `HAYLEN_PORT_PLATFORM`, `HAYLEN_PORT_CAPABILITIES` and `HAYLEN_PORT_APP_FUNCTION` and includes the module, so `haylen_add_app` builds the apps of the port from the SDK alone.
+
+```json
+{
+  "platform": "console",
+  "contract": 1,
+  "capabilities": ["dynamicLibraries"],
+  "hostTools": ["port-shaders"],
+  "appFunction": "console_add_app",
+  "releaseProfile": "console",
+  "pluginPart": "console"
+}
+```
+
+The engine port of the console reads that file into `haylen-sdk.json`, the manifest that every SDK of Haylen holds and that the tooling selects SDKs by: the port, its version, the engine version, the revision of the engine sources, the configuration, and one slice for each system and environment with its architectures, binary interface, toolchain, C++ runtime, oldest system version, graphics APIs, capabilities and files, besides the host tools with the system and architecture they run on. An app build never compiles the engine, so a missing slice, a slice of other engine sources or another configuration stops it with the `haylen sdk build` command to run.
+
+## The tooling of a port
+
+The command line `haylen` finds every platform through two contracts of `tools/haylen/platforms`, which a port implements in a Python package of its private repository:
+
+| Contract | What it does | Entry point group |
+| --- | --- | --- |
+| `EnginePort` | Builds the engine of the platform and installs its SDK. `describe` returns a `PortDescription` with the name, the contract version, the version of the port, its tools and its `PortTarget`s. `check_environment` finds the tools that one of its targets needs on this machine. `build_sdk` takes an `SdkRequest` with the targets, the configuration, the architectures, the revision of the engine sources and the folder, builds the engine, installs the SDK and returns its `SdkManifest`. | `haylen.engine_ports` |
+| `PlatformBackend` | Builds apps against that SDK. `describe` returns a `PlatformDescription` with its targets, capabilities, tools, contribution types and the sections of `platforms` in `haylen.json` it reads. `check_environment`, `prepare`, `build` and `verify` turn a resolved product into a generated project, a built product and a verification report, and `devices`, `run`, `package` and `sign` are optional capabilities. | `haylen.backends` |
+
+A `PortTarget` declares its name, its system, its environment (`device`, `simulator` or `host`), its architectures with their binary interfaces, its toolchain, its C++ runtime, its oldest system version, its graphics APIs, its shader languages and the capabilities of the system that the engine uses there. A backend target declares the same system, environment, binary interfaces and toolchain, and the capabilities it needs. The registry matches a backend target with the port target that builds its engine by those properties and capabilities, never by their names, so the two pieces of a port can name their targets as they like. Installing one never implies the other, and `haylen doctor --target <name>` shows both with what this machine lacks.
+
+Each contract has its own version, `Contract.ENGINE_PORT` and `Contract.BACKEND`, apart from the version of the engine and of its SDKs. An extension that declares another version stops every command that needs it with a sentence that names both versions, and the registry never tries another extension in its place. The core of the tooling never imports a backend or a port by name, so the internal ones of `tools/haylen/platforms/<name>/` register through the same entry points as a private one.
+
+The Python package of a port declares its two classes in its `pyproject.toml`:
+
+```toml
+[project]
+name = "haylen-console"
+version = "1.0.0"
+requires-python = ">=3.15"
+
+[project.entry-points."haylen.engine_ports"]
+console = "haylen_console.console_port:ConsolePort"
+
+[project.entry-points."haylen.backends"]
+console = "haylen_console.console_backend:ConsoleBackend"
+```
+
+The package goes into the Python environment that runs the tooling, such as a uv project of the private repository that depends on the Haylen checkout through a path and runs `uv run haylen`. Installing it runs its code with the trust of the developer who installs it. Its targets then take part in every command, such as `haylen sdk build --target console` and `haylen app run --target console`, and its backend generates the project of the platform with the tool that the SDK of the console requires, which may be CMake with `haylen_add_app` or another build system.
 
 ## The platform runtime
 
@@ -72,12 +150,12 @@ The runtime of a port does what every platform layer does, as the [architecture 
 
 1. **A host** derived from `platform::NativeHost`. It adds what the window does: the size and scale of the framebuffer, fullscreen, the title, the cursor, the clipboard, closing the window, its focus, `endSplashScreen`, which takes the splash screen of the platform away once the app drew its first complete frame, keeping the screen on, pacing its frames at the frame rate of the app in `applyFrameRate`, sizing its drawable for the pixel density cap of the app in `applyMaxPixelDensity` with the `gpu::Surface::Size` that its device takes, the controllers, the text input of the services, which it hands to the constructor of `platform::NativeHost`, where the engine shares it between its editors and the plain keyboard, `prepareGpuDevice`, which answers `true` once the device of the next app can be created, `createGpuDevice`, which hands over the device that draws into the window, and `pumpHaltedEvents`, which keeps the platform responsive while the [debugger](../tools/debugger.md) halts the frame thread and answers whether the platform asks the frame to finish.
 2. **A window** derived from `platform::NativeWindow`, installed with `NativeWindow::install` while it is open, which hands the services its native handles.
-3. **A runtime** that holds the entry point of the process. It first calls `CrashGuard::install`, so the handlers of native crashes are in place before the native parts of plugins load, as the [plugin guide](plugins.md#native-crashes) describes. It then calls `Player::create` with the command line and the host, opens the window for the APIs of `Player::getGraphicsApis` until a device starts, calls `Player::initialize`, then `Player::frame` once a frame, hands events of the system to `Player::handleEvent`, replaces a device that `isLost` reports and calls `Player::cleanup` when the app ends.
+3. **A runtime** that holds the entry point of the process. It first calls `CrashGuard::install`, so the handlers of native crashes are in place before the native parts of plugins load, as the [plugin guide](plugins.md) describes. It then calls `Player::create` with the command line and the host, opens the window for the APIs of `Player::getGraphicsApis` until a device starts, calls `Player::initialize`, then `Player::frame` once a frame, hands events of the system to `Player::handleEvent`, replaces a device that `isLost` reports and calls `Player::cleanup` when the app ends.
 4. **The services** of the platform: the definitions of the static methods of `platform::Services` in `engine/src/platform/Services.hpp`. They tell the name of the platform, open the package that ships with the app, give the folders of user data and of downloaded content, report what the device is, answer the bridge, run text input and read video. A service the platform does not offer answers the way the contract of its method says, such as a screen that fails with `noHandler`.
 
-The runtime reaches the system of the console through its SDK, or through SDL 3 where the console maker provides its port of SDL to licensed developers. A runtime on SDL can start from the SDL platform layer of the engine, `engine/src/platform/sdl/`, as a copy in the private repository, and keep its own changes there.
+The runtime reaches the system of the console through its SDK, or through SDL 3 where the maker of the console provides its port of SDL to licensed developers. A runtime on SDL can start from the SDL platform layer of the engine, `engine/src/platform/sdl/`, as a copy in the private repository, and keep its own changes there.
 
-The system info of a port reports the operating system `'port'`, the value `SystemInfo::Os::Port`, and the platform name tells which console it is, such as `'xbox'`. A console on a TV reports the device kind `tv`.
+The system info of a port reports the operating system `'port'`, the value `SystemInfo::Os::Port`, and the platform name of `PLATFORM` tells which platform it is. A console on a TV reports the device kind `tv`.
 
 ## The GPU device
 
@@ -87,7 +165,7 @@ A platform whose graphics API the engine already has names it in `GRAPHICS_APIS`
 
 - The [OpenGL device](../graphics/opengl.md) draws through the `gpu::GlContext` that the platform makes. A port whose console runs OpenGL 4.3 core or OpenGL ES 3.0 implements `gpu::GlContext` in its runtime, hands it over in a surface of the kind `Gl` and needs no device code.
 - The [Vulkan device](../graphics/vulkan.md) makes surfaces for the windows of Windows, Linux and Android only, and needs Vulkan 1.1. A console with Vulkan whose surface is of another kind needs a device of its own.
-- The [Direct3D 12 device](../graphics/direct3d.md) is written against the Direct3D 12 of Windows and compiles HLSL when programs are made, with `d3dcompiler_47.dll`.
+- The [Direct3D 12 device](../graphics/direct3d.md) is written against the Direct3D 12 of Windows and compiles HLSL when programs are made, with `d3dcompiler_47.dll`. A console whose graphics API differs from it keeps an adapted copy as its device of the API `port`.
 
 ### A device of its own
 
@@ -111,7 +189,7 @@ The device implements the whole contract of `gpu::Device` and reports `Api::Port
 
 ### Why the API and the language are reserved values
 
-The enums `gpu::Device::Api` and `gpu::Device::Language` stay closed, with one value for every port: `Port`. A build targets one platform, so it holds at most one port, and one reserved value names its device in every build. The closed enums keep their one table of names each, `kApiNames` for the APIs and the names of the languages in shader packages, so `app.json`, `--graphics-api`, the shader packages and Lua all read the same names. They keep the arrays that the engine indexes by language, and the validation of `window.graphicsApis` stays in the engine library, which runs before any device exists and never links the devices. A registration of APIs at run time would need tables of names that grow while the app runs, which the validation of `app.json` could not read, for a choice that a build makes only once. The name of the console comes from the platform name and from `getAdapterName` of the device instead.
+The enums `gpu::Device::Api` and `gpu::Device::Language` stay closed, with one value for every port: `Port`. A build targets one platform, so it holds at most one port, and one reserved value names its device in every build. The closed enums keep their one table of names each, `kApiNames` for the APIs and the names of the languages in shader packages, so `haylen.json`, `--graphics-api`, the shader packages and Lua all read the same names. They keep the arrays that the engine indexes by language, and the validation of `window.graphicsApis` stays in the engine library, which runs before any device exists and never links the devices. A registration of APIs at run time would need tables of names that grow while the app runs, which the validation of `haylen.json` could not read, for a choice that a build makes only once. The name of the platform comes from the platform name and from `getAdapterName` of the device instead.
 
 ## Shaders
 
@@ -122,6 +200,8 @@ The enums `gpu::Device::Api` and `gpu::Device::Language` stay closed, with one v
 3. The device then receives the code of the `port` target as bytes in `StageCode::bytecode`, with the descriptor set and the binding of each slot.
 
 The target `port` has the shape of the target `spirv`: its stages name sources of the package that hold the Base64 text of the code, and its `blocks`, `textures` and `samplers` give each slot an object with `set` and `binding`. The test port shows the smallest shader tool, `engine/tests/data/port/port-shaders.cmake`, which copies the `spirv` target as the `port` target.
+
+The shaders of apps take the `port` target the same way. The SDK of a port lists its shader tool among its host tools with the name `port-shaders`, whatever the suffix of its file, as the test port does with `port-shaders.cmake`. When the SDK of the target of an app holds that tool for this machine, the tooling runs it on every `.shader` package of the app after `haylen-shaderc` writes it, with the path of the package as its last argument and a CMake script through `cmake -P`, and it compiles a package that lacks the target again, so `app prepare`, `app build`, `app run` and the development server give every package of a port app its `port` target.
 
 ```json
 {
@@ -137,116 +217,79 @@ The target `port` has the shape of the target `spirv`: its stages name sources o
 }
 ```
 
-The custom shaders of apps are packages too, which `haylen shaders` compiles. A port runs its shader tool on the `.shader` files of an app before it packs the app for the console, since the device of the port reads only the `port` target.
+The custom shaders of apps are packages too, which `haylen app shaders` compiles. The backend of a port runs the shader tool of the SDK of the port, one of its host tools, on the `.shader` files of an app before it packs the app for the console, since the device of the port reads only the `port` target.
 
 ## Testing a port
 
-The command `haylen test --port` builds the engine with the test port of `engine/tests/data/port` in `build/<host>-port-<config>` and plays the app of `engine/tests/data/port-app` on it. The test port has the platform `test-port`, a runtime that plays the app without a window, services that answer like a console without plugins, and a device of the API `port` built on `gpu::NullDevice`, which checks every call of the engine against the contract and runs the code that its shader tool wrote. The app checks the platform, the operating system and the graphics API, draws shapes, sprites and text, and quits with the status `0`. It needs no SDK, so it builds on the desktops of the public repository and keeps the mechanism working for every port.
+The command `haylen test --port` builds the engine with the test port of `engine/tests/data/port` in `build/engine/<host>-port-<config>` and plays the app of `engine/tests/data/port-app` on it. The test port has the platform `test-port`, a runtime that plays the app without a window, services that answer like a console without plugins, and a device of the API `port` built on `gpu::NullDevice`, which checks every call of the engine against the contract and runs the code that its shader tool wrote. The app checks the platform, the operating system and the graphics API, draws shapes, sprites and text, and quits with the status `0`. It needs no SDK, so it builds on the desktops of the public repository and keeps the mechanism working for every port.
 
 ```sh
 haylen test --port
 ```
 
-A port tests its own device the way the engine tests its devices, with the conformance suite and the reference images of `engine/tests/gpu`, which the [testing guide](../tools/testing.md#the-gpu-tests) describes. The engine builds those tests for desktops, the web and Android, so a port builds them with the toolchain of its console in its private repository and runs them on a development kit.
+The tests of the tooling prove the other half with the fake backend and the fake engine port of `tools/tests/support`. The fake port names its target differently from the target of the fake backend, so the tests show that the registry matches them by what they describe, refuses a port that lacks a capability of the backend, refuses an extension of another contract version and resolves products for a platform that the core never names. Run them with `uv run pytest tools/tests`, as the [testing guide](../tools/testing.md) describes.
+
+### The proof of an external port
+
+The proof of an external port checks both halves together, installed the way a private repository installs them. The folder `engine/tests/data/port` is also the Python package `haylen-test-port`, whose engine port `testport.port_engine:PortEngine` builds the SDK of the test port with `HAYLEN_PORT_DIR` and `HAYLEN_BUILD_SDK=ON`. The folder `tools/tests/data/test-port-backend` holds the package `haylen-test-port-backend`, whose backend `testportbackend.port_backend:PortBackend` declares the target `test-port`, the contribution type `testPortPart` and the section `platforms.test-port`. Neither the command line nor the core names them.
+
+The test `tools/tests/extensions/test_external_port.py` copies both packages to a temporary folder outside the repository. It makes an environment with uv that holds the tooling of the checkout in editable mode, the engine port in editable mode, since it reads its CMake port from the folder of its project, and the backend as a wheel. Then it runs the `haylen` of that environment:
+
+1. `haylen doctor --target test-port` finds the backend and the engine port and matches them by their system, environment, toolchain and binary interfaces, while their target names differ.
+2. `haylen sdk build --target test-port --config Debug` builds the SDK of the test port. Its slice takes the capabilities of `share/haylen/haylen-port.json`, and its shader tool becomes a host tool.
+3. `haylen app build`, `app verify` and `app run` build the app of `tools/tests/data/test-port-app`. Its CMake project calls `haylen_add_app`, which calls the app function of the port, and links the part of its plugin, a C++ source that Lua calls through `native.load`. The verification checks that the executable holds the content of the app and registers the part. The app checks the platform, the operating system, the graphics API, a file of its content and the answer of its plugin, plays without a window and quits with the status `0`.
+4. The files of the command line, the core and the internal backends are the same before and after, and none of them names `test-port`.
+
+The same test checks the failures that a port meets, each with its typed error and its sentence: a machine without CMake (`missingToolchain`), a backend of another contract version (`incompatibleExtension`), a plugin without an implementation for `test-port` (`unsupportedTarget`), a capability that the backend does not declare, such as `package` (`missingCapability`), an architecture that the target does not build (`unsupportedTarget`), and an SDK whose slice lacks its files (`incompatibleSdk`). It builds the engine, so the usual run of the tests leaves it out, and the job `port` of continuous integration runs it on Linux, Windows and macOS. The variable `HAYLEN_JOBS` sets the jobs of its builds.
+
+```sh
+HAYLEN_JOBS=4 uv run pytest -m port tools/tests/extensions
+```
+
+The test port still includes some internal headers of `engine/src` and compiles one internal source. The test `tools/tests/repository/test_port_headers.py` lists them and fails on any new one, so a port depends on fewer of them over time.
+
+A port tests its own device the way the engine tests its devices, with the conformance suite and the reference images of `engine/tests/gpu`, which the testing guide also describes. The engine builds those tests for desktops, the web and Android, so a port builds them with the toolchain of its console in its private repository and runs them on a development kit.
 
 ## Continuous integration
 
-The public continuous integration of Haylen never sees a console SDK, and `haylen test --port` checks the mechanism of ports without one. A port runs its own builds and tests on private runners, such as self-hosted runners of its private repository on machines that hold the SDK and reach a development kit:
+The public continuous integration of Haylen never sees the SDK of a console, and its job `port` runs [the proof of an external port](#the-proof-of-an-external-port), which checks the mechanism of ports and their tooling without one. A port runs its own builds and tests on private runners, such as self-hosted runners of its private repository on machines that hold the SDK and reach a development kit:
 
 1. Check out Haylen at the commit the port supports and the port next to it.
-2. Configure the engine with the toolchain of the console and `HAYLEN_PORT_DIR`.
-3. Build the player and the GPU tests of the port.
+2. Install the Python package of the port into the environment of the tooling, and build the SDK of the console with `haylen sdk build`.
+3. Build the player and the GPU tests of the port with the toolchain of the console and `HAYLEN_PORT_DIR`.
 4. Run them on the development kit, and keep logs, captures and reference images in the private repository.
 
 Keep the runners, their secrets and their logs private, since they hold what the license of the SDK covers.
 
 ## Getting access to an SDK
 
-Each console maker gives its SDK, its development kits and its documentation only to studios that it approves, under a non-disclosure agreement, the NDA. The steps below are public, and everything after them happens under that agreement:
-
-| Platform | Where a studio applies | What it receives after approval |
-| --- | --- | --- |
-| Xbox One and Xbox Series X and S | The ID@Xbox program for independent studios, or a publisher that already works with Xbox, through Microsoft Partner Center. | The GDKX, the console parts of the Game Development Kit, development kits, and the Xbox Requirements that a game passes before release. |
-| Nintendo Switch and Nintendo Switch 2 | The Nintendo Developer Portal, where a company registers and applies for the platform. | The SDK of the console, development hardware that the studio buys, and the guidelines that the release check of Nintendo follows. |
-| PlayStation 4 and PlayStation 5 | The PlayStation Partners program, where a company registers and applies. | The SDK of the console, development and test kits, and the technical requirements that a game passes before release. |
-
-Approval asks for a company and, usually, a game to show. Once a studio holds the agreement of a console, it can also ask the SDL project for its private port of SDL 3 for that console, which the SDL maintainers share after they confirm the agreement.
+The maker of each console gives its SDK, its development kits and its documentation only to studios that it approves, under a non-disclosure agreement, the NDA. A studio applies to the developer program of the console, usually as a company with a game to show, and receives the SDK, the development hardware and the requirements that a game passes before release once it is approved. Everything after that happens under the agreement, in the private repositories of the port and the plugin. A studio that holds the agreement of a console can also ask the SDL project for its private port of SDL 3 for that console, which the SDL maintainers share after they confirm the agreement.
 
 ## A port step by step
 
-These steps are the same for every console. The sections that follow add what each console changes.
+These steps are the same for every console:
 
 1. **Get access.** Apply to the program of the console, sign its agreement and receive the SDK, the development kit and the documentation.
-2. **Make the private repository.** Create a private repository for the port, such as `haylen-console`, with `port.cmake`, a `runtime/` folder for the host, the window, the entry point and the services, a `gpu/` folder for the device when the console needs one, a `tools/` folder for the shader command, the CMake toolchain file of the SDK, and the scripts of its continuous integration.
+2. **Make the private repositories.** Create one for the port, such as `haylen-console`, with `port.cmake`, a `runtime/` folder for the host, the window, the entry point and the services, a `gpu/` folder for the device when the console needs one, a `tools/` folder for the shader command, the CMake toolchain file of the SDK, the Python package of its engine port and its backend, and the scripts of its continuous integration. Create another one for the console plugin.
 3. **Build the test port first.** Run `haylen test --port` on a desktop to see the mechanism work, and read `engine/tests/data/port`, the smallest complete port, before writing your own.
 4. **Write the runtime.** Implement the host, the window, the runtime and the services that [the platform runtime](#the-platform-runtime) lists, on the SDL port of the console or on its SDK alone. Start every service with the answer its contract gives for a platform that lacks it, then fill in the services the console has.
 5. **Choose the GPU device.** Name a graphics API of the engine in `GRAPHICS_APIS` when the console runs one, or write `gpu::PortDevice` for its own graphics API, as [the GPU device](#the-gpu-device) explains. Start from `gpu::NullDevice` so apps run before the device draws.
 6. **Write the shader command.** Pick the language of `haylen-shaderc` that the shader compiler of the SDK reads, name it in `SHADER_LANGUAGES`, and make `SHADER_COMMAND` write the compiled code into the `port` target, as [the shaders section](#shaders) shows.
-7. **Build and play.** Configure the engine with the toolchain and `HAYLEN_PORT_DIR`, build it, and play the app of `engine/tests/data/port-app` on the development kit until it quits with the status `0`.
-8. **Run the GPU tests.** Build the conformance suite of `engine/tests/gpu` with the toolchain of the console and run it on the kit until every reference image matches.
-9. **Play real apps.** Play the test project of `samples/tests` and the sample games on the kit with a controller, and fix in the port what differs from the other platforms.
-10. **Meet the requirements of the console.** Every console has rules that a game passes before release, such as how it suspends and resumes, how users sign in, where it saves, and what it shows when a controller disconnects. The services and the runtime of the port carry them, so apps meet them without code of their own.
-11. **Pack the app.** Put the app package, or its protected release, inside the package of the console with the packaging tool of the SDK, and open it through `Services::openBundledPackage`.
-12. **Automate it.** Run steps 7 to 9 on private runners for every commit of Haylen that the port follows, as [continuous integration](#continuous-integration) describes.
-
-## Xbox
-
-Xbox games build with the Game Development Kit, the GDK. Microsoft publishes the parts of the GDK for Windows PCs in its public repository `microsoft/GDK`, while the parts for the consoles, the GDKX, reach licensed Xbox developers only.
-
-- **Runtime.** SDL 3 supports the GDK, and its public repository holds the code of the targets `Gaming.Desktop.x64`, `Gaming.Xbox.XboxOne.x64` and `Gaming.Xbox.Scarlett.x64`, while only the GDKX builds the Xbox targets. SDL builds for the GDK only through the Visual Studio solution of its folder `VisualC-GDK`, so the port builds SDL there and names the resulting library in `RUNTIME_LIBRARIES`. A port builds its runtime on that SDL, starting from a copy of `engine/src/platform/sdl/`, with services that reach the GDK for the user, saves and storage. SDL initializes the game runtime and the task queue of the GDK by itself.
-- **GPU device.** The consoles draw through their own Direct3D 12, which the GDKX documents. The [Direct3D 12 device](../graphics/direct3d.md) of the engine is the starting point. A port whose console runs it as it is names `direct3D12` in `GRAPHICS_APIS`. A port that needs the headers or the swapchain of the console keeps an adapted copy as its device of the API `port`.
-- **Shaders.** The packages carry `hlsl5`, HLSL for shader model 5.0. The Direct3D 12 device of the engine compiles it with `d3dcompiler_47.dll` when a program is made. A console that compiles shaders ahead of time gets them from the shader command of the port, which compiles the HLSL of each package with the compiler of the GDK into the `port` target.
-- **Package.** A GDK game ships with `MicrosoftGame.config`, which names its identity, its executable and its logos, and the packaging tools of the GDK pack it with the app package next to the executable.
-
-Steps that differ from the general ones:
-
-1. Join ID@Xbox or work through a publisher, and install the GDK and the GDKX of the same version on Windows with Visual Studio.
-2. Build SDL from `VisualC-GDK` for the target of the console, and the engine with the CMake toolchain that the GDKX provides for that target.
-3. Name `direct3D12` in `GRAPHICS_APIS` and test whether the device of the engine runs on the console as it is, before writing a device of the API `port`.
-4. Deploy and run on the development kit with the tools of the GDK, which also capture GPU frames for the device.
-
-### Testing without a console
-
-A PC game of the public GDK, the target `Gaming.Desktop.x64`, runs on Windows without a console, but it does not test an Xbox port. That target is Windows with the game runtime of the GDK on top: it draws through the Direct3D 12 of Windows, which the [Windows platform](../tools/distribution.md) of the engine already runs, and it never reaches the Direct3D 12 of the consoles, their memory, their packaging or their requirements, which only the GDKX and a development kit provide. A build for that target also needs SDL built through its Visual Studio solution instead of the CMake build of the engine. Developer Mode of a retail Xbox runs UWP apps, not games of the GDK, and the engine has no UWP runtime. So the Xbox path is tested on a development kit, and what a desktop can test without one is the mechanism of ports, through `haylen test --port`.
-
-## Nintendo Switch
-
-Nintendo Switch games build with the SDK of the console, which reaches licensed developers only.
-
-- **Runtime.** The SDL project keeps a port of SDL 3 for Nintendo Switch and Nintendo Switch 2 in a separate repository, free under the zlib license for developers under the NDA of the console. A port builds its runtime on it, or on the SDK alone as a native host, and its services on the SDK.
-- **GPU device.** The console has a graphics API of its own, NVN, which its SDK documents. The original Nintendo Switch is also conformant to Vulkan 1.0 and OpenGL 4.5, as the public conformance lists of those APIs record. The fastest start draws through the [OpenGL device](../graphics/opengl.md): the runtime implements `gpu::GlContext` on the context of the console, and the port names `openGl` in `GRAPHICS_APIS`. A device for NVN follows as the device of the API `port`.
-- **Shaders.** The OpenGL device runs the `glsl430` code of the packages as they are. A device for NVN takes `spirv` or the GLSL of the packages through the shader command of the port, which compiles it with the shader compiler of the SDK.
-- **Package.** The tools of the SDK pack the executable with the app package as the content of the game.
-
-Steps that differ from the general ones:
-
-1. Register on the Nintendo Developer Portal, apply for the platform and buy the development hardware.
-2. Ask the SDL project for its port of the console, or plan a native host on the SDK.
-3. Start with the OpenGL device and a `gpu::GlContext` of the console, so apps draw from the first build, and measure before writing the device for NVN.
-4. Test docked and handheld, since the console changes its screen size and performance between them, and the runtime reports each change as a new size of the window.
-
-## PlayStation
-
-PlayStation games build with the SDK of the console, which reaches registered developers only, and so does the documentation of its graphics API and shader language.
-
-- **Runtime.** The SDL project keeps ports of SDL 3 for PlayStation 4 and PlayStation 5 in separate repositories for developers under the NDA of the console. A port builds its runtime on them or on the SDK alone.
-- **GPU device.** The consoles have graphics APIs of their own, which no device of the engine draws through, so the port brings its device of the API `port`.
-- **Shaders.** The consoles have a shader language of their own, which public talks describe for the PlayStation 4 as the PlayStation Shader Language. The shader command of the port reads the `hlsl5` or `spirv` code of each package, translates it where the compiler of the SDK reads another language, compiles it and writes the result into the `port` target.
-- **Package.** The tools of the SDK pack the executable with the app package as the content of the game.
-
-Steps that differ from the general ones:
-
-1. Register on PlayStation Partners and apply for the consoles, then receive the SDK and the development and test kits.
-2. Ask the SDL project for its ports of the consoles, or plan a native host on the SDK.
-3. Write the device of the API `port` from the start, keeping `gpu::NullDevice` in its place until it draws, and follow the order of the [RHI guide](../graphics/rhi.md): buffers, textures, programs, pipelines, render passes, readbacks.
-4. Keep one port for both consoles when their SDKs allow it, with one `PLATFORM` each, such as `playstation4` and `playstation5`, so both share the runtime and differ only where their SDKs differ.
+7. **Write the engine port and the backend.** Implement `EnginePort` so `haylen sdk build` installs the SDK of the console with its manifest, and `PlatformBackend` so `haylen app build` generates and builds the project of an app with the tool of the SDK, as [the tooling of a port](#the-tooling-of-a-port) explains, and check both with `haylen doctor`.
+8. **Build and play.** Build the SDK, then play the app of `engine/tests/data/port-app` on the development kit until it quits with the status `0`.
+9. **Run the GPU tests.** Build the conformance suite of `engine/tests/gpu` with the toolchain of the console and run it on the kit until every reference image matches.
+10. **Play real apps.** Play the test project of `samples/tests` and the sample games on the kit with a controller, and fix in the port what differs from the other platforms.
+11. **Write the console plugin.** Bring users and sign-in, achievements, the store, the saves of each user, the storage quota and the setup of controllers with their glyphs through the plugin contract, so apps reach them from Lua and C++.
+12. **Meet the requirements of the console.** Every console has rules that a game passes before release, such as how it suspends and resumes, how users sign in, where it saves, and what it shows when a controller disconnects. The runtime and the plugin carry them, so apps meet them without code of their own.
+13. **Pack the app.** The `package` capability of the backend puts the app package, or its protected release, inside the package of the console with the packaging tool of the SDK, and the runtime opens it through `Services::openBundledPackage`.
+14. **Automate it.** Run steps 8 to 10 on private runners for every commit of Haylen that the port follows, as [continuous integration](#continuous-integration) describes.
 
 ## Other platforms
 
 The steps above fit any platform. What decides between a port and a platform of the repository is the license of its SDK:
 
-- **A platform whose SDK is public**, such as a new operating system for phones, computers or TVs, becomes a platform of the repository: a platform folder under `engine/src/platform/`, on SDL where SDL supports it, a GPU device under `engine/src/gpu/` when its graphics API is new, a platform template under `templates/`, and a run target in `haylen.py`, as `AGENTS.md` describes.
-- **A platform whose SDK is private**, such as a console or a device under an agreement, becomes a port, with everything this guide describes kept in its private repository.
+- **A platform whose SDK is public**, such as a new operating system for phones, computers or TVs, becomes a platform of the repository: a platform folder under `engine/src/platform/`, on SDL where SDL supports it, a GPU device under `engine/src/gpu/` when its graphics API is new, and a backend and an engine port under `tools/haylen/platforms/<name>/` with their template and their entry points in `pyproject.toml`, as `AGENTS.md` describes.
+- **A platform whose SDK is private**, such as a console or a device under an agreement, becomes a port, with everything this guide describes kept in its private repositories.
 
 Every port, whatever the platform, implements the same parts of the engine:
 
@@ -261,9 +304,10 @@ Every port, whatever the platform, implements the same parts of the engine:
 | Audio | The audio setup that `getAudioSetup` of the host returns, with a backend of its own for the mixer where miniaudio has none for the platform. |
 | Graphics | A device of the engine named in `GRAPHICS_APIS`, or `gpu::PortDevice` with the shader command. |
 | Optional services | Video, accessibility, the media session and the bridge of native plugins, each answering with `unsupported` or doing nothing where the platform lacks it. |
+| Tooling | The engine port that builds the SDK and the backend that generates, builds, verifies, runs and packages apps. |
 
 ## Limits
 
 - Every dependency of the engine must build with the toolchain of the console, such as Varn with Lua and libuv, Poco with its TLS stack, SDL where the port uses it, and the libraries of fonts, images and audio. A dependency that needs a change for a console gets it in the private repository of the port, through a patch of its own.
-- Native plugins have parts for Apple platforms, Android, the web and desktops, so a plugin that a console app uses gets its console part in the private repository too.
-- The commands of `haylen.py` that build, run and pack apps target the platforms of the repository. A port packs its apps with the tools of the SDK of its console.
+- Native plugins have parts for the platforms they list in `implementations`, so a plugin that a console app uses gets its console part in a private repository too, and a plugin that does not list the platform of the port fails the build of that platform.
+- The backends of the repository build apps for the platforms of the repository. Apps of a port build, run and pack only through the backend of the port, with the tools of the SDK of its console.

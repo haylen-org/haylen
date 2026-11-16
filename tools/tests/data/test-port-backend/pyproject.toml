@@ -1,0 +1,18 @@
+[project]
+name = "haylen-test-port-backend"
+version = "1.0.0"
+description = "The backend of the target test-port, which builds, verifies and runs Lua apps against the SDK of the engine port of the test port."
+license = "MIT"
+requires-python = ">=3.15"
+dependencies = ["haylen"]
+
+[project.entry-points."haylen.backends"]
+test-port = "testportbackend.port_backend:PortBackend"
+
+[build-system]
+requires = ["uv_build>=0.9,<0.13"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
+module-name = "testportbackend"

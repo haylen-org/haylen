@@ -25,7 +25,7 @@
 
 namespace haylen::debug {
 
-// A development server whose client of the debugger sets a breakpoint as soon as an app says hello, and at every halt sends a batch of files, reads the stack and lets the app go on, the way an editor does through the server of `haylen.py`.
+// A development server whose client of the debugger sets a breakpoint as soon as an app says hello, and at every halt sends a batch of files, reads the stack and lets the app go on, the way an editor does through the development server of `haylen app run`.
 class DebuggingServer final {
   public:
     DebuggingServer() : listener(Poco::Net::SocketAddress("127.0.0.1", 0)), server(new Factory(*this), listener, new Poco::Net::HTTPServerParams()) {

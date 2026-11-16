@@ -124,7 +124,7 @@
 
         [logged addObject:key];
     }
-    haylen::core::Log::warning("{} needs {}, which the app lacks, so the calls that need it fail with the code \"unsupported\". Add \"{}\" to \"{}\".", owner.UTF8String, requirement.summary.UTF8String, requirement.snippet.UTF8String, requirement.file.UTF8String);
+    haylen::core::Log::warning("{} needs {}, which the app lacks, so the calls that need it fail with the code \"unsupported\". {}", owner.UTF8String, requirement.summary.UTF8String, requirement.instructions.UTF8String);
 }
 
 @end

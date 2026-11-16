@@ -150,7 +150,7 @@ TEST_F(MixerLuaTest, SpatializesAndFollowsCameras) {
     EXPECT_NE(fixture->lua("audio.followCamera(hit)").find("haylen.Camera expected"), std::string::npos);
 }
 
-TEST(MixerOutputLuaTest, GuardsTheMasterBusWithALimiterUnlessAppJsonTurnsItOff) {
+TEST(MixerOutputLuaTest, GuardsTheMasterBusWithALimiterUnlessHaylenJsonTurnsItOff) {
     {
         test::EngineFixture fixture;
         EXPECT_EQ(fixture.lua("local audio = require('haylen.audio') local limiter = audio.busEffects('master')[1] return string.format('%.2f %.2f %.2f ', limiter.threshold, limiter.release, limiter.reduction) .. audio.outputState() .. ' ' .. audio.outputLatency()"), "0.90 0.10 0.00 unavailable 0.0");
@@ -158,7 +158,7 @@ TEST(MixerOutputLuaTest, GuardsTheMasterBusWithALimiterUnlessAppJsonTurnsItOff) 
         EXPECT_NE(fixture.lua("require('haylen.audio').newEffect('limiter', {threshold = 2})").find("A limiter threshold must be above 0 and at most 1."), std::string::npos);
         EXPECT_NE(fixture.lua("require('haylen.audio').newEffect('limiter', {knee = 2})").find("Unknown option \"knee\"."), std::string::npos);
     }
-    test::EngineFixture plain({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "audio": {"limiter": false, "latency": "low"}})"}});
+    test::EngineFixture plain({{"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "audio": {"limiter": false, "latency": "low"}})"}});
     EXPECT_EQ(plain.lua("return #require('haylen.audio').busEffects('master')"), "0");
 }
 

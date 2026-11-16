@@ -28,7 +28,7 @@ class ReleaseInspectorTest : public ::testing::Test {
     [[nodiscard]] static Files makeFiles() {
         Files files;
         const auto text = [&files](const std::string& path, const std::string& content) { files.emplace(path, test::TestFiles::bytes(content)); };
-        text("app.json", R"({"name": "Release Test", "identifier": "com.haylen.tests"})");
+        text("haylen.json", R"({"name": "Release Test", "identifier": "com.haylen.tests"})");
         text("source/main.lua", "loaded = true");
         text("content/data/config.json", R"({"level": 3})");
         text("content/data/removed.json", R"({"removed": true})");
@@ -61,7 +61,7 @@ TEST_F(ReleaseInspectorTest, ShowsTheFilesChunksAndShardsOfARelease) {
     EXPECT_EQ(report.app.envelope.domain, Manifest::Domain::App);
     EXPECT_EQ(report.app.envelope.profile, test::ReleaseFixture::kProfile);
     ASSERT_EQ(report.app.files.size(), 2U);
-    EXPECT_EQ(report.app.files.front().path, "app.json");
+    EXPECT_EQ(report.app.files.front().path, "haylen.json");
     ASSERT_EQ(report.content.files.size(), 4U);
 
     // The copy of the large file stores nothing, which the totals show as the saving of deduplication.
@@ -105,7 +105,7 @@ TEST_F(ReleaseInspectorTest, NamesTheFilesWhoseDeliveryChanged) {
     release.build(io::MemoryPackage("source", files));
     const ReleaseInspector::Report before = makeInspector().inspect(release.getFolder());
 
-    files["app.json"] = test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "com.haylen.tests", "content": {"delivery": [{"match": "world/**", "mode": "onDemand"}]}})");
+    files["haylen.json"] = test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "com.haylen.tests", "content": {"delivery": [{"match": "world/**", "mode": "onDemand"}]}})");
     release.build(io::MemoryPackage("source", files));
     const ReleaseInspector::Report after = makeInspector().inspect(release.getFolder());
 
@@ -119,7 +119,7 @@ TEST_F(ReleaseInspectorTest, NamesTheFilesWhoseDeliveryChanged) {
 
 TEST_F(ReleaseInspectorTest, DeliversTheFilesOfAPreloadGroupThatARuleNames) {
     Files files = makeFiles();
-    files["app.json"] = test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "com.haylen.tests", "content": {"groups": "groups.json", "delivery": [{"group": "world", "mode": "onDemand"}]}})");
+    files["haylen.json"] = test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "com.haylen.tests", "content": {"groups": "groups.json", "delivery": [{"group": "world", "mode": "onDemand"}]}})");
     files["content/groups.json"] = test::TestFiles::bytes(R"({"groups": {"world": ["world/"]}})");
     release.build(io::MemoryPackage("source", files));
     const ReleaseInspector::Report report = makeInspector().inspect(release.getFolder());
@@ -169,7 +169,7 @@ TEST_F(ReleaseInspectorTest, CountsAShardThatBothDomainsNameOnce) {
     // Content files with the bytes and the order of the files of the app domain seal into the same records, so both domains write one shard file.
     const std::string config = R"({"name": "Release Test", "identifier": "com.haylen.tests"})";
     const std::vector<std::uint8_t> module = LuaCompiler::compile("loaded = true", "source/main.lua");
-    release.build({{"app.json", config}, {"source/main.lua", "loaded = true"}, {"content/a.json", config}, {"content/b.bin", std::string(module.begin(), module.end())}});
+    release.build({{"haylen.json", config}, {"source/main.lua", "loaded = true"}, {"content/a.json", config}, {"content/b.bin", std::string(module.begin(), module.end())}});
     const ReleaseInspector::Report report = makeInspector().inspect(release.getFolder());
     ASSERT_EQ(report.app.envelope.shards, report.content.envelope.shards);
 

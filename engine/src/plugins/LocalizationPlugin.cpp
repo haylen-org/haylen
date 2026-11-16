@@ -36,14 +36,14 @@ void LocalizationPlugin::loadConfiguredLanguages(core::Engine& engine) {
     if (!configured.folder.empty()) {
         const std::vector<std::string> loaded = loadFolder(engine.getPackage(), configured.folder);
         if (loaded.empty()) {
-            throw std::runtime_error("The folder \"" + configured.folder + "\" of \"localization.folder\" in \"app.json\" holds no language file. Add a file such as \"" + configured.folder + "/en.json\".");
+            throw std::runtime_error("The folder \"" + configured.folder + "\" of \"localization.folder\" in \"haylen.json\" holds no language file. Add a file such as \"" + configured.folder + "/en.json\".");
         }
     }
 
     if (!configured.fallback.empty()) {
         const std::vector<std::string>& languages = catalog.getLanguages();
         if (std::ranges::find(languages, configured.fallback) == languages.end()) {
-            throw std::runtime_error("The \"localization.fallback\" of \"app.json\" names \"" + configured.fallback + "\", whose file the folder \"" + configured.folder + "\" lacks.");
+            throw std::runtime_error("The \"localization.fallback\" of \"haylen.json\" names \"" + configured.fallback + "\", whose file the folder \"" + configured.folder + "\" lacks.");
         }
 
         catalog.setFallback(configured.fallback);

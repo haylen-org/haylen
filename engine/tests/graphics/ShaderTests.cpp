@@ -124,15 +124,16 @@ void main() {
 @program glow haylen_vs glow_fs
 )";
 
-    // Compiles the material `source` with `haylen.py shaders`, the way apps compile theirs, with the shader compiler of the build. Python starts without a shell, so no shell reinterprets the quotes of the paths.
+    // Compiles the material `source` with `haylen app shaders`, the way apps compile theirs, with the shader compiler of the build. The tooling of the checkout runs through uv, which starts without a shell, so no shell reinterprets the quotes of the paths.
     [[nodiscard]] static std::vector<std::uint8_t> compile(const std::string& name, const char* source) {
         const test::TemporaryDirectory app;
-        app.write("app.json", R"({"name": "Shaders", "identifier": "com.haylen.shaders", "version": "1.0.0"})");
+        app.write("haylen.json", R"({"name": "Shaders", "identifier": "com.haylen.shaders", "version": "1.0.0"})");
         app.write("content/shaders/" + name + ".glsl", source);
         const Poco::Process::Env env{{"HAYLEN_SHADER_COMPILER", HAYLEN_SHADER_COMPILER}};
 
-        if (Poco::Process::launch(HAYLEN_PYTHON, {HAYLEN_TOOL_SCRIPT, "shaders", app.getPath().string()}, "", nullptr, nullptr, nullptr, env).wait() != 0) {
-            throw std::runtime_error("The command \"haylen.py shaders\" failed.");
+        const std::vector<std::string> arguments{"run", "--project", HAYLEN_TOOLING_ROOT, "--frozen", "haylen", "app", "shaders", app.getPath().string()};
+        if (Poco::Process::launch(HAYLEN_UV, arguments, "", nullptr, nullptr, nullptr, env).wait() != 0) {
+            throw std::runtime_error("The command \"haylen app shaders\" failed.");
         }
 
         std::ifstream file(app.getPath() / "content" / "shaders" / (name + ".shader"), std::ios::binary);
@@ -158,7 +159,7 @@ class MaterialLuaTest : public ShaderTest {};
 
 } // namespace
 
-TEST_F(ShaderTest, CompilesWithMakePyIntoEveryProgramWithItsReflection) {
+TEST_F(ShaderTest, CompilesWithAppShadersIntoEveryProgramWithItsReflection) {
     const graphics::Shader shader = graphics::Shader::parse(tintShader());
     EXPECT_EQ(shader.getName(), "tint");
     EXPECT_EQ(shader.getVersion(), 1U);

@@ -9,7 +9,7 @@ import tilesets as t
 import transitions as tr
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "tools"))
-from png_image import Image, read, write  # noqa: E402
+from png_image import Image  # noqa: E402
 
 IMAGES = Path(__file__).resolve().parents[2] / "content" / "tiled" / "images"
 # The sky from its top to the horizon: a deep blue that pales into the haze over the hills.
@@ -27,8 +27,8 @@ def write_sky() -> None:
                 color = tuple(round(a + (b - a) * mix) for a, b in zip(low, high))
         for x in range(width):
             image.pixels[(y * width + x) * 4 : (y * width + x) * 4 + 4] = bytes((*color, 255))
-    write(image, IMAGES / "sky.png")
+    Image.write(image, IMAGES / "sky.png")
 
 
 def write_sea() -> None:
-    write(tr.texture(read(tr.TILES / "terrain.png"), t.WATER), IMAGES / "sea.png")
+    Image.write(tr.texture(Image.read(tr.TILES / "terrain.png"), t.WATER), IMAGES / "sea.png")

@@ -149,7 +149,7 @@ scene.push({
 | `order` | integer | `0` | Canvases reach their destination by order, lowest first, and canvases with the same order in the order they began. |
 | `visibilityMask` | integer | all bits | Draws whose `visibility` shares no bit with the mask are skipped. |
 | `ambientLight` | Color | none | Turns on lighting. The canvas is multiplied by a light map that starts at this color and receives every `graphics2d.drawLight`, and occluders cast the shadows of its lights. |
-| `clear` | Color | see the meaning | The background of offscreen canvases. Render target canvases are transparent by default. World canvases with `ambientLight` or `postProcess` take the `clearColor` of `app.json` by default. Screen canvases and other world canvases draw straight onto the screen, so they raise an error when given a clear color. |
+| `clear` | Color | see the meaning | The background of offscreen canvases. Render target canvases are transparent by default. World canvases with `ambientLight` or `postProcess` take the `clearColor` of `haylen.json` by default. Screen canvases and other world canvases draw straight onto the screen, so they raise an error when given a clear color. |
 | `postProcess` | table | none | Adjustments of the whole image, applied when the canvas reaches its destination, with the [post-process options](#post-process-options). |
 | `debugDrawings` | boolean | `true` | Shows the [drawings of `haylen.debug`](debug.md#drawings) over the canvas, such as the physics shapes. A canvas of an interface in units of its own, such as a heads-up display, turns them off. |
 
@@ -3878,7 +3878,7 @@ A `Material` shades draws with a custom shader and holds values for the uniforms
 
 ### graphics2d.newMaterial(shader, uniforms)
 
-Returns a new `Material` that shades draws with `shader`, a `Shader` that [`haylen.assets`](assets.md#assetsshaderpath) loads from a `.shader` file compiled by `haylen.py shaders`. The table `uniforms` is optional and holds first values by name, which `material:set` takes one by one. A key of it that is not a string raises a `bad argument` error that ends with `uniform names must be strings`. A shader without the programs of the shader library raises `The shader "<name>" has no "sprite" program. Compile it with "haylen.py shaders" from a source that includes "haylen/material.glsl".`, and no shader raises `A material needs a shader.`.
+Returns a new `Material` that shades draws with `shader`, a `Shader` that [`haylen.assets`](assets.md#assetsshaderpath) loads from a `.shader` file compiled by `haylen app shaders`. The table `uniforms` is optional and holds first values by name, which `material:set` takes one by one. A key of it that is not a string raises a `bad argument` error that ends with `uniform names must be strings`. A shader without the programs of the shader library raises `The shader "<name>" has no "sprite" program. Compile it with "haylen app shaders" from a source that includes "haylen/material.glsl".`, and no shader raises `A material needs a shader.`.
 
 ```lua
 local assets = require('haylen.assets')
@@ -4116,9 +4116,9 @@ These messages come from the functions and methods of the module, besides the er
 | `Occluders can only be drawn in a lit canvas, a world or render target canvas with ambient light.` | The function `graphics2d.drawOccluder` ran in another canvas. |
 | `A material needs a shader.` | The function `graphics2d.newMaterial` got no shader. |
 | `A post-processing material needs a shader.` | An entry of the `materials` of a post-process has no shader. |
-| `The shader "<name>" has no "sprite" program. Compile it with "haylen.py shaders" from a source that includes "haylen/material.glsl".` | The shader of a material lacks the programs of the shader library. |
+| `The shader "<name>" has no "sprite" program. Compile it with "haylen app shaders" from a source that includes "haylen/material.glsl".` | The shader of a material lacks the programs of the shader library. |
 | `The shader "<name>" has no uniform named "<key>".` | The methods `material:set` or `material:get` named another uniform. |
-| `The shader "<name>" was compiled with another version of the shader library. Compile it again with "haylen.py shaders".` | A draw first used a shader compiled with another library. |
+| `The shader "<name>" was compiled with another version of the shader library. Compile it again with "haylen app shaders".` | A draw first used a shader compiled with another library. |
 | `The camera zoom must be a number.` | A zoom of a camera is not a number. |
 | `The smallest zoom must be above 0 and not above the largest zoom.` | The `minZoom` of a camera is out of range. |
 | `The largest zoom must not be below the smallest zoom.` | The `maxZoom` of a camera is out of range. |

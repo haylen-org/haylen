@@ -251,7 +251,7 @@ end)
 
 ### platform.plugins()
 
-Returns a list with one table per plugin that `app.json` lists, in the order of their ids. Each table has these fields:
+Returns a list with one table per plugin that `haylen.json` lists, in the order of their ids. Each table has these fields:
 
 | Field | Type | Meaning |
 | --- | --- | --- |
@@ -271,7 +271,7 @@ end
 
 ### platform.plugin(id)
 
-Returns the [`AppPlugin`](#appplugin) handle of the plugin `id` that `app.json` lists. The Lua modules of a plugin use it to reach its native part. An id that `app.json` does not list raises `The plugin "<id>" is not among the plugins of "app.json".`.
+Returns the [`AppPlugin`](#appplugin) handle of the plugin `id` that `haylen.json` lists. The Lua modules of a plugin use it to reach its native part. An id that `haylen.json` does not list raises `The plugin "<id>" is not among the plugins of "haylen.json".`.
 
 ```lua
 local platform = require('haylen.platform')
@@ -400,7 +400,7 @@ A platform without the native part of the plugin answers its calls with the code
 | --- | --- | --- |
 | `id` | string | The id of the plugin, such as `'ads'`. |
 | `version` | string | The `version` of its `plugin.json`. |
-| `config` | table | The parameter values of the plugin in `app.json`, over the `default` of every parameter of its `plugin.json`. The native parts receive the same values. |
+| `config` | table | The parameter values of the plugin in `haylen.json`, over the `default` of every parameter of its `plugin.json`. The native parts receive the same values. |
 | `native` | boolean | Whether the native part of the plugin runs on this platform. The handle reads it anew every time, since a native library may declare the native part later. |
 
 The properties are read-only.
@@ -647,7 +647,7 @@ These messages are raised by the functions and methods of the module.
 | `A <type> key cannot be converted to JSON.` | A table has a key that is neither a string nor a number. |
 | `Value is nested too deeply to convert to JSON.` | A table is nested deeper than 128 levels. |
 | `Unknown option "<key>".` | An options table has a key that the function does not take. |
-| `The plugin "<id>" is not among the plugins of "app.json".` | The id of `platform.plugin` names no plugin of the app. |
+| `The plugin "<id>" is not among the plugins of "haylen.json".` | The id of `platform.plugin` names no plugin of the app. |
 | `The file "<path>" of the package is not a JSON object.` | A `plugin.json` of the package is not a JSON object. |
 | `The file "<path>" of the package has no version.` | A `plugin.json` of the package has no `version`. |
 | `A method or event of the plugin "<id>" needs a name.` | The name given to a method of a handle is empty. |

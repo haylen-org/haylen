@@ -1,10 +1,11 @@
 {
+    "interface": 1,
     "id": "native-test",
     "name": "Native Test",
     "version": "1.0.0",
     "description": "Stands in for the test library of the engine in the browser, which loads no native libraries, by answering its functions and handlers in the page.",
-    "platforms": ["web"],
-    "web": {
-        "module": "web/native-test.js"
-    }
+    "implementations": {"ios": "lua", "catalyst": "lua", "tvos": "lua", "visionos": "lua", "macos": "lua", "android": "lua", "web": "native", "windows": "lua", "linux": "lua"},
+    "contributions": [
+        {"type": "webModule", "platforms": ["web"], "path": "web/native-test.js"}
+    ]
 }

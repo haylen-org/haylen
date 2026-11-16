@@ -9,7 +9,7 @@
 
 namespace haylen::assets {
 
-// The format of preload groups: a `groups` object that maps each group name to its list of entries, where an entry is a path relative to `content` or an object with `path` and an optional `type` and `options`. A path that ends with `/` names a folder. The asset manager loads the groups, and the delivery rules of `app.json` name them.
+// The format of preload groups: a `groups` object that maps each group name to its list of entries, where an entry is a path relative to `content` or an object with `path` and an optional `type` and `options`. A path that ends with `/` names a folder. The asset manager loads the groups, and the delivery rules of `haylen.json` name them.
 class GroupManifest final {
   public:
     struct Entry {

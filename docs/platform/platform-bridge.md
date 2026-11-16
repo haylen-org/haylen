@@ -276,7 +276,7 @@ R8 keeps the classes that the engine reaches by name through the `consumer-rules
 
 ### Where Android handlers register
 
-[Plugins](plugins.md#the-android-part) register their handlers through their context, which puts the id of the plugin in front of the name. Apps register theirs once, in `Application.onCreate` of the application class, before the first activity starts. The `<application>` of the manifest of the [Android project](../tools/distribution.md#the-android-project) names that class. The Android template gives it as `App` in `app/src/main/kotlin/com/haylen/app/App.kt`, with the handler of the [bridge example](../tools/distribution.md#the-bridge-example) of the templates.
+[Plugins](plugins.md#the-android-part) register their handlers through their context, which puts the id of the plugin in front of the name. Apps register theirs once, in `Application.onCreate` of the application class, before the first activity starts. The key `platforms.android.applicationClass` of `haylen.json` names that class, and the Android backend writes it into the `<application>` of the manifest of the generated project. Its source lies in a folder of the app that `platforms.android.sources` names, which the app module compiles where it lies. The command `haylen new` writes it as `App` in `native/android/App.kt`, with the handler of the method `app.greet` and the event `app.greeted`.
 
 ```java
 import dev.haylen.HaylenBridge;
@@ -302,7 +302,7 @@ public final class StorePlugin {
 }
 ```
 
-The sign-in of Tiny Island is a real handler of this kind. The local plugin `samples/games/tiny-island/plugins/sign-in` has a `SignInPlugin` that answers `sign-in.signIn` with Credential Manager. It builds the credential option of the identity service with the web client id from the `clientId` parameter of the plugin. It calls `getCredentialAsync` on the main executor of the activity and replies with `idToken`, `email`, `name` and `picture`. Without a client id it fails with a message that names the key of `app.json` to set.
+The sign-in of Tiny Island is a real handler of this kind. The local plugin `samples/games/tiny-island/plugins/sign-in` has a `SignInPlugin` that answers `sign-in.signIn` with Credential Manager. It builds the credential option of the identity service with the web client id from the `clientId` parameter of the plugin. It calls `getCredentialAsync` on the main executor of the activity and replies with `idToken`, `email`, `name` and `picture`. Without a client id it fails with a message that names the key of `haylen.json` to set.
 
 ### Kotlin coroutines
 
@@ -415,13 +415,13 @@ import Foundation
 }
 ```
 
-The engine ships `HaylenBridgeAsync.swift` as a source file. The tool `haylen.py` writes it into `haylen/` of the project, and the target templates compile it. The engine artifact is a static library of C, C++ and Objective-C, whose headers Swift reaches through `source/HaylenBridging.h`. A Swift module inside the artifact would have to match the Swift compiler of each app, so the helpers stay a source file. The target names its module `HaylenApp`, so Objective-C code such as `main.m` calls Swift classes through `#import "HaylenApp-Swift.h"`.
+The engine ships `HaylenBridgeAsync.swift` as a source file in the Apple SDK, and the Apple backend compiles it into the app target of every generated project. The engine of the SDK is a static library of C, C++ and Objective-C, whose headers Swift reaches through the bridging header `HaylenBridging.h` of the project. A Swift module inside the SDK would have to match the Swift compiler of each app, so the helpers stay a source file. The target names its module `HaylenApp`, so Objective-C code calls Swift classes through `#import "HaylenApp-Swift.h"`.
 
 ### Where Apple handlers register
 
-Apps made from the Apple template register in the `main` function of `source/main.m`, before it calls `haylen_main`. Their Objective-C, C++ and Swift files sit next to it in `platform/apple/source/` of the app, and every file there builds into every target, as the [distribution guide](../tools/distribution.md#the-apple-project) describes. The template registers its Swift handlers of `AppBridge.swift` from there.
+The Swift, Objective-C, Objective-C++, C and C++ files of an app lie in the folders that `platforms.apple.sources` of `haylen.json` names, such as `native/apple/`, and the app target of every Apple platform compiles them where they lie. They register their handlers before the runtime starts, from `+load` of a class. The command `haylen new` writes `AppBridge.swift`, whose `registerHandlers` registers the handler of `app.greet`, and `AppBridgeLoader.m`, whose `+load` calls it, since a Swift class runs no code when it loads.
 
-Apps built with `haylen_add_app` add their Objective-C file with the `SOURCES` argument. They compile it with `-fobjc-arc`, as the engine compiles its Apple sources, and register from `+load` or once the app has launched, as `src/AppBridge.mm` of the C++ template does.
+C++ apps take the same folders, so their Apple handlers register the same way, while their C++ code calls the bridge through `haylen::platform::Bridge`.
 
 ## Web
 
@@ -443,24 +443,21 @@ The handler returns the result or a promise of it. `ArrayBuffer` and `Uint8Array
 
 The web build has one thread, so handlers run on the main thread of the browser between frames. An asynchronous handler, such as one that waits for `fetch` or for a sign-in popup, never blocks the app while it waits.
 
-The function `register` exists once the runtime script has run, so a page registers its handlers in `Module.preRun`. The web template runs the `app.js` of an app for that, and a C++ app made from the C++ template links the same file into its runtime script with `--pre-js`. Plugins register theirs with `context.register` of their web module. One such module is the sign-in of Tiny Island, which answers `sign-in.signIn`. It loads the script of the identity service only when the player first signs in and reads the client id from the parameters of the plugin. It resolves with `idToken`, `email`, `name` and `picture`, decoded from the credential that comes back. The development server sends no embedder policy, so the script loads. A site that serves the page with `Cross-Origin-Embedder-Policy: require-corp` blocks it, as the [distribution guide](../tools/distribution.md#serve) explains.
+The function `register` exists once the runtime script has run, so a page registers its handlers in `Module.preRun`. The page scripts of an app, which `platforms.web.scripts` of `haylen.json` names, such as `native/web/app.js`, load after the loader of the page and before the runtime starts, for Lua and C++ apps alike. Plugins register theirs with `context.register` of their web module. One such module is the sign-in of Tiny Island, which answers `sign-in.signIn`. It loads the script of the identity service only when the player first signs in and reads the client id from the parameters of the plugin. It resolves with `idToken`, `email`, `name` and `picture`, decoded from the credential that comes back. The development server sends no embedder policy, so the script loads. A site that serves the page with `Cross-Origin-Embedder-Policy: require-corp` blocks it, as the [distribution guide](../tools/distribution.md) explains.
 
-```html
-<script>
-    var Module = {
-        canvas: document.getElementById("canvas"),
-        preRun: [function () {
-            Module.haylen.register("store.buy", async (params, context) => {
-                if (!params.item) {
-                    throw Object.assign(new Error("The method store.buy needs an item."), { code: "missingItem" });
-                }
-                const response = await fetch("/api/buy", { method: "POST", body: JSON.stringify(params), signal: context.signal });
-                return await response.json();
-            });
-            window.addEventListener("hashchange", () => Module.haylen.emit("app.link", { url: location.href }));
-        }],
-    };
-</script>
+```js
+// native/web/app.js
+Module.preRun = Module.preRun ?? [];
+Module.preRun.push(() => {
+    Module.haylen.register("store.buy", async (params, context) => {
+        if (!params.item) {
+            throw Object.assign(new Error("The method store.buy needs an item."), { code: "missingItem" });
+        }
+        const response = await fetch("/api/buy", { method: "POST", body: JSON.stringify(params), signal: context.signal });
+        return await response.json();
+    });
+    window.addEventListener("hashchange", () => Module.haylen.emit("app.link", { url: location.href }));
+});
 ```
 
 ## Desktop
@@ -495,7 +492,7 @@ The class `haylen::platform::Bridge` in `engine/include/haylen/platform/Bridge.h
 | `emit(std::string_view event, std::string_view payloadJson, buffers = {}, const Bridge::EmitOptions& options = {})` | Sends an event with the byte buffers of its JSON, from any thread. With `options.retain` it waits for the first listener of its name, and with `options.batched` it arrives in the list of its frame. |
 | `getPendingCallCount()` | The calls that still wait for an answer. |
 
-The engine gives C++ code two more services next to the bridge. The function `engine.getAppPlugins()` returns the plugins of `app.json` as `haylen::platform::AppPlugin` records with `id`, `version`, `config` and `native`. The function `engine.getScreens()` returns the `haylen::platform::Screens` that open the screens of plugins, as the [plugin guide](plugins.md#screens-in-c) describes.
+The engine gives C++ code two more services next to the bridge. The function `engine.getAppPlugins()` returns the plugins of `haylen.json` as `haylen::platform::AppPlugin` records with `id`, `version`, `config` and `native`. The function `engine.getScreens()` returns the `haylen::platform::Screens` that open the screens of plugins, as the [plugin guide](plugins.md#screens-in-c) describes.
 
 A plugin is the usual home for C++ handlers, because its `start` runs with every new engine:
 
@@ -553,7 +550,7 @@ This example adds the method `accessibility.reducedMotion`, which tells the app 
 
 ### Android
 
-The file `app/src/main/java/com/haylen/app/MotionPlugin.java` in the [Android project](../tools/distribution.md#the-android-project) of the app:
+The file `native/android/MotionPlugin.java` in the folder of the app that `platforms.android.sources` of `haylen.json` names:
 
 ```java
 package com.haylen.app;
@@ -586,7 +583,7 @@ final class MotionPlugin {
 }
 ```
 
-The application class of the Android template, `app/src/main/kotlin/com/haylen/app/App.kt`, registers it:
+The application class of the app, `native/android/App.kt`, which `platforms.android.applicationClass` names, registers it:
 
 ```kotlin
 package com.haylen.app
@@ -605,26 +602,16 @@ The handler reads a setting and touches no view, so it runs on the background th
 
 ### Web
 
-The shell of the app, which `haylen_add_app` takes as `WEB_SHELL`, registers the handler in `preRun`:
+A page script of the app, `native/web/motion.js`, which `platforms.web.scripts` of `haylen.json` lists, registers the handler in `preRun`:
 
-```html
-<canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
-<script>
-    function registerMotion() {
-        const query = window.matchMedia("(prefers-reduced-motion: reduce)");
-        Module.haylen.register("accessibility.reducedMotion", () => ({ reduced: query.matches }));
-        query.addEventListener("change", () => Module.haylen.emit("accessibility.reducedMotionChanged", { reduced: query.matches }));
-    }
-
-    var Module = {
-        canvas: document.getElementById("canvas"),
-        preRun: [registerMotion],
-        haylen: {
-            packageUrl: new URLSearchParams(location.search).get("package"),
-        },
-    };
-</script>
-{{{ SCRIPT }}}
+```js
+// native/web/motion.js
+Module.preRun = Module.preRun ?? [];
+Module.preRun.push(() => {
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+    Module.haylen.register("accessibility.reducedMotion", () => ({ reduced: query.matches }));
+    query.addEventListener("change", () => Module.haylen.emit("accessibility.reducedMotionChanged", { reduced: query.matches }));
+});
 ```
 
 ### Lua

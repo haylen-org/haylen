@@ -41,7 +41,7 @@ class DevelopmentSession;
 
 namespace haylen::plugins {
 
-// Shows the debug statistics and the debug drawings and exposes them to Lua as `haylen.debug`. Compact mode draws the main numbers in a corner with the renderer, and full mode shows the statistics window with frame times, profiler scopes, the scenes, the drawings, rendering, memory, GPU pools, counters, object counts, signals and event listeners, monitors and recent log lines. A key cycles through `off`, `compact` and `full`, F3 unless the app picks another, and `app.json` picks the mode the app starts with. Drawings draw over every canvas the app draws, by name: `physics` shows the bodies, shapes, joints and contacts of every physics world, `bounds` outlines the sprites and text blocks and names each sprite after its texture, and drawers that apps and plugins add show anything else. Another key, F4 unless the app picks another, turns every drawing on or off, and `app.json` names the drawings the app starts with. The developer console runs the commands of the engine and the app, from the lines that the terminal of the development server and the web page send, in development runs and wherever `app.json` turns it on. The inspector window lists and edits the values of the scenes, the autoloads, the watched values and the globals, opened by F2 unless the app picks another key, by the terminal or by the console.
+// Shows the debug statistics and the debug drawings and exposes them to Lua as `haylen.debug`. Compact mode draws the main numbers in a corner with the renderer, and full mode shows the statistics window with frame times, profiler scopes, the scenes, the drawings, rendering, memory, GPU pools, counters, object counts, signals and event listeners, monitors and recent log lines. A key cycles through `off`, `compact` and `full`, F3 unless the app picks another, and `haylen.json` picks the mode the app starts with. Drawings draw over every canvas the app draws, by name: `physics` shows the bodies, shapes, joints and contacts of every physics world, `bounds` outlines the sprites and text blocks and names each sprite after its texture, and drawers that apps and plugins add show anything else. Another key, F4 unless the app picks another, turns every drawing on or off, and `haylen.json` names the drawings the app starts with. The developer console runs the commands of the engine and the app, from the lines that the terminal of the development server and the web page send, in development runs and wherever `haylen.json` turns it on. The inspector window lists and edits the values of the scenes, the autoloads, the watched values and the globals, opened by F2 unless the app picks another key, by the terminal or by the console.
 class DebugPlugin final : public Plugin {
   public:
     static constexpr std::size_t kLogLines = 200;
@@ -60,7 +60,7 @@ class DebugPlugin final : public Plugin {
     // Draws a drawing into the open canvas, whose kind the renderer tells.
     using Drawer = std::function<void(graphics2d::Renderer& renderer)>;
 
-    // A development run, which has the development session of the process, turns the console on whatever `app.json` says, offers the command `lua` and reports its GPU captures to the development server.
+    // A development run, which has the development session of the process, turns the console on whatever `haylen.json` says, offers the command `lua` and reports its GPU captures to the development server.
     explicit DebugPlugin(platform::DevelopmentSession* developmentSession);
     ~DebugPlugin() override;
 
@@ -158,7 +158,7 @@ class DebugPlugin final : public Plugin {
         return console;
     }
 
-    // Whether the console runs the lines of the development server and the web page and the inspector opens, which a development run and the setting `debug.console` of `app.json` allow. The app runs its own commands either way.
+    // Whether the console runs the lines of the development server and the web page and the inspector opens, which a development run and the setting `debug.console` of `haylen.json` allow. The app runs its own commands either way.
     [[nodiscard]] bool isConsoleEnabled() const noexcept {
         return consoleEnabled;
     }

@@ -234,7 +234,7 @@ TEST(LocalizationLuaTest, RefusesFilesNotNamedAfterALanguage) {
 TEST(LocalizationLuaTest, LoadsAFolderThatDownloadsOnlyAsynchronously) {
     // clang-format off
     test::EngineFixture fixture({
-        {"app.json", R"({"content": {"delivery": [{"match": "expansion/**", "mode": "onDemand"}]}})"},
+        {"haylen.json", R"({"content": {"delivery": [{"match": "expansion/**", "mode": "onDemand"}]}})"},
         {"content/expansion/dialogue/en.json", R"({"quest": "Find the key"})"},
         {"content/expansion/broken/en.json", "{"},
     });
@@ -254,11 +254,11 @@ TEST(LocalizationLuaTest, LoadsAFolderThatDownloadsOnlyAsynchronously) {
     EXPECT_NE(fixture.lua("return refused").find("is not valid JSON"), std::string::npos);
 }
 
-// The section `localization` of app.json loads the languages before any script runs, the system picks among them, and every change of the current language reaches the app once, at the start of the next frame.
+// The section `localization` of haylen.json loads the languages before any script runs, the system picks among them, and every change of the current language reaches the app once, at the start of the next frame.
 TEST(LocalizationPluginTest, FollowsTheSystemAndAnnouncesEveryChangeOfLanguage) {
     // clang-format off
     test::EngineFixture fixture({
-        {"app.json", R"({"localization": {"folder": "locale", "fallback": "en"}})"},
+        {"haylen.json", R"({"localization": {"folder": "locale", "fallback": "en"}})"},
         {"content/locale/en.json", R"({"menu": {"play": "Play"}})"},
         {"content/locale/es.json", R"({"menu": {"play": "Jugar"}})"},
         {"content/locale/pt-BR.json", R"({"menu": {"play": "Jogar"}})"},
@@ -291,11 +291,11 @@ TEST(LocalizationPluginTest, FollowsTheSystemAndAnnouncesEveryChangeOfLanguage) 
     EXPECT_EQ(fixture.lua("return heard[#heard] .. ' ' .. localization.text('menu.play')"), "en>pt-BR Jogar");
 }
 
-// A language that app.json names is the choice of the app from the start.
-TEST(LocalizationPluginTest, StartsInTheLanguageOfAppJson) {
+// A language that haylen.json names is the choice of the app from the start.
+TEST(LocalizationPluginTest, StartsInTheLanguageOfHaylenJson) {
     // clang-format off
     test::EngineFixture fixture({
-        {"app.json", R"({"localization": {"folder": "locale", "language": "es_419"}})"},
+        {"haylen.json", R"({"localization": {"folder": "locale", "language": "es_419"}})"},
         {"content/locale/en.json", "{}"},
         {"content/locale/es.json", "{}"},
     });
@@ -307,18 +307,18 @@ TEST(LocalizationPluginTest, StartsInTheLanguageOfAppJson) {
 }
 
 TEST(LocalizationPluginTest, RefusesAFallbackWithoutItsFile) {
-    test::EngineFixture missing({{"app.json", R"({"localization": {"folder": "locale", "fallback": "de"}})"}, {"content/locale/en.json", "{}"}});
+    test::EngineFixture missing({{"haylen.json", R"({"localization": {"folder": "locale", "fallback": "de"}})"}, {"content/locale/en.json", "{}"}});
     ASSERT_NE(missing.engine().getError(), nullptr);
-    EXPECT_EQ(missing.engine().getError()->getMessage(), "The \"localization.fallback\" of \"app.json\" names \"de\", whose file the folder \"locale\" lacks.");
+    EXPECT_EQ(missing.engine().getError()->getMessage(), "The \"localization.fallback\" of \"haylen.json\" names \"de\", whose file the folder \"locale\" lacks.");
 }
 
 TEST(LocalizationPluginTest, RefusesAnEmptyFolder) {
-    test::EngineFixture empty({{"app.json", R"({"localization": {"folder": "texts"}})"}, {"content/other/en.json", "{}"}});
+    test::EngineFixture empty({{"haylen.json", R"({"localization": {"folder": "texts"}})"}, {"content/other/en.json", "{}"}});
     ASSERT_NE(empty.engine().getError(), nullptr);
-    EXPECT_EQ(empty.engine().getError()->getMessage(), "The folder \"texts\" of \"localization.folder\" in \"app.json\" holds no language file. Add a file such as \"texts/en.json\".");
+    EXPECT_EQ(empty.engine().getError()->getMessage(), "The folder \"texts\" of \"localization.folder\" in \"haylen.json\" holds no language file. Add a file such as \"texts/en.json\".");
 }
 
-TEST(LocalizationPluginTest, ReadsTheLocalizationSectionOfAppJson) {
+TEST(LocalizationPluginTest, ReadsTheLocalizationSectionOfHaylenJson) {
     const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({"localization": {"folder": "./locale", "fallback": "EN", "language": "pt_br"}})"));
     EXPECT_EQ(config.localization.folder, "locale");
     EXPECT_EQ(config.localization.fallback, "en");
@@ -337,9 +337,9 @@ TEST(LocalizationPluginTest, ReadsTheLocalizationSectionOfAppJson) {
         return std::string();
     };
     // clang-format on
-    EXPECT_EQ(error(R"({"localization": {"language": "Portuguese"}})"), "The \"localization.language\" value \"Portuguese\" in \"app.json\" is no language tag. Write a language such as \"en\", \"pt-BR\" or \"pt_BR\".");
-    EXPECT_EQ(error(R"({"localization": {"fallback": "en"}})"), "The \"localization.fallback\" of \"app.json\" needs a \"localization.folder\" that holds its language file.");
-    EXPECT_EQ(error(R"({"localization": {"default": "en"}})"), "Unknown key \"default\" in the \"localization\" section of \"app.json\".");
+    EXPECT_EQ(error(R"({"localization": {"language": "Portuguese"}})"), "The \"localization.language\" value \"Portuguese\" in \"haylen.json\" is no language tag. Write a language such as \"en\", \"pt-BR\" or \"pt_BR\".");
+    EXPECT_EQ(error(R"({"localization": {"fallback": "en"}})"), "The \"localization.fallback\" of \"haylen.json\" needs a \"localization.folder\" that holds its language file.");
+    EXPECT_EQ(error(R"({"localization": {"default": "en"}})"), "Unknown key \"default\" in the \"localization\" section of \"haylen.json\".");
 }
 
 } // namespace haylen::localization

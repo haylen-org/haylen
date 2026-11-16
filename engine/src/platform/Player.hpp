@@ -62,13 +62,13 @@ class Player final {
     // The configuration of the app that the window opens for.
     [[nodiscard]] static const core::AppConfig& getOpeningConfig() noexcept;
 
-    // Where the window opens on the desktop, in desktop points, when `app.json` places it, which the platform layer opens it at.
+    // Where the window opens on the desktop, in desktop points, when `haylen.json` places it, which the platform layer opens it at.
     [[nodiscard]] static std::optional<math::Rect> getOpeningFrame();
 
-    // The size in points that `app.json` gives the window the process opened with.
+    // The size in points that `haylen.json` gives the window the process opened with.
     [[nodiscard]] static math::Vec2 getOpeningSize() noexcept;
 
-    // The graphics APIs the window tries in turn until one starts: the one that `--graphics-api` names, or else the ones of `window.graphicsApis` of `app.json`, then the other APIs of the build in the order of the platform.
+    // The graphics APIs the window tries in turn until one starts: the one that `--graphics-api` names, or else the ones of `window.graphicsApis` of `haylen.json`, then the other APIs of the build in the order of the platform.
     [[nodiscard]] static const std::vector<gpu::Device::Api>& getGraphicsApis() noexcept;
 
     // Starts the app once the window of the platform layer is open.
@@ -139,7 +139,7 @@ class Player final {
     [[nodiscard]] static gpu::Device* getGpuDevice() noexcept;
 
   private:
-    // Stands in for the app when its package cannot be opened or its `app.json` is invalid, so the window explains the problem instead of closing.
+    // Stands in for the app when its package cannot be opened or its `haylen.json` is invalid, so the window explains the problem instead of closing.
     class FailedApplication final : public core::Application {
       public:
         explicit FailedApplication(std::string reason) : error(std::move(reason)) {

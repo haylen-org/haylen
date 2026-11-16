@@ -1,6 +1,6 @@
 # 📖 `haylen.window`
 
-The module `haylen.window` controls the window that the app runs in, or the canvas on the web. It covers the size, the pixel density, fullscreen, the title, the mouse cursor, the on-screen keyboard, the orientation and the status bar of phones, the system gestures at the edges of the screen, the back button, keeping the screen on and the fold of foldable devices. On desktops it also covers frameless, transparent, always-on-top and click-through windows and their frame. The module [`haylen.display`](display.md) lists the displays. The `window` section of `app.json` sets the window when the app starts, as the [Lua guide](../core/lua.md) lists. Drawing works in design units, so layout code usually reads [`haylen.viewport`](viewport.md) instead of the window size. The [desktop guide](../platform/desktop.md) explains how the desktop options fit together.
+The module `haylen.window` controls the window that the app runs in, or the canvas on the web. It covers the size, the pixel density, fullscreen, the title, the mouse cursor, the on-screen keyboard, the orientation and the status bar of phones, the system gestures at the edges of the screen, the back button, keeping the screen on and the fold of foldable devices. On desktops it also covers frameless, transparent, always-on-top and click-through windows and their frame. The module [`haylen.display`](display.md) lists the displays. The `window` section of `haylen.json` sets the window when the app starts, as the [Lua guide](../core/lua.md) lists. Drawing works in design units, so layout code usually reads [`haylen.viewport`](viewport.md) instead of the window size. The [desktop guide](../platform/desktop.md) explains how the desktop options fit together.
 
 ```lua
 local window = require('haylen.window')
@@ -35,7 +35,7 @@ end
 
 ### window.maxPixelDensity()
 
-Returns the most framebuffer pixels that the app draws in each window point, or `0` when it draws every pixel of the display. It starts as `window.maxPixelDensity` of `app.json` says, `0` by default.
+Returns the most framebuffer pixels that the app draws in each window point, or `0` when it draws every pixel of the display. It starts as `window.maxPixelDensity` of `haylen.json` says, `0` by default.
 
 ```lua
 local window = require('haylen.window')
@@ -47,7 +47,7 @@ print('Pixel density cap:', window.maxPixelDensity())
 
 Draws at most `cap` framebuffer pixels in each window point, or every pixel of the display with `0`. On a display denser than the cap, such as a phone of 3 pixels in each point or a 4K monitor, the framebuffer shrinks to the cap and is stretched over the window, so the GPU fills fewer pixels at the price of sharpness. A cap of `2` keeps text and art sharp on almost every screen and fills less than half the pixels of a phone of 3 pixels in each point, and a cap below `1` draws fewer pixels than points for the slowest devices. The [rendering guide](../graphics/rendering.md#pixel-density) explains where the stretch happens on each platform.
 
-The window keeps its size, and every size in window points and design units stays the same: [`window.framebufferSize()`](#windowframebuffersize) and [`window.dpiScale()`](#windowdpiscale) report the smaller framebuffer, while input, the safe area and the UI keep their place. A display that is not denser than the cap draws every pixel, and outputs on other displays always draw every pixel of their display. The cap applies from the next frame and ends with the app, and a restarted app starts with the value of `app.json` again. A cap that is negative or not a number raises `The pixel density cap <cap> is out of range. It is 0 for every pixel of the display, or a positive number of framebuffer pixels in each point.`.
+The window keeps its size, and every size in window points and design units stays the same: [`window.framebufferSize()`](#windowframebuffersize) and [`window.dpiScale()`](#windowdpiscale) report the smaller framebuffer, while input, the safe area and the UI keep their place. A display that is not denser than the cap draws every pixel, and outputs on other displays always draw every pixel of their display. The cap applies from the next frame and ends with the app, and a restarted app starts with the value of `haylen.json` again. A cap that is negative or not a number raises `The pixel density cap <cap> is out of range. It is 0 for every pixel of the display, or a positive number of framebuffer pixels in each point.`.
 
 ```lua
 local window = require('haylen.window')
@@ -86,7 +86,7 @@ The table `options` goes only with `true`, and chooses where and how the window 
 | `display` | The display of the window | The id of the display to cover, from [`display.list()`](display.md#displaylist). A desktop window moves there first. |
 | `mode` | none | A mode of the display, such as one of the `modes` of `display.list()`, which makes the fullscreen exclusive: the display runs in that mode while the window holds it, and goes back to its own mode when the window leaves fullscreen. It needs `width` and `height` in pixels, and `refreshRate` picks the rate, the highest rate of the size without it. |
 
-Exclusive fullscreen works on macOS, Windows and Linux. On the web the page puts the element that holds the canvas in fullscreen, so the fields and the views of plugins stay over the app. A page covers another screen once the app holds the [permission](system.md#permissions) `'screens'`. Browsers allow fullscreen only shortly after a click, a tap or a key of the person, so the `fullscreen` key of `app.json` leaves a page as it is when it loads, and browsers have no modes. Phones, tablets and TVs keep the window on its display in the mode that the system picks, and another display or a mode answers `'unsupported'` there. The window of an Android app always fills the screen, so `true` resolves at once and `false` rejects with the code `'unsupported'`.
+Exclusive fullscreen works on macOS, Windows and Linux. On the web the page puts the element that holds the canvas in fullscreen, so the fields and the views of plugins stay over the app. A page covers another screen once the app holds the [permission](system.md#permissions) `'screens'`. Browsers allow fullscreen only shortly after a click, a tap or a key of the person, so the `fullscreen` key of `haylen.json` leaves a page as it is when it loads, and browsers have no modes. Phones, tablets and TVs keep the window on its display in the mode that the system picks, and another display or a mode answers `'unsupported'` there. The window of an Android app always fills the screen, so `true` resolves at once and `false` rejects with the code `'unsupported'`.
 
 ```lua
 local async = require('async')
@@ -116,7 +116,7 @@ playOnSecondDisplay()
 
 ### window.resizable()
 
-Returns `true` when the player can resize the window. It starts as `window.resizable` of `app.json`.
+Returns `true` when the player can resize the window. It starts as `window.resizable` of `haylen.json`.
 
 ```lua
 local window = require('haylen.window')
@@ -267,7 +267,7 @@ end
 
 ### window.lockOrientation(orientation)
 
-Keeps the screen in `'landscape'` or `'portrait'`, or lets it turn freely again with `'any'`. The file `app.json` sets the orientations an app starts with, and this function changes them while it runs. An unknown name raises a bad argument error.
+Keeps the screen in `'landscape'` or `'portrait'`, or lets it turn freely again with `'any'`. The file `haylen.json` sets the orientations an app starts with, and this function changes them while it runs. An unknown name raises a bad argument error.
 
 - Android locks the activity.
 - iPhones and iPads lock the app and turn the screen right away.
@@ -284,7 +284,7 @@ window.lockOrientation('any')
 
 ### window.statusBar()
 
-Returns how the status bar of a phone or a tablet shows over the top of the app. The value `'hidden'` hides it. The values `'auto'`, `'light'` and `'dark'` show it with the content color of the system theme, with light content or with dark content. The key `window.statusBar` of `app.json` sets it when the app starts, and it is `'hidden'` by default. Platforms without a status bar keep reporting the value that was set.
+Returns how the status bar of a phone or a tablet shows over the top of the app. The value `'hidden'` hides it. The values `'auto'`, `'light'` and `'dark'` show it with the content color of the system theme, with light content or with dark content. The key `window.statusBar` of `haylen.json` sets it when the app starts, and it is `'hidden'` by default. Platforms without a status bar keep reporting the value that was set.
 
 ```lua
 local window = require('haylen.window')
@@ -314,7 +314,7 @@ window.setStatusBar('hidden')
 
 ### window.statusBarColor()
 
-Returns the color that the engine paints behind the status bar, as a `Color`, or `nil` while it paints none and the app shows what it draws there. The key `window.statusBarColor` of `app.json` sets it when the app starts.
+Returns the color that the engine paints behind the status bar, as a `Color`, or `nil` while it paints none and the app shows what it draws there. The key `window.statusBarColor` of `haylen.json` sets it when the app starts.
 
 ```lua
 local window = require('haylen.window')
@@ -340,7 +340,7 @@ Phones and tablets take some swipes that start at an edge of the screen for the 
 
 ### window.systemGestures()
 
-Returns how the system gestures at the edges of the screen answer a swipe. The key `window.systemGestures` of `app.json` sets it when the app starts, and it is `'deferred'` by default. Platforms without such gestures keep reporting the value that was set.
+Returns how the system gestures at the edges of the screen answer a swipe. The key `window.systemGestures` of `haylen.json` sets it when the app starts, and it is `'deferred'` by default. Platforms without such gestures keep reporting the value that was set.
 
 ```lua
 local window = require('haylen.window')
@@ -416,7 +416,7 @@ scene.push(setmetatable({}, Shop))
 
 ### window.keepScreenOn()
 
-Returns whether the app keeps the screen on. It starts as `window.keepScreenOn` of `app.json` says, `false` by default.
+Returns whether the app keeps the screen on. It starts as `window.keepScreenOn` of `haylen.json` says, `false` by default.
 
 ```lua
 local window = require('haylen.window')
@@ -426,7 +426,7 @@ print('Screen kept on:', window.keepScreenOn())
 
 ### window.setKeepScreenOn(enabled)
 
-Keeps the screen on while the app shows, or leaves it to the settings of the system again. While it is `true`, the screen saver of a desktop or an Apple TV does not start, an iPhone or an iPad does not lock and an Android device does not turn its screen off. The input of game controllers does not count as activity for iOS, tvOS and desktops, so an app that players drive with them keeps the screen on while they play, and so does an app that plays a cutscene or runs a long task without input. iOS, tvOS and Mac Catalyst turn the idle timer of the app off, macOS, Windows and Linux hold off the screen saver of the desktop, Android keeps the screen of the activity on, and a browser keeps it on through its Screen Wake Lock API while the page shows. The browser releases that lock whenever the page hides, and the page takes it again each time it shows while the app keeps the screen on. The function returns a Varn promise that resolves on a later frame, with nothing once the screen stays on or follows the system again. A browser that refuses the lock, such as for a page that hides or a device that saves battery, rejects it with a [failure](system.md#failures) of the code `'denied'`, and a browser without the API rejects it with the code `'unsupported'`, while the app runs on with the screen of the system. The setting ends with the app, and a restarted app starts with the value of `app.json` again.
+Keeps the screen on while the app shows, or leaves it to the settings of the system again. While it is `true`, the screen saver of a desktop or an Apple TV does not start, an iPhone or an iPad does not lock and an Android device does not turn its screen off. The input of game controllers does not count as activity for iOS, tvOS and desktops, so an app that players drive with them keeps the screen on while they play, and so does an app that plays a cutscene or runs a long task without input. iOS, tvOS and Mac Catalyst turn the idle timer of the app off, macOS, Windows and Linux hold off the screen saver of the desktop, Android keeps the screen of the activity on, and a browser keeps it on through its Screen Wake Lock API while the page shows. The browser releases that lock whenever the page hides, and the page takes it again each time it shows while the app keeps the screen on. The function returns a Varn promise that resolves on a later frame, with nothing once the screen stays on or follows the system again. A browser that refuses the lock, such as for a page that hides or a device that saves battery, rejects it with a [failure](system.md#failures) of the code `'denied'`, and a browser without the API rejects it with the code `'unsupported'`, while the app runs on with the screen of the system. The setting ends with the app, and a restarted app starts with the value of `haylen.json` again.
 
 ```lua
 local window = require('haylen.window')
@@ -448,7 +448,7 @@ endRace()
 
 ### window.frameRate()
 
-Returns the frames per second that the app aims for, or `0` for a frame at every refresh of the display. It starts as `window.frameRate` of `app.json` says, `0` by default.
+Returns the frames per second that the app aims for, or `0` for a frame at every refresh of the display. It starts as `window.frameRate` of `haylen.json` says, `0` by default.
 
 ```lua
 local window = require('haylen.window')
@@ -464,7 +464,7 @@ Aims for `framesPerSecond` frames per second, from 1 to 1000, or for a frame at 
 - Every platform plays a frame every few refreshes when the display refreshes faster, so the frames average the rate.
 - A rate above the refresh of the display plays every refresh while `window.vsync` is on, and caps the frames of a window without vsync.
 
-The rate ends with the app, and a restarted app starts with the value of `app.json` again. A rate out of range raises `The frame rate <rate> is out of range. It is 0 for every refresh of the display, or from 1 to 1000 frames per second.`.
+The rate ends with the app, and a restarted app starts with the value of `haylen.json` again. A rate out of range raises `The frame rate <rate> is out of range. It is 0 for every refresh of the display, or from 1 to 1000 frames per second.`.
 
 ```lua
 local display = require('haylen.display')
@@ -559,7 +559,7 @@ print(window.foldSimulation())
 
 ### window.setFoldSimulation(value)
 
-Replaces the fold that the device reports, to test a layout for foldable and dual-screen devices on any screen. The simulated fold lies across the middle of the window. The value `nil` goes back to the fold of the device. The option `debug.fold` of `app.json` sets a simulation when the app starts.
+Replaces the fold that the device reports, to test a layout for foldable and dual-screen devices on any screen. The simulated fold lies across the middle of the window. The value `nil` goes back to the fold of the device. The option `debug.fold` of `haylen.json` sets a simulation when the app starts.
 
 The argument `value` is a preset name, or a table with these keys:
 
@@ -599,7 +599,7 @@ Frames use desktop points, from the top left corner of the primary display, as t
 
 ### window.canBeTransparent()
 
-Returns `true` when the window opened able to be transparent. The key `window.transparent` of `app.json` decides it before the window opens, because it chooses how the system composes the window.
+Returns `true` when the window opened able to be transparent. The key `window.transparent` of `haylen.json` decides it before the window opens, because it chooses how the system composes the window.
 
 ```lua
 local window = require('haylen.window')
@@ -623,7 +623,7 @@ end
 
 Makes the window opaque, or transparent again. An opaque window shows alpha 1 everywhere, whatever the clear color and the blend modes of the app. On macOS it also gets the background and the shadow of a normal window. So a window mode that needs a regular window turns transparency off together with `window.setDecorated(true)`.
 
-Only a window that opened transparent can turn transparent. On any other window `true` raises `The window opened opaque, so it cannot turn transparent. Set "window.transparent" in "app.json" to open a window that can.`.
+Only a window that opened transparent can turn transparent. On any other window `true` raises `The window opened opaque, so it cannot turn transparent. Set "window.transparent" in "haylen.json" to open a window that can.`.
 
 ```lua
 local window = require('haylen.window')
@@ -696,7 +696,7 @@ print('In the taskbar:', window.showInTaskbar())
 
 ### window.setShowInTaskbar(enabled)
 
-Shows the window in the taskbar and the window switcher, or leaves it out. On macOS it shows or hides the Dock icon and the menu bar of the app. A packaged macOS app that never wants a Dock icon also sets `showInTaskbar` to `false` in `app.json`, which keeps the icon from flashing while the app starts.
+Shows the window in the taskbar and the window switcher, or leaves it out. On macOS it shows or hides the Dock icon and the menu bar of the app. A packaged macOS app that never wants a Dock icon also sets `showInTaskbar` to `false` in `haylen.json`, which keeps the icon from flashing while the app starts.
 
 ```lua
 local window = require('haylen.window')
@@ -748,7 +748,7 @@ window.setFrame(area.x, area:bottom() - 180, area.width, 180)
 
 ### window.place(position)
 
-Moves the window to a position that reads like `window.position` of `app.json`. It keeps the size of the window, unless the position fills the area. The position is one of these:
+Moves the window to a position that reads like `window.position` of `haylen.json`. It keeps the size of the window, unless the position fills the area. The position is one of these:
 
 - `'center'`, the middle of the work area of the primary display.
 - A point, such as `{x = 40, y = 60}`, in desktop points.
@@ -809,7 +809,7 @@ Lets clicks pass through the window to the desktop and the windows behind it. Th
 - `true` lets every click through.
 - A list of regions lets clicks through everywhere except the regions, which keep the mouse for the app. A region is a `Rect`, a table `{x, y, width, height}` or `{x = 0, y = 0, width = 10, height = 10}`, or a polygon as a list of at least three points.
 
-Regions are in design units by default, converted with the viewport of the moment. So an app whose layout changes, or whose window resizes, gives them again. The argument `units` set to `'pixels'` takes framebuffer pixels instead. The key `window.mousePassthrough` of `app.json` starts the app with `true`.
+Regions are in design units by default, converted with the viewport of the moment. So an app whose layout changes, or whose window resizes, gives them again. The argument `units` set to `'pixels'` takes framebuffer pixels instead. The key `window.mousePassthrough` of `haylen.json` starts the app with `true`.
 
 Apps usually give their regions every frame, around what the player can click. The window keeps the mouse it has while a button is down, so a press that starts over the app also ends there. While clicks pass through, the app still hears the mouse move over the window on Windows and macOS. On Linux it hears the mouse only over the regions.
 
@@ -872,7 +872,7 @@ These messages are raised by the functions of the module.
 | `A newer change of fullscreen replaced this one before the window finished it.` | The rejection of `window.setFullscreen` with the code `'denied'` for a call that a later call replaced. |
 | `The window closed before it finished the change of fullscreen.` | The rejection of `window.setFullscreen` with the code `'denied'` for a call whose window closed first. |
 | `bad argument #1 to '<function>' (unknown value '<name>')` | The functions `setCursor`, `lockOrientation`, `setStatusBar` or `setSystemGestures` got a name they do not know. |
-| `The window opened opaque, so it cannot turn transparent. Set "window.transparent" in "app.json" to open a window that can.` | The function `window.setTransparent(true)` ran on a window that opened opaque. |
+| `The window opened opaque, so it cannot turn transparent. Set "window.transparent" in "haylen.json" to open a window that can.` | The function `window.setTransparent(true)` ran on a window that opened opaque. |
 | `bad argument #3 to 'setFrame' (positive width expected)` | The width of `window.setFrame` is not positive. |
 | `bad argument #4 to 'setFrame' (positive height expected)` | The height of `window.setFrame` is not positive. |
 | `A window position is "center", a point with "x" and "y", or an object with an "anchor".` | The position of `window.place` has another form. |

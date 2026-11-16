@@ -8,9 +8,9 @@ The public API is what an app, or a project that extends the engine, can reach:
 
 - The Lua modules `haylen` and `haylen.<module>` that `require` returns. That covers every function, method, property, option, enum name, event name, event payload, error code and error message that their [reference pages](../lua-api/README.md) list.
 - The public C++ headers under `engine/include/haylen/`, with the namespaces of their contexts, such as `haylen::graphics2d` and `haylen::ui`. That covers the interface `haylen::plugins::Plugin`, the plugins that apps construct or reference, and the binding toolkit in `engine/include/haylen/lua/`, with which projects install their own Lua modules.
-- The app package: the keys of `app.json`, the folders `source/` and `content/`, `source/main.lua` as the entry point, the asset paths relative to `content/`, and the formats of the data files of the engine, such as `.particles`, the screens of the UI and themes.
+- The app package: the keys of `haylen.json`, the folders `source/` and `content/`, `source/main.lua` as the entry point, the asset paths relative to `content/`, and the formats of the data files of the engine, such as `.particles`, the screens of the UI and themes.
 - The contract of native plugins: `plugin.json`, the bridge methods and events named `<id>.<name>`, the error codes of the bridge, and the native interfaces: `HaylenPlugin`, the Android plugin classes and the JavaScript module of the web part.
-- The commands and options of `haylen.py`, the CMake targets `haylen::engine` and `haylen::runtime`, the function `haylen_add_app`, and the folder `haylen/` that the platform projects include with their few visible lines.
+- The commands and options of `haylen` with their JSON results, the keys of `haylen.json` that the tooling reads, such as `kind`, `cpp` and the sections of `platforms`, the manifest `plugin.json` with its contribution types, `haylen.lock`, the contracts `PlatformBackend` and `EnginePort` with their entry point groups, the CMake package of the SDK with its targets `haylen::engine`, `haylen::runtime`, `haylen::player` and `haylen::native`, and the function `haylen_add_app`.
 
 A name that a reference page or a guide documents is public. A name that no page documents is not public, even when Lua can reach it, such as a metatable in the registry.
 

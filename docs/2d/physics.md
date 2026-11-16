@@ -136,7 +136,7 @@ print(world.maxSpeed) -- 12800.0, which is 400 meters per second at this scale.
 
 ## Stepping
 
-A world advances only when [`world:step(seconds)`](../lua-api/physics2d.md#worldstepdeltaseconds) runs. Call it in the `fixedUpdate` callback of a scene. The engine calls `fixedUpdate` at the fixed rate of `fixedRate` in `app.json`, 60 times per second by default, with the same step length every time.
+A world advances only when [`world:step(seconds)`](../lua-api/physics2d.md#worldstepdeltaseconds) runs. Call it in the `fixedUpdate` callback of a scene. The engine calls `fixedUpdate` at the fixed rate of `fixedRate` in `haylen.json`, 60 times per second by default, with the same step length every time.
 
 A fixed step keeps the simulation stable, and it makes the simulation repeat exactly, while the frame rate of the display changes. One frame may run zero, one or several fixed steps. So input that `update` reads reaches the simulation through the state of the scene. The [mover example](../lua-api/physics2d.md#physics2dnewmoverworld-options) of the reference keeps a jump this way until the next fixed step.
 
@@ -428,7 +428,7 @@ local coin = world:createBody({x = 0, y = -400, vy = 3000, continuousThreshold =
 coin:addCircle(4)
 ```
 
-Other settings help too. More sub-steps make contacts stiffer, so a fast heavy body does not push into a wall or a pile. A higher `fixedRate` in `app.json` shortens how far a body moves between two steps. The world option `maxSpeed` caps the speed of every body, 400 meters per second by default. A body asked to go faster moves at the cap. A lower cap keeps everything within what continuous collision catches well.
+Other settings help too. More sub-steps make contacts stiffer, so a fast heavy body does not push into a wall or a pile. A higher `fixedRate` in `haylen.json` shortens how far a body moves between two steps. The world option `maxSpeed` caps the speed of every body, 400 meters per second by default. A body asked to go faster moves at the cap. A lower cap keeps everything within what continuous collision catches well.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -782,11 +782,11 @@ The cost of a world grows with what is awake and touching:
 
 ### Debug and Release builds
 
-A Debug build of the engine has no optimizations, so it runs physics several times slower than a Release build. A pile of 4000 falling boxes takes about 27 milliseconds a step on one thread in a Debug build, and 2.1 in Release. The desktop player of `haylen run` and the apps built for each platform use the Release engine. The player runs a Debug engine only with `--engine-config Debug`, to debug the engine itself. Measure physics with `haylen bench --suite physics`, as the [build guide](../tools/build.md#bench) describes.
+A Debug build of the engine has no optimizations, so it runs physics several times slower than a Release build. A pile of 4000 falling boxes takes about 27 milliseconds a step on one thread in a Debug build, and 2.1 in Release. The desktop player of `haylen app run` and the apps built for each target use the Release SDK. An app builds against a Debug SDK only with `--engine-config Debug`, once `haylen sdk build --config Debug` built it, to debug the engine itself. Measure physics with `haylen engine bench --suite physics`, as the [build guide](../tools/build.md) describes.
 
 ### The physics benchmark
 
-The command `haylen bench --suite physics` builds `haylen-physics-benchmark` in Release and runs it on the headless host. It prints the workers of the job system. Then, for each scene, it prints the average time of one step or one operation in milliseconds. These numbers come from an Apple silicon Mac with a Release build. Absolute values vary from machine to machine and from run to run.
+The command `haylen engine bench --suite physics` builds `haylen-physics-benchmark` in Release and runs it on the headless host. It prints the workers of the job system. Then, for each scene, it prints the average time of one step or one operation in milliseconds. These numbers come from an Apple silicon Mac with a Release build. Absolute values vary from machine to machine and from run to run.
 
 | Scene | What it measures | Average ms |
 | --- | --- | --- |

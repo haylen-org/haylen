@@ -1,0 +1,11 @@
+{
+    "name": "Test Port",
+    "identifier": "com.haylen.testport",
+    "version": "1.0.0",
+    "plugins": {
+        "test-port-greeter": {}
+    },
+    "platforms": {
+        "test-port": {"executable": "test-port-app"}
+    }
+}

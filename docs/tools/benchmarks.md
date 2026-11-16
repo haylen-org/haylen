@@ -1,6 +1,6 @@
 # ⏱️ Benchmarks
 
-This guide explains how the benchmarks of the engine measure the renderer on the GPU devices of a machine, how to run them on each graphics API and what their numbers mean. The [`bench` command](build.md#bench) of the build guide lists every benchmark and what it measures.
+This guide explains how the benchmarks of the engine measure the renderer on the GPU devices of a machine, how to run them on each graphics API and what their numbers mean. The [`engine bench` command](build.md#engine-bench) of the build guide lists every benchmark and what it measures.
 
 ## Two ways to draw
 
@@ -9,9 +9,9 @@ Most benchmarks run the engine on the headless host, the host of the engine test
 The benchmarks that draw also run on a real GPU device of the build. The option `--graphics-api` names the graphics API, and the option `--gpu` runs the benchmark once on every API that the build compiled:
 
 ```sh
-haylen bench --suite render --graphics-api vulkan
-haylen bench --suite render --gpu
-haylen bench --suite particles --gpu
+haylen engine bench --suite render --graphics-api vulkan
+haylen engine bench --suite render --gpu
+haylen engine bench --suite particles --gpu
 ```
 
 The benchmarks that draw are `render`, `ui`, `particles`, `nodes`, `animation`, `physics` and `sprites`. The others measure the CPU alone, so they take neither option.
@@ -43,11 +43,11 @@ Machines without a GPU, such as containers and the runners of continuous integra
 To measure Linux in a container, run the benchmarks of a Linux build there with the Mesa drivers installed, such as the packages `mesa-vulkan-drivers` and `libgl1-mesa-dri` of Ubuntu:
 
 ```sh
-haylen bench --suite render --gpu
+haylen engine bench --suite render --gpu
 ```
 
 ## Comparing runs
 
 The first line of each table names the GPU, which matters on a laptop with two GPUs. Direct3D and Vulkan take the most powerful GPU, while OpenGL on Windows draws on the GPU that the driver gives the process, often the integrated one. So the tables of two APIs can come from two GPUs of one machine.
 
-Numbers compare well only on one machine at a time, in the Release build that `bench` makes, with the machine idle and plugged in. Compare `Frame ms` to see what each API costs the frame thread, and `GPU ms` to see what it costs the GPU. A frame whose `Frame ms` stays well above its `GPU ms` is bound by the CPU, and one whose `Frame ms` follows its `GPU ms` is bound by the GPU.
+Numbers compare well only on one machine at a time, in the Release build that `engine bench` makes, with the machine idle and plugged in. Compare `Frame ms` to see what each API costs the frame thread, and `GPU ms` to see what it costs the GPU. A frame whose `Frame ms` stays well above its `GPU ms` is bound by the CPU, and one whose `Frame ms` follows its `GPU ms` is bound by the GPU.

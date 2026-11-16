@@ -588,7 +588,7 @@ TEST(ViewportTest, LandsOnWholePixels) {
     EXPECT_TRUE(std::isfinite(viewport.getSafeRect().height));
 }
 
-// Each enum keeps its names in one place, which Lua, asset options and `app.json` all read, and every value reads back as the name it came from.
+// Each enum keeps its names in one place, which Lua, asset options and `haylen.json` all read, and every value reads back as the name it came from.
 TEST(GraphicsNamesTest, ParsesAndNamesBlendFilterWrapAndScalingValues) {
     EXPECT_EQ(graphics::BlendMode::parse("additive"), graphics::BlendMode::Type::Additive);
     EXPECT_EQ(graphics::BlendMode::name(graphics::BlendMode::Type::Screen), "screen");

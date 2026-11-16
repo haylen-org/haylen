@@ -1,9 +1,11 @@
 #include "platform/Services.hpp"
 
+#include <filesystem>
 #include <stdexcept>
 #include <string>
 #include <utility>
 
+#include "TestPortRuntime.hpp"
 #include "TestPortWindow.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/io/Package.hpp"
@@ -26,9 +28,13 @@ std::vector<std::string> Services::getNativePlugins() {
     return {};
 }
 
-// The test port plays the package that its command line names, and ships none of its own.
+// An app that `haylen_add_app` built for the test port keeps its package in the folder "app" next to its executable, while the player of the port plays the package that its command line names.
 std::shared_ptr<io::Package> Services::openBundledPackage() {
-    throw std::runtime_error("The test port ships no app. Name the package of an app on the command line.");
+    const std::filesystem::path folder = TestPortRuntime::getExecutableFolder() / "app";
+    if (!std::filesystem::is_directory(folder)) {
+        throw std::runtime_error("The test port finds no app in \"" + folder.string() + "\". Name the package of an app on the command line, or build the app with \"haylen_add_app\".");
+    }
+    return io::Package::openDirectory(folder);
 }
 
 std::filesystem::path Services::getUserDataDirectory(std::string_view identifier) {

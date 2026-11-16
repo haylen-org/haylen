@@ -8,18 +8,21 @@ buildscript {
     }
 }
 
-// Every module publishes its release variant as `dev.haylen:<module>` at the engine version to the Maven repository that `haylen.py engine --platform android` names.
+// Every module publishes its release variant as `dev.haylen:<module>` at the engine version to the Maven repository that `haylen sdk build --target android` names, and builds into the folder that it names, outside the engine sources.
 plugins {
     id("com.android.library") version "9.5.0" apply false
 }
 
 val engineVersion = rootDir.resolve("../../VERSION").readText().trim()
 val mavenDir = providers.gradleProperty("haylenMavenDir").orNull
-    ?: error("Pass \"-PhaylenMavenDir\" with the Maven repository that receives the libraries. The script \"haylen.py\" uses \"build/artifacts/android/maven\".")
+    ?: error("Pass \"-PhaylenMavenDir\" with the Maven repository that receives the libraries. The command \"haylen sdk build --target android\" passes the folder \"maven\" of the SDK.")
+val buildDirectory = providers.gradleProperty("haylenBuildDirectory").orNull
+    ?: error("Pass \"-PhaylenBuildDirectory\" with the folder that receives the build outputs. The command \"haylen sdk build --target android\" passes a folder of \"build/engine\".")
 
 // The Android plugin creates the component of the release variant after the module evaluated, so the publication takes it after the plugin has registered its own step.
 subprojects {
     group = "dev.haylen"
+    layout.buildDirectory.set(file("$buildDirectory/$name"))
     version = engineVersion
     apply(plugin = "maven-publish")
     pluginManager.withPlugin("com.android.library") {

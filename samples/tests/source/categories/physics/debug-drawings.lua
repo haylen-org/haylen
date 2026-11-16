@@ -26,7 +26,7 @@ DebugDrawings.post = 770
 DebugDrawings.modes = {{id = 'off', text = 'Off'}, {id = 'compact', text = 'Compact'}, {id = 'full', text = 'Full'}}
 DebugDrawings.names = {physics = 'the physics shapes', bounds = 'the sprite bounds', centers = 'the centers'}
 DebugDrawings.code = [[
-debugging.setDrawing('physics', true)  -- Or press F4, or list it in "debug.drawings" of "app.json".
+debugging.setDrawing('physics', true)  -- Or press F4, or list it in "debug.drawings" of "haylen.json".
 debugging.addDrawer('centers', function(kind) graphics2d.drawCircle(x, y, 6, '#FFFF4080') end, {owner = self})
 debugging.setStatsMode('full')  -- The overlay lists the scenes and the drawings.]]
 

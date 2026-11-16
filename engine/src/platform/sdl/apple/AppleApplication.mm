@@ -48,7 +48,7 @@ bool AppleApplication::isTextFieldFocused() noexcept {
     return [window.firstResponder isKindOfClass:HaylenFieldEditor.class];
 }
 #else
-// SDL names the class that UIKit creates as the delegate of the application through a class method of its own delegate, which names the delegate of Haylen instead. SDL takes every orientation, so it never turns the size of the window it opens, and once the window opened its view controller and the application delegate answer UIKit with the orientations of `app.json` or of the lock of the app.
+// SDL names the class that UIKit creates as the delegate of the application through a class method of its own delegate, which names the delegate of Haylen instead. SDL takes every orientation, so it never turns the size of the window it opens, and once the window opened its view controller and the application delegate answer UIKit with the orientations of `haylen.json` or of the lock of the app.
 void AppleApplication::prepare() {
     const IMP name = imp_implementationWithBlock(^NSString*(id) { return NSStringFromClass(HaylenSceneDelegate.class); });
     class_replaceMethod(object_getClass(HaylenSceneDelegate.superclass), @selector(getSceneDelegateClassName), name, "@@:");

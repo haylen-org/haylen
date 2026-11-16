@@ -402,7 +402,7 @@ int WindowLua::setFrame(lua_State* L) {
     return 0;
 }
 
-// Moves the window with `place(position)`, where the position reads like the one of `app.json` and keeps the size of the window unless it fills the area.
+// Moves the window with `place(position)`, where the position reads like the one of `haylen.json` and keeps the size of the window unless it fills the area.
 int WindowLua::place(lua_State* L) {
     core::Engine& engine = lua::Runtime::getEngine(L);
     const WindowPlacement placement = WindowPlacement::fromJson(lua::JsonConverter::read(L, 1));

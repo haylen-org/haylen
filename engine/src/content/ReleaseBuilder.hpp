@@ -23,7 +23,7 @@
 
 namespace haylen::content {
 
-// Builds the protected release of an app package into a folder of its own: the app domain from `app.json`, the Lua modules under `source`, compiled into bytecode, and the manifest and Lua modules of every plugin the app lists, and the content domain from the assets under `content`, each into its own shards and signed manifest. Nothing else of the package folder takes part, so the platform projects, notes and build files next to it never reach a release, and a file can never move from one domain to the other. A build that follows an earlier release of the app reuses its shards the way `ContentBuilder` does, and links or copies the shards it keeps into the new folder, so unchanged content keeps its shard files byte for byte. The earlier release may lie anywhere under its folder, as in the depots of a store, an unpacked app or a release folder, and only the shards the folder holds can be kept.
+// Builds the protected release of an app package into a folder of its own: the app domain from `haylen.json`, the Lua modules under `source`, compiled into bytecode, and the manifest and Lua modules of every plugin the app lists, and the content domain from the assets under `content`, each into its own shards and signed manifest. Nothing else of the package folder takes part, so the platform projects, notes and build files next to it never reach a release, and a file can never move from one domain to the other. A build that follows an earlier release of the app reuses its shards the way `ContentBuilder` does, and links or copies the shards it keeps into the new folder, so unchanged content keeps its shard files byte for byte. The earlier release may lie anywhere under its folder, as in the depots of a store, an unpacked app or a release folder, and only the shards the folder holds can be kept.
 class ReleaseBuilder final {
   public:
     struct Options {
@@ -54,7 +54,7 @@ class ReleaseBuilder final {
     // New content is encrypted under the content key with the active ID, and the ring opens earlier releases under any of its keys.
     ReleaseBuilder(std::shared_ptr<const KeyRing> contentKeys, const Digest& activeKeyId, std::shared_ptr<const SigningKey> signing, std::shared_ptr<const RecordCache> recordCache = nullptr);
 
-    // Builds the release of an app package into an output folder that does not exist yet, reusing the release under an earlier folder when one is given. Throws `std::invalid_argument` for an output folder that exists or an earlier folder that holds no release or two of them, and the errors of `AppConfig` for an `app.json` that is not valid.
+    // Builds the release of an app package into an output folder that does not exist yet, reusing the release under an earlier folder when one is given. Throws `std::invalid_argument` for an output folder that exists or an earlier folder that holds no release or two of them, and the errors of `AppConfig` for a `haylen.json` that is not valid.
     Result build(const io::Package& app, const std::filesystem::path& output, const std::optional<std::filesystem::path>& earlier, const Options& options) const;
 
     // The files of an earlier release by name: its manifests and the shard files at hand.
@@ -69,7 +69,7 @@ class ReleaseBuilder final {
     // Reads a manifest of an earlier release that the signing key of this builder signed.
     [[nodiscard]] Manifest readManifest(const std::filesystem::path& file) const;
 
-    // Lists the files of an app package that a domain holds, with the delivery that the rules of `app.json` give each asset, without the files that file managers leave in folders.
+    // Lists the files of an app package that a domain holds, with the delivery that the rules of `haylen.json` give each asset, without the files that file managers leave in folders.
     [[nodiscard]] static std::vector<ContentBuilder::Input> listFiles(const io::Package& app, const core::AppConfig& config, Manifest::Domain domain);
 
   private:

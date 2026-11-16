@@ -31,7 +31,7 @@
         interface: "ui = require('haylen.ui')\nclicked = false\nrequire('haylen.scene').push({enter = function(self) self.gui = ui.mount(ui.column{ui.button{text = 'Play', onClick = function() clicked = true end}}, {owner = self}) end})",
         // A plugin whose web module answers a method, opens a screen and pushes a video stream and an audio stream from the page, and a scene that calls the method, opens the screen and shows the stream.
         probeApp: JSON.stringify({ name: "Editor Check", identifier: "com.haylen.editorcheck", plugins: { probe: {} } }),
-        probePlugin: JSON.stringify({ id: "probe", name: "Probe", version: "1.0.0", description: "Answers the plugin step of the editor check.", platforms: ["web"], web: { module: "web/probe.js" } }),
+        probePlugin: JSON.stringify({ interface: 1, id: "probe", name: "Probe", version: "1.0.0", description: "Answers the plugin step of the editor check.", implementations: { web: "native" } }),
         probeSource: "return require('haylen.platform').plugin('probe')",
         probeMain: "local async = require('async')\nprobe = require('probe')\nstream = probe:videoStream('frames')\nresults = {}\nasync.spawn(function()\n  local answer = probe:call('echo', {text = 'hello'}):await()\n  results.echo = answer and answer.echoed or 'none'\n  local picked = probe:openScreen('pick', {choice = 'blue'}):await()\n  results.screen = picked and picked.picked or 'none'\nend)",
         // A clip of the engine tests, which the driver hands the page, and a scene that plays it muted.

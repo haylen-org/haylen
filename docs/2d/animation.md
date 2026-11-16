@@ -385,7 +385,7 @@ end)
 
 Animated batches and skeletons do their work in C++. A batch advances a large crowd on the job system, and a skeleton allocates nothing once its buffers have grown. An app with many animated characters keeps them in batches, and keeps animators for the few characters whose code reacts to every frame.
 
-The command `haylen bench --suite animation` measures this on the headless host. These are the numbers of an Apple M5 Pro in Release with 15 workers:
+The command `haylen engine bench --suite animation` measures this on the headless host. These are the numbers of an Apple M5 Pro in Release with 15 workers:
 
 | Scene | Average ms per frame |
 | --- | --- |

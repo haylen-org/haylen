@@ -7,7 +7,7 @@ namespace haylen::core {
 class Engine;
 struct AppConfig;
 
-// Entry point of an app. The runtime creates it before the window, lets it adjust the configuration read from `app.json`, and starts it once the engine is ready.
+// Entry point of an app. The runtime creates it before the window, lets it adjust the configuration read from `haylen.json`, and starts it once the engine is ready.
 class Application {
   public:
     virtual ~Application() = default;

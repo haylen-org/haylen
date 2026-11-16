@@ -16,7 +16,7 @@ local Background = haylen.class('Background', AudioTest)
 Background.length = 32
 Background.artwork = 'audio/cover.png'
 Background.code = [[
--- The section "audio" of "app.json" holds {"iosSession": "playback", "background": true}.
+-- The section "audio" of "haylen.json" holds {"iosSession": "playback", "background": true}.
 haylen.setLifecycle({pauseOnBackground = false})
 audio.setBackground(true)
 local voice = audio.playMusic(track, {loop = false})
@@ -24,7 +24,7 @@ system.setNowPlaying({title = 'Calm loop', duration = 32, playing = true})]]
 
 -- What each platform needs to play on in the background, which the test project has.
 Background.notes = {
-    ios = 'iOS plays on with the session "playback" and the background mode "audio", which the tools add from "app.json".',
+    ios = 'iOS plays on with the session "playback" and the background mode "audio", which the tools add from "haylen.json".',
     android = 'Android plays on while the media notification shows the track as playing, which keeps the app in the foreground.',
     web = 'A hidden tab plays on, except in Safari on iPhones and iPads, which suspends the page.',
 }

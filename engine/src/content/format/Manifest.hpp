@@ -27,7 +27,7 @@ class Manifest final {
     static constexpr std::uint64_t kMaximumShards = std::uint64_t{1} << 20;
     static constexpr std::uint64_t kMaximumCatalogSize = std::uint64_t{512} << 20;
 
-    // The app domain holds `app.json`, the Lua modules and the plugins, which belong to one build of the app. The content domain holds the assets, which updates may replace.
+    // The app domain holds `haylen.json`, the Lua modules and the plugins, which belong to one build of the app. The content domain holds the assets, which updates may replace.
     enum class Domain : std::uint8_t {
         App = 0,
         Content = 1,

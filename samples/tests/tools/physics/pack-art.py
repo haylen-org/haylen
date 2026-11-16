@@ -13,7 +13,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "tools"))
 
-from png_image import Image, read, write  # noqa: E402
+from png_image import Image  # noqa: E402
 
 CONTENT = Path(__file__).resolve().parents[2] / "content" / "physics"
 MARGIN = 4
@@ -40,9 +40,9 @@ def scaled(image: Image, longest: int, folder: Path) -> Image:
     """Scales an image with the system tool so its longer side is `longest` pixels."""
     factor = longest / max(image.width, image.height)
     source, target = folder / "source.png", folder / "target.png"
-    write(image, source)
+    Image.write(image, source)
     subprocess.run(["sips", "-z", str(round(image.height * factor)), str(round(image.width * factor)), str(source), "--out", str(target)], check=True, capture_output=True)
-    return read(target)
+    return Image.read(target)
 
 
 def framed(image: Image) -> Image:
@@ -59,13 +59,13 @@ def main() -> None:
     CONTENT.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as scratch:
         for name, columns, rows, objects in SHEETS:
-            sheet = read(folder / name)
+            sheet = Image.read(folder / name)
             width, height = sheet.width // columns, sheet.height // rows
             for index, (piece, longest) in enumerate(objects):
                 cell = sheet.crop((index % columns) * width, (index // columns) * height, width, height)
                 left, top, right, bottom = visible(cell)
                 cropped = cell.crop(left, top, right - left, bottom - top)
-                write(framed(scaled(cropped, longest - MARGIN * 2, Path(scratch))), CONTENT / f"{piece}.png")
+                Image.write(framed(scaled(cropped, longest - MARGIN * 2, Path(scratch))), CONTENT / f"{piece}.png")
                 print(f"Wrote {piece}.png.")
 
 

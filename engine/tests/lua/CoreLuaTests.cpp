@@ -63,7 +63,7 @@ TEST(CoreLuaTest, QuitsWithAnExitStatus) {
 
 TEST(CoreLuaTest, LaunchesAnotherAppPackageOnceTheFrameEnds) {
     test::TemporaryDirectory guest;
-    guest.write("app.json", R"({"name": "Guest", "identifier": "com.haylen.guest"})");
+    guest.write("haylen.json", R"({"name": "Guest", "identifier": "com.haylen.guest"})");
     test::EngineFixture fixture;
     EXPECT_EQ(fixture.lua("return tostring(require('haylen').launched())"), "false");
     EXPECT_FALSE(fixture.engine().getLaunchRequest().has_value());
@@ -87,10 +87,10 @@ TEST(CoreLuaTest, LaunchesAnotherAppPackageOnceTheFrameEnds) {
 // A list of downloaded apps shows each one by what its package says, read on the I/O pool.
 TEST(CoreLuaTest, ReadsWhatAnAppPackageSaysAboutItself) {
     test::TemporaryDirectory guest;
-    guest.write("app.json", R"({"name": "Guest", "identifier": "com.haylen.guest", "version": "2.1.0", "build": 7, "splash": {"logo": "brand/logo.svg"}})");
+    guest.write("haylen.json", R"({"name": "Guest", "identifier": "com.haylen.guest", "version": "2.1.0", "build": 7, "splash": {"logo": "brand/logo.svg"}})");
     guest.write("content/brand/logo.svg", "<svg/>");
     test::TemporaryDirectory plain;
-    plain.write("app.json", R"({"name": "Plain", "identifier": "com.haylen.plain"})");
+    plain.write("haylen.json", R"({"name": "Plain", "identifier": "com.haylen.plain"})");
     test::EngineFixture fixture;
     // clang-format off
     fixture.runLua(R"(
@@ -111,7 +111,7 @@ TEST(CoreLuaTest, ReadsWhatAnAppPackageSaysAboutItself) {
 }
 
 TEST(CoreLuaTest, ReportsTheFixedStepClock) {
-    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "fixedRate": 30})"}});
+    test::EngineFixture fixture({{"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "fixedRate": 30})"}});
     fixture.runLua("haylen = require('haylen')");
     EXPECT_EQ(fixture.lua("return haylen.config.fixedRate"), "30.0");
     EXPECT_EQ(fixture.lua("return haylen.fixedStep() == 1 / 30"), "true");
@@ -223,8 +223,8 @@ TEST(CoreLuaTest, HearsTheKeyboardAndTheNetwork) {
     EXPECT_EQ(fixture.lua("return table.concat(heard, ', ')"), "keyboardShown 700.0 380.0 unknown, networkOffline offline, keyboardHidden offline, networkOnline online");
 }
 
-TEST(CoreLuaTest, AppliesTheResizableSettingOfAppJson) {
-    test::EngineFixture fixture({{"app.json", R"({"window": {"resizable": false}})"}});
+TEST(CoreLuaTest, AppliesTheResizableSettingOfHaylenJson) {
+    test::EngineFixture fixture({{"haylen.json", R"({"window": {"resizable": false}})"}});
     EXPECT_FALSE(fixture.host().isResizable());
 }
 
@@ -246,7 +246,7 @@ TEST(CoreLuaTest, ConvertsViewportCoordinates) {
 }
 
 TEST(CoreLuaTest, PlacesLetterboxedViewportsInPixels) {
-    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "design": {"scaling": "fit"}})"}});
+    test::EngineFixture fixture({{"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "design": {"scaling": "fit"}})"}});
     fixture.host().resize({1000.0F, 540.0F});
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return tostring(require('haylen.viewport').pixelRect())"), "Rect(20.0, 0.0, 960.0, 540.0)");

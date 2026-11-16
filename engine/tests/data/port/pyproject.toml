@@ -1,0 +1,19 @@
+[project]
+name = "haylen-test-port"
+version = "1.0.0"
+description = "The engine port of the test port, which builds the engine SDK of the platform test-port from the CMake port of its folder."
+license = "MIT"
+requires-python = ">=3.15"
+dependencies = ["haylen"]
+
+[project.entry-points."haylen.engine_ports"]
+test-port = "testport.port_engine:PortEngine"
+
+[build-system]
+requires = ["uv_build>=0.9,<0.13"]
+build-backend = "uv_build"
+
+# The package lies next to the CMake port that it builds, whose files it reads from the folder of this project, so it installs in editable mode from its checkout.
+[tool.uv.build-backend]
+module-root = ""
+module-name = "testport"

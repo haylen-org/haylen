@@ -18,7 +18,14 @@ else()
   message(FATAL_ERROR "The variable \"CPP_EMBEDDING_MODE\" is \"subdirectory\", \"cpm\" or \"package\", not \"${CPP_EMBEDDING_MODE}\".")
 endif()
 
+# The project stages the package of the app next to its build, as the tooling stages the package of every app, so its sources and its CMake files never ship.
+set(package "${CMAKE_CURRENT_BINARY_DIR}/package")
+file(REMOVE_RECURSE "${package}")
+file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/haylen.json" "${CMAKE_CURRENT_SOURCE_DIR}/content" DESTINATION "${package}")
+file(GLOB_RECURSE package_files CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/content/*")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/haylen.json" ${package_files})
+
 haylen_add_app(main CPP
   SOURCES src/EmbeddingApp.cpp
-  PACKAGE "${CMAKE_CURRENT_SOURCE_DIR}"
+  CONTENT "${package}"
 )

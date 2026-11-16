@@ -37,7 +37,7 @@ class ShardReference;
 class Updater;
 struct UpdateOffer;
 
-// The content of the running app: which content plays, which of its files are on the device, and its updates. In a protected release it brings the required files that the device lacks before the app starts, downloads the prefetched files in the background once the app runs, brings the files that load on demand when the app asks for them, and checks the update channel of the app and installs newer content that plays from the next start. In development it plays the folder of the app, where the files that `app.json` delivers later are on the device only once something brought them, as they would be in a release, so an app learns early that it loads them the way a release needs. Its callbacks run on the frame thread, and it never shows cryptographic details.
+// The content of the running app: which content plays, which of its files are on the device, and its updates. In a protected release it brings the required files that the device lacks before the app starts, downloads the prefetched files in the background once the app runs, brings the files that load on demand when the app asks for them, and checks the update channel of the app and installs newer content that plays from the next start. In development it plays the folder of the app, where the files that `haylen.json` delivers later are on the device only once something brought them, as they would be in a release, so an app learns early that it loads them the way a release needs. Its callbacks run on the frame thread, and it never shows cryptographic details.
 class ContentManager final {
   public:
     // Idle when nothing runs, Checking while it asks the channel, Downloading while it brings files or an update, Ready once an update is installed and plays from the next start, and Failed after an error, which `getError` holds.
@@ -95,7 +95,7 @@ class ContentManager final {
     ContentManager(const ContentManager&) = delete;
     ContentManager& operator=(const ContentManager&) = delete;
 
-    // Holds the start of the app until its required files are on the device, then collects what the store no longer needs, downloads the prefetched files and, with updates on, checks the channel. The rules of `app.json` that name preload groups need the group manifest, which comes down first when the device lacks it.
+    // Holds the start of the app until its required files are on the device, then collects what the store no longer needs, downloads the prefetched files and, with updates on, checks the channel. The rules of `haylen.json` that name preload groups need the group manifest, which comes down first when the device lacks it.
     void start();
 
     // Brings files that the engine reads before the app starts, by their paths relative to `content`, and calls `ready` on the frame thread once all of them are on the device and readable, before the app starts. It calls `ready` at once when they are on the device already. In a release that holds the start for its required files, the files come down after them behind the update screen, which shows a failure and tries again. Otherwise the start of the app holds for them, and a failure shows the error screen. An error that `ready` throws later shows the error screen like an error of the start. Throws `std::invalid_argument` for a file that does not exist.
@@ -238,7 +238,7 @@ class ContentManager final {
     // The room that downloading records needs, or the error that tells how much the device lacks.
     [[nodiscard]] std::optional<Error> checkRoom(std::uint64_t downloadBytes, std::uint64_t records, std::uint64_t available) const;
 
-    // Whether the content has a server to download from: the server of `app.json`, or the place that the release of a web page stays.
+    // Whether the content has a server to download from: the server of `haylen.json`, or the place that the release of a web page stays.
     [[nodiscard]] bool hasServer() const noexcept;
 
     // The address of a shard: next to the release on a web page for the shards that ship with the app, or in the publication tree of the server.

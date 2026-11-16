@@ -152,9 +152,9 @@ class AppConfigTest : public ::testing::Test {
         return {};
     }
 
-    // Returns the message that refuses a package with the `app.json` and the group manifest, or an empty text when the package is valid.
+    // Returns the message that refuses a package with the `haylen.json` and the group manifest, or an empty text when the package is valid.
     [[nodiscard]] static std::string refusalOfPackage(const std::string& document, const std::string& groups) {
-        io::MemoryPackage package("app", {{"app.json", test::TestFiles::bytes(document)}, {"content/groups.json", test::TestFiles::bytes(groups)}});
+        io::MemoryPackage package("app", {{"haylen.json", test::TestFiles::bytes(document)}, {"content/groups.json", test::TestFiles::bytes(groups)}});
         try {
             AppConfig config = AppConfig::fromPackage(package);
             config.content.expandGroups(package);
@@ -279,7 +279,7 @@ TEST_F(AppConfigTest, TheBuildNumberIsAWholeNumberFromOne) {
         (void)AppConfig::fromJson(Json{{"build", "7"}});
         FAIL() << "A build number in a string must be refused.";
     } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "The \"build\" value \"7\" in \"app.json\" is not a build number. It is a whole number from 1 to 2100000000 that grows with every upload of the app.");
+        EXPECT_STREQ(error.what(), "The \"build\" value \"7\" in \"haylen.json\" is not a build number. It is a whole number from 1 to 2100000000 that grows with every upload of the app.");
     }
 }
 
@@ -292,7 +292,7 @@ TEST_F(AppConfigTest, RejectsInvalidValues) {
         (void)AppConfig::fromJson(Json::parse(R"({"autoload": ["state.player", ""]})"));
         FAIL() << "An autoload needs the name of its module.";
     } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "The \"autoload\" list in \"app.json\" has an empty module name.");
+        EXPECT_STREQ(error.what(), "The \"autoload\" list in \"haylen.json\" has an empty module name.");
     }
 }
 
@@ -302,7 +302,7 @@ TEST_F(AppConfigTest, RefusesNumbersThatTheirFieldsCannotHold) {
             (void)AppConfig::fromJson(Json::parse(document));
             ADD_FAILURE() << "A number that its field cannot hold must be refused: " << document;
         } catch (const std::invalid_argument& error) {
-            EXPECT_TRUE(std::string_view(error.what()).ends_with("in \"app.json\" must be a whole number from -2147483648 to 2147483647.")) << error.what();
+            EXPECT_TRUE(std::string_view(error.what()).ends_with("in \"haylen.json\" must be a whole number from -2147483648 to 2147483647.")) << error.what();
         }
     }
 
@@ -310,7 +310,7 @@ TEST_F(AppConfigTest, RefusesNumbersThatTheirFieldsCannotHold) {
         (void)AppConfig::fromJson(Json::parse(R"({"splash": {"duration": 1e300}})"));
         FAIL() << "A number beyond the range of a float must be refused.";
     } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "The value of \"duration\" in \"app.json\" must be a number from -3.40282e+38 to 3.40282e+38.");
+        EXPECT_STREQ(error.what(), "The value of \"duration\" in \"haylen.json\" must be a number from -3.40282e+38 to 3.40282e+38.");
     }
 }
 
@@ -329,10 +329,10 @@ TEST_F(AppConfigTest, ReadsTheGraphicsApisTheWindowTriesFirst) {
     EXPECT_EQ(config.window.graphicsApis, (std::vector<gpu::Device::Api>{gpu::Device::Api::Vulkan, gpu::Device::Api::OpenGl}));
     EXPECT_EQ(config.toJson().at("window").at("graphicsApis"), Json::parse(R"(["vulkan", "openGl"])"));
 
-    EXPECT_EQ(refusal(R"({"window": {"graphicsApis": ["glide"]}})"), "The \"window.graphicsApis\" value \"glide\" in \"app.json\" is not a graphics API. It is \"metal\", \"direct3D12\", \"direct3D11\", \"vulkan\", \"openGl\", \"openGlEs\", \"webGpu\", \"webGl2\" or \"port\".");
-    EXPECT_EQ(refusal(R"({"window": {"graphicsApis": ["none"]}})"), "The \"window.graphicsApis\" value \"none\" in \"app.json\" is not a graphics API. It is \"metal\", \"direct3D12\", \"direct3D11\", \"vulkan\", \"openGl\", \"openGlEs\", \"webGpu\", \"webGl2\" or \"port\".");
-    EXPECT_EQ(refusal(R"({"window": {"graphicsApis": ["metal", "metal"]}})"), "The \"window.graphicsApis\" of \"app.json\" names \"metal\" twice.");
-    EXPECT_EQ(refusal(R"({"window": {"graphicsApis": "metal"}})"), "The \"window.graphicsApis\" of \"app.json\" is not an array of graphics API names, such as [\"vulkan\", \"openGl\"].");
+    EXPECT_EQ(refusal(R"({"window": {"graphicsApis": ["glide"]}})"), "The \"window.graphicsApis\" value \"glide\" in \"haylen.json\" is not a graphics API. It is \"metal\", \"direct3D12\", \"direct3D11\", \"vulkan\", \"openGl\", \"openGlEs\", \"webGpu\", \"webGl2\" or \"port\".");
+    EXPECT_EQ(refusal(R"({"window": {"graphicsApis": ["none"]}})"), "The \"window.graphicsApis\" value \"none\" in \"haylen.json\" is not a graphics API. It is \"metal\", \"direct3D12\", \"direct3D11\", \"vulkan\", \"openGl\", \"openGlEs\", \"webGpu\", \"webGl2\" or \"port\".");
+    EXPECT_EQ(refusal(R"({"window": {"graphicsApis": ["metal", "metal"]}})"), "The \"window.graphicsApis\" of \"haylen.json\" names \"metal\" twice.");
+    EXPECT_EQ(refusal(R"({"window": {"graphicsApis": "metal"}})"), "The \"window.graphicsApis\" of \"haylen.json\" is not an array of graphics API names, such as [\"vulkan\", \"openGl\"].");
 }
 
 TEST_F(AppConfigTest, ReadsHowTheContentReachesTheDevice) {
@@ -364,7 +364,7 @@ TEST_F(AppConfigTest, ReadsHowTheContentReachesTheDevice) {
 // A rule that names a preload group delivers the files of the group, which the group manifest of the app lists for the asset manager too.
 TEST_F(AppConfigTest, DeliversThePreloadGroupsThatRulesName) {
     const std::string app = R"({"content": {"groups": "groups.json", "delivery": [{"group": "asia", "mode": "onDemand"}, {"match": "world/**", "mode": "prefetch"}]}})";
-    io::MemoryPackage package("app", {{"app.json", test::TestFiles::bytes(app)}, {"content/groups.json", test::TestFiles::bytes(R"({"groups": {"asia": ["world/asia/", {"path": "music/tokyo.ogg", "options": {"stream": true}}]}})")}});
+    io::MemoryPackage package("app", {{"haylen.json", test::TestFiles::bytes(app)}, {"content/groups.json", test::TestFiles::bytes(R"({"groups": {"asia": ["world/asia/", {"path": "music/tokyo.ogg", "options": {"stream": true}}]}})")}});
     AppConfig config = AppConfig::fromPackage(package);
     EXPECT_TRUE(config.content.hasGroupRules()) << "Reading the configuration reads no content.";
     config.content.expandGroups(package);
@@ -401,36 +401,58 @@ TEST_F(AppConfigTest, ReadsThePluginsOfTheApp) {
         EXPECT_THROW((void)AppConfig::fromJson(Json::parse(document)), std::invalid_argument) << document;
     }
 
-    EXPECT_EQ(refusal(R"({"plugins": {"ads": []}})"), "The plugin \"ads\" in \"app.json\" must be an object with the optional keys \"path\", \"git\", \"ref\" and \"parameters\".");
-    EXPECT_EQ(refusal(R"({"plugins": {"ads": {"testMode": true}}})"), "Unknown key \"testMode\" in the plugin \"ads\" of \"app.json\".");
-    EXPECT_EQ(refusal(R"({"plugins": {"ads": {"path": 3}}})"), "The \"path\" of the plugin \"ads\" in \"app.json\" must be a text.");
-    EXPECT_EQ(refusal(R"({"plugins": {"ads": {"git": ""}}})"), "The \"git\" of the plugin \"ads\" in \"app.json\" must be a text.");
-    EXPECT_EQ(refusal(R"({"plugins": {"ads": {"path": "../ads", "git": "https://example.com/ads.git"}}})"), "The plugin \"ads\" in \"app.json\" names both a \"path\" and a \"git\" repository. Keep the one that the plugin comes from.");
-    EXPECT_EQ(refusal(R"({"plugins": {"ads": {"ref": "main"}}})"), "The \"ref\" of the plugin \"ads\" in \"app.json\" picks a branch, tag or commit of a git repository, so it needs \"git\".");
-    EXPECT_EQ(refusal(R"({"plugins": {"ads": {"parameters": []}}})"), "The \"parameters\" of the plugin \"ads\" in \"app.json\" must be an object of parameter values.");
+    EXPECT_EQ(refusal(R"({"plugins": {"ads": []}})"), "The plugin \"ads\" in \"haylen.json\" must be an object with the optional keys \"path\", \"git\", \"ref\" and \"parameters\".");
+    EXPECT_EQ(refusal(R"({"plugins": {"ads": {"testMode": true}}})"), "Unknown key \"testMode\" in the plugin \"ads\" of \"haylen.json\".");
+    EXPECT_EQ(refusal(R"({"plugins": {"ads": {"path": 3}}})"), "The \"path\" of the plugin \"ads\" in \"haylen.json\" must be a text.");
+    EXPECT_EQ(refusal(R"({"plugins": {"ads": {"git": ""}}})"), "The \"git\" of the plugin \"ads\" in \"haylen.json\" must be a text.");
+    EXPECT_EQ(refusal(R"({"plugins": {"ads": {"path": "../ads", "git": "https://example.com/ads.git"}}})"), "The plugin \"ads\" in \"haylen.json\" names both a \"path\" and a \"git\" repository. Keep the one that the plugin comes from.");
+    EXPECT_EQ(refusal(R"({"plugins": {"ads": {"ref": "main"}}})"), "The \"ref\" of the plugin \"ads\" in \"haylen.json\" picks a branch, tag or commit of a git repository, so it needs \"git\".");
+    EXPECT_EQ(refusal(R"({"plugins": {"ads": {"parameters": []}}})"), "The \"parameters\" of the plugin \"ads\" in \"haylen.json\" must be an object of parameter values.");
 
-    // Every plugin of `app.json` has its manifest in the package, which only `haylen.py` makes for a plugin that `app.json` references elsewhere.
-    io::MemoryPackage package("app", {{"app.json", test::TestFiles::bytes(R"({"plugins": {"ads": {}}})")}});
+    // Every plugin of `haylen.json` has its manifest in the package, which only the tooling stages for a plugin that `haylen.json` references elsewhere.
+    io::MemoryPackage package("app", {{"haylen.json", test::TestFiles::bytes(R"({"plugins": {"ads": {}}})")}});
     try {
         (void)AppConfig::fromPackage(package);
         FAIL() << "The package has no manifest for the plugin.";
     } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "The plugin \"ads\" in \"app.json\" has no \"plugins/ads/plugin.json\" in the package.");
+        EXPECT_STREQ(error.what(), "The plugin \"ads\" in \"haylen.json\" has no \"plugins/ads/plugin.json\" in the package.");
     }
 
     package.setFile("plugins/ads/plugin.json", test::TestFiles::bytes(R"({"id": "ads"})"));
     EXPECT_EQ(AppConfig::fromPackage(package).plugins.size(), 1U);
 
-    package.setFile("app.json", test::TestFiles::bytes(R"({"plugins": {"ads": {}, "camera": {"path": "../plugins/camera"}}})"));
+    package.setFile("haylen.json", test::TestFiles::bytes(R"({"plugins": {"ads": {}, "camera": {"path": "../plugins/camera"}}})"));
     try {
         (void)AppConfig::fromPackage(package);
         FAIL() << "A folder package lacks a referenced plugin.";
     } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "The plugin \"camera\" in \"app.json\" comes from a \"path\" or a \"git\" repository, so the package has no \"plugins/camera/plugin.json\". Run the app with \"haylen run\", which places every plugin in the package wherever it comes from.");
+        EXPECT_STREQ(error.what(), "The plugin \"camera\" in \"haylen.json\" comes from a \"path\" or a \"git\" repository, so the package has no \"plugins/camera/plugin.json\". Run the app with \"haylen app run\", which places every plugin in the package wherever it comes from.");
     }
 
     package.setFile("plugins/camera/plugin.json", test::TestFiles::bytes(R"({"id": "camera"})"));
     EXPECT_EQ(AppConfig::fromPackage(package).plugins.size(), 2U);
+}
+
+// The tooling builds the app from its kind, its C++ sources and the sections of its platforms, so the engine takes them and checks only their types.
+TEST_F(AppConfigTest, TakesTheSectionsOfTheToolingAndChecksTheirTypes) {
+    EXPECT_NO_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"kind": "cpp", "cpp": {"sources": ["src"]}, "platforms": {"ios": {"infoPlist": {}}, "android": {}}})")));
+    EXPECT_NO_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"kind": "lua"})")));
+
+    // clang-format off
+    const auto failure = [](const char* document) {
+        try {
+            (void)core::AppConfig::fromJson(core::Json::parse(document));
+        } catch (const std::invalid_argument& error) {
+            return std::string(error.what());
+        }
+        return std::string();
+    };
+    // clang-format on
+    EXPECT_EQ(failure(R"({"kind": "rust"})"), "The \"kind\" of \"haylen.json\" must be \"lua\" or \"cpp\", not \"rust\".");
+    EXPECT_EQ(failure(R"({"kind": 1})"), "The \"kind\" of \"haylen.json\" must be \"lua\" or \"cpp\", not 1.");
+    EXPECT_EQ(failure(R"({"cpp": ["src"]})"), "The \"cpp\" section of \"haylen.json\" must be an object with the \"sources\" of the C++ app.");
+    EXPECT_EQ(failure(R"({"platforms": []})"), "The \"platforms\" section of \"haylen.json\" must be an object of platform sections by name, such as \"ios\" or \"android\".");
+    EXPECT_EQ(failure(R"({"platforms": {"ios": true}})"), "The section \"ios\" of \"platforms\" in \"haylen.json\" must be an object.");
 }
 
 TEST(PluginRegistryTest, FindsPluginsByTypeAndName) {
@@ -524,7 +546,7 @@ TEST(EngineTest, AnnouncesPluginsAddedWhileRunning) {
 
 // A plugin that fails to start leaves the plugins after it unstarted, and the frames that show the error screen never reach them.
 TEST(EngineTest, KeepsShowingTheErrorOfAPluginThatFailedToStart) {
-    test::EngineFixture fixture({{"app.json", R"({"localization": {"folder": "locale", "fallback": "de"}})"}, {"content/locale/en.json", "{}"}});
+    test::EngineFixture fixture({{"haylen.json", R"({"localization": {"folder": "locale", "fallback": "de"}})"}, {"content/locale/en.json", "{}"}});
     ASSERT_NE(fixture.engine().getError(), nullptr);
     fixture.frames(3);
     EXPECT_TRUE(fixture.engine().isRunning());
@@ -598,7 +620,7 @@ TEST(EngineTest, ComesBackInactiveWhileTheWindowLacksTheFocus) {
 }
 
 TEST(EngineTest, PublishesTheKeyboardAndTheNetwork) {
-    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "design": {"width": 960, "height": 540, "scaling": "fit"}})"}});
+    test::EngineFixture fixture({{"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "design": {"width": 960, "height": 540, "scaling": "fit"}})"}});
     Engine& engine = fixture.engine();
     std::vector<std::string> log;
     for (const std::string_view name : {LifecycleEvent::kKeyboardShown, LifecycleEvent::kKeyboardHidden, LifecycleEvent::kNetworkOnline, LifecycleEvent::kNetworkOffline}) {
@@ -672,7 +694,7 @@ TEST(EngineTest, KeepsHeldTouchesOnTheirScreenPointAcrossAResize) {
 
 // An app of any orientation turns its design with the screen, so a phone turned on its side keeps the size of the design units and lays out wide.
 TEST(EngineTest, TurnsTheDesignOfAnAppOfAnyOrientationWithTheScreen) {
-    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "orientation": "any", "design": {"width": 440, "height": 956, "scaling": "expand"}})"}});
+    test::EngineFixture fixture({{"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "orientation": "any", "design": {"width": 440, "height": 956, "scaling": "expand"}})"}});
     Engine& engine = fixture.engine();
     fixture.host().resize({1320.0F, 2868.0F});
     fixture.frames(1);
@@ -688,14 +710,14 @@ TEST(EngineTest, TurnsTheDesignOfAnAppOfAnyOrientationWithTheScreen) {
 }
 
 TEST(EngineTest, KeepsTheDesignOfAnAppOfOneOrientation) {
-    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "orientation": "landscape", "design": {"width": 1920, "height": 1080}})"}});
+    test::EngineFixture fixture({{"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "orientation": "landscape", "design": {"width": 1920, "height": 1080}})"}});
     fixture.host().resize({1080.0F, 1920.0F});
     fixture.frames(1);
     EXPECT_EQ(fixture.engine().getViewport().getDesignSize(), math::Vec2(1920.0F, 1080.0F));
 }
 
 TEST(EngineTest, HaltsUpdatesByTheLifecycleOptions) {
-    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "lifecycle": {"pauseOnFocusLoss": true, "muteOnFocusLoss": true}})"}});
+    test::EngineFixture fixture({{"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "lifecycle": {"pauseOnFocusLoss": true, "muteOnFocusLoss": true}})"}});
     Engine& engine = fixture.engine();
     EXPECT_TRUE(engine.getLifecycle().pauseOnBackground);
     EXPECT_TRUE(engine.getLifecycle().pauseOnFocusLoss);

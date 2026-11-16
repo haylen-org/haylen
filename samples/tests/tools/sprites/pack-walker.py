@@ -14,7 +14,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "tools"))
 
-from png_image import Image, read, write  # noqa: E402
+from png_image import Image  # noqa: E402
 
 SHEET = Path(__file__).resolve().parents[2] / "content" / "sprites" / "sheets" / "walker.png"
 CELL = 256
@@ -81,9 +81,9 @@ def stature(image: Image) -> int:
 
 def scaled(image: Image, factor: float, folder: Path) -> Image:
     source, target = folder / "frame.png", folder / "scaled.png"
-    write(image, source)
+    Image.write(image, source)
     subprocess.run(["sips", "-z", str(round(image.height * factor)), str(round(image.width * factor)), str(source), "--out", str(target)], check=True, capture_output=True)
-    return read(target)
+    return Image.read(target)
 
 
 def main() -> None:
@@ -92,7 +92,7 @@ def main() -> None:
     folder = Path(sys.argv[1])
     frames = {}
     for clip, count, _ in CLIPS:
-        painting = read(folder / f"{clip}.png")
+        painting = Image.read(folder / f"{clip}.png")
         frames[clip] = [key(painting.crop(index % 4 * PAINTED[0], index // 4 * PAINTED[1], *PAINTED)) for index in range(count)]
 
     _, top, _, bottom, _ = bounds(frames["idle"][0])
@@ -118,7 +118,7 @@ def main() -> None:
                             sys.exit(f"Frame {column + 1} of the {clip} clip does not fit its cell, so it needs to be painted smaller.")
                         target = ((row * CELL + cellY) * sheet.width + column * CELL + cellX) * 4
                         sheet.pixels[target : target + 4] = image.pixels[offset : offset + 4]
-    write(sheet, SHEET)
+    Image.write(sheet, SHEET)
 
 
 if __name__ == "__main__":

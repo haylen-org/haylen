@@ -17,13 +17,13 @@ The commands run from the root of the repository:
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `haylen run samples/games/taskbar-quest` |
-| macOS app | `haylen run samples/games/taskbar-quest --platform macos` |
-| Windows app | `haylen run samples/games/taskbar-quest --platform windows` |
-| Linux app | `haylen run samples/games/taskbar-quest --platform linux` |
-| Browser | `haylen run samples/games/taskbar-quest --platform web` |
+| Desktop player with hot reload | `haylen app run samples/games/taskbar-quest` |
+| macOS app | `haylen app run samples/games/taskbar-quest --target macos` |
+| Windows app | `haylen app run samples/games/taskbar-quest --target windows` |
+| Linux app | `haylen app run samples/games/taskbar-quest --target linux` |
+| Browser | `haylen app run samples/games/taskbar-quest --target web` |
 
-The command `haylen package samples/games/taskbar-quest -o taskbar-quest.zip` zips the package, which is `app.json`, `source/` and `content/` of this folder, and the desktop player runs the zip as well: `haylen taskbar-quest.zip`.
+The command `haylen app zip samples/games/taskbar-quest -o taskbar-quest.zip` zips the package, which is `haylen.json`, `source/` and `content/` of this folder, and the desktop player of the desktop SDK runs the zip as well, such as `build/sdk/desktop-release/macos-arm64/bin/haylen taskbar-quest.zip` on a Mac.
 
 ## Platforms
 
@@ -50,11 +50,11 @@ Every image of the game is painted for it with the `codex` command line and its 
 
 ## Package layout
 
-The sample folder is the package. Only `app.json`, `source/` and `content/` ship, and this README stays behind.
+The sample folder is the package. Only `haylen.json`, `source/` and `content/` ship, and this README stays behind.
 
 ```text
 taskbar-quest/
-  app.json               A frameless, transparent, always on top and unfocusable strip of 200 points anchored to the bottom of the work area and filling its width, with a design size of 1600 by 200 and expand scaling, and the sky as the background of the splash of a web page.
+  haylen.json            A frameless, transparent, always on top and unfocusable strip of 200 points anchored to the bottom of the work area and filling its width, with a design size of 1600 by 200 and expand scaling, and the sky as the background of the splash of a web page.
   source/
     main.lua             Loads the action map and the theme and opens the game.
     config.lua           Tuning values: the scale of the art, hero, enemies, spawns, prices, window mode and draw layers.

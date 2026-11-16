@@ -1,4 +1,4 @@
--- The app of the fullscreen check of the web: the key F covers the screen, the key L leaves fullscreen and the key R asks to cover it and to leave it at once, while `haylen.py test --platform web` reads what the window reports when each promise settles.
+-- The app of the fullscreen check of the web: the key F covers the screen, the key L leaves fullscreen and the key R asks to cover it and to leave it at once, while `haylen test --platform web` reads what the window reports when each promise settles.
 local async = require('async')
 local events = require('haylen.events')
 local input = require('haylen.input')

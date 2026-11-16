@@ -1,0 +1,219 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "haylen.json",
+    "description": "The manifest of a Haylen app, which the tooling and the engine read.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["name", "identifier", "version"],
+    "properties": {
+        "name": {"type": "string", "minLength": 1, "description": "The name that people read."},
+        "identifier": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9-]*(\\.[A-Za-z][A-Za-z0-9-]*)+$", "description": "The reverse domain identifier, such as com.example.game."},
+        "version": {"type": "string", "pattern": "^\\d+(\\.\\d+){0,2}$", "description": "The version that people see, one to three numbers separated by dots."},
+        "build": {"type": "integer", "minimum": 1, "maximum": 2100000000, "description": "The build number, which grows with every upload of the app."},
+        "kind": {"enum": ["lua", "cpp"], "description": "Whether the app runs its Lua modules in the player of the engine, or compiles the C++ sources of its cpp section against the engine SDK."},
+        "description": {"type": "string"},
+        "company": {"type": "string"},
+        "copyright": {"type": "string"},
+        "website": {"type": "string"},
+        "orientation": {"enum": ["landscape", "portrait", "any"]},
+        "fixedRate": {"type": "number", "exclusiveMinimum": 0},
+        "maxFrameTime": {"type": "number", "exclusiveMinimum": 0},
+        "clearColor": {"$ref": "#/$defs/color"},
+        "window": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "title": {"type": "string"},
+                "width": {"type": "integer", "minimum": 1},
+                "height": {"type": "integer", "minimum": 1},
+                "fullscreen": {"type": "boolean"},
+                "maxPixelDensity": {"type": "number", "minimum": 0},
+                "resizable": {"type": "boolean"},
+                "vsync": {"type": "boolean"},
+                "frameRate": {"type": "integer", "minimum": 0},
+                "sampleCount": {"type": "integer", "minimum": 1},
+                "decorated": {"type": "boolean"},
+                "transparent": {"type": "boolean"},
+                "alwaysOnTop": {"type": "boolean"},
+                "showInTaskbar": {"type": "boolean"},
+                "focusable": {"type": "boolean"},
+                "mousePassthrough": {"type": "boolean"},
+                "keepScreenOn": {"type": "boolean"},
+                "position": {"type": "object"},
+                "statusBar": {"enum": ["hidden", "auto", "light", "dark"]},
+                "statusBarColor": {"$ref": "#/$defs/color"},
+                "systemGestures": {"enum": ["system", "deferred", "autoHideIndicator"]},
+                "graphicsApis": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+                "lowPowerGpu": {"type": "boolean"}
+            }
+        },
+        "design": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "width": {"type": "number", "exclusiveMinimum": 0},
+                "height": {"type": "number", "exclusiveMinimum": 0},
+                "scaling": {"enum": ["fit", "fill", "stretch", "expand", "pixelPerfect", "fitWidth", "none"]}
+            }
+        },
+        "splash": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "logo": {"type": "string", "description": "An image of the content folder, relative to it."},
+                "background": {"$ref": "#/$defs/color"},
+                "darkBackground": {"$ref": "#/$defs/color"},
+                "duration": {"type": "number", "minimum": 0},
+                "fadeOut": {"type": "number", "minimum": 0}
+            }
+        },
+        "lifecycle": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "pauseOnBackground": {"type": "boolean"},
+                "pauseOnFocusLoss": {"type": "boolean"},
+                "muteOnFocusLoss": {"type": "boolean"}
+            }
+        },
+        "audio": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "iosSession": {"enum": ["ambient", "soloAmbient", "playback"]},
+                "mixWithOthers": {"type": "boolean"},
+                "background": {"type": "boolean"},
+                "latency": {"enum": ["low", "balanced", "powerSaving"]},
+                "limiter": {"type": "boolean"}
+            }
+        },
+        "input": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "mouseAsTouch": {"type": "boolean"},
+                "touchAsMouse": {"type": "boolean"},
+                "scrollSpeed": {"type": "number", "exclusiveMinimum": 0}
+            }
+        },
+        "ui": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "scaleMode": {"enum": ["design", "physical"]},
+                "scale": {"type": "number", "minimum": 0.25, "maximum": 4}
+            }
+        },
+        "debug": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "stats": {"enum": ["off", "compact", "full"]},
+                "statsItems": {"type": "array", "items": {"enum": ["frameRate", "drawCalls", "geometry", "memory", "counters", "physics", "particles", "audio"]}},
+                "drawings": {"type": "array", "items": {"type": "string", "minLength": 1}},
+                "objectEvents": {"type": "boolean"},
+                "console": {"type": "boolean"},
+                "safeArea": {},
+                "fold": {},
+                "showSafeArea": {"type": "boolean"},
+                "reload": {"enum": ["module", "restart"]},
+                "executionBudget": {"type": "number", "minimum": 0.1, "maximum": 600},
+                "memoryBudget": {"type": "number", "minimum": 16, "maximum": 4096}
+            }
+        },
+        "content": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "groups": {"type": "string"},
+                "updates": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "baseUrl": {"type": "string"},
+                        "channel": {"type": "string"},
+                        "enabled": {"type": "boolean"}
+                    }
+                },
+                "delivery": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "match": {"type": "string"},
+                            "group": {"type": "string"},
+                            "mode": {"enum": ["required", "prefetch", "onDemand"]},
+                            "pack": {"type": "string"}
+                        }
+                    }
+                }
+            }
+        },
+        "localization": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "folder": {"type": "string"},
+                "fallback": {"type": "string"},
+                "language": {"type": "string"}
+            }
+        },
+        "autoload": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "native": {
+            "type": "object",
+            "description": "The native libraries of the app by name, which Lua loads with native.load.",
+            "propertyNames": {"pattern": "^[A-Za-z][A-Za-z0-9_-]*$"},
+            "additionalProperties": {"$ref": "#/$defs/nativeLibrary"}
+        },
+        "plugins": {
+            "type": "object",
+            "description": "The plugins of the app by their id.",
+            "propertyNames": {"pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"},
+            "additionalProperties": {"$ref": "#/$defs/pluginEntry"}
+        },
+        "cpp": {
+            "type": "object",
+            "description": "The C++ code of a C++ app, which the backend of every target compiles against the engine SDK.",
+            "additionalProperties": false,
+            "required": ["sources"],
+            "properties": {
+                "sources": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}, "description": "Folders and files of C, C++, Objective-C and Objective-C++ sources, relative to the app folder."},
+                "includeDirectories": {"type": "array", "items": {"type": "string", "minLength": 1}},
+                "definitions": {"type": "array", "items": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*(=.*)?$"}}
+            }
+        },
+        "platforms": {
+            "type": "object",
+            "description": "The settings and files of the generated projects that the app declares, by the name of a section that a backend reads, such as ios or android.",
+            "propertyNames": {"pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"},
+            "additionalProperties": {"type": "object"}
+        }
+    },
+    "$defs": {
+        "color": {"type": "string", "pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$"},
+        "nativeLibrary": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "files": {"type": "object", "additionalProperties": {"type": "string", "minLength": 1}, "description": "Prebuilt files by platform."},
+                "cmake": {"type": "string", "minLength": 1, "description": "The folder of a CMake project, relative to the folder of the manifest."},
+                "platforms": {"type": "array", "items": {"type": "string"}, "uniqueItems": true, "minItems": 1},
+                "link": {"enum": ["dynamic", "static"]},
+                "symbols": {"type": "array", "items": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"}, "uniqueItems": true}
+            },
+            "oneOf": [{"required": ["files"], "not": {"required": ["cmake"]}}, {"required": ["cmake", "platforms"], "not": {"required": ["files"]}}]
+        },
+        "pluginEntry": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "path": {"type": "string", "minLength": 1},
+                "git": {"type": "string", "minLength": 1},
+                "ref": {"type": "string", "minLength": 1},
+                "parameters": {"type": "object"}
+            },
+            "dependentRequired": {"ref": ["git"]}
+        }
+    }
+}

@@ -10,7 +10,7 @@ The engine works the mapping out again at the start of every frame, so after a r
 
 ## Scaling policies
 
-The scaling policy decides how the design area fits the framebuffer. The `design` section of `app.json` picks it at start, and `viewport.setScaling` changes it.
+The scaling policy decides how the design area fits the framebuffer. The `design` section of `haylen.json` picks it at start, and `viewport.setScaling` changes it.
 
 | Name | Behavior |
 | --- | --- |
@@ -34,7 +34,7 @@ end
 
 ### viewport.designSize()
 
-Returns the width and height of the design area in design units, as two numbers. They are 1920 and 1080 unless the `design` section of `app.json` or `viewport.setDesignSize` gives others. An app whose `orientation` is `any` turns the design with the screen, so a design of 440 by 956 returns 956 and 440 while the screen is wider than tall, as the [rendering guide](../graphics/rendering.md#design-units-and-the-viewport) explains.
+Returns the width and height of the design area in design units, as two numbers. They are 1920 and 1080 unless the `design` section of `haylen.json` or `viewport.setDesignSize` gives others. An app whose `orientation` is `any` turns the design with the screen, so a design of 440 by 956 returns 956 and 440 while the screen is wider than tall, as the [rendering guide](../graphics/rendering.md#design-units-and-the-viewport) explains.
 
 ```lua
 local viewport = require('haylen.viewport')
@@ -59,7 +59,7 @@ print(viewport.designSize())
 
 ### viewport.scaling()
 
-Returns the name of the [scaling policy](#scaling-policies) in use: `'fit'`, `'fill'`, `'stretch'`, `'expand'`, `'pixelPerfect'`, `'fitWidth'` or `'none'`. It is `'expand'` unless the `design` section of `app.json` or `viewport.setScaling` picks another.
+Returns the name of the [scaling policy](#scaling-policies) in use: `'fit'`, `'fill'`, `'stretch'`, `'expand'`, `'pixelPerfect'`, `'fitWidth'` or `'none'`. It is `'expand'` unless the `design` section of `haylen.json` or `viewport.setScaling` picks another.
 
 ```lua
 local viewport = require('haylen.viewport')
@@ -256,7 +256,7 @@ Replaces the safe area that the device reports, to test a layout for other scree
 - Insets in points of the window: one number for every side, `{vertical, horizontal}` or `{top, right, bottom, left}`.
 - The value `nil`, which goes back to the safe area of the device.
 
-The option `debug.safeArea` of `app.json` sets it at start, and [`ui.setSafeAreaVisible`](ui.md#uisetsafeareavisiblevisible) shows it.
+The option `debug.safeArea` of `haylen.json` sets it at start, and [`ui.setSafeAreaVisible`](ui.md#uisetsafeareavisiblevisible) shows it.
 
 | Device | Portrait | Landscape | Cutout |
 | --- | --- | --- | --- |

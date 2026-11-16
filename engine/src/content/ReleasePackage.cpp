@@ -71,7 +71,7 @@ std::shared_ptr<io::Package> ReleasePackage::openBundled(std::shared_ptr<io::Pac
     }
 
     if (bootstrap == nullptr) {
-        throw Error(Error::Code::KeyUnavailable, "The app ships a protected release, and this build holds no keys to open it. Build the app in the Release configuration with \"haylen.py\", which compiles the keys of the app into it.");
+        throw Error(Error::Code::KeyUnavailable, "The app ships a protected release, and this build holds no keys to open it. Build the app with \"haylen app build --config Release\", which compiles the keys of the app into it.");
     }
 
     return open(std::move(files), *bootstrap, std::move(openStore), std::move(remoteAddress));

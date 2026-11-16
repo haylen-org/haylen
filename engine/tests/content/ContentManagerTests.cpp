@@ -55,7 +55,7 @@ class ContentManagerTest : public ::testing::Test {
     [[nodiscard]] Files makeGame() const {
         const std::string app = R"({"name": "Content", "identifier": "com.haylen.tests", "content": {"updates": {"baseUrl": ")" + server.getUrl() + R"(", "enabled": false}, "delivery": [{"match": "levels/**", "mode": "onDemand"}, {"match": "music/**", "mode": "prefetch"}]}})";
         Files files;
-        files.emplace("app.json", test::TestFiles::bytes(app));
+        files.emplace("haylen.json", test::TestFiles::bytes(app));
         files.emplace("source/main.lua", test::TestFiles::bytes("started = true\nrequire('haylen.events').on('contentRecovered', function(event) recovered = event.reason end)"));
         files.emplace("content/data/config.json", test::TestFiles::bytes(R"({"level": 1})"));
         files.emplace("content/levels/forest.json", test::TestFiles::bytes(R"({"trees": 12})"));
@@ -465,12 +465,12 @@ TEST_F(ContentManagerTest, TellsTheAppThatItPlaysEarlierContentWhenTheUpdateWasD
     EXPECT_FALSE(getRecovery().empty());
 }
 
-// An app whose `app.json` names content that the engine reads before the app starts: a folder of languages and the group manifest of its delivery rules, which a release may not hold on the device yet, as on a web page.
+// An app whose `haylen.json` names content that the engine reads before the app starts: a folder of languages and the group manifest of its delivery rules, which a release may not hold on the device yet, as on a web page.
 class ContentStartTest : public ContentManagerTest {
   protected:
-    // Builds and publishes the game again with the languages and the sections of `app.json` that read them.
+    // Builds and publishes the game again with the languages and the sections of `haylen.json` that read them.
     void rebuild(const std::string& sections) {
-        game["app.json"] = test::TestFiles::bytes(R"({"name": "Start", "identifier": "com.haylen.tests", )" + sections + "}");
+        game["haylen.json"] = test::TestFiles::bytes(R"({"name": "Start", "identifier": "com.haylen.tests", )" + sections + "}");
         game["source/main.lua"] = test::TestFiles::bytes("greeting = require('haylen.localization').text('menu.play')\nstarted = true");
         game.emplace("content/locale/en.json", test::TestFiles::bytes(R"({"menu": {"play": "Play"}})"));
         game.emplace("content/locale/pt-BR.json", test::TestFiles::bytes(R"({"menu": {"play": "Jogar"}})"));
@@ -541,7 +541,7 @@ TEST(ContentDevelopmentTest, KeepsTheFilesThatDownloadOffTheDeviceUntilSomething
     test::TemporaryDirectory data;
     platform::HeadlessHost host(data.getPath());
     std::map<std::string, std::vector<std::uint8_t>> files;
-    files.emplace("app.json", test::TestFiles::bytes(R"({"content": {"delivery": [{"match": "levels/**", "mode": "onDemand"}]}})"));
+    files.emplace("haylen.json", test::TestFiles::bytes(R"({"content": {"delivery": [{"match": "levels/**", "mode": "onDemand"}]}})"));
     files.emplace("source/main.lua", test::TestFiles::bytes("started = true"));
     files.emplace("content/levels/forest.json", test::TestFiles::bytes(R"({"trees": 12})"));
     files.emplace("content/data/config.json", test::TestFiles::bytes(R"({"level": 1})"));
@@ -573,7 +573,7 @@ TEST(ContentDevelopmentTest, HoldsTheStartForTheLanguagesThatARuleDeliversLater)
     test::TemporaryDirectory data;
     platform::HeadlessHost host(data.getPath());
     std::map<std::string, std::vector<std::uint8_t>> files;
-    files.emplace("app.json", test::TestFiles::bytes(R"({"localization": {"folder": "locale"}, "content": {"delivery": [{"match": "locale/**", "mode": "onDemand"}]}})"));
+    files.emplace("haylen.json", test::TestFiles::bytes(R"({"localization": {"folder": "locale"}, "content": {"delivery": [{"match": "locale/**", "mode": "onDemand"}]}})"));
     files.emplace("source/main.lua", test::TestFiles::bytes("greeting = require('haylen.localization').text('menu.play')"));
     files.emplace("content/locale/en.json", test::TestFiles::bytes(R"({"menu": {"play": "Play"}})"));
     auto package = std::make_shared<io::MemoryPackage>("development", std::move(files));
@@ -598,7 +598,7 @@ class ContentPackTest : public ContentManagerTest {
     ContentPackTest() {
         game.erase("content/levels/forest.json");
         const std::string app = R"({"name": "Packs", "identifier": "com.haylen.tests", "content": {"delivery": [{"match": "expansion/**", "pack": "expansion"}]}})";
-        game["app.json"] = test::TestFiles::bytes(app);
+        game["haylen.json"] = test::TestFiles::bytes(app);
         game.emplace("content/expansion/island.json", test::TestFiles::bytes(R"({"palms": 7})"));
         release.build(io::MemoryPackage("source", game));
         const ReleaseInspector inspector(release.getKeys(), {release.getSigningKey().getVerifyingKey()});

@@ -1,4 +1,4 @@
--- The parameters of the plugin, which `app.json` gives in its `plugins` section over the defaults of `plugin.json`. The file `app.json` leaves `tickInterval` out on purpose, so its default shows, and the native part receives the same values from its platform.
+-- The parameters of the plugin, which `haylen.json` gives in its `plugins` section over the defaults of `plugin.json`. The file `haylen.json` leaves `tickInterval` out on purpose, so its default shows, and the native part receives the same values from its platform.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
@@ -30,20 +30,20 @@ function Configuration:enter()
                     ui.label{text = tostring(config[name]), font = 'heading'},
                 },
                 ui.column{gap = 8, alignItems = 'end',
-                    ui.badge{text = given[name] ~= nil and 'From "app.json"' or 'Default of "plugin.json"', tone = given[name] ~= nil and 'accent' or 'information'},
+                    ui.badge{text = given[name] ~= nil and 'From "haylen.json"' or 'Default of "plugin.json"', tone = given[name] ~= nil and 'accent' or 'information'},
                     ui.badge{id = 'native-' .. name, text = demo.available() and 'Asking the native part' or 'No native part here', tone = 'neutral'},
                 },
             },
         }
     end
     self:frame{
-        hint = 'Compare the values with "app.json" and "plugins/native-demo/plugin.json", and ask the native part for them again.',
+        hint = 'Compare the values with "haylen.json" and "plugins/native-demo/plugin.json", and ask the native part for them again.',
         focus = 'ask',
         controls = {
             ui.button{id = 'ask', text = 'Ask the native part again', variant = 'primary', enabled = demo.available(), onClick = function()
                 self:act(function() self:compareNative(config) end)
             end},
-            ui.label{text = 'The file "app.json" gives "greeting", "bannerColor" and "urlScheme" and leaves "tickInterval" out, which then takes the default of "plugin.json". The tool "haylen.py" checks the values against the types of "plugin.json" before it builds, and the platforms hand the same values to the native part.', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'The file "haylen.json" gives "greeting", "bannerColor" and "urlScheme" and leaves "tickInterval" out, which then takes the default of "plugin.json". The tooling checks the values against the types of "plugin.json" before it builds, and the platforms hand the same values to the native part.', color = 'textMuted', font = 'caption'},
         },
         showcase = {
             ui.panel{grow = 1, align = 'stretch', gap = 16,
@@ -54,7 +54,7 @@ function Configuration:enter()
     }
 
     local defaulted = given[Configuration.leftOut] == nil and config[Configuration.leftOut] == Configuration.default
-    self.results:set('default', defaulted and 'pass' or 'fail', 'A parameter that "app.json" leaves out takes its default', string.format('The file "app.json" gives no "%s", and the plugin reads %s, the default of "plugin.json".', Configuration.leftOut, DemoTest.json(config[Configuration.leftOut])))
+    self.results:set('default', defaulted and 'pass' or 'fail', 'A parameter that "haylen.json" leaves out takes its default', string.format('The file "haylen.json" gives no "%s", and the plugin reads %s, the default of "plugin.json".', Configuration.leftOut, DemoTest.json(config[Configuration.leftOut])))
     self:act(function() self:compareNative(config) end)
 end
 

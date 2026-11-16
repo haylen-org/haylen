@@ -10,8 +10,8 @@ Platform covers the window and the device, the services every platform offers, t
 | Displays | The displays of every platform with their ids, areas, scales, refresh rates and modes, how an app follows them as they change and the screens of a browser. | [`displays.md`](displays.md) |
 | Native code | Native libraries called from Lua, their callbacks and threads, packaging them with an app and integrating SDKs with a C API. | [`native.md`](native.md) |
 | Platform bridge | The JSON bridge between Lua and native code: calls, events, bytes, timeouts, screens and the native side on every platform. | [`platform-bridge.md`](platform-bridge.md) |
-| Plugins | Native plugins from `haylen.py plugin new` to publishing: `plugin.json`, the Lua API, the services of the engine, screens, requirements, the Apple, Android, web and desktop parts and the demo plugin. | [`plugins.md`](plugins.md) |
-| Ports | Adding a platform that the repository does not hold, such as a game console: `HAYLEN_PORT_DIR` and `port.cmake`, the platform runtime, the GPU device of the API `port`, shaders, testing, private continuous integration, and the paths for Xbox, Nintendo Switch and PlayStation. | [`ports.md`](ports.md) |
+| Plugins | Native plugins from `haylen plugin new` to publishing: `plugin.json` with its typed contributions and their merge rules, `haylen.lock`, the Lua API, the services of the engine, screens, requirements, the Apple, Android, web and desktop parts and the demo plugin. | [`plugins.md`](plugins.md) |
+| Ports | Adding a platform that the repository does not hold, such as a game console: the three layers of engine, private port and private plugin, `HAYLEN_PORT_DIR` with `port.cmake` and `haylen_port`, the SDK of a port, the engine port and backend that the tooling installs from outside, the GPU device of the API `port`, shaders, testing and private continuous integration. | [`ports.md`](ports.md) |
 
 ## Lua API
 

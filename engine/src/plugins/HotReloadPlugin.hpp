@@ -21,7 +21,7 @@ class DevelopmentSession;
 
 namespace haylen::plugins {
 
-// Applies the changes of an app in development, even while the error screen shows. Changed assets reload in place, a changed Lua module reloads in place with the state of the app in the mode `module` of `debug.reload`, and a change that cannot apply in place restarts the app: `app.json`, `source/main.lua`, a plugin manifest, a removed module, a module that cannot merge and any module in the mode `restart`. A batch that fixed an error of frame code or of a reload resumes the app from the error screen. The changes come from the development session of the host, from its scans of the package folder, the page or the development server. The plugin installs `haylen.hotReload` in every app, and the module graph only in development, so apps that ship load their modules exactly as before.
+// Applies the changes of an app in development, even while the error screen shows. Changed assets reload in place, a changed Lua module reloads in place with the state of the app in the mode `module` of `debug.reload`, and a change that cannot apply in place restarts the app: `haylen.json`, `source/main.lua`, a plugin manifest, a removed module, a module that cannot merge and any module in the mode `restart`. A batch that fixed an error of frame code or of a reload resumes the app from the error screen. The changes come from the development session of the host, from its scans of the package folder, the page or the development server. The plugin installs `haylen.hotReload` in every app, and the module graph only in development, so apps that ship load their modules exactly as before.
 class HotReloadPlugin final : public Plugin {
   public:
     static constexpr std::chrono::milliseconds kScanInterval{500};

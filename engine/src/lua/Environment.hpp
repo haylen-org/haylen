@@ -23,7 +23,7 @@ namespace haylen::lua {
 // Prepares the Lua state of an engine for app scripts.
 class Environment final {
   public:
-    // Binds the Lua state to the engine and makes `require` load modules from the package instead of the host file system: the modules of the app from its source folder, and the modules of every plugin that `app.json` lists from `plugins/<id>/source`. The failures of `async` tasks and `ffi` callbacks reach the error screen. App code loads chunks only as text, has no `string.dump` and no `package.loadlib`, and cannot reach the protected metatables of the engine, the upvalues, locals and internal functions of native functions or the user values of userdata through the debug library.
+    // Binds the Lua state to the engine and makes `require` load modules from the package instead of the host file system: the modules of the app from its source folder, and the modules of every plugin that `haylen.json` lists from `plugins/<id>/source`. The failures of `async` tasks and `ffi` callbacks reach the error screen. App code loads chunks only as text, has no `string.dump` and no `package.loadlib`, and cannot reach the protected metatables of the engine, the upvalues, locals and internal functions of native functions or the user values of userdata through the debug library.
     static void install(core::Engine& engine, lua_State* L);
 
     // Takes the modules that reach native code and other programs, `ffi`, `process` and `haylen.native`, and the functions `io.popen` and `os.execute` out of the Lua state, so requiring one of those modules raises an error that says the app has no native access.

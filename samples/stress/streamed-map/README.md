@@ -8,13 +8,13 @@ The commands run from the root of the repository:
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `haylen run samples/stress/streamed-map` |
-| macOS app | `haylen run samples/stress/streamed-map --platform macos` |
-| iPhone and iPad simulator | `haylen run samples/stress/streamed-map --platform ios-simulator` |
-| Apple TV simulator | `haylen run samples/stress/streamed-map --platform tvos-simulator` |
-| Android device or emulator | `haylen run samples/stress/streamed-map --platform android --device <serial>` |
-| Browser | `haylen run samples/stress/streamed-map --platform web` |
-| Headless player | `build/macos-debug/bin/haylen-headless samples/stress/streamed-map --frames 900` |
+| Desktop player with hot reload | `haylen app run samples/stress/streamed-map` |
+| macOS app | `haylen app run samples/stress/streamed-map --target macos` |
+| iPhone and iPad simulator | `haylen app run samples/stress/streamed-map --target ios-simulator` |
+| Apple TV simulator | `haylen app run samples/stress/streamed-map --target tvos-simulator` |
+| Android device or emulator | `haylen app run samples/stress/streamed-map --target android --device <serial>` |
+| Browser | `haylen app run samples/stress/streamed-map --target web` |
+| Headless player | `build/engine/macos-debug/bin/haylen-headless samples/stress/streamed-map --frames 900` |
 
 On the headless platform the app runs a short tour by itself: it flies at several zooms and build budgets, starts a new world, logs the frame numbers of every step and quits.
 
@@ -80,7 +80,7 @@ The terrain and its decorations are painted for the sample with the `codex` comm
 
 ```text
 streamed-map/
-  app.json               Window, design resolution of 1920 by 1080 in landscape and identifier.
+  haylen.json               Window, design resolution of 1920 by 1080 in landscape and identifier.
   source/
     main.lua             Sets the map theme of the panel and opens the flight.
     scenes/flight.lua    The flight: the camera, the autopilot, input, the panel and the drawing.

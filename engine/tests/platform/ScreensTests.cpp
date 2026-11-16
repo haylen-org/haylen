@@ -49,8 +49,8 @@ class ScreensTest : public ::testing::Test {
     static std::map<std::string, std::string> shopFiles() {
         // clang-format off
         return {
-            {"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"shop": {}}})"},
-            {"plugins/shop/plugin.json", R"({"id": "shop", "version": "1.0.0"})"},
+            {"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"shop": {}}})"},
+            {"plugins/shop/plugin.json", R"({"id": "shop", "version": "1.0.0", "implementations": {"ios": "lua"}})"},
             {"source/main.lua", R"(
                 async = require('async')
                 haylen = require('haylen')

@@ -450,7 +450,7 @@ Every generator works in C++, so one call costs far less than the same work in L
 | Delaunay, Voronoi and relaxation | The points, in about n log n time. Relaxation repeats the Voronoi diagram once per iteration. |
 | Autotiling | The cells. |
 
-As a rule, run a generation on the frame when it is small and happens once, such as a room of a puzzle. Use the asynchronous versions for whole worlds, and for Wave Function Collapse on maps larger than a screen. The command `haylen bench --suite procedural` times the generators on the machine, as [the bench command](../tools/build.md#bench) describes.
+As a rule, run a generation on the frame when it is small and happens once, such as a room of a puzzle. Use the asynchronous versions for whole worlds, and for Wave Function Collapse on maps larger than a screen. The command `haylen engine bench --suite procedural` times the generators on the machine, as [the bench command](../tools/benchmarks.md) describes.
 
 ## C++
 

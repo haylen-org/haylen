@@ -4,14 +4,14 @@ Haylen Tests is the test project of the engine: one app with a test of every eng
 
 ## Running
 
-- Desktop: `haylen run samples/tests` runs the project in the player with hot reload.
-- A platform: `haylen run samples/tests --platform ios-simulator`, and the same with `tvos-simulator`, `android`, `web`, `macos`, `windows` or `linux`.
+- Desktop: `haylen app run samples/tests` runs the project in the player of the desktop SDK with hot reload, once `haylen sdk build --target player` built that SDK.
+- A target: `haylen app run samples/tests --target ios-simulator`, and the same with `tvos-simulator`, `android`, `web`, `macos`, `windows` or `linux`, once `haylen sdk build --target <target>` built the SDK of the target.
 - Automatic: the headless player runs every test that the headless platform supports, one after the other for 2 seconds each, lists the tests that raised an error, failed a check of their results or whose scene failed to load, and exits with the status 1 when any test failed, which the CI job `tests-project` does on every push:
 
 ```sh
-haylen build --target haylen-headless
-haylen build --target haylen-native-test
-build/macos-debug/bin/haylen-headless samples/tests --frames 60000
+haylen engine build --target haylen-headless
+haylen engine build --target haylen-native-test
+build/engine/macos-debug/bin/haylen-headless samples/tests --frames 60000
 ```
 
 - UI tests: `haylen test --ui samples/tests --platform ios-simulator --device "iPad Pro 13-inch (M5)"` taps a category of the menu, and on an iPad tiles the window to each half, resizes it there and resizes it in Stage Manager, checking at each size that the framebuffer follows the window. The same command with `--platform visionos-simulator` taps the menu with a look and a pinch.
@@ -34,7 +34,7 @@ The menu lists the categories by section with their prefixes and the number of t
 
 | Path | Contents |
 | --- | --- |
-| `app.json` | The project in landscape at a design size of 1920 by 1080, the autoload of the Events tests, the native test libraries and the plugins the tests use. |
+| `haylen.json` | The project in landscape at a design size of 1920 by 1080, the autoload of the Events tests, the native test libraries and the plugins the tests use. |
 | `source/main.lua` | Loads the catalog, makes the app recoverable and opens the menu, or starts the automatic run on the headless platform. |
 | `source/harness/` | What every test shares: the catalog of the manifests, the menu, the test list, the base class `Test` with its frame and play area, the unsupported page, the automatic run, rows of checks, a log of lines, a pointer for every device and the way between the screens. |
 | `source/categories/<category>/` | One folder per category with `manifest.lua`, one file per test and the modules its tests share. |
@@ -45,9 +45,9 @@ The menu lists the categories by section with their prefixes and the number of t
 
 A manifest returns the `prefix`, the `title` and the `description` of its category and its `tests`. Each test has a `code`, a `title`, a `description` and the `module` of its file, and a test that does not run everywhere lists the `platforms` it runs on and, in `unsupported`, the reason for each other platform, from `macos`, `windows`, `linux`, `ios`, `tvos`, `android`, `web` and `headless`. The catalog checks every manifest when the project starts.
 
-## Settings of `app.json`
+## Settings of `haylen.json`
 
-Some settings that `app.json` gives the whole project change at run time, so the tests that need other values set them on entry and restore them on exit:
+Some settings that `haylen.json` gives the whole project change at run time, so the tests that need other values set them on entry and restore them on exit:
 
 - The orientation tests unlock the orientation with `window.lockOrientation('any')` and lock it to landscape again, and the fold test restores the fold simulation it found.
 - The design resolution test changes the design size and the scaling with `viewport.setDesignSize` and `viewport.setScaling` and restores 1920 by 1080 with `expand`.
@@ -56,7 +56,7 @@ Some settings that `app.json` gives the whole project change at run time, so the
 - The window, lifecycle and preferences tests restore the fullscreen mode, the lifecycle options, the bus volumes, the language and the theme they change.
 - The UI scale and image theme tests restore the scale of the UI and the theme they change.
 
-No test needs a setting that only `app.json` can give.
+No test needs a setting that only `haylen.json` can give.
 
 ## Art of the fantasy theme
 
@@ -330,7 +330,7 @@ Custom fragment shaders compiled into ".shader" files: materials on sprites and 
 | `SHD-003` | Textures as uniforms | A material that reads a gradient and a pattern texture, including a live render target. |  |
 | `SHD-004` | Post-processing chain | The built-in vignette followed by custom blur, color grading and tube screen passes over a canvas. |  |
 | `SHD-005` | Shaders on text | Rainbow, dissolve and flash materials on text drawn from its distance field. |  |
-| `SHD-006` | Hot reload | How a desktop run of the player recompiles and reloads a shader while the app keeps running. |  |
+| `SHD-006` | Hot reload | How a development run recompiles and reloads a shader while the app keeps running. |  |
 | `SHD-007` | Shader load time | Every shader of the category loaded in the background and drawn at once, with the time of the files and of the first frame on the graphics API of the platform. |  |
 | `SHD-008` | Shader library | Forty-five material shaders of games by category, from neon trails, lasers and shields to fire, frost, gold, glitches and shockwaves, with their numbers on sliders, each of which draws once on its target when the test opens. |  |
 
@@ -671,7 +671,7 @@ The anchors of the interface against the safe area and the whole screen, drawing
 
 #### Content delivery (DLV)
 
-Assets that the app needs to start, assets that download in the background or when the app asks for them, their progress, and how a release ships and updates its content. The tests are in `source/categories/delivery/`, and the rules of `content.delivery` in `app.json` name the folders of `content/delivery/` that each test delivers later.
+Assets that the app needs to start, assets that download in the background or when the app asks for them, their progress, and how a release ships and updates its content. The tests are in `source/categories/delivery/`, and the rules of `content.delivery` in `haylen.json` name the folders of `content/delivery/` that each test delivers later.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
@@ -682,7 +682,7 @@ Assets that the app needs to start, assets that download in the background or wh
 
 #### Development (DEV)
 
-Hot reload while the project runs in development, with "haylen run samples/tests" or with "--platform web": each test names a file to edit and shows what a saved change does while the test runs. Without development the tests say that hot reload is off. The error screen of every kind of code that runs for the app, and the return to the app from it, run in development and in apps that ship. The tests are in `source/categories/development/`, and the files to edit in `source/categories/development/edit/` and `content/development/`.
+Hot reload while the project runs in development, with "haylen app run samples/tests" or with "--target web": each test names a file to edit and shows what a saved change does while the test runs. Without development the tests say that hot reload is off. The error screen of every kind of code that runs for the app, and the return to the app from it, run in development and in apps that ship. The tests are in `source/categories/development/`, and the files to edit in `source/categories/development/edit/` and `content/development/`.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
@@ -792,7 +792,7 @@ Every capability of native plugins through the plugin "native-demo", written wit
 | `PLG-003` | Binary payloads | Bytes that cross to the native part and back as buffers, and an image that the native part draws and returns as PNG bytes. | headless |
 | `PLG-004` | Streams | A video stream that the native part draws 30 times per second, and an audio stream of a tone that the app plays. | headless |
 | `PLG-005` | Batched events | 100 events per frame from the native part, which arrive as one list per frame. | headless |
-| `PLG-006` | Configuration | The parameters of the plugin from "app.json" and the defaults of "plugin.json", in Lua and in the native part. |  |
+| `PLG-006` | Configuration | The parameters of the plugin from "haylen.json" and the defaults of "plugin.json", in Lua and in the native part. |  |
 | `PLG-007` | Native banner | A native view over the app at the top or bottom that may reserve its edge, with a native button, while other taps reach the app. | windows, linux, headless |
 | `PLG-008` | Covering native UI | A native screen over the whole app, which halts the app until it closes. | windows, linux, headless |
 | `PLG-009` | Native screen | A screen of the plugin whose answer reaches the call, and after a restart the next app as "screenRestored". | headless |

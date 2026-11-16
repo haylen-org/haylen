@@ -34,7 +34,7 @@ class UiBenchmark final {
         platform::HeadlessHost host(std::filesystem::temp_directory_path() / "haylen-ui-benchmark");
         gpu.install(host);
         std::map<std::string, std::vector<std::uint8_t>> files;
-        for (const auto& [path, text] : {std::pair<std::string, std::string_view>{"app.json", R"({"name": "UI Benchmark", "identifier": "com.haylen.uibenchmark"})"}, {"source/main.lua", ""}}) {
+        for (const auto& [path, text] : {std::pair<std::string, std::string_view>{"haylen.json", R"({"name": "UI Benchmark", "identifier": "com.haylen.uibenchmark"})"}, {"source/main.lua", ""}}) {
             files.emplace(path, std::vector<std::uint8_t>(text.begin(), text.end()));
         }
 

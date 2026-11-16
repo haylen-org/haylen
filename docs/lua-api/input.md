@@ -8,7 +8,7 @@ local input = require('haylen.input')
 
 ## Frame timing
 
-The engine updates the devices and the action map once at the start of every frame. A state such as `input.keyPressed` or `input.pressed` stays `true` for that whole frame, in every scene callback, and is `false` again on the next frame. Read these frame states in `update`. In `fixedUpdate`, read actions with [`input.stepPressed`](#inputsteppressedaction), [`input.stepReleased`](#inputstepreleasedaction) and [`input.stepDown`](#inputstepdownaction), which give each press to exactly one fixed step. Positions are in design coordinates, the space that `design` of `app.json` sets. The [input guide](../input/input.md#frame-timing) explains why.
+The engine updates the devices and the action map once at the start of every frame. A state such as `input.keyPressed` or `input.pressed` stays `true` for that whole frame, in every scene callback, and is `false` again on the next frame. Read these frame states in `update`. In `fixedUpdate`, read actions with [`input.stepPressed`](#inputsteppressedaction), [`input.stepReleased`](#inputstepreleasedaction) and [`input.stepDown`](#inputstepdownaction), which give each press to exactly one fixed step. Positions are in design coordinates, the space that `design` of `haylen.json` sets. The [input guide](../input/input.md#frame-timing) explains why.
 
 ## Keyboard
 
@@ -301,7 +301,7 @@ scene.push({
 
 ### input.setScrollSpeed(speed)
 
-Multiplies every scroll of the wheels and the trackpads by `speed` before the UI, `input.mouseScroll` and the `mouseScroll` events see it. It is `1` by default, and it suits a setting of the player for how fast the wheel scrolls. The key `input.scrollSpeed` of `app.json` sets it at start. A value that is not positive raises `The scroll speed must be a positive number.` and keeps the current speed.
+Multiplies every scroll of the wheels and the trackpads by `speed` before the UI, `input.mouseScroll` and the `mouseScroll` events see it. It is `1` by default, and it suits a setting of the player for how fast the wheel scrolls. The key `input.scrollSpeed` of `haylen.json` sets it at start. A value that is not positive raises `The scroll speed must be a positive number.` and keeps the current speed.
 
 ```lua
 local input = require('haylen.input')
@@ -528,7 +528,7 @@ Both motors at `0` stop the gamepad. A new rumble replaces the one that runs. Th
 | --- | --- |
 | iOS, iPadOS, tvOS and Mac Catalyst | The haptics engine of the controller plays one continuous event. Its intensity follows the stronger motor, and its sharpness follows the share of the high frequency motor. |
 | macOS | Both motors of the controller through the gamepad API of SDL, where the controller and its driver rumble. |
-| Android | The vibrators of the controller, one motor on each when it has two, and the stronger motor on one. It needs the permission `VIBRATE`, which the template declares. |
+| Android | The vibrators of the controller, one motor on each when it has two, and the stronger motor on one. It needs the permission `VIBRATE`, which the Android backend declares in every app unless `removedPermissions` names it. |
 | Windows | Both motors of the controller through the gamepad API of SDL, for XInput, Windows.Gaming.Input and HID controllers that rumble. |
 | Linux | Both motors through the gamepad API of SDL, with the force feedback of the event device of the controller or its HID driver, when the user may write to the device. The rules of most distributions allow it for the user at the computer. |
 | Web | The dual rumble of the Gamepad API through the gamepad API of SDL, in browsers that offer it. |
@@ -876,7 +876,7 @@ scene.push({
 
 ### input.setMouseAsTouch(enabled)
 
-Makes the mouse act as a finger, so an app made for touch screens runs with a mouse. A desktop build that tests touch controls is the usual use. The key `input.mouseAsTouch` of `app.json` sets it at start.
+Makes the mouse act as a finger, so an app made for touch screens runs with a mouse. A desktop build that tests touch controls is the usual use. The key `input.mouseAsTouch` of `haylen.json` sets it at start.
 
 - The left button becomes a touch with an `id` that no real finger has. The touch begins, moves while the button is held, and ends.
 - The function `input.lastDevice` reports `'touch'`, so controls with `touchOnly` show.
@@ -905,7 +905,7 @@ end
 
 ### input.setTouchAsMouse(enabled)
 
-Makes a finger act as the mouse too, so an app that reads the mouse runs on a touch screen. The key `input.touchAsMouse` of `app.json` sets it at start. The UI keeps following the finger itself, so a drag of the finger still scrolls the area under it.
+Makes a finger act as the mouse too, so an app that reads the mouse runs on a touch screen. The key `input.touchAsMouse` of `haylen.json` sets it at start. The UI keeps following the finger itself, so a drag of the finger still scrolls the area under it.
 
 - The first finger down drives the left button and the mouse position until it lifts. The mouse leaves the window with it, and the next finger down takes over.
 - A finger that drives the mouse keeps driving it until it lifts, even when this turns off meanwhile.

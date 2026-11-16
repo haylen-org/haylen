@@ -287,19 +287,19 @@ class Engine final {
     [[nodiscard]] const AppConfig::Lifecycle& getLifecycle() const noexcept;
     void setLifecycle(const AppConfig::Lifecycle& value);
 
-    // Whether the output keeps playing while the app is in the background, which `audio.background` of `app.json` turns on when the app starts. Only an app that declares it there may turn it on, since the platform settings it needs come from the declaration, and turning it on in another app throws `std::invalid_argument`.
+    // Whether the output keeps playing while the app is in the background, which `audio.background` of `haylen.json` turns on when the app starts. Only an app that declares it there may turn it on, since the platform settings it needs come from the declaration, and turning it on in another app throws `std::invalid_argument`.
     void setBackgroundAudio(bool value);
     [[nodiscard]] bool isBackgroundAudio() const noexcept;
 
-    // Change how the design space maps onto the screen while the app runs, starting from the design section of app.json. The viewport follows at once, and the UI, cameras and pointer input with it.
+    // Change how the design space maps onto the screen while the app runs, starting from the design section of haylen.json. The viewport follows at once, and the UI, cameras and pointer input with it.
     void setScaling(graphics::Viewport::ScalingPolicy value);
     void setDesignSize(math::Vec2 value);
 
-    // A simulated safe area replaces the one the device reports, to test layouts for other screens. The debug.safeArea option of app.json sets it at start.
+    // A simulated safe area replaces the one the device reports, to test layouts for other screens. The debug.safeArea option of haylen.json sets it at start.
     void setSafeAreaSimulation(std::optional<platform::SafeAreaSimulation> value);
     [[nodiscard]] const std::optional<platform::SafeAreaSimulation>& getSafeAreaSimulation() const noexcept;
 
-    // The fold of a foldable or dual-screen device across the window in framebuffer pixels, the simulated one while a simulation replaces the fold that the device reports, or none. The debug.fold option of app.json sets the simulation at start, and the windowFoldChanged event announces every change of the fold or of the posture.
+    // The fold of a foldable or dual-screen device across the window in framebuffer pixels, the simulated one while a simulation replaces the fold that the device reports, or none. The debug.fold option of haylen.json sets the simulation at start, and the windowFoldChanged event announces every change of the fold or of the posture.
     [[nodiscard]] std::optional<platform::Fold> getFold() const;
     void setFoldSimulation(std::optional<platform::FoldSimulation> value);
     [[nodiscard]] const std::optional<platform::FoldSimulation>& getFoldSimulation() const noexcept;
@@ -310,7 +310,7 @@ class Engine final {
     // The screen edges that native views of plugins reserve, such as a banner ad, as the largest reservation on each edge in framebuffer pixels. The safe area of the viewport grows on each edge to cover them, so UI anchored to the safe area moves out of their way. The engine takes them at the start of every frame.
     [[nodiscard]] const math::Insets& getReservedInsets() const noexcept;
 
-    // The plugins that app.json lists, in the order of their ids, with the version, the permissions and the parameter defaults of their plugin.json and whether their native part runs on this platform. Throws std::runtime_error when a plugin.json of the package cannot be read or two plugins declare the same permission.
+    // The plugins that haylen.json lists, in the order of their ids, with the version, the permissions and the parameter defaults of their plugin.json and whether their native part runs on this platform. Throws std::runtime_error when a plugin.json of the package cannot be read or two plugins declare the same permission.
     [[nodiscard]] std::vector<platform::AppPlugin> getAppPlugins() const;
 
     // The ids of the plugins whose native part runs, which the platform loaded or a native library of the app declared, in order.

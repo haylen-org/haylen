@@ -131,7 +131,7 @@ class Host : public Window {
     // Reads the font file of a face that `findSystemFont` found, on a worker of the I/O pool, which throws `std::runtime_error` when the system does not hand it over.
     [[nodiscard]] virtual std::vector<std::uint8_t> readSystemFont(const SystemFont& font) = 0;
 
-    // Tells the platform whether the app plays audio in the background, as `audio.background` of `app.json` declares, when an app starts. The platform then keeps running the frames of the app in the background while the system lets it, and on Android keeps the app in the foreground with its media notification while what plays shows as playing. A project of the app that lacks what the platform needs for it, such as the mode `audio` of `UIBackgroundModes`, logs once what is missing and how to add it.
+    // Tells the platform whether the app plays audio in the background, as `audio.background` of `haylen.json` declares, when an app starts. The platform then keeps running the frames of the app in the background while the system lets it, and on Android keeps the app in the foreground with its media notification while what plays shows as playing. A project of the app that lacks what the platform needs for it, such as the mode `audio` of `UIBackgroundModes`, logs once what is missing and how to add it.
     virtual void setBackgroundAudio(bool value) = 0;
 
     // Shows what the app plays in the now-playing and lock-screen controls of the system, or takes the app out of them with nothing, where the platform has such controls. The platform sends the commands of the controls, the media keys and headset buttons through `MediaSession::receive`.

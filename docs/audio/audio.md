@@ -367,9 +367,9 @@ Haylen writes its effects as nodes of its own in the node graph of miniaudio. Th
 
 ## Loudness and latency
 
-Many loud sounds at once add up past full scale and crackle. So the engine puts a [limiter](../lua-api/audio.md#limiter) on the `master` bus of every app. It keeps every sample under `0.9` and recovers over `0.1` seconds after a peak. Set the key `audio.limiter` of `app.json` to `false` to leave it out. The function `audio.newEffect('limiter', options)` makes more limiters for any bus or voice.
+Many loud sounds at once add up past full scale and crackle. So the engine puts a [limiter](../lua-api/audio.md#limiter) on the `master` bus of every app. It keeps every sample under `0.9` and recovers over `0.1` seconds after a peak. Set the key `audio.limiter` of `haylen.json` to `false` to leave it out. The function `audio.newEffect('limiter', options)` makes more limiters for any bus or voice.
 
-Latency is the time from a tap to its sound. The key `audio.latency` of `app.json` trades it for power with `'low'`, `'balanced'` or `'powerSaving'`, and `audio.outputLatency()` tells the seconds that the device buffers.
+Latency is the time from a tap to its sound. The key `audio.latency` of `haylen.json` trades it for power with `'low'`, `'balanced'` or `'powerSaving'`, and `audio.outputLatency()` tells the seconds that the device buffers.
 
 ```json
 {
@@ -466,7 +466,7 @@ The output runs at 48000 Hz in stereo by default, as `audio.sampleRate()` and `a
 
 ### iOS and tvOS sessions
 
-On iOS and tvOS, the system groups the sound of an app in an audio session. The key `audio.iosSession` of `app.json` picks its category, which decides what the silent switch and other apps do.
+On iOS and tvOS, the system groups the sound of an app in an audio session. The key `audio.iosSession` of `haylen.json` picks its category, which decides what the silent switch and other apps do.
 
 | `iosSession` | Silent switch | Other apps | Use it for |
 | --- | --- | --- | --- |
@@ -482,7 +482,7 @@ On iOS and tvOS, the system groups the sound of an app in an audio session. The 
 }
 ```
 
-The key `mixWithOthers` is `false` by default. Only the `'playback'` category takes `true`, because `'ambient'` always mixes and `'soloAmbient'` never does. An unknown category raises `The "audio.iosSession" value "<value>" in "app.json" is unknown. It is "ambient", "soloAmbient" or "playback".`, and `mixWithOthers` with another category raises `The "audio.mixWithOthers" option in "app.json" needs the "iosSession" value "playback".`. Closing the output leaves the iOS audio session active, so an app that restarts finds the session as it left it.
+The key `mixWithOthers` is `false` by default. Only the `'playback'` category takes `true`, because `'ambient'` always mixes and `'soloAmbient'` never does. An unknown category raises `The "audio.iosSession" value "<value>" in "haylen.json" is unknown. It is "ambient", "soloAmbient" or "playback".`, and `mixWithOthers` with another category raises `The "audio.mixWithOthers" option in "haylen.json" needs the "iosSession" value "playback".`. Closing the output leaves the iOS audio session active, so an app that restarts finds the session as it left it.
 
 ### Android
 
@@ -533,7 +533,7 @@ When the app goes to the background, the engine stops the audio output. It start
 
 ### Playing in the background
 
-A music player, a radio, a podcast app or a meditation app keeps playing when the person leaves it. The key `audio.background` of `app.json` declares it, together with the `'playback'` session, which is the only one that iOS and tvOS play in the background:
+A music player, a radio, a podcast app or a meditation app keeps playing when the person leaves it. The key `audio.background` of `haylen.json` declares it, together with the `'playback'` session, which is the only one that iOS and tvOS play in the background:
 
 ```json
 {
@@ -546,13 +546,13 @@ A music player, a radio, a podcast app or a meditation app keeps playing when th
 
 The engine then keeps the output running in the background while a voice plays, and stops it once no voice plays there, so the system may suspend an app whose sound ended or paused. A voice that starts again in the background, such as from the play button of the lock screen, brings the output back. The rest of the app follows the [lifecycle options](../core/lifecycle.md#halting-the-app): with `pauseOnBackground` left at `true`, scenes, timers and tweens stand still while the sound plays on, and the app still hears the [`mediaCommand` events](../lua-api/system.md#events) of the controls of the system. A player that moves to the next track in the background sets `pauseOnBackground` to `false`, so its timers and the end of each track keep running there. An app that mutes itself with `muteOnFocusLoss` is muted in the background as well. The function [`audio.setBackground`](../lua-api/audio.md#audiosetbackgroundenabled) turns the background off and on again while the app runs, such as for a game whose radio alone plays on there.
 
-The tools bring what each platform needs into the project of the app, from `app.json`, as [`haylen.py prepare`](../tools/distribution.md) writes it:
+The backend of each target brings what its platform needs into the project that it generates from `haylen.json`, as [`haylen app prepare`](../tools/distribution.md) writes it:
 
 | Platform | What the app plays in the background |
 | --- | --- |
-| iOS, iPadOS, tvOS and visionOS | The mode `audio` of `UIBackgroundModes` in the `Info.plist`, which `haylen.py` adds. While the session plays, UIKit lets the app run, and the engine runs its frames ten times a second from a timer, since the display link stops there. Once the sound stops, UIKit suspends the app, and the controls of the lock screen wake it again. A project without the mode logs once what it lacks, and the sound stops when the app leaves. |
+| iOS, iPadOS, tvOS and visionOS | The mode `audio` of `UIBackgroundModes` in the `Info.plist`, which the Apple backend adds. While the session plays, UIKit lets the app run, and the engine runs its frames ten times a second from a timer, since the display link stops there. Once the sound stops, UIKit suspends the app, and the controls of the lock screen wake it again. A project without the mode logs once what it lacks, and the sound stops when the app leaves. |
 | Mac Catalyst and macOS | Nothing more. A Mac app keeps running in the background and plays on. |
-| Android | The library `haylen-playback`, which `haylen.py` adds to the project, with the foreground service `dev.haylen.HaylenPlaybackService` of the type `mediaPlayback` and the permissions `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_MEDIA_PLAYBACK`. While the app shows what it plays as playing with [`system.setNowPlaying`](../lua-api/system.md#systemsetnowplayinginfo), the service keeps the app in the foreground with the media notification, so Android neither freezes nor ends it, and the app keeps the audio focus. Without now-playing information Android freezes the app about a minute after it left, which stops the sound. Android lets an app start the service only while it is in the foreground or right after a command of its media session, and a refusal logs a warning. Google Play asks apps with a foreground service to declare its type in the Play Console. |
+| Android | The library `haylen-playback`, which the Android backend adds to the project, with the foreground service `dev.haylen.HaylenPlaybackService` of the type `mediaPlayback` and the permissions `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_MEDIA_PLAYBACK`. While the app shows what it plays as playing with [`system.setNowPlaying`](../lua-api/system.md#systemsetnowplayinginfo), the service keeps the app in the foreground with the media notification, so Android neither freezes nor ends it, and the app keeps the audio focus. Without now-playing information Android freezes the app about a minute after it left, which stops the sound. Android lets an app start the service only while it is in the foreground or right after a command of its media session, and a refusal logs a warning. Google Play asks apps with a foreground service to declare its type in the Play Console. |
 | Windows and Linux | Nothing more. A minimized window keeps running and plays on. |
 | Web | Nothing more. A hidden tab keeps running the app from timers, which browsers do not slow down while the page plays sound. Safari on iPhones and iPads suspends the page when the browser leaves the screen, which stops its sound, and a browser that freezes or discards a hidden tab stops it as well. |
 
@@ -691,7 +691,7 @@ C++ code reaches the same audio through these classes:
 - The class `haylen::audio::Mixer` of `haylen/audio/Mixer.hpp`, which `engine.getAudio()` returns, offers voices, buses, music, process modes, effects and positional audio. Its options are the structures `Mixer::PlayOptions`, `Mixer::MusicOptions` and `Mixer::Spatialization`. The method `Mixer::play` also takes a `std::shared_ptr<platform::AudioStream>` to play an audio stream.
 - The class `haylen::audio::Sound` of `haylen/audio/Sound.hpp` holds decoded or streamed sound data. The method `Sound::decode` makes it from encoded bytes, and `Sound::fromSamples` from spans of float or 16-bit samples. The method `Sound::stream` makes it from a `std::shared_ptr<io::PackageReader>` of an encoded file, such as the one `Package::openAssetReader` returns.
 - The effects are `audio::Filter`, `audio::Delay`, `audio::Reverb` and `audio::Limiter`, made with `std::make_shared` and their settings structures.
-- The class `audio::Session` is the audio session of `app.json`.
+- The class `audio::Session` is the audio session of `haylen.json`.
 
 The engine applies its pause through `Mixer::setProcessPaused`. The method `Mixer::deviceEventReceived` delivers device events on the frame thread, and the audio plugin turns them into the interruptions and events above. The method `Mixer::isOutputAvailable` tells whether the mix reaches an audio device. A mixer made without a device mixes on demand through `render`, which tests and offline tools use. Every mixer takes the `core::JobSystem` whose I/O pool decodes its streamed voices.
 

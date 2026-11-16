@@ -8,7 +8,7 @@ local storage = require('haylen.storage')
 
 ## The storage folder
 
-Every app gets its own folder, named after the `identifier` in `app.json`, so two apps never see each other's files.
+Every app gets its own folder, named after the `identifier` in `haylen.json`, so two apps never see each other's files.
 
 | Platform | Folder |
 | --- | --- |

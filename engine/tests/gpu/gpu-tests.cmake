@@ -1,4 +1,4 @@
-# The GPU tests run the conformance suite of the GPU devices and the reference scenes of the 2D renderer on every device the build compiled, or on the one that `HAYLEN_TEST_GRAPHICS_API` names, with what the devices add to `HAYLEN_GPU_TEST_SOURCES`, `HAYLEN_GPU_TEST_LIBRARIES` and the offscreen contexts of `HAYLEN_GPU_OFFSCREEN_SOURCES` and `HAYLEN_GPU_OFFSCREEN_LIBRARIES`. They need a GPU, so CTest leaves them to `haylen.py test --gpu`.
+# The GPU tests run the conformance suite of the GPU devices and the reference scenes of the 2D renderer on every device the build compiled, or on the one that `HAYLEN_TEST_GRAPHICS_API` names, with what the devices add to `HAYLEN_GPU_TEST_SOURCES`, `HAYLEN_GPU_TEST_LIBRARIES` and the offscreen contexts of `HAYLEN_GPU_OFFSCREEN_SOURCES` and `HAYLEN_GPU_OFFSCREEN_LIBRARIES`. They need a GPU, so CTest leaves them to `haylen test --gpu`.
 set(haylen_tests_dir "${HAYLEN_ENGINE_DIR}/tests")
 set(haylen_gpu_test_sources
   "${haylen_tests_dir}/gpu/BlendTests.cpp"
@@ -52,7 +52,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_link_libraries(haylen-gpu-tests PRIVATE X11::X11)
 endif()
 haylen_compile_shader(haylen-gpu-tests SOURCE "${haylen_tests_dir}/gpu/shaders/conformance.glsl" SYMBOL getConformanceShader)
-# The materials of the image tests compile into every program of a material, the way "haylen.py shaders" compiles the materials of apps.
+# The materials of the image tests compile into every program of a material, the way `haylen app shaders` compiles the materials of apps.
 haylen_compile_shader(haylen-gpu-tests SOURCE "${haylen_tests_dir}/gpu/shaders/scattered-sampling.glsl" SYMBOL getScatteredSamplingShader VARIANTS "sprite=" "sprite_lit=HAYLEN_LIT" "batch=HAYLEN_BATCH" "batch_lit=HAYLEN_BATCH,HAYLEN_LIT" "text=HAYLEN_TEXT" "text_lit=HAYLEN_TEXT,HAYLEN_LIT" "mesh=HAYLEN_MESH" "mesh_lit=HAYLEN_MESH,HAYLEN_LIT" "shape=HAYLEN_SHAPE" "shape_lit=HAYLEN_SHAPE,HAYLEN_LIT")
 haylen_compile_shader(haylen-gpu-tests SOURCE "${haylen_tests_dir}/gpu/shaders/backdrop-shift.glsl" SYMBOL getBackdropShiftShader VARIANTS "sprite=" "sprite_lit=HAYLEN_LIT" "batch=HAYLEN_BATCH" "batch_lit=HAYLEN_BATCH,HAYLEN_LIT" "text=HAYLEN_TEXT" "text_lit=HAYLEN_TEXT,HAYLEN_LIT" "mesh=HAYLEN_MESH" "mesh_lit=HAYLEN_MESH,HAYLEN_LIT" "shape=HAYLEN_SHAPE" "shape_lit=HAYLEN_SHAPE,HAYLEN_LIT")
 haylen_enable_warnings(haylen-gpu-tests)
@@ -61,7 +61,7 @@ if(WIN32)
   target_sources(haylen-gpu-tests PRIVATE "${HAYLEN_ENGINE_DIR}/src/gpu/GpuPreferenceExports.cpp")
 endif()
 
-# An iOS or tvOS device starts no plain executable, so there the tests are a signed app that carries the reference images and keeps its results in its container, which `haylen.py` installs, launches and copies the results back from.
+# An iOS or tvOS device starts no plain executable, so there the tests are a signed app that carries the reference images and keeps its results in its container, which `haylen test --gpu` installs, launches and copies the results back from.
 if(HAYLEN_PLATFORM MATCHES "^(ios|tvos)$" AND NOT HAYLEN_CATALYST AND NOT CMAKE_OSX_SYSROOT MATCHES "[Ss]imulator")
   file(GLOB haylen_gpu_references CONFIGURE_DEPENDS "${haylen_tests_dir}/data/gpu/*.png")
   target_sources(haylen-gpu-tests PRIVATE
@@ -85,7 +85,7 @@ if(HAYLEN_PLATFORM MATCHES "^(ios|tvos)$" AND NOT HAYLEN_CATALYST AND NOT CMAKE_
   )
   target_link_libraries(haylen-gpu-tests PRIVATE GTest::gtest "-framework UIKit")
 elseif(ANDROID)
-  # The library goes into an APK that `haylen.py` packages with the reference images as assets, installs and launches, and whose results it copies back from the files of the app.
+  # The library goes into an APK that `haylen test --gpu` packages with the reference images as assets, installs and launches, and whose results it copies back from the files of the app.
   set_target_properties(haylen-gpu-tests PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
   target_sources(haylen-gpu-tests PRIVATE
     "${haylen_tests_dir}/gpu/android/GpuTestActivity.cpp"

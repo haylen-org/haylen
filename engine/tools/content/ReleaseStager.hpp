@@ -22,7 +22,7 @@ class ReleaseStager final {
         std::map<std::string, std::vector<std::string>> packs;
     };
 
-    // The rules of `app.json` name the pack of each asset, and without them no asset belongs to a pack.
+    // The rules of `haylen.json` name the pack of each asset, and without them no asset belongs to a pack.
     ReleaseStager(const ReleaseInspector& releaseInspector, core::AppConfig::Content rules);
 
     // Which content ships besides the packs: the shards the required files use, every shard, for an app without a server, or none, as for a web page, which downloads the manifests and the app domain before the app starts and streams all of its content.

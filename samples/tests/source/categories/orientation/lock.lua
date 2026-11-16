@@ -35,7 +35,7 @@ end
 function Lock:enter()
     self.wallpaper = areas.wallpaper()
     self:frame{
-        hint = 'The file "app.json" sets the orientation an app starts with, "landscape" in this project, and leaving this test locks the screen to landscape again. Browsers usually lock only a fullscreen page on a phone, so turn fullscreen on first there.',
+        hint = 'The file "haylen.json" sets the orientation an app starts with, "landscape" in this project, and leaving this test locks the screen to landscape again. Browsers usually lock only a fullscreen page on a phone, so turn fullscreen on first there.',
         code = Lock.code,
         focus = 'lock',
         content = {ui.row{gap = 24, grow = 1, align = 'stretch',

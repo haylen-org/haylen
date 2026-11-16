@@ -453,7 +453,7 @@ The grid algorithms cost what they touch:
 | `spatial2d.visibilityPolygon` | The square of the walls, since it casts a few rays at each wall end against every wall. |
 | `UnionFind` | Nearly constant per call. |
 
-The command `haylen bench --suite algorithms` times the AABB and k-d tree queries on the machine, as [the bench command](../tools/build.md#bench) describes.
+The command `haylen engine bench --suite algorithms` times the AABB and k-d tree queries on the machine, as [the bench command](../tools/benchmarks.md) describes.
 
 ## C++
 

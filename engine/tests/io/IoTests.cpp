@@ -71,7 +71,7 @@ class PackageTest : public ::testing::TestWithParam<std::string> {
   protected:
     std::unique_ptr<Package> makePackage() {
         const std::map<std::string, std::string> files = {
-            {"app.json", R"({"plugins": {"ads": {"parameters": {"testMode": true}}}})"}, {"source/main.lua", "print('hi')"}, {"content/maps/island.tmj", "{\"width\": 2}"}, {"content/audio/hit.ogg", "OggS"}, {"plugins/ads/plugin.json", R"({"id": "ads", "version": "1.0.0"})"}, {"plugins/ads/source/init.lua", "return {}"},
+            {"haylen.json", R"({"plugins": {"ads": {"parameters": {"testMode": true}}}})"}, {"source/main.lua", "print('hi')"}, {"content/maps/island.tmj", "{\"width\": 2}"}, {"content/audio/hit.ogg", "OggS"}, {"plugins/ads/plugin.json", R"({"id": "ads", "version": "1.0.0", "implementations": {"ios": "lua"}})"}, {"plugins/ads/source/init.lua", "return {}"},
         };
 
         if (GetParam() == "directory") {

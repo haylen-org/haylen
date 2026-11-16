@@ -43,7 +43,7 @@ A language that reads right to left declares it with `"@direction": "rightToLeft
 }
 ```
 
-The usual layout keeps one JSON file per language in a folder of the content, named after its language tag, such as `locale/en.json` and `locale/pt-BR.json`. The section `localization` of [`app.json`](haylen.md#localization) loads that folder before any Lua runs, and [`localization.loadFolder`](#localizationloadfolderfolder) loads any other folder. A folder that downloads when the app asks for it, such as the dialogue of an expansion that a rule of `content.delivery` delivers on demand, loads with [`localization.loadFolderAsync`](#localizationloadfolderasyncfolder).
+The usual layout keeps one JSON file per language in a folder of the content, named after its language tag, such as `locale/en.json` and `locale/pt-BR.json`. The section `localization` of [`haylen.json`](haylen.md#localization) loads that folder before any Lua runs, and [`localization.loadFolder`](#localizationloadfolderfolder) loads any other folder. A folder that downloads when the app asks for it, such as the dialogue of an expansion that a rule of `content.delivery` delivers on demand, loads with [`localization.loadFolderAsync`](#localizationloadfolderasyncfolder).
 
 ```json
 {
@@ -59,7 +59,7 @@ Adds every `.json` file under `folder` of the content, subfolders included, as t
 
 A synchronous load never waits for a download. So a file of the folder that is not on the device yet raises `The localization file "<path>" is not on the device yet, since it downloads when the app asks for it. Load its folder with "localization.loadFolderAsync", which brings it first.`, before any file of the folder is added. A file that is not valid JSON raises `The localization file "<path>" is not valid JSON.`. A file whose name is no language tag raises `The localization file "<path>" is not named after a language tag. Name it after its language, such as "en.json", "pt-BR.json" or "pt_BR.json".`. A table with a wrong entry raises the errors of [`localization.add`](#localizationaddlanguage-table).
 
-In development, a saved change to a file of a loaded folder adds the file again, so `localization.text` returns its new texts at once. The folder of `app.json` counts as loaded. A text that the file no longer has stays until the app restarts. A file that fails while an editor still writes it waits for the next save, with a warning in the log. The [Lua guide](../core/lua.md#hot-reload) explains hot reload.
+In development, a saved change to a file of a loaded folder adds the file again, so `localization.text` returns its new texts at once. The folder of `haylen.json` counts as loaded. A text that the file no longer has stays until the app restarts. A file that fails while an editor still writes it waits for the next save, with a warning in the log. The [Lua guide](../core/lua.md#hot-reload) explains hot reload.
 
 ```lua
 local localization = require('haylen.localization')
@@ -105,7 +105,7 @@ localization.add('en', {menu = {settings = 'Settings'}})
 
 ### localization.languages()
 
-Returns the list of every language added, in the order in which each was first added. The folder of `app.json` adds its languages first, in the order of their file names.
+Returns the list of every language added, in the order in which each was first added. The folder of `haylen.json` adds its languages first, in the order of their file names.
 
 ```lua
 local localization = require('haylen.localization')
@@ -137,7 +137,7 @@ The current language is the added language closest to what is wanted. While the 
 2. The tag without its last subtag, again and again, so `zh-Hans-CN` finds `zh-Hans` and then `zh`, and `pt-BR` finds `pt`.
 3. Another region of the same language, the first one added, so `pt-PT` finds `pt-BR` and `es` finds `es-MX`. A tag with a script only matches languages without a script or with the same one, so `zh-Hant-HK` finds `zh-Hant-TW` but never `zh-Hans`.
 
-When no wanted tag finds a language, the current language is the fallback language, which is the first language added until [`localization.setFallback`](#localizationsetfallbacklanguage) or `app.json` names another. The event [`languageChanged`](#events) tells the app of every change of the current language.
+When no wanted tag finds a language, the current language is the fallback language, which is the first language added until [`localization.setFallback`](#localizationsetfallbacklanguage) or `haylen.json` names another. The event [`languageChanged`](#events) tells the app of every change of the current language.
 
 ### localization.setLanguage(tag)
 
@@ -155,7 +155,7 @@ end
 
 ### localization.followSystem()
 
-Lets the current language follow the languages of the system again, after a call of `localization.setLanguage`. Every app starts this way, unless the field `localization.language` of `app.json` names a language.
+Lets the current language follow the languages of the system again, after a call of `localization.setLanguage`. Every app starts this way, unless the field `localization.language` of `haylen.json` names a language.
 
 ```lua
 local localization = require('haylen.localization')

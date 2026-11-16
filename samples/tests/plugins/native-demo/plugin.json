@@ -1,10 +1,10 @@
 {
+    "interface": 1,
     "id": "native-demo",
     "name": "Native Demo",
     "version": "1.0.0",
     "description": "Exercises every capability of native plugins and simulates the SDKs of cameras, maps, stores, ads and sign-in with the APIs of each platform alone.",
-    "platforms": ["ios", "catalyst", "tvos", "visionos", "macos", "android", "web", "windows", "linux"],
-    "requires": [],
+    "implementations": {"ios": "native", "catalyst": "native", "tvos": "native", "visionos": "native", "macos": "native", "android": "native", "web": "native", "windows": "native", "linux": "native"},
     "permissions": ["camera", "microphone", "location", "notifications"],
     "parameters": {
         "greeting": {"type": "string", "default": "Hello from the native demo", "description": "Text of the native banner."},
@@ -16,35 +16,36 @@
         "locationUsage": {"type": "string", "platforms": ["ios", "catalyst", "tvos", "visionos", "macos"], "default": "The Native Demo plugin reads the location to simulate the location and the map of an SDK.", "description": "Text of the location permission prompt on Apple platforms."},
         "macDevices": {"type": "boolean", "platforms": ["macos"], "default": true, "description": "Whether the macOS app signs with the entitlements of the hardened runtime that the camera, the microphone and the location need."}
     },
-    "apple": {
-        "class": "NativeDemoPlugin",
-        "sources": "apple",
-        "frameworks": ["UserNotifications.framework", "AVFoundation.framework", "CoreLocation.framework", "MapKit.framework"],
-        "infoPlist": {
-            "CFBundleURLTypes": [{"CFBundleURLName": "com.haylen.plugins.native-demo", "CFBundleURLSchemes": ["${urlScheme}"]}],
-            "NSCameraUsageDescription": "${cameraUsage}",
-            "NSMicrophoneUsageDescription": "${microphoneUsage}",
-            "NSLocationWhenInUseUsageDescription": "${locationUsage}",
-            "NSLocationUsageDescription": "${locationUsage}"
+    "contributions": [
+        {"type": "appleClass", "platforms": ["ios", "catalyst", "tvos", "visionos", "macos"], "name": "NativeDemoPlugin"},
+        {"type": "appleSources", "platforms": ["ios", "catalyst", "tvos", "visionos", "macos"], "path": "apple"},
+        {"type": "framework", "platforms": ["ios", "catalyst", "tvos", "visionos", "macos"], "name": "UserNotifications.framework"},
+        {"type": "framework", "platforms": ["ios", "catalyst", "tvos", "visionos", "macos"], "name": "AVFoundation.framework"},
+        {"type": "framework", "platforms": ["ios", "catalyst", "tvos", "visionos", "macos"], "name": "CoreLocation.framework"},
+        {"type": "framework", "platforms": ["ios", "catalyst", "tvos", "visionos", "macos"], "name": "MapKit.framework"},
+        {
+            "type": "infoPlist",
+            "platforms": ["ios", "catalyst", "tvos", "visionos", "macos"],
+            "values": {
+                "CFBundleURLTypes": [{"CFBundleURLName": "com.haylen.plugins.native-demo", "CFBundleURLSchemes": ["${urlScheme}"]}],
+                "NSLocationWhenInUseUsageDescription": "${locationUsage}",
+                "NSLocationUsageDescription": "${locationUsage}"
+            }
         },
-        "entitlements": {
-            "com.apple.security.device.camera": "${macDevices}",
-            "com.apple.security.device.audio-input": "${macDevices}",
-            "com.apple.security.personal-information.location": "${macDevices}"
-        }
-    },
-    "android": {
-        "module": "android",
-        "placeholders": {"nativeDemoUrlScheme": "${urlScheme}"}
-    },
-    "web": {
-        "module": "web/native-demo.js"
-    },
-    "desktop": {
-        "urlSchemes": ["${urlScheme}"]
-    },
-    "native": {
-        "cmake": "native",
-        "platforms": ["macos", "windows", "linux"]
-    }
+        {"type": "infoPlist", "platforms": ["ios", "catalyst", "visionos", "macos"], "values": {"NSCameraUsageDescription": "${cameraUsage}", "NSMicrophoneUsageDescription": "${microphoneUsage}"}},
+        {
+            "type": "entitlements",
+            "platforms": ["macos"],
+            "values": {
+                "com.apple.security.device.camera": "${macDevices}",
+                "com.apple.security.device.audio-input": "${macDevices}",
+                "com.apple.security.personal-information.location": "${macDevices}"
+            }
+        },
+        {"type": "gradleModule", "platforms": ["android"], "path": "android"},
+        {"type": "manifestPlaceholder", "platforms": ["android"], "name": "nativeDemoUrlScheme", "value": "${urlScheme}"},
+        {"type": "webModule", "platforms": ["web"], "path": "web/native-demo.js"},
+        {"type": "urlScheme", "platforms": ["windows", "linux"], "scheme": "${urlScheme}"},
+        {"type": "nativeLibrary", "platforms": ["macos", "windows", "linux"], "cmake": "native"}
+    ]
 }

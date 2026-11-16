@@ -1,4 +1,4 @@
--- The function `platform.plugins()` lists the plugins of `app.json` with their version and whether their native part runs on this platform, which the headless host and any platform without the native part report as false.
+-- The function `platform.plugins()` lists the plugins of `haylen.json` with their version and whether their native part runs on this platform, which the headless host and any platform without the native part report as false.
 local haylen = require('haylen')
 local platform = require('haylen.platform')
 local ui = require('haylen.ui')
@@ -25,7 +25,7 @@ function Info:enter()
         },
         showcase = {
             ui.card{grow = 1, align = 'stretch', gap = 12,
-                ui.label{text = 'The plugins of "app.json"', font = 'heading'},
+                ui.label{text = 'The plugins of "haylen.json"', font = 'heading'},
                 ui.table{id = 'plugins', columns = {{text = 'Plugin'}, {text = 'Version', width = 180}, {text = 'Native part', width = 220}}, rows = rows},
             },
         },

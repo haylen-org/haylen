@@ -1,10 +1,10 @@
 # 🔑 Sign-In
 
-The local plugin of [Tiny Island](../../README.md) that signs the player in with the account of an Android device: Credential Manager answers on Android and the identity service of the same account answers in the browser. The game lists it in its `app.json` and calls it from its settings screen, and `haylen.py` builds it into the project of each platform as the [plugin guide](../../../../../docs/platform/plugins.md) describes.
+The local plugin of [Tiny Island](../../README.md) that signs the player in with the account of an Android device: Credential Manager answers on Android and the identity service of the same account answers in the browser. The game lists it in its `haylen.json` and calls it from its settings screen, and the backends of Android and the web build it into the projects they generate, as the [plugin guide](../../../../../docs/platform/plugins.md) describes.
 
 ## Setup
 
-Both platforms sign in with the web client id that the identity service of the account gives the game, which `app.json` gives the plugin:
+Both platforms sign in with the web client id that the identity service of the account gives the game, which `haylen.json` gives the plugin:
 
 ```json
 {

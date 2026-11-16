@@ -12,7 +12,7 @@ desktop.__index = desktop
 -- Only the desktops of Windows, macOS and Linux float a frameless window above the others, as the window reference says. Everywhere else, such as on a web page, the window fills the page and the quest shows in the window mode alone.
 desktop.stripPlatforms = {windows = true, macos = true, linux = true}
 
--- The strip mode comes from `app.json`, so on a desktop the app starts in whatever mode the window has. The strip follows the taskbar and the displays while the owner lives.
+-- The strip mode comes from `haylen.json`, so on a desktop the app starts in whatever mode the window has. The strip follows the taskbar and the displays while the owner lives.
 function desktop.new(owner)
     local canStrip = desktop.stripPlatforms[haylen.platform] == true
     local self = setmetatable({canStrip = canStrip, strip = canStrip and not window.decorated()}, desktop)

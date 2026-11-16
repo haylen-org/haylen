@@ -744,7 +744,7 @@ void ContentManager::check(std::function<void(std::optional<Update>, std::option
     }
 
     if (!updater || !settings.updates) {
-        throw std::logic_error("The app names no content server, so it has no updates. Name one in \"content.updates\" of \"app.json\".");
+        throw std::logic_error("The app names no content server, so it has no updates. Name one in \"content.updates\" of \"haylen.json\".");
     }
 
     status = Status::Checking;

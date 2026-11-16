@@ -27,7 +27,7 @@ class ReleaseStagerTest : public ::testing::Test {
     static constexpr std::string_view kApp = R"({"name": "Packs", "identifier": "com.haylen.tests", "content": {"delivery": [{"match": "forest/**", "pack": "forest"}, {"match": "music/**", "mode": "prefetch"}]}})";
 
     ReleaseStagerTest() {
-        files.emplace("app.json", test::TestFiles::bytes(std::string(kApp)));
+        files.emplace("haylen.json", test::TestFiles::bytes(std::string(kApp)));
         files.emplace("source/main.lua", test::TestFiles::bytes("return {level = 1}"));
         files.emplace("source/scenes/menu.lua", test::TestFiles::bytes("return {title = 'menu'}"));
         files.emplace("content/data/config.json", test::TestFiles::bytes(R"({"level": 1})"));

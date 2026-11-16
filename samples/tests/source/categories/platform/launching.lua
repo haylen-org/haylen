@@ -46,7 +46,7 @@ function Launching:enter()
                 },
                 ui.label{text = string.format('"%s", "%s", %d by %d in any orientation.', manifest.name, manifest.identifier, manifest.design.width, manifest.design.height), color = 'textMuted'},
                 ui.column{gap = 8,
-                    ui.row{gap = 12, ui.icon{image = 'plugins/file.svg', size = 36, color = 'accentText'}, ui.label{text = Launching.folder .. '/app.json', font = 'monospace'}},
+                    ui.row{gap = 12, ui.icon{image = 'plugins/file.svg', size = 36, color = 'accentText'}, ui.label{text = Launching.folder .. '/haylen.json', font = 'monospace'}},
                     ui.row{gap = 12, ui.icon{image = 'plugins/file.svg', size = 36, color = 'accentText'}, ui.label{text = Launching.folder .. '/source/main.lua', font = 'monospace'}},
                 },
             },
@@ -59,7 +59,7 @@ function Launching:enter()
                 ui.scroll{id = 'answersScroll', grow = 1, height = 0, focusable = false, visible = false, ui.list{id = 'answers', items = {}}},
             },
         }},
-        code = "storage.writeJson('launched-app/app.json', manifest)\nstorage.writeText('launched-app/source/main.lua', main)\nhaylen.launch(storage.root() .. '/launched-app')  -- Its quit comes back here.",
+        code = "storage.writeJson('launched-app/haylen.json', manifest)\nstorage.writeText('launched-app/source/main.lua', main)\nhaylen.launch(storage.root() .. '/launched-app')  -- Its quit comes back here.",
     }
 end
 
@@ -73,7 +73,7 @@ end
 
 -- Writes the package of the small app into the storage, where a downloaded package would land.
 function Launching:launch()
-    storage.writeJson(Launching.folder .. '/app.json', Launching.manifest)
+    storage.writeJson(Launching.folder .. '/haylen.json', Launching.manifest)
     storage.writeText(Launching.folder .. '/source/main.lua', Launching.main)
     local path = storage.root() .. '/' .. Launching.folder
     self:log('Launching the package at "%s".', path)

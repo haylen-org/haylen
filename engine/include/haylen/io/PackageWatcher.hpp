@@ -11,7 +11,7 @@
 
 namespace haylen::io {
 
-// Notices the files of `app.json`, `source`, `content` and the `plugin.json` and `source` folder of every plugin that were added, changed or removed in a package folder since the previous scan, for reloading an app while it is being made. Hidden files, backup files and files under the source folders that are not Lua never count, so the swap and backup files of editors change nothing.
+// Notices the files of `haylen.json`, `source`, `content` and the `plugin.json` and `source` folder of every plugin that were added, changed or removed in a package folder since the previous scan, for reloading an app while it is being made. Hidden files, backup files and files under the source folders that are not Lua never count, so the swap and backup files of editors change nothing.
 class PackageWatcher final {
   public:
     // How long a scan that found changes waits before it looks at them again, so a file that an editor or a copy is still writing waits for the next scan.
@@ -23,7 +23,7 @@ class PackageWatcher final {
     // Returns the changed paths relative to the folder, in sorted order, leaving out the files that were still changing.
     [[nodiscard]] std::vector<std::string> scan();
 
-    // Tells whether a package path is one whose changes count: `app.json`, a file under `content`, a Lua module under `source`, and the `plugin.json` and the Lua modules under `source` of a plugin, none of them hidden or a backup.
+    // Tells whether a package path is one whose changes count: `haylen.json`, a file under `content`, a Lua module under `source`, and the `plugin.json` and the Lua modules under `source` of a plugin, none of them hidden or a backup.
     [[nodiscard]] static bool isWatched(std::string_view path);
 
   private:

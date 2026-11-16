@@ -235,8 +235,8 @@ TEST_F(DebugDrawingTest, SwitchesDrawingsFromLua) {
     EXPECT_NE(fixture.lua("debugging.addDrawer('x', function() end, {after = 1})").find("Unknown option \"after\""), std::string::npos);
 }
 
-TEST(DebugDrawingConfigTest, StartsWithTheDrawingsOfTheAppJson) {
-    test::EngineFixture fixture({{"app.json", R"({"name": "Drawings", "identifier": "com.haylen.drawings", "debug": {"drawings": ["physics", "bounds"]}})"}});
+TEST(DebugDrawingConfigTest, StartsWithTheDrawingsOfTheHaylenJson) {
+    test::EngineFixture fixture({{"haylen.json", R"({"name": "Drawings", "identifier": "com.haylen.drawings", "debug": {"drawings": ["physics", "bounds"]}})"}});
     EXPECT_EQ(fixture.engine().getPlugin<plugins::DebugPlugin>().getDrawings(), (std::vector<std::string>{"bounds", "physics"}));
     EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"debug": {"drawings": [""]}})")), std::invalid_argument);
 }

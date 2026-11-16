@@ -407,7 +407,7 @@ The stress sample `samples/stress/streamed-map` streams the chunks of one infini
 
 The island of the sample Tiny Island lives in `samples/games/tiny-island/content/maps/`, as `island.tmj` and three external tilesets. The tool `samples/games/tiny-island/tools/generate-island-map.py` writes all of them from seeded noise, and they open and edit in Tiled 1.12. The file `samples/games/tiny-island/source/systems/island.lua` loads the map with the `linear` filter, because the art is painted in high definition, and gives the rest of the game what it needs from it.
 
-The map is orthogonal, 56 by 36 cells of 64 pixels. Its background color is the water color `#2fb3c4`, which matches the `clearColor` in `app.json`, so the sea fills the screen around the map.
+The map is orthogonal, 56 by 36 cells of 64 pixels. Its background color is the water color `#2fb3c4`, which matches the `clearColor` in `haylen.json`, so the sea fills the screen around the map.
 
 | Layer | Kind | Content |
 | --- | --- | --- |

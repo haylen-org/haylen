@@ -1,4 +1,4 @@
--- The rule "delivery/prefetched/**" of "app.json" prefetches the tracks of the folder: a release downloads them in the background once the app runs, before anything asks for them. "content.prefetch" brings assets onto the device on request without decoding them, so they cost storage and no memory, and its progress function receives the bytes as they arrive. Each track shows where it is, and the bar the bytes of all of them.
+-- The rule "delivery/prefetched/**" of "haylen.json" prefetches the tracks of the folder: a release downloads them in the background once the app runs, before anything asks for them. "content.prefetch" brings assets onto the device on request without decoding them, so they cost storage and no memory, and its progress function receives the bytes as they arrive. Each track shows where it is, and the bar the bytes of all of them.
 local assets = require('haylen.assets')
 local content = require('haylen.content')
 local haylen = require('haylen')
@@ -9,7 +9,7 @@ local Test = require('harness.test')
 local Prefetch = haylen.class('Prefetch', Test)
 
 Prefetch.code = [[
--- The file "app.json" holds "content": {"delivery": [{"match": "delivery/prefetched/**", "mode": "prefetch"}]}.
+-- The file "haylen.json" holds "content": {"delivery": [{"match": "delivery/prefetched/**", "mode": "prefetch"}]}.
 print(content.isLocal('delivery/prefetched/track-1.json'))
 local done, err = content.prefetch(paths, function(progress) print(progress.receivedBytes, progress.totalBytes) end, {owner = self}):await()
 local track = assets.json('delivery/prefetched/track-1.json')  -- Loads at once, since it is on the device.]]

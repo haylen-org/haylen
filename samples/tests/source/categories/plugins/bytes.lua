@@ -1,4 +1,4 @@
--- Bytes cross to the native part and back as byte buffers next to the JSON of the call, never as text, and the native part paints a picture and returns it as the bytes of a PNG file, which becomes a texture that the UI shows. Swift paints it with CoreGraphics, Kotlin with a Bitmap, JavaScript with a canvas and C pixel by pixel with a PNG encoder of its own.
+-- Bytes cross to the native part and back as byte buffers next to the JSON of the call, never as text, and the native part paints a picture and returns it as the bytes of a PNG file, which becomes a texture that the UI shows. Swift paints it with CoreGraphics, Kotlin with a Bitmap, JavaScript with a canvas and C++ pixel by pixel with a PNG encoder of its own.
 local graphics = require('haylen.graphics')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
@@ -44,7 +44,7 @@ function Bytes:enter()
         focus = 'run',
         controls = {
             ui.button{id = 'run', text = 'Run the checks again', variant = 'primary', onClick = function() self:run() end},
-            ui.label{text = 'The function "platform.bytes" marks a string that crosses as bytes, and every byte buffer of an answer arrives as a Lua string. Swift reads and answers "Data", Kotlin "ByteArray", JavaScript "Uint8Array" and C arrays of "HaylenNativeBuffer".', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'The function "platform.bytes" marks a string that crosses as bytes, and every byte buffer of an answer arrives as a Lua string. Swift reads and answers "Data", Kotlin "ByteArray", JavaScript "Uint8Array" and C++ spans of "HaylenNativeBuffer".', color = 'textMuted', font = 'caption'},
         },
         showcase = {
             ui.card{grow = 1, align = 'stretch', gap = 12,

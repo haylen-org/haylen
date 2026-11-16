@@ -200,7 +200,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         }
     }
 
-    // The meta-data `dev.haylen.statusBar` of the activity, which the template fills from `app.json`, launches the app with its status bar until the engine applies the same value, and without it the status bar starts hidden.
+    // The meta-data `dev.haylen.statusBar` of the activity, which the template fills from `haylen.json`, launches the app with its status bar until the engine applies the same value, and without it the status bar starts hidden.
     private int launchStatusBar() {
         try {
             Bundle metaData = getPackageManager().getActivityInfo(getComponentName(), PackageManager.GET_META_DATA).metaData;
@@ -380,7 +380,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     @Override
     public void onInputDeviceChanged(int deviceId) {}
 
-    // Called from the frame thread of the engine with 0 for landscape, 1 for portrait and 2 for any orientation, the values `app.json` gives the manifest.
+    // Called from the frame thread of the engine with 0 for landscape, 1 for portrait and 2 for any orientation, the values `haylen.json` gives the manifest.
     static void lockOrientation(int value) {
         HaylenActivity activity = HaylenBridge.activity();
         if (activity == null) {
@@ -560,7 +560,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         return ("The app lacks " + internet.description() + ", which network access needs on Android. " + internet.instructions()).getBytes(StandardCharsets.UTF_8);
     }
 
-    // Called from the frame thread of the engine when an app starts, with the WebSocket address of the development server that `haylen.py run` launches the app with, or nothing. Only a debuggable app reads it, so an app that ships never runs in development.
+    // Called from the frame thread of the engine when an app starts, with the WebSocket address of the development server that `haylen app run` launches the app with, or nothing. Only a debuggable app reads it, so an app that ships never runs in development.
     static byte[] developmentServer() {
         HaylenActivity activity = HaylenBridge.activity();
         if (activity == null || (activity.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) == 0) {

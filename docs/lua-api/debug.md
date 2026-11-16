@@ -14,7 +14,7 @@ The engine shows its statistics in one of three modes:
 
 | Mode | What shows |
 | --- | --- |
-| `'off'` | Nothing. Every app starts this way, unless `app.json` picks another mode. |
+| `'off'` | Nothing. Every app starts this way, unless `haylen.json` picks another mode. |
 | `'compact'` | One line for each [compact item](#compact-items) that is on, in the bottom left corner of the safe area. By default those are the frame rate, the draw calls and the geometry. The 2D renderer draws the lines above everything else, scene transitions and the error screen included, so they work in every app, with or without UI. The numbers change four times per second, so they stay readable, and the frames in between allocate nothing. |
 | `'full'` | The statistics window, drawn over the app. Its close button turns the statistics off. |
 
@@ -30,7 +30,7 @@ The statistics window shows:
 - The reads and downloads of the [content](content.md#contentstats), the object counts, and the signals and event listeners with their emissions.
 - Warnings about listeners whose owner is gone, the monitors with their graphs, and the recent log.
 
-The key F3 cycles through `off`, `compact` and `full`, and so does the key `s` in the terminal of `haylen run`, which reaches a phone or a TV too. So they also open the statistics window, where the player ticks what the drawings and the compact mode show. The window moves by its title bar and resizes by its corner, with the mouse or a finger, stays inside the safe area, and scrolls under a finger that drags its content. The function `debug.setToggleKey` picks another key, and `debug.setStatsMode` picks a mode from Lua. The setting `"debug": {"stats": "compact"}` in `app.json` starts the app in a mode, as the [Lua guide](../core/lua.md#appjson) lists. The statistics describe the frame before, because the renderer knows its numbers only once it has submitted a frame.
+The key F3 cycles through `off`, `compact` and `full`, and so does the key `s` in the terminal of `haylen app run`, which reaches a phone or a TV too. So they also open the statistics window, where the player ticks what the drawings and the compact mode show. The window moves by its title bar and resizes by its corner, with the mouse or a finger, stays inside the safe area, and scrolls under a finger that drags its content. The function `debug.setToggleKey` picks another key, and `debug.setStatsMode` picks a mode from Lua. The setting `"debug": {"stats": "compact"}` in `haylen.json` starts the app in a mode, as the [Lua guide](../core/lua.md#haylenjson) lists. The statistics describe the frame before, because the renderer knows its numbers only once it has submitted a frame.
 
 ### Compact items
 
@@ -47,7 +47,7 @@ The compact mode shows one line for each item that is on, in this order:
 | `'particles'` | The live particles. |
 | `'audio'` | The voices that play. |
 
-The first three are on, unless the list `"debug": {"statsItems": ["frameRate", "physics"]}` of `app.json` picks others. The checkboxes of the statistics window and the functions below change them while the app runs.
+The first three are on, unless the list `"debug": {"statsItems": ["frameRate", "physics"]}` of `haylen.json` picks others. The checkboxes of the statistics window and the functions below change them while the app runs.
 
 ### debug.setStatsMode(mode)
 
@@ -180,7 +180,7 @@ Drawings show what the app draws and simulates. They draw over every canvas that
 | `'bounds'` | An outline around every sprite, sprite of a batch, nine-slice piece and baked batch, named after the path of the texture that the assets loaded it from, and a fainter outline around every text block, in every canvas. |
 | Any other name | The drawers that the app or a plugin adds with [`debug.addDrawer`](#debugadddrawername-fn-options). |
 
-The key F4 turns every drawing off while any is on, and otherwise turns on every drawing that the engine and the app know, and so does the key `p` in the terminal of `haylen run`. The function `debug.setDrawKey` picks another key, and `debug.setDrawing` switches one drawing from Lua. The setting `"debug": {"drawings": ["physics", "bounds"]}` in `app.json` starts the app with drawings on, as the [Lua guide](../core/lua.md#appjson) lists. When an app gives both shortcuts the same key, the key of the statistics wins.
+The key F4 turns every drawing off while any is on, and otherwise turns on every drawing that the engine and the app know, and so does the key `p` in the terminal of `haylen app run`. The function `debug.setDrawKey` picks another key, and `debug.setDrawing` switches one drawing from Lua. The setting `"debug": {"drawings": ["physics", "bounds"]}` in `haylen.json` starts the app with drawings on, as the [Lua guide](../core/lua.md#haylenjson) lists. When an app gives both shortcuts the same key, the key of the statistics wins.
 
 ### debug.setDrawing(name, enabled)
 
@@ -283,7 +283,7 @@ The statistics count the objects of every type that were created, are alive and 
 
 ### debug.setObjectEvents(enabled)
 
-Turns the events `objectCreated` and `objectDestroyed` on or off. The setting `"debug": {"objectEvents": true}` in `app.json` turns them on from the start.
+Turns the events `objectCreated` and `objectDestroyed` on or off. The setting `"debug": {"objectEvents": true}` in `haylen.json` turns them on from the start.
 
 ```lua
 local debug = require('haylen.debug')
@@ -577,14 +577,14 @@ A GPU capture records every command that the GPU device of the app runs during a
 
 | Graphics API | Capture tool | File |
 | --- | --- | --- |
-| Metal | The frame capture of Metal, which the Debug runs of `haylen run` turn on and Xcode opens. | `.gputrace` |
+| Metal | The frame capture of Metal, which the Debug runs of `haylen app run` turn on and Xcode opens. | `.gputrace` |
 | Direct3D 12 | PIX when PIX launched the app for a GPU capture, or else RenderDoc when RenderDoc launched the app. | `.wpix` or `.rdc` |
 | Direct3D 11, Vulkan, OpenGL and OpenGL ES | RenderDoc when RenderDoc launched the app. | `.rdc` |
 | WebGPU and WebGL2 | None, since browsers give a page no capture tool. | None |
 
 Captures go to the folder `gpu-captures` of the [storage folder](storage.md#the-storage-folder) of the app, named after the time they started, such as `gpu-captures/2026-11-03-14-05-09-123.gputrace`. RenderDoc adds the number of the first frame it captured to the name, such as `2026-11-03-14-05-09-123_frame482.rdc`. A capture starts at once and ends after the given number of frames was submitted, so it records the rest of the frame that asked for it and the frames after it. Each capture that ends writes its path into the log, and a development run reports it to the development server, whose terminal prints it.
 
-Besides this function, the console command `gpuCapture`, the key `g` of [`haylen run`](../tools/distribution.md#while-the-app-runs) and the command [`haylen capture`](../tools/distribution.md#capture) ask the app for a capture.
+Besides this function, the console command `gpuCapture`, the key `g` of [`haylen app run`](../tools/commands.md) and the command [`haylen app capture`](../tools/commands.md) ask the app for a capture.
 
 ### debug.gpuCaptureTool()
 
@@ -684,11 +684,11 @@ The developer console runs commands that the engine, plugins and the app registe
 
 The lines come from outside the app, so a phone, a TV and a browser take them the same way a desktop does:
 
-- In a Debug run of `haylen run`, the key `d` opens the console in the terminal, with a line at the bottom that the log of the app never mixes with. Each line runs in every connected app, and the result prints above the line. Tab completes the names of the commands and the values of boolean arguments, the arrows go through the lines typed before, and Escape goes back to the keys of the run, as [the developer console](../tools/distribution.md#the-developer-console) of the run describes.
+- In a Debug run of `haylen app run`, the key `d` opens the console in the terminal, with a line at the bottom that the log of the app never mixes with. Each line runs in every connected app, and the result prints above the line. Tab completes the names of the commands and the values of boolean arguments, the arrows go through the lines typed before, and Escape goes back to the keys of the run, as the [distribution guide](../tools/distribution.md) describes for the console of the run.
 - A web page runs a line with the request `console` of the [editor contract](../tools/build.md#the-editor-contract).
 - The app runs a line with [`debug.runCommand`](#debugruncommandline), such as from a cheat menu of its own.
 
-The console takes lines from outside the app in development runs, and `"debug": {"console": true}` in `app.json` turns that on in any other run. While it is off, a line from outside fails with an error, but the app still registers and runs its own commands with `debug.runCommand`.
+The console takes lines from outside the app in development runs, and `"debug": {"console": true}` in `haylen.json` turns that on in any other run. While it is off, a line from outside fails with an error, but the app still registers and runs its own commands with `debug.runCommand`.
 
 The engine registers these commands:
 
@@ -781,7 +781,7 @@ end
 
 ### debug.consoleEnabled()
 
-Returns whether the console takes lines from outside the app and the inspector opens, which a development run or `debug.console` in `app.json` decides.
+Returns whether the console takes lines from outside the app and the inspector opens, which a development run or `debug.console` in `haylen.json` decides.
 
 ```lua
 local debug = require('haylen.debug')
@@ -804,7 +804,7 @@ A table lists its keys, at most 200 of them, in order, integer keys first, and d
 
 The inspector window shows the roots as rows of a table, with the scenes open. A tap or a click on the name of a row opens the values it holds below it. A boolean shows a check box, and a number or a string shows a field, which sets the value once Enter confirms it or the field lets go of the focus. An edit that the setter refuses shows its error at the top of the window. The open rows read their values again four times per second, so the window follows the app as it runs.
 
-The window opens with F2, which `debug.setInspectorKey` changes, with the key `i` in the terminal of `haylen run`, which reaches a phone or a TV too, with the console command `inspector` or with `debug.setInspectorVisible(true)`. It moves by its title bar and resizes by its corner, with the mouse or a finger, stays inside the safe area, and scrolls under a finger that drags its rows. It follows the console: it is on in development runs and with `"debug": {"console": true}` in `app.json`. The console commands `inspect` and `set` reach the same values as text. Nothing of the inspector runs while its window is closed. The inspector does not pick objects on the screen or move them with handles.
+The window opens with F2, which `debug.setInspectorKey` changes, with the key `i` in the terminal of `haylen app run`, which reaches a phone or a TV too, with the console command `inspector` or with `debug.setInspectorVisible(true)`. It moves by its title bar and resizes by its corner, with the mouse or a finger, stays inside the safe area, and scrolls under a finger that drags its rows. It follows the console: it is on in development runs and with `"debug": {"console": true}` in `haylen.json`. The console commands `inspect` and `set` reach the same values as text. Nothing of the inspector runs while its window is closed. The inspector does not pick objects on the screen or move them with handles.
 
 ### debug.watch(name, value)
 
@@ -860,7 +860,7 @@ end
 
 ### debug.setInspectorVisible(visible)
 
-Shows or hides the inspector window. Showing it while the console is off raises `The inspector is off outside development runs. Set "debug.console" to true in "app.json" to turn it on.`.
+Shows or hides the inspector window. Showing it while the console is off raises `The inspector is off outside development runs. Set "debug.console" to true in "haylen.json" to turn it on.`.
 
 ```lua
 local debug = require('haylen.debug')
@@ -951,7 +951,7 @@ end)
 | `A trace is already recording. Stop it with "debug.stopTraceAsync" before starting another.` | `debug.startTrace` while a trace records. |
 | `A trace records at least 1 frame.`, `A trace holds at least 1 span.` | `debug.startTrace` with `frames` or `capacity` below 1. |
 | `No trace is recording. Start one with "debug.startTrace".` | `debug.stopTraceAsync` without a trace. |
-| `The console is off outside development runs. Set "debug.console" to true in "app.json" to turn it on.` | A line from outside the app while the console is off. |
-| `The inspector is off outside development runs. Set "debug.console" to true in "app.json" to turn it on.` | `debug.setInspectorVisible(true)` while the console is off. |
+| `The console is off outside development runs. Set "debug.console" to true in "haylen.json" to turn it on.` | A line from outside the app while the console is off. |
+| `The inspector is off outside development runs. Set "debug.console" to true in "haylen.json" to turn it on.` | `debug.setInspectorVisible(true)` while the console is off. |
 | The messages of [`debug.addCommand`](#debugaddcommandname-fn-options) and [`debug.runCommand`](#debugruncommandline) | The console. |
 | The messages of [`debug.inspect`](#debuginspectpath) | The inspector. |

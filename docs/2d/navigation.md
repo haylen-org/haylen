@@ -446,7 +446,7 @@ Every algorithm runs in C++, so one call costs far less than the same work in Lu
 | `SteeringAgent` | One Lua call per behavior per agent per frame. | Steer tens or hundreds of agents, and use a crowd for more. |
 | `Crowd` | The agents times their `maxNeighbors`, spread over the job system. | Lower `neighborDistance` and `maxNeighbors` for dense crowds. |
 
-The command `haylen bench --suite algorithms` times A\*, weighted A\*, jump point search, flow fields, hierarchical path finding, navigation mesh builds and paths, and crowd steps on the machine, as [the bench command](../tools/build.md#bench) describes.
+The command `haylen engine bench --suite algorithms` times A\*, weighted A\*, jump point search, flow fields, hierarchical path finding, navigation mesh builds and paths, and crowd steps on the machine, as [the bench command](../tools/benchmarks.md) describes.
 
 ## C++
 

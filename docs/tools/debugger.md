@@ -4,21 +4,21 @@ This guide explains the Lua debugger of Haylen: how an editor attaches to an app
 
 ## How it works
 
-The engine runs the debugger itself, inside the development session of the app. An editor talks to it with the Debug Adapter Protocol, the protocol that most editors use for their debuggers. The editor attaches to a TCP port of your machine, and the development server of `haylen.py` carries every message between that port and the app over the connection that also pushes your saved files.
+The engine runs the debugger itself, inside the development session of the app. An editor talks to it with the Debug Adapter Protocol, the protocol that most editors use for their debuggers. The editor attaches to a TCP port of your machine, and the development server of `haylen app run` carries every message between that port and the app over the connection that also pushes your saved files.
 
 ```text
-editor ── TCP port 4711 ── haylen.py run ── development connection ── app
+editor ── TCP port 4711 ── haylen app run ── development connection ── app
 ```
 
 The app answers a request whose field has another type than the protocol gives it with an error that names the field, such as `The field "line" of the request must be an integer of 32 bits.`, and nothing of that request takes effect.
 
-The same path reaches every platform: the desktop player, the iOS, tvOS and visionOS simulators, Mac Catalyst, the Android emulator through the `adb reverse` that the development server already sets up, iPhones, iPads, Apple TVs and Android devices on your network, and the web page. So you never forward a port yourself.
+The same path reaches every platform: the desktop player, the iOS, tvOS and visionOS simulators, Mac Catalyst, the Android emulator through the `adb reverse` that the Android backend already sets up, iPhones, iPads, Apple TVs and Android devices on your network, and the web page. So you never forward a port yourself.
 
-Only an app in development has a debugger. That is an app that `haylen.py run` starts in the `Debug` configuration, which passes `--dev-server`, or a web page that `run --platform web` serves. An app built from the templates without `haylen.py run`, a shipped app and a protected release never run in development, so their Lua has no hooks and no port listens for an editor.
+Only an app in development has a debugger. That is an app that `haylen app run` starts in the `Debug` configuration, which passes `--dev-server`, or a web page that `haylen app run --target web` serves. An app that starts without `haylen app run`, a shipped app and a protected release never run in development, so their Lua has no hooks and no port listens for an editor.
 
 ## Attach an editor
 
-Start the app with `haylen.py run`. The summary of the run names the port that the debugger listens on:
+Start the app with `haylen app run`. The summary of the run names the port that the debugger listens on:
 
 ```text
 Debugger        Attach an editor to port 4711 of this machine
@@ -27,10 +27,10 @@ Debugger        Attach an editor to port 4711 of this machine
 The option `--debugger-port` picks another port, such as when two apps run at once:
 
 ```bash
-./haylen run samples/games/tiny-island --platform ios --debugger-port 4712
+haylen app run samples/games/tiny-island --target ios --debugger-port 4712
 ```
 
-Then attach the debugger of your editor to that port. Every client of the Debug Adapter Protocol needs the same three things: a TCP connection to `127.0.0.1` and the port, the request `attach` and no program to launch, since `haylen.py run` already started the app. Use any name for the type of the adapter, since the app answers whatever the editor calls it.
+Then attach the debugger of your editor to that port. Every client of the Debug Adapter Protocol needs the same three things: a TCP connection to `127.0.0.1` and the port, the request `attach` and no program to launch, since `haylen app run` already started the app. Use any name for the type of the adapter, since the app answers whatever the editor calls it.
 
 In Neovim with its common Debug Adapter Protocol plugin, the adapter is a server on the port:
 
@@ -132,4 +132,4 @@ An app without breakpoints, log points, steps or the error filter runs with only
 
 ## Release builds
 
-The debugger exists only in the development session, which only `--dev`, `--dev-server` and the page of `run --platform web` create. A release build carries the bootstrap of its app, which ignores those options, as [Distribution](distribution.md#development-mode) explains, so no release ever hooks its Lua, and `haylen.py check --config Release` and the inspection of `run --config Release` keep proving that no release holds Lua text or files of the package as they are.
+The debugger exists only in the development session, which only `--dev`, `--dev-server` and the page of `app run --target web` create. A release build carries the bootstrap of its app, which ignores those options, as the [distribution guide](distribution.md) explains, so no release ever hooks its Lua, and the verification of every Release build by `haylen app build` and `haylen app verify` keeps proving that no release holds Lua text or files of the package as they are.

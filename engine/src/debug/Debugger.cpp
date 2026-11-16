@@ -176,7 +176,7 @@ void Debugger::dispatch(const core::Json& request, const core::Json& arguments, 
         attached = true;
         respond(request);
     } else if (command == "launch") {
-        fail(request, "The debugger attaches to an app that runs, which \"haylen run\" starts. Use a configuration whose request is \"attach\".");
+        fail(request, "The debugger attaches to an app that runs, which \"haylen app run\" starts. Use a configuration whose request is \"attach\".");
     } else if (command == "configurationDone") {
         respond(request);
     } else if (command == "disconnect") {

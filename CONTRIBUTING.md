@@ -16,4 +16,4 @@ The art of the repository is made for the project. A contribution never includes
 
 ## How to contribute
 
-The file [AGENTS.md](AGENTS.md) holds the rules every change follows: the code organization and naming, the formatting, the writing standard, the tests and the documentation that come with every change, and the format of commit messages. A change is complete when it is implemented, exported to Lua, tested and documented, and when `haylen test`, `haylen format --check` and the tests of the tools pass.
+The file [AGENTS.md](AGENTS.md) holds the rules every change follows: the code organization and naming, the formatting, the writing standard, the tests and the documentation that come with every change, and the format of commit messages. A change is complete when it is implemented, exported to Lua, tested and documented, and when `haylen test`, `haylen engine format --check` and the tests of the tools, `uv run pytest`, pass.

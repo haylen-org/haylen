@@ -8,13 +8,13 @@ The commands run from the root of the repository:
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `haylen run samples/apps/music-streaming` |
-| macOS app | `haylen run samples/apps/music-streaming --platform macos` |
-| iPhone and iPad simulator | `haylen run samples/apps/music-streaming --platform ios-simulator` |
-| Apple TV simulator | `haylen run samples/apps/music-streaming --platform tvos-simulator` |
-| Android device or emulator | `haylen run samples/apps/music-streaming --platform android --device <serial>` |
-| Browser | `haylen run samples/apps/music-streaming --platform web` |
-| Headless player | `build/macos-debug/bin/haylen-headless samples/apps/music-streaming` |
+| Desktop player with hot reload | `haylen app run samples/apps/music-streaming` |
+| macOS app | `haylen app run samples/apps/music-streaming --target macos` |
+| iPhone and iPad simulator | `haylen app run samples/apps/music-streaming --target ios-simulator` |
+| Apple TV simulator | `haylen app run samples/apps/music-streaming --target tvos-simulator` |
+| Android device or emulator | `haylen app run samples/apps/music-streaming --target android --device <serial>` |
+| Browser | `haylen app run samples/apps/music-streaming --target web` |
+| Headless player | `build/engine/macos-debug/bin/haylen-headless samples/apps/music-streaming` |
 
 On the headless platform the app runs a tour by itself: it plays a mix, opens the player, seeks, picks a shorter song near the end of the one that plays and checks that the time of the old song never counts for the new one, skips, shuffles, repeats, sets the sleep timer, likes a song, shares it, pulls the queue up from half the screen, reorders it and removes a song, scrolls the favorites, opens an artist, adds a song to a playlist and takes one out, searches, opens a genre and the library, makes a playlist and deletes it after the alert, opens links of the scheme and of the web, logs every step and quits.
 
@@ -95,7 +95,7 @@ The app follows the [navigation](../../../docs/ui/navigation.md) of the engine, 
 
 ```text
 music-streaming/
-  app.json               Window, physical UI scale, any orientation, the playback audio session, the player autoload, the plugin of the links and the identifier.
+  haylen.json            Window, physical UI scale, any orientation, the playback audio session, the player autoload, the plugin of the links and the identifier.
   source/
     main.lua             Registers the theme and the covers, and starts the shell.
     style.lua            The palette, the type scale, the spacing scale, the shapes and the theme.

@@ -13,7 +13,7 @@ import tilesets as t
 from tiled_json import prop, tileset
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "tools"))
-from png_image import Image, read, write  # noqa: E402
+from png_image import Image  # noqa: E402
 
 TILES = Path(__file__).resolve().parents[2] / "content" / "tiled" / "tiles"
 SIZE = 32 * t.SCALE
@@ -133,7 +133,7 @@ def extruded(tile: Image) -> Image:
 
 
 def write_image() -> None:
-    atlas = read(TILES / "terrain.png")
+    atlas = Image.read(TILES / "terrain.png")
     sand, dirt = texture(atlas, t.SAND), texture(atlas, t.DIRT)
     rows = {}
     for frame in range(FRAMES):
@@ -149,7 +149,7 @@ def write_image() -> None:
         field = Field(seed)
         for mask in range(1, 16):
             image.paste(extruded(draw(mask, field, layers)), mask * (SIZE + t.SPACING), row * (SIZE + t.SPACING))
-    write(image, TILES / "transitions.png")
+    Image.write(image, TILES / "transitions.png")
 
 
 def tile_id(row: int, mask: int) -> int:

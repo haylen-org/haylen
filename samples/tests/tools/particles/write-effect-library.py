@@ -17,7 +17,7 @@ ATLASES = {name: json.loads((TEXTURES / f"{name}.json").read_text())["frames"] f
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "tools"))
 import png_image  # noqa: E402
 
-IMAGES = {name: png_image.read(str(TEXTURES / f"{name}.png")) for name in ATLASES}
+IMAGES = {name: png_image.Image.read(str(TEXTURES / f"{name}.png")) for name in ATLASES}
 TAU = 6.2832
 QUARTER = 1.5708
 # Rings, circles and swirls on the ground lie on a plane tilted by this angle.

@@ -18,7 +18,7 @@ class ApplePlugins final {
     using Ask = void (^)(id<HaylenPlugin> plugin, Answer answer);
     using Done = void (^)(NSUInteger answers);
 
-    // Creates the class of every plugin that the bundled package lists for this destination, with the parameters of the plugin, and loads it with its context. A destination leaves out the classes of the plugins that do not list it, such as Mac Catalyst the ones for iOS alone, and those plugins run without their native part there, while a class that a listed destination lacks is logged with what the project lacks.
+    // Creates the class of every plugin of the bundled package whose native part runs on this destination, from the `appleClass` contribution of its `plugin.json` that lists the destination, with the parameters of the plugin, and loads it with its context. A plugin without such a class runs without a native class there, such as one for iOS alone on Mac Catalyst, while a class that the app lacks is logged with what the project lacks.
     static void load();
 
     // The ids of the loaded plugins, which run their native part.
@@ -37,18 +37,17 @@ class ApplePlugins final {
     static void closeCovers();
 
   private:
-    // What `plugin.json` and `app.json` say about a plugin with a class.
+    // What `plugin.json` and `haylen.json` say about a plugin with a class.
     struct Declaration {
         std::string identifier;
         std::string className;
         core::Json config;
-        bool supported = false;
     };
 
-    // The plugins of `app.json` whose `plugin.json` names a class in its `apple` section, in load order, or none when the bundle holds no package, as the desktop player, which runs the package that its command line names. Throws when the bundled package, its `app.json` or a `plugin.json` cannot be read.
+    // The plugins of `haylen.json` whose `plugin.json` names a class for this destination, in load order, or none when the bundle holds no package, as the desktop player, which runs the package that its command line names. Throws when the bundled package, its `haylen.json` or a `plugin.json` cannot be read.
     [[nodiscard]] static std::vector<Declaration> readDeclarations();
 
-    // The destination this build runs on, as plugin.json names platforms.
+    // The destination this build runs on, as `plugin.json` names platforms.
     [[nodiscard]] static std::string_view getDestination() noexcept;
 
     static NSMutableArray<id<HaylenPlugin>>* plugins;

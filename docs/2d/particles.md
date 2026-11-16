@@ -407,7 +407,7 @@ campfire.scale = 0.75
 
 ### The particle benchmark
 
-The command `haylen bench --suite particles` builds `haylen-particle-benchmark` in Release and runs it on the headless host. It prints the workers of the job system and, for each scene, the average time of one frame in milliseconds. These numbers come from an Apple M5 Pro with a Release build. Absolute values vary from machine to machine and from run to run.
+The command `haylen engine bench --suite particles` builds `haylen-particle-benchmark` in Release and runs it on the headless host. It prints the workers of the job system and, for each scene, the average time of one frame in milliseconds. These numbers come from an Apple M5 Pro with a Release build. Absolute values vary from machine to machine and from run to run.
 
 | Scene | What it measures | ms |
 | --- | --- | --- |

@@ -352,8 +352,8 @@ TEST(StatsTest, PublishesObjectEventsWhenAsked) {
     EXPECT_FALSE(ObjectCounter::isObserved());
 }
 
-TEST(StatsTest, StartsWithTheModeOfAppJson) {
-    test::EngineFixture fixture({{"app.json", R"({"name": "Stats", "debug": {"stats": "compact", "objectEvents": true}})"}});
+TEST(StatsTest, StartsWithTheModeOfHaylenJson) {
+    test::EngineFixture fixture({{"haylen.json", R"({"name": "Stats", "debug": {"stats": "compact", "objectEvents": true}})"}});
     plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
     EXPECT_EQ(plugin.getStatsMode(), StatsDisplay::Mode::Compact);
     EXPECT_TRUE(plugin.hasObjectEvents());
@@ -366,8 +366,8 @@ TEST(StatsTest, StartsWithTheModeOfAppJson) {
 }
 
 // The items of the compact display come from the list of the app, which also writes back.
-TEST(StatsTest, StartsWithTheItemsOfAppJson) {
-    test::EngineFixture picked({{"app.json", R"({"name": "Stats", "debug": {"statsItems": ["physics", "frameRate"]}})"}});
+TEST(StatsTest, StartsWithTheItemsOfHaylenJson) {
+    test::EngineFixture picked({{"haylen.json", R"({"name": "Stats", "debug": {"statsItems": ["physics", "frameRate"]}})"}});
     StatsDisplay& display = picked.engine().getPlugin<plugins::DebugPlugin>().getStatsDisplay();
     EXPECT_EQ(display.getItems(), (std::vector{StatsDisplay::Item::FrameRate, StatsDisplay::Item::Physics}));
     EXPECT_EQ(picked.engine().getConfig().toJson()["debug"]["statsItems"], core::Json::parse(R"(["physics", "frameRate"])"));

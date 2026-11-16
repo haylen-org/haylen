@@ -2,6 +2,7 @@
 /.cache/
 /build/
 /dist/
+/.venv/
 /.idea/
 /.vscode/
 .DS_Store
@@ -13,7 +14,7 @@ __pycache__/
 /engine/platform/android/build/
 /engine/platform/android/*/build/
 local.properties
-# The signing keys that `haylen.py distribution android-key` writes into the Android project of an app, with their passwords.
+# The signing keys of Android release builds with their passwords, which `haylen app sign --target android` writes into `platform/android/keystore/` of an app.
 **/platform/android/keystore/
 *.profraw
 MISSING.md

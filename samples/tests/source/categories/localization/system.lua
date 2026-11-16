@@ -10,7 +10,7 @@ local LanguageTest = require('categories.localization.language-test')
 local SystemLanguage = haylen.class('SystemLanguage', LanguageTest)
 
 SystemLanguage.code = [[
--- The app.json of the project holds "localization": {"folder": "localization/locale", "fallback": "en"}.
+-- The haylen.json of the project holds "localization": {"folder": "localization/locale", "fallback": "en"}.
 localization.followSystem()  -- The first language of system.languages() with a match.
 localization.setLanguage('pt_BR')  -- The choice of the app, until followSystem again.
 events.on('languageChanged', function(change) print(change.previous, change.language) end, {owner = self})

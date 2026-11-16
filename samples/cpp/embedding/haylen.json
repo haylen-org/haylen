@@ -1,0 +1,20 @@
+{
+    "name": "C++ Embedding",
+    "identifier": "com.haylen.embedding",
+    "version": "1.0.0",
+    "kind": "cpp",
+    "cpp": {"sources": ["src"]},
+    "window": {
+        "title": "C++ Embedding",
+        "width": 960,
+        "height": 540,
+        "resizable": true,
+        "maxPixelDensity": 0
+    },
+    "design": {
+        "width": 1920,
+        "height": 1080,
+        "scaling": "fit"
+    },
+    "clearColor": "#FF1B1E2B"
+}

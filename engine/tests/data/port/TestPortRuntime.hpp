@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <filesystem>
 #include <memory>
 
 #include "TestPortWindow.hpp"
@@ -8,7 +9,7 @@
 
 namespace haylen::platform {
 
-// The runtime of the test port, which holds the entry point, plays the app that the command line names on the device of the first graphics API that starts, and ends with the status the app quit with.
+// The runtime of the test port, which holds the entry point, plays the app that the command line names, or the one that `haylen_add_app` built for the port, on the device of the first graphics API that starts, and ends with the status the app quit with.
 class TestPortRuntime final {
   public:
     // The frames an app has to quit within, after which the run fails.
@@ -16,6 +17,11 @@ class TestPortRuntime final {
     static constexpr double kFrameSeconds = 1.0 / 60.0;
 
     [[nodiscard]] static int run(int argc, char* argv[]);
+
+    // The folder of the executable, where the app that `haylen_add_app` builds for the port keeps its content.
+    [[nodiscard]] static const std::filesystem::path& getExecutableFolder() noexcept {
+        return executableFolder;
+    }
 
     // Hands the player the device that the window opened with, and a new device of the same API afterwards.
     [[nodiscard]] std::unique_ptr<gpu::Device> createDevice();
@@ -39,6 +45,8 @@ class TestPortRuntime final {
   private:
     [[nodiscard]] bool openWindow();
     [[nodiscard]] int play();
+
+    static std::filesystem::path executableFolder;
 
     TestPortWindow window;
     gpu::Device::Api api = gpu::Device::Api::None;

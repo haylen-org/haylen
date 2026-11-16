@@ -56,9 +56,9 @@ def frame(sheet: Image, cell: int, size: int = SIZE) -> Image:
     right, bottom = max(b[2] for b in boxes), max(b[3] for b in boxes)
     with tempfile.TemporaryDirectory() as folder:
         source, target = Path(folder) / "frame.png", Path(folder) / "scaled.png"
-        write(painted.crop(left, top, right - left, bottom - top), source)
+        Image.write(painted.crop(left, top, right - left, bottom - top), source)
         subprocess.run(["sips", "-z", str(size), str(size), str(source), "--out", str(target)], check=True, capture_output=True)
-        return key(read(target))
+        return key(Image.read(target))
 
 
 def pixel(image: Image, x: int, y: int) -> list[int]:
@@ -141,7 +141,7 @@ def cards(plain: Image) -> None:
     atlas = Image.blank(200, 100)
     atlas.paste(card, 2, 2)
     atlas.paste(checker, 102, 2)
-    write(atlas, CONTENT / "cards.png")
+    Image.write(atlas, CONTENT / "cards.png")
     margin = (CARD_CANVAS - CARD) // 2
     document = {
         "frames": [
@@ -162,15 +162,15 @@ def cards(plain: Image) -> None:
 def main() -> None:
     if len(sys.argv) != 2:
         sys.exit("Usage: build-art.py <folder of frames.png>")
-    sheet = read(Path(sys.argv[1]) / "frames.png")
+    sheet = Image.read(Path(sys.argv[1]) / "frames.png")
     CONTENT.mkdir(parents=True, exist_ok=True)
     wood = plain_ends(frame(sheet, 0), WOOD_BORDER, WOOD_CORNER, WOOD_BAR)
-    write(striped(wood, WOOD_BORDER), CONTENT / "panel.png")
-    write(wood, CONTENT / "parchment.png")
+    Image.write(striped(wood, WOOD_BORDER), CONTENT / "panel.png")
+    Image.write(wood, CONTENT / "parchment.png")
     factor = PIECES_SIZE / SIZE
     border = round(WOOD_BORDER * factor)
-    write(pieces(striped(plain_ends(frame(sheet, 0, PIECES_SIZE), border, round(WOOD_CORNER * factor), round(WOOD_BAR * factor)), border), border), CONTENT / "pieces.png")
-    write(plain_ends(frame(sheet, 1), WHITE_BORDER, WHITE_CORNER, WHITE_BAR), CONTENT / "frame-white.png")
+    Image.write(pieces(striped(plain_ends(frame(sheet, 0, PIECES_SIZE), border, round(WOOD_CORNER * factor), round(WOOD_BAR * factor)), border), border), CONTENT / "pieces.png")
+    Image.write(plain_ends(frame(sheet, 1), WHITE_BORDER, WHITE_CORNER, WHITE_BAR), CONTENT / "frame-white.png")
     cards(wood)
     print("Wrote panel.png, parchment.png, pieces.png, frame-white.png, cards.png and cards.json.")
 

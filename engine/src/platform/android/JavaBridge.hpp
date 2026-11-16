@@ -67,7 +67,7 @@ class JavaBridge final {
     // The sentence that engine-owned network errors end with while the app does not declare the permission `INTERNET`, or an empty text.
     [[nodiscard]] static std::string getNetworkRequirement();
 
-    // The WebSocket address of the development server that the intent of a debuggable app names, which `haylen.py run` launches it with, or an empty text.
+    // The WebSocket address of the development server that the intent of a debuggable app names, which `haylen app run` launches it with, or an empty text.
     [[nodiscard]] static std::string getDevelopmentServer();
 
     // The check of a permission and the request for it, from any thread, which Java answers on the main thread through `answerPermission` with the JSON of `Permission::Answer::fromJson`. A call that Java never took fails at once.

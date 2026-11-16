@@ -1,7 +1,5 @@
 # 🧪 Testing
 
-This guide is for people who change the engine and need to prove that it works. Every capability of the engine that runs without a real graphics device or platform has GoogleTest tests, and every Lua binding is tested by running Lua through a headless engine. The guide explains how the suite is organized, how the headless host and the engine fixture work, and how to test a new binding. It also covers the commands `test`, `coverage`, `fuzz` and `format`, the test project, the tests of `haylen.py` and continuous integration.
-
 ## Layout
 
 The suite lives in `engine/tests/` and builds into one executable, `haylen-tests`.
@@ -77,7 +75,7 @@ explicit EngineFixture(std::map<std::string, std::string> files = {}, std::uniqu
 EngineFixture(std::map<std::string, std::string> files, std::unique_ptr<core::Application> application, Options options);
 ```
 
-The argument `files` maps package paths to their contents. Unless the map has them, the fixture adds an `app.json` with the name `Test App` and the identifier `com.haylen.tests`, and an empty `source/main.lua`. It reads the configuration, creates the engine with a `lua::Application`, or with the given application, and starts it. User data goes to a temporary folder, which the fixture removes afterwards.
+The argument `files` maps package paths to their contents. Unless the map has them, the fixture adds a `haylen.json` with the name `Test App` and the identifier `com.haylen.tests`, and an empty `source/main.lua`. It reads the configuration, creates the engine with a `lua::Application`, or with the given application, and starts it. User data goes to a temporary folder, which the fixture removes afterwards.
 
 The struct `EngineFixture::Options` has three options:
 
@@ -181,13 +179,13 @@ haylen test
 haylen test --config Release --jobs 4
 ```
 
-The command `test` builds `haylen-tests` for this machine and runs CTest with `--output-on-failure` in parallel. It configures `build/<host>-<config>` when needed, as the [build trees](build.md#build-trees) describe. It takes the [build options](build.md#build-options), of which `--config` (`Debug` by default), `--jobs` and `--sanitizers` matter here. With `--platform web` it runs [the error screen check of the web](#the-error-screen-check-of-the-web), [the wake lock check of the web](#the-wake-lock-check-of-the-web), [the fullscreen check of the web](#the-fullscreen-check-of-the-web), [the plugin check of the web](#the-plugin-check-of-the-web), [the editor check of the web](#the-editor-check-of-the-web) and [the memory check of the web](#the-memory-check-of-the-web) instead, and with `--gpu` on the web, on Android, on the Apple simulators, on Mac Catalyst or on an iOS, tvOS or visionOS device it runs [the GPU tests](#the-gpu-tests) there. With `--port` it builds and plays [the test port](#the-test-port), and with `--ui` it runs [the UI tests](#the-ui-tests) of an app on a simulator.
+The command `test` builds `haylen-tests` for this machine and runs CTest with `--output-on-failure` in parallel. It configures `build/engine/<host>-<config>` when needed, as the [build trees](build.md#build-trees) describe. The option `--config` picks the configuration, `Debug` by default, `--sanitizers` builds a tree with [sanitizers](#sanitizers), `--target` names the CMake target that the build makes before CTest runs, `haylen-tests` by default, and `--jobs` sets the jobs of the build and of CTest. With `--platform web` it runs [the error screen check of the web](#the-error-screen-check-of-the-web), [the wake lock check of the web](#the-wake-lock-check-of-the-web), [the fullscreen check of the web](#the-fullscreen-check-of-the-web), [the plugin check of the web](#the-plugin-check-of-the-web), [the editor check of the web](#the-editor-check-of-the-web) and [the memory check of the web](#the-memory-check-of-the-web) instead, and with `--gpu` on the web, on Android, on the Apple simulators, on Mac Catalyst or on an iOS, tvOS or visionOS device it runs [the GPU tests](#the-gpu-tests) there. With `--platform web` and `--app` it runs [the start check of an app on the web](#the-start-check-of-an-app-on-the-web) instead. With `--port` it builds and plays [the test port](#the-test-port), and with `--ui` it runs [the UI tests](#the-ui-tests) of an app on a simulator. The checks of the web, the start check and the UI tests build their apps through the backends, so they need the SDK of their target, and the checks of the web also the desktop SDK of this machine, whose content tool builds their protected releases, as [engine SDKs](build.md#engine-sdks) describe.
 
 Run one suite or one test through CTest or through the executable:
 
 ```sh
-ctest --test-dir build/macos-debug -R SpatialLuaTest --output-on-failure
-build/macos-debug/bin/haylen-tests --gtest_filter='SpatialLuaTest.*'
+ctest --test-dir build/engine/macos-debug -R SpatialLuaTest --output-on-failure
+build/engine/macos-debug/bin/haylen-tests --gtest_filter='SpatialLuaTest.*'
 ```
 
 ## The GPU tests
@@ -197,8 +195,8 @@ The executable `haylen-gpu-tests` runs on the real GPU devices of the build, whi
 ```sh
 haylen test --gpu
 haylen test --graphics-api vulkan
-HAYLEN_TEST_GRAPHICS_API=metal build/macos-debug/bin/haylen-gpu-tests --gtest_filter='GpuTextureTest.*'
-HAYLEN_TEST_GPU_SOFTWARE=1 build/windows-debug/bin/haylen-gpu-tests.exe
+HAYLEN_TEST_GRAPHICS_API=metal build/engine/macos-debug/bin/haylen-gpu-tests --gtest_filter='GpuTextureTest.*'
+HAYLEN_TEST_GPU_SOFTWARE=1 build/engine/windows-debug/bin/haylen-gpu-tests.exe
 ```
 
 The option `--gpu` of `haylen test` builds the executable and runs it on every device of the build, and `--graphics-api` with a name of `gpu::Device::kApiNames` runs it on that device alone, through the environment variable `HAYLEN_TEST_GRAPHICS_API`. CTest does not run these tests, so `haylen test` without them runs only `haylen-tests`.
@@ -211,10 +209,10 @@ The option `--gpu` of `haylen test` builds the executable and runs it on every d
 The references come from the first device that draws the scenes right, and every other device matches them. To write them, run the GPU tests with `HAYLEN_GPU_REFERENCES=write`, which writes the image of each scene to its reference and names it in the output, then look at every image before you commit it. A run without the variable never writes a reference. A missing reference fails its test, and a scene that differs keeps the image it drew and the difference in `gpu-test-output` of the build tree.
 
 ```sh
-HAYLEN_GPU_REFERENCES=write HAYLEN_TEST_GRAPHICS_API=metal build/macos-debug/bin/haylen-gpu-tests --gtest_filter='GpuRendererTest.*'
+HAYLEN_GPU_REFERENCES=write HAYLEN_TEST_GRAPHICS_API=metal build/engine/macos-debug/bin/haylen-gpu-tests --gtest_filter='GpuRendererTest.*'
 ```
 
-On the web, `haylen test --gpu --platform web` builds the GPU tests in `build/web-gpu-tests-debug` and runs them in the page `engine/tests/web/gpu-tests.html` of a headless Chrome, whose WebGPU draws through SwiftShader on a machine without a GPU for it. The browser hands over the adapter of WebGPU and the copies of render targets only in a turn of its event loop. So the tests wait through `test::EventLoop::yield`, which gives the browser that turn through the promise integration of WebAssembly. The page preloads the reference images at their paths on the machine that built it, and the driver `engine/tests/web/gpu-tests.mjs` prints what the tests print and exits with their status.
+On the web, `haylen test --gpu --platform web` builds the GPU tests in `build/engine/web-gpu-tests-debug` and runs them in the page `engine/tests/web/gpu-tests.html` of a headless Chrome, whose WebGPU draws through SwiftShader on a machine without a GPU for it. The browser hands over the adapter of WebGPU and the copies of render targets only in a turn of its event loop. So the tests wait through `test::EventLoop::yield`, which gives the browser that turn through the promise integration of WebAssembly. The page preloads the reference images at their paths on the machine that built it, and the driver `engine/tests/web/gpu-tests.mjs` prints what the tests print and exits with their status.
 
 ```sh
 haylen test --gpu --platform web
@@ -222,14 +220,14 @@ haylen test --gpu --graphics-api webGpu --platform web
 haylen test --gpu --graphics-api webGl2 --platform web
 ```
 
-On Android, `haylen test --gpu --platform android` builds the GPU tests for the ABI of the device in `build/android-gpu-tests-<abi>-debug` as the library of a test app, since a program that adb starts reaches the Vulkan driver of some devices only from an app. The command packages the library and the reference images into the APK of `com.haylen.gputests`, a NativeActivity without Java code. The tool `aapt2` links it against the newest platform of the Android SDK, and `apksigner` signs it with a key that the tree keeps. The command installs the app on the device that `--device` names or on the only one connected. Without any, it starts an emulator of the first virtual device of the Android SDK without a window and shuts it down when the tests end. With `HAYLEN_TEST_GPU_SOFTWARE=1` that emulator draws through SwiftShader, as a machine without a GPU for it needs. The command starts the app with the variables that start with `HAYLEN_` or `GTEST_`, which the app takes from the string array extra `environment` of its intent. It hands those of GoogleTest to it as the arguments they stand for, since GoogleTest reads its variables when the library loads, before the activity starts. The command prints what the tests print, which the app writes to the log of the device under the tag `haylen-gpu-tests`. The app copies the reference images from its assets into its files, runs the tests on a thread of their own, finishes its activity and quits with their status. It finishes the activity first because Android starts the activity of a process that quits while it shows again, with the intent it had. The command starts the app with `am start -S`, which stops a run that still goes on. It writes their results to `results.xml` and keeps the scenes that differ next to it in `gpu-test-output` of its files. The app is debuggable, so the command copies that folder into `gpu-test-output` of the tree through `run-as`. Then it uninstalls the app and fails when a test failed or the app quit before it wrote its results.
+On Android, `haylen test --gpu --platform android` builds the GPU tests for the ABI of the device in `build/engine/android-gpu-tests-<abi>-debug` as the library of a test app, since a program that adb starts reaches the Vulkan driver of some devices only from an app. The command packages the library and the reference images into the APK of `com.haylen.gputests`, a NativeActivity without Java code. The tool `aapt2` links it against the newest platform of the Android SDK, and `apksigner` signs it with a key that the tree keeps. The command installs the app on the device that `--device` names or on the only one connected. Without any, it starts an emulator of the first virtual device of the Android SDK without a window and shuts it down when the tests end. With `HAYLEN_TEST_GPU_SOFTWARE=1` that emulator draws through SwiftShader, as a machine without a GPU for it needs. The command starts the app with the variables that start with `HAYLEN_` or `GTEST_`, which the app takes from the string array extra `environment` of its intent. It hands those of GoogleTest to it as the arguments they stand for, since GoogleTest reads its variables when the library loads, before the activity starts. The command prints what the tests print, which the app writes to the log of the device under the tag `haylen-gpu-tests`. The app copies the reference images from its assets into its files, runs the tests on a thread of their own, finishes its activity and quits with their status. It finishes the activity first because Android starts the activity of a process that quits while it shows again, with the intent it had. The command starts the app with `am start -S`, which stops a run that still goes on. It writes their results to `results.xml` and keeps the scenes that differ next to it in `gpu-test-output` of its files. The app is debuggable, so the command copies that folder into `gpu-test-output` of the tree through `run-as`. Then it uninstalls the app and fails when a test failed or the app quit before it wrote its results.
 
 ```sh
 haylen test --gpu --platform android
 haylen test --graphics-api openGlEs --platform android --device emulator-5554
 ```
 
-On the Apple simulators, `haylen test --gpu --platform ios-simulator`, `--platform tvos-simulator` and `--platform visionos-simulator` build the GPU tests for the simulator in `build/<platform>-gpu-tests-debug`, as a plain executable for the architecture of the Mac. They start it inside the simulator with `xcrun simctl spawn`, which hands the tests the variables that start with `HAYLEN_` or `GTEST_` through the prefix `SIMCTL_CHILD_`. A simulator shares the files of the Mac, so the tests read the reference images and keep the scenes that differ in `gpu-test-output` of the tree, at the same paths as on the Mac. The option `--device` takes the name or the id of a simulator. Without it the tests take a booted simulator, or else the first iPhone, Apple TV or Apple Vision Pro. A machine without the simulator runtime of the platform stops with the command that installs it, such as `xcodebuild -downloadPlatform visionOS`. A simulator that was shut down boots without a window and shuts down when the tests end. With `--platform catalyst` the tests build for Mac Catalyst in `build/catalyst-gpu-tests-debug` and run on the Mac itself.
+On the Apple simulators, `haylen test --gpu --platform ios-simulator`, `--platform tvos-simulator` and `--platform visionos-simulator` build the GPU tests for the simulator in `build/engine/<platform>-gpu-tests-debug`, as a plain executable for the architecture of the Mac. They start it inside the simulator with `xcrun simctl spawn`, which hands the tests the variables that start with `HAYLEN_` or `GTEST_` through the prefix `SIMCTL_CHILD_`. A simulator shares the files of the Mac, so the tests read the reference images and keep the scenes that differ in `gpu-test-output` of the tree, at the same paths as on the Mac. The option `--device` takes the name or the id of a simulator. Without it the tests take a booted simulator, or else the first iPhone, Apple TV or Apple Vision Pro. A machine without the simulator runtime of the platform stops with the command that installs it, such as `xcodebuild -downloadPlatform visionOS`. A simulator that was shut down boots without a window and shuts down when the tests end. With `--platform catalyst` the tests build for Mac Catalyst in `build/engine/catalyst-gpu-tests-debug` and run on the Mac itself.
 
 ```sh
 haylen test --gpu --platform ios-simulator
@@ -238,7 +236,7 @@ haylen test --gpu --platform tvos-simulator
 haylen test --gpu --platform catalyst
 ```
 
-On iOS, tvOS and visionOS devices, `haylen test --gpu --platform ios`, `--platform tvos` and `--platform visionos` with `--device` and the name or the id of a device, which `xcrun devicectl list devices` lists, build the GPU tests in `build/<platform>-gpu-tests-debug` as an app, since a device starts no plain executable. The Xcode generator builds the app `com.haylen.gputests` and signs it for the development team that `HAYLEN_APPLE_TEAM` names. The app carries the reference images in its bundle, shows an empty window and runs the tests once its scene is active, because Metal takes no work from an app in the background. The command installs it with `xcrun devicectl`, launches it with the variables that start with `HAYLEN_` or `GTEST_` through the prefix `DEVICECTL_CHILD_` and prints what the tests print. The app writes its results to `results.xml` and keeps the scenes that differ next to it in `Library/Caches/gpu-test-output` of its container, the one folder that tvOS lets an app write. The class `test::GpuTestFiles` finds both folders, in the bundle and the container there and in the source and build trees elsewhere. When the app quits, the command copies that folder into `gpu-test-output` of the tree, uninstalls the app and fails when a test failed or the app quit before it wrote its results. An iPhone or iPad must be unlocked to launch the app. An Apple TV must be awake and show no screen saver, because tvOS refuses to launch an app while it sleeps and keeps an app that launches behind the screen saver in the background, where the tests wait. The app keeps the idle timer off, so no screen saver starts while the tests run.
+On iOS, tvOS and visionOS devices, `haylen test --gpu --platform ios`, `--platform tvos` and `--platform visionos` with `--device` and the name or the id of a device, which `xcrun devicectl list devices` lists, build the GPU tests in `build/engine/<platform>-gpu-tests-debug` as an app, since a device starts no plain executable. The Xcode generator builds the app `com.haylen.gputests` and signs it for the development team that `HAYLEN_APPLE_TEAM` names. The app carries the reference images in its bundle, shows an empty window and runs the tests once its scene is active, because Metal takes no work from an app in the background. The command installs it with `xcrun devicectl`, launches it with the variables that start with `HAYLEN_` or `GTEST_` through the prefix `DEVICECTL_CHILD_` and prints what the tests print. The app writes its results to `results.xml` and keeps the scenes that differ next to it in `Library/Caches/gpu-test-output` of its container, the one folder that tvOS lets an app write. The class `test::GpuTestFiles` finds both folders, in the bundle and the container there and in the source and build trees elsewhere. When the app quits, the command copies that folder into `gpu-test-output` of the tree, uninstalls the app and fails when a test failed or the app quit before it wrote its results. An iPhone or iPad must be unlocked to launch the app. An Apple TV must be awake and show no screen saver, because tvOS refuses to launch an app while it sleeps and keeps an app that launches behind the screen saver in the background, where the tests wait. The app keeps the idle timer off, so no screen saver starts while the tests run.
 
 ```sh
 haylen test --gpu --platform ios --device "iPhone"
@@ -252,9 +250,9 @@ haylen test --port
 haylen test --port --config Release
 ```
 
-The option `--port` of `haylen test` checks the mechanism of [ports](../platform/ports.md) on this machine. It configures the engine with `HAYLEN_PORT_DIR` set to `engine/tests/data/port` in `build/<host>-port-<config>`, builds the player `haylen` of that port and plays `engine/tests/data/port-app` on it. The port replaces the platform layer and the services with a runtime that plays the app without a window, and draws through a device of the API `port` built on `gpu::NullDevice`, so every call of the engine meets the checks of the contract. Its shader tool gives every shader package of the engine a `port` target, which the device runs.
+The option `--port` of `haylen test` checks the mechanism of [ports](../platform/ports.md) on this machine. It configures the engine with `HAYLEN_PORT_DIR` set to `engine/tests/data/port` in `build/engine/<host>-port-<config>`, builds the player `haylen` of that port and plays `engine/tests/data/port-app` on it. The port replaces the platform layer and the services with a runtime that plays the app without a window, and draws through a device of the API `port` built on `gpu::NullDevice`, so every call of the engine meets the checks of the contract. Its shader tool gives every shader package of the engine a `port` target, which the device runs.
 
-The app fails the run with the status `1` when `haylen.platform` is not `'test-port'`, when the operating system of `haylen.system` is not `'port'` or when `haylen.graphicsApi` is not `'port'`. The runtime fails it too when the app does not quit within 600 frames, such as an app stuck on the error screen. Otherwise the app draws ten frames of shapes, sprites and text and quits with the status `0`.
+The app fails the run with the status `1` when `haylen.platform` is not `'test-port'`, when the operating system of `haylen.system` is not `'port'` or when `haylen.graphicsApi` is not `'port'`. The runtime fails it too when the app does not quit within 600 frames, such as an app stuck on the error screen. Otherwise the app draws ten frames of shapes, sprites and text and quits with the status `0`. The tooling side of the same proof is [the proof of the extension points](#the-proof-of-the-extension-points).
 
 ## The error screen check of the web
 
@@ -265,7 +263,7 @@ haylen test --platform web --graphics-api webGl2
 
 A web page writes the clipboard only through the asynchronous clipboard API of the browser, which may refuse it, and a restart from the error screen creates a new GPU device, which WebGPU hands over only in a later turn of the event loop of the page. So `haylen test --platform web` first runs this check in a browser:
 
-1. It builds the release site of the app `engine/tests/data/web-error-screen`, which clears the canvas to magenta and stops with an error when the key E is pressed, and serves it.
+1. It builds the release site of the app `engine/tests/data/web-error-screen` through the web backend, which clears the canvas to magenta and stops with an error when the key E is pressed, and serves it.
 2. The driver `engine/tests/web/error-screen-check.mjs` opens the page in a headless Chrome that lets the page write the clipboard. Like the [GPU tests of the web](#the-gpu-tests), every browser of the check draws WebGPU and WebGL2 through SwiftShader, so both start on a machine without a GPU. The driver decodes its screenshots itself, so they never touch the GPU of the page.
 3. The page decodes a screenshot of itself through an `OffscreenCanvas` once, as a page that embeds an app and draws into a canvas of its own does, and the app must draw on. Should the browser take the GPU away from the app then, the app must start again on the one replacement of its device and draw its magenta, without the failure that a second loss would bring.
 4. The driver stops the app and presses C on the error screen. The clipboard must then hold the report of the error.
@@ -280,7 +278,7 @@ Headless Chrome on Linux cannot present a WebGPU canvas, so it takes the device 
 
 A web page keeps the screen on through the Screen Wake Lock API of the browser, which releases the lock whenever the page hides. So `haylen test --platform web` then runs this check in a browser:
 
-1. It builds the release site of the app `engine/tests/data/web-wake-lock`, whose `app.json` keeps the screen on from the start and whose script lets the screen sleep when the space key is pressed, and serves it.
+1. It builds the release site of the app `engine/tests/data/web-wake-lock`, whose `haylen.json` keeps the screen on from the start and whose script lets the screen sleep when the space key is pressed, and serves it.
 2. The driver `engine/tests/web/wake-lock-check.mjs` opens the page in a headless Chrome and watches the locks that the browser grants and releases through a script that it adds to the page.
 3. The page must take the lock, give it up when another tab hides it, take it again when it shows and release it once the app lets the screen sleep.
 4. Then a browser that refuses every request and one without the API open the page, which must only warn in its log while the app runs on, without an error.
@@ -309,7 +307,7 @@ The context that the web module of a plugin receives answers what the page offer
 
 A website edits and runs projects through the [editor contract](build.md#the-editor-contract) of the generic web player, whose answers, records and audio output only a browser shows, and in the optimized build that ships. So `haylen test --platform web` then runs this check in a browser:
 
-1. It serves the page `engine/tests/web/editor-check.html` next to the web player of the artifacts, which is built in `Release`, in development with a storage namespace of its own.
+1. It serves the page `engine/tests/web/editor-check.html` next to the web player of the web SDK, which is built in `Release`, in development with a storage namespace of its own.
 2. The driver `engine/tests/web/editor-check.mjs` opens the page in a headless Chrome and sends requests through `Module.haylen.editor`.
 3. The editor empties the package, writes a project of three files in one batch and runs it, and the answer of `run` carries the revision of the batch and the app.
 4. It saves a valid module and then a module with a syntax error, which the answer of `applyChanges` rejects with an error record of the code `syntax`, the phase `reload`, the file and the line. Saving the text that runs again restores the module, and the app resumes.
@@ -328,30 +326,50 @@ The check then runs again in the [Worker mode](build.md#hosting-the-runtime), on
 6. A project plays the clip of `engine/tests/data/video`, which the driver hands the page, and the app sees its pictures.
 7. After the dispose, the page loads again and runs a project whose finalizer never ends, which the execution budget cannot stop. The heartbeat of the worker falls silent while the page goes on answering, and `terminate()` ends the worker, rejects the request that waited with `terminated` and makes every later request fail with `terminated`.
 
+This guide is for people who change the engine and need to prove that it works. Every capability of the engine that runs without a real graphics device or platform has GoogleTest tests, and every Lua binding is tested by running Lua through a headless engine. The guide explains how the suite is organized, how the headless host and the engine fixture work, and how to test a new binding. It also covers the command `test`, the commands `engine coverage`, `engine fuzz` and `engine format`, the test project, the tests of the tooling and continuous integration.
+
 ## The memory check of the web
 
 A web page reads content through a worker and keeps records in memory within a budget, which only a browser shows. So this check runs one:
 
 1. It copies the app `engine/tests/data/web-memory` into `build/tests/web-memory`.
-2. It writes a file of 16 MiB and one of 384 MiB of random bytes into its content, which `app.json` delivers on demand.
+2. It writes a file of 16 MiB and one of 384 MiB of random bytes into its content, which `haylen.json` delivers on demand.
 3. It builds the release site of the app in the Release configuration and serves it.
 4. It opens the page in a headless Chrome: the one that the environment variable `HAYLEN_CHROME` names, or else the one of the machine.
 5. The driver `engine/tests/web/memory-check.mjs`, which the Node of the Emscripten SDK runs, follows the page and its workers over the debugging protocol. Meanwhile the app prefetches the large file and reads a small asset. The driver reports the bytes they received, the peak of the memory of WebAssembly, and the array buffers that they keep after a collection.
 
 The check fails when the page did not download the file, when the memory of WebAssembly grew past half of the file, or when more than 64 MiB of array buffers stay. A page that holds what it downloads would do that.
 
-Then it opens the page again in a browser whose page finds no private file system, which the driver removes before the page loads. That page must keep the file of 16 MiB in memory and refuse the large one for want of room, or the check fails. An Emscripten SDK without Node stops the check with a message to install it again with `haylen tools --emsdk`.
+Then it opens the page again in a browser whose page finds no private file system, which the driver removes before the page loads. That page must keep the file of 16 MiB in memory and refuse the large one for want of room, or the check fails. An Emscripten SDK without Node stops the check with a message to install it again with `haylen engine tools --emscripten`.
+
+## The start check of an app on the web
+
+```sh
+haylen test --platform web --app samples/tests
+haylen test --platform web --app samples/tests --config Release
+haylen test --platform web --app samples/tests --config Release --graphics-api webGl2
+```
+
+An app can build and pass its verification and still stop at its start in a browser, such as a protected release whose first scene reads a file that is not on the device yet. Only a browser shows that, so the option `--app` of `haylen test` opens the page of an app and follows its start:
+
+1. It builds the site of the app of the folder through the web backend in the configuration of `--config`, `Debug` by default, and verifies it. A `Release` build needs the keys of the app, which continuous integration gives through `HAYLEN_KEYS_DIR`, and the content tool of the desktop SDK of this machine, as [engine SDKs](build.md#engine-sdks) describe.
+2. It serves the site on a free port of this machine with the static server of `haylen serve`.
+3. The driver `engine/tests/web/app-start-check.mjs`, which the Node of the Emscripten SDK runs, opens the page in a headless Chrome of its own whose WebGPU and WebGL2 draw through SwiftShader, as in [the error screen check](#the-error-screen-check-of-the-web). It follows the console of the page and of its workers over the debugging protocol.
+4. The check passes once the app logs `The app draws through "<api>".` with the API of the address, the splash ends, which happens only after the first complete frame of the app, and three more seconds pass without an error.
+5. It fails with the reason and the last lines of the console when the page throws an error, when the app shows its error screen, when the splash shows that the start failed, when the console holds an error, such as one that the engine logs, when the app draws through another API, or when the app does not draw its first complete frame within 180 seconds. The page prints the warnings of the engine as errors of its console, so the driver reads the level that the engine writes in each of its lines, and a warning of the engine does not fail the check.
+6. The page opens twice, with `?graphicsApi=webGpu` and with `?graphicsApi=webGl2`, or once with the API of `--graphics-api`. Each page has a browser of its own, and the browser and the server stop when the check ends, also when it fails.
+
+Headless Chrome on Linux cannot present a WebGPU canvas, so on Linux run the check with `--graphics-api webGl2`, as for [the error screen check](#the-error-screen-check-of-the-web).
 
 ## The test project
 
-The app `samples/tests`, Haylen Tests, holds a test of every feature of the engine, from sprites to plugins, in categories with a code per test, as [its README](../../samples/tests/README.md) lists. A person runs it on every platform, with `haylen run samples/tests` on the desktop. Its menu runs one test at a time, or every test one after the other.
+The app `samples/tests`, Haylen Tests, holds a test of every feature of the engine, from sprites to plugins, in categories with a code per test, as [its README](../../samples/tests/README.md) lists. A person runs it on every platform, with `haylen app run samples/tests` on the desktop. Its menu runs one test at a time, or every test one after the other.
 
 The headless player runs it without a window, as every platform runs it, so a broken test shows up without a device. The Native libraries tests load the test library of the engine, which the target `haylen-native-test` builds next to the headless player and the desktop player:
 
 ```sh
-haylen build --target haylen-headless
-haylen build --target haylen-native-test
-build/macos-debug/bin/haylen-headless samples/tests --frames 60000
+haylen engine build --target haylen-headless --target haylen-native-test
+build/engine/macos-debug/bin/haylen-headless samples/tests --frames 60000
 ```
 
 The executable `haylen-headless` builds with the player on desktop platforms. It runs any app package on the headless host at 60 frames per second of real time, so asynchronous work such as decoding and file reads finishes as it does on a device. It prints the log. It stops when the app quits, when an error stops an app that cannot recover, or after the frames of `--frames`. With `--dev` it runs a package folder in development, like the player. So a file saved while it runs reloads as [hot reload](../core/lua.md#hot-reload) describes, and the log shows what each save did. The apps keep their user data in a folder of the first app under the temporary folder of the system. A test that plays an app through `HeadlessPlayer::run` names a folder of its own in `dataDirectory`, so tests and checkouts that run at the same time never share preferences or storage.
@@ -393,8 +411,8 @@ class MenuTests: HaylenUITestCase {
 
 The command `haylen test --ui <app>` runs these steps:
 
-- It builds the app for the simulator as `haylen run --build-only` does, in the Debug configuration with the engine artifacts of `--config`, `Debug` by default. A Debug engine checks at every frame on UIKit that the view and its drawable cover the window, through `platform::SurfaceCheck`.
-- It generates the runner from `engine/tests/ui/apple/project.yml` with the pinned XcodeGen into `build/<platform>-ui-tests`, with the tests of the app, and builds it with `xcodebuild build-for-testing`.
+- It builds the app for the simulator target through the Apple backend and verifies it, as `haylen app build` does, in the configuration of `--config`, `Debug` by default, against the Release SDK of the simulator.
+- It generates the runner from `engine/tests/ui/apple/project.yml` with the pinned XcodeGen into `build/engine/<platform>-ui-tests`, with the tests of the app, and builds it with `xcodebuild build-for-testing`.
 - It boots the simulator that `--device` names without a window, or else a booted one or the first iPhone, Apple TV or Apple Vision Pro, and installs the app.
 - It runs the tests with `xcodebuild test-without-building`, which prints each test and each failure. The runner receives the identifier of the app and the folder of the screenshots through the prefix `TEST_RUNNER_` of xcodebuild. A test that runs longer than 10 minutes stops and fails.
 - It relays the log of the app meanwhile and fails when the engine logged an error, even when every test passed, so a layout that leaves the drawable behind the window fails the run.
@@ -422,7 +440,7 @@ haylen test --sanitizers address
 haylen test --sanitizers thread
 ```
 
-The option `--sanitizers` builds the tests with sanitizers in a tree of its own, `build/<host>-<config>-address` or `build/<host>-<config>-thread`, so switching never builds the plain tree again. It sets `HAYLEN_SANITIZERS`, which MSVC builds ignore.
+The option `--sanitizers` builds the tests with sanitizers in a tree of its own, `build/engine/<host>-<config>-address` or `build/engine/<host>-<config>-thread`, so switching never builds the plain tree again. It sets `HAYLEN_SANITIZERS`, which MSVC builds ignore.
 
 | Value | Sanitizers | What they instrument |
 | --- | --- | --- |
@@ -434,11 +452,11 @@ AddressSanitizer and ThreadSanitizer fail the test whose process raised a report
 ## Fuzzing
 
 ```sh
-haylen fuzz
-haylen fuzz --seconds 600 --llvm /opt/homebrew/opt/llvm/bin
+haylen engine fuzz
+haylen engine fuzz --seconds 600 --llvm /opt/homebrew/opt/llvm/bin
 ```
 
-A fuzzer feeds a parser with inputs that libFuzzer generates, to find the inputs that crash it. The command `fuzz` builds the fuzzers of the parsers that read untrusted bytes and runs each one for a while.
+A fuzzer feeds a parser with inputs that libFuzzer generates, to find the inputs that crash it. The command `engine fuzz` builds the fuzzers of the parsers that read untrusted bytes and runs each one for a while.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
@@ -446,7 +464,7 @@ A fuzzer feeds a parser with inputs that libFuzzer generates, to find the inputs
 | `--llvm` | the variable `HAYLEN_LLVM`, or else the LLVM of a package manager | The `bin` folder of an LLVM whose Clang links libFuzzer. Without either, the command looks in `/opt/homebrew/opt/llvm/bin`, `/usr/local/opt/llvm/bin` and `/usr/lib/llvm-<version>/bin` for the versions 20, 19 and 18. Apple Clang does not ship libFuzzer. |
 | `--jobs` | the processors minus one | The parallel jobs of the build. |
 
-The command configures `build/fuzz` in the Debug configuration with that Clang and `HAYLEN_BUILD_FUZZERS`, which instruments every target for libFuzzer and AddressSanitizer. It builds the nine fuzzers and runs each on inputs of at most 64 KiB. Each fuzzer has a corpus of its own in `build/fuzz/corpus/<fuzzer>`, which keeps the inputs that reached new code for the next run. A crash stops the command with the input that caused it.
+The command configures `build/engine/fuzz` in the Debug configuration with that Clang and `HAYLEN_BUILD_FUZZERS`, which instruments every target for libFuzzer and AddressSanitizer. It builds the nine fuzzers and runs each on inputs of at most 64 KiB. Each fuzzer has a corpus of its own in `build/fuzz/corpus/<fuzzer>`, which keeps the inputs that reached new code for the next run. A crash stops the command with the input that caused it.
 
 | Fuzzer | What it checks | Tests that drive the same code on every run |
 | --- | --- | --- |
@@ -463,62 +481,83 @@ The command configures `build/fuzz` in the Debug configuration with that Clang a
 ## Coverage
 
 ```sh
-haylen coverage
-haylen coverage --jobs 4 --sanitizers address
+haylen engine coverage
+haylen engine coverage --jobs 4 --sanitizers address
 ```
 
-Coverage uses the source-based coverage of LLVM, so it needs Clang. The command `coverage` works in these steps:
+Coverage uses the source-based coverage of LLVM, so it needs Clang. The command `engine coverage` works in these steps:
 
-1. It configures `build/coverage` in the Debug configuration with `HAYLEN_ENABLE_COVERAGE=ON` and without the player.
-2. It builds `haylen-tests` and runs every test, which writes one profile per process into `build/coverage/coverage/`.
-3. It merges the profiles with `llvm-profdata`, prints the report of `llvm-cov` and writes an HTML report to `build/coverage/coverage/html/index.html`.
+1. It configures `build/engine/coverage` in the Debug configuration with `HAYLEN_ENABLE_COVERAGE=ON` and without the player.
+2. It builds `haylen-tests` and runs every test, which writes one profile per process into `build/engine/coverage/coverage/`.
+3. It merges the profiles with `llvm-profdata`, prints the report of `llvm-cov` and writes an HTML report to `build/engine/coverage/coverage/html/index.html`.
 
-The report leaves out the dependencies, the tests themselves, generated files and the platform folders in `engine/src/platform/` that need the SDK of a platform: `apple`, `android`, `web`, `windows` and `linux`. On macOS the LLVM tools come from Xcode through `xcrun`, and elsewhere they must be on `PATH`. The command also takes `--jobs` and `--sanitizers`. Coverage of the engine stays as close to 100 percent as the code allows.
+The report leaves out the dependencies, the tests themselves, generated files and the platform folders in `engine/src/platform/` that need the SDK of a platform: `apple`, `android`, `web`, `windows` and `linux`. On macOS the LLVM tools come from Xcode through `xcrun`, and elsewhere they must be on `PATH`. The command also takes `--sanitizers`, which measures with sanitizers too. Coverage of the engine stays as close to 100 percent as the code allows.
 
 ## Formatting
 
 ```sh
-haylen format
-haylen format --check
+haylen engine format
+haylen engine format --check
 ```
 
-The command `format` runs `clang-format --style=file` on every `.h`, `.hpp`, `.c`, `.cpp`, `.m` and `.mm` file under `engine/include`, `engine/src`, `engine/tests`, `engine/tools`, `samples` and `templates`. It skips build outputs inside those folders, such as the `.cxx`, `.gradle`, `build` and `_deps` folders. It also skips the files of the plugin template whose names hold a token such as `{{NAME}}`, which become code only once `plugin new` replaces their tokens.
+The command `engine format` runs `clang-format --style=file` on every `.h`, `.hpp`, `.c`, `.cpp`, `.m` and `.mm` file under `engine/include`, `engine/src`, `engine/tests`, `engine/tools`, `samples`, `templates` and `tools/haylen`, whose backend templates hold sources too. It skips build outputs inside those folders, such as the `.cxx`, `.gradle`, `build` and `_deps` folders. It also skips the files of the plugin template whose names hold a token such as `{{NAME}}`, which become code only once `plugin new` replaces their tokens.
 
-Then it lists every multi-line lambda outside a `// clang-format off` and `// clang-format on` region, because `clang-format` cannot lay out such lambdas well. The option `--check` changes nothing. It fails when a file is not formatted or a lambda lacks its markers. The command `clang-format` must be on `PATH`, and continuous integration installs version 23.1.3 with `pip install clang-format==23.1.3`.
+Then it lists every multi-line lambda outside a `// clang-format off` and `// clang-format on` region, because `clang-format` cannot lay out such lambdas well. Last, it formats the Python of `tools` with `ruff format` and checks it with `ruff check`, with the rules of `pyproject.toml`. The option `--check` changes nothing. It fails when a file is not formatted, a lambda lacks its markers or Ruff finds a problem. The command `clang-format` must be on `PATH`, and continuous integration installs version 23.1.3 with `pip install clang-format==23.1.3`. Ruff comes with the development group of the tooling, so uv brings it.
 
-## The rules of haylen.py
+## The tests of the tooling
 
 ```sh
-python3 -m unittest discover -s tools -p "test_*.py"
+uv run pytest
+uv run pytest tools/tests/platforms/android
+uv run pytest tools/tests/repository -k docs
 ```
 
-The module `tools/test_haylen.py` tests the rules that need no build, with the `unittest` module of Python. It covers:
+The tooling has its own tests, written for pytest, which uv runs with the locked development group of `pyproject.toml`. They need no build, so they run in seconds on every machine. Each test file holds one class named after its subject with a `Test` suffix, such as `BackendRegistryTest`, whose methods name the behavior they check.
 
-- How `haylen.py` merges the `Info.plist` keys, the entitlements and the privacy manifests of the developer, the plugins and `app.json`, and how `check` decides that a built app holds what a plugin needs.
-- How it writes `haylen.properties`, the CMake values, the resource scripts, the status bar and the splash screens, and when `run` generates `App.xcodeproj` again, keeps it or compares it with a trial generation.
-- How it reads its arguments, such as the app folder of `run` and the options of `sdk --check-consumers` and `distribution android-key`, how its launchers run it, and how its terminal output marks reserved expressions, paths and URLs with and without color.
-- How it provides the pinned shader compiler, XcodeGen and Emscripten, how it builds only the stale engine artifacts, and how the layers of the templates, the desktop projects, `run`, `plugin new` and native libraries behave.
-- That every tracked file and folder uses dashes where nothing requires an underscore, and so does every target, project and install component of the CMake files and of the CMake text that `haylen.py` writes.
-- That only the SDL platform layer reaches SDL, that only the GPU devices include the headers of their graphics APIs, that no Lua binding knows a host, and that comments and the texts of the interface are written as the project asks.
+| Path | What it tests |
+| --- | --- |
+| `tools/tests/test_*.py` | The core: the manifests `haylen.json` and `plugin.json`, the resolution of an app into the project of a target, the registry of backends and engine ports, the plugins of the repository and the keys of `haylen.json` that the engine reads. |
+| `tools/tests/platforms/<backend>/` | Each backend and engine port: the projects it generates from fixed inputs, which the same inputs generate again without a change, how it merges the contributions of plugins, its verification and the commands it would run, which `RecordedCommands` records instead of running. |
+| `tools/tests/development/` | The development server, the package server, the debug relay, the console line, the keys of a run and the site server. |
+| `tools/tests/content/` | Protected releases, key folders, release inspections and Steam depots, with a content tool that records its calls. |
+| `tools/tests/engine/` | The command `test`, the engine trees, the GPU and UI tests, coverage, Emscripten, the shader compiler and the checks of the web, with their commands recorded. |
+| `tools/tests/repository/` | The rules of the repository, which the next list describes. |
+| `tools/tests/support/` | The shared doubles: `FakeBackend` and `FakePort`, a backend and an engine port of the platform `fake`, `ToolingFixture`, which makes apps, plugins, SDK manifests and a registry in a temporary folder, `RecordedCommands`, a context whose native tools never run, and the readers of tracked files and Markdown pages. |
+
+The test `test_architecture.py` checks the rules that the design of the tooling depends on:
+
+- The core layers, `haylen.core`, `haylen.plugins`, `haylen.sdk`, `haylen.native` and the contract modules directly in `haylen.platforms`, never import a concrete backend from `haylen.platforms.<name>`.
+- The imports of the package form no cycle.
+- Every module holds one top-level class, with no free functions and no module-level variables, every `__init__.py` is empty, and no module uses `TYPE_CHECKING`.
+
+The rules of the repository need no build either. The tests of `tools/tests/repository` check:
+
+- That every tracked file and folder uses dashes where nothing requires an underscore, and so does every target, project and install component of the CMake files.
+- That only the SDL platform layer reaches SDL, that only the GPU devices include the headers of their graphics APIs, that no Lua binding knows a host, and that only Windows and Linux start the text input of SDL.
+- That comments and the texts of the interface are written as the project asks, that every text file is UTF-8, that the launchers run the tooling through uv, and that the scripts of `tools` follow the code rules.
 - That the animated sheets and the images of the samples hold their pivots and have clean edges.
 - The documentation, through `DocsTest`: the titles, the languages of code blocks, one line per paragraph, every relative link and its heading, the tables of the indexes, and that no long sentence repeats in another page.
 
+### The proof of the extension points
+
+The tooling proves that a platform joins it without a change of the core. The registry finds `FakeBackend` and `FakePort` through the same entry points as the backends of the repository, and the tests of `BackendRegistryTest` and the resolver check that a port and a backend match by their system, environment, toolchain, binary interfaces and capabilities, even with different target names, that a port without the capabilities of a backend does not match, that an extension of another contract version stops every command that needs it, and that two extensions of one target refuse to load. The engine side of the same proof is [the test port](#the-test-port), which builds and plays an app on a platform and a GPU device that come from outside the engine. The test `tools/tests/extensions/test_external_port.py` joins both halves: it installs an engine port and a backend from outside the repository into an environment of their own and builds, verifies and runs an app with them, as [the proof of an external port](../platform/ports.md#the-proof-of-an-external-port) describes. It builds the engine, so it runs only with `uv run pytest -m port`.
+
 ## Continuous integration
 
-The workflow `.github/workflows/ci.yml` runs on every push to a branch and on every pull request, except a change that touches only Markdown files, `docs/` or `extras/`, whose docs the tests of `tools/test_haylen.py` check on every machine before a commit. A newer push to the same branch or pull request cancels the run in progress, so only the run of the newest commit goes on. A run can also start by hand, with `gh workflow run ci.yml --ref main`, which tests the whole branch whatever changed, and such a run has a concurrency group of its own, so no push cancels it and it cancels nothing. The workflow only tests, so no job publishes anything, and tags and releases start no run. The jobs of a run hand the desktop artifacts that one of them built to the others as an artifact of the run, which nothing outside the run reads and which GitHub deletes after a day. A GitHub release of the repository is its source archive alone, since every project compiles the engine from its sources, or builds the prebuilt engine of its apps with `haylen engine` on its own machine.
+The workflow `.github/workflows/ci.yml` runs on every push to a branch and on every pull request, except a change that touches only Markdown files, `docs/` or `extras/`, whose docs the tests of the tooling check on every machine before a commit. A newer push to the same branch or pull request cancels the run in progress, so only the run of the newest commit goes on. A run can also start by hand, with `gh workflow run ci.yml --ref main`, which tests the whole branch whatever changed, and such a run has a concurrency group of its own, so no push cancels it and it cancels nothing. The workflow only tests, so no job publishes anything, and tags and releases start no run. The jobs of a run hand the desktop SDKs that one of them built to the others as an artifact of the run, which nothing outside the run reads and which GitHub deletes after a day. A GitHub release of the repository is its source archive alone, since every developer builds the SDKs of their apps with `haylen sdk build` on their own machine.
 
-Every job runs `haylen.py` with `--verbose`, and every build passes `--jobs` with all the processors of the runner. The variable `LINUX_PACKAGES` of the workflow lists the development packages that the engine builds against on Linux: Ninja, the X11, Wayland and input libraries that SDL compiles against and loads when the app starts, and the headers of EGL and OpenGL. The variable `MESA_PACKAGES` lists Mesa lavapipe for Vulkan with its validation layers and Mesa llvmpipe for OpenGL, which draw the GPU tests of Linux.
+Every job runs the command `haylen` through uv with `--verbose`, and every build passes `--jobs` with all the processors of the runner. The variable `LINUX_PACKAGES` of the workflow lists the development packages that the engine builds against on Linux: Ninja, the X11, Wayland and input libraries that SDL compiles against and loads when the app starts, and the headers of EGL and OpenGL. The variable `MESA_PACKAGES` lists Mesa lavapipe for Vulkan with its validation layers and Mesa llvmpipe for OpenGL, which draw the GPU tests of Linux.
 
 ### The build environment
 
-Every job that builds starts with the action `.github/actions/build-environment`. It installs Python and the Linux packages that the job names, sets up MSVC and Ninja on Windows and restores the caches below. A job with a compiler cache then points the variables `CMAKE_<LANG>_COMPILER_LAUNCHER` at ccache, so every compile of the job goes through it, as the [build guide](build.md#settings-of-every-build) describes. Each cache has a key that changes with everything it depends on, so no cache ever holds a result of other inputs:
+Every job that builds starts with the action `.github/actions/build-environment`. It installs uv and the Python of `.python-version`, the Linux packages that the job names, sets up MSVC and Ninja on Windows and restores the caches below. A job with a compiler cache then points the variables `CMAKE_<LANG>_COMPILER_LAUNCHER` at ccache, so every compile of the job goes through it, as the [build guide](build.md#settings-of-every-build) describes. Each cache has a key that changes with everything it depends on, so no cache ever holds a result of other inputs:
 
 | Cache | Folder | Key |
 | --- | --- | --- |
 | The sources of the dependencies | `.cache/cpm`, which `CPM_SOURCE_CACHE` names | The system and the hash of `engine/cmake/haylen-dependencies.cmake` and of the patches in `engine/cmake/patches`. The `desktop` job of each system saves it, and the other jobs of the system read it and fetch the few sources that only their platform needs. |
 | The shader compiler | `.tools/haylen-shaderc-<commit>` | The system, the processor and the hash of `engine/cmake/haylen-shader-compiler.json` and of `engine/cmake/haylen-shader-compiler.cmake`. The `desktop` job of each system and the `macos-intel` job save it, and every other job reads it. |
-| XcodeGen | `.tools/xcodegen-<version>` | The system, the processor and the version and SHA-256 of `XCODEGEN_VERSION` and `XCODEGEN_SHA256` in `haylen.py`. The iOS job of `apple`, the one job that generates an Xcode project, saves it. |
-| The Emscripten SDK and its ports | `.tools/emsdk` and `.cache/emscripten/ports` | The system, the processor and `EMSDK_VERSION` of `haylen.py`. The `web` job saves it on Linux and the macOS `desktop-port` job on macOS, and the `release` and `web-gpu` jobs read it. The jobs that compile with Emscripten point `EM_CACHE` at `.cache/emscripten`, so the libraries that Emscripten builds stay out of the SDK and out of the cache, while the ports that it downloads land in `.cache/emscripten/ports`. |
+| XcodeGen | `.tools/xcodegen-<version>` | The system, the processor and the hash of `tools/haylen/toolchains/xcodegen.py`, which pins its version and SHA-256. The iOS job of `apple`, which generates the Xcode project of an app, saves it. |
+| The Emscripten SDK and its ports | `.tools/emsdk` and `.cache/emscripten/ports` | The system, the processor and the version that `tools/haylen/toolchains/emscripten.py` pins. The `web` job saves it on Linux and the macOS `port` job on macOS, and the `web-gpu` job reads it. The jobs that compile with Emscripten point `EM_CACHE` at `.cache/emscripten`, so the libraries that Emscripten builds stay out of the SDK and out of the cache, while the ports that it downloads land in `.cache/emscripten/ports`. |
 | ccache on Windows | `.tools/ccache-<version>-windows-x86_64` | The system, the processor and the inputs `ccache-version` and `ccache-sha256` of the action, the newest release of ccache and the hash that its download must match. The Windows `desktop` job saves it, and the other Windows jobs with a compiler cache read it. |
 | The compiler cache | `.ccache` | The name of the cache of the job, the system and the processor, the version of Emscripten for the jobs that build the web, and the run that saved it. A run restores the newest cache of its name. A job that keeps a cache ends with the action `.github/actions/compiler-cache`, also when it fails or a newer push cancels it. Only the runs of the default branch save, pushed or started by hand, and the runs of other branches and of pull requests read the caches of the default branch. A job that compiled nothing, such as one cancelled before its build, keeps the cache it restored. A job that ran to its end drops every object it did not use, a cancelled job keeps them all, and then the action saves the cache under the name of its run and deletes the caches of the same name that earlier runs saved. So the repository keeps one compiler cache of each name, which holds one build of its job. |
 
@@ -526,29 +565,27 @@ The sources of the dependencies and the tools come from the releases of their pr
 
 The compiler cache cannot hide a failure. It finds an object by the hash of the compiler, its options and every source and header that the compile reads, so a change to any of them compiles the source again, and every link, test and check runs on every run. The objects take the compression level 6 of zstd, which keeps them about a seventh smaller than the default level. The largest size of each compiler cache, its `cache-size` in the workflow, stays above what one run of its job compiles, since a smaller cache would drop objects in the order the next run asks for them.
 
-The repository keeps at most 10 GB of caches, and GitHub removes the caches that runs read least recently first, so a second copy of any cache would push out the newest cache of another job. That is why only the default branch saves, and why each cache holds one build of its job. One build of every job has to fit, or the caches of the jobs that run last, whose runs read them least recently, would leave before each run and every run would compile those jobs from nothing. So the workflow sets `HAYLEN_DEBUG_INFO` to `LINES`, as the [build guide](build.md#cmake-options) describes, and its Debug trees keep only the file and line of each instruction, which stack traces and sanitizer reports read. Full debug information made up most of each Debug object. The jobs that compile keep a compiler cache: `desktop`, `desktop-port`, `macos-intel`, `fuzz`, `desktop-artifacts`, `web`, `android`, `apple`, `cpp-apps` and `cpp-releases`. The `desktop-apps` jobs compile only the few files of the starter app and its plugin, whose bootstrap holds the keys that each run makes, so they compile without a cache. The desktop artifacts of Linux and Windows build once per run, in the `desktop-artifacts` jobs, and the jobs that release apps take them through the action `.github/actions/desktop-artifacts`, so no other cache holds their objects. The macOS artifacts build in the iOS job and in the macOS `desktop-port` job, the two jobs that need them, since a job of their own would hold up the slices of the iOS job. The `tests-project` job builds the headless player in the same build tree as the Linux `desktop` job, and the `release` job builds the same artifacts as the `web` job, so each reads the compiler cache of that job and saves none. The `coverage`, `sanitizers`, `web-gpu` and `android-gpu` jobs build trees with options of their own that no other job compiles, and they compile without a cache.
+The repository keeps at most 10 GB of caches, and GitHub removes the caches that runs read least recently first, so a second copy of any cache would push out the newest cache of another job. That is why only the default branch saves, and why each cache holds one build of its job. One build of every job has to fit, or the caches of the jobs that run last, whose runs read them least recently, would leave before each run and every run would compile those jobs from nothing. So the workflow sets `HAYLEN_DEBUG_INFO` to `LINES`, as the [build guide](build.md#cmake-options) describes, and its Debug trees keep only the file and line of each instruction, which stack traces and sanitizer reports read. Full debug information made up most of each Debug object. The jobs that compile the engine keep a compiler cache: `desktop`, `port`, `macos-intel`, `fuzz`, `desktop-sdk`, `web`, `android` and `apple`. The `desktop-apps` and `cpp-apps` jobs compile only the starter app and its plugin against the desktop SDK of the run, and a release bootstrap holds the keys that each run makes, so they compile without a cache. The desktop SDKs of Linux and Windows build once per run, in the `desktop-sdk` jobs, and the jobs that build apps take them through the action `.github/actions/desktop-sdk`, so no other cache holds their objects. The macOS SDKs build in the iOS job and in the macOS `port` job, the two jobs that need them, since a job of their own would hold up the slices of the iOS job. The `tests-project` job builds the headless player in the same build tree as the Linux `desktop` job, so it reads the compiler cache of that job and saves none. The `coverage`, `sanitizers`, `web-gpu` and `android-gpu` jobs build trees with options of their own that no other job compiles, and they compile without a cache.
 
 ### The jobs
 
 | Job | Runner | What it does |
 | --- | --- | --- |
-| `format` | Ubuntu | Installs clang-format 23.1.3, runs `format --check` and the tests of [the rules of haylen.py](#the-rules-of-haylenpy). |
+| `format` | Ubuntu | Installs clang-format 23.1.3, runs `engine format --check`, which checks the C-family sources, the lambda markers and the Python of the tooling with Ruff, and runs `uv run pytest`, the [tests of the tooling](#the-tests-of-the-tooling). |
 | `desktop` | macOS, Ubuntu and Windows | Runs `test --config Debug`, the engine tests. Then it runs [the GPU tests](#the-gpu-tests) in the same build tree on every device that a hosted runner can start, each named with `--graphics-api`, so a device that cannot start fails the job. Linux runs `vulkan` on Mesa lavapipe and `openGl` on Mesa llvmpipe through EGL without a display. Windows installs the Graphics Tools of Windows, whose debug layer validates Direct3D, and runs `direct3D12` and `direct3D11` on WARP with `HAYLEN_TEST_GPU_SOFTWARE=1`. Windows runners have no Vulkan driver and only the OpenGL 1.1 of the system, so Vulkan and OpenGL do not run there. macOS runs `metal` on the paravirtual GPU of the runner. |
-| `desktop-port` | macOS, Ubuntu and Windows | Runs `test --port --config Debug`, which builds the engine with [the test port](#the-test-port) in a tree of its own and plays its app on it. Then it runs `sdk --config Release --check-consumers package`, which builds the SDK and the consumer project `engine/tests/consumer` that finds it with `find_package`. The macOS job then runs `engine --platform web` and `test --platform web --graphics-api webGpu`, the checks of the pages of the web on WebGPU, which Chrome draws there through Metal, since headless Chrome on Linux cannot present a WebGPU canvas. |
+| `port` | macOS, Ubuntu and Windows | Runs `uv run pytest -m port tools/tests/extensions`, [the proof of an external port](../platform/ports.md#the-proof-of-an-external-port), which installs an engine port and a backend from outside the tooling and builds, verifies and runs an app with a plugin on them. Then it builds the desktop SDK of the system with `sdk build --target linux`, `--target windows` or `--target player` and a project that finds it with `engine consumers --mode package`. The macOS job also builds the web SDK with `sdk build --target web`, runs `test --platform web --graphics-api webGpu`, the checks of the pages of the web on WebGPU, which Chrome draws there through Metal, and checks with `test --platform web --app samples/tests --config Release --graphics-api webGpu` that the protected web release of the test project starts. |
 | `macos-intel` | macOS on Intel | Builds the engine for x86-64 and runs the engine tests in Debug. The Intel runners of GitHub are virtual machines without a Metal device, so the GPU tests do not run there and the Metal paths of Intel Macs stay untested in CI. The job prints the report of the displays of the runner, which shows whether it supports Metal. |
-| `tests-project` | Ubuntu | Builds `haylen-headless` and the test library `haylen-native-test` in Debug, and runs every test of [the test project](#the-test-project) with `build/linux-debug/bin/haylen-headless samples/tests --frames 60000`. It fails when a test raises an error or its scene fails to load. |
-| `coverage` | macOS | Runs `coverage`, whose report table shows in the log. |
+| `tests-project` | Ubuntu | Builds `haylen-headless` and the test library `haylen-native-test` in Debug with `engine build`, and runs every test of [the test project](#the-test-project) with `build/engine/linux-debug/bin/haylen-headless samples/tests --frames 60000`. It fails when a test raises an error or its scene fails to load. |
+| `coverage` | macOS | Runs `engine coverage`, whose report table shows in the log. |
 | `sanitizers` | Ubuntu | Runs `test --sanitizers address` and `test --sanitizers thread` in two jobs, which build and run the engine tests with AddressSanitizer and UndefinedBehaviorSanitizer, and with ThreadSanitizer. |
-| `fuzz` | Ubuntu | Installs Clang with its runtime libraries and runs `fuzz --seconds 60 --llvm /usr/bin`, which builds the fuzzers and runs each for a minute. |
+| `fuzz` | Ubuntu | Installs Clang with its runtime libraries and runs `engine fuzz --seconds 60 --llvm /usr/bin`, which builds the fuzzers and runs each for a minute. |
 | `web-gpu` | Ubuntu | Runs `test --gpu --platform web` with `--graphics-api webGpu` and `--graphics-api webGl2`, the GPU tests in the headless Chrome of the runner, where WebGPU draws through SwiftShader and WebGL2 through ANGLE on SwiftShader. |
-| `desktop-artifacts` | Ubuntu and Windows | Runs `engine --platform desktop`, which builds the player, the content tool and the SDK of the system, and hands them to the jobs of the run that release apps: `web`, `release` and `android` on Linux, and `desktop-apps` and `cpp-releases` on both systems. |
-| `web` | Ubuntu | Runs `engine --platform web`, which builds the prebuilt WebGPU and WebGL2 player, then `test --platform web --graphics-api webGl2`, the [error screen check](#the-error-screen-check-of-the-web), the [wake lock check](#the-wake-lock-check-of-the-web), the [fullscreen check](#the-fullscreen-check-of-the-web), the [plugin check](#the-plugin-check-of-the-web), the [editor check](#the-editor-check-of-the-web) and the [memory check of the web](#the-memory-check-of-the-web) in the Chrome of the runner on WebGL2, since headless Chrome on Linux cannot present a WebGPU canvas. The macOS `desktop-port` job runs the same checks on WebGPU. Their releases take the content tool of the desktop artifacts of the run. |
-| `release` | Ubuntu | Builds the protected release of the test project for the web with `prepare samples/tests --platform web --config Release`, with keys made for the job and thrown away with it. Then it inspects the site with `check --config Release`, which fails when it holds Lua text, a file of the package as it is, a zipped package, symbol files or a key in any form. |
+| `desktop-sdk` | Ubuntu and Windows | Runs `sdk build --target linux` or `sdk build --target windows`, which builds the SDK of the system with the desktop player and the content tool, and hands it to the jobs of the run that build apps: `web` and `android` on Linux, and `desktop-apps` and `cpp-apps` on both systems. |
+| `web` | Ubuntu | Runs `sdk build --target web`, which builds the web player and the web SDK, then `test --platform web --graphics-api webGl2`, the [error screen check](#the-error-screen-check-of-the-web), the [wake lock check](#the-wake-lock-check-of-the-web), the [fullscreen check](#the-fullscreen-check-of-the-web), the [plugin check](#the-plugin-check-of-the-web), the [editor check](#the-editor-check-of-the-web) and the [memory check of the web](#the-memory-check-of-the-web) in the Chrome of the runner on WebGL2, since headless Chrome on Linux cannot present a WebGPU canvas. Then `test --platform web --app samples/tests --config Release --graphics-api webGl2` builds the protected web release of the test project with the content tool of the desktop SDK of the run and keys made for the job and thrown away with it, verifies it for anything a release never holds and [checks that it starts](#the-start-check-of-an-app-on-the-web). The macOS `port` job runs the same checks on WebGPU. |
 | `android-gpu` | Ubuntu | Installs the NDK, the emulator and the Android 37 image for x86-64, lets the emulator use KVM and creates a virtual device. Runs `test --gpu --platform android` with `HAYLEN_TEST_GPU_SOFTWARE=1`, which starts that device without a window, drawing through SwiftShader, and runs the GPU tests on every device of the Android build that starts there. |
-| `android` | Ubuntu | Installs Java 25, NDK 30.0.16248370, CMake 4.1.2 and the Android 37.2 platform. Runs `engine --platform android`, which builds the Android libraries into the local Maven repository. Then it creates the starter app with `new build/starter`, gives it an upload key with `distribution android-key build/starter` and runs `run build/starter --platform android --config Release --build-only`. That builds the protected release with the content tool of the desktop artifacts, the library of the app for every ABI and the signed APK, and checks it for anything a release never holds. |
-| `apple` | macOS | Builds the slices of `Haylen.xcframework` with `engine --platform apple --slices`, in four jobs, one for each family: iOS with `ios` and `ios-simulator`, tvOS with `tvos` and `tvos-simulator`, visionOS with `xros` and `xros-simulator`, and macOS with `macos` and `ios-maccatalyst`. The iOS job then creates the starter app and runs `run build/starter --platform ios-simulator --config Release --build-only`, which builds and checks its protected release for the iOS simulator from the slices it built. |
-| `desktop-apps` | Ubuntu and Windows | Installs `dpkg-dev`, `desktop-file-utils` and the newest CMake on Linux. Creates the starter app with `new build/starter`. Adds to it a plugin that `plugin new build/echo-check` creates from the plugin template, with `plugin add build/echo-check --app build/starter`. Runs `distribution installer build/starter --output build/dist` for the platform, which takes the desktop artifacts of the run and builds the C library of the plugin, the starter app from the Linux or Windows template in the Release configuration, and its `.deb` and AppImage or its installer. Then it checks the installed app with `check --config Release`, and on Linux validates its desktop entry with `desktop-file-validate`. |
-| `cpp-apps` | Ubuntu and Windows | Creates the starter C++ app with `new build/starter-cpp --kind cpp` and builds it with `run build/starter-cpp --build-only`, which compiles the engine with the app in the Debug configuration. |
-| `cpp-releases` | Ubuntu and Windows | Creates the same app and builds it with `run build/starter-cpp --config Release --build-only`, which ships and checks its protected release with the content tool of the desktop artifacts of the run. |
+| `android` | Ubuntu | Installs Java 25, NDK 30.0.16248370, CMake 4.1.2 and the Android 37.2 platform. Runs `sdk build --target android`, which builds the SDK of every ABI with the Android libraries in its local Maven repository. Then it creates the starter app with `new build/starter` and the starter C++ app with `new build/starter-cpp --kind cpp`, gives it an upload key with `app sign build/starter --target android` and runs `app build build/starter --target android --config Release`. That builds the protected release with the content tool of the desktop SDK, the library of the app for every ABI and the signed APK, and verifies it for anything a release never holds. Last, `app build build/starter-cpp --target android` builds the C++ app, whose C++ code the CMake external build of Gradle compiles for every ABI against the SDK. |
+| `apple` | macOS | Builds the slices of the Apple SDK with `sdk build`, in four jobs, one for each family: iOS with `--target ios --target ios-simulator`, tvOS with `--target tvos --target tvos-simulator`, visionOS with `--target visionos --target visionos-simulator`, and macOS with `--target macos --target catalyst`. The iOS job then builds the desktop SDK of the Mac, creates the starter app and the starter C++ app, runs `app build build/starter --target ios-simulator --config Release`, which builds and verifies its protected release for the iOS simulator from the slices it built, and `app build build/starter-cpp --target ios-simulator`, whose C++ code the generated Xcode project compiles against the SDK. |
+| `desktop-apps` | Ubuntu and Windows | Installs `dpkg-dev`, `desktop-file-utils` and the newest CMake on Linux. Creates the starter app with `new build/starter`. Adds to it a plugin that `plugin new build/echo-check` creates from the plugin template, with `plugin add build/echo-check --app build/starter`. Runs `app package build/starter --target <system> --format installer -o build/dist`, which takes the desktop SDK of the run and builds the C++ library of the plugin, the starter app in the Release configuration and its `.deb` and AppImage or its installer, after the verification of the build. On Linux it validates the desktop entry of the app with `desktop-file-validate`. |
+| `cpp-apps` | Ubuntu and Windows | Creates the starter C++ app with `new build/starter-cpp --kind cpp`, builds it with `app build build/starter-cpp`, which compiles only the code of the app against the desktop SDK of the run in the Debug configuration, and then with `app build build/starter-cpp --config Release`, which ships and verifies its protected release with the content tool of that SDK. |
 
-The engine tests run in the `desktop`, `macos-intel`, `coverage` and `sanitizers` jobs, and the GPU tests in the `desktop`, `web-gpu` and `android-gpu` jobs. The `web`, `android` and `apple` jobs check that the engine artifacts of those platforms build. The `desktop-apps` job checks the desktop artifacts with the Windows and Linux templates, the `cpp-apps` and `cpp-releases` jobs build the C++ template on both systems, and the `release` job checks a protected web release. Work that builds a tree of its own runs in a job of its own, so the longest job sets the time of a run, except where short trees share a job, as the test port and the SDK do, so a run asks for fewer macOS runners, which GitHub has the fewest of.
+The engine tests run in the `desktop`, `macos-intel`, `coverage` and `sanitizers` jobs, and the GPU tests in the `desktop`, `web-gpu` and `android-gpu` jobs. The `web`, `android` and `apple` jobs check that the SDKs of those targets build and that an app builds against them. The `desktop-apps` job checks the desktop SDKs with the generated Windows and Linux projects, the `cpp-apps` job builds a C++ app on both systems in Debug and Release, and the `web` and `port` jobs check that a protected web release starts. Work that builds a tree of its own runs in a job of its own, so the longest job sets the time of a run, except where short trees share a job, as the test port and the SDK do, so a run asks for fewer macOS runners, which GitHub has the fewest of.

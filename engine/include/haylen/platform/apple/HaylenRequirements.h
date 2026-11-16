@@ -6,7 +6,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-// Something that a feature needs from the Apple project of the app, with the file of the project that declares it and the snippet that adds it there.
+// Something that a feature needs from the app, with the file that adds it and the snippet that the file takes.
 @interface HaylenRequirement : NSObject
 
 // One of `infoPlistKey`, `usageDescription`, `backgroundMode`, `urlScheme`, `class` and `entitlement`.
@@ -15,7 +15,7 @@ NS_ASSUME_NONNULL_BEGIN
 // The key, the mode, the scheme, the class or the entitlement.
 @property(nonatomic, readonly, copy) NSString* name;
 
-// The file of the Apple project that declares the requirement, relative to the project, such as `ios/Info.plist` on iOS and Mac Catalyst.
+// The file that adds the requirement: `haylen.json` of the app, whose section of the platform under `platforms` takes the keys of the `Info.plist` and the entitlements, or `plugin.json` of the plugin for a framework, which only a plugin links.
 @property(nonatomic, readonly, copy) NSString* file;
 
 @property(nonatomic, readonly, copy) NSString* snippet;
@@ -35,7 +35,7 @@ NS_ASSUME_NONNULL_BEGIN
 // A scheme of `CFBundleURLTypes`, whose links open the app.
 + (instancetype)urlScheme:(NSString*)scheme;
 
-// A class that a framework or a library brings, such as `UNUserNotificationCenter` of `UserNotifications.framework`, which the target of the app links.
+// A class that a framework or a library brings, such as `UNUserNotificationCenter` of `UserNotifications.framework`, which the `framework` contribution of a plugin links into the app.
 + (instancetype)className:(NSString*)name framework:(NSString*)framework;
 
 // A boolean entitlement that the app signs with. Only macOS and Mac Catalyst tell an app its entitlements, so on iOS and tvOS the requirement never counts as missing, and the error of the API that needs it tells instead.
@@ -43,7 +43,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
-// Tells what the Apple project of the app holds: the keys of its `Info.plist`, the classes it links and, on macOS and Mac Catalyst, the entitlements it signs with. The project belongs to its developer, so a plugin checks what it needs before it calls a system API that needs it, and a missing requirement logs once what is missing and how to add it and fails the call with the code `unsupported` instead of crashing the app. Every method works from any thread.
+// Tells what the app holds: the keys of its `Info.plist`, the classes it links and, on macOS and Mac Catalyst, the entitlements it signs with. An app may leave out what a plugin needs, so a plugin checks what it needs before it calls a system API that needs it, and a missing requirement logs once what is missing and how to add it and fails the call with the code `unsupported` instead of crashing the app. Every method works from any thread.
 @interface HaylenRequirements : NSObject
 
 - (instancetype)init NS_UNAVAILABLE;
@@ -67,10 +67,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (BOOL)hasEntitlement:(NSString*)key;
 #endif
 
-// The requirements that the project lacks, in their order.
+// The requirements that the app lacks, in their order.
 - (NSArray<HaylenRequirement*>*)missing:(NSArray<HaylenRequirement*>*)requirements;
 
-// Returns `NO` with an error when the project lacks any of the requirements, after it logged each missing one once. The user info of the error holds the failure that a handler replies with, `message`, the code `unsupported` and `data`, whose `missing` lists each missing requirement as `{kind, name, file, snippet}`, so `reply(NO, error.userInfo)` fails the call.
+// Returns `NO` with an error when the app lacks any of the requirements, after it logged each missing one once. The user info of the error holds the failure that a handler replies with, `message`, the code `unsupported` and `data`, whose `missing` lists each missing requirement as `{kind, name, file, snippet}`, so `reply(NO, error.userInfo)` fails the call.
 - (BOOL)require:(NSArray<HaylenRequirement*>*)requirements error:(NSError**)error;
 
 @end

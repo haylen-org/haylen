@@ -33,7 +33,7 @@ class Package;
 
 namespace haylen::core {
 
-// App settings read from `app.json` before any script runs, because the window exists before `source/main.lua`.
+// App settings read from `haylen.json` before any script runs, because the window exists before `source/main.lua`.
 struct AppConfig {
     // A transparent window opens able to let the desktop show through its transparent pixels, which it keeps for the whole run, and clears to transparent unless `clearColor` says otherwise. The desktop options change at run time through the window, and `position` places the window when it opens. The status bar of phones and tablets launches as `statusBar` says, and the engine paints `statusBarColor` behind it while it shows. The system gestures at the edges of phones and tablets follow `systemGestures`.
     struct Window {
@@ -69,7 +69,7 @@ struct AppConfig {
         bool lowPowerGpu = false;
     };
 
-    // The launch screen that every platform shows while the app starts, with a logo relative to the content folder, or the Haylen logo when it is empty, over a background color that defaults to the clear color, and another one while the system uses dark colors. It stays until the app drew its first complete frame, which `Engine::isFrameComplete` tells, and at least the duration in seconds since the launch, and fades out into the app over the fade-out in seconds. The script `haylen.py` turns it into the launch storyboard on Apple platforms, the splash screen on Android and the loading page on the web.
+    // The launch screen that every platform shows while the app starts, with a logo relative to the content folder, or the Haylen logo when it is empty, over a background color that defaults to the clear color, and another one while the system uses dark colors. It stays until the app drew its first complete frame, which `Engine::isFrameComplete` tells, and at least the duration in seconds since the launch, and fades out into the app over the fade-out in seconds. The backends of the tooling turn it into the launch storyboard on Apple platforms, the splash screen on Android and the loading page on the web.
     struct Splash {
         std::string logo;
         math::Color background = math::Color::black();
@@ -197,10 +197,10 @@ struct AppConfig {
     // Lua modules that load before the first scene and live for the whole app.
     std::vector<std::string> autoloads;
 
-    // The native libraries the app ships by name, which `haylen.py` builds and places in the package of each platform. The engine keeps the section as `app.json` wrote it.
+    // The native libraries the app ships by name, which the backend of each target builds and places in the app. The engine keeps the section as `haylen.json` wrote it.
     Json native = Json::object();
 
-    // A plugin that the app uses: where `haylen.py` takes it from, an empty `path` and `git` meaning the folder `plugins/<id>` of the app, and the values of its parameters as `app.json` wrote them. The package always holds the plugin at `plugins/<id>`, with its `plugin.json` and its Lua modules, wherever it comes from.
+    // A plugin that the app uses: where the tooling takes it from, an empty `path` and `git` meaning the folder `plugins/<id>` of the app, and the values of its parameters as `haylen.json` wrote them. The package always holds the plugin at `plugins/<id>`, with its `plugin.json` and its Lua modules, wherever it comes from.
     struct Plugin {
         std::string path;
         std::string git;
@@ -216,7 +216,7 @@ struct AppConfig {
     // Reads every present field and validates it. Throws `std::invalid_argument` with the offending field on bad values.
     [[nodiscard]] static AppConfig fromJson(const Json& document);
 
-    // Reads `app.json` of the package like `fromJson` and also checks that the package holds `plugins/<id>/plugin.json` for every plugin the app lists, which a folder that the player runs directly lacks for a plugin that `app.json` references elsewhere. It reads no content, so the rules that name preload groups stay until `Content::expandGroups`.
+    // Reads `haylen.json` of the package like `fromJson` and also checks that the package holds `plugins/<id>/plugin.json` for every plugin the app lists, which a folder that the player runs directly lacks for a plugin that `haylen.json` references elsewhere. It reads no content, so the rules that name preload groups stay until `Content::expandGroups`.
     [[nodiscard]] static AppConfig fromPackage(const io::Package& package);
     [[nodiscard]] Json toJson() const;
 
@@ -248,6 +248,7 @@ struct AppConfig {
     static void readPlugins(const Json& section, AppConfig& config);
     [[nodiscard]] static Plugin readPlugin(const std::string& id, const Json& entry);
     static void readPluginText(const Json& entry, const std::string& id, const char* key, std::string& target);
+    static void requireToolingSections(const Json& document);
     [[nodiscard]] static std::vector<gpu::Device::Api> readGraphicsApis(const Json& value);
     [[nodiscard]] static bool isContentPattern(std::string_view pattern) noexcept;
     static void readWindow(const Json& section, AppConfig& config);

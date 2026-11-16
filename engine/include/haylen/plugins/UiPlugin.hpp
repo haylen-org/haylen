@@ -131,7 +131,7 @@ class UiPlugin final : public Plugin {
         return direction;
     }
 
-    // How large the interface draws from the next frame, which the `ui` section of `app.json` sets at start. The backend reports the design units one UI unit spans that it resolves to.
+    // How large the interface draws from the next frame, which the `ui` section of `haylen.json` sets at start. The backend reports the design units one UI unit spans that it resolves to.
     void setScaling(const ui::Scaling& value) noexcept {
         scaling = value;
     }
@@ -147,7 +147,7 @@ class UiPlugin final : public Plugin {
         return textScale;
     }
 
-    // Shades the screen outside the safe area and outlines it over everything, to check layouts against notches and system bars. The `debug.showSafeArea` option of `app.json` turns it on at start.
+    // Shades the screen outside the safe area and outlines it over everything, to check layouts against notches and system bars. The `debug.showSafeArea` option of `haylen.json` turns it on at start.
     void setSafeAreaVisible(bool value) noexcept {
         safeAreaVisible = value;
     }

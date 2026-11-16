@@ -42,7 +42,7 @@ def pack_icons(sheet: Image) -> None:
         factor = ICON_ROOM / max(x1 - x0, y1 - y0)
         icon = cut(cell, (x0, y0, x1, y1), factor)
         result.paste(icon, index % columns * ICON + (ICON - icon.width) // 2, index // columns * ICON + (ICON - icon.height) // 2)
-    write(result, CONTENT / "icons.png")
+    Image.write(result, CONTENT / "icons.png")
     print("Wrote icons.png.")
 
 
@@ -58,7 +58,7 @@ def pack_creatures(sheet: Image) -> None:
             frame = cut(sheet, (column * half + x0, row * half + y0, column * half + x1, row * half + y1), factor)
             top = CREATURE - 8 - frame.height if rest == "ground" else (CREATURE - frame.height) // 2
             result.paste(frame, column * CREATURE + (CREATURE - frame.width) // 2, max(0, top))
-        write(result, CONTENT / f"{name}.png")
+        Image.write(result, CONTENT / f"{name}.png")
         print(f"Wrote {name}.png.")
 
 
@@ -67,8 +67,8 @@ def main() -> None:
         sys.exit("Usage: pack-art.py <folder of icons.png and creatures.png>")
     folder = Path(sys.argv[1])
     CONTENT.mkdir(parents=True, exist_ok=True)
-    pack_icons(read(folder / "icons.png"))
-    pack_creatures(read(folder / "creatures.png"))
+    pack_icons(Image.read(folder / "icons.png"))
+    pack_creatures(Image.read(folder / "creatures.png"))
 
 
 if __name__ == "__main__":

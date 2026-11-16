@@ -1,4 +1,4 @@
-// Android library module of the plugin `native-sample`. The script `haylen.py` copies it into `haylen/plugins/native-sample` of the Android project of the app, which depends on it. The `haylen-plugins` library brings the plugin API of the `haylen` library and the provider that loads the plugin, and the `haylen-coroutines` library the suspending handlers.
+// Android library module of the plugin `native-sample`. The Android backend copies it into `plugins/native-sample/` of the Android project that it generates for the app, whose app module depends on it. The `haylen-plugins` library brings the plugin API of the `haylen` library and the provider that loads the plugin, and the `haylen-coroutines` library the suspending handlers.
 plugins {
     id("com.android.library")
 }

@@ -1,0 +1,86 @@
+import re
+from pathlib import Path
+
+import pytest
+
+from haylen.cli.application import Application
+from haylen.cli.arguments import Arguments
+from haylen.cli.command_session import CommandSession
+from haylen.core.app_pipeline import AppPipeline
+from haylen.core.errors.invalid_option import InvalidOption
+from haylen.core.errors.missing_capability import MissingCapability
+from haylen.core.product_request import ProductRequest
+from haylen.core.resolved_product import ResolvedProduct
+from tests.support.tooling_fixture import ToolingFixture
+
+
+class CommandsTest:
+    """The commands run through the parser of the command line against the fake backend, whose SDKs and plugins come from the fixture."""
+
+    @staticmethod
+    def session(fixture: ToolingFixture, monkeypatch: pytest.MonkeyPatch, structured: bool = False) -> CommandSession:
+        session = CommandSession(fixture.context, structured)
+        session.registry = fixture.registry()
+
+        def resolve(pipeline: AppPipeline, request: ProductRequest) -> ResolvedProduct:
+            return fixture.resolver(request.app_folder, pipeline.registry).resolve(request)
+
+        monkeypatch.setattr(AppPipeline, "resolve", resolve)
+        return session
+
+    @staticmethod
+    def run(session: CommandSession, words: list[str]) -> object:
+        parser, commands = Application.parser()
+        arguments = parser.parse_args(words)
+        return commands[arguments.command_path].run(arguments, session)
+
+    @pytest.mark.parametrize("words", [["app", "package", "--target", "fake", "--format", "store"], ["app", "run", "--target", "fake"]])
+    def test_a_backend_without_the_capability_stops_the_command_before_it_prepares_anything(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, words: list[str]):
+        fixture = ToolingFixture(tmp_path)
+        fixture.sdk()
+        app = fixture.app({})
+        session = CommandsTest.session(fixture, monkeypatch)
+        with pytest.raises(MissingCapability, match=re.escape('The backend "fake" of "fake" does not')):
+            CommandsTest.run(session, [*words[:2], str(app), *words[2:]])
+
+    def test_the_release_that_a_build_follows_needs_the_release_configuration(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        fixture = ToolingFixture(tmp_path)
+        app = fixture.app({})
+        shipped = tmp_path / "shipped"
+        shipped.mkdir()
+        session = CommandsTest.session(fixture, monkeypatch)
+        parser, _ = Application.parser()
+
+        debug = parser.parse_args(["app", "build", str(app), "--target", "fake", "--previous-release", str(shipped)])
+        with pytest.raises(InvalidOption, match=re.escape('takes "--config Release"')):
+            Arguments.request(debug, session, debug.previous_release)
+
+        release = parser.parse_args(["app", "build", str(app), "--target", "fake", "--config", "Release", "--previous-release", str(shipped)])
+        assert Arguments.request(release, session, release.previous_release).previous_release == shipped.resolve()
+
+    def test_content_publishes_to_the_channel_that_the_engine_follows_by_default(self):
+        parser, _ = Application.parser()
+        assert parser.parse_args(["content", "publish", "--target", "web", "--output", "tree"]).channel == "stable"
+        assert parser.parse_args(["content", "publish", "--target", "web", "--output", "tree", "--channel", "beta"]).channel == "beta"
+
+    def test_the_plugin_list_names_the_plugin_folders_that_the_app_does_not_list(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        fixture = ToolingFixture(tmp_path)
+        app = fixture.app({"plugins": {"kit": {}}})
+        fixture.plugin(app, "kit", {})
+        fixture.plugin(app, "stray", {})
+
+        listed = CommandsTest.run(CommandsTest.session(fixture, monkeypatch), ["plugin", "list", "--app", str(app)])
+        assert [(plugin["id"], plugin["listed"]) for plugin in listed["plugins"]] == [("kit", True), ("stray", False)]
+        assert 'stray  1.0.0, fake, from plugins/stray, Not in "haylen.json", so no build carries it' in fixture.output.getvalue()
+
+    def test_inspect_shows_the_settings_of_the_target_with_their_origins(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        fixture = ToolingFixture(tmp_path)
+        fixture.sdk()
+        app = fixture.app({"platforms": {"fake": {"signing": "team", "minimumSystemVersion": "2.0"}}})
+        origin = f"{fixture.resolve(app).app.origin} at platforms.fake.signing"
+
+        CommandsTest.run(CommandsTest.session(fixture, monkeypatch), ["project", "inspect", str(app), "--target", "fake"])
+        assert f'  "team" from {fixture.resolve(app).app.origin} at "platforms.fake.signing"' in fixture.output.getvalue()
+
+        described = CommandsTest.run(CommandsTest.session(fixture, monkeypatch, structured=True), ["project", "inspect", str(app), "--target", "fake"])
+        assert described["targets"][0]["settings"] == {"fake": {"signing": {"value": "team", "origin": origin}}}

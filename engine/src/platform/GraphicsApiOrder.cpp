@@ -10,7 +10,7 @@
 
 namespace haylen::platform {
 
-// The APIs of `app.json` may belong to other platforms, which the order leaves out quietly, while an API the command line asks for and the build lacks deserves a word.
+// The APIs of `haylen.json` may belong to other platforms, which the order leaves out quietly, while an API the command line asks for and the build lacks deserves a word.
 std::vector<gpu::Device::Api> GraphicsApiOrder::resolve(std::string_view requested, std::span<const gpu::Device::Api> configured) {
     if (requested.empty()) {
         return gpu::DeviceFactory::order(configured);

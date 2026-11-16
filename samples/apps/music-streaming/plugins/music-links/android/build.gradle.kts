@@ -1,4 +1,4 @@
-// Android library module of the Music Links plugin, whose manifest only adds the intent filter of its scheme to the manifest of the app. The script `haylen.py` copies it into `haylen/plugins/music-links` of the Android project of the app, which depends on it. The `haylen-links` library brings the activity that receives the links.
+// Android library module of the Music Links plugin, whose manifest only adds the intent filter of its scheme to the manifest of the app. The Android backend copies it into `plugins/music-links/` of the Android project that it generates for the app, whose app module depends on it. The `haylen-links` library brings the activity that receives the links.
 plugins {
     id("com.android.library")
 }

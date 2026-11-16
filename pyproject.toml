@@ -1,0 +1,53 @@
+[project]
+name = "haylen"
+version = "0.0.1"
+description = "The command line of Haylen, which creates, prepares, builds, verifies and runs apps through platform backends, and builds and tests the engine."
+license = "MIT"
+requires-python = ">=3.15"
+dependencies = ["jsonschema==4.26.0"]
+
+[project.scripts]
+haylen = "haylen.cli.application:Application.main"
+
+[project.entry-points."haylen.backends"]
+android = "haylen.platforms.android.android_backend:AndroidBackend"
+apple = "haylen.platforms.apple.apple_backend:AppleBackend"
+desktop = "haylen.platforms.desktop.desktop_backend:DesktopBackend"
+player = "haylen.platforms.player.player_backend:PlayerBackend"
+web = "haylen.platforms.web.web_backend:WebBackend"
+
+[project.entry-points."haylen.engine_ports"]
+android = "haylen.platforms.android.android_port:AndroidPort"
+apple = "haylen.platforms.apple.apple_engine_port:AppleEnginePort"
+desktop = "haylen.platforms.desktop.desktop_port:DesktopPort"
+web = "haylen.platforms.web.web_port:WebPort"
+
+[dependency-groups]
+dev = ["pytest==9.2.0", "ruff==0.17.5"]
+
+[build-system]
+requires = ["uv_build>=0.9,<0.13"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = "tools"
+module-name = "haylen"
+
+[tool.ruff]
+line-length = 200
+src = ["tools"]
+# Ruff formats and lints the Python of the tooling, the package and the scripts of `tools`.
+include = ["tools/**/*.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "RUF", "PIE", "RET", "PTH"]
+ignore = ["E501", "N818", "RUF012"]
+
+[tool.pytest.ini_options]
+testpaths = ["tools/tests"]
+# The proof of an external port builds the engine, so it runs only when "-m port" asks for it.
+addopts = "-p no:cacheprovider -m 'not port'"
+markers = ["port: the proof of an external port, which builds the engine and runs only with \"-m port\""]
+python_classes = ["*Test"]
+python_files = ["test_*.py"]
+pythonpath = ["tools"]

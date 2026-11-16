@@ -37,12 +37,12 @@ def recolor(red: int, green: int, blue: int) -> tuple[int, int, int]:
 
 
 def main() -> None:
-    image = png_image.read(CONTENT / "animation" / "fighter.png")
+    image = png_image.Image.read(CONTENT / "animation" / "fighter.png")
     pixels = image.pixels
     for index in range(0, len(pixels), 4):
         if pixels[index + 3] > 0:
             pixels[index], pixels[index + 1], pixels[index + 2] = recolor(pixels[index], pixels[index + 1], pixels[index + 2])
-    png_image.write(image, CONTENT / "algorithms" / "fighter-red.png")
+    png_image.Image.write(image, CONTENT / "algorithms" / "fighter-red.png")
     print(f"Wrote {CONTENT / 'algorithms' / 'fighter-red.png'} ({image.width}x{image.height}).")
 
 

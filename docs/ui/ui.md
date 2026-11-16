@@ -252,7 +252,7 @@ ui.mount(ui.column{
 
 ## Place it on the screen
 
-Sizes and positions are design units of the `design` resolution in `app.json`, which is 1920 by 1080 in Tiny Island and by default. The metrics of the built-in themes suit that resolution. The [rendering guide](../graphics/rendering.md) explains the scaling policies that map design units to the screen. The functions [`viewport.setScaling`](../lua-api/viewport.md#viewportsetscalingpolicy) and [`viewport.setDesignSize`](../lua-api/viewport.md#viewportsetdesignsizewidth-height) change them while the app runs, and every GUI lays out in the new areas from the next frame on.
+Sizes and positions are design units of the `design` resolution in `haylen.json`, which is 1920 by 1080 in Tiny Island and by default. The metrics of the built-in themes suit that resolution. The [rendering guide](../graphics/rendering.md) explains the scaling policies that map design units to the screen. The functions [`viewport.setScaling`](../lua-api/viewport.md#viewportsetscalingpolicy) and [`viewport.setDesignSize`](../lua-api/viewport.md#viewportsetdesignsizewidth-height) change them while the app runs, and every GUI lays out in the new areas from the next frame on.
 
 ### The safe area
 
@@ -299,7 +299,7 @@ GUIs draw in the order of their `layer` option, and GUIs on the same layer in th
 
 ### Testing the safe area on a desktop
 
-A desktop window has no notch, so Haylen can simulate one. Set `debug.safeArea` in `app.json`, or call [`viewport.setSafeAreaSimulation`](../lua-api/viewport.md#viewportsetsafeareasimulationvalue) while the app runs. It takes a device, such as `'iphoneNotch'`, `'iphoneDynamicIsland'`, `'ipad'`, `'androidGestureBar'` or `'television'`, whose insets follow the window as it turns between landscape and portrait. It also takes insets in window points. The option `debug.showSafeArea`, or [`ui.setSafeAreaVisible`](../lua-api/ui.md#uisetsafeareavisiblevisible), shades what lies outside the safe area and prints its insets where they cover no interface.
+A desktop window has no notch, so Haylen can simulate one. Set `debug.safeArea` in `haylen.json`, or call [`viewport.setSafeAreaSimulation`](../lua-api/viewport.md#viewportsetsafeareasimulationvalue) while the app runs. It takes a device, such as `'iphoneNotch'`, `'iphoneDynamicIsland'`, `'ipad'`, `'androidGestureBar'` or `'television'`, whose insets follow the window as it turns between landscape and portrait. It also takes insets in window points. The option `debug.showSafeArea`, or [`ui.setSafeAreaVisible`](../lua-api/ui.md#uisetsafeareavisiblevisible), shades what lies outside the safe area and prints its insets where they cover no interface.
 
 ```json
 {
@@ -794,7 +794,7 @@ Every area that scrolls follows the device that moves it:
 
 - A trackpad, and the other precise devices of macOS and the web, move the content by the points of the screen they move, at once. So the content follows the fingers.
 - Each step of a mouse wheel moves the content by the theme metric `scrollLine`, 64 UI units by default, gliding there. Shift turns a mouse wheel sideways.
-- The option `scrollSpeed` of the `input` section of `app.json`, 1 by default, multiplies every scroll before the UI and the app see it. The function `input.setScrollSpeed()` changes it while the app runs, which suits a setting of the player. A theme or a `style` changes `scrollLine` for its areas.
+- The option `scrollSpeed` of the `input` section of `haylen.json`, 1 by default, multiplies every scroll before the UI and the app see it. The function `input.setScrollSpeed()` changes it while the app runs, which suits a setting of the player. A theme or a `style` changes `scrollLine` for its areas.
 
 The trackpads and the mouse of macOS report the phases of their gestures. So a `scroll` and a `collection` move under them the way a finger moves them on a touch screen. The content follows the fingers and stretches past an end, with a resistance that grows the farther it goes. Once the fingers leave, the content flings on with the speed it had and bounces at an end, or springs back at once when it lies past one. The momentum that macOS adds after the fingers leave moves nothing there, and fingers that touch the trackpad again stop the fling. The areas without a motion of their own follow that momentum instead: the `textArea`, the body of a `dialog` and the popups. The precise devices of the web report no phases, so they move the content within its range and never stretch it.
 
@@ -858,7 +858,7 @@ The keyboard, gamepads and TV remotes move the focus between items with the dire
 
 ### What a long list costs
 
-The command `haylen bench --suite ui` runs the UI benchmark, `engine/bench/UiBenchmark.cpp`, on the headless host. A list and a grid of a hundred thousand items take a fling every 45 frames for 900 frames, and then rest for 300 frames. The items have three types: a sticky header, a plain type and a type with a binder. For each phase, the benchmark prints the average and the worst CPU time of a frame, the items bound, the binder calls and the cells created. At its end, it prints the cells alive. These are the numbers of an Apple M5 Pro in Release:
+The command `haylen engine bench --suite ui` runs the UI benchmark, `engine/bench/UiBenchmark.cpp`, on the headless host. A list and a grid of a hundred thousand items take a fling every 45 frames for 900 frames, and then rest for 300 frames. The items have three types: a sticky header, a plain type and a type with a binder. For each phase, the benchmark prints the average and the worst CPU time of a frame, the items bound, the binder calls and the cells created. At its end, it prints the cells alive. These are the numbers of an Apple M5 Pro in Release:
 
 | Layout | Phase | Frame ms | Worst ms | Binds | Binder calls | Cells created | Cells alive |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -1037,7 +1037,7 @@ A GUI lays out in UI units, and the scale mode decides how big a UI unit is:
 - In the default mode `'design'`, a UI unit is a design unit. The interface grows and shrinks with the screen like the rest of the app. That suits games drawn for one screen shape, and televisions.
 - In the mode `'physical'`, a UI unit keeps the same physical size on every screen, from the density that the platform reports. So buttons and text are as large on a phone as on a desktop monitor. The shorter side of the visible area always holds at least 480 units. The room that the UI has then changes with the screen, and layouts that grow, wrap and fit their columns follow it.
 
-Set the mode with `ui.setScaleMode('physical')`, or with `"ui": {"scaleMode": "physical"}` in `app.json`. The factor of `ui.setScale`, such as a size setting of the player, multiplies both modes. The function `ui.scale()` reports the factor, the design units that a UI unit spans and the points of the screen that it spans. The reference describes [the scale functions](../lua-api/ui.md#scale).
+Set the mode with `ui.setScaleMode('physical')`, or with `"ui": {"scaleMode": "physical"}` in `haylen.json`. The factor of `ui.setScale`, such as a size setting of the player, multiplies both modes. The function `ui.scale()` reports the factor, the design units that a UI unit spans and the points of the screen that it spans. The reference describes [the scale functions](../lua-api/ui.md#scale).
 
 ```lua
 local preferences = require('haylen.preferences')

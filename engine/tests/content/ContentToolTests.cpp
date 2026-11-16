@@ -19,7 +19,7 @@ namespace haylen::content {
 class ContentToolTest : public ::testing::Test {
   protected:
     ContentToolTest() {
-        app.write("app.json", R"({"name": "Tool Test", "identifier": "com.haylen.tests", "version": "1.0.0"})");
+        app.write("haylen.json", R"({"name": "Tool Test", "identifier": "com.haylen.tests", "version": "1.0.0"})");
         app.write("source/main.lua", "loaded = true");
         app.write("content/data/config.json", R"({"level": 3})");
     }

@@ -16,7 +16,13 @@ With `--reference`, the app keeps the plugin where it is, so apps that share the
 haylen plugin add path/to/{{ID}} --reference --app my-app
 ```
 
-Both list the plugin in the `plugins` section of `app.json`. The values of its [parameters](#parameters) go under `parameters`, and a reference also names the folder of the plugin in `path`, relative to the app:
+A plugin in a git repository is added from its address at a branch, tag or commit. With `--reference`, the tooling pins the commit in `haylen.lock` of the app, which a Release build needs, and `haylen plugin update {{ID}}` pins the commit that the ref names later:
+
+```sh
+haylen plugin add https://example.com/{{ID}}.git --ref 1.0.0 --reference --app my-app
+```
+
+Each of them lists the plugin in the `plugins` section of `haylen.json`. The values of its [parameters](#parameters) go under `parameters`, and a reference also names the folder of the plugin in `path`, relative to the app:
 
 ```json
 {
@@ -30,14 +36,14 @@ Both list the plugin in the `plugins` section of `app.json`. The values of its [
 
 | Platform | Native part | Setup |
 | --- | --- | --- |
-| iOS, iPadOS, Mac Catalyst, tvOS, macOS | `apple/{{NAME}}Plugin.swift` | None. |
+| iOS, iPadOS, Mac Catalyst, tvOS, visionOS, macOS | `apple/{{NAME}}Plugin.swift` | None. |
 | Android | The library module in `android/` | None. |
 | Web | `web/{{ID}}.js` | None. |
-| Windows, Linux, and macOS in the desktop player | The C library of `native/{{NAME}}.c` | None. The tool `haylen.py` builds it with CMake and places it next to the app, and the Lua API loads it. |
+| Windows, Linux, and macOS in the desktop player | The C++ library of `native/` | None. The backend builds the library with CMake against the installed SDK of the engine and places it next to the app, and the Lua API loads it. |
 
 ## Parameters
 
-{{PARAMETERS}}
+The plugin has no parameters yet, so its entry in `haylen.json` is an empty object.
 
 ## Lua API
 
@@ -70,7 +76,6 @@ local echoes = plugin.onEchoed(function(payload)
     print('Echoed ' .. payload.message)
 end)
 ```
-{{BLOCK:README_API}}
 
 ## Native API
 
@@ -78,4 +83,3 @@ end)
 | --- | --- | --- |
 | `{{ID}}.echo` | `{message}` | `{message}` |
 | `{{ID}}.echoed` (event) | `{message}` | |
-{{BLOCK:README_NATIVE}}

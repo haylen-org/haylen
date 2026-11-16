@@ -21,7 +21,7 @@ Every line carries its time and its level, such as `[2026-01-02 10:00:00.123] [i
 | Android | Logcat, with the tag `haylen`. |
 | Web | The console of the browser, with warnings through `console.warn` and errors through `console.error`. |
 
-The command [`haylen run`](../tools/distribution.md#run) shows these lines while the app runs, and [`debug.recentLog(count)`](debug.md#debugrecentlogcount) returns the newest ones inside the app.
+The command [`haylen app run`](../tools/commands.md) shows these lines while the app runs, and [`debug.recentLog(count)`](debug.md#debugrecentlogcount) returns the newest ones inside the app.
 
 ## Functions
 

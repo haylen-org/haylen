@@ -20,56 +20,73 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-// Tells what the project of the app holds: the permissions, components and meta-data of its merged manifest, the classes of its build and the links it opens. The project belongs to its developer, so a plugin checks what it needs before it calls a system API that needs it, and a missing requirement logs once what is missing and how to add it and fails the call with the code `unsupported` instead of crashing the app.
+// Tells what the app holds: the permissions, components and meta-data of its merged manifest, the classes of its build and the links it opens. An app may leave out what a plugin needs, so a plugin checks what it needs before it calls a system API that needs it, and a missing requirement logs once what is missing and how to add it and fails the call with the code `unsupported` instead of crashing the app.
 public final class HaylenRequirements {
-    // What a feature needs from the project, with the file of the project that declares it and the snippet that adds it there.
+    // What a feature needs from the app, with the file that adds it and the snippet that the file takes.
     public static final class Requirement {
         private final Kind kind;
         private final String name;
         private final String description;
         private final String file;
         private final String snippet;
+        private final String instructions;
 
-        private Requirement(Kind kind, String name, String description, String file, String snippet) {
+        private Requirement(Kind kind, String name, String description, String file, String snippet, String instructions) {
             this.kind = kind;
             this.name = name;
             this.description = description;
             this.file = file;
             this.snippet = snippet;
+            this.instructions = instructions;
         }
 
-        // A permission that the merged manifest declares. A normal permission, such as `VIBRATE`, is granted exactly when it is declared, while a dangerous one still needs the person to grant it.
+        // A permission that the merged manifest declares, which the app adds in `platforms.android.manifest.permissions` of `haylen.json` when no library brings it. A normal permission, such as `VIBRATE`, is granted exactly when it is declared, while a dangerous one still needs the person to grant it.
         public static Requirement permission(String name) {
-            return new Requirement(Kind.PERMISSION, name, "the permission \"" + name + "\"", MANIFEST, "<uses-permission android:name=\"" + name + "\" />");
+            String snippet = "{\"platforms\": {\"android\": {\"manifest\": {\"permissions\": [\"" + name + "\"]}}}}";
+            String instructions = "Add \"" + snippet + "\" to \"" + APP_MANIFEST + "\", and leave the permission out of \"platforms.android.manifest.removedPermissions\".";
+            return new Requirement(Kind.PERMISSION, name, "the permission \"" + name + "\"", APP_MANIFEST, snippet, instructions);
         }
 
-        // A class of the build, which the dependency brings.
+        // A class of the build, which a dependency of the Android module of the plugin brings.
         public static Requirement className(String name, String dependency) {
-            return new Requirement(Kind.CLASS, name, "the class \"" + name + "\"", BUILD_SCRIPT, "implementation(\"" + dependency + "\")");
+            return module(Kind.CLASS, name, "the class \"" + name + "\"", BUILD_SCRIPT, "implementation(\"" + dependency + "\")");
         }
 
         // A meta-data entry of the application, with the value it takes.
         public static Requirement metaData(String name, String value) {
-            return new Requirement(Kind.META_DATA, name, "the meta-data \"" + name + "\"", MANIFEST, "<meta-data android:name=\"" + name + "\" android:value=\"" + value + "\" />");
+            return module(Kind.META_DATA, name, "the meta-data \"" + name + "\"", MODULE_MANIFEST, "<meta-data android:name=\"" + name + "\" android:value=\"" + value + "\" />");
         }
 
         public static Requirement activity(String className) {
-            return new Requirement(Kind.ACTIVITY, className, "the activity \"" + className + "\"", MANIFEST, "<activity android:name=\"" + className + "\" android:exported=\"false\" />");
+            return module(Kind.ACTIVITY, className, "the activity \"" + className + "\"", MODULE_MANIFEST, "<activity android:name=\"" + className + "\" android:exported=\"false\" />");
         }
 
         public static Requirement service(String className) {
-            return new Requirement(Kind.SERVICE, className, "the service \"" + className + "\"", MANIFEST, "<service android:name=\"" + className + "\" android:exported=\"false\" />");
+            return module(Kind.SERVICE, className, "the service \"" + className + "\"", MODULE_MANIFEST, "<service android:name=\"" + className + "\" android:exported=\"false\" />");
         }
 
         // A content provider with the authority, which the class implements.
         public static Requirement provider(String authority, String className) {
-            return new Requirement(Kind.PROVIDER, authority, "a provider with the authority \"" + authority + "\"", MANIFEST, "<provider android:name=\"" + className + "\" android:authorities=\"" + authority + "\" android:exported=\"false\" />");
+            return module(Kind.PROVIDER, authority, "a provider with the authority \"" + authority + "\"", MODULE_MANIFEST, "<provider android:name=\"" + className + "\" android:authorities=\"" + authority + "\" android:exported=\"false\" />");
         }
 
         // Links with the scheme that open the app, which reach its plugins through `HaylenLinkActivity`.
         public static Requirement urlScheme(String scheme) {
             String filter = "<intent-filter><action android:name=\"android.intent.action.VIEW\" /><category android:name=\"android.intent.category.DEFAULT\" /><category android:name=\"android.intent.category.BROWSABLE\" /><data android:scheme=\"" + scheme + "\" /></intent-filter>";
-            return new Requirement(Kind.URL_SCHEME, scheme, "an activity that opens the links with the scheme \"" + scheme + "\"", MANIFEST, "<activity android:name=\"dev.haylen.HaylenLinkActivity\" android:exported=\"true\">" + filter + "</activity>");
+            return module(Kind.URL_SCHEME, scheme, "an activity that opens the links with the scheme \"" + scheme + "\"", MODULE_MANIFEST, "<activity android:name=\"dev.haylen.HaylenLinkActivity\" android:exported=\"true\">" + filter + "</activity>");
+        }
+
+        // The service of the audio that plays in the background, which the library `haylen-playback` brings to an app that declares `audio.background` in `haylen.json`.
+        static Requirement backgroundAudio() {
+            String snippet = "{\"audio\": {\"background\": true}}";
+            String instructions = "Add \"" + snippet + "\" to \"" + APP_MANIFEST + "\".";
+            return new Requirement(Kind.SERVICE, HaylenPlaybackService.class.getName(), "the service of the audio that plays in the background", APP_MANIFEST, snippet, instructions);
+        }
+
+        // What only the Android module of a plugin brings, with a file relative to the module.
+        private static Requirement module(Kind kind, String name, String description, String file, String snippet) {
+            String instructions = "Add \"" + snippet + "\" to \"" + file + "\" of the Android module of the plugin.";
+            return new Requirement(kind, name, description, file, snippet, instructions);
         }
 
         // One of `permission`, `class`, `metaData`, `activity`, `service`, `provider` and `urlScheme`.
@@ -82,7 +99,7 @@ public final class HaylenRequirements {
             return name;
         }
 
-        // The file of the Android project that declares the requirement, relative to the project.
+        // The file that adds the requirement: `haylen.json` of the app, or a file of the Android module of the plugin, relative to the module.
         public String file() {
             return file;
         }
@@ -93,7 +110,7 @@ public final class HaylenRequirements {
 
         // The sentence that tells how to add the requirement.
         String instructions() {
-            return "Add \"" + snippet + "\" to \"" + file + "\".";
+            return instructions;
         }
 
         String description() {
@@ -127,8 +144,9 @@ public final class HaylenRequirements {
     }
 
     private static final String TAG = "haylen";
-    private static final String MANIFEST = "app/src/main/AndroidManifest.xml";
-    private static final String BUILD_SCRIPT = "app/build.gradle.kts";
+    private static final String APP_MANIFEST = "haylen.json";
+    private static final String MODULE_MANIFEST = "src/main/AndroidManifest.xml";
+    private static final String BUILD_SCRIPT = "build.gradle.kts";
     private static final int PACKAGE_FLAGS = PackageManager.GET_PERMISSIONS | PackageManager.GET_ACTIVITIES | PackageManager.GET_SERVICES | PackageManager.GET_PROVIDERS | PackageManager.GET_META_DATA;
 
     // The merged manifest stays the same while the process lives, so it is read once. What was logged is kept by owner and requirement, so each one logs once.
@@ -200,7 +218,7 @@ public final class HaylenRequirements {
         return !queryActivities(view).isEmpty();
     }
 
-    // Throws a `HaylenBridge.Failure` with the code `unsupported` when the project lacks any of the requirements, whose data lists each missing one in `missing` as `{kind, name, file, snippet}`, and logs each missing one once.
+    // Throws a `HaylenBridge.Failure` with the code `unsupported` when the app lacks any of the requirements, whose data lists each missing one in `missing` as `{kind, name, file, snippet}`, and logs each missing one once.
     public void require(Requirement... requirements) throws HaylenBridge.Failure {
         List<Requirement> missing = new ArrayList<>();
         for (Requirement requirement : requirements) {

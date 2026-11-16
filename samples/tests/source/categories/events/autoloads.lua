@@ -1,4 +1,4 @@
--- Autoloads: the player data that `app.json` loads before `main.lua`, shared by this test, a shop scene and the coin counter it draws in the corner of this test, and a jukebox added at run time with `haylen.autoload`.
+-- Autoloads: the player data that `haylen.json` loads before `main.lua`, shared by this test, a shop scene and the coin counter it draws in the corner of this test, and a jukebox added at run time with `haylen.autoload`.
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -13,7 +13,7 @@ local Autoloads = haylen.class('Autoloads', EventsTest)
 Autoloads.coinCounter = true
 
 local kCode = [[
--- The file "app.json" lists "categories.events.player-data" in "autoload".
+-- The file "haylen.json" lists "categories.events.player-data" in "autoload".
 local playerData = haylen.autoloads.playerData
 playerData:earn(10)
 haylen.autoload('categories.events.jukebox')  -- Named "jukebox".

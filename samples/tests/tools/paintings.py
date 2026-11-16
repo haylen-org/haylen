@@ -13,7 +13,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "tools"))
 
-from png_image import Image, read, write  # noqa: E402
+from png_image import Image  # noqa: E402
 
 # The alpha above which a pixel counts as part of what an image shows.
 VISIBLE = 128
@@ -85,10 +85,10 @@ def cut(painted: Image, box: tuple[int, int, int, int], factor: float, margin: i
 def scaled(image: Image, factor: float) -> Image:
     with tempfile.TemporaryDirectory() as folder:
         source, target = Path(folder) / "source.png", Path(folder) / "scaled.png"
-        write(image, source)
+        Image.write(image, source)
         width, height = max(1, round(image.width * factor)), max(1, round(image.height * factor))
         subprocess.run(["sips", "-z", str(height), str(width), str(source), "--out", str(target)], check=True, capture_output=True)
-        return read(target)
+        return Image.read(target)
 
 
 def trimmed(image: Image, margin: int = 2) -> Image:

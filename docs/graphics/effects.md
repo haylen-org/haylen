@@ -106,7 +106,7 @@ scene.push({
 
 ## Your own effects
 
-An effect of your own is a fragment shader in the [Haylen shader language](shaders.md#the-haylen-shader-language). You write it under `content/shaders/`, `haylen.py shaders` compiles it into a `.shader` file for every graphics API, and a material made of it plugs into one of three places:
+An effect of your own is a fragment shader in the [Haylen shader language](shaders.md#the-haylen-shader-language). You write it under `content/shaders/`, `haylen app shaders` compiles it into a `.shader` file for every graphics API, and a material made of it plugs into one of three places:
 
 | Place | What the shader reads | How to plug it in |
 | --- | --- | --- |

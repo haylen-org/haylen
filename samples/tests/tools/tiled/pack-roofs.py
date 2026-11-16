@@ -12,7 +12,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "tools"))
 
-from png_image import Image, read, write  # noqa: E402
+from png_image import Image  # noqa: E402
 
 TOOLS = Path(__file__).resolve().parents[1]
 SHEET = Path(__file__).resolve().parents[2] / "content" / "tiled" / "tiles" / "roofs.png"
@@ -44,7 +44,7 @@ def halved(image: Image) -> Image:
 def main() -> None:
     if len(sys.argv) != 2:
         sys.exit("Name the painting of the roofs, such as \"python3 pack-roofs.py roofs.png\".")
-    painting = read(Path(sys.argv[1]))
+    painting = Image.read(Path(sys.argv[1]))
     width = painting.width // len(NAMES)
     roofs = [halved(props.trimmed(props.key(painting.crop(index * width, 0, width, painting.height)))) for index in range(len(NAMES))]
     sheet = Image.blank(sum(roof.width for roof in roofs) + GUTTER * 2 * len(roofs), max(roof.height for roof in roofs) + GUTTER * 2)
@@ -53,7 +53,7 @@ def main() -> None:
         sheet.paste(roof, x, GUTTER)
         print(f'("{name}", ({x}, {GUTTER}, {roof.width}, {roof.height})),')
         x += roof.width + GUTTER * 2
-    write(sheet, SHEET)
+    Image.write(sheet, SHEET)
 
 
 if __name__ == "__main__":

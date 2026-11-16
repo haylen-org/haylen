@@ -29,7 +29,7 @@ class ReleaseBuilderTest : public ::testing::Test {
     using Files = std::map<std::string, std::vector<std::uint8_t>>;
 
     static constexpr std::size_t kMegabyte = 1024 * 1024;
-    static constexpr std::string_view kAppJson = R"({"name": "Release Test", "identifier": "com.haylen.tests", "version": "1.0.0", "plugins": {"ads": {}}})";
+    static constexpr std::string_view kManifest = R"({"name": "Release Test", "identifier": "com.haylen.tests", "version": "1.0.0", "plugins": {"ads": {}}})";
 
     // A package whose files read as other bytes the second time they open, like files that change while a release builds.
     class ChangingPackage final : public io::Package {
@@ -72,9 +72,9 @@ class ReleaseBuilderTest : public ::testing::Test {
     [[nodiscard]] static Files makeFiles() {
         Files files;
         const auto text = [&files](const std::string& path, const std::string& content) { files.emplace(path, test::TestFiles::bytes(content)); };
-        text("app.json", std::string(kAppJson));
+        text("haylen.json", std::string(kManifest));
         text("source/main.lua", "loaded = true");
-        text("plugins/ads/plugin.json", R"({"id": "ads", "version": "1.0.0"})");
+        text("plugins/ads/plugin.json", R"({"id": "ads", "version": "1.0.0", "implementations": {"ios": "lua"}})");
         text("plugins/ads/source/init.lua", "return {}");
         text("content/data/config.json", R"({"level": 3})");
         files.emplace("content/world/terrain.bin", test::TestFiles::randomBytes(9 * kMegabyte, 1));
@@ -106,23 +106,23 @@ class ReleaseBuilderTest : public ::testing::Test {
 };
 
 TEST_F(ReleaseBuilderTest, ReleasesOnlyThePackageOfTheApp) {
-    // The folder of an app also holds its platform projects, notes, plugins it does not list and files of file managers, none of which ship.
+    // The folder of an app also holds its native code, its signing keys, notes, plugins it does not list and files of file managers, none of which ship.
     const test::TemporaryDirectory app;
     for (const auto& [path, bytes] : makeFiles()) {
         app.write(path, std::string(bytes.begin(), bytes.end()));
     }
 
-    app.write("plugins/unused/plugin.json", R"({"id": "unused", "version": "1.0.0"})");
+    app.write("plugins/unused/plugin.json", R"({"id": "unused", "version": "1.0.0", "implementations": {"ios": "lua"}})");
     app.write("plugins/unused/source/init.lua", "return {}");
     app.write("plugins/ads/android/build.gradle.kts", "plugins {}");
-    app.write("platform/apple/project.yml", "name: App");
+    app.write("native/apple/AppBridge.swift", "import Foundation");
+    app.write("platform/android/keystore/release.properties", "alias=upload");
     app.write("content/.DS_Store", "finder");
     app.write("notes.txt", "notes");
     (void)build(*io::Package::openDirectory(app.getPath()), "release");
 
     const std::unique_ptr<io::Package> release = open("release");
-    EXPECT_EQ(release->list(""), (std::vector<std::string>{"app.json", "content/data/config.json", "content/world/terrain.bin", "plugins/ads/plugin.json", "plugins/ads/source/init.lua", "source/main.lua"}));
-
+    EXPECT_EQ(release->list(""), (std::vector<std::string>{"content/data/config.json", "content/world/terrain.bin", "haylen.json", "plugins/ads/plugin.json", "plugins/ads/source/init.lua", "source/main.lua"}));
     for (const auto& [name, bytes] : readFolder("release")) {
         EXPECT_TRUE(name.ends_with(".hpak") || name.ends_with(".hmanifest")) << name;
     }
@@ -221,7 +221,7 @@ TEST_F(ReleaseBuilderTest, RefusesFoldersAndAppsItCannotBuild) {
     EXPECT_THROW((void)build(source, "release"), std::invalid_argument) << "A release never builds over another one.";
 
     Files broken = makeFiles();
-    broken["app.json"] = test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "com.haylen.tests", "unknown": 1})");
+    broken["haylen.json"] = test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "com.haylen.tests", "unknown": 1})");
     EXPECT_THROW((void)build(io::MemoryPackage("source", broken), "broken"), std::invalid_argument);
 }
 
@@ -242,7 +242,7 @@ TEST_F(ReleaseBuilderTest, StopsOnADamagedEarlierRelease) {
 }
 
 TEST_F(ReleaseBuilderTest, RefusesEarlierReleasesItCannotReuse) {
-    const Files small{{"app.json", test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "com.haylen.tests"})")}, {"source/main.lua", test::TestFiles::bytes("loaded = true")}};
+    const Files small{{"haylen.json", test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "com.haylen.tests"})")}, {"source/main.lua", test::TestFiles::bytes("loaded = true")}};
     try {
         (void)build(io::MemoryPackage("source", small), "first", "missing");
         FAIL() << "A previous release that does not exist must stop the build.";
@@ -252,7 +252,7 @@ TEST_F(ReleaseBuilderTest, RefusesEarlierReleasesItCannotReuse) {
 
     // The release of another app shares no file with this one, even when the same keys sign both.
     Files other = small;
-    other["app.json"] = test::TestFiles::bytes(R"({"name": "Other", "identifier": "com.haylen.other"})");
+    other["haylen.json"] = test::TestFiles::bytes(R"({"name": "Other", "identifier": "com.haylen.other"})");
     const ReleaseBuilder::Result foreign = build(io::MemoryPackage("source", other), "other");
     try {
         (void)build(io::MemoryPackage("source", small), "second", "other");

@@ -52,11 +52,11 @@ class ReleaseLuaTest : public ::testing::Test {
 
 TEST_F(ReleaseLuaTest, RunsModulesPluginsAndAutoloadsFromBytecode) {
     start({
-        {"app.json", R"({"name": "Release Lua", "identifier": "com.haylen.tests", "autoload": ["state.player"], "plugins": {"ads": {}}})"},
+        {"haylen.json", R"({"name": "Release Lua", "identifier": "com.haylen.tests", "autoload": ["state.player"], "plugins": {"ads": {}}})"},
         {"source/main.lua", "local menu = require('scenes.menu')\nlocal ads = require('ads')\nloaded = menu.name .. ' ' .. tostring(ads.ready) .. ' ' .. require('state.player').name"},
         {"source/scenes/menu.lua", "return {name = 'menu'}"},
         {"source/state/player.lua", "return {name = 'player'}"},
-        {"plugins/ads/plugin.json", R"({"id": "ads", "version": "1.0.0"})"},
+        {"plugins/ads/plugin.json", R"({"id": "ads", "version": "1.0.0", "implementations": {"ios": "lua"}})"},
         {"plugins/ads/source/init.lua", "return {ready = true}"},
     });
     ASSERT_EQ(engine->getError(), nullptr) << engine->getError()->getMessage();
@@ -66,13 +66,13 @@ TEST_F(ReleaseLuaTest, RunsModulesPluginsAndAutoloadsFromBytecode) {
         EXPECT_TRUE(package->isLuaBytecode(path)) << path;
     }
 
-    EXPECT_FALSE(package->isLuaBytecode("app.json"));
+    EXPECT_FALSE(package->isLuaBytecode("haylen.json"));
     EXPECT_FALSE(package->isLuaBytecode("plugins/ads/plugin.json"));
 }
 
 TEST_F(ReleaseLuaTest, ReportsErrorsWithTheModuleTheLineAndTheLocals) {
     start({
-        {"app.json", R"({"name": "Release Lua", "identifier": "com.haylen.tests"})"},
+        {"haylen.json", R"({"name": "Release Lua", "identifier": "com.haylen.tests"})"},
         {"source/main.lua", "require('scenes.menu').open(nil)"},
         {"source/scenes/menu.lua", "local menu = {}\n\nfunction menu.open(value)\n    return value.title\nend\n\nreturn menu"},
     });
@@ -94,7 +94,7 @@ TEST_F(ReleaseLuaTest, LoadsBytecodeOnlyFromAnAuthenticatedRelease) {
 }
 
 TEST_F(ReleaseLuaTest, RefusesBytecodeOfAnotherLuaAbi) {
-    release.build({{"app.json", R"({"name": "Release Lua", "identifier": "com.haylen.tests"})"}, {"source/main.lua", "loaded = true"}});
+    release.build({{"haylen.json", R"({"name": "Release Lua", "identifier": "com.haylen.tests"})"}, {"source/main.lua", "loaded = true"}});
     Compatibility other = release.getCompatibility();
     other.luaAbi = "lua-5.4-f0-i4-x4-l8-n8-le";
     const VerifyingKey trusted = release.getSigningKey().getVerifyingKey();

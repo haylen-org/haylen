@@ -33,7 +33,7 @@ Loads a library and returns the namespace of Varn's `ffi` whose fields are the f
 
 The function looks for a name in this order, and the first file that loads wins:
 
-1. The folders that the `--native` option of the player adds. The command `haylen.py run` passes them during development.
+1. The folders that the `--native` option of the player adds. The command `haylen app run` passes the folder where the target `player` builds the native libraries of the app and its plugins.
 2. The folders of the platform. That is `Contents/Frameworks` of the app bundle and then the folder of the executable on macOS and Mac Catalyst, and `Frameworks` of the app bundle on iOS and tvOS. On Windows it is the folder of the executable, and on Linux the folder of the executable and its `lib` folder. On Android it is the libraries of the APK, which the dynamic linker finds by name.
 3. The libraries linked into the app, which register their symbols, as iOS and tvOS apps do with static libraries. For them `native.load` returns `ffi.C`, because their symbols are part of the app. The namespace `ffi.C` finds the registered symbols by name without the app exporting them.
 
@@ -83,7 +83,7 @@ print(lib.native_test_checksum(buffer, 8))
 
 Returns the address of the symbol `name` as a light userdata, or `nil` when no library has it. The search covers the symbols of the libraries linked into the app, the libraries loaded so far in the order they loaded, and the app itself. The address goes where C takes a pointer, such as a parameter declared `void*` or a function pointer. The function `ffi.cast` turns it into any typed pointer, and a function pointer made this way is called like a function.
 
-The app itself is what the dynamic linker of the platform sees of it, which depends on the platform and the configuration. On Apple platforms, Android and Linux the search also reaches the libraries of the system that the process links, such as the C library. On Windows it reaches only the executable. A release is what `haylen.py run --config Release` and `prepare` build:
+The app itself is what the dynamic linker of the platform sees of it, which depends on the platform and the configuration. On Apple platforms, Android and Linux the search also reaches the libraries of the system that the process links, such as the C library. On Windows it reaches only the executable. A release is what `haylen app build --config Release` builds:
 
 | Platform | Debug | Release |
 | --- | --- | --- |

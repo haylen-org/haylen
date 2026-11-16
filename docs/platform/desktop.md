@@ -4,7 +4,7 @@ This guide is for apps that run on Windows, macOS and Linux and want more than a
 
 ## The window options
 
-The `window` section of `app.json` opens the window with these options already in effect. So a frameless window never shows a title bar, not even for its first frame. Each option also changes while the app runs.
+The `window` section of `haylen.json` opens the window with these options already in effect. So a frameless window never shows a title bar, not even for its first frame. Each option also changes while the app runs.
 
 ```json
 {
@@ -42,11 +42,11 @@ Every start of the app applies these options again. So an app that restarts from
 Frames and displays are in desktop points. The origin is the top left corner of the primary display, and y grows down.
 
 - On macOS a desktop point is a point of the system.
-- On Windows and Linux a desktop point is a pixel divided by the scale of the primary display. The window size of `app.json` scales the same way, so a window of 1280 by 180 points has a frame of 1280 by 180 points on every system.
+- On Windows and Linux a desktop point is a pixel divided by the scale of the primary display. The window size of `haylen.json` scales the same way, so a window of 1280 by 180 points has a frame of 1280 by 180 points on every system.
 
 ### Where the window goes
 
-The option `position` of `app.json` and the function [`window.place`](../lua-api/window.md#windowplaceposition) take the same values:
+The option `position` of `haylen.json` and the function [`window.place`](../lua-api/window.md#windowplaceposition) take the same values:
 
 - `"center"`, the middle of the work area.
 - A point, such as `{"x": 40, "y": 60}`.
@@ -83,7 +83,7 @@ The engine keeps its colors premultiplied by their alpha, from the first draw to
 
 A pixel with half its coverage shows half of the desktop behind it, the way the system composes the window. An additive draw adds its alpha too, so a glow over the desktop covers part of what is behind it.
 
-The option `transparent` of `app.json` decides, before the window opens, whether the window can be transparent at all, because it chooses how the system composes the window. Such a window can then turn opaque and transparent again with `window.setTransparent`. While it is opaque, the engine clears the alpha of every frame to 1 and draws no alpha at all, whatever the clear color and the blend modes. So no pixel lets the desktop through, and on macOS the window also gets the background and the shadow of a normal window. A window that opened opaque stays opaque.
+The option `transparent` of `haylen.json` decides, before the window opens, whether the window can be transparent at all, because it chooses how the system composes the window. Such a window can then turn opaque and transparent again with `window.setTransparent`. While it is opaque, the engine clears the alpha of every frame to 1 and draws no alpha at all, whatever the clear color and the blend modes. So no pixel lets the desktop through, and on macOS the window also gets the background and the shadow of a normal window. A window that opened opaque stays opaque.
 
 ```lua
 local window = require('haylen.window')
@@ -140,7 +140,7 @@ The window keeps the mouse it has while a button is down. So a press that starts
 
 A game that the player keeps next to their work should not take the keyboard when clicked. The option `focusable = false` keeps the app inactive: clicks reach the app, and key presses go to the app the player was typing in. Such a game is played with the mouse. A normal window mode with `window.setFocusable(true)` can bring the keyboard back.
 
-The option `showInTaskbar = false` makes the window a tool window without a taskbar button on Windows and Linux. On macOS it makes the app an accessory app without a Dock icon or a menu bar. A macOS app that `haylen.py` or `haylen_add_app` packages with `showInTaskbar` set to `false` in `app.json` also declares `LSUIElement`, so its Dock icon never appears, not even while it starts. A window out of the taskbar needs a way to quit, such as a button of the UI.
+The option `showInTaskbar = false` makes the window a tool window without a taskbar button on Windows and Linux. On macOS it makes the app an accessory app without a Dock icon or a menu bar. The Apple backend gives a macOS app with `showInTaskbar` set to `false` in `haylen.json` the `Info.plist` key `LSUIElement` too, so its Dock icon never appears, not even while it starts. A window out of the taskbar needs a way to quit, such as a button of the UI.
 
 ```lua
 local window = require('haylen.window')
@@ -152,7 +152,7 @@ window.setShowInTaskbar(true)
 
 ## Menus and quitting
 
-On macOS the player, the apps of the Apple template and C++ apps are regular apps. They have a Dock icon and come to the front when they start. They have the standard main menu:
+On macOS the player and the apps of the target `macos`, Lua and C++ alike, are regular apps. They have a Dock icon and come to the front when they start. They have the standard main menu:
 
 - The app menu, with About, Hide (Command+H), Hide Others (Option+Command+H), Show All and Quit (Command+Q).
 - The Edit menu, with Undo (Command+Z), Redo (Shift+Command+Z), Cut (Command+X), Copy (Command+C), Paste (Command+V), Delete and Select All (Command+A). These act on the text field that is being edited. They stay disabled while none is, so the keys then reach the app.
@@ -173,7 +173,7 @@ ui.mount(ui.button{text = 'Quit', anchor = 'topRight', margin = 16, onClick = fu
 
 A strip above the taskbar puts these pieces together:
 
-1. The file `app.json` opens a frameless, transparent window above the others. The window is anchored to the bottom of the work area and fills its width. Its design size is shaped like the strip, with `"expand"` scaling, so the visible width follows the display.
+1. The file `haylen.json` opens a frameless, transparent window above the others. The window is anchored to the bottom of the work area and fills its width. Its design size is shaped like the strip, with `"expand"` scaling, so the visible width follows the display.
 2. The scene draws the ground, the hero and the UI, and leaves the rest of the strip transparent.
 3. Every frame, the scene gives the regions of what the player can click. Presses on the ground or on a grip call `window.startDrag()`.
 4. A button switches to a normal window and back. The normal window takes `setTransparent(false)`, `setDecorated(true)`, `setAlwaysOnTop(false)`, `setFocusable(true)`, `setMousePassthrough(false)` and a frame in the middle of the screen. The strip comes back with its options, `setTransparent(true)` and `window.place({anchor = 'bottom', fill = 'width'})`.
@@ -218,26 +218,26 @@ showStrip()
 | macOS | Everything. The window becomes a borderless window that can still take the keyboard when it is focusable. While on top it floats at the level of panels and joins every space. The Dock icon hides through the activation policy of the app. AppKit decides whether a window takes the mouse for the whole window. So passthrough follows the mouse every frame and lets the window ignore it outside the regions, while the app keeps hearing the mouse move over the window. An unfocusable window takes clicks without activating the app. |
 | Windows | Everything with the Direct3D 11 graphics API, the default. Transparency renders into a DirectComposition swapchain with premultiplied alpha, and builds that draw with OpenGL open opaque windows. A frameless window is a popup without a sizing border, so the app resizes it itself. Passthrough makes the window layered and transparent to clicks outside the regions, following the mouse every frame, while the app keeps hearing the mouse move. The system moves dragged windows in its own move loop, during which the app keeps drawing. An unfocusable window does not activate when clicked. |
 | Linux | X11 with a window manager that follows the Extended Window Manager Hints, as the common desktops do. Transparency needs a compositing window manager that offers 32-bit ARGB visuals. Without one the app stops with a clear error instead of opening an opaque window. Decorations follow the Motif hints, and a window manager may ignore them. Passthrough sets the input shape of the window, so the app hears the mouse only over the regions. Desktop points follow `Xft.dpi`, and the work area of each display is the work area of the desktop inside the display. Wayland sessions run the app through XWayland. |
-| Web | The canvas is the window, and the page gives it no desktop. A transparent app has a transparent canvas, and the page of the template drops its own background. So whatever holds the page shows through, such as an editor that embeds it in a frame. The other options keep their values without effect. The function `window.frame()` returns the canvas, and `display.list()` returns the screens that the browser shows the page. |
+| Web | The canvas is the window, and the page gives it no desktop. A transparent app has a transparent canvas, and the page that the web backend generates drops its own background. So whatever holds the page shows through, such as an editor that embeds it in a frame. The other options keep their values without effect. The function `window.frame()` returns the canvas, and `display.list()` returns the screens that the browser shows the page. |
 | iOS, iPadOS, tvOS, Android | Apps fill the screen, so the desktop options do not apply. The setters keep their values without effect. The function `window.frame()` returns the screen in points, and `display.list()` returns the screen with the external displays attached to it. |
 
 ## Shipping a desktop app
 
-The player runs any app during development, and the project of each platform ships it. That is the macOS target of the Apple template, and the CMake projects of the Windows and Linux templates. The tool `haylen.py` builds and installs those with `haylen run <app> --platform windows` or `--platform linux`, as the [distribution guide](../tools/distribution.md#windows-and-linux) describes.
+The player runs any app during development. The targets of each platform ship it: `macos` of the Apple backend, whose generated Xcode project builds a macOS app, and `windows` and `linux` of the desktop backend, whose generated CMake project builds the executable against the installed desktop SDK of the machine. The command `haylen app run <app> --target windows` builds, installs and runs it, and `haylen app build` builds it alone, as the [distribution guide](../tools/distribution.md) describes.
 
-- The executable takes the name, the version, the description, the company and the copyright of `app.json`. The version resource shows them on Windows, and the desktop entry and the AppStream metainfo show them on Linux.
-- On Windows the window and its taskbar button take the first icon of the executable, the icon of the project in `resources/app.ico`. On Linux the class of the window is the identifier of `app.json`. The identifier names the desktop entry and the icons that the project installs, so the desktop shows them for the window.
-- The command `haylen distribution installer <app> --platform windows` makes the installer of the app with Inno Setup, and `--platform linux` makes a `.deb` and an AppImage, as [distribution installer](../tools/distribution.md#distribution-installer) describes.
-- Windows builds sign the executable, the installer and the uninstaller with the certificate that the environment names. Continuous integration takes it from the secrets `WINDOWS_CERTIFICATE` and `WINDOWS_CERTIFICATE_PWD`, as [signing](../tools/distribution.md#signing) describes. Without a certificate the app stays unsigned, and the build says so.
+- The executable takes the name, the version, the description, the company and the copyright of `haylen.json`. The version resource shows them on Windows, and the desktop entry and the AppStream metainfo show them on Linux.
+- On Windows the window and its taskbar button take the first icon of the executable, which the project takes from `resources/app.ico`. The key `files` of `platforms.windows` in `haylen.json` puts an icon of the app in its place. On Linux the class of the window is the identifier of `haylen.json`. The identifier names the desktop entry and the icons that the project installs, so the desktop shows them for the window.
+- The command `haylen app package <app> --target windows --format installer` makes the installer of the app with Inno Setup, and `--target linux` makes a `.deb` and an AppImage, from a Release build.
+- Windows release builds sign the executable, the installer and the uninstaller with the certificate that the environment names. Without a certificate the app stays unsigned, and the build says so.
 
 ```sh
-haylen run ~/apps/strip --platform windows
-haylen distribution installer ~/apps/strip --platform linux
+haylen app run ~/apps/strip --target windows
+haylen app package ~/apps/strip --target linux --format installer
 ```
 
 ## C++
 
-C++ apps reach the same options through `platform::Window`, which `core::Engine::getWindow()` returns. It has `setDecorated`, `setAlwaysOnTop`, `setShowInTaskbar`, `setFocusable`, `getFrame` and `setFrame`, `setMousePassthrough` with regions in framebuffer pixels, `startDrag`, `getDisplays` and `getDisplayId`, and `canBeTransparent`, `isTransparent` and `setTransparent`. The class `platform::WindowPlacement` reads and resolves the positions of `app.json` against the displays of `core::Engine::getDisplays()`, and `core::AppConfig::Window` holds the options of `app.json`.
+C++ apps reach the same options through `platform::Window`, which `core::Engine::getWindow()` returns. It has `setDecorated`, `setAlwaysOnTop`, `setShowInTaskbar`, `setFocusable`, `getFrame` and `setFrame`, `setMousePassthrough` with regions in framebuffer pixels, `startDrag`, `getDisplays` and `getDisplayId`, and `canBeTransparent`, `isTransparent` and `setTransparent`. The class `platform::WindowPlacement` reads and resolves the positions of `haylen.json` against the displays of `core::Engine::getDisplays()`, and `core::AppConfig::Window` holds the options of `haylen.json`.
 
 ```cpp
 #include "haylen/core/Application.hpp"

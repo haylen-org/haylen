@@ -20,7 +20,7 @@ class Package;
 
 namespace haylen::plugins {
 
-// Owns the translated text of the app and exposes it to Lua as `haylen.localization`. It loads the languages that the `localization` section of `app.json` names before any script runs, holding the start of the app while their files come to the device, hands the catalog the languages of the system whenever they change, and publishes `languageChanged` at the start of the frame after the current language changed, whatever changed it.
+// Owns the translated text of the app and exposes it to Lua as `haylen.localization`. It loads the languages that the `localization` section of `haylen.json` names before any script runs, holding the start of the app while their files come to the device, hands the catalog the languages of the system whenever they change, and publishes `languageChanged` at the start of the frame after the current language changed, whatever changed it.
 class LocalizationPlugin final : public Plugin {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {

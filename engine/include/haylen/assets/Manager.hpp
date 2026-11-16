@@ -111,7 +111,7 @@ class Manager final {
     void textureAsync(std::string_view path, std::function<void(graphics::Texture, std::string)> callback, graphics::Texture::Options options = {});
     [[nodiscard]] std::shared_ptr<text::Font> font(std::string_view path, text::TrueTypeFont::Options options = {});
 
-    // Loads a `.shader` file that `haylen.py shaders` compiled, which reloads in place when the file changes.
+    // Loads a `.shader` file that `haylen app shaders` compiled, which reloads in place when the file changes.
     [[nodiscard]] graphics::Shader shader(std::string_view path);
     [[nodiscard]] graphics::VectorImage vectorImage(std::string_view path);
     [[nodiscard]] core::Json json(std::string_view path);

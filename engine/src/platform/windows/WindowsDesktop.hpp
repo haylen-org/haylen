@@ -18,7 +18,7 @@
 
 namespace haylen::platform {
 
-// The desktop window of Windows. Desktop points are pixels divided by the scale of the primary display, which sizes the window of `app.json` too. Only a layered window lets clicks through, so passthrough follows the mouse every frame and makes the window transparent to clicks outside the regions, while the app keeps hearing the mouse move. The window procedure of SDL gets a procedure in front of it that reports moves, display changes, the app theme and the power status, and starts drags between frames.
+// The desktop window of Windows. Desktop points are pixels divided by the scale of the primary display, which sizes the window of `haylen.json` too. Only a layered window lets clicks through, so passthrough follows the mouse every frame and makes the window transparent to clicks outside the regions, while the app keeps hearing the mouse move. The window procedure of SDL gets a procedure in front of it that reports moves, display changes, the app theme and the power status, and starts drags between frames.
 class WindowsDesktop final {
   public:
     static void setStyle(const WindowStyle& value);

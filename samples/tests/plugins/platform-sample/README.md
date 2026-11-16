@@ -1,6 +1,6 @@
 # 🔌 Platform Sample
 
-A local plugin of the [test project](../../README.md) with the native code of the tests `PLT-001`, Native events, and `PLT-002`, Custom handler: Objective-C on Apple platforms, Java on Android and JavaScript on the web answer its methods and send its events through the [platform bridge](../../../../docs/platform/platform-bridge.md). The project lists it in its `app.json` with no parameters, and `haylen.py` builds it into the project of each platform as the [plugin guide](../../../../docs/platform/plugins.md) describes.
+A local plugin of the [test project](../../README.md) with the native code of the tests `PLT-001`, Native events, and `PLT-002`, Custom handler: Objective-C on Apple platforms, Java on Android and JavaScript on the web answer its methods and send its events through the [platform bridge](../../../../docs/platform/platform-bridge.md). The project lists it in its `haylen.json` with no parameters, and the backend of each target builds it into the generated project as the [plugin guide](../../../../docs/platform/plugins.md) describes.
 
 ## Lua API
 
@@ -25,7 +25,7 @@ platformSample.ticker(5, 500)
 
 | Platform | Native part |
 | --- | --- |
-| iOS, Mac Catalyst, tvOS, macOS | `apple/PlatformSamplePlugin.m`, whose class registers the methods in `loadWithContext:` and follows the notifications of the app. |
+| iOS, Mac Catalyst, tvOS, visionOS, macOS | `apple/PlatformSamplePlugin.m`, whose class registers the methods in `loadWithContext:` and follows the notifications of the app. |
 | Android | The module in `android/`, whose `PlatformSamplePlugin` registers the methods in `onLoad` and sends the activity events from `onActivityResumed` and `onActivityPaused`. |
 | Web | `web/platform-sample.js`, which registers the methods in `load` and follows the visibility of the tab. |
 | Desktop player, Windows, Linux | None, so calls fail with the code `noHandler`. |

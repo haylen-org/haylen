@@ -544,6 +544,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/platform/Permission.cpp
   src/platform/ReturnHold.cpp
   src/platform/PlatformLua.cpp
+  src/platform/PluginManifest.cpp
   src/platform/PluginStreams.cpp
   src/platform/Fold.cpp
   src/platform/FoldSimulation.cpp
@@ -1031,9 +1032,15 @@ if(NOT HAYLEN_PORT_PLATFORM)
   haylen_link_runtime_platform(haylen-runtime PUBLIC)
 endif()
 
-# A port builds its apps with the engine in one CMake project, since the SDK describes the platforms of the repository.
-if(HAYLEN_BUILD_SDK AND HAYLEN_PORT_PLATFORM)
-  message(FATAL_ERROR "The port of \"${HAYLEN_PORT_DIR}\" builds its apps with the engine through \"add_subdirectory\", so \"HAYLEN_BUILD_SDK\" stays off.")
+# The Lua player is the app of every Lua app: the object that defines `core::Application::create` with the app of Lua. Lua apps link it next to the runtime, while C++ apps define the function in their own sources, so every app holds exactly one.
+add_library(haylen-player OBJECT src/platform/LuaPlayer.cpp)
+add_library(haylen::player ALIAS haylen-player)
+target_link_libraries(haylen-player PRIVATE haylen-engine)
+haylen_enable_warnings(haylen-player)
+
+# A port installs the SDK of its platform only when its `haylen_port` says that it builds one.
+if(HAYLEN_BUILD_SDK AND HAYLEN_PORT_PLATFORM AND NOT HAYLEN_PORT_SDK)
+  message(FATAL_ERROR "The port of \"${HAYLEN_PORT_DIR}\" builds no SDK, since its \"haylen_port\" does not pass \"SDK ON\", so \"HAYLEN_BUILD_SDK\" stays off.")
 elseif(HAYLEN_BUILD_SDK)
   include(haylen-install)
 endif()
@@ -1054,8 +1061,8 @@ endif()
 # The player runs any package: a folder or zip from the command line on desktop, or what the page loads through Module.haylen on the web.
 # On Android it is the library that HaylenActivity of the haylen Android library loads, and it plays the package in the APK assets.
 if(HAYLEN_BUILD_PLAYER AND (HAYLEN_DESKTOP OR EMSCRIPTEN OR HAYLEN_PORT_PLATFORM))
-  add_executable(haylen src/platform/LuaPlayer.cpp)
-  target_link_libraries(haylen PRIVATE haylen::runtime)
+  add_executable(haylen)
+  target_link_libraries(haylen PRIVATE haylen::runtime haylen::player)
   # The generator expression keeps multi-config generators such as Xcode and Visual Studio from adding a folder per configuration.
   set_target_properties(haylen PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/haylen/$<0:>")
   # The runtime of a port holds the entry point of its platform, while the Apple player starts from a main function of its own.
@@ -1072,8 +1079,8 @@ if(HAYLEN_BUILD_PLAYER AND (HAYLEN_DESKTOP OR EMSCRIPTEN OR HAYLEN_PORT_PLATFORM
     target_link_options(haylen PRIVATE "LINKER:--enable-new-dtags")
   endif()
 elseif(HAYLEN_BUILD_PLAYER AND ANDROID)
-  add_library(haylen SHARED src/platform/LuaPlayer.cpp)
-  target_link_libraries(haylen PRIVATE haylen::runtime)
+  add_library(haylen SHARED)
+  target_link_libraries(haylen PRIVATE haylen::runtime haylen::player)
 endif()
 
 # The headless player runs any package without a window, GPU or audio device on the host of the engine tests, which suits automatic runs of apps such as the test project in continuous integration.
@@ -1094,7 +1101,7 @@ endif()
 if(HAYLEN_BUILD_BENCHMARKS AND HAYLEN_DESKTOP)
   haylen_add_app(haylen-sprite-benchmark CPP
     SOURCES bench/SpriteBenchmark.cpp
-    PACKAGE "${CMAKE_CURRENT_LIST_DIR}/bench/sprite-benchmark"
+    CONTENT "${CMAKE_CURRENT_LIST_DIR}/bench/sprite-benchmark"
   )
 
   # The benchmarks of the renderer take `--graphics-api` to draw their frames offscreen through a device of the build instead of the null device of the headless host, with the offscreen contexts of OpenGL that the GPU tests draw through.

@@ -8,13 +8,13 @@ The commands run from the root of the repository:
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `haylen run samples/apps/ride-hailing` |
-| macOS app | `haylen run samples/apps/ride-hailing --platform macos` |
-| iPhone and iPad simulator | `haylen run samples/apps/ride-hailing --platform ios-simulator` |
-| Apple TV simulator | `haylen run samples/apps/ride-hailing --platform tvos-simulator` |
-| Android device or emulator | `haylen run samples/apps/ride-hailing --platform android --device <serial>` |
-| Browser | `haylen run samples/apps/ride-hailing --platform web` |
-| Headless player | `build/macos-debug/bin/haylen-headless samples/apps/ride-hailing` |
+| Desktop player with hot reload | `haylen app run samples/apps/ride-hailing` |
+| macOS app | `haylen app run samples/apps/ride-hailing --target macos` |
+| iPhone and iPad simulator | `haylen app run samples/apps/ride-hailing --target ios-simulator` |
+| Apple TV simulator | `haylen app run samples/apps/ride-hailing --target tvos-simulator` |
+| Android device or emulator | `haylen app run samples/apps/ride-hailing --target android --device <serial>` |
+| Browser | `haylen app run samples/apps/ride-hailing --target web` |
+| Headless player | `build/engine/macos-debug/bin/haylen-headless samples/apps/ride-hailing` |
 
 On the headless platform the app runs a tour by itself: it searches a destination, compares the kinds of ride, requests one, follows the trip through the search, the driver on the way, the messages, the safety tools and the ride with its details in a sheet over the map, rates it with a tip, opens the menu, the trips, a past trip, the wallet and the account, opens links of the scheme and of the web, and requests a second ride that it cancels after the reasons and the alert, logs every step and quits.
 
@@ -88,7 +88,7 @@ The app follows the [navigation](../../../docs/ui/navigation.md) of the engine. 
 
 ```text
 ride-hailing/
-  app.json               Window, physical UI scale, any orientation, the rides autoload and the identifier.
+  haylen.json               Window, physical UI scale, any orientation, the rides autoload and the identifier.
   source/
     main.lua             Registers the theme and starts the shell.
     style.lua            The palette of the screens and of the map, the type scale, the spacing scale, the shapes and the theme.

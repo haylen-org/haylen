@@ -44,7 +44,7 @@ float AppleStatusBar::getHeight() {
     return static_cast<float>(manager.statusBarFrame.size.height) * NativeWindow::getScale();
 }
 
-// The keys that haylen.py writes from `app.json` launch the app with its status bar, so the view controller keeps it until the engine applies the same value.
+// The keys that the Apple backend writes into the `Info.plist` from `haylen.json` launch the app with its status bar, so the view controller keeps it until the engine applies the same value.
 Window::StatusBar AppleStatusBar::fromInfoPlist() {
     NSDictionary* info = NSBundle.mainBundle.infoDictionary;
     if ([info[@"UIStatusBarHidden"] boolValue]) {

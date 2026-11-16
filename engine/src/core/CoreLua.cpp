@@ -123,11 +123,11 @@ int CoreLua::rootLaunch(lua_State* L) {
     return 0;
 }
 
-// Opens the package and reads its `app.json` and the logo of its splash, which a package without one leaves empty. A package that cannot open fails with the reason.
+// Opens the package and reads its `haylen.json` and the logo of its splash, which a package without one leaves empty. A package that cannot open fails with the reason.
 CoreLua::PackageInfo CoreLua::readPackageInfo(const std::filesystem::path& path) {
     std::error_code error;
     if (!std::filesystem::exists(path, error)) {
-        throw std::invalid_argument("No app package is at \"" + path.string() + "\". Name a folder or a zip file that holds \"app.json\".");
+        throw std::invalid_argument("No app package is at \"" + path.string() + "\". Name a folder or a zip file that holds \"haylen.json\".");
     }
 
     const std::unique_ptr<io::Package> package = io::Package::open(path);

@@ -306,9 +306,9 @@ TEST(PlatformLuaTest, ReceivesTheBatchedEventsOfAFrameAsOneList) {
 TEST(PlatformLuaTest, HandsPluginModulesTheHandlesOfTheirPlugins) {
     // clang-format off
     test::EngineFixture fixture({
-        {"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"ads-kit": {"parameters": {"testMode": true}}, "sign-in": {}}})"},
-        {"plugins/ads-kit/plugin.json", R"({"id": "ads-kit", "version": "1.2.0", "parameters": {"testMode": {"type": "boolean", "default": false}, "placement": {"type": "string", "default": "bottom"}, "appId": {"type": "string"}}})"},
-        {"plugins/sign-in/plugin.json", R"({"id": "sign-in", "version": "2.0"})"},
+        {"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"ads-kit": {"parameters": {"testMode": true}}, "sign-in": {}}})"},
+        {"plugins/ads-kit/plugin.json", R"({"id": "ads-kit", "version": "1.2.0", "implementations": {"ios": "lua"}, "parameters": {"testMode": {"type": "boolean", "default": false}, "placement": {"type": "string", "default": "bottom"}, "appId": {"type": "string"}}})"},
+        {"plugins/sign-in/plugin.json", R"({"id": "sign-in", "version": "2.0", "implementations": {"ios": "lua"}})"},
         {"plugins/ads-kit/source/init.lua", "local handle = require('haylen.platform').plugin('ads-kit') return {handle = handle}"},
     });
     // clang-format on
@@ -342,7 +342,7 @@ TEST(PlatformLuaTest, HandsPluginModulesTheHandlesOfTheirPlugins) {
     EXPECT_EQ(fixture.lua("return table.concat({tostring(shown.done), table.concat(closed, ','), platform.pendingCallCount()}, ' ')"), "true dismissed 0");
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 
-    EXPECT_NE(fixture.lua("platform.plugin('crash-kit')").find("The plugin \"crash-kit\" is not among the plugins of \"app.json\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("platform.plugin('crash-kit')").find("The plugin \"crash-kit\" is not among the plugins of \"haylen.json\"."), std::string::npos);
     EXPECT_NE(fixture.lua("ads:call('')").find("A method or event of the plugin \"ads-kit\" needs a name."), std::string::npos);
     EXPECT_NE(fixture.lua("ads:on('closed', 3)").find("function expected"), std::string::npos);
     EXPECT_NE(fixture.lua("ads.id = 'other'").find("error: "), std::string::npos);
@@ -351,7 +351,7 @@ TEST(PlatformLuaTest, HandsPluginModulesTheHandlesOfTheirPlugins) {
 TEST(PlatformLuaTest, ExplainsPluginManifestsItCannotRead) {
     // clang-format off
     test::EngineFixture fixture({
-        {"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"broken": {}, "unversioned": {}}})"},
+        {"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"broken": {}, "unversioned": {}}})"},
         {"plugins/broken/plugin.json", "{"},
         {"plugins/unversioned/plugin.json", R"({"id": "unversioned"})"},
     });
@@ -359,7 +359,7 @@ TEST(PlatformLuaTest, ExplainsPluginManifestsItCannotRead) {
     fixture.runLua("platform = require('haylen.platform')");
     EXPECT_NE(fixture.lua("platform.plugin('broken')").find("The file \"plugins/broken/plugin.json\" of the package is not a JSON object."), std::string::npos);
     EXPECT_NE(fixture.lua("platform.plugins()").find("The file \"plugins/broken/plugin.json\" of the package is not a JSON object."), std::string::npos);
-    fixture.package().setFile("plugins/broken/plugin.json", test::TestFiles::bytes(R"({"id": "broken", "version": "1"})"));
+    fixture.package().setFile("plugins/broken/plugin.json", test::TestFiles::bytes(R"({"id": "broken", "version": "1", "implementations": {"ios": "lua"}})"));
     EXPECT_NE(fixture.lua("platform.plugin('unversioned')").find("The file \"plugins/unversioned/plugin.json\" of the package has no version."), std::string::npos);
 }
 

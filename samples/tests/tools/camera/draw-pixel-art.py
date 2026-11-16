@@ -12,7 +12,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "tools"))
 
-from png_image import Image, write  # noqa: E402
+from png_image import Image  # noqa: E402
 
 CONTENT = Path(__file__).resolve().parents[2] / "content" / "camera"
 WIDTH, HEIGHT = 640, 320
@@ -250,11 +250,11 @@ def draw_island() -> Canvas:
 
 
 def main() -> None:
-    write(draw_island().image(), CONTENT / "pixel-island.png")
+    Image.write(draw_island().image(), CONTENT / "pixel-island.png")
     knight = Canvas(32, 16)
     for index, frame in enumerate(KNIGHT):
         knight.stamp(frame, index * 16, 0)
-    write(knight.image(), CONTENT / "knight.png")
+    Image.write(knight.image(), CONTENT / "knight.png")
 
 
 if __name__ == "__main__":

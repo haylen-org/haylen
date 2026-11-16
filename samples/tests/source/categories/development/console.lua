@@ -1,4 +1,4 @@
--- Developer console: commands of the test with typed arguments that end with it, lines run from code with their results, and the list of commands with how to type them, which the console of the terminal of "haylen run" completes from. The log shows each line run as a console does, the line in the accent color and its result under it.
+-- Developer console: commands of the test with typed arguments that end with it, lines run from code with their results, and the list of commands with how to type them, which the console of the terminal of "haylen app run" completes from. The log shows each line run as a console does, the line in the accent color and its result under it.
 local debugging = require('haylen.debug')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
@@ -49,7 +49,7 @@ function Console:enter()
     end
 
     self:frame{
-        hint = 'Press "d" in the terminal of "haylen run" to open the console, and type "gold 50", "god true" or "help".',
+        hint = 'Press "d" in the terminal of "haylen app run" to open the console, and type "gold 50", "god true" or "help".',
         code = Console.code,
         content = {ui.row{wrap = true, grow = 1, gap = 24, alignItems = 'stretch',
             ui.panel{width = 520, grow = 1, gap = 12,

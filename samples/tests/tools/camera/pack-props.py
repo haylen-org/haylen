@@ -12,7 +12,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "tools"))
 
-from png_image import Image, read, write  # noqa: E402
+from png_image import Image  # noqa: E402
 
 SHEET = Path(__file__).resolve().parents[2] / "content" / "camera" / "props.png"
 NAMES = ("shrine", "cottage", "well", "signpost", "stump", "log", "mushrooms", "flowers", "reeds", "lilies", "barrel", "campfire")
@@ -65,7 +65,7 @@ def trimmed(image: Image) -> Image:
 def main() -> None:
     if len(sys.argv) != 2:
         sys.exit("Name the painting of the props, such as \"python3 pack-props.py props-sheet.png\".")
-    painting = read(Path(sys.argv[1]))
+    painting = Image.read(Path(sys.argv[1]))
     cellWidth, cellHeight = painting.width // COLUMNS, painting.height // ROWS
     props = []
     for index, name in enumerate(NAMES):
@@ -83,7 +83,7 @@ def main() -> None:
     for name, image, left, top in places:
         sheet.paste(image, left, top)
         print(f"{name} = {{{left}, {top}, {image.width}, {image.height}}}")
-    write(sheet, SHEET)
+    Image.write(sheet, SHEET)
 
 
 if __name__ == "__main__":

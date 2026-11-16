@@ -1,0 +1,76 @@
+{
+    "name": "Haylen Tests",
+    "identifier": "com.haylen.tests",
+    "version": "1.0.0",
+    "orientation": "landscape",
+    "window": {
+        "title": "Haylen Tests",
+        "width": 1280,
+        "height": 720,
+        "resizable": true,
+        "maxPixelDensity": 0
+    },
+    "design": {
+        "width": 1920,
+        "height": 1080,
+        "scaling": "expand"
+    },
+    "clearColor": "#FF101418",
+    "audio": {
+        "iosSession": "playback",
+        "background": true
+    },
+    "debug": {
+        "console": true
+    },
+    "autoload": ["categories.events.player-data"],
+    "localization": {
+        "folder": "localization/locale",
+        "fallback": "en"
+    },
+    "content": {
+        "delivery": [
+            {"match": "delivery/later/**", "mode": "onDemand"},
+            {"match": "delivery/prefetched/**", "mode": "prefetch"}
+        ]
+    },
+    "native": {
+        "native-test": {
+            "cmake": "plugins/native-test/native",
+            "platforms": [
+                "macos",
+                "ios",
+                "tvos",
+                "android",
+                "windows",
+                "linux"
+            ]
+        },
+        "native-test-static": {
+            "cmake": "plugins/native-test/native",
+            "platforms": [
+                "ios",
+                "tvos"
+            ],
+            "link": "static",
+            "symbols": [
+                "native_test_add",
+                "native_test_scale",
+                "native_test_origin",
+                "native_test_checksum"
+            ]
+        }
+    },
+    "plugins": {
+        "native-demo": {
+            "parameters": {
+                "greeting": "Hello from haylen.json",
+                "bannerColor": "#1D3557",
+                "urlScheme": "haylendemo"
+            }
+        },
+        "native-sample": {},
+        "native-test": {},
+        "platform-sample": {}
+    }
+}

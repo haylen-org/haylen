@@ -86,7 +86,7 @@ void HotReloadPlugin::beginFrame(core::Engine& engine, float) {
     }
 }
 
-// A Lua file that no module loaded yet changes nothing, because the next `require` reads it, except while an error shows, since the file may hold the module whose first load failed: the batch then resumes the app, so the code that failed requires it again. A batch restarts the app for `app.json`, `source/main.lua` and plugin manifests, for any loaded module in the mode `restart`, for more loaded modules than reload in place, and for any change while an error that cannot resume shows.
+// A Lua file that no module loaded yet changes nothing, because the next `require` reads it, except while an error shows, since the file may hold the module whose first load failed: the batch then resumes the app, so the code that failed requires it again. A batch restarts the app for `haylen.json`, `source/main.lua` and plugin manifests, for any loaded module in the mode `restart`, for more loaded modules than reload in place, and for any change while an error that cannot resume shows.
 HotReloadPlugin::Batch HotReloadPlugin::classify(core::Engine& engine, const std::vector<std::string>& changed) const {
     Batch batch;
     for (const std::string& path : changed) {

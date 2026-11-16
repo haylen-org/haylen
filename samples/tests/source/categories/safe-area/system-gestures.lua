@@ -12,7 +12,7 @@ local areas = require('categories.safe-area.areas')
 local SystemGestures = haylen.class('SystemGestures', Test)
 
 SystemGestures.code = [[
-window.setSystemGestures('deferred')  -- Or "system" and "autoHideIndicator", which "window.systemGestures" of "app.json" sets at start.
+window.setSystemGestures('deferred')  -- Or "system" and "autoHideIndicator", which "window.systemGestures" of "haylen.json" sets at start.
 print(window.systemGestures())
 for _, touch in ipairs(input.touches()) do
     local fromEdge = touch.phase == 'began' and touch.startX < visible.x + 80  -- The first swipe from a deferred edge reaches the app.
@@ -45,7 +45,7 @@ function SystemGestures:enter()
         counts[index] = ui.row{gap = 24, ui.label{text = edge.text, grow = 1}, ui.label{id = 'swipes-' .. edge.id, text = '0'}}
     end
     self:frame{
-        hint = 'The file "app.json" leaves the edges of this project deferred, and leaving this test brings that back. Swipe in from an edge of the screen with each choice and watch which swipes reach the app.',
+        hint = 'The file "haylen.json" leaves the edges of this project deferred, and leaving this test brings that back. Swipe in from an edge of the screen with each choice and watch which swipes reach the app.',
         code = SystemGestures.code,
         focus = 'gestures',
         fixed = true,

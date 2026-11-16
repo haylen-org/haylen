@@ -29,7 +29,7 @@ function Sharing:enter()
     for _, app in ipairs(Sharing.apps) do
         controls[#controls + 1] = ui.button{id = app.kind, text = app.button, onClick = function() self:open(app) end}
     end
-    controls[#controls + 1] = ui.label{text = 'The share sheet of UIKit, AppKit, Android and the Web Share API, and the links of the settings, the maps and the mail of each system. The desktops of the C library and Apple TV have no share sheet, and a web page cannot open the settings.', color = 'textMuted', font = 'caption'}
+    controls[#controls + 1] = ui.label{text = 'The share sheet of UIKit, AppKit, Android and the Web Share API, and the links of the settings, the maps and the mail of each system. The desktops of the C++ library and Apple TV have no share sheet, and a web page cannot open the settings.', color = 'textMuted', font = 'caption'}
     self:frame{
         hint = 'Share, then open each app and come back.',
         focus = 'share',

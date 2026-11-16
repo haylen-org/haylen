@@ -22,8 +22,8 @@ Urls.ways = {
     tvos = {'Run this in a terminal of the computer that runs the simulator.', 'xcrun simctl openurl booted %s://hello'},
     macos = {'Run this in a terminal.', 'open %s://hello'},
     android = {'Run this in a terminal of the computer that the device is connected to.', 'adb shell am start -a android.intent.action.VIEW -d %s://hello'},
-    windows = {'Run this in a command prompt once "haylen run" registered the scheme.', 'start "" %s://hello'},
-    linux = {'Run this in a terminal once "haylen run" registered the scheme.', 'xdg-open %s://hello'},
+    windows = {'Run this in a command prompt once "haylen app run --target windows" registered the scheme.', 'start "" %s://hello'},
+    linux = {'Run this in a terminal once "haylen app run --target linux" registered the scheme.', 'xdg-open %s://hello'},
     web = {'Add this to the end of the address of this page and press Enter.', '#hello'},
 }
 

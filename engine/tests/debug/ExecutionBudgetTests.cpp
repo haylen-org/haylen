@@ -20,7 +20,7 @@ class ExecutionBudgetTest : public ::testing::Test {
     static constexpr const char* kAppJson = R"({"name": "Budget", "identifier": "com.haylen.budget", "debug": {"executionBudget": 0.1}})";
 
     void start(const std::string& main, std::map<std::string, std::string> files = {}) {
-        files["app.json"] = kAppJson;
+        files["haylen.json"] = kAppJson;
         files["source/main.lua"] = main;
         fixture.reset();
         fixture = std::make_unique<test::EngineFixture>(std::move(files), nullptr, test::EngineFixture::Options{.development = true});
@@ -138,7 +138,7 @@ TEST_F(ExecutionBudgetTest, CancelsAnAppThatTakesMoreMemoryThanItsBudget) {
     };
     for (const std::string& attempt : attempts) {
         SCOPED_TRACE(attempt);
-        std::map<std::string, std::string> files{{"app.json", R"({"name": "Budget", "identifier": "com.haylen.budget", "debug": {"executionBudget": 30, "memoryBudget": 32}})"}, {"source/main.lua", "require('haylen.scene').push({update = function() " + attempt + " end})"}};
+        std::map<std::string, std::string> files{{"haylen.json", R"({"name": "Budget", "identifier": "com.haylen.budget", "debug": {"executionBudget": 30, "memoryBudget": 32}})"}, {"source/main.lua", "require('haylen.scene').push({update = function() " + attempt + " end})"}};
         fixture.reset();
         fixture = std::make_unique<test::EngineFixture>(std::move(files), nullptr, test::EngineFixture::Options{.development = true});
         runUntilCancelled();
@@ -149,7 +149,7 @@ TEST_F(ExecutionBudgetTest, CancelsAnAppThatTakesMoreMemoryThanItsBudget) {
 
 // Garbage that a full collection frees never runs the budget out, however much the app allocated in total.
 TEST_F(ExecutionBudgetTest, CountsOnlyTheMemoryThatStaysAfterACollection) {
-    std::map<std::string, std::string> files{{"app.json", R"({"name": "Budget", "identifier": "com.haylen.budget", "debug": {"memoryBudget": 32}})"}, {"source/main.lua", "for round = 1, 20 do local scratch = {} for index = 1, 50000 do scratch[index] = {index} end end done = true"}};
+    std::map<std::string, std::string> files{{"haylen.json", R"({"name": "Budget", "identifier": "com.haylen.budget", "debug": {"memoryBudget": 32}})"}, {"source/main.lua", "for round = 1, 20 do local scratch = {} for index = 1, 50000 do scratch[index] = {index} end end done = true"}};
     fixture = std::make_unique<test::EngineFixture>(std::move(files), nullptr, test::EngineFixture::Options{.development = true});
     EXPECT_EQ(fixture->engine().getError(), nullptr);
     EXPECT_EQ(fixture->lua("return done"), "true");

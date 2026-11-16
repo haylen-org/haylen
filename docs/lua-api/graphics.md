@@ -1105,7 +1105,7 @@ end
 
 ## Shader
 
-A `Shader` is a custom shader that `haylen.py shaders` compiled from the Haylen shader language for every shader language the engine runs. Load it from a `.shader` file with `assets.shader(path)` or `assets.load(path)`. [Materials](graphics2d.md#material) draw with it, and the [shader guide](../graphics/shaders.md) explains how to write one. The engine creates the GPU program for the shader language of the GPU device the first time a draw needs it. Two shaders compare equal with `==` when they are the same loaded shader.
+A `Shader` is a custom shader that `haylen app shaders` compiled from the Haylen shader language for every shader language the engine runs. Load it from a `.shader` file with `assets.shader(path)` or `assets.load(path)`. [Materials](graphics2d.md#material) draw with it, and the [shader guide](../graphics/shaders.md) explains how to write one. The engine creates the GPU program for the shader language of the GPU device the first time a draw needs it. Two shaders compare equal with `==` when they are the same loaded shader.
 
 ### Properties
 

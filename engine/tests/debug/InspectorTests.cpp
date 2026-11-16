@@ -101,7 +101,7 @@ TEST(InspectorLuaTest, ShowsTheWindowInDevelopmentWithItsKey) {
 
 class InspectorWindowTest : public ::testing::Test, public test::UiFixture {
   protected:
-    InspectorWindowTest() : test::UiFixture({{"app.json", R"({"name": "Inspector", "identifier": "com.haylen.inspector", "debug": {"console": true}})"}}) {}
+    InspectorWindowTest() : test::UiFixture({{"haylen.json", R"({"name": "Inspector", "identifier": "com.haylen.inspector", "debug": {"console": true}})"}}) {}
 
     // Turns a point of ImGui into the point of the visible area that the touches of the fixture take.
     [[nodiscard]] math::Vec2 place(ImVec2 point) {

@@ -55,34 +55,34 @@ class HotReloadPluginTest : public PackageEditTest {};
 
 TEST_F(PackageWatcherTest, ReportsAddedChangedAndRemovedFiles) {
     const test::TemporaryDirectory directory;
-    directory.write("app.json", "{}");
+    directory.write("haylen.json", "{}");
     directory.write("source/main.lua", "print(1)");
     directory.write("content/a.json", "{}");
-    directory.write("platform/android/build/output.txt", "");
+    directory.write("native/android/App.kt", "");
     directory.write("plugins/ads/plugin.json", "{}");
     directory.write("plugins/ads/source/init.lua", "return {}");
     directory.write("plugins/ads/android/build.gradle.kts", "");
     io::PackageWatcher watcher(directory.getPath());
     EXPECT_TRUE(watcher.scan().empty());
 
-    // Only `app.json`, `source`, `content` and the manifests and Lua modules of plugins belong to the package, so files next to them and the native parts of plugins never count.
+    // Only `haylen.json`, `source`, `content` and the manifests and Lua modules of plugins belong to the package, so files next to them and the native parts of plugins never count.
     directory.write("content/b.json", "[]");
     directory.write("README.md", "# Notes");
-    directory.write("platform/android/build/other.txt", "");
+    directory.write("native/web/app.js", "");
     directory.write("plugins/README.md", "# Plugins");
     directory.write("plugins/ads/android/src/main/AndroidManifest.xml", "");
     directory.write("plugins/ads/source/banner.lua", "return {}");
     touch(directory.getPath() / "source/main.lua", 5);
-    touch(directory.getPath() / "app.json", 5);
+    touch(directory.getPath() / "haylen.json", 5);
     touch(directory.getPath() / "plugins/ads/plugin.json", 5);
     std::filesystem::remove(directory.getPath() / "content/a.json");
-    EXPECT_EQ(watcher.scan(), (std::vector<std::string>{"app.json", "content/a.json", "content/b.json", "plugins/ads/plugin.json", "plugins/ads/source/banner.lua", "source/main.lua"}));
+    EXPECT_EQ(watcher.scan(), (std::vector<std::string>{"content/a.json", "content/b.json", "haylen.json", "plugins/ads/plugin.json", "plugins/ads/source/banner.lua", "source/main.lua"}));
     EXPECT_TRUE(watcher.scan().empty());
 }
 
 TEST_F(PackageWatcherTest, IgnoresHiddenBackupAndNonLuaSourceFiles) {
     const test::TemporaryDirectory directory;
-    directory.write("app.json", "{}");
+    directory.write("haylen.json", "{}");
     directory.write("source/main.lua", "");
     directory.write("plugins/ads/plugin.json", "{}");
     io::PackageWatcher watcher(directory.getPath());
@@ -102,11 +102,11 @@ TEST_F(PackageWatcherTest, IgnoresHiddenBackupAndNonLuaSourceFiles) {
     directory.write("plugins/ads/source/banner.lua", "return {}");
     EXPECT_EQ(watcher.scan(), (std::vector<std::string>{"content/hero.png", "plugins/ads/source/banner.lua", "source/level.lua"}));
 
-    EXPECT_TRUE(io::PackageWatcher::isWatched("app.json"));
+    EXPECT_TRUE(io::PackageWatcher::isWatched("haylen.json"));
     EXPECT_TRUE(io::PackageWatcher::isWatched("plugins/ads/plugin.json"));
     EXPECT_FALSE(io::PackageWatcher::isWatched("plugins/ads/android/build.gradle.kts"));
     EXPECT_FALSE(io::PackageWatcher::isWatched("plugins/README.md"));
-    EXPECT_FALSE(io::PackageWatcher::isWatched("platform/web/index.html"));
+    EXPECT_FALSE(io::PackageWatcher::isWatched("native/web/app.js"));
     EXPECT_FALSE(io::PackageWatcher::isWatched("source/.level.lua.swp"));
 }
 
@@ -256,7 +256,7 @@ class WatchedEngine final {
 
 TEST_F(HotReloadPluginTest, RestartsForScriptsAndReloadsAssets) {
     const test::TemporaryDirectory directory;
-    directory.write("hot/app.json", R"({"name": "Hot"})");
+    directory.write("hot/haylen.json", R"({"name": "Hot"})");
     directory.write("hot/source/main.lua", "");
     directory.write("hot/content/tile.png", toText(test::TestFiles::pngImage(2, 2, 0xFFFFFFFFU)));
 
@@ -303,9 +303,9 @@ TEST_F(HotReloadPluginTest, RestartsForScriptsAndReloadsAssets) {
 
 TEST_F(HotReloadPluginTest, ReloadsTheLuaOfAPluginInPlace) {
     const test::TemporaryDirectory directory;
-    directory.write("hot/app.json", R"({"name": "Hot", "plugins": {"ads": {}}})");
+    directory.write("hot/haylen.json", R"({"name": "Hot", "plugins": {"ads": {}}})");
     directory.write("hot/source/main.lua", "ads = require('ads')");
-    directory.write("hot/plugins/ads/plugin.json", R"({"id": "ads", "version": "1.0.0"})");
+    directory.write("hot/plugins/ads/plugin.json", R"({"id": "ads", "version": "1.0.0", "implementations": {"ios": "lua"}})");
     directory.write("hot/plugins/ads/source/init.lua", "return {show = function() return 'v1' end}");
     WatchedEngine watched(directory.getPath() / "hot", std::make_unique<lua::Application>());
     lua_State* L = watched.get().getLuaState();
@@ -330,7 +330,7 @@ TEST_F(HotReloadPluginTest, ReloadsTheLuaOfAPluginInPlace) {
 
 TEST_F(HotReloadPluginTest, IgnoresTheFilesOfEditors) {
     const test::TemporaryDirectory directory;
-    directory.write("hot/app.json", R"({"name": "Hot"})");
+    directory.write("hot/haylen.json", R"({"name": "Hot"})");
     directory.write("hot/source/main.lua", "");
     directory.write("hot/content/tile.png", toText(test::TestFiles::pngImage(2, 2, 0xFFFFFFFFU)));
     WatchedEngine watched(directory.getPath() / "hot");
@@ -348,7 +348,7 @@ TEST_F(HotReloadPluginTest, IgnoresTheFilesOfEditors) {
 
 TEST_F(HotReloadPluginTest, ScansWhileTheAppIsHalted) {
     const test::TemporaryDirectory directory;
-    directory.write("hot/app.json", R"({"name": "Hot", "lifecycle": {"pauseOnFocusLoss": true}})");
+    directory.write("hot/haylen.json", R"({"name": "Hot", "lifecycle": {"pauseOnFocusLoss": true}})");
     directory.write("hot/source/main.lua", "");
     directory.write("hot/content/tile.png", toText(test::TestFiles::pngImage(2, 2, 0xFFFFFFFFU)));
     WatchedEngine watched(directory.getPath() / "hot");
@@ -378,7 +378,7 @@ TEST_F(HotReloadPluginTest, KeepsChangesThatArriveDuringARestart) {
 
     // The session belongs to the host, so a change queued while the engine is replaced reaches the next engine.
     fixture.engine().requestRestart();
-    const std::vector<std::string> changed{"app.json"};
+    const std::vector<std::string> changed{"haylen.json"};
     session.addChanges(changed);
     fixture.restart();
     EXPECT_FALSE(fixture.engine().isRestartRequested());
@@ -387,9 +387,9 @@ TEST_F(HotReloadPluginTest, KeepsChangesThatArriveDuringARestart) {
     EXPECT_TRUE(session.takeChanges().empty());
 }
 
-TEST_F(HotReloadPluginTest, RestartsFromAFailedAppWhenAppJsonChanges) {
+TEST_F(HotReloadPluginTest, RestartsFromAFailedAppWhenHaylenJsonChanges) {
     const test::TemporaryDirectory directory;
-    directory.write("broken/app.json", R"({"name": "Broken", "window": {"widht": 100}})");
+    directory.write("broken/haylen.json", R"({"name": "Broken", "window": {"widht": 100}})");
     directory.write("broken/source/main.lua", "");
 
     // The runtime plays an app whose configuration fails with defaults and an application that shows the reason, and the app still restarts once the file is fixed.
@@ -404,8 +404,8 @@ TEST_F(HotReloadPluginTest, RestartsFromAFailedAppWhenAppJsonChanges) {
     ASSERT_NE(engine.getError(), nullptr);
     EXPECT_TRUE(engine.getPlugin<plugins::HotReloadPlugin>().isActive());
 
-    directory.write("broken/app.json", R"({"name": "Broken", "window": {"width": 100}})");
-    touch(directory.getPath() / "broken/app.json", 5);
+    directory.write("broken/haylen.json", R"({"name": "Broken", "window": {"width": 100}})");
+    touch(directory.getPath() / "broken/haylen.json", 5);
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
     while (!engine.isRestartRequested() && std::chrono::steady_clock::now() < deadline) {
         engine.frame(0.1);

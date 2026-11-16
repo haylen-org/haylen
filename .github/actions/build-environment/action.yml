@@ -37,6 +37,9 @@ runs:
       with:
         python-version: "3.15"
 
+    # The tooling is a package that uv runs from the lock of the repository, with the Python that ".python-version" pins.
+    - uses: astral-sh/setup-uv@v10.3.3
+
     - name: Install the Linux packages
       if: runner.os == 'Linux' && inputs.packages != ''
       shell: bash
@@ -51,12 +54,12 @@ runs:
       shell: bash
       run: pip install ninja
 
-    # Objects of one version of Emscripten never mix with another, so its version keys the compiler cache, and every build compiles with every processor of the runner.
+    # Objects of one version of Emscripten never mix with another, so its version, which `tools/haylen/toolchains/emscripten.py` pins, keys the compiler cache, and every build compiles with every processor of the runner.
     - name: Read the version of Emscripten and the processors of the runner
       id: machine
       shell: bash
       run: |
-        echo "emscripten=$(python -c 'import haylen; print(haylen.EMSDK_VERSION)')" >> "$GITHUB_OUTPUT"
+        echo "emscripten=$(sed -n 's/^    VERSION = "\(.*\)"$/\1/p' tools/haylen/toolchains/emscripten.py)" >> "$GITHUB_OUTPUT"
         echo "JOBS=$(python -c 'import os; print(os.cpu_count())')" >> "$GITHUB_ENV"
 
     # The sources of the dependencies and the tools that the builds download come from the releases of their projects, so each one keeps a cache whose name every copy shares and whose key ends with what pins it. One job of each cache saves it, in the runs of the default branch, once the job succeeds with a key that no cache holds yet. Each cache step keeps an id of its own, since the steps of an action that a job uses twice would share the state that saves them.
@@ -71,7 +74,7 @@ runs:
         echo "shader-compiler-name=tool-shader-compiler-$system-" >> "$GITHUB_OUTPUT"
         echo "shader-compiler-key=tool-shader-compiler-$system-${{ hashFiles('engine/cmake/haylen-shader-compiler.json', 'engine/cmake/haylen-shader-compiler.cmake') }}" >> "$GITHUB_OUTPUT"
         echo "xcodegen-name=tool-xcodegen-$system-" >> "$GITHUB_OUTPUT"
-        echo "xcodegen-key=tool-xcodegen-$system-$(python -c 'import haylen; print(haylen.XCODEGEN_VERSION + "-" + haylen.XCODEGEN_SHA256)')" >> "$GITHUB_OUTPUT"
+        echo "xcodegen-key=tool-xcodegen-$system-${{ hashFiles('tools/haylen/toolchains/xcodegen.py') }}" >> "$GITHUB_OUTPUT"
         echo "emscripten-name=tool-emscripten-$system-" >> "$GITHUB_OUTPUT"
         echo "emscripten-key=tool-emscripten-$system-${{ steps.machine.outputs.emscripten }}" >> "$GITHUB_OUTPUT"
         echo "ccache-name=tool-ccache-$system-" >> "$GITHUB_OUTPUT"

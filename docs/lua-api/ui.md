@@ -6,7 +6,7 @@ The module `haylen.ui` builds the interface that players see, such as menus, HUD
 local ui = require('haylen.ui')
 ```
 
-A GUI is a tree of nodes. A node is a flat table with a `kind`, an optional `id`, its children and the properties of its kind. The function [`ui.mount`](#uimounttree-options) builds the tree, draws it over the app every frame and returns a [`Gui`](#gui). Sizes and positions are design units, the units of the design resolution in `app.json`. The metrics of the built-in themes suit the default design resolution of 1920 by 1080.
+A GUI is a tree of nodes. A node is a flat table with a `kind`, an optional `id`, its children and the properties of its kind. The function [`ui.mount`](#uimounttree-options) builds the tree, draws it over the app every frame and returns a [`Gui`](#gui). Sizes and positions are design units, the units of the design resolution in `haylen.json`. The metrics of the built-in themes suit the default design resolution of 1920 by 1080.
 
 ```lua
 local scene = require('haylen.scene')
@@ -1855,7 +1855,7 @@ A GUI lays out in UI units. The scale mode decides how large a UI unit is, and t
 
 ### ui.setScaleMode(mode)
 
-Sets how large the interface draws, from the next frame on. The `app.json` key `ui.scaleMode` sets it at start.
+Sets how large the interface draws, from the next frame on. The `haylen.json` key `ui.scaleMode` sets it at start.
 
 - The mode `'design'` is the default. A UI unit is a design unit, so the UI grows and shrinks with the screen like the rest of the app.
 - The mode `'physical'` gives a UI unit the same size on every screen: three quarters of a point. So the default control height of 64 units is 48 points on a phone, a tablet and a desktop. The shorter side of the visible area never holds fewer than 480 UI units, so a layout always has room. A layout that grows with `grow`, `wrap` and `minColumnWidth` follows the room it gets.
@@ -1883,7 +1883,7 @@ print(ui.scaleMode())
 
 ### ui.setScale(factor)
 
-Multiplies the size of the interface by a factor from 0.25 to 4, in both modes, such as a size setting of the player. The `app.json` key `ui.scale` sets it at start. A factor out of range raises `The UI scale must be from 0.25 to 4.`.
+Multiplies the size of the interface by a factor from 0.25 to 4, in both modes, such as a size setting of the player. The `haylen.json` key `ui.scale` sets it at start. A factor out of range raises `The UI scale must be from 0.25 to 4.`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -1908,7 +1908,7 @@ The safe area is the part of the screen that notches, rounded corners and system
 
 ### ui.setSafeAreaVisible(visible)
 
-Shows or hides the debug view of the safe area. The view shades the screen outside the safe area and outlines it. It prints the insets by name in the widest shaded band that holds them, so they cover no interface. In the top or bottom band they take one line, and in a side band one line per edge. When no band holds them, they show on a dark pill at the bottom of the screen. The option `debug.showSafeArea` of `app.json` turns the view on at start. Together with [`viewport.setSafeAreaSimulation`](viewport.md#viewportsetsafeareasimulationvalue), it checks a layout against notches, rounded corners and gesture bars on a desktop.
+Shows or hides the debug view of the safe area. The view shades the screen outside the safe area and outlines it. It prints the insets by name in the widest shaded band that holds them, so they cover no interface. In the top or bottom band they take one line, and in a side band one line per edge. When no band holds them, they show on a dark pill at the bottom of the screen. The option `debug.showSafeArea` of `haylen.json` turns the view on at start. Together with [`viewport.setSafeAreaSimulation`](viewport.md#viewportsetsafeareasimulationvalue), it checks a layout against notches, rounded corners and gesture bars on a desktop.
 
 ```lua
 local ui = require('haylen.ui')

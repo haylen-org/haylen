@@ -29,34 +29,39 @@ typedef NS_ENUM(NSInteger, HaylenRequirementKind) {
 }
 
 + (instancetype)infoPlistKey:(NSString*)key value:(NSString*)value {
-    NSString* snippet = [NSString stringWithFormat:@"<key>%@</key><string>%@</string>", key, value];
-    return [[self alloc] initWithType:HaylenRequirementKindInfoPlistKey name:key summary:[NSString stringWithFormat:@"the \"Info.plist\" key \"%@\"", key] file:self.infoPlistFile snippet:snippet];
+    NSString* snippet = [self section:@"infoPlist" value:[NSString stringWithFormat:@"{%@: %@}", [self quoted:key], [self quoted:value]]];
+    return [[self alloc] initWithType:HaylenRequirementKindInfoPlistKey name:key summary:[NSString stringWithFormat:@"the \"Info.plist\" key \"%@\"", key] file:self.appManifest snippet:snippet];
 }
 
 + (instancetype)usageDescription:(NSString*)key {
-    NSString* snippet = [NSString stringWithFormat:@"<key>%@</key><string>Tell the person why the app asks for this.</string>", key];
-    return [[self alloc] initWithType:HaylenRequirementKindUsageDescription name:key summary:[NSString stringWithFormat:@"the usage description \"%@\"", key] file:self.infoPlistFile snippet:snippet];
+    NSString* snippet = [self section:@"infoPlist" value:[NSString stringWithFormat:@"{%@: \"Tell the person why the app asks for this.\"}", [self quoted:key]]];
+    return [[self alloc] initWithType:HaylenRequirementKindUsageDescription name:key summary:[NSString stringWithFormat:@"the usage description \"%@\"", key] file:self.appManifest snippet:snippet];
 }
 
 + (instancetype)backgroundMode:(NSString*)mode {
-    NSString* snippet = [NSString stringWithFormat:@"<key>UIBackgroundModes</key><array><string>%@</string></array>", mode];
-    return [[self alloc] initWithType:HaylenRequirementKindBackgroundMode name:mode summary:[NSString stringWithFormat:@"the background mode \"%@\"", mode] file:self.infoPlistFile snippet:snippet];
+    NSString* snippet = [self section:@"infoPlist" value:[NSString stringWithFormat:@"{\"UIBackgroundModes\": [%@]}", [self quoted:mode]]];
+    return [[self alloc] initWithType:HaylenRequirementKindBackgroundMode name:mode summary:[NSString stringWithFormat:@"the background mode \"%@\"", mode] file:self.appManifest snippet:snippet];
+}
+
++ (instancetype)backgroundAudio {
+    return [[self alloc] initWithType:HaylenRequirementKindBackgroundMode name:@"audio" summary:@"the background mode \"audio\"" file:self.appManifest snippet:@"{\"audio\": {\"background\": true}}"];
 }
 
 + (instancetype)urlScheme:(NSString*)scheme {
-    NSString* snippet = [NSString stringWithFormat:@"<key>CFBundleURLTypes</key><array><dict><key>CFBundleURLSchemes</key><array><string>%@</string></array></dict></array>", scheme];
-    return [[self alloc] initWithType:HaylenRequirementKindUrlScheme name:scheme summary:[NSString stringWithFormat:@"the URL scheme \"%@\"", scheme] file:self.infoPlistFile snippet:snippet];
+    NSString* snippet = [self section:@"infoPlist" value:[NSString stringWithFormat:@"{\"CFBundleURLTypes\": [{\"CFBundleURLSchemes\": [%@]}]}", [self quoted:scheme]]];
+    return [[self alloc] initWithType:HaylenRequirementKindUrlScheme name:scheme summary:[NSString stringWithFormat:@"the URL scheme \"%@\"", scheme] file:self.appManifest snippet:snippet];
 }
 
-// The target of the app lists the frameworks it links among the dependencies of `project.yml`.
+// Only a plugin links a framework, through a `framework` contribution of its `plugin.json`.
 + (instancetype)className:(NSString*)name framework:(NSString*)framework {
     NSString* summary = [NSString stringWithFormat:@"the class \"%@\" of \"%@\"", name, framework];
-    return [[self alloc] initWithType:HaylenRequirementKindClass name:name summary:summary file:@"project.yml" snippet:[NSString stringWithFormat:@"- sdk: %@", framework]];
+    NSString* snippet = [NSString stringWithFormat:@"{\"type\": \"framework\", \"platforms\": [\"%@\"], \"name\": %@}", self.platform, [self quoted:framework]];
+    return [[self alloc] initWithType:HaylenRequirementKindClass name:name summary:summary file:@"plugin.json" snippet:snippet];
 }
 
 + (instancetype)entitlement:(NSString*)key {
-    NSString* snippet = [NSString stringWithFormat:@"<key>%@</key><true/>", key];
-    return [[self alloc] initWithType:HaylenRequirementKindEntitlement name:key summary:[NSString stringWithFormat:@"the entitlement \"%@\"", key] file:self.entitlementsFile snippet:snippet];
+    NSString* snippet = [self section:@"entitlements" value:[NSString stringWithFormat:@"{%@: true}", [self quoted:key]]];
+    return [[self alloc] initWithType:HaylenRequirementKindEntitlement name:key summary:[NSString stringWithFormat:@"the entitlement \"%@\"", key] file:self.appManifest snippet:snippet];
 }
 
 - (NSString*)kind {
@@ -92,6 +97,14 @@ typedef NS_ENUM(NSInteger, HaylenRequirementKind) {
     return requirementSnippet;
 }
 
+- (NSString*)instructions {
+    if (type == HaylenRequirementKindClass) {
+        return [NSString stringWithFormat:@"Add the contribution \"%@\" to the \"contributions\" of \"plugin.json\" of the plugin.", requirementSnippet];
+    }
+
+    return [NSString stringWithFormat:@"Add \"%@\" to \"%@\".", requirementSnippet, requirementFile];
+}
+
 - (NSDictionary<NSString*, NSString*>*)entry {
     return @{@"kind" : self.kind, @"name" : self.name, @"file" : self.file, @"snippet" : self.snippet};
 }
@@ -118,27 +131,33 @@ typedef NS_ENUM(NSInteger, HaylenRequirementKind) {
     }
 }
 
-// The iOS target builds iOS and Mac Catalyst from one `Info.plist`, while each platform signs with entitlements of its own.
-+ (NSString*)infoPlistFile {
+// The app gives the keys of its `Info.plist` and its entitlements in the section of its platform under `platforms` of `haylen.json`.
++ (NSString*)appManifest {
+    return @"haylen.json";
+}
+
++ (NSString*)section:(NSString*)key value:(NSString*)value {
+    return [NSString stringWithFormat:@"{\"platforms\": {\"%@\": {\"%@\": %@}}}", self.platform, key, value];
+}
+
+// The name of the platform in `haylen.json` and `plugin.json`.
++ (NSString*)platform {
 #if TARGET_OS_OSX
-    return @"macos/Info.plist";
+    return @"macos";
+#elif TARGET_OS_MACCATALYST
+    return @"catalyst";
 #elif TARGET_OS_TV
-    return @"tvos/Info.plist";
+    return @"tvos";
+#elif TARGET_OS_VISION
+    return @"visionos";
 #else
-    return @"ios/Info.plist";
+    return @"ios";
 #endif
 }
 
-+ (NSString*)entitlementsFile {
-#if TARGET_OS_OSX
-    return @"macos/App.entitlements";
-#elif TARGET_OS_MACCATALYST
-    return @"ios/Catalyst.entitlements";
-#elif TARGET_OS_TV
-    return @"tvos/App.entitlements";
-#else
-    return @"ios/App.entitlements";
-#endif
++ (NSString*)quoted:(NSString*)text {
+    NSData* json = [NSJSONSerialization dataWithJSONObject:text options:NSJSONWritingFragmentsAllowed | NSJSONWritingWithoutEscapingSlashes error:nil];
+    return [[NSString alloc] initWithData:json encoding:NSUTF8StringEncoding];
 }
 
 @end

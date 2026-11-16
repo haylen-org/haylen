@@ -1,4 +1,4 @@
--- The native part sends 100 events of the name `burst` 30 times per second, each marked batched, and the bridge hands the events of one frame to the listener as one list in order, which suits sensors, locations and progress. Swift, Kotlin and JavaScript send them from the main thread and C from a thread of its library. The chart shows the size of every list as it arrives.
+-- The native part sends 100 events of the name `burst` 30 times per second, each marked batched, and the bridge hands the events of one frame to the listener as one list in order, which suits sensors, locations and progress. Swift, Kotlin and JavaScript send them from the main thread and C++ from a thread of its library. The chart shows the size of every list as it arrives.
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -38,7 +38,7 @@ function Batches:enter()
         focus = 'send',
         controls = {
             ui.button{id = 'send', text = 'Send the bursts', variant = 'primary', onClick = function() self:send() end},
-            ui.label{text = 'Each native part marks the events batched, with "{batched = true}" on the web, "batched" set to "true" in Swift and Kotlin and a flag of the emit in C. The listener runs once per frame with a list instead of once per event.', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'Each native part marks the events batched, with "{batched = true}" on the web, "batched" set to "true" in Swift and Kotlin and a flag of the emit in C++. The listener runs once per frame with a list instead of once per event.', color = 'textMuted', font = 'caption'},
         },
         showcase = {
             ui.card{grow = 1, align = 'stretch', gap = 12,

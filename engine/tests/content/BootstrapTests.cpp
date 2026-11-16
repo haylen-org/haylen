@@ -25,7 +25,7 @@ namespace haylen::content {
 class BootstrapTest : public ::testing::Test {
   protected:
     BootstrapTest() {
-        release.build({{"app.json", R"({"name": "Bootstrap", "identifier": "com.haylen.tests"})"}, {"source/main.lua", "loaded = true"}, {"content/data/config.json", R"({"level": 3})"}});
+        release.build({{"haylen.json", R"({"name": "Bootstrap", "identifier": "com.haylen.tests"})"}, {"source/main.lua", "loaded = true"}, {"content/data/config.json", R"({"level": 3})"}});
     }
 
     // The bootstrap that a release build of the test app compiles in.
@@ -97,7 +97,7 @@ TEST_F(BootstrapTest, OpensTheReleaseOfItsApp) {
     EXPECT_TRUE(package->isLuaBytecode("source/main.lua"));
 
     // A development build ships the package itself, which opens as it is with or without a bootstrap.
-    const auto plain = std::make_shared<io::MemoryPackage>("plain", std::map<std::string, std::vector<std::uint8_t>>{{"app.json", test::TestFiles::bytes("{}")}});
+    const auto plain = std::make_shared<io::MemoryPackage>("plain", std::map<std::string, std::vector<std::uint8_t>>{{"haylen.json", test::TestFiles::bytes("{}")}});
     EXPECT_EQ(ReleasePackage::openBundled(plain, nullptr), plain);
     const Bootstrap bootstrap = makeBootstrap();
     const std::shared_ptr<io::Package> folder = io::Package::openDirectory(release.getFolder());
@@ -106,7 +106,7 @@ TEST_F(BootstrapTest, OpensTheReleaseOfItsApp) {
 
 // A release build never plays plain files that someone put in the place of its release.
 TEST_F(BootstrapTest, RefusesPlainFilesInThePlaceOfItsRelease) {
-    const auto plain = std::make_shared<io::MemoryPackage>("plain", std::map<std::string, std::vector<std::uint8_t>>{{"app.json", test::TestFiles::bytes("{}")}, {"source/main.lua", test::TestFiles::bytes("print('swapped')")}});
+    const auto plain = std::make_shared<io::MemoryPackage>("plain", std::map<std::string, std::vector<std::uint8_t>>{{"haylen.json", test::TestFiles::bytes("{}")}, {"source/main.lua", test::TestFiles::bytes("print('swapped')")}});
     const Bootstrap bootstrap = makeBootstrap();
     expectCode(Error::Code::MissingManifest, [&] { (void)ReleasePackage::openBundled(plain, &bootstrap); });
 }

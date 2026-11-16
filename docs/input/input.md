@@ -44,7 +44,7 @@ The engine reads the events that arrived since the last frame once, at the start
 - The function `input.consumePress(action)` returns `true` once per press, in `update` or in `fixedUpdate`. The `buffer` of an action keeps a press ready for that many seconds of fixed steps. This is the usual jump buffer: a jump pressed just before landing still jumps.
 - When the window loses the focus or the app is suspended, the keys, modifier keys and mouse buttons that are held are released in that frame. Touches and gestures in progress are cancelled, without taps or swipes. So a player never comes back to a stuck key.
 - A key that goes down and up again within one frame still counts as a press for the actions bound to it.
-- Positions are in design coordinates, the space that `design` of `app.json` sets. The [rendering guide](../graphics/rendering.md) shows how design coordinates map to the screen.
+- Positions are in design coordinates, the space that `design` of `haylen.json` sets. The [rendering guide](../graphics/rendering.md) shows how design coordinates map to the screen.
 
 ```lua
 local input = require('haylen.input')
@@ -228,7 +228,7 @@ Each platform delivers keys in its own way. The engine keeps one rule everywhere
 
 ### Mouse
 
-Mouse buttons are `'left'`, `'right'` and `'middle'`. The function `input.mousePosition()` returns the position of the mouse in design coordinates. The function `input.mouseDelta()` returns the movement of this frame, which keeps working while [`haylen.window`](../lua-api/window.md) locks the mouse. The function `input.mouseScroll()` returns the scroll of the wheel or the trackpad, in steps of a wheel. The function `input.setScrollSpeed()` and the key `input.scrollSpeed` of `app.json` make every scroll faster or slower. The function `input.mouseInside()` tells whether the mouse is over the window.
+Mouse buttons are `'left'`, `'right'` and `'middle'`. The function `input.mousePosition()` returns the position of the mouse in design coordinates. The function `input.mouseDelta()` returns the movement of this frame, which keeps working while [`haylen.window`](../lua-api/window.md) locks the mouse. The function `input.mouseScroll()` returns the scroll of the wheel or the trackpad, in steps of a wheel. The function `input.setScrollSpeed()` and the key `input.scrollSpeed` of `haylen.json` make every scroll faster or slower. The function `input.mouseInside()` tells whether the mouse is over the window.
 
 A camera turns a point in design coordinates, the space of the mouse, into a place in the world with `camera:screenToWorld`. It counts the viewport of the camera too.
 
@@ -283,7 +283,7 @@ scene.push({
 
 An app can treat one device as the other:
 
-- With `input.setMouseAsTouch(true)`, or `"input": {"mouseAsTouch": true}` in `app.json`, the left mouse button becomes a finger for the whole engine. So touch controls, gestures and touch code run on a desktop as on a phone.
+- With `input.setMouseAsTouch(true)`, or `"input": {"mouseAsTouch": true}` in `haylen.json`, the left mouse button becomes a finger for the whole engine. So touch controls, gestures and touch code run on a desktop as on a phone.
 - With `input.setTouchAsMouse(true)`, or `"touchAsMouse": true`, the first finger down also drives the mouse. So code that reads `input.mousePressed` and `input.mousePosition` runs on a touch screen, while the touches keep working. That mouse reaches the app alone: the UI follows the finger, so a drag scrolls the area under it and a tap presses a button once.
 
 ### Gestures
@@ -488,7 +488,7 @@ App code can write virtual inputs itself, for controls of its own, with `input.s
 
 ### System gestures at the edges
 
-Phones and tablets keep some swipes from the edges of the screen for the system. On an iPhone or an iPad a swipe up from the bottom goes home, and on Android a swipe in from a side also goes back. A thumb that slides off a stick near an edge can leave the game by accident. The option `window.systemGestures` of `app.json`, and [`window.setSystemGestures`](../lua-api/window.md#windowsetsystemgesturesvalue) while the app runs, choose how those swipes answer.
+Phones and tablets keep some swipes from the edges of the screen for the system. On an iPhone or an iPad a swipe up from the bottom goes home, and on Android a swipe in from a side also goes back. A thumb that slides off a stick near an edge can leave the game by accident. The option `window.systemGestures` of `haylen.json`, and [`window.setSystemGestures`](../lua-api/window.md#windowsetsystemgesturesvalue) while the app runs, choose how those swipes answer.
 
 - `'deferred'`, the default, lets the first swipe from an edge reach the app, and the system acts only on a second swipe. It suits games with touch controls, so a game keeps it during play.
 - `'system'` lets the system act on the first swipe and shows the home indicator or the navigation bar. It suits apps such as a shop, a reader or the menus of a game, where people expect to leave with one swipe.

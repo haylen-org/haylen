@@ -1,6 +1,7 @@
 #import "platform/apple/AppleBackgroundAudio.hpp"
 
 #if !TARGET_OS_OSX
+#import "platform/apple/HaylenRequirement+Runtime.h"
 #import "platform/apple/HaylenRequirements+Runtime.h"
 
 namespace haylen::platform {
@@ -18,7 +19,7 @@ void AppleBackgroundAudio::setEnabled(bool value) {
 #if !TARGET_OS_MACCATALYST
     if (value) {
         static HaylenRequirements* const requirements = [[HaylenRequirements alloc] initWithOwner:@"The audio that plays in the background"];
-        [requirements require:@[ [HaylenRequirement backgroundMode:@"audio"] ] error:nil];
+        [requirements require:@[ HaylenRequirement.backgroundAudio ] error:nil];
     }
 #endif
 }

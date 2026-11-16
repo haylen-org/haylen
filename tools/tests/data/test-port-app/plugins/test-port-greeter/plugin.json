@@ -1,0 +1,11 @@
+{
+    "interface": 1,
+    "id": "test-port-greeter",
+    "name": "Test Port Greeter",
+    "version": "1.0.0",
+    "description": "The plugin of the app of the test port, whose part for the test port is a C++ source that the backend links into the app and that Lua calls through native.load.",
+    "implementations": {"test-port": "native"},
+    "contributions": [
+        {"type": "testPortPart", "platforms": ["test-port"], "sources": ["test-port/TestPortGreeter.cpp"], "symbols": ["test_port_greeter_greeting"]}
+    ]
+}

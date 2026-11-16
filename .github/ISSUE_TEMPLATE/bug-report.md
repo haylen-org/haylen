@@ -16,7 +16,7 @@ Describe the problem in a few short sentences.
 List the steps that show the problem, such as:
 
 1. Create an app with `haylen new my-app`.
-2. Run it with `haylen run my-app --platform android`.
+2. Run it with `haylen app run my-app --target android`.
 3. See the error.
 
 **What you expected**
@@ -31,7 +31,7 @@ Add screenshots, the error screen of the app or the log of the command, which `h
 
 - The operating system and its version, such as macOS 26.1 or Ubuntu 24.04.
 - The version of Haylen in `engine/VERSION`, or the commit you build from.
-- The platform, as `--platform` names it: `macos`, `windows`, `linux`, `ios`, `ios-simulator`, `tvos`, `tvos-simulator`, `visionos`, `visionos-simulator`, `catalyst`, `android` or `web`.
+- The target, as `--target` names it: `player`, `macos`, `windows`, `linux`, `ios`, `ios-simulator`, `tvos`, `tvos-simulator`, `visionos`, `visionos-simulator`, `catalyst`, `android` or `web`, and what `haylen doctor --target <target>` shows.
 - The graphics API, when the problem is in what the app draws, such as `metal`, `vulkan` or `webGpu`.
 - The device, when the app runs on a phone, a tablet, a TV or a simulator.
 

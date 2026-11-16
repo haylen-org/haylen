@@ -1,4 +1,4 @@
--- The app lays out in design units, and the scaling policy of `app.json` maps them onto the screen. The preview applies each policy to screens of other shapes, and the live values show how this app is mapped right now, in either orientation.
+-- The app lays out in design units, and the scaling policy of `haylen.json` maps them onto the screen. The preview applies each policy to screens of other shapes, and the live values show how this app is mapped right now, in either orientation.
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -12,7 +12,7 @@ local Test = require('harness.test')
 local Scaling = haylen.class('Scaling', Test)
 
 Scaling.code = [[
--- The file "app.json" sets "design" to a width of 1920, a height of 1080 and the scaling "expand".
+-- The file "haylen.json" sets "design" to a width of 1920, a height of 1080 and the scaling "expand".
 viewport.setScaling('fit')
 local width, height = viewport.designSize()
 local visible = viewport.visibleRect()  -- Larger than the design area with "expand".
@@ -44,7 +44,7 @@ function Scaling:enter()
         screens[index] = {id = screen.id, text = string.format('%s, %d x %d', screen.text, screen.width, screen.height)}
     end
     self:frame{
-        hint = 'Left and right change the focused stepper. The policy is "design.scaling" in "app.json", and this project uses "expand". The preview draws the design area of 1920 by 1080 on a simulated screen: black bars are letterboxing, the striped band is the extra visible area of "expand", and whatever leaves the screen is cropped.',
+        hint = 'Left and right change the focused stepper. The policy is "design.scaling" in "haylen.json", and this project uses "expand". The preview draws the design area of 1920 by 1080 on a simulated screen: black bars are letterboxing, the striped band is the extra visible area of "expand", and whatever leaves the screen is cropped.',
         code = Scaling.code,
         focus = 'policy',
         panelWidth = 760,

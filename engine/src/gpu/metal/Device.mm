@@ -34,7 +34,7 @@ namespace haylen::gpu::metal {
 
 // The Metal objects of the device and the state of the frame and the pass that record.
 struct Device::Native {
-    static constexpr std::string_view kMissingCaptureTool = "Metal writes GPU traces only for an app that starts with the environment variable \"MTL_CAPTURE_ENABLED\" set to 1 or the key \"MetalCaptureEnabled\" set to true in its \"Info.plist\". The Debug runs of \"haylen run\" start the app with the variable, so run the app with it, or set one of them.";
+    static constexpr std::string_view kMissingCaptureTool = "Metal writes GPU traces only for an app that starts with the environment variable \"MTL_CAPTURE_ENABLED\" set to 1 or the key \"MetalCaptureEnabled\" set to true in its \"Info.plist\". The Debug runs of \"haylen app run\" start the app with the variable, so run the app with it, or set one of them.";
 
     // Uniform blocks take the buffer indices from 0 of each stage, so vertex buffers take the ones after them.
     static constexpr NSUInteger kFirstVertexBuffer = kMaxBlocks;

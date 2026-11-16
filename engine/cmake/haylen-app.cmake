@@ -1,15 +1,8 @@
-# Apps deploy their package into the app of each platform. A package is app.json, the source folder and the content folder, so nothing else that shares the package folder ships.
-# Desktop builds link those entries into an "app" folder next to the executable, so edited files show up without a rebuild.
-# Apple bundles carry them under Resources/app.
-# Web builds preload them at /app in the virtual file system.
-# Android apps take them into the APK assets of their Gradle project, which haylen.py assembles from the Android template, so the build records the package folder next to the library.
-# With HAYLEN_PROTECTED_RELEASE every app ships its protected release instead, built by the content tool with the keys of the app, which the app opens with the bootstrap the build compiles into it, in the same places, and a web page preloads only the manifests and the app domain and streams the rest from the "app" folder next to it.
+# The CMake API of apps: `haylen_add_app` builds the binary of an app against the engine, from the SDK that `find_package(haylen)` imports or from the engine that `add_subdirectory` adds.
+# The tooling prepares the content that an app ships, the staged package of a Debug build or the protected release of a Release build with the bootstrap that the content tool writes for it, and the function places that content where the runtime of each platform reads it.
+# Xcode builds the apps of every Apple platform from the projects of the tooling, so the function builds only plain macOS executables there, such as those of CMake projects that consume the engine.
 
-option(HAYLEN_PROTECTED_RELEASE "Ships the package of every app as its protected release, with the bootstrap of the app compiled in." OFF)
-set(HAYLEN_CONTENT_TOOL "" CACHE FILEPATH "The content tool of the host, haylen-content, which builds protected releases. Empty uses the haylen-content target of the build.")
-set(HAYLEN_PREVIOUS_RELEASE "" CACHE PATH "A folder that holds the last release of the app that shipped, which the protected release follows instead of the last release of the build tree, so a clean machine keeps the shards of unchanged content. Empty follows the build tree.")
-
-# The system frameworks that the engine needs on each Apple platform. The runtime links them, and the Apple artifacts publish them in haylen-frameworks.json, from which haylen.py links them into the projects of Lua apps.
+# The system frameworks that the engine needs on each Apple platform. The runtime links them, and the Apple SDK publishes them in haylen-apple.json, from which the Xcode projects of apps link them.
 # Every Apple platform finds the fonts of the system through CoreText, Mac Catalyst reads the battery of the Mac from the power sources of IOKit, every Apple platform decodes videos with AVFoundation and CoreMedia, and SDL reads the keyboard layouts of macOS through Carbon and its controllers through IOKit, GameController, CoreHaptics and ForceFeedback.
 set(HAYLEN_APPLE_FRAMEWORKS_MACOS Cocoa Carbon CoreFoundation CoreGraphics CoreText QuartzCore Metal MetalKit GameController CoreHaptics ForceFeedback AVFoundation AudioToolbox CoreAudio CoreMedia Network CoreVideo IOKit UniformTypeIdentifiers)
 set(HAYLEN_APPLE_FRAMEWORKS_IOS Foundation UIKit CoreGraphics CoreText QuartzCore Metal MetalKit GameController AVFoundation AudioToolbox CoreAudio CoreMedia Network CoreVideo UniformTypeIdentifiers)
@@ -58,32 +51,6 @@ function(haylen_link_runtime_platform target scope)
   endif()
 endfunction()
 
-function(haylen_mark_resources)
-  cmake_parse_arguments(arg "" "BASEDIR;RESOURCEBASE" "FILES" ${ARGN})
-
-  foreach(file IN LISTS arg_FILES)
-    file(RELATIVE_PATH relative "${arg_BASEDIR}" "${file}")
-    get_filename_component(location "${relative}" DIRECTORY)
-    set_source_files_properties("${file}" PROPERTIES MACOSX_PACKAGE_LOCATION "${arg_RESOURCEBASE}/${location}" HEADER_FILE_ONLY ON)
-    string(REPLACE "/" "\\\\" group "${arg_RESOURCEBASE}/${location}")
-    source_group("${group}" FILES "${file}")
-  endforeach()
-endfunction()
-
-function(haylen_link_package target entries paths)
-  set(package_target "${target}-package")
-  list(JOIN entries "|" entries)
-  list(JOIN paths "|" paths)
-  add_custom_target(${package_target} ALL
-    COMMAND "${CMAKE_COMMAND}" -D "DESTINATION=$<TARGET_FILE_DIR:${target}>/app" -D "ENTRIES=${entries}" -D "PATHS=${paths}"
-            -P "${HAYLEN_CMAKE_DIR}/haylen-link-content.cmake"
-    COMMENT "Linking the app package of ${target}"
-    VERBATIM
-  )
-  add_dependencies(${package_target} ${target})
-  set_target_properties(${package_target} PROPERTIES FOLDER Utils)
-endfunction()
-
 function(haylen_setup_web_page target shell)
   if(NOT shell)
     set(shell "${HAYLEN_ENGINE_DIR}/platform/web/shell.html")
@@ -92,7 +59,7 @@ function(haylen_setup_web_page target shell)
   target_link_options(${target} PRIVATE "--shell-file=${shell}")
   set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS "${shell}" "${HAYLEN_ENGINE_DIR}/platform/web/haylen-audio-worklet.js")
 
-  # The WebGPU and WebGL2 bundle of haylen.py run builds its page from the same shell, so the shell travels with the build output, next to the engine logo that the default shell shows as its icon.
+  # The shell travels with the build output, next to the engine logo that the default shell shows as its icon.
   # The runtime loads the processor of its audio output and the worker of its content store from next to its script, and a page of the Worker mode loads the page side of the runtime and the worker that runs it from there, so they travel with the build output too.
   add_custom_command(TARGET ${target} POST_BUILD
     COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${shell}" "$<TARGET_FILE_DIR:${target}>/${target}.shell.html"
@@ -105,480 +72,20 @@ function(haylen_setup_web_page target shell)
   )
 endfunction()
 
-function(haylen_setup_apple_bundle target project_dir display_name identifier version build show_in_taskbar status_bar background_audio)
-  # The keys of the plugins that haylen.py writes hold the background mode with the modes of the plugins, and an app without them gets it here.
-  set(HAYLEN_BACKGROUND_MODES "")
-  if(background_audio AND NOT HAYLEN_PLATFORM STREQUAL "macos" AND NOT HAYLEN_PLUGIN_KEYS MATCHES "<key>UIBackgroundModes</key>")
-    set(HAYLEN_BACKGROUND_MODES "\t<key>UIBackgroundModes</key>\n\t<array>\n\t\t<string>audio</string>\n\t</array>\n")
-  endif()
-  if(HAYLEN_PLATFORM STREQUAL "macos")
-    # An app without a taskbar button has no Dock icon, not even while it starts.
-    set(HAYLEN_UI_ELEMENT "")
-    if(NOT show_in_taskbar)
-      set(HAYLEN_UI_ELEMENT "\t<key>LSUIElement</key>\n\t<true/>\n")
-    endif()
-    set(plist "${CMAKE_CURRENT_BINARY_DIR}/${target}-Info.plist.in")
-    configure_file("${project_dir}/mac/Info.plist.in" "${plist}" @ONLY)
-  elseif(CMAKE_SYSTEM_NAME STREQUAL "visionOS")
-    # The window of visionOS has no orientation, status bar or launch screen.
-    set(plist "${CMAKE_CURRENT_BINARY_DIR}/${target}-Info.plist.in")
-    configure_file("${project_dir}/visionos/Info.plist.in" "${plist}" @ONLY)
-    set(launch_screen "")
-  elseif(HAYLEN_PLATFORM STREQUAL "ios")
-    # The Info.plist lists every orientation, and the runtime allows the ones of app.json, since a foldable iPhone shows an app that lists fewer in a box on its inner screen. The iPhone does not turn upside down.
-    set(HAYLEN_ORIENTATIONS "\t\t<string>UIInterfaceOrientationPortrait</string>\n\t\t<string>UIInterfaceOrientationLandscapeLeft</string>\n\t\t<string>UIInterfaceOrientationLandscapeRight</string>\n")
-    set(HAYLEN_ORIENTATIONS_IPAD "${HAYLEN_ORIENTATIONS}\t\t<string>UIInterfaceOrientationPortraitUpsideDown</string>\n")
-    # The app launches with the status bar of app.json, which the view controller of the runtime keeps until the engine applies the same value.
-    set(HAYLEN_STATUS_BAR_HIDDEN "false")
-    set(HAYLEN_STATUS_BAR_STYLE "UIStatusBarStyleDefault")
-    if(status_bar STREQUAL "hidden")
-      set(HAYLEN_STATUS_BAR_HIDDEN "true")
-    elseif(status_bar STREQUAL "light")
-      set(HAYLEN_STATUS_BAR_STYLE "UIStatusBarStyleLightContent")
-    elseif(status_bar STREQUAL "dark")
-      set(HAYLEN_STATUS_BAR_STYLE "UIStatusBarStyleDarkContent")
-    endif()
-    set(plist "${CMAKE_CURRENT_BINARY_DIR}/${target}-Info.plist.in")
-    configure_file("${project_dir}/ios/Info.plist.in" "${plist}" @ONLY)
-    set(launch_screen "${project_dir}/ios/LaunchScreen.storyboard")
-  else()
-    set(plist "${CMAKE_CURRENT_BINARY_DIR}/${target}-Info.plist.in")
-    configure_file("${project_dir}/tvos/Info.plist.in" "${plist}" @ONLY)
-    set(launch_screen "${project_dir}/tvos/LaunchScreen.storyboard")
-  endif()
-
-  set_target_properties(${target} PROPERTIES
-    MACOSX_BUNDLE ON
-    MACOSX_BUNDLE_INFO_PLIST "${plist}"
-    MACOSX_BUNDLE_BUNDLE_NAME "${display_name}"
-    MACOSX_BUNDLE_GUI_IDENTIFIER "${identifier}"
-    MACOSX_BUNDLE_SHORT_VERSION_STRING "${version}"
-    MACOSX_BUNDLE_BUNDLE_VERSION "${build}"
-    XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "${identifier}"
-    XCODE_ATTRIBUTE_CODE_SIGN_STYLE "Automatic"
-  )
-
-  if(CMAKE_SYSTEM_NAME STREQUAL "visionOS")
-    set_target_properties(${target} PROPERTIES XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "7" XCODE_ATTRIBUTE_XROS_DEPLOYMENT_TARGET "1.0")
-  elseif(HAYLEN_PLATFORM STREQUAL "ios")
-    set_target_properties(${target} PROPERTIES XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2" XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "16.3")
-  elseif(HAYLEN_PLATFORM STREQUAL "tvos")
-    set_target_properties(${target} PROPERTIES XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "3" XCODE_ATTRIBUTE_TVOS_DEPLOYMENT_TARGET "16.3")
-  endif()
-
-  # The privacy manifest declares the APIs with required reasons that the engine calls, merged with the declarations of the plugins when the app has any.
-  set(privacy "${project_dir}/PrivacyInfo.xcprivacy")
-  if(HAYLEN_PLUGIN_PRIVACY)
-    set(privacy "${HAYLEN_PLUGIN_PRIVACY}")
-  endif()
-  set(resources "${privacy}" ${launch_screen})
-  target_sources(${target} PRIVATE ${resources})
-  set_source_files_properties(${resources} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
-
-  # Xcode signs the bundles it builds, while other generators leave only the signature the linker gives the executable, which binds neither the bundle identifier, the Info.plist, the entitlements nor the frameworks and extensions the bundle embeds. macOS places the window of an unsigned Mac Catalyst app at the top left, whatever frame the app asks for. So the bundle is signed ad hoc, after every other step of its build.
-  if(NOT CMAKE_GENERATOR STREQUAL "Xcode")
-    set(entitlements "")
-    if(HAYLEN_PLUGIN_ENTITLEMENTS)
-      set(entitlements --entitlements "${HAYLEN_PLUGIN_ENTITLEMENTS}")
-    endif()
+# Places the content of an app next to its binary after every build, where the runtime opens it as the folder "app": a link to the staged package of a Debug build, so the files that the tooling stages again show up without a link of the app, and a copy of a protected release, so a file that the release no longer holds never stays behind.
+function(haylen_place_content target content destination release)
+  if(release)
     add_custom_command(TARGET ${target} POST_BUILD
-      COMMAND codesign --force --sign - --timestamp=none ${entitlements} "$<TARGET_BUNDLE_DIR:${target}>"
+      COMMAND "${CMAKE_COMMAND}" -E rm -rf "${destination}"
+      COMMAND "${CMAKE_COMMAND}" -E copy_directory "${content}" "${destination}"
       VERBATIM
     )
-  endif()
-endfunction()
-
-# Lists the entries of the package, `app.json`, `source`, `content` and `plugins/<id>/plugin.json` and `plugins/<id>/source` of every plugin that `app.json` names, relative to the package, and where each one lies on disk.
-# A plugin lies in `plugins/<id>` of the package folder, or where the file that HAYLEN_PLUGIN_FOLDERS_FILE names puts it, which haylen.py writes from the references of `app.json`.
-function(haylen_read_package_entries package entries_output paths_output)
-  if(HAYLEN_PLUGIN_FOLDERS_FILE)
-    include("${HAYLEN_PLUGIN_FOLDERS_FILE}")
-  endif()
-  file(READ "${package}/app.json" document)
-  set(entries app.json source content)
-  set(paths "${package}/app.json" "${package}/source" "${package}/content")
-  string(JSON count ERROR_VARIABLE missing LENGTH "${document}" plugins)
-  if(NOT missing AND count GREATER 0)
-    math(EXPR last "${count} - 1")
-    foreach(index RANGE ${last})
-      string(JSON id MEMBER "${document}" plugins ${index})
-      string(JSON path ERROR_VARIABLE without_path GET "${document}" plugins ${id} path)
-      string(JSON git ERROR_VARIABLE without_git GET "${document}" plugins ${id} git)
-      if(HAYLEN_PLUGIN_FOLDERS_FILE AND NOT DEFINED HAYLEN_PLUGIN_FOLDER_${id})
-        message(FATAL_ERROR "The plugin \"${id}\" of ${package}/app.json has no folder in \"${HAYLEN_PLUGIN_FOLDERS_FILE}\". Build the app with \"haylen run\", which writes the folders of its plugins.")
-      elseif(HAYLEN_PLUGIN_FOLDERS_FILE)
-        set(folder "${HAYLEN_PLUGIN_FOLDER_${id}}")
-      elseif(without_path AND without_git)
-        set(folder "${package}/plugins/${id}")
-      else()
-        message(FATAL_ERROR "The plugin \"${id}\" of ${package}/app.json comes from a \"path\" or a \"git\" repository, which haylen.py resolves. Build the app with \"haylen run\", which hands the folders of its plugins to CMake through \"HAYLEN_PLUGIN_FOLDERS_FILE\".")
-      endif()
-      list(APPEND entries "plugins/${id}/plugin.json" "plugins/${id}/source")
-      list(APPEND paths "${folder}/plugin.json" "${folder}/source")
-    endforeach()
-  endif()
-  set(${entries_output} "${entries}" PARENT_SCOPE)
-  set(${paths_output} "${paths}" PARENT_SCOPE)
-endfunction()
-
-# Builds the Apple parts of the plugins of an app into it from the file that HAYLEN_PLUGINS_FILE names, which haylen.py run writes from app.json and the plugins, so a C++ app takes every part that the Apple project gives a Lua app.
-# Their Objective-C, C and C++ sources compile into the app, and their Swift sources into a library that the app links whole, with the plugin API of the engine as their bridging header and the Swift helpers of the engine. The app links their system frameworks, the frameworks they ship and the framework of their Swift packages, embeds the dynamic ones and their app extensions, bundles their resources, runs their build scripts and takes their Info.plist keys, entitlements and privacy declarations.
-function(haylen_add_apple_plugins target)
-  set(HAYLEN_PLUGIN_KEYS "" PARENT_SCOPE)
-  set(HAYLEN_PLUGIN_ENTITLEMENTS "" PARENT_SCOPE)
-  set(HAYLEN_PLUGIN_PRIVACY "" PARENT_SCOPE)
-  if(NOT HAYLEN_PLUGINS_FILE OR NOT EXISTS "${HAYLEN_PLUGINS_FILE}")
     return()
   endif()
-  include("${HAYLEN_PLUGINS_FILE}")
-  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${HAYLEN_PLUGINS_FILE}")
-
-  set(swift ${HAYLEN_PLUGIN_SOURCES})
-  list(FILTER swift INCLUDE REGEX "\\.swift$")
-  set(sources ${HAYLEN_PLUGIN_SOURCES})
-  list(FILTER sources EXCLUDE REGEX "\\.swift$")
-  set(objc ${sources})
-  list(FILTER objc INCLUDE REGEX "\\.mm?$")
-  target_sources(${target} PRIVATE ${sources})
-  set_source_files_properties(${objc} PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
-
-  # The C-family targets of the Swift packages are found by their module maps and their public header folders, which Xcode gives every target that links the packages.
-  set(package_modules "")
-  set(swift_package_modules "")
-  foreach(map IN LISTS HAYLEN_PLUGIN_MODULE_MAPS)
-    list(APPEND package_modules "-fmodule-map-file=${map}")
-    list(APPEND swift_package_modules "SHELL:-Xcc \"-fmodule-map-file=${map}\"")
-  endforeach()
-  foreach(folder IN LISTS HAYLEN_PLUGIN_HEADERS)
-    list(APPEND package_modules "-I${folder}")
-    list(APPEND swift_package_modules "SHELL:-Xcc \"-I${folder}\"")
-  endforeach()
-  if(sources AND package_modules)
-    set_property(SOURCE ${sources} APPEND PROPERTY COMPILE_OPTIONS ${package_modules})
-  endif()
-
-  # The frameworks of the plugins and of their Swift packages are found by the folders that hold them, and a static library of an xcframework by its headers next to it.
-  set(search "")
-  foreach(library IN LISTS HAYLEN_PLUGIN_LIBRARIES)
-    get_filename_component(folder "${library}" DIRECTORY)
-    if(library MATCHES "\\.framework$")
-      list(APPEND search "SHELL:-F ${folder}")
-    elseif(IS_DIRECTORY "${folder}/Headers")
-      target_include_directories(${target} PRIVATE "${folder}/Headers")
-    endif()
-    target_link_libraries(${target} PRIVATE "${library}")
-  endforeach()
-  foreach(framework IN LISTS HAYLEN_PLUGIN_FRAMEWORKS)
-    target_link_libraries(${target} PRIVATE "-framework ${framework}")
-  endforeach()
-  target_compile_options(${target} PRIVATE ${search})
-
-  # The Swift objects of the plugins and of the frameworks they link name the libraries of the Swift toolchain that they need, such as those that run Swift code on older systems. The C++ driver that links the app does not search the folder of those libraries, so the app names it for its platform, as Xcode does for a target with Swift code.
-  if(CMAKE_Swift_COMPILER)
-    set(swift_platform "$(PLATFORM_NAME)")
-    if(CMAKE_CXX_COMPILER_TARGET MATCHES "-macabi$")
-      set(swift_platform "maccatalyst")
-    elseif(NOT CMAKE_GENERATOR STREQUAL "Xcode")
-      set(swift_platform "macosx")
-    endif()
-    cmake_path(GET CMAKE_Swift_COMPILER PARENT_PATH swift_tools)
-    target_link_options(${target} PRIVATE "-L${swift_tools}/../lib/swift/${swift_platform}")
-  endif()
-
-  # The Swift sources compile into a library of their own, which takes the header folders of the app without the options and definitions that its C and C++ libraries give their users, which Swift does not read. The app links the whole library, so the runtime finds every plugin class by its name.
-  if(swift)
-    if(NOT CMAKE_Swift_COMPILER)
-      message(FATAL_ERROR "The plugins of ${target} have Swift sources, which need the Swift language. Add \"enable_language(Swift)\" to the CMake project on Apple platforms, as the C++ template does.")
-    endif()
-    set(library "${target}-swift-plugins")
-    set(bridging "${HAYLEN_ENGINE_DIR}/platform/apple/HaylenPlugins.h")
-    add_library(${library} STATIC ${swift} "${HAYLEN_ENGINE_DIR}/platform/apple/HaylenBridgeAsync.swift")
-    set_target_properties(${library} PROPERTIES Swift_MODULE_NAME HaylenPlugins XCODE_ATTRIBUTE_SWIFT_OBJC_BRIDGING_HEADER "${bridging}" XCODE_ATTRIBUTE_SWIFT_VERSION "5.0")
-    target_include_directories(${library} PRIVATE "$<TARGET_PROPERTY:${target},INCLUDE_DIRECTORIES>")
-    target_compile_options(${library} PRIVATE "SHELL:-import-objc-header ${bridging}" ${search})
-    foreach(modules IN LISTS HAYLEN_PLUGIN_MODULES)
-      target_compile_options(${library} PRIVATE "SHELL:-I ${modules}")
-    endforeach()
-    target_compile_options(${library} PRIVATE ${swift_package_modules})
-    # Other generators than Xcode compile Swift for the macOS that builds it, so the library takes the deployment target of the app in the target of the compiler.
-    if(HAYLEN_PLATFORM STREQUAL "macos" AND NOT CMAKE_GENERATOR STREQUAL "Xcode" AND CMAKE_OSX_DEPLOYMENT_TARGET)
-      set(architecture "${CMAKE_SYSTEM_PROCESSOR}")
-      if(CMAKE_OSX_ARCHITECTURES)
-        set(architecture "${CMAKE_OSX_ARCHITECTURES}")
-      endif()
-      target_compile_options(${library} PRIVATE "SHELL:-target ${architecture}-apple-macosx${CMAKE_OSX_DEPLOYMENT_TARGET}")
-    endif()
-    target_link_libraries(${target} PRIVATE "$<LINK_LIBRARY:WHOLE_ARCHIVE,${library}>")
-    # The app links with the C++ driver, which takes every option that its C and C++ libraries give the linker, such as the weak frameworks of SDL, and the Swift objects bring the Swift libraries they need themselves.
-    set_target_properties(${target} PROPERTIES LINKER_LANGUAGE CXX)
-  endif()
-
-  if(HAYLEN_PLUGIN_RESOURCES)
-    target_sources(${target} PRIVATE ${HAYLEN_PLUGIN_RESOURCES})
-    set_source_files_properties(${HAYLEN_PLUGIN_RESOURCES} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
-  endif()
-
-  # A bundle of macOS or Mac Catalyst keeps its parts in its Contents folder, and a bundle of iOS or tvOS at its root.
-  set(contents "$<TARGET_BUNDLE_CONTENT_DIR:${target}>")
-  set(resources "${contents}")
-  set(runpath "@executable_path/Frameworks")
-  if(HAYLEN_PLATFORM STREQUAL "macos" OR CMAKE_CXX_COMPILER_TARGET MATCHES "-macabi$")
-    set(resources "${contents}/Resources")
-    set(runpath "@executable_path/../Frameworks")
-  endif()
-  if(HAYLEN_PLUGIN_BUNDLES)
-    haylen_embed_apple(${target} "${HAYLEN_PLUGIN_BUNDLES}" "${resources}" OFF)
-  endif()
-  if(HAYLEN_PLUGIN_EMBEDDED)
-    target_link_options(${target} PRIVATE "LINKER:-rpath,${runpath}")
-    haylen_embed_apple(${target} "${HAYLEN_PLUGIN_EMBEDDED}" "${contents}/Frameworks" ON)
-  endif()
-
-  # Mac Catalyst apps leave out the extensions of iOS, as the Apple project of Lua apps does.
-  if(NOT CMAKE_CXX_COMPILER_TARGET MATCHES "-macabi$")
-    foreach(name IN LISTS HAYLEN_PLUGIN_EXTENSIONS)
-      haylen_add_apple_extension(${target} ${name} "${contents}")
-    endforeach()
-  endif()
-
-  # The build scripts read the build settings of Xcode, which the Xcode generator gives every script, and which haylen_add_app gives the scripts of other generators.
-  # Other generators build only the bundles of macOS and Mac Catalyst, whose paths the settings give relative to the folder of the bundle, as Xcode does.
-  # BUILD_DIR names the products folder of the derived data of the Swift packages, which holds their checkouts in SourcePackages next to Build, as the derived data of a Lua app does.
-  set(settings "")
-  if(HAYLEN_PLUGIN_PACKAGES_BUILD_DIR)
-    list(APPEND settings "BUILD_DIR=${HAYLEN_PLUGIN_PACKAGES_BUILD_DIR}")
-  endif()
-  if(NOT CMAKE_GENERATOR STREQUAL "Xcode")
-    set(bundle "$<TARGET_BUNDLE_DIR_NAME:${target}>")
-    list(APPEND settings
-      "TARGET_BUILD_DIR=$<PATH:GET_PARENT_PATH,$<TARGET_BUNDLE_DIR:${target}>>"
-      "BUILT_PRODUCTS_DIR=$<PATH:GET_PARENT_PATH,$<TARGET_BUNDLE_DIR:${target}>>"
-      "WRAPPER_NAME=${bundle}"
-      "FULL_PRODUCT_NAME=${bundle}"
-      "PRODUCT_NAME=$<TARGET_FILE_BASE_NAME:${target}>"
-      "EXECUTABLE_NAME=$<TARGET_FILE_NAME:${target}>"
-      "EXECUTABLE_PATH=${bundle}/Contents/MacOS/$<TARGET_FILE_NAME:${target}>"
-      "CONTENTS_FOLDER_PATH=${bundle}/Contents"
-      "EXECUTABLE_FOLDER_PATH=${bundle}/Contents/MacOS"
-      "UNLOCALIZED_RESOURCES_FOLDER_PATH=${bundle}/Contents/Resources"
-      "FRAMEWORKS_FOLDER_PATH=${bundle}/Contents/Frameworks"
-      "PLUGINS_FOLDER_PATH=${bundle}/Contents/PlugIns"
-      "INFOPLIST_PATH=${bundle}/Contents/Info.plist"
-      "PRODUCT_BUNDLE_IDENTIFIER=${app_identifier}"
-      "CONFIGURATION=$<CONFIG>"
-      "PLATFORM_NAME=macosx"
-      "SRCROOT=${CMAKE_SOURCE_DIR}"
-      "PROJECT_DIR=${CMAKE_SOURCE_DIR}"
-      "CODE_SIGNING_ALLOWED=YES"
-      "EXPANDED_CODE_SIGN_IDENTITY=-"
-    )
-  endif()
-  set(environment "")
-  if(settings)
-    set(environment "${CMAKE_COMMAND}" -E env ${settings})
-  endif()
-  foreach(script IN LISTS HAYLEN_PLUGIN_SCRIPTS)
-    add_custom_command(TARGET ${target} POST_BUILD COMMAND ${environment} /bin/sh "${script}" WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}" VERBATIM)
-  endforeach()
-
-  if(HAYLEN_PLUGIN_ENTITLEMENTS)
-    set_target_properties(${target} PROPERTIES XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS "${HAYLEN_PLUGIN_ENTITLEMENTS}")
-  endif()
-  set(HAYLEN_PLUGIN_KEYS "${HAYLEN_PLUGIN_KEYS}" PARENT_SCOPE)
-  set(HAYLEN_PLUGIN_ENTITLEMENTS "${HAYLEN_PLUGIN_ENTITLEMENTS}" PARENT_SCOPE)
-  set(HAYLEN_PLUGIN_PRIVACY "${HAYLEN_PLUGIN_PRIVACY}" PARENT_SCOPE)
-endfunction()
-
-# Copies frameworks, app extensions or resource bundles into the bundle of an app after its link, and signs them like the app when they hold code.
-function(haylen_embed_apple target items destination sign)
-  list(JOIN items "|" joined)
   add_custom_command(TARGET ${target} POST_BUILD
-    COMMAND "${CMAKE_COMMAND}" "-DITEMS=${joined}" "-DDESTINATION=${destination}" "-DSIGN=${sign}" -P "${HAYLEN_CMAKE_DIR}/haylen-apple-embed.cmake"
+    COMMAND "${CMAKE_COMMAND}" "-DSOURCE=${content}" "-DDESTINATION=${destination}" -P "${HAYLEN_CMAKE_DIR}/haylen-link-content.cmake"
     VERBATIM
   )
-endfunction()
-
-# Builds an app extension of a plugin as a target of its own, from the variables that haylen.py writes for it, and embeds it into the app: an ExtensionKit extension in Extensions and a classic app extension in PlugIns.
-function(haylen_add_apple_extension target name contents)
-  set(prefix "HAYLEN_EXTENSION_${name}")
-  set(extension "${target}-${name}")
-  add_executable(${extension} MACOSX_BUNDLE ${${prefix}_SOURCES})
-  set_target_properties(${extension} PROPERTIES
-    OUTPUT_NAME "${name}"
-    BUNDLE_EXTENSION appex
-    MACOSX_BUNDLE_INFO_PLIST "${${prefix}_INFO_PLIST}"
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/${target}/extensions/$<0:>"
-    XCODE_PRODUCT_TYPE "com.apple.product-type.${${prefix}_TYPE}"
-    XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "${${prefix}_IDENTIFIER}"
-    XCODE_ATTRIBUTE_CODE_SIGN_STYLE "Automatic"
-    XCODE_ATTRIBUTE_APPLICATION_EXTENSION_API_ONLY YES
-    XCODE_ATTRIBUTE_SKIP_INSTALL YES
-    XCODE_ATTRIBUTE_SWIFT_VERSION "5.0"
-  )
-  target_compile_options(${extension} PRIVATE "$<$<COMPILE_LANGUAGE:Swift>:-application-extension>" "$<$<COMPILE_LANGUAGE:Swift>:-parse-as-library>" "$<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-fapplication-extension>")
-  target_link_options(${extension} PRIVATE "LINKER:-application_extension")
-  # A classic app extension starts in the main function of the system, while an ExtensionKit extension declares its own with @main.
-  if(${prefix}_TYPE STREQUAL "app-extension")
-    target_link_options(${extension} PRIVATE "LINKER:-e,_NSExtensionMain")
-  endif()
-  foreach(framework IN LISTS ${prefix}_FRAMEWORKS)
-    target_link_libraries(${extension} PRIVATE "-framework ${framework}")
-  endforeach()
-
-  # The extension runs on the systems of its minimum version, which may be newer than the one of the app. Other generators build macOS alone, where a later target of the compiler wins over the one of the app.
-  set(minimum "${${prefix}_MINIMUM_VERSION}")
-  if(minimum AND NOT CMAKE_GENERATOR STREQUAL "Xcode")
-    set(triple "${CMAKE_SYSTEM_PROCESSOR}-apple-macosx${minimum}")
-    target_compile_options(${extension} PRIVATE "$<IF:$<COMPILE_LANGUAGE:Swift>,SHELL:-target ${triple},-mmacosx-version-min=${minimum}>")
-    target_link_options(${extension} PRIVATE "$<IF:$<LINK_LANGUAGE:Swift>,SHELL:-target ${triple},-mmacosx-version-min=${minimum}>")
-  elseif(minimum)
-    if(HAYLEN_PLATFORM STREQUAL "macos")
-      set_target_properties(${extension} PROPERTIES XCODE_ATTRIBUTE_MACOSX_DEPLOYMENT_TARGET "${minimum}")
-    elseif(CMAKE_SYSTEM_NAME STREQUAL "visionOS")
-      set_target_properties(${extension} PROPERTIES XCODE_ATTRIBUTE_XROS_DEPLOYMENT_TARGET "${minimum}")
-    elseif(HAYLEN_PLATFORM STREQUAL "ios")
-      set_target_properties(${extension} PROPERTIES XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "${minimum}")
-    else()
-      set_target_properties(${extension} PROPERTIES XCODE_ATTRIBUTE_TVOS_DEPLOYMENT_TARGET "${minimum}")
-    endif()
-  endif()
-
-  # Xcode signs the extension with its entitlements, and other generators sign it ad hoc with them before the app embeds it.
-  set(signing --force --sign - --timestamp=none)
-  if(${prefix}_ENTITLEMENTS)
-    set_target_properties(${extension} PROPERTIES XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS "${${prefix}_ENTITLEMENTS}")
-    list(APPEND signing --entitlements "${${prefix}_ENTITLEMENTS}")
-  endif()
-  if(NOT CMAKE_GENERATOR STREQUAL "Xcode")
-    add_custom_command(TARGET ${extension} POST_BUILD COMMAND codesign ${signing} "$<TARGET_BUNDLE_DIR:${extension}>" VERBATIM)
-  endif()
-
-  set(folder "${contents}/PlugIns")
-  if(${prefix}_TYPE STREQUAL "extensionkit-extension")
-    set(folder "${contents}/Extensions")
-  endif()
-  add_dependencies(${target} ${extension})
-  haylen_embed_apple(${target} "$<TARGET_BUNDLE_DIR:${extension}>" "${folder}" ON)
-endfunction()
-# Reads the name, identifier, version and build number of an app package, so the app carries the same values the runtime reads.
-function(haylen_read_app_info target package)
-  if(NOT EXISTS "${package}/app.json")
-    message(FATAL_ERROR "The app package of ${target} needs an app.json: ${package}")
-  endif()
-  file(READ "${package}/app.json" document)
-  foreach(key name identifier version)
-    string(JSON value ERROR_VARIABLE error GET "${document}" ${key})
-    if(error OR value STREQUAL "")
-      message(FATAL_ERROR "The app.json of ${target} needs a ${key} to build an app: ${package}/app.json")
-    endif()
-    set(app_${key} "${value}" PARENT_SCOPE)
-  endforeach()
-
-  # The build number grows with every upload, from 1 up to the largest version code that Google Play takes, like the runtime reads it.
-  string(JSON build_type ERROR_VARIABLE error TYPE "${document}" build)
-  set(build 1)
-  if(NOT error)
-    string(JSON build GET "${document}" build)
-  endif()
-  if((NOT error AND NOT build_type STREQUAL "NUMBER") OR NOT build MATCHES "^[1-9][0-9]*$" OR build GREATER 2100000000)
-    message(FATAL_ERROR "The \"build\" of the app.json of ${target} must be a whole number from 1 to 2100000000 that grows with every upload of the app: ${package}/app.json")
-  endif()
-  set(app_build "${build}" PARENT_SCOPE)
-
-  # Windows show in the taskbar unless the window section of app.json says otherwise, like the runtime.
-  string(JSON show_in_taskbar ERROR_VARIABLE error GET "${document}" window showInTaskbar)
-  if(error)
-    set(show_in_taskbar ON)
-  endif()
-  set(app_show_in_taskbar "${show_in_taskbar}" PARENT_SCOPE)
-
-  # The status bar of phones and tablets stays hidden unless the window section of app.json shows it, like the runtime.
-  string(JSON status_bar ERROR_VARIABLE error GET "${document}" window statusBar)
-  if(error)
-    set(status_bar "hidden")
-  endif()
-  set(app_status_bar "${status_bar}" PARENT_SCOPE)
-
-  # An app that plays audio in the background needs the background mode of iOS, tvOS and visionOS for it.
-  string(JSON background_audio ERROR_VARIABLE error GET "${document}" audio background)
-  if(error)
-    set(background_audio OFF)
-  endif()
-  set(app_background_audio "${background_audio}" PARENT_SCOPE)
-  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${package}/app.json")
-endfunction()
-
-# Creates an app from its package folder, named after the name, identifier and version of its app.json.
-#   haylen_add_app(<target> PACKAGE <folder> [SOURCES <files>...] [CPP] [APPLE_PROJECT <folder>] [WEB_SHELL <file>])
-# Lua apps need no sources. C++ apps pass CPP and define haylen::core::Application::create in their sources.
-function(haylen_add_app target)
-  cmake_parse_arguments(arg "CPP" "PACKAGE;APPLE_PROJECT;WEB_SHELL" "SOURCES" ${ARGN})
-  haylen_read_app_info(${target} "${arg_PACKAGE}")
-
-
-  set(sources ${arg_SOURCES})
-  if(NOT arg_CPP)
-    list(APPEND sources "${HAYLEN_ENGINE_DIR}/src/platform/LuaPlayer.cpp")
-  endif()
-  # The drivers of a laptop with two GPUs read which one the app wants from variables of the executable itself.
-  if(WIN32)
-    list(APPEND sources "${HAYLEN_ENGINE_DIR}/src/gpu/GpuPreferenceExports.cpp")
-  endif()
-  # The Apple runtime leaves main to the app, which enters it through haylen_main.
-  if(APPLE)
-    list(APPEND sources "${HAYLEN_ENGINE_DIR}/src/platform/apple/AppleMain.cpp")
-  endif()
-
-  if(ANDROID)
-    add_library(${target} SHARED ${sources})
-    set_target_properties(${target} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/${target}/$<0:>")
-  else()
-    add_executable(${target} ${sources})
-    # The generator expression keeps multi-config generators such as Xcode and Visual Studio from adding a folder per configuration.
-    set_target_properties(${target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/${target}/$<0:>")
-  endif()
-  target_link_libraries(${target} PRIVATE haylen::runtime)
-  get_filename_component(package "${arg_PACKAGE}" ABSOLUTE)
-  file(WRITE "${CMAKE_BINARY_DIR}/bin/${target}/package.txt" "${package}")
-  haylen_read_package_entries("${package}" package_entries package_paths)
-  if(HAYLEN_PROTECTED_RELEASE)
-    haylen_add_release(${target} "${package}" "${package_entries}" "${package_paths}" "${arg_APPLE_PROJECT}" "${arg_WEB_SHELL}")
-    return()
-  endif()
-
-  if(APPLE)
-    set(project_dir "${arg_APPLE_PROJECT}")
-    if(NOT project_dir)
-      set(project_dir "${HAYLEN_ENGINE_DIR}/platform/apple")
-    endif()
-    # Each entry lands in the resources of the bundle at its place in the package, wherever it lies on disk.
-    foreach(entry path IN ZIP_LISTS package_entries package_paths)
-      file(GLOB_RECURSE package_files CONFIGURE_DEPENDS "${path}" "${path}/*")
-      list(FILTER package_files EXCLUDE REGEX "/\\.DS_Store$")
-      if(NOT package_files)
-        continue()
-      endif()
-      get_filename_component(base "${path}" DIRECTORY)
-      get_filename_component(location "${entry}" DIRECTORY)
-      haylen_mark_resources(FILES ${package_files} BASEDIR "${base}" RESOURCEBASE "Resources/app/${location}")
-      target_sources(${target} PRIVATE ${package_files})
-    endforeach()
-    haylen_add_apple_plugins(${target})
-    haylen_setup_apple_bundle(${target} "${project_dir}" "${app_name}" "${app_identifier}" "${app_version}" "${app_build}" "${app_show_in_taskbar}" "${app_status_bar}" "${app_background_audio}")
-  elseif(EMSCRIPTEN)
-    haylen_setup_web_page(${target} "${arg_WEB_SHELL}")
-    # The link preloads the package into the page, so a change to a file of the package links the page again.
-    foreach(entry path IN ZIP_LISTS package_entries package_paths)
-      if(EXISTS "${path}")
-        target_link_options(${target} PRIVATE "--preload-file=${path}@/app/${entry}")
-        file(GLOB_RECURSE package_files CONFIGURE_DEPENDS "${path}" "${path}/*")
-        set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS ${package_files})
-      endif()
-    endforeach()
-  elseif(NOT ANDROID)
-    haylen_link_package(${target} "${package_entries}" "${package_paths}")
-    haylen_setup_windows_app(${target})
-  endif()
 endfunction()
 
 # Windows apps embed the application manifest of the engine, which selects the Common Controls of version 6 for the controls that native libraries show and UTF-8 as the code page of the process.
@@ -589,127 +96,14 @@ function(haylen_setup_windows_app target)
   endif()
 endfunction()
 
-# The key folder of an app, as haylen.py finds it: under the folder that HAYLEN_KEYS_DIR names in continuous integration, or else under the configuration folder of the user, never inside a project.
-function(haylen_keys_folder identifier output)
-  if(DEFINED ENV{HAYLEN_KEYS_DIR} AND NOT "$ENV{HAYLEN_KEYS_DIR}" STREQUAL "")
-    set(root "$ENV{HAYLEN_KEYS_DIR}")
-  elseif(CMAKE_HOST_APPLE)
-    set(root "$ENV{HOME}/Library/Application Support/Haylen/keys")
-  elseif(CMAKE_HOST_WIN32)
-    file(TO_CMAKE_PATH "$ENV{APPDATA}/Haylen/keys" root)
-  elseif(DEFINED ENV{XDG_CONFIG_HOME} AND NOT "$ENV{XDG_CONFIG_HOME}" STREQUAL "")
-    set(root "$ENV{XDG_CONFIG_HOME}/haylen/keys")
-  else()
-    set(root "$ENV{HOME}/.config/haylen/keys")
-  endif()
-  set(${output} "${root}/${identifier}" PARENT_SCOPE)
-endfunction()
-
-# Builds the protected release of an app and its bootstrap, and ships the part of the release that the app needs where the platform keeps the package.
-function(haylen_add_release target package entries paths apple_project web_shell)
-  set(tool "${HAYLEN_CONTENT_TOOL}")
-  set(tool_target "")
-  if(NOT tool AND TARGET haylen-content)
-    set(tool "$<TARGET_FILE:haylen-content>")
-    set(tool_target haylen-content)
-  endif()
-  if(NOT tool)
-    message(FATAL_ERROR "A protected release needs the content tool of the host. Name it with \"HAYLEN_CONTENT_TOOL\", such as the haylen-content of the desktop artifacts that \"haylen.py engine --platform desktop\" builds.")
-  endif()
-
-  # The profile names the platform family of the release, and the release serves the build number of app.json. Android releases build shards that fill an install-time asset pack of haylen.py several times over, as CONTENT_SHARD_TARGETS of haylen.py says.
-  set(shard_target "")
+# Builds a release without the symbols of the app, which stay in the folder `symbols/<target>` of the build tree for crash reports: a dSYM on macOS, the symbol map of Emscripten, the PDB of the public symbols on Windows and a debug file that the stripped binary names elsewhere.
+function(haylen_harden_release target)
+  set(folder "${CMAKE_BINARY_DIR}/symbols/${target}")
+  file(MAKE_DIRECTORY "${folder}")
   if(APPLE)
-    set(profile apple)
-  elseif(ANDROID)
-    set(profile android)
-    set(shard_target 268435456)
-  elseif(EMSCRIPTEN)
-    set(profile web)
-  elseif(WIN32)
-    set(profile windows)
-  else()
-    set(profile linux)
-  endif()
-  file(READ "${package}/app.json" document)
-  string(JSON server ERROR_VARIABLE missing GET "${document}" content updates baseUrl)
-  if(missing)
-    set(server "")
-  endif()
-  haylen_keys_folder("${app_identifier}" keys)
-
-  # The build folder of the release records the package, which haylen.py inspects the built app against.
-  set(folder "${CMAKE_BINARY_DIR}/haylen-release/${target}")
-  file(WRITE "${folder}/package.txt" "${package}")
-  set(stamp "${folder}/release.stamp")
-  set(bootstrap "${folder}/HaylenBootstrap.cpp")
-  set(boot "")
-  if(EMSCRIPTEN)
-    set(boot "${folder}/boot")
-  endif()
-  set(globs "")
-  foreach(path IN LISTS paths)
-    list(APPEND globs "${path}" "${path}/*")
-  endforeach()
-  file(GLOB_RECURSE package_files CONFIGURE_DEPENDS ${globs})
-  list(JOIN entries "|" joined_entries)
-  list(JOIN paths "|" joined_paths)
-  add_custom_command(OUTPUT "${stamp}"
-    COMMAND "${CMAKE_COMMAND}" "-DTOOL=${tool}" "-DENTRIES=${joined_entries}" "-DPATHS=${joined_paths}" "-DPACKAGE=${folder}/package" "-DIDENTIFIER=${app_identifier}" "-DKEYS=${keys}" "-DPROFILE=${profile}" "-DBUILD=${app_build}" "-DRELEASE=${folder}/release" "-DPREVIOUS=${HAYLEN_PREVIOUS_RELEASE}" "-DCACHE=${folder}/cache" "-DSHIPPED=${folder}/shipped" "-DPACKS=${folder}/packs" "-DSERVER=${server}" "-DSHARD_TARGET=${shard_target}" "-DBOOT=${boot}" "-DSTAMP=${stamp}" -P "${HAYLEN_CMAKE_DIR}/haylen-release-content.cmake"
-    DEPENDS ${package_files} "${HAYLEN_CMAKE_DIR}/haylen-release-content.cmake" ${tool_target}
-    COMMENT "Building the protected release of ${target}."
-    VERBATIM
-  )
-  add_custom_command(OUTPUT "${bootstrap}"
-    COMMAND "${tool}" bootstrap --keys "${keys}" --profile "${profile}" --build "${app_build}" --output "${bootstrap}"
-    DEPENDS "${stamp}"
-    COMMENT "Writing the bootstrap of ${target}."
-    VERBATIM
-  )
-  add_custom_target(${target}-release DEPENDS "${stamp}")
-  add_dependencies(${target} ${target}-release)
-  target_sources(${target} PRIVATE "${bootstrap}")
-
-  if(APPLE)
-    # The executable leaves its symbols before the bundle is signed, like everything the bundle holds.
-    haylen_harden_release(${target} "${folder}")
-    # The release goes into the bundle before the bundle is signed, at the resources of the bundle, where macOS and Mac Catalyst keep them in Contents.
-    set(destination "$<TARGET_BUNDLE_DIR:${target}>/app")
-    if(HAYLEN_PLATFORM STREQUAL "macos" OR CMAKE_CXX_COMPILER_TARGET MATCHES "-macabi$")
-      set(destination "$<TARGET_BUNDLE_CONTENT_DIR:${target}>/Resources/app")
-    endif()
-    haylen_copy_release(${target} "${folder}/shipped" "${destination}")
-    set(project_dir "${apple_project}")
-    if(NOT project_dir)
-      set(project_dir "${HAYLEN_ENGINE_DIR}/platform/apple")
-    endif()
-    haylen_add_apple_plugins(${target})
-    haylen_setup_apple_bundle(${target} "${project_dir}" "${app_name}" "${app_identifier}" "${app_version}" "${app_build}" "${app_show_in_taskbar}" "${app_status_bar}" "${app_background_audio}")
-  elseif(EMSCRIPTEN)
-    # The page preloads the manifests and the app domain, and the shards of the content stay in the "app" folder next to it, where downloads read them by range.
-    haylen_setup_web_page(${target} "${web_shell}")
-    file(WRITE "${folder}/haylen-release.js" "Module.haylen = Module.haylen || {};\nModule.haylen.release = {address: \"app/\", identifier: \"${app_identifier}\", files: []};\n")
-    target_link_options(${target} PRIVATE "--preload-file=${boot}@/app" "--pre-js=${folder}/haylen-release.js")
-    set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS "${stamp}")
-    haylen_copy_release(${target} "${folder}/release" "$<TARGET_FILE_DIR:${target}>/app")
-  elseif(ANDROID)
-    file(WRITE "${CMAKE_BINARY_DIR}/bin/${target}/release.txt" "${folder}/shipped")
-  else()
-    haylen_copy_release(${target} "${folder}/shipped" "$<TARGET_FILE_DIR:${target}>/app")
-    haylen_setup_windows_app(${target})
-  endif()
-  if(NOT APPLE)
-    haylen_harden_release(${target} "${folder}")
-  endif()
-endfunction()
-
-# Builds a release without the symbols of the app, which stay in the build folder of its release for crash reports: a dSYM on Apple platforms, the symbol map of Emscripten, the PDB of the public symbols on Windows and a debug file that the stripped binary names elsewhere.
-function(haylen_harden_release target folder)
-  if(APPLE)
-    # The Xcode generator and the others link and strip alike, as Xcode strips the Release builds of the Apple template.
     target_link_options(${target} PRIVATE "LINKER:-dead_strip")
     add_custom_command(TARGET ${target} POST_BUILD
-      COMMAND xcrun dsymutil "$<TARGET_FILE:${target}>" -o "${folder}/$<TARGET_BUNDLE_DIR_NAME:${target}>.dSYM"
+      COMMAND xcrun dsymutil "$<TARGET_FILE:${target}>" -o "${folder}/$<TARGET_FILE_NAME:${target}>.dSYM"
       COMMAND xcrun strip "$<TARGET_FILE:${target}>"
       VERBATIM
     )
@@ -741,11 +135,99 @@ function(haylen_harden_release target folder)
   endif()
 endfunction()
 
-# Replaces the release folder of an app after each build, so a file the release no longer names never stays behind.
-function(haylen_copy_release target source destination)
-  add_custom_command(TARGET ${target} POST_BUILD
-    COMMAND "${CMAKE_COMMAND}" -E rm -rf "${destination}"
-    COMMAND "${CMAKE_COMMAND}" -E copy_directory "${source}" "${destination}"
-    VERBATIM
-  )
+# Builds the binary of an app:
+#   haylen_add_app(<target> LUA|CPP [SOURCES <files>...] CONTENT <folder> [BOOTSTRAP <file>] [WEB_SHELL <file>])
+# - `LUA` links the Lua player of `haylen::player`, which defines the app, and `CPP` compiles the `SOURCES`, which define `haylen::core::Application::create`.
+# - `CONTENT` is the folder that the app ships, the staged package of a Debug build or the protected release of a Release build.
+# - `BOOTSTRAP` is the bootstrap source that the content tool writes for a protected release, which the binary compiles in and which makes the build a release build without symbols.
+# - `WEB_SHELL` is the page of a web app, by default the shell of the engine.
+# On desktops the app is an executable with its content in the folder "app" next to it, on Android the shared library that the activity loads while Gradle takes the content into the assets, and on the web a page that preloads its package or, for a release, streams it from the folder "app" next to it. A port builds the app with the function that `APP_FUNCTION` of its `haylen_port` names.
+function(haylen_add_app target)
+  cmake_parse_arguments(PARSE_ARGV 1 arg "LUA;CPP" "CONTENT;BOOTSTRAP;WEB_SHELL" "SOURCES")
+  if(arg_UNPARSED_ARGUMENTS)
+    message(FATAL_ERROR "The app \"${target}\" passes \"${arg_UNPARSED_ARGUMENTS}\" to \"haylen_add_app\", which takes \"LUA\" or \"CPP\", \"SOURCES\", \"CONTENT\", \"BOOTSTRAP\" and \"WEB_SHELL\".")
+  endif()
+  if(arg_LUA STREQUAL arg_CPP)
+    message(FATAL_ERROR "The app \"${target}\" names its kind with exactly one of \"LUA\", for the Lua player of the engine, and \"CPP\", for sources that define \"haylen::core::Application::create\".")
+  endif()
+  if(arg_LUA AND arg_SOURCES)
+    message(FATAL_ERROR "The Lua app \"${target}\" runs the Lua player of the engine, which defines the app, so it takes no \"SOURCES\". Make it a \"CPP\" app to compile sources of its own.")
+  endif()
+  if(arg_CPP AND NOT arg_SOURCES)
+    message(FATAL_ERROR "The C++ app \"${target}\" needs \"SOURCES\" that define \"haylen::core::Application::create\".")
+  endif()
+  if(NOT arg_CONTENT)
+    message(FATAL_ERROR "The app \"${target}\" needs \"CONTENT\", the folder of the staged package or of the protected release that it ships.")
+  endif()
+  get_filename_component(content "${arg_CONTENT}" ABSOLUTE)
+  if(NOT IS_DIRECTORY "${content}")
+    message(FATAL_ERROR "The \"CONTENT\" of the app \"${target}\" names \"${content}\", which is no folder. Prepare the app first, which stages its content.")
+  endif()
+  if(arg_BOOTSTRAP AND NOT EXISTS "${arg_BOOTSTRAP}")
+    message(FATAL_ERROR "The \"BOOTSTRAP\" of the app \"${target}\" names \"${arg_BOOTSTRAP}\", which does not exist. The content tool writes it with the protected release of the app.")
+  endif()
+  set(release OFF)
+  if(arg_BOOTSTRAP)
+    set(release ON)
+  endif()
+
+  set(sources ${arg_SOURCES} ${arg_BOOTSTRAP})
+  set(libraries haylen::runtime)
+  if(arg_LUA)
+    list(APPEND libraries haylen::player)
+  endif()
+
+  if(HAYLEN_PORT_PLATFORM)
+    if(NOT HAYLEN_PORT_APP_FUNCTION)
+      message(FATAL_ERROR "The port of the platform \"${HAYLEN_PORT_PLATFORM}\" builds no apps, since its \"haylen_port\" names no \"APP_FUNCTION\".")
+    endif()
+    set(release_flag "")
+    if(release)
+      set(release_flag RELEASE)
+    endif()
+    cmake_language(CALL "${HAYLEN_PORT_APP_FUNCTION}" ${target} SOURCES ${sources} LIBRARIES ${libraries} CONTENT "${content}" ${release_flag})
+    return()
+  endif()
+  if(APPLE AND NOT HAYLEN_PLATFORM STREQUAL "macos")
+    message(FATAL_ERROR "The app \"${target}\" builds for \"${HAYLEN_PLATFORM}\", whose apps Xcode builds from the Apple project that the tooling generates, so \"haylen_add_app\" builds only plain macOS executables on Apple platforms.")
+  endif()
+
+  # The drivers of a laptop with two GPUs read which one the app wants from variables of the executable itself, and the macOS runtime leaves main to the executable, which enters it through haylen_main.
+  if(WIN32)
+    list(APPEND sources "${HAYLEN_ENGINE_DIR}/src/gpu/GpuPreferenceExports.cpp")
+  elseif(APPLE)
+    list(APPEND sources "${HAYLEN_ENGINE_DIR}/src/platform/apple/AppleMain.cpp")
+  endif()
+
+  # The generator expression keeps multi-config generators such as Xcode and Visual Studio from adding a folder per configuration.
+  if(ANDROID)
+    add_library(${target} SHARED ${sources})
+    set_target_properties(${target} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/${target}/$<0:>")
+  else()
+    add_executable(${target} ${sources})
+    set_target_properties(${target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/${target}/$<0:>")
+  endif()
+  target_link_libraries(${target} PRIVATE ${libraries})
+  # A Lua app may compile no source, so the language of the engine links it.
+  set_target_properties(${target} PROPERTIES LINKER_LANGUAGE CXX)
+
+  if(EMSCRIPTEN)
+    haylen_setup_web_page(${target} "${arg_WEB_SHELL}")
+  endif()
+  if(EMSCRIPTEN AND release)
+    # The page of a release downloads its manifests and its app domain before the app starts and streams the rest from the folder "app" next to it.
+    haylen_place_content(${target} "${content}" "$<TARGET_FILE_DIR:${target}>/app" ON)
+  elseif(EMSCRIPTEN)
+    # The link preloads the package into the page, so a change to a file of the package links the page again.
+    target_link_options(${target} PRIVATE "--preload-file=${content}@/app")
+    file(GLOB_RECURSE package_files CONFIGURE_DEPENDS "${content}/*")
+    set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS ${package_files})
+  elseif(NOT ANDROID)
+    haylen_place_content(${target} "${content}" "$<TARGET_FILE_DIR:${target}>/app" ${release})
+    haylen_setup_windows_app(${target})
+  endif()
+
+  if(release)
+    haylen_harden_release(${target})
+  endif()
 endfunction()

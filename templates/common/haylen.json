@@ -1,0 +1,37 @@
+{
+    "name": "Haylen App",
+    "identifier": "com.haylen.app",
+    "version": "1.0.0",
+    "build": 1,
+    "description": "An app made with Haylen.",
+    "orientation": "landscape",
+    "window": {
+        "title": "Haylen App",
+        "width": 1280,
+        "height": 720,
+        "resizable": true,
+        "maxPixelDensity": 0
+    },
+    "design": {
+        "width": 1920,
+        "height": 1080,
+        "scaling": "expand"
+    },
+    "clearColor": "#FF101418",
+    "splash": {
+        "logo": "logo.png",
+        "background": "#FF101418"
+    },
+    "platforms": {
+        "apple": {
+            "sources": ["native/apple"]
+        },
+        "android": {
+            "sources": ["native/android"],
+            "applicationClass": "com.haylen.app.App"
+        },
+        "web": {
+            "scripts": ["native/web/app.js"]
+        }
+    }
+}

@@ -1,17 +1,14 @@
 {
+    "interface": 1,
     "id": "native-sample",
     "name": "Native Sample",
     "version": "1.0.0",
     "description": "The platform handlers of the test project: suspending Kotlin and a throwing Java handler on Android, async Swift on Apple platforms and JavaScript on the web.",
-    "platforms": ["ios", "catalyst", "tvos", "visionos", "macos", "android", "web"],
-    "apple": {
-        "class": "NativeSamplePlugin",
-        "sources": "apple"
-    },
-    "android": {
-        "module": "android"
-    },
-    "web": {
-        "module": "web/native-sample.js"
-    }
+    "implementations": {"ios": "native", "catalyst": "native", "tvos": "native", "visionos": "native", "macos": "native", "android": "native", "web": "native", "windows": "lua", "linux": "lua"},
+    "contributions": [
+        {"type": "appleClass", "platforms": ["ios", "catalyst", "tvos", "visionos", "macos"], "name": "NativeSamplePlugin"},
+        {"type": "appleSources", "platforms": ["ios", "catalyst", "tvos", "visionos", "macos"], "path": "apple"},
+        {"type": "gradleModule", "platforms": ["android"], "path": "android"},
+        {"type": "webModule", "platforms": ["web"], "path": "web/native-sample.js"}
+    ]
 }

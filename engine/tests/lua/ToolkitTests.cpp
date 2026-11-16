@@ -114,13 +114,13 @@ TEST(EnvironmentTest, RequiresModulesFromThePackageOnly) {
 TEST(EnvironmentTest, RequiresTheModulesOfThePluginsOfTheApp) {
     // clang-format off
     test::EngineFixture fixture({
-        {"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"ads-kit": {}}})"},
-        {"plugins/ads-kit/plugin.json", R"({"id": "ads-kit", "version": "1.0.0"})"},
+        {"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"ads-kit": {}}})"},
+        {"plugins/ads-kit/plugin.json", R"({"id": "ads-kit", "version": "1.0.0", "implementations": {"ios": "lua"}})"},
         {"plugins/ads-kit/source/init.lua", "return {name = 'ads', banner = require('ads-kit.banner').name}"},
         {"plugins/ads-kit/source/banner.lua", "return {name = 'banner'}"},
         {"plugins/ads-kit/source/formats/init.lua", "return {name = 'formats'}"},
         {"plugins/ads-kit/source/broken.lua", "return {"},
-        {"plugins/other/plugin.json", R"({"id": "other", "version": "1.0.0"})"},
+        {"plugins/other/plugin.json", R"({"id": "other", "version": "1.0.0", "implementations": {"ios": "lua"}})"},
         {"plugins/other/source/init.lua", "return {}"},
         {"source/main.lua", "ads = require('ads-kit')"},
     });
@@ -132,7 +132,7 @@ TEST(EnvironmentTest, RequiresTheModulesOfThePluginsOfTheApp) {
     EXPECT_NE(fixture.lua("return require('ads-kit.broken')").find("plugins/ads-kit/source/broken.lua"), std::string::npos);
     EXPECT_NE(fixture.lua("return require('ads-kit.missing')").find("no file 'plugins/ads-kit/source/missing.lua' or 'plugins/ads-kit/source/missing/init.lua' in the app package"), std::string::npos);
 
-    // Only the plugins that `app.json` lists have modules, so the folder of any other plugin is invisible.
+    // Only the plugins that `haylen.json` lists have modules, so the folder of any other plugin is invisible.
     EXPECT_NE(fixture.lua("return require('other')").find("no file 'source/other.lua' or 'source/other/init.lua' in the app package"), std::string::npos);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
@@ -141,8 +141,8 @@ TEST(EnvironmentTest, StopsAnAppWhoseModuleHasTheNameOfAPlugin) {
     {
         // clang-format off
         test::EngineFixture fixture({
-            {"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"ads-kit": {}}})"},
-            {"plugins/ads-kit/plugin.json", R"({"id": "ads-kit", "version": "1.0.0"})"},
+            {"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"ads-kit": {}}})"},
+            {"plugins/ads-kit/plugin.json", R"({"id": "ads-kit", "version": "1.0.0", "implementations": {"ios": "lua"}})"},
             {"source/ads-kit/about.txt", "Not a module."},
             {"source/ads-kit/banner.lua", "return {}"},
             {"source/main.lua", "started = true"},
@@ -154,7 +154,7 @@ TEST(EnvironmentTest, StopsAnAppWhoseModuleHasTheNameOfAPlugin) {
         EXPECT_EQ(fixture.lua("return started"), "nil");
     }
 
-    test::EngineFixture shadowed({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"ads-kit": {}}})"}, {"plugins/ads-kit/plugin.json", "{}"}, {"source/ads-kit/init.lua", "return {}"}});
+    test::EngineFixture shadowed({{"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"ads-kit": {}}})"}, {"plugins/ads-kit/plugin.json", "{}"}, {"source/ads-kit/init.lua", "return {}"}});
     ASSERT_NE(shadowed.engine().getError(), nullptr);
     EXPECT_NE(std::string_view(shadowed.engine().getError()->what()).find("source/ads-kit/init.lua\" has the name \"ads-kit\", which \"require\" resolves to \"plugins/ads-kit/source/init.lua\""), std::string::npos);
 }

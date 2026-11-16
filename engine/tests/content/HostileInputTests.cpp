@@ -43,7 +43,7 @@ class HostileInputTest : public ::testing::Test {
 
     // Valid inputs of every parser, each behind the byte that picks its parser.
     [[nodiscard]] std::vector<std::vector<std::uint8_t>> makeSeeds() {
-        release.build({{"app.json", "{}"}, {"source/main.lua", "return 1"}, {"content/a.txt", "alpha"}, {"content/b.bin", std::string(5000, 'b')}});
+        release.build({{"haylen.json", "{}"}, {"source/main.lua", "return 1"}, {"content/a.txt", "alpha"}, {"content/b.bin", std::string(5000, 'b')}});
         std::vector<std::vector<std::uint8_t>> seeds;
 
         const std::vector<std::uint8_t> plain = test::TestFiles::bytes("chunk");

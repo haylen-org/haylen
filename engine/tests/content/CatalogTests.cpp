@@ -141,11 +141,11 @@ TEST_F(ContentCatalogTest, DescribesFilesLargerThanFourGigabytes) {
 }
 
 TEST_F(ContentCatalogTest, RejectsPathsThatAreNotNormalized) {
-    for (const std::string& path : {std::string(""), std::string("/etc/passwd"), std::string("../secret"), std::string("content/../app.json"), std::string("content//a.png"), std::string("content/./a.png"), std::string("content/a.png/"), std::string("content\\a.png"), std::string("C:/a.png"), std::string("content/a\0b.png", 15), std::string("content/\x7F.png"), std::string("content/\xC0\xAF.png"), std::string("content/\xFF.png"), std::string(Catalog::kMaximumPathLength + 1, 'a')}) {
+    for (const std::string& path : {std::string(""), std::string("/etc/passwd"), std::string("../secret"), std::string("content/../haylen.json"), std::string("content//a.png"), std::string("content/./a.png"), std::string("content/a.png/"), std::string("content\\a.png"), std::string("C:/a.png"), std::string("content/a\0b.png", 15), std::string("content/\x7F.png"), std::string("content/\xC0\xAF.png"), std::string("content/\xFF.png"), std::string(Catalog::kMaximumPathLength + 1, 'a')}) {
         EXPECT_FALSE(Catalog::isValidPath(path)) << path;
     }
 
-    for (const std::string& path : {std::string("app.json"), std::string("content/maps/island.tmj"), std::string("content/ação/naïve €.png"), std::string(Catalog::kMaximumPathLength, 'a')}) {
+    for (const std::string& path : {std::string("haylen.json"), std::string("content/maps/island.tmj"), std::string("content/ação/naïve €.png"), std::string(Catalog::kMaximumPathLength, 'a')}) {
         EXPECT_TRUE(Catalog::isValidPath(path)) << path;
     }
 

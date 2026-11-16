@@ -178,14 +178,14 @@ TEST_F(ManifestTest, RejectsChangedCatalogs) {
 
 TEST_F(ManifestTest, KeepsEachDomainToItsOwnFiles) {
     const auto decrypt = [this](Manifest::Domain domain, const std::string& path, Delivery delivery) { return Manifest::read(write(makeEnvelope(domain), makeCatalog(path, delivery)), trusted).decryptCatalog(keys).getFileCount(); };
-    EXPECT_EQ(decrypt(Manifest::Domain::App, "app.json", Delivery::Required), 1U);
+    EXPECT_EQ(decrypt(Manifest::Domain::App, "haylen.json", Delivery::Required), 1U);
     EXPECT_EQ(decrypt(Manifest::Domain::App, "source/main.lua", Delivery::Required), 1U);
     EXPECT_EQ(decrypt(Manifest::Domain::App, "plugins/ads/source/init.lua", Delivery::Required), 1U);
     EXPECT_EQ(decrypt(Manifest::Domain::Content, "content/a.png", Delivery::OnDemand), 1U);
     expectCode(Error::Code::CorruptCatalog, [&] { (void)decrypt(Manifest::Domain::App, "content/a.png", Delivery::Required); });
     expectCode(Error::Code::CorruptCatalog, [&] { (void)decrypt(Manifest::Domain::App, "source/level.lua", Delivery::OnDemand); });
     expectCode(Error::Code::CorruptCatalog, [&] { (void)decrypt(Manifest::Domain::Content, "source/main.lua", Delivery::Required); });
-    expectCode(Error::Code::CorruptCatalog, [&] { (void)decrypt(Manifest::Domain::Content, "app.json", Delivery::Required); });
+    expectCode(Error::Code::CorruptCatalog, [&] { (void)decrypt(Manifest::Domain::Content, "haylen.json", Delivery::Required); });
 }
 
 TEST_F(ManifestTest, KeepsLuaBytecodeToTheModulesOfTheAppDomain) {
@@ -197,7 +197,7 @@ TEST_F(ManifestTest, KeepsLuaBytecodeToTheModulesOfTheAppDomain) {
     EXPECT_EQ(decrypt(app, "plugins/ads/source/init.lua"), 1U);
     EXPECT_EQ(Manifest::read(write(app, makeCatalog("source/main.lua")), trusted).getEnvelope().luaAbi, LuaBytecodeAbi::get());
 
-    for (const char* path : {"app.json", "source/notes.txt", "plugins/ads/plugin.json", "plugins/ads/main.lua", "plugins/source/init.lua"}) {
+    for (const char* path : {"haylen.json", "source/notes.txt", "plugins/ads/plugin.json", "plugins/ads/main.lua", "plugins/source/init.lua"}) {
         expectCode(Error::Code::CorruptCatalog, [&] { (void)decrypt(app, path); });
     }
 
@@ -286,7 +286,7 @@ TEST_F(ManifestTest, NeverAcceptsAnOlderGeneration) {
     ChannelDescriptor other = read;
     other.generation = 4;
     EXPECT_FALSE(other.describes(manifest));
-    EXPECT_FALSE(read.describes(Manifest::read(write(makeEnvelope(Manifest::Domain::App), makeCatalog("app.json")), trusted)));
+    EXPECT_FALSE(read.describes(Manifest::read(write(makeEnvelope(Manifest::Domain::App), makeCatalog("haylen.json")), trusted)));
 }
 
 TEST_F(ManifestTest, VerifiesChannelDescriptors) {

@@ -1,0 +1,66 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "plugin.json",
+    "description": "The manifest of a Haylen plugin: its identity, its dependencies, the platforms it supports, its parameters and the typed contributions of each platform. The backend of each platform validates the fields of the contributions of its types.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["interface", "id", "name", "version", "description", "implementations"],
+    "properties": {
+        "interface": {"const": 1, "description": "The version of the plugin interface of Haylen that the manifest follows, apart from the version of the plugin."},
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"},
+        "name": {"type": "string", "minLength": 1},
+        "version": {"type": "string", "pattern": "^\\d+(\\.\\d+){0,2}$", "description": "The release version of the plugin."},
+        "description": {"type": "string", "minLength": 1},
+        "implementations": {
+            "type": "object",
+            "description": "How the plugin works on each platform it supports: with its native part, which the platform needs, or with its Lua API alone. A platform that is missing does not support the plugin.",
+            "minProperties": 1,
+            "propertyNames": {"pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"},
+            "additionalProperties": {"enum": ["native", "lua"]}
+        },
+        "dependencies": {
+            "type": "object",
+            "description": "The plugins that the app must also list, by id, with the oldest version that this plugin works with in the same major version.",
+            "propertyNames": {"pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"},
+            "additionalProperties": {"type": "string", "pattern": "^\\d+(\\.\\d+){0,2}$"}
+        },
+        "permissions": {
+            "type": "array",
+            "description": "The permissions that the plugin owns, in camelCase.",
+            "uniqueItems": true,
+            "items": {"type": "string", "pattern": "^[a-z][A-Za-z0-9]*$"}
+        },
+        "parameters": {
+            "type": "object",
+            "propertyNames": {"pattern": "^[a-z][A-Za-z0-9]*$"},
+            "additionalProperties": {"$ref": "#/$defs/parameter"}
+        },
+        "contributions": {
+            "type": "array",
+            "items": {"$ref": "#/$defs/contribution"}
+        }
+    },
+    "$defs": {
+        "parameter": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "description"],
+            "properties": {
+                "type": {"enum": ["string", "number", "integer", "boolean", "array", "object", "file"]},
+                "description": {"type": "string", "minLength": 1},
+                "platforms": {"type": "array", "items": {"type": "string"}, "uniqueItems": true, "minItems": 1},
+                "required": {"type": "boolean"},
+                "default": {}
+            }
+        },
+        "contribution": {
+            "type": "object",
+            "description": "One thing that the plugin brings to the project of the platforms it lists, whose other fields the type defines.",
+            "required": ["type", "platforms"],
+            "properties": {
+                "type": {"type": "string", "pattern": "^[a-z][A-Za-z0-9]*$"},
+                "platforms": {"type": "array", "items": {"type": "string"}, "uniqueItems": true, "minItems": 1}
+            }
+        }
+    }
+}

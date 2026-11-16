@@ -181,7 +181,7 @@ TEST(SafeAreaConfigTest, ReadsTheSimulationFromTheAppFile) {
     EXPECT_FALSE(core::AppConfig::fromJson(core::Json::object()).debug.safeArea.has_value());
     EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"debug": {"safeArea": "watch"}})")), std::invalid_argument);
 
-    test::EngineFixture fixture({{"app.json", R"({"name": "Notch", "debug": {"safeArea": [0, 40], "showSafeArea": true}})"}});
+    test::EngineFixture fixture({{"haylen.json", R"({"name": "Notch", "debug": {"safeArea": [0, 40], "showSafeArea": true}})"}});
     fixture.frames(1);
     EXPECT_EQ(fixture.engine().getViewport().getSafeRect(), (math::Rect{40.0F, 0.0F, 1840.0F, 1080.0F}));
     EXPECT_EQ(fixture.lua("local ui = require('haylen.ui') return tostring(ui.safeAreaVisible())"), "true");

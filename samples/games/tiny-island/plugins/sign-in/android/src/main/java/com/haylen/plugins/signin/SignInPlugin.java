@@ -30,7 +30,7 @@ public final class SignInPlugin extends HaylenPlugin {
     private void signIn(String clientId, HaylenBridge.Reply reply) {
         Activity activity = context.activity();
         if (clientId.isEmpty()) {
-            reply.failure("Sign-in needs the web client id that the identity service gives the game. Set \"plugins.sign-in.clientId\" in the \"app.json\" of the game.");
+            reply.failure("Sign-in needs the web client id that the identity service gives the game. Set \"plugins.sign-in.clientId\" in the \"haylen.json\" of the game.");
             return;
         }
         if (activity == null) {

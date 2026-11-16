@@ -71,7 +71,7 @@ class SwapchainPasses final {
 
 } // namespace
 
-TEST_F(WindowConfigTest, ReadsTheDesktopOptionsOfAppJson) {
+TEST_F(WindowConfigTest, ReadsTheDesktopOptionsOfHaylenJson) {
     const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({
         "window": {"decorated": false, "transparent": true, "alwaysOnTop": true, "showInTaskbar": false, "focusable": false, "mousePassthrough": true, "keepScreenOn": true,
                    "position": {"anchor": "bottom", "area": "work", "display": "primary", "offset": [0, -8], "fill": "width"}}
@@ -120,7 +120,7 @@ TEST_F(WindowConfigTest, RejectsInvalidDesktopOptions) {
     }
 }
 
-TEST_F(WindowConfigTest, ReadsTheStatusBarOfAppJson) {
+TEST_F(WindowConfigTest, ReadsTheStatusBarOfHaylenJson) {
     const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({"window": {"statusBar": "dark", "statusBarColor": "#F0F0F0"}})"));
     EXPECT_EQ(config.window.statusBar, Window::StatusBar::Dark);
     EXPECT_EQ(config.window.statusBarColor, math::Color::fromHex(0xF0F0F0FFU));
@@ -137,7 +137,7 @@ TEST_F(WindowConfigTest, ReadsTheStatusBarOfAppJson) {
     }
 }
 
-TEST_F(WindowConfigTest, ReadsTheSystemGesturesOfAppJson) {
+TEST_F(WindowConfigTest, ReadsTheSystemGesturesOfHaylenJson) {
     const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({"window": {"systemGestures": "system"}})"));
     EXPECT_EQ(config.window.systemGestures, Window::SystemGestures::System);
     EXPECT_EQ(core::AppConfig::fromJson(config.toJson()).toJson(), config.toJson());
@@ -150,7 +150,7 @@ TEST_F(WindowConfigTest, ReadsTheSystemGesturesOfAppJson) {
         (void)core::AppConfig::fromJson(core::Json::parse(R"({"window": {"systemGestures": "hidden"}})"));
         FAIL();
     } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), R"(The "window.systemGestures" value "hidden" in "app.json" is unknown. It is "system", "deferred" or "autoHideIndicator".)");
+        EXPECT_STREQ(error.what(), R"(The "window.systemGestures" value "hidden" in "haylen.json" is unknown. It is "system", "deferred" or "autoHideIndicator".)");
     }
 
     for (const char* document : {R"({"window": {"systemGestures": ""}})", R"({"window": {"systemGestures": 1}})"}) {
@@ -207,8 +207,8 @@ TEST_F(DisplayTest, FindsTheDisplayThatHoldsMostOfAFrame) {
     EXPECT_EQ(Display::findHolding(displays, {5000.0F, 5000.0F, 800.0F, 600.0F}).name, "main");
 }
 
-TEST(WindowEngineTest, AppliesTheWindowOptionsOfAppJson) {
-    test::EngineFixture fixture({{"app.json", R"({"window": {"decorated": false, "alwaysOnTop": true, "showInTaskbar": false, "focusable": false, "mousePassthrough": true, "resizable": false}})"}});
+TEST(WindowEngineTest, AppliesTheWindowOptionsOfHaylenJson) {
+    test::EngineFixture fixture({{"haylen.json", R"({"window": {"decorated": false, "alwaysOnTop": true, "showInTaskbar": false, "focusable": false, "mousePassthrough": true, "resizable": false}})"}});
     const HeadlessHost& host = fixture.host();
     EXPECT_FALSE(host.isDecorated());
     EXPECT_TRUE(host.isAlwaysOnTop());
@@ -231,7 +231,7 @@ TEST(WindowEngineTest, OpensAnOrdinaryWindowByDefault) {
 
 // The engine paints the color behind the status bar on a canvas of its own, only while the status bar shows over the visible area.
 TEST(WindowEngineTest, ShowsTheStatusBarAndPaintsItsColor) {
-    test::EngineFixture fixture({{"app.json", R"({"window": {"statusBar": "light", "statusBarColor": "#102030"}})"}});
+    test::EngineFixture fixture({{"haylen.json", R"({"window": {"statusBar": "light", "statusBarColor": "#102030"}})"}});
     HeadlessHost& host = fixture.host();
     EXPECT_EQ(host.getStatusBar(), Window::StatusBar::Light);
     EXPECT_EQ(fixture.engine().getStatusBarColor(), math::Color::fromHex(0x102030FFU));
@@ -253,7 +253,7 @@ TEST(WindowEngineTest, ShowsTheStatusBarAndPaintsItsColor) {
 }
 
 TEST(WindowEngineTest, TurnsTransparencyOffAndOnAgain) {
-    test::EngineFixture fixture({{"app.json", R"({"window": {"transparent": true}})"}});
+    test::EngineFixture fixture({{"haylen.json", R"({"window": {"transparent": true}})"}});
     EXPECT_TRUE(fixture.host().canBeTransparent());
     EXPECT_TRUE(fixture.host().isTransparent());
     EXPECT_TRUE(fixture.host().isFrameTransparent());
@@ -276,7 +276,7 @@ TEST(WindowEngineTest, KeepsAWindowThatOpenedOpaqueOpaque) {
 // Whatever the clear color and the blends, an opaque window clears to alpha 1 and draws no alpha, while a transparent one clears to the clear color and blends its alpha.
 TEST(WindowEngineTest, KeepsTheAlphaOfOpaqueWindowsAtOne) {
     test::EngineFixture fixture({
-        {"app.json", R"({"window": {"transparent": true}, "clearColor": "#00000000"})"},
+        {"haylen.json", R"({"window": {"transparent": true}, "clearColor": "#00000000"})"},
         {"source/main.lua", "local graphics2d = require('haylen.graphics2d') local camera = graphics2d.newCamera() "
                             "require('haylen.scene').push({render = function() "
                             "graphics2d.beginWorld(camera, {ambientLight = '#FF808080', postProcess = {fade = '#40FFFFFF'}}) graphics2d.drawRect({0, 0, 100, 100}, '#80FF0000') "

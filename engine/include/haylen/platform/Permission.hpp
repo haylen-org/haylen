@@ -29,7 +29,7 @@ class Permission final {
         Unsupported,
     };
 
-    // What the project of the app lacks for a permission, such as the line of the Android manifest that declares it, with the file that holds it and the snippet that adds it.
+    // What the app lacks for a permission, such as a permission of the Android manifest, with the file that adds it and the snippet that the file takes.
     struct Requirement {
         std::string kind;
         std::string name;

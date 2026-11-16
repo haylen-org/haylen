@@ -20,7 +20,7 @@
 
 namespace haylen::content {
 
-// The command line of `haylen-content`, the host tool that `haylen.py` runs to create the keys of apps and to build, verify, inspect, compare, publish and compact their protected releases with the format library of the engine. Every command takes the key folder of the app it works on, and nothing it prints holds a key.
+// The command line of `haylen-content`, the host tool that the tooling runs from the desktop SDK to create the keys of apps and to build, verify, inspect, compare, publish and compact their protected releases with the format library of the engine. Every command takes the key folder of the app it works on, and nothing it prints holds a key.
 class ContentTool final {
   public:
     ContentTool(std::ostream& output, std::ostream& errors);

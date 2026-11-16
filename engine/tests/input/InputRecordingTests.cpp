@@ -150,7 +150,7 @@ class InputRecordingLuaTest : public ::testing::Test {
   protected:
     // Loads the bytes in a new app with the identifier and the fixed rate of its manifest and returns the result or the error.
     [[nodiscard]] static std::string load(const std::string& bytes, const char* manifest) {
-        test::EngineFixture fixture({{"app.json", manifest}});
+        test::EngineFixture fixture({{"haylen.json", manifest}});
         lua_pushlstring(fixture.lua(), bytes.data(), bytes.size());
         lua_setglobal(fixture.lua(), "bytes");
         return fixture.lua("return require('haylen.input').loadRecording(bytes).steps");
@@ -160,7 +160,7 @@ class InputRecordingLuaTest : public ::testing::Test {
 TEST_F(InputRecordingLuaTest, RecordsAndReplaysPlayersIntoACommandBuffer) {
     std::string other;
     {
-        test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "fixedRate": 30})"}});
+        test::EngineFixture fixture({{"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "fixedRate": 30})"}});
         // clang-format off
     fixture.runLua(R"(
         input = require('haylen.input')

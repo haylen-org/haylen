@@ -4,7 +4,7 @@ This guide explains the Vulkan device of the [render hardware interface](rhi.md)
 
 ## Choosing the device
 
-Builds for Windows, Linux and Android compile the Vulkan device. Linux and Android try it first, and Windows tries it after Direct3D 12 and Direct3D 11. An app that wants Vulkan first names it in `window.graphicsApis` of `app.json`, as [choosing the graphics API](rhi.md#choosing-the-graphics-api) explains:
+Builds for Windows, Linux and Android compile the Vulkan device. Linux and Android try it first, and Windows tries it after Direct3D 12 and Direct3D 11. An app that wants Vulkan first names it in `window.graphicsApis` of `haylen.json`, as [choosing the graphics API](rhi.md#choosing-the-graphics-api) explains:
 
 ```json
 {

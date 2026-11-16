@@ -1,4 +1,8 @@
 #!/bin/sh
-# Runs haylen.py from the folder of this script, wherever it is called from or linked to.
+# Runs the command line of Haylen, the package in `tools/haylen`, through uv from the folder of this script, wherever it is called from or linked to.
 root=$(dirname "$(readlink -f "$0")")
-exec python3 "$root/haylen.py" "$@"
+if ! command -v uv >/dev/null 2>&1; then
+    echo 'Error: The command "uv" was not found. Install uv from https://docs.astral.sh/uv and run "haylen" again.' >&2
+    exit 1
+fi
+exec uv run --project "$root" --frozen haylen "$@"

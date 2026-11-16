@@ -7,7 +7,7 @@
 
 namespace haylen::content {
 
-// The Lua module of content in development, where the folder of the app plays and the files that `app.json` delivers later stay off the device until something brings them, as in a release.
+// The Lua module of content in development, where the folder of the app plays and the files that `haylen.json` delivers later stay off the device until something brings them, as in a release.
 class ContentLuaTest : public ::testing::Test {
   protected:
     ContentLuaTest() {
@@ -21,7 +21,7 @@ class ContentLuaTest : public ::testing::Test {
     }
 
     test::EngineFixture fixture{{
-        {"app.json", R"({"content": {"delivery": [{"match": "levels/**", "mode": "onDemand"}, {"match": "music/**", "mode": "prefetch"}]}})"},
+        {"haylen.json", R"({"content": {"delivery": [{"match": "levels/**", "mode": "onDemand"}, {"match": "music/**", "mode": "prefetch"}]}})"},
         {"content/levels/forest.json", R"({"trees": 12})"},
         {"content/levels/desert.json", R"({"dunes": 3})"},
         {"content/music/theme.txt", "theme"},

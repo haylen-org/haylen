@@ -1,9 +1,9 @@
 #import "platform/apple/ApplePlugins.hpp"
 
-#include <algorithm>
 #include <exception>
 #include <filesystem>
 #include <memory>
+#include <optional>
 
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Log.hpp"
@@ -11,6 +11,7 @@
 #include "haylen/io/Path.hpp"
 #include "haylen/platform/AppPlugin.hpp"
 #include "platform/PluginLoadOrder.hpp"
+#include "platform/PluginManifest.hpp"
 #include "platform/Services.hpp"
 #import "platform/apple/AppleBridge.hpp"
 #import "platform/apple/HaylenPluginContext+Runtime.h"
@@ -30,15 +31,10 @@ void ApplePlugins::load() {
     }
 
     for (const Declaration& declaration : declarations) {
-        // A destination leaves out the classes of the plugins that do not list it on purpose, so only a plugin that lists it misses its class by mistake.
-        if (!declaration.supported) {
-            continue;
-        }
-
         const char* name = declaration.className.c_str();
         Class type = NSClassFromString(@(name));
         if (type == nil) {
-            core::Log::error("The class \"{}\" of the plugin \"{}\" is missing from the app, so the plugin runs without its native part. The project lacks the Apple sources of the plugin, which a target compiles when it names its template of \"haylen/project.yml\" in \"templates\" of \"project.yml\", or a Swift class of them names itself without \"@objc({})\".", name, declaration.identifier, name);
+            core::Log::error("The class \"{}\" of the plugin \"{}\" is missing from the app, so the plugin runs without its native part. The \"appleSources\" of the plugin do not define it, or a Swift class of them names itself without \"@objc({})\".", name, declaration.identifier, name);
             continue;
         }
 
@@ -132,15 +128,11 @@ std::vector<ApplePlugins::Declaration> ApplePlugins::readDeclarations() {
     const core::AppConfig config = core::AppConfig::fromPackage(*package);
     std::vector<Declaration> declarations;
     for (const std::string& identifier : PluginLoadOrder::read(*package)) {
-        const core::Json manifest = core::Json::parse(package->readText(io::Path::plugin(identifier, io::Path::kPluginManifestFile)));
-        const core::Json apple = manifest.value("apple", core::Json::object());
-        if (!apple.contains("class")) {
+        const std::optional<std::string> className = PluginManifest::read(*package, identifier).findAppleClass(getDestination());
+        if (!className) {
             continue;
         }
-
-        const core::Json platforms = manifest.value("platforms", core::Json::array());
-        const bool supported = std::ranges::find(platforms, core::Json(getDestination())) != platforms.end();
-        declarations.push_back({.identifier = identifier, .className = apple.at("class").get<std::string>(), .config = AppPlugin::read(*package, identifier, config.plugins.at(identifier).parameters).config, .supported = supported});
+        declarations.push_back({.identifier = identifier, .className = *className, .config = AppPlugin::read(*package, identifier, config.plugins.at(identifier).parameters).config});
     }
 
     return declarations;

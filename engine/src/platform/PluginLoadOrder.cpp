@@ -5,17 +5,17 @@
 
 #include <nlohmann/json.hpp>
 
-#include "haylen/core/Json.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/io/Path.hpp"
+#include "platform/PluginManifest.hpp"
 
 namespace haylen::platform {
 
-// The object of plugins keeps the order that `app.json` gives it, which a sorted JSON object would lose.
+// The object of plugins keeps the order that `haylen.json` gives it, which a sorted JSON object would lose.
 std::vector<std::string> PluginLoadOrder::read(const io::Package& package) {
     const nlohmann::ordered_json app = nlohmann::ordered_json::parse(package.readText(io::Path::kAppConfigFile), nullptr, false);
     if (!app.is_object()) {
-        throw std::runtime_error("The file \"app.json\" of the package is not a JSON object.");
+        throw std::runtime_error("The file \"haylen.json\" of the package is not a JSON object.");
     }
 
     const auto plugins = app.find("plugins");
@@ -30,16 +30,11 @@ std::vector<std::string> PluginLoadOrder::read(const io::Package& package) {
 
     std::map<std::string, std::vector<std::string>> required;
     for (const std::string& id : listed) {
-        const std::string path = io::Path::plugin(id, io::Path::kPluginManifestFile);
-        const core::Json manifest = core::Json::parse(package.readText(path), nullptr, false);
-        if (!manifest.is_object()) {
-            throw std::runtime_error("The file \"" + path + "\" of the package is not a JSON object.");
-        }
-
+        const PluginManifest manifest = PluginManifest::read(package, id);
         std::vector<std::string>& dependencies = required[id];
-        for (const core::Json& dependency : manifest.value("requires", core::Json::array())) {
-            if (dependency.is_string() && std::ranges::find(listed, dependency.get<std::string>()) != listed.end()) {
-                dependencies.push_back(dependency.get<std::string>());
+        for (const std::string& dependency : manifest.getDependencies()) {
+            if (std::ranges::find(listed, dependency) != listed.end()) {
+                dependencies.push_back(dependency);
             }
         }
     }

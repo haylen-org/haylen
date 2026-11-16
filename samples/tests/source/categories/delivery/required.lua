@@ -1,4 +1,4 @@
--- An asset that no rule of "content.delivery" in "app.json" names is required: its bytes are on the device before the app starts, so "assets.json" reads it at once. The panel shows whether the app runs from its folder, as in development, or from a protected release, which ships the Lua modules as bytecode and every asset encrypted in shards.
+-- An asset that no rule of "content.delivery" in "haylen.json" names is required: its bytes are on the device before the app starts, so "assets.json" reads it at once. The panel shows whether the app runs from its folder, as in development, or from a protected release, which ships the Lua modules as bytecode and every asset encrypted in shards.
 local assets = require('haylen.assets')
 local content = require('haylen.content')
 local haylen = require('haylen')
@@ -15,7 +15,7 @@ function Required:enter()
     self.map = assets.json(Required.path)
     self.mapView = MapView()
     local stats = content.stats()
-    local source = content.isProtected() and string.format('A protected release of generation %d, whose catalog lists %d files.', content.generation(), stats.catalogFiles) or 'The folder of the app, as in development. The command "haylen run samples/tests --config Release" plays the protected release instead, with the Lua modules as bytecode and every asset in encrypted shards.'
+    local source = content.isProtected() and string.format('A protected release of generation %d, whose catalog lists %d files.', content.generation(), stats.catalogFiles) or 'The folder of the app, as in development. The command "haylen app run samples/tests" with "--config Release" and the target of a platform, such as "--target macos", plays the protected release instead, with the Lua modules as bytecode and every asset in encrypted shards.'
     local onDevice = content.isLocal(Required.path)
     self:frame{
         code = string.format("local map = assets.json('%s')\nprint(content.isLocal('%s'))", Required.path, Required.path),

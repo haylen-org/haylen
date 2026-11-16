@@ -2,7 +2,7 @@
 
 This guide shows how an app reaches native code: the APIs of each platform, native libraries and SDKs with a C API. It is for developers who need something the engine does not offer, such as the SDK of a game platform or of online services. It explains the three ways to reach native code and how to choose one. It shows how Lua calls a native library and how its callbacks come back. It also shows how an app ships its libraries on every platform, and how to call SDKs with a C API. The [`haylen.native` reference](../lua-api/native.md) and the [`haylen.platform` reference](../lua-api/platform.md) list every function, and the [platform bridge guide](platform-bridge.md) describes how bridge calls travel.
 
-The test project checks every part of this guide. Its Native libraries category, the tests `NAT-001` to `NAT-005` in `samples/tests/source/categories/native/`, runs against the test library of the engine, `engine/tests/native/NativeTest.c`, on every platform, with a list of checks that pass or fail. The `native` section of `samples/tests/app.json` builds that library from `samples/tests/plugins/native-test/native/`.
+The test project checks every part of this guide. Its Native libraries category, the tests `NAT-001` to `NAT-005` in `samples/tests/source/categories/native/`, runs against the test library of the engine, `engine/tests/native/NativeTest.c`, on every platform, with a list of checks that pass or fail. The `native` section of `samples/tests/haylen.json` builds that library from `samples/tests/plugins/native-test/native/`.
 
 ## The three ways
 
@@ -10,15 +10,15 @@ The test project checks every part of this guide. Its Native libraries category,
 | --- | --- | --- |
 | The platform bridge, `haylen.platform` | JSON calls and events with byte buffers next to them. Java or Kotlin answers them on Android, Objective-C or Swift on Apple platforms, JavaScript on the web, C in native libraries, and C++ or Lua anywhere. Answers come later, errors carry a code and data, and calls time out and cancel. The native parts of plugins also feed video and audio streams through it. | Every platform. |
 | Native libraries through FFI, `haylen.native` and Varn's `ffi` | Lua declares the C functions and types of a library and calls them directly, with numbers, text, structs, pointers, buffers and callbacks. | macOS, Windows, Linux, iOS, tvOS, Mac Catalyst and Android. Not the browser. |
-| C++ plugins | A `haylen::plugins::Plugin` of an app that compiles the engine, with the lifecycle of the engine and a Lua module of its own. | Apps built with `haylen_add_app`, on every platform. |
+| C++ plugins | A `haylen::plugins::Plugin` of a C++ app, with the lifecycle of the engine and a Lua module of its own. | C++ apps, on every platform. |
 
 FFI means foreign function interface: Lua calls C functions without glue code that someone compiles.
 
 ## Choosing a way
 
-- **Platform APIs** that live in Java, Kotlin, Objective-C, Swift or JavaScript, such as sign-in, purchases, sharing or permissions, go through the bridge. Their handlers are written in the language of the platform, in a [plugin](plugins.md) of the app or in its platform projects in `platform/<template>/`.
+- **Platform APIs** that live in Java, Kotlin, Objective-C, Swift or JavaScript, such as sign-in, purchases, sharing or permissions, go through the bridge. Their handlers are written in the language of the platform, in a [plugin](plugins.md) of the app or in the bridge handlers of the app, which the sections `platforms.apple.sources`, `platforms.android.sources` and `platforms.web.scripts` of `haylen.json` name, as the [platform bridge guide](platform-bridge.md) describes.
 - **A library or SDK with a C API** that ships as a `.dll`, `.so`, `.dylib`, framework or static library goes through FFI. Lua calls it directly, with no glue code to compile. A call costs what a C call costs, plus the conversion of the arguments.
-- **A library with a C++ API**, one that needs many calls per frame from native code, or one whose data never needs to reach Lua, goes into a C++ plugin of an app that compiles the engine. A small C library with a flat API that FFI calls works too.
+- **A library with a C++ API**, one that needs many calls per frame from native code, or one whose data never needs to reach Lua, goes into a C++ plugin of a C++ app. A small C library with a flat API that FFI calls works too.
 - **A native library that works on its own threads**, answering calls or sending events from them, registers bridge handlers through the C interface of the engine, `HaylenNativeApi`. It works the same on every platform that loads native libraries.
 - **The browser** has no native libraries, so web builds reach JavaScript through the bridge. An app that calls a library through FFI elsewhere answers the same methods with a page handler on the web, as the local plugin `native-test` of the test project does.
 
@@ -133,41 +133,49 @@ lib.native_test_visit(3, visitor)
 
 A library written for Haylen receives the C interface of the engine when the app loads it with `native.load(name, {init = 'my_library_haylen_init'})`. The interface is `HaylenNativeApi` from `haylen/platform/native/HaylenNative.h`. With it a library can do all of this, the same way on every platform:
 
-- register bridge handlers in C and answer them from any thread, with JSON and byte buffers;
+- register bridge handlers through its C entry points and answer them from any thread, with JSON and byte buffers;
 - send events, retained or batched;
 - feed the video and audio streams of a plugin, and open the screens of a plugin over the window of the app;
 - cover the app, write to the engine log and hear the errors that stop the app.
 
-The library exports its `init` function, so `native.load` finds it. On Windows that takes `__declspec(dllexport)`, and a library built with hidden symbols marks the function visible, as the C library of the plugin template does with a macro. The [reference](../lua-api/native.md#the-c-interface-of-the-engine) lists every entry.
+The library exports its `init` function, so `native.load` finds it. On Windows that takes `__declspec(dllexport)`, and a library built with hidden symbols marks the function visible, as the C++ library of the plugin template does with a macro on the init function that forwards to its class. The [reference](../lua-api/native.md#the-c-interface-of-the-engine) lists every entry.
 
-```c
+```cpp
+#include <cstddef>
+#include <cstdint>
+
 #include "haylen/platform/native/HaylenNative.h"
 
-static const HaylenNativeApi* engine = 0;
+// The library of the app, which lives as long as the process, since the engine may call its handlers until the process ends.
+class Downloads final {
+  public:
+    explicit Downloads(const HaylenNativeApi& engine) : api(engine) {}
 
-static void download(void* user, uint64_t call, const char* method, const char* paramsJson, const HaylenNativeBuffer* buffers, size_t bufferCount) {
-    /* Starts the work on a thread of the library, which calls `engine->resolve(call, 1, "{\"file\": {\"$bytes\": 0}}", &file, 1)` with the downloaded bytes when it is done. */
-}
+    // Starts the work on a thread of the library, which resolves the call with the downloaded bytes in a buffer when it is done.
+    static void download(void* user, std::uint64_t call, const char* method, const char* paramsJson, const HaylenNativeBuffer* buffers, std::size_t bufferCount);
 
-static void stop(void* user, uint64_t call) {
-    /* The app cancelled the call or its timeout passed, so the work may stop. */
-}
+    // The app cancelled the call or its timeout passed, so the work may stop.
+    static void stop(void* user, std::uint64_t call);
 
-int my_library_haylen_init(const HaylenNativeApi* api) {
+  private:
+    const HaylenNativeApi& api;
+};
+
+extern "C" int my_library_haylen_init(const HaylenNativeApi* api) {
     if (api->version != HAYLEN_NATIVE_API_VERSION) {
         return 1;
     }
-    engine = api;
-    api->registerHandler("my-library.download", download, stop, 0);
+    auto* downloads = new Downloads(*api);
+    api->registerHandler("my-library.download", &Downloads::download, &Downloads::stop, downloads);
     return 0;
 }
 ```
 
-This is also how Windows and Linux apps answer bridge methods with native code without compiling the engine, since those platforms have no registry of handlers of their own.
+This is also how Windows and Linux apps answer bridge methods with native code, since those platforms have no registry of handlers of their own. The library builds against the installed SDK of the engine, so it never compiles the engine.
 
 ## Packaging libraries with an app
 
-The `native` section of `app.json` lists the libraries that an app ships, by the name it loads them with. A library is either prebuilt files for each platform or a CMake project that `haylen.py` builds for each platform it lists.
+The `native` section of `haylen.json` lists the libraries that an app ships, by the name it loads them with. A library is either prebuilt files for each platform or a CMake project that the backend of each platform it lists builds for its target. A plugin brings a library of its own with its [`nativeLibrary` contribution](plugins.md#native-library-contributions), which takes the id of the plugin as its name and the same keys as an entry of this section.
 
 A name starts with a letter and holds letters, digits, dashes and underscores. A library that the app builds takes dashes, such as `native-test`. A prebuilt library keeps the name of its files, such as `game_platform`. The `init` function of a library takes underscores, such as `native_test_haylen_init`, because a C function is named with an identifier.
 
@@ -176,14 +184,14 @@ A name starts with a letter and holds letters, digits, dashes and underscores. A
     "native": {
         "game_platform": {
             "files": {
-                "macos": "platform/apple/native/libgame_platform.dylib",
-                "windows": "platform/windows/game_platform.dll",
-                "linux": "platform/linux/libgame_platform.so"
+                "macos": "libs/macos/libgame_platform.dylib",
+                "windows": "libs/windows/game_platform.dll",
+                "linux": "libs/linux/libgame_platform.so"
             }
         },
         "native-test": {
             "cmake": "native",
-            "platforms": ["macos", "ios", "tvos", "android", "windows", "linux"]
+            "platforms": ["macos", "ios", "catalyst", "tvos", "android", "windows", "linux"]
         },
         "native-test-static": {
             "cmake": "native",
@@ -197,29 +205,29 @@ A name starts with a letter and holds letters, digits, dashes and underscores. A
 
 | Key | Meaning |
 | --- | --- |
-| `files` | The prebuilt file of each platform, relative to the app folder. That is a `.dylib`, `.framework` or `.xcframework` on macOS, a `.framework`, `.xcframework` or, when linked statically, a `.a` on iOS and tvOS, a `.dll` on Windows and a `.so` on Linux. On Android it is a folder with a subfolder of `.so` files for each ABI, the layout of `jniLibs`. An `.xcframework` gives the slice of each Apple platform. |
-| `cmake` | A folder with a `CMakeLists.txt` that defines a library target with the name of the library. It builds as a shared or a static library, as `BUILD_SHARED_LIBS` says. The script `haylen.py` passes `HAYLEN_INCLUDE_DIR`, the folder of `haylen/platform/native/HaylenNative.h`. |
-| `platforms` | The platforms that `haylen.py` builds a CMake library for, among `macos`, `ios`, `tvos`, `android`, `windows` and `linux`. |
-| `link` | Either `dynamic`, the default, or `static`. Only iOS and tvOS apps link statically, Mac Catalyst included. |
-| `symbols` | The symbols of a static library that Lua reaches. The script `haylen.py` keeps them and registers them. |
+| `files` | The prebuilt file of each platform, by the platform names of the tooling, relative to the app folder. That is a `.dylib`, `.framework` or `.xcframework` on macOS, a `.framework` or `.xcframework` on Mac Catalyst and visionOS, and also, when linked statically, a `.a` on iOS and tvOS, a `.dll` on Windows and a `.so` on Linux. On Android it is a folder with a subfolder of `.so` files for each ABI, the layout of `jniLibs`. An `.xcframework` gives the slice of each Apple target. |
+| `cmake` | A folder with a `CMakeLists.txt` that defines a library target with the name of the library, which the backend builds as a shared library, or as a static one when `link` is `static`. The project finds the installed SDK of the engine with `find_package(haylen CONFIG REQUIRED)` and links its target `haylen::native`, which gives it `haylen/platform/native/HaylenNative.h` and nlohmann/json without the engine. |
+| `platforms` | The platforms that a CMake library builds for, among `macos`, `ios`, `catalyst`, `tvos`, `visionos`, `android`, `windows` and `linux`. A library ships only to the platforms it names, so the iOS library reaches neither Mac Catalyst nor visionOS unless they are listed too. |
+| `link` | Either `dynamic`, the default, or `static`. Only iOS and tvOS, and the targets whose SDK slice loads no dynamic library, link a static library, which lists its `symbols`, while every other target loads shared libraries alone and refuses a static one with a sentence that names the library. |
+| `symbols` | The symbols of a static library that Lua reaches, which the app keeps and registers. |
 
-The script `haylen.py` places each library where the app loads it:
+The backend of each target places every library where the app loads it:
 
-| Platform | Place |
+| Target | Place |
 | --- | --- |
-| macOS and Mac Catalyst | The folder `Contents/Frameworks` of the app bundle. The `Embed native libraries` phase of `App.xcodeproj` copies and signs it with the identity of the app. The executable has `@executable_path/../Frameworks` in its runpath. |
-| iOS and tvOS, dynamic | A framework in `Frameworks` of the app bundle, embedded and signed the same way. A CMake library becomes a framework whose bundle identifier is the identifier of the app followed by `.native.<name>`. |
-| iOS, Mac Catalyst and tvOS, static | Linked into the app through `HAYLEN_NATIVE_LDFLAGS` in `haylen/Haylen.xcconfig` of the Apple project, with `haylen/HaylenNativeSymbols.mm` generated next to it. On Mac Catalyst the setting holds only for the build of the iOS target whose `IS_MACCATALYST` is `YES`. So the macOS target, which builds with the same SDK, never links the copy of Mac Catalyst. |
-| Android | The folder `haylen/jniLibs/<abi>/` of the Gradle project, for `arm64-v8a`, `armeabi-v7a` and `x86_64`, the ABIs of the engine. The app module takes it as a folder of native libraries, and the linker of Android finds them by name. An AAR dependency or a `jniLibs` folder of the Android project of the app works too. |
-| Windows | Next to the executable. |
-| Linux | The folder `lib/` next to the executable. The `RUNPATH` of `$ORIGIN:$ORIGIN/lib` lets the libraries find each other. |
-| Desktop player | The folder `build/apps/<app>-<hash>/native/development/`, in the build folder of the app. The command `haylen.py run` passes it to the player with `--native`. |
+| `macos` and `catalyst` | The folder `Contents/Frameworks` of the app bundle. The app target of the generated Xcode project embeds the library without linking it and signs it with the identity of the app. The executable has `@executable_path/../Frameworks` in its runpath. |
+| iOS, tvOS and visionOS, dynamic | A framework in `Frameworks` of the app bundle, embedded and signed the same way. A CMake library becomes a framework whose bundle identifier is the identifier of the app followed by `.native.<name>`. |
+| iOS and tvOS, static | Linked into the app by the app target, with the generated `HaylenNativeSymbols.mm`, which keeps the symbols of the library and registers them. |
+| `android` | The external native build of Gradle builds a CMake library for every ABI of the product against the SDK of that ABI, and a prebuilt library goes into `app/src/main/jniLibs/<abi>/` of the generated project. The linker of Android finds them by name. |
+| `windows` | Next to the executable. |
+| `linux` | The folder `lib/` next to the executable. The `RUNPATH` of `$ORIGIN:$ORIGIN/lib` lets the libraries find each other. |
+| `player` | The folder `build/native` of the product, in the build folder of the app, which the run hands the player with `--native`. |
 
-The file `project.yml` of the app never changes for its libraries. The script `haylen.py` writes them into `haylen/native/<platform>-<sdk>/` of the Apple project. It writes the file lists that the embed phase reads into `haylen/native/<platform>-<sdk>.xcfilelist`, the link settings into `haylen/Haylen.xcconfig`, and the embed phase into the target templates of the platforms that have libraries. The embed phase runs without the script sandbox of Xcode, because the sandbox would need every file of a bundle and the temporary files of `codesign` listed one by one. Files that the app keeps in `platform/<platform>/` for Windows and Linux land next to the executable too.
+A CMake library builds for every architecture of the product. On Apple targets the backend joins the architectures with `lipo`, and on Android each ABI builds on its own. The embed phase of an Apple app runs without the script sandbox of Xcode, because the sandbox would need every file of a bundle and the temporary files of `codesign` listed one by one. Other files that a Windows or Linux app ships next to its executable come from the `files` key of the section of its platform in `haylen.json`.
 
 ### Static libraries on iOS and tvOS
 
-An iOS or tvOS app may link a library statically instead of embedding a framework, which some SDKs require. The Mac Catalyst build of the iOS app may do the same. Dead code stripping would then remove every function that the app never calls from native code. So `haylen.py` writes `haylen/HaylenNativeSymbols.mm`, whose `+load` registers the listed symbols with `haylen::platform::NativeLibraries::registerLinked`. These references keep the functions in the app. Every Lua state that the engine makes gets the table through `varn::runtime::Runtime::addSymbol`. So `native.load('native-test-static')` returns `ffi.C`, which finds the listed functions by name without the app exporting them, and `native.findSymbol` finds them too. The `symbols` list names every function that Lua calls, an `init` function included.
+An iOS or tvOS app may link a library statically instead of embedding a framework, which some SDKs require. A target whose SDK slice loads no dynamic library, which its capabilities say, links every library statically, so each of its libraries lists its symbols. Every other target loads its libraries dynamically and refuses one with `"link": "static"` with one sentence that names the library, so a library that links statically on iOS leaves the other platforms out of its `platforms`. Dead code stripping would then remove every function that the app never calls from native code. So the Apple backend generates `HaylenNativeSymbols.mm`, whose `+load` registers the listed symbols with `haylen::platform::NativeLibraries::registerLinked`. These references keep the functions in the app. Every Lua state that the engine makes gets the table through `varn::runtime::Runtime::addSymbol`. So `native.load('native-test-static')` returns `ffi.C`, which finds the listed functions by name without the app exporting them, and `native.findSymbol` finds them too. The `symbols` list names every function that Lua calls, an `init` function included.
 
 ```lua
 local ffi = require('ffi')
@@ -236,7 +244,7 @@ print(lib.native_test_add(1, 2))
 
 ### Development
 
-The command `haylen run <app>` builds or copies the libraries of this desktop into `build/apps/<app>-<hash>/native/development/`, in the [build folder of the app](../tools/distribution.md#platform-projects). Then it starts the player with `--native` and that folder, which `native.load` searches first. The player takes `--native <folder>` more than once, so a player started by hand finds libraries anywhere.
+The command `haylen app run <app>`, whose default target for a Lua app on a desktop is `player`, builds or copies the libraries of this machine into the folder `build/native` of the product, in the build folder of the app. Then it starts the player with `--native` and that folder, which `native.load` searches first. The player takes `--native <folder>` more than once, so a player started by hand finds libraries anywhere.
 
 ```sh
 haylen --dev ~/apps/my-game --native ~/sdk/lib --native ~/apps/my-game/build/native
@@ -244,7 +252,7 @@ haylen --dev ~/apps/my-game --native ~/sdk/lib --native ~/apps/my-game/build/nat
 
 ## C++ plugins
 
-An app that compiles the engine with `haylen_add_app` extends it with plugins of its own. They have the same lifecycle as the plugins of the engine: `start`, `fixedUpdate`, `update`, `render`, `renderUi`, `stop` and the lifecycle events, all on the frame thread. The method `installLua` installs a Lua module with the binding toolkit of `haylen/lua/`. A plugin added before the engine starts, or while it runs, gets `start` and `installLua` like a built-in one. The [embedding guide](../tools/embedding.md#plugins-of-an-app) shows a complete plugin.
+A C++ app, whose `kind` in `haylen.json` is `cpp` and whose sources compile against the prebuilt SDK of the engine, extends the engine with plugins of its own. They have the same lifecycle as the plugins of the engine: `start`, `fixedUpdate`, `update`, `render`, `renderUi`, `stop` and the lifecycle events, all on the frame thread. The method `installLua` installs a Lua module with the binding toolkit of `haylen/lua/`. A plugin added before the engine starts, or while it runs, gets `start` and `installLua` like a built-in one. The [embedding guide](../tools/embedding.md) shows a complete plugin.
 
 ```cpp
 class GamePlatformPlugin final : public haylen::plugins::Plugin {
@@ -317,7 +325,7 @@ local function pump()
 end
 ```
 
-Read the parameter struct of a callback with `ffi.cast('const some_callback*', message.data)` before the message is freed. Declare the struct first, with the packing that its header uses. Some SDKs read files next to the executable during development. Keep those files in `platform/windows/` and `platform/linux/` of the app, which land next to the executable, and in `Contents/MacOS` of the macOS app bundle.
+Read the parameter struct of a callback with `ffi.cast('const some_callback*', message.data)` before the message is freed. Declare the struct first, with the packing that its header uses. Some SDKs read files next to the executable during development, such as a text file with the id of the app. The generated projects of Windows and Linux install the executable, the package and the native libraries alone, so they have no place for such a file yet.
 
 ### An online services SDK with peer-to-peer connections
 
@@ -367,12 +375,12 @@ Accepting a connection, sending packets and reading them after each tick follow 
 ### Other SDKs
 
 - An SDK that calls back from its own threads gets engine callbacks with the default thread. It declares the data it needs as byte ranges, or the app copies the data before the callback returns.
-- An SDK with a C++ API gets a small C library with a flat API that wraps it, built by the `cmake` entry of the `native` section, or a C++ plugin in an app that compiles the engine.
+- An SDK with a C++ API gets a small C library with a flat API that wraps it, built by the `cmake` entry of the `native` section, or a C++ plugin of a C++ app.
 - An SDK that needs Java, Kotlin, Objective-C or Swift for part of its work, such as sign-in on a phone, answers those parts through a [plugin](plugins.md) of the app, while its C API goes through FFI.
 
 ## The web
 
-The browser runs no native code, so `native.available()` is `false` there, and the app reaches the page through the bridge instead. JavaScript handlers answer the same methods that native code answers elsewhere, with typed errors, cancellation through an `AbortSignal` and events. Register them with `Module.haylen.register` in `platform/web/app.js` of the app, or with `context.register` of the web module of a plugin, as the [platform bridge guide](platform-bridge.md#web) shows.
+The browser runs no native code, so `native.available()` is `false` there, and the app reaches the page through the bridge instead. JavaScript handlers answer the same methods that native code answers elsewhere, with typed errors, cancellation through an `AbortSignal` and events. Register them with `Module.haylen.register` in a page script of the app, such as `native/web/app.js`, which `platforms.web.scripts` of `haylen.json` names, or with `context.register` of the web module of a plugin, as the [platform bridge guide](platform-bridge.md#web) shows.
 
 ```lua
 local native = require('haylen.native')

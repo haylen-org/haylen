@@ -1,0 +1,52 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "haylen-sdk.json",
+    "description": "The manifest of an installed engine SDK, which its engine port writes.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["format", "port", "portVersion", "engineVersion", "revision", "configuration", "slices"],
+    "properties": {
+        "format": {"const": 1},
+        "port": {"type": "string", "minLength": 1},
+        "portVersion": {"type": "string", "minLength": 1},
+        "engineVersion": {"type": "string", "minLength": 1},
+        "revision": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "configuration": {"enum": ["Debug", "Release"]},
+        "slices": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["system", "environment", "architectures", "abi", "toolchain", "runtime", "minimumSystemVersion", "graphicsApis", "capabilities"],
+                "properties": {
+                    "system": {"type": "string", "minLength": 1},
+                    "environment": {"enum": ["device", "simulator", "host"]},
+                    "architectures": {"type": "array", "minItems": 1, "items": {"type": "string"}, "uniqueItems": true},
+                    "abi": {"type": "string", "minLength": 1},
+                    "toolchain": {"type": "string", "minLength": 1},
+                    "runtime": {"type": "string", "minLength": 1},
+                    "minimumSystemVersion": {"type": "string", "minLength": 1},
+                    "graphicsApis": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+                    "capabilities": {"type": "array", "items": {"enum": ["dynamicLibraries", "executableMemory", "processes"]}, "uniqueItems": true},
+                    "files": {"type": "object", "additionalProperties": {"type": "string"}}
+                }
+            }
+        },
+        "hostTools": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name", "system", "architecture", "path"],
+                "properties": {
+                    "name": {"type": "string"},
+                    "system": {"type": "string"},
+                    "architecture": {"type": "string"},
+                    "path": {"type": "string"}
+                }
+            }
+        },
+        "files": {"type": "object", "additionalProperties": {"type": "string"}}
+    }
+}

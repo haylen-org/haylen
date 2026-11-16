@@ -46,7 +46,7 @@ public final class HaylenPluginContext {
         return HaylenBridge.activity();
     }
 
-    // The parameter values that `app.json` gives the plugin, over the defaults of its `plugin.json`.
+    // The parameter values that `haylen.json` gives the plugin, over the defaults of its `plugin.json`.
     public JSONObject config() {
         return config;
     }

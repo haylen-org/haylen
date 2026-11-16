@@ -1,4 +1,4 @@
--- The native part paints an animated picture 30 times per second into a video stream, whose texture the UI shows and which stays current by itself, and synthesizes a tone into an audio stream, which the app plays as a voice and reads for a wave and a level meter. Swift pushes both from dispatch queues on Apple platforms, Kotlin from threads of its own on Android, C from threads of its library on the desktops and JavaScript from timers of the page on the web.
+-- The native part paints an animated picture 30 times per second into a video stream, whose texture the UI shows and which stays current by itself, and synthesizes a tone into an audio stream, which the app plays as a voice and reads for a wave and a level meter. Swift pushes both from dispatch queues on Apple platforms, Kotlin from threads of its own on Android, C++ from threads of its library on the desktops and JavaScript from timers of the page on the web.
 local audio = require('haylen.audio')
 local collections = require('haylen.collections')
 local graphics = require('haylen.graphics')

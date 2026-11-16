@@ -8,13 +8,13 @@ The commands run from the root of the repository:
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `haylen run samples/stress/busy-interface` |
-| macOS app | `haylen run samples/stress/busy-interface --platform macos` |
-| iPhone and iPad simulator | `haylen run samples/stress/busy-interface --platform ios-simulator` |
-| Apple TV simulator | `haylen run samples/stress/busy-interface --platform tvos-simulator` |
-| Android device or emulator | `haylen run samples/stress/busy-interface --platform android --device <serial>` |
-| Browser | `haylen run samples/stress/busy-interface --platform web` |
-| Headless player | `build/macos-debug/bin/haylen-headless samples/stress/busy-interface --frames 900` |
+| Desktop player with hot reload | `haylen app run samples/stress/busy-interface` |
+| macOS app | `haylen app run samples/stress/busy-interface --target macos` |
+| iPhone and iPad simulator | `haylen app run samples/stress/busy-interface --target ios-simulator` |
+| Apple TV simulator | `haylen app run samples/stress/busy-interface --target tvos-simulator` |
+| Android device or emulator | `haylen app run samples/stress/busy-interface --target android --device <serial>` |
+| Browser | `haylen app run samples/stress/busy-interface --target web` |
+| Headless player | `build/engine/macos-debug/bin/haylen-headless samples/stress/busy-interface --frames 900` |
 
 On the headless platform the app runs a short tour by itself: it shows more cards, fills the lists with a hundred thousand items each, scrolls, goes through every rate of change, hides the charts, logs the frame numbers of every step and quits.
 
@@ -78,7 +78,7 @@ The sample uses one image. The logo is painted for it with the `codex` command l
 
 ```text
 busy-interface/
-  app.json               Window, design resolution of 1920 by 1080 in landscape and identifier.
+  haylen.json               Window, design resolution of 1920 by 1080 in landscape and identifier.
   source/
     main.lua             Sets the dense operations theme and opens the dashboard.
     scenes/dashboard.lua The dashboard: the GUI, the live values, the lists, the table, the feed and the charts.

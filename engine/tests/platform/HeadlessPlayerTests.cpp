@@ -13,7 +13,7 @@ namespace haylen::platform {
 class HeadlessPlayerTest : public ::testing::Test {
   protected:
     HeadlessPlayerTest() {
-        app.write("app.json", R"({"name": "Player Test", "identifier": "com.haylen.tests"})");
+        app.write("haylen.json", R"({"name": "Player Test", "identifier": "com.haylen.tests"})");
     }
 
     // Plays the app with the source of its main module and returns the exit status of the player.
@@ -56,7 +56,7 @@ TEST_F(HeadlessPlayerTest, PlaysSoundsOutWithoutADevice) {
 // A launched app plays until it quits, and the app that launched it starts again from its package, which the shared preferences of the two apps tell apart.
 TEST_F(HeadlessPlayerTest, StartsTheLauncherAgainWhenTheAppItLaunchedQuits) {
     test::TemporaryDirectory guest;
-    guest.write("app.json", R"({"name": "Guest", "identifier": "com.haylen.tests"})");
+    guest.write("haylen.json", R"({"name": "Guest", "identifier": "com.haylen.tests"})");
     guest.write("source/main.lua", "local haylen = require('haylen') local preferences = require('haylen.preferences') preferences.set('guest', haylen.launched() and haylen.canQuit()) preferences.save() haylen.quit({status = 9})");
     const std::string path = guest.getPath().generic_string();
     // clang-format off
@@ -77,7 +77,7 @@ TEST_F(HeadlessPlayerTest, StartsTheLauncherAgainWhenTheAppItLaunchedQuits) {
 // A launched app whose engine cannot start, since a file stands where its storage folder goes, fails the run, and the app that launched it starts again.
 TEST_F(HeadlessPlayerTest, StartsTheLauncherAgainWhenTheAppItLaunchedCannotStart) {
     test::TemporaryDirectory guest;
-    guest.write("app.json", R"({"name": "Guest", "identifier": "com.haylen.brokenguest"})");
+    guest.write("haylen.json", R"({"name": "Guest", "identifier": "com.haylen.brokenguest"})");
     guest.write("source/main.lua", "require('haylen').quit()");
     const std::filesystem::path storage = data.getPath() / "com.haylen.brokenguest";
     std::ofstream(storage) << "A file where the storage folder of the guest goes.";
@@ -111,9 +111,9 @@ TEST_F(HeadlessPlayerTest, StartsTheLauncherAgainWhenTheAppItLaunchedCannotStart
 // An app launched without native access has none of the modules and functions that reach native code and other programs but keeps every module of the engine, an app it launches with native access has none either, and the app that launched it keeps them.
 TEST_F(HeadlessPlayerTest, LaunchesAnAppWithoutNativeAccess) {
     // The two apps share preferences of their own, which no other test that runs at the same time writes.
-    app.write("app.json", R"({"name": "Player Test", "identifier": "com.haylen.nativeaccess"})");
+    app.write("haylen.json", R"({"name": "Player Test", "identifier": "com.haylen.nativeaccess"})");
     test::TemporaryDirectory guest;
-    guest.write("app.json", R"({"name": "Guest", "identifier": "com.haylen.nativeaccess"})");
+    guest.write("haylen.json", R"({"name": "Guest", "identifier": "com.haylen.nativeaccess"})");
     const std::string path = guest.getPath().generic_string();
     // clang-format off
     guest.write("source/main.lua", R"(

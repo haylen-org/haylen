@@ -7,7 +7,7 @@ This guide explains how an app shades its draws with fragment shaders of its own
 A custom shader goes through four steps:
 
 1. You write a source in the [Haylen shader language](#the-haylen-shader-language), annotated GLSL, under `content/shaders/`.
-2. The command `haylen.py shaders` compiles every source ahead of time with the Haylen shader compiler into a `.shader` package. The package holds the code of every shader language the engine runs.
+2. The command `haylen app shaders` compiles every source ahead of time with the Haylen shader compiler into a `.shader` package. The package holds the code of every shader language the engine runs.
 3. The engine loads the package as a `Shader`.
 4. A `Material` draws with the shader and holds the values of its uniforms and textures.
 
@@ -39,7 +39,7 @@ void main() {
 @program ripple haylen_vs ripple_fs
 ```
 
-The command `haylen shaders my-game` compiles it into `content/shaders/ripple.shader`. In Lua, [`haylen.assets`](../lua-api/assets.md#assetsshaderpath) loads the file and [`graphics2d.newMaterial`](../lua-api/graphics2d.md#material) makes a material of it:
+The command `haylen app shaders my-game` compiles it into `content/shaders/ripple.shader`. In Lua, [`haylen.assets`](../lua-api/assets.md#assetsshaderpath) loads the file and [`graphics2d.newMaterial`](../lua-api/graphics2d.md#material) makes a material of it:
 
 ```lua
 local assets = require('haylen.assets')
@@ -78,15 +78,15 @@ The compiler gives inputs and outputs their locations, so a stage declares them 
 
 ## Compiling
 
-The command `haylen.py shaders <app>` compiles every `.glsl` file under `content/shaders/` that declares an `@program`. It leaves the other files alone, since the sources include them. The commands `run`, `prepare`, `package` and `distribution installer` of `haylen.py` compile the shaders that changed on their own.
+The command `haylen app shaders <app>` compiles every `.glsl` file under `content/shaders/` that declares an `@program`. It leaves the other files alone, since the sources include them. Every preparation of an app, which `app prepare`, `app build`, `app run` and `app package` start with, the protected releases of the `content` commands and the package of `app serve` compile the shaders that changed on their own.
 
-The command runs `haylen-shaderc`, the Haylen shader compiler. Unless the environment variable `HAYLEN_SHADER_COMPILER` names a build of it, `haylen.py` uses the release that `engine/cmake/haylen-shader-compiler.json` pins and keeps it in `.tools/`. It downloads the binary of that release for the machine and checks its SHA-256. Only on a machine that the release ships no binary for does it build the compiler from the source of the pinned commit, as the [build guide](../tools/build.md#tools) describes.
+The command runs `haylen-shaderc`, the Haylen shader compiler. Unless the environment variable `HAYLEN_SHADER_COMPILER` names a build of it, the tooling uses the release that `engine/cmake/haylen-shader-compiler.json` pins and keeps it in `.tools/`. It downloads the binary of that release for the machine and checks its SHA-256. Only on a machine that the release ships no binary for does it build the compiler from the source of the pinned commit, as the [build guide](../tools/build.md) describes.
 
 The command passes `engine/shaders/include` with `--include`, which is how `@include haylen/material.glsl` finds the shader library. It writes a `.shader` file next to each source, so the files ship in the package like any asset. A source compiles again when its `.shader` file is older than any source of the app or of the shader library, or than the pin of the shader compiler in `engine/cmake/haylen-shader-compiler.json`, and `--force` compiles them all. An `@include` path of the app resolves against the folder of the file that includes it first, and then against the shader library.
 
 ```sh
-haylen shaders my-game
-haylen shaders my-game --force
+haylen app shaders my-game
+haylen app shaders my-game --force
 ```
 
 A source declares exactly one `@program`, whose vertex shader is `haylen_vs`. Otherwise the command stops with `The shader <path> must declare exactly one "@program" whose vertex shader is "haylen_vs" from "haylen/material.glsl".`. That program compiles ten times: as variants with the defines of each kind of draw, and once more of each for lit canvases.
@@ -116,9 +116,9 @@ Error: The shader my-game/content/shaders/ripple.glsl does not compile, and the 
 /home/me/my-game/content/shaders/ripple.glsl:14:34: error: Undeclared identifier ("wave").
 ```
 
-Browsers cannot run the shader compiler, so the web editor and the web runtime never compile shaders. An app compiles its shaders on a machine with `haylen.py` and ships the `.shader` files in its package. An edited source reaches the browser once its `.shader` file is compiled again.
+Browsers cannot run the shader compiler, so the web editor and the web runtime never compile shaders. An app compiles its shaders on a machine with the tooling and ships the `.shader` files in its package. An edited source reaches the browser once its `.shader` file is compiled again.
 
-In development, `haylen.py run` keeps compiling the sources that change while the desktop player runs with `--dev`. The player reloads every changed `.shader` file in place. The materials that use it draw with the new programs from the next frame, and keep the values that still fit its uniforms. A source with an error prints the error and leaves the last good shader running.
+In development, the development server of `haylen app run` and `haylen app serve` keeps compiling the sources that change and pushes the new `.shader` files to the app, on every target. The app reloads every changed `.shader` file in place. The materials that use it draw with the new programs from the next frame, and keep the values that still fit its uniforms. A source with an error prints the error and leaves the last good shader running.
 
 ## The shader library
 
@@ -202,7 +202,7 @@ scene.push({
 
 A material fills the uniform blocks and textures that the fragment shader declares, by these rules:
 
-- Uniform blocks take the bindings 1 to 5. Binding 0 holds the view projection of the vertex shader and whether the blend of the draw needs premultiplied colors, binding 6 holds the edges of the [fade](rendering.md#fades) of the draw, which `haylen_output` applies, and binding 7 holds the lighting of lit canvases. The renderer fills them with the layout of the shader library it was built with. So a shader compiled with another version of the library raises `The shader "<name>" was compiled with another version of the shader library. Compile it again with "haylen.py shaders".` when a draw first uses it.
+- Uniform blocks take the bindings 1 to 5. Binding 0 holds the view projection of the vertex shader and whether the blend of the draw needs premultiplied colors, binding 6 holds the edges of the [fade](rendering.md#fades) of the draw, which `haylen_output` applies, and binding 7 holds the lighting of lit canvases. The renderer fills them with the layout of the shader library it was built with. So a shader compiled with another version of the library raises `The shader "<name>" was compiled with another version of the shader library. Compile it again with "haylen app shaders".` when a draw first uses it.
 - Members are `float`, `vec2`, `vec3`, `vec4`, `int`, `ivec2`, `ivec3`, `ivec4` and `mat4`, and arrays of any of them. The std140 rules give every element of an array a whole vector of 16 bytes, so an array of `float` takes 16 bytes an element. The engine places the numbers that a material sets for an array at those strides.
 - A block holds floats or integers, not both, because the GLSL targets read each block as one array of `vec4` or `ivec4`. So integer uniforms go in a block of their own.
 - Textures take the bindings from 1 to 24, next to `sprite_texture` at 0, with samplers of their own from binding 1 up or with `sprite_sampler`. The bindings 25 to 31 hold the textures of a batch after its first, in the `batch` programs.
@@ -308,7 +308,7 @@ scene.push({
 
 ## Game shaders
 
-The test project keeps a library of forty-five material shaders of games under `samples/tests/content/shaders/library/`. Test `SHD-008` shows them by category, with a slider for each of their numbers. Each one is an ordinary source that an app copies into its own `content/shaders/` together with `common.glsl` and compiles with `haylen.py shaders`. The file `common.glsl` holds the hashes, noise and helpers they share. Among them, `library_glow` spreads the coverage of a shape like the bloom of a bright light, for the glows of neon, plasma and teleports.
+The test project keeps a library of forty-five material shaders of games under `samples/tests/content/shaders/library/`. Test `SHD-008` shows them by category, with a slider for each of their numbers. Each one is an ordinary source that an app copies into its own `content/shaders/` together with `common.glsl` and compiles with `haylen app shaders`. The file `common.glsl` holds the hashes, noise and helpers they share. Among them, `library_glow` spreads the coverage of a shape like the bloom of a bright light, for the glows of neon, plasma and teleports.
 
 | Category | Shaders | Drawn on |
 | --- | --- | --- |

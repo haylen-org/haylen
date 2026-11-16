@@ -9,7 +9,7 @@ return {
         {code = 'SHD-003', title = 'Textures as uniforms', description = 'A material that reads a gradient and a pattern texture, including a live render target.', module = 'texture-uniforms'},
         {code = 'SHD-004', title = 'Post-processing chain', description = 'The built-in vignette followed by custom blur, color grading and tube screen passes over a canvas.', module = 'post-processing'},
         {code = 'SHD-005', title = 'Shaders on text', description = 'Rainbow, dissolve and flash materials on text drawn from its distance field.', module = 'text-shader'},
-        {code = 'SHD-006', title = 'Hot reload', description = 'How a desktop run of the player recompiles and reloads a shader while the app keeps running.', module = 'hot-reload'},
+        {code = 'SHD-006', title = 'Hot reload', description = 'How a development run recompiles and reloads a shader while the app keeps running.', module = 'hot-reload'},
         {code = 'SHD-007', title = 'Shader load time', description = 'Every shader of the category loaded in the background and drawn at once, with the time of the files and of the first frame on the graphics API of the platform.', module = 'load-time'},
         {code = 'SHD-008', title = 'Shader library', description = 'Forty-five material shaders of games by category, from neon trails, lasers and shields to fire, frost, gold, glitches and shockwaves, with their numbers on sliders, each of which draws once on its target when the test opens.', module = 'library-browser'},
     },

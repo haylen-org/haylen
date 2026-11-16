@@ -32,7 +32,7 @@ import org.json.JSONObject;
 final class HaylenPlugins {
     private static final String TAG = "haylen";
     private static final String META_DATA_PREFIX = "dev.haylen.plugin.";
-    // The file of the APK assets that `haylen.py prepare` writes with the plugins of `app.json` in load order, their versions and their parameter values.
+    // The file of the APK assets that the tooling writes when it prepares an app, with the plugins of `haylen.json` in load order, their versions and their parameter values.
     private static final String PLUGINS_FILE = "haylen-plugins.json";
 
     private static final Handler mainThread = new Handler(Looper.getMainLooper());
@@ -42,7 +42,7 @@ final class HaylenPlugins {
 
     private HaylenPlugins() {}
 
-    // Creates every plugin class that the manifest names and calls `onLoad` in the load order of `haylen-plugins.json`, where every plugin follows the plugins it requires. A class that cannot be created, or an `onLoad` that fails, is logged and leaves its plugin out, so the app runs without its native part.
+    // Creates every plugin class that the manifest names and calls `onLoad` in the load order of `haylen-plugins.json`, where every plugin follows the plugins it depends on. A class that cannot be created, or an `onLoad` that fails, is logged and leaves its plugin out, so the app runs without its native part.
     static void load(Application application) {
         Map<String, String> classes = readClasses(application);
         Map<String, JSONObject> declared = readDeclared(application);
@@ -64,8 +64,7 @@ final class HaylenPlugins {
                 context.unregisterAll();
                 continue;
             }
-
-            Log.i(TAG, "Loaded the plugin \"" + id + "\" " + (entry != null ? entry.optString("version") : "that \"app.json\" does not list") + ".");
+            Log.i(TAG, "Loaded the plugin \"" + id + "\" " + (entry != null ? entry.optString("version") : "that \"haylen.json\" does not list") + ".");
             all.add(new Loaded(plugin, context));
         }
 
@@ -193,7 +192,7 @@ final class HaylenPlugins {
                 declared.put(entry.getString("id"), entry);
             }
         } catch (IOException | JSONException error) {
-            Log.w(TAG, "The assets of the app have no readable \"" + PLUGINS_FILE + "\", which \"haylen.py prepare\" writes: " + HaylenBridge.reason(error));
+            Log.w(TAG, "The assets of the app have no readable \"" + PLUGINS_FILE + "\", which the tooling writes when it prepares the app: " + HaylenBridge.reason(error));
         }
 
         return declared;

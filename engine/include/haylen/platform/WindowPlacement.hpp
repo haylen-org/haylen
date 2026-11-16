@@ -16,7 +16,7 @@
 
 namespace haylen::platform {
 
-// Where a desktop window opens or moves to, in desktop points: centered on a display, at a point of the desktop, or against a side or a corner of the whole area or the work area of a display, which the window can also fill along one or both axes. The position of the window section of `app.json` and `window.place` in Lua read it.
+// Where a desktop window opens or moves to, in desktop points: centered on a display, at a point of the desktop, or against a side or a corner of the whole area or the work area of a display, which the window can also fill along one or both axes. The position of the window section of `haylen.json` and `window.place` in Lua read it.
 class WindowPlacement final {
   public:
     enum class Anchor : std::uint8_t {

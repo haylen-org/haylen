@@ -4,7 +4,7 @@ This guide explains the two devices that draw on Windows through Direct3D: the d
 
 ## Choosing a device
 
-A Windows build compiles both devices. The player tries Direct3D 12 first and Direct3D 11 next, and it moves on to the next graphics API when one cannot start on the machine. An app can change the order with `window.graphicsApis` in `app.json`:
+A Windows build compiles both devices. The player tries Direct3D 12 first and Direct3D 11 next, and it moves on to the next graphics API when one cannot start on the machine. An app can change the order with `window.graphicsApis` in `haylen.json`:
 
 ```json
 {

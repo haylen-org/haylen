@@ -8,7 +8,7 @@ The renderer is `graphics2d::Renderer` (`engine/include/haylen/2d/graphics/Rende
 
 A frame goes through these steps:
 
-1. After the app updates, `Engine::frame` calls `Renderer::beginFrame` with the viewport and the `clearColor` of `app.json`.
+1. After the app updates, `Engine::frame` calls `Renderer::beginFrame` with the viewport and the `clearColor` of `haylen.json`.
 2. Scenes and plugins record their draws in `render` and then in `renderUi`. The functions `beginWorld`, `beginScreen` and `beginTarget` open a canvas, and each one closes the canvas before it. Every draw turns its data into GPU instances or vertices at once and stores a draw item with its sort key. During a scene transition this step runs twice: once for the scenes before the change and once for the scenes after it. Each run draws inside a capture of its own image, as [scene transitions](#scene-transitions) explains.
 3. The method `Renderer::endFrame` submits the frame. The profiler shows it as `submit`. It creates the render targets that lighting, post-processing and metaballs need, casts the shadow maps of the frame on the task pool, sorts each canvas and merges its items into commands. Then it uploads the instance, vertex and index data of the whole frame. It renders the offscreen passes and the captures in the order the frame recorded them, then the screen pass, and commits.
 4. The method `Device::collectGarbage` destroys the GPU objects whose last handle went away during the frame.
@@ -121,7 +121,7 @@ First, the offscreen work runs in the order the frame recorded it:
 - The composite of a render target canvas into its target.
 - Every [capture](#captures), once the canvases before its end have their passes.
 
-Second, the screen pass clears the framebuffer with the `clearColor` of `app.json`. It draws every world and screen canvas that no capture took, by their `order` and then in the order they began. It draws inside the rectangle of the viewport that the [scaling policy](#design-units-and-the-viewport) computes, so letterbox bars show the clear color. A world canvas draws only inside the part of that rectangle that its camera viewport covers. Render targets render first. So a screen canvas that draws the texture of a render target shows what the target recorded in the same frame, whatever the order of the two canvases.
+Second, the screen pass clears the framebuffer with the `clearColor` of `haylen.json`. It draws every world and screen canvas that no capture took, by their `order` and then in the order they began. It draws inside the rectangle of the viewport that the [scaling policy](#design-units-and-the-viewport) computes, so letterbox bars show the clear color. A world canvas draws only inside the part of that rectangle that its camera viewport covers. Render targets render first. So a screen canvas that draws the texture of a render target shows what the target recorded in the same frame, whatever the order of the two canvases.
 
 A world canvas with lighting or post-processing reaches the screen as one image that covers its whole viewport. The image blends with the premultiplied alpha of its scene, and its clear color makes it opaque by default. So it hides everything that earlier canvases drew there, unless its clear color is transparent. Begin such a canvas before the canvases that must show on top of it, or give those canvases a higher `order`.
 
@@ -180,7 +180,7 @@ scene.push({
 
 ## Design units and the viewport
 
-An app draws and lays out in design units, not in pixels. The `design` section of `app.json` sets the design size, 1920 by 1080 units by default, and a scaling policy, `expand` by default. The viewport maps the design area onto the real framebuffer by that policy, so the same layout fits a phone, a tablet and a desktop window. The [`haylen.viewport` reference](../lua-api/viewport.md#scaling-policies) lists the policies, and `viewport.setScaling` and `viewport.setDesignSize` change them while the app runs.
+An app draws and lays out in design units, not in pixels. The `design` section of `haylen.json` sets the design size, 1920 by 1080 units by default, and a scaling policy, `expand` by default. The viewport maps the design area onto the real framebuffer by that policy, so the same layout fits a phone, a tablet and a desktop window. The [`haylen.viewport` reference](../lua-api/viewport.md#scaling-policies) lists the policies, and `viewport.setScaling` and `viewport.setDesignSize` change them while the app runs.
 
 Three rectangles describe the mapping:
 
@@ -188,7 +188,7 @@ Three rectangles describe the mapping:
 - The safe rectangle, `viewport.safeRect()`, is the visible area that no notch, rounded corner, system bar or native view covers. Put buttons and important HUD text inside it.
 - The pixel rectangle, `viewport.pixelRect()`, is the part of the framebuffer that shows the visible rectangle, on whole pixels. Outside it, the letterbox bars of `fit` and `pixelPerfect` show the clear color.
 
-An app whose `orientation` in `app.json` is `any` turns its design with the screen. A design taller than wide, such as 440 by 956 units, lays out as 956 by 440 units on a screen wider than tall, and turns back when the screen does. So a phone on its side keeps the size of the design units and the UI lays out again for the wide screen, as a native app does, instead of shrinking the whole design to fit the short side. An app of one orientation keeps its design as it is. `viewport.designSize()` returns the turned size.
+An app whose `orientation` in `haylen.json` is `any` turns its design with the screen. A design taller than wide, such as 440 by 956 units, lays out as 956 by 440 units on a screen wider than tall, and turns back when the screen does. So a phone on its side keeps the size of the design units and the UI lays out again for the wide screen, as a native app does, instead of shrinking the whole design to fit the short side. An app of one orientation keeps its design as it is. `viewport.designSize()` returns the turned size.
 
 The engine recomputes the viewport at the start of every frame, so a resize or a rotation shows from the next frame on. Pointer and touch positions arrive in design units already. Inside a world canvas, `graphics2d.canvasUnitSize()` tells how long one design unit of the screen is in world units, so outlines keep one thickness at any zoom.
 
@@ -209,7 +209,7 @@ scene.push({
 
 ## Pixel density
 
-A dense display draws many framebuffer pixels in each window point: 2 on a Retina Mac, 3 on many phones, and 2 or more on a 4K monitor. Every pixel costs fill rate, so a weak GPU, a phone that runs hot or a page in a browser may spend most of its frame filling pixels that the eye hardly tells apart. The cap of the pixel density, `window.maxPixelDensity` of `app.json` or [`window.setMaxPixelDensity`](../lua-api/window.md#windowsetmaxpixeldensitycap), limits the framebuffer pixels in each point. On a denser display the framebuffer shrinks to the cap and is stretched over the window with a linear filter, so the window keeps its size and every size in points and design units stays the same.
+A dense display draws many framebuffer pixels in each window point: 2 on a Retina Mac, 3 on many phones, and 2 or more on a 4K monitor. Every pixel costs fill rate, so a weak GPU, a phone that runs hot or a page in a browser may spend most of its frame filling pixels that the eye hardly tells apart. The cap of the pixel density, `window.maxPixelDensity` of `haylen.json` or [`window.setMaxPixelDensity`](../lua-api/window.md#windowsetmaxpixeldensitycap), limits the framebuffer pixels in each point. On a denser display the framebuffer shrinks to the cap and is stretched over the window with a linear filter, so the window keeps its size and every size in points and design units stays the same.
 
 The cap trades sharpness for fill rate. Curves keep their fade of one pixel, which is now a pixel of the smaller framebuffer, so edges look softer once stretched, and text and art lose the detail that the display could show. A cap of `2` is hard to tell from the full density on most phones and fills less than half the pixels of a screen of 3 pixels in each point. A cap of `1` draws one pixel in each point, as on a display of standard density.
 
@@ -471,7 +471,7 @@ Kept meshes, `graphics2d::Mesh`, hold their vertices in C++ between draws. A def
 
 Rectangles, lines and sprites keep hard edges. So rectangles that share an edge tile without a seam, and lines on whole pixels stay crisp.
 
-The `sampleCount` of `app.json` multisamples only the window. Render targets, captures and the images of lit and post-processed canvases have one sample, so no edge of the engine depends on it.
+The `sampleCount` of `haylen.json` multisamples only the window. Render targets, captures and the images of lit and post-processed canvases have one sample, so no edge of the engine depends on it.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -1226,10 +1226,10 @@ end
 ## Sprite benchmark
 
 ```sh
-haylen bench
+haylen engine bench
 ```
 
-The command `bench` builds the `haylen-sprite-benchmark` app in Release for the host and runs it on the local GPU. The app is `engine/bench/SpriteBenchmark.cpp`, written in C++. Desktop builds add it with `haylen_add_app(... CPP ...)` when `HAYLEN_BUILD_BENCHMARKS` is on, with the package `engine/bench/sprite-benchmark`. Its `app.json` opens a 1280 by 720 high-DPI window with vsync off and a 1920 by 1080 design area with the `fit` policy. Its `content/noise.json` describes the images of the last phase.
+The command `bench` builds the `haylen-sprite-benchmark` app in Release for the host and runs it on the local GPU. The app is `engine/bench/SpriteBenchmark.cpp`, written in C++. Desktop builds add it with `haylen_add_app(... CPP ...)` when `HAYLEN_BUILD_BENCHMARKS` is on, with the package `engine/bench/sprite-benchmark`. Its `haylen.json` opens a 1280 by 720 high-DPI window with vsync off and a 1920 by 1080 design area with the `fit` policy. Its `content/noise.json` describes the images of the last phase.
 
 The benchmark runs these phases:
 
@@ -1262,7 +1262,7 @@ These results are recorded in `PROJECT.md`, measured on an Apple M5 Pro with Met
 ## Render benchmark
 
 ```sh
-haylen bench --suite render
+haylen engine bench --suite render
 ```
 
 The suite `render` builds `haylen-render-benchmark` in Release, from `engine/bench/RenderBenchmark.cpp`. It runs whole engine frames on the headless host, whose null GPU device takes the draw calls and uploads without a GPU. So it measures what the frame thread spends to record, sort, batch and submit. With `--graphics-api` or `--gpu` it draws the same frames offscreen through the GPU devices of the build and adds the time of the GPU, as the [benchmarks guide](../tools/benchmarks.md) explains. Each scene runs 30 warm-up frames and 300 measured frames of a 1920 by 1080 design area:
