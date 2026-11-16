@@ -2383,6 +2383,73 @@ Achados da revisão geral, decididos pelo dono em 10/11/2026:
 - [x] O `PROJECT.md` ainda descreve como presentes o `openUrl`, a vibração, o `platform::Dialogs`, o `haylen.dialogs` e a janela de console dentro do app: reescrever no presente o que existe agora, os plugins e o console do terminal. Feito: o pedido 117, o grupo AA e o item do console de desenvolvimento descrevem o que existe: `haylen.system` na engine, os diálogos, os links e a vibração nos plugins `dialogs`, `links` e `haptics`, e o console no terminal do `haylen run`, conferidos contra o código e as referências.
 - [x] O job "Sanitizer address" da CI falha com 640 bytes perdidos dentro do fontconfig no `LinuxFontsTest.FindsTheFilesOfTheFacesOfCharacters`: corrigir a causa na engine, sem supressão. Feito: a configuração que a engine carregava nunca era destruída, e o `FcDefaultSubstitute` do fontconfig 2.17 carregava ainda a configuração implícita do processo, que ninguém libera. Agora o `LinuxFonts` usa só a sua configuração, inclusive na substituição padrão pelo `FcConfigSetDefaultSubstitute` onde o fontconfig o tem (as versões anteriores não leem configuração ali), e o `LinuxFonts::release`, que o `Services::shutdown` do Linux chama, a destrói com o `FcConfigDestroy`, enquanto a biblioteca fica carregada, porque o `dlclose` perderia os caches do processo que o fontconfig guarda. Reproduzido no Docker com o Ubuntu 26.04 da CI e o AddressSanitizer: antes os mesmos 640 bytes, depois nenhum, com a busca carregando de novo depois da liberação. Também sem vazamento na imagem `haylen-rhi-ci-linux` (fontconfig 2.15).
 
+#### BC. Pedidos de 16 de novembro: reestruturação do tooling, consoles, CI, correções, efeitos, samples e playground
+
+Pedido do dono de 16/11/2026: continuar de onde a rodada de novembro parou e fazer os pontos abaixo, sem gambiarras, sem caminhos de reserva, sem código legado nem compatível com versões anteriores, com código limpo e legível em inglês, comentários raros, frases sem ponto e vírgula, um arquivo por classe, helpers para o que se repete, `__init__.py` vazios, sem `TYPE_CHECKING`, e o melhor do tooling de Python (uv e Ruff). As máquinas da nuvem podem compilar e testar, sempre desligadas ao terminar.
+
+Retomada e CI:
+
+- [ ] Retomar as frentes paradas em 10/11: integrar ao `main` o trabalho pronto das worktrees de legibilidade (`readability`, `rd-core`, `rd-2d-graphics`, `rd-lua-debug`, `rd-ui-core`), da revisão visual (`vr-world`) e do `ci-green`, sem perder nada que ainda não foi lido.
+- [ ] O CI verde de novo: o teste `GpuRendererTest.ReadsTexturesAtThePixelFootprintWherePointsJump` falha no OpenGL do Linux desde a filtragem anisotrópica, e os símbolos do OpenSSL e do Poco continuam visíveis nas bibliotecas do SDK. Fechar com uma execução manual inteira verde.
+- [ ] Os itens abertos de BA (revisão visual, legibilidade, `AGENTS.md`, conferência final) e a conferência de BB.
+
+Reestruturação do tooling (plano `HAYLEN_PLANO_FINAL_REESTRUTURACAO_AUDITADO_V2.md`):
+
+- [ ] O `haylen.py` monolítico vira um pacote Python instalável com uma CLI fina, gerido com uv e verificado com Ruff (formatação e lint), com uma camada `core` que não importa nenhuma plataforma concreta.
+- [ ] Um modelo canônico, tipado e imutável do projeto resolvido (`ResolvedProject`), feito uma vez por target efetivo a partir do manifesto do app e dos plugins, que todo backend consome sem resolver nada de novo.
+- [ ] O contrato `PlatformBackend` versionado (`describe`, `check_environment`, `prepare`, `build`, `verify` e as capacidades opcionais `devices`, `run`, `package`, `sign`), com `TargetId`, `PlatformDescription`, `PreparedProject`, `BuildProduct`, erros tipados e uma registry que acha backends internos e externos por entry point, sem `if` por plataforma no core.
+- [ ] Separar o port da engine (runtime, serviços, GPU, shaders) do backend do app, ambos pelo mesmo target, com uma API pública de adaptação da engine para ports.
+- [ ] Um dono só para cada compilação em cada plataforma: CMake para a engine, o SDK e o C/C++, XcodeGen e Xcode com SwiftPM na Apple, Gradle com NDK no Android, Emscripten com o backend da web, CMake nos desktops.
+- [ ] O SDK pré-compilado com manifesto próprio (revisão, targets, ABI, toolchain, variante, configuração, APIs gráficas), selecionado e validado depois dos plugins e antes do projeto nativo, sem recompilar a engine como reserva, e consumido por apps Lua e C++.
+- [ ] Um pipeline único para Lua e C++ em Debug e Release, onde o modo só muda o que é compilado.
+- [ ] O manifesto novo de plugins, validado por schema, com contribuições tipadas por target, dependências resolvidas uma vez com detecção de ciclos e conflitos, e dono de cada configuração.
+- [ ] O manifesto novo do app (`haylen.json`), projetos nativos gerados descartáveis e determinísticos, escritos só quando mudam, com estado de preparação e erros que apontam para o manifesto ou o plugin de origem.
+- [ ] Toolchains e diagnóstico por target: `haylen doctor` diz backend, SDK, toolchain, versões, capacidades e o que falta.
+- [ ] A CLI final: `new`, `doctor`, `sdk build|list`, `plugin add|remove|list`, `project inspect`, `app prepare|build|run|verify`, `test`, com saída legível e estruturada para CI.
+- [ ] Testes de contrato, de projeto gerado, de build real e um backend e um port sintéticos externos, fora da árvore, que geram um app executável sem mudar a CLI nem o core.
+- [ ] O corte final: nada do fluxo antigo, `AGENTS.md`, `README.md`, docs, templates e CI descrevem só o fluxo novo.
+
+Consoles:
+
+- [ ] Suporte a consoles (Nintendo Switch, Xbox e outros) dentro da licença e do modelo da Haylen: analisar como engines abertas que já fazem isso se organizam e ajustar a estrutura de ports para que um console entre só pelo port e pelo backend dele, fora deste repositório.
+
+Engine, templates e dependências:
+
+- [ ] Os ícones dos apps, da Apple TV e do Android passam a ser o logo de fundo branco, o mesmo dos repositórios, em vez do de fundo preto.
+- [ ] Conferir se ainda há na engine algo que não é do núcleo e deve ir para os plugins, como partes do sistema de permissões ou chamadas ao sistema que não têm a ver com a engine.
+- [ ] Tirar `templates/plugin-features` e o `plugin new --with`: os templates são só `common`, `lua`, `cpp` e `plugin`.
+- [ ] Trocar todo parser de JSON escrito à mão em C++ pelo nlohmann/json, a mesma biblioteca que o Varn usa.
+
+Texto e rolagem:
+
+- [ ] Revisar a entrada de texto em todas as plataformas, mostrando e escondendo o teclado em todos os casos, sem gambiarras, inclusive o teclado que não aparece no teste de campo de texto na web.
+- [ ] A rolagem: depois de um gesto horizontal, um gesto vertical logo em seguida não rola a área vertical que contém a horizontal até o mouse se mover (visto no app de música).
+- [ ] Na web, arrastar uma lista com o mouse não rola, só a roda: conferir se é o comportamento certo ou um defeito.
+
+Correções visuais e web:
+
+- [ ] As bordas arredondadas do slider continuam ruins.
+- [ ] O ícone do toast fica longe da curva da borda: encaixar o círculo do ícone na curva.
+- [ ] Na web, o splash mostra a barra andando com um quadrado sem o logo: carregar primeiro os arquivos básicos da página, e o logo é opcional, sem ele aparecem a barra, o progresso e o texto de carregamento.
+- [ ] O Taskbar Hero na web já começa no modo janela, já que a web não tem janela flutuante.
+
+Efeitos e samples:
+
+- [ ] Efeitos em tempo real de alto desempenho, como desfoque e o vidro do iOS, com exemplos de como usar e de como criar os próprios.
+- [ ] Um exemplo dos quatro jeitos de mostrar o personagem atrás de algo (esmaecer, pontilhado, recorte e silhueta).
+- [ ] A navegação dos apps de exemplo: abrir uma tela (como "New Post" ou uma conversa) troca só o miolo, nunca monta outro app inteiro com menu e barras por cima. Revisar todos os apps.
+- [ ] Um sample novo em `apps`: o painel de um carro elétrico, moderno e animado, simulando uma viagem com velocidade, navegação, energia, pneus e assistentes mudando, com textos em inglês.
+
+Playground do site (pendências da engine):
+
+- [ ] P0: limite de execução para todo código Lua em desenvolvimento, que o script não zera nem engole, com erro estruturado, e o player da web num Worker com OffscreenCanvas que o editor pode encerrar.
+- [ ] P1: voltar um módulo ao último conteúdo que funcionava limpa a tela de erro e relata a recuperação de verdade.
+- [ ] P1: o áudio da web encerra e começa de novo sem `InvalidStateError` em Run, restart e Stop cedo, e o contrato do editor ganha versão, capacidades, ids de pedido com confirmação, códigos de erro estáveis e a semântica de apagar, renomear e trocar arquivos.
+
+Só o dono:
+
+- [ ] Desdobrar o iPhone Duo no app Simulator e conferir ORI-005 e PLT-008, os testes de plugins em aparelhos reais e a limpeza das pastas que a permissão não deixou apagar.
+
 #### AT. Documentação
 
 - [x] Documentação organizada por módulo da engine (núcleo, gráficos, 2D com cada módulo, UI, áudio, input, plataforma, rede, conteúdo, ferramentas), com um índice claro. Os guias ficam numa pasta por módulo (`docs/core`, `docs/graphics`, `docs/2d`, `docs/ui`, `docs/audio`, `docs/input`, `docs/platform`, `docs/network`, `docs/content`, `docs/tools`), o índice único é `docs/README.md` com os guias e as referências de cada módulo, cada módulo 2D ganhou o seu guia (nós, animação, luz, navegação, espacial e geração procedural), e um verificador de links não acha nenhum link quebrado.
