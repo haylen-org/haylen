@@ -273,6 +273,11 @@ extras/images/            Brand images: the vertical and horizontal logos, the s
 - Extract focused functions when one function is accumulating unrelated responsibilities.
 - Do not extract functions only to reduce the visible line count.
 - Avoid abstractions that make the main flow harder to understand.
+- Code is written for the person who reads and debugs it later. Every important step is observable: intermediate results have descriptive names, calls are not chained into long lines, one line holds one responsibility, and closures do not nest.
+- Prefer explicit code to hidden mechanisms. Behavior never hides in macros, reflection, operator overloads, implicit conversions or side effects of properties and hooks.
+- Prefer the simple, conventional solution and concrete code. An interface, a template parameter or an extension point exists only for a need that is real today.
+- Logic is never duplicated. What repeats goes into a helper class of its context, named after it, such as `TextHelper`.
+- C++ uses the best of the standard of the project and no C idioms. Code that talks to a C library wraps its pointers and handles in C++ ownership types, such as `std::unique_ptr` with a deleter. Native code is C++, and C appears only in the C ABI that native libraries share, such as `HaylenNative.h`.
 - Avoid unnecessary nesting.
 - Prefer early returns when they simplify control flow.
 - Do not use an unnecessary else after return.
