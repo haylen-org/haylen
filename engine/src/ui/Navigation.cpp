@@ -7,7 +7,9 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/platform/Accessibility.hpp"
+#include "haylen/plugins/StoragePlugin.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
+#include "haylen/storage/ResumeState.hpp"
 #include "haylen/ui/Gui.hpp"
 #include "haylen/ui/NavigationStack.hpp"
 #include "haylen/ui/Screen.hpp"
@@ -75,6 +77,28 @@ std::shared_ptr<Presentation> Navigation::present(std::shared_ptr<Screen> screen
 const Navigation::Alert::Action* Navigation::Alert::findCancel() const noexcept {
     const auto found = std::ranges::find(actions, Role::Cancel, &Action::role);
     return found != actions.end() ? &*found : nullptr;
+}
+
+// A router that keeps the state of the navigation builds again what the run before it kept, after it registered, so a screen that fails to build leaves the router to its owner.
+std::shared_ptr<Router> Navigation::createRouter(Router::Options options) {
+    const bool restores = options.restores;
+    auto created = std::make_shared<Router>(*this, engine, std::move(options));
+    routers.push_back(created);
+    if (!restores) {
+        return created;
+    }
+
+    const std::optional<storage::ResumeState::Restored>& restored = engine.getPlugin<plugins::StoragePlugin>().getNavigationState().getRestored();
+    if (restored) {
+        created->restore(restored->value);
+    }
+
+    return created;
+}
+
+std::shared_ptr<NavigationSplit> Navigation::findSplit(const Screen& host) const {
+    const auto found = std::ranges::find_if(splits, [&host](const std::shared_ptr<NavigationSplit>& split) { return host.getGui() && split->getPrimary()->getRegion().gui == host.getGui(); });
+    return found != splits.end() ? *found : nullptr;
 }
 
 // An alert fades in as a dialog, which the person leaves only through its cancel action. An action sheet points at its anchor as a popover on a wide screen, and rises as a sheet as tall as its actions on a compact one or without an anchor, and a tap outside it cancels it.
@@ -637,8 +661,13 @@ void Navigation::closeHostedBy(const Gui& gui) {
     }
 }
 
-// The UI stops without running hooks, since the app ends with it.
+// The UI stops without running hooks, since the app ends with it, and a router that keeps the state of the navigation keeps it first.
 void Navigation::closeAll() {
+    const std::vector<std::shared_ptr<Router>> closing = std::exchange(routers, {});
+    for (const std::shared_ptr<Router>& router : closing) {
+        router->close();
+    }
+
     for (const std::shared_ptr<NavigationTabs>& candidate : tabs) {
         candidate->closed = true;
         candidate->selectionChanged.clear();
@@ -686,6 +715,10 @@ void Navigation::forget(const NavigationTabs& closed) {
 
 void Navigation::forget(const NavigationSplit& split) {
     std::erase_if(splits, [&](const std::shared_ptr<NavigationSplit>& entry) { return entry.get() == &split; });
+}
+
+void Navigation::forget(const Router& router) {
+    std::erase_if(routers, [&](const std::shared_ptr<Router>& entry) { return entry.get() == &router; });
 }
 
 void Navigation::forget(const Presentation& presentation) {

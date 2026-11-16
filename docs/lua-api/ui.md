@@ -3848,7 +3848,7 @@ ui.mount(ui.column{
 
 ## Navigation
 
-The navigation shows the screens of an app: stacks that push and pop screens in the area of a node of a frame, tabs that each keep a stack, a split of a list and its detail, presentations over everything, such as sheets, popovers, drawers, dialogs and the alerts and action sheets that the engine builds, and the toasts, snackbars and banners above them all. The [navigation guide](../ui/navigation.md) explains the model, when to use each part and how they fit together.
+The navigation shows the screens of an app: stacks that push and pop screens in the area of a node of a frame, tabs that each keep a stack, a split of a list and its detail, presentations over everything, such as sheets, popovers, drawers, dialogs and the alerts and action sheets that the engine builds, the toasts, snackbars and banners above them all, and the routes that turn links into the state of the navigation. The [navigation guide](../ui/navigation.md) explains the model, when to use each part and how they fit together.
 
 ### ui.Screen
 
@@ -4125,6 +4125,49 @@ end}
 -- A chat message that opens its conversation.
 ui.showMessage{style = 'banner', title = 'Ana', text = 'See you at six?', icon = 'images/ana.png', onTap = function()
     openChat('ana')
+end}
+```
+
+### ui.router(options)
+
+Creates the routes of the app and returns its [`Router`](#router). A route turns a link or a location, such as `music://artist/42` or `artist/42`, into the state of the navigation: the tab, the screens of its stack, the detail of a split and the presentations. The [navigation guide](../ui/navigation.md#routes-for-links) explains how routes build the state and how the router keeps it.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `routes` | list | required | The routes, as the table below describes. The first route that matches a link takes it. |
+| `tabs` | `NavigationTabs` | none | The tabs whose stacks the routes show in. |
+| `stack` | `NavigationStack` | none | The one stack the routes show in, for an app without tabs. |
+| `schemes` | list of strings | empty | The schemes of the links of the app, such as `'music'`. The host of such a link is the first segment of its path, so `music://artist/42` reads as `artist/42`. |
+| `hosts` | list of strings | empty | The hosts of the web links of the app, such as `'music.example.com'`, whose path is the location, so `https://music.example.com/artist/42` reads as `artist/42`. |
+| `links` | boolean | `true` | Opens every link that [`linkOpened`](../core/lifecycle.md#the-whole-lifecycle) reports, the one that opened the app and those that arrive while it runs. |
+| `restore` | boolean | `false` | Keeps the state of the navigation and builds it again when the app starts after a restart or after the system ended it in the background. |
+| `owner` | table or userdata | the default owner | Closes the router when it ends. |
+| `onUnmatched` | function | none | Hears the table `{url}` for a link that no route matches, which the router also logs as an error. |
+
+| Route key | Type | Meaning |
+| --- | --- | --- |
+| `name` | string | The name of the route, unique in the router. |
+| `path` | string | The segments of the location, such as `'artist/{id}'`. A segment in braces is a parameter: `{id}` reads text, and `{id:integer}`, `{price:number}` and `{on:boolean}` read their type. A segment that does not read as its type makes the route not match. |
+| `query` | table | The query parameters the route reads and their types, such as `{sort = 'string', page = 'integer'}`. A link may leave them out, and the route ignores the others. |
+| `tab` | string | The tab the route shows in. Without it, the route shows in the selected tab. |
+| `parent` | string | The route whose screens lie under the screen of this one, made from the same parameters, so the stack holds what the person would have reached by hand. |
+| `detail` | boolean | Shows the screen as the detail of the [split](#uinavigationsplitoptions) that the screen under it holds. |
+| `present` | table | Presents the screen with these [options of `ui.present`](#uipresentscreen-options) instead of showing it in a stack. |
+| `screen` | function | Makes the screen from the table of the parameters. A route without it selects its tab and shows the root of the tab. |
+
+A table with another key raises `Unknown option "<key>".`. A missing list raises `A router lists its routes in "routes", each a table with a "name" and a "path".`, a router with both tabs and a stack or neither raises `A router shows its routes in the stacks of "tabs" or in one "stack".`, a route without a name raises `Every route needs a name.`, a repeated name raises `The route "<name>" is given more than once.`, a tab the tabs lack raises `The route "<name>" shows in the tab "<tab>", which the router has no tabs with.`, a parent no route has raises `The route "<name>" names the parent "<parent>", which no route has.`, a parent that is a detail or a presentation raises `The parent of a route is a route of a stack, which "<parent>" is not.`, a circle of parents raises `The parents of the route "<name>" lead back to a route they passed.` and an unknown type raises `The path of the route "<name>" has a parameter of the type "<type>", which is not "string", "integer", "number" or "boolean".`.
+
+```lua
+local ui = require('haylen.ui')
+
+local router = ui.router{tabs = tabs, schemes = {'music'}, hosts = {'music.example.com'}, restore = true, routes = {
+    {name = 'home', path = 'home', tab = 'home'},
+    {name = 'search', path = 'search', tab = 'search', query = {q = 'string'}, screen = function(parameters) return Search(parameters.q) end},
+    {name = 'artist', path = 'artist/{id}', tab = 'search', screen = function(parameters) return Artist(parameters.id) end},
+    {name = 'album', path = 'album/{id:integer}', parent = 'artist', screen = function(parameters) return Album(parameters.id) end},
+    {name = 'player', path = 'player', present = {detents = {'large'}}, screen = function() return Player() end},
+}, onUnmatched = function(event)
+    print('The link ' .. event.url .. ' leads nowhere.')
 end}
 ```
 
@@ -4407,6 +4450,78 @@ async.spawn(function()
         deleteForGood()
     end
 end)
+```
+
+## Router
+
+A `Router`, named `haylen.Router` in messages, turns links and locations into the state of the navigation.
+
+### router:open(link, transition)
+
+Builds the state that a link or a location opens, the way a link that opens the app does: the modal presentations leave, the tab of the route shows, its stack holds the root of the tab, the screens of the parents of the route and the screen of the route, and a route with `detail` or `present` shows its screen there over the screens of its parents. A link that no route matches raises `No route matches the link "<link>".`, and a query parameter whose text is not of its type raises `The query parameter "<name>" of the link "<link>" must be of the type "<type>".`.
+
+```lua
+router:open('music://album/7?track=3')
+```
+
+### router:push(location, transition)
+
+Shows the screen of a location in the flow that shows: pushed on the stack of the selected tab, as a detail or presented, without the screens of its parents. It suits a button that goes deeper. A route without a screen shows the root of its tab. A location that no route matches raises `No route matches the link "<location>".`.
+
+```lua
+ui.button{text = 'Open the album', onClick = function() router:push('album/' .. album.id) end}
+```
+
+### router:match(link)
+
+Returns the name of the route that a link or a location matches and the table of its parameters, or `nil` when none matches.
+
+```lua
+local name, parameters = router:match('artist/42')
+```
+
+### router:location(screen)
+
+Returns the location the router showed a screen for, or `nil` for a screen it did not show, such as the location to share.
+
+```lua
+local link = 'https://music.example.com/' .. router:location(screen)
+```
+
+### router:save()
+
+Returns the state of the navigation as a table: the selected tab, the locations of the screens of every stack, of the details and of the presentations that the router showed. Screens that the app showed without the router stay out of it.
+
+```lua
+local state = router:save()
+```
+
+### router:restore(state)
+
+Builds again the state that `save` returned. A location that no route matches anymore, such as after an update of the app, is left out with a warning in the log.
+
+```lua
+router:restore(state)
+```
+
+### router:close()
+
+Stops opening links and keeping the state. A change of a closed router raises `The router is closed.`.
+
+```lua
+router:close()
+```
+
+### Properties
+
+| Property | Type | Meaning |
+| --- | --- | --- |
+| `closed` | boolean | Whether the router closed. Read only. |
+
+```lua
+if not router.closed then
+    router:open(link)
+end
 ```
 
 ## Gui

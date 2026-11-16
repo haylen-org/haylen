@@ -630,6 +630,7 @@ Every component of "haylen.ui" with its themes, focus navigation, tweens, text e
 | `GUI-034` | Theme sounds | A theme that plays sounds for presses, focus moves, choices, slider steps and typing, styles that silence or replace the sound of one control, and a switch that mutes them. |  |
 | `GUI-035` | Navigation | A small app whose bars stay while a stack pushes and pops screens in its middle, tabs that keep their stacks, a list and its detail side by side or as one stack, and a new post in a sheet with bars and a stack of its own. |  |
 | `GUI-036` | Presentations | Sheets that rest at their detents, a page and a form sheet, a sheet beside the app, a cover, a dialog, a drawer, a popover, an alert, an action sheet, a picker that returns its color and a note that asks before it closes. |  |
+| `GUI-037` | Routes and links | Links of the scheme of the native demo plugin that open a place with the places under it, a chat in the detail of a split and a new post in a sheet, a link that no route matches, and the state that the router keeps. |  |
 
 #### Accessibility (ACC)
 

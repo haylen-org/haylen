@@ -101,6 +101,24 @@ bool NavigationTabs::goBackToFirst() {
     return true;
 }
 
+std::vector<std::string> NavigationTabs::getTabIds() const {
+    std::vector<std::string> ids;
+    for (const Entry& entry : entries) {
+        ids.push_back(entry.tab.id);
+    }
+
+    return ids;
+}
+
+bool NavigationTabs::hasTab(std::string_view id) const noexcept {
+    return std::ranges::any_of(entries, [id](const Entry& entry) { return entry.tab.id == id; });
+}
+
+std::shared_ptr<NavigationStack> NavigationTabs::findStack(std::string_view id) const noexcept {
+    const auto found = std::ranges::find_if(entries, [id](const Entry& entry) { return entry.tab.id == id; });
+    return found != entries.end() ? found->stack : nullptr;
+}
+
 void NavigationTabs::close() {
     if (closed) {
         return;

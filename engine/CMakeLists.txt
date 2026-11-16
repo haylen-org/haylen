@@ -739,6 +739,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/Presentation.cpp
   src/ui/PresentationView.cpp
   src/ui/PropertyReader.cpp
+  src/ui/Router.cpp
   src/ui/Scaling.cpp
   src/ui/Screen.cpp
   src/ui/ScriptedScreen.cpp

@@ -1,6 +1,6 @@
 # 🧭 Navigation
 
-This guide explains how an app moves between its screens: a frame with bars that stays, stacks that push and pop screens in the middle of the frame, tabs that each keep their own stack, a list and its detail that sit side by side on a tablet and work as one stack on a phone, presentations that open a new flow over everything, such as sheets, popovers, drawers, dialogs, alerts and action sheets, and the toasts, snackbars and banners that tell of what happened. It also explains the results of a flow, unsaved work, the system back, deep links and the hooks of a screen. The [`haylen.ui` reference](../lua-api/ui.md#navigation) lists every function, option and error.
+This guide explains how an app moves between its screens: a frame with bars that stays, stacks that push and pop screens in the middle of the frame, tabs that each keep their own stack, a list and its detail that sit side by side on a tablet and work as one stack on a phone, presentations that open a new flow over everything, such as sheets, popovers, drawers, dialogs, alerts and action sheets, and the toasts, snackbars and banners that tell of what happened. It also explains the results of a flow, unsaved work, the system back, the routes of links and the hooks of a screen. The [`haylen.ui` reference](../lua-api/ui.md#navigation) lists every function, option and error.
 
 ## Screens, stacks and the frame
 
@@ -266,21 +266,31 @@ It goes through the layers from the top: each presentation, and then the app und
 
 The screen that a pop or a dismissal would take away hears `back` first and may keep its place. Only when nothing goes back does the press reach the app: the root of the GUI with the focus hears `cancel`, and on Android the back button leaves the app. So an app built on the navigation never calls `window.setBackLeavesApp`. A back button in a bar calls `ui.goBack()`, which goes back the same way, and `ui.canGoBack()` tells whether it would.
 
-## Deep links
+## Routes for links
 
-A link that opens the app, such as a link to a conversation, builds the stack that the person would have reached by hand. The tabs select the tab, and the stack of that tab takes the whole list at once. Only the top screen builds its GUI, and the screens under it build theirs when the person goes back to them.
+A link that opens the app, such as a link to an album that a friend sent, lands on the screen it names, with the screens the person would have reached by hand under it. The routes of the app decide that state. A route has a path whose segments may be typed parameters, such as `album/{id:integer}`, and typed query parameters. It names the tab it shows in, the route whose screens lie under it, and whether its screen is a detail or a presentation.
 
 ```lua
-local events = require('haylen.events')
-
-events.on('linkOpened', function(event)
-    local person = event.url:match('^photos://chat/(%w+)$')
-    if person then
-        tabs:select('messages')
-        tabs.current:setScreens({Inbox(), Chat(person)}, {effect = 'none'})
-    end
-end)
+local router = ui.router{tabs = tabs, schemes = {'music'}, hosts = {'music.example.com'}, restore = true, routes = {
+    {name = 'home', path = 'home', tab = 'home'},
+    {name = 'artist', path = 'artist/{id}', tab = 'search', screen = function(p) return Artist(p.id) end},
+    {name = 'album', path = 'album/{id:integer}', parent = 'artist', screen = function(p) return Album(p.id) end},
+    {name = 'chat', path = 'chat/{person}', tab = 'messages', detail = true, screen = function(p) return Chat(p.person) end},
+    {name = 'player', path = 'player', present = {detents = {'large'}}, screen = function() return Player() end},
+}}
 ```
+
+The link `music://album/7?artist=42` reads as the location `album/7`, since the host of a link of a scheme of the app is the first segment of its path. A web link of a host of the app, such as `https://music.example.com/album/7`, reads its path the same way. The first route that matches takes the link. A segment that does not read as the type of its parameter makes the route not match, so `album/seven` reaches no album.
+
+The router opens every link that [`linkOpened`](../core/lifecycle.md#the-whole-lifecycle) reports, the one that launched the app and those that arrive while it runs, through the same flow that the platform and the plugins use for links. Opening a link builds the whole state: the modal presentations leave, the tab of the route shows, and its stack holds the root of the tab, the screens of the parents of the route and the screen of the route. A route with `detail` shows its screen as the detail of the split that the screen under it holds, and a route with `present` presents it over them. A link that no route matches leaves the app as it is, and the router logs `No route matches the link "<link>".` and tells `onUnmatched`.
+
+Code goes to a route the same way. `router:open(location)` builds the whole state like a link, and `router:push(location)` shows the screen of the location in the flow that shows, such as a button that opens an album from an artist.
+
+## Keeping the state of the navigation
+
+Mobile systems end apps in the background to free memory, and a person who comes back expects the app where they left it. A router with `restore = true` keeps the state of the navigation: the selected tab and the locations of the screens it showed in every stack, as details and as presentations. The engine writes it to the storage of the app when the app goes to the background and when it restarts, such as after a change of its code in development, and drops it when the app comes back to the foreground or stops normally. A launch after a restart or after the system ended the app builds the state again, each screen from its location, and a link that launched the app opens after it.
+
+Only the screens that the router showed have a location, so an app that wants its whole state back shows its screens through its routes. A screen that keeps more, such as a draft or the scroll of a list, keeps it with the [resume state](../lua-api/storage.md#resume-state) of `haylen.storage`.
 
 ## Scenes and navigation
 
@@ -292,7 +302,7 @@ A stack draws only the top screen of each stack that shows, and both screens of 
 
 ## From C++
 
-The classes of `haylen::ui` are the same model. `ui::Screen` builds its GUI in `build` and hears the same hooks. The `ui::Navigation` of the UI plugin creates stacks with `createStack`, tabs with `createTabs`, splits with `createSplit`, presentations with `present`, alerts with `presentAlert` and messages with `showMessage`, which takes the options of `ui.showMessage` as JSON properties, and `goBack` takes the system back. A presentation tells that it left with its `dismissed` signal, and `getResult` returns its result as JSON. A `ui::Message` tells what happened with its signals `appeared`, `tapped`, `actionPressed` and `dismissed`, and `getReason` says why it left.
+The classes of `haylen::ui` are the same model. `ui::Screen` builds its GUI in `build` and hears the same hooks. The `ui::Navigation` of the UI plugin creates stacks with `createStack`, tabs with `createTabs`, splits with `createSplit`, presentations with `present`, alerts with `presentAlert`, messages with `showMessage` and the routes of links with `createRouter`, which takes the options of `ui.showMessage` as JSON properties, and `goBack` takes the system back. A presentation tells that it left with its `dismissed` signal, and `getResult` returns its result as JSON. A `ui::Message` tells what happened with its signals `appeared`, `tapped`, `actionPressed` and `dismissed`, and `getReason` says why it left.
 
 ```cpp
 #include <memory>

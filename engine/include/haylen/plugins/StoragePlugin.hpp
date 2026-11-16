@@ -36,6 +36,9 @@ class StoragePlugin final : public Plugin {
     [[nodiscard]] storage::Preferences& getPreferences();
     [[nodiscard]] storage::ResumeState& getResumeState();
 
+    // The state of the navigation that a router keeps, which reaches user storage when the app goes to the background or restarts and leaves it when the app comes back or stops normally.
+    [[nodiscard]] storage::ResumeState& getNavigationState();
+
     // Runs the operation on the I/O pool once every operation queued before it finished, so operations on the same files never overlap and reach the disk in order. The operation hands its result back itself, such as through the frame queue of the job system, and an exception it throws reaches the engine as an error while the operations after it still run. Stopping the plugin runs the operations still waiting on the frame thread, so a save queued just before the app quits still reaches the disk.
     void queueOperation(std::function<void()> operation);
 
@@ -61,8 +64,8 @@ class StoragePlugin final : public Plugin {
     // Writes pending preferences from shutdown paths, where a failure must not escape.
     static void saveQuietly(storage::Preferences& target) noexcept;
 
-    // Writes the resume state when the app goes to the background, or removes it, where a failure is logged and the app goes on.
-    void writeResumeState(bool background) noexcept;
+    // Writes a resume state while the app is away, or removes it, where a failure is logged and the app goes on.
+    static void writeResumeState(storage::ResumeState& state, bool kept) noexcept;
 
     // Tells whether a stored value is absent or of the JSON type, where any number counts as a float.
     [[nodiscard]] static bool hasStoredType(const core::Json& value, core::Json::value_t type) noexcept;
@@ -78,6 +81,7 @@ class StoragePlugin final : public Plugin {
     std::unique_ptr<storage::SaveSlots> saveSlots;
     std::unique_ptr<storage::Preferences> preferences;
     std::unique_ptr<storage::ResumeState> resumeState;
+    std::unique_ptr<storage::ResumeState> navigationState;
 };
 
 } // namespace haylen::plugins

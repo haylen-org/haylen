@@ -94,7 +94,7 @@ The engine names every moment of the system, of the app and of its screen with o
 | A display connects, disconnects or changes. | `displayConnected`, `displayDisconnected`, `displayChanged` | [`haylen.display`](../lua-api/display.md) |
 | The on-screen keyboard shows or hides. | `keyboardShown`, `keyboardHidden` | The frame of the keyboard comes with `keyboardShown`. |
 
-The language that the person picks in the settings belongs to [`haylen.localization`](../lua-api/localization.md). Links that open the app reach it as `linkOpened`, and the native parts of the plugins that declare them also receive them, as the [plugin guide](../platform/plugins.md#links-and-notifications) describes, together with the taps of notifications. Some apps keep playing their sound in the background, such as a music player, which the [audio guide](../audio/audio.md#playing-in-the-background) describes with what each platform allows.
+The language that the person picks in the settings belongs to [`haylen.localization`](../lua-api/localization.md). Links that open the app reach it as `linkOpened`, which the [routes of the navigation](../ui/navigation.md#routes-for-links) turn into the screen they name, and the native parts of the plugins that declare them also receive them, as the [plugin guide](../platform/plugins.md#links-and-notifications) describes, together with the taps of notifications. Some apps keep playing their sound in the background, such as a music player, which the [audio guide](../audio/audio.md#playing-in-the-background) describes with what each platform allows.
 
 ## App states
 

@@ -14,6 +14,7 @@
 #include "haylen/ui/NavigationTransition.hpp"
 #include "haylen/ui/Presentation.hpp"
 #include "haylen/ui/Region.hpp"
+#include "haylen/ui/Router.hpp"
 
 struct lua_State;
 
@@ -25,7 +26,7 @@ class NavigationStack;
 class NavigationTabs;
 class Screen;
 
-// Adds the navigation to `haylen.ui`: the `Screen` base class, the functions that create stacks, tabs and splits, present screens, alerts and action sheets, show messages, the system back, and the classes `NavigationStack`, `NavigationTabs`, `NavigationSplit`, `Presentation` and `Message`.
+// Adds the navigation to `haylen.ui`: the `Screen` base class, the functions that create stacks, tabs, splits and routers, present screens, alerts and action sheets, show messages, the system back, and the classes `NavigationStack`, `NavigationTabs`, `NavigationSplit`, `Presentation`, `Message` and `Router`.
 class NavigationLua final {
   public:
     static void install(lua_State* L);
@@ -51,6 +52,8 @@ class NavigationLua final {
     static constexpr std::array<std::string_view, 2> kDismissFields{"result", "transition"};
     static constexpr std::array<std::string_view, 3> kTransitionFields{"effect", "duration", "ease"};
     static constexpr std::array<std::string_view, 5> kMessageHandlerFields{"owner", "onShow", "onAction", "onTap", "onDismiss"};
+    static constexpr std::array<std::string_view, 9> kRouterFields{"routes", "tabs", "stack", "schemes", "hosts", "links", "restore", "owner", "onUnmatched"};
+    static constexpr std::array<std::string_view, 8> kRouteFields{"name", "path", "query", "tab", "parent", "detail", "present", "screen"};
 
     [[nodiscard]] static Navigation& getNavigation(lua_State* L);
     template <typename T> static void pushObject(lua_State* L, const std::shared_ptr<T>& object);
@@ -76,6 +79,9 @@ class NavigationLua final {
     // Ties a presentation that Lua made to its owner, connects its handlers, keeps the promise of its result in its userdata and pushes the userdata.
     static void finishPresentation(lua_State* L, const std::shared_ptr<Presentation>& presentation, int owner, int dismissHandler, int detentHandler);
 
+    // Reads a route of `ui.router` from the table at the index.
+    [[nodiscard]] static Router::Route readRoute(lua_State* L, int index);
+
     // Pushes the promise of the result of the presentation or message userdata at the index, which settles once it left, making it the first time it is asked for.
     template <typename T> static void pushResult(lua_State* L, int index);
 
@@ -97,6 +103,7 @@ class NavigationLua final {
     static int present(lua_State* L);
     static int presentAlert(lua_State* L);
     static int showMessage(lua_State* L);
+    static int router(lua_State* L);
     static int goBack(lua_State* L);
     static int canGoBack(lua_State* L);
     static int screenState(lua_State* L);
@@ -150,6 +157,14 @@ class NavigationLua final {
     static int messageShown(lua_State* L);
     static int messageDismissed(lua_State* L);
     static int messageResult(lua_State* L);
+    static int routerOpen(lua_State* L);
+    static int routerPush(lua_State* L);
+    static int routerMatch(lua_State* L);
+    static int routerLocation(lua_State* L);
+    static int routerSave(lua_State* L);
+    static int routerRestore(lua_State* L);
+    static int routerClose(lua_State* L);
+    static int routerClosed(lua_State* L);
 };
 
 } // namespace haylen::ui

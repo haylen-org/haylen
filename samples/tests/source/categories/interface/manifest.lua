@@ -40,5 +40,6 @@ return {
         {code = 'GUI-034', title = 'Theme sounds', description = 'A theme that plays sounds for presses, focus moves, choices, slider steps and typing, styles that silence or replace the sound of one control, and a switch that mutes them.', module = 'theme-sounds'},
         {code = 'GUI-035', title = 'Navigation', description = 'A small app whose bars stay while a stack pushes and pops screens in its middle, tabs that keep their stacks, a list and its detail side by side or as one stack, and a new post in a sheet with bars and a stack of its own.', module = 'navigation'},
         {code = 'GUI-036', title = 'Presentations', description = 'Sheets that rest at their detents, a page and a form sheet, a sheet beside the app, a cover, a dialog, a drawer, a popover, an alert, an action sheet, a picker that returns its color and a note that asks before it closes.', module = 'presentations'},
+        {code = 'GUI-037', title = 'Routes and links', description = 'Links of the scheme of the native demo plugin that open a place with the places under it, a chat in the detail of a split and a new post in a sheet, a link that no route matches, and the state that the router keeps.', module = 'routes'},
     },
 }

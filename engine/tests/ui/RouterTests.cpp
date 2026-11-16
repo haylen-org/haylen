@@ -1,0 +1,230 @@
+#include <gtest/gtest.h>
+
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include "haylen/core/Engine.hpp"
+#include "haylen/core/EventBus.hpp"
+#include "haylen/core/LifecycleEvent.hpp"
+#include "haylen/ui/Navigation.hpp"
+#include "haylen/ui/NavigationSplit.hpp"
+#include "haylen/ui/NavigationStack.hpp"
+#include "haylen/ui/NavigationTabs.hpp"
+#include "haylen/ui/Router.hpp"
+#include "haylen/ui/Screen.hpp"
+#include "support/RecordingScreen.hpp"
+#include "support/UiFixture.hpp"
+
+namespace haylen::ui {
+
+// A frame with a middle where the tabs of the routes show, and screens that remember the parameters they were made from.
+class RouterTest : public ::testing::Test, public test::UiFixture {
+  protected:
+    RouterTest() {
+        frame = mount(R"({"kind": "column", "children": [{"kind": "column", "id": "middle", "grow": 1, "align": "stretch"}]})");
+    }
+
+    // A screen whose name holds the parameters it was made from, and whose GUI holds the areas of a split.
+    std::shared_ptr<test::RecordingScreen> make(const std::string& name) {
+        return std::make_shared<test::RecordingScreen>(getUi(), name, log, R"({"kind": "row", "children": [{"kind": "column", "id": "list", "grow": 1}, {"kind": "column", "id": "detail", "grow": 1}]})");
+    }
+
+    Router::Factory named(const std::string& prefix, const char* key = nullptr) {
+        // clang-format off
+        return [this, prefix, key](const core::Json& parameters) {
+            const std::string name = key == nullptr ? prefix : prefix + ":" + parameters.at(key).dump();
+            return make(name);
+        };
+        // clang-format on
+    }
+
+    [[nodiscard]] Navigation& getNavigation() {
+        return getUi().getNavigation();
+    }
+
+    // Tabs for the home and the search, whose roots are screens of their names.
+    std::shared_ptr<NavigationTabs> createTabs() {
+        // clang-format off
+        return getNavigation().createTabs({.gui = frame, .node = "middle"}, {
+            {.id = "home", .root = [this] { return make("home"); }},
+            {.id = "search", .root = [this] { return make("search"); }},
+        }, "home");
+        // clang-format on
+    }
+
+    std::vector<Router::Route> createRoutes() {
+        return {
+            {.name = "home", .path = "home", .tab = "home"},
+            {.name = "artist", .path = "artist/{artist}", .tab = "search", .screen = named("artist", "artist")},
+            {.name = "album", .path = "artist/{artist}/album/{id:integer}", .query = {{"track", Router::Type::Integer}}, .parent = "artist", .screen = named("album", "id")},
+            {.name = "player", .path = "player", .presentation = Presentation::Options{.style = Presentation::Style::FullScreen}, .screen = named("player")},
+        };
+    }
+
+    // The names of the screens of a stack, from the root to the top.
+    [[nodiscard]] static std::string describe(const NavigationStack& stack) {
+        std::string names;
+        for (const std::shared_ptr<Screen>& screen : stack.getScreens()) {
+            names += (names.empty() ? "" : " ") + std::static_pointer_cast<test::RecordingScreen>(screen)->getName();
+        }
+        return names;
+    }
+
+    std::shared_ptr<Gui> frame;
+    std::vector<std::string> log;
+};
+
+// A path matches with its typed parameters, a link of a scheme of the app reads its host as the first segment, a web link of a host of the app reads its path, and a segment of another type matches no route.
+TEST_F(RouterTest, MatchesLinksWithTheirTypedParameters) {
+    const std::shared_ptr<Router> router = getNavigation().createRouter({.routes = createRoutes(), .tabs = createTabs(), .schemes = {"music"}, .hosts = {"music.example.com"}});
+    const std::optional<Router::Match> album = router->match("music://artist/sea%20wolves/album/7?track=3&utm=mail#top");
+    ASSERT_TRUE(album.has_value());
+    EXPECT_EQ(album->route->name, "album");
+    EXPECT_EQ(album->parameters, (core::Json{{"artist", "sea wolves"}, {"id", 7}, {"track", 3}}));
+
+    EXPECT_EQ(router->match("https://music.example.com/artist/42")->parameters, (core::Json{{"artist", "42"}}));
+    EXPECT_EQ(router->match("/home")->route->name, "home");
+    EXPECT_FALSE(router->match("music://artist/42/album/seven").has_value());
+    EXPECT_FALSE(router->match("photos://artist/42").has_value());
+    EXPECT_FALSE(router->match("https://other.example.com/artist/42").has_value());
+    EXPECT_THROW(static_cast<void>(router->match("artist/42/album/7?track=first")), std::invalid_argument);
+}
+
+// A link selects the tab of its route and builds its stack from the root of the tab, the screens of its parents and its own screen, and a link of a presentation presents its screen over them.
+TEST_F(RouterTest, OpensALinkWithTheScreensOfItsParentsInItsTab) {
+    const std::shared_ptr<NavigationTabs> tabs = createTabs();
+    const std::shared_ptr<Router> router = getNavigation().createRouter({.routes = createRoutes(), .tabs = tabs, .schemes = {"music"}});
+    frames(2);
+
+    router->open("music://artist/42/album/7");
+    frames(30);
+    EXPECT_EQ(tabs->getSelected(), "search");
+    EXPECT_EQ(describe(*tabs->getCurrent()), "search artist:\"42\" album:7");
+    EXPECT_EQ(router->getLocation(*tabs->getCurrent()->getTop()), "artist/42/album/7");
+
+    router->push("player");
+    frames(30);
+    ASSERT_EQ(getNavigation().getPresentations().size(), 1U);
+    EXPECT_EQ(router->getLocation(*getNavigation().getPresentations().front()->getScreen()), "player");
+
+    // A link replaces what the person was doing, so the presentation leaves.
+    router->open("home");
+    frames(30);
+    EXPECT_EQ(tabs->getSelected(), "home");
+    EXPECT_TRUE(getNavigation().getPresentations().empty());
+    EXPECT_THROW(router->open("music://nowhere"), std::invalid_argument);
+}
+
+// A link that opens the app reaches the router through `linkOpened`, and a link that no route matches is told and leaves the app as it is.
+TEST_F(RouterTest, OpensTheLinksThatOpenTheApp) {
+    const std::shared_ptr<NavigationTabs> tabs = createTabs();
+    const std::shared_ptr<Router> router = getNavigation().createRouter({.routes = createRoutes(), .tabs = tabs, .schemes = {"music"}});
+    std::vector<std::string> missed;
+    static_cast<void>(router->unmatched.connect([&missed](const std::string& url) { missed.push_back(url); }));
+
+    getEngine().getEvents().emit(core::LifecycleEvent::kLinkOpened, {{"url", "music://artist/7"}});
+    getEngine().getEvents().emit(core::LifecycleEvent::kLinkOpened, {{"url", "music://lost/7"}});
+    frames(30);
+    EXPECT_EQ(describe(*tabs->getCurrent()), "search artist:\"7\"");
+    EXPECT_EQ(missed, (std::vector<std::string>{"music://lost/7"}));
+}
+
+// A route with a detail shows its screen as the detail of the split that the screen under it holds.
+TEST_F(RouterTest, ShowsADetailInTheSplitOfTheScreenUnderIt) {
+    const auto inbox = make("inbox");
+    const std::shared_ptr<NavigationStack> stack = getNavigation().createStack({.gui = frame, .node = "middle"}, inbox);
+    frames(2);
+    const std::shared_ptr<NavigationSplit> split = getNavigation().createSplit({.gui = inbox->getGui(), .node = "list"}, {.gui = inbox->getGui(), .node = "detail"}, make("people"), {}, false);
+    const std::shared_ptr<Router> router = getNavigation().createRouter({.routes = {{.name = "chat", .path = "chat/{person}", .detail = true, .screen = named("chat", "person")}}, .stack = stack});
+    router->open("chat/ana");
+    frames(30);
+    EXPECT_EQ(describe(*split->getDetail()), "chat:\"ana\"");
+
+    const std::shared_ptr<Router> lost = getNavigation().createRouter({.routes = {{.name = "chat", .path = "chat/{person}", .detail = true, .screen = named("chat", "person")}}, .stack = split->getDetail()});
+    EXPECT_THROW(lost->push("chat/bruno"), std::logic_error);
+}
+
+// The state of the navigation reads back as the same tabs, stacks and presentations, made again from their locations.
+TEST_F(RouterTest, SavesAndRestoresTheStateOfTheNavigation) {
+    const std::shared_ptr<NavigationTabs> tabs = createTabs();
+    const std::shared_ptr<Router> router = getNavigation().createRouter({.routes = createRoutes(), .tabs = tabs});
+    router->open("artist/42/album/7?track=3");
+    router->push("player");
+    frames(30);
+    const core::Json state = router->save();
+    EXPECT_EQ(state.at("tab"), "search");
+    EXPECT_EQ(state.at("stacks").at("search"), (core::Json{"artist/42", "artist/42/album/7?track=3"}));
+    EXPECT_EQ(state.at("presented"), (core::Json{"player"}));
+
+    router->open("home");
+    frames(30);
+    core::Json changed = state;
+    changed["stacks"]["search"].push_back("lost/1");
+    router->restore(changed);
+    frames(30);
+    EXPECT_EQ(tabs->getSelected(), "search");
+    EXPECT_EQ(describe(*tabs->getCurrent()), "search artist:\"42\" album:7");
+    EXPECT_EQ(getNavigation().getPresentations().size(), 1U);
+}
+
+// Routes of Lua open links with typed parameters through the tabs and the screens of their parents, push a location, match a link and locate a screen, tell about a link that no route matches, and keep the state of the navigation across a restart.
+TEST_F(RouterTest, RoutesLinksFromLuaAndKeepsTheStateAcrossARestart) {
+    // clang-format off
+    const std::string app = R"(
+        local haylen = require('haylen')
+        ui = require('haylen.ui')
+        Page = haylen.class('Page', ui.Screen)
+        function Page:init(name) self.name = name end
+        function Page:build() return ui.column{ui.label{text = self.name}} end
+        frame = ui.mount(ui.column{ui.column{id = 'middle', grow = 1, align = 'stretch'}}, {placement = 'screen'})
+        tabs = ui.navigationTabs{gui = frame, id = 'middle', tabs = {{id = 'home', root = function() return Page('home') end}, {id = 'search', root = function() return Page('search') end}}}
+        missed = {}
+        router = ui.router{tabs = tabs, schemes = {'music'}, restore = true, onUnmatched = function(event) missed[#missed + 1] = event.url end, routes = {
+            {name = 'home', path = 'home', tab = 'home'},
+            {name = 'artist', path = 'artist/{artist}', tab = 'search', screen = function(p) return Page('artist ' .. p.artist) end},
+            {name = 'album', path = 'artist/{artist}/album/{id:integer}', query = {track = 'integer'}, parent = 'artist', screen = function(p) return Page('album ' .. p.id .. ' ' .. tostring(p.track)) end},
+            {name = 'player', path = 'player', present = {style = 'fullScreen'}, screen = function() return Page('player') end},
+        }}
+        function names()
+            local list = {}
+            for index, screen in ipairs(tabs.current.screens) do list[index] = screen.name end
+            return tabs.selected .. ': ' .. table.concat(list, ', ')
+        end
+    )";
+    // clang-format on
+    getFixture().runLua(app);
+    getFixture().runLua("router:open('music://artist/sea/album/7?track=2')");
+    getEngine().getEvents().emit(core::LifecycleEvent::kLinkOpened, {{"url", "music://lost/1"}});
+    frames(30);
+    EXPECT_EQ(getFixture().lua("return names()"), "search: search, artist sea, album 7 2");
+    EXPECT_EQ(getFixture().lua("return router:location(tabs.current.top) .. ' ' .. table.concat(missed, ',')"), "artist/sea/album/7?track=2 music://lost/1");
+    EXPECT_EQ(getFixture().lua("local name, p = router:match('music://artist/sea/album/7') return name .. ' ' .. p.artist .. ' ' .. p.id"), "album sea 7");
+    EXPECT_EQ(getFixture().lua("return tostring(router:match('music://lost'))"), "nil");
+    EXPECT_NE(getFixture().lua("router:open('lost/1')").find("No route matches the link \"lost/1\"."), std::string::npos);
+    EXPECT_NE(getFixture().lua("router:match('artist/a/album/7?track=one')").find("The query parameter \"track\" of the link \"artist/a/album/7?track=one\" must be of the type \"integer\"."), std::string::npos);
+    EXPECT_NE(getFixture().lua("ui.router{tabs = tabs, routes = {{name = 'a', path = 'a', speed = 2}}}").find("Unknown option \"speed\""), std::string::npos);
+
+    // A restart, such as after a change of the code in development, builds the same state again from the locations the router kept.
+    getFixture().runLua("router:push('player')");
+    frames(30);
+    getEngine().requestRestart();
+    getFixture().restart();
+    getFixture().runLua(app);
+    frames(30);
+    EXPECT_EQ(getFixture().lua("return names()"), "search: search, artist sea, album 7 2");
+    EXPECT_EQ(getUi().getNavigation().getPresentations().size(), 1U);
+}
+
+TEST_F(RouterTest, RefusesRoutesThatCannotWork) {
+    const std::shared_ptr<NavigationTabs> tabs = createTabs();
+    EXPECT_THROW(static_cast<void>(getNavigation().createRouter({.routes = createRoutes()})), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(getNavigation().createRouter({.routes = {{.name = "a", .path = "a"}, {.name = "a", .path = "b"}}, .tabs = tabs})), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(getNavigation().createRouter({.routes = {{.name = "a", .path = "a", .tab = "lost"}}, .tabs = tabs})), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(getNavigation().createRouter({.routes = {{.name = "a", .path = "a", .parent = "b"}, {.name = "b", .path = "b", .parent = "a"}}, .tabs = tabs})), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(getNavigation().createRouter({.routes = {{.name = "a", .path = "a/{id:color}"}}, .tabs = tabs})), std::invalid_argument);
+}
+
+} // namespace haylen::ui

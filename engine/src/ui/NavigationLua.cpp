@@ -84,6 +84,21 @@ template <> struct EnumNames<ui::Presentation::Style> {
     }
 };
 
+template <> struct Type<ui::Router> {
+    static constexpr const char* name = "haylen.Router";
+    using Storage = std::shared_ptr<ui::Router>;
+};
+
+template <> struct EnumNames<ui::Router::Type> {
+    static std::optional<ui::Router::Type> fromName(std::string_view name) {
+        const auto found = std::ranges::find(ui::Router::kTypeNames, name, &std::pair<std::string_view, ui::Router::Type>::first);
+        return found != ui::Router::kTypeNames.end() ? std::optional(found->second) : std::nullopt;
+    }
+    static std::string_view name(ui::Router::Type value) {
+        return std::ranges::find(ui::Router::kTypeNames, value, &std::pair<std::string_view, ui::Router::Type>::second)->first;
+    }
+};
+
 template <> struct EnumNames<ui::Presentation::Size> {
     static std::optional<ui::Presentation::Size> fromName(std::string_view name) {
         const auto found = std::ranges::find(ui::Presentation::kSizeNames, name, &std::pair<std::string_view, ui::Presentation::Size>::first);
@@ -716,6 +731,187 @@ int NavigationLua::showMessage(lua_State* L) {
     return 1;
 }
 
+// A route reads `{name = 'artist', path = 'artist/{id}', query = {tab = 'string'}, tab = 'search', parent = 'search', detail = false, present = {style = 'sheet'}, screen = function(parameters) return Artist(parameters.id) end}`.
+Router::Route NavigationLua::readRoute(lua_State* L, int index) {
+    const int table = lua_absindex(L, index);
+    luaL_checktype(L, table, LUA_TTABLE);
+    lua::Table::checkFields(L, table, {kRouteFields});
+    Router::Route route;
+    lua::Table::readField(L, table, "name", route.name);
+    lua::Table::readField(L, table, "path", route.path);
+    lua::Table::readField(L, table, "tab", route.tab);
+    lua::Table::readField(L, table, "parent", route.parent);
+    lua::Table::readField(L, table, "detail", route.detail);
+    if (lua_getfield(L, table, "query") != LUA_TNIL) {
+        luaL_checktype(L, -1, LUA_TTABLE);
+        lua_pushnil(L);
+        while (lua_next(L, -2) != 0) {
+            const std::string name = lua::Stack::read<std::string>(L, -2);
+            Router::Type type = Router::Type::String;
+            lua::Table::readValue(L, "query", type);
+            route.query.emplace_back(name, type);
+            lua_pop(L, 1);
+        }
+
+        std::ranges::sort(route.query, {}, &std::pair<std::string, Router::Type>::first);
+    }
+
+    lua_pop(L, 1);
+    if (lua_getfield(L, table, "present") != LUA_TNIL) {
+        Presentation::Options presentation;
+        readPresentOptions(L, -1, presentation);
+        route.presentation = std::move(presentation);
+    }
+
+    lua_pop(L, 1);
+    if (lua_getfield(L, table, "screen") != LUA_TNIL) {
+        if (!lua_isfunction(L, -1)) {
+            luaL_error(L, "The \"screen\" of a route is a function that returns a screen for the parameters of the route.");
+        }
+
+        auto function = std::make_shared<lua::Reference>(L, -1);
+        // clang-format off
+        route.screen = [function](const core::Json& parameters) {
+            std::shared_ptr<Screen> made;
+            lua::Runtime::protectedRun(function->getState(), [&](lua_State* state) {
+                function->push(state);
+                lua::JsonConverter::push(state, parameters);
+                lua_call(state, 1, 1);
+                made = readScreen(state, -1);
+                lua_pop(state, 1);
+            });
+            return made;
+        };
+        // clang-format on
+    }
+
+    lua_pop(L, 1);
+    return route;
+}
+
+// Creates a router with `ui.router{tabs = tabs, schemes = {'music'}, hosts = {'music.example.com'}, links = true, restore = true, routes = {...}, owner = scene, onUnmatched = function(event) end}`.
+int NavigationLua::router(lua_State* L) {
+    luaL_checktype(L, 1, LUA_TTABLE);
+    lua::Table::checkFields(L, 1, {kRouterFields});
+    Router::Options options;
+    if (lua_getfield(L, 1, "tabs") != LUA_TNIL) {
+        options.tabs = lua::Userdata::checkShared<NavigationTabs>(L, -1);
+    }
+
+    lua_pop(L, 1);
+    if (lua_getfield(L, 1, "stack") != LUA_TNIL) {
+        options.stack = lua::Userdata::checkShared<NavigationStack>(L, -1);
+    }
+
+    lua_pop(L, 1);
+    lua::Table::readField(L, 1, "schemes", options.schemes);
+    lua::Table::readField(L, 1, "hosts", options.hosts);
+    lua::Table::readField(L, 1, "links", options.links);
+    lua::Table::readField(L, 1, "restore", options.restores);
+    if (lua_getfield(L, 1, "routes") != LUA_TTABLE) {
+        return luaL_error(L, "A router lists its routes in \"routes\", each a table with a \"name\" and a \"path\".");
+    }
+
+    const auto count = static_cast<int>(lua_rawlen(L, -1));
+    for (int position = 1; position <= count; ++position) {
+        lua_rawgeti(L, -1, position);
+        options.routes.push_back(readRoute(L, -1));
+        lua_pop(L, 1);
+    }
+
+    lua_pop(L, 1);
+    const int handler = pushHandler(L, 1, "onUnmatched");
+    const int owner = pushOwner(L, 1);
+    const std::shared_ptr<Router> created = getNavigation(L).createRouter(std::move(options));
+    if (owner != 0) {
+        lua::Owners::add(L, owner, std::make_shared<NavigationLink>(std::weak_ptr<Router>(created)));
+    }
+
+    if (handler != 0) {
+        auto function = std::make_shared<lua::Reference>(L, handler);
+        // clang-format off
+        core::Connection connection = created->unmatched.connect([function](const std::string& url) {
+            lua_State* main = function->getState();
+            lua::Runtime::runReporting(main, [&] {
+                function->push(main);
+                lua_createtable(main, 0, 1);
+                lua::Stack::push(main, url);
+                lua_setfield(main, -2, "url");
+                lua::Runtime::protectedCall(main, 1, 0);
+            });
+        });
+        // clang-format on
+        if (owner != 0) {
+            lua::Owners::add(L, owner, connection);
+        }
+    }
+
+    pushObject(L, created);
+    return 1;
+}
+
+int NavigationLua::routerOpen(lua_State* L) {
+    Router& router = lua::Userdata::check<Router>(L, 1);
+    const std::string link = lua::Stack::read<std::string>(L, 2);
+    router.open(link, readTransition(L, 3, {}));
+    return 0;
+}
+
+int NavigationLua::routerPush(lua_State* L) {
+    Router& router = lua::Userdata::check<Router>(L, 1);
+    const std::string location = lua::Stack::read<std::string>(L, 2);
+    router.push(location, readTransition(L, 3, {}));
+    return 0;
+}
+
+// Returns the name of the route a link matches and its parameters, or nothing.
+int NavigationLua::routerMatch(lua_State* L) {
+    const Router& router = lua::Userdata::check<Router>(L, 1);
+    const std::optional<Router::Match> found = router.match(lua::Stack::read<std::string_view>(L, 2));
+    if (!found) {
+        lua_pushnil(L);
+        return 1;
+    }
+
+    lua::Stack::push(L, found->route->name);
+    lua::JsonConverter::push(L, found->parameters);
+    return 2;
+}
+
+int NavigationLua::routerLocation(lua_State* L) {
+    const Router& router = lua::Userdata::check<Router>(L, 1);
+    const std::shared_ptr<Screen> screen = readScreen(L, 2);
+    const std::string location = router.getLocation(*screen);
+    if (location.empty()) {
+        lua_pushnil(L);
+        return 1;
+    }
+
+    lua::Stack::push(L, location);
+    return 1;
+}
+
+int NavigationLua::routerSave(lua_State* L) {
+    lua::JsonConverter::push(L, lua::Userdata::check<Router>(L, 1).save());
+    return 1;
+}
+
+int NavigationLua::routerRestore(lua_State* L) {
+    Router& router = lua::Userdata::check<Router>(L, 1);
+    router.restore(lua::JsonConverter::read(L, 2));
+    return 0;
+}
+
+int NavigationLua::routerClose(lua_State* L) {
+    lua::Userdata::check<Router>(L, 1).close();
+    return 0;
+}
+
+int NavigationLua::routerClosed(lua_State* L) {
+    lua_pushboolean(L, lua::Userdata::check<Router>(L, 1).isClosed() ? 1 : 0);
+    return 1;
+}
+
 int NavigationLua::goBack(lua_State* L) {
     lua_pushboolean(L, getNavigation(L).goBack() ? 1 : 0);
     return 1;
@@ -1028,7 +1224,7 @@ int NavigationLua::messageResult(lua_State* L) {
 void NavigationLua::addTo(lua_State* L, int module) {
     const int target = lua_absindex(L, module);
     const luaL_Reg functions[] = {
-        {"navigationStack", &lua::Binding::native<&navigationStack>}, {"navigationTabs", &lua::Binding::native<&navigationTabs>}, {"navigationSplit", &lua::Binding::native<&navigationSplit>}, {"present", &lua::Binding::native<&present>}, {"presentAlert", &lua::Binding::native<&presentAlert>}, {"showMessage", &lua::Binding::native<&showMessage>}, {"goBack", &lua::Binding::native<&goBack>}, {"canGoBack", &lua::Binding::native<&canGoBack>}, {"screenState", &lua::Binding::native<&screenState>}, {nullptr, nullptr},
+        {"navigationStack", &lua::Binding::native<&navigationStack>}, {"navigationTabs", &lua::Binding::native<&navigationTabs>}, {"navigationSplit", &lua::Binding::native<&navigationSplit>}, {"present", &lua::Binding::native<&present>}, {"presentAlert", &lua::Binding::native<&presentAlert>}, {"showMessage", &lua::Binding::native<&showMessage>}, {"router", &lua::Binding::native<&router>}, {"goBack", &lua::Binding::native<&goBack>}, {"canGoBack", &lua::Binding::native<&canGoBack>}, {"screenState", &lua::Binding::native<&screenState>}, {nullptr, nullptr},
     };
     for (const luaL_Reg* entry = functions; entry->name != nullptr; ++entry) {
         lua_pushcfunction(L, entry->func);
@@ -1048,6 +1244,7 @@ void NavigationLua::install(lua_State* L) {
     lua::ClassBuilder<NavigationSplit>(L).function("showDetail", &lua::Binding::native<&splitShowDetail>).function("clearDetail", &lua::Binding::native<&splitClearDetail>).function("close", &lua::Binding::native<&splitClose>).property("collapsed", &splitCollapsed, &lua::Binding::native<&splitSetCollapsed>).property("hasDetail", &splitHasDetail).property("primary", &splitPrimary).property("detail", &splitDetail).property("closed", &splitClosed).install();
     lua::ClassBuilder<Presentation>(L).function("dismiss", &lua::Binding::native<&presentationDismiss>).property("screen", &presentationScreen).property("style", &presentationStyle).property("dismissible", &presentationDismissible).property("dismissed", &presentationDismissed).property("modal", &presentationModal).property("result", &lua::Binding::native<&presentationResult>).property("detent", &presentationDetent, &lua::Binding::native<&presentationSetDetent>).install();
     lua::ClassBuilder<Message>(L).function("update", &lua::Binding::native<&messageUpdate>).function("dismiss", &lua::Binding::native<&messageDismiss>).property("style", &messageStyle).property("shown", &messageShown).property("dismissed", &messageDismissed).property("result", &lua::Binding::native<&messageResult>).install();
+    lua::ClassBuilder<Router>(L).function("open", &lua::Binding::native<&routerOpen>).function("push", &lua::Binding::native<&routerPush>).function("match", &lua::Binding::native<&routerMatch>).function("location", &lua::Binding::native<&routerLocation>).function("save", &lua::Binding::native<&routerSave>).function("restore", &lua::Binding::native<&routerRestore>).function("close", &lua::Binding::native<&routerClose>).property("closed", &routerClosed).install();
 }
 
 } // namespace haylen::ui

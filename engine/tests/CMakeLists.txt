@@ -250,6 +250,7 @@ set(HAYLEN_TEST_SOURCES
   ui/ComponentTests.cpp
   ui/FocusRingTests.cpp
   ui/NavigationTests.cpp
+  ui/RouterTests.cpp
   ui/GuiTests.cpp
   ui/ImageLibraryTests.cpp
   ui/LabelTests.cpp

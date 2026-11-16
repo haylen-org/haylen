@@ -7,6 +7,7 @@
 #include "haylen/ui/NavigationStack.hpp"
 #include "haylen/ui/NavigationTabs.hpp"
 #include "haylen/ui/Presentation.hpp"
+#include "haylen/ui/Router.hpp"
 
 namespace haylen::ui {
 

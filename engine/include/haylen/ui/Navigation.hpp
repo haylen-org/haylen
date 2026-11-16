@@ -18,6 +18,7 @@
 #include "haylen/ui/NavigationTransition.hpp"
 #include "haylen/ui/Presentation.hpp"
 #include "haylen/ui/Region.hpp"
+#include "haylen/ui/Router.hpp"
 
 namespace haylen::core {
 class Engine;
@@ -89,6 +90,12 @@ class Navigation final {
     // Presents a screen over everything the app shows.
     [[nodiscard]] std::shared_ptr<Presentation> present(std::shared_ptr<Screen> screen, Presentation::Options options);
 
+    // Creates the routes of the app, which open the links that `linkOpened` reports and build the state they name, and which build again the state that the last run kept when they keep it. Throws `std::invalid_argument` for the routes that `Router` refuses.
+    [[nodiscard]] std::shared_ptr<Router> createRouter(Router::Options options);
+
+    // Returns the split whose list lies in the GUI of a screen, such as the conversations inside the screen of a tab, or nothing.
+    [[nodiscard]] std::shared_ptr<NavigationSplit> findSplit(const Screen& host) const;
+
     // Presents an alert or an action sheet that the engine builds, whose result is the id of the action the person chose. Throws `std::invalid_argument` for no actions, an action without an id, a repeated id and more than one cancel action.
     [[nodiscard]] std::shared_ptr<Presentation> presentAlert(Alert alert);
 
@@ -121,6 +128,7 @@ class Navigation final {
     friend class NavigationSplit;
     friend class Presentation;
     friend class PresentationView;
+    friend class Router;
 
     // How a screen draws in a frame. A screen that is shown lays out in its area moved by the effect of its transition: a slide by the distance times the width of its area toward its side, which a right to left interface mirrors, a rise by the distance times the room from the top of its area to the bottom of the screen, and a fade to an opacity of one minus the distance. An inert screen takes no input and no focus.
     struct Look {
@@ -209,6 +217,7 @@ class Navigation final {
     void forget(const NavigationSplit& split);
     void forget(const Presentation& presentation);
     void forget(const Message& message);
+    void forget(const Router& router);
 
     core::Engine& engine;
     plugins::UiPlugin& ui;
@@ -217,6 +226,7 @@ class Navigation final {
     std::vector<std::shared_ptr<NavigationSplit>> splits;
     std::vector<std::shared_ptr<Presentation>> presentations;
     std::vector<std::shared_ptr<Message>> messages;
+    std::vector<std::shared_ptr<Router>> routers;
 
     // The containers and screens that an update or a render walks, kept between frames so they allocate nothing.
     std::vector<std::shared_ptr<NavigationStack>> walkedStacks;

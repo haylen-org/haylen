@@ -64,10 +64,13 @@ void StoragePlugin::start(core::Engine& engine) {
     }
 
     resumeState = std::make_unique<storage::ResumeState>(engine.getStorage());
-    try {
-        resumeState->load();
-    } catch (const std::exception& error) {
-        core::Log::warning("{}", error.what());
+    navigationState = std::make_unique<storage::ResumeState>(engine.getStorage(), "navigation-state.json");
+    for (storage::ResumeState* state : {resumeState.get(), navigationState.get()}) {
+        try {
+            state->load();
+        } catch (const std::exception& error) {
+            core::Log::warning("{}", error.what());
+        }
     }
 }
 
@@ -79,33 +82,36 @@ void StoragePlugin::event(core::Engine&, const platform::Event& event) {
 
     if (event.type == platform::Event::Type::Suspended) {
         saveQuietly(*preferences);
-        writeResumeState(true);
+        writeResumeState(*resumeState, true);
+        writeResumeState(*navigationState, true);
     } else if (event.type == platform::Event::Type::Resumed) {
-        writeResumeState(false);
+        writeResumeState(*resumeState, false);
+        writeResumeState(*navigationState, false);
     }
 }
 
-// The app goes on whether the resume state reached the disk or not, as it would without one.
-void StoragePlugin::writeResumeState(bool background) noexcept {
+// The app goes on whether a resume state reached the disk or not, as it would without one.
+void StoragePlugin::writeResumeState(storage::ResumeState& state, bool kept) noexcept {
     try {
-        if (background) {
-            resumeState->save();
+        if (kept) {
+            state.save();
         } else {
-            resumeState->discard();
+            state.discard();
         }
     } catch (const std::exception& error) {
         core::Log::error("The resume state could not be written: {}", error.what());
     }
 }
 
-// The preferences are saved even when a waiting operation failed, whose error reaches the engine afterwards.
-void StoragePlugin::stop(core::Engine&) {
+// The preferences are saved even when a waiting operation failed, whose error reaches the engine afterwards. The state of the navigation outlives a restart, such as one after a change of the code, and a normal stop drops it.
+void StoragePlugin::stop(core::Engine& engine) {
     const std::exception_ptr failure = runOperations(*operations);
     jobs = nullptr;
 
     if (preferences) {
         saveQuietly(*preferences);
-        writeResumeState(false);
+        writeResumeState(*resumeState, false);
+        writeResumeState(*navigationState, engine.isRestartRequested());
     }
 
     if (failure) {
@@ -189,6 +195,14 @@ storage::ResumeState& StoragePlugin::getResumeState() {
     }
 
     return *resumeState;
+}
+
+storage::ResumeState& StoragePlugin::getNavigationState() {
+    if (!navigationState) {
+        throw std::logic_error("The storage plugin has not started.");
+    }
+
+    return *navigationState;
 }
 
 // Bus names may hold dots, so every bus is a key of one group instead of a part of a dotted path, and buses the app has not created keep what the group stored for them.

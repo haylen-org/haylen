@@ -45,6 +45,11 @@ class NavigationTabs final : public std::enable_shared_from_this<NavigationTabs>
     [[nodiscard]] const std::shared_ptr<NavigationStack>& getStack(std::string_view id);
     [[nodiscard]] const std::shared_ptr<NavigationStack>& getCurrent();
 
+    // The ids of the tabs in their order, whether a tab has an id, and the stack of a tab once it opened, or nothing before.
+    [[nodiscard]] std::vector<std::string> getTabIds() const;
+    [[nodiscard]] bool hasTab(std::string_view id) const noexcept;
+    [[nodiscard]] std::shared_ptr<NavigationStack> findStack(std::string_view id) const noexcept;
+
     // Closes the stack of every tab, and the tabs take no changes anymore.
     void close();
     [[nodiscard]] bool isClosed() const noexcept {

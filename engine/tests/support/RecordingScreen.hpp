@@ -45,6 +45,10 @@ class RecordingScreen final : public ui::Screen {
         record("remove");
     }
 
+    [[nodiscard]] const std::string& getName() const noexcept {
+        return name;
+    }
+
     int builds = 0;
     int updates = 0;
     bool keeping = false;
