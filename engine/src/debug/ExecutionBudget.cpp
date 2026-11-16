@@ -39,6 +39,7 @@ void ExecutionBudget::attach(lua_State* L, Limits value, Cancel cancel, StageRea
     readStage = std::move(stage);
     exhausted = false;
     memoryExhausted = false;
+    refusal.reset();
     message.clear();
     current = this;
     if (entries > 0) {
@@ -83,20 +84,28 @@ void ExecutionBudget::finishApp() noexcept {
     readStage = nullptr;
     exhausted = false;
     memoryExhausted = false;
+    refusal.reset();
     if (entries > 0) {
         deadline = Clock::now() + limits.time;
     }
 }
 
-// Lua passes the kind of a new object in place of its old size, so only a block that exists has a size to give back.
+// Lua passes the kind of a new object in place of its old size, so only a block that exists has a size to give back. A refusal runs the budget out unless the very next growth is its retry and succeeds, since only the emergency collection of Lua comes between a refusal and its retry, while a refusal that Lua raised as an error stays, whatever the app allocates after catching it.
 void* ExecutionBudget::allocate(void* data, void* block, std::size_t oldSize, std::size_t newSize) {
     auto& budget = *static_cast<ExecutionBudget*>(data);
     const std::size_t previous = block != nullptr ? oldSize : 0;
     const bool grows = newSize > previous;
+    const Refusal asked{.block = block, .oldSize = oldSize, .newSize = newSize};
+    const bool retry = grows && budget.refusal == asked;
+    if (grows) {
+        budget.refusal.reset();
+    }
+
     if (grows && budget.used - previous + newSize > budget.limits.memory) {
         if (budget.cancelApp && !budget.memoryExhausted) {
             budget.memoryExhausted = true;
             budget.memoryStage = budget.readCurrentStage();
+            budget.refusal = asked;
         }
         return nullptr;
     }
@@ -105,7 +114,7 @@ void* ExecutionBudget::allocate(void* data, void* block, std::size_t oldSize, st
     if (result == nullptr && newSize > 0) {
         return nullptr;
     }
-    if (grows && !budget.exhausted) {
+    if (retry && !budget.exhausted) {
         budget.memoryExhausted = false;
     }
     budget.used = budget.used - previous + newSize;

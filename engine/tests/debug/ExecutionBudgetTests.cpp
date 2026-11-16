@@ -1,6 +1,5 @@
 #include <gtest/gtest.h>
 
-#include <chrono>
 #include <map>
 #include <memory>
 #include <string>
@@ -10,6 +9,7 @@
 #include "haylen/lua/Error.hpp"
 #include "platform/DevelopmentSession.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/EventLoop.hpp"
 #include "support/TestFiles.hpp"
 
 namespace haylen::debug {
@@ -26,11 +26,16 @@ class ExecutionBudgetTest : public ::testing::Test {
         fixture = std::make_unique<test::EngineFixture>(std::move(files), nullptr, test::EngineFixture::Options{.development = true});
     }
 
-    // Runs frames until the app stops, and fails when the frames take far longer than the budget.
+    // The frames that a cancel may take: the code that runs too long or takes too much stops inside the frame it runs in, and a task needs a few turns of the event loop to reach its code. Counting frames instead of time keeps the check apart from how fast the machine runs, such as under a sanitizer.
+    static constexpr int kCancelFrames = 10;
+
+    // Runs frames until the app stops, and fails when no frame of the bound stopped it.
     void runUntilCancelled() {
-        const auto started = std::chrono::steady_clock::now();
-        ASSERT_TRUE(fixture->frameUntil([this] { return fixture->engine().isCancelled(); }, std::chrono::seconds(5)));
-        EXPECT_LT(std::chrono::steady_clock::now() - started, std::chrono::seconds(5));
+        for (int frame = 0; frame < kCancelFrames && !fixture->engine().isCancelled(); ++frame) {
+            fixture->frames(1);
+            test::EventLoop::yield();
+        }
+        ASSERT_TRUE(fixture->engine().isCancelled());
     }
 
     [[nodiscard]] const lua::Error& error() const {
@@ -124,10 +129,12 @@ TEST_F(ExecutionBudgetTest, ReplacesAResumableErrorAndRunsAgainAfterARestart) {
     EXPECT_EQ(fixture->lua("return count"), "3");
 }
 
+// The memory that the app takes after it caught the error of the budget never counts as room that a collection made, so the budget runs out the first time, also when the app allocates right after the catch and never runs out of memory again.
 TEST_F(ExecutionBudgetTest, CancelsAnAppThatTakesMoreMemoryThanItsBudget) {
     const std::vector<std::string> attempts{
         "local kept = {} while true do kept[#kept + 1] = string.rep('x', 4096) .. #kept end",
         "while true do pcall(function() local kept = {} while true do kept[#kept + 1] = string.rep('y', 4096) .. #kept end end) end",
+        "if not filled then filled = true pcall(function() local kept = {} while true do kept[#kept + 1] = string.rep('z', 4096) .. #kept end end) local after = {} end",
     };
     for (const std::string& attempt : attempts) {
         SCOPED_TRACE(attempt);

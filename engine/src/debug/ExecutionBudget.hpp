@@ -5,6 +5,7 @@
 #include <chrono>
 #include <cstddef>
 #include <functional>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -101,8 +102,18 @@ class ExecutionBudget final {
     void* baseData = nullptr;
     std::size_t used = 0;
 
-    // Whether the allocator refused memory and no growth succeeded since, as one does when Lua asks again after an emergency collection that made room.
+    // A growth that the allocator refused. Lua asks for it again right after an emergency collection when it can, so the next growth tells whether the collection made room.
+    struct Refusal {
+        void* block = nullptr;
+        std::size_t oldSize = 0;
+        std::size_t newSize = 0;
+
+        friend bool operator==(const Refusal&, const Refusal&) = default;
+    };
+
+    // Whether the allocator refused memory that no emergency collection made room for, and the refusal whose retry the next growth may be.
     bool memoryExhausted = false;
+    std::optional<Refusal> refusal;
     std::string memoryStage;
     Cancel cancelApp;
     StageReader readStage;
