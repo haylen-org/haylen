@@ -118,6 +118,12 @@ class TextInput {
     // The field of the plain on-screen keyboard that `Window::setKeyboardVisible` opens. Its typing reaches the app as key and character events instead of a text field.
     static constexpr std::uint64_t kKeyboardField = 0;
 
+    // The plain keyboard as a field: empty, without capitalization and in the corner of the screen, so no browser scrolls the page to show it.
+    [[nodiscard]] static Field getKeyboardField() {
+        const math::Rect corner{0.0F, 0.0F, 1.0F, 1.0F};
+        return {.id = kKeyboardField, .bounds = corner, .caret = corner, .options = {.capitalization = Capitalization::None}};
+    }
+
     virtual ~TextInput() = default;
 
     // Returns whether a native field edits the text, so the UI leaves character and editing keys to it.

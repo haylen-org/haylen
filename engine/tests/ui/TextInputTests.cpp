@@ -50,7 +50,7 @@ class TextInputTest : public ::testing::Test {
         return getEngine().getPlugin<plugins::UiPlugin>();
     }
     platform::HeadlessTextInput& getInput() {
-        return fixture.host().getTextInput();
+        return fixture.host().getPlatformTextInput();
     }
     const TextInput::Field& getPublished() {
         return getInput().getPublished().back();
@@ -199,6 +199,25 @@ TEST_F(TextInputTest, TakesTheKeyboardFromTheFieldOfTheAppAndGivesItBack) {
     focus(*gui, "name");
     appField.finish();
     EXPECT_TRUE(getInput().isEditing());
+}
+
+// A field of the UI takes the native input from the plain keyboard of the app and gives it back when it finishes, and closing the plain keyboard meanwhile leaves the field editing.
+TEST_F(TextInputTest, SharesTheNativeInputWithThePlainKeyboardOfTheApp) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name", "value": "Ana"}, {"kind": "textField", "id": "town"}]})");
+    fixture.runLua("window = require('haylen.window') window.setKeyboardVisible(true)");
+    ASSERT_TRUE(fixture.host().isKeyboardVisible());
+
+    focus(*gui, "name");
+    EXPECT_NE(getPublished().id, TextInput::kKeyboardField);
+    act(TextInput::Action::Submit);
+    EXPECT_TRUE(fixture.host().isKeyboardVisible()) << "A field that the player submits leaves the keyboard of the app open.";
+
+    focus(*gui, "town");
+    fixture.runLua("window.setKeyboardVisible(false)");
+    EXPECT_TRUE(getInput().isEditing());
+    EXPECT_NE(getPublished().id, TextInput::kKeyboardField) << "The field keeps editing while the app closes its keyboard.";
+    act(TextInput::Action::Submit);
+    EXPECT_FALSE(getInput().isEditing());
 }
 
 TEST_F(TextInputTest, StopsEditingWhenTheAppRestarts) {

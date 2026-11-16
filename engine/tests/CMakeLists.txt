@@ -200,6 +200,7 @@ set(HAYLEN_TEST_SOURCES
   platform/PluginLoadOrderTests.cpp
   platform/ReturnHoldTests.cpp
   platform/ScreensTests.cpp
+  platform/SharedTextInputTests.cpp
   platform/sdl/EventsTests.cpp
   platform/sdl/GamepadsTests.cpp
   platform/sdl/FrameTimerTests.cpp

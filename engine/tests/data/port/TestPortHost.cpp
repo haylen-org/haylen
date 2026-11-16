@@ -75,10 +75,6 @@ audio::Mixer::Setup TestPortHost::getAudioSetup() const {
     return {.device = false};
 }
 
-TextInput& TestPortHost::getTextInput() noexcept {
-    return Services::getTextInput();
-}
-
 void TestPortHost::closeWindow() {
     runtime.close();
 }

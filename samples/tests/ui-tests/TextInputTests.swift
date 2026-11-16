@@ -81,6 +81,32 @@ class TextInputTests: HaylenUITestCase {
         try saveScreenshot("keyboard-closed")
     }
 
+    // The plain keyboard of the test "Text input" gives the native input to the message field and takes it back once the field sends, and closes when the test hides it as it exits.
+    func testThePlainKeyboardOfTheAppComesBackAfterAField() throws {
+        tap("Back")
+        waitFor(element(matching: "Search by code or title.*")).tap()
+        waitFor(app.keyboards.firstMatch)
+        for _ in 0..<"text fields".count {
+            waitFor(app.keyboards.keys["delete"]).tap()
+        }
+        press("text input")
+        waitFor(element(matching: "GUI-018\\s+Text input.*")).tap()
+        tap("Show the plain keyboard")
+        waitFor(app.keyboards.firstMatch)
+
+        tap("Say hello to the keeper")
+        press("oi")
+        waitFor(app.keyboards.descendants(matching: .any).matching(NSPredicate(format: "label ==[c] %@", "send")).firstMatch).tap()
+        waitFor(app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Submitted \"oi\"")).firstMatch, timeout: 10)
+        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        XCTAssertTrue(app.keyboards.firstMatch.exists, "The keyboard of the app closes after the field sends.")
+        try saveScreenshot("plain-keyboard-back")
+
+        // The keyboard covers the button that hides it, and the test hides it as it exits.
+        tap("Back")
+        waitUntil("The plain keyboard stays open after the app hid it.") { !app.keyboards.firstMatch.exists }
+    }
+
     func startTyping() {
         tap("https://haylen.dev")
         waitFor(app.keyboards.firstMatch)

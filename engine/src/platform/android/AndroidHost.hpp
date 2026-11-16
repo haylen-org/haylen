@@ -8,6 +8,7 @@
 #include <string_view>
 
 #include "platform/NativeHost.hpp"
+#include "platform/Services.hpp"
 
 namespace haylen::platform {
 
@@ -16,7 +17,7 @@ class AndroidRuntime;
 // The host of Android apps, whose window is the surface of the `GameActivity` that `AndroidRuntime` runs. The window always fills the screen, so it is always fullscreen and has no title, no cursor and no style.
 class AndroidHost final : public NativeHost {
   public:
-    explicit AndroidHost(AndroidRuntime& activityRuntime) noexcept : runtime(activityRuntime) {}
+    explicit AndroidHost(AndroidRuntime& activityRuntime) noexcept : NativeHost(Services::getTextInput()), runtime(activityRuntime) {}
 
     [[nodiscard]] math::Vec2 getFramebufferSize() const noexcept override;
     [[nodiscard]] float getDpiScale() const noexcept override;
@@ -34,7 +35,6 @@ class AndroidHost final : public NativeHost {
     [[nodiscard]] bool canBeTransparent() const noexcept override {
         return false;
     }
-    [[nodiscard]] TextInput& getTextInput() noexcept override;
     [[nodiscard]] std::unique_ptr<gpu::Device> createGpuDevice() override;
     [[nodiscard]] bool prepareGpuDevice() override;
     void closeWindow() override;

@@ -7,10 +7,6 @@
 
 namespace haylen::platform {
 
-void KeyboardTranslator::reset() noexcept {
-    committed.clear();
-}
-
 std::vector<Event> KeyboardTranslator::translate(const Event& event) {
     std::vector<Event> events;
     if (event.type == Event::Type::TextAction) {
@@ -28,6 +24,12 @@ std::vector<Event> KeyboardTranslator::translate(const Event& event) {
             break;
         }
         return events;
+    }
+
+    // A plain keyboard that opened again starts from an empty field.
+    if (event.textEdit.revision != revision) {
+        revision = event.textEdit.revision;
+        committed.clear();
     }
 
     std::u32string text = core::Utf8::decode(event.textEdit.text);

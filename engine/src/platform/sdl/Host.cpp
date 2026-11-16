@@ -314,10 +314,9 @@ bool Host::canBeTransparent() const noexcept {
     return runtime.isTransparent();
 }
 
-// Apple platforms and the web edit text in a native field of the services, while Windows and Linux type through the text events of SDL.
-platform::TextInput& Host::getTextInput() noexcept {
+platform::TextInput& Host::getPlatformTextInput(Runtime& owner) noexcept {
 #if defined(_WIN32) || defined(__linux__)
-    return runtime.getTextInput();
+    return owner.getTextInput();
 #else
     return Services::getTextInput();
 #endif

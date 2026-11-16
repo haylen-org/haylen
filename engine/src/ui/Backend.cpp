@@ -356,10 +356,6 @@ Backend::Backend(graphics::Device& graphicsDevice, platform::Window& hostWindow,
 }
 
 Backend::~Backend() {
-    if (keyboardShown) {
-        window.setKeyboardVisible(false);
-    }
-
     ImGui::DestroyContext(imguiContext);
 }
 
@@ -992,19 +988,8 @@ void Backend::render(graphics2d::Renderer& renderer) {
     ImDrawData& data = *ImGui::GetDrawData();
     updateTextures(data);
 
-    // Text fields of the UI edit through the text session, while other ImGui text inputs, such as those of `haylen.imgui`, type through the plain keyboard of the window.
-    const bool plainInput = imguiContext->PlatformImeData.WantTextInput && !textSession->isActive();
-    if (keyboardShown && !plainInput) {
-        keyboardShown = false;
-        window.setKeyboardVisible(false);
-    }
-
-    textSession->publish();
-
-    if (plainInput && !keyboardShown) {
-        keyboardShown = true;
-        window.setKeyboardVisible(true);
-    }
+    // Text fields of the UI edit through the text session, while other ImGui text inputs, such as those of `haylen.imgui`, type through the plain keyboard that it holds for them.
+    textSession->publish(imguiContext->PlatformImeData.WantTextInput);
 
     const ImGuiMouseCursor imguiCursor = isUsingPointer() ? ImGui::GetMouseCursor() : ImGuiMouseCursor_Arrow;
     const platform::Window::Cursor wanted = requestedCursor ? *requestedCursor : toCursor(imguiCursor);

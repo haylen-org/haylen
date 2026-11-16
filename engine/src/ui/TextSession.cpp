@@ -181,7 +181,8 @@ std::optional<std::pair<int, int>> TextSession::getComposition(ImGuiID id) const
     return std::pair{compositionStart, compositionEnd};
 }
 
-void TextSession::publish() {
+// Without a field that edits, the other ImGui inputs, such as those of `haylen.imgui`, type through the plain keyboard, which holds the native input like a field.
+void TextSession::publish(bool plainKeyboard) {
     const bool composing = compositionStart >= 0 && compositionEnd > compositionStart;
     if (!activeThisFrame) {
         active = 0;
@@ -190,7 +191,11 @@ void TextSession::publish() {
         compositionStart = -1;
         compositionEnd = -1;
 
-        if (published) {
+        const bool keyboardPublished = published && published->id == platform::TextInput::kKeyboardField;
+        if (plainKeyboard && !keyboardPublished) {
+            published = platform::TextInput::getKeyboardField();
+            input.edit(*published);
+        } else if (!plainKeyboard && published) {
             published.reset();
             input.finish();
         }

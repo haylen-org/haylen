@@ -23,6 +23,7 @@
 #include "platform/Host.hpp"
 #include "platform/NativeViews.hpp"
 #include "platform/PixelDensityCap.hpp"
+#include "platform/SharedTextInput.hpp"
 #include "platform/SystemFontReader.hpp"
 #include "platform/SystemState.hpp"
 #include "platform/headless/HeadlessTextInput.hpp"
@@ -126,7 +127,7 @@ class HeadlessHost final : public Host {
         callback(windowAnswer);
     }
     void setKeyboardVisible(bool value) override {
-        keyboardVisible = value;
+        textInput.setKeyboardVisible(value);
     }
     // The clipboard keeps the text unless the test refuses it, the way a browser refuses a page, and answers at once.
     void setClipboard(std::string_view value, std::function<void(Permission::Answer answer)> callback) override {
@@ -187,7 +188,7 @@ class HeadlessHost final : public Host {
     void setSystemGestures(SystemGestures value) override {
         systemGestures = value;
     }
-    [[nodiscard]] HeadlessTextInput& getTextInput() noexcept override {
+    [[nodiscard]] TextInput& getTextInput() noexcept override {
         return textInput;
     }
     [[nodiscard]] bool hasPointerDevice() const noexcept override {
@@ -655,8 +656,14 @@ class HeadlessHost final : public Host {
     [[nodiscard]] bool isMouseLocked() const noexcept {
         return mouseLocked;
     }
+    // The text input of the platform under the one that the engine shares, which records what reaches it.
+    [[nodiscard]] HeadlessTextInput& getPlatformTextInput() noexcept {
+        return platformInput;
+    }
+
+    // Whether the platform shows the plain keyboard, as the last field that it edits.
     [[nodiscard]] bool isKeyboardVisible() const noexcept {
-        return keyboardVisible;
+        return platformInput.isEditing() && platformInput.getPublished().back().id == TextInput::kKeyboardField;
     }
     [[nodiscard]] bool isQuitRequested() const noexcept {
         return quitRequested;
@@ -779,7 +786,8 @@ class HeadlessHost final : public Host {
     std::vector<math::Polygon::Outline> passthroughRegions;
     Passthrough passthrough = Passthrough::Off;
     int dragCount = 0;
-    HeadlessTextInput textInput;
+    HeadlessTextInput platformInput;
+    SharedTextInput textInput{platformInput};
     std::string title;
     std::string clipboard;
     Cursor cursor = Cursor::Default;
@@ -789,7 +797,6 @@ class HeadlessHost final : public Host {
     bool resizable = true;
     bool cursorVisible = true;
     bool mouseLocked = false;
-    bool keyboardVisible = false;
     bool quitRequested = false;
     bool pointerDevice = true;
     bool screenKeptOn = false;

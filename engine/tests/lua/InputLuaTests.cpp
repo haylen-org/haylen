@@ -287,12 +287,12 @@ TEST(InputLuaAppTest, TakesThePointerDevicesFromTheAppSettings) {
 
 TEST_F(InputLuaTest, EditsATextFieldTheAppDrawsWithTheNativeTextInput) {
     fixture.host().resize({960.0F, 540.0F});
-    fixture.host().getTextInput().setNative(true);
+    fixture.host().getPlatformTextInput().setNative(true);
     lua("events = {} require('haylen.scene').push({event = function(self, e) if e.type == 'textEdited' then events[#events + 1] = e end end})");
     fixture.frames(1);
 
     lua("input.editText({text = 'Ana', x = 100, y = 200, width = 400, height = 60, keyboard = 'email', returnKey = 'done'})");
-    const std::vector<platform::TextInput::Field>& published = fixture.host().getTextInput().getPublished();
+    const std::vector<platform::TextInput::Field>& published = fixture.host().getPlatformTextInput().getPublished();
     ASSERT_EQ(published.size(), 1U);
     EXPECT_EQ(published[0].id, AppTextField::kField);
     EXPECT_EQ(published[0].text, "Ana");
@@ -323,7 +323,7 @@ TEST_F(InputLuaTest, EditsATextFieldTheAppDrawsWithTheNativeTextInput) {
     EXPECT_EQ(published[3].selectionEnd, 2);
 
     lua("input.finishText()");
-    EXPECT_FALSE(fixture.host().getTextInput().isEditing());
+    EXPECT_FALSE(fixture.host().getPlatformTextInput().isEditing());
     EXPECT_NE(lua("input.editText({text = 'A', selectionStart = 5})").find("The selection of a text field must run from 0 to the length of its text"), std::string::npos);
     EXPECT_NE(lua("input.editText({text = 'A', keyboard = 'emoji'})").find("The option \"keyboard\" of a text field must be \"text\", \"multiline\""), std::string::npos);
     EXPECT_NE(lua("input.editText({})").find("A text field needs its \"text\" as a string."), std::string::npos);

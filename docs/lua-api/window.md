@@ -228,6 +228,7 @@ Shows or hides the plain on-screen keyboard. Use it for an app that takes typing
 - A correction erases with `backspace` key events and types again.
 - Return, tab and escape arrive as the key events `enter`, `tab` and `escape`.
 - Text that the input method still composes arrives once it is committed.
+- A text field that edits keeps the native input meanwhile. The keyboard of the app opens once the field finishes, and `window.setKeyboardVisible(false)` while a field edits leaves the field editing. The [text input guide](../ui/text-input.md#one-native-input-for-every-editor) explains the rules.
 
 Desktop apps type with the physical keyboard and show no keyboard on screen, but they still take text only while it is open. Safari on iOS opens the keyboard only from a tap, so there a text field of the UI is the reliable way to type. The [text input guide](../ui/text-input.md) describes each platform.
 

@@ -54,10 +54,6 @@ bool AndroidHost::pumpHaltedEvents() {
     return runtime.isEnding();
 }
 
-TextInput& AndroidHost::getTextInput() noexcept {
-    return Services::getTextInput();
-}
-
 void AndroidHost::pollGamepads(std::span<input::GamepadState> gamepads) {
     AndroidGamepads::poll(gamepads);
 }

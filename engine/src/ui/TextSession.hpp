@@ -55,8 +55,8 @@ class TextSession final {
         caretRect = caret;
     }
 
-    // Publishes the focused field and the fields on screen to the platform at the end of the frame, or ends editing when no field kept the focus.
-    void publish();
+    // Publishes the focused field and the fields on screen to the platform at the end of the frame. Without a focused field, it publishes the plain keyboard when `plainKeyboard` asks for it and ends editing otherwise.
+    void publish(bool plainKeyboard);
 
     [[nodiscard]] bool isActive() const noexcept {
         return activeThisFrame;

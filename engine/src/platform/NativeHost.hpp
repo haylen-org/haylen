@@ -17,6 +17,7 @@
 #include "platform/Host.hpp"
 #include "platform/KeyboardTranslator.hpp"
 #include "platform/NativeViews.hpp"
+#include "platform/SharedTextInput.hpp"
 #include "platform/SystemState.hpp"
 #include "platform/WindowStyle.hpp"
 
@@ -25,9 +26,14 @@ namespace haylen::platform {
 // The host of every platform layer on a real device, which reaches the system through the services of the platform folder compiled into the runtime. A platform layer derives its host from it and adds what its window does: its size, scale, fullscreen, title, cursor, clipboard, closing, focus, transparency and GPU device.
 class NativeHost : public Host {
   public:
+    explicit NativeHost(TextInput& platformInput) noexcept : textInput(platformInput) {}
+
     [[nodiscard]] bool isResizable() const noexcept override;
     void setResizable(bool value) override;
     void setKeyboardVisible(bool value) override;
+    [[nodiscard]] TextInput& getTextInput() noexcept final {
+        return textInput;
+    }
     void requestQuit() override;
     [[nodiscard]] bool canQuit() const noexcept override;
     [[nodiscard]] Orientation getOrientation() const override;
@@ -190,13 +196,13 @@ class NativeHost : public Host {
     void applyStyle();
 
   private:
+    SharedTextInput textInput;
     KeyboardTranslator keyboard;
     std::unordered_map<std::uint32_t, OutputReport> refusedOutputs;
     std::unique_ptr<DevelopmentSession> developmentSession;
     bool launched = false;
     bool nativeAccess = true;
     bool backHeld = false;
-    std::uint64_t keyboardRevision = 0;
     WindowStyle style;
     Passthrough passthrough = Passthrough::Off;
     StatusBar statusBar = StatusBar::Hidden;

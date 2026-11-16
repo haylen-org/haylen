@@ -8,6 +8,7 @@
 #include <string_view>
 
 #include "platform/NativeHost.hpp"
+#include "platform/Services.hpp"
 
 namespace haylen::platform {
 
@@ -16,7 +17,7 @@ class TestPortRuntime;
 // The host of the test port, whose window has a fixed size and no cursor, clipboard or controllers, and whose GPU device the runtime makes.
 class TestPortHost final : public NativeHost {
   public:
-    explicit TestPortHost(TestPortRuntime& owner) noexcept : runtime(owner) {}
+    explicit TestPortHost(TestPortRuntime& owner) noexcept : NativeHost(Services::getTextInput()), runtime(owner) {}
 
     [[nodiscard]] math::Vec2 getFramebufferSize() const noexcept override;
     [[nodiscard]] float getDpiScale() const noexcept override;
@@ -30,7 +31,6 @@ class TestPortHost final : public NativeHost {
     [[nodiscard]] std::string getClipboard() const override;
     void readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback) override;
     [[nodiscard]] bool canBeTransparent() const noexcept override;
-    [[nodiscard]] TextInput& getTextInput() noexcept override;
     [[nodiscard]] std::unique_ptr<gpu::Device> createGpuDevice() override;
     [[nodiscard]] bool prepareGpuDevice() override;
     [[nodiscard]] audio::Mixer::Setup getAudioSetup() const override;

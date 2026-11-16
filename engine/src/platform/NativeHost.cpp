@@ -28,17 +28,8 @@ void NativeHost::setResizable(bool value) {
     applyStyle();
 }
 
-// The plain keyboard edits an empty native field of its own, placed in the corner of the screen so no browser scrolls the page to show it.
 void NativeHost::setKeyboardVisible(bool value) {
-    TextInput& input = getTextInput();
-    if (!value) {
-        input.finish();
-        return;
-    }
-
-    keyboard.reset();
-    const math::Rect corner{0.0F, 0.0F, 1.0F, 1.0F};
-    input.edit({.id = TextInput::kKeyboardField, .revision = ++keyboardRevision, .bounds = corner, .caret = corner, .options = {.capitalization = TextInput::Capitalization::None}});
+    textInput.setKeyboardVisible(value);
 }
 
 // A launched app quits back to the app that launched it, which takes over the same window.

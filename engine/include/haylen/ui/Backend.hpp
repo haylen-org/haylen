@@ -406,7 +406,6 @@ class Backend final {
     std::string clipboard;
     platform::Window::Cursor cursor = platform::Window::Cursor::Default;
     std::optional<platform::Window::Cursor> requestedCursor;
-    bool keyboardShown = false;
     bool frameActive = false;
 };
 

@@ -55,6 +55,17 @@ scene.push({
 })
 ```
 
+### One native input for every editor
+
+The platform has one native text input, and the engine shares it between its editors and the plain keyboard, so none of them closes the keyboard of another. The class `platform::SharedTextInput` holds the input for every host, and these rules decide who has it:
+
+- An editor holds the input from the moment it starts editing until it finishes. The editors are a text field of the UI, the field of `input.editText` and the plain keyboard that the UI opens for the text inputs of `haylen.imgui`.
+- The plain keyboard of `window.setKeyboardVisible(true)` shows only while no editor holds the input. A call while a field edits leaves the field editing, and the plain keyboard opens once the field finishes, empty.
+- The call `window.setKeyboardVisible(false)` closes the plain keyboard of the app. A field that edits meanwhile keeps its keyboard until it finishes, and then the keyboard closes.
+- A field that finishes while the app wants the plain keyboard hands the input back to it. So a field that the player submits or leaves never closes a keyboard that the app opened.
+- Every plain keyboard that opens starts with an empty field and a revision of its own. Calling `window.setKeyboardVisible(true)` again shows it again, such as after the player closed it.
+- A text field of the UI and the field of `input.editText` take turns too: the field of the UI takes the input while it edits, and the field of the app gets it back once the UI lets go.
+
 ## Web
 
 The web runtime, `engine/platform/web/haylen-runtime.js`, edits through fields of the browser:
@@ -141,7 +152,7 @@ Some limits remain:
 
 ## From C++
 
-The class `haylen::platform::TextInput` (`haylen/platform/TextInput.hpp`) is the protocol, and `Window::getTextInput()` returns the text input of the platform.
+The class `haylen::platform::TextInput` (`haylen/platform/TextInput.hpp`) is the protocol, and `Window::getTextInput()` returns the text input that the engine shares over the one of the platform, as [One native input for every editor](#one-native-input-for-every-editor) describes. An editor calls `edit` when it starts or follows its field and `finish` when it ends, and `TextInput::getKeyboardField()` is the field of the plain keyboard.
 
 - The method `edit(field)` starts or follows the editing of a `TextInput::Field`, `finish()` ends it, and `setVisibleFields(fields, tapSlop)` lists the fields on screen with the distance in framebuffer pixels that a press may travel and still tap one.
 - A native platform answers with `TextEdited` events, which carry a `TextInput::Edit`, `TextAction` events with a `TextInput::Action`, and `KeyboardChanged` events with the keyboard frame. The engine delivers them to the UI on the frame thread.

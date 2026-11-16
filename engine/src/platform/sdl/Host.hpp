@@ -21,7 +21,7 @@ class Runtime;
 // The host of the platforms that SDL runs, whose window SDL opens and whose frames the GPU device of the graphics API that the runtime chose draws.
 class Host final : public platform::NativeHost {
   public:
-    explicit Host(Runtime& owner) noexcept : runtime(owner) {}
+    explicit Host(Runtime& owner) noexcept : NativeHost(getPlatformTextInput(owner)), runtime(owner) {}
     ~Host() override;
 
     [[nodiscard]] math::Vec2 getFramebufferSize() const noexcept override;
@@ -37,7 +37,6 @@ class Host final : public platform::NativeHost {
     [[nodiscard]] std::string getClipboard() const override;
     void readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback) override;
     [[nodiscard]] bool canBeTransparent() const noexcept override;
-    [[nodiscard]] platform::TextInput& getTextInput() noexcept override;
     [[nodiscard]] std::unique_ptr<gpu::Device> createGpuDevice() override;
     [[nodiscard]] bool prepareGpuDevice() override;
     void closeWindow() override;
@@ -64,6 +63,9 @@ class Host final : public platform::NativeHost {
     void applyMaxPixelDensity(float cap) override;
 
   private:
+    // Apple platforms and the web edit text in a native field of the services, while Windows and Linux type through the text events of SDL.
+    [[nodiscard]] static platform::TextInput& getPlatformTextInput(Runtime& owner) noexcept;
+
     static constexpr std::size_t kCursorCount = static_cast<std::size_t>(Cursor::NotAllowed) + 1;
 
     [[nodiscard]] static SDL_SystemCursor toSystemCursor(Cursor cursor) noexcept;

@@ -40,8 +40,8 @@ TEST(KeyboardTranslatorTest, TypesWhatThePlainKeyboardCommits) {
 
         return typed;
     };
-    const auto edit = [](std::string text, int compositionStart = -1, int compositionEnd = -1) {
-        return Event{.type = Event::Type::TextEdited, .textEdit = {.text = std::move(text), .compositionStart = compositionStart, .compositionEnd = compositionEnd}};
+    const auto edit = [](std::string text, int compositionStart = -1, int compositionEnd = -1, std::uint64_t revision = 1) {
+        return Event{.type = Event::Type::TextEdited, .textEdit = {.revision = revision, .text = std::move(text), .compositionStart = compositionStart, .compositionEnd = compositionEnd}};
     };
     // clang-format on
     const std::string backspace = "<" + std::to_string(static_cast<int>(input::Key::Backspace)) + ">";
@@ -59,8 +59,7 @@ TEST(KeyboardTranslatorTest, TypesWhatThePlainKeyboardCommits) {
         EXPECT_TRUE(typed.typedOnScreen);
     }
 
-    keyboard.reset();
-    EXPECT_EQ(describe(edit("new")), "new");
+    EXPECT_EQ(describe(edit("new", -1, -1, 2)), "new") << "A plain keyboard that opens again starts from an empty field.";
 }
 
 TEST(BridgeRelayTest, ForwardsNativeRepliesToTheAttachedBridge) {

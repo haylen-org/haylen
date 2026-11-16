@@ -303,7 +303,7 @@ TEST_F(UiLuaTest, PassesTheKeyboardOptionsOfTextComponents) {
     // clang-format on
     fixture.frames(1);
     using TextInput = platform::TextInput;
-    const std::vector<TextInput::Field>& fields = fixture.host().getTextInput().getVisibleFields();
+    const std::vector<TextInput::Field>& fields = fixture.host().getPlatformTextInput().getVisibleFields();
     ASSERT_EQ(fields.size(), 3U);
     EXPECT_EQ(fields[0].options, (TextInput::Options{.keyboard = TextInput::Keyboard::Email, .returnKey = TextInput::ReturnKey::Next, .capitalization = TextInput::Capitalization::Words, .autocorrect = false, .maxLength = 40}));
     EXPECT_EQ(fields[1].options, (TextInput::Options{.keyboard = TextInput::Keyboard::Multiline, .returnKey = TextInput::ReturnKey::Send}));
@@ -311,7 +311,7 @@ TEST_F(UiLuaTest, PassesTheKeyboardOptionsOfTextComponents) {
 
     fixture.runLua("form:set('mail', {keyboard = 'url'})");
     fixture.frames(1);
-    EXPECT_EQ(fixture.host().getTextInput().getVisibleFields()[0].options.keyboard, TextInput::Keyboard::Url);
+    EXPECT_EQ(fixture.host().getPlatformTextInput().getVisibleFields()[0].options.keyboard, TextInput::Keyboard::Url);
     EXPECT_NE(fixture.lua("ui.mount(ui.textField{keyboard = 'multiline'})").find("The property \"keyboard\" of a \"textField\" must be \"text\", \"number\", \"decimal\", \"phone\", \"email\", \"url\" or \"search\"."), std::string::npos) << "Text areas and secret fields own those keyboards.";
     EXPECT_NE(fixture.lua("ui.mount(ui.secretField{autocapitalize = 'shout'})").find("The property \"autocapitalize\" of a \"secretField\" must be \"none\", \"sentences\", \"words\" or \"characters\"."), std::string::npos);
 }

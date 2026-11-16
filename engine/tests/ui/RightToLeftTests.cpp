@@ -37,7 +37,7 @@ class RightToLeftTest : public ::testing::Test {
     }
 
     [[nodiscard]] int getCaret() {
-        return ui.getFixture().host().getTextInput().getPublished().back().selectionEnd;
+        return ui.getFixture().host().getPlatformTextInput().getPublished().back().selectionEnd;
     }
 
     test::UiFixture ui;
