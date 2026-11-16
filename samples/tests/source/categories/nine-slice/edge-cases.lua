@@ -82,8 +82,9 @@ function EdgeCases:check()
         self.results:set(case.key, exact and inside and 'pass' or 'fail', case.name, detail)
     end
 
+    -- Every border shrinks by the one factor that fits the shorter side, so the round corners keep their shape.
     local corner = self.stretched:layout({0, 0, 24, 18}, scale)[1].area
-    local meets = corner.width == 12 and corner.height == 9
+    local meets = corner.width == 9 and corner.height == 9
     self.results:set('meet', meets and 'pass' or 'fail', 'Shrunk borders', string.format('The corner of a frame of 24 by 18 with borders of %.1f shrinks to %g by %g.', EdgeCases.small.border * scale, corner.width, corner.height))
 end
 
