@@ -172,6 +172,8 @@ A glass costs passes over its own region, never over the whole screen, and one c
 | The player on macOS, Metal | 2560 by 1504 | 3.37 ms | 4.65 ms | 1.28 ms |
 | Chrome on macOS, WebGPU | 2000 by 1125 | 1.85 ms | 2.49 ms | 0.64 ms |
 
+The [render benchmark](rendering.md#render-benchmark) measures the same in Release on that machine, with 400 circles under a bar, a card and a sheet of glass of 1920 by 1080 pixels. The three surfaces take the GPU time of a frame from 0.11 ms to 0.49 ms on Metal, add 28 draw calls, and add 2 microseconds of the frame thread, which allocates nothing for them. The Metal driver allocates 28 small blocks more for the passes of the glass in each frame, which the engine cannot avoid.
+
 So one surface costs about a quarter of a millisecond on that GPU at that size. The GPU of a phone is several times slower, and its screen holds about as many pixels, so a phone pays about a millisecond for each surface of glass, which keeps one or two of them, such as a tab bar and a sheet, well inside a frame. The work of the frame thread grows by a few hundredths of a millisecond for each glass. WebGL2 measures no GPU time in Chrome, and its frame thread showed the same small growth.
 
 To keep glass cheap on a phone:

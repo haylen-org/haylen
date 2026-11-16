@@ -19,6 +19,7 @@
 
 #include "haylen/2d/animation/AtlasBuilder.hpp"
 #include "haylen/2d/graphics/Camera.hpp"
+#include "haylen/2d/graphics/Glass.hpp"
 #include "haylen/2d/graphics/Path.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/2d/graphics/Shape.hpp"
@@ -64,6 +65,7 @@ class RenderBenchmark final {
         std::printf("%-44s %9s %9s %7s %9s %11s %9s %11s\n", "Scene", "Frame ms", "GPU ms", "Draws", "Instances", "Upload KB", "Allocs", "Alloc KB");
         measureSprites(engine, gpu);
         measureShapes(engine, gpu);
+        measureGlass(engine, gpu);
         measurePaths(engine, gpu);
         measureText(engine, gpu);
         measureRichText(engine, gpu);
@@ -213,6 +215,31 @@ class RenderBenchmark final {
             }
         });
         // clang-format on
+    }
+
+    // A screen of circles under a bar, a card and a sheet of glass, and the same screen without the glass, so the difference is what the glass costs: the copy of the screen and the passes of each glass over its own region.
+    static void measureGlass(core::Engine& engine, BenchmarkGpu& gpu) {
+        for (const bool glass : {false, true}) {
+            // clang-format off
+            measure(engine, gpu, glass ? "Glass, a bar, a card and a sheet over shapes" : "Glass, the same shapes without the glass", [glass](core::Engine& current) {
+                graphics2d::Renderer& renderer = current.getRenderer2D();
+                renderer.beginScreen();
+                for (int index = 0; index < 400; ++index) {
+                    const math::Vec2 place{static_cast<float>(index % 20) * 96.0F + 48.0F, static_cast<float>(index / 20) * 54.0F + 27.0F};
+                    renderer.drawCircle(place, 22.0F, math::Color{0.9F, 0.5F, 0.2F + static_cast<float>(index % 5) * 0.15F, 1.0F});
+                }
+
+                if (!glass) {
+                    return;
+                }
+
+                const graphics2d::Glass look{.blur = 24.0F, .saturation = 1.6F, .tint = math::Color{1.0F, 1.0F, 1.0F, 0.2F}, .rim = 0.6F, .refraction = 12.0F};
+                renderer.drawGlass({.bounds = {60.0F, 40.0F, 1800.0F, 140.0F}, .radii = {70.0F, 70.0F, 70.0F, 70.0F}}, look);
+                renderer.drawGlass({.bounds = {660.0F, 300.0F, 600.0F, 360.0F}, .radii = {40.0F, 40.0F, 40.0F, 40.0F}}, look);
+                renderer.drawGlass({.bounds = {0.0F, 680.0F, 1920.0F, 400.0F}, .radii = {40.0F, 40.0F, 0.0F, 0.0F}}, look);
+            });
+            // clang-format on
+        }
     }
 
     // Two hundred kept paths of curves, arcs and a hole, filled by the even-odd rule and stroked with round joins, and then one path whose commands change every frame, which tessellates every frame.

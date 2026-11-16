@@ -1269,6 +1269,7 @@ The suite `render` builds `haylen-render-benchmark` in Release, from `engine/ben
 
 - Ten thousand sprites in runs of four textures, and then alternating them.
 - A thousand circles, rounded panels and lines.
+- 400 circles under a bar, a card and a sheet of glass, and the same circles without the glass.
 - 200 kept paths of curves, arcs and a hole, each filled by the even-odd rule and stroked with round joins, and then one wave of 16 curves whose commands change every frame.
 - 200 labels that stay the same, and 200 labels whose numbers change every frame.
 - 20 rich text blocks with a wave effect.
@@ -1282,6 +1283,8 @@ For each scene it prints the CPU time of a frame, the time of the GPU on a real 
 | 10,000 sprites alternating 4 textures | 0.438 | 10,000 | 10,000 | 468.8 | 0 | 0 |
 | 10,000 sprites alternating 4 frames of a runtime atlas | 0.289 | 1 | 10,000 | 468.8 | 0 | 0 |
 | 3,000 circles, panels and lines | 0.133 | 2,000 | 3,000 | 140.6 | 0 | 0 |
+| 400 circles without glass | 0.027 | 1 | 400 | 18.8 | 0 | 0 |
+| 400 circles under 3 glass surfaces | 0.029 | 29 | 400 | 18.9 | 0 | 0 |
 | 200 kept paths, filled and stroked | 1.765 | 1 | 0 | 4,670.0 | 0 | 0 |
 | 1 path that changes every frame | 0.252 | 1 | 0 | 97.9 | 344.6 | 43.89 |
 | 200 labels that stay | 0.074 | 1 | 4,892 | 229.3 | 0 | 0 |
@@ -1289,7 +1292,7 @@ For each scene it prints the CPU time of a frame, the time of the GPU on a real 
 | 20 rich text blocks with a wave | 0.032 | 1 | 1,440 | 67.5 | 0 | 0 |
 | A screen of 40 interface components | 0.026 | 48 | 514 | 24.1 | 0 | 0 |
 
-Labels that stay find their layouts in the cache of their font, so they cost what their glyph quads cost. Text that changes every frame lays out again, which is the one drawing that allocates. So a readout of numbers is cheapest when it changes a few times per second, as the compact debug statistics do. Alternating textures turns every sprite into a draw call, while the same sprites cut from one atlas that `animation2d::AtlasBuilder` packs at run time draw in one. Kept paths allocate nothing and draw in one call, and their cost is the vertices of their curves, which every frame copies into the streaming buffer through their transforms. The path rows were measured while other builds loaded the machine. A path whose commands change every frame tessellates every frame, and its fill allocates while the polygon booleans resolve it. Alternating circles and panels with lines splits the batches of the shape program, as the [performance guidance](#performance-guidance) explains. The suite also packs 400 images of 8 to 72 pixels a side into one linear atlas, trimmed, padded, extruded and bled. That takes 5.8 ms on one worker and gives an atlas of 1024 by 685 pixels.
+Labels that stay find their layouts in the cache of their font, so they cost what their glyph quads cost. Text that changes every frame lays out again, which is the one drawing that allocates. So a readout of numbers is cheapest when it changes a few times per second, as the compact debug statistics do. Alternating textures turns every sprite into a draw call, while the same sprites cut from one atlas that `animation2d::AtlasBuilder` packs at run time draw in one. Kept paths allocate nothing and draw in one call, and their cost is the vertices of their curves, which every frame copies into the streaming buffer through their transforms. The path and glass rows were measured while other builds loaded the machine. A path whose commands change every frame tessellates every frame, and its fill allocates while the polygon booleans resolve it. Alternating circles and panels with lines splits the batches of the shape program, as the [performance guidance](#performance-guidance) explains. Each glass adds the passes over its region, which are the 28 draw calls more of the glass row, and a few microseconds of the frame thread, and its cost on the GPU is in the [effects guide](effects.md#cost-and-budget). The suite also packs 400 images of 8 to 72 pixels a side into one linear atlas, trimmed, padded, extruded and bled. That takes 5.8 ms on one worker and gives an atlas of 1024 by 685 pixels.
 
 ## Using the renderer from C++
 
