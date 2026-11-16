@@ -1041,9 +1041,9 @@ void Backend::beginDeferring() {
 
 // Every window that began since `beginDeferring` has an order of this frame from that count on, whether it is a child window, a popup or the window of a component.
 void Backend::endDeferring() {
-    for (const ImGuiWindow* window : imguiContext->Windows) {
-        if (window->Active && window->BeginOrderWithinContext >= deferredFrom) {
-            deferredLists.push_back(window->DrawList);
+    for (const ImGuiWindow* begun : imguiContext->Windows) {
+        if (begun->Active && begun->BeginOrderWithinContext >= deferredFrom) {
+            deferredLists.push_back(begun->DrawList);
         }
     }
 }
