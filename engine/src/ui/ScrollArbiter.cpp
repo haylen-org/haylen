@@ -26,6 +26,21 @@ bool ScrollArbiter::isEmpty(const Wheel& value) noexcept {
     return value.lines.isZero() && value.points.isZero();
 }
 
+// A wheel without phases cannot tell a new gesture from one that turns, so the motion since the gesture last moved along its axis turns it once it goes across the axis more than twice as far as along it, by at least a step of a wheel or a few points of a trackpad.
+bool ScrollArbiter::trackTurn() noexcept {
+    crossing.lines += wheel.lines;
+    crossing.points += wheel.points;
+    const bool stepped = !crossing.lines.isZero();
+    const math::Vec2 motion = stepped ? crossing.lines : crossing.points;
+    const float along = std::fabs(vertical ? motion.y : motion.x);
+    const float across = std::fabs(vertical ? motion.x : motion.y);
+    if (across <= along) {
+        crossing = {};
+        return false;
+    }
+    return across > along * kTurnRatio && (stepped || across >= kTurnPoints);
+}
+
 ImGuiID ScrollArbiter::choose(std::span<const Offer> offers) noexcept {
     const Offer* best = nullptr;
     for (const Offer& offer : offers) {
@@ -102,24 +117,31 @@ void ScrollArbiter::beginFrame(float seconds) {
     areas.swap(previousAreas);
     areas.clear();
 
-    // A gesture of a trackpad with phases lasts while its fingers are on it or its momentum goes on, until fingers touch it again. A wheel without phases that pauses, or that rests while the pointer moves on, ends its gesture. The next wheel starts a gesture along the axis it moves most.
+    // A gesture of a trackpad with phases lasts while its fingers are on it or its momentum goes on, until fingers touch it again. A wheel without phases that pauses, that rests while the pointer moves on or that turns to the other axis ends its gesture. The next wheel starts a gesture along the axis it moves most.
     const bool scrolled = !isEmpty(wheel);
+    const bool turned = gesture && !phased && scrolled && trackTurn();
     const bool pointerTravelled = (pointer - wheelPointer).getLengthSquared() > kPointerTravel * kPointerTravel;
     const bool paused = quiet > kGesturePause || (quiet > kPointerPause && pointerTravelled);
-    if (gesture && !fingers && (touched || (phased && wheel.momentum.isZero()) || paused)) {
+    if (gesture && !fingers && (turned || touched || (phased && wheel.momentum.isZero()) || paused)) {
         gesture = false;
     }
 
     fingers = (fingers || touched || (framePhased && scrolled)) && !lifted;
 
     if (scrolled && !gesture) {
-        const math::Vec2 motion = wheel.lines.isZero() ? wheel.points : wheel.lines;
+        // A gesture that turned starts with the motion that turned it, which no area took yet.
+        const Wheel start = turned ? std::exchange(crossing, {}) : wheel;
+        const math::Vec2 motion = start.lines.isZero() ? start.points : start.lines;
+
         gesture = true;
         phased = framePhased;
         vertical = std::fabs(motion.y) >= std::fabs(motion.x);
-        waiting = wheel;
+        crossing = {};
+        delivered.lines = start.lines;
+        delivered.points = start.points;
+        waiting = start;
         chooseArea(pointer);
-        waiting = wheelArea == 0 ? wheel : Wheel{};
+        waiting = wheelArea == 0 ? start : Wheel{};
     } else if (!isEmpty(waiting)) {
         chooseArea(pointer);
         delivered.lines += waiting.lines;

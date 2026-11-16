@@ -11,7 +11,7 @@
 
 namespace haylen::ui {
 
-// Decides which area a scroll gesture moves. A gesture of a wheel or a trackpad keeps the axis it starts along and goes to the innermost area under the pointer that can move along that axis the way it scrolls, or else to the innermost one that scrolls along it, and stays with that area, wherever the content goes, until the fingers leave a trackpad that reports the phases of its gestures, or until a device without phases pauses or the pointer moves on while it rests. The momentum that the system adds to a trackpad once the fingers left keeps the gesture and reaches its area apart, which moves on by its own motion when it has one, and fingers that touch the trackpad reach every area under the pointer, which stops its motion. Every area that scrolls registers while it draws, in any order, and a gesture chooses among the areas of the frame before, so its first scroll already moves the area it chose. A gesture that starts as the pointer arrives over an area, before the area knows the pointer is there, chooses again in the next frame, which receives the first scroll too. A finger that drags past the slop goes to the innermost area it pressed whose axis the drag follows, from the frame after the areas it pressed offered themselves, and stays with it until it lifts, unless it already drags an item. An item that the pointer or a finger drags scrolls the innermost area under it that it nears the edge of and that can move that way, faster the closer it gets to the edge.
+// Decides which area a scroll gesture moves. A gesture of a wheel or a trackpad keeps the axis it starts along and goes to the innermost area under the pointer that can move along that axis the way it scrolls, or else to the innermost one that scrolls along it, and stays with that area, wherever the content goes, until the fingers leave a trackpad that reports the phases of its gestures, or until a device without phases pauses, turns to the other axis or rests while the pointer moves on. The momentum that the system adds to a trackpad once the fingers left keeps the gesture and reaches its area apart, which moves on by its own motion when it has one, and fingers that touch the trackpad reach every area under the pointer, which stops its motion. Every area that scrolls registers while it draws, in any order, and a gesture chooses among the areas of the frame before, so its first scroll already moves the area it chose. A gesture that starts as the pointer arrives over an area, before the area knows the pointer is there, chooses again in the next frame, which receives the first scroll too. A finger that drags past the slop goes to the innermost area it pressed whose axis the drag follows, from the frame after the areas it pressed offered themselves, and stays with it until it lifts, unless it already drags an item. An item that the pointer or a finger drags scrolls the innermost area under it that it nears the edge of and that can move that way, faster the closer it gets to the edge.
 class ScrollArbiter final {
   public:
     // Steps of a wheel, points of the screen that a trackpad moved and points of the momentum that the system adds to a trackpad once its fingers left, with positive values for scrolling up and to the left.
@@ -93,6 +93,10 @@ class ScrollArbiter final {
     static constexpr float kPointerPause = 0.1F;
     static constexpr float kPointerTravel = 4.0F;
 
+    // A gesture of a wheel without phases turns to the other axis once its motion goes across its axis this many times as far as along it, by at least these points of a trackpad.
+    static constexpr float kTurnRatio = 2.0F;
+    static constexpr float kTurnPoints = 16.0F;
+
     // Returns the smallest area that offered, among those that can move when any can, so an area inside another wins over it.
     [[nodiscard]] static ImGuiID choose(std::span<const Offer> offers) noexcept;
 
@@ -104,10 +108,14 @@ class ScrollArbiter final {
 
     [[nodiscard]] static bool isEmpty(const Wheel& value) noexcept;
 
+    // Adds the wheel of the frame to the motion across the gesture and returns whether the gesture turned to the other axis.
+    [[nodiscard]] bool trackTurn() noexcept;
+
     Wheel pending;
     Wheel wheel;
     Wheel delivered;
     Wheel waiting;
+    Wheel crossing;
     bool pendingTouched = false;
     bool pendingLifted = false;
     bool touched = false;

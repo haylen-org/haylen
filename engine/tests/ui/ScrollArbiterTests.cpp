@@ -46,28 +46,26 @@ class ScrollArbiterTest : public ::testing::Test, public test::UiFixture {
         wheel(point, scroll.y, scroll.x, true);
     }
 
-    // Sends the scroll of a trackpad that reports the phases of its gestures over a point, up and down, and runs a frame.
-    void phase(math::Vec2 point, float scroll, platform::Event::ScrollPhase value) {
+    // Sends the scroll of a trackpad that reports the phases of its gestures over a point and runs a frame.
+    void phased(math::Vec2 point, math::Vec2 scroll, platform::Event::ScrollPhase value) {
         pointer(platform::Event::Type::MouseMove, point);
         platform::Event event;
         event.type = platform::Event::Type::MouseScroll;
-        event.scroll = {0.0F, scroll};
+        event.scroll = scroll;
         event.preciseScroll = true;
         event.scrollPhase = value;
         getEngine().handleEvent(event);
         frames();
     }
 
+    // Sends the scroll of a trackpad that reports the phases of its gestures over a point, up and down, and runs a frame.
+    void phase(math::Vec2 point, float scroll, platform::Event::ScrollPhase value) {
+        phased(point, {0.0F, scroll}, value);
+    }
+
     // Sends the sideways scroll of a trackpad that reports the phases of its gestures over a point and runs a frame.
     void sideways(math::Vec2 point, float scroll, platform::Event::ScrollPhase value) {
-        pointer(platform::Event::Type::MouseMove, point);
-        platform::Event event;
-        event.type = platform::Event::Type::MouseScroll;
-        event.scroll = {scroll, 0.0F};
-        event.preciseScroll = true;
-        event.scrollPhase = value;
-        getEngine().handleEvent(event);
-        frames();
+        phased(point, {scroll, 0.0F}, value);
     }
 
     // A page holding a draggable list of rows taller than the page.
@@ -128,18 +126,54 @@ TEST_F(ScrollArbiterTest, AVerticalGestureOverAHorizontalAreaScrollsTheVerticalA
 }
 
 TEST_F(ScrollArbiterTest, AGestureKeepsTheAxisItStartsAlong) {
+    using Phase = platform::Event::ScrollPhase;
     auto gui = mountPage();
     const math::Vec2 inside = getBounds(*gui, "strip").getCenter();
     const float top = getBounds(*gui, "strip").y;
     const float left = getBounds(*gui, "covers").x;
 
-    // A gesture that starts mostly up and down stays with the page, also when it drifts sideways later.
-    trackpad(inside, {-6.0F, -30.0F});
-    trackpad(inside, {-40.0F, -2.0F});
-    trackpad(inside, {-40.0F, 0.0F});
+    // A gesture that starts mostly up and down stays with the page while its fingers stay on the trackpad, also when it drifts sideways later.
+    phased(inside, {}, Phase::Began);
+    phased(inside, {-6.0F, -30.0F}, Phase::Changed);
+    phased(inside, {-40.0F, -2.0F}, Phase::Changed);
+    phased(inside, {-40.0F, 0.0F}, Phase::Changed);
+    phased(inside, {}, Phase::Ended);
     frames(kRest);
-    EXPECT_NEAR(getBounds(*gui, "strip").y, top - 32.0F, 0.5F);
+    EXPECT_LT(getBounds(*gui, "strip").y, top - 20.0F);
     EXPECT_EQ(getBounds(*gui, "covers").x, left);
+
+    // A wheel without phases keeps its axis while it wavers across it a little.
+    const float scrolledTop = getBounds(*gui, "strip").y;
+    trackpad(inside, {-4.0F, -30.0F});
+    trackpad(inside, {-6.0F, -2.0F});
+    trackpad(inside, {-5.0F, -20.0F});
+    frames(kRest);
+    EXPECT_NEAR(getBounds(*gui, "strip").y, scrolledTop - 52.0F, 0.5F);
+    EXPECT_EQ(getBounds(*gui, "covers").x, left);
+}
+
+// A wheel without phases, such as a trackpad in a browser, cannot tell a new gesture from one that turns. So a vertical swipe right after a sideways one over a strip scrolls the page around it while the pointer rests, even while the momentum of the sideways swipe still arrives.
+TEST_F(ScrollArbiterTest, AWheelWithoutPhasesThatTurnsToTheOtherAxisScrollsTheAreaAlongIt) {
+    auto gui = mountPage();
+    const math::Vec2 inside = getBounds(*gui, "strip").getCenter();
+    const float top = getBounds(*gui, "strip").y;
+    const float left = getBounds(*gui, "covers").x;
+    trackpad(inside, {-30.0F, 0.0F});
+    trackpad(inside, {-10.0F, -1.0F});
+    trackpad(inside, {-2.0F, 0.0F});
+    trackpad(inside, {0.0F, -20.0F});
+    trackpad(inside, {0.0F, -20.0F});
+    frames(kRest);
+    EXPECT_NEAR(getBounds(*gui, "covers").x, left - 42.0F, 0.5F);
+    EXPECT_NEAR(getBounds(*gui, "strip").y, top - 40.0F, 0.5F);
+
+    // A wheel that steps up and down right after it turns at once too.
+    const float scrolledLeft = getBounds(*gui, "covers").x;
+    trackpad(inside, {-30.0F, 0.0F});
+    wheel(inside, -1.0F);
+    frames(kRest);
+    EXPECT_NEAR(getBounds(*gui, "covers").x, scrolledLeft - 30.0F, 0.5F);
+    EXPECT_NEAR(getBounds(*gui, "strip").y, top - 104.0F, 0.5F);
 }
 
 TEST_F(ScrollArbiterTest, AGestureStaysWithTheAreaItStartedInWhileTheContentMovesUnderThePointer) {
