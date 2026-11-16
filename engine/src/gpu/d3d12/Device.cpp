@@ -73,7 +73,7 @@ Device::Device(ComPtr<IDXGIFactory6> dxgiFactory, ComPtr<IDXGIAdapter1> card, co
     depthViews = std::make_unique<DescriptorHeap>(*device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 64);
     textureTables = std::make_unique<DescriptorRing>(*device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, kTextureHeapSize, D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_1, "haylen-texture-tables");
     samplerTables = std::make_unique<DescriptorRing>(*device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE, D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE, "haylen-sampler-tables");
-    uploads = std::make_unique<UploadAllocator>(*device.Get());
+    uploads = std::make_unique<UploadAllocator>(*device.Get(), kFramesInFlight);
     bufferArena = std::make_unique<BufferArena>(*device.Get());
     rootSignatures = std::make_unique<RootSignatures>(*device.Get());
     timer = std::make_unique<FrameTimer>(*device.Get(), *queue.Get(), kFramesInFlight);
@@ -321,6 +321,7 @@ void Device::openFrame() {
     timer->begin(*commands.Get(), frameIndex);
 }
 
+// The transfers open the frame, which takes back the upload memory of the frames the GPU finished, so every copy takes the list before it stages its data.
 ID3D12GraphicsCommandList4& Device::getTransferList() {
     openFrame();
 
@@ -367,9 +368,10 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
     }
 
     if (!desc.data.empty()) {
+        ID3D12GraphicsCommandList4& list = getTransferList();
         const UploadAllocator::Allocation staged = uploads->allocate(size, 16);
         std::memcpy(staged.data, desc.data.data(), size);
-        getTransferList().CopyBufferRegion(record.resource.Get(), record.range.offset, staged.resource, staged.offset, size);
+        list.CopyBufferRegion(record.resource.Get(), record.range.offset, staged.resource, staged.offset, size);
     }
 
     return {buffers.insert(std::move(record))};
@@ -431,9 +433,8 @@ void Device::stagePixels(const ImageRecord& image, std::span<const std::span<con
         total += (bytes + D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT - 1) / D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT * D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
     }
 
-    const UploadAllocator::Allocation staged = uploads->allocate(total, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
-
     ID3D12GraphicsCommandList4& list = getTransferList();
+    const UploadAllocator::Allocation staged = uploads->allocate(total, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
     const D3D12_RESOURCE_BARRIER toCopy = makeTransition(image.resource.Get(), image.home, D3D12_RESOURCE_STATE_COPY_DEST);
     list.ResourceBarrier(1, &toCopy);
 
@@ -665,9 +666,10 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
         return;
     }
 
+    ID3D12GraphicsCommandList4& list = getTransferList();
     const UploadAllocator::Allocation staged = uploads->allocate(data.size(), 16);
     std::memcpy(staged.data, data.data(), data.size());
-    getTransferList().CopyBufferRegion(record.resource.Get(), record.range.offset + offset, staged.resource, staged.offset, data.size());
+    list.CopyBufferRegion(record.resource.Get(), record.range.offset + offset, staged.resource, staged.offset, data.size());
 }
 
 void Device::writeImages(std::span<const ImageWrite> writes) {

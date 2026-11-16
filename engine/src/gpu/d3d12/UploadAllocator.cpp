@@ -8,7 +8,13 @@
 
 namespace haylen::gpu::d3d12 {
 
-UploadAllocator::UploadAllocator(ID3D12Device& owner) : device(owner) {}
+UploadAllocator::UploadAllocator(ID3D12Device& owner, std::size_t framesInFlight) : device(owner) {
+    free.reserve(framesInFlight);
+    retired.reserve(framesInFlight);
+    for (std::size_t frame = 0; frame < framesInFlight; ++frame) {
+        free.push_back(makePage(kPageSize));
+    }
+}
 
 UploadAllocator::Page UploadAllocator::makePage(UINT64 size) {
     const D3D12_HEAP_PROPERTIES heap{.Type = D3D12_HEAP_TYPE_UPLOAD};

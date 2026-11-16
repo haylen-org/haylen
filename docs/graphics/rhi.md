@@ -92,7 +92,7 @@ Two calls bring data from the CPU into a frame:
 - `writeBuffer(buffer, offset, data)` writes part of a dynamic buffer at an offset that is a multiple of four bytes. A frame writes each part once, before a pass binds the buffer, and the buffer holds in that frame only what the frame wrote.
 - `writeImages(writes)` replaces the first mip level of dynamic images, every layer at once. A frame makes one call before its first pass, so the device stages every image before it copies any.
 
-Each device moves this data through upload memory of its own for each frame in flight. That memory stays mapped where the API allows it, and it grows only when a frame needs more room, so a frame that writes what the frame before it wrote allocates nothing. The engine tests check this with `test::AllocationTracker`.
+Each device moves this data through upload memory of its own for each frame in flight. That memory stays mapped where the API allows it, and it grows only when a frame needs more room, so a frame that writes what the frame before it wrote allocates nothing, even when the GPU falls behind. A device opens its frame, which waits for the frame in flight that used the same memory, before it stages any data. The engine tests check this with `test::AllocationTracker`.
 
 ## Reading pixels back
 

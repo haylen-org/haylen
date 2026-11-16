@@ -362,6 +362,49 @@ TEST_P(Direct3DDeviceTest, RepeatsAFrameWithoutAllocatingAndMeasuresTheGpu) {
     EXPECT_TRUE(device->getGpuFrameSeconds().has_value());
 }
 
+// Frames that start to outrun the GPU, after frames it kept up with, write their buffers into the upload memory of the frame that ended before the frames in flight, so they allocate nothing.
+TEST_P(Direct3DDeviceTest, KeepsItsUploadMemoryWhenTheGpuFallsBehind) {
+    start();
+    images.push_back(device->makeImage({.width = kSize, .height = kSize, .kind = Device::ImageKind::RenderTarget, .label = "haylen-test-small"}));
+    const Image quick = images.back();
+    images.push_back(device->makeImage({.width = 2048, .height = 2048, .kind = Device::ImageKind::RenderTarget, .label = "haylen-test-large"}));
+    const Image slow = images.back();
+    buffers.push_back(device->makeBuffer({.size = 64, .usage = Device::Usage::Dynamic, .label = "haylen-test-dynamic"}));
+    const Buffer vertices = buffers.back();
+    const Pipeline pipeline = makePipeline(false);
+    const std::array<float, 6> corners{-1.0F, -1.0F, -1.0F, 3.0F, 3.0F, -1.0F};
+
+    // clang-format off
+    const auto frame = [&](Image target, int draws) {
+        device->writeBuffer(vertices, 0, std::as_bytes(std::span(corners)));
+        const Device::ColorAttachment color{.image = target};
+        device->beginPass({.colors = std::span(&color, 1), .label = "haylen-test-frame"});
+
+        for (int draw = 0; draw < draws; ++draw) {
+            drawTriangle(pipeline, vertices, {1.0F, 1.0F, 1.0F, 1.0F});
+        }
+
+        device->endPass();
+        device->commit();
+    };
+    // clang-format on
+    frame(slow, 1);
+
+    // Each frame of the start waits for the GPU through a readback, so the GPU never falls behind before the frames of the large target.
+    for (int warm = 0; warm < 4; ++warm) {
+        frame(quick, 1);
+        static_cast<void>(read(quick));
+    }
+
+    const test::AllocationTracker tracker;
+
+    for (int index = 0; index < 10; ++index) {
+        frame(slow, 16);
+    }
+
+    EXPECT_EQ(tracker.getTotal(), 0U);
+}
+
 INSTANTIATE_TEST_SUITE_P(Direct3D, Direct3DDeviceTest, ::testing::ValuesIn(Direct3DDeviceTest::getCompiledApis()), [](const ::testing::TestParamInfo<Device::Api>& info) { return info.param == Device::Api::Direct3D11 ? std::string("Direct3D11") : std::string("Direct3D12"); });
 
 } // namespace haylen::gpu::direct3d

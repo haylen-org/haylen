@@ -16,3 +16,7 @@ target_sources(haylen-gpu PRIVATE
 )
 target_compile_definitions(haylen-gpu PUBLIC HAYLEN_GPU_DIRECT3D12)
 target_link_libraries(haylen-gpu PRIVATE d3d12)
+
+# The tests of the upload memory of the device on WARP, which every Windows machine has.
+list(APPEND HAYLEN_GPU_TEST_SOURCES "${HAYLEN_ENGINE_DIR}/tests/gpu/d3d12/UploadAllocatorTests.cpp")
+list(APPEND HAYLEN_GPU_TEST_LIBRARIES d3d12)
