@@ -173,9 +173,11 @@ float Presentation::getDistance() const {
     return 1.0F;
 }
 
-// A screen is compact while its safe area is narrower than a form sheet with its margins, such as a phone in portrait, or too short to float a card in.
+// A screen is compact while its safe area is narrower than a form sheet with its margins, in UI units or in the points that sheet spans in the physical scale mode, such as a phone in portrait whatever the scale of its UI, or too short to float a card in.
 bool Presentation::isCompact(const Frame& frame) const {
-    return frame.safe.width < kSheetWidth + kSheetMargin * 2.0F || frame.safe.height < kSheetMargin * 4.0F;
+    const float formWidth = kSheetWidth + kSheetMargin * 2.0F;
+    const bool narrow = frame.safe.width < formWidth || frame.safe.width * frame.pointsPerUnit < formWidth * Scaling::kPointsPerUnit;
+    return narrow || frame.safe.height < kSheetMargin * 4.0F;
 }
 
 bool Presentation::isSheet(const Frame& frame) const {

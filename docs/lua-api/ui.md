@@ -3980,7 +3980,7 @@ Presents a screen over everything the app shows and returns its [`Presentation`]
 | `'drawer'` | A panel the height of the screen that slides in from the start edge, the right edge of a right-to-left interface. |
 | `'popover'` | A floating card with an arrow under or over the node of `anchor`, as tall as its screen measures. On a compact screen it is a sheet. |
 
-A screen is compact while its safe area is narrower than 824 UI units, such as a phone in portrait.
+A screen is compact while its safe area is narrower than 824 UI units, or than the 618 points that those units span in the `'physical'` [scale mode](#uisetscalemodemode), such as a phone in portrait whatever the scale of its UI.
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |

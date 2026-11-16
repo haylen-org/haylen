@@ -23,6 +23,7 @@ Presentation::Frame PresentationView::prepare(Presentation& presentation, Gui& g
     Presentation::Frame frame{
         .display = backend.getLiftedDisplayRect(),
         .safe = backend.getLiftedSafeRect(),
+        .pointsPerUnit = backend.getPointsPerUnit(),
         .radius = context.getMetric(Theme::Metric::PanelRadius),
         .rightToLeft = context.isRightToLeft(),
     };

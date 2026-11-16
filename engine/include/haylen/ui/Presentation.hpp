@@ -15,6 +15,7 @@
 #include "haylen/math/Rect.hpp"
 #include "haylen/ui/NavigationTransition.hpp"
 #include "haylen/ui/Region.hpp"
+#include "haylen/ui/Scaling.hpp"
 
 namespace haylen::plugins {
 class UiPlugin;
@@ -120,10 +121,11 @@ class Presentation final : public std::enable_shared_from_this<Presentation> {
         float behindScale = 1.0F;
     };
 
-    // What a layout depends on besides the presentation: the visible and safe areas of the screen, the corner radius of the theme panels, the height the screen measures at the width of its area, where the anchor of a popover drew, and the direction of the UI.
+    // What a layout depends on besides the presentation: the visible and safe areas of the screen, the points of the screen one UI unit spans, the corner radius of the theme panels, the height the screen measures at the width of its area, where the anchor of a popover drew, and the direction of the UI.
     struct Frame {
         math::Rect display;
         math::Rect safe;
+        float pointsPerUnit = Scaling::kPointsPerUnit;
         float radius = 0.0F;
         float contentHeight = 0.0F;
         std::optional<math::Rect> anchor;

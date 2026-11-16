@@ -144,7 +144,7 @@ end
 ui.present(NewPost(), {style = 'sheet', onDismiss = function() print('The new post closed.') end})
 ```
 
-A screen is compact while its safe area is narrower than a form sheet with its margins, such as a phone in portrait. The same presentation adapts to the screen it shows on: a sheet fills the width of a compact screen and floats as a card on a wide one, and a popover becomes a sheet on a compact screen. When the window changes size, such as a tablet that turns or a split screen, the presentation lays out again at once.
+A screen is compact while its safe area is narrower than a form sheet with its margins, such as a phone in portrait. The width counts in UI units and in points of the screen, so a phone is compact also when its UI lays out a wide design. The same presentation adapts to the screen it shows on: a sheet fills the width of a compact screen and floats as a card on a wide one, and a popover becomes a sheet on a compact screen. When the window changes size, such as a tablet that turns or a split screen, the presentation lays out again at once.
 
 A tap on the backdrop, Escape, the system back and a drag dismiss a dismissible presentation. A presentation with `dismissible = false` stays until the app dismisses it.
 

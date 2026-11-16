@@ -633,6 +633,19 @@ TEST_F(NavigationTest, ShrinksTheGuisBehindASheetNearTheTopOfACompactScreen) {
     EXPECT_FLOAT_EQ(full->getLayout(tablet).surface.width, Presentation::kSheetWidth);
 }
 
+// A screen narrower than a form sheet in points is compact whatever the scale of its UI, such as a phone that lays out a wide design, and the sheets and popovers fill its width.
+TEST_F(NavigationTest, MakesAScreenCompactByItsWidthInPoints) {
+    const Presentation::Frame phone{.display = {0.0F, 0.0F, 1920.0F, 4000.0F}, .safe = {0.0F, 0.0F, 1920.0F, 4000.0F}, .pointsPerUnit = 0.2F, .radius = 16.0F};
+    const Presentation::Frame tablet{.display = {0.0F, 0.0F, 1920.0F, 1300.0F}, .safe = {0.0F, 0.0F, 1920.0F, 1300.0F}, .pointsPerUnit = 0.6F, .radius = 16.0F};
+    const std::shared_ptr<Presentation> sheet = getNavigation().present(make("sheet"), {});
+    const std::shared_ptr<Presentation> popover = getNavigation().present(make("popover"), {.style = Presentation::Style::Popover, .anchor = getArea("home")});
+    EXPECT_TRUE(sheet->getLayout(phone).compact);
+    EXPECT_FLOAT_EQ(sheet->getLayout(phone).surface.width, phone.display.width);
+    EXPECT_FALSE(popover->getLayout(phone).arrow.has_value());
+    EXPECT_FALSE(sheet->getLayout(tablet).compact);
+    EXPECT_FLOAT_EQ(sheet->getLayout(tablet).surface.width, Presentation::kSheetWidth);
+}
+
 // Screens that stay where they are cost the frames nothing more than the frame alone.
 TEST_F(NavigationTest, ShowsStillScreensWithoutAllocating) {
     // clang-format off
