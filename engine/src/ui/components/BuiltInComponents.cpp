@@ -51,7 +51,6 @@
 #include "ui/components/inputs/TextField.hpp"
 #include "ui/components/overlays/ContextMenu.hpp"
 #include "ui/components/overlays/Dialog.hpp"
-#include "ui/components/overlays/Toast.hpp"
 #include "ui/components/overlays/Window.hpp"
 #include "ui/components/settings/SettingsActions.hpp"
 #include "ui/components/settings/SettingsForm.hpp"
@@ -125,7 +124,6 @@ void BuiltInComponents::registerAll(ComponentRegistry& registry) {
     registry.add<SettingsRow>("settingsRow");
     registry.add<SettingsActions>("settingsActions");
     registry.add<Dialog>("dialog");
-    registry.add<Toast>("toast");
     registry.add<Window>("window");
     registry.add<ContextMenu>("contextMenu");
     registry.add<TouchStick>("touchStick");

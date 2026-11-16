@@ -7,15 +7,16 @@
 
 namespace haylen::ui {
 
+class Message;
 class NavigationSplit;
 class NavigationStack;
 class NavigationTabs;
 class Presentation;
 
-// Ties a stack, tabs, a split or a presentation to the owner it was created with: disconnecting closes it, or dismisses a presentation at once, and the link ends once it closed. An owner that blocks leaves the navigation as it is, since its screens keep their state on their own.
+// Ties a stack, tabs, a split, a presentation or a message to the owner it was created with: disconnecting closes it, or dismisses a presentation or a message at once, and the link ends once it closed. An owner that blocks leaves the navigation as it is, since its screens keep their state on their own.
 class NavigationLink final : public core::Connection::Link {
   public:
-    using Target = std::variant<std::weak_ptr<NavigationStack>, std::weak_ptr<NavigationTabs>, std::weak_ptr<NavigationSplit>, std::weak_ptr<Presentation>>;
+    using Target = std::variant<std::weak_ptr<NavigationStack>, std::weak_ptr<NavigationTabs>, std::weak_ptr<NavigationSplit>, std::weak_ptr<Presentation>, std::weak_ptr<Message>>;
 
     explicit NavigationLink(Target value);
 

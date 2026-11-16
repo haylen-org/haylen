@@ -46,6 +46,7 @@
 #include "ui/ImGuiConverter.hpp"
 #include "ui/ImGuiLua.hpp"
 #include "ui/ImageLibrary.hpp"
+#include "ui/MessageView.hpp"
 #include "ui/PresentationView.hpp"
 #include "ui/SoundLibrary.hpp"
 #include "ui/TextSession.hpp"
@@ -92,6 +93,7 @@ void UiPlugin::start(core::Engine& engine) {
     setTheme(themeName);
     navigation = std::make_unique<ui::Navigation>(engine, *this);
     presentationView = std::make_unique<ui::PresentationView>(*backend, *context);
+    messageView = std::make_unique<ui::MessageView>(*backend, *context, engine.getAccessibility());
     // clang-format off
     focus.setBackHandler([this] {
         if (!navigation->canGoBack()) {
@@ -133,6 +135,7 @@ void UiPlugin::stop(core::Engine& engine) {
     focus.setBackHandler({});
     backRequested = false;
     presentationView.reset();
+    messageView.reset();
     for (const Mounted& entry : guis) {
         (void)entry.gui->detach();
     }
@@ -632,6 +635,7 @@ void UiPlugin::drawCurrent(core::Engine& engine, const core::SceneView& view) {
     beginWindow("##haylen-guis", ImGuiWindowFlags_NoNavInputs);
     drawing.setTransparentWindow();
     drawGuis(under, drawnGuis.size(), false);
+    messageView->draw(navigation->getMessages());
 
     // The GUIs that no view shows, such as those of a covered scene, hear that they stopped drawing.
     for (const Mounted& entry : guis) {

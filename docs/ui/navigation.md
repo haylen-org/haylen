@@ -1,6 +1,6 @@
 # 🧭 Navigation
 
-This guide explains how an app moves between its screens: a frame with bars that stays, stacks that push and pop screens in the middle of the frame, tabs that each keep their own stack, a list and its detail that sit side by side on a tablet and work as one stack on a phone, and presentations that open a new flow over everything, such as sheets, popovers, drawers, dialogs, alerts and action sheets. It also explains the results of a flow, unsaved work, the system back, deep links and the hooks of a screen. The [`haylen.ui` reference](../lua-api/ui.md#navigation) lists every function, option and error.
+This guide explains how an app moves between its screens: a frame with bars that stays, stacks that push and pop screens in the middle of the frame, tabs that each keep their own stack, a list and its detail that sit side by side on a tablet and work as one stack on a phone, presentations that open a new flow over everything, such as sheets, popovers, drawers, dialogs, alerts and action sheets, and the toasts, snackbars and banners that tell of what happened. It also explains the results of a flow, unsaved work, the system back, deep links and the hooks of a screen. The [`haylen.ui` reference](../lua-api/ui.md#navigation) lists every function, option and error.
 
 ## Screens, stacks and the frame
 
@@ -190,6 +190,28 @@ Every action has a role. The cancel action leads, and the person also chooses it
 
 An action sheet points at its anchor as a popover on a wide screen, and rises from the bottom of a compact one as a sheet as tall as its actions.
 
+## Messages
+
+A message tells the person of something that happened and goes away on its own, without a decision and without the focus, so the person goes on with what they were doing. The navigation shows messages above every GUI and every presentation, in three styles that follow the platforms people know:
+
+- A toast confirms something short, such as a saved file, in a pill at the bottom middle that fits its text. A few toasts show together, and each lasts 3 seconds.
+- A snackbar tells of an action that the person may take back, such as an undo after a deletion, in a bar across the bottom with its action at the end. One snackbar shows at a time, for 4 seconds, or 6 with an action.
+- A banner tells of news that the person may open, such as a chat message, in a card that drops in under the status bar with a picture at its start. One banner shows at a time, for 5 seconds, and a tap on it reports that the person wants to see more.
+
+```lua
+ui.showMessage{text = 'Saved to your collection.', tone = 'success', indicator = 'icon'}
+
+ui.showMessage{style = 'snackbar', text = 'Removed from your collection.', action = 'Undo', onAction = function()
+    Collection.add(post)
+end}
+
+ui.showMessage{style = 'banner', title = 'Ana', text = 'See you at six?', icon = 'images/ana.png', onTap = function()
+    openChat('ana')
+end}
+```
+
+Messages of one position stack without covering each other, as a list or as a deck with the newest in front. The others wait their turn in a queue, a higher priority before a lower one, and a snackbar or a banner of a higher priority replaces the one that shows, such as a warning that the connection dropped over a confirmation. The time of a message stops while the pointer or a finger rests on its stack, and the person taps it, swipes it away, closes it or presses its action. Its `result` resolves with the reason it left, so a snackbar can wait for the undo before it deletes for good. Screen readers hear every message that comes on screen, and a high priority interrupts them. Use an alert instead when the person must decide before going on.
+
 ## Results of a flow
 
 A presented flow can hand a value back to whoever presented it, such as the color the person picked or the post they wrote. The screen dismisses its presentation with a result, and the `result` of the presentation is a promise that resolves with it once the presentation left. A dismissal by the person resolves it with `nil`, and an alert resolves it with the id of the action.
@@ -266,11 +288,11 @@ Scenes and navigation work at two levels. A [scene](../core/lifecycle.md#scene-l
 
 ## Cost
 
-A stack draws only the top screen of each stack that shows, and both screens of a change that plays. A presentation draws its screen and its surface, and a sheet that moves lays its screen out again at its new height. A screen that stays still costs nothing more than any other GUI, and a frame in which nothing moves allocates nothing in the navigation. The screens of hidden tabs keep their GUIs in memory and draw nothing. A transition moves the GUIs of two screens in their area with a clip, so its cost is the cost of drawing those two GUIs.
+A stack draws only the top screen of each stack that shows, and both screens of a change that plays. A presentation draws its screen and its surface, and a sheet that moves lays its screen out again at its new height. A message draws in an ImGui window of its own above everything. A screen or a message that stays still costs nothing more than any other GUI, and a frame in which nothing moves allocates nothing in the navigation. The screens of hidden tabs keep their GUIs in memory and draw nothing. A transition moves the GUIs of two screens in their area with a clip, so its cost is the cost of drawing those two GUIs.
 
 ## From C++
 
-The classes of `haylen::ui` are the same model. `ui::Screen` builds its GUI in `build` and hears the same hooks. The `ui::Navigation` of the UI plugin creates stacks with `createStack`, tabs with `createTabs`, splits with `createSplit`, presentations with `present` and alerts with `presentAlert`, and `goBack` takes the system back. A presentation tells that it left with its `dismissed` signal, and `getResult` returns its result as JSON.
+The classes of `haylen::ui` are the same model. `ui::Screen` builds its GUI in `build` and hears the same hooks. The `ui::Navigation` of the UI plugin creates stacks with `createStack`, tabs with `createTabs`, splits with `createSplit`, presentations with `present`, alerts with `presentAlert` and messages with `showMessage`, which takes the options of `ui.showMessage` as JSON properties, and `goBack` takes the system back. A presentation tells that it left with its `dismissed` signal, and `getResult` returns its result as JSON. A `ui::Message` tells what happened with its signals `appeared`, `tapped`, `actionPressed` and `dismissed`, and `getReason` says why it left.
 
 ```cpp
 #include <memory>

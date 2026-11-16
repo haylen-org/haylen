@@ -3,8 +3,13 @@
 #include <array>
 #include <functional>
 #include <memory>
+#include <span>
 #include <string_view>
 #include <vector>
+
+#include "haylen/core/Json.hpp"
+#include "haylen/core/Signal.hpp"
+#include "haylen/ui/Message.hpp"
 
 #include "haylen/ui/NavigationTransition.hpp"
 #include "haylen/ui/Presentation.hpp"
@@ -20,7 +25,7 @@ class NavigationStack;
 class NavigationTabs;
 class Screen;
 
-// Adds the navigation to `haylen.ui`: the `Screen` base class, the functions that create stacks, tabs and splits, present screens, alerts and action sheets, the system back, and the classes `NavigationStack`, `NavigationTabs`, `NavigationSplit` and `Presentation`.
+// Adds the navigation to `haylen.ui`: the `Screen` base class, the functions that create stacks, tabs and splits, present screens, alerts and action sheets, show messages, the system back, and the classes `NavigationStack`, `NavigationTabs`, `NavigationSplit`, `Presentation` and `Message`.
 class NavigationLua final {
   public:
     static void install(lua_State* L);
@@ -45,6 +50,7 @@ class NavigationLua final {
     static constexpr std::array<std::string_view, 3> kActionFields{"id", "text", "role"};
     static constexpr std::array<std::string_view, 2> kDismissFields{"result", "transition"};
     static constexpr std::array<std::string_view, 3> kTransitionFields{"effect", "duration", "ease"};
+    static constexpr std::array<std::string_view, 5> kMessageHandlerFields{"owner", "onShow", "onAction", "onTap", "onDismiss"};
 
     [[nodiscard]] static Navigation& getNavigation(lua_State* L);
     template <typename T> static void pushObject(lua_State* L, const std::shared_ptr<T>& object);
@@ -70,14 +76,27 @@ class NavigationLua final {
     // Ties a presentation that Lua made to its owner, connects its handlers, keeps the promise of its result in its userdata and pushes the userdata.
     static void finishPresentation(lua_State* L, const std::shared_ptr<Presentation>& presentation, int owner, int dismissHandler, int detentHandler);
 
-    // Pushes the promise of the result of the presentation userdata at the index, which settles once the presentation left, making it the first time it is asked for.
-    static void pushResult(lua_State* L, int index);
+    // Pushes the promise of the result of the presentation or message userdata at the index, which settles once it left, making it the first time it is asked for.
+    template <typename T> static void pushResult(lua_State* L, int index);
+
+    // Whether a presentation or a message left and told it already, and what its promise resolves with: the result of a presentation and the reason of a message.
+    [[nodiscard]] static bool hasLeft(const Navigation& navigation, const Presentation& presentation);
+    [[nodiscard]] static bool hasLeft(const Navigation& navigation, const Message& message);
+    [[nodiscard]] static core::Json getOutcome(const Presentation& presentation);
+    [[nodiscard]] static core::Json getOutcome(const Message& message);
+
+    // Reads the keys of the table at the index that the list names into the properties of a message.
+    [[nodiscard]] static core::Json readMessageProperties(lua_State* L, int index, std::span<const std::string_view> keys);
+
+    // Connects the handler at the index to a signal of a message for as long as the owner at its index lives, calling it with `{message, reason}`.
+    static void connectMessage(lua_State* L, core::Signal<Message&>& signal, int handler, int owner);
 
     static int navigationStack(lua_State* L);
     static int navigationTabs(lua_State* L);
     static int navigationSplit(lua_State* L);
     static int present(lua_State* L);
     static int presentAlert(lua_State* L);
+    static int showMessage(lua_State* L);
     static int goBack(lua_State* L);
     static int canGoBack(lua_State* L);
     static int screenState(lua_State* L);
@@ -124,6 +143,13 @@ class NavigationLua final {
     static int presentationResult(lua_State* L);
     static int presentationDetent(lua_State* L);
     static int presentationSetDetent(lua_State* L);
+
+    static int messageUpdate(lua_State* L);
+    static int messageDismiss(lua_State* L);
+    static int messageStyle(lua_State* L);
+    static int messageShown(lua_State* L);
+    static int messageDismissed(lua_State* L);
+    static int messageResult(lua_State* L);
 };
 
 } // namespace haylen::ui

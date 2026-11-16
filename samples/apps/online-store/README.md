@@ -51,6 +51,7 @@ The app follows the [navigation](../../../docs/ui/navigation.md) of the engine, 
 - The price of a product on sale is a `richText` with the price in the color of the sale and the old price inside `[s]`, so the strike follows the text at every size.
 - The grid of the browse tab is a `collection` with `cellAspect` and `minCellSize`, so it shows two columns on a phone and five on a desktop, and the picture of a card takes the room its texts leave in the cell. A filter builds the new list and gives it to the collection, which compares the items by id.
 - The bag, in `source/bag.lua`, the saved products, in `source/wishlist.lua`, and the orders, in the autoload `source/orders.lua`, emit `bagChanged`, `wishlistChanged` and `orderChanged` on [`haylen.events`](../../../docs/lua-api/events.md). An order goes through its stages on every screen, and the bag buttons of every screen follow the count of the bag.
+- Taking a product out of the saved products shows a snackbar of `ui.showMessage` whose `Undo` saves it again, and the heart of the product follows `wishlistChanged`, while the other confirmations are toasts at the bottom.
 - The checkout keeps the values of its fields from their events, so a window that crosses the wide width lays the form out again without losing them, and marks each empty field with the `error` of its `formField`.
 
 ## Style guide
@@ -76,7 +77,7 @@ online-store/
   source/
     main.lua             Registers the theme and the swatches, and starts the shell.
     style.lua            The palette, the type scale, the spacing scale, the shapes and the theme.
-    shell.lua            Tabs, navigation, notices, the navigation of the top, the bar of tabs, the bag buttons and the headers.
+    shell.lua            Tabs, navigation, messages, the navigation of the top, the bar of tabs, the bag buttons and the headers.
     page.lua             The base of every screen, a class of "ui.Screen".
     widgets.lua          The picture of a product, the product card, the shelves, the swatches and the rows of costs.
     bag.lua              The bag and its promo codes.

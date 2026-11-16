@@ -12,6 +12,7 @@
 
 #include "haylen/core/Json.hpp"
 
+#include "haylen/ui/Message.hpp"
 #include "haylen/ui/NavigationSplit.hpp"
 #include "haylen/ui/NavigationTabs.hpp"
 #include "haylen/ui/NavigationTransition.hpp"
@@ -32,7 +33,7 @@ class Gui;
 class NavigationStack;
 class Screen;
 
-// The navigation of the app: the stacks, tabs and splits that show screens in the areas of GUIs, and the presentations over everything, among them the alerts and action sheets that the engine builds. A stack, tabs or a split lives until it closes, its owner ends or the GUI of its area unmounts, and a presentation until it is dismissed. Screens may hold areas of their own, so a stack can live in a screen of another stack, such as a split inside a tab. The system back goes through the layers from the top, the presentations and then the app under them. In each layer it pops the innermost stack that shows and can pop, then goes to the first tab, and then a modal presentation is dismissed and keeps the back from the layers under it, while a sheet that is not modal goes down to its lowest detent. Only then does the back reach the app.
+// The navigation of the app: the stacks, tabs and splits that show screens in the areas of GUIs, the presentations over everything, among them the alerts and action sheets that the engine builds, and the messages above them all, the toasts, snackbars and banners that come and go on their own. A stack, tabs or a split lives until it closes, its owner ends or the GUI of its area unmounts, and a presentation until it is dismissed. Screens may hold areas of their own, so a stack can live in a screen of another stack, such as a split inside a tab. The system back goes through the layers from the top, the presentations and then the app under them. In each layer it pops the innermost stack that shows and can pop, then goes to the first tab, and then a modal presentation is dismissed and keeps the back from the layers under it, while a sheet that is not modal goes down to its lowest detent. Only then does the back reach the app.
 class Navigation final {
   public:
     Navigation(core::Engine& engine, plugins::UiPlugin& ui);
@@ -96,6 +97,14 @@ class Navigation final {
         return presentations;
     }
 
+    // Shows a toast, a snackbar or a banner over everything the app shows, or puts it in the queue of its stack. Throws `std::invalid_argument` for an unknown property, a wrong value and a message without a title or a text.
+    [[nodiscard]] std::shared_ptr<Message> showMessage(const core::Json& properties);
+
+    // The messages that wait, show or leave, in the order they asked to show.
+    [[nodiscard]] const std::vector<std::shared_ptr<Message>>& getMessages() const noexcept {
+        return messages;
+    }
+
     // Whether the system back goes back somewhere in the app: a stack that pops, tabs that go to the first tab or a presentation that leaves.
     [[nodiscard]] bool canGoBack() const;
 
@@ -126,8 +135,12 @@ class Navigation final {
 
     [[nodiscard]] Look getLook(const Screen& screen) const;
 
-    // Moves the transitions on and runs the update hook of the screens that draw.
+    // Moves the transitions on, runs the update hook of the screens that draw and tells the app what its messages did.
     void update(float deltaSeconds);
+
+    // Tells the app that its messages came on screen, that the person tapped them or pressed their actions, and that they left, and lets a snackbar or a banner that waits replace the one of its style and position that shows with a lower priority.
+    void updateMessages();
+    void replaceMessages();
 
     // Runs the render hook of the screens that draw.
     void render();
@@ -195,6 +208,7 @@ class Navigation final {
     void forget(const NavigationTabs& closed);
     void forget(const NavigationSplit& split);
     void forget(const Presentation& presentation);
+    void forget(const Message& message);
 
     core::Engine& engine;
     plugins::UiPlugin& ui;
@@ -202,10 +216,12 @@ class Navigation final {
     std::vector<std::shared_ptr<NavigationTabs>> tabs;
     std::vector<std::shared_ptr<NavigationSplit>> splits;
     std::vector<std::shared_ptr<Presentation>> presentations;
+    std::vector<std::shared_ptr<Message>> messages;
 
     // The containers and screens that an update or a render walks, kept between frames so they allocate nothing.
     std::vector<std::shared_ptr<NavigationStack>> walkedStacks;
     std::vector<std::shared_ptr<Presentation>> walkedPresentations;
+    std::vector<std::shared_ptr<Message>> walkedMessages;
     std::vector<std::shared_ptr<Screen>> walkedScreens;
     mutable std::vector<NavigationStack*> activeStacks;
 };

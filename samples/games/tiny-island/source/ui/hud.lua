@@ -77,7 +77,6 @@ function hud.new(game, onPause)
                 onPause()
             end},
         },
-        ui.toast{id = 'notice', duration = 4},
         ui.spacer{grow = 1},
         touchControls(class),
     })
@@ -134,7 +133,7 @@ function hud:update()
 end
 
 function hud:notice(key)
-    self.gui:set('notice', {text = widgets.text(key), tone = tones[key], open = true})
+    ui.showMessage{text = widgets.text(key), tone = tones[key], position = 'top', duration = 4, owner = self.gui}
 end
 
 function hud:setVisible(visible)

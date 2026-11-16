@@ -26,6 +26,7 @@
 #include "haylen/lua/Userdata.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
 #include "haylen/ui/Gui.hpp"
+#include "haylen/ui/Message.hpp"
 #include "haylen/ui/Navigation.hpp"
 #include "haylen/ui/NavigationSplit.hpp"
 #include "haylen/ui/NavigationStack.hpp"
@@ -33,6 +34,7 @@
 #include "haylen/ui/Presentation.hpp"
 #include "haylen/ui/Screen.hpp"
 #include "lua/Owners.hpp"
+#include "ui/MessageContent.hpp"
 #include "ui/NavigationLink.hpp"
 #include "ui/ScriptedScreen.hpp"
 #include "ui/UiLua.hpp"
@@ -57,6 +59,11 @@ template <> struct Type<ui::NavigationSplit> {
 template <> struct Type<ui::Presentation> {
     static constexpr const char* name = "haylen.Presentation";
     using Storage = std::shared_ptr<ui::Presentation>;
+};
+
+template <> struct Type<ui::Message> {
+    static constexpr const char* name = "haylen.Message";
+    using Storage = std::shared_ptr<ui::Message>;
 };
 
 template <> struct EnumNames<ui::NavigationTransition::Effect> {
@@ -472,8 +479,26 @@ void NavigationLua::readPresentOptions(lua_State* L, int index, Presentation::Op
     lua_pop(L, 1);
 }
 
-// The promise of the result lives in the userdata, so it lasts while Lua holds the presentation, and a userdata pushed again for a presentation that left makes a promise that already holds its result.
-void NavigationLua::pushResult(lua_State* L, int index) {
+bool NavigationLua::hasLeft(const Navigation& navigation, const Presentation& presentation) {
+    const std::vector<std::shared_ptr<Presentation>>& shown = navigation.getPresentations();
+    return presentation.isDismissed() && std::ranges::none_of(shown, [&presentation](const std::shared_ptr<Presentation>& entry) { return entry.get() == &presentation; });
+}
+
+bool NavigationLua::hasLeft(const Navigation& navigation, const Message& message) {
+    const std::vector<std::shared_ptr<Message>>& shown = navigation.getMessages();
+    return message.isDismissed() && std::ranges::none_of(shown, [&message](const std::shared_ptr<Message>& entry) { return entry.get() == &message; });
+}
+
+core::Json NavigationLua::getOutcome(const Presentation& presentation) {
+    return presentation.getResult();
+}
+
+core::Json NavigationLua::getOutcome(const Message& message) {
+    return std::string(Message::reasonName(*message.getReason()));
+}
+
+// The promise of the result lives in the userdata, so it lasts while Lua holds the object, and a userdata pushed again for an object that left makes a promise that already holds its result.
+template <typename T> void NavigationLua::pushResult(lua_State* L, int index) {
     const int self = lua_absindex(L, index);
     lua::Userdata::pushField(L, self, "result");
     if (!lua_isnil(L, -1)) {
@@ -481,16 +506,14 @@ void NavigationLua::pushResult(lua_State* L, int index) {
     }
 
     lua_pop(L, 1);
-    const std::shared_ptr<Presentation>& presentation = lua::Userdata::checkShared<Presentation>(L, self);
+    const std::shared_ptr<T>& object = lua::Userdata::checkShared<T>(L, self);
     lua::Promise promise(lua::Runtime::getEngine(L));
-    const std::vector<std::shared_ptr<Presentation>>& shown = getNavigation(L).getPresentations();
-    const bool gone = presentation->isDismissed() && std::ranges::find(shown, presentation) == shown.end();
-    if (gone) {
-        promise.resolve(presentation->getResult());
+    if (hasLeft(getNavigation(L), *object)) {
+        promise.resolve(getOutcome(*object));
     } else {
         // clang-format off
-        static_cast<void>(presentation->dismissed.connect([promise](Presentation& left) {
-            promise.resolve(left.getResult());
+        static_cast<void>(object->dismissed.connect([promise](T& left) {
+            promise.resolve(getOutcome(left));
         }));
         // clang-format on
     }
@@ -547,7 +570,7 @@ void NavigationLua::finishPresentation(lua_State* L, const std::shared_ptr<Prese
     }
 
     pushPresentation(L, presentation);
-    pushResult(L, -1);
+    pushResult<Presentation>(L, -1);
     lua_pop(L, 1);
 }
 
@@ -620,6 +643,76 @@ int NavigationLua::presentAlert(lua_State* L) {
     const int owner = pushOwner(L, 1);
     const std::shared_ptr<Presentation> presentation = getNavigation(L).presentAlert(std::move(alert));
     finishPresentation(L, presentation, owner, dismissHandler, 0);
+    return 1;
+}
+
+core::Json NavigationLua::readMessageProperties(lua_State* L, int index, std::span<const std::string_view> keys) {
+    const int table = lua_absindex(L, index);
+    core::Json properties = core::Json::object();
+    for (const std::string_view key : keys) {
+        lua_pushlstring(L, key.data(), key.size());
+        if (lua_gettable(L, table) != LUA_TNIL) {
+            properties[std::string(key)] = lua::JsonConverter::read(L, -1);
+        }
+
+        lua_pop(L, 1);
+    }
+
+    return properties;
+}
+
+void NavigationLua::connectMessage(lua_State* L, core::Signal<Message&>& signal, int handler, int owner) {
+    if (handler == 0) {
+        return;
+    }
+
+    auto function = std::make_shared<lua::Reference>(L, handler);
+    // clang-format off
+    core::Connection connection = signal.connect([function](Message& message) {
+        lua_State* main = function->getState();
+        lua::Runtime::runReporting(main, [&] {
+            function->push(main);
+            lua_createtable(main, 0, 2);
+            pushObject(main, message.shared_from_this());
+            lua_setfield(main, -2, "message");
+            if (message.getReason()) {
+                lua::Stack::push(main, Message::reasonName(*message.getReason()));
+                lua_setfield(main, -2, "reason");
+            }
+
+            lua::Runtime::protectedCall(main, 1, 0);
+        });
+    });
+    // clang-format on
+    if (owner != 0) {
+        lua::Owners::add(L, owner, connection);
+    }
+}
+
+// Shows a message with `ui.showMessage{style = 'snackbar', text = 'Photo deleted.', action = 'Undo', priority = 'high', owner = scene, onAction = function(event) end, onDismiss = function(event) end}`.
+int NavigationLua::showMessage(lua_State* L) {
+    luaL_checktype(L, 1, LUA_TTABLE);
+    lua::Table::checkFields(L, 1, {Message::Content::kContentKeys, Message::Content::kPlacementKeys, kMessageHandlerFields});
+    core::Json properties = readMessageProperties(L, 1, Message::Content::kPlacementKeys);
+    properties.update(readMessageProperties(L, 1, Message::Content::kContentKeys));
+    const int showHandler = pushHandler(L, 1, "onShow");
+    const int actionHandler = pushHandler(L, 1, "onAction");
+    const int tapHandler = pushHandler(L, 1, "onTap");
+    const int dismissHandler = pushHandler(L, 1, "onDismiss");
+    const int owner = pushOwner(L, 1);
+
+    const std::shared_ptr<Message> message = getNavigation(L).showMessage(properties);
+    if (owner != 0) {
+        lua::Owners::add(L, owner, std::make_shared<NavigationLink>(std::weak_ptr<Message>(message)));
+    }
+
+    connectMessage(L, message->appeared, showHandler, owner);
+    connectMessage(L, message->actionPressed, actionHandler, owner);
+    connectMessage(L, message->tapped, tapHandler, owner);
+    connectMessage(L, message->dismissed, dismissHandler, owner);
+    pushObject(L, message);
+    pushResult<Message>(L, -1);
+    lua_pop(L, 1);
     return 1;
 }
 
@@ -876,7 +969,7 @@ int NavigationLua::presentationModal(lua_State* L) {
 
 int NavigationLua::presentationResult(lua_State* L) {
     static_cast<void>(lua::Userdata::check<Presentation>(L, 1));
-    pushResult(L, 1);
+    pushResult<Presentation>(L, 1);
     return 1;
 }
 
@@ -897,10 +990,45 @@ int NavigationLua::presentationSetDetent(lua_State* L) {
     return 0;
 }
 
+// Changes a message with `message:update{text = 'Uploaded.', tone = 'success', indicator = 'icon', duration = 2}`.
+int NavigationLua::messageUpdate(lua_State* L) {
+    Message& message = lua::Userdata::check<Message>(L, 1);
+    luaL_checktype(L, 2, LUA_TTABLE);
+    lua::Table::checkFields(L, 2, {Message::Content::kContentKeys});
+    message.update(readMessageProperties(L, 2, Message::Content::kContentKeys));
+    return 0;
+}
+
+int NavigationLua::messageDismiss(lua_State* L) {
+    lua::Userdata::check<Message>(L, 1).dismiss();
+    return 0;
+}
+
+int NavigationLua::messageStyle(lua_State* L) {
+    lua::Stack::push(L, Message::styleName(lua::Userdata::check<Message>(L, 1).getStyle()));
+    return 1;
+}
+
+int NavigationLua::messageShown(lua_State* L) {
+    lua_pushboolean(L, lua::Userdata::check<Message>(L, 1).isShown() ? 1 : 0);
+    return 1;
+}
+
+int NavigationLua::messageDismissed(lua_State* L) {
+    lua_pushboolean(L, lua::Userdata::check<Message>(L, 1).isDismissed() ? 1 : 0);
+    return 1;
+}
+
+int NavigationLua::messageResult(lua_State* L) {
+    static_cast<void>(lua::Userdata::check<Message>(L, 1));
+    pushResult<Message>(L, 1);
+    return 1;
+}
+
 void NavigationLua::addTo(lua_State* L, int module) {
     const int target = lua_absindex(L, module);
     const luaL_Reg functions[] = {
-        {"navigationStack", &lua::Binding::native<&navigationStack>}, {"navigationTabs", &lua::Binding::native<&navigationTabs>}, {"navigationSplit", &lua::Binding::native<&navigationSplit>}, {"present", &lua::Binding::native<&present>}, {"presentAlert", &lua::Binding::native<&presentAlert>}, {"goBack", &lua::Binding::native<&goBack>}, {"canGoBack", &lua::Binding::native<&canGoBack>}, {"screenState", &lua::Binding::native<&screenState>}, {nullptr, nullptr},
+        {"navigationStack", &lua::Binding::native<&navigationStack>}, {"navigationTabs", &lua::Binding::native<&navigationTabs>}, {"navigationSplit", &lua::Binding::native<&navigationSplit>}, {"present", &lua::Binding::native<&present>}, {"presentAlert", &lua::Binding::native<&presentAlert>}, {"showMessage", &lua::Binding::native<&showMessage>}, {"goBack", &lua::Binding::native<&goBack>}, {"canGoBack", &lua::Binding::native<&canGoBack>}, {"screenState", &lua::Binding::native<&screenState>}, {nullptr, nullptr},
     };
     for (const luaL_Reg* entry = functions; entry->name != nullptr; ++entry) {
         lua_pushcfunction(L, entry->func);
@@ -919,6 +1047,7 @@ void NavigationLua::install(lua_State* L) {
     lua::ClassBuilder<NavigationTabs>(L).function("select", &lua::Binding::native<&tabsSelect>).function("stack", &lua::Binding::native<&tabsStack>).function("close", &lua::Binding::native<&tabsClose>).property("selected", &tabsSelected).property("current", &lua::Binding::native<&tabsCurrent>).property("closed", &tabsClosed).install();
     lua::ClassBuilder<NavigationSplit>(L).function("showDetail", &lua::Binding::native<&splitShowDetail>).function("clearDetail", &lua::Binding::native<&splitClearDetail>).function("close", &lua::Binding::native<&splitClose>).property("collapsed", &splitCollapsed, &lua::Binding::native<&splitSetCollapsed>).property("hasDetail", &splitHasDetail).property("primary", &splitPrimary).property("detail", &splitDetail).property("closed", &splitClosed).install();
     lua::ClassBuilder<Presentation>(L).function("dismiss", &lua::Binding::native<&presentationDismiss>).property("screen", &presentationScreen).property("style", &presentationStyle).property("dismissible", &presentationDismissible).property("dismissed", &presentationDismissed).property("modal", &presentationModal).property("result", &lua::Binding::native<&presentationResult>).property("detent", &presentationDetent, &lua::Binding::native<&presentationSetDetent>).install();
+    lua::ClassBuilder<Message>(L).function("update", &lua::Binding::native<&messageUpdate>).function("dismiss", &lua::Binding::native<&messageDismiss>).property("style", &messageStyle).property("shown", &messageShown).property("dismissed", &messageDismissed).property("result", &lua::Binding::native<&messageResult>).install();
 }
 
 } // namespace haylen::ui

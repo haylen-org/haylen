@@ -1,4 +1,4 @@
--- The frame of the app: the tabs, the notices and the layout that follows the width of the window. Phones show a bar of icons at the bottom, and wide windows show a rail with the wordmark and the names of the tabs on the left. The frame mounts once in the scene of the app, and the screens of each tab live in a stack of their own in its middle, so going to another screen changes only the middle while the bars stay. A new post and the stories open over everything as presentations, a new flow with bars of their own.
+-- The frame of the app: the tabs, the messages it shows and the layout that follows the width of the window. Phones show a bar of icons at the bottom, and wide windows show a rail with the wordmark and the names of the tabs on the left. The frame mounts once in the scene of the app, and the screens of each tab live in a stack of their own in its middle, so going to another screen changes only the middle while the bars stay. A new post and the stories open over everything as presentations, a new flow with bars of their own.
 local events = require('haylen.events')
 local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
@@ -34,10 +34,9 @@ function Shell.start()
     scene.push(Shell.scene)
 end
 
--- Mounts the frame and the notices, which stay above every screen, and the tabs in the middle of the frame.
+-- Mounts the frame and the tabs in the middle of the frame, and shows a banner for each answer that arrives in a chat that does not show.
 function Shell.scene:enter()
     Shell.gui = ui.mount(Shell.frame(), {owner = self, sharedFocus = true})
-    Shell.notices = ui.mount(ui.toast{id = 'notice', position = 'bottom', duration = 2.5, indicator = 'icon'}, {owner = self, layer = 10, sharedFocus = true})
     Shell.adaptFrame()
     local tabs = {}
     for _, tab in ipairs(Shell.tabs) do
@@ -49,6 +48,7 @@ function Shell.scene:enter()
         Shell.select(event.selected, event.previous)
     end}
     events.on('chatChanged', Shell.showUnread, {owner = self})
+    events.on('chatAnswered', Shell.showAnswer, {owner = self})
     Shell.showUnread()
 end
 
@@ -61,8 +61,22 @@ function Shell.scene:render()
     graphics2d.drawRect(viewport.visibleRect(), ui.themeColor('window'))
 end
 
+-- Confirms what the person just did in a toast at the bottom.
 function Shell.notify(text, tone)
-    Shell.notices:command('notice', 'show', {text = text, tone = tone or 'neutral'})
+    ui.showMessage{text = text, tone = tone or 'neutral', indicator = 'icon', owner = Shell.scene}
+end
+
+-- Tells that something went away in a snackbar whose action brings it back.
+function Shell.offerUndo(text, undo)
+    ui.showMessage{style = 'snackbar', text = text, action = 'Undo', owner = Shell.scene, onAction = undo}
+end
+
+-- Drops a banner with the face of whoever answered under the status bar, and a tap on it opens their chat.
+function Shell.showAnswer(conversation)
+    local answer = conversation.messages[#conversation.messages]
+    ui.showMessage{style = 'banner', title = conversation.name, text = answer.text, icon = conversation.avatar, owner = Shell.scene, onTap = function()
+        Shell.open(require('screens.chat'), {conversation = conversation.id}, 'conversation')
+    end}
 end
 
 -- Shows a tab with the screens it kept, or goes back to its root when it already shows. The tab of a new post presents the new post instead.

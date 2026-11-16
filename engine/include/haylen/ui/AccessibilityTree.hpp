@@ -37,6 +37,9 @@ class AccessibilityTree final {
     void enter(Context& context, const Component& component, ImGuiID node, const math::Rect& bounds);
     void leave(const FocusNavigator& focus);
 
+    // Adds an element that no focus target answers, such as a message that the navigation draws over every GUI, while the tree is enabled.
+    void addElement(std::uint64_t id, const math::Rect& bounds, platform::AccessibilityElement::Role role, std::string_view label);
+
     // Adds a part of the component being drawn as an element of its own, with the focus target that its actions reach, while the tree is enabled.
     void addPart(ImGuiID target, const math::Rect& bounds, platform::AccessibilityElement::Role role, std::string_view label, std::uint8_t states);
 

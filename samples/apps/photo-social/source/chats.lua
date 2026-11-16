@@ -1,4 +1,4 @@
--- The direct messages: one conversation with each of a few people, the newest on top. A message the person sends gets an answer a moment later, a post can travel in a message, and every change emits "chatChanged" on the event bus.
+-- The direct messages: one conversation with each of a few people, the newest on top. A message the person sends gets an answer a moment later, which emits "chatAnswered" on the event bus while its chat does not show, a post can travel in a message, and every change emits "chatChanged".
 local events = require('haylen.events')
 local timer = require('haylen.timer')
 
@@ -93,6 +93,9 @@ function Chats.send(conversation, text, post)
         conversation.unread = Chats.reading == conversation and 0 or conversation.unread + 1
         Chats.describe(conversation)
         events.emit('chatChanged', conversation)
+        if Chats.reading ~= conversation then
+            events.emit('chatAnswered', conversation)
+        end
     end, {owner = Chats})
 end
 

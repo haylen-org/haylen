@@ -1,4 +1,4 @@
--- The frame of the app: the tabs, the notices and the layout that follows the width of the window. Phones show a bar of tabs with their names at the bottom, and wide windows show the wordmark, the tabs, the search and the bag across the top, the way a store on the web does. The frame mounts once in the scene of the app, and the screens of each tab live in a stack of their own in its middle, so going to another screen changes only the middle while the bars stay. The bag opens over everything as a sheet, a flow of its own up to the confirmation of the order.
+-- The frame of the app: the tabs, the messages it shows and the layout that follows the width of the window. Phones show a bar of tabs with their names at the bottom, and wide windows show the wordmark, the tabs, the search and the bag across the top, the way a store on the web does. The frame mounts once in the scene of the app, and the screens of each tab live in a stack of their own in its middle, so going to another screen changes only the middle while the bars stay. The bag opens over everything as a sheet, a flow of its own up to the confirmation of the order.
 local events = require('haylen.events')
 local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
@@ -38,10 +38,9 @@ function Shell.start()
     scene.push(Shell.scene)
 end
 
--- Mounts the frame and the notices, which stay above every screen, and the tabs in the middle of the frame. The bag button of the frame follows the bag while the app runs.
+-- Mounts the frame and the tabs in the middle of the frame. The bag button of the frame follows the bag while the app runs.
 function Shell.scene:enter()
     Shell.gui = ui.mount(Shell.frame(), {owner = self, sharedFocus = true})
-    Shell.notices = ui.mount(ui.toast{id = 'notice', position = 'bottom', duration = 2.5, indicator = 'icon'}, {owner = self, layer = 10, sharedFocus = true})
     Shell.showBag(Shell)
     Shell.adaptFrame()
     local tabs = {}
@@ -62,8 +61,14 @@ function Shell.scene:render()
     graphics2d.drawRect(viewport.visibleRect(), ui.themeColor('window'))
 end
 
+-- Confirms what the person just did in a toast at the bottom.
 function Shell.notify(text, tone)
-    Shell.notices:command('notice', 'show', {text = text, tone = tone or 'neutral'})
+    ui.showMessage{text = text, tone = tone or 'neutral', indicator = 'icon', owner = Shell.scene}
+end
+
+-- Tells that something went away in a snackbar whose action brings it back.
+function Shell.offerUndo(text, undo)
+    ui.showMessage{style = 'snackbar', text = text, action = 'Undo', owner = Shell.scene, onAction = undo}
 end
 
 -- Shows a tab with the screens it kept, or goes back to its root when it already shows. Parameters go to the root of the tab, such as the category that the browse tab shows, which then shows at its root.

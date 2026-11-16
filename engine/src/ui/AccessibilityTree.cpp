@@ -81,14 +81,24 @@ void AccessibilityTree::leave(const FocusNavigator& focus) {
     element.actions |= Element::Focus;
 }
 
-void AccessibilityTree::addPart(ImGuiID target, const math::Rect& bounds, Element::Role role, std::string_view label, std::uint8_t states) {
+void AccessibilityTree::addElement(std::uint64_t id, const math::Rect& bounds, Element::Role role, std::string_view label) {
     if (!enabled || (!levels.empty() && levels.back().hidden)) {
         return;
     }
 
-    Element& element = add(target, bounds);
+    Element& element = add(id, bounds);
     element.role = role;
     element.label.assign(label);
+}
+
+void AccessibilityTree::addPart(ImGuiID target, const math::Rect& bounds, Element::Role role, std::string_view label, std::uint8_t states) {
+    const std::size_t before = count;
+    addElement(target, bounds, role, label);
+    if (count == before) {
+        return;
+    }
+
+    Element& element = elements[count - 1];
     element.states = states;
     if (target != 0 && (states & Element::Disabled) == 0) {
         element.actions = Element::Focus | Element::Activate;

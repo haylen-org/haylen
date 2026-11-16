@@ -1,4 +1,5 @@
 -- A product: a gallery of four pictures in the chosen color, the name and the price in the serif, the rating with the reviews in a sheet, the colors as round swatches, the sizes, the quantity, the details and a shelf of related products. The gallery stands beside the details on wide windows and above them on phones, and adding to the bag opens a sheet that leads to the bag or back to shopping.
+local events = require('haylen.events')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
@@ -78,6 +79,11 @@ end
 
 function Product:start()
     self.gui:collection('related'):setItems(Store.related(self.product, 12))
+    events.on('wishlistChanged', function(changed)
+        if changed == self.product then
+            self.gui:set('wish', {icon = Shell.icon(Wishlist.has(self.product) and 'heart-filled' or 'heart')})
+        end
+    end, {owner = self})
 end
 
 -- Lays the gallery and the details side by side on wide windows and one above the other on phones.
@@ -194,10 +200,16 @@ function Product:pickSize(size)
     self.gui:set('sizeHint', {visible = false})
 end
 
+-- Saves the product for later or takes it out of the saved products, which a snackbar offers to undo, and the heart follows the list.
 function Product:toggleSaved()
-    local saved = Wishlist.toggle(self.product)
-    self.gui:set('wish', {icon = Shell.icon(saved and 'heart-filled' or 'heart')})
-    Shell.notify(saved and 'Saved for later.' or 'Removed from your saved products.')
+    local product = self.product
+    if Wishlist.toggle(product) then
+        Shell.notify('Saved for later.')
+        return
+    end
+    Shell.offerUndo('Removed from your saved products.', function()
+        Wishlist.toggle(product)
+    end)
 end
 
 function Product:addToBag()

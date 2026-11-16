@@ -694,7 +694,6 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/components/inputs/TextField.cpp
   src/ui/components/overlays/ContextMenu.cpp
   src/ui/components/overlays/Dialog.cpp
-  src/ui/components/overlays/Toast.cpp
   src/ui/components/overlays/Window.cpp
   src/ui/components/PopupList.cpp
   src/ui/components/settings/SettingsActions.cpp
@@ -724,6 +723,9 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/ImageLibrary.cpp
   src/ui/LuaItemSource.cpp
   src/ui/LuaPageSource.cpp
+  src/ui/Message.cpp
+  src/ui/MessageStack.cpp
+  src/ui/MessageView.cpp
   src/ui/MountLink.cpp
   src/ui/Navigation.cpp
   src/ui/NavigationInput.cpp
@@ -752,7 +754,6 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/TextSession.cpp
   src/ui/TextValue.cpp
   src/ui/Theme.cpp
-  src/ui/ToastStack.cpp
   src/ui/TransformLua.cpp
   src/ui/Typography.cpp
   src/ui/UiLua.cpp

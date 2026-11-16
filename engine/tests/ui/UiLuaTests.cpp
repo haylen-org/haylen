@@ -346,7 +346,7 @@ TEST_F(UiLuaTest, SwitchesThemesAndReadsInputCapture) {
     EXPECT_EQ(fixture.lua("ui.setTheme('light') return ui.theme()"), "light");
     EXPECT_NE(fixture.lua("ui.setTheme('marble')").find("no theme named \"marble\""), std::string::npos);
     EXPECT_EQ(fixture.lua("return tostring(ui.usingPointer()) .. tostring(ui.usingKeyboard())"), "falsefalse");
-    EXPECT_EQ(fixture.lua("local kinds = ui.kinds() return #kinds .. ' ' .. kinds[1]"), "63 accordion");
+    EXPECT_EQ(fixture.lua("local kinds = ui.kinds() return #kinds .. ' ' .. kinds[1]"), "62 accordion");
     EXPECT_NE(fixture.lua("ui.loadTheme('themes/none.json')").find("error: "), std::string::npos);
     EXPECT_NE(fixture.lua("ui.addFont('pixel', 'fonts/none.ttf')").find("error: "), std::string::npos);
 }
@@ -880,13 +880,11 @@ TEST_F(UiLuaTest, ReportsWhereFloatingNodesDraw) {
         ui = require('haylen.ui')
         screen = ui.mount(ui.column{
             ui.window{id = 'map', title = 'Map', x = 300, y = 200, width = 400, ui.label{text = 'Inside'}},
-            ui.toast{id = 'saved', open = true, text = 'Saved', duration = 0},
         }, {placement = 'screen'})
     )");
     // clang-format on
     fixture.frames(2);
     EXPECT_EQ(fixture.lua("local b = screen:bounds('map') return b.x .. ' ' .. b.y .. ' ' .. b.width"), "300.0 200.0 400.0");
-    EXPECT_EQ(fixture.lua("return tostring(screen:bounds('saved').height > 0)"), "true");
 
     // The window moves with its title bar, and its bounds follow.
     pointer(platform::Event::Type::MouseMove, {320.0F, 220.0F});
@@ -902,26 +900,6 @@ TEST_F(UiLuaTest, ReportsWhereFloatingNodesDraw) {
     fixture.runLua("screen:set('map', {open = false})");
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return tostring(screen:bounds('map'))"), "nil");
-}
-
-TEST_F(UiLuaTest, ShowsChangesAndHidesToastNoticesFromLua) {
-    // clang-format off
-    fixture.runLua(R"(
-        ui = require('haylen.ui')
-        reasons = {}
-        screen = ui.mount(ui.toast{id = 'jobs', duration = 0, variant = 'soft', arrangement = 'deck', onDismiss = function(event)
-            reasons[#reasons + 1] = (event.notice or 'own') .. ':' .. event.reason
-        end}, {placement = 'screen'})
-        screen:command('jobs', 'show', {notice = 'upload', title = 'Upload', text = 'Sending the save', indicator = 'progress', progress = 0.25})
-    )");
-    // clang-format on
-    fixture.frames(10);
-    fixture.runLua("screen:command('jobs', 'update', {notice = 'upload', progress = 1, tone = 'success', indicator = 'icon'})");
-    fixture.frames(2);
-    fixture.runLua("screen:command('jobs', 'hide', {notice = 'upload'})");
-    fixture.frames(20);
-    EXPECT_EQ(fixture.lua("return table.concat(reasons, ' ')"), "upload:hidden");
-    EXPECT_EQ(fixture.lua("local ok, message = pcall(screen.command, screen, 'jobs', 'update', {notice = 'gone'}) return message"), "The toast \"jobs\" shows no notice \"gone\".");
 }
 
 TEST_F(UiLuaTest, SimulatesTheSafeAreaAndKeepsTheBackButton) {

@@ -327,7 +327,7 @@ void Context::beginFrame(double now, float delta) noexcept {
     reshapes.clear();
     enclosures.clear();
     layers.resize(1);
-    toasts.beginFrame();
+    messages.beginFrame();
     time = now;
     deltaSeconds = delta;
 }

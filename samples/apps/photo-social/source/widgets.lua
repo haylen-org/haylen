@@ -93,7 +93,7 @@ function Widgets.onPostEvent(page, list, event)
         end
         list:reload(post.id)
     elseif part == 'save' then
-        Shell.notify(Social.toggleSave(post) and 'Saved to your collection.' or 'Removed from your collection.')
+        Widgets.toggleSave(post)
         list:reload(post.id)
     elseif part == 'comment' then
         Shell.open(require('screens.post'), {post = post.id})
@@ -107,10 +107,21 @@ function Widgets.onPostEvent(page, list, event)
         elseif event.item == 'send' then
             Widgets.askFriend(page, post)
         else
-            Shell.notify(Social.toggleSave(post) and 'Saved to your collection.' or 'Removed from your collection.')
+            Widgets.toggleSave(post)
             list:reload(post.id)
         end
     end
+end
+
+-- Saves a post or takes it out of the collection, which a snackbar offers to undo. The screens that show the post follow it through "socialChanged".
+function Widgets.toggleSave(post)
+    if Social.toggleSave(post) then
+        Shell.notify('Saved to your collection.')
+        return
+    end
+    Shell.offerUndo('Removed from your collection.', function()
+        Social.toggleSave(post)
+    end)
 end
 
 function Widgets.openPerson(id)

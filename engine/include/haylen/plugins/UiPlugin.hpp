@@ -36,6 +36,7 @@ struct SceneView;
 
 namespace haylen::ui {
 class ImageLibrary;
+class MessageView;
 class PresentationView;
 class SoundLibrary;
 } // namespace haylen::ui
@@ -75,7 +76,7 @@ class UiPlugin final : public Plugin {
         return navigationInput;
     }
 
-    // The stacks, tabs, splits and presentations of the app.
+    // The stacks, tabs, splits, presentations and messages of the app.
     [[nodiscard]] ui::Navigation& getNavigation();
     [[nodiscard]] ui::ComponentRegistry& getComponents() noexcept {
         return components;
@@ -233,9 +234,10 @@ class UiPlugin final : public Plugin {
     ui::NavigationInput navigationInput;
     std::unique_ptr<ui::Navigation> navigation;
 
-    // The system back that the focus handed to the navigation, which the next update takes, and what draws around presentations and follows their gestures.
+    // The system back that the focus handed to the navigation, which the next update takes, what draws around presentations and follows their gestures, and what draws the messages above everything.
     bool backRequested = false;
     std::unique_ptr<ui::PresentationView> presentationView;
+    std::unique_ptr<ui::MessageView> messageView;
     std::unique_ptr<ui::Backend> backend;
     std::unique_ptr<ui::Context> context;
     std::map<std::string, ui::Theme, std::less<>> themes;

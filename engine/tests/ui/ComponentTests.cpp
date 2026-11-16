@@ -32,6 +32,8 @@
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/text/Layout.hpp"
 #include "haylen/ui/Backend.hpp"
+#include "haylen/ui/Navigation.hpp"
+#include "platform/headless/HeadlessHost.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
@@ -199,7 +201,6 @@ TEST_F(ComponentTest, DrawsEveryKind) {
         {"kind": "safeArea", "children": [{"kind": "spacer", "height": 10}]},
         {"kind": "touchStick", "action": "move", "radius": 60},
         {"kind": "touchButton", "action": "jump", "text": "A", "size": 80},
-        {"kind": "toast", "open": true, "text": "Saved", "tone": "success", "position": "bottom"},
         {"kind": "dialog", "title": "Quit?", "message": "Progress is saved.", "buttons": [{"id": "no", "text": "Stay"}, {"id": "yes", "text": "Quit", "variant": "destructive"}], "children": [{"kind": "label", "text": "Really"}]}
     ]}]})");
     // clang-format on
@@ -355,11 +356,10 @@ TEST_F(ComponentTest, SelectsInContainersAndCollections) {
     }
 }
 
-TEST_F(ComponentTest, RunsDialogsToastsAndPopups) {
+TEST_F(ComponentTest, RunsDialogsAndPopups) {
     // clang-format off
     auto gui = mount(R"({"kind": "column", "padding": 20, "children": [
         {"kind": "dialog", "id": "quit", "title": "Quit?", "buttons": [{"id": "no", "text": "Stay"}, {"id": "yes", "text": "Quit"}]},
-        {"kind": "toast", "id": "saved", "text": "Saved", "duration": 0.5},
         {"kind": "combo", "id": "size", "width": 300, "items": [{"id": "small", "text": "Small"}, {"id": "large", "text": "Large"}]},
         {"kind": "menuButton", "id": "menu", "text": "Menu", "items": [{"id": "save", "text": "Save"}]}
     ]})");
@@ -370,11 +370,6 @@ TEST_F(ComponentTest, RunsDialogsToastsAndPopups) {
     ASSERT_FALSE(events.empty());
     EXPECT_EQ(getLastEvent().id, "quit");
     EXPECT_EQ(getLastEvent().value, (core::Json{{"button", "yes"}}));
-
-    gui->set("saved", {{"open", true}});
-    frames(45);
-    EXPECT_EQ(getLastEvent().id, "saved");
-    EXPECT_EQ(getLastEvent().name, "dismiss");
 
     const float padding = getUi().getTheme().getMetric(Theme::Metric::MenuPadding);
     const float item = getUi().getTheme().getMetric(Theme::Metric::ListRowHeight) * 0.75F;
@@ -1586,15 +1581,24 @@ TEST_F(ComponentAssetTest, CapsWindowsWithTheTitleBarAndTheirCloseButtonOfTheThe
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"bag:close"}));
 }
 
-TEST_F(ComponentAssetTest, KeepsTheTextOfToastsInsideThePaddingOfTheirSurface) {
-    auto gui = mount(R"({"kind": "toast", "id": "saved", "text": "Saved", "duration": 0, "open": true})");
+// A theme that paints messages with an image keeps their text inside the padding of the image, which screen readers find as the frame of the alert.
+TEST_F(ComponentAssetTest, KeepsTheTextOfMessagesInsideThePaddingOfTheirSurface) {
+    fixture.host().setAccessibilityTreeWanted(true);
+    static_cast<void>(getUi().getNavigation().showMessage({{"text", "Saved"}, {"duration", 0}}));
+    // clang-format off
+    const auto measure = [this] {
+        const std::vector<platform::AccessibilityElement>& elements = fixture.host().getAccessibilityTrees().back().elements;
+        const auto found = std::ranges::find(elements, platform::AccessibilityElement::Role::Alert, &platform::AccessibilityElement::role);
+        return found == elements.end() ? 0.0F : found->bounds.height;
+    };
+    // clang-format on
     frames(30);
-    const float flat = getBounds(*gui, "saved").height;
+    const float flat = measure();
     EXPECT_GT(flat, 0.0F);
 
     getUi().setTheme(getUi().loadTheme(getEngine(), "themes/plates.json"));
     frames(2);
-    EXPECT_FLOAT_EQ(getBounds(*gui, "saved").height, flat + 40.0F);
+    EXPECT_FLOAT_EQ(measure(), flat + 40.0F);
 }
 
 } // namespace haylen::ui

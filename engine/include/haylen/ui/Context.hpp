@@ -24,10 +24,10 @@
 #include "haylen/ui/AccessibilityTree.hpp"
 #include "haylen/ui/Alignment.hpp"
 #include "haylen/ui/Event.hpp"
+#include "haylen/ui/MessageStack.hpp"
 #include "haylen/ui/Style.hpp"
 #include "haylen/ui/TextValue.hpp"
 #include "haylen/ui/Theme.hpp"
-#include "haylen/ui/ToastStack.hpp"
 #include "haylen/ui/Transform.hpp"
 
 struct ImGuiWindow;
@@ -240,9 +240,9 @@ class Context final {
         return sticks;
     }
 
-    // The stacks the toasts of every GUI share, so toasts shown together never cover each other.
-    [[nodiscard]] ToastStack& getToasts() noexcept {
-        return toasts;
+    // The stacks the messages of the navigation share, so messages shown together never cover each other.
+    [[nodiscard]] MessageStack& getMessages() noexcept {
+        return messages;
     }
 
     // Converts between design coordinates, such as those of a touch, and UI coordinates.
@@ -279,7 +279,7 @@ class Context final {
     void pushReshape(const Transform& shape, math::Vec2 center);
     void popReshape();
 
-    // Starts a window of its own, a popup, a tooltip, a dialog, a toast or a window, which keeps its look whatever the transforms of the nodes around it, until `popReshape`.
+    // Starts a window of its own, a popup, a tooltip, a dialog, a message or a window, which keeps its look whatever the transforms of the nodes around it, until `popReshape`.
     void pushPlainReshape();
     [[nodiscard]] Reshape getReshape() const noexcept;
 
@@ -342,7 +342,7 @@ class Context final {
     std::map<std::string, math::Vec2, std::less<>> sticks;
     std::vector<Reshape> reshapes;
     std::vector<Enclosure> enclosures;
-    ToastStack toasts;
+    MessageStack messages;
 
     // The texts the frame keeps, in slots that frames reuse and that never move while the frame draws.
     std::deque<std::string> frameTexts;

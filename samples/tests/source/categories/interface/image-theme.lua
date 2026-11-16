@@ -120,7 +120,7 @@ function ImageTheme:overlays()
         ui.row{gap = 12, wrap = true,
             ui.button{text = 'Alert', onClick = function() self:askChest() end},
             ui.button{text = 'Window', tooltip = 'Tooltips take the tooltip piece of the atlas.', onClick = function() self:openWindow() end},
-            ui.button{text = 'Toast', onClick = function(event) event.gui:command('toast', 'show', {text = 'The chest is open.', tone = 'success'}) end},
+            ui.button{text = 'Toast', onClick = function() ui.showMessage{text = 'The chest is open.', tone = 'success', owner = self} end},
         },
         ui.row{gap = 8, wrap = true, children = icons},
         ui.panel{id = 'window-dock', height = 230, align = 'stretch', justify = 'center', alignItems = 'center', ui.label{text = 'The window opens here.', color = 'textMuted'}},
@@ -175,7 +175,6 @@ function ImageTheme:nodes()
             ui.label{text = 'A window with a title bar from the atlas.', color = 'textMuted'},
             ui.row{gap = 12, ui.icon{image = ImageTheme.icon('potion'), size = 56}, ui.icon{image = ImageTheme.icon('key'), size = 56}, ui.button{text = 'Drink', variant = 'primary'}},
         },
-        ui.toast{id = 'toast', duration = 3},
     }
 end
 

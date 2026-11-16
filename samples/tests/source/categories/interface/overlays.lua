@@ -1,4 +1,4 @@
--- Alerts, a dialog with children, toasts at the top and the bottom of the safe area, tooltips, a popover that points at its button and context menus.
+-- Alerts, a dialog with children, toasts at the top and the bottom of the safe area and a snackbar that stays, tooltips, a popover that points at its button and context menus.
 local haylen = require('haylen')
 local timer = require('haylen.timer')
 local ui = require('haylen.ui')
@@ -11,7 +11,7 @@ local Overlays = haylen.class('Overlays', Test)
 Overlays.code = [[
 ui.presentAlert{title = 'Delete the save?', actions = {{id = 'keep', text = 'Keep it', role = 'cancel'}, {id = 'delete', text = 'Delete', role = 'destructive'}}}
 ui.present(Confirm, {style = 'dialog'})  -- Confirm:build() returns ui.dialog{...}.
-gui:set('notice', {open = true, tone = 'success', text = 'Saved.'})  -- The toast is ui.toast{id = 'notice', duration = 3}.
+ui.showMessage{text = 'Saved.', tone = 'success', position = 'top', owner = self}  -- A toast for three seconds.
 ui.button{text = 'Hover me', tooltip = 'Shows after the pointer rests.'}
 ui.contextMenu{items = {{id = 'rename', text = 'Rename'}, {id = 'erase', text = 'Erase'}}, onSelect = function(event) act(event.item) end, slotButton}
 ui.present(Wind, {style = 'popover', anchor = {gui = gui, id = 'wind'}})]]
@@ -71,17 +71,25 @@ function Overlays:ask(alert)
     ui.presentAlert(alert)
 end
 
-function Overlays:toast(id, text)
-    return function(event)
-        event.gui:set(id, {open = true, text = text})
+-- A snackbar that stays until the link closes it, one at a time.
+function Overlays:showSticky()
+    if self.sticky and not self.sticky.dismissed then
+        return
+    end
+    self.sticky = ui.showMessage{style = 'snackbar', text = 'This snackbar stays until the link closes it', tone = 'warning', indicator = 'icon', duration = 0, owner = self}
+end
+
+function Overlays:closeSticky()
+    if self.sticky then
+        self.sticky:dismiss()
     end
 end
 
 function Overlays:columns()
     local toneButtons = {}
     for index, tone in ipairs({'information', 'success', 'warning', 'danger'}) do
-        toneButtons[index] = ui.button{text = tone:sub(1, 1):upper() .. tone:sub(2), onClick = function(event)
-            event.gui:set('notice', {open = true, tone = tone, text = 'A toast in the "' .. tone .. '" tone'})
+        toneButtons[index] = ui.button{text = tone:sub(1, 1):upper() .. tone:sub(2), onClick = function()
+            ui.showMessage{text = 'A toast in the "' .. tone .. '" tone', tone = tone, position = 'top', owner = self}
         end}
     end
     return layout.columns{
@@ -97,12 +105,14 @@ function Overlays:columns()
                     ui.present(Confirm(self), {style = 'dialog', owner = self})
                 end},
             }),
-            layout.section('Component "toast"', {grow = 1,
+            layout.section('Function "showMessage"', {grow = 1,
                 ui.row{wrap = true, gap = 12, children = toneButtons},
                 ui.row{wrap = true, gap = 12,
-                    ui.button{text = 'Toast at the bottom', onClick = self:toast('bottom', 'Saved at the bottom of the safe area')},
-                    ui.button{text = 'Toast until closed', onClick = self:toast('sticky', 'This toast stays until the link closes it')},
-                    ui.button{text = 'Close it', variant = 'link', onClick = function(event) event.gui:set('sticky', {open = false}) end},
+                    ui.button{text = 'Toast at the bottom', onClick = function()
+                        ui.showMessage{text = 'Saved at the bottom of the safe area', tone = 'success', owner = self}
+                    end},
+                    ui.button{text = 'Snackbar until closed', onClick = function() self:showSticky() end},
+                    ui.button{text = 'Close it', variant = 'link', onClick = function() self:closeSticky() end},
                 },
             }),
         },
@@ -134,9 +144,6 @@ function Overlays:columns()
                 ui.label{text = 'On a narrow screen the popover rises as a sheet.', font = 'caption', color = 'textMuted'},
             }),
         },
-        ui.toast{id = 'notice', duration = 3},
-        ui.toast{id = 'bottom', tone = 'success', position = 'bottom'},
-        ui.toast{id = 'sticky', tone = 'warning', duration = 0},
     }
 end
 

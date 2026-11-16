@@ -2,6 +2,7 @@
 
 #include <utility>
 
+#include "haylen/ui/Message.hpp"
 #include "haylen/ui/NavigationSplit.hpp"
 #include "haylen/ui/NavigationStack.hpp"
 #include "haylen/ui/NavigationTabs.hpp"
@@ -22,6 +23,8 @@ void NavigationLink::disconnect() {
         using Held = typename std::decay_t<decltype(held)>::element_type;
         if constexpr (std::is_same_v<Held, Presentation>) {
             held->dismiss(nullptr, NavigationTransition{.effect = NavigationTransition::Effect::None});
+        } else if constexpr (std::is_same_v<Held, Message>) {
+            held->vanish();
         } else {
             held->close();
         }
@@ -38,7 +41,7 @@ bool NavigationLink::isConnected() const noexcept {
         }
 
         using Held = typename std::decay_t<decltype(held)>::element_type;
-        if constexpr (std::is_same_v<Held, Presentation>) {
+        if constexpr (std::is_same_v<Held, Presentation> || std::is_same_v<Held, Message>) {
             return !held->isDismissed();
         } else {
             return !held->isClosed();

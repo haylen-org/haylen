@@ -1,4 +1,4 @@
--- The frame of the app: the stack of its screens, the notices and the parts that float over the map. The map fills the screen and has no tab bar: a round button opens the menu with the trips, the wallet and the account over the map, and every step of a ride shows in a sheet, at the bottom of a phone or as a panel beside the map on a wide window. The steps of a ride and the pages of the menu are screens of one stack over the whole screen, and the menu is a drawer presented over everything.
+-- The frame of the app: the stack of its screens and the parts that float over the map. The map fills the screen and has no tab bar: a round button opens the menu with the trips, the wallet and the account over the map, and every step of a ride shows in a sheet, at the bottom of a phone or as a panel beside the map on a wide window. The steps of a ride and the pages of the menu are screens of one stack over the whole screen, and the menu is a drawer presented over everything.
 local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
 local ui = require('haylen.ui')
@@ -33,10 +33,9 @@ function Shell.start()
     scene.push(Shell.scene)
 end
 
--- Mounts the frame, whose middle is the whole screen, with the stack of the screens on the map, and the notices, which stay above every screen.
+-- Mounts the frame, whose middle is the whole screen, with the stack of the screens on the map.
 function Shell.scene:enter()
     Shell.gui = ui.mount(ui.column{id = 'middle', grow = 1, gap = 0, align = 'stretch'}, {owner = self, placement = 'screen', sharedFocus = true})
-    Shell.notices = ui.mount(ui.toast{id = 'notice', position = 'top', duration = 2.5, indicator = 'icon'}, {owner = self, layer = 10, sharedFocus = true})
     Shell.stack = ui.navigationStack{gui = Shell.gui, id = 'middle', root = require('screens.home')(), owner = self}
 end
 
@@ -45,8 +44,9 @@ function Shell.scene:render()
     graphics2d.drawRect(viewport.visibleRect(), ui.themeColor('window'))
 end
 
+-- Confirms what the person just did in a toast at the top, clear of the sheets of the ride at the bottom.
 function Shell.notify(text, tone)
-    Shell.notices:command('notice', 'show', {text = text, tone = tone or 'neutral'})
+    ui.showMessage{text = text, tone = tone or 'neutral', indicator = 'icon', position = 'top', owner = Shell.scene}
 end
 
 -- Shows the map with the sheet that asks where to.

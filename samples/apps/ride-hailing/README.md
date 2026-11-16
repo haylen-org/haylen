@@ -74,7 +74,7 @@ ride-hailing/
   source/
     main.lua             Registers the theme and starts the shell.
     style.lua            The palette of the screens and of the map, the type scale, the spacing scale, the shapes and the theme.
-    shell.lua            Navigation, notices, the buttons over the map, the sheets and the headers.
+    shell.lua            Navigation, messages, the buttons over the map, the sheets and the headers.
     page.lua             The base of every screen, a class of "ui.Screen".
     rides.lua            The kinds of ride, the trip in progress, the past trips and the wallet, an autoload.
     traffic.lua          The cars of the city.

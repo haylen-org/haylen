@@ -234,8 +234,8 @@ function Lifecycle:touchAsset()
 end
 
 function Lifecycle:touchGui()
-    local toast = ui.mount(ui.toast{id = 'toast', text = 'A GUI that unmounts itself', open = true}, {owner = self, layer = 2})
-    timer.after(1.2, function() toast:unmount() end, {owner = self})
+    local note = ui.mount(ui.column{justify = 'end', alignItems = 'center', padding = 24, ui.card{ui.label{text = 'A GUI that unmounts itself'}}}, {owner = self, layer = 2})
+    timer.after(1.2, function() note:unmount() end, {owner = self})
 end
 
 -- Nothing listens on the discard port, so the socket fails, retries twice and closes.

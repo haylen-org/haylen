@@ -16,6 +16,7 @@
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Component.hpp"
 #include "haylen/ui/Gui.hpp"
+#include "haylen/ui/Navigation.hpp"
 #include "haylen/ui/Theme.hpp"
 #include "support/UiFixture.hpp"
 
@@ -218,9 +219,9 @@ TEST_F(SmoothEdgeTest, CastsOneSoftShadowUnderFloatingSurfaces) {
     EXPECT_EQ(shadow->radii, round(getMetric(Theme::Metric::PanelRadius)));
 }
 
-// A notice floats lower than dialogs and windows, so it casts a smaller, nearer and lighter shadow than theirs.
-TEST_F(SmoothEdgeTest, CastsALowShadowUnderANotice) {
-    mount(R"({"kind": "column", "children": [{"kind": "toast", "text": "Saved", "duration": 0, "open": true}]})");
+// A message floats lower than dialogs and windows, so it casts a smaller, nearer and lighter shadow than theirs.
+TEST_F(SmoothEdgeTest, CastsALowShadowUnderAMessage) {
+    static_cast<void>(getUi().getNavigation().showMessage({{"text", "Saved"}, {"duration", 0}}));
     frames(30);
     const float softness = getMetric(Theme::Metric::ShadowSize) * 2.0F;
     const std::optional<graphics2d::Shape> shadow = findShape([softness](const graphics2d::Shape& shape) { return shape.softness > 0.0F && shape.softness < softness; });

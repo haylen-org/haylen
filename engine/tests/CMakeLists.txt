@@ -254,6 +254,8 @@ set(HAYLEN_TEST_SOURCES
   ui/ImageLibraryTests.cpp
   ui/LabelTests.cpp
   ui/LayoutTests.cpp
+  ui/MessageStackTests.cpp
+  ui/MessageTests.cpp
   ui/FocusTests.cpp
   ui/GameComponentTests.cpp
   ui/GridLayoutTests.cpp
@@ -274,7 +276,6 @@ set(HAYLEN_TEST_SOURCES
   ui/StyleTests.cpp
   ui/ThemeSoundTests.cpp
   ui/ThemeTests.cpp
-  ui/ToastStackTests.cpp
   ui/TransformTests.cpp
   ui/UiLuaTests.cpp
   ui/WheelTests.cpp

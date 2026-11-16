@@ -219,7 +219,7 @@ Cards and panels add padding from two places. Their own `padding` applies when i
 
 ### A HUD layout
 
-The Tiny Island HUD shows the usual shape of a game HUD. A padded root column holds a top row. The row has the survivor panel with its meters on the left, a growing spacer, and the day panel and the pause button on the right. A toast sits under the row. A second growing spacer pushes the touch controls to the bottom.
+The Tiny Island HUD shows the usual shape of a game HUD. A padded root column holds a top row. The row has the survivor panel with its meters on the left, a growing spacer, and the day panel and the pause button on the right. A second growing spacer pushes the touch controls to the bottom. The notices of the run are [messages](navigation.md#messages) at the top, which float over the HUD without taking room in it.
 
 ```lua
 local ui = require('haylen.ui')
@@ -241,7 +241,6 @@ ui.mount(ui.column{
         },
         ui.button{id = 'pause', icon = 'ui/pause.png', variant = 'icon', align = 'start'},
     },
-    ui.toast{id = 'notice', duration = 4},
     ui.spacer{grow = 1},
     ui.row{id = 'touch', align = 'stretch',
         ui.touchStick{action = 'move', mode = 'floating', touchOnly = true, width = 760, height = 420, align = 'end'},
@@ -259,7 +258,7 @@ Sizes and positions are design units of the `design` resolution in `app.json`, w
 
 The app draws over the whole screen on every platform, under notches, dynamic islands, rounded corners and gesture bars. The safe area is the part of the screen that they leave free. By default, `ui.mount` lays out the root of a GUI inside the safe area, so its controls are never hidden. Every Tiny Island screen, the HUD included, keeps that default.
 
-A GUI that paints a background to the edges of the screen mounts with `placement = 'screen'`. It then keeps its controls inside the safe area with a `safeArea` node or with anchors. Toasts always appear at the top or the bottom edge of the safe area, stacked so they never cover each other.
+A GUI that paints a background to the edges of the screen mounts with `placement = 'screen'`. It then keeps its controls inside the safe area with a `safeArea` node or with anchors. Toasts, snackbars and banners always appear at the top or the bottom edge of the safe area, stacked so they never cover each other.
 
 ```lua
 local ui = require('haylen.ui')
@@ -1057,7 +1056,7 @@ Every curve of the components fades over one pixel of the screen, in both scale 
 
 - A surface paints its fill and its border in one shape. So the border runs inside the same edge, follows its corners and meets the fill without a seam.
 - The focus ring is the border of a shape, `focusGap` away from its control, with corners that are concentric to the corners of the control.
-- The shadow of a floating surface is the shape of the surface, moved down by `shadowOffset`. Its edge fades over twice `shadowSize`, centered on the edge, as a blur does. So the shadow starts at half the `shadow` color along the edge of the surface, and clears `shadowSize` away from it. A toast floats lower than dialogs, windows and popups. So its shadow is smaller, nearer and lighter, and the notices of a stack never darken each other.
+- The shadow of a floating surface is the shape of the surface, moved down by `shadowOffset`. Its edge fades over twice `shadowSize`, centered on the edge, as a blur does. So the shadow starts at half the `shadow` color along the edge of the surface, and clears `shadowSize` away from it. A message floats lower than dialogs, windows and popups. So its shadow is smaller, nearer and lighter, and the messages of a stack never darken each other.
 - The highlight of a selected, hovered or pressed row of a list or a collection inside a card or a panel rounds its corners to match. The corners that meet the corners of the card take the radius of the card less the space between them, and the other corners keep the radius of the rows.
 - The shapes reach the renderer at their place among the ImGui draws, through callbacks of the draw list, and so do the texts, rich texts and nine-slices of the components. Draws in a row in one window, under the same clip and texture, share one callback. The shapes of neighboring controls merge into one draw call, and each frame keeps every draw in storage that later frames reuse.
 
@@ -1100,7 +1099,7 @@ ui.setTextScale(preferences.get('textScale', 'system'))
 
 ## Component catalog
 
-The engine ships 63 component kinds, and `ui.kinds()` lists them. This table groups them by purpose, and each group links to its section of the reference.
+The engine ships 62 component kinds, and `ui.kinds()` lists them. This table groups them by purpose, and each group links to its section of the reference.
 
 | Purpose | Kinds |
 | --- | --- |
@@ -1112,7 +1111,7 @@ The engine ships 63 component kinds, and `ui.kinds()` lists them. This table gro
 | [Indicators](../lua-api/ui.md#indicators) | `badge`, `statusIndicator`, `busyIndicator`, `progress`, `circularProgress`, `icon`, `image`, `avatar` |
 | [Lists and grids](../lua-api/ui.md#lists-and-grids) | `list` (with draggable rows), `tree`, `table`, `slotGrid`, `collection` (any number of items of several types, as [long lists](#long-lists) explains) |
 | [Settings](../lua-api/ui.md#settings) | `settingsForm`, `settingsRow`, `settingsActions` |
-| [Overlays](../lua-api/ui.md#overlays) | `dialog`, `toast`, `window`, `contextMenu` |
+| [Overlays](../lua-api/ui.md#overlays) | `dialog`, `window`, `contextMenu` |
 | [Touch controls](../lua-api/ui.md#touch-controls) | `touchStick`, `touchButton` |
 | [Play areas](../lua-api/ui.md#play-areas) | `playArea` |
 
@@ -1124,7 +1123,7 @@ Games reach for a few kinds often:
 - A `keyCapture` reads the next key, mouse button, gamepad button or stick for a controls screen, and returns a binding that the action map takes.
 - A `window` floats a draggable panel over the game, and a `contextMenu` opens actions on a right click, a long press or `uiMenu`.
 
-The Tiny Island screens use a small part of the catalog. The menu is the logo as an `image` over a column of buttons. The class selection screen uses a `pageHeader` with `banner = true`, `imageButton` portraits whose `tint` dims the classes that are not chosen, and `progress` bars for the stats. The settings sheet is a `panel` with a `settingsForm` of `settingsRow` nodes that hold sliders, a combo and toggles. The HUD uses panels, icons, labels, progress bars, an icon button, a toast and the touch controls.
+The Tiny Island screens use a small part of the catalog. The menu is the logo as an `image` over a column of buttons. The class selection screen uses a `pageHeader` with `banner = true`, `imageButton` portraits whose `tint` dims the classes that are not chosen, and `progress` bars for the stats. The settings sheet is a `panel` with a `settingsForm` of `settingsRow` nodes that hold sliders, a combo and toggles. The HUD uses panels, icons, labels, progress bars, an icon button and the touch controls, and shows its notices as toasts of `ui.showMessage`.
 
 ## Immediate mode UI with haylen.imgui
 

@@ -1,4 +1,4 @@
--- The frame of the app: the tabs, the notices, the player that follows every screen and the layout that follows the width of the window. Phones show a bar of tabs at the bottom with a floating card of the song that plays above it, and wide windows show a sidebar with the playlists on the left and the player bar of a desktop across the bottom. The frame mounts once in the scene of the app, and the screens of each tab live in a stack of their own in its middle, so going to another screen changes only the middle while the bars stay. The player and the queue open over everything as presentations, a new flow with bars of its own.
+-- The frame of the app: the tabs, the player that follows every screen and the layout that follows the width of the window. Phones show a bar of tabs at the bottom with a floating card of the song that plays above it, and wide windows show a sidebar with the playlists on the left and the player bar of a desktop across the bottom. The frame mounts once in the scene of the app, and the screens of each tab live in a stack of their own in its middle, so going to another screen changes only the middle while the bars stay. The player and the queue open over everything as presentations, a new flow with bars of its own.
 local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
 local ui = require('haylen.ui')
@@ -36,10 +36,9 @@ function Shell.start()
     scene.push(Shell.scene)
 end
 
--- Mounts the frame and the notices, which stay above every screen, and the tabs in the middle of the frame.
+-- Mounts the frame and the tabs in the middle of the frame.
 function Shell.scene:enter()
     Shell.gui = ui.mount(Shell.frame(), {owner = self, sharedFocus = true})
-    Shell.notices = ui.mount(ui.toast{id = 'notice', position = 'top', duration = 2.5, indicator = 'icon'}, {owner = self, layer = 10, sharedFocus = true})
     Shell.adaptFrame()
     local tabs = {}
     for index, tab in ipairs(Shell.tabs) do
@@ -60,8 +59,9 @@ function Shell.scene:render()
     graphics2d.drawRect(viewport.visibleRect(), ui.themeColor('window'))
 end
 
+-- Confirms what the person just did in a toast at the top, clear of the player at the bottom.
 function Shell.notify(text, tone)
-    Shell.notices:command('notice', 'show', {text = text, tone = tone or 'neutral'})
+    ui.showMessage{text = text, tone = tone or 'neutral', indicator = 'icon', position = 'top', owner = Shell.scene}
 end
 
 -- Shows a tab with the screens it kept, or goes back to its root when it already shows, the way native tab bars do.

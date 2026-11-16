@@ -88,11 +88,11 @@ function Settings:form()
                             self:show(self.saved)
                             self:report('Back to the saved settings.')
                         end},
-                        ui.button{id = 'save', text = 'Save', variant = 'primary', onClick = function(event)
+                        ui.button{id = 'save', text = 'Save', variant = 'primary', onClick = function()
                             for key, value in pairs(self.values) do
                                 self.saved[key] = value
                             end
-                            event.gui:set('saved', {open = true})
+                            ui.showMessage{text = 'Settings saved', tone = 'success', indicator = 'icon', owner = self}
                             local saved = self.values
                             self:report(string.format('Saved the music at %.0f and the effects at %.0f percent, the language "%s" and the difficulty "%s".', saved.music, saved.effects, saved.language, saved.difficulty))
                         end},
@@ -100,7 +100,6 @@ function Settings:form()
                 },
             },
         },
-        ui.toast{id = 'saved', text = 'Settings saved', tone = 'success', position = 'bottom'},
     }
 end
 

@@ -90,7 +90,6 @@ Every kind is also a function of the module, so `ui.button{text = 'Play'}` build
 | [`tabs`](#uitabsproperties) | [Containers](#containers) | A strip of tabs over the child of the selected tab. |
 | [`textArea`](#uitextareaproperties) | [Inputs](#inputs) | A text entry of several lines. |
 | [`textField`](#uitextfieldproperties) | [Inputs](#inputs) | A text entry of one line. |
-| [`toast`](#uitoastproperties) | [Overlays](#overlays) | Short notices at an edge of the screen. |
 | [`toggle`](#uitoggleproperties) | [Choices](#choices) | A switch with a label. |
 | [`touchButton`](#uitouchbuttonproperties) | [Touch controls](#touch-controls) | An on-screen button that drives a virtual button of the action map. |
 | [`touchStick`](#uitouchstickproperties) | [Touch controls](#touch-controls) | An on-screen stick that drives a virtual stick of the action map. |
@@ -1520,7 +1519,7 @@ ui.mount(ui.settingsForm{
 
 ## Overlays
 
-Overlays show over the rest of the UI: the card of a dialog, which a presentation shows over the dimmed screen, toasts, windows and context menus.
+Overlays show over the rest of the UI: the card of a dialog, which a presentation shows over the dimmed screen, windows and context menus. Toasts, snackbars and banners are [messages](#uishowmessageoptions) of the navigation.
 
 ### ui.dialog(properties)
 
@@ -1557,84 +1556,6 @@ function Confirm:build()
 end
 
 local answer = ui.present(Confirm, {style = 'dialog'}).result:await()
-```
-
-### ui.toast(properties)
-
-A toast shows short notices at an edge of the safe area. The notice of the toast itself shows while `open` is `true`. The [commands](#guicommandid-name-arguments) `show`, `update` and `hide` add more notices to the same toast, change them and let them go.
-
-A notice is a pill in the color of its tone. It can hold an indicator, a title, a text, an action and a close button. It slides in from the edge and fades in, stays for its duration, and then fades out while the notices around it move into its place. A toast takes no room in the layout. Its notices take the pointer over them. The action and the close button never take the focus, so a new notice never pulls the focus from the game or the screen.
-
-The notices of every toast at the same position form one stack, so they never cover each other:
-
-- In a `'list'`, the notices line up in the order they were asked to show. When the list already shows the theme `toastLimit` notices, the next ones wait their turn, and their time starts once they show.
-- In a `'deck'`, the newest notice is in front at the edge. The older ones peek out behind it, smaller, each the theme `toastPeek` past the notice in front of it.
-- An `expandable` deck opens into a list while the pointer or a finger is on it. It stays open while the pointer is anywhere in the area its notices take.
-- A deck that is not expandable keeps its depth. Its notices behind the front leave every press to the front one. Each press or swipe takes the front notice away, and the next one comes forward.
-- The time of the notices of a stack stops while the pointer or a finger is on it.
-- When an edge of the safe area is too narrow for its start, middle and end stacks side by side, they form one stack. Every notice keeps its side in it.
-
-A notice of a list is as wide as what it shows. It grows up to the theme `toastWidth` times the [text scale](#uisettextscalescale), within the safe area. The notices of a deck all take that width, so they line up.
-
-The player lets a notice go in several ways. A press on a notice reports `click` and lets it go. The action reports `action` and lets the notice go. The close button lets it go. A press that drags the notice sideways past a third of its width swipes it away, while a shorter drag springs back. Every notice that leaves reports `dismiss` with the reason. The one exception is the notice of the properties when `open = true` is set again, which replaces it with a new one at the end of the stack.
-
-| Property | Type | Default | Meaning |
-| --- | --- | --- | --- |
-| `open` | boolean | `false` | Shows the notice of the toast. |
-| `text` | text | none | The notice. |
-| `title` | text | none | A bold line over the text. |
-| `tone` | tone | `'neutral'` | The color of the notice, and the symbol of the indicator `'icon'`: a check for `'success'`, a cross for `'danger'`, an exclamation mark for `'warning'` and an "i" for the other tones. |
-| `variant` | string | `'solid'` | How the notice paints its tone. The value `'solid'` fills it with the color of the tone. The value `'soft'` fills it with the pale color of the tone over the raised color, which keeps it opaque, with a border of the tone. The value `'outline'` fills it with the raised color of the theme, with a border of the tone. A neutral notice takes the colors of tooltips. A theme that paints toasts with an image keeps the image and gives the tone to the indicator. |
-| `indicator` | string | `'none'` | What shows before the text: `'none'`, `'icon'` for the symbol of the tone, `'busy'` for a spinner, or `'progress'` for a ring that fills with `progress`. |
-| `progress` | number from 0 to 1 | `0` | How full the ring of the indicator `'progress'` is. |
-| `action` | text | none | The text of a button at the end of the notice, such as `'Undo'`. |
-| `closable` | boolean | `false` | Shows a close button at the end of the notice. |
-| `duration` | number from 0 to 3600 | `3` | The seconds on screen. The value `0` keeps the notice until it is closed, swiped away or hidden, or until `open` is set to `false`. |
-| `position` | string | `'top'` | Where the stack sits. The values `'top'` and `'bottom'` are the middle of the edge. The values `'topStart'`, `'topEnd'`, `'bottomStart'` and `'bottomEnd'` are its sides, where start is the left of a left-to-right UI. |
-| `arrangement` | string | `'list'` | How the notices of the toast stack: `'list'` or `'deck'`. |
-| `expandable` | boolean | `true` | Opens a deck into a list while the pointer or a finger is on it. Without it, the deck keeps its depth. |
-
-The commands of a toast take a table:
-
-- The command `'show'` adds a notice. Its arguments are `notice`, the id of the notice, and `title`, `text`, `action`, `tone`, `variant`, `indicator`, `progress`, `closable` and `duration`, which work like the properties of the same names. A notice looks like the properties of the toast unless its arguments say otherwise, and it says only what its arguments say. Showing a notice with the id of a notice that shows changes it and starts its time again.
-- The command `'update'` changes the notice with the id `notice`, with the same arguments, such as the progress of an upload. A `duration` among them starts its time again. A missing id raises `The "update" command of a "toast" needs the "notice" it changes.`.
-- The command `'hide'` lets the notice with the id `notice` go. Without an id, it lets every notice of the toast go.
-
-An id that no notice of the toast has raises `The toast "<id>" shows no notice "<notice>".`. An argument that is not a table raises `The "<command>" command of a "toast" takes a table.`. Unknown arguments raise `Unknown key "<key>" in the "<command>" command of a "toast".`. Wrong values raise the errors of the properties of the same names.
-
-| Event | Values | When |
-| --- | --- | --- |
-| `noticeShow` | `notice` | A notice comes on screen. For a notice that waited in a full list, that is when its turn comes. |
-| `click` | `notice` | The player pressed a notice and let go without swiping it, and the notice leaves. |
-| `action` | `notice` | The player pressed the action of a notice, which then leaves. |
-| `dismiss` | `reason`, `notice` | A notice left. The reason is `'timeout'` when its time ended, `'clicked'` after a press, `'closed'` after its close button, `'swiped'` after a swipe, `'action'` after its action, and `'hidden'` after `open = false` or the command `'hide'`. |
-
-The value `notice` is the id the notice was shown with. It is absent for the notice of the properties.
-
-```lua
-local ui = require('haylen.ui')
-
-local notices = ui.mount(ui.toast{id = 'saved', text = 'Progress saved', tone = 'success', indicator = 'icon', position = 'bottom',
-    onAction = function(event)
-        print('Undo ' .. event.notice .. '.')
-    end,
-    onDismiss = function(event)
-        print((event.notice or 'saved') .. ' left: ' .. event.reason .. '.')
-    end})
-
-notices:set('saved', {open = true})
-notices:command('saved', 'show', {notice = 'chest', text = 'Two new items in the chest', tone = 'information', duration = 5})
-notices:command('saved', 'show', {notice = 'trash', text = 'The map was deleted', variant = 'outline', tone = 'danger', indicator = 'icon', action = 'Undo', closable = true})
-
--- A notice that follows a task changes as the task goes on.
-notices:command('saved', 'show', {notice = 'upload', text = 'Uploading the save', indicator = 'progress', duration = 0})
-notices:command('saved', 'update', {notice = 'upload', progress = 0.5})
-notices:command('saved', 'update', {notice = 'upload', text = 'Save uploaded', tone = 'success', indicator = 'icon', duration = 2})
-
--- The newest notice in front, the older ones behind it.
-local deck = ui.mount(ui.toast{id = 'feed', position = 'bottomEnd', arrangement = 'deck', duration = 6})
-deck:command('feed', 'show', {text = 'A gull stole a fish'})
-deck:command('feed', 'show', {text = 'The tide is rising', tone = 'information'})
 ```
 
 ### ui.window(properties)
@@ -2246,9 +2167,9 @@ Colors are `'#RRGGBB'` or `'#AARRGGBB'` strings. The accent and the four tones `
 | `window` | `#FF1B1E2B` | `#FFF4F5F9` | The background of ImGui windows and the outline of progress text. |
 | `panel` | `#FF232739` | `#FFFFFFFF` | The fill of panels and dialogs. |
 | `raised` | `#FF2C3147` | `#FFFFFFFF` | The fill of cards, buttons, fields and chips. |
-| `tooltip` | `#FF0F111A` | `#FF1B1E2B` | The background of tooltips, toasts and the counts of slots. |
+| `tooltip` | `#FF0F111A` | `#FF1B1E2B` | The background of tooltips, messages and the counts of slots. |
 | `overlay` | `#A0000000` | `#66000000` | The backdrop behind dialogs and the base of touch controls. |
-| `shadow` | `#66000000` | `#291B1E2B` | The soft shadow under dialogs, windows, toasts, tooltips, popovers and the popups of combos, menus and color fields. |
+| `shadow` | `#66000000` | `#291B1E2B` | The soft shadow under dialogs, windows, messages, tooltips, popovers and the popups of combos, menus and color fields. |
 | `hover` | `#14FFFFFF` | `#0F000000` | The layer over hovered controls and rows. |
 | `pressed` | `#24FFFFFF` | `#1F000000` | The layer over pressed controls. |
 | `selection` | `#404C7DFF` | `#334C7DFF` | Selected rows, checked buttons and selected text. |
@@ -2264,7 +2185,7 @@ Colors are `'#RRGGBB'` or `'#AARRGGBB'` strings. The accent and the four tones `
 | `text` | `#FFE8EAF2` | `#FF1B1E2B` | The main text. |
 | `textMuted` | `#FFA3A8BF` | `#FF5C6380` | Captions, placeholders, help lines and inactive tabs. |
 | `textDisabled` | `#FF6A7090` | `#FFA3A8BF` | The text of disabled ImGui items. |
-| `onTooltip` | `#FFE8EAF2` | `#FFF4F5F9` | The text of tooltips, toasts and the counts of slots. |
+| `onTooltip` | `#FFE8EAF2` | `#FFF4F5F9` | The text of tooltips, messages and the counts of slots. |
 | `accent` | `#FF4C7DFF` | `#FF3A66E0` | The accent fill of primary buttons, checked boxes, slider fills and the selected tab. |
 | `accentHover` | `#FF6690FF` | `#FF4C7DFF` | The hovered accent fill and hovered links. |
 | `accentStrong` | `#FF3A66E0` | `#FF2C52C0` | The pressed accent fill. |
@@ -2316,10 +2237,10 @@ Metrics size the parts of the components. Both built-in themes share these value
 | --- | --- | --- |
 | `controlHeight` | `64` | The height of buttons, fields, combos, sliders and the tab strip, and the least height of the rows of check boxes, radio buttons and toggles. So every control is a touch target of the same size, the size that the accessibility audits of the platforms ask for at the scales of phones. |
 | `controlRadius` | `12` | The corner radius of controls, panels and windows. |
-| `controlPaddingX` | `24` | The horizontal padding inside buttons, fields, alerts and toasts. A button too narrow for its label with this padding keeps `contentSpacing` instead. |
-| `controlPaddingY` | `12` | The vertical padding of settings rows, alerts, toasts and text areas. |
+| `controlPaddingX` | `24` | The horizontal padding inside buttons, fields, alerts and messages. A button too narrow for its label with this padding keeps `contentSpacing` instead. |
+| `controlPaddingY` | `12` | The vertical padding of settings rows, alerts, messages and text areas. |
 | `itemSpacing` | `16` | The default gap of columns, rows and grids, and the space between the parts of a component. |
-| `panelPadding` | `28` | The default padding of cards, panels and dialogs, and the margin of toasts. |
+| `panelPadding` | `28` | The default padding of cards, panels and dialogs, and the margin of messages. |
 | `borderWidth` | `2` | The width of borders and dividers. |
 | `focusWidth` | `3` | The thickness of the focus ring and of the line under the selected tab. |
 | `scrollbarSize` | `10` | The thickness of [scroll bars](#scroll-bars). |
@@ -2337,7 +2258,7 @@ Metrics size the parts of the components. Both built-in themes share these value
 | `tabPaddingX` | `24` | The horizontal padding of each tab, and of the labels of segmented controls with room. |
 | `listRowHeight` | `64` | The height of list, tree and table rows, and the smallest height of settings rows. |
 | `dialogWidth` | `760` | The width of dialogs. |
-| `toastWidth` | `560` | The widest a toast grows at a text scale of 1, and the width of the toasts of a deck. |
+| `toastWidth` | `560` | The widest a toast grows at a text scale of 1, and the width of snackbars, banners and the messages of a deck. |
 | `tooltipWidth` | `520` | The width at which tooltips wrap. |
 | `settingsLabelWidth` | `420` | The width of the label column of settings rows. |
 | `caretWidth` | `2` | The width of the text cursor in fields and [`haylen.imgui`](imgui.md) inputs. |
@@ -2347,18 +2268,18 @@ Metrics size the parts of the components. Both built-in themes share these value
 | `windowTitleHeight` | `56` | The height of the title bar of windows. |
 | `pageIndicatorSize` | `14` | The size of the page dots of carousels. |
 | `toggleKnobInset` | `4` | The space between the knob of a switch and the edge of its track, and between the picked segment of a segmented control and the border of its track. |
-| `transitionDuration` | `0.15` | The seconds the transitions of the UI take: the knob of a switch, the fades of dialogs and their backdrops, and the fades and moves of toasts. |
-| `toastLimit` | `3` | The notices one list of toasts shows at once, while the others wait, and the notices a closed deck shows, while older ones hide behind them. The value `0` shows them all. |
-| `toastRadius` | `999` | The corner radius of toasts, at most half the height of a toast of one line. So the default rounds every toast of one line into a pill. |
-| `toastPeek` | `14` | How far each notice behind the front of a closed deck of toasts peeks out past the notice in front of it. |
+| `transitionDuration` | `0.15` | The seconds the transitions of the UI take: the knob of a switch, the fades of dialogs and their backdrops, and the fades and moves of messages. |
+| `toastLimit` | `3` | The toasts one list of messages shows at once, while the others wait, and the messages a closed deck shows, while older ones hide behind them. The value `0` shows them all. |
+| `toastRadius` | `999` | The corner radius of toasts, at most half the height of a toast of one line. So the default rounds every toast of one line into a pill, while snackbars take `controlRadius` and banners `panelRadius`. |
+| `toastPeek` | `14` | How far each message behind the front of a closed deck of messages peeks out past the message in front of it. |
 | `toneBarWidth` | `6` | The width of the tone bar of alerts. |
-| `panelRadius` | `16` | The corner radius of panels, cards, dialogs, windows, toasts and popups. The rows of a popup, the highlighted rows of a list or a collection in a card, and the title bar of a window follow it inside. |
+| `panelRadius` | `16` | The corner radius of panels, cards, dialogs, windows, banners and popups. The rows of a popup, the highlighted rows of a list or a collection in a card, and the title bar of a window follow it inside. |
 | `contentSpacing` | `12` | The space between the box, the switch or the icon of a control and its text. |
 | `focusGap` | `3` | The space between a control and its focus ring. |
 | `disabledOpacity` | `0.5` | The opacity of disabled nodes. |
 | `tooltipDelay` | `0.5` | The seconds the pointer rests on a node before its tooltip shows. |
 | `longPressDuration` | `0.5` | The seconds a finger holds a context menu before it opens, and holds a row, a slot or an item before it lifts it. |
-| `shadowSize` | `24` | How far the soft shadow of floating surfaces reaches past their edge. The shadow starts at half its color along the edge. A toast casts it at a share of this reach, nearer and lighter. The value `0` turns shadows off. |
+| `shadowSize` | `24` | How far the soft shadow of floating surfaces reaches past their edge. The shadow starts at half its color along the edge. A message casts it at a share of this reach, nearer and lighter. The value `0` turns shadows off. |
 | `shadowOffset` | `6` | How far below its surface a shadow falls. |
 | `chipHeight` | `48` | The height of chips. |
 | `chipRadius` | `999` | The corner radius of chips, at most half their height. So the default rounds every chip into a pill. |
@@ -2459,7 +2380,7 @@ A surface paints a part of a component with a nine-slice image instead of flat c
 | `card` | `card`. |
 | `dialog` | `dialog`. |
 | `tooltip` | The tooltips of every node. The text stays inside the `padding` of the surface. |
-| `toast` | `toast`. The text and the tone bar stay inside the `padding` of the surface, where the bar is a strip with round ends. |
+| `toast` | The toasts, snackbars and banners of [`ui.showMessage`](#uishowmessageoptions). Their text and indicator stay inside the `padding` of the surface. |
 | `banner` | `pageHeader` with `banner = true`. |
 | `button`, `buttonHover`, `buttonPressed` | Default, toolbar and icon buttons, menu buttons, dialog buttons and the buttons of number fields. |
 | `buttonPrimary`, `buttonPrimaryHover`, `buttonPrimaryPressed` | Primary buttons. |
@@ -2477,7 +2398,7 @@ A surface paints a part of a component with a nine-slice image instead of flat c
 | `menu` | The popups of combos, menu buttons, context menus and color fields. |
 | `window` | Windows. With a `titleBar` image, the window starts behind the middle of its title bar, so the bar caps it and no corner of the window shows around the ends of the bar. |
 | `titleBar` | The title bar across the top of windows, and the band behind the title of dialogs across the content of the dialog, which only an image draws. The title stays inside the `padding` of the surface. |
-| `close`, `closeHover`, `closePressed` | The close button of windows and toasts, in place of the cross, drawn over the whole button. The `danger` color fills it with `colorize`. |
+| `close`, `closeHover`, `closePressed` | The close button of windows and messages, in place of the cross, drawn over the whole button. The `danger` color fills it with `colorize`. |
 | `slot`, `slotHighlighted` | The slots of slot grids, and the selected or hovered slot. |
 | `cell`, `cellHover`, `cellPressed`, `cellSelected` | The backgrounds of interactive collection cells: always, while hovered, while pressed and while selected. The state surfaces also mark the rows of lists, trees, tables, accordions and popups. Without images, the state surfaces paint the `hover`, `pressed` and `selection` colors, and `cell` paints nothing. |
 | `scrollbar`, `scrollbarHover` | The thumb of [scroll bars](#scroll-bars), and the thumb while hovered or held, which falls back to `scrollbar`. |
@@ -2574,7 +2495,7 @@ A theme may give the interactions of the UI a sound each, such as a click for ev
 
 | Interaction | When it plays |
 | --- | --- |
-| `press` | A press of a button, an image button, a menu button, a combo, a tab, a list row, a table row, a tree row, a slot, a collection item, an item of a menu or a context menu, a dialog button, a toast or its action, the clear button of a filter field or the header of an accordion section. |
+| `press` | A press of a button, an image button, a menu button, a combo, a tab, a list row, a table row, a tree row, a slot, a collection item, an item of a menu or a context menu, a dialog button, a message or its action, the clear button of a filter field or the header of an accordion section. |
 | `focus` | The player moves the focus with the keyboard, a gamepad or a remote: a direction, Tab, `uiFocus` or a page of a collection. A pointer, a script and a screen reader move the focus without it. |
 | `toggle` | A choice changes: a checkbox, a toggle, a radio group, a selectable chip, a segmented control or the pick of a combo. |
 | `step` | A slider, a range slider or a stepper changes its value, or a step button of a number field is pressed. |
@@ -3927,7 +3848,7 @@ ui.mount(ui.column{
 
 ## Navigation
 
-The navigation shows the screens of an app: stacks that push and pop screens in the area of a node of a frame, tabs that each keep a stack, a split of a list and its detail, and presentations over everything, such as sheets, popovers, drawers, dialogs and the alerts and action sheets that the engine builds. The [navigation guide](../ui/navigation.md) explains the model, when to use each part and how they fit together.
+The navigation shows the screens of an app: stacks that push and pop screens in the area of a node of a frame, tabs that each keep a stack, a split of a list and its detail, presentations over everything, such as sheets, popovers, drawers, dialogs and the alerts and action sheets that the engine builds, and the toasts, snackbars and banners above them all. The [navigation guide](../ui/navigation.md) explains the model, when to use each part and how they fit together.
 
 ### ui.Screen
 
@@ -4135,6 +4056,76 @@ ui.presentAlert{style = 'actionSheet', anchor = {gui = frame, id = 'share'}, act
     {id = 'message', text = 'Send in a message'},
     {id = 'cancel', text = 'Cancel', role = 'cancel'},
 }}
+```
+
+### ui.showMessage(options)
+
+Shows a toast, a snackbar or a banner over everything the app shows, above every GUI and every presentation, and returns its [`Message`](#message). A message tells of something that happened and goes away on its own, so it never takes the focus and the person goes on with what they were doing. The [navigation guide](../ui/navigation.md#messages) explains when to use each style.
+
+| Style | What it is |
+| --- | --- |
+| `'toast'` | A pill at the bottom middle of the safe area that fits its text, for a short confirmation, such as a saved file. A stack shows the theme `toastLimit` toasts at once, and a toast lasts 3 seconds. |
+| `'snackbar'` | A bar across the bottom, as wide as the theme `toastWidth` within the safe area, with the corner radius of controls, for an action that the person may take back, such as an undo after a deletion. A stack shows one snackbar at a time, and a snackbar lasts 4 seconds, or 6 with an action. |
+| `'banner'` | A card that drops in under the status bar at the top of the safe area, as wide as the theme `toastWidth`, with the corner radius of panels and a picture at its start, for news that the person may open, such as a chat message. A stack shows one banner at a time, and a banner lasts 5 seconds. |
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `style` | string | `'toast'` | One of the styles above. |
+| `title` | text | none | A bold line over the text. |
+| `text` | text | none | The message. A message needs a `title` or a `text`. |
+| `icon` | string | none | The path of a round picture at the start of the message, such as the avatar of whoever wrote, in place of the indicator. |
+| `action` | text | none | The text of a button at the end of the message, such as `'Undo'`. |
+| `tone` | tone | `'neutral'` | The color of the message, and the symbol of the indicator `'icon'`: a check for `'success'`, a cross for `'danger'`, an exclamation mark for `'warning'` and an "i" for the other tones. |
+| `variant` | string | `'solid'` | How the message paints its tone. The value `'solid'` fills it with the color of the tone. The value `'soft'` fills it with the pale color of the tone over the raised color, which keeps it opaque, with a border of the tone. The value `'outline'` fills it with the raised color of the theme, with a border of the tone. A neutral message takes the colors of tooltips. A theme that paints the `toast` surface with an image keeps the image and gives the tone to the indicator. |
+| `indicator` | string | `'none'` | What shows before the text: `'none'`, `'icon'` for the symbol of the tone, `'busy'` for a spinner, or `'progress'` for a ring that fills with `progress`. |
+| `progress` | number from 0 to 1 | `0` | How full the ring of the indicator `'progress'` is. |
+| `closable` | boolean | `false` | Shows a close button at the end of the message. |
+| `duration` | number from 0 to 3600 | the duration of the style | The seconds on screen, from when the message comes on screen. The value `0` keeps the message until something lets it go. |
+| `priority` | string | `'normal'` | `'low'`, `'normal'` or `'high'`. Among the messages that wait, a higher priority goes first, and a high priority interrupts what a screen reader says. |
+| `position` | string | `'bottom'`, or `'top'` for a banner | Where the stack sits. The values `'top'` and `'bottom'` are the middle of the edge. The values `'topStart'`, `'topEnd'`, `'bottomStart'` and `'bottomEnd'` are its sides, where start is the left of a left-to-right UI. |
+| `arrangement` | string | `'list'` | How the messages of the stack line up: `'list'` or `'deck'`. |
+| `expandable` | boolean | `true` | Opens a deck into a list while the pointer or a finger is on it. Without it, the deck keeps its depth. |
+| `owner` | table or userdata | the default owner | Lets the message go at once when it ends. |
+| `onShow` | function | none | Hears the table `{message}` when the message comes on screen. For a message that waited, that is when its turn comes. |
+| `onTap` | function | none | Hears the table `{message, reason}` when the person taps the message, which then leaves. |
+| `onAction` | function | none | Hears the table `{message, reason}` when the person presses the action, which lets the message go. |
+| `onDismiss` | function | none | Hears the table `{message, reason}` once the message left the screen. |
+
+The messages of every position form one stack, so they never cover each other:
+
+- In a `'list'`, the messages line up in the order they came on screen. A stack shows the theme `toastLimit` toasts and one snackbar and one banner at once, and the next ones of a style wait their turn without taking room. Among those that wait, a higher priority goes first, and the same priority keeps the order they asked to show in. Their time starts once they show.
+- A snackbar or a banner that waits with a higher priority than the one of its style and position that shows replaces it. The one that shows leaves with the reason `'replaced'`, and the new one comes on screen once it left.
+- In a `'deck'`, the newest message is in front at the edge. The older ones peek out behind it, smaller, each the theme `toastPeek` past the message in front of it.
+- An `expandable` deck opens into a list while the pointer or a finger is on it. It stays open while the pointer is anywhere in the area its messages take.
+- A deck that is not expandable keeps its depth. Its messages behind the front leave every press to the front one. Each tap or swipe takes the front message away, and the next one comes forward.
+- The time of the messages of a stack stops while the pointer or a finger is on it.
+- When an edge of the safe area is too narrow for its start, middle and end stacks side by side, they form one stack. Every message keeps its side in it.
+
+A toast of a list is as wide as what it shows. It grows up to the theme `toastWidth` times the [text scale](#uisettextscalescale), within the safe area. A snackbar, a banner and the messages of a deck all take that width, so they line up.
+
+A message slides in from the edge of its stack and fades in, a snackbar and a banner by their whole height, so a banner drops in under the status bar. It settles into its place as the messages around it come and go, and fades out while its place shrinks. While the system asks for reduced motion, it only fades. Its action and its close button never take the focus, so a new message never pulls the focus from the game or the screen.
+
+The person lets a message go in several ways. A tap on the message lets it go with the reason `'tapped'`. The action lets it go with `'action'`, and the close button with `'closed'`. A press that drags the message sideways past a third of its width swipes it away with `'swiped'`, while a shorter drag springs back. A message whose time ends leaves with `'timeout'`.
+
+Screen readers hear every message that comes on screen, its title, its text and its action, and the tree they read holds it as an alert.
+
+An unknown option raises `Unknown option "<key>".`. A wrong value raises the error of its option, such as `The property "style" of a "message" must be "toast", "snackbar" or "banner".`, and a message without a title or a text raises `A message needs a "title" or a "text".`.
+
+```lua
+local ui = require('haylen.ui')
+
+-- A short confirmation.
+ui.showMessage{text = 'Progress saved', tone = 'success', indicator = 'icon', owner = scene}
+
+-- A deletion that the person may take back.
+ui.showMessage{style = 'snackbar', text = 'The map was deleted.', action = 'Undo', owner = scene, onAction = function()
+    restoreMap()
+end}
+
+-- A chat message that opens its conversation.
+ui.showMessage{style = 'banner', title = 'Ana', text = 'See you at six?', icon = 'images/ana.png', onTap = function()
+    openChat('ana')
+end}
 ```
 
 ### ui.goBack()
@@ -4364,6 +4355,60 @@ end)
 queue.detent = 2
 ```
 
+## Message
+
+A `Message`, named `haylen.Message` in messages, is a toast, a snackbar or a banner that [`ui.showMessage`](#uishowmessageoptions) showed.
+
+### message:update(options)
+
+Changes what the message says and how it looks with the options `title`, `text`, `icon`, `action`, `tone`, `variant`, `indicator`, `progress`, `closable` and `duration` of [`ui.showMessage`](#uishowmessageoptions), such as the progress of an upload. A `duration` starts its time again. The other options of `ui.showMessage` raise `Unknown option "<key>".`, and wrong values raise the errors of `ui.showMessage`.
+
+```lua
+local upload = ui.showMessage{text = 'Uploading the save', indicator = 'progress', duration = 0}
+upload:update{progress = 0.5}
+upload:update{text = 'Save uploaded', tone = 'success', indicator = 'icon', duration = 2}
+```
+
+### message:dismiss()
+
+Lets the message go with the reason `'dismissed'`. A message that shows leaves the screen, and a message that waits leaves the queue at once. A message that leaves already stays as it is.
+
+```lua
+local syncing = ui.showMessage{text = 'Syncing your library', indicator = 'busy', duration = 0}
+library.sync():await()
+syncing:dismiss()
+```
+
+### Properties
+
+| Property | Type | Meaning |
+| --- | --- | --- |
+| `style` | string | `'toast'`, `'snackbar'` or `'banner'`. Read only. |
+| `shown` | boolean | Whether the message came on screen, which stays `true` once it left. Read only. |
+| `dismissed` | boolean | Whether the message leaves or left. Read only. |
+| `result` | promise | A promise that resolves with the reason once the message left, for `await` in a coroutine. The same promise every time. Read only. |
+
+| Reason | Why the message left |
+| --- | --- |
+| `'timeout'` | Its time ended. |
+| `'tapped'` | The person tapped it. |
+| `'closed'` | The person pressed its close button. |
+| `'swiped'` | The person swiped it away. |
+| `'action'` | The person pressed its action. |
+| `'dismissed'` | The app dismissed it, or its owner ended. |
+| `'replaced'` | A snackbar or a banner of a higher priority took its place. |
+
+```lua
+local async = require('async')
+
+async.spawn(function()
+    local reason = ui.showMessage{style = 'snackbar', text = 'Photo deleted.', action = 'Undo'}.result:await()
+    if reason ~= 'action' then
+        deleteForGood()
+    end
+end)
+```
+
 ## Gui
 
 A `Gui`, named `haylen.Gui` in messages, is the mounted tree that [`ui.mount`](#uimounttree-options) returns. Its methods find nodes by id. Reading a member it does not have raises `The type "haylen.Gui" has no member "<name>".`. Writing a read-only property raises `The type "haylen.Gui" has no writable property "<name>".`.
@@ -4450,7 +4495,7 @@ end
 
 ### gui:bounds(id)
 
-Returns the rectangle where the node was last drawn, as a `haylen.Rect` with `x`, `y`, `width` and `height`, in the design coordinates of screen canvases. A `window`, `dialog` or `toast` reports the frame it drew, which follows a window that the player drags. It returns `nil` for an unknown id, and for a node that has not drawn yet. That is the case until the GUI has drawn once, and for a window, dialog or toast that is closed.
+Returns the rectangle where the node was last drawn, as a `haylen.Rect` with `x`, `y`, `width` and `height`, in the design coordinates of screen canvases. A `window` or `dialog` reports the frame it drew, which follows a window that the player drags. It returns `nil` for an unknown id, and for a node that has not drawn yet. That is the case until the GUI has drawn once, and for a window or dialog that is closed.
 
 ```lua
 local scene = require('haylen.scene')
@@ -4475,7 +4520,6 @@ Sends the command `name` to the node `id`. The table `arguments` is optional, an
 - The command `'focus'` moves the keyboard, gamepad and remote focus to the node. The focus ring stays visible when the player was already navigating. It shows at once when the player last used a gamepad or has no pointer device. A mouse or touch player sees it only once they start navigating. The first accept also counts as navigating: it shows the ring and presses the focused node.
 - The command `'open'` opens a `contextMenu` below its child, as a right click would.
 - The command `'scrollTo'` scrolls a `scroll` to a place, as described below.
-- The commands `'show'`, `'update'` and `'hide'` add, change and let go the notices of a `toast`, as [its section](#uitoastproperties) describes.
 
 These kinds take the focus: `button`, `imageButton`, `menuButton`, `chip`, `checkbox`, `toggle`, `radioGroup`, `combo`, `segmentedControl`, `textField`, `secretField`, `textArea`, `filterField`, `numberField`, `slider`, `rangeSlider`, `stepper`, `keyCapture`, `colorField`, `list`, `tree`, `slotGrid`, `accordion`, `carousel`, `playArea`, `collection` and a `richText` with links. Some of them choose an entry:
 
@@ -4591,9 +4635,9 @@ A read-only boolean, `true` from `mount` until `unmount`.
 ```lua
 local ui = require('haylen.ui')
 
-local toastLayer = ui.mount(ui.toast{id = 'note', text = 'Saved'})
-if toastLayer.mounted then
-    toastLayer:set('note', {open = true})
+local hud = ui.mount(ui.label{id = 'note', text = 'Saved'})
+if hud.mounted then
+    hud:set('note', {text = 'Saved again'})
 end
 ```
 
@@ -4631,7 +4675,7 @@ A `UiTransform`, named `haylen.UiTransform` in messages, moves, scales, fades an
 | `opacity` | number | `1` | Multiplies the alpha of what the node draws, from `0` to `1`. |
 | `tint` | Color | white | Multiplies the colors of what the node draws. |
 
-Scale, opacity and tint change only how the node looks, so its input areas keep their layout size. They reach everything the node draws in its GUI, the content of the scroll areas inside it included, with its pictures, shapes and text. Popups, tooltips, dialogs, toasts and windows float in windows of their own, so they keep their look whatever the transforms around them. The four properties are native properties, so [`haylen.tween`](tween.md#native-properties) animates them without running Lua every frame. Replacing the node with `replaceChildren` releases its transform. Reading it then raises `This "haylen.UiTransform" was already released.`, a tween on it stops, and `gui:transform` returns the transform of the new node.
+Scale, opacity and tint change only how the node looks, so its input areas keep their layout size. They reach everything the node draws in its GUI, the content of the scroll areas inside it included, with its pictures, shapes and text. Popups, tooltips, dialogs and windows float in windows of their own, so they keep their look whatever the transforms around them. The four properties are native properties, so [`haylen.tween`](tween.md#native-properties) animates them without running Lua every frame. Replacing the node with `replaceChildren` releases its transform. Reading it then raises `This "haylen.UiTransform" was already released.`, a tween on it stops, and `gui:transform` returns the transform of the new node.
 
 ```lua
 local math2d = require('haylen.math')

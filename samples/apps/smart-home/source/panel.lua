@@ -32,9 +32,8 @@ function Panel.new(owner, home)
             ui.grid{id = 'cards', minColumnWidth = Panel.columnWidth, columns = 4, gap = space.l, padding = {space.s, space.l, space.xl, space.l}, alignItems = 'stretch', children = cards},
         },
     }, {owner = owner})
-    self.notices = ui.mount(ui.toast{id = 'notice', position = 'top', duration = 3, indicator = 'icon'}, {owner = owner, layer = 10})
     home:on('notice', function(text)
-        self.notices:command('notice', 'show', {text = text, tone = 'information'})
+        ui.showMessage{style = 'banner', text = text, tone = 'information', indicator = 'icon', owner = owner}
     end)
     home:on('changed', function()
         self:showControls()

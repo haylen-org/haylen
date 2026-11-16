@@ -53,7 +53,8 @@ The app follows the [navigation](../../../docs/ui/navigation.md) of the engine, 
 - The feed, the comments, the grids and the conversations are `collection` nodes. The posts of a phone and of a wide window are two templates of the same items, the heart over a liked picture is a part whose [transform](../../../docs/lua-api/ui.md#guitransformid) a tween fades and grows, and the head of a profile is the first cell of its grid, across all three columns.
 - The story is a [play area](../../../docs/lua-api/ui.md#uiplayareaproperties) over the picture, so the arrows, the directional pad and a remote reach the actions `storyPrevious` and `storyNext` of the action map while the reply field and the buttons stay a Tab away. A press on the picture reports `press` and `release`, which hold the story and step through it.
 - The new post decodes the chosen picture on the task pool, makes the small previews of every filter from its middle and the preview of the post with the crop and the filter, all in tasks that the screen owns.
-- The data of `source/data/social.lua` and the conversations of `source/chats.lua` emit `socialChanged` and `chatChanged` on [`haylen.events`](../../../docs/lua-api/events.md), and the screens listen with themselves as owners. The answer of a friend arrives through a timer owned by the conversations, so it reaches the messages after the chat closed.
+- The data of `source/data/social.lua` and the conversations of `source/chats.lua` emit `socialChanged` and `chatChanged` on [`haylen.events`](../../../docs/lua-api/events.md), and the screens listen with themselves as owners. The answer of a friend arrives through a timer owned by the conversations, so it reaches the messages after the chat closed, and an answer in a chat that does not show emits `chatAnswered`, which drops a banner of `ui.showMessage` with the face of the friend under the status bar, whose tap opens the chat.
+- Taking a post out of the collection shows a snackbar whose `Undo` puts it back, and the other confirmations are toasts at the bottom.
 - The field of a chat stays above the on-screen keyboard, and a tap on the send button while the keyboard is open sends at once, because the GUIs hold their place while a press is down.
 
 ## Style guide
@@ -78,7 +79,7 @@ photo-social/
   source/
     main.lua             Registers the theme, the actions of the stories and the pictures, and starts the shell.
     style.lua            The palette, the type scale, the spacing scale, the shapes and the theme.
-    shell.lua            Tabs, navigation, notices, the rail and the bar of icons, the wordmark and the headers.
+    shell.lua            Tabs, navigation, messages, the rail and the bar of icons, the wordmark and the headers.
     page.lua             The base of every screen, a class of "ui.Screen".
     widgets.lua          The templates of posts, comments, people, stories and tiles, and the dialog that sends a post.
     photos.lua           The twelve pictures, their looks and the filters.

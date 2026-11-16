@@ -12,6 +12,7 @@
 #include "haylen/ui/NavigationStack.hpp"
 #include "haylen/ui/Screen.hpp"
 #include "ui/AlertScreen.hpp"
+#include "ui/MessageContent.hpp"
 
 namespace haylen::ui {
 
@@ -92,6 +93,12 @@ std::shared_ptr<Presentation> Navigation::presentAlert(Alert alert) {
     options.detents = {{.kind = Presentation::Detent::Kind::Fit}};
     options.width = Alert::kActionSheetWidth;
     return present(std::move(screen), std::move(options));
+}
+
+std::shared_ptr<Message> Navigation::showMessage(const core::Json& properties) {
+    auto created = std::make_shared<Message>(properties);
+    messages.push_back(created);
+    return created;
 }
 
 void Navigation::checkRegion(const Region& region) const {
@@ -514,6 +521,53 @@ void Navigation::update(float deltaSeconds) {
     }
 
     walkedScreens.clear();
+    updateMessages();
+}
+
+// The handlers of the app may show and dismiss messages, so the pass walks a copy.
+void Navigation::updateMessages() {
+    replaceMessages();
+    walkedMessages.assign(messages.begin(), messages.end());
+    for (const std::shared_ptr<Message>& message : walkedMessages) {
+        if (message->shownOnce && !message->appearReported) {
+            message->appearReported = true;
+            message->appeared.emit(*message);
+        }
+
+        if (message->reason && !message->leaveReported) {
+            message->leaveReported = true;
+            if (*message->reason == Message::Reason::Action) {
+                message->actionPressed.emit(*message);
+            }
+
+            if (*message->reason == Message::Reason::Tapped) {
+                message->tapped.emit(*message);
+            }
+        }
+
+        if (message->phase == Message::Phase::Gone) {
+            forget(*message);
+            message->dismissed.emit(*message);
+        }
+    }
+
+    walkedMessages.clear();
+}
+
+// The one that shows leaves first, and the one that replaces it comes on screen once the stack has room for it.
+void Navigation::replaceMessages() {
+    for (const std::shared_ptr<Message>& waiting : messages) {
+        if (waiting->phase != Message::Phase::Waiting || waiting->style == Message::Style::Toast) {
+            continue;
+        }
+
+        for (const std::shared_ptr<Message>& shown : messages) {
+            const bool rival = shown->phase == Message::Phase::Shown && shown->style == waiting->style && shown->content->position == waiting->content->position;
+            if (rival && shown->priority < waiting->priority) {
+                shown->leave(Message::Reason::Replaced);
+            }
+        }
+    }
 }
 
 void Navigation::render() {
@@ -607,10 +661,19 @@ void Navigation::closeAll() {
         presentation->dismissed.clear();
     }
 
+    for (const std::shared_ptr<Message>& message : messages) {
+        message->phase = Message::Phase::Gone;
+        message->appeared.clear();
+        message->actionPressed.clear();
+        message->tapped.clear();
+        message->dismissed.clear();
+    }
+
     tabs.clear();
     splits.clear();
     stacks.clear();
     presentations.clear();
+    messages.clear();
 }
 
 void Navigation::forget(const NavigationStack& stack) {
@@ -627,6 +690,10 @@ void Navigation::forget(const NavigationSplit& split) {
 
 void Navigation::forget(const Presentation& presentation) {
     std::erase_if(presentations, [&](const std::shared_ptr<Presentation>& entry) { return entry.get() == &presentation; });
+}
+
+void Navigation::forget(const Message& message) {
+    std::erase_if(messages, [&](const std::shared_ptr<Message>& entry) { return entry.get() == &message; });
 }
 
 } // namespace haylen::ui

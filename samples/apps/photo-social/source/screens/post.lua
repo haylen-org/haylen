@@ -101,7 +101,7 @@ function Post:wideBody()
                 end},
                 ui.spacer{grow = 1},
                 ui.button{id = 'save', icon = Shell.icon('bookmark'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Save', onClick = function()
-                    Shell.notify(Social.toggleSave(post) and 'Saved to your collection.' or 'Removed from your collection.')
+                    Widgets.toggleSave(post)
                 end},
             },
             ui.divider{},

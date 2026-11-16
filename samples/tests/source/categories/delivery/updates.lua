@@ -8,7 +8,7 @@ local Test = require('harness.test')
 local Updates = haylen.class('Updates', Test)
 
 Updates.code = [[
-events.on('contentUpdateReady', function(event) toast('New content plays from the next start.') end, {owner = self})
+events.on('contentUpdateReady', function(event) ui.showMessage{text = 'New content plays from the next start.'} end, {owner = self})
 local ok, promise = pcall(content.check)  -- Raises in development, which has no updates.
 if ok then local found = promise:await() end
 print(content.status(), content.generation(), content.stats().downloadedBytes)
