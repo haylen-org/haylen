@@ -2519,6 +2519,52 @@ scene.push({
 })
 ```
 
+### graphics2d.drawGlass(rect, options)
+
+Draws a surface of glass in a shape over what lies behind it: what the canvas drew before it and what the canvases before that canvas drew into the same destination this frame. The image behind the shape shows blurred, with its saturation and brightness changed, a tint mixed over it, a rim of light along the edge and a bend near the edge like the rim of a lens. A glass with only the defaults is a plain backdrop blur, such as the blurred bar behind a menu. The [effects guide](../graphics/effects.md) explains how glass works, what it costs and how to write effects of your own on it. The argument `rect` is the area of the shape before it turns, and `options` is optional and takes the options of the glass, the options of [`drawShape`](#graphics2ddrawshaperect-options) but `texture`, and the keys of the [draw order](#draw-order):
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `blur` | number | `16` | Blurs the image behind over this radius in units of the canvas. The value `0` keeps it sharp. |
+| `saturation` | number | `1` | Scales the colors away from their gray. The value `0` makes them gray and values above 1 make them richer. |
+| `brightness` | number | `1` | Multiplies the colors. Values above 1 make the glass lighter. |
+| `tint` | Color | `'#00000000'` | Mixed over the image behind by its alpha, such as a white haze of frosted glass. |
+| `rim` | number | `0` | Brightens a band along the edge as if light caught it, strongest where the edge faces the top-left, from 0 for none to 1. |
+| `rimWidth` | number | `2` | The width of the band of the rim, at least one pixel. |
+| `refraction` | number | `0` | Bends the image near the edge. The edge shows what lies this far past it, and the bend fades inward over three times the distance. |
+
+The `color` of the shape multiplies the glass, and its alpha fades the whole glass. Its `borderWidth` and `borderColor` draw a border over the glass along the edge. Its `kind`, `radius`, `rotation`, `startAngle`, `sweep` and `softness` shape it like any shape, and the edge fades over one pixel of the destination.
+
+A [material](#material) in the options replaces the look of the glass with a shader of the app. The shader runs as its `shape` program and reads the image behind the glass with `haylen_backdrop(shift)`, as the [shader guide](../graphics/shaders.md#the-shader-library) explains. The image behind is ready up to `refraction` units past the edge of the shape, so a material that reads farther sets `refraction` to how far it reads.
+
+Each glass ends the pass of its destination, renders what lies behind it into smaller images and draws in a new pass, so it costs a few passes over its own area whatever its blur, and nothing over the rest of the screen. A screen whose canvases hold glass draws into an image of its own, which reaches the swapchain at the end of the frame. A glass in a [group or mask](#groups-and-masks) reads what the group drew before it. A glass in a canvas with ambient light raises `A glass draws in a canvas without ambient light. Draw it in a canvas that begins after the lit one.`.
+
+A shape with a `texture` raises `Unknown option "texture".`. A negative radius, border width or softness raises `A glass needs corner radii, a border width and a softness of zero or more.`. A negative `blur`, `saturation`, `brightness`, `rimWidth` or `refraction` raises `A glass needs a blur, a saturation, a brightness, a rim width and a refraction of zero or more.`, and a `rim` outside 0 to 1 raises `A glass needs a rim from 0 to 1.`.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local haylen = require('haylen')
+local scene = require('haylen.scene')
+
+local camera = graphics2d.newCamera()
+
+scene.push({
+    render = function(self)
+        graphics2d.beginWorld(camera)
+        for index = 0, 9 do
+            graphics2d.drawCircle(-450 + index * 100, math.sin(haylen.elapsed() + index) * 200, 60, '#FFE8A33D')
+        end
+    end,
+    renderUi = function(self)
+        graphics2d.beginScreen()
+        -- A bar of frosted glass with a rim of light and a bend at its edge.
+        graphics2d.drawGlass({60, 60, 1800, 140}, {radius = 40, blur = 24, saturation = 1.6, tint = '#33FFFFFF', rim = 0.6, refraction = 10})
+        -- A plain backdrop blur behind a panel.
+        graphics2d.drawGlass({60, 760, 600, 260}, {radius = 24, blur = 32})
+    end,
+})
+```
+
 ### graphics2d.drawPolygon(points, color, order)
 
 Fills a simple polygon, convex or concave, given as a list of points in either winding. The fill stops half a pixel of the destination inside the outline, and a fringe fades it out to half a pixel outside. So its edges cover the pixels they cross like the edges of shapes. Fewer than three points draw nothing.
@@ -3568,8 +3614,9 @@ Starts a group in the open canvas. The group sorts its draws among themselves li
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `opacity` | number | `1` | The opacity of the whole image, from 0 to 1. |
+| `dither` | number | `0` | Shows the opacity as a pattern of square cells of this size in units of the canvas, each of which shows whole or not at all, in the ordered pattern of four by four cells. The pattern stays put on what the canvas shows, so it moves with the world. The value `0` blends the opacity smoothly. |
 
-The image composites with the `blend` of the options, plain transparency by default. A blend from `'overlay'` on mixes the image with what the canvas drew below the group, as a layer of a drawing program does. A canvas with ambient light cannot do that and raises `A group that blends with what lies below draws in a canvas without ambient light.`. A group with `'opaque'` replaces everything below it with its image, transparent parts included. An opacity outside 0 to 1 raises `A group needs an opacity from 0 to 1.`.
+The image composites with the `blend` of the options, plain transparency by default. A blend from `'overlay'` on mixes the image with what the canvas drew below the group, as a layer of a drawing program does. A canvas with ambient light cannot do that and raises `A group that blends with what lies below draws in a canvas without ambient light.`. A group with `'opaque'` replaces everything below it with its image, transparent parts included. An opacity outside 0 to 1 raises `A group needs an opacity from 0 to 1.`, and a negative dither raises `A group needs a dither of zero or more.`.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -3612,7 +3659,7 @@ scene.push({
 
 ### graphics2d.pushMask(drawShape, options)
 
-Calls the function `drawShape` at once to draw the shape of a mask with any draws, such as circles, sprites, text or meshes. Then everything until `graphics2d.popMask()` draws only inside that shape, or outside it with `mode = 'outside'`, as for round avatars, reveals, fog of war and shaped panels. The masked draws composite as one image like a group. The table `options` is optional and takes `mode`, `'inside'` by default or `'outside'`, and the keys of the [draw order](#draw-order) but `material`. In C++, `Renderer::pushMask(mode, order)` begins the shape, `Renderer::endMaskShape()` ends it and `Renderer::popMask()` ends the content.
+Calls the function `drawShape` at once to draw the shape of a mask with any draws, such as circles, sprites, text or meshes. Then everything until `graphics2d.popMask()` draws only inside that shape, or outside it with `mode = 'outside'`, as for round avatars, reveals, fog of war and shaped panels. The masked draws composite as one image like a group. The table `options` is optional and takes `mode`, `'inside'` by default or `'outside'`, `dither` and the keys of the [draw order](#draw-order) but `material`. A `dither` above 0 shows the coverage of the shape as a pattern of square cells of that size in units of the canvas, like the `dither` of a group, so the soft edge of a shape turns into a pattern of whole pixels, such as a tree that dissolves into a dither around a character behind it. A negative dither raises `A mask needs a dither of zero or more.`. In C++, `Renderer::pushMask(options)` begins the shape with a `Renderer::MaskOptions`, `Renderer::endMaskShape()` ends it and `Renderer::popMask()` ends the content.
 
 The function `drawShape` cannot yield. An error that it raises goes on with its whole stack, and the mask it began ends with empty content as the error leaves `pushMask`, so the draws after a protected call that catches the error draw as they would without the mask. Inside a coroutine that the error ends, the mask ends when the coroutine closes.
 
@@ -4004,6 +4051,8 @@ These messages come from the functions and methods of the module, besides the er
 | `The "endGroup" call has no matching "beginGroup".` | The function `graphics2d.endGroup` had no open group. |
 | `The "popMask" call has no matching "pushMask" whose shape ended with "endMaskShape".` | The function `graphics2d.popMask` had no open mask. |
 | `A group needs an opacity from 0 to 1.` | The `opacity` of a group is out of range. |
+| `A group needs a dither of zero or more.` | The `dither` of a group is negative. |
+| `A mask needs a dither of zero or more.` | The `dither` of a mask is negative. |
 | `A group that blends with what lies below draws in a canvas without ambient light.` | A group with a blend from `'overlay'` on is in a lit canvas. |
 | `The blend mode "<name>" mixes with what lies below, which only groups do. Draw inside "beginGroup" with that blend instead.` | A draw that is not a group has a blend from `'overlay'` on. |
 | `A draw needs a specular strength and an emission of zero or more.` | The `specular` or `emission` of a draw is negative. |
@@ -4030,6 +4079,10 @@ These messages come from the functions and methods of the module, besides the er
 | `A sprite layout names each field once, and "<name>" comes twice.` | A list of sprite fields names a field twice. |
 | `A "drawBatch" call with a float buffer needs the fields each sprite takes, such as "fields = {'x', 'y'}".` | The layout of `graphics2d.drawBatch` lacks `fields`. |
 | `A shape needs corner radii, a border width and a softness of zero or more.` | A value of `graphics2d.drawShape` is negative. |
+| `A glass needs corner radii, a border width and a softness of zero or more.` | A value of the shape of `graphics2d.drawGlass` is negative. |
+| `A glass needs a blur, a saturation, a brightness, a rim width and a refraction of zero or more.` | A value of the glass of `graphics2d.drawGlass` is negative. |
+| `A glass needs a rim from 0 to 1.` | The `rim` of a glass is out of range. |
+| `A glass draws in a canvas without ambient light. Draw it in a canvas that begins after the lit one.` | The function `graphics2d.drawGlass` ran in a lit canvas. |
 | `The option "radius" of a shape takes one radius for every corner or four, from the top-left corner clockwise.` | The `radius` table of a shape has another length. |
 | `Points take either one "color" or "colors" for each point.` | The function `graphics2d.drawPoints` got both. |
 | `Points take one color for each of their <count> points.` | The `colors` of `graphics2d.drawPoints` have another count. |

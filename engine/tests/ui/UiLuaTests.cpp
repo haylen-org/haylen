@@ -500,6 +500,30 @@ TEST(UiLuaThemeTest, FollowsTheContrastAndTransparencyOfTheSystem) {
     EXPECT_NE(fixture.lua("ui.setTheme('lost')").find("The theme \"lost\" names the high contrast theme \"missing\", which the UI does not know."), std::string::npos);
 }
 
+// A panel, a card and a dialog with `glass` draw glass with the look of the theme, which makes the screen draw into an image the glass reads, and reduced transparency draws them as plain surfaces of the opaque glass color, which reads nothing.
+TEST(UiLuaThemeTest, DrawsGlassSurfacesPlainWhileTheSystemReducesTransparency) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        ui = require('haylen.ui')
+        graphics2d = require('haylen.graphics2d')
+        ui.mount(ui.column{
+            ui.panel{glass = true, width = 400, height = 120, ui.label{text = 'Panel'}},
+            ui.card{glass = true, width = 400, height = 120, ui.label{text = 'Card'}},
+            ui.dialog{glass = true, open = true, title = 'Glass', message = 'Behind it the app shows through.'},
+        }, {placement = 'screen'})
+    )");
+    // clang-format on
+    fixture.frames(3);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+    EXPECT_EQ(fixture.lua("return graphics2d.stats().passes"), "29");
+
+    fixture.host().setAccessibilitySettings({.reducedTransparency = true});
+    fixture.frames(2);
+    EXPECT_EQ(fixture.lua("return ui.themeColor('glass'):toHex() .. ' ' .. graphics2d.stats().passes"), "#FF1B1E2B 1");
+    EXPECT_NE(fixture.lua("ui.mount(ui.panel{glass = 'yes'})").find("glass"), std::string::npos);
+}
+
 TEST(UiLuaThemeTest, ScalesTheTextWithTheSystemUnlessTheAppSetsAScale) {
     test::EngineFixture fixture;
     fixture.runLua("ui = require('haylen.ui') gui = ui.mount(ui.column{ui.label{id = 'title', text = 'Settings'}}, {placement = 'screen'})");

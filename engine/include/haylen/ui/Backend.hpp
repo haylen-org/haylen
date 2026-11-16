@@ -14,6 +14,7 @@
 
 #include <imgui.h>
 
+#include "haylen/2d/graphics/Glass.hpp"
 #include "haylen/2d/graphics/MeshVertex.hpp"
 #include "haylen/2d/graphics/NineSlice.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
@@ -165,6 +166,9 @@ class Backend final {
     // Draws a shape in UI coordinates the same way. The shapes, texts, rich texts and nine-slices drawn one after another in a window share one command of its draw list, and the frame keeps them in storage that frames reuse.
     void addShape(const graphics2d::Shape& shape);
 
+    // Draws glass in a shape in UI coordinates the same way, over what the app and the UI drew behind it.
+    void addGlass(const graphics2d::Shape& shape, const graphics2d::Glass& glass);
+
     // Draws a text in UI coordinates the same way, with its top left corner at the position.
     void addText(std::shared_ptr<text::FontFamily> family, std::string_view content, math::Vec2 position, const text::Style& style);
 
@@ -274,9 +278,9 @@ class Backend final {
         std::size_t index = 0;
     };
 
-    // A draw of the frame that a run of a callback command draws, one of its shapes, texts, rich texts or nine-slices.
+    // A draw of the frame that a run of a callback command draws, one of its shapes, glass surfaces, texts, rich texts or nine-slices.
     struct Draw {
-        enum class Kind : std::uint8_t { Shape, Text, RichText, Sprites };
+        enum class Kind : std::uint8_t { Shape, Glass, Text, RichText, Sprites };
 
         Kind kind = Kind::Shape;
         std::size_t index = 0;
@@ -293,6 +297,11 @@ class Backend final {
         graphics::Texture texture;
         std::size_t first = 0;
         std::size_t count = 0;
+    };
+
+    struct GlassSurface {
+        graphics2d::Shape shape;
+        graphics2d::Glass glass;
     };
 
     // The draws a callback command draws, a run of the draws of the frame.
@@ -365,6 +374,7 @@ class Backend final {
     std::vector<std::function<void(graphics2d::Renderer&)>> renderCalls;
     std::vector<Draw> draws;
     std::vector<graphics2d::Shape> shapes;
+    std::vector<GlassSurface> glassSurfaces;
     std::vector<Fade> fades;
     std::vector<Text> texts;
     std::string characters;

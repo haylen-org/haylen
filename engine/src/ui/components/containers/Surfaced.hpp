@@ -7,12 +7,13 @@
 
 namespace haylen::ui {
 
-// A column on a themed surface that keeps the pointer from reaching the app behind it and cuts its children at its edges.
+// A column on a themed surface, or on glass with the property `glass`, that keeps the pointer from reaching the app behind it and cuts its children at its edges.
 class Surfaced : public Linear {
   public:
     Surfaced(Theme::Surface role, Theme::Color fillColor, bool hasBorder) : Linear(false), surface(role), fill(fillColor), bordered(hasBorder) {}
 
   protected:
+    void readMore(PropertyReader& reader) override;
     [[nodiscard]] math::Insets getPadding(Context& context) const override;
     [[nodiscard]] bool clipsChildren() const noexcept override {
         return true;
@@ -24,6 +25,7 @@ class Surfaced : public Linear {
     Theme::Surface surface;
     Theme::Color fill;
     bool bordered;
+    bool glass = false;
 };
 
 } // namespace haylen::ui

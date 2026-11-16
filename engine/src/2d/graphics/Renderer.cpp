@@ -170,6 +170,7 @@ void Renderer::beginFrame(const graphics::Viewport& viewport, math::Color clearC
     ++state->frame;
     state->pixelRect = viewport.getPixelRect();
     state->visibleRect = viewport.getVisibleRect();
+    state->framebufferSize = viewport.getFramebufferSize();
     state->clearColor = clearColor;
     state->stats = {};
 }
@@ -750,6 +751,29 @@ void Renderer::drawShape(const Shape& shape, const DrawOrder& order) {
     }
 }
 
+void Renderer::drawGlass(const Shape& shape, const Glass& glass, const DrawOrder& order) {
+    const bool measured = std::ranges::all_of(shape.radii, [](float radius) { return radius >= 0.0F; }) && shape.borderWidth >= 0.0F && shape.softness >= 0.0F;
+    if (!measured) {
+        throw std::invalid_argument("A glass needs corner radii, a border width and a softness of zero or more.");
+    }
+
+    if (shape.texture.isValid()) {
+        throw std::invalid_argument("A glass shows the image behind it, so its shape takes no texture.");
+    }
+
+    if (!(glass.blur >= 0.0F && glass.saturation >= 0.0F && glass.brightness >= 0.0F && glass.rimWidth >= 0.0F && glass.refraction >= 0.0F)) {
+        throw std::invalid_argument("A glass needs a blur, a saturation, a brightness, a rim width and a refraction of zero or more.");
+    }
+
+    if (!(glass.rim >= 0.0F && glass.rim <= 1.0F)) {
+        throw std::invalid_argument("A glass needs a rim from 0 to 1.");
+    }
+
+    if (shape.bounds.width > 0.0F && shape.bounds.height > 0.0F && state->accepts(order)) {
+        state->addGlass(shape, glass, order);
+    }
+}
+
 void Renderer::drawPoints(std::span<const math::Vec2> points, float radius, std::span<const math::Color> colors, const DrawOrder& order) {
     if (colors.size() != 1 && colors.size() != points.size()) {
         throw std::invalid_argument(std::format("Points take one color, or one for each of their {} points.", points.size()));
@@ -961,15 +985,18 @@ void Renderer::composite(const GroupScope& scope, const graphics::Texture& image
     DrawItem& item = state->addItem(backdrop ? Program::Backdrop : Program::ImageBlend, order, image.getResource().get(), bottom);
     item.first = static_cast<std::uint32_t>(state->blends.size());
     item.count = 1;
-    state->blends.push_back({.blend = blend, .origin = origin, .rows = rows, .columns = columns, .opacity = scope.opacity, .straighten = straighten});
+    state->blends.push_back({.blend = blend, .origin = origin, .rows = rows, .columns = columns, .opacity = scope.opacity, .dither = scope.dither, .straighten = straighten});
 }
 
 void Renderer::beginGroup(const GroupOptions& options) {
     if (!(options.opacity >= 0.0F && options.opacity <= 1.0F)) {
         throw std::invalid_argument("A group needs an opacity from 0 to 1.");
     }
+    if (!(options.dither >= 0.0F)) {
+        throw std::invalid_argument("A group needs a dither of zero or more.");
+    }
 
-    openGroup({.stage = GroupScope::Stage::Group, .opacity = options.opacity, .order = options.order});
+    openGroup({.stage = GroupScope::Stage::Group, .opacity = options.opacity, .dither = options.dither, .order = options.order});
 }
 
 void Renderer::endGroup() {
@@ -983,8 +1010,12 @@ void Renderer::endGroup() {
     composite(scope, image);
 }
 
-void Renderer::pushMask(MaskMode mode, const DrawOrder& order) {
-    openGroup({.stage = GroupScope::Stage::MaskShape, .outside = mode == MaskMode::Outside, .order = order});
+void Renderer::pushMask(const MaskOptions& options) {
+    if (!(options.dither >= 0.0F)) {
+        throw std::invalid_argument("A mask needs a dither of zero or more.");
+    }
+
+    openGroup({.stage = GroupScope::Stage::MaskShape, .dither = options.dither, .outside = options.mode == MaskMode::Outside, .order = options.order});
 }
 
 void Renderer::endMaskShape() {

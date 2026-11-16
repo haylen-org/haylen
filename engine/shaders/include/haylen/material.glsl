@@ -1,4 +1,4 @@
-// The Haylen shader library for 2D draws. A material is a fragment shader that includes this file, declares its program with the `haylen_vs` vertex stage and writes its color with `haylen_output`. The engine compiles every material for sprites, sprite batches with several textures or sprite data, text, meshes and shapes, and for lit canvases, through the `HAYLEN_BATCH`, `HAYLEN_TEXT`, `HAYLEN_MESH`, `HAYLEN_SHAPE` and `HAYLEN_LIT` defines.
+// The Haylen shader library for 2D draws. A material is a fragment shader that includes this file, declares its program with the `haylen_vs` vertex stage and writes its color with `haylen_output`. The engine compiles every material for sprites, sprite batches with several textures or sprite data, text, meshes and shapes, and for lit canvases, through the `HAYLEN_BATCH`, `HAYLEN_TEXT`, `HAYLEN_MESH`, `HAYLEN_SHAPE` and `HAYLEN_LIT` defines. Glass draws use the shape program of their material.
 @include haylen/output.glsl
 
 // The vertex stage of every 2D program, which programs with attributes of their own include and call from their `main`.
@@ -284,6 +284,18 @@ vec4 haylen_shape_paint(vec4 fill) {
 #endif
 
 @include_block haylen_output
+
+#ifdef HAYLEN_SHAPE
+// What lies behind a glass draw at the pixel of the fragment moved by a shift in units of the canvas, which turns into pixels through how the point of the canvas changes from one pixel to the next. The texture of a glass draw is the image behind it with the size of its destination, so the pixel of the fragment reads it on every graphics API whichever way its rows run.
+vec4 haylen_backdrop(vec2 shift) {
+    vec2 across = dFdx(haylen_output_point);
+    vec2 down = dFdy(haylen_output_point);
+    float determinant = across.x * down.y - down.x * across.y;
+    vec2 pixels = vec2(shift.x * down.y - down.x * shift.y, across.x * shift.y - shift.x * across.y) / (abs(determinant) > 0.0000001 ? determinant : 0.0000001);
+    vec2 size = vec2(textureSize(sampler2D(sprite_texture, sprite_sampler), 0));
+    return textureLod(sampler2D(sprite_texture, sprite_sampler), (gl_FragCoord.xy + pixels) / size, 0.0);
+}
+#endif
 
 // The texture of the draw at a point, with the slopes of the point across one pixel to the right and one pixel down, which pick its mip level. A loop that samples takes the slopes once before it starts and passes them to every step, so compilers keep the loop instead of unrolling it to take the slopes at each step. A sprite of a batch with several textures picks its own texture by its index.
 vec4 haylen_texture_grad(vec2 point, vec2 slopeX, vec2 slopeY) {

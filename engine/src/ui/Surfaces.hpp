@@ -35,6 +35,9 @@ class Surfaces final {
     // Draws a shape in UI coordinates, moved, scaled and faded by the transforms of the nodes around it and by the alpha of ImGui, such as the alpha of a disabled node.
     static void drawShape(Context& context, graphics2d::Shape shape);
 
+    // Paints a surface of glass with the look of the theme, the theme `glass` color as its tint and the border inside its edge, over what lies behind it. A theme whose glass color is opaque, as reduced transparency makes it, paints a plain surface of that color instead, which shows nothing behind it.
+    static void drawGlass(Context& context, const math::Rect& bounds, std::optional<math::Color> border, float radius);
+
     // Paints the soft shadow of the theme under a floating surface, such as a dialog or a menu, reaching past the clip of its window. A lift below one casts a smaller, nearer and lighter shadow for a surface that floats lower.
     static void drawShadow(Context& context, const math::Rect& bounds, float radius, float lift = 1.0F);
 

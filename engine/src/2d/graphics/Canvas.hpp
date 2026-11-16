@@ -50,6 +50,9 @@ struct Canvas {
 
     // Whether a group of the canvas blends with what lies below it, which it reads from a copy of the image of the canvas.
     bool backdrop = false;
+
+    // Whether the canvas holds glass draws, which read what its destination holds behind them.
+    bool glass = false;
     std::size_t lightBegin = 0;
     std::size_t lightEnd = 0;
     std::size_t segmentBegin = 0;

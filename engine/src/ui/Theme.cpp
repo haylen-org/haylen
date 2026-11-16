@@ -289,7 +289,7 @@ Theme Theme::lightHighContrast() {
 }
 
 void Theme::makeSurfacesOpaque() noexcept {
-    for (const Color role : {Color::Window, Color::Panel, Color::Raised, Color::Tooltip}) {
+    for (const Color role : {Color::Window, Color::Panel, Color::Raised, Color::Tooltip, Color::Glass}) {
         colors[static_cast<std::size_t>(role)].a = 1.0F;
     }
 }

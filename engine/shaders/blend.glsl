@@ -33,7 +33,7 @@ layout(binding=1) uniform blend_fs_params {
     vec4 color;
     // Image: xy is the pixel size of the first image, z the aspect of the area and w the flip flags, 1 for the first image and 2 for the second.
     vec4 image;
-    // Fade: x is the opacity the whole result takes, and y is 1 when the first image holds premultiplied colors that the blend of the draw takes straight, as the image of a group.
+    // Fade: x is the opacity the whole result takes, y is 1 when the first image holds premultiplied colors that the blend of the draw takes straight, as the image of a group, and z the size in units of the canvas of the cells that dither the share of a mask that shows, or 0.
     vec4 fade;
 };
 layout(binding=0) uniform texture2D from_texture;
@@ -134,11 +134,34 @@ vec4 page_turn(float progress) {
     return sample_to(uv);
 }
 
-// The first image shows where the second one covers, or where it does not when reversed, and the progress moves from the whole first image to the masked one.
+// The threshold of a cell of the canvas in the ordered dither of four by four cells, from the bits of its column and row read in reverse, so each step of a share turns on the cell farthest from those already on.
+float dither_threshold(vec2 cell) {
+    ivec2 at = ivec2(mod(floor(cell), 4.0));
+    int mixed = at.x ^ at.y;
+    int order = ((mixed & 1) << 3) | ((at.y & 1) << 2) | (((mixed >> 1) & 1) << 1) | ((at.y >> 1) & 1);
+    return (float(order) + 0.5) / 16.0;
+}
+
+// The point of the images at the middle of the cell of the canvas that the pixel lies in, through how the point of the canvas and the point of the images change from one pixel to the next, so every pixel of a cell reads the same coverage.
+vec2 cell_middle(float size) {
+    vec2 point = haylen_output_point;
+    vec2 shift = (floor(point / size) + 0.5) * size - point;
+    vec2 across = dFdx(point);
+    vec2 down = dFdy(point);
+    float determinant = across.x * down.y - down.x * across.y;
+    vec2 steps = vec2(shift.x * down.y - down.x * shift.y, across.x * shift.y - shift.x * across.y) / (abs(determinant) > 0.0000001 ? determinant : 0.0000001);
+    return uv + steps.x * dFdx(uv) + steps.y * dFdy(uv);
+}
+
+// The first image shows where the second one covers, or where it does not when reversed, and the progress moves from the whole first image to the masked one. The share that shows takes the opacity, and a dither shows each cell of the canvas whole where the share at the middle of the cell passes its threshold and not at all elsewhere.
 vec4 masked(float progress) {
-    float cover = sample_to(uv).a;
+    float cover = sample_to(fade.z > 0.0 ? cell_middle(fade.z) : uv).a;
     cover = settings.z > 0.5 ? 1.0 - cover : cover;
-    return sample_from(uv) * mix(1.0, cover, progress);
+    float share = mix(1.0, cover, progress) * fade.x;
+    if (fade.z > 0.0) {
+        share = step(dither_threshold(haylen_output_point / fade.z), share);
+    }
+    return sample_from(uv) * share;
 }
 
 void main() {
@@ -157,7 +180,9 @@ void main() {
     } else {
         result = masked(progress);
     }
-    result *= fade.x;
+    if (settings.x < 4.5) {
+        result *= fade.x;
+    }
     if (fade.y > 0.5) {
         result.rgb /= max(result.a, 0.0001);
     }

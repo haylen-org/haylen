@@ -17,6 +17,8 @@
 #include "2d/graphics/Command.hpp"
 #include "2d/graphics/DrawItem.hpp"
 #include "2d/graphics/FadeEdge.hpp"
+#include "2d/graphics/GlassDraw.hpp"
+#include "2d/graphics/GlassTargets.hpp"
 #include "2d/graphics/GpuInstance.hpp"
 #include "2d/graphics/GpuVertex.hpp"
 #include "2d/graphics/GroupScope.hpp"
@@ -37,6 +39,7 @@
 #include "graphics/PassTarget.hpp"
 #include "graphics/ShaderResource.hpp"
 #include "haylen/2d/graphics/DrawOrder.hpp"
+#include "haylen/2d/graphics/Glass.hpp"
 #include "haylen/2d/graphics/ImageBlend.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/2d/graphics/Shape.hpp"
@@ -69,7 +72,7 @@ struct RendererState {
     static constexpr std::size_t kParallelGrain = 4096;
     static constexpr int kLightTextureSize = 128;
     static constexpr int kMetaballTextureSize = 64;
-    static constexpr std::size_t kProgramCount = 14;
+    static constexpr std::size_t kProgramCount = 15;
 
     // The bind slots of the programs of the renderer, which their sources declare with `layout(binding = ...)` and `getProgram` checks against the reflection of their packages. Every program reads its view projection from the vertex block slot, its fade from the fade block slot and the lighting of lit passes from the lit block slot, which the shader library reserves.
     static constexpr int kVertexBlock = 0;
@@ -163,6 +166,12 @@ struct RendererState {
     std::vector<MetaballDraw> metaballs;
     std::vector<LitTargets> litTargets;
 
+    // The glass draws of the frame with their shapes, the images of glass of each size of destination they draw over, and the image the screen draws into instead of the swapchain while its canvases hold glass, which reads what they drew.
+    std::vector<GlassDraw> glasses;
+    std::vector<GpuInstance> glassInstances;
+    std::vector<GlassTargets> glassTargets;
+    graphics::RenderTarget screenImage;
+
     // The open groups and masks from the outermost, the clips, fades and layer offsets of the canvases they draw over, and the images they draw into, which frames reuse by their order.
     std::vector<GroupScope> groups;
     std::vector<std::uint32_t> savedClips;
@@ -225,6 +234,7 @@ struct RendererState {
 
     math::Rect pixelRect{};
     math::Rect visibleRect{};
+    math::Vec2 framebufferSize{};
     math::Color clearColor = math::Color::black();
     std::uint64_t frame = 0;
     std::uint32_t sequence = 0;
@@ -292,6 +302,9 @@ struct RendererState {
     // Records a shape whose quad reaches a pixel of the destination past its edge, where the edge fades out, and half its softness further. A shape stands on the lowest point of its turned rectangle.
     void addShape(const Shape& shape, const DrawOrder& order);
 
+    // Records a glass of the shape, which stands where the shape would and reads the corners of the shape moved out by the reach of its quad and of its refraction.
+    void addGlass(const Shape& shape, const Glass& glass, const DrawOrder& order);
+
     // Meshes stand on their lowest vertex.
     void addMesh(const graphics::Texture& texture, std::span<const GpuVertex> meshVertices, std::span<const std::uint32_t> meshIndices, const DrawOrder& order);
 
@@ -352,7 +365,7 @@ struct RendererState {
         int sampleCount = 1;
     };
 
-    static const std::array<std::span<const std::uint8_t> (*)(), 11> kPackages;
+    static const std::array<std::span<const std::uint8_t> (*)(), 12> kPackages;
     static const std::array<ProgramSource, kProgramCount> kPrograms;
     static const std::array<Input, 9> kSpriteInputs;
     static const std::array<Input, 11> kBatchInputs;

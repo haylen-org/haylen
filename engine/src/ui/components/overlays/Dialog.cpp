@@ -28,6 +28,7 @@ void Dialog::readProperties(PropertyReader& reader) {
     reader.read("title", title);
     reader.read("message", message);
     reader.read("dismissible", dismissible);
+    reader.read("glass", glass);
     if (const core::Json* parsed = reader.take("buttons")) {
         buttons = readButtons(reader, *parsed);
     }
@@ -86,9 +87,14 @@ void Dialog::render(Context& context, const math::Rect&) {
     const math::Rect frame{ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, width, height};
     setBounds(frame);
     drawBackdrop(context, display);
+    // Glass shows what lies behind it, which a shadow under it would darken.
     const float radius = context.getMetric(Theme::Metric::PanelRadius);
-    Surfaces::drawShadow(context, frame, radius);
-    Surfaces::draw(context, Theme::Surface::Dialog, frame, context.getColor(Theme::Color::Panel), context.getColor(Theme::Color::Border), radius);
+    if (glass) {
+        Surfaces::drawGlass(context, frame, context.getColor(Theme::Color::Border), radius);
+    } else {
+        Surfaces::drawShadow(context, frame, radius);
+        Surfaces::draw(context, Theme::Surface::Dialog, frame, context.getColor(Theme::Color::Panel), context.getColor(Theme::Color::Border), radius);
+    }
     drawContent(context, frame, padding, overflowing);
 
     if (open && dismissible && context.getFocus().answerCancel(ImGui::GetCurrentWindow())) {

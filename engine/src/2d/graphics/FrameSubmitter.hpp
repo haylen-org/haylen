@@ -34,7 +34,7 @@ struct Command;
 struct RendererState;
 struct Shade;
 
-// Turns the canvases recorded during a frame into GPU passes: it casts the shadow maps, orders and merges the draws, uploads the instance data and renders the metaball fields, the offscreen, light, post-processing and capture passes and the swapchain pass.
+// Turns the canvases recorded during a frame into GPU passes: it casts the shadow maps, orders and merges the draws, uploads the instance data and renders the metaball fields, the offscreen, light, post-processing and capture passes, the passes of glass and the swapchain pass.
 class FrameSubmitter final {
   public:
     // A transparent window composes the alpha of the frame with the desktop, and every other frame keeps alpha 1 whatever it draws.
@@ -134,6 +134,12 @@ class FrameSubmitter final {
         Vector levels{};
     };
 
+    struct GlassParams {
+        Vector look{};
+        Vector tint{};
+        Vector rim{};
+    };
+
     // The parts of the composite of a canvas: everything in one pass, the image before bloom and blur, or what comes after them.
     enum class Stage : std::uint8_t {
         Whole,
@@ -156,13 +162,23 @@ class FrameSubmitter final {
     static constexpr std::size_t kBlurLevels = 8;
     static constexpr int kBlurSmallest = 4;
 
+    // A blur of a region works on the region moved out by this many texels of its smallest size, which holds every texel that its taps reach from the region.
+    static constexpr float kBlurMargin = 8.0F;
+
     // Moves everything drawn with the matrix by an offset in world units.
     [[nodiscard]] static Matrix translated(Matrix matrix, math::Vec2 offset) noexcept;
     [[nodiscard]] static Matrix projection(const math::Transform2D& view, math::Vec2 viewSize) noexcept;
     [[nodiscard]] static bool isInstanced(const DrawItem& item) noexcept;
 
+    // Returns the pixels of a pass that the corners of an area of a canvas cover, the ones whose centers lie inside it, or every pixel the area touches.
+    [[nodiscard]] static math::Rect getPixels(const Canvas& canvas, const std::array<math::Vec2, 4>& corners, const math::Rect& passRect, bool touched) noexcept;
+
     void prepareTargets();
     LitTargets& getLitTargets(std::size_t index, math::Vec2 size, const Canvas& canvas);
+
+    // Gives the glass draws of the canvas the images of glass of the size of its destination, and returns whether the canvas draws on the screen, whose image the glass reads.
+    bool prepareGlass(const Canvas& canvas, std::size_t& glassTargetsUsed);
+    [[nodiscard]] math::Vec2 getDestinationSize(const Canvas& canvas) const;
     const graphics::RenderTarget& getField(std::size_t index, math::Vec2 size);
     void castShadows();
     void buildCommands();
@@ -184,7 +200,12 @@ class FrameSubmitter final {
     void renderCapture(std::size_t index);
     void renderSwapchain();
     void renderPresentations();
-    void drawCanvases(std::size_t capture, graphics::PassTarget pass);
+
+    // Draws the world and screen canvases of a destination, the screen or a capture, into the pass, which draws into the image, or into the swapchain without one.
+    void drawCanvases(std::size_t capture, graphics::PassTarget pass, const graphics::RenderTarget* image);
+
+    // Draws the image of the screen into the swapchain one pixel to one pixel.
+    void drawScreenImage(graphics::PassTarget pass);
 
     // Draws the finished image of a composited canvas into the pass: the composite, or the last post-processing material over the image before it.
     void drawFinal(const Canvas& canvas, graphics::PassTarget pass);
@@ -195,23 +216,28 @@ class FrameSubmitter final {
     void endPass();
     void composite(const Canvas& canvas, graphics::PassTarget pass, Stage stage);
 
-    // Draws the source into the target with the filter program, which shrinks it to half its size, keeping what passes the threshold when it is not negative, or blurs it along the step in texels of the source.
-    void filter(const graphics::RenderTarget& source, const graphics::RenderTarget& destination, float threshold, math::Vec2 step);
-    void copy(const graphics::RenderTarget& source, const graphics::RenderTarget& destination);
+    // Draws the source into the target with the filter program, which shrinks it to half its size, keeping what passes the threshold when it is not negative, or blurs it along the step in texels of the source, writing only the pixels of the region of the target when it has one.
+    void filter(const graphics::RenderTarget& source, const graphics::RenderTarget& destination, float threshold, math::Vec2 step, const std::optional<math::Rect>& region = std::nullopt);
+    void copy(const graphics::RenderTarget& source, const graphics::RenderTarget& destination, const std::optional<math::Rect>& region = std::nullopt);
 
-    // Blurs the image of a stage over the radius in units of the canvas into the first target of the chain, at half its size, through the smaller sizes the radius needs.
-    void blurInto(const Canvas& canvas, const graphics::RenderTarget& image, std::vector<std::array<graphics::RenderTarget, 2>>& chain, float threshold, float radius);
+    // Blurs the image over the radius in its pixels into the first target of the chain, at half its size, through the smaller sizes the radius needs, keeping to what the region of the image needs when it has one.
+    void blurInto(const graphics::RenderTarget& image, std::vector<std::array<graphics::RenderTarget, 2>>& chain, float threshold, float radius, const std::optional<math::Rect>& region = std::nullopt);
     void growChain(std::vector<std::array<graphics::RenderTarget, 2>>& chain, std::size_t levels, int width, int height);
+
+    // Returns the texels of a size of the chain that a region of the image covers, the ones it touches.
+    [[nodiscard]] static std::optional<math::Rect> getChainRegion(const std::optional<math::Rect>& region, const std::vector<std::array<graphics::RenderTarget, 2>>& chain, std::size_t index) noexcept;
     void drawPostMaterial(std::size_t shadeIndex, const graphics::Texture& image, graphics::PassTarget pass);
 
     [[nodiscard]] math::Rect getClipScissor(const Canvas& canvas, std::uint32_t clip, const math::Rect& passRect) const noexcept;
     [[nodiscard]] bool showsPixels(const Canvas& canvas, std::uint32_t clip, const math::Rect& passRect) const noexcept;
     void applyClip(const Canvas& canvas, std::uint32_t clip, const math::Rect& passRect);
-    void drawCommands(const Canvas& canvas, std::size_t begin, std::size_t end, graphics::PassTarget pass, const math::Rect& passRect);
+    // Draws the commands of a canvas into the pass, which draws into the image, or into the swapchain without one, where no glass draws.
+    void drawCommands(const Canvas& canvas, std::size_t begin, std::size_t end, graphics::PassTarget pass, const math::Rect& passRect, const graphics::RenderTarget* image);
     [[nodiscard]] static bool isPaired(Program program) noexcept;
     [[nodiscard]] gpu::Device::Bindings makeBindings(const Command& command, const Shade& shade, graphics::PassTarget pass);
     void drawImageBlend(const Command& command, const Matrix& matrix);
     void drawBackdrop(const Canvas& canvas, const Command& command, const Matrix& matrix, const math::Rect& passRect);
+    void drawGlass(const Canvas& canvas, const Command& command, const Matrix& matrix, const math::Rect& passRect, const graphics::RenderTarget& image);
     void drawMetaball(const Command& command, const Matrix& matrix);
     void applyUniforms(const Matrix& matrix, graphics::BlendMode::Type blend);
 
@@ -234,6 +260,7 @@ class FrameSubmitter final {
     bool transparent = false;
     std::size_t instanceCursor = 0;
     std::size_t splatBase = 0;
+    std::size_t glassBase = 0;
     std::size_t commandFloor = 0;
     bool identity = true;
     bool passOpen = false;

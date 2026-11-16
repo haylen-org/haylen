@@ -1093,7 +1093,7 @@ ui.mount(ui.row{
 The UI follows the [accessibility settings](../lua-api/accessibility.md) of the system without any code:
 
 - While the system asks for higher contrast, the UI draws the high contrast theme that the chosen theme names. The engine ships `darkHighContrast` and `lightHighContrast`, with white or black text, borders of full contrast, and a yellow or deep blue focus ring.
-- While the system asks for reduced transparency, the UI draws the colors `window`, `panel`, `raised` and `tooltip` of the theme opaque.
+- While the system asks for reduced transparency, the UI draws the colors `window`, `panel`, `raised`, `tooltip` and `glass` of the theme opaque. So panels, cards and dialogs of glass draw as plain surfaces, which show nothing behind them.
 - The text scales with the text size of the system. Every font role grows, and the controls around the text grow with it. That lasts until the app sets a scale of its own with [`ui.setTextScale`](../lua-api/ui.md#uisettextscalescale), such as from a setting of the player.
 
 The function `ui.theme()` keeps returning the theme that the app chose. The function `ui.themeColor` and the other readers of the theme return what the UI draws.

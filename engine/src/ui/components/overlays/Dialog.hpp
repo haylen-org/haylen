@@ -16,7 +16,7 @@
 
 namespace haylen::ui {
 
-// A modal window over the whole screen with a title, a message, optional content and answer buttons, which line up in one row while they fit and otherwise stack across its width, over a backdrop that fades in and out with it. It takes no room in the layout that holds it, and content taller than the screen scrolls beside a scroll bar at the edge of the dialog.
+// A modal window over the whole screen with a title, a message, optional content and answer buttons, which line up in one row while they fit and otherwise stack across its width, over a backdrop that fades in and out with it, on its themed surface or, with the property `glass`, on glass. It takes no room in the layout that holds it, and content taller than the screen scrolls beside a scroll bar at the edge of the dialog.
 class Dialog final : public Component {
   public:
     [[nodiscard]] std::string_view getKind() const noexcept override {
@@ -57,6 +57,7 @@ class Dialog final : public Component {
 
     bool open = false;
     bool dismissible = true;
+    bool glass = false;
     float shown = 0.0F;
     TextValue title;
     TextValue message;

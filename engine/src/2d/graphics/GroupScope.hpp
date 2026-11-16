@@ -27,6 +27,7 @@ struct GroupScope {
     std::size_t layerOffsetStart = 0;
     int layerOffset = 0;
     float opacity = 1.0F;
+    float dither = 0.0F;
     bool outside = false;
     DrawOrder order{};
 

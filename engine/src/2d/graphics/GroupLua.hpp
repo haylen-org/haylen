@@ -41,8 +41,8 @@ class GroupLua final {
         bool shapeOpen = false;
     };
 
-    static constexpr std::array<std::string_view, 1> kGroupFields{"opacity"};
-    static constexpr std::array<std::string_view, 1> kMaskFields{"mode"};
+    static constexpr std::array<std::string_view, 2> kGroupFields{"opacity", "dither"};
+    static constexpr std::array<std::string_view, 2> kMaskFields{"mode", "dither"};
     static constexpr const char* kClosersKey = "haylen.maskClosers";
 
     static int beginMask(lua_State* L);

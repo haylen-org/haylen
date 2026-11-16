@@ -530,16 +530,36 @@ TEST_F(Graphics2DLuaTest, DrawsStrokesAndKeptMeshes) {
     EXPECT_NE(lua("graphics2d.newGridMesh(nil, 1, 1, {depth = 1})").find("Unknown option \"depth\"."), std::string::npos);
 }
 
+// Two glass draws over a world canvas: the screen draws into its image, and each glass shrinks what lies behind it to the size where its blur spans four texels.
+TEST_F(Graphics2DLuaTest, DrawsGlassOverWhatLiesBehindIt) {
+    // clang-format off
+    const std::string body = R"(
+        graphics2d.beginWorld(graphics2d.newCamera())
+        graphics2d.drawRect({-100, -100, 200, 200}, '#FF3060A0')
+        graphics2d.beginScreen()
+        graphics2d.drawGlass({100, 100, 300, 80}, {blur = 20, saturation = 1.4, brightness = 1.1, tint = '#40FFFFFF', rim = 0.6, rimWidth = 3, refraction = 8, radius = 24, borderWidth = 1, borderColor = '#80FFFFFF', layer = 2})
+        graphics2d.drawGlass({100, 300, 120, 120}, {kind = 'ellipse', rotation = 0.3, color = '#C0FFFFFF'})
+    )";
+    // clang-format on
+    EXPECT_EQ(render(body), "nil");
+    EXPECT_EQ(lua("return graphics2d.stats().passes"), "18");
+
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawGlass({0, 0, 8, 8}, {texture = hero})").find("Unknown option \"texture\"."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawGlass({0, 0, 8, 8}, {frost = 1})").find("Unknown option \"frost\"."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawGlass({0, 0, 8, 8}, {rim = 2})").find("A glass needs a rim from 0 to 1."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawGlass({0, 0, 8, 8}, {blur = -1})").find("A glass needs a blur, a saturation, a brightness, a rim width and a refraction of zero or more."), std::string::npos);
+}
+
 TEST_F(Graphics2DLuaTest, DrawsGroupsAndMasks) {
     // clang-format off
     const std::string body = R"(
         graphics2d.beginWorld(graphics2d.newCamera())
-        graphics2d.beginGroup({opacity = 0.5, layer = 2})
+        graphics2d.beginGroup({opacity = 0.5, dither = 2, layer = 2})
         graphics2d.drawRect({0, 0, 20, 20}, '#FF0000')
         graphics2d.pushMask(function()
             graphics2d.drawCircle(10, 10, 8, '#FFFFFF')
             graphics2d.draw(hero, 10, 10)
-        end, {mode = 'outside', layer = 1})
+        end, {mode = 'outside', dither = 4, layer = 1})
         graphics2d.drawRect({0, 0, 20, 20}, '#00FF00')
         graphics2d.popMask()
         graphics2d.endGroup()
@@ -555,6 +575,8 @@ TEST_F(Graphics2DLuaTest, DrawsGroupsAndMasks) {
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.popMask()").find("The \"popMask\" call has no matching \"pushMask\" whose shape ended with \"endMaskShape\"."), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.beginGroup({alpha = 1})").find("Unknown option \"alpha\"."), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.beginGroup({opacity = 3})").find("A group needs an opacity from 0 to 1."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.beginGroup({dither = -2})").find("A group needs a dither of zero or more."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.pushMask(function() end, {dither = -2})").find("A mask needs a dither of zero or more."), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.pushMask(function() end, {mode = 'around'})").find("around"), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.pushMask(5)").find("function expected"), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.pushMask(function() error('Shape failed.') end)").find("Shape failed."), std::string::npos);

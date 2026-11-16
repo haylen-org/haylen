@@ -236,7 +236,7 @@ ui.mount(ui.scroll{axis = 'horizontal', snap = true, width = 1200, height = 240,
 
 ### ui.card(properties)
 
-A card is a column on a raised surface with a border. The theme `card` surface draws it when the theme has one. It takes the properties of `column`. When its `padding` is zero, the theme `panelPadding` metric pads the content. The `padding` of a theme surface image always adds on top, so content clears thick frame borders. A card keeps the pointer from reaching the app behind it. It cuts its children at its edges, so tall content never draws over what lies around it. Put content that may run long in a `scroll`, so the player can reach all of it.
+A card is a column on a raised surface with a border. The theme `card` surface draws it when the theme has one. It takes the properties of `column`, and `glass = true` draws it on glass instead, as [glass surfaces](#glass-surfaces) describes. When its `padding` is zero, the theme `panelPadding` metric pads the content. The `padding` of a theme surface image always adds on top, so content clears thick frame borders. A card keeps the pointer from reaching the app behind it. It cuts its children at its edges, so tall content never draws over what lies around it. Put content that may run long in a `scroll`, so the player can reach all of it.
 
 ```lua
 local ui = require('haylen.ui')
@@ -251,7 +251,7 @@ ui.mount(ui.card{
 
 ### ui.panel(properties)
 
-A panel is a column on the `panel` color, without a border. The theme `panel` surface draws it when the theme has one. It takes the properties of `column` and pads its content like a card. Like a card, it keeps the pointer from reaching the app and cuts its children at its edges.
+A panel is a column on the `panel` color, without a border. The theme `panel` surface draws it when the theme has one. It takes the properties of `column` and pads its content like a card, and `glass = true` draws it on glass instead, as [glass surfaces](#glass-surfaces) describes. Like a card, it keeps the pointer from reaching the app and cuts its children at its edges.
 
 ```lua
 local ui = require('haylen.ui')
@@ -262,6 +262,22 @@ ui.mount(ui.panel{
     ui.label{text = 'Objectives'},
     ui.checkbox{text = 'Build a shelter'},
     ui.checkbox{text = 'Find water'},
+}, {placement = 'screen'})
+```
+
+### Glass surfaces
+
+A `panel`, a `card` and a `dialog` with `glass = true` draw their surface as glass, which shows the app and the GUIs behind it blurred, as the [effects guide](../graphics/effects.md#glass) explains. The glass takes the corner radius `panelRadius`, the border of the surface, the color role `glass` as its tint and the metrics `glassBlur`, `glassSaturation`, `glassRim` and `glassRefraction` of the theme. A theme image of the surface does not draw on glass. While the system asks for reduced transparency, the glass color turns opaque, and the surface draws as a plain surface of that color.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.panel{
+    glass = true,
+    align = 'end',
+    width = 520,
+    ui.sectionTitle{text = 'Map'},
+    ui.label{text = 'The world shows through this panel, blurred.'},
 }, {placement = 'screen'})
 ```
 
@@ -1543,6 +1559,7 @@ A dialog is a modal window over the whole screen, with a title, a message, optio
 | `title` | text | none | The title, in the heading font. |
 | `message` | text | none | The message under the title. |
 | `dismissible` | boolean | `true` | Lets Escape and the east gamepad button close the dialog. |
+| `glass` | boolean | `false` | Draws the dialog on [glass](#glass-surfaces), without its shadow, over the dimmed screen behind it. |
 | `buttons` | list of buttons | empty | The answer buttons, lined up at the bottom right in list order. |
 
 A button is a table with a unique `id` string, a `text` and a `variant`. Buttons without an id raise `The property "buttons" of a "dialog" must hold objects with an id.`. A repeated id raises `The property "buttons" of a "dialog" uses the id "<id>" more than once.`. An unknown variant raises `The property "buttons" of a "dialog" has a variant other than "default", "primary", "destructive", "toolbar", "icon" or "link".`.
@@ -2296,6 +2313,7 @@ Colors are `'#RRGGBB'` or `'#AARRGGBB'` strings. The accent and the four tones `
 | `onInformation` | `#FFFFFFFF` | `#FFFFFFFF` | The ink on the information fill. |
 | `informationBackground` | `#263AA8E0` | `#1F2A8CC0` | The subtle background of the information tone. |
 | `informationText` | `#FF7FCBF2` | `#FF1D6A93` | The text of the information tone. |
+| `glass` | `#8C1B1E2B` | `#8CFFFFFF` | The tint of [glass surfaces](#glass-surfaces), mixed over what lies behind them by its alpha. An opaque glass color draws them as plain surfaces. |
 
 ### ui.themeColor(role)
 
@@ -2379,6 +2397,10 @@ Metrics size the parts of the components. Both built-in themes share these value
 | `readingWidth` | `880` | The widest line of the title and the message of an empty state, which keeps a long message easy to read on a wide screen. |
 | `cellRadius` | `12` | The corner radius of the backgrounds of interactive collection cells and of the focus ring around them. |
 | `refreshDistance` | `120` | How far a pull at the start of a refreshable collection goes before it refreshes. |
+| `glassBlur` | `24` | The radius of the blur of [glass surfaces](#glass-surfaces). |
+| `glassSaturation` | `1.6` | How much richer glass surfaces make the colors behind them. |
+| `glassRim` | `0.5` | The strength of the rim of light along the edge of glass surfaces, from 0 to 1. |
+| `glassRefraction` | `10` | How far past their edge glass surfaces bend the image behind them. |
 
 ### ui.themeMetric(name)
 
@@ -2854,7 +2876,7 @@ ui.mount(ui.row{
 The UI follows the [accessibility settings](accessibility.md) of the system without any code:
 
 - While the system asks for higher contrast, the UI draws the theme that the `highContrast` key of the chosen theme names.
-- While the system asks for reduced transparency, it draws the colors `window`, `panel`, `raised` and `tooltip` of the theme opaque.
+- While the system asks for reduced transparency, it draws the colors `window`, `panel`, `raised`, `tooltip` and `glass` of the theme opaque, so [glass surfaces](#glass-surfaces) draw as plain ones.
 - Its text follows the text size of the system, until the app sets a text scale of its own with `ui.setTextScale`.
 
 ### ui.setTextScale(scale)

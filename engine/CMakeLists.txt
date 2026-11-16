@@ -90,6 +90,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/graphics/CameraRigLua.cpp
   src/2d/graphics/DrawItem.cpp
   src/2d/graphics/FrameSubmitter.cpp
+  src/2d/graphics/GlassLua.cpp
   src/2d/graphics/GpuInstance.cpp
   src/2d/graphics/Graphics2DLua.cpp
   src/2d/graphics/LightInstance.cpp
@@ -795,6 +796,7 @@ haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/mesh.glsl" SYMBOL getM
 haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/shape.glsl" SYMBOL getShapeShader VARIANTS "shape=HAYLEN_SHAPE" "shape_lit=HAYLEN_SHAPE,HAYLEN_LIT")
 haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/blend.glsl" SYMBOL getBlendShader VARIANTS "blend=" "blend_lit=HAYLEN_LIT")
 haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/backdrop.glsl" SYMBOL getBackdropShader)
+haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/glass.glsl" SYMBOL getGlassShader VARIANTS "glass=HAYLEN_SHAPE")
 haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/metaball.glsl" SYMBOL getMetaballShader VARIANTS "metaball=" "metaball_lit=HAYLEN_LIT")
 haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/recolor.glsl" SYMBOL getRecolorShader VARIANTS "recolor=" "recolor_lit=HAYLEN_LIT")
 haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/composite.glsl" SYMBOL getCompositeShader)

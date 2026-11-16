@@ -49,6 +49,9 @@ class Graphics2DLua final {
 
     [[nodiscard]] static Renderer::CanvasOptions readCanvasOptions(lua_State* L, int index);
 
+    // Reads the value on top of the stack into the field of the shape that the option names, one of the options of `drawShape`.
+    static void readShapeField(lua_State* L, std::string_view key, Shape& shape);
+
   private:
     static constexpr std::array<std::string_view, 7> kCanvasFields{"sort", "order", "visibilityMask", "ambientLight", "clear", "postProcess", "debugDrawings"};
     static constexpr std::array<std::string_view, 5> kFadeFields{"length", "left", "top", "right", "bottom"};

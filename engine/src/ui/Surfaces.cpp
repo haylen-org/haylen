@@ -135,6 +135,39 @@ void Surfaces::drawShape(Context& context, graphics2d::Shape shape) {
     context.getBackend().addShape(shape);
 }
 
+void Surfaces::drawGlass(Context& context, const math::Rect& bounds, std::optional<math::Color> border, float radius) {
+    const math::Color tint = context.getColor(Theme::Color::Glass);
+    const float width = context.getMetric(Theme::Metric::BorderWidth);
+    const bool bordered = border && border->a > 0.0F && width > 0.0F;
+    const float rounding = std::min(radius, std::min(bounds.width, bounds.height) * 0.5F);
+    graphics2d::Shape shape{.bounds = bounds, .radii = {rounding, rounding, rounding, rounding}, .color = tint, .borderWidth = bordered ? width : 0.0F, .borderColor = bordered ? *border : math::Color::transparent()};
+    if (tint.a >= 1.0F) {
+        drawShape(context, shape);
+        return;
+    }
+
+    // The glass blurs, bends and lights in UI units, which the transforms of the nodes around it scale like the shape.
+    const Context::Reshape reshape = context.getReshape();
+    const float scale = std::min(reshape.scale.x, reshape.scale.y);
+    const math::Color alpha = reshape.color.withAlpha(reshape.color.a * ImGui::GetStyle().Alpha);
+    const graphics2d::Glass glass{
+        .blur = context.getMetric(Theme::Metric::GlassBlur) * scale,
+        .saturation = context.getMetric(Theme::Metric::GlassSaturation),
+        .tint = tint,
+        .rim = std::clamp(context.getMetric(Theme::Metric::GlassRim), 0.0F, 1.0F),
+        .rimWidth = width * scale,
+        .refraction = context.getMetric(Theme::Metric::GlassRefraction) * scale,
+    };
+    shape.bounds = reshape.apply(shape.bounds);
+    for (float& corner : shape.radii) {
+        corner *= scale;
+    }
+    shape.color = alpha;
+    shape.borderWidth *= scale;
+    shape.borderColor = shape.borderColor * alpha;
+    context.getBackend().addGlass(shape, glass);
+}
+
 std::array<float, 4> Surfaces::getRadii(float radius, ImDrawFlags corners) noexcept {
     const auto rounded = [radius, corners](ImDrawFlags corner) { return (corners & corner) != 0 ? radius : 0.0F; };
     return {rounded(ImDrawFlags_RoundTopLeft), rounded(ImDrawFlags_RoundTopRight), rounded(ImDrawFlags_RoundBottomRight), rounded(ImDrawFlags_RoundBottomLeft)};

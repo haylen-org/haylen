@@ -297,6 +297,9 @@ void Backend::runDraw(const Draw& draw) {
     case Draw::Kind::Shape:
         rendering->drawShape(shapes[draw.index]);
         return;
+    case Draw::Kind::Glass:
+        rendering->drawGlass(glassSurfaces[draw.index].shape, glassSurfaces[draw.index].glass);
+        return;
     case Draw::Kind::Text: {
         const Text& drawn = texts[draw.index];
         rendering->drawText(*drawn.family, getContent(drawn), drawn.origin, drawn.style);
@@ -770,6 +773,7 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
     renderCalls.clear();
     draws.clear();
     shapes.clear();
+    glassSurfaces.clear();
     fades.clear();
     texts.clear();
     characters.clear();
@@ -867,6 +871,11 @@ void Backend::popFade() {
 void Backend::addShape(const graphics2d::Shape& shape) {
     shapes.push_back(shape);
     addDraw(Draw::Kind::Shape, shapes.size() - 1);
+}
+
+void Backend::addGlass(const graphics2d::Shape& shape, const graphics2d::Glass& glass) {
+    glassSurfaces.push_back({.shape = shape, .glass = glass});
+    addDraw(Draw::Kind::Glass, glassSurfaces.size() - 1);
 }
 
 void Backend::addText(std::shared_ptr<text::FontFamily> family, std::string_view content, math::Vec2 position, const text::Style& style) {

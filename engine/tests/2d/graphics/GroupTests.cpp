@@ -66,7 +66,7 @@ TEST_F(GroupTest, NestsGroupsAndMasksWithEveryKindOfDraw) {
         Renderer& renderer = engine.getRenderer2D();
         renderer.beginWorld(camera);
         renderer.drawMetaballs(points, 4.0F);
-        renderer.pushMask(Renderer::MaskMode::Outside, {.layer = 1});
+        renderer.pushMask({.mode = Renderer::MaskMode::Outside, .order = {.layer = 1}});
         renderer.drawCircle({0.0F, 0.0F}, 30.0F, math::Color::white());
         renderer.endMaskShape();
         renderer.beginGroup({.opacity = 0.25F});
@@ -92,11 +92,11 @@ TEST_F(GroupTest, ClosesWhatACanvasLeavesOpen) {
         Renderer& renderer = engine.getRenderer2D();
         renderer.beginWorld(camera);
         renderer.beginGroup({});
-        renderer.pushMask();
+        renderer.pushMask({});
         renderer.drawRect({0.0F, 0.0F, 5.0F, 5.0F}, math::Color::white());
         renderer.beginScreen();
         renderer.beginGroup({});
-        renderer.pushMask();
+        renderer.pushMask({});
         renderer.endMaskShape();
     });
     // clang-format on
@@ -115,19 +115,23 @@ TEST_F(GroupTest, RejectsCallsThatMatchNothing) {
         record(errors, [&renderer] { renderer.popMask(); });
         record(errors, [&renderer] { renderer.endMaskShape(); });
         record(errors, [&renderer] { renderer.beginGroup({.opacity = 2.0F}); });
-        renderer.pushMask();
+        record(errors, [&renderer] { renderer.beginGroup({.dither = -1.0F}); });
+        record(errors, [&renderer] { renderer.pushMask({.dither = -1.0F}); });
+        renderer.pushMask({});
         record(errors, [&renderer] { renderer.popMask(); });
         record(errors, [&renderer] { renderer.endGroup(); });
     });
     // clang-format on
-    ASSERT_EQ(errors.size(), 7U);
+    ASSERT_EQ(errors.size(), 9U);
     EXPECT_NE(errors[0].find("No canvas is active."), std::string::npos);
     EXPECT_EQ(errors[1], "The \"endGroup\" call has no matching \"beginGroup\".");
     EXPECT_EQ(errors[2], "The \"popMask\" call has no matching \"pushMask\" whose shape ended with \"endMaskShape\".");
     EXPECT_EQ(errors[3], "The \"endMaskShape\" call has no matching \"pushMask\".");
     EXPECT_EQ(errors[4], "A group needs an opacity from 0 to 1.");
-    EXPECT_EQ(errors[5], errors[2]);
-    EXPECT_EQ(errors[6], errors[1]);
+    EXPECT_EQ(errors[5], "A group needs a dither of zero or more.");
+    EXPECT_EQ(errors[6], "A mask needs a dither of zero or more.");
+    EXPECT_EQ(errors[7], errors[2]);
+    EXPECT_EQ(errors[8], errors[1]);
 }
 
 TEST_F(GroupTest, BlendsAGroupWithACopyOfWhatLiesBelowIt) {
@@ -186,10 +190,10 @@ TEST_F(GroupTest, DrawsTheSameGroupsEveryFrameWithoutAllocating) {
         renderer.beginWorld(camera);
         renderer.pushClip({0.0F, 0.0F, 100.0F, 100.0F});
         renderer.pushFade({0.0F, 0.0F, 100.0F, 100.0F}, {.length = 20.0F, .top = 1.0F, .right = 0.5F});
-        renderer.pushMask(Renderer::MaskMode::Inside, {});
+        renderer.pushMask({.mode = Renderer::MaskMode::Inside, .dither = 4.0F});
         renderer.drawCircle({0.0F, 0.0F}, 30.0F, math::Color::white());
         renderer.endMaskShape();
-        renderer.beginGroup({.opacity = 0.5F});
+        renderer.beginGroup({.opacity = 0.5F, .dither = 2.0F});
         renderer.drawRect({0.0F, 0.0F, 50.0F, 50.0F}, math::Color::white());
         renderer.endGroup();
         renderer.popMask();

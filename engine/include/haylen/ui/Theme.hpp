@@ -71,6 +71,7 @@ class Theme final {
         OnInformation,
         InformationBackground,
         InformationText,
+        Glass,
     };
 
     enum class Metric : std::uint8_t {
@@ -133,6 +134,10 @@ class Theme final {
         ScrollFade,
         SliderValueWidth,
         ChipRadius,
+        GlassBlur,
+        GlassSaturation,
+        GlassRim,
+        GlassRefraction,
     };
 
     enum class Font : std::uint8_t {
@@ -240,8 +245,8 @@ class Theme final {
     // Loads a texture for a theme image from a path relative to the package `content/` folder.
     using TextureLoader = std::function<graphics::Texture(std::string_view path, graphics::Texture::Options options)>;
 
-    static constexpr std::size_t kColorCount = static_cast<std::size_t>(Color::InformationText) + 1;
-    static constexpr std::size_t kMetricCount = static_cast<std::size_t>(Metric::ChipRadius) + 1;
+    static constexpr std::size_t kColorCount = static_cast<std::size_t>(Color::Glass) + 1;
+    static constexpr std::size_t kMetricCount = static_cast<std::size_t>(Metric::GlassRefraction) + 1;
     static constexpr std::size_t kFontCount = static_cast<std::size_t>(Font::Monospace) + 1;
     static constexpr std::size_t kSurfaceCount = static_cast<std::size_t>(Surface::FocusRing) + 1;
     static constexpr std::size_t kSoundCount = static_cast<std::size_t>(Sound::Type) + 1;
@@ -296,7 +301,7 @@ class Theme final {
         highContrast = std::move(value);
     }
 
-    // Takes the transparency out of the colors of the surfaces, the window, panels, raised surfaces and tooltips, which the UI draws while the system asks for reduced transparency.
+    // Takes the transparency out of the colors of the surfaces, the window, panels, raised surfaces, tooltips and glass, which the UI draws while the system asks for reduced transparency, so a glass surface draws as a plain surface of its tint.
     void makeSurfacesOpaque() noexcept;
 
     // The filter that the pictures of components, such as images, icons and image buttons, load with.
@@ -386,6 +391,7 @@ class Theme final {
         {"onInformation", 0xFFFFFFFF, 0xFFFFFFFF, 0x000000FF, 0xFFFFFFFF},
         {"informationBackground", 0x3AA8E026, 0x2A8CC01F, 0x7FD1FF40, 0x0B548026},
         {"informationText", 0x7FCBF2FF, 0x1D6A93FF, 0xA8E0FFFF, 0x0A4A70FF},
+        {"glass", 0x1B1E2B8C, 0xFFFFFF8C, 0x000000E6, 0xFFFFFFE6},
     }};
     static constexpr std::array<MetricRole, kMetricCount> kMetricRoles{{
         {"controlHeight", 64.0F},
@@ -447,6 +453,10 @@ class Theme final {
         {"scrollFade", 32.0F},
         {"sliderValueWidth", 96.0F},
         {"chipRadius", 999.0F},
+        {"glassBlur", 24.0F},
+        {"glassSaturation", 1.6F},
+        {"glassRim", 0.5F},
+        {"glassRefraction", 10.0F},
     }};
     static constexpr std::array<std::string_view, kFontCount> kFontNames{"body", "caption", "button", "heading", "title", "monospace"};
     static constexpr std::array<std::string_view, kSurfaceCount> kSurfaceNames{

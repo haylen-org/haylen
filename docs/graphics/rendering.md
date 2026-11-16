@@ -64,11 +64,12 @@ The shaders of the engine live in `engine/shaders`. They are written in the [Hay
 | `effect.glsl` | The program of [sprite effects](#sprite-effects). |
 | `blend.glsl` | The image blend patterns of scene transitions, groups and masks. |
 | `backdrop.glsl` | The program that draws the image of a group whose blend mixes with what lies below it. |
+| `glass.glsl` | The program of [glass](effects.md#glass), which shades a shape with the image behind it. |
 | `metaball.glsl` | The surface of metaballs. |
 | `light.glsl` | The light pass. |
 | `composite.glsl` | The lighting and post-processing composite, and the filter program that shrinks and blurs images for bloom and blur. |
 
-The programs that draw into lit canvases compile a second time with `HAYLEN_LIT`, which makes twenty-two programs in all. Every program shares the shader library in `engine/shaders/include/haylen`, which the custom shaders of apps include too, as the [shader guide](shaders.md#the-shader-library) explains. The renderer makes each program the first time a draw needs it. Some graphics APIs compile a program when the program is made, such as Metal. On those, the GPU device starts compiling every source on the I/O pool when the renderer starts, as [shader load time](shaders.md#load-time) explains.
+The programs that draw into lit canvases compile a second time with `HAYLEN_LIT`, which makes twenty-three programs in all. Every program shares the shader library in `engine/shaders/include/haylen`, which the custom shaders of apps include too, as the [shader guide](shaders.md#the-shader-library) explains. The renderer makes each program the first time a draw needs it. Some graphics APIs compile a program when the program is made, such as Metal. On those, the GPU device starts compiling every source on the I/O pool when the renderer starts, as [shader load time](shaders.md#load-time) explains.
 
 ## Canvases
 
@@ -785,7 +786,7 @@ A group, and the shape and the content of a mask, each draw into an image of the
 
 When a group or mask ends, its draws and metaballs move ahead of the draws of the canvas it drew over, together with those of the groups inside it. Its canvas moves ahead of that canvas too. So the draws of every canvas stay in one run, and its image renders before anything samples it. The canvas then opens again with the clips, fades and layer offsets it had. It draws the image as one draw of the image blend program: a quad whose corners follow the view however the camera turns or zooms.
 
-The `mask` pattern of `Renderer::drawImageBlend` multiplies the content by the alpha of the shape, or by what the shape leaves uncovered. So the edge of a mask is as smooth as the shape drawn into it. The opacity of a group scales the whole image, whose colors stay premultiplied. Masks need no stencil buffer and no multisampling, and they cost one extra pass each for the shape and for the content.
+The `mask` pattern of `Renderer::drawImageBlend` multiplies the content by the alpha of the shape, or by what the shape leaves uncovered. So the edge of a mask is as smooth as the shape drawn into it. A group or a mask with a `dither` turns that share into whole cells of an ordered pattern instead, as the [effects guide](effects.md#dithered-fades) shows. The opacity of a group scales the whole image, whose colors stay premultiplied. Masks need no stencil buffer and no multisampling, and they cost one extra pass each for the shape and for the content.
 
 ```lua
 local assets = require('haylen.assets')
@@ -1039,6 +1040,10 @@ scene.push({
     end,
 })
 ```
+
+## Glass
+
+A glass draw shows what lies behind its shape blurred, graded, tinted and lit at its rim. It ends the pass of its destination to read it, and a screen with glass draws into an image of its own first. The [effects guide](effects.md#glass) explains the steps, the glass of the UI and the cost.
 
 ## Custom shaders
 

@@ -12,12 +12,13 @@
 
 namespace haylen::graphics2d {
 
-// Begins with `beginGroup({opacity, layer, ...})`, whose table also takes the keys of the draw order of the image.
+// Begins with `beginGroup({opacity, dither, layer, ...})`, whose table also takes the keys of the draw order of the image.
 int GroupLua::beginGroup(lua_State* L) {
     Renderer::GroupOptions options;
     if (!lua_isnoneornil(L, 1)) {
         options.order = lua::TypeConverter::readDrawOrder(L, 1, {kGroupFields});
         lua::Table::readField(L, 1, "opacity", options.opacity);
+        lua::Table::readField(L, 1, "dither", options.dither);
     }
 
     lua::Runtime::getEngine(L).getRenderer2D().beginGroup(options);
@@ -30,14 +31,14 @@ int GroupLua::endGroup(lua_State* L) {
 }
 
 int GroupLua::beginMask(lua_State* L) {
-    Renderer::MaskMode mode = Renderer::MaskMode::Inside;
-    DrawOrder order;
+    Renderer::MaskOptions options;
     if (!lua_isnoneornil(L, 1)) {
-        order = lua::TypeConverter::readDrawOrder(L, 1, {kMaskFields});
-        lua::Table::readField(L, 1, "mode", mode);
+        options.order = lua::TypeConverter::readDrawOrder(L, 1, {kMaskFields});
+        lua::Table::readField(L, 1, "mode", options.mode);
+        lua::Table::readField(L, 1, "dither", options.dither);
     }
 
-    lua::Runtime::getEngine(L).getRenderer2D().pushMask(mode, order);
+    lua::Runtime::getEngine(L).getRenderer2D().pushMask(options);
     return 0;
 }
 

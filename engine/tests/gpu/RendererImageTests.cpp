@@ -19,6 +19,7 @@
 #include "gpu/support/LoggedErrors.hpp"
 #include "gpu/support/OffscreenSurface.hpp"
 #include "haylen/2d/graphics/Camera.hpp"
+#include "haylen/2d/graphics/Glass.hpp"
 #include "haylen/2d/graphics/Material.hpp"
 #include "haylen/2d/graphics/PostProcess.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
@@ -34,6 +35,7 @@
 #include "haylen/graphics/RenderTarget.hpp"
 #include "haylen/graphics/Shader.hpp"
 #include "haylen/graphics/Texture.hpp"
+#include "haylen/graphics/Viewport.hpp"
 #include "haylen/math/Rect.hpp"
 #include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
@@ -368,6 +370,101 @@ TEST_P(GpuRendererTest, ReadsTexturesAtThePixelFootprintWherePointsJump) {
     }
 
     EXPECT_GE(red, 60 * 60 * 98 / 100);
+}
+
+// Glass over stripes and circles: a plain blur, frosted glass with a tint, a rim and a refraction, a turned rounded rectangle and an ellipse, each reading what the canvas drew before it, so the later glass shows the earlier one blurred.
+TEST_P(GpuRendererTest, DrawsGlassOverWhatLiesBehindIt) {
+    // clang-format off
+    expectScene("glass", [](core::Engine&, graphics2d::Renderer& renderer, const graphics::RenderTarget& into) {
+        renderer.beginTarget(into, topLeft(), {.clear = math::Color::fromHex(0x1B2A41FFU)});
+        const std::array<std::uint32_t, 4> stripes{0xE63946FFU, 0xF1FAEEFFU, 0x457B9DFFU, 0xFFB703FFU};
+        for (std::size_t index = 0; index < stripes.size(); ++index) {
+            renderer.drawRect({static_cast<float>(index) * 32.0F, 0.0F, 16.0F, static_cast<float>(kSize)}, math::Color::fromHex(stripes[index]));
+        }
+        renderer.drawCircle({40.0F, 40.0F}, 18.0F, math::Color::fromHex(0x2A9D8FFFU));
+        renderer.drawCircle({96.0F, 92.0F}, 22.0F, math::Color::fromHex(0xE9C46AFFU));
+        renderer.drawGlass({.bounds = {8.0F, 8.0F, 52.0F, 36.0F}, .radii = {8.0F, 8.0F, 8.0F, 8.0F}}, {.blur = 6.0F});
+        renderer.drawGlass({.bounds = {68.0F, 8.0F, 52.0F, 52.0F}, .radii = {14.0F, 14.0F, 14.0F, 14.0F}, .borderWidth = 1.0F, .borderColor = math::Color(1.0F, 1.0F, 1.0F, 0.5F)}, {.blur = 10.0F, .saturation = 1.6F, .tint = math::Color(1.0F, 1.0F, 1.0F, 0.25F), .rim = 0.7F, .refraction = 6.0F});
+        renderer.drawGlass({.bounds = {14.0F, 70.0F, 56.0F, 34.0F}, .radii = {10.0F, 10.0F, 10.0F, 10.0F}, .rotation = 0.35F}, {.blur = 16.0F, .brightness = 0.8F, .refraction = 4.0F});
+        renderer.drawGlass({.kind = graphics2d::Shape::Kind::Ellipse, .bounds = {74.0F, 72.0F, 44.0F, 40.0F}}, {.blur = 3.0F, .rim = 0.4F});
+    });
+    // clang-format on
+}
+
+// A material of a glass reads what lies behind it through `haylen_backdrop`, here 24 pixels to the left, which the refraction of the glass keeps ready past its edge.
+TEST_P(GpuRendererTest, ShadesGlassWithAMaterialThatReadsWhatLiesBehind) {
+    const graphics2d::Material shift(graphics::Shader::parse(core::EmbeddedFiles::getBackdropShiftShader()));
+    std::optional<graphics::Image> image;
+    // clang-format off
+    readScene("glass material", [&](core::Engine&, graphics2d::Renderer& renderer, const graphics::RenderTarget& into) {
+        renderer.beginTarget(into, topLeft(), {.clear = math::Color::black()});
+        renderer.drawRect({0.0F, 0.0F, 64.0F, static_cast<float>(kSize)}, math::Color(1.0F, 0.0F, 0.0F, 1.0F));
+        renderer.drawRect({64.0F, 0.0F, 64.0F, static_cast<float>(kSize)}, math::Color(0.0F, 0.0F, 1.0F, 1.0F));
+        renderer.drawGlass({.bounds = {32.0F, 8.0F, 64.0F, 32.0F}}, {.blur = 0.0F, .refraction = 24.0F}, {.material = shift});
+    }, image);
+    // clang-format on
+    ASSERT_TRUE(image.has_value());
+
+    // Red behind the glass up to x 88 turns green, blue past it stays blue, and below the glass the blue half is untouched.
+    const math::Color shifted = image->getPixel(70, 24);
+    EXPECT_LT(shifted.r, 0.1F);
+    EXPECT_GT(shifted.g, 0.9F);
+    const math::Color right = image->getPixel(92, 24);
+    EXPECT_GT(right.b, 0.9F);
+    EXPECT_LT(right.g, 0.1F);
+    const math::Color below = image->getPixel(70, 64);
+    EXPECT_GT(below.b, 0.9F);
+    EXPECT_LT(below.g, 0.1F);
+}
+
+// Glass in a canvas of a capture reads what the canvases before it drew into the capture, as glass on the screen does, so glass without saturation turns the red of an earlier canvas gray.
+TEST_P(GpuRendererTest, ReadsWhatEarlierCanvasesOfACaptureDrew) {
+    std::optional<graphics::Image> image;
+    // clang-format off
+    readScene("glass over canvases", [&](core::Engine& engine, graphics2d::Renderer& renderer, const graphics::RenderTarget& into) {
+        const math::Rect visible = engine.getViewport().getVisibleRect();
+        renderer.beginCapture(into, math::Color::black());
+        renderer.beginScreen();
+        renderer.drawRect(visible, math::Color(1.0F, 0.0F, 0.0F, 1.0F));
+        renderer.beginScreen();
+        renderer.drawGlass({.bounds = {visible.x + visible.width * 0.25F, visible.y + visible.height * 0.25F, visible.width * 0.5F, visible.height * 0.5F}}, {.blur = 0.0F, .saturation = 0.0F});
+        renderer.endCapture();
+    }, image);
+    // clang-format on
+    ASSERT_TRUE(image.has_value());
+
+    const math::Color glass = image->getPixel(64, 64);
+    EXPECT_NEAR(glass.r, 0.2126F, 0.02F);
+    EXPECT_NEAR(glass.g, 0.2126F, 0.02F);
+    const math::Color around = image->getPixel(8, 8);
+    EXPECT_GT(around.r, 0.9F);
+    EXPECT_LT(around.g, 0.1F);
+}
+
+// A group faded by a dither and masks whose soft circles turn into patterns of whole cells, which stay put on the canvas, over stripes.
+TEST_P(GpuRendererTest, DithersGroupsAndMasks) {
+    // clang-format off
+    expectScene("dither", [](core::Engine&, graphics2d::Renderer& renderer, const graphics::RenderTarget& into) {
+        renderer.beginTarget(into, topLeft(), {.clear = math::Color::fromHex(0x1B2A41FFU)});
+        const std::array<std::uint32_t, 4> stripes{0xE63946FFU, 0xF1FAEEFFU, 0x457B9DFFU, 0xFFB703FFU};
+        for (std::size_t index = 0; index < stripes.size(); ++index) {
+            renderer.drawRect({0.0F, static_cast<float>(index) * 32.0F, static_cast<float>(kSize), 16.0F}, math::Color::fromHex(stripes[index]));
+        }
+        renderer.beginGroup({.opacity = 0.5F, .dither = 2.0F});
+        renderer.drawRect({8.0F, 8.0F, 48.0F, 48.0F}, math::Color::fromHex(0x2A9D8FFFU));
+        renderer.endGroup();
+        renderer.pushMask({.mode = graphics2d::Renderer::MaskMode::Outside, .dither = 2.0F});
+        renderer.drawShape({.bounds = {72.0F, 8.0F, 48.0F, 48.0F}, .radii = {24.0F, 24.0F, 24.0F, 24.0F}, .softness = 24.0F});
+        renderer.endMaskShape();
+        renderer.drawRect({64.0F, 0.0F, 64.0F, 64.0F}, math::Color::fromHex(0x264653FFU));
+        renderer.popMask();
+        renderer.pushMask({.mode = graphics2d::Renderer::MaskMode::Inside, .dither = 4.0F});
+        renderer.drawShape({.bounds = {16.0F, 72.0F, 96.0F, 48.0F}, .radii = {24.0F, 24.0F, 24.0F, 24.0F}, .softness = 20.0F});
+        renderer.endMaskShape();
+        renderer.drawRect({0.0F, 64.0F, 128.0F, 64.0F}, math::Color::fromHex(0xE9C46AFFU));
+        renderer.popMask();
+    });
+    // clang-format on
 }
 
 INSTANTIATE_TEST_SUITE_P(Devices, GpuRendererTest, ::testing::ValuesIn(test::GpuFixture::getTestedApis()), test::GpuFixture::nameApi);

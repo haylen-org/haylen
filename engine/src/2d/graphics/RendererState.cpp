@@ -22,7 +22,7 @@ debug::ObjectCounter& RendererState::bufferCounter = *new debug::ObjectCounter("
 
 std::uint64_t RendererState::submissions = 0;
 
-const std::array<std::span<const std::uint8_t> (*)(), 11> RendererState::kPackages{&core::EmbeddedFiles::getSpriteShader, &core::EmbeddedFiles::getTextShader, &core::EmbeddedFiles::getMeshShader, &core::EmbeddedFiles::getBlendShader, &core::EmbeddedFiles::getCompositeShader, &core::EmbeddedFiles::getLightShader, &core::EmbeddedFiles::getMetaballShader, &core::EmbeddedFiles::getRecolorShader, &core::EmbeddedFiles::getEffectShader, &core::EmbeddedFiles::getShapeShader, &core::EmbeddedFiles::getBackdropShader};
+const std::array<std::span<const std::uint8_t> (*)(), 12> RendererState::kPackages{&core::EmbeddedFiles::getSpriteShader, &core::EmbeddedFiles::getTextShader, &core::EmbeddedFiles::getMeshShader, &core::EmbeddedFiles::getBlendShader, &core::EmbeddedFiles::getCompositeShader, &core::EmbeddedFiles::getLightShader, &core::EmbeddedFiles::getMetaballShader, &core::EmbeddedFiles::getRecolorShader, &core::EmbeddedFiles::getEffectShader, &core::EmbeddedFiles::getShapeShader, &core::EmbeddedFiles::getBackdropShader, &core::EmbeddedFiles::getGlassShader};
 
 const std::array<RendererState::ProgramSource, RendererState::kProgramCount> RendererState::kPrograms{{
     {.package = 0, .program = "sprite", .lit = "sprite_lit"},
@@ -39,6 +39,7 @@ const std::array<RendererState::ProgramSource, RendererState::kProgramCount> Ren
     {.package = 0, .program = "batch", .lit = "batch_lit"},
     {.package = 10, .program = "backdrop", .lit = ""},
     {.package = 1, .program = "text_gradient", .lit = "text_gradient_lit"},
+    {.package = 11, .program = "glass", .lit = ""},
 }};
 
 // The vertex layouts below read these records at fixed offsets.
@@ -310,6 +311,8 @@ void RendererState::resetFrame() noexcept {
     indices.clear();
     uploadIndices.clear();
     blends.clear();
+    glasses.clear();
+    glassInstances.clear();
     groups.clear();
     savedClips.clear();
     savedFadeEdges.clear();
@@ -536,6 +539,10 @@ void RendererState::checkOrder(Program program, const DrawOrder& order, std::spa
         throw std::invalid_argument("A group that blends with what lies below draws in a canvas without ambient light.");
     }
 
+    if (program == Program::Glass && canvas.isLit()) {
+        throw std::invalid_argument("A glass draws in a canvas without ambient light. Draw it in a canvas that begins after the lit one.");
+    }
+
     if (order.material.isValid() && program == Program::Recolor) {
         throw std::invalid_argument("A draw with a part mask does not take a material.");
     }
@@ -606,6 +613,7 @@ DrawItem& RendererState::addItem(Program program, const DrawOrder& order, graphi
 
     current.distorted = current.distorted || distorts;
     current.backdrop = current.backdrop || program == Program::Backdrop;
+    current.glass = current.glass || program == Program::Glass;
     items.push_back(item);
     return items.back();
 }
@@ -631,6 +639,29 @@ void RendererState::addShape(const Shape& shape, const DrawOrder& order) {
     const math::Vec2 half = shape.bounds.getSize() * 0.5F;
     const float lowest = shape.bounds.getCenter().y + std::fabs(std::sin(shape.rotation)) * half.x + std::fabs(std::cos(shape.rotation)) * half.y;
     addInstances(Program::Shape, order, texture, std::span(&packed, 1), lowest);
+}
+
+// The glass reads the corners of its turned rectangle, moved out by the reach of its quad, where its edge fades, and by its refraction, which reads that far past the edge.
+void RendererState::addGlass(const Shape& shape, const Glass& glass, const DrawOrder& order) {
+    const float margin = getPixelSize() + shape.softness * 0.5F;
+    const GpuInstance packed = GpuInstance::makeShape(shape, margin, false);
+    const math::Vec2 center = shape.bounds.getCenter();
+    const math::Vec2 half = shape.bounds.getSize() * 0.5F + math::Vec2{margin + glass.refraction, margin + glass.refraction};
+    const float cosine = std::cos(shape.rotation);
+    const float sine = std::sin(shape.rotation);
+    std::array<math::Vec2, 4> corners{math::Vec2{-half.x, -half.y}, math::Vec2{half.x, -half.y}, math::Vec2{half.x, half.y}, math::Vec2{-half.x, half.y}};
+    for (math::Vec2& corner : corners) {
+        corner = center + math::Vec2{corner.x * cosine - corner.y * sine, corner.x * sine + corner.y * cosine};
+    }
+
+    const float lowest = center.y + std::fabs(sine) * shape.bounds.width * 0.5F + std::fabs(cosine) * shape.bounds.height * 0.5F;
+
+    const float pixels = getPixelsPerUnit();
+    DrawItem& item = addItem(Program::Glass, order, white.getResource().get(), lowest);
+    item.first = static_cast<std::uint32_t>(glasses.size());
+    item.count = 1;
+    glasses.push_back({.glass = glass, .instance = static_cast<std::uint32_t>(glassInstances.size()), .corners = corners, .blurPixels = glass.blur * pixels, .refractionPixels = glass.refraction * pixels});
+    glassInstances.push_back(packed);
 }
 
 void RendererState::scaleCoverage(std::span<GpuInstance> data, Program program, float distortion) noexcept {
@@ -783,6 +814,7 @@ RendererState::Layout RendererState::describeLayout(Program program) {
         layout.inputs = getPairedInputs(program);
         return layout;
     case Program::Shape:
+    case Program::Glass:
     case Program::Sprite:
     case Program::Text:
         break;
@@ -791,7 +823,7 @@ RendererState::Layout RendererState::describeLayout(Program program) {
     layout.buffers[0] = {.stride = kCorner};
     layout.buffers[1] = {.stride = kInstance, .perInstance = true};
     layout.bufferCount = 2;
-    layout.inputs = program == Program::Shape ? std::span<const Input>(kShapeInputs) : std::span<const Input>(kSpriteInputs);
+    layout.inputs = program == Program::Shape || program == Program::Glass ? std::span<const Input>(kShapeInputs) : std::span<const Input>(kSpriteInputs);
     return layout;
 }
 
@@ -916,6 +948,8 @@ const char* RendererState::materialProgramName(Program program, graphics::PassTa
         return lit ? "mesh_lit" : "mesh";
     case Program::Shape:
         return lit ? "shape_lit" : "shape";
+    case Program::Glass:
+        return "shape";
     case Program::Batch:
         return lit ? "batch_lit" : "batch";
     case Program::ImageBlend:
@@ -930,7 +964,7 @@ const char* RendererState::materialProgramName(Program program, graphics::PassTa
         break;
     }
 
-    throw std::logic_error("Materials only replace the sprite, batch, text, mesh and shape programs.");
+    throw std::logic_error("Materials only replace the sprite, batch, text, mesh, shape and glass programs.");
 }
 
 const graphics::ShaderResource::Compiled& RendererState::getMaterialProgram(MaterialResource& material, Program program, graphics::PassTarget target) {

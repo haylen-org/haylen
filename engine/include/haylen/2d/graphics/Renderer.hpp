@@ -13,6 +13,7 @@
 
 #include "haylen/2d/graphics/Camera.hpp"
 #include "haylen/2d/graphics/DrawOrder.hpp"
+#include "haylen/2d/graphics/Glass.hpp"
 #include "haylen/2d/graphics/ImageBlend.hpp"
 #include "haylen/2d/graphics/Mesh.hpp"
 #include "haylen/2d/graphics/MeshVertex.hpp"
@@ -109,9 +110,17 @@ class Renderer final {
         Outside,
     };
 
-    // How a group draws once it ends: the opacity of the whole image and its place among the draws of its canvas.
+    // How a group draws once it ends: the opacity of the whole image and its place among the draws of its canvas. A dither above 0 shows the opacity as a pattern of cells of that size in units of the canvas that show whole or not at all, which stays put on what the canvas shows, instead of blending it.
     struct GroupOptions {
         float opacity = 1.0F;
+        float dither = 0.0F;
+        DrawOrder order{};
+    };
+
+    // How a mask draws: inside its shape or outside it, its place among the draws of its canvas, and the dither that shows its coverage as whole cells of that size in units of the canvas, such as the soft edge of a shape turned into a pattern of pixels.
+    struct MaskOptions {
+        MaskMode mode = MaskMode::Inside;
+        float dither = 0.0F;
         DrawOrder order{};
     };
 
@@ -230,6 +239,9 @@ class Renderer final {
     void drawArc(math::Vec2 center, float radius, float thickness, float startAngle, float endAngle, math::Color color, const DrawOrder& order = {});
     void drawShape(const Shape& shape, const DrawOrder& order = {});
 
+    // Draws glass in the shape over what the canvas and the canvases before it in its destination drew behind it this frame, which a glass inside a group reads from the image of the group alone. The color of the shape multiplies the glass, its border draws over it and its texture stays empty, since the glass shows the image behind it. A material shades the glass with its shape program, which reads the image behind with `haylen_backdrop`. Each glass ends the pass of its destination, blurs what it reads in smaller images and goes on in a new pass, and a screen whose canvases hold glass draws into an image of its own that reaches the swapchain at the end of the frame. Throws `std::invalid_argument` for a shape with a texture, values the shape cannot draw, a negative blur, saturation, brightness, rim width or refraction, a rim outside 0 to 1, or a canvas with ambient light.
+    void drawGlass(const Shape& shape, const Glass& glass, const DrawOrder& order = {});
+
     // Fills a circle of the radius at every point, all of the one color of `colors` or each of its own, as one quad each of the shape program, which merge into one draw call. Throws `std::invalid_argument` for colors of another count.
     void drawPoints(std::span<const math::Vec2> points, float radius, std::span<const math::Color> colors, const DrawOrder& order = {});
 
@@ -269,12 +281,12 @@ class Renderer final {
     void pushClip(const math::Rect& rect);
     void popClip();
 
-    // Draws what follows until `endGroup` into an image of the open canvas, which then draws as one with the opacity and the draw order of the options, so overlapping parts fade together. A group sorts its draws among themselves like a canvas of its own and composites with the blend of its order, unlit and without post-processing of its own, a blend that mixes with what lies below reads a copy of what its canvas drew before it, and a canvas that ends closes the groups and masks it has open.
+    // Draws what follows until `endGroup` into an image of the open canvas, which then draws as one with the opacity, the dither and the draw order of the options, so overlapping parts fade together. A group sorts its draws among themselves like a canvas of its own and composites with the blend of its order, unlit and without post-processing of its own, a blend that mixes with what lies below reads a copy of what its canvas drew before it, and a canvas that ends closes the groups and masks it has open.
     void beginGroup(const GroupOptions& options);
     void endGroup();
 
-    // Records what follows until `endMaskShape` as the shape of a mask, drawn with anything, and draws what follows from there until `popMask` only inside the shape or outside it, through the coverage of the shape, soft edges included, as one image with the draw order. Masks and groups nest.
-    void pushMask(MaskMode mode = MaskMode::Inside, const DrawOrder& order = {});
+    // Records what follows until `endMaskShape` as the shape of a mask, drawn with anything, and draws what follows from there until `popMask` only inside the shape or outside it, through the coverage of the shape, soft edges included, as one image with the draw order of the options. Masks and groups nest. Throws `std::invalid_argument` for a negative dither.
+    void pushMask(const MaskOptions& options);
     void endMaskShape();
     void popMask();
 

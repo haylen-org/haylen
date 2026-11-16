@@ -97,7 +97,7 @@ A source declares exactly one `@program`, whose vertex shader is `haylen_vs`. Ot
 | `batch`, `batch_lit` | `HAYLEN_BATCH`, `HAYLEN_BATCH HAYLEN_LIT` | Sprite batches with several textures or with [sprite data](#sprite-data). |
 | `text`, `text_lit` | `HAYLEN_TEXT`, `HAYLEN_TEXT HAYLEN_LIT` | Text. |
 | `mesh`, `mesh_lit` | `HAYLEN_MESH`, `HAYLEN_MESH HAYLEN_LIT` | Meshes and polygons. |
-| `shape`, `shape_lit` | `HAYLEN_SHAPE`, `HAYLEN_SHAPE HAYLEN_LIT` | Circles, rings, arcs and shapes, whose `uv` goes from 0 to 1 across the rectangle of the shape. |
+| `shape`, `shape_lit` | `HAYLEN_SHAPE`, `HAYLEN_SHAPE HAYLEN_LIT` | Circles, rings, arcs, shapes and glass, whose `uv` goes from 0 to 1 across the rectangle of the shape. |
 
 Each program compiles for every target of the compiler, so one package runs on every graphics API:
 
@@ -143,6 +143,8 @@ The file `haylen/material.glsl` holds what every material shares:
 | `haylen_base(vec2 point)` | `vec4` | The function `haylen_text` in the text programs and `haylen_sprite` in the others: the color the draw has without the material. |
 | `haylen_world_normal(vec3 tangent)` | `vec2` | Turns a tangent-space normal, with y pointing up the image, into the world through the flips and rotation of the sprite. |
 | `haylen_output(vec4 color)` | function | Writes the result, a straight color. It multiplies the color by its alpha for draws whose blend mode needs that, `multiply` and `screen`. A shape fades the alpha by how much of the pixel it covers, so its edge stays smooth whatever color the material writes, and every draw fades it by the [fade](rendering.md#fades) it draws in. In lit canvases it also writes the emission, surface and info images that the light pass reads, with a flat normal. |
+| `haylen_backdrop(vec2 shift)` | `vec4` | Only with `HAYLEN_SHAPE`: what lies behind a [glass](effects.md#glass) draw at the pixel, moved by a shift in units of the canvas, with premultiplied colors. The image behind is ready up to the `refraction` of the glass past its edge. |
+| `haylen_output_point` | `in vec2` | The point of the canvas where the pixel lies, in units of the canvas, which the fade of the draw reads. |
 | `haylen_output_surface(vec4 color, vec2 normal, float specular, float shininess)` | function | Only with `HAYLEN_LIT`: writes the result with a world normal, a specular strength and a shininess divided by 255, for materials that light their own surface. |
 | `haylen_surface`, `haylen_info` | `vec4` uniforms | Only with `HAYLEN_LIT`: the lighting of the draw, which `haylen_output` applies. |
 
