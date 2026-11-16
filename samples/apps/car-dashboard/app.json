@@ -1,0 +1,22 @@
+{
+    "name": "Car Dashboard",
+    "identifier": "com.haylen.cardashboard",
+    "version": "1.0.0",
+    "orientation": "any",
+    "window": {
+        "title": "Car Dashboard",
+        "width": 1600,
+        "height": 900,
+        "resizable": true,
+        "maxPixelDensity": 0
+    },
+    "design": {
+        "width": 1920,
+        "height": 1080,
+        "scaling": "expand"
+    },
+    "splash": {
+        "background": "#FF060A14"
+    },
+    "clearColor": "#FF060A14"
+}
