@@ -62,21 +62,21 @@ function Layout:layOutPortrait(left, top, right, bottom)
     local gap = Layout.gap
     local width, height = right - left, bottom - top
     local half = (width - gap) * 0.5
-    local radius = math.min(width * 0.4, height * 0.17)
+    local radius = math.min(width * 0.4, height * 0.155)
     self.gauge = {x = left + width * 0.5, y = top + radius + 6, radius = radius}
     self.strip = {x = left + width * 0.08, y = self.gauge.y + radius * 1.04, width = width * 0.84, height = 92}
     self.road = {x = left, y = self.gauge.y + radius * 0.12, width = width, height = self.strip.y - gap - (self.gauge.y + radius * 0.12)}
 
     local y = self.strip.y + self.strip.height + gap
     local rest = bottom - y - 3 * gap
-    local navigation = math.floor(rest * 0.3)
+    local navigation = math.floor(rest * 0.4)
     self.navigation = {x = left, y = y, width = width, height = navigation}
     y = y + navigation + gap
-    local energy = math.floor(rest * 0.2)
+    local energy = math.floor(rest * 0.17)
     self.battery = {x = left, y = y, width = half, height = energy}
     self.consumption = {x = left + half + gap, y = y, width = half, height = energy}
     y = y + energy + gap
-    local cards = math.floor(rest * 0.3)
+    local cards = math.floor(rest * 0.26)
     self.tyres = {x = left, y = y, width = half, height = cards}
     self.assistants = {x = left + half + gap, y = y, width = half, height = cards}
     y = y + cards + gap
