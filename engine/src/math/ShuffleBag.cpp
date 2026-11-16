@@ -1,6 +1,8 @@
 #include "haylen/math/ShuffleBag.hpp"
 
+#include <cstdint>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 #include "haylen/math/Random.hpp"
@@ -8,6 +10,15 @@
 namespace haylen::math {
 
 ShuffleBag::ShuffleBag(std::span<const std::uint32_t> counts) {
+    std::uint64_t total = 0;
+    for (const std::uint32_t count : counts) {
+        total += count;
+    }
+    if (total > kMaxItems) {
+        throw std::invalid_argument("A shuffle bag holds at most " + std::to_string(kMaxItems) + " items.");
+    }
+
+    items.reserve(static_cast<std::size_t>(total));
     for (std::size_t item = 0; item < counts.size(); ++item) {
         items.insert(items.end(), counts[item], item);
     }

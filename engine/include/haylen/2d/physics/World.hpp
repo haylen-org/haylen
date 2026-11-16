@@ -38,6 +38,8 @@ class StepTasks;
 // Box2D world in world units. Events collected during `step` stay available until the next step.
 class World final {
   public:
+    // The most sub-steps of one step, far more than any simulation needs.
+    static constexpr int kMaxSubSteps = 64;
     // Speeds are in world units per second. Unset speeds keep the values Box2D is tuned for in meters: a speed limit of 400 meters per second, overlaps pushed apart at up to 3 meters per second, and bounces and hit events from 1 meter per second. More than one thread steps the world on the job system the world receives, except on the web, which runs on one thread.
     struct Settings {
         math::Vec2 gravity{0.0F, 980.0F};

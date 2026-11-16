@@ -65,6 +65,8 @@ class Runtime final {
 
     static constexpr const char* kEngineKey = "haylen.engine";
     static constexpr const char* kErrorType = "haylen.Error";
+    static constexpr const char* kSyntaxErrorsKey = "haylen.syntaxErrors";
+    static constexpr int kMaxSyntaxErrors = 64;
 
     // A deeper stack keeps only its innermost and outermost levels, like a Lua traceback, so a runaway recursion reports quickly.
     static constexpr int kInnerLevels = 10;
@@ -82,6 +84,10 @@ class Runtime final {
 
     // The message handler of every protected call: it replaces the error value with an `Error` userdata that holds the stack.
     static int handleMessage(lua_State* L);
+
+    // Records the message of a module of the package that did not compile, which `require` raises as it is, so the error keeps the code `syntax` once it reaches a protected call of the engine. The record keeps the latest messages only.
+    static void recordSyntaxError(lua_State* L, int index);
+    [[nodiscard]] static bool isSyntaxError(lua_State* L, int index);
 
     // Returns the `Error` that `handleMessage` left at index, or an `Error` without frames for any other error value.
     [[nodiscard]] static Error readError(lua_State* L, int index);

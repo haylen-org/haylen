@@ -15,6 +15,7 @@ class Raycaster;
 // Rays cast together, with a result slot for each one. The batch keeps its buffers, so casting the same number of rays again reuses them, and results line up with the rays by index.
 class RayBatch final {
   public:
+    static constexpr std::size_t kMaxRays = std::size_t{1} << 20;
     // Sets the number of rays, keeping the existing ones and adding rays of zero length.
     void resize(std::size_t count);
     [[nodiscard]] std::size_t size() const noexcept {

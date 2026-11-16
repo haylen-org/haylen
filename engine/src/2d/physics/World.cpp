@@ -8,6 +8,7 @@
 #include <chrono>
 #include <cmath>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 #include "2d/physics/Box2DConverter.hpp"
@@ -126,8 +127,8 @@ class World::OneWayFilter final {
 };
 
 World::World(const Settings& settings, core::JobSystem* jobSystem) : pixelsPerMeter(settings.pixelsPerMeter), subSteps(settings.subSteps), threads(settings.threads), interpolate(settings.interpolate), jobs(jobSystem), oneWayFilter(std::make_unique<OneWayFilter>()) {
-    if (settings.pixelsPerMeter <= 0.0F || settings.subSteps < 1 || settings.threads < 1) {
-        throw std::invalid_argument("A physics world needs positive pixels per meter, at least one sub-step and at least one thread.");
+    if (settings.pixelsPerMeter <= 0.0F || settings.subSteps < 1 || settings.subSteps > kMaxSubSteps || settings.threads < 1) {
+        throw std::invalid_argument("A physics world needs positive pixels per meter, from 1 to " + std::to_string(kMaxSubSteps) + " sub-steps and at least one thread.");
     }
 
     if (settings.threads > 1 && jobSystem == nullptr) {
@@ -762,8 +763,8 @@ void World::wakeAll() {
 }
 
 void World::setSubSteps(int value) {
-    if (value < 1) {
-        throw std::invalid_argument("A physics world needs at least one sub-step.");
+    if (value < 1 || value > kMaxSubSteps) {
+        throw std::invalid_argument("A physics world takes from 1 to " + std::to_string(kMaxSubSteps) + " sub-steps.");
     }
 
     subSteps = value;

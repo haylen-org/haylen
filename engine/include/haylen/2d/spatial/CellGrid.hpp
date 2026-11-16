@@ -12,6 +12,8 @@ namespace haylen::spatial2d {
 // A dense grid of integer cell values, such as terrain kinds or walls, for the grid algorithms of `spatial2d`. The algorithms treat zero as open ground and any other value as solid, unless they compare values.
 class CellGrid final {
   public:
+    // The most cells of a grid, which keeps one at 64 MiB.
+    static constexpr std::int64_t kMaxCells = std::int64_t{1} << 24;
     CellGrid(int columns, int rows, std::int32_t value = 0);
 
     [[nodiscard]] int getWidth() const noexcept {

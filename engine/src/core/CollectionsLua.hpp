@@ -12,6 +12,7 @@ namespace haylen::core {
 // Installs `haylen.collections` with object pools that recycle Lua values, such as sprites and projectiles, ring buffers of Lua values over `core::RingBuffer` and float buffers shared with C++ over `core::FloatBuffer`.
 class CollectionsLua final {
   public:
+    static constexpr std::size_t kMaxRingCapacity = std::size_t{1} << 24;
     static void install(lua_State* L);
 
     using ValueBuffer = RingBuffer<lua::Reference>;

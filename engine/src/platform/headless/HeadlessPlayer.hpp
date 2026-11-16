@@ -12,6 +12,10 @@ namespace haylen::io {
 class Package;
 }
 
+namespace haylen::debug {
+class ExecutionBudget;
+}
+
 namespace haylen::platform {
 
 class DevelopmentSession;
@@ -46,6 +50,10 @@ class HeadlessPlayer final {
     [[nodiscard]] static std::unique_ptr<core::Engine> launchPackage(HeadlessHost& host, const core::Engine::Launch& request, std::shared_ptr<io::Package>& playing);
     [[nodiscard]] static std::unique_ptr<core::Engine> returnToLauncher(HeadlessHost& host, std::vector<Launcher>& launchers, std::shared_ptr<io::Package>& playing);
     [[nodiscard]] static std::unique_ptr<core::Engine> launch(HeadlessHost& host, const std::shared_ptr<io::Package>& package);
+
+    // Ends the app of the engine, whose stop the execution budget of development times like every other call into the engine.
+    static void end(HeadlessHost& host, std::unique_ptr<core::Engine>& engine);
+    [[nodiscard]] static debug::ExecutionBudget* getExecutionBudget(HeadlessHost& host) noexcept;
 };
 
 } // namespace haylen::platform

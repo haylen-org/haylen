@@ -6,6 +6,7 @@
 #include <array>
 #include <cmath>
 #include <stdexcept>
+#include <string>
 
 #include "2d/physics/Box2DConverter.hpp"
 #include "haylen/2d/physics/World.hpp"
@@ -19,8 +20,8 @@
 namespace haylen::physics2d {
 
 std::vector<std::vector<std::vector<math::Vec2>>> Fracture::split(std::span<const std::vector<math::Vec2>> shape, const Options& options) {
-    if (options.pieces < 1) {
-        throw std::invalid_argument("A fracture needs at least one piece.");
+    if (options.pieces < 1 || options.pieces > kMaxPieces) {
+        throw std::invalid_argument("A fracture makes from 1 to " + std::to_string(kMaxPieces) + " pieces.");
     }
 
     const std::vector<std::vector<math::Vec2>> outlines = math::Polygon::unite(shape);

@@ -11,6 +11,7 @@
 #include <optional>
 #include <span>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 #include "2d/physics/Box2DConverter.hpp"
@@ -581,9 +582,12 @@ class Fluid::Collider final {
 
 Fluid::Fluid(World& owner, const Options& settings) : world(owner), options(settings) {
     const bool materials = options.density >= 0.0F && options.friction >= 0.0F && options.restitution >= 0.0F && std::isfinite(options.gravityScale);
-    const bool motion = options.viscosity >= 0.0F && options.viscosity <= 1.0F && options.iterations >= 1 && options.maxSpeed >= 0.0F;
+    const bool motion = options.viscosity >= 0.0F && options.viscosity <= 1.0F && options.iterations >= 1 && options.iterations <= kMaxIterations && options.maxSpeed >= 0.0F;
     if (options.radius <= 0.0F || options.smoothingRadius <= options.radius || !materials || !motion) {
-        throw std::invalid_argument("A fluid needs a positive particle radius, a larger smoothing radius, at least one iteration, a viscosity from 0 to 1, and a density, friction, restitution and top speed of zero or more.");
+        throw std::invalid_argument("A fluid needs a positive particle radius, a larger smoothing radius, from 1 to " + std::to_string(kMaxIterations) + " iterations, a viscosity from 0 to 1, and a density, friction, restitution and top speed of zero or more.");
+    }
+    if (options.maxParticles > kMaxParticles) {
+        throw std::invalid_argument("A fluid holds at most " + std::to_string(kMaxParticles) + " particles.");
     }
 
     const float scale = world.getPixelsPerMeter();

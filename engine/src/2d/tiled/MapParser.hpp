@@ -36,8 +36,8 @@ class MapParser final {
     [[nodiscard]] static std::string_view blendModeName(graphics::BlendMode::Type value);
 
   private:
-    // Cells are indexed with `int` and their data takes four bytes each, so a layer holds as many cells as both allow.
-    static constexpr std::size_t kMaxCells = std::min<std::size_t>(std::numeric_limits<int>::max(), std::numeric_limits<std::size_t>::max() / 4);
+    // A layer holds as many cells as a map does.
+    static constexpr std::size_t kMaxCells = static_cast<std::size_t>(Map::kMaxCells);
 
     // Compressed data grows its output by this many bytes at a time, so a layer whose size claims more cells than its data holds never allocates them.
     static constexpr std::size_t kDecompressStep = std::size_t{1} << 16U;

@@ -37,6 +37,9 @@ class Profiler final {
         return open.size();
     }
 
+    // The name of the innermost open scope that the engine opened, such as `update`, or an empty text outside every such scope.
+    [[nodiscard]] std::string_view getScopeName() const noexcept;
+
     // The scopes of the last finished frame, parents before their children.
     [[nodiscard]] const std::vector<ProfileSample>& getLastFrame() const noexcept {
         return finished;

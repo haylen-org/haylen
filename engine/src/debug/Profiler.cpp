@@ -73,6 +73,15 @@ void Profiler::beginScope(std::string_view name) {
     open.push_back({.sample = index, .start = clock()});
 }
 
+std::string_view Profiler::getScopeName() const noexcept {
+    for (auto scope = open.rbegin(); scope != open.rend(); ++scope) {
+        if (!scope->script) {
+            return current[static_cast<std::size_t>(scope->sample)].name;
+        }
+    }
+    return {};
+}
+
 void Profiler::beginScriptScope(std::string_view name) {
     beginScope(name);
     open.back().script = true;

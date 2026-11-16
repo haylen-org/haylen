@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <cstddef>
@@ -122,6 +123,7 @@ class Engine final {
         Lifecycle,
         Reload,
     };
+    static constexpr std::array<std::string_view, 3> kPhaseNames = {"frame", "lifecycle", "reload"};
 
     // Sets the phase for its lifetime and restores the previous one. An error that leaves a lifecycle scope counts as a lifecycle error wherever the engine reports it.
     class PhaseScope final {
@@ -216,8 +218,15 @@ class Engine final {
     void reportError(const std::exception& exception);
     void reportError(const std::string& message);
 
+    // Stops the app for good with the error, which replaces any error that shows and which only a restart clears, so no fix resumes the app and it cannot go back from the error screen. The host cancels an app this way, such as when its code ran longer than the execution budget of development.
+    void cancel(const lua::Error& error);
+    [[nodiscard]] bool isCancelled() const noexcept;
+
     // Returns the error that stopped the app, or null while it runs.
     [[nodiscard]] const lua::Error* getError() const noexcept;
+
+    // The record of the error that stopped the app, as the page and the event `appError` receive it with the phase where it rose, or null while the app runs.
+    [[nodiscard]] Json getErrorRecord() const;
 
     // Whether the error that stopped the app came from code that runs again, so fixing it in development resumes the app instead of restarting it.
     [[nodiscard]] bool isErrorResumable() const noexcept;
@@ -353,6 +362,7 @@ class Engine final {
     void leaveErrorScreen();
     void runScripts(double frameSeconds);
     void updateApp(std::size_t plugins, float delta);
+    void showError(const lua::Error& error, bool resumable);
     void publishDeviceChanges();
     void publishKeyboard(const math::Rect& value);
     [[nodiscard]] Json describeFold(const std::optional<platform::Fold>& fold) const;

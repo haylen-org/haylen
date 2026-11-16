@@ -103,7 +103,11 @@ core::Json Error::toJson() const {
         stack.push_back({{"source", frame.source}, {"line", frame.line}, {"function", frame.function}, {"kind", getKindName(frame.kind)}});
     }
 
-    return {{"message", message}, {"file", file}, {"line", line}, {"traceback", getTraceback()}, {"frames", std::move(stack)}};
+    core::Json json{{"code", kCodeNames[static_cast<std::size_t>(code)]}, {"message", message}, {"file", file}, {"line", line}, {"traceback", getTraceback()}, {"frames", std::move(stack)}};
+    if (!callback.empty()) {
+        json["callback"] = callback;
+    }
+    return json;
 }
 
 } // namespace haylen::lua

@@ -220,6 +220,7 @@ class DebugPlugin final : public Plugin {
     void record(core::Log::Level level, std::string_view line);
     void addBuiltInCommands(core::Engine& engine);
     void runRelayedLines();
+    void answerInspection(const std::vector<std::string>& path, const std::function<void(bool ok, const core::Json& result)>& reply) const;
     [[nodiscard]] core::Json describeCommands() const;
     void detachTrace();
     void readLastCrash(core::Engine& engine);

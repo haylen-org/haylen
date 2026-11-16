@@ -838,6 +838,24 @@ TEST(EngineTest, ReportsErrorsAndKeepsRendering) {
     EXPECT_GT(fixture.engine().getRenderer2D().getStats().sprites, 0U);
 }
 
+// A Lua file that does not compile stops the app with the code "syntax", whether the engine loads it, a "require" of the app does or the app raises the message of that failure again.
+TEST(EngineTest, NamesTheKindAndThePhaseOfErrors) {
+    {
+        test::EngineFixture fixture({{"source/main.lua", "local broken = "}});
+        EXPECT_EQ(fixture.engine().getErrorRecord().at("code"), "syntax");
+        EXPECT_EQ(fixture.engine().getErrorRecord().at("phase"), "startup");
+    }
+    {
+        test::EngineFixture fixture({{"source/main.lua", "require('haylen.scene').push({update = function() require('broken') end})"}, {"source/broken.lua", "return {"}});
+        fixture.frames(2);
+        EXPECT_EQ(fixture.engine().getErrorRecord().at("code"), "syntax");
+        EXPECT_EQ(fixture.engine().getErrorRecord().at("phase"), "frame");
+        EXPECT_EQ(fixture.engine().getErrorRecord().at("file"), "source/broken.lua");
+    }
+    test::EngineFixture fixture({{"source/main.lua", "local ok, message = pcall(require, 'broken') error(message, 0)"}, {"source/broken.lua", "return {"}});
+    EXPECT_EQ(fixture.engine().getErrorRecord().at("code"), "syntax");
+}
+
 TEST(EngineTest, HandsTheErrorThatStoppedTheAppToTheHost) {
     test::EngineFixture fixture({{"source/main.lua", "local function explode()\n    error('the island sank')\nend\nexplode()"}});
     ASSERT_EQ(fixture.host().getErrorReports().size(), 1U);
@@ -848,7 +866,9 @@ TEST(EngineTest, HandsTheErrorThatStoppedTheAppToTheHost) {
     EXPECT_NE(report.at("traceback").get<std::string>().find("source/main.lua:2"), std::string::npos);
     ASSERT_FALSE(report.at("frames").empty());
     EXPECT_EQ(report.at("frames").at(1), (Json{{"source", "source/main.lua"}, {"line", 2}, {"function", "local 'explode'"}, {"kind", "lua"}}));
-    EXPECT_EQ(report, fixture.engine().getError()->toJson());
+    EXPECT_EQ(report.at("code"), "runtime");
+    EXPECT_EQ(report.at("phase"), "startup");
+    EXPECT_EQ(report, fixture.engine().getErrorRecord());
 
     // Only the error that the error screen shows reaches the host.
     fixture.engine().reportError("a later failure");
@@ -941,7 +961,7 @@ TEST(EngineTest, ShowsErrorsOfAsyncTasksWithTheirStack) {
     EXPECT_EQ(error.getFrames()[1].line, 3);
     EXPECT_EQ(error.getFrames()[1].function, "function <source/scenes/loader.lua:1>");
     EXPECT_EQ(error.getFrames()[1].kind, lua::Error::Frame::Kind::Lua);
-    EXPECT_EQ(fixture.host().getErrorReports().back(), error.toJson());
+    EXPECT_EQ(fixture.host().getErrorReports().back(), fixture.engine().getErrorRecord());
     EXPECT_NE(fixture.lua("require('async').spawn(3)").find("bad argument #1 to 'spawn' (function expected, got number)"), std::string::npos);
 }
 

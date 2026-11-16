@@ -51,7 +51,7 @@ TEST_P(ErrorReportTest, ShowsTheErrorWithItsStackAndRecovers) {
     EXPECT_EQ(error.getLine(), code.line);
     EXPECT_TRUE(std::ranges::any_of(error.getFrames(), [&](const lua::Error::Frame& frame) { return frame.source == "source/fault.lua" && frame.line == code.line; })) << error.getTraceback();
     ASSERT_EQ(fixture.host().getErrorReports().size(), 1U);
-    EXPECT_EQ(fixture.host().getErrorReports().front(), error.toJson());
+    EXPECT_EQ(fixture.host().getErrorReports().front(), fixture.engine().getErrorRecord());
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return heard"), error.getMessage());
 

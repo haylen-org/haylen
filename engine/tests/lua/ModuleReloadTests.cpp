@@ -754,6 +754,58 @@ TEST_F(ModuleReloadTest, ResumesOnceAModuleWhoseFirstLoadFailedIsFixed) {
     EXPECT_FALSE(restarted());
 }
 
+// An editor that undoes a broken save writes the exact bytes of the code that runs, which no reload needs, and the batch still leaves the error screen and says so.
+TEST_F(ModuleReloadTest, LeavesTheErrorOnceAModuleHoldsTheCodeThatRunsAgain) {
+    start({{"source/settings.lua", "return {speed = function() return 1 end}"}, {"source/main.lua", "settings = require('settings')"}});
+    std::vector<plugins::HotReloadPlugin::Report> reports;
+    const core::Connection connection = fixture->engine().getPlugin<plugins::HotReloadPlugin>().reloaded.connect([&reports](const plugins::HotReloadPlugin::Report& report) { reports.push_back(report); });
+    const std::string working = "return {speed = function() return 2 end}";
+    edit({{"source/settings.lua", working}});
+    edit({{"source/settings.lua", "return {speed = function() return 3 end"}});
+    ASSERT_NE(fixture->engine().getError(), nullptr);
+    EXPECT_EQ(fixture->engine().getError()->getFile(), "source/settings.lua");
+
+    edit({{"source/settings.lua", working}});
+    EXPECT_EQ(error(), "");
+    EXPECT_EQ(lua("return settings.speed()"), "2");
+    ASSERT_EQ(reports.size(), 3U);
+    EXPECT_EQ(reports[2].modules, std::vector<std::string>{});
+    EXPECT_EQ(reports[2].restored, std::vector<std::string>{"source/settings.lua"});
+    EXPECT_TRUE(reports[2].resumed);
+
+    // A save of the same bytes once the module runs them again restores nothing.
+    edit({{"source/settings.lua", working}});
+    ASSERT_EQ(reports.size(), 4U);
+    EXPECT_EQ(reports[3].restored, std::vector<std::string>{});
+    EXPECT_FALSE(reports[3].resumed);
+}
+
+TEST_F(ModuleReloadTest, ResumesAScenePlayerWhoseFileHoldsTheCodeThatRunsAgain) {
+    const std::string first = R"(
+local haylen = require('haylen')
+local Player = haylen.class('Player')
+function Player:init() self.steps = 0 end
+function Player:update() self.steps = self.steps + 1 end
+function Player:reloaded() calls[#calls + 1] = 'reloaded' end
+return Player
+)";
+    start({{"source/player.lua", first}, {"source/main.lua", "calls = {} player = require('player')() require('haylen.scene').push(player)"}});
+    fixture->frames(3);
+    std::string second = first;
+    second.replace(second.find("self.steps + 1"), 14, "self.steps + 10");
+    edit({{"source/player.lua", second}});
+    EXPECT_EQ(lua("return table.concat(calls, ', ')"), "reloaded");
+    edit({{"source/player.lua", "local haylen = require('haylen')\nlocal Player = haylen.class('Player'\nreturn Player"}});
+    ASSERT_NE(fixture->engine().getError(), nullptr);
+    const std::string steps = lua("return player.steps");
+
+    edit({{"source/player.lua", second}});
+    EXPECT_EQ(error(), "");
+    EXPECT_EQ(lua("return player.steps - " + steps), "10");
+    EXPECT_EQ(lua("return table.concat(calls, ', ')"), "reloaded");
+    EXPECT_FALSE(restarted());
+}
+
 TEST_F(ModuleReloadTest, RestartsOnceAModuleWhoseFirstLoadFailedInALifecycleStepIsFixed) {
     start({{"source/late.lua", "return {value ="}, {"source/main.lua", "require('haylen.scene').push({enter = function() require('late') end})"}});
     fixture->frames(2);

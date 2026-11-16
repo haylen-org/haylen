@@ -381,6 +381,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/debug/DebugWindow.cpp
   src/debug/Debugger.cpp
   src/debug/Evaluation.cpp
+  src/debug/ExecutionBudget.cpp
   src/debug/GpuCaptureLua.cpp
   src/debug/HaltedStack.cpp
   src/debug/Inspector.cpp
@@ -578,6 +579,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/plugins/DebugPlugin.cpp
   src/plugins/Graphics2DPlugin.cpp
   src/plugins/DebuggerPlugin.cpp
+  src/plugins/ExecutionBudgetPlugin.cpp
   src/plugins/HotReloadPlugin.cpp
   src/plugins/InputPlugin.cpp
   src/plugins/JobsPlugin.cpp

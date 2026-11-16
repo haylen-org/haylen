@@ -17,6 +17,9 @@ namespace haylen::animation2d {
 
 // Frames of one texture shown in order, each for its own duration.
 struct Animation {
+    // The most frames that a grid of a texture gives.
+    static constexpr std::int64_t kMaxGridFrames = 65536;
+
     enum class Loop : std::uint8_t {
         Loop,
         Once,

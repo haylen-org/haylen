@@ -19,6 +19,10 @@ namespace haylen::procedural2d {
 // Fills a grid with tiles so that every pair of neighbors follows adjacency rules, the simple tiled model of Wave Function Collapse. It settles the cell with the fewest choices left, picks one of its tiles by weight and spreads what that rules out, restarting when a cell runs out of tiles.
 class WaveFunctionCollapse final {
   public:
+    // The largest count of tiles, the largest count of cells times tiles that one solver tracks and the most attempts.
+    static constexpr std::size_t kMaxTiles = 4096;
+    static constexpr std::size_t kMaxStates = std::size_t{1} << 22;
+    static constexpr int kMaxAttempts = 1000;
     enum class Direction : std::uint8_t {
         Right,
         Down,

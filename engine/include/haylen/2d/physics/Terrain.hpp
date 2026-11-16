@@ -19,6 +19,8 @@ class World;
 // Destructible ground stored as a grid of samples from 0 (empty) to 255 (solid), which bitmaps and polygons fill and which shapes and explosions carve. The solid areas become chain loops on one static body per chunk, traced with marching squares, and the points between hard samples relax within half a cell, so ground of hard samples follows its slopes instead of the steps of its cells, and `update` rebuilds only the chunks that changed. The terrain owns its bodies and must go before its world.
 class Terrain final {
   public:
+    // The most samples of a terrain.
+    static constexpr std::int64_t kMaxSamples = std::int64_t{1} << 24;
     // The sample `(column, row)` lies at `origin + (column, row) * cellSize`. Outlines are simplified to within `simplifyTolerance` world units, and chunks are `chunkSize` cells wide and tall.
     struct Options {
         int columns = 257;

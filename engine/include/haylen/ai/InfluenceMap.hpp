@@ -16,6 +16,8 @@ namespace haylen::ai {
 // A grid of influence over the world, such as the threat of enemies, the presence of allies or the pull of resources, which agents read to choose where to go. Cell (column, row) covers the square from `origin + (column, row) * cellSize`.
 class InfluenceMap final {
   public:
+    // The most cells of a map.
+    static constexpr std::int64_t kMaxCells = std::int64_t{1} << 24;
     enum class Falloff : std::uint8_t {
         Constant,
         Linear,

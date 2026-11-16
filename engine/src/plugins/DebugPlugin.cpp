@@ -379,6 +379,28 @@ void DebugPlugin::runRelayedLines() {
     for (const platform::ConsoleRelay::ListReply& reply : platform::ConsoleRelay::takeCommandRequests()) {
         reply(consoleEnabled ? describeCommands() : core::Json::array());
     }
+    for (const platform::ConsoleRelay::Inspection& inspection : platform::ConsoleRelay::takeInspections()) {
+        answerInspection(inspection.path, inspection.reply);
+    }
+}
+
+// Inspecting reads the values of the app and never changes them, so a tool may look at the app while it runs.
+void DebugPlugin::answerInspection(const std::vector<std::string>& path, const std::function<void(bool ok, const core::Json& result)>& reply) const {
+    if (!consoleEnabled) {
+        reply(false, {{"code", "unsupported"}, {"message", "The inspector is off outside development runs. Set \"debug.console\" to true in \"app.json\" to turn it on."}});
+        return;
+    }
+
+    core::Json entries = core::Json::array();
+    try {
+        for (const debug::Inspector::Entry& entry : debug::Inspector::list(owner->getLuaState(), path)) {
+            entries.push_back({{"key", entry.key}, {"type", entry.type}, {"value", entry.value}, {"expandable", entry.expandable}});
+        }
+    } catch (const std::exception& error) {
+        reply(false, {{"code", "invalidPath"}, {"message", error.what()}});
+        return;
+    }
+    reply(true, {{"path", debug::Inspector::joinPath(path)}, {"entries", std::move(entries)}});
 }
 
 core::Json DebugPlugin::describeCommands() const {

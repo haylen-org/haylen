@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Editor check</title>
+<style>
+    html, body { margin: 0; background: #101418; }
+    canvas { display: block; width: 640px; height: 360px; }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+    // The project that the editor check builds file by file: a scene whose speed comes from a module, which plays a looping tone, and code that never ends.
+    const tone = [
+        "local audio = require('haylen.audio')",
+        "local samples = {}",
+        "for index = 1, 22050 do samples[index] = string.pack('<h', math.floor(math.sin(index * 2 * math.pi * 440 / 22050) * 2000)) end",
+        "beep = audio.newSound(table.concat(samples), {format = 'int16', sampleRate = 22050, channels = 1})",
+        "audio.play(beep, {loop = true})",
+    ].join("\n");
+    const check = {
+        app: JSON.stringify({ name: "Editor Check", identifier: "com.haylen.editorcheck", debug: { executionBudget: 1 } }),
+        main: "settings = require('settings')\ncount = 0\nrequire('haylen.scene').push({update = function() count = count + settings.step end})\n" + tone,
+        first: "return {step = 1}",
+        second: "return {step = 2}",
+        endless: "require('haylen.scene').push({update = function() while true do pcall(function() while true do end end) end end})",
+        errors: [],
+    };
+    const params = new URLSearchParams(location.search);
+    var Module = {
+        canvas: document.getElementById("canvas"),
+        preRun: [],
+        haylen: {
+            development: true,
+            storageNamespace: "editor-check",
+            graphicsApi: params.get("graphicsApi") || undefined,
+            onError: (error) => check.errors.push(error),
+        },
+    };
+    const editor = { request: (method, values) => Module.haylen.editor.request(method, values) };
+</script>
+<script src="haylen.js"></script>
+</body>
+</html>

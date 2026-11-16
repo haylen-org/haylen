@@ -189,6 +189,7 @@ void Engine::start() {
     }
 
     current.started = true;
+    current.starting = true;
 
     applyWindowOptions();
 
@@ -212,6 +213,7 @@ void Engine::start() {
 
         if (isStartHeld()) {
             current.applicationPending = true;
+            current.starting = false;
             return;
         }
 
@@ -224,8 +226,10 @@ void Engine::start() {
 void Engine::startApplication() {
     EngineState& current = *state;
     current.applicationPending = false;
+    current.starting = true;
     current.application->start(*this);
     current.events.emit(LifecycleEvent::kAppStarted);
+    current.starting = false;
 }
 
 std::shared_ptr<void> Engine::holdStart() {
@@ -1236,14 +1240,31 @@ void Engine::reportError(const std::exception& exception) {
     }
 
     const auto* scriptError = dynamic_cast<const lua::Error*>(&exception);
-    current.errorScreen = std::make_unique<ErrorScreen>(*this, scriptError != nullptr ? *scriptError : lua::Error(exception.what()), !lifecycle);
+    showError(scriptError != nullptr ? *scriptError : lua::Error(exception.what()), !lifecycle);
+}
 
-    // The player reaches the buttons of the error screen with the mouse, also when the app locked or hid it.
+void Engine::cancel(const lua::Error& error) {
+    EngineState& current = *state;
+    current.cancelled = true;
+    current.recovering = false;
+    current.errorScreen.reset();
+    showError(error, false);
+}
+
+bool Engine::isCancelled() const noexcept {
+    return state->cancelled;
+}
+
+// The player reaches the buttons of the error screen with the mouse, also when the app locked or hid it.
+void Engine::showError(const lua::Error& error, bool resumable) {
+    EngineState& current = *state;
+    current.errorScreen = std::make_unique<ErrorScreen>(*this, error, resumable);
     current.host.setMouseLocked(false, [](const platform::Permission::Answer&) {});
     current.host.setCursorVisible(true);
 
     Log::error("{}", current.errorScreen->getReport());
-    const Json report = current.errorScreen->getError().toJson();
+    current.errorPhase = current.starting ? std::string_view("startup") : kPhaseNames[static_cast<std::size_t>(current.phase)];
+    const Json report = getErrorRecord();
     current.host.reportError(report);
     platform::NativeApi::reportError(report);
     errorRaised.emit(current.errorScreen->getError());
@@ -1256,6 +1277,15 @@ void Engine::reportError(const std::string& message) {
 
 const lua::Error* Engine::getError() const noexcept {
     return state->errorScreen ? &state->errorScreen->getError() : nullptr;
+}
+
+Json Engine::getErrorRecord() const {
+    if (!state->errorScreen) {
+        return nullptr;
+    }
+    Json record = state->errorScreen->getError().toJson();
+    record["phase"] = state->errorPhase;
+    return record;
 }
 
 bool Engine::isErrorResumable() const noexcept {
@@ -1278,18 +1308,18 @@ void Engine::setRecoverable(bool value) noexcept {
 }
 
 bool Engine::isRecoverable() const noexcept {
-    return state->recoverable;
+    return state->recoverable && !state->cancelled;
 }
 
 void Engine::recover() noexcept {
-    state->recovering = state->errorScreen != nullptr;
+    state->recovering = state->errorScreen != nullptr && !state->cancelled;
 }
 
 // The listeners of appRecovered run before the app updates again, so a scene that failed in every frame is gone before it would fail again.
 void Engine::leaveErrorScreen() {
     EngineState& current = *state;
     current.recovering = false;
-    const Json error = current.errorScreen->getError().toJson();
+    const Json error = getErrorRecord();
     current.errorScreen.reset();
     current.events.emit(LifecycleEvent::kAppRecovered, error);
 }

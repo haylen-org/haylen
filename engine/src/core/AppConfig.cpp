@@ -638,7 +638,7 @@ void AppConfig::readUi(const Json& section, AppConfig& config) {
 }
 
 void AppConfig::readDebug(const Json& section, AppConfig& config) {
-    JsonValidator::requireKnownKeys(section, {"stats", "statsItems", "drawings", "objectEvents", "console", "safeArea", "fold", "showSafeArea", "reload"}, "the \"debug\" section of \"app.json\"");
+    JsonValidator::requireKnownKeys(section, {"stats", "statsItems", "drawings", "objectEvents", "console", "safeArea", "fold", "showSafeArea", "reload", "executionBudget", "memoryBudget"}, "the \"debug\" section of \"app.json\"");
     std::string stats;
     readValue(section, "stats", stats);
 
@@ -702,6 +702,26 @@ void AppConfig::readDebug(const Json& section, AppConfig& config) {
         }
 
         config.debug.reload = *mode;
+    }
+
+    if (section.contains("executionBudget")) {
+        double seconds = 0.0;
+        readValue(section, "executionBudget", seconds);
+        if (!(seconds >= kMinExecutionBudget && seconds <= kMaxExecutionBudget)) {
+            throw std::invalid_argument("The \"debug.executionBudget\" value in \"app.json\" must be a number of seconds from 0.1 to 600.");
+        }
+
+        config.debug.executionBudget = std::chrono::milliseconds(std::llround(seconds * 1000.0));
+    }
+
+    if (section.contains("memoryBudget")) {
+        double megabytes = 0.0;
+        readValue(section, "memoryBudget", megabytes);
+        if (!(megabytes >= kMinMemoryBudget && megabytes <= kMaxMemoryBudget)) {
+            throw std::invalid_argument("The \"debug.memoryBudget\" value in \"app.json\" must be a number of megabytes from 16 to 4096.");
+        }
+
+        config.debug.memoryBudget = static_cast<std::size_t>(std::llround(megabytes * 1024.0 * 1024.0));
     }
 }
 
@@ -821,7 +841,7 @@ Json AppConfig::toJson() const {
         statsItems.push_back(debug::StatsDisplay::itemName(item));
     }
 
-    Json debugJson = {{"stats", debug::StatsDisplay::modeName(debug.stats)}, {"statsItems", statsItems}, {"drawings", debug.drawings}, {"objectEvents", debug.objectEvents}, {"console", debug.console}, {"showSafeArea", debug.showSafeArea}, {"reload", reloadName(debug.reload)}};
+    Json debugJson = {{"stats", debug::StatsDisplay::modeName(debug.stats)}, {"statsItems", statsItems}, {"drawings", debug.drawings}, {"objectEvents", debug.objectEvents}, {"console", debug.console}, {"showSafeArea", debug.showSafeArea}, {"reload", reloadName(debug.reload)}, {"executionBudget", static_cast<double>(debug.executionBudget.count()) / 1000.0}, {"memoryBudget", static_cast<double>(debug.memoryBudget) / (1024.0 * 1024.0)}};
     if (debug.safeArea) {
         debugJson["safeArea"] = debug.safeArea->toJson();
     }

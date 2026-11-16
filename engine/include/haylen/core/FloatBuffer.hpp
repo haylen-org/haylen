@@ -9,6 +9,8 @@ namespace haylen::core {
 // A fixed number of floats that Lua and C++ share without copying. Scripts fill it through index access and bulk sets, and bulk APIs such as sprite batches, `drawBatch` and physics read and write it in place, so thousands of sprites or bodies change without a Lua table for each one.
 class FloatBuffer final {
   public:
+    // The most floats of a buffer, 256 MiB of them.
+    static constexpr std::size_t kMaxSize = std::size_t{1} << 26;
     explicit FloatBuffer(std::size_t count, float value = 0.0F);
 
     [[nodiscard]] std::size_t size() const noexcept {

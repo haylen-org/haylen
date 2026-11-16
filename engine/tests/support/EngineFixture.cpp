@@ -4,6 +4,7 @@
 
 #include <stdexcept>
 
+#include "debug/ExecutionBudget.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "io/OverlayPackage.hpp"
 #include "platform/DevelopmentSession.hpp"
@@ -43,7 +44,19 @@ EngineFixture::EngineFixture(std::map<std::string, std::string> files, std::uniq
     launch(std::move(application));
 }
 
-EngineFixture::~EngineFixture() = default;
+EngineFixture::~EngineFixture() {
+    stop();
+}
+
+debug::ExecutionBudget* EngineFixture::executionBudget() noexcept {
+    platform::DevelopmentSession* session = headlessHost.getDevelopmentSession();
+    return session != nullptr ? &session->getExecutionBudget() : nullptr;
+}
+
+void EngineFixture::stop() {
+    const debug::ExecutionBudget::Entry entry(executionBudget(), "stop");
+    runningEngine.reset();
+}
 
 void EngineFixture::launch(std::unique_ptr<core::Application> application) {
     core::AppConfig config = core::AppConfig::fromPackage(*playedPackage);
@@ -55,16 +68,18 @@ void EngineFixture::launch(std::unique_ptr<core::Application> application) {
     application->configure(config);
     headlessHost.setTransparencySupported(config.window.transparent);
     runningEngine = std::make_unique<core::Engine>(headlessHost, playedPackage, std::move(config), std::move(application));
+    const debug::ExecutionBudget::Entry entry(executionBudget(), "start");
     runningEngine->start();
 }
 
 void EngineFixture::restart() {
-    runningEngine.reset();
+    stop();
     launch(nullptr);
 }
 
 void EngineFixture::frames(int count, double seconds) {
     for (int frame = 0; frame < count; ++frame) {
+        const debug::ExecutionBudget::Entry entry(executionBudget(), "frame");
         runningEngine->frame(seconds);
     }
 }
@@ -76,7 +91,10 @@ bool EngineFixture::frameUntil(const std::function<bool()>& condition, std::chro
             return false;
         }
 
-        runningEngine->frame(1.0 / 60.0);
+        {
+            const debug::ExecutionBudget::Entry entry(executionBudget(), "frame");
+            runningEngine->frame(1.0 / 60.0);
+        }
         EventLoop::yield();
     }
 

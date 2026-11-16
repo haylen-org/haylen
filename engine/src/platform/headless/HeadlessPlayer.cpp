@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include "debug/ExecutionBudget.hpp"
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Log.hpp"
@@ -74,7 +75,7 @@ int HeadlessPlayer::play(const Options& options) {
     auto next = std::chrono::steady_clock::now();
     while (engine->isRunning() || !launchers.empty()) {
         if (!engine->isRunning()) {
-            engine.reset();
+            end(host, engine);
             engine = returnToLauncher(host, launchers, playing);
         }
 
@@ -88,27 +89,30 @@ int HeadlessPlayer::play(const Options& options) {
         }
 
         if (engine->isRestartRequested()) {
-            engine.reset();
+            end(host, engine);
             engine = launch(host, playing);
         } else if (const std::optional<core::Engine::Launch> request = engine->getLaunchRequest()) {
             launchers.push_back({.package = playing, .development = host.exchangeDevelopmentSession(nullptr), .nativeAccess = host.hasNativeAccess()});
             host.setLaunched(true);
             host.setNativeAccess(host.hasNativeAccess() && request->nativeAccess);
-            engine.reset();
+            end(host, engine);
             engine = launchPackage(host, *request, playing);
             if (engine == nullptr) {
                 engine = returnToLauncher(host, launchers, playing);
             }
         }
 
-        engine->frame(std::chrono::duration<double>(kFrameTime).count());
+        {
+            const debug::ExecutionBudget::Entry entry(getExecutionBudget(host), "frame");
+            engine->frame(std::chrono::duration<double>(kFrameTime).count());
+        }
         ++frame;
         next += kFrameTime;
         std::this_thread::sleep_until(next);
     }
 
     const int status = host.getErrorReports().empty() ? engine->getExitStatus() : 1;
-    engine->stop();
+    end(host, engine);
     return status;
 }
 
@@ -149,8 +153,19 @@ std::unique_ptr<core::Engine> HeadlessPlayer::launch(HeadlessHost& host, const s
     }
 
     auto engine = std::make_unique<core::Engine>(host, package, std::move(config), std::move(application));
+    const debug::ExecutionBudget::Entry entry(getExecutionBudget(host), "start");
     engine->start();
     return engine;
+}
+
+void HeadlessPlayer::end(HeadlessHost& host, std::unique_ptr<core::Engine>& engine) {
+    const debug::ExecutionBudget::Entry entry(getExecutionBudget(host), "stop");
+    engine.reset();
+}
+
+debug::ExecutionBudget* HeadlessPlayer::getExecutionBudget(HeadlessHost& host) noexcept {
+    DevelopmentSession* session = host.getDevelopmentSession();
+    return session != nullptr ? &session->getExecutionBudget() : nullptr;
 }
 
 } // namespace haylen::platform

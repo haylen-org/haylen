@@ -19,6 +19,8 @@ namespace haylen::procedural2d {
 // Lays out rooms joined by corridors, where 1 marks walls and 0 floors, and every room can reach every other one. The method `Bsp` splits the map in two again and again and puts one room in each part. The method `Placement` drops rooms at random free spots and joins them with a minimum spanning tree.
 class Dungeon final {
   public:
+    static constexpr int kMaxRoomAttempts = 1 << 20;
+    static constexpr int kMaxRooms = 4096;
     static constexpr std::int32_t kFloor = 0;
     static constexpr std::int32_t kWall = 1;
 

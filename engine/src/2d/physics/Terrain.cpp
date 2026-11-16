@@ -4,6 +4,7 @@
 #include <cmath>
 #include <limits>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 #include "2d/physics/Box2DConverter.hpp"
@@ -18,6 +19,9 @@ namespace haylen::physics2d {
 Terrain::Terrain(World& owner, const Options& settings) : world(owner), options(settings) {
     if (settings.columns < 2 || settings.rows < 2 || settings.cellSize <= 0.0F || settings.chunkSize < 1 || settings.simplifyTolerance < 0.0F) {
         throw std::invalid_argument("A terrain needs at least 2 by 2 samples, a positive cell size and chunk size, and a tolerance of at least zero.");
+    }
+    if (static_cast<std::int64_t>(settings.columns) * settings.rows > kMaxSamples) {
+        throw std::invalid_argument("A terrain holds at most " + std::to_string(kMaxSamples) + " samples.");
     }
 
     Box2DConverter::checkShapeOptions(settings.shape);

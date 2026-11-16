@@ -2,14 +2,17 @@
 
 #include <emscripten/emscripten.h>
 
+#include <algorithm>
 #include <cstdlib>
 #include <exception>
+#include <map>
 #include <span>
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "debug/Inspector.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/audio/Mixer.hpp"
@@ -43,6 +46,10 @@
 // clang-format off
 EM_JS(void, haylen_js_started, (const char* json), {
     Module.haylen.reportStarted(JSON.parse(UTF8ToString(json)));
+});
+
+EM_JS(void, haylen_js_complete_request, (double request, int ok, const char* json), {
+    Module.haylen.completeRequest(request, ok !== 0, JSON.parse(UTF8ToString(json)));
 });
 
 EM_JS(void, haylen_js_set_drawable_width, (int width), {
@@ -97,10 +104,6 @@ EM_JS(char*, haylen_js_clipboard, (), {
     return stringToNewUTF8(Module.haylen.clipboardText());
 });
 
-EM_JS(void, haylen_js_console_result, (double id, int ok, const char* output), {
-    Module.haylen.reportConsoleResult(id, ok !== 0, UTF8ToString(output));
-});
-
 EM_JS(char*, haylen_js_canvas_selector, (), {
     return stringToNewUTF8(Module.haylen.canvasSelector());
 });
@@ -109,6 +112,10 @@ EM_JS(char*, haylen_js_canvas_selector, (), {
 namespace haylen::platform {
 
 std::vector<std::string>& WebPage::touched = *new std::vector<std::string>();
+int WebPage::revision = 0;
+std::vector<WebPage::PendingRequest>& WebPage::pendingApplies = *new std::vector<PendingRequest>();
+std::vector<WebPage::PendingRequest>& WebPage::pendingRuns = *new std::vector<PendingRequest>();
+std::vector<core::Json>& WebPage::frameReports = *new std::vector<core::Json>();
 std::string& WebPage::lastError = *new std::string();
 std::unordered_map<std::uint64_t, WebPage::GatedCallback>& WebPage::gatedCalls = *new std::unordered_map<std::uint64_t, GatedCallback>();
 std::uint64_t WebPage::nextGatedCall = 1;
@@ -117,8 +124,11 @@ double WebPage::lastStats = 0.0;
 template <typename Body> int WebPage::answer(Body&& body) {
     try {
         return body();
+    } catch (const RequestError& error) {
+        lastError = core::Json{{"code", error.getCode()}, {"message", error.what()}}.dump();
+        return -1;
     } catch (const std::exception& error) {
-        lastError = error.what();
+        lastError = core::Json{{"code", "failed"}, {"message", error.what()}}.dump();
         return -1;
     }
 }
@@ -196,9 +206,21 @@ std::string WebPage::getCanvasSelector() {
     return result;
 }
 
-void WebPage::reportStarted(const core::AppConfig& config) {
+void WebPage::reportStarted(core::Engine& engine) {
     lastStats = emscripten_get_now();
-    haylen_js_started(core::Json{{"name", config.name}, {"identifier", config.identifier}, {"version", config.version}, {"build", config.build}}.dump().c_str());
+    const core::AppConfig& config = engine.getConfig();
+    const core::Json app{{"name", config.name}, {"identifier", config.identifier}, {"version", config.version}, {"build", config.build}};
+    haylen_js_started(app.dump().c_str());
+    const core::Json error = engine.getErrorRecord();
+    for (const PendingRequest& pending : std::exchange(pendingRuns, {})) {
+        completeRequest(pending.request, true, {{"revision", pending.revision}, {"app", app}, {"error", error}});
+    }
+}
+
+void WebPage::reportStartFailed(const core::Json& error) {
+    for (const PendingRequest& pending : std::exchange(pendingRuns, {})) {
+        completeRequest(pending.request, true, {{"revision", pending.revision}, {"app", core::Json()}, {"error", error}});
+    }
 }
 
 void WebPage::reportStopped() noexcept {
@@ -215,23 +237,139 @@ void WebPage::reportFrame(core::Engine& engine) {
     haylen_js_stats(getFrameStatistics(engine).dump().c_str());
 }
 
+// A frame that took the changes of the requests answers them, with the report of hot reload when the changes did anything. Changes that touched no file the app loaded answer with no report.
+void WebPage::finishFrame() {
+    const DevelopmentSession* session = Player::getDevelopmentSession();
+    if (pendingApplies.empty() || (session != nullptr && session->hasChanges())) {
+        frameReports.clear();
+        return;
+    }
+
+    const core::Json report = frameReports.empty() ? core::Json() : frameReports.back();
+    frameReports.clear();
+    for (const PendingRequest& pending : std::exchange(pendingApplies, {})) {
+        completeRequest(pending.request, true, {{"revision", pending.revision}, {"report", report}});
+    }
+}
+
+void WebPage::completeRequest(double request, bool ok, const core::Json& result) {
+    haylen_js_complete_request(request, ok ? 1 : 0, result.dump().c_str());
+}
+
 const char* WebPage::getLastError() noexcept {
     return lastError.c_str();
 }
 
+int WebPage::getRevision() noexcept {
+    return revision;
+}
+
 void WebPage::requireEditable() {
     if (content::Bootstrap::find() != nullptr) {
-        throw std::runtime_error("The release runtime of the app plays only its protected release, so the page cannot change its files.");
+        throw RequestError("notEditable", "The release runtime of the app plays only its protected release, so the page cannot change its files.");
     }
 }
 
-int WebPage::loadZip(const std::uint8_t* bytes, int size) {
+void WebPage::requirePlaying() {
+    if (!Player::isPlaying()) {
+        throw RequestError("notRunning", "No app plays, so there is nothing to apply the changes to. Run the app first.");
+    }
+}
+
+std::string WebPage::readPath(const core::Json& operation, const char* key) {
+    const auto found = operation.find(key);
+    if (found == operation.end() || !found->is_string()) {
+        throw RequestError("invalidRequest", std::string("An edit needs the path \"") + key + "\" as a string.");
+    }
+    try {
+        return io::Path::normalize(found->get<std::string>());
+    } catch (const std::invalid_argument& error) {
+        throw RequestError("invalidPath", error.what());
+    }
+}
+
+// An edit is `{op: "write", path, bytes}` with the index of its buffer, `{op: "remove", path}` or `{op: "rename", from, to}`.
+std::vector<WebPage::Edit> WebPage::readEdits(const char* operations, std::span<const std::vector<std::byte>> contents) {
+    const core::Json list = core::Json::parse(operations, nullptr, false);
+    if (!list.is_array()) {
+        throw RequestError("invalidRequest", "The edits of a batch are a list of operations.");
+    }
+
+    std::vector<Edit> edits;
+    edits.reserve(list.size());
+    for (const core::Json& operation : list) {
+        const auto op = operation.is_object() ? operation.find("op") : operation.end();
+        const std::string name = op != operation.end() && op->is_string() ? op->get<std::string>() : std::string();
+        const auto kind = std::ranges::find(kEditNames, name);
+        if (kind == kEditNames.end()) {
+            throw RequestError("invalidRequest", "An edit is a \"write\", a \"remove\" or a \"rename\", not \"" + name + "\".");
+        }
+
+        Edit edit{.kind = static_cast<Edit::Kind>(kind - kEditNames.begin())};
+        if (edit.kind == Edit::Kind::Rename) {
+            edit.path = readPath(operation, "from");
+            edit.target = readPath(operation, "to");
+        } else {
+            edit.path = readPath(operation, "path");
+        }
+        if (edit.kind == Edit::Kind::Write) {
+            const auto buffer = operation.find("bytes");
+            if (buffer == operation.end() || !buffer->is_number_unsigned() || buffer->get<std::size_t>() >= contents.size()) {
+                throw RequestError("invalidRequest", "The write of \"" + edit.path + "\" names no buffer of the batch.");
+            }
+            const std::vector<std::byte>& content = contents[buffer->get<std::size_t>()];
+            const auto* first = reinterpret_cast<const std::uint8_t*>(content.data());
+            edit.bytes.assign(first, first + content.size());
+        }
+        edits.push_back(std::move(edit));
+    }
+    return edits;
+}
+
+// The batch plays its edits in order against what the package holds, so a remove or a rename that finds no file fails the whole batch before it changed anything.
+void WebPage::checkEdits(const std::vector<Edit>& edits) {
+    const io::OverlayPackage& overlay = Player::getOverlay();
+    std::map<std::string, bool, std::less<>> present;
+    for (const Edit& edit : edits) {
+        if (edit.kind == Edit::Kind::Write) {
+            present[edit.path] = true;
+            continue;
+        }
+
+        const auto known = present.find(edit.path);
+        const bool exists = known != present.end() ? known->second : overlay.exists(edit.path);
+        if (!exists) {
+            throw RequestError("missingFile", "The package holds no file \"" + edit.path + "\" to " + (edit.kind == Edit::Kind::Remove ? "remove." : "rename."));
+        }
+        present[edit.path] = false;
+        if (edit.kind == Edit::Kind::Rename) {
+            present[edit.target] = true;
+        }
+    }
+}
+
+int WebPage::edit(const char* operations, const std::uint32_t* buffers, int count) {
     // clang-format off
     return answer([&] {
         requireEditable();
-        std::vector<std::uint8_t> archive(bytes, bytes + size);
-        Player::restart([&archive] { return io::Package::openZip(std::move(archive), "app.zip"); });
-        return 1;
+        const std::vector<std::vector<std::byte>> contents = readBuffers(buffers, count);
+        std::vector<Edit> edits = readEdits(operations, contents);
+        checkEdits(edits);
+
+        io::OverlayPackage& overlay = Player::getOverlay();
+        for (Edit& change : edits) {
+            if (change.kind == Edit::Kind::Write) {
+                overlay.setFile(change.path, std::move(change.bytes));
+            } else if (change.kind == Edit::Kind::Remove) {
+                overlay.removeFile(change.path);
+            } else {
+                overlay.setFile(change.target, overlay.read(change.path));
+                overlay.removeFile(change.path);
+                touched.push_back(change.target);
+            }
+            touched.push_back(std::move(change.path));
+        }
+        return ++revision;
     });
     // clang-format on
 }
@@ -243,64 +381,75 @@ int WebPage::clearFiles() {
         requireEditable();
         touched.clear();
         Player::stage(std::make_shared<io::OverlayPackage>(std::make_shared<io::MemoryPackage>("editor")));
-        return 1;
+        return ++revision;
     });
     // clang-format on
 }
 
-int WebPage::setFile(const char* path, const std::uint8_t* bytes, int size) {
+// Without development there is no module graph to reload modules in place, so the app restarts with the edited files, and the request answers at once.
+int WebPage::applyChanges(double request) {
     // clang-format off
-    return answer([&] {
+    return answer([request] {
         requireEditable();
-        std::string entry = io::Path::normalize(path);
-        Player::getOverlay().setFile(entry, std::vector<std::uint8_t>(bytes, bytes + size));
-        touched.push_back(std::move(entry));
-        return 1;
-    });
-    // clang-format on
-}
-
-int WebPage::removeFile(const char* path) {
-    // clang-format off
-    return answer([&] {
-        requireEditable();
-        std::string entry = io::Path::normalize(path);
-        const bool removed = Player::getOverlay().removeFile(entry);
-        touched.push_back(std::move(entry));
-        return removed ? 1 : 0;
-    });
-    // clang-format on
-}
-
-int WebPage::runFiles() {
-    // clang-format off
-    return answer([] {
-        requireEditable();
-        touched.clear();
-        Player::restart();
-        return 1;
-    });
-    // clang-format on
-}
-
-// Without development there is no module graph to reload modules in place, so the app restarts with the edited files.
-int WebPage::applyChanges() {
-    // clang-format off
-    return answer([] {
-        requireEditable();
+        requirePlaying();
         const std::vector<std::string> changed = std::exchange(touched, {});
         if (DevelopmentSession* session = Player::getDevelopmentSession()) {
             session->addChanges(changed);
+            pendingApplies.push_back({.request = request, .revision = revision});
             return 1;
         }
 
         Player::restart();
+        completeRequest(request, true, {{"revision", revision}, {"report", {{"restarted", true}, {"reason", "The page outside development restarts the app with its changes."}}}});
         return 1;
+    });
+    // clang-format on
+}
+
+int WebPage::runFiles(double request) {
+    // clang-format off
+    return answer([request] {
+        requireEditable();
+        touched.clear();
+        pendingRuns.push_back({.request = request, .revision = revision});
+        Player::restart();
+        return 1;
+    });
+    // clang-format on
+}
+
+int WebPage::loadZip(double request, const std::uint8_t* bytes, int size) {
+    // clang-format off
+    return answer([&] {
+        requireEditable();
+        std::vector<std::uint8_t> archive(bytes, bytes + size);
+        touched.clear();
+        pendingRuns.push_back({.request = request, .revision = ++revision});
+        Player::restart([&archive] { return io::Package::openZip(std::move(archive), "app.zip"); });
+        return 1;
+    });
+    // clang-format on
+}
+
+int WebPage::stopApp() {
+    // clang-format off
+    return answer([] {
+        Player::stop();
+        return revision;
+    });
+    // clang-format on
+}
+
+void WebPage::inspect(double request, const char* path) {
+    // clang-format off
+    ConsoleRelay::requestInspection(debug::Inspector::splitPath(path), [request](bool ok, const core::Json& result) {
+        completeRequest(request, ok, result);
     });
     // clang-format on
 }
 
 void WebPage::reportReloaded(const core::Json& report) {
+    frameReports.push_back(report);
     haylen_js_reloaded(report.dump().c_str());
 }
 
@@ -366,7 +515,7 @@ void WebPage::resolve(double call, bool ok, const char* json, const std::uint32_
 }
 
 void WebPage::runConsoleLine(double id, const char* line) {
-    ConsoleRelay::submit(line, [id](const debug::Console::Result& result) { haylen_js_console_result(id, result.ok ? 1 : 0, result.output.c_str()); });
+    ConsoleRelay::submit(line, [id](const debug::Console::Result& result) { completeRequest(id, true, {{"ok", result.ok}, {"output", result.output}}); });
 }
 
 void WebPage::emit(const char* event, const char* json, const std::uint32_t* buffers, int count, int flags) {
@@ -515,36 +664,44 @@ EMSCRIPTEN_KEEPALIVE void haylen_web_uncover_app() {
     haylen::platform::WebEntry::guard("haylen_web_uncover_app", [&] { haylen::platform::NativeHost::getNativeViews().uncoverApp(); });
 }
 
-EMSCRIPTEN_KEEPALIVE int haylen_web_load_zip(const std::uint8_t* bytes, int size) {
-    return haylen::platform::WebPage::loadZip(bytes, size);
+EMSCRIPTEN_KEEPALIVE int haylen_web_revision() {
+    return haylen::platform::WebPage::getRevision();
+}
+
+EMSCRIPTEN_KEEPALIVE int haylen_web_edit(const char* operations, const std::uint32_t* buffers, int count) {
+    return haylen::platform::WebPage::edit(operations, buffers, count);
 }
 
 EMSCRIPTEN_KEEPALIVE int haylen_web_clear_files() {
     return haylen::platform::WebPage::clearFiles();
 }
 
-EMSCRIPTEN_KEEPALIVE int haylen_web_set_file(const char* path, const std::uint8_t* bytes, int size) {
-    return haylen::platform::WebPage::setFile(path, bytes, size);
+EMSCRIPTEN_KEEPALIVE int haylen_web_apply_changes(double request) {
+    return haylen::platform::WebPage::applyChanges(request);
 }
 
-EMSCRIPTEN_KEEPALIVE int haylen_web_remove_file(const char* path) {
-    return haylen::platform::WebPage::removeFile(path);
+EMSCRIPTEN_KEEPALIVE int haylen_web_run_files(double request) {
+    return haylen::platform::WebPage::runFiles(request);
 }
 
-EMSCRIPTEN_KEEPALIVE int haylen_web_run_files() {
-    return haylen::platform::WebPage::runFiles();
+EMSCRIPTEN_KEEPALIVE int haylen_web_load_zip(double request, const std::uint8_t* bytes, int size) {
+    return haylen::platform::WebPage::loadZip(request, bytes, size);
+}
+
+EMSCRIPTEN_KEEPALIVE int haylen_web_stop() {
+    return haylen::platform::WebPage::stopApp();
+}
+
+EMSCRIPTEN_KEEPALIVE void haylen_web_dispose() {
+    haylen::platform::WebEntry::guard("haylen_web_dispose", [&] { haylen::platform::Player::end(); });
+}
+
+EMSCRIPTEN_KEEPALIVE void haylen_web_inspect(double request, const char* path) {
+    haylen::platform::WebEntry::guard("haylen_web_inspect", [&] { haylen::platform::WebPage::inspect(request, path); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_console(double id, const char* line) {
     haylen::platform::WebEntry::guard("haylen_web_console", [&] { haylen::platform::WebPage::runConsoleLine(id, line); });
-}
-
-EMSCRIPTEN_KEEPALIVE void haylen_web_restart() {
-    haylen::platform::WebEntry::guard("haylen_web_restart", [&] { haylen::platform::Player::restart(); });
-}
-
-EMSCRIPTEN_KEEPALIVE void haylen_web_stop() {
-    haylen::platform::WebEntry::guard("haylen_web_stop", [&] { haylen::platform::Player::stop(); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_set_paused(int paused) {
@@ -553,10 +710,6 @@ EMSCRIPTEN_KEEPALIVE void haylen_web_set_paused(int paused) {
 
 EMSCRIPTEN_KEEPALIVE int haylen_web_paused() {
     return haylen::platform::Player::isPaused() ? 1 : 0;
-}
-
-EMSCRIPTEN_KEEPALIVE int haylen_web_apply_changes() {
-    return haylen::platform::WebPage::applyChanges();
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_visibility(int visible) {

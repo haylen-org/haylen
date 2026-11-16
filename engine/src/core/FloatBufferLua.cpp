@@ -2,6 +2,7 @@
 
 #include <lua.hpp>
 
+#include <cstdint>
 #include <memory>
 #include <span>
 
@@ -112,6 +113,9 @@ int FloatBufferLua::fill(lua_State* L) {
 int FloatBufferLua::create(lua_State* L) {
     const lua_Integer size = luaL_checkinteger(L, 1);
     luaL_argcheck(L, size >= 0, 1, "the size cannot be negative");
+    if (static_cast<std::uint64_t>(size) > FloatBuffer::kMaxSize) {
+        return luaL_error(L, "A float buffer holds at most %d floats.", static_cast<int>(FloatBuffer::kMaxSize));
+    }
     lua::Userdata::emplace<FloatBuffer>(L, std::make_shared<FloatBuffer>(static_cast<std::size_t>(size), lua::Converter<float>::readOr(L, 2, 0.0)));
     return 1;
 }

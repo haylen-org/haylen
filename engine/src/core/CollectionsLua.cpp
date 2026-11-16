@@ -239,7 +239,11 @@ int CollectionsLua::poolCapacity(lua_State* L) {
 }
 
 int CollectionsLua::newRingBuffer(lua_State* L) {
-    lua::Userdata::emplace<ValueBuffer>(L, lua::Stack::read<std::size_t>(L, 1));
+    const auto capacity = lua::Stack::read<std::size_t>(L, 1);
+    if (capacity > kMaxRingCapacity) {
+        return luaL_error(L, "A ring buffer holds at most %d values.", static_cast<int>(kMaxRingCapacity));
+    }
+    lua::Userdata::emplace<ValueBuffer>(L, capacity);
     return 1;
 }
 

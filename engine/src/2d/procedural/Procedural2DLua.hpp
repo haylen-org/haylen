@@ -121,6 +121,7 @@ class Procedural2DLua final {
     static int delaunayFindNearest(lua_State* L);
     static int voronoi(lua_State* L);
     static int voronoiAsync(lua_State* L);
+    [[nodiscard]] static int readIterations(lua_State* L, int index);
     static int relax(lua_State* L);
     static int relaxAsync(lua_State* L);
     static int open(lua_State* L);

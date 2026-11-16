@@ -237,7 +237,7 @@ Node Nodes2DLua::addNode(lua_State* L, NodeTree& tree, const Node& parent, int p
     if (lua_getfield(L, table, "children") != LUA_TNIL) {
         luaL_checktype(L, -1, LUA_TTABLE);
         const int children = lua_gettop(L);
-        const auto count = static_cast<lua_Integer>(luaL_len(L, children));
+        const auto count = static_cast<lua_Integer>(lua_rawlen(L, children));
         for (lua_Integer child = 1; child <= count; ++child) {
             lua_rawgeti(L, children, child);
             (void)addNode(L, tree, node, -1);
@@ -251,7 +251,7 @@ Node Nodes2DLua::addNode(lua_State* L, NodeTree& tree, const Node& parent, int p
 
 std::vector<Node> Nodes2DLua::readNodes(lua_State* L, int index) {
     luaL_checktype(L, index, LUA_TTABLE);
-    const auto count = static_cast<std::size_t>(luaL_len(L, index));
+    const auto count = lua_rawlen(L, index);
     std::vector<Node> nodes;
     nodes.reserve(count);
     for (std::size_t place = 1; place <= count; ++place) {

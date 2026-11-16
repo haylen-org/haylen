@@ -48,8 +48,12 @@ ModuleReloader::Result ModuleReloader::reload(const std::string& file) {
 
     const int top = lua_gettop(state);
     const std::string chunkName = "@" + file;
-    if (luaL_loadbufferx(state, source.data(), source.size(), chunkName.c_str(), "t") != LUA_OK) {
+    const int loaded = luaL_loadbufferx(state, source.data(), source.size(), chunkName.c_str(), "t");
+    if (loaded != LUA_OK) {
         Error error(lua_tostring(state, -1));
+        if (loaded == LUA_ERRSYNTAX) {
+            error.setCode(Error::Code::Syntax);
+        }
         lua_settop(state, top);
         return {.status = Status::Failed, .error = std::move(error)};
     }

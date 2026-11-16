@@ -13,6 +13,7 @@ namespace haylen::physics2d {
 // Breaks polygons and bodies into pieces along Voronoi cells, such as a crate hit by a rocket or glass hit by a stone.
 class Fracture final {
   public:
+    static constexpr int kMaxPieces = 1024;
     // The cells grow around random points inside the shape, which gather around the impact point when there is one. Pieces smaller than `minimumArea` are dropped.
     struct Options {
         int pieces = 8;

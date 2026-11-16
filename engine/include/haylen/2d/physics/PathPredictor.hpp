@@ -14,6 +14,7 @@ class World;
 // Predicts the flight of a thrown body the way the solver of the world integrates it, sub-step by sub-step with gravity, gravity scale and linear damping, and sweeps it through the world to the first shape it would hit, which draws the aim of a slingshot that matches the real throw.
 class PathPredictor final {
   public:
+    static constexpr int kMaxSteps = 65536;
     // The step is the time of one world step, and the path keeps one point per step. The radius sweeps a circle, and 0 sweeps a ray.
     struct Options {
         float step = 1.0F / 60.0F;

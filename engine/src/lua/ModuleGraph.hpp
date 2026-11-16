@@ -23,6 +23,9 @@ class ModuleGraph final {
         // The package paths of the modules that this one required, at its top level or later.
         std::set<std::string> dependencies;
         bool restartOnChange = false;
+
+        // Whether the last reload of the file failed, so the code that runs is older than the file until the file holds that code again or a reload applies.
+        bool failed = false;
     };
 
     // Replaces `require` in the Lua state, whose modules are then recorded here. The graph must outlive the Lua state.

@@ -35,13 +35,48 @@ void Runtime::reportError(lua_State* L, const std::exception& exception) {
 }
 
 void Runtime::runChunk(lua_State* L, std::string_view source, const std::string& chunkName) {
-    if (luaL_loadbufferx(L, source.data(), source.size(), chunkName.c_str(), "t") != LUA_OK) {
+    const int status = luaL_loadbufferx(L, source.data(), source.size(), chunkName.c_str(), "t");
+    if (status != LUA_OK) {
         Error error = readError(L, -1);
         lua_pop(L, 1);
+        if (status == LUA_ERRSYNTAX) {
+            error.setCode(Error::Code::Syntax);
+        }
         throw error;
     }
 
     protectedCall(L, 0, 0);
+}
+
+void Runtime::recordSyntaxError(lua_State* L, int index) {
+    const int message = lua_absindex(L, index);
+    if (lua_getfield(L, LUA_REGISTRYINDEX, kSyntaxErrorsKey) != LUA_TTABLE || luaL_len(L, -1) >= kMaxSyntaxErrors) {
+        lua_pop(L, 1);
+        lua_newtable(L);
+        lua_pushvalue(L, -1);
+        lua_setfield(L, LUA_REGISTRYINDEX, kSyntaxErrorsKey);
+    }
+    lua_pushvalue(L, message);
+    lua_rawseti(L, -2, luaL_len(L, -2) + 1);
+    lua_pushvalue(L, message);
+    lua_pushboolean(L, 1);
+    lua_rawset(L, -3);
+    lua_pop(L, 1);
+}
+
+bool Runtime::isSyntaxError(lua_State* L, int index) {
+    if (lua_type(L, index) != LUA_TSTRING) {
+        return false;
+    }
+    const int message = lua_absindex(L, index);
+    if (lua_getfield(L, LUA_REGISTRYINDEX, kSyntaxErrorsKey) != LUA_TTABLE) {
+        lua_pop(L, 1);
+        return false;
+    }
+    lua_pushvalue(L, message);
+    const bool recorded = lua_rawget(L, -2) == LUA_TBOOLEAN;
+    lua_pop(L, 2);
+    return recorded;
 }
 
 // Mirrors the stand-alone interpreter: strings and numbers are the message, values with `__tostring` describe themselves and other values name their type.
@@ -153,7 +188,11 @@ Error Runtime::captureError(lua_State* L, const std::string& text, int level) {
 int Runtime::handleMessage(lua_State* L) {
     // clang-format off
     return Binding::guarded(L, [L] {
-        pushError(L, captureError(L, describeValue(L, 1), 1));
+        Error error = captureError(L, describeValue(L, 1), 1);
+        if (isSyntaxError(L, 1)) {
+            error.setCode(Error::Code::Syntax);
+        }
+        pushError(L, std::move(error));
         return 1;
     });
     // clang-format on
@@ -206,6 +245,9 @@ void Runtime::protectedCall(lua_State* L, int arguments, int results) {
     if (status != LUA_OK) {
         Error error = readError(L, -1);
         lua_pop(L, 1);
+        if (status == LUA_ERRMEM) {
+            error.setCode(Error::Code::Memory);
+        }
         throw error;
     }
 }

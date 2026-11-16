@@ -7,6 +7,7 @@ namespace haylen::platform {
 std::mutex& ConsoleRelay::mutex = *new std::mutex;
 std::vector<ConsoleRelay::PendingLine>& ConsoleRelay::pending = *new std::vector<ConsoleRelay::PendingLine>;
 std::vector<ConsoleRelay::PendingListing>& ConsoleRelay::listings = *new std::vector<ConsoleRelay::PendingListing>;
+std::vector<ConsoleRelay::Inspection>& ConsoleRelay::inspections = *new std::vector<ConsoleRelay::Inspection>;
 
 void ConsoleRelay::submit(std::string line, Reply reply, const void* owner) {
     const std::scoped_lock lock(mutex);
@@ -16,6 +17,16 @@ void ConsoleRelay::submit(std::string line, Reply reply, const void* owner) {
 void ConsoleRelay::requestCommands(ListReply reply, const void* owner) {
     const std::scoped_lock lock(mutex);
     listings.push_back({.reply = std::move(reply), .owner = owner});
+}
+
+void ConsoleRelay::requestInspection(std::vector<std::string> path, InspectionReply reply) {
+    const std::scoped_lock lock(mutex);
+    inspections.push_back({.path = std::move(path), .reply = std::move(reply)});
+}
+
+std::vector<ConsoleRelay::Inspection> ConsoleRelay::takeInspections() {
+    const std::scoped_lock lock(mutex);
+    return std::exchange(inspections, {});
 }
 
 void ConsoleRelay::withdraw(const void* owner) {

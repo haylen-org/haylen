@@ -16,6 +16,8 @@ struct SoundData;
 // Shared handle to audio. Decoded sounds keep 32-bit float frames in memory, which suits short effects. Streamed sounds keep only a reader of the encoded file and decode it while they play, which suits long music, so a file of any size plays in bounded memory.
 class Sound final {
   public:
+    // The most samples of a sound decoded whole, 512 MiB of them, so a longer sound streams instead.
+    static constexpr std::size_t kMaxSamples = std::size_t{1} << 27;
     Sound() = default;
     explicit Sound(std::shared_ptr<const SoundData> value) noexcept : data(std::move(value)) {}
 

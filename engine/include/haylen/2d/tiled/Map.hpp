@@ -25,6 +25,8 @@ namespace haylen::tiled {
 // A Tiled map in the current JSON format, with external tilesets and templates already merged in.
 class Map final {
   public:
+    // The most cells of a finite map and of one layer, 64 MiB of tile ids.
+    static constexpr std::int64_t kMaxCells = std::int64_t{1} << 24;
     enum class Orientation : std::uint8_t {
         Orthogonal,
         Isometric,

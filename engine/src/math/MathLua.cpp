@@ -296,7 +296,7 @@ int MathLua::randomWeightedIndex(lua_State* L) {
 int MathLua::randomShuffle(lua_State* L) {
     Random& self = lua::Userdata::check<Random>(L, 1);
     luaL_checktype(L, 2, LUA_TTABLE);
-    const lua_Integer length = luaL_len(L, 2);
+    const lua_Integer length = static_cast<lua_Integer>(lua_rawlen(L, 2));
     for (lua_Integer index = length; index > 1; --index) {
         const auto other = static_cast<lua_Integer>(self.nextU64() % static_cast<std::uint64_t>(index)) + 1;
         lua_rawgeti(L, 2, index);

@@ -1,13 +1,16 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "haylen/core/Json.hpp"
@@ -51,19 +54,25 @@ class WebPage final {
     // The text of the last paste into the page or the last text it wrote, which a paste of the person into a field of the UI reads.
     [[nodiscard]] static std::string getClipboard();
 
-    // Tells the page when an app starts and stops, and passes it frame statistics about once per second.
-    static void reportStarted(const core::AppConfig& config);
+    // Tells the page when an app starts, with the error that stopped its start, or failed to start, and when it stops, and passes it frame statistics about once per second. A start answers the request of the editor that ran the app.
+    static void reportStarted(core::Engine& engine);
+    static void reportStartFailed(const core::Json& error);
     static void reportStopped() noexcept;
     static void reportFrame(core::Engine& engine);
 
-    // Requests of the page. The ones that answer a number answer -1 when they fail, with the reason kept for `getLastError`, which `haylen-runtime.js` throws as a JavaScript error. The page edits the files of the package that plays, under its overlay, and `applyChanges` hands the paths it touched to hot reload in development, or restarts the app otherwise. The runtime of a release, which carries the bootstrap of its app, plays only its protected release and refuses every one of these requests.
+    // Answers the requests of the editor to apply changes once a frame applied them, with what hot reload did in that frame. A frame that runs while changes still wait answers nothing.
+    static void finishFrame();
+
+    // The requests of the editor contract of `haylen-runtime.js`, each with the id of its request where it answers later through `completeRequest`. The ones that answer a number answer -1 when they fail, with the error kept for `getLastError` as the JSON `{code, message}`, which the page rejects the request with. The page edits the files of the package that plays, under its overlay, as atomic batches that each make a new revision of the package, and `applyChanges` hands the paths a batch touched to hot reload in development, or restarts the app otherwise. The runtime of a release, which carries the bootstrap of its app, plays only its protected release and refuses every request that edits or runs a package.
     [[nodiscard]] static const char* getLastError() noexcept;
-    static int loadZip(const std::uint8_t* bytes, int size);
+    [[nodiscard]] static int getRevision() noexcept;
+    static int edit(const char* operations, const std::uint32_t* buffers, int count);
     static int clearFiles();
-    static int setFile(const char* path, const std::uint8_t* bytes, int size);
-    static int removeFile(const char* path);
-    static int runFiles();
-    static int applyChanges();
+    static int applyChanges(double request);
+    static int runFiles(double request);
+    static int loadZip(double request, const std::uint8_t* bytes, int size);
+    static int stopApp();
+    static void inspect(double request, const char* path);
 
     // Passes the report of every batch of changes that hot reload applied to the page.
     static void reportReloaded(const core::Json& report);
@@ -102,10 +111,53 @@ class WebPage final {
   private:
     static constexpr double kStatsInterval = 1000.0;
 
+    // A request of the editor that failed, with the stable code of the contract, such as `invalidPath`, and the sentence for the person.
+    class RequestError final : public std::runtime_error {
+      public:
+        RequestError(std::string errorCode, const std::string& message) : std::runtime_error(message), code(std::move(errorCode)) {}
+
+        [[nodiscard]] const std::string& getCode() const noexcept {
+            return code;
+        }
+
+      private:
+        std::string code;
+    };
+
+    // A request whose answer waits for a frame or a start, with the revision of the package it applies.
+    struct PendingRequest {
+        double request = 0.0;
+        int revision = 0;
+    };
+
+    // One step of a batch of edits, checked before any of them applies.
+    struct Edit {
+        enum class Kind : std::uint8_t {
+            Write,
+            Remove,
+            Rename,
+        };
+
+        Kind kind = Kind::Write;
+        std::string path;
+        std::string target;
+        std::vector<std::uint8_t> bytes;
+    };
+    static constexpr std::array<std::string_view, 3> kEditNames = {"write", "remove", "rename"};
+
+    [[nodiscard]] static std::vector<Edit> readEdits(const char* operations, std::span<const std::vector<std::byte>> contents);
+    [[nodiscard]] static std::string readPath(const core::Json& operation, const char* key);
+    static void checkEdits(const std::vector<Edit>& edits);
+    static void completeRequest(double request, bool ok, const core::Json& result);
+
     [[nodiscard]] static std::vector<std::vector<std::byte>> readBuffers(const std::uint32_t* table, int count);
 
-    // The paths the page changed since its last `applyChanges`.
+    // The paths the page changed since its last `applyChanges`, the revision of the package, the requests that wait for their answer and the reports of hot reload of the frame that runs.
     static std::vector<std::string>& touched;
+    static int revision;
+    static std::vector<PendingRequest>& pendingApplies;
+    static std::vector<PendingRequest>& pendingRuns;
+    static std::vector<core::Json>& frameReports;
 
     using GatedCallback = std::function<void(Permission::Answer answer, std::string text)>;
 
@@ -123,6 +175,7 @@ class WebPage final {
 
     template <typename Body> static int answer(Body&& body);
     static void requireEditable();
+    static void requirePlaying();
 };
 
 } // namespace haylen::platform

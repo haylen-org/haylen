@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <stdexcept>
+#include <string>
 
 #include "haylen/2d/physics/Raycaster.hpp"
 #include "haylen/2d/physics/World.hpp"
@@ -9,8 +10,8 @@
 namespace haylen::physics2d {
 
 PathPredictor::Path PathPredictor::predict(const World& world, math::Vec2 position, math::Vec2 velocity, const Options& options) {
-    if (!(options.step > 0.0F) || options.steps < 1 || !(options.radius >= 0.0F) || !(options.linearDamping >= 0.0F)) {
-        throw std::invalid_argument("A path prediction needs a positive step, at least one step, and a radius and damping of zero or more.");
+    if (!(options.step > 0.0F) || options.steps < 1 || options.steps > kMaxSteps || !(options.radius >= 0.0F) || !(options.linearDamping >= 0.0F)) {
+        throw std::invalid_argument("A path prediction needs a positive step, from 1 to " + std::to_string(kMaxSteps) + " steps, and a radius and damping of zero or more.");
     }
 
     const Raycaster raycaster(world);

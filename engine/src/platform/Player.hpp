@@ -19,11 +19,16 @@
 #include "haylen/core/Application.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/gpu/Device.hpp"
+#include "haylen/lua/Error.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/platform/Event.hpp"
 #include "platform/NativeHost.hpp"
 #include "platform/ReportedState.hpp"
+
+namespace haylen::debug {
+class ExecutionBudget;
+}
 
 namespace haylen::gpu {
 class Device;
@@ -100,8 +105,14 @@ class Player final {
     // Ends the running app and leaves an empty screen until the next restart.
     static void stop();
 
+    // Ends the player of the process and closes its window, such as when the page that hosts the web runtime disposes of it, which no app follows.
+    static void end();
+
     // Ends the running app with a failure that no app can recover from, such as a GPU that keeps no device for it. The reason reaches the log and the web page, and a window of the desktop closes with the exit status 1.
     static void fail(std::string_view reason);
+
+    // Whether an app plays, which a stop or an app without its package ends.
+    [[nodiscard]] static bool isPlaying() noexcept;
 
     // Pauses or resumes the running app. A paused app keeps its last frame on screen, and the engine sees it as suspended until it resumes.
     static void setPaused(bool value);
@@ -128,17 +139,19 @@ class Player final {
     [[nodiscard]] static gpu::Device* getGpuDevice() noexcept;
 
   private:
-    // Stands in for the app when its package cannot be opened, so the window explains the problem instead of closing.
+    // Stands in for the app when its package cannot be opened or its `app.json` is invalid, so the window explains the problem instead of closing.
     class FailedApplication final : public core::Application {
       public:
-        explicit FailedApplication(std::string reason) : message(std::move(reason)) {}
+        explicit FailedApplication(std::string reason) : error(std::move(reason)) {
+            error.setCode(lua::Error::Code::Package);
+        }
 
         void start(core::Engine&) override {
-            throw std::runtime_error(message);
+            throw error;
         }
 
       private:
-        std::string message;
+        lua::Error error;
     };
 
     // Keeps the window alive with an empty screen after the page stops the app.
@@ -175,6 +188,9 @@ class Player final {
 
     [[nodiscard]] static Process& getProcess() noexcept;
     [[nodiscard]] static Player& getCurrent() noexcept;
+
+    // The execution budget of the development session, which times every call of the player into the engine, or null for an app that plays as it ships.
+    [[nodiscard]] debug::ExecutionBudget* getExecutionBudget() const noexcept;
     [[nodiscard]] App load(const std::function<std::shared_ptr<io::Package>()>& open);
     [[nodiscard]] std::vector<gpu::Device::Api> resolveGraphicsApis(std::string_view requested, std::span<const gpu::Device::Api> configured);
     [[nodiscard]] static std::vector<Event> takePostedEvents();
@@ -187,6 +203,7 @@ class Player final {
 #endif
 
     [[nodiscard]] std::shared_ptr<io::Package> withOverlay(std::shared_ptr<io::Package> source) const;
+    void play(double seconds);
     void endSplashScreenWhenDue();
     void launch();
     void leaveFailedStart();

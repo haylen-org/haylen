@@ -509,9 +509,25 @@ Some failures go to the code that asked for the work instead of the error screen
 
 Warnings of Lua, such as an error in a `__gc` metamethod or a call of `warn`, go to the log as warnings that start with `Lua warning:`. The calls `warn('@off')` and `warn('@on')` turn them off and on.
 
+### The execution budget
+
+Code that never ends, such as a loop without an exit, would hold the frame thread forever, and a browser page or a window would freeze with it. So an app in development runs its code under an execution budget: each time the platform enters the engine, such as for one frame, the start of the app, an event or the stop of the app, the code of the app may run for `debug.executionBudget` seconds of `app.json`, 5 by default. That covers everything the app runs in that call: the start of the app and `source/main.lua`, the modules it requires, scene hooks, `update`, `fixedUpdate` and `render`, timers, tweens, listeners, the callbacks of promises and tasks, hot reload and the code that runs while the app stops.
+
+When the time runs out, the engine stops the app for good. The error screen shows the error with the code `executionBudget`, the file and line that ran when the time ran out, its stack, and the step of the engine it ran in, such as `update`, `render` or `reload`, which the error carries as `callback`. Every instruction of the app raises that error again from then on. So a `pcall`, an `xpcall` or a coroutine of the app catches it only to raise it again at its next instruction, the message handler of an `xpcall` never sees it, and the app cannot reset the budget. No fix resumes the app and it cannot go back from the error screen. Saving a file restarts it, and so do `R` and `run` of a web page. The page and every editor also receive the error, as [where the report goes](#where-the-report-goes) describes.
+
+The Lua state of an app in development has a memory budget too, `debug.memoryBudget` megabytes of `app.json`, 1024 by default. Once the state holds that much and a full collection of its garbage cannot make room, the allocation fails and the engine stops the app the same way, with the code `memory`.
+
+```json
+{
+    "debug": {"executionBudget": 2, "memoryBudget": 256}
+}
+```
+
+The budget counts with a hook of Lua on every coroutine, which reads the clock every few hundred instructions. So code in development runs a little slower than in a shipped app, which has no budget and no hook. The budget belongs to the engine, so `debug.sethook` raises an error in development, where the budget and the [debugger](../tools/debugger.md) hold the hooks of Lua. A native function that runs long finishes before the budget can stop it, and [native work](#native-work-and-its-bounds) explains how the engine bounds it. Lua turns every hook off while a `__gc` metamethod runs, so a finalizer that never ends escapes the budget and holds the frame thread, and finalizers of an app stay short. While the debugger halts the app, the budget waits, and the code gets its whole time again once the app goes on.
+
 ### Going on after an error
 
-The runtime stays alive on the error screen. In development, saving the fix resumes or restarts the app, as [hot reload](#hot-reload) describes. A browser editor restarts it with `Module.haylen.restart()` or `Module.haylen.run()`.
+The runtime stays alive on the error screen. In development, saving the fix resumes or restarts the app, as [hot reload](#hot-reload) describes. A browser editor runs it again with the request `run` of its [editor contract](../tools/build.md#the-editor-contract).
 
 An app that can return to a safe screen after an error calls [`haylen.setRecoverable(true)`](../lua-api/haylen.md#haylensetrecoverablerecoverable). Its error screen then offers `Back to the app` next to copying and restarting, also with Escape, the east button and the back button of the platform, and the focus starts on it. Going back publishes `appRecovered` with the error at the start of the next frame, before the app updates again. So its listener first leaves the scene that failed, and the app then runs on with the same Lua state. Every error also publishes `appError` at the end of its frame. An app that runs on by itself answers it with `haylen.recover()`, the way the test project of the samples runs every test and lists the ones that failed.
 
@@ -538,7 +554,7 @@ The player checks `app.json`, `source/`, `content/` and the `plugin.json` and `s
 
 ### What a save does
 
-- **A Lua module that the app loaded** reloads in place. Its functions run the new code everywhere, while the state of the app stays, as [`haylen.hotReload`](../lua-api/hotReload.md#how-a-module-reloads) describes. A module that fails to compile or to run changes nothing and shows its error, while the other changed modules of the save still reload. Saving the fix reloads it. A module keeps the text it loaded, so a save while its first load runs reloads it like any later save.
+- **A Lua module that the app loaded** reloads in place. Its functions run the new code everywhere, while the state of the app stays, as [`haylen.hotReload`](../lua-api/hotReload.md#how-a-module-reloads) describes. A module that fails to compile or to run changes nothing and shows its error, while the other changed modules of the save still reload. Saving the fix reloads it. Saving the text that the module runs, such as an undo of the broken save, needs no reload, so the module counts as restored and the error screen goes away as it does after a fix. A module keeps the text it loaded, so a save while its first load runs reloads it like any later save.
 - **A file under `content/`** reloads the assets read from it without a restart. Textures, shaders and JSON change in place, so sprites that already use a texture show the new pixels. Other asset types leave the cache, so the next load reads the new file, and every live asset that went stale gets the event `assetChanged`, as [`haylen.assets`](../lua-api/assets.md#hot-reload-of-assets) describes. The texts of a folder that `localization.loadFolder` loaded and the themes that `ui.loadTheme` loaded rebuild from their changed files. A changed font file restarts the app.
 - **A Lua file that no module loaded yet** changes nothing, because the next `require` reads it. While an error shows, such as one of a module whose first load failed, saving the file resumes the app, so the code that failed requires it again, or restarts the app when the error cannot resume.
 - **A change that cannot apply in place** restarts the app with a fresh Lua state, and `source/main.lua` runs again. The log names the reason. These changes restart the app: a changed `app.json`, `source/main.lua` or `plugin.json`, a removed module, a module that now returns another kind of value, a module that returns another value that is neither a table nor a function, such as a string, a module whose functions capture two different variables with the same name, a module that called `hotReload.restartOnChange()`, a save that touches more than 32 loaded modules, and every changed module while `debug.reload` of `app.json` is `"restart"`. A restart works even from an app whose `app.json` failed to load, so fixing the file restarts it.
@@ -566,7 +582,35 @@ State that must survive a restart belongs in [`haylen.storage`](../lua-api/stora
 
 ### Devices, browsers and editors
 
-Zip packages and shipped apps are never watched. The command `haylen run <app> --platform web` serves the page in development, connected to a development server that pushes every file saved in the app to the open pages, which reload it the same way. The command `run` with `--platform android`, `ios-simulator`, `tvos-simulator`, `ios`, `tvos`, `macos` or `catalyst` launches the app connected to such a server, so the emulator, the simulators and the devices reload every save too, as the [distribution guide](../tools/distribution.md#development-mode) describes. A browser editor turns development on with `Module.haylen.development`, sends changed files with `Module.haylen.setFile` and applies them with `Module.haylen.applyChanges()`, as the [build guide](../tools/build.md#runtime-api) describes.
+Zip packages and shipped apps are never watched. The command `haylen run <app> --platform web` serves the page in development, connected to a development server that pushes every file saved in the app to the open pages, which reload it the same way. The command `run` with `--platform android`, `ios-simulator`, `tvos-simulator`, `ios`, `tvos`, `macos` or `catalyst` launches the app connected to such a server, so the emulator, the simulators and the devices reload every save too, as the [distribution guide](../tools/distribution.md#development-mode) describes. A browser editor turns development on with `Module.haylen.development`, sends changed files with the request `edit` of its editor contract and applies them with `applyChanges`, as the [build guide](../tools/build.md#the-editor-contract) describes.
+
+## Native work and its bounds
+
+The [execution budget](#the-execution-budget) stops Lua code, but it cannot stop a native function of the engine while it runs, and the memory budget counts only the memory of the Lua state. So every native function that does work or takes memory in proportion to a number that a script or an asset gives checks that number first, and raises an error that names the limit when the number is too large. A malformed asset fails the same way, before it allocates. These are the limits:
+
+| Kind of work | Limit |
+| --- | --- |
+| Grids of cells, navigation grids, influence maps and terrains | 16777216 cells |
+| Tiled maps, their layers and the maps that `tiled.newMap` builds | 16777216 cells |
+| Images, textures and their decoders | 16384 pixels on each side |
+| Sounds decoded whole | 134217728 samples, so a longer sound plays as a stream |
+| Grid animations of a texture | 65536 frames |
+| Voronoi relaxation | 1000 iterations |
+| Caves of the cellular automaton | 1000 steps |
+| Drunkard walks | 4096 walkers and 67108864 steps |
+| Dungeons | 1048576 room attempts and 4096 rooms |
+| Wave function collapse | 4096 tiles, 4194304 cells times tiles and 1000 attempts |
+| Physics worlds | 64 sub-steps |
+| Path predictions | 65536 steps |
+| Ropes and fractures | 4096 segments and 1024 pieces |
+| Fluids | 1048576 particles and 64 iterations |
+| Ray batches, ray fans and bouncing rays | 1048576 rays, 65536 rays and 1024 bounces |
+| Bresenham lines and circles | 1048576 cells and a radius of 65536 cells |
+| Float buffers, ring buffers, union-finds and shuffle bags | 67108864 floats, 16777216 values, elements and items |
+| Chains | 4096 segments |
+| Paged collections | 16777216 items |
+
+Lists that a function reads from a table take the length of the table as Lua stores it, never a `__len` metamethod, so a table cannot claim more items than it holds. Noise grids, particles, paths, strokes, meshes, node trees, GUIs and the other systems keep the limits their guides and reference pages describe.
 
 ## Performance
 

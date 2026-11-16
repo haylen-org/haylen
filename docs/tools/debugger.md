@@ -128,7 +128,7 @@ A web page cannot halt, because the browser runs the app on the one thread that 
 
 ## Cost
 
-An app without breakpoints, log points, steps or the error filter runs without any hook, exactly as fast as without an editor. While any of them is set, every coroutine reports its calls and returns, and only the functions whose lines hold a breakpoint report their lines, so code far from the breakpoints runs close to full speed. The breakpoints are indexed by file and line, so the check of a line costs one lookup. Turning the error filter off in the editor leaves an app with no breakpoints without hooks again.
+An app without breakpoints, log points, steps or the error filter runs with only the count hook of the [execution budget](../core/lua.md#the-execution-budget), as without an editor. While any of them is set, every coroutine reports its calls and returns, and only the functions whose lines hold a breakpoint report their lines, so code far from the breakpoints runs close to full speed. The breakpoints are indexed by file and line, so the check of a line costs one lookup. Turning the error filter off in the editor leaves an app with no breakpoints with that count hook alone again. The hooks of the debugger carry the count of the budget, since Lua keeps one hook for each coroutine, and the budget waits while the app halts.
 
 ## Release builds
 

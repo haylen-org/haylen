@@ -1,12 +1,18 @@
 #include "haylen/2d/spatial/Bresenham.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <cstdlib>
 #include <stdexcept>
+#include <string>
 
 namespace haylen::spatial2d {
 
 void Bresenham::line(Cell from, Cell to, std::vector<Cell>& cells) {
+    const std::int64_t longest = std::max(std::abs(static_cast<std::int64_t>(to.x) - from.x), std::abs(static_cast<std::int64_t>(to.y) - from.y));
+    if (longest + 1 > kMaxLineCells) {
+        throw std::invalid_argument("A line covers at most " + std::to_string(kMaxLineCells) + " cells.");
+    }
     cells.clear();
     const int spanX = std::abs(to.x - from.x);
     const int spanY = -std::abs(to.y - from.y);
@@ -35,8 +41,8 @@ void Bresenham::line(Cell from, Cell to, std::vector<Cell>& cells) {
 }
 
 void Bresenham::circle(Cell center, int radius, std::vector<Cell>& cells) {
-    if (radius < 0) {
-        throw std::invalid_argument("A circle needs a radius of zero or more cells.");
+    if (radius < 0 || radius > kMaxRadius) {
+        throw std::invalid_argument("A circle needs a radius from 0 to " + std::to_string(kMaxRadius) + " cells.");
     }
 
     cells.clear();

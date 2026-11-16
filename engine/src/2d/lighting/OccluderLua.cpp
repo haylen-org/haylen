@@ -27,7 +27,7 @@ void OccluderLua::readPoints(lua_State* L, int index, std::vector<math::Vec2>& p
     }
 
     // The list may sit in a field of a table, so the error names the list instead of an argument.
-    const auto count = static_cast<std::size_t>(luaL_len(L, table));
+    const auto count = lua_rawlen(L, table);
     points.resize(count / 2);
     bool numbers = count % 2 == 0;
     for (std::size_t point = 0; numbers && point < points.size(); ++point) {

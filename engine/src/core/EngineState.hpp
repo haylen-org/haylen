@@ -6,6 +6,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -130,6 +131,7 @@ struct EngineState {
     std::unique_ptr<ErrorScreen> errorScreen;
     bool recoverable = false;
     bool recovering = false;
+    bool cancelled = false;
     Engine::Phase phase = Engine::Phase::Frame;
 
     // Whether an error left a lifecycle scope since the frame began, which makes the error the engine reports next a lifecycle error.
@@ -160,6 +162,12 @@ struct EngineState {
     // The holds that keep the app from starting, and whether the app waits for them to end.
     std::vector<std::weak_ptr<void>> startHolds;
     bool applicationPending = false;
+
+    // Whether the app starts, from the start of the engine until `source/main.lua` and the steps it began finished, which the reports of its errors tell.
+    bool starting = false;
+
+    // The phase of the error that shows, as its record names it.
+    std::string_view errorPhase;
 
     bool running = true;
     std::uint8_t exitStatus = 0;

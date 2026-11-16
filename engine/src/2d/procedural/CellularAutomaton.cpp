@@ -1,5 +1,8 @@
 #include "haylen/2d/procedural/CellularAutomaton.hpp"
 
+#include <stdexcept>
+#include <string>
+
 #include "haylen/math/Random.hpp"
 
 namespace haylen::procedural2d {
@@ -41,6 +44,9 @@ spatial2d::CellGrid CellularAutomaton::step(const spatial2d::CellGrid& grid, con
 }
 
 spatial2d::CellGrid CellularAutomaton::generate(const Options& options, math::Random& random) {
+    if (options.steps < 0 || options.steps > kMaxSteps) {
+        throw std::invalid_argument("A cellular automaton takes from 0 to " + std::to_string(kMaxSteps) + " steps.");
+    }
     spatial2d::CellGrid grid(options.width, options.height, kFloor);
     for (int y = 0; y < options.height; ++y) {
         for (int x = 0; x < options.width; ++x) {

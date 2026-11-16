@@ -31,7 +31,7 @@ void MeshLua::readVertex(lua_State* L, int index, MeshVertex& vertex) {
 
 void MeshLua::readVertices(lua_State* L, int index, std::vector<MeshVertex>& vertices) {
     luaL_checktype(L, index, LUA_TTABLE);
-    vertices.assign(static_cast<std::size_t>(luaL_len(L, index)), MeshVertex{});
+    vertices.assign(lua_rawlen(L, index), MeshVertex{});
     for (std::size_t place = 0; place < vertices.size(); ++place) {
         lua_rawgeti(L, index, static_cast<lua_Integer>(place + 1));
         readVertex(L, lua_gettop(L), vertices[place]);

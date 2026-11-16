@@ -10,6 +10,11 @@ namespace haylen::procedural2d {
 // The Voronoi diagram of a point set inside a rectangle, built from the Delaunay triangulation of the points. Cell `i` holds every position closer to point `i` than to any other point, as a convex outline wound with a positive signed area, so `Delaunay::findNearest` finds the cell that holds a position. Duplicate points get empty cells.
 class Voronoi final {
   public:
+    static constexpr int kMaxRelaxIterations = 1000;
+
+    // Throws `std::invalid_argument` for a count of relaxation iterations outside 0 to `kMaxRelaxIterations`.
+    static void requireIterations(int iterations);
+
     // Throws `std::invalid_argument` when a point or the area is not finite.
     Voronoi(std::vector<math::Vec2> sites, const math::Rect& area);
 

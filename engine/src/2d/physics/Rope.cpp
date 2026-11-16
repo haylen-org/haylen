@@ -2,14 +2,15 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <string>
 
 #include "haylen/2d/physics/World.hpp"
 
 namespace haylen::physics2d {
 
 Rope Rope::create(World& world, const Options& options) {
-    if (options.segments < 1 || (options.end - options.start).isZero() || options.thickness <= 0.0F) {
-        throw std::invalid_argument("A rope needs at least one segment, two distinct ends and a positive thickness.");
+    if (options.segments < 1 || options.segments > kMaxSegments || (options.end - options.start).isZero() || options.thickness <= 0.0F) {
+        throw std::invalid_argument("A rope needs from 1 to " + std::to_string(kMaxSegments) + " segments, two distinct ends and a positive thickness.");
     }
 
     // A rope that fails halfway, such as on a bad material or an end body of another world, leaves no bodies behind.

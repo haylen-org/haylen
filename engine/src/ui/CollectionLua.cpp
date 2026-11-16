@@ -335,8 +335,8 @@ int CollectionLua::setPages(lua_State* L) {
     lua::Table::readField(L, 2, "count", count);
     lua::Table::readField(L, 2, "pageSize", pageSize);
     lua::Table::readField(L, 2, "maxPages", maxPages);
-    if (count < 0) {
-        return luaL_error(L, "The option \"count\" must be at least 0.");
+    if (count < 0 || count > LuaPageSource::kMaxCount) {
+        return luaL_error(L, "The option \"count\" must be from 0 to %d.", static_cast<int>(LuaPageSource::kMaxCount));
     }
 
     if (pageSize < 1 || maxPages < 1) {

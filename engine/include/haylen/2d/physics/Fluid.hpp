@@ -16,6 +16,9 @@ class World;
 // A liquid of particles kept in flat arrays outside Box2D and simulated after every step of its world. The particles keep the density of particles half a smoothing radius apart with the position based density constraints of particle fluids over a spatial hash, so the liquid barely compresses under its own weight, collide with the shapes of the world through queries along the path of each step, and push the dynamic bodies they hit, so crates float and sink by their density. The passes run in parallel on the job system of the world when it has one. The fluid must go before its world.
 class Fluid final {
   public:
+    // The most particles and solver iterations of one fluid.
+    static constexpr std::size_t kMaxParticles = std::size_t{1} << 20;
+    static constexpr int kMaxIterations = 64;
     // Particles interact within the smoothing radius and collide with shapes at their radius. Each step pushes compressed particles apart in `iterations` passes, where more passes compress the liquid less. Viscosity, from 0 to 1, evens out the speeds of neighbors. The density, in kilograms per square meter of the area of a particle, gives the particles the mass they push bodies with. Friction slows particles that slide along shapes, and restitution bounces them off. Speeds are capped at `maxSpeed` world units per second.
     struct Options {
         float radius = 4.0F;

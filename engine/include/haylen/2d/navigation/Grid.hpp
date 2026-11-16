@@ -14,6 +14,8 @@ namespace haylen::navigation2d {
 // A walkability grid with per-cell costs for path finding, laid out like the maps of Tiled. Cells start walkable with cost 1, and cells outside the grid are blocked. Cells are addressed by column and row like Tiled cells, so the cells of a hexagonal or staggered map are its offset coordinates.
 class Grid final {
   public:
+    // The most cells of a grid.
+    static constexpr std::int64_t kMaxCells = std::int64_t{1} << 24;
     struct Cell {
         int x = 0;
         int y = 0;

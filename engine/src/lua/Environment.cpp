@@ -170,9 +170,13 @@ int Environment::loadModule(lua_State* L, const io::Package& package, const std:
 }
 
 void Environment::runModule(lua_State* L, const io::Package& package, const std::string& path) {
-    if (loadModule(L, package, path) != LUA_OK) {
+    const int status = loadModule(L, package, path);
+    if (status != LUA_OK) {
         Error error = Runtime::readError(L, -1);
         lua_pop(L, 1);
+        if (status == LUA_ERRSYNTAX) {
+            error.setCode(Error::Code::Syntax);
+        }
         throw error;
     }
 
@@ -193,7 +197,11 @@ int Environment::searchPackage(lua_State* L) {
                 continue;
             }
 
-            if (loadModule(L, package, candidate) != LUA_OK) {
+            const int status = loadModule(L, package, candidate);
+            if (status == LUA_ERRSYNTAX) {
+                Runtime::recordSyntaxError(L, -1);
+            }
+            if (status != LUA_OK) {
                 return lua_error(L);
             }
 

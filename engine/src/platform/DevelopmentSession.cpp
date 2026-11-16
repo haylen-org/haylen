@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "debug/Debugger.hpp"
+#include "debug/ExecutionBudget.hpp"
 #include "haylen/core/Log.hpp"
 #include "io/OverlayPackage.hpp"
 #include "platform/DevelopmentConnection.hpp"
@@ -14,7 +15,7 @@
 namespace haylen::platform {
 
 // The debugger talks to its client through the connection, and while it halts the app it pumps the connection itself, since no frame pumps it then.
-DevelopmentSession::DevelopmentSession(Host& host, std::optional<std::filesystem::path> folder, std::string server) {
+DevelopmentSession::DevelopmentSession(Host& host, std::optional<std::filesystem::path> folder, std::string server) : executionBudget(std::make_unique<debug::ExecutionBudget>()) {
     // clang-format off
     debugger = std::make_unique<debug::Debugger>(host, [this](const core::Json& message) {
         if (connection) {
@@ -77,6 +78,11 @@ void DevelopmentSession::addChanges(std::span<const std::string> paths) {
 std::vector<std::string> DevelopmentSession::takeChanges() {
     const std::scoped_lock lock(mutex);
     return std::exchange(pending, {});
+}
+
+bool DevelopmentSession::hasChanges() const {
+    const std::scoped_lock lock(mutex);
+    return !pending.empty();
 }
 
 std::shared_ptr<DevelopmentSession::Scan> DevelopmentSession::beginScan() {

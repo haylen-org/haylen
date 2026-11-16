@@ -6,6 +6,7 @@
 #include <array>
 #include <cstddef>
 #include <stdexcept>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -29,6 +30,9 @@ Sound Sound::decode(std::span<const std::uint8_t> encoded) {
     for (;;) {
         ma_uint64 read = 0;
         const ma_result result = ma_decoder_read_pcm_frames(&decoder.get(), chunk.data(), framesPerChunk, &read);
+        if (decoded->samples.size() + read * decoded->channels > kMaxSamples) {
+            throw std::runtime_error("The audio decodes to more than " + std::to_string(kMaxSamples) + " samples, so it plays only as a stream.");
+        }
         decoded->samples.insert(decoded->samples.end(), chunk.begin(), chunk.begin() + static_cast<std::ptrdiff_t>(read * decoded->channels));
 
         if (result != MA_SUCCESS || read < framesPerChunk) {

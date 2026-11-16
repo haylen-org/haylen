@@ -4,7 +4,6 @@
 #include <array>
 #include <cmath>
 #include <cstdlib>
-#include <limits>
 #include <stdexcept>
 #include <string>
 
@@ -33,8 +32,8 @@ std::string_view Grid::heuristicName(Heuristic value) noexcept {
 }
 
 Grid::Grid(int columns, int rows, const Layout& value) : width(columns), height(rows), layout(value) {
-    if (columns <= 0 || rows <= 0 || static_cast<std::int64_t>(columns) * rows > std::numeric_limits<std::int32_t>::max()) {
-        throw std::invalid_argument("A navigation grid needs a positive size that fits in 32-bit cell indices.");
+    if (columns <= 0 || rows <= 0 || static_cast<std::int64_t>(columns) * rows > kMaxCells) {
+        throw std::invalid_argument("A navigation grid needs a positive size of at most " + std::to_string(kMaxCells) + " cells.");
     }
 
     const auto count = static_cast<std::size_t>(columns) * static_cast<std::size_t>(rows);

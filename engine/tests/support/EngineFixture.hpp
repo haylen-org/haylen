@@ -19,6 +19,10 @@
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/TemporaryDirectory.hpp"
 
+namespace haylen::debug {
+class ExecutionBudget;
+}
+
 namespace haylen::test {
 
 // A running engine on the headless host with an in-memory package.
@@ -61,6 +65,10 @@ class EngineFixture final {
 
   private:
     void launch(std::unique_ptr<core::Application> application);
+    void stop();
+
+    // The execution budget of the development session, which times every call of the fixture into the engine the way the player does, or null outside development.
+    [[nodiscard]] debug::ExecutionBudget* executionBudget() noexcept;
 
     TemporaryDirectory directory;
     platform::HeadlessHost headlessHost;

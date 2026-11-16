@@ -1264,7 +1264,7 @@ The file `loader.js` runs when the page loads:
 7. Before the app starts, a `Module.preRun` callback holds the start with a run dependency. Meanwhile it calls `load(context)` of every plugin in load order, with the context of `Module.haylen.createPluginContext`, as the [plugin guide](../platform/plugins.md#web) describes. A plugin that fails to import or to load replaces the progress bar with its error, and the app does not start.
 8. `Module.haylen.onSplashEnded` fades the splash out once the runtime ends it, and `Module.haylen.onStarted` tells the page that the app runs. `Module.haylen.onError` writes every error to the console. An error that happens before the app starts replaces the progress bar with the message and the Lua stack trace. Later errors show on the error screen of the runtime.
 
-When `config.json` holds the `development` entry, which only `run --platform web` writes, the loader sets `Module.haylen.development`, and the address of the development server with its token in `Module.haylen.developmentServer`. The [build guide](build.md#page-setup) lists every field that a page sets and the whole [runtime API](build.md#runtime-api), such as `Module.haylen.loadZip`, which replaces the running app later.
+When `config.json` holds the `development` entry, which only `run --platform web` writes, the loader sets `Module.haylen.development`, and the address of the development server with its token in `Module.haylen.developmentServer`. The [build guide](build.md#page-setup) lists every field that a page sets and the whole [runtime API](build.md#runtime-api) with its [editor contract](build.md#the-editor-contract), whose request `loadZip` replaces the running app later.
 
 ### Changing the splash
 

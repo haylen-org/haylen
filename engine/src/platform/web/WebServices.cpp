@@ -83,6 +83,14 @@ EM_JS(void, haylen_js_persist, (), {
     Module.haylen.persist();
 });
 
+EM_JS(void, haylen_js_shutdown, (), {
+    Module.haylen.reportShutdown();
+});
+
+EM_JS(char*, haylen_js_user_data_root, (), {
+    return stringToNewUTF8(Module.haylen.userDataRoot);
+});
+
 EM_JS(int, haylen_js_orientation, (), {
     return Module.haylen.orientation();
 });
@@ -134,7 +142,10 @@ void Services::initialize() {
     std::free(languages);
 }
 
-void Services::shutdown() noexcept {}
+// The page that disposes of the runtime learns that the player ended, so it closes what the browser keeps for it.
+void Services::shutdown() noexcept {
+    haylen_js_shutdown();
+}
 
 // Script errors may quote bytes that are not UTF-8, which reach the page replaced instead of failing the report.
 void Services::reportError(const core::Json& report) {
@@ -159,9 +170,12 @@ std::shared_ptr<io::Package> Services::openBundledPackage() {
     // clang-format on
 }
 
+// The page mounts IndexedDB at the root of the user data, `/persistent` or the folder of its storage namespace, and loads it before the runtime starts.
 std::filesystem::path Services::getUserDataDirectory(std::string_view identifier) {
-    // The page mounts IndexedDB at `/persistent` and loads it before the runtime starts.
-    return std::filesystem::path("/persistent") / std::string(identifier);
+    char* root = haylen_js_user_data_root();
+    std::filesystem::path folder(root);
+    std::free(root);
+    return folder / std::string(identifier);
 }
 
 void Services::persistUserData() {

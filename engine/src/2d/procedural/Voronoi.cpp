@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 #include "haylen/2d/procedural/Delaunay.hpp"
@@ -63,7 +64,14 @@ std::vector<math::Vec2> Voronoi::clip(const std::vector<math::Vec2>& outline, ma
     return result.size() >= 3 ? result : std::vector<math::Vec2>{};
 }
 
+void Voronoi::requireIterations(int iterations) {
+    if (iterations < 0 || iterations > kMaxRelaxIterations) {
+        throw std::invalid_argument("A relaxation takes from 0 to " + std::to_string(kMaxRelaxIterations) + " iterations.");
+    }
+}
+
 std::vector<math::Vec2> Voronoi::relax(std::vector<math::Vec2> sites, const math::Rect& area, int iterations) {
+    requireIterations(iterations);
     for (int iteration = 0; iteration < iterations; ++iteration) {
         const Voronoi diagram(sites, area);
         for (std::size_t index = 0; index < sites.size(); ++index) {

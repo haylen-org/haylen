@@ -370,8 +370,8 @@ TEST_F(MapTest, RejectsBrokenData) {
     // A layer that claims far more cells than its compressed data holds fails without allocating them.
     for (const std::string compression : {"zlib", "zstd"}) {
         map = orthogonalMap();
-        map["layers"][0]["width"] = 46340;
-        map["layers"][0]["height"] = 46340;
+        map["layers"][0]["width"] = 4096;
+        map["layers"][0]["height"] = 4096;
         map["layers"][0]["compression"] = compression;
         map["layers"][0]["data"] = encodeTiles({1, 2, 3}, compression);
         const test::AllocationTracker allocations;

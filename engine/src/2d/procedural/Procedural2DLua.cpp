@@ -1,6 +1,8 @@
 #include "2d/procedural/Procedural2DLua.hpp"
 
+#include <algorithm>
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -385,15 +387,22 @@ int Procedural2DLua::voronoiAsync(lua_State* L) {
     // clang-format on
 }
 
+// A count beyond the range of an int reads as the largest one, so the check of the relaxation refuses it instead of a truncated count.
+int Procedural2DLua::readIterations(lua_State* L, int index) {
+    const lua_Integer iterations = luaL_optinteger(L, index, 1);
+    return static_cast<int>(std::clamp<lua_Integer>(iterations, -1, std::numeric_limits<int>::max()));
+}
+
 int Procedural2DLua::relax(lua_State* L) {
-    lua::Stack::push(L, Voronoi::relax(lua::Stack::read<std::vector<math::Vec2>>(L, 1), lua::Stack::read<math::Rect>(L, 2), static_cast<int>(luaL_optinteger(L, 3, 1))));
+    lua::Stack::push(L, Voronoi::relax(lua::Stack::read<std::vector<math::Vec2>>(L, 1), lua::Stack::read<math::Rect>(L, 2), readIterations(L, 3)));
     return 1;
 }
 
 int Procedural2DLua::relaxAsync(lua_State* L) {
     auto points = lua::Stack::read<std::vector<math::Vec2>>(L, 1);
     const auto bounds = lua::Stack::read<math::Rect>(L, 2);
-    const auto iterations = static_cast<int>(luaL_optinteger(L, 3, 1));
+    const int iterations = readIterations(L, 3);
+    Voronoi::requireIterations(iterations);
     // clang-format off
     return spawn(L, [points = std::move(points), bounds, iterations]() mutable {
         return Voronoi::relax(std::move(points), bounds, iterations);

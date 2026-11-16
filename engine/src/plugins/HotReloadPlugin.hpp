@@ -29,11 +29,19 @@ class HotReloadPlugin final : public Plugin {
     // A batch that touches more loaded modules than this, such as a switch of branches, restarts the app instead.
     static constexpr std::size_t kRestartModules = 32;
 
-    // What one batch of changes did, for the log, the page and the development server.
+    // A changed file that the batch could not apply, with the error that kept it out.
+    struct Rejection {
+        std::string path;
+        lua::Error error;
+    };
+
+    // What one batch of changes did, for the log, the page and the development server. The restored modules are those whose file holds again the code that runs, after a reload of it failed.
     struct Report {
         core::AppConfig::Debug::Reload mode = core::AppConfig::Debug::Reload::Module;
         std::vector<std::string> modules;
+        std::vector<std::string> restored;
         std::vector<std::string> assets;
+        std::vector<Rejection> rejected;
         bool resumed = false;
         bool restarted = false;
         std::string reason;
@@ -76,7 +84,7 @@ class HotReloadPlugin final : public Plugin {
 
     [[nodiscard]] Batch classify(core::Engine& engine, const std::vector<std::string>& changed) const;
     void apply(core::Engine& engine, const std::vector<std::string>& changed);
-    void reloadAssets(core::Engine& engine, const std::vector<std::string>& assets, Report& report) const;
+    void reloadAssets(core::Engine& engine, const Batch& batch, Report& report) const;
 
     // Reloads the modules in dependency order and returns whether all of them and their hooks applied, or leaves a restart reason in the report.
     [[nodiscard]] bool reloadModules(core::Engine& engine, const std::vector<std::string>& paths, Report& report);

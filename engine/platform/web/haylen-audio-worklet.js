@@ -17,12 +17,18 @@ class HaylenAudioProcessor extends AudioWorkletProcessor {
         // An inactive output plays silence and keeps what it has queued. Only an output that received samples since it became active counts underruns.
         this.active = false;
         this.primed = false;
+        // A processor whose output closed ends, so the browser can release its node.
+        this.ended = false;
         this.port.onmessage = (event) => this.receive(event.data);
     }
 
     receive(data) {
         if (data instanceof Float32Array) {
             this.write(data);
+            return;
+        }
+        if (data.ended) {
+            this.ended = true;
             return;
         }
 
@@ -72,7 +78,7 @@ class HaylenAudioProcessor extends AudioWorkletProcessor {
             this.spent = [];
         }
 
-        return true;
+        return !this.ended;
     }
 }
 

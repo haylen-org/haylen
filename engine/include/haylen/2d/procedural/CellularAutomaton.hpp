@@ -14,6 +14,7 @@ namespace haylen::procedural2d {
 // Grows cave maps with a cellular automaton, where 1 marks walls and 0 floors: random walls smoothed by counting the walls around each cell.
 class CellularAutomaton final {
   public:
+    static constexpr int kMaxSteps = 1000;
     static constexpr std::int32_t kFloor = 0;
     static constexpr std::int32_t kWall = 1;
 

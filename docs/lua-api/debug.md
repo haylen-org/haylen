@@ -685,7 +685,7 @@ The developer console runs commands that the engine, plugins and the app registe
 The lines come from outside the app, so a phone, a TV and a browser take them the same way a desktop does:
 
 - In a Debug run of `haylen run`, the key `d` opens the console in the terminal, with a line at the bottom that the log of the app never mixes with. Each line runs in every connected app, and the result prints above the line. Tab completes the names of the commands and the values of boolean arguments, the arrows go through the lines typed before, and Escape goes back to the keys of the run, as [the developer console](../tools/distribution.md#the-developer-console) of the run describes.
-- A web page runs a line with `Module.haylen.console(line)`, as the [runtime API](../tools/build.md#runtime-api) describes.
+- A web page runs a line with the request `console` of the [editor contract](../tools/build.md#the-editor-contract).
 - The app runs a line with [`debug.runCommand`](#debugruncommandline), such as from a cheat menu of its own.
 
 The console takes lines from outside the app in development runs, and `"debug": {"console": true}` in `app.json` turns that on in any other run. While it is off, a line from outside fails with an error, but the app still registers and runs its own commands with `debug.runCommand`.

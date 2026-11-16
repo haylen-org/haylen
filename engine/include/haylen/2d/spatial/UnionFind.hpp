@@ -8,6 +8,7 @@ namespace haylen::spatial2d {
 // Disjoint sets of the elements 0 to `size - 1` with union by size and path halving, which keeps every operation nearly constant time.
 class UnionFind final {
   public:
+    static constexpr std::size_t kMaxCount = std::size_t{1} << 24;
     explicit UnionFind(std::size_t count = 0);
 
     // Starts over with `count` elements, each in a set of its own.

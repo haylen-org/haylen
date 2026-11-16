@@ -1,11 +1,13 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "haylen/core/Json.hpp"
@@ -15,6 +17,17 @@ namespace haylen::lua {
 // An app error split into the parts an error screen and an editor show: the message, the script position Lua put in front of it and the stack of calls that led to it, innermost first. The method `what()` returns the text as Lua raised it. An error whose text has no script position takes the position of its innermost script frame, and errors raised outside scripts keep an empty file, line zero and no frames.
 class Error final : public std::runtime_error {
   public:
+    // What kind of failure the error is, which an editor tells apart without reading the message: code that raised an error as it ran, a Lua file that does not compile, a package that cannot open or whose `app.json` is invalid, an asset that failed to load, code that ran longer than the execution budget of development, or an app that ran out of memory, of its memory budget in development or of the system.
+    enum class Code : std::uint8_t {
+        Runtime,
+        Syntax,
+        Package,
+        Asset,
+        ExecutionBudget,
+        Memory,
+    };
+    static constexpr std::array<std::string_view, 6> kCodeNames = {"runtime", "syntax", "package", "asset", "executionBudget", "memory"};
+
     struct Frame {
         enum class Kind : std::uint8_t {
             Lua,
@@ -47,6 +60,20 @@ class Error final : public std::runtime_error {
     [[nodiscard]] const std::vector<Frame>& getFrames() const noexcept {
         return frames;
     }
+    [[nodiscard]] Code getCode() const noexcept {
+        return code;
+    }
+    void setCode(Code value) noexcept {
+        code = value;
+    }
+
+    // The step of the engine that ran the failing code, such as `update` or `reload`, where the engine tells it, or an empty text.
+    [[nodiscard]] const std::string& getCallback() const noexcept {
+        return callback;
+    }
+    void setCallback(std::string value) {
+        callback = std::move(value);
+    }
 
     // Renders the frames one per line as aligned location and function columns, separated by spaces and never by tab characters.
     [[nodiscard]] std::string getTraceback() const;
@@ -69,6 +96,8 @@ class Error final : public std::runtime_error {
     std::string file;
     int line = 0;
     std::vector<Frame> frames;
+    Code code = Code::Runtime;
+    std::string callback;
 };
 
 } // namespace haylen::lua

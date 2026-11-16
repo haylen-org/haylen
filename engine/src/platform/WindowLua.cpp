@@ -52,7 +52,7 @@ math::Polygon::Outline WindowLua::readRegion(lua_State* L, int index) {
         return {rect.getMin(), {rect.getRight(), rect.y}, rect.getMax(), {rect.x, rect.getBottom()}};
     }
 
-    const lua_Integer count = luaL_len(L, index);
+    const lua_Integer count = static_cast<lua_Integer>(lua_rawlen(L, index));
     if (count < 3) {
         luaL_error(L, "A mouse passthrough polygon needs at least three points.");
     }
@@ -429,7 +429,7 @@ int WindowLua::setMousePassthrough(lua_State* L) {
     luaL_argcheck(L, units == "design" || units == "pixels", 2, "'design' or 'pixels' expected");
 
     std::vector<math::Polygon::Outline> regions;
-    const lua_Integer count = luaL_len(L, 1);
+    const lua_Integer count = static_cast<lua_Integer>(lua_rawlen(L, 1));
     for (lua_Integer index = 1; index <= count; ++index) {
         lua_rawgeti(L, 1, index);
         regions.push_back(readRegion(L, lua_gettop(L)));

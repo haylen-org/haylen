@@ -13,6 +13,7 @@ namespace haylen::animation2d {
 // A chain of points joined by segments of fixed lengths that procedural animation bends in two ways. Reaching keeps the first point at the root and bends the chain so its last point reaches a target, like a leg, an arm or a tentacle. Following moves the first point as a head and drags every other point behind it, like the body of a snake, a centipede or a tail. The bend between two segments never passes `maxBend`, and nothing allocates once the chain is made.
 class Chain final {
   public:
+    static constexpr std::size_t kMaxSegments = 4096;
     struct Options {
         math::Vec2 root;
         std::vector<float> lengths;

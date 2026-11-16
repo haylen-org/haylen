@@ -426,7 +426,7 @@ TEST_F(NativeLuaTest, HandsTheErrorsThatStopAppsToLibraries) {
         fixture.runLua("require('haylen').reportError('the first app failed')");
         ASSERT_NE(fixture.engine().getError(), nullptr);
         EXPECT_EQ(fixture.lua("return lib.native_test_error_count() - before"), "1") << "A handler that registered twice hears an error once.";
-        EXPECT_EQ(core::Json::parse(fixture.lua("return ffi.string(lib.native_test_last_error())")), fixture.engine().getError()->toJson());
+        EXPECT_EQ(core::Json::parse(fixture.lua("return ffi.string(lib.native_test_last_error())")), fixture.engine().getErrorRecord());
     }
 
     // The handler belongs to the process, so it hears the errors of the next app without registering again.

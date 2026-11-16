@@ -483,37 +483,26 @@ A page defines `Module` before it loads the runtime script. The file `templates/
 | `Module.haylen.release` | Optional `{address, identifier, files}` of a protected release. The `files` are `{name, bytes}` of its manifests and its app domain, which the page downloaded and which go to `/app`. The `address`, such as `app/`, is where the shards of the content stay and download by range. The `identifier` of the app names its [content store](../content/content.md#the-web). The web loader sets it in release builds. |
 | `Module.haylen.graphicsApi` | Optional `webGpu` or `webGl2`, the graphics API that the window tries first, as the player does with `--graphics-api`. Without it the runtime draws through WebGPU, or through WebGL2 where WebGPU does not start. The web loader and the default shell of C++ apps set it from the `graphicsApi` parameter of the address. |
 | `Module.haylen.development` | Optional `true` that runs the app in development, as the player does with `--dev`. Lua modules and assets that the page changes with `applyChanges()` then reload in place, as [hot reload](../core/lua.md#hot-reload) describes. |
+| `Module.haylen.storageNamespace` | Optional name that keeps the user data of the page in an IndexedDB database of its own, `/persistent/<name>`, as [hosting the runtime](#hosting-the-runtime) describes. Without it the user data lives in `/persistent`. |
 | `Module.haylen.developmentServer` | Optional WebSocket address of the development server that `run --platform web` starts, such as `ws://127.0.0.1:8000/haylen/development?token=<token>`. The server pushes every file saved in the app to the page. |
 | `Module.instantiateWasm` | Optional function that receives the imports of the module and a callback. It instantiates `haylen.wasm` itself and passes the instance to the callback. So a page that already downloaded the bytes, such as the web loader, keeps Emscripten from fetching the file again. |
 | `Module.preRun` | Functions that run before the app starts. Page handlers of the platform bridge register here. |
 
 None of the package fields turns on development mode. Only a page that sets `Module.haylen.development` runs in development. The template loader sets it only for the `development` entry of `config.json` that `run --platform web` writes.
 
-A custom shell passed as `WEB_SHELL` keeps the `{{{ SCRIPT }}}` placeholder. Emscripten inserts the runtime script there, and `run` inserts the runtime loader. Before the app starts, the runtime mounts IndexedDB at `/persistent` for user data and loads it. It also reads what the browser tells about the device through `navigator.userAgentData` and the Battery Status API, which answer asynchronously.
+A custom shell passed as `WEB_SHELL` keeps the `{{{ SCRIPT }}}` placeholder. Emscripten inserts the runtime script there, and `run` inserts the runtime loader. Before the app starts, the runtime mounts IndexedDB at `/persistent`, or at the folder of the storage namespace, for user data and loads it. It also reads what the browser tells about the device through `navigator.userAgentData` and the Battery Status API, which answer asynchronously.
 
 ### Runtime API
 
-The file `engine/platform/web/haylen-runtime.js` is linked with `--pre-js`. It fills `Module.haylen` with the API that a page or a browser editor uses. None of these calls reloads the page.
+The file `engine/platform/web/haylen-runtime.js` is linked with `--pre-js`. It fills `Module.haylen` with the API that a page uses: the handlers and events of the platform bridge, the contexts of plugins, the callbacks of the app and the editor contract of the next section. None of these calls reloads the page.
 
 | Function | Meaning |
 | --- | --- |
-| `loadZip(bytes)` | Replaces the running app with a zipped package, given as a `Uint8Array` or an `ArrayBuffer`. A file that is not a valid zip shows the error screen and reaches `onError`, like any package that fails to load. |
-| `clearFiles()` | Stops the app and empties its package, for an app that the page builds file by file before `run()`. |
-| `setFile(path, content)` | Adds or replaces a file of the package that plays. The `path` is relative to the root of the package, such as `source/main.lua` or `content/ui/logo.png`, and `content` is a string or bytes. The app reads the new file the next time it loads it, and `applyChanges()` applies it at once. An absolute path, or one that leaves the package, throws an `Error` with the reason. |
-| `removeFile(path)` | Removes a file of the package that plays and returns whether it existed. An invalid path throws an `Error`. |
-| `applyChanges()` | Applies every file that `setFile` and `removeFile` changed since its last call, as one batch at the start of the next frame. A page in development reloads them as [hot reload](../core/lua.md#hot-reload) applies saved files: assets and Lua modules in place, and `app.json` or `source/main.lua` with a restart. Any other page restarts the app with them. |
-| `run()` | Starts the package from `source/main.lua`, in place of the running app. |
-| `restart()` | Starts the last app again from its package, which loads every script again. |
-| `console(line)` | Runs a line of the [developer console](../lua-api/debug.md#console) in the running app. It returns a promise of `{ok, output}`, which resolves once the next frame ran the line. An app outside development without `debug.console` in `app.json` answers with `ok` set to `false` and the reason. |
-| `stop()` | Ends the app and leaves an empty canvas until the next start. |
-| `setPaused(paused)`, `pause()`, `resume()` | Pause or resume the app. A paused app keeps its last frame and sees the pause as a suspend. |
-| `paused()` | Returns whether the app is paused. |
 | `register(method, handler)`, `unregister(method)`, `emit(event, payload, options)` | The handlers and events of the platform bridge, with `options.retain` to keep an event for the first listener, as the [platform bridge guide](../platform/platform-bridge.md#web) describes. |
 | `openLink(url)` | Hands the app a link that opened the page, such as a link of a URL scheme of a plugin that the address of the page stands in for. The app hears it as [`linkOpened`](../lua-api/events.md#app-and-plugins), the link that started the page once `source/main.lua` ran, and a link that arrives while an app that the app launched plays ends that app, as on the other platforms. |
 | `createPluginContext(id, config)` | The context of the web module of a plugin, as the [plugin guide](../platform/plugins.md#web-modules) describes. |
 | `nativePlugins()` | Returns the ids of the plugins that have a web module. |
-
-The runtime of a release carries the bootstrap of its app and plays only its protected release. So `loadZip`, `clearFiles`, `setFile`, `removeFile`, `applyChanges` and `run` throw an `Error` there and leave the app as it is.
+| `paused()` | Returns whether the app is paused. |
 
 No C++ exception crosses into the page. A function of the runtime that fails while it answers the page throws an `Error` with the reason. Otherwise it logs an engine error that names the function, and the page goes on.
 
@@ -522,30 +511,124 @@ The runtime reports back through callbacks that the page assigns to `Module.hayl
 | Callback | Arguments |
 | --- | --- |
 | `onLog(level, message)` | The `level` is `'debug'`, `'info'`, `'warning'` or `'error'`. |
-| `onError(error)` | `{message, file, line, traceback, frames}` of the error that stopped the app, with an empty `file` when no script position is known. The `traceback` is the stack as text, one frame per line. The `frames` list the same frames as `{source, line, function, kind}` objects, innermost first, with the kind `lua`, `c` or `main`. |
+| `onError(error)` | The [error record](#error-records) of the error that stopped the app. |
 | `onStarted(app)` | `{name, identifier, version, build}` from `app.json`. |
 | `onStopped()` | The app ended. |
 | `onLoadProgress(progress)` | `{loaded, total}` in bytes while the runtime downloads what the app needs before it starts: the WebAssembly module, unless the page instantiates it with `Module.instantiateWasm`, the files that the build preloads and the package of `packageUrl`. The `total` is 0 while the size of a download is unknown, as for a compressed response, which tells only its compressed length. |
 | `onSplashEnded(splash)` | `{fadeOut}`, the seconds of the fade out of `app.json`. The runtime ended the splash screen, which the page then fades out over those seconds. |
-| `onReloaded(report)` | In development, after every batch of changes that hot reload applied. It is `{restarted: false, mode, modules, assets, resumed, milliseconds}`, with the files of the modules and assets that reloaded in place and whether the app left the error screen. Right before a restart it is `{restarted: true, reason}`. |
+| `onReloaded(report)` | In development, after every batch of changes that hot reload applied, the [reload report](#reload-reports). |
 | `onStats(stats)` | About once per second: `fps`, `frameMilliseconds`, `averageMilliseconds`, `drawCalls`, `sprites`, `vertices`, `textureSwitches`, `uploadedBytes`, `assets`, `voices`, `scopes` and `audio`. The `scopes` are a list of `{name, milliseconds, calls, depth}` profiler scopes. The `audio` is the output of the app as `{available, state, sampleRate, bufferedMilliseconds, blocks, underruns}`, or only `{available}` while the app runs without an audio output. |
 
 In `onStats`, `available` tells whether the app plays sound, `state` is the state of its `AudioContext` and `bufferedMilliseconds` is the mixed audio that waits ahead of the output. The `blocks` count the blocks mixed so far, and `underruns` the render quanta that the processor played without samples.
 
-Callbacks run in a microtask right after the frame that raised them. So they may call back into the runtime, even to restart the app.
+Callbacks run in a microtask right after the frame that raised them. So they may call back into the runtime, even to run the app again.
+
+### The editor contract
+
+An editor, such as a playground of a website, edits a project and runs it with `Module.haylen.editor`. The playground runs Lua, JSON and assets against the precompiled engine of the page, so it never compiles C++ or native plugins.
+
+The contract has a version, `Module.haylen.editor.protocol`, which is `1`. A later version that changes a request or a record raises it. Every request goes through one function:
 
 ```js
-Module.haylen.onError = (error) => console.error(error.message + "\n" + error.traceback);
-Module.haylen.onStarted = (app) => console.log("Running " + app.name);
+const answer = await Module.haylen.editor.request(method, params);
+```
+
+Each request gets an id, which its answer carries as `request`, and a promise. The promise resolves once the request completed, and rejects with an `Error` whose `code` is a stable code and whose message is a sentence for the person. The codes are `invalidRequest`, `invalidPath`, `missingFile`, `notEditable` for the runtime of a release, `notRunning` when no app plays, `unsupported`, `disposed` and `failed`. A request made before the runtime started waits for it.
+
+| Request | Params | Answer |
+| --- | --- | --- |
+| `hello` | | `{protocol, capabilities}` |
+| `edit` | `{operations}` | `{revision}` once the package changed |
+| `clearFiles` | | `{revision}` once the app stopped and the package is empty |
+| `applyChanges` | | `{revision, report}` once the frame that applied the changes ended |
+| `run` | | `{revision, app, error}` once the app started |
+| `loadZip` | `{bytes}` | `{revision, app, error}` once the app of the zipped package started |
+| `stop` | | `{revision}` once the app ended |
+| `pause`, `resume` | | `{paused}` |
+| `console` | `{line}` | `{ok, output}` once the next frame ran the line |
+| `inspect` | `{path}` | `{path, entries}` |
+| `dispose` | | `{disposed}` once the runtime ended |
+
+The `capabilities` say what this runtime offers, each as a boolean: `packageEditing`, which the runtime of a release lacks, `developmentReload` for a page in development, `pause`, `console`, `inspection`, `cancellation` for the [execution budget](../core/lua.md#the-execution-budget) of a page in development, `storageNamespaces` and `workerHosting`, which is `false`, as [hosting the runtime](#hosting-the-runtime) explains.
+
+#### Editing the package
+
+The request `edit` applies a batch of operations to the package that plays, all of them or none:
+
+- `{op: "write", path, content}` adds or replaces a file, with `content` as a string, which goes as UTF-8, or as bytes, an `ArrayBuffer` or a view of one.
+- `{op: "remove", path}` removes a file.
+- `{op: "rename", from, to}` moves a file to another path, replacing a file there.
+
+Paths are relative to the root of the package, such as `source/main.lua` or `content/ui/logo.png`. The batch checks every operation before it changes anything. A path that is absolute or leaves the package fails it with `invalidPath`, and a remove or a rename of a file that the package does not hold at that point of the batch fails it with `missingFile`. Every batch that applied makes a new revision of the package, a number that grows by one, which its answer carries. The app reads an edited file the next time it loads it, and `applyChanges` applies the files of every batch since the last `applyChanges` at once.
+
+The request `clearFiles` stops the app and empties the package, for a project that the editor writes file by file before `run`. The request `loadZip` replaces the package with a zipped one and runs it.
+
+#### Applying changes
+
+The request `applyChanges` hands the changed files to the app as one batch at the start of the next frame. Its answer comes once that frame ended and carries the revision that the batch applied. A page in development reloads them the way [hot reload](../core/lua.md#hot-reload) applies saved files, and the `report` is the [reload report](#reload-reports) of the batch, or `null` when the batch touched no file that the app uses, such as a Lua file that no module loaded yet. Any other page restarts the app, and the `report` is `{restarted: true, reason}`. A paused app applies no changes, so the answer comes once it resumed, and a request without a playing app fails with `notRunning`.
+
+A module that fails to reload keeps running the code it had, while the package keeps the new file, so the report rejects the file with its error and the error screen shows it. Nothing rolls the file back. The next batch that fixes the module, or that writes the exact text that the module runs, resumes the app. An error of a lifecycle step, or the execution budget, is no error a reload fixes, so the next batch restarts the app.
+
+#### Running, pausing and stopping
+
+The request `run` starts the package from `source/main.lua`, in place of the running app, with a fresh Lua state, and its answer comes once the app started. The `app` of the answer is `{name, identifier, version, build}` from `app.json`, and its `error` is the [error record](#error-records) of an error that stopped the start, or `null`. A package whose `app.json` is invalid answers with the error and no app. Running again needs no reload of the page, and the audio contexts and the graphics device of the page stay for the next app.
+
+The request `pause` keeps the last frame on screen and the app sees the pause as a suspend, as a hidden page does. A paused app runs no frame and applies no changes until `resume`. A `run` always leaves the app running. The request `stop` ends the app and leaves an empty canvas until the next `run`.
+
+#### Inspecting the app
+
+The request `inspect` lists the values of the running app at a path of the [inspector](../lua-api/debug.md#inspector), without changing anything: an empty path lists the roots `watched`, `scenes`, `autoloads` and `globals`, and a path such as `scenes.1` lists the keys of that value. Each entry is `{key, type, value, expandable}`, where `value` is the value as short text and `expandable` tells whether the path of the entry lists more. The inspector reads tables raw, so it never runs code of the app. A request outside development fails with `unsupported` unless `debug.console` of `app.json` turns the console on, and a path that leads nowhere fails with `invalidPath`.
+
+#### Ending the runtime
+
+The request `dispose` ends the runtime for good: the app stops, the player ends with its window and its graphics device, every audio context and its processors close, and the user data reaches its database. Its answer comes once all of that ended, so the page can then remove the frame that hosts the runtime. Every later request fails with `disposed`.
+
+### Error records
+
+Every error that stops an app reaches `onError` as one record, and the answers of `run` and the reload reports carry the same records:
+
+| Field | Meaning |
+| --- | --- |
+| `code` | What kind of error it is: `syntax` for a Lua file that does not compile, `runtime` for code that raised an error, `package` for a package that cannot open or whose `app.json` is invalid, `asset` for an asset that could not load, `executionBudget` for code that ran longer than the [execution budget](../core/lua.md#the-execution-budget), and `memory` for an app that ran out of memory, of its memory budget in development or of the system. |
+| `phase` | Where the app stood: `startup` while it starts, from its plugins to `source/main.lua`, `lifecycle` in a step of its lifecycle, such as a scene `enter`, `frame` in code of a frame, such as an update, a timer or a listener, and `reload` in a reload of development. |
+| `message` | The sentence for the person, without the position in front of it. |
+| `file`, `line` | The project-relative path of the file, such as `source/player.lua`, and the line, or an empty `file` and line 0 when no script position is known. Lua tells lines only, so a record has no column. |
+| `callback` | For an error of the execution budget, the step of the engine that ran too long, such as `start`, `update`, `fixedUpdate`, `render`, `scripts` for the callbacks of promises and tasks, `event` or `reload`. |
+| `traceback` | The stack as text, one frame per line. |
+| `frames` | The same frames as `{source, line, function, kind}` objects, innermost first, with the kind `lua`, `c` or `main`. |
+
+The machine fields never change with the language of the person, while `message` and `traceback` are text for the person.
+
+### Reload reports
+
+A report of hot reload is `{restarted: false, mode, modules, restored, assets, rejected, resumed, milliseconds}`. The `modules` and `assets` are the files that reloaded in place, the `restored` are modules whose file holds again the code that runs after a reload of them failed, and the `rejected` are `{path, error}` for every file that could not apply, with its [error record](#error-records). The `resumed` tells whether the app left the error screen. Right before a restart the report is `{restarted: true, reason}`.
+
+```js
+const editor = Module.haylen.editor;
+Module.haylen.onError = (error) => console.error(error.code + " " + error.file + ":" + error.line + " " + error.message);
 
 async function play(files) {
-    Module.haylen.clearFiles();
-    for (const [path, content] of Object.entries(files)) {
-        Module.haylen.setFile(path, content);
-    }
-    Module.haylen.run();
+    await editor.request("clearFiles");
+    const operations = Object.entries(files).map(([path, content]) => ({ op: "write", path, content }));
+    const { revision } = await editor.request("edit", { operations });
+    const started = await editor.request("run");
+    console.log("Revision " + revision + " runs " + started.app.name);
+}
+
+async function save(path, content) {
+    await editor.request("edit", { operations: [{ op: "write", path, content }] });
+    const { report } = await editor.request("applyChanges");
+    return report === null ? [] : report.rejected;
 }
 ```
+
+### Hosting the runtime
+
+One runtime plays one app at a time, and a page holds one runtime, since the runtime keeps its state in the global `Module` of the page. Two players coexist only in two frames or windows of their own, each with its own runtime. A page that names `Module.haylen.storageNamespace` before the runtime loads, such as `project-42`, keeps the user data of its apps in the IndexedDB database `/persistent/project-42`, apart from every other namespace and from pages without one, and the editor deletes the data of a project with `indexedDB.deleteDatabase("/persistent/project-42")` while no runtime uses it. A namespace is 1 to 64 letters, digits, dots, dashes and underscores.
+
+An editor runs the runtime in a frame of its own, which it removes after `dispose` and creates again for a project from scratch. The runtime needs the document of its page: SDL reads the keyboard, the mouse and the touches from it, the text input uses its hidden fields, the overlay of plugins and the tree of screen readers live in it, and the audio output needs an `AudioContext`, which a worker lacks. So the runtime does not run in a worker with an `OffscreenCanvas`, and `workerHosting` is `false`.
+
+A frame of the same origin shares the thread of the editor, so code of the app that never ends would freeze the editor too. In development the [execution budget](../core/lua.md#the-execution-budget) stops such code after `debug.executionBudget`, and the [bounds of native work](../core/lua.md#native-work-and-its-bounds) keep a native function of the engine from running away. A frame of another site, such as a sandbox on a domain of its own, runs in a process of its own in the browsers that isolate sites, Chromium and Firefox, so it never holds up the editor, and the editor can remove it when it stops answering. The editor then talks to the frame with `postMessage` and forwards the requests and callbacks of the contract itself. A browser that does not isolate sites may run such a frame on the thread of the page.
 
 ## Android
 

@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <optional>
 #include <span>
+#include <stdexcept>
+#include <string>
 #include <vector>
 
 #include "haylen/math/Circle.hpp"
@@ -18,6 +20,9 @@ namespace haylen::math {
 // Casts rays against shapes without a physics world, and composes any cast into bouncing paths and fans. Circles, rectangles and polygons are solid, so a ray that starts inside one hits it at distance zero with a zero normal. Segments and chains are hit from both sides.
 class Raycast final {
   public:
+    // The most reflections of a bouncing ray and the most rays of a fan.
+    static constexpr int kMaxBounces = 1024;
+    static constexpr std::size_t kMaxFanRays = 65536;
     // How far a bounce moves the next ray off the surface it reflects from, so the next cast never hits that surface again at its origin.
     static constexpr float kSurfaceOffset = 1e-3F;
 
@@ -46,6 +51,9 @@ class Raycast final {
 
     // Follows a ray that bounces off every surface it hits, like a laser between mirrors, for at most `bounces` reflections. The function `cast` takes a `Ray` and returns an optional hit with `point`, `normal` and `distance` members. The list `hits` receives every bounce point in order, and the returned ray is the last leg of the path, whose end is where the path stops. A hit with a zero normal stops the path.
     template <typename Hit, typename Cast> static Ray bounce(Ray ray, int bounces, Cast&& cast, std::vector<Hit>& hits) {
+        if (bounces < 0 || bounces > kMaxBounces) {
+            throw std::invalid_argument("A bouncing ray takes from 0 to " + std::to_string(kMaxBounces) + " bounces.");
+        }
         hits.clear();
         for (int reflection = 0;; ++reflection) {
             const std::optional<Hit> hit = cast(ray);
@@ -67,6 +75,9 @@ class Raycast final {
 
     // Casts `count` rays of the given length, spread evenly across an arc of `spread` radians centered on `angle`, like a cone of vision. The list `results` receives one optional hit per ray in order of increasing angle, and a single ray points straight along `angle`.
     template <typename Hit, typename Cast> static void fan(Vec2 origin, float angle, float spread, std::size_t count, float length, Cast&& cast, std::vector<std::optional<Hit>>& results) {
+        if (count > kMaxFanRays) {
+            throw std::invalid_argument("A fan casts at most " + std::to_string(kMaxFanRays) + " rays.");
+        }
         results.clear();
         const float step = count > 1 ? spread / static_cast<float>(count - 1) : 0.0F;
         const float first = count > 1 ? angle - spread * 0.5F : angle;

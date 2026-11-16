@@ -1,6 +1,8 @@
 #pragma once
 
 #include <array>
+#include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <map>
 #include <optional>
@@ -107,6 +109,12 @@ struct AppConfig {
         std::optional<platform::FoldSimulation> fold;
         bool showSafeArea = false;
         Reload reload = Reload::Module;
+
+        // The time that the code of an app in development may run in each entry of the host, such as one frame, before the engine cancels the app.
+        std::chrono::milliseconds executionBudget{5000};
+
+        // The bytes that the Lua state of an app in development may hold before the engine cancels the app.
+        std::size_t memoryBudget = std::size_t{1024} * 1024 * 1024;
     };
 
     // How the content of a protected release reaches the device, from the `content` object: the server of its updates and downloads, and the files that need not be on the device before the app starts.
@@ -213,6 +221,14 @@ struct AppConfig {
 
     // The largest build number, the largest version code that Google Play takes.
     static constexpr std::uint32_t kMaxBuild = 2'100'000'000;
+
+    // The bounds of `debug.executionBudget` in seconds.
+    static constexpr double kMinExecutionBudget = 0.1;
+    static constexpr double kMaxExecutionBudget = 600.0;
+
+    // The bounds of `debug.memoryBudget` in megabytes.
+    static constexpr double kMinMemoryBudget = 16.0;
+    static constexpr double kMaxMemoryBudget = 4096.0;
 
   private:
     static const std::array<std::pair<std::string_view, Debug::Reload>, 2> kReloadNames;

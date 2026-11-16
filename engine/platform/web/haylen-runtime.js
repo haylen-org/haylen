@@ -1,5 +1,5 @@
 // Page side of the Haylen web runtime, included before the generated module code.
-// Pages talk to the running app through `Module.haylen`: native bridge handlers, the contexts of plugin modules with their overlay over the canvas, the editor API that edits the package of the app and swaps it without reloading the page, development with hot reload, and the `onLog`, `onError`, `onLoadProgress`, `onStarted`, `onSplashEnded`, `onStopped`, `onStats` and `onReloaded` callbacks.
+// Pages talk to the running app through `Module.haylen`: native bridge handlers, the contexts of plugin modules with their overlay over the canvas, the versioned editor contract of `Module.haylen.editor`, which edits the package of the app and runs it again without reloading the page, development with hot reload, and the `onLog`, `onError`, `onLoadProgress`, `onStarted`, `onSplashEnded`, `onStopped`, `onStats` and `onReloaded` callbacks.
 
 Module.haylen = Module.haylen || {};
 
@@ -1318,7 +1318,7 @@ Module.haylen = Module.haylen || {};
         notify("onSplashEnded", {fadeOut});
     };
 
-    // Reports of hot reload arrive after every batch of changes that applied, as `{restarted: false, mode, modules, assets, resumed, milliseconds}`, or as `{restarted: true, reason}` before a restart.
+    // Reports of hot reload arrive after every batch of changes that applied, as `{restarted: false, mode, modules, restored, assets, resumed, milliseconds}`, or as `{restarted: true, reason}` before a restart.
     haylen.reportReloaded = function (report) {
         notify("onReloaded", report);
     };
@@ -1529,101 +1529,177 @@ Module.haylen = Module.haylen || {};
         });
     };
 
-    // Entry points that can fail answer -1 and keep the reason, which becomes a JavaScript error.
+    // The editor contract, version 1 of `haylen.editor.protocol`: the requests that an editor sends to the runtime through `haylen.editor.request(method, params)`. Every request gets an id and a promise, which resolves with the result and the id as `request` once the request completed, and rejects with an `Error` whose `code` is a stable code of the contract and whose message is a sentence for the person. The callbacks `onLog`, `onError`, `onStarted`, `onStopped`, `onReloaded` and `onStats` carry what the app does by itself.
+    const editor = { protocol: 1, pending: new Map(), nextRequest: 1 };
+    haylen.editor = editor;
+
+    const requestError = (code, message) => Object.assign(new Error(message), { code });
+
+    // Requests of the engine that fail answer -1 and keep the error as JSON `{code, message}`.
     const checked = (result) => {
         if (result < 0) {
-            throw new Error(Module.UTF8ToString(Module._haylen_web_last_error()));
+            const error = JSON.parse(Module.UTF8ToString(Module._haylen_web_last_error()));
+            throw requestError(error.code, error.message);
         }
-
         return result;
     };
 
-    // Replaces the running app with a zipped package. The runtime of a release refuses it, as it refuses every request of the editor API.
-    haylen.loadZip = function (bytes) {
-        const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
-        const pointer = Module._malloc(data.length);
-        Module.HEAPU8.set(data, pointer);
-
-        try {
-            checked(Module._haylen_web_load_zip(pointer, data.length));
-        } finally {
-            Module._free(pointer);
+    // The answer of a request that waits for the engine, which the runtime sends once the frame that applied it or the start of the app it ran ended.
+    haylen.completeRequest = function (request, ok, result) {
+        const pending = editor.pending.get(request);
+        editor.pending.delete(request);
+        if (pending === undefined) {
+            return;
         }
-    };
-
-    // Editor API: `setFile` and `removeFile` edit the package that plays, `applyChanges` applies the files edited since its last call the way hot reload does in development and restarts the app otherwise, `run` starts the package again from `source/main.lua`, and `clearFiles` stops the app and empties the package for an app built file by file.
-    haylen.clearFiles = function () {
-        checked(Module._haylen_web_clear_files());
-    };
-
-    haylen.setFile = function (path, content) {
-        const data = typeof content === "string" ? new TextEncoder().encode(content) : new Uint8Array(content);
-        const pointer = Module._malloc(data.length);
-        Module.HEAPU8.set(data, pointer);
-
-        try {
-            checked(callEngine("haylen_web_set_file", "number", ["string", "number", "number"], [path, pointer, data.length]));
-        } finally {
-            Module._free(pointer);
+        if (!ok) {
+            pending.reject(requestError(result.code, result.message));
+            return;
         }
+        pending.resolve(result);
     };
 
-    haylen.removeFile = function (path) {
-        return checked(callEngine("haylen_web_remove_file", "number", ["string"], [path])) === 1;
+    // Starts a request whose answer the engine sends later, and forgets it when the start already fails.
+    const completeLater = (request, start) => {
+        const completion = new Promise((resolve, reject) => editor.pending.set(request, { resolve, reject }));
+        try {
+            start();
+        } catch (error) {
+            editor.pending.delete(request);
+            throw error;
+        }
+        return completion;
     };
 
-    haylen.run = function () {
-        checked(Module._haylen_web_run_files());
+    // What this runtime offers the editor, which `hello` answers.
+    editor.capabilities = function () {
+        const editable = !haylen.release;
+        return {
+            packageEditing: editable,
+            developmentReload: editable && haylen.development === true,
+            pause: true,
+            console: true,
+            inspection: true,
+            cancellation: haylen.development === true,
+            storageNamespaces: true,
+            workerHosting: false,
+        };
     };
 
-    // Starts the last playing app again from its package, which reloads every script.
-    haylen.restart = function () {
-        Module._haylen_web_restart();
-    };
-
-    // Runs a line of the developer console in the running app and resolves with `{ok, output}` once the next frame ran it. Apps run lines in development and when "debug.console" of "app.json" turns the console on.
-    const consoleCalls = new Map();
-    let nextConsoleCall = 1;
-    haylen.console = function (line) {
-        const id = nextConsoleCall++;
-        return new Promise((resolve) => {
-            consoleCalls.set(id, resolve);
-            callEngine("haylen_web_console", null, ["number", "string"], [id, String(line)]);
+    // A write carries its content as a string, which goes as UTF-8, or as bytes, an `ArrayBuffer` or a view of one.
+    const encodeEdits = (operations) => {
+        if (!Array.isArray(operations)) {
+            throw requestError("invalidRequest", "The edits of a batch are a list of operations.");
+        }
+        const buffers = [];
+        const list = operations.map((operation) => {
+            if (operation === null || typeof operation !== "object" || operation.op !== "write") {
+                return operation;
+            }
+            const content = operation.content;
+            if (typeof content === "string") {
+                buffers.push(new TextEncoder().encode(content));
+            } else if (content instanceof ArrayBuffer || ArrayBuffer.isView(content)) {
+                buffers.push(content instanceof ArrayBuffer ? new Uint8Array(content) : new Uint8Array(content.buffer, content.byteOffset, content.byteLength));
+            } else {
+                throw requestError("invalidRequest", "The write of \"" + operation.path + "\" needs its content as a string or as bytes.");
+            }
+            return { op: "write", path: operation.path, bytes: buffers.length - 1 };
         });
+        return { json: JSON.stringify(list), buffers };
     };
 
-    haylen.reportConsoleResult = function (id, ok, output) {
-        const resolve = consoleCalls.get(id);
-        consoleCalls.delete(id);
+    const methods = {
+        hello: () => ({ protocol: editor.protocol, capabilities: editor.capabilities() }),
 
-        if (resolve) {
-            resolve({ ok, output });
+        // Applies a batch of `{op: "write", path, content}`, `{op: "remove", path}` and `{op: "rename", from, to}` as one change of the package, or none of them when one fails, and answers the revision of the package that it made.
+        edit: (request, params) => {
+            const { json, buffers } = encodeEdits(params.operations);
+            const revision = withBuffers(buffers, (table, count) => checked(callEngine("haylen_web_edit", "number", ["string", "number", "number"], [json, table, count])));
+            return { revision };
+        },
+
+        // Stops the app and empties its package, for an app that the editor builds file by file before `run`.
+        clearFiles: () => ({ revision: checked(Module._haylen_web_clear_files()) }),
+
+        // Applies every file that the edits changed since the last `applyChanges`, as one batch at the start of the next frame, and answers once that frame ended, with the revision it applied and the report of hot reload, or with a restart outside development.
+        applyChanges: (request) => completeLater(request, () => checked(Module._haylen_web_apply_changes(request))),
+
+        // Starts the package from `source/main.lua` in place of the running app, and answers once it started, with the error that stopped its start, if any.
+        run: (request) => completeLater(request, () => checked(Module._haylen_web_run_files(request))),
+
+        // Replaces the package with a zipped one, as bytes, and runs it.
+        loadZip: (request, params) => {
+            const data = params.bytes instanceof Uint8Array ? params.bytes : new Uint8Array(params.bytes);
+            const pointer = Module._malloc(data.length);
+            Module.HEAPU8.set(data, pointer);
+            try {
+                return completeLater(request, () => checked(Module._haylen_web_load_zip(request, pointer, data.length)));
+            } finally {
+                Module._free(pointer);
+            }
+        },
+
+        // Ends the app and leaves an empty canvas until the next run.
+        stop: () => ({ revision: checked(Module._haylen_web_stop()) }),
+
+        // A paused app keeps its last frame on screen, sees the pause as a suspend and applies no changes until it resumes.
+        pause: () => {
+            Module._haylen_web_set_paused(1);
+            return { paused: true };
+        },
+        resume: () => {
+            Module._haylen_web_set_paused(0);
+            return { paused: false };
+        },
+
+        // Runs a line of the developer console in the running app once the next frame runs.
+        console: (request, params) => completeLater(request, () => callEngine("haylen_web_console", null, ["number", "string"], [request, String(params.line)])),
+
+        // Ends the runtime for good: the app stops, the player ends with its window and graphics device, the audio contexts close and the user data reaches its database, so the page can discard the frame or the worker that hosts the runtime. Every request after it fails with `disposed`.
+        dispose: () => {
+            const ended = new Promise((resolve) => {
+                editor.ending = resolve;
+            });
+            Module._haylen_web_dispose();
+            return ended
+                .then(() => audio.dispose())
+                .then(() => new Promise((resolve, reject) => FS.syncfs(false, (error) => (error ? reject(requestError("failed", "Saving user data failed: " + error)) : resolve()))))
+                .then(() => ({ disposed: true }));
+        },
+
+        // Lists the values of the running app at a path of the inspector, such as `scenes.1`, without changing them.
+        inspect: (request, params) => completeLater(request, () => callEngine("haylen_web_inspect", null, ["number", "string"], [request, String(params.path || "")])),
+    };
+
+    // The player calls it once it ended, after a dispose.
+    haylen.reportShutdown = function () {
+        editor.disposed = true;
+        if (editor.ending) {
+            editor.ending();
         }
     };
 
-    haylen.stop = function () {
-        Module._haylen_web_stop();
-    };
-
-    // A paused app keeps its last frame on screen and sees the pause as a suspend. Starting an app always leaves it running.
-    haylen.setPaused = function (paused) {
-        Module._haylen_web_set_paused(paused ? 1 : 0);
-    };
-
-    haylen.pause = function () {
-        haylen.setPaused(true);
-    };
-
-    haylen.resume = function () {
-        haylen.setPaused(false);
+    editor.request = function (method, params = {}) {
+        return new Promise((resolve, reject) => {
+            whenRuntimeReady(() => {
+                const request = editor.nextRequest++;
+                try {
+                    if (editor.disposed || editor.ending) {
+                        throw requestError("disposed", "The runtime was disposed of, so it takes no more requests.");
+                    }
+                    if (!Object.hasOwn(methods, method)) {
+                        throw requestError("invalidRequest", "The editor has no request \"" + method + "\".");
+                    }
+                    Promise.resolve(methods[method](request, params)).then((result) => resolve({ request, ...result }), reject);
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        });
     };
 
     haylen.paused = function () {
         return Module._haylen_web_paused() === 1;
-    };
-
-    haylen.applyChanges = function () {
-        checked(Module._haylen_web_apply_changes());
     };
 
     // WebSockets the app opened through `haylen.net`, by the id the runtime gave them. Their events reach the app on its next frame.
@@ -2003,7 +2079,7 @@ Module.haylen = Module.haylen || {};
     };
 
     // The audio output that `BrowserAudioOutput.cpp` drives, one per audio device of the engine. The engine mixes blocks of interleaved samples on this thread and posts them to an `AudioWorkletNode`, whose processor in `haylen-audio-worklet.js` plays them from a ring buffer. The processor answers with the frames it played and the buffers of the blocks it copied, and the page mixes new blocks until the audio queued ahead of the output is back at its target, so neither shared memory nor threads are needed.
-    const audio = { outputs: new Map() };
+    const audio = { outputs: new Map(), contexts: new Map() };
     haylen.audio = audio;
 
     // The videos of the engine, which `WebVideoDecoder.cpp` drives: each plays in a video element that nothing shows, made from the bytes of its file, which the engine hands over in pieces. The element keeps the clock, the engine copies its newest picture through a canvas into wasm memory, and its sound leaves the element through a `MediaElementAudioSourceNode` of the context of the audio output into the processor `haylen-video-tap` of `haylen-audio-worklet.js`, which hands the samples back to the page for the mixer of the engine. A browser that refuses to play sound before the user interacted with the page plays the video muted until the next tap, click or key.
@@ -2029,7 +2105,7 @@ Module.haylen = Module.haylen || {};
                 return;
             }
 
-            const context = output.context;
+            const context = output.shared.context;
             const source = context.createMediaElementSource(video.element);
             const tap = new AudioWorkletNode(context, "haylen-video-tap", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: "explicit" });
             const silence = context.createGain();
@@ -2061,7 +2137,7 @@ Module.haylen = Module.haylen || {};
             const { element, error } = videos.get(id);
             const ready = element.readyState >= HTMLMediaElement.HAVE_METADATA;
             const [output] = audio.outputs.values();
-            return JSON.stringify({ width: ready ? element.videoWidth : 0, height: ready ? element.videoHeight : 0, duration: ready && Number.isFinite(element.duration) ? element.duration : 0, sampleRate: output ? output.context.sampleRate : 0, error });
+            return JSON.stringify({ width: ready ? element.videoWidth : 0, height: ready ? element.videoHeight : 0, duration: ready && Number.isFinite(element.duration) ? element.duration : 0, sampleRate: output ? output.shared.context.sampleRate : 0, error });
         };
 
         const control = (id, playing, rate) => {
@@ -2173,14 +2249,46 @@ Module.haylen = Module.haylen || {};
         return typeof AudioContext !== "undefined" && typeof AudioWorkletNode !== "undefined" && "audioWorklet" in AudioContext.prototype;
     };
 
-    // Browsers run a context only once the user has interacted with the page, unless their autoplay policy lets it run on its own, and Safari on iOS suspends it again after interruptions. A resume without either only makes the browser warn, so the output then waits for the next tap, click or key.
-    const resumeAudio = (output) => {
-        const activation = navigator.userActivation;
-        if (output.context.state === "running" || (activation && !activation.hasBeenActive && !output.ran)) {
+    // The contexts of the outputs, one for each sample rate, which the page keeps from the first output on. So an app that runs again plays on the context that the person already unlocked, its processors load once, and no context closes while the next one opens, which some browsers refuse. A context whose outputs all stopped waits suspended, so a stopped app holds no audio hardware, and `audio.dispose` closes every context for good.
+    const sharedContext = (sampleRate) => {
+        let shared = audio.contexts.get(sampleRate);
+        if (shared !== undefined) {
+            return shared;
+        }
+        const context = new AudioContext({ sampleRate, latencyHint: "interactive" });
+        const worklet = locateFile("haylen-audio-worklet.js");
+        shared = { context, worklet, ran: false, ready: context.audioWorklet.addModule(worklet), change: null };
+        context.onstatechange = () => {
+            shared.ran = shared.ran || context.state === "running";
+        };
+        audio.contexts.set(sampleRate, shared);
+        return shared;
+    };
+
+    const reportAudioFailure = (action) => (error) => console.error("The audio output could not " + action + ": " + error.message);
+
+    // Browsers run a context only once the user has interacted with the page, unless their autoplay policy lets it run on its own, and Safari on iOS suspends it again after interruptions. A resume without either only makes the browser warn, so the context then waits for the next tap, click or key. A context runs while any of its outputs started, and suspends once none did. One change of a context runs at a time, since WebKit refuses a suspend while a resume is under way, and the context settles again once the change ended, as the outputs may have changed meanwhile.
+    const settleContext = (shared) => {
+        const context = shared.context;
+        if (shared.change !== null || context.state === "closed") {
             return;
         }
-
-        output.context.resume().catch(() => {});
+        const playing = [...audio.outputs.values()].some((output) => output.shared === shared && output.started);
+        const activation = navigator.userActivation;
+        const allowed = !activation || activation.hasBeenActive || shared.ran;
+        let change = null;
+        if (!playing && context.state === "running") {
+            change = context.suspend().catch(reportAudioFailure("suspend"));
+        } else if (playing && context.state !== "running" && allowed) {
+            change = context.resume().catch(reportAudioFailure("resume"));
+        }
+        if (change === null) {
+            return;
+        }
+        shared.change = change.then(() => {
+            shared.change = null;
+            settleContext(shared);
+        });
     };
 
     const mixBlock = (output) => {
@@ -2202,43 +2310,36 @@ Module.haylen = Module.haylen || {};
     const connectAudio = (output) => {
         // The ring buffer of the processor holds the whole target, which the page never exceeds.
         const options = { channels: output.channels, capacity: output.bufferedFrames, reportFrames: output.blockFrames };
-        output.node = new AudioWorkletNode(output.context, "haylen-audio", { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [output.channels], processorOptions: options });
+        const context = output.shared.context;
+        output.node = new AudioWorkletNode(context, "haylen-audio", { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [output.channels], processorOptions: options });
         output.node.port.onmessage = (event) => {
             output.queued -= event.data.played;
             output.underruns = event.data.underruns;
             for (const buffer of event.data.buffers) {
                 output.spare.push(new Float32Array(buffer));
             }
-
             fillAudio(output);
         };
-        output.node.connect(output.context.destination);
-
+        output.node.connect(context.destination);
         if (output.started) {
             output.node.port.postMessage({ active: true });
             fillAudio(output);
         }
     };
 
-    // Creates the context and loads the processor, which may still be loading when the engine starts the output. Returns `false` when the browser refuses the context.
+    // Takes the context of the sample rate and connects the processor once it loaded, which may still be loading when the engine starts the output. An output that closed while the processor loaded is gone, whatever the loading gave. Returns `false` when the browser refuses the context.
     audio.open = function (device, channels, sampleRate, blockFrames, bufferedFrames) {
-        let context;
+        let shared;
         try {
-            context = new AudioContext({ sampleRate, latencyHint: "interactive" });
+            shared = sharedContext(sampleRate);
         } catch (error) {
             console.error("The audio output could not be opened: " + error.message);
             return false;
         }
-
-        const output = { device, channels, blockFrames, bufferedFrames, context, node: null, started: false, ran: false, queued: 0, blocks: 0, underruns: 0, spare: [], scratch: Module._malloc(blockFrames * channels * Float32Array.BYTES_PER_ELEMENT) };
-        context.onstatechange = () => {
-            output.ran = output.ran || context.state === "running";
-        };
+        const output = { device, channels, blockFrames, bufferedFrames, shared, node: null, started: false, queued: 0, blocks: 0, underruns: 0, spare: [], scratch: Module._malloc(blockFrames * channels * Float32Array.BYTES_PER_ELEMENT) };
         audio.outputs.set(device, output);
-        // An output that closed while its processor loaded is gone, whatever the loading gave.
-        const worklet = locateFile("haylen-audio-worklet.js");
         const isOpen = () => audio.outputs.get(device) === output;
-        context.audioWorklet.addModule(worklet).then(
+        shared.ready.then(
             () => {
                 if (isOpen()) {
                     connectAudio(output);
@@ -2246,7 +2347,7 @@ Module.haylen = Module.haylen || {};
             },
             (error) => {
                 if (isOpen()) {
-                    console.error("The audio processor \"" + worklet + "\" could not be loaded: " + error.message);
+                    console.error("The audio processor \"" + shared.worklet + "\" could not be loaded: " + error.message);
                 }
             }
         );
@@ -2260,8 +2361,7 @@ Module.haylen = Module.haylen || {};
         if (output.node) {
             output.node.port.postMessage({ active: true });
         }
-
-        resumeAudio(output);
+        settleContext(output.shared);
         queueMicrotask(() => fillAudio(output));
     };
 
@@ -2272,39 +2372,47 @@ Module.haylen = Module.haylen || {};
         if (output.node) {
             output.node.port.postMessage({ active: false });
         }
-
-        output.context.suspend();
+        settleContext(output.shared);
     };
 
+    // The processor of a closed output ends, so the browser releases its node, while the context stays for the next output.
     audio.close = function (device) {
         const output = audio.outputs.get(device);
         audio.outputs.delete(device);
-
         if (output.node) {
             output.node.port.onmessage = null;
+            output.node.port.postMessage({ ended: true });
             output.node.disconnect();
         }
-
-        output.context.close();
         Module._free(output.scratch);
+        settleContext(output.shared);
+    };
+
+    // Closes every context once no output uses it, such as when the page that hosts the runtime goes away, and resolves once the browser closed them.
+    audio.dispose = function () {
+        if (audio.outputs.size > 0) {
+            throw new Error("The audio contexts close only once the app stopped.");
+        }
+        const closing = [...audio.contexts.values()].map((shared) => Promise.resolve(shared.change).then(() => shared.context.close()));
+        audio.contexts.clear();
+        return Promise.all(closing);
     };
 
     // Whether the output that the engine started waits for the user, as browsers keep a context suspended until the first tap, click or key.
     audio.locked = function (device) {
         const output = audio.outputs.get(device);
-        return output !== undefined && output.started && output.context.state !== "running";
+        return output !== undefined && output.started && output.shared.context.state !== "running";
     };
 
     // Describes the output of the app for `onStats`, which is unavailable while the app runs without sound.
     audio.stats = function () {
         const [output] = audio.outputs.values();
-
         if (!output) {
             return { available: false };
         }
-
-        const rate = output.context.sampleRate;
-        return { available: true, state: output.context.state, sampleRate: rate, bufferedMilliseconds: (output.queued * 1000) / rate, blocks: output.blocks, underruns: output.underruns };
+        const context = output.shared.context;
+        const rate = context.sampleRate;
+        return { available: true, state: context.state, sampleRate: rate, bufferedMilliseconds: (output.queued * 1000) / rate, blocks: output.blocks, underruns: output.underruns };
     };
 
     // Every tap, click and key resumes the outputs the app keeps playing, unless the app is in the background.
@@ -2312,13 +2420,9 @@ Module.haylen = Module.haylen || {};
         if (document.visibilityState !== "visible" || haylen.paused()) {
             return;
         }
-
         haylen.video.unlock();
-
-        for (const output of audio.outputs.values()) {
-            if (output.started) {
-                resumeAudio(output);
-            }
+        for (const shared of audio.contexts.values()) {
+            settleContext(shared);
         }
     };
 
@@ -2804,15 +2908,20 @@ Module.haylen = Module.haylen || {};
         };
     }
 
-    // User data lives in IndexedDB under `/persistent`, loaded before the app starts so saves are there on the first frame, and so is what the browser tells about the device.
+    // User data lives in IndexedDB under `/persistent`, loaded before the app starts so saves are there on the first frame, and so is what the browser tells about the device. A page that names `Module.haylen.storageNamespace`, such as an editor that plays many projects, keeps the user data of each namespace in a database of its own, named after its folder `/persistent/<namespace>`, so projects never see each other's data and a page loads only the namespace it plays.
+    const storageNamespace = haylen.storageNamespace;
+    if (storageNamespace !== undefined && (typeof storageNamespace !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(storageNamespace))) {
+        throw new Error("The field \"Module.haylen.storageNamespace\" must be 1 to 64 letters, digits, dots, dashes or underscores, starting with a letter or a digit.");
+    }
+    haylen.userDataRoot = storageNamespace === undefined ? "/persistent" : "/persistent/" + storageNamespace;
     Module.preRun = Module.preRun || [];
     Module.preRun.push(function () {
         addRunDependency("haylen-device");
         readDevice().then(() => removeRunDependency("haylen-device"));
     });
     Module.preRun.push(function () {
-        FS.mkdir("/persistent");
-        FS.mount(IDBFS, {}, "/persistent");
+        FS.mkdirTree(haylen.userDataRoot);
+        FS.mount(IDBFS, {}, haylen.userDataRoot);
         addRunDependency("haylen-user-data");
         FS.syncfs(true, (error) => {
             if (error) {

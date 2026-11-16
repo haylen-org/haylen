@@ -45,6 +45,7 @@ These errors can happen:
 
 - Bytes that are not a sound file raise `Audio data is not a supported WAV, FLAC, MP3 or Ogg Vorbis file.`.
 - A file or raw samples without a single sample raise `Audio data contains no samples.`.
+- A file that decodes to more than 134217728 samples raises `The audio decodes to more than 134217728 samples, so it plays only as a stream.`, and plays with `stream = true`.
 - A `format` other than the two names raises `The format of raw samples is "float32" or "int16", not "<format>".`.
 - Raw samples without `sampleRate` or `channels` raise `Raw audio needs a sample rate and channels.`.
 - Bytes that do not fill whole samples raise `Samples of this format take <n> bytes each, which <m> bytes do not fill.`.

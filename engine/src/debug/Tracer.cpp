@@ -4,6 +4,7 @@
 
 #include "debug/Debugger.hpp"
 #include "debug/Evaluation.hpp"
+#include "debug/ExecutionBudget.hpp"
 #include "debug/HaltedStack.hpp"
 #include "debug/ThreadWalk.hpp"
 #include "haylen/lua/Runtime.hpp"
@@ -133,16 +134,22 @@ int Tracer::getMask(lua_State* L, const lua_Debug& info) {
     return covered ? mask | LUA_MASKLINE : mask;
 }
 
+// The hooks of the tracer carry the count of the execution budget, since a coroutine has one hook for everything.
 void Tracer::applyMask(lua_State* L, int mask) {
-    if (lua_gethook(L) != &onHook || lua_gethookmask(L) != mask) {
-        lua_sethook(L, &onHook, mask, 0);
+    const int full = mask | ExecutionBudget::getMask();
+    if (lua_gethook(L) != &onHook || lua_gethookmask(L) != full) {
+        lua_sethook(L, &onHook, full, ExecutionBudget::getCount());
     }
 }
 
 void Tracer::onHook(lua_State* L, lua_Debug* ar) {
+    if (ar->event == LUA_HOOKCOUNT) {
+        ExecutionBudget::check(L);
+        return;
+    }
     Tracer* tracer = current;
     if (tracer == nullptr || !tracer->isWatching()) {
-        lua_sethook(L, nullptr, 0, 0);
+        ExecutionBudget::hook(L);
         return;
     }
 
@@ -348,6 +355,7 @@ void Tracer::halt(Halt value) {
         debugger.halt(value);
     }
 
+    ExecutionBudget::renew();
     refresh(thread);
 }
 

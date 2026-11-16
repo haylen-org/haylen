@@ -4,6 +4,7 @@
 #include <exception>
 #include <optional>
 #include <unordered_set>
+#include <utility>
 
 #include "haylen/assets/Manager.hpp"
 #include "haylen/core/Engine.hpp"
@@ -32,7 +33,13 @@ core::Json HotReloadPlugin::Report::toJson() const {
         return {{"restarted", true}, {"reason", reason}};
     }
 
-    return {{"restarted", false}, {"mode", core::AppConfig::reloadName(mode)}, {"modules", modules}, {"assets", assets}, {"resumed", resumed}, {"milliseconds", milliseconds}};
+    core::Json rejections = core::Json::array();
+    for (const Rejection& rejection : rejected) {
+        core::Json error = rejection.error.toJson();
+        error["phase"] = core::Engine::kPhaseNames[static_cast<std::size_t>(core::Engine::Phase::Reload)];
+        rejections.push_back({{"path", rejection.path}, {"error", std::move(error)}});
+    }
+    return {{"restarted", false}, {"mode", core::AppConfig::reloadName(mode)}, {"modules", modules}, {"restored", restored}, {"assets", assets}, {"rejected", std::move(rejections)}, {"resumed", resumed}, {"milliseconds", milliseconds}};
 }
 
 void HotReloadPlugin::start(core::Engine& engine) {
@@ -144,7 +151,7 @@ void HotReloadPlugin::apply(core::Engine& engine, const std::vector<std::string>
         return;
     }
 
-    reloadAssets(engine, batch.assets, report);
+    reloadAssets(engine, batch, report);
 
     for (Plugin* plugin : engine.getPlugins().getAll()) {
         plugin->packageChanged(engine, batch.files);
@@ -167,7 +174,11 @@ void HotReloadPlugin::apply(core::Engine& engine, const std::vector<std::string>
         core::Log::info("Reloaded {} in {:.0f} ms.", list, report.milliseconds);
     }
 
-    if (applied && (!report.modules.empty() || !report.assets.empty() || batch.retry) && engine.clearError()) {
+    for (const std::string& path : report.restored) {
+        core::Log::info("The file \"{}\" holds the code that runs again.", path);
+    }
+    const bool changedCode = !report.modules.empty() || !report.restored.empty() || !report.assets.empty() || batch.retry;
+    if (applied && changedCode && engine.clearError()) {
         report.resumed = true;
         core::Log::info("The app resumed after the reload.");
     }
@@ -175,9 +186,10 @@ void HotReloadPlugin::apply(core::Engine& engine, const std::vector<std::string>
     finish(report);
 }
 
-// An editor may still be writing a file when it is seen, so a failed reload waits for the next save instead of stopping the app.
-void HotReloadPlugin::reloadAssets(core::Engine& engine, const std::vector<std::string>& assets, Report& report) const {
-    for (const std::string& asset : assets) {
+// An editor may still be writing a file when it is seen, so a failed reload waits for the next save instead of stopping the app, and the report rejects the file with its reason.
+void HotReloadPlugin::reloadAssets(core::Engine& engine, const Batch& batch, Report& report) const {
+    for (std::size_t index = 0; index < batch.assets.size(); ++index) {
+        const std::string& asset = batch.assets[index];
         try {
             if (engine.getAssets().reload(asset) > 0) {
                 core::Log::info("Reloaded \"{}\".", asset);
@@ -185,6 +197,9 @@ void HotReloadPlugin::reloadAssets(core::Engine& engine, const std::vector<std::
             }
         } catch (const std::exception& error) {
             core::Log::warning("The asset \"{}\" could not be reloaded yet: {}", asset, error.what());
+            lua::Error rejection(std::string("The asset \"") + asset + "\" could not be reloaded: " + error.what());
+            rejection.setCode(lua::Error::Code::Asset);
+            report.rejected.push_back({.path = batch.files[index], .error = std::move(rejection)});
         }
     }
 }
@@ -213,12 +228,21 @@ bool HotReloadPlugin::reloadModules(core::Engine& engine, const std::vector<std:
             return false;
         }
 
-        if (result.status == lua::ModuleReloader::Status::Failed && !failure) {
-            failure = std::move(result.error);
+        lua::ModuleGraph::Module& module = *graph->find(path);
+        if (result.status == lua::ModuleReloader::Status::Failed) {
+            module.failed = true;
+            report.rejected.push_back({.path = path, .error = *result.error});
+            if (!failure) {
+                failure = std::move(result.error);
+            }
         }
 
         if (result.status == lua::ModuleReloader::Status::Patched) {
+            module.failed = false;
             report.modules.push_back(path);
+        }
+        if (result.status == lua::ModuleReloader::Status::Unchanged && std::exchange(module.failed, false)) {
+            report.restored.push_back(path);
         }
     }
 

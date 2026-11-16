@@ -2,6 +2,7 @@
 
 #include <lua.hpp>
 
+#include <cstdint>
 #include <vector>
 
 #include "core/FloatBufferLua.hpp"
@@ -35,8 +36,8 @@ int ChainLua::create(lua_State* L) {
     }
 
     if (even) {
-        if (segments < 1) {
-            return luaL_error(L, "A chain needs at least one segment in \"segments\".");
+        if (segments < 1 || static_cast<std::uint64_t>(segments) > Chain::kMaxSegments) {
+            return luaL_error(L, "A chain needs from 1 to %d segments in \"segments\".", static_cast<int>(Chain::kMaxSegments));
         }
 
         options.lengths.assign(static_cast<std::size_t>(segments), length);

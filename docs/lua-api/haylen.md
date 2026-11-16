@@ -188,6 +188,8 @@ These options start the values of [`haylen.lifecycle()`](#haylenlifecycle), and 
 | `debug.fold` | string or object | Absent | A fold to simulate instead of the one of the device: a preset such as `"book"` or `"tabletop"`, or an object with `axis`, `state` and `hinge`, as [`window.setFoldSimulation`](window.md#windowsetfoldsimulationvalue) describes. |
 | `debug.showSafeArea` | boolean | `false` | Shows the debug view of the safe area from the start, as [`ui.setSafeAreaVisible`](ui.md#uisetsafeareavisiblevisible) describes. |
 | `debug.reload` | string | `"module"` | How a changed Lua module applies while the app runs in development. `"module"` reloads it in place with the state of the app, and `"restart"` restarts the app, as [hot reload](../core/lua.md#hot-reload) describes. |
+| `debug.executionBudget` | number | `5` | The seconds that the code of an app in development may run each time the platform enters the engine, such as for one frame, before the engine stops the app, from 0.1 to 600, as [the execution budget](../core/lua.md#the-execution-budget) describes. |
+| `debug.memoryBudget` | number | `1024` | The megabytes that the Lua state of an app in development may hold before the engine stops the app, from 16 to 4096, as [the execution budget](../core/lua.md#the-execution-budget) describes. |
 
 #### Localization
 

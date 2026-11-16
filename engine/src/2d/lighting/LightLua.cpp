@@ -60,7 +60,7 @@ int LightLua::newLight(lua_State* L) {
 int LightLua::illuminate(lua_State* L) {
     const math::Color ambient = lua::Stack::read<math::Color>(L, 1);
     luaL_checktype(L, 2, LUA_TTABLE);
-    std::vector<Light> lights(static_cast<std::size_t>(luaL_len(L, 2)));
+    std::vector<Light> lights(lua_rawlen(L, 2));
     for (std::size_t index = 0; index < lights.size(); ++index) {
         lua_rawgeti(L, 2, static_cast<lua_Integer>(index + 1));
         lights[index] = read(L, -1);
@@ -128,7 +128,7 @@ int LightLua::shadowedAt(lua_State* L) {
     const Light& light = lua::Userdata::check<Light>(L, 1);
     light.validate();
     luaL_checktype(L, 4, LUA_TTABLE);
-    std::vector<Occluder> occluders(static_cast<std::size_t>(luaL_len(L, 4)));
+    std::vector<Occluder> occluders(lua_rawlen(L, 4));
     for (std::size_t index = 0; index < occluders.size(); ++index) {
         lua_rawgeti(L, 4, static_cast<lua_Integer>(index + 1));
         OccluderLua::read(L, -1, occluders[index]);

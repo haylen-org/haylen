@@ -14,6 +14,8 @@ namespace haylen::procedural2d {
 // Carves winding caves with random walkers that start at the center and dig floors until a share of the map is open, where 1 marks walls and 0 floors. The outermost cells stay walls.
 class DrunkardWalk final {
   public:
+    static constexpr int kMaxWalkers = 4096;
+    static constexpr int kMaxSteps = 1 << 26;
     static constexpr std::int32_t kFloor = 0;
     static constexpr std::int32_t kWall = 1;
 

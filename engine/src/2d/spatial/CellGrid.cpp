@@ -1,15 +1,14 @@
 #include "haylen/2d/spatial/CellGrid.hpp"
 
 #include <algorithm>
-#include <limits>
 #include <stdexcept>
 #include <string>
 
 namespace haylen::spatial2d {
 
 CellGrid::CellGrid(int columns, int rows, std::int32_t value) : width(columns), height(rows) {
-    if (columns <= 0 || rows <= 0 || static_cast<std::int64_t>(columns) * rows > std::numeric_limits<std::int32_t>::max()) {
-        throw std::invalid_argument("A cell grid needs a positive size that fits in 32-bit cell indices.");
+    if (columns <= 0 || rows <= 0 || static_cast<std::int64_t>(columns) * rows > kMaxCells) {
+        throw std::invalid_argument("A cell grid needs a positive size of at most " + std::to_string(kMaxCells) + " cells.");
     }
 
     values.assign(static_cast<std::size_t>(columns) * static_cast<std::size_t>(rows), value);

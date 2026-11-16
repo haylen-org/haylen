@@ -13,6 +13,7 @@
 
 #include "content/ReleasePackage.hpp"
 #include "debug/Debugger.hpp"
+#include "debug/ExecutionBudget.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/content/Bootstrap.hpp"
 #include "haylen/core/Engine.hpp"
@@ -176,6 +177,10 @@ void Player::stop() {
     getCurrent().replace({.package = std::make_shared<io::MemoryPackage>("stopped"), .config = {}, .application = std::make_unique<StoppedApplication>(), .playing = false});
 }
 
+void Player::end() {
+    getCurrent().host->closeWindow();
+}
+
 void Player::fail(std::string_view reason) {
     Player& runtime = getCurrent();
     runtime.close();
@@ -195,8 +200,14 @@ void Player::setPaused(bool value) {
     }
 
     if (const std::optional<Event> event = runtime.reported.setPaused(value)) {
+        const debug::ExecutionBudget::Entry entry(runtime.getExecutionBudget(), "event");
         runtime.engine->handleEvent(*event);
     }
+}
+
+bool Player::isPlaying() noexcept {
+    const Player& runtime = getCurrent();
+    return runtime.engine != nullptr && runtime.playing;
 }
 
 bool Player::isPaused() noexcept {
@@ -264,6 +275,11 @@ void Player::pressBack() {
 
     deliver({.type = Event::Type::KeyDown, .key = input::Key::Escape});
     deliver({.type = Event::Type::KeyUp, .key = input::Key::Escape});
+}
+
+debug::ExecutionBudget* Player::getExecutionBudget() const noexcept {
+    const DevelopmentSession* session = host->getDevelopmentSession();
+    return session != nullptr ? &session->getExecutionBudget() : nullptr;
 }
 
 Player::Process& Player::getProcess() noexcept {
@@ -352,28 +368,7 @@ void Player::frame(double seconds) {
         return;
     }
 
-    runtime.host->setBackHeld(getProcess().backHeld.load());
-    Services::updateWindow();
-
-    if (const std::optional<Event::MemoryLevel> level = MemoryWarning::take()) {
-        runtime.engine->handleEvent({.type = Event::Type::LowMemory, .memoryLevel = *level});
-    }
-
-    for (Event& event : takePostedEvents()) {
-#if defined(__ANDROID__)
-        // The on-screen keyboard of Android arrives from the UI thread in window pixels.
-        if (event.type == Event::Type::KeyboardChanged) {
-            event.keyboardFrame = AndroidActivity::toFramebuffer(event.keyboardFrame);
-        }
-#endif
-        runtime.deliver(event);
-    }
-    for (int press = takeBackPresses(); press > 0 && runtime.engine->isRunning(); --press) {
-        runtime.pressBack();
-    }
-
-    runtime.endSplashScreenWhenDue();
-    runtime.engine->frame(seconds);
+    runtime.play(seconds);
 #if defined(__ANDROID__)
     runtime.reportBackCapture();
 #endif
@@ -388,6 +383,7 @@ void Player::frame(double seconds) {
     }
 #if defined(__EMSCRIPTEN__)
     WebPage::reportFrame(*runtime.engine);
+    WebPage::finishFrame();
 #endif
 
     // A restart or a launch happens between frames, where no engine code is on the stack.
@@ -396,6 +392,33 @@ void Player::frame(double seconds) {
     } else if (const std::optional<core::Engine::Launch>& request = runtime.engine->getLaunchRequest()) {
         runtime.launchPackage(*request);
     }
+}
+
+// The events that wait and the frame run as one call into the engine, which the execution budget of development times, before the frame decides whether another app takes over.
+void Player::play(double seconds) {
+    const debug::ExecutionBudget::Entry entry(getExecutionBudget(), "frame");
+    host->setBackHeld(getProcess().backHeld.load());
+    Services::updateWindow();
+
+    if (const std::optional<Event::MemoryLevel> level = MemoryWarning::take()) {
+        engine->handleEvent({.type = Event::Type::LowMemory, .memoryLevel = *level});
+    }
+
+    for (Event& event : takePostedEvents()) {
+#if defined(__ANDROID__)
+        // The on-screen keyboard of Android arrives from the UI thread in window pixels.
+        if (event.type == Event::Type::KeyboardChanged) {
+            event.keyboardFrame = AndroidActivity::toFramebuffer(event.keyboardFrame);
+        }
+#endif
+        deliver(event);
+    }
+    for (int press = takeBackPresses(); press > 0 && engine->isRunning(); --press) {
+        pressBack();
+    }
+
+    endSplashScreenWhenDue();
+    engine->frame(seconds);
 }
 
 // The page hears what every batch of a development server did, as the web editor shows it.
@@ -521,7 +544,12 @@ void Player::launch() {
     } catch (const std::exception& error) {
         // Without an engine there is no error screen, so the failure goes to the log and the page.
         core::Log::error("The engine could not start: {}", error.what());
-        Services::reportError(lua::Error(error.what()).toJson());
+        core::Json report = lua::Error(error.what()).toJson();
+        report["phase"] = "startup";
+        Services::reportError(report);
+#if defined(__EMSCRIPTEN__)
+        WebPage::reportStartFailed(report);
+#endif
     }
 
     if (engine == nullptr) {
@@ -529,6 +557,7 @@ void Player::launch() {
         return;
     }
 
+    const debug::ExecutionBudget::Entry entry(getExecutionBudget(), "start");
     engine->start();
 
     for (const Event& event : reported.getReplay()) {
@@ -536,7 +565,7 @@ void Player::launch() {
     }
 #if defined(__EMSCRIPTEN__)
     if (playing) {
-        WebPage::reportStarted(engine->getConfig());
+        WebPage::reportStarted(*engine);
     }
 #elif defined(__ANDROID__)
     JavaBridge::setAppRunning(true);
@@ -577,7 +606,10 @@ void Player::close() noexcept {
     AppleRuntime::setAppRunning(false);
 #endif
     getProcess().exitStatus = engine->getExitStatus();
-    engine.reset();
+    {
+        const debug::ExecutionBudget::Entry entry(getExecutionBudget(), "stop");
+        engine.reset();
+    }
 #if defined(__EMSCRIPTEN__)
     if (playing) {
         WebPage::reportStopped();
@@ -603,6 +635,7 @@ void Player::deliver(const Event& event) {
         return;
     }
 
+    const debug::ExecutionBudget::Entry entry(getExecutionBudget(), "event");
     const bool typed = event.type == Event::Type::TextEdited || event.type == Event::Type::TextAction;
     if (!typed || event.textEdit.field != TextInput::kKeyboardField) {
         engine->handleEvent(event);

@@ -431,7 +431,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | Event | Source |
 | --- | --- |
 | `appActive`, `appInactive` | The window of the page gaining and losing the focus. |
-| `appBackground` | A hidden tab, through `visibilitychange`, and `Module.haylen.pause()` of the page. |
+| `appBackground` | A hidden tab, through `visibilitychange`, and the request `pause` of the [editor contract](../tools/build.md#the-editor-contract) of the page. |
 | `appLowMemory` | Never, because browsers tell pages nothing about memory pressure. |
 | `appQuitRequested` | Never, because a page that closes cannot wait for the app. |
 | `linkOpened` | The links that the page or the web module of a plugin hands over with `openLink` of the [runtime API](../tools/build.md#runtime-api), such as a link of the scheme of a plugin that the hash of the page address stands in for, since a page is the link that opened it. |

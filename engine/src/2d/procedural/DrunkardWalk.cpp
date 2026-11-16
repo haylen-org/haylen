@@ -4,6 +4,7 @@
 #include <array>
 #include <cmath>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 #include "haylen/math/Math.hpp"
@@ -14,6 +15,9 @@ namespace haylen::procedural2d {
 spatial2d::CellGrid DrunkardWalk::generate(const Options& options, math::Random& random) {
     if (options.width < 3 || options.height < 3 || options.walkers < 1) {
         throw std::invalid_argument("A drunkard walk needs a map of at least 3 by 3 cells and at least one walker.");
+    }
+    if (options.walkers > kMaxWalkers || options.maxSteps > kMaxSteps) {
+        throw std::invalid_argument("A drunkard walk takes at most " + std::to_string(kMaxWalkers) + " walkers and " + std::to_string(kMaxSteps) + " steps.");
     }
 
     spatial2d::CellGrid grid(options.width, options.height, kWall);

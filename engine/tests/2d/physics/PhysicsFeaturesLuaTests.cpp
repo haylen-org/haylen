@@ -198,7 +198,7 @@ TEST_F(PhysicsFeaturesLuaTest, FluidsExposePositionsInBulk) {
     EXPECT_NE(lua("water:draw({size = 2})").find("Unknown option \"size\""), std::string::npos);
     EXPECT_NE(lua("physics2d.newFluid(world, {radius = 4, smoothingRadius = 3})").find("larger smoothing radius"), std::string::npos);
     EXPECT_NE(lua("physics2d.newFluid(world, {density = -1})").find("A fluid needs"), std::string::npos);
-    EXPECT_NE(lua("physics2d.newFluid(world, {iterations = 0})").find("at least one iteration"), std::string::npos);
+    EXPECT_NE(lua("physics2d.newFluid(world, {iterations = 0})").find("from 1 to 64 iterations"), std::string::npos);
     EXPECT_NE(lua("physics2d.newFluid(world, {stiffness = 0.1})").find("Unknown option \"stiffness\""), std::string::npos);
 }
 
@@ -270,7 +270,7 @@ TEST_F(PhysicsFeaturesLuaTest, TunesWorldsAndReadsTheirState) {
     )");
     // clang-format on
     EXPECT_EQ(lua("return tostring(intact) .. ' ' .. tostring(weld.valid) .. ' ' .. tostring(broken.valid) .. ' ' .. tostring(broken.a == holder) .. ' ' .. tostring(broken.force > 0)"), "true false false true true");
-    EXPECT_NE(lua("tuned.subSteps = 0").find("at least one sub-step"), std::string::npos);
+    EXPECT_NE(lua("tuned.subSteps = 0").find("from 1 to 64 sub-steps"), std::string::npos);
     EXPECT_NE(lua("physics2d.newWorld({threads = 0})").find("at least one thread"), std::string::npos);
     EXPECT_NE(lua("tuned.maxSpeed = -1").find("A physics speed needs to be finite and zero or more."), std::string::npos);
     EXPECT_NE(lua("physics2d.newWorld({warp = 1})").find("Unknown option \"warp\""), std::string::npos);

@@ -12,6 +12,9 @@ void RayBatch::requireIndex(std::size_t index) const {
 }
 
 void RayBatch::resize(std::size_t count) {
+    if (count > kMaxRays) {
+        throw std::invalid_argument("A ray batch holds at most " + std::to_string(kMaxRays) + " rays.");
+    }
     rays.resize(count);
     results.resize(count);
 }
