@@ -6,6 +6,7 @@ import pytest
 from haylen.cli.application import Application
 from haylen.cli.arguments import Arguments
 from haylen.cli.command_session import CommandSession
+from haylen.cli.commands.doctor import DoctorCommand
 from haylen.core.app_pipeline import AppPipeline
 from haylen.core.errors.invalid_option import InvalidOption
 from haylen.core.errors.missing_capability import MissingCapability
@@ -84,3 +85,11 @@ class CommandsTest:
 
         described = CommandsTest.run(CommandsTest.session(fixture, monkeypatch, structured=True), ["project", "inspect", str(app), "--target", "fake"])
         assert described["targets"][0]["settings"] == {"fake": {"signing": {"value": "team", "origin": origin}}}
+
+    def test_the_doctor_says_that_a_pinned_tool_not_downloaded_yet_comes_with_the_first_build(self):
+        missing = {"name": "Gradle", "version": "9.8.2", "path": None, "problem": None}
+        found = {"name": "cmake", "version": "cmake version 4.4.3", "path": "/opt/homebrew/bin/cmake", "problem": None}
+        broken = {"name": "Xcode", "version": None, "path": None, "problem": 'The command "xcodebuild" does not run.'}
+        assert DoctorCommand.tool_state(missing) == "9.8.2, which the first build that needs it downloads into `.tools`"
+        assert DoctorCommand.tool_state(found) == "cmake version 4.4.3 at `/opt/homebrew/bin/cmake`"
+        assert DoctorCommand.tool_state(broken) == 'The command "xcodebuild" does not run.'

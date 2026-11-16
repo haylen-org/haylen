@@ -40,11 +40,20 @@ class DoctorCommand(Command):
                 ("Engine port", result["port"]),
                 ("SDK", result["sdk"]),
             ]
-            rows += [(tool["name"], tool["problem"] or f"{tool['version'] or 'Found'} at `{tool['path']}`") for tool in result["tools"]]
+            rows += [(tool["name"], DoctorCommand.tool_state(tool)) for tool in result["tools"]]
             terminal.rows(rows)
             for problem in result["problems"]:
                 terminal.warning(problem)
         return {"host": {"system": Host.system(), "architecture": Host.architecture()}, "problems": list(registry.problems), "targets": results}
+
+    @staticmethod
+    def tool_state(tool: Mapping[str, object]) -> str:
+        """What a row of the doctor says of one tool: its problem, where it is, or, for a pinned tool that is not in `.tools` yet, that the first build that needs it downloads it."""
+        if tool["problem"]:
+            return str(tool["problem"])
+        if tool["path"] is None:
+            return f"{tool['version']}, which the first build that needs it downloads into `.tools`"
+        return f"{tool['version'] or 'Found'} at `{tool['path']}`"
 
     @staticmethod
     def examine(target: BackendRegistry.Target, registry: BackendRegistry, manifests: list, revision: str) -> dict[str, object]:
