@@ -117,6 +117,7 @@ std::function<void()> JobSystem::enqueue(std::function<void()> work, std::string
             job = std::move(found->second);
             target->jobs.erase(found);
         }
+
         job();
     };
     // clang-format on

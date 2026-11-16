@@ -66,6 +66,7 @@ void Utf8::decode(std::string_view text, std::u32string& output) {
 bool Utf8::isValid(std::string_view text) noexcept {
     // Only the three bytes that encode U+FFFD decode to it without an error.
     static constexpr std::string_view kEncodedReplacement = "\xEF\xBF\xBD";
+
     for (std::size_t offset = 0; offset < text.size();) {
         const std::size_t start = offset;
         if (decode(text, offset) == kReplacementCharacter && text.substr(start, offset - start) != kEncodedReplacement) {

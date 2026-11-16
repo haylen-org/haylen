@@ -41,6 +41,7 @@ void FrameQueue::clear() noexcept {
         const std::scoped_lock lock(mutex);
         dropped = std::exchange(calls, {});
     }
+
     running.clear();
 }
 

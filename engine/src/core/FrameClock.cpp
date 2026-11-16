@@ -52,6 +52,7 @@ bool FrameClock::canProcess(ProcessMode mode, bool gamePaused) noexcept {
     case ProcessMode::Disabled:
         return false;
     }
+
     return false;
 }
 

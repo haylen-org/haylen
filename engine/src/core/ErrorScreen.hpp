@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -87,6 +88,7 @@ class ErrorScreen final {
     [[nodiscard]] const math::Rect& getCloseButton() const noexcept {
         return closeButton;
     }
+
     [[nodiscard]] Action getFocusedAction() const noexcept {
         return focused;
     }
@@ -95,6 +97,7 @@ class ErrorScreen final {
     }
 
     void handleEvent(const platform::Event& event);
+
     // Reads the gamepads once per frame, since their buttons arrive as state rather than as events.
     void update();
     void render();

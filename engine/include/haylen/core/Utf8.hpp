@@ -20,6 +20,7 @@ class Utf8 final {
 
     // Tells whether text is well-formed UTF-8, without stray or missing continuation bytes, overlong forms, surrogates or code points above U+10FFFF.
     [[nodiscard]] static bool isValid(std::string_view text) noexcept;
+
     static void append(std::string& output, char32_t codePoint);
     [[nodiscard]] static std::size_t countCodePoints(std::string_view text) noexcept;
 

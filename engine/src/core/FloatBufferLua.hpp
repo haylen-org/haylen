@@ -29,7 +29,7 @@ class FloatBufferLua final {
   private:
     [[nodiscard]] static FloatBuffer& check(lua_State* L);
 
-    // Reads the one-based index at stack index 2 and returns it counted from zero, raising an error outside the buffer.
+    // Reads the one-based position at the stack index and returns it counted from zero, raising an error when `count` values from it do not fit in the buffer.
     [[nodiscard]] static std::size_t checkPosition(lua_State* L, const FloatBuffer& buffer, int index, std::size_t count);
 
     static int at(lua_State* L);

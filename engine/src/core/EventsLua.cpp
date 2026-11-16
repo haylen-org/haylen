@@ -2,8 +2,10 @@
 
 #include <lua.hpp>
 
+#include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/lua/Binding.hpp"
@@ -85,6 +87,7 @@ Connection EventsLua::subscribe(lua_State* L, int name, int function, int option
         lua::Table::readField(L, options, "channel", settings.channel);
         lua::Table::readField(L, options, "priority", settings.priority);
         lua::Table::readField(L, options, "once", settings.once);
+
         if (ownerIndex == 0 && lua_getfield(L, options, "owner") != LUA_TNIL) {
             ownerIndex = lua_gettop(L);
         }
@@ -119,6 +122,7 @@ Connection EventsLua::subscribe(lua_State* L, int name, int function, int option
         }
     }, std::move(settings));
     // clang-format on
+
     if (ownerIndex != 0) {
         lua::Owners::add(L, ownerIndex, connection);
     }

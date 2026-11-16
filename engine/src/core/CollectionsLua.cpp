@@ -44,6 +44,7 @@ void CollectionsLua::callHook(lua_State* L, const char* name, int object, int fi
 void CollectionsLua::create(lua_State* L) {
     lua::Userdata::pushField(L, 1, "create");
     lua_call(L, 0, 1);
+
     if (lua_isnil(L, -1)) {
         luaL_error(L, "The \"create\" function of the pool returned \"nil\".");
     }
@@ -121,6 +122,7 @@ int CollectionsLua::newPool(lua_State* L) {
     luaL_argcheck(L, lua_getfield(L, options, "create") == LUA_TFUNCTION, options, "create must be a function");
     lua::Userdata::setField(L, self, "create", -1);
     lua_pop(L, 1);
+
     for (const char* hook : kHooks) {
         const int type = lua_getfield(L, options, hook);
         luaL_argcheck(L, type == LUA_TFUNCTION || type == LUA_TNIL, options, "reset and release must be functions when present");
@@ -145,6 +147,11 @@ int CollectionsLua::newPool(lua_State* L) {
 int CollectionsLua::poolAcquire(lua_State* L) {
     Pool& pool = lua::Userdata::check<Pool>(L, 1);
     const int arguments = lua_gettop(L) - 1;
+    if (pool.idle == 0 && pool.capacity > 0 && pool.active >= pool.capacity) {
+        lua_pushnil(L);
+        return 1;
+    }
+
     if (pool.idle > 0) {
         lua::Userdata::pushField(L, 1, "idle");
         lua_rawgeti(L, -1, static_cast<lua_Integer>(pool.idle));
@@ -152,15 +159,11 @@ int CollectionsLua::poolAcquire(lua_State* L) {
         lua_rawseti(L, -3, static_cast<lua_Integer>(pool.idle));
         lua_remove(L, -2);
         --pool.idle;
-    } else if (pool.capacity > 0 && pool.active >= pool.capacity) {
-        lua_pushnil(L);
-        return 1;
     } else {
         create(L);
     }
 
     const int object = lua_gettop(L);
-
     const auto slot = static_cast<lua_Integer>(++pool.active);
     lua::Userdata::pushField(L, 1, "active");
     lua_pushvalue(L, object);

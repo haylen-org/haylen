@@ -145,7 +145,6 @@ class EventBus final {
         // clang-format on
     }
 
-    // Removes every listener.
     void clear() noexcept;
 
     // Lists every named event that has ever had a listener, with its listener count, its emits since then and the listeners whose owner is gone.

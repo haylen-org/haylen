@@ -73,6 +73,7 @@ TEST(MessagePackLuaTest, EncodesAndDecodesOnTheFrameThreadAndOffIt) {
     test::EngineFixture fixture;
     fixture.runLua("net = require('haylen.net') platform = require('haylen.platform')");
     EXPECT_EQ(fixture.lua("local value = net.decodeMessagePack(net.encodeMessagePack({o = 30, t = 12, name = 'stone', list = {1, 2, 3}, raw = platform.bytes('\\0\\1\\2')})) return value.o .. ' ' .. value.t .. ' ' .. value.name .. ' ' .. #value.list .. ' ' .. #value.raw .. ' ' .. value.raw:byte(3)"), "30 12 stone 3 3 2");
+
     // clang-format off
     fixture.runLua(R"(
         require('async').spawn(function()
@@ -87,6 +88,7 @@ TEST(MessagePackLuaTest, EncodesAndDecodesOnTheFrameThreadAndOffIt) {
         end)
     )");
     // clang-format on
+
     ASSERT_TRUE(fixture.frameUntil([&fixture] { return fixture.lua("return tostring(refused ~= nil)") == "true"; }));
     EXPECT_EQ(fixture.lua("return decoded"), "5 2000 2000");
     EXPECT_EQ(fixture.lua("return refused"), "The bytes are not valid MessagePack: it holds the byte 0xc1, which no value uses.");

@@ -147,6 +147,7 @@ void TimerScheduler::update(const FrameClock& clock) {
             }
 
             timer.remaining += timer.interval;
+
             // A timer that owes more calls than one update runs, as one with a tiny interval does, drops the rest of its debt.
             if (++timer.callsThisUpdate >= kMaxCallsPerUpdate && timer.remaining <= 0.0F) {
                 timer.remaining = timer.interval;

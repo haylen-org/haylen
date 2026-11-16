@@ -123,7 +123,9 @@ template <typename... Args> class Signal final {
 
     [[nodiscard]] std::size_t size() const noexcept {
         const auto live = [](const std::shared_ptr<Entry>& entry) { return entry->connected; };
-        return static_cast<std::size_t>(std::count_if(state->entries.begin(), state->entries.end(), live) + std::count_if(state->added.begin(), state->added.end(), live));
+        const auto listed = std::count_if(state->entries.begin(), state->entries.end(), live);
+        const auto added = std::count_if(state->added.begin(), state->added.end(), live);
+        return static_cast<std::size_t>(listed + added);
     }
     [[nodiscard]] bool empty() const noexcept {
         return size() == 0;

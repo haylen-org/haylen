@@ -89,14 +89,8 @@ void SceneLoad::preload(std::string_view group, PreloadCompletion completion) {
                 load->groups[part] = fraction;
             }
         }, [deferral, name = std::string(group), completion = std::move(completion)](std::vector<std::string> failures) {
-            std::optional<lua::Error> failure;
-            if (!failures.empty()) {
-                std::string text = "The asset group \"" + name + "\" could not load " + failures.front();
-                for (std::size_t index = 1; index < failures.size(); ++index) {
-                    text += ", " + failures[index];
-                }
-
-                failure.emplace(text + ".");
+            const std::optional<lua::Error> failure = describeFailures(name, failures);
+            if (failure) {
                 deferral->fail(*failure);
             } else {
                 deferral->complete();
@@ -113,6 +107,19 @@ void SceneLoad::preload(std::string_view group, PreloadCompletion completion) {
         throw;
     }
     // clang-format on
+}
+
+std::optional<lua::Error> SceneLoad::describeFailures(std::string_view group, const std::vector<std::string>& failures) {
+    if (failures.empty()) {
+        return std::nullopt;
+    }
+
+    std::string text = "The asset group \"" + std::string(group) + "\" could not load " + failures.front();
+    for (std::size_t index = 1; index < failures.size(); ++index) {
+        text += ", " + failures[index];
+    }
+
+    return lua::Error(text + ".");
 }
 
 void SceneLoad::release() {

@@ -34,8 +34,6 @@
 
 namespace haylen::core {
 
-namespace {
-
 // Writes the scene events of the engine to a log next to the hooks of the scenes, as the event name followed by the scenes it carries.
 class EventRecorder final {
   public:
@@ -122,8 +120,6 @@ class RecordingView final : public LoadingView {
     std::vector<std::string>& log;
 };
 
-} // namespace
-
 TEST(SceneLoadTest, FinishesOnceTheHookAndEveryDeferralReleasedIt) {
     test::EngineFixture fixture;
     SceneManager& scenes = fixture.engine().getScenes();
@@ -138,6 +134,7 @@ TEST(SceneLoadTest, FinishesOnceTheHookAndEveryDeferralReleasedIt) {
         second.emplace(load.defer());
     });
     // clang-format on
+
     scenes.preload(scene, std::string("params"));
     ASSERT_NE(context, nullptr);
     EXPECT_EQ(std::any_cast<std::string>(context->getParams()), "params");
@@ -178,6 +175,7 @@ TEST(SceneLoadTest, FinishesOnceTheHookAndEveryDeferralReleasedIt) {
         throw std::runtime_error("The level file is damaged.");
     });
     // clang-format on
+
     scenes.preload(throwing, {}, [&](const SceneManager::Result& value) { result = value; });
     ASSERT_TRUE(result.has_value());
     EXPECT_STREQ(result->error->what(), "The level file is damaged.");
@@ -194,6 +192,7 @@ TEST(SceneLoadTest, FinishesOnceTheHookAndEveryDeferralReleasedIt) {
         dropped.emplace(load.defer());
     });
     // clang-format on
+
     scenes.preload(twice, {}, [&](const SceneManager::Result& value) { result = value; });
     early->fail(lua::Error("the first failure"));
     dropped.reset();
@@ -529,6 +528,7 @@ TEST(SceneManagerTest, ShowsTheLoadingViewAfterItsDelayForItsMinimumTime) {
     EXPECT_EQ(scenes.getTop(), slow.get());
     EXPECT_FALSE(scenes.isLoadingViewShown());
 }
+
 TEST(SceneManagerTest, PreloadsAssetGroupsIntoTheProgressOfTheLoad) {
     std::vector<std::string> log;
     const std::vector<std::uint8_t> image = test::TestFiles::pngImage(4, 4, 0xFFFFFFFFU);
@@ -690,6 +690,7 @@ TEST(SceneManagerTest, FailedLoadsAfterTheCurrentSceneLeftGoToTheErrorHandler) {
         scenes.replace(fallback);
     }});
     // clang-format on
+
     fixture.frames(2, 0.125);
     broken->deferral->fail(lua::Error("no map"));
     fixture.frames(1, 0.125);
@@ -756,6 +757,7 @@ TEST(SceneManagerTest, ChangesWhoseHookFailsEndWhereTheyFailed) {
         }
     };
     // clang-format on
+
     std::optional<SceneManager::Result> popped;
     scenes.push(menu);
     scenes.push(pause);
@@ -995,6 +997,7 @@ TEST(SceneManagerTest, StoppingTheEngineDuringALoadUnloadsEveryScene) {
         fixture.frames(2, 0.125);
         log.clear();
     }
+
     EXPECT_EQ(log, (std::vector<std::string>{"view:exit", "spare:unload", "game:unload"}));
     EXPECT_EQ(game->getState(), Scene::State::Unloaded);
 
@@ -1273,6 +1276,7 @@ TEST(SceneManagerTest, DropsAChangeWhoseHookOrListenerClearedTheStack) {
         {.trigger = LifecycleEvent::kSceneExitTransitionStarted, .covering = false},
     };
     // clang-format on
+
     for (const Case& entry : cases) {
         const std::string label = std::string(entry.trigger) + (entry.push ? " of a push" : " of a replace") + (entry.covering ? "" : " without a transition") + (entry.keepCurrent ? " that keeps the current scene" : "") + (entry.failing ? " that fails to load" : "");
         std::vector<std::string> log;
@@ -1294,6 +1298,7 @@ TEST(SceneManagerTest, DropsAChangeWhoseHookOrListenerClearedTheStack) {
             }
         };
         // clang-format on
+
         menu->onHook = clearOn;
         game->onHook = clearOn;
         const ScopedConnection listener = fixture.engine().getEvents().on(entry.trigger, [&clearOn, &entry](EventBus::Event&) { clearOn(entry.trigger); });
@@ -1347,6 +1352,7 @@ TEST(SceneManagerTest, TellsThePauseOnlyToScenesStillOnTheStack) {
         }
     };
     // clang-format on
+
     log.clear();
     engine.setPaused(true);
     EXPECT_EQ(log, (std::vector<std::string>{"game:paused", "hud:exit", "hud:unload", "game:exit", "game:unload"}));
@@ -1366,6 +1372,7 @@ TEST(SceneManagerTest, ScenesThatFailToLeaveStillUnloadAndRaiseTheFirstFailure) 
         {.failing = {"menu:exit"}, .keepCurrent = true, .error = "menu:exit failed"},
     };
     // clang-format on
+
     for (const Case& entry : cases) {
         std::vector<std::string> log;
         test::EngineFixture fixture;
@@ -1383,6 +1390,7 @@ TEST(SceneManagerTest, ScenesThatFailToLeaveStillUnloadAndRaiseTheFirstFailure) 
             }
         };
         // clang-format on
+
         scenes.replace(std::make_shared<test::RecordingScene>("game", log), {.transition = SceneManager::Transition::fade(0.5F), .unloadBeforeLoad = !entry.keepCurrent});
         fixture.frames(4, 0.125);
         ASSERT_NE(fixture.engine().getError(), nullptr) << entry.error;
@@ -1404,6 +1412,7 @@ TEST(SceneManagerTest, ASceneThatClearsTheStackWhileItRendersEndsTheTransition) 
         }
     }));
     // clang-format on
+
     fixture.frames(1);
 
     // The effect would draw after the scene in the frame of the cover, when the change is already gone.

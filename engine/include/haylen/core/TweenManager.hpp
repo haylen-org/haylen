@@ -73,6 +73,8 @@ class TweenManager final {
     // A tween that shortens under reduced motion plays this many times faster.
     static constexpr float kShortenedSpeed = 4.0F;
 
+    // Whether the tween is alive and plays in this manager, which a tween that joined a timeline no longer does.
+    [[nodiscard]] bool isManaged(const Tween& tween) const noexcept;
     [[nodiscard]] std::size_t getGroup(std::string_view tag);
     void advanceAll(const FrameClock& clock, bool fixed);
     [[nodiscard]] std::vector<std::shared_ptr<Tween>> collectTagged(std::string_view tag) const;

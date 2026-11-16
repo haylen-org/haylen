@@ -152,6 +152,7 @@ struct AppConfig {
 
     // The build number of the app, a whole number that grows with every upload to a store, while `version` is the version that people see. It is the bundle version of Apple platforms, the version code of Android and the app build that protected releases and content updates match.
     std::uint32_t build = 1;
+
     std::string description = "Haylen App";
     std::string company = "Haylen App";
     std::string copyright = "Copyright \xC2\xA9 Haylen App";
@@ -169,12 +170,13 @@ struct AppConfig {
     // How the app shares sound with the system and other apps, from the `audio` object with `iosSession`, `mixWithOthers` and `background`, and how its output plays, with `latency` and `limiter`.
     audio::Session audioSession{};
     audio::OutputSettings audioOutput{};
+
     Input input{};
 
     // How large the interface draws, from the `ui` object with `scaleMode` and `scale`.
     ui::Scaling uiScaling{};
-    Debug debug{};
 
+    Debug debug{};
     Content content{};
     Localization localization{};
 
@@ -227,6 +229,16 @@ struct AppConfig {
     [[nodiscard]] static std::vector<gpu::Device::Api> readGraphicsApis(const Json& value);
     static void expandGroups(const io::Package& package, Content& content);
     [[nodiscard]] static bool isContentPattern(std::string_view pattern) noexcept;
+    static void readWindow(const Json& section, AppConfig& config);
+    static void readDesign(const Json& section, AppConfig& config);
+    static void readSplash(const Json& section, AppConfig& config);
+    static void readLifecycle(const Json& section, AppConfig& config);
+    static void readAudio(const Json& section, AppConfig& config);
+    static void readInput(const Json& section, AppConfig& config);
+    static void readUi(const Json& section, AppConfig& config);
+    static void readDebug(const Json& section, AppConfig& config);
+    [[nodiscard]] static Content::Updates readUpdates(const Json& section);
+    [[nodiscard]] static Content::Rule readDeliveryRule(const Json& section, std::string_view groups);
     static void readContent(const Json& section, AppConfig& config);
     [[nodiscard]] static std::string readLanguageTag(const Json& section, const char* key);
     static void readLocalization(const Json& section, AppConfig& config);

@@ -86,6 +86,7 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
             }
         });
     // clang-format on
+
     current.system = std::make_unique<platform::System>(host, *current.platform, current.events, current.graphics->getAdapterName(), [this] { return getAppPlugins(); });
     current.gamepadMotion = std::make_unique<input::GamepadMotion>(host);
     current.displays = std::make_unique<platform::Displays>(host, current.events);
@@ -111,15 +112,18 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
         },
     });
     // clang-format on
+
     current.scenes = std::make_unique<SceneManager>(*this);
 
     const std::span<const std::uint8_t> font = EmbeddedFiles::getDefaultFont();
     current.defaultFont = std::make_shared<text::TrueTypeFont>(*current.graphics, std::vector<std::uint8_t>(font.begin(), font.end()));
+
     current.safeAreaSimulation = current.config.debug.safeArea;
     current.foldSimulation = current.config.debug.fold;
     current.pointerEmulation.setMouseAsTouch(current.config.input.mouseAsTouch);
     current.pointerEmulation.setTouchAsMouse(current.config.input.touchAsMouse);
     current.input.setScrollSpeed(current.config.input.scrollSpeed);
+
     current.reservedInsets = host.getReservedInsets();
     current.viewport.update(host.getFramebufferSize(), getOrientedDesignSize(host.getFramebufferSize()), current.config.scaling, getSafeAreaInsets(), host.getDpiScale());
     current.fullscreen = host.isFullscreen();
@@ -127,6 +131,7 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     current.orientation = host.getOrientation();
     current.safeRect = current.viewport.getSafeRect();
     current.fold = getFold();
+
     plugins::BuiltInPlugins::registerAll(current.plugins, host);
 }
 
@@ -154,6 +159,7 @@ Engine::~Engine() {
     current.runtime->stop();
     current.jobs->discardQueued();
     current.runtime.reset();
+
     // The motion of gamepads outlives the Lua state, whose owners still end their requests while it closes.
     current.gamepadMotion.reset();
     current.audio.reset();
@@ -246,6 +252,7 @@ void Engine::applyWindowOptions() {
     host.setFocusable(window.focusable);
     host.setStatusBar(window.statusBar);
     host.setSystemGestures(window.systemGestures);
+
     // clang-format off
     host.setKeepScreenOn(window.keepScreenOn, [](const platform::Permission::Answer& answer) {
         if (answer.state != platform::Permission::State::Granted) {
@@ -253,10 +260,12 @@ void Engine::applyWindowOptions() {
         }
     });
     // clang-format on
+
     host.setFrameRate(window.frameRate);
     host.setMaxPixelDensity(window.maxPixelDensity);
     current.statusBarColor = window.statusBarColor;
     host.setMousePassthrough(window.mousePassthrough ? platform::Window::Passthrough::Whole : platform::Window::Passthrough::Off, {});
+
     // A pointer that goes free needs no answer.
     host.setMouseLocked(false, [](const platform::Permission::Answer&) {});
     host.setCursorVisible(true);
@@ -283,9 +292,11 @@ void Engine::stop() {
         }
     };
     // clang-format on
+
     attempt([&current] { current.events.emit(LifecycleEvent::kAppStopping); });
     attempt([&current] { current.scenes->clear(); });
     attempt([this, &current] { current.application->stop(*this); });
+
     current.screenCaptures.clear();
     current.capturingScreen.clear();
     current.graphics->cancelReads();
@@ -320,10 +331,12 @@ void Engine::frame(double frameSeconds) {
     current.host.pollGamepads(current.gamepads);
     current.input.updateGamepads(current.gamepads);
     current.actions.update(current.input, current.virtualInput, halted || current.scenes->isInputBlocked());
+
     current.clock.advance(halted ? 0.0 : frameSeconds);
     const auto delta = static_cast<float>(current.clock.getDelta());
     current.input.updateTouchDurations(static_cast<float>(current.clock.getUnscaledDelta()));
     current.gestures.update(current.input, static_cast<float>(current.clock.getUnscaledDelta()));
+
     // Plugins that start during the frame join the next one, and the loops reach the plugins by index, since the registry grows when one starts.
     const std::size_t plugins = current.plugins.size();
     debug::Profiler& profiler = current.profiler;
@@ -353,22 +366,7 @@ void Engine::frame(double frameSeconds) {
             current.assets->finalizePending();
         }
 
-        // The replies of the platform settle their promises before the event loop runs too, so a coroutine that awaits a native call resumes in the frame its reply reaches.
-        {
-            const debug::ProfileScope scope(profiler, "scripts");
-            current.platform->pump();
-            current.system->pump();
-            current.mediaSession->pump();
-            publishLinks();
-            current.accessibility->pump();
-            current.tweens.setReducedMotion(current.accessibility->getSettings().reducedMotion);
-            current.screens->pump();
-            // A screen that ended in the pump uncovers the app before the code that awaited its answer resumes.
-            applyCover();
-            const std::chrono::nanoseconds budget = getPollBudget(frameSeconds);
-            const varn::runtime::EventLoop::PollResult polled = current.runtime->poll(budget);
-            current.loopPoll = {.budget = budget, .ran = polled.ran, .pending = polled.pending, .idleMilliseconds = polled.idleMilliseconds};
-        }
+        runScripts(frameSeconds);
 
         if (!hidden) {
             for (std::size_t index = 0; index < plugins; ++index) {
@@ -377,27 +375,7 @@ void Engine::frame(double frameSeconds) {
         }
 
         if (!current.errorScreen && !halted) {
-            const auto step = static_cast<float>(current.clock.getFixedStep());
-            while (current.clock.consumeFixedStep()) {
-                const debug::ProfileScope scope(profiler, "fixedUpdate");
-                current.actions.beginStep(step);
-                current.scenes->fixedUpdate(current.clock);
-                current.tweens.fixedUpdate(current.clock);
-
-                for (std::size_t index = 0; index < plugins; ++index) {
-                    current.plugins[index].fixedUpdate(*this, step);
-                }
-            }
-
-            const debug::ProfileScope scope(profiler, "update");
-            current.timers.update(current.clock);
-            current.tweens.update(current.clock);
-
-            for (std::size_t index = 0; index < plugins; ++index) {
-                current.plugins[index].update(*this, delta);
-            }
-
-            current.scenes->update(current.clock);
+            updateApp(plugins, delta);
         }
 
         current.audio->update(static_cast<float>(current.clock.getUnscaledDelta()));
@@ -423,6 +401,53 @@ void Engine::frame(double frameSeconds) {
     current.graphics->collectGarbage();
     current.input.endFrame();
     profiler.endFrame();
+}
+
+// The replies of the platform settle their promises before the event loop runs, so a coroutine that awaits a native call resumes in the frame its reply reaches.
+void Engine::runScripts(double frameSeconds) {
+    EngineState& current = *state;
+    const debug::ProfileScope scope(current.profiler, "scripts");
+    current.platform->pump();
+    current.system->pump();
+    current.mediaSession->pump();
+    publishLinks();
+    current.accessibility->pump();
+    current.tweens.setReducedMotion(current.accessibility->getSettings().reducedMotion);
+    current.screens->pump();
+
+    // A screen that ended in the pump uncovers the app before the code that awaited its answer resumes.
+    applyCover();
+
+    const std::chrono::nanoseconds budget = getPollBudget(frameSeconds);
+    const varn::runtime::EventLoop::PollResult polled = current.runtime->poll(budget);
+    current.loopPoll = {.budget = budget, .ran = polled.ran, .pending = polled.pending, .idleMilliseconds = polled.idleMilliseconds};
+}
+
+// The fixed steps the clock owes run first, then the frame update of the timers, the tweens, the plugins and the scenes.
+void Engine::updateApp(std::size_t plugins, float delta) {
+    EngineState& current = *state;
+    debug::Profiler& profiler = current.profiler;
+    const auto step = static_cast<float>(current.clock.getFixedStep());
+    while (current.clock.consumeFixedStep()) {
+        const debug::ProfileScope scope(profiler, "fixedUpdate");
+        current.actions.beginStep(step);
+        current.scenes->fixedUpdate(current.clock);
+        current.tweens.fixedUpdate(current.clock);
+
+        for (std::size_t index = 0; index < plugins; ++index) {
+            current.plugins[index].fixedUpdate(*this, step);
+        }
+    }
+
+    const debug::ProfileScope scope(profiler, "update");
+    current.timers.update(current.clock);
+    current.tweens.update(current.clock);
+
+    for (std::size_t index = 0; index < plugins; ++index) {
+        current.plugins[index].update(*this, delta);
+    }
+
+    current.scenes->update(current.clock);
 }
 
 // Gamepads that are connected when the app starts are announced on its first frame.
@@ -1210,11 +1235,13 @@ void Engine::reportError(const std::exception& exception) {
         return;
     }
 
-    // The player reaches the buttons of the error screen with the mouse, also when the app locked or hid it.
     const auto* scriptError = dynamic_cast<const lua::Error*>(&exception);
     current.errorScreen = std::make_unique<ErrorScreen>(*this, scriptError != nullptr ? *scriptError : lua::Error(exception.what()), !lifecycle);
+
+    // The player reaches the buttons of the error screen with the mouse, also when the app locked or hid it.
     current.host.setMouseLocked(false, [](const platform::Permission::Answer&) {});
     current.host.setCursorVisible(true);
+
     Log::error("{}", current.errorScreen->getReport());
     const Json report = current.errorScreen->getError().toJson();
     current.host.reportError(report);

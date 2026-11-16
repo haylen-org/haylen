@@ -30,11 +30,14 @@ class CollectionsLua final {
 
     // Calls the pool function under `name` with the object and the arguments from `first` on, when the pool has that function.
     static void callHook(lua_State* L, const char* name, int object, int first, int count);
+
     // Pushes a new object from the `create` function, raising an error when it returns `nil`.
     static void create(lua_State* L);
     static void prewarm(lua_State* L, Pool& pool, std::size_t count);
+
     // Pushes a list of the active objects, which callbacks may change while it is walked.
     static void pushActive(lua_State* L, const Pool& pool);
+
     static bool releaseObject(lua_State* L, Pool& pool, int object);
 
     static int newPool(lua_State* L);

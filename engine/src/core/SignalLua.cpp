@@ -97,62 +97,74 @@ Connection SignalLua::connect(lua_State* L, int signal, int function, int option
     // A listener without an owner is held through the signal, so a listener that refers to the signal never keeps it alive.
     auto callback = std::make_shared<lua::Owners::Function>(L, function, ownerIndex != 0 ? ownerIndex : signal);
 
-    Signal<const ScriptedSignal::Arguments&>::Slot slot;
-    if (deferred) {
-        // A deferred listener runs at the end of the frame with the values packed at emit time, and not at all once it disconnects before then. A once listener disconnects as it is called, so its queued call keeps it.
-        // clang-format off
-        slot = [callback, once = settings.once, &queue = lua::Runtime::getEngine(L).getFrameQueue()](const ScriptedSignal::Arguments& arguments) {
-            lua_State* source = arguments.state;
-            lua_createtable(source, arguments.count, 0);
-
-            for (int index = 0; index < arguments.count; ++index) {
-                lua_pushvalue(source, arguments.first + index);
-                lua_rawseti(source, -2, index + 1);
-            }
-
-            auto packed = std::make_shared<lua::Reference>(source, -1);
-            lua_pop(source, 1);
-            queue.post([weak = std::weak_ptr<lua::Owners::Function>(callback), held = once ? callback : nullptr, packed, count = arguments.count] {
-                const std::shared_ptr<lua::Owners::Function> listener = weak.lock();
-                lua_State* main = packed->getState();
-                luaL_checkstack(main, count + 2, "too many values to deliver");
-
-                if (!listener || !listener->push(main)) {
-                    return;
-                }
-
-                packed->push(main);
-                const int table = lua_gettop(main);
-                for (int index = 1; index <= count; ++index) {
-                    lua_rawgeti(main, table, index);
-                }
-
-                lua_remove(main, table);
-                lua::Runtime::protectedCall(main, count, 0);
-            });
-        };
-        // clang-format on
-    } else {
-        // clang-format off
-        slot = [callback](const ScriptedSignal::Arguments& arguments) {
-            lua_State* source = arguments.state;
-            if (!callback->push(source)) {
-                return;
-            }
-
-            pushArguments(source, arguments.first, arguments.count);
-            lua_call(source, arguments.count, 0);
-        };
-        // clang-format on
-    }
-
+    FrameQueue& queue = lua::Runtime::getEngine(L).getFrameQueue();
+    Slot slot = deferred ? makeDeferredSlot(callback, settings.once, queue) : makeSlot(callback);
     Connection connection = target.signal.connect(std::move(slot), settings);
+
     if (ownerIndex != 0) {
         lua::Owners::add(L, ownerIndex, connection);
     }
 
     lua_settop(L, top);
     return connection;
+}
+
+SignalLua::Slot SignalLua::makeSlot(std::shared_ptr<lua::Owners::Function> callback) {
+    // clang-format off
+    return [callback = std::move(callback)](const ScriptedSignal::Arguments& arguments) {
+        lua_State* source = arguments.state;
+        if (!callback->push(source)) {
+            return;
+        }
+
+        pushArguments(source, arguments.first, arguments.count);
+        lua_call(source, arguments.count, 0);
+    };
+    // clang-format on
+}
+
+// A deferred listener runs at the end of the frame with the values packed at emit time, and not at all once it disconnects before then. A once listener disconnects as it is called, so its queued call keeps it.
+SignalLua::Slot SignalLua::makeDeferredSlot(std::shared_ptr<lua::Owners::Function> callback, bool once, FrameQueue& queue) {
+    // clang-format off
+    return [callback = std::move(callback), once, &queue](const ScriptedSignal::Arguments& arguments) {
+        std::shared_ptr<lua::Reference> packed = packArguments(arguments);
+        queue.post([weak = std::weak_ptr<lua::Owners::Function>(callback), held = once ? callback : nullptr, packed = std::move(packed), count = arguments.count] {
+            deliverPacked(weak.lock(), *packed, count);
+        });
+    };
+    // clang-format on
+}
+
+std::shared_ptr<lua::Reference> SignalLua::packArguments(const ScriptedSignal::Arguments& arguments) {
+    lua_State* source = arguments.state;
+    lua_createtable(source, arguments.count, 0);
+
+    for (int index = 0; index < arguments.count; ++index) {
+        lua_pushvalue(source, arguments.first + index);
+        lua_rawseti(source, -2, index + 1);
+    }
+
+    auto packed = std::make_shared<lua::Reference>(source, -1);
+    lua_pop(source, 1);
+    return packed;
+}
+
+void SignalLua::deliverPacked(const std::shared_ptr<lua::Owners::Function>& listener, const lua::Reference& packed, int count) {
+    lua_State* main = packed.getState();
+    luaL_checkstack(main, count + 2, "too many values to deliver");
+
+    if (!listener || !listener->push(main)) {
+        return;
+    }
+
+    packed.push(main);
+    const int table = lua_gettop(main);
+    for (int index = 1; index <= count; ++index) {
+        lua_rawgeti(main, table, index);
+    }
+
+    lua_remove(main, table);
+    lua::Runtime::protectedCall(main, count, 0);
 }
 
 bool SignalLua::isSignal(lua_State* L, int index) {

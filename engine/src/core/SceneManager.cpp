@@ -2,7 +2,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <exception>
+#include <iterator>
 #include <stdexcept>
 #include <utility>
 
@@ -385,6 +387,7 @@ std::size_t SceneManager::getKeptLevel(const Change& change) const noexcept {
     case Operation::PopTo:
         return std::min(change.level, stack.size());
     }
+
     return stack.size();
 }
 
@@ -434,71 +437,100 @@ bool SceneManager::step(const std::shared_ptr<Change>& change, float& remaining)
         start(change);
         return true;
     case Phase::Load:
-        if (!waitForLoad(change, remaining)) {
-            return false;
-        }
-
-        if (change->blocked) {
-            remaining = 0.0F;
-        }
-
-        if (pending == change && change->failure) {
-            takeNext();
-            reportFailure(*change, change->from != nullptr);
-
-            if (change->options.completion) {
-                change->options.completion({.outcome = Outcome::Failed, .error = change->failure});
-            }
-        } else if (pending == change) {
-            switchScenes(change);
-        }
-
-        return true;
+        return stepLoad(change, remaining);
     case Phase::Out:
-        change->elapsed += std::exchange(remaining, 0.0F);
-        if (!isFinished(*change) && getProgress(*change) < change->options.transition.effect->getSwitchProgress()) {
-            return false;
-        }
-
-        coverScreen(change);
-        return true;
+        return stepOut(change, remaining);
     case Phase::Covered:
-        if (!waitForLoad(change, remaining)) {
-            return false;
-        }
-
-        if (change->blocked) {
-            remaining = 0.0F;
-        }
-
-        if (pending == change && change->failure) {
-            restoreScenes(change);
-        } else if (pending == change) {
-            revealScene(change);
-        }
-
-        return true;
+        return stepCovered(change, remaining);
     case Phase::In:
-        change->elapsed += std::exchange(remaining, 0.0F);
-        if (!change->exited && (isFinished(*change) || getProgress(*change) >= change->options.transition.effect->getExitProgress())) {
-            change->exited = true;
-            exitLeaving();
+        return stepIn(change, remaining);
+    }
 
-            if (pending == change && !change->outFinished) {
-                change->outFinished = true;
-                publishPhase(LifecycleEvent::kTransitionOutFinished, *change);
-            }
+    return true;
+}
 
-            return true;
-        }
+// The load of a change without an effect that covers the screen ends with the switch of the scenes, or with the failure of the load.
+bool SceneManager::stepLoad(const std::shared_ptr<Change>& change, float& remaining) {
+    if (!waitForLoad(change, remaining)) {
+        return false;
+    }
 
-        if (!isFinished(*change)) {
-            return false;
-        }
+    if (change->blocked) {
+        remaining = 0.0F;
+    }
 
-        finish(change);
+    if (pending != change) {
         return true;
     }
+
+    if (!change->failure) {
+        switchScenes(change);
+        return true;
+    }
+
+    takeNext();
+    reportFailure(*change, change->from != nullptr);
+
+    if (change->options.completion) {
+        change->options.completion({.outcome = Outcome::Failed, .error = change->failure});
+    }
+
+    return true;
+}
+
+bool SceneManager::stepOut(const std::shared_ptr<Change>& change, float& remaining) {
+    change->elapsed += std::exchange(remaining, 0.0F);
+    if (!isFinished(*change) && getProgress(*change) < change->options.transition.effect->getSwitchProgress()) {
+        return false;
+    }
+
+    coverScreen(change);
+    return true;
+}
+
+// The covered screen waits for the load and then reveals the next scene, or the scenes on the stack again when the load failed.
+bool SceneManager::stepCovered(const std::shared_ptr<Change>& change, float& remaining) {
+    if (!waitForLoad(change, remaining)) {
+        return false;
+    }
+
+    if (change->blocked) {
+        remaining = 0.0F;
+    }
+
+    if (pending != change) {
+        return true;
+    }
+
+    if (change->failure) {
+        restoreScenes(change);
+    } else {
+        revealScene(change);
+    }
+
+    return true;
+}
+
+// The scenes that leave exit once the effect passes its exit point, and the change finishes with the effect.
+bool SceneManager::stepIn(const std::shared_ptr<Change>& change, float& remaining) {
+    change->elapsed += std::exchange(remaining, 0.0F);
+    if (!change->exited && (isFinished(*change) || getProgress(*change) >= change->options.transition.effect->getExitProgress())) {
+        change->exited = true;
+        exitLeaving();
+
+        if (pending == change && !change->outFinished) {
+            change->outFinished = true;
+            publishPhase(LifecycleEvent::kTransitionOutFinished, *change);
+        }
+
+        return true;
+    }
+
+    if (!isFinished(*change)) {
+        return false;
+    }
+
+    finish(change);
     return true;
 }
 
@@ -666,43 +698,47 @@ void SceneManager::coverScreen(const std::shared_ptr<Change>& change) {
     }
 
     // A load that already failed changes nothing, and the covered screen shows the scenes on the stack again.
-    if (!change->failure) {
-        const std::size_t keep = getKeptLevel(*change);
-        switch (change->operation) {
-        case Operation::Push:
-            if (change->from) {
-                coverScene(change->from);
-            }
+    if (change->failure) {
+        change->phase = Phase::Covered;
+        return;
+    }
 
-            break;
-        case Operation::Replace:
-            if (change->from) {
-                stack.pop_back();
-                release(change->from, change->options.unloadBeforeLoad);
-            }
-
-            if (pending == change && needsLoad(change->scene.get())) {
-                startLoad(change->scene, std::move(change->options.params));
-            }
-
-            break;
-        case Operation::Pop:
-        case Operation::PopTo:
-            while (stack.size() > keep && pending == change) {
-                const std::shared_ptr<Scene> popped = stack.back();
-                stack.pop_back();
-                release(popped, true);
-            }
-
-            if (const std::shared_ptr<Scene> top = getTopShared(); top && pending == change) {
-                uncoverScene(top);
-            }
-
-            break;
+    const std::size_t keep = getKeptLevel(*change);
+    switch (change->operation) {
+    case Operation::Push:
+        if (change->from) {
+            coverScene(change->from);
         }
-        if (pending != change) {
-            return;
+
+        break;
+    case Operation::Replace:
+        if (change->from) {
+            stack.pop_back();
+            release(change->from, change->options.unloadBeforeLoad);
         }
+
+        if (pending == change && needsLoad(change->scene.get())) {
+            startLoad(change->scene, std::move(change->options.params));
+        }
+
+        break;
+    case Operation::Pop:
+    case Operation::PopTo:
+        while (stack.size() > keep && pending == change) {
+            const std::shared_ptr<Scene> popped = stack.back();
+            stack.pop_back();
+            release(popped, true);
+        }
+
+        if (const std::shared_ptr<Scene> top = getTopShared(); top && pending == change) {
+            uncoverScene(top);
+        }
+
+        break;
+    }
+
+    if (pending != change) {
+        return;
     }
 
     change->phase = Phase::Covered;
@@ -811,6 +847,7 @@ void SceneManager::switchScenes(const std::shared_ptr<Change>& change) {
 
         break;
     }
+
     if (pending != change) {
         return;
     }
@@ -865,6 +902,7 @@ void SceneManager::finish(const std::shared_ptr<Change>& change) {
 void SceneManager::takeNext() noexcept {
     endTransition();
     pending.reset();
+
     if (!queue.empty()) {
         pending = std::move(queue.front());
         queue.pop_front();

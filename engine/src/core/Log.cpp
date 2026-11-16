@@ -42,6 +42,7 @@ Log::Level Log::fromVarnLevel(varn::log::Level value) noexcept {
     case varn::log::Level::Error:
         return Level::Error;
     }
+
     return Level::Info;
 }
 
@@ -56,6 +57,7 @@ varn::log::Level Log::toVarnLevel(Level value) noexcept {
     case Level::Error:
         return varn::log::Level::Error;
     }
+
     return varn::log::Level::Info;
 }
 

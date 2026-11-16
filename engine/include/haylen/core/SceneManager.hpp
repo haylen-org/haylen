@@ -133,6 +133,7 @@ class SceneManager final {
 
     // Returns the scene at the index, counted from the bottom of the stack.
     [[nodiscard]] Scene& at(std::size_t index) const;
+
     [[nodiscard]] std::size_t size() const noexcept {
         return stack.size();
     }
@@ -239,6 +240,10 @@ class SceneManager final {
     void request(Change change);
     void advance(float deltaSeconds);
     [[nodiscard]] bool step(const std::shared_ptr<Change>& change, float& remaining);
+    [[nodiscard]] bool stepLoad(const std::shared_ptr<Change>& change, float& remaining);
+    [[nodiscard]] bool stepOut(const std::shared_ptr<Change>& change, float& remaining);
+    [[nodiscard]] bool stepCovered(const std::shared_ptr<Change>& change, float& remaining);
+    [[nodiscard]] bool stepIn(const std::shared_ptr<Change>& change, float& remaining);
     void start(const std::shared_ptr<Change>& change);
     void coverScreen(const std::shared_ptr<Change>& change);
     void revealScene(const std::shared_ptr<Change>& change);

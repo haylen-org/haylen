@@ -182,29 +182,28 @@ float TweenMotion::pathHeading(float progress) const noexcept {
     return (ahead - behind).getAngle();
 }
 
+// Each shake swings roughly opposite to the previous one, bent by the randomness, and the first and last points rest at the start value.
+TweenValue TweenMotion::shakeOffsetAt(const TweenValue& strength, int index) const {
+    const bool resting = index <= 0 || index >= count;
+    const float decay = resting ? 0.0F : 1.0F - static_cast<float>(index) / static_cast<float>(count);
+    const float random = hash(seed, static_cast<std::uint32_t>(index));
+    if (strength.getKind() == TweenValue::Kind::Number) {
+        const float sign = index % 2 == 0 ? 1.0F : -1.0F;
+        return static_cast<double>(sign * decay * (1.0F - 0.5F * random * amount / 180.0F)) * strength.getNumber();
+    }
+
+    const math::Vec2 reach = strength.getVector();
+    const float angle = hash(seed, 0U) * math::Math::kTau + static_cast<float>(index) * math::Math::kPi + (random * 2.0F - 1.0F) * math::Math::radians(amount);
+    return math::Vec2{std::cos(angle) * reach.x, std::sin(angle) * reach.y} * decay;
+}
+
 TweenValue TweenMotion::shakeOffset(const TweenValue& strength, float progress) const {
     const float position = std::clamp(progress, 0.0F, 1.0F) * static_cast<float>(count);
     const int step = std::min(static_cast<int>(position), count - 1);
     const float fraction = position - static_cast<float>(step);
-
-    // Each shake swings roughly opposite to the previous one, bent by the randomness, and the first and last points rest at the start value.
-    // clang-format off
-    const auto offsetAt = [this, &strength](int index) -> TweenValue {
-        const bool resting = index <= 0 || index >= count;
-        const float decay = resting ? 0.0F : 1.0F - static_cast<float>(index) / static_cast<float>(count);
-        const float random = hash(seed, static_cast<std::uint32_t>(index));
-        if (strength.getKind() == TweenValue::Kind::Number) {
-            const float sign = index % 2 == 0 ? 1.0F : -1.0F;
-            return static_cast<double>(sign * decay * (1.0F - 0.5F * random * amount / 180.0F)) * strength.getNumber();
-        }
-
-        const math::Vec2 reach = strength.getVector();
-        const float angle = hash(seed, 0U) * math::Math::kTau + static_cast<float>(index) * math::Math::kPi + (random * 2.0F - 1.0F) * math::Math::radians(amount);
-        return math::Vec2{std::cos(angle) * reach.x, std::sin(angle) * reach.y} * decay;
-    };
-    // clang-format on
-    const TweenValue start = offsetAt(step);
-    return TweenValue::mix(start, offsetAt(step + 1), fraction, TweenValue::Interpolation::Linear);
+    const TweenValue start = shakeOffsetAt(strength, step);
+    const TweenValue end = shakeOffsetAt(strength, step + 1);
+    return TweenValue::mix(start, end, fraction, TweenValue::Interpolation::Linear);
 }
 
 TweenValue TweenMotion::evaluate(const TweenValue& from, const TweenValue& to, float progress) const {
@@ -243,6 +242,7 @@ TweenValue TweenMotion::evaluate(const TweenValue& from, const TweenValue& to, f
     case Kind::Orientation:
         return static_cast<double>(source->pathHeading(progress));
     }
+
     return from;
 }
 
@@ -271,6 +271,7 @@ float TweenMotion::getDistance(const TweenValue& from, const TweenValue& to) con
     case Kind::Jump:
         break;
     }
+
     return TweenValue::distance(from, to, TweenValue::Interpolation::Linear);
 }
 

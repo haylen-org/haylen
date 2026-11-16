@@ -1,8 +1,10 @@
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <limits>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "haylen/core/ConnectionScope.hpp"
@@ -16,7 +18,7 @@
 namespace haylen::core {
 
 TEST(FrameClockTest, AccumulatesFixedStepsAndClampsSpikes) {
-    core::FrameClock clock(0.1, 0.25);
+    FrameClock clock(0.1, 0.25);
     clock.advance(0.35);
     EXPECT_DOUBLE_EQ(clock.getUnscaledDelta(), 0.25);
 
@@ -35,7 +37,7 @@ TEST(FrameClockTest, AccumulatesFixedStepsAndClampsSpikes) {
 }
 
 TEST(FrameClockTest, TimeScaleAffectsScaledTimeOnly) {
-    core::FrameClock clock;
+    FrameClock clock;
     clock.setTimeScale(0.5);
     clock.advance(0.1);
     EXPECT_DOUBLE_EQ(clock.getDelta(), 0.05);
@@ -49,7 +51,7 @@ TEST(FrameClockTest, TimeScaleAffectsScaledTimeOnly) {
 
 // A huge finite scale owes more fixed steps than a frame runs, and the frame drops the rest so it ends.
 TEST(FrameClockTest, RunsABoundedNumberOfFixedStepsAtHugeTimeScales) {
-    core::FrameClock clock;
+    FrameClock clock;
     clock.setTimeScale(1.0e18);
     clock.advance(1.0 / 60.0);
     std::uint32_t steps = 0;
@@ -57,12 +59,12 @@ TEST(FrameClockTest, RunsABoundedNumberOfFixedStepsAtHugeTimeScales) {
         ++steps;
     }
 
-    EXPECT_EQ(steps, core::FrameClock::kMaxFixedSteps);
+    EXPECT_EQ(steps, FrameClock::kMaxFixedSteps);
     EXPECT_LT(clock.getInterpolation(), 1.0);
 }
 
 TEST(FrameClockTest, RefusesTimeScalesThatAreNotFinite) {
-    core::FrameClock clock;
+    FrameClock clock;
     clock.setTimeScale(2.0);
     EXPECT_THROW(clock.setTimeScale(std::numeric_limits<double>::infinity()), std::invalid_argument);
     EXPECT_THROW(clock.setTimeScale(std::numeric_limits<double>::quiet_NaN()), std::invalid_argument);
@@ -70,21 +72,21 @@ TEST(FrameClockTest, RefusesTimeScalesThatAreNotFinite) {
 }
 
 TEST(FrameClockTest, PauseStopsFixedStepsAndGatesProcessModes) {
-    core::FrameClock clock(0.1, 1.0);
+    FrameClock clock(0.1, 1.0);
     clock.setPaused(true);
     clock.advance(0.35);
     EXPECT_FALSE(clock.consumeFixedStep());
     EXPECT_DOUBLE_EQ(clock.getDelta(), 0.35);
-    EXPECT_FALSE(clock.canProcess(core::ProcessMode::Inherit));
-    EXPECT_FALSE(clock.canProcess(core::ProcessMode::Pausable));
-    EXPECT_TRUE(clock.canProcess(core::ProcessMode::WhenPaused));
-    EXPECT_TRUE(clock.canProcess(core::ProcessMode::Always));
-    EXPECT_FALSE(clock.canProcess(core::ProcessMode::Disabled));
+    EXPECT_FALSE(clock.canProcess(ProcessMode::Inherit));
+    EXPECT_FALSE(clock.canProcess(ProcessMode::Pausable));
+    EXPECT_TRUE(clock.canProcess(ProcessMode::WhenPaused));
+    EXPECT_TRUE(clock.canProcess(ProcessMode::Always));
+    EXPECT_FALSE(clock.canProcess(ProcessMode::Disabled));
 
     // Time that passed while paused never turns into a burst of fixed steps.
     clock.setPaused(false);
-    EXPECT_TRUE(clock.canProcess(core::ProcessMode::Pausable));
-    EXPECT_FALSE(clock.canProcess(core::ProcessMode::WhenPaused));
+    EXPECT_TRUE(clock.canProcess(ProcessMode::Pausable));
+    EXPECT_FALSE(clock.canProcess(ProcessMode::WhenPaused));
     clock.advance(0.1);
     int steps = 0;
     while (clock.consumeFixedStep()) {
@@ -95,7 +97,7 @@ TEST(FrameClockTest, PauseStopsFixedStepsAndGatesProcessModes) {
 }
 
 TEST(FrameClockTest, SkipsTheFirstDeltaAfterAResume) {
-    core::FrameClock clock(0.1, 10.0);
+    FrameClock clock(0.1, 10.0);
     clock.skipNextDelta();
     clock.advance(5.0);
     EXPECT_DOUBLE_EQ(clock.getUnscaledDelta(), 0.0);
@@ -104,19 +106,23 @@ TEST(FrameClockTest, SkipsTheFirstDeltaAfterAResume) {
     EXPECT_DOUBLE_EQ(clock.getDelta(), 0.2);
 }
 
-TEST(TimerSchedulerTest, FiresDelayedAndRepeatingTimers) {
-    core::TimerScheduler timers;
-    core::FrameClock clock(0.1, 10.0);
-    // clang-format off
-    const auto step = [&](double seconds) {
+// Runs timers on a clock that accepts long frames, so a test can jump through time in one step.
+class TimerSchedulerTest : public ::testing::Test {
+  protected:
+    void step(double seconds) {
         clock.advance(seconds);
         timers.update(clock);
-    };
-    // clang-format on
+    }
+
+    TimerScheduler timers;
+    FrameClock clock{0.1, 10.0};
+};
+
+TEST_F(TimerSchedulerTest, FiresDelayedAndRepeatingTimers) {
     int once = 0;
     int repeated = 0;
     timers.after(0.5F, [&] { ++once; });
-    const core::TimerScheduler::Id repeating = timers.every(0.25F, [&] { ++repeated; }, 3);
+    const TimerScheduler::Id repeating = timers.every(0.25F, [&] { ++repeated; }, 3);
 
     step(0.3);
     EXPECT_EQ(once, 0);
@@ -134,17 +140,9 @@ TEST(TimerSchedulerTest, FiresDelayedAndRepeatingTimers) {
     EXPECT_THROW((void)timers.after(0.25F, {}), std::invalid_argument);
 }
 
-TEST(TimerSchedulerTest, PauseCancelAndClear) {
-    core::TimerScheduler timers;
-    core::FrameClock clock(0.1, 10.0);
-    // clang-format off
-    const auto step = [&](double seconds) {
-        clock.advance(seconds);
-        timers.update(clock);
-    };
-    // clang-format on
+TEST_F(TimerSchedulerTest, PauseCancelAndClear) {
     int calls = 0;
-    const core::TimerScheduler::Id id = timers.every(0.1F, [&] { ++calls; });
+    const TimerScheduler::Id id = timers.every(0.1F, [&] { ++calls; });
     timers.pause(id, true);
     step(1.0);
     EXPECT_EQ(calls, 0);
@@ -165,11 +163,9 @@ TEST(TimerSchedulerTest, PauseCancelAndClear) {
     EXPECT_FALSE(timers.isActive(9999));
 }
 
-TEST(TimerSchedulerTest, CallbacksCanScheduleAndCancelTimers) {
-    core::TimerScheduler timers;
-    core::FrameClock clock(0.1, 10.0);
+TEST_F(TimerSchedulerTest, CallbacksCanScheduleAndCancelTimers) {
     std::vector<std::string> events;
-    core::TimerScheduler::Id pendingId = 0;
+    TimerScheduler::Id pendingId = 0;
 
     // clang-format off
     timers.after(0.1F, [&] {
@@ -178,171 +174,147 @@ TEST(TimerSchedulerTest, CallbacksCanScheduleAndCancelTimers) {
         EXPECT_TRUE(timers.isActive(pendingId));
     });
     // clang-format on
-    const core::TimerScheduler::Id cancelled = timers.after(0.1F, [&] { events.emplace_back("cancelled"); });
+
+    const TimerScheduler::Id cancelled = timers.after(0.1F, [&] { events.emplace_back("cancelled"); });
     timers.after(0.05F, [&, cancelled] { timers.cancel(cancelled); });
 
-    clock.advance(0.2);
-    timers.update(clock);
+    step(0.2);
     EXPECT_EQ(events, (std::vector<std::string>{"first"}));
 
-    clock.advance(0.2);
-    timers.update(clock);
+    step(0.2);
     EXPECT_EQ(events, (std::vector<std::string>{"first", "second"}));
 }
 
-TEST(TimerSchedulerTest, ClearingFromACallbackDropsEveryTimerWithTheOnesItCreated) {
-    core::TimerScheduler timers;
-    core::FrameClock clock(0.1, 10.0);
+TEST_F(TimerSchedulerTest, ClearingFromACallbackDropsEveryTimerWithTheOnesItCreated) {
     int calls = 0;
-    core::TimerScheduler::Id created = 0;
+    TimerScheduler::Id created = 0;
     // clang-format off
     timers.after(0.1F, [&] {
         created = timers.after(0.1F, [&calls] { ++calls; });
         timers.clear();
     });
     // clang-format on
+
     timers.every(0.15F, [&calls] { calls += 10; });
 
-    clock.advance(0.2);
-    timers.update(clock);
+    step(0.2);
     EXPECT_EQ(calls, 0);
     EXPECT_FALSE(timers.isActive(created));
     EXPECT_EQ(timers.size(), 0U);
-    clock.advance(1.0);
-    timers.update(clock);
+    step(1.0);
     EXPECT_EQ(calls, 0);
 }
 
-TEST(TimerSchedulerTest, ZeroIntervalRepeatsOncePerUpdate) {
-    core::TimerScheduler timers;
-    core::FrameClock clock(0.1, 10.0);
+TEST_F(TimerSchedulerTest, ZeroIntervalRepeatsOncePerUpdate) {
     int calls = 0;
     timers.every(0.0F, [&] { ++calls; });
-    clock.advance(1.0);
-    timers.update(clock);
-    clock.advance(1.0);
-    timers.update(clock);
+    step(1.0);
+    step(1.0);
     EXPECT_EQ(calls, 2);
 }
 
 // An interval too small to pay back a frame would repeat without end, so the timer drops what it owes past the calls of one update.
-TEST(TimerSchedulerTest, TinyIntervalsRunABoundedNumberOfTimesPerUpdate) {
-    core::TimerScheduler timers;
-    core::FrameClock clock(0.1, 10.0);
+TEST_F(TimerSchedulerTest, TinyIntervalsRunABoundedNumberOfTimesPerUpdate) {
     std::uint32_t calls = 0;
     timers.every(1.0e-10F, [&] { ++calls; });
-    clock.advance(1.0 / 60.0);
-    timers.update(clock);
-    EXPECT_EQ(calls, core::TimerScheduler::kMaxCallsPerUpdate);
-    clock.advance(1.0 / 60.0);
-    timers.update(clock);
-    EXPECT_EQ(calls, core::TimerScheduler::kMaxCallsPerUpdate * 2);
+    step(1.0 / 60.0);
+    EXPECT_EQ(calls, TimerScheduler::kMaxCallsPerUpdate);
+    step(1.0 / 60.0);
+    EXPECT_EQ(calls, TimerScheduler::kMaxCallsPerUpdate * 2);
 }
 
-TEST(TimerSchedulerTest, ProcessModesAndUnscaledTime) {
-    core::TimerScheduler timers;
-    core::FrameClock clock(0.1, 10.0);
+TEST_F(TimerSchedulerTest, ProcessModesAndUnscaledTime) {
     std::vector<std::string> fired;
     timers.after(0.5F, [&] { fired.emplace_back("pausable"); });
-    timers.after(0.5F, [&] { fired.emplace_back("menu"); }, {.processMode = core::ProcessMode::WhenPaused});
-    timers.after(0.5F, [&] { fired.emplace_back("always"); }, {.processMode = core::ProcessMode::Always, .unscaled = true});
-    timers.after(0.5F, [&] { fired.emplace_back("disabled"); }, {.processMode = core::ProcessMode::Disabled});
+    timers.after(0.5F, [&] { fired.emplace_back("menu"); }, {.processMode = ProcessMode::WhenPaused});
+    timers.after(0.5F, [&] { fired.emplace_back("always"); }, {.processMode = ProcessMode::Always, .unscaled = true});
+    timers.after(0.5F, [&] { fired.emplace_back("disabled"); }, {.processMode = ProcessMode::Disabled});
 
     // While paused with the time scale at zero, only the unscaled timer that always runs and the one that runs when paused move, and only the unscaled one makes progress.
     clock.setPaused(true);
     clock.setTimeScale(0.0);
-    clock.advance(0.6);
-    timers.update(clock);
+    step(0.6);
     EXPECT_EQ(fired, (std::vector<std::string>{"always"}));
 
     clock.setTimeScale(1.0);
-    clock.advance(0.6);
-    timers.update(clock);
+    step(0.6);
     EXPECT_EQ(fired, (std::vector<std::string>{"always", "menu"}));
 
     clock.setPaused(false);
-    clock.advance(0.6);
-    timers.update(clock);
+    step(0.6);
     EXPECT_EQ(fired, (std::vector<std::string>{"always", "menu", "pausable"}));
     EXPECT_EQ(timers.size(), 1U);
 }
 
-TEST(TimerSchedulerTest, InheritingTimersFollowTheModeOfTheirParent) {
-    core::TimerScheduler timers;
-    core::FrameClock clock(0.1, 10.0);
-    core::ProcessMode parent = core::ProcessMode::Pausable;
+TEST_F(TimerSchedulerTest, InheritingTimersFollowTheModeOfTheirParent) {
+    ProcessMode parent = ProcessMode::Pausable;
     int calls = 0;
     timers.every(0.1F, [&] { ++calls; }, -1, {.parentMode = [&parent] { return parent; }});
-    timers.every(0.1F, [&] { calls += 100; }, -1, {.processMode = core::ProcessMode::Pausable, .parentMode = [] { return core::ProcessMode::Always; }});
+    timers.every(0.1F, [&] { calls += 100; }, -1, {.processMode = ProcessMode::Pausable, .parentMode = [] { return ProcessMode::Always; }});
 
     clock.setPaused(true);
-    clock.advance(0.1);
-    timers.update(clock);
+    step(0.1);
     EXPECT_EQ(calls, 0);
 
-    parent = core::ProcessMode::WhenPaused;
-    clock.advance(0.1);
-    timers.update(clock);
+    parent = ProcessMode::WhenPaused;
+    step(0.1);
     EXPECT_EQ(calls, 1) << "An own mode wins over the parent.";
 }
 
-TEST(TimerSchedulerTest, ConnectionsCancelAndBlockTimers) {
-    core::TimerScheduler timers;
-    core::FrameClock clock(0.1, 10.0);
+TEST_F(TimerSchedulerTest, ConnectionsCancelAndBlockTimers) {
     int calls = 0;
-    const core::TimerScheduler::Id id = timers.every(0.1F, [&] { ++calls; });
-    core::Connection connection = timers.getConnection(id);
+    const TimerScheduler::Id id = timers.every(0.1F, [&] { ++calls; });
+    Connection connection = timers.getConnection(id);
     EXPECT_TRUE(connection.isConnected());
 
     connection.setBlocked(true);
     EXPECT_TRUE(connection.isBlocked());
-    clock.advance(0.5);
-    timers.update(clock);
+    step(0.5);
     EXPECT_EQ(calls, 0);
 
     connection.setBlocked(false);
-    clock.advance(0.1);
-    timers.update(clock);
+    step(0.1);
     EXPECT_EQ(calls, 1);
 
     {
-        core::ConnectionScope scope;
+        ConnectionScope scope;
         scope.add(connection);
     }
+
     EXPECT_FALSE(timers.isActive(id));
     EXPECT_FALSE(connection.isConnected());
     EXPECT_FALSE(timers.getConnection(12345).isConnected());
 }
 
 TEST(Utf8Test, DecodesValidSequences) {
-    EXPECT_EQ(core::Utf8::decode("aé€😀"), (std::u32string{U'a', U'é', U'€', U'\U0001F600'}));
-    EXPECT_EQ(core::Utf8::countCodePoints("aé€😀"), 4U);
+    EXPECT_EQ(Utf8::decode("aé€😀"), (std::u32string{U'a', U'é', U'€', U'\U0001F600'}));
+    EXPECT_EQ(Utf8::countCodePoints("aé€😀"), 4U);
 }
 
 TEST(Utf8Test, ReplacesInvalidSequences) {
-    EXPECT_EQ(core::Utf8::decode("\xFF"), std::u32string(1, core::Utf8::kReplacementCharacter));
-    EXPECT_EQ(core::Utf8::decode("\xE2\x82"), std::u32string(1, core::Utf8::kReplacementCharacter));
-    EXPECT_EQ(core::Utf8::decode("\xC0\x80"), std::u32string(1, core::Utf8::kReplacementCharacter));
-    EXPECT_EQ(core::Utf8::decode("\xED\xA0\x80"), std::u32string(1, core::Utf8::kReplacementCharacter));
+    EXPECT_EQ(Utf8::decode("\xFF"), std::u32string(1, Utf8::kReplacementCharacter));
+    EXPECT_EQ(Utf8::decode("\xE2\x82"), std::u32string(1, Utf8::kReplacementCharacter));
+    EXPECT_EQ(Utf8::decode("\xC0\x80"), std::u32string(1, Utf8::kReplacementCharacter));
+    EXPECT_EQ(Utf8::decode("\xED\xA0\x80"), std::u32string(1, Utf8::kReplacementCharacter));
 }
 
 TEST(Utf8Test, ValidatesWellFormedText) {
-    EXPECT_TRUE(core::Utf8::isValid(""));
-    EXPECT_TRUE(core::Utf8::isValid("aé€😀"));
-    EXPECT_TRUE(core::Utf8::isValid("\xEF\xBF\xBD")) << "An encoded replacement character is valid text.";
+    EXPECT_TRUE(Utf8::isValid(""));
+    EXPECT_TRUE(Utf8::isValid("aé€😀"));
+    EXPECT_TRUE(Utf8::isValid("\xEF\xBF\xBD")) << "An encoded replacement character is valid text.";
 
     for (const std::string_view invalid : {"\xFF", "\xE2\x82", "a\x80", "\xC0\x80", "\xED\xA0\x80", "\xF4\x90\x80\x80", "\xEF\xBF"}) {
-        EXPECT_FALSE(core::Utf8::isValid(invalid));
+        EXPECT_FALSE(Utf8::isValid(invalid));
     }
 }
 
 TEST(Utf8Test, EncodesEveryLength) {
     std::string text;
     for (const char32_t codePoint : {U'a', U'é', U'€', U'\U0001F600', static_cast<char32_t>(0xD800), static_cast<char32_t>(0x110000)}) {
-        core::Utf8::append(text, codePoint);
+        Utf8::append(text, codePoint);
     }
 
-    EXPECT_EQ(core::Utf8::decode(text), (std::u32string{U'a', U'é', U'€', U'\U0001F600', core::Utf8::kReplacementCharacter, core::Utf8::kReplacementCharacter}));
+    EXPECT_EQ(Utf8::decode(text), (std::u32string{U'a', U'é', U'€', U'\U0001F600', Utf8::kReplacementCharacter, Utf8::kReplacementCharacter}));
 }
 
 TEST(JsonBytesTest, RefersToBuffersOnlyThroughIndexesOfZeroOrMore) {

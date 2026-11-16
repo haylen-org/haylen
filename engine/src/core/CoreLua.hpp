@@ -35,6 +35,7 @@ class CoreLua final {
 
     [[nodiscard]] static std::string joinArguments(lua_State* L);
     [[nodiscard]] static PackageInfo readPackageInfo(const std::filesystem::path& path);
+    static void pushPackageInfo(lua_State* L, const PackageInfo& info);
     template <Log::Level Level> static int logMessage(lua_State* L);
     static int openLog(lua_State* L);
 

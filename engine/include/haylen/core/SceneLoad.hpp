@@ -7,6 +7,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "haylen/lua/Error.hpp"
@@ -82,6 +83,8 @@ class SceneLoad final : public std::enable_shared_from_this<SceneLoad> {
 
   private:
     friend class SceneManager;
+
+    [[nodiscard]] static std::optional<lua::Error> describeFailures(std::string_view group, const std::vector<std::string>& failures);
 
     // Releases one hold on the load: the load hook itself, which the scene manager releases once it returned, or a deferral.
     void release();

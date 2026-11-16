@@ -54,6 +54,7 @@ class EventsLua final {
 
     // Calls the function with the values of the event and returns whether it returned a true value. Events emitted from Lua run the function on the emitting thread, where errors reach the emitter, and other events run it on the main thread in a protected call.
     [[nodiscard]] static bool invoke(const lua::Owners::Function& function, lua_State* main, const EventBus::Event& event);
+
     static int emitOn(lua_State* L, std::string_view channel, int first);
     static int postOn(lua_State* L, std::string_view channel, int first);
 

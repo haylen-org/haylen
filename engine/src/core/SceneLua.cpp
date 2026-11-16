@@ -5,6 +5,7 @@
 #include <array>
 #include <memory>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -107,11 +108,13 @@ SceneManager::Options SceneLua::readOptions(lua_State* L, int index) {
     lua::Table::readField(L, index, "minimumLoadingTime", options.minimumLoadingTime);
     lua::Table::readField(L, index, "loadingFadeOut", options.loadingFadeOut);
     lua::Table::readField(L, index, "unloadBeforeLoad", options.unloadBeforeLoad);
+
     if (lua_getfield(L, index, "params") != LUA_TNIL) {
         options.params = std::make_shared<lua::Reference>(L, -1);
     }
 
     lua_pop(L, 1);
+
     if (lua_getfield(L, index, "loading") != LUA_TNIL) {
         luaL_checktype(L, -1, LUA_TTABLE);
         options.loading = std::make_shared<lua::ScriptedLoadingView>(L, -1);
@@ -212,43 +215,41 @@ void SceneLua::pushLoad(lua_State* L, SceneLoad& load) {
     lua::Userdata::emplace<SceneLoad>(L, load.weak_from_this());
 }
 
-int SceneLua::push(lua_State* L) {
-    luaL_checktype(L, 1, LUA_TTABLE);
-    (void)lua::ScriptedScene::readProcessMode(L, 1);
-    const int options = lua_isnoneornil(L, 2) ? 0 : 2;
-    if (options != 0) {
-        luaL_checktype(L, options, LUA_TTABLE);
-        lua::Table::checkFields(L, options, {kChangeFields});
+// Returns the index of the options table at index once its fields are checked, or 0 when the call passes no options.
+int SceneLua::checkOptions(lua_State* L, int index, std::span<const std::string_view> fields) {
+    if (lua_isnoneornil(L, index)) {
+        return 0;
     }
 
+    luaL_checktype(L, index, LUA_TTABLE);
+    lua::Table::checkFields(L, index, {fields});
+    return index;
+}
+
+// Reads the change of a push or a replace, with the scene at index 1 and its options at index 2, and pushes the promise of the change.
+SceneManager::Options SceneLua::readChange(lua_State* L) {
+    luaL_checktype(L, 1, LUA_TTABLE);
+    (void)lua::ScriptedScene::readProcessMode(L, 1);
+    const int options = checkOptions(L, 2, kChangeFields);
     SceneManager::Options change = readOptions(L, options);
     change.completion = pushCompletion(L, options);
+    return change;
+}
+
+int SceneLua::push(lua_State* L) {
+    SceneManager::Options change = readChange(L);
     lua::Runtime::getEngine(L).getScenes().push(lua::ScriptedScene::get(L, 1), std::move(change));
     return 1;
 }
 
 int SceneLua::replace(lua_State* L) {
-    luaL_checktype(L, 1, LUA_TTABLE);
-    (void)lua::ScriptedScene::readProcessMode(L, 1);
-    const int options = lua_isnoneornil(L, 2) ? 0 : 2;
-    if (options != 0) {
-        luaL_checktype(L, options, LUA_TTABLE);
-        lua::Table::checkFields(L, options, {kChangeFields});
-    }
-
-    SceneManager::Options change = readOptions(L, options);
-    change.completion = pushCompletion(L, options);
+    SceneManager::Options change = readChange(L);
     lua::Runtime::getEngine(L).getScenes().replace(lua::ScriptedScene::get(L, 1), std::move(change));
     return 1;
 }
 
 int SceneLua::pop(lua_State* L) {
-    const int options = lua_isnoneornil(L, 1) ? 0 : 1;
-    if (options != 0) {
-        luaL_checktype(L, options, LUA_TTABLE);
-        lua::Table::checkFields(L, options, {kTransitionFields});
-    }
-
+    const int options = checkOptions(L, 1, kTransitionFields);
     SceneManager::Transition transition = readTransition(L, options);
     SceneManager::Completion completion = pushCompletion(L, options);
     lua::Runtime::getEngine(L).getScenes().pop(std::move(transition), std::move(completion));
@@ -257,12 +258,7 @@ int SceneLua::pop(lua_State* L) {
 
 int SceneLua::popTo(lua_State* L) {
     const auto level = lua::Stack::read<std::size_t>(L, 1);
-    const int options = lua_isnoneornil(L, 2) ? 0 : 2;
-    if (options != 0) {
-        luaL_checktype(L, options, LUA_TTABLE);
-        lua::Table::checkFields(L, options, {kTransitionFields});
-    }
-
+    const int options = checkOptions(L, 2, kTransitionFields);
     SceneManager::Transition transition = readTransition(L, options);
     SceneManager::Completion completion = pushCompletion(L, options);
     lua::Runtime::getEngine(L).getScenes().popTo(level, std::move(transition), std::move(completion));
@@ -270,12 +266,7 @@ int SceneLua::popTo(lua_State* L) {
 }
 
 int SceneLua::popToRoot(lua_State* L) {
-    const int options = lua_isnoneornil(L, 1) ? 0 : 1;
-    if (options != 0) {
-        luaL_checktype(L, options, LUA_TTABLE);
-        lua::Table::checkFields(L, options, {kTransitionFields});
-    }
-
+    const int options = checkOptions(L, 1, kTransitionFields);
     SceneManager::Transition transition = readTransition(L, options);
     SceneManager::Completion completion = pushCompletion(L, options);
     lua::Runtime::getEngine(L).getScenes().popToRoot(std::move(transition), std::move(completion));
@@ -421,6 +412,7 @@ int SceneLua::spawn(lua_State* L) {
         }
     });
     // clang-format on
+
     return 0;
 }
 
@@ -434,7 +426,8 @@ int SceneLua::loadProgress(lua_State* L) {
 // Preloads one asset group or a list of them with `context:preload(groups)` and returns a promise that resolves with `true` once all of them loaded, or rejects with the first failure, which also fails the load.
 int SceneLua::loadPreload(lua_State* L) {
     SceneLoad& load = lua::Userdata::check<SceneLoad>(L, 1);
-    const std::vector<std::string> groups = lua_type(L, 2) == LUA_TSTRING ? std::vector<std::string>{lua::Stack::read<std::string>(L, 2)} : lua::Stack::read<std::vector<std::string>>(L, 2);
+    const bool single = lua_type(L, 2) == LUA_TSTRING;
+    const std::vector<std::string> groups = single ? std::vector<std::string>{lua::Stack::read<std::string>(L, 2)} : lua::Stack::read<std::vector<std::string>>(L, 2);
     const lua::Promise promise(lua::Runtime::getEngine(L));
     auto remaining = std::make_shared<std::size_t>(groups.size());
     for (const std::string& group : groups) {

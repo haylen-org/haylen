@@ -1,13 +1,17 @@
 #pragma once
 
 #include <array>
+#include <memory>
 #include <string_view>
 #include <vector>
 
+#include "core/ScriptedSignal.hpp"
 #include "haylen/core/Connection.hpp"
 #include "haylen/core/EventBus.hpp"
-
-struct lua_State;
+#include "haylen/core/FrameQueue.hpp"
+#include "haylen/core/Signal.hpp"
+#include "haylen/lua/Reference.hpp"
+#include "lua/Owners.hpp"
 
 namespace haylen::core {
 
@@ -25,10 +29,17 @@ class SignalLua final {
     [[nodiscard]] static std::vector<EventBus::Topic> getNamedSignals(lua_State* L);
 
   private:
+    using Slot = Signal<const ScriptedSignal::Arguments&>::Slot;
+
     static constexpr std::array<std::string_view, 4> kConnectFields{"priority", "once", "deferred", "owner"};
     static constexpr const char* kNamedSignals = "haylen.namedSignals";
 
     static void pushArguments(lua_State* L, int first, int count);
+    [[nodiscard]] static Slot makeSlot(std::shared_ptr<lua::Owners::Function> callback);
+    [[nodiscard]] static Slot makeDeferredSlot(std::shared_ptr<lua::Owners::Function> callback, bool once, FrameQueue& queue);
+    [[nodiscard]] static std::shared_ptr<lua::Reference> packArguments(const ScriptedSignal::Arguments& arguments);
+    static void deliverPacked(const std::shared_ptr<lua::Owners::Function>& listener, const lua::Reference& packed, int count);
+
     static int create(lua_State* L);
     static int connectFunction(lua_State* L);
     static int emit(lua_State* L);

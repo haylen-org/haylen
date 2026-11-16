@@ -92,6 +92,7 @@ void ClassLua::push(lua_State* L) {
     }
 
     lua_pop(L, 1);
+
     if (luaL_loadbufferx(L, kSource.data(), kSource.size(), "=haylen.class", "t") != LUA_OK) {
         lua_error(L);
     }

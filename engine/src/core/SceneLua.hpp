@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <span>
 #include <string_view>
 
 #include "haylen/core/SceneManager.hpp"
@@ -23,9 +24,12 @@ class SceneLua final {
 
     [[nodiscard]] static SceneManager::Transition readTransition(lua_State* L, int index);
     [[nodiscard]] static SceneManager::Options readOptions(lua_State* L, int index);
+    [[nodiscard]] static int checkOptions(lua_State* L, int index, std::span<const std::string_view> fields);
+    [[nodiscard]] static SceneManager::Options readChange(lua_State* L);
 
     // Returns the completion of a change or a preload, which calls the `onComplete` of the options at index, when there are some, and settles the promise it pushes onto the stack.
     [[nodiscard]] static SceneManager::Completion pushCompletion(lua_State* L, int options);
+
     static void pushScene(lua_State* L, const Scene& scene);
     static void pushSceneEvent(lua_State* L, const Scene& scene);
     static void pushTransfer(lua_State* L, const SceneManager::Transfer& transfer);

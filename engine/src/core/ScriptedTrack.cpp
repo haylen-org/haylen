@@ -1,6 +1,7 @@
 #include "core/ScriptedTrack.hpp"
 
 #include <algorithm>
+#include <cstddef>
 #include <stdexcept>
 #include <utility>
 
@@ -11,7 +12,7 @@
 
 namespace haylen::core {
 
-ScriptedTrack::ScriptedTrack(lua_State* L, int value) : state(lua::Runtime::getMainThread(L)), target(L, value) {}
+ScriptedTrack::ScriptedTrack(lua_State* L, int object) : state(lua::Runtime::getMainThread(L)), target(L, object) {}
 
 std::string ScriptedTrack::join(const Path& path) {
     std::string name;

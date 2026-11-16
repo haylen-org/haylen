@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <map>
 #include <memory>
@@ -33,8 +34,6 @@
 
 namespace haylen::core {
 
-namespace {
-
 // Passes a package through but fails to read one of its files, like a package whose storage went away after the app started.
 class UnreadablePackage final : public io::Package {
   public:
@@ -65,8 +64,6 @@ class UnreadablePackage final : public io::Package {
     std::string unreadable;
 };
 
-} // namespace
-
 class ErrorScreenTest : public ::testing::Test {
   protected:
     static constexpr std::string_view kBattle = "local function strike(enemy)\n\treturn enemy.health\nend\n\nreturn function()\n\tlocal damage = strike(nil)\n\treturn damage\nend\n";
@@ -81,6 +78,16 @@ class ErrorScreenTest : public ::testing::Test {
         event.type = platform::Event::Type::KeyDown;
         event.key = key;
         fixture.engine().handleEvent(event);
+    }
+
+    // Presses a button of a gamepad, which counts as pressed in the frame it goes down, so each press is one frame down and one frame up.
+    static void tap(test::EngineFixture& fixture, input::GamepadButton button) {
+        input::GamepadState state{.connected = true, .name = "Remote"};
+        state.buttons[static_cast<std::size_t>(button)] = true;
+        fixture.host().setGamepad(0, state);
+        fixture.frames(1);
+        fixture.host().setGamepad(0, {.connected = true, .name = "Remote"});
+        fixture.frames(1);
     }
 
     // Sends a mouse or touch event at a point in design units, which the platform reports in framebuffer pixels.
@@ -98,8 +105,8 @@ class ErrorScreenTest : public ::testing::Test {
 TEST_F(ErrorScreenTest, ShowsTheLinesAroundTheErrorLineOfAPackageFile) {
     test::EngineFixture fixture = startFailingApp();
 
-    const core::ErrorScreen middle(fixture.engine(), lua::Error("source/scenes/battle.lua:6: boom"), true);
-    const std::vector<core::ErrorScreen::SourceLine>& lines = middle.getExcerpt();
+    const ErrorScreen middle(fixture.engine(), lua::Error("source/scenes/battle.lua:6: boom"), true);
+    const std::vector<ErrorScreen::SourceLine>& lines = middle.getExcerpt();
     ASSERT_EQ(lines.size(), 6U);
     EXPECT_EQ(lines.front().number, 3);
     EXPECT_EQ(lines.back().number, 8);
@@ -107,17 +114,17 @@ TEST_F(ErrorScreenTest, ShowsTheLinesAroundTheErrorLineOfAPackageFile) {
     EXPECT_EQ(lines[3].text, "    local damage = strike(nil)");
     EXPECT_EQ(lines[1].text, "");
 
-    const core::ErrorScreen first(fixture.engine(), lua::Error("source/scenes/battle.lua:1: boom"), true);
+    const ErrorScreen first(fixture.engine(), lua::Error("source/scenes/battle.lua:1: boom"), true);
     ASSERT_EQ(first.getExcerpt().size(), 4U);
     EXPECT_EQ(first.getExcerpt().front().text, "local function strike(enemy)");
 
-    EXPECT_TRUE(core::ErrorScreen(fixture.engine(), lua::Error("source/scenes/battle.lua:40: past the end"), true).getExcerpt().empty());
-    EXPECT_TRUE(core::ErrorScreen(fixture.engine(), lua::Error("source/scenes/missing.lua:3: boom"), true).getExcerpt().empty());
-    EXPECT_TRUE(core::ErrorScreen(fixture.engine(), lua::Error("The app could not be loaded."), true).getExcerpt().empty());
+    EXPECT_TRUE(ErrorScreen(fixture.engine(), lua::Error("source/scenes/battle.lua:40: past the end"), true).getExcerpt().empty());
+    EXPECT_TRUE(ErrorScreen(fixture.engine(), lua::Error("source/scenes/missing.lua:3: boom"), true).getExcerpt().empty());
+    EXPECT_TRUE(ErrorScreen(fixture.engine(), lua::Error("The app could not be loaded."), true).getExcerpt().empty());
 
     // Lines that end with a carriage return show without it.
     fixture.package().setFile("source/scenes/windows.lua", test::TestFiles::bytes("local damage = 1\r\nerror('boom')\r\n"));
-    const core::ErrorScreen windows(fixture.engine(), lua::Error("source/scenes/windows.lua:2: boom"), true);
+    const ErrorScreen windows(fixture.engine(), lua::Error("source/scenes/windows.lua:2: boom"), true);
     ASSERT_EQ(windows.getExcerpt().size(), 2U);
     EXPECT_EQ(windows.getExcerpt()[0].text, "local damage = 1");
     EXPECT_EQ(windows.getExcerpt()[1].text, "error('boom')");
@@ -142,15 +149,15 @@ TEST_F(ErrorScreenTest, ShowsNoExcerptOfAFileThatCannotBeRead) {
 
 TEST_F(ErrorScreenTest, ReportsTheWholeErrorAsPlainText) {
     std::vector<std::string> logged;
-    const std::uint64_t listener = core::Log::addListener([&logged](core::Log::Level, std::string_view line) { logged.emplace_back(line); });
+    const std::uint64_t listener = Log::addListener([&logged](Log::Level, std::string_view line) { logged.emplace_back(line); });
     test::EngineFixture fixture = startFailingApp();
     fixture.frames(1);
-    core::Log::removeListener(listener);
+    Log::removeListener(listener);
 
     ASSERT_NE(fixture.engine().getError(), nullptr);
-    const core::ErrorScreen screen(fixture.engine(), *fixture.engine().getError(), true);
+    const ErrorScreen screen(fixture.engine(), *fixture.engine().getError(), true);
     const std::string& report = screen.getReport();
-    EXPECT_TRUE(report.starts_with("The app stopped with an error\nTest App 1.0.0 · headless · Haylen " + std::string(core::Version::kString) + "\n\nattempt to index")) << report;
+    EXPECT_TRUE(report.starts_with("The app stopped with an error\nTest App 1.0.0 · headless · Haylen " + std::string(Version::kString) + "\n\nattempt to index")) << report;
     EXPECT_NE(report.find("\nFile \"source/scenes/battle.lua\", line 2\n"), std::string::npos) << report;
     EXPECT_NE(report.find("\n> 2      return enemy.health\n"), std::string::npos) << report;
     EXPECT_NE(report.find("\n  5  return function()\n"), std::string::npos) << report;
@@ -165,7 +172,7 @@ TEST_F(ErrorScreenTest, CopiesTheReportAndRestartsTheAppFromTheKeyboard) {
     test::EngineFixture fixture = startFailingApp();
     fixture.frames(2);
     ASSERT_NE(fixture.engine().getError(), nullptr);
-    const std::string report = core::ErrorScreen(fixture.engine(), *fixture.engine().getError(), true).getReport();
+    const std::string report = ErrorScreen(fixture.engine(), *fixture.engine().getError(), true).getReport();
 
     press(fixture, input::Key::C);
     EXPECT_EQ(fixture.host().getClipboard(), report);
@@ -200,28 +207,16 @@ TEST_F(ErrorScreenTest, CopiesAndRestartsWithAGamepadOrATvRemote) {
     test::EngineFixture fixture = startFailingApp();
     fixture.frames(2);
     ASSERT_NE(fixture.engine().getError(), nullptr);
-    const std::string report = core::ErrorScreen(fixture.engine(), *fixture.engine().getError(), true).getReport();
-
-    // A button counts as pressed in the frame it goes down, so each press is one frame down and one frame up.
-    // clang-format off
-    const auto tap = [&fixture](input::GamepadButton button) {
-        input::GamepadState state{.connected = true, .name = "Remote"};
-        state.buttons[static_cast<std::size_t>(button)] = true;
-        fixture.host().setGamepad(0, state);
-        fixture.frames(1);
-        fixture.host().setGamepad(0, {.connected = true, .name = "Remote"});
-        fixture.frames(1);
-    };
-    // clang-format on
+    const std::string report = ErrorScreen(fixture.engine(), *fixture.engine().getError(), true).getReport();
 
     // The focus starts on Restart, and the directional pad moves it to Copy, which the south button presses.
-    tap(input::GamepadButton::DpadLeft);
-    tap(input::GamepadButton::South);
+    tap(fixture, input::GamepadButton::DpadLeft);
+    tap(fixture, input::GamepadButton::South);
     EXPECT_EQ(fixture.host().getClipboard(), report);
     EXPECT_FALSE(fixture.engine().isRestartRequested());
 
-    tap(input::GamepadButton::DpadRight);
-    tap(input::GamepadButton::South);
+    tap(fixture, input::GamepadButton::DpadRight);
+    tap(fixture, input::GamepadButton::South);
     EXPECT_TRUE(fixture.engine().isRestartRequested());
 }
 
@@ -283,6 +278,7 @@ TEST_F(ErrorScreenTest, GoesBackToARecoverableAppAfterItsListenersRan) {
         scene.push({update = function() error('broken scene', 0) end})
     )"}});
     // clang-format on
+
     fixture.frames(2);
     ASSERT_NE(fixture.engine().getError(), nullptr);
     EXPECT_TRUE(fixture.engine().isBackCaptured());
@@ -311,6 +307,7 @@ TEST_F(ErrorScreenTest, OffersToGoBackOnlyInARecoverableApp) {
         recoverable.render();
     }));
     // clang-format on
+
     fixture.frames(2);
     EXPECT_GT(recoverable.getBackButton().getSize().x, 0.0F);
 
@@ -334,6 +331,7 @@ TEST_F(ErrorScreenTest, ClosesAnAppThatAnotherAppLaunched) {
         launched.render();
     }));
     // clang-format on
+
     fixture.frames(2);
     EXPECT_GT(launched.getCloseButton().getSize().x, 0.0F);
 
@@ -353,25 +351,13 @@ TEST_F(ErrorScreenTest, GoesBackWithTheButtonsOfAGamepad) {
     fixture.frames(2);
     ASSERT_NE(fixture.engine().getError(), nullptr);
 
-    // A button counts as pressed in the frame it goes down, so each press is one frame down and one frame up.
-    // clang-format off
-    const auto tap = [&fixture](input::GamepadButton button) {
-        input::GamepadState state{.connected = true};
-        state.buttons[static_cast<std::size_t>(button)] = true;
-        fixture.host().setGamepad(0, state);
-        fixture.frames(1);
-        fixture.host().setGamepad(0, {.connected = true});
-        fixture.frames(1);
-    };
-    // clang-format on
-
     // The scene fails again once the app runs on, which shows the screen again.
-    tap(input::GamepadButton::East);
+    tap(fixture, input::GamepadButton::East);
     EXPECT_NE(fixture.engine().getError(), nullptr);
     EXPECT_EQ(fixture.host().getErrorReports().size(), 2U);
 
     // The focus of a recoverable app starts on going back, which the south button presses.
-    tap(input::GamepadButton::South);
+    tap(fixture, input::GamepadButton::South);
     EXPECT_NE(fixture.engine().getError(), nullptr);
     EXPECT_EQ(fixture.host().getErrorReports().size(), 3U);
     EXPECT_FALSE(fixture.engine().isRestartRequested());
@@ -524,6 +510,7 @@ TEST_F(ErrorScreenTest, TellsWhichErrorsAFixCanResume) {
         EXPECT_EQ(fixture.engine().getError() == nullptr, resumable) << source;
     }
 }
+
 // clang-format on
 
 } // namespace haylen::core

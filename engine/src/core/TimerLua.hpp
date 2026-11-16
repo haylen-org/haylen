@@ -13,6 +13,7 @@ class TimerLua final {
     static void install(lua_State* L);
 
   private:
+    // A timer of `after` takes the first three fields, and only a timer of `every` takes a count.
     static constexpr std::array<std::string_view, 4> kTimerFields{"owner", "processMode", "unscaled", "count"};
 
     static int start(lua_State* L, bool repeating);

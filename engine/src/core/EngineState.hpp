@@ -93,11 +93,14 @@ struct EngineState {
     std::vector<graphics::Device::ReadCallback> screenCaptures;
     std::vector<graphics::Device::ReadCallback> capturingScreen;
     graphics::RenderTarget screenImage;
+
     std::unique_ptr<assets::Manager> assets;
     std::unique_ptr<SceneManager> scenes;
     plugins::PluginRegistry plugins;
+
     // The plugins whose start completed, in start order, which are the ones stop reaches.
     std::vector<plugins::Plugin*> startedPlugins;
+
     std::shared_ptr<text::Font> defaultFont;
     std::unique_ptr<varn::runtime::Runtime> runtime;
     Engine::EventLoopPoll loopPoll;
@@ -117,6 +120,7 @@ struct EngineState {
     // The cutouts of the screen over the window in framebuffer pixels, and the storage that each frame reads them into.
     std::vector<math::Rect> cutouts;
     std::vector<math::Rect> readCutouts;
+
     bool backLeavesApp = true;
     std::optional<math::Color> statusBarColor;
     math::Rect keyboardFrame;
@@ -130,6 +134,7 @@ struct EngineState {
 
     // Whether an error left a lifecycle scope since the frame began, which makes the error the engine reports next a lifecycle error.
     bool lifecycleFailed = false;
+
     Engine::AppState appState = Engine::AppState::Active;
 
     // An app in the foreground is active only while its window has the focus, no interruption of the system, such as a phone call, holds it and no native UI of a plugin covers it.
@@ -149,11 +154,13 @@ struct EngineState {
 
     // Whether the frame that rendered last drew the app complete, which no frame did before the first one rendered.
     bool frameComplete = false;
+
     bool started = false;
 
     // The holds that keep the app from starting, and whether the app waits for them to end.
     std::vector<std::weak_ptr<void>> startHolds;
     bool applicationPending = false;
+
     bool running = true;
     std::uint8_t exitStatus = 0;
     bool restartRequested = false;

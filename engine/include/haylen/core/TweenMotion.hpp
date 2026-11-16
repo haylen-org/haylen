@@ -61,6 +61,7 @@ class TweenMotion final {
     [[nodiscard]] math::Vec2 pathPoint(float t) const noexcept;
     [[nodiscard]] math::Vec2 pathAt(float progress) const noexcept;
     [[nodiscard]] float pathHeading(float progress) const noexcept;
+    [[nodiscard]] TweenValue shakeOffsetAt(const TweenValue& strength, int index) const;
     [[nodiscard]] TweenValue shakeOffset(const TweenValue& strength, float progress) const;
     [[nodiscard]] static math::Vec2 vector(const TweenValue& value);
 

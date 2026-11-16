@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <random>
 #include <span>
 #include <utility>
@@ -14,6 +15,7 @@
 #include "haylen/core/TweenManager.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
+#include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/NativeProperty.hpp"
 #include "haylen/lua/Reference.hpp"
 #include "haylen/lua/Runtime.hpp"
@@ -141,6 +143,7 @@ void TweenLua::readCallbacks(lua_State* L, int options, int owner, Tween::Callba
         return function;
     };
     // clang-format on
+
     if (auto function = read("onStart")) {
         callbacks.start = [function, main] { call(*function, main); };
     }
@@ -264,11 +267,12 @@ math::EasingCurve TweenLua::readEase(lua_State* L, int options, int owner) {
 }
 
 bool TweenLua::isListed(lua_State* L, int options, const char* list, std::string_view name) {
-    if (options == 0 || lua_getfield(L, options, list) == LUA_TNIL) {
-        if (options != 0) {
-            lua_pop(L, 1);
-        }
+    if (options == 0) {
+        return false;
+    }
 
+    if (lua_getfield(L, options, list) == LUA_TNIL) {
+        lua_pop(L, 1);
         return false;
     }
 
@@ -347,54 +351,55 @@ std::optional<std::vector<TweenLua::NativeField>> TweenLua::findNativeFields(lua
     return fields;
 }
 
-TweenValue TweenLua::readNative(const std::vector<NativeField>& fields) {
-    // clang-format off
-    const auto readOne = [](const NativeField& field) -> TweenValue {
-        lua::NativeProperty::Values values{};
-        (void)field.property->read(field.storage, values);
+TweenValue TweenLua::readNativeField(const NativeField& field) {
+    lua::NativeProperty::Values values{};
+    (void)field.property->read(field.storage, values);
 
-        if (field.component >= 0) {
-            return static_cast<double>(values[static_cast<std::size_t>(field.component)]);
-        }
-
-        switch (field.property->kind) {
-        case lua::NativeProperty::Kind::Vector:
-            return math::Vec2{values[0], values[1]};
-        case lua::NativeProperty::Kind::Color:
-            return math::Color{values[0], values[1], values[2], values[3]};
-        case lua::NativeProperty::Kind::Number:
-            break;
-        }
-        return static_cast<double>(values[0]);
-    };
-    // clang-format on
-    if (fields.size() == 2) {
-        return math::Vec2{static_cast<float>(readOne(fields[0]).getNumber()), static_cast<float>(readOne(fields[1]).getNumber())};
+    if (field.component >= 0) {
+        return static_cast<double>(values[static_cast<std::size_t>(field.component)]);
     }
 
-    return readOne(fields.front());
+    switch (field.property->kind) {
+    case lua::NativeProperty::Kind::Vector:
+        return math::Vec2{values[0], values[1]};
+    case lua::NativeProperty::Kind::Color:
+        return math::Color{values[0], values[1], values[2], values[3]};
+    case lua::NativeProperty::Kind::Number:
+        break;
+    }
+
+    return static_cast<double>(values[0]);
+}
+
+TweenValue TweenLua::readNative(const std::vector<NativeField>& fields) {
+    if (fields.size() != 2) {
+        return readNativeField(fields.front());
+    }
+
+    const auto x = static_cast<float>(readNativeField(fields[0]).getNumber());
+    const auto y = static_cast<float>(readNativeField(fields[1]).getNumber());
+    return math::Vec2{x, y};
+}
+
+void TweenLua::writeNativeNumber(const NativeField& field, float number) {
+    lua::NativeProperty::Values values{};
+    (void)field.property->read(field.storage, values);
+    values[static_cast<std::size_t>(std::max(field.component, 0))] = number;
+    (void)field.property->write(field.storage, values);
 }
 
 void TweenLua::writeNative(const std::vector<NativeField>& fields, const TweenValue& value) {
-    // clang-format off
-    const auto writeNumber = [](const NativeField& field, float number) {
-        lua::NativeProperty::Values values{};
-        (void)field.property->read(field.storage, values);
-        values[static_cast<std::size_t>(std::max(field.component, 0))] = number;
-        (void)field.property->write(field.storage, values);
-    };
-    // clang-format on
     if (fields.size() == 2) {
         const math::Vec2 vector = value.getVector();
-        writeNumber(fields[0], vector.x);
-        writeNumber(fields[1], vector.y);
+        writeNativeNumber(fields[0], vector.x);
+        writeNativeNumber(fields[1], vector.y);
         return;
     }
 
     const NativeField& field = fields.front();
     switch (value.getKind()) {
     case TweenValue::Kind::Number:
-        writeNumber(field, static_cast<float>(value.getNumber()));
+        writeNativeNumber(field, static_cast<float>(value.getNumber()));
         return;
     case TweenValue::Kind::Vector: {
         lua::NativeProperty::Values values{};
@@ -445,6 +450,7 @@ TweenValue TweenLua::readLike(lua_State* L, int index, const TweenValue& current
 
         return lua::Stack::read<std::string>(L, index);
     }
+
     return current;
 }
 
@@ -464,6 +470,7 @@ void TweenLua::addProperty(Builder& builder, const std::vector<std::string>& nam
                 return reference->isAlive() && first.property->read(first.storage, values);
             }));
         // clang-format on
+
         return;
     }
 
@@ -472,6 +479,18 @@ void TweenLua::addProperty(Builder& builder, const std::vector<std::string>& nam
     }
 
     builder.scripted->add(names, std::move(property));
+}
+
+// Makes the tween the only one that animates its fields when its options ask for it with `overwrite`.
+void TweenLua::applyOverwrite(lua_State* L, int options, const PropertyTween& tween) {
+    bool overwrite = false;
+    if (options != 0) {
+        lua::Table::readField(L, options, "overwrite", overwrite);
+    }
+
+    if (overwrite) {
+        lua::Runtime::getEngine(L).getTweens().overwrite(tween);
+    }
 }
 
 void TweenLua::finishTracks(Builder& builder) {
@@ -545,15 +564,7 @@ int TweenLua::startValues(lua_State* L, TweenProperty::Mode mode) {
         tween->renderStart();
     }
 
-    bool overwrite = false;
-    if (options != 0) {
-        lua::Table::readField(L, options, "overwrite", overwrite);
-    }
-
-    if (overwrite) {
-        lua::Runtime::getEngine(L).getTweens().overwrite(*tween);
-    }
-
+    applyOverwrite(L, options, *tween);
     start(L, tween, options, owner);
     return 1;
 }
@@ -575,11 +586,12 @@ int TweenLua::fromTo(lua_State* L) {
 }
 
 std::vector<std::string> TweenLua::readFieldNames(lua_State* L, int options, std::vector<std::string> defaults) {
-    if (options == 0 || lua_getfield(L, options, "field") == LUA_TNIL) {
-        if (options != 0) {
-            lua_pop(L, 1);
-        }
+    if (options == 0) {
+        return defaults;
+    }
 
+    if (lua_getfield(L, options, "field") == LUA_TNIL) {
+        lua_pop(L, 1);
         return defaults;
     }
 
@@ -640,15 +652,7 @@ int TweenLua::startReadyMade(lua_State* L, std::initializer_list<lua::Table::Fie
 
     finishTracks(builder);
 
-    bool overwrite = false;
-    if (options != 0) {
-        lua::Table::readField(L, options, "overwrite", overwrite);
-    }
-
-    if (overwrite) {
-        lua::Runtime::getEngine(L).getTweens().overwrite(*tween);
-    }
-
+    applyOverwrite(L, options, *tween);
     start(L, tween, options, owner);
     return 1;
 }
@@ -809,7 +813,8 @@ int TweenLua::shake(lua_State* L) {
             lua::Table::readField(state, builder.options, "seed", seed);
         }
 
-        TweenValue strength = current.getKind() == TweenValue::Kind::Vector && lua_type(state, 3) == LUA_TNUMBER ? TweenValue(math::Vec2{lua::Stack::read<float>(state, 3), lua::Stack::read<float>(state, 3)}) : readLike(state, 3, current, "strength");
+        const bool uniform = current.getKind() == TweenValue::Kind::Vector && lua_type(state, 3) == LUA_TNUMBER;
+        TweenValue strength = uniform ? TweenValue(math::Vec2{lua::Stack::read<float>(state, 3), lua::Stack::read<float>(state, 3)}) : readLike(state, 3, current, "strength");
         TweenProperty property = TweenProperty::to(std::move(strength));
         property.setMotion(TweenMotion::shake(vibrato, randomness, seed));
         return property;
@@ -1002,6 +1007,7 @@ int TweenLua::handleWait(lua_State* L) {
         promise->resolveCustom([completed](lua_State* state) { lua_pushboolean(state, completed ? 1 : 0); });
     };
     // clang-format on
+
     if (!tween->isAlive()) {
         settle(tween->isCompleted());
     } else {
@@ -1162,6 +1168,7 @@ template <typename T> void TweenLua::installHandle(lua_State* L, bool withTimeli
     lua::ClassBuilder<T> builder(L);
     builder.function("play", &lua::Binding::native<&handlePlay>).function("pause", &lua::Binding::native<&handlePause>).function("resume", &lua::Binding::native<&handleResume>).function("restart", &lua::Binding::native<&handleRestart>).function("reverse", &lua::Binding::native<&handleReverse>).function("seek", &lua::Binding::native<&handleSeek>).function("complete", &lua::Binding::native<&handleComplete>).function("kill", &lua::Binding::native<&handleKill>).function("wait", &lua::Binding::native<&handleWait>);
     builder.property("alive", &handleAlive).property("playing", &handlePlaying).property("paused", &handlePaused).property("reversed", &handleReversed).property("completed", &handleCompleted).property("progress", &handleProgress, &lua::Binding::native<&handleSetProgress>).property("time", &handleTime, &lua::Binding::native<&handleSetTime>).property("timeScale", &handleTimeScale, &lua::Binding::native<&handleSetTimeScale>).property("duration", &handleDuration).property("totalDuration", &handleTotalDuration).property("delay", &handleDelay).property("tag", &handleTag);
+
     if (withTimeline) {
         builder.function("append", &lua::Binding::native<&timelineAppend>).function("join", &lua::Binding::native<&timelineJoin>).function("insert", &lua::Binding::native<&timelineInsert>).function("addLabel", &lua::Binding::native<&timelineAddLabel>).property("size", &timelineSize);
     }

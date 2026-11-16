@@ -56,6 +56,7 @@ Connection EventBus::subscribe(std::unique_ptr<Listeners>& listeners, Handler ha
         handler(event);
     }, {.priority = options.priority, .owner = std::move(options.owner)});
     // clang-format on
+
     return *connection;
 }
 

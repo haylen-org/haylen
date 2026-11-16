@@ -28,10 +28,12 @@ int TimerLua::start(lua_State* L, bool repeating) {
     int owner = 0;
     if (!lua_isnoneornil(L, 3)) {
         luaL_checktype(L, 3, LUA_TTABLE);
-        lua::Table::checkFields(L, 3, {repeating ? std::span<const std::string_view>(kTimerFields) : std::span<const std::string_view>(kTimerFields).first(3)});
+        const std::span<const std::string_view> fields(kTimerFields);
+        lua::Table::checkFields(L, 3, {repeating ? fields : fields.first(3)});
         lua::Table::readField(L, 3, "processMode", options.processMode);
         lua::Table::readField(L, 3, "unscaled", options.unscaled);
         lua::Table::readField(L, 3, "count", count);
+
         if (lua_getfield(L, 3, "owner") != LUA_TNIL) {
             lua::Owners::checkOwner(L, -1);
             owner = lua_gettop(L);
@@ -55,8 +57,10 @@ int TimerLua::start(lua_State* L, bool repeating) {
         }
     };
     // clang-format on
+
     TimerScheduler& timers = lua::Runtime::getEngine(L).getTimers();
     const TimerScheduler::Id id = repeating ? timers.every(seconds, std::move(callback), count, options) : timers.after(seconds, std::move(callback), options);
+
     if (owner != 0) {
         lua::Owners::add(L, owner, timers.getConnection(id));
     }

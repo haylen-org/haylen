@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -23,16 +24,13 @@
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/lua/Binding.hpp"
-#include "haylen/lua/ClassBuilder.hpp"
 #include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/JsonConverter.hpp"
 #include "haylen/lua/Promise.hpp"
-#include "haylen/lua/Reference.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
-#include "haylen/lua/Userdata.hpp"
 #include "haylen/platform/SafeAreaSimulation.hpp"
 #include "haylen/platform/Window.hpp"
 #include "lua/Autoloads.hpp"
@@ -142,6 +140,27 @@ CoreLua::PackageInfo CoreLua::readPackageInfo(const std::filesystem::path& path)
     return info;
 }
 
+void CoreLua::pushPackageInfo(lua_State* L, const PackageInfo& info) {
+    lua_createtable(L, 0, 6);
+    lua::Stack::push(L, info.name);
+    lua_setfield(L, -2, "name");
+    lua::Stack::push(L, info.identifier);
+    lua_setfield(L, -2, "identifier");
+    lua::Stack::push(L, info.version);
+    lua_setfield(L, -2, "version");
+    lua_pushinteger(L, info.build);
+    lua_setfield(L, -2, "build");
+
+    if (info.logo.empty()) {
+        return;
+    }
+
+    lua::Stack::push(L, info.logo);
+    lua_setfield(L, -2, "logo");
+    lua_pushlstring(L, reinterpret_cast<const char*>(info.logoBytes.data()), info.logoBytes.size());
+    lua_setfield(L, -2, "logoBytes");
+}
+
 // Reads what an app package says about itself with `haylen.packageInfo(path)` on the I/O pool, such as the name and the logo that a list of downloaded apps shows, and resolves on a later frame.
 int CoreLua::rootPackageInfo(lua_State* L) {
     Engine& engine = lua::Runtime::getEngine(L);
@@ -154,26 +173,10 @@ int CoreLua::rootPackageInfo(lua_State* L) {
             return;
         }
 
-        promise.resolveWith([info = std::move(*result.value)](lua_State* state) {
-            lua_createtable(state, 0, 6);
-            lua::Stack::push(state, info.name);
-            lua_setfield(state, -2, "name");
-            lua::Stack::push(state, info.identifier);
-            lua_setfield(state, -2, "identifier");
-            lua::Stack::push(state, info.version);
-            lua_setfield(state, -2, "version");
-            lua_pushinteger(state, info.build);
-            lua_setfield(state, -2, "build");
-
-            if (!info.logo.empty()) {
-                lua::Stack::push(state, info.logo);
-                lua_setfield(state, -2, "logo");
-                lua_pushlstring(state, reinterpret_cast<const char*>(info.logoBytes.data()), info.logoBytes.size());
-                lua_setfield(state, -2, "logoBytes");
-            }
-        });
+        promise.resolveWith([info = std::move(*result.value)](lua_State* state) { pushPackageInfo(state, info); });
     });
     // clang-format on
+
     promise.push(L);
     return 1;
 }
@@ -277,6 +280,7 @@ int CoreLua::rootAppState(lua_State* L) {
         lua_pushliteral(L, "background");
         break;
     }
+
     return 1;
 }
 
@@ -297,6 +301,7 @@ int CoreLua::rootNetworkState(lua_State* L) {
         lua_pushliteral(L, "offline");
         break;
     }
+
     return 1;
 }
 
@@ -380,7 +385,7 @@ int CoreLua::viewportSafeRect(lua_State* L) {
 
 // Returns the edges that native views reserve as a table of design units, which the safe rectangle already leaves out.
 int CoreLua::viewportReservedInsets(lua_State* L) {
-    core::Engine& engine = lua::Runtime::getEngine(L);
+    Engine& engine = lua::Runtime::getEngine(L);
     const math::Insets& pixels = engine.getReservedInsets();
     const math::Vec2 scale = engine.getViewport().getPixelsPerUnit();
     lua::Stack::push(L, math::Insets{.left = pixels.left / scale.x, .top = pixels.top / scale.y, .right = pixels.right / scale.x, .bottom = pixels.bottom / scale.y});
@@ -389,7 +394,7 @@ int CoreLua::viewportReservedInsets(lua_State* L) {
 
 // Returns the cutouts of the screen over the window as a list of rectangles of design units.
 int CoreLua::viewportCutouts(lua_State* L) {
-    core::Engine& engine = lua::Runtime::getEngine(L);
+    Engine& engine = lua::Runtime::getEngine(L);
     const graphics::Viewport& viewport = engine.getViewport();
     const std::span<const math::Rect> cutouts = engine.getCutouts();
     lua_createtable(L, static_cast<int>(cutouts.size()), 0);
@@ -456,7 +461,7 @@ int CoreLua::viewportSafeAreaSimulation(lua_State* L) {
 
 // Simulates the safe area of a device by name or of insets in window points with `setSafeAreaSimulation(value)`, and `nil` goes back to the safe area of the device.
 int CoreLua::viewportSetSafeAreaSimulation(lua_State* L) {
-    core::Engine& engine = lua::Runtime::getEngine(L);
+    Engine& engine = lua::Runtime::getEngine(L);
     if (lua_isnoneornil(L, 1)) {
         engine.setSafeAreaSimulation(std::nullopt);
         return 0;

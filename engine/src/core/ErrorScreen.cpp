@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <exception>
 #include <memory>
 #include <utility>
@@ -51,6 +52,7 @@ std::string ErrorScreen::expandTabs(std::string_view text) {
 std::vector<ErrorScreen::SourceLine> ErrorScreen::readExcerpt() const {
     const std::string& file = error.getFile();
     io::Package& package = engine.getPackage();
+
     // A protected release holds its modules as bytecode, whose source text no package keeps.
     if (file.empty() || error.getLine() <= 0 || !package.exists(file) || package.isLuaBytecode(file)) {
         return {};
@@ -147,7 +149,7 @@ void ErrorScreen::copyReport() {
     engine.getSystem().setClipboard(report, [state = std::weak_ptr<CopyState>(copyState)](const platform::Permission::Answer& answer) {
         const bool copied = answer.state == platform::Permission::State::Granted;
         if (!copied) {
-            core::Log::warning("The report of the error stays off the clipboard. {}", answer.message);
+            Log::warning("The report of the error stays off the clipboard. {}", answer.message);
         }
 
         if (const std::shared_ptr<CopyState> alive = state.lock()) {
@@ -166,6 +168,7 @@ std::string_view ErrorScreen::getCopyLabel() const noexcept {
     case CopyState::Idle:
         break;
     }
+
     return "Copy report";
 }
 
@@ -215,8 +218,10 @@ void ErrorScreen::moveFocus(int step) {
         shown[count++] = Action::Close;
     }
 
-    const auto index = std::ranges::find(shown.begin(), shown.begin() + static_cast<std::ptrdiff_t>(count), focused) - shown.begin();
-    focused = shown[static_cast<std::size_t>(std::clamp<std::ptrdiff_t>(index + step, 0, static_cast<std::ptrdiff_t>(count) - 1))];
+    const auto end = shown.begin() + static_cast<std::ptrdiff_t>(count);
+    const std::ptrdiff_t index = std::ranges::find(shown.begin(), end, focused) - shown.begin();
+    const std::ptrdiff_t next = std::clamp<std::ptrdiff_t>(index + step, 0, static_cast<std::ptrdiff_t>(count) - 1);
+    focused = shown[static_cast<std::size_t>(next)];
 }
 
 void ErrorScreen::scrollBy(float amount) {
@@ -480,7 +485,8 @@ float ErrorScreen::drawExcerpt(graphics2d::Renderer& renderer, text::Font& font,
         text::Style numberStyle = code;
         numberStyle.color = failing ? kTitleColor : kMutedColor;
         const std::string number = std::to_string(line.number);
-        renderer.drawText(font, number, {origin.x + padding + numberWidth - font.measure(number, numberStyle).x, y}, numberStyle);
+        const float numberX = origin.x + padding + numberWidth - font.measure(number, numberStyle).x;
+        renderer.drawText(font, number, {numberX, y}, numberStyle);
         renderer.drawText(font, line.text, {codeX, y}, code);
         y += lineHeight;
     }

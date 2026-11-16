@@ -3,11 +3,15 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <numeric>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include "haylen/core/JobSystem.hpp"
@@ -16,14 +20,40 @@
 
 namespace haylen::core {
 
-TEST(JobSystemTest, RunDeliversValuesOnTheFrameThread) {
+class JobSystemTest : public ::testing::Test {
+  protected:
+    // Holds the workers of the task pool in their jobs until it opens, and counts the workers that started and left.
+    struct Gate {
+        std::atomic<std::size_t> started{0};
+        std::atomic<std::size_t> left{0};
+        std::atomic<bool> open{false};
+    };
+
+    static void occupyWorkers(JobSystem& jobs, Gate& gate) {
+        for (std::size_t worker = 0; worker < jobs.getWorkerCount(); ++worker) {
+            // clang-format off
+            jobs.post([&gate] {
+                ++gate.started;
+
+                while (!gate.open) {
+                    std::this_thread::yield();
+                }
+
+                ++gate.left;
+            });
+            // clang-format on
+        }
+    }
+};
+
+TEST_F(JobSystemTest, RunDeliversValuesOnTheFrameThread) {
     test::VarnRuntime varn;
-    core::JobSystem jobs(varn.getRuntime(), [](const std::string& message) { FAIL() << message; });
+    JobSystem jobs(varn.getRuntime(), [](const std::string& message) { FAIL() << message; });
     const auto frameThread = std::this_thread::get_id();
 
     std::atomic<bool> done{false};
     // clang-format off
-    jobs.run([] { return 21 * 2; }, [&](core::JobSystem::Result<int> result) {
+    jobs.run([] { return 21 * 2; }, [&](JobSystem::Result<int> result) {
         EXPECT_TRUE(result.isOk());
         EXPECT_EQ(*result.value, 42);
         EXPECT_EQ(std::this_thread::get_id(), frameThread);
@@ -34,23 +64,23 @@ TEST(JobSystemTest, RunDeliversValuesOnTheFrameThread) {
     ASSERT_TRUE(varn.pumpUntil([&] { return done.load(); }));
 }
 
-TEST(JobSystemTest, RunReportsExceptions) {
+TEST_F(JobSystemTest, RunReportsExceptions) {
     test::VarnRuntime varn;
-    core::JobSystem jobs(varn.getRuntime(), [](const std::string& message) { FAIL() << message; });
+    JobSystem jobs(varn.getRuntime(), [](const std::string& message) { FAIL() << message; });
 
     std::string error;
     std::string unknownError;
-    jobs.run([]() -> int { throw std::runtime_error("decode failed"); }, [&](core::JobSystem::Result<int> result) { error = result.error; });
-    jobs.run([]() -> int { throw 7; }, [&](core::JobSystem::Result<int> result) { unknownError = result.error; });
+    jobs.run([]() -> int { throw std::runtime_error("decode failed"); }, [&](JobSystem::Result<int> result) { error = result.error; });
+    jobs.run([]() -> int { throw 7; }, [&](JobSystem::Result<int> result) { unknownError = result.error; });
 
     ASSERT_TRUE(varn.pumpUntil([&] { return !error.empty() && !unknownError.empty(); }));
     EXPECT_EQ(error, "decode failed");
     EXPECT_NE(unknownError.find("unknown"), std::string::npos);
 }
 
-TEST(JobSystemTest, PostAndPostIoRunInBackground) {
+TEST_F(JobSystemTest, PostAndPostIoRunInBackground) {
     test::VarnRuntime varn;
-    core::JobSystem jobs(varn.getRuntime(), [](const std::string& message) { FAIL() << message; });
+    JobSystem jobs(varn.getRuntime(), [](const std::string& message) { FAIL() << message; });
 
     std::atomic<int> count{0};
     jobs.post([&] { ++count; });
@@ -61,10 +91,10 @@ TEST(JobSystemTest, PostAndPostIoRunInBackground) {
     EXPECT_GE(jobs.getWorkerCount(), 1U);
 }
 
-TEST(JobSystemTest, ReportsExceptionsThatEscapePostedWork) {
+TEST_F(JobSystemTest, ReportsExceptionsThatEscapePostedWork) {
     test::VarnRuntime varn;
     std::vector<std::string> errors;
-    core::JobSystem jobs(varn.getRuntime(), [&](const std::string& message) { errors.push_back(message); });
+    JobSystem jobs(varn.getRuntime(), [&](const std::string& message) { errors.push_back(message); });
 
     jobs.post([] { throw std::runtime_error("worker failed"); });
     jobs.postIo([] { throw 3; });
@@ -77,9 +107,9 @@ TEST(JobSystemTest, ReportsExceptionsThatEscapePostedWork) {
     EXPECT_EQ(errors[2], "worker failed");
 }
 
-TEST(JobSystemTest, ParallelForCoversTheWholeRange) {
+TEST_F(JobSystemTest, ParallelForCoversTheWholeRange) {
     test::VarnRuntime varn;
-    core::JobSystem jobs(varn.getRuntime(), [](const std::string& message) { FAIL() << message; });
+    JobSystem jobs(varn.getRuntime(), [](const std::string& message) { FAIL() << message; });
 
     std::vector<int> values(10000, 0);
     // clang-format off
@@ -103,12 +133,13 @@ TEST(JobSystemTest, ParallelForCoversTheWholeRange) {
         ++calls;
     });
     // clang-format on
+
     EXPECT_EQ(calls, 1);
 }
 
-TEST(JobSystemTest, ParallelForPropagatesTheFirstException) {
+TEST_F(JobSystemTest, ParallelForPropagatesTheFirstException) {
     test::VarnRuntime varn;
-    core::JobSystem jobs(varn.getRuntime(), [](const std::string& message) { FAIL() << message; });
+    JobSystem jobs(varn.getRuntime(), [](const std::string& message) { FAIL() << message; });
 
     // clang-format off
     const auto failAfterTheFirstChunk = [](std::size_t begin, std::size_t) {
@@ -127,29 +158,14 @@ TEST(JobSystemTest, ParallelForPropagatesTheFirstException) {
     EXPECT_THROW(jobs.parallelFor(0, 1000, 1, failInTheFirstChunk), std::logic_error);
 }
 
-TEST(JobSystemTest, ParallelForNeverWaitsBehindBusyWorkers) {
+TEST_F(JobSystemTest, ParallelForNeverWaitsBehindBusyWorkers) {
     test::VarnRuntime varn;
-    core::JobSystem jobs(varn.getRuntime(), [](const std::string& message) { FAIL() << message; });
+    JobSystem jobs(varn.getRuntime(), [](const std::string& message) { FAIL() << message; });
 
     // Every worker runs a long job, like an asynchronous navmesh build, so no worker can take a chunk.
-    std::atomic<std::size_t> started{0};
-    std::atomic<std::size_t> left{0};
-    std::atomic<bool> open{false};
-    for (std::size_t worker = 0; worker < jobs.getWorkerCount(); ++worker) {
-        // clang-format off
-        jobs.post([&] {
-            ++started;
-
-            while (!open) {
-                std::this_thread::yield();
-            }
-
-            ++left;
-        });
-        // clang-format on
-    }
-
-    ASSERT_TRUE(varn.pumpUntil([&] { return started.load() == jobs.getWorkerCount(); }));
+    Gate gate;
+    occupyWorkers(jobs, gate);
+    ASSERT_TRUE(varn.pumpUntil([&] { return gate.started.load() == jobs.getWorkerCount(); }));
 
     std::vector<int> values(1000, 0);
     std::atomic<bool> finished{false};
@@ -163,42 +179,28 @@ TEST(JobSystemTest, ParallelForNeverWaitsBehindBusyWorkers) {
         finished = true;
     });
     // clang-format on
+
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
     while (!finished && std::chrono::steady_clock::now() < deadline) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
     const bool finishedWhileBusy = finished;
-    open = true;
+    gate.open = true;
     caller.join();
-    ASSERT_TRUE(varn.pumpUntil([&] { return left.load() == jobs.getWorkerCount(); }));
+    ASSERT_TRUE(varn.pumpUntil([&] { return gate.left.load() == jobs.getWorkerCount(); }));
     EXPECT_TRUE(finishedWhileBusy) << "The caller ran every chunk while the workers were busy.";
     EXPECT_EQ(std::accumulate(values.begin(), values.end(), 0), 1000);
 }
 
-TEST(JobSystemTest, DiscardsQueuedWorkWithoutRunningIt) {
+TEST_F(JobSystemTest, DiscardsQueuedWorkWithoutRunningIt) {
     test::VarnRuntime varn;
-    core::JobSystem jobs(varn.getRuntime(), [](const std::string& message) { FAIL() << message; });
+    JobSystem jobs(varn.getRuntime(), [](const std::string& message) { FAIL() << message; });
 
     // Every worker waits at the gate, so the next job stays in the queue.
-    std::atomic<std::size_t> started{0};
-    std::atomic<std::size_t> left{0};
-    std::atomic<bool> open{false};
-    for (std::size_t worker = 0; worker < jobs.getWorkerCount(); ++worker) {
-        // clang-format off
-        jobs.post([&] {
-            ++started;
-
-            while (!open) {
-                std::this_thread::yield();
-            }
-
-            ++left;
-        });
-        // clang-format on
-    }
-
-    ASSERT_TRUE(varn.pumpUntil([&] { return started.load() == jobs.getWorkerCount(); }));
+    Gate gate;
+    occupyWorkers(jobs, gate);
+    ASSERT_TRUE(varn.pumpUntil([&] { return gate.started.load() == jobs.getWorkerCount(); }));
 
     auto held = std::make_shared<int>(0);
     const std::weak_ptr<int> watched = held;
@@ -207,42 +209,42 @@ TEST(JobSystemTest, DiscardsQueuedWorkWithoutRunningIt) {
     jobs.discardQueued();
     EXPECT_TRUE(watched.expired());
 
-    open = true;
-    jobs.post([&] { ++started; });
-    ASSERT_TRUE(varn.pumpUntil([&] { return started.load() == jobs.getWorkerCount() + 1 && left.load() == jobs.getWorkerCount(); }));
+    gate.open = true;
+    jobs.post([&gate] { ++gate.started; });
+    ASSERT_TRUE(varn.pumpUntil([&] { return gate.started.load() == jobs.getWorkerCount() + 1 && gate.left.load() == jobs.getWorkerCount(); }));
     EXPECT_FALSE(ran);
 }
 
 TEST(LogTest, FiltersByLevel) {
-    std::vector<std::pair<core::Log::Level, std::string>> lines;
-    const std::uint64_t listener = core::Log::addListener([&](core::Log::Level level, std::string_view message) { lines.emplace_back(level, std::string(message)); });
+    std::vector<std::pair<Log::Level, std::string>> lines;
+    const std::uint64_t listener = Log::addListener([&](Log::Level level, std::string_view message) { lines.emplace_back(level, std::string(message)); });
 
-    core::Log::setLevel(core::Log::Level::Info);
-    core::Log::debug("hidden {}", 1);
-    core::Log::info("loaded {} textures", 3);
-    core::Log::warning("slow frame");
-    core::Log::error("failed {}", "badly");
-    core::Log::setLevel(core::Log::Level::Debug);
-    core::Log::debug("visible");
-    EXPECT_EQ(core::Log::getLevel(), core::Log::Level::Debug);
+    Log::setLevel(Log::Level::Info);
+    Log::debug("hidden {}", 1);
+    Log::info("loaded {} textures", 3);
+    Log::warning("slow frame");
+    Log::error("failed {}", "badly");
+    Log::setLevel(Log::Level::Debug);
+    Log::debug("visible");
+    EXPECT_EQ(Log::getLevel(), Log::Level::Debug);
 
-    core::Log::removeListener(listener);
-    core::Log::setLevel(core::Log::Level::Info);
+    Log::removeListener(listener);
+    Log::setLevel(Log::Level::Info);
 
     ASSERT_EQ(lines.size(), 4U);
-    EXPECT_EQ(lines[0].first, core::Log::Level::Info);
+    EXPECT_EQ(lines[0].first, Log::Level::Info);
     EXPECT_NE(lines[0].second.find("loaded 3 textures"), std::string::npos);
-    EXPECT_EQ(lines[1].first, core::Log::Level::Warning);
-    EXPECT_EQ(lines[2].first, core::Log::Level::Error);
-    EXPECT_EQ(lines[3].first, core::Log::Level::Debug);
+    EXPECT_EQ(lines[1].first, Log::Level::Warning);
+    EXPECT_EQ(lines[2].first, Log::Level::Error);
+    EXPECT_EQ(lines[3].first, Log::Level::Debug);
 }
 
 // A line carries its time, its level and its message, and never the name of the library that writes it.
 TEST(LogTest, WritesLinesWithTheirTimeAndLevelOnly) {
     std::string line;
-    const std::uint64_t listener = core::Log::addListener([&](core::Log::Level, std::string_view message) { line = std::string(message); });
-    core::Log::info("Ready");
-    core::Log::removeListener(listener);
+    const std::uint64_t listener = Log::addListener([&](Log::Level, std::string_view message) { line = std::string(message); });
+    Log::info("Ready");
+    Log::removeListener(listener);
 
     EXPECT_TRUE(line.starts_with("[")) << line;
     EXPECT_TRUE(line.ends_with("] [info] Ready")) << line;

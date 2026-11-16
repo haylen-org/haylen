@@ -2,10 +2,13 @@
 
 #include <lua.hpp>
 
+#include <memory>
 #include <span>
 
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
+#include "haylen/lua/Converter.hpp"
+#include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Userdata.hpp"
 
 namespace haylen::core {
@@ -29,7 +32,8 @@ std::size_t FloatBufferLua::checkPosition(lua_State* L, const FloatBuffer& buffe
 // Reads `buffer[index]`, which never goes through a method lookup.
 int FloatBufferLua::at(lua_State* L) {
     const FloatBuffer& buffer = check(L);
-    lua_pushnumber(L, static_cast<lua_Number>(buffer.getValues()[checkPosition(L, buffer, 2, 1)]));
+    const std::size_t position = checkPosition(L, buffer, 2, 1);
+    lua_pushnumber(L, static_cast<lua_Number>(buffer.getValues()[position]));
     return 1;
 }
 

@@ -56,6 +56,7 @@ TweenValue TweenValue::mix(const TweenValue& from, const TweenValue& to, float t
     case Kind::Text:
         return mixText(from.getText(), to.getText(), t);
     }
+
     return from;
 }
 
@@ -75,6 +76,7 @@ TweenValue TweenValue::add(const TweenValue& value, const TweenValue& offset, fl
     case Kind::Text:
         break;
     }
+
     throw std::invalid_argument("A text cannot be tweened by an offset.");
 }
 
@@ -94,6 +96,7 @@ TweenValue TweenValue::difference(const TweenValue& end, const TweenValue& start
     case Kind::Text:
         break;
     }
+
     throw std::invalid_argument("A text cannot be tweened by an offset.");
 }
 
@@ -115,6 +118,7 @@ float TweenValue::distance(const TweenValue& from, const TweenValue& to, Interpo
     case Kind::Text:
         return static_cast<float>(Utf8::countCodePoints(to.getText()));
     }
+
     return 0.0F;
 }
 

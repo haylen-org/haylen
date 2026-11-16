@@ -24,6 +24,7 @@ const char* MessagePack::check(std::span<const std::byte> bytes) noexcept {
 
         return true;
     };
+
     const auto skip = [&bytes, &offset](std::uint64_t size) {
         if (bytes.size() - offset < size) {
             return false;

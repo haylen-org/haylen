@@ -78,6 +78,7 @@ class TweenLua final {
             lua::Runtime::protectedCall(main, 1, 0);
         }
     }
+
     static void start(lua_State* L, const std::shared_ptr<Tween>& tween, int options, int owner);
 
     [[nodiscard]] static std::shared_ptr<PropertyTween> createTween(lua_State* L, float length, int options, int owner);
@@ -87,9 +88,12 @@ class TweenLua final {
     [[nodiscard]] static TweenValue readCurrent(Builder& builder, const std::vector<std::string>& names);
     [[nodiscard]] static TweenValue readLike(lua_State* L, int index, const TweenValue& current, std::string_view name);
     static void addProperty(Builder& builder, const std::vector<std::string>& names, TweenProperty property);
+    static void applyOverwrite(lua_State* L, int options, const PropertyTween& tween);
     static void finishTracks(Builder& builder);
     [[nodiscard]] static std::optional<std::vector<NativeField>> findNativeFields(lua_State* L, int target, const std::vector<std::string>& names);
+    [[nodiscard]] static TweenValue readNativeField(const NativeField& field);
     [[nodiscard]] static TweenValue readNative(const std::vector<NativeField>& fields);
+    static void writeNativeNumber(const NativeField& field, float number);
     static void writeNative(const std::vector<NativeField>& fields, const TweenValue& value);
     static void checkTarget(lua_State* L);
     static int startValues(lua_State* L, TweenProperty::Mode mode);
@@ -159,7 +163,7 @@ class TweenLua final {
     static int timelineAddLabel(lua_State* L);
     static int timelineSize(lua_State* L);
 
-    template <typename T> static void installHandle(lua_State* L, bool timeline);
+    template <typename T> static void installHandle(lua_State* L, bool withTimeline);
 };
 
 } // namespace haylen::core

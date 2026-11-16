@@ -55,6 +55,7 @@ class Log final {
     struct Listeners;
 
     static constexpr Level kDefaultLevel = Level::Info;
+
     // The name of the log of the platform, which tags logcat on Android and is the category of the unified log on the Apple platforms, the same tag the Java side of the engine uses.
     static constexpr std::string_view kPlatformName = "haylen";
 

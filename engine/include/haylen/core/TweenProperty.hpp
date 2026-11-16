@@ -31,6 +31,7 @@ class TweenProperty final {
     [[nodiscard]] TweenValue::Interpolation getInterpolation() const noexcept {
         return interpolation;
     }
+
     void setMotion(std::shared_ptr<TweenMotion> value) noexcept {
         motion = std::move(value);
     }

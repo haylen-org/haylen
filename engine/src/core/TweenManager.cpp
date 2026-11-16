@@ -24,6 +24,10 @@ std::size_t TweenManager::getGroup(std::string_view tag) {
     return groups.size() - 1;
 }
 
+bool TweenManager::isManaged(const Tween& tween) const noexcept {
+    return tween.isAlive() && tween.manager == this;
+}
+
 void TweenManager::add(std::shared_ptr<Tween> tween) {
     if (!tween) {
         throw std::invalid_argument("The tween manager cannot play an empty tween.");
@@ -126,7 +130,7 @@ void TweenManager::killTarget(const void* target) {
 std::vector<std::shared_ptr<Tween>> TweenManager::collectTagged(std::string_view tag) const {
     std::vector<std::shared_ptr<Tween>> tagged;
     for (const auto* list : {&tweens, &pending}) {
-        std::copy_if(list->begin(), list->end(), std::back_inserter(tagged), [tag, this](const std::shared_ptr<Tween>& tween) { return tween->isAlive() && tween->manager == this && tween->getTag() == tag; });
+        std::copy_if(list->begin(), list->end(), std::back_inserter(tagged), [tag, this](const std::shared_ptr<Tween>& tween) { return isManaged(*tween) && tween->getTag() == tag; });
     }
 
     return tagged;
@@ -170,7 +174,7 @@ float TweenManager::getTimeScale(std::string_view tag) const noexcept {
 void TweenManager::killAll() {
     std::vector<std::shared_ptr<Tween>> all;
     for (const auto* list : {&tweens, &pending}) {
-        std::copy_if(list->begin(), list->end(), std::back_inserter(all), [this](const std::shared_ptr<Tween>& tween) { return tween->isAlive() && tween->manager == this; });
+        std::copy_if(list->begin(), list->end(), std::back_inserter(all), [this](const std::shared_ptr<Tween>& tween) { return isManaged(*tween); });
     }
 
     for (const std::shared_ptr<Tween>& tween : all) {
@@ -197,7 +201,7 @@ void TweenManager::clear() noexcept {
 std::size_t TweenManager::size() const noexcept {
     std::size_t count = 0;
     for (const auto* list : {&tweens, &pending}) {
-        count += static_cast<std::size_t>(std::count_if(list->begin(), list->end(), [this](const std::shared_ptr<Tween>& tween) { return tween->isAlive() && tween->manager == this; }));
+        count += static_cast<std::size_t>(std::count_if(list->begin(), list->end(), [this](const std::shared_ptr<Tween>& tween) { return isManaged(*tween); }));
     }
 
     return count;

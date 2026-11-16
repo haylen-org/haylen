@@ -84,6 +84,7 @@ class JobSystem final {
         };
         // clang-format on
     }
+
     struct ParallelRange;
     struct Queue;
 

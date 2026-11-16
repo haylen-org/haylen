@@ -55,12 +55,14 @@ class Tween : public Connection::Link, public std::enable_shared_from_this<Tween
     [[nodiscard]] int getRepeatCount() const noexcept {
         return repeatCount;
     }
+
     void setLoopMode(LoopMode value) noexcept {
         loopMode = value;
     }
     [[nodiscard]] LoopMode getLoopMode() const noexcept {
         return loopMode;
     }
+
     void setRepeatDelay(float seconds);
     [[nodiscard]] float getRepeatDelay() const noexcept {
         return repeatDelay;
@@ -86,6 +88,7 @@ class Tween : public Connection::Link, public std::enable_shared_from_this<Tween
 
     // Returns the mode the tween runs by: its own, or the one of its parent while it inherits.
     [[nodiscard]] ProcessMode resolveProcessMode() const;
+
     void setUnscaled(bool value) noexcept {
         unscaled = value;
     }
@@ -290,6 +293,7 @@ class Tween : public Connection::Link, public std::enable_shared_from_this<Tween
 
     // Set until the playhead leaves the start moving forward, and again when it goes back to the start, so callbacks at time zero run every time the tween plays from its start.
     bool atStart = true;
+
     debug::TrackedObject tracked{counter};
 };
 

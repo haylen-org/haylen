@@ -169,8 +169,10 @@ class Engine final {
     [[nodiscard]] FrameClock& getClock() noexcept;
     [[nodiscard]] EventBus& getEvents() noexcept;
     [[nodiscard]] FrameQueue& getFrameQueue() noexcept;
+
     // Captures the next frame the app renders, everything the screen shows of it, into an image that reaches the callback in a later frame, read back as `graphics::Device::readTarget` reads.
     void captureScreen(graphics::Device::ReadCallback done);
+
     [[nodiscard]] graphics::Device& getGraphics() noexcept;
     [[nodiscard]] graphics2d::Renderer& getRenderer2D() noexcept;
     [[nodiscard]] audio::Mixer& getAudio() noexcept;
@@ -290,11 +292,11 @@ class Engine final {
 
     // The fold of a foldable or dual-screen device across the window in framebuffer pixels, the simulated one while a simulation replaces the fold that the device reports, or none. The debug.fold option of app.json sets the simulation at start, and the windowFoldChanged event announces every change of the fold or of the posture.
     [[nodiscard]] std::optional<platform::Fold> getFold() const;
+    void setFoldSimulation(std::optional<platform::FoldSimulation> value);
+    [[nodiscard]] const std::optional<platform::FoldSimulation>& getFoldSimulation() const noexcept;
 
     // The cutouts of the screen over the window in framebuffer pixels, those of the simulated device while a safe area simulation names one, which the windowCutoutsChanged event announces as they change.
     [[nodiscard]] std::span<const math::Rect> getCutouts() const noexcept;
-    void setFoldSimulation(std::optional<platform::FoldSimulation> value);
-    [[nodiscard]] const std::optional<platform::FoldSimulation>& getFoldSimulation() const noexcept;
 
     // The screen edges that native views of plugins reserve, such as a banner ad, as the largest reservation on each edge in framebuffer pixels. The safe area of the viewport grows on each edge to cover them, so UI anchored to the safe area moves out of their way. The engine takes them at the start of every frame.
     [[nodiscard]] const math::Insets& getReservedInsets() const noexcept;
@@ -349,12 +351,15 @@ class Engine final {
     void startApplication();
     void applyWindowOptions();
     void leaveErrorScreen();
+    void runScripts(double frameSeconds);
+    void updateApp(std::size_t plugins, float delta);
     void publishDeviceChanges();
     void publishKeyboard(const math::Rect& value);
     [[nodiscard]] Json describeFold(const std::optional<platform::Fold>& fold) const;
 
     // A rectangle of framebuffer pixels as the table of design units that events carry.
     [[nodiscard]] Json toDesignJson(const math::Rect& pixels) const;
+
     void dispatchEvent(const platform::Event& event);
     void render(std::size_t plugins);
     [[nodiscard]] bool checkFrameComplete() const;
