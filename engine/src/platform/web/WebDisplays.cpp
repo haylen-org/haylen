@@ -47,6 +47,13 @@ std::string WebDisplays::getWindowDisplayId() {
     return described.at("current").get<std::string>();
 }
 
+bool WebDisplays::hasUnlistedDisplays() {
+    char* text = haylen_js_displays();
+    const core::Json described = core::Json::parse(text);
+    std::free(text);
+    return described.at("unlisted").get<bool>();
+}
+
 } // namespace haylen::platform
 
 extern "C" {

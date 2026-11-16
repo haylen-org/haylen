@@ -195,6 +195,9 @@ class Window {
     // Returns the id of the display that shows the window, the one that holds most of it on desktops.
     [[nodiscard]] virtual std::string getDisplayId() const = 0;
 
+    // Whether the device has displays that `getDisplays` leaves out until the app holds the permission `screens`, such as the other screens of a browser, which tells that the screen of the page is not the only one before the person lets the page see them.
+    [[nodiscard]] virtual bool hasUnlistedDisplays() const = 0;
+
   private:
     static const std::array<std::pair<std::string_view, Orientation>, 3> kOrientationNames;
     static const std::array<std::pair<std::string_view, StatusBar>, 4> kStatusBarNames;

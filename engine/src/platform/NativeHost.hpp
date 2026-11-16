@@ -69,6 +69,7 @@ class NativeHost : public Host {
     // Platforms whose window stays on its display go fullscreen only on that display, in the mode that the system picks.
     void enterFullscreen(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) override;
     [[nodiscard]] std::vector<Display> getDisplays() const override;
+    [[nodiscard]] bool hasUnlistedDisplays() const override;
 
     // Platforms without outputs end every output they are asked for, with the reason.
     void openOutput(std::uint32_t number, std::string_view display, const Output::Options& options) override;

@@ -267,6 +267,10 @@ class HeadlessHost final : public Host {
         return Display::findHolding(displays, frame).id;
     }
 
+    [[nodiscard]] bool hasUnlistedDisplays() const override {
+        return unlistedDisplays;
+    }
+
     // Outputs open on the headless platform as the requests record them, and tests report them with `setOutputReport` and the event `OutputChanged`.
     void openOutput(std::uint32_t number, std::string_view display, const Output::Options& options) override {
         outputRequests.push_back({.number = number, .display = std::string(display), .options = options});
@@ -499,6 +503,11 @@ class HeadlessHost final : public Host {
         transparencySupported = value;
         transparent = value;
     }
+    // Stands for a browser that knows of more screens than the page sees.
+    void setUnlistedDisplays(bool value) noexcept {
+        unlistedDisplays = value;
+    }
+
     void setDisplays(std::vector<Display> value) {
         displays = std::move(value);
     }
@@ -775,6 +784,7 @@ class HeadlessHost final : public Host {
 
     // The headless desktop is one 1920 by 1080 display at 60 frames per second whose work area leaves a 40 point taskbar at the bottom, with the window at the top left corner of it.
     std::vector<Display> displays{{.id = "headless", .name = "headless", .bounds = {0.0F, 0.0F, 1920.0F, 1080.0F}, .workArea = {0.0F, 0.0F, 1920.0F, 1040.0F}, .scale = 1.0F, .refreshRate = 60.0F, .primary = true, .modes = {{.width = 1920, .height = 1080, .refreshRate = 60.0F, .scale = 1.0F}, {.width = 1280, .height = 720, .refreshRate = 60.0F, .scale = 1.0F}}}};
+    bool unlistedDisplays = false;
     Permission::Answer windowAnswer{.state = Permission::State::Granted};
     std::vector<math::Rect> screenCutouts;
     Fullscreen fullscreenTarget;

@@ -8,7 +8,7 @@
 
 namespace haylen::platform {
 
-Displays::Displays(Window& source, core::EventBus& bus) : window(source), events(bus), displays(source.getDisplays()), windowDisplay(source.getDisplayId()) {}
+Displays::Displays(Window& source, core::EventBus& bus) : window(source), events(bus), displays(source.getDisplays()), windowDisplay(source.getDisplayId()), unlisted(source.hasUnlistedDisplays()) {}
 
 std::span<const Display> Displays::getAll() const noexcept {
     return displays;
@@ -31,6 +31,7 @@ const Display& Displays::getWindowDisplay() const noexcept {
 
 void Displays::refresh() {
     const std::vector<Display> previous = std::exchange(displays, window.getDisplays());
+    unlisted = window.hasUnlistedDisplays();
     for (const Display& display : previous) {
         if (find(display.id) == nullptr) {
             events.emit(core::LifecycleEvent::kDisplayDisconnected, {{"display", display.id}, {"name", display.name}});

@@ -82,6 +82,9 @@ class Services final {
     // Returns the id of the display that shows the window.
     [[nodiscard]] static std::string getWindowDisplayId();
 
+    // Whether the device has displays that `getDisplays` leaves out until the app holds the permission `screens`, as `Window::hasUnlistedDisplays` describes.
+    [[nodiscard]] static bool hasUnlistedDisplays();
+
     // Lets clicks through the window everywhere, or everywhere outside the regions in framebuffer pixels.
     static void setMousePassthrough(Window::Passthrough mode, std::span<const math::Polygon::Outline> regions);
 

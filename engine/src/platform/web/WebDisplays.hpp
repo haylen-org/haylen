@@ -12,6 +12,9 @@ class WebDisplays final {
   public:
     [[nodiscard]] static std::vector<Display> getDisplays();
     [[nodiscard]] static std::string getWindowDisplayId();
+
+    // Whether the browser tells that the device has more screens than the page sees, through `screen.isExtended`, while the page lacks the permission `screens`.
+    [[nodiscard]] static bool hasUnlistedDisplays();
 };
 
 } // namespace haylen::platform

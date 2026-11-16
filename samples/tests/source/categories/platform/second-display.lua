@@ -28,6 +28,9 @@ function SecondDisplay:enter()
             ui.label{id = 'answer', text = '', color = 'textMuted', font = 'caption'},
         },
     }
+    if display.unlisted() then
+        self:set('answer', {text = 'This browser shows the app only the screen of its window until it holds the permission "screens". Click "Open on the next display" to ask for every screen.'})
+    end
     for _, name in ipairs({'outputShown', 'outputHidden', 'outputResized', 'outputClosed'}) do
         events.on(name, function(info)
             table.insert(self.heard, 1, string.format('%s %s', name, info.ending or (info.width and string.format('%d by %d', info.width, info.height)) or ''))
@@ -41,10 +44,16 @@ function SecondDisplay:enter()
     end)
 end
 
--- A browser and an iPhone or iPad of iOS 27 show the app every display only once it holds the permission "screens", so the button asks first, inside the click that a browser needs.
+-- A browser and an iPhone or iPad of iOS 27 show the app every display only once it holds the permission "screens", so a click without it only asks for it. A browser opens the window of an output only right after a click, and the time the person spends on the prompt uses that click up, so the output opens at the next click, once the app holds the permission.
 function SecondDisplay:open()
     self:spawn(function()
-        system.requestPermission('screens'):await()
+        local state = system.permission('screens'):await()
+        if state ~= 'granted' then
+            local answered = system.requestPermission('screens'):await()
+            self:set('answer', {text = answered == 'granted' and 'The app sees every display now. Click again to open the scoreboard.' or string.format('The permission "screens" is "%s", so the app sees only the display of its window.', answered)})
+            return
+        end
+
         local current = display.current().id
         for _, shown in ipairs(display.list()) do
             if shown.id ~= current then

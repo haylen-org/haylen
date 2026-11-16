@@ -28,12 +28,23 @@ function Displays:enter()
             ui.label{id = 'answer', text = '', color = 'textMuted', font = 'caption'},
         },
     }
+    if display.unlisted() then
+        self:set('answer', {text = self:describeSingle()})
+    end
     for _, name in ipairs({'displayConnected', 'displayDisconnected', 'displayChanged', 'windowDisplayChanged'}) do
         events.on(name, function(info)
             table.insert(self.heard, 1, string.format('%s %s', name, info.name or info.display))
             self.heard[6] = nil
         end, {owner = self})
     end
+end
+
+-- A browser that hides the other screens until the app holds the permission "screens" says that there are more, so the test asks for them instead of calling the device single.
+function Displays:describeSingle()
+    if display.unlisted() then
+        return 'This browser shows the app only the screen of its window until it holds the permission "screens". Click "Ask for every screen" to see the others.'
+    end
+    return 'This device has a single display.'
 end
 
 -- The display after the one of the window, in the order of the list, or nil with a single display.
@@ -51,7 +62,7 @@ end
 function Displays:place()
     local other = self:nextDisplay()
     if not other then
-        self:set('answer', {text = 'This device has a single display.'})
+        self:set('answer', {text = self:describeSingle()})
         return
     end
     window.place({anchor = 'center', display = other.id})

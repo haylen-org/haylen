@@ -205,6 +205,10 @@ std::string Services::getWindowDisplayId() {
     return WebDisplays::getWindowDisplayId();
 }
 
+bool Services::hasUnlistedDisplays() {
+    return WebDisplays::hasUnlistedDisplays();
+}
+
 void Services::setMousePassthrough(Window::Passthrough, std::span<const math::Polygon::Outline>) {}
 
 void Services::startWindowDrag() {}

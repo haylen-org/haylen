@@ -47,6 +47,23 @@ local shown = display.current()
 print('The window is on', shown.name, 'at', shown.refreshRate, 'frames per second.')
 ```
 
+### display.unlisted()
+
+Returns `true` when the device has displays that `display.list()` leaves out until the app holds the [permission](system.md#permissions) `'screens'`. A browser tells that the device has more screens than the page sees before the person lets the page see them, so the app asks with `system.requestPermission('screens')` instead of telling the person that there is a single display. Every other platform lists all of its displays and returns `false`, and an iPhone or an iPad that waits for the permission cannot tell that an external display is there. The list grows with `displayConnected` once the app holds the permission.
+
+```lua
+local async = require('async')
+local display = require('haylen.display')
+local system = require('haylen.system')
+
+if #display.list() == 1 and display.unlisted() then
+    async.spawn(function()
+        local state = system.requestPermission('screens'):await()
+        print('The permission is ' .. state .. ', and the app sees ' .. #display.list() .. ' displays.')
+    end)
+end
+```
+
 ### display.open(id, options)
 
 Opens an output on the display with the id and returns it as an [`Output`](#output). An output is what the app shows on a display other than the one of its window. The app draws into the render target of the output with any canvas, and the engine shows the target on the display at the end of every frame, as large as it fits, with bars of the clear color around it. The [displays guide](../platform/displays.md#content-on-another-display) explains where outputs work and how they fit the engine.

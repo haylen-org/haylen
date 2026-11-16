@@ -189,6 +189,11 @@ std::string Services::getWindowDisplayId() {
 #endif
 }
 
+// UIKit tells nothing of an external display whose scene it does not connect, so an iPhone or an iPad that waits for the permission "screens" cannot tell that one is there.
+bool Services::hasUnlistedDisplays() {
+    return false;
+}
+
 void Services::setMousePassthrough([[maybe_unused]] Window::Passthrough mode, [[maybe_unused]] std::span<const math::Polygon::Outline> regions) {
 #if TARGET_OS_OSX
     AppleDesktop::setPassthrough(mode, regions);

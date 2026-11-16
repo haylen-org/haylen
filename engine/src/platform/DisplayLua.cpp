@@ -67,12 +67,14 @@ int DisplayLua::current(lua_State* L) {
     return 1;
 }
 
+int DisplayLua::unlisted(lua_State* L) {
+    lua::Stack::push(L, lua::Runtime::getEngine(L).getDisplays().hasUnlisted());
+    return 1;
+}
+
 int DisplayLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"list", &lua::Binding::native<&list>},
-        {"current", &lua::Binding::native<&current>},
-        {"open", &lua::Binding::native<&OutputLua::open>},
-        {nullptr, nullptr},
+        {"list", &lua::Binding::native<&list>}, {"current", &lua::Binding::native<&current>}, {"unlisted", &lua::Binding::native<&unlisted>}, {"open", &lua::Binding::native<&OutputLua::open>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

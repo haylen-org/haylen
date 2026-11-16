@@ -59,6 +59,22 @@ TEST_F(DisplayLuaTest, ListsTheDisplaysWithTheirModes) {
     EXPECT_EQ(fixture.host().getFrame(), (math::Rect{0.0F, 25.0F, 640.0F, 480.0F}));
 }
 
+// A browser lists only the screen of the page before the permission "screens", while it tells that the device has more, and the list holds them all once the page sees them.
+TEST_F(DisplayLuaTest, TellsOfDisplaysThatWaitForThePermission) {
+    test::EngineFixture fixture;
+    fixture.runLua("display = require('haylen.display')");
+    EXPECT_EQ(fixture.lua("return tostring(display.unlisted())"), "false");
+
+    fixture.host().setUnlistedDisplays(true);
+    fixture.engine().handleEvent({.type = Event::Type::DisplaysChanged});
+    EXPECT_EQ(fixture.lua("return #display.list() .. ' ' .. tostring(display.unlisted())"), "1 true");
+
+    fixture.host().setUnlistedDisplays(false);
+    fixture.host().setDisplays(twoDisplays());
+    fixture.engine().handleEvent({.type = Event::Type::DisplaysChanged});
+    EXPECT_EQ(fixture.lua("return #display.list() .. ' ' .. tostring(display.unlisted())"), "2 false");
+}
+
 TEST_F(DisplayLuaTest, PublishesEveryDisplayThatConnectsDisconnectsOrChanges) {
     test::EngineFixture fixture;
     fixture.runLua("events = require('haylen.events') heard = {} "

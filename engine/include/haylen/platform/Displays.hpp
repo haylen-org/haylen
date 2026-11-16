@@ -30,6 +30,11 @@ class Displays final {
     // Returns the display that shows the window. A window on a display that the engine has not heard of yet, between a move and the report of the displays that follows it, counts as on the primary display.
     [[nodiscard]] const Display& getWindowDisplay() const noexcept;
 
+    // Whether the device has displays that the list leaves out until the app holds the permission `screens`, as a browser tells before the person lets the page see every screen.
+    [[nodiscard]] bool hasUnlisted() const noexcept {
+        return unlisted;
+    }
+
     // Reads the displays again and publishes what changed, the displays that went away first.
     void refresh();
 
@@ -43,6 +48,7 @@ class Displays final {
     core::EventBus& events;
     std::vector<Display> displays;
     std::string windowDisplay;
+    bool unlisted = false;
 };
 
 } // namespace haylen::platform

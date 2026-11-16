@@ -198,6 +198,10 @@ std::string NativeHost::getDisplayId() const {
     return Services::getWindowDisplayId();
 }
 
+bool NativeHost::hasUnlistedDisplays() const {
+    return Services::hasUnlistedDisplays();
+}
+
 FullscreenTarget NativeHost::resolveFullscreen(const Fullscreen& value) const {
     return FullscreenTarget::resolve(getDisplays(), getDisplayId(), value);
 }

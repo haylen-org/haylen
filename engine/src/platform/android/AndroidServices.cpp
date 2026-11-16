@@ -119,6 +119,11 @@ std::string Services::getWindowDisplayId() {
     return AndroidDisplays::getWindowDisplayId();
 }
 
+// Every display of the device is in the list, so none waits for the permission "screens".
+bool Services::hasUnlistedDisplays() {
+    return false;
+}
+
 void Services::setMousePassthrough(Window::Passthrough, std::span<const math::Polygon::Outline>) {}
 
 void Services::startWindowDrag() {}

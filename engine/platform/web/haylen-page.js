@@ -1396,7 +1396,7 @@ Module.haylen = Module.haylen || {};
         return [...bounds, vertical ? 1 : 0, folded ? 1 : 0, 1, occluding ? 1 : 0];
     };
 
-    // The screens of the page: the one it shows on until the person lets the page see every screen through the Window Management API, whose screens then report their changes. Each screen gets an id the first time the page sees it, which it keeps while it stays connected, and its points are the CSS pixels of the screens around it.
+    // The screens of the page: the one it shows on until the person lets the page see every screen through the Window Management API, whose screens then report their changes. Until then `screen.isExtended` tells whether the device has more screens, which the page reports as unlisted. Each screen gets an id the first time the page sees it, which it keeps while it stays connected, and its points are the CSS pixels of the screens around it.
     const pageScreens = { details: null, ids: new WeakMap(), counted: 0 };
     const screenId = (shown) => {
         if (!pageScreens.ids.has(shown)) {
@@ -1427,7 +1427,8 @@ Module.haylen = Module.haylen || {};
     haylen.displays = function () {
         const all = pageScreens.details !== null ? pageScreens.details.screens : [window.screen];
         const current = pageScreens.details !== null ? pageScreens.details.currentScreen : window.screen;
-        return JSON.stringify({ current: screenId(current), displays: all.map(describeScreen) });
+        const unlisted = pageScreens.details === null && window.screen.isExtended === true;
+        return JSON.stringify({ current: screenId(current), displays: all.map(describeScreen), unlisted });
     };
 
     // Asks to see every screen, and once the page sees them follows their changes. The permission `screens` asks the same way.
@@ -1445,6 +1446,23 @@ Module.haylen = Module.haylen || {};
     if (window.screen.addEventListener) {
         window.screen.addEventListener("change", displaysChanged);
     }
+
+    // A page that already holds the permission, which the person gave on an earlier visit or in the settings of the site, sees every screen without asking again, from the start and from the moment the permission changes to granted.
+    const followScreensPermission = async () => {
+        if (typeof window.getScreenDetails !== "function") {
+            return;
+        }
+
+        const status = await navigator.permissions.query({ name: "window-management" });
+        const follow = () => {
+            if (status.state === "granted") {
+                seeEveryScreen().catch((error) => console.warn("The page holds the permission to see every screen, but the browser did not describe them: " + error.message));
+            }
+        };
+        status.addEventListener("change", follow);
+        follow();
+    };
+    followScreensPermission();
 
     // The outputs of the app on other screens, each a window of the browser that `window.open` places on its screen through the Window Management API, with a canvas that fills the window and that the WebGPU device presents into. A browser opens such a window only shortly after a click or a key of the person, so the app opens an output from a button, and a window that the browser blocks ends the output with the reason. The window covers the work area of its screen when the output asks for fullscreen, since a page cannot make another window fullscreen without a gesture inside it. The endings are those of `platform::Output::Ending`, in its order.
     const outputEndings = { person: 1, disconnected: 2, unsupported: 3 };
@@ -1469,12 +1487,24 @@ Module.haylen = Module.haylen || {};
         const size = fullscreen ? [target.availWidth, target.availHeight] : [Math.min(width, target.availWidth), Math.min(height, target.availHeight)];
         const left = target.availLeft + Math.round((target.availWidth - size[0]) / 2);
         const top = target.availTop + Math.round((target.availHeight - size[1]) / 2);
-        const opened = window.open("", "haylen-output-" + number, `popup,left=${left},top=${top},width=${size[0]},height=${size[1]}`);
+        // Every output opens a window of its own, so a window that an earlier output or the popup blocker of the browser left open never stands in for it.
+        const opened = window.open("", "_blank", `popup,left=${left},top=${top},width=${size[0]},height=${size[1]}`);
         if (opened === null) {
             queueMicrotask(() => endOutput(number, outputEndings.unsupported, "The browser blocked the window of the output. A browser opens a window only shortly after a click or a key of the person, so open the output from a button."));
             return;
         }
 
+        // A window that the page cannot fill ends the output with the reason of the browser, which the log of the engine shows, instead of staying empty.
+        try {
+            fillOutputWindow(number, opened, title);
+        } catch (error) {
+            opened.close();
+            queueMicrotask(() => endOutput(number, outputEndings.unsupported, "The window of the output could not be prepared: " + error.message));
+        }
+    };
+
+    // Lays a canvas over the whole window of an output, which the WebGPU device presents into, follows its size and hands the engine its pointer.
+    const fillOutputWindow = (number, opened, title) => {
         const page = opened.document;
         page.title = title;
         page.body.style.cssText = "margin:0;overflow:hidden;background:#000";
