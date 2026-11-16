@@ -1698,7 +1698,7 @@ Module.haylen = Module.haylen || {};
     };
 
     // Native text editing. A hidden textarea, or a password input, lies over the focused field next to the canvas, so phones open their keyboard and browsers bring their input methods, paste, copy and undo. The engine also lists the fields on screen, because Safari on iOS opens the keyboard only when an element takes the focus inside a user gesture.
-    const text = { elements: {}, field: null, fields: [], active: null, composition: null, finishing: false, keyboard: [0, 0, 0, 0] };
+    const text = { elements: {}, field: null, fields: [], tapSlop: 0, active: null, composition: null, finishing: false, keyboard: [0, 0, 0, 0] };
     haylen.textInput = text;
 
     // The engine counts code points, while JavaScript strings count characters outside the Basic Multilingual Plane twice.
@@ -1951,21 +1951,51 @@ Module.haylen = Module.haylen || {};
         reportKeyboard();
     };
 
-    text.setFields = function (fields) {
+    text.setFields = function (fields, tapSlop) {
         text.fields = fields;
+        text.tapSlop = tapSlop;
     };
 
-    // A tap on a field focuses its element inside the gesture, before the engine even sees the tap.
+    // The canvas takes the focus on a press, as an element with a tab index, but the engine decides when the editing of a field ends. So a press never takes the focus from the element that edits, such as the press that browsers send after a tap, which would close the keyboard that the tap opened.
+    const keepEditingFocus = (event) => {
+        if (isElement(document.activeElement)) {
+            event.preventDefault();
+        }
+    };
+
+    // The presses on the canvas by pointer, with where each one started and whether another pointer pressed meanwhile.
+    const presses = new Map();
+
+    const notePress = (event) => {
+        for (const press of presses.values()) {
+            press.shared = true;
+        }
+        presses.set(event.pointerId, { x: event.clientX, y: event.clientY, shared: presses.size > 0 });
+    };
+
+    const isInside = (place, x, y) => x >= place.left && x <= place.left + place.width && y >= place.top && y <= place.top + place.height;
+
+    // A tap on a field focuses its element inside the gesture, before the engine even sees the tap, as the engine taps it: a press that starts and ends on the field, travels less than the slop of the engine and shares the screen with no other pointer. Phones open their keyboard only for a focus inside a gesture, so an element that already has the focus, such as the one of a field that the app focused as its screen opened, takes it again.
     const focusTapped = (event) => {
+        const press = presses.get(event.pointerId);
+        presses.delete(event.pointerId);
+        if (!press || press.shared || Math.hypot(event.clientX - press.x, event.clientY - press.y) >= toPage([0, 0, text.tapSlop, 0]).width) {
+            return;
+        }
+
         for (const field of text.fields) {
             const place = toPage(field.bounds);
-            if (event.clientX >= place.left && event.clientX <= place.left + place.width && event.clientY >= place.top && event.clientY <= place.top + place.height) {
+            if (isInside(place, press.x, press.y) && isInside(place, event.clientX, event.clientY)) {
                 const target = element(field.password);
                 configure(target, field);
 
-                if (document.activeElement !== target) {
-                    target.focus({ preventScroll: true });
+                if (document.activeElement === target) {
+                    text.finishing = true;
+                    target.blur();
+                    text.finishing = false;
                 }
+
+                target.focus({ preventScroll: true });
 
                 return;
             }
@@ -2520,7 +2550,10 @@ Module.haylen = Module.haylen || {};
 
     // A hidden page sends the app to the background, a page that goes away makes the user data durable, and the network state, the time zone, the color scheme, the languages, the accessibility preferences and the battery reach the app when it starts and whenever they change.
     Module.postRun.push(function () {
+        Module.canvas.addEventListener("pointerdown", notePress, true);
+        Module.canvas.addEventListener("mousedown", keepEditingFocus, true);
         Module.canvas.addEventListener("pointerup", focusTapped, true);
+        Module.canvas.addEventListener("pointercancel", (event) => presses.delete(event.pointerId), true);
         document.addEventListener("selectionchange", () => {
             if (text.active && document.activeElement === text.active) {
                 report();

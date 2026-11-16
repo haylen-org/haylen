@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "haylen/core/Utf8.hpp"
+#include "ui/ScrollArbiter.hpp"
 
 namespace haylen::ui {
 
@@ -219,16 +220,18 @@ math::Rect TextSession::toFramebuffer(const math::Rect& rect) const noexcept {
     return math::Rect::fromMinMax(viewport.toFramebuffer(rect.getMin() * scale + origin), viewport.toFramebuffer(rect.getMax() * scale + origin));
 }
 
-// The list is rebuilt every frame in storage kept from the frames before, and the platform hears it only when it changes.
+// The list is rebuilt every frame in storage kept from the frames before, and the platform hears it only when it or the slop of a tap changes. A press that travels the slop of a drag scrolls instead of tapping.
 void TextSession::publishVisibleFields() {
     visibleFields.clear();
     for (const Entry& entry : fields) {
         visibleFields.push_back({.id = entry.id, .bounds = toFramebuffer(entry.bounds), .options = entry.options});
     }
 
-    if (visibleFields != sentFields) {
-        input.setVisibleFields(visibleFields);
+    const float tapSlop = toFramebuffer({0.0F, 0.0F, ScrollArbiter::kDragSlop, 0.0F}).width;
+    if (visibleFields != sentFields || tapSlop != sentTapSlop) {
+        input.setVisibleFields(visibleFields, tapSlop);
         sentFields = visibleFields;
+        sentTapSlop = tapSlop;
     }
 }
 

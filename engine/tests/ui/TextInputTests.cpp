@@ -20,6 +20,7 @@
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Theme.hpp"
 #include "support/EngineFixture.hpp"
+#include "ui/ScrollArbiter.hpp"
 #include "ui/TextSession.hpp"
 
 namespace haylen::ui {
@@ -127,6 +128,7 @@ TEST_F(TextInputTest, PublishesTheFocusedFieldWithItsKeyboard) {
     EXPECT_EQ(visible[1].options, (TextInput::Options{.keyboard = TextInput::Keyboard::Multiline}));
     EXPECT_EQ(visible[2].options, (TextInput::Options{.keyboard = TextInput::Keyboard::Password, .capitalization = TextInput::Capitalization::None, .autocorrect = false}));
     EXPECT_EQ(visible[3].options.keyboard, TextInput::Keyboard::Text) << "Numeric keypads have no minus sign.";
+    EXPECT_FLOAT_EQ(getInput().getTapSlop(), ScrollArbiter::kDragSlop) << "A press taps a field within the slop of a drag, in framebuffer pixels.";
     EXPECT_TRUE(getInput().getPublished().empty());
 
     focus(*gui, "email");

@@ -131,8 +131,8 @@ class TextInput {
     // Ends editing and hides the keyboard.
     virtual void finish() {}
 
-    // Lists the text fields on screen, so a platform that opens its keyboard only inside a user gesture can focus its native field as soon as one is tapped.
-    virtual void setVisibleFields(std::span<const Field>) {}
+    // Lists the text fields on screen, so a platform that opens its keyboard only inside a user gesture can focus its native field as soon as one is tapped. A press taps a field only while it travels less than `tapSlop` framebuffer pixels, as the UI decides.
+    virtual void setVisibleFields(std::span<const Field>, float) {}
 };
 
 } // namespace haylen::platform

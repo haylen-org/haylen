@@ -119,6 +119,7 @@ class TextSession final {
     std::vector<Entry> fields;
     std::vector<platform::TextInput::Field> visibleFields;
     std::vector<platform::TextInput::Field> sentFields;
+    float sentTapSlop = 0.0F;
     std::optional<platform::TextInput::Field> published;
     std::optional<platform::TextInput::Edit> pending;
     std::optional<platform::TextInput::Action> action;

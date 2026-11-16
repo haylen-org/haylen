@@ -20,8 +20,9 @@ class HeadlessTextInput final : public TextInput {
     void finish() override {
         editing = false;
     }
-    void setVisibleFields(std::span<const Field> fields) override {
+    void setVisibleFields(std::span<const Field> fields, float value) override {
         visibleFields.assign(fields.begin(), fields.end());
+        tapSlop = value;
     }
 
     void setNative(bool value) noexcept {
@@ -36,10 +37,14 @@ class HeadlessTextInput final : public TextInput {
     [[nodiscard]] const std::vector<Field>& getVisibleFields() const noexcept {
         return visibleFields;
     }
+    [[nodiscard]] float getTapSlop() const noexcept {
+        return tapSlop;
+    }
 
   private:
     std::vector<Field> published;
     std::vector<Field> visibleFields;
+    float tapSlop = 0.0F;
     bool native = false;
     bool editing = false;
 };

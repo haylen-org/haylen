@@ -1,7 +1,7 @@
 import XCTest
 
 #if os(iOS)
-// The address field of the test "Text fields", which capitalizes nothing and sits right above the keyboard, types through the software keyboard: each key types once, Backspace deletes, the screen holds still while the keyboard shows, and the text and the keyboard stay when the device turns.
+// The address field of the test "Text fields", which capitalizes nothing and sits right above the keyboard, types through the software keyboard: each key types once, Backspace deletes, the screen holds still while the keyboard shows, the text and the keyboard stay when the device turns, and the keyboard follows the field that edits.
 class TextInputTests: HaylenUITestCase {
     override func setUpWithError() throws {
         try super.setUpWithError()
@@ -53,6 +53,32 @@ class TextInputTests: HaylenUITestCase {
         press("e")
         expectReport("mare")
         try saveScreenshot("text-turned")
+    }
+
+    // The keyboard stays while another field takes over, comes back with the app, closes with a field that submits and closes with the screen of its field.
+    func testTheKeyboardFollowsTheFieldThatEdits() throws {
+        startTyping()
+        tap("Crew size")
+        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        XCTAssertTrue(app.keyboards.firstMatch.exists, "The keyboard closes when another field takes over.")
+        press("42")
+        waitFor(element("The field \"number\" reported \"change\" with \"42\"."), timeout: 10)
+
+        startTyping()
+        XCUIDevice.shared.press(.home)
+        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        app.activate()
+        waitFor(app.keyboards.firstMatch)
+        press("ilha")
+        expectReport("ilha")
+        try saveScreenshot("keyboard-back")
+        waitFor(app.keyboards.descendants(matching: .any).matching(NSPredicate(format: "label ==[c] %@", "go")).firstMatch).tap()
+        waitUntil("The keyboard stays open after its field submitted.") { !app.keyboards.firstMatch.exists }
+
+        startTyping()
+        tap("Back")
+        waitUntil("The keyboard stays open after the screen of its field closed.") { !app.keyboards.firstMatch.exists }
+        try saveScreenshot("keyboard-closed")
     }
 
     func startTyping() {

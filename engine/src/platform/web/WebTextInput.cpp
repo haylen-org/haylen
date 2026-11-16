@@ -17,8 +17,8 @@ EM_JS(void, haylen_js_text_finish, (), {
     Module.haylen.textInput.finish();
 });
 
-EM_JS(void, haylen_js_text_fields, (const char* json), {
-    Module.haylen.textInput.setFields(JSON.parse(UTF8ToString(json)));
+EM_JS(void, haylen_js_text_fields, (const char* json, float tapSlop), {
+    Module.haylen.textInput.setFields(JSON.parse(UTF8ToString(json)), tapSlop);
 });
 // clang-format on
 
@@ -32,13 +32,13 @@ void WebTextInput::finish() {
     haylen_js_text_finish();
 }
 
-void WebTextInput::setVisibleFields(std::span<const Field> fields) {
+void WebTextInput::setVisibleFields(std::span<const Field> fields, float tapSlop) {
     core::Json list = core::Json::array();
     for (const Field& field : fields) {
         list.push_back(toJson(field));
     }
 
-    haylen_js_text_fields(list.dump().c_str());
+    haylen_js_text_fields(list.dump().c_str(), tapSlop);
 }
 
 // The page reports edits and actions from its own event handlers, which may run inside a call of the engine, such as the blur of `finish`, so they wait for the next frame.

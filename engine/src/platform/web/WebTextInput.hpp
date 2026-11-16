@@ -17,7 +17,7 @@ class WebTextInput final : public TextInput {
     }
     void edit(const Field& field) override;
     void finish() override;
-    void setVisibleFields(std::span<const Field> fields) override;
+    void setVisibleFields(std::span<const Field> fields, float tapSlop) override;
 
     // Requests of the page, which reach the running app on its next frame.
     static void receiveEdit(double field, double revision, const char* text, int selectionStart, int selectionEnd, int compositionStart, int compositionEnd);
