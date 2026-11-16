@@ -6,6 +6,7 @@
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/SceneManager.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/DrawingScene.hpp"
 #include "support/RecordingEffect.hpp"
 #include "support/UiFixture.hpp"
@@ -51,6 +52,22 @@ TEST_F(GuiRegionTest, FollowsTheNodeOfItsRegionInTheFrameItMoves) {
     frames();
     EXPECT_FLOAT_EQ(getBounds(*page, "open").y, getBounds(*frame, "content").y);
     EXPECT_GE(getBounds(*page, "open").y, 200.0F);
+}
+
+// A page in the middle of its frame finds its area every frame without allocating more than the frame alone does.
+TEST_F(GuiRegionTest, LaysOutInItsRegionWithoutAllocating) {
+    // clang-format off
+    const auto measure = [this] {
+        frames(5);
+        const test::AllocationTracker tracker;
+        frames(10);
+        return tracker.getTotal();
+    };
+    // clang-format on
+    const std::size_t frameAlone = measure();
+    const std::shared_ptr<Gui> page = mountPage();
+    EXPECT_EQ(measure(), frameAlone);
+    EXPECT_FLOAT_EQ(getBounds(*page, "open").y, getBounds(*frame, "content").y);
 }
 
 TEST_F(GuiRegionTest, DrawsNothingWhileTheGuiOfItsRegionIsHidden) {

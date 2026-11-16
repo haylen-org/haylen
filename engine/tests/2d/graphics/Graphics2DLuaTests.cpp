@@ -668,6 +668,7 @@ TEST_F(Graphics2DLuaTest, DrawsEveryKindOfDrawWithoutAllocating) {
         wall = lighting2d.newOccluder({points = {40, 0, 40, 40, 50, 40}})
         family = graphics.newFontFamily({regular = graphics2d.defaultFont()})
         target = graphics.newRenderTarget(16, 16)
+        maskShape = function() graphics2d.drawCircle(8, 8, 8, '#FFFFFFFF') end
     )");
     const std::string frame = R"(
         camera:frame({{0, 0}, {10, 10}}, 4, 0.016)
@@ -701,6 +702,7 @@ TEST_F(Graphics2DLuaTest, DrawsEveryKindOfDrawWithoutAllocating) {
         graphics2d.drawPoints({1, 2, 3, 4}, {radius = 2, colors = {'#FF0000FF', '#00FF00FF'}})
         graphics2d.drawPoints(buffer, {radius = 2, color = '#FF0000FF'})
         graphics2d.drawShape({0, 0, 20, 20}, {radius = {1, 2, 3, 4}, borderWidth = 1})
+        graphics2d.drawShape({0, 0, 20, 20}, {kind = 'ellipse', texture = hero, startAngle = 1, sweep = 2, softness = 4})
         graphics2d.drawPolygon({{0, 0}, {10, 0}, {10, 10}}, '#FFFFFFFF')
         graphics2d.drawPolygon({{{0, 0}, {10, 0}, {10, 10}}, {{20, 0}, {30, 0}, {30, 10}}}, '#FFFFFFFF')
         graphics2d.drawPolyline({{0, 0}, {10, 10}, {20, 0}}, 2, '#FFFFFFFF')
@@ -708,6 +710,8 @@ TEST_F(Graphics2DLuaTest, DrawsEveryKindOfDrawWithoutAllocating) {
         graphics2d.drawStroke({0, 0, 10, 10, 20, 0}, {width = 2, widths = {1, 2, 3}, colors = {'#FF0000FF', '#00FF00FF', '#0000FFFF'}})
         graphics2d.drawStroke({0, 0, 10, 10, 20, 0}, {width = 2, dashes = {2, 1}})
         graphics2d.drawStroke(spline, {width = 2})
+        graphics2d.drawStroke({0, 0, 10, 10, 20, 0, 30, 0}, {width = 2, count = 3, join = 'round', cap = 'round'})
+        graphics2d.pushMask(maskShape) graphics2d.drawRect({0, 0, 16, 16}, '#FF00FF00') graphics2d.popMask()
         graphics2d.drawText(nil, 'Gold', 0, 0, {size = 16, gradient = {colors = {'#FFFF0000', '#FF0000FF'}}, outlineWidth = 1})
         graphics2d.drawText(family, 'Hello', 10, 10, {size = 16})
         graphics2d.measureText(nil, 'Hello', {size = 16})
