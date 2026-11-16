@@ -1,4 +1,4 @@
--- The library tab: the playlists, the albums and the artists of the person in one recycled grid, picked with pills, a dialog that makes a new playlist and, where quitting closes the app, a button that quits it.
+-- The library tab: the playlists, the albums and the artists of the person in one recycled grid, picked with pills, a dialog that names a new playlist and, where quitting closes the app, a button that quits it.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
@@ -9,6 +9,21 @@ local Style = require('style')
 local Widgets = require('widgets')
 
 local Library = haylen.class('Library', Page)
+
+-- The name of a new playlist in a dialog, which hands the name back, or nothing when the person cancels.
+local NamePlaylist = haylen.class('NamePlaylist', ui.Screen)
+
+function NamePlaylist:build()
+    self.name = ''
+    return ui.dialog{title = 'New playlist', buttons = {{id = 'cancel', text = 'Cancel'}, {id = 'create', text = 'Create', variant = 'primary'}},
+        onAnswer = function(event)
+            self.presentation:dismiss({result = event.button == 'create' and self.name or nil})
+        end,
+        ui.textField{id = 'newName', placeholder = 'My playlist', maxLength = 40, autocapitalize = 'words', returnKey = 'done', onChange = function(event)
+            self.name = event.value
+        end},
+    }
+end
 
 Library.sections = {{id = 'playlists', text = 'Playlists'}, {id = 'albums', text = 'Albums'}, {id = 'artists', text = 'Artists'}}
 
@@ -26,8 +41,12 @@ function Library:tree()
         Shell.centered(Style.size.page, ui.column{gap = space.s, padding = {0, space.l},
             ui.row{gap = space.xs,
                 ui.label{text = 'Library', font = 'title', grow = 1, wrap = false},
-                ui.button{id = 'new', icon = Shell.icon('plus'), iconColor = 'text', variant = 'icon', tooltip = 'New playlist', accessibilityLabel = 'New playlist', onClick = function(event)
-                    event.gui:set('newDialog', {open = true})
+                ui.button{id = 'new', icon = Shell.icon('plus'), iconColor = 'text', variant = 'icon', tooltip = 'New playlist', accessibilityLabel = 'New playlist', onClick = function()
+                    ui.present(NamePlaylist(), {style = 'dialog', owner = self, onDismiss = function(event)
+                        if event.result then
+                            self:create(event.result)
+                        end
+                    end})
                 end},
                 -- Where quitting closes the app, the library offers it, so the way the app ends can be tried.
                 haylen.canQuit() and ui.button{id = 'quit', text = 'Quit', variant = 'toolbar', onClick = function() haylen.quit() end} or nil,
@@ -40,16 +59,6 @@ function Library:tree()
                 Widgets.openItem(event.item)
             end,
         }, 1),
-        ui.dialog{id = 'newDialog', title = 'New playlist', buttons = {{id = 'cancel', text = 'Cancel'}, {id = 'create', text = 'Create', variant = 'primary'}},
-            onAnswer = function(event)
-                if event.button == 'create' then
-                    self:create()
-                end
-            end,
-            ui.textField{id = 'newName', placeholder = 'My playlist', maxLength = 40, autocapitalize = 'words', returnKey = 'done', onChange = function(event)
-                self.newName = event.value
-            end},
-        },
     }
 end
 
@@ -79,9 +88,9 @@ function Library:show()
     self.items:setItems(lists[self.section])
 end
 
-function Library:create()
+function Library:create(typed)
     self.created = self.created + 1
-    local name = (self.newName or ''):match('^%s*(.-)%s*$')
+    local name = typed:match('^%s*(.-)%s*$')
     local playlist = {id = 'created-' .. self.created, type = 'playlist', name = name ~= '' and name or 'My playlist ' .. self.created, description = 'A playlist you made.', tracks = {}, cover = Shell.blankCover, caption = 'Playlist · 0 songs'}
     table.insert(Catalog.playlists, 2, playlist)
     Catalog.byId[playlist.id] = playlist

@@ -603,7 +603,7 @@ Every component of "haylen.ui" with its themes, focus navigation, tweens, text e
 | `GUI-007` | Indicators | Badges, status dots, busy rings, progress bars, circular progress and cooldowns, icons, images and avatars. |  |
 | `GUI-008` | Collections | Lists with draggable rows that draw only the rows in view, trees and tables. |  |
 | `GUI-009` | Settings | A settings screen built from a settings form, rows and actions. |  |
-| `GUI-010` | Overlays | Dialogs, toasts, tooltips, popovers and context menus. |  |
+| `GUI-010` | Overlays | Alerts, a dialog, toasts, tooltips, a popover and context menus. |  |
 | `GUI-011` | Game controls | Steppers, segmented controls, range sliders and key capture fields that rebind actions of the action map. |  |
 | `GUI-012` | Windows and pages | A draggable window, accordions, a carousel and a scroll that snaps to its cards. |  |
 | `GUI-013` | Slot grid | An inventory, a hotbar in another GUI and a chest list that trade items by drag and drop. |  |
@@ -629,6 +629,7 @@ Every component of "haylen.ui" with its themes, focus navigation, tweens, text e
 | `GUI-033` | Image theme | A casual fantasy theme drawn from one atlas of nine-slice pieces and a set of icons, beside the default theme at several UI scales. |  |
 | `GUI-034` | Theme sounds | A theme that plays sounds for presses, focus moves, choices, slider steps and typing, styles that silence or replace the sound of one control, and a switch that mutes them. |  |
 | `GUI-035` | Navigation | A small app whose bars stay while a stack pushes and pops screens in its middle, tabs that keep their stacks, a list and its detail side by side or as one stack, and a new post in a sheet with bars and a stack of its own. |  |
+| `GUI-036` | Presentations | Sheets that rest at their detents, a page and a form sheet, a sheet beside the app, a cover, a dialog, a drawer, a popover, an alert, an action sheet, a picker that returns its color and a note that asks before it closes. |  |
 
 #### Accessibility (ACC)
 

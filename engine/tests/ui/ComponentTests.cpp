@@ -186,7 +186,6 @@ TEST_F(ComponentTest, DrawsEveryKind) {
         {"kind": "toggle", "text": "Toggle"},
         {"kind": "chip", "text": "Chip", "selected": true},
         {"kind": "menuButton", "text": "Menu", "items": [{"id": "x", "text": "X"}]},
-        {"kind": "popover", "text": "More", "children": [{"kind": "label", "text": "Inside"}]},
         {"kind": "tabs", "items": [{"id": "one", "text": "One"}, {"id": "two", "text": "Two"}], "children": [{"kind": "label", "text": "First"}, {"kind": "label", "text": "Second"}]},
         {"kind": "list", "items": [{"id": "a", "text": "Alpha", "caption": "First letter"}, {"id": "b", "text": "Beta", "enabled": false}], "selected": "a"},
         {"kind": "tree", "items": [{"id": "root", "text": "Root", "children": [{"id": "leaf", "text": "Leaf"}]}], "expanded": ["root"]},
@@ -201,12 +200,12 @@ TEST_F(ComponentTest, DrawsEveryKind) {
         {"kind": "touchStick", "action": "move", "radius": 60},
         {"kind": "touchButton", "action": "jump", "text": "A", "size": 80},
         {"kind": "toast", "open": true, "text": "Saved", "tone": "success", "position": "bottom"},
-        {"kind": "dialog", "open": true, "title": "Quit?", "message": "Progress is saved.", "buttons": [{"id": "no", "text": "Stay"}, {"id": "yes", "text": "Quit", "variant": "destructive"}], "children": [{"kind": "label", "text": "Really"}]}
+        {"kind": "dialog", "title": "Quit?", "message": "Progress is saved.", "buttons": [{"id": "no", "text": "Stay"}, {"id": "yes", "text": "Quit", "variant": "destructive"}], "children": [{"kind": "label", "text": "Really"}]}
     ]}]})");
     // clang-format on
     frames(3);
     EXPECT_EQ(getEngine().getError(), nullptr) << getEngine().getError()->what();
-    EXPECT_GT(getEngine().getRenderer2D().getStats().vertices, 0U);
+    EXPECT_GT(getEngine().getRenderer2D().getStats().instances, 0U);
 }
 
 TEST_F(ComponentTest, WrapsTextTheSameWayAtItsMeasuredWidth) {
@@ -359,7 +358,7 @@ TEST_F(ComponentTest, SelectsInContainersAndCollections) {
 TEST_F(ComponentTest, RunsDialogsToastsAndPopups) {
     // clang-format off
     auto gui = mount(R"({"kind": "column", "padding": 20, "children": [
-        {"kind": "dialog", "id": "quit", "open": true, "title": "Quit?", "buttons": [{"id": "no", "text": "Stay"}, {"id": "yes", "text": "Quit"}]},
+        {"kind": "dialog", "id": "quit", "title": "Quit?", "buttons": [{"id": "no", "text": "Stay"}, {"id": "yes", "text": "Quit"}]},
         {"kind": "toast", "id": "saved", "text": "Saved", "duration": 0.5},
         {"kind": "combo", "id": "size", "width": 300, "items": [{"id": "small", "text": "Small"}, {"id": "large", "text": "Large"}]},
         {"kind": "menuButton", "id": "menu", "text": "Menu", "items": [{"id": "save", "text": "Save"}]}
@@ -371,12 +370,6 @@ TEST_F(ComponentTest, RunsDialogsToastsAndPopups) {
     ASSERT_FALSE(events.empty());
     EXPECT_EQ(getLastEvent().id, "quit");
     EXPECT_EQ(getLastEvent().value, (core::Json{{"button", "yes"}}));
-
-    gui->set("quit", {{"open", true}});
-    frames(2);
-    key(input::Key::Escape);
-    frames(2);
-    EXPECT_EQ(getLastEvent().name, "dismiss");
 
     gui->set("saved", {{"open", true}});
     frames(45);
@@ -396,31 +389,26 @@ TEST_F(ComponentTest, RunsDialogsToastsAndPopups) {
     EXPECT_EQ(getLastEvent().value, (core::Json{{"item", "save"}}));
 }
 
-// A dialog or a menu whose node stops drawing closes, so it no longer keeps the pointer and cancel from the rest of the UI.
+// A menu whose node stops drawing closes, so it no longer keeps the pointer and cancel from the rest of the UI.
 TEST_F(ComponentTest, ClosesThePopupsOfNodesThatStopDrawing) {
     // clang-format off
     auto gui = mount(R"({"kind": "column", "padding": 20, "children": [
         {"kind": "button", "id": "play", "text": "Play"},
-        {"kind": "menuButton", "id": "menu", "text": "Menu", "items": [{"id": "save", "text": "Save"}]},
-        {"kind": "dialog", "id": "quit", "open": true, "title": "Quit?", "buttons": [{"id": "stay", "text": "Stay"}]}
+        {"kind": "menuButton", "id": "menu", "text": "Menu", "items": [{"id": "save", "text": "Save"}]}
     ]})");
     // clang-format on
     frames(2);
-    ASSERT_TRUE(getUi().isCapturingBack());
-    gui->set("quit", {{"visible", false}});
-    frames(2);
-    EXPECT_FALSE(getUi().isCapturingBack());
-    click(*gui, "play");
-    EXPECT_EQ(getEventNames(), (std::vector<std::string>{"play:click"}));
-
     click(*gui, "menu");
     ASSERT_TRUE(getUi().isCapturingBack());
     gui->set("menu", {{"visible", false}});
     frames(2);
     EXPECT_FALSE(getUi().isCapturingBack());
+    click(*gui, "play");
+    EXPECT_EQ(getEventNames(), (std::vector<std::string>{"play:click"}));
 
-    gui->set("quit", {{"visible", true}});
+    gui->set("menu", {{"visible", true}});
     frames(2);
+    click(*gui, "menu");
     ASSERT_TRUE(getUi().isCapturingBack());
     gui->setVisible(false);
     frames(2);
@@ -428,27 +416,11 @@ TEST_F(ComponentTest, ClosesThePopupsOfNodesThatStopDrawing) {
 
     gui->setVisible(true);
     frames(2);
+    click(*gui, "menu");
     ASSERT_TRUE(getUi().isCapturingBack());
     getUi().unmount(*gui);
     frames(2);
     EXPECT_FALSE(getUi().isCapturingBack());
-}
-
-TEST_F(ComponentTest, ShowsOneDialogAtATime) {
-    // clang-format off
-    auto gui = mount(R"({"kind": "column", "children": [
-        {"kind": "dialog", "id": "first", "open": true, "title": "First", "buttons": [{"id": "ok", "text": "OK"}]},
-        {"kind": "dialog", "id": "second", "open": true, "title": "Second", "buttons": [{"id": "ok", "text": "OK"}]}
-    ]})");
-    // clang-format on
-    frames(2);
-    key(input::Key::Enter);
-
-    // The second dialog waits until the first one faded out.
-    frames(12);
-    key(input::Key::Enter);
-    frames(2);
-    EXPECT_EQ(getEventNames(), (std::vector<std::string>{"first:answer", "second:answer"}));
 }
 
 TEST_F(ComponentTest, ScrollsTheContentOfDialogsTallerThanTheScreen) {
@@ -457,7 +429,7 @@ TEST_F(ComponentTest, ScrollsTheContentOfDialogsTallerThanTheScreen) {
         buttons += std::string(index == 0 ? "" : ", ") + R"({"kind": "button", "id": "b)" + std::to_string(index) + R"(", "text": "Rule"})";
     }
 
-    auto gui = mount(R"({"kind": "column", "children": [{"kind": "dialog", "id": "rules", "open": true, "title": "Rules", "buttons": [{"id": "ok", "text": "OK"}], "children": [)" + buttons + "]}]}");
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "dialog", "id": "rules", "title": "Rules", "buttons": [{"id": "ok", "text": "OK"}], "children": [)" + buttons + "]}]}");
     frames(2);
     const math::Rect dialog = getBounds(*gui, "rules");
     EXPECT_LE(dialog.getBottom(), 1080.0F);
@@ -1580,12 +1552,18 @@ TEST_F(ComponentAssetTest, FramesTheTitlesOfWindowsAndDialogsWithTheTitleBar) {
     EXPECT_EQ(drawFrame().at("ui/bar.png"), math::Rect(window.x, window.y, window.width, getUi().getTheme().getMetric(Theme::Metric::WindowTitleHeight)));
 
     getUi().unmount(*gui);
-    gui = mount(R"({"kind": "dialog", "id": "quit", "open": true, "title": "Quit?", "message": "Progress is saved.", "buttons": [{"id": "no", "text": "Stay"}]})");
+    gui = mount(R"({"kind": "dialog", "id": "quit", "title": "Quit?", "message": "Progress is saved.", "buttons": [{"id": "no", "text": "Stay"}]})");
     frames(30);
     const math::Rect dialog = getBounds(*gui, "quit");
     const float padding = getUi().getTheme().getMetric(Theme::Metric::PanelPadding);
     const float title = Typography::measureParagraph(getUi().getContext(), Theme::Font::Heading, "Quit?", dialog.width).y;
-    EXPECT_EQ(drawFrame().at("ui/bar.png"), math::Rect(dialog.x + padding, dialog.y + padding, dialog.width - padding * 2.0F, title + 22.0F));
+
+    // The body of a card in the middle of the screen starts at the whole unit that ImGui places its child window at.
+    const math::Rect bar = drawFrame().at("ui/bar.png");
+    EXPECT_EQ(bar.x, dialog.x + padding);
+    EXPECT_NEAR(bar.y, dialog.y + padding, 0.5F);
+    EXPECT_EQ(bar.width, dialog.width - padding * 2.0F);
+    EXPECT_EQ(bar.height, title + 22.0F);
 }
 
 TEST_F(ComponentAssetTest, CapsWindowsWithTheTitleBarAndTheirCloseButtonOfTheTheme) {

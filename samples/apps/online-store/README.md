@@ -23,8 +23,8 @@ On the headless platform the app runs a tour by itself: it browses a category wi
 | Screen | What it shows |
 | --- | --- |
 | Shop | The edit of the season with the illustration of the app, the categories as tiles, the promises of the store and shelves of new arrivals, best sellers and offers. |
-| Browse | Every product in a recycled grid that fits its columns to the width, narrowed by a typed text, the category chips and a dialog with the price range, the colors and the sale, sorted by popularity, novelty, price or rating. |
-| Product | A gallery of four pictures in the chosen color, the name and the price in the serif with the old price struck through, the rating with the reviews in a dialog, the colors as round swatches, the sizes, the quantity, the details in an accordion and related products. The gallery stands beside the details on wide windows and above them on phones, and adding opens a dialog that leads to the bag. |
+| Browse | Every product in a recycled grid that fits its columns to the width, narrowed by a typed text, the category chips and a popover with the price range, the colors and the sale, which rises as a sheet on a phone, sorted by popularity, novelty, price or rating. |
+| Product | A gallery of four pictures in the chosen color, the name and the price in the serif with the old price struck through, the rating with the reviews in a sheet that rests at half the screen, the colors as round swatches, the sizes, the quantity, the details in an accordion and related products. The gallery stands beside the details on wide windows and above them on phones, and adding opens a sheet as tall as its content that leads to the bag. |
 | Bag | The products with steppers for their quantities, a promo code and the costs, in a card beside the products on wide windows. |
 | Checkout | The shipping address, which marks every empty field, the delivery, the payment and the summary with the button that places the order. |
 | Confirmation | The thanks, the number of the order and the way to follow it. |

@@ -1,4 +1,4 @@
--- A product: a gallery of four pictures in the chosen color, the name and the price in the serif, the rating with the reviews in a dialog, the colors as round swatches, the sizes, the quantity, the details and a shelf of related products. The gallery stands beside the details on wide windows and above them on phones, and adding to the bag opens a dialog that leads to the bag or back to shopping.
+-- A product: a gallery of four pictures in the chosen color, the name and the price in the serif, the rating with the reviews in a sheet, the colors as round swatches, the sizes, the quantity, the details and a shelf of related products. The gallery stands beside the details on wide windows and above them on phones, and adding to the bag opens a sheet that leads to the bag or back to shopping.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
@@ -13,6 +13,42 @@ local Wishlist = require('wishlist')
 local Product = haylen.class('Product', Page)
 
 Product.galleryBackdrops = {'sand', 'sky', 'lilac', 'mint', 'peach', 'rose', 'lemon', 'slate'}
+
+-- What went into the bag, in a sheet as tall as its content, which hands back whether the person wants to see the bag.
+local Added = haylen.class('Added', ui.Screen)
+
+function Added:init(product, color, text)
+    self.product, self.color, self.text = product, color, text
+end
+
+function Added:build()
+    local space = Style.space
+    local product = self.product
+    return ui.column{gap = space.m, padding = {space.m, space.l, space.l, space.l},
+        ui.label{text = 'Added to your bag', font = 'heading'},
+        ui.row{gap = space.m, Widgets.picture({width = 104, height = 124, image = product.image, backdrop = product.backdrop, tint = self.color.value, inset = space.s}), ui.label{text = self.text, grow = 1}},
+        ui.row{gap = space.s,
+            ui.button{id = 'shop', text = 'Keep shopping', grow = 1, onClick = function() self.presentation:dismiss() end},
+            ui.button{id = 'bag', text = 'View bag', variant = 'primary', grow = 1, autofocus = true, onClick = function() self.presentation:dismiss({result = 'bag'}) end},
+        },
+    }
+end
+
+-- The reviews of a product in a sheet that rests at half the screen and opens to nearly all of it.
+local Reviews = haylen.class('Reviews', ui.Screen)
+
+function Reviews:init(page)
+    self.page = page
+end
+
+function Reviews:build()
+    local space = Style.space
+    return ui.column{gap = space.s, padding = {space.xs, space.l, space.l, space.l},
+        ui.row{gap = space.s, ui.label{text = 'Reviews', font = 'heading', grow = 1}, ui.button{id = 'close', text = 'Close', onClick = function() self.presentation:dismiss() end}},
+        ui.label{text = self.page.product.ratingText, color = 'textMuted'},
+        ui.scroll{grow = 1, height = 0, ui.column(self.page:reviews())},
+    }
+end
 
 function Product:tree()
     local product = Store.product(self.params.product)
@@ -37,15 +73,6 @@ function Product:tree()
                 end},
             }),
         },
-        ui.dialog{id = 'addedDialog', title = 'Added to your bag', buttons = {{id = 'shop', text = 'Keep shopping'}, {id = 'bag', text = 'View bag', variant = 'primary'}},
-            onAnswer = function(event)
-                if event.button == 'bag' then
-                    Shell.openBag()
-                end
-            end,
-            ui.row{gap = Style.space.m, Widgets.picture({width = 104, height = 124, image = product.image, backdrop = product.backdrop, imageId = 'addedImage', inset = Style.space.s}), ui.label{id = 'addedText', text = '', grow = 1}},
-        },
-        ui.dialog{id = 'reviewDialog', title = 'Reviews', message = product.ratingText, buttons = {{id = 'close', text = 'Close'}}, ui.column(self:reviews())},
     }
 end
 
@@ -93,8 +120,8 @@ function Product:details()
             ui.row{gap = space.xs,
                 ui.icon{image = Shell.icon('star'), size = 24, color = 'warning'},
                 ui.label{text = product.ratingText, color = 'textMuted', grow = 1},
-                ui.button{id = 'reviews', text = 'Read reviews', variant = 'link', style = {metrics = {controlPaddingX = 0}}, onClick = function(event)
-                    event.gui:set('reviewDialog', {open = true})
+                ui.button{id = 'reviews', text = 'Read reviews', variant = 'link', style = {metrics = {controlPaddingX = 0}}, onClick = function()
+                    self:openReviews()
                 end},
             },
         },
@@ -181,9 +208,16 @@ function Product:addToBag()
     end
     Bag.add(self.product, self.color, self.size, self.quantity)
     local color = Store.color(self.color)
-    self.gui:set('addedImage', {tint = color.value})
-    self.gui:set('addedText', {text = string.format('%s in %s', self.product.name, string.lower(color.name)) .. (self.size ~= 'One size' and ', size ' .. self.size or '') .. ', quantity ' .. self.quantity .. '.'})
-    self.gui:set('addedDialog', {open = true})
+    local text = string.format('%s in %s', self.product.name, string.lower(color.name)) .. (self.size ~= 'One size' and ', size ' .. self.size or '') .. ', quantity ' .. self.quantity .. '.'
+    self.addedSheet = ui.present(Added(self.product, color, text), {detents = {'fit'}, owner = self, onDismiss = function(event)
+        if event.result == 'bag' then
+            Shell.openBag()
+        end
+    end})
+end
+
+function Product:openReviews()
+    self.reviewsSheet = ui.present(Reviews(self), {detents = {'medium', 'large'}, owner = self})
 end
 
 return Product

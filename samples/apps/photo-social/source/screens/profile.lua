@@ -12,6 +12,46 @@ local Widgets = require('widgets')
 
 local Profile = haylen.class('Profile', Page)
 
+-- The name and the bio of the person's own profile, which asks before it drops changes nobody saved.
+local EditProfile = haylen.class('EditProfile', ui.Screen)
+
+function EditProfile:init(person)
+    self.person = person
+    self.name, self.bio = person.name, person.bio
+end
+
+function EditProfile:build()
+    local space = Style.space
+    return ui.column{gap = space.m, padding = {space.xs, space.l, space.l, space.l},
+        ui.row{gap = space.s,
+            ui.button{id = 'cancel', text = 'Cancel', variant = 'link', onClick = function() ui.goBack() end},
+            ui.label{text = 'Edit profile', font = 'heading', grow = 1, textAlign = 'center'},
+            ui.button{id = 'save', text = 'Save', variant = 'primary', onClick = function() self.presentation:dismiss({result = {name = self.name, bio = self.bio}}) end},
+        },
+        ui.formField{label = 'Name', ui.textField{id = 'editName', value = self.name, maxLength = 40, autocapitalize = 'words', returnKey = 'next', onChange = function(event)
+            self.name = event.value
+        end}},
+        ui.formField{label = 'Bio', ui.textArea{id = 'editBio', value = self.bio, maxLength = 80, rows = 2, onChange = function(event)
+            self.bio = event.value
+        end}},
+    }
+end
+
+-- Cancel, Escape, the back button, a tap beside the sheet and a drag down ask first while the profile has changes nobody saved.
+function EditProfile:back()
+    if self.name == self.person.name and self.bio == self.person.bio then
+        return false
+    end
+    ui.presentAlert{title = 'Discard your changes?', message = 'The name and the bio you typed are not saved.', owner = self,
+        actions = {{id = 'keep', text = 'Keep editing', role = 'cancel'}, {id = 'discard', text = 'Discard', role = 'destructive'}},
+        onDismiss = function(event)
+            if event.result == 'discard' then
+                self.presentation:dismiss()
+            end
+        end}
+    return true
+end
+
 Profile.sections = {{id = 'posts', text = 'Posts'}, {id = 'saved', text = 'Saved'}}
 
 function Profile:tree()
@@ -39,7 +79,6 @@ function Profile:tree()
     local content = ui.column{grow = 1, gap = 0,
         person.me and ui.column{id = 'topBar', gap = 0, ui.row{height = Style.size.header, padding = {0, space.m}, ui.label{text = person.handle, font = 'heading', grow = 1, wrap = false}}, ui.divider{}} or Shell.header(person.handle),
         Shell.centered(980, ui.column{gap = 0, list}, 1),
-        self:editDialog(),
     }
     return content
 end
@@ -120,10 +159,7 @@ function Profile:headAction(part)
     local person = self.person
     if part == 'primary' then
         if person.me then
-            self.gui:set('editName', {value = person.name})
-            self.gui:set('editBio', {value = person.bio})
-            self.edit = {name = person.name, bio = person.bio}
-            self.gui:set('editDialog', {open = true})
+            self:openEdit()
         else
             Social.toggleFollow(person)
         end
@@ -136,28 +172,18 @@ function Profile:headAction(part)
     end
 end
 
--- The dialog that edits the name and the bio of the person's own profile.
-function Profile:editDialog()
-    if not self.person.me then
-        return ui.spacer{}
-    end
-    return ui.dialog{id = 'editDialog', title = 'Edit profile', buttons = {{id = 'cancel', text = 'Cancel'}, {id = 'save', text = 'Save', variant = 'primary'}},
-        onAnswer = function(event)
-            if event.button == 'save' then
-                local name = self.edit.name:match('^%s*(.-)%s*$')
-                self.person.name = name ~= '' and name or self.person.name
-                self.person.bio = self.edit.bio
-                self:showGrid()
-                Shell.notify('Your profile is up to date.')
-            end
-        end,
-        ui.formField{label = 'Name', ui.textField{id = 'editName', maxLength = 40, autocapitalize = 'words', returnKey = 'next', onChange = function(event)
-            self.edit.name = event.value
-        end}},
-        ui.formField{label = 'Bio', ui.textArea{id = 'editBio', maxLength = 80, rows = 2, onChange = function(event)
-            self.edit.bio = event.value
-        end}},
-    }
+-- Edits the name and the bio of the person's own profile in a sheet, which hands back what the person saved.
+function Profile:openEdit()
+    self.editSheet = ui.present(EditProfile(self.person), {owner = self, onDismiss = function(event)
+        if not event.result then
+            return
+        end
+        local name = event.result.name:match('^%s*(.-)%s*$')
+        self.person.name = name ~= '' and name or self.person.name
+        self.person.bio = event.result.bio
+        self:showGrid()
+        Shell.notify('Your profile is up to date.')
+    end})
 end
 
 return Profile

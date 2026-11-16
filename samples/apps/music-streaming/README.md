@@ -78,7 +78,7 @@ music-streaming/
     style.lua            The palette, the type scale, the spacing scale, the shapes and the theme.
     shell.lua            Tabs, navigation, notices, the sidebar, the bar of tabs, the floating card of the song and the player bar.
     page.lua             The base of every screen, a class of "ui.Screen", with the glow of its genre.
-    widgets.lua          The templates of songs, covers and artists, the shelves, the menu of a song and the playlist dialog.
+    widgets.lua          The templates of songs, covers and artists, the shelves, the menu of a song and the playlist sheet.
     player.lua           The queue and the playback, an autoload.
     synth.lua            The synthesizer of the songs and the levels of their voices.
     covers.lua           The covers of the albums and mixes, and the glow of the genres.

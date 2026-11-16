@@ -21,7 +21,7 @@ void NavigationLink::disconnect() {
 
         using Held = typename std::decay_t<decltype(held)>::element_type;
         if constexpr (std::is_same_v<Held, Presentation>) {
-            held->dismiss(NavigationTransition{.effect = NavigationTransition::Effect::None});
+            held->dismiss(nullptr, NavigationTransition{.effect = NavigationTransition::Effect::None});
         } else {
             held->close();
         }

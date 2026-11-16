@@ -208,7 +208,7 @@ TEST_F(SmoothEdgeTest, RoundsTheFocusRingAroundTheCornersOfItsControl) {
 
 // A floating surface casts the shape of the surface, moved down by the offset, whose edge fades over twice the size of the shadow centered on its edge, as a blur does, so the shadow starts at half its color along the edge of the surface instead of a dark band.
 TEST_F(SmoothEdgeTest, CastsOneSoftShadowUnderFloatingSurfaces) {
-    const std::shared_ptr<Gui> gui = mount(R"({"kind": "dialog", "id": "quit", "open": true, "title": "Quit?", "message": "Progress is saved.", "buttons": [{"id": "no", "text": "Stay"}]})");
+    const std::shared_ptr<Gui> gui = mount(R"({"kind": "dialog", "id": "quit", "title": "Quit?", "message": "Progress is saved.", "buttons": [{"id": "no", "text": "Stay"}]})");
     frames(30);
     const float size = getMetric(Theme::Metric::ShadowSize);
     const std::optional<graphics2d::Shape> shadow = findShape([size](const graphics2d::Shape& shape) { return shape.softness == size * 2.0F; });

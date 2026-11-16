@@ -73,13 +73,12 @@ function Themes:nodes()
                 },
                 ui.segmentedControl{items = {{id = 'day', text = 'Day'}, {id = 'night', text = 'Night'}}, selected = 'day'},
                 ui.row{wrap = true, gap = 12,
-                    ui.button{text = 'Dialog', onClick = function(event) event.gui:set('dialog', {open = true}) end},
+                    ui.button{text = 'Alert', onClick = function() ui.presentAlert{title = 'Set sail?', message = 'Alerts take the dialog surface of the theme.', actions = {{id = 'stay', text = 'Stay', role = 'cancel'}, {id = 'sail', text = 'Sail'}}, owner = self} end},
                     ui.button{text = 'Toast', onClick = function(event) event.gui:set('toast', {open = true}) end},
                     ui.button{text = 'Tooltip', tooltip = 'Tooltips take the tooltip surface'},
                 },
             },
         },
-        ui.dialog{id = 'dialog', title = 'Set sail?', message = 'Dialogs take the dialog surface of the theme.', buttons = {{id = 'stay', text = 'Stay'}, {id = 'sail', text = 'Sail', variant = 'primary'}}},
         ui.toast{id = 'toast', text = 'A toast on its own surface', tone = 'success'},
     }
 end

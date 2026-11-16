@@ -2,6 +2,7 @@
 
 #include <lua.hpp>
 
+#include <algorithm>
 #include <format>
 #include <functional>
 #include <optional>
@@ -14,6 +15,8 @@
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
 #include "haylen/lua/EnumNames.hpp"
+#include "haylen/lua/JsonConverter.hpp"
+#include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Reference.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
@@ -71,6 +74,36 @@ template <> struct EnumNames<ui::Presentation::Style> {
     }
     static std::string_view name(ui::Presentation::Style value) {
         return ui::Presentation::styleName(value);
+    }
+};
+
+template <> struct EnumNames<ui::Presentation::Size> {
+    static std::optional<ui::Presentation::Size> fromName(std::string_view name) {
+        const auto found = std::ranges::find(ui::Presentation::kSizeNames, name, &std::pair<std::string_view, ui::Presentation::Size>::first);
+        return found != ui::Presentation::kSizeNames.end() ? std::optional(found->second) : std::nullopt;
+    }
+    static std::string_view name(ui::Presentation::Size value) {
+        return std::ranges::find(ui::Presentation::kSizeNames, value, &std::pair<std::string_view, ui::Presentation::Size>::second)->first;
+    }
+};
+
+template <> struct EnumNames<ui::Navigation::Alert::Style> {
+    static std::optional<ui::Navigation::Alert::Style> fromName(std::string_view name) {
+        const auto found = std::ranges::find(ui::Navigation::Alert::kStyleNames, name, &std::pair<std::string_view, ui::Navigation::Alert::Style>::first);
+        return found != ui::Navigation::Alert::kStyleNames.end() ? std::optional(found->second) : std::nullopt;
+    }
+    static std::string_view name(ui::Navigation::Alert::Style value) {
+        return std::ranges::find(ui::Navigation::Alert::kStyleNames, value, &std::pair<std::string_view, ui::Navigation::Alert::Style>::second)->first;
+    }
+};
+
+template <> struct EnumNames<ui::Navigation::Alert::Role> {
+    static std::optional<ui::Navigation::Alert::Role> fromName(std::string_view name) {
+        const auto found = std::ranges::find(ui::Navigation::Alert::kRoleNames, name, &std::pair<std::string_view, ui::Navigation::Alert::Role>::first);
+        return found != ui::Navigation::Alert::kRoleNames.end() ? std::optional(found->second) : std::nullopt;
+    }
+    static std::string_view name(ui::Navigation::Alert::Role value) {
+        return std::ranges::find(ui::Navigation::Alert::kRoleNames, value, &std::pair<std::string_view, ui::Navigation::Alert::Role>::second)->first;
     }
 };
 
@@ -350,57 +383,160 @@ int NavigationLua::navigationSplit(lua_State* L) {
     return 1;
 }
 
-// Presents a screen with `ui.present(screen, {style = 'sheet', transition = {...}, dismissible = true, color = '#FF101014', maxWidth = 760, maxHeight = 1000, owner = scene, onDismiss = function(event) end})`.
-int NavigationLua::present(lua_State* L) {
-    std::shared_ptr<Screen> screen = readScreen(L, 1);
-    Presentation::Options options;
-    int handler = 0;
-    int owner = 0;
-    if (!lua_isnoneornil(L, 2)) {
-        luaL_checktype(L, 2, LUA_TTABLE);
-        lua::Table::checkFields(L, 2, {kPresentFields});
-        lua::Table::readField(L, 2, "style", options.style);
-        lua::Table::readField(L, 2, "dismissible", options.dismissible);
-        if (lua_getfield(L, 2, "color") != LUA_TNIL) {
-            options.color = lua::Stack::read<math::Color>(L, -1);
-        }
-
+int NavigationLua::pushHandler(lua_State* L, int options, const char* name) {
+    if (lua_getfield(L, options, name) == LUA_TNIL) {
         lua_pop(L, 1);
-        lua::Table::readField(L, 2, "maxWidth", options.maxWidth);
-        lua::Table::readField(L, 2, "maxHeight", options.maxHeight);
-        if (lua_getfield(L, 2, "transition") != LUA_TNIL) {
-            options.transition = readTransition(L, -1, {});
-        }
-
-        lua_pop(L, 1);
-        if (lua_getfield(L, 2, "onDismiss") != LUA_TNIL) {
-            luaL_checktype(L, -1, LUA_TFUNCTION);
-            handler = lua_gettop(L);
-        } else {
-            lua_pop(L, 1);
-        }
-
-        owner = pushOwner(L, 2);
-    } else {
-        owner = lua::Owners::pushDefault(L);
+        return 0;
     }
 
-    Navigation& navigation = getNavigation(L);
-    const std::shared_ptr<Presentation> presentation = navigation.present(std::move(screen), options);
+    luaL_checktype(L, -1, LUA_TFUNCTION);
+    return lua_gettop(L);
+}
+
+// A detent is "medium", "large", "fit" or a height in UI units, listed from the lowest to the highest.
+std::vector<Presentation::Detent> NavigationLua::readDetents(lua_State* L, int index) {
+    luaL_checktype(L, index, LUA_TTABLE);
+    std::vector<Presentation::Detent> detents;
+    const auto count = static_cast<int>(lua_rawlen(L, index));
+    for (int position = 1; position <= count; ++position) {
+        lua_rawgeti(L, index, position);
+        if (lua_type(L, -1) == LUA_TNUMBER) {
+            detents.push_back({.kind = Presentation::Detent::Kind::Height, .height = static_cast<float>(lua_tonumber(L, -1))});
+            lua_pop(L, 1);
+            continue;
+        }
+
+        const std::string_view name = lua_type(L, -1) == LUA_TSTRING ? lua::Stack::read<std::string_view>(L, -1) : std::string_view{};
+        const auto found = std::ranges::find(Presentation::kDetentNames, name, &std::pair<std::string_view, Presentation::Detent::Kind>::first);
+        if (found == Presentation::kDetentNames.end()) {
+            luaL_error(L, "A detent is \"medium\", \"large\", \"fit\" or a height in UI units, not %s.", luaL_tolstring(L, -1, nullptr));
+        }
+
+        detents.push_back({.kind = found->second});
+        lua_pop(L, 1);
+    }
+
+    return detents;
+}
+
+void NavigationLua::readPresentOptions(lua_State* L, int index, Presentation::Options& options) {
+    luaL_checktype(L, index, LUA_TTABLE);
+    lua::Table::checkFields(L, index, {kPresentFields});
+    lua::Table::readField(L, index, "style", options.style);
+    lua::Table::readField(L, index, "dismissible", options.dismissible);
+    lua::Table::readField(L, index, "modal", options.modal);
+    lua::Table::readField(L, index, "maxWidth", options.maxWidth);
+    lua::Table::readField(L, index, "maxHeight", options.maxHeight);
+    lua::Table::readField(L, index, "size", options.size);
+    if (lua_getfield(L, index, "color") != LUA_TNIL) {
+        options.color = lua::Stack::read<math::Color>(L, -1);
+    }
+
+    lua_pop(L, 1);
+    if (lua_getfield(L, index, "transition") != LUA_TNIL) {
+        options.transition = readTransition(L, -1, {});
+    }
+
+    lua_pop(L, 1);
+    if (lua_getfield(L, index, "detents") != LUA_TNIL) {
+        options.detents = readDetents(L, -1);
+    }
+
+    lua_pop(L, 1);
+    if (lua_getfield(L, index, "detent") != LUA_TNIL) {
+        const lua_Integer position = luaL_checkinteger(L, -1);
+        if (position < 1 || position > static_cast<lua_Integer>(options.detents.size())) {
+            luaL_error(L, "The \"detent\" a sheet opens at is the place of one of its detents, from 1 to %d.", static_cast<int>(options.detents.size()));
+        }
+
+        options.detent = static_cast<std::size_t>(position - 1);
+    }
+
+    lua_pop(L, 1);
+    if (lua_getfield(L, index, "grabber") != LUA_TNIL) {
+        options.grabber = lua::Stack::read<bool>(L, -1);
+    }
+
+    lua_pop(L, 1);
+    if (lua_getfield(L, index, "width") != LUA_TNIL) {
+        options.width = lua::Stack::read<float>(L, -1);
+    }
+
+    lua_pop(L, 1);
+    if (lua_getfield(L, index, "anchor") != LUA_TNIL) {
+        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::checkFields(L, -1, {kRegionFields});
+        options.anchor = readRegion(L, -1, "The anchor of a popover");
+    }
+
+    lua_pop(L, 1);
+}
+
+// The promise of the result lives in the userdata, so it lasts while Lua holds the presentation, and a userdata pushed again for a presentation that left makes a promise that already holds its result.
+void NavigationLua::pushResult(lua_State* L, int index) {
+    const int self = lua_absindex(L, index);
+    lua::Userdata::pushField(L, self, "result");
+    if (!lua_isnil(L, -1)) {
+        return;
+    }
+
+    lua_pop(L, 1);
+    const std::shared_ptr<Presentation>& presentation = lua::Userdata::checkShared<Presentation>(L, self);
+    lua::Promise promise(lua::Runtime::getEngine(L));
+    const std::vector<std::shared_ptr<Presentation>>& shown = getNavigation(L).getPresentations();
+    const bool gone = presentation->isDismissed() && std::ranges::find(shown, presentation) == shown.end();
+    if (gone) {
+        promise.resolve(presentation->getResult());
+    } else {
+        // clang-format off
+        static_cast<void>(presentation->dismissed.connect([promise](Presentation& left) {
+            promise.resolve(left.getResult());
+        }));
+        // clang-format on
+    }
+
+    promise.push(L);
+    lua::Userdata::setField(L, self, "result", lua_gettop(L));
+}
+
+void NavigationLua::finishPresentation(lua_State* L, const std::shared_ptr<Presentation>& presentation, int owner, int dismissHandler, int detentHandler) {
     if (owner != 0) {
         lua::Owners::add(L, owner, std::make_shared<NavigationLink>(std::weak_ptr<Presentation>(presentation)));
     }
 
-    if (handler != 0) {
-        auto function = std::make_shared<lua::Reference>(L, handler);
+    if (dismissHandler != 0) {
+        auto function = std::make_shared<lua::Reference>(L, dismissHandler);
         // clang-format off
         core::Connection connection = presentation->dismissed.connect([function](Presentation& left) {
             lua_State* main = function->getState();
             lua::Runtime::runReporting(main, [&] {
                 function->push(main);
-                lua_createtable(main, 0, 1);
+                lua_createtable(main, 0, 2);
                 pushPresentation(main, left.shared_from_this());
                 lua_setfield(main, -2, "presentation");
+                lua::JsonConverter::push(main, left.getResult());
+                lua_setfield(main, -2, "result");
+                lua::Runtime::protectedCall(main, 1, 0);
+            });
+        });
+        // clang-format on
+        if (owner != 0) {
+            lua::Owners::add(L, owner, connection);
+        }
+    }
+
+    if (detentHandler != 0) {
+        auto function = std::make_shared<lua::Reference>(L, detentHandler);
+        // clang-format off
+        core::Connection connection = presentation->detentChanged.connect([function](Presentation& moved) {
+            lua_State* main = function->getState();
+            lua::Runtime::runReporting(main, [&] {
+                function->push(main);
+                lua_createtable(main, 0, 2);
+                pushPresentation(main, moved.shared_from_this());
+                lua_setfield(main, -2, "presentation");
+                lua_pushinteger(main, static_cast<lua_Integer>(moved.getDetent() + 1));
+                lua_setfield(main, -2, "detent");
                 lua::Runtime::protectedCall(main, 1, 0);
             });
         });
@@ -411,6 +547,79 @@ int NavigationLua::present(lua_State* L) {
     }
 
     pushPresentation(L, presentation);
+    pushResult(L, -1);
+    lua_pop(L, 1);
+}
+
+// Presents a screen with `ui.present(screen, {style = 'sheet', detents = {'medium', 'large'}, transition = {...}, dismissible = true, owner = scene, onDismiss = function(event) end})`.
+int NavigationLua::present(lua_State* L) {
+    std::shared_ptr<Screen> screen = readScreen(L, 1);
+    Presentation::Options options;
+    int dismissHandler = 0;
+    int detentHandler = 0;
+    int owner = 0;
+    if (!lua_isnoneornil(L, 2)) {
+        readPresentOptions(L, 2, options);
+        dismissHandler = pushHandler(L, 2, "onDismiss");
+        detentHandler = pushHandler(L, 2, "onDetentChange");
+        owner = pushOwner(L, 2);
+    } else {
+        owner = lua::Owners::pushDefault(L);
+    }
+
+    const std::shared_ptr<Presentation> presentation = getNavigation(L).present(std::move(screen), std::move(options));
+    finishPresentation(L, presentation, owner, dismissHandler, detentHandler);
+    return 1;
+}
+
+// Presents an alert with `ui.presentAlert{style = 'alert', title = 'Delete?', message = '...', actions = {{id = 'cancel', text = 'Cancel', role = 'cancel'}, {id = 'delete', text = 'Delete', role = 'destructive'}}, anchor = {gui = gui, id = 'share'}, owner = scene, onDismiss = function(event) end}`.
+int NavigationLua::presentAlert(lua_State* L) {
+    luaL_checktype(L, 1, LUA_TTABLE);
+    lua::Table::checkFields(L, 1, {kAlertFields});
+    Navigation::Alert alert;
+    lua::Table::readField(L, 1, "style", alert.style);
+    if (lua_getfield(L, 1, "title") != LUA_TNIL) {
+        alert.title = lua::JsonConverter::read(L, -1);
+    }
+
+    lua_pop(L, 1);
+    if (lua_getfield(L, 1, "message") != LUA_TNIL) {
+        alert.message = lua::JsonConverter::read(L, -1);
+    }
+
+    lua_pop(L, 1);
+    if (lua_getfield(L, 1, "actions") != LUA_TTABLE) {
+        return luaL_error(L, "An alert lists its actions in \"actions\", each a table with an \"id\", a \"text\" and a \"role\".");
+    }
+
+    const auto count = static_cast<int>(lua_rawlen(L, -1));
+    for (int position = 1; position <= count; ++position) {
+        lua_rawgeti(L, -1, position);
+        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::checkFields(L, -1, {kActionFields});
+        Navigation::Alert::Action action;
+        lua::Table::readField(L, -1, "id", action.id);
+        lua::Table::readField(L, -1, "role", action.role);
+        if (lua_getfield(L, -1, "text") != LUA_TNIL) {
+            action.text = lua::JsonConverter::read(L, -1);
+        }
+
+        lua_pop(L, 2);
+        alert.actions.push_back(std::move(action));
+    }
+
+    lua_pop(L, 1);
+    if (lua_getfield(L, 1, "anchor") != LUA_TNIL) {
+        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::checkFields(L, -1, {kRegionFields});
+        alert.anchor = readRegion(L, -1, "The anchor of an action sheet");
+    }
+
+    lua_pop(L, 1);
+    const int dismissHandler = pushHandler(L, 1, "onDismiss");
+    const int owner = pushOwner(L, 1);
+    const std::shared_ptr<Presentation> presentation = getNavigation(L).presentAlert(std::move(alert));
+    finishPresentation(L, presentation, owner, dismissHandler, 0);
     return 1;
 }
 
@@ -616,10 +825,27 @@ int NavigationLua::splitClosed(lua_State* L) {
     return 1;
 }
 
+// Dismisses with `presentation:dismiss{result = value, transition = {...}}`, where the result is a value that JSON holds.
 int NavigationLua::presentationDismiss(lua_State* L) {
     Presentation& presentation = lua::Userdata::check<Presentation>(L, 1);
-    const std::optional<NavigationTransition> transition = lua_isnoneornil(L, 2) ? std::nullopt : std::optional(readTransition(L, 2, {}));
-    presentation.dismiss(transition);
+    core::Json result;
+    std::optional<NavigationTransition> transition;
+    if (!lua_isnoneornil(L, 2)) {
+        luaL_checktype(L, 2, LUA_TTABLE);
+        lua::Table::checkFields(L, 2, {kDismissFields});
+        if (lua_getfield(L, 2, "result") != LUA_TNIL) {
+            result = lua::JsonConverter::read(L, -1);
+        }
+
+        lua_pop(L, 1);
+        if (lua_getfield(L, 2, "transition") != LUA_TNIL) {
+            transition = readTransition(L, -1, {});
+        }
+
+        lua_pop(L, 1);
+    }
+
+    presentation.dismiss(std::move(result), transition);
     return 0;
 }
 
@@ -643,10 +869,38 @@ int NavigationLua::presentationDismissed(lua_State* L) {
     return 1;
 }
 
+int NavigationLua::presentationModal(lua_State* L) {
+    lua_pushboolean(L, lua::Userdata::check<Presentation>(L, 1).isModal() ? 1 : 0);
+    return 1;
+}
+
+int NavigationLua::presentationResult(lua_State* L) {
+    static_cast<void>(lua::Userdata::check<Presentation>(L, 1));
+    pushResult(L, 1);
+    return 1;
+}
+
+int NavigationLua::presentationDetent(lua_State* L) {
+    lua_pushinteger(L, static_cast<lua_Integer>(lua::Userdata::check<Presentation>(L, 1).getDetent() + 1));
+    return 1;
+}
+
+int NavigationLua::presentationSetDetent(lua_State* L) {
+    Presentation& presentation = lua::Userdata::check<Presentation>(L, 1);
+    const lua_Integer position = luaL_checkinteger(L, 3);
+    const auto count = static_cast<lua_Integer>(presentation.getOptions().detents.size());
+    if (position < 1 || position > count) {
+        return luaL_error(L, "A sheet rests at the place of one of its detents, from 1 to %d.", static_cast<int>(count));
+    }
+
+    presentation.setDetent(static_cast<std::size_t>(position - 1));
+    return 0;
+}
+
 void NavigationLua::addTo(lua_State* L, int module) {
     const int target = lua_absindex(L, module);
     const luaL_Reg functions[] = {
-        {"navigationStack", &lua::Binding::native<&navigationStack>}, {"navigationTabs", &lua::Binding::native<&navigationTabs>}, {"navigationSplit", &lua::Binding::native<&navigationSplit>}, {"present", &lua::Binding::native<&present>}, {"goBack", &lua::Binding::native<&goBack>}, {"canGoBack", &lua::Binding::native<&canGoBack>}, {"screenState", &lua::Binding::native<&screenState>}, {nullptr, nullptr},
+        {"navigationStack", &lua::Binding::native<&navigationStack>}, {"navigationTabs", &lua::Binding::native<&navigationTabs>}, {"navigationSplit", &lua::Binding::native<&navigationSplit>}, {"present", &lua::Binding::native<&present>}, {"presentAlert", &lua::Binding::native<&presentAlert>}, {"goBack", &lua::Binding::native<&goBack>}, {"canGoBack", &lua::Binding::native<&canGoBack>}, {"screenState", &lua::Binding::native<&screenState>}, {nullptr, nullptr},
     };
     for (const luaL_Reg* entry = functions; entry->name != nullptr; ++entry) {
         lua_pushcfunction(L, entry->func);
@@ -664,7 +918,7 @@ void NavigationLua::install(lua_State* L) {
     lua::ClassBuilder<NavigationStack>(L).function("push", &lua::Binding::native<&stackPush>).function("pop", &lua::Binding::native<&stackPop>).function("popTo", &lua::Binding::native<&stackPopTo>).function("popToRoot", &lua::Binding::native<&stackPopToRoot>).function("replace", &lua::Binding::native<&stackReplace>).function("setScreens", &lua::Binding::native<&stackSetScreens>).function("close", &lua::Binding::native<&stackClose>).property("screens", &stackScreens).property("top", &stackTop).property("size", &stackSize).property("canGoBack", &stackCanGoBack).property("transitioning", &stackTransitioning).property("shown", &stackShown, &lua::Binding::native<&stackSetShown>).property("closed", &stackClosed).install();
     lua::ClassBuilder<NavigationTabs>(L).function("select", &lua::Binding::native<&tabsSelect>).function("stack", &lua::Binding::native<&tabsStack>).function("close", &lua::Binding::native<&tabsClose>).property("selected", &tabsSelected).property("current", &lua::Binding::native<&tabsCurrent>).property("closed", &tabsClosed).install();
     lua::ClassBuilder<NavigationSplit>(L).function("showDetail", &lua::Binding::native<&splitShowDetail>).function("clearDetail", &lua::Binding::native<&splitClearDetail>).function("close", &lua::Binding::native<&splitClose>).property("collapsed", &splitCollapsed, &lua::Binding::native<&splitSetCollapsed>).property("hasDetail", &splitHasDetail).property("primary", &splitPrimary).property("detail", &splitDetail).property("closed", &splitClosed).install();
-    lua::ClassBuilder<Presentation>(L).function("dismiss", &lua::Binding::native<&presentationDismiss>).property("screen", &presentationScreen).property("style", &presentationStyle).property("dismissible", &presentationDismissible).property("dismissed", &presentationDismissed).install();
+    lua::ClassBuilder<Presentation>(L).function("dismiss", &lua::Binding::native<&presentationDismiss>).property("screen", &presentationScreen).property("style", &presentationStyle).property("dismissible", &presentationDismissible).property("dismissed", &presentationDismissed).property("modal", &presentationModal).property("result", &lua::Binding::native<&presentationResult>).property("detent", &presentationDetent, &lua::Binding::native<&presentationSetDetent>).install();
 }
 
 } // namespace haylen::ui

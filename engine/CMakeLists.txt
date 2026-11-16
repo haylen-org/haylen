@@ -629,6 +629,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/text/TextFit.cpp
   src/text/TrueTypeFont.cpp
   src/ui/AccessibilityTree.cpp
+  src/ui/AlertScreen.cpp
   src/ui/Anchor.cpp
   src/ui/Backend.cpp
   src/ui/Component.cpp
@@ -639,7 +640,6 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/components/buttons/Chip.cpp
   src/ui/components/buttons/ImageButton.cpp
   src/ui/components/buttons/MenuButton.cpp
-  src/ui/components/buttons/Popover.cpp
   src/ui/components/ChoiceItem.cpp
   src/ui/components/DragAndDrop.cpp
   src/ui/components/choices/Checkbox.cpp
@@ -735,6 +735,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/NavigationTransition.cpp
   src/ui/Popup.cpp
   src/ui/Presentation.cpp
+  src/ui/PresentationView.cpp
   src/ui/PropertyReader.cpp
   src/ui/Scaling.cpp
   src/ui/Screen.cpp

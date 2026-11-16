@@ -1,4 +1,4 @@
--- The browse tab: every product of the store in a recycled grid that fits its columns to the width, narrowed by a typed text, a category and a dialog of filters with the price, the colors and the sale, in the chosen order.
+-- The browse tab: every product of the store in a recycled grid that fits its columns to the width, narrowed by a typed text, a category and a popover of filters with the price, the colors and the sale, in the chosen order.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
@@ -18,6 +18,42 @@ Browse.sorts = {
     {id = 'rated', text = 'Best rated', less = function(a, b) return a.rating > b.rating end},
 }
 Browse.maxPrice = 250
+
+-- The filters in a popover that points at their button, or a sheet on a phone, which hands back the filters to use or a request to reset them.
+local Filters = haylen.class('Filters', ui.Screen)
+
+function Filters:init(current)
+    self.pending = {low = current.low, high = current.high, sale = current.sale, colors = {}}
+    for id, picked in pairs(current.colors) do
+        self.pending.colors[id] = picked
+    end
+end
+
+function Filters:build()
+    local space = Style.space
+    local colors = {gap = space.xs, wrap = true}
+    for _, color in ipairs(Store.colors) do
+        colors[#colors + 1] = ui.chip{id = 'color-' .. color.id, text = color.name, selected = self.pending.colors[color.id] == true, onChange = function(event)
+            self.pending.colors[color.id] = event.selected or nil
+        end}
+    end
+    return ui.column{gap = space.s, padding = {space.m, space.l, space.l, space.l},
+        ui.label{text = 'Filters', font = 'heading'},
+        ui.label{text = 'Price', font = 'button'},
+        ui.rangeSlider{id = 'price', min = 0, max = Browse.maxPrice, low = self.pending.low, high = self.pending.high, step = 5, showValue = true, decimals = 0, autofocus = true, onChange = function(event)
+            self.pending.low, self.pending.high = event.low, event.high
+        end},
+        ui.label{text = 'Colors', font = 'button', margin = {space.s, 0, 0, 0}},
+        ui.row(colors),
+        ui.toggle{id = 'sale', text = 'Only products on sale', checked = self.pending.sale, margin = {space.s, 0, 0, 0}, onChange = function(event)
+            self.pending.sale = event.checked
+        end},
+        ui.row{gap = space.s, margin = {space.s, 0, 0, 0},
+            ui.button{id = 'reset', text = 'Reset', grow = 1, onClick = function() self.presentation:dismiss({result = {reset = true}}) end},
+            ui.button{id = 'apply', text = 'Show products', variant = 'primary', grow = 1, onClick = function() self.presentation:dismiss({result = self.pending}) end},
+        },
+    }
+end
 
 function Browse:tree()
     local space = Style.space
@@ -41,12 +77,6 @@ function Browse:tree()
     local sorts = {}
     for _, sort in ipairs(Browse.sorts) do
         sorts[#sorts + 1] = {id = sort.id, text = sort.text}
-    end
-    local colors = {gap = space.xs, wrap = true}
-    for _, color in ipairs(Store.colors) do
-        colors[#colors + 1] = ui.chip{id = 'color-' .. color.id, text = color.name, onChange = function(event)
-            self.pending.colors[color.id] = event.selected or nil
-        end}
     end
     return Shell.tabPage(ui.column{grow = 1, gap = space.s, padding = {space.m, 0, 0, 0},
         Shell.centered(Style.size.page, ui.column{gap = space.s,
@@ -80,25 +110,6 @@ function Browse:tree()
             end,
             ui.emptyState{image = 'images/hero.png', imageSize = 220, title = 'Nothing matches', message = 'Try other words or fewer filters.'},
         }, 1),
-        ui.dialog{id = 'filterDialog', title = 'Filters', buttons = {{id = 'reset', text = 'Reset'}, {id = 'apply', text = 'Show products', variant = 'primary'}},
-            onAnswer = function(event)
-                if event.button == 'reset' then
-                    self.filters = {low = 0, high = Browse.maxPrice, sale = false, colors = {}}
-                else
-                    self.filters = self.pending
-                end
-                self:refresh()
-            end,
-            ui.label{text = 'Price', font = 'button'},
-            ui.rangeSlider{id = 'price', min = 0, max = Browse.maxPrice, low = 0, high = Browse.maxPrice, step = 5, showValue = true, decimals = 0, onChange = function(event)
-                self.pending.low, self.pending.high = event.low, event.high
-            end},
-            ui.label{text = 'Colors', font = 'button', margin = {space.s, 0, 0, 0}},
-            ui.row(colors),
-            ui.toggle{id = 'sale', text = 'Only products on sale', margin = {space.s, 0, 0, 0}, onChange = function(event)
-                self.pending.sale = event.checked
-            end},
-        },
     }, Shell.phoneBar(self, 'Browse'))
 end
 
@@ -125,17 +136,15 @@ function Browse:apply(params)
     end
 end
 
--- Opens the filters with the values in use, so a dialog closed without applying changes nothing.
+-- Opens the filters with the values in use, so filters closed without applying them change nothing.
 function Browse:openFilters()
-    local filters = self.filters
-    self.pending = {low = filters.low, high = filters.high, sale = filters.sale, colors = {}}
-    for _, color in ipairs(Store.colors) do
-        self.pending.colors[color.id] = filters.colors[color.id]
-        self.gui:set('color-' .. color.id, {selected = filters.colors[color.id] == true})
-    end
-    self.gui:set('price', {low = filters.low, high = filters.high})
-    self.gui:set('sale', {checked = filters.sale})
-    self.gui:set('filterDialog', {open = true})
+    self.filtersSheet = ui.present(Filters(self.filters), {style = 'popover', anchor = {gui = self.gui, id = 'filters'}, width = 560, detents = {'fit'}, owner = self, onDismiss = function(event)
+        if not event.result then
+            return
+        end
+        self.filters = event.result.reset and {low = 0, high = Browse.maxPrice, sale = false, colors = {}} or event.result
+        self:refresh()
+    end})
 end
 
 function Browse:pickCategory(id)

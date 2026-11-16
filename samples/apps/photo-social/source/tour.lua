@@ -42,11 +42,11 @@ function Tour.steps()
         {'See it in the feed', function() Shell.top():share() end},
         {'Open the profile', function() Shell.showTab('profile') end},
         {'Edit the profile', function() Shell.top():headAction('primary') end},
-        {'Show the saved posts', function() local page = Shell.top() page.gui:set('editDialog', {open = false}) Social.toggleSave(feed[5]) Social.toggleSave(feed[8]) page.section = 'saved' page:showGrid() end},
+        {'Show the saved posts', function() local page = Shell.top() page.editSheet:dismiss() Social.toggleSave(feed[5]) Social.toggleSave(feed[8]) page.section = 'saved' page:showGrid() end},
         {'Back home, which kept its screens', function() Shell.showTab('home') end},
         {'Back to the root of home', function() Shell.showTab('home') end},
         {'Send a post to a friend', function() Widgets.askFriend(Shell.top(), feed[2]) end},
-        {'Back to the feed', function() Shell.top().gui:set('friendDialog', {open = false}) end},
+        {'Back to the feed', function() Shell.top().friendSheet:dismiss() end},
     }
 end
 

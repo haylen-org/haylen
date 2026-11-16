@@ -1,6 +1,7 @@
 -- The building blocks the screens share: the templates of posts, comments, people, stories and the tiles of a grid, what the buttons of a post do, and the dialog that sends a post to a friend.
 local tween = require('haylen.tween')
 local math2d = require('haylen.math')
+local haylen = require('haylen')
 local ui = require('haylen.ui')
 
 local Chats = require('chats')
@@ -116,30 +117,38 @@ function Widgets.openPerson(id)
     Shell.open(require('screens.profile'), {person = id}, 'person')
 end
 
--- The dialog that sends a post to one of the conversations, which every screen of posts mounts.
-function Widgets.friendDialog(page)
+-- The conversations a post goes to, in a sheet that rests at half the screen and opens to nearly all of it, which hands the chosen conversation back.
+local PickFriend = haylen.class('PickFriend', ui.Screen)
+
+function PickFriend:build()
+    local space = Style.space
     local items = {}
     for _, conversation in ipairs(Chats.list) do
         items[#items + 1] = {id = conversation.id, text = conversation.name, caption = conversation.handle, image = conversation.avatar, iconColor = false}
     end
-    page.friend = items[1].id
-    return ui.dialog{id = 'friendDialog', title = 'Send to a friend', buttons = {{id = 'cancel', text = 'Cancel'}, {id = 'send', text = 'Send', variant = 'primary'}},
-        onAnswer = function(event)
-            if event.button == 'send' then
-                local conversation = Chats.find(page.friend)
-                Chats.send(conversation, 'Look at this post', page.sharing)
-                Shell.notify('Sent to ' .. conversation.name .. '.')
-            end
-        end,
-        ui.list{id = 'friendList', items = items, selected = items[1].id, height = 72 * 4, onSelect = function(event)
-            page.friend = event.item
+    self.friend = items[1].id
+    return ui.column{gap = space.m, padding = {space.xs, space.l, space.l, space.l},
+        ui.row{gap = space.s,
+            ui.button{id = 'cancel', text = 'Cancel', variant = 'link', onClick = function() self.presentation:dismiss() end},
+            ui.label{text = 'Send to a friend', font = 'heading', grow = 1, textAlign = 'center'},
+            ui.button{id = 'send', text = 'Send', variant = 'primary', onClick = function() self.presentation:dismiss({result = self.friend}) end},
+        },
+        ui.list{id = 'friendList', grow = 1, items = items, selected = items[1].id, autofocus = true, onSelect = function(event)
+            self.friend = event.item
         end},
     }
 end
 
+-- Sends a post to the conversation the person picks in a sheet.
 function Widgets.askFriend(page, post)
-    page.sharing = post
-    page.gui:set('friendDialog', {open = true})
+    page.friendSheet = ui.present(PickFriend(), {detents = {'medium', 'large'}, owner = page, onDismiss = function(event)
+        if not event.result then
+            return
+        end
+        local conversation = Chats.find(event.result)
+        Chats.send(conversation, 'Look at this post', post)
+        Shell.notify('Sent to ' .. conversation.name .. '.')
+    end})
 end
 
 -- The template of a comment: the face, the name with the text, how long ago and the likes.

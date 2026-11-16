@@ -1,9 +1,16 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
+#include <optional>
+#include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
+
+#include "haylen/core/Json.hpp"
 
 #include "haylen/ui/NavigationSplit.hpp"
 #include "haylen/ui/NavigationTabs.hpp"
@@ -25,7 +32,7 @@ class Gui;
 class NavigationStack;
 class Screen;
 
-// The navigation of the app: the stacks, tabs and splits that show screens in the areas of GUIs, and the presentations over everything. A stack, tabs or a split lives until it closes, its owner ends or the GUI of its area unmounts, and a presentation until it is dismissed. Screens may hold areas of their own, so a stack can live in a screen of another stack, such as a split inside a tab. The system back goes through the innermost stack that shows and can pop, then to the first tab, then dismisses the topmost presentation, and only then reaches the app.
+// The navigation of the app: the stacks, tabs and splits that show screens in the areas of GUIs, and the presentations over everything, among them the alerts and action sheets that the engine builds. A stack, tabs or a split lives until it closes, its owner ends or the GUI of its area unmounts, and a presentation until it is dismissed. Screens may hold areas of their own, so a stack can live in a screen of another stack, such as a split inside a tab. The system back goes through the layers from the top, the presentations and then the app under them. In each layer it pops the innermost stack that shows and can pop, then goes to the first tab, and then a modal presentation is dismissed and keeps the back from the layers under it, while a sheet that is not modal goes down to its lowest detent. Only then does the back reach the app.
 class Navigation final {
   public:
     Navigation(core::Engine& engine, plugins::UiPlugin& ui);
@@ -34,6 +41,45 @@ class Navigation final {
     Navigation(const Navigation&) = delete;
     Navigation& operator=(const Navigation&) = delete;
 
+    // An alert or an action sheet that the navigation builds and presents: a title, a message and the actions the person chooses from. An alert interrupts with a decision in a dialog, such as a confirmation before something is deleted. An action sheet offers the choices of one control, such as the ways to share a picture, next to that control on a wide screen and from the bottom of a compact one. The cancel action leads and lets the person dismiss the alert, a destructive action shows in the danger color, and the last default action is the preferred one.
+    struct Alert {
+        enum class Style : std::uint8_t {
+            Alert,
+            ActionSheet,
+        };
+
+        enum class Role : std::uint8_t {
+            Default,
+            Cancel,
+            Destructive,
+        };
+
+        struct Action {
+            std::string id;
+
+            // The label of the action, a text value of the UI such as a string or a localized key.
+            core::Json text;
+            Role role = Role::Default;
+        };
+
+        // The width of an action sheet that points at its anchor, in UI units.
+        static constexpr float kActionSheetWidth = 520.0F;
+
+        static constexpr std::array<std::pair<std::string_view, Style>, 2> kStyleNames{{{"alert", Style::Alert}, {"actionSheet", Style::ActionSheet}}};
+        static constexpr std::array<std::pair<std::string_view, Role>, 3> kRoleNames{{{"default", Role::Default}, {"cancel", Role::Cancel}, {"destructive", Role::Destructive}}};
+
+        // The cancel action, which the person also chooses by dismissing the alert, or null for an alert that only its actions close.
+        [[nodiscard]] const Action* findCancel() const noexcept;
+
+        Style style = Style::Alert;
+        core::Json title;
+        core::Json message;
+        std::vector<Action> actions;
+
+        // The node that an action sheet points at on a wide screen.
+        std::optional<Region> anchor;
+    };
+
     // Creates a stack in the area of a node of a mounted GUI, with a first screen when one is given. Throws `std::invalid_argument` for a GUI that is not mounted or that has no node with the id.
     [[nodiscard]] std::shared_ptr<NavigationStack> createStack(Region region, std::shared_ptr<Screen> root = nullptr);
     [[nodiscard]] std::shared_ptr<NavigationTabs> createTabs(Region region, std::vector<NavigationTabs::Tab> tabs, std::string_view selected);
@@ -41,6 +87,9 @@ class Navigation final {
 
     // Presents a screen over everything the app shows.
     [[nodiscard]] std::shared_ptr<Presentation> present(std::shared_ptr<Screen> screen, Presentation::Options options);
+
+    // Presents an alert or an action sheet that the engine builds, whose result is the id of the action the person chose. Throws `std::invalid_argument` for no actions, an action without an id, a repeated id and more than one cancel action.
+    [[nodiscard]] std::shared_ptr<Presentation> presentAlert(Alert alert);
 
     // The presentations that show or leave, from the bottom up.
     [[nodiscard]] const std::vector<std::shared_ptr<Presentation>>& getPresentations() const noexcept {
@@ -62,6 +111,7 @@ class Navigation final {
     friend class NavigationTabs;
     friend class NavigationSplit;
     friend class Presentation;
+    friend class PresentationView;
 
     // How a screen draws in a frame. A screen that is shown lays out in its area moved by the effect of its transition: a slide by the distance times the width of its area toward its side, which a right to left interface mirrors, a rise by the distance times the room from the top of its area to the bottom of the screen, and a fade to an opacity of one minus the distance. An inert screen takes no input and no focus.
     struct Look {
@@ -129,10 +179,16 @@ class Navigation final {
 
     // The presentation a stack lies in through the screens that hold its area, or null for a stack under every presentation.
     [[nodiscard]] const Presentation* findPresentation(const NavigationStack& stack) const;
-    [[nodiscard]] const Presentation* getTopPresentation() const;
 
-    // Collects the stacks of the topmost presentation, or of the app under every presentation, that draw, the innermost first.
-    void collectActive(std::vector<NavigationStack*>& found) const;
+    // The topmost modal presentation that has not left, which takes the input of everything under it.
+    [[nodiscard]] const Presentation* getTopModal() const;
+
+    // Collects the stacks of a layer, a presentation or the app under every presentation, that draw, the innermost first.
+    void collectActive(const Presentation* layer, std::vector<NavigationStack*>& found) const;
+
+    // Whether the system back goes back in the stacks and tabs of a layer, and goes back there.
+    [[nodiscard]] bool canGoBackIn(const Presentation* layer) const;
+    [[nodiscard]] bool goBackIn(const Presentation* layer);
     void collectDrawn(std::vector<std::shared_ptr<Screen>>& found) const;
 
     void forget(const NavigationStack& stack);

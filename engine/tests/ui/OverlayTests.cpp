@@ -7,9 +7,6 @@
 #include <string_view>
 #include <vector>
 
-#include <imgui.h>
-#include <imgui_internal.h>
-
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/2d/graphics/Shape.hpp"
 #include "haylen/core/Engine.hpp"
@@ -43,17 +40,6 @@ class OverlayTest : public ::testing::Test, public test::UiFixture {
         frames();
         renderer.removeCanvasOverlay(overlay);
         return blocks;
-    }
-
-    // The alpha of the first vertex the window of an open dialog drew, which is the corner of its backdrop, or nothing once the dialog is closed.
-    [[nodiscard]] std::optional<float> getBackdropAlpha() {
-        getUi().getBackend().makeCurrent();
-        const ImGuiContext& state = *GImGui;
-        if (state.OpenPopupStack.Size == 0 || state.OpenPopupStack[0].Window == nullptr || state.OpenPopupStack[0].Window->DrawList->VtxBuffer.Size == 0) {
-            return std::nullopt;
-        }
-
-        return static_cast<float>((state.OpenPopupStack[0].Window->DrawList->VtxBuffer[0].col >> IM_COL32_A_SHIFT) & 0xFFU) / 255.0F;
     }
 
     // The bounds of the element with the label in the last accessibility tree the platform received.
@@ -121,34 +107,11 @@ TEST_F(OverlayTest, QueuesNoticesBeyondTheLimitOfTheStack) {
     EXPECT_THROW(gui->command(getUi().getContext(), "news", "show", "Hi"), std::invalid_argument);
 }
 
-TEST_F(OverlayTest, FadesADialogAndItsBackdropInAndOutTogether) {
-    auto gui = mount(R"({"kind": "column", "children": [{"kind": "dialog", "id": "quit", "title": "Quit?", "buttons": [{"id": "yes", "text": "Quit"}]}]})");
-    gui->set("quit", {{"open", true}});
-    frames();
-    const std::optional<float> opening = getBackdropAlpha();
-    ASSERT_TRUE(opening.has_value());
-    EXPECT_GT(*opening, 0.0F);
-    EXPECT_LT(*opening, 0.5F);
-
-    // The backdrop reaches the overlay color of the theme within the transition, together with the dialog.
-    frames(getTransitionFrames());
-    EXPECT_NEAR(*getBackdropAlpha(), getUi().getTheme().getColor(Theme::Color::Overlay).a, 1.0F / 255.0F);
-
-    // A dialog that closes keeps fading with its backdrop, and both are gone at the end of the transition.
-    gui->set("quit", {{"open", false}});
-    frames(2);
-    const std::optional<float> closing = getBackdropAlpha();
-    ASSERT_TRUE(closing.has_value());
-    EXPECT_LT(*closing, getUi().getTheme().getColor(Theme::Color::Overlay).a);
-    frames(getTransitionFrames());
-    EXPECT_FALSE(getBackdropAlpha().has_value());
-}
-
 // Answers that fit line up in one row at the end of the dialog, and answers that do not fit stack across its width with the main answer on top, so none passes the edges of the dialog.
 TEST_F(OverlayTest, StacksTheAnswersOfADialogThatDoNotFitInOneRow) {
     getFixture().host().setAccessibilityTreeWanted(true);
     getUi().setScaling({.mode = Scaling::Mode::Physical, .factor = 1.0F});
-    auto gui = mount(R"({"kind": "column", "children": [{"kind": "dialog", "id": "safety", "title": "Safety", "open": true, "buttons": [{"id": "close", "text": "Close"}, {"id": "share", "text": "Share my trip"}, {"id": "help", "text": "Call for help", "variant": "destructive"}]}]})");
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "dialog", "id": "safety", "title": "Safety", "buttons": [{"id": "close", "text": "Close"}, {"id": "share", "text": "Share my trip"}, {"id": "help", "text": "Call for help", "variant": "destructive"}]}]})");
     frames(getTransitionFrames());
     EXPECT_EQ(findElement("Close").y, findElement("Call for help").y);
     EXPECT_LT(findElement("Close").getRight(), findElement("Share my trip").x);

@@ -11,8 +11,11 @@
 #include "haylen/input/ActionMap.hpp"
 #include "haylen/input/Input.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
+#include "haylen/ui/Navigation.hpp"
+#include "haylen/ui/Presentation.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/AllocationTracker.hpp"
+#include "support/RecordingScreen.hpp"
 #include "support/UiFixture.hpp"
 
 namespace haylen::ui {
@@ -218,49 +221,42 @@ TEST_F(FocusTest, SendsCancelToTheTopmostGuiWithoutFocus) {
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"pause:cancel"}));
 }
 
-TEST_F(FocusTest, RestoresTheFocusWhenADialogCloses) {
-    // clang-format off
-    auto gui = mount(R"({"kind": "column", "padding": 20, "children": [
-        {"kind": "button", "id": "quit", "text": "Quit", "autofocus": true},
-        {"kind": "button", "id": "stay", "text": "Stay"},
-        {"kind": "dialog", "id": "confirm", "title": "Quit?", "buttons": [{"id": "no", "text": "No"}, {"id": "yes", "text": "Yes"}]}
-    ]})");
-    // clang-format on
+// The focus goes into an alert, starting on its preferred action, and back to the control that had it once the alert left.
+TEST_F(FocusTest, RestoresTheFocusWhenAnAlertLeaves) {
+    auto gui = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "button", "id": "quit", "text": "Quit", "autofocus": true}, {"kind": "button", "id": "stay", "text": "Stay"}]})");
     key(input::Key::Down);
     ASSERT_TRUE(isFocused(*gui, "quit"));
     ASSERT_TRUE(isRingVisible());
 
-    gui->set("confirm", {{"open", true}});
-    frames(2);
+    const std::shared_ptr<Presentation> alert = getUi().getNavigation().presentAlert({.title = "Quit?", .actions = {{.id = "no", .text = "No", .role = Navigation::Alert::Role::Cancel}, {.id = "yes", .text = "Yes"}}});
+    frames(20);
     EXPECT_TRUE(getEngine().isBackCaptured());
     key(input::Key::Left);
     key(input::Key::Enter);
 
-    // The focus goes back once the dialog faded out and closed.
-    frames(12);
-    EXPECT_EQ(findLastEvent("answer").value, (core::Json{{"button", "no"}}));
+    // The focus goes back once the alert faded out and left.
+    frames(20);
+    EXPECT_EQ(alert->getResult(), "no");
     EXPECT_TRUE(isFocused(*gui, "quit"));
     EXPECT_FALSE(getEngine().isBackCaptured());
 }
 
-TEST_F(FocusTest, OpensPopoversWithTheFocusInsideAndCancelClosesThem) {
-    // clang-format off
-    auto gui = mount(R"({"kind": "column", "id": "screen", "padding": 20, "children": [
-        {"kind": "popover", "id": "help", "text": "Help", "autofocus": true, "children": [{"kind": "column", "children": [{"kind": "button", "id": "inner", "text": "Inner"}, {"kind": "button", "id": "more", "text": "More"}]}]}
-    ]})");
-    // clang-format on
+// A popover opens with the focus on the control inside it that asks for it, and the back takes it away and gives the focus back to the control it points at.
+TEST_F(FocusTest, OpensPopoversWithTheFocusInsideAndTheBackClosesThem) {
+    auto gui = mount(R"({"kind": "column", "id": "screen", "padding": 20, "children": [{"kind": "button", "id": "help", "text": "Help", "autofocus": true}]})");
+    std::vector<std::string> log;
+    const auto inside = std::make_shared<test::RecordingScreen>(getUi(), "inside", log, R"({"kind": "column", "children": [{"kind": "button", "id": "inner", "text": "Inner", "autofocus": true}, {"kind": "button", "id": "more", "text": "More"}]})");
     key(input::Key::Enter);
-    frames(2);
-    EXPECT_TRUE(isFocused(*gui, "inner"));
+    const std::shared_ptr<Presentation> popover = getUi().getNavigation().present(inside, {.style = Presentation::Style::Popover, .anchor = Region{.gui = gui, .node = "help"}});
+    frames(20);
+    EXPECT_TRUE(isFocused(*inside->getGui(), "inner"));
     key(input::Key::Down);
-    EXPECT_TRUE(isFocused(*gui, "more"));
+    EXPECT_TRUE(isFocused(*inside->getGui(), "more"));
 
-    frames(2);
-    clearEvents();
     key(input::Key::Escape);
-    frames();
+    frames(20);
+    EXPECT_TRUE(popover->isDismissed());
     EXPECT_TRUE(isFocused(*gui, "help"));
-    EXPECT_EQ(getEventNames(), (std::vector<std::string>{"help:focus"}));
 }
 
 // The west button of a gamepad, the square of some controllers, and Ctrl+Tab never open the window switcher of ImGui, which belongs to the tools of ImGui and not to an app.
@@ -441,7 +437,7 @@ TEST_F(FocusTest, LetsTheAppKeepTheBackButton) {
     EXPECT_TRUE(getEngine().isBackCaptured());
     getEngine().setBackLeavesApp(true);
 
-    auto gui = mount(R"({"kind": "popover", "id": "help", "text": "Help", "children": [{"kind": "label", "text": "Inside"}]})");
+    auto gui = mount(R"({"kind": "menuButton", "id": "help", "text": "Help", "items": [{"id": "about", "text": "About"}]})");
     click(*gui, "help");
     EXPECT_TRUE(getEngine().isBackCaptured());
 }

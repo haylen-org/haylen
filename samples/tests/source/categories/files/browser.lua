@@ -63,9 +63,9 @@ function Browser:enter()
                     ui.button{id = 'newFile', text = 'New file', onClick = function()
                         self:create(false)
                     end},
-                    ui.button{id = 'delete', text = 'Delete', variant = 'destructive', enabled = false, onClick = function(event)
+                    ui.button{id = 'delete', text = 'Delete', variant = 'destructive', enabled = false, onClick = function()
                         if self.selected then
-                            event.gui:set('confirm', {open = true, message = 'The file "' .. self:relative(self.selected) .. '" will be removed.'})
+                            self:confirmDelete()
                         end
                     end},
                     ui.button{id = 'examples', text = 'Add examples', onClick = function()
@@ -81,11 +81,6 @@ function Browser:enter()
                 ui.label{id = 'details', text = 'Pick a file to see its size, its date and its first bytes.', color = 'textMuted'},
                 ui.scroll{grow = 1, ui.label{id = 'preview', text = '', font = 'monospace'}},
             },
-            ui.dialog{id = 'confirm', title = 'Delete it?', buttons = {{id = 'keep', text = 'Keep'}, {id = 'delete', text = 'Delete', variant = 'destructive'}}, onAnswer = function(event)
-                if event.button == 'delete' then
-                    self:remove(self.selected)
-                end
-            end},
         }},
     }
     self:open('')
@@ -199,4 +194,16 @@ function Browser:remove(name)
     end)
 end
 
+
+-- Asks before the selected file goes away.
+function Browser:confirmDelete()
+    local selected = self.selected
+    ui.presentAlert{title = 'Delete it?', message = 'The file "' .. self:relative(selected) .. '" will be removed.', owner = self,
+        actions = {{id = 'keep', text = 'Keep', role = 'cancel'}, {id = 'delete', text = 'Delete', role = 'destructive'}},
+        onDismiss = function(event)
+            if event.result == 'delete' then
+                self:remove(selected)
+            end
+        end}
+end
 return Browser

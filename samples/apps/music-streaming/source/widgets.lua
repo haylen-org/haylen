@@ -1,4 +1,5 @@
--- The building blocks the screens share: the templates of the cells of songs, covers and artists, the shelves, what the menu of a song does and the dialog that adds a song to a playlist.
+-- The building blocks the screens share: the templates of the cells of songs, covers and artists, the shelves, what the menu of a song does and the sheet that adds a song to a playlist.
+local haylen = require('haylen')
 local ui = require('haylen.ui')
 
 local Catalog = require('data.catalog')
@@ -104,34 +105,46 @@ function Widgets.onTracks(tracks, page)
     end
 end
 
--- Opens the dialog of `Widgets.playlistDialog` for a song.
-function Widgets.askPlaylist(page, track)
-    page.pendingTrack = track
-    page.gui:set('playlistDialog', {open = true, message = 'Add ' .. track.name .. ' to a playlist.'})
+-- The playlists a song can go to, in a sheet as tall as its content, which hands the chosen playlist back.
+local PickPlaylist = haylen.class('PickPlaylist', ui.Screen)
+
+function PickPlaylist:init(track)
+    self.track = track
 end
 
--- The dialog that adds a song to one of the playlists, which every page that shows songs mounts.
-function Widgets.playlistDialog(page)
+function PickPlaylist:build()
+    local space = Style.space
     local items = {}
     for _, playlist in ipairs(Catalog.playlists) do
         if playlist.id ~= 'liked' then
             items[#items + 1] = {id = playlist.id, text = playlist.name}
         end
     end
-    page.chosenPlaylist = items[1].id
-    return ui.dialog{id = 'playlistDialog', title = 'Add to a playlist', message = '', buttons = {{id = 'cancel', text = 'Cancel'}, {id = 'add', text = 'Add', variant = 'primary'}},
-        onAnswer = function(event)
-            if event.button == 'add' then
-                local playlist = Catalog.find(page.chosenPlaylist)
-                table.insert(playlist.tracks, 1, page.pendingTrack)
-                playlist.caption = string.format('Playlist · %s songs', Catalog.thousands(#playlist.tracks))
-                Shell.notify(page.pendingTrack.name .. ' is in ' .. playlist.name .. '.')
-            end
-        end,
-        ui.radioGroup{id = 'playlistChoice', items = items, selected = items[1].id, onChange = function(event)
-            page.chosenPlaylist = event.value
+    self.chosen = items[1].id
+    return ui.column{gap = space.m, padding = {space.m, space.l, space.l, space.l},
+        ui.label{text = 'Add to a playlist', font = 'heading'},
+        ui.label{text = 'Add ' .. self.track.name .. ' to a playlist.', color = 'textMuted'},
+        ui.radioGroup{id = 'playlistChoice', items = items, selected = items[1].id, autofocus = true, onChange = function(event)
+            self.chosen = event.value
         end},
+        ui.row{gap = space.s,
+            ui.button{id = 'cancel', text = 'Cancel', grow = 1, onClick = function() self.presentation:dismiss() end},
+            ui.button{id = 'add', text = 'Add', variant = 'primary', grow = 1, onClick = function() self.presentation:dismiss({result = self.chosen}) end},
+        },
     }
+end
+
+-- Asks for the playlist of a song in a sheet, and adds the song to the playlist the sheet hands back.
+function Widgets.askPlaylist(page, track)
+    page.playlistSheet = ui.present(PickPlaylist(track), {detents = {'fit'}, owner = page, onDismiss = function(event)
+        if not event.result then
+            return
+        end
+        local playlist = Catalog.find(event.result)
+        table.insert(playlist.tracks, 1, track)
+        playlist.caption = string.format('Playlist · %s songs', Catalog.thousands(#playlist.tracks))
+        Shell.notify(track.name .. ' is in ' .. playlist.name .. '.')
+    end})
 end
 
 -- The big round play button of a page, in the accent of the app, or in the color of the text with `light`.

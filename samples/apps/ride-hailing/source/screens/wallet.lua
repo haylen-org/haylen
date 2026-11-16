@@ -12,9 +12,30 @@ local Wallet = haylen.class('Wallet', Page)
 
 Wallet.amounts = {{id = '10', text = '$10'}, {id = '20', text = '$20'}, {id = '50', text = '$50'}, {id = '100', text = '$100'}}
 
+-- The amounts of money to add, in a sheet as tall as its content, which hands the chosen amount back to the wallet.
+local AddFunds = haylen.class('AddFunds', ui.Screen)
+
+function AddFunds:init()
+    self.amount = 20
+end
+
+function AddFunds:build()
+    local space = Style.space
+    return ui.column{gap = space.m, padding = {space.m, space.l, space.l, space.l},
+        ui.label{text = 'Add funds', font = 'heading'},
+        ui.label{text = 'The money comes from the card ending in 4821.', color = 'textMuted'},
+        ui.segmentedControl{id = 'amount', items = Wallet.amounts, selected = '20', accessibilityLabel = 'Amount', onChange = function(event)
+            self.amount = tonumber(event.value)
+        end},
+        ui.row{gap = space.s,
+            ui.button{id = 'cancel', text = 'Cancel', grow = 1, onClick = function() self.presentation:dismiss() end},
+            ui.button{id = 'add', text = 'Add funds', variant = 'primary', grow = 1, autofocus = true, onClick = function() self.presentation:dismiss({result = self.amount}) end},
+        },
+    }
+end
+
 function Wallet:tree()
     local space = Style.space
-    self.amount = 20
     local cards = {}
     for _, card in ipairs(Rides.wallet.cards) do
         cards[#cards + 1] = {id = card.id, text = card.text, caption = card.caption, image = Shell.icon(card.icon)}
@@ -27,8 +48,8 @@ function Wallet:tree()
                 ui.card{gap = space.xs, padding = {space.l, space.l}, style = {colors = {raised = Style.color.ink, border = Style.color.ink}, metrics = {panelRadius = Style.radius.sheet}},
                     ui.row{gap = space.s, ui.icon{image = Shell.icon('wallet'), size = 30, color = 'accent'}, ui.label{text = 'Wallet balance', color = 'onTooltip', grow = 1}},
                     ui.label{id = 'balance', text = '', font = 'title', color = 'onTooltip', style = Style.text('title', Style.type.display)},
-                    ui.button{id = 'addFunds', text = 'Add funds', icon = Shell.icon('plus'), iconColor = 'text', variant = 'primary', align = 'start', margin = {space.xs, 0, 0, 0}, onClick = function(event)
-                        event.gui:set('fundsDialog', {open = true})
+                    ui.button{id = 'addFunds', text = 'Add funds', icon = Shell.icon('plus'), iconColor = 'text', variant = 'primary', align = 'start', margin = {space.xs, 0, 0, 0}, onClick = function()
+                        self:openFunds()
                     end},
                 },
                 ui.label{text = 'Ways to pay', font = 'heading'},
@@ -37,19 +58,17 @@ function Wallet:tree()
                 ui.list{id = 'movements', items = {}},
             }),
         },
-        ui.dialog{id = 'fundsDialog', title = 'Add funds', message = 'The money comes from the card ending in 4821.',
-            buttons = {{id = 'cancel', text = 'Cancel'}, {id = 'add', text = 'Add funds', variant = 'primary'}},
-            onAnswer = function(event)
-                if event.button == 'add' then
-                    Rides.addFunds(self.amount)
-                    Shell.notify(Rides.money(self.amount) .. ' added to your wallet.', 'success')
-                end
-            end,
-            ui.segmentedControl{id = 'amount', items = Wallet.amounts, selected = '20', onChange = function(event)
-                self.amount = tonumber(event.value)
-            end},
-        },
     }
+end
+
+-- The sheet of the amounts returns the amount the person chose, or nothing when they closed it.
+function Wallet:openFunds()
+    self.funds = ui.present(AddFunds(), {detents = {'fit'}, owner = self, onDismiss = function(event)
+        if event.result then
+            Rides.addFunds(event.result)
+            Shell.notify(Rides.money(event.result) .. ' added to your wallet.', 'success')
+        end
+    end})
 end
 
 function Wallet:start()

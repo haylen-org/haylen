@@ -6,7 +6,6 @@
 #include "ui/components/buttons/Chip.hpp"
 #include "ui/components/buttons/ImageButton.hpp"
 #include "ui/components/buttons/MenuButton.hpp"
-#include "ui/components/buttons/Popover.hpp"
 #include "ui/components/choices/Checkbox.hpp"
 #include "ui/components/choices/Combo.hpp"
 #include "ui/components/choices/RadioGroup.hpp"
@@ -94,7 +93,6 @@ void BuiltInComponents::registerAll(ComponentRegistry& registry) {
     registry.add<ImageButton>("imageButton");
     registry.add<Chip>("chip");
     registry.add<MenuButton>("menuButton");
-    registry.add<Popover>("popover");
     registry.add<Checkbox>("checkbox");
     registry.add<Toggle>("toggle");
     registry.add<RadioGroup>("radioGroup");

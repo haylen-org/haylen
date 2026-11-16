@@ -432,6 +432,15 @@ void FocusNavigator::forget(const Gui& gui) {
     }
 }
 
+void FocusNavigator::parkFocus() {
+    if (focusedGui == nullptr || focusedItem == 0) {
+        return;
+    }
+
+    std::erase_if(parked, [this](const auto& entry) { return entry.first == focusedGui; });
+    parked.emplace_back(focusedGui, focusedItem);
+}
+
 void FocusNavigator::clear() {
     ImGuiContext& g = *GImGui;
     if (find(drawn, g.NavId) != nullptr || find(building, g.NavId) != nullptr) {

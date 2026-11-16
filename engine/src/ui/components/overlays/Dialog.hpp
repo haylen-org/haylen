@@ -16,7 +16,7 @@
 
 namespace haylen::ui {
 
-// A modal window over the whole screen with a title, a message, optional content and answer buttons, which line up in one row while they fit and otherwise stack across its width, over a backdrop that fades in and out with it, on its themed surface or, with the property `glass`, on glass. It takes no room in the layout that holds it, and content taller than the screen scrolls beside a scroll bar at the edge of the dialog.
+// The card of a dialog with a title, a message, optional content and answer buttons, which line up in one row while they fit and otherwise stack across its width, on its themed surface or, with the property `glass`, on glass. A presentation of the dialog style shows it over the dimmed screen, which takes the modality, the backdrop, the fades and the back. The card is as wide as the theme `dialogWidth` within the room it has, as tall as its content within the safe area, and content taller than that scrolls beside a scroll bar at the edge of the card. Its last button takes the focus when the card first draws.
 class Dialog final : public Component {
   public:
     [[nodiscard]] std::string_view getKind() const noexcept override {
@@ -28,8 +28,8 @@ class Dialog final : public Component {
     }
 
   protected:
-    [[nodiscard]] bool isFloating() const noexcept override {
-        return true;
+    [[nodiscard]] Alignment getDefaultAlignment() const noexcept override {
+        return Alignment::Center;
     }
     void readProperties(PropertyReader& reader) override;
     [[nodiscard]] math::Vec2 measureContent(Context&, float) override;
@@ -44,9 +44,6 @@ class Dialog final : public Component {
 
     [[nodiscard]] static std::vector<Answer> readButtons(PropertyReader& reader, const core::Json& value);
     [[nodiscard]] static math::Insets getContentPadding(Context& context);
-    [[nodiscard]] static bool isWaiting();
-    static void drawBackdrop(Context& context, const math::Rect& display);
-    static void close();
     [[nodiscard]] float getBodyHeight(Context& context, float width);
     [[nodiscard]] float getContentHeight(Context& context, float width);
     [[nodiscard]] bool isStacked(Context& context, float width) const;
@@ -55,10 +52,8 @@ class Dialog final : public Component {
     void drawContent(Context& context, const math::Rect& frame, const math::Insets& padding, bool overflowing);
     void drawBody(Context& context, const math::Rect& body, const math::Rect& inner, bool overflowing);
 
-    bool open = false;
-    bool dismissible = true;
     bool glass = false;
-    float shown = 0.0F;
+    bool focused = false;
     TextValue title;
     TextValue message;
     std::vector<Answer> buttons;

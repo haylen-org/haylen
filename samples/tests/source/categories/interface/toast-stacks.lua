@@ -58,8 +58,12 @@ function ToastStacks:enter()
                         ui.row{justify = 'spaceBetween', buttons[4], buttons[5], buttons[6]},
                     },
                 }),
-                layout.section('A dialog and its backdrop', {grow = 1,
-                    ui.button{id = 'ask', text = 'Open the dialog', onClick = function(event) event.gui:set('question', {open = true}) end},
+                layout.section('An alert and its backdrop', {grow = 1,
+                    ui.button{id = 'ask', text = 'Open the alert', onClick = function()
+                        ui.presentAlert{title = 'Set sail now?', message = 'The backdrop fades in and out together with the alert.', owner = self,
+                            actions = {{id = 'wait', text = 'Wait', role = 'cancel'}, {id = 'sail', text = 'Sail'}},
+                            onDismiss = function(event) self:set('status', {text = 'The alert answered "' .. event.result .. '".'}) end}
+                    end},
                 }),
             },
             ui.column{grow = 1, gap = 24,
@@ -81,8 +85,6 @@ function ToastStacks:enter()
                     },
                 }),
             },
-            ui.dialog{id = 'question', title = 'Set sail now?', message = 'The backdrop fades in and out together with the dialog.', buttons = {{id = 'wait', text = 'Wait'}, {id = 'sail', text = 'Sail', variant = 'primary'}},
-                onAnswer = function(event) self:set('status', {text = 'The dialog answered "' .. event.button .. '".'}) end},
             ui.toast{id = 'sticky', text = 'This notice stays until it is let go', tone = 'warning', duration = 0},
             table.unpack(toasts),
         }},

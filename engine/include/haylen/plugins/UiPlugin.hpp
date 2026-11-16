@@ -36,6 +36,7 @@ struct SceneView;
 
 namespace haylen::ui {
 class ImageLibrary;
+class PresentationView;
 class SoundLibrary;
 } // namespace haylen::ui
 
@@ -193,11 +194,12 @@ class UiPlugin final : public Plugin {
 
     void add(Mounted entry);
     void drawGui(const Mounted& entry, bool inert);
+    void drawPresented(const Mounted& entry, ui::Presentation& presentation, const ui::Navigation::Look& look, bool inert);
+    void drawScreenGui(const Mounted& entry, const ui::Navigation::Look& look, const math::Rect& area, math::Vec2 offset, const std::optional<math::Rect>& clip, bool inert);
 
     // Whether a GUI laid out in an earlier frame with every picture it shows, which the navigation waits for before a screen moves in.
     [[nodiscard]] bool isComplete(const ui::Gui& gui) const;
     [[nodiscard]] math::Vec2 getLookOffset(const ui::Navigation::Look& look, const math::Rect& area, float riseRoom) const;
-    void drawBackdrop(const ui::Presentation& presentation, const ui::Presentation::Layout& layout, const ui::Navigation::Look& look, math::Vec2 offset);
     [[nodiscard]] std::optional<math::Rect> findArea(const Mounted& entry) const;
 
     // Performs an action that a screen reader asked of an element of the last frame, and hands the elements of this frame to the platform.
@@ -231,9 +233,9 @@ class UiPlugin final : public Plugin {
     ui::NavigationInput navigationInput;
     std::unique_ptr<ui::Navigation> navigation;
 
-    // The system back that the focus handed to the navigation, and the presentation whose backdrop the player tapped, which the next update takes.
+    // The system back that the focus handed to the navigation, which the next update takes, and what draws around presentations and follows their gestures.
     bool backRequested = false;
-    std::weak_ptr<ui::Presentation> backdropTapped;
+    std::unique_ptr<ui::PresentationView> presentationView;
     std::unique_ptr<ui::Backend> backend;
     std::unique_ptr<ui::Context> context;
     std::map<std::string, ui::Theme, std::less<>> themes;

@@ -1,6 +1,6 @@
 # 🧭 Navigation
 
-This guide explains how an app moves between its screens: a frame with bars that stays, stacks that push and pop screens in the middle of the frame, tabs that each keep their own stack, a list and its detail that sit side by side on a tablet and work as one stack on a phone, and presentations that open a new flow over everything. It also explains the system back, deep links and the hooks of a screen. The [`haylen.ui` reference](../lua-api/ui.md#navigation) lists every function, option and error.
+This guide explains how an app moves between its screens: a frame with bars that stays, stacks that push and pop screens in the middle of the frame, tabs that each keep their own stack, a list and its detail that sit side by side on a tablet and work as one stack on a phone, and presentations that open a new flow over everything, such as sheets, popovers, drawers, dialogs, alerts and action sheets. It also explains the results of a flow, unsaved work, the system back, deep links and the hooks of a screen. The [`haylen.ui` reference](../lua-api/ui.md#navigation) lists every function, option and error.
 
 ## Screens, stacks and the frame
 
@@ -114,13 +114,15 @@ The app decides when the split collapses, in the same place where it lays out it
 
 ## Presentations open a new flow
 
-A presentation shows a screen over everything the app shows, such as a new post, a checkout or a sign in. It starts a new flow. Its screen may hold bars of its own and stacks of its own, and the GUIs under it take no input or focus until it leaves.
+A presentation shows a screen over everything the app shows, such as a new post, a checkout, a picker or a sign in. It starts a new flow. Its screen may hold bars of its own and stacks of its own. A modal presentation takes the input and the focus of the GUIs under it until it leaves, and then the focus goes back to the control that had it.
 
-| Style | What it looks like |
-| --- | --- |
-| `sheet` | It rises from the bottom over a dimmed backdrop. On a narrow screen it fills the width up to the bottom edge, and on a wide screen it floats as a rounded card in the middle. The engine draws its surface in the theme `panel` color. |
-| `fullScreen` | It rises over the whole screen, on the theme `background` color, and lays out its screen in the safe area. |
-| `dialog` | It fades in over a dimmed backdrop. Its screen lays out in the safe area and draws its own card, usually a root with `align = 'center'`. |
+| Style | What it looks like | When to use it |
+| --- | --- | --- |
+| `sheet` | A surface that rises from the bottom over a dimmed backdrop. | A task that the person finishes or drops, such as a new post, the queue of a player or the details of a ride. |
+| `fullScreen` | A surface over the whole screen, on the theme `background` color. | A flow that needs the whole screen and may not be dragged away, such as a camera or a sign in. |
+| `dialog` | The screen fades in over a dimmed backdrop and draws its own card, usually a [`dialog`](../lua-api/ui.md#uidialogproperties). | A short question with a few fields, such as the name of a new playlist. |
+| `drawer` | A panel the height of the screen that slides in from the start edge. | The places of an app on a phone, such as a menu of sections. |
+| `popover` | A floating card with an arrow that points at a control, and a sheet on a compact screen. | Choices or details of one control, such as the colors of a pen or the options of a filter. |
 
 ```lua
 local NewPost = haylen.class('NewPost', ui.Screen)
@@ -142,15 +144,103 @@ end
 ui.present(NewPost(), {style = 'sheet', onDismiss = function() print('The new post closed.') end})
 ```
 
-A tap on the backdrop dismisses a dismissible sheet or dialog. A presentation with `dismissible = false` stays until the app dismisses it, and the system back does nothing while it shows. A stack whose area lies in a presented screen closes when the presentation leaves.
+A screen is compact while its safe area is narrower than a form sheet with its margins, such as a phone in portrait. The same presentation adapts to the screen it shows on: a sheet fills the width of a compact screen and floats as a card on a wide one, and a popover becomes a sheet on a compact screen. When the window changes size, such as a tablet that turns or a split screen, the presentation lays out again at once.
+
+A tap on the backdrop, Escape, the system back and a drag dismiss a dismissible presentation. A presentation with `dismissible = false` stays until the app dismisses it.
+
+## Sheets and their detents
+
+A detent is a height a sheet rests at. A sheet lists its detents from the lowest to the highest: `'medium'` rests at half the screen, `'large'` near the top, `'fit'` at the height its screen measures, and a number at that height in UI units. A sheet with more than one detent shows a grabber along its top. The person drags the grabber, or any part of the sheet that no control takes, and the sheet glides to the detent nearest to where it was heading. A tap on the grabber moves it to the next detent, and screen readers read the grabber as a button that does the same. A drag well below the lowest detent dismisses the sheet.
+
+```lua
+-- The queue rests at half the screen, and the person pulls it up to see more.
+local queue = ui.present(Queue(), {detents = {'medium', 'large'}, onDetentChange = function(event)
+    queue.screen:showMore(event.detent == 2)
+end})
+```
+
+On a compact screen, the GUIs behind a modal sheet shrink a little as it nears the top, so the sheet reads as a card over the screen it came from. On a wide screen, a form sheet floats as a card in the middle and keeps one size, and a page sheet keeps its detents along the bottom with a bounded width, which suits a sheet that the person resizes, such as the details of a ride on a tablet.
+
+A sheet with `modal = false` leaves the input of the app to the GUIs under it and draws no backdrop, such as a map whose ride details stay open while the person moves the map. The system back moves such a sheet down to its lowest detent, and goes on to the app once it rests there.
+
+## Popovers, drawers and context menus
+
+A popover points at the node of its `anchor` with an arrow. It sits under the node when its screen fits there, and over it otherwise, and it is as tall as its screen measures. On a compact screen, it is a sheet instead, since a small card would be hard to reach there.
+
+```lua
+ui.present(Filters(), {style = 'popover', anchor = {gui = frame, id = 'filter'}, width = 520})
+```
+
+A drawer slides in from the start edge, which is the right edge of a right-to-left interface. It holds the places of an app on a phone, where a sidebar has no room. A drag toward its edge or a tap on the backdrop closes it.
+
+A context menu belongs to a control rather than to the flow, so it is the [`contextMenu`](../lua-api/ui.md#uicontextmenuproperties) node of the GUI. It opens with a right click, a long press or the menu key, and closes with the system back before the navigation goes back.
+
+## Alerts and action sheets
+
+An alert interrupts with a decision, such as whether to delete a draft. An action sheet offers the choices of one control, such as the ways to share a picture. The engine builds both from a title, a message and a list of actions, so they look and behave the same in every app, with the keyboard, a gamepad, a remote and a screen reader.
+
+```lua
+local answer = ui.presentAlert{
+    title = 'Delete the draft?',
+    actions = {{id = 'keep', text = 'Keep', role = 'cancel'}, {id = 'delete', text = 'Delete', role = 'destructive'}},
+}.result:await()
+```
+
+Every action has a role. The cancel action leads, and the person also chooses it by dismissing the alert. A destructive action shows in the danger color. The last default action is the preferred one and starts with the focus. An alert without a cancel action stays until the person picks an action, such as an update that the app needs.
+
+An action sheet points at its anchor as a popover on a wide screen, and rises from the bottom of a compact one as a sheet as tall as its actions.
+
+## Results of a flow
+
+A presented flow can hand a value back to whoever presented it, such as the color the person picked or the post they wrote. The screen dismisses its presentation with a result, and the `result` of the presentation is a promise that resolves with it once the presentation left. A dismissal by the person resolves it with `nil`, and an alert resolves it with the id of the action.
+
+```lua
+function ColorPicker:pick(color)
+    self.presentation:dismiss({result = {color = color}})
+end
+
+async.spawn(function()
+    local picked = ui.present(ColorPicker(), {detents = {'fit'}}).result:await()
+    if picked then
+        pen.color = picked.color
+    end
+end)
+```
+
+A result is a value that JSON holds, the way the results of other screens of the system are plain data, so it can also be saved with the state of the navigation.
+
+## Unsaved work
+
+A screen that holds unsaved work, such as a draft, keeps its place with its `back` hook. The hook hears every way the person goes back: the system back, a tap on the backdrop and a drag that would dismiss the sheet. It returns `true` to keep the screen and asks first, and the sheet glides back to its detent.
+
+```lua
+function Compose:back()
+    if self.text == '' then
+        return false
+    end
+
+    async.spawn(function()
+        local answer = ui.presentAlert{title = 'Discard the draft?', actions = {
+            {id = 'keep', text = 'Keep editing', role = 'cancel'},
+            {id = 'discard', text = 'Discard', role = 'destructive'},
+        }}.result:await()
+        if answer == 'discard' then
+            self.presentation:dismiss()
+        end
+    end)
+    return true
+end
+```
 
 ## The system back
 
 The system back is the back button of Android and of a gamepad, Escape, the east button of a gamepad and the menu button of a TV remote. A focus scope that takes it, such as an open dialog or popup, takes it first. Then the navigation takes it, in this order:
 
+It goes through the layers from the top: each presentation, and then the app under them. In each layer:
+
 1. The innermost stack that shows and has a screen under its top one pops. In a split, the detail goes back before the list.
 2. Tabs whose selected tab is not the first go to the first tab.
-3. The topmost presentation is dismissed.
+3. A modal presentation is dismissed, when it is dismissible, and keeps the back from the layers under it either way. A sheet that is not modal goes down to its lowest detent, and once it rests there the back goes on to the layer under it.
 
 The screen that a pop or a dismissal would take away hears `back` first and may keep its place. Only when nothing goes back does the press reach the app: the root of the GUI with the focus hears `cancel`, and on Android the back button leaves the app. So an app built on the navigation never calls `window.setBackLeavesApp`. A back button in a bar calls `ui.goBack()`, which goes back the same way, and `ui.canGoBack()` tells whether it would.
 
@@ -176,11 +266,11 @@ Scenes and navigation work at two levels. A [scene](../core/lifecycle.md#scene-l
 
 ## Cost
 
-A stack draws only the top screen of each stack that shows, and both screens of a change that plays. A screen that stays still costs nothing more than any other GUI, and a frame in which nothing moves allocates nothing in the navigation. The screens of hidden tabs keep their GUIs in memory and draw nothing. A transition moves the GUIs of two screens in their area with a clip, so its cost is the cost of drawing those two GUIs.
+A stack draws only the top screen of each stack that shows, and both screens of a change that plays. A presentation draws its screen and its surface, and a sheet that moves lays its screen out again at its new height. A screen that stays still costs nothing more than any other GUI, and a frame in which nothing moves allocates nothing in the navigation. The screens of hidden tabs keep their GUIs in memory and draw nothing. A transition moves the GUIs of two screens in their area with a clip, so its cost is the cost of drawing those two GUIs.
 
 ## From C++
 
-The classes of `haylen::ui` are the same model. `ui::Screen` builds its GUI in `build` and hears the same hooks. The `ui::Navigation` of the UI plugin creates stacks with `createStack`, tabs with `createTabs`, splits with `createSplit` and presentations with `present`, and `goBack` takes the system back.
+The classes of `haylen::ui` are the same model. `ui::Screen` builds its GUI in `build` and hears the same hooks. The `ui::Navigation` of the UI plugin creates stacks with `createStack`, tabs with `createTabs`, splits with `createSplit`, presentations with `present` and alerts with `presentAlert`, and `goBack` takes the system back. A presentation tells that it left with its `dismissed` signal, and `getResult` returns its result as JSON.
 
 ```cpp
 #include <memory>

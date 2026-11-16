@@ -126,6 +126,9 @@ class FocusNavigator final {
     // Drops the control a GUI keeps for when it draws again, once the GUI is unmounted, and lets go of the GUI in the frames drawn so far, which may outlive it.
     void forget(const Gui& gui);
 
+    // Keeps the focused control for its GUI, which gives it the focus back once it draws its controls again while the focus is on no control, such as the GUIs under a presentation that opens and takes the focus.
+    void parkFocus();
+
     // Whether the component being drawn and every node around it can take the focus.
     [[nodiscard]] bool isFocusable() const noexcept;
 

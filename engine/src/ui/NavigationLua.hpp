@@ -4,8 +4,10 @@
 #include <functional>
 #include <memory>
 #include <string_view>
+#include <vector>
 
 #include "haylen/ui/NavigationTransition.hpp"
+#include "haylen/ui/Presentation.hpp"
 #include "haylen/ui/Region.hpp"
 
 struct lua_State;
@@ -16,10 +18,9 @@ class Navigation;
 class NavigationSplit;
 class NavigationStack;
 class NavigationTabs;
-class Presentation;
 class Screen;
 
-// Adds the navigation to `haylen.ui`: the `Screen` base class, the functions that create stacks, tabs and splits and present screens, the system back, and the classes `NavigationStack`, `NavigationTabs`, `NavigationSplit` and `Presentation`.
+// Adds the navigation to `haylen.ui`: the `Screen` base class, the functions that create stacks, tabs and splits, present screens, alerts and action sheets, the system back, and the classes `NavigationStack`, `NavigationTabs`, `NavigationSplit` and `Presentation`.
 class NavigationLua final {
   public:
     static void install(lua_State* L);
@@ -39,7 +40,10 @@ class NavigationLua final {
     static constexpr std::array<std::string_view, 2> kTabFields{"id", "root"};
     static constexpr std::array<std::string_view, 6> kSplitFields{"primary", "detail", "root", "placeholder", "collapsed", "owner"};
     static constexpr std::array<std::string_view, 2> kRegionFields{"gui", "id"};
-    static constexpr std::array<std::string_view, 8> kPresentFields{"style", "transition", "dismissible", "color", "maxWidth", "maxHeight", "owner", "onDismiss"};
+    static constexpr std::array<std::string_view, 16> kPresentFields{"style", "transition", "dismissible", "modal", "color", "maxWidth", "maxHeight", "size", "detents", "detent", "grabber", "width", "anchor", "owner", "onDismiss", "onDetentChange"};
+    static constexpr std::array<std::string_view, 7> kAlertFields{"style", "title", "message", "actions", "anchor", "owner", "onDismiss"};
+    static constexpr std::array<std::string_view, 3> kActionFields{"id", "text", "role"};
+    static constexpr std::array<std::string_view, 2> kDismissFields{"result", "transition"};
     static constexpr std::array<std::string_view, 3> kTransitionFields{"effect", "duration", "ease"};
 
     [[nodiscard]] static Navigation& getNavigation(lua_State* L);
@@ -56,10 +60,24 @@ class NavigationLua final {
     // Takes the owner of the options table at the index, or the default owner, and pushes it, returning its index or 0.
     [[nodiscard]] static int pushOwner(lua_State* L, int options);
 
+    // Reads the options of `ui.present` from the table at the index.
+    static void readPresentOptions(lua_State* L, int index, Presentation::Options& options);
+    [[nodiscard]] static std::vector<Presentation::Detent> readDetents(lua_State* L, int index);
+
+    // Reads the function of an option of the table at the index and leaves it on the stack, returning its index, or returns 0 and pushes nothing when the option is missing.
+    [[nodiscard]] static int pushHandler(lua_State* L, int options, const char* name);
+
+    // Ties a presentation that Lua made to its owner, connects its handlers, keeps the promise of its result in its userdata and pushes the userdata.
+    static void finishPresentation(lua_State* L, const std::shared_ptr<Presentation>& presentation, int owner, int dismissHandler, int detentHandler);
+
+    // Pushes the promise of the result of the presentation userdata at the index, which settles once the presentation left, making it the first time it is asked for.
+    static void pushResult(lua_State* L, int index);
+
     static int navigationStack(lua_State* L);
     static int navigationTabs(lua_State* L);
     static int navigationSplit(lua_State* L);
     static int present(lua_State* L);
+    static int presentAlert(lua_State* L);
     static int goBack(lua_State* L);
     static int canGoBack(lua_State* L);
     static int screenState(lua_State* L);
@@ -102,6 +120,10 @@ class NavigationLua final {
     static int presentationStyle(lua_State* L);
     static int presentationDismissible(lua_State* L);
     static int presentationDismissed(lua_State* L);
+    static int presentationModal(lua_State* L);
+    static int presentationResult(lua_State* L);
+    static int presentationDetent(lua_State* L);
+    static int presentationSetDetent(lua_State* L);
 };
 
 } // namespace haylen::ui

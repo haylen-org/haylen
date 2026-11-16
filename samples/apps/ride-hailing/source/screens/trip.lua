@@ -22,6 +22,51 @@ Trip.replies = {'I am at the pickup point.', 'I will be there in two minutes.', 
 Trip.reasons = {{id = 'plans', text = 'My plans changed'}, {id = 'long', text = 'The driver takes too long'}, {id = 'wrong', text = 'I picked the wrong place'}, {id = 'other', text = 'Another reason'}}
 Trip.plate = {colors = {accent = Style.color.ink, onAccent = Style.color.yellow}, fonts = {caption = {size = Style.type.label}}}
 
+-- The chat with the driver in a sheet that rests at half the screen and opens to nearly all of it, which keeps its lines while the trip goes on.
+local Chat = haylen.class('Chat', ui.Screen)
+
+function Chat:init(trip)
+    self.trip = trip
+end
+
+function Chat:build()
+    local space = Style.space
+    local replies = {gap = space.xs, wrap = true}
+    for index, reply in ipairs(Trip.replies) do
+        replies[index] = ui.button{id = 'reply-' .. index, text = reply, onClick = function()
+            self:send(reply)
+        end}
+    end
+    return ui.column{gap = space.m, padding = {space.xs, space.l, space.l, space.l},
+        ui.row{gap = space.s,
+            ui.label{text = 'Message ' .. self.trip.trip.driver.name, font = 'heading', grow = 1},
+            ui.button{id = 'close', text = 'Close', onClick = function() self.presentation:dismiss() end},
+        },
+        ui.label{text = 'Messages go to your driver.', color = 'textMuted'},
+        ui.scroll{grow = 1, height = 0, ui.column{id = 'chatLines', gap = space.xs, children = self.trip.chat}},
+        ui.row(replies),
+    }
+end
+
+function Chat:send(text)
+    local space = Style.space
+    local chat = self.trip.chat
+    chat[#chat + 1] = ui.row{gap = 0, ui.spacer{grow = 1}, ui.card{padding = {space.xs, space.m}, style = {colors = {raised = Style.color.yellow, border = Style.color.yellow}}, ui.label{text = text}}}
+    chat[#chat + 1] = ui.row{gap = 0, ui.card{padding = {space.xs, space.m}, style = {colors = {raised = Style.color.mist, border = Style.color.mist}}, ui.label{text = 'Thanks, see you soon!'}}, ui.spacer{grow = 1}}
+    self.gui:replaceChildren('chatLines', chat)
+end
+
+-- The reasons to cancel in a dialog, which hands the answer back to the trip.
+local CancelRide = haylen.class('CancelRide', ui.Screen)
+
+function CancelRide:build()
+    return ui.dialog{title = 'Cancel the ride?', message = 'Tell us why, so we can do better.',
+        buttons = {{id = 'keep', text = 'Keep the ride'}, {id = 'cancel', text = 'Cancel the ride', variant = 'destructive'}},
+        onAnswer = function(event) self.presentation:dismiss({result = event.button}) end,
+        ui.radioGroup{id = 'reason', items = Trip.reasons, selected = 'plans'},
+    }
+end
+
 function Trip:tree()
     self.trip = Rides.current
     self.map = MapView()
@@ -42,12 +87,6 @@ end
 function Trip:layoutChanged(wide)
     local space = Style.space
     local driver = self.trip.driver
-    local replies = {gap = space.xs, wrap = true}
-    for index, reply in ipairs(Trip.replies) do
-        replies[index] = ui.button{id = 'reply-' .. index, text = reply, onClick = function()
-            self:sendChat(reply)
-        end}
-    end
     self.gui:replaceChildren('root', {
         Shell.mapButton('back', 'back', 'Back to the map', ui.goBack, {anchor = wide and 'topRight' or 'topLeft', margin = space.m}),
         Shell.mapButton('recenter', 'locate', 'Show the whole route', function()
@@ -75,17 +114,21 @@ function Trip:layoutChanged(wide)
                 ui.badge{text = driver.plate, tone = 'accent', solid = true, style = Trip.plate},
             },
             ui.row{id = 'actions', gap = space.s,
-                self:action('chat', 'chat', 'Message', function(event)
-                    event.gui:set('chatDialog', {open = true})
+                self:action('chat', 'chat', 'Message', function()
+                    self:openChat()
                 end),
-                self:action('safety', 'shield', 'Safety', function(event)
-                    event.gui:set('safetyDialog', {open = true})
+                self:action('safety', 'shield', 'Safety', function()
+                    self:openSafety()
                 end),
                 self:action('share', 'share', 'Share', function()
                     Shell.notify('Your trip is shared with your trusted contacts.')
                 end),
-                self:action('cancel', 'close', 'Cancel', function(event)
-                    event.gui:set('cancelDialog', {open = true})
+                self:action('cancel', 'close', 'Cancel', function()
+                    ui.present(CancelRide(), {style = 'dialog', owner = self, onDismiss = function(event)
+                        if event.result == 'cancel' then
+                            self:cancel()
+                        end
+                    end})
                 end),
             },
             ui.column{id = 'rating', visible = false, gap = space.s,
@@ -102,28 +145,6 @@ function Trip:layoutChanged(wide)
                 end},
             },
         }, wide),
-        ui.dialog{id = 'chatDialog', title = 'Message ' .. driver.name, message = 'Messages go to your driver.', buttons = {{id = 'close', text = 'Close'}},
-            ui.column{id = 'chatLines', gap = space.xs},
-            ui.row(replies),
-        },
-        ui.dialog{id = 'safetyDialog', title = 'Safety', message = 'Share where you are with the people you trust, or call for help at once.',
-            buttons = {{id = 'close', text = 'Close'}, {id = 'share', text = 'Share my trip'}, {id = 'help', text = 'Call for help', variant = 'destructive'}},
-            onAnswer = function(event)
-                if event.button == 'share' then
-                    Shell.notify('Your trip is shared with your trusted contacts.')
-                elseif event.button == 'help' then
-                    Shell.notify('Calling for help is not part of this sample.', 'warning')
-                end
-            end},
-        ui.dialog{id = 'cancelDialog', title = 'Cancel the ride?', message = 'Tell us why, so we can do better.',
-            buttons = {{id = 'keep', text = 'Keep the ride'}, {id = 'cancel', text = 'Cancel the ride', variant = 'destructive'}},
-            onAnswer = function(event)
-                if event.button == 'cancel' then
-                    self:cancel()
-                end
-            end,
-            ui.radioGroup{id = 'reason', items = Trip.reasons, selected = 'plans'},
-        },
     })
     self:showStage()
 end
@@ -154,11 +175,21 @@ function Trip:showStage()
     gui:set('progress', {visible = stage.id ~= 'arrived'})
 end
 
-function Trip:sendChat(text)
-    local space = Style.space
-    self.chat[#self.chat + 1] = ui.row{gap = 0, ui.spacer{grow = 1}, ui.card{padding = {space.xs, space.m}, style = {colors = {raised = Style.color.yellow, border = Style.color.yellow}}, ui.label{text = text}}}
-    self.chat[#self.chat + 1] = ui.row{gap = 0, ui.card{padding = {space.xs, space.m}, style = {colors = {raised = Style.color.mist, border = Style.color.mist}}, ui.label{text = 'Thanks, see you soon!'}}, ui.spacer{grow = 1}}
-    self.gui:replaceChildren('chatLines', self.chat)
+function Trip:openChat()
+    self.chatSheet = ui.present(Chat(self), {detents = {'medium', 'large'}, owner = self})
+end
+
+-- The safety tools point at their button on a wide window and rise from the bottom of a phone.
+function Trip:openSafety()
+    self.safety = ui.presentAlert{style = 'actionSheet', title = 'Safety', message = 'Share where you are with the people you trust, or call for help at once.', anchor = {gui = self.gui, id = 'safety'}, owner = self,
+        actions = {{id = 'share', text = 'Share my trip'}, {id = 'help', text = 'Call for help', role = 'destructive'}, {id = 'close', text = 'Close', role = 'cancel'}},
+        onDismiss = function(event)
+            if event.result == 'share' then
+                Shell.notify('Your trip is shared with your trusted contacts.')
+            elseif event.result == 'help' then
+                Shell.notify('Calling for help is not part of this sample.', 'warning')
+            end
+        end}
 end
 
 function Trip:cancel()

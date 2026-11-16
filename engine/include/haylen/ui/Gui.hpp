@@ -76,6 +76,9 @@ class Gui final {
     // Draws the GUI laid out in the area, faded to the opacity, as a screen that fades in or out.
     void draw(Context& context, const math::Rect& area, float opacity = 1.0F);
 
+    // Returns the size the root measures at a width, such as the height that a presented screen needs.
+    [[nodiscard]] math::Vec2 measure(Context& context, float width);
+
     // Tells the components of a GUI that the UI does not draw this frame, such as the GUI of a covered scene, that they stopped drawing.
     void skip(Context& context);
     [[nodiscard]] std::vector<Event> takeEvents();

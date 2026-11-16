@@ -49,7 +49,7 @@ Every kind is also a function of the module, so `ui.button{text = 'Play'}` build
 | [`column`](#uicolumnproperties) | [Containers](#containers) | Children from top to bottom. |
 | [`combo`](#uicomboproperties) | [Choices](#choices) | A field that opens a list of choices. |
 | [`contextMenu`](#uicontextmenuproperties) | [Overlays](#overlays) | A menu that opens over its child on a right click or a long press. |
-| [`dialog`](#uidialogproperties) | [Overlays](#overlays) | A modal window with a message and answer buttons. |
+| [`dialog`](#uidialogproperties) | [Overlays](#overlays) | The card of a dialog with a message and answer buttons. |
 | [`divider`](#uidividerproperties) | [Containers](#containers) | A thin line between parts of a layout. |
 | [`emptyState`](#uiemptystateproperties) | [Text](#text) | A placeholder for a view with nothing to show yet. |
 | [`filterField`](#uifilterfieldproperties) | [Inputs](#inputs) | A search field with a clear button. |
@@ -66,7 +66,6 @@ Every kind is also a function of the module, so `ui.button{text = 'Play'}` build
 | [`pageHeader`](#uipageheaderproperties) | [Text](#text) | A page title with a caption, on a banner if you want. |
 | [`panel`](#uipanelproperties) | [Containers](#containers) | A column on the panel color, without a border. |
 | [`playArea`](#uiplayareaproperties) | [Play areas](#play-areas) | The part of a screen where the game shows and takes the focus. |
-| [`popover`](#uipopoverproperties) | [Buttons](#buttons) | A button that opens a floating panel. |
 | [`progress`](#uiprogressproperties) | [Indicators](#indicators) | A bar filled up to a value. |
 | [`radioGroup`](#uiradiogroupproperties) | [Choices](#choices) | Options of which the player picks one. |
 | [`rangeSlider`](#uirangesliderproperties) | [Inputs](#inputs) | A track with two knobs that pick a range. |
@@ -716,24 +715,6 @@ ui.mount(ui.menuButton{
 })
 ```
 
-### ui.popover(properties)
-
-A popover is a button that opens a floating panel, which holds the one child of the node. It takes the properties of `button` except `checked`, plus `contentWidth`. Its panel opens and scrolls like the list of a [`combo`](#uicomboproperties).
-
-| Property | Type | Default | Meaning |
-| --- | --- | --- | --- |
-| `contentWidth` | number from 0 to 10000 | `480` | The width of the floating panel. |
-
-```lua
-local ui = require('haylen.ui')
-
-ui.mount(ui.popover{
-    text = 'Help',
-    contentWidth = 520,
-    ui.label{text = 'Drag the map to look around and tap a tile to walk there.'},
-})
-```
-
 ## Choices
 
 Choices let the player pick a value. They all take the focus.
@@ -794,7 +775,7 @@ ui.mount(ui.radioGroup{
 
 ### ui.combo(properties)
 
-A combo is a field that shows the selected item and opens a list of the others. Picking another item reports `change`, with the item id as `value`. The list opens below the field. It opens above instead when the room below is too short for it and the room above is larger. It stays inside the screen, and a list taller than its room scrolls beside a [scroll bar](#scroll-bars). The menus of `menuButton` and `contextMenu` and the popups of `popover` and `colorField` open and scroll the same way.
+A combo is a field that shows the selected item and opens a list of the others. Picking another item reports `change`, with the item id as `value`. The list opens below the field. It opens above instead when the room below is too short for it and the room above is larger. It stays inside the screen, and a list taller than its room scrolls beside a [scroll bar](#scroll-bars). The menus of `menuButton` and `contextMenu` and the popup of `colorField` open and scroll the same way.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -1539,26 +1520,21 @@ ui.mount(ui.settingsForm{
 
 ## Overlays
 
-Overlays float above the layout and take no room in it.
+Overlays show over the rest of the UI: the card of a dialog, which a presentation shows over the dimmed screen, toasts, windows and context menus.
 
 ### ui.dialog(properties)
 
-A dialog is a modal window over the whole screen, with a title, a message, optional children and answer buttons. A backdrop in the theme `overlay` color dims everything behind it. The dialog and its backdrop fade in together when it opens, and fade out together when it closes, over the theme `transitionDuration`. A closing dialog takes no more answers. The last button starts with the focus.
+A dialog is the card of a dialog, with a title, a message, optional children and answer buttons, on the theme `dialog` surface. A [presentation](#uipresentscreen-options) of the `dialog` style shows it over the dimmed screen: the presentation takes the input and the focus of everything under it, fades the card and its backdrop in and out, and closes it with the system back. [`ui.presentAlert`](#uipresentalertoptions) builds the card of the common alerts for you.
 
-- Pressing a button closes the dialog and reports `answer`, with the button id as `button`.
-- Escape or the east gamepad button closes a dismissible dialog and reports `dismiss`.
-- A dialog that the player closed shows again when `set` sets `open = true`.
+- Pressing a button reports `answer`, with the button id as `button`.
 - The buttons line up in one row at the end of the dialog while they fit its width. When they do not fit, as on a phone in portrait, they stack across the whole width, with the last button, usually the main answer, on top and the first one at the bottom. A label too long for the width wraps, and its button grows taller.
-- A dialog stays inside the screen. When its title, message and children are taller than it, they scroll above the buttons, beside a [scroll bar](#scroll-bars) at the edge of the dialog. The padding of the dialog holds the lane of the bar.
-- One dialog shows at a time. A dialog that opens while another one shows waits until that one closes.
-- A dialog closes when its node stops drawing, because it, a node around it or its GUI was hidden. It shows again once it draws while `open` is still `true`. The popups of menu buttons, popovers, combos, color fields and context menus close the same way.
+- A dialog is as wide as the theme `dialogWidth` within the room it has, a `panelPadding` away from its edges, and it sits in the middle of that room unless its `align` says otherwise. It is as tall as its content within the safe area. When its title, message and children are taller than that, they scroll above the buttons, beside a [scroll bar](#scroll-bars) at the edge of the dialog. The padding of the dialog holds the lane of the bar.
+- The last button takes the focus when the dialog first draws.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `open` | boolean | `false` | Shows the dialog. |
 | `title` | text | none | The title, in the heading font. |
 | `message` | text | none | The message under the title. |
-| `dismissible` | boolean | `true` | Lets Escape and the east gamepad button close the dialog. |
 | `glass` | boolean | `false` | Draws the dialog on [glass](#glass-surfaces), without its shadow, over the dimmed screen behind it. |
 | `buttons` | list of buttons | empty | The answer buttons, lined up at the bottom right in list order. |
 
@@ -1567,20 +1543,20 @@ A button is a table with a unique `id` string, a `text` and a `variant`. Buttons
 ```lua
 local ui = require('haylen.ui')
 
-ui.mount(ui.column{
-    ui.button{text = 'Quit', onClick = function(event)
-        event.gui:set('confirm', {open = true})
-    end},
-    ui.dialog{
-        id = 'confirm',
+-- A dialog with a check box, which a screen of the dialog style shows over the dimmed screen.
+local Confirm = {}
+
+function Confirm:build()
+    return ui.dialog{
         title = 'Quit the app?',
         message = 'Your progress is saved.',
         buttons = {{id = 'stay', text = 'Stay'}, {id = 'quit', text = 'Quit', variant = 'destructive'}},
-        onAnswer = function(event) print('The player chose ' .. event.button .. '.') end,
-        onDismiss = function(event) print('The dialog was dismissed.') end,
+        onAnswer = function(event) self.presentation:dismiss({result = event.button}) end,
         ui.checkbox{text = 'Do not ask again'},
-    },
-})
+    }
+end
+
+local answer = ui.present(Confirm, {style = 'dialog'}).result:await()
 ```
 
 ### ui.toast(properties)
@@ -1856,7 +1832,7 @@ Every kind takes these properties. A hidden node takes no room.
 | `maxWidth` | number | unbounded | The largest width. |
 | `minHeight` | number | `0` | The smallest height. |
 | `maxHeight` | number | unbounded | The largest height. |
-| `align` | string | depends on the kind | The value `'start'`, `'center'`, `'end'` or `'stretch'`. A column places the node across its width with it, a row across its height, and a grid inside its cell. A stack or the GUI root places it in both directions. Without `align`, rows center their children. Everywhere else, these kinds use `'start'`: labels, buttons, image buttons, menu buttons, popovers, chips, check boxes, toggles, radio groups, badges, status indicators, circular progress indicators, icons, images, avatars, rich text and touch controls. The busy indicator uses `'center'`, and every other kind stretches. |
+| `align` | string | depends on the kind | The value `'start'`, `'center'`, `'end'` or `'stretch'`. A column places the node across its width with it, a row across its height, and a grid inside its cell. A stack or the GUI root places it in both directions. Without `align`, rows center their children. Everywhere else, these kinds use `'start'`: labels, buttons, image buttons, menu buttons, chips, check boxes, toggles, radio groups, badges, status indicators, circular progress indicators, icons, images, avatars, rich text and touch controls. The busy indicator and the dialog use `'center'`, and every other kind stretches. |
 | `anchor` | string | none | Takes the node out of the layout of its parent and places it against the safe area, the screen or its parent, as [anchors](#anchors) describes. The value `'none'` puts it back in the layout. |
 | `anchorTo` | string | `'safe'` | The area an anchored node is placed in: `'safe'`, `'screen'` or `'parent'`. The value `'parent'` is the bounds of the parent, which for the root of a GUI is the area of the GUI. |
 | `margin` | insets | `0` | The space around the node. Its parent places it that far from the nodes and edges around it, and an anchored node keeps that distance from the edges of its area. |
@@ -1926,7 +1902,7 @@ ui.mount(ui.stack{width = 1200, height = 700,
 
 ### Scroll bars
 
-Every area that scrolls keeps its scroll bar in a lane of its own along its end edge. The bar never covers the content and never touches it. These areas scroll: `scroll`, `collection`, the text of `textArea`, the popups of `combo`, `menuButton`, `contextMenu`, `popover` and `colorField`, the body of `dialog`, and the windows of [`haylen.imgui`](imgui.md) with the debug overlay. For content that scrolls up and down, the end edge is the right edge, or the left one in a right-to-left interface. For content that scrolls sideways, it is the bottom edge.
+Every area that scrolls keeps its scroll bar in a lane of its own along its end edge. The bar never covers the content and never touches it. These areas scroll: `scroll`, `collection`, the text of `textArea`, the popups of `combo`, `menuButton`, `contextMenu` and `colorField`, the body of `dialog`, and the windows of [`haylen.imgui`](imgui.md) with the debug overlay. For content that scrolls up and down, the end edge is the right edge, or the left one in a right-to-left interface. For content that scrolls sideways, it is the bottom edge.
 
 | Metric | Default | Part of the lane |
 | --- | --- | --- |
@@ -2040,7 +2016,7 @@ The direction of the layout is separate from the direction of each text. The cal
 - Rows place their first child at the right, and grids fill their rows from the right. The values `start` and `end` of `align`, `justify` and `textAlign` name the right and the left.
 - Check boxes, radio buttons and toggles put their box on the right of their text, and buttons put their icon on the right. List rows, form fields, settings rows, tabs, accordions, trees, tables and alerts start from the right.
 - Sliders, range sliders, progress bars and toggles fill from the right. The left and right arrow keys move sliders, steppers, segmented controls, carousels and splitters the way they point on screen.
-- Steppers and carousels swap their ends, so the arrow that points left moves forward. The closed arrows of trees and accordions point left, and the arrow of a combo stands at its left. Menus, combo lists, popovers and context menus open from the right edge of their button.
+- Steppers and carousels swap their ends, so the arrow that points left moves forward. The closed arrows of trees and accordions point left, and the arrow of a combo stands at its left. Menus, combo lists and context menus open from the right edge of their button.
 - Text fields line their text up on the right. In every direction, the caret stands on the side of the letter it follows, and the left and right arrow keys move it the way they point on screen. A selection across a change of direction covers every run it spans.
 
 Some things never mirror. Anchors, `padding` given as four sides and the properties `focusLeft` and `focusRight` name fixed sides. Images and icons draw as they are. A node with `direction = 'leftToRight'` inside a right-to-left UI keeps its own direction, for a phone number, a code or a game board.
@@ -2272,7 +2248,7 @@ Colors are `'#RRGGBB'` or `'#AARRGGBB'` strings. The accent and the four tones `
 | `raised` | `#FF2C3147` | `#FFFFFFFF` | The fill of cards, buttons, fields and chips. |
 | `tooltip` | `#FF0F111A` | `#FF1B1E2B` | The background of tooltips, toasts and the counts of slots. |
 | `overlay` | `#A0000000` | `#66000000` | The backdrop behind dialogs and the base of touch controls. |
-| `shadow` | `#66000000` | `#291B1E2B` | The soft shadow under dialogs, windows, toasts, tooltips and the popups of combos, menus, popovers and color fields. |
+| `shadow` | `#66000000` | `#291B1E2B` | The soft shadow under dialogs, windows, toasts, tooltips, popovers and the popups of combos, menus and color fields. |
 | `hover` | `#14FFFFFF` | `#0F000000` | The layer over hovered controls and rows. |
 | `pressed` | `#24FFFFFF` | `#1F000000` | The layer over pressed controls. |
 | `selection` | `#404C7DFF` | `#334C7DFF` | Selected rows, checked buttons and selected text. |
@@ -2485,7 +2461,7 @@ A surface paints a part of a component with a nine-slice image instead of flat c
 | `tooltip` | The tooltips of every node. The text stays inside the `padding` of the surface. |
 | `toast` | `toast`. The text and the tone bar stay inside the `padding` of the surface, where the bar is a strip with round ends. |
 | `banner` | `pageHeader` with `banner = true`. |
-| `button`, `buttonHover`, `buttonPressed` | Default, toolbar and icon buttons, menu buttons, popovers, dialog buttons and the buttons of number fields. |
+| `button`, `buttonHover`, `buttonPressed` | Default, toolbar and icon buttons, menu buttons, dialog buttons and the buttons of number fields. |
 | `buttonPrimary`, `buttonPrimaryHover`, `buttonPrimaryPressed` | Primary buttons. |
 | `buttonDestructive`, `buttonDestructiveHover`, `buttonDestructivePressed` | Destructive buttons. |
 | `field`, `fieldFocused` | Text fields, secret fields, text areas, filter fields, number fields, combos, color fields, steppers and key captures. |
@@ -2498,7 +2474,7 @@ A surface paints a part of a component with a nine-slice image instead of flat c
 | `chip`, `chipSelected` | Chips. |
 | `badge` | Badges. |
 | `segment`, `segmentSelected` | The strip of segmented controls and their selected segment. |
-| `menu` | The popups of combos, menu buttons, context menus, popovers and color fields. |
+| `menu` | The popups of combos, menu buttons, context menus and color fields. |
 | `window` | Windows. With a `titleBar` image, the window starts behind the middle of its title bar, so the bar caps it and no corner of the window shows around the ends of the bar. |
 | `titleBar` | The title bar across the top of windows, and the band behind the title of dialogs across the content of the dialog, which only an image draws. The title stays inside the `padding` of the surface. |
 | `close`, `closeHover`, `closePressed` | The close button of windows and toasts, in place of the cross, drawn over the whole button. The `danger` color fills it with `colorize`. |
@@ -2598,7 +2574,7 @@ A theme may give the interactions of the UI a sound each, such as a click for ev
 
 | Interaction | When it plays |
 | --- | --- |
-| `press` | A press of a button, an image button, a menu button, a popover, a combo, a tab, a list row, a table row, a tree row, a slot, a collection item, an item of a menu or a context menu, a dialog button, a toast or its action, the clear button of a filter field or the header of an accordion section. |
+| `press` | A press of a button, an image button, a menu button, a combo, a tab, a list row, a table row, a tree row, a slot, a collection item, an item of a menu or a context menu, a dialog button, a toast or its action, the clear button of a filter field or the header of an accordion section. |
 | `focus` | The player moves the focus with the keyboard, a gamepad or a remote: a direction, Tab, `uiFocus` or a page of a collection. A pointer, a script and a screen reader move the focus without it. |
 | `toggle` | A choice changes: a checkbox, a toggle, a radio group, a selectable chip, a segmented control or the pick of a combo. |
 | `step` | A slider, a range slider or a stepper changes its value, or a step button of a number field is pressed. |
@@ -2682,7 +2658,7 @@ The UI moves the focus with these actions of [`haylen.input`](input.md#action-ma
 - A direction moves the focus to the nearest control in that direction, and prefers controls in line with the focused one. A node that names a neighbor with `focusLeft`, `focusRight`, `focusUp` or `focusDown` sends it there instead.
 - Some controls use left and right themselves while they have the focus: sliders, range sliders, steppers, segmented controls and the page dots of a carousel.
 - Tab and Shift Tab walk the controls in the order they draw, also out of a text field being edited. A text field they reach starts editing. While nothing has the focus, Tab goes to the first control of the topmost GUI with controls, and Shift Tab to its last one. So a keyboard alone, as a screen reader user has, enters a GUI that focuses nothing by itself.
-- The focus stays inside its GUI, or inside the GUIs that share it with [`sharedFocus`](#guisharedfocus). A dialog, a popover and a menu keep it until they close, and then it returns to where it was.
+- The focus stays inside its GUI, or inside the GUIs that share it with [`sharedFocus`](#guisharedfocus). A modal presentation and a menu keep it until they close, and then it returns to where it was.
 - A GUI that stops drawing keeps the control that had the focus. That happens to the GUI of a covered scene, or to a GUI with `visible` set to `false`. Once the GUI draws again, the control gets the focus back, unless the focus moved elsewhere meanwhile.
 - A `window` belongs to the navigation of its GUI. A move reaches its controls from the rest of the GUI and brings it to the front. Closing it returns the focus to where it was.
 - A node with `focusScope = true` keeps the focus while the focus is inside. A move never enters a scope from outside: only `autofocus`, the `focus` command or a click do.
@@ -3951,7 +3927,7 @@ ui.mount(ui.column{
 
 ## Navigation
 
-The navigation shows the screens of an app: stacks that push and pop screens in the area of a node of a frame, tabs that each keep a stack, a split of a list and its detail, and presentations over everything. The [navigation guide](../ui/navigation.md) explains the model, when to use each part and how they fit together.
+The navigation shows the screens of an app: stacks that push and pop screens in the area of a node of a frame, tabs that each keep a stack, a split of a list and its detail, and presentations over everything, such as sheets, popovers, drawers, dialogs and the alerts and action sheets that the engine builds. The [navigation guide](../ui/navigation.md) explains the model, when to use each part and how they fit together.
 
 ### ui.Screen
 
@@ -3966,7 +3942,7 @@ The base class of screens, for [`haylen.class`](haylen.md). A screen is a table 
 | `disappeared(self)` | The screen no longer shows. |
 | `update(self, dt)` | Every frame while the screen draws, with the real time of the frame in seconds. |
 | `render(self)` | Every frame while the screen draws, before the UI draws. |
-| `back(self)` | The system back is about to take the screen away. Returning `true` keeps it. |
+| `back(self)` | The person is about to take the screen away: the system back, or for a presented screen a tap on the backdrop or a drag that dismisses it. Returning `true` keeps it, such as to ask first whether to drop unsaved work. |
 | `remove(self)` | The screen left its stack or its presentation for good. Everything it owns ends right after, and its GUI unmounts. |
 
 The engine sets these fields on the table:
@@ -4073,25 +4049,92 @@ split:showDetail(Chat(person))
 
 ### ui.present(screen, options)
 
-Presents a screen over everything the app shows and returns its [`Presentation`](#presentation). The GUIs under it take no input or focus until it leaves. The table `options` is optional.
+Presents a screen over everything the app shows and returns its [`Presentation`](#presentation). A modal presentation takes the input and the focus of the GUIs under it until it leaves, and the focus goes back where it was. The table `options` is optional. The [navigation guide](../ui/navigation.md#presentations-open-a-new-flow) explains when to use each style.
+
+| Style | What it is |
+| --- | --- |
+| `'sheet'` | A surface of the theme `panel` color that rises from the bottom. On a compact screen it fills the width and rests at one of its `detents`. On a wide screen a `'form'` sheet floats as a rounded card in the middle, and a `'page'` sheet rests at its detents along the bottom with a bounded width. |
+| `'fullScreen'` | A surface of the theme `background` color over the whole screen, which lays out the screen in the safe area. |
+| `'dialog'` | The screen fades in over the dimmed screen and lays out in the safe area, where it draws its own card, usually a [`dialog`](#uidialogproperties). |
+| `'drawer'` | A panel the height of the screen that slides in from the start edge, the right edge of a right-to-left interface. |
+| `'popover'` | A floating card with an arrow under or over the node of `anchor`, as tall as its screen measures. On a compact screen it is a sheet. |
+
+A screen is compact while its safe area is narrower than 824 UI units, such as a phone in portrait.
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `style` | string | `'sheet'` | `'sheet'` rises on a surface of the theme `panel` color, which fills the width of a narrow screen up to its bottom edge and floats as a rounded card in the middle of a wide one, over a dimmed backdrop. `'fullScreen'` rises over the whole screen on the theme `background` color and lays out the screen in the safe area. `'dialog'` fades in over a dimmed backdrop and lays out the screen in the safe area, where the screen draws its own card. |
-| `transition` | table | a rise, or a fade of 0.2 seconds for a dialog | The [transition](#transitions) of the presentation and of its dismissal. |
-| `dismissible` | boolean | `true` | Whether a tap on the backdrop and the system back dismiss it. |
-| `color` | color | the theme color | The color of the surface of a sheet or a full screen presentation, such as a dark stage behind pictures. |
-| `maxWidth` | number | `760` | The widest that a sheet grows on a wide screen, in UI units. |
-| `maxHeight` | number | `1000` | The tallest that a sheet grows on a wide screen, in UI units. |
+| `style` | string | `'sheet'` | One of the styles above. |
+| `transition` | table | a rise, a slide for a drawer, or a fade of 0.2 seconds for a dialog and a popover | The [transition](#transitions) of the presentation and of its dismissal. |
+| `dismissible` | boolean | `true` | Whether the person dismisses it with a tap on the backdrop, a drag, Escape or the system back. |
+| `modal` | boolean | `true` | The value `false` leaves the input and the focus of the app to the GUIs under a sheet, which draws no backdrop, such as the queue of a player that stays open while the person browses. Only a sheet can be not modal. |
+| `detents` | list | `{'large'}` | The heights a sheet rests at, from the lowest to the highest: `'medium'` for half the screen, `'large'` for nearly all of it, `'fit'` for the height its screen measures, or a number, the height of its screen in UI units. |
+| `detent` | integer | `1` | The place in `detents` of the detent the sheet opens at. |
+| `grabber` | boolean | `true` with more than one detent | Shows the grabber along the top of a sheet, which a drag moves and a tap moves to the next detent. |
+| `size` | string | `'form'` | How a sheet shows on a wide screen: `'form'` or `'page'`. |
+| `maxWidth` | number | `760` | The widest that a form sheet grows on a wide screen, in UI units. |
+| `maxHeight` | number | `1000` | The tallest that a form sheet grows on a wide screen, in UI units. |
+| `width` | number | `480` for a popover, `560` for a drawer | The width of a popover and of a drawer, in UI units. A drawer takes at most 85 percent of the screen. |
+| `anchor` | table | none | The node a popover points at, `{gui = gui, id = 'share'}`. |
+| `color` | color | the theme color | The color of the surface, such as a dark stage behind pictures. |
 | `owner` | table or userdata | the default owner | Dismisses the presentation at once when it ends. |
-| `onDismiss` | function | none | Hears the table `{presentation}` once the presentation left and its screen was removed. |
+| `onDismiss` | function | none | Hears the table `{presentation, result}` once the presentation left and its screen was removed. |
+| `onDetentChange` | function | none | Hears the table `{presentation, detent}` when a sheet rests at another detent. |
 
-The backdrop takes the theme `overlay` color. A screen that a stack or another presentation holds raises `The screen already shows in a navigation stack or in a presentation.`, and a width or height that is not positive raises `The largest width and height of a sheet must be positive.`.
+A drag on the grabber, or on a part of the surface that no control takes, moves a sheet between its detents and glides it to the detent nearest to where it was heading. A sheet dragged well below its lowest detent, a card dragged down, and a drawer dragged toward its edge are dismissed, after the screen agreed through its `back` hook, and otherwise they glide back. On a compact screen, the GUIs behind a modal sheet shrink a little as it nears the top, so the sheet reads as a card over them. While the system asks for reduced motion, a slide and a rise cross fade instead.
+
+The backdrop takes the theme `overlay` color. A screen that a stack or another presentation holds raises `The screen already shows in a navigation stack or in a presentation.`, a width or height that is not positive raises `The widths and heights of a presentation must be positive.`, a detent that is not one of the names or a number raises `A detent is "medium", "large", "fit" or a height in UI units, not <value>.`, a `detent` out of the list raises `The "detent" a sheet opens at is the place of one of its detents, from 1 to <count>.`, a presentation other than a sheet that is not modal raises `Only a sheet can leave the input of the app under it, so only a sheet can be not modal.`, and a popover without an anchor raises `A popover needs the node it points at as its anchor.`.
 
 ```lua
-local sheet = ui.present(NewPost(), {style = 'sheet', onDismiss = function()
-    print('The new post closed.')
+local ui = require('haylen.ui')
+
+-- The queue of a player rests at half the screen and opens to nearly all of it.
+local queue = ui.present(Queue(), {detents = {'medium', 'large'}, onDetentChange = function(event)
+    print('The queue rests at detent ' .. event.detent .. '.')
 end})
+
+-- A picker returns what the person picked to whoever presented it.
+local color = ui.present(ColorPicker(), {style = 'popover', anchor = {gui = frame, id = 'color'}}).result:await()
+
+-- A menu of the app slides in from the start edge.
+ui.present(Menu(), {style = 'drawer'})
+```
+
+### ui.presentAlert(options)
+
+Presents an alert or an action sheet that the engine builds and returns its [`Presentation`](#presentation), whose `result` is the id of the action the person chose. An alert interrupts with a decision, such as a confirmation before something is deleted, as a [`dialog`](#uidialogproperties) over the dimmed screen. An action sheet offers the choices of one control, such as the ways to share a picture: next to its anchor as a popover on a wide screen, and from the bottom of a compact one or without an anchor.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `style` | string | `'alert'` | `'alert'` or `'actionSheet'`. |
+| `title` | text | none | The title. |
+| `message` | text | none | The message under the title. |
+| `actions` | list | required | The actions, each a table `{id = 'delete', text = 'Delete', role = 'destructive'}`. |
+| `anchor` | table | none | The node an action sheet points at on a wide screen, `{gui = gui, id = 'share'}`. |
+| `owner` | table or userdata | the default owner | Dismisses the alert at once when it ends. |
+| `onDismiss` | function | none | Hears the table `{presentation, result}` once the alert left. |
+
+The role of an action is `'default'`, `'cancel'` or `'destructive'`. The cancel action leads, so it sits at the start of a row of answers and under the other actions of an action sheet. The person also chooses it by dismissing the alert with Escape, the system back or a tap outside an action sheet, and an alert without a cancel action stays until one of its actions closes it. A destructive action shows in the danger color, and the last default action of an alert is the preferred one, in the primary color, with the focus.
+
+A missing list raises `An alert lists its actions in "actions", each a table with an "id", a "text" and a "role".`, an empty list raises `An alert needs at least one action.`, a missing id raises `Every action of an alert needs an id.`, a repeated id raises `The alert uses the action id "<id>" more than once.` and a second cancel action raises `An alert has one cancel action at most.`.
+
+```lua
+local ui = require('haylen.ui')
+
+local answer = ui.presentAlert{
+    title = 'Delete the playlist?',
+    message = 'Its songs stay in your library.',
+    actions = {{id = 'keep', text = 'Keep', role = 'cancel'}, {id = 'delete', text = 'Delete', role = 'destructive'}},
+}.result:await()
+
+if answer == 'delete' then
+    deletePlaylist()
+end
+
+ui.presentAlert{style = 'actionSheet', anchor = {gui = frame, id = 'share'}, actions = {
+    {id = 'copy', text = 'Copy link'},
+    {id = 'message', text = 'Send in a message'},
+    {id = 'cancel', text = 'Cancel', role = 'cancel'},
+}}
 ```
 
 ### ui.goBack()
@@ -4104,7 +4147,7 @@ ui.button{icon = 'icons/back.svg', accessibilityLabel = 'Back', onClick = ui.goB
 
 ### ui.canGoBack()
 
-Returns whether the system back goes back somewhere in the app: a stack that pops, tabs that go to the first tab or a presentation that leaves. While it returns `false`, the back button of Android leaves the app.
+Returns whether the system back goes back somewhere in the app: a stack that pops, tabs that go to the first tab, a modal presentation or a sheet above its lowest detent. While it returns `false`, the back button of Android leaves the app.
 
 ```lua
 frame:set('back', {visible = ui.canGoBack()})
@@ -4285,12 +4328,15 @@ split.collapsed = viewport.safeRect().width < 900
 
 A `Presentation`, named `haylen.Presentation` in messages, shows a screen over everything. Its screen sets its field `presentation`.
 
-### presentation:dismiss(transition)
+### presentation:dismiss(options)
 
-Plays the transition back and removes the screen once the presentation left. A presentation that leaves already stays as it is.
+Plays the transition back and removes the screen once the presentation left. The table `options` is optional: `result` is the value that whoever presented it receives, which JSON holds, and `transition` is the [transition](#transitions) of the dismissal. A presentation that leaves already stays as it is. A result that JSON cannot hold raises the errors of the [JSON values of `haylen.storage`](storage.md#json-values), and a table with another key raises `Unknown option "<key>".`.
 
 ```lua
-sheet:dismiss()
+-- A picker hands what the person picked to whoever presented it.
+function Picker:pick(color)
+    self.presentation:dismiss({result = {color = color}})
+end
 ```
 
 ### Properties
@@ -4298,14 +4344,24 @@ sheet:dismiss()
 | Property | Type | Meaning |
 | --- | --- | --- |
 | `screen` | screen | The presented screen. Read only. |
-| `style` | string | `'sheet'`, `'fullScreen'` or `'dialog'`. Read only. |
-| `dismissible` | boolean | Whether a tap on the backdrop and the system back dismiss it. Read only. |
+| `style` | string | `'sheet'`, `'fullScreen'`, `'dialog'`, `'drawer'` or `'popover'`. Read only. |
+| `dismissible` | boolean | Whether the person dismisses it. Read only. |
+| `modal` | boolean | Whether it takes the input of the GUIs under it. Read only. |
 | `dismissed` | boolean | Whether the presentation leaves or left. Read only. |
+| `detent` | integer | The place in `detents` of the detent a sheet rests at. Setting it glides the sheet there. A place out of the list raises `A sheet rests at the place of one of its detents, from 1 to <count>.`. |
+| `result` | promise | A promise that resolves with the result once the presentation left, or with `nil` when the person dismissed it, for `await` in a coroutine. The same promise every time. Read only. |
 
 ```lua
-if not sheet.dismissed then
-    sheet:dismiss({effect = 'fade'})
-end
+local async = require('async')
+
+async.spawn(function()
+    local picked = ui.present(Picker(), {detents = {'fit'}}).result:await()
+    if picked then
+        applyColor(picked.color)
+    end
+end)
+
+queue.detent = 2
 ```
 
 ## Gui
@@ -4421,7 +4477,7 @@ Sends the command `name` to the node `id`. The table `arguments` is optional, an
 - The command `'scrollTo'` scrolls a `scroll` to a place, as described below.
 - The commands `'show'`, `'update'` and `'hide'` add, change and let go the notices of a `toast`, as [its section](#uitoastproperties) describes.
 
-These kinds take the focus: `button`, `imageButton`, `menuButton`, `popover`, `chip`, `checkbox`, `toggle`, `radioGroup`, `combo`, `segmentedControl`, `textField`, `secretField`, `textArea`, `filterField`, `numberField`, `slider`, `rangeSlider`, `stepper`, `keyCapture`, `colorField`, `list`, `tree`, `slotGrid`, `accordion`, `carousel`, `playArea`, `collection` and a `richText` with links. Some of them choose an entry:
+These kinds take the focus: `button`, `imageButton`, `menuButton`, `chip`, `checkbox`, `toggle`, `radioGroup`, `combo`, `segmentedControl`, `textField`, `secretField`, `textArea`, `filterField`, `numberField`, `slider`, `rangeSlider`, `stepper`, `keyCapture`, `colorField`, `list`, `tree`, `slotGrid`, `accordion`, `carousel`, `playArea`, `collection` and a `richText` with links. Some of them choose an entry:
 
 - A radio group, a list, a tree and a slot grid focus their selected entry. They focus their first entry that can be picked when none is selected, or when the selected one cannot take the focus, such as an item of a closed branch.
 - An accordion focuses its first header.
@@ -4543,7 +4599,7 @@ end
 
 ### gui.sharedFocus
 
-A readable and writable boolean, `false` unless `ui.mount` received `sharedFocus = true`. Every GUI is a navigation space of its own, where directions and Tab never leave it. The GUIs that share the focus form one space together. So a remote or a gamepad moves from the pages of an app to a tab bar or a player bar mounted as a GUI of its own, and back. Dialogs, popovers, menus and focus scopes still keep the focus inside them, and cancel still goes to the GUI that holds the focus.
+A readable and writable boolean, `false` unless `ui.mount` received `sharedFocus = true`. Every GUI is a navigation space of its own, where directions and Tab never leave it. The GUIs that share the focus form one space together. So a remote or a gamepad moves from the pages of an app to a tab bar or a player bar mounted as a GUI of its own, and back. Modal presentations, menus and focus scopes still keep the focus inside them, and cancel still goes to the GUI that holds the focus.
 
 ```lua
 local ui = require('haylen.ui')

@@ -10,11 +10,13 @@
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/input/Key.hpp"
+#include "haylen/text/Direction.hpp"
 #include "haylen/ui/Navigation.hpp"
 #include "haylen/ui/NavigationSplit.hpp"
 #include "haylen/ui/NavigationStack.hpp"
 #include "haylen/ui/NavigationTabs.hpp"
 #include "haylen/ui/Presentation.hpp"
+#include "haylen/ui/Scaling.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/RecordingScreen.hpp"
 #include "support/UiFixture.hpp"
@@ -47,6 +49,21 @@ class NavigationTest : public ::testing::Test, public test::UiFixture {
     // Runs the frames of a transition of the default duration and one more.
     void settle() {
         frames(30);
+    }
+
+    // Makes the window as narrow as a phone in portrait, with one UI unit for each point of the screen.
+    void usePhone() {
+        getFixture().host().resize({480.0F, 1000.0F});
+        getUi().setScaling({.mode = Scaling::Mode::Physical, .factor = 1.0F});
+        frames(3);
+    }
+
+    // Press and drag the pointer at points in UI units.
+    void clickUi(math::Vec2 point) {
+        click(point * getUi().getBackend().getScale());
+    }
+    void dragUi(math::Vec2 from, math::Vec2 to) {
+        drag(from * getUi().getBackend().getScale(), to * getUi().getBackend().getScale(), 8);
     }
 
     std::shared_ptr<Gui> frame;
@@ -216,7 +233,7 @@ TEST_F(NavigationTest, RefusesAScreenThatAnotherStackHolds) {
     const std::shared_ptr<NavigationStack> second = getNavigation().createStack(getArea("detail"));
     EXPECT_THROW(second->push(home), std::invalid_argument);
     EXPECT_THROW(first->push(home), std::invalid_argument);
-    EXPECT_THROW(getNavigation().createStack({.gui = frame, .node = "sidebar"}), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(getNavigation().createStack({.gui = frame, .node = "sidebar"})), std::invalid_argument);
 }
 
 // Each tab keeps its stack with the GUIs of its screens, and selecting the tab that shows goes back to its root.
@@ -392,6 +409,230 @@ TEST_F(NavigationTest, ClosesTheStacksOfAGuiThatUnmounts) {
     EXPECT_EQ(home->getState(), Screen::State::Removed);
 }
 
+// A sheet on a compact screen rests at its detent, moves to another one when the person drags its grabber, and leaves when dragged below its lowest one, once its screen agreed.
+TEST_F(NavigationTest, DragsASheetBetweenItsDetentsAndAwayBelowTheLowest) {
+    usePhone();
+    const auto queue = make("queue");
+    const std::shared_ptr<Presentation> sheet = getNavigation().present(queue, {.detents = {{.kind = Presentation::Detent::Kind::Medium}, {.kind = Presentation::Detent::Kind::Large}}});
+    settle();
+    const math::Rect display = getUi().getBackend().getLiftedDisplayRect();
+    const math::Rect safe = getUi().getBackend().getLiftedSafeRect();
+    const float medium = display.getBottom() - display.height * 0.5F;
+    const float large = safe.y + Presentation::kSheetTop;
+    EXPECT_NEAR(getBounds(*queue->getGui(), "open").y, medium + Presentation::kGrabberBand, 1.0F);
+
+    const math::Vec2 grabber{display.getCenter().x, medium + Presentation::kGrabberBand * 0.5F};
+    dragUi(grabber, {grabber.x, safe.y + 40.0F});
+    settle();
+    EXPECT_EQ(sheet->getDetent(), 1U);
+    EXPECT_NEAR(getBounds(*queue->getGui(), "open").y, large + Presentation::kGrabberBand, 1.0F);
+
+    // A tap on the grabber goes to the next detent, and from the highest one back to the lowest.
+    clickUi({grabber.x, large + Presentation::kGrabberBand * 0.5F});
+    settle();
+    EXPECT_EQ(sheet->getDetent(), 0U);
+
+    dragUi(grabber, {grabber.x, display.getBottom() - 4.0F});
+    settle();
+    EXPECT_TRUE(hasEntry("queue:back"));
+    EXPECT_TRUE(sheet->isDismissed());
+    EXPECT_EQ(queue->getState(), Screen::State::Removed);
+}
+
+// A screen that keeps its place, such as one with unsaved work, refuses every dismissal by the person, and its sheet glides back to its detent.
+TEST_F(NavigationTest, SpringsBackASheetWhoseScreenKeepsItsPlace) {
+    usePhone();
+    const auto draft = make("draft");
+    draft->keeping = true;
+    const std::shared_ptr<Presentation> sheet = getNavigation().present(draft, {.grabber = true});
+    settle();
+    const math::Rect display = getUi().getBackend().getLiftedDisplayRect();
+    const float rest = getBounds(*draft->getGui(), "open").y;
+    const math::Vec2 grabber{display.getCenter().x, rest - Presentation::kGrabberBand * 0.5F};
+
+    dragUi(grabber, {grabber.x, display.getBottom() - 4.0F});
+    settle();
+    EXPECT_FALSE(sheet->isDismissed());
+    EXPECT_NEAR(getBounds(*draft->getGui(), "open").y, rest, 1.0F);
+
+    clickUi({display.getCenter().x, display.y + 4.0F});
+    key(input::Key::Escape);
+    settle();
+    EXPECT_FALSE(sheet->isDismissed());
+    EXPECT_EQ(std::ranges::count(log, std::string("draft:back")), 3);
+}
+
+// A presented flow hands its result to whoever presented it, and a dismissal by the person leaves no result.
+TEST_F(NavigationTest, ReturnsTheResultOfAPresentedFlow) {
+    const std::shared_ptr<Presentation> picker = getNavigation().present(make("picker"), {});
+    core::Json heard;
+    static_cast<void>(picker->dismissed.connect([&heard](Presentation& left) { heard = left.getResult(); }));
+    settle();
+    picker->dismiss(core::Json{{"color", "teal"}});
+    settle();
+    EXPECT_EQ(heard, (core::Json{{"color", "teal"}}));
+
+    const std::shared_ptr<Presentation> other = getNavigation().present(make("other"), {});
+    settle();
+    key(input::Key::Escape);
+    settle();
+    EXPECT_TRUE(other->isDismissed());
+    EXPECT_TRUE(other->getResult().is_null());
+}
+
+// An alert leaves with the action the person chose, the back chooses its cancel action, and an alert without one stays until one of its actions closes it.
+TEST_F(NavigationTest, PresentsAlertsWhoseChosenActionIsTheResult) {
+    const Navigation::Alert discard{.title = "Discard the draft?", .actions = {{.id = "keep", .text = "Keep", .role = Navigation::Alert::Role::Cancel}, {.id = "discard", .text = "Discard", .role = Navigation::Alert::Role::Destructive}}};
+    const std::shared_ptr<Presentation> chosen = getNavigation().presentAlert(discard);
+    settle();
+    key(input::Key::Enter);
+    settle();
+    EXPECT_EQ(chosen->getResult(), "discard");
+
+    const std::shared_ptr<Presentation> cancelled = getNavigation().presentAlert(discard);
+    settle();
+    key(input::Key::Escape);
+    settle();
+    EXPECT_EQ(cancelled->getResult(), "keep");
+
+    const std::shared_ptr<Presentation> required = getNavigation().presentAlert({.title = "Update required", .actions = {{.id = "update", .text = "Update"}}});
+    settle();
+    key(input::Key::Escape);
+    settle();
+    EXPECT_FALSE(required->isDismissed());
+    key(input::Key::Enter);
+    settle();
+    EXPECT_EQ(required->getResult(), "update");
+
+    EXPECT_THROW(static_cast<void>(getNavigation().presentAlert({.title = "Empty"})), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(getNavigation().presentAlert({.actions = {{.id = "a"}, {.id = "a"}}})), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(getNavigation().presentAlert({.actions = {{.id = "a", .role = Navigation::Alert::Role::Cancel}, {.id = "b", .role = Navigation::Alert::Role::Cancel}}})), std::invalid_argument);
+}
+
+// An action sheet points at its control from under it on a wide screen, rises from the bottom of a compact one, and a tap outside it chooses its cancel action.
+TEST_F(NavigationTest, ShowsAnActionSheetNextToItsAnchorOrFromTheBottom) {
+    const Navigation::Alert sharing{.style = Navigation::Alert::Style::ActionSheet, .title = "Share", .actions = {{.id = "copy", .text = "Copy link"}, {.id = "cancel", .text = "Cancel", .role = Navigation::Alert::Role::Cancel}}, .anchor = getArea("home")};
+    const std::shared_ptr<Presentation> wide = getNavigation().presentAlert(sharing);
+    settle();
+    const math::Rect anchor = getBounds(*frame, "home");
+    const math::Rect copy = getBounds(*wide->getScreen()->getGui(), "copy");
+    EXPECT_EQ(wide->getStyle(), Presentation::Style::Popover);
+    EXPECT_GT(copy.y, anchor.getBottom() + Presentation::kArrowSize);
+    EXPECT_LT(copy.y, anchor.getBottom() + 300.0F);
+    clickUi(copy.getCenter());
+    settle();
+    EXPECT_EQ(wide->getResult(), "copy");
+
+    usePhone();
+    const std::shared_ptr<Presentation> compact = getNavigation().presentAlert(sharing);
+    settle();
+    const math::Rect display = getUi().getBackend().getLiftedDisplayRect();
+    EXPECT_GT(getBounds(*compact->getScreen()->getGui(), "copy").y, display.getCenter().y);
+    clickUi({display.getCenter().x, display.y + 8.0F});
+    settle();
+    EXPECT_EQ(compact->getResult(), "cancel");
+}
+
+// A popover floats under the control it points at with its arrow at the middle of the control, and becomes a sheet across the width of a compact screen.
+TEST_F(NavigationTest, PointsAPopoverAtItsAnchorAndMakesItASheetOnACompactScreen) {
+    const auto info = make("info");
+    const std::shared_ptr<Presentation> popover = getNavigation().present(info, {.style = Presentation::Style::Popover, .width = 400.0F, .anchor = getArea("home")});
+    settle();
+    const math::Rect anchor = getBounds(*frame, "home");
+    const math::Rect content = getBounds(*info->getGui(), "open");
+    EXPECT_FLOAT_EQ(content.y, anchor.getBottom() + Presentation::kArrowSize);
+    EXPECT_FLOAT_EQ(content.width, 400.0F);
+    EXPECT_LE(content.x, anchor.getCenter().x);
+    popover->dismiss();
+    settle();
+
+    usePhone();
+    const auto adapted = make("adapted");
+    static_cast<void>(getNavigation().present(adapted, {.style = Presentation::Style::Popover, .anchor = getArea("home")}));
+    settle();
+    const math::Rect safe = getUi().getBackend().getLiftedSafeRect();
+    EXPECT_FLOAT_EQ(getBounds(*adapted->getGui(), "open").x, safe.x);
+    EXPECT_FLOAT_EQ(getBounds(*adapted->getGui(), "open").width, safe.width);
+    EXPECT_THROW(static_cast<void>(getNavigation().present(make("lost"), {.style = Presentation::Style::Popover})), std::invalid_argument);
+}
+
+// A drawer slides in from the start edge, the right one in a right to left interface, and a drag toward that edge takes it away.
+TEST_F(NavigationTest, SlidesADrawerFromTheStartEdgeAndOutByADrag) {
+    const std::string tree = R"({"kind": "column", "children": [{"kind": "button", "id": "open", "text": "Inbox"}]})";
+    const auto menu = std::make_shared<test::RecordingScreen>(getUi(), "menu", log, tree);
+    const std::shared_ptr<Presentation> drawer = getNavigation().present(menu, {.style = Presentation::Style::Drawer, .width = 500.0F});
+    frames(8);
+    const math::Rect safe = getUi().getBackend().getLiftedSafeRect();
+    EXPECT_LT(getBounds(*menu->getGui(), "open").x, safe.x);
+    settle();
+    EXPECT_FLOAT_EQ(getBounds(*menu->getGui(), "open").x, safe.x);
+
+    const math::Vec2 inside{safe.x + 250.0F, safe.getCenter().y};
+    dragUi(inside, {inside.x - 300.0F, inside.y});
+    settle();
+    EXPECT_TRUE(drawer->isDismissed());
+
+    getUi().setDirection(text::Direction::RightToLeft);
+    const auto mirrored = std::make_shared<test::RecordingScreen>(getUi(), "mirrored", log, tree);
+    const std::shared_ptr<Presentation> start = getNavigation().present(mirrored, {.style = Presentation::Style::Drawer, .width = 500.0F});
+    settle();
+    EXPECT_FLOAT_EQ(getBounds(*mirrored->getGui(), "open").getRight(), safe.getRight());
+    clickUi({safe.x + 8.0F, safe.getCenter().y});
+    settle();
+    EXPECT_TRUE(start->isDismissed());
+}
+
+// While the system asks for reduced motion, a drawer fades in where it rests instead of sliding.
+TEST_F(NavigationTest, FadesADrawerInPlaceWhileMotionIsReduced) {
+    getFixture().host().setAccessibilitySettings({.reducedMotion = true});
+    frames(2);
+    const auto menu = make("menu");
+    static_cast<void>(getNavigation().present(menu, {.style = Presentation::Style::Drawer}));
+    frames(4);
+    EXPECT_FLOAT_EQ(getBounds(*menu->getGui(), "open").x, getUi().getBackend().getLiftedSafeRect().x);
+}
+
+// A sheet that is not modal leaves the frame its input, and the back moves it down to its lowest detent rather than dismissing it.
+TEST_F(NavigationTest, LeavesTheAppItsInputUnderASheetThatIsNotModal) {
+    usePhone();
+    const auto queue = make("queue");
+    const std::shared_ptr<Presentation> sheet = getNavigation().present(queue, {.modal = false, .detents = {{.kind = Presentation::Detent::Kind::Height, .height = 200.0F}, {.kind = Presentation::Detent::Kind::Large}}});
+    settle();
+    clearEvents();
+    clickUi(getBounds(*frame, "home").getCenter());
+    EXPECT_EQ(findLastEvent("click").id, "home");
+    clearEvents();
+    clickUi(getBounds(*queue->getGui(), "open").getCenter());
+    EXPECT_EQ(findLastEvent("click").id, "open");
+
+    sheet->setDetent(1);
+    settle();
+    EXPECT_TRUE(getNavigation().canGoBack());
+    EXPECT_TRUE(getNavigation().goBack());
+    settle();
+    EXPECT_EQ(sheet->getDetent(), 0U);
+    EXPECT_FALSE(getNavigation().canGoBack());
+    EXPECT_FALSE(getNavigation().goBack());
+    EXPECT_FALSE(sheet->isDismissed());
+    EXPECT_THROW(static_cast<void>(getNavigation().present(make("card"), {.style = Presentation::Style::Dialog, .modal = false})), std::invalid_argument);
+}
+
+// The GUIs behind a modal sheet shrink as it nears the top of a compact screen, and stay whole behind a sheet on a wide screen or one that is not modal.
+TEST_F(NavigationTest, ShrinksTheGuisBehindASheetNearTheTopOfACompactScreen) {
+    const Presentation::Frame phone{.display = {0.0F, 0.0F, 800.0F, 1600.0F}, .safe = {0.0F, 60.0F, 800.0F, 1500.0F}, .radius = 16.0F};
+    const Presentation::Frame tablet{.display = {0.0F, 0.0F, 2000.0F, 1500.0F}, .safe = {0.0F, 40.0F, 2000.0F, 1440.0F}, .radius = 16.0F};
+    const std::vector<Presentation::Detent> detents{{.kind = Presentation::Detent::Kind::Medium}, {.kind = Presentation::Detent::Kind::Large}};
+    const std::shared_ptr<Presentation> half = getNavigation().present(make("half"), {.detents = detents});
+    const std::shared_ptr<Presentation> full = getNavigation().present(make("full"), {.detents = detents, .detent = 1});
+    const std::shared_ptr<Presentation> beside = getNavigation().present(make("beside"), {.modal = false, .detents = detents, .detent = 1});
+    EXPECT_FLOAT_EQ(half->getLayout(phone).behindScale, 1.0F);
+    EXPECT_FLOAT_EQ(full->getLayout(phone).behindScale, Presentation::kBehindScale);
+    EXPECT_FLOAT_EQ(full->getLayout(tablet).behindScale, 1.0F);
+    EXPECT_FLOAT_EQ(beside->getLayout(phone).behindScale, 1.0F);
+    EXPECT_FLOAT_EQ(full->getLayout(phone).surface.y, phone.safe.y + Presentation::kSheetTop);
+    EXPECT_FLOAT_EQ(full->getLayout(tablet).surface.width, Presentation::kSheetWidth);
+}
+
 // Screens that stay where they are cost the frames nothing more than the frame alone.
 TEST_F(NavigationTest, ShowsStillScreensWithoutAllocating) {
     // clang-format off
@@ -405,7 +646,9 @@ TEST_F(NavigationTest, ShowsStillScreensWithoutAllocating) {
     const std::size_t frameAlone = measure();
     const std::shared_ptr<NavigationStack> stack = getNavigation().createStack(getArea("list"), make("home"));
     stack->push(make("profile"));
-    const std::shared_ptr<Presentation> sheet = getNavigation().present(make("compose"), {});
+    const std::shared_ptr<Presentation> queue = getNavigation().present(make("queue"), {.modal = false, .detents = {{.kind = Presentation::Detent::Kind::Medium}, {.kind = Presentation::Detent::Kind::Large}}});
+    const std::shared_ptr<Presentation> sheet = getNavigation().present(make("compose"), {.detents = {{.kind = Presentation::Detent::Kind::Fit}, {.kind = Presentation::Detent::Kind::Large}}, .detent = 1});
+    const std::shared_ptr<Presentation> popover = getNavigation().present(make("info"), {.style = Presentation::Style::Popover, .anchor = getArea("home")});
     settle();
     EXPECT_EQ(measure(), frameAlone);
 }
@@ -448,6 +691,48 @@ TEST_F(NavigationTest, NavigatesFromLua) {
     getFixture().runLua("sheet:dismiss()");
     frames(20);
     EXPECT_EQ(getFixture().lua("return tostring(closed) .. tostring(sheet.dismissed) .. ui.screenState(sheet.screen)"), "truetrueremoved");
+}
+
+// A sheet reports its detents and changes them from Lua, a presented flow hands its result to the promise of its presentation, and an alert resolves with the action the person chose.
+TEST_F(NavigationTest, PresentsSheetsAlertsAndTheirResultsFromLua) {
+    // clang-format off
+    getFixture().runLua(R"(
+        local async = require('async')
+        ui = require('haylen.ui')
+        Page = {build = function() return ui.column{ui.button{id = 'open', text = 'Open'}} end}
+        frame = ui.mount(ui.column{ui.button{id = 'share', text = 'Share'}}, {placement = 'screen'})
+        sheet = ui.present(Page, {detents = {'medium', 'large', 320}, detent = 2, onDetentChange = function(event) moved = event.detent end, onDismiss = function(event) left = event.result.color end})
+        async.spawn(function() picked = sheet.result:await().color end)
+        alert = ui.presentAlert{title = 'Delete the song?', actions = {{id = 'keep', text = 'Keep', role = 'cancel'}, {id = 'delete', text = 'Delete', role = 'destructive'}}}
+        async.spawn(function() answer = alert.result:await() end)
+    )");
+    // clang-format on
+    frames(30);
+    EXPECT_EQ(getFixture().lua("return sheet.detent .. ' ' .. tostring(sheet.modal) .. ' ' .. sheet.style"), "2 true sheet");
+    getFixture().runLua("sheet.detent = 1");
+    EXPECT_EQ(getFixture().lua("return tostring(moved)"), "1");
+
+    key(input::Key::Escape);
+    frames(30);
+    EXPECT_EQ(getFixture().lua("return tostring(answer)"), "keep");
+    getFixture().runLua("sheet:dismiss({result = {color = 'teal'}, transition = {effect = 'fade', duration = 0.1}})");
+    frames(30);
+    EXPECT_EQ(getFixture().lua("return picked .. ' ' .. left .. ' ' .. tostring(sheet.dismissed)"), "teal teal true");
+
+    // clang-format off
+    getFixture().runLua(R"(
+        menu = ui.presentAlert{style = 'actionSheet', anchor = {gui = frame, id = 'share'}, actions = {{id = 'copy', text = 'Copy link'}}}
+        side = ui.present(Page, {style = 'drawer', width = 500})
+    )");
+    // clang-format on
+    frames(30);
+    EXPECT_EQ(getFixture().lua("return menu.style .. ' ' .. side.style .. ' ' .. tostring(menu.dismissible)"), "popover drawer true");
+    EXPECT_NE(getFixture().lua("ui.present(Page, {detents = {'half'}})").find("A detent is \"medium\", \"large\", \"fit\" or a height in UI units, not half."), std::string::npos);
+    EXPECT_NE(getFixture().lua("ui.present(Page, {detents = {'large'}, detent = 3})").find("from 1 to 1"), std::string::npos);
+    EXPECT_NE(getFixture().lua("ui.present({build = Page.build}, {style = 'popover'})").find("A popover needs the node it points at as its anchor."), std::string::npos);
+    EXPECT_NE(getFixture().lua("ui.presentAlert{title = 'Hi'}").find("An alert lists its actions in \"actions\""), std::string::npos);
+    EXPECT_NE(getFixture().lua("ui.presentAlert{actions = {{id = 'ok', role = 'maybe'}}}").find("maybe"), std::string::npos);
+    EXPECT_NE(getFixture().lua("side:dismiss({result = function() end})").find("cannot be converted to JSON"), std::string::npos);
 }
 
 TEST_F(NavigationTest, ReportsMistakesFromLua) {

@@ -193,14 +193,14 @@ class Component {
     }
     void setListening(Notice notice, bool value) noexcept;
 
+    // Reshapes the vertices that the window being drawn took since the vertex count, and every child window that began inside it since the window count, such as scroll areas, or the GUIs behind a sheet.
+    static void reshapeSince(int firstVertex, int firstWindow, const Transform& shape, math::Vec2 center);
+
   protected:
     Component() = default;
 
     // Scales the vertices drawn into the list since the first one around the center and multiplies their colors by the tint and the opacity, and scales the clip rectangles of its commands too for the list of a child window, which the node drew whole.
     static void reshape(ImDrawList& list, int firstVertex, const Transform& shape, math::Vec2 center, bool clips);
-
-    // Reshapes the vertices that the window being drawn took since the vertex count, and every child window that began inside it since the window count, such as scroll areas.
-    static void reshapeSince(int firstVertex, int firstWindow, const Transform& shape, math::Vec2 center);
 
     [[nodiscard]] virtual Alignment getDefaultAlignment() const noexcept {
         return Alignment::Stretch;

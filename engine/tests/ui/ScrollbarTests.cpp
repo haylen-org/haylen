@@ -502,21 +502,8 @@ TEST_F(ScrollbarTest, KeepsALongPopupInsideTheDisplayOnTheSideOfItsAnchorWithMor
     }
 }
 
-TEST_F(ScrollbarTest, ScrollsTheContentOfATallPopoverBesideItsBar) {
-    auto gui = mount(marked(R"({"kind": "popover", "id": "more", "text": "More", "contentWidth": 300, "children": [{"kind": "column", "id": "content", "children": [)" + labels(120) + "]}]}"));
-    for (const Display& screen : kScreens) {
-        SCOPED_TRACE(screen.name);
-        use(screen);
-        clickUi(getBounds(*gui, "more").getCenter());
-        frames(3);
-        const math::Rect display = getUi().getBackend().getDisplayRect();
-        expectApart(getBounds(*gui, "content"), findBar(display), display, Side::End);
-        clickUi(display.getMax() - math::Vec2{1.0F, 1.0F});
-    }
-}
-
 TEST_F(ScrollbarTest, ScrollsTheBodyOfATallDialogBesideItsBar) {
-    auto gui = mount(marked(R"({"kind": "dialog", "id": "credits", "open": true, "title": "Credits", "buttons": [{"id": "close", "text": "Close"}], "children": [{"kind": "column", "id": "content", "children": [)" + labels(120) + "]}]}"));
+    auto gui = mount(marked(R"({"kind": "dialog", "id": "credits", "title": "Credits", "buttons": [{"id": "close", "text": "Close"}], "children": [{"kind": "column", "id": "content", "children": [)" + labels(120) + "]}]}"));
     for (const Display& screen : kScreens) {
         SCOPED_TRACE(screen.name);
         use(screen);
@@ -534,7 +521,7 @@ TEST_F(ScrollbarTest, DrawsNoBarBesideTheBodyOfADialogThatFits) {
         SCOPED_TRACE(spacing);
         // clang-format off
         auto gui = mount(R"({"kind": "column", "style": {"colors": {"scrollbar": "#FF00FF", "scrollbarHover": "#FF00FF"}, "metrics": {"itemSpacing": )" + spacing + R"(, "panelPadding": )" + spacing + R"(}, "fonts": {"body": {"size": 21.3}, "heading": {"size": 27.7}}}, "children": [
-            {"kind": "dialog", "id": "safety", "open": true, "title": "Safety", "message": "Share where you are with the people you trust, or call for help at once.", "buttons": [{"id": "close", "text": "Close"}, {"id": "help", "text": "Call for help"}]}
+            {"kind": "dialog", "id": "safety", "title": "Safety", "message": "Share where you are with the people you trust, or call for help at once.", "buttons": [{"id": "close", "text": "Close"}, {"id": "help", "text": "Call for help"}]}
         ]})");
         // clang-format on
         frames(2);

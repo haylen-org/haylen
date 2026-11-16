@@ -58,8 +58,8 @@ function Reset:enter()
                 ui.button{id = 'audio', text = 'Reset the audio group', align = 'stretch', onClick = function()
                     self:resetAudio()
                 end},
-                ui.button{id = 'everything', text = 'Reset every setting', variant = 'destructive', align = 'stretch', onClick = function(event)
-                    event.gui:set('confirm', {open = true})
+                ui.button{id = 'everything', text = 'Reset every setting', variant = 'destructive', align = 'stretch', onClick = function()
+                    self:confirmReset()
                 end},
                 ui.label{id = 'result', text = '', color = 'accentText'},
                 ui.column{grow = 1, gap = 12, justify = 'center', align = 'stretch',
@@ -71,12 +71,6 @@ function Reset:enter()
                 ui.label{id = 'summary', text = '', color = 'textMuted'},
                 ui.scroll{grow = 1, height = 0, ui.table{id = 'values', columns = {{text = 'Setting'}, {text = 'Stored', width = 240}, {text = 'Default', width = 240}, {text = '', width = 150}}, rows = {}, style = {fonts = {body = {font = 'monospace'}}, metrics = {listRowHeight = 52}}}},
             },
-            ui.dialog{id = 'confirm', title = 'Reset every setting?', message = 'Every setting of these tests goes back to its default and is saved at once. The other preferences of the project stay.', buttons = {{id = 'cancel', text = 'Cancel'}, {id = 'reset', text = 'Reset', variant = 'destructive'}}, onAnswer = function(event)
-                if event.button == 'reset' then
-                    settings.reset(self)
-                    self:refresh('The groups "' .. table.concat(settings.groups, '", "') .. '" went back to their defaults, which were applied and saved.')
-                end
-            end},
         }},
     }
     self:refresh('')
@@ -145,4 +139,16 @@ function Reset:resetAudio()
     self:refresh("The call \"preferences.remove('audio')\" dropped the group, and capturing the default mix stored it again.")
 end
 
+
+-- Asks before every setting goes back to its default.
+function Reset:confirmReset()
+    ui.presentAlert{title = 'Reset every setting?', message = 'Every setting of these tests goes back to its default and is saved at once. The other preferences of the project stay.', owner = self,
+        actions = {{id = 'cancel', text = 'Cancel', role = 'cancel'}, {id = 'reset', text = 'Reset', role = 'destructive'}},
+        onDismiss = function(event)
+            if event.result == 'reset' then
+                settings.reset(self)
+                self:refresh('The groups "' .. table.concat(settings.groups, '", "') .. '" went back to their defaults, which were applied and saved.')
+            end
+        end}
+end
 return Reset

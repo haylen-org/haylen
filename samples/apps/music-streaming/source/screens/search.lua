@@ -62,7 +62,6 @@ function Search:tree()
             end,
             ui.emptyState{image = Shell.icon('music'), imageSize = 72, title = 'Nothing found', message = 'Try another name.'},
         }, 1)},
-        Widgets.playlistDialog(self),
     }
 end
 

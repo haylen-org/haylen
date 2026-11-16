@@ -13,7 +13,7 @@ return {
         {code = 'GUI-007', title = 'Indicators', description = 'Badges, status dots, busy rings, progress bars, circular progress and cooldowns, icons, images and avatars.', module = 'indicators'},
         {code = 'GUI-008', title = 'Collections', description = 'Lists with draggable rows that draw only the rows in view, trees and tables.', module = 'collections'},
         {code = 'GUI-009', title = 'Settings', description = 'A settings screen built from a settings form, rows and actions.', module = 'settings'},
-        {code = 'GUI-010', title = 'Overlays', description = 'Dialogs, toasts, tooltips, popovers and context menus.', module = 'overlays'},
+        {code = 'GUI-010', title = 'Overlays', description = 'Alerts, a dialog, toasts, tooltips, a popover and context menus.', module = 'overlays'},
         {code = 'GUI-011', title = 'Game controls', description = 'Steppers, segmented controls, range sliders and key capture fields that rebind actions of the action map.', module = 'game-controls'},
         {code = 'GUI-012', title = 'Windows and pages', description = 'A draggable window, accordions, a carousel and a scroll that snaps to its cards.', module = 'windows-pages'},
         {code = 'GUI-013', title = 'Slot grid', description = 'An inventory, a hotbar in another GUI and a chest list that trade items by drag and drop.', module = 'slot-grid'},
@@ -39,5 +39,6 @@ return {
         {code = 'GUI-033', title = 'Image theme', description = 'A casual fantasy theme drawn from one atlas of nine-slice pieces and a set of icons, beside the default theme at several UI scales.', module = 'image-theme'},
         {code = 'GUI-034', title = 'Theme sounds', description = 'A theme that plays sounds for presses, focus moves, choices, slider steps and typing, styles that silence or replace the sound of one control, and a switch that mutes them.', module = 'theme-sounds'},
         {code = 'GUI-035', title = 'Navigation', description = 'A small app whose bars stay while a stack pushes and pops screens in its middle, tabs that keep their stacks, a list and its detail side by side or as one stack, and a new post in a sheet with bars and a stack of its own.', module = 'navigation'},
+        {code = 'GUI-036', title = 'Presentations', description = 'Sheets that rest at their detents, a page and a form sheet, a sheet beside the app, a cover, a dialog, a drawer, a popover, an alert, an action sheet, a picker that returns its color and a note that asks before it closes.', module = 'presentations'},
     },
 }

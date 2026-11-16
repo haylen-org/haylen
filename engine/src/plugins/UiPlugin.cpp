@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdio>
 #include <exception>
 #include <format>
 #include <limits>
@@ -45,6 +46,7 @@
 #include "ui/ImGuiConverter.hpp"
 #include "ui/ImGuiLua.hpp"
 #include "ui/ImageLibrary.hpp"
+#include "ui/PresentationView.hpp"
 #include "ui/SoundLibrary.hpp"
 #include "ui/TextSession.hpp"
 #include "ui/UiLua.hpp"
@@ -89,6 +91,7 @@ void UiPlugin::start(core::Engine& engine) {
 
     setTheme(themeName);
     navigation = std::make_unique<ui::Navigation>(engine, *this);
+    presentationView = std::make_unique<ui::PresentationView>(*backend, *context);
     // clang-format off
     focus.setBackHandler([this] {
         if (!navigation->canGoBack()) {
@@ -129,7 +132,7 @@ void UiPlugin::stop(core::Engine& engine) {
 
     focus.setBackHandler({});
     backRequested = false;
-    backdropTapped.reset();
+    presentationView.reset();
     for (const Mounted& entry : guis) {
         (void)entry.gui->detach();
     }
@@ -274,8 +277,17 @@ void UiPlugin::update(core::Engine& engine, float) {
         navigation->goBack();
     }
 
-    if (const std::shared_ptr<ui::Presentation> tapped = std::exchange(backdropTapped, {}).lock()) {
-        tapped->dismiss();
+    const ui::PresentationView::Requests requests = presentationView->takeRequests();
+    if (const std::shared_ptr<ui::Presentation> tapped = requests.tapped.lock()) {
+        static_cast<void>(tapped->dismissByPerson());
+    }
+
+    if (const std::shared_ptr<ui::Presentation> released = requests.released.lock()) {
+        released->release();
+    }
+
+    if (const std::shared_ptr<ui::Presentation> cycled = requests.cycled.lock(); cycled && !cycled->isDismissed()) {
+        cycled->setDetent((cycled->getDetent() + 1) % cycled->getOptions().detents.size());
     }
 
     navigation->update(static_cast<float>(engine.getClock().getUnscaledDelta()));
@@ -436,7 +448,7 @@ void UiPlugin::drawGuis(std::size_t first, std::size_t last, bool inert) {
 
 // The GUIs that collect before the GUI of the topmost presentation lie under it, or none while no presentation shows.
 std::size_t UiPlugin::countUnderPresentation() const {
-    const ui::Presentation* top = navigation->getTopPresentation();
+    const ui::Presentation* top = navigation->getTopModal();
     if (top == nullptr) {
         return 0;
     }
@@ -445,7 +457,7 @@ std::size_t UiPlugin::countUnderPresentation() const {
     return static_cast<std::size_t>(std::distance(drawnGuis.begin(), found));
 }
 
-// The GUI of a screen draws where the look of its screen places it, cut to its area while it moves, and without input while its transition plays.
+// The GUI of a screen draws where the look of its screen places it, cut to its area while it moves, and without input while its transition plays. The GUI of a presentation draws over its backdrop and surface, and a sheet that is not modal draws in a window of its own above the GUIs of the app, so it takes the pointer over its surface while they keep theirs.
 void UiPlugin::drawGui(const Mounted& entry, bool inert) {
     ui::Navigation::Look look{.shown = true};
     std::shared_ptr<ui::Presentation> presentation;
@@ -458,34 +470,53 @@ void UiPlugin::drawGui(const Mounted& entry, bool inert) {
         return;
     }
 
-    const math::Rect display = backend->getLiftedDisplayRect();
-    ui::Presentation::Layout layout;
-    std::optional<math::Rect> area;
     if (presentation) {
-        layout = presentation->getLayout(display, backend->getLiftedSafeRect(), context->getMetric(ui::Theme::Metric::PanelRadius));
-        area = layout.area;
-    } else {
-        area = findArea(entry);
+        drawPresented(entry, *presentation, look, inert);
+        return;
     }
 
+    const std::optional<math::Rect> area = findArea(entry);
     if (!area) {
         return;
     }
 
+    const math::Rect display = backend->getLiftedDisplayRect();
+    const math::Vec2 offset = getLookOffset(look, *area, display.getBottom() - area->y);
+    drawScreenGui(entry, look, *area, offset, offset != math::Vec2{} ? std::optional(*area) : std::nullopt, inert);
+}
+
+void UiPlugin::drawPresented(const Mounted& entry, ui::Presentation& presentation, const ui::Navigation::Look& look, bool inert) {
+    const ui::Presentation::Frame frame = presentationView->prepare(presentation, *entry.gui);
+    const ui::Presentation::Layout layout = presentation.getLayout(frame);
+    const math::Vec2 offset = presentationView->getOffset(layout, look);
+    const bool detached = !presentation.isModal() && !inert;
+    if (detached) {
+        const math::Rect surface = layout.surface.translated(offset);
+        std::array<char, 40> name{};
+        std::snprintf(name.data(), name.size(), "##haylen-sheet%p", static_cast<const void*>(&presentation));
+        ImGui::SetNextWindowPos(ui::ImGuiConverter::toImVec2(surface.getMin()));
+        ImGui::SetNextWindowSize(ui::ImGuiConverter::toImVec2(surface.getSize()));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0.0F, 0.0F});
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0F);
+        ImGui::Begin(name.data(), nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNavInputs);
+        ImGui::PopStyleVar(2);
+    }
+
+    presentationView->drawChrome(presentation, layout, look, offset, !inert);
+    drawScreenGui(entry, look, layout.area, offset, frame.display, inert);
+    if (detached) {
+        ImGui::End();
+    }
+}
+
+// A GUI that moves draws cut to its clip, its area for a screen of a stack and the display for a presentation.
+void UiPlugin::drawScreenGui(const Mounted& entry, const ui::Navigation::Look& look, const math::Rect& area, math::Vec2 offset, const std::optional<math::Rect>& clip, bool inert) {
     if (entry.gui->getRoot().getDrawnFrame() == 0) {
         guiAppeared = true;
     }
 
-    const float riseTop = layout.surface.isEmpty() ? area->y : std::min(area->y, layout.surface.y);
-    const math::Vec2 offset = getLookOffset(look, *area, display.getBottom() - riseTop);
-    if (presentation) {
-        drawBackdrop(*presentation, layout, look, offset);
-    }
-
-    const bool moved = offset != math::Vec2{};
-    if (moved) {
-        const math::Rect clip = presentation ? display : *area;
-        ImGui::PushClipRect(ui::ImGuiConverter::toImVec2(clip.getMin()), ui::ImGuiConverter::toImVec2(clip.getMax()), true);
+    if (clip) {
+        ImGui::PushClipRect(ui::ImGuiConverter::toImVec2(clip->getMin()), ui::ImGuiConverter::toImVec2(clip->getMax()), true);
     }
 
     const bool still = inert || look.inert;
@@ -498,7 +529,7 @@ void UiPlugin::drawGui(const Mounted& entry, bool inert) {
     const float opacity = look.effect == ui::NavigationTransition::Effect::Fade ? 1.0F - look.distance : 1.0F;
     const std::uint64_t waitsBefore = images->getWaits();
     ImGui::PushID(entry.gui.get());
-    entry.gui->draw(*context, area->translated(offset), opacity);
+    entry.gui->draw(*context, area.translated(offset), opacity);
     ImGui::PopID();
     if (images->getWaits() != waitsBefore) {
         waitingGuis.push_back(entry.gui.get());
@@ -508,7 +539,7 @@ void UiPlugin::drawGui(const Mounted& entry, bool inert) {
         focus.suspendTargets(suspended);
         backend->endInert();
     }
-    if (moved) {
+    if (clip) {
         ImGui::PopClipRect();
     }
 
@@ -536,39 +567,6 @@ math::Vec2 UiPlugin::getLookOffset(const ui::Navigation::Look& look, const math:
     return {};
 }
 
-// The backdrop dims what lies under a sheet or a dialog, and the surface of a sheet or a full screen presentation moves and fades with its screen. A tap on the backdrop of the topmost dismissible presentation, outside its surface or the root of its screen, dismisses it in the next update.
-void UiPlugin::drawBackdrop(const ui::Presentation& presentation, const ui::Presentation::Layout& layout, const ui::Navigation::Look& look, math::Vec2 offset) {
-    const math::Rect display = backend->getLiftedDisplayRect();
-    const float shown = 1.0F - look.distance;
-    ImDrawList& list = *ImGui::GetWindowDrawList();
-    if (presentation.getStyle() != ui::Presentation::Style::FullScreen) {
-        const math::Color dim = context->getColor(ui::Theme::Color::Overlay);
-        list.AddRectFilled(ui::ImGuiConverter::toImVec2(display.getMin()), ui::ImGuiConverter::toImVec2(display.getMax()), ui::ImGuiConverter::toImU32(dim.withAlpha(dim.a * shown)));
-    }
-
-    if (!layout.surface.isEmpty()) {
-        const ui::Theme::Color role = presentation.getStyle() == ui::Presentation::Style::FullScreen ? ui::Theme::Color::Background : ui::Theme::Color::Panel;
-        const math::Color color = presentation.getColor().value_or(context->getColor(role));
-        const float alpha = look.effect == ui::NavigationTransition::Effect::Fade ? color.a * shown : color.a;
-        backend->addShape({.bounds = layout.surface.translated(offset), .radii = layout.radii, .color = color.withAlpha(alpha)});
-    }
-
-    if (&presentation != navigation->getTopPresentation()) {
-        return;
-    }
-
-    backend->blockPointer(display);
-    if (!presentation.isDismissible() || look.inert || !ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::GetCurrentContext()->HoveredIdPreviousFrame != 0) {
-        return;
-    }
-
-    const math::Vec2 pointer{ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y};
-    const math::Rect kept = layout.surface.isEmpty() ? presentation.getScreen()->getGui()->getRoot().getBounds() : layout.surface;
-    if (!kept.contains(pointer)) {
-        backdropTapped = std::const_pointer_cast<ui::Presentation>(presentation.shared_from_this());
-    }
-}
-
 // The GUIs of a leaving view take no input and no focus, and they draw into the image of their view right away.
 void UiPlugin::drawLeaving(core::Engine& engine, const core::SceneView& view) {
     beginWindow("##haylen-leaving", ImGuiWindowFlags_NoInputs);
@@ -594,10 +592,25 @@ void UiPlugin::drawAbove(core::Engine& engine, const core::SceneView& view) {
     drawing.endDeferring();
 }
 
-// The GUIs under the topmost presentation draw in a window of their own that takes no input, with child windows that never take the pointer, and reach the screen before the presentation draws over them.
+// The GUIs under the topmost modal presentation draw in a window of their own that takes no input, with child windows that never take the pointer, and reach the screen before the presentation draws over them. They shrink about the middle of the screen while a sheet near the top of a compact screen covers them.
 void UiPlugin::drawUnder(core::Engine& engine, std::size_t count) {
     beginWindow("##haylen-under", ImGuiWindowFlags_NoInputs);
+    const ui::Presentation& top = *navigation->getTopModal();
+    const float scale = presentationView->getBehindScale(top, navigation->getLook(*top.getScreen()));
+    const ui::Transform shrunk{.scale = {scale, scale}};
+    const math::Vec2 middle = backend->getLiftedDisplayRect().getCenter();
+    const int firstVertex = ImGui::GetCurrentWindow()->DrawList->VtxBuffer.Size;
+    const int firstWindow = GImGui->WindowsActiveCount;
+    if (shrunk.isReshaping()) {
+        context->pushReshape(shrunk, middle);
+    }
+
     drawGuis(0, count, true);
+    if (shrunk.isReshaping()) {
+        context->popReshape();
+        ui::Component::reshapeSince(firstVertex, firstWindow, shrunk, middle);
+    }
+
     const ImGuiWindow& window = *ImGui::GetCurrentWindow();
     ImGui::End();
     getBackend().renderWindow(engine.getRenderer2D(), window);

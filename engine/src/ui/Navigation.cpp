@@ -11,6 +11,7 @@
 #include "haylen/ui/Gui.hpp"
 #include "haylen/ui/NavigationStack.hpp"
 #include "haylen/ui/Screen.hpp"
+#include "ui/AlertScreen.hpp"
 
 namespace haylen::ui {
 
@@ -58,11 +59,39 @@ std::shared_ptr<NavigationSplit> Navigation::createSplit(Region primary, Region 
     return created;
 }
 
+// A modal presentation keeps the focus of the GUIs under it, which goes back where it was once the presentation left.
 std::shared_ptr<Presentation> Navigation::present(std::shared_ptr<Screen> screen, Presentation::Options options) {
-    auto created = std::make_shared<Presentation>(*this, std::move(screen), options);
+    auto created = std::make_shared<Presentation>(*this, std::move(screen), std::move(options));
+    if (created->isModal()) {
+        ui.getFocus().parkFocus();
+    }
+
     presentations.push_back(created);
     created->open();
     return created;
+}
+
+const Navigation::Alert::Action* Navigation::Alert::findCancel() const noexcept {
+    const auto found = std::ranges::find(actions, Role::Cancel, &Action::role);
+    return found != actions.end() ? &*found : nullptr;
+}
+
+// An alert fades in as a dialog, which the person leaves only through its cancel action. An action sheet points at its anchor as a popover on a wide screen, and rises as a sheet as tall as its actions on a compact one or without an anchor, and a tap outside it cancels it.
+std::shared_ptr<Presentation> Navigation::presentAlert(Alert alert) {
+    auto screen = std::make_shared<AlertScreen>(ui, std::move(alert));
+    const Alert& shown = screen->getAlert();
+    Presentation::Options options{.dismissible = shown.findCancel() != nullptr};
+    if (shown.style == Alert::Style::Alert) {
+        options.style = Presentation::Style::Dialog;
+        return present(std::move(screen), std::move(options));
+    }
+
+    options.style = shown.anchor ? Presentation::Style::Popover : Presentation::Style::Sheet;
+    options.dismissible = true;
+    options.anchor = shown.anchor;
+    options.detents = {{.kind = Presentation::Detent::Kind::Fit}};
+    options.width = Alert::kActionSheetWidth;
+    return present(std::move(screen), std::move(options));
 }
 
 void Navigation::checkRegion(const Region& region) const {
@@ -305,9 +334,9 @@ const Presentation* Navigation::findPresentation(const NavigationStack& stack) c
     return nullptr;
 }
 
-const Presentation* Navigation::getTopPresentation() const {
+const Presentation* Navigation::getTopModal() const {
     for (auto presentation = presentations.rbegin(); presentation != presentations.rend(); ++presentation) {
-        if (!(*presentation)->isDismissed()) {
+        if (!(*presentation)->isDismissed() && (*presentation)->isModal()) {
             return presentation->get();
         }
     }
@@ -316,8 +345,7 @@ const Presentation* Navigation::getTopPresentation() const {
 }
 
 // The innermost stacks come first, and among stacks as deep, the ones created last, such as the detail of a split before its list.
-void Navigation::collectActive(std::vector<NavigationStack*>& found) const {
-    const Presentation* layer = getTopPresentation();
+void Navigation::collectActive(const Presentation* layer, std::vector<NavigationStack*>& found) const {
     found.clear();
     for (auto stack = stacks.rbegin(); stack != stacks.rend(); ++stack) {
         if (isDrawn(**stack) && findPresentation(**stack) == layer) {
@@ -328,12 +356,8 @@ void Navigation::collectActive(std::vector<NavigationStack*>& found) const {
     std::ranges::stable_sort(found, [this](const NavigationStack* lhs, const NavigationStack* rhs) { return getDepth(*lhs) > getDepth(*rhs); });
 }
 
-bool Navigation::canGoBack() const {
-    if (getTopPresentation() != nullptr) {
-        return true;
-    }
-
-    collectActive(activeStacks);
+bool Navigation::canGoBackIn(const Presentation* layer) const {
+    collectActive(layer, activeStacks);
     const bool pops = std::ranges::any_of(activeStacks, &NavigationStack::canGoBack);
     activeStacks.clear();
     if (pops) {
@@ -341,16 +365,15 @@ bool Navigation::canGoBack() const {
     }
 
     // clang-format off
-    return std::ranges::any_of(tabs, [this](const std::shared_ptr<NavigationTabs>& candidate) {
+    return std::ranges::any_of(tabs, [this, layer](const std::shared_ptr<NavigationTabs>& candidate) {
         const NavigationTabs::Entry& current = candidate->find(candidate->selected);
-        return current.stack && isDrawn(*current.stack) && candidate->entries.front().tab.id != candidate->selected;
+        return current.stack && isDrawn(*current.stack) && findPresentation(*current.stack) == layer && candidate->entries.front().tab.id != candidate->selected;
     });
     // clang-format on
 }
 
-bool Navigation::goBack() {
-    const Presentation* layer = getTopPresentation();
-    collectActive(activeStacks);
+bool Navigation::goBackIn(const Presentation* layer) {
+    collectActive(layer, activeStacks);
     std::shared_ptr<NavigationStack> popping;
     for (NavigationStack* stack : activeStacks) {
         if (stack->canGoBack()) {
@@ -377,16 +400,49 @@ bool Navigation::goBack() {
         }
     }
 
-    if (layer == nullptr) {
-        return false;
+    return false;
+}
+
+// A modal presentation keeps the back from the layers under it, even while the person cannot dismiss it.
+bool Navigation::canGoBack() const {
+    for (auto presentation = presentations.rbegin(); presentation != presentations.rend(); ++presentation) {
+        const Presentation& layer = **presentation;
+        if (layer.isDismissed()) {
+            continue;
+        }
+
+        if (layer.isModal() || layer.getDetent() > 0 || canGoBackIn(&layer)) {
+            return true;
+        }
     }
 
-    const std::shared_ptr<Presentation> top = std::const_pointer_cast<Presentation>(layer->shared_from_this());
-    if (top->isDismissible() && !askBack(*top->getScreen())) {
-        top->dismiss();
+    return canGoBackIn(nullptr);
+}
+
+// The layers are a copy, since the hooks that the back asks may present or dismiss.
+bool Navigation::goBack() {
+    const std::vector<std::shared_ptr<Presentation>> layers(presentations.rbegin(), presentations.rend());
+    for (const std::shared_ptr<Presentation>& layer : layers) {
+        if (layer->isDismissed()) {
+            continue;
+        }
+
+        if (goBackIn(layer.get())) {
+            return true;
+        }
+
+        if (layer->isModal()) {
+            static_cast<void>(layer->dismissByPerson());
+            return true;
+        }
+
+        if (layer->getDetent() > 0) {
+            layer->setDetent(0);
+            return true;
+        }
     }
 
-    return true;
+    return goBackIn(nullptr);
 }
 
 Navigation::Look Navigation::getLook(const Screen& screen) const {

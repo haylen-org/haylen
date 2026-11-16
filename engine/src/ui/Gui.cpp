@@ -397,6 +397,16 @@ void Gui::draw(Context& context, const math::Rect& area, float opacity) {
     root->noticeStoppedDrawing(context);
 }
 
+math::Vec2 Gui::measure(Context& context, float width) {
+    const bool writing = root->pushWriting(context);
+    const math::Vec2 size = root->measure(context, width);
+    if (writing) {
+        context.popWriting();
+    }
+
+    return size;
+}
+
 void Gui::skip(Context& context) {
     if (std::exchange(arrived, false)) {
         reportMounts(*root);

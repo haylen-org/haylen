@@ -1,4 +1,4 @@
--- Modal dialogs with children, toasts at the top and the bottom of the safe area, tooltips, popovers and context menus.
+-- Alerts, a dialog with children, toasts at the top and the bottom of the safe area, tooltips, a popover that points at its button and context menus.
 local haylen = require('haylen')
 local timer = require('haylen.timer')
 local ui = require('haylen.ui')
@@ -9,16 +9,49 @@ local layout = require('categories.interface.layout')
 local Overlays = haylen.class('Overlays', Test)
 
 Overlays.code = [[
-ui.dialog{id = 'confirm', title = 'Delete the save?', buttons = {{id = 'keep', text = 'Keep it'}, {id = 'delete', text = 'Delete', variant = 'destructive'}}}
-gui:set('confirm', {open = true})
+ui.presentAlert{title = 'Delete the save?', actions = {{id = 'keep', text = 'Keep it', role = 'cancel'}, {id = 'delete', text = 'Delete', role = 'destructive'}}}
+ui.present(Confirm, {style = 'dialog'})  -- Confirm:build() returns ui.dialog{...}.
 gui:set('notice', {open = true, tone = 'success', text = 'Saved.'})  -- The toast is ui.toast{id = 'notice', duration = 3}.
 ui.button{text = 'Hover me', tooltip = 'Shows after the pointer rests.'}
 ui.contextMenu{items = {{id = 'rename', text = 'Rename'}, {id = 'erase', text = 'Erase'}}, onSelect = function(event) act(event.item) end, slotButton}
-ui.popover{text = 'Wind', icon = 'interface/icons/wind.svg', contentWidth = 560, windControls}]]
+ui.present(Wind, {style = 'popover', anchor = {gui = gui, id = 'wind'}})]]
+
+-- A dialog with a check box, presented over the dimmed screen.
+local Confirm = haylen.class('Confirm', ui.Screen)
+
+function Confirm:init(test)
+    self.test = test
+end
+
+function Confirm:build()
+    return ui.dialog{title = 'Delete the save?', message = 'The island and everything on it will be gone.',
+        buttons = {{id = 'keep', text = 'Keep it'}, {id = 'delete', text = 'Delete', variant = 'destructive'}},
+        onAnswer = function(event)
+            self.test:report('The dialog answered "' .. event.button .. '".')
+            self.presentation:dismiss({result = event.button})
+        end,
+        ui.checkbox{text = 'Also delete the cloud copy'},
+    }
+end
+
+-- The controls of the wind in a popover that points at its button.
+local Wind = haylen.class('Wind', ui.Screen)
+
+function Wind:init(test)
+    self.test = test
+end
+
+function Wind:build()
+    return ui.column{gap = 12, padding = 24,
+        ui.label{text = 'A popover holds any screen, such as these controls.'},
+        ui.slider{value = 0.4, showValue = true, autofocus = true, onChange = function(event) self.test:report(string.format('The wind is %.2f.', event.value)) end},
+        ui.toggle{text = 'Gusts', onChange = function(event) self.test:report(event.checked and 'Gusts are on.' or 'Gusts are off.') end},
+    }
+end
 
 function Overlays:enter()
     self:frame{
-        hint = 'Escape or the east button closes a dismissible dialog, a popover or a menu first. Rest the pointer on a control for its tooltip. Right click or long press the save slot, or focus it and press the menu key or the north button, for its context menu.',
+        hint = 'Escape or the east button closes a menu, a popover or a dismissible dialog first. Rest the pointer on a control for its tooltip. Right click or long press the save slot, or focus it and press the menu key or the north button, for its context menu.',
         code = Overlays.code,
         focus = 'delete',
         content = {self:columns()},
@@ -29,6 +62,13 @@ end
 
 function Overlays:report(text)
     self:set('status', {text = text})
+end
+
+-- Presents an alert and reports the action the person chose once it left.
+function Overlays:ask(alert)
+    alert.owner = self
+    alert.onDismiss = function(event) self:report('The alert answered "' .. tostring(event.result) .. '".') end
+    ui.presentAlert(alert)
 end
 
 function Overlays:toast(id, text)
@@ -46,12 +86,15 @@ function Overlays:columns()
     end
     return layout.columns{
         ui.column{grow = 1, gap = 24,
-            layout.section('Component "dialog"', {
-                ui.button{id = 'delete', text = 'Delete the save', variant = 'destructive', onClick = function(event)
-                    event.gui:set('confirm', {open = true})
+            layout.section('Alerts and dialogs', {
+                ui.button{id = 'delete', text = 'Delete the save', variant = 'destructive', onClick = function()
+                    self:ask{title = 'Delete the save?', message = 'The island and everything on it will be gone.', actions = {{id = 'keep', text = 'Keep it', role = 'cancel'}, {id = 'delete', text = 'Delete', role = 'destructive'}}}
                 end},
-                ui.button{text = 'Open a dialog that must be answered', onClick = function(event)
-                    event.gui:set('terms', {open = true})
+                ui.button{text = 'Open an alert that must be answered', onClick = function()
+                    self:ask{title = 'Before you sail', message = 'Escape does not close this alert, so pick an answer.', actions = {{id = 'decline', text = 'Decline'}, {id = 'accept', text = 'Accept'}}}
+                end},
+                ui.button{text = 'Open a dialog with a check box', onClick = function()
+                    ui.present(Confirm(self), {style = 'dialog', owner = self})
                 end},
             }),
             layout.section('Component "toast"', {grow = 1,
@@ -84,25 +127,12 @@ function Overlays:columns()
                 },
                 ui.label{text = 'Each of these four has a tooltip.', font = 'caption', color = 'textMuted'},
             }),
-            layout.section('Component "popover"', {grow = 1,
-                ui.popover{text = 'Wind', icon = 'interface/icons/wind.svg', contentWidth = 560,
-                    ui.column{gap = 12,
-                        ui.label{text = 'A popover holds any child, such as these controls.'},
-                        ui.slider{value = 0.4, showValue = true, onChange = function(event) self:report(string.format('The wind is %.2f.', event.value)) end},
-                        ui.toggle{text = 'Gusts', onChange = function(event) self:report(event.checked and 'Gusts are on.' or 'Gusts are off.') end},
-                    },
-                },
+            layout.section('Popover', {grow = 1,
+                ui.button{id = 'wind', text = 'Wind', icon = 'interface/icons/wind.svg', onClick = function()
+                    ui.present(Wind(self), {style = 'popover', anchor = {gui = self.gui, id = 'wind'}, width = 560, owner = self})
+                end},
+                ui.label{text = 'On a narrow screen the popover rises as a sheet.', font = 'caption', color = 'textMuted'},
             }),
-        },
-        ui.dialog{id = 'confirm', title = 'Delete the save?', message = 'The island and everything on it will be gone.',
-            buttons = {{id = 'keep', text = 'Keep it'}, {id = 'delete', text = 'Delete', variant = 'destructive'}},
-            onAnswer = function(event) self:report('The dialog answered "' .. event.button .. '".') end,
-            onDismiss = function() self:report('The dialog was dismissed.') end,
-            ui.checkbox{text = 'Also delete the cloud copy'},
-        },
-        ui.dialog{id = 'terms', title = 'Before you sail', message = 'Escape does not close this dialog, so pick an answer.', dismissible = false,
-            buttons = {{id = 'decline', text = 'Decline'}, {id = 'accept', text = 'Accept', variant = 'primary'}},
-            onAnswer = function(event) self:report('The terms answered "' .. event.button .. '".') end,
         },
         ui.toast{id = 'notice', duration = 3},
         ui.toast{id = 'bottom', tone = 'success', position = 'bottom'},

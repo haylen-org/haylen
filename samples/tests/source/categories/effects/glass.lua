@@ -10,12 +10,20 @@ local Scenery = require('categories.effects.scenery')
 
 local Glass = haylen.class('Glass', ParticleTest)
 
+-- A dialog of glass, presented over the landscape that goes on behind it.
+local Paused = haylen.class('Paused', ui.Screen)
+
+function Paused:build()
+    return ui.dialog{glass = true, title = 'Paused', message = 'The landscape goes on behind the glass.', buttons = {{id = 'resume', text = 'Resume'}},
+        onAnswer = function() self.presentation:dismiss() end}
+end
+
 Glass.code = [[
 graphics2d.drawGlass({-800, -480, 1600, 140}, {radius = 70, blur = 24, saturation = 1.6,
     tint = '#33FFFFFF', rim = 0.6, refraction = 12})
 graphics2d.drawGlass({x - 110, y - 110, 220, 220}, {kind = 'ellipse', blur = 4, refraction = 30, rim = 0.8})
 ui.panel{glass = true, ui.label{text = 'Glass of the theme'}}
-ui.dialog{glass = true, open = true, title = 'Paused'}  -- Plain with reduced transparency.]]
+ui.dialog{glass = true, title = 'Paused'}  -- Plain with reduced transparency.]]
 
 Glass.sliders = {
     {'blur', 'Blur radius', 0, 96, 0},
@@ -44,7 +52,7 @@ function Glass:enter()
             self.overlay:set('ui-panel', {visible = event.checked})
             self.overlay:set('ui-card', {visible = event.checked})
         end},
-        ui.button{id = 'dialog', text = 'Open a dialog of glass', onClick = function() self.overlay:set('glass-dialog', {open = true}) end},
+        ui.button{id = 'dialog', text = 'Open a dialog of glass', onClick = function() ui.present(Paused(), {style = 'dialog', owner = self}) end},
     }
     for _, slider in ipairs(Glass.sliders) do
         local key = slider[1]
@@ -61,7 +69,6 @@ function Glass:enter()
     self.overlay = ui.mount(ui.column{id = 'glass-panel', anchor = 'bottomLeft', margin = 24, gap = 16, width = 460,
         ui.panel{id = 'ui-panel', glass = true, gap = 8, ui.label{text = 'Glass panel', font = 'heading'}, ui.label{text = 'The theme gives it its blur, tint, rim and bend.', color = 'textMuted'}},
         ui.card{id = 'ui-card', glass = true, gap = 8, ui.label{text = 'Glass card', font = 'heading'}, ui.label{text = 'Reduced transparency draws it plain.', color = 'textMuted'}},
-        ui.dialog{id = 'glass-dialog', glass = true, title = 'Paused', message = 'The landscape goes on behind the glass.', buttons = {{id = 'resume', text = 'Resume'}}},
     }, {owner = self, layer = 1})
     self:keepInRegion(self.overlay, 'glass-panel', 24)
 end

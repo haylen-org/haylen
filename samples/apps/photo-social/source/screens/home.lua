@@ -24,7 +24,6 @@ function Home:tree()
             ui.divider{},
         },
         ui.row{id = 'body', grow = 1, gap = 0, align = 'stretch'},
-        Widgets.friendDialog(self),
     }
 end
 

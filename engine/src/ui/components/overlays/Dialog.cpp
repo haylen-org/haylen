@@ -24,119 +24,39 @@
 namespace haylen::ui {
 
 void Dialog::readProperties(PropertyReader& reader) {
-    reader.read("open", open);
     reader.read("title", title);
     reader.read("message", message);
-    reader.read("dismissible", dismissible);
     reader.read("glass", glass);
     if (const core::Json* parsed = reader.take("buttons")) {
         buttons = readButtons(reader, *parsed);
     }
 }
 
-math::Vec2 Dialog::measureContent(Context&, float) {
-    return {};
-}
-
-void Dialog::render(Context& context, const math::Rect&) {
-    if (open && !ImGui::IsPopupOpen("##dialog") && !isWaiting()) {
-        ImGui::OpenPopup("##dialog");
-    }
-
-    if (!ImGui::IsPopupOpen("##dialog")) {
-        shown = 0.0F;
-        return;
-    }
-
-    // The dialog and its backdrop fade in and out together over the transition duration of the theme, and a closing dialog stays until it faded, taking no answers.
-    const float duration = context.getMetric(Theme::Metric::TransitionDuration);
-    const float step = duration > 0.0F ? context.getDeltaSeconds() / duration : 1.0F;
-    shown = open ? std::min(1.0F, shown + step) : std::max(0.0F, shown - step);
-    if (shown <= 0.0F) {
-        close();
-        return;
-    }
-
-    // A dialog keeps a margin inside the display, and its content scrolls only when it is taller than that, which the sizes of the dialog decide rather than its edges, whose fractions round differently.
-    const math::Rect display = context.getBackend().getLiftedDisplayRect();
+// The card keeps a margin inside the room it has and inside the safe area, and its content scrolls only when it is taller than that, which the sizes of the card decide rather than its edges, whose fractions round differently.
+math::Vec2 Dialog::measureContent(Context& context, float availableWidth) {
     const float margin = context.getMetric(Theme::Metric::PanelPadding);
     const math::Insets padding = getContentPadding(context);
-    const float width = std::min(context.getMetric(Theme::Metric::DialogWidth), display.width - margin * 2.0F);
-    const float inner = width - padding.getHorizontal();
-    const float content = getContentHeight(context, inner) + padding.getVertical();
-    const float room = std::max(0.0F, display.height - margin * 2.0F);
-    const bool overflowing = content > room;
-    const float height = overflowing ? room : content;
-    ImGui::SetNextWindowPos(ImGuiConverter::toImVec2(display.getCenter()), ImGuiCond_Always, {0.5F, 0.5F});
-    ImGui::SetNextWindowSize({width, height});
-    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * shown);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0.0F, 0.0F});
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0F);
-    ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.0F, 0.0F, 0.0F, 0.0F));
-    ImGui::PushStyleColor(ImGuiCol_ModalWindowDimBg, ImVec4(0.0F, 0.0F, 0.0F, 0.0F));
-    const bool began = ImGui::BeginPopupModal("##dialog", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNavInputs);
-    ImGui::PopStyleColor(2);
-    ImGui::PopStyleVar(2);
+    const float width = std::max(0.0F, std::min(context.getMetric(Theme::Metric::DialogWidth), availableWidth - margin * 2.0F));
+    const float content = getContentHeight(context, width - padding.getHorizontal()) + padding.getVertical();
+    const float room = std::max(0.0F, context.getBackend().getLiftedSafeRect().height - margin * 2.0F);
+    return {width, std::min(content, room)};
+}
 
-    if (!began) {
-        ImGui::PopStyleVar();
-        return;
-    }
+void Dialog::render(Context& context, const math::Rect& bounds) {
+    const math::Insets padding = getContentPadding(context);
+    const float content = getContentHeight(context, bounds.width - padding.getHorizontal()) + padding.getVertical();
+    const bool overflowing = content > bounds.height + 0.5F;
 
-    context.pushPlainReshape();
-    const math::Rect frame{ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, width, height};
-    setBounds(frame);
-    drawBackdrop(context, display);
     // Glass shows what lies behind it, which a shadow under it would darken.
     const float radius = context.getMetric(Theme::Metric::PanelRadius);
     if (glass) {
-        Surfaces::drawGlass(context, frame, context.getColor(Theme::Color::Border), radius);
+        Surfaces::drawGlass(context, bounds, context.getColor(Theme::Color::Border), radius);
     } else {
-        Surfaces::drawShadow(context, frame, radius);
-        Surfaces::draw(context, Theme::Surface::Dialog, frame, context.getColor(Theme::Color::Panel), context.getColor(Theme::Color::Border), radius);
-    }
-    drawContent(context, frame, padding, overflowing);
-
-    if (open && dismissible && context.getFocus().answerCancel(ImGui::GetCurrentWindow())) {
-        open = false;
-        context.emit(*this, "dismiss");
+        Surfaces::drawShadow(context, bounds, radius);
+        Surfaces::draw(context, Theme::Surface::Dialog, bounds, context.getColor(Theme::Color::Panel), context.getColor(Theme::Color::Border), radius);
     }
 
-    context.popReshape();
-    ImGui::EndPopup();
-    ImGui::PopStyleVar();
-}
-
-// A faded dialog closes its popup from outside, since ImGui skips the window of a popup drawn with no opacity.
-void Dialog::close() {
-    const ImGuiContext& state = *GImGui;
-    const ImGuiID id = ImGui::GetID("##dialog");
-    for (int level = 0; level < state.OpenPopupStack.Size; ++level) {
-        if (state.OpenPopupStack[level].PopupId == id) {
-            ImGui::ClosePopupToLevel(level, true);
-            return;
-        }
-    }
-}
-
-// The backdrop covers the whole display behind the dialog, drawn first in the window of the dialog so it stays above the GUIs under it.
-void Dialog::drawBackdrop(Context& context, const math::Rect& display) {
-    ImDrawList& list = *ImGui::GetWindowDrawList();
-    list.PushClipRect(ImGuiConverter::toImVec2(display.getMin()), ImGuiConverter::toImVec2(display.getMax()), false);
-    list.AddRectFilled(ImGuiConverter::toImVec2(display.getMin()), ImGuiConverter::toImVec2(display.getMax()), ImGuiConverter::toImU32(context.getColor(Theme::Color::Overlay)));
-    list.PopClipRect();
-}
-
-// Only one dialog shows at a time, so a dialog that opens while another one shows waits until that one closes.
-bool Dialog::isWaiting() {
-    const ImGuiContext& state = *GImGui;
-    const int level = state.BeginPopupStack.Size;
-    if (state.OpenPopupStack.Size <= level) {
-        return false;
-    }
-
-    const ImGuiWindow* shown = state.OpenPopupStack[level].Window;
-    return shown != nullptr && (shown->Flags & ImGuiWindowFlags_Modal) != 0 && (shown->Active || shown->WasActive);
+    drawContent(context, bounds, padding, overflowing);
 }
 
 std::vector<Dialog::Answer> Dialog::readButtons(PropertyReader& reader, const core::Json& value) {
@@ -283,14 +203,14 @@ void Dialog::drawContent(Context& context, const math::Rect& frame, const math::
         const bool pressed = Widgets::button(context, place, text, nullptr, button->variant, false, {}, {});
         context.getAccessibility().addPart(ImGui::GetItemID(), place, platform::AccessibilityElement::Role::Button, text, 0);
 
-        if (button == buttons.rbegin() && ImGui::IsWindowAppearing()) {
+        if (button == buttons.rbegin() && !focused) {
+            focused = true;
             Widgets::focusItem(context);
         }
 
         ImGui::PopID();
 
-        if (pressed && open) {
-            open = false;
+        if (pressed) {
             context.playSound(Theme::Sound::Press);
             context.emit(*this, "answer", {{"button", button->id}});
         }
@@ -352,7 +272,7 @@ bool Dialog::describe(Context& context, platform::AccessibilityElement& element)
     element.role = platform::AccessibilityElement::Role::Dialog;
     element.label.assign(context.getText(title));
     element.value.assign(context.getText(message));
-    return open;
+    return true;
 }
 
 } // namespace haylen::ui

@@ -30,7 +30,6 @@ function Artist:tree()
     return ui.column{grow = 1, gap = 0,
         Shell.header(''),
         ui.column{id = 'body', grow = 1, gap = 0},
-        Widgets.playlistDialog(self),
     }
 end
 

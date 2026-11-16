@@ -1,4 +1,4 @@
--- Every component that scrolls, side by side, each with its scroll bar in a lane of its own a gap away from its content: a scroll in both directions, a recycled collection, a list, a tree and a table in a scroll, a text area, the popups of a combo, a menu button, a context menu and a popover, a dialog and an immediate window, at the scale picked here.
+-- Every component that scrolls, side by side, each with its scroll bar in a lane of its own a gap away from its content: a scroll in both directions, a recycled collection, a list, a tree and a table in a scroll, a text area, the popups of a combo, a menu button and a context menu, a presented dialog and an immediate window, at the scale picked here.
 local haylen = require('haylen')
 local imgui = require('haylen.imgui')
 local ui = require('haylen.ui')
@@ -8,6 +8,16 @@ local Test = require('harness.test')
 local layout = require('categories.interface.layout')
 
 local ScrollBars = haylen.class('ScrollBars', Test)
+
+-- The credits in a dialog taller than the screen, whose body scrolls beside a bar at its edge.
+local Credits = {}
+
+function Credits:build()
+    return ui.dialog{title = 'Credits', message = 'The body of a dialog taller than the screen scrolls beside a bar at its edge.', buttons = {{id = 'close', text = 'Close', variant = 'primary'}},
+        onAnswer = function() self.presentation:dismiss() end,
+        ui.column{gap = 8, children = ScrollBars.labels('Credit line', 80)},
+    }
+end
 
 ScrollBars.code = [[
 ui.scroll{height = 90, ui.column{gap = 8, children = rows}}  -- The bar runs in a lane of its own beside the rows.
@@ -58,7 +68,7 @@ function ScrollBars:enter()
     self.started = {mode = ui.scaleMode(), factor = ui.scale()}
     self.immediate = ScrollBars.lines('Immediate line', 40)
     self:frame{
-        hint = 'Pick a scale and look at every bar, whose lane runs beside the content. Open the combo, the menu, the popover, the dialog and the menu of the quest card to see their bars. The wheel, a thumb and a press on a track scroll each one.',
+        hint = 'Pick a scale and look at every bar, whose lane runs beside the content. Open the combo, the menu, the dialog and the menu of the quest card to see their bars. The wheel, a thumb and a press on a track scroll each one.',
         code = ScrollBars.code,
         focus = 'scale',
         fixed = true,
@@ -68,9 +78,6 @@ function ScrollBars:enter()
                 ui.label{id = 'gap', grow = 1, color = 'textMuted'},
             },
             ui.scroll{id = 'cards', grow = 1, height = 0, ui.grid{minColumnWidth = 400, gap = 16, children = self:cards()}},
-            ui.dialog{id = 'credits', title = 'Credits', message = 'The body of a dialog taller than the screen scrolls beside a bar at its edge.', buttons = {{id = 'close', text = 'Close', variant = 'primary'}},
-                ui.column{gap = 8, children = ScrollBars.labels('Credit line', 80)},
-            },
         },
     }
     local entries = {}
@@ -124,8 +131,7 @@ function ScrollBars:cards()
         ui.combo{id = 'combo', items = ScrollBars.choices('Choice', 80), selected = 'choice-1'},
         ui.row{gap = 12, wrap = true, lineGap = 12,
             ui.menuButton{id = 'menu', text = 'Menu', items = ScrollBars.choices('Command', 60)},
-            ui.popover{id = 'popover', text = 'Popover', contentWidth = 360, ui.column{gap = 8, children = ScrollBars.labels('Popover line', 60)}},
-            ui.button{text = 'Dialog', onClick = function(event) event.gui:set('credits', {open = true}) end},
+            ui.button{text = 'Dialog', onClick = function() ui.present(setmetatable({}, {__index = Credits}), {style = 'dialog', owner = self}) end},
         },
         ui.contextMenu{id = 'actions', items = ScrollBars.choices('Action', 60), ui.card{ui.label{text = 'A quest card with a long context menu'}}},
     })

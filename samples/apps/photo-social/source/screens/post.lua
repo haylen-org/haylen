@@ -18,7 +18,6 @@ function Post:tree()
     return ui.column{gap = 0,
         Shell.header('Post'),
         ui.column{id = 'body', grow = 1, gap = 0},
-        Widgets.friendDialog(self),
     }
 end
 

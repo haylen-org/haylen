@@ -118,13 +118,20 @@ function ImageTheme:overlays()
     end
     return layout.section('Overlays and icons', {
         ui.row{gap = 12, wrap = true,
-            ui.button{text = 'Dialog', onClick = function(event) event.gui:set('dialog', {open = true}) end},
+            ui.button{text = 'Alert', onClick = function() self:askChest() end},
             ui.button{text = 'Window', tooltip = 'Tooltips take the tooltip piece of the atlas.', onClick = function() self:openWindow() end},
             ui.button{text = 'Toast', onClick = function(event) event.gui:command('toast', 'show', {text = 'The chest is open.', tone = 'success'}) end},
         },
         ui.row{gap = 8, wrap = true, children = icons},
         ui.panel{id = 'window-dock', height = 230, align = 'stretch', justify = 'center', alignItems = 'center', ui.label{text = 'The window opens here.', color = 'textMuted'}},
     })
+end
+
+-- An alert takes the dialog piece of the atlas.
+function ImageTheme:askChest()
+    ui.presentAlert{title = 'Open the chest?', message = 'The key breaks once the chest opens.', owner = self,
+        actions = {{id = 'leave', text = 'Leave it', role = 'cancel'}, {id = 'open', text = 'Open'}},
+        onDismiss = function(event) self:report('The alert answered "' .. event.result .. '".') end}
 end
 
 function ImageTheme:openWindow()
@@ -163,9 +170,6 @@ function ImageTheme:nodes()
         },
         ui.scroll{grow = 1, height = 0,
             ui.grid{minColumnWidth = 560, gap = 24, self:buttons(), self:choices(), self:overlays(), self:collections(), self:bars()},
-        },
-        ui.dialog{id = 'dialog', title = 'Open the chest?', message = 'The key breaks once the chest opens.', buttons = {{id = 'leave', text = 'Leave it'}, {id = 'open', text = 'Open', variant = 'primary'}},
-            onAnswer = function(event) self:report('The dialog answered "' .. event.button .. '".') end,
         },
         ui.window{id = 'window', title = 'Satchel', closable = true, onMove = function() self.moved = true end,
             ui.label{text = 'A window with a title bar from the atlas.', color = 'textMuted'},

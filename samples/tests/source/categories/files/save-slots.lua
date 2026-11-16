@@ -63,8 +63,8 @@ function SaveSlots:enter()
                     ui.button{id = 'load', text = 'Load', onClick = function()
                         self:loadSlot()
                     end},
-                    ui.button{id = 'delete', text = 'Delete', variant = 'destructive', onClick = function(event)
-                        event.gui:set('confirm', {open = true, message = 'The slot "' .. self.selected .. '" will be gone for good.'})
+                    ui.button{id = 'delete', text = 'Delete', variant = 'destructive', onClick = function()
+                        self:confirmDelete()
                     end},
                     ui.button{id = 'damage', text = 'Damage the file', onClick = function()
                         storage.writeText('saves/' .. self.selected .. '.json', '{"data": ')
@@ -72,11 +72,6 @@ function SaveSlots:enter()
                     end},
                 },
             },
-            ui.dialog{id = 'confirm', title = 'Delete the slot?', buttons = {{id = 'keep', text = 'Keep it'}, {id = 'delete', text = 'Delete', variant = 'destructive'}}, onAnswer = function(event)
-                if event.button == 'delete' then
-                    self:delete()
-                end
-            end},
         }},
     }
     self:saveExamples()
@@ -181,4 +176,15 @@ function SaveSlots:delete()
     self:refresh()
 end
 
+
+-- Asks before the selected slot goes away.
+function SaveSlots:confirmDelete()
+    ui.presentAlert{title = 'Delete the slot?', message = 'The slot "' .. self.selected .. '" will be gone for good.', owner = self,
+        actions = {{id = 'keep', text = 'Keep it', role = 'cancel'}, {id = 'delete', text = 'Delete', role = 'destructive'}},
+        onDismiss = function(event)
+            if event.result == 'delete' then
+                self:delete()
+            end
+        end}
+end
 return SaveSlots

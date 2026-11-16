@@ -658,9 +658,9 @@ An app remaps any of them by defining an action with the same name in its action
 
 A screen gives the first focus with `autofocus = true` on a node, or with `gui:command(id, 'focus')`. Every Tiny Island screen does this, so a gamepad player can start at once. Set `focusable = false` to keep a HUD button out of navigation, and call `ui.clearFocus()` to drop the focus when gameplay starts.
 
-The focus stays inside its GUI. Dialogs, popovers and menus keep it until they close, and then give it back to where it was. A node with `focusScope = true` keeps it the same way. A GUI that stops drawing, such as the GUI of a covered scene, remembers its focused control and gives it the focus again once it draws. The property `focusWrap` wraps the focus around the ends of a row or a column. A scroll brings the focused control into view.
+The focus stays inside its GUI. Modal presentations, such as dialogs, sheets and popovers, and menus keep it until they close, and then give it back to where it was. A node with `focusScope = true` keeps it the same way. A GUI that stops drawing, such as the GUI of a covered scene, remembers its focused control and gives it the focus again once it draws. The property `focusWrap` wraps the focus around the ends of a row or a column. A scroll brings the focused control into view.
 
-Going back is the job of the root of a GUI. The action `uiCancel` first closes an open popup or dialog, or puts back a carried item. Otherwise it sends `cancel` to the innermost focus scope or to the root of the GUI, where a screen goes back with an `onCancel` handler.
+Going back is the job of the root of a GUI. The action `uiCancel` first closes an open popup or presentation, or puts back a carried item. Otherwise it sends `cancel` to the innermost focus scope or to the root of the GUI, where a screen goes back with an `onCancel` handler.
 
 ```lua
 local scene = require('haylen.scene')
@@ -1100,13 +1100,13 @@ ui.setTextScale(preferences.get('textScale', 'system'))
 
 ## Component catalog
 
-The engine ships 64 component kinds, and `ui.kinds()` lists them. This table groups them by purpose, and each group links to its section of the reference.
+The engine ships 63 component kinds, and `ui.kinds()` lists them. This table groups them by purpose, and each group links to its section of the reference.
 
 | Purpose | Kinds |
 | --- | --- |
 | [Containers](../lua-api/ui.md#containers) | `column`, `row`, `grid`, `stack`, `scroll` (vertical or horizontal, with snapping), `card`, `panel`, `spacer`, `divider`, `tabs`, `accordion`, `carousel`, `formField`, `splitter`, `safeArea` |
 | [Text](../lua-api/ui.md#text) | `label`, `richText` (markup with links, effects and a typewriter reveal), `pageHeader`, `sectionTitle`, `emptyState`, `alert` |
-| [Buttons](../lua-api/ui.md#buttons) | `button` (variants `default`, `primary`, `destructive`, `toolbar`, `icon` and `link`), `imageButton`, `chip`, `menuButton`, `popover` |
+| [Buttons](../lua-api/ui.md#buttons) | `button` (variants `default`, `primary`, `destructive`, `toolbar`, `icon` and `link`), `imageButton`, `chip`, `menuButton` |
 | [Choices](../lua-api/ui.md#choices) | `checkbox`, `toggle`, `radioGroup`, `combo`, `segmentedControl` |
 | [Inputs](../lua-api/ui.md#inputs) | `textField`, `secretField`, `textArea`, `filterField`, `numberField`, `slider`, `rangeSlider`, `stepper`, `colorField`, `keyCapture` |
 | [Indicators](../lua-api/ui.md#indicators) | `badge`, `statusIndicator`, `busyIndicator`, `progress`, `circularProgress`, `icon`, `image`, `avatar` |

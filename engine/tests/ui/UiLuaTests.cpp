@@ -199,7 +199,7 @@ TEST_F(UiLuaTest, HandsEventValuesAndListenersToLua) {
         listener = ui.onEvent(function(event) heard[#heard + 1] = event.id .. ':' .. event.name .. ':' .. tostring(event.gui == menu) end)
         menu = ui.mount(ui.column{
             ui.list{id = 'slots', items = {{id = 'slot1', text = 'Slot 1'}}, onSelect = function(event) seen[#seen + 1] = event.id .. ' ' .. event.name .. ' ' .. event.item end},
-            ui.dialog{id = 'quit', open = true, buttons = {{id = 'stay', text = 'Stay'}, {id = 'leave', text = 'Leave'}}, onAnswer = function(event) seen[#seen + 1] = event.id .. ' ' .. event.button end},
+            ui.dialog{id = 'quit', buttons = {{id = 'stay', text = 'Stay'}, {id = 'leave', text = 'Leave'}}, onAnswer = function(event) seen[#seen + 1] = event.id .. ' ' .. event.button end},
         }, {placement = 'screen'})
     )");
     // clang-format on
@@ -213,7 +213,7 @@ TEST_F(UiLuaTest, HandsEventValuesAndListenersToLua) {
     fixture.frames(2);
     click("menu", "slots");
     EXPECT_EQ(fixture.lua("return table.concat(seen, ',')"), "quit leave,slots select slot1");
-    EXPECT_EQ(fixture.lua("return table.concat(heard, ',')"), "quit:focus:true,quit:answer:true,quit:blur:true,slots:focus:true,slots:select:true");
+    EXPECT_EQ(fixture.lua("return table.concat(heard, ',')"), "quit:focus:true,quit:answer:true,slots:focus:true,slots:select:true,quit:blur:true");
 
     fixture.runLua("listener:disconnect()");
     click("menu", "slots");
@@ -346,7 +346,7 @@ TEST_F(UiLuaTest, SwitchesThemesAndReadsInputCapture) {
     EXPECT_EQ(fixture.lua("ui.setTheme('light') return ui.theme()"), "light");
     EXPECT_NE(fixture.lua("ui.setTheme('marble')").find("no theme named \"marble\""), std::string::npos);
     EXPECT_EQ(fixture.lua("return tostring(ui.usingPointer()) .. tostring(ui.usingKeyboard())"), "falsefalse");
-    EXPECT_EQ(fixture.lua("local kinds = ui.kinds() return #kinds .. ' ' .. kinds[1]"), "64 accordion");
+    EXPECT_EQ(fixture.lua("local kinds = ui.kinds() return #kinds .. ' ' .. kinds[1]"), "63 accordion");
     EXPECT_NE(fixture.lua("ui.loadTheme('themes/none.json')").find("error: "), std::string::npos);
     EXPECT_NE(fixture.lua("ui.addFont('pixel', 'fonts/none.ttf')").find("error: "), std::string::npos);
 }
@@ -510,7 +510,7 @@ TEST(UiLuaThemeTest, DrawsGlassSurfacesPlainWhileTheSystemReducesTransparency) {
         ui.mount(ui.column{
             ui.panel{glass = true, width = 400, height = 120, ui.label{text = 'Panel'}},
             ui.card{glass = true, width = 400, height = 120, ui.label{text = 'Card'}},
-            ui.dialog{glass = true, open = true, title = 'Glass', message = 'Behind it the app shows through.'},
+            ui.dialog{glass = true, title = 'Glass', message = 'Behind it the app shows through.'},
         }, {placement = 'screen'})
     )");
     // clang-format on

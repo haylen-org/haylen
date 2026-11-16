@@ -73,7 +73,7 @@ ui.mount(ui.column{
     gap = 24,
     ui.panel{glass = true, width = 900, ui.label{text = 'Now playing'}},
     ui.card{glass = true, width = 900, ui.label{text = 'Up next'}},
-    ui.dialog{glass = true, open = true, title = 'Paused', message = 'The game waits behind the glass.', buttons = {{id = 'resume', text = 'Resume'}}},
+    ui.dialog{glass = true, title = 'Paused', message = 'The game waits behind the glass.', buttons = {{id = 'resume', text = 'Resume'}}},
 }, {placement = 'screen'})
 ```
 
