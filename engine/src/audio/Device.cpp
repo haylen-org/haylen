@@ -115,7 +115,7 @@ void Device::checkFailure() {
         return;
     }
 
-    core::Log::warning("The app runs without sound because the audio output is unavailable: {}.", reason);
+    core::Log::warning("The app runs without sound because the audio output is unavailable. {}", reason);
     disconnect();
 }
 

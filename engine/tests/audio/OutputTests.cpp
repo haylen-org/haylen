@@ -149,7 +149,7 @@ class AudioOutputTest : public MixerFixture {
     }
 
     static const char* getFailure(ma_device*) {
-        return failing ? "the test refused the context after the output opened" : nullptr;
+        return failing ? "The test refused the context after the output opened." : nullptr;
     }
 
     static inline std::atomic<bool> accepting = false;
@@ -229,7 +229,7 @@ TEST_F(AudioOutputTest, FallsSilentWhenTheOutputFailsAfterItOpened) {
     EXPECT_EQ(output.getOutputState(), Mixer::OutputState::Unavailable);
     EXPECT_FALSE(output.isOutputAvailable());
     ASSERT_EQ(getWarnings().size(), 1U);
-    EXPECT_NE(getWarnings().front().find("the test refused the context after the output opened"), std::string::npos);
+    EXPECT_NE(getWarnings().front().find("The test refused the context after the output opened."), std::string::npos);
     EXPECT_EQ(closedDevices, 1);
     const float cursor = output.getCursor(shot);
     play(output, 0.3F);
