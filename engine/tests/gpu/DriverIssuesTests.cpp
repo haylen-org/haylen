@@ -65,4 +65,26 @@ TEST(DriverIssuesTest, ClearsLayersByDrawingOnlyOnTheTranslatorOfTheEmulatorOnSw
     EXPECT_FALSE(DriverIssues::find({.api = Device::Api::OpenGlEs, .renderer = "Adreno (TM) 830", .version = "OpenGL ES 3.2 V@0800.37"}, Issue::ClearLayersByDrawing).has_value());
 }
 
+// Only the OpenGL of llvmpipe up to Mesa 26.0, whose anisotropic filtering ignores the slopes of a lookup, filters without anisotropy, while newer Mesa, lavapipe and other drivers keep it.
+TEST(DriverIssuesTest, FiltersWithoutAnisotropyOnlyOnTheLlvmpipeThatIgnoresTheSlopesOfALookup) {
+    const std::string_view renderer = "llvmpipe (LLVM 21.1.8, 256 bits)";
+    const std::string_view seen = "4.5 (Core Profile) Mesa 26.0.8-1ubuntu0.3";
+    const std::string_view fixed = "4.5 (Core Profile) Mesa 26.1.0-devel (git-56997723)";
+    EXPECT_TRUE(DriverIssues::find({.api = Device::Api::OpenGl, .renderer = renderer, .version = seen, .versionNumber = DriverIssues::readMesaVersion(seen)}, Issue::NoAnisotropy).has_value());
+    EXPECT_TRUE(DriverIssues::find({.api = Device::Api::OpenGl, .renderer = "llvmpipe (LLVM 19.1.1, 128 bits)", .version = "4.5 (Core Profile) Mesa 25.2.8", .versionNumber = DriverIssues::readMesaVersion("4.5 (Core Profile) Mesa 25.2.8")}, Issue::NoAnisotropy).has_value());
+    EXPECT_FALSE(DriverIssues::find({.api = Device::Api::OpenGl, .renderer = renderer, .version = fixed, .versionNumber = DriverIssues::readMesaVersion(fixed)}, Issue::NoAnisotropy).has_value());
+    EXPECT_FALSE(DriverIssues::find({.api = Device::Api::Vulkan, .renderer = "llvmpipe (LLVM 21.1.8, 256 bits)", .versionNumber = (26U << 22U) | 8U}, Issue::NoAnisotropy).has_value());
+    EXPECT_FALSE(DriverIssues::find({.api = Device::Api::OpenGl, .renderer = "AMD Radeon Pro V620 MxGPU (radeonsi, navi21, LLVM 20.1.2, DRM 3.57, 6.8.0-1071-azure)", .version = "4.6 (Core Profile) Mesa 25.2.8"}, Issue::NoAnisotropy).has_value());
+}
+
+// The version of Mesa reads from the version text of its OpenGL and OpenGL ES as Mesa numbers its Vulkan drivers, and the text of another driver reads as 0.
+TEST(DriverIssuesTest, ReadsTheVersionOfMesaFromTheVersionText) {
+    EXPECT_EQ(DriverIssues::readMesaVersion("4.5 (Core Profile) Mesa 26.0.8-1ubuntu0.3"), (26U << 22U) | 8U);
+    EXPECT_EQ(DriverIssues::readMesaVersion("OpenGL ES 3.2 Mesa 25.2.8"), (25U << 22U) | (2U << 12U) | 8U);
+    EXPECT_EQ(DriverIssues::readMesaVersion("4.6 (Core Profile) Mesa 26.1-devel"), (26U << 22U) | (1U << 12U));
+    EXPECT_EQ(DriverIssues::readMesaVersion("4.6.0 NVIDIA 596.86"), 0U);
+    EXPECT_EQ(DriverIssues::readMesaVersion("4.5 Mesa x"), 0U);
+    EXPECT_EQ(DriverIssues::readMesaVersion("4.5 Mesa 99999999999999999999.1"), 0U);
+}
+
 } // namespace haylen::gpu

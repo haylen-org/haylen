@@ -99,19 +99,21 @@ void Device::copyPixels(std::byte* destination, std::span<const std::byte> sourc
 // The issues are applied before the device makes any program, since the compiling of the context follows one of them.
 void Device::applyDriverIssues() {
     const std::string version = gl.getString(Gl::kVersion);
-    const DriverIssues::Driver driver{.api = api, .renderer = adapterName, .version = version};
+    const DriverIssues::Driver driver{.api = api, .renderer = adapterName, .version = version, .versionNumber = DriverIssues::readMesaVersion(version)};
     const std::optional<std::string_view> floatFiltering = DriverIssues::find(driver, DriverIssues::Issue::NoFloatFiltering);
     const std::optional<std::string_view> passFlushes = DriverIssues::find(driver, DriverIssues::Issue::FlushEachPass);
     const std::optional<std::string_view> noGpuDisjoint = DriverIssues::find(driver, DriverIssues::Issue::NoGpuDisjoint);
     const std::optional<std::string_view> callingThread = DriverIssues::find(driver, DriverIssues::Issue::CompileOnCallingThread);
     const std::optional<std::string_view> layerClears = DriverIssues::find(driver, DriverIssues::Issue::ClearLayersByDrawing);
-    for (const std::optional<std::string_view>& reason : {floatFiltering, passFlushes, noGpuDisjoint, callingThread, layerClears}) {
+    const std::optional<std::string_view> noAnisotropy = DriverIssues::find(driver, DriverIssues::Issue::NoAnisotropy);
+    for (const std::optional<std::string_view>& reason : {floatFiltering, passFlushes, noGpuDisjoint, callingThread, layerClears, noAnisotropy}) {
         if (reason) {
             core::Log::info("The OpenGL device works around its driver. {}", *reason);
         }
     }
 
     noFloatFiltering = floatFiltering.has_value();
+    anisotropic = !noAnisotropy.has_value();
     flushEachPass = passFlushes.has_value();
     if (noGpuDisjoint) {
         timer.setReadsDisjoint(false);
@@ -147,7 +149,7 @@ void Device::readCapabilities() {
         capabilities.filterableFormats[index] = !pixel.depth && (!pixel.floating || (features.textureFloatLinear && !noFloatFiltering));
     }
 
-    if (features.anisotropicFiltering) {
+    if (features.anisotropicFiltering && anisotropic) {
         gl.getIntegerv(Gl::kMaxTextureMaxAnisotropy, &value);
         maxAnisotropy = static_cast<float>(std::max(1, value));
     }
@@ -384,7 +386,7 @@ Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
         gl.samplerParameteri(name, Gl::kTextureCompareMode, static_cast<Gl::Int>(Gl::kCompareRefToTexture));
         gl.samplerParameteri(name, Gl::kTextureCompareFunc, static_cast<Gl::Int>(Conversions::toCompare(*desc.compare)));
     }
-    if (desc.maxAnisotropy > 1 && gl.getFeatures().anisotropicFiltering) {
+    if (desc.maxAnisotropy > 1 && maxAnisotropy > 1.0F) {
         gl.samplerParameterf(name, Gl::kTextureMaxAnisotropy, std::min(static_cast<float>(desc.maxAnisotropy), maxAnisotropy));
     }
     debug.label(Gl::kSampler, name, desc.label);

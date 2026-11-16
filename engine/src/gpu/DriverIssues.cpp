@@ -1,10 +1,12 @@
 #include "gpu/DriverIssues.hpp"
 
 #include <algorithm>
+#include <charconv>
+#include <system_error>
 
 namespace haylen::gpu {
 
-const std::array<DriverIssues::Entry, 7> DriverIssues::kEntries{{
+const std::array<DriverIssues::Entry, 8> DriverIssues::kEntries{{
     {
         .api = Device::Api::Vulkan,
         .issue = Issue::AvoidApi,
@@ -53,6 +55,13 @@ const std::array<DriverIssues::Entry, 7> DriverIssues::kEntries{{
         .version = "SwiftShader 4.0.0",
         .reason = "The OpenGL ES translator of the Android emulator on SwiftShader 4.0.0.1 clears, reads and blits the first layer of an array or a volume texture whatever layer the framebuffer attaches, while its draws reach that layer, which the x86_64 images of Android 17 showed on a Linux host, so a pass clears an attachment at a later layer by drawing.",
     },
+    {
+        .api = Device::Api::OpenGl,
+        .issue = Issue::NoAnisotropy,
+        .renderer = "llvmpipe",
+        .lastVersionNumber = makeMesaVersion(26, 0, 4095),
+        .reason = "The llvmpipe of Mesa up to 26.0 takes the samples and the level of detail of anisotropic filtering from the slopes of the coordinate between neighboring pixels and ignores the slopes that \"textureGrad\" gives it, which Mesa 26.0.8 on Linux showed, where a lookup at points that jump from one pixel to the next read the smallest level.",
+    },
 }};
 
 std::optional<std::string_view> DriverIssues::find(const Driver& driver, Issue issue) noexcept {
@@ -65,6 +74,38 @@ std::optional<std::string_view> DriverIssues::find(const Driver& driver, Issue i
         return std::nullopt;
     }
     return entry->reason;
+}
+
+std::uint64_t DriverIssues::readMesaVersion(std::string_view version) noexcept {
+    constexpr std::string_view kMarker = "Mesa ";
+    const std::size_t start = version.find(kMarker);
+    if (start == std::string_view::npos) {
+        return 0;
+    }
+
+    // The version reads as numbers between dots, such as 26.0.8 in `Mesa 26.0.8-1ubuntu0.3`, and a part that is missing counts as 0.
+    std::array<std::uint32_t, 3> parts{};
+    const char* position = version.data() + start + kMarker.size();
+    const char* const end = version.data() + version.size();
+    for (std::size_t index = 0; index < parts.size(); ++index) {
+        const std::from_chars_result read = std::from_chars(position, end, parts[index]);
+        if (read.ec != std::errc() && index == 0) {
+            return 0;
+        }
+
+        if (read.ec != std::errc()) {
+            break;
+        }
+
+        position = read.ptr;
+        if (position == end || *position != '.') {
+            break;
+        }
+
+        ++position;
+    }
+
+    return makeMesaVersion(parts[0], parts[1], parts[2]);
 }
 
 bool DriverIssues::matches(const Entry& entry, const Driver& driver, Issue issue) noexcept {

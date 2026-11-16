@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <optional>
@@ -27,6 +28,8 @@ class DriverIssues final {
         CompileOnCallingThread,
         // The clears of a pass reach only the first layer of an array or a volume texture, so a pass clears an attachment at a later layer by drawing.
         ClearLayersByDrawing,
+        // Textures filter without anisotropy, since the anisotropic filtering of the driver ignores the slopes that a shader gives a lookup.
+        NoAnisotropy,
     };
 
     // A driver as its graphics API describes it: the name of its GPU, its version text and its version number, which is 0 where the API gives none.
@@ -40,6 +43,9 @@ class DriverIssues final {
     // The reason of the entry of the issue that matches the driver, or nothing when its driver has no such issue.
     [[nodiscard]] static std::optional<std::string_view> find(const Driver& driver, Issue issue) noexcept;
 
+    // The version number of a driver of Mesa from the version text of its OpenGL or OpenGL ES, such as `4.5 (Core Profile) Mesa 26.0.8`, made as Mesa numbers its Vulkan drivers, or 0 for the text of another driver.
+    [[nodiscard]] static std::uint64_t readMesaVersion(std::string_view version) noexcept;
+
   private:
     struct Entry {
         Device::Api api = Device::Api::None;
@@ -50,7 +56,12 @@ class DriverIssues final {
         std::string_view reason;
     };
 
-    static const std::array<Entry, 7> kEntries;
+    static const std::array<Entry, 8> kEntries;
+
+    // Mesa numbers its Vulkan drivers with 10 bits for the minor version and 12 bits for the patch, so larger parts saturate there.
+    [[nodiscard]] static constexpr std::uint64_t makeMesaVersion(std::uint64_t major, std::uint64_t minor, std::uint64_t patch) noexcept {
+        return (major << 22U) | (std::min<std::uint64_t>(minor, 1023) << 12U) | std::min<std::uint64_t>(patch, 4095);
+    }
 
     [[nodiscard]] static bool matches(const Entry& entry, const Driver& driver, Issue issue) noexcept;
 };

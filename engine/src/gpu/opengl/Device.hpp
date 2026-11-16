@@ -219,6 +219,8 @@ class Device final : public gpu::Device {
     std::string adapterName;
     Capabilities capabilities;
     bool noFloatFiltering = false;
+    // Whether samplers filter anisotropically where the context can, which the driver issues turn off for a driver whose anisotropic filtering ignores the slopes of a lookup.
+    bool anisotropic = true;
     // Whether each pass ends with a flush, which the driver issues ask of a driver that drops passes otherwise.
     bool flushEachPass = false;
     DebugOutput debug;
@@ -248,6 +250,7 @@ class Device final : public gpu::Device {
 #endif
     PipelineRecord* applied = nullptr;
     int indexOffset = 0;
+    // The largest anisotropy of a sampler, which stays 1 where samplers filter without it.
     float maxAnisotropy = 1.0F;
     std::vector<std::byte> staging;
 };
