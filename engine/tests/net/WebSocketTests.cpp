@@ -211,21 +211,29 @@ class RawServer final {
                 continue;
             }
             Poco::Net::StreamSocket peer = listener.acceptConnection();
-            switch (behavior) {
-            case Behavior::PlainText:
-                send(peer, "HTTP/1.1 400 Bad Request\r\n\r\n");
-                peer.shutdownSend();
-                drain(peer);
-                break;
-            case Behavior::Reset:
-                (void)readRequest(peer);
-                peer.setLinger(true, 0);
-                peer.close();
-                break;
-            case Behavior::BrokenFrame:
-                send(peer, "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + accept(readRequest(peer)) + "\r\n\r\n\x81\x05he");
-                break;
-            }
+
+            // A client that already gave up the connection ends the answer, since the tests check what the client saw.
+            try {
+                answer(peer);
+            } catch (const Poco::Exception&) {}
+        }
+    }
+
+    void answer(Poco::Net::StreamSocket& peer) const {
+        switch (behavior) {
+        case Behavior::PlainText:
+            send(peer, "HTTP/1.1 400 Bad Request\r\n\r\n");
+            peer.shutdownSend();
+            drain(peer);
+            break;
+        case Behavior::Reset:
+            (void)readRequest(peer);
+            peer.setLinger(true, 0);
+            peer.close();
+            break;
+        case Behavior::BrokenFrame:
+            send(peer, "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + accept(readRequest(peer)) + "\r\n\r\n\x81\x05he");
+            break;
         }
     }
 
@@ -237,16 +245,14 @@ class RawServer final {
         peer.sendBytes(bytes.data(), static_cast<int>(bytes.size()));
     }
 
-    // A client that hangs up with bytes it never read resets the connection, which ends the reading as well.
+    // Reads until the client hangs up, and a client that hangs up with bytes it never read resets the connection, which ends the answer.
     void drain(Poco::Net::StreamSocket& peer) const {
         std::array<char, 1024> buffer{};
-        try {
-            while (!done) {
-                if (isReadable(peer) && peer.receiveBytes(buffer.data(), static_cast<int>(buffer.size())) <= 0) {
-                    return;
-                }
+        while (!done) {
+            if (isReadable(peer) && peer.receiveBytes(buffer.data(), static_cast<int>(buffer.size())) <= 0) {
+                return;
             }
-        } catch (const Poco::Exception&) {}
+        }
     }
 
     // Reads the request of the client up to the blank line that ends its header.
