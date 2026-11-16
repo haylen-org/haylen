@@ -2425,7 +2425,7 @@ Texto e rolagem:
 
 - [ ] Revisar a entrada de texto em todas as plataformas, mostrando e escondendo o teclado em todos os casos, sem gambiarras, inclusive o teclado que não aparece no teste de campo de texto na web.
 - [ ] A rolagem: depois de um gesto horizontal, um gesto vertical logo em seguida não rola a área vertical que contém a horizontal até o mouse se mover (visto no app de música).
-- [ ] Na web, arrastar uma lista com o mouse não rola, só a roda: conferir se é o comportamento certo ou um defeito.
+- [x] Na web, arrastar uma lista com o mouse não rola, só a roda: conferir se é o comportamento certo ou um defeito. Feito: é o comportamento certo, que a referência da `collection` já dizia. Como nas listas e páginas dos apps de desktop, o mouse rola pela roda, pelo trackpad e pela barra de rolagem, e o arrastar do mouse seleciona texto, arrasta um item ou move um controle. Só o dedo arrasta o conteúdo, e um navegador que emula um celular manda toques, que arrastam como o dedo. O guia da UI e a referência do `scroll` passaram a dizer isso claramente.
 
 Correções visuais e web:
 
