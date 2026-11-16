@@ -25,7 +25,7 @@ struct AppConfig;
 
 namespace haylen::platform {
 
-// The page that hosts the web runtime through `Module.haylen`, which `platform/web/haylen-runtime.js` defines before the runtime starts. The page learns when apps start and stop and how their frames perform, and it edits an app file by file.
+// The page that hosts the web runtime through `Module.haylen`, which `platform/web/haylen-runtime.js` and `platform/web/haylen-page.js` define before the runtime starts. The page learns when apps start and stop and how their frames perform, and it edits an app file by file.
 class WebPage final {
   public:
     // Returns the CSS selector of the canvas the page handed to the runtime as `Module.canvas`.
@@ -45,6 +45,9 @@ class WebPage final {
 
     // Answers once the browser locked the pointer that SDL asked for, or refused it, within a bound.
     static void awaitPointerLock(bool value, std::function<void(Permission::Answer answer)> callback);
+
+    // Locks the pointer to the canvas, or releases it, for the Worker mode, whose page asks the browser itself, and answers as `awaitPointerLock` does.
+    static void lockPointer(bool value, std::function<void(Permission::Answer answer)> callback);
 
     // The calls that a browser may gate: the writes and reads of its clipboard and the checks and requests of permissions, which the page answers asynchronously through `answerGatedCall` with the JSON `{state, message, missing, text}` of `Permission::Answer::fromJson` and the text of a read.
     static void setClipboard(std::string_view text, std::function<void(Permission::Answer answer)> callback);
@@ -109,6 +112,9 @@ class WebPage final {
     static int pushVideoFrame(void* stream, const std::uint8_t* pixels, int width, int height, double timestamp);
     [[nodiscard]] static void* openAudioStream(const char* plugin, const char* name, int sampleRate, int channels, int capacityFrames);
     static int pushAudioFrames(void* stream, const float* samples, int frames);
+
+    // The frames that the ring of an audio stream has room for, which the page of the Worker mode keeps its pushes within.
+    [[nodiscard]] static int getAudioStreamRoom(void* stream) noexcept;
 
   private:
     static constexpr double kStatsInterval = 1000.0;

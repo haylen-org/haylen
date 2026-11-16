@@ -2,9 +2,9 @@
 
 #include <cstdint>
 
-#include "platform/sdl/FrameTimer.hpp"
+#include "platform/FrameTimer.hpp"
 
-namespace haylen::platform::sdl {
+namespace haylen::platform {
 
 class FrameTimerTest : public ::testing::Test {
   protected:
@@ -42,4 +42,4 @@ TEST_F(FrameTimerTest, LimitsAFrameThatTookVeryLong) {
     EXPECT_DOUBLE_EQ(timer.next(kMillisecond + 2000 * kMillisecond), 0.1);
 }
 
-} // namespace haylen::platform::sdl
+} // namespace haylen::platform

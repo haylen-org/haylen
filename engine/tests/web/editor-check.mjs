@@ -1,6 +1,8 @@
 // Opens the page of the editor check in a headless browser over its debugging protocol and drives the editor contract of the generic web player: it builds a project file by file, runs it, reloads a module, rejects a syntax error, restores the code that runs, applies a failing batch atomically, stops code that never ends through the execution budget while the page answers, inspects the app, runs it again in place while its audio output opens, stops it early and disposes of the runtime. It prints what happened as JSON, with every error that the page logged, since the audio output must open and close again without one.
-// Run it with Node: node editor-check.mjs <debugging port> <page address>
-const [port, url] = process.argv.slice(2);
+// In the Worker mode, with the mode "worker" and a page address that asks for it, the runtime runs in a dedicated worker: `hello` reports it, a key and a click of the browser reach the app through the page, and on a second load of the page the editor terminates a worker that a finalizer holds while the page and its heartbeat tell it stopped answering.
+// Run it with Node: node editor-check.mjs <debugging port> <page address> [worker]
+const [port, url, mode] = process.argv.slice(2);
+const worker = mode === "worker";
 const version = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json();
 const socket = new WebSocket(version.webSocketDebuggerUrl);
 const pending = new Map();
@@ -28,7 +30,18 @@ socket.onmessage = (event) => {
         }
     } else if (message.method === "Runtime.exceptionThrown" && !result.failure) {
         result.failure = message.params.exceptionDetails.exception?.description ?? message.params.exceptionDetails.text;
+    } else if (message.method === "Page.loadEventFired" && loaded) {
+        loaded();
     }
+};
+
+// Loads the page and waits for its load event within a bound, so no step runs in the page that the navigation replaces.
+let loaded = null;
+const navigate = async () => {
+    const load = new Promise((resolve) => (loaded = resolve));
+    await send("Page.navigate", { url }, sessionId);
+    await Promise.race([load, new Promise((resolve) => setTimeout(resolve, 30000))]);
+    loaded = null;
 };
 
 await new Promise((resolve) => (socket.onopen = resolve));
@@ -36,7 +49,7 @@ const page = (await send("Target.getTargets")).targetInfos.find((target) => targ
 const { sessionId } = await send("Target.attachToTarget", { targetId: page.targetId, flatten: true });
 await send("Runtime.enable", {}, sessionId);
 await send("Page.enable", {}, sessionId);
-await send("Page.navigate", { url }, sessionId);
+await navigate();
 
 // Runs a script of the page that answers whether the step held, within the seconds.
 const step = async (name, script, seconds) => {
@@ -51,7 +64,16 @@ const step = async (name, script, seconds) => {
     return reached;
 };
 
-const ready = await step("ready", "for (let tries = 0; tries < 300 && !(window.Module && Module.haylen && Module.haylen.editor); ++tries) { await new Promise((resolve) => setTimeout(resolve, 100)); } const hello = await Module.haylen.editor.request('hello'); return hello.protocol === 1 && hello.capabilities.packageEditing && hello.capabilities.developmentReload;", 40);
+const readyScript = `for (let tries = 0; tries < 300 && !(window.Module && Module.haylen && Module.haylen.editor); ++tries) { await new Promise((resolve) => setTimeout(resolve, 100)); } const hello = await Module.haylen.editor.request('hello'); return hello.protocol === 1 && hello.capabilities.packageEditing && hello.capabilities.developmentReload && hello.capabilities.workerHosting === ${worker};`;
+const ready = await step("ready", readyScript, 40);
+if (ready && worker) {
+    await step("prepared input", "await editor.request('clearFiles'); await editor.request('edit', { operations: [{ op: 'write', path: 'app.json', content: check.app }, { op: 'write', path: 'source/main.lua', content: check.input }] }); const ran = await editor.request('run'); await new Promise((resolve) => setTimeout(resolve, 300)); return ran.error === null;", 30);
+    await send("Input.dispatchMouseEvent", { type: "mousePressed", x: 320, y: 180, button: "left", clickCount: 1 }, sessionId);
+    await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: 320, y: 180, button: "left", clickCount: 1 }, sessionId);
+    await send("Input.dispatchKeyEvent", { type: "keyDown", code: "Space", key: " ", windowsVirtualKeyCode: 32 }, sessionId);
+    await send("Input.dispatchKeyEvent", { type: "keyUp", code: "Space", key: " ", windowsVirtualKeyCode: 32 }, sessionId);
+    await step("took input", "await new Promise((resolve) => setTimeout(resolve, 500)); const answer = await editor.request('console', { line: 'lua keys .. \\',\\' .. clicks .. \\',\\' .. math.floor(x) .. \\',\\' .. math.floor(y)' }); const [keys, clicks, x, y] = answer.output.trim().split(',').map(Number); return keys === 1 && clicks === 1 && Math.abs(x - 320 * devicePixelRatio) <= 2 && Math.abs(y - 180 * devicePixelRatio) <= 2;", 20);
+}
 if (ready) {
     await step("ran", "await editor.request('clearFiles'); const edited = await editor.request('edit', { operations: [{ op: 'write', path: 'app.json', content: check.app }, { op: 'write', path: 'source/main.lua', content: check.main }, { op: 'write', path: 'source/settings.lua', content: check.first }] }); const ran = await editor.request('run'); return ran.revision === edited.revision && ran.app.name === 'Editor Check' && ran.error === null;", 30);
     await step("reloaded", "await editor.request('edit', { operations: [{ op: 'write', path: 'source/settings.lua', content: check.second }] }); const applied = await editor.request('applyChanges'); return applied.report.modules[0] === 'source/settings.lua' && applied.report.rejected.length === 0;", 20);
@@ -64,6 +86,16 @@ if (ready) {
     await step("ran again in place", "for (let round = 0; round < 4; ++round) { await editor.request('run'); } await new Promise((resolve) => setTimeout(resolve, 500)); return Module.haylen.audio.stats().available;", 30);
     await step("stopped early", "editor.request('run'); await editor.request('stop'); const ran = await editor.request('run'); await new Promise((resolve) => setTimeout(resolve, 500)); return ran.error === null;", 30);
     await step("disposed", "const answer = await editor.request('dispose'); let after = null; try { await editor.request('hello'); } catch (error) { after = error.code; } return answer.disposed && after === 'disposed';", 30);
+}
+if (ready && worker) {
+    await navigate();
+    await step("ready again", readyScript, 40);
+    await step("terminated a stuck worker", "await editor.request('clearFiles'); await editor.request('edit', { operations: [{ op: 'write', path: 'app.json', content: check.app }, { op: 'write', path: 'source/main.lua', content: check.stuck }] }); editor.request('run').catch(() => undefined); for (let tries = 0; tries < 100 && Module.haylen.editor.heartbeat() < 2000; ++tries) { await new Promise((resolve) => setTimeout(resolve, 100)); } const silent = Module.haylen.editor.heartbeat() >= 2000; const waiting = editor.request('hello').then(() => null, (error) => error.code); await Module.haylen.editor.terminate(); let after = null; try { await editor.request('hello'); } catch (error) { after = error.code; } return silent && (await waiting) === 'terminated' && after === 'terminated';", 30);
+}
+// The errors that the page heard through "onError" join the log, since a runtime in a worker logs to a console of its own.
+if (result.failure) {
+    const heard = await send("Runtime.evaluate", { expression: "JSON.stringify(window.check ? check.errors : [])", returnByValue: true }, sessionId);
+    result.log.push("Errors of the page: " + (heard.result?.value ?? "none"));
 }
 console.log(JSON.stringify(result));
 process.exit(0);

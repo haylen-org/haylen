@@ -12,43 +12,43 @@
 // The JavaScript of the page goes into the module as it is written.
 // clang-format off
 EM_JS(int, haylen_js_video_begin, (), {
-    return Module.haylen.video.begin();
+    return Module.haylen.videoDecoder.begin();
 });
 
 EM_JS(void, haylen_js_video_append, (int id, const void* bytes, int length), {
-    Module.haylen.video.append(id, bytes, length);
+    Module.haylen.videoDecoder.append(id, bytes, length);
 });
 
 EM_JS(void, haylen_js_video_open, (int id, const char* type), {
-    Module.haylen.video.open(id, UTF8ToString(type));
+    Module.haylen.videoDecoder.open(id, UTF8ToString(type));
 });
 
 EM_JS(char*, haylen_js_video_info, (int id), {
-    return stringToNewUTF8(Module.haylen.video.info(id));
+    return stringToNewUTF8(Module.haylen.videoDecoder.info(id));
 });
 
 EM_JS(void, haylen_js_video_control, (int id, int playing, double rate), {
-    Module.haylen.video.control(id, playing !== 0, rate);
+    Module.haylen.videoDecoder.control(id, playing !== 0, rate);
 });
 
 EM_JS(int, haylen_js_video_frame, (int id, void* pixels, int width, int height), {
-    return Module.haylen.video.frame(id, pixels, width, height);
+    return Module.haylen.videoDecoder.frame(id, pixels, width, height);
 });
 
 EM_JS(int, haylen_js_video_take_sound, (int id, float* samples, int capacity), {
-    return Module.haylen.video.takeSound(id, samples, capacity);
+    return Module.haylen.videoDecoder.takeSound(id, samples, capacity);
 });
 
 EM_JS(void, haylen_js_video_seek, (int id, double seconds), {
-    Module.haylen.video.seek(id, seconds);
+    Module.haylen.videoDecoder.seek(id, seconds);
 });
 
 EM_JS(double, haylen_js_video_time, (int id), {
-    return Module.haylen.video.time(id);
+    return Module.haylen.videoDecoder.time(id);
 });
 
 EM_JS(void, haylen_js_video_close, (int id), {
-    Module.haylen.video.close(id);
+    Module.haylen.videoDecoder.close(id);
 });
 // clang-format on
 

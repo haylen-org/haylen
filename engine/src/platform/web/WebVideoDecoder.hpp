@@ -10,7 +10,7 @@
 
 namespace haylen::platform {
 
-// Plays a video file of the package in a video element of the page, which `haylen.video` of `haylen-runtime.js` makes from the bytes of the file. The element keeps its own clock, so the decoder hands it play, pause, seek and rate, reports its time and its newest picture, and passes on the sound that the page took from the element. The element learns its size and its length after it opens, so the decoder reports them once the page knows them.
+// Plays a video file of the package in a video element of the page, which `haylen.video` of `haylen-page.js` makes from the bytes of the file, through `haylen.videoDecoder` of `haylen-runtime.js`. The element keeps its own clock, so the decoder hands it play, pause, seek and rate, reports its time and its newest picture, and passes on the sound that the page took from the element. The element learns its size and its length after it opens, so the decoder reports them once the page knows them.
 class WebVideoDecoder final : public VideoDecoder {
   public:
     // Hands the bytes of the file to the page in pieces. Throws `std::runtime_error` for a file the package cannot read.

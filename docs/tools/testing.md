@@ -318,6 +318,11 @@ A website edits and runs projects through the [editor contract](build.md#the-edi
 7. The editor inspects the globals of the app, runs it again in place four times while its looping sound opens the audio output, and stops it while the output may still open.
 8. The editor disposes of the runtime, and a later request fails with `disposed`. The page must log no error of its own during the whole check, such as one of the audio output.
 
+The check then runs again in the [Worker mode](build.md#hosting-the-runtime), on a page whose address asks for it with `hosting=worker` and with the mode `worker` of the driver. There `hello` reports `workerHosting`, and two more parts run:
+
+1. Before the steps above, the editor runs a project that counts the presses of the space key and of the left mouse button, and the browser clicks the middle of the canvas and presses space. The page posts both to the worker, and the console of the app reports one press of each, with the click at the middle of the framebuffer.
+2. After the dispose, the page loads again and runs a project whose finalizer never ends, which the execution budget cannot stop. The heartbeat of the worker falls silent while the page goes on answering, and `terminate()` ends the worker, rejects the request that waited with `terminated` and makes every later request fail with `terminated`.
+
 ## The memory check of the web
 
 A web page reads content through a worker and keeps records in memory within a budget, which only a browser shows. So this check runs one:

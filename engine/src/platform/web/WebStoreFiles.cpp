@@ -9,7 +9,7 @@
 #include "haylen/core/Json.hpp"
 #include "platform/web/WebEntry.hpp"
 
-// The page side lives in `platform/web/haylen-runtime.js`, whose store hands every change to the worker of `haylen-content-store.js`.
+// The engine side lives in `platform/web/haylen-runtime.js`, whose store hands every change to the worker of `haylen-content-store.js`.
 
 // clang-format off
 EM_JS(void, haylen_js_store_write, (const char* name, const uint8_t* data, int size), {

@@ -5,27 +5,27 @@
 
 // clang-format off
 EM_JS(int, haylen_js_audio_supported, (), {
-    return Module.haylen.audio.supported() ? 1 : 0;
+    return Module.haylen.mixer.supported() ? 1 : 0;
 });
 
 EM_JS(int, haylen_js_audio_open, (void* device, int channels, int sampleRate, int blockFrames, int bufferedFrames), {
-    return Module.haylen.audio.open(device, channels, sampleRate, blockFrames, bufferedFrames) ? 1 : 0;
+    return Module.haylen.mixer.open(device, channels, sampleRate, blockFrames, bufferedFrames) ? 1 : 0;
 });
 
 EM_JS(void, haylen_js_audio_start, (void* device), {
-    Module.haylen.audio.start(device);
+    Module.haylen.mixer.start(device);
 });
 
 EM_JS(void, haylen_js_audio_stop, (void* device), {
-    Module.haylen.audio.stop(device);
+    Module.haylen.mixer.stop(device);
 });
 
 EM_JS(int, haylen_js_audio_locked, (void* device), {
-    return Module.haylen.audio.locked(device) ? 1 : 0;
+    return Module.haylen.mixer.locked(device) ? 1 : 0;
 });
 
 EM_JS(void, haylen_js_audio_close, (void* device), {
-    Module.haylen.audio.close(device);
+    Module.haylen.mixer.close(device);
 });
 // clang-format on
 
@@ -88,7 +88,7 @@ ma_result BrowserAudioOutput::stopDevice(ma_device* device) {
 
 } // namespace haylen::audio
 
-// Entry point for the audio output of the page, called through `Module.haylen.audio` in `platform/web/haylen-runtime.js`.
+// Entry point for the mixer of the audio output, called through `Module.haylen.mixer` in `platform/web/haylen-runtime.js`.
 extern "C" {
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_audio_render(ma_device* device, float* samples, int frames) {

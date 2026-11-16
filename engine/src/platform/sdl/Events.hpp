@@ -1,7 +1,5 @@
 #pragma once
 
-#include <array>
-#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <vector>
@@ -10,6 +8,7 @@
 
 #include "haylen/math/Vec2.hpp"
 #include "haylen/platform/Event.hpp"
+#include "platform/Touches.hpp"
 
 #if defined(__APPLE__)
 #include <TargetConditionals.h>
@@ -17,7 +16,7 @@
 
 namespace haylen::platform::sdl {
 
-// Turns the events of SDL into the events of the engine, with positions in framebuffer pixels. It follows the fingers on the screen, because SDL reports each finger on its own while the engine hands every touch of the screen with each change, whether the window is minimized and the state of the app.
+// Turns the events of SDL into the events of the engine, with positions in framebuffer pixels. It follows the fingers on the screen, which SDL reports each on its own, whether the window is minimized and the state of the app.
 class Events final {
   public:
     // What the translation reads from the window and the keyboard: the framebuffer pixels per unit of the coordinates of the window, the size of the framebuffer, which the positions of fingers are fractions of, and the modifier keys held, which only the events of keys carry.
@@ -34,11 +33,6 @@ class Events final {
     [[nodiscard]] static bool isPlatformBack(const SDL_Event& source) noexcept;
 
   private:
-    struct Finger {
-        SDL_FingerID id = 0;
-        math::Vec2 position;
-    };
-
     // The Apple TV remote reports its touch surface as touches, which the gamepad of the remote stands for instead. Apps of UIKit hear the states of the app, while desktop windows minimize.
 #if defined(__APPLE__) && TARGET_OS_TV
     static constexpr bool kRemote = true;
@@ -59,8 +53,7 @@ class Events final {
     static void appendText(const char* text, const Context& context, std::vector<platform::Event>& events);
     void appendTouch(const SDL_TouchFingerEvent& source, const Context& context, std::vector<platform::Event>& events);
 
-    std::array<Finger, platform::Event::kMaxTouchPoints> fingers{};
-    std::size_t fingerCount = 0;
+    Touches touches;
     bool minimized = false;
 
     // The last state of a UIKit app, which an app that starts hears as active.

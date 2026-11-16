@@ -33,6 +33,7 @@
 #elif defined(__EMSCRIPTEN__)
 #include <emscripten/emscripten.h>
 
+#include "platform/web/PageModifiers.hpp"
 #include "platform/web/WebEntry.hpp"
 #include "platform/web/WebPage.hpp"
 #elif defined(_WIN32)
@@ -84,8 +85,7 @@ void Runtime::scroll(math::Vec2 value, bool precise, int modifiers) {
         return;
     }
 
-    const input::KeyModifiers held{.shift = (modifiers & 1) != 0, .control = (modifiers & 2) != 0, .alt = (modifiers & 4) != 0, .super = (modifiers & 8) != 0};
-    running->post({.type = platform::Event::Type::MouseScroll, .modifiers = held, .scroll = value, .preciseScroll = precise});
+    running->post({.type = platform::Event::Type::MouseScroll, .modifiers = PageModifiers::read(modifiers), .scroll = value, .preciseScroll = precise});
 }
 
 // An app that the debugger halts never goes on once the system ends the process, so nothing of it runs as it ends.
@@ -535,7 +535,7 @@ int haylen_main(int argc, char* argv[]) {
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
     return haylen::platform::sdl::Runtime::run(__argc, __argv);
 }
-#else
+#elif !defined(__EMSCRIPTEN__)
 int main(int argc, char* argv[]) {
     return haylen::platform::sdl::Runtime::run(argc, argv);
 }

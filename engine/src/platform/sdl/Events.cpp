@@ -1,7 +1,7 @@
 #include "platform/sdl/Events.hpp"
 
-#include <algorithm>
 #include <cstring>
+#include <utility>
 
 #include <SDL3/SDL_stdinc.h>
 
@@ -185,39 +185,19 @@ void Events::appendText(const char* text, const Context& context, std::vector<pl
     }
 }
 
-// Every touch of the screen travels with each change, and the finger that changed is marked. A finger that lifts travels one last time before it leaves the list.
 void Events::appendTouch(const SDL_TouchFingerEvent& source, const Context& context, std::vector<platform::Event>& events) {
-    const math::Vec2 position{source.x * context.framebuffer.x, source.y * context.framebuffer.y};
-    Finger* const end = fingers.data() + fingerCount;
-    Finger* finger = std::find_if(fingers.data(), end, [&source](const Finger& candidate) { return candidate.id == source.fingerID; });
-    if (finger == end) {
-        if (source.type != SDL_EVENT_FINGER_DOWN || fingerCount == fingers.size()) {
-            return;
-        }
-
-        ++fingerCount;
-    }
-
-    *finger = {.id = source.fingerID, .position = position};
-
-    platform::Event::Type type = platform::Event::Type::TouchMoved;
+    Touches::Phase phase = Touches::Phase::Moved;
     if (source.type == SDL_EVENT_FINGER_DOWN) {
-        type = platform::Event::Type::TouchBegan;
+        phase = Touches::Phase::Began;
     } else if (source.type == SDL_EVENT_FINGER_UP) {
-        type = platform::Event::Type::TouchEnded;
+        phase = Touches::Phase::Ended;
     } else if (source.type == SDL_EVENT_FINGER_CANCELED) {
-        type = platform::Event::Type::TouchCancelled;
+        phase = Touches::Phase::Cancelled;
     }
 
-    platform::Event event{.type = type, .modifiers = toModifiers(context.modifiers), .touchCount = fingerCount};
-    for (std::size_t index = 0; index < fingerCount; ++index) {
-        event.touches[index] = {.id = static_cast<std::uint64_t>(fingers[index].id), .position = fingers[index].position, .changed = &fingers[index] == finger};
-    }
-
-    events.push_back(event);
-
-    if (type == platform::Event::Type::TouchEnded || type == platform::Event::Type::TouchCancelled) {
-        *finger = fingers[--fingerCount];
+    const math::Vec2 position{source.x * context.framebuffer.x, source.y * context.framebuffer.y};
+    if (std::optional<platform::Event> touch = touches.change(static_cast<std::uint64_t>(source.fingerID), phase, position, toModifiers(context.modifiers))) {
+        events.push_back(std::move(*touch));
     }
 }
 

@@ -68,7 +68,7 @@ The platform has one native text input, and the engine shares it between its edi
 
 ## Web
 
-The web runtime, `engine/platform/web/haylen-runtime.js`, edits through fields of the browser:
+The page side of the web runtime, `engine/platform/web/haylen-page.js`, edits through fields of the browser, also in the [Worker mode](../tools/build.md#hosting-the-runtime), where it posts the edits to the worker:
 
 - A hidden `<textarea>` edits text, text areas and every keyboard except passwords. A hidden `<input type="password">` edits passwords.
 - Both are siblings of the canvas, placed over the field, with framebuffer pixels scaled to the box of the canvas on the page.

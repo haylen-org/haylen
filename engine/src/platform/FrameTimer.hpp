@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace haylen::platform::sdl {
+namespace haylen::platform {
 
 // Measures the seconds between frames and smooths them, so the frames that the display paces evenly advance the app evenly although the system wakes the frame thread a little early or late. A frame that takes clearly longer or shorter than the ones before starts the smoothing again from its own duration.
 class FrameTimer final {
@@ -20,4 +20,4 @@ class FrameTimer final {
     double average = 1.0 / 60.0;
 };
 
-} // namespace haylen::platform::sdl
+} // namespace haylen::platform

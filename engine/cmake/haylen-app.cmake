@@ -47,9 +47,10 @@ function(haylen_link_runtime_platform target scope)
       "-sEXPORTED_FUNCTIONS=[_main,_malloc,_free,_haylen_web_resolve,_haylen_web_emit,_haylen_web_open_link,_haylen_web_finish_screen,_haylen_web_restore_screen,_haylen_web_load_zip,_haylen_web_clear_files,_haylen_web_revision,_haylen_web_edit,_haylen_web_run_files,_haylen_web_console,_haylen_web_inspect,_haylen_web_dispose,_haylen_web_stop,_haylen_web_set_paused,_haylen_web_paused,_haylen_web_apply_changes,_haylen_web_last_error,_haylen_web_visibility,_haylen_web_page_hidden,_haylen_web_network,_haylen_web_displays_changed,_haylen_web_theme,_haylen_web_languages,_haylen_web_accessibility,_haylen_web_accessibility_action,_haylen_web_battery,_haylen_web_time_zone,_haylen_web_text_edited,_haylen_web_text_action,_haylen_web_keyboard,_haylen_web_scroll,_haylen_web_socket_opened,_haylen_web_socket_received,_haylen_web_socket_closed,_haylen_web_socket_failed,_haylen_web_audio_render,_haylen_web_open_video_stream,_haylen_web_push_video_frame,_haylen_web_open_audio_stream,_haylen_web_push_audio_frames,_haylen_web_media_command,_varn_dataview_new,_varn_dataview_acquire,_varn_dataview_retain,_varn_dataview_release,_varn_dataview_data,_varn_dataview_size,_varn_dataview_id]"
       "--pre-js=${HAYLEN_VARN_DATAVIEW_SCRIPT}"
       "--pre-js=${HAYLEN_ENGINE_DIR}/platform/web/haylen-runtime.js"
+      "--pre-js=${HAYLEN_ENGINE_DIR}/platform/web/haylen-page.js"
     )
-    # The scripts go into the script of every app that links the runtime, so a change to them links the app again even when no library changed.
-    set_property(TARGET ${target} APPEND PROPERTY INTERFACE_LINK_DEPENDS "${HAYLEN_VARN_DATAVIEW_SCRIPT}" "${HAYLEN_ENGINE_DIR}/platform/web/haylen-runtime.js")
+    # The scripts go into the script of every app that links the runtime, so a change to them links the app again even when no library changed. The engine side of the runtime comes before its page side, which reaches it as it loads.
+    set_property(TARGET ${target} APPEND PROPERTY INTERFACE_LINK_DEPENDS "${HAYLEN_VARN_DATAVIEW_SCRIPT}" "${HAYLEN_ENGINE_DIR}/platform/web/haylen-runtime.js" "${HAYLEN_ENGINE_DIR}/platform/web/haylen-page.js")
   else()
     # The window services of X11 call Xlib, its shape extension and RandR, while SDL loads the libraries of X11 and Wayland when the app starts.
     find_package(X11 REQUIRED)
@@ -92,12 +93,14 @@ function(haylen_setup_web_page target shell)
   set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS "${shell}" "${HAYLEN_ENGINE_DIR}/platform/web/haylen-audio-worklet.js")
 
   # The WebGPU and WebGL2 bundle of haylen.py run builds its page from the same shell, so the shell travels with the build output, next to the engine logo that the default shell shows as its icon.
-  # The runtime loads the processor of its audio output and the worker of its content store from next to its script, so both travel with the build output too.
+  # The runtime loads the processor of its audio output and the worker of its content store from next to its script, and a page of the Worker mode loads the page side of the runtime and the worker that runs it from there, so they travel with the build output too.
   add_custom_command(TARGET ${target} POST_BUILD
     COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${shell}" "$<TARGET_FILE_DIR:${target}>/${target}.shell.html"
     COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${HAYLEN_ENGINE_DIR}/platform/web/haylen-logo.svg" "$<TARGET_FILE_DIR:${target}>/haylen-logo.svg"
     COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${HAYLEN_ENGINE_DIR}/platform/web/haylen-audio-worklet.js" "$<TARGET_FILE_DIR:${target}>/haylen-audio-worklet.js"
     COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${HAYLEN_ENGINE_DIR}/platform/web/haylen-content-store.js" "$<TARGET_FILE_DIR:${target}>/haylen-content-store.js"
+    COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${HAYLEN_ENGINE_DIR}/platform/web/haylen-page.js" "$<TARGET_FILE_DIR:${target}>/haylen-page.js"
+    COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${HAYLEN_ENGINE_DIR}/platform/web/haylen-worker.js" "$<TARGET_FILE_DIR:${target}>/haylen-worker.js"
     VERBATIM
   )
 endfunction()

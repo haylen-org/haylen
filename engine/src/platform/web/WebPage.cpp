@@ -89,6 +89,10 @@ EM_JS(void, haylen_js_await_pointer_lock, (double id, int value), {
     Module.haylen.awaitPointerLock(id, value !== 0);
 });
 
+EM_JS(void, haylen_js_lock_pointer, (double id, int value), {
+    Module.haylen.lockPointer(id, value !== 0);
+});
+
 EM_JS(void, haylen_js_write_clipboard, (double id, const char* text), {
     Module.haylen.writeClipboard(id, UTF8ToString(text));
 });
@@ -156,6 +160,10 @@ void WebPage::setScreenKeptOn(bool value, std::function<void(Permission::Answer 
 
 void WebPage::awaitPointerLock(bool value, std::function<void(Permission::Answer answer)> callback) {
     haylen_js_await_pointer_lock(awaitGatedCall(withoutText(std::move(callback))), value ? 1 : 0);
+}
+
+void WebPage::lockPointer(bool value, std::function<void(Permission::Answer answer)> callback) {
+    haylen_js_lock_pointer(awaitGatedCall(withoutText(std::move(callback))), value ? 1 : 0);
 }
 
 void WebPage::setClipboard(std::string_view text, std::function<void(Permission::Answer answer)> callback) {
@@ -615,6 +623,11 @@ int WebPage::pushAudioFrames(void* stream, const float* samples, int frames) {
     // clang-format on
 }
 
+int WebPage::getAudioStreamRoom(void* stream) noexcept {
+    const AudioStream& target = *static_cast<AudioStream*>(stream);
+    return static_cast<int>(target.getCapacity() - target.getBufferedFrames());
+}
+
 core::Json WebPage::getFrameStatistics(core::Engine& engine) {
     const debug::Profiler& profiler = engine.getProfiler();
     const graphics2d::Renderer::Stats& render = engine.getRenderer2D().getStats();
@@ -680,6 +693,10 @@ EMSCRIPTEN_KEEPALIVE void* haylen_web_open_audio_stream(const char* plugin, cons
 
 EMSCRIPTEN_KEEPALIVE int haylen_web_push_audio_frames(void* stream, const float* samples, int frames) {
     return haylen::platform::WebPage::pushAudioFrames(stream, samples, frames);
+}
+
+EMSCRIPTEN_KEEPALIVE int haylen_web_audio_stream_room(void* stream) {
+    return haylen::platform::WebPage::getAudioStreamRoom(stream);
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_reserve_insets(const char* key, float left, float top, float right, float bottom) {

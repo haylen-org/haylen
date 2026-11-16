@@ -425,7 +425,7 @@ Apps built with `haylen_add_app` add their Objective-C file with the `SOURCES` a
 
 ## Web
 
-The page side of the bridge lives in `engine/platform/web/haylen-runtime.js`. Every web target links it with `--pre-js`, and it fills `Module.haylen`:
+The page side of the bridge lives in `engine/platform/web/haylen-page.js`. Every web target links it with `--pre-js`, a page of the [Worker mode](../tools/build.md#hosting-the-runtime) loads it alone, and it fills `Module.haylen`:
 
 | Function | Meaning |
 | --- | --- |

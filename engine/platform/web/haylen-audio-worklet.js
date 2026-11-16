@@ -1,5 +1,5 @@
-// AudioWorklet processors of the Haylen web runtime, which `haylen-runtime.js` loads from next to its script: the audio output and the tap of the sound of videos.
-// The page mixes on its own thread and posts blocks of interleaved samples, which the processor keeps in a ring buffer and plays one render quantum at a time. It answers with the frames it played since its last answer and the buffers of the blocks it copied, which the page fills again, and it counts the render quanta that found the buffer empty.
+// AudioWorklet processors of the Haylen web runtime, which `haylen-page.js` loads from next to the runtime script: the audio output and the tap of the sound of videos.
+// The mixer of the engine side mixes on the thread of the module, the page or the worker of the Worker mode, and posts blocks of interleaved samples through the port that the page hands the processor as its first message, which the processor keeps in a ring buffer and plays one render quantum at a time. It answers through that port with the frames it played since its last answer and the buffers of the blocks it copied, which the mixer fills again, and it counts the render quanta that found the buffer empty.
 
 class HaylenAudioProcessor extends AudioWorkletProcessor {
     constructor(options) {
@@ -19,7 +19,11 @@ class HaylenAudioProcessor extends AudioWorkletProcessor {
         this.primed = false;
         // A processor whose output closed ends, so the browser can release its node.
         this.ended = false;
-        this.port.onmessage = (event) => this.receive(event.data);
+        this.mixer = null;
+        this.port.onmessage = (event) => {
+            this.mixer = event.data;
+            this.mixer.onmessage = (message) => this.receive(message.data);
+        };
     }
 
     receive(data) {
@@ -66,14 +70,14 @@ class HaylenAudioProcessor extends AudioWorkletProcessor {
         this.storedFrames -= played;
         this.unreportedFrames += played;
 
-        // A starved output answers at once, so the page learns about it without waiting for a whole block to play.
+        // A starved output answers at once, so the mixer learns about it without waiting for a whole block to play.
         const starved = this.active && this.primed && played < frames;
         if (starved) {
             this.underruns += 1;
         }
 
         if (this.unreportedFrames >= this.reportFrames || (starved && this.unreportedFrames > 0)) {
-            this.port.postMessage({ played: this.unreportedFrames, underruns: this.underruns, buffers: this.spent }, this.spent);
+            this.mixer.postMessage({ played: this.unreportedFrames, underruns: this.underruns, buffers: this.spent }, this.spent);
             this.unreportedFrames = 0;
             this.spent = [];
         }

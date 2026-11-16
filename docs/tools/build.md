@@ -450,11 +450,13 @@ The engine target adds the native exceptions and the native `longjmp` of WebAsse
 
 ### Files of a web build
 
-A web target produces `<target>.html`, `<target>.js`, `<target>.wasm` and, for apps, `<target>.data` in `bin/<target>/`. A step after the build, `haylen_setup_web_page`, copies three more files next to them:
+A web target produces `<target>.html`, `<target>.js`, `<target>.wasm` and, for apps, `<target>.data` in `bin/<target>/`. A step after the build, `haylen_setup_web_page`, copies more files next to them:
 
 - The shell of the target as `<target>.shell.html`. That is the `WEB_SHELL` of `haylen_add_app`, or `engine/platform/web/shell.html` by default.
 - `haylen-logo.svg`, the engine logo, which the default shell shows on its splash and as the icon of the page.
 - `haylen-audio-worklet.js`, the AudioWorklet processor of the audio output. The runtime loads it from the folder of its script through `locateFile`.
+- `haylen-content-store.js`, the worker of the [content store](../content/content.md#the-web) of a protected release.
+- `haylen-page.js` and `haylen-worker.js`, the page side of the runtime and the worker that runs the module in the [Worker mode](#hosting-the-runtime), which a page of that mode loads from next to the runtime script.
 
 The prebuilt player of `haylen engine --platform web` is the `haylen` target of the `web` tree, whose page is the [web loader](distribution.md#web-loader). The command `run --platform web` builds a C++ app target and writes this layout:
 
@@ -477,7 +479,9 @@ A page defines `Module` before it loads the runtime script. The file `templates/
 
 | Field | Meaning |
 | --- | --- |
-| `Module.canvas` | The canvas that the app draws into. It must be a canvas element with an `id`. The runtime follows its size with a `ResizeObserver`, so the layout of the page decides the size. |
+| `Module.canvas` | The canvas that the app draws into. It must be a canvas element with an `id`. The runtime follows its size with a `ResizeObserver`, so the layout of the page decides the size. In the Worker mode the page hands the canvas to the worker with `transferControlToOffscreen`, so nothing else draws into it. |
+| `Module.haylen.hosting` | Optional `worker`, which runs the module in a dedicated worker, as [hosting the runtime](#hosting-the-runtime) describes. The page then loads `haylen-page.js` instead of the runtime script. |
+| `Module.haylen.runtimeUrl` | The address of the runtime script in the Worker mode, `haylen.js` next to the page by default. The worker `haylen-worker.js`, the audio processor and the worker of the content store load from next to it. |
 | `Module.haylen.packageData` | Optional bytes of a zipped package, as an `ArrayBuffer` or a `Uint8Array`. The runtime writes them to its file system and plays them instead of the bundled package. The web loader downloads `app.zip` with a progress bar and hands it over this way. |
 | `Module.haylen.packageUrl` | Optional URL of a zipped package, used when `packageData` is not set. The runtime downloads it before the app starts and plays it instead of the bundled package. A failed download reaches `onError`. The default shell of C++ apps reads it from the `package` parameter of the address. |
 | `Module.haylen.release` | Optional `{address, identifier, files}` of a protected release. The `files` are `{name, bytes}` of its manifests and its app domain, which the page downloaded and which go to `/app`. The `address`, such as `app/`, is where the shards of the content stay and download by range. The `identifier` of the app names its [content store](../content/content.md#the-web). The web loader sets it in release builds. |
@@ -495,7 +499,7 @@ A custom shell passed as `WEB_SHELL` keeps the `{{{ SCRIPT }}}` placeholder. Ems
 
 ### Runtime API
 
-The file `engine/platform/web/haylen-runtime.js` is linked with `--pre-js`. It fills `Module.haylen` with the API that a page uses: the handlers and events of the platform bridge, the contexts of plugins, the callbacks of the app and the editor contract of the next section. None of these calls reloads the page.
+Two scripts make the runtime. The engine side, `engine/platform/web/haylen-runtime.js`, holds what needs the memory and the exports of the module: the calls into the engine, the editor contract, the WebSockets of the app, the content store, the downloads, the user data, the mixer of the audio outputs, the pictures of videos and the pushes of streams. The page side, `engine/platform/web/haylen-page.js`, holds what needs the document: the input, the text fields, the overlay, the mirror of screen readers, the clipboard, fullscreen, the pointer and wake locks, the now-playing controls, the video elements, the windows of outputs, the audio contexts and the web modules of plugins. Both are linked with `--pre-js`, the engine side first, and in the Worker mode the page loads the page side alone. Together they fill `Module.haylen` with the API that a page uses: the handlers and events of the platform bridge, the contexts of plugins, the callbacks of the app and the editor contract of the next section. None of these calls reloads the page.
 
 | Function | Meaning |
 | --- | --- |
@@ -534,7 +538,7 @@ The contract has a version, `Module.haylen.editor.protocol`, which is `1`. A lat
 const answer = await Module.haylen.editor.request(method, params);
 ```
 
-Each request gets an id, which its answer carries as `request`, and a promise. The promise resolves once the request completed, and rejects with an `Error` whose `code` is a stable code and whose message is a sentence for the person. The codes are `invalidRequest`, `invalidPath`, `missingFile`, `projectBudget`, `package` for bytes that are no zipped package, `notEditable` for the runtime of a release, `notRunning` when no app plays, `unsupported`, `disposed` and `failed`. A request made before the runtime started waits for it.
+Each request gets an id, which its answer carries as `request`, and a promise. The promise resolves once the request completed, and rejects with an `Error` whose `code` is a stable code and whose message is a sentence for the person. The codes are `invalidRequest`, `invalidPath`, `missingFile`, `projectBudget`, `package` for bytes that are no zipped package, `notEditable` for the runtime of a release, `notRunning` when no app plays, `unsupported`, `disposed`, `terminated` for a worker that the editor terminated and `failed`. A request made before the runtime started waits for it.
 
 | Request | Params | Answer |
 | --- | --- | --- |
@@ -550,7 +554,7 @@ Each request gets an id, which its answer carries as `request`, and a promise. T
 | `inspect` | `{path}` | `{path, entries}` |
 | `dispose` | | `{disposed}` once the runtime ended |
 
-The `capabilities` say what this runtime offers, each as a boolean: `packageEditing`, which the runtime of a release lacks, `developmentReload` for a page in development, `pause`, `console`, `inspection`, `cancellation` for the [execution budget](../core/lua.md#the-execution-budget) of a page in development, `storageNamespaces` and `workerHosting`, which is `false`, as [hosting the runtime](#hosting-the-runtime) explains.
+The `capabilities` say what this runtime offers, each as a boolean: `packageEditing`, which the runtime of a release lacks, `developmentReload` for a page in development, `pause`, `console`, `inspection`, `cancellation` for the [execution budget](../core/lua.md#the-execution-budget) of a page in development, `storageNamespaces` and `workerHosting`, which is `true` when the runtime runs in a dedicated worker, as [hosting the runtime](#hosting-the-runtime) explains.
 
 #### Editing the package
 
@@ -627,9 +631,42 @@ async function save(path, content) {
 
 One runtime plays one app at a time, and a page holds one runtime, since the runtime keeps its state in the global `Module` of the page. Two players coexist only in two frames or windows of their own, each with its own runtime. A page that names `Module.haylen.storageNamespace` before the runtime loads, such as `project-42`, keeps the user data of its apps in the IndexedDB database `/persistent/project-42`, apart from every other namespace and from pages without one, and the editor deletes the data of a project with `indexedDB.deleteDatabase("/persistent/project-42")` while no runtime uses it. A namespace is 1 to 64 letters, digits, dots, dashes and underscores.
 
-An editor runs the runtime in a frame of its own, which it removes after `dispose` and creates again for a project from scratch. The runtime needs the document of its page: SDL reads the keyboard, the mouse and the touches from it, the text input uses its hidden fields, the overlay of plugins and the tree of screen readers live in it, and the audio output needs an `AudioContext`, which a worker lacks. So the runtime does not run in a worker with an `OffscreenCanvas`, and `workerHosting` is `false`.
+An editor runs the runtime in the Worker mode, in a dedicated worker that it ends when the code of a project stops answering, or in a frame of its own. A page asks for the Worker mode with `Module.haylen.hosting = "worker"` and loads `haylen-page.js`, the page side of the runtime, instead of the runtime script:
 
-A frame of the same origin shares the thread of the editor, so code of the app that never ends would freeze the editor too. In development the [execution budget](../core/lua.md#the-execution-budget) stops such code after `debug.executionBudget`, and the [bounds of native work](../core/lua.md#native-work-and-its-bounds) keep a native function of the engine from running away. A frame of another site, such as a sandbox on a domain of its own, runs in a process of its own in the browsers that isolate sites, Chromium and Firefox, so it never holds up the editor, and the editor can remove it when it stops answering. The editor then talks to the frame with `postMessage` and forwards the requests and callbacks of the contract itself. A browser that does not isolate sites may run such a frame on the thread of the page.
+```html
+<canvas id="canvas"></canvas>
+<script>
+    var Module = {
+        canvas: document.getElementById("canvas"),
+        haylen: { hosting: "worker", runtimeUrl: "player/haylen.js", development: true, storageNamespace: "project-42" },
+    };
+</script>
+<script src="player/haylen-page.js"></script>
+```
+
+The page side reads the device, starts `haylen-worker.js` next to the runtime script as a dedicated worker and hands it the canvas as an `OffscreenCanvas` with the options of the page. The worker loads the runtime script, whose engine side draws into the canvas through WebGPU or WebGL2 and runs the frames on the animation frames of the worker, through the worker layer of `engine/src/platform/worker/`. The two sides talk through messages:
+
+- The page posts the input over the canvas: the keys that reach the app by their `code`, the mouse and the pens and fingers of pointer events, the scrolls and the focus of the page, and the controllers of the Gamepad API in its standard mapping at every animation frame of the page.
+- The page posts the state that the engine reads during a frame whenever it changes: the size of the canvas box and the pixels of the screen in each CSS pixel, the safe area, the fold, the orientation, fullscreen, the text of the clipboard, the screens and the plugins with a web module.
+- The page posts the requests of the editor, which the worker answers with the contract of the runtime on the page, and the calls of its page side into the engine, such as the answers of plugins and the edits of text fields. What the page posts before the worker started waits for it.
+- The worker posts the calls of the engine into the page, such as the text fields to edit, the tree of screen readers, fullscreen, the locks, the clipboard, the cursor, the title and the calls of the platform bridge, and a heartbeat four times a second while it answers.
+- Audio, videos and outputs stay on the page. The page owns the audio context of each output and hands its processor one end of a `MessageChannel` and the worker the other, so the mixer of the worker posts its blocks straight to the processor. A video plays in an element of the page, which posts each new picture to the worker as an `ImageBitmap` with its sound, and an output on another screen opens a window of the page whose canvas the worker draws into as another `OffscreenCanvas`.
+
+Everything else stays in the worker: the user data in IndexedDB, the WebSockets of the app, the downloads and the content store. In the Worker mode `hello` reports `workerHosting` as `true`, and the editor gains two functions:
+
+| Function | Meaning |
+| --- | --- |
+| `Module.haylen.editor.heartbeat()` | The milliseconds since the worker last answered, which grow while code of the app holds the worker, such as a finalizer of Lua that never ends, which runs without the hooks of the [execution budget](../core/lua.md#the-execution-budget). |
+| `Module.haylen.editor.terminate()` | Ends the worker at once, rejects every request that waits with the code `terminated` and releases what the page holds for the runtime: its audio contexts, text fields, videos, outputs and locks. It resolves once the audio contexts closed, and the page then starts a new runtime for the next project. |
+
+A `dispose` ends the worker too, once the user data reached its database. The Worker mode has limits that come from the browser:
+
+- The memory of the module stays in the worker, so a `VarnDataView` of the app never reaches the web module of a plugin, which runs on the page, and a call or a screen that carries one fails with the code `unsupported`. A plugin moves bytes instead, which cross as copies.
+- The page cannot answer during a frame of the worker, so an audio output always opens, and a context that the browser refuses leaves the output silent while the page logs why. The `push` of the audio stream of a plugin returns the frames that fit in the room that the worker reported last.
+- A browser opens popups, fullscreen, the pointer lock and the windows of outputs only shortly after an input of the person, so the request of the app reaches the page while that input still counts.
+- The worker needs the animation frames of workers and the `OffscreenCanvas` of WebGPU or WebGL2. Chromium and Safari offer both. A browser without the animation frames of workers reports the reason to `onError` instead of starting.
+
+A frame of the same origin shares the thread of the editor, so code of the app that never ends in a frame would freeze the editor too. In development the [execution budget](../core/lua.md#the-execution-budget) stops such code after `debug.executionBudget`, and the [bounds of native work](../core/lua.md#native-work-and-its-bounds) keep a native function of the engine from running away. A frame of another site, such as a sandbox on a domain of its own, runs in a process of its own in the browsers that isolate sites, Chromium and Firefox, and the editor talks to it with `postMessage`. The Worker mode keeps the editor answering without such a site, since the worker runs on a thread of its own in every browser.
 
 ## Android
 

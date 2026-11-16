@@ -24,7 +24,7 @@
 #include "platform/web/WebTextInput.hpp"
 #include "platform/web/WebVideoDecoder.hpp"
 
-// The page side lives in `platform/web/haylen-runtime.js`, which defines `Module.haylen` before the runtime starts.
+// The page side lives in `platform/web/haylen-page.js` and the engine side in `platform/web/haylen-runtime.js`, which define `Module.haylen` before the runtime starts.
 
 // clang-format off
 EM_JS(void, haylen_js_dispatch, (double call, const char* method, const char* params, const uint32_t* buffers, int count), {

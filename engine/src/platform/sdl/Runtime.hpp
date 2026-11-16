@@ -14,8 +14,8 @@
 #include "haylen/platform/Event.hpp"
 #include "platform/DeviceRecovery.hpp"
 #include "platform/FrameRateGate.hpp"
+#include "platform/FrameTimer.hpp"
 #include "platform/sdl/Events.hpp"
-#include "platform/sdl/FrameTimer.hpp"
 #include "platform/sdl/OutputWindows.hpp"
 #include "platform/sdl/Window.hpp"
 

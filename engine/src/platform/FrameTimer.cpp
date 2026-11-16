@@ -1,9 +1,9 @@
-#include "platform/sdl/FrameTimer.hpp"
+#include "platform/FrameTimer.hpp"
 
 #include <algorithm>
 #include <cmath>
 
-namespace haylen::platform::sdl {
+namespace haylen::platform {
 
 double FrameTimer::next(std::uint64_t nanoseconds) noexcept {
     if (last == 0) {
@@ -23,4 +23,4 @@ double FrameTimer::next(std::uint64_t nanoseconds) noexcept {
     return average;
 }
 
-} // namespace haylen::platform::sdl
+} // namespace haylen::platform
