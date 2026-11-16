@@ -96,7 +96,7 @@ function StaticBatches:plant(kindAt)
     table.sort(points, function(a, b) return a.y < b.y end)
     local trees = graphics2d.newSpriteBatch(assets.texture('tiled/tiles/props.png', Terrain.textureOptions))
     for index, point in ipairs(points) do
-        local source = index % 3 == 0 and {134, 2, 128, 256} or {2, 2, 128, 256}
+        local source = index % 3 == 0 and {176, 16, 128, 256} or {16, 16, 128, 256}
         trees:add({x = point.x, y = point.y, width = 96, height = 192, pivotY = 0.94, source = source, flipHorizontal = index % 2 == 0})
     end
     return trees:bake()

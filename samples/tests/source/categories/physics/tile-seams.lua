@@ -34,7 +34,7 @@ TileSeams.catchLoss = 0.5
 TileSeams.restTime = 0.5
 TileSeams.fade = 0.3
 -- Every tile shows one slab of the stone tile of the Tiled tests, whose four slabs are a quarter of the tile each.
-TileSeams.stoneTile = {530, 2}
+TileSeams.stoneTile = {656, 16}
 TileSeams.slab = 64
 
 function TileSeams:enter()

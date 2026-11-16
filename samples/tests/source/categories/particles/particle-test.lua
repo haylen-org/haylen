@@ -13,7 +13,7 @@ local ParticleTest = haylen.class('ParticleTest', Test)
 ParticleTest.view = {1920, 1080}
 ParticleTest.atlases = {effects = 'particles/library/textures/effects.json', pixel = 'particles/library/textures/pixel.json', props = 'particles/props.json', scenery = 'lighting/scenery.json'}
 ParticleTest.tiles = 'tiled/tiles/terrain.png'
-ParticleTest.floors = {stone = {530, 2, 128, 128}, grass = {2, 2, 128, 128}, flowers = {134, 2, 128, 128}, dirt = {266, 2, 128, 128}, sand = {398, 2, 128, 128}}
+ParticleTest.floors = {stone = {656, 16, 128, 128}, grass = {16, 16, 128, 128}, flowers = {176, 16, 128, 128}, dirt = {336, 16, 128, 128}, sand = {496, 16, 128, 128}}
 ParticleTest.gradients = {}
 ParticleTest.actions = {actions = {
     {name = 'cursor', type = 'vector', up = {'key:w', 'key:up', 'button:dpadUp'}, down = {'key:s', 'key:down', 'button:dpadDown'}, left = {'key:a', 'key:left', 'button:dpadLeft'}, right = {'key:d', 'key:right', 'button:dpadRight'}, bindings = {'stick:left', 'stick:right'}},

@@ -1,4 +1,4 @@
--- The painted ground of the package, laid out by the corners of its cells: grass in every cell, and sand, dirt paths and water whose edges follow the kind of ground at the four corners of each cell. It draws the tiles of `content/tiled/tiles/`, painted at 128 pixels in a margin of 2 and a spacing of 4.
+-- The painted ground of the package, laid out by the corners of its cells: grass in every cell, and sand, dirt paths and water whose edges follow the kind of ground at the four corners of each cell. It draws the tiles of `content/tiled/tiles/`, painted at 128 pixels in a margin of 16 and a spacing of 32.
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -18,7 +18,7 @@ Terrain.flowers = 0.12
 
 -- Returns the area of the painted tile at a column and row of a tile image.
 function Terrain.source(column, row)
-    return {2 + column * 132, 2 + row * 132, 128, 128}
+    return {16 + column * 160, 16 + row * 160, 128, 128}
 end
 
 -- Returns the image of the grass and the image of the corner sets.

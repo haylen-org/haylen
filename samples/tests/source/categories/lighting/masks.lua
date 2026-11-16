@@ -21,9 +21,9 @@ print(lamp:affects(2, 2))  -- Prints false.]]
 -- The floor has the mask 8, which only the fill light reaches, so it stays the same whatever the lamp selects.
 Masks.floorMask = 8
 Masks.kinds = {
-    {name = 'Crates', source = {530, 266, 128, 128}},
-    {name = 'Bushes', source = {266, 266, 128, 128}},
-    {name = 'Rocks', source = {398, 266, 128, 128}},
+    {name = 'Crates', source = {656, 336, 128, 128}},
+    {name = 'Bushes', source = {336, 336, 128, 128}},
+    {name = 'Rocks', source = {496, 336, 128, 128}},
 }
 Masks.layers = {{id = '1', text = '1'}, {id = '2', text = '2'}, {id = '3', text = '3'}}
 Masks.spacing = {x = 420, y = 230}

@@ -164,13 +164,11 @@ function Recolor:draw(area)
         self:figure(inner[1] + slot * (column + 0.5), inner[2] + rowHeight * (row + 1) - 46, rowHeight - 56, figure.name, figure.options)
     end
 
-    -- A ring of the color of the card around the meadow rounds its corners.
     Panels.card(layout.meadow, 'A crowd of 120 in one draw call')
     graphics2d.drawStatic(self.grass, 0, 0, {layer = -5})
     graphics2d.drawStatic(self.edges, 0, 0, {layer = -4})
     self.crowd:draw({partMask = self.mask})
-    local ground, ring = self.ground, 24
-    graphics2d.drawShape({ground[1] - ring, ground[2] - ring, ground[3] + ring * 2, ground[4] + ring * 2}, {radius = Recolor.meadowRadius + ring, color = '#00000000', borderWidth = ring, borderColor = Panels.fill, layer = 1})
+    Panels.frame(self.ground, Recolor.meadowRadius)
 end
 
 return Recolor

@@ -10,7 +10,7 @@ local Room = haylen.class('Room')
 
 -- The tiles of 128 pixels in the painted tileset, and the share of a tile that a crate or a bush fills.
 Room.tileset = 'tiled/tiles/terrain.png'
-Room.sources = {floor = {530, 2, 128, 128}, bricks = {662, 2, 128, 128}, crate = {530, 266, 128, 128}, bush = {266, 266, 128, 128}}
+Room.sources = {floor = {656, 16, 128, 128}, bricks = {816, 16, 128, 128}, crate = {656, 336, 128, 128}, bush = {336, 336, 128, 128}}
 Room.fill = {crate = 110 / 128, bush = 100 / 128}
 -- The painted flagstones repeat every this many world units.
 Room.floor = 'lighting/courtyard.png'

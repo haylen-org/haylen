@@ -45,7 +45,9 @@ Every path inside a map is relative to the file that contains it. So a map, its 
 
 A game can paint its tiles larger than the grid it plays at, so they stay sharp on large screens. Keep the map grid at the size the game plays at. Give the tileset the size of the painted tiles, and set its tile render size to the map grid size in Tiled, which writes `"tilerendersize": "grid"`. Then every tile draws at the size of a cell, with its offset and its collision shapes scaled the same way. Load such a map with the `linear` filter.
 
-The linear filter reads the pixels around each point. So keep a gutter around each tile in the tileset image, made of copies of the edge pixels of the tile. Give the gutter to Tiled as the margin and the spacing of the tileset. Then a tile never shows its neighbor along its edges. The tiles of the Tiled tests of the test project are painted at four times their grid this way.
+The linear filter reads the pixels around each point. So keep a gutter around each tile in the tileset image, made of copies of the edge pixels of the tile. Give the gutter to Tiled as the margin and twice the gutter as the spacing of the tileset. Then a tile never shows its neighbor along its edges.
+
+A map drawn smaller than its tiles reads the mipmaps of the tileset, smaller copies whose pixels each mix a square of 2, 4, 8 or more pixels of the image. A square that reaches past the gutter mixes in the next tile, and its color shows as a thin line along the joints of the map. A gutter of 16 pixels on tiles whose sizes are multiples of 32 keeps every square inside one tile and its gutter until the map draws at a thirty-second of the size of its tiles. The tiles of the Tiled tests of the test project are painted at four times their grid this way.
 
 ## Supported features
 

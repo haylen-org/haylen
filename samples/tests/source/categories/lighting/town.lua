@@ -16,8 +16,8 @@ Town.houses = {
 
 -- The lamp post and the trees of the props tileset, with the glass of the lantern, in pixels of its tile.
 Town.lampTiles = 'tiled/tiles/props.png'
-Town.postSource = {266, 2, 128, 256}
-Town.treeSources = {tree = {2, 2, 128, 256}, pine = {134, 2, 128, 256}}
+Town.postSource = {336, 16, 128, 256}
+Town.treeSources = {tree = {16, 16, 128, 256}, pine = {176, 16, 128, 256}}
 Town.lantern = {110, 137}
 
 Town.glass = {night = '#FFFFC870', day = '#FF33465E'}

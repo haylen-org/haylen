@@ -42,7 +42,7 @@ SlopesSteps.block = 36
 -- The stone pillars at the sides reach up to this height, and the walls of the worlds reach far above them.
 SlopesSteps.pillarTop = -150
 -- The bush of the tiles of the Tiled tests that stands where the grass of the hill meets the landing.
-SlopesSteps.bush = {266, 266, 128, 128}
+SlopesSteps.bush = {336, 336, 128, 128}
 
 function SlopesSteps:enter()
     self:frame{

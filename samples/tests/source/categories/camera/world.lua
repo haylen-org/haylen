@@ -39,14 +39,14 @@ World.shrine = {x = 820, y = 470}
 -- The props of the island: the texture and area of each in the images of the package, the size it draws at, the point it stands on as a fraction of its height, and the radius of its foot that the walkers go around, if any.
 World.textures = {'tiled/tiles/props.png', 'tiled/tiles/terrain.png', 'camera/props.png'}
 World.kinds = {
-    tree = {texture = 1, source = {2, 2, 128, 256}, width = 120, height = 240, pivotY = 0.94, solid = 24, shadow = 54},
-    pine = {texture = 1, source = {134, 2, 128, 256}, width = 116, height = 232, pivotY = 0.94, solid = 22, shadow = 46},
-    lamp = {texture = 1, source = {266, 2, 128, 256}, width = 96, height = 192, pivotY = 0.95, solid = 12, shadow = 26},
-    bush = {texture = 2, source = {266, 266, 128, 128}, width = 84, height = 84, pivotY = 0.86, solid = 26, shadow = 36},
-    rock = {texture = 2, source = {398, 266, 128, 128}, width = 96, height = 96, pivotY = 0.86, solid = 32, shadow = 42},
-    chest = {texture = 2, source = {662, 266, 128, 128}, width = 72, height = 72, pivotY = 0.9, solid = 24, shadow = 30},
-    crate = {texture = 2, source = {530, 266, 128, 128}, width = 72, height = 72, pivotY = 0.9, solid = 24, shadow = 30},
-    flag = {texture = 2, source = {926, 266, 128, 128}, width = 80, height = 80, pivotY = 0.9, solid = 8, shadow = 18},
+    tree = {texture = 1, source = {16, 16, 128, 256}, width = 120, height = 240, pivotY = 0.94, solid = 24, shadow = 54},
+    pine = {texture = 1, source = {176, 16, 128, 256}, width = 116, height = 232, pivotY = 0.94, solid = 22, shadow = 46},
+    lamp = {texture = 1, source = {336, 16, 128, 256}, width = 96, height = 192, pivotY = 0.95, solid = 12, shadow = 26},
+    bush = {texture = 2, source = {336, 336, 128, 128}, width = 84, height = 84, pivotY = 0.86, solid = 26, shadow = 36},
+    rock = {texture = 2, source = {496, 336, 128, 128}, width = 96, height = 96, pivotY = 0.86, solid = 32, shadow = 42},
+    chest = {texture = 2, source = {816, 336, 128, 128}, width = 72, height = 72, pivotY = 0.9, solid = 24, shadow = 30},
+    crate = {texture = 2, source = {656, 336, 128, 128}, width = 72, height = 72, pivotY = 0.9, solid = 24, shadow = 30},
+    flag = {texture = 2, source = {1136, 336, 128, 128}, width = 80, height = 80, pivotY = 0.9, solid = 8, shadow = 18},
     shrine = {texture = 3, source = {6, 6, 233, 292}, width = 198, height = 248, pivotY = 0.95, solid = 80, shadow = 100},
     cottage = {texture = 3, source = {251, 6, 280, 279}, width = 280, height = 279, pivotY = 0.94, solid = 110, shadow = 130},
     well = {texture = 3, source = {543, 6, 216, 272}, width = 151, height = 190, pivotY = 0.95, solid = 52, shadow = 64},

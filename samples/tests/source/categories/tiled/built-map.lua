@@ -50,7 +50,7 @@ end
 
 -- The tilesets of the painted tiles, which hold four pixels for every pixel of the grid in gutters of their edge pixels and draw at the size of the grid.
 function BuiltMap.painted(name, wangSets)
-    return {name = name, image = 'tiled/tiles/' .. name .. '.png', filter = 'linear', tileWidth = kTile * 4, tileHeight = kTile * 4, margin = 2, spacing = 4, renderGridSize = true, wangSets = wangSets}
+    return {name = name, image = 'tiled/tiles/' .. name .. '.png', filter = 'linear', tileWidth = kTile * 4, tileHeight = kTile * 4, margin = 16, spacing = 32, renderGridSize = true, wangSets = wangSets}
 end
 
 function BuiltMap:enter()

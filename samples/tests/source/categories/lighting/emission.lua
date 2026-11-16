@@ -22,7 +22,7 @@ graphics2d.drawLight(lamp)]]
 Emission.ground = 300
 Emission.neonScale = 0.82
 Emission.houses = {{name = 'cottage', x = -620, scale = 0.72}, {name = 'stone-house', x = 40, scale = 0.72}, {name = 'cottage', x = 700, scale = 0.72}}
-Emission.signpost = {794, 398, 128, 128}
+Emission.signpost = {976, 496, 128, 128}
 Emission.signposts = {-1080, -300, 1180}
 
 function Emission:init(entry)

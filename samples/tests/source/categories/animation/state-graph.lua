@@ -20,10 +20,10 @@ StateGraph.speed = 260
 StateGraph.scale = 0.85
 -- Bushes and rocks of the painted props of the Tiled tests stand around the meadow, at shares of the play area, and sort with the walker by the line they stand on.
 StateGraph.props = {
-    {source = {266, 266, 128, 128}, x = 0.1, y = 0.28},
-    {source = {398, 266, 128, 128}, x = 0.88, y = 0.22},
-    {source = {398, 266, 128, 128}, x = 0.14, y = 0.9},
-    {source = {266, 266, 128, 128}, x = 0.86, y = 0.86},
+    {source = {336, 336, 128, 128}, x = 0.1, y = 0.28},
+    {source = {496, 336, 128, 128}, x = 0.88, y = 0.22},
+    {source = {496, 336, 128, 128}, x = 0.14, y = 0.9},
+    {source = {336, 336, 128, 128}, x = 0.86, y = 0.86},
 }
 StateGraph.propSize = 112
 -- The feet of the walker stand on this share of the height of its cells.

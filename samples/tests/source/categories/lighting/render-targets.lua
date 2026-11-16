@@ -21,7 +21,7 @@ graphics2d.draw(garden.texture, 80, -260, {pivotX = 0, pivotY = 0})]]
 
 RenderTargets.width = 800
 RenderTargets.height = 450
-RenderTargets.grass = {2, 2, 128, 128}
+RenderTargets.grass = {16, 16, 128, 128}
 -- The top of the desk the monitors stand on, in world units.
 RenderTargets.desk = 310
 RenderTargets.fireflyGlow = m.color('#FFE8FF90')

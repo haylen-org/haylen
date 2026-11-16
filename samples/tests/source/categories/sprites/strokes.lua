@@ -16,7 +16,7 @@ Strokes.caps = {{id = 'butt', text = 'Butt'}, {id = 'round', text = 'Round'}, {i
 Strokes.maxPoints = 400
 Strokes.streamerPoints = 10
 Strokes.streamerColors = {'#FFFFD54F', '#FFFFB74D', '#FFFF8A65', '#FFF06292', '#FFBA68C8', '#FF9575CD', '#FF7986CB', '#FF64B5F6', '#FF4FC3F7', '#FF4DD0E1'}
-Strokes.grass = {2, 2, 128, 128}
+Strokes.grass = {16, 16, 128, 128}
 
 -- The cards of each layout in world units around the center of the view, which the camera fits into the play area.
 Strokes.layouts = {

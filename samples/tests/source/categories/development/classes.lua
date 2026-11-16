@@ -27,7 +27,7 @@ Classes.cell = 256
 Classes.run = {9, 16}
 Classes.feet = 0.92
 -- The bushes and rocks of the tiles of the Tiled tests, the share of a prop from its top to its base, the size it draws at, how far apart they stand and the reach of their base.
-Classes.props = {{266, 266, 128, 128}, {398, 266, 128, 128}}
+Classes.props = {{336, 336, 128, 128}, {496, 336, 128, 128}}
 Classes.propBase = 0.82
 Classes.propSize = 112
 Classes.propSpacing = 300

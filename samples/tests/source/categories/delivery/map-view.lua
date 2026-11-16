@@ -7,7 +7,7 @@ local MapView = haylen.class('MapView')
 
 -- The painted tiles hold 128 pixels in gutters of 2 and 4, the transitions keep one corner set per row with the corner mask as the column, and the water plays the four rows from its first one.
 MapView.tile = 128
-MapView.margin, MapView.spacing = 2, 4
+MapView.margin, MapView.spacing = 16, 32
 MapView.grass, MapView.rock = 0, 19
 MapView.sandRow, MapView.waterRow = 4, 0
 MapView.waterFrames, MapView.waterSeconds = 4, 0.18

@@ -162,9 +162,7 @@ function RuntimeAtlases:drawMeadow(rect)
             graphics2d.draw(texture, x, y, {scaleX = scale, scaleY = scale, pivotY = 1, flipHorizontal = spot.flip})
         end
     end
-    -- A ring of the color of the card around the grass rounds its corners, and every sprite stands inside it.
-    local ring = 24
-    graphics2d.drawShape({grass[1] - ring, grass[2] - ring, grass[3] + ring * 2, grass[4] + ring * 2}, {radius = RuntimeAtlases.meadowRadius + ring, color = '#00000000', borderWidth = ring, borderColor = Panels.fill, layer = 1})
+    Panels.frame(grass, RuntimeAtlases.meadowRadius)
 end
 
 -- The medal with the hero, composed on the task pool, and a name on its ribbon drawn as text.

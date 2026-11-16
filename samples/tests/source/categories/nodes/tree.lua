@@ -26,12 +26,12 @@ NodeTree.lift = 18
 NodeTree.aim = {-0.8, 0.4}
 -- The tanks, wheels, barrels and pennants move in one call, eight nodes of three values for each tank.
 NodeTree.movingPaths = {'', 'wheel1', 'wheel2', 'wheel3', 'wheel4', 'wheel5', 'turret/barrel', 'turret/flag'}
-NodeTree.grass = {2, 2, 128, 128}
-NodeTree.flowers = {134, 2, 128, 128}
+NodeTree.grass = {16, 16, 128, 128}
+NodeTree.flowers = {176, 16, 128, 128}
 NodeTree.flowerShare = 0.035
 -- The tiles of the roads, from the corner set of the paths of the Tiled tests: the row of cells above the line of a road holds its top edge and the row below it its bottom edge.
-NodeTree.roadTop = {2 + 12 * 132, 2 + 5 * 132, 128, 128}
-NodeTree.roadBottom = {2 + 3 * 132, 2 + 5 * 132, 128, 128}
+NodeTree.roadTop = {16 + 12 * 160, 16 + 5 * 160, 128, 128}
+NodeTree.roadBottom = {16 + 3 * 160, 16 + 5 * 160, 128, 128}
 
 NodeTree.code = [[
 local tank = tree:instantiate(prefab, {name = 'tank1', x = x, y = y})  -- The subtree of tank.prefab.

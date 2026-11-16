@@ -18,8 +18,8 @@ local ScreenCapture = haylen.class('ScreenCapture', SpriteTest)
 ScreenCapture.path = 'tests/screen-capture.png'
 ScreenCapture.rows = 8
 -- The coins turn back and forth between their faces, never edge on, so a still picture shows a coin.
-ScreenCapture.coins = {{2, 398, 128, 128}, {134, 398, 128, 128}, {398, 398, 128, 128}, {134, 398, 128, 128}}
-ScreenCapture.slime = {{530, 398, 128, 128}, {662, 398, 128, 128}}
+ScreenCapture.coins = {{16, 496, 128, 128}, {176, 496, 128, 128}, {496, 496, 128, 128}, {176, 496, 128, 128}}
+ScreenCapture.slime = {{656, 496, 128, 128}, {816, 496, 128, 128}}
 ScreenCapture.layouts = {
     landscape = {view = {1700, 800}, cards = {scene = {-830, -380, 820, 760}, shot = {10, -380, 820, 760}}},
     portrait = {view = {900, 1700}, cards = {scene = {-430, -830, 860, 820}, shot = {-430, 10, 860, 820}}},
@@ -102,10 +102,10 @@ function ScreenCapture:drawScene(rect)
     graphics2d.drawStatic(self.edges, 0, 0, {layer = 1})
     local centerX, centerY = map[1] + map[3] / 2, map[2] + map[4] / 2
     local things = {
-        {texture = self.props, source = {2, 2, 128, 256}, x = map[1] + cell * 1.2, y = map[2] + cell * 2.6, height = cell * 2.4},
-        {texture = self.props, source = {134, 2, 128, 256}, x = map[1] + map[3] - cell * 1.1, y = map[2] + cell * 2.2, height = cell * 2.4},
-        {texture = self.props, source = {2, 2, 128, 256}, x = map[1] + map[3] - cell * 1.6, y = map[2] + map[4] - cell * 0.3, height = cell * 2.2},
-        {texture = self.terrain, source = {266, 266, 128, 128}, x = map[1] + cell * 1.6, y = map[2] + map[4] - cell * 0.6, height = cell},
+        {texture = self.props, source = {16, 16, 128, 256}, x = map[1] + cell * 1.2, y = map[2] + cell * 2.6, height = cell * 2.4},
+        {texture = self.props, source = {176, 16, 128, 256}, x = map[1] + map[3] - cell * 1.1, y = map[2] + cell * 2.2, height = cell * 2.4},
+        {texture = self.props, source = {16, 16, 128, 256}, x = map[1] + map[3] - cell * 1.6, y = map[2] + map[4] - cell * 0.3, height = cell * 2.2},
+        {texture = self.terrain, source = {336, 336, 128, 128}, x = map[1] + cell * 1.6, y = map[2] + map[4] - cell * 0.6, height = cell},
     }
     for index = 0, 4 do
         local frame = ScreenCapture.coins[math.floor(time * 10 + index * 2) % #ScreenCapture.coins + 1]

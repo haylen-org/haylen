@@ -14,8 +14,8 @@ local CompositionTest = haylen.class('CompositionTest', ComponentTest)
 CompositionTest.meadow = '#FF7CC647'
 CompositionTest.cell = 150
 CompositionTest.tuftScale = 3.6
-CompositionTest.tufts = {{56, 3, 21, 19}, {24, 23, 20, 15}, {98, 26, 20, 19}, {61, 46, 20, 17}, {2, 54, 19, 16}, {96, 68, 21, 18}, {38, 78, 20, 17}, {16, 99, 21, 19}, {82, 103, 20, 18}}
-CompositionTest.flowers = {{150, 14, 43, 44}, {202, 56, 47, 43}, {148, 78, 50, 44}}
+CompositionTest.tufts = {{70, 17, 21, 19}, {38, 37, 20, 15}, {112, 40, 20, 19}, {75, 60, 20, 17}, {16, 68, 19, 16}, {110, 82, 21, 18}, {52, 92, 20, 17}, {30, 113, 21, 19}, {96, 117, 20, 18}}
+CompositionTest.flowers = {{192, 28, 43, 44}, {244, 70, 47, 43}, {190, 92, 50, 44}}
 
 CompositionTest.code = [[
 local Composition = require('composition')  -- With health-bar.lua, copied from samples/tests.

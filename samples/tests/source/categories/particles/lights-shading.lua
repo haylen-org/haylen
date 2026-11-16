@@ -23,7 +23,7 @@ LightsShading.campfire = {-120, 330}
 LightsShading.floor = 360
 -- The trees and pines of the props tileset and the rocks of the terrain tileset that stand around the clearing.
 LightsShading.trees = {{-1040, 1.3, 'tree'}, {-820, 1.6, 'pine'}, {-560, 1.25, 'tree'}, {300, 1.45, 'pine'}, {1000, 1.5, 'tree'}}
-LightsShading.treeSources = {tree = {2, 2, 128, 256}, pine = {134, 2, 128, 256}}
+LightsShading.treeSources = {tree = {16, 16, 128, 256}, pine = {176, 16, 128, 256}}
 LightsShading.rocks = {{560, 380, 150}, {760, 390, 120}, {660, 340, 110}}
 
 function LightsShading:init(entry)
@@ -100,7 +100,7 @@ function LightsShading:draw(area)
         graphics2d.draw(self.tiles, tree[1], LightsShading.floor + 30, {source = source, width = 128 * tree[2] * 1.4, height = 256 * tree[2] * 1.4, pivotY = 1, layer = 1})
     end
     for _, rock in ipairs(LightsShading.rocks) do
-        graphics2d.draw(self.terrain, rock[1], rock[2], {source = {398, 266, 128, 128}, width = rock[3], height = rock[3], pivotY = 0.8, layer = 2})
+        graphics2d.draw(self.terrain, rock[1], rock[2], {source = {496, 336, 128, 128}, width = rock[3], height = rock[3], pivotY = 0.8, layer = 2})
     end
     ParticleTest.prop('campfire', LightsShading.campfire[1], LightsShading.campfire[2] + 50, 0.5, {pivotY = 1, layer = 2})
     ParticleTest.drawAll(self.emitters)

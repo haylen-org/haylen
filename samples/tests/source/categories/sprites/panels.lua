@@ -13,6 +13,7 @@ Panels.padding = 20
 Panels.titleSize = 30
 Panels.captionSize = 28
 Panels.pillColor = '#D8141826'
+Panels.ring = 8
 
 -- Returns the layout of `layouts`, a landscape and a portrait one with the `view` each lays its cards in, that the camera shows larger in the play area of `area`.
 function Panels.layout(layouts, area)
@@ -35,6 +36,12 @@ function Panels.card(rect, title, options)
     graphics2d.drawText(nil, title, x + padding, y + padding - 4, {size = Panels.titleSize, color = Test.ink, layer = layer + 1})
     local top = Panels.titleSize * 1.2 + 10
     return {x + padding, y + padding + top, width - padding * 2, height - padding * 2 - top}
+end
+
+-- Rounds the corners of a field laid out inside the padding of a card and under its title with a ring of the color of the card, drawn over the field. The ring is narrower than the padding, so it covers neither the border nor the title of the card.
+function Panels.frame(field, radius)
+    local ring = Panels.ring
+    graphics2d.drawShape({field[1] - ring, field[2] - ring, field[3] + ring * 2, field[4] + ring * 2}, {radius = radius + ring, color = '#00000000', borderWidth = ring, borderColor = Panels.fill, layer = 1})
 end
 
 -- Draws a caption whose top center sits at `x`, `y`.

@@ -19,7 +19,7 @@ Dissolve.subjects = {
     {name = 'Knight', path = 'sprites/images/hero.png', x = -600, scale = 1.4},
     {name = 'Rock', path = 'sprites/images/rock.png', x = -200, scale = 2.25},
     {name = 'Tree', path = 'sprites/images/tree.png', x = 200, scale = 1.7},
-    {name = 'Chest', path = 'tiled/tiles/terrain.png', source = {662, 266, 128, 128}, x = 600, scale = 1.6, pivotY = 0.92},
+    {name = 'Chest', path = 'tiled/tiles/terrain.png', source = {816, 336, 128, 128}, x = 600, scale = 1.6, pivotY = 0.92},
 }
 Dissolve.edgeColors = {
     {id = 'embers', text = 'Embers', color = '#FFFF9A30'},

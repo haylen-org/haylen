@@ -23,7 +23,7 @@ TurbulenceAttractors.killRadius = 40
 TurbulenceAttractors.ground = 400
 TurbulenceAttractors.house = {x = -560, scale = 0.62}
 -- The chest of the terrain tileset, which the coins jump out of.
-TurbulenceAttractors.chest = {x = 530, size = 170, source = {662, 266, 128, 128}}
+TurbulenceAttractors.chest = {x = 530, size = 170, source = {816, 336, 128, 128}}
 
 function TurbulenceAttractors:init(entry)
     TurbulenceAttractors.super.init(self, entry)

@@ -5,7 +5,7 @@ local haylen = require('haylen')
 
 local Art = haylen.class('Art')
 
--- The tiles of `tiled/tiles/terrain.png` by name: eight columns of 128 pixels with a margin of 2 and a spacing of 4.
+-- The tiles of `tiled/tiles/terrain.png` by name: eight columns of 128 pixels with a margin of 16 and a spacing of 32.
 Art.tileIds = {grass = 0, flowers = 1, dirt = 2, sand = 3, stone = 4, brick = 5, water = 8, lava = 12, bush = 18, rock = 19, crate = 20, chest = 21, spikes = 22, flag = 23, coin = 24, slime = 28, sign = 30, key = 31}
 Art.tileSize = 128
 Art.cellsPerTile = 4
@@ -32,7 +32,7 @@ function Art:init()
     self.personMask = assets.texture('sprites/images/outfit-mask.png', linear)
     self.sources = {}
     for name, id in pairs(Art.tileIds) do
-        self.sources[name] = {2 + id % 8 * 132, 2 + id // 8 * 132, Art.tileSize, Art.tileSize}
+        self.sources[name] = {16 + id % 8 * 160, 16 + id // 8 * 160, Art.tileSize, Art.tileSize}
     end
     -- The options of every draw, filled in place.
     self.tileOptions = {source = nil, width = 0, height = 0, pivotX = 0, pivotY = 0, layer = 0, color = nil}

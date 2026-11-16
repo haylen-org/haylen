@@ -6,8 +6,8 @@ local m = require('haylen.math')
 
 local Meadow = haylen.class('Meadow')
 
-Meadow.grass = {2, 2, 128, 128}
-Meadow.flowers = {134, 2, 128, 128}
+Meadow.grass = {16, 16, 128, 128}
+Meadow.flowers = {176, 16, 128, 128}
 Meadow.flowerShare = 0.07
 
 -- Covers `rect` of the world with cells of `cell` units, and more cells around it so a view a little wider than the rectangle shows grass too. The optional rectangle `clear` keeps plain grass, such as under a crowd, and the share of cells with flowers is `flowerShare`, or a few of them without it.

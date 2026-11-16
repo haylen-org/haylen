@@ -22,7 +22,7 @@ TileLayers.actions = {actions = {
 
 TileLayers.code = [[
 local grass = graphics2d.newTileLayer({terrain, transitions}, {cellWidth = 64, cellHeight = 64, chunkSize = 8})
-grass:defineFrame(1, {texture = 1, source = {2, 2, 128, 128}, width = 64, height = 64})
+grass:defineFrame(1, {texture = 1, source = {16, 16, 128, 128}, width = 64, height = 64})
 grass:setCells(column, row, 8, ids)  -- A float buffer of ids, one call per chunk.
 paths:setCell(column, row, id)  -- Bakes only the chunk of the cell again.
 grass:draw({layer = 0})  -- Bakes changed chunks and draws the ones in view.]]

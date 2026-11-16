@@ -158,14 +158,12 @@ function BatchTextures:walk(dt)
     self.meadow:writeFields(positions, {'x', 'y'})
 end
 
--- A ring of the color of the card around the field rounds its corners.
 function BatchTextures:draw(area)
     Panels.card(self.layout.card, 'Four textures, one batch, one draw call')
     graphics2d.drawStatic(self.grass, 0, 0, {layer = -5})
     graphics2d.drawStatic(self.edges, 0, 0, {layer = -4})
     self.meadow:draw(self.swaying and {material = self.sway} or nil)
-    local field, ring = self.field, 24
-    graphics2d.drawShape({field[1] - ring, field[2] - ring, field[3] + ring * 2, field[4] + ring * 2}, {radius = BatchTextures.fieldRadius + ring, color = '#00000000', borderWidth = ring, borderColor = Panels.fill, layer = 1})
+    Panels.frame(self.field, BatchTextures.fieldRadius)
 end
 
 return BatchTextures

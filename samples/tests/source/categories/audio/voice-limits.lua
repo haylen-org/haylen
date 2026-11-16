@@ -20,7 +20,7 @@ audio.play(line, {priority = 255, loop = true})  -- Outlasts voices of lower pri
 audio.pause(tone)
 audio.resume(tone)  -- Both fade over a few milliseconds, so nothing clicks.]]
 -- The coin of the terrain atlas spins through its four frames.
-local kCoinFrames = {{2, 398, 128, 128}, {134, 398, 128, 128}, {266, 398, 128, 128}, {398, 398, 128, 128}}
+local kCoinFrames = {{16, 496, 128, 128}, {176, 496, 128, 128}, {336, 496, 128, 128}, {496, 496, 128, 128}}
 local kGravity = 1400
 
 function VoiceLimits:enter()
@@ -140,7 +140,7 @@ function VoiceLimits:draw(area)
     local ground = area.height - 56
     local chestX = area.width * 0.3
     graphics2d.drawEllipse(chestX, ground, 90, 16, '#50000000')
-    graphics2d.draw(self.terrain, chestX, ground + 10, {source = {662, 266, 128, 128}, width = 200, height = 200, pivotY = 1, layer = 1})
+    graphics2d.draw(self.terrain, chestX, ground + 10, {source = {816, 336, 128, 128}, width = 200, height = 200, pivotY = 1, layer = 1})
     local options = {source = nil, width = 44, height = 44, layer = 2}
     for _, coin in ipairs(self.coins) do
         options.source = kCoinFrames[math.floor(self.time * 12 + coin.spin) % 4 + 1]

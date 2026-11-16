@@ -20,7 +20,7 @@ OutlineGlow.subjects = {
     {name = 'Bunny', path = 'sprites/images/bunny.png', x = -360, scale = 2.5},
     {name = 'Tree', path = 'sprites/images/tree.png', x = 0, scale = 1.6},
     {name = 'Rock', path = 'sprites/images/rock.png', x = 360, scale = 2.25, glowing = true},
-    {name = 'Chest', path = 'tiled/tiles/terrain.png', source = {662, 266, 128, 128}, x = 720, scale = 1.5, pivotY = 0.92},
+    {name = 'Chest', path = 'tiled/tiles/terrain.png', source = {816, 336, 128, 128}, x = 720, scale = 1.5, pivotY = 0.92},
 }
 OutlineGlow.outlineColors = {
     {id = 'white', text = 'White', color = '#FFFFFFFF'},

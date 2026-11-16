@@ -23,7 +23,7 @@ hills:draw(camera, {layer = -2})]]
 Parallax.ground = 300
 Parallax.height = 1080
 -- The fence of the painted terrain tiles, repeated along the back of the ground.
-Parallax.fence = {source = {926, 2, 128, 128}, size = 150}
+Parallax.fence = {source = {1136, 16, 128, 128}, size = 150}
 
 function Parallax.texture(name)
     return assets.texture('camera/' .. name .. '.png', {filter = 'linear', wrap = 'repeat'})

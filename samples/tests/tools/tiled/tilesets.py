@@ -13,9 +13,9 @@ COIN, SLIME, SIGN, KEY = 24, 28, 30, 31
 # Local tile ids of the props tileset.
 TREE, PINE, LAMP = 0, 1, 2
 
-# The tiles are painted at four times the size of the grid of the maps, which they fill because the tilesets draw them at the size of the grid. Each tile sits in a gutter of its own edge pixels, so the linear filter never reads its neighbours.
+# The tiles are painted at four times the size of the grid of the maps, which they fill because the tilesets draw them at the size of the grid. Each tile sits in a gutter of 16 copies of its edge pixels, and every tile with its gutter starts on a multiple of 32 pixels, so neither the linear filter nor the mip levels of a map drawn down to a thirty-second of its size read a neighbour.
 SCALE = 4
-MARGIN, SPACING = 2, 4
+MARGIN, SPACING = 16, 32
 GRID = {"margin": MARGIN, "spacing": SPACING, "tilerendersize": "grid"}
 
 

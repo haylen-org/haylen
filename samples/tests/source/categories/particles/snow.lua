@@ -144,7 +144,7 @@ function Snow:draw(area)
         local x, scale = pine[1], pine[2]
         local y = Snow.surface(Snow.far, x) + 30 * scale
         graphics2d.draw(graphics2d.lightTexture(), x + 30 * scale, y - 6 * scale, {width = 180 * scale, height = 40 * scale, color = '#70404C80', layer = 2})
-        graphics2d.draw(self.trees, x, y, {source = {134, 2, 128, 256}, width = 128 * scale, height = 256 * scale, pivotY = 1, color = '#FFA8B8D8', layer = 2})
+        graphics2d.draw(self.trees, x, y, {source = {176, 16, 128, 256}, width = 128 * scale, height = 256 * scale, pivotY = 1, color = '#FFA8B8D8', layer = 2})
         graphics2d.drawShape({x - 62 * scale, y - 30 * scale, 124 * scale, 46 * scale}, {kind = 'ellipse', color = '#FFC8D6EE', layer = 3})
         graphics2d.drawShape({x - 46 * scale, y - 28 * scale, 70 * scale, 12 * scale}, {kind = 'ellipse', color = '#B0FFFFFF', layer = 3})
     end

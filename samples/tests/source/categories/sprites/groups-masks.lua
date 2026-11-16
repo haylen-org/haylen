@@ -17,14 +17,14 @@ GroupsMasks.columns = 12
 GroupsMasks.rows = 10
 -- The props of the island from the back to the front: a tile of the terrain image or a tall tree of the props image, its place as a share of the map and its height in cells.
 GroupsMasks.props = {
-    {image = 'terrain', source = {398, 266, 128, 128}, x = 0.6, y = 0.15, size = 0.9},
-    {image = 'tree', source = {134, 2, 128, 256}, x = 0.92, y = 0.22, size = 2.3},
-    {image = 'tree', source = {2, 2, 128, 256}, x = 0.12, y = 0.3, size = 2.2},
-    {image = 'terrain', source = {926, 266, 128, 128}, x = 0.32, y = 0.36, size = 0.9},
-    {image = 'terrain', source = {662, 266, 128, 128}, x = 0.16, y = 0.7, size = 0.8},
-    {image = 'terrain', source = {266, 266, 128, 128}, x = 0.38, y = 0.88, size = 0.9},
-    {image = 'terrain', source = {530, 398, 128, 128}, x = 0.6, y = 0.9, size = 0.6},
-    {image = 'tree', source = {2, 2, 128, 256}, x = 0.88, y = 0.95, size = 2},
+    {image = 'terrain', source = {496, 336, 128, 128}, x = 0.6, y = 0.15, size = 0.9},
+    {image = 'tree', source = {176, 16, 128, 256}, x = 0.92, y = 0.22, size = 2.3},
+    {image = 'tree', source = {16, 16, 128, 256}, x = 0.12, y = 0.3, size = 2.2},
+    {image = 'terrain', source = {1136, 336, 128, 128}, x = 0.32, y = 0.36, size = 0.9},
+    {image = 'terrain', source = {816, 336, 128, 128}, x = 0.16, y = 0.7, size = 0.8},
+    {image = 'terrain', source = {336, 336, 128, 128}, x = 0.38, y = 0.88, size = 0.9},
+    {image = 'terrain', source = {656, 496, 128, 128}, x = 0.6, y = 0.9, size = 0.6},
+    {image = 'tree', source = {16, 16, 128, 256}, x = 0.88, y = 0.95, size = 2},
 }
 -- How far the light of the hole reaches from its middle, which the wandering hole keeps inside the island.
 GroupsMasks.holeReach = 175
@@ -108,7 +108,7 @@ function GroupsMasks:drawPortrait(rect)
         graphics2d.drawCircle(x, y, radius, '#FFFFFFFF')
     end)
     graphics2d.drawShape({x - 140, y - 140, 280, 280}, {texture = self.sky})
-    graphics2d.draw(self.images.terrain, x, y + 70, {source = {2, 2, 128, 128}, width = 300, height = 150, pivotY = 0})
+    graphics2d.draw(self.images.terrain, x, y + 70, {source = {16, 16, 128, 128}, width = 300, height = 150, pivotY = 0})
     graphics2d.draw(self.hero, x, y + 96, {scaleX = 200 / self.hero.height, scaleY = 200 / self.hero.height, pivotY = 1, layer = 1})
     graphics2d.popMask()
     graphics2d.drawRing(x, y, radius + 4, 8, '#FFFFC93C', {layer = 2})
@@ -128,10 +128,10 @@ function GroupsMasks:drawCard(rect)
     end)
     graphics2d.drawShape({x - 40, y - 40, width + 80, height + 80}, {texture = self.sky})
     for column = -1, 2 do
-        graphics2d.draw(self.images.terrain, x + column * width * 0.4, y + height * 0.66, {source = {2, 2, 128, 128}, width = width * 0.4, height = width * 0.4, pivotX = 0, pivotY = 0})
-        graphics2d.draw(self.images.terrain, x + column * width * 0.4, y + height * 0.66 + width * 0.4, {source = {2, 2, 128, 128}, width = width * 0.4, height = width * 0.4, pivotX = 0, pivotY = 0})
+        graphics2d.draw(self.images.terrain, x + column * width * 0.4, y + height * 0.66, {source = {16, 16, 128, 128}, width = width * 0.4, height = width * 0.4, pivotX = 0, pivotY = 0})
+        graphics2d.draw(self.images.terrain, x + column * width * 0.4, y + height * 0.66 + width * 0.4, {source = {16, 16, 128, 128}, width = width * 0.4, height = width * 0.4, pivotX = 0, pivotY = 0})
     end
-    graphics2d.draw(self.images.tree, x - width * 0.08, y + height * 0.74, {source = {2, 2, 128, 256}, width = width * 0.5, height = width, pivotY = 1, layer = 1})
+    graphics2d.draw(self.images.tree, x - width * 0.08, y + height * 0.74, {source = {16, 16, 128, 256}, width = width * 0.5, height = width, pivotY = 1, layer = 1})
     graphics2d.draw(self.hero, x + width * 0.62, y + height * 0.8, {scaleX = width * 0.66 / self.hero.height, scaleY = width * 0.66 / self.hero.height, pivotY = 1, layer = 2})
     graphics2d.drawShape({x, y + height - 54, width, 54}, {color = '#E01E1B33', layer = 3})
     graphics2d.drawText(nil, 'Island knight', x + width / 2, y + height - 27, {size = 26, color = '#FFFFE9A8', anchor = {0.5, 0.5}, layer = 4})
