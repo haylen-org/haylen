@@ -11,20 +11,24 @@ local Widgets = require('widgets')
 
 local Home = haylen.class('Home', Page)
 
-function Home:enter()
+function Home:tree()
     local space = Style.space
-    self:mountGui(ui.column{grow = 1, gap = 0,
+    return ui.column{grow = 1, gap = 0,
         ui.column{id = 'topBar', gap = 0,
             ui.row{height = Style.size.header, padding = {0, space.xs, 0, space.m}, Shell.wordmark(44), ui.spacer{grow = 1},
                 ui.button{id = 'explore', icon = Shell.icon('search'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Explore', tooltip = 'Explore', onClick = function()
-                    Shell.showTab('explore', {focus = true})
+                    Shell.showTab('explore')
+                    Shell.navigation.current.screens[1]:focusSearch()
                 end},
             },
             ui.divider{},
         },
         ui.row{id = 'body', grow = 1, gap = 0, align = 'stretch'},
         Widgets.friendDialog(self),
-    })
+    }
+end
+
+function Home:start()
     events.on('socialChanged', function(changed)
         if self.feed and Social.post(changed.id) == changed then
             self.feed:setItems(Social.feed())
@@ -136,19 +140,21 @@ end
 
 function Home:openStory(id)
     if id == 'mine' then
-        Shell.showTab('create')
+        Shell.compose()
         return
     end
     for index, story in ipairs(Social.stories) do
         if story.id == id then
-            Shell.open(require('screens.story'), {index = index}, Shell.riseTransition)
+            Shell.openStory(index, function()
+                self:showSeenStories()
+            end)
             return
         end
     end
 end
 
 -- Shows the stories seen while the viewer was open inside the gray ring.
-function Home:resume()
+function Home:showSeenStories()
     if self.stories then
         self.stories:setItems(self:storyItems())
         self.stories:reload(self:storyIds())

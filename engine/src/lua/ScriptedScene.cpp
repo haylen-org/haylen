@@ -21,21 +21,6 @@ namespace haylen::lua {
 
 ScriptedScene::ScriptedScene(lua_State* L, int index) : table(L, index) {}
 
-void ScriptedScene::pushWeakKeyed(lua_State* L, const char* name) {
-    if (lua_getfield(L, LUA_REGISTRYINDEX, name) == LUA_TTABLE) {
-        return;
-    }
-
-    lua_pop(L, 1);
-    lua_newtable(L);
-    lua_createtable(L, 0, 1);
-    lua_pushliteral(L, "k");
-    lua_setfield(L, -2, "__mode");
-    lua_setmetatable(L, -2);
-    lua_pushvalue(L, -1);
-    lua_setfield(L, LUA_REGISTRYINDEX, name);
-}
-
 int ScriptedScene::collectHandle(lua_State* L) {
     static_cast<std::weak_ptr<ScriptedScene>*>(lua_touserdata(L, 1))->~weak_ptr();
     lua_pushnil(L);
@@ -45,7 +30,7 @@ int ScriptedScene::collectHandle(lua_State* L) {
 
 std::shared_ptr<ScriptedScene> ScriptedScene::find(lua_State* L, int index) {
     const int key = lua_absindex(L, index);
-    pushWeakKeyed(L, kScenes);
+    Owners::pushWeakTable(L, kScenes, "k");
     lua_pushvalue(L, key);
     std::shared_ptr<ScriptedScene> scene;
     if (lua_rawget(L, -2) == LUA_TUSERDATA) {
@@ -58,7 +43,7 @@ std::shared_ptr<ScriptedScene> ScriptedScene::find(lua_State* L, int index) {
 
 bool ScriptedScene::wasScene(lua_State* L, int index) {
     const int key = lua_absindex(L, index);
-    pushWeakKeyed(L, kScenes);
+    Owners::pushWeakTable(L, kScenes, "k");
     lua_pushvalue(L, key);
     const bool known = lua_rawget(L, -2) == LUA_TUSERDATA;
     lua_pop(L, 2);
@@ -73,7 +58,7 @@ std::shared_ptr<ScriptedScene> ScriptedScene::get(lua_State* L, int index) {
     }
 
     auto created = std::make_shared<ScriptedScene>(L, key);
-    pushWeakKeyed(L, kScenes);
+    Owners::pushWeakTable(L, kScenes, "k");
     lua_pushvalue(L, key);
     if (Userdata::newMetatable(L, kHandleType)) {
         lua_pushcfunction(L, &collectHandle);
@@ -274,7 +259,7 @@ core::ProcessMode ScriptedScene::resolveOwnerMode(lua_State* L, int owner) {
 // Every timer and tween of an owner shares the mode of the owner, which the owner gives once per frame however much it owns, and which each holder keeps alive while the owner is weakly kept.
 std::shared_ptr<ScriptedScene::OwnerMode> ScriptedScene::findOwnerMode(lua_State* L, int owner) {
     const int key = lua_absindex(L, owner);
-    pushWeakKeyed(L, kOwnerModes);
+    Owners::pushWeakTable(L, kOwnerModes, "k");
     lua_pushvalue(L, key);
     if (lua_rawget(L, -2) == LUA_TUSERDATA) {
         std::shared_ptr<OwnerMode> found = *static_cast<std::shared_ptr<OwnerMode>*>(lua_touserdata(L, -1));

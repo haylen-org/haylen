@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <limits>
 #include <map>
 #include <memory>
 #include <optional>
@@ -21,8 +22,10 @@
 #include "haylen/ui/Event.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
 #include "haylen/ui/Gui.hpp"
+#include "haylen/ui/Navigation.hpp"
 #include "haylen/ui/NavigationInput.hpp"
 #include "haylen/ui/Placement.hpp"
+#include "haylen/ui/Region.hpp"
 #include "haylen/ui/Scaling.hpp"
 #include "haylen/ui/Theme.hpp"
 
@@ -52,6 +55,7 @@ class UiPlugin final : public Plugin {
     void event(core::Engine& engine, const platform::Event& event) override;
     void beginFrame(core::Engine& engine, float deltaSeconds) override;
     void update(core::Engine& engine, float deltaSeconds) override;
+    void render(core::Engine& engine) override;
     void renderUi(core::Engine& engine, const core::SceneView& view) override;
     void installLua(core::Engine& engine, lua_State* L) override;
     [[nodiscard]] bool isCapturingBack() const override;
@@ -66,26 +70,23 @@ class UiPlugin final : public Plugin {
     [[nodiscard]] ui::FocusNavigator& getFocus() noexcept {
         return focus;
     }
-    [[nodiscard]] const ui::NavigationInput& getNavigation() const noexcept {
-        return navigation;
+    [[nodiscard]] const ui::NavigationInput& getNavigationInput() const noexcept {
+        return navigationInput;
     }
+
+    // The stacks, tabs, splits and presentations of the app.
+    [[nodiscard]] ui::Navigation& getNavigation();
     [[nodiscard]] ui::ComponentRegistry& getComponents() noexcept {
         return components;
     }
 
     [[nodiscard]] std::shared_ptr<ui::Gui> createGui(const core::Json& tree, ui::Placement placement = ui::Placement::Safe) const;
 
-    // The node of a mounted GUI whose area a GUI of the region placement lays out in, such as the middle that the bars of an app leave between them.
-    struct Region {
-        std::shared_ptr<ui::Gui> gui;
-        std::string node;
-    };
+    // GUIs draw in layer order, and GUIs on the same layer in the order they were mounted. A GUI of a scene draws only while its scene shows and goes into the image of its scene during a transition, so it travels with its scene, while a GUI of no scene draws above the scenes the app runs, on the screen above a transition too, where it takes no input until the transition ends. Mounting and unmounting publish `guiMounted` and `guiUnmounted` with the shared pointer of the GUI. A GUI whose collections bind cells refuses to unmount. Throws `std::invalid_argument` for a GUI of the region placement, which only the navigation mounts as the GUI of a screen.
+    void mount(std::shared_ptr<ui::Gui> gui, int layer = 0, const std::shared_ptr<const core::Scene>& scene = nullptr);
 
-    // GUIs draw in layer order, and GUIs on the same layer in the order they were mounted. A GUI of a scene draws only while its scene shows and goes into the image of its scene during a transition, so it travels with its scene, while a GUI of no scene draws above the scenes the app runs, on the screen above a transition too, where it takes no input until the transition ends. A GUI of the region placement lays out in the area where the node of its region drew in this frame or the last one, draws right after the GUI of its region and draws nothing while that GUI is gone or hidden. Mounting and unmounting publish `guiMounted` and `guiUnmounted` with the shared pointer of the GUI. A GUI whose collections bind cells refuses to unmount. Throws `std::invalid_argument` for a region given to a GUI of another placement or missing for one of the region placement, and for a region whose GUI is not mounted, lies in a region itself or has no node with that id.
-    void mount(std::shared_ptr<ui::Gui> gui, int layer = 0, const std::shared_ptr<const core::Scene>& scene = nullptr, const std::optional<Region>& region = std::nullopt);
-
-    // Throws `std::invalid_argument` as `mount` does for a region whose GUI is not mounted, lies in a region itself or has no node with that id.
-    void checkRegion(const Region& region) const;
+    // Throws `std::invalid_argument` for a region whose GUI is not mounted or has no node with the id.
+    void checkRegion(const ui::Region& region) const;
     bool unmount(const ui::Gui& gui);
     [[nodiscard]] bool isMounted(const ui::Gui& gui) const;
 
@@ -157,12 +158,20 @@ class UiPlugin final : public Plugin {
     [[nodiscard]] bool isUsingKeyboard() const;
 
   private:
+    friend class ui::Navigation;
+
+    // The layer of the GUIs of presentations, above every GUI of the app.
+    static constexpr int kPresentationLayer = std::numeric_limits<int>::max();
+
     struct Mounted {
         std::shared_ptr<ui::Gui> gui;
         std::weak_ptr<const core::Scene> scene;
         bool scened = false;
         int layer = 0;
         std::uint64_t order = 0;
+
+        // The screen whose GUI this is, which the navigation mounts and places.
+        const ui::Screen* screen = nullptr;
 
         // The GUI and the node of a region, and the place in the drawing order, which a GUI of a region takes from the GUI of its region.
         std::weak_ptr<ui::Gui> host;
@@ -174,17 +183,31 @@ class UiPlugin final : public Plugin {
     // Builds the theme the UI draws from the chosen theme and the accessibility settings, and applies it.
     void applyTheme(bool highContrast, bool reducedTransparency);
     void collectGuis(core::Engine& engine, const core::SceneView& view, bool sceneGuis, bool freeGuis);
-    [[nodiscard]] const Mounted& findRegionHost(const Region& region) const;
+    [[nodiscard]] const Mounted& findRegionHost(const ui::Region& region) const;
+
+    // Mounts the GUI of a screen in the area of a stack, or as the GUI of a presentation, which draws above every other GUI.
+    void mountScreen(const ui::Screen& screen, const ui::Region* region);
+
+    // Lays out the GUI of a screen in the area of another stack, such as when a split collapses.
+    void moveScreen(const ui::Gui& gui, const ui::Region& region);
+
+    void add(Mounted entry);
+    void drawGui(const Mounted& entry, bool inert);
+    [[nodiscard]] math::Vec2 getLookOffset(const ui::Navigation::Look& look, const math::Rect& area, float riseRoom) const;
+    void drawBackdrop(const ui::Presentation& presentation, const ui::Presentation::Layout& layout, const ui::Navigation::Look& look, math::Vec2 offset);
     [[nodiscard]] std::optional<math::Rect> findArea(const Mounted& entry) const;
 
     // Performs an action that a screen reader asked of an element of the last frame, and hands the elements of this frame to the platform.
     void perform(const platform::Accessibility::Request& request);
     void publishAccessibility(core::Engine& engine);
+    void deliverEvents(core::Engine& engine);
     void deliver(core::Engine& engine, ui::Gui& gui, const ui::Event& event);
     void deliverAtOnce(ui::Gui& gui, const ui::Event& event);
     void prepareGuis();
     void beginWindow(const char* name, ImGuiWindowFlags flags);
-    void drawGuis();
+    void drawGuis(std::size_t first, std::size_t last, bool inert);
+    [[nodiscard]] std::size_t countUnderPresentation() const;
+    void drawUnder(core::Engine& engine, std::size_t count);
     void drawLeaving(core::Engine& engine, const core::SceneView& view);
     void drawAbove(core::Engine& engine, const core::SceneView& view);
     void drawCurrent(core::Engine& engine, const core::SceneView& view);
@@ -202,7 +225,12 @@ class UiPlugin final : public Plugin {
 
     ui::ComponentRegistry components;
     ui::FocusNavigator focus;
-    ui::NavigationInput navigation;
+    ui::NavigationInput navigationInput;
+    std::unique_ptr<ui::Navigation> navigation;
+
+    // The system back that the focus handed to the navigation, and the presentation whose backdrop the player tapped, which the next update takes.
+    bool backRequested = false;
+    std::weak_ptr<ui::Presentation> backdropTapped;
     std::unique_ptr<ui::Backend> backend;
     std::unique_ptr<ui::Context> context;
     std::map<std::string, ui::Theme, std::less<>> themes;

@@ -70,7 +70,8 @@ class Gui final {
     // Throws while the GUI prepares, when it can neither replace nodes nor unmount.
     void checkNotPreparing() const;
 
-    void draw(Context& context, const math::Rect& area);
+    // Draws the GUI laid out in the area, faded to the opacity, as a screen that fades in or out.
+    void draw(Context& context, const math::Rect& area, float opacity = 1.0F);
 
     // Tells the components of a GUI that the UI does not draw this frame, such as the GUI of a covered scene, that they stopped drawing.
     void skip(Context& context);

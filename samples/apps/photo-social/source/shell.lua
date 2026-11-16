@@ -1,9 +1,9 @@
--- The frame of the app: the tabs, the navigation between screens, the notices and the layout that follows the width of the window. Phones show a bar of icons at the bottom, and wide windows show a rail with the wordmark and the names of the tabs on the left. The frame mounts once, and every screen lays out in its middle, so opening a screen changes only the middle and never builds the bars again.
+-- The frame of the app: the tabs, the notices and the layout that follows the width of the window. Phones show a bar of icons at the bottom, and wide windows show a rail with the wordmark and the names of the tabs on the left. The frame mounts once in the scene of the app, and the screens of each tab live in a stack of their own in its middle, so going to another screen changes only the middle while the bars stay. A new post and the stories open over everything as presentations, a new flow with bars of their own.
 local events = require('haylen.events')
+local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
 local ui = require('haylen.ui')
 local viewport = require('haylen.viewport')
-local window = require('haylen.window')
 
 local Style = require('style')
 
@@ -12,14 +12,13 @@ local Shell = {}
 Shell.tabs = {
     {id = 'home', text = 'Home', icon = 'home', screen = 'screens.home'},
     {id = 'explore', text = 'Explore', icon = 'explore', screen = 'screens.explore'},
-    {id = 'create', text = 'New post', image = 'images/create.svg', screen = 'screens.compose-pick', push = true},
-    {id = 'messages', text = 'Messages', icon = 'messages', screen = 'screens.inbox'},
+    {id = 'create', text = 'New post', image = 'images/create.svg'},
+    {id = 'messages', text = 'Messages', icon = 'messages', screen = 'screens.messages'},
     {id = 'profile', text = 'Profile', screen = 'screens.profile'},
 }
-Shell.pushTransition = {duration = 0.28, effect = 'slideIn', direction = 'left', ease = 'cubicOut'}
-Shell.backTransition = {duration = 0.24, effect = 'slideIn', direction = 'right', ease = 'cubicOut'}
-Shell.riseTransition = {duration = 0.3, effect = 'moveIn', direction = 'up', ease = 'cubicOut'}
-Shell.current = 'home'
+
+-- The scene of the app, which owns the frame and its navigation, paints the background of the theme behind them and keeps the frame current every frame.
+Shell.scene = {}
 
 function Shell.icon(name)
     return 'icons/' .. name .. '.svg'
@@ -31,75 +30,100 @@ function Shell.width()
     return viewport.safeRect().width / unit
 end
 
--- Mounts the frame and the notices, which stay above every screen, and shows the first tab.
 function Shell.start()
-    Shell.gui = ui.mount(Shell.frame(), {layer = 1, sharedFocus = true})
-    Shell.notices = ui.mount(ui.toast{id = 'notice', position = 'bottom', duration = 2.5, indicator = 'icon'}, {layer = 10, sharedFocus = true})
-    Shell.adaptFrame()
-    Shell.showTab('home')
-    Shell.followUnread()
+    scene.push(Shell.scene)
 end
 
--- The placement of the GUI of a screen: the middle of the frame, between the rail or the bar of icons.
-function Shell.middle()
-    return {gui = Shell.gui, id = 'middle'}
+-- Mounts the frame and the notices, which stay above every screen, and the tabs in the middle of the frame.
+function Shell.scene:enter()
+    Shell.gui = ui.mount(Shell.frame(), {owner = self, sharedFocus = true})
+    Shell.notices = ui.mount(ui.toast{id = 'notice', position = 'bottom', duration = 2.5, indicator = 'icon'}, {owner = self, layer = 10, sharedFocus = true})
+    Shell.adaptFrame()
+    local tabs = {}
+    for _, tab in ipairs(Shell.tabs) do
+        if tab.screen then
+            tabs[#tabs + 1] = {id = tab.id, root = function() return require(tab.screen)() end}
+        end
+    end
+    Shell.navigation = ui.navigationTabs{gui = Shell.gui, id = 'middle', tabs = tabs, owner = self, onChange = function(event)
+        Shell.select(event.selected, event.previous)
+    end}
+    events.on('chatChanged', Shell.showUnread, {owner = self})
+    Shell.showUnread()
+end
+
+function Shell.scene:update()
+    Shell.adaptFrame()
+end
+
+function Shell.scene:render()
+    graphics2d.beginScreen()
+    graphics2d.drawRect(viewport.visibleRect(), ui.themeColor('window'))
 end
 
 function Shell.notify(text, tone)
     Shell.notices:command('notice', 'show', {text = text, tone = tone or 'neutral'})
 end
 
--- Shows a tab as the only screen, without a transition, the way native tab bars switch, or pushes the screen of a tab that opens over the others, such as a new post.
-function Shell.showTab(id, params)
-    for _, tab in ipairs(Shell.tabs) do
-        if tab.id == id then
-            if tab.push then
-                Shell.open(require(tab.screen), params, Shell.riseTransition)
-                return
-            end
-            Shell.select(id)
-            if scene.size() > 1 then
-                scene.popToRoot()
-            end
-            scene.replace(require(tab.screen)(params))
-            window.setBackLeavesApp(id == 'home')
-            return
-        end
+-- Shows a tab with the screens it kept, or goes back to its root when it already shows. The tab of a new post presents the new post instead.
+function Shell.showTab(id)
+    if id == 'create' then
+        Shell.compose()
+        return
     end
+    Shell.navigation:select(id)
 end
 
--- Pushes a screen over the current one with a slide, or with another transition. A screen of the same kind that already shows the same thing, named by the parameter `key`, such as the chat with a person that a profile opened from that chat, comes back instead, so the stack never holds two copies of it.
-function Shell.open(Screen, params, transition, key)
+-- The screen that the person sees: the screen on top of the presentation that shows, or the top screen of the tab that shows.
+function Shell.top()
+    local presented = Shell.presented
+    if presented and not presented.dismissed then
+        local screen = presented.screen
+        return screen.steps and screen.steps.top or screen
+    end
+    local top = Shell.navigation.current.top
+    local split = top.split
+    if not split then
+        return top
+    end
+    if split.hasDetail and not split.collapsed then
+        return split.detail.top
+    end
+    return split.primary.top
+end
+
+-- Pushes a screen in the stack of the tab that shows. A screen of the same kind that already shows the same thing, named by the parameter `key`, such as the chat with a person that a profile opened from that chat, comes back instead, so the stack never holds two copies of it.
+function Shell.open(Screen, params, key)
+    local stack = Shell.navigation.current
     if key then
-        local screens = scene.list()
+        local screens = stack.screens
         for level = #screens - 1, 1, -1 do
             local shown = screens[level]
-            if shown and shown:is(Screen) and shown.params[key] == params[key] then
-                scene.popTo(level, Shell.backTransition)
-                window.setBackLeavesApp(level == 1 and Shell.current == 'home')
+            if shown:is(Screen) and shown.params[key] == params[key] then
+                stack:popTo(shown)
                 return
             end
         end
     end
-    window.setBackLeavesApp(false)
-    return scene.push(Screen(params), transition or Shell.pushTransition)
+    stack:push(Screen(params))
 end
 
--- Puts a screen in the place of the current one with the same slide, such as the next step of a new post.
-function Shell.replace(Screen, params)
-    return scene.replace(Screen(params), Shell.pushTransition)
+-- Presents a new post over everything, a flow of its own with its bar and its steps.
+function Shell.compose()
+    Shell.present(require('screens.new-post')())
 end
 
--- Goes back one screen, or to the home tab from the root of another tab.
-function Shell.back()
-    if scene.size() > 1 then
-        scene.pop(scene.top().backTransition or Shell.backTransition)
-        if scene.size() == 2 then
-            window.setBackLeavesApp(Shell.current == 'home')
-        end
-    elseif Shell.current ~= 'home' then
-        Shell.showTab('home')
+-- Presents the stories over everything on their dark stage, from the story at the index, and calls back once they close.
+function Shell.openStory(index, closed)
+    Shell.present(require('screens.story')({index = index}), closed, Style.color.stage)
+end
+
+-- Presents a flow over the whole screen, on the color of the window of the app or another color, while no other presentation shows.
+function Shell.present(screen, closed, color)
+    if Shell.presented and not Shell.presented.dismissed then
+        return
     end
+    Shell.presented = ui.present(screen, {style = 'fullScreen', color = color or ui.themeColor('window'), owner = Shell.scene, onDismiss = closed})
 end
 
 -- Shows the rail on a wide window and the bar of icons otherwise.
@@ -113,9 +137,8 @@ function Shell.adaptFrame()
     Shell.gui:set('tabBar', {visible = not wide})
 end
 
--- Keeps the frame current and tells a screen when the window crosses the widths of the wide and roomy layouts.
+-- Tells a screen when the window crosses the widths of the wide and roomy layouts.
 function Shell.adapt(page)
-    Shell.adaptFrame()
     local width = Shell.width()
     local wide, roomy = width >= Style.wideWidth, width >= Style.roomyWidth
     if page.wide == wide and page.roomy == roomy then
@@ -139,17 +162,21 @@ function Shell.tabIcon(tab, selected)
     return Shell.icon(tab.icon .. (selected and '-filled' or ''))
 end
 
-function Shell.tabButton(tab, current, placement)
-    local selected = tab.id == current
+function Shell.tabStyle(selected)
+    return {fonts = {button = {size = Style.type.body, bold = selected}}, metrics = {iconSize = 32, controlPaddingX = Style.space.m, contentSpacing = Style.space.m}}
+end
+
+function Shell.tabButton(tab, placement)
+    local selected = tab.id == Shell.tabs[1].id
     local rail = placement == 'rail'
     -- The face of the profile and the button of a new post keep their colors, and the icons take the color of the text. The button of a new post stands out in the bar.
     local iconColor = 'text'
-    local iconSize = 32
+    local style = Shell.tabStyle(selected)
     if tab.id == 'profile' then
         iconColor = false
     elseif tab.image then
         iconColor = false
-        iconSize = rail and 32 or 48
+        style.metrics.iconSize = rail and 32 or 48
     end
     local button = ui.button{
         id = placement .. '-' .. tab.id,
@@ -163,11 +190,9 @@ function Shell.tabButton(tab, current, placement)
         height = rail and 64 or Style.size.tabBar - Style.space.s,
         accessibilityLabel = tab.text,
         tooltip = not rail and tab.text or nil,
-        style = {fonts = {button = {size = Style.type.body, bold = selected}}, metrics = {iconSize = iconSize, controlPaddingX = Style.space.m, contentSpacing = Style.space.m}},
+        style = style,
         onClick = function()
-            if not selected or tab.push or scene.size() > 1 then
-                Shell.showTab(tab.id)
-            end
+            Shell.showTab(tab.id)
         end,
     }
     if tab.id ~= 'messages' then
@@ -193,26 +218,16 @@ function Shell.showUnread()
     Shell.gui:set('bar-unread', {text = count, visible = count > 0})
 end
 
--- Keeps the count of unread messages current while the frame lives.
-function Shell.followUnread()
-    events.on('chatChanged', Shell.showUnread, {owner = Shell.gui})
-    Shell.showUnread()
-end
-
--- Marks the tab that shows, in the rail and in the bar, and keeps the count of unread messages on the tabs built again.
-function Shell.select(id)
-    if Shell.current == id and Shell.gui:has('rail-' .. id) then
-        return
-    end
-    Shell.current = id
-    local rail, bar = {}, {}
+-- Marks the tab that shows in the rail and in the bar, changing only the look of the two tabs.
+function Shell.select(current, previous)
     for _, tab in ipairs(Shell.tabs) do
-        rail[#rail + 1] = Shell.tabButton(tab, id, 'rail')
-        bar[#bar + 1] = Shell.tabButton(tab, id, 'bar')
+        if tab.id == current or tab.id == previous then
+            local selected = tab.id == current
+            local look = {icon = Shell.tabIcon(tab, selected), style = Shell.tabStyle(selected)}
+            Shell.gui:set('rail-' .. tab.id, look)
+            Shell.gui:set('bar-' .. tab.id, look)
+        end
     end
-    Shell.gui:replaceChildren('railTabs', rail)
-    Shell.gui:replaceChildren('barTabs', bar)
-    Shell.showUnread()
 end
 
 -- The wordmark: the logo and the name of the app.
@@ -223,21 +238,27 @@ function Shell.wordmark(size)
     }
 end
 
--- The frame: the rail with the wordmark and the tabs, the middle where the screens lay out, and the bar of icons. The bars paint the window color, so the screens that slide in the middle pass under them. The tabs arrive with `Shell.select`.
+-- The frame: the rail with the wordmark and the tabs, the middle where the stacks of the tabs show their screens, and the bar of icons.
 function Shell.frame()
     local space = Style.space
     local surface = {colors = {panel = 'window'}, metrics = {panelRadius = 0}}
-    return ui.row{gap = 0, onCancel = Shell.back,
+    local rail = {id = 'railTabs', gap = space.xs, align = 'stretch'}
+    local bar = {id = 'barTabs', gap = 0, height = Style.size.tabBar, padding = {0, space.s}}
+    for _, tab in ipairs(Shell.tabs) do
+        rail[#rail + 1] = Shell.tabButton(tab, 'rail')
+        bar[#bar + 1] = Shell.tabButton(tab, 'bar')
+    end
+    return ui.row{gap = 0,
         ui.row{id = 'rail', visible = false, gap = 0, align = 'stretch',
             ui.panel{width = Style.size.rail, gap = space.xs, padding = {space.xl, space.m, space.l, space.m}, align = 'stretch', style = surface,
                 ui.row{padding = {0, space.s, space.xl, space.s}, Shell.wordmark(52)},
-                ui.column{id = 'railTabs', gap = space.xs, align = 'stretch'},
+                ui.column(rail),
             },
             ui.divider{vertical = true, align = 'stretch'},
         },
         ui.column{grow = 1, gap = 0, align = 'stretch',
-            ui.column{id = 'middle', grow = 1, gap = 0},
-            ui.panel{id = 'tabBar', gap = 0, padding = 0, style = surface, ui.divider{}, ui.row{id = 'barTabs', gap = 0, height = Style.size.tabBar, padding = {0, space.s}}},
+            ui.column{id = 'middle', grow = 1, gap = 0, align = 'stretch'},
+            ui.panel{id = 'tabBar', gap = 0, padding = 0, style = surface, ui.divider{}, ui.row(bar)},
         },
     }
 end
@@ -250,11 +271,10 @@ function Shell.centered(maxWidth, node, grow)
     return ui.row{gap = 0, grow = grow or 0, align = 'stretch', ui.spacer{grow = 1}, node, ui.spacer{grow = 1}}
 end
 
--- A bar at the top of a pushed screen: a back button, a title and optional trailing nodes.
-function Shell.header(title, trailing, options)
-    options = options or {}
+-- A bar at the top of a pushed screen: a back button, which goes back the way the system back does, a title and optional trailing nodes.
+function Shell.header(title, trailing)
     local row = {gap = Style.space.xs, padding = {0, Style.space.s}, height = Style.size.header}
-    row[#row + 1] = ui.button{id = 'back', icon = Shell.icon(options.close and 'close' or 'back'), iconColor = 'text', variant = 'icon', accessibilityLabel = options.close and 'Close' or 'Back', tooltip = options.close and 'Close' or 'Back', onClick = options.onBack or Shell.back}
+    row[#row + 1] = ui.button{id = 'back', icon = Shell.icon('back'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Back', tooltip = 'Back', onClick = ui.goBack}
     row[#row + 1] = ui.label{id = 'title', text = title, font = 'heading', wrap = false, grow = 1}
     for _, node in ipairs(trailing or {}) do
         row[#row + 1] = node

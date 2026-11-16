@@ -1,6 +1,7 @@
--- The now playing screen: the big cover over the glow of the colors of its genre, a visualizer whose bars follow the voices of the song as the synthesizer plays them, the song with its heart, the position that the person drags to seek, the controls with shuffle and repeat, the sleep timer, the volume and the way to the queue. A wide window shows the cover beside the controls and the songs that come next.
+-- The now playing screen, which the app presents over everything as a flow of its own: the big cover over the glow of the colors of its genre, a visualizer whose bars follow the voices of the song as the synthesizer plays them, the song with its heart, the position that the person drags to seek, the controls with shuffle and repeat, the sleep timer, the volume and the way to the queue. A wide window shows the cover beside the controls and the songs that come next.
 local audio = require('haylen.audio')
 local events = require('haylen.events')
+local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local math2d = require('haylen.math')
@@ -18,38 +19,63 @@ local Widgets = require('widgets')
 
 local NowPlaying = haylen.class('NowPlaying', Page)
 
-NowPlaying.backTransition = {duration = 0.3, effect = 'push', direction = 'down', ease = 'cubicOut'}
 NowPlaying.sleepItems = {{id = 'off', text = 'Off'}, {id = '5', text = 'In 5 minutes'}, {id = '15', text = 'In 15 minutes'}, {id = '30', text = 'In 30 minutes'}, {id = 'track', text = 'At the end of the song'}}
 -- The bars of the visualizer, and how fast they rise to a level and fall back from it.
 NowPlaying.bars = 36
 NowPlaying.rise = 28
 NowPlaying.fall = 6
 
-function NowPlaying:enter()
+NowPlaying.clear = {clear = '#00000000'}
+
+function NowPlaying:init(params)
+    Page.init(self, params)
     self.levels = {}
     self.heights = {}
     for index = 1, NowPlaying.bars do
         self.heights[index] = 0
     end
-    self.showsPlayer = true
-    self:mountGui(ui.column{id = 'root', gap = 0})
+    local track = Player.current()
+    self.glow = track and track.genre
+    self.camera = graphics2d.newCamera()
+    self.camera.anchor = 'topLeft'
+    self.low, self.high = math2d.color(Style.color.violet), math2d.color(Style.color.pink)
+    self.colors = {}
+    for index = 1, NowPlaying.bars do
+        self.colors[index] = math2d.color(0, 0, 0, 1)
+    end
+end
+
+function NowPlaying:tree()
+    return ui.column{id = 'root', gap = 0}
+end
+
+function NowPlaying:start()
     events.on('playerChanged', function()
         self:showSong()
     end, {owner = self})
 end
 
+-- The glow of the player reaches lower than the glow of a page.
+function NowPlaying:build()
+    local tree = Page.build(self)
+    tree[1].image = self.glow and Covers.glow(self.glow, Covers.playerReach) or Shell.blankCover
+    return tree
+end
+
 function NowPlaying:layoutChanged(wide)
     local space = Style.space
     local top = ui.row{gap = space.xs, padding = {0, space.s}, height = Style.size.header,
-        ui.button{id = 'close', icon = Shell.icon('down'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Close the player', tooltip = 'Close', onClick = Shell.back},
-        ui.column{gap = 0, grow = 1, ui.label{text = 'Playing from', font = 'caption', color = 'textMuted', textAlign = 'center', align = 'stretch'}, ui.label{id = 'source', text = '', font = 'button', textAlign = 'center', align = 'stretch', wrap = false}},
-        ui.button{id = 'queue', icon = Shell.icon('queue'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Queue', tooltip = 'Queue', onClick = function()
-            Shell.open(require('screens.queue'))
+        ui.button{id = 'close', icon = Shell.icon('down'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Close the player', tooltip = 'Close', onClick = function()
+            self.presentation:dismiss()
         end},
+        ui.column{gap = 0, grow = 1, ui.label{text = 'Playing from', font = 'caption', color = 'textMuted', textAlign = 'center', align = 'stretch'}, ui.label{id = 'source', text = '', font = 'button', textAlign = 'center', align = 'stretch', wrap = false}},
+        ui.button{id = 'queue', icon = Shell.icon('queue'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Queue', tooltip = 'Queue', onClick = Shell.openQueue},
     }
     local art = ui.column{gap = space.m, grow = 1,
         ui.image{id = 'cover', image = Shell.blankCover, aspectRatio = 1, align = 'center', grow = 1, maxWidth = 560, maxHeight = 560, radius = Style.radius.card, fit = 'contain', accessibilityLabel = 'Cover'},
-        ui.spacer{id = 'visualizer', height = wide and 120 or 76, align = 'stretch'},
+        ui.stack{id = 'visualizerBox', height = wide and 120 or 76, align = 'stretch',
+            ui.image{id = 'visualizer', image = Shell.blankCover, visible = false, fit = 'fill', align = 'stretch', accessibilityHidden = true},
+        },
     }
     local controls = ui.column{gap = space.s,
         ui.row{gap = space.s,
@@ -58,7 +84,8 @@ function NowPlaying:layoutChanged(wide)
                 ui.button{id = 'artist', text = '', variant = 'link', align = 'start', style = {metrics = {controlPaddingX = 0}, colors = {accentText = 'textMuted', accentHover = 'text'}, fonts = {button = {size = Style.type.body, bold = false}}}, onClick = function()
                     local track = Player.current()
                     if track then
-                        Shell.open(require('screens.artist'), {artist = track.artist})
+                        self.presentation:dismiss()
+                        Shell.open(require('screens.artist'), {artist = track.artist}, 'artist')
                     end
                 end},
             },
@@ -121,7 +148,10 @@ function NowPlaying:showSong()
     if not track or not gui:has('cover') then
         return
     end
-    self.glow = track.genre
+    if self.glow ~= track.genre then
+        self.glow = track.genre
+        gui:set('glow', {image = Covers.glow(track.genre, Covers.playerReach), visible = true})
+    end
     if self.track ~= track then
         self.track = track
         self.plan = Synth.plan(track.seed, Synth.styles[Catalog.genre(track.genre).style])
@@ -216,30 +246,46 @@ function NowPlaying:update(dt)
     end
 end
 
--- Draws the glow of the genre, then the bars of the visualizer in the room the GUI leaves for them, from violet at the low end to pink at the high end, with a faint reflection under them.
+-- Draws the bars of the visualizer into the picture that the GUI shows where it leaves room for them, from violet at the low end to pink at the high end, with a faint reflection under them. The picture takes the pixels it covers on the screen, so the bars stay sharp and move with the screen as it rises and leaves.
 function NowPlaying:render()
-    graphics2d.beginScreen()
-    local visible = viewport.visibleRect()
-    graphics2d.drawRect(visible, ui.themeColor('window'))
-    if self.glow then
-        graphics2d.draw(Covers.backdrop(self.glow), visible.x, visible.y, {width = visible.width, height = visible.height, pivotX = 0, pivotY = 0})
-    end
-    local area = self.gui and self.gui:bounds('visualizer')
-    if not area then
+    local area = self.gui:bounds('visualizerBox')
+    if not area or area.width <= 0 then
         return
     end
+    local density = viewport.pixelsPerUnit()
+    local width, height = math.floor(area.width * density + 0.5), math.floor(area.height * density + 0.5)
+    if not self.target or math.abs(width - self.targetWidth) > 1 or math.abs(height - self.targetHeight) > 1 then
+        self.target = graphics.newRenderTarget(width, height)
+        self.targetWidth, self.targetHeight = width, height
+        self.camera.x, self.camera.y = 0, 0
+        if self.visualizer then
+            ui.removeImage(self.visualizer)
+        end
+        self.visualizer = '@visualizer-' .. tostring(self.target)
+        ui.setImage(self.visualizer, self.target)
+        self.gui:set('visualizer', {image = self.visualizer, visible = true})
+    end
+    graphics2d.beginTarget(self.target, self.camera, NowPlaying.clear)
     local count = NowPlaying.bars
-    local gap = area.width / count * 0.32
-    local width = (area.width - gap * (count - 1)) / count
-    local base = area.y + area.height * 0.78
-    local low, high = math2d.color(Style.color.violet), math2d.color(Style.color.pink)
+    local gap = width / count * 0.32
+    local barWidth = (width - gap * (count - 1)) / count
+    local base = height * 0.78
+    local low, high = self.low, self.high
     for index = 1, count do
         local share = (index - 1) / (count - 1)
-        local color = math2d.color(low.r + (high.r - low.r) * share, low.g + (high.g - low.g) * share, low.b + (high.b - low.b) * share, 1)
-        local height = math.max(width, self.heights[index] * area.height * 0.76)
-        local x = area.x + (index - 1) * (width + gap)
-        graphics2d.drawShape({x, base - height, width, height}, {radius = width / 2, color = color})
-        graphics2d.drawShape({x, base + gap, width, height * 0.22}, {radius = width / 2, color = math2d.color(color.r, color.g, color.b, 0.22)})
+        local color = self.colors[index]
+        color.r, color.g, color.b, color.a = low.r + (high.r - low.r) * share, low.g + (high.g - low.g) * share, low.b + (high.b - low.b) * share, 1
+        local barHeight = math.max(barWidth, self.heights[index] * height * 0.76)
+        local x = (index - 1) * (barWidth + gap)
+        graphics2d.drawShape({x, base - barHeight, barWidth, barHeight}, {radius = barWidth / 2, color = color})
+        color.a = 0.22
+        graphics2d.drawShape({x, base + gap, barWidth, barHeight * 0.22}, {radius = barWidth / 2, color = color})
+    end
+end
+
+function NowPlaying:remove()
+    if self.visualizer then
+        ui.removeImage(self.visualizer)
     end
 end
 

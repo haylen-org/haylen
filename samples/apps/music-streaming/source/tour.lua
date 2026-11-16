@@ -1,8 +1,8 @@
 -- The automatic run of the headless platform: it plays a mix, opens the player, seeks, picks a shorter song, skips, shuffles and repeats, sets the sleep timer, reorders the queue, browses the favorites, an artist, the search, a genre and the library, adds a song to a playlist and makes a playlist, logs each step and quits, so an unattended run checks every path of the app.
 local haylen = require('haylen')
 local log = require('haylen.log')
-local scene = require('haylen.scene')
 local timer = require('haylen.timer')
+local ui = require('haylen.ui')
 
 local Catalog = require('data.catalog')
 local Player = require('player')
@@ -22,25 +22,26 @@ function Tour.steps()
         {'Pick a shorter song near the end of this one', function() Tour.pickShorterSong() end},
         {'Skip to the next song', function() Player.next() end},
         {'Shuffle and repeat', function() Player.setShuffle(true) Player.cycleRepeat() end},
-        {'Set the sleep timer', function() scene.top():setSleep('15') end},
+        {'Set the sleep timer', function() Shell.top():setSleep('15') end},
         {'Like the song', function() Catalog.toggleLike(Player.current()) end},
-        {'Open the queue', function() Shell.open(require('screens.queue')) end},
+        {'Open the queue', function() Shell.openQueue() end},
         {'Reorder the queue', function() Player.moveInQueue(Player.index + 3, Player.index + 1) Player.removeFromQueue(Player.index + 2) end},
-        {'Close the player', function() Shell.back() Shell.back() end},
+        {'Close the queue and the player', function() ui.goBack() ui.goBack() end},
         {'Open the favorites', function() Shell.open(require('screens.collection'), {collection = 'liked'}) end},
-        {'Scroll the favorites', function() scene.top().gui:collection('tracks'):scrollTo(2000, {align = 'center', animated = false}) end},
+        {'Scroll the favorites', function() Shell.top().gui:collection('tracks'):scrollTo(2000, {align = 'center', animated = false}) end},
         {'Open an artist', function() Shell.open(require('screens.artist'), {artist = Catalog.artists[4].id}) end},
-        {'Follow the artist', function() local page = scene.top() require('screens.artist').following[page.artist.id] = true page:showFollow() end},
-        {'Add a song to a playlist', function() local page = scene.top() Widgets.askPlaylist(page, page.artist.tracks[2]) end},
-        {'Search', function() scene.top().gui:set('playlistDialog', {open = false}) Shell.showTab('search') end},
-        {'Type a search', function() local page = scene.top() page.query = 'golden' page.gui:set('query', {value = 'golden'}) page:refresh() end},
+        {'Follow the artist', function() local page = Shell.top() require('screens.artist').following[page.artist.id] = true page:showFollow() end},
+        {'Add a song to a playlist', function() local page = Shell.top() Widgets.askPlaylist(page, page.artist.tracks[2]) end},
+        {'Search', function() Shell.top().gui:set('playlistDialog', {open = false}) Shell.showTab('search') end},
+        {'Type a search', function() local page = Shell.top() page.query = 'golden' page.gui:set('query', {value = 'golden'}) page:refresh() end},
         {'Open a genre', function() Shell.open(require('screens.collection'), {collection = 'genre-jazz'}) end},
         {'Open the library', function() Shell.showTab('library') end},
-        {'Show the albums', function() scene.top():pick('albums') end},
-        {'Make a playlist', function() local page = scene.top() page.newName = 'Road trip' page:pick('playlists') page:create() end},
-        {'Back home', function() Shell.showTab('home') end},
+        {'Show the albums', function() Shell.top():pick('albums') end},
+        {'Make a playlist', function() local page = Shell.top() page.newName = 'Road trip' page:pick('playlists') page:create() end},
+        {'Back home, which kept its screens', function() Shell.showTab('home') end},
+        {'Back to the root of home', function() Shell.showTab('home') end},
         {'Player again', function() Shell.openPlayer() end},
-        {'Close it', function() Shell.back() end},
+        {'Close it', function() ui.goBack() end},
     }
 end
 

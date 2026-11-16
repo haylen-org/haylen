@@ -1,5 +1,4 @@
 -- The stories, full screen: every picture of a person shows for five seconds under bars that fill as it plays, then the next one, then the stories of the next person. A tap on the left third goes back and anywhere else goes on, a press holds the story, the arrows, the directional pad and a remote step through it while it has the focus, and the field at the bottom replies in the direct messages. A phone shows the pictures from edge to edge, and a wide window shows them in a tall frame with arrows beside it.
-local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
 local ui = require('haylen.ui')
@@ -15,15 +14,14 @@ local Story = haylen.class('Story', Page)
 
 Story.duration = 5
 Story.tapTime = 0.3
-Story.backTransition = {duration = 0.3, effect = 'push', direction = 'down', ease = 'cubicOut'}
 Story.white = '#FFFFFFFF'
 Story.field = {colors = {raised = '#26FFFFFF', border = '#99FFFFFF', borderStrong = '#FFFFFFFF', text = '#FFFFFFFF', textMuted = '#D9FFFFFF', caret = '#FFFFFFFF', focus = '#FFFFFFFF'}, metrics = {controlRadius = Style.radius.field}}
 Story.onPhoto = {colors = {text = '#FFFFFFFF', hover = '#26FFFFFF', pressed = '#40FFFFFF'}}
 
-function Story:enter()
+function Story:tree()
     self.storyIndex = self.params.index
     self.frame, self.elapsed = 1, 0
-    self:mountGui(ui.stack{id = 'root'})
+    return ui.stack{id = 'root'}
 end
 
 function Story:layoutChanged(wide)
@@ -95,7 +93,7 @@ function Story:closeButton(wide)
     if not wide then
         return ui.spacer{}
     end
-    return ui.button{id = 'closeWide', icon = Shell.icon('close'), variant = 'icon', anchor = 'topRight', margin = Style.space.l, accessibilityLabel = 'Close', tooltip = 'Close', style = Story.onPhoto, onClick = Shell.back}
+    return ui.button{id = 'closeWide', icon = Shell.icon('close'), variant = 'icon', anchor = 'topRight', margin = Style.space.l, accessibilityLabel = 'Close', tooltip = 'Close', style = Story.onPhoto, onClick = ui.goBack}
 end
 
 -- The bars, the person, the note of the picture and the reply, kept inside the safe area of a phone.
@@ -109,7 +107,7 @@ function Story:overlay(wide)
                 ui.label{id = 'name', text = '', font = 'button', color = 'onAccent', wrap = false},
                 ui.label{id = 'age', text = '', font = 'caption', color = 'onAccent', wrap = false},
             },
-            ui.button{id = 'close', icon = Shell.icon('close'), variant = 'icon', visible = not wide, accessibilityLabel = 'Close', tooltip = 'Close', style = Story.onPhoto, onClick = Shell.back},
+            ui.button{id = 'close', icon = Shell.icon('close'), variant = 'icon', visible = not wide, accessibilityLabel = 'Close', tooltip = 'Close', style = Story.onPhoto, onClick = ui.goBack},
         },
         ui.spacer{grow = 1},
         ui.label{id = 'note', text = '', font = 'title', color = 'onAccent', outline = '#73000000', outlineWidth = 3, textAlign = 'center', align = 'stretch'},
@@ -182,7 +180,7 @@ function Story:next()
         self.storyIndex, self.frame = self.storyIndex + 1, 1
         self:showStory()
     else
-        Shell.back()
+        self.presentation:dismiss()
     end
 end
 
@@ -245,13 +243,9 @@ function Story:update(dt)
     end
 end
 
-function Story:exitTransitionStarted()
+function Story:disappear()
     self.exiting = true
 end
 
-function Story:render()
-    graphics2d.beginScreen()
-    graphics2d.drawRect(viewport.visibleRect(), '#FF101014')
-end
 
 return Story

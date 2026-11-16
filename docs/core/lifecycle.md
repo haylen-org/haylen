@@ -23,7 +23,7 @@ Then every frame runs the same steps. The [architecture guide](architecture.md#t
 4. The frame draws:
     - The visible scenes get `render`, and then the loading view and the autoloads get `render`.
     - The visible scenes get `renderUi`, and then the loading view, the autoloads and the GUIs get `renderUi`. A GUI that a scene owns draws only while its scene shows.
-    - During a scene transition, the scenes before and after the change each draw into an image of their own, with the GUIs they own. The loading view and the autoloads draw with the current scenes, and the transition effect draws the two images on the screen. The GUIs of no scene draw with the current scenes too, except during an effect that shows both scenes, such as a slide, where they draw on the screen above the effect, so the bars of an app stay in place while its pages move.
+    - During a scene transition, the scenes before and after the change each draw into an image of their own, with the GUIs they own. The loading view and the autoloads draw with the current scenes, and the transition effect draws the two images on the screen. The GUIs of no scene draw with the current scenes too, except during an effect that shows both scenes, such as a slide, where they draw on the screen above the effect, so a HUD of an autoload stays in place while the scenes move. The screens of an app move inside a scene, through the [navigation](../ui/navigation.md), and not through scene changes.
 5. Events queued with `events.post` and deferred signal listeners run.
 
 Platform events, such as keys, touches and focus changes, arrive between frames. The autoloads get them first and then the top scene, as the [scene reference](../lua-api/scene.md#events) describes.

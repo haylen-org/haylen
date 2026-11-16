@@ -13,7 +13,8 @@ local Artist = haylen.class('Artist', Page)
 
 Artist.following = {}
 
-function Artist:enter()
+function Artist:init(params)
+    Page.init(self, params)
     local artist = Catalog.find(self.params.artist)
     self.artist = artist
     self.glow = artist.genre
@@ -23,11 +24,14 @@ function Artist:enter()
     end
     self.popular = popular
     self.onTracks = Widgets.onTracks(function() return popular end, self)
-    self:mountGui(ui.column{grow = 1, gap = 0,
+end
+
+function Artist:tree()
+    return ui.column{grow = 1, gap = 0,
         Shell.header(''),
         ui.column{id = 'body', grow = 1, gap = 0},
         Widgets.playlistDialog(self),
-    })
+    }
 end
 
 function Artist:layoutChanged(wide)

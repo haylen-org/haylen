@@ -13,7 +13,7 @@ local Search = haylen.class('Search', Page)
 
 Search.limit = 400
 
-function Search:enter()
+function Search:tree()
     local space = Style.space
     self.query = ''
     local tiles = {}
@@ -25,7 +25,8 @@ function Search:enter()
                 Shell.open(require('screens.collection'), {collection = 'genre-' .. genre.id})
             end}
     end
-    self:mountGui(ui.column{grow = 1, gap = space.s, padding = {space.l, 0, 0, 0},
+    self.onTracks = Widgets.onTracks(function() return self.tracks end, self)
+    return ui.column{grow = 1, gap = space.s, padding = {space.l, 0, 0, 0},
         Shell.centered(Style.size.page, ui.column{gap = space.s, padding = {0, space.l},
             ui.label{text = 'Search', font = 'title'},
             ui.filterField{id = 'query', placeholder = 'Artists, albums or songs', returnKey = 'search', onChange = function(event)
@@ -62,9 +63,11 @@ function Search:enter()
             ui.emptyState{image = Shell.icon('music'), imageSize = 72, title = 'Nothing found', message = 'Try another name.'},
         }, 1)},
         Widgets.playlistDialog(self),
-    })
+    }
+end
+
+function Search:start()
     self.results = self.gui:collection('resultList')
-    self.onTracks = Widgets.onTracks(function() return self.tracks end, self)
 end
 
 function Search:refresh()

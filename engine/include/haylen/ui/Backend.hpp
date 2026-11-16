@@ -218,6 +218,10 @@ class Backend final {
     // Begins a child window that draws at this point of the draw list of the window being built, so what that window draws after it, such as the nodes and GUIs above a scroll, covers it. The child ends with `ImGui::EndChild`.
     bool beginChild(const char* id, math::Vec2 size, ImGuiChildFlags childFlags, ImGuiWindowFlags windowFlags);
 
+    // Draws what follows without input until `endInert`: its items take no pointer or keyboard and its child windows never take the pointer from the GUIs drawn over them, such as the GUIs under a presentation.
+    void beginInert();
+    void endInert();
+
     // Adds a font under a name and returns its regular face. Fonts are sized when drawn, so one font serves every size, and a fallback draws the characters a face lacks with its em square as large as the em square of that face.
     ImFont* addFont(const std::string& name, FontFiles files);
 
@@ -399,6 +403,7 @@ class Backend final {
     std::vector<math::Rect> blockedPrevious;
     ImGuiID transparentWindow = 0;
     ImGuiID dragKeeper = 0;
+    int inertDepth = 0;
     std::vector<ImGuiID> immediateWindows;
     std::optional<std::uint64_t> primaryTouch;
     bool touchShared = false;

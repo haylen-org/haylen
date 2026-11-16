@@ -13,13 +13,16 @@ local Post = haylen.class('Post', Page)
 
 Post.stage = {colors = {panel = '#FF0E0E12'}, metrics = {panelRadius = 0}}
 
-function Post:enter()
+function Post:tree()
     self.post = Social.post(self.params.post)
-    self:mountGui(ui.column{gap = 0, onCancel = Shell.back,
+    return ui.column{gap = 0,
         Shell.header('Post'),
         ui.column{id = 'body', grow = 1, gap = 0},
         Widgets.friendDialog(self),
-    })
+    }
+end
+
+function Post:start()
     events.on('socialChanged', function(changed)
         if changed == self.post then
             self:showPost()

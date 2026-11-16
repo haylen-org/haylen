@@ -12,7 +12,7 @@ local Library = haylen.class('Library', Page)
 
 Library.sections = {{id = 'playlists', text = 'Playlists'}, {id = 'albums', text = 'Albums'}, {id = 'artists', text = 'Artists'}}
 
-function Library:enter()
+function Library:tree()
     local space = Style.space
     self.section = 'playlists'
     self.created = 0
@@ -22,7 +22,7 @@ function Library:enter()
             self:pick(section.id)
         end}
     end
-    self:mountGui(ui.column{grow = 1, gap = space.s, padding = {space.l, 0, 0, 0},
+    return ui.column{grow = 1, gap = space.s, padding = {space.l, 0, 0, 0},
         Shell.centered(Style.size.page, ui.column{gap = space.s, padding = {0, space.l},
             ui.row{gap = space.xs,
                 ui.label{text = 'Library', font = 'title', grow = 1, wrap = false},
@@ -50,7 +50,10 @@ function Library:enter()
                 self.newName = event.value
             end},
         },
-    })
+    }
+end
+
+function Library:start()
     self.items = self.gui:collection('items')
     self:show()
 end

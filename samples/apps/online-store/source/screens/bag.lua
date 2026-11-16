@@ -11,11 +11,13 @@ local Widgets = require('widgets')
 
 local BagPage = haylen.class('BagPage', Page)
 
-function BagPage:enter()
-    self:mountGui(ui.column{gap = 0, onCancel = Shell.back,
-        Shell.header('Your bag'),
-        ui.column{id = 'body', grow = 1, gap = 0},
-    })
+BagPage.title = 'Your bag'
+
+function BagPage:tree()
+    return ui.column{id = 'body', grow = 1, gap = 0}
+end
+
+function BagPage:start()
     events.on('bagChanged', function()
         self:showLines()
     end, {owner = self})
@@ -63,7 +65,7 @@ function BagPage:body(wide)
         ui.divider{},
         Widgets.costRow('total', 'Total', true),
         ui.button{id = 'checkout', text = 'Checkout', variant = 'primary', align = 'stretch', margin = {space.xs, 0, 0, 0}, onClick = function()
-            Shell.open(require('screens.checkout'))
+            self.stack:push(require('screens.checkout')())
         end},
     }
     if wide then

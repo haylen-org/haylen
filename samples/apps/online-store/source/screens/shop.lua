@@ -12,8 +12,8 @@ local Shop = haylen.class('Shop', Page)
 
 Shop.shelfSize = 14
 
-function Shop:enter()
-    self:mountGui(Shell.tabPage(ui.scroll{id = 'scroll', grow = 1, height = 0,
+function Shop:tree()
+    return Shell.tabPage(ui.scroll{id = 'scroll', grow = 1, height = 0,
         Shell.centered(Style.size.page, ui.column{id = 'page', gap = Style.space.m, padding = {Style.space.l, Style.space.l, Style.space.xxl, Style.space.l},
             ui.column{id = 'campaign'},
             Widgets.section('Shop by category'),
@@ -38,7 +38,10 @@ function Shop:enter()
             Widgets.section('On sale', 'See all', function() Shell.showTab('browse', {sale = true}) end),
             Widgets.shelf('sale'),
         }),
-    }, Shell.phoneBar(self)))
+    }, Shell.phoneBar(self))
+end
+
+function Shop:start()
     self.gui:collection('categories'):setItems(self:categoryItems())
     self.gui:collection('new'):setItems(self:pick(function(product) return product.reviews < 40 end))
     self.gui:collection('best'):setItems(self:pick(function(product) return product.popularity > 90000 end))

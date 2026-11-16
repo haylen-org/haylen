@@ -14,14 +14,19 @@ local Style = require('style')
 
 local Home = haylen.class('Home', Page)
 
+Home.onMap = true
+
 Home.recent = {'p12', 'p48', 'p230'}
 Home.searchBar = {colors = {raised = Style.color.mist, border = Style.color.mist, text = Style.color.ink}, metrics = {controlRadius = Style.radius.control, iconSize = 30}, fonts = {button = {size = Style.type.heading * 0.85}}}
 Home.place = {colors = {raised = Style.color.paper, border = Style.color.line}, metrics = {controlRadius = Style.radius.chip, controlPaddingX = Style.space.m}}
 
-function Home:enter()
+function Home:tree()
     self.map = MapView()
     self.font = assets.font('fonts/barlow-semibold.ttf')
-    self:mountGui(ui.stack{id = 'root', onCancel = Shell.back})
+    return ui.stack{id = 'root'}
+end
+
+function Home:start()
     events.on('tripChanged', function()
         self:showCurrent()
     end, {owner = self})
@@ -43,14 +48,14 @@ function Home:layoutChanged(wide)
     -- A phone shows the menu as a round button over the map, and a wide window in the head of the panel.
     self.gui:replaceChildren('root', {
         Shell.mapButton('menu', 'menu', 'Menu', function()
-            Shell.open(require('screens.menu'), nil, Shell.menuTransition)
+            Shell.openMenu()
         end, {anchor = 'topLeft', margin = space.m, visible = not wide}),
         Shell.mapButton('locate', 'locate', 'Show where I am', function()
             self.map:reset()
         end, {anchor = 'topRight', margin = space.m}),
         Shell.sheet('sheet', {
             ui.row{id = 'panelHead', visible = wide, gap = space.s, Shell.mapButton('menuWide', 'menu', 'Menu', function()
-                Shell.open(require('screens.menu'), nil, Shell.menuTransition)
+                Shell.openMenu()
             end), ui.image{image = 'images/logo.svg', width = 44, height = 44, accessibilityHidden = true}, ui.label{text = 'Ride Hailing', font = 'heading', grow = 1, wrap = false}},
             ui.card{id = 'current', visible = false, padding = {space.s, space.m}, style = {colors = {raised = Style.color.yellow, border = Style.color.yellow}, metrics = {panelRadius = Style.radius.control}},
                 ui.row{gap = space.s,
@@ -111,7 +116,6 @@ function Home:update(dt)
 end
 
 function Home:render()
-    Page.render(self)
     local map = self.map
     map:begin()
     map:drawTraffic()

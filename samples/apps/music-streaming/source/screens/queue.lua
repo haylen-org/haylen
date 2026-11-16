@@ -10,12 +10,11 @@ local Style = require('style')
 
 local Queue = haylen.class('Queue', Page)
 
-function Queue:enter()
+-- The queue is a sheet over the app or the player, on the surface of the sheet, which closes with its button or the system back.
+function Queue:tree()
     local space = Style.space
-    local track = Player.current()
-    self.glow = track and track.genre
-    self:mountGui(ui.column{grow = 1, gap = 0,
-        Shell.header('Queue', {
+    return ui.column{grow = 1, gap = 0,
+        Shell.sheetHeader('Queue', {
             ui.button{id = 'clear', text = 'Clear', variant = 'toolbar', onClick = function()
                 for index = #Player.queue, Player.index + 1, -1 do
                     table.remove(Player.queue, index)
@@ -59,7 +58,10 @@ function Queue:enter()
             end,
             ui.emptyState{image = Shell.icon('queue'), imageSize = 72, title = 'Nothing comes next', message = 'Add songs to the queue from their menu.'},
         }, 1),
-    })
+    }
+end
+
+function Queue:start()
     self.list = self.gui:collection('upcoming')
     events.on('playerChanged', function()
         self:showQueue()

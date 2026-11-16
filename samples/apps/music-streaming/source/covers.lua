@@ -68,21 +68,27 @@ function Covers.register()
     end
 end
 
--- Returns the backdrop of a genre, a tall texture that fades from a dark shade of its first color into the night of the app, made the first time a screen asks for it.
-Covers.backdrops = {}
+-- The glows of the genres, named for the UI by the genre and the share of the height of a screen where the glow reaches the night.
+Covers.glows = {}
 
-function Covers.backdrop(genreId)
-    local texture = Covers.backdrops[genreId]
-    if texture then
-        return texture
+-- Returns the name of the glow of a genre, a tall picture that fades from a dark shade of its first color at the top into the night of the app at `reach` of its height, which the screens show behind their content. It is made the first time a screen asks for it.
+function Covers.glow(genreId, reach)
+    reach = reach or Covers.glowReach
+    local name = string.format('@glow-%s-%d', genreId, math.floor(reach * 100 + 0.5))
+    if Covers.glows[name] then
+        return name
     end
     local night = math2d.color(Style.color.night)
     local image = graphics.newImage(4, 256)
-    image:fillGradient({angle = math.pi / 2, stops = {{0, Covers.deep(genreId, 0.55)}, {0.75, night}, {1, night}}})
-    texture = graphics.newTexture(image, {filter = 'linear'})
-    Covers.backdrops[genreId] = texture
-    return texture
+    image:fillGradient({angle = math.pi / 2, stops = {{0, Covers.deep(genreId, 0.55)}, {reach, night}, {1, night}}})
+    ui.setImage(name, graphics.newTexture(image, {filter = 'linear'}))
+    Covers.glows[name] = true
+    return name
 end
+
+-- A page glows down to a little over half its height, and the player down to three quarters of it.
+Covers.glowReach = 0.53
+Covers.playerReach = 0.75
 
 -- The first color of a genre mixed with the night of the app by `amount`, dark enough for white text.
 function Covers.deep(genreId, amount)

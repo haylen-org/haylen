@@ -13,7 +13,9 @@ local Style = require('style')
 
 local Preview = haylen.class('Preview', Page)
 
-function Preview:enter()
+Preview.onMap = true
+
+function Preview:tree()
     self.map = MapView()
     self.font = assets.font('fonts/barlow-semibold.ttf')
     self.from = Places.here
@@ -33,13 +35,13 @@ function Preview:enter()
             eta = kind.minutes .. ' min away',
         }
     end
-    self:mountGui(ui.stack{id = 'root', onCancel = Shell.back})
+    return ui.stack{id = 'root'}
 end
 
 function Preview:layoutChanged(wide)
     local space = Style.space
     self.gui:replaceChildren('root', {
-        Shell.mapButton('back', 'back', 'Back', Shell.back, {anchor = wide and 'topRight' or 'topLeft', margin = space.m}),
+        Shell.mapButton('back', 'back', 'Back', ui.goBack, {anchor = wide and 'topRight' or 'topLeft', margin = space.m}),
         Shell.sheet('sheet', {
             ui.row{gap = space.s,
                 ui.column{gap = 0, grow = 1,
@@ -127,7 +129,6 @@ function Preview:update(dt)
 end
 
 function Preview:render()
-    Page.render(self)
     local map = self.map
     map:begin()
     map:drawTraffic()

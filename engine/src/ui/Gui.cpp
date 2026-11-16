@@ -11,6 +11,7 @@
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
 #include "haylen/ui/PropertyReader.hpp"
+#include "haylen/ui/Transform.hpp"
 
 namespace haylen::ui {
 
@@ -362,7 +363,7 @@ void Gui::command(Context& context, std::string_view id, std::string_view name, 
 }
 
 // The root places itself in the direction it sets for the GUI.
-void Gui::draw(Context& context, const math::Rect& area) {
+void Gui::draw(Context& context, const math::Rect& area, float opacity) {
     if (!visible) {
         skip(context);
         return;
@@ -380,7 +381,19 @@ void Gui::draw(Context& context, const math::Rect& area) {
         context.popWriting();
     }
 
+    if (opacity >= 1.0F) {
+        root->draw(context, placed);
+        root->noticeStoppedDrawing(context);
+        return;
+    }
+
+    const Transform faded{.opacity = opacity};
+    const int firstVertex = ImGui::GetCurrentWindow()->DrawList->VtxBuffer.Size;
+    const int firstWindow = GImGui->WindowsActiveCount;
+    context.pushReshape(faded, placed.getCenter());
     root->draw(context, placed);
+    context.popReshape();
+    Component::reshapeSince(firstVertex, firstWindow, faded, placed.getCenter());
     root->noticeStoppedDrawing(context);
 }
 

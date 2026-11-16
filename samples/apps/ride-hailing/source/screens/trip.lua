@@ -14,19 +14,24 @@ local Style = require('style')
 
 local Trip = haylen.class('Trip', Page)
 
+Trip.onMap = true
+
 Trip.stars = {{id = '1', text = '1'}, {id = '2', text = '2'}, {id = '3', text = '3'}, {id = '4', text = '4'}, {id = '5', text = '5'}}
 Trip.tips = {{id = '0', text = 'No tip'}, {id = '1', text = '$1'}, {id = '2', text = '$2'}, {id = '5', text = '$5'}}
 Trip.replies = {'I am at the pickup point.', 'I will be there in two minutes.', 'I am wearing a red jacket.'}
 Trip.reasons = {{id = 'plans', text = 'My plans changed'}, {id = 'long', text = 'The driver takes too long'}, {id = 'wrong', text = 'I picked the wrong place'}, {id = 'other', text = 'Another reason'}}
 Trip.plate = {colors = {accent = Style.color.ink, onAccent = Style.color.yellow}, fonts = {caption = {size = Style.type.label}}}
 
-function Trip:enter()
+function Trip:tree()
     self.trip = Rides.current
     self.map = MapView()
     self.font = assets.font('fonts/barlow-semibold.ttf')
     self.stars, self.tip = 5, 0
     self.chat = {}
-    self:mountGui(ui.stack{id = 'root', onCancel = Shell.back})
+    return ui.stack{id = 'root'}
+end
+
+function Trip:start()
     events.on('tripChanged', function(changed)
         if changed == self.trip then
             self:showStage()
@@ -44,7 +49,7 @@ function Trip:layoutChanged(wide)
         end}
     end
     self.gui:replaceChildren('root', {
-        Shell.mapButton('back', 'back', 'Back to the map', Shell.back, {anchor = wide and 'topRight' or 'topLeft', margin = space.m}),
+        Shell.mapButton('back', 'back', 'Back to the map', ui.goBack, {anchor = wide and 'topRight' or 'topLeft', margin = space.m}),
         Shell.mapButton('recenter', 'locate', 'Show the whole route', function()
             self.map:reset()
         end, {anchor = wide and 'bottomRight' or 'topRight', margin = space.m}),
@@ -159,14 +164,14 @@ end
 function Trip:cancel()
     Rides.cancel()
     Shell.notify('Your ride is cancelled.')
-    Shell.back()
+    Shell.showHome()
 end
 
 function Trip:finish()
     local name = Places.find(self.trip.to).name
     Rides.finish(self.stars, self.tip)
     Shell.notify('Thanks for riding. Your trip to ' .. name .. ' is in your trips.', 'success')
-    Shell.back()
+    Shell.showHome()
 end
 
 function Trip:update(dt)
@@ -202,7 +207,6 @@ function Trip:update(dt)
 end
 
 function Trip:render()
-    Page.render(self)
     local trip = self.trip
     local map = self.map
     map:begin()

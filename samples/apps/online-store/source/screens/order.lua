@@ -12,7 +12,7 @@ local Widgets = require('widgets')
 
 local Order = haylen.class('Order', Page)
 
-function Order:enter()
+function Order:tree()
     local order = Orders.find(self.params.order)
     self.order = order
     local space = Style.space
@@ -38,7 +38,7 @@ function Order:enter()
             ui.label{text = line.total, font = 'button'},
         }
     end
-    self:mountGui(ui.column{gap = 0, onCancel = Shell.back,
+    return ui.column{gap = 0,
         Shell.header(order.number),
         ui.scroll{grow = 1, height = 0,
             Shell.centered(Style.size.reading, ui.column{gap = space.l, padding = {space.l, space.l, space.xxl, space.l},
@@ -54,9 +54,12 @@ function Order:enter()
                 ui.row{gap = space.s, ui.label{text = 'Total', font = 'heading', grow = 1}, ui.label{text = Store.money(order.total), font = 'heading'}},
             }),
         },
-    })
+    }
+end
+
+function Order:start()
     events.on('orderChanged', function(changed)
-        if changed == order then
+        if changed == self.order then
             self:showStage()
         end
     end, {owner = self})

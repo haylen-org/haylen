@@ -12,7 +12,7 @@ local Wallet = haylen.class('Wallet', Page)
 
 Wallet.amounts = {{id = '10', text = '$10'}, {id = '20', text = '$20'}, {id = '50', text = '$50'}, {id = '100', text = '$100'}}
 
-function Wallet:enter()
+function Wallet:tree()
     local space = Style.space
     self.amount = 20
     local cards = {}
@@ -20,7 +20,7 @@ function Wallet:enter()
         cards[#cards + 1] = {id = card.id, text = card.text, caption = card.caption, image = Shell.icon(card.icon)}
     end
     cards[#cards + 1] = {id = 'cash', text = 'Cash', caption = 'Pay the driver at the end of the ride', image = Shell.icon('cash')}
-    self:mountGui(ui.column{gap = 0, onCancel = Shell.back,
+    return ui.column{gap = 0,
         Shell.header('Wallet'),
         ui.scroll{grow = 1, height = 0,
             Shell.centered(Style.size.reading, ui.column{gap = space.l, padding = {space.l, space.l, space.xl, space.l},
@@ -49,7 +49,10 @@ function Wallet:enter()
                 self.amount = tonumber(event.value)
             end},
         },
-    })
+    }
+end
+
+function Wallet:start()
     events.on('walletChanged', function()
         self:showWallet()
     end, {owner = self})

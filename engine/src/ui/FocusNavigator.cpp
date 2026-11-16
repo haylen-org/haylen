@@ -857,7 +857,7 @@ void FocusNavigator::activate(const Target& target) {
     g.NavActivateFlags = ImGuiActivateFlags_PreferInput;
 }
 
-// Cancel goes to the innermost focus scope around the focus, or to the root of the GUI that holds it, or of the topmost GUI when nothing has the focus. Focus in a window of its own, such as a draggable window, leaves cancel to that window.
+// Cancel goes to the innermost focus scope around the focus, then to the back handler, then to the root of the GUI that holds it, or of the topmost GUI when nothing has the focus. Focus in a window of its own, such as a draggable window, leaves cancel to that window.
 void FocusNavigator::cancel(const Target* source) {
     const Node* node = source != nullptr ? &drawn.nodes[source->node] : nullptr;
     if (node != nullptr) {
@@ -865,6 +865,10 @@ void FocusNavigator::cancel(const Target* source) {
             notify(drawn.scopes[*trap].id, "cancel");
             return;
         }
+    }
+
+    if (backHandler && backHandler()) {
+        return;
     }
 
     if (drawn.guis.empty()) {

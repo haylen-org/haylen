@@ -15,6 +15,7 @@ Style.color = {
     blue = '#FF2F6BFF',
     blueDeep = '#FF2153D6',
     heart = '#FFFF3358',
+    stage = '#FF101014',
 }
 
 -- The type scale, the sizes of the em square that the UI sizes every font by: each step is about a quarter larger than the one below it, from the captions of times and counts up to the wordmark.

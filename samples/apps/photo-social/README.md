@@ -45,7 +45,7 @@ Every post has a menu with the way to the profile, sending it to a friend in a d
 
 ## How it works
 
-The screens are scenes of `source/screens/` built on the base of `source/page.lua`, which mounts their GUI with the scene as owner in the middle of the frame, paints the background and tells the screen when the window crosses the widths of the wide and roomy layouts. The shell of `source/shell.lua` mounts the frame once, the rail of a wide window and the bar of icons of a phone, and every screen lays out in its middle through a [region](../../../docs/lua-api/ui.md#regions) placement, so a new post, a post, a profile or a conversation changes only the middle while the bars stay, and the count of unread messages lives on the tabs of the frame. The shell switches the tabs as the only screen without a transition, pushes the other screens with a slide, brings back a profile or a conversation that already shows in the stack instead of opening a second copy, and goes back with the back button, Escape and the east button.
+The app follows the [navigation](../../../docs/ui/navigation.md) of the engine, the way an app of a phone or a tablet moves between its screens. The scene of `source/shell.lua` mounts the frame once, the rail of a wide window and the bar of icons of a phone, and its tabs, `ui.navigationTabs` in the middle of the frame, keep a stack each, so a post or a profile slides in only the middle while the bars stay, a tab keeps its screens and its scroll while another tab shows, and selecting the tab that shows goes back to its root. The tab buttons change only their look when the tab changes, and the count of unread messages lives on them. The messages tab is a split of the conversations and the open chat, side by side on a wide window with a note until a chat opens, and one stack on a phone, where the chat slides over the conversations, and the chat moves between the two as the window crosses the wide width. A new post and the stories open over everything as presentations that cover the whole screen: the new post has its own bar with the way out, the title of the step and its action, which stays while the picture, the edit and the caption slide under it in a stack of their own. The screens of `source/screens/` are classes of `ui.Screen` built on the base of `source/page.lua`. A profile or a conversation that already shows in the stack comes back instead of opening a second copy, and the back buttons, the back button of Android, Escape and the east button go back the same way, through the stack, then to the home tab, and they close a presentation before anything else.
 
 - The pictures of `source/photos.lua` are twelve painted files that every post, story and profile reuses. Each one shows whole or as a close crop around its subject with a filter, made on the task pool with `image:crop` and `image:applyAsync` of [`haylen.graphics`](../../../docs/lua-api/graphics.md) and named for the UI with `ui.setImage`, so twelve files give twenty-four looks. Until a look is ready its name shows the mean color of its picture, so nothing waits on the frame thread, and the textures keep mipmaps, so the small tiles of a grid stay smooth.
 - The faces of `source/avatars.lua` are SVG documents drawn from a few shapes, a round face with dots for eyes, rosy cheeks and a smile under one of six haircuts, read with `graphics.newVectorImage`, so every person has a face of a few hundred bytes that stays sharp at every size.
@@ -79,7 +79,7 @@ photo-social/
     main.lua             Registers the theme, the actions of the stories and the pictures, and starts the shell.
     style.lua            The palette, the type scale, the spacing scale, the shapes and the theme.
     shell.lua            Tabs, navigation, notices, the rail and the bar of icons, the wordmark and the headers.
-    page.lua             The base of every screen.
+    page.lua             The base of every screen, a class of "ui.Screen".
     widgets.lua          The templates of posts, comments, people, stories and tiles, and the dialog that sends a post.
     photos.lua           The twelve pictures, their looks and the filters.
     avatars.lua          The faces of the people.
@@ -88,7 +88,7 @@ photo-social/
     random.lua           The seeded generator of the fake data.
     tour.lua             The automatic run of the headless platform.
     data/social.lua      The people, their posts, comments and stories, and the person who uses the app.
-    screens/             Home, story, post, profile, explore, the three steps of a new post, messages and chat.
+    screens/             Home, story, post, profile, explore, the new post with its three steps, and messages with the inbox and the chat.
   content/
     photos/              The twelve pictures.
     icons/               The line icons.

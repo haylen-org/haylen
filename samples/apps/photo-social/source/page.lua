@@ -1,33 +1,33 @@
--- The base of every screen: it paints the background of the theme, mounts the GUI of the screen in the middle of the frame and follows the width of the window.
-local graphics2d = require('haylen.graphics2d')
+-- The base of every screen: it builds the tree of the screen, runs the start of the screen the first time it shows, and tells the screen when the window crosses the widths of the wide and roomy layouts.
 local haylen = require('haylen')
-local scene = require('haylen.scene')
 local ui = require('haylen.ui')
-local viewport = require('haylen.viewport')
 
 local Shell = require('shell')
 
-local Page = haylen.class('Page', scene.Scene)
+local Page = haylen.class('Page', ui.Screen)
 
 function Page:init(params)
     self.params = params or {}
 end
 
--- Mounts the tree of the screen in the middle of the frame. Every screen shares the focus with the frame and the notices, so a remote moves between the screen and the tabs, and cancel goes back.
-function Page:mountGui(tree)
-    tree.onCancel = tree.onCancel or Shell.back
-    self.gui = ui.mount(tree, {owner = self, sharedFocus = true, placement = Shell.middle()})
-    self.wide, self.roomy = nil, nil
+function Page:build()
+    return self:tree()
+end
+
+-- The screen lays out for the width of the window and starts the first time it shows.
+function Page:appear()
     Shell.adapt(self)
+    if self.started then
+        return
+    end
+    self.started = true
+    if self.start then
+        self:start()
+    end
 end
 
 function Page:update(dt)
     Shell.adapt(self)
-end
-
-function Page:render()
-    graphics2d.beginScreen()
-    graphics2d.drawRect(viewport.visibleRect(), ui.themeColor('window'))
 end
 
 return Page

@@ -75,7 +75,6 @@ class ScriptedScene final : public core::Scene {
     static constexpr const char* kHandleType = "haylen.SceneHandle";
     static constexpr const char* kOwnerModeType = "haylen.OwnerMode";
 
-    static void pushWeakKeyed(lua_State* L, const char* name);
     static int collectHandle(lua_State* L);
     [[nodiscard]] static std::shared_ptr<OwnerMode> findOwnerMode(lua_State* L, int owner);
     static int collectOwnerMode(lua_State* L);

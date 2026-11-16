@@ -11,9 +11,9 @@ local Wishlist = require('wishlist')
 
 local Saved = haylen.class('Saved', Page)
 
-function Saved:enter()
+function Saved:tree()
     local space = Style.space
-    self:mountGui(Shell.tabPage(ui.column{grow = 1, gap = 0,
+    return Shell.tabPage(ui.column{grow = 1, gap = 0,
         Shell.centered(Style.size.page, ui.column{gap = space.xxs, padding = {space.l, space.l, space.s, space.l},
             ui.label{text = 'Saved for later', font = 'title'},
             ui.label{id = 'count', text = '', color = 'textMuted'},
@@ -25,7 +25,10 @@ function Saved:enter()
             end,
             ui.emptyState{image = 'images/hero.png', imageSize = 240, title = 'Nothing saved yet', message = 'Tap the heart of a product to keep it here.'},
         }, 1),
-    }, Shell.phoneBar(self, 'Saved')))
+    }, Shell.phoneBar(self, 'Saved'))
+end
+
+function Saved:start()
     self.list = self.gui:collection('saved')
     events.on('wishlistChanged', function()
         self:show()

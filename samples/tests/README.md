@@ -628,6 +628,7 @@ Every component of "haylen.ui" with its themes, focus navigation, tweens, text e
 | `GUI-032` | Images made at run time | A minimap rendered into a render target every frame, a portrait composed on the CPU and a vector image built in code, in components. |  |
 | `GUI-033` | Image theme | A casual fantasy theme drawn from one atlas of nine-slice pieces and a set of icons, beside the default theme at several UI scales. |  |
 | `GUI-034` | Theme sounds | A theme that plays sounds for presses, focus moves, choices, slider steps and typing, styles that silence or replace the sound of one control, and a switch that mutes them. |  |
+| `GUI-035` | Navigation | A small app whose bars stay while a stack pushes and pops screens in its middle, tabs that keep their stacks, a list and its detail side by side or as one stack, and a new post in a sheet with bars and a stack of its own. |  |
 
 #### Accessibility (ACC)
 

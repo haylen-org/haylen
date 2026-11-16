@@ -19,7 +19,7 @@ Browse.sorts = {
 }
 Browse.maxPrice = 250
 
-function Browse:enter()
+function Browse:tree()
     local space = Style.space
     self.query = ''
     self.category = self.params.category
@@ -48,7 +48,7 @@ function Browse:enter()
             self.pending.colors[color.id] = event.selected or nil
         end}
     end
-    self:mountGui(Shell.tabPage(ui.column{grow = 1, gap = space.s, padding = {space.m, 0, 0, 0},
+    return Shell.tabPage(ui.column{grow = 1, gap = space.s, padding = {space.m, 0, 0, 0},
         Shell.centered(Style.size.page, ui.column{gap = space.s,
             ui.row{gap = space.xs, padding = {0, space.l},
                 ui.filterField{id = 'query', placeholder = 'Search the store', grow = 1, returnKey = 'search', onChange = function(event)
@@ -99,10 +99,28 @@ function Browse:enter()
                 self.pending.sale = event.checked
             end},
         },
-    }, Shell.phoneBar(self, 'Browse')))
+    }, Shell.phoneBar(self, 'Browse'))
+end
+
+function Browse:start()
     self.grid = self.gui:collection('grid')
     self:refresh()
-    if self.params.focus then
+end
+
+-- Shows what another screen asks for, such as a category of the shop, the newest products or the products on sale, or puts the focus in the search.
+function Browse:apply(params)
+    if params.category ~= nil or params.sort or params.sale ~= nil then
+        self:pickCategory(params.category)
+    end
+    for _, sort in ipairs(Browse.sorts) do
+        if sort.id == (params.sort or Browse.sorts[1].id) then
+            self.sort = sort
+        end
+    end
+    self.gui:set('sort', {text = self.sort.text})
+    self.filters.sale = params.sale == true
+    self:refresh()
+    if params.focus then
         self.gui:command('query', 'focus')
     end
 end

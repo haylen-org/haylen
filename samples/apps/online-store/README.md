@@ -44,7 +44,7 @@ On the headless platform the app runs a tour by itself: it browses a category wi
 
 ## How it works
 
-The screens are scenes of `source/screens/` built on the base of `source/page.lua`, which mounts their GUI with the scene as owner in the middle of the frame, paints the paper of the store and tells the screen when the window crosses the wide width. The shell of `source/shell.lua` mounts the frame once, the navigation of the top with the bag and the bar of tabs, and every screen lays out in its middle through a [region](../../../docs/lua-api/ui.md#regions) placement, so opening a product, the bag or the checkout changes only the middle while the bars stay. The shell switches the tabs as the only screen without a transition, pushes the other screens with a slide, puts the order in the place of its confirmation with `Shell.replace` and goes back with the back button, Escape and the east button. A phone shows the bar of tabs with their names at the bottom, and a wide window shows the wordmark, the tabs, the search and the bag across the top, the way a store on the web does, with the tab that shows underlined.
+The app follows the [navigation](../../../docs/ui/navigation.md) of the engine, the way an app of a phone or a tablet moves between its screens. The scene of `source/shell.lua` mounts the frame once, the navigation of the top with the bag and the bar of tabs, and its tabs, `ui.navigationTabs` in the middle of the frame, keep a stack each, so opening a product slides in only the middle while the bars stay, and the browse tab keeps its filters, its product and its scroll while another tab shows. The tab buttons change only their look when the tab changes. The orders tab is a split of the orders and the open order, side by side on a wide window and one stack on a phone. The bag opens over everything as a sheet that starts a flow of its own: a bar with the way out and the title of the step stays while the bag, the checkout and the confirmation slide under it, and following the order closes the flow and opens the order in the orders tab. The screens of `source/screens/` are classes of `ui.Screen` built on the base of `source/page.lua`, which shows their back button only where there is somewhere to go back to. A phone shows the bar of tabs with their names at the bottom, and a wide window shows the wordmark, the tabs, the search and the bag across the top, the way a store on the web does, with the tab that shows underlined.
 
 - One illustration serves every color of a product. The goods are drawn in white with a navy outline and navy shading, and the `tint` of their `image` gives them the color of the product, which the templates bind from the `tint` field of the item and the product page changes with `gui:set` when the person picks a color.
 - The swatches of the colors are round SVG documents made at run time for every color, plain and inside a dark ring, named with `ui.setImage`, and the product page gives the swatch it picks the ring.
@@ -77,7 +77,7 @@ online-store/
     main.lua             Registers the theme and the swatches, and starts the shell.
     style.lua            The palette, the type scale, the spacing scale, the shapes and the theme.
     shell.lua            Tabs, navigation, notices, the navigation of the top, the bar of tabs, the bag buttons and the headers.
-    page.lua             The base of every screen.
+    page.lua             The base of every screen, a class of "ui.Screen".
     widgets.lua          The picture of a product, the product card, the shelves, the swatches and the rows of costs.
     bag.lua              The bag and its promo codes.
     wishlist.lua         The saved products.
@@ -85,7 +85,7 @@ online-store/
     random.lua           The seeded generator of the fake data.
     tour.lua             The automatic run of the headless platform.
     data/store.lua       The colors, the categories, the products and their reviews.
-    screens/             Shop, browse, product, bag, checkout, confirmation, orders, order, saved and account.
+    screens/             Shop, browse, product, the flow of the bag with the bag, checkout and confirmation, the orders tab with its orders and order, saved and account.
   content/
     products/            The products and their backdrops.
     icons/               The line icons.

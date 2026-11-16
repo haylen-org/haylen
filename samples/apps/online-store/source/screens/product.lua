@@ -14,14 +14,14 @@ local Product = haylen.class('Product', Page)
 
 Product.galleryBackdrops = {'sand', 'sky', 'lilac', 'mint', 'peach', 'rose', 'lemon', 'slate'}
 
-function Product:enter()
+function Product:tree()
     local product = Store.product(self.params.product)
     self.product = product
     self.category = Store.category(product.category)
     self.color = product.colors[1]
     self.size = #self.category.sizes == 1 and self.category.sizes[1] or nil
     self.quantity = 1
-    self:mountGui(ui.column{gap = 0, onCancel = Shell.back,
+    return ui.column{gap = 0,
         Shell.header(self.category.name, {
             ui.button{id = 'wish', icon = Shell.icon(Wishlist.has(product) and 'heart-filled' or 'heart'), iconColor = 'text', variant = 'icon', tooltip = 'Save', accessibilityLabel = 'Save the product', onClick = function()
                 self:toggleSaved()
@@ -40,14 +40,17 @@ function Product:enter()
         ui.dialog{id = 'addedDialog', title = 'Added to your bag', buttons = {{id = 'shop', text = 'Keep shopping'}, {id = 'bag', text = 'View bag', variant = 'primary'}},
             onAnswer = function(event)
                 if event.button == 'bag' then
-                    Shell.open(require('screens.bag'))
+                    Shell.openBag()
                 end
             end,
             ui.row{gap = Style.space.m, Widgets.picture({width = 104, height = 124, image = product.image, backdrop = product.backdrop, imageId = 'addedImage', inset = Style.space.s}), ui.label{id = 'addedText', text = '', grow = 1}},
         },
         ui.dialog{id = 'reviewDialog', title = 'Reviews', message = product.ratingText, buttons = {{id = 'close', text = 'Close'}}, ui.column(self:reviews())},
-    })
-    self.gui:collection('related'):setItems(Store.related(product, 12))
+    }
+end
+
+function Product:start()
+    self.gui:collection('related'):setItems(Store.related(self.product, 12))
 end
 
 -- Lays the gallery and the details side by side on wide windows and one above the other on phones.

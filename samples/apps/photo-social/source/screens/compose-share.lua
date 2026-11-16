@@ -10,15 +10,17 @@ local Style = require('style')
 
 local ComposeShare = haylen.class('ComposeShare', Page)
 
-function ComposeShare:enter()
+ComposeShare.title = 'New post'
+ComposeShare.actionText = 'Share'
+
+function ComposeShare:action()
+    self:share()
+end
+
+function ComposeShare:tree()
     local space = Style.space
     self.caption, self.place = '', ''
-    self:mountGui(ui.column{gap = 0, onCancel = Shell.back,
-        Shell.header('New post', {
-            ui.button{id = 'shareTop', text = 'Share', variant = 'link', onClick = function()
-                self:share()
-            end},
-        }),
+    return ui.column{gap = 0,
         ui.scroll{grow = 1, height = 0,
             Shell.centered(720, ui.column{gap = space.l, padding = {space.l, space.m, space.xl, space.m},
                 ui.image{id = 'thumb', image = Compose.texture and Compose.preview or Compose.look(), fit = 'cover', aspectRatio = 1, maxWidth = 360, align = 'center', radius = Style.radius.photo, accessibilityLabel = 'The picture of the post'},
@@ -37,11 +39,12 @@ function ComposeShare:enter()
                 end},
             }),
         },
-    })
+    }
 end
 
 function ComposeShare:share()
     local post = Social.publish(Compose.finish(), self.caption:match('^%s*(.-)%s*$'), self.place:match('^%s*(.-)%s*$'))
+    Shell.presented:dismiss()
     Shell.showTab('home')
     Shell.notify('Your post is shared.', 'success')
     return post

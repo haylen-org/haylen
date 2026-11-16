@@ -14,7 +14,7 @@ local Profile = haylen.class('Profile', Page)
 
 Profile.sections = {{id = 'posts', text = 'Posts'}, {id = 'saved', text = 'Saved'}}
 
-function Profile:enter()
+function Profile:tree()
     local person = Social.person(self.params.person or 'me')
     self.person = person
     self.section = 'posts'
@@ -41,7 +41,10 @@ function Profile:enter()
         Shell.centered(980, ui.column{gap = 0, list}, 1),
         self:editDialog(),
     }
-    self:mountGui(content)
+    return content
+end
+
+function Profile:start()
     self.list = self.gui:collection('grid')
     events.on('socialChanged', function()
         self:showGrid()
@@ -128,7 +131,7 @@ function Profile:headAction(part)
         if person.me then
             Shell.showTab('create')
         else
-            Shell.open(require('screens.chat'), {conversation = Chats.with(person).id}, nil, 'conversation')
+            Shell.open(require('screens.chat'), {conversation = Chats.with(person).id}, 'conversation')
         end
     end
 end

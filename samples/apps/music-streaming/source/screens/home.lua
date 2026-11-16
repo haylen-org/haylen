@@ -12,10 +12,14 @@ local Widgets = require('widgets')
 
 local Home = haylen.class('Home', Page)
 
-function Home:enter()
-    local space = Style.space
+function Home:init(params)
+    Page.init(self, params)
     self.glow = Catalog.mixes[1].genre
-    self:mountGui(ui.scroll{grow = 1, height = 0,
+end
+
+function Home:tree()
+    local space = Style.space
+    return ui.scroll{grow = 1,
         Shell.centered(Style.size.page, ui.column{id = 'page', gap = space.s, padding = {space.l, space.m, space.xl, space.m},
             ui.label{text = Home.greeting(), font = 'title', margin = {0, space.xs, space.xs, space.xs}},
             ui.column{id = 'featured', margin = {0, space.xs}},
@@ -30,7 +34,11 @@ function Home:enter()
             Widgets.section('Played lately'),
             Widgets.shelf('albums', 'album'),
         }),
-    })
+    }
+end
+
+-- Fills the shelves the first time the home shows.
+function Home:start()
     local releases, albums, artists = {}, {}, {}
     for index = #Catalog.albums, 1, -1 do
         local album = Catalog.albums[index]

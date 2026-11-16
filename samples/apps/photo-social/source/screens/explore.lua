@@ -10,10 +10,10 @@ local Widgets = require('widgets')
 
 local Explore = haylen.class('Explore', Page)
 
-function Explore:enter()
+function Explore:tree()
     local space = Style.space
     self.query = ''
-    self:mountGui(ui.column{grow = 1, gap = 0,
+    return ui.column{grow = 1, gap = 0,
         Shell.centered(980, ui.column{gap = 0,
             ui.row{padding = {space.s, space.m}, ui.filterField{id = 'query', placeholder = 'Search people', grow = 1, returnKey = 'search', style = {metrics = {controlRadius = Style.radius.field}}, onChange = function(event)
                 self.query = string.lower(event.value)
@@ -39,7 +39,10 @@ function Explore:enter()
                 ui.emptyState{image = Shell.icon('search'), imageSize = 64, title = 'Nobody by that name', message = 'Try another name or handle.'},
             },
         }, 1),
-    })
+    }
+end
+
+function Explore:start()
     local posts = {}
     for _, post in ipairs(Social.posts) do
         if post.author ~= 'me' then
@@ -47,9 +50,11 @@ function Explore:enter()
         end
     end
     self.gui:collection('grid'):setItems(Widgets.tiles(posts))
-    if self.params.focus then
-        self.gui:command('query', 'focus')
-    end
+end
+
+-- Puts the focus in the search field, such as when the search button of the home opens the tab.
+function Explore:focusSearch()
+    self.gui:command('query', 'focus')
 end
 
 function Explore:refresh()

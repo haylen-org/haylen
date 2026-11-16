@@ -1,17 +1,19 @@
--- The frame of the app: the navigation between screens, the notices and the parts that float over the map. The map fills the screen and has no tab bar: a round button opens the menu with the trips, the wallet and the account, and every step of a ride shows in a sheet, at the bottom of a phone or as a panel beside the map on a wide window.
+-- The frame of the app: the stack of its screens, the notices and the parts that float over the map. The map fills the screen and has no tab bar: a round button opens the menu with the trips, the wallet and the account over the map, and every step of a ride shows in a sheet, at the bottom of a phone or as a panel beside the map on a wide window. The steps of a ride and the pages of the menu are screens of one stack over the whole screen, and the menu is a drawer presented over everything.
+local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
 local ui = require('haylen.ui')
 local viewport = require('haylen.viewport')
-local window = require('haylen.window')
 
 local Style = require('style')
 
 local Shell = {}
 
-Shell.pushTransition = {duration = 0.3, effect = 'slideIn', direction = 'left', ease = 'cubicOut'}
-Shell.backTransition = {duration = 0.26, effect = 'slideIn', direction = 'right', ease = 'cubicOut'}
-Shell.riseTransition = {duration = 0.28, effect = 'moveIn', direction = 'up', ease = 'cubicOut'}
-Shell.menuTransition = {duration = 0.24, effect = 'moveIn', direction = 'right', ease = 'cubicOut'}
+-- The steps of a ride change their sheet over the map with a cross fade, and the drawer of the menu slides in from the start of the screen.
+Shell.sheetTransition = {effect = 'fade', duration = 0.22}
+Shell.menuTransition = {effect = 'slide', duration = 0.24}
+
+-- The scene of the app, which owns the frame and its stack and paints the background of the theme behind them.
+Shell.scene = {}
 
 function Shell.icon(name)
     return 'icons/' .. name .. '.svg'
@@ -27,52 +29,68 @@ function Shell.isWide()
     return Shell.width() >= Style.wideWidth
 end
 
--- Mounts the notices, which stay above every screen, and shows the map.
 function Shell.start()
-    Shell.notices = ui.mount(ui.toast{id = 'notice', position = 'top', duration = 2.5, indicator = 'icon'}, {layer = 10, sharedFocus = true})
-    Shell.showHome()
+    scene.push(Shell.scene)
+end
+
+-- Mounts the frame, whose middle is the whole screen, with the stack of the screens on the map, and the notices, which stay above every screen.
+function Shell.scene:enter()
+    Shell.gui = ui.mount(ui.column{id = 'middle', grow = 1, gap = 0, align = 'stretch'}, {owner = self, placement = 'screen', sharedFocus = true})
+    Shell.notices = ui.mount(ui.toast{id = 'notice', position = 'top', duration = 2.5, indicator = 'icon'}, {owner = self, layer = 10, sharedFocus = true})
+    Shell.stack = ui.navigationStack{gui = Shell.gui, id = 'middle', root = require('screens.home')(), owner = self}
+end
+
+function Shell.scene:render()
+    graphics2d.beginScreen()
+    graphics2d.drawRect(viewport.visibleRect(), ui.themeColor('window'))
 end
 
 function Shell.notify(text, tone)
     Shell.notices:command('notice', 'show', {text = text, tone = tone or 'neutral'})
 end
 
--- Shows the map with the sheet that asks where to as the only screen.
+-- Shows the map with the sheet that asks where to.
 function Shell.showHome()
-    if scene.size() > 1 then
-        scene.popToRoot()
+    Shell.closeMenu()
+    Shell.stack:popToRoot()
+end
+
+-- The screen that the person sees: the menu while it shows, or the top screen of the stack.
+function Shell.top()
+    if Shell.menu and not Shell.menu.dismissed then
+        return Shell.menu.screen
     end
-    scene.replace(require('screens.home')())
-    window.setBackLeavesApp(true)
+    return Shell.stack.top
 end
 
 -- Pushes a screen over the current one with a slide, or with another transition.
 function Shell.open(Screen, params, transition)
-    window.setBackLeavesApp(false)
-    return scene.push(Screen(params), transition or Shell.pushTransition)
+    Shell.stack:push(Screen(params), transition)
 end
 
--- Puts a screen in the place of the current one with the same slide, such as the trip after its request.
+-- Puts a screen in the place of the current one, such as the trip after its request, with the cross fade of the sheets over the map.
 function Shell.replace(Screen, params)
-    return scene.replace(Screen(params), Shell.pushTransition)
+    Shell.stack:replace(Screen(params), Shell.sheetTransition)
 end
 
--- Goes back one screen.
-function Shell.back()
-    if scene.size() > 1 then
-        scene.pop(scene.top().backTransition or Shell.backTransition)
-        if scene.size() == 2 then
-            window.setBackLeavesApp(true)
-        end
-    end
-end
-
--- Opens a page of the menu, or a new ride from a past trip, over the map with everything else closed, so going back always returns to the map.
+-- Opens a page of the menu, or a new ride from a past trip, right over the map, so going back always returns to the map.
 function Shell.openPage(Screen, params)
-    if scene.size() > 1 then
-        scene.popToRoot()
+    Shell.closeMenu()
+    Shell.stack:setScreens({Shell.stack.screens[1], Screen(params)})
+end
+
+-- Presents the menu as a drawer over the dimmed map, which a tap beside it, Escape and the back button close.
+function Shell.openMenu()
+    if Shell.menu and not Shell.menu.dismissed then
+        return
     end
-    Shell.open(Screen, params)
+    Shell.menu = ui.present(require('screens.menu')(), {style = 'dialog', transition = Shell.menuTransition, owner = Shell.scene})
+end
+
+function Shell.closeMenu()
+    if Shell.menu and not Shell.menu.dismissed then
+        Shell.menu:dismiss()
+    end
 end
 
 -- Tells a screen when the window crosses the wide width.
@@ -130,7 +148,7 @@ end
 -- A bar at the top of a page of the menu: a back button, a title and optional trailing nodes.
 function Shell.header(title, trailing)
     local row = {gap = Style.space.xs, padding = {0, Style.space.s}, height = Style.size.header}
-    row[#row + 1] = ui.button{id = 'back', icon = Shell.icon('back'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Back', tooltip = 'Back', onClick = Shell.back}
+    row[#row + 1] = ui.button{id = 'back', icon = Shell.icon('back'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Back', tooltip = 'Back', onClick = ui.goBack}
     row[#row + 1] = ui.label{id = 'title', text = title, font = 'heading', wrap = false, grow = 1}
     for _, node in ipairs(trailing or {}) do
         row[#row + 1] = node

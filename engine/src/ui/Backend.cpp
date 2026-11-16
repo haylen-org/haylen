@@ -866,11 +866,22 @@ void Backend::addRenderCallback(std::function<void(graphics2d::Renderer& rendere
 }
 
 bool Backend::beginChild(const char* id, math::Vec2 size, ImGuiChildFlags childFlags, ImGuiWindowFlags windowFlags) {
-    const bool visible = ImGui::BeginChild(id, {size.x, size.y}, childFlags, windowFlags);
+    const ImGuiWindowFlags inputs = inertDepth > 0 ? ImGuiWindowFlags_NoMouseInputs : ImGuiWindowFlags_None;
+    const bool visible = ImGui::BeginChild(id, {size.x, size.y}, childFlags, windowFlags | inputs);
     const ImGuiWindow& child = *ImGui::GetCurrentWindow();
     ChildCall call{.owner = this, .window = &child};
     child.ParentWindow->DrawList->AddCallback(&runChildCall, &call, sizeof(call));
     return visible;
+}
+
+void Backend::beginInert() {
+    ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+    ++inertDepth;
+}
+
+void Backend::endInert() {
+    --inertDepth;
+    ImGui::PopItemFlag();
 }
 
 void Backend::pushFade(const Fade& fade) {

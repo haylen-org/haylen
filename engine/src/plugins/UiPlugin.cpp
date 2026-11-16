@@ -41,6 +41,7 @@
 #include "haylen/plugins/TextPlugin.hpp"
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
+#include "haylen/ui/Screen.hpp"
 #include "ui/ImGuiConverter.hpp"
 #include "ui/ImGuiLua.hpp"
 #include "ui/ImageLibrary.hpp"
@@ -87,6 +88,17 @@ void UiPlugin::start(core::Engine& engine) {
     }
 
     setTheme(themeName);
+    navigation = std::make_unique<ui::Navigation>(engine, *this);
+    // clang-format off
+    focus.setBackHandler([this] {
+        if (!navigation->canGoBack()) {
+            return false;
+        }
+
+        backRequested = true;
+        return true;
+    });
+    // clang-format on
 }
 
 void UiPlugin::stop(core::Engine& engine) {
@@ -110,6 +122,14 @@ void UiPlugin::stop(core::Engine& engine) {
     fontFamilies.clear();
 
     // No GUI is left to report events, and listeners holding Lua functions let go before the Lua state closes.
+    if (navigation) {
+        navigation->closeAll();
+        navigation.reset();
+    }
+
+    focus.setBackHandler({});
+    backRequested = false;
+    backdropTapped.reset();
     for (const Mounted& entry : guis) {
         (void)entry.gui->detach();
     }
@@ -128,6 +148,14 @@ ui::Backend& UiPlugin::getBackend() {
     }
 
     return *backend;
+}
+
+ui::Navigation& UiPlugin::getNavigation() {
+    if (!navigation) {
+        throw std::logic_error("The UI plugin has not started.");
+    }
+
+    return *navigation;
 }
 
 ui::ImageLibrary& UiPlugin::getImages() {
@@ -154,7 +182,7 @@ void UiPlugin::beginFrame(core::Engine& engine, float) {
     elapsed += delta;
     drawBegun = false;
     guiAppeared = false;
-    navigation.update(engine.getActions(), engine.getInput(), engine.getVirtualInput(), engine.isHalted() || engine.getScenes().isInputBlocked(), focus.getOwner() == ui::FocusNavigator::Owner::PlayArea);
+    navigationInput.update(engine.getActions(), engine.getInput(), engine.getVirtualInput(), engine.isHalted() || engine.getScenes().isInputBlocked(), focus.getOwner() == ui::FocusNavigator::Owner::PlayArea);
     const graphics::Viewport& viewport = engine.getViewport();
     const math::Vec2 pixelsPerUnit = viewport.getPixelsPerUnit();
     backend->setScale(scaling.resolve(std::min(pixelsPerUnit.x, pixelsPerUnit.y), engine.getWindow().getDpiScale(), viewport.getVisibleRect().getSize()));
@@ -166,7 +194,7 @@ void UiPlugin::beginFrame(core::Engine& engine, float) {
     }
 
     context->setTextScale(textScale.value_or(settings.textScale));
-    backend->beginFrame(delta, viewport, engine.getInput(), navigation);
+    backend->beginFrame(delta, viewport, engine.getInput(), navigationInput);
 
     if (backend->getPointsPerUnit() != styledPoints) {
         styledPoints = backend->getPointsPerUnit();
@@ -181,7 +209,7 @@ void UiPlugin::beginFrame(core::Engine& engine, float) {
     const bool known = !catalog.getLanguage().empty();
     const text::Direction resolved = direction == text::Direction::Auto ? (known ? catalog.getDirection(catalog.getLanguage()) : text::Direction::LeftToRight) : direction;
     context->setBaseWriting(resolved, catalog.getLanguage());
-    focus.update(navigation, engine.getInput().getLastDevice(), engine.getWindow().hasPointerDevice());
+    focus.update(navigationInput, engine.getInput().getLastDevice(), engine.getWindow().hasPointerDevice());
 
     // The actions of screen readers reach the elements of the last frame, which the tree forgets once it starts the elements of this one.
     platform::Accessibility& accessibility = engine.getAccessibility();
@@ -239,7 +267,25 @@ void UiPlugin::publishAccessibility(core::Engine& engine) {
     engine.getAccessibility().publish(tree.getElements(), tree.getFocused());
 }
 
+// The navigation moves on with the real time of the UI, after the events of the GUIs, so a screen that a handler pushes starts its transition in this frame.
 void UiPlugin::update(core::Engine& engine, float) {
+    deliverEvents(engine);
+    if (std::exchange(backRequested, false)) {
+        navigation->goBack();
+    }
+
+    if (const std::shared_ptr<ui::Presentation> tapped = std::exchange(backdropTapped, {}).lock()) {
+        tapped->dismiss();
+    }
+
+    navigation->update(static_cast<float>(engine.getClock().getUnscaledDelta()));
+}
+
+void UiPlugin::render(core::Engine&) {
+    navigation->render();
+}
+
+void UiPlugin::deliverEvents(core::Engine& engine) {
     // Handlers may mount or unmount GUIs, so the loop walks a copy and skips GUIs that are gone.
     delivering.assign(guis.begin(), guis.end());
     for (const Mounted& entry : delivering) {
@@ -381,20 +427,136 @@ void UiPlugin::beginWindow(const char* name, ImGuiWindowFlags flags) {
 }
 
 // Every GUI moves up together while the on-screen keyboard would cover the focused text field.
-void UiPlugin::drawGuis() {
-    for (const Mounted* entry : drawnGuis) {
-        const std::optional<math::Rect> area = findArea(*entry);
-        if (!area) {
-            continue;
-        }
-        if (entry->gui->getRoot().getDrawnFrame() == 0) {
-            guiAppeared = true;
-        }
+void UiPlugin::drawGuis(std::size_t first, std::size_t last, bool inert) {
+    for (std::size_t index = first; index < last; ++index) {
+        drawGui(*drawnGuis[index], inert);
+    }
+}
 
-        ImGui::PushID(entry->gui.get());
-        entry->gui->draw(*context, *area);
-        ImGui::PopID();
-        shownGuis.push_back(entry->gui.get());
+// The GUIs that collect before the GUI of the topmost presentation lie under it, or none while no presentation shows.
+std::size_t UiPlugin::countUnderPresentation() const {
+    const ui::Presentation* top = navigation->getTopPresentation();
+    if (top == nullptr) {
+        return 0;
+    }
+
+    const auto found = std::ranges::find(drawnGuis, top->getScreen()->getGui().get(), [](const Mounted* entry) { return entry->gui.get(); });
+    return static_cast<std::size_t>(std::distance(drawnGuis.begin(), found));
+}
+
+// The GUI of a screen draws where the look of its screen places it, cut to its area while it moves, and without input while its transition plays.
+void UiPlugin::drawGui(const Mounted& entry, bool inert) {
+    ui::Navigation::Look look{.shown = true};
+    std::shared_ptr<ui::Presentation> presentation;
+    if (entry.screen != nullptr) {
+        look = navigation->getLook(*entry.screen);
+        presentation = entry.screen->getPresentation();
+    }
+
+    if (!look.shown) {
+        return;
+    }
+
+    const math::Rect display = backend->getLiftedDisplayRect();
+    ui::Presentation::Layout layout;
+    std::optional<math::Rect> area;
+    if (presentation) {
+        layout = presentation->getLayout(display, backend->getLiftedSafeRect(), context->getMetric(ui::Theme::Metric::PanelRadius));
+        area = layout.area;
+    } else {
+        area = findArea(entry);
+    }
+
+    if (!area) {
+        return;
+    }
+
+    if (entry.gui->getRoot().getDrawnFrame() == 0) {
+        guiAppeared = true;
+    }
+
+    const float riseTop = layout.surface.isEmpty() ? area->y : std::min(area->y, layout.surface.y);
+    const math::Vec2 offset = getLookOffset(look, *area, display.getBottom() - riseTop);
+    if (presentation) {
+        drawBackdrop(*presentation, layout, look, offset);
+    }
+
+    const bool moved = offset != math::Vec2{};
+    if (moved) {
+        const math::Rect clip = presentation ? display : *area;
+        ImGui::PushClipRect(ui::ImGuiConverter::toImVec2(clip.getMin()), ui::ImGuiConverter::toImVec2(clip.getMax()), true);
+    }
+
+    const bool still = inert || look.inert;
+    const bool suspended = focus.areTargetsSuspended();
+    if (still) {
+        backend->beginInert();
+        focus.suspendTargets(true);
+    }
+
+    const float opacity = look.effect == ui::NavigationTransition::Effect::Fade ? 1.0F - look.distance : 1.0F;
+    ImGui::PushID(entry.gui.get());
+    entry.gui->draw(*context, area->translated(offset), opacity);
+    ImGui::PopID();
+
+    if (still) {
+        focus.suspendTargets(suspended);
+        backend->endInert();
+    }
+    if (moved) {
+        ImGui::PopClipRect();
+    }
+
+    shownGuis.push_back(entry.gui.get());
+}
+
+// A slide moves the screen across the width of its area, mirrored in a right to left interface, and a rise moves it down by the room under the top of what rises.
+math::Vec2 UiPlugin::getLookOffset(const ui::Navigation::Look& look, const math::Rect& area, float riseRoom) const {
+    switch (look.effect) {
+    case ui::NavigationTransition::Effect::Slide: {
+        const float mirror = context->isRightToLeft() ? -1.0F : 1.0F;
+        return {look.distance * look.side * mirror * area.width, 0.0F};
+    }
+    case ui::NavigationTransition::Effect::Rise:
+        return {0.0F, look.distance * riseRoom};
+    case ui::NavigationTransition::Effect::None:
+    case ui::NavigationTransition::Effect::Fade:
+        break;
+    }
+
+    return {};
+}
+
+// The backdrop dims what lies under a sheet or a dialog, and the surface of a sheet or a full screen presentation moves and fades with its screen. A tap on the backdrop of the topmost dismissible presentation, outside its surface or the root of its screen, dismisses it in the next update.
+void UiPlugin::drawBackdrop(const ui::Presentation& presentation, const ui::Presentation::Layout& layout, const ui::Navigation::Look& look, math::Vec2 offset) {
+    const math::Rect display = backend->getLiftedDisplayRect();
+    const float shown = 1.0F - look.distance;
+    ImDrawList& list = *ImGui::GetWindowDrawList();
+    if (presentation.getStyle() != ui::Presentation::Style::FullScreen) {
+        const math::Color dim = context->getColor(ui::Theme::Color::Overlay);
+        list.AddRectFilled(ui::ImGuiConverter::toImVec2(display.getMin()), ui::ImGuiConverter::toImVec2(display.getMax()), ui::ImGuiConverter::toImU32(dim.withAlpha(dim.a * shown)));
+    }
+
+    if (!layout.surface.isEmpty()) {
+        const ui::Theme::Color role = presentation.getStyle() == ui::Presentation::Style::FullScreen ? ui::Theme::Color::Background : ui::Theme::Color::Panel;
+        const math::Color color = presentation.getColor().value_or(context->getColor(role));
+        const float alpha = look.effect == ui::NavigationTransition::Effect::Fade ? color.a * shown : color.a;
+        backend->addShape({.bounds = layout.surface.translated(offset), .radii = layout.radii, .color = color.withAlpha(alpha)});
+    }
+
+    if (&presentation != navigation->getTopPresentation()) {
+        return;
+    }
+
+    backend->blockPointer(display);
+    if (!presentation.isDismissible() || look.inert || !ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::GetCurrentContext()->HoveredIdPreviousFrame != 0) {
+        return;
+    }
+
+    const math::Vec2 pointer{ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y};
+    const math::Rect kept = layout.surface.isEmpty() ? presentation.getScreen()->getGui()->getRoot().getBounds() : layout.surface;
+    if (!kept.contains(pointer)) {
+        backdropTapped = std::const_pointer_cast<ui::Presentation>(presentation.shared_from_this());
     }
 }
 
@@ -403,7 +565,7 @@ void UiPlugin::drawLeaving(core::Engine& engine, const core::SceneView& view) {
     beginWindow("##haylen-leaving", ImGuiWindowFlags_NoInputs);
     focus.suspendTargets(true);
     collectGuis(engine, view, true, false);
-    drawGuis();
+    drawGuis(0, drawnGuis.size(), false);
     focus.suspendTargets(false);
     const ImGuiWindow& window = *ImGui::GetCurrentWindow();
     ImGui::End();
@@ -417,10 +579,19 @@ void UiPlugin::drawAbove(core::Engine& engine, const core::SceneView& view) {
     beginWindow("##haylen-above", ImGuiWindowFlags_NoInputs);
     focus.suspendTargets(true);
     collectGuis(engine, view, false, true);
-    drawGuis();
+    drawGuis(0, drawnGuis.size(), false);
     focus.suspendTargets(false);
     ImGui::End();
     drawing.endDeferring();
+}
+
+// The GUIs under the topmost presentation draw in a window of their own that takes no input, with child windows that never take the pointer, and reach the screen before the presentation draws over them.
+void UiPlugin::drawUnder(core::Engine& engine, std::size_t count) {
+    beginWindow("##haylen-under", ImGuiWindowFlags_NoInputs);
+    drawGuis(0, count, true);
+    const ImGuiWindow& window = *ImGui::GetCurrentWindow();
+    ImGui::End();
+    getBackend().renderWindow(engine.getRenderer2D(), window);
 }
 
 void UiPlugin::drawCurrent(core::Engine& engine, const core::SceneView& view) {
@@ -430,10 +601,15 @@ void UiPlugin::drawCurrent(core::Engine& engine, const core::SceneView& view) {
         drawAbove(engine, view);
     }
 
+    collectGuis(engine, view, true, !aboveTransition);
+    const std::size_t under = countUnderPresentation();
+    if (under > 0) {
+        drawUnder(engine, under);
+    }
+
     beginWindow("##haylen-guis", ImGuiWindowFlags_NoNavInputs);
     drawing.setTransparentWindow();
-    collectGuis(engine, view, true, !aboveTransition);
-    drawGuis();
+    drawGuis(under, drawnGuis.size(), false);
 
     // The GUIs that no view shows, such as those of a covered scene, hear that they stopped drawing.
     for (const Mounted& entry : guis) {
@@ -478,7 +654,7 @@ input::ActionMap::Capture UiPlugin::getCapture() const {
 
     const std::array<std::pair<Action, bool>, ui::NavigationInput::kActionCount> answers{{
         {Action::Accept, focus.answersAccept()},
-        {Action::Cancel, focus.answersCancel()},
+        {Action::Cancel, focus.answersCancel() || navigation->canGoBack()},
         {Action::Left, control},
         {Action::Right, control},
         {Action::Up, control},
@@ -493,7 +669,7 @@ input::ActionMap::Capture UiPlugin::getCapture() const {
 
     for (const auto& [action, answered] : answers) {
         if (answered) {
-            addCapture(capture, navigation.getBindings(action));
+            addCapture(capture, navigationInput.getBindings(action));
         }
     }
 
@@ -596,30 +772,57 @@ std::shared_ptr<ui::Gui> UiPlugin::createGui(const core::Json& tree, ui::Placeme
     return std::make_shared<ui::Gui>(components, tree, placement);
 }
 
-void UiPlugin::mount(std::shared_ptr<ui::Gui> gui, int layer, const std::shared_ptr<const core::Scene>& scene, const std::optional<Region>& region) {
+void UiPlugin::mount(std::shared_ptr<ui::Gui> gui, int layer, const std::shared_ptr<const core::Scene>& scene) {
+    if (gui && gui->getPlacement() == ui::Placement::Region) {
+        throw std::invalid_argument("Only the navigation mounts a GUI of the region placement, as the GUI of a screen.");
+    }
+
+    add({.gui = std::move(gui), .scene = scene, .scened = scene != nullptr, .layer = layer});
+}
+
+// The GUI of a screen of a stack belongs to the scene of the GUI of its area and draws right after that GUI, and the GUI of a presentation belongs to no scene and draws above every other GUI.
+void UiPlugin::mountScreen(const ui::Screen& screen, const ui::Region* region) {
+    if (region == nullptr) {
+        add({.gui = screen.getGui(), .screen = &screen});
+        return;
+    }
+
+    const Mounted& host = findRegionHost(*region);
+    add({.gui = screen.getGui(), .scene = host.scene, .scened = host.scened, .screen = &screen, .host = region->gui, .hostNode = region->node, .drawLayer = host.drawLayer, .drawOrder = host.drawOrder});
+}
+
+void UiPlugin::moveScreen(const ui::Gui& gui, const ui::Region& region) {
+    const Mounted host = findRegionHost(region);
+    const auto found = std::ranges::find_if(guis, [&](const Mounted& entry) { return entry.gui.get() == &gui; });
+    if (found == guis.end()) {
+        return;
+    }
+
+    found->scene = host.scene;
+    found->scened = host.scened;
+    found->host = region.gui;
+    found->hostNode = region.node;
+    found->drawLayer = host.drawLayer;
+    found->drawOrder = host.drawOrder;
+}
+
+// A GUI of no region takes its own place in the drawing order, and the GUI of a presentation draws above every other GUI.
+void UiPlugin::add(Mounted entry) {
     if (owner == nullptr) {
         throw std::logic_error("The UI plugin has not started.");
     }
 
-    if (!gui || isMounted(*gui)) {
+    if (!entry.gui || isMounted(*entry.gui)) {
         throw std::invalid_argument("Only a GUI that is not mounted can be mounted.");
     }
 
-    if (region.has_value() != (gui->getPlacement() == ui::Placement::Region)) {
-        throw std::invalid_argument("A GUI takes a region exactly when its placement is the region placement.");
+    entry.order = nextOrder++;
+    if (entry.hostNode.empty()) {
+        entry.drawOrder = entry.order;
+        entry.drawLayer = entry.screen != nullptr ? kPresentationLayer : entry.layer;
     }
 
-    Mounted entry{.gui = gui, .scene = scene, .scened = scene != nullptr, .layer = layer, .order = nextOrder++};
-    entry.drawLayer = layer;
-    entry.drawOrder = entry.order;
-    if (region) {
-        const Mounted& host = findRegionHost(*region);
-        entry.host = region->gui;
-        entry.hostNode = region->node;
-        entry.drawLayer = host.drawLayer;
-        entry.drawOrder = host.drawOrder;
-    }
-
+    const std::shared_ptr<ui::Gui> gui = entry.gui;
     guis.push_back(std::move(entry));
     gui->attach([this](ui::Gui& target, const ui::Event& event) { deliverAtOnce(target, event); });
     owner->getEvents().emitWith(core::LifecycleEvent::kGuiMounted, gui);
@@ -643,16 +846,17 @@ bool UiPlugin::unmount(const ui::Gui& gui) {
 
     owner->getEvents().emitWith(core::LifecycleEvent::kGuiUnmounted, unmounted);
     ui::UiLua::forgetGui(owner->getLuaState(), gui);
+    if (navigation) {
+        navigation->closeHostedBy(*unmounted);
+    }
+
     return true;
 }
 
-const UiPlugin::Mounted& UiPlugin::findRegionHost(const Region& region) const {
+const UiPlugin::Mounted& UiPlugin::findRegionHost(const ui::Region& region) const {
     const auto found = std::ranges::find_if(guis, [&](const Mounted& entry) { return entry.gui == region.gui; });
     if (!region.gui || found == guis.end()) {
         throw std::invalid_argument("The GUI of a region must be mounted.");
-    }
-    if (region.gui->getPlacement() == ui::Placement::Region) {
-        throw std::invalid_argument("The GUI of a region cannot lie in a region itself.");
     }
     if (region.gui->find(region.node) == nullptr) {
         throw std::invalid_argument(std::format("The GUI of the region has no node with the id \"{}\".", region.node));
@@ -660,7 +864,7 @@ const UiPlugin::Mounted& UiPlugin::findRegionHost(const Region& region) const {
     return *found;
 }
 
-void UiPlugin::checkRegion(const Region& region) const {
+void UiPlugin::checkRegion(const ui::Region& region) const {
     static_cast<void>(findRegionHost(region));
 }
 
@@ -873,9 +1077,13 @@ std::shared_ptr<text::FontFamily> UiPlugin::getFontFamily(core::Engine& engine, 
     return family;
 }
 
-// Back closes an open popup or dialog, which the UI does itself.
+// Back closes an open popup or dialog, which the UI does itself, and goes back in the navigation of the app while it can.
 bool UiPlugin::isCapturingBack() const {
-    return backend && backend->getImGuiContext()->OpenPopupStack.Size > 0;
+    if (!backend) {
+        return false;
+    }
+
+    return backend->getImGuiContext()->OpenPopupStack.Size > 0 || navigation->canGoBack();
 }
 
 // A GUI lays out as it draws for the first time, so the code of the app that places the world around its nodes finds their bounds only from the next frame. A picture that is still loading leaves its place empty.

@@ -15,7 +15,7 @@ local TripDetail = haylen.class('TripDetail', Page)
 
 TripDetail.mapSize = {960, 480}
 
-function TripDetail:enter()
+function TripDetail:tree()
     local space = Style.space
     local trip
     for _, past in ipairs(Rides.past) do
@@ -36,7 +36,7 @@ function TripDetail:enter()
     self.map.camera.position = {TripDetail.center(bounds.x + bounds.width / 2, TripDetail.mapSize[1] / zoom / 2, Rides.city.width), TripDetail.center(bounds.y + bounds.height / 2, TripDetail.mapSize[2] / zoom / 2, Rides.city.height)}
     local kind = Rides.kind(trip.kind)
     local service = trip.cancelled and 0 or trip.fare * 0.08
-    self:mountGui(ui.column{gap = 0, onCancel = Shell.back,
+    return ui.column{gap = 0,
         Shell.header('Trip to ' .. to.name),
         ui.scroll{grow = 1, height = 0,
             Shell.centered(Style.size.reading, ui.column{gap = space.l, padding = {space.l, space.l, space.xl, space.l},
@@ -76,7 +76,7 @@ function TripDetail:enter()
                 },
             }),
         },
-    })
+    }
 end
 
 -- The center of the view along one axis: around the route, kept inside the city so its edge never shows beside a route near it, or in the middle of the city when the view is wider than the city.
@@ -91,13 +91,12 @@ function TripDetail:costRow(text, value, font)
     return ui.row{gap = Style.space.s, ui.label{text = text, font = font or 'body', color = font and 'text' or 'textMuted', grow = 1}, ui.label{text = value, font = font or 'body'}}
 end
 
-function TripDetail:exit()
+function TripDetail:remove()
     ui.removeImage(self.mapName)
 end
 
 -- Draws the route into its render target, which the picture of the page shows.
 function TripDetail:render()
-    Page.render(self)
     local map = self.map
     graphics2d.beginTarget(self.target, map.camera, {clear = Style.map.ground})
     map.unit = 1.6 / map.camera.zoom.x

@@ -80,6 +80,9 @@ class Owners final {
     // Ends everything the owner at index holds right now.
     static void release(lua_State* L, int owner);
 
+    // Pushes the table of the registry under the name, which holds its keys, its values or both weakly as the mode `k`, `v` or `kv` says, and creates it on the first use.
+    static void pushWeakTable(lua_State* L, const char* name, const char* mode);
+
   private:
     static constexpr const char* kScopes = "haylen.owners";
     static constexpr const char* kFunctions = "haylen.ownedFunctions";
@@ -97,8 +100,6 @@ class Owners final {
 
     // Stops the tasks first, so no code of the owner resumes while its links and connections end.
     static void endHeld(std::vector<std::weak_ptr<Task>> tasks, std::vector<std::shared_ptr<core::Connection::Link>> links, core::ConnectionScope& connections);
-
-    static void pushWeakTable(lua_State* L, const char* name, const char* mode);
 
     // Pushes the scope userdata of the owner and returns its scope, creating it on the first use.
     static Scope& pushScope(lua_State* L, int owner);

@@ -35,7 +35,7 @@ namespace haylen::ui {
 namespace {
 
 // A screen the bars are measured on: its framebuffer, its pixels per point, the scaling of the design area and the scaling of the UI.
-struct Screen {
+struct Display {
     const char* name = "";
     math::Vec2 framebuffer;
     float pixelsPerPoint = 1.0F;
@@ -62,7 +62,7 @@ class ScrollbarTest : public ::testing::Test, public test::UiFixture {
     static constexpr const char* kNotes = R"(Line 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7\nLine 8\nLine 9\nLine 10\nLine 11\nLine 12\nLine 13\nLine 14\nLine 15\nLine 16\nLine 17\nLine 18\nLine 19\nLine 20)";
 
     // Design units on a desktop, twice as large, a window so small that the theme gap spans fewer than four points, a dense screen in the physical mode, the physical mode at half its size, and a design area that is not scaled on a dense screen.
-    static constexpr std::array<Screen, 6> kScreens{{
+    static constexpr std::array<Display, 6> kScreens{{
         {.name = "design", .framebuffer = {1920.0F, 1080.0F}},
         {.name = "design 2x", .framebuffer = {1920.0F, 1080.0F}, .scaling = {.mode = Scaling::Mode::Design, .factor = 2.0F}},
         {.name = "small window", .framebuffer = {640.0F, 360.0F}},
@@ -94,7 +94,7 @@ class ScrollbarTest : public ::testing::Test, public test::UiFixture {
         return list;
     }
 
-    void use(const Screen& screen) {
+    void use(const Display& screen) {
         getFixture().host().setDpiScale(screen.pixelsPerPoint);
         getFixture().host().resize(screen.framebuffer);
         getEngine().setScaling(screen.policy);
@@ -211,7 +211,7 @@ class ScrollbarTest : public ::testing::Test, public test::UiFixture {
 
 TEST_F(ScrollbarTest, KeepsTheBarOfAScrollInALaneBesideItsContentAtEveryScale) {
     auto gui = mount(marked(R"({"kind": "scroll", "id": "area", "width": 300, "height": 240, "children": [{"kind": "column", "id": "content", "children": [)" + labels(30) + "]}]}"));
-    for (const Screen& screen : kScreens) {
+    for (const Display& screen : kScreens) {
         SCOPED_TRACE(screen.name);
         use(screen);
         const math::Rect area = getBounds(*gui, "area");
@@ -262,7 +262,7 @@ TEST_F(ScrollbarTest, TakesTheGapFromTheStyleOfANodeButNeverLessThanFourPoints) 
     EXPECT_FLOAT_EQ(bar.width, 14.0F);
     EXPECT_FLOAT_EQ(wide.getRight() - bar.getRight(), 6.0F);
 
-    for (const Screen& screen : kScreens) {
+    for (const Display& screen : kScreens) {
         SCOPED_TRACE(screen.name);
         use(screen);
         const float gap = findBar(getBounds(*gui, "none")).x - getBounds(*gui, "noneContent").getRight();
@@ -291,7 +291,7 @@ TEST_F(ScrollbarTest, PutsTheBarOfAHorizontalScrollBelowItsContent) {
     }
 
     auto gui = mount(marked(R"({"kind": "scroll", "id": "area", "axis": "horizontal", "width": 300, "align": "start", "children": [{"kind": "row", "id": "content", "children": [)" + buttons + "]}]}"));
-    for (const Screen& screen : kScreens) {
+    for (const Display& screen : kScreens) {
         SCOPED_TRACE(screen.name);
         use(screen);
         const math::Rect area = getBounds(*gui, "area");
@@ -307,7 +307,7 @@ TEST_F(ScrollbarTest, KeepsTheCellsOfACollectionOutOfTheLaneOfItsBar) {
     auto gui = mount(marked(R"({"kind": "collection", "id": "list", "width": 300, "height": 240, "gap": 0, "types": {"row": {"template": {"kind": "label", "part": "title", "bind": {"text": "title"}, "height": 40}}}})"));
     Collection& list = gui->getCollection("list");
     list.setSource(makeItems(100));
-    for (const Screen& screen : kScreens) {
+    for (const Display& screen : kScreens) {
         SCOPED_TRACE(screen.name);
         use(screen);
         const math::Rect area = list.getBounds();
@@ -331,7 +331,7 @@ TEST_F(ScrollbarTest, PutsTheBarOfAHorizontalCollectionBelowItsCells) {
     auto gui = mount(marked(R"({"kind": "collection", "id": "shelf", "axis": "horizontal", "width": 300, "types": {"tile": {"template": {"kind": "label", "part": "title", "bind": {"text": "title"}, "width": 120, "height": 80}}}})"));
     Collection& shelf = gui->getCollection("shelf");
     shelf.setSource(makeItems(40));
-    for (const Screen& screen : kScreens) {
+    for (const Display& screen : kScreens) {
         SCOPED_TRACE(screen.name);
         use(screen);
         const math::Rect area = shelf.getBounds();
@@ -349,7 +349,7 @@ TEST_F(ScrollbarTest, KeepsListsTreesAndTablesInAScrollApartFromItsBar) {
         {"kind": "table", "id": "table", "columns": [{"text": "Name"}, {"text": "Level"}], "rows": [{"id": "ana", "cells": ["Ana", 4]}, {"id": "bo", "cells": ["Bo", 7]}]}
     ]}]})"));
     // clang-format on
-    for (const Screen& screen : kScreens) {
+    for (const Display& screen : kScreens) {
         SCOPED_TRACE(screen.name);
         use(screen);
         const math::Rect area = getBounds(*gui, "area");
@@ -363,7 +363,7 @@ TEST_F(ScrollbarTest, KeepsListsTreesAndTablesInAScrollApartFromItsBar) {
 
 TEST_F(ScrollbarTest, KeepsTheTextOfATextAreaApartFromItsBar) {
     auto gui = mount(marked(R"({"kind": "textArea", "id": "notes", "width": 400, "rows": 4, "value": ")" + std::string(kNotes) + R"("})"));
-    for (const Screen& screen : kScreens) {
+    for (const Display& screen : kScreens) {
         SCOPED_TRACE(screen.name);
         use(screen);
         const math::Rect field = getBounds(*gui, "notes");
@@ -465,7 +465,7 @@ TEST_F(ScrollbarTest, ScrollsTheRowsOfALongComboBesideItsBar) {
     }
 
     auto gui = mount(marked(R"({"kind": "combo", "id": "pick", "width": 300, "selected": "i1", "items": [)" + items + "]}"));
-    for (const Screen& screen : kScreens) {
+    for (const Display& screen : kScreens) {
         SCOPED_TRACE(screen.name);
         use(screen);
         clickUi(getBounds(*gui, "pick").getCenter());
@@ -504,7 +504,7 @@ TEST_F(ScrollbarTest, KeepsALongPopupInsideTheDisplayOnTheSideOfItsAnchorWithMor
 
 TEST_F(ScrollbarTest, ScrollsTheContentOfATallPopoverBesideItsBar) {
     auto gui = mount(marked(R"({"kind": "popover", "id": "more", "text": "More", "contentWidth": 300, "children": [{"kind": "column", "id": "content", "children": [)" + labels(120) + "]}]}"));
-    for (const Screen& screen : kScreens) {
+    for (const Display& screen : kScreens) {
         SCOPED_TRACE(screen.name);
         use(screen);
         clickUi(getBounds(*gui, "more").getCenter());
@@ -517,7 +517,7 @@ TEST_F(ScrollbarTest, ScrollsTheContentOfATallPopoverBesideItsBar) {
 
 TEST_F(ScrollbarTest, ScrollsTheBodyOfATallDialogBesideItsBar) {
     auto gui = mount(marked(R"({"kind": "dialog", "id": "credits", "open": true, "title": "Credits", "buttons": [{"id": "close", "text": "Close"}], "children": [{"kind": "column", "id": "content", "children": [)" + labels(120) + "]}]}"));
-    for (const Screen& screen : kScreens) {
+    for (const Display& screen : kScreens) {
         SCOPED_TRACE(screen.name);
         use(screen);
         frames(12);
@@ -570,7 +570,7 @@ TEST_F(ScrollbarTest, KeepsTheGapInImmediateWindowsAndTheirChildren) {
         end})
     )");
     // clang-format on
-    for (const Screen& screen : kScreens) {
+    for (const Display& screen : kScreens) {
         SCOPED_TRACE(screen.name);
         use(screen);
 

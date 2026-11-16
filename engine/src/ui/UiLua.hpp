@@ -30,16 +30,25 @@ class UiLua final {
     // Drops the handlers of a GUI that is no longer mounted and ends everything its userdata owns.
     static void forgetGui(lua_State* L, const Gui& gui);
 
+    // Builds a GUI that is not mounted yet from the node table at the index, with its handlers, and pushes its userdata.
+    [[nodiscard]] static std::shared_ptr<Gui> buildGui(lua_State* L, int tree, Placement placement, bool sharedFocus);
+
+    // Pushes the userdata of a GUI, or `nil` for a GUI mounted from C++.
+    static void pushGui(lua_State* L, const std::shared_ptr<Gui>& gui);
+
+    // Returns the GUI of the userdata at the index, or null for any other value.
+    [[nodiscard]] static std::shared_ptr<Gui> toGui(lua_State* L, int index);
+
+    [[nodiscard]] static plugins::UiPlugin& getPlugin(lua_State* L);
+
   private:
     // The registry keeps one entry per mounted GUI, keyed by the GUI address: its userdata and the handlers of its nodes by id and event name.
     static constexpr const char* kHandlersKey = "haylen.ui.handlers";
     static constexpr std::array<std::string_view, 4> kMountFields{"placement", "layer", "owner", "sharedFocus"};
-    static constexpr std::array<std::string_view, 2> kRegionFields{"gui", "id"};
     static constexpr std::array<std::string_view, 1> kEventFields{"owner"};
     static constexpr float kMinimumTextScale = 0.5F;
     static constexpr float kMaximumTextScale = 4.0F;
 
-    [[nodiscard]] static plugins::UiPlugin& getPlugin(lua_State* L);
     static void pushRoot(lua_State* L);
     [[nodiscard]] static std::optional<std::string> handlerEvent(lua_State* L, int key, int value);
     static void storeHandler(lua_State* L, int handlers, const std::string& id, const std::string& event, int value);
@@ -58,10 +67,8 @@ class UiLua final {
     static void listenToEvents(lua_State* L, Gui& gui, std::string_view id, int events);
     static void pushEventTable(lua_State* L, const Gui& gui, const Event& event);
     static void callListener(lua_State* L, const lua::Owners::Function& listener, Gui& gui, const Event& event);
-    static void pushGui(lua_State* L, const std::shared_ptr<Gui>& gui);
     static void pushGuiEvent(lua_State* L, const std::shared_ptr<Gui>& gui);
     [[nodiscard]] static Gui& checkGui(lua_State* L);
-    [[nodiscard]] static plugins::UiPlugin::Region readRegion(lua_State* L, int index);
 
     static int mount(lua_State* L);
     static int guiSet(lua_State* L);

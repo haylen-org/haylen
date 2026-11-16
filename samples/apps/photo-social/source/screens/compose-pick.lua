@@ -10,18 +10,17 @@ local Style = require('style')
 
 local ComposePick = haylen.class('ComposePick', Page)
 
-ComposePick.backTransition = {duration = 0.3, effect = 'push', direction = 'down', ease = 'cubicOut'}
+-- The bar of the new post shows the title and the action of the step on top of its stack.
+ComposePick.title = 'New post'
+ComposePick.actionText = 'Next'
 
-function ComposePick:enter()
+function ComposePick:tree()
     Compose.begin()
-    self:mountGui(ui.column{gap = 0, onCancel = Shell.back,
-        Shell.header('New post', {
-            ui.button{id = 'next', text = 'Next', variant = 'link', onClick = function()
-                self:next()
-            end},
-        }, {close = true}),
-        ui.column{id = 'body', grow = 1, gap = 0},
-    })
+    return ui.column{id = 'body', grow = 1, gap = 0}
+end
+
+function ComposePick:action()
+    self:next()
 end
 
 function ComposePick:layoutChanged(wide)
@@ -65,7 +64,7 @@ function ComposePick:pick(id)
 end
 
 function ComposePick:next()
-    Shell.open(require('screens.compose-edit'))
+    self.stack:push(require('screens.compose-edit')())
 end
 
 return ComposePick

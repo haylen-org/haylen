@@ -11,9 +11,9 @@ local Widgets = require('widgets')
 
 local OrderList = haylen.class('OrderList', Page)
 
-function OrderList:enter()
+function OrderList:tree()
     local space = Style.space
-    self:mountGui(Shell.tabPage(ui.column{grow = 1, gap = 0,
+    return Shell.tabPage(ui.column{grow = 1, gap = 0,
         Shell.centered(Style.size.reading, ui.column{gap = space.xxs, padding = {space.l, space.l, space.s, space.l},
             ui.label{text = 'Your orders', font = 'title'},
             ui.label{text = 'Follow an order from the warehouse to your door.', color = 'textMuted'},
@@ -32,10 +32,13 @@ function OrderList:enter()
                 ui.divider{},
             }, estimatedSize = 146}},
             onSelect = function(event)
-                Shell.open(require('screens.order'), {order = event.item})
+                self.params.tab:openOrder(event.item)
             end,
         }, 1),
-    }, Shell.phoneBar(self, 'Orders')))
+    }, Shell.phoneBar(self, 'Orders'))
+end
+
+function OrderList:start()
     self.list = self.gui:collection('orders')
     events.on('orderChanged', function(changed)
         self.list:setItems(Orders.list)

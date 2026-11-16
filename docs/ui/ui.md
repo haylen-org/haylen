@@ -64,39 +64,31 @@ The option `owner = self` makes the scene own the GUI. You never unmount such a 
 
 A GUI without a scene as owner stays on screen above every scene until you call `gui:unmount()`, even when the scenes change. That suits the HUD of an [autoload](../core/lifecycle.md), which lives as long as the app. During an effect that shows both scenes, such as a slide, it stays in place on the screen above the effect and takes no input until the effect ends. An effect that covers the screen, such as a fade, covers it too.
 
-### An app frame with pages
+### An app frame with screens
 
-An app with bars around its pages, such as a tab bar on a phone and a sidebar on a wide window, mounts the bars once as a frame. The frame is a GUI that no scene owns, with an empty node where the pages go. Every page is a scene whose GUI mounts with a [region](../lua-api/ui.md#regions) placement, `{gui = frame, id = 'middle'}`, so it lays out in the area of that node. Opening a page pushes its scene, which changes only the middle: the bars are never built again, so their state, their focus and their scroll stay as they are, and the person never ends up in a second copy of the app. During a slide, the bars stay in place above the effect, and only the middle moves. The frame and the pages share the focus, so a remote or a gamepad moves from a page to the tabs and back. The app samples, such as `samples/apps/photo-social`, are built this way.
+An app with bars around its screens, such as a tab bar on a phone and a sidebar on a wide window, mounts the bars once as a frame. The frame is a GUI with an empty node where the screens go. A navigation stack, tabs or a split shows the screens of the app in the area of that node, so going to another screen changes only the middle: the bars are never built again, and their state, their focus and their scroll stay as they are. The [navigation guide](navigation.md) explains screens, stacks, tabs, splits, presentations and the system back.
 
 ```lua
 local haylen = require('haylen')
-local scene = require('haylen.scene')
 local ui = require('haylen.ui')
 
 local frame = ui.mount(ui.column{gap = 0,
     ui.column{id = 'middle', grow = 1},
-    ui.panel{padding = 0, ui.row{height = 96,
-        ui.button{text = 'Home', grow = 1},
-        ui.button{text = 'Messages', grow = 1},
-    }},
-}, {layer = 1, sharedFocus = true})
+    ui.panel{padding = 0, ui.row{height = 96, ui.button{text = 'Back', grow = 1, onClick = ui.goBack}}},
+}, {sharedFocus = true})
 
-local Page = haylen.class('Page', scene.Scene)
+local Messages = haylen.class('Messages', ui.Screen)
 
-function Page:init(title)
-    self.title = title
-end
-
-function Page:enter()
-    ui.mount(ui.column{
-        ui.label{text = self.title, font = 'title'},
+function Messages:build()
+    return ui.column{
+        ui.label{text = 'Messages', font = 'title'},
         ui.button{text = 'Open a chat', onClick = function()
-            scene.push(Page('Chat'), {duration = 0.3, effect = 'slideIn', direction = 'left'})
+            self.stack:push(Messages())
         end},
-    }, {owner = self, sharedFocus = true, placement = {gui = frame, id = 'middle'}})
+    }
 end
 
-scene.push(Page('Messages'))
+ui.navigationStack{gui = frame, id = 'middle', root = Messages()}
 ```
 
 ### Every property is checked

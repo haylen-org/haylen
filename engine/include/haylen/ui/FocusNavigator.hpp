@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -141,6 +142,11 @@ class FocusNavigator final {
 
     // Whether the player pressed `uiCancel` this frame for a window that closes with it, such as a dismissible dialog or a closable window: the topmost popup, or the window with the focus while no popup is open. The window being asked answers cancel, so the app actions leave the next press to it.
     [[nodiscard]] bool answerCancel(const ImGuiWindow* window);
+
+    // Takes a cancel that no focus scope answers before the root of the GUI hears it, while the handler returns true, such as the system back that the navigation of the app answers.
+    void setBackHandler(std::function<bool()> handler) {
+        backHandler = std::move(handler);
+    }
 
     // Whether the UI answers `uiCancel`, `uiAccept` and `uiFocus` itself in the next frame: cancel while a control or a play area has the focus, a control is being edited, a popup is open, an item is carried or the focused window closes with it, accept while a control has the focus, and `uiFocus` while a GUI has the focus or draws a play area.
     [[nodiscard]] bool answersCancel() const noexcept {
@@ -343,6 +349,7 @@ class FocusNavigator final {
     bool focusAnswered = false;
     bool menuPressed = false;
     bool suspended = false;
+    std::function<bool()> backHandler;
 };
 
 } // namespace haylen::ui

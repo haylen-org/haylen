@@ -43,7 +43,7 @@ On the headless platform the app runs a tour by itself: it searches a destinatio
 
 ## How it works
 
-The screens are scenes of `source/screens/` built on the base of `source/page.lua`, which mounts their GUI with the scene as owner and tells the screen when the window crosses the wide width. The app has no tab bar: the map is the first screen, a round button opens the menu, which is a transparent scene over the map, and `Shell.openPage` opens a page of the menu over the map with the menu closed. Every step of a ride shows in the sheet of `Shell.sheet`, a white card that floats at the bottom of a phone with a handle, or as a panel at the top left of a wide window, and `Shell.replace` puts the ride in the place of the search and the trip in the place of the ride, so going back from a trip returns to the map. A ride again from a past trip starts over the map too, with the menu and its pages closed. The app has no bars around its screens, so each screen is whole and nothing of it is built twice.
+The app follows the [navigation](../../../docs/ui/navigation.md) of the engine. It has no tab bar: the map is the first screen of one stack over the whole screen, whose steps of a ride change their sheet over the map with a cross fade, and whose pages of the menu slide over the map. A round button presents the menu as a drawer that slides in from the start of the screen over the dimmed map, and a tap beside it, Escape and the back button close it. `Shell.openPage` opens a page of the menu right over the map with the menu closed, and a ride again from a past trip starts over the map too, so going back always returns to the map. Every step of a ride shows in the sheet of `Shell.sheet`, a white card that floats at the bottom of a phone with a handle, or as a panel at the top left of a wide window, and `Shell.replace` puts the ride in the place of the search and the trip in the place of the ride. The screens of `source/screens/` are classes of `ui.Screen` built on the base of `source/page.lua`: the steps of a ride draw the map behind their GUI, and the pages cover it with the background of the theme.
 
 - The autoload `source/rides.lua` holds the trip in progress and moves it through its stages on every screen: five seconds of search, the driver riding the route from where they are to the pickup, five seconds at the pickup and the ride to the destination, with the times of the routes from their lengths. Every change emits `tripChanged` on [`haylen.events`](../../../docs/lua-api/events.md), which the map, the trip and the trips hear, and shows a notice.
 - The traffic of `source/traffic.lua` is 36 cars that ride the shortest routes between random corners of the city and pick a new route when they arrive. The autoload advances it, so the map is alive behind every screen.
@@ -75,7 +75,7 @@ ride-hailing/
     main.lua             Registers the theme and starts the shell.
     style.lua            The palette of the screens and of the map, the type scale, the spacing scale, the shapes and the theme.
     shell.lua            Navigation, notices, the buttons over the map, the sheets and the headers.
-    page.lua             The base of every screen.
+    page.lua             The base of every screen, a class of "ui.Screen".
     rides.lua            The kinds of ride, the trip in progress, the past trips and the wallet, an autoload.
     traffic.lua          The cars of the city.
     map-view.lua         The camera and the drawing of the map.

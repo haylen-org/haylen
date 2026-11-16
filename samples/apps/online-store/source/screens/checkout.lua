@@ -15,14 +15,13 @@ local Checkout = haylen.class('Checkout', Page)
 Checkout.deliveries = {{id = 'standard', text = 'Standard, 3 to 5 days, free over $75'}, {id = 'express', text = 'Express, next day, $9.99'}}
 Checkout.payments = {{id = 'card', text = 'Card ending in 4821'}, {id = 'wallet', text = 'Phone wallet'}, {id = 'later', text = 'Pay in three parts'}}
 
-function Checkout:enter()
+Checkout.title = 'Checkout'
+
+function Checkout:tree()
     local address = Store.me.address
     self.fields = {name = address.name, street = address.street, city = address.city, zip = address.zip}
     self.express = false
-    self:mountGui(ui.column{gap = 0, onCancel = Shell.back,
-        Shell.header('Checkout'),
-        ui.scroll{grow = 1, height = 0, ui.column{id = 'body', gap = 0}},
-    })
+    return ui.scroll{grow = 1, ui.column{id = 'body', gap = 0}}
 end
 
 function Checkout:layoutChanged(wide)
@@ -94,8 +93,7 @@ function Checkout:place()
     end
     local order = Orders.place(Bag.lines, Bag.totals(self.express), self.express)
     Bag.clear()
-    Shell.showTab('orders')
-    Shell.open(require('screens.confirmation'), {order = order.id})
+    self.stack:setScreens({require('screens.confirmation')({order = order.id})})
 end
 
 return Checkout

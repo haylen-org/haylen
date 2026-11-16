@@ -13,15 +13,18 @@ local ComposeEdit = haylen.class('ComposeEdit', Page)
 
 ComposeEdit.crops = {{id = 'full', text = 'Whole picture'}, {id = 'close', text = 'Close up'}}
 
-function ComposeEdit:enter()
-    self:mountGui(ui.column{gap = 0, onCancel = Shell.back,
-        Shell.header('Edit', {
-            ui.button{id = 'next', text = 'Next', variant = 'link', onClick = function()
-                Shell.open(require('screens.compose-share'))
-            end},
-        }),
-        ui.column{id = 'body', grow = 1, gap = 0},
-    })
+ComposeEdit.title = 'Edit'
+ComposeEdit.actionText = 'Next'
+
+function ComposeEdit:tree()
+    return ui.column{id = 'body', grow = 1, gap = 0}
+end
+
+function ComposeEdit:action()
+    self.stack:push(require('screens.compose-share')())
+end
+
+function ComposeEdit:start()
     scene.spawn(self, function()
         Compose.prepare():await()
         self:showPreview(true)

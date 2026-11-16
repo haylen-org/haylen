@@ -10,9 +10,9 @@ local Style = require('style')
 
 local Activity = haylen.class('Activity', Page)
 
-function Activity:enter()
+function Activity:tree()
     local space = Style.space
-    self:mountGui(ui.column{gap = 0, onCancel = Shell.back,
+    return ui.column{gap = 0,
         Shell.header('Your trips'),
         Shell.centered(Style.size.reading, ui.collection{id = 'trips', gap = 0, padding = {0, space.s, space.xl, space.s}, rememberFocus = true,
             types = {
@@ -30,7 +30,10 @@ function Activity:enter()
                 Shell.open(require('screens.trip-detail'), {trip = event.item})
             end,
         }, 1),
-    })
+    }
+end
+
+function Activity:start()
     self.list = self.gui:collection('trips')
     events.on('tripChanged', function()
         self:showTrips()

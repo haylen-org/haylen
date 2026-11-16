@@ -16,7 +16,7 @@ local Chat = haylen.class('Chat', Page)
 Chat.outgoing = {colors = {raised = 'accent', border = 'accent'}, metrics = {panelRadius = Style.radius.bubble}}
 Chat.incoming = {colors = {raised = Style.color.mist, border = Style.color.mist}, metrics = {panelRadius = Style.radius.bubble}}
 
-function Chat:enter()
+function Chat:tree()
     local conversation = Chats.find(self.params.conversation)
     self.conversation = conversation
     local person = Social.person(conversation.person)
@@ -31,10 +31,10 @@ function Chat:enter()
         node[2] = ui.label{part = 'time', bind = {text = 'time'}, font = 'caption', color = color == 'onAccent' and 'onAccent' or 'textMuted', align = align}
         return ui.card(node)
     end
-    self:mountGui(ui.column{gap = 0, onCancel = Shell.back,
+    return ui.column{gap = 0,
         ui.column{gap = 0,
             ui.row{gap = space.s, padding = {0, space.m, 0, space.s}, height = Style.size.header,
-                ui.button{id = 'back', icon = Shell.icon('back'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Back', tooltip = 'Back', onClick = Shell.back},
+                ui.button{id = 'back', icon = Shell.icon('back'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Back', tooltip = 'Back', onClick = ui.goBack},
                 ui.avatar{image = person.avatar, size = Style.size.avatarSmall},
                 ui.column{gap = 0, grow = 1,
                     ui.label{text = person.name, font = 'button', wrap = false},
@@ -74,15 +74,28 @@ function Chat:enter()
                 end},
             },
         }, 1),
-    })
+    }
+end
+
+function Chat:start()
     self.messages = self.gui:collection('messages')
     events.on('chatChanged', function(changed)
-        if changed == conversation then
-            self.messages:setItems(conversation.messages)
+        if changed == self.conversation then
+            self.messages:setItems(self.conversation.messages)
         end
     end, {owner = self})
-    self.messages:setItems(conversation.messages)
-    Chats.read(conversation)
+    self.messages:setItems(self.conversation.messages)
+end
+
+-- The open chat reads its messages while it shows, and its back button shows while there is somewhere to go back to, which a chat beside the list of a wide window does not have.
+function Chat:appear()
+    Page.appear(self)
+    Chats.read(self.conversation)
+    self:showBack()
+end
+
+function Chat:showBack()
+    self.gui:set('back', {visible = self.stack ~= nil and self.stack.canGoBack})
 end
 
 function Chat:send(text)
@@ -94,7 +107,7 @@ function Chat:send(text)
     self.gui:set('draft', {value = ''})
 end
 
-function Chat:exit()
+function Chat:disappeared()
     Chats.read(nil)
 end
 

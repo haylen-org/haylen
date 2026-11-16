@@ -9,12 +9,11 @@ local Style = require('style')
 
 local Search = haylen.class('Search', Page)
 
-Search.backTransition = {duration = 0.24, effect = 'push', direction = 'down', ease = 'cubicOut'}
 
-function Search:enter()
+function Search:tree()
     local space = Style.space
     self.query = ''
-    self:mountGui(ui.column{gap = 0, onCancel = Shell.back,
+    return ui.column{gap = 0,
         Shell.header('Plan your ride'),
         Shell.centered(Style.size.reading, ui.column{gap = 0, padding = {space.m, space.l, space.s, space.l},
             ui.row{gap = space.m, align = 'stretch',
@@ -55,7 +54,10 @@ function Search:enter()
             end,
             ui.emptyState{image = Shell.icon('search'), imageSize = 72, title = 'No place matches', message = 'Try a street or another name.'},
         }, 1),
-    })
+    }
+end
+
+function Search:start()
     self.places = self.gui:collection('places')
     self:refresh()
     self.gui:command('query', 'focus')

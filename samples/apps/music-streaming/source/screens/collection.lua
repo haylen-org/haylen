@@ -11,16 +11,20 @@ local Widgets = require('widgets')
 
 local Collection = haylen.class('Collection', Page)
 
-function Collection:enter()
+function Collection:init(params)
+    Page.init(self, params)
     local source = self:source(self.params.collection)
     self.source = source
     self.glow = source.genre or (source.tracks[1] and source.tracks[1].genre)
     self.onTracks = Widgets.onTracks(function() return source.tracks end, self)
-    self:mountGui(ui.column{grow = 1, gap = 0,
+end
+
+function Collection:tree()
+    return ui.column{grow = 1, gap = 0,
         Shell.header(''),
         ui.column{id = 'body', grow = 1, gap = 0},
         Widgets.playlistDialog(self),
-    })
+    }
 end
 
 function Collection:layoutChanged(wide)

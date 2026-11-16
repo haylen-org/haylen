@@ -313,11 +313,16 @@ void Component::renderReshaped(Context& context, const math::Rect& bounds) {
     render(context, bounds);
     context.popReshape();
 
-    reshape(*window->DrawList, firstVertex, *transform, bounds.getCenter(), false);
+    reshapeSince(firstVertex, firstWindow, *transform, bounds.getCenter());
+}
+
+void Component::reshapeSince(int firstVertex, int firstWindow, const Transform& shape, math::Vec2 center) {
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    reshape(*window->DrawList, firstVertex, shape, center, false);
     for (ImGuiWindow* child : GImGui->Windows) {
         const bool beganInside = child != window && child->RootWindow == window->RootWindow && child->BeginOrderWithinContext >= firstWindow;
         if (beganInside && child->LastFrameActive == GImGui->FrameCount) {
-            reshape(*child->DrawList, 0, *transform, bounds.getCenter(), true);
+            reshape(*child->DrawList, 0, shape, center, true);
         }
     }
 }

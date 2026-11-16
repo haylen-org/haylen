@@ -11,10 +11,10 @@ local Wishlist = require('wishlist')
 
 local Account = haylen.class('Account', Page)
 
-function Account:enter()
+function Account:tree()
     local space = Style.space
     local address = Store.me.address
-    self:mountGui(Shell.tabPage(ui.scroll{grow = 1, height = 0,
+    return Shell.tabPage(ui.scroll{grow = 1, height = 0,
         Shell.centered(Style.size.reading, ui.column{gap = space.l, padding = {space.l, space.l, space.xxl, space.l},
             ui.row{gap = space.m,
                 ui.avatar{name = Store.me.name, size = 88},
@@ -45,7 +45,7 @@ function Account:enter()
             -- Where quitting closes the app, the account offers it, so the way the app ends can be tried.
             haylen.canQuit() and ui.button{id = 'quit', text = 'Quit the app', align = 'start', onClick = function() haylen.quit() end} or nil,
         }),
-    }, Shell.phoneBar(self, 'Account')))
+    }, Shell.phoneBar(self, 'Account'))
 end
 
 -- A count of the person with the tab it opens.

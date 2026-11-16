@@ -8,9 +8,9 @@ local Style = require('style')
 
 local Account = haylen.class('Account', Page)
 
-function Account:enter()
+function Account:tree()
     local space = Style.space
-    self:mountGui(ui.column{gap = 0, onCancel = Shell.back,
+    return ui.column{gap = 0,
         Shell.header('Account'),
         ui.scroll{grow = 1, height = 0,
             Shell.centered(Style.size.reading, ui.column{gap = space.l, padding = {space.l, space.l, space.xl, space.l},
@@ -40,7 +40,7 @@ function Account:enter()
                 ui.list{id = 'contacts', items = {{id = 'tom', text = 'Tomas Almeida', caption = 'Brother', image = Shell.icon('user')}, {id = 'ines', text = 'Ines Kato', caption = 'Friend', image = Shell.icon('user')}}},
             }),
         },
-    })
+    }
 end
 
 return Account

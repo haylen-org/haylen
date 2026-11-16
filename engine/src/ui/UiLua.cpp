@@ -43,6 +43,7 @@
 #include "ui/CollectionLua.hpp"
 #include "ui/ImageLibrary.hpp"
 #include "ui/MountLink.hpp"
+#include "ui/NavigationLua.hpp"
 #include "ui/Surfaces.hpp"
 #include "ui/TransformLua.hpp"
 
@@ -394,28 +395,9 @@ Gui& UiLua::checkGui(lua_State* L) {
     return lua::Userdata::check<Gui>(L, 1);
 }
 
-// Reads the region of the option `placement`, a table `{gui = frame, id = 'content'}` that names a mounted GUI and the id of one of its nodes.
-plugins::UiPlugin::Region UiLua::readRegion(lua_State* L, int index) {
-    lua::Table::checkFields(L, index, {kRegionFields});
-    plugins::UiPlugin::Region region;
-    lua_getfield(L, index, "gui");
-    if (luaL_testudata(L, -1, lua::Type<Gui>::name) == nullptr) {
-        luaL_error(L, "The region of the \"placement\" option names its GUI with \"gui\".");
-    }
-    region.gui = lua::Userdata::checkShared<Gui>(L, -1);
-    lua_pop(L, 1);
-    if (lua_getfield(L, index, "id") != LUA_TSTRING) {
-        luaL_error(L, "The region of the \"placement\" option names its node with \"id\".");
-    }
-    region.node = lua::Stack::read<std::string>(L, -1);
-    lua_pop(L, 1);
-    return region;
-}
-
-// Mounts a tree with `mount(tree[, {placement = 'safe', 'screen' or {gui = frame, id = 'content'}, layer = 0, owner = scene, sharedFocus = false}])` and returns the GUI. A GUI with an owner is unmounted when the owner is released, such as a scene when it unloads.
+// Mounts a tree with `mount(tree[, {placement = 'safe' or 'screen', layer = 0, owner = scene, sharedFocus = false}])` and returns the GUI. A GUI with an owner is unmounted when the owner is released, such as a scene when it unloads.
 int UiLua::mount(lua_State* L) {
     Placement placement = Placement::Safe;
-    std::optional<plugins::UiPlugin::Region> region;
     int layer = 0;
     int owner = 0;
     bool sharedFocus = false;
@@ -423,30 +405,16 @@ int UiLua::mount(lua_State* L) {
         luaL_checktype(L, 2, LUA_TTABLE);
         lua::Table::checkFields(L, 2, {kMountFields});
         const int kind = lua_getfield(L, 2, "placement");
-        if (kind == LUA_TTABLE) {
-            region = readRegion(L, lua_gettop(L));
-            getPlugin(L).checkRegion(*region);
-            placement = Placement::Region;
-        } else if (kind != LUA_TNIL) {
+        if (kind != LUA_TNIL) {
             const std::optional<Placement> named = kind == LUA_TSTRING ? lua::EnumNames<Placement>::fromName(lua::Stack::read<std::string_view>(L, -1)) : std::nullopt;
             if (!named || *named == Placement::Region) {
-                return luaL_error(L, "The \"placement\" option must be \"safe\", \"screen\" or a region such as {gui = frame, id = \"content\"}.");
+                return luaL_error(L, "The \"placement\" option must be \"safe\" or \"screen\". A screen of a navigation stack lays out in the area of its stack.");
             }
 
             placement = *named;
         }
 
         lua_pop(L, 1);
-
-        if (region) {
-            const bool layered = lua_getfield(L, 2, "layer") != LUA_TNIL;
-            lua_pop(L, 1);
-
-            if (layered) {
-                return luaL_error(L, "A GUI in a region draws right after the GUI of its region, so it takes no \"layer\".");
-            }
-        }
-
         lua::Table::readField(L, 2, "layer", layer);
         lua::Table::readField(L, 2, "sharedFocus", sharedFocus);
         if (lua_getfield(L, 2, "owner") != LUA_TNIL) {
@@ -459,15 +427,32 @@ int UiLua::mount(lua_State* L) {
         owner = lua::Owners::pushDefault(L);
     }
 
+    std::shared_ptr<Gui> created = buildGui(L, 1, placement, sharedFocus);
+    const int userdata = lua_gettop(L);
+
+    // A GUI owned by a scene of the stack belongs to that scene, so it shows and leaves with it.
+    const std::shared_ptr<const core::Scene> scene = owner != 0 ? lua::ScriptedScene::find(L, owner) : nullptr;
+    getPlugin(L).mount(created, layer, scene);
+
+    if (owner != 0) {
+        lua::Owners::add(L, owner, std::make_shared<MountLink>(getPlugin(L), created));
+    }
+
+    lua_pushvalue(L, userdata);
+    return 1;
+}
+
+// The GUI is registered before it mounts, so listeners of the mount event already receive its userdata.
+std::shared_ptr<Gui> UiLua::buildGui(lua_State* L, int tree, Placement placement, bool sharedFocus) {
+    const int node = lua_absindex(L, tree);
     lua_newtable(L);
     const int handlers = lua_gettop(L);
     std::size_t count = 0;
-    const core::Json tree = convertNode(L, 1, handlers, 0, count);
-    std::shared_ptr<Gui> created = getPlugin(L).createGui(tree, placement);
+    const core::Json converted = convertNode(L, node, handlers, 0, count);
+    std::shared_ptr<Gui> created = getPlugin(L).createGui(converted, placement);
     created->setSharedFocus(sharedFocus);
     listenToHandlers(L, *created, handlers);
 
-    // The GUI is registered before it mounts, so listeners of the mount event already receive its userdata.
     lua::Userdata::emplace<Gui>(L, created);
     const int userdata = lua_gettop(L);
     pushRoot(L);
@@ -478,20 +463,10 @@ int UiLua::mount(lua_State* L) {
     lua_setfield(L, -2, "handlers");
     lua_rawsetp(L, -2, created.get());
     lua_pop(L, 1);
-
-    // A GUI owned by a scene of the stack belongs to that scene, so it shows and leaves with it.
-    const std::shared_ptr<const core::Scene> scene = owner != 0 ? lua::ScriptedScene::find(L, owner) : nullptr;
-    getPlugin(L).mount(created, layer, scene, region);
-
-    if (owner != 0) {
-        lua::Owners::add(L, owner, std::make_shared<MountLink>(getPlugin(L), created));
-    }
-
-    lua_pushvalue(L, userdata);
-    return 1;
+    lua_remove(L, handlers);
+    return created;
 }
 
-// Pushes the userdata of a GUI, or `nil` for a GUI mounted from C++.
 void UiLua::pushGui(lua_State* L, const std::shared_ptr<Gui>& gui) {
     pushRoot(L);
     if (lua_rawgetp(L, -1, gui.get()) == LUA_TTABLE) {
@@ -502,6 +477,14 @@ void UiLua::pushGui(lua_State* L, const std::shared_ptr<Gui>& gui) {
 
     lua_replace(L, -3);
     lua_pop(L, 1);
+}
+
+std::shared_ptr<Gui> UiLua::toGui(lua_State* L, int index) {
+    if (lua::Userdata::test<Gui>(L, index) == nullptr) {
+        return nullptr;
+    }
+
+    return lua::Userdata::checkShared<Gui>(L, index);
 }
 
 void UiLua::pushGuiEvent(lua_State* L, const std::shared_ptr<Gui>& gui) {
@@ -1143,6 +1126,7 @@ int UiLua::open(lua_State* L) {
         {"mount", &lua::Binding::native<&mount>}, {"node", &lua::Binding::native<&node>}, {"setTheme", &lua::Binding::native<&setTheme>}, {"theme", &lua::Binding::native<&theme>}, {"themes", &lua::Binding::native<&themes>}, {"loadTheme", &lua::Binding::native<&loadTheme>}, {"addTheme", &lua::Binding::native<&addTheme>}, {"themeColor", &lua::Binding::native<&themeColor>}, {"themeMetric", &lua::Binding::native<&themeMetric>}, {"themeFont", &lua::Binding::native<&themeFont>}, {"themeSurface", &lua::Binding::native<&themeSurface>}, {"themeSound", &lua::Binding::native<&themeSound>}, {"themeImageFilter", &lua::Binding::native<&themeImageFilter>}, {"setImage", &lua::Binding::native<&setImage>}, {"removeImage", &lua::Binding::native<&removeImage>}, {"addFont", &lua::Binding::native<&addFont>}, {"usingPointer", &lua::Binding::native<&usingPointer>}, {"usingKeyboard", &lua::Binding::native<&usingKeyboard>}, {"focused", &lua::Binding::native<&focused>}, {"focusOwner", &lua::Binding::native<&focusOwner>}, {"clearFocus", &lua::Binding::native<&clearFocus>}, {"focusRingVisible", &lua::Binding::native<&focusRingVisible>}, {"safeAreaVisible", &lua::Binding::native<&safeAreaVisible>}, {"setSafeAreaVisible", &lua::Binding::native<&setSafeAreaVisible>}, {"setDirection", &lua::Binding::native<&setDirection>}, {"direction", &lua::Binding::native<&direction>}, {"setScaleMode", &lua::Binding::native<&setScaleMode>}, {"scaleMode", &lua::Binding::native<&scaleMode>}, {"setScale", &lua::Binding::native<&setScale>}, {"scale", &lua::Binding::native<&scale>}, {"setTextScale", &lua::Binding::native<&setTextScale>}, {"textScale", &lua::Binding::native<&textScale>}, {"kinds", &lua::Binding::native<&kinds>}, {"onEvent", &lua::Binding::native<&onEvent>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
+    NavigationLua::addTo(L, -1);
     lua_createtable(L, 0, 1);
     lua_pushcfunction(L, &lua::Binding::native<&moduleIndex>);
     lua_setfield(L, -2, "__index");
@@ -1156,6 +1140,7 @@ void UiLua::install(lua_State* L) {
     core::EventsLua::addPayload<std::shared_ptr<Gui>>(&pushGuiEvent);
     TransformLua::install(L);
     CollectionLua::install(L);
+    NavigationLua::install(L);
     lua::ClassBuilder<Gui>(L).function("set", &lua::Binding::native<&guiSet>).function("replaceChildren", &lua::Binding::native<&guiReplaceChildren>).function("get", &lua::Binding::native<&guiGet>).function("has", &lua::Binding::native<&guiHas>).function("bounds", &lua::Binding::native<&guiBounds>).function("command", &lua::Binding::native<&guiCommand>).function("removeHandler", &lua::Binding::native<&guiRemoveHandler>).function("unmount", &lua::Binding::native<&guiUnmount>).property("visible", &guiVisible, &lua::Binding::native<&guiSetVisible>).property("sharedFocus", &guiSharedFocus, &lua::Binding::native<&guiSetSharedFocus>).property("mounted", &guiMounted).property("placement", &guiPlacement).function("transform", &lua::Binding::native<&guiTransform>).function("collection", &lua::Binding::native<&guiCollection>).install();
     lua::Binding::preload(L, "haylen.ui", &open);
 }

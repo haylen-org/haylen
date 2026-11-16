@@ -725,10 +725,20 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/LuaItemSource.cpp
   src/ui/LuaPageSource.cpp
   src/ui/MountLink.cpp
+  src/ui/Navigation.cpp
   src/ui/NavigationInput.cpp
+  src/ui/NavigationLink.cpp
+  src/ui/NavigationLua.cpp
+  src/ui/NavigationSplit.cpp
+  src/ui/NavigationStack.cpp
+  src/ui/NavigationTabs.cpp
+  src/ui/NavigationTransition.cpp
   src/ui/Popup.cpp
+  src/ui/Presentation.cpp
   src/ui/PropertyReader.cpp
   src/ui/Scaling.cpp
+  src/ui/Screen.cpp
+  src/ui/ScriptedScreen.cpp
   src/ui/ScrollArbiter.cpp
   src/ui/ScrollFade.cpp
   src/ui/Scrollbar.cpp

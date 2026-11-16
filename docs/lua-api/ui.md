@@ -3608,7 +3608,7 @@ Builds a GUI from the node table `tree`, shows it and returns its [`Gui`](#gui).
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `placement` | string or table | `'safe'` | The value `'safe'` lays out the root inside the safe area of the screen, away from notches and system bars. The value `'screen'` lays it out over the whole visible screen. A region, a table `{gui = frame, id = 'middle'}`, lays it out in the area of the node `id` of the mounted GUI `gui`, as [regions](#regions) describe. |
+| `placement` | string | `'safe'` | The value `'safe'` lays out the root inside the safe area of the screen, away from notches and system bars. The value `'screen'` lays it out over the whole visible screen. A screen of the [navigation](#navigation) lays out in the area of its stack instead. |
 | `layer` | integer | `0` | GUIs draw in ascending layer order. GUIs on the same layer draw in the order they were mounted, so a later GUI covers an earlier one with everything it holds, the content of its scrolls included. |
 | `owner` | table or userdata | none | Unmounts the GUI when the owner is released, such as a scene when it unloads, or collected, like the other [owners of `haylen.events`](events.md#owners). |
 | `sharedFocus` | boolean | `false` | Joins the navigation space of the other GUIs that share the focus, as [`gui.sharedFocus`](#guisharedfocus) describes. |
@@ -3617,7 +3617,7 @@ A scene of the stack as `owner` also makes the GUI part of the scene. The GUI dr
 
 The root fills the whole area when its `align` is `'stretch'`, which is the default of containers. With `'start'`, `'center'` or `'end'`, the root keeps its measured size and sits at the top left, the center or the bottom right of the area. Mounting publishes the `guiMounted` event of [`haylen.events`](events.md) with the table `{gui}`.
 
-An unknown option raises `Unknown option "<key>".`. A placement other than `safe`, `screen` or a region raises `The "placement" option must be "safe", "screen" or a region such as {gui = frame, id = "content"}.`. The errors of a region are listed under [regions](#regions). An owner that is not a table or a userdata raises `An owner must be a table or a userdata, not <type>.`. A tree that breaks the [screen format](#screen-format), or has an invalid property, raises an error that names the problem, and nothing is mounted. Examples are `There is no UI component kind named "spaceship".` and `The property "width" of a "label" must be a non-negative number or "auto".`.
+An unknown option raises `Unknown option "<key>".`. A placement other than `safe` or `screen` raises `The "placement" option must be "safe" or "screen". A screen of a navigation stack lays out in the area of its stack.`. An owner that is not a table or a userdata raises `An owner must be a table or a userdata, not <type>.`. A tree that breaks the [screen format](#screen-format), or has an invalid property, raises an error that names the problem, and nothing is mounted. Examples are `There is no UI component kind named "spaceship".` and `The property "width" of a "label" must be a non-negative number or "auto".`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -3638,33 +3638,6 @@ local ui = require('haylen.ui')
 scene.push({
     enter = function(self)
         ui.mount(ui.label{text = 'Level 1'}, {owner = self})
-    end,
-})
-```
-
-### Regions
-
-An app with bars around its pages, such as a tab bar or a sidebar, mounts the bars once as a frame, a GUI that no scene owns, and lays out the GUI of every page in the middle of the frame. The option `placement = {gui = frame, id = 'middle'}` names the frame and the id of the node whose area the page takes. So opening a page changes only the middle, and the bars keep their state, their focus and the place of their scroll for as long as the app runs. The [UI guide](../ui/ui.md#an-app-frame-with-pages) shows the whole pattern.
-
-- The GUI lays out in the area where the node drew in this frame or the last one, and it follows the node in the frame the node moves or resizes.
-- It draws right after the GUI of its region, whatever their layers, so it takes no `layer`.
-- It draws nothing while the GUI of its region is unmounted or hidden, or no longer draws the node.
-- During an effect that shows both scenes, such as a slide, the frame stays on the screen above the effect and takes no input until the effect ends, while the pages go into the images of their scenes, so only the middle moves.
-
-A region whose table has another key raises `Unknown option "<key>".`. One without a GUI raises `The region of the "placement" option names its GUI with "gui".`, and one without an id raises `The region of the "placement" option names its node with "id".`. A GUI that is not mounted raises `The GUI of a region must be mounted.`, a GUI that lies in a region itself raises `The GUI of a region cannot lie in a region itself.`, and an id that the GUI lacks raises `The GUI of the region has no node with the id "<id>".`. A `layer` with a region raises `A GUI in a region draws right after the GUI of its region, so it takes no "layer".`.
-
-```lua
-local scene = require('haylen.scene')
-local ui = require('haylen.ui')
-
-local frame = ui.mount(ui.column{gap = 0,
-    ui.column{id = 'middle', grow = 1},
-    ui.row{height = 96, ui.button{text = 'Home', grow = 1}, ui.button{text = 'Search', grow = 1}},
-}, {layer = 1, sharedFocus = true})
-
-scene.push({
-    enter = function(self)
-        ui.mount(ui.label{text = 'Home'}, {owner = self, sharedFocus = true, placement = {gui = frame, id = 'middle'}})
     end,
 })
 ```
@@ -3976,6 +3949,365 @@ ui.mount(ui.column{
 })
 ```
 
+## Navigation
+
+The navigation shows the screens of an app: stacks that push and pop screens in the area of a node of a frame, tabs that each keep a stack, a split of a list and its detail, and presentations over everything. The [navigation guide](../ui/navigation.md) explains the model, when to use each part and how they fit together.
+
+### ui.Screen
+
+The base class of screens, for [`haylen.class`](haylen.md). A screen is a table with a `build` method, which returns the node table of its GUI, and optional hooks. A plain table with a `build` method is a screen too.
+
+| Hook | When it runs |
+| --- | --- |
+| `build(self)` | Once, the first time the screen shows. It returns the node table of its GUI. |
+| `appear(self)` | The screen starts to show, as it comes on top of its stack, the screens above it leave, its tab shows again or its presentation opens. |
+| `appeared(self)` | Its transition ended, and input reaches it. |
+| `disappear(self)` | The screen starts to leave the screen. |
+| `disappeared(self)` | The screen no longer shows. |
+| `update(self, dt)` | Every frame while the screen draws, with the real time of the frame in seconds. |
+| `render(self)` | Every frame while the screen draws, before the UI draws. |
+| `back(self)` | The system back is about to take the screen away. Returning `true` keeps it. |
+| `remove(self)` | The screen left its stack or its presentation for good. Everything it owns ends right after, and its GUI unmounts. |
+
+The engine sets these fields on the table:
+
+| Field | Value |
+| --- | --- |
+| `gui` | The [`Gui`](#gui) of the screen, once it is built. It shares the focus with the GUIs around it. |
+| `stack` | The [`NavigationStack`](#navigationstack) that holds the screen, or `nil`. |
+| `presentation` | The [`Presentation`](#presentation) that shows the screen, or `nil`. |
+
+A failing hook goes to the error screen as a failure of the lifecycle. A `build` method that is missing raises `A screen needs a "build" method that returns the node table of its GUI.`, and one that returns something else raises `The "build" method of a screen must return a node table, not <type>.`, both on the error screen.
+
+```lua
+local haylen = require('haylen')
+local ui = require('haylen.ui')
+
+local Settings = haylen.class('Settings', ui.Screen)
+
+function Settings:build()
+    return ui.column{ui.label{text = 'Settings', font = 'title'}, ui.toggle{id = 'sound', text = 'Sound', value = true}}
+end
+
+function Settings:appeared()
+    print('Settings shows.')
+end
+```
+
+### Transitions
+
+Every function that changes a stack or a presentation takes a transition table as its last argument.
+
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `effect` | string | `'slide'` | `'slide'` moves the screens along the reading direction, `'fade'` cross fades them, `'rise'` brings the screen up from the bottom of the screen and takes it back down, and `'none'` changes at once. |
+| `duration` | number | `0.3` | Seconds. Zero changes at once. |
+| `ease` | easing | `'cubicOut'` | The [easing](tween.md#easing) of the motion. |
+
+While the system asks for reduced motion, a slide and a rise cross fade instead. A transition with another key raises `Unknown option "<key>".`, and a negative duration raises `The "duration" of a navigation transition cannot be negative.`.
+
+### ui.navigationStack(options)
+
+Creates a stack of screens in the area of the node `id` of the mounted GUI `gui` and returns its [`NavigationStack`](#navigationstack). Only its top screen shows. The stack lives until it closes, its owner ends or its GUI unmounts.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `gui` | `Gui` | required | The GUI whose node holds the area, such as the frame of the app or the GUI of a screen. |
+| `id` | string | required | The id of the node. |
+| `root` | screen | none | The first screen, which shows at once. |
+| `owner` | table or userdata | the default owner | Closes the stack when it ends, like the [owners of `haylen.events`](events.md#owners). |
+| `onChange` | function | none | Hears every change of the list of screens with the table `{stack, top, size}`. |
+
+A table with another key raises `Unknown option "<key>".`. A missing GUI raises `A navigation stack names the GUI that holds its area with "gui".`, a missing id raises `A navigation stack names the node of its area with "id".`, a GUI that is not mounted raises `The GUI of a region must be mounted.` and an id that the GUI lacks raises `The GUI of the region has no node with the id "<id>".`.
+
+```lua
+local ui = require('haylen.ui')
+
+local frame = ui.mount(ui.column{gap = 0, ui.row{height = 96, ui.label{id = 'title', text = 'Home'}}, ui.column{id = 'middle', grow = 1}}, {sharedFocus = true})
+local stack = ui.navigationStack{gui = frame, id = 'middle', root = Home(), onChange = function(event)
+    frame:set('title', {text = event.top.title})
+end}
+```
+
+### ui.navigationTabs(options)
+
+Creates tabs that each keep a stack in the area of the node `id` of the mounted GUI `gui`, and returns their [`NavigationTabs`](#navigationtabs). The stack of a tab builds its root screen the first time the tab shows.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `gui` | `Gui` | required | The GUI whose node holds the area. |
+| `id` | string | required | The id of the node. |
+| `tabs` | list | required | The tabs, each a table `{id = 'home', root = function() return Home() end}`, whose function makes the root screen. |
+| `selected` | string | the first tab | The tab that shows first. |
+| `owner` | table or userdata | the default owner | Closes the tabs when it ends. |
+| `onChange` | function | none | Hears every change of the selected tab with the table `{selected, previous}`. |
+
+A list that is missing raises `Navigation tabs list their tabs in "tabs", each a table with an "id" and a "root" function.`. An empty list raises `Navigation tabs need at least one tab.`, a repeated id raises `The navigation tab "<id>" is given more than once.`, a selected id that no tab has raises `There is no navigation tab with the id "<id>".` and a root that returns no screen raises `A screen is a table with a "build" method, not <type>.`.
+
+```lua
+local tabs = ui.navigationTabs{gui = frame, id = 'middle', tabs = {
+    {id = 'home', root = function() return Home() end},
+    {id = 'library', root = function() return Library() end},
+}}
+```
+
+### ui.navigationSplit(options)
+
+Creates a list and its detail and returns their [`NavigationSplit`](#navigationsplit). Expanded, the list shows in the `primary` area and the detail in the `detail` area. Collapsed, the detail screens move on top of the list in the `primary` area.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `primary` | table | required | The area of the list, `{gui = frame, id = 'list'}`. |
+| `detail` | table | required | The area of the detail, `{gui = frame, id = 'detail'}`. |
+| `root` | screen | required | The screen of the list. |
+| `placeholder` | function | none | Makes the screen that shows in the detail area while nothing is picked. |
+| `collapsed` | boolean | `false` | Whether the split starts collapsed. |
+| `owner` | table or userdata | the default owner | Closes the split when it ends. |
+
+A missing area raises `A navigation split names the area of its list with "primary", such as {gui = frame, id = "list"}.` or the same sentence for `detail`, and a missing root raises `A screen is a table with a "build" method, not nil.`.
+
+```lua
+local split = ui.navigationSplit{primary = {gui = frame, id = 'list'}, detail = {gui = frame, id = 'detail'}, root = Inbox(), placeholder = function() return Pick() end}
+split:showDetail(Chat(person))
+```
+
+### ui.present(screen, options)
+
+Presents a screen over everything the app shows and returns its [`Presentation`](#presentation). The GUIs under it take no input or focus until it leaves. The table `options` is optional.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `style` | string | `'sheet'` | `'sheet'` rises on a surface of the theme `panel` color, which fills the width of a narrow screen up to its bottom edge and floats as a rounded card in the middle of a wide one, over a dimmed backdrop. `'fullScreen'` rises over the whole screen on the theme `background` color and lays out the screen in the safe area. `'dialog'` fades in over a dimmed backdrop and lays out the screen in the safe area, where the screen draws its own card. |
+| `transition` | table | a rise, or a fade of 0.2 seconds for a dialog | The [transition](#transitions) of the presentation and of its dismissal. |
+| `dismissible` | boolean | `true` | Whether a tap on the backdrop and the system back dismiss it. |
+| `color` | color | the theme color | The color of the surface of a sheet or a full screen presentation, such as a dark stage behind pictures. |
+| `maxWidth` | number | `760` | The widest that a sheet grows on a wide screen, in UI units. |
+| `maxHeight` | number | `1000` | The tallest that a sheet grows on a wide screen, in UI units. |
+| `owner` | table or userdata | the default owner | Dismisses the presentation at once when it ends. |
+| `onDismiss` | function | none | Hears the table `{presentation}` once the presentation left and its screen was removed. |
+
+The backdrop takes the theme `overlay` color. A screen that a stack or another presentation holds raises `The screen already shows in a navigation stack or in a presentation.`, and a width or height that is not positive raises `The largest width and height of a sheet must be positive.`.
+
+```lua
+local sheet = ui.present(NewPost(), {style = 'sheet', onDismiss = function()
+    print('The new post closed.')
+end})
+```
+
+### ui.goBack()
+
+Goes back the way the system back does, as the [navigation guide](../ui/navigation.md#the-system-back) describes, and returns whether it went back somewhere. It suits the back button of a bar.
+
+```lua
+ui.button{icon = 'icons/back.svg', accessibilityLabel = 'Back', onClick = ui.goBack}
+```
+
+### ui.canGoBack()
+
+Returns whether the system back goes back somewhere in the app: a stack that pops, tabs that go to the first tab or a presentation that leaves. While it returns `false`, the back button of Android leaves the app.
+
+```lua
+frame:set('back', {visible = ui.canGoBack()})
+```
+
+### ui.screenState(screen)
+
+Returns the state of a screen: `'created'` before it first shows, `'appearing'`, `'shown'`, `'disappearing'`, `'hidden'` while another screen covers it or its tab does not show, or `'removed'` once it left for good.
+
+```lua
+if ui.screenState(chat) == 'shown' then
+    chat:markRead()
+end
+```
+
+## NavigationStack
+
+A `NavigationStack`, named `haylen.NavigationStack` in messages, holds the screens of one area. Every change plays its transition inside the area, and a change that starts while another one plays finishes the other one at once. A screen that the stack holds sets its field `stack`.
+
+### stack:push(screen, transition)
+
+Puts a screen on top. A screen that another stack or a presentation holds raises `The screen already shows in another navigation stack or in a presentation.`, and a screen that the stack holds already raises `A navigation stack holds each screen once.`.
+
+```lua
+stack:push(Profile(person))
+stack:push(Player(), {effect = 'rise', duration = 0.34})
+```
+
+### stack:pop(transition)
+
+Takes the top screen away for good and shows the screen under it. A stack with one screen or none stays as it is.
+
+```lua
+stack:pop()
+```
+
+### stack:popTo(screen, transition)
+
+Takes away every screen above a screen of the stack. A screen that the stack does not hold raises `The navigation stack does not hold the screen to pop to.`.
+
+```lua
+stack:popTo(album)
+```
+
+### stack:popToRoot(transition)
+
+Keeps only the first screen.
+
+```lua
+stack:popToRoot()
+```
+
+### stack:replace(screen, transition)
+
+Puts a screen in the place of the top screen, such as the next step of a form.
+
+```lua
+stack:replace(Caption(picture))
+```
+
+### stack:setScreens(screens, transition)
+
+Sets the whole list of screens, from the root to the top, as a deep link does. The change goes back when the new top screen was in the stack, and forward otherwise. Only the top screen builds its GUI.
+
+```lua
+stack:setScreens({Inbox(), Chat(person)}, {effect = 'none'})
+```
+
+### stack:close()
+
+Removes every screen at once, from the top down, and the stack takes no changes anymore. A change of a closed stack raises `The navigation stack is closed.`.
+
+```lua
+stack:close()
+```
+
+### Properties
+
+| Property | Type | Meaning |
+| --- | --- | --- |
+| `screens` | list | The screens from the root to the top. Read only. |
+| `top` | screen | The top screen, or `nil`. Read only. |
+| `size` | integer | The count of screens. Read only. |
+| `canGoBack` | boolean | Whether a screen lies under the top one. Read only. |
+| `transitioning` | boolean | Whether a change plays. Read only. |
+| `shown` | boolean | Whether the stack shows. A hidden stack keeps its screens and draws nothing. |
+| `closed` | boolean | Whether the stack closed. Read only. |
+
+```lua
+if stack.canGoBack then
+    stack:pop()
+end
+```
+
+## NavigationTabs
+
+A `NavigationTabs`, named `haylen.NavigationTabs` in messages, holds a stack for every tab.
+
+### tabs:select(id)
+
+Shows the stack of a tab and hides the stack that showed, or pops the stack of the tab that shows to its root. An id that no tab has raises `There is no navigation tab with the id "<id>".`.
+
+```lua
+tabs:select('library')
+```
+
+### tabs:stack(id)
+
+Returns the [`NavigationStack`](#navigationstack) of a tab, which makes its root screen the first time it is asked for.
+
+```lua
+tabs:stack('home'):push(Artist(artist))
+```
+
+### tabs:close()
+
+Closes the stack of every tab, and the tabs take no changes anymore. A change of closed tabs raises `The navigation tabs are closed.`.
+
+```lua
+tabs:close()
+```
+
+### Properties
+
+| Property | Type | Meaning |
+| --- | --- | --- |
+| `selected` | string | The id of the selected tab. Read only. |
+| `current` | `NavigationStack` | The stack of the selected tab, or `nil` once the tabs closed. Read only. |
+| `closed` | boolean | Whether the tabs closed. Read only. |
+
+```lua
+tabs.current:push(Search(query))
+```
+
+## NavigationSplit
+
+A `NavigationSplit`, named `haylen.NavigationSplit` in messages, holds a list and its detail.
+
+### split:showDetail(screen, transition)
+
+Shows a screen as the detail in place of the detail screens: at once in the detail area unless a transition is given, or collapsed on top of the list with a slide.
+
+```lua
+split:showDetail(Chat(person))
+```
+
+### split:clearDetail(transition)
+
+Takes every detail screen away and shows the list, or the placeholder in the detail area.
+
+```lua
+split:clearDetail()
+```
+
+### split:close()
+
+Closes both stacks, and the split takes no changes anymore. A change of a closed split raises `The navigation split is closed.`.
+
+```lua
+split:close()
+```
+
+### Properties
+
+| Property | Type | Meaning |
+| --- | --- | --- |
+| `collapsed` | boolean | Whether the detail screens work on top of the list. Setting it moves the detail screens with their GUIs and their state. |
+| `hasDetail` | boolean | Whether a detail screen shows, other than the placeholder. Read only. |
+| `primary` | `NavigationStack` | The stack of the list, which also holds the detail screens while the split is collapsed. Read only. |
+| `detail` | `NavigationStack` | The stack of the detail area. Read only. |
+| `closed` | boolean | Whether the split closed. Read only. |
+
+```lua
+split.collapsed = viewport.safeRect().width < 900
+```
+
+## Presentation
+
+A `Presentation`, named `haylen.Presentation` in messages, shows a screen over everything. Its screen sets its field `presentation`.
+
+### presentation:dismiss(transition)
+
+Plays the transition back and removes the screen once the presentation left. A presentation that leaves already stays as it is.
+
+```lua
+sheet:dismiss()
+```
+
+### Properties
+
+| Property | Type | Meaning |
+| --- | --- | --- |
+| `screen` | screen | The presented screen. Read only. |
+| `style` | string | `'sheet'`, `'fullScreen'` or `'dialog'`. Read only. |
+| `dismissible` | boolean | Whether a tap on the backdrop and the system back dismiss it. Read only. |
+| `dismissed` | boolean | Whether the presentation leaves or left. Read only. |
+
+```lua
+if not sheet.dismissed then
+    sheet:dismiss({effect = 'fade'})
+end
+```
+
 ## Gui
 
 A `Gui`, named `haylen.Gui` in messages, is the mounted tree that [`ui.mount`](#uimounttree-options) returns. Its methods find nodes by id. Reading a member it does not have raises `The type "haylen.Gui" has no member "<name>".`. Writing a read-only property raises `The type "haylen.Gui" has no writable property "<name>".`.
@@ -4223,7 +4555,7 @@ local page = ui.mount(ui.column{ui.button{text = 'Album', autofocus = true}}, {s
 
 ### gui.placement
 
-A read-only string, `'safe'`, `'screen'` or `'region'`, as `ui.mount` received it.
+A read-only string, `'safe'` or `'screen'` as `ui.mount` received it, or `'region'` for the GUI of a screen of a [navigation stack](#navigationstack).
 
 ```lua
 local ui = require('haylen.ui')
