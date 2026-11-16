@@ -1,0 +1,25 @@
+{
+    "name": "Smart Home",
+    "identifier": "com.haylen.smarthome",
+    "version": "1.0.0",
+    "orientation": "any",
+    "window": {
+        "title": "Smart Home",
+        "width": 1366,
+        "height": 900,
+        "resizable": true,
+        "maxPixelDensity": 0
+    },
+    "design": {
+        "width": 1366,
+        "height": 900,
+        "scaling": "none"
+    },
+    "ui": {
+        "scaleMode": "physical"
+    },
+    "splash": {
+        "background": "#FFF4F1EC"
+    },
+    "clearColor": "#FFF4F1EC"
+}
