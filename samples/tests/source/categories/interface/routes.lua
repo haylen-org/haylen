@@ -97,8 +97,23 @@ function Routes:follow(link)
         return
     end
     self.router:open(link)
-    local state = self.router:save()
-    self:report(string.format('Opened "%s". The tab "%s" holds %s.', link, state.tab, table.concat(state.stacks[state.tab] or {}, ', ')))
+    self:report(string.format('Opened "%s". %s', link, Routes.describe(self.router:save())))
+end
+
+-- Says what the state that the router keeps holds: the screens of the stack of the tab, its details and its presentations, or only the root of the tab.
+function Routes.describe(state)
+    local held = {}
+    for _, location in ipairs(state.stacks[state.tab] or {}) do
+        held[#held + 1] = location
+    end
+    for _, location in ipairs(state.details) do
+        held[#held + 1] = location .. ' as a detail'
+    end
+    local text = #held > 0 and string.format('The tab "%s" holds %s.', state.tab, table.concat(held, ', ')) or string.format('The tab "%s" shows only its root.', state.tab)
+    if #state.presented > 0 then
+        text = text .. string.format(' Over it shows %s.', table.concat(state.presented, ', '))
+    end
+    return text
 end
 
 function Routes:app(scheme)
