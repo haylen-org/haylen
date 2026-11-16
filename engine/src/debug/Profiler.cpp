@@ -20,7 +20,7 @@ double Profiler::getSteadySeconds() {
 }
 
 void Profiler::beginFrame(double shownSeconds) {
-    current.clear();
+    currentCount = 0;
     open.clear();
 
     if (shownSeconds > 0.0) {
@@ -51,13 +51,15 @@ void Profiler::endFrame() {
     next = (next + 1) % history.size();
     recorded = std::min(recorded + 1, history.size());
     finished.swap(current);
+    finishedCount = currentCount;
+    currentCount = 0;
     inFrame = false;
 }
 
 void Profiler::beginScope(std::string_view name) {
     const int parent = open.empty() ? -1 : open.back().sample;
     int index = -1;
-    for (std::size_t sample = 0; sample < current.size(); ++sample) {
+    for (std::size_t sample = 0; sample < currentCount; ++sample) {
         if (current[sample].parent == parent && current[sample].name == name) {
             index = static_cast<int>(sample);
             break;
@@ -65,8 +67,18 @@ void Profiler::beginScope(std::string_view name) {
     }
 
     if (index < 0) {
-        index = static_cast<int>(current.size());
-        current.push_back({.name = std::string(name), .milliseconds = 0.0, .calls = 0, .depth = static_cast<int>(open.size()), .parent = parent});
+        index = static_cast<int>(currentCount);
+        if (currentCount == current.size()) {
+            current.emplace_back();
+        }
+
+        ProfileSample& sample = current[currentCount];
+        sample.name.assign(name);
+        sample.milliseconds = 0.0;
+        sample.calls = 0;
+        sample.depth = static_cast<int>(open.size());
+        sample.parent = parent;
+        ++currentCount;
     }
 
     ++current[static_cast<std::size_t>(index)].calls;

@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <functional>
 #include <memory>
+#include <span>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -41,8 +42,8 @@ class Profiler final {
     [[nodiscard]] std::string_view getScopeName() const noexcept;
 
     // The scopes of the last finished frame, parents before their children.
-    [[nodiscard]] const std::vector<ProfileSample>& getLastFrame() const noexcept {
-        return finished;
+    [[nodiscard]] std::span<const ProfileSample> getLastFrame() const noexcept {
+        return {finished.data(), finishedCount};
     }
     [[nodiscard]] double getLastFrameMilliseconds() const noexcept {
         return lastFrameMilliseconds;
@@ -74,8 +75,11 @@ class Profiler final {
 
     Clock clock;
     std::shared_ptr<TraceRecorder> tracer;
+    // The samples of a frame keep their storage for the frames after it, which use the first entries, so a frame of the same scopes allocates nothing.
     std::vector<ProfileSample> current;
     std::vector<ProfileSample> finished;
+    std::size_t currentCount = 0;
+    std::size_t finishedCount = 0;
     std::vector<OpenScope> open;
     std::vector<float> history;
     std::vector<float> intervals;

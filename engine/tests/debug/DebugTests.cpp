@@ -6,6 +6,7 @@
 #include <condition_variable>
 #include <cstdlib>
 #include <mutex>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -49,7 +50,7 @@ TEST(ProfilerTest, AddsUpScopesPerFrame) {
     now = 0.016;
     profiler.endFrame();
 
-    const std::vector<ProfileSample>& samples = profiler.getLastFrame();
+    const std::span<const ProfileSample> samples = profiler.getLastFrame();
     ASSERT_EQ(samples.size(), 3U);
     EXPECT_EQ(samples[0].name, "update");
     EXPECT_NEAR(samples[0].milliseconds, 6.0, 1e-9);
@@ -61,6 +62,32 @@ TEST(ProfilerTest, AddsUpScopesPerFrame) {
     EXPECT_EQ(samples[2].name, "render");
     EXPECT_EQ(samples[2].depth, 0);
     EXPECT_NEAR(profiler.getLastFrameMilliseconds(), 16.0, 1e-9);
+}
+
+// Frames of the same scopes reuse the samples of the frames before them, so a scope whose name is longer than the text a string keeps in place allocates nothing, as on the web, where that text is shortest.
+TEST(ProfilerTest, MeasuresFramesOfTheSameScopesWithoutAllocating) {
+    Profiler profiler;
+    // clang-format off
+    const auto frame = [&profiler] {
+        profiler.beginFrame(0.016);
+        const ProfileScope outer(profiler, "a scope whose name outgrows the text of a short string");
+        const ProfileScope inner(profiler, "another scope inside it with a long name");
+    };
+    // clang-format on
+    frame();
+    profiler.endFrame();
+    frame();
+    profiler.endFrame();
+
+    const test::AllocationTracker tracker;
+    for (int index = 0; index < 3; ++index) {
+        frame();
+        profiler.endFrame();
+    }
+
+    EXPECT_EQ(tracker.getTotal(), 0U);
+    ASSERT_EQ(profiler.getLastFrame().size(), 2U);
+    EXPECT_EQ(profiler.getLastFrame()[1].name, "another scope inside it with a long name");
 }
 
 TEST(ProfilerTest, ScopesCloseWhatTheyContain) {
@@ -315,7 +342,7 @@ TEST(DebugPluginTest, ProfilesFromLua) {
     fixture.frames(1);
     ASSERT_NE(fixture.engine().getError(), nullptr);
     EXPECT_NE(std::string_view(fixture.engine().getError()->what()).find("A profiler scope was closed without being opened."), std::string::npos);
-    const std::vector<ProfileSample>& scopes = fixture.engine().getProfiler().getLastFrame();
+    const std::span<const ProfileSample> scopes = fixture.engine().getProfiler().getLastFrame();
     EXPECT_NE(std::ranges::find(scopes, std::string_view("update"), &ProfileSample::name), scopes.end());
 }
 

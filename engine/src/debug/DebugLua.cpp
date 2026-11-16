@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -413,7 +414,7 @@ int DebugLua::frame(lua_State* L) {
         lua_setfield(L, -2, "gpuMilliseconds");
     }
 
-    const std::vector<ProfileSample>& samples = profiler.getLastFrame();
+    const std::span<const ProfileSample> samples = profiler.getLastFrame();
     lua_createtable(L, static_cast<int>(samples.size()), 0);
     for (std::size_t index = 0; index < samples.size(); ++index) {
         const ProfileSample& sample = samples[index];
