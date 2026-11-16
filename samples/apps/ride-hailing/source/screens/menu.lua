@@ -11,7 +11,7 @@ local Menu = haylen.class('Menu', ui.Screen)
 function Menu:build()
     local space = Style.space
     local items = {
-        {id = 'activity', text = 'Your trips', caption = Rides.thousands(#Rides.past) .. ' trips', image = Shell.icon('receipt')},
+        {id = 'trips', text = 'Your trips', caption = Rides.thousands(#Rides.past) .. ' trips', image = Shell.icon('receipt')},
         {id = 'wallet', text = 'Wallet', caption = Rides.money(Rides.wallet.balance) .. ' in your wallet', image = Shell.icon('wallet')},
         {id = 'account', text = 'Account', caption = 'Safety, contacts and the invite', image = Shell.icon('user')},
     }
@@ -25,7 +25,7 @@ function Menu:build()
         },
         ui.divider{},
         ui.list{id = 'pages', items = items, autofocus = true, onSelect = function(event)
-            Shell.openPage(require('screens.' .. event.item))
+            Shell.openPage(event.item)
         end},
         ui.spacer{grow = 1},
         -- Where quitting closes the app, the menu offers it, so the way the app ends can be tried.

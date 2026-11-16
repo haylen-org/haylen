@@ -3,8 +3,8 @@ local events = require('haylen.events')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
-local Chats = require('chats')
 local Page = require('page')
+local Routes = require('routes')
 local Shell = require('shell')
 local Social = require('data.social')
 local Style = require('style')
@@ -72,12 +72,12 @@ function Profile:tree()
         end,
         onSelect = function(event)
             if not event.part then
-                Shell.open(require('screens.post'), {post = event.item})
+                Shell.open(Routes.post(Social.post(event.item)))
             end
         end,
     }
     local content = ui.column{grow = 1, gap = 0,
-        person.me and ui.column{id = 'topBar', gap = 0, ui.row{height = Style.size.header, padding = {0, space.m}, ui.label{text = person.handle, font = 'heading', grow = 1, wrap = false}}, ui.divider{}} or Shell.header(person.handle),
+        self.params.person == nil and ui.column{id = 'topBar', gap = 0, ui.row{height = Style.size.header, padding = {0, space.m}, ui.label{text = person.handle, font = 'heading', grow = 1, wrap = false}}, ui.divider{}} or Shell.header(person.handle),
         Shell.centered(980, ui.column{gap = 0, list}, 1),
     }
     return content
@@ -94,7 +94,7 @@ function Profile:start()
 end
 
 function Profile:layoutChanged(wide)
-    if self.person.me and self.gui:has('topBar') then
+    if self.gui:has('topBar') then
         self.gui:set('topBar', {visible = not wide})
     end
 end
@@ -161,13 +161,13 @@ function Profile:headAction(part)
         if person.me then
             self:openEdit()
         else
-            Social.toggleFollow(person)
+            Widgets.toggleFollow(person)
         end
     elseif part == 'secondary' then
         if person.me then
             Shell.showTab('create')
         else
-            Shell.open(require('screens.chat'), {conversation = Chats.with(person).id}, 'conversation')
+            Shell.router:open(Routes.chat(person.id))
         end
     end
 end

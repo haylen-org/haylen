@@ -1,8 +1,10 @@
 -- The explore tab: a grid of the pictures of everyone, and the people whose name or handle matches the typed text.
+local events = require('haylen.events')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
 local Page = require('page')
+local Routes = require('routes')
 local Shell = require('shell')
 local Social = require('data.social')
 local Style = require('style')
@@ -23,15 +25,12 @@ function Explore:tree()
         Shell.centered(980, ui.column{gap = 0,
             ui.collection{id = 'grid', grow = 1, layout = 'grid', lanes = 3, cellAspect = 1, gap = space.xs, padding = {0, space.s, space.xl, space.s}, rememberFocus = true, types = {tile = Widgets.tile()},
                 onSelect = function(event)
-                    Shell.open(require('screens.post'), {post = event.item})
+                    Shell.open(Routes.post(Social.post(event.item)))
                 end,
             },
             ui.collection{id = 'people', visible = false, grow = 1, gap = 0, padding = {0, 0, space.xl, 0}, rememberFocus = true, types = {person = Widgets.person()},
                 onClick = function(event)
-                    local person = Social.person(event.cell.item)
-                    Social.toggleFollow(person)
-                    Widgets.describePerson(person)
-                    self.gui:collection('people'):reload(person.id)
+                    Widgets.toggleFollow(Social.person(event.cell.item))
                 end,
                 onSelect = function(event)
                     Widgets.openPerson(event.item)
@@ -50,6 +49,9 @@ function Explore:start()
         end
     end
     self.gui:collection('grid'):setItems(Widgets.tiles(posts))
+    events.on('socialChanged', function(changed)
+        Widgets.showFollow(self.gui:collection('people'), changed)
+    end, {owner = self})
 end
 
 -- Puts the focus in the search field, such as when the search button of the home opens the tab.

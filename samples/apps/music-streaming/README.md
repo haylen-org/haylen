@@ -16,7 +16,7 @@ The commands run from the root of the repository:
 | Browser | `haylen run samples/apps/music-streaming --platform web` |
 | Headless player | `build/macos-debug/bin/haylen-headless samples/apps/music-streaming` |
 
-On the headless platform the app runs a tour by itself: it plays a mix, opens the player, seeks, picks a shorter song near the end of the one that plays and checks that the time of the old song never counts for the new one, skips, shuffles, repeats, sets the sleep timer, likes a song, reorders the queue, scrolls the favorites, opens an artist, adds a song to a playlist, searches, opens a genre and the library, makes a playlist, logs every step and quits.
+On the headless platform the app runs a tour by itself: it plays a mix, opens the player, seeks, picks a shorter song near the end of the one that plays and checks that the time of the old song never counts for the new one, skips, shuffles, repeats, sets the sleep timer, likes a song, shares it, pulls the queue up from half the screen, reorders it and removes a song, scrolls the favorites, opens an artist, adds a song to a playlist and takes one out, searches, opens a genre and the library, makes a playlist and deletes it after the alert, opens links of the scheme and of the web, logs every step and quits.
 
 ## Screens
 
@@ -25,12 +25,33 @@ On the headless platform the app runs a tour by itself: it plays a mix, opens th
 | Home | A greeting, the mix of the day on a card in the colors of its genre, and shelves of the mixes, the playlists, new releases, popular artists and albums played lately. |
 | Search | The genres as tiles in their colors while the field is empty, and the artists, albums and songs that match the typed text in one recycled list. |
 | Library | The playlists, albums and artists in a recycled grid, picked with pills, a dialog that makes a new playlist and, where quitting closes the app, a button that quits it. |
-| Album, playlist, mix and genre | The big cover, the names and the buttons that play and shuffle under the glow of the colors of the genre, over the songs in a recycled list that holds all 2,400 favorites. |
-| Artist | The round picture, the listeners, the follow button, the popular songs and the albums in one recycled grid of mixed cells. |
-| Now playing | The big cover over the glow of its genre, the visualizer, the song with its heart, the position to drag, the controls with shuffle and repeat, the sleep timer and the volume. A wide window shows the cover beside the controls and the songs that come next. |
-| Queue | The song that plays and the songs that come next, which a drag or the keyboard, a gamepad or a remote put in another order. |
+| Album, playlist, mix and genre | The big cover, the names and the buttons that play and shuffle under the glow of the colors of the genre, over the songs in a recycled list that holds all 2,400 favorites, with the share button in the bar and, on a playlist of the person, the button that deletes it after an alert. A link to a song shows its album around the song. |
+| Artist | The round picture, the listeners, the follow button, the popular songs and the albums in one recycled grid of mixed cells, with the share button in the bar. |
+| Now playing | The big cover over the glow of its genre, the visualizer, the song with its heart, the position to drag, the controls with shuffle and repeat, the sleep timer, the volume and the share button of the song. A wide window shows the cover beside the controls and the songs that come next. |
+| Queue | A sheet that rests at half the screen and opens to nearly all of it, with the song that plays and the songs that come next, which a drag or the keyboard, a gamepad or a remote put in another order, and which leave from their menu or all at once with a snackbar that brings them back. |
 
-Every song has a menu that a right click, a long press or the menu button opens: play next, add to the queue, add to a playlist, go to the artist and go to the album.
+Every song has a menu that a right click, a long press or the menu button opens: play next, add to the queue, add to a playlist, go to the artist, go to the album and share, and on a playlist of the person, remove from the playlist, with a snackbar that puts the song back.
+
+## Links
+
+The links of the scheme `haylenmusic` and of the web host `music.example.com` open the screens of the app from a cold start and while it runs, through the routes of `source/routes.lua`. The local plugin of `plugins/music-links/` registers the scheme on Apple platforms, Android, Windows and Linux, and its README lists the commands that open a link on each of them. The share buttons and the menu of a song put either link on the clipboard.
+
+| Link | What it opens |
+| --- | --- |
+| `haylenmusic://home` | The home tab. |
+| `haylenmusic://search` | The search tab. |
+| `haylenmusic://search/golden` | The results of a search over the search tab, with the way back. |
+| `haylenmusic://library` | The library tab. |
+| `haylenmusic://artist/12` | An artist over the root of the tab that shows. |
+| `haylenmusic://album/30` | An album over the root of the tab that shows. |
+| `haylenmusic://album/30?track=264` | An album around one of its songs, the link that sharing a song gives. |
+| `haylenmusic://playlist/drive` | A playlist or a mix, such as `playlist/mix-jazz` or the favorites, `playlist/liked`. |
+| `haylenmusic://genre/jazz` | The songs of a genre over the search tab. |
+| `haylenmusic://player` | The player over everything. |
+| `haylenmusic://queue` | The queue in its sheet. |
+| `https://music.example.com/artist/12` | The same screens from the web host, for every path above. |
+
+A link to something the library lacks, such as `haylenmusic://artist/9999`, shows a page that says so, and a link that no route matches leaves the app as it is.
 
 ## Controls
 
@@ -52,6 +73,8 @@ The app follows the [navigation](../../../docs/ui/navigation.md) of the engine, 
 - The autoload `source/player.lua` keeps the queue, plays a song with `audio.playMusic`, which crossfades from the one before and starts at a position, seeks with `audio.setCursor`, keeps the last six songs and makes the next one ahead of time, goes on to the next song when one ends, and shows what plays in the now playing controls of the system with `system.setNowPlaying`, whose `mediaCommand` events play, pause, skip and seek. Every change emits `playerChanged` on [`haylen.events`](../../../docs/lua-api/events.md).
 - The covers of `source/covers.lua` are SVG documents made from one of six patterns over a diagonal gradient of the colors of a genre, read with `graphics.newVectorImage` and named with `ui.setImage`, so 368 covers take a few hundred bytes each and rasterize only while they show. The glow behind a screen is a tall texture of `image:fillGradient` that fades from a dark shade of the genre into the night.
 - The menu of a song is a `contextMenu` around the row in the template of the cell, so its `select` arrives on the collection with `part` and `cell`, and the queue is a `collection` with `reorderable = true`, whose `reorder` event moves the song in the player.
+- The router of `source/routes.lua`, `ui.router` over the tabs with `restore = true`, turns links into screens, and every screen that the person opens goes through it too with `router:push`, so the router knows the location of each screen, builds the stacks of the tabs and the presentations again after the system ended the app, and gives the location that sharing puts in a link. The player and the queue are routes that present their screens, the player over the whole screen and the queue as a page sheet with the detents `medium` and `large`, as the [navigation guide](../../../docs/ui/navigation.md#sheets-and-their-detents) describes.
+- Sharing is an action sheet of `ui.presentAlert` that points at the share button on a wide window and rises from the bottom of a phone, deleting a playlist asks first in an alert with a destructive action, and a song that leaves a playlist or the queue shows a snackbar of `ui.showMessage` whose `Undo` puts it back where it was, while the other confirmations are toasts at the top, clear of the player.
 
 ## Style guide
 
@@ -72,11 +95,12 @@ The app follows the [navigation](../../../docs/ui/navigation.md) of the engine, 
 
 ```text
 music-streaming/
-  app.json               Window, physical UI scale, any orientation, the playback audio session, the player autoload and the identifier.
+  app.json               Window, physical UI scale, any orientation, the playback audio session, the player autoload, the plugin of the links and the identifier.
   source/
     main.lua             Registers the theme and the covers, and starts the shell.
     style.lua            The palette, the type scale, the spacing scale, the shapes and the theme.
-    shell.lua            Tabs, navigation, messages, the sidebar, the bar of tabs, the floating card of the song and the player bar.
+    shell.lua            Tabs, navigation, messages, alerts, sharing, the sidebar, the bar of tabs, the floating card of the song and the player bar.
+    routes.lua           The routes of the links and the locations of the screens.
     page.lua             The base of every screen, a class of "ui.Screen", with the glow of its genre.
     widgets.lua          The templates of songs, covers and artists, the shelves, the menu of a song and the playlist sheet.
     player.lua           The queue and the playback, an autoload.
@@ -90,4 +114,6 @@ music-streaming/
     icons/               The icons.
     images/              The logo and the illustration.
     fonts/               Kanit and its license.
+  plugins/
+    music-links/         The local plugin that registers the scheme of the links.
 ```

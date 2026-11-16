@@ -1,7 +1,9 @@
--- The frame of the app: the tabs, the messages it shows and the layout that follows the width of the window. Phones show a bar of tabs with their names at the bottom, and wide windows show the wordmark, the tabs, the search and the bag across the top, the way a store on the web does. The frame mounts once in the scene of the app, and the screens of each tab live in a stack of their own in its middle, so going to another screen changes only the middle while the bars stay. The bag opens over everything as a sheet, a flow of its own up to the confirmation of the order.
+-- The frame of the app: the tabs, the routes of its links, the messages it shows and the layout that follows the width of the window. Phones show a bar of tabs with their names at the bottom, and wide windows show the wordmark, the tabs, the search and the bag across the top, the way a store on the web does. The frame mounts once in the scene of the app, and the screens of each tab live in a stack of their own in its middle, so going to another screen changes only the middle while the bars stay. The bag opens over everything as a sheet, a flow of its own up to the confirmation of the order.
+local async = require('async')
 local events = require('haylen.events')
 local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
+local system = require('haylen.system')
 local ui = require('haylen.ui')
 local viewport = require('haylen.viewport')
 
@@ -38,7 +40,7 @@ function Shell.start()
     scene.push(Shell.scene)
 end
 
--- Mounts the frame and the tabs in the middle of the frame. The bag button of the frame follows the bag while the app runs.
+-- Mounts the frame and the tabs in the middle of the frame, and starts the routes of the links over the tabs. The bag button of the frame follows the bag while the app runs.
 function Shell.scene:enter()
     Shell.gui = ui.mount(Shell.frame(), {owner = self, sharedFocus = true})
     Shell.showBag(Shell)
@@ -50,6 +52,7 @@ function Shell.scene:enter()
     Shell.navigation = ui.navigationTabs{gui = Shell.gui, id = 'middle', tabs = tabs, owner = self, onChange = function(event)
         Shell.select(event.selected, event.previous)
     end}
+    Shell.router = require('routes').start(Shell.navigation, self)
 end
 
 function Shell.scene:update()
@@ -71,6 +74,43 @@ function Shell.offerUndo(text, undo)
     ui.showMessage{style = 'snackbar', text = text, action = 'Undo', owner = Shell.scene, onAction = undo}
 end
 
+-- Asks before something goes away for good in an alert, and calls `confirmed` once the person picks the destructive action.
+function Shell.confirm(title, message, action, confirmed)
+    return ui.presentAlert{title = title, message = message, owner = Shell.scene,
+        actions = {{id = 'keep', text = 'Cancel', role = 'cancel'}, {id = 'confirm', text = action, role = 'destructive'}},
+        onDismiss = function(event)
+            if event.result == 'confirm' then
+                confirmed()
+            end
+        end}
+end
+
+-- Offers the links of a location in an action sheet, which points at the button that opened it on a wide window, and puts the link the person picks on the clipboard.
+function Shell.share(title, location, anchor)
+    local Routes = require('routes')
+    return ui.presentAlert{style = 'actionSheet', title = title, anchor = anchor, owner = Shell.scene,
+        actions = {{id = 'web', text = 'Copy link'}, {id = 'app', text = 'Copy the link of the app'}, {id = 'cancel', text = 'Cancel', role = 'cancel'}},
+        onDismiss = function(event)
+            if event.result == 'web' then
+                Shell.copy(Routes.webLink(location))
+            elseif event.result == 'app' then
+                Shell.copy(Routes.link(location))
+            end
+        end}
+end
+
+-- Puts a link on the clipboard and tells whether it got there, since a browser keeps the clipboard from a page without a recent input of the person.
+function Shell.copy(link)
+    async.spawn(function()
+        local _, problem = system.setClipboard(link):await()
+        if problem then
+            Shell.notify(problem, 'warning')
+            return
+        end
+        Shell.notify('The link is on the clipboard.')
+    end)
+end
+
 -- Shows a tab with the screens it kept, or goes back to its root when it already shows. Parameters go to the root of the tab, such as the category that the browse tab shows, which then shows at its root.
 function Shell.showTab(id, params)
     Shell.navigation:select(id)
@@ -82,11 +122,15 @@ function Shell.showTab(id, params)
     stack.screens[1]:apply(params)
 end
 
--- The screen that the person sees: the screen on top of the presentation that shows, or the top screen of the tab that shows, which may be the open order beside the list.
+-- Whether a presented screen, such as the flow of the bag, still shows.
+function Shell.isPresented(screen)
+    return screen ~= nil and screen.presentation ~= nil and not screen.presentation.dismissed
+end
+
+-- The screen that the person sees: the step on top of the flow of the bag while it shows, or the top screen of the tab that shows, which may be the open order beside the list.
 function Shell.top()
-    local presented = Shell.presented
-    if presented and not presented.dismissed then
-        return presented.screen.steps.top
+    if Shell.isPresented(Shell.bagFlow) then
+        return Shell.bagFlow.steps.top
     end
     local top = Shell.navigation.current.top
     local split = top.split
@@ -99,23 +143,32 @@ function Shell.top()
     return split.primary.top
 end
 
--- Pushes a screen in the stack of the tab that shows.
-function Shell.open(Screen, params)
-    Shell.navigation.current:push(Screen(params))
+-- Shows the screen of a location, such as "product/12", in the stack of the tab that shows. A screen that already shows the same location further down the stack, such as the product that a related product opened from, comes back instead, so the stack never holds two copies of it.
+function Shell.open(location)
+    local stack = Shell.navigation.current
+    local screens = stack.screens
+    for level = #screens - 1, 1, -1 do
+        local shown = screens[level]
+        if Shell.router:location(shown) == location then
+            stack:popTo(shown)
+            return
+        end
+    end
+    Shell.router:push(location)
 end
 
--- Presents the bag over everything as a sheet that starts a flow of its own, from the bag to the checkout and the confirmation, while no other presentation shows.
+-- Presents the bag through its route over everything as a sheet that starts a flow of its own, from the bag to the checkout and the confirmation, while it does not show yet.
 function Shell.openBag()
-    if Shell.presented and not Shell.presented.dismissed then
+    if Shell.isPresented(Shell.bagFlow) then
         return
     end
-    Shell.presented = ui.present(require('screens.checkout-flow')(), {style = 'sheet', maxWidth = 1100, maxHeight = 1200, owner = Shell.scene})
+    Shell.router:push('bag')
 end
 
 -- Closes the flow of the bag, such as once an order is placed.
 function Shell.closeBag()
-    if Shell.presented and not Shell.presented.dismissed then
-        Shell.presented:dismiss()
+    if Shell.isPresented(Shell.bagFlow) then
+        Shell.bagFlow.presentation:dismiss()
     end
 end
 

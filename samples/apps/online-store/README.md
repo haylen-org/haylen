@@ -16,22 +16,40 @@ The commands run from the root of the repository:
 | Browser | `haylen run samples/apps/online-store --platform web` |
 | Headless player | `build/macos-debug/bin/haylen-headless samples/apps/online-store` |
 
-On the headless platform the app runs a tour by itself: it browses a category with filters, opens a product, picks a color and a size, fills the bag, applies a promo code, checks out once without a street and once with it, follows the order through its stages, saves products and opens the account, logs every step and quits.
+On the headless platform the app runs a tour by itself: it browses a category with filters, opens a product, shares it, picks a color and a size, fills the bag, applies a promo code, removes a product, asks before emptying the bag, checks out once without a street and once with it, follows the order through its stages, saves products, opens the account and opens links of the scheme and of the web, logs every step and quits.
 
 ## Screens
 
 | Screen | What it shows |
 | --- | --- |
 | Shop | The edit of the season with the illustration of the app, the categories as tiles, the promises of the store and shelves of new arrivals, best sellers and offers. |
-| Browse | Every product in a recycled grid that fits its columns to the width, narrowed by a typed text, the category chips and a popover with the price range, the colors and the sale, which rises as a sheet on a phone, sorted by popularity, novelty, price or rating. |
-| Product | A gallery of four pictures in the chosen color, the name and the price in the serif with the old price struck through, the rating with the reviews in a sheet that rests at half the screen, the colors as round swatches, the sizes, the quantity, the details in an accordion and related products. The gallery stands beside the details on wide windows and above them on phones, and adding opens a sheet as tall as its content that leads to the bag. |
-| Bag | The products with steppers for their quantities, a promo code and the costs, in a card beside the products on wide windows. |
+| Browse | Every product in a recycled grid that fits its columns to the width, narrowed by a typed text, the category chips and a popover with the price range, the colors and the sale, which rises as a sheet on a phone, sorted by popularity, novelty, price or rating. A category of the shop opens the same grid as a page of its own with the way back. |
+| Product | A gallery of four pictures in the chosen color, the name and the price in the serif with the old price struck through, the rating with the reviews in a sheet that rests at half the screen, the colors as round swatches, the sizes, the quantity, the details in an accordion and related products. The gallery stands beside the details on wide windows and above them on phones, adding opens a sheet as tall as its content that leads to the bag, and the share button of the bar offers its links in an action sheet that points at the button on a wide window. |
+| Bag | The products with steppers for their quantities and a remove button, a promo code and the costs, in a card beside the products on wide windows. A product that leaves shows a snackbar that brings it back, and emptying the whole bag asks first in an alert. |
 | Checkout | The shipping address, which marks every empty field, the delivery, the payment and the summary with the button that places the order. |
 | Confirmation | The thanks, the number of the order and the way to follow it. |
 | Orders | The orders with their state, the newest on top. |
 | Order | The state of the order, the stages from the order to the door on a line of steps that fills as it moves on, the products and the total. |
 | Saved | The products kept with the heart. |
 | Account | The person with the counts of orders and saved products, the notices, the address, help and, where quitting closes the app, a button that quits it. |
+
+## Links
+
+The links of the scheme `haylenstore` and of the web host `store.example.com` open the screens of the app while it runs, through the routes of `source/routes.lua`, and the share button of a product copies them. A platform opens a link of the scheme once a plugin registers it, as the local plugin of [Music Streaming](../music-streaming/plugins/music-links/README.md) does for its own.
+
+| Link | What it opens |
+| --- | --- |
+| `haylenstore://shop` | The shop tab. |
+| `haylenstore://browse` | The browse tab with every product. |
+| `haylenstore://category/sneakers` | The page of a category over the browse tab. |
+| `haylenstore://product/42` | A product over the root of the tab that shows. |
+| `haylenstore://saved` | The saved products. |
+| `haylenstore://orders` | The orders. |
+| `haylenstore://account` | The account. |
+| `haylenstore://bag` | The flow of the bag in its sheet. |
+| `https://store.example.com/product/42` | The same screens from the web host, for every path above. |
+
+A link to something the store does not sell, such as `haylenstore://product/999999`, shows a page that says so, and a link that no route matches leaves the app as it is.
 
 ## Controls
 
@@ -51,7 +69,8 @@ The app follows the [navigation](../../../docs/ui/navigation.md) of the engine, 
 - The price of a product on sale is a `richText` with the price in the color of the sale and the old price inside `[s]`, so the strike follows the text at every size.
 - The grid of the browse tab is a `collection` with `cellAspect` and `minCellSize`, so it shows two columns on a phone and five on a desktop, and the picture of a card takes the room its texts leave in the cell. A filter builds the new list and gives it to the collection, which compares the items by id.
 - The bag, in `source/bag.lua`, the saved products, in `source/wishlist.lua`, and the orders, in the autoload `source/orders.lua`, emit `bagChanged`, `wishlistChanged` and `orderChanged` on [`haylen.events`](../../../docs/lua-api/events.md). An order goes through its stages on every screen, and the bag buttons of every screen follow the count of the bag.
-- Taking a product out of the saved products shows a snackbar of `ui.showMessage` whose `Undo` saves it again, and the heart of the product follows `wishlistChanged`, while the other confirmations are toasts at the bottom.
+- The router of `source/routes.lua`, `ui.router` over the tabs with `restore = true`, turns links into screens, and the products and categories that the person opens go through it too, so the router knows the location of each screen, builds the stacks of the tabs and the flow of the bag again after the system ended the app, and gives the location that sharing puts in a link. The bag is a route that presents its flow as a sheet.
+- Sharing is an action sheet of `ui.presentAlert`, and emptying the bag asks first in an alert with a destructive action. A product that leaves the bag or the saved products shows a snackbar of `ui.showMessage` whose `Undo` puts it back, and the heart of the product follows `wishlistChanged`, while the other confirmations are toasts at the bottom.
 - The checkout keeps the values of its fields from their events, so a window that crosses the wide width lays the form out again without losing them, and marks each empty field with the `error` of its `formField`.
 
 ## Style guide
@@ -77,7 +96,8 @@ online-store/
   source/
     main.lua             Registers the theme and the swatches, and starts the shell.
     style.lua            The palette, the type scale, the spacing scale, the shapes and the theme.
-    shell.lua            Tabs, navigation, messages, the navigation of the top, the bar of tabs, the bag buttons and the headers.
+    shell.lua            Tabs, navigation, messages, alerts, sharing, the navigation of the top, the bar of tabs, the bag buttons and the headers.
+    routes.lua           The routes of the links and the locations of the screens.
     page.lua             The base of every screen, a class of "ui.Screen".
     widgets.lua          The picture of a product, the product card, the shelves, the swatches and the rows of costs.
     bag.lua              The bag and its promo codes.

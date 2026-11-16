@@ -21,7 +21,7 @@ function Saved:tree()
         Shell.centered(Style.size.page, ui.collection{id = 'saved', grow = 1, layout = 'grid', minCellSize = Widgets.cellWidth, cellAspect = Widgets.cellAspect, gap = space.m, padding = {space.xs, space.l, space.xl, space.l}, rememberFocus = true,
             types = {product = Widgets.productCard()},
             onSelect = function(event)
-                Shell.open(require('screens.product'), {product = event.item})
+                Widgets.openProduct(event.item)
             end,
             ui.emptyState{image = 'images/hero.png', imageSize = 240, title = 'Nothing saved yet', message = 'Tap the heart of a product to keep it here.'},
         }, 1),

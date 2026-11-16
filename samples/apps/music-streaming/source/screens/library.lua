@@ -64,6 +64,11 @@ end
 
 function Library:start()
     self.items = self.gui:collection('items')
+end
+
+-- The library shows the playlists as they are now every time it shows, such as after one was deleted.
+function Library:appear()
+    Page.appear(self)
     self:show()
 end
 
@@ -91,9 +96,9 @@ end
 function Library:create(typed)
     self.created = self.created + 1
     local name = typed:match('^%s*(.-)%s*$')
-    local playlist = {id = 'created-' .. self.created, type = 'playlist', name = name ~= '' and name or 'My playlist ' .. self.created, description = 'A playlist you made.', tracks = {}, cover = Shell.blankCover, caption = 'Playlist · 0 songs'}
-    table.insert(Catalog.playlists, 2, playlist)
-    Catalog.byId[playlist.id] = playlist
+    local playlist = {id = 'created-' .. self.created, type = 'playlist', name = name ~= '' and name or 'My playlist ' .. self.created, description = 'A playlist you made.', tracks = {}, cover = Shell.blankCover}
+    Catalog.addPlaylist(playlist)
+    Shell.showPlaylists()
     Shell.notify(playlist.name .. ' is in your library.')
     self:show()
 end

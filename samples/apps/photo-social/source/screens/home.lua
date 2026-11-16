@@ -27,13 +27,21 @@ function Home:tree()
     }
 end
 
+-- The feed follows the posts that change, arrive or go away, and the people to follow show whom the person follows.
 function Home:start()
     events.on('socialChanged', function(changed)
-        if self.feed and Social.post(changed.id) == changed then
-            self.feed:setItems(Social.feed())
-            if self.feed:indexOf(changed.id) then
-                self.feed:reload(changed.id)
+        if not self.feed then
+            return
+        end
+        if Social.person(changed.id) == changed then
+            if self.gui:has('suggested') then
+                Widgets.showFollow(self.gui:collection('suggested'), changed)
             end
+            return
+        end
+        self.feed:setItems(Social.feed())
+        if self.feed:indexOf(changed.id) then
+            self.feed:reload(changed.id)
         end
     end, {owner = self})
 end
@@ -104,10 +112,7 @@ function Home:side()
         ui.label{text = 'People to follow', font = 'button', color = 'textMuted', margin = {space.s, 0, 0, 0}},
         ui.collection{id = 'suggested', height = 80 * 5, gap = 0, scrollbar = false, types = {person = Widgets.person()},
             onClick = function(event)
-                local person = Social.person(event.cell.item)
-                Social.toggleFollow(person)
-                Widgets.describePerson(person)
-                self.gui:collection('suggested'):reload(person.id)
+                Widgets.toggleFollow(Social.person(event.cell.item))
             end,
             onSelect = function(event)
                 Widgets.openPerson(event.item)

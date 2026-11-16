@@ -16,7 +16,7 @@ The commands run from the root of the repository:
 | Browser | `haylen run samples/apps/ride-hailing --platform web` |
 | Headless player | `build/macos-debug/bin/haylen-headless samples/apps/ride-hailing` |
 
-On the headless platform the app runs a tour by itself: it searches a destination, compares the kinds of ride, requests one, follows the trip through the search, the driver on the way, the messages, the safety tools and the ride, rates it with a tip, opens the menu, the trips, a past trip, the wallet and the account, logs every step and quits.
+On the headless platform the app runs a tour by itself: it searches a destination, compares the kinds of ride, requests one, follows the trip through the search, the driver on the way, the messages, the safety tools and the ride with its details in a sheet over the map, rates it with a tip, opens the menu, the trips, a past trip, the wallet and the account, opens links of the scheme and of the web, and requests a second ride that it cancels after the reasons and the alert, logs every step and quits.
 
 ## Screens
 
@@ -25,12 +25,28 @@ On the headless platform the app runs a tour by itself: it searches a destinatio
 | Map | The map with the traffic and the rider, the round buttons of the menu and of the rider's place, and a sheet that asks where the rider is going, with the saved places, the recent destinations and the ride in progress. |
 | Search | The pickup and the destination joined by a line, and a field that narrows the 565 places of the city in a recycled list as the person types, with the saved places first. |
 | Ride | The route on the map with the pickup and the destination, and a sheet with the six kinds of ride with their prices and times, the payment and the request. |
-| Trip | The radar while the app looks for a driver, the car of the driver coming to the pickup, waiting and riding the route, under a sheet with the stage, the minutes left in large numbers, the progress of the trip, the driver and the plate, the messages, the safety tools, the share and the cancel, and the rating with a tip at the end. |
+| Trip | The radar while the app looks for a driver, the car of the driver coming to the pickup, waiting and riding the route, under a sheet with the stage, the minutes left in large numbers, the progress of the trip, the driver and the plate, the messages, the safety tools, the details, the share and the cancel, and the rating with a tip at the end. The cancel asks for the reason in an action sheet that points at its button and then asks once more in an alert. |
+| Ride details | A sheet over the map that rests at half the screen and opens to nearly all of it, with the pickup and the destination, the driver and the car, the kind of ride, the payment and the fare. It leaves the map to the person, so the map still moves and zooms under it. |
 | Menu | A panel that slides in from the left over the dimmed map with the rider, the trips, the wallet, the account and, where quitting closes the app, a button that quits it. |
 | Trips | The 520 past trips in a recycled list under sticky months. |
 | Trip details | The route on a map drawn into a render target that the page shows as a picture, the places, the driver and the receipt. |
 | Wallet | The balance on a dark card with a dialog that adds funds, the ways to pay and the movements. |
 | Account | The rider, an invitation with the illustration of the app, the safety options and the trusted contacts. |
+
+## Links
+
+The links of the scheme `haylenride` and of the web host `ride.example.com` open the pages of the menu over the map while the app runs, through the routes of `source/routes.lua`. A platform opens a link of the scheme once a plugin registers it, as the local plugin of [Music Streaming](../music-streaming/plugins/music-links/README.md) does for its own.
+
+| Link | What it opens |
+| --- | --- |
+| `haylenride://map` | The map, with every page closed. |
+| `haylenride://trips` | The trips over the map. |
+| `haylenride://trip/12` | A past trip over the trips, so going back shows the trips and then the map. |
+| `haylenride://wallet` | The wallet over the map. |
+| `haylenride://account` | The account over the map. |
+| `https://ride.example.com/trip/12` | The same pages from the web host, for every path above. |
+
+A link to a trip the rider never took, such as `haylenride://trip/99999`, shows a page that says so, and a link that no route matches leaves the app as it is.
 
 ## Controls
 
@@ -43,12 +59,14 @@ On the headless platform the app runs a tour by itself: it searches a destinatio
 
 ## How it works
 
-The app follows the [navigation](../../../docs/ui/navigation.md) of the engine. It has no tab bar: the map is the first screen of one stack over the whole screen, whose steps of a ride change their sheet over the map with a cross fade, and whose pages of the menu slide over the map. A round button presents the menu as a drawer that slides in from the start of the screen over the dimmed map, and a tap beside it, Escape and the back button close it. `Shell.openPage` opens a page of the menu right over the map with the menu closed, and a ride again from a past trip starts over the map too, so going back always returns to the map. Every step of a ride shows in the sheet of `Shell.sheet`, a white card that floats at the bottom of a phone with a handle, or as a panel at the top left of a wide window, and `Shell.replace` puts the ride in the place of the search and the trip in the place of the ride. The screens of `source/screens/` are classes of `ui.Screen` built on the base of `source/page.lua`: the steps of a ride draw the map behind their GUI, and the pages cover it with the background of the theme.
+The app follows the [navigation](../../../docs/ui/navigation.md) of the engine. It has no tab bar: the map is the first screen of one stack over the whole screen, whose steps of a ride change their sheet over the map with a cross fade, and whose pages of the menu slide over the map. A round button presents the menu as a drawer that slides in from the start of the screen over the dimmed map, and a tap beside it, Escape and the back button close it. `Shell.openPage` opens a page of the menu through its route, right over the map with the menu closed, and a ride again from a past trip starts over the map too, so going back always returns to the map. Every step of a ride shows in the sheet of `Shell.sheet`, a white card that floats at the bottom of a phone with a handle, or as a panel at the top left of a wide window, and `Shell.replace` puts the ride in the place of the search and the trip in the place of the ride. The screens of `source/screens/` are classes of `ui.Screen` built on the base of `source/page.lua`: the steps of a ride draw the map behind their GUI, and the pages cover it with the background of the theme.
 
 - The autoload `source/rides.lua` holds the trip in progress and moves it through its stages on every screen: five seconds of search, the driver riding the route from where they are to the pickup, five seconds at the pickup and the ride to the destination, with the times of the routes from their lengths. Every change emits `tripChanged` on [`haylen.events`](../../../docs/lua-api/events.md), which the map, the trip and the trips hear, and shows a notice.
 - The traffic of `source/traffic.lua` is 36 cars that ride the shortest routes between random corners of the city and pick a new route when they arrive. The autoload advances it, so the map is alive behind every screen.
 - The module `source/map-view.lua` fits a part of the city into the room the sheet leaves, follows drags, the wheel and pinches, and draws the day map, the cars seen from above, the route with a white casing, the pickup and the destination with their labels, the pulse of the rider and the radar of the search with [`haylen.graphics2d`](../../../docs/lua-api/graphics2d.md) in a world canvas behind the GUI. Every mark keeps its size in UI units at every zoom, so it stays as large as the interface around it on every screen, and a block of the city never spans more than 110 points, so a short route never fills a large window with a few blocks.
 - The kinds of ride are a `collection` with single selection that follows the focus, so a remote picks a kind by moving to it, and the request button names it with its price.
+- The router of `source/routes.lua`, `ui.router` over the stack with `restore = true`, turns links into the pages of the menu, and the pages and past trips that the person opens go through it too, so it builds the stack again after the system ended the app. The route of a trip names the trips as its parent, so a link to a trip lies over the list of the trips.
+- The details of a ride are a sheet of `ui.present` with the detents `medium` and `large` and `modal = false`, so the map under it takes drags, the wheel and pinches, and on a wide window it keeps its detents along the bottom as a page sheet, as the [navigation guide](../../../docs/ui/navigation.md#sheets-and-their-detents) describes. The reasons to cancel are an action sheet of `ui.presentAlert`, and the alert after it has a destructive action.
 - The map of a past trip is drawn into a render target every frame, which `ui.setImage` names, so an `image` node shows it with rounded corners inside the scroll of the page, and its view keeps inside the city.
 
 ## Style guide
@@ -75,6 +93,7 @@ ride-hailing/
     main.lua             Registers the theme and starts the shell.
     style.lua            The palette of the screens and of the map, the type scale, the spacing scale, the shapes and the theme.
     shell.lua            Navigation, messages, the buttons over the map, the sheets and the headers.
+    routes.lua           The routes of the links.
     page.lua             The base of every screen, a class of "ui.Screen".
     rides.lua            The kinds of ride, the trip in progress, the past trips and the wallet, an autoload.
     traffic.lua          The cars of the city.

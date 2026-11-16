@@ -1,4 +1,4 @@
--- The frame of the app: the stack of its screens and the parts that float over the map. The map fills the screen and has no tab bar: a round button opens the menu with the trips, the wallet and the account over the map, and every step of a ride shows in a sheet, at the bottom of a phone or as a panel beside the map on a wide window. The steps of a ride and the pages of the menu are screens of one stack over the whole screen, and the menu is a drawer presented over everything.
+-- The frame of the app: the stack of its screens, the routes of its links and the parts that float over the map. The map fills the screen and has no tab bar: a round button opens the menu with the trips, the wallet and the account over the map, and every step of a ride shows in a sheet, at the bottom of a phone or as a panel beside the map on a wide window. The steps of a ride and the pages of the menu are screens of one stack over the whole screen, and the menu is a drawer presented over everything.
 local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
 local ui = require('haylen.ui')
@@ -32,10 +32,11 @@ function Shell.start()
     scene.push(Shell.scene)
 end
 
--- Mounts the frame, whose middle is the whole screen, with the stack of the screens on the map.
+-- Mounts the frame, whose middle is the whole screen, with the stack of the screens on the map, and starts the routes of the links over the stack.
 function Shell.scene:enter()
     Shell.gui = ui.mount(ui.column{id = 'middle', grow = 1, gap = 0, align = 'stretch'}, {owner = self, placement = 'screen', sharedFocus = true})
     Shell.stack = ui.navigationStack{gui = Shell.gui, id = 'middle', root = require('screens.home')(), owner = self}
+    Shell.router = require('routes').start(Shell.stack, self)
 end
 
 function Shell.scene:render()
@@ -72,10 +73,14 @@ function Shell.replace(Screen, params)
     Shell.stack:replace(Screen(params), Shell.sheetTransition)
 end
 
--- Opens a page of the menu, or a new ride from a past trip, right over the map, so going back always returns to the map.
-function Shell.openPage(Screen, params)
-    Shell.closeMenu()
-    Shell.stack:setScreens({Shell.stack.screens[1], Screen(params)})
+-- Opens a page of the menu through its route, such as "wallet", right over the map, which closes the menu, so going back always returns to the map.
+function Shell.openPage(location)
+    Shell.router:open(location)
+end
+
+-- Starts a new ride to a place right over the map, such as from a past trip, so going back returns to the map.
+function Shell.rideTo(placeId)
+    Shell.stack:setScreens({Shell.stack.screens[1], require('screens.preview')({to = placeId})})
 end
 
 -- Presents the menu as a drawer over the dimmed map, which a tap beside it, Escape and the back button close.
@@ -134,6 +139,22 @@ function Shell.sheet(id, children, wide)
         sheet.anchor, sheet.margin = 'stretchBottom', {0, space.xs, space.xs, space.xs}
     end
     return ui.card(sheet)
+end
+
+-- The pickup and the destination of a ride with their lines, joined by a line from a dot to a square.
+function Shell.stops(from, to)
+    local space = Style.space
+    return ui.row{gap = space.m, align = 'stretch',
+        ui.column{gap = 0, width = 28, padding = {14, 0}, align = 'stretch',
+            ui.icon{image = Shell.icon('dot'), size = 28, color = 'text', align = 'center'},
+            ui.divider{vertical = true, grow = 1, width = 4, align = 'center', color = 'borderStrong', style = {metrics = {borderWidth = 2.5}}},
+            ui.icon{image = Shell.icon('square'), size = 28, color = 'text', align = 'center'},
+        },
+        ui.column{gap = space.m, grow = 1,
+            ui.column{gap = 0, ui.label{text = from.name, font = 'button'}, ui.label{text = from.line, font = 'caption', color = 'textMuted'}},
+            ui.column{gap = 0, ui.label{text = to.name, font = 'button'}, ui.label{text = to.line, font = 'caption', color = 'textMuted'}},
+        },
+    }
 end
 
 -- Centers a node in the width it gets, as wide as it may be up to `maxWidth`. A `grow` lets the row take the free height of a column.

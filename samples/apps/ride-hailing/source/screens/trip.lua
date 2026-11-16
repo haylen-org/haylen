@@ -1,4 +1,4 @@
--- The trip in progress: the radar while the app looks for a driver, the car of the driver coming to the pickup and then riding the route, under a sheet with the stage, the minutes left in large numbers, the progress of the trip, the driver and the plate, the chat, the safety tools and the cancel, and the rating with a tip once the ride arrives.
+-- The trip in progress: the radar while the app looks for a driver, the car of the driver coming to the pickup and then riding the route, under a sheet with the stage, the minutes left in large numbers, the progress of the trip, the driver and the plate, the chat, the safety tools, the details of the ride and the cancel, and the rating with a tip once the ride arrives.
 local assets = require('haylen.assets')
 local events = require('haylen.events')
 local haylen = require('haylen')
@@ -56,15 +56,65 @@ function Chat:send(text)
     self.gui:replaceChildren('chatLines', chat)
 end
 
--- The reasons to cancel in a dialog, which hands the answer back to the trip.
-local CancelRide = haylen.class('CancelRide', ui.Screen)
+-- The details of the ride in a sheet over the map that leaves the map to the person, resting at half the screen and opening to nearly all of it: the pickup and the destination, the driver and the car, the kind of ride, the payment and the fare.
+local RideDetails = haylen.class('RideDetails', ui.Screen)
 
-function CancelRide:build()
-    return ui.dialog{title = 'Cancel the ride?', message = 'Tell us why, so we can do better.',
-        buttons = {{id = 'keep', text = 'Keep the ride'}, {id = 'cancel', text = 'Cancel the ride', variant = 'destructive'}},
-        onAnswer = function(event) self.presentation:dismiss({result = event.button}) end,
-        ui.radioGroup{id = 'reason', items = Trip.reasons, selected = 'plans'},
+function RideDetails:init(trip)
+    self.trip = trip
+end
+
+function RideDetails:build()
+    local space = Style.space
+    local trip = self.trip
+    local from, to = Places.find(trip.from), Places.find(trip.to)
+    local kind = Rides.kind(trip.kind)
+    local driver = trip.driver
+    return ui.column{gap = space.m, padding = {space.xs, space.l, space.l, space.l},
+        ui.row{gap = space.s,
+            ui.label{text = 'Your ride', font = 'heading', grow = 1},
+            ui.button{id = 'close', text = 'Close', onClick = function() self.presentation:dismiss() end},
+        },
+        ui.scroll{grow = 1, height = 0, ui.column{gap = space.m,
+            Shell.stops(from, to),
+            ui.divider{},
+            ui.row{gap = space.m,
+                ui.avatar{name = driver.name, size = 64},
+                ui.column{gap = 0, grow = 1,
+                    ui.label{text = driver.name, font = 'button', wrap = false},
+                    ui.label{text = driver.rating .. ' stars · ' .. driver.car .. ' · ' .. driver.plate, font = 'caption', color = 'textMuted'},
+                },
+            },
+            ui.row{gap = space.m,
+                ui.image{image = kind.art, width = 104, height = 60, fit = 'contain'},
+                ui.column{gap = 0, grow = 1,
+                    ui.label{text = kind.name, font = 'button'},
+                    ui.label{text = kind.seats .. (kind.seats == 1 and ' seat' or ' seats') .. ' · ' .. Rides.distanceText(trip.length), font = 'caption', color = 'textMuted'},
+                },
+            },
+            ui.card{gap = space.s, padding = space.l, style = {colors = {raised = Style.color.mist, border = Style.color.mist}, metrics = {panelRadius = Style.radius.control}},
+                RideDetails.row('Payment', RideDetails.paymentText(trip.payment)),
+                RideDetails.row('Fare', Rides.money(trip.fare)),
+            },
+        }},
     }
+end
+
+function RideDetails.row(text, value)
+    return ui.row{gap = Style.space.s, ui.label{text = text, color = 'textMuted', grow = 1}, ui.label{text = value}}
+end
+
+function RideDetails.paymentText(payment)
+    if payment == 'wallet' then
+        return 'Wallet'
+    end
+    if payment == 'cash' then
+        return 'Cash'
+    end
+    for _, card in ipairs(Rides.wallet.cards) do
+        if card.id == payment then
+            return card.text
+        end
+    end
 end
 
 function Trip:tree()
@@ -120,15 +170,14 @@ function Trip:layoutChanged(wide)
                 self:action('safety', 'shield', 'Safety', function()
                     self:openSafety()
                 end),
+                self:action('details', 'info', 'Details', function()
+                    self:openDetails()
+                end),
                 self:action('share', 'share', 'Share', function()
                     Shell.notify('Your trip is shared with your trusted contacts.')
                 end),
                 self:action('cancel', 'close', 'Cancel', function()
-                    ui.present(CancelRide(), {style = 'dialog', owner = self, onDismiss = function(event)
-                        if event.result == 'cancel' then
-                            self:cancel()
-                        end
-                    end})
+                    self:askCancel()
                 end),
             },
             ui.column{id = 'rating', visible = false, gap = space.s,
@@ -188,6 +237,39 @@ function Trip:openSafety()
                 Shell.notify('Your trip is shared with your trusted contacts.')
             elseif event.result == 'help' then
                 Shell.notify('Calling for help is not part of this sample.', 'warning')
+            end
+        end}
+end
+
+-- Shows the details of the ride in a sheet that is not modal, so the map under it still moves and zooms, and that keeps its detents along the bottom of a wide window.
+function Trip:openDetails()
+    if self.details and not self.details.dismissed then
+        return
+    end
+    self.details = ui.present(RideDetails(self.trip), {detents = {'medium', 'large'}, modal = false, size = 'page', owner = self})
+end
+
+-- Asks why the rider cancels in an action sheet that points at the cancel button, and then asks once more in an alert before the ride is cancelled for good.
+function Trip:askCancel()
+    local actions = {}
+    for index, reason in ipairs(Trip.reasons) do
+        actions[index] = {id = reason.id, text = reason.text}
+    end
+    actions[#actions + 1] = {id = 'keep', text = 'Keep the ride', role = 'cancel'}
+    self.cancelSheet = ui.presentAlert{style = 'actionSheet', title = 'Why do you want to cancel?', anchor = {gui = self.gui, id = 'cancel'}, owner = self, actions = actions, onDismiss = function(event)
+        if event.result ~= nil and event.result ~= 'keep' then
+            self:confirmCancel()
+        end
+    end}
+end
+
+function Trip:confirmCancel()
+    local searching = Rides.stages[self.trip.stage].id == 'searching'
+    self.cancelAlert = ui.presentAlert{title = 'Cancel the ride?', message = searching and 'No driver took the ride yet.' or self.trip.driver.name .. ' is already on the way to you.', owner = self,
+        actions = {{id = 'keep', text = 'Keep the ride', role = 'cancel'}, {id = 'cancel', text = 'Cancel the ride', role = 'destructive'}},
+        onDismiss = function(event)
+            if event.result == 'cancel' then
+                self:cancel()
             end
         end}
 end

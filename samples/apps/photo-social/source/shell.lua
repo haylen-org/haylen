@@ -1,7 +1,9 @@
--- The frame of the app: the tabs, the messages it shows and the layout that follows the width of the window. Phones show a bar of icons at the bottom, and wide windows show a rail with the wordmark and the names of the tabs on the left. The frame mounts once in the scene of the app, and the screens of each tab live in a stack of their own in its middle, so going to another screen changes only the middle while the bars stay. A new post and the stories open over everything as presentations, a new flow with bars of their own.
+-- The frame of the app: the tabs, the routes of its links, the messages it shows and the layout that follows the width of the window. Phones show a bar of icons at the bottom, and wide windows show a rail with the wordmark and the names of the tabs on the left. The frame mounts once in the scene of the app, and the screens of each tab live in a stack of their own in its middle, so going to another screen changes only the middle while the bars stay. A new post and the stories open over everything as presentations, a new flow with bars of their own.
+local async = require('async')
 local events = require('haylen.events')
 local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
+local system = require('haylen.system')
 local ui = require('haylen.ui')
 local viewport = require('haylen.viewport')
 
@@ -34,7 +36,7 @@ function Shell.start()
     scene.push(Shell.scene)
 end
 
--- Mounts the frame and the tabs in the middle of the frame, and shows a banner for each answer that arrives in a chat that does not show.
+-- Mounts the frame and the tabs in the middle of the frame, starts the routes of the links over the tabs, and shows a banner for each answer that arrives in a chat that does not show.
 function Shell.scene:enter()
     Shell.gui = ui.mount(Shell.frame(), {owner = self, sharedFocus = true})
     Shell.adaptFrame()
@@ -47,6 +49,7 @@ function Shell.scene:enter()
     Shell.navigation = ui.navigationTabs{gui = Shell.gui, id = 'middle', tabs = tabs, owner = self, onChange = function(event)
         Shell.select(event.selected, event.previous)
     end}
+    Shell.router = require('routes').start(Shell.navigation, self)
     events.on('chatChanged', Shell.showUnread, {owner = self})
     events.on('chatAnswered', Shell.showAnswer, {owner = self})
     Shell.showUnread()
@@ -71,11 +74,34 @@ function Shell.offerUndo(text, undo)
     ui.showMessage{style = 'snackbar', text = text, action = 'Undo', owner = Shell.scene, onAction = undo}
 end
 
--- Drops a banner with the face of whoever answered under the status bar, and a tap on it opens their chat.
+-- Asks before something goes away for good in an alert, and calls `confirmed` once the person picks the destructive action.
+function Shell.confirm(title, message, action, confirmed)
+    return ui.presentAlert{title = title, message = message, owner = Shell.scene,
+        actions = {{id = 'keep', text = 'Cancel', role = 'cancel'}, {id = 'confirm', text = action, role = 'destructive'}},
+        onDismiss = function(event)
+            if event.result == 'confirm' then
+                confirmed()
+            end
+        end}
+end
+
+-- Puts a link on the clipboard and tells whether it got there, since a browser keeps the clipboard from a page without a recent input of the person.
+function Shell.copy(link)
+    async.spawn(function()
+        local _, problem = system.setClipboard(link):await()
+        if problem then
+            Shell.notify(problem, 'warning')
+            return
+        end
+        Shell.notify('The link is on the clipboard.')
+    end)
+end
+
+-- Drops a banner with the face of whoever answered under the status bar, and a tap on it opens their chat through its route, in the messages tab beside or over the conversations.
 function Shell.showAnswer(conversation)
     local answer = conversation.messages[#conversation.messages]
     ui.showMessage{style = 'banner', title = conversation.name, text = answer.text, icon = conversation.avatar, owner = Shell.scene, onTap = function()
-        Shell.open(require('screens.chat'), {conversation = conversation.id}, 'conversation')
+        Shell.router:open(require('routes').chat(conversation.person))
     end}
 end
 
@@ -106,20 +132,18 @@ function Shell.top()
     return split.primary.top
 end
 
--- Pushes a screen in the stack of the tab that shows. A screen of the same kind that already shows the same thing, named by the parameter `key`, such as the chat with a person that a profile opened from that chat, comes back instead, so the stack never holds two copies of it.
-function Shell.open(Screen, params, key)
+-- Shows the screen of a location, such as "profile/ava", in the stack of the tab that shows. A screen that already shows the same location further down the stack, such as the profile that a post opened from, comes back instead, so the stack never holds two copies of it.
+function Shell.open(location)
     local stack = Shell.navigation.current
-    if key then
-        local screens = stack.screens
-        for level = #screens - 1, 1, -1 do
-            local shown = screens[level]
-            if shown:is(Screen) and shown.params[key] == params[key] then
-                stack:popTo(shown)
-                return
-            end
+    local screens = stack.screens
+    for level = #screens - 1, 1, -1 do
+        local shown = screens[level]
+        if Shell.router:location(shown) == location then
+            stack:popTo(shown)
+            return
         end
     end
-    stack:push(Screen(params))
+    Shell.router:push(location)
 end
 
 -- Presents a new post over everything, a flow of its own with its bar and its steps.

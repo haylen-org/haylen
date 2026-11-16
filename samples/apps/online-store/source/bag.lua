@@ -38,16 +38,28 @@ function Bag.add(product, colorId, size, quantity)
 end
 
 function Bag.setQuantity(id, quantity)
-    for index, line in ipairs(Bag.lines) do
+    for _, line in ipairs(Bag.lines) do
         if line.id == id then
-            if quantity <= 0 then
-                table.remove(Bag.lines, index)
-            else
-                line.quantity = quantity
-            end
+            line.quantity = quantity
             break
         end
     end
+    Bag.changed()
+end
+
+-- Takes a line out of the bag and returns it with its place, which `putBack` takes to bring it back.
+function Bag.remove(id)
+    for index, line in ipairs(Bag.lines) do
+        if line.id == id then
+            table.remove(Bag.lines, index)
+            Bag.changed()
+            return line, index
+        end
+    end
+end
+
+function Bag.putBack(line, index)
+    table.insert(Bag.lines, math.min(index, #Bag.lines + 1), line)
     Bag.changed()
 end
 

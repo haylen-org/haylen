@@ -1,4 +1,4 @@
--- The building blocks the screens share: the templates of posts, comments, people, stories and the tiles of a grid, what the buttons of a post do, and the dialog that sends a post to a friend.
+-- The building blocks the screens share: the templates of posts, comments, people, stories and the tiles of a grid, what the buttons of a post do, the action sheet that shares a post, the sheet that sends a post to a friend and following with a snackbar that takes an unfollow back.
 local tween = require('haylen.tween')
 local math2d = require('haylen.math')
 local haylen = require('haylen')
@@ -6,6 +6,7 @@ local ui = require('haylen.ui')
 
 local Chats = require('chats')
 local Photos = require('photos')
+local Routes = require('routes')
 local Shell = require('shell')
 local Social = require('data.social')
 local Style = require('style')
@@ -20,6 +21,8 @@ Widgets.postMenu = {
     {id = 'send', text = 'Send to a friend', image = Shell.icon('share')},
     {id = 'save', text = 'Save or unsave', image = Shell.icon('bookmark')},
 }
+-- The menu of a comment of the person.
+Widgets.commentMenu = {{id = 'delete', text = 'Delete comment', image = Shell.icon('trash')}}
 -- The buttons under a picture: an icon with its count, flat and close together.
 Widgets.countButton = {metrics = {controlPaddingX = Style.space.s, contentSpacing = Style.space.xs}}
 
@@ -55,7 +58,7 @@ function Widgets.post(wide, gallery)
         ui.row{gap = 0, padding = {space.xs, gutter - space.s, 0, gutter - space.s},
             ui.button{part = 'like', bind = {icon = 'likeIcon', iconColor = 'likeColor', text = 'likeCountText'}, text = '', icon = Shell.icon('heart'), iconColor = 'text', variant = 'toolbar', style = Widgets.countButton, accessibilityLabel = 'Like'},
             ui.button{part = 'comment', bind = {text = 'commentCountText'}, text = '', icon = Shell.icon('comment'), iconColor = 'text', variant = 'toolbar', style = Widgets.countButton, accessibilityLabel = 'Comments'},
-            ui.button{part = 'send', text = 'Share', icon = Shell.icon('share'), iconColor = 'text', variant = 'toolbar', style = Widgets.countButton, accessibilityLabel = 'Send to a friend'},
+            ui.button{part = 'send', text = 'Share', icon = Shell.icon('share'), iconColor = 'text', variant = 'toolbar', style = Widgets.countButton, accessibilityLabel = 'Share'},
             ui.spacer{grow = 1},
             ui.button{part = 'save', bind = {icon = 'saveIcon'}, icon = Shell.icon('bookmark'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Save'},
         },
@@ -96,9 +99,9 @@ function Widgets.onPostEvent(page, list, event)
         Widgets.toggleSave(post)
         list:reload(post.id)
     elseif part == 'comment' then
-        Shell.open(require('screens.post'), {post = post.id})
+        Shell.open(Routes.post(post))
     elseif part == 'send' then
-        Widgets.askFriend(page, post)
+        Widgets.sharePost(page, post)
     elseif part == 'author' or part == 'face' then
         Widgets.openPerson(post.author)
     elseif part == 'more' then
@@ -125,7 +128,43 @@ function Widgets.toggleSave(post)
 end
 
 function Widgets.openPerson(id)
-    Shell.open(require('screens.profile'), {person = id}, 'person')
+    Shell.open(Routes.profile(id))
+end
+
+-- Shows whether the person follows someone in a list of people, once that changed.
+function Widgets.showFollow(list, person)
+    if list:indexOf(person.id) then
+        Widgets.describePerson(person)
+        list:reload(person.id)
+    end
+end
+
+-- Follows a person or stops following them, which a snackbar offers to take back.
+function Widgets.toggleFollow(person)
+    if Social.toggleFollow(person) then
+        return
+    end
+    Shell.offerUndo('You unfollowed ' .. person.handle .. '.', function()
+        if not person.followed then
+            Social.toggleFollow(person)
+        end
+    end)
+end
+
+-- Offers the ways to share a post in an action sheet, which points at the share button that opened it on a wide window: sending it to a friend in a chat, or putting its link on the clipboard.
+function Widgets.sharePost(page, post, anchor)
+    local location = Routes.post(post)
+    page.shareSheet = ui.presentAlert{style = 'actionSheet', title = 'Share the post of ' .. post.authorName, anchor = anchor, owner = page,
+        actions = {{id = 'send', text = 'Send to a friend'}, {id = 'web', text = 'Copy link'}, {id = 'app', text = 'Copy the link of the app'}, {id = 'cancel', text = 'Cancel', role = 'cancel'}},
+        onDismiss = function(event)
+            if event.result == 'send' then
+                Widgets.askFriend(page, post)
+            elseif event.result == 'web' then
+                Shell.copy(Routes.webLink(location))
+            elseif event.result == 'app' then
+                Shell.copy(Routes.link(location))
+            end
+        end}
 end
 
 -- The conversations a post goes to, in a sheet that rests at half the screen and opens to nearly all of it, which hands the chosen conversation back.
@@ -162,10 +201,10 @@ function Widgets.askFriend(page, post)
     end})
 end
 
--- The template of a comment: the face, the name with the text, how long ago and the likes.
-function Widgets.comment()
+-- The template of a comment: the face, the name with the text, how long ago and the likes. A comment of the person has a menu that deletes it, which a right click, a long press or the menu button opens.
+function Widgets.comment(mine)
     local space = Style.space
-    return {template = ui.row{gap = space.s, padding = {space.s, space.m}, alignItems = 'start',
+    local row = ui.row{gap = space.s, padding = {space.s, space.m}, alignItems = 'start',
         ui.avatar{part = 'avatar', bind = {image = 'avatar'}, size = Style.size.avatarSmall},
         ui.column{gap = space.xxs, grow = 1,
             ui.richText{part = 'text', bind = {text = 'markup'}, text = ''},
@@ -174,7 +213,11 @@ function Widgets.comment()
                 ui.label{part = 'likes', bind = {text = 'likesText'}, font = 'caption', color = 'textMuted'},
             },
         },
-    }, interactive = false, estimatedSize = 92}
+    }
+    if not mine then
+        return {template = row, interactive = false, estimatedSize = 92}
+    end
+    return {template = ui.contextMenu{part = 'menu', items = Widgets.commentMenu, row}, interactive = true, estimatedSize = 92}
 end
 
 -- The template of a person in a list: the face, the handle, the name and the button that follows.

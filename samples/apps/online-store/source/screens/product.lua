@@ -1,10 +1,11 @@
--- A product: a gallery of four pictures in the chosen color, the name and the price in the serif, the rating with the reviews in a sheet, the colors as round swatches, the sizes, the quantity, the details and a shelf of related products. The gallery stands beside the details on wide windows and above them on phones, and adding to the bag opens a sheet that leads to the bag or back to shopping.
+-- A product: a gallery of four pictures in the chosen color, the name and the price in the serif, the rating with the reviews in a sheet, the colors as round swatches, the sizes, the quantity, the details and a shelf of related products, with the share button in its bar. The gallery stands beside the details on wide windows and above them on phones, and adding to the bag opens a sheet that leads to the bag or back to shopping.
 local events = require('haylen.events')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
 local Bag = require('bag')
 local Page = require('page')
+local Routes = require('routes')
 local Shell = require('shell')
 local Store = require('data.store')
 local Style = require('style')
@@ -60,6 +61,9 @@ function Product:tree()
     self.quantity = 1
     return ui.column{gap = 0,
         Shell.header(self.category.name, {
+            ui.button{id = 'share', icon = Shell.icon('share'), iconColor = 'text', variant = 'icon', tooltip = 'Share', accessibilityLabel = 'Share the product', onClick = function()
+                self:share()
+            end},
             ui.button{id = 'wish', icon = Shell.icon(Wishlist.has(product) and 'heart-filled' or 'heart'), iconColor = 'text', variant = 'icon', tooltip = 'Save', accessibilityLabel = 'Save the product', onClick = function()
                 self:toggleSaved()
             end},
@@ -70,7 +74,7 @@ function Product:tree()
                 ui.row{id = 'top', gap = Style.space.xl, align = 'stretch'},
                 Widgets.section('You may also like'),
                 ui.collection{id = 'related', axis = 'horizontal', scrollbar = false, gap = Style.space.m, rememberFocus = true, types = {product = Widgets.productCard(Style.size.card)}, onSelect = function(event)
-                    Shell.open(require('screens.product'), {product = event.item})
+                    Widgets.openProduct(event.item)
                 end},
             }),
         },
@@ -210,6 +214,11 @@ function Product:toggleSaved()
     Shell.offerUndo('Removed from your saved products.', function()
         Wishlist.toggle(product)
     end)
+end
+
+-- Offers the links of the product in an action sheet that points at the share button.
+function Product:share()
+    self.shareSheet = Shell.share(self.product.name, Routes.product(self.product), {gui = self.gui, id = 'share'})
 end
 
 function Product:addToBag()

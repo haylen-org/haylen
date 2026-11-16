@@ -1,10 +1,11 @@
--- The trips: the 520 past trips in a recycled list under sticky months, each opening its details.
+-- The trips: the 520 past trips in a recycled list under sticky months, each opening its details through its route.
 local events = require('haylen.events')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
 local Page = require('page')
 local Rides = require('rides')
+local Routes = require('routes')
 local Shell = require('shell')
 local Style = require('style')
 
@@ -27,7 +28,7 @@ function Activity:tree()
                 }, estimatedSize = 96},
             },
             onSelect = function(event)
-                Shell.open(require('screens.trip-detail'), {trip = event.item})
+                Shell.router:push(Routes.trip(Rides.pastTrip(event.item)))
             end,
         }, 1),
     }

@@ -1,4 +1,4 @@
--- A post with its comments and the field that adds one. A phone shows the post and then the comments in one list over the field, and a wide window shows the picture on a dark stage beside a column with the author, the comments, the buttons and the field.
+-- A post with its comments and the field that adds one. A phone shows the post and then the comments in one list over the field, and a wide window shows the picture on a dark stage beside a column with the author, the comments, the buttons and the field. The person deletes a post or a comment of their own after an alert.
 local events = require('haylen.events')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
@@ -15,8 +15,14 @@ Post.stage = {colors = {panel = '#FF0E0E12'}, metrics = {panelRadius = 0}}
 
 function Post:tree()
     self.post = Social.post(self.params.post)
+    local trailing = {}
+    if self.post.author == 'me' then
+        trailing[1] = ui.button{id = 'delete', icon = Shell.icon('trash'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Delete the post', tooltip = 'Delete', onClick = function()
+            self:askDelete()
+        end}
+    end
     return ui.column{gap = 0,
-        Shell.header('Post'),
+        Shell.header('Post', trailing),
         ui.column{id = 'body', grow = 1, gap = 0},
     }
 end
@@ -41,7 +47,7 @@ end
 function Post:phoneBody()
     return ui.column{grow = 1, gap = 0,
         ui.collection{id = 'items', grow = 1, gap = 0, padding = {0, 0, Style.space.m, 0},
-            types = {post = Widgets.post(false), gallery = Widgets.post(false, true), comment = Widgets.comment()},
+            types = {post = Widgets.post(false), gallery = Widgets.post(false, true), comment = Widgets.comment(), myComment = Widgets.comment(true)},
             onClick = function(event)
                 if event.part == 'comment' then
                     self.gui:command('draft', 'focus')
@@ -50,7 +56,9 @@ function Post:phoneBody()
                 end
             end,
             onSelect = function(event)
-                if event.part then
+                if event.part == 'menu' then
+                    self:askDeleteComment(event.cell.item)
+                elseif event.part then
                     Widgets.onPostEvent(self, self.list, event)
                 end
             end,
@@ -87,7 +95,11 @@ function Post:wideBody()
                 },
             },
             ui.divider{},
-            ui.collection{id = 'items', grow = 1, gap = 0, padding = {space.xs, 0}, types = {comment = Widgets.comment()}},
+            ui.collection{id = 'items', grow = 1, gap = 0, padding = {space.xs, 0}, types = {comment = Widgets.comment(), myComment = Widgets.comment(true)}, onSelect = function(event)
+                if event.part == 'menu' then
+                    self:askDeleteComment(event.cell.item)
+                end
+            end},
             ui.divider{},
             ui.row{gap = 0, padding = {space.xs, space.xs},
                 ui.button{id = 'like', text = '', icon = Shell.icon('heart'), iconColor = 'text', variant = 'toolbar', style = Widgets.countButton, accessibilityLabel = 'Like', onClick = function()
@@ -96,8 +108,8 @@ function Post:wideBody()
                 ui.button{id = 'comment', text = '', icon = Shell.icon('comment'), iconColor = 'text', variant = 'toolbar', style = Widgets.countButton, accessibilityLabel = 'Comments', onClick = function()
                     self.gui:command('draft', 'focus')
                 end},
-                ui.button{id = 'send', text = 'Share', icon = Shell.icon('share'), iconColor = 'text', variant = 'toolbar', style = Widgets.countButton, accessibilityLabel = 'Send to a friend', onClick = function()
-                    Widgets.askFriend(self, post)
+                ui.button{id = 'send', text = 'Share', icon = Shell.icon('share'), iconColor = 'text', variant = 'toolbar', style = Widgets.countButton, accessibilityLabel = 'Share', onClick = function()
+                    Widgets.sharePost(self, post, {gui = self.gui, id = 'send'})
                 end},
                 ui.spacer{grow = 1},
                 ui.button{id = 'save', icon = Shell.icon('bookmark'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Save', onClick = function()
@@ -153,6 +165,30 @@ function Post:showPost()
         self.gui:set('comment', {text = post.commentCountText})
         self.gui:set('save', {icon = post.saveIcon})
     end
+end
+
+-- Asks before the post goes away for good, and goes back once it is gone.
+function Post:askDelete()
+    local post = self.post
+    self.deleteAlert = Shell.confirm('Delete this post?', 'It leaves your profile and the feeds of your followers, with its likes and comments.', 'Delete', function()
+        Social.deletePost(post)
+        Shell.notify('Your post is deleted.')
+        self.stack:pop()
+    end)
+end
+
+-- Asks before a comment of the person goes away for good.
+function Post:askDeleteComment(id)
+    local post = self.post
+    self.deleteAlert = Shell.confirm('Delete your comment?', 'Nobody sees it on this post anymore.', 'Delete', function()
+        for _, comment in ipairs(post.comments) do
+            if comment.id == id then
+                Social.deleteComment(post, comment)
+                Shell.notify('Your comment is deleted.')
+                return
+            end
+        end
+    end)
 end
 
 function Post:send(text)

@@ -1,4 +1,4 @@
--- The queue: the song that plays and the songs that come next, which the person drags into another order with the pointer or carries with the keyboard, a gamepad or a remote, and removes from their menu.
+-- The queue: the song that plays and the songs that come next, which the person drags into another order with the pointer or carries with the keyboard, a gamepad or a remote, and removes from their menu or clears, with a snackbar that brings them back.
 local events = require('haylen.events')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
@@ -10,16 +10,13 @@ local Style = require('style')
 
 local Queue = haylen.class('Queue', Page)
 
--- The queue is a sheet over the app or the player, on the surface of the sheet, which closes with its button or the system back.
+-- The queue is a sheet over the app or the player, on the surface of the sheet, which rests at half the screen, opens to nearly all of it with a drag or a tap on its grabber, and closes with its button, a drag down or the system back.
 function Queue:tree()
     local space = Style.space
     return ui.column{grow = 1, gap = 0,
         Shell.sheetHeader('Queue', {
             ui.button{id = 'clear', text = 'Clear', variant = 'toolbar', onClick = function()
-                for index = #Player.queue, Player.index + 1, -1 do
-                    table.remove(Player.queue, index)
-                end
-                Player.changed()
+                self:clear()
             end},
         }),
         Shell.centered(900, ui.column{gap = space.xs, padding = {space.s, space.m, 0, space.m},
@@ -49,7 +46,7 @@ function Queue:tree()
                 if event.part == 'menu' then
                     local position = Player.index + event.cell.index
                     if event.item == 'remove' then
-                        Player.removeFromQueue(position)
+                        self:drop(position)
                     else
                         Player.index = position
                         Player.load()
@@ -67,6 +64,26 @@ function Queue:start()
         self:showQueue()
     end, {owner = self})
     self:showQueue()
+end
+
+-- Takes a song out of the queue, which a snackbar offers to bring back to its place.
+function Queue:drop(position)
+    local track = Player.queue[position]
+    Player.removeFromQueue(position)
+    Shell.offerUndo(track.name .. ' left the queue.', function()
+        Player.putBack({track}, position)
+    end)
+end
+
+-- Takes the songs that come next out of the queue, which a snackbar offers to bring back.
+function Queue:clear()
+    local removed = Player.clearUpcoming()
+    if #removed == 0 then
+        return
+    end
+    Shell.offerUndo(#removed == 1 and 'One song left the queue.' or string.format('%d songs left the queue.', #removed), function()
+        Player.putBack(removed, Player.index + 1)
+    end)
 end
 
 -- The entries of the songs after the one that plays, with ids from their place, since a song may come twice.

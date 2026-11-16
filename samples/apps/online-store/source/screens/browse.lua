@@ -1,4 +1,4 @@
--- The browse tab: every product of the store in a recycled grid that fits its columns to the width, narrowed by a typed text, a category and a popover of filters with the price, the colors and the sale, in the chosen order.
+-- The browse tab: every product of the store in a recycled grid that fits its columns to the width, narrowed by a typed text, a category and a popover of filters with the price, the colors and the sale, in the chosen order. The route of a category, such as "category/sneakers", shows the same screen as a page of its own with the category picked and a way back.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
@@ -78,7 +78,7 @@ function Browse:tree()
     for _, sort in ipairs(Browse.sorts) do
         sorts[#sorts + 1] = {id = sort.id, text = sort.text}
     end
-    return Shell.tabPage(ui.column{grow = 1, gap = space.s, padding = {space.m, 0, 0, 0},
+    local content = ui.column{grow = 1, gap = space.s, padding = {space.m, 0, 0, 0},
         Shell.centered(Style.size.page, ui.column{gap = space.s,
             ui.row{gap = space.xs, padding = {0, space.l},
                 ui.filterField{id = 'query', placeholder = 'Search the store', grow = 1, returnKey = 'search', onChange = function(event)
@@ -106,11 +106,15 @@ function Browse:tree()
         Shell.centered(Style.size.page, ui.collection{id = 'grid', grow = 1, layout = 'grid', minCellSize = Widgets.cellWidth, cellAspect = Widgets.cellAspect, gap = space.m, padding = {space.xs, space.l, space.xl, space.l}, rememberFocus = true,
             types = {product = Widgets.productCard()},
             onSelect = function(event)
-                Shell.open(require('screens.product'), {product = event.item})
+                Widgets.openProduct(event.item)
             end,
             ui.emptyState{image = 'images/hero.png', imageSize = 220, title = 'Nothing matches', message = 'Try other words or fewer filters.'},
         }, 1),
-    }, Shell.phoneBar(self, 'Browse'))
+    }
+    if self.params.category then
+        return ui.column{gap = 0, Shell.header(Store.category(self.params.category).name, {Shell.bagButton(self, 'headerBag')}), content}
+    end
+    return Shell.tabPage(content, Shell.phoneBar(self, 'Browse'))
 end
 
 function Browse:start()
@@ -118,10 +122,10 @@ function Browse:start()
     self:refresh()
 end
 
--- Shows what another screen asks for, such as a category of the shop, the newest products or the products on sale, or puts the focus in the search.
+-- Shows what another screen asks for in every category, such as the newest products or the products on sale, or puts the focus in the search.
 function Browse:apply(params)
-    if params.category ~= nil or params.sort or params.sale ~= nil then
-        self:pickCategory(params.category)
+    if params.sort or params.sale ~= nil then
+        self:pickCategory(nil)
     end
     for _, sort in ipairs(Browse.sorts) do
         if sort.id == (params.sort or Browse.sorts[1].id) then

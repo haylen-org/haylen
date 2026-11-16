@@ -16,7 +16,7 @@ The commands run from the root of the repository:
 | Browser | `haylen run samples/apps/photo-social --platform web` |
 | Headless player | `build/macos-debug/bin/haylen-headless samples/apps/photo-social` |
 
-On the headless platform the app runs a tour by itself: it likes a post, watches and answers a story, comments on a post, follows a person, searches people, chats, makes a post with a filter and a crop, edits the profile, saves posts and sends one to a friend, logs every step and quits.
+On the headless platform the app runs a tour by itself: it likes a post, watches and answers a story, shares a post with a friend, whose answer drops in as a banner, comments on a post and deletes the comment after the alert, follows and unfollows a person, searches people, chats, makes a post with a filter and a crop and deletes it after the alert, edits the profile, saves posts, opens links of the scheme and of the web and sends a post to a friend, logs every step and quits.
 
 ## Screens
 
@@ -24,14 +24,31 @@ On the headless platform the app runs a tour by itself: it likes a post, watches
 | --- | --- |
 | Home | The stories in a row, with the person's own first, over the feed of the people the person follows. Every post shows its author with the place and the time, the caption over the picture, and the buttons with the counts of likes and comments under it. A phone shows the posts under the wordmark, and a wide window shows them as cards in a column, with the person and suggestions of people to follow beside it when there is room. |
 | Story | The pictures of a person, five seconds each, under bars that fill as they play, then the stories of the next person. A tap on the left third goes back and anywhere else goes on, a press holds the story, and the field at the bottom replies in the direct messages. A wide window shows the pictures in a tall frame between two arrows. |
-| Post | The post and its comments over the field that adds one, or on a wide window the picture on a dark stage beside the author, the comments, the buttons and the field. |
-| Profile | The face inside the ring of the app, the name and the bio in the middle, the counts of posts, followers and following on a soft card, the buttons that follow and message, and the grid of pictures. The person's own profile edits its name and bio in a dialog, starts a post and shows the saved posts in a second section. |
+| Post | The post and its comments over the field that adds one, or on a wide window the picture on a dark stage beside the author, the comments, the buttons and the field. A post of the person has the button that deletes it, and a comment of the person has a menu that deletes it, both after an alert. |
+| Profile | The face inside the ring of the app, the name and the bio in the middle, the counts of posts, followers and following on a soft card, the buttons that follow and message, and the grid of pictures. Unfollowing shows a snackbar that follows again, and the message button opens the chat in the messages tab. The person's own profile edits its name and bio in a sheet that asks before it drops changes, starts a post and shows the saved posts in a second section. |
 | Explore | A grid of the pictures of everyone, and the people whose name or handle matches the typed text. |
 | New post | Three steps: a picture of the library, its crop and its filter, each shown on the middle of the picture, and the caption and the place before it goes to the top of the feed. |
 | Messages | The conversations, the newest on top, with a dot on those with messages not read yet, narrowed by a typed name. |
 | Chat | The messages in a recycled list that sticks to its end, with the posts that travel in them as pictures, and the field that sends a message. The other person answers a moment later. |
 
-Every post has a menu with the way to the profile, sending it to a friend in a dialog and saving it.
+Every post has a menu with the way to the profile, sending it to a friend in a sheet and saving it. Its share button offers sending it to a friend and copying its link in an action sheet, which points at the button on a wide window.
+
+## Links
+
+The links of the scheme `haylenphotos` and of the web host `photos.example.com` open the screens of the app while it runs, through the routes of `source/routes.lua`, and the action sheet of a post copies them. A platform opens a link of the scheme once a plugin registers it, as the local plugin of [Music Streaming](../music-streaming/plugins/music-links/README.md) does for its own.
+
+| Link | What it opens |
+| --- | --- |
+| `haylenphotos://home` | The home tab. |
+| `haylenphotos://explore` | The explore tab. |
+| `haylenphotos://messages` | The messages tab. |
+| `haylenphotos://profile` | The person's own profile. |
+| `haylenphotos://profile/ava` | The profile of a person over the root of the tab that shows. |
+| `haylenphotos://post/46` | A post with its comments over the root of the tab that shows. |
+| `haylenphotos://chat/kai` | The chat with a person in the messages tab, beside the conversations on a wide window and over them on a phone. |
+| `https://photos.example.com/post/46` | The same screens from the web host, for every path above. |
+
+A link to someone or something the app lacks, such as `haylenphotos://post/9999`, shows a page that says so, and a link that no route matches leaves the app as it is.
 
 ## Controls
 
@@ -54,7 +71,8 @@ The app follows the [navigation](../../../docs/ui/navigation.md) of the engine, 
 - The story is a [play area](../../../docs/lua-api/ui.md#uiplayareaproperties) over the picture, so the arrows, the directional pad and a remote reach the actions `storyPrevious` and `storyNext` of the action map while the reply field and the buttons stay a Tab away. A press on the picture reports `press` and `release`, which hold the story and step through it.
 - The new post decodes the chosen picture on the task pool, makes the small previews of every filter from its middle and the preview of the post with the crop and the filter, all in tasks that the screen owns.
 - The data of `source/data/social.lua` and the conversations of `source/chats.lua` emit `socialChanged` and `chatChanged` on [`haylen.events`](../../../docs/lua-api/events.md), and the screens listen with themselves as owners. The answer of a friend arrives through a timer owned by the conversations, so it reaches the messages after the chat closed, and an answer in a chat that does not show emits `chatAnswered`, which drops a banner of `ui.showMessage` with the face of the friend under the status bar, whose tap opens the chat.
-- Taking a post out of the collection shows a snackbar whose `Undo` puts it back, and the other confirmations are toasts at the bottom.
+- The router of `source/routes.lua`, `ui.router` over the tabs with `restore = true`, turns links into screens, and the profiles, posts and chats that the person opens go through it too, so the router knows the location of each screen, builds the stacks and the open chat again after the system ended the app, and gives the location that sharing puts in a link. The route of a chat is a detail of the split of the messages tab, and the banner of an answer and the message button of a profile open it with `router:open`, which shows the messages tab with the chat.
+- Sharing is an action sheet of `ui.presentAlert`, and deleting a post or a comment asks first in an alert with a destructive action. Taking a post out of the collection and unfollowing a person show a snackbar whose `Undo` takes it back, and the other confirmations are toasts at the bottom.
 - The field of a chat stays above the on-screen keyboard, and a tap on the send button while the keyboard is open sends at once, because the GUIs hold their place while a press is down.
 
 ## Style guide
@@ -79,9 +97,10 @@ photo-social/
   source/
     main.lua             Registers the theme, the actions of the stories and the pictures, and starts the shell.
     style.lua            The palette, the type scale, the spacing scale, the shapes and the theme.
-    shell.lua            Tabs, navigation, messages, the rail and the bar of icons, the wordmark and the headers.
+    shell.lua            Tabs, navigation, messages, alerts, the clipboard, the rail and the bar of icons, the wordmark and the headers.
+    routes.lua           The routes of the links and the locations of the screens.
     page.lua             The base of every screen, a class of "ui.Screen".
-    widgets.lua          The templates of posts, comments, people, stories and tiles, and the dialog that sends a post.
+    widgets.lua          The templates of posts, comments, people, stories and tiles, sharing, following and the sheet that sends a post.
     photos.lua           The twelve pictures, their looks and the filters.
     avatars.lua          The faces of the people.
     compose.lua          The post being made and its previews.

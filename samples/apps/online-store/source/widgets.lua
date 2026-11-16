@@ -2,6 +2,7 @@
 local graphics = require('haylen.graphics')
 local ui = require('haylen.ui')
 
+local Routes = require('routes')
 local Shell = require('shell')
 local Store = require('data.store')
 local Style = require('style')
@@ -37,8 +38,13 @@ Widgets.cellWidth = 200
 -- A shelf of products that scrolls sideways, and opens a product when one is picked.
 function Widgets.shelf(id)
     return ui.collection{id = id, axis = 'horizontal', scrollbar = false, gap = Style.space.m, rememberFocus = true, types = {product = Widgets.productCard(Style.size.card)}, onSelect = function(event)
-        Shell.open(require('screens.product'), {product = event.item})
+        Widgets.openProduct(event.item)
     end}
+end
+
+-- Opens a product by its id through its route.
+function Widgets.openProduct(id)
+    Shell.open(Routes.product(Store.product(id)))
 end
 
 -- A title of a section in the serif with an optional link at its end.

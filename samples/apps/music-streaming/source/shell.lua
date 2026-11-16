@@ -1,6 +1,8 @@
--- The frame of the app: the tabs, the player that follows every screen and the layout that follows the width of the window. Phones show a bar of tabs at the bottom with a floating card of the song that plays above it, and wide windows show a sidebar with the playlists on the left and the player bar of a desktop across the bottom. The frame mounts once in the scene of the app, and the screens of each tab live in a stack of their own in its middle, so going to another screen changes only the middle while the bars stay. The player and the queue open over everything as presentations, a new flow with bars of its own.
+-- The frame of the app: the tabs, the routes of its links, the player that follows every screen, the messages and the layout that follows the width of the window. Phones show a bar of tabs at the bottom with a floating card of the song that plays above it, and wide windows show a sidebar with the playlists on the left and the player bar of a desktop across the bottom. The frame mounts once in the scene of the app, and the screens of each tab live in a stack of their own in its middle, so going to another screen changes only the middle while the bars stay. The player and the queue open over everything as presentations, a new flow with bars of its own.
+local async = require('async')
 local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
+local system = require('haylen.system')
 local ui = require('haylen.ui')
 local viewport = require('haylen.viewport')
 
@@ -36,7 +38,7 @@ function Shell.start()
     scene.push(Shell.scene)
 end
 
--- Mounts the frame and the tabs in the middle of the frame.
+-- Mounts the frame and the tabs in the middle of the frame, and starts the routes of the links over the tabs.
 function Shell.scene:enter()
     Shell.gui = ui.mount(Shell.frame(), {owner = self, sharedFocus = true})
     Shell.adaptFrame()
@@ -47,6 +49,7 @@ function Shell.scene:enter()
     Shell.navigation = ui.navigationTabs{gui = Shell.gui, id = 'middle', tabs = tabs, owner = self, onChange = function(event)
         Shell.select(event.selected, event.previous)
     end}
+    Shell.router = require('routes').start(Shell.navigation, self)
 end
 
 function Shell.scene:update()
@@ -64,53 +67,91 @@ function Shell.notify(text, tone)
     ui.showMessage{text = text, tone = tone or 'neutral', indicator = 'icon', position = 'top', owner = Shell.scene}
 end
 
+-- Tells that something went away in a snackbar whose action brings it back.
+function Shell.offerUndo(text, undo)
+    ui.showMessage{style = 'snackbar', text = text, action = 'Undo', owner = Shell.scene, onAction = undo}
+end
+
+-- Asks before something goes away for good in an alert, and calls `confirmed` once the person picks the destructive action.
+function Shell.confirm(title, message, action, confirmed)
+    return ui.presentAlert{title = title, message = message, owner = Shell.scene,
+        actions = {{id = 'keep', text = 'Cancel', role = 'cancel'}, {id = 'confirm', text = action, role = 'destructive'}},
+        onDismiss = function(event)
+            if event.result == 'confirm' then
+                confirmed()
+            end
+        end}
+end
+
+-- Offers the links of a location in an action sheet, which points at the button that opened it on a wide window, and puts the link the person picks on the clipboard.
+function Shell.share(title, location, anchor)
+    local Routes = require('routes')
+    return ui.presentAlert{style = 'actionSheet', title = title, anchor = anchor, owner = Shell.scene,
+        actions = {{id = 'web', text = 'Copy link'}, {id = 'app', text = 'Copy the link of the app'}, {id = 'cancel', text = 'Cancel', role = 'cancel'}},
+        onDismiss = function(event)
+            if event.result == 'web' then
+                Shell.copy(Routes.webLink(location))
+            elseif event.result == 'app' then
+                Shell.copy(Routes.link(location))
+            end
+        end}
+end
+
+-- Puts a link on the clipboard and tells whether it got there, since a browser keeps the clipboard from a page without a recent input of the person.
+function Shell.copy(link)
+    async.spawn(function()
+        local _, problem = system.setClipboard(link):await()
+        if problem then
+            Shell.notify(problem, 'warning')
+            return
+        end
+        Shell.notify('The link is on the clipboard.')
+    end)
+end
+
 -- Shows a tab with the screens it kept, or goes back to its root when it already shows, the way native tab bars do.
 function Shell.showTab(id)
     Shell.navigation:select(id)
 end
 
--- The screen that the person sees: the screen of the presentation on top, or the top screen of the tab that shows.
+-- Whether a presented screen, such as the player, still shows.
+function Shell.isPresented(screen)
+    return screen ~= nil and screen.presentation ~= nil and not screen.presentation.dismissed
+end
+
+-- The screen that the person sees: the player while it shows, or the top screen of the tab that shows.
 function Shell.top()
-    if Shell.presented and not Shell.presented.dismissed then
-        return Shell.presented.screen
+    if Shell.isPresented(Shell.player) then
+        return Shell.player
     end
     return Shell.navigation.current.top
 end
 
--- Pushes a screen in the stack of the tab that shows. A screen of the same kind that already shows the same thing, named by the parameter `key`, such as an artist that its album opened from that artist, comes back instead, so the stack never holds two copies of it.
-function Shell.open(Screen, params, key)
+-- Shows the screen of a location, such as "artist/12", in the stack of the tab that shows. A screen that already shows the same location further down the stack, such as the artist that its album opened from, comes back instead, so the stack never holds two copies of it.
+function Shell.open(location)
     local stack = Shell.navigation.current
-    if key then
-        local screens = stack.screens
-        for level = #screens - 1, 1, -1 do
-            local shown = screens[level]
-            if shown:is(Screen) and shown.params[key] == params[key] then
-                stack:popTo(shown)
-                return
-            end
+    local screens = stack.screens
+    for level = #screens - 1, 1, -1 do
+        local shown = screens[level]
+        if Shell.router:location(shown) == location then
+            stack:popTo(shown)
+            return
         end
     end
-    stack:push(Screen(params))
+    Shell.router:push(location)
 end
 
--- Opens a screen of the tab that shows from the player or the queue, which close first, so the person lands on the screen in the app.
-function Shell.leavePresentation()
-    if Shell.presented and not Shell.presented.dismissed then
-        Shell.presented:dismiss()
-    end
-end
-
--- Presents the player over everything, a flow of its own with its close button, which goes back down with the system back.
+-- Presents the player over everything through its route, a flow of its own with its close button, which goes back down with the system back.
 function Shell.openPlayer()
-    if Shell.presented and not Shell.presented.dismissed then
+    if Shell.isPresented(Shell.player) then
         return
     end
-    Shell.presented = ui.present(require('screens.now-playing')(), {style = 'fullScreen', owner = Shell.scene})
+    Shell.router:push('player')
 end
 
--- Presents the queue as a sheet over the app or over the player.
+-- Presents the queue through its route as a sheet over the app or over the player, which rests at half the screen and opens to nearly all of it.
 function Shell.openQueue()
-    ui.present(require('screens.queue')(), {style = 'sheet', maxWidth = 900, owner = Shell.scene})
+    Shell.router:push('queue')
 end
 
 -- Shows the sidebar and the player bar on a wide window, and the bar of tabs with the floating card of the song otherwise.
@@ -186,10 +227,23 @@ function Shell.wordmark()
     }
 end
 
+-- The items of the playlists of the person in the sidebar.
+function Shell.playlistItems()
+    local items = {}
+    for index, playlist in ipairs(require('data.catalog').playlists) do
+        items[index] = {id = playlist.id, text = playlist.name, caption = playlist.caption, image = playlist.cover, iconColor = false}
+    end
+    return items
+end
+
+-- Shows the playlists of the person in the sidebar again once one is made or deleted.
+function Shell.showPlaylists()
+    Shell.gui:set('sidePlaylists', {items = Shell.playlistItems()})
+end
+
 -- The sidebar of a wide window: the wordmark, the tabs and the playlists of the person.
 function Shell.sidebar()
     local space = Style.space
-    local Catalog = require('data.catalog')
     local tabs = {id = 'sideTabs', gap = space.xxs, align = 'stretch'}
     for _, tab in ipairs(Shell.tabs) do
         tabs[#tabs + 1] = Shell.sideTab(tab)
@@ -200,12 +254,8 @@ function Shell.sidebar()
     }
     column[#column + 1] = ui.divider{margin = {space.s, space.s}}
     column[#column + 1] = ui.label{text = 'Your playlists', font = 'caption', color = 'textMuted', margin = {space.xs, space.s}}
-    local items = {}
-    for index, playlist in ipairs(Catalog.playlists) do
-        items[index] = {id = playlist.id, text = playlist.name, caption = playlist.caption, image = playlist.cover, iconColor = false}
-    end
-    column[#column + 1] = ui.list{id = 'sidePlaylists', items = items, onSelect = function(event)
-        Shell.open(require('screens.collection'), {collection = event.item}, 'collection')
+    column[#column + 1] = ui.list{id = 'sidePlaylists', items = Shell.playlistItems(), onSelect = function(event)
+        Shell.open(require('routes').location(event.item))
     end}
     return ui.row{id = 'sidebar', visible = false, gap = 0, align = 'stretch',
         ui.panel{width = Style.size.sidebar, padding = space.xs, align = 'stretch', style = {metrics = {panelRadius = 0}}, ui.scroll{grow = 1, height = 0, ui.column(column)}},

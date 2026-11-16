@@ -17,12 +17,7 @@ TripDetail.mapSize = {960, 480}
 
 function TripDetail:tree()
     local space = Style.space
-    local trip
-    for _, past in ipairs(Rides.past) do
-        if past.id == self.params.trip then
-            trip = past
-        end
-    end
+    local trip = Rides.pastTrip(self.params.trip)
     self.trip = trip
     local from, to = Places.find(trip.from), Places.find(trip.to)
     self.route = Rides.route(from, to)
@@ -41,17 +36,7 @@ function TripDetail:tree()
         ui.scroll{grow = 1, height = 0,
             Shell.centered(Style.size.reading, ui.column{gap = space.l, padding = {space.l, space.l, space.xl, space.l},
                 ui.image{image = self.mapName, align = 'stretch', aspectRatio = TripDetail.mapSize[1] / TripDetail.mapSize[2], radius = Style.radius.sheet, fit = 'cover', accessibilityLabel = 'Map of the route'},
-                ui.row{gap = space.m, align = 'stretch',
-                    ui.column{gap = 0, width = 28, padding = {14, 0}, align = 'stretch',
-                        ui.icon{image = Shell.icon('dot'), size = 28, color = 'text', align = 'center'},
-                        ui.divider{vertical = true, grow = 1, width = 4, align = 'center', color = 'borderStrong', style = {metrics = {borderWidth = 2.5}}},
-                        ui.icon{image = Shell.icon('square'), size = 28, color = 'text', align = 'center'},
-                    },
-                    ui.column{gap = space.m, grow = 1,
-                        ui.column{gap = 0, ui.label{text = from.name, font = 'button'}, ui.label{text = from.line, font = 'caption', color = 'textMuted'}},
-                        ui.column{gap = 0, ui.label{text = to.name, font = 'button'}, ui.label{text = to.line, font = 'caption', color = 'textMuted'}},
-                    },
-                },
+                Shell.stops(from, to),
                 ui.label{text = trip.caption, color = 'textMuted'},
                 ui.divider{},
                 ui.row{gap = space.m,
@@ -71,7 +56,7 @@ function TripDetail:tree()
                         Shell.notify('Our team answers questions about this trip in the chat.')
                     end},
                     ui.button{id = 'again', text = 'Ride there again', variant = 'primary', grow = 1, onClick = function()
-                        Shell.openPage(require('screens.preview'), {to = to.id})
+                        Shell.rideTo(to.id)
                     end},
                 },
             }),

@@ -1,4 +1,4 @@
--- The search tab: the genres to browse as tiles in their colors while the field is empty, and the artists, albums and songs that match the typed text in one recycled list.
+-- The search tab: the genres to browse as tiles in their colors while the field is empty, and the artists, albums and songs that match the typed text in one recycled list. A link to a search, such as "haylenmusic://search/golden", shows the same screen over the tab with its query and a way back.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
@@ -15,21 +15,21 @@ Search.limit = 400
 
 function Search:tree()
     local space = Style.space
-    self.query = ''
+    self.query = string.lower(self.params.query or '')
     local tiles = {}
     for _, genre in ipairs(Catalog.genres) do
         local shade = Covers.deepText(genre.id, 0.8)
         tiles[#tiles + 1] = ui.button{id = 'genre-' .. genre.id, text = genre.name, height = 132, align = 'stretch', justify = 'start',
             style = {colors = {raised = shade, border = shade, text = Style.color.text, hover = '#1FFFFFFF'}, metrics = {controlRadius = Style.radius.card, controlPaddingX = space.l}, fonts = {button = {size = Style.type.heading}}},
             onClick = function()
-                Shell.open(require('screens.collection'), {collection = 'genre-' .. genre.id})
+                Shell.open('genre/' .. genre.id)
             end}
     end
     self.onTracks = Widgets.onTracks(function() return self.tracks end, self)
     return ui.column{grow = 1, gap = space.s, padding = {space.l, 0, 0, 0},
         Shell.centered(Style.size.page, ui.column{gap = space.s, padding = {0, space.l},
-            ui.label{text = 'Search', font = 'title'},
-            ui.filterField{id = 'query', placeholder = 'Artists, albums or songs', returnKey = 'search', onChange = function(event)
+            self.params.query and Shell.header('Search') or ui.label{text = 'Search', font = 'title'},
+            ui.filterField{id = 'query', value = self.params.query, placeholder = 'Artists, albums or songs', returnKey = 'search', onChange = function(event)
                 self.query = string.lower(event.value)
                 self:refresh()
             end},
@@ -67,6 +67,7 @@ end
 
 function Search:start()
     self.results = self.gui:collection('resultList')
+    self:refresh()
 end
 
 function Search:refresh()

@@ -1,0 +1,18 @@
+{
+    "id": "music-links",
+    "name": "Music Links",
+    "version": "1.0.0",
+    "description": "Registers the URL scheme haylenmusic, so links such as haylenmusic://artist/12 open the app and reach its routes.",
+    "platforms": ["ios", "catalyst", "tvos", "visionos", "macos", "android", "windows", "linux"],
+    "apple": {
+        "infoPlist": {
+            "CFBundleURLTypes": [{"CFBundleURLName": "com.haylen.plugins.music-links", "CFBundleURLSchemes": ["haylenmusic"]}]
+        }
+    },
+    "android": {
+        "module": "android"
+    },
+    "desktop": {
+        "urlSchemes": ["haylenmusic"]
+    }
+}

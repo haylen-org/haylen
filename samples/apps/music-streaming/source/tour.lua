@@ -1,4 +1,4 @@
--- The automatic run of the headless platform: it plays a mix, opens the player, seeks, picks a shorter song, skips, shuffles and repeats, sets the sleep timer, reorders the queue, browses the favorites, an artist, the search, a genre and the library, adds a song to a playlist and makes a playlist, logs each step and quits, so an unattended run checks every path of the app.
+-- The automatic run of the headless platform: it plays a mix, opens the player, seeks, picks a shorter song, skips, shuffles and repeats, sets the sleep timer, shares the song, pulls the queue up, reorders it and removes a song, browses the favorites, an artist, the search, a genre and the library, adds a song to a playlist and takes one out, makes a playlist and deletes it after the alert, opens links of the scheme and of the web, logs each step and quits, so an unattended run checks every path of the app.
 local haylen = require('haylen')
 local log = require('haylen.log')
 local timer = require('haylen.timer')
@@ -6,6 +6,7 @@ local ui = require('haylen.ui')
 
 local Catalog = require('data.catalog')
 local Player = require('player')
+local Routes = require('routes')
 local Shell = require('shell')
 local Widgets = require('widgets')
 
@@ -14,6 +15,7 @@ local Tour = {}
 Tour.interval = 1.5
 
 function Tour.steps()
+    local linkedSong = Catalog.albums[30].tracks[2]
     return {
         {'Home', function() end},
         {'Play a mix', function() Player.playList(Catalog.mixes[2].tracks, 1) end},
@@ -24,22 +26,37 @@ function Tour.steps()
         {'Shuffle and repeat', function() Player.setShuffle(true) Player.cycleRepeat() end},
         {'Set the sleep timer', function() Shell.top():setSleep('15') end},
         {'Like the song', function() Catalog.toggleLike(Player.current()) end},
-        {'Open the queue', function() Shell.openQueue() end},
-        {'Reorder the queue', function() Player.moveInQueue(Player.index + 3, Player.index + 1) Player.removeFromQueue(Player.index + 2) end},
+        {'Share the song', function() Shell.top():share() end},
+        {'Copy the link of the app', function() Shell.top().shareSheet:dismiss({result = 'app'}) end},
+        {'Open the queue at half the screen', function() Shell.openQueue() end},
+        {'Pull the queue up', function() Shell.queue.presentation.detent = 2 end},
+        {'Reorder the queue', function() Player.moveInQueue(Player.index + 3, Player.index + 1) end},
+        {'Remove a song from the queue', function() Shell.queue:drop(Player.index + 2) end},
         {'Close the queue and the player', function() ui.goBack() ui.goBack() end},
-        {'Open the favorites', function() Shell.open(require('screens.collection'), {collection = 'liked'}) end},
+        {'Open the favorites', function() Shell.open(Routes.location('liked')) end},
         {'Scroll the favorites', function() Shell.top().gui:collection('tracks'):scrollTo(2000, {align = 'center', animated = false}) end},
-        {'Open an artist', function() Shell.open(require('screens.artist'), {artist = Catalog.artists[4].id}) end},
+        {'Open an artist', function() Shell.open(Routes.location(Catalog.artists[4].id)) end},
         {'Follow the artist', function() local page = Shell.top() require('screens.artist').following[page.artist.id] = true page:showFollow() end},
         {'Add a song to a playlist', function() local page = Shell.top() Widgets.askPlaylist(page, page.artist.tracks[2]) end},
-        {'Search', function() Shell.top().playlistSheet:dismiss() Shell.showTab('search') end},
+        {'Open a playlist', function() Shell.top().playlistSheet:dismiss({result = 'drive'}) Shell.open(Routes.location('drive')) end},
+        {'Take a song out of the playlist', function() local page = Shell.top() page:removeTrack(page.source.tracks[1]) end},
+        {'Search', function() Shell.showTab('search') end},
         {'Type a search', function() local page = Shell.top() page.query = 'golden' page.gui:set('query', {value = 'golden'}) page:refresh() end},
-        {'Open a genre', function() Shell.open(require('screens.collection'), {collection = 'genre-jazz'}) end},
+        {'Open a genre', function() Shell.open('genre/jazz') end},
         {'Open the library', function() Shell.showTab('library') end},
         {'Show the albums', function() Shell.top():pick('albums') end},
         {'Make a playlist', function() local page = Shell.top() page:pick('playlists') page:create('Road trip') end},
+        {'Open the new playlist', function() Shell.open(Routes.location(Catalog.playlists[2].id)) end},
+        {'Ask before deleting it', function() Shell.top():askDelete() end},
+        {'Delete it', function() Shell.top().deleteAlert:dismiss({result = 'confirm'}) end},
         {'Back home, which kept its screens', function() Shell.showTab('home') end},
         {'Back to the root of home', function() Shell.showTab('home') end},
+        {'Open a link to an artist', function() Shell.router:open(Routes.link('artist/12')) end},
+        {'Open a web link to a song of an album', function() Shell.router:open(Routes.webLink(Routes.location(linkedSong.id))) end},
+        {'Open a link to a search', function() Shell.router:open(Routes.link('search/golden')) end},
+        {'Open a link to an artist the library lacks', function() Shell.router:open(Routes.link('artist/9999')) end},
+        {'Open the queue from a link', function() Shell.router:open(Routes.link('queue')) end},
+        {'Close the queue', function() ui.goBack() end},
         {'Player again', function() Shell.openPlayer() end},
         {'Close it', function() ui.goBack() end},
     }

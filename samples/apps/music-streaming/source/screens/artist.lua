@@ -1,10 +1,11 @@
--- An artist: the round picture, the listeners and the follow button under the glow of the genre, the most played songs and the albums, in one recycled grid of mixed cells.
+-- An artist: the round picture, the listeners and the follow button under the glow of the genre, the most played songs and the albums, in one recycled grid of mixed cells, with the share button in its bar.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
 local Catalog = require('data.catalog')
 local Page = require('page')
 local Player = require('player')
+local Routes = require('routes')
 local Shell = require('shell')
 local Style = require('style')
 local Widgets = require('widgets')
@@ -28,7 +29,11 @@ end
 
 function Artist:tree()
     return ui.column{grow = 1, gap = 0,
-        Shell.header(''),
+        Shell.header('', {
+            ui.button{id = 'share', icon = Shell.icon('share'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Share', tooltip = 'Share', onClick = function()
+                self.shareSheet = Shell.share(self.artist.name, Routes.location(self.artist.id), {gui = self.gui, id = 'share'})
+            end},
+        }),
         ui.column{id = 'body', grow = 1, gap = 0},
     }
 end

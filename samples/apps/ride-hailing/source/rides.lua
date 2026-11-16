@@ -112,6 +112,14 @@ function Rides:start()
     end
 end
 
+function Rides.pastTrip(id)
+    for _, trip in ipairs(Rides.past) do
+        if trip.id == id then
+            return trip
+        end
+    end
+end
+
 -- Starts a trip of a kind between two places and returns it.
 function Rides.request(from, to, kindId, payment)
     local kind = Rides.kind(kindId)

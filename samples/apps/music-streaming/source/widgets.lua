@@ -4,6 +4,7 @@ local ui = require('haylen.ui')
 
 local Catalog = require('data.catalog')
 local Player = require('player')
+local Routes = require('routes')
 local Shell = require('shell')
 local Style = require('style')
 
@@ -15,12 +16,18 @@ Widgets.trackMenu = {
     {id = 'playlist', text = 'Add to a playlist', image = Shell.icon('plus')},
     {id = 'artist', text = 'Go to the artist', image = Shell.icon('user')},
     {id = 'album', text = 'Go to the album', image = Shell.icon('library')},
+    {id = 'share', text = 'Share', image = Shell.icon('share')},
 }
+-- The menu of a song of a playlist of the person, which also takes the song out of the playlist.
+Widgets.playlistTrackMenu = {{id = 'remove', text = 'Remove from this playlist', image = Shell.icon('trash')}}
+for _, item in ipairs(Widgets.trackMenu) do
+    Widgets.playlistTrackMenu[#Widgets.playlistTrackMenu + 1] = item
+end
 
--- A row of a song with its cover or its number, its name, its artist and its length, across `span` lanes of a grid. A right click, a long press or the menu button open the menu of the song.
-function Widgets.trackRow(showCover, span)
+-- A row of a song with its cover or its number, its name, its artist and its length, across `span` lanes of a grid. A right click, a long press or the menu button open the menu of the song, which takes the song out of its playlist when it is `removable`.
+function Widgets.trackRow(showCover, span, removable)
     local space = Style.space
-    return {template = ui.contextMenu{part = 'menu', items = Widgets.trackMenu,
+    return {template = ui.contextMenu{part = 'menu', items = removable and Widgets.playlistTrackMenu or Widgets.trackMenu,
         ui.row{gap = space.m, padding = {space.xs, space.s},
             ui.label{part = 'number', bind = {text = '$index'}, width = 40, color = 'textMuted', textAlign = 'end', visible = not showCover},
             ui.image{part = 'cover', bind = {image = 'cover'}, image = Shell.blankCover, width = 60, height = 60, radius = Style.radius.cover, visible = showCover == true},
@@ -66,17 +73,12 @@ function Widgets.section(text)
     return ui.label{text = text, font = 'heading', margin = {Style.space.l, 0, 0, Style.space.xs}}
 end
 
--- Opens an artist, an album, a playlist or a mix by its id.
+-- Opens an artist, an album, a playlist or a mix by its id, through its route.
 function Widgets.openItem(id)
-    local found = Catalog.find(id)
-    if found.type == 'artist' then
-        Shell.open(require('screens.artist'), {artist = found.id}, 'artist')
-    else
-        Shell.open(require('screens.collection'), {collection = found.id}, 'collection')
-    end
+    Shell.open(Routes.location(id))
 end
 
--- What a page does for the events of a collection of songs: a press plays the list from that song, and the menu acts on the song.
+-- What a page does for the events of a collection of songs: a press plays the list from that song, and the menu acts on the song. Taking a song out of a playlist goes to the page, which shows the playlist.
 function Widgets.onTracks(tracks, page)
     return function(event)
         local track = Catalog.find(event.part == 'menu' and event.cell.item or event.item)
@@ -98,9 +100,13 @@ function Widgets.onTracks(tracks, page)
         elseif event.item == 'playlist' then
             Widgets.askPlaylist(page, track)
         elseif event.item == 'artist' then
-            Shell.open(require('screens.artist'), {artist = track.artist}, 'artist')
+            Widgets.openItem(track.artist)
         elseif event.item == 'album' then
-            Shell.open(require('screens.collection'), {collection = track.album}, 'collection')
+            Widgets.openItem(track.album)
+        elseif event.item == 'share' then
+            Shell.share(track.name, Routes.location(track.id))
+        elseif event.item == 'remove' then
+            page:removeTrack(track)
         end
     end
 end
@@ -142,7 +148,7 @@ function Widgets.askPlaylist(page, track)
         end
         local playlist = Catalog.find(event.result)
         table.insert(playlist.tracks, 1, track)
-        playlist.caption = string.format('Playlist · %s songs', Catalog.thousands(#playlist.tracks))
+        Catalog.describe(playlist)
         Shell.notify(track.name .. ' is in ' .. playlist.name .. '.')
     end})
 end

@@ -96,7 +96,7 @@ function Catalog.build()
             end
         end
         playlist.cover = playlist.tracks[1].cover
-        playlist.caption = string.format('Playlist · %s songs', Catalog.thousands(#playlist.tracks))
+        Catalog.describe(playlist)
     end
     Catalog.mixes = {}
     for index, genre in ipairs(Catalog.genres) do
@@ -172,6 +172,29 @@ end
 
 function Catalog.find(id)
     return Catalog.byId[id]
+end
+
+-- Writes the count of songs of a playlist into its caption.
+function Catalog.describe(playlist)
+    playlist.caption = string.format('Playlist · %s songs', Catalog.thousands(#playlist.tracks))
+end
+
+-- Adds a playlist that the person made after the favorites.
+function Catalog.addPlaylist(playlist)
+    table.insert(Catalog.playlists, 2, playlist)
+    Catalog.byId[playlist.id] = playlist
+    Catalog.describe(playlist)
+end
+
+-- Takes a playlist of the person out of the library, while its songs stay in their albums.
+function Catalog.removePlaylist(playlist)
+    for index, other in ipairs(Catalog.playlists) do
+        if other == playlist then
+            table.remove(Catalog.playlists, index)
+            break
+        end
+    end
+    Catalog.byId[playlist.id] = nil
 end
 
 -- Likes a song or takes the like back, keeps the favorites newest first, and emits "playerChanged" so every view of the song follows.

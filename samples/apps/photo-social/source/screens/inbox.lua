@@ -5,6 +5,7 @@ local ui = require('haylen.ui')
 
 local Chats = require('chats')
 local Page = require('page')
+local Routes = require('routes')
 local Shell = require('shell')
 local Style = require('style')
 
@@ -34,7 +35,7 @@ function Inbox:tree()
                 ui.icon{part = 'dot', bind = {visible = 'hasUnread'}, image = Shell.icon('dot'), size = 24, color = 'accent', visible = false, accessibilityLabel = 'Unread'},
             }, estimatedSize = 88}},
             onSelect = function(event)
-                self.params.messages:openChat(event.item)
+                Shell.router:push(Routes.chat(Chats.find(event.item).person))
             end,
             ui.emptyState{image = Shell.icon('messages'), imageSize = 64, title = 'No conversations', message = 'Send a post to a friend to start one.'},
         }, 1),

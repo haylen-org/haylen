@@ -3,6 +3,7 @@ local haylen = require('haylen')
 local ui = require('haylen.ui')
 
 local Page = require('page')
+local Routes = require('routes')
 local Shell = require('shell')
 local Store = require('data.store')
 local Style = require('style')
@@ -24,7 +25,7 @@ function Shop:tree()
                 },
                 ui.label{part = 'name', bind = {text = 'name'}, textAlign = 'center', align = 'stretch', wrap = false},
             }}}, onSelect = function(event)
-                Shell.showTab('browse', {category = event.item})
+                Shell.open(Routes.category(event.item))
             end},
             Widgets.section('New in', 'See all', function() Shell.showTab('browse', {sort = 'new'}) end),
             Widgets.shelf('new'),

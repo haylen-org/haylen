@@ -215,6 +215,28 @@ function Player.removeFromQueue(index)
     Player.changed()
 end
 
+-- Takes every song after the one that plays out of the queue and returns them in their order.
+function Player.clearUpcoming()
+    local removed = {}
+    for index = Player.index + 1, #Player.queue do
+        removed[#removed + 1] = Player.queue[index]
+    end
+    for index = #Player.queue, Player.index + 1, -1 do
+        table.remove(Player.queue, index)
+    end
+    Player.changed()
+    return removed
+end
+
+-- Puts songs that left the queue back at a place after the song that plays, such as the place they left.
+function Player.putBack(tracks, position)
+    local place = math.max(Player.index + 1, math.min(position, #Player.queue + 1))
+    for offset, track in ipairs(tracks) do
+        table.insert(Player.queue, place + offset - 1, track)
+    end
+    Player.changed()
+end
+
 function Player.moveInQueue(from, to)
     local track = table.remove(Player.queue, from)
     table.insert(Player.queue, to, track)

@@ -1,10 +1,11 @@
--- An album, a playlist, a mix or a genre: the big cover, the names and the buttons that play and shuffle under the glow of its colors, over the songs in a recycled list, which holds all 2,400 favorites.
+-- An album, a playlist, a mix or a genre: the big cover, the names and the buttons that play and shuffle under the glow of its colors, over the songs in a recycled list, which holds all 2,400 favorites. Its bar shares it, and a playlist of the person loses a song with a snackbar that brings it back, or goes away for good after an alert. A link to a song of an album shows the album around that song.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
 local Catalog = require('data.catalog')
 local Page = require('page')
 local Player = require('player')
+local Routes = require('routes')
 local Shell = require('shell')
 local Style = require('style')
 local Widgets = require('widgets')
@@ -19,9 +20,29 @@ function Collection:init(params)
     self.onTracks = Widgets.onTracks(function() return source.tracks end, self)
 end
 
+-- The playlists of the person, other than the favorites, which follow the heart of each song.
+function Collection:isOwnPlaylist()
+    for _, playlist in ipairs(Catalog.playlists) do
+        if playlist == self.source then
+            return playlist.id ~= 'liked'
+        end
+    end
+    return false
+end
+
 function Collection:tree()
+    local trailing = {
+        ui.button{id = 'share', icon = Shell.icon('share'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Share', tooltip = 'Share', onClick = function()
+            self:share()
+        end},
+    }
+    if self:isOwnPlaylist() then
+        trailing[2] = ui.button{id = 'delete', icon = Shell.icon('trash'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Delete the playlist', tooltip = 'Delete the playlist', onClick = function()
+            self:askDelete()
+        end}
+    end
     return ui.column{grow = 1, gap = 0,
-        Shell.header(''),
+        Shell.header('', trailing),
         ui.column{id = 'body', grow = 1, gap = 0},
     }
 end
@@ -44,7 +65,7 @@ function Collection:layoutChanged(wide)
     self.gui:replaceChildren('body', {Shell.centered(1100, ui.collection{id = 'tracks', gap = 0, padding = {0, space.s, space.xl, space.s}, rememberFocus = true,
         types = {
             head = {template = head, interactive = false},
-            track = Widgets.trackRow(source.type ~= 'album'),
+            track = Widgets.trackRow(source.type ~= 'album', nil, self:isOwnPlaylist()),
         },
         onClick = function(event)
             if event.part == 'play' then
@@ -60,12 +81,60 @@ function Collection:layoutChanged(wide)
         end,
         ui.emptyState{image = Shell.icon('music'), imageSize = 72, title = 'No songs yet', message = 'Add songs from their menu.'},
     }, 1)})
+    self.list = self.gui:collection('tracks')
+    self:showTracks()
+    if self.params.track then
+        self.list:scrollTo(self.params.track, {align = 'center', animated = false})
+    end
+end
+
+function Collection:showTracks()
+    local source = self.source
     local kinds = {album = 'Album', playlist = 'Playlist', genre = 'Genre'}
     local items = {{id = 'head', type = 'head', cover = source.cover, name = source.name, kind = kinds[source.type] or 'Playlist', caption = source.caption, description = source.description or ''}}
     for _, track in ipairs(source.tracks) do
         items[#items + 1] = track
     end
-    self.gui:collection('tracks'):setItems(items)
+    self.list:setItems(items)
+    self.list:reload('head')
+end
+
+-- Offers the links of the collection in an action sheet that points at the share button.
+function Collection:share()
+    self.shareSheet = Shell.share(self.source.name, Routes.location(self.params.collection), {gui = self.gui, id = 'share'})
+end
+
+-- Takes a song out of the playlist, which a snackbar offers to bring back to its place.
+function Collection:removeTrack(track)
+    local playlist = self.source
+    local place
+    for index, other in ipairs(playlist.tracks) do
+        if other == track then
+            place = index
+            break
+        end
+    end
+    table.remove(playlist.tracks, place)
+    Catalog.describe(playlist)
+    self:showTracks()
+    Shell.offerUndo(track.name .. ' left ' .. playlist.name .. '.', function()
+        table.insert(playlist.tracks, place, track)
+        Catalog.describe(playlist)
+        if ui.screenState(self) ~= 'removed' then
+            self:showTracks()
+        end
+    end)
+end
+
+-- Asks before the playlist goes away for good, and goes back once it is gone.
+function Collection:askDelete()
+    local playlist = self.source
+    self.deleteAlert = Shell.confirm('Delete ' .. playlist.name .. '?', 'The playlist leaves your library. Its songs stay in their albums.', 'Delete', function()
+        Catalog.removePlaylist(playlist)
+        Shell.showPlaylists()
+        Shell.notify(playlist.name .. ' is deleted.')
+        self.stack:pop()
+    end)
 end
 
 -- The album, the playlist or the mix with the id, or the songs of a genre for an id that starts with "genre-".

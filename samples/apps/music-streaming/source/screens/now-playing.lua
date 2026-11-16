@@ -1,4 +1,4 @@
--- The now playing screen, which the app presents over everything as a flow of its own: the big cover over the glow of the colors of its genre, a visualizer whose bars follow the voices of the song as the synthesizer plays them, the song with its heart, the position that the person drags to seek, the controls with shuffle and repeat, the sleep timer, the volume and the way to the queue. A wide window shows the cover beside the controls and the songs that come next.
+-- The now playing screen, which the app presents over everything as a flow of its own: the big cover over the glow of the colors of its genre, a visualizer whose bars follow the voices of the song as the synthesizer plays them, the song with its heart, the position that the person drags to seek, the controls with shuffle and repeat, the sleep timer, the volume, the way to the queue and the share button of the song. A wide window shows the cover beside the controls and the songs that come next.
 local audio = require('haylen.audio')
 local events = require('haylen.events')
 local graphics = require('haylen.graphics')
@@ -12,6 +12,7 @@ local Catalog = require('data.catalog')
 local Covers = require('covers')
 local Page = require('page')
 local Player = require('player')
+local Routes = require('routes')
 local Shell = require('shell')
 local Style = require('style')
 local Synth = require('synth')
@@ -69,6 +70,9 @@ function NowPlaying:layoutChanged(wide)
             self.presentation:dismiss()
         end},
         ui.column{gap = 0, grow = 1, ui.label{text = 'Playing from', font = 'caption', color = 'textMuted', textAlign = 'center', align = 'stretch'}, ui.label{id = 'source', text = '', font = 'button', textAlign = 'center', align = 'stretch', wrap = false}},
+        ui.button{id = 'share', icon = Shell.icon('share'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Share the song', tooltip = 'Share', onClick = function()
+            self:share()
+        end},
         ui.button{id = 'queue', icon = Shell.icon('queue'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Queue', tooltip = 'Queue', onClick = Shell.openQueue},
     }
     local art = ui.column{gap = space.m, grow = 1,
@@ -85,7 +89,7 @@ function NowPlaying:layoutChanged(wide)
                     local track = Player.current()
                     if track then
                         self.presentation:dismiss()
-                        Shell.open(require('screens.artist'), {artist = track.artist}, 'artist')
+                        Shell.open(Routes.location(track.artist))
                     end
                 end},
             },
@@ -145,7 +149,12 @@ end
 function NowPlaying:showSong()
     local track = Player.current()
     local gui = self.gui
-    if not track or not gui:has('cover') then
+    if not gui:has('cover') then
+        return
+    end
+    if not track then
+        gui:set('title', {text = 'Nothing plays'})
+        gui:set('artist', {text = 'Pick a song to start'})
         return
     end
     if self.glow ~= track.genre then
@@ -188,6 +197,14 @@ function NowPlaying:showSong()
             }
         end
         gui:replaceChildren('upNext', rows)
+    end
+end
+
+-- Offers the links of the song in an action sheet that points at the share button.
+function NowPlaying:share()
+    local track = Player.current()
+    if track then
+        self.shareSheet = Shell.share(track.name, Routes.location(track.id), {gui = self.gui, id = 'share'})
     end
 end
 
