@@ -576,6 +576,41 @@ TEST_F(MessageTest, ShowsMessagesFromLua) {
     EXPECT_EQ(getFixture().lua("return lateReason .. ' ' .. tostring(late.shown)"), "dismissed false");
 }
 
+// The messages keep inside the area of the app, above its bars, while no modal presentation covers it, and lie in the safe area over a presentation and once the GUI of the area unmounts.
+TEST_F(MessageTest, KeepsTheMessagesInsideTheAreaOfTheApp) {
+    // clang-format off
+    getFixture().runLua(R"(
+        ui = require('haylen.ui')
+        frame = ui.mount(ui.column{gap = 0, ui.column{id = 'middle', grow = 1}, ui.row{id = 'bar', height = 160}})
+        ui.setMessageArea{gui = frame, id = 'middle'}
+        ui.showMessage{style = 'snackbar', text = 'Photo deleted', duration = 0}
+    )");
+    // clang-format on
+    frames(getTransitionFrames() * 3);
+    const math::Rect safe = getUi().getBackend().getLiftedSafeRect();
+    const float margin = getMetric(Theme::Metric::PanelPadding);
+    ASSERT_TRUE(findMessage("Photo deleted"));
+    EXPECT_NEAR(findMessage("Photo deleted")->getBottom(), safe.getBottom() - 160.0F - margin, 1.0F);
+
+    getFixture().runLua("sheet = ui.present({build = function() return ui.column{ui.label{text = 'Queue'}} end})");
+    frames(40);
+    EXPECT_NEAR(findMessage("Photo deleted")->getBottom(), safe.getBottom() - margin, 1.0F);
+
+    getFixture().runLua("sheet:dismiss()");
+    frames(40);
+    EXPECT_NEAR(findMessage("Photo deleted")->getBottom(), safe.getBottom() - 160.0F - margin, 1.0F);
+
+    getFixture().runLua("frame:unmount()");
+    frames(2);
+    EXPECT_FALSE(getUi().getNavigation().getMessageArea().has_value());
+    EXPECT_NEAR(findMessage("Photo deleted")->getBottom(), safe.getBottom() - margin, 1.0F);
+
+    getFixture().runLua("other = ui.mount(ui.column{ui.label{text = 'Other'}})");
+    EXPECT_NE(getFixture().lua("ui.setMessageArea{gui = other, id = 'nowhere'}").find("The GUI of the region has no node with the id \"nowhere\"."), std::string::npos);
+    EXPECT_NE(getFixture().lua("ui.setMessageArea{gui = other, node = 'middle'}").find("Unknown option \"node\"."), std::string::npos);
+    EXPECT_EQ(getFixture().lua("ui.setMessageArea(nil)").find("error:"), std::string::npos);
+}
+
 TEST_F(MessageTest, ReportsMistakesFromLua) {
     getFixture().runLua("ui = require('haylen.ui') shown = ui.showMessage{text = 'Hi'}");
     EXPECT_NE(getFixture().lua("ui.showMessage{text = 'Hi', color = 'red'}").find("Unknown option \"color\"."), std::string::npos);

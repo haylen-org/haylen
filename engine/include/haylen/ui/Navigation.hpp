@@ -112,6 +112,12 @@ class Navigation final {
         return messages;
     }
 
+    // Keeps the messages inside the area of a node, such as the middle that the bars of an app leave between them, so a snackbar never covers a tab bar, while the node draws and no modal presentation covers it, and in the safe area otherwise or without an area. The area ends when its GUI unmounts. Throws `std::invalid_argument` for a GUI that is not mounted or a node that the GUI lacks.
+    void setMessageArea(std::optional<Region> value);
+    [[nodiscard]] const std::optional<Region>& getMessageArea() const noexcept {
+        return messageArea;
+    }
+
     // Whether the system back goes back somewhere in the app: a stack that pops, tabs that go to the first tab or a presentation that leaves.
     [[nodiscard]] bool canGoBack() const;
 
@@ -226,6 +232,7 @@ class Navigation final {
     std::vector<std::shared_ptr<NavigationSplit>> splits;
     std::vector<std::shared_ptr<Presentation>> presentations;
     std::vector<std::shared_ptr<Message>> messages;
+    std::optional<Region> messageArea;
     std::vector<std::shared_ptr<Router>> routers;
 
     // The containers and screens that an update or a render walks, kept between frames so they allocate nothing.

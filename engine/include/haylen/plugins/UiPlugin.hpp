@@ -202,6 +202,7 @@ class UiPlugin final : public Plugin {
     [[nodiscard]] bool isComplete(const ui::Gui& gui) const;
     [[nodiscard]] math::Vec2 getLookOffset(const ui::Navigation::Look& look, const math::Rect& area, float riseRoom) const;
     [[nodiscard]] std::optional<math::Rect> findArea(const Mounted& entry) const;
+    [[nodiscard]] math::Rect getMessageArea() const;
 
     // Performs an action that a screen reader asked of an element of the last frame, and hands the elements of this frame to the platform.
     void perform(const platform::Accessibility::Request& request);

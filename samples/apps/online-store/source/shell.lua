@@ -43,6 +43,8 @@ end
 -- Mounts the frame and the tabs in the middle of the frame, and starts the routes of the links over the tabs. The bag button of the frame follows the bag while the app runs.
 function Shell.scene:enter()
     Shell.gui = ui.mount(Shell.frame(), {owner = self, sharedFocus = true})
+    -- The toasts and snackbars keep above the bars of the frame, so they never cover the tabs or the player.
+    ui.setMessageArea{gui = Shell.gui, id = 'middle'}
     Shell.showBag(Shell)
     Shell.adaptFrame()
     local tabs = {}

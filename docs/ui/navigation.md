@@ -210,6 +210,12 @@ ui.showMessage{style = 'banner', title = 'Ana', text = 'See you at six?', icon =
 end}
 ```
 
+The messages lie in the safe area. An app whose frame holds bars, such as a tab bar or the player of a music app, keeps them inside the middle of its frame with `ui.setMessageArea`, so a snackbar never covers its tabs. The area counts while its node draws and no modal presentation covers it, and the messages go back to the safe area over a presentation, which covers the bars anyway.
+
+```lua
+ui.setMessageArea{gui = frame, id = 'middle'}
+```
+
 Messages of one position stack without covering each other, as a list or as a deck with the newest in front. The others wait their turn in a queue, a higher priority before a lower one, and a snackbar or a banner of a higher priority replaces the one that shows, such as a warning that the connection dropped over a confirmation. The time of a message stops while the pointer or a finger rests on its stack, and the person taps it, swipes it away, closes it or presses its action. Its `result` resolves with the reason it left, so a snackbar can wait for the undo before it deletes for good. Screen readers hear every message that comes on screen, and a high priority interrupts them. They read the action and the close button of a message as buttons, which they press though neither takes the focus. Use an alert instead when the person must decide before going on.
 
 ## Results of a flow
@@ -302,7 +308,7 @@ A stack draws only the top screen of each stack that shows, and both screens of 
 
 ## From C++
 
-The classes of `haylen::ui` are the same model. `ui::Screen` builds its GUI in `build` and hears the same hooks. The `ui::Navigation` of the UI plugin creates stacks with `createStack`, tabs with `createTabs`, splits with `createSplit`, presentations with `present`, alerts with `presentAlert`, messages with `showMessage` and the routes of links with `createRouter`, which takes the options of `ui.showMessage` as JSON properties, and `goBack` takes the system back. A presentation tells that it left with its `dismissed` signal, and `getResult` returns its result as JSON. A `ui::Message` tells what happened with its signals `appeared`, `tapped`, `actionPressed` and `dismissed`, and `getReason` says why it left.
+The classes of `haylen::ui` are the same model. `ui::Screen` builds its GUI in `build` and hears the same hooks. The `ui::Navigation` of the UI plugin creates stacks with `createStack`, tabs with `createTabs`, splits with `createSplit`, presentations with `present`, alerts with `presentAlert`, messages with `showMessage` in the area of `setMessageArea` and the routes of links with `createRouter`, which takes the options of `ui.showMessage` as JSON properties, and `goBack` takes the system back. A presentation tells that it left with its `dismissed` signal, and `getResult` returns its result as JSON. A `ui::Message` tells what happened with its signals `appeared`, `tapped`, `actionPressed` and `dismissed`, and `getReason` says why it left.
 
 ```cpp
 #include <memory>

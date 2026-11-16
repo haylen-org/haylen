@@ -103,6 +103,7 @@ class NavigationLua final {
     static int present(lua_State* L);
     static int presentAlert(lua_State* L);
     static int showMessage(lua_State* L);
+    static int setMessageArea(lua_State* L);
     static int router(lua_State* L);
     static int goBack(lua_State* L);
     static int canGoBack(lua_State* L);

@@ -125,6 +125,14 @@ std::shared_ptr<Message> Navigation::showMessage(const core::Json& properties) {
     return created;
 }
 
+void Navigation::setMessageArea(std::optional<Region> value) {
+    if (value) {
+        checkRegion(*value);
+    }
+
+    messageArea = std::move(value);
+}
+
 void Navigation::checkRegion(const Region& region) const {
     ui.checkRegion(region);
 }
@@ -627,6 +635,10 @@ void Navigation::collectDrawn(std::vector<std::shared_ptr<Screen>>& found) const
 }
 
 void Navigation::closeHostedBy(const Gui& gui) {
+    if (messageArea && messageArea->gui.get() == &gui) {
+        messageArea.reset();
+    }
+
     std::vector<std::shared_ptr<NavigationTabs>> closingTabs;
     std::vector<std::shared_ptr<NavigationSplit>> closingSplits;
     std::vector<std::shared_ptr<NavigationStack>> closingStacks;
@@ -703,6 +715,7 @@ void Navigation::closeAll() {
     stacks.clear();
     presentations.clear();
     messages.clear();
+    messageArea.reset();
 }
 
 void Navigation::forget(const NavigationStack& stack) {

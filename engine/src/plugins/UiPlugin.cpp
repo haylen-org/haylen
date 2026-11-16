@@ -93,7 +93,7 @@ void UiPlugin::start(core::Engine& engine) {
     setTheme(themeName);
     navigation = std::make_unique<ui::Navigation>(engine, *this);
     presentationView = std::make_unique<ui::PresentationView>(*backend, *context);
-    messageView = std::make_unique<ui::MessageView>(*backend, *context, engine.getAccessibility());
+    messageView = std::make_unique<ui::MessageView>(*context, engine.getAccessibility());
     // clang-format off
     focus.setBackHandler([this] {
         if (!navigation->canGoBack()) {
@@ -601,6 +601,22 @@ void UiPlugin::drawAbove(core::Engine& engine, const core::SceneView& view) {
     drawing.endDeferring();
 }
 
+// The messages keep inside the area of the app while its node draws and no modal presentation covers it, and lie in the safe area otherwise.
+math::Rect UiPlugin::getMessageArea() const {
+    const math::Rect safe = backend->getLiftedSafeRect();
+    const std::optional<ui::Region>& area = navigation->getMessageArea();
+    if (!area || navigation->getTopModal() != nullptr) {
+        return safe;
+    }
+
+    const ui::Component* node = area->gui->find(area->node);
+    if (node == nullptr || node->getDrawnFrame() + 1 < context->getFrame() || node->getBounds().isEmpty()) {
+        return safe;
+    }
+
+    return node->getBounds().intersection(safe);
+}
+
 // The GUIs under the topmost modal presentation draw in a window of their own that takes no input, with child windows that never take the pointer, and reach the screen before the presentation draws over them, without elements for screen readers. They shrink about the middle of the screen while a sheet near the top of a compact screen covers them.
 void UiPlugin::drawUnder(core::Engine& engine, std::size_t count) {
     beginWindow("##haylen-under", ImGuiWindowFlags_NoInputs);
@@ -644,7 +660,7 @@ void UiPlugin::drawCurrent(core::Engine& engine, const core::SceneView& view) {
     beginWindow("##haylen-guis", ImGuiWindowFlags_NoNavInputs);
     drawing.setTransparentWindow();
     drawGuis(under, drawnGuis.size(), false);
-    messageView->draw(navigation->getMessages());
+    messageView->draw(navigation->getMessages(), getMessageArea());
 
     // The GUIs that no view shows, such as those of a covered scene, hear that they stopped drawing.
     for (const Mounted& entry : guis) {

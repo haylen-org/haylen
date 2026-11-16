@@ -912,6 +912,19 @@ int NavigationLua::routerClosed(lua_State* L) {
     return 1;
 }
 
+// Keeps the messages inside the area of a node with `ui.setMessageArea{gui = frame, id = 'middle'}`, or in the safe area again with `ui.setMessageArea(nil)`.
+int NavigationLua::setMessageArea(lua_State* L) {
+    if (lua_isnoneornil(L, 1)) {
+        getNavigation(L).setMessageArea(std::nullopt);
+        return 0;
+    }
+
+    luaL_checktype(L, 1, LUA_TTABLE);
+    lua::Table::checkFields(L, 1, {kRegionFields});
+    getNavigation(L).setMessageArea(readRegion(L, 1, "The area of the messages"));
+    return 0;
+}
+
 int NavigationLua::goBack(lua_State* L) {
     lua_pushboolean(L, getNavigation(L).goBack() ? 1 : 0);
     return 1;
@@ -1224,7 +1237,7 @@ int NavigationLua::messageResult(lua_State* L) {
 void NavigationLua::addTo(lua_State* L, int module) {
     const int target = lua_absindex(L, module);
     const luaL_Reg functions[] = {
-        {"navigationStack", &lua::Binding::native<&navigationStack>}, {"navigationTabs", &lua::Binding::native<&navigationTabs>}, {"navigationSplit", &lua::Binding::native<&navigationSplit>}, {"present", &lua::Binding::native<&present>}, {"presentAlert", &lua::Binding::native<&presentAlert>}, {"showMessage", &lua::Binding::native<&showMessage>}, {"router", &lua::Binding::native<&router>}, {"goBack", &lua::Binding::native<&goBack>}, {"canGoBack", &lua::Binding::native<&canGoBack>}, {"screenState", &lua::Binding::native<&screenState>}, {nullptr, nullptr},
+        {"navigationStack", &lua::Binding::native<&navigationStack>}, {"navigationTabs", &lua::Binding::native<&navigationTabs>}, {"navigationSplit", &lua::Binding::native<&navigationSplit>}, {"present", &lua::Binding::native<&present>}, {"presentAlert", &lua::Binding::native<&presentAlert>}, {"showMessage", &lua::Binding::native<&showMessage>}, {"setMessageArea", &lua::Binding::native<&setMessageArea>}, {"router", &lua::Binding::native<&router>}, {"goBack", &lua::Binding::native<&goBack>}, {"canGoBack", &lua::Binding::native<&canGoBack>}, {"screenState", &lua::Binding::native<&screenState>}, {nullptr, nullptr},
     };
     for (const luaL_Reg* entry = functions; entry->name != nullptr; ++entry) {
         lua_pushcfunction(L, entry->func);

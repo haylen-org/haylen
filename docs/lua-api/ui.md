@@ -4064,7 +4064,7 @@ Shows a toast, a snackbar or a banner over everything the app shows, above every
 
 | Style | What it is |
 | --- | --- |
-| `'toast'` | A pill at the bottom middle of the safe area that fits its text, for a short confirmation, such as a saved file. A stack shows the theme `toastLimit` toasts at once, and a toast lasts 3 seconds. |
+| `'toast'` | A pill at the bottom middle of the safe area, or of the area of [`ui.setMessageArea`](#uisetmessageareaarea), that fits its text, for a short confirmation, such as a saved file. A stack shows the theme `toastLimit` toasts at once, and a toast lasts 3 seconds. |
 | `'snackbar'` | A bar across the bottom, as wide as the theme `toastWidth` within the safe area, with the corner radius of controls, for an action that the person may take back, such as an undo after a deletion. A stack shows one snackbar at a time, and a snackbar lasts 4 seconds, or 6 with an action. |
 | `'banner'` | A card that drops in under the status bar at the top of the safe area, as wide as the theme `toastWidth`, with the corner radius of panels and a picture at its start, for news that the person may open, such as a chat message. A stack shows one banner at a time, and a banner lasts 5 seconds. |
 
@@ -4126,6 +4126,19 @@ end}
 ui.showMessage{style = 'banner', title = 'Ana', text = 'See you at six?', icon = 'images/ana.png', onTap = function()
     openChat('ana')
 end}
+```
+
+### ui.setMessageArea(area)
+
+Keeps the messages of [`ui.showMessage`](#uishowmessageoptions) inside the area of the node `id` of the mounted GUI `gui`, such as the middle that the tab bar and the player of an app leave, so a snackbar never covers them. The stacks of the messages line up with the edges of that area while its node draws and no modal presentation shows, and with the edges of the safe area otherwise. The value `nil` puts them in the safe area again, and the area ends when its GUI unmounts.
+
+A table with another key raises `Unknown option "<key>".`, a missing GUI raises `The area of the messages names the GUI that holds its area with "gui".`, a missing id raises `The area of the messages names the node of its area with "id".`, a GUI that is not mounted raises `The GUI of a region must be mounted.` and an id that the GUI lacks raises `The GUI of the region has no node with the id "<id>".`.
+
+```lua
+local ui = require('haylen.ui')
+
+local frame = ui.mount(ui.column{gap = 0, ui.column{id = 'middle', grow = 1}, ui.row{id = 'tabs', height = 120}}, {sharedFocus = true})
+ui.setMessageArea{gui = frame, id = 'middle'}
 ```
 
 ### ui.router(options)

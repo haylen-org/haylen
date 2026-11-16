@@ -17,16 +17,16 @@ class Accessibility;
 
 namespace haylen::ui {
 
-class Backend;
 class Context;
 
 // Draws the messages of the navigation above every GUI and every presentation, each in an ImGui window of its own in the stack of its position, and answers the presses and swipes on them. A message slides in from the edge of its stack and fades in, settles into its place as the messages around it come and go, and fades out while its place shrinks, and only fades while the system asks for reduced motion. What the person did that runs code of the app waits for the next update of the navigation. Every message that comes on screen is announced to screen readers and joins the tree they read as an alert.
 class MessageView final {
   public:
-    MessageView(Backend& drawing, Context& drawingContext, platform::Accessibility& screenReaders);
+    MessageView(Context& drawingContext, platform::Accessibility& screenReaders);
 
     // Draws the messages that wait or show, in the window being built.
-    void draw(const std::vector<std::shared_ptr<Message>>& messages);
+    // Draws the messages in the stacks of the edges of an area in UI coordinates, the safe area or the area of the app that keeps clear of its bars.
+    void draw(const std::vector<std::shared_ptr<Message>>& messages, const math::Rect& area);
 
   private:
     // The places of the parts of a message inside its frame.
@@ -62,7 +62,7 @@ class MessageView final {
     // The picture at the start of a banner, as a share of the height of a line of its text.
     static constexpr float kIconLines = 2.0F;
 
-    void drawMessage(Message& message);
+    void drawMessage(Message& message, const math::Rect& area);
 
     // Lays out the parts of a message no wider than `width`, or exactly as wide when it fills the width, as a snackbar, a banner and the messages of a deck do.
     [[nodiscard]] Layout layOut(const Message& message, float width, bool fill);
@@ -76,7 +76,6 @@ class MessageView final {
     void describe(const Message& message);
     [[nodiscard]] static bool endsSentence(std::string_view text) noexcept;
 
-    Backend& backend;
     Context& context;
     platform::Accessibility& accessibility;
     std::string spoken;

@@ -12,7 +12,6 @@
 #include "haylen/math/Insets.hpp"
 #include "haylen/platform/Accessibility.hpp"
 #include "haylen/ui/AccessibilityTree.hpp"
-#include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Component.hpp"
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/MessageStack.hpp"
@@ -26,18 +25,18 @@
 
 namespace haylen::ui {
 
-MessageView::MessageView(Backend& drawing, Context& drawingContext, platform::Accessibility& screenReaders) : backend(drawing), context(drawingContext), accessibility(screenReaders) {}
+MessageView::MessageView(Context& drawingContext, platform::Accessibility& screenReaders) : context(drawingContext), accessibility(screenReaders) {}
 
-void MessageView::draw(const std::vector<std::shared_ptr<Message>>& messages) {
+void MessageView::draw(const std::vector<std::shared_ptr<Message>>& messages, const math::Rect& area) {
     for (const std::shared_ptr<Message>& message : messages) {
         if (message->phase != Message::Phase::Gone) {
-            drawMessage(*message);
+            drawMessage(*message, area);
         }
     }
 }
 
 // A message waits while the list of its stack is full, and its time runs from the frame it comes on screen, while nothing holds its stack. A message behind the front of a closed deck shrinks toward the edge and fades once more messages than the limit of the theme lie in front of it.
-void MessageView::drawMessage(Message& message) {
+void MessageView::drawMessage(Message& message, const math::Rect& area) {
     MessageStack& stack = context.getMessages();
     if (message.key == 0) {
         message.key = stack.createKey();
@@ -47,17 +46,16 @@ void MessageView::drawMessage(Message& message) {
         message.since = context.getTime();
     }
 
-    // A message grows with the text scale, within the safe area. The stacks of an edge that has no room for its start, middle and end stacks side by side form one stack, in which every message keeps its side, so they never cover each other.
+    // A message grows with the text scale, within its area. The stacks of an edge that has no room for its start, middle and end stacks side by side form one stack, in which every message keeps its side, so they never cover each other.
     const Message::Content& content = *message.content;
-    const math::Rect safe = backend.getLiftedSafeRect();
     const float margin = context.getMetric(Theme::Metric::PanelPadding);
     const float widest = context.getMetric(Theme::Metric::ToastWidth) * context.getTextScale();
-    const float width = std::max(0.0F, std::min(widest, safe.width - margin * 2.0F));
+    const float width = std::max(0.0F, std::min(widest, area.width - margin * 2.0F));
     const bool toast = message.style == Message::Style::Toast;
     const bool deck = content.arrangement == MessageStack::Arrangement::Deck;
     const Layout layout = layOut(message, width, deck || !toast);
     const bool bottom = MessageStack::isBottom(content.position);
-    const bool shared = widest * 3.0F + margin * 4.0F > safe.width;
+    const bool shared = widest * 3.0F + margin * 4.0F > area.width;
     const MessageStack::Position stacked = shared ? (bottom ? MessageStack::Position::Bottom : MessageStack::Position::Top) : content.position;
 
     // A toast shows the limit of the theme at once, and a snackbar or a banner one at a time.
@@ -124,18 +122,18 @@ void MessageView::drawMessage(Message& message) {
         return;
     }
 
-    // Start and end stacks line up with the sides of the safe area the UI starts and ends at. A toast comes in from the edge of its stack, and a snackbar and a banner travel their whole height, so a banner drops in under the status bar.
+    // Start and end stacks line up with the sides of the area the UI starts and ends at. A toast comes in from the edge of its stack, and a snackbar and a banner travel their whole height, so a banner drops in under the status bar.
     const MessageStack::Position position = content.position;
     const bool start = position == MessageStack::Position::TopStart || position == MessageStack::Position::BottomStart;
     const bool end = position == MessageStack::Position::TopEnd || position == MessageStack::Position::BottomEnd;
-    float x = safe.getCenter().x - layout.size.x * 0.5F;
+    float x = area.getCenter().x - layout.size.x * 0.5F;
     if (start || end) {
-        x = (start != context.isRightToLeft()) ? safe.x + margin : safe.getRight() - margin - layout.size.x;
+        x = (start != context.isRightToLeft()) ? area.x + margin : area.getRight() - margin - layout.size.x;
     }
 
     const float travel = reduced ? 0.0F : (toast ? margin : layout.size.y + margin);
     const float slide = (1.0F - message.appear) * travel;
-    const float y = bottom ? safe.getBottom() - margin - message.offset - layout.size.y + slide : safe.y + margin + message.offset - slide;
+    const float y = bottom ? area.getBottom() - margin - message.offset - layout.size.y + slide : area.y + margin + message.offset - slide;
     const math::Rect frame{std::floor(x + message.swipe), std::floor(y), layout.size.x, layout.size.y};
     stack.cover(stacked, frame);
 
