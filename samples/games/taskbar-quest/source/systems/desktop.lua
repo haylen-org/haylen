@@ -9,9 +9,16 @@ local config = require('config')
 local desktop = {}
 desktop.__index = desktop
 
--- The strip mode comes from `app.json`, so the mode the app starts in is whatever the window has. The strip follows the taskbar and the displays while the owner lives.
+-- Only the desktops of Windows, macOS and Linux float a frameless window above the others, as the window reference says. Everywhere else, such as on a web page, the window fills the page and the quest shows in the window mode alone.
+desktop.stripPlatforms = {windows = true, macos = true, linux = true}
+
+-- The strip mode comes from `app.json`, so on a desktop the app starts in whatever mode the window has. The strip follows the taskbar and the displays while the owner lives.
 function desktop.new(owner)
-    local self = setmetatable({strip = not window.decorated()}, desktop)
+    local canStrip = desktop.stripPlatforms[haylen.platform] == true
+    local self = setmetatable({canStrip = canStrip, strip = canStrip and not window.decorated()}, desktop)
+    if not canStrip then
+        viewport.setDesignSize(config.window.designWidth, config.window.designHeight)
+    end
     for _, name in ipairs({'displayConnected', 'displayDisconnected', 'displayChanged'}) do
         events.on(name, function()
             if self.strip then

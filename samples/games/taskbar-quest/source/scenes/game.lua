@@ -24,7 +24,7 @@ function game:enter()
     self.desktop = desktop.new(self)
     self.stage = stage.new(images)
     self.effects = effects.new(images)
-    self.hud = hud.new(self, {
+    self.hud = hud.new(self, self.desktop.canStrip, {
         sword = function() self.quest:upgradeSword() end,
         potion = function() self.quest:drinkPotion() end,
         mode = function() self.desktop:toggle() end,
@@ -33,9 +33,9 @@ function game:enter()
     self.quest = quest.new(self, images, self.effects, self.hud, self.stage.lane)
 end
 
--- A press on the ground or the grip drags the window, which has to start while the button is still down.
+-- A press on the ground or the grip drags the window of a desktop, which has to start while the button is still down.
 function game:event(event)
-    if event.type ~= 'mouseDown' or event.button ~= 'left' or ui.usingPointer() then
+    if not self.desktop.canStrip or event.type ~= 'mouseDown' or event.button ~= 'left' or ui.usingPointer() then
         return
     end
     if self.quest:targetAt(event.x, event.y) == nil and self.stage:grabs(event.x, event.y) then
@@ -44,7 +44,7 @@ function game:event(event)
 end
 
 function game:update(dt)
-    if input.pressed('quit') and not self.desktop.strip then
+    if input.pressed('quit') and not self.desktop.strip and haylen.canQuit() then
         haylen.quit()
         return
     end
@@ -66,7 +66,7 @@ end
 
 function game:render()
     graphics2d.beginScreen()
-    self.stage:draw(not self.desktop.strip, haylen.elapsed())
+    self.stage:draw(not self.desktop.strip, self.desktop.canStrip, haylen.elapsed())
     self.quest:draw()
     self.effects:draw()
 end

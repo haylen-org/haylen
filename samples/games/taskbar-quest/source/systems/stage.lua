@@ -89,7 +89,8 @@ function stage:drawBackdrop(time)
     end
 end
 
-function stage:draw(windowMode, time)
+-- The grip shows only where the window moves by it.
+function stage:draw(windowMode, movable, time)
     if windowMode then
         self:drawBackdrop(time)
     end
@@ -110,7 +111,9 @@ function stage:draw(windowMode, time)
     end
     graphics2d.drawBatch(self.art.decorations.texture, flowers, {layer = config.layer.props})
 
-    graphics2d.draw(self.art.texture, self.grip.x, self.grip.y, {source = self.art.grip, pivotX = 0, pivotY = 0, width = self.grip.width, height = self.grip.height, layer = config.layer.props})
+    if movable then
+        graphics2d.draw(self.art.texture, self.grip.x, self.grip.y, {source = self.art.grip, pivotX = 0, pivotY = 0, width = self.grip.width, height = self.grip.height, layer = config.layer.props})
+    end
 end
 
 return stage

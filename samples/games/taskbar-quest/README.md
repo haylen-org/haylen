@@ -9,7 +9,7 @@ The game shows the desktop windows of the engine. The strip has no title bar, le
 - Click a slime or a mushroom to strike it, click a coin to collect it at once, and click the hero to say hello.
 - Drag the strip by the ground or by the grip at its left end.
 - Click the empty space above the ground: the click reaches the window or the desktop behind the strip.
-- Press Window to turn the strip into a normal opaque window in the middle of the screen, and Strip to send it back above the taskbar, transparent again. Escape quits in window mode, and the cross quits in both modes.
+- Press Window to turn the strip into a normal opaque window in the middle of the screen, and Strip to send it back above the taskbar, transparent again. Escape quits in window mode, and the cross quits in both modes. A web page always shows the window mode, as the [platforms](#platforms) tell.
 
 ## Running it
 
@@ -32,7 +32,7 @@ The command `haylen package samples/games/taskbar-quest -o taskbar-quest.zip` zi
 | macOS | Everything works, and transparency always does. The strip is unfocusable, so clicking it never activates the game, and the app you were typing in keeps the keyboard and the menu bar. |
 | Windows | Everything works with the Direct3D 11 backend, which is the default. A build with the OpenGL backend opens an opaque window. |
 | Linux | Transparency needs a compositing window manager. The strip hears the mouse only over its regions. |
-| Web | The strip shows over the page, and the window options keep their values without effect. |
+| Web | A page has no window that floats above the others, so the quest starts in the window mode and stays in it, with the sky and the hills filling the page. The button of the modes and the grip do not show, since there is no strip and the page does not move, and neither does the cross, since a page closes only through the browser, as [`haylen.canQuit`](../../../docs/lua-api/haylen.md#haylencanquit) tells. |
 | iOS, iPadOS, tvOS, Android | Apps fill the screen there, so these devices are not the target of the game. |
 
 ## Art
@@ -54,12 +54,12 @@ The sample folder is the package. Only `app.json`, `source/` and `content/` ship
 
 ```text
 taskbar-quest/
-  app.json               A frameless, transparent, always on top and unfocusable strip of 200 points anchored to the bottom of the work area and filling its width, with a design size of 1600 by 200 and expand scaling.
+  app.json               A frameless, transparent, always on top and unfocusable strip of 200 points anchored to the bottom of the work area and filling its width, with a design size of 1600 by 200 and expand scaling, and the sky as the background of the splash of a web page.
   source/
     main.lua             Loads the action map and the theme and opens the game.
     config.lua           Tuning values: the scale of the art, hero, enemies, spawns, prices, window mode and draw layers.
     scenes/game.lua      The scene: input, update order, drawing and the regions that keep the mouse.
-    systems/             The quest rules (quest.lua), the strip and window modes (desktop.lua), the ground and the sky (stage.lua), effects and art.
+    systems/             The quest rules (quest.lua), the strip and window modes and the platforms that have the strip (desktop.lua), the ground and the sky (stage.lua), effects and art.
     entities/            The hero, the enemies and the coins.
     ui/hud.lua           The counters and the buttons.
   content/

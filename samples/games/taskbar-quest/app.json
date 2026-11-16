@@ -15,6 +15,7 @@
         "mousePassthrough": true,
         "position": {"anchor": "bottom", "area": "work", "display": "primary", "fill": "width"}
     },
+    "splash": {"background": "#FF5B8FD6"},
     "design": {
         "width": 1600,
         "height": 200,

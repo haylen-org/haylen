@@ -1,4 +1,5 @@
 -- The counters in the top left corner of the safe area and the buttons in its top right corner.
+local haylen = require('haylen')
 local m = require('haylen.math')
 local tween = require('haylen.tween')
 local ui = require('haylen.ui')
@@ -8,7 +9,8 @@ local config = require('config')
 local hud = {}
 hud.__index = hud
 
-function hud.new(owner, actions)
+-- The button of the modes shows only where the strip exists, and the button that quits only where a quit closes the app.
+function hud.new(owner, canStrip, actions)
     local self = setmetatable({shown = {}}, hud)
     self.gui = ui.mount(ui.stack{
         ui.panel{
@@ -37,8 +39,8 @@ function hud.new(owner, actions)
                 focusable = false,
                 ui.button{id = 'sword', icon = 'images/icon-sword.png', onClick = actions.sword},
                 ui.button{id = 'potion', icon = 'images/icon-potion.png', onClick = actions.potion},
-                ui.button{id = 'mode', onClick = actions.mode},
-                ui.button{id = 'quit', icon = 'images/icon-close.png', variant = 'icon', tooltip = 'Quit', onClick = actions.quit},
+                ui.button{id = 'mode', visible = canStrip, onClick = actions.mode},
+                ui.button{id = 'quit', visible = haylen.canQuit(), icon = 'images/icon-close.png', variant = 'icon', tooltip = 'Quit', onClick = actions.quit},
             },
         },
     }, {owner = owner})
