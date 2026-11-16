@@ -2439,6 +2439,7 @@ Efeitos e samples:
 - [ ] Um exemplo dos quatro jeitos de mostrar o personagem atrás de algo (esmaecer, pontilhado, recorte e silhueta).
 - [ ] A navegação dos apps de exemplo: abrir uma tela (como "New Post" ou uma conversa) troca só o miolo, nunca monta outro app inteiro com menu e barras por cima. Revisar todos os apps.
 - [ ] Um sample novo em `apps`: o painel de um carro elétrico, moderno e animado, simulando uma viagem com velocidade, navegação, energia, pneus e assistentes mudando, com textos em inglês.
+- [ ] Outro sample novo em `apps`: o painel de controle de uma casa inteligente, bonito e moderno como o do carro, imitando os painéis de parede que controlam a casa (luzes por cômodo, clima, segurança e câmeras, energia, cenas e aparelhos), animado com dados que mudam, com textos em inglês.
 
 Playground do site (pendências da engine):
 
