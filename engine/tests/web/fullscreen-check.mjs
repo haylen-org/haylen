@@ -61,6 +61,8 @@ const page = (await send("Target.getTargets")).targetInfos.find((target) => targ
 const { sessionId } = await send("Target.attachToTarget", { targetId: page.targetId, flatten: true });
 await send("Runtime.enable", {}, sessionId);
 await send("Page.enable", {}, sessionId);
+// The page takes the focus, as the window that a person types into has it, since the browser counts a key as an input of the person only on a page with the focus.
+await send("Page.bringToFront", {}, sessionId);
 await send("Page.navigate", { url }, sessionId);
 
 // A key of the debugging protocol counts as an input of the person, which the browser wants shortly before it goes fullscreen.
