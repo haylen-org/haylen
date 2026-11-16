@@ -519,7 +519,7 @@ TEST_F(TextInputTest, HoldsTheLiftedFieldStillOverAKeyboardBetweenTwoUnits) {
     }
 }
 
-// A tap on a button next to a field ends the editing and hides the keyboard while the finger is still down, so the UI stays where it was until the finger lifts, and the button it pressed takes the tap.
+// A keyboard that hides while a finger presses a button next to a field leaves the UI where it was until the finger lifts, so the button it pressed takes the tap.
 TEST_F(TextInputTest, KeepsTheUiInPlaceUntilAPressThatHidesTheKeyboardLifts) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "spacer", "height": 900}, {"kind": "row", "children": [{"kind": "textField", "id": "draft", "grow": 1}, {"kind": "button", "id": "send", "text": "Send"}]}]})");
     focus(*gui, "draft");
@@ -573,6 +573,52 @@ TEST_F(TextInputTest, ScrollsOverAFieldBeingEditedAndKeepsEditing) {
     fixture.frames(2);
     EXPECT_LT(gui->find("content")->getBounds().y, top - 40.0F);
     EXPECT_TRUE(getInput().isEditing());
+}
+
+// A finger that presses outside the field being edited and drags scrolls the form, and the field keeps editing with the keyboard, its focus and its text.
+TEST_F(TextInputTest, KeepsEditingWhileAFingerScrollsTheFormFromOutsideTheField) {
+    auto gui = mount(R"({"kind": "scroll", "id": "page", "width": 600, "height": 400, "children": [{"kind": "column", "id": "content", "children": [{"kind": "textField", "id": "name"}, {"kind": "button", "id": "save", "text": "Save"}, {"kind": "spacer", "height": 4000}]}]})");
+    focus(*gui, "name");
+    edit("Ada", 3, 3);
+    ASSERT_TRUE(getInput().isEditing());
+    events.clear();
+    const math::Vec2 start = gui->find("save")->getBounds().getCenter();
+    const float top = gui->find("content")->getBounds().y;
+    touch(platform::Event::Type::TouchBegan, start);
+    fixture.frames(2);
+    EXPECT_TRUE(getInput().isEditing()) << "A press outside the field decides nothing yet.";
+
+    for (int step = 1; step <= 10; ++step) {
+        touch(platform::Event::Type::TouchMoved, start - math::Vec2{0.0F, 8.0F * static_cast<float>(step)});
+        fixture.frames(1);
+        ASSERT_TRUE(getInput().isEditing()) << "The field stops editing at step " << step << " of the drag.";
+    }
+
+    touch(platform::Event::Type::TouchEnded, start - math::Vec2{0.0F, 80.0F});
+    fixture.frames(3);
+    EXPECT_LT(gui->find("content")->getBounds().y, top - 40.0F);
+    ASSERT_TRUE(getInput().isEditing());
+    EXPECT_TRUE(events.empty()) << "The button under the finger takes no press.";
+    edit("Ada L", 5, 5);
+    EXPECT_EQ(getPublished().text, "Ada L");
+}
+
+// A finger that taps outside the field being edited ends the editing once it lifts, and the button it tapped takes the tap.
+TEST_F(TextInputTest, EndsEditingWhenAFingerThatPressedOutsideTheFieldLiftsWithinTheSlop) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name"}, {"kind": "button", "id": "save", "text": "Save"}]})");
+    focus(*gui, "name");
+    const math::Vec2 button = gui->find("save")->getBounds().getCenter();
+    const math::Vec2 lift = button + math::Vec2{ScrollArbiter::kDragSlop * 0.5F, 0.0F};
+    touch(platform::Event::Type::TouchBegan, button);
+    fixture.frames(3);
+    EXPECT_TRUE(getInput().isEditing()) << "The field edits while the finger is down.";
+
+    touch(platform::Event::Type::TouchMoved, lift);
+    fixture.frames(1);
+    touch(platform::Event::Type::TouchEnded, lift);
+    fixture.frames(3);
+    EXPECT_FALSE(getInput().isEditing());
+    EXPECT_NE(std::ranges::find(events, std::string("save:click {}")), events.end());
 }
 
 // A screen that turns lays the GUI out again around the field being edited, which keeps its text, its focus and the keyboard.

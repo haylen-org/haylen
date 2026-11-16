@@ -10,6 +10,7 @@
 
 #include "haylen/core/JsonNumber.hpp"
 #include "haylen/input/Input.hpp"
+#include "haylen/ui/Backend.hpp"
 #include "haylen/ui/CollectionCell.hpp"
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
@@ -1173,13 +1174,14 @@ void Collection::takeInput(Context& context) {
         idle = 0.0F;
     }
 
-    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+    const ScrollArbiter::Press& press = context.getBackend().getScrollArbiter().getPress();
+    if (press.began) {
         pressed = underPointer;
         dragging = false;
         pressCandidate.clear();
     }
 
-    if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+    if (!press.down) {
         if (lift) {
             finishLift(context);
         }
@@ -1202,7 +1204,7 @@ void Collection::takeInput(Context& context) {
         return;
     }
 
-    if (!pressed || io.MouseSource != ImGuiMouseSource_TouchScreen) {
+    if (!pressed || !press.touch) {
         return;
     }
 
@@ -1221,7 +1223,7 @@ void Collection::takeInput(Context& context) {
         pendingScroll.reset();
     }
 
-    const float step = isVertical() ? -io.MouseDelta.y : (rightToLeft ? io.MouseDelta.x : -io.MouseDelta.x);
+    const float step = isVertical() ? -press.motion.y : (rightToLeft ? press.motion.x : -press.motion.x);
     scroller->drag(step, delta);
     idle = 0.0F;
 }

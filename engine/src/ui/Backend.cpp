@@ -550,6 +550,7 @@ void Backend::handlePointer(const platform::Event& event, const graphics::Viewpo
         const math::Vec2 point = toUi(viewport.toDesign(framebufferPoint));
         io.AddMousePosEvent(point.x, point.y);
         pointerPosition = framebufferPoint;
+        return point;
     };
     // clang-format on
 
@@ -580,7 +581,7 @@ void Backend::handlePointer(const platform::Event& event, const graphics::Viewpo
         break;
     }
 
-    // ImGui follows one pointer, so the first finger down drives it until it lifts and other fingers stay with the app.
+    // ImGui follows one pointer, so the first finger down drives it until it lifts and other fingers stay with the app. While a field edits, a finger that presses outside it is held from ImGui, so ImGui never ends the editing at the press: the areas scroll under it and the field keeps editing, and only a finger that lifts within the slop reaches ImGui, as a tap that ends the editing and presses what it tapped.
     const std::span<const platform::TouchPoint> touches(event.touches.data(), event.touchCount);
     switch (event.type) {
     case platform::Event::Type::TouchBegan:
@@ -593,8 +594,13 @@ void Backend::handlePointer(const platform::Event& event, const graphics::Viewpo
                 primaryTouch = touch.id;
                 touchShared = false;
                 io.AddMouseSourceEvent(ImGuiMouseSource_TouchScreen);
-                place(touch.position);
-                io.AddMouseButtonEvent(0, true);
+                const math::Vec2 point = place(touch.position);
+
+                if (textSession->getActiveField() != 0 && !textSession->getFieldBounds().contains(point)) {
+                    scrollArbiter->holdFinger(point);
+                } else {
+                    io.AddMouseButtonEvent(0, true);
+                }
             }
         }
 
@@ -603,7 +609,7 @@ void Backend::handlePointer(const platform::Event& event, const graphics::Viewpo
         for (const platform::TouchPoint& touch : touches) {
             if (primaryTouch == touch.id) {
                 io.AddMouseSourceEvent(ImGuiMouseSource_TouchScreen);
-                place(touch.position);
+                scrollArbiter->moveFinger(place(touch.position));
             }
         }
 
@@ -611,15 +617,27 @@ void Backend::handlePointer(const platform::Event& event, const graphics::Viewpo
     case platform::Event::Type::TouchEnded:
     case platform::Event::Type::TouchCancelled:
         for (const platform::TouchPoint& touch : touches) {
-            // The release happens where the finger lifted, and the pointer leaves with the finger in the next frame, so nothing stays hovered.
-            if (primaryTouch == touch.id && touch.changed) {
-                io.AddMouseSourceEvent(ImGuiMouseSource_TouchScreen);
-                place(touch.position);
-                io.AddMouseButtonEvent(0, false);
-                io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
-                pointerPosition.reset();
-                primaryTouch.reset();
+            if (primaryTouch != touch.id || !touch.changed) {
+                continue;
             }
+
+            // The release happens where the finger lifted, and the pointer leaves with the finger in the next frame, so nothing stays hovered. A held finger that lifts within the slop reaches ImGui there as a tap.
+            const bool held = scrollArbiter->isHoldingFinger();
+            const bool tapped = scrollArbiter->releaseFinger() && !touchShared && event.type == platform::Event::Type::TouchEnded;
+            io.AddMouseSourceEvent(ImGuiMouseSource_TouchScreen);
+            place(touch.position);
+
+            if (tapped) {
+                io.AddMouseButtonEvent(0, true);
+            }
+
+            if (!held || tapped) {
+                io.AddMouseButtonEvent(0, false);
+            }
+
+            io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
+            pointerPosition.reset();
+            primaryTouch.reset();
         }
 
         break;
@@ -753,8 +771,10 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
     io.DisplayFramebufferScale = {density.x, density.y};
     io.DeltaTime = std::max(deltaSeconds, 1.0F / 1000.0F);
 
-    // ImGui takes in the presses and releases of this frame in its new frame, so a press that lets go now still holds the UI in place for the frame of its release.
-    const bool pointerDown = std::ranges::any_of(io.MouseDown, [](bool down) { return down; });
+    // ImGui takes in the presses and releases of this frame in its new frame, so a press that lets go now still holds the UI in place for the frame of its release. A finger held from ImGui holds it too, and so do the presses still in the queue of ImGui, such as the tap of a held finger that lifted.
+    const bool buttonDown = std::ranges::any_of(io.MouseDown, [](bool down) { return down; });
+    const bool buttonQueued = std::ranges::any_of(imguiContext->InputEventsQueue, [](const ImGuiInputEvent& queued) { return queued.Type == ImGuiInputEventType_MouseButton; });
+    const bool pointerDown = buttonDown || buttonQueued || scrollArbiter->isHoldingFinger();
     textSession->beginFrame(viewport, scale, deltaSeconds, pointerDown);
     closeAbandonedPopups();
     feedGamepad(input, navigation);

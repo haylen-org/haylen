@@ -32,6 +32,8 @@ Return, tab and escape of the native field arrive as actions:
 
 While a field edits, the keys it types belong to the field alone and never navigate. So Space types a space, and Enter starts a new line in a text area instead of pressing the field. Enter still submits a single line and Escape still cancels, as keys of the field. The gamepad buttons of `uiAccept` and `uiCancel` still end the editing. While a platform edits the field natively, the UI ignores the character events and editing keys that reach it for that field, so nothing types twice.
 
+A finger ends the editing only with a tap outside the field, as in the forms of native apps. While a field edits, a finger that presses outside it decides nothing at the press, and the UI keeps the press from the controls. A finger that lifts before it travels past the slop of a drag is a tap. It reaches the UI as a press and a release where it lifted, which end the editing and press what the finger tapped, such as a button next to the field. A finger that travels past the slop scrolls the area under it, presses no control, and leaves the field editing with the keyboard open. The mouse ends the editing at its press, as on desktops.
+
 The platform also reports the frame of the on-screen keyboard. When the keyboard would cover the focused field, every mounted GUI moves up together until the field shows above it, with a small margin. They never move past the top of the screen, and they move back when the keyboard closes. The engine publishes `keyboardShown`, with the frame in design units, and `keyboardHidden` on the [event bus](../lua-api/events.md).
 
 ### Typing without a field of the UI

@@ -14,6 +14,7 @@
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/PropertyReader.hpp"
 #include "ui/ImGuiConverter.hpp"
+#include "ui/ScrollArbiter.hpp"
 #include "ui/ScrollFade.hpp"
 
 namespace haylen::ui {
@@ -230,13 +231,14 @@ void Scroll::followWindow() {
 void Scroll::followFinger(Context& context, const math::Rect& bounds, bool underPointer) {
     const ImGuiIO& io = ImGui::GetIO();
     const ImGuiContext& state = *GImGui;
+    const ScrollArbiter::Press& press = context.getBackend().getScrollArbiter().getPress();
 
-    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+    if (press.began) {
         pressed = underPointer;
         dragging = false;
     }
 
-    if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+    if (!press.down) {
         if (dragging) {
             scroller.release();
         }
@@ -246,7 +248,7 @@ void Scroll::followFinger(Context& context, const math::Rect& bounds, bool under
         return;
     }
 
-    if (!pressed || io.MouseSource != ImGuiMouseSource_TouchScreen) {
+    if (!pressed || !press.touch) {
         return;
     }
 
@@ -264,7 +266,7 @@ void Scroll::followFinger(Context& context, const math::Rect& bounds, bool under
         request.reset();
     }
 
-    scroller.drag(-static_cast<double>(horizontal ? io.MouseDelta.x : io.MouseDelta.y), context.getDeltaSeconds());
+    scroller.drag(-static_cast<double>(horizontal ? press.motion.x : press.motion.y), context.getDeltaSeconds());
 }
 
 // A node scrolls only as far as it needs to show whole with `nearest`, and aligns its start, middle or end with the view otherwise.

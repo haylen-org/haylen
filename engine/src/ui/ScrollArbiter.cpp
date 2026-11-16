@@ -95,10 +95,29 @@ void ScrollArbiter::chooseEdge(math::Vec2 pointer) {
     }
 }
 
+void ScrollArbiter::holdFinger(math::Vec2 point) noexcept {
+    held = HeldFinger{.start = point, .position = point, .previous = point};
+}
+
+void ScrollArbiter::moveFinger(math::Vec2 point) noexcept {
+    if (!held) {
+        return;
+    }
+
+    held->position = point;
+    held->travelled = held->travelled || (point - held->start).getLengthSquared() >= kDragSlop * kDragSlop;
+}
+
+bool ScrollArbiter::releaseFinger() noexcept {
+    const std::optional<HeldFinger> finger = std::exchange(held, std::nullopt);
+    return finger && !finger->travelled;
+}
+
 void ScrollArbiter::beginFrame(float seconds) {
     const ImGuiIO& io = ImGui::GetIO();
     const math::Vec2 pointer{io.MousePos.x, io.MousePos.y};
     frameSeconds = seconds;
+    readPress();
 
     edgeAreas.swap(previousEdgeAreas);
     edgeAreas.clear();
@@ -156,13 +175,29 @@ void ScrollArbiter::beginFrame(float seconds) {
     }
 
     // An item that the finger picked up in the frame the drag offers came keeps the finger.
-    if (!io.MouseDown[ImGuiMouseButton_Left]) {
+    if (!press.down) {
         dragArea = 0;
     } else if (dragArea == 0 && !dragOffers.empty() && !itemDragged) {
         dragArea = choose(dragOffers);
     }
 
     dragOffers.clear();
+}
+
+// A held finger never reaches ImGui, so the areas read it here in place of the pointer of ImGui.
+void ScrollArbiter::readPress() {
+    if (held) {
+        press = {.start = held->start, .travel = held->position - held->start, .motion = held->position - held->previous, .began = std::exchange(held->began, false), .down = true, .touch = true};
+        held->previous = held->position;
+        return;
+    }
+
+    const ImGuiIO& io = ImGui::GetIO();
+    const ImVec2 start = io.MouseClickedPos[ImGuiMouseButton_Left];
+    const ImVec2 travel = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left, 0.0F);
+    const bool down = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+    const math::Vec2 motion = down ? math::Vec2{io.MouseDelta.x, io.MouseDelta.y} : math::Vec2{};
+    press = {.start = {start.x, start.y}, .travel = {travel.x, travel.y}, .motion = motion, .began = ImGui::IsMouseClicked(ImGuiMouseButton_Left), .down = down, .touch = io.MouseSource == ImGuiMouseSource_TouchScreen};
 }
 
 ScrollArbiter::AxisWheel ScrollArbiter::takeWheel(ImGuiID area, const math::Rect& bounds, bool horizontal, double position, double maximum, bool hovered) {
@@ -191,15 +226,12 @@ bool ScrollArbiter::takeDrag(ImGuiID area, const math::Rect& bounds, bool horizo
         return false;
     }
 
-    const ImGuiIO& io = ImGui::GetIO();
-    const ImVec2 press = io.MouseClickedPos[ImGuiMouseButton_Left];
-    if (!io.MouseDown[ImGuiMouseButton_Left] || !bounds.contains(math::Vec2{press.x, press.y})) {
+    if (!press.down || !bounds.contains(press.start)) {
         return false;
     }
 
-    const ImVec2 moved = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left, 0.0F);
-    const float along = std::fabs(horizontal ? moved.x : moved.y);
-    const float across = std::fabs(horizontal ? moved.y : moved.x);
+    const float along = std::fabs(horizontal ? press.travel.x : press.travel.y);
+    const float across = std::fabs(horizontal ? press.travel.y : press.travel.x);
     if (along >= kDragSlop && along > across) {
         dragOffers.push_back({.area = area, .size = bounds.width * bounds.height, .movable = true});
     }

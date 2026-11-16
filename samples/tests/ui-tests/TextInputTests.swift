@@ -1,7 +1,7 @@
 import XCTest
 
 #if os(iOS)
-// The address field of the test "Text fields", which capitalizes nothing and sits right above the keyboard, types through the software keyboard: each key types once, Backspace deletes, the screen holds still while the keyboard shows, the text and the keyboard stay when the device turns, and the keyboard follows the field that edits.
+// The address field of the test "Text fields", which capitalizes nothing and sits right above the keyboard, types through the software keyboard: each key types once, Backspace deletes, the screen holds still while the keyboard shows, the text and the keyboard stay when the device turns and while a finger scrolls the page, and the keyboard follows the field that edits.
 class TextInputTests: HaylenUITestCase {
     override func setUpWithError() throws {
         try super.setUpWithError()
@@ -81,6 +81,24 @@ class TextInputTests: HaylenUITestCase {
         try saveScreenshot("keyboard-closed")
     }
 
+    // A finger that drags the page from outside the field scrolls it and leaves the field editing with the keyboard, and only a tap outside the field closes the keyboard.
+    func testAFingerThatScrollsThePageKeepsTheFieldEditing() throws {
+        startTyping()
+        let field = element("https://haylen.dev")
+        let top = field.frame.minY
+        let start = belowField(field)
+        start.press(forDuration: 0.1, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -60)))
+        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        XCTAssertTrue(app.keyboards.firstMatch.exists, "The keyboard closes when a finger scrolls the page from outside the field.")
+        XCTAssertLessThan(field.frame.minY, top - 20, "The page does not scroll under the finger.")
+        press("mar")
+        expectReport("mar")
+        try saveScreenshot("scrolled-while-editing")
+
+        belowField(field).tap()
+        waitUntil("The keyboard stays open after a tap outside the field.") { !app.keyboards.firstMatch.exists }
+    }
+
     // The plain keyboard of the test "Text input" gives the native input to the message field and takes it back once the field sends, and closes when the test hides it as it exits.
     func testThePlainKeyboardOfTheAppComesBackAfterAField() throws {
         tap("Back")
@@ -105,6 +123,11 @@ class TextInputTests: HaylenUITestCase {
         // The keyboard covers the button that hides it, and the test hides it as it exits.
         tap("Back")
         waitUntil("The plain keyboard stays open after the app hid it.") { !app.keyboards.firstMatch.exists }
+    }
+
+    // The help line under the field, which no control covers.
+    func belowField(_ field: XCUIElement) -> XCUICoordinate {
+        field.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1)).withOffset(CGVector(dx: 0, dy: 14))
     }
 
     func startTyping() {

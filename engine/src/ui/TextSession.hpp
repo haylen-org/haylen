@@ -67,6 +67,9 @@ class TextSession final {
     [[nodiscard]] ImGuiID getActiveField() const noexcept {
         return active;
     }
+    [[nodiscard]] const math::Rect& getFieldBounds() const noexcept {
+        return bounds;
+    }
     [[nodiscard]] const platform::TextInput::Options& getOptions() const noexcept {
         return options;
     }
