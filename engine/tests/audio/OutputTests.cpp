@@ -35,6 +35,7 @@ class AudioOutputTest : public MixerFixture {
 
     void SetUp() override {
         accepting = false;
+        failing = false;
         answering = true;
         closedDevices = 0;
         // clang-format off
@@ -147,14 +148,20 @@ class AudioOutputTest : public MixerFixture {
         return locked;
     }
 
+    static const char* getFailure(ma_device*) {
+        return failing ? "the test refused the context after the output opened" : nullptr;
+    }
+
     static inline std::atomic<bool> accepting = false;
     static inline std::atomic<bool> locked = false;
+    static inline std::atomic<bool> failing = false;
     static inline bool answering = true;
     static inline std::mutex gateMutex;
     static inline std::condition_variable gate;
     static inline std::atomic<int> closedDevices = 0;
     static constexpr OutputBackend kBackend{.initContext = &initContext, .refusal = "the test refuses the audio"};
     static constexpr OutputBackend kLockingBackend{.initContext = &initContext, .refusal = "the test refuses the audio", .isLocked = &isLocked};
+    static constexpr OutputBackend kFailingBackend{.initContext = &initContext, .refusal = "the test refuses the audio", .failure = &getFailure};
 
     std::mutex linesMutex;
     std::vector<std::pair<core::Log::Level, std::string>> lines;
@@ -203,6 +210,30 @@ TEST_F(AudioOutputTest, KeepsTimeWithoutSoundWhileTheSystemRefusesTheOutput) {
     EXPECT_FALSE(refused.isOutputAvailable());
     play(refused, 0.5F);
     EXPECT_NEAR(refused.getCursor(night), cursor + 0.5F, 0.01F);
+    EXPECT_EQ(getWarnings().size(), 1U);
+}
+
+TEST_F(AudioOutputTest, FallsSilentWhenTheOutputFailsAfterItOpened) {
+    accepting = true;
+    Mixer output({.device = true, .sampleRate = kRate, .channels = 2, .backend = &kFailingBackend}, jobs);
+    ASSERT_TRUE(settle(output));
+    output.update(kFrameSeconds);
+    EXPECT_EQ(output.getOutputState(), Mixer::OutputState::Running);
+    EXPECT_TRUE(getWarnings().empty());
+
+    // The platform learns later that it cannot play the output, and the app keeps time without sound, with the reason in its log once.
+    failing = true;
+    const Mixer::VoiceId shot = output.play(makeTone(toFrames(1.0F)));
+    output.update(kFrameSeconds);
+    failing = false;
+    EXPECT_EQ(output.getOutputState(), Mixer::OutputState::Unavailable);
+    EXPECT_FALSE(output.isOutputAvailable());
+    ASSERT_EQ(getWarnings().size(), 1U);
+    EXPECT_NE(getWarnings().front().find("the test refused the context after the output opened"), std::string::npos);
+    EXPECT_EQ(closedDevices, 1);
+    const float cursor = output.getCursor(shot);
+    play(output, 0.3F);
+    EXPECT_NEAR(output.getCursor(shot), cursor + 0.3F, 0.02F);
     EXPECT_EQ(getWarnings().size(), 1U);
 }
 

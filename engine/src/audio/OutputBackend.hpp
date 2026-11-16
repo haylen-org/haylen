@@ -11,6 +11,9 @@ struct OutputBackend {
 
     // Whether the output of a device waits for the user before it plays, where the platform keeps sound locked, or null where it never does.
     bool (*isLocked)(ma_device* device) = nullptr;
+
+    // Why the output of a device stopped working after it opened, which the platform learns later, such as the page of a browser that refuses the audio context of a worker, or null while the output works. The function itself is null where the platform reports every failure while the device opens.
+    const char* (*failure)(ma_device* device) = nullptr;
 };
 
 } // namespace haylen::audio

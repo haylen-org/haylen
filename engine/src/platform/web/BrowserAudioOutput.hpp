@@ -2,6 +2,9 @@
 
 #include <miniaudio.h>
 
+#include <string>
+#include <unordered_map>
+
 #include "audio/OutputBackend.hpp"
 
 namespace haylen::audio {
@@ -17,6 +20,9 @@ class BrowserAudioOutput final {
     // Mixes the next frames of a started device into interleaved samples.
     static void render(ma_device* device, float* samples, ma_uint32 frames);
 
+    // Records that the page could not play the output of a device, whose audio context or processor the browser refused after the device opened, which the device of the mixer takes at its next update.
+    static void fail(ma_device* device, std::string reason);
+
   private:
     static constexpr ma_uint32 kBlockFrames = 256;
     static constexpr ma_uint32 kBufferedMilliseconds = 50;
@@ -28,6 +34,10 @@ class BrowserAudioOutput final {
     static ma_result startDevice(ma_device* device);
     static ma_result stopDevice(ma_device* device);
     static bool isLocked(ma_device* device);
+    [[nodiscard]] static const char* getFailure(ma_device* device);
+
+    // The reasons of the outputs that failed, by their device, until the device closes.
+    static std::unordered_map<ma_device*, std::string>& failures;
 };
 
 } // namespace haylen::audio

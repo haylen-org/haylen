@@ -44,6 +44,10 @@ const step = (name, reached) => {
 
 socket.onmessage = (event) => {
     const message = JSON.parse(event.data);
+    // The runtime of the Worker mode logs in its worker, whose console the check follows like the console of the page.
+    if (message.method === "Target.attachedToTarget" && message.params.targetInfo.type === "worker") {
+        send("Runtime.enable", {}, message.params.sessionId);
+    }
     if (message.id && pending.has(message.id)) {
         pending.get(message.id)(message.result ?? {});
         pending.delete(message.id);
@@ -77,6 +81,7 @@ const { sessionId } = await send("Target.attachToTarget", { targetId: page.targe
 const origin = new URL(url).origin;
 await send("Browser.grantPermissions", { origin, permissions: ["clipboardReadWrite", "clipboardSanitizedWrite"] });
 await send("Runtime.enable", {}, sessionId);
+await send("Target.setAutoAttach", { autoAttach: true, waitForDebuggerOnStart: false, flatten: true }, sessionId);
 await send("Page.enable", {}, sessionId);
 await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false }, sessionId);
 await send("Emulation.setFocusEmulationEnabled", { enabled: true }, sessionId);

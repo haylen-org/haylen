@@ -597,6 +597,7 @@ An app never stops because it has no audio output. These cases leave the mixer w
 - A computer without an audio device.
 - An iOS audio session that another app holds.
 - A web page served over plain `http`, where the browser offers no `AudioWorklet`.
+- A web page whose browser refuses the audio context of the output or the processor that plays it. The page tells the engine as soon as it knows, also after the output opened, as in the [Worker mode](../tools/build.md#hosting-the-runtime), where the output opens before the page answers.
 
 The app runs as usual. The log writes one warning with the reason, and `audio.outputAvailable()` returns `false`, so an app can tell the player that its sound is off.
 

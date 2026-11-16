@@ -11,7 +11,7 @@
 <body>
 <canvas id="canvas"></canvas>
 <script>
-    // The project that the editor check builds file by file: a scene whose speed comes from a module, which plays a looping tone, and code that never ends. The Worker mode also runs a scene that counts the presses of the space key and of the left mouse button and keeps where the mouse pressed, and code that holds the worker in a finalizer that never ends, which the execution budget cannot stop.
+    // The project that the editor check builds file by file: a scene whose speed comes from a module, which plays a looping tone, and code that never ends. The Worker mode also runs a scene that counts the presses of the space key and of the left mouse button and keeps where the mouse pressed, a scene that reads the first controller, a button that the mirror of screen readers activates, a plugin whose web module answers on the page, a video, and code that holds the worker in a finalizer that never ends, which the execution budget cannot stop.
     const tone = [
         "local audio = require('haylen.audio')",
         "local samples = {}",
@@ -27,6 +27,17 @@
         endless: "require('haylen.scene').push({update = function() while true do pcall(function() while true do end end) end end})",
         input: "input = require('haylen.input')\nkeys, clicks, x, y = 0, 0, 0, 0\nrequire('haylen.scene').push({update = function() if input.keyPressed('space') then keys = keys + 1 end if input.mousePressed('left') then clicks = clicks + 1 x, y = input.mouseFramebufferPosition() end end})",
         stuck: "require('haylen.scene').push({update = function() setmetatable({}, {__gc = function() while true do end end}) collectgarbage() end})",
+        gamepad: "input = require('haylen.input')\nrequire('haylen.scene').push({update = function() pad = {tostring(input.gamepadConnected(1)), input.gamepadName(1) or '', tostring(input.gamepadDown('south', 1)), string.format('%.2f', input.gamepadAxis('rightTrigger', 1))} end})",
+        interface: "ui = require('haylen.ui')\nclicked = false\nrequire('haylen.scene').push({enter = function(self) self.gui = ui.mount(ui.column{ui.button{text = 'Play', onClick = function() clicked = true end}}, {owner = self}) end})",
+        // A plugin whose web module answers a method, opens a screen and pushes a video stream and an audio stream from the page, and a scene that calls the method, opens the screen and shows the stream.
+        probeApp: JSON.stringify({ name: "Editor Check", identifier: "com.haylen.editorcheck", plugins: { probe: {} } }),
+        probePlugin: JSON.stringify({ id: "probe", name: "Probe", version: "1.0.0", description: "Answers the plugin step of the editor check.", platforms: ["web"], web: { module: "web/probe.js" } }),
+        probeSource: "return require('haylen.platform').plugin('probe')",
+        probeMain: "local async = require('async')\nprobe = require('probe')\nstream = probe:videoStream('frames')\nresults = {}\nasync.spawn(function()\n  local answer = probe:call('echo', {text = 'hello'}):await()\n  results.echo = answer and answer.echoed or 'none'\n  local picked = probe:openScreen('pick', {choice = 'blue'}):await()\n  results.screen = picked and picked.picked or 'none'\nend)",
+        // A clip of the engine tests, which the driver hands the page, and a scene that plays it muted.
+        videoMain: "video = require('haylen.video')\nclip = video.load('clip.mp4', {autoplay = true, muted = true})",
+        // A controller in the standard mapping that the browser would report, with the south button down and the right trigger pulled all the way, which the dead zone of the engine leaves whole.
+        pad: { index: 0, id: "Wireless Controller (STANDARD GAMEPAD Vendor: 054c Product: 09cc)", connected: true, mapping: "standard", buttons: Array.from({ length: 17 }, (_, place) => ({ pressed: place === 0, value: place === 0 || place === 7 ? 1 : 0 })), axes: [0, 0, 0, 0] },
         errors: [],
     };
     // The page runs the runtime on itself, or in the Worker mode with "?hosting=worker", where it loads the page side of the runtime alone.

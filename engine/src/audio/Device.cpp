@@ -83,6 +83,8 @@ void Device::restart() {
 }
 
 void Device::update(float deltaSeconds) {
+    checkFailure();
+
     if (opening == nullptr) {
         return;
     }
@@ -100,6 +102,21 @@ void Device::update(float deltaSeconds) {
         }
     }
     take();
+}
+
+// An output that failed after it opened leaves the app without sound, as one that the system refuses while it opens does, until the output opens again.
+void Device::checkFailure() {
+    if (connection == nullptr || setup.backend == nullptr || setup.backend->failure == nullptr) {
+        return;
+    }
+
+    const char* reason = setup.backend->failure(&connection->device);
+    if (reason == nullptr) {
+        return;
+    }
+
+    core::Log::warning("The app runs without sound because the audio output is unavailable: {}.", reason);
+    disconnect();
 }
 
 void Device::report(Mixer::DeviceEvent event) {

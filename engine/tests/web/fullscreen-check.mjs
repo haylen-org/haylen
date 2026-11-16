@@ -33,6 +33,10 @@ const step = async (name, text, { seconds = 10, since = result.log.length } = {}
 
 socket.onmessage = (event) => {
     const message = JSON.parse(event.data);
+    // The runtime of the Worker mode logs in its worker, whose console the check follows like the console of the page.
+    if (message.method === "Target.attachedToTarget" && message.params.targetInfo.type === "worker") {
+        send("Runtime.enable", {}, message.params.sessionId);
+    }
     if (message.id && pending.has(message.id)) {
         pending.get(message.id)(message.result ?? {});
         pending.delete(message.id);
@@ -60,6 +64,7 @@ await new Promise((resolve) => (socket.onopen = resolve));
 const page = (await send("Target.getTargets")).targetInfos.find((target) => target.type === "page");
 const { sessionId } = await send("Target.attachToTarget", { targetId: page.targetId, flatten: true });
 await send("Runtime.enable", {}, sessionId);
+await send("Target.setAutoAttach", { autoAttach: true, waitForDebuggerOnStart: false, flatten: true }, sessionId);
 await send("Page.enable", {}, sessionId);
 // The page takes the focus, as the window that a person types into has it, since the browser counts a key as an input of the person only on a page with the focus.
 await send("Page.bringToFront", {}, sessionId);

@@ -123,6 +123,7 @@ class Device final {
     void connect(bool warn);
     void take();
     void disconnect() noexcept;
+    void checkFailure();
     void apply();
 
     Mixer::Setup setup;

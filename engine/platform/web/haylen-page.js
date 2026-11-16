@@ -1076,7 +1076,16 @@ Module.haylen = Module.haylen || {};
         return answer.state === "prompt" ? { state: "unknown" } : answer;
     };
 
-    const answerGatedCall = (id, answer) => whenRuntimeReady(() => engine.call("haylen_web_answer_gated_call", null, ["number", "string"], [id, JSON.stringify(answer)]));
+    // In the Worker mode the state of the page reaches the worker before the answer, so the app that hears the answer reads the state that the call left, such as fullscreen.
+    const answerGatedCall = (id, answer) => {
+        whenRuntimeReady(() => {
+            if (hostedInWorker) {
+                worker.postLayout();
+            }
+
+            engine.call("haylen_web_answer_gated_call", null, ["number", "string"], [id, JSON.stringify(answer)]);
+        });
+    };
 
     // A failure of the code of a check or a request answers `unsupported` with its message, so the engine always hears back.
     const settleGatedCall = (id, work) => {
@@ -2086,14 +2095,19 @@ Module.haylen = Module.haylen || {};
         engine.connectAudio(output.device, channel.port2);
     };
 
-    // Takes the context of the sample rate and connects the processor once it loaded, which may still be loading when the engine starts the output. An output that closed while the processor loaded is gone, whatever the loading gave. Returns `false` when the browser refuses the context.
+    // The engine hears of an output that the browser refuses, whose context it does not create or whose processor does not load, and leaves the app without sound with the reason in its log, as it does for an output that the system refuses.
+    const failAudio = (device, message) => {
+        engine.call("haylen_web_audio_failed", null, ["number", "string"], [device, message]);
+    };
+
+    // Takes the context of the sample rate and connects the processor once it loaded, which may still be loading when the engine starts the output. An output that closed while the processor loaded is gone, whatever the loading gave.
     audio.open = function (device, channels, sampleRate, blockFrames, bufferedFrames) {
         let shared;
         try {
             shared = sharedContext(sampleRate);
         } catch (error) {
-            console.error("The audio output could not be opened: " + error.message);
-            return false;
+            failAudio(device, "The browser refused the audio context of the output: " + error.message);
+            return;
         }
         const output = { device, channels, blockFrames, bufferedFrames, shared, node: null, started: false };
         audio.outputs.set(device, output);
@@ -2106,15 +2120,19 @@ Module.haylen = Module.haylen || {};
             },
             (error) => {
                 if (isOpen()) {
-                    console.error("The audio processor \"" + shared.worklet + "\" could not be loaded: " + error.message);
+                    failAudio(device, "The audio processor \"" + shared.worklet + "\" could not be loaded: " + error.message);
                 }
             }
         );
-        return true;
     };
 
+    // An output that the browser refused has no context to start or stop.
     audio.start = function (device) {
         const output = audio.outputs.get(device);
+        if (output === undefined) {
+            return;
+        }
+
         output.started = true;
         settleContext(output.shared);
         reportAudioLocks();
@@ -2122,6 +2140,10 @@ Module.haylen = Module.haylen || {};
 
     audio.stop = function (device) {
         const output = audio.outputs.get(device);
+        if (output === undefined) {
+            return;
+        }
+
         output.started = false;
         settleContext(output.shared);
         reportAudioLocks();
@@ -2130,6 +2152,10 @@ Module.haylen = Module.haylen || {};
     // The browser releases the node of a closed output, whose processor the mixer ended, while the context stays for the next output.
     audio.close = function (device) {
         const output = audio.outputs.get(device);
+        if (output === undefined) {
+            return;
+        }
+
         audio.outputs.delete(device);
         if (output.node) {
             output.node.disconnect();
@@ -2826,8 +2852,32 @@ Module.haylen = Module.haylen || {};
     };
 
     // Starts the worker once the page read the device, with the canvas, the options of the page and the state that the engine reads as it starts. The bytes of a package that the page holds go to the worker, and the addresses of the page become absolute, since the worker resolves addresses against its own script.
+    // A page holds the start of the worker as it holds the module on the page: the functions of `Module.preRun` run first, and `Module.addRunDependency` holds the start until `Module.removeRunDependency` releases every dependency, as a loader does while it loads the web modules of plugins.
+    const runPreRun = () => {
+        const dependencies = new Set();
+        let release = null;
+        const released = new Promise((resolve) => (release = resolve));
+        Module.addRunDependency = (name) => dependencies.add(name);
+        Module.removeRunDependency = (name) => {
+            dependencies.delete(name);
+            if (dependencies.size === 0) {
+                release();
+            }
+        };
+
+        for (const work of [].concat(Module.preRun || [])) {
+            work();
+        }
+
+        if (dependencies.size === 0) {
+            release();
+        }
+
+        return released;
+    };
+
     const startWorker = async () => {
-        await readDevice();
+        await Promise.all([readDevice(), runPreRun()]);
         const script = new URL(haylen.runtimeUrl || "haylen.js", document.baseURI).href;
         const offscreen = Module.canvas.transferControlToOffscreen();
         const transfer = [offscreen];
@@ -2839,10 +2889,12 @@ Module.haylen = Module.haylen || {};
             projectBudget: haylen.projectBudget,
             packageUrl: haylen.packageUrl ? new URL(haylen.packageUrl, document.baseURI).href : undefined,
             packageData: haylen.packageData,
+            wasmBinary: Module.wasmBinary,
             release: haylen.release ? { ...haylen.release, address: new URL(haylen.release.address, document.baseURI).href } : undefined,
         };
         const state = { ...pageState(), systemInfo: haylen.systemInfo(), languages: haylen.languages(), audioSupported: audio.supported(), audioLocks: [], gamepads: { revision: 0, pads: [] } };
         haylen.packageData = null;
+        Module.wasmBinary = null;
         worker.heartbeat = performance.now();
         worker.thread = new Worker(new URL("haylen-worker.js", script));
         worker.thread.onmessage = receive;

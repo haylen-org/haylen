@@ -3,13 +3,15 @@
 
 #include <emscripten/emscripten.h>
 
+#include <utility>
+
 // clang-format off
 EM_JS(int, haylen_js_audio_supported, (), {
     return Module.haylen.mixer.supported() ? 1 : 0;
 });
 
-EM_JS(int, haylen_js_audio_open, (void* device, int channels, int sampleRate, int blockFrames, int bufferedFrames), {
-    return Module.haylen.mixer.open(device, channels, sampleRate, blockFrames, bufferedFrames) ? 1 : 0;
+EM_JS(void, haylen_js_audio_open, (void* device, int channels, int sampleRate, int blockFrames, int bufferedFrames), {
+    Module.haylen.mixer.open(device, channels, sampleRate, blockFrames, bufferedFrames);
 });
 
 EM_JS(void, haylen_js_audio_start, (void* device), {
@@ -31,7 +33,18 @@ EM_JS(void, haylen_js_audio_close, (void* device), {
 
 namespace haylen::audio {
 
-const OutputBackend BrowserAudioOutput::kBackend{.initContext = &BrowserAudioOutput::initContext, .refusal = "browsers offer \"AudioWorklet\" only to pages served over \"https\" or from \"localhost\"", .isLocked = &BrowserAudioOutput::isLocked};
+const OutputBackend BrowserAudioOutput::kBackend{.initContext = &BrowserAudioOutput::initContext, .refusal = "browsers offer \"AudioWorklet\" only to pages served over \"https\" or from \"localhost\"", .isLocked = &BrowserAudioOutput::isLocked, .failure = &BrowserAudioOutput::getFailure};
+
+std::unordered_map<ma_device*, std::string>& BrowserAudioOutput::failures = *new std::unordered_map<ma_device*, std::string>();
+
+void BrowserAudioOutput::fail(ma_device* device, std::string reason) {
+    failures.insert_or_assign(device, std::move(reason));
+}
+
+const char* BrowserAudioOutput::getFailure(ma_device* device) {
+    const auto found = failures.find(device);
+    return found != failures.end() ? found->second.c_str() : nullptr;
+}
 
 bool BrowserAudioOutput::isLocked(ma_device* device) {
     return haylen_js_audio_locked(device) != 0;
@@ -60,9 +73,7 @@ ma_result BrowserAudioOutput::initDevice(ma_device* device, const ma_device_conf
     }
 
     const ma_uint32 bufferedFrames = playback->sampleRate * kBufferedMilliseconds / 1000;
-    if (haylen_js_audio_open(device, static_cast<int>(playback->channels), static_cast<int>(playback->sampleRate), static_cast<int>(kBlockFrames), static_cast<int>(bufferedFrames)) == 0) {
-        return MA_FAILED_TO_OPEN_BACKEND_DEVICE;
-    }
+    haylen_js_audio_open(device, static_cast<int>(playback->channels), static_cast<int>(playback->sampleRate), static_cast<int>(kBlockFrames), static_cast<int>(bufferedFrames));
 
     playback->format = ma_format_f32;
     ma_channel_map_init_standard(ma_standard_channel_map_webaudio, playback->channelMap, MA_MAX_CHANNELS, playback->channels);
@@ -72,6 +83,7 @@ ma_result BrowserAudioOutput::initDevice(ma_device* device, const ma_device_conf
 }
 
 ma_result BrowserAudioOutput::uninitDevice(ma_device* device) {
+    failures.erase(device);
     haylen_js_audio_close(device);
     return MA_SUCCESS;
 }
@@ -93,5 +105,10 @@ extern "C" {
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_audio_render(ma_device* device, float* samples, int frames) {
     haylen::platform::WebEntry::guard("haylen_web_audio_render", [&] { haylen::audio::BrowserAudioOutput::render(device, samples, static_cast<ma_uint32>(frames)); });
+}
+
+// The page reports an output whose audio context or processor the browser refused, with the reason.
+EMSCRIPTEN_KEEPALIVE void haylen_web_audio_failed(ma_device* device, const char* reason) {
+    haylen::platform::WebEntry::guard("haylen_web_audio_failed", [&] { haylen::audio::BrowserAudioOutput::fail(device, reason); });
 }
 }

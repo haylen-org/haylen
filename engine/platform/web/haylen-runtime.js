@@ -475,7 +475,7 @@ Module.haylen = Module.haylen || {};
         };
     })();
 
-    // A page that leaves the WebAssembly module to the runtime, such as the default shell of C++ apps, sees the module, the files that the build preloads and the package of `packageUrl` download through `onLoadProgress({loaded, total})`. The `total` is 0 while the size of a download is unknown, which is the case of a compressed response, since it tells only its compressed length.
+    // A page that leaves the WebAssembly module to the runtime, neither instantiating it with `Module.instantiateWasm` nor handing its bytes as `Module.wasmBinary`, such as the default shell of C++ apps, sees the module, the files that the build preloads and the package of `packageUrl` download through `onLoadProgress({loaded, total})`. The `total` is 0 while the size of a download is unknown, which is the case of a compressed response, since it tells only its compressed length.
     const downloads = new Map();
     const reportDownloads = () => {
         let loaded = 0;
@@ -522,7 +522,7 @@ Module.haylen = Module.haylen || {};
         }
     };
 
-    if (!Module.instantiateWasm) {
+    if (!Module.instantiateWasm && !Module.wasmBinary) {
         Module.instantiateWasm = function (imports, receive) {
             const url = findWasmBinary();
             fetch(url)
@@ -628,7 +628,7 @@ Module.haylen = Module.haylen || {};
     // The calls of the engine into the page: the functions of the page side on `Module.haylen` on the page, and in the Worker mode the functions that post each call to the page, which `haylen-worker.js` also lists.
     const page = hostedInWorker ? {} : haylen;
 
-    // The mixer of the audio outputs that `BrowserAudioOutput.cpp` drives, one per audio device of the engine, which mixes blocks of interleaved samples and posts them to the processor of the output through the port that the page hands it. The processor answers with the frames it played and the buffers of the blocks it copied, and the mixer mixes new blocks until the audio queued ahead of the output is back at its target, so neither shared memory nor threads are needed. The page side owns the audio context and the node of each output. In the Worker mode the page cannot answer during a frame, so an output always opens, and a context that the browser refuses leaves the output silent while the page logs why.
+    // The mixer of the audio outputs that `BrowserAudioOutput.cpp` drives, one per audio device of the engine, which mixes blocks of interleaved samples and posts them to the processor of the output through the port that the page hands it. The processor answers with the frames it played and the buffers of the blocks it copied, and the mixer mixes new blocks until the audio queued ahead of the output is back at its target, so neither shared memory nor threads are needed. The page side owns the audio context and the node of each output. A context or a processor that the browser refuses reaches the engine through `haylen_web_audio_failed`, which leaves the app without sound with the reason in its log, on the page and in the Worker mode alike.
     const mixer = { outputs: new Map() };
     haylen.mixer = mixer;
 
@@ -637,13 +637,8 @@ Module.haylen = Module.haylen || {};
     };
 
     mixer.open = function (device, channels, sampleRate, blockFrames, bufferedFrames) {
-        const opened = page.audio.open(device, channels, sampleRate, blockFrames, bufferedFrames);
-        if (opened === false) {
-            return false;
-        }
-
         mixer.outputs.set(device, { device, channels, sampleRate, blockFrames, bufferedFrames, port: null, started: false, queued: 0, blocks: 0, underruns: 0, spare: [], scratch: Module._malloc(blockFrames * channels * Float32Array.BYTES_PER_ELEMENT) });
-        return true;
+        page.audio.open(device, channels, sampleRate, blockFrames, bufferedFrames);
     };
 
     const mixBlock = (output) => {

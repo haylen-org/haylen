@@ -148,7 +148,7 @@ The project lives in `platform/web/`.
 | File | What to compare | Notes |
 | --- | --- | --- |
 | `index.html` | The structure of the page, the elements that `loader.js` uses and the scripts it loads. | Keep your texts and your extra tags. |
-| `loader.js` | The whole file. | Take the reference, since it talks to the runtime of the engine. Keep only edits that you made on purpose, and move them to `app.js` if they are app code. |
+| `loader.js` | The whole file, such as the `hosting` parameter of the address that runs the app in the Worker mode. | Take the reference, since it talks to the runtime of the engine. Keep only edits that you made on purpose, and move them to `app.js` if they are app code. |
 | `loader.css` | The variables at the top and the rules below them. | Keep your values of the variables. Take the rules of the reference. |
 | `app.js` | The page code and its bridge handlers. | Keep your handlers. |
 

@@ -40,6 +40,12 @@ var Module = {
         }
     };
 
+    // The address may ask with `?hosting=worker` for the Worker mode of the runtime, which runs the app in a dedicated worker, so a script of the app that never ends leaves the page answering.
+    const hosting = new URLSearchParams(location.search).get("hosting");
+    if (hosting) {
+        Module.haylen.hosting = hosting;
+    }
+
     // Downloads every file into memory while one bar shows the progress of all of them. Compressed responses report their compressed length, so the sizes of `config.json` give the total whenever the length of the actual bytes is unknown.
     const download = async (files) => {
         const received = new Array(files.length).fill(0);
@@ -223,13 +229,17 @@ var Module = {
         // A protected release downloads only its manifests and its app domain before the app starts, and the content streams in as the app needs it, while development downloads the zipped package.
         const files = config.release ? config.release.files.map((name) => ({ url: "app/" + name, size: config.sizes["app/" + name] })) : [{ url: "app.zip", size: config.sizes["app.zip"] }];
         const [plugins, [wasm, ...packageFiles]] = await Promise.all([importPlugins(config.plugins), download([{ url: "haylen.wasm", size: config.sizes["haylen.wasm"] }, ...files])]);
-        // The runtime compiles the bytes downloaded here, so the browser fetches the WebAssembly module only once.
-        Module.instantiateWasm = (imports, receive) => {
-            WebAssembly.instantiate(wasm, imports).then(
-                (result) => receive(result.instance),
-                (error) => fail("The app could not be loaded.", String(error.message || error))
-            );
-        };
+        // The runtime compiles the bytes downloaded here, so the browser fetches the WebAssembly module only once. In the Worker mode the bytes go to the worker, which compiles them.
+        if (Module.haylen.hosting === "worker") {
+            Module.wasmBinary = wasm;
+        } else {
+            Module.instantiateWasm = (imports, receive) => {
+                WebAssembly.instantiate(wasm, imports).then(
+                    (result) => receive(result.instance),
+                    (error) => fail("The app could not be loaded.", String(error.message || error))
+                );
+            };
+        }
         if (config.release) {
             Module.haylen.release = { address: "app/", identifier: config.identifier, files: config.release.files.map((name, index) => ({ name, bytes: packageFiles[index] })) };
         } else {
@@ -243,7 +253,7 @@ var Module = {
         }
 
         loadPlugins(plugins);
-        await loadScript("haylen.js");
+        await loadScript(Module.haylen.hosting === "worker" ? "haylen-page.js" : "haylen.js");
     } catch (error) {
         fail("The app could not be loaded.", String(error.message || error));
     }
