@@ -1132,6 +1132,11 @@ def end_process_tree(process: subprocess.Popen, name: str) -> None:
             os.killpg(process.pid, 0)
         except ProcessLookupError:
             return
+        except PermissionError:
+            # The kernel of macOS answers a group whose processes all ended and wait for their parent to collect them with EPERM instead of ESRCH.
+            if host_name() != "macos":
+                raise
+            return
         if time.monotonic() > deadline:
             raise BuildError(f"The processes of {name} were still running {BROWSER_EXIT_SECONDS} seconds after the request to end. End them, and try again.")
         time.sleep(0.1)

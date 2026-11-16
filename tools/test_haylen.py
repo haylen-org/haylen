@@ -3451,6 +3451,19 @@ class HeadlessBrowserTest(unittest.TestCase):
                 os.kill(helper_id, 0)
             self.assertFalse(profile.exists())
 
+    def test_takes_a_group_of_processes_that_wait_for_their_parent_as_ended_on_macos(self):
+        # The kernel of macOS answers a group that holds only processes that ended and wait for their parent with EPERM, while a refusal on other systems stays an error.
+        def killpg(_: int, number: int) -> None:
+            if number == 0:
+                raise PermissionError(1, "Operation not permitted")
+
+        process = mock.Mock(pid=4242)
+        with mock.patch.object(haylen.os, "killpg", side_effect=killpg, create=True):
+            with mock.patch.object(haylen, "host_name", return_value="macos"):
+                haylen.end_process_tree(process, "the test")
+            with mock.patch.object(haylen, "host_name", return_value="linux"), self.assertRaises(PermissionError):
+                haylen.end_process_tree(process, "the test")
+
     @staticmethod
     def end_helper(helper_id: int) -> None:
         with contextlib.suppress(ProcessLookupError):
