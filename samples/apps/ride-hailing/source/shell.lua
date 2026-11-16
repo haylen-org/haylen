@@ -8,9 +8,8 @@ local Style = require('style')
 
 local Shell = {}
 
--- The steps of a ride change their sheet over the map with a cross fade, and the drawer of the menu slides in from the start of the screen.
+-- The steps of a ride change their sheet over the map with a cross fade.
 Shell.sheetTransition = {effect = 'fade', duration = 0.22}
-Shell.menuTransition = {effect = 'slide', duration = 0.24}
 
 -- The scene of the app, which owns the frame and its stack and paints the background of the theme behind them.
 Shell.scene = {}
@@ -84,7 +83,7 @@ function Shell.openMenu()
     if Shell.menu and not Shell.menu.dismissed then
         return
     end
-    Shell.menu = ui.present(require('screens.menu')(), {style = 'dialog', transition = Shell.menuTransition, owner = Shell.scene})
+    Shell.menu = ui.present(require('screens.menu')(), {style = 'drawer', width = 420, owner = Shell.scene})
 end
 
 function Shell.closeMenu()
