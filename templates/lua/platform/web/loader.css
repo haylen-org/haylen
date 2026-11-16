@@ -63,6 +63,11 @@ html, body {
     pointer-events: none;
 }
 
+/* The content of the splash shows once the basic files of the page arrived, so its first paint already holds the logo. */
+#splash.starting > * {
+    visibility: hidden;
+}
+
 #splash-logo {
     width: var(--splash-logo-size);
     height: var(--splash-logo-size);
@@ -85,8 +90,14 @@ html, body {
     transition: width 0.15s linear;
 }
 
-#splash-percent {
+#splash-caption {
+    display: flex;
+    justify-content: space-between;
+    width: var(--splash-bar-width);
     margin: calc(var(--splash-gap) / -2) 0 0;
+}
+
+#splash-percent {
     font-variant-numeric: tabular-nums;
 }
 
@@ -98,7 +109,7 @@ html, body {
 }
 
 #splash.failed #splash-progress,
-#splash.failed #splash-percent {
+#splash.failed #splash-caption {
     display: none;
 }
 

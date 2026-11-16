@@ -2431,7 +2431,7 @@ Correções visuais e web:
 
 - [ ] As bordas arredondadas do slider continuam ruins.
 - [ ] O ícone do toast fica longe da curva da borda: encaixar o círculo do ícone na curva.
-- [ ] Na web, o splash mostra a barra andando com um quadrado sem o logo: carregar primeiro os arquivos básicos da página, e o logo é opcional, sem ele aparecem a barra, o progresso e o texto de carregamento.
+- [x] Na web, o splash mostra a barra andando com um quadrado sem o logo: carregar primeiro os arquivos básicos da página, e o logo é opcional, sem ele aparecem a barra, o progresso e o texto de carregamento. Feito: o `index.html` do template pré-carrega o `config.json` junto com o estilo e o loader, o conteúdo do splash fica escondido (classe `starting`) até o logo baixar e decodificar, e só então o runtime e o pacote começam a baixar, então o primeiro quadro do splash já tem o logo e nunca aparece a caixa vazia da imagem sem fonte. O logo é opcional: uma página sem `#splash-logo` mostra só a barra, o texto "Loading" e a porcentagem, centralizados, e o ícone da página continua sendo o logo. O shell padrão dos apps C++ tem o logo em SVG dentro da página, que aparece no primeiro quadro sem nenhum download, e ganhou o mesmo texto de carregamento. Nenhuma mudança no `haylen.py`. Verificado no Chrome headless com rede limitada (300 ms de latência, 1,5 MB/s) em WebGPU e WebGL2, com capturas olhadas de perto do template, de uma página sem logo e do shell C++, e com a ordem dos pedidos confirmando que `haylen.wasm` e `app.zip` só começam depois do logo. Docs em `docs/tools/distribution.md`, `build.md` e `embedding.md`.
 - [ ] O Taskbar Hero na web já começa no modo janela, já que a web não tem janela flutuante.
 
 Efeitos e samples:

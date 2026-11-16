@@ -1,4 +1,4 @@
-// Loads a Haylen app into the page: checks what the browser supports, downloads the runtime with the manifests and the app domain of the protected release, or with `app.zip` in development, behind a real progress bar, imports the web modules of the plugins, and hands everything to the runtime.
+// Loads a Haylen app into the page: shows the splash once its basic files arrived, checks what the browser supports, downloads the runtime with the manifests and the app domain of the protected release, or with `app.zip` in development, behind a real progress bar, imports the web modules of the plugins, and hands everything to the runtime.
 // The script `haylen.py` writes `config.json` next to this file with the name, the identifier, the transparency, the splash logo and backgrounds of `app.json`, the files of the release that download before the app starts, the size of every download and the plugins with a web part, whose modules it copies to `plugins/<id>/`.
 
 var Module = {
@@ -17,7 +17,7 @@ var Module = {
     const logo = document.getElementById("splash-logo");
 
     const fail = (message, detail) => {
-        splash.classList.remove("hidden");
+        splash.classList.remove("starting", "hidden");
         splash.classList.add("failed");
         status.textContent = message;
         status.hidden = false;
@@ -157,15 +157,28 @@ var Module = {
     if (config.splash.darkBackground) {
         matchMedia("(prefers-color-scheme: dark)").addEventListener("change", updateTheme);
     }
-    // The splash and the icon of the page show the logo from a single download.
-    logo.alt = config.name;
-    fetch(config.splash.logo)
-        .then((response) => response.blob())
-        .then((blob) => {
-            const source = URL.createObjectURL(blob);
+    // The logo of the splash is optional: a page without `#splash-logo` shows the bar, the percentage and the loading text alone. A page with it downloads and decodes the logo before anything else, so the splash shows it from its first paint, and the icon of the page takes the same download.
+    const icon = document.querySelector("link[rel=icon]");
+    if (logo === null) {
+        icon.href = config.splash.logo;
+    } else {
+        try {
+            const response = await fetch(config.splash.logo);
+            if (!response.ok) {
+                throw new Error("The file \"" + config.splash.logo + "\" could not be downloaded: " + response.status + " " + response.statusText + ".");
+            }
+            const source = URL.createObjectURL(await response.blob());
+            logo.alt = config.name;
             logo.src = source;
-            document.querySelector("link[rel=icon]").href = source;
-        });
+            await logo.decode();
+            logo.hidden = false;
+            icon.href = source;
+        } catch (error) {
+            fail("The splash logo could not be loaded.", String(error.message || error));
+            return;
+        }
+    }
+    splash.classList.remove("starting");
 
     if (typeof WebAssembly !== "object") {
         fail("This browser does not support WebAssembly, which this app needs.");

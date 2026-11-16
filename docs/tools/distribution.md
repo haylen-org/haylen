@@ -825,7 +825,7 @@ The resources are vector drawables of the Haylen brand. The adaptive launcher ic
 
 ```text
 templates/lua/platform/web/
-  index.html        The canvas and the splash with the logo, the progress bar, the percentage and the line of a failure.
+  index.html        The canvas and the splash with the logo, the progress bar, the loading text with the percentage and the line of a failure.
   loader.css        Styles of the page and the splash, with the variables that restyle the splash at its top.
   loader.js         Checks the browser, downloads with progress, loads the plugins and starts the runtime.
 templates/common/platform/web/
@@ -1256,8 +1256,8 @@ An app that stops or restarts leaves the server, which says so and keeps serving
 The file `loader.js` runs when the page loads:
 
 1. It creates `Module` with the canvas, so `app.js` can add page handlers to `Module.preRun`.
-2. It reads `config.json`, which haylen.py writes. It holds the app name and identifier, whether `window.transparent` is set, the splash logo and backgrounds, the files of the protected release that download before the app starts, or `app.zip` in development, the size of each of them and of `haylen.wasm`, and the plugins with a web part.
-3. It sets the title and the background, picks the light or the dark look of the splash, and downloads `splash.<ext>`, the logo of the app or the Haylen symbol, once for both the logo of the splash and the icon of the page. For a transparent app the page itself has no background, so whatever holds the page, such as the page of an editor that embeds it in a frame, shows through the transparent pixels of the canvas. Only the splash keeps the splash background.
+2. It reads `config.json`, which haylen.py writes and which `index.html` preloads next to the style and the loader. It holds the app name and identifier, whether `window.transparent` is set, the splash logo and backgrounds, the files of the protected release that download before the app starts, or `app.zip` in development, the size of each of them and of `haylen.wasm`, and the plugins with a web part.
+3. It sets the title and the background, picks the light or the dark look of the splash, and downloads and decodes `splash.<ext>`, the logo of the app or the Haylen symbol, once for both the logo of the splash and the icon of the page. Only then does the content of the splash show, so its first paint already holds the logo, and only then do the runtime and the package start to download. For a transparent app the page itself has no background, so whatever holds the page, such as the page of an editor that embeds it in a frame, shows through the transparent pixels of the canvas. Only the splash keeps the splash background.
 4. It checks for WebAssembly and for WebGPU or WebGL2, and a browser with neither sees a message instead of a blank page. The runtime draws through WebGPU, or through WebGL2 where WebGPU does not start. Add `?graphicsApi=webGpu` or `?graphicsApi=webGl2` to the address to try one of them first, which the loader passes on as `Module.haylen.graphicsApi`. Those are the names that `graphics.apiName()` gives the two APIs. Any other name fails the app, and the page shows why.
 5. It downloads `haylen.wasm` with the manifests and the app domain of the protected release, or with `app.zip` in development, behind one progress bar with its percentage. Each download counts the bytes it streams against its `Content-Length`, or against the size in `config.json` when the length is missing or describes compressed bytes. Meanwhile it imports the web module of every plugin from `plugins/<id>/`.
 6. It hands the WebAssembly bytes to the runtime through `Module.instantiateWasm`, which compiles them instead of downloading `haylen.wasm` again. It hands the release as `Module.haylen.release`, or the package as `Module.haylen.packageData` in development, then loads `haylen.js`. The runtime opens the [content store](../content/content.md#the-web) of the app before it starts, and the content of the release streams from `app/` as the app needs it. Every file of the page downloads once.
@@ -1268,7 +1268,20 @@ When `config.json` holds the `development` entry, which only `run --platform web
 
 ### Changing the splash
 
-The splash is the element `#splash` of `index.html`: the logo, a thin progress bar, the percentage under it and, when the app cannot start, the message of the failure. It stays centered in the page in every browser, since it covers the page and centers its content with a flexible box.
+The splash is the element `#splash` of `index.html`: the logo, a thin progress bar, the loading text with the percentage under it and, when the app cannot start, the message of the failure. It stays centered in the page in every browser, since it covers the page and centers its content with a flexible box.
+
+The logo is optional. A page whose `index.html` has no `#splash-logo` shows the bar, the loading text and the percentage alone, centered with no empty room above them, and the loader still gives the icon of the page the logo of `config.json`. For example, this splash has no logo:
+
+```html
+<div id="splash" class="starting">
+    <div id="splash-progress" role="progressbar" aria-label="Loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div id="splash-bar"></div>
+    </div>
+    <p id="splash-caption" aria-hidden="true"><span>Loading</span><span id="splash-percent">0%</span></p>
+    <p id="splash-status" hidden></p>
+    <pre id="splash-details" hidden></pre>
+</div>
+```
 
 Every value that a project usually changes is a variable at the top of `loader.css`. The first block holds the values over a dark splash background, and the block of `#splash.light` holds the colors over a light one. The loader adds the class `light` when the relative luminance of the splash background of `app.json` passes one half, and checks again when the system switches between light and dark colors. So the text and the bar always stand out from the background.
 
@@ -1276,9 +1289,9 @@ Every value that a project usually changes is a variable at the top of `loader.c
 | --- | --- |
 | `--splash-logo-size` | The width and height of the logo, which keeps its proportions inside them. |
 | `--splash-bar-width`, `--splash-bar-height` | The size of the progress bar, whose ends are round. |
-| `--splash-gap` | The space between the logo, the bar and the failure message. The percentage sits closer to the bar, at half of it. |
-| `--splash-font` | The font of the percentage and of the failure message. |
-| `--splash-text` | The color of the percentage. |
+| `--splash-gap` | The space between the logo, the bar and the failure message. The loading text and the percentage sit closer to the bar, at half of it. |
+| `--splash-font` | The font of the loading text, the percentage and the failure message. |
+| `--splash-text` | The color of the loading text and the percentage. |
 | `--splash-track`, `--splash-bar` | The colors of the empty and the filled part of the bar. |
 | `--splash-failed` | The color of the failure message. |
 | `--splash-details-background`, `--splash-details-text` | The colors of the box with the details of a failure, such as the Lua stack trace. |
@@ -1296,7 +1309,7 @@ For example, a project with its brand color on the bar and a larger logo changes
 }
 ```
 
-A deeper change, such as another layout, edits the rules below the variables and the elements of `index.html`. The loader needs only the ids `splash`, `splash-logo`, `splash-progress`, `splash-bar`, `splash-percent`, `splash-status` and `splash-details`, and the classes `light`, `failed` and `hidden` that it sets on `#splash`.
+A deeper change, such as another layout, edits the rules below the variables and the elements of `index.html`. The loader needs only the ids `splash`, `splash-progress`, `splash-bar`, `splash-percent`, `splash-status` and `splash-details`, and `splash-logo` when the splash shows a logo. It removes the class `starting`, which hides the content of `#splash` until the basic files arrived, and sets the classes `light`, `failed` and `hidden` on `#splash`.
 
 ## Platform support
 
