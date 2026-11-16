@@ -37,6 +37,7 @@
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/math/Rect.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
 
@@ -389,6 +390,26 @@ TEST_P(GpuRendererTest, DrawsGlassOverWhatLiesBehindIt) {
         renderer.drawGlass({.kind = graphics2d::Shape::Kind::Ellipse, .bounds = {74.0F, 72.0F, 44.0F, 40.0F}}, {.blur = 3.0F, .rim = 0.4F});
     });
     // clang-format on
+}
+
+// Frames that draw the same glass again allocate nothing in the renderer and the device, whose passes over the region of each glass reuse their images and their passes.
+TEST_P(GpuRendererTest, DrawsGlassFramesWithoutAllocating) {
+    // clang-format off
+    fixture->engine().getScenes().replace(std::make_shared<test::DrawingScene>([this](core::Engine& engine) {
+        graphics2d::Renderer& renderer = engine.getRenderer2D();
+        renderer.beginTarget(target, topLeft(), {.clear = math::Color::fromHex(0x1B2A41FFU)});
+        renderer.drawCircle({40.0F, 40.0F}, 18.0F, math::Color::fromHex(0x2A9D8FFFU));
+        renderer.drawCircle({96.0F, 92.0F}, 22.0F, math::Color::fromHex(0xE9C46AFFU));
+        renderer.drawGlass({.bounds = {8.0F, 8.0F, 52.0F, 36.0F}, .radii = {8.0F, 8.0F, 8.0F, 8.0F}}, {.blur = 6.0F});
+        renderer.drawGlass({.bounds = {68.0F, 8.0F, 52.0F, 52.0F}, .radii = {14.0F, 14.0F, 14.0F, 14.0F}}, {.blur = 10.0F, .saturation = 1.6F, .tint = math::Color(1.0F, 1.0F, 1.0F, 0.25F), .rim = 0.7F, .refraction = 6.0F});
+        renderer.drawGlass({.kind = graphics2d::Shape::Kind::Ellipse, .bounds = {74.0F, 72.0F, 44.0F, 40.0F}}, {.blur = 16.0F});
+    }));
+    // clang-format on
+    fixture->frames(30);
+
+    const test::AllocationTracker tracker;
+    fixture->frames(60);
+    EXPECT_EQ(tracker.getTotal(), 0U);
 }
 
 // A material of a glass reads what lies behind it through `haylen_backdrop`, here 24 pixels to the left, which the refraction of the glass keeps ready past its edge.
