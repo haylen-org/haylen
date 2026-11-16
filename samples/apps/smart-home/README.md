@@ -24,7 +24,7 @@ On the headless platform the app runs a tour by itself: it goes through the scen
 | --- | --- |
 | Top bar | A greeting for the time of the day, how many lights are on and the clock. |
 | House | The house under a sky that turns from day to dusk and night, with the sun or the moon crossing it and the windows glowing at night while the rooms are lit, and whether the doors are locked and the alarm armed. |
-| Scenes | Morning, away, movie and night, which set the lights and their color, the blinds, the alarm, the climate and the music, with the scene that is on lit. |
+| Scenes | Morning, away, movie and night, which set the lights and their color, the blinds, the alarm, the locks of the doors, the target and the mode of the climate and the music, with the scene that is on lit. The panel opens with the morning scene on. |
 | Climate | The dial of the thermostat, filled to the target in the color of the mode, with the mark of the room temperature, cooler and warmer, the mode and the humidity. |
 | Rooms | The living room, the kitchen, the bedroom and the office, each with its lights on or off, their brightness and four colors of light. |
 | Security | The camera at the front door, which sees in infrared at night and frames a visitor when it sees motion, the alarm and the locks of the doors. |

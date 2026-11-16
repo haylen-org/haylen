@@ -211,12 +211,28 @@ function Panel:devicesCard()
 end
 
 -- Sets a property of a node only when the value behind it changed.
-function Panel:show(id, value, properties)
-    if self.shown[id] ~= value then
-        self.shown[id] = value
-        self.gui:set(id, properties)
+-- Whether the value behind a readout changed since it last showed, which then becomes the value it shows.
+function Panel:changed(id, value)
+    if self.shown[id] == value then
+        return false
     end
+    self.shown[id] = value
+    return true
 end
+
+-- Sets the text or the value of a node through one table that every call fills again, so a readout that changes builds no table.
+function Panel:setText(id, text)
+    Panel.textProperties.text = text
+    self.gui:set(id, Panel.textProperties)
+end
+
+function Panel:setValue(id, value)
+    Panel.valueProperties.value = value
+    self.gui:set(id, Panel.valueProperties)
+end
+
+Panel.textProperties = {text = ''}
+Panel.valueProperties = {value = 0}
 
 function Panel:showRoom(room)
     local prefix = room.id .. '-'
@@ -254,30 +270,50 @@ end
 
 Panel.alarmTexts = {off = 'Alarm off', home = 'Armed at home', away = 'Armed away'}
 
--- The texts that follow the time and the energy, set only when they change.
+-- The texts that follow the time and the energy. Each one is made and set only in the frame its value changes, so the other frames build nothing.
 function Panel:update()
     local home = self.home
     local minute = math.floor(home.minute % (24 * 60))
-    local hour = minute // 60
-    local greeting = hour < 12 and 'Good morning' or (hour < 18 and 'Good afternoon' or 'Good evening')
-    self:show('greeting', greeting, {text = greeting})
-    self:show('clock', minute, {text = Text.clock(minute * 60)})
+    if self:changed('clock', minute) then
+        local hour = minute // 60
+        self:setText('greeting', hour < 12 and 'Good morning' or (hour < 18 and 'Good afternoon' or 'Good evening'))
+        self:setText('clock', Text.clock(minute * 60))
+    end
+
     local lights = home:lightsOn()
-    self:show('summary', lights, {text = lights == 0 and 'Every light is off' or string.format('%d lights on in the home', lights)})
+    if self:changed('summary', lights) then
+        self:setText('summary', lights == 0 and 'Every light is off' or string.format('%d lights on in the home', lights))
+    end
     local humidity = math.floor(home.climate.humidity + 0.5)
-    self:show('humidity', humidity, {text = Text.format('Humidity %.0f%%', humidity, 1)})
+    if self:changed('humidity', humidity) then
+        self:setText('humidity', Text.format('Humidity %.0f%%', humidity, 1))
+    end
+    if self:changed('blindsLabel', home.blinds) then
+        self:setText('blindsLabel', Text.format('Blinds %.0f%% open', home.blinds, 1))
+    end
+
     local solar = home:solar()
-    self:show('solar', math.floor(solar * 10), {text = Text.format('%.1f kW', solar, 0.1)})
+    if self:changed('solar', math.floor(solar * 10)) then
+        self:setText('solar', Text.format('%.1f kW', solar, 0.1))
+    end
     local usage = home:consumption()
-    self:show('usage', math.floor(usage * 10), {text = Text.format('%.1f kW', usage, 0.1)})
-    self:show('battery', math.floor(home.battery * 100), {text = Text.format('%.0f%%', home.battery * 100, 1)})
+    if self:changed('usage', math.floor(usage * 10)) then
+        self:setText('usage', Text.format('%.1f kW', usage, 0.1))
+    end
+    if self:changed('battery', math.floor(home.battery * 100)) then
+        self:setText('battery', Text.format('%.0f%%', home.battery * 100, 1))
+    end
     local _, grid = home:balance()
-    self:show('grid', math.floor(grid * 10), {text = Text.format('%.1f kW', math.abs(grid), 0.1)})
-    self:show('blindsLabel', home.blinds, {text = Text.format('Blinds %.0f%% open', home.blinds, 1)})
+    if self:changed('grid', math.floor(math.abs(grid) * 10)) then
+        self:setText('grid', Text.format('%.1f kW', math.abs(grid), 0.1))
+    end
+
     local washer = home.washer
     local left = math.ceil(washer.left)
-    self:show('washerLeft', left, {text = washer.running and Text.duration(left * 60) .. ' left' or 'Done'})
-    self:show('washer', left, {value = 1 - washer.left / washer.total})
+    if self:changed('washer', left) then
+        self:setText('washerLeft', washer.running and Text.duration(left * 60) .. ' left' or 'Done')
+        self:setValue('washer', 1 - washer.left / washer.total)
+    end
 end
 
 return Panel

@@ -16,14 +16,19 @@ Home.lightColors = {
     {id = 'violet', text = 'Violet', color = '#FFB79CFF'},
 }
 
--- What each scene sets: the brightness of every room, the blinds, the alarm, the target of the climate and the music.
+-- The doors that a scene locks: the patio stays open while the family is home in the day, and every door locks for the night and when everyone is away.
+Home.dayLocks = {front = true, garage = true, patio = false}
+Home.allLocks = {front = true, garage = true, patio = true}
+
+-- What each scene sets: the brightness of every room and the color of its lights, the blinds, the alarm, the locks of the doors, the target and the mode of the climate and the music. The panel opens with the scene of the morning on.
 Home.scenes = {
-    morning = {text = 'Morning', icon = 'sun', rooms = {living = 70, kitchen = 90, bedroom = 40, office = 0}, color = 'daylight', blinds = 100, alarm = 'off', target = 21.5, music = true},
-    away = {text = 'Away', icon = 'lock', rooms = {living = 0, kitchen = 0, bedroom = 0, office = 0}, color = 'warm', blinds = 30, alarm = 'away', target = 17, music = false},
-    movie = {text = 'Movie', icon = 'film', rooms = {living = 15, kitchen = 0, bedroom = 0, office = 0}, color = 'violet', blinds = 0, alarm = 'off', target = 22, music = false},
-    night = {text = 'Night', icon = 'moon', rooms = {living = 0, kitchen = 0, bedroom = 10, office = 0}, color = 'warm', blinds = 0, alarm = 'home', target = 19, music = false},
+    morning = {text = 'Morning', icon = 'sun', rooms = {living = 70, kitchen = 90, bedroom = 40, office = 0}, color = 'daylight', blinds = 100, alarm = 'off', locks = Home.dayLocks, target = 21.5, mode = 'heat', music = true},
+    away = {text = 'Away', icon = 'lock', rooms = {living = 0, kitchen = 0, bedroom = 0, office = 0}, color = 'warm', blinds = 30, alarm = 'away', locks = Home.allLocks, target = 17, mode = 'auto', music = false},
+    movie = {text = 'Movie', icon = 'film', rooms = {living = 15, kitchen = 0, bedroom = 0, office = 0}, color = 'violet', blinds = 0, alarm = 'off', locks = Home.dayLocks, target = 22, mode = 'heat', music = false},
+    night = {text = 'Night', icon = 'moon', rooms = {living = 0, kitchen = 0, bedroom = 10, office = 0}, color = 'warm', blinds = 0, alarm = 'home', locks = Home.allLocks, target = 19, mode = 'auto', music = false},
 }
 Home.sceneOrder = {'morning', 'away', 'movie', 'night'}
+Home.startScene = 'morning'
 
 -- The events at the door that arrive now and then, as a notice and on the camera.
 Home.events = {
@@ -38,23 +43,21 @@ function Home.new()
     self.minute = Home.startMinute
     self.time = 0
     self.rooms = {
-        {id = 'living', text = 'Living room', icon = 'sofa', level = 70, on = true, color = 'warm', lights = 4},
-        {id = 'kitchen', text = 'Kitchen', icon = 'kitchen', level = 90, on = true, color = 'daylight', lights = 3},
-        {id = 'bedroom', text = 'Bedroom', icon = 'bed', level = 40, on = true, color = 'warm', lights = 2},
-        {id = 'office', text = 'Office', icon = 'desk', level = 0, on = false, color = 'cool', lights = 2},
+        {id = 'living', text = 'Living room', icon = 'sofa', lights = 4},
+        {id = 'kitchen', text = 'Kitchen', icon = 'kitchen', lights = 3},
+        {id = 'bedroom', text = 'Bedroom', icon = 'bed', lights = 2},
+        {id = 'office', text = 'Office', icon = 'desk', lights = 2},
     }
-    self.climate = {target = 21.5, current = 20.6, mode = 'heat', humidity = 44}
+    self.climate = {current = 20.6, humidity = 44}
     self.locks = {
-        {id = 'front', text = 'Front door', locked = true},
-        {id = 'garage', text = 'Garage', locked = true},
-        {id = 'patio', text = 'Patio door', locked = false},
+        {id = 'front', text = 'Front door'},
+        {id = 'garage', text = 'Garage'},
+        {id = 'patio', text = 'Patio door'},
     }
-    self.alarm = 'home'
-    self.blinds = 80
-    self.speaker = {playing = true, volume = 40, track = 'Morning Light', artist = 'The Quiet Hours'}
+    self.speaker = {volume = 40, track = 'Morning Light', artist = 'The Quiet Hours'}
     self.washer = {running = true, total = 95, left = 41}
     self.battery = 0.58
-    self.scene = 'morning'
+    self:setScene(Home.startScene)
     self.usage = {}
     self.solarCurve = {}
     for slot = 1, 96 do
@@ -175,8 +178,8 @@ function Home:emit(kind, value)
     end
 end
 
--- Applies a scene: the lights of every room, their color, the blinds, the alarm, the climate and the music.
-function Home:applyScene(id)
+-- Sets everything a scene holds: the lights of every room and their color, the blinds, the alarm, the locks, the climate and the music.
+function Home:setScene(id)
     local scene = Home.scenes[id]
     self.scene = id
     for _, room in ipairs(self.rooms) do
@@ -184,12 +187,21 @@ function Home:applyScene(id)
         room.on = room.level > 0
         room.color = scene.color
     end
+    for _, lock in ipairs(self.locks) do
+        lock.locked = scene.locks[lock.id]
+    end
     self.blinds = scene.blinds
     self.alarm = scene.alarm
     self.climate.target = scene.target
+    self.climate.mode = scene.mode
     self.speaker.playing = scene.music
+end
+
+-- Applies a scene that the person chose, and tells the panel and the person.
+function Home:applyScene(id)
+    self:setScene(id)
     self:emit('changed')
-    self:emit('notice', 'The ' .. string.lower(scene.text) .. ' scene is on.')
+    self:emit('notice', 'The ' .. string.lower(Home.scenes[id].text) .. ' scene is on.')
 end
 
 function Home:room(id)
