@@ -217,7 +217,10 @@ template <typename... Args> class Signal final {
         std::shared_ptr<State> guarded;
     };
 
-    static constexpr bool kCopyableArguments = (std::is_copy_constructible_v<std::decay_t<Args>> && ...) && !((std::is_lvalue_reference_v<Args> && !std::is_const_v<std::remove_reference_t<Args>>) || ...);
+    // The arguments are inspected only where a slot is deferred, since a class may hold a signal of itself while it is not complete yet.
+    static consteval bool hasCopyableArguments() {
+        return (std::is_copy_constructible_v<std::decay_t<Args>> && ...) && !((std::is_lvalue_reference_v<Args> && !std::is_const_v<std::remove_reference_t<Args>>) || ...);
+    }
 
     static void insertByPriority(std::vector<std::shared_ptr<Entry>>& list, std::shared_ptr<Entry> entry) {
         const auto position = std::find_if(list.begin(), list.end(), [&entry](const std::shared_ptr<Entry>& existing) { return existing->priority < entry->priority; });
@@ -226,7 +229,7 @@ template <typename... Args> class Signal final {
 
     // A once slot disconnects as it is called, so its queued call keeps it alive, while the queued calls of other slots are skipped once they disconnected.
     static Slot deferTo([[maybe_unused]] FrameQueue& queue, [[maybe_unused]] Slot slot, [[maybe_unused]] bool once) {
-        if constexpr (kCopyableArguments) {
+        if constexpr (hasCopyableArguments()) {
             // clang-format off
             return [&queue, shared = std::make_shared<Slot>(std::move(slot)), once](Args... args) {
                 queue.post([weak = std::weak_ptr<Slot>(shared), held = once ? shared : nullptr, values = std::make_tuple(std::decay_t<Args>(args)...)] {

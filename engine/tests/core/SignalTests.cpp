@@ -243,6 +243,21 @@ TEST(SignalTest, DeferredSlotsRunWhenTheQueueFlushes) {
     EXPECT_THROW((void)signal.connect({}), std::invalid_argument);
 }
 
+// A class holds a signal that passes the class itself, which every compiler accepts while the class is not complete yet.
+TEST(SignalTest, AClassHoldsASignalOfItself) {
+    struct Door {
+        Signal<Door&> opened;
+        int openings = 0;
+    };
+    Door door;
+    door.opened.connect([](Door& opened) { ++opened.openings; });
+    door.opened.emit(door);
+    EXPECT_EQ(door.openings, 1);
+
+    FrameQueue queue;
+    EXPECT_THROW((void)door.opened.connect([](Door&) {}, {.queue = &queue}), std::logic_error);
+}
+
 TEST(SignalTest, ErrorsLeaveTheSignalUsable) {
     Signal<> signal;
     int calls = 0;
