@@ -139,11 +139,7 @@ TEST_F(StyleTest, DrawsASubtreeWithAnotherRegisteredTheme) {
 
 TEST_F(StyleTest, PaintsTheSurfacesAStyleGivesOnceTheirImagesLoad) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "button", "id": "framed", "text": "Framed", "style": {"surfaces": {"button": {"image": "ui/frame.png", "slice": 8}}}}, {"kind": "button", "text": "Flat"}]})");
-    bool painted = false;
-    for (int frame = 0; frame < 60 && !painted; ++frame) {
-        painted = drawsTexture("ui/frame.png");
-    }
-    EXPECT_TRUE(painted);
+    EXPECT_TRUE(getFixture().frameUntil([&] { return drawsTexture("ui/frame.png"); }));
 
     // A style that sets a surface to flat colors paints it so, whatever the theme has.
     gui->set("framed", {{"style", {{"surfaces", {{"button", false}}}}}});
