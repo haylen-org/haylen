@@ -341,8 +341,8 @@ void Engine::frame(double frameSeconds) {
     current.input.updateTouchDurations(static_cast<float>(current.clock.getUnscaledDelta()));
     current.gestures.update(current.input, static_cast<float>(current.clock.getUnscaledDelta()));
 
-    // Plugins that start during the frame join the next one, and the loops reach the plugins by index, since the registry grows when one starts.
-    const std::size_t plugins = current.plugins.size();
+    // Only the plugins that started take part in the frame. Plugins that start during the frame join the next one, and the loops reach them by index, since the list grows when one starts.
+    const std::size_t plugins = current.startedPlugins.size();
     debug::Profiler& profiler = current.profiler;
     profiler.beginFrame(frameSeconds);
     current.lifecycleFailed = false;
@@ -374,7 +374,7 @@ void Engine::frame(double frameSeconds) {
 
         if (!hidden) {
             for (std::size_t index = 0; index < plugins; ++index) {
-                current.plugins[index].beginFrame(*this, delta);
+                current.startedPlugins[index]->beginFrame(*this, delta);
             }
         }
 
@@ -439,7 +439,7 @@ void Engine::updateApp(std::size_t plugins, float delta) {
         current.tweens.fixedUpdate(current.clock);
 
         for (std::size_t index = 0; index < plugins; ++index) {
-            current.plugins[index].fixedUpdate(*this, step);
+            current.startedPlugins[index]->fixedUpdate(*this, step);
         }
     }
 
@@ -448,7 +448,7 @@ void Engine::updateApp(std::size_t plugins, float delta) {
     current.tweens.update(current.clock);
 
     for (std::size_t index = 0; index < plugins; ++index) {
-        current.plugins[index].update(*this, delta);
+        current.startedPlugins[index]->update(*this, delta);
     }
 
     current.scenes->update(current.clock);
@@ -549,7 +549,7 @@ void Engine::render(std::size_t plugins) {
 
     try {
         for (std::size_t index = 0; index < plugins; ++index) {
-            current.plugins[index].renderOverlay(*this);
+            current.startedPlugins[index]->renderOverlay(*this);
         }
     } catch (const std::exception& exception) {
         reportError(exception);
@@ -599,7 +599,7 @@ void Engine::render(std::size_t plugins) {
 
     try {
         for (std::size_t index = 0; index < plugins; ++index) {
-            current.plugins[index].endFrame(*this);
+            current.startedPlugins[index]->endFrame(*this);
         }
     } catch (const std::exception& exception) {
         reportError(exception);
@@ -640,14 +640,14 @@ void Engine::renderScenes(std::size_t plugins) {
 
         if (view.current) {
             for (std::size_t index = 0; index < plugins; ++index) {
-                current.plugins[index].render(*this);
+                current.startedPlugins[index]->render(*this);
             }
         }
 
         scenes.renderUi(view);
 
         for (std::size_t index = 0; index < plugins; ++index) {
-            current.plugins[index].renderUi(*this, view);
+            current.startedPlugins[index]->renderUi(*this, view);
         }
 
         if (view.target.isValid()) {
@@ -777,8 +777,8 @@ void Engine::dispatchEvent(const platform::Event& event) {
 
     // The plugins hear the event also when a listener of the engine event failed, so a plugin that keeps data, such as the preferences, still saves it when the app goes to the background.
     try {
-        for (std::size_t index = 0, plugins = current.plugins.size(); index < plugins; ++index) {
-            current.plugins[index].event(*this, event);
+        for (std::size_t index = 0, plugins = current.startedPlugins.size(); index < plugins; ++index) {
+            current.startedPlugins[index]->event(*this, event);
         }
 
         if (!current.errorScreen) {
@@ -1180,8 +1180,8 @@ bool Engine::isBackCaptured() const {
         return true;
     }
 
-    for (std::size_t index = 0; index < current.plugins.size(); ++index) {
-        if (current.plugins[index].isCapturingBack()) {
+    for (std::size_t index = 0; index < current.startedPlugins.size(); ++index) {
+        if (current.startedPlugins[index]->isCapturingBack()) {
             return true;
         }
     }
@@ -1205,8 +1205,8 @@ bool Engine::checkFrameComplete() const {
         return false;
     }
 
-    for (std::size_t index = 0; index < current.plugins.size(); ++index) {
-        if (!current.plugins[index].isFrameComplete()) {
+    for (std::size_t index = 0; index < current.startedPlugins.size(); ++index) {
+        if (!current.startedPlugins[index]->isFrameComplete()) {
             return false;
         }
     }

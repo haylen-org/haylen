@@ -518,6 +518,15 @@ TEST(EngineTest, AnnouncesPluginsAddedWhileRunning) {
     EXPECT_EQ(started, std::vector<std::string>{"counting"});
 }
 
+// A plugin that fails to start leaves the plugins after it unstarted, and the frames that show the error screen never reach them.
+TEST(EngineTest, KeepsShowingTheErrorOfAPluginThatFailedToStart) {
+    test::EngineFixture fixture({{"app.json", R"({"localization": {"folder": "locale", "fallback": "de"}})"}, {"content/locale/en.json", "{}"}});
+    ASSERT_NE(fixture.engine().getError(), nullptr);
+    fixture.frames(3);
+    EXPECT_TRUE(fixture.engine().isRunning());
+    EXPECT_NE(fixture.engine().getError()->getMessage().find("localization.fallback"), std::string::npos);
+}
+
 TEST(EngineTest, TracksAppStatesFromPlatformEvents) {
     test::EngineFixture fixture;
     Engine& engine = fixture.engine();
