@@ -48,6 +48,11 @@ EM_JS(void, haylen_js_started, (const char* json), {
     Module.haylen.reportStarted(JSON.parse(UTF8ToString(json)));
 });
 
+EM_JS(double, haylen_js_project_budget, (int bytes), {
+    const budget = Module.haylen.projectBudget;
+    return bytes !== 0 ? budget.bytes : budget.files;
+});
+
 EM_JS(void, haylen_js_complete_request, (double request, int ok, const char* json), {
     Module.haylen.completeRequest(request, ok !== 0, JSON.parse(UTF8ToString(json)));
 });
@@ -328,23 +333,45 @@ std::vector<WebPage::Edit> WebPage::readEdits(const char* operations, std::span<
 
 // The batch plays its edits in order against what the package holds, so a remove or a rename that finds no file fails the whole batch before it changed anything.
 void WebPage::checkEdits(const std::vector<Edit>& edits) {
-    const io::OverlayPackage& overlay = Player::getOverlay();
-    std::map<std::string, bool, std::less<>> present;
+    FileSizes files = measure(Player::getOverlay());
     for (const Edit& edit : edits) {
         if (edit.kind == Edit::Kind::Write) {
-            present[edit.path] = true;
+            files[edit.path] = edit.bytes.size();
             continue;
         }
 
-        const auto known = present.find(edit.path);
-        const bool exists = known != present.end() ? known->second : overlay.exists(edit.path);
-        if (!exists) {
+        const auto found = files.find(edit.path);
+        if (found == files.end()) {
             throw RequestError("missingFile", "The package holds no file \"" + edit.path + "\" to " + (edit.kind == Edit::Kind::Remove ? "remove." : "rename."));
         }
-        present[edit.path] = false;
+        const std::uint64_t size = found->second;
+        files.erase(found);
         if (edit.kind == Edit::Kind::Rename) {
-            present[edit.target] = true;
+            files[edit.target] = size;
         }
+    }
+
+    checkBudget(files);
+}
+
+WebPage::FileSizes WebPage::measure(const io::Package& package) {
+    FileSizes files;
+    for (const std::string& path : package.list("")) {
+        files[path] = package.getFileSize(path);
+    }
+    return files;
+}
+
+void WebPage::checkBudget(const FileSizes& files) {
+    std::uint64_t bytes = 0;
+    for (const auto& [path, size] : files) {
+        bytes += size;
+    }
+
+    const auto allowedFiles = static_cast<std::uint64_t>(haylen_js_project_budget(0));
+    const auto allowedBytes = static_cast<std::uint64_t>(haylen_js_project_budget(1));
+    if (files.size() > allowedFiles || bytes > allowedBytes) {
+        throw RequestError("projectBudget", "The project may hold " + std::to_string(allowedFiles) + " files and " + std::to_string(allowedBytes) + " bytes, and the package would hold " + std::to_string(files.size()) + " files and " + std::to_string(bytes) + " bytes.");
     }
 }
 
@@ -422,10 +449,17 @@ int WebPage::loadZip(double request, const std::uint8_t* bytes, int size) {
     // clang-format off
     return answer([&] {
         requireEditable();
-        std::vector<std::uint8_t> archive(bytes, bytes + size);
+        std::shared_ptr<io::Package> package;
+        try {
+            package = io::Package::openZip(std::vector<std::uint8_t>(bytes, bytes + size), "app.zip");
+        } catch (const std::exception& error) {
+            throw RequestError("package", error.what());
+        }
+        checkBudget(measure(*package));
+
         touched.clear();
         pendingRuns.push_back({.request = request, .revision = ++revision});
-        Player::restart([&archive] { return io::Package::openZip(std::move(archive), "app.zip"); });
+        Player::restart(std::move(package));
         return 1;
     });
     // clang-format on

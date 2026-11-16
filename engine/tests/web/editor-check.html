@@ -34,6 +34,7 @@
         haylen: {
             development: true,
             storageNamespace: "editor-check",
+            projectBudget: { files: 16, bytes: 1048576 },
             graphicsApi: params.get("graphicsApi") || undefined,
             onError: (error) => check.errors.push(error),
         },

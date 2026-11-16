@@ -483,6 +483,7 @@ A page defines `Module` before it loads the runtime script. The file `templates/
 | `Module.haylen.release` | Optional `{address, identifier, files}` of a protected release. The `files` are `{name, bytes}` of its manifests and its app domain, which the page downloaded and which go to `/app`. The `address`, such as `app/`, is where the shards of the content stay and download by range. The `identifier` of the app names its [content store](../content/content.md#the-web). The web loader sets it in release builds. |
 | `Module.haylen.graphicsApi` | Optional `webGpu` or `webGl2`, the graphics API that the window tries first, as the player does with `--graphics-api`. Without it the runtime draws through WebGPU, or through WebGL2 where WebGPU does not start. The web loader and the default shell of C++ apps set it from the `graphicsApi` parameter of the address. |
 | `Module.haylen.development` | Optional `true` that runs the app in development, as the player does with `--dev`. Lua modules and assets that the page changes with `applyChanges()` then reload in place, as [hot reload](../core/lua.md#hot-reload) describes. |
+| `Module.haylen.projectBudget` | Optional `{files, bytes}`, the most files and bytes that the package of a project may hold, 4096 files and 268435456 bytes by default, as [editing the package](#editing-the-package) describes. |
 | `Module.haylen.storageNamespace` | Optional name that keeps the user data of the page in an IndexedDB database of its own, `/persistent/<name>`, as [hosting the runtime](#hosting-the-runtime) describes. Without it the user data lives in `/persistent`. |
 | `Module.haylen.developmentServer` | Optional WebSocket address of the development server that `run --platform web` starts, such as `ws://127.0.0.1:8000/haylen/development?token=<token>`. The server pushes every file saved in the app to the page. |
 | `Module.instantiateWasm` | Optional function that receives the imports of the module and a callback. It instantiates `haylen.wasm` itself and passes the instance to the callback. So a page that already downloaded the bytes, such as the web loader, keeps Emscripten from fetching the file again. |
@@ -533,7 +534,7 @@ The contract has a version, `Module.haylen.editor.protocol`, which is `1`. A lat
 const answer = await Module.haylen.editor.request(method, params);
 ```
 
-Each request gets an id, which its answer carries as `request`, and a promise. The promise resolves once the request completed, and rejects with an `Error` whose `code` is a stable code and whose message is a sentence for the person. The codes are `invalidRequest`, `invalidPath`, `missingFile`, `notEditable` for the runtime of a release, `notRunning` when no app plays, `unsupported`, `disposed` and `failed`. A request made before the runtime started waits for it.
+Each request gets an id, which its answer carries as `request`, and a promise. The promise resolves once the request completed, and rejects with an `Error` whose `code` is a stable code and whose message is a sentence for the person. The codes are `invalidRequest`, `invalidPath`, `missingFile`, `projectBudget`, `package` for bytes that are no zipped package, `notEditable` for the runtime of a release, `notRunning` when no app plays, `unsupported`, `disposed` and `failed`. A request made before the runtime started waits for it.
 
 | Request | Params | Answer |
 | --- | --- | --- |
@@ -559,9 +560,9 @@ The request `edit` applies a batch of operations to the package that plays, all 
 - `{op: "remove", path}` removes a file.
 - `{op: "rename", from, to}` moves a file to another path, replacing a file there.
 
-Paths are relative to the root of the package, such as `source/main.lua` or `content/ui/logo.png`. The batch checks every operation before it changes anything. A path that is absolute or leaves the package fails it with `invalidPath`, and a remove or a rename of a file that the package does not hold at that point of the batch fails it with `missingFile`. Every batch that applied makes a new revision of the package, a number that grows by one, which its answer carries. The app reads an edited file the next time it loads it, and `applyChanges` applies the files of every batch since the last `applyChanges` at once.
+Paths are relative to the root of the package, such as `source/main.lua` or `content/ui/logo.png`. The batch checks every operation before it changes anything. A path that is absolute or leaves the package fails it with `invalidPath`, and a remove or a rename of a file that the package does not hold at that point of the batch fails it with `missingFile`. A batch after which the package would hold more files or bytes than `Module.haylen.projectBudget` allows fails with `projectBudget` and a sentence that names both counts, and so does a zipped package of `loadZip`, so a project never fills the memory of the page. Every batch that applied makes a new revision of the package, a number that grows by one, which its answer carries. The app reads an edited file the next time it loads it, and `applyChanges` applies the files of every batch since the last `applyChanges` at once.
 
-The request `clearFiles` stops the app and empties the package, for a project that the editor writes file by file before `run`. The request `loadZip` replaces the package with a zipped one and runs it.
+The request `clearFiles` stops the app and empties the package, for a project that the editor writes file by file before `run`. The request `loadZip` replaces the package with a zipped one and runs it, and bytes that are no zip archive fail it with `package` and leave the app as it is.
 
 #### Applying changes
 

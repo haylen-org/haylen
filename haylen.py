@@ -941,7 +941,7 @@ WEB_UNKNOWN_API_STEPS = ["reported", "shown"]
 # The editor check of the web: a page of the generic web player in development whose editor builds a project file by file, runs it, reloads, rejects and restores a module, applies a failing batch atomically, stops code that never ends through the execution budget, inspects the app, runs it again in place while its audio output opens, stops it early and disposes of the runtime, without an error of the page.
 WEB_EDITOR_PAGE = ENGINE_DIR / "tests" / "web" / "editor-check.html"
 WEB_EDITOR_DRIVER = ENGINE_DIR / "tests" / "web" / "editor-check.mjs"
-WEB_EDITOR_STEPS = ["ready", "ran", "reloaded", "rejected a syntax error", "restored", "applied atomically", "stopped endless code", "inspected", "ran again in place", "stopped early", "disposed"]
+WEB_EDITOR_STEPS = ["ready", "ran", "reloaded", "rejected a syntax error", "restored", "applied atomically", "kept the project budget", "stopped endless code", "inspected", "ran again in place", "stopped early", "disposed"]
 # The graphics APIs of the web, which the pages of the checks of the web draw through, each one or the one that "--graphics-api" names.
 WEB_GRAPHICS_APIS = ("webGpu", "webGl2")
 # A headless browser and its helper processes end within this time of the request to end, since the helpers write its profile until they exit.

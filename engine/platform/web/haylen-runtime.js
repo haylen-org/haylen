@@ -1533,6 +1533,13 @@ Module.haylen = Module.haylen || {};
     const editor = { protocol: 1, pending: new Map(), nextRequest: 1 };
     haylen.editor = editor;
 
+    // The most files and bytes that the package of a project may hold, which a page sets as `Module.haylen.projectBudget` before the runtime loads, and the edits and zipped packages that would pass either fail with the code `projectBudget`.
+    const projectBudget = Object.assign({ files: 4096, bytes: 256 * 1024 * 1024 }, haylen.projectBudget);
+    if (![projectBudget.files, projectBudget.bytes].every((value) => Number.isSafeInteger(value) && value > 0) || Object.keys(projectBudget).length !== 2) {
+        throw new Error("The field \"Module.haylen.projectBudget\" takes \"files\" and \"bytes\" as whole numbers above 0.");
+    }
+    haylen.projectBudget = projectBudget;
+
     const requestError = (code, message) => Object.assign(new Error(message), { code });
 
     // Requests of the engine that fail answer -1 and keep the error as JSON `{code, message}`.

@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <memory>
 #include <span>
 #include <stdexcept>
@@ -14,6 +15,7 @@
 #include <vector>
 
 #include "haylen/core/Json.hpp"
+#include "haylen/io/Package.hpp"
 #include "haylen/platform/Permission.hpp"
 
 namespace haylen::core {
@@ -148,6 +150,13 @@ class WebPage final {
     [[nodiscard]] static std::vector<Edit> readEdits(const char* operations, std::span<const std::vector<std::byte>> contents);
     [[nodiscard]] static std::string readPath(const core::Json& operation, const char* key);
     static void checkEdits(const std::vector<Edit>& edits);
+
+    // The sizes of the files of a package by their paths.
+    using FileSizes = std::map<std::string, std::uint64_t, std::less<>>;
+    [[nodiscard]] static FileSizes measure(const io::Package& package);
+
+    // Refuses a package that would hold more files or bytes than the project budget of the page, `Module.haylen.projectBudget`.
+    static void checkBudget(const FileSizes& files);
     static void completeRequest(double request, bool ok, const core::Json& result);
 
     [[nodiscard]] static std::vector<std::vector<std::byte>> readBuffers(const std::uint32_t* table, int count);
