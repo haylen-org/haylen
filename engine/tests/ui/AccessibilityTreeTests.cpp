@@ -209,6 +209,29 @@ TEST_F(AccessibilityTreeTest, ReachesThePresentationAndTheMessagesButNotWhatAMod
     EXPECT_NE(find("Under"), nullptr);
 }
 
+// The answers of a dialog and of an alert reach screen readers and the focus in the order people read them, from the start of their row, while the main answer at the end starts with the focus.
+TEST_F(AccessibilityTreeTest, ReadsTheAnswersOfADialogInTheOrderOfTheRow) {
+    // clang-format off
+    fixture.runLua(R"(
+        gui = ui.mount(ui.dialog{title = 'Save the island?', buttons = {{id = 'cancel', text = 'Cancel'}, {id = 'later', text = 'Later'}, {id = 'save', text = 'Save', variant = 'primary'}}}, {placement = 'screen'})
+    )");
+    // clang-format on
+    fixture.frames(3);
+
+    const std::vector<platform::HeadlessHost::AccessibilityTree>& trees = fixture.host().getAccessibilityTrees();
+    ASSERT_FALSE(trees.empty());
+    std::vector<std::string> answers;
+    for (const Element& element : trees.back().elements) {
+        if (element.role == Element::Role::Button) {
+            answers.push_back(element.label);
+        }
+    }
+
+    EXPECT_EQ(answers, (std::vector<std::string>{"Cancel", "Later", "Save"}));
+    EXPECT_LT(find("Cancel")->bounds.x, find("Later")->bounds.x);
+    EXPECT_TRUE(find("Save")->has(Element::Focused));
+}
+
 TEST_F(AccessibilityTreeTest, ReadsElementsAndAnnouncesFromLua) {
     fixture.runLua("gui = ui.mount(ui.column{ui.toggle{id = 'music', text = 'Music', checked = true}}, {placement = 'screen'})");
     fixture.frames(3);

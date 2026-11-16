@@ -47,6 +47,7 @@ class Dialog final : public Component {
     [[nodiscard]] float getBodyHeight(Context& context, float width);
     [[nodiscard]] float getContentHeight(Context& context, float width);
     [[nodiscard]] bool isStacked(Context& context, float width) const;
+    [[nodiscard]] float getRowWidth(Context& context) const;
     [[nodiscard]] static float getStackedButtonHeight(Context& context, const Answer& button, float width);
     [[nodiscard]] float getButtonsHeight(Context& context, float width) const;
     void drawContent(Context& context, const math::Rect& frame, const math::Insets& padding, bool overflowing);

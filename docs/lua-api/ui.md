@@ -1528,7 +1528,7 @@ A dialog is the card of a dialog, with a title, a message, optional children and
 - Pressing a button reports `answer`, with the button id as `button`.
 - The buttons line up in one row at the end of the dialog while they fit its width. When they do not fit, as on a phone in portrait, they stack across the whole width, with the last button, usually the main answer, on top and the first one at the bottom. A label too long for the width wraps, and its button grows taller.
 - A dialog is as wide as the theme `dialogWidth` within the room it has, a `panelPadding` away from its edges, and it sits in the middle of that room unless its `align` says otherwise. It is as tall as its content within the safe area. When its title, message and children are taller than that, they scroll above the buttons, beside a [scroll bar](#scroll-bars) at the edge of the dialog. The padding of the dialog holds the lane of the bar.
-- The last button takes the focus when the dialog first draws.
+- The last button takes the focus when the dialog first draws. The focus and screen readers move through the buttons in the order people read them, from the start of the row or the top of the stack.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |

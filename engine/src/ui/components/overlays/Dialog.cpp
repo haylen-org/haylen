@@ -133,13 +133,17 @@ float Dialog::getContentHeight(Context& context, float width) {
 
 // The answers line up in one row while they fit the width, and otherwise stack across it.
 bool Dialog::isStacked(Context& context, float width) const {
+    return getRowWidth(context) > width;
+}
+
+float Dialog::getRowWidth(Context& context) const {
     const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
     float row = 0.0F;
     for (const Answer& button : buttons) {
         row += Widgets::measureButton(context, context.getText(button.text), false, button.variant, {}).x + (row > 0.0F ? spacing : 0.0F);
     }
 
-    return row > width;
+    return row;
 }
 
 // A stacked answer takes at least the height of a control, and grows when its label wraps across the width.
@@ -181,29 +185,32 @@ void Dialog::drawContent(Context& context, const math::Rect& frame, const math::
         ImGui::EndChild();
     }
 
-    // Buttons line up at the bottom end, the right or the left of a right-to-left UI, or stack across the width when they do not fit in one row, with the last one, usually the main answer, on top. That one starts with the navigation focus.
-    const bool stacked = isStacked(context, inner.width);
-    float x = inner.getRight();
+    // Buttons line up at the bottom end, the right or the left of a right-to-left UI, or stack across the width when they do not fit in one row, with the last one, usually the main answer, at the end of the row or on top of the stack. That one starts with the navigation focus. They draw in the order people read them, from the start of the row or the top of the stack, so the focus and screen readers move through them in that order.
+    const float row = getRowWidth(context);
+    const bool stacked = row > inner.width;
+    const std::size_t count = buttons.size();
+    float x = inner.getRight() - row;
     float y = inner.getBottom() - buttonsHeight;
-    for (auto button = buttons.rbegin(); button != buttons.rend(); ++button) {
-        const std::string_view text = context.getText(button->text);
+    for (std::size_t order = 0; order < count; ++order) {
+        const std::size_t index = stacked ? count - 1 - order : order;
+        const Answer& button = buttons[index];
+        const std::string_view text = context.getText(button.text);
         math::Rect place;
         if (stacked) {
-            const float height = getStackedButtonHeight(context, *button, inner.width);
+            const float height = getStackedButtonHeight(context, button, inner.width);
             place = {inner.x, y, inner.width, height};
             y += height + spacing;
         } else {
-            const float width = Widgets::measureButton(context, text, false, button->variant, {}).x;
-            x -= width;
+            const float width = Widgets::measureButton(context, text, false, button.variant, {}).x;
             place = context.mirror({x, inner.getBottom() - controlHeight, width, controlHeight}, inner);
-            x -= spacing;
+            x += width + spacing;
         }
 
-        ImGui::PushID(button->id.c_str());
-        const bool pressed = Widgets::button(context, place, text, nullptr, button->variant, false, {}, {});
+        ImGui::PushID(button.id.c_str());
+        const bool pressed = Widgets::button(context, place, text, nullptr, button.variant, false, {}, {});
         context.getAccessibility().addPart(ImGui::GetItemID(), place, platform::AccessibilityElement::Role::Button, text, 0);
 
-        if (button == buttons.rbegin() && !focused) {
+        if (index == count - 1 && !focused) {
             focused = true;
             Widgets::focusItem(context);
         }
@@ -212,7 +219,7 @@ void Dialog::drawContent(Context& context, const math::Rect& frame, const math::
 
         if (pressed) {
             context.playSound(Theme::Sound::Press);
-            context.emit(*this, "answer", {{"button", button->id}});
+            context.emit(*this, "answer", {{"button", button.id}});
         }
     }
 }
