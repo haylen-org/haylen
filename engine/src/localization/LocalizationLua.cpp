@@ -3,12 +3,15 @@
 #include <lua.hpp>
 
 #include <cstdint>
+#include <exception>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
 
+#include "haylen/content/ContentManager.hpp"
+#include "haylen/content/Error.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/localization/DateFormat.hpp"
 #include "haylen/localization/ListFormat.hpp"
@@ -16,6 +19,7 @@
 #include "haylen/localization/PluralRules.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/JsonConverter.hpp"
+#include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
@@ -33,9 +37,41 @@ int LocalizationLua::add(lua_State* L) {
     return 0;
 }
 
+// A synchronous load never waits for a download, so a file that is not on the device yet fails before any file of the folder is added.
 int LocalizationLua::loadFolder(lua_State* L) {
     core::Engine& owner = lua::Runtime::getEngine(L);
-    lua::Stack::push(L, owner.getPlugin<plugins::LocalizationPlugin>().loadFolder(owner.getPackage(), lua::Stack::read<std::string_view>(L, 1)));
+    const auto folder = lua::Stack::read<std::string_view>(L, 1);
+    for (const std::string& file : plugins::LocalizationPlugin::getLanguageFiles(owner.getPackage(), folder)) {
+        if (!owner.getContent().isLocal(file)) {
+            throw std::runtime_error("The localization file \"" + file + "\" is not on the device yet, since it downloads when the app asks for it. Load its folder with \"localization.loadFolderAsync\", which brings it first.");
+        }
+    }
+
+    lua::Stack::push(L, owner.getPlugin<plugins::LocalizationPlugin>().loadFolder(owner.getPackage(), folder));
+    return 1;
+}
+
+int LocalizationLua::loadFolderAsync(lua_State* L) {
+    core::Engine& owner = lua::Runtime::getEngine(L);
+    std::string folder = lua::Stack::read<std::string>(L, 1);
+    const std::vector<std::string> files = plugins::LocalizationPlugin::getLanguageFiles(owner.getPackage(), folder);
+    const lua::Promise promise(owner);
+    // clang-format off
+    owner.getContent().acquire(files, {}, [&owner, promise, folder = std::move(folder)](std::optional<content::Error> failure) {
+        if (failure) {
+            promise.reject(failure->what());
+            return;
+        }
+
+        try {
+            const std::vector<std::string> languages = owner.getPlugin<plugins::LocalizationPlugin>().loadFolder(owner.getPackage(), folder);
+            promise.resolve(core::Json(languages));
+        } catch (const std::exception& error) {
+            promise.reject(error.what());
+        }
+    });
+    // clang-format on
+    promise.push(L);
     return 1;
 }
 
@@ -236,7 +272,7 @@ int LocalizationLua::assetPath(lua_State* L) {
 
 int LocalizationLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"add", &lua::Binding::native<&add>}, {"loadFolder", &lua::Binding::native<&loadFolder>}, {"setLanguage", &lua::Binding::native<&setLanguage>}, {"language", &lua::Binding::native<&language>}, {"followSystem", &lua::Binding::native<&followSystem>}, {"followingSystem", &lua::Binding::native<&followingSystem>}, {"setFallback", &lua::Binding::native<&setFallback>}, {"fallback", &lua::Binding::native<&fallback>}, {"setPseudo", &lua::Binding::native<&setPseudo>}, {"pseudo", &lua::Binding::native<&pseudo>}, {"languages", &lua::Binding::native<&languages>}, {"has", &lua::Binding::native<&has>}, {"text", &lua::Binding::native<&text>}, {"format", &lua::Binding::native<&format>}, {"findBestMatch", &lua::Binding::native<&findBestMatch>}, {"normalizeTag", &lua::Binding::native<&normalizeTag>}, {"direction", &lua::Binding::native<&direction>}, {"formatNumber", &lua::Binding::native<&formatNumber>}, {"formatDate", &lua::Binding::native<&formatDate>}, {"formatList", &lua::Binding::native<&formatList>}, {"pluralCategory", &lua::Binding::native<&pluralCategory>}, {"assetPath", &lua::Binding::native<&assetPath>}, {nullptr, nullptr},
+        {"add", &lua::Binding::native<&add>}, {"loadFolder", &lua::Binding::native<&loadFolder>}, {"loadFolderAsync", &lua::Binding::native<&loadFolderAsync>}, {"setLanguage", &lua::Binding::native<&setLanguage>}, {"language", &lua::Binding::native<&language>}, {"followSystem", &lua::Binding::native<&followSystem>}, {"followingSystem", &lua::Binding::native<&followingSystem>}, {"setFallback", &lua::Binding::native<&setFallback>}, {"fallback", &lua::Binding::native<&fallback>}, {"setPseudo", &lua::Binding::native<&setPseudo>}, {"pseudo", &lua::Binding::native<&pseudo>}, {"languages", &lua::Binding::native<&languages>}, {"has", &lua::Binding::native<&has>}, {"text", &lua::Binding::native<&text>}, {"format", &lua::Binding::native<&format>}, {"findBestMatch", &lua::Binding::native<&findBestMatch>}, {"normalizeTag", &lua::Binding::native<&normalizeTag>}, {"direction", &lua::Binding::native<&direction>}, {"formatNumber", &lua::Binding::native<&formatNumber>}, {"formatDate", &lua::Binding::native<&formatDate>}, {"formatList", &lua::Binding::native<&formatList>}, {"pluralCategory", &lua::Binding::native<&pluralCategory>}, {"assetPath", &lua::Binding::native<&assetPath>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

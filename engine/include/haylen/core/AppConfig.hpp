@@ -126,7 +126,7 @@ struct AppConfig {
             bool enabled = true;
         };
 
-        // The files under `content` whose path matches the pattern, relative to `content`, take the delivery, and with a pack name they go into shards of that pack, which a store delivers on its own, such as the content of a downloadable expansion. A rule may name a preload group instead of a pattern, which `fromPackage` replaces with a rule for each entry of the group in the manifest that `groups` names.
+        // The files under `content` whose path matches the pattern, relative to `content`, take the delivery, and with a pack name they go into shards of that pack, which a store delivers on its own, such as the content of a downloadable expansion. A rule may name a preload group instead of a pattern, which `expandGroups` replaces with a rule for each entry of the group in the manifest that `groups` names.
         struct Rule {
             std::string match;
             content::Delivery mode = content::Delivery::Required;
@@ -145,6 +145,12 @@ struct AppConfig {
 
         // The pack of an asset by its path relative to `content`: the pack of the first rule that matches it, empty for the content that is no pack of its own.
         [[nodiscard]] std::string_view getPack(std::string_view path) const noexcept;
+
+        // Whether a rule names a preload group that `expandGroups` has not replaced yet, so the deliveries and packs of the rules need the group manifest first.
+        [[nodiscard]] bool hasGroupRules() const noexcept;
+
+        // Replaces every rule that names a preload group with a rule for each entry of the group in the group manifest of the package, the path of a file or every file under a folder. The group manifest is content, which a release may not hold on the device yet, so the content manager brings it before it calls this. Throws `std::invalid_argument` for a manifest that the package lacks, a group that it does not define or an entry outside the `content` folder.
+        void expandGroups(const io::Package& package);
     };
 
     // The texts the app ships, from the `localization` object: the folder under `content` whose JSON files load as languages before any script runs, the fallback language among them, and the language the app starts in. Without a language the app follows the languages of the system. The languages are in their canonical form, such as `pt-BR`.
@@ -210,7 +216,7 @@ struct AppConfig {
     // Reads every present field and validates it. Throws `std::invalid_argument` with the offending field on bad values.
     [[nodiscard]] static AppConfig fromJson(const Json& document);
 
-    // Reads `app.json` of the package like `fromJson` and also checks that the package holds `plugins/<id>/plugin.json` for every plugin the app lists, which a folder that the player runs directly lacks for a plugin that `app.json` references elsewhere.
+    // Reads `app.json` of the package like `fromJson` and also checks that the package holds `plugins/<id>/plugin.json` for every plugin the app lists, which a folder that the player runs directly lacks for a plugin that `app.json` references elsewhere. It reads no content, so the rules that name preload groups stay until `Content::expandGroups`.
     [[nodiscard]] static AppConfig fromPackage(const io::Package& package);
     [[nodiscard]] Json toJson() const;
 
@@ -243,7 +249,6 @@ struct AppConfig {
     [[nodiscard]] static Plugin readPlugin(const std::string& id, const Json& entry);
     static void readPluginText(const Json& entry, const std::string& id, const char* key, std::string& target);
     [[nodiscard]] static std::vector<gpu::Device::Api> readGraphicsApis(const Json& value);
-    static void expandGroups(const io::Package& package, Content& content);
     [[nodiscard]] static bool isContentPattern(std::string_view pattern) noexcept;
     static void readWindow(const Json& section, AppConfig& config);
     static void readDesign(const Json& section, AppConfig& config);

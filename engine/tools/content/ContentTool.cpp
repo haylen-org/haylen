@@ -243,6 +243,13 @@ ReleaseInspector ContentTool::makeInspector(const KeyStore& store) {
     return ReleaseInspector(store.getContentKeys(), {store.getSigningKey()->getVerifyingKey()});
 }
 
+core::AppConfig::Content ContentTool::readDeliveryRules(const std::filesystem::path& app) {
+    const std::shared_ptr<const io::Package> package = io::Package::openDirectory(app);
+    core::AppConfig::Content rules = core::AppConfig::fromPackage(*package).content;
+    rules.expandGroups(*package);
+    return rules;
+}
+
 void ContentTool::runVerify(Arguments& arguments) {
     const std::filesystem::path folder = arguments.takePositional("release folder");
     const KeyStore store = KeyStore::open(arguments.takeOption("keys"));
@@ -262,7 +269,7 @@ void ContentTool::runStage(Arguments& arguments) {
     const ReleaseStager::Content content = arguments.takeFlag("ship-deferred") ? ReleaseStager::Content::All : appOnly ? ReleaseStager::Content::None : ReleaseStager::Content::Required;
     arguments.finish();
     const ReleaseInspector inspector = makeInspector(store);
-    const core::AppConfig::Content rules = app ? core::AppConfig::fromPackage(*io::Package::openDirectory(*app)).content : core::AppConfig::Content{};
+    const core::AppConfig::Content rules = app ? readDeliveryRules(*app) : core::AppConfig::Content{};
     const auto folderOf = [](const std::optional<std::string>& path) { return path ? std::optional<std::filesystem::path>(*path) : std::nullopt; };
     const ReleaseStager::Layout layout = ReleaseStager(inspector, rules).stage(folder, shipped, folderOf(deferred), folderOf(packs), content);
     output << std::format("Staged the release \"{}\": {} files ship with the app in \"{}\", {} shards stay for the server and {} packs go to their stores.\n", folder.generic_string(), layout.shipped.size(), shipped.generic_string(), layout.deferred.size(), layout.packs.size());

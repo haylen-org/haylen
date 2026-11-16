@@ -28,7 +28,8 @@ ChannelPublisher::Publication ChannelPublisher::publish(const io::Package& app, 
         throw std::invalid_argument("A publication needs the name of a channel, with at most 64 lowercase letters, digits, dashes and dots, not \"" + options.channel + "\".");
     }
 
-    const core::AppConfig config = core::AppConfig::fromPackage(app);
+    core::AppConfig config = core::AppConfig::fromPackage(app);
+    config.content.expandGroups(app);
     const Digest application = Manifest::identifyApplication(config.identifier);
     const std::optional<ChannelDescriptor> current = readChannel(tree, options.channel);
     std::optional<Manifest> earlier;

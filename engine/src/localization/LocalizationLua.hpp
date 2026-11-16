@@ -28,6 +28,7 @@ class LocalizationLua final {
 
     static int add(lua_State* L);
     static int loadFolder(lua_State* L);
+    static int loadFolderAsync(lua_State* L);
     static int setLanguage(lua_State* L);
     static int language(lua_State* L);
     static int followSystem(lua_State* L);

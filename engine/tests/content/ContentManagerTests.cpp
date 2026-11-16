@@ -27,6 +27,7 @@
 #include "haylen/core/ScopedConnection.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/lua/Application.hpp"
+#include "haylen/lua/Error.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/platform/Event.hpp"
 #include "io/CompositePackage.hpp"
@@ -464,6 +465,78 @@ TEST_F(ContentManagerTest, TellsTheAppThatItPlaysEarlierContentWhenTheUpdateWasD
     EXPECT_FALSE(getRecovery().empty());
 }
 
+// An app whose `app.json` names content that the engine reads before the app starts: a folder of languages and the group manifest of its delivery rules, which a release may not hold on the device yet, as on a web page.
+class ContentStartTest : public ContentManagerTest {
+  protected:
+    // Builds and publishes the game again with the languages and the sections of `app.json` that read them.
+    void rebuild(const std::string& sections) {
+        game["app.json"] = test::TestFiles::bytes(R"({"name": "Start", "identifier": "com.haylen.tests", )" + sections + "}");
+        game["source/main.lua"] = test::TestFiles::bytes("greeting = require('haylen.localization').text('menu.play')\nstarted = true");
+        game.emplace("content/locale/en.json", test::TestFiles::bytes(R"({"menu": {"play": "Play"}})"));
+        game.emplace("content/locale/pt-BR.json", test::TestFiles::bytes(R"({"menu": {"play": "Jogar"}})"));
+        game.emplace("content/groups.json", test::TestFiles::bytes(R"({"groups": {"forest": ["levels/"]}})"));
+        release.build(io::MemoryPackage("source", game));
+        publish(game);
+    }
+
+    [[nodiscard]] std::string getGreeting() const {
+        lua_State* L = engine->getLuaState();
+        lua_getglobal(L, "greeting");
+        std::string greeting = lua_isstring(L, -1) != 0 ? lua_tostring(L, -1) : "";
+        lua_pop(L, 1);
+        return greeting;
+    }
+
+    [[nodiscard]] std::string getServer() const {
+        return R"("updates": {"baseUrl": ")" + server.getUrl() + R"(", "enabled": false})";
+    }
+};
+
+TEST_F(ContentStartTest, LoadsTheLanguagesOfAppJsonOnceTheyDownload) {
+    rebuild(R"("localization": {"folder": "locale", "fallback": "en"}, "content": {)" + getServer() + "}");
+    run(shipWithoutContent());
+
+    EXPECT_FALSE(hasStarted());
+    ASSERT_TRUE(frameUntil([this] { return hasStarted(); })) << (engine->getError() != nullptr ? engine->getError()->getMessage() : "");
+    EXPECT_EQ(getGreeting(), "Play") << "The main module reads the languages, so they loaded before it ran.";
+    EXPECT_TRUE(engine->getContent().isLocal("locale/pt-BR.json"));
+}
+
+TEST_F(ContentStartTest, BringsTheLanguagesThatARuleDeliversLaterBeforeTheAppStarts) {
+    rebuild(R"("localization": {"folder": "locale", "fallback": "en"}, "content": {)" + getServer() + R"(, "delivery": [{"match": "locale/**", "mode": "onDemand"}]})");
+    run(ship());
+
+    EXPECT_FALSE(engine->getContent().isLocal("locale/en.json"));
+    ASSERT_TRUE(frameUntil([this] { return hasStarted(); })) << (engine->getError() != nullptr ? engine->getError()->getMessage() : "");
+    EXPECT_EQ(getGreeting(), "Play");
+    EXPECT_TRUE(engine->getContent().isLocal("locale/en.json"));
+}
+
+TEST_F(ContentStartTest, ShowsWhyTheLanguagesCannotDownloadAndTriesAgain) {
+    rebuild(R"("localization": {"folder": "locale", "fallback": "en"}, "content": {)" + getServer() + R"(, "delivery": [{"match": "locale/**", "mode": "onDemand"}]})");
+    setPacksStatus(503);
+    run(ship());
+
+    ASSERT_TRUE(frameUntil([this] { return engine->getContent().getStatus() == ContentManager::Status::Failed; }));
+    EXPECT_FALSE(hasStarted());
+    EXPECT_TRUE(engine->getContent().isHoldingStart()) << "The update screen shows the failure and offers to try again.";
+
+    setPacksStatus(0);
+    engine->getContent().retry();
+    ASSERT_TRUE(frameUntil([this] { return hasStarted(); }));
+    EXPECT_EQ(getGreeting(), "Play");
+}
+
+TEST_F(ContentStartTest, ExpandsTheGroupsOfItsRulesOnceTheGroupManifestDownloads) {
+    rebuild(R"("content": {)" + getServer() + R"(, "groups": "groups.json", "delivery": [{"group": "forest", "mode": "onDemand"}]})");
+    run(shipWithoutContent());
+
+    EXPECT_FALSE(hasStarted());
+    ASSERT_TRUE(frameUntil([this] { return hasStarted(); })) << (engine->getError() != nullptr ? engine->getError()->getMessage() : "");
+    EXPECT_TRUE(engine->getContent().isLocal("data/config.json"));
+    EXPECT_FALSE(engine->getContent().isLocal("levels/forest.json")) << "The group delivers the level on demand, so the start never downloaded it.";
+}
+
 TEST(ContentDevelopmentTest, KeepsTheFilesThatDownloadOffTheDeviceUntilSomethingBringsThem) {
     test::TemporaryDirectory data;
     platform::HeadlessHost host(data.getPath());
@@ -493,6 +566,30 @@ TEST(ContentDevelopmentTest, KeepsTheFilesThatDownloadOffTheDeviceUntilSomething
     engine.frame(1.0 / 60.0);
     EXPECT_TRUE(brought);
     EXPECT_EQ(engine.getAssets().json("levels/forest.json")["trees"], 12);
+}
+
+// Development plays the folder of the app with the delivery of a release, so languages that a rule delivers later hold the start until they are brought.
+TEST(ContentDevelopmentTest, HoldsTheStartForTheLanguagesThatARuleDeliversLater) {
+    test::TemporaryDirectory data;
+    platform::HeadlessHost host(data.getPath());
+    std::map<std::string, std::vector<std::uint8_t>> files;
+    files.emplace("app.json", test::TestFiles::bytes(R"({"localization": {"folder": "locale"}, "content": {"delivery": [{"match": "locale/**", "mode": "onDemand"}]}})"));
+    files.emplace("source/main.lua", test::TestFiles::bytes("greeting = require('haylen.localization').text('menu.play')"));
+    files.emplace("content/locale/en.json", test::TestFiles::bytes(R"({"menu": {"play": "Play"}})"));
+    auto package = std::make_shared<io::MemoryPackage>("development", std::move(files));
+    core::AppConfig config = core::AppConfig::fromPackage(*package);
+    auto application = std::make_unique<lua::Application>();
+    application->configure(config);
+    core::Engine engine(host, package, std::move(config), std::move(application));
+    engine.start();
+
+    EXPECT_TRUE(engine.isStartHeld());
+    engine.frame(1.0 / 60.0);
+    engine.frame(1.0 / 60.0);
+    lua_State* L = engine.getLuaState();
+    lua_getglobal(L, "greeting");
+    EXPECT_STREQ(lua_tostring(L, -1), "Play");
+    lua_pop(L, 1);
 }
 
 // An app without a server whose expansion is a pack that a store installs next to the app, or leaves out for a player who does not own it.

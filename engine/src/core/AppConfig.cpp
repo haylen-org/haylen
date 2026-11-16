@@ -391,27 +391,31 @@ bool AppConfig::isContentPattern(std::string_view pattern) noexcept {
     return !pattern.empty() && !pattern.starts_with('/') && pattern.find("..") == std::string_view::npos && pattern.find('\\') == std::string_view::npos;
 }
 
+bool AppConfig::Content::hasGroupRules() const noexcept {
+    return std::ranges::any_of(delivery, [](const Rule& rule) { return !rule.group.empty() && rule.match.empty(); });
+}
+
 // A rule that names a preload group takes its place with a rule for each entry of the group: the path of a file, or every file under a folder.
-void AppConfig::expandGroups(const io::Package& package, Content& content) {
-    if (std::ranges::none_of(content.delivery, [](const Content::Rule& rule) { return !rule.group.empty(); })) {
+void AppConfig::Content::expandGroups(const io::Package& package) {
+    if (!hasGroupRules()) {
         return;
     }
 
-    const std::string manifest = io::Path::asset(content.groups);
+    const std::string manifest = io::Path::asset(groups);
     if (!package.exists(manifest)) {
         throw std::invalid_argument("The group manifest \"" + manifest + "\" that \"content.groups\" in \"app.json\" names is not in the package.");
     }
 
-    const std::map<std::string, std::vector<assets::GroupManifest::Entry>> groups = assets::GroupManifest::read(Json::parse(package.readText(manifest)));
-    std::vector<Content::Rule> expanded;
-    for (Content::Rule& rule : content.delivery) {
-        if (rule.group.empty()) {
+    const std::map<std::string, std::vector<assets::GroupManifest::Entry>> defined = assets::GroupManifest::read(Json::parse(package.readText(manifest)));
+    std::vector<Rule> expanded;
+    for (Rule& rule : delivery) {
+        if (rule.group.empty() || !rule.match.empty()) {
             expanded.push_back(std::move(rule));
             continue;
         }
 
-        const auto found = groups.find(rule.group);
-        if (found == groups.end()) {
+        const auto found = defined.find(rule.group);
+        if (found == defined.end()) {
             throw std::invalid_argument("A rule of \"content.delivery\" in \"app.json\" names the group \"" + rule.group + "\", which \"" + manifest + "\" does not define.");
         }
 
@@ -424,12 +428,11 @@ void AppConfig::expandGroups(const io::Package& package, Content& content) {
         }
     }
 
-    content.delivery = std::move(expanded);
+    delivery = std::move(expanded);
 }
 
 AppConfig AppConfig::fromPackage(const io::Package& package) {
     AppConfig config = fromJson(Json::parse(package.readText(io::Path::kAppConfigFile)));
-    expandGroups(package, config.content);
 
     for (const auto& [id, plugin] : config.plugins) {
         const std::string manifest = io::Path::plugin(id, io::Path::kPluginManifestFile);
@@ -873,7 +876,7 @@ Json AppConfig::toJson() const {
         windowJson["graphicsApis"].push_back(std::ranges::find(gpu::Device::kApiNames, api, &std::pair<std::string_view, gpu::Device::Api>::second)->first);
     }
 
-    // A rule that names a group keeps the name until `fromPackage` replaces it with the patterns of the group.
+    // A rule that names a group keeps the name until `Content::expandGroups` replaces it with the patterns of the group.
     Json contentJson = {{"delivery", Json::array()}};
     for (const Content::Rule& rule : content.delivery) {
         Json written = rule.match.empty() ? Json{{"group", rule.group}} : Json{{"match", rule.match}};

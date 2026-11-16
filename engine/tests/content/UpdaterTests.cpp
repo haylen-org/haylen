@@ -54,9 +54,11 @@ class UpdaterTest : public ::testing::Test {
             auto recordStore = std::make_shared<LocalStore>(std::move(storeFiles), test.release.getCompatibility().application, test::ReleaseFixture::kAppBuild);
             package = std::make_shared<ReleasePackage>(test.release.getFiles(), keys ? std::move(keys) : test.release.getKeys(), std::span(&trusted, 1), test.release.getCompatibility(), std::move(recordStore), std::move(provider));
             downloader = std::make_unique<Downloader>(jobs, transport, package->getStore());
-            updater = std::make_unique<Updater>(package, jobs, transport, *downloader, core::AppConfig::Content{.updates = core::AppConfig::Content::Updates{.baseUrl = test.server.getUrl()}});
+            settings.updates = core::AppConfig::Content::Updates{.baseUrl = test.server.getUrl()};
+            updater = std::make_unique<Updater>(package, jobs, transport, *downloader, settings);
         }
 
+        core::AppConfig::Content settings;
         std::shared_ptr<ReleasePackage> package;
         core::JobSystem& jobs;
         HttpTransport transport;

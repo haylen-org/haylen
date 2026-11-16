@@ -650,6 +650,7 @@ if (!content.isLocal("world/asia/maps/tokyo.tmj")) {
 | `isLocal(path)` | Whether every byte of an asset is on the device. |
 | `acquire(paths, progress, done)` | Brings assets onto the device and makes them readable for a load that follows. |
 | `prefetch(paths, progress, done)` | Brings assets onto the device without reading them in, which `content.prefetch` calls. |
+| `bringBeforeStart(paths, ready)` | Holds the start of the app until files that the engine reads before any Lua runs are on the device, and calls `ready` to read them, at once when they are there already. |
 | `addPackFolder(folder)` | Reads the shards of a pack from the folder that a store installed it into while the app runs. |
 | `addPackSource(source)` | Adds a `content::PackSource` that `acquire` asks for the packs that assets need, before the content server, and returns the `core::Connection` that removes it. |
 | `check(done)`, `download(progress, done)`, `apply()` | Asks the channel for newer content, installs it for the next start, and starts the app again on it. |
@@ -659,6 +660,13 @@ if (!content.isLocal("world/asia/maps/tokyo.tmj")) {
 ### What the manager does on its own
 
 When the app starts, the manager looks on a worker thread for required content that the device lacks, while the engine holds the start of the app with `Engine::holdStart`. Content that ships with the app is there, so the app starts in the next frames. Content that is not there, as on a web page or on a device that cleared its downloads, downloads from the server first, and the app starts once all of it is verified. When downloaded content cannot come back, the manager plays the content that ships with the app instead.
+
+The engine reads a few files of the content before any Lua runs, and it reads each of them only once the manager has it on the device:
+
+- The group manifest of `content.groups`, when a rule of `content.delivery` names a preload group. The rules tell which files belong to packs only once their groups are expanded, so the manager brings the manifest first and expands the groups before it looks for the required content.
+- The language files of the folder that the `localization` section names. A subsystem hands such files to `ContentManager::bringBeforeStart`, which calls it back once they are on the device and before the app starts. Files on the device already are read at once. Files that a rule delivers later come down after the required content, behind the same update screen.
+
+So a synchronous read never waits for the network, and an app starts the same way whether its content shipped with it, came from a store or downloads on a web page. Every failure of these downloads shows on the update screen, which tries again. In development, where the folder of the app plays with the deliveries of a release, the start holds for the files that a rule delivers later until the next frame, as a release brings them.
 
 Once the app runs, the manager removes from the store what no retained content uses, downloads the prefetched content, and checks the channel when updates are on, which installs newer content in the background for the next start. The network and the state of the app steer that work:
 
@@ -677,7 +685,7 @@ A mouse, a finger, Enter, the south button of a gamepad and the select button of
 
 ## The web
 
-A web page ships the same protected release as every other platform, built for the `web` profile, and nothing of the package as it is. The [loading guide](loading.md#web) lists the files of the site. The page downloads the runtime, the two manifests and the shards of the app domain before the app starts. Those shards hold `app.json` and the Lua bytecode and are small.
+A web page ships the same protected release as every other platform, built for the `web` profile, and nothing of the package as it is. The [loading guide](loading.md#web) lists the files of the site. The page downloads the runtime, the two manifests and the shards of the app domain before the app starts. Those shards hold `app.json` and the Lua bytecode and are small. Everything else comes through the content manager, the content that the engine reads before any Lua runs included, as [what the manager does on its own](#what-the-manager-does-on-its-own) describes.
 
 The content never downloads whole. The content manager reads the encrypted index of each shard it needs, and then only the records of the assets that the app needs, by byte range from `app/`. So a page of a game of many gigabytes starts after a download of a few megabytes. The required content comes down while the update screen shows, the prefetched content follows in the background, and on-demand assets come when the app loads them, exactly as on the other platforms. WebGPU and WebGL2 share the same release and the same store, since only the runtime differs.
 

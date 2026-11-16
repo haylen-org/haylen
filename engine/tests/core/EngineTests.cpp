@@ -156,7 +156,8 @@ class AppConfigTest : public ::testing::Test {
     [[nodiscard]] static std::string refusalOfPackage(const std::string& document, const std::string& groups) {
         io::MemoryPackage package("app", {{"app.json", test::TestFiles::bytes(document)}, {"content/groups.json", test::TestFiles::bytes(groups)}});
         try {
-            (void)AppConfig::fromPackage(package);
+            AppConfig config = AppConfig::fromPackage(package);
+            config.content.expandGroups(package);
         } catch (const std::invalid_argument& error) {
             return error.what();
         }
@@ -364,7 +365,10 @@ TEST_F(AppConfigTest, ReadsHowTheContentReachesTheDevice) {
 TEST_F(AppConfigTest, DeliversThePreloadGroupsThatRulesName) {
     const std::string app = R"({"content": {"groups": "groups.json", "delivery": [{"group": "asia", "mode": "onDemand"}, {"match": "world/**", "mode": "prefetch"}]}})";
     io::MemoryPackage package("app", {{"app.json", test::TestFiles::bytes(app)}, {"content/groups.json", test::TestFiles::bytes(R"({"groups": {"asia": ["world/asia/", {"path": "music/tokyo.ogg", "options": {"stream": true}}]}})")}});
-    const AppConfig config = AppConfig::fromPackage(package);
+    AppConfig config = AppConfig::fromPackage(package);
+    EXPECT_TRUE(config.content.hasGroupRules()) << "Reading the configuration reads no content.";
+    config.content.expandGroups(package);
+    EXPECT_FALSE(config.content.hasGroupRules());
     EXPECT_EQ(config.content.getDelivery("world/asia/maps/tokyo.tmj"), content::Delivery::OnDemand);
     EXPECT_EQ(config.content.getDelivery("music/tokyo.ogg"), content::Delivery::OnDemand);
     EXPECT_EQ(config.content.getDelivery("world/europe/paris.tmj"), content::Delivery::Prefetch) << "The rules after the group keep their order.";

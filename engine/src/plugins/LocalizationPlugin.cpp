@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "haylen/assets/Manager.hpp"
+#include "haylen/content/ContentManager.hpp"
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/EventBus.hpp"
@@ -23,11 +24,11 @@
 
 namespace haylen::plugins {
 
-// The languages of the configuration load before the scripts, and the system decides the language unless the app names one.
+// The languages of the configuration load before the scripts, once the content manager has their files on the device, which a release may download first, as a web page does. The system decides the language unless the app names one.
 void LocalizationPlugin::start(core::Engine& engine) {
-    loadConfiguredLanguages(engine);
-    catalog.setSystemLanguages(engine.getSystem().getLanguages());
-    announced = catalog.getLanguage();
+    const std::string& folder = engine.getConfig().localization.folder;
+    std::vector<std::string> files = folder.empty() ? std::vector<std::string>() : getLanguageFiles(engine.getPackage(), folder);
+    engine.getContent().bringBeforeStart(std::move(files), [this, &engine] { loadConfiguredLanguages(engine); });
 }
 
 void LocalizationPlugin::loadConfiguredLanguages(core::Engine& engine) {
@@ -51,6 +52,9 @@ void LocalizationPlugin::loadConfiguredLanguages(core::Engine& engine) {
     if (!configured.language.empty()) {
         catalog.setLanguage(configured.language);
     }
+
+    catalog.setSystemLanguages(engine.getSystem().getLanguages());
+    announced = catalog.getLanguage();
 }
 
 // The list of the system is compared, not copied, on frames where nothing changed.
@@ -68,13 +72,15 @@ void LocalizationPlugin::beginFrame(core::Engine& engine, float) {
     engine.getEvents().emit(core::LifecycleEvent::kLanguageChanged, {{"language", announced}, {"previous", std::move(previous)}});
 }
 
+std::vector<std::string> LocalizationPlugin::getLanguageFiles(const io::Package& package, std::string_view folder) {
+    std::vector<std::string> files = package.listAssets(folder);
+    std::erase_if(files, [](const std::string& file) { return std::filesystem::path(file).extension() != ".json"; });
+    return files;
+}
+
 std::vector<std::string> LocalizationPlugin::loadFolder(const io::Package& package, std::string_view folder) {
     std::vector<std::string> languages;
-    for (const std::string& file : package.listAssets(folder)) {
-        if (std::filesystem::path(file).extension() != ".json") {
-            continue;
-        }
-
+    for (const std::string& file : getLanguageFiles(package, folder)) {
         std::string language = addFile(package, file);
         languages.push_back(std::move(language));
     }

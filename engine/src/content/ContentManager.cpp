@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <format>
+#include <iterator>
 #include <stdexcept>
 #include <unordered_set>
 #include <utility>
@@ -120,7 +121,9 @@ void ContentManager::fail(const Error& failure) {
 }
 
 void ContentManager::start() {
+    // Development plays the folder of the app, which holds the group manifest of the rules.
     if (!release) {
+        settings.expandGroups(engine.getPackage());
         return;
     }
 
@@ -130,7 +133,9 @@ void ContentManager::start() {
         recoveryReport = engine.getEvents().on(core::LifecycleEvent::kAppStarted, [this, report](core::EventBus::Event&) { engine.getEvents().emit(core::LifecycleEvent::kContentRecovered, report); }, {.once = true});
     }
 
+    // A release without a store downloads nothing, so the group manifest of its rules must be on the device.
     if (!downloader) {
+        settings.expandGroups(engine.getPackage());
         return;
     }
 
@@ -230,10 +235,65 @@ std::optional<Error> ContentManager::checkRoom(std::uint64_t downloadBytes, std:
     return Error(Error::Code::InsufficientStorage, std::format("The content needs {} bytes of room on the device and {} are free. Free some room and try again.", required, available), {.requiredBytes = required, .availableBytes = available});
 }
 
+void ContentManager::bringBeforeStart(std::vector<std::string> paths, std::function<void()> ready) {
+    for (const std::string& path : paths) {
+        if (!engine.getPackage().exists(toPackagePath(path))) {
+            throw std::invalid_argument("The asset \"" + path + "\" does not exist.");
+        }
+    }
+
+    if (std::ranges::all_of(paths, [this](const std::string& path) { return isLocal(path); })) {
+        ready();
+        return;
+    }
+
+    if (holdingStart) {
+        startFiles.push_back({.paths = std::move(paths), .ready = std::move(ready)});
+        return;
+    }
+
+    // Without a start that waits for required files, as in development, the start holds for these files alone.
+    // clang-format off
+    acquire(paths, {}, [this, owner = std::weak_ptr(alive), hold = engine.holdStart(), ready = std::move(ready)](std::optional<Error> failure) mutable {
+        if (owner.expired()) {
+            return;
+        }
+
+        if (failure) {
+            const core::Engine::PhaseScope scope(engine, core::Engine::Phase::Lifecycle);
+            engine.reportError(*failure);
+            return;
+        }
+
+        (void)runStartStep(ready);
+        hold.reset();
+    });
+    // clang-format on
+}
+
+bool ContentManager::runStartStep(const std::function<void()>& step) {
+    const core::Engine::PhaseScope scope(engine, core::Engine::Phase::Lifecycle);
+    try {
+        step();
+    } catch (const std::exception& failure) {
+        engine.reportError(failure);
+        return false;
+    }
+
+    return true;
+}
+
 void ContentManager::bringRequired() {
     status = Status::Downloading;
     error.reset();
     progress = {};
+
+    // The rules that name preload groups tell which files belong to packs only once the group manifest is read, which a release may not hold on the device yet, as on a web page.
+    if (settings.hasGroupRules()) {
+        bringGroupManifest();
+        return;
+    }
+
     const std::shared_ptr<const ReleasePackage::Content> content = release->getContent();
 
     // Finding what the device lacks opens the shard files it looks into, so it runs away from the frame thread.
@@ -249,7 +309,7 @@ void ContentManager::bringRequired() {
         }
 
         if (missing.value->empty()) {
-            finishStart();
+            bringStartFiles();
             return;
         }
 
@@ -267,7 +327,7 @@ void ContentManager::bringRequired() {
                 }
 
                 if (!failure) {
-                    finishStart();
+                    bringStartFiles();
                     return;
                 }
 
@@ -284,6 +344,66 @@ void ContentManager::bringRequired() {
         }, Downloader::Priority::Foreground, Downloader::Use::Read);
     });
     // clang-format on
+}
+
+void ContentManager::bringGroupManifest() {
+    if (isLocal(settings.groups)) {
+        if (runStartStep([this] { settings.expandGroups(engine.getPackage()); })) {
+            bringRequired();
+        }
+
+        return;
+    }
+
+    // clang-format off
+    bringAssets({settings.groups}, [this](const Progress& received) { progress = received; }, [this, owner = std::weak_ptr(alive)](std::optional<Error> failure) {
+        if (owner.expired()) {
+            return;
+        }
+
+        if (failure) {
+            fail(*failure);
+            return;
+        }
+
+        bringGroupManifest();
+    }, true);
+    // clang-format on
+}
+
+// The files that the engine reads before the app starts come down after the required files, which usually hold them already, and are read before the start ends.
+void ContentManager::bringStartFiles() {
+    std::vector<std::string> wanted;
+    for (const StartFiles& files : startFiles) {
+        std::ranges::copy_if(files.paths, std::back_inserter(wanted), [this](const std::string& path) { return !isLocal(path); });
+    }
+
+    if (!wanted.empty()) {
+        // clang-format off
+        bringAssets(wanted, [this](const Progress& received) { progress = received; }, [this, owner = std::weak_ptr(alive)](std::optional<Error> failure) {
+            if (owner.expired()) {
+                return;
+            }
+
+            if (failure) {
+                fail(*failure);
+                return;
+            }
+
+            bringStartFiles();
+        }, true);
+        // clang-format on
+        return;
+    }
+
+    const std::vector<StartFiles> arrived = std::exchange(startFiles, {});
+    for (const StartFiles& files : arrived) {
+        if (!runStartStep(files.ready)) {
+            return;
+        }
+    }
+
+    finishStart();
 }
 
 void ContentManager::finishStart() {

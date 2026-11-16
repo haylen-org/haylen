@@ -16,6 +16,7 @@
 #include "content/KeyStore.hpp"
 #include "content/ReleaseInspector.hpp"
 #include "content/format/Manifest.hpp"
+#include "haylen/core/AppConfig.hpp"
 
 namespace haylen::content {
 
@@ -70,6 +71,9 @@ class ContentTool final {
     void printStatistics(Manifest::Domain domain, const ContentBuilder::Statistics& statistics);
 
     [[nodiscard]] static ReleaseInspector makeInspector(const KeyStore& store);
+
+    // The delivery rules of the app folder, with the rules that name preload groups replaced by the entries of the groups.
+    [[nodiscard]] static core::AppConfig::Content readDeliveryRules(const std::filesystem::path& app);
     [[nodiscard]] static std::string_view getKindName(Catalog::Kind kind) noexcept;
     [[nodiscard]] static std::string_view getDomainName(Manifest::Domain domain) noexcept;
 

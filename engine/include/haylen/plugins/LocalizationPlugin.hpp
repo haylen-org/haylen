@@ -20,7 +20,7 @@ class Package;
 
 namespace haylen::plugins {
 
-// Owns the translated text of the app and exposes it to Lua as `haylen.localization`. It loads the languages that the `localization` section of `app.json` names before any script runs, hands the catalog the languages of the system whenever they change, and publishes `languageChanged` at the start of the frame after the current language changed, whatever changed it.
+// Owns the translated text of the app and exposes it to Lua as `haylen.localization`. It loads the languages that the `localization` section of `app.json` names before any script runs, holding the start of the app while their files come to the device, hands the catalog the languages of the system whenever they change, and publishes `languageChanged` at the start of the frame after the current language changed, whatever changed it.
 class LocalizationPlugin final : public Plugin {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {
@@ -42,6 +42,9 @@ class LocalizationPlugin final : public Plugin {
 
     // Returns `i18n/<language>/<path>` for the first of the current language and the tags without its last subtags whose asset exists, such as `i18n/pt-BR/voice/intro.ogg` and then `i18n/pt/voice/intro.ogg`, and the path itself otherwise.
     [[nodiscard]] std::string getAssetPath(const assets::Manager& assets, std::string_view path) const;
+
+    // The JSON files under a content folder, by their paths relative to `content`, in sorted order.
+    [[nodiscard]] static std::vector<std::string> getLanguageFiles(const io::Package& package, std::string_view folder);
 
   private:
     // Adds a language file and returns its language.

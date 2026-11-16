@@ -43,7 +43,7 @@ A language that reads right to left declares it with `"@direction": "rightToLeft
 }
 ```
 
-The usual layout keeps one JSON file per language in a folder of the content, named after its language tag, such as `locale/en.json` and `locale/pt-BR.json`. The section `localization` of [`app.json`](haylen.md#localization) loads that folder before any Lua runs, and [`localization.loadFolder`](#localizationloadfolderfolder) loads any other folder.
+The usual layout keeps one JSON file per language in a folder of the content, named after its language tag, such as `locale/en.json` and `locale/pt-BR.json`. The section `localization` of [`app.json`](haylen.md#localization) loads that folder before any Lua runs, and [`localization.loadFolder`](#localizationloadfolderfolder) loads any other folder. A folder that downloads when the app asks for it, such as the dialogue of an expansion that a rule of `content.delivery` delivers on demand, loads with [`localization.loadFolderAsync`](#localizationloadfolderasyncfolder).
 
 ```json
 {
@@ -57,7 +57,7 @@ The usual layout keeps one JSON file per language in a folder of the content, na
 
 Adds every `.json` file under `folder` of the content, subfolders included, as the language that its file is named after. So `locale/pt-BR.json` and `locale/pt_BR.json` both add the language `pt-BR`. Returns the list of languages in their canonical form, in the order of the sorted file paths. Other files are ignored.
 
-A file that is not valid JSON raises `The localization file "<path>" is not valid JSON.`. A file whose name is no language tag raises `The localization file "<path>" is not named after a language tag. Name it after its language, such as "en.json", "pt-BR.json" or "pt_BR.json".`. A table with a wrong entry raises the errors of [`localization.add`](#localizationaddlanguage-table).
+A synchronous load never waits for a download. So a file of the folder that is not on the device yet raises `The localization file "<path>" is not on the device yet, since it downloads when the app asks for it. Load its folder with "localization.loadFolderAsync", which brings it first.`, before any file of the folder is added. A file that is not valid JSON raises `The localization file "<path>" is not valid JSON.`. A file whose name is no language tag raises `The localization file "<path>" is not named after a language tag. Name it after its language, such as "en.json", "pt-BR.json" or "pt_BR.json".`. A table with a wrong entry raises the errors of [`localization.add`](#localizationaddlanguage-table).
 
 In development, a saved change to a file of a loaded folder adds the file again, so `localization.text` returns its new texts at once. The folder of `app.json` counts as loaded. A text that the file no longer has stays until the app restarts. A file that fails while an editor still writes it waits for the next save, with a warning in the log. The [Lua guide](../core/lua.md#hot-reload) explains hot reload.
 
@@ -66,6 +66,25 @@ local localization = require('haylen.localization')
 
 local languages = localization.loadFolder('dialogue')
 print('Loaded ' .. table.concat(languages, ', ') .. '.')
+```
+
+### localization.loadFolderAsync(folder)
+
+Loads a folder like [`localization.loadFolder`](#localizationloadfolderfolder), but first brings the files that are not on the device, as [`haylen.content`](content.md) brings assets, and returns a promise. The promise resolves with the list of languages once every file is added. A download that fails, or a file that `localization.loadFolder` refuses, rejects the promise with its message, and the files of the folder that were added before the refused one stay. A folder whose files are all on the device loads in the next frame.
+
+```lua
+local async = require('async')
+local localization = require('haylen.localization')
+local log = require('haylen.log')
+
+async.spawn(function()
+    local languages, message = localization.loadFolderAsync('expansion/dialogue'):await()
+    if not languages then
+        log.error('The dialogue did not load: ' .. message)
+        return
+    end
+    log.info('The dialogue speaks ' .. table.concat(languages, ', ') .. '.')
+end)
 ```
 
 ### localization.add(language, table)

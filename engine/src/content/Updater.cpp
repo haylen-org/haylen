@@ -15,7 +15,7 @@
 
 namespace haylen::content {
 
-Updater::Updater(std::shared_ptr<ReleasePackage> releasePackage, core::JobSystem& jobSystem, HttpTransport& httpTransport, Downloader& recordDownloader, core::AppConfig::Content contentSettings) : release(std::move(releasePackage)), jobs(jobSystem), transport(httpTransport), downloader(recordDownloader), settings(std::move(contentSettings)) {
+Updater::Updater(std::shared_ptr<ReleasePackage> releasePackage, core::JobSystem& jobSystem, HttpTransport& httpTransport, Downloader& recordDownloader, const core::AppConfig::Content& contentSettings) : release(std::move(releasePackage)), jobs(jobSystem), transport(httpTransport), downloader(recordDownloader), settings(contentSettings) {
     if (settings.updates) {
         baseUrl = settings.updates->baseUrl;
         channel = settings.updates->channel;

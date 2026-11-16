@@ -36,8 +36,8 @@ class Updater final {
         std::uint64_t freedBytes = 0;
     };
 
-    // The updates of the settings name the publication tree, with its address ending in a slash, and the channel, and their rules name the packs, which updates leave to the stores that deliver them.
-    Updater(std::shared_ptr<ReleasePackage> releasePackage, core::JobSystem& jobSystem, HttpTransport& httpTransport, Downloader& recordDownloader, core::AppConfig::Content contentSettings);
+    // The updates of the settings name the publication tree, with its address ending in a slash, and the channel, and their rules name the packs, which updates leave to the stores that deliver them. The settings outlive the updater, which reads their rules at every check, so rules whose preload groups expand later reach the next check.
+    Updater(std::shared_ptr<ReleasePackage> releasePackage, core::JobSystem& jobSystem, HttpTransport& httpTransport, Downloader& recordDownloader, const core::AppConfig::Content& contentSettings);
     ~Updater();
 
     Updater(const Updater&) = delete;
@@ -79,7 +79,7 @@ class Updater final {
     core::JobSystem& jobs;
     HttpTransport& transport;
     Downloader& downloader;
-    core::AppConfig::Content settings;
+    const core::AppConfig::Content& settings;
     std::string baseUrl;
     std::string channel;
     std::shared_ptr<bool> alive = std::make_shared<bool>(true);

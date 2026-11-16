@@ -95,8 +95,11 @@ class ContentManager final {
     ContentManager(const ContentManager&) = delete;
     ContentManager& operator=(const ContentManager&) = delete;
 
-    // Holds the start of the app until its required files are on the device, then collects what the store no longer needs, downloads the prefetched files and, with updates on, checks the channel.
+    // Holds the start of the app until its required files are on the device, then collects what the store no longer needs, downloads the prefetched files and, with updates on, checks the channel. The rules of `app.json` that name preload groups need the group manifest, which comes down first when the device lacks it.
     void start();
+
+    // Brings files that the engine reads before the app starts, by their paths relative to `content`, and calls `ready` on the frame thread once all of them are on the device and readable, before the app starts. It calls `ready` at once when they are on the device already. In a release that holds the start for its required files, the files come down after them behind the update screen, which shows a failure and tries again. Otherwise the start of the app holds for them, and a failure shows the error screen. An error that `ready` throws later shows the error screen like an error of the start. Throws `std::invalid_argument` for a file that does not exist.
+    void bringBeforeStart(std::vector<std::string> paths, std::function<void()> ready);
 
     // Reports progress and drives the downloads once per frame.
     void update();
@@ -198,6 +201,12 @@ class ContentManager final {
 
     using PackSources = std::vector<std::shared_ptr<PackSourceLink>>;
 
+    // Files that the engine reads before the app starts, and what reads them once they are on the device.
+    struct StartFiles {
+        std::vector<std::string> paths;
+        std::function<void()> ready;
+    };
+
     // Asks the sources for each pack in turn, and then for the next pack, until every pack was asked for or a source failed.
     void bringAssets(const std::vector<std::string>& paths, ProgressCallback onProgress, Completion done, bool readIn);
     void deliverPacks(std::vector<std::string> packs, std::size_t index, std::shared_ptr<const PackSources> sources, ProgressCallback onProgress, Completion done);
@@ -207,7 +216,12 @@ class ContentManager final {
     void startCheck();
     void installOffer(ProgressCallback onProgress, Completion done);
     void bringRequired();
+    void bringGroupManifest();
+    void bringStartFiles();
     void finishStart();
+
+    // Runs a step of the start that reads files once they arrived, and returns false when it failed, whose error shows the error screen as an error of the start.
+    [[nodiscard]] bool runStartStep(const std::function<void()>& step);
     void prefetchRules();
     void startSurvey();
     void fail(const Error& failure);
@@ -243,6 +257,7 @@ class ContentManager final {
     std::vector<core::ScopedConnection> listeners;
     std::shared_ptr<bool> alive = std::make_shared<bool>(true);
     std::set<std::string> broughtInDevelopment;
+    std::vector<StartFiles> startFiles;
     PackSources packSources;
     std::uint64_t packRequests = 0;
     Status status = Status::Idle;

@@ -230,6 +230,30 @@ TEST(LocalizationLuaTest, RefusesFilesNotNamedAfterALanguage) {
     EXPECT_NE(fixture.lua("localization.loadFolder('i18n')").find("The localization file \"i18n/english.json\" is not named after a language tag."), std::string::npos);
 }
 
+// A folder that downloads, such as the dialogue of an expansion, loads only asynchronously, since a synchronous load never waits for a download.
+TEST(LocalizationLuaTest, LoadsAFolderThatDownloadsOnlyAsynchronously) {
+    // clang-format off
+    test::EngineFixture fixture({
+        {"app.json", R"({"content": {"delivery": [{"match": "expansion/**", "mode": "onDemand"}]}})"},
+        {"content/expansion/dialogue/en.json", R"({"quest": "Find the key"})"},
+        {"content/expansion/broken/en.json", "{"},
+    });
+    fixture.runLua(R"(
+        localization = require('haylen.localization')
+        require('async').spawn(function()
+            loaded = table.concat(localization.loadFolderAsync('expansion/dialogue'):await(), ',')
+            local languages, message = localization.loadFolderAsync('expansion/broken'):await()
+            refused = message
+        end)
+    )");
+    // clang-format on
+
+    EXPECT_NE(fixture.lua("localization.loadFolder('expansion/dialogue')").find("The localization file \"expansion/dialogue/en.json\" is not on the device yet"), std::string::npos);
+    ASSERT_TRUE(fixture.frameUntil([&fixture] { return fixture.lua("return tostring(refused)") != "nil"; }));
+    EXPECT_EQ(fixture.lua("return loaded .. ' ' .. localization.text('quest')"), "en Find the key");
+    EXPECT_NE(fixture.lua("return refused").find("is not valid JSON"), std::string::npos);
+}
+
 // The section `localization` of app.json loads the languages before any script runs, the system picks among them, and every change of the current language reaches the app once, at the start of the next frame.
 TEST(LocalizationPluginTest, FollowsTheSystemAndAnnouncesEveryChangeOfLanguage) {
     // clang-format off

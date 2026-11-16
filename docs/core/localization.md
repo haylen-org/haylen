@@ -56,7 +56,9 @@ The section `localization` of `app.json` loads the folder of the languages befor
 - The `fallback` gives every text that another language lacks. Without it, the first file in the folder, in the order of the names, is the fallback.
 - The `language` picks the language of the app from the start, such as `"pt-BR"`. Most apps leave it out, so they follow the device.
 
-The engine checks the section when the app starts, so a misspelled tag, a fallback without its file or an empty folder shows on the error screen with a sentence that says what to fix. The [`app.json` reference](../lua-api/haylen.md#localization) lists the fields and their messages. A folder that the app loads later, such as the dialogue of an expansion, joins the same catalog through `localization.loadFolder`.
+The folder is content, so a protected release may not hold it on the device when the app starts, as on a web page, which downloads its content after the page opens. The engine never reads a language file that is not on the device. It holds the start of the app while the [content manager](../content/content.md#what-the-manager-does-on-its-own) brings the folder, behind the update screen, and loads the languages once their files are there, still before any Lua runs. Files that ship with the app load at once. A rule of `content.delivery` may deliver the folder later, such as `{"match": "locale/**", "mode": "onDemand"}`, and the folder still comes down before the app starts.
+
+The engine checks the section when the app starts, so a misspelled tag, a fallback without its file or an empty folder shows on the error screen with a sentence that says what to fix. The [`app.json` reference](../lua-api/haylen.md#localization) lists the fields and their messages. A folder that the app loads later joins the same catalog through `localization.loadFolder`. A folder that downloads when the app asks for it, such as the dialogue of an expansion that a rule delivers on demand, loads through `localization.loadFolderAsync`, which brings its files first, since a synchronous load never waits for a download.
 
 ## Language tags
 
