@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
+import struct
+from pathlib import Path
+
 from tiled_json import FORMAT_VERSION, TILED_VERSION, animation, collision, item, prop, tileset
+
+TILESETS = Path(__file__).resolve().parents[2] / "content" / "tiled" / "tilesets"
 
 # Local tile ids of the terrain tileset, in the order of the tiles of `tiles/terrain.png`.
 GRASS, FLOWERS, DIRT, SAND, STONE, WALL, HALF_WALL, FENCE = range(8)
@@ -69,7 +74,6 @@ def props() -> dict:
 
 # The props of the island of the Camera tests, as their areas of `content/camera/props.png` in the order of the tiles of the scenery tileset.
 SCENERY_IMAGE = "../../camera/props.png"
-SCENERY_SIZE = (1024, 1052)
 SCENERY = (
     ("shrine", (6, 6, 233, 292)),
     ("cottage", (251, 6, 280, 279)),
@@ -89,7 +93,6 @@ SHRINE, COTTAGE, WELL, SIGNPOST, STUMP, LOG, MUSHROOMS, BLOSSOMS, REEDS, LILIES,
 
 # The roofs of the group layers test seen from straight above, as their areas of `tiles/roofs.png`, which `pack-roofs.py` packs.
 ROOFS_IMAGE = "../tiles/roofs.png"
-ROOFS_SIZE = (757, 196)
 ROOFS = (
     ("clay", (6, 6, 238, 183)),
     ("slate", (256, 6, 234, 183)),
@@ -98,9 +101,16 @@ ROOFS = (
 CLAY, SLATE, THATCH = range(3)
 
 
-def collection(name: str, image: str, size: tuple[int, int], areas: tuple, alignment: str) -> dict:
+def image_size(image: str) -> tuple[int, int]:
+    """The width and height of a PNG named relative to the tilesets folder, read from its header."""
+    header = (TILESETS / image).read_bytes()[16:24]
+    return struct.unpack(">II", header)
+
+
+def collection(name: str, image: str, areas: tuple, alignment: str) -> dict:
     """An image collection whose tiles are areas of one image, which maps place as tile objects of any size."""
-    tiles = [{"id": index, "type": kind, "image": image, "imagewidth": size[0], "imageheight": size[1], "x": x, "y": y, "width": width, "height": height} for index, (kind, (x, y, width, height)) in enumerate(areas)]
+    width, height = image_size(image)
+    tiles = [{"id": index, "type": kind, "image": image, "imagewidth": width, "imageheight": height, "x": x, "y": y, "width": area_width, "height": area_height} for index, (kind, (x, y, area_width, area_height)) in enumerate(areas)]
     return {
         "columns": 0,
         "grid": {"height": 1, "orientation": "orthogonal", "width": 1},
@@ -120,12 +130,12 @@ def collection(name: str, image: str, size: tuple[int, int], areas: tuple, align
 
 def scenery() -> dict:
     """The painted props of the Camera tests, standing on the middle of their bottom edge."""
-    return collection("scenery", SCENERY_IMAGE, SCENERY_SIZE, SCENERY, "bottom")
+    return collection("scenery", SCENERY_IMAGE, SCENERY, "bottom")
 
 
 def roofs() -> dict:
     """The roofs of the town of the group layers test, placed by their top-left corner like the walls under them."""
-    return collection("roofs", ROOFS_IMAGE, ROOFS_SIZE, ROOFS, "topleft")
+    return collection("roofs", ROOFS_IMAGE, ROOFS, "topleft")
 
 
 def diamonds() -> dict:
