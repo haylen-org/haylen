@@ -81,6 +81,17 @@ class HaylenUITestCase: XCTestCase {
         app.windows.firstMatch.frame
     }
 
+    // Turns the device and waits until the window of the app turns with it and its rotation ends.
+    func turnDevice(_ orientation: UIDeviceOrientation, file: StaticString = #filePath, line: UInt = #line) {
+        XCUIDevice.shared.orientation = orientation
+        let landscape = orientation.isLandscape
+        waitUntil("The window of the app does not turn to \(landscape ? "landscape" : "portrait").", file: file, line: line) {
+            let frame = windowFrame
+            return (frame.width > frame.height) == landscape
+        }
+        RunLoop.current.run(until: Date().addingTimeInterval(1))
+    }
+
     // Chooses how iPadOS shows windows in the settings of the system, returns the way it showed them before and brings the app back to the front.
     @discardableResult
     func setMultitasking(_ mode: Multitasking) -> Multitasking {

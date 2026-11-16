@@ -3,6 +3,7 @@ local graphics2d = require('haylen.graphics2d')
 local m = require('haylen.math')
 
 local Drive = require('drive')
+local Layout = require('layout')
 local Style = require('style')
 local Text = require('text')
 
@@ -11,11 +12,12 @@ Panels.__index = Panels
 
 -- The meters of the city that the map shows across its width, and the streets of the route it draws.
 Panels.mapSpan = 1500
-
--- A card wider than this, such as a card of the sides of a landscape screen, shows its readouts beside its drawing, and a narrower one, such as half of a portrait screen, stacks them.
-Panels.wideCard = 520
 Panels.routeSegments = 4
+
 Panels.padding = 28
+
+-- The height of a reading of the trip computer, its name over its value.
+Panels.readingHeight = 70
 
 -- The scale of the chart of the energy use moves in steps of 5 kWh/100 km, spans at least 30, keeps a share of the range of the line as room above and below it and shrinks back at this rate per second.
 Panels.chartStep = 5
@@ -211,8 +213,9 @@ function Panels:drawTrip(card, drive)
     local padding = Panels.padding
     Style.drawText('Trip computer', card.x + padding, card.y + padding + 18, Style.type.body, Style.color.text, 0, 0.5, true)
     local third = (card.width - padding * 2) / 3
-    local labelY = card.y + card.height * 0.5 + 6
-    local valueY = labelY + 46
+    local below = card.y + padding + 48
+    local labelY = below + (card.y + card.height - padding - below - Panels.readingHeight) * 0.5 + 12
+    local valueY = labelY + Panels.readingHeight - 24
     local left = card.x + padding
     Panels.drawReading('Trip A', Text.format('%.1f km', drive.trip.distance, 0.1), left + third * 0.5, labelY, valueY)
     Panels.drawReading('Average', Text.format('%.1f kWh', drive:averageConsumption(), 0.1), left + third * 1.5, labelY, valueY)
@@ -234,7 +237,7 @@ function Panels:drawBattery(card, drive)
     local charge = drive:charge()
     local left = card.x + padding + 72
     Style.drawText(Text.format('%.0f %%', charge * 100, 1), left, middle - 24, Style.type.value, Style.color.text, 0, 0.5, true)
-    local range = card.width > Panels.wideCard
+    local range = card.width > Layout.wideCard
     local barWidth = range and card.width * 0.42 or card.width - padding * 2 - 72
     local barY = middle + 20
     Style.drawShape(left, barY, barWidth, 22, 11, '#FF16213A', Panels.barEdge)
@@ -253,7 +256,7 @@ function Panels:drawConsumption(card, drive)
     Style.drawCard(card.x, card.y, card.width, card.height)
     local padding = Panels.padding
     Style.drawText('Energy use', card.x + padding, card.y + padding + 16, Style.type.body, Style.color.text, 0, 0.5, true)
-    local valueWidth = card.width > Panels.wideCard and 170 or 0
+    local valueWidth = card.width > Layout.wideCard and 170 or 0
     local chartX, chartY = card.x + padding, card.y + padding + 48
     local chartWidth, chartHeight = card.width - padding * 2 - valueWidth, card.height - padding * 2 - 48
     local history = drive.history
@@ -337,7 +340,7 @@ function Panels:drawAssistants(card)
     Style.drawCard(card.x, card.y, card.width, card.height)
     local padding = Panels.padding * 0.6
     local gap = 14
-    local columns = card.width > Panels.wideCard and 4 or 2
+    local columns = card.width > Layout.wideCard and 4 or 2
     local rows = 4 / columns
     local width = (card.width - padding * 2 - gap * (columns - 1)) / columns
     local height = (card.height - padding * 2 - gap * (rows - 1)) / rows

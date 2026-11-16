@@ -95,14 +95,14 @@ function Panel:climateCard()
     return Panel.card{
         Panel.title('thermostat', 'Climate', 'accentText', ui.label{id = 'humidity', text = '', color = 'textMuted', wrap = false}),
         ui.image{id = 'dial', image = '@dial', aspectRatio = 1.6, align = 'stretch', accessibilityLabel = 'Thermostat'},
+        ui.segmentedControl{id = 'mode', align = 'stretch', items = Panel.modes, selected = climate.mode, onChange = function(event)
+            climate.mode = event.value
+        end},
         ui.row{gap = Style.space.s, align = 'stretch',
-            ui.button{id = 'cooler', icon = Panel.icon('minus'), iconColor = 'text', width = 64, accessibilityLabel = 'Cooler', onClick = function()
+            ui.button{id = 'cooler', icon = Panel.icon('minus'), iconColor = 'text', grow = 1, accessibilityLabel = 'Cooler', onClick = function()
                 climate.target = math.max(10, climate.target - 0.5)
             end},
-            ui.segmentedControl{id = 'mode', grow = 1, items = Panel.modes, selected = climate.mode, onChange = function(event)
-                climate.mode = event.value
-            end},
-            ui.button{id = 'warmer', icon = Panel.icon('plus'), iconColor = 'text', width = 64, accessibilityLabel = 'Warmer', onClick = function()
+            ui.button{id = 'warmer', icon = Panel.icon('plus'), iconColor = 'text', grow = 1, accessibilityLabel = 'Warmer', onClick = function()
                 climate.target = math.min(30, climate.target + 0.5)
             end},
         },
@@ -171,12 +171,12 @@ Panel.alarms = {{id = 'off', text = 'Disarmed'}, {id = 'home', text = 'Home'}, {
 
 function Panel:energyCard()
     local stat = function(id, label)
-        return ui.column{gap = 0, grow = 1, ui.label{id = id, text = '', font = 'heading', wrap = false}, ui.label{text = label, font = 'caption', color = 'textMuted', wrap = false}}
+        return ui.column{gap = 0, ui.label{id = id, text = '', font = 'heading', wrap = false}, ui.label{text = label, font = 'caption', color = 'textMuted', wrap = false}}
     end
     return Panel.card{
         Panel.title('sun', 'Energy today', 'accentText'),
         ui.image{id = 'energy', image = '@energy', aspectRatio = 2.2, align = 'stretch', accessibilityLabel = 'Solar and usage over the day'},
-        ui.row{gap = Style.space.s, wrap = true, stat('solar', 'Solar'), stat('usage', 'Home'), stat('battery', 'Battery'), stat('grid', 'Grid')},
+        ui.grid{columns = 2, gap = Style.space.s, stat('solar', 'Solar'), stat('usage', 'Home'), stat('battery', 'Battery'), stat('grid', 'Grid')},
     }
 end
 

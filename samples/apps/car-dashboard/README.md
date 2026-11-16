@@ -53,7 +53,7 @@ The screen is one scene, `source/scenes/cockpit.lua`. Each frame it moves the ca
 - The map draws the blocks of the city around the car, the route as two strokes, a wide soft one and a bright one, and the car as a disc with an arrow, all inside a rounded mask.
 - The arrow of the turn is a path that `path:stroke` draws, and the icons are SVG documents that `graphics2d.drawVector` and the buttons tint.
 - Every table that the drawing uses is made once and filled again each frame, and the texts of the readouts are kept once they were made, so a frame that shows what the frame before it showed builds nothing.
-- A landscape screen uses a design size of 1920 by 1080 and a portrait one 1080 by 1920, so the text keeps its size when the screen turns, and the bar of the controls shows in one row in landscape and in two rows in portrait.
+- A landscape screen uses a design size of 1920 by 1080 and a portrait one 1080 by 1920, so the text keeps its size when the screen turns, and the bar of the controls shows in one row in landscape and in two rows in portrait. In portrait the cards keep the height their content needs and the map takes the rest, and a wide portrait screen, such as an iPad, sets the gauge beside the navigation.
 
 ## Style guide
 
@@ -88,4 +88,6 @@ car-dashboard/
   content/
     images/              The car from behind and from above.
     icons/               The line icons.
+  ui-tests/
+    OrientationTests.swift  The UI test that turns the device to landscape and back and saves a picture of each, which "haylen test --ui samples/apps/car-dashboard" runs on a simulator.
 ```

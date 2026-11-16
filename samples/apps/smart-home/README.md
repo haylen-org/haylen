@@ -82,4 +82,6 @@ smart-home/
   content/
     images/house.png     The house.
     icons/               The line icons.
+  ui-tests/
+    OrientationTests.swift  The UI test that turns the device to landscape and back and saves a picture of each, which "haylen test --ui samples/apps/smart-home" runs on a simulator.
 ```

@@ -401,8 +401,9 @@ The class `HaylenUITestCase` starts the app again for each test and gives the te
 | `setMultitasking(_:)` | Chooses Full Screen Apps, Windowed Apps or Stage Manager in the settings of iPadOS, and returns the mode it replaced, so a test puts it back. |
 | `arrangeWindow(_:)` | Picks an arrangement of the window controls of iPadOS, such as `Left`, `Right` or `Fill`. |
 | `resizeWindow(by:)` | Drags the bottom right corner of the window of the app, which resizes it. |
+| `turnDevice(_:)` | Turns the iPhone or the iPad to an orientation and waits until the window of the app turns with it. |
 
-The test project checks with them that a tap opens a category, that the software keyboard types, deletes and turns with a field on the iPhone and the iPad, that the keyboard of the Apple TV types into the search of its menu, and that on an iPad the framebuffer follows the window. That test tiles the window to the left half, resizes it there, tiles it to the right half and resizes it in Stage Manager. At each size it reads the framebuffer from the test "Window and device", compares it with the frame of the window times its scale, and checks that the controls of the window leave the button "Back" free. Tiny Island checks that its start plays.
+The test project checks with them that a tap opens a category, that the software keyboard types, deletes and turns with a field on the iPhone and the iPad, that the keyboard of the Apple TV types into the search of its menu, and that on an iPad the framebuffer follows the window. That test tiles the window to the left half, resizes it there, tiles it to the right half and resizes it in Stage Manager. At each size it reads the framebuffer from the test "Window and device", compares it with the frame of the window times its scale, and checks that the controls of the window leave the button "Back" free. Tiny Island checks that its start plays, and Car Dashboard and Smart Home turn to landscape and back to portrait and save a picture of each.
 
 ## Sanitizers
 
