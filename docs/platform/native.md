@@ -2,7 +2,7 @@
 
 This guide shows how an app reaches native code: the APIs of each platform, native libraries and SDKs with a C API. It is for developers who need something the engine does not offer, such as the SDK of a game platform or of online services. It explains the three ways to reach native code and how to choose one. It shows how Lua calls a native library and how its callbacks come back. It also shows how an app ships its libraries on every platform, and how to call SDKs with a C API. The [`haylen.native` reference](../lua-api/native.md) and the [`haylen.platform` reference](../lua-api/platform.md) list every function, and the [platform bridge guide](platform-bridge.md) describes how bridge calls travel.
 
-The test project checks every part of this guide. Its Native libraries category, the tests `NAT-001` to `NAT-005` in `samples/tests/source/categories/native/`, runs against the test library of the engine, `engine/tests/native/NativeTest.c`, on every platform, with a list of checks that pass or fail. The `native` section of `samples/tests/haylen.json` builds that library from `samples/tests/plugins/native-test/native/`.
+The test project checks every part of this guide. Its Native libraries category, the tests `NAT-001` to `NAT-005` in `samples/tests/source/categories/native/`, runs against the test library of the engine, the C++ library of `engine/tests/native/` with C entry points, on every platform, with a list of checks that pass or fail. The `native` section of `samples/tests/haylen.json` builds that library from `samples/tests/plugins/native-test/native/`.
 
 ## The three ways
 
@@ -18,7 +18,7 @@ FFI means foreign function interface: Lua calls C functions without glue code th
 
 - **Platform APIs** that live in Java, Kotlin, Objective-C, Swift or JavaScript, such as sign-in, purchases, sharing or permissions, go through the bridge. Their handlers are written in the language of the platform, in a [plugin](plugins.md) of the app or in the bridge handlers of the app, which the sections `platforms.apple.sources`, `platforms.android.sources` and `platforms.web.scripts` of `haylen.json` name, as the [platform bridge guide](platform-bridge.md) describes.
 - **A library or SDK with a C API** that ships as a `.dll`, `.so`, `.dylib`, framework or static library goes through FFI. Lua calls it directly, with no glue code to compile. A call costs what a C call costs, plus the conversion of the arguments.
-- **A library with a C++ API**, one that needs many calls per frame from native code, or one whose data never needs to reach Lua, goes into a C++ plugin of a C++ app. A small C library with a flat API that FFI calls works too.
+- **A library with a C++ API**, one that needs many calls per frame from native code, or one whose data never needs to reach Lua, goes into a C++ plugin of a C++ app. A small library with a flat C API that FFI calls works too.
 - **A native library that works on its own threads**, answering calls or sending events from them, registers bridge handlers through the C interface of the engine, `HaylenNativeApi`. It works the same on every platform that loads native libraries.
 - **The browser** has no native libraries, so web builds reach JavaScript through the bridge. An app that calls a library through FFI elsewhere answers the same methods with a page handler on the web, as the local plugin `native-test` of the test project does.
 
@@ -375,7 +375,7 @@ Accepting a connection, sending packets and reading them after each tick follow 
 ### Other SDKs
 
 - An SDK that calls back from its own threads gets engine callbacks with the default thread. It declares the data it needs as byte ranges, or the app copies the data before the callback returns.
-- An SDK with a C++ API gets a small C library with a flat API that wraps it, built by the `cmake` entry of the `native` section, or a C++ plugin of a C++ app.
+- An SDK with a C++ API gets a small library with a flat C API that wraps it, built by the `cmake` entry of the `native` section, or a C++ plugin of a C++ app.
 - An SDK that needs Java, Kotlin, Objective-C or Swift for part of its work, such as sign-in on a phone, answers those parts through a [plugin](plugins.md) of the app, while its C API goes through FFI.
 
 ## The web

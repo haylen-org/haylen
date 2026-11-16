@@ -326,14 +326,13 @@ haylen_enable_coverage(haylen-tests)
 
 include("${CMAKE_CURRENT_LIST_DIR}/gpu/gpu-tests.cmake")
 
-# The native library that the native interop tests call. It sits next to the test executable and the headless player, where `native.load` finds it by its exact name.
-add_library(haylen-native-test SHARED native/NativeTest.c)
-set_target_properties(haylen-native-test PROPERTIES OUTPUT_NAME native-test C_VISIBILITY_PRESET hidden LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+# The native library that the native interop tests call, a C++ library behind the C entry points that the tests declare. It sits next to the test executable and the headless player, where `native.load` finds it by its exact name.
+find_package(Threads REQUIRED)
+add_library(haylen-native-test SHARED native/NativeTest.cpp native/NativeTestLibrary.cpp native/NativeTestValues.cpp)
+set_target_properties(haylen-native-test PROPERTIES OUTPUT_NAME native-test CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN ON LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+target_compile_definitions(haylen-native-test PRIVATE NATIVE_TEST_ORIGIN="dynamic")
 target_include_directories(haylen-native-test PRIVATE "${HAYLEN_ENGINE_DIR}/include")
-if(NOT WIN32)
-  find_package(Threads REQUIRED)
-  target_link_libraries(haylen-native-test PRIVATE Threads::Threads)
-endif()
+target_link_libraries(haylen-native-test PRIVATE nlohmann_json::nlohmann_json Threads::Threads)
 haylen_enable_warnings(haylen-native-test)
 add_dependencies(haylen-tests haylen-native-test)
 target_compile_definitions(haylen-tests PRIVATE HAYLEN_NATIVE_TEST_LIBRARY="$<TARGET_FILE:haylen-native-test>")
