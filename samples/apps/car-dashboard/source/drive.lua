@@ -24,9 +24,10 @@ Drive.startClock = (10 * 60 + 24) * 60
 -- The four tyres in the order front left, front right, rear left and rear right, cold, in bar.
 Drive.coldPressure = {2.4, 2.4, 2.3, 2.3}
 
--- The share of the battery that one turn of the history of consumption covers, in seconds per sample.
+-- The history of the energy use takes one sample every half a second, and the energy use averages the road behind the car with a weight that fades over this distance, in meters.
 Drive.sampleSeconds = 0.5
 Drive.historySize = 72
+Drive.averageDistance = 150
 
 function Drive.new(seed)
     local self = setmetatable({}, Drive)
@@ -34,7 +35,6 @@ function Drive.new(seed)
     self.speed = 0
     self.acceleration = 0
     self.power = 0
-    self.consumption = 0
     self.energy = Drive.capacity * 0.72
     self.trip = {distance = Drive.startTrip.distance, energy = Drive.startTrip.energy, seconds = Drive.startTrip.seconds}
     self.clock = Drive.startClock
@@ -48,6 +48,7 @@ function Drive.new(seed)
     for index = 1, Drive.historySize do
         self.history[index] = 14 + 3 * math.sin(index * 0.35) + 2 * math.sin(index * 0.11)
     end
+    self.consumption = self.history[Drive.historySize]
     self.sampleTime = 0
     self.sampleSum, self.sampleCount = 0, 0
 
@@ -185,10 +186,11 @@ function Drive:useEnergy(dt, step)
     self.trip.distance = self.trip.distance + step / 1000
     self.trip.seconds = self.trip.seconds + dt
 
-    -- The consumption of the moment, in kilowatt hours per 100 km, joins the history once per sample.
+    -- The energy use, in kilowatt hours per 100 km, averages each stretch of road by its length, so a start or a stop weighs as much as the road it takes, and it joins the history once per sample.
     if self.speed > 1 then
-        local instant = m.clamp(self.power / (self.speed * 3.6) * 100, -25, 45)
-        self.consumption = self.consumption + (instant - self.consumption) * math.min(1, dt * 2)
+        local instant = self.power / (self.speed * 3.6) * 100
+        local weight = math.min(1, step / Drive.averageDistance)
+        self.consumption = self.consumption + (instant - self.consumption) * weight
         self.sampleSum = self.sampleSum + self.consumption
         self.sampleCount = self.sampleCount + 1
     end
@@ -198,7 +200,7 @@ function Drive:useEnergy(dt, step)
         for index = 1, #history - 1 do
             history[index] = history[index + 1]
         end
-        history[#history] = m.clamp(self.sampleSum / self.sampleCount, -20, 40)
+        history[#history] = self.sampleSum / self.sampleCount
         self.sampleTime, self.sampleSum, self.sampleCount = 0, 0, 0
     end
 end

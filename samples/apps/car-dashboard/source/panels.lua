@@ -17,6 +17,12 @@ Panels.wideCard = 520
 Panels.routeSegments = 4
 Panels.padding = 28
 
+-- The scale of the chart of the energy use moves in steps of 5 kWh/100 km, spans at least 30, keeps a share of the range of the line as room above and below it and shrinks back at this rate per second.
+Panels.chartStep = 5
+Panels.chartSpan = 30
+Panels.chartRoom = 0.15
+Panels.chartEase = 1.5
+
 function Panels.new(images, icons)
     local self = setmetatable({images = images, icons = icons}, Panels)
     self.route = {}
@@ -252,8 +258,9 @@ function Panels:drawConsumption(card, drive)
     local chartWidth, chartHeight = card.width - padding * 2 - valueWidth, card.height - padding * 2 - 48
     local history = drive.history
     local count = #history
+    local bottom, top = self:chartScale(history, drive.time)
     for index = 1, count do
-        local value = m.clamp((history[index] + 10) / 50, 0, 1)
+        local value = (history[index] - bottom) / (top - bottom)
         local x = chartX + chartWidth * (index - 1) / (count - 1)
         local y = chartY + chartHeight * (1 - value)
         self.chartLine[index][1], self.chartLine[index][2] = x, y
@@ -270,6 +277,28 @@ function Panels:drawConsumption(card, drive)
         return
     end
     Style.drawText(Text.format('%.1f kWh/100 km', drive.consumption, 0.1), right, card.y + padding + 16, Style.type.small, Style.color.text, 1, 0.5, true)
+end
+
+-- The bounds of the chart of the energy use: they hold zero and the whole history with room to spare in steps of the scale, grow at once when the history needs it and glide back when it no longer does, so the line never touches them.
+function Panels:chartScale(history, time)
+    local low, high = history[1], history[1]
+    for index = 2, #history do
+        low = math.min(low, history[index])
+        high = math.max(high, history[index])
+    end
+    local step = Panels.chartStep
+    local room = (high - low) * Panels.chartRoom
+    local bottom = math.min(0, math.floor((low - room) / step) * step)
+    local top = math.max(bottom + Panels.chartSpan, math.ceil((high + room) / step) * step)
+    if not self.chartTop then
+        self.chartBottom, self.chartTop, self.chartTime = bottom, top, time
+    end
+
+    local keep = math.exp(-(time - self.chartTime) * Panels.chartEase)
+    self.chartTime = time
+    self.chartBottom = math.min(bottom, bottom + (self.chartBottom - bottom) * keep)
+    self.chartTop = math.max(top, top + (self.chartTop - top) * keep)
+    return self.chartBottom, self.chartTop
 end
 
 -- The tyres: the car seen from above with a green mark on each tyre and the pressure of each next to it.
