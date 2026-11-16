@@ -4004,7 +4004,7 @@ Every function that changes a stack or a presentation takes a transition table a
 | `duration` | number | `0.3` | Seconds. Zero changes at once. |
 | `ease` | easing | `'cubicOut'` | The [easing](tween.md#easing) of the motion. |
 
-While the system asks for reduced motion, a slide and a rise cross fade instead. A transition with another key raises `Unknown option "<key>".`, and a negative duration raises `The "duration" of a navigation transition cannot be negative.`.
+While the system asks for reduced motion, a slide and a rise cross fade instead. The screen that comes moves only once its GUI laid out with every picture it shows, waiting at most half a second, as the [navigation guide](../ui/navigation.md#what-a-stack-does) explains. A transition with another key raises `Unknown option "<key>".`, and a negative duration raises `The "duration" of a navigation transition cannot be negative.`.
 
 ### ui.navigationStack(options)
 

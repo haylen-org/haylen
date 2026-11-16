@@ -121,6 +121,10 @@ class Presentation final : public std::enable_shared_from_this<Presentation> {
     NavigationTransition transition;
     Phase phase = Phase::Arriving;
     float elapsed = 0.0F;
+
+    // How long the presentation waited for its screen to lay out with every picture before it started to arrive.
+    float waited = 0.0F;
+    bool moving = false;
 };
 
 } // namespace haylen::ui

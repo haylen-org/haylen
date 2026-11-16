@@ -90,6 +90,10 @@ class NavigationStack final : public std::enable_shared_from_this<NavigationStac
         NavigationTransition transition;
         bool backward = false;
         float elapsed = 0.0F;
+
+        // How long the change waited for the screen that comes before it started to move.
+        float waited = 0.0F;
+        bool moving = false;
     };
 
     void checkOpen() const;
@@ -103,7 +107,7 @@ class NavigationStack final : public std::enable_shared_from_this<NavigationStac
     // Whether the top screen shows: the stack shows, and so does the screen whose GUI holds its area, if any.
     [[nodiscard]] bool isActive() const;
 
-    // Moves the transition on and finishes it once it played.
+    // Moves the transition on and finishes it once it played. It starts once the GUI of the screen that comes laid out with every picture it shows, or once it waited `Navigation::kReadyWait` for them.
     void advance(float deltaSeconds);
 
     // Takes the screens from the index up out of the stack without hooks or transition, and puts screens on top the same way, which a split does as it collapses and expands.

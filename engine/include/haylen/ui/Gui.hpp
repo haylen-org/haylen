@@ -38,6 +38,9 @@ class Gui final {
     [[nodiscard]] Component& getRoot() noexcept {
         return *root;
     }
+    [[nodiscard]] const Component& getRoot() const noexcept {
+        return *root;
+    }
     [[nodiscard]] Component* find(std::string_view id) const;
 
     // Returns the collection with the id, and throws for an unknown id or a node of another kind.

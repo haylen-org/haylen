@@ -219,6 +219,14 @@ void NavigationStack::advance(float deltaSeconds) {
         return;
     }
 
+    if (!change->moving) {
+        change->moving = navigation.isReady(*change->incoming) || change->waited >= Navigation::kReadyWait;
+        change->waited += deltaSeconds;
+        if (!change->moving) {
+            return;
+        }
+    }
+
     change->elapsed += deltaSeconds;
     if (change->elapsed >= change->transition.duration) {
         finish();

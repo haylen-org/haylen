@@ -53,6 +53,9 @@ class Navigation final {
     // Takes the system back and returns whether it went back somewhere. The screen that a pop or a dismissal would take away hears it first and may keep its place.
     bool goBack();
 
+    // The longest that a change waits for the GUI of the screen it shows to lay out with every picture, in seconds, after which it plays and a late picture shows when it arrives.
+    static constexpr float kReadyWait = 0.5F;
+
   private:
     friend class plugins::UiPlugin;
     friend class NavigationStack;
@@ -91,6 +94,9 @@ class Navigation final {
     // Runs a hook of a screen and reports its failure to the error screen as a failure of the lifecycle.
     template <typename Hook> void notify(Screen& screen, Hook&& hook);
     [[nodiscard]] bool askBack(Screen& screen);
+
+    // Whether the GUI of a screen laid out in an earlier frame with every picture it shows, or the screen has no GUI to wait for.
+    [[nodiscard]] bool isReady(const Screen& screen) const;
 
     // A screen joins a stack or a presentation, or moves to another stack.
     void place(Screen& screen, const std::shared_ptr<NavigationStack>& stack);

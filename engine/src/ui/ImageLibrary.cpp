@@ -95,7 +95,7 @@ graphics::Texture ImageLibrary::getTexture(std::string_view path, graphics::Text
     if (!isVector(path) && !isNamed(path)) {
         const graphics::Texture& texture = requestFile(path, filter).texture;
         if (!texture.isValid()) {
-            waitedFrame = frame;
+            markWaiting();
         }
 
         return texture;
@@ -103,7 +103,7 @@ graphics::Texture ImageLibrary::getTexture(std::string_view path, graphics::Text
 
     Vector& vector = requestVector(path);
     if (!vector.image.isValid()) {
-        waitedFrame = frame;
+        markWaiting();
         return {};
     }
 
@@ -117,7 +117,7 @@ graphics::Texture ImageLibrary::getTexture(std::string_view path, graphics::Text
     requestRaster(std::string(path), vector, step);
 
     if (vector.rasters.empty()) {
-        waitedFrame = frame;
+        markWaiting();
         return {};
     }
 
@@ -137,7 +137,7 @@ math::Vec2 ImageLibrary::getSize(std::string_view path, graphics::Texture::Filte
     if (!isVector(path) && !isNamed(path)) {
         const graphics::Texture& texture = requestFile(path, filter).texture;
         if (!texture.isValid()) {
-            waitedFrame = frame;
+            markWaiting();
             return {};
         }
 
@@ -146,11 +146,16 @@ math::Vec2 ImageLibrary::getSize(std::string_view path, graphics::Texture::Filte
 
     const Vector& vector = requestVector(path);
     if (!vector.image.isValid()) {
-        waitedFrame = frame;
+        markWaiting();
         return {};
     }
 
     return vector.image.getSize();
+}
+
+void ImageLibrary::markWaiting() noexcept {
+    waitedFrame = frame;
+    ++waits;
 }
 
 void ImageLibrary::beginFrame() {

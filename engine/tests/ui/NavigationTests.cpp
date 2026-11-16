@@ -1,9 +1,11 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "haylen/core/Engine.hpp"
@@ -22,7 +24,7 @@ namespace haylen::ui {
 // The frame of an app: a bar of 80 units on top with a button, and the middle under it, split into a list and a detail, where the screens lay out.
 class NavigationTest : public ::testing::Test, public test::UiFixture {
   protected:
-    NavigationTest() {
+    explicit NavigationTest(std::map<std::string, std::string> files = {}) : UiFixture(std::move(files)) {
         frame = mount(R"({"kind": "column", "gap": 0, "children": [{"kind": "row", "id": "bar", "height": 80, "children": [{"kind": "button", "id": "home", "text": "Home"}]}, {"kind": "row", "id": "middle", "grow": 1, "gap": 0, "align": "stretch", "children": [{"kind": "column", "id": "list", "grow": 1, "align": "stretch"}, {"kind": "column", "id": "detail", "grow": 1, "align": "stretch"}]}]})");
     }
 
@@ -146,6 +148,66 @@ TEST_F(NavigationTest, BuildsOnlyTheTopScreenOfADeepLink) {
     settle();
     EXPECT_EQ(artist->builds, 1);
     EXPECT_EQ(artist->getState(), Screen::State::Shown);
+}
+
+// The same frame with a picture in the package that a screen shows, which arrives some frames after the screen first draws.
+class NavigationPictureTest : public NavigationTest {
+  protected:
+    NavigationPictureTest() : NavigationTest({{"content/icons/square.svg", R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#3366FF"/></svg>)"}}) {}
+
+    std::shared_ptr<test::RecordingScreen> makePicture(const std::string& name) {
+        return std::make_shared<test::RecordingScreen>(getUi(), name, log, R"({"kind": "column", "children": [{"kind": "image", "id": "picture", "image": "icons/square.svg", "width": 64, "height": 64}]})");
+    }
+};
+
+// A screen moves in only once its GUI laid out with every picture it shows, so no picture pops in while it slides.
+TEST_F(NavigationPictureTest, HoldsATransitionUntilThePicturesOfTheScreenThatComesArrived) {
+    const std::shared_ptr<NavigationStack> stack = getNavigation().createStack(getArea("list"), make("home"));
+    frames(2);
+    const math::Rect list = getBounds(*frame, "list");
+    const auto gallery = makePicture("gallery");
+    stack->push(gallery);
+    frames(2);
+    ASSERT_TRUE(stack->isTransitioning());
+    EXPECT_FLOAT_EQ(getBounds(*gallery->getGui(), "picture").x, list.x + list.width);
+
+    ASSERT_TRUE(getFixture().frameUntil([&] { return getBounds(*gallery->getGui(), "picture").x < list.x + list.width; }));
+    EXPECT_TRUE(getUi().getContext().getImage("icons/square.svg", {64.0F, 64.0F}).isValid());
+    settle();
+    EXPECT_FALSE(stack->isTransitioning());
+}
+
+// A presentation rises only once its screen laid out with every picture it shows.
+TEST_F(NavigationPictureTest, HoldsAPresentationUntilThePicturesOfItsScreenArrived) {
+    frames(2);
+    const auto sheet = makePicture("sheet");
+    const std::shared_ptr<Presentation> shown = getNavigation().present(sheet, {.style = Presentation::Style::FullScreen});
+    frames(2);
+    const float bottom = getUi().getBackend().getLiftedDisplayRect().getBottom();
+    EXPECT_GE(getBounds(*sheet->getGui(), "picture").y, bottom);
+
+    ASSERT_TRUE(getFixture().frameUntil([&] { return getBounds(*sheet->getGui(), "picture").y < bottom; }));
+    EXPECT_TRUE(getUi().getContext().getImage("icons/square.svg", {64.0F, 64.0F}).isValid());
+    settle();
+    EXPECT_FALSE(shown->isDismissed());
+    EXPECT_EQ(sheet->getState(), Screen::State::Shown);
+}
+
+// A screen whose GUI never lays out, such as one whose area does not draw, still moves in once the change waited as long as it waits.
+TEST_F(NavigationTest, StartsATransitionThatWaitedAsLongAsItWaits) {
+    const std::shared_ptr<NavigationStack> stack = getNavigation().createStack(getArea("list"), make("home"));
+    frames(2);
+    frame->set("list", core::Json::parse(R"({"visible": false})"));
+    frames(2);
+    stack->push(make("profile"));
+    frames(static_cast<int>(Navigation::kReadyWait * 60.0F) - 6);
+    ASSERT_TRUE(stack->isTransitioning());
+    EXPECT_FALSE(hasEntry("profile:appeared"));
+
+    settle();
+    settle();
+    EXPECT_FALSE(stack->isTransitioning());
+    EXPECT_TRUE(hasEntry("profile:appeared"));
 }
 
 TEST_F(NavigationTest, RefusesAScreenThatAnotherStackHolds) {

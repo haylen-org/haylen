@@ -328,6 +328,7 @@ void UiPlugin::renderUi(core::Engine& engine, const core::SceneView& view) {
     if (!drawBegun) {
         drawBegun = true;
         shownGuis.clear();
+        waitingGuis.clear();
         prepareGuis();
         focus.beginDraw();
     }
@@ -495,9 +496,13 @@ void UiPlugin::drawGui(const Mounted& entry, bool inert) {
     }
 
     const float opacity = look.effect == ui::NavigationTransition::Effect::Fade ? 1.0F - look.distance : 1.0F;
+    const std::uint64_t waitsBefore = images->getWaits();
     ImGui::PushID(entry.gui.get());
     entry.gui->draw(*context, area->translated(offset), opacity);
     ImGui::PopID();
+    if (images->getWaits() != waitsBefore) {
+        waitingGuis.push_back(entry.gui.get());
+    }
 
     if (still) {
         focus.suspendTargets(suspended);
@@ -508,6 +513,10 @@ void UiPlugin::drawGui(const Mounted& entry, bool inert) {
     }
 
     shownGuis.push_back(entry.gui.get());
+}
+
+bool UiPlugin::isComplete(const ui::Gui& gui) const {
+    return gui.getRoot().getDrawnFrame() != 0 && std::ranges::find(waitingGuis, &gui) == waitingGuis.end();
 }
 
 // A slide moves the screen across the width of its area, mirrored in a right to left interface, and a rise moves it down by the room under the top of what rises.

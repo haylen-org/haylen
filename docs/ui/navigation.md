@@ -49,6 +49,8 @@ A stack changes by a new list of screens. Every operation is one of these lists:
 - `stack:replace(screen)` puts a screen in the place of the top one, such as the next step of a form.
 - `stack:setScreens(list)` sets the whole list at once, as a deep link does.
 
+A change moves the screens only once the GUI of the screen that comes laid out and every picture it shows arrived, so no picture pops in while the screen slides or rises. Until then the screen that comes waits out of sight, and the screen that leaves stays still. A change waits half a second at most, so a picture that takes longer, or never arrives, cannot hold the app: the change then plays, and the late picture shows once it arrives. A presentation waits for its screen the same way.
+
 A change goes forward when the new top screen is new, and back when it was already in the stack. A forward slide comes in from the end of the reading direction, and a back slide comes in from its start. A right to left interface mirrors both. The screens of a change take no input until it ends. A change that starts while another one plays finishes the other one at once, so a fast series of taps never leaves screens halfway.
 
 Each operation takes a transition table as its last argument, such as `{effect = 'fade', duration = 0.2}`. The effects are `slide`, `fade`, `rise` and `none`. A `rise` brings the screen up from the bottom of the screen, which suits a player that opens over a list. While the system asks for reduced motion, a slide and a rise cross fade instead.

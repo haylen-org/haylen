@@ -69,6 +69,15 @@ void Presentation::advance(float deltaSeconds) {
         return;
     }
 
+    // It arrives once its screen laid out with every picture it shows, so nothing pops in as it rises, or once it waited the longest a change waits.
+    if (phase == Phase::Arriving && !moving) {
+        moving = navigation.isReady(*screen) || waited >= Navigation::kReadyWait;
+        waited += deltaSeconds;
+        if (!moving) {
+            return;
+        }
+    }
+
     elapsed += deltaSeconds;
     if (elapsed < transition.duration) {
         return;

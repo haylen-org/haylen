@@ -49,6 +49,11 @@ class ImageLibrary final {
         return waitedFrame == frame;
     }
 
+    // Counts every request for a picture that had nothing to draw yet, so a caller that compares the count before and after drawing a GUI knows whether that GUI waits for a picture.
+    [[nodiscard]] std::uint64_t getWaits() const noexcept {
+        return waits;
+    }
+
     // Counts the frames that tell which rasters were drawn lately, and releases the rasters drawn longest ago while the rasters pass the budget, keeping those of this frame and the one before.
     void beginFrame();
 
@@ -67,6 +72,9 @@ class ImageLibrary final {
     }
 
   private:
+    // Marks this frame as one that asked for a picture with nothing to draw yet.
+    void markWaiting() noexcept;
+
     struct File {
         graphics::Texture texture;
         std::string error;
@@ -111,6 +119,7 @@ class ImageLibrary final {
     std::size_t rasterBytes = 0;
     std::uint64_t frame = 1;
     std::uint64_t waitedFrame = 0;
+    std::uint64_t waits = 0;
 };
 
 } // namespace haylen::ui

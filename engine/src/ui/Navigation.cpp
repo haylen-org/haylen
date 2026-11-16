@@ -85,6 +85,10 @@ bool Navigation::askBack(Screen& screen) {
     return kept;
 }
 
+bool Navigation::isReady(const Screen& screen) const {
+    return !screen.gui || ui.isComplete(*screen.gui);
+}
+
 void Navigation::place(Screen& screen, const std::shared_ptr<NavigationStack>& stack) {
     screen.stack = stack;
     screen.presentation.reset();

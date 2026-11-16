@@ -193,6 +193,9 @@ class UiPlugin final : public Plugin {
 
     void add(Mounted entry);
     void drawGui(const Mounted& entry, bool inert);
+
+    // Whether a GUI laid out in an earlier frame with every picture it shows, which the navigation waits for before a screen moves in.
+    [[nodiscard]] bool isComplete(const ui::Gui& gui) const;
     [[nodiscard]] math::Vec2 getLookOffset(const ui::Navigation::Look& look, const math::Rect& area, float riseRoom) const;
     void drawBackdrop(const ui::Presentation& presentation, const ui::Presentation::Layout& layout, const ui::Navigation::Look& look, math::Vec2 offset);
     [[nodiscard]] std::optional<math::Rect> findArea(const Mounted& entry) const;
@@ -245,6 +248,9 @@ class UiPlugin final : public Plugin {
     std::vector<Mounted> delivering;
     std::vector<const Mounted*> drawnGuis;
     std::vector<const ui::Gui*> shownGuis;
+
+    // The GUIs that asked for a picture that had nothing to draw yet when they last drew, which a change of the navigation waits for.
+    std::vector<const ui::Gui*> waitingGuis;
     std::vector<std::shared_ptr<ui::Gui>> preparing;
     std::vector<platform::Accessibility::Request> accessibilityRequests;
     std::uint64_t nextOrder = 0;
