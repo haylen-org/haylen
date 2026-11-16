@@ -230,9 +230,15 @@ void UiPlugin::beginFrame(core::Engine& engine, float) {
     tree.beginFrame();
 }
 
+// A button that takes no focus hears its press while it draws, and the actions on the other elements reach their focus targets.
 void UiPlugin::perform(const platform::Accessibility::Request& request) {
     using Element = platform::AccessibilityElement;
-    const std::optional<ImGuiID> target = context->getAccessibility().findTarget(request.element);
+    ui::AccessibilityTree& tree = context->getAccessibility();
+    if (request.action == Element::Activate && tree.press(request.element)) {
+        return;
+    }
+
+    const std::optional<ImGuiID> target = tree.findTarget(request.element);
     if (!target) {
         return;
     }
@@ -595,7 +601,7 @@ void UiPlugin::drawAbove(core::Engine& engine, const core::SceneView& view) {
     drawing.endDeferring();
 }
 
-// The GUIs under the topmost modal presentation draw in a window of their own that takes no input, with child windows that never take the pointer, and reach the screen before the presentation draws over them. They shrink about the middle of the screen while a sheet near the top of a compact screen covers them.
+// The GUIs under the topmost modal presentation draw in a window of their own that takes no input, with child windows that never take the pointer, and reach the screen before the presentation draws over them, without elements for screen readers. They shrink about the middle of the screen while a sheet near the top of a compact screen covers them.
 void UiPlugin::drawUnder(core::Engine& engine, std::size_t count) {
     beginWindow("##haylen-under", ImGuiWindowFlags_NoInputs);
     const ui::Presentation& top = *navigation->getTopModal();
@@ -608,7 +614,10 @@ void UiPlugin::drawUnder(core::Engine& engine, std::size_t count) {
         context->pushReshape(shrunk, middle);
     }
 
+    ui::AccessibilityTree& tree = context->getAccessibility();
+    tree.beginHidden();
     drawGuis(0, count, true);
+    tree.endHidden();
     if (shrunk.isReshaping()) {
         context->popReshape();
         ui::Component::reshapeSince(firstVertex, firstWindow, shrunk, middle);

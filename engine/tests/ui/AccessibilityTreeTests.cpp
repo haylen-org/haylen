@@ -175,6 +175,40 @@ TEST_F(AccessibilityTreeTest, PerformsTheActionsOfScreenReadersAndFollowsTheFocu
     EXPECT_NE(fixture.lua("accessibility.perform(1, 'shake')").find("The accessibility action \"shake\" is unknown."), std::string::npos);
 }
 
+// A modal presentation hides the GUIs under it from screen readers, which reach its screen, the messages above it, the grabber of its sheet and the action of a message, though neither takes the focus.
+TEST_F(AccessibilityTreeTest, ReachesThePresentationAndTheMessagesButNotWhatAModalCovers) {
+    fixture.host().resize({480.0F, 1000.0F});
+    // clang-format off
+    fixture.runLua(R"(
+        ui.setScaleMode('physical')
+        undone = false
+        gui = ui.mount(ui.column{ui.button{text = 'Under'}}, {placement = 'screen'})
+        sheet = ui.present({build = function() return ui.column{ui.label{text = 'Queue'}} end}, {detents = {'medium', 'large'}})
+        ui.showMessage{style = 'snackbar', text = 'The map was deleted.', action = 'Undo', duration = 0, onAction = function() undone = true end}
+    )");
+    // clang-format on
+    fixture.frames(40);
+
+    EXPECT_EQ(find("Under"), nullptr);
+    EXPECT_NE(find("Queue"), nullptr);
+    ASSERT_NE(find("The map was deleted. Undo"), nullptr);
+    EXPECT_EQ(find("The map was deleted. Undo")->role, Element::Role::Alert);
+    ASSERT_NE(find("Sheet grabber"), nullptr);
+    EXPECT_EQ(find("Sheet grabber")->actions, Element::Activate);
+
+    platform::AccessibilityRelay::perform({.element = find("Sheet grabber")->id, .action = Element::Activate});
+    fixture.frames(30);
+    EXPECT_EQ(fixture.lua("return sheet.detent"), "2");
+
+    platform::AccessibilityRelay::perform({.element = find("Undo")->id, .action = Element::Activate});
+    fixture.frames(30);
+    EXPECT_EQ(fixture.lua("return tostring(undone)"), "true");
+
+    fixture.runLua("sheet:dismiss()");
+    fixture.frames(30);
+    EXPECT_NE(find("Under"), nullptr);
+}
+
 TEST_F(AccessibilityTreeTest, ReadsElementsAndAnnouncesFromLua) {
     fixture.runLua("gui = ui.mount(ui.column{ui.toggle{id = 'music', text = 'Music', checked = true}}, {placement = 'screen'})");
     fixture.frames(3);

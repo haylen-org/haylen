@@ -3970,7 +3970,7 @@ split:showDetail(Chat(person))
 
 ### ui.present(screen, options)
 
-Presents a screen over everything the app shows and returns its [`Presentation`](#presentation). A modal presentation takes the input and the focus of the GUIs under it until it leaves, and the focus goes back where it was. The table `options` is optional. The [navigation guide](../ui/navigation.md#presentations-open-a-new-flow) explains when to use each style.
+Presents a screen over everything the app shows and returns its [`Presentation`](#presentation). A modal presentation takes the input and the focus of the GUIs under it until it leaves, and the focus goes back where it was. Screen readers reach only it and what lies above it meanwhile. The table `options` is optional. The [navigation guide](../ui/navigation.md#presentations-open-a-new-flow) explains when to use each style.
 
 | Style | What it is |
 | --- | --- |
@@ -4107,7 +4107,7 @@ A message slides in from the edge of its stack and fades in, a snackbar and a ba
 
 The person lets a message go in several ways. A tap on the message lets it go with the reason `'tapped'`. The action lets it go with `'action'`, and the close button with `'closed'`. A press that drags the message sideways past a third of its width swipes it away with `'swiped'`, while a shorter drag springs back. A message whose time ends leaves with `'timeout'`.
 
-Screen readers hear every message that comes on screen, its title, its text and its action, and the tree they read holds it as an alert.
+Screen readers hear every message that comes on screen, its title, its text and its action, and the tree they read holds it as an alert, followed by its action and its close button as buttons that they press, though neither takes the focus.
 
 An unknown option raises `Unknown option "<key>".`. A wrong value raises the error of its option, such as `The property "style" of a "message" must be "toast", "snackbar" or "banner".`, and a message without a title or a text raises `A message needs a "title" or a "text".`.
 

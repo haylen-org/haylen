@@ -3,6 +3,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "haylen/math/Color.hpp"
@@ -73,6 +74,7 @@ class MessageView final {
 
     // Writes what screen readers say of a message into storage every frame reuses: its title, its text and its action.
     void describe(const Message& message);
+    [[nodiscard]] static bool endsSentence(std::string_view text) noexcept;
 
     Backend& backend;
     Context& context;

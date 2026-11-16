@@ -43,7 +43,20 @@ class AccessibilityTree final {
     // Adds a part of the component being drawn as an element of its own, with the focus target that its actions reach, while the tree is enabled.
     void addPart(ImGuiID target, const math::Rect& bounds, platform::AccessibilityElement::Role role, std::string_view label, std::uint8_t states);
 
-    // Marks the element whose target holds the focus.
+    // Adds a button of the component being drawn that takes no focus, such as the grabber of a sheet or the action of a message, while the tree is enabled. A screen reader presses it through `press`, and the code that draws it hears the press from `takePress` in the next frame.
+    void addButton(ImGuiID item, const math::Rect& bounds, std::string_view label);
+
+    // Presses the button of `addButton` that an element of the last frame is, and returns whether the element is one.
+    bool press(std::uint64_t element) noexcept;
+
+    // Returns whether a screen reader pressed the button of `addButton` with this item since the last frame, once.
+    [[nodiscard]] bool takePress(ImGuiID item) noexcept;
+
+    // Leave the elements of what draws in between out of the tree, such as the GUIs under a modal presentation, which screen readers do not reach.
+    void beginHidden();
+    void endHidden();
+
+    // Marks the element whose target holds the focus, and forgets a press that no button took.
     void endFrame(ImGuiID focusedItem);
 
     // The elements of the last frame, with bounds in UI coordinates until the UI turns them into framebuffer pixels.
@@ -74,7 +87,9 @@ class AccessibilityTree final {
 
     std::vector<platform::AccessibilityElement> elements;
     std::vector<ImGuiID> targets;
+    std::vector<ImGuiID> buttons;
     std::vector<Level> levels;
+    ImGuiID pressed = 0;
     std::size_t count = 0;
     std::uint64_t focused = 0;
     bool enabled = false;

@@ -11,6 +11,7 @@
 
 #include "haylen/math/Insets.hpp"
 #include "haylen/platform/Accessibility.hpp"
+#include "haylen/ui/AccessibilityTree.hpp"
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Component.hpp"
 #include "haylen/ui/Context.hpp"
@@ -157,6 +158,12 @@ void MessageView::drawMessage(Message& message) {
     if (ImGui::Begin(name.data(), nullptr, flags)) {
         ImGuiWindow& window = *ImGui::GetCurrentWindow();
         stack.attach(message.key, window.ID);
+        AccessibilityTree& tree = context.getAccessibility();
+        if (tree.isEnabled()) {
+            describe(message);
+            tree.addElement(window.ID, frame, platform::AccessibilityElement::Role::Alert, spoken);
+        }
+
         context.pushPlainReshape();
 
         // The edges of the message fade over a pixel that reaches past its window, so the drawing may cross the window by a little. A message behind the front of a deck draws at its full size and shrinks toward the edge of the stack with its vertices.
@@ -181,12 +188,6 @@ void MessageView::drawMessage(Message& message) {
         const bool inside = stack.isHeld(stacked) && stack.getArea(stacked).expanded(spacing).contains(math::Vec2{pointer.x, pointer.y});
         if (inside || ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) || GImGui->ActiveIdWindow == &window) {
             stack.hold(stacked);
-        }
-
-        AccessibilityTree& tree = context.getAccessibility();
-        if (tree.isEnabled()) {
-            describe(message);
-            tree.addElement(window.ID, frame, platform::AccessibilityElement::Role::Alert, spoken);
         }
     }
 
@@ -297,9 +298,10 @@ MessageView::Colors MessageView::getColors(const Message::Content& content) cons
     return {.fill = fill, .border = border, .ink = ink, .accent = ink, .accentInk = fill};
 }
 
-// The whole message takes the press that taps or swipes it, and the action and the close button over it take theirs first. A press lets the message go at once, and the next update tells the app.
+// The whole message takes the press that taps or swipes it, and the action and the close button over it take theirs first, also from screen readers, which read them as buttons after the message. A press lets the message go at once, and the next update tells the app.
 void MessageView::drawParts(Message& message, const Layout& layout, math::Vec2 origin) {
     const Message::Content& content = *message.content;
+    AccessibilityTree& tree = context.getAccessibility();
     const Colors colors = getColors(content);
     const math::Rect frame{origin.x, origin.y, layout.size.x, layout.size.y};
     const bool pressable = message.phase == Message::Phase::Shown;
@@ -330,14 +332,17 @@ void MessageView::drawParts(Message& message, const Layout& layout, math::Vec2 o
     if (!layout.action.isEmpty()) {
         const math::Rect area = place(layout.action);
         const float radius = area.height * 0.5F;
+        const std::string_view action = context.getText(content.action);
         const Widgets::Interaction pressed = Widgets::interact(context, area, radius, "##action", ImGuiButtonFlags_NoNavFocus);
+        const ImGuiID item = ImGui::GetItemID();
+        tree.addButton(item, area, action);
         if (pressed.hovered) {
             Surfaces::fill(context, area, colors.ink.withAlpha(colors.ink.a * (pressed.held ? 0.24F : 0.14F)), radius);
         }
 
-        Typography::drawAligned(context, Theme::Font::Button, area, colors.ink, context.getText(content.action), Alignment::Center);
+        Typography::drawAligned(context, Theme::Font::Button, area, colors.ink, action, Alignment::Center);
 
-        if (pressed.clicked && pressable) {
+        if ((pressed.clicked || tree.takePress(item)) && pressable) {
             context.playSound(Theme::Sound::Press);
             message.leave(Message::Reason::Action);
         }
@@ -355,11 +360,13 @@ void MessageView::drawParts(Message& message, const Layout& layout, math::Vec2 o
     }
 
     const Widgets::Interaction pressed = Widgets::interact(context, area, area.height * 0.5F, "##close", ImGuiButtonFlags_NoNavFocus);
+    const ImGuiID item = ImGui::GetItemID();
+    tree.addButton(item, area, "Close");
     if (!Widgets::closeImage(context, area, pressed)) {
         Widgets::cross(context, area.getCenter(), area.height * 0.28F, context.getMetric(Theme::Metric::StrokeWidth), colors.ink.withAlpha(colors.ink.a * (pressed.hovered ? 1.0F : 0.75F)));
     }
 
-    if (pressed.clicked && pressable) {
+    if ((pressed.clicked || tree.takePress(item)) && pressable) {
         message.leave(Message::Reason::Closed);
     }
 }
@@ -469,11 +476,16 @@ void MessageView::describe(const Message& message) {
         }
 
         if (!spoken.empty()) {
-            spoken += ". ";
+            spoken += endsSentence(spoken) ? " " : ". ";
         }
 
         spoken += said;
     }
+}
+
+// A part that ends with the mark of the end of a sentence already ends its sentence, so the next part follows it after a space alone.
+bool MessageView::endsSentence(std::string_view text) noexcept {
+    return text.ends_with('.') || text.ends_with('!') || text.ends_with('?');
 }
 
 } // namespace haylen::ui

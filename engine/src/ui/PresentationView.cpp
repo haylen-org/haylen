@@ -6,6 +6,7 @@
 
 #include <imgui_internal.h>
 
+#include "haylen/ui/AccessibilityTree.hpp"
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/Gui.hpp"
@@ -96,9 +97,11 @@ void PresentationView::drawChrome(Presentation& presentation, const Presentation
         const math::Rect grabber = layout.grabber.translated(offset);
         const math::Rect reach = math::Rect::fromCenter(grabber.getCenter(), {grabber.width * 2.0F, Presentation::kGrabberBand});
         ImGui::SetCursorScreenPos(ImGuiConverter::toImVec2(reach.getMin()));
-        const bool pressed = ImGui::InvisibleButton("##grabber", ImGuiConverter::toImVec2(reach.getSize()));
+        const bool clicked = ImGui::InvisibleButton("##grabber", ImGuiConverter::toImVec2(reach.getSize()));
         const ImGuiID item = ImGui::GetItemID();
-        context.getAccessibility().addPart(item, reach, platform::AccessibilityElement::Role::Button, "Sheet grabber", 0);
+        AccessibilityTree& tree = context.getAccessibility();
+        tree.addButton(item, reach, "Sheet grabber");
+        const bool pressed = clicked || tree.takePress(item);
         if (pressed && !presentation.dragging) {
             requests.cycled = presentation.weak_from_this();
         }

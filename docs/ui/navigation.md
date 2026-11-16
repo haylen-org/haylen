@@ -114,7 +114,7 @@ The app decides when the split collapses, in the same place where it lays out it
 
 ## Presentations open a new flow
 
-A presentation shows a screen over everything the app shows, such as a new post, a checkout, a picker or a sign in. It starts a new flow. Its screen may hold bars of its own and stacks of its own. A modal presentation takes the input and the focus of the GUIs under it until it leaves, and then the focus goes back to the control that had it.
+A presentation shows a screen over everything the app shows, such as a new post, a checkout, a picker or a sign in. It starts a new flow. Its screen may hold bars of its own and stacks of its own. A modal presentation takes the input and the focus of the GUIs under it until it leaves, and then the focus goes back to the control that had it. Screen readers reach only the modal presentation and what lies above it until it leaves.
 
 | Style | What it looks like | When to use it |
 | --- | --- | --- |
@@ -210,7 +210,7 @@ ui.showMessage{style = 'banner', title = 'Ana', text = 'See you at six?', icon =
 end}
 ```
 
-Messages of one position stack without covering each other, as a list or as a deck with the newest in front. The others wait their turn in a queue, a higher priority before a lower one, and a snackbar or a banner of a higher priority replaces the one that shows, such as a warning that the connection dropped over a confirmation. The time of a message stops while the pointer or a finger rests on its stack, and the person taps it, swipes it away, closes it or presses its action. Its `result` resolves with the reason it left, so a snackbar can wait for the undo before it deletes for good. Screen readers hear every message that comes on screen, and a high priority interrupts them. Use an alert instead when the person must decide before going on.
+Messages of one position stack without covering each other, as a list or as a deck with the newest in front. The others wait their turn in a queue, a higher priority before a lower one, and a snackbar or a banner of a higher priority replaces the one that shows, such as a warning that the connection dropped over a confirmation. The time of a message stops while the pointer or a finger rests on its stack, and the person taps it, swipes it away, closes it or presses its action. Its `result` resolves with the reason it left, so a snackbar can wait for the undo before it deletes for good. Screen readers hear every message that comes on screen, and a high priority interrupts them. They read the action and the close button of a message as buttons, which they press though neither takes the focus. Use an alert instead when the person must decide before going on.
 
 ## Results of a flow
 

@@ -106,7 +106,47 @@ void AccessibilityTree::addPart(ImGuiID target, const math::Rect& bounds, Elemen
     }
 }
 
+void AccessibilityTree::addButton(ImGuiID item, const math::Rect& bounds, std::string_view label) {
+    const std::size_t before = count;
+    addElement(item, bounds, Element::Role::Button, label);
+    if (count == before) {
+        return;
+    }
+
+    elements[count - 1].actions = Element::Activate;
+    buttons[count - 1] = item;
+}
+
+bool AccessibilityTree::press(std::uint64_t element) noexcept {
+    for (std::size_t index = 0; index < count; ++index) {
+        if (elements[index].id == element && buttons[index] != 0) {
+            pressed = buttons[index];
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool AccessibilityTree::takePress(ImGuiID item) noexcept {
+    if (pressed == 0 || pressed != item) {
+        return false;
+    }
+
+    pressed = 0;
+    return true;
+}
+
+void AccessibilityTree::beginHidden() {
+    levels.push_back({.hidden = true});
+}
+
+void AccessibilityTree::endHidden() {
+    levels.pop_back();
+}
+
 void AccessibilityTree::endFrame(ImGuiID focusedItem) {
+    pressed = 0;
     if (focusedItem == 0) {
         return;
     }
@@ -155,6 +195,7 @@ Element& AccessibilityTree::add(std::uint64_t id, const math::Rect& bounds) {
     if (count == elements.size()) {
         elements.emplace_back();
         targets.push_back(0);
+        buttons.push_back(0);
     }
 
     Element& element = elements[count];
@@ -168,6 +209,7 @@ Element& AccessibilityTree::add(std::uint64_t id, const math::Rect& bounds) {
     element.states = 0;
     element.actions = 0;
     targets[count] = 0;
+    buttons[count] = 0;
     ++count;
     return element;
 }
