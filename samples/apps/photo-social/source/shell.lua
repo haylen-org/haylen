@@ -1,4 +1,4 @@
--- The frame of the app: the tabs, the navigation between screens, the notices and the layout that follows the width of the window. Phones show a bar of icons at the bottom, and wide windows show a rail with the wordmark and the names of the tabs on the left.
+-- The frame of the app: the tabs, the navigation between screens, the notices and the layout that follows the width of the window. Phones show a bar of icons at the bottom, and wide windows show a rail with the wordmark and the names of the tabs on the left. The frame mounts once, and every screen lays out in its middle, so opening a screen changes only the middle and never builds the bars again.
 local events = require('haylen.events')
 local scene = require('haylen.scene')
 local ui = require('haylen.ui')
@@ -31,10 +31,18 @@ function Shell.width()
     return viewport.safeRect().width / unit
 end
 
--- Mounts the notices, which stay above every screen, and shows the first tab.
+-- Mounts the frame and the notices, which stay above every screen, and shows the first tab.
 function Shell.start()
+    Shell.gui = ui.mount(Shell.frame(), {layer = 1, sharedFocus = true})
     Shell.notices = ui.mount(ui.toast{id = 'notice', position = 'bottom', duration = 2.5, indicator = 'icon'}, {layer = 10, sharedFocus = true})
+    Shell.adaptFrame()
     Shell.showTab('home')
+    Shell.followUnread()
+end
+
+-- The placement of the GUI of a screen: the middle of the frame, between the rail or the bar of icons.
+function Shell.middle()
+    return {gui = Shell.gui, id = 'middle'}
 end
 
 function Shell.notify(text, tone)
@@ -49,7 +57,7 @@ function Shell.showTab(id, params)
                 Shell.open(require(tab.screen), params, Shell.riseTransition)
                 return
             end
-            Shell.current = id
+            Shell.select(id)
             if scene.size() > 1 then
                 scene.popToRoot()
             end
@@ -60,8 +68,19 @@ function Shell.showTab(id, params)
     end
 end
 
--- Pushes a screen over the current one with a slide, or with another transition.
-function Shell.open(Screen, params, transition)
+-- Pushes a screen over the current one with a slide, or with another transition. A screen of the same kind that already shows the same thing, named by the parameter `key`, such as the chat with a person that a profile opened from that chat, comes back instead, so the stack never holds two copies of it.
+function Shell.open(Screen, params, transition, key)
+    if key then
+        local screens = scene.list()
+        for level = #screens - 1, 1, -1 do
+            local shown = screens[level]
+            if shown and shown:is(Screen) and shown.params[key] == params[key] then
+                scene.popTo(level, Shell.backTransition)
+                window.setBackLeavesApp(level == 1 and Shell.current == 'home')
+                return
+            end
+        end
+    end
     window.setBackLeavesApp(false)
     return scene.push(Screen(params), transition or Shell.pushTransition)
 end
@@ -83,18 +102,26 @@ function Shell.back()
     end
 end
 
--- Tells a screen when the window crosses the widths of the wide and roomy layouts, and shows the rail or the bar of a screen built with `Shell.frame`.
+-- Shows the rail on a wide window and the bar of icons otherwise.
+function Shell.adaptFrame()
+    local wide = Shell.width() >= Style.wideWidth
+    if Shell.wide == wide then
+        return
+    end
+    Shell.wide = wide
+    Shell.gui:set('rail', {visible = wide})
+    Shell.gui:set('tabBar', {visible = not wide})
+end
+
+-- Keeps the frame current and tells a screen when the window crosses the widths of the wide and roomy layouts.
 function Shell.adapt(page)
+    Shell.adaptFrame()
     local width = Shell.width()
     local wide, roomy = width >= Style.wideWidth, width >= Style.roomyWidth
     if page.wide == wide and page.roomy == roomy then
         return
     end
     page.wide, page.roomy = wide, roomy
-    if page.gui:has('rail') then
-        page.gui:set('rail', {visible = wide})
-        page.gui:set('tabBar', {visible = not wide})
-    end
     if page.layoutChanged then
         page:layoutChanged(wide, roomy)
     end
@@ -138,7 +165,7 @@ function Shell.tabButton(tab, current, placement)
         tooltip = not rail and tab.text or nil,
         style = {fonts = {button = {size = Style.type.body, bold = selected}}, metrics = {iconSize = iconSize, controlPaddingX = Style.space.m, contentSpacing = Style.space.m}},
         onClick = function()
-            if not selected or tab.push then
+            if not selected or tab.push or scene.size() > 1 then
                 Shell.showTab(tab.id)
             end
         end,
@@ -159,18 +186,33 @@ function Shell.tabButton(tab, current, placement)
     }
 end
 
--- Shows the count of unread messages on the tab of the messages, and keeps it current while the page lives.
-function Shell.followUnread(page)
-    local function show()
-        local count = require('chats').unreadCount()
-        for _, placement in ipairs({'rail', 'bar'}) do
-            if page.gui:has(placement .. '-unread') then
-                page.gui:set(placement .. '-unread', {text = count, visible = count > 0})
-            end
-        end
+-- Shows the count of unread messages on the tab of the messages.
+function Shell.showUnread()
+    local count = require('chats').unreadCount()
+    Shell.gui:set('rail-unread', {text = count, visible = count > 0})
+    Shell.gui:set('bar-unread', {text = count, visible = count > 0})
+end
+
+-- Keeps the count of unread messages current while the frame lives.
+function Shell.followUnread()
+    events.on('chatChanged', Shell.showUnread, {owner = Shell.gui})
+    Shell.showUnread()
+end
+
+-- Marks the tab that shows, in the rail and in the bar, and keeps the count of unread messages on the tabs built again.
+function Shell.select(id)
+    if Shell.current == id and Shell.gui:has('rail-' .. id) then
+        return
     end
-    events.on('chatChanged', show, {owner = page})
-    show()
+    Shell.current = id
+    local rail, bar = {}, {}
+    for _, tab in ipairs(Shell.tabs) do
+        rail[#rail + 1] = Shell.tabButton(tab, id, 'rail')
+        bar[#bar + 1] = Shell.tabButton(tab, id, 'bar')
+    end
+    Shell.gui:replaceChildren('railTabs', rail)
+    Shell.gui:replaceChildren('barTabs', bar)
+    Shell.showUnread()
 end
 
 -- The wordmark: the logo and the name of the app.
@@ -181,22 +223,21 @@ function Shell.wordmark(size)
     }
 end
 
--- Wraps the content of a tab with the rail and the bar of icons.
-function Shell.frame(current, content, onCancel)
+-- The frame: the rail with the wordmark and the tabs, the middle where the screens lay out, and the bar of icons. The bars paint the window color, so the screens that slide in the middle pass under them. The tabs arrive with `Shell.select`.
+function Shell.frame()
     local space = Style.space
-    local rail = {width = Style.size.rail, gap = space.xs, padding = {space.xl, space.m, space.l, space.m}, align = 'stretch',
-        ui.row{padding = {0, space.s, space.xl, space.s}, Shell.wordmark(52)},
-    }
-    local bar = {gap = 0, height = Style.size.tabBar, padding = {0, space.s}}
-    for _, tab in ipairs(Shell.tabs) do
-        rail[#rail + 1] = Shell.tabButton(tab, current, 'rail')
-        bar[#bar + 1] = Shell.tabButton(tab, current, 'bar')
-    end
-    return ui.row{gap = 0, onCancel = onCancel or Shell.back,
-        ui.row{id = 'rail', visible = false, gap = 0, align = 'stretch', ui.column(rail), ui.divider{vertical = true, align = 'stretch'}},
+    local surface = {colors = {panel = 'window'}, metrics = {panelRadius = 0}}
+    return ui.row{gap = 0, onCancel = Shell.back,
+        ui.row{id = 'rail', visible = false, gap = 0, align = 'stretch',
+            ui.panel{width = Style.size.rail, gap = space.xs, padding = {space.xl, space.m, space.l, space.m}, align = 'stretch', style = surface,
+                ui.row{padding = {0, space.s, space.xl, space.s}, Shell.wordmark(52)},
+                ui.column{id = 'railTabs', gap = space.xs, align = 'stretch'},
+            },
+            ui.divider{vertical = true, align = 'stretch'},
+        },
         ui.column{grow = 1, gap = 0, align = 'stretch',
-            content,
-            ui.column{id = 'tabBar', gap = 0, ui.divider{}, ui.row(bar)},
+            ui.column{id = 'middle', grow = 1, gap = 0},
+            ui.panel{id = 'tabBar', gap = 0, padding = 0, style = surface, ui.divider{}, ui.row{id = 'barTabs', gap = 0, height = Style.size.tabBar, padding = {0, space.s}}},
         },
     }
 end

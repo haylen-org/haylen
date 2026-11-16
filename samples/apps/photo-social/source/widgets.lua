@@ -113,7 +113,7 @@ function Widgets.onPostEvent(page, list, event)
 end
 
 function Widgets.openPerson(id)
-    Shell.open(require('screens.profile'), {person = id})
+    Shell.open(require('screens.profile'), {person = id}, nil, 'person')
 end
 
 -- The dialog that sends a post to one of the conversations, which every screen of posts mounts.

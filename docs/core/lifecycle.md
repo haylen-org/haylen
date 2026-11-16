@@ -23,7 +23,7 @@ Then every frame runs the same steps. The [architecture guide](architecture.md#t
 4. The frame draws:
     - The visible scenes get `render`, and then the loading view and the autoloads get `render`.
     - The visible scenes get `renderUi`, and then the loading view, the autoloads and the GUIs get `renderUi`. A GUI that a scene owns draws only while its scene shows.
-    - During a scene transition, the scenes before and after the change each draw into an image of their own, with the GUIs they own. The loading view, the autoloads and the GUIs of no scene draw with the current scenes, and the transition effect draws the two images on the screen.
+    - During a scene transition, the scenes before and after the change each draw into an image of their own, with the GUIs they own. The loading view and the autoloads draw with the current scenes, and the transition effect draws the two images on the screen. The GUIs of no scene draw with the current scenes too, except during an effect that shows both scenes, such as a slide, where they draw on the screen above the effect, so the bars of an app stay in place while its pages move.
 5. Events queued with `events.post` and deferred signal listeners run.
 
 Platform events, such as keys, touches and focus changes, arrive between frames. The autoloads get them first and then the top scene, as the [scene reference](../lua-api/scene.md#events) describes.
@@ -540,7 +540,7 @@ scene.replace(game, {duration = 1, loading = view, loadingDelay = 0.2, minimumLo
                                                                                                    sceneEnterTransitionFinished game
 ```
 
-While the screen stays covered, the effect draws at its switch point with the last frame of the outgoing scenes and no scene at all. So the transition itself is the loading screen when the change has no loading view, and waiting costs almost no GPU work. The drawing of the plugins, the autoloads and the GUIs of no scene goes with the current scenes: into the outgoing image during the out phase, over the covered frame while the screen stays covered, and into the incoming image during the in phase.
+While the screen stays covered, the effect draws at its switch point with the last frame of the outgoing scenes and no scene at all. So the transition itself is the loading screen when the change has no loading view, and waiting costs almost no GPU work. The drawing of the plugins, the autoloads and the GUIs of no scene goes with the current scenes: into the outgoing image during the out phase, over the covered frame while the screen stays covered, and into the incoming image during the in phase. An effect that shows both scenes keeps the GUIs of no scene on the screen above it instead.
 
 Once the load is done and the loading view stayed its minimum time, the view fades out into the covered frame over `loadingFadeOut` seconds, `0.25` by default. So the in phase starts from the covered frame without a cut. During the fade, the view, the autoloads and the GUIs draw over the covered frame into an image of their own. The effect blends that image over the covered frame with the opacity that is left. A `loadingFadeOut` of `0` takes the view away at once. A view over the current scenes goes away at once too, since the scenes under it keep running. That is the case before an effect that shows both scenes, or in a change without an effect.
 

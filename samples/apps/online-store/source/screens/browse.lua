@@ -48,7 +48,7 @@ function Browse:enter()
             self.pending.colors[color.id] = event.selected or nil
         end}
     end
-    self:mountGui(Shell.frame(self, 'browse', ui.column{grow = 1, gap = space.s, padding = {space.m, 0, 0, 0},
+    self:mountGui(Shell.tabPage(ui.column{grow = 1, gap = space.s, padding = {space.m, 0, 0, 0},
         Shell.centered(Style.size.page, ui.column{gap = space.s,
             ui.row{gap = space.xs, padding = {0, space.l},
                 ui.filterField{id = 'query', placeholder = 'Search the store', grow = 1, returnKey = 'search', onChange = function(event)

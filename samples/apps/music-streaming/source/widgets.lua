@@ -69,9 +69,9 @@ end
 function Widgets.openItem(id)
     local found = Catalog.find(id)
     if found.type == 'artist' then
-        Shell.open(require('screens.artist'), {artist = found.id})
+        Shell.open(require('screens.artist'), {artist = found.id}, nil, 'artist')
     else
-        Shell.open(require('screens.collection'), {collection = found.id})
+        Shell.open(require('screens.collection'), {collection = found.id}, nil, 'collection')
     end
 end
 
@@ -97,9 +97,9 @@ function Widgets.onTracks(tracks, page)
         elseif event.item == 'playlist' then
             Widgets.askPlaylist(page, track)
         elseif event.item == 'artist' then
-            Shell.open(require('screens.artist'), {artist = track.artist})
+            Shell.open(require('screens.artist'), {artist = track.artist}, nil, 'artist')
         elseif event.item == 'album' then
-            Shell.open(require('screens.collection'), {collection = track.album})
+            Shell.open(require('screens.collection'), {collection = track.album}, nil, 'collection')
         end
     end
 end

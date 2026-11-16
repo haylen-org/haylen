@@ -14,7 +14,7 @@ local Account = haylen.class('Account', Page)
 function Account:enter()
     local space = Style.space
     local address = Store.me.address
-    self:mountGui(Shell.frame(self, 'account', ui.scroll{grow = 1, height = 0,
+    self:mountGui(Shell.tabPage(ui.scroll{grow = 1, height = 0,
         Shell.centered(Style.size.reading, ui.column{gap = space.l, padding = {space.l, space.l, space.xxl, space.l},
             ui.row{gap = space.m,
                 ui.avatar{name = Store.me.name, size = 88},

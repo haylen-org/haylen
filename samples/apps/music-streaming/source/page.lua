@@ -17,9 +17,10 @@ function Page:init(params)
     self.params = params or {}
 end
 
--- Mounts the tree of the screen. Every screen shares the focus with the GUIs of the app, so a remote reaches the notices and back.
+-- Mounts the tree of the screen in the middle of the frame. Every screen shares the focus with the frame and the notices, so a remote moves between the screen, the tabs and the player, and cancel goes back.
 function Page:mountGui(tree)
-    self.gui = ui.mount(tree, {owner = self, sharedFocus = true})
+    tree.onCancel = tree.onCancel or Shell.back
+    self.gui = ui.mount(tree, {owner = self, sharedFocus = true, placement = Shell.middle()})
     self.wide = nil
     Shell.adapt(self)
 end

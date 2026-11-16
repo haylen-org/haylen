@@ -23,11 +23,11 @@ function Artist:enter()
     end
     self.popular = popular
     self.onTracks = Widgets.onTracks(function() return popular end, self)
-    self:mountGui(Shell.frame(Shell.current, ui.column{grow = 1, gap = 0,
+    self:mountGui(ui.column{grow = 1, gap = 0,
         Shell.header(''),
         ui.column{id = 'body', grow = 1, gap = 0},
         Widgets.playlistDialog(self),
-    }))
+    })
 end
 
 function Artist:layoutChanged(wide)

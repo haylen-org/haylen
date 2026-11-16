@@ -13,7 +13,7 @@ local Inbox = haylen.class('Inbox', Page)
 function Inbox:enter()
     local space = Style.space
     self.query = ''
-    self:mountGui(Shell.frame('messages', ui.column{grow = 1, gap = 0,
+    self:mountGui(ui.column{grow = 1, gap = 0,
         Shell.centered(760, ui.column{gap = space.s, padding = {space.m, space.m, space.s, space.m},
             ui.label{text = 'Messages', font = 'title'},
             ui.filterField{id = 'query', placeholder = 'Search', returnKey = 'search', style = {metrics = {controlRadius = Style.radius.field}}, onChange = function(event)
@@ -38,8 +38,7 @@ function Inbox:enter()
             end,
             ui.emptyState{image = Shell.icon('messages'), imageSize = 64, title = 'No conversations', message = 'Send a post to a friend to start one.'},
         }, 1),
-    }))
-    Shell.followUnread(self)
+    })
     self.list = self.gui:collection('conversations')
     events.on('chatChanged', function()
         self:showConversations()

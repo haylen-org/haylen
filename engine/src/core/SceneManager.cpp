@@ -939,6 +939,10 @@ bool SceneManager::isEffectShown() const noexcept {
     return pending && pending->options.transition.effect && (pending->phase == Phase::Out || pending->phase == Phase::Covered || pending->phase == Phase::In);
 }
 
+bool SceneManager::isShowingBothScenes() const noexcept {
+    return isEffectShown() && !pending->covering;
+}
+
 // Both images have the pixel size of the viewport, so a captured frame looks the same as the screen would.
 void SceneManager::prepareImages() {
     const math::Rect& pixels = engine.getViewport().getPixelRect();

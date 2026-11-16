@@ -25,7 +25,7 @@ function Search:enter()
                 Shell.open(require('screens.collection'), {collection = 'genre-' .. genre.id})
             end}
     end
-    self:mountGui(Shell.frame('search', ui.column{grow = 1, gap = space.s, padding = {space.l, 0, 0, 0},
+    self:mountGui(ui.column{grow = 1, gap = space.s, padding = {space.l, 0, 0, 0},
         Shell.centered(Style.size.page, ui.column{gap = space.s, padding = {0, space.l},
             ui.label{text = 'Search', font = 'title'},
             ui.filterField{id = 'query', placeholder = 'Artists, albums or songs', returnKey = 'search', onChange = function(event)
@@ -62,7 +62,7 @@ function Search:enter()
             ui.emptyState{image = Shell.icon('music'), imageSize = 72, title = 'Nothing found', message = 'Try another name.'},
         }, 1)},
         Widgets.playlistDialog(self),
-    }))
+    })
     self.results = self.gui:collection('resultList')
     self.onTracks = Widgets.onTracks(function() return self.tracks end, self)
 end

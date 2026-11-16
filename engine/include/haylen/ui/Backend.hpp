@@ -87,6 +87,11 @@ class Backend final {
 
     // Draws a window that ended, with its child windows and its popups, before the frame ends, such as the GUIs of a scene that leaves through a transition into an image of its own.
     void renderWindow(graphics2d::Renderer& renderer, const ImGuiWindow& root);
+
+    // Keeps every window that begins between the two calls out of `render`, with its child windows, popups and the windows of its components, so `renderDeferred` draws them once the frame ended, such as the GUIs of no scene, which reach the screen above a transition.
+    void beginDeferring();
+    void endDeferring();
+    void renderDeferred(graphics2d::Renderer& renderer);
     [[nodiscard]] bool isFrameActive() const noexcept {
         return frameActive;
     }
@@ -363,6 +368,8 @@ class Backend final {
     std::vector<graphics2d::NineSlice::Patch> patches;
     std::vector<const ImDrawList*> renderedLists;
     std::vector<const ImDrawList*> drawnLists;
+    std::vector<const ImDrawList*> deferredLists;
+    int deferredFrom = 0;
     std::vector<graphics2d::MeshVertex> meshVertices;
     std::vector<std::uint32_t> meshIndices;
     graphics2d::Renderer* rendering = nullptr;

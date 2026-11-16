@@ -157,6 +157,9 @@ class SceneManager final {
         return pending && pending->viewShown;
     }
 
+    // Whether a transition draws the scenes before and after the change at once, as a slide does, instead of covering the screen between them.
+    [[nodiscard]] bool isShowingBothScenes() const noexcept;
+
     // Returns how much of the loading view still shows, which falls from 1 to 0 while it fades out.
     [[nodiscard]] float getLoadingViewOpacity() const noexcept;
 

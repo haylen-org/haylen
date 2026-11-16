@@ -75,6 +75,28 @@ template <> struct EnumNames<ui::FocusNavigator::Owner> {
     }
 };
 
+template <> struct EnumNames<ui::Placement> {
+    static constexpr std::array<std::pair<std::string_view, ui::Placement>, 3> kPlacements{{{"safe", ui::Placement::Safe}, {"screen", ui::Placement::Screen}, {"region", ui::Placement::Region}}};
+
+    static std::optional<ui::Placement> fromName(std::string_view name) {
+        for (const auto& [candidate, placement] : kPlacements) {
+            if (candidate == name) {
+                return placement;
+            }
+        }
+        return std::nullopt;
+    }
+
+    static std::string_view name(ui::Placement value) {
+        for (const auto& [candidate, placement] : kPlacements) {
+            if (placement == value) {
+                return candidate;
+            }
+        }
+        return kPlacements.front().first;
+    }
+};
+
 } // namespace haylen::lua
 
 namespace haylen::ui {
@@ -339,21 +361,54 @@ Gui& UiLua::checkGui(lua_State* L) {
     return lua::Userdata::check<Gui>(L, 1);
 }
 
-// Mounts a tree with `mount(tree[, {placement = 'safe' or 'screen', layer = 0, owner = scene, sharedFocus = false}])` and returns the GUI. A GUI with an owner is unmounted when the owner is released, such as a scene when it unloads.
+// Reads the region of the option `placement`, a table `{gui = frame, id = 'content'}` that names a mounted GUI and the id of one of its nodes.
+plugins::UiPlugin::Region UiLua::readRegion(lua_State* L, int index) {
+    lua::Table::checkFields(L, index, {kRegionFields});
+    plugins::UiPlugin::Region region;
+    lua_getfield(L, index, "gui");
+    if (luaL_testudata(L, -1, lua::Type<Gui>::name) == nullptr) {
+        luaL_error(L, "The region of the \"placement\" option names its GUI with \"gui\".");
+    }
+    region.gui = lua::Userdata::checkShared<Gui>(L, -1);
+    lua_pop(L, 1);
+    if (lua_getfield(L, index, "id") != LUA_TSTRING) {
+        luaL_error(L, "The region of the \"placement\" option names its node with \"id\".");
+    }
+    region.node = lua::Stack::read<std::string>(L, -1);
+    lua_pop(L, 1);
+    return region;
+}
+
+// Mounts a tree with `mount(tree[, {placement = 'safe', 'screen' or {gui = frame, id = 'content'}, layer = 0, owner = scene, sharedFocus = false}])` and returns the GUI. A GUI with an owner is unmounted when the owner is released, such as a scene when it unloads.
 int UiLua::mount(lua_State* L) {
     Placement placement = Placement::Safe;
+    std::optional<plugins::UiPlugin::Region> region;
     int layer = 0;
     int owner = 0;
     bool sharedFocus = false;
     if (!lua_isnoneornil(L, 2)) {
         luaL_checktype(L, 2, LUA_TTABLE);
         lua::Table::checkFields(L, 2, {kMountFields});
-        std::string name = "safe";
-        lua::Table::readField(L, 2, "placement", name);
-        if (name != "safe" && name != "screen") {
-            return luaL_error(L, "The \"placement\" option must be \"safe\" or \"screen\".");
+        const int kind = lua_getfield(L, 2, "placement");
+        if (kind == LUA_TTABLE) {
+            region = readRegion(L, lua_gettop(L));
+            getPlugin(L).checkRegion(*region);
+            placement = Placement::Region;
+        } else if (kind != LUA_TNIL) {
+            const std::optional<Placement> named = kind == LUA_TSTRING ? lua::EnumNames<Placement>::fromName(lua::Stack::read<std::string_view>(L, -1)) : std::nullopt;
+            if (!named || *named == Placement::Region) {
+                return luaL_error(L, "The \"placement\" option must be \"safe\", \"screen\" or a region such as {gui = frame, id = \"content\"}.");
+            }
+            placement = *named;
         }
-        placement = name == "safe" ? Placement::Safe : Placement::Screen;
+        lua_pop(L, 1);
+        if (region) {
+            const bool layered = lua_getfield(L, 2, "layer") != LUA_TNIL;
+            lua_pop(L, 1);
+            if (layered) {
+                return luaL_error(L, "A GUI in a region draws right after the GUI of its region, so it takes no \"layer\".");
+            }
+        }
         lua::Table::readField(L, 2, "layer", layer);
         lua::Table::readField(L, 2, "sharedFocus", sharedFocus);
         if (lua_getfield(L, 2, "owner") != LUA_TNIL) {
@@ -387,7 +442,7 @@ int UiLua::mount(lua_State* L) {
 
     // A GUI owned by a scene of the stack belongs to that scene, so it shows and leaves with it.
     const std::shared_ptr<const core::Scene> scene = owner != 0 ? lua::ScriptedScene::find(L, owner) : nullptr;
-    getPlugin(L).mount(created, layer, scene);
+    getPlugin(L).mount(created, layer, scene, region);
     if (owner != 0) {
         lua::Owners::add(L, owner, std::make_shared<MountLink>(getPlugin(L), created));
     }
@@ -597,7 +652,7 @@ int UiLua::guiCollection(lua_State* L) {
 }
 
 int UiLua::guiPlacement(lua_State* L) {
-    lua::Stack::push(L, checkGui(L).getPlacement() == Placement::Safe ? "safe" : "screen");
+    lua::Stack::push(L, lua::EnumNames<Placement>::name(checkGui(L).getPlacement()));
     return 1;
 }
 

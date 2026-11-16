@@ -31,7 +31,8 @@ function NowPlaying:enter()
     for index = 1, NowPlaying.bars do
         self.heights[index] = 0
     end
-    self:mountGui(ui.column{id = 'root', gap = 0, onCancel = Shell.back})
+    self.showsPlayer = true
+    self:mountGui(ui.column{id = 'root', gap = 0})
     events.on('playerChanged', function()
         self:showSong()
     end, {owner = self})

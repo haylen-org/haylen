@@ -14,7 +14,7 @@ function Queue:enter()
     local space = Style.space
     local track = Player.current()
     self.glow = track and track.genre
-    self:mountGui(Shell.frame(Shell.current, ui.column{grow = 1, gap = 0,
+    self:mountGui(ui.column{grow = 1, gap = 0,
         Shell.header('Queue', {
             ui.button{id = 'clear', text = 'Clear', variant = 'toolbar', onClick = function()
                 for index = #Player.queue, Player.index + 1, -1 do
@@ -59,7 +59,7 @@ function Queue:enter()
             end,
             ui.emptyState{image = Shell.icon('queue'), imageSize = 72, title = 'Nothing comes next', message = 'Add songs to the queue from their menu.'},
         }, 1),
-    }))
+    })
     self.list = self.gui:collection('upcoming')
     events.on('playerChanged', function()
         self:showQueue()

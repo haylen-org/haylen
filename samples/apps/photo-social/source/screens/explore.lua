@@ -13,7 +13,7 @@ local Explore = haylen.class('Explore', Page)
 function Explore:enter()
     local space = Style.space
     self.query = ''
-    self:mountGui(Shell.frame('explore', ui.column{grow = 1, gap = 0,
+    self:mountGui(ui.column{grow = 1, gap = 0,
         Shell.centered(980, ui.column{gap = 0,
             ui.row{padding = {space.s, space.m}, ui.filterField{id = 'query', placeholder = 'Search people', grow = 1, returnKey = 'search', style = {metrics = {controlRadius = Style.radius.field}}, onChange = function(event)
                 self.query = string.lower(event.value)
@@ -39,8 +39,7 @@ function Explore:enter()
                 ui.emptyState{image = Shell.icon('search'), imageSize = 64, title = 'Nobody by that name', message = 'Try another name or handle.'},
             },
         }, 1),
-    }))
-    Shell.followUnread(self)
+    })
     local posts = {}
     for _, post in ipairs(Social.posts) do
         if post.author ~= 'me' then

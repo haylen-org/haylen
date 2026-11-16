@@ -273,7 +273,7 @@ TEST_F(UiLuaTest, ReportsMistakes) {
     EXPECT_NE(fixture.lua("return ui.spaceship").find("\"haylen.ui\" has no member \"spaceship\""), std::string::npos);
     EXPECT_NE(fixture.lua("ui.mount(ui.label{id = '#1'})").find("reserved"), std::string::npos);
     EXPECT_NE(fixture.lua("ui.mount(ui.column{ui.label{}, children = {}})").find("not both"), std::string::npos);
-    EXPECT_NE(fixture.lua("ui.mount(ui.label{}, {placement = 'floor'})").find("\"safe\" or \"screen\""), std::string::npos);
+    EXPECT_NE(fixture.lua("ui.mount(ui.label{}, {placement = 'floor'})").find("\"safe\", \"screen\" or a region"), std::string::npos);
     EXPECT_NE(fixture.lua("ui.mount(ui.label{}, {depth = 1})").find("Unknown option \"depth\""), std::string::npos);
     EXPECT_NE(fixture.lua("ui.mount(ui.label{text = function() end})").find("error: "), std::string::npos);
     EXPECT_NE(fixture.lua("ui.mount({kind = 'label', [true] = 1})").find("keys must be strings"), std::string::npos);

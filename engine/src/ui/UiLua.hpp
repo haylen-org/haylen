@@ -9,12 +9,9 @@
 #include <vector>
 
 #include "haylen/core/Json.hpp"
+#include "haylen/plugins/UiPlugin.hpp"
 
 struct lua_State;
-
-namespace haylen::plugins {
-class UiPlugin;
-}
 
 namespace haylen::ui {
 
@@ -36,6 +33,7 @@ class UiLua final {
     // The registry keeps one entry per mounted GUI, keyed by the GUI address: its userdata and the handlers of its nodes by id and event name.
     static constexpr const char* kHandlersKey = "haylen.ui.handlers";
     static constexpr std::array<std::string_view, 4> kMountFields{"placement", "layer", "owner", "sharedFocus"};
+    static constexpr std::array<std::string_view, 2> kRegionFields{"gui", "id"};
     static constexpr std::array<std::string_view, 1> kEventFields{"owner"};
     static constexpr float kMinimumTextScale = 0.5F;
     static constexpr float kMaximumTextScale = 4.0F;
@@ -58,6 +56,7 @@ class UiLua final {
     static void pushGui(lua_State* L, const std::shared_ptr<Gui>& gui);
     static void pushGuiEvent(lua_State* L, const std::shared_ptr<Gui>& gui);
     [[nodiscard]] static Gui& checkGui(lua_State* L);
+    [[nodiscard]] static plugins::UiPlugin::Region readRegion(lua_State* L, int index);
 
     static int mount(lua_State* L);
     static int guiSet(lua_State* L);

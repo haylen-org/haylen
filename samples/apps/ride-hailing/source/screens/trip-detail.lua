@@ -71,7 +71,7 @@ function TripDetail:enter()
                         Shell.notify('Our team answers questions about this trip in the chat.')
                     end},
                     ui.button{id = 'again', text = 'Ride there again', variant = 'primary', grow = 1, onClick = function()
-                        Shell.open(require('screens.preview'), {to = to.id})
+                        Shell.openPage(require('screens.preview'), {to = to.id})
                     end},
                 },
             }),

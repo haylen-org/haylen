@@ -6,6 +6,7 @@
 
 #include <imgui_internal.h>
 
+#include "gpu/NullDevice.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/SceneManager.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
@@ -151,13 +152,34 @@ TEST_F(SceneGuiTest, GivesTheFocusBackOnceItsSceneShowsAgain) {
     EXPECT_TRUE(isFocused(*other, "other"));
 }
 
-TEST_F(SceneGuiTest, DrawsAGuiWithoutASceneAboveEveryView) {
+// A GUI of no scene stays on the screen above a transition, out of the images of the scenes, and takes input again once the transition ends.
+TEST_F(SceneGuiTest, DrawsAGuiWithoutASceneOnTheScreenAboveATransition) {
     auto hud = getUi().createGui(core::Json::parse(R"({"kind": "button", "id": "coins", "text": "Coins 12"})"), Placement::Screen);
     getUi().mount(hud);
     push(0.0F, 1.0F);
     frames(10);
-    EXPECT_TRUE(hasDrawn("##haylen-guis"));
+    ASSERT_TRUE(getEngine().getScenes().isTransitioning());
+    EXPECT_TRUE(hasDrawn("##haylen-above"));
     EXPECT_TRUE(hasDrawn("##haylen-leaving"));
+
+    // The effect of the test draws nothing, so whatever the swapchain draws is the GUI above it.
+    int screenDraws = 0;
+    for (const gpu::NullDevice::PassRecord& pass : getFixture().host().getGpu().getLastFrame().passes) {
+        if (pass.swapchain) {
+            screenDraws += pass.draws;
+        }
+    }
+    EXPECT_GT(screenDraws, 0);
+
+    clearEvents();
+    click(*hud, "coins");
+    EXPECT_TRUE(getEventNames().empty());
+
+    frames(60);
+    ASSERT_FALSE(getEngine().getScenes().isTransitioning());
+    EXPECT_FALSE(hasDrawn("##haylen-above"));
+    click(*hud, "coins");
+    EXPECT_EQ(findLastEvent("click").id, "coins");
 }
 
 // A GUI lays out as it draws for the first time, so the frame it first draws in is not the complete frame that a splash screen hands over to.

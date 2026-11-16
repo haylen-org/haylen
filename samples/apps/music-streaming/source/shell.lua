@@ -1,4 +1,4 @@
--- The frame of the app: the tabs, the navigation between screens, the notices, the player that follows every screen and the layout that follows the width of the window. Phones show a bar of tabs at the bottom with a floating card of the song that plays above it, and wide windows show a sidebar with the playlists on the left and the player bar of a desktop across the bottom.
+-- The frame of the app: the tabs, the navigation between screens, the notices, the player that follows every screen and the layout that follows the width of the window. Phones show a bar of tabs at the bottom with a floating card of the song that plays above it, and wide windows show a sidebar with the playlists on the left and the player bar of a desktop across the bottom. The frame mounts once, and every screen lays out in its middle, so opening a screen changes only the middle and never builds the bars again.
 local scene = require('haylen.scene')
 local ui = require('haylen.ui')
 local viewport = require('haylen.viewport')
@@ -33,10 +33,17 @@ function Shell.isWide()
     return Shell.width() >= Style.wideWidth
 end
 
--- Mounts the notices, which stay above every screen, and shows the first tab.
+-- Mounts the frame and the notices, which stay above every screen, and shows the first tab.
 function Shell.start()
+    Shell.gui = ui.mount(Shell.frame(), {layer = 1, sharedFocus = true})
     Shell.notices = ui.mount(ui.toast{id = 'notice', position = 'top', duration = 2.5, indicator = 'icon'}, {layer = 10, sharedFocus = true})
+    Shell.adaptFrame()
     Shell.showTab('home')
+end
+
+-- The placement of the GUI of a screen: the middle of the frame, between the sidebar, the player and the bar of tabs.
+function Shell.middle()
+    return {gui = Shell.gui, id = 'middle'}
 end
 
 function Shell.notify(text, tone)
@@ -47,7 +54,7 @@ end
 function Shell.showTab(id, params)
     for _, tab in ipairs(Shell.tabs) do
         if tab.id == id then
-            Shell.current = id
+            Shell.select(id)
             if scene.size() > 1 then
                 scene.popToRoot()
             end
@@ -58,8 +65,19 @@ function Shell.showTab(id, params)
     end
 end
 
--- Pushes a screen over the current one with a slide, or with another transition.
-function Shell.open(Screen, params, transition)
+-- Pushes a screen over the current one with a slide, or with another transition. A screen of the same kind that already shows the same thing, named by the parameter `key`, such as an artist that its album opened from that artist, comes back instead, so the stack never holds two copies of it.
+function Shell.open(Screen, params, transition, key)
+    if key then
+        local screens = scene.list()
+        for level = #screens - 1, 1, -1 do
+            local shown = screens[level]
+            if shown and shown:is(Screen) and shown.params[key] == params[key] then
+                scene.popTo(level, Shell.backTransition)
+                window.setBackLeavesApp(level == 1 and Shell.current == 'home')
+                return
+            end
+        end
+    end
     window.setBackLeavesApp(false)
     return scene.push(Screen(params), transition or Shell.pushTransition)
 end
@@ -80,23 +98,43 @@ function Shell.openPlayer()
     Shell.open(require('screens.now-playing'), nil, Shell.riseTransition)
 end
 
--- Shows the sidebar and the player bar or the bar of tabs and the floating card of a screen built with `Shell.frame`, and tells the screen when the window crosses the wide width.
+-- Shows the sidebar and the player bar on a wide window, and the bar of tabs with the floating card of the song otherwise.
+function Shell.adaptFrame()
+    local wide = Shell.isWide()
+    if Shell.wide == wide then
+        return
+    end
+    Shell.wide = wide
+    Shell.gui:set('sidebar', {visible = wide})
+    Shell.gui:set('phone', {visible = not wide})
+end
+
+-- Keeps the frame current and tells a screen when the window crosses the wide width.
 function Shell.adapt(page)
+    Shell.adaptFrame()
     local wide = Shell.isWide()
     if page.wide == wide then
         return
     end
     page.wide = wide
-    local gui = page.gui
-    if gui:has('sidebar') then
-        gui:set('sidebar', {visible = wide})
-        gui:set('desk', {visible = wide})
-        gui:set('phone', {visible = not wide})
-        page.playerShown = nil
-    end
     if page.layoutChanged then
         page:layoutChanged(wide)
     end
+end
+
+-- Marks the tab that shows, in the sidebar and in the bar of tabs.
+function Shell.select(id)
+    if Shell.current == id and Shell.gui:has('side-' .. id) then
+        return
+    end
+    Shell.current = id
+    local side, bar = {}, {}
+    for _, tab in ipairs(Shell.tabs) do
+        side[#side + 1] = Shell.sideTab(tab, id)
+        bar[#bar + 1] = Shell.barTab(tab, id)
+    end
+    Shell.gui:replaceChildren('sideTabs', side)
+    Shell.gui:replaceChildren('barTabs', bar)
 end
 
 -- A tab of the bar of a phone: the icon over the name, filled and bright while it shows.
@@ -106,7 +144,7 @@ function Shell.barTab(tab, current)
         iconColor = selected and 'text' or 'textMuted', accessibilityLabel = tab.text,
         style = {colors = {text = selected and 'text' or 'textMuted'}, fonts = {button = {size = Style.type.caption}}},
         onClick = function()
-            if not selected then
+            if not selected or scene.size() > 1 then
                 Shell.showTab(tab.id)
             end
         end}
@@ -133,16 +171,14 @@ function Shell.wordmark()
     }
 end
 
--- The sidebar of a wide window: the wordmark, the tabs and the playlists of the person.
-function Shell.sidebar(current)
+-- The sidebar of a wide window: the wordmark, the tabs, which arrive with `Shell.select`, and the playlists of the person.
+function Shell.sidebar()
     local space = Style.space
     local Catalog = require('data.catalog')
     local column = {gap = space.xxs, padding = {space.m, 0, space.s, 0}, align = 'stretch',
         ui.row{padding = {0, space.s, space.l, space.s}, Shell.wordmark()},
+        ui.column{id = 'sideTabs', gap = space.xxs, align = 'stretch'},
     }
-    for _, tab in ipairs(Shell.tabs) do
-        column[#column + 1] = Shell.sideTab(tab, current)
-    end
     column[#column + 1] = ui.divider{margin = {space.s, space.s}}
     column[#column + 1] = ui.label{text = 'Your playlists', font = 'caption', color = 'textMuted', margin = {space.xs, space.s}}
     local items = {}
@@ -150,27 +186,24 @@ function Shell.sidebar(current)
         items[index] = {id = playlist.id, text = playlist.name, caption = playlist.caption, image = playlist.cover, iconColor = false}
     end
     column[#column + 1] = ui.list{id = 'sidePlaylists', items = items, onSelect = function(event)
-        Shell.open(require('screens.collection'), {collection = event.item})
+        Shell.open(require('screens.collection'), {collection = event.item}, nil, 'collection')
     end}
     return ui.row{id = 'sidebar', visible = false, gap = 0, align = 'stretch',
         ui.panel{width = Style.size.sidebar, padding = space.xs, align = 'stretch', style = {metrics = {panelRadius = 0}}, ui.scroll{grow = 1, height = 0, ui.column(column)}},
     }
 end
 
--- Wraps the content of a screen with the sidebar and the player bar of a wide window, or with the floating card of the song and the bar of tabs of a phone.
-function Shell.frame(current, content, onCancel)
+-- The frame: the sidebar and the player bar of a wide window, or the floating card of the song and the bar of tabs of a phone, around the middle where the screens lay out. The bars paint the night of the app, so the screens that slide in the middle pass under them.
+function Shell.frame()
     local space = Style.space
-    local bar = {gap = 0, height = Style.size.tabBar, padding = {0, space.l}}
-    for _, tab in ipairs(Shell.tabs) do
-        bar[#bar + 1] = Shell.barTab(tab, current)
-    end
-    return ui.column{gap = 0, onCancel = onCancel or Shell.back,
+    local surface = {colors = {panel = 'window'}, metrics = {panelRadius = 0}}
+    return ui.column{gap = 0, onCancel = Shell.back,
         ui.row{grow = 1, gap = 0, align = 'stretch',
-            Shell.sidebar(current),
-            ui.column{grow = 1, gap = 0, align = 'stretch', content},
+            Shell.sidebar(),
+            ui.column{id = 'middle', grow = 1, gap = 0, align = 'stretch'},
         },
-        ui.column{id = 'desk', visible = false, gap = 0, ui.divider{}, Shell.playerBar()},
-        ui.column{id = 'phone', gap = 0, Shell.miniPlayer(), ui.row(bar)},
+        ui.panel{id = 'desk', visible = false, gap = 0, padding = 0, style = surface, ui.divider{}, Shell.playerBar()},
+        ui.panel{id = 'phone', gap = 0, padding = 0, style = surface, Shell.miniPlayer(), ui.row{id = 'barTabs', gap = 0, height = Style.size.tabBar, padding = {0, space.l}}},
     }
 end
 
@@ -265,19 +298,19 @@ end
 -- The colors of the round buttons of the player in the color of the text, with the icon in the color of the night.
 Shell.lightColors = {accent = Style.color.text, accentHover = '#FFFFFFFF', accentStrong = '#FFD9D5EA', onAccent = Style.color.night}
 
--- Follows the player in the card of a phone or the bar of a wide window: the song and its state when they change, and the position every frame.
+-- Follows the player in the card of a phone or the bar of a wide window: the song and its state when they change, and the position every frame. The screen of the player hides the card and the bar, which would repeat it.
 function Shell.showPlayer(page)
-    local gui = page.gui
-    if not gui:has('mini') then
-        return
-    end
+    local gui = Shell.gui
     local Player = require('player')
     local Catalog = require('data.catalog')
     local track = Player.current()
-    local key = track and (track.id .. tostring(Player.playing) .. tostring(Player.loading) .. tostring(track.liked) .. tostring(Player.shuffle) .. Player.repeatMode) or ''
-    if page.playerShown ~= key then
-        page.playerShown = key
-        gui:set('mini', {visible = track ~= nil})
+    local hidden = page.showsPlayer == true
+    local layout = tostring(hidden) .. tostring(Shell.wide)
+    local key = track and (track.id .. tostring(Player.playing) .. tostring(Player.loading) .. tostring(track.liked) .. tostring(Player.shuffle) .. Player.repeatMode .. layout) or layout
+    if Shell.playerShown ~= key then
+        Shell.playerShown = key
+        gui:set('mini', {visible = track ~= nil and not hidden})
+        gui:set('desk', {visible = Shell.wide and not hidden})
         if track then
             local name = Player.loading and 'Making the song' or track.name
             local icon = Shell.icon(Player.playing and 'pause' or 'play')
@@ -300,16 +333,16 @@ function Shell.showPlayer(page)
     end
     local elapsed = Player.elapsed()
     local value = math.floor(elapsed / track.length * 400) / 400
-    if page.playerValue ~= value then
-        page.playerValue = value
+    if Shell.playerValue ~= value then
+        Shell.playerValue = value
         gui:set('miniProgress', {value = value})
         if not Shell.scrubbing then
             gui:set('barPosition', {value = value})
         end
     end
     local second = math.floor(elapsed)
-    if page.playerSecond ~= second then
-        page.playerSecond = second
+    if Shell.playerSecond ~= second then
+        Shell.playerSecond = second
         gui:set('barElapsed', {text = Catalog.duration(second)})
     end
 end

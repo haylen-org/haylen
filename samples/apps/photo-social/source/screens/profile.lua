@@ -41,10 +41,7 @@ function Profile:enter()
         Shell.centered(980, ui.column{gap = 0, list}, 1),
         self:editDialog(),
     }
-    self:mountGui(person.me and Shell.frame('profile', content) or ui.column{gap = 0, onCancel = Shell.back, content})
-    if person.me then
-        Shell.followUnread(self)
-    end
+    self:mountGui(content)
     self.list = self.gui:collection('grid')
     events.on('socialChanged', function()
         self:showGrid()
@@ -131,7 +128,7 @@ function Profile:headAction(part)
         if person.me then
             Shell.showTab('create')
         else
-            Shell.open(require('screens.chat'), {conversation = Chats.with(person).id})
+            Shell.open(require('screens.chat'), {conversation = Chats.with(person).id}, nil, 'conversation')
         end
     end
 end

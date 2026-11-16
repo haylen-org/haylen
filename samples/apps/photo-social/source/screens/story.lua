@@ -23,7 +23,7 @@ Story.onPhoto = {colors = {text = '#FFFFFFFF', hover = '#26FFFFFF', pressed = '#
 function Story:enter()
     self.storyIndex = self.params.index
     self.frame, self.elapsed = 1, 0
-    self:mountGui(ui.stack{id = 'root', onCancel = Shell.back}, {placement = 'screen'})
+    self:mountGui(ui.stack{id = 'root'})
 end
 
 function Story:layoutChanged(wide)

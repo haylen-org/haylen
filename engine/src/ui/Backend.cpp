@@ -721,6 +721,7 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
     spriteDraws.clear();
     sprites.clear();
     renderedLists.clear();
+    deferredLists.clear();
     ImGui::NewFrame();
     scrollArbiter->beginFrame(deltaSeconds);
     ImGui::ErrorRecoveryStoreState(&recovery->state);
@@ -946,6 +947,36 @@ void Backend::renderWindow(graphics2d::Renderer& renderer, const ImGuiWindow& ro
     drawLists(renderer, drawnLists);
 }
 
+void Backend::beginDeferring() {
+    deferredFrom = imguiContext->WindowsActiveCount;
+}
+
+// Every window that began since `beginDeferring` has an order of this frame from that count on, whether it is a child window, a popup or the window of a component.
+void Backend::endDeferring() {
+    for (const ImGuiWindow* window : imguiContext->Windows) {
+        if (window->Active && window->BeginOrderWithinContext >= deferredFrom) {
+            deferredLists.push_back(window->DrawList);
+        }
+    }
+}
+
+// The deferred windows draw in the order of the draw data of the frame, so they cover each other as they would have in it.
+void Backend::renderDeferred(graphics2d::Renderer& renderer) {
+    if (deferredLists.empty()) {
+        return;
+    }
+    makeCurrent();
+    drawnLists.clear();
+    const ImDrawData& data = *ImGui::GetDrawData();
+    for (const ImDrawList* list : std::span<ImDrawList* const>(data.CmdLists.Data, static_cast<std::size_t>(data.CmdLists.Size))) {
+        if (std::ranges::find(deferredLists, list) != deferredLists.end()) {
+            drawnLists.push_back(list);
+        }
+    }
+    deferredLists.clear();
+    drawLists(renderer, drawnLists);
+}
+
 void Backend::collectLists(const ImGuiWindow& window, std::vector<const ImDrawList*>& lists) {
     if (!window.Active || window.Hidden) {
         return;
@@ -984,9 +1015,9 @@ void Backend::drawWindow(const ImGuiWindow& imguiWindow) {
     }
 }
 
-// A list draws once a frame, so a child window drawn inside its parent, or a window drawn before the frame ends, is left out when the lists of ImGui reach it.
+// A list draws once a frame, so a child window drawn inside its parent, or a window drawn before the frame ends, is left out when the lists of ImGui reach it, and a deferred list waits for `renderDeferred`.
 void Backend::drawList(const ImDrawList& list) {
-    if (std::ranges::find(renderedLists, &list) != renderedLists.end()) {
+    if (std::ranges::find(renderedLists, &list) != renderedLists.end() || std::ranges::find(deferredLists, &list) != deferredLists.end()) {
         return;
     }
     renderedLists.push_back(&list);

@@ -15,7 +15,7 @@ local Home = haylen.class('Home', Page)
 function Home:enter()
     local space = Style.space
     self.glow = Catalog.mixes[1].genre
-    self:mountGui(Shell.frame('home', ui.scroll{grow = 1, height = 0,
+    self:mountGui(ui.scroll{grow = 1, height = 0,
         Shell.centered(Style.size.page, ui.column{id = 'page', gap = space.s, padding = {space.l, space.m, space.xl, space.m},
             ui.label{text = Home.greeting(), font = 'title', margin = {0, space.xs, space.xs, space.xs}},
             ui.column{id = 'featured', margin = {0, space.xs}},
@@ -30,7 +30,7 @@ function Home:enter()
             Widgets.section('Played lately'),
             Widgets.shelf('albums', 'album'),
         }),
-    }))
+    })
     local releases, albums, artists = {}, {}, {}
     for index = #Catalog.albums, 1, -1 do
         local album = Catalog.albums[index]

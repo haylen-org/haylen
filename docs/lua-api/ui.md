@@ -3586,7 +3586,7 @@ Builds a GUI from the node table `tree`, shows it and returns its [`Gui`](#gui).
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `placement` | string | `'safe'` | The value `'safe'` lays out the root inside the safe area of the screen, away from notches and system bars. The value `'screen'` lays it out over the whole visible screen. |
+| `placement` | string or table | `'safe'` | The value `'safe'` lays out the root inside the safe area of the screen, away from notches and system bars. The value `'screen'` lays it out over the whole visible screen. A region, a table `{gui = frame, id = 'middle'}`, lays it out in the area of the node `id` of the mounted GUI `gui`, as [regions](#regions) describe. |
 | `layer` | integer | `0` | GUIs draw in ascending layer order. GUIs on the same layer draw in the order they were mounted, so a later GUI covers an earlier one with everything it holds, the content of its scrolls included. |
 | `owner` | table or userdata | none | Unmounts the GUI when the owner is released, such as a scene when it unloads, or collected, like the other [owners of `haylen.events`](events.md#owners). |
 | `sharedFocus` | boolean | `false` | Joins the navigation space of the other GUIs that share the focus, as [`gui.sharedFocus`](#guisharedfocus) describes. |
@@ -3595,7 +3595,7 @@ A scene of the stack as `owner` also makes the GUI part of the scene. The GUI dr
 
 The root fills the whole area when its `align` is `'stretch'`, which is the default of containers. With `'start'`, `'center'` or `'end'`, the root keeps its measured size and sits at the top left, the center or the bottom right of the area. Mounting publishes the `guiMounted` event of [`haylen.events`](events.md) with the table `{gui}`.
 
-An unknown option raises `Unknown option "<key>".`. A placement other than `safe` or `screen` raises `The "placement" option must be "safe" or "screen".`. An owner that is not a table or a userdata raises `An owner must be a table or a userdata, not <type>.`. A tree that breaks the [screen format](#screen-format), or has an invalid property, raises an error that names the problem, and nothing is mounted. Examples are `There is no UI component kind named "spaceship".` and `The property "width" of a "label" must be a non-negative number or "auto".`.
+An unknown option raises `Unknown option "<key>".`. A placement other than `safe`, `screen` or a region raises `The "placement" option must be "safe", "screen" or a region such as {gui = frame, id = "content"}.`. The errors of a region are listed under [regions](#regions). An owner that is not a table or a userdata raises `An owner must be a table or a userdata, not <type>.`. A tree that breaks the [screen format](#screen-format), or has an invalid property, raises an error that names the problem, and nothing is mounted. Examples are `There is no UI component kind named "spaceship".` and `The property "width" of a "label" must be a non-negative number or "auto".`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -3616,6 +3616,33 @@ local ui = require('haylen.ui')
 scene.push({
     enter = function(self)
         ui.mount(ui.label{text = 'Level 1'}, {owner = self})
+    end,
+})
+```
+
+### Regions
+
+An app with bars around its pages, such as a tab bar or a sidebar, mounts the bars once as a frame, a GUI that no scene owns, and lays out the GUI of every page in the middle of the frame. The option `placement = {gui = frame, id = 'middle'}` names the frame and the id of the node whose area the page takes. So opening a page changes only the middle, and the bars keep their state, their focus and the place of their scroll for as long as the app runs. The [UI guide](../ui/ui.md#an-app-frame-with-pages) shows the whole pattern.
+
+- The GUI lays out in the area where the node drew in this frame or the last one, and it follows the node in the frame the node moves or resizes.
+- It draws right after the GUI of its region, whatever their layers, so it takes no `layer`.
+- It draws nothing while the GUI of its region is unmounted or hidden, or no longer draws the node.
+- During an effect that shows both scenes, such as a slide, the frame stays on the screen above the effect and takes no input until the effect ends, while the pages go into the images of their scenes, so only the middle moves.
+
+A region whose table has another key raises `Unknown option "<key>".`. One without a GUI raises `The region of the "placement" option names its GUI with "gui".`, and one without an id raises `The region of the "placement" option names its node with "id".`. A GUI that is not mounted raises `The GUI of a region must be mounted.`, a GUI that lies in a region itself raises `The GUI of a region cannot lie in a region itself.`, and an id that the GUI lacks raises `The GUI of the region has no node with the id "<id>".`. A `layer` with a region raises `A GUI in a region draws right after the GUI of its region, so it takes no "layer".`.
+
+```lua
+local scene = require('haylen.scene')
+local ui = require('haylen.ui')
+
+local frame = ui.mount(ui.column{gap = 0,
+    ui.column{id = 'middle', grow = 1},
+    ui.row{height = 96, ui.button{text = 'Home', grow = 1}, ui.button{text = 'Search', grow = 1}},
+}, {layer = 1, sharedFocus = true})
+
+scene.push({
+    enter = function(self)
+        ui.mount(ui.label{text = 'Home'}, {owner = self, sharedFocus = true, placement = {gui = frame, id = 'middle'}})
     end,
 })
 ```
@@ -4174,7 +4201,7 @@ local page = ui.mount(ui.column{ui.button{text = 'Album', autofocus = true}}, {s
 
 ### gui.placement
 
-A read-only string, `'safe'` or `'screen'`, as `ui.mount` received it.
+A read-only string, `'safe'`, `'screen'` or `'region'`, as `ui.mount` received it.
 
 ```lua
 local ui = require('haylen.ui')

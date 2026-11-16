@@ -67,7 +67,7 @@ function Shell.back()
     end
 end
 
--- Opens a page of the menu: over the map with the menu closed.
+-- Opens a page of the menu, or a new ride from a past trip, over the map with everything else closed, so going back always returns to the map.
 function Shell.openPage(Screen, params)
     if scene.size() > 1 then
         scene.popToRoot()

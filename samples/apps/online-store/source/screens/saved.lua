@@ -13,7 +13,7 @@ local Saved = haylen.class('Saved', Page)
 
 function Saved:enter()
     local space = Style.space
-    self:mountGui(Shell.frame(self, 'saved', ui.column{grow = 1, gap = 0,
+    self:mountGui(Shell.tabPage(ui.column{grow = 1, gap = 0,
         Shell.centered(Style.size.page, ui.column{gap = space.xxs, padding = {space.l, space.l, space.s, space.l},
             ui.label{text = 'Saved for later', font = 'title'},
             ui.label{id = 'count', text = '', color = 'textMuted'},

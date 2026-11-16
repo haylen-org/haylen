@@ -6,9 +6,11 @@
 #include <format>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -249,9 +251,13 @@ void UiPlugin::deliverAtOnce(ui::Gui& gui, const ui::Event& event) {
     lua::Runtime::runReporting(engine.getLuaState(), [&] { deliver(engine, gui, event); });
 }
 
-// Every view draws the GUIs of its scenes, a view that leaves through a transition into its own image before the frame ends, and the current view also the GUIs that belong to no scene, which ends the frame.
+// Every view draws the GUIs of its scenes, a view that leaves through a transition into its own image before the frame ends, and the current view also the GUIs that belong to no scene, which ends the frame. During an effect that shows both scenes, such as a slide, the GUIs of no scene wait for the view of the effect, which draws them on the screen above it, so the bars of an app stay in place while its pages change.
 void UiPlugin::renderUi(core::Engine& engine, const core::SceneView& view) {
     ui::Backend& drawing = getBackend();
+    if (view.effect && !view.current) {
+        drawing.renderDeferred(engine.getRenderer2D());
+        return;
+    }
     if (!drawing.isFrameActive()) {
         return;
     }
@@ -268,8 +274,8 @@ void UiPlugin::renderUi(core::Engine& engine, const core::SceneView& view) {
     }
 }
 
-// Collects the GUIs a view draws in layer order, into storage every frame reuses: those of its scenes, and in the current view those of no scene too. A scene in the current view and in a leaving view, such as one under a transparent scene pushed through an effect that shows both, keeps its GUIs in the current view.
-void UiPlugin::collectGuis(core::Engine& engine, const core::SceneView& view) {
+// Collects the GUIs a view draws in layer order, into storage every frame reuses: those of its scenes, those of no scene, or both. A scene in the current view and in a leaving view, such as one under a transparent scene pushed through an effect that shows both, keeps its GUIs in the current view. A GUI of a region draws right after the GUI of its region, which lays out the area first.
+void UiPlugin::collectGuis(core::Engine& engine, const core::SceneView& view, bool sceneGuis, bool freeGuis) {
     const std::vector<core::SceneView>& views = engine.getScenes().getViews();
     const auto current = std::ranges::find_if(views, &core::SceneView::current);
     // clang-format off
@@ -281,17 +287,44 @@ void UiPlugin::collectGuis(core::Engine& engine, const core::SceneView& view) {
     drawnGuis.clear();
     for (const Mounted& entry : guis) {
         if (!entry.scened) {
-            if (view.current) {
+            if (freeGuis) {
                 drawnGuis.push_back(&entry);
             }
             continue;
         }
         const std::shared_ptr<const core::Scene> scene = entry.scene.lock();
-        if (scene && shows(view, scene.get()) && (view.current || current == views.end() || !shows(*current, scene.get()))) {
+        if (sceneGuis && scene && shows(view, scene.get()) && (view.current || current == views.end() || !shows(*current, scene.get()))) {
             drawnGuis.push_back(&entry);
         }
     }
-    std::ranges::sort(drawnGuis, [](const Mounted* lhs, const Mounted* rhs) { return lhs->layer != rhs->layer ? lhs->layer < rhs->layer : lhs->order < rhs->order; });
+    // clang-format off
+    std::ranges::sort(drawnGuis, [](const Mounted* lhs, const Mounted* rhs) {
+        const bool lhsRegion = lhs->gui->getPlacement() == ui::Placement::Region;
+        const bool rhsRegion = rhs->gui->getPlacement() == ui::Placement::Region;
+        return std::tie(lhs->drawLayer, lhs->drawOrder, lhsRegion, lhs->order) < std::tie(rhs->drawLayer, rhs->drawOrder, rhsRegion, rhs->order);
+    });
+    // clang-format on
+}
+
+// The area of a GUI of a region is where the node of its region drew in this frame or the last one, so it follows the GUI of its region in the frame that GUI changes, and it has none while that GUI is gone, hidden or no longer draws the node.
+std::optional<math::Rect> UiPlugin::findArea(const Mounted& entry) const {
+    const ui::Backend& drawing = *backend;
+    if (entry.gui->getPlacement() == ui::Placement::Safe) {
+        return drawing.getLiftedSafeRect();
+    }
+    if (entry.gui->getPlacement() == ui::Placement::Screen) {
+        return drawing.getLiftedDisplayRect();
+    }
+
+    const std::shared_ptr<ui::Gui> host = entry.host.lock();
+    if (!host || !host->isVisible() || !isMounted(*host)) {
+        return std::nullopt;
+    }
+    const ui::Component* node = host->find(entry.hostNode);
+    if (node == nullptr || node->getDrawnFrame() + 1 < context->getFrame() || node->getBounds().isEmpty()) {
+        return std::nullopt;
+    }
+    return node->getBounds();
 }
 
 // Collections bind their cells and run their binders before anything draws, where Lua may run. A binder may unmount other GUIs, so the pass walks a copy and skips GUIs that are gone.
@@ -322,13 +355,16 @@ void UiPlugin::beginWindow(const char* name, ImGuiWindowFlags flags) {
 
 // Every GUI moves up together while the on-screen keyboard would cover the focused text field.
 void UiPlugin::drawGuis() {
-    ui::Backend& drawing = getBackend();
     for (const Mounted* entry : drawnGuis) {
+        const std::optional<math::Rect> area = findArea(*entry);
+        if (!area) {
+            continue;
+        }
         if (entry->gui->getRoot().getDrawnFrame() == 0) {
             guiAppeared = true;
         }
         ImGui::PushID(entry->gui.get());
-        entry->gui->draw(*context, entry->gui->getPlacement() == ui::Placement::Safe ? drawing.getLiftedSafeRect() : drawing.getLiftedDisplayRect());
+        entry->gui->draw(*context, *area);
         ImGui::PopID();
         shownGuis.push_back(entry->gui.get());
     }
@@ -338,7 +374,7 @@ void UiPlugin::drawGuis() {
 void UiPlugin::drawLeaving(core::Engine& engine, const core::SceneView& view) {
     beginWindow("##haylen-leaving", ImGuiWindowFlags_NoInputs);
     focus.suspendTargets(true);
-    collectGuis(engine, view);
+    collectGuis(engine, view, true, false);
     drawGuis();
     focus.suspendTargets(false);
     const ImGuiWindow& window = *ImGui::GetCurrentWindow();
@@ -346,11 +382,29 @@ void UiPlugin::drawLeaving(core::Engine& engine, const core::SceneView& view) {
     getBackend().renderWindow(engine.getRenderer2D(), window);
 }
 
+// The GUIs of no scene take no input and no focus during an effect that shows both scenes. They draw first, so the GUIs of their regions lay out in the areas of this frame, but they reach the screen only once the effect drew.
+void UiPlugin::drawAbove(core::Engine& engine, const core::SceneView& view) {
+    ui::Backend& drawing = getBackend();
+    drawing.beginDeferring();
+    beginWindow("##haylen-above", ImGuiWindowFlags_NoInputs);
+    focus.suspendTargets(true);
+    collectGuis(engine, view, false, true);
+    drawGuis();
+    focus.suspendTargets(false);
+    ImGui::End();
+    drawing.endDeferring();
+}
+
 void UiPlugin::drawCurrent(core::Engine& engine, const core::SceneView& view) {
     ui::Backend& drawing = getBackend();
+    const bool aboveTransition = view.target.isValid() && engine.getScenes().isShowingBothScenes();
+    if (aboveTransition) {
+        drawAbove(engine, view);
+    }
+
     beginWindow("##haylen-guis", ImGuiWindowFlags_NoNavInputs);
     drawing.setTransparentWindow();
-    collectGuis(engine, view);
+    collectGuis(engine, view, true, !aboveTransition);
     drawGuis();
 
     // The GUIs that no view shows, such as those of a covered scene, hear that they stopped drawing.
@@ -504,14 +558,28 @@ std::shared_ptr<ui::Gui> UiPlugin::createGui(const core::Json& tree, ui::Placeme
     return std::make_shared<ui::Gui>(components, tree, placement);
 }
 
-void UiPlugin::mount(std::shared_ptr<ui::Gui> gui, int layer, const std::shared_ptr<const core::Scene>& scene) {
+void UiPlugin::mount(std::shared_ptr<ui::Gui> gui, int layer, const std::shared_ptr<const core::Scene>& scene, const std::optional<Region>& region) {
     if (owner == nullptr) {
         throw std::logic_error("The UI plugin has not started.");
     }
     if (!gui || isMounted(*gui)) {
         throw std::invalid_argument("Only a GUI that is not mounted can be mounted.");
     }
-    guis.push_back({.gui = gui, .scene = scene, .scened = scene != nullptr, .layer = layer, .order = nextOrder++});
+    if (region.has_value() != (gui->getPlacement() == ui::Placement::Region)) {
+        throw std::invalid_argument("A GUI takes a region exactly when its placement is the region placement.");
+    }
+
+    Mounted entry{.gui = gui, .scene = scene, .scened = scene != nullptr, .layer = layer, .order = nextOrder++};
+    entry.drawLayer = layer;
+    entry.drawOrder = entry.order;
+    if (region) {
+        const Mounted& host = findRegionHost(*region);
+        entry.host = region->gui;
+        entry.hostNode = region->node;
+        entry.drawLayer = host.drawLayer;
+        entry.drawOrder = host.drawOrder;
+    }
+    guis.push_back(std::move(entry));
     gui->attach([this](ui::Gui& target, const ui::Event& event) { deliverAtOnce(target, event); });
     owner->getEvents().emitWith(core::LifecycleEvent::kGuiMounted, gui);
 }
@@ -532,6 +600,24 @@ bool UiPlugin::unmount(const ui::Gui& gui) {
     owner->getEvents().emitWith(core::LifecycleEvent::kGuiUnmounted, unmounted);
     ui::UiLua::forgetGui(owner->getLuaState(), gui);
     return true;
+}
+
+const UiPlugin::Mounted& UiPlugin::findRegionHost(const Region& region) const {
+    const auto found = std::ranges::find_if(guis, [&](const Mounted& entry) { return entry.gui == region.gui; });
+    if (!region.gui || found == guis.end()) {
+        throw std::invalid_argument("The GUI of a region must be mounted.");
+    }
+    if (region.gui->getPlacement() == ui::Placement::Region) {
+        throw std::invalid_argument("The GUI of a region cannot lie in a region itself.");
+    }
+    if (region.gui->find(region.node) == nullptr) {
+        throw std::invalid_argument(std::format("The GUI of the region has no node with the id \"{}\".", region.node));
+    }
+    return *found;
+}
+
+void UiPlugin::checkRegion(const Region& region) const {
+    static_cast<void>(findRegionHost(region));
 }
 
 bool UiPlugin::isMounted(const ui::Gui& gui) const {

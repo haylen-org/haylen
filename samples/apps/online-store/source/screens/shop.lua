@@ -13,7 +13,7 @@ local Shop = haylen.class('Shop', Page)
 Shop.shelfSize = 14
 
 function Shop:enter()
-    self:mountGui(Shell.frame(self, 'home', ui.scroll{id = 'scroll', grow = 1, height = 0,
+    self:mountGui(Shell.tabPage(ui.scroll{id = 'scroll', grow = 1, height = 0,
         Shell.centered(Style.size.page, ui.column{id = 'page', gap = Style.space.m, padding = {Style.space.l, Style.space.l, Style.space.xxl, Style.space.l},
             ui.column{id = 'campaign'},
             Widgets.section('Shop by category'),

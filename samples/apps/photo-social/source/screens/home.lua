@@ -13,7 +13,7 @@ local Home = haylen.class('Home', Page)
 
 function Home:enter()
     local space = Style.space
-    self:mountGui(Shell.frame('home', ui.column{grow = 1, gap = 0,
+    self:mountGui(ui.column{grow = 1, gap = 0,
         ui.column{id = 'topBar', gap = 0,
             ui.row{height = Style.size.header, padding = {0, space.xs, 0, space.m}, Shell.wordmark(44), ui.spacer{grow = 1},
                 ui.button{id = 'explore', icon = Shell.icon('search'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Explore', tooltip = 'Explore', onClick = function()
@@ -24,8 +24,7 @@ function Home:enter()
         },
         ui.row{id = 'body', grow = 1, gap = 0, align = 'stretch'},
         Widgets.friendDialog(self),
-    }))
-    Shell.followUnread(self)
+    })
     events.on('socialChanged', function(changed)
         if self.feed and Social.post(changed.id) == changed then
             self.feed:setItems(Social.feed())
