@@ -24,6 +24,7 @@
 #include "platform/Services.hpp"
 #include "platform/sdl/Host.hpp"
 #include "platform/sdl/WaylandDisplays.hpp"
+#include "platform/web/PageModifiers.hpp"
 
 #if defined(__APPLE__)
 #include <TargetConditionals.h>
@@ -33,7 +34,6 @@
 #elif defined(__EMSCRIPTEN__)
 #include <emscripten/emscripten.h>
 
-#include "platform/web/PageModifiers.hpp"
 #include "platform/web/WebEntry.hpp"
 #include "platform/web/WebPage.hpp"
 #elif defined(_WIN32)
