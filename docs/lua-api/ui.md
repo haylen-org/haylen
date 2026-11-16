@@ -3974,7 +3974,7 @@ Presents a screen over everything the app shows and returns its [`Presentation`]
 
 | Style | What it is |
 | --- | --- |
-| `'sheet'` | A surface of the theme `panel` color that rises from the bottom. On a compact screen it fills the width and rests at one of its `detents`. On a wide screen a `'form'` sheet floats as a rounded card in the middle, and a `'page'` sheet rests at its detents along the bottom with a bounded width. |
+| `'sheet'` | A surface of the theme `panel` color that rises from the bottom. On a compact screen it fills the width and rests at one of its `detents`. On a wide screen a `'form'` sheet floats as a rounded card in the middle without a grabber, as tall as its screen measures when every detent is `'fit'` or a number and otherwise as tall as `maxHeight`, and a `'page'` sheet rests at its detents along the bottom with a bounded width. |
 | `'fullScreen'` | A surface of the theme `background` color over the whole screen, which lays out the screen in the safe area. |
 | `'dialog'` | The screen fades in over the dimmed screen and lays out in the safe area, where it draws its own card, usually a [`dialog`](#uidialogproperties). |
 | `'drawer'` | A panel the height of the screen that slides in from the start edge, the right edge of a right-to-left interface. |
@@ -3990,7 +3990,7 @@ A screen is compact while its safe area is narrower than 824 UI units, or than t
 | `modal` | boolean | `true` | The value `false` leaves the input and the focus of the app to the GUIs under a sheet, which draws no backdrop, such as the queue of a player that stays open while the person browses. Only a sheet can be not modal. |
 | `detents` | list | `{'large'}` | The heights a sheet rests at, from the lowest to the highest: `'medium'` for half the screen, `'large'` for nearly all of it, `'fit'` for the height its screen measures, or a number, the height of its screen in UI units. |
 | `detent` | integer | `1` | The place in `detents` of the detent the sheet opens at. |
-| `grabber` | boolean | `true` with more than one detent | Shows the grabber along the top of a sheet, which a drag moves and a tap moves to the next detent. |
+| `grabber` | boolean | `true` with more than one detent | Shows the grabber along the top of a sheet that rests at its detents, which a drag moves and a tap moves to the next detent. A card on a wide screen has none. |
 | `size` | string | `'form'` | How a sheet shows on a wide screen: `'form'` or `'page'`. |
 | `maxWidth` | number | `760` | The widest that a form sheet grows on a wide screen, in UI units. |
 | `maxHeight` | number | `1000` | The tallest that a form sheet grows on a wide screen, in UI units. |
@@ -4382,7 +4382,7 @@ end
 | `dismissible` | boolean | Whether the person dismisses it. Read only. |
 | `modal` | boolean | Whether it takes the input of the GUIs under it. Read only. |
 | `dismissed` | boolean | Whether the presentation leaves or left. Read only. |
-| `detent` | integer | The place in `detents` of the detent a sheet rests at. Setting it glides the sheet there. A place out of the list raises `A sheet rests at the place of one of its detents, from 1 to <count>.`. |
+| `detent` | integer | The place in `detents` of the detent a sheet rests at. Setting it glides the sheet there, and a card on a wide screen stays where it is and rests there once the screen is compact. A place out of the list raises `A sheet rests at the place of one of its detents, from 1 to <count>.`. |
 | `result` | promise | A promise that resolves with the result once the presentation left, or with `nil` when the person dismissed it, for `await` in a coroutine. The same promise every time. Read only. |
 
 ```lua

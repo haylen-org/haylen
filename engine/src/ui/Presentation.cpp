@@ -99,7 +99,7 @@ void Presentation::setDetent(std::size_t index) {
         return;
     }
 
-    if (lastFrame) {
+    if (lastFrame && !isCard(*lastFrame)) {
         const float shown = getSheetLayout(*lastFrame).surface.y;
         offset = shown - getDetentTop(*lastFrame, index);
     }
@@ -180,6 +180,10 @@ bool Presentation::isCompact(const Frame& frame) const {
     return narrow || frame.safe.height < kSheetMargin * 4.0F;
 }
 
+bool Presentation::isCard(const Frame& frame) const {
+    return options.style == Style::Sheet && options.size == Size::Form && !isCompact(frame);
+}
+
 bool Presentation::isSheet(const Frame& frame) const {
     return options.style == Style::Sheet || (options.style == Style::Popover && isCompact(frame));
 }
@@ -229,24 +233,24 @@ float Presentation::getAreaWidth(const Frame& frame) const {
     return getLayout(frame).area.width;
 }
 
-// A sheet rests at its detent, grows and shrinks as a drag moves it between detents, stretches a little past its highest detent, and moves down whole below its lowest one. A form sheet on a wide screen floats as a card in the middle that a drag moves down whole.
+// A sheet rests at its detent, grows and shrinks as a drag moves it between detents, stretches a little past its highest detent, and moves down whole below its lowest one. A form sheet on a wide screen floats as a card in the middle that a drag moves down whole, and since it rests at no detent it shows no grabber.
 Presentation::Layout Presentation::getSheetLayout(const Frame& frame) const {
     const bool compact = isCompact(frame);
-    const bool grabbed = options.grabber.value_or(options.detents.size() > 1);
-    const float band = grabbed ? kGrabberBand : 0.0F;
     const float radius = frame.radius;
     Layout layout{.compact = compact};
-    if (!compact && options.size == Size::Form && options.style == Style::Sheet) {
+    if (isCard(frame)) {
         const float width = std::min(options.maxWidth, frame.safe.width - kSheetMargin * 2.0F);
-        const float height = std::min(options.maxHeight, frame.safe.height - kSheetMargin * 2.0F);
+        const float height = std::min(getCardHeight(frame), frame.safe.height - kSheetMargin * 2.0F);
         const float moved = offset >= 0.0F ? offset : offset * kStretch;
         const math::Rect card{frame.safe.getCenter().x - width * 0.5F, frame.safe.getCenter().y - height * 0.5F + moved, width, height};
         layout.surface = card;
-        layout.area = {card.x, card.y + band, card.width, card.height - band};
+        layout.area = card;
         layout.radii = {radius, radius, radius, radius};
-        layout.grabber = grabbed ? math::Rect::fromCenter({card.getCenter().x, card.y + band * 0.5F}, kGrabberSize) : math::Rect{};
         return layout;
     }
+
+    const bool grabbed = options.grabber.value_or(options.detents.size() > 1);
+    const float band = grabbed ? kGrabberBand : 0.0F;
 
     float highest = frame.display.getBottom();
     float lowest = frame.display.y;
@@ -288,6 +292,26 @@ Presentation::Layout Presentation::getSheetLayout(const Frame& frame) const {
     }
 
     return layout;
+}
+
+// A card is as tall as its tallest detent when every detent is the height its screen measures or a height of its own, such as a picker, and otherwise as tall as a form sheet grows.
+float Presentation::getCardHeight(const Frame& frame) const {
+    float tallest = 0.0F;
+    for (const Detent& entry : options.detents) {
+        switch (entry.kind) {
+        case Detent::Kind::Fit:
+            tallest = std::max(tallest, frame.contentHeight);
+            break;
+        case Detent::Kind::Height:
+            tallest = std::max(tallest, entry.height);
+            break;
+        case Detent::Kind::Medium:
+        case Detent::Kind::Large:
+            return options.maxHeight;
+        }
+    }
+
+    return std::min(tallest, options.maxHeight);
 }
 
 // A drawer covers the whole height at the start edge, as wide as its width within most of the screen, rounds its end corners, and a drag toward the start moves it out.
@@ -355,7 +379,7 @@ void Presentation::release() {
 
     const Frame& frame = *lastFrame;
     const Layout layout = getLayout(frame);
-    const bool sliding = options.style == Style::Drawer || (!isCompact(frame) && options.size == Size::Form && options.style == Style::Sheet);
+    const bool sliding = options.style == Style::Drawer || isCard(frame);
     if (sliding) {
         const float length = options.style == Style::Drawer ? layout.surface.width : layout.surface.height;
         if (offset > length / 3.0F || (speed > kFlingSpeed && offset > 0.0F)) {

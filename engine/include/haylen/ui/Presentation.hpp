@@ -224,11 +224,15 @@ class Presentation final : public std::enable_shared_from_this<Presentation> {
 
     // Whether the presentation shows as a sheet: a sheet, or a popover on a compact screen.
     [[nodiscard]] bool isSheet(const Frame& frame) const;
+
+    // Whether the presentation shows as a card in the middle: a form sheet on a wide screen.
+    [[nodiscard]] bool isCard(const Frame& frame) const;
     [[nodiscard]] bool isCompact(const Frame& frame) const;
 
     // The top of the surface of a sheet resting at a detent.
     [[nodiscard]] float getDetentTop(const Frame& frame, std::size_t index) const;
     [[nodiscard]] Layout getSheetLayout(const Frame& frame) const;
+    [[nodiscard]] float getCardHeight(const Frame& frame) const;
     [[nodiscard]] Layout getDrawerLayout(const Frame& frame) const;
     [[nodiscard]] Layout getPopoverLayout(const Frame& frame) const;
 

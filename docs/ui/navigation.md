@@ -150,7 +150,7 @@ A tap on the backdrop, Escape, the system back and a drag dismiss a dismissible 
 
 ## Sheets and their detents
 
-A detent is a height a sheet rests at. A sheet lists its detents from the lowest to the highest: `'medium'` rests at half the screen, `'large'` near the top, `'fit'` at the height its screen measures, and a number at that height in UI units. A sheet with more than one detent shows a grabber along its top. The person drags the grabber, or any part of the sheet that no control takes, and the sheet glides to the detent nearest to where it was heading. A tap on the grabber moves it to the next detent, and screen readers read the grabber as a button that does the same. A drag well below the lowest detent dismisses the sheet.
+A detent is a height a sheet rests at. A sheet lists its detents from the lowest to the highest: `'medium'` rests at half the screen, `'large'` near the top, `'fit'` at the height its screen measures, and a number at that height in UI units. A sheet with more than one detent shows a grabber along its top while it rests at its detents. The person drags the grabber, or any part of the sheet that no control takes, and the sheet glides to the detent nearest to where it was heading. A tap on the grabber moves it to the next detent, and screen readers read the grabber as a button that does the same. A drag well below the lowest detent dismisses the sheet.
 
 ```lua
 -- The queue rests at half the screen, and the person pulls it up to see more.
@@ -159,7 +159,7 @@ local queue = ui.present(Queue(), {detents = {'medium', 'large'}, onDetentChange
 end})
 ```
 
-On a compact screen, the GUIs behind a modal sheet shrink a little as it nears the top, so the sheet reads as a card over the screen it came from. On a wide screen, a form sheet floats as a card in the middle and keeps one size, and a page sheet keeps its detents along the bottom with a bounded width, which suits a sheet that the person resizes, such as the details of a ride on a tablet.
+On a compact screen, the GUIs behind a modal sheet shrink a little as it nears the top, so the sheet reads as a card over the screen it came from. On a wide screen, a form sheet floats as a card in the middle. It rests at no detent, so it shows no grabber, and it keeps one size: the height its screen measures when every detent is `'fit'` or a number, such as a picker, and otherwise the height a form sheet grows to. A page sheet keeps its detents along the bottom with a bounded width, which suits a sheet that the person resizes, such as the details of a ride on a tablet.
 
 A sheet with `modal = false` leaves the input of the app to the GUIs under it and draws no backdrop, such as a map whose ride details stay open while the person moves the map. The system back moves such a sheet down to its lowest detent, and goes on to the app once it rests there.
 

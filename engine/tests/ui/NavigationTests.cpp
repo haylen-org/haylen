@@ -646,6 +646,26 @@ TEST_F(NavigationTest, MakesAScreenCompactByItsWidthInPoints) {
     EXPECT_FLOAT_EQ(sheet->getLayout(tablet).surface.width, Presentation::kSheetWidth);
 }
 
+// A form sheet on a wide screen rests at no detent, so it shows no grabber and a new detent leaves it where it is, and it is as tall as its screen when every detent fits its screen.
+TEST_F(NavigationTest, FloatsACardWithoutDetentsThatFitsItsScreen) {
+    const Presentation::Frame tablet{.display = {0.0F, 0.0F, 2000.0F, 1500.0F}, .safe = {0.0F, 40.0F, 2000.0F, 1440.0F}, .radius = 16.0F, .contentHeight = 300.0F};
+    const std::vector<Presentation::Detent> detents{{.kind = Presentation::Detent::Kind::Medium}, {.kind = Presentation::Detent::Kind::Large}};
+    const auto queue = make("queue");
+    const std::shared_ptr<Presentation> card = getNavigation().present(queue, {.detents = detents});
+    const std::shared_ptr<Presentation> picker = getNavigation().present(make("picker"), {.detents = {{.kind = Presentation::Detent::Kind::Fit}}});
+    EXPECT_TRUE(card->getLayout(tablet).grabber.isEmpty());
+    EXPECT_FLOAT_EQ(card->getLayout(tablet).area.y, card->getLayout(tablet).surface.y);
+    EXPECT_FLOAT_EQ(card->getLayout(tablet).surface.height, Presentation::kSheetHeight);
+    EXPECT_FLOAT_EQ(picker->getLayout(tablet).surface.height, 300.0F);
+
+    picker->dismiss();
+    settle();
+    const float rest = getBounds(*queue->getGui(), "open").y;
+    card->setDetent(1);
+    frames(2);
+    EXPECT_FLOAT_EQ(getBounds(*queue->getGui(), "open").y, rest);
+}
+
 // Screens that stay where they are cost the frames nothing more than the frame alone.
 TEST_F(NavigationTest, ShowsStillScreensWithoutAllocating) {
     // clang-format off

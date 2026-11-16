@@ -81,7 +81,7 @@ void PresentationView::drawChrome(Presentation& presentation, const Presentation
     }
 
     // The surface takes the presses that no control of the screen takes, so a drag on its empty parts moves it, and the grabber takes its own press, which cycles the detents.
-    const bool card = style == Presentation::Style::Sheet && !layout.compact && presentation.getOptions().size == Presentation::Size::Form;
+    const bool card = presentation.isCard(*presentation.lastFrame);
     const bool sheet = style == Presentation::Style::Sheet || (style == Presentation::Style::Popover && layout.compact);
     const bool movable = presentation.getOptions().detents.size() > 1 || presentation.isDismissible();
     ImGui::PushID(&presentation);
@@ -128,7 +128,7 @@ void PresentationView::drawSurface(const Presentation& presentation, const Prese
     const math::Color color = presentation.getOptions().color.value_or(context.getColor(role));
     const float alpha = look.effect == NavigationTransition::Effect::Fade ? 1.0F - look.distance : 1.0F;
     const math::Rect surface = layout.surface.translated(offset);
-    const bool card = style == Presentation::Style::Sheet && !layout.compact && presentation.getOptions().size == Presentation::Size::Form;
+    const bool card = presentation.isCard(*presentation.lastFrame);
     if (card || (style == Presentation::Style::Popover && !layout.compact)) {
         ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * alpha);
         Surfaces::drawShadow(context, surface, layout.radii[0]);

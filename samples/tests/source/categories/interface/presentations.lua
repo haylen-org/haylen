@@ -10,7 +10,7 @@ local Presentations = haylen.class('Presentations', Test)
 
 Presentations.code = [[
 ui.present(Queue(), {detents = {'medium', 'large'}})      -- Drag the grabber.
-ui.present(Map(), {modal = false, detents = {240, 'large'}})
+ui.present(Map(), {modal = false, size = 'page', detents = {240, 'large'}})
 ui.present(Colors(), {style = 'popover', anchor = {gui = gui, id = 'pen'}})
 ui.present(Menu(), {style = 'drawer'})
 local color = ui.present(Picker(), {detents = {'fit'}}).result:await()
@@ -117,7 +117,7 @@ function Presentations:columns()
         ui.column{grow = 1, gap = 24,
             layout.section('Sheets', {
                 ui.button{id = 'queue', text = 'Sheet at half or nearly all of the screen', align = 'stretch', onClick = function()
-                    self:present(Sample('Up next', 'Drag the grabber up for the whole queue, or down to close it.', 30), {detents = {'medium', 'large'}})
+                    self:present(Sample('Up next', 'Drag the grabber up for the whole queue, or down to close it. A wide window shows the sheet as a card.', 30), {detents = {'medium', 'large'}})
                 end},
                 ui.button{id = 'page', text = 'Page sheet', align = 'stretch', onClick = function()
                     self:present(Sample('Ride details', 'On a wide window a page sheet rests at its detents along the bottom.', 20), {size = 'page', detents = {'medium', 'large'}})
@@ -126,7 +126,7 @@ function Presentations:columns()
                     self:present(Sample('Sign in', 'On a wide window a form sheet floats as a card in the middle.'), {size = 'form'})
                 end},
                 ui.button{id = 'beside', text = 'Sheet beside the app', align = 'stretch', onClick = function()
-                    self:present(Sample('Map layers', 'This sheet is not modal, so the buttons of the test still answer.'), {modal = false, detents = {240, 'large'}})
+                    self:present(Sample('Map layers', 'This sheet is not modal, so the buttons of the test still answer.'), {modal = false, size = 'page', detents = {240, 'large'}})
                 end},
             }),
             layout.section('Covers and dialogs', {
