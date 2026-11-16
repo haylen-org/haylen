@@ -30,7 +30,7 @@ Two variables change which GPU a device takes:
 | A Mac | Metal on macOS and Mac Catalyst, and the Apple simulators. | `haylen test --gpu`, `haylen test --gpu --platform catalyst` |
 | A Windows PC | Direct3D 12, Direct3D 11, Vulkan and OpenGL, on each GPU of the machine. | `haylen test --gpu`, then again with `HAYLEN_TEST_GPU_LOW_POWER=1` and `HAYLEN_TEST_GPU_SOFTWARE=1` |
 | A Linux PC | Vulkan and OpenGL on the GPU of the machine, on X11 and Wayland. | `haylen test --gpu` |
-| Any machine with Docker | Linux with Vulkan on Mesa lavapipe and OpenGL on Mesa llvmpipe, which are software rasterizers. | Run `haylen test --gpu` inside an Ubuntu container with the Mesa packages that the CI workflow installs. |
+| Any machine with Docker | Linux with Vulkan on Mesa lavapipe and OpenGL on Mesa llvmpipe, which are software rasterizers. | Run `haylen test --gpu` inside an Ubuntu container with the Mesa packages that the CI workflow installs. On an arm64 machine, such as a Mac with Apple silicon, those packages also bring Vulkan drivers of hardware that a container lacks, whose loader reports errors that the tests count, so set `VK_DRIVER_FILES` to `/usr/share/vulkan/icd.d/lvp_icd.json` to load lavapipe alone. |
 
 Drivers keep the shaders they compiled in a cache on the disk, so a problem that comes with compiling shows up only while the cache is empty, as in the first run on a new machine. Clear the cache of the driver before each run of a batch that checks such a problem, such as `~/.cache/AMD` on Linux and `%LOCALAPPDATA%\AMD` on Windows for the drivers of AMD.
 
