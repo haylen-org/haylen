@@ -1,5 +1,6 @@
 -- Routes of links in a small app inside the region of the test: the links of the scheme of the native demo plugin open a place in the tab of places with the places under it, a chat as the detail of the split of messages and a new post as a sheet. A link that no route matches leaves the app as it is, the buttons go to the same routes from code, and the state of the navigation reads back as the locations the router keeps for the next start.
 local haylen = require('haylen')
+local timer = require('haylen.timer')
 local ui = require('haylen.ui')
 
 local Test = require('harness.test')
@@ -83,7 +84,20 @@ function Routes:enter()
     }, onUnmatched = function(event)
         self:report('No route matches "' .. event.url .. '", so the app stays as it is.')
     end}
+    -- A link from outside reaches the router on its own, so the status tells where it went once the router opened it.
+    self:listen('linkOpened', function(link)
+        self:tellOpened(link.url)
+    end)
     self:report('Open a link.')
+end
+
+-- Tells in the next frame where a link from outside went, after the router opened it.
+function Routes:tellOpened(url)
+    timer.after(0, function()
+        if self.router:match(url) then
+            self:report(string.format('Opened "%s" from outside. %s', url, Routes.describe(self.router:save())))
+        end
+    end, {owner = self})
 end
 
 function Routes:report(text)
