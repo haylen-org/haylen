@@ -2,8 +2,18 @@ if(NOT HAYLEN_SANITIZERS MATCHES "^(OFF|ADDRESS|THREAD)$")
   message(FATAL_ERROR "The option \"HAYLEN_SANITIZERS\" is \"OFF\", \"ADDRESS\" or \"THREAD\", not \"${HAYLEN_SANITIZERS}\".")
 endif()
 
+# The sanitizers instrument programs that run on this machine with a compiler that has them: a desktop, or a port that builds with the compiler of this machine, such as the test port, while MSVC has neither ThreadSanitizer nor UndefinedBehaviorSanitizer.
+if(NOT MSVC AND (HAYLEN_DESKTOP OR (HAYLEN_PORT_PLATFORM AND NOT CMAKE_CROSSCOMPILING)))
+  set(HAYLEN_SANITIZABLE ON)
+else()
+  set(HAYLEN_SANITIZABLE OFF)
+endif()
+if(NOT HAYLEN_SANITIZERS STREQUAL "OFF" AND NOT HAYLEN_SANITIZABLE)
+  message(FATAL_ERROR "The sanitizers of \"HAYLEN_SANITIZERS\" instrument a build for this machine without MSVC: a desktop, or a port that builds with the compiler of this machine. Configure this build with \"HAYLEN_SANITIZERS\" set to \"OFF\".")
+endif()
+
 # ThreadSanitizer sees only the synchronization of the code it instruments, such as the atomics with which libuv wakes its loop, so it instruments the dependencies too.
-if(HAYLEN_SANITIZERS STREQUAL "THREAD" AND HAYLEN_DESKTOP AND NOT MSVC)
+if(HAYLEN_SANITIZERS STREQUAL "THREAD")
   add_compile_options(-fsanitize=thread -fno-omit-frame-pointer)
   add_link_options(-fsanitize=thread)
 endif()
@@ -40,7 +50,7 @@ function(haylen_enable_warnings target)
     endif()
   endif()
 
-  if(HAYLEN_SANITIZERS STREQUAL "ADDRESS" AND HAYLEN_DESKTOP AND NOT MSVC)
+  if(HAYLEN_SANITIZERS STREQUAL "ADDRESS")
     target_compile_options(${target} PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
     target_link_options(${target} PRIVATE -fsanitize=address,undefined)
   endif()
@@ -48,7 +58,7 @@ endfunction()
 
 # Checks the memory of libraries that the engine compiles from the sources of a dependency and hands the bytes of apps, such as SVG documents, fonts and sounds, with AddressSanitizer, so a test of the engine fails on a read past their buffers too. Their warnings and UndefinedBehaviorSanitizer stay off, since only their projects can act on them.
 function(haylen_check_dependency_memory)
-  if(HAYLEN_SANITIZERS STREQUAL "ADDRESS" AND HAYLEN_DESKTOP AND NOT MSVC)
+  if(HAYLEN_SANITIZERS STREQUAL "ADDRESS")
     foreach(target IN LISTS ARGN)
       target_compile_options(${target} PRIVATE -fsanitize=address -fno-omit-frame-pointer)
     endforeach()

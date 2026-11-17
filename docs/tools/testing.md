@@ -248,11 +248,12 @@ haylen test --gpu --platform tvos --device "Living Room"
 ```sh
 haylen test --port
 haylen test --port --config Release
+haylen test --port --sanitizers thread
 ```
 
-The option `--port` of `haylen test` checks the mechanism of [ports](../platform/ports.md) on this machine. It configures the engine with `HAYLEN_PORT_DIR` set to `engine/tests/data/port` in `build/engine/<host>-port-<config>`, builds the player `haylen` of that port and plays `engine/tests/data/port-app` on it. The port replaces the platform layer and the services with a runtime that plays the app without a window, and draws through a device of the API `port` built on `gpu::NullDevice`, so every call of the engine meets the checks of the contract. Its shader tool gives every shader package of the engine a `port` target, which the device runs.
+The option `--port` of `haylen test` checks the mechanism of [ports](../platform/ports.md) on this machine. It configures the engine with `HAYLEN_PORT_DIR` set to `engine/tests/data/port` in `build/engine/<host>-port-<config>`, builds the player `haylen` of that port and plays `engine/tests/data/port-app` on it. The port replaces the platform layer and the services with a runtime that plays the app without a window, and draws through a device of the API `port` built on `gpu::NullDevice`, so every call of the engine meets the checks of the contract. Its shader tool gives every shader package of the engine a `port` target, which the device runs. It runs threads with the `PUMP` loop of Varn, which its frames pump, and its audio output reads a period of sound after each frame. With `--sanitizers thread` the port builds and plays under ThreadSanitizer in a tree of its own, which checks the worker threads of the pumped loop.
 
-The app fails the run with the status `1` when `haylen.platform` is not `'test-port'`, when the operating system of `haylen.system` is not `'port'`, when `haylen.graphicsApi` is not `'port'` when `io.popen` starts a program, which the test port refuses, since it does not allow `processes`, or when the module `process` does not run on the external driver of the test port. The runtime fails it too when the app does not quit within 600 frames, such as an app stuck on the error screen. Otherwise the app draws ten frames of shapes, sprites and text and quits with the status `0`. The tooling side of the same proof is [the proof of the extension points](#the-proof-of-the-extension-points).
+The app fails the run with the status `1` when `haylen.platform` is not `'test-port'`, when the operating system of `haylen.system` is not `'port'`, when `haylen.graphicsApi` is not `'port'`, when `io.popen` starts a program or `ffi.cast` makes a callback of a Lua function, which the test port refuses, since it allows neither `processes` nor `executableMemory`, or when the module `process` does not run on the external driver of the test port. It also fails when a trace shows its jobs on the lane of the frames instead of a worker of the pools, and when its audio output reports another latency than the one of the output of the port. The runtime fails it too when the app does not quit within 600 frames, such as an app stuck on the error screen, and when it played no sound through the output of the port. Otherwise the app draws its frames of shapes, sprites and text until its sound plays, and quits with the status `0`. The tooling side of the same proof is [the proof of the extension points](#the-proof-of-the-extension-points).
 
 ## The error screen check of the web
 
@@ -440,7 +441,7 @@ haylen test --sanitizers address
 haylen test --sanitizers thread
 ```
 
-The option `--sanitizers` builds the tests with sanitizers in a tree of its own, `build/engine/<host>-<config>-address` or `build/engine/<host>-<config>-thread`, so switching never builds the plain tree again. It sets `HAYLEN_SANITIZERS`, which MSVC builds ignore.
+The option `--sanitizers` builds the tests with sanitizers in a tree of its own, `build/engine/<host>-<config>-address` or `build/engine/<host>-<config>-thread`, so switching never builds the plain tree again. It sets `HAYLEN_SANITIZERS`, whose configuration stops with a sentence under MSVC, which has neither ThreadSanitizer nor UndefinedBehaviorSanitizer.
 
 | Value | Sanitizers | What they instrument |
 | --- | --- | --- |

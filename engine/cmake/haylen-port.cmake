@@ -15,9 +15,9 @@ string(REPLACE "\"" "" HAYLEN_PORT_CAPABILITY_NAMES "${haylen_port_capability_na
 # - `CONTRACT`, the version of the contract of ports that the port follows, which must be `HAYLEN_PORT_CONTRACT_VERSION`.
 # - `PLATFORM`, the name of the platform, which `HAYLEN_PLATFORM` takes and the services of the port report.
 # - `SYSTEM_API`, the interfaces of the system that the engine compiles its system code against, `posix` or `windows`: the files of the content store, the local time, the handlers of native crashes and the loader of native libraries.
-# - `THREADS`, which is `OFF` when the platform runs no thread besides the one that plays the frames, and `ON` by default.
+# - `THREADS`, which is `OFF` when the platform runs no thread besides the one that plays the frames, and `ON` by default, so the worker pools of Varn and the jobs of the engine run on threads of their own.
 # - `CAPABILITIES`, what the platform allows apps to do, any of `dynamicLibraries`, `executableMemory` and `processes`.
-# - `VARN_DRIVERS`, the drivers of the Lua runtime Varn that the platform takes, as `<NAME>=<DRIVER>`, such as `SOCKET=EXTERNAL`, and `TLS=ON` for TLS, while every driver it does not name is the one of the target `port` of Varn that needs nothing of the system, and the event loop follows `THREADS`. `VARN_DRIVER_SOURCES` lists the sources of each driver `EXTERNAL` as `<NAME>=<path>`.
+# - `VARN_DRIVERS`, the drivers of the Lua runtime Varn that the platform takes, as `<NAME>=<DRIVER>`, such as `SOCKET=EXTERNAL`, and `TLS=ON` for TLS, while every driver it does not name is the one of the target `port` of Varn that needs nothing of the system, such as the event loop `PUMP`, which the frames pump with or without threads, while `EVENT_LOOP=LIBUV` takes the loop of libuv, which needs threads. `VARN_DRIVER_SOURCES` lists the sources of each driver `EXTERNAL` as `<NAME>=<path>`.
 # - `RUNTIME_SOURCES` and `RUNTIME_LIBRARIES`, the platform layer and the services of the port, which `haylen-runtime` compiles and links instead of those of the engine.
 # - `GRAPHICS_APIS`, the graphics APIs of the engine whose devices the port compiles, such as `vulkan`.
 # - `DEVICE_SOURCES` and `DEVICE_LIBRARIES`, the device of the API `port` that `haylen-gpu` compiles and links, which defines `gpu::PortDevice` for a graphics API the engine has no device of.
@@ -53,10 +53,13 @@ function(haylen_port)
     endif()
   endforeach()
   foreach(driver IN LISTS port_VARN_DRIVERS)
-    if(NOT driver MATCHES "^(SOCKET|HTTP_CLIENT|HTTP_SERVER|CRYPTO|PROCESS|FFI|FS|LOG|JSON|XML|TLS)=[A-Z0-9_]+$")
-      message(FATAL_ERROR "The port of \"${HAYLEN_PORT_DIR}\" names the driver of Varn \"${driver}\". Name each one as \"<NAME>=<DRIVER>\", such as \"SOCKET=EXTERNAL\", with a name of \"SOCKET\", \"HTTP_CLIENT\", \"HTTP_SERVER\", \"CRYPTO\", \"PROCESS\", \"FFI\", \"FS\", \"LOG\", \"JSON\", \"XML\" or \"TLS\", while the event loop follows \"THREADS\".")
+    if(NOT driver MATCHES "^(EVENT_LOOP|SOCKET|HTTP_CLIENT|HTTP_SERVER|CRYPTO|PROCESS|FFI|FS|LOG|JSON|XML|TLS)=[A-Z0-9_]+$")
+      message(FATAL_ERROR "The port of \"${HAYLEN_PORT_DIR}\" names the driver of Varn \"${driver}\". Name each one as \"<NAME>=<DRIVER>\", such as \"SOCKET=EXTERNAL\", with a name of \"EVENT_LOOP\", \"SOCKET\", \"HTTP_CLIENT\", \"HTTP_SERVER\", \"CRYPTO\", \"PROCESS\", \"FFI\", \"FS\", \"LOG\", \"JSON\", \"XML\" or \"TLS\".")
     endif()
   endforeach()
+  if("EVENT_LOOP=LIBUV" IN_LIST port_VARN_DRIVERS AND NOT port_THREADS)
+    message(FATAL_ERROR "The port of \"${HAYLEN_PORT_DIR}\" takes the event loop \"LIBUV\" of Varn with \"THREADS OFF\", while that loop runs on threads. Take the event loop \"PUMP\", which runs without threads, or turn \"THREADS\" on.")
+  endif()
   foreach(source IN LISTS port_VARN_DRIVER_SOURCES)
     string(REGEX MATCH "^([A-Z_]+)=(.+)$" matched "${source}")
     if(NOT matched OR NOT EXISTS "${CMAKE_MATCH_2}")

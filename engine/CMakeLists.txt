@@ -27,7 +27,7 @@ option(HAYLEN_BUILD_SDK "Merge the engine into the SDK that cmake --install --co
 option(HAYLEN_BUILD_FRAMEWORK "Merge the SDK and the player into the static library of one Haylen.xcframework slice. Apple platforms only." OFF)
 option(HAYLEN_ENABLE_COVERAGE "Instrument the engine and its tests for code coverage." OFF)
 option(HAYLEN_BUILD_FUZZERS "Build the fuzzer of the content formats with the tests, which needs a Clang that links libFuzzer." OFF)
-set(HAYLEN_SANITIZERS "OFF" CACHE STRING "Sanitizers of desktop builds without MSVC: OFF, ADDRESS for AddressSanitizer and UndefinedBehaviorSanitizer, or THREAD for ThreadSanitizer.")
+set(HAYLEN_SANITIZERS "OFF" CACHE STRING "Sanitizers of builds for this machine without MSVC, a desktop or a port that builds with the compiler of this machine: OFF, ADDRESS for AddressSanitizer and UndefinedBehaviorSanitizer, or THREAD for ThreadSanitizer.")
 set_property(CACHE HAYLEN_SANITIZERS PROPERTY STRINGS OFF ADDRESS THREAD)
 set(HAYLEN_SHADERC "" CACHE FILEPATH "Path to a build of the Haylen shader compiler haylen-shaderc, or empty for the pinned compiler that the build downloads or builds.")
 if(DEFINED ENV{HAYLEN_DEBUG_INFO})
@@ -783,10 +783,10 @@ else()
   list(APPEND HAYLEN_ENGINE_SOURCES src/content/posix/StoreFile.cpp src/localization/posix/LocalTime.cpp)
 endif()
 
-# The browser build talks WebSocket through the page and plays audio through it, while native builds use Poco with the TLS stack Varn already links.
+# The browser build talks WebSocket through the page and plays audio through it, while native builds use the sockets of Poco on threads of their own with the TLS stack that Varn builds, whatever its event loop.
 if(EMSCRIPTEN)
   list(APPEND HAYLEN_ENGINE_SOURCES src/platform/web/BrowserAudioOutput.cpp src/platform/web/BrowserWebSocket.cpp)
-elseif(VARN_SOCKET_DRIVER STREQUAL "POCO" AND VARN_ENABLE_TLS)
+elseif(VARN_ENABLE_TLS)
   list(APPEND HAYLEN_ENGINE_SOURCES src/net/PocoWebSocket.cpp)
 else()
   list(APPEND HAYLEN_ENGINE_SOURCES src/net/unavailable/WebSocketTransport.cpp)

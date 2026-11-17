@@ -40,20 +40,23 @@ else()
 endif()
 
 # The thread sanitizer cannot follow the `_longjmp` that a yield of Lua takes, so its builds tell Varn to keep yields as exceptions.
-if(HAYLEN_SANITIZERS STREQUAL "THREAD" AND HAYLEN_DESKTOP AND NOT MSVC)
+if(HAYLEN_SANITIZERS STREQUAL "THREAD")
   set(HAYLEN_VARN_SANITIZE "thread")
 else()
   set(HAYLEN_VARN_SANITIZE "")
 endif()
 
-# A port builds the target `port` of Varn with the drivers that its `haylen_port` names, every other driver being the one that needs nothing of the system, the sources of its external drivers and the event loop that follows its threads: libuv, whose loop waits on the system, or the loop that the frames pump, where the platform runs no thread besides the one of the frames.
+# A port builds the target `port` of Varn with the drivers that its `haylen_port` names, every other driver being the one that needs nothing of the system, such as the event loop that the frames pump, the sources of its external drivers and worker pools on threads of their own wherever the platform has threads.
 if(HAYLEN_PORT_PLATFORM)
   set(HAYLEN_VARN_TARGET "port")
-  if(HAYLEN_THREADS)
-    set(VARN_EVENT_LOOP_DRIVER "LIBUV" CACHE STRING "The event loop of Varn, which follows the threads of the port." FORCE)
-  else()
-    set(VARN_EVENT_LOOP_DRIVER "PUMP" CACHE STRING "The event loop of Varn, which follows the threads of the port." FORCE)
-  endif()
+  set(VARN_THREADS ${HAYLEN_THREADS} CACHE BOOL "The worker pools of Varn on threads of their own, which follow the threads of the port." FORCE)
+  # Each configuration takes the drivers from the `haylen_port` of that moment, so a driver that the port no longer names goes back to the default of the target `port` of Varn rather than keeping a value of an earlier configuration.
+  foreach(driver IN ITEMS SOCKET HTTP_CLIENT HTTP_SERVER CRYPTO PROCESS FFI FS LOG JSON XML)
+    unset(VARN_${driver}_DRIVER CACHE)
+    unset(VARN_${driver}_DRIVER_SOURCES CACHE)
+  endforeach()
+  unset(VARN_ENABLE_TLS CACHE)
+  set(VARN_EVENT_LOOP_DRIVER "PUMP" CACHE STRING "The event loop of Varn, which the port may name." FORCE)
   # The callbacks of the module `ffi` are closures that write code into memory, so a port that does not allow `executableMemory` builds Varn without them, as it builds the native callbacks of the engine.
   if("executableMemory" IN_LIST HAYLEN_CAPABILITIES)
     set(VARN_FFI_CLOSURES ON CACHE BOOL "The callbacks of the ffi module of Varn, which follow the executable memory of the port." FORCE)
@@ -83,8 +86,8 @@ endif()
 # The engine links the static core of Varn, which the `cli` target builds, and Varn picks the HTTP driver of every platform itself: the URL Loading System on iOS, tvOS and Mac Catalyst, the Android stack on Android and the fetch of the browser on the web.
 CPMAddPackage(
   NAME varn
-  URL "https://github.com/varn-org/varn/archive/86894396206108d051602a9716d4c8eb27fc69bf.tar.gz"
-  URL_HASH SHA256=015a07c18456cfdeb975065a45dd3d59926c0ecd21d96f9f0f9f4f75f67e866b
+  URL "https://github.com/varn-org/varn/archive/6bf20297d75b98a04e2e791073c9eb230cd31bcd.tar.gz"
+  URL_HASH SHA256=db80f99c59f65e2750a40aa59ee8e150e9d7d428b8c2f5fa2a36c67836146612
   OPTIONS "VARN_TARGET ${HAYLEN_VARN_TARGET}" "VARN_BUILD_TESTS OFF" "VARN_SANITIZE ${HAYLEN_VARN_SANITIZE}"
   EXCLUDE_FROM_ALL YES
   SYSTEM YES

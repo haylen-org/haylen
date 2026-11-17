@@ -82,7 +82,7 @@ class TestCommand(Command):
         if arguments.port:
             if gpu or platform != Host.system():
                 raise UnsupportedTarget('The option "--port" builds the test port for this machine, so it takes neither "--gpu", "--graphics-api" nor "--platform".')
-            return PortTest(context).run(arguments.config)
+            return PortTest(context).run(arguments.config, arguments.sanitizers)
 
         # The checks of the web draw too, so on the web "--graphics-api" names the API of their pages unless "--gpu" asks for the GPU tests.
         if platform == "web":
