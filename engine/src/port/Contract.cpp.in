@@ -1,0 +1,39 @@
+#include "haylen/port/Contract.hpp"
+
+#include <algorithm>
+#include <cstddef>
+
+namespace haylen::port {
+
+std::string_view Contract::getCapabilityName(Capability value) noexcept {
+    return kCapabilityNames.at(static_cast<std::size_t>(value));
+}
+
+std::optional<Contract::Capability> Contract::findCapability(std::string_view name) noexcept {
+    const auto found = std::ranges::find(kCapabilityNames, name);
+    if (found == kCapabilityNames.end()) {
+        return std::nullopt;
+    }
+
+    return static_cast<Capability>(found - kCapabilityNames.begin());
+}
+
+// The configuration of the engine writes what the platform of the build allows into this file.
+bool Contract::allows(Capability value) noexcept {
+    switch (value) {
+    case Capability::DynamicLibraries:
+        return @HAYLEN_ALLOWS_DYNAMIC_LIBRARIES@;
+    case Capability::ExecutableMemory:
+        return @HAYLEN_ALLOWS_EXECUTABLE_MEMORY@;
+    case Capability::Processes:
+        return @HAYLEN_ALLOWS_PROCESSES@;
+    }
+
+    return false;
+}
+
+bool Contract::hasThreads() noexcept {
+    return @HAYLEN_HAS_THREADS@;
+}
+
+} // namespace haylen::port

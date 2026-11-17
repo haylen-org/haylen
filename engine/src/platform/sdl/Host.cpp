@@ -25,6 +25,7 @@
 #include "platform/apple/ApplePasteboard.hpp"
 #endif
 #if defined(__APPLE__)
+#include "platform/apple/AppleRuntime.hpp"
 #include "platform/apple/AppleTextInput.hpp"
 #endif
 #if defined(__APPLE__) && !TARGET_OS_OSX
@@ -354,6 +355,69 @@ std::unique_ptr<gpu::Device> Host::createGpuDevice() {
 
 bool Host::prepareGpuDevice() {
     return runtime.prepareDevice();
+}
+
+// The apps of Apple platforms hear the events of their native plugins only while an app runs, and a page hears when an app starts, fails to start and stops.
+void Host::appStarted([[maybe_unused]] core::Engine& engine, [[maybe_unused]] bool playing) {
+#if defined(__APPLE__)
+    AppleRuntime::setAppRunning(true);
+#elif defined(__EMSCRIPTEN__)
+    if (playing) {
+        WebPage::reportStarted(engine);
+    }
+#endif
+}
+
+void Host::appStartFailed([[maybe_unused]] const core::Json& report) {
+#if defined(__EMSCRIPTEN__)
+    WebPage::reportStartFailed(report);
+#endif
+}
+
+void Host::appStopping() {
+#if defined(__APPLE__)
+    AppleRuntime::setAppRunning(false);
+#endif
+}
+
+void Host::appStopped([[maybe_unused]] bool playing) {
+#if defined(__EMSCRIPTEN__)
+    if (playing) {
+        WebPage::reportStopped();
+    }
+#endif
+}
+
+// A page shows the statistics of each frame and applies the files it edited between frames.
+void Host::frameFinished([[maybe_unused]] core::Engine& engine) {
+#if defined(__EMSCRIPTEN__)
+    WebPage::reportFrame(engine);
+    WebPage::finishFrame();
+#endif
+}
+
+// A page hears what every batch of a development server did, as the web editor shows it.
+void Host::developmentEnabled([[maybe_unused]] DevelopmentSession& session) {
+#if defined(__EMSCRIPTEN__)
+    session.addReporter(&WebPage::reportReloaded);
+#endif
+}
+
+// A page shows an app that cannot go on on its error screen, and edits every package that it plays file by file.
+bool Host::keepsWindowAfterFailure() const noexcept {
+#if defined(__EMSCRIPTEN__)
+    return true;
+#else
+    return false;
+#endif
+}
+
+bool Host::overlaysEveryPackage() const noexcept {
+#if defined(__EMSCRIPTEN__)
+    return true;
+#else
+    return false;
+#endif
 }
 
 void Host::closeWindow() {

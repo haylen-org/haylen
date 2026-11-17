@@ -194,7 +194,7 @@ function(haylen_add_app target)
 
   # The drivers of a laptop with two GPUs read which one the app wants from variables of the executable itself, and the macOS runtime leaves main to the executable, which enters it through haylen_main.
   if(WIN32)
-    list(APPEND sources "${HAYLEN_ENGINE_DIR}/src/gpu/GpuPreferenceExports.cpp")
+    list(APPEND sources "${HAYLEN_ENGINE_DIR}/src/gpu/windows/GpuPreferenceExports.cpp")
   elseif(APPLE)
     list(APPEND sources "${HAYLEN_ENGINE_DIR}/src/platform/apple/AppleMain.cpp")
   endif()

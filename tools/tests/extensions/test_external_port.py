@@ -74,7 +74,7 @@ class ExternalPortTest:
         installed_slice = sdk["slices"][0]
         assert sdk["port"] == "test-port"
         assert (installed_slice["system"], installed_slice["environment"], installed_slice["toolchain"]) == ("test-port", "host", "test-port-cc")
-        assert installed_slice["capabilities"] == ["dynamicLibraries", "processes"]
+        assert installed_slice["capabilities"] == ["dynamicLibraries"]
         assert installed_slice["graphicsApis"] == ["port"]
         assert [tool["name"] for tool in sdk["hostTools"]] == ["port-shaders.cmake"]
 
@@ -162,7 +162,7 @@ class ExternalPortTest:
                     "runtime": "host-c++",
                     "minimumSystemVersion": "1.0",
                     "graphicsApis": ["port"],
-                    "capabilities": ["dynamicLibraries", "processes"],
+                    "capabilities": ["dynamicLibraries"],
                     "files": {"cmake": f"test-port-{architecture}/lib/cmake/haylen"},
                 }
             ],

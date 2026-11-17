@@ -46,11 +46,39 @@ else()
   set(HAYLEN_VARN_SANITIZE "")
 endif()
 
+# A port builds the target `port` of Varn with the drivers that its `haylen_port` names, every other driver being the one that needs nothing of the system, the sources of its external drivers and the event loop that follows its threads: libuv, whose loop waits on the system, or the loop that the frames pump, where the platform runs no thread besides the one of the frames.
+if(HAYLEN_PORT_PLATFORM)
+  set(HAYLEN_VARN_TARGET "port")
+  if(HAYLEN_THREADS)
+    set(VARN_EVENT_LOOP_DRIVER "LIBUV" CACHE STRING "The event loop of Varn, which follows the threads of the port." FORCE)
+  else()
+    set(VARN_EVENT_LOOP_DRIVER "PUMP" CACHE STRING "The event loop of Varn, which follows the threads of the port." FORCE)
+  endif()
+  foreach(driver IN LISTS HAYLEN_PORT_VARN_DRIVERS)
+    string(REGEX MATCH "^([A-Z_]+)=(.+)$" matched "${driver}")
+    if(CMAKE_MATCH_1 STREQUAL "TLS")
+      set(VARN_ENABLE_TLS ${CMAKE_MATCH_2} CACHE BOOL "TLS of Varn, which the port names." FORCE)
+    else()
+      set(VARN_${CMAKE_MATCH_1}_DRIVER "${CMAKE_MATCH_2}" CACHE STRING "A driver of Varn, which the port names." FORCE)
+    endif()
+  endforeach()
+  set(haylen_varn_external_drivers "")
+  foreach(source IN LISTS HAYLEN_PORT_VARN_DRIVER_SOURCES)
+    string(REGEX MATCH "^([A-Z_]+)=(.+)$" matched "${source}")
+    list(APPEND haylen_varn_sources_${CMAKE_MATCH_1} "${CMAKE_MATCH_2}")
+    list(APPEND haylen_varn_external_drivers ${CMAKE_MATCH_1})
+  endforeach()
+  list(REMOVE_DUPLICATES haylen_varn_external_drivers)
+  foreach(driver IN LISTS haylen_varn_external_drivers)
+    set(VARN_${driver}_DRIVER_SOURCES "${haylen_varn_sources_${driver}}" CACHE STRING "The sources of an external driver of Varn, which the port names." FORCE)
+  endforeach()
+endif()
+
 # The engine links the static core of Varn, which the `cli` target builds, and Varn picks the HTTP driver of every platform itself: the URL Loading System on iOS, tvOS and Mac Catalyst, the Android stack on Android and the fetch of the browser on the web.
 CPMAddPackage(
   NAME varn
-  URL "https://github.com/varn-org/varn/archive/92b4ba5baedd3b3834b21980e8e6ad2bc6df7d3b.tar.gz"
-  URL_HASH SHA256=63a71e7758e6a179c1c041da8748558026b13b0835c2f818da673cc955cedaaa
+  URL "https://github.com/varn-org/varn/archive/f09af0fc3f29cd4ea2399e18d32c58f8d623a63f.tar.gz"
+  URL_HASH SHA256=1f1756740deac8af6c1a8489e94fa02c7507c0a0630387a21e452cf8ee179bce
   OPTIONS "VARN_TARGET ${HAYLEN_VARN_TARGET}" "VARN_BUILD_TESTS OFF" "VARN_SANITIZE ${HAYLEN_VARN_SANITIZE}"
   EXCLUDE_FROM_ALL YES
   SYSTEM YES

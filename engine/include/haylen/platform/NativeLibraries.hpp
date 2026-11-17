@@ -30,7 +30,7 @@ class NativeLibraries final {
         bool linked = false;
     };
 
-    // Whether the platform loads native libraries, which the browser does not.
+    // Whether the platform loads native libraries at run time, which a page and a port without the capability `dynamicLibraries` do not. Where it does not, only the libraries linked into the app load, by their names.
     [[nodiscard]] static bool isAvailable() noexcept;
 
     // Adds a folder that `open` searches before the folders of the platform, such as the one where the backend of the target `player` places the libraries of an app during development.
@@ -65,13 +65,8 @@ class NativeLibraries final {
     // Generated code registers linked libraries before `main`, so the state exists from its first use.
     [[nodiscard]] static State& getState();
 
-    [[nodiscard]] static std::vector<std::filesystem::path> getPlatformFolders();
-    [[nodiscard]] static std::filesystem::path getExecutableFolder();
-
-    // Opens a file of a candidate, or returns null and describes why it failed.
-    [[nodiscard]] static void* load(const std::filesystem::path& file, std::string& failure);
-    [[nodiscard]] static void* lookup(void* handle, const std::string& name);
-    [[nodiscard]] static void* lookupProcess(const std::string& name);
+    // Finds a linked library on a platform that loads no library at run time.
+    [[nodiscard]] static Library openLinked(std::string_view name);
 };
 
 } // namespace haylen::platform

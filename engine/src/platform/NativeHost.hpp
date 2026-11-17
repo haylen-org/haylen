@@ -21,6 +21,10 @@
 #include "platform/SharedTextInput.hpp"
 #include "platform/SystemState.hpp"
 
+namespace haylen::core {
+class Engine;
+}
+
 namespace haylen::platform {
 
 // The host of every platform layer on a real device, which reaches the system through the services of the platform folder compiled into the runtime. A platform layer derives its host from it and adds what its window does: its size, scale, fullscreen, title, cursor, clipboard, closing, focus, transparency and GPU device.
@@ -163,6 +167,26 @@ class NativeHost : public Host {
     // Turns the edits and actions of the plain keyboard that `setKeyboardVisible` opens into key and character events.
     [[nodiscard]] std::vector<Event> translateKeyboard(const Event& event) {
         return keyboard.translate(event);
+    }
+
+    // What the platform layer does as the player starts, plays and stops its apps, where its platform needs it, and nothing elsewhere: when an app started or could not start, before and after an app stops, after each frame that an app played and after each frame that it keeps running, when development starts, and with an event that other threads posted before the app hears it.
+    virtual void appStarted(core::Engine&, bool) {}
+    virtual void appStartFailed(const core::Json&) {}
+    virtual void appStopping() {}
+    virtual void appStopped(bool) {}
+    virtual void framePlayed(core::Engine&) {}
+    virtual void frameFinished(core::Engine&) {}
+    virtual void developmentEnabled(DevelopmentSession&) {}
+    virtual void preparePostedEvent(Event&) const {}
+
+    // Whether the window stays after an app that cannot go on, so its host shows the failure, as a page does, instead of closing with the status 1.
+    [[nodiscard]] virtual bool keepsWindowAfterFailure() const noexcept {
+        return false;
+    }
+
+    // Whether every package plays under an overlay that the platform edits file by file, as a page does, and not only one that a development server sends files to.
+    [[nodiscard]] virtual bool overlaysEveryPackage() const noexcept {
+        return false;
     }
 
     // Closes the window at once, without asking the app, which ends the process of desktop apps.

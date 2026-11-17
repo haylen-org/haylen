@@ -1,21 +1,9 @@
 #include "platform/CrashGuard.hpp"
 
-#if defined(_WIN32)
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
-#include <windows.h>
-
-#include <fcntl.h>
-#include <io.h>
-#include <share.h>
-#include <sys/stat.h>
-#elif !defined(__EMSCRIPTEN__)
-#include <fcntl.h>
-#include <unistd.h>
-#endif
-
 #include <algorithm>
 #include <cstring>
+
+#include "platform/CrashHandlers.hpp"
 
 namespace haylen::platform {
 
@@ -25,20 +13,9 @@ std::atomic<int> CrashGuard::published = 0;
 std::atomic<bool> CrashGuard::installed = false;
 std::atomic<bool> CrashGuard::crashing = false;
 
-#if defined(_WIN32)
-CrashGuard::ExceptionFilter CrashGuard::previousFilter = nullptr;
-#elif !defined(__EMSCRIPTEN__)
-std::array<struct sigaction, CrashGuard::kSignals.size()>& CrashGuard::previousActions = *new std::array<struct sigaction, CrashGuard::kSignals.size()>{};
-
-#if !(defined(__APPLE__) && TARGET_OS_TV)
-// The stack stays untouched until a handler runs on it, so it takes no memory before.
-std::array<std::byte, CrashGuard::kAlternateStackSize>& CrashGuard::alternateStack = *new std::array<std::byte, CrashGuard::kAlternateStackSize>;
-#endif
-#endif
-
 void CrashGuard::install() {
     if (!installed.exchange(true)) {
-        installHandlers();
+        CrashHandlers::install();
     }
 }
 
@@ -63,178 +40,21 @@ void CrashGuard::setContext(std::string_view json) {
     published.store(next, std::memory_order_release);
 }
 
-#if !defined(__EMSCRIPTEN__)
-
 void CrashGuard::writeReport(std::string_view reason) noexcept {
     if (path[0] == 0) {
         return;
     }
-#if defined(_WIN32)
-    int descriptor = -1;
-    if (_wsopen_s(&descriptor, path.data(), _O_WRONLY | _O_CREAT | _O_TRUNC | _O_BINARY, _SH_DENYNO, _S_IREAD | _S_IWRITE) != 0) {
-        return;
-    }
-#else
-    const int descriptor = open(path.data(), O_WRONLY | O_CREAT | O_TRUNC, 0600);
-    if (descriptor < 0) {
-        return;
-    }
-#endif
 
     const Context& context = contexts[static_cast<std::size_t>(published.load(std::memory_order_acquire))];
-    writeAll(descriptor, R"({"reason":")");
-    writeAll(descriptor, reason);
-    writeAll(descriptor, R"(","context":)");
-    writeAll(descriptor, context.size == 0 ? std::string_view("{}") : std::string_view(context.text.data(), context.size));
-    writeAll(descriptor, "}\n");
-#if defined(_WIN32)
-    _close(descriptor);
-#else
-    close(descriptor);
-#endif
+    const std::string_view text = context.size == 0 ? std::string_view("{}") : std::string_view(context.text.data(), context.size);
+    const std::array<std::string_view, 5> pieces{R"({"reason":")", reason, R"(","context":)", text, "}\n"};
+    CrashHandlers::writeFile(path.data(), pieces);
 }
 
-void CrashGuard::writeAll(int descriptor, std::string_view text) noexcept {
-    while (!text.empty()) {
-#if defined(_WIN32)
-        const int written = _write(descriptor, text.data(), static_cast<unsigned int>(text.size()));
-#else
-        const ssize_t written = write(descriptor, text.data(), text.size());
-#endif
-        if (written <= 0) {
-            return;
-        }
-
-        text.remove_prefix(static_cast<std::size_t>(written));
-    }
-}
-
-#endif
-
-#if defined(_WIN32)
-
-void CrashGuard::installHandlers() {
-    previousFilter = SetUnhandledExceptionFilter(&handleException);
-}
-
-// The filter that was there before decides what happens to the exception, and without one the system handles it.
-long __stdcall CrashGuard::handleException(_EXCEPTION_POINTERS* info) {
+void CrashGuard::reportCrash(std::string_view reason) noexcept {
     if (!crashing.exchange(true)) {
-        writeReport(describeException(info->ExceptionRecord->ExceptionCode));
-    }
-
-    if (previousFilter != nullptr) {
-        return previousFilter(info);
-    }
-
-    return EXCEPTION_CONTINUE_SEARCH;
-}
-
-std::string_view CrashGuard::describeException(unsigned long code) noexcept {
-    switch (code) {
-    case EXCEPTION_ACCESS_VIOLATION:
-        return "accessViolation";
-    case EXCEPTION_STACK_OVERFLOW:
-        return "stackOverflow";
-    case EXCEPTION_ILLEGAL_INSTRUCTION:
-        return "illegalInstruction";
-    case EXCEPTION_INT_DIVIDE_BY_ZERO:
-        return "divideByZero";
-    case EXCEPTION_BREAKPOINT:
-        return "breakpoint";
-    default:
-        return "exception";
+        writeReport(reason);
     }
 }
-
-#elif !defined(__EMSCRIPTEN__)
-
-void CrashGuard::installHandlers() {
-#if !(defined(__APPLE__) && TARGET_OS_TV)
-    prepareAlternateStack();
-#endif
-
-    for (std::size_t index = 0; index < kSignals.size(); ++index) {
-        struct sigaction action{};
-        action.sa_sigaction = &handleSignal;
-        action.sa_flags = SA_SIGINFO | SA_ONSTACK;
-        sigemptyset(&action.sa_mask);
-        sigaction(kSignals[index], &action, &previousActions[index]);
-    }
-}
-
-#if !(defined(__APPLE__) && TARGET_OS_TV)
-// A stack overflow leaves the thread no stack to run a handler on, and the handlers run on the alternate stack of the thread. A thread that has one already, such as every thread on Android, keeps it.
-void CrashGuard::prepareAlternateStack() {
-    stack_t current{};
-    sigaltstack(nullptr, &current);
-    if ((current.ss_flags & SS_DISABLE) == 0) {
-        return;
-    }
-
-    stack_t stack{};
-    stack.ss_sp = alternateStack.data();
-    stack.ss_size = alternateStack.size();
-    sigaltstack(&stack, nullptr);
-}
-#endif
-
-void CrashGuard::handleSignal(int signal, siginfo_t* info, void* context) {
-    if (!crashing.exchange(true)) {
-        writeReport(describeSignal(signal));
-    }
-
-    forwardSignal(signal, info, context);
-}
-
-// The action that was there before takes the signal back, so a fault that happens again once the handler returns reaches it as it would without the guard. Its handler receives the signal information and the context of the crash itself, an ignored signal stays ignored, and the default action ends the process.
-void CrashGuard::forwardSignal(int signal, siginfo_t* info, void* context) {
-    const auto found = std::ranges::find(kSignals, signal);
-    const struct sigaction& previous = previousActions[static_cast<std::size_t>(found - kSignals.begin())];
-    sigaction(signal, &previous, nullptr);
-
-    if (previous.sa_handler == SIG_IGN) {
-        return;
-    }
-
-    if (previous.sa_handler == SIG_DFL) {
-        raise(signal);
-        return;
-    }
-
-    if ((previous.sa_flags & SA_SIGINFO) != 0) {
-        previous.sa_sigaction(signal, info, context);
-        return;
-    }
-
-    previous.sa_handler(signal);
-}
-
-std::string_view CrashGuard::describeSignal(int signal) noexcept {
-    switch (signal) {
-    case SIGSEGV:
-        return "segmentationFault";
-    case SIGBUS:
-        return "busError";
-    case SIGILL:
-        return "illegalInstruction";
-    case SIGFPE:
-        return "arithmeticError";
-    case SIGABRT:
-        return "abort";
-    case SIGTRAP:
-        return "trap";
-    default:
-        return "signal";
-    }
-}
-
-#else
-
-void CrashGuard::installHandlers() {}
-
-void CrashGuard::writeReport(std::string_view) noexcept {}
-
-#endif
 
 } // namespace haylen::platform

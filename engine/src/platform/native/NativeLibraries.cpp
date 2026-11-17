@@ -1,38 +1,17 @@
 #include "haylen/platform/NativeLibraries.hpp"
 
 #include <algorithm>
-#include <array>
-#include <cstdint>
 #include <stdexcept>
-#include <system_error>
 #include <utility>
 
+#include "platform/native/LibraryLoader.hpp"
 #include "varn/runtime/Runtime.h"
-
-#if defined(_WIN32)
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
-#include <windows.h>
-#elif !defined(__EMSCRIPTEN__)
-#include <dlfcn.h>
-#endif
-
-#if defined(__APPLE__)
-#include <TargetConditionals.h>
-#include <mach-o/dyld.h>
-#endif
 
 namespace haylen::platform {
 
-#if defined(__EMSCRIPTEN__)
 bool NativeLibraries::isAvailable() noexcept {
-    return false;
+    return LibraryLoader::isAvailable();
 }
-#else
-bool NativeLibraries::isAvailable() noexcept {
-    return true;
-}
-#endif
 
 NativeLibraries::State& NativeLibraries::getState() {
     static State& state = *new State();
@@ -63,24 +42,17 @@ std::vector<std::string> NativeLibraries::getFileNames(std::string_view name) {
     if (std::filesystem::path(text).has_extension()) {
         return {text};
     }
-#if defined(_WIN32)
-    return {text + ".dll"};
-#elif defined(__APPLE__) && (TARGET_OS_OSX || TARGET_OS_MACCATALYST)
-    return {"lib" + text + ".dylib", text + ".framework/" + text};
-#elif defined(__APPLE__)
-    return {text + ".framework/" + text};
-#else
-    return {"lib" + text + ".so"};
-#endif
+
+    return LibraryLoader::getFileNames(name);
 }
 
 NativeLibraries::Library NativeLibraries::open(std::string_view name) {
-    if (!isAvailable()) {
-        throw std::runtime_error("Native libraries are not available in the browser. Call JavaScript through \"haylen.platform\" instead.");
-    }
-
     if (name.empty()) {
         throw std::invalid_argument("A native library needs a name or a path.");
+    }
+
+    if (!LibraryLoader::isAvailable()) {
+        return openLinked(name);
     }
 
     State& state = getState();
@@ -91,7 +63,7 @@ NativeLibraries::Library NativeLibraries::open(std::string_view name) {
         candidates.push_back(given);
     } else {
         std::vector<std::filesystem::path> folders = state.folders;
-        std::ranges::copy(getPlatformFolders(), std::back_inserter(folders));
+        std::ranges::copy(LibraryLoader::getFolders(), std::back_inserter(folders));
 
         for (const std::filesystem::path& folder : folders) {
             for (const std::string& file : getFileNames(name)) {
@@ -109,7 +81,7 @@ NativeLibraries::Library NativeLibraries::open(std::string_view name) {
         }
 
         std::string failure;
-        if (void* handle = load(candidate, failure)) {
+        if (void* handle = LibraryLoader::load(candidate, failure)) {
             Library library{.name = std::string(name), .path = path, .handle = handle};
             state.loaded.push_back(library);
             return library;
@@ -129,9 +101,19 @@ NativeLibraries::Library NativeLibraries::open(std::string_view name) {
     throw std::runtime_error("The native library \"" + std::string(name) + "\" could not be loaded. These are the places it searched:" + searched + "\nPut the library in one of them or load it by its path.");
 }
 
+NativeLibraries::Library NativeLibraries::openLinked(std::string_view name) {
+    State& state = getState();
+    const std::scoped_lock lock(state.mutex);
+    if (state.linked.contains(std::string(name))) {
+        return {.name = std::string(name), .linked = true};
+    }
+
+    throw std::runtime_error("This platform loads no native library at run time, so the library \"" + std::string(name) + "\" loads only when the app links it, which it does not. Link the library into the app with \"link\": \"static\" and the symbols that Lua calls.");
+}
+
 void* NativeLibraries::findSymbol(const Library& library, std::string_view name) {
     if (!library.linked) {
-        return lookup(library.handle, std::string(name));
+        return LibraryLoader::lookup(library.handle, std::string(name));
     }
 
     State& state = getState();
@@ -156,12 +138,12 @@ void* NativeLibraries::findSymbol(std::string_view name) {
     }
 
     for (const Library& library : state.loaded) {
-        if (void* address = lookup(library.handle, text)) {
+        if (void* address = LibraryLoader::lookup(library.handle, text)) {
             return address;
         }
     }
 
-    return lookupProcess(text);
+    return LibraryLoader::lookupProcess(text);
 }
 
 void NativeLibraries::addLinkedSymbols(varn::runtime::Runtime& runtime) {
@@ -175,130 +157,5 @@ void NativeLibraries::addLinkedSymbols(varn::runtime::Runtime& runtime) {
         }
     }
 }
-
-// The engine loads the libraries of an app from inside its bundle or next to its executable, where the backend of its target places them, so the system search paths never decide which file loads.
-std::vector<std::filesystem::path> NativeLibraries::getPlatformFolders() {
-#if defined(__ANDROID__)
-    // The package manager extracts the libraries of the APK where the linker finds them by name.
-    return {std::filesystem::path()};
-#elif defined(__APPLE__) && (TARGET_OS_OSX || TARGET_OS_MACCATALYST)
-    const std::filesystem::path executable = getExecutableFolder();
-    return {executable.parent_path() / "Frameworks", executable};
-#elif defined(__APPLE__)
-    return {getExecutableFolder() / "Frameworks"};
-#elif defined(_WIN32)
-    return {getExecutableFolder()};
-#elif defined(__EMSCRIPTEN__)
-    return {};
-#else
-    const std::filesystem::path executable = getExecutableFolder();
-    return {executable, executable / "lib"};
-#endif
-}
-
-#if defined(_WIN32)
-std::filesystem::path NativeLibraries::getExecutableFolder() {
-    std::wstring buffer(MAX_PATH, L'\0');
-    DWORD length = GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
-    while (length == buffer.size()) {
-        buffer.resize(buffer.size() * 2);
-        length = GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
-    }
-
-    buffer.resize(length);
-    return std::filesystem::path(buffer).parent_path();
-}
-
-// Wide paths reach folders with any name, and the flags keep the dependencies of the library to its own folder and the system folders.
-void* NativeLibraries::load(const std::filesystem::path& file, std::string& failure) {
-    std::error_code error;
-    if (!std::filesystem::exists(file, error)) {
-        failure = "not found";
-        return nullptr;
-    }
-
-    HMODULE module = LoadLibraryExW(file.c_str(), nullptr, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
-    if (module == nullptr) {
-        const DWORD code = GetLastError();
-        std::array<char, 512> text{};
-        const DWORD size = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, code, 0, text.data(), static_cast<DWORD>(text.size()), nullptr);
-        failure = size > 0 ? std::string(text.data(), size) : "Windows error " + std::to_string(code);
-        while (!failure.empty() && (failure.back() == '\n' || failure.back() == '\r' || failure.back() == '.')) {
-            failure.pop_back();
-        }
-
-        return nullptr;
-    }
-
-    return reinterpret_cast<void*>(module);
-}
-
-void* NativeLibraries::lookup(void* handle, const std::string& name) {
-    return reinterpret_cast<void*>(GetProcAddress(static_cast<HMODULE>(handle), name.c_str()));
-}
-
-void* NativeLibraries::lookupProcess(const std::string& name) {
-    return reinterpret_cast<void*>(GetProcAddress(GetModuleHandleW(nullptr), name.c_str()));
-}
-#elif defined(__EMSCRIPTEN__)
-std::filesystem::path NativeLibraries::getExecutableFolder() {
-    return {};
-}
-
-void* NativeLibraries::load(const std::filesystem::path&, std::string& failure) {
-    failure = "not available in the browser";
-    return nullptr;
-}
-
-void* NativeLibraries::lookup(void*, const std::string&) {
-    return nullptr;
-}
-
-void* NativeLibraries::lookupProcess(const std::string&) {
-    return nullptr;
-}
-#else
-#if defined(__APPLE__)
-std::filesystem::path NativeLibraries::getExecutableFolder() {
-    std::uint32_t size = 0;
-    _NSGetExecutablePath(nullptr, &size);
-    std::string buffer(size, '\0');
-    _NSGetExecutablePath(buffer.data(), &size);
-    std::error_code error;
-    const std::filesystem::path resolved = std::filesystem::canonical(buffer.c_str(), error);
-    return (error ? std::filesystem::path(buffer.c_str()) : resolved).parent_path();
-}
-#else
-std::filesystem::path NativeLibraries::getExecutableFolder() {
-    std::error_code error;
-    return std::filesystem::read_symlink("/proc/self/exe", error).parent_path();
-}
-#endif
-
-// A candidate without a folder is a name that the dynamic linker looks up itself, which is how Android finds the libraries of the APK.
-void* NativeLibraries::load(const std::filesystem::path& file, std::string& failure) {
-    std::error_code error;
-    if (file.has_parent_path() && !std::filesystem::exists(file, error)) {
-        failure = "not found";
-        return nullptr;
-    }
-
-    void* handle = dlopen(file.c_str(), RTLD_NOW | RTLD_LOCAL);
-    if (handle == nullptr) {
-        const char* text = dlerror();
-        failure = text != nullptr ? text : "dlopen failed";
-    }
-
-    return handle;
-}
-
-void* NativeLibraries::lookup(void* handle, const std::string& name) {
-    return dlsym(handle, name.c_str());
-}
-
-void* NativeLibraries::lookupProcess(const std::string& name) {
-    return dlsym(RTLD_DEFAULT, name.c_str());
-}
-#endif
 
 } // namespace haylen::platform

@@ -289,7 +289,7 @@ add_executable(haylen-tests ${HAYLEN_TEST_SOURCES} "${HAYLEN_ENGINE_DIR}/src/pla
 set_target_properties(haylen-tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
 # The tests export the variables that the drivers of a laptop with two GPUs read, like the player and the apps.
 if(WIN32)
-  target_sources(haylen-tests PRIVATE "${HAYLEN_ENGINE_DIR}/src/gpu/GpuPreferenceExports.cpp")
+  target_sources(haylen-tests PRIVATE "${HAYLEN_ENGINE_DIR}/src/gpu/windows/GpuPreferenceExports.cpp")
 endif()
 target_link_libraries(haylen-tests PRIVATE haylen::engine haylen::headless haylen::gpu haylen-content-tool SDL3::SDL3-static haylen-harfbuzz haylen-miniaudio haylen-stb haylen-monocypher libzip::zip ZLIB::ZLIB libzstd_static Poco::Net GTest::gtest_main)
 # The tests reach into the engine's private headers on purpose, to check internals the public API hides.

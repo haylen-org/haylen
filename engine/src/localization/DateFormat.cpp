@@ -6,6 +6,7 @@
 #include <limits>
 #include <stdexcept>
 
+#include "localization/LocalTime.hpp"
 #include "localization/LocaleData.hpp"
 
 namespace haylen::localization {
@@ -63,12 +64,7 @@ DateFormat::Fields DateFormat::toFields(std::int64_t seconds, std::optional<int>
     // The system converts only the moments that its own time type and calendar hold, such as none before 1970 on Windows.
     const auto moment = static_cast<std::time_t>(seconds);
     std::tm local{};
-#if defined(_WIN32)
-    const bool converted = localtime_s(&local, &moment) == 0;
-#else
-    const bool converted = localtime_r(&moment, &local) != nullptr;
-#endif
-    if (!converted) {
+    if (!LocalTime::convert(moment, local)) {
         throw std::invalid_argument(std::format("The system cannot express the moment {} in the time zone of the device. Pass a \"timeZoneOffset\" to format it.", seconds));
     }
 

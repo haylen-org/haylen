@@ -6,13 +6,18 @@ file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/../include/haylen/port/Contract.hpp" hay
 string(REGEX MATCH "kVersion = ([0-9]+)" haylen_port_contract_match "${haylen_port_contract_line}")
 set(HAYLEN_PORT_CONTRACT_VERSION "${CMAKE_MATCH_1}")
 
-# What the platform of a port allows apps to do, which the SDK of the port records and plugins and the tooling read: loading libraries at run time, writing code into memory and starting other processes.
-set(HAYLEN_PORT_CAPABILITY_NAMES dynamicLibraries executableMemory processes)
+# What the platform of a port allows apps to do, which `port::Contract::kCapabilityNames` names and the SDK of the port records for plugins and the tooling: loading libraries at run time, writing code into memory and starting other processes.
+file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/../include/haylen/port/Contract.hpp" haylen_port_capability_line REGEX "kCapabilityNames\\{")
+string(REGEX MATCHALL "\"[A-Za-z]+\"" haylen_port_capability_names "${haylen_port_capability_line}")
+string(REPLACE "\"" "" HAYLEN_PORT_CAPABILITY_NAMES "${haylen_port_capability_names}")
 
 # Describes the port:
 # - `CONTRACT`, the version of the contract of ports that the port follows, which must be `HAYLEN_PORT_CONTRACT_VERSION`.
 # - `PLATFORM`, the name of the platform, which `HAYLEN_PLATFORM` takes and the services of the port report.
+# - `SYSTEM_API`, the interfaces of the system that the engine compiles its system code against, `posix` or `windows`: the files of the content store, the local time, the handlers of native crashes and the loader of native libraries.
+# - `THREADS`, which is `OFF` when the platform runs no thread besides the one that plays the frames, and `ON` by default.
 # - `CAPABILITIES`, what the platform allows apps to do, any of `dynamicLibraries`, `executableMemory` and `processes`.
+# - `VARN_DRIVERS`, the drivers of the Lua runtime Varn that the platform takes, as `<NAME>=<DRIVER>`, such as `SOCKET=EXTERNAL`, and `TLS=ON` for TLS, while every driver it does not name is the one of the target `port` of Varn that needs nothing of the system, and the event loop follows `THREADS`. `VARN_DRIVER_SOURCES` lists the sources of each driver `EXTERNAL` as `<NAME>=<path>`.
 # - `RUNTIME_SOURCES` and `RUNTIME_LIBRARIES`, the platform layer and the services of the port, which `haylen-runtime` compiles and links instead of those of the engine.
 # - `GRAPHICS_APIS`, the graphics APIs of the engine whose devices the port compiles, such as `vulkan`.
 # - `DEVICE_SOURCES` and `DEVICE_LIBRARIES`, the device of the API `port` that `haylen-gpu` compiles and links, which defines `gpu::PortDevice` for a graphics API the engine has no device of.
@@ -23,9 +28,9 @@ set(HAYLEN_PORT_CAPABILITY_NAMES dynamicLibraries executableMemory processes)
 # - `PLUGIN_PART`, the name of the part of plugins that the backend of the port reads.
 # - `SDK`, which is `ON` when the port builds and installs the SDK that `HAYLEN_BUILD_SDK` makes.
 function(haylen_port)
-  cmake_parse_arguments(PARSE_ARGV 0 port "" "CONTRACT;PLATFORM;APP_FUNCTION;APP_MODULE;RELEASE_PROFILE;PLUGIN_PART;SDK" "CAPABILITIES;RUNTIME_SOURCES;RUNTIME_LIBRARIES;GRAPHICS_APIS;DEVICE_SOURCES;DEVICE_LIBRARIES;SHADER_LANGUAGES;SHADER_COMMAND;HOST_TOOLS")
+  cmake_parse_arguments(PARSE_ARGV 0 port "" "CONTRACT;PLATFORM;SYSTEM_API;THREADS;APP_FUNCTION;APP_MODULE;RELEASE_PROFILE;PLUGIN_PART;SDK" "CAPABILITIES;VARN_DRIVERS;VARN_DRIVER_SOURCES;RUNTIME_SOURCES;RUNTIME_LIBRARIES;GRAPHICS_APIS;DEVICE_SOURCES;DEVICE_LIBRARIES;SHADER_LANGUAGES;SHADER_COMMAND;HOST_TOOLS")
   if(port_UNPARSED_ARGUMENTS)
-    message(FATAL_ERROR "The port of \"${HAYLEN_PORT_DIR}\" passes \"${port_UNPARSED_ARGUMENTS}\" to \"haylen_port\", which takes \"CONTRACT\", \"PLATFORM\", \"CAPABILITIES\", \"RUNTIME_SOURCES\", \"RUNTIME_LIBRARIES\", \"GRAPHICS_APIS\", \"DEVICE_SOURCES\", \"DEVICE_LIBRARIES\", \"SHADER_LANGUAGES\", \"SHADER_COMMAND\", \"HOST_TOOLS\", \"APP_FUNCTION\", \"APP_MODULE\", \"RELEASE_PROFILE\", \"PLUGIN_PART\" and \"SDK\".")
+    message(FATAL_ERROR "The port of \"${HAYLEN_PORT_DIR}\" passes \"${port_UNPARSED_ARGUMENTS}\" to \"haylen_port\", which takes \"CONTRACT\", \"PLATFORM\", \"SYSTEM_API\", \"THREADS\", \"CAPABILITIES\", \"VARN_DRIVERS\", \"VARN_DRIVER_SOURCES\", \"RUNTIME_SOURCES\", \"RUNTIME_LIBRARIES\", \"GRAPHICS_APIS\", \"DEVICE_SOURCES\", \"DEVICE_LIBRARIES\", \"SHADER_LANGUAGES\", \"SHADER_COMMAND\", \"HOST_TOOLS\", \"APP_FUNCTION\", \"APP_MODULE\", \"RELEASE_PROFILE\", \"PLUGIN_PART\" and \"SDK\".")
   endif()
   if(NOT port_CONTRACT STREQUAL HAYLEN_PORT_CONTRACT_VERSION)
     message(FATAL_ERROR "The port of \"${HAYLEN_PORT_DIR}\" follows the contract \"${port_CONTRACT}\" of ports, while this engine has the contract ${HAYLEN_PORT_CONTRACT_VERSION}. Update the port to the contract of the engine, as the guide of ports describes, and pass \"CONTRACT ${HAYLEN_PORT_CONTRACT_VERSION}\".")
@@ -33,9 +38,32 @@ function(haylen_port)
   if(NOT port_PLATFORM MATCHES "^[a-z][a-z0-9-]*$" OR port_PLATFORM MATCHES "^(macos|windows|linux|ios|tvos|android|web)$")
     message(FATAL_ERROR "The port of \"${HAYLEN_PORT_DIR}\" names its platform \"${port_PLATFORM}\". Name it in lowercase dash-case with a name that no platform of the engine has, such as \"console\".")
   endif()
+  if(NOT port_SYSTEM_API MATCHES "^(posix|windows)$")
+    message(FATAL_ERROR "The port of \"${HAYLEN_PORT_DIR}\" names the system interface \"${port_SYSTEM_API}\" in \"SYSTEM_API\", which is \"posix\" or \"windows\", the interfaces of the system that the engine compiles its files, local time, crash handlers and native libraries against.")
+  endif()
+  if(NOT DEFINED port_THREADS)
+    set(port_THREADS ON)
+  endif()
+  if(NOT port_THREADS MATCHES "^(ON|OFF)$")
+    message(FATAL_ERROR "The \"THREADS\" of the port of \"${HAYLEN_PORT_DIR}\" is \"ON\" or \"OFF\", not \"${port_THREADS}\".")
+  endif()
   foreach(capability IN LISTS port_CAPABILITIES)
     if(NOT capability IN_LIST HAYLEN_PORT_CAPABILITY_NAMES)
       message(FATAL_ERROR "The port of \"${HAYLEN_PORT_DIR}\" names the capability \"${capability}\", which is \"dynamicLibraries\", \"executableMemory\" or \"processes\".")
+    endif()
+  endforeach()
+  foreach(driver IN LISTS port_VARN_DRIVERS)
+    if(NOT driver MATCHES "^(SOCKET|HTTP_CLIENT|HTTP_SERVER|CRYPTO|PROCESS|FFI|FS|LOG|JSON|XML|TLS)=[A-Z0-9_]+$")
+      message(FATAL_ERROR "The port of \"${HAYLEN_PORT_DIR}\" names the driver of Varn \"${driver}\". Name each one as \"<NAME>=<DRIVER>\", such as \"SOCKET=EXTERNAL\", with a name of \"SOCKET\", \"HTTP_CLIENT\", \"HTTP_SERVER\", \"CRYPTO\", \"PROCESS\", \"FFI\", \"FS\", \"LOG\", \"JSON\", \"XML\" or \"TLS\", while the event loop follows \"THREADS\".")
+    endif()
+  endforeach()
+  foreach(source IN LISTS port_VARN_DRIVER_SOURCES)
+    string(REGEX MATCH "^([A-Z_]+)=(.+)$" matched "${source}")
+    if(NOT matched OR NOT EXISTS "${CMAKE_MATCH_2}")
+      message(FATAL_ERROR "The port of \"${HAYLEN_PORT_DIR}\" names the source of a driver of Varn \"${source}\". Name each one as \"<NAME>=<path>\" of an existing file, such as \"SOCKET=${CMAKE_CURRENT_LIST_DIR}/ConsoleSockets.cpp\".")
+    endif()
+    if(NOT "${CMAKE_MATCH_1}=EXTERNAL" IN_LIST port_VARN_DRIVERS)
+      message(FATAL_ERROR "The port of \"${HAYLEN_PORT_DIR}\" names a source of the driver \"${CMAKE_MATCH_1}\" of Varn, which it does not name \"${CMAKE_MATCH_1}=EXTERNAL\" in \"VARN_DRIVERS\".")
     endif()
   endforeach()
   if(NOT port_RUNTIME_SOURCES)
@@ -76,7 +104,11 @@ function(haylen_port)
   endif()
 
   set(HAYLEN_PORT_PLATFORM "${port_PLATFORM}" PARENT_SCOPE)
+  set(HAYLEN_PORT_SYSTEM_API "${port_SYSTEM_API}" PARENT_SCOPE)
+  set(HAYLEN_PORT_THREADS "${port_THREADS}" PARENT_SCOPE)
   set(HAYLEN_PORT_CAPABILITIES "${port_CAPABILITIES}" PARENT_SCOPE)
+  set(HAYLEN_PORT_VARN_DRIVERS "${port_VARN_DRIVERS}" PARENT_SCOPE)
+  set(HAYLEN_PORT_VARN_DRIVER_SOURCES "${port_VARN_DRIVER_SOURCES}" PARENT_SCOPE)
   set(HAYLEN_PORT_RUNTIME_SOURCES "${port_RUNTIME_SOURCES}" PARENT_SCOPE)
   set(HAYLEN_PORT_RUNTIME_LIBRARIES "${port_RUNTIME_LIBRARIES}" PARENT_SCOPE)
   set(HAYLEN_PORT_GRAPHICS_APIS "${port_GRAPHICS_APIS}" PARENT_SCOPE)

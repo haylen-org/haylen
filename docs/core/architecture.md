@@ -103,6 +103,9 @@ Each platform has a folder of its own. These are its main classes, and each fold
 | `web/` | `WebServices.cpp`, `WebPage` with the exports that the page calls, `WebVideoDecoder`, which plays videos in video elements of the page, and `BrowserWebSocket`. |
 | `windows/` | Its services with `WindowsSystem`, `WindowsPowerStatus` and `WindowsText`. `WindowsVideoDecoder` with `WindowsPackageStream`, which decode videos with Media Foundation. |
 | `linux/` | Its services with `LinuxSystem` and `LinuxSystemReader`, which reads the files of the system. `LinuxGlib`, which loads GIO at run time. `LinuxSettings`, which follows the color scheme and the accessibility settings of the settings portal. |
+| `posix/` | What Apple platforms, Linux and Android share of POSIX: `PosixCrashHandlers` with the signals of native crashes and the `LibraryLoader` of `dlopen`. |
+
+The portable code never asks which system it compiles for. CMake picks the code of the system of the build by its system interface, `posix` or `windows`, from the folders of the same names of a context, such as `content/posix/StoreFile.cpp` with the files of the content store and `localization/windows/LocalTime.cpp` with the local time, and a platform that lacks a capability takes the code of the folders `unavailable`, such as `native/unavailable/LibraryLoader.cpp`, which loads only the libraries linked into the app. A port names its system interface in `SYSTEM_API`, as the [guide of ports](../platform/ports.md) describes.
 
 The classes `PluginLoadOrder`, `WindowsPowerStatus`, `LinuxSystemReader`, `AndroidDeviceInfo`, `AndroidBatteryStatus`, `AndroidFramePacer`, `AndroidGraphicsApis`, `AndroidGamepadStates`, `AndroidGlesVersion`, `AndroidKeyClaims` and `AndroidYuvImage` compile on every platform into `haylen-platform`, so every host tests them.
 

@@ -48,7 +48,13 @@ The folder holds a `port.cmake`, which describes the port with one call of `hayl
 haylen_port(
   CONTRACT 2
   PLATFORM console
+  SYSTEM_API posix
+  THREADS ON
   CAPABILITIES dynamicLibraries
+  VARN_DRIVERS SOCKET=EXTERNAL HTTP_CLIENT=EXTERNAL FS=STD
+  VARN_DRIVER_SOURCES
+    "SOCKET=${CMAKE_CURRENT_LIST_DIR}/varn/ConsoleSockets.cpp"
+    "HTTP_CLIENT=${CMAKE_CURRENT_LIST_DIR}/varn/ConsoleHttpClient.cpp"
   RUNTIME_SOURCES
     "${CMAKE_CURRENT_LIST_DIR}/runtime/ConsoleHost.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/runtime/ConsoleRuntime.cpp"
@@ -72,7 +78,11 @@ haylen_port(
 | --- | --- |
 | `CONTRACT` | The version of the contract of ports that the port follows. It must be `port::Contract::kVersion` of the [public API of ports](#the-public-api-of-ports), which `engine/cmake/haylen-port.cmake` reads into `HAYLEN_PORT_CONTRACT_VERSION` and which grows whenever that API or `haylen_port` change in a way that a port must follow, so a port of an older contract stops with a sentence that names both versions. |
 | `PLATFORM` | The name of the platform in lowercase dash-case, which `HAYLEN_PLATFORM` takes and the services of the port report. It cannot be the name of a platform of the engine. |
-| `CAPABILITIES` | What the platform allows apps to do, any of `dynamicLibraries`, which loads libraries at run time, `executableMemory`, which writes code into memory, and `processes`, which starts other processes. The SDK of the port records them, and the registry of the tooling checks them against what the backend of a target needs. |
+| `SYSTEM_API` | The interfaces of the system that the engine compiles its system code against, `posix` or `windows`: the files of the content store with their flush to the disk, the local time, the handlers of native crashes and, with `dynamicLibraries`, the loader of native libraries. The portable code of the engine never asks which system it compiles for, so these are the only parts that a port takes from a system, and everything else of its platform comes through the public API of ports. |
+| `THREADS` | `OFF` when the platform runs no thread besides the one that plays the frames, so the jobs, the physics and the audio device of the engine run on that thread, and `ON` by default. |
+| `CAPABILITIES` | What the platform allows apps to do, any of `dynamicLibraries`, which loads libraries at run time, `executableMemory`, which writes code into memory, and `processes`, which starts other processes. The engine answers each one the platform lacks where an app reaches it: without `dynamicLibraries`, `native.load` finds only the libraries linked into the app, which the backend links statically and registers by their names, without `processes`, `io.popen` and `os.execute` fail with a sentence that says so, and `port::Contract::allows` tells native code. Without `executableMemory`, `haylen.native` makes no callback that native code calls, since its closures write code into memory, and without `processes` the module `process` of Varn takes its driver that runs nothing. The SDK of the port records the capabilities, and the registry of the tooling checks them against what the backend of a target needs. |
+| `VARN_DRIVERS` | The drivers of the Lua runtime Varn that the platform takes, as `<NAME>=<DRIVER>` for `SOCKET`, `HTTP_CLIENT`, `HTTP_SERVER`, `CRYPTO`, `PROCESS`, `FFI`, `FS`, `LOG`, `JSON` and `XML`, and `TLS=ON` for TLS. The engine builds the target `port` of Varn, whose every driver that the port does not name is the one that needs nothing of the system, such as no sockets and the portable crypto, and whose event loop follows `THREADS`: the loop of libuv, which waits on the system, or the loop that the frames pump, whose worker pools run inside the pump. The WebSockets of the engine take the sockets of Poco with TLS, and a platform without them opens none. |
+| `VARN_DRIVER_SOURCES` | The sources of each driver `EXTERNAL` of `VARN_DRIVERS`, as `<NAME>=<path>`, which implement the public header of the module of Varn that every driver of it implements, such as `varn/socket/SocketTransport.h`, so a port brings the sockets, the HTTP transport, the crypto, the processes, the native calls or the files of its system. A transport that completes work through a callback of the system while the loop is pumped counts it in `varn::runtime::HostWork`. |
 | `RUNTIME_SOURCES` | The sources of the runtime of the platform, which `haylen-runtime` compiles instead of the SDL platform layer, the Android runtime and the services of the engine. |
 | `RUNTIME_LIBRARIES` | The libraries that the runtime links, such as the targets of the SDK. |
 | `GRAPHICS_APIS` | The graphics APIs of the engine whose devices the port compiles, by their names in `gpu::Device::kApiNames`, such as `openGl`. |
@@ -87,7 +97,7 @@ haylen_port(
 | `PLUGIN_PART` | The name of the part of plugins that the backend of the port reads, in lowercase dash-case, which plugins list in `implementations` and in the `platforms` of their contributions. |
 | `SDK` | `ON` when the port builds and installs the SDK of its platform with `HAYLEN_BUILD_SDK`, which stops with a clear sentence otherwise. |
 
-The runtime of a port compiles with the definition `HAYLEN_PORT`, which keeps the platform folders of the repository out of the shared player even where the compiler of the port targets their system, and `haylen-gpu` compiles with `HAYLEN_GPU_PORT` when the port has a device. A port needs `CONTRACT`, `RUNTIME_SOURCES` and at least one graphics API: its own device, the devices of the engine it names, or both. A port with a device of its own needs `SHADER_LANGUAGES` and `SHADER_COMMAND`, and an `APP_FUNCTION` needs its `APP_MODULE`. The configuration stops with a clear sentence when one is missing, when a capability or a host tool is unknown, and when a port without an `APP_FUNCTION` builds an app.
+The portable code of the engine never asks which system it compiles for, so the platform folders of the repository stay out of the build of a port even where the compiler of the port targets their system, and `haylen-gpu` compiles with `HAYLEN_GPU_PORT` when the port has a device. A port needs `CONTRACT`, `SYSTEM_API`, `RUNTIME_SOURCES` and at least one graphics API: its own device, the devices of the engine it names, or both. A port with a device of its own needs `SHADER_LANGUAGES` and `SHADER_COMMAND`, and an `APP_FUNCTION` needs its `APP_MODULE`. The configuration stops with a clear sentence when one is missing, when a capability or a host tool is unknown, and when a port without an `APP_FUNCTION` builds an app.
 
 Build the engine with the port through CMake:
 
@@ -258,7 +268,7 @@ The custom shaders of apps are packages too, which `haylen app shaders` compiles
 
 ## Testing a port
 
-The command `haylen test --port` builds the engine with the test port of `engine/tests/data/port` in `build/engine/<host>-port-<config>` and plays the app of `engine/tests/data/port-app` on it. The test port has the platform `test-port`, a runtime that plays the app without a window, services that answer like a console without plugins, and a device of the API `port` built on `gpu::NullDevice`, which checks every call of the engine against the contract and runs the code that its shader tool wrote. The app checks the platform, the operating system and the graphics API, draws shapes, sprites and text, and quits with the status `0`. It needs no SDK, so it builds on the desktops of the public repository and keeps the mechanism working for every port.
+The command `haylen test --port` builds the engine with the test port of `engine/tests/data/port` in `build/engine/<host>-port-<config>` and plays the app of `engine/tests/data/port-app` on it. The test port has the platform `test-port`, a runtime that plays the app without a window, services that answer like a console without plugins, and a device of the API `port` built on `gpu::NullDevice`, which checks every call of the engine against the contract and runs the code that its shader tool wrote. The test port builds the target `port` of Varn with the drivers of the desktop and an external driver of processes of its own, which starts nothing. The app checks the platform, the operating system and the graphics API, that `io.popen` refuses to start a program, since the test port does not allow `processes`, and that the module `process` runs on the external driver, draws shapes, sprites and text, and quits with the status `0`. It needs no SDK, so it builds on the desktops of the public repository and keeps the mechanism working for every port.
 
 ```sh
 haylen test --port

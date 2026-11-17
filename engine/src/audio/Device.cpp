@@ -5,6 +5,7 @@
 
 #include "audio/OutputBackend.hpp"
 #include "haylen/core/Log.hpp"
+#include "haylen/port/Contract.hpp"
 
 namespace haylen::audio {
 
@@ -252,12 +253,14 @@ void Device::connect(bool warn) {
     waited = 0.0F;
     warnRefusal = warn;
     warnedWaiting = false;
-#if defined(__EMSCRIPTEN__)
-    open(*next, setup);
-    take();
-#else
+    // A platform without threads besides the one of the frames, such as a page, opens the device on that thread, where it never blocks.
+    if (!port::Contract::hasThreads()) {
+        open(*next, setup);
+        take();
+        return;
+    }
+
     std::thread([next, options = setup] { open(*next, options); }).detach();
-#endif
 }
 
 void Device::take() {

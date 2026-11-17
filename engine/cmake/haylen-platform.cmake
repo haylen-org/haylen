@@ -50,6 +50,39 @@ else()
   set(HAYLEN_GPU_TESTS_ALONE OFF)
 endif()
 
+# The interfaces of the system that the engine compiles its system code against, which a port declares in `SYSTEM_API`: POSIX on Apple platforms, Linux and Android, Windows, and the browser, which has the files and the local time of POSIX and no native crashes or native libraries.
+if(HAYLEN_PORT_PLATFORM)
+  set(HAYLEN_SYSTEM_API "${HAYLEN_PORT_SYSTEM_API}")
+elseif(EMSCRIPTEN)
+  set(HAYLEN_SYSTEM_API "web")
+elseif(WIN32)
+  set(HAYLEN_SYSTEM_API "windows")
+else()
+  set(HAYLEN_SYSTEM_API "posix")
+endif()
+
+# What the platform allows apps to do, which a port declares in `CAPABILITIES`: Mac Catalyst starts no process of its own, iPhones, iPads, TVs and Apple Vision Pro neither start processes nor write code into memory, and a page does none of the three.
+if(HAYLEN_PORT_PLATFORM)
+  set(HAYLEN_CAPABILITIES ${HAYLEN_PORT_CAPABILITIES})
+elseif(HAYLEN_PLATFORM STREQUAL "web")
+  set(HAYLEN_CAPABILITIES "")
+elseif(HAYLEN_CATALYST)
+  set(HAYLEN_CAPABILITIES dynamicLibraries processes)
+elseif(HAYLEN_PLATFORM MATCHES "^(ios|tvos)$")
+  set(HAYLEN_CAPABILITIES dynamicLibraries)
+else()
+  set(HAYLEN_CAPABILITIES dynamicLibraries executableMemory processes)
+endif()
+
+# Whether the platform runs threads besides the one that plays the frames, which a page does not and a port declares in `THREADS`.
+if(HAYLEN_PORT_PLATFORM)
+  set(HAYLEN_THREADS ${HAYLEN_PORT_THREADS})
+elseif(HAYLEN_PLATFORM STREQUAL "web")
+  set(HAYLEN_THREADS OFF)
+else()
+  set(HAYLEN_THREADS ON)
+endif()
+
 # The function `haylen_add_app` runs in the folders of the apps, which do not see the variables of the engine folder.
 set(HAYLEN_PLATFORM "${HAYLEN_PLATFORM}" CACHE INTERNAL "Platform the engine is built for.")
 set(HAYLEN_DESKTOP "${HAYLEN_DESKTOP}" CACHE INTERNAL "Whether the platform is a desktop.")

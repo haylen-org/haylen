@@ -33,20 +33,6 @@
 #include "platform/Services.hpp"
 #include "platform/native/NativeApi.hpp"
 
-// A port brings the services of its own platform, so the platform folders of the repository stay out of its builds even where its compiler targets their system, as a test port on a desktop does.
-#if defined(__APPLE__) && !defined(HAYLEN_PORT)
-#include "platform/apple/AppleRuntime.hpp"
-#elif defined(__ANDROID__)
-#include "platform/android/AndroidActivity.hpp"
-#include "platform/android/AndroidGamepads.hpp"
-#include "platform/android/AndroidTextInput.hpp"
-#include "platform/android/JavaBridge.hpp"
-#elif defined(__EMSCRIPTEN__)
-#include "platform/web/WebPage.hpp"
-#elif defined(__linux__) && !defined(HAYLEN_PORT)
-#include "platform/linux/LinuxAccessibility.hpp"
-#endif
-
 namespace haylen::platform {
 
 Player::Player(std::unique_ptr<NativeHost> nativeHost) : host(std::move(nativeHost)) {}
@@ -61,13 +47,6 @@ void Player::create(int argc, char* argv[], std::unique_ptr<NativeHost> nativeHo
     process.current = std::make_unique<Player>(std::move(nativeHost));
     Player& runtime = *process.current;
     LaunchOptions options = LaunchOptions::parse(argc, argv);
-#if defined(__ANDROID__)
-    // Android starts apps without a command line, and a debuggable app takes the development server from the intent that launched it.
-    if (std::string server = JavaBridge::getDevelopmentServer(); !server.empty()) {
-        options.development = true;
-        options.developmentServer = std::move(server);
-    }
-#endif
     // A release build carries the bootstrap of its app and plays its protected release, which never runs in development.
     if (options.development && content::Bootstrap::find() != nullptr) {
         core::Log::warning("The release build of the app ignores \"--dev\" and \"--dev-server\", since a release never runs in development.");
@@ -186,10 +165,12 @@ void Player::fail(std::string_view reason) {
     runtime.close();
     core::Log::error("{}", reason);
     Services::reportError(lua::Error(std::string(reason)).toJson());
-#if !defined(__EMSCRIPTEN__)
+    if (runtime.host->keepsWindowAfterFailure()) {
+        return;
+    }
+
     getProcess().exitStatus = 1;
     runtime.host->closeWindow();
-#endif
 }
 
 // A page that pauses an app in a hidden tab, or resumes it there, changes nothing the app hears until the tab shows again.
@@ -326,12 +307,8 @@ std::vector<gpu::Device::Api> Player::resolveGraphicsApis(std::string_view reque
 
 // The web plays every package under an overlay, which the page edits file by file, and so does an app that a development server sends files to. A protected release plays as it ships, since no file of it is ever replaced.
 std::shared_ptr<io::Package> Player::withOverlay(std::shared_ptr<io::Package> source) const {
-#if defined(__EMSCRIPTEN__)
-    const bool overlaid = true;
-#else
     const DevelopmentSession* session = host->getDevelopmentSession();
-    const bool overlaid = session != nullptr && session->isConnected();
-#endif
+    const bool overlaid = host->overlaysEveryPackage() || (session != nullptr && session->isConnected());
     if (!overlaid || std::dynamic_pointer_cast<io::OverlayPackage>(source) || std::dynamic_pointer_cast<content::ReleasePackage>(source)) {
         return source;
     }
@@ -369,9 +346,7 @@ void Player::frame(double seconds) {
     }
 
     runtime.play(seconds);
-#if defined(__ANDROID__)
-    runtime.reportBackCapture();
-#endif
+    runtime.host->framePlayed(*runtime.engine);
     if (!runtime.engine->isRunning()) {
         if (!runtime.launchers.empty()) {
             runtime.returnToLauncher();
@@ -381,10 +356,8 @@ void Player::frame(double seconds) {
         runtime.host->closeWindow();
         return;
     }
-#if defined(__EMSCRIPTEN__)
-    WebPage::reportFrame(*runtime.engine);
-    WebPage::finishFrame();
-#endif
+
+    runtime.host->frameFinished(*runtime.engine);
 
     // A restart or a launch happens between frames, where no engine code is on the stack.
     if (runtime.engine->isRestartRequested()) {
@@ -405,12 +378,7 @@ void Player::play(double seconds) {
     }
 
     for (Event& event : takePostedEvents()) {
-#if defined(__ANDROID__)
-        // The on-screen keyboard of Android arrives from the UI thread in window pixels.
-        if (event.type == Event::Type::KeyboardChanged) {
-            event.keyboardFrame = AndroidActivity::toFramebuffer(event.keyboardFrame);
-        }
-#endif
+        host->preparePostedEvent(event);
         deliver(event);
     }
     for (int press = takeBackPresses(); press > 0 && engine->isRunning(); --press) {
@@ -424,9 +392,7 @@ void Player::play(double seconds) {
 // The page hears what every batch of a development server did, as the web editor shows it.
 void Player::enableDevelopment(std::optional<std::filesystem::path> folder, std::string server) {
     host->enableDevelopment(std::move(folder), std::move(server));
-#if defined(__EMSCRIPTEN__)
-    host->getDevelopmentSession()->addReporter(&WebPage::reportReloaded);
-#endif
+    host->developmentEnabled(*host->getDevelopmentSession());
 }
 
 // The app that launches keeps its package, its development session and its native access for its return, and the launched app opens like any package, in development with a session of its own when it names a development server, with native access only when both apps have it, and with the error screen when it cannot open.
@@ -512,18 +478,6 @@ Player::Back Player::routeBack(bool pressed) {
     return Back::Player;
 }
 
-#if defined(__ANDROID__)
-void Player::reportBackCapture() {
-    const bool captured = engine->isBackCaptured() || AndroidTextInput::isEditing() || host->isLaunched() || getProcess().backHeld.load();
-    if (captured == backReported) {
-        return;
-    }
-
-    backReported = captured;
-    JavaBridge::captureBack(captured);
-}
-#endif
-
 void Player::cleanup() {
     getCurrent().close();
     getProcess().current.reset();
@@ -547,9 +501,7 @@ void Player::launch() {
         core::Json report = lua::Error(error.what()).toJson();
         report["phase"] = "startup";
         Services::reportError(report);
-#if defined(__EMSCRIPTEN__)
-        WebPage::reportStartFailed(report);
-#endif
+        host->appStartFailed(report);
     }
 
     if (engine == nullptr) {
@@ -563,15 +515,8 @@ void Player::launch() {
     for (const Event& event : reported.getReplay()) {
         engine->handleEvent(event);
     }
-#if defined(__EMSCRIPTEN__)
-    if (playing) {
-        WebPage::reportStarted(*engine);
-    }
-#elif defined(__ANDROID__)
-    JavaBridge::setAppRunning(true);
-#elif defined(__APPLE__) && !defined(HAYLEN_PORT)
-    AppleRuntime::setAppRunning(true);
-#endif
+
+    host->appStarted(*engine, playing);
 }
 
 // An app whose engine could not start returns to the app that launched it. The app that runs first closes its desktop window, while the web runtime waits for the next package.
@@ -580,10 +525,13 @@ void Player::leaveFailedStart() {
         returnToLauncher();
         return;
     }
-#if !defined(__EMSCRIPTEN__)
+
+    if (host->keepsWindowAfterFailure()) {
+        return;
+    }
+
     getProcess().exitStatus = 1;
     host->closeWindow();
-#endif
 }
 
 void Player::launchWhenReady() {
@@ -599,37 +547,19 @@ void Player::close() noexcept {
     if (engine == nullptr) {
         return;
     }
-#if defined(__ANDROID__)
-    // Native events wait in Java from here on, so the ones that come while the app stops reach the next app instead of none.
-    JavaBridge::setAppRunning(false);
-#elif defined(__APPLE__) && !defined(HAYLEN_PORT)
-    AppleRuntime::setAppRunning(false);
-#endif
+
+    host->appStopping();
     getProcess().exitStatus = engine->getExitStatus();
     {
         const debug::ExecutionBudget::Entry entry(getExecutionBudget(), "stop");
         engine.reset();
     }
-#if defined(__EMSCRIPTEN__)
-    if (playing) {
-        WebPage::reportStopped();
-    }
-#endif
+
+    host->appStopped(playing);
 }
 
 // The typing of the plain keyboard reaches the app as the key and character events a physical keyboard would send.
 void Player::deliver(const Event& event) {
-#if defined(__ANDROID__)
-    // Android sends the axes of controllers only to the window with the focus, so a stick released while another window has it would keep its last value.
-    if (event.type == Event::Type::FocusLost) {
-        AndroidGamepads::releaseAxes();
-    }
-#elif defined(__linux__) && !defined(HAYLEN_PORT)
-    // Screen readers follow the focus of the window that is active, which the window tells them as it gains and loses the focus.
-    if (event.type == Event::Type::FocusGained || event.type == Event::Type::FocusLost) {
-        LinuxAccessibility::setActive(event.type == Event::Type::FocusGained);
-    }
-#endif
     const bool heard = reported.record(event);
     if (engine == nullptr || !heard) {
         return;

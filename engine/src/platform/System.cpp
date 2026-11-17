@@ -11,6 +11,7 @@
 
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
+#include "localization/LocalTime.hpp"
 #include "platform/Host.hpp"
 
 namespace haylen::platform {
@@ -220,11 +221,7 @@ void System::publishChanges() {
     if (reportedTimeZone != timeZone) {
         // The C library keeps the zone it read first, so the local times of the app follow a new one only once it reads the zone again.
         timeZone = std::move(reportedTimeZone);
-#if defined(_WIN32)
-        _tzset();
-#else
-        tzset();
-#endif
+        localization::LocalTime::reloadZone();
         events.emit(core::LifecycleEvent::kTimeZoneChanged, {{"timeZone", timeZone}});
     }
 

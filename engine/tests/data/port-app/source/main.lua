@@ -1,9 +1,10 @@
--- The app of the test port: it checks that the platform, the operating system and the graphics API are the ones of the port, draws a few frames of shapes, sprites and text through the device of the port, which runs the code that the shader tool of the port wrote, and quits with the status 0 when every check passed.
+-- The app of the test port: it checks that the platform, the operating system and the graphics API are the ones of the port, that the port refuses to start programs and that Varn takes its external driver of processes, draws a few frames of shapes, sprites and text through the device of the port, which runs the code that the shader tool of the port wrote, and quits with the status 0 when every check passed.
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local log = require('haylen.log')
 local scene = require('haylen.scene')
+local process = require('process')
 local system = require('haylen.system')
 
 local failures = 0
@@ -17,6 +18,19 @@ for _, check in ipairs(checks) do
         log.error(string.format('The %s of the test port is "%s" instead of "%s".', check[1], tostring(check[2]), check[3]))
         failures = failures + 1
     end
+end
+
+-- The process module of Varn runs on the external driver of the test port, which names its own folder.
+if process.cwd() ~= '/test-port' then
+    log.error(string.format('The process module of the test port runs in "%s" instead of the external driver of the port.', tostring(process.cwd())))
+    failures = failures + 1
+end
+
+-- The test port does not allow `processes`, so the functions that start other programs say so.
+local started, reason = pcall(io.popen, 'echo')
+if started or not tostring(reason):find('This platform starts no other program, so "io.popen" is not available.', 1, true) then
+    log.error(string.format('The test port started a program through "io.popen" or failed with "%s".', tostring(reason)))
+    failures = failures + 1
 end
 
 local camera = graphics2d.newCamera()

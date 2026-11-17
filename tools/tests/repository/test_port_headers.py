@@ -4,7 +4,7 @@ from haylen.core.repository import Repository
 
 
 class PortHeadersTest:
-    """A port reaches the engine through the public API of `engine/include/haylen/port` and the other public headers alone, so a port outside the repository never depends on a file that the SDK does not install. The test port proves it: its sources include no header of `engine/src` and its CMake files compile no source of the engine."""
+    """A port reaches the engine through the public API of `engine/include/haylen/port` and the other public headers alone, so a port outside the repository never depends on a file that the SDK does not install, and its external drivers of Varn implement the public headers of the modules of Varn. The test port proves it: its sources include no header of `engine/src` and its CMake files compile no source of the engine."""
 
     PORT = Repository.ENGINE / "tests" / "data" / "port"
     INCLUDE = re.compile(r'^#\s*include\s*"([^"]+)"', re.MULTILINE)
@@ -21,5 +21,5 @@ class PortHeadersTest:
         return reached
 
     def test_the_port_reaches_only_public_headers_of_the_engine(self):
-        internal = {name for name in PortHeadersTest.reached() if not (Repository.ENGINE / "include" / name).is_file()}
+        internal = {name for name in PortHeadersTest.reached() if not (Repository.ENGINE / "include" / name).is_file() and not name.startswith("varn/")}
         assert sorted(internal) == []

@@ -2,11 +2,12 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <memory>
 #include <span>
 
 namespace haylen::content {
 
-// One open file of a local content store, read at any offset by several threads at once without a lock, appended to, and made durable with the call of the system that flushes it to the disk.
+// One open file of a local content store, through the files of the system of the build, read at any offset by several threads at once without a lock, appended to, and made durable with the call of the system that flushes it to the disk.
 class StoreFile final {
   public:
     enum class Mode : std::uint8_t {
@@ -41,12 +42,11 @@ class StoreFile final {
   private:
     [[noreturn]] void fail(const char* action) const;
 
+    // The open file as the system of the build holds it, which `posix/StoreFile.cpp` and `windows/StoreFile.cpp` define.
+    struct Native;
+
     std::filesystem::path path;
-#if defined(_WIN32)
-    void* handle = nullptr;
-#else
-    int descriptor = -1;
-#endif
+    std::unique_ptr<Native> native;
 };
 
 } // namespace haylen::content

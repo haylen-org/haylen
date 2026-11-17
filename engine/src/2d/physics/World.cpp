@@ -16,6 +16,7 @@
 #include "2d/physics/StepTasks.hpp"
 #include "haylen/2d/physics/Raycaster.hpp"
 #include "haylen/math/Math.hpp"
+#include "haylen/port/Contract.hpp"
 
 namespace haylen::physics2d {
 
@@ -161,10 +162,11 @@ World::World(const Settings& settings, core::JobSystem* jobSystem) : pixelsPerMe
     contactDampingRatio = def.contactDampingRatio;
     contactPushSpeed = def.contactSpeed * pixelsPerMeter;
 
-#if defined(__EMSCRIPTEN__)
-    // The web runs everything on one thread.
-    threads = 1;
-#else
+    // A platform without threads besides the one of the frames, such as a page, steps every world on that thread.
+    if (!port::Contract::hasThreads()) {
+        threads = 1;
+    }
+
     // Box2D steps a world without task callbacks on threads of its own, so a world of one thread gives none and Box2D steps it on the calling thread.
     if (threads > 1) {
         threads = std::min(threads, kMaxThreads);
@@ -174,7 +176,6 @@ World::World(const Settings& settings, core::JobSystem* jobSystem) : pixelsPerMe
         def.finishTask = &StepTasks::finish;
         def.userTaskContext = tasks.get();
     }
-#endif
 
     const b2WorldId world = b2CreateWorld(&def);
     if (!b2World_IsValid(world)) {

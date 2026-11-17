@@ -61,6 +61,8 @@ class Environment final {
     static void wrapLoader(lua_State* L, const char* name, int modeIndex);
     static void restrictLoading(lua_State* L);
     static int refuseNativeModule(lua_State* L);
+    static int refuseProcess(lua_State* L);
+    static void refuseProcesses(lua_State* L);
 
     // Calls the original function of the debug library, held as the first upvalue, with the arguments of the call.
     static int callOriginal(lua_State* L);

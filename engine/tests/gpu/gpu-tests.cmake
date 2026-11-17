@@ -58,7 +58,7 @@ haylen_compile_shader(haylen-gpu-tests SOURCE "${haylen_tests_dir}/gpu/shaders/b
 haylen_enable_warnings(haylen-gpu-tests)
 # The drivers of a laptop with two GPUs read which one the tests want from variables of the executable itself, which the variable `HAYLEN_TEST_GPU_LOW_POWER` turns to the integrated GPU.
 if(WIN32)
-  target_sources(haylen-gpu-tests PRIVATE "${HAYLEN_ENGINE_DIR}/src/gpu/GpuPreferenceExports.cpp")
+  target_sources(haylen-gpu-tests PRIVATE "${HAYLEN_ENGINE_DIR}/src/gpu/windows/GpuPreferenceExports.cpp")
 endif()
 
 # An iOS or tvOS device starts no plain executable, so there the tests are a signed app that carries the reference images and keeps its results in its container, which `haylen test --gpu` installs, launches and copies the results back from.

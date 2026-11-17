@@ -325,7 +325,6 @@ set(HAYLEN_ENGINE_SOURCES
   src/content/ShardIndexFile.cpp
   src/content/ShardReader.cpp
   src/content/ShardSet.cpp
-  src/content/StoreFile.cpp
   src/content/StoreFiles.cpp
   src/content/UpdateScreen.cpp
   src/content/Updater.cpp
@@ -762,15 +761,57 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/Widgets.cpp
 )
 
+# Native libraries load at run time through the dynamic linker of the system where the platform allows `dynamicLibraries`, and only the libraries linked into the app load elsewhere.
+if("dynamicLibraries" IN_LIST HAYLEN_CAPABILITIES AND HAYLEN_SYSTEM_API MATCHES "^(posix|windows)$")
+  list(APPEND HAYLEN_ENGINE_SOURCES src/platform/${HAYLEN_SYSTEM_API}/LibraryLoader.cpp)
+else()
+  list(APPEND HAYLEN_ENGINE_SOURCES src/platform/native/unavailable/LibraryLoader.cpp)
+endif()
+
+# Native callbacks are the closures of libffi, which Varn builds with its driver `LIBFFI`, and which a port writes into memory only where it allows `executableMemory`, while the platforms of the engine without that capability take the closures that libffi makes from trampolines it ships. A platform without them makes no callback.
+if(VARN_FFI_DRIVER STREQUAL "LIBFFI" AND (NOT HAYLEN_PORT_PLATFORM OR "executableMemory" IN_LIST HAYLEN_CAPABILITIES))
+  list(APPEND HAYLEN_ENGINE_SOURCES src/platform/native/libffi/NativeCallback.cpp)
+else()
+  list(APPEND HAYLEN_ENGINE_SOURCES src/platform/native/unavailable/NativeCallback.cpp)
+endif()
+
+# The files of the content store and the local time reach the C library of the system of the build, which the browser gives the interfaces of POSIX for.
+if(HAYLEN_SYSTEM_API STREQUAL "windows")
+  list(APPEND HAYLEN_ENGINE_SOURCES src/content/windows/StoreFile.cpp src/localization/windows/LocalTime.cpp)
+else()
+  list(APPEND HAYLEN_ENGINE_SOURCES src/content/posix/StoreFile.cpp src/localization/posix/LocalTime.cpp)
+endif()
+
 # The browser build talks WebSocket through the page and plays audio through it, while native builds use Poco with the TLS stack Varn already links.
 if(EMSCRIPTEN)
   list(APPEND HAYLEN_ENGINE_SOURCES src/platform/web/BrowserAudioOutput.cpp src/platform/web/BrowserWebSocket.cpp)
-else()
+elseif(VARN_SOCKET_DRIVER STREQUAL "POCO" AND VARN_ENABLE_TLS)
   list(APPEND HAYLEN_ENGINE_SOURCES src/net/PocoWebSocket.cpp)
+else()
+  list(APPEND HAYLEN_ENGINE_SOURCES src/net/unavailable/WebSocketTransport.cpp)
 endif()
 
 set(HAYLEN_GENERATED_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated/include")
 configure_file("${CMAKE_CURRENT_LIST_DIR}/include/haylen/core/Version.hpp.in" "${HAYLEN_GENERATED_INCLUDE_DIR}/haylen/core/Version.hpp" @ONLY)
+
+# The contract of ports answers what the platform of the build allows from the capabilities and the threads that `haylen-platform.cmake` decided.
+foreach(capability IN ITEMS DYNAMIC_LIBRARIES:dynamicLibraries EXECUTABLE_MEMORY:executableMemory PROCESSES:processes)
+  string(REPLACE ":" ";" capability "${capability}")
+  list(GET capability 0 capability_variable)
+  list(GET capability 1 capability_name)
+  if(capability_name IN_LIST HAYLEN_CAPABILITIES)
+    set(HAYLEN_ALLOWS_${capability_variable} true)
+  else()
+    set(HAYLEN_ALLOWS_${capability_variable} false)
+  endif()
+endforeach()
+if(HAYLEN_THREADS)
+  set(HAYLEN_HAS_THREADS true)
+else()
+  set(HAYLEN_HAS_THREADS false)
+endif()
+configure_file("${CMAKE_CURRENT_LIST_DIR}/src/port/Contract.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/generated/src/port/Contract.cpp" @ONLY)
+list(APPEND HAYLEN_ENGINE_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/generated/src/port/Contract.cpp")
 
 add_library(haylen-engine STATIC ${HAYLEN_ENGINE_SOURCES})
 add_library(haylen::engine ALIAS haylen-engine)
@@ -792,7 +833,7 @@ target_link_libraries(haylen-engine
   PRIVATE box2d::box2d Clipper2 msdfgen::msdfgen-core haylen-harfbuzz haylen-sheenbidi haylen-unibreak haylen-miniaudio haylen-stb haylen-nanosvg haylen-fast-float haylen-monocypher libzip::zip ZLIB::ZLIB libzstd_static
 )
 
-if(NOT EMSCRIPTEN)
+if(TARGET Poco::NetSSL)
   target_link_libraries(haylen-engine PRIVATE Poco::NetSSL)
 endif()
 
@@ -896,6 +937,14 @@ add_library(haylen-platform STATIC
 )
 add_library(haylen::platform ALIAS haylen-platform)
 # Apps see only the public API, so the private headers stay private to the engine libraries.
+# The handlers of native crashes are the signals of POSIX, the unhandled exceptions of Windows, or none in the browser.
+if(HAYLEN_SYSTEM_API STREQUAL "posix")
+  target_sources(haylen-platform PRIVATE src/platform/posix/CrashHandlers.cpp src/platform/posix/PosixCrashHandlers.cpp)
+elseif(HAYLEN_SYSTEM_API STREQUAL "windows")
+  target_sources(haylen-platform PRIVATE src/platform/windows/CrashHandlers.cpp src/platform/windows/WindowsCrashHandlers.cpp)
+else()
+  target_sources(haylen-platform PRIVATE src/platform/web/CrashHandlers.cpp)
+endif()
 target_include_directories(haylen-platform PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
 target_link_libraries(haylen-platform PUBLIC haylen-engine haylen-gpu)
 haylen_enable_warnings(haylen-platform)
@@ -1021,7 +1070,6 @@ target_include_directories(haylen-runtime PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src
 target_link_libraries(haylen-runtime PUBLIC haylen-platform haylen-gpu)
 if(HAYLEN_PORT_PLATFORM)
   target_link_libraries(haylen-runtime PRIVATE ${HAYLEN_PORT_RUNTIME_LIBRARIES})
-  target_compile_definitions(haylen-runtime PRIVATE HAYLEN_PORT)
 elseif(NOT ANDROID)
   target_link_libraries(haylen-runtime PRIVATE SDL3::SDL3-static)
 endif()
@@ -1075,7 +1123,7 @@ if(HAYLEN_BUILD_PLAYER AND (HAYLEN_DESKTOP OR EMSCRIPTEN OR HAYLEN_PORT_PLATFORM
     target_sources(haylen PRIVATE src/platform/apple/AppleMain.cpp)
   elseif(WIN32 AND NOT HAYLEN_PORT_PLATFORM)
     set_target_properties(haylen PROPERTIES WIN32_EXECUTABLE ON)
-    target_sources(haylen PRIVATE platform/windows/haylen.manifest src/gpu/GpuPreferenceExports.cpp)
+    target_sources(haylen PRIVATE platform/windows/haylen.manifest src/gpu/windows/GpuPreferenceExports.cpp)
   elseif(EMSCRIPTEN)
     haylen_setup_web_page(haylen "")
   elseif(NOT HAYLEN_PORT_PLATFORM)

@@ -9,6 +9,7 @@
 #include <unordered_map>
 
 #include "haylen/debug/TraceRecorder.hpp"
+#include "haylen/port/Contract.hpp"
 #include "varn/runtime/Runtime.h"
 
 namespace haylen::core {
@@ -156,10 +157,12 @@ void JobSystem::parallelFor(std::size_t begin, std::size_t end, [[maybe_unused]]
         return;
     }
 
-#if defined(__EMSCRIPTEN__)
-    // The browser build has no worker threads, so the whole range runs on the frame thread.
-    body(begin, end);
-#else
+    // A platform without threads besides the one of the frames, such as a page, runs the whole range on the frame thread.
+    if (!port::Contract::hasThreads()) {
+        body(begin, end);
+        return;
+    }
+
     const std::size_t count = end - begin;
     const std::size_t grain = std::max<std::size_t>(1, grainSize);
     const std::size_t chunkLimit = std::min(workerCount * kChunksPerWorker, (count + grain - 1) / grain);
@@ -191,7 +194,6 @@ void JobSystem::parallelFor(std::size_t begin, std::size_t end, [[maybe_unused]]
     if (range->error) {
         std::rethrow_exception(range->error);
     }
-#endif
 }
 
 } // namespace haylen::core

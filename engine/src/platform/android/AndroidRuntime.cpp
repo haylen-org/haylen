@@ -13,6 +13,7 @@
 #include <optional>
 #include <string>
 #include <variant>
+#include <vector>
 
 #include "gpu/DeviceFactory.hpp"
 #include "haylen/core/AppConfig.hpp"
@@ -20,9 +21,11 @@
 #include "haylen/platform/Display.hpp"
 #include "platform/Player.hpp"
 #include "platform/android/AndroidDisplays.hpp"
+#include "platform/android/AndroidGamepads.hpp"
 #include "platform/android/AndroidHost.hpp"
 #include "platform/android/AndroidInputEvents.hpp"
 #include "platform/android/AndroidOutputs.hpp"
+#include "platform/android/JavaBridge.hpp"
 
 namespace haylen::platform {
 
@@ -147,7 +150,19 @@ void AndroidRuntime::run() {
 
     NativeWindow::install(&window);
     window.setRunning(true);
-    Player::create(0, nullptr, std::make_unique<AndroidHost>(*this));
+    // Android starts apps without a command line, and a debuggable app takes the development server from the intent that launched it.
+    std::vector<std::string> arguments{"haylen"};
+    if (std::string server = JavaBridge::getDevelopmentServer(); !server.empty()) {
+        arguments.emplace_back("--dev-server");
+        arguments.push_back(std::move(server));
+    }
+
+    std::vector<char*> argv;
+    for (std::string& argument : arguments) {
+        argv.push_back(argument.data());
+    }
+
+    Player::create(static_cast<int>(argv.size()), argv.data(), std::make_unique<AndroidHost>(*this));
     const core::AppConfig::Window& config = Player::getOpeningConfig().window;
     window.setMaxPixelDensity(config.maxPixelDensity);
     graphics.configure(Player::getGraphicsApis(), {.sampleCount = config.sampleCount, .vsync = config.vsync});
@@ -214,6 +229,8 @@ void AndroidRuntime::handle(AndroidMessageQueue::Signal signal) {
         Player::handleEvent({.type = Event::Type::FocusGained});
         break;
     case AndroidMessageQueue::Signal::FocusLost:
+        // Android sends the axes of controllers only to the window with the focus, so a stick released while another window has it would keep its last value.
+        AndroidGamepads::releaseAxes();
         Player::handleEvent({.type = Event::Type::FocusLost});
         break;
     case AndroidMessageQueue::Signal::WindowDestroyed:

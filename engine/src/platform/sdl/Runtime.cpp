@@ -46,6 +46,7 @@
 
 #include "platform/windows/WindowsServices.hpp"
 #else
+#include "platform/linux/LinuxAccessibility.hpp"
 #include "platform/linux/LinuxServices.hpp"
 #endif
 
@@ -400,6 +401,12 @@ void Runtime::deliver(const SDL_Event& event) {
     events.translate(event, getContext(), translated);
 
     for (const platform::Event& translatedEvent : translated) {
+#if defined(__linux__) && !defined(__EMSCRIPTEN__)
+        // Screen readers follow the focus of the window that is active, which the window tells them as it gains and loses the focus.
+        if (translatedEvent.type == platform::Event::Type::FocusGained || translatedEvent.type == platform::Event::Type::FocusLost) {
+            LinuxAccessibility::setActive(translatedEvent.type == platform::Event::Type::FocusGained);
+        }
+#endif
         Player::handleEvent(translatedEvent);
 
         if (translatedEvent.type == platform::Event::Type::QuitRequested) {

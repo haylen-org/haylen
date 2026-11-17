@@ -15,6 +15,7 @@
 #include "haylen/io/Path.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/Runtime.hpp"
+#include "haylen/port/Contract.hpp"
 
 namespace haylen::lua {
 
@@ -282,6 +283,25 @@ int Environment::refuseNativeModule(lua_State* L) {
     return luaL_error(L, "The app that launched this app gave it no native access, so the module \"%s\" is not available.", luaL_checkstring(L, 1));
 }
 
+int Environment::refuseProcess(lua_State* L) {
+    return luaL_error(L, "This platform starts no other program, so \"%s\" is not available.", lua_tostring(L, lua_upvalueindex(1)));
+}
+
+// The functions that run other programs say so where the platform does not allow `processes`, instead of failing in the C library.
+void Environment::refuseProcesses(lua_State* L) {
+    lua_getglobal(L, "io");
+    lua_pushliteral(L, "io.popen");
+    lua_pushcclosure(L, &refuseProcess, 1);
+    lua_setfield(L, -2, "popen");
+    lua_pop(L, 1);
+
+    lua_getglobal(L, "os");
+    lua_pushliteral(L, "os.execute");
+    lua_pushcclosure(L, &refuseProcess, 1);
+    lua_setfield(L, -2, "execute");
+    lua_pop(L, 1);
+}
+
 // Varn also makes each of its modules a global, so the global of a module goes with it.
 void Environment::withholdNativeAccess(lua_State* L) {
     lua_getglobal(L, "package");
@@ -438,6 +458,10 @@ void Environment::install(core::Engine& engine, lua_State* L) {
     installFailureHandler(L);
     restrictLoading(L);
     restrictDebug(L);
+
+    if (!port::Contract::allows(port::Contract::Capability::Processes)) {
+        refuseProcesses(L);
+    }
 }
 
 } // namespace haylen::lua

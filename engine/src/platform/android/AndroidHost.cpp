@@ -1,10 +1,12 @@
 #include "platform/android/AndroidHost.hpp"
 
+#include "haylen/core/Engine.hpp"
 #include "platform/NativeWindow.hpp"
 #include "platform/android/AndroidActivity.hpp"
 #include "platform/android/AndroidGamepads.hpp"
 #include "platform/android/AndroidOutputs.hpp"
 #include "platform/android/AndroidRuntime.hpp"
+#include "platform/android/AndroidTextInput.hpp"
 #include "platform/android/JavaBridge.hpp"
 
 namespace haylen::platform {
@@ -38,6 +40,33 @@ bool AndroidHost::prepareGpuDevice() {
 
 std::unique_ptr<gpu::Device> AndroidHost::createGpuDevice() {
     return runtime.getGraphics().createDevice();
+}
+
+// Native events wait in Java while no app runs, so the ones that come while an app stops reach the next app instead of none.
+void AndroidHost::appStarted(core::Engine&, bool) {
+    JavaBridge::setAppRunning(true);
+}
+
+void AndroidHost::appStopping() {
+    JavaBridge::setAppRunning(false);
+}
+
+// Back reaches the app only through the back callback of the activity, which is enabled only while the app takes back or edits a text field, so the predictive back animation of the system plays only when back leaves the app.
+void AndroidHost::framePlayed(core::Engine& engine) {
+    const bool captured = engine.isBackCaptured() || AndroidTextInput::isEditing() || isLaunched() || isBackHeld();
+    if (captured == backReported) {
+        return;
+    }
+
+    backReported = captured;
+    JavaBridge::captureBack(captured);
+}
+
+// The on-screen keyboard of Android arrives from the UI thread in window pixels.
+void AndroidHost::preparePostedEvent(Event& event) const {
+    if (event.type == Event::Type::KeyboardChanged) {
+        event.keyboardFrame = AndroidActivity::toFramebuffer(event.keyboardFrame);
+    }
 }
 
 void AndroidHost::closeWindow() {

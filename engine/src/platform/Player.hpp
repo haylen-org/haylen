@@ -197,11 +197,6 @@ class Player final {
     [[nodiscard]] static int takeBackPresses();
     void pressBack();
 
-#if defined(__ANDROID__)
-    // Back reaches the app only through the back callback of the activity, which is enabled only while the app takes back or edits a text field, so the predictive back animation of the system plays only when back leaves the app.
-    void reportBackCapture();
-#endif
-
     [[nodiscard]] std::shared_ptr<io::Package> withOverlay(std::shared_ptr<io::Package> source) const;
     void play(double seconds);
     void endSplashScreenWhenDue();
@@ -241,10 +236,6 @@ class Player final {
     // When the player started, which the duration of the splash counts from, and whether the launch screen ended.
     std::chrono::steady_clock::time_point launched = std::chrono::steady_clock::now();
     bool splashEnded = false;
-#if defined(__ANDROID__)
-    // Whether the activity last heard that the app takes the back button. Each activity creates its own player and starts with its back callback disabled.
-    bool backReported = false;
-#endif
 };
 
 } // namespace haylen::platform

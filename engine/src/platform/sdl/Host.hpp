@@ -41,6 +41,14 @@ class Host final : public platform::NativeHost {
     [[nodiscard]] bool prepareGpuDevice() override;
     [[nodiscard]] audio::Mixer::Setup getAudioSetup() const override;
     void closeWindow() override;
+    void appStarted(core::Engine& engine, bool playing) override;
+    void appStartFailed(const core::Json& report) override;
+    void appStopping() override;
+    void appStopped(bool playing) override;
+    void frameFinished(core::Engine& engine) override;
+    void developmentEnabled(DevelopmentSession& session) override;
+    [[nodiscard]] bool keepsWindowAfterFailure() const noexcept override;
+    [[nodiscard]] bool overlaysEveryPackage() const noexcept override;
     [[nodiscard]] std::vector<Display> getDisplays() const override;
     [[nodiscard]] std::string getDisplayId() const override;
     void endSplashScreen(float fadeOutSeconds) override;

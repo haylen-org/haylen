@@ -95,6 +95,40 @@ bool Host::prepareGpuDevice() {
     return runtime.prepareDevice();
 }
 
+// The page hears when an app starts, fails to start and stops, shows the statistics of each frame, applies the files it edited between frames, hears what every batch of a development server did, shows an app that cannot go on on its error screen and edits every package that it plays.
+void Host::appStarted(core::Engine& engine, bool playing) {
+    if (playing) {
+        WebPage::reportStarted(engine);
+    }
+}
+
+void Host::appStartFailed(const core::Json& report) {
+    WebPage::reportStartFailed(report);
+}
+
+void Host::appStopped(bool playing) {
+    if (playing) {
+        WebPage::reportStopped();
+    }
+}
+
+void Host::frameFinished(core::Engine& engine) {
+    WebPage::reportFrame(engine);
+    WebPage::finishFrame();
+}
+
+void Host::developmentEnabled(DevelopmentSession& session) {
+    session.addReporter(&WebPage::reportReloaded);
+}
+
+bool Host::keepsWindowAfterFailure() const noexcept {
+    return true;
+}
+
+bool Host::overlaysEveryPackage() const noexcept {
+    return true;
+}
+
 void Host::closeWindow() {
     runtime.close();
 }

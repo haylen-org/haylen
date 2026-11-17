@@ -34,7 +34,7 @@ class PortEngine(EnginePort):
     MINIMUM_SYSTEM_VERSION = "1.0"
     GRAPHICS_APIS = ("port",)
     SHADER_LANGUAGES = ("spirv",)
-    CAPABILITIES = frozenset({"dynamicLibraries", "processes"})
+    CAPABILITIES = frozenset({"dynamicLibraries"})
     # The runtime of the test port compiles on the desktops, whose machines play its apps.
     HOSTS = frozenset({"macos", "linux", "windows"})
     TOOLS = ("cmake", "ninja", "haylen-shaderc")
