@@ -63,14 +63,7 @@ Router::Router(Navigation& owner, core::Engine& running, Options settings) : nav
     // clang-format off
     if (options.links) {
         linkConnection = engine.getEvents().on(core::LifecycleEvent::kLinkOpened, [this](core::EventBus::Event& event) {
-            const std::string url = event.getData().value("url", std::string());
-            if (!match(url)) {
-                core::Log::error("No route matches the link \"{}\".", url);
-                unmatched.emit(url);
-                return;
-            }
-
-            open(url);
+            follow(event.getData().value("url", std::string()));
         });
     }
 
@@ -83,6 +76,16 @@ Router::Router(Navigation& owner, core::Engine& running, Options settings) : nav
 }
 
 Router::~Router() = default;
+
+void Router::follow(const std::string& url) {
+    if (!match(url)) {
+        core::Log::error("No route matches the link \"{}\".", url);
+        unmatched.emit(url);
+        return;
+    }
+
+    open(url);
+}
 
 // A segment in braces is a parameter, `{name}` or `{name:type}`, and any other segment is a literal.
 std::vector<Router::Segment> Router::compile(const Route& route) {

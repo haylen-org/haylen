@@ -191,7 +191,7 @@ TEST(EventsLuaTest, OwnerFunctionsDoNotKeepTheirOwnerAlive) {
     )");
     // clang-format on
     fixture.frames(1);
-    EXPECT_EQ(fixture.lua("return tostring(next(tracker)) .. ' ' .. require('haylen.events').topics()[1].listeners"), "nil 0");
+    EXPECT_EQ(fixture.lua("for _, topic in ipairs(require('haylen.events').topics()) do if topic.name == 'turn' then return tostring(next(tracker)) .. ' ' .. topic.listeners end end"), "nil 0");
 }
 
 TEST(SignalLuaTest, ListenersDoNotKeepTheirSignalAlive) {

@@ -4152,7 +4152,7 @@ Creates the routes of the app and returns its [`Router`](#router). A route turns
 | `stack` | `NavigationStack` | none | The one stack the routes show in, for an app without tabs. |
 | `schemes` | list of strings | empty | The schemes of the links of the app, such as `'music'`. The host of such a link is the first segment of its path, so `music://artist/42` reads as `artist/42`. |
 | `hosts` | list of strings | empty | The hosts of the web links of the app, such as `'music.example.com'`, whose path is the location, so `https://music.example.com/artist/42` reads as `artist/42`. |
-| `links` | boolean | `true` | Opens every link that [`linkOpened`](../core/lifecycle.md#the-whole-lifecycle) reports, the one that opened the app and those that arrive while it runs. |
+| `links` | boolean | `true` | Opens every link that [`linkOpened`](../core/lifecycle.md#the-whole-lifecycle) reports, the one that opened the app and those that arrive while it runs. The first router with links opens the last link that arrived before the app created it, in its first frame. |
 | `restore` | boolean | `false` | Keeps the state of the navigation and builds it again when the app starts after a restart or after the system ended it in the background. |
 | `owner` | table or userdata | the default owner | Closes the router when it ends. |
 | `onUnmatched` | function | none | Hears the table `{url}` for a link that no route matches, which the router also logs as an error. |

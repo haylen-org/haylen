@@ -171,6 +171,9 @@ class Router final : public std::enable_shared_from_this<Router> {
     // Keeps the state of the navigation for the next start, as the app goes to the background or restarts.
     void persist() const;
 
+    // Opens a link that opened the app, or logs and tells that no route matches it.
+    void follow(const std::string& url);
+
     Navigation& navigation;
     core::Engine& engine;
     Options options;

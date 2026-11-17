@@ -5,6 +5,8 @@
 #include <utility>
 
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/EventBus.hpp"
+#include "haylen/core/LifecycleEvent.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/platform/Accessibility.hpp"
 #include "haylen/plugins/StoragePlugin.hpp"
@@ -18,7 +20,13 @@
 
 namespace haylen::ui {
 
-Navigation::Navigation(core::Engine& owner, plugins::UiPlugin& plugin) : engine(owner), ui(plugin) {}
+// clang-format off
+Navigation::Navigation(core::Engine& owner, plugins::UiPlugin& plugin) : engine(owner), ui(plugin) {
+    linkConnection = engine.getEvents().on(core::LifecycleEvent::kLinkOpened, [this](core::EventBus::Event& event) {
+        launchLink = event.getData().value("url", std::string());
+    });
+}
+// clang-format on
 
 Navigation::~Navigation() = default;
 
@@ -82,8 +90,13 @@ const Navigation::Alert::Action* Navigation::Alert::findCancel() const noexcept 
 // A router that keeps the state of the navigation builds again what the run before it kept, after it registered, so a screen that fails to build leaves the router to its owner.
 std::shared_ptr<Router> Navigation::createRouter(Router::Options options) {
     const bool restores = options.restores;
+    const bool links = options.links;
     auto created = std::make_shared<Router>(*this, engine, std::move(options));
     routers.push_back(created);
+    if (links && !routed) {
+        routed = true;
+        linkConnection.disconnect();
+    }
     if (!restores) {
         return created;
     }
@@ -533,6 +546,8 @@ Navigation::Look Navigation::getLook(const Screen& screen) const {
 }
 
 void Navigation::update(float deltaSeconds) {
+    followLaunchLink();
+
     walkedStacks.assign(stacks.begin(), stacks.end());
     for (const std::shared_ptr<NavigationStack>& stack : walkedStacks) {
         stack->advance(deltaSeconds);
@@ -554,6 +569,22 @@ void Navigation::update(float deltaSeconds) {
 
     walkedScreens.clear();
     updateMessages();
+}
+
+// The link that launched the app reaches the first router that opens links once the app registered its handlers, after the router built the state it restored.
+void Navigation::followLaunchLink() {
+    if (!launchLink || !routed) {
+        return;
+    }
+
+    const auto found = std::ranges::find_if(routers, [](const std::shared_ptr<Router>& router) { return router->options.links && !router->isClosed(); });
+    const std::string link = *std::exchange(launchLink, std::nullopt);
+    if (found == routers.end()) {
+        return;
+    }
+
+    const std::shared_ptr<Router> router = *found;
+    lua::Runtime::runReporting(engine.getLuaState(), [&] { router->follow(link); });
 }
 
 // The handlers of the app may show and dismiss messages, so the pass walks a copy.

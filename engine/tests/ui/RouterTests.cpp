@@ -132,6 +132,25 @@ TEST_F(RouterTest, OpensTheLinksThatOpenTheApp) {
     EXPECT_EQ(missed, (std::vector<std::string>{"music://lost/7"}));
 }
 
+// The link that launched the app arrives before the app creates its router, such as while its first scene loads, and the first router that opens links opens it once, after the state it restored.
+TEST_F(RouterTest, OpensTheLinkThatLaunchedTheAppOnceTheRouterStarts) {
+    getEngine().getEvents().emit(core::LifecycleEvent::kLinkOpened, {{"url", "music://lost/1"}});
+    getEngine().getEvents().emit(core::LifecycleEvent::kLinkOpened, {{"url", "music://artist/12"}});
+    frames(2);
+
+    const std::shared_ptr<NavigationTabs> tabs = createTabs();
+    const std::shared_ptr<Router> router = getNavigation().createRouter({.routes = createRoutes(), .tabs = tabs, .schemes = {"music"}});
+    frames(30);
+    EXPECT_EQ(tabs->getSelected(), "search");
+    EXPECT_EQ(describe(*tabs->getCurrent()), "search artist:\"12\"");
+
+    tabs->select("home");
+    frames(30);
+    const std::shared_ptr<Router> second = getNavigation().createRouter({.routes = createRoutes(), .tabs = createTabs(), .schemes = {"music"}});
+    frames(30);
+    EXPECT_EQ(tabs->getSelected(), "home");
+}
+
 // A route with a detail shows its screen as the detail of the split that the screen under it holds.
 TEST_F(RouterTest, ShowsADetailInTheSplitOfTheScreenUnderIt) {
     const auto inbox = make("inbox");
