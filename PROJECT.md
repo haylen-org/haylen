@@ -2453,6 +2453,7 @@ Playground do site (pendências da engine):
 
 Só o dono:
 
+- [ ] CI rápido como o de engines abertas (menos de 30 minutos): o cache de compilação vai para um bucket S3 da AWS com o sccache no lugar do cache do GitHub, que despeja os caches grandes e hoje acerta 0,13% no job de macOS e Catalyst, com expiração dos objetos antigos, um usuário IAM só desse bucket, gravação só pelos pushes do repositório e leitura pelos pull requests; as fatias do `Haylen.xcframework` compilam em jobs paralelos e um job final as junta; e os testes dos sanitizers e o projeto de testes rodam em partes paralelas. Sem guardar binários de dependências: elas continuam compiladas a partir do código, só que pelo cache.
 - [ ] Uma bateria nas máquinas remotas da AWS e da Azure depois que o tooling novo entrar em `main`, com tudo compilado antes, timer de desligamento e tudo apagado e conferido no fim: Windows com GPU NVIDIA (Direct3D 12, Direct3D 11 e Vulkan) e Linux com GPU NVIDIA (Vulkan e OpenGL) rodando os testes da engine e de GPU, o projeto de testes no player, apps Lua e C++ com instalador e pacotes, entrada de texto e saída em outra tela; um Mac remoto só para o que este Mac e a CI não cobrem; e aparelhos reais de nuvem (Android com Adreno e Mali, e iPhone e iPad se houver) só para o que o simulador e o emulador não mostram, como drivers reais de GPU, desempenho, teclado do sistema e voltar físico.
 - [ ] Desdobrar o iPhone Duo no app Simulator e conferir ORI-005 e PLT-008, os testes de plugins em aparelhos reais e a limpeza das pastas que a permissão não deixou apagar.
 
