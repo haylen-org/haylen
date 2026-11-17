@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "haylen/gpu/Device.hpp"
+#include "haylen/gpu/DeviceOptions.hpp"
 #include "haylen/gpu/Surface.hpp"
 
 namespace haylen::gpu {
@@ -14,17 +15,6 @@ namespace haylen::gpu {
 // Makes the device of each graphics API that the build compiled, which `HAYLEN_GRAPHICS_APIS` lists, and orders the APIs a platform tries when it opens its window.
 class DeviceFactory final {
   public:
-    struct Options {
-        // Whether the device turns on the validation of its graphics API and the labels of its objects, which Debug builds and tests do.
-        bool validation = false;
-
-        // Whether the device prefers the software rasterizer of its graphics API, such as WARP on Direct3D, which draws where no GPU does and the same pixels on every machine. A device whose API has no software rasterizer ignores it.
-        bool software = false;
-
-        // Whether the device prefers the GPU that uses the least power, such as the integrated GPU of a laptop that has two, to the most powerful one. A device whose API does not tell its GPUs apart ignores it.
-        bool lowPower = false;
-    };
-
     // The APIs this build compiled, in the default order of preference of the platforms: the API of a port, Metal, Direct3D 12, Direct3D 11, Vulkan, WebGPU, OpenGL, OpenGL ES and WebGL2.
     [[nodiscard]] static std::span<const Device::Api> getCompiledApis() noexcept;
 
@@ -35,10 +25,10 @@ class DeviceFactory final {
     [[nodiscard]] static bool usesGlContext(Device::Api api) noexcept;
 
     // Starts what the API needs before `create` that arrives in a later turn of the event loop, such as the adapter and the device that the browser hands to WebGPU, which follow the options that ask for a software rasterizer or a GPU of low power, and returns whether `create` can run now. The platform keeps running its frames while it returns false, and `create` then reports a request that failed. It also tells the drivers of a laptop with two GPUs which one the options ask for, through `GpuPreference`, so the platform calls it before it opens the window of the API.
-    [[nodiscard]] static bool prepare(Device::Api api, const Options& options);
+    [[nodiscard]] static bool prepare(Device::Api api, const DeviceOptions& options);
 
     // Creates the device of the API, drawing into the surface or offscreen when there is none. Throws `std::runtime_error` with a clear sentence when the API cannot start on this machine, so the platform tries the next one.
-    [[nodiscard]] static std::unique_ptr<Device> create(Device::Api api, const std::optional<Surface>& surface, const Options& options);
+    [[nodiscard]] static std::unique_ptr<Device> create(Device::Api api, const std::optional<Surface>& surface, const DeviceOptions& options);
 
     // The name of an API in `Device::kApiNames`, such as `vulkan`.
     [[nodiscard]] static std::string_view getApiName(Device::Api api) noexcept;

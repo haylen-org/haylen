@@ -3,7 +3,7 @@
 #include <mutex>
 #include <optional>
 
-#include "platform/SystemFont.hpp"
+#include "haylen/platform/SystemFont.hpp"
 
 namespace haylen::platform {
 

@@ -23,7 +23,7 @@
 
 namespace haylen::gpu::vulkan {
 
-std::unique_ptr<gpu::Device> Device::create(const std::optional<Surface>& surface, const DeviceFactory::Options& options) {
+std::unique_ptr<gpu::Device> Device::create(const std::optional<Surface>& surface, const DeviceOptions& options) {
     return std::make_unique<Device>(surface, Settings{.validation = options.validation, .software = options.software, .lowPower = options.lowPower});
 }
 

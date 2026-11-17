@@ -1,4 +1,4 @@
-#include "platform/Services.hpp"
+#import "platform/apple/AppleServices.hpp"
 
 #include <TargetConditionals.h>
 
@@ -27,6 +27,7 @@
 #import "platform/apple/AppleBridge.hpp"
 #import "platform/apple/AppleCutouts.hpp"
 #import "platform/apple/AppleDesktop.hpp"
+#import "platform/apple/AppleDesktopService.hpp"
 #import "platform/apple/AppleDisplays.hpp"
 #import "platform/apple/AppleFold.hpp"
 #import "platform/apple/AppleFonts.hpp"
@@ -40,11 +41,9 @@
 #import "platform/apple/ApplePlugins.hpp"
 #import "platform/apple/ApplePowerSaving.hpp"
 #import "platform/apple/AppleScreens.hpp"
-#import "platform/apple/AppleSplash.hpp"
 #import "platform/apple/AppleStatusBar.hpp"
 #import "platform/apple/AppleSystem.hpp"
 #import "platform/apple/AppleSystemGestures.hpp"
-#import "platform/apple/AppleTextInput.hpp"
 #import "platform/apple/AppleTimeZone.hpp"
 #import "platform/apple/AppleVideoDecoder.hpp"
 #import "platform/apple/CatalystWindow.hpp"
@@ -52,7 +51,17 @@
 
 namespace haylen::platform {
 
-std::string_view Services::getName() noexcept {
+// Only a Mac has a desktop of windows, which its own service follows.
+port::Services AppleServices::create() {
+    const auto services = std::make_shared<AppleServices>();
+    port::Services registered{.platform = services, .displays = services, .screen = services, .bridge = services, .permissions = services, .media = services, .accessibility = services, .video = services, .fonts = services};
+#if TARGET_OS_OSX
+    registered.desktop = std::make_shared<AppleDesktopService>();
+#endif
+    return registered;
+}
+
+std::string_view AppleServices::getName() const noexcept {
 #if TARGET_OS_OSX
     return "macos";
 #elif TARGET_OS_TV
@@ -62,7 +71,7 @@ std::string_view Services::getName() noexcept {
 #endif
 }
 
-void Services::initialize() {
+void AppleServices::initialize() {
     AppleNetwork::observe();
     AppleBattery::observe();
     ApplePowerSaving::observe();
@@ -87,19 +96,19 @@ void Services::initialize() {
 #endif
 }
 
-void Services::shutdown() noexcept {
+void AppleServices::shutdown() noexcept {
     AppleBridge::clearHandlers();
 }
 
-void Services::reportError(const core::Json& report) {
+void AppleServices::reportError(const core::Json& report) {
     ApplePlugins::reportError(report);
 }
 
-std::vector<std::string> Services::getNativePlugins() {
+std::vector<std::string> AppleServices::getNativePlugins() {
     return ApplePlugins::getIds();
 }
 
-std::shared_ptr<io::Package> Services::openBundledPackage() {
+std::shared_ptr<io::Package> AppleServices::openBundledPackage() {
     // Bundles keep the package in their resources, and a plain executable keeps it next to itself, which is where the main bundle points too.
     NSString* resources = NSBundle.mainBundle.resourcePath;
     const std::filesystem::path folder = std::filesystem::path(resources.UTF8String) / "app";
@@ -117,7 +126,7 @@ std::shared_ptr<io::Package> Services::openBundledPackage() {
     return io::Package::open(folder.string() + ".zip");
 }
 
-std::filesystem::path Services::getUserDataDirectory(std::string_view identifier) {
+std::filesystem::path AppleServices::getUserDataDirectory(std::string_view identifier) {
 #if TARGET_OS_TV
     // Apps on tvOS keep no permanent local files, so caches are the only writable place.
     const NSSearchPathDirectory directory = NSCachesDirectory;
@@ -129,7 +138,7 @@ std::filesystem::path Services::getUserDataDirectory(std::string_view identifier
 }
 
 // Downloaded content comes back with a download, so it stays out of backups, and tvOS keeps it among the caches, which the system may clear.
-std::filesystem::path Services::getContentStoreDirectory(std::string_view identifier) {
+std::filesystem::path AppleServices::getContentStoreDirectory(std::string_view identifier) {
 #if TARGET_OS_TV
     const NSSearchPathDirectory directory = NSCachesDirectory;
 #else
@@ -144,22 +153,10 @@ std::filesystem::path Services::getContentStoreDirectory(std::string_view identi
     return folder;
 }
 
-void Services::persistUserData() {}
-
-bool Services::hasDesktop() noexcept {
-    return TARGET_OS_OSX != 0;
-}
-
-void Services::setWindowBackground(const math::Color&) {}
-
-void Services::setWindowStyle([[maybe_unused]] const WindowStyle& value) {
-#if TARGET_OS_OSX
-    AppleDesktop::setStyle(value);
-#endif
-}
+void AppleServices::persistUserData() {}
 
 // Windows of iPhones, iPads and TVs fill their screen.
-math::Rect Services::getWindowFrame() {
+math::Rect AppleServices::getWindowFrame() {
 #if TARGET_OS_OSX
     return AppleDesktop::getFrame();
 #else
@@ -167,13 +164,7 @@ math::Rect Services::getWindowFrame() {
 #endif
 }
 
-void Services::setWindowFrame([[maybe_unused]] const math::Rect& value) {
-#if TARGET_OS_OSX
-    AppleDesktop::setFrame(value);
-#endif
-}
-
-std::vector<Display> Services::getDisplays() {
+std::vector<Display> AppleServices::getDisplays() {
 #if TARGET_OS_OSX
     return AppleDesktop::getDisplays();
 #else
@@ -181,7 +172,7 @@ std::vector<Display> Services::getDisplays() {
 #endif
 }
 
-std::string Services::getWindowDisplayId() {
+std::string AppleServices::getWindowDisplayId() {
 #if TARGET_OS_OSX
     return AppleDesktop::getWindowDisplayId();
 #else
@@ -190,35 +181,11 @@ std::string Services::getWindowDisplayId() {
 }
 
 // UIKit tells nothing of an external display whose scene it does not connect, so an iPhone or an iPad that waits for the permission "screens" cannot tell that one is there.
-bool Services::hasUnlistedDisplays() {
+bool AppleServices::hasUnlistedDisplays() {
     return false;
 }
 
-void Services::setMousePassthrough([[maybe_unused]] Window::Passthrough mode, [[maybe_unused]] std::span<const math::Polygon::Outline> regions) {
-#if TARGET_OS_OSX
-    AppleDesktop::setPassthrough(mode, regions);
-#endif
-}
-
-void Services::startWindowDrag() {
-#if TARGET_OS_OSX
-    AppleDesktop::startDrag();
-#endif
-}
-
-void Services::watchWindow() {
-#if TARGET_OS_OSX
-    AppleDesktop::watch();
-#endif
-}
-
-void Services::updateWindow() {
-#if TARGET_OS_OSX
-    AppleDesktop::update();
-#endif
-}
-
-math::Insets Services::getSafeAreaInsets() {
+math::Insets AppleServices::getSafeAreaInsets() {
     const float scale = NativeWindow::getScale();
 #if TARGET_OS_OSX
     // The camera housing of a notched display covers the top of its screen, which only a fullscreen window or a borderless window placed there reaches, and a fullscreen window that the system keeps below the housing does not.
@@ -247,12 +214,12 @@ math::Insets Services::getSafeAreaInsets() {
 #endif
 }
 
-bool Services::hasPointerDevice() noexcept {
+bool AppleServices::hasPointerDevice() const noexcept {
     return TARGET_OS_TV == 0;
 }
 
 // Only iPhones and iPads turn their screen, while Macs, Mac Catalyst windows and TVs count as landscape.
-Orientation Services::getOrientation() {
+Orientation AppleServices::getOrientation() {
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
     return AppleOrientation::get();
 #else
@@ -260,27 +227,27 @@ Orientation Services::getOrientation() {
 #endif
 }
 
-void Services::lockOrientation([[maybe_unused]] Orientation value) {
+void AppleServices::lockOrientation([[maybe_unused]] Orientation value) {
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
     AppleOrientation::lock(value);
 #endif
 }
 
 // Only iPhones and iPads show a status bar, while Macs, Mac Catalyst windows and TVs have none over the app.
-void Services::setStatusBar([[maybe_unused]] Window::StatusBar value) {
+void AppleServices::setStatusBar([[maybe_unused]] Window::StatusBar value) {
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
     AppleStatusBar::set(value);
 #endif
 }
 
 // Only iPhones and iPads take swipes at the edges of the screen and show a home indicator, while Macs, Mac Catalyst windows, TVs and Apple Vision Pro have neither.
-void Services::setSystemGestures([[maybe_unused]] Window::SystemGestures value) {
+void AppleServices::setSystemGestures([[maybe_unused]] Window::SystemGestures value) {
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
     AppleSystemGestures::set(value);
 #endif
 }
 
-float Services::getStatusBarHeight() {
+float AppleServices::getStatusBarHeight() {
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
     return AppleStatusBar::getHeight();
 #else
@@ -288,16 +255,9 @@ float Services::getStatusBarHeight() {
 #endif
 }
 
-// A Mac app has no launch screen, while the other Apple platforms keep theirs over the window until the splash ends.
-void Services::endSplashScreen([[maybe_unused]] float fadeOutSeconds) {
-#if !TARGET_OS_OSX
-    AppleSplash::end(fadeOutSeconds);
-#endif
-}
-
 // Apple devices have no folds, and iPadOS reports none for the windows of an iPad.
 // A foldable iPhone reports its fold from iOS 27.1 on, and every other Apple device has none.
-std::optional<Fold> Services::getFold() {
+std::optional<Fold> AppleServices::getFold() {
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
     return AppleFold::get();
 #else
@@ -306,7 +266,7 @@ std::optional<Fold> Services::getFold() {
 }
 
 // A notched Mac reports the areas beside the housing of its camera, which lies between them along the top of the screen, and a window that reaches the top of the screen has it over its content. iPhones report the regions that elements of the screen occlude, which `AppleCutouts` follows.
-void Services::getCutouts(std::vector<math::Rect>& cutouts) {
+void AppleServices::getCutouts(std::vector<math::Rect>& cutouts) {
     cutouts.clear();
 #if TARGET_OS_OSX
     NSWindow* window = (__bridge NSWindow*)NativeWindow::getHandle();
@@ -333,93 +293,69 @@ void Services::getCutouts(std::vector<math::Rect>& cutouts) {
 #endif
 }
 
-TextInput& Services::getTextInput() {
-    static AppleTextInput& input = *new AppleTextInput();
-    return input;
-}
-
 // The parameters reach the handler with a VarnDataView of their own for every view, which the decode takes while the bridge still holds the views.
-void Services::dispatch(std::uint64_t call, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView>) {
+void AppleServices::dispatch(std::uint64_t call, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView>) {
     AppleBridge::dispatch(call, method, paramsJson, buffers);
 }
 
-void Services::cancel(std::uint64_t call) {
+void AppleServices::cancel(std::uint64_t call) {
     AppleBridge::cancel(call);
 }
 
-SystemInfo Services::getSystemInfo() {
+SystemInfo AppleServices::getSystemInfo() {
     return AppleSystem::getInfo();
 }
 
-void Services::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
+void AppleServices::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
     ApplePermissions::check(kind, std::move(callback));
 }
 
-void Services::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
+void AppleServices::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
     ApplePermissions::request(kind, std::move(callback));
 }
 
-std::string Services::explainBlockedSocket(std::intptr_t) {
-    return {};
-}
-
-// LaunchServices and UIKit hand the links to the app that runs, whose delegates report them.
-bool Services::forwardLink(std::string_view, std::string_view) {
-    return false;
-}
-
-void Services::listenForLinks(std::string_view) {}
-
 // A Mac app keeps running its frames in the background, so its sound plays on.
-void Services::setBackgroundAudio([[maybe_unused]] bool value) {
+void AppleServices::setBackgroundAudio([[maybe_unused]] bool value) {
 #if !TARGET_OS_OSX
     AppleBackgroundAudio::setEnabled(value);
 #endif
 }
 
-void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {
+void AppleServices::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {
     AppleMediaSession::update(value);
 }
 
-bool Services::isAccessibilityTreeWanted() {
+bool AppleServices::isTreeWanted() {
     return HaylenAccessibilityView.shared.wanted;
 }
 
-void Services::updateAccessibility(std::span<const AccessibilityElement> elements, std::uint64_t focused) {
+void AppleServices::update(std::span<const AccessibilityElement> elements, std::uint64_t focused) {
     [HaylenAccessibilityView.shared updateElements:elements focused:focused];
 }
 
-void Services::announce(std::string_view text, bool interrupt) {
+void AppleServices::announce(std::string_view text, bool interrupt) {
     [HaylenAccessibilityView.shared announce:[[NSString alloc] initWithBytes:text.data() length:text.size() encoding:NSUTF8StringEncoding] interrupt:interrupt];
 }
 
-std::optional<SystemFont> Services::findSystemFont(char32_t codePoint) {
+std::optional<SystemFont> AppleServices::findSystemFont(char32_t codePoint) {
     return AppleFonts::find(codePoint);
 }
 
-std::vector<std::uint8_t> Services::readSystemFont(const SystemFont& font) {
+std::vector<std::uint8_t> AppleServices::readSystemFont(const SystemFont& font) {
     return AppleFonts::read(font);
 }
 
-std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) {
+std::unique_ptr<VideoDecoder> AppleServices::openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) {
     return std::make_unique<AppleVideoDecoder>(std::move(file), path);
 }
 
 // Native libraries of the macOS player open the screens they registered before the platform is asked for them.
-void Services::openScreen(const ScreenRequest& request) {
+void AppleServices::openScreen(const ScreenRequest& request) {
     AppleScreens::open(request);
 }
 
-void Services::cancelScreen(std::uint64_t id) {
+void AppleServices::cancelScreen(std::uint64_t id) {
     AppleScreens::cancel(id);
-}
-
-HaylenNativeWindow Services::getNativeWindow() {
-#if TARGET_OS_OSX
-    return {.handle = NativeWindow::getHandle(), .display = nullptr};
-#else
-    return {};
-#endif
 }
 
 } // namespace haylen::platform

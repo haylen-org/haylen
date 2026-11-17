@@ -75,7 +75,9 @@ class Runtime final {
     // Hands over the GPU device that started with the window, or creates another one for the window, as an app that replaces the last one asks for it. Another one needs its graphics API prepared first, which `prepareDevice` reports.
     [[nodiscard]] std::unique_ptr<gpu::Device> createDevice();
     [[nodiscard]] bool prepareDevice();
-    void endSplashScreen(float fadeOutSeconds);
+
+    // Shows a window that opened hidden until the app drew its first complete frame.
+    void showWhenComplete();
 
     // Ends the frames at the next iteration, which closes the window and ends the process of desktop apps.
     void close() noexcept {
@@ -125,7 +127,7 @@ class Runtime final {
     static SDL_AppResult onEvent(void* state, SDL_Event* event);
     static void onQuit(void* state, SDL_AppResult result);
     static void describeApp(const core::AppConfig& config);
-    [[nodiscard]] static gpu::DeviceFactory::Options getDeviceOptions() noexcept;
+    [[nodiscard]] static gpu::DeviceOptions getDeviceOptions() noexcept;
     [[nodiscard]] static bool isHiddenUntilComplete() noexcept;
 
     SDL_AppResult initialize(int argc, char* argv[]);

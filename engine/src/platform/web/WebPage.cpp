@@ -61,6 +61,10 @@ EM_JS(void, haylen_js_set_drawable_width, (int width), {
     Module.haylen.setDrawableWidth(width);
 });
 
+EM_JS(void, haylen_js_end_splash, (float fadeOut), {
+    Module.haylen.reportSplashEnded(fadeOut);
+});
+
 EM_JS(void, haylen_js_stopped, (), {
     Module.haylen.reportStopped();
 });
@@ -251,6 +255,10 @@ void WebPage::reportFrame(core::Engine& engine) {
 }
 
 // A frame that took the changes of the requests answers them, with the report of hot reload when the changes did anything. Changes that touched no file the app loaded answer with no report.
+void WebPage::endSplashScreen(float fadeOutSeconds) {
+    haylen_js_end_splash(fadeOutSeconds);
+}
+
 void WebPage::finishFrame() {
     const DevelopmentSession* session = Player::getDevelopmentSession();
     if (pendingApplies.empty() || (session != nullptr && session->hasChanges())) {

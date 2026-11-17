@@ -34,7 +34,7 @@ class Connection final {
     ~Connection();
 
     // Starts requesting the adapter and the device unless a request runs or ended, and returns where it stands. The software rasterizer of the browser, its fallback adapter, answers a request for software, and the GPU of the lowest power a request for low power. A failed request stays failed until `take` reports it.
-    static Status request(const DeviceFactory::Options& options);
+    static Status request(const DeviceOptions& options);
 
     // Hands over the ready connection, leaving none. Throws `std::runtime_error` with the reason when the request failed, still runs or never started.
     [[nodiscard]] static std::unique_ptr<Connection> take();

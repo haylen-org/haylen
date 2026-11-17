@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "platform/NativeHost.hpp"
-#include "platform/Services.hpp"
+#include "platform/web/WebTextInput.hpp"
 
 namespace haylen::platform::worker {
 
@@ -19,7 +19,7 @@ class Runtime;
 // The host of the Worker mode of the web, whose window is the `OffscreenCanvas` of the worker and whose page owns everything of the document: the cursor, the title, fullscreen, the pointer lock, the wake lock, the clipboard and the controllers, which the host asks for through the page side of the runtime.
 class Host final : public platform::NativeHost {
   public:
-    explicit Host(Runtime& owner) noexcept : NativeHost(Services::getTextInput()), runtime(owner) {}
+    explicit Host(Runtime& owner) noexcept : NativeHost(WebTextInput::getShared()), runtime(owner) {}
 
     [[nodiscard]] math::Vec2 getFramebufferSize() const noexcept override;
     [[nodiscard]] float getDpiScale() const noexcept override;
@@ -36,6 +36,7 @@ class Host final : public platform::NativeHost {
     [[nodiscard]] bool canBeTransparent() const noexcept override;
     [[nodiscard]] std::unique_ptr<gpu::Device> createGpuDevice() override;
     [[nodiscard]] bool prepareGpuDevice() override;
+    [[nodiscard]] audio::Mixer::Setup getAudioSetup() const override;
     void closeWindow() override;
     void endSplashScreen(float fadeOutSeconds) override;
     [[nodiscard]] bool canHaltFrames() const noexcept override;
@@ -48,6 +49,9 @@ class Host final : public platform::NativeHost {
     [[nodiscard]] OutputReport getOutputReport(std::uint32_t number) const override;
 
   protected:
+    [[nodiscard]] bool allowsQuit() const noexcept override {
+        return false;
+    }
     void requestWindowClose() override;
     void setWindowFocusable(bool value) override;
     void setScreenSaverSuspended(bool value, std::function<void(Permission::Answer answer)> callback) override;

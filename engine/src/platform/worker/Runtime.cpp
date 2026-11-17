@@ -153,7 +153,7 @@ bool Runtime::hasAnimationFrames() noexcept {
 }
 
 // Debug builds validate every call of the graphics API, as on the page.
-gpu::DeviceFactory::Options Runtime::getDeviceOptions() noexcept {
+gpu::DeviceOptions Runtime::getDeviceOptions() noexcept {
 #if defined(NDEBUG)
     constexpr bool validation = false;
 #else

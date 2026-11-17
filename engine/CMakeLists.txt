@@ -885,6 +885,7 @@ add_library(haylen-platform STATIC
   src/platform/linux/LinuxVisualColor.cpp
   src/platform/MemoryWarning.cpp
   src/platform/ReportedState.cpp
+  src/platform/Services.cpp
   src/platform/SupportedOrientations.cpp
   src/platform/SurfaceCheck.cpp
   src/platform/Touches.cpp
@@ -905,9 +906,9 @@ set(HAYLEN_RUNTIME_SOURCES
   src/platform/NativeHost.cpp
   src/platform/Player.cpp
 )
-# A port brings the platform layer and the services of its platform.
+# A port brings the platform layer and the services of its platform, which reach the engine through the public API of `haylen/port`.
 if(HAYLEN_PORT_PLATFORM)
-  list(APPEND HAYLEN_RUNTIME_SOURCES ${HAYLEN_PORT_RUNTIME_SOURCES})
+  list(APPEND HAYLEN_RUNTIME_SOURCES src/port/BridgeReplies.cpp src/port/GpuDevices.cpp src/port/Player.cpp src/port/PortHost.cpp src/port/SystemReports.cpp ${HAYLEN_PORT_RUNTIME_SOURCES})
 elseif(APPLE)
   set(HAYLEN_APPLE_SOURCES
     src/platform/apple/AppleAccessibility.mm
@@ -968,6 +969,10 @@ elseif(APPLE)
     src/platform/apple/HaylenThemeView.mm
     src/platform/apple/HaylenVideoStream.mm
   )
+  # Only a Mac has a desktop of windows.
+  if(HAYLEN_PLATFORM STREQUAL "macos")
+    list(APPEND HAYLEN_APPLE_SOURCES src/platform/apple/AppleDesktopService.mm)
+  endif()
   # Apple TV has no pasteboard, so its apps keep the clipboard of SDL inside the app.
   if(NOT HAYLEN_PLATFORM STREQUAL "tvos")
     list(APPEND HAYLEN_APPLE_SOURCES src/platform/apple/ApplePasteboard.mm)
@@ -996,10 +1001,11 @@ if(NOT ANDROID AND NOT HAYLEN_PORT_PLATFORM)
   if(HAYLEN_PLATFORM MATCHES "^(windows|linux)$")
     list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sdl/TextInput.cpp)
   endif()
-  # UIKit apps read their controllers through `platform::AppleGamepads`, whose header speaks Objective-C, and the other platforms through the gamepads of SDL.
-  if(HAYLEN_PLATFORM MATCHES "^(ios|tvos)$")
+  # The host of Apple platforms reaches the native text field of `platform::AppleTextInput` and, in UIKit apps, the controllers of `platform::AppleGamepads`, whose headers speak Objective-C. UIKit apps read their controllers through those, and the other platforms through the gamepads of SDL.
+  if(APPLE)
     set_source_files_properties(src/platform/sdl/Host.cpp PROPERTIES LANGUAGE OBJCXX COMPILE_OPTIONS "-fobjc-arc")
-  else()
+  endif()
+  if(NOT HAYLEN_PLATFORM MATCHES "^(ios|tvos)$")
     list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sdl/Gamepads.cpp)
   endif()
   if(APPLE)
@@ -1048,7 +1054,6 @@ endif()
 # The headless host draws through the null GPU device, which checks every call of the engine against the contract of the device and draws nothing, and the GPU tests of the platforms that build them alone run the engine on it with a real device.
 if(HAYLEN_DESKTOP OR (HAYLEN_GPU_TESTS_ALONE AND HAYLEN_BUILD_TESTS))
   add_library(haylen-headless-host OBJECT
-    src/gpu/NullDevice.cpp
     src/platform/headless/HeadlessHost.cpp
     src/platform/headless/HeadlessPlayer.cpp
   )

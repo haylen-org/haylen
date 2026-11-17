@@ -31,7 +31,7 @@ The SDKs of game consoles, their headers, their graphics APIs, their shader comp
 
 | In the repository | In the private repository of the port |
 | --- | --- |
-| The mechanism of ports: `HAYLEN_PORT_DIR`, `haylen_port`, `gpu::PortDevice`, the reserved values `Api::Port`, `Language::Port`, `Surface::Kind::Port` and `SystemInfo::Os::Port`, and the `port` targets of shader packages. | The `port.cmake` of the port. |
+| The mechanism of ports: `HAYLEN_PORT_DIR`, `haylen_port`, the public API of ports in `haylen/port`, the reserved values `Api::Port`, `Language::Port`, `Surface::Kind::Port` and `SystemInfo::Os::Port`, and the `port` targets of shader packages. | The `port.cmake` of the port. |
 | The contracts of the tooling: `EnginePort`, `PlatformBackend`, the entry point groups `haylen.engine_ports` and `haylen.backends`, and the SDK manifest. | The engine port and the backend of the console, in a Python package. |
 | The engine, the player, the renderers, the Lua API and the devices of the public graphics APIs. | The runtime, the host, the window and the services of the console. |
 | The test port in `engine/tests/data/port`, which checks the mechanism on a desktop. | The GPU device of the console, its shader tool and its tests. |
@@ -46,7 +46,7 @@ The folder holds a `port.cmake`, which describes the port with one call of `hayl
 
 ```cmake
 haylen_port(
-  CONTRACT 1
+  CONTRACT 2
   PLATFORM console
   CAPABILITIES dynamicLibraries
   RUNTIME_SOURCES
@@ -70,13 +70,13 @@ haylen_port(
 
 | Argument | What it gives |
 | --- | --- |
-| `CONTRACT` | The version of the contract of ports that the port follows. It must be `HAYLEN_PORT_CONTRACT_VERSION` of `engine/cmake/haylen-port.cmake`, which grows whenever `haylen_port`, `platform::NativeHost`, `platform::Services` or `gpu::PortDevice` change in a way that a port must follow, so a port of an older contract stops with a sentence that names both versions. |
+| `CONTRACT` | The version of the contract of ports that the port follows. It must be `port::Contract::kVersion` of the [public API of ports](#the-public-api-of-ports), which `engine/cmake/haylen-port.cmake` reads into `HAYLEN_PORT_CONTRACT_VERSION` and which grows whenever that API or `haylen_port` change in a way that a port must follow, so a port of an older contract stops with a sentence that names both versions. |
 | `PLATFORM` | The name of the platform in lowercase dash-case, which `HAYLEN_PLATFORM` takes and the services of the port report. It cannot be the name of a platform of the engine. |
 | `CAPABILITIES` | What the platform allows apps to do, any of `dynamicLibraries`, which loads libraries at run time, `executableMemory`, which writes code into memory, and `processes`, which starts other processes. The SDK of the port records them, and the registry of the tooling checks them against what the backend of a target needs. |
 | `RUNTIME_SOURCES` | The sources of the runtime of the platform, which `haylen-runtime` compiles instead of the SDL platform layer, the Android runtime and the services of the engine. |
 | `RUNTIME_LIBRARIES` | The libraries that the runtime links, such as the targets of the SDK. |
 | `GRAPHICS_APIS` | The graphics APIs of the engine whose devices the port compiles, by their names in `gpu::Device::kApiNames`, such as `openGl`. |
-| `DEVICE_SOURCES` | The sources of the device of the API `port`, which `haylen-gpu` compiles. They define `gpu::PortDevice::create`. |
+| `DEVICE_SOURCES` | The sources of the device of the API `port`, which `haylen-gpu` compiles. They define `port::PortDevice::create`. |
 | `DEVICE_LIBRARIES` | The libraries that the device links. |
 | `SHADER_LANGUAGES` | The languages of `haylen-shaderc` that the shader tool of the port reads, such as `spirv` or `hlsl5`. The shader packages of the engine carry them. |
 | `SHADER_COMMAND` | The command that runs on every shader package of the engine after `haylen-shaderc` wrote it, with the path of the package after its last argument. It writes the code of the device of the port into the package. |
@@ -103,7 +103,7 @@ A port with `SDK ON` installs the SDK of its platform like any other platform, w
 ```json
 {
   "platform": "console",
-  "contract": 1,
+  "contract": 2,
   "capabilities": ["dynamicLibraries"],
   "hostTools": ["port-shaders"],
   "appFunction": "console_add_app",
@@ -144,18 +144,55 @@ console = "haylen_console.console_backend:ConsoleBackend"
 
 The package goes into the Python environment that runs the tooling, such as a uv project of the private repository that depends on the Haylen checkout through a path and runs `uv run haylen`. Installing it runs its code with the trust of the developer who installs it. Its targets then take part in every command, such as `haylen sdk build --target console` and `haylen app run --target console`, and its backend generates the project of the platform with the tool that the SDK of the console requires, which may be CMake with `haylen_add_app` or another build system.
 
+## The public API of ports
+
+A port reaches the engine through the headers of `engine/include/haylen/port/`, in the namespace `haylen::port`, and the other public headers of the engine, which every SDK installs. It never includes a header of `engine/src` or compiles a source of the engine, so a port builds against an SDK as well as against a checkout. The API is stable in the sense of the [API policy](../tools/api-policy.md#the-api-of-ports), and `port::Contract::kVersion` names its version, which the `CONTRACT` of `haylen_port` must match.
+
+| Header | What it gives a port |
+| --- | --- |
+| `Contract.hpp` | `port::Contract`, the version of the contract of ports. |
+| `Host.hpp` | `port::Host`, the window that the port implements: the size and scale of its framebuffer, fullscreen, the title, the cursor, the mouse lock, the clipboard, the text input, closing, whether an app may quit itself, the splash, the halts of the debugger, the controllers, the screen saver, the frame rate, the pixel density cap, the GPU device and the audio setup. |
+| `Player.hpp` | `port::Player`, which installs the services and plays apps for the runtime of the port: `installServices`, `create`, `getGraphicsApis`, `initialize`, `frame`, `handleEvent`, `postEvent`, `cleanup`, `getGpuDevice` and `getExitStatus`. |
+| `Services.hpp` and the services | `port::Services`, the services of the platform by capability, which [the services of a port](#the-services-of-a-port) lists. |
+| `SystemReports.hpp` | `port::SystemReports`, what the system tells the engine from any thread: the theme, the battery, the power saving mode, the time zone, the languages, the accessibility settings, memory warnings, the links that open the app and the actions of the screen reader. |
+| `BridgeReplies.hpp` | `port::BridgeReplies`, the answers, events and screen endings of the native parts of plugins, from any thread. |
+| `GpuDevices.hpp` | `port::GpuDevices`, which makes the device of a graphics API of the build, names an API and makes the checking device of `createChecking`, which draws nothing and checks every call against the contract of `gpu::Device`. |
+| `PortDevice.hpp` | `port::PortDevice`, the device of the API `port` that a port with a graphics API of its own defines. |
+
+The value types that the API takes are public too, such as `platform::Event`, `platform::SystemInfo`, `platform::Display`, `platform::WindowStyle`, `platform::SystemFont`, `platform::PixelDensityCap`, `gpu::Surface` and `gpu::DeviceOptions`.
+
 ## The platform runtime
 
 The runtime of a port does what every platform layer does, as the [architecture guide](../core/architecture.md#layers) describes:
 
-1. **A host** derived from `platform::NativeHost`. It adds what the window does: the size and scale of the framebuffer, fullscreen, the title, the cursor, the clipboard, closing the window, its focus, `endSplashScreen`, which takes the splash screen of the platform away once the app drew its first complete frame, keeping the screen on, pacing its frames at the frame rate of the app in `applyFrameRate`, sizing its drawable for the pixel density cap of the app in `applyMaxPixelDensity` with the `gpu::Surface::Size` that its device takes, the controllers, the text input of the services, which it hands to the constructor of `platform::NativeHost`, where the engine shares it between its editors and the plain keyboard, `prepareGpuDevice`, which answers `true` once the device of the next app can be created, `createGpuDevice`, which hands over the device that draws into the window, and `pumpHaltedEvents`, which keeps the platform responsive while the [debugger](../tools/debugger.md) halts the frame thread and answers whether the platform asks the frame to finish.
-2. **A window** derived from `platform::NativeWindow`, installed with `NativeWindow::install` while it is open, which hands the services its native handles.
-3. **A runtime** that holds the entry point of the process. It first calls `CrashGuard::install`, so the handlers of native crashes are in place before the native parts of plugins load, as the [plugin guide](plugins.md) describes. It then calls `Player::create` with the command line and the host, opens the window for the APIs of `Player::getGraphicsApis` until a device starts, calls `Player::initialize`, then `Player::frame` once a frame, hands events of the system to `Player::handleEvent`, replaces a device that `isLost` reports and calls `Player::cleanup` when the app ends.
-4. **The services** of the platform: the definitions of the static methods of `platform::Services` in `engine/src/platform/Services.hpp`. They tell the name of the platform, open the package that ships with the app, give the folders of user data and of downloaded content, report what the device is, answer the bridge, run text input and read video. A service the platform does not offer answers the way the contract of its method says, such as a screen that fails with `noHandler`.
+1. **A window** derived from `port::Host`, which the engine wraps in its own native host, so the development session, the style of the window, the share of the text input between the editors and the plain keyboard and every other part that the engine holds of a host stay the same on every platform.
+2. **The services** of the platform, a `port::Services`, which the runtime installs once with `port::Player::installServices` before anything else of the engine runs.
+3. **A runtime** that holds the entry point of the process. It installs the services, calls `port::Player::create` with the command line and its window, opens the window for the APIs of `port::Player::getGraphicsApis` until a device starts, calls `port::Player::initialize`, then `port::Player::frame` once a frame, hands events of the system to `port::Player::handleEvent`, replaces a device that `isLost` reports and calls `port::Player::cleanup` when the app ends. A port maps the lifecycle of its system onto the events of the engine: a suspend of the console is `Event::Type::Suspended` and its resume `Event::Type::Resumed`, which move the app between the states that the [lifecycle guide](../core/lifecycle.md) describes.
 
-The runtime reaches the system of the console through its SDK, or through SDL 3 where the maker of the console provides its port of SDL to licensed developers. A runtime on SDL can start from the SDL platform layer of the engine, `engine/src/platform/sdl/`, as a copy in the private repository, and keep its own changes there.
+The runtime reaches the system of the console through its SDK, or through SDL 3 where the maker of the console provides its port of SDL to licensed developers. A runtime on SDL can start from the SDL platform layer of the engine, `engine/src/platform/sdl/`, as a copy in the private repository that it moves onto the public API, and keep its own changes there.
 
 The system info of a port reports the operating system `'port'`, the value `SystemInfo::Os::Port`, and the platform name of `PLATFORM` tells which platform it is. A console on a TV reports the device kind `tv`.
+
+### The services of a port
+
+Every platform, of the engine or of a port, registers the services of the capabilities it has, and the engine answers in one place for each one it lacks, so an empty implementation never reads as one that worked. One object may implement several services, which the fields of `port::Services` then share.
+
+| Service | What it covers | What the engine answers without it |
+| --- | --- | --- |
+| `PlatformService` | The name of the platform, starting and stopping the following of the system, the package that ships with the app, the folder of user data, committing it, the system info and whether the device has a pointer. | Required. |
+| `DisplayService` | The displays of the device, the display of the window, the displays that wait for the permission `screens` and the frame of the window. | Required. |
+| `DesktopService` | A desktop of windows: the style, background, frame, passthrough and drag of the window, following it and its native handles for native libraries. | A window that fills its screen, with null native handles. |
+| `ScreenService` | The safe area, the orientation, the status bar, the gestures of the system, a fold and cutouts. | A landscape screen, safe everywhere, without a status bar, gestures, fold or cutouts. |
+| `BridgeService` | The native parts of plugins in the language of the platform, their calls, their screens and the failures that stopped the app. | Calls and screens that fail with the code `noHandler`. |
+| `PermissionService` | The permissions of the engine, `screens` and `localNetwork`. | `Granted`, since such a platform gates none. |
+| `NetworkService` | Why the platform blocked a connection and what the project lacks for network access. | Nothing to explain. |
+| `LinkService` | The links of a platform that starts a new process of the app for every link. | No process forwards a link. |
+| `MediaService` | The now-playing controls and the audio of an app in the background. | No controls, and frames that keep running in the background. |
+| `AccessibilityService` | The screen reader. | A tree that nobody wants. |
+| `VideoService` | The decoder of video files. | No decoder, so a video fails with the sentence of the video system. |
+| `FontService` | The fonts of the system. | No font of the system. |
+
+The platforms of the engine register their services the same way, so the table is also the map of what each platform offers.
 
 ## The GPU device
 
@@ -169,23 +206,23 @@ A platform whose graphics API the engine already has names it in `GRAPHICS_APIS`
 
 ### A device of its own
 
-A port whose graphics API the engine has no device of defines the class `gpu::PortDevice` of `engine/src/gpu/PortDevice.hpp`:
+A port whose graphics API the engine has no device of defines the class `port::PortDevice` of `haylen/port/PortDevice.hpp`:
 
 ```cpp
-#include "gpu/PortDevice.hpp"
+#include "haylen/port/PortDevice.hpp"
 
 #include "ConsoleDevice.hpp"
 
-namespace haylen::gpu {
+namespace haylen::port {
 
-std::unique_ptr<Device> PortDevice::create(const std::optional<Surface>& surface, const DeviceFactory::Options& options) {
+std::unique_ptr<gpu::Device> PortDevice::create(const std::optional<gpu::Surface>& surface, const gpu::DeviceOptions& options) {
     return std::make_unique<ConsoleDevice>(surface, options);
 }
 
-} // namespace haylen::gpu
+} // namespace haylen::port
 ```
 
-The device implements the whole contract of `gpu::Device` and reports `Api::Port` from `getApi` and `Language::Port` from `getLanguage`. Its runtime hands it the window in a surface of the kind `Surface::Kind::Port`, whose `window` and `display` hold whatever native handles the device reads. The factory prefers the API `port` to every other API of the build, and the [RHI guide](../graphics/rhi.md) lists what each part of the contract asks of a device. A device can start as `gpu::NullDevice`, which reports the API it is given, so the runtime of a port runs apps before its device draws, as the test port does.
+The device implements the whole contract of `gpu::Device` and reports `Api::Port` from `getApi` and `Language::Port` from `getLanguage`. Its runtime hands it the window in a surface of the kind `Surface::Kind::Port`, whose `window` and `display` hold whatever native handles the device reads. The factory prefers the API `port` to every other API of the build, and the [RHI guide](../graphics/rhi.md) lists what each part of the contract asks of a device. A device can start as the checking device of `port::GpuDevices::createChecking`, which reports the API it is given, so the runtime of a port runs apps before its device draws, as the test port does.
 
 ### Why the API and the language are reserved values
 
@@ -246,7 +283,7 @@ The same test checks the failures that a port meets, each with its typed error a
 HAYLEN_JOBS=4 uv run pytest -m port tools/tests/extensions
 ```
 
-The test port still includes some internal headers of `engine/src` and compiles one internal source. The test `tools/tests/repository/test_port_headers.py` lists them and fails on any new one, so a port depends on fewer of them over time.
+The test port includes only public headers of the engine and compiles no source of the engine, which the test `tools/tests/repository/test_port_headers.py` checks, so it proves that a port builds on the public API of ports alone.
 
 A port tests its own device the way the engine tests its devices, with the conformance suite and the reference images of `engine/tests/gpu`, which the testing guide also describes. The engine builds those tests for desktops, the web and Android, so a port builds them with the toolchain of its console in its private repository and runs them on a development kit.
 
@@ -273,7 +310,7 @@ These steps are the same for every console:
 2. **Make the private repositories.** Create one for the port, such as `haylen-console`, with `port.cmake`, a `runtime/` folder for the host, the window, the entry point and the services, a `gpu/` folder for the device when the console needs one, a `tools/` folder for the shader command, the CMake toolchain file of the SDK, the Python package of its engine port and its backend, and the scripts of its continuous integration. Create another one for the console plugin.
 3. **Build the test port first.** Run `haylen test --port` on a desktop to see the mechanism work, and read `engine/tests/data/port`, the smallest complete port, before writing your own.
 4. **Write the runtime.** Implement the host, the window, the runtime and the services that [the platform runtime](#the-platform-runtime) lists, on the SDL port of the console or on its SDK alone. Start every service with the answer its contract gives for a platform that lacks it, then fill in the services the console has.
-5. **Choose the GPU device.** Name a graphics API of the engine in `GRAPHICS_APIS` when the console runs one, or write `gpu::PortDevice` for its own graphics API, as [the GPU device](#the-gpu-device) explains. Start from `gpu::NullDevice` so apps run before the device draws.
+5. **Choose the GPU device.** Name a graphics API of the engine in `GRAPHICS_APIS` when the console runs one, or write `port::PortDevice` for its own graphics API, as [the GPU device](#the-gpu-device) explains. Start from `gpu::NullDevice` so apps run before the device draws.
 6. **Write the shader command.** Pick the language of `haylen-shaderc` that the shader compiler of the SDK reads, name it in `SHADER_LANGUAGES`, and make `SHADER_COMMAND` write the compiled code into the `port` target, as [the shaders section](#shaders) shows.
 7. **Write the engine port and the backend.** Implement `EnginePort` so `haylen sdk build` installs the SDK of the console with its manifest, and `PlatformBackend` so `haylen app build` generates and builds the project of an app with the tool of the SDK, as [the tooling of a port](#the-tooling-of-a-port) explains, and check both with `haylen doctor`.
 8. **Build and play.** Build the SDK, then play the app of `engine/tests/data/port-app` on the development kit until it quits with the status `0`.
@@ -295,15 +332,15 @@ Every port, whatever the platform, implements the same parts of the engine:
 
 | Part | What the port gives |
 | --- | --- |
-| Entry point and frames | The runtime that calls `Player::create`, `Player::initialize`, `Player::frame`, `Player::handleEvent` and `Player::cleanup`. |
-| Window | The host derived from `platform::NativeHost` and the window derived from `platform::NativeWindow`, with the size and scale of the framebuffer, the pixel density cap, focus, closing, the screen saver and the frame rate. |
-| Input | Controllers, and the keyboard, the mouse and touch where the platform has them, handed to the player as events, and the text input of `Services::getTextInput` with the keyboard of the system. |
-| Files | The package that ships with the app, the folder of user data, which `Services::persistUserData` commits where the platform saves on request, and the folder of the content store. |
-| System | The name of the platform, `Services::getSystemInfo` with the device kind, the safe area of the screen and the system state, such as the theme and the battery. |
+| Entry point and frames | The runtime that installs the services and calls `port::Player::create`, `port::Player::initialize`, `port::Player::frame`, `port::Player::handleEvent` and `port::Player::cleanup`. |
+| Window | The window derived from `port::Host`, with the size and scale of the framebuffer, the pixel density cap, focus, closing, the screen saver and the frame rate. |
+| Input | Controllers, and the keyboard, the mouse and touch where the platform has them, handed to the player as events, and the text input of `port::Host::getTextInput` with the keyboard of the system. |
+| Files | The package that ships with the app, the folder of user data, which `PlatformService::persistUserData` commits where the platform saves on request, and the folder of the content store. |
+| System | The name of the platform, `PlatformService::getSystemInfo` with the device kind, the displays, the safe area of the screen where it has one and the reports of `port::SystemReports`, such as the theme, the battery and the languages. |
 | Lifecycle | The app states `active`, `inactive` and `background`, suspend and resume, and low memory, handed to the player as events. |
 | Audio | The audio setup that `getAudioSetup` of the host returns, with a backend of its own for the mixer where miniaudio has none for the platform. |
-| Graphics | A device of the engine named in `GRAPHICS_APIS`, or `gpu::PortDevice` with the shader command. |
-| Optional services | Video, accessibility, the media session and the bridge of native plugins, each answering with `unsupported` or doing nothing where the platform lacks it. |
+| Graphics | A device of the engine named in `GRAPHICS_APIS`, or `port::PortDevice` with the shader command. |
+| Optional services | The services of [the services of a port](#the-services-of-a-port) that the platform has, such as video, accessibility, the media session and the bridge of native plugins, while the engine answers for each one it lacks. |
 | Tooling | The engine port that builds the SDK and the backend that generates, builds, verifies, runs and packages apps. |
 
 ## Limits

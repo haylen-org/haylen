@@ -1,6 +1,6 @@
 #include "platform/android/AndroidWindow.hpp"
 
-#include "platform/PixelDensityCap.hpp"
+#include "haylen/platform/PixelDensityCap.hpp"
 #include "platform/android/AndroidActivity.hpp"
 
 namespace haylen::platform {

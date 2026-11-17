@@ -22,6 +22,9 @@ class AppleTextInput final : public TextInput {
   public:
     AppleTextInput();
 
+    // The text input of the process, which lives as long as it, since the system may still report edits while the process exits.
+    [[nodiscard]] static TextInput& getShared();
+
     [[nodiscard]] bool isNative() const noexcept override {
         return true;
     }

@@ -19,7 +19,7 @@
 
 namespace haylen::gpu::opengl {
 
-std::unique_ptr<gpu::Device> Device::create(Api flavour, const std::optional<Surface>& surface, const DeviceFactory::Options& options) {
+std::unique_ptr<gpu::Device> Device::create(Api flavour, const std::optional<Surface>& surface, const DeviceOptions& options) {
     if (!surface || surface->kind != Surface::Kind::Gl || surface->gl == nullptr) {
         throw std::runtime_error("The OpenGL device draws through an OpenGL context, and the platform gave it no surface with one.");
     }

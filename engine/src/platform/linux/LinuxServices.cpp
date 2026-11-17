@@ -1,4 +1,4 @@
-#include "platform/Services.hpp"
+#include "platform/linux/LinuxServices.hpp"
 
 #include <cstdlib>
 #include <stdexcept>
@@ -8,12 +8,9 @@
 #include "content/FolderStoreFiles.hpp"
 #include "content/ReleasePackage.hpp"
 #include "haylen/content/Bootstrap.hpp"
-#include "haylen/core/Json.hpp"
 #include "haylen/io/Package.hpp"
 #include "io/CompositePackage.hpp"
-#include "platform/BridgeRelay.hpp"
 #include "platform/NativeWindow.hpp"
-#include "platform/ScreenRelay.hpp"
 #include "platform/SystemFontReader.hpp"
 #include "platform/linux/LinuxAccessibility.hpp"
 #include "platform/linux/LinuxDesktop.hpp"
@@ -26,11 +23,16 @@
 
 namespace haylen::platform {
 
-std::string_view Services::getName() noexcept {
+port::Services LinuxServices::create() {
+    const auto services = std::make_shared<LinuxServices>();
+    return {.platform = services, .displays = services, .desktop = services, .links = services, .accessibility = services, .fonts = services};
+}
+
+std::string_view LinuxServices::getName() const noexcept {
     return "linux";
 }
 
-void Services::initialize() {
+void LinuxServices::initialize() {
     LinuxSystem::reportLanguages();
     LinuxSystem::watchBattery();
     LinuxSettings::observe();
@@ -38,19 +40,12 @@ void Services::initialize() {
     LinuxAccessibility::start();
 }
 
-void Services::shutdown() noexcept {
+void LinuxServices::shutdown() noexcept {
     LinuxDesktop::release();
     LinuxFonts::release();
 }
 
-void Services::reportError(const core::Json&) {}
-
-// The platform loads no native plugins of its own, and native libraries declare theirs through `HaylenNativeApi`.
-std::vector<std::string> Services::getNativePlugins() {
-    return {};
-}
-
-std::shared_ptr<io::Package> Services::openBundledPackage() {
+std::shared_ptr<io::Package> LinuxServices::openBundledPackage() {
     const std::filesystem::path directory = std::filesystem::read_symlink("/proc/self/exe").parent_path();
     // A release build plays only the release next to it, while a development build may also ship its package as a zip.
     const content::Bootstrap* bootstrap = content::Bootstrap::find();
@@ -67,7 +62,7 @@ std::shared_ptr<io::Package> Services::openBundledPackage() {
     return io::Package::open(directory / "app.zip");
 }
 
-std::filesystem::path Services::getUserDataDirectory(std::string_view identifier) {
+std::filesystem::path LinuxServices::getUserDataDirectory(std::string_view identifier) {
     if (const char* data = std::getenv("XDG_DATA_HOME"); data != nullptr && *data != '\0') {
         return std::filesystem::path(data) / std::string(identifier);
     }
@@ -81,7 +76,7 @@ std::filesystem::path Services::getUserDataDirectory(std::string_view identifier
 }
 
 // Downloaded content comes back with a download, so it lives among the caches of the user.
-std::filesystem::path Services::getContentStoreDirectory(std::string_view identifier) {
+std::filesystem::path LinuxServices::getContentStoreDirectory(std::string_view identifier) {
     if (const char* cache = std::getenv("XDG_CACHE_HOME"); cache != nullptr && *cache != '\0') {
         return std::filesystem::path(cache) / std::string(identifier) / "content";
     }
@@ -94,168 +89,92 @@ std::filesystem::path Services::getContentStoreDirectory(std::string_view identi
     return std::filesystem::path(home) / ".cache" / std::string(identifier) / "content";
 }
 
-void Services::persistUserData() {}
+void LinuxServices::persistUserData() {}
 
-bool Services::hasDesktop() noexcept {
+SystemInfo LinuxServices::getSystemInfo() {
+    return LinuxSystem::getInfo();
+}
+
+bool LinuxServices::hasPointerDevice() const noexcept {
     return true;
 }
 
-void Services::setWindowStyle(const WindowStyle& value) {
+void LinuxServices::setWindowStyle(const WindowStyle& value) {
     LinuxDesktop::setStyle(value);
 }
 
-void Services::setWindowBackground(const math::Color& value) {
+void LinuxServices::setWindowBackground(const math::Color& value) {
     LinuxDesktop::setBackground(value);
 }
 
-math::Rect Services::getWindowFrame() {
+math::Rect LinuxServices::getWindowFrame() {
     return LinuxDesktop::getFrame();
 }
 
-void Services::setWindowFrame(const math::Rect& value) {
+void LinuxServices::setWindowFrame(const math::Rect& value) {
     LinuxDesktop::setFrame(value);
 }
 
-std::vector<Display> Services::getDisplays() {
+std::vector<Display> LinuxServices::getDisplays() {
     return LinuxDesktop::getDisplays();
 }
 
-std::string Services::getWindowDisplayId() {
+std::string LinuxServices::getWindowDisplayId() {
     return LinuxDesktop::getWindowDisplayId();
 }
 
 // Every display of the device is in the list, so none waits for the permission "screens".
-bool Services::hasUnlistedDisplays() {
+bool LinuxServices::hasUnlistedDisplays() {
     return false;
 }
 
-void Services::setMousePassthrough(Window::Passthrough mode, std::span<const math::Polygon::Outline> regions) {
+void LinuxServices::setMousePassthrough(Window::Passthrough mode, std::span<const math::Polygon::Outline> regions) {
     LinuxDesktop::setPassthrough(mode, regions);
 }
 
-void Services::startWindowDrag() {
+void LinuxServices::startWindowDrag() {
     LinuxDesktop::startDrag();
 }
 
-void Services::watchWindow() {
+void LinuxServices::watchWindow() {
     LinuxDesktop::watch();
 }
 
-void Services::updateWindow() {
+void LinuxServices::updateWindow() {
     LinuxDesktop::update();
     LinuxGlib::iterate();
 }
 
-math::Insets Services::getSafeAreaInsets() {
-    return {};
+HaylenNativeWindow LinuxServices::getNativeWindow() {
+    return {.handle = NativeWindow::getHandle(), .display = NativeWindow::getDisplay()};
 }
 
-bool Services::hasPointerDevice() noexcept {
-    return true;
-}
-
-Orientation Services::getOrientation() {
-    return Orientation::Landscape;
-}
-
-void Services::lockOrientation(Orientation) {}
-
-// Linux desktops have no status bar over the window of an app.
-void Services::setStatusBar(Window::StatusBar) {}
-
-// Linux desktops let no app defer the swipes that their touch screens take at the edges.
-void Services::setSystemGestures(Window::SystemGestures) {}
-
-float Services::getStatusBarHeight() {
-    return 0.0F;
-}
-
-// A Linux app opens its window at once, without a launch screen.
-void Services::endSplashScreen(float) {}
-
-// Linux desktops report no folds or hinges to windows.
-std::optional<Fold> Services::getFold() {
-    return std::nullopt;
-}
-
-// The displays of desktops have no cutouts that the window system reports.
-void Services::getCutouts(std::vector<math::Rect>& cutouts) {
-    cutouts.clear();
-}
-
-// Linux has no handler registry in the language of the platform, so native libraries and C++ plugins answer the methods of apps.
-void Services::dispatch(std::uint64_t id, std::string_view method, std::string_view, std::span<const std::vector<std::byte>>, std::span<const varn::dataview::DataView>) {
-    BridgeRelay::resolve(id, false, core::Json{{"message", "No native handler is registered for \"" + std::string(method) + "\"."}, {"code", "noHandler"}}.dump());
-}
-
-// Every call fails while it is made, so no call is ever pending here.
-void Services::cancel(std::uint64_t) {}
-
-SystemInfo Services::getSystemInfo() {
-    return LinuxSystem::getInfo();
-}
-
-// Linux gates none of the permissions of the engine, the motion of controllers, every screen and the local network, for an app outside a sandbox.
-void Services::checkPermission(Permission::Kind, std::function<void(Permission::Answer answer)> callback) {
-    callback({.state = Permission::State::Granted});
-}
-
-void Services::requestPermission(Permission::Kind, std::function<void(Permission::Answer answer)> callback) {
-    callback({.state = Permission::State::Granted});
-}
-
-std::string Services::explainBlockedSocket(std::intptr_t) {
-    return {};
-}
-
-bool Services::forwardLink(std::string_view identifier, std::string_view url) {
+bool LinuxServices::forwardLink(std::string_view identifier, std::string_view url) {
     return LinuxLinks::forward(identifier, url);
 }
 
-void Services::listenForLinks(std::string_view identifier) {
+void LinuxServices::listenForLinks(std::string_view identifier) {
     LinuxLinks::listen(identifier);
 }
 
-// A minimized window keeps running its frames, so its sound plays on.
-void Services::setBackgroundAudio(bool) {}
-
-// The now-playing controls of Linux desktops listen on the session bus for players that serve MPRIS, which the engine does not serve, as the reference of `haylen.system` explains.
-void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>&) {}
-
-bool Services::isAccessibilityTreeWanted() {
+bool LinuxServices::isTreeWanted() {
     return LinuxAccessibility::isWanted();
 }
 
-void Services::updateAccessibility(std::span<const AccessibilityElement> elements, std::uint64_t focused) {
+void LinuxServices::update(std::span<const AccessibilityElement> elements, std::uint64_t focused) {
     LinuxAccessibility::update(elements, focused);
 }
 
-void Services::announce(std::string_view text, bool interrupt) {
+void LinuxServices::announce(std::string_view text, bool interrupt) {
     LinuxAccessibility::announce(text, interrupt);
 }
 
-std::optional<SystemFont> Services::findSystemFont(char32_t codePoint) {
+std::optional<SystemFont> LinuxServices::findSystemFont(char32_t codePoint) {
     return LinuxFonts::find(codePoint);
 }
 
-std::vector<std::uint8_t> Services::readSystemFont(const SystemFont& font) {
+std::vector<std::uint8_t> LinuxServices::readSystemFont(const SystemFont& font) {
     return SystemFontReader::read(font.file);
-}
-
-// Linux has no decoder of video files that every distribution ships, as the video reference explains.
-std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader>, std::string_view) {
-    return nullptr;
-}
-
-// Linux has no screen registry in the language of the platform, so native libraries open the screens of plugins, before the platform is asked.
-void Services::openScreen(const ScreenRequest& request) {
-    ScreenRelay::finish(request.id, false, core::Json{{"message", "No native screen is registered for \"" + request.plugin + "." + request.screen + "\"."}, {"code", "noHandler"}}.dump());
-}
-
-void Services::cancelScreen(std::uint64_t) {}
-
-HaylenNativeWindow Services::getNativeWindow() {
-    return {.handle = NativeWindow::getHandle(), .display = NativeWindow::getDisplay()};
 }
 
 } // namespace haylen::platform

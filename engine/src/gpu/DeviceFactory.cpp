@@ -7,7 +7,7 @@
 #include "gpu/GpuPreference.hpp"
 
 #if defined(HAYLEN_GPU_PORT)
-#include "gpu/PortDevice.hpp"
+#include "haylen/port/PortDevice.hpp"
 #endif
 #if defined(HAYLEN_GPU_METAL)
 #include "gpu/metal/Device.hpp"
@@ -101,7 +101,7 @@ std::optional<Device::Api> DeviceFactory::findApi(std::string_view name) noexcep
     return found->second;
 }
 
-bool DeviceFactory::prepare([[maybe_unused]] Device::Api api, const Options& options) {
+bool DeviceFactory::prepare([[maybe_unused]] Device::Api api, const DeviceOptions& options) {
     GpuPreference::request(options.lowPower);
 #if defined(HAYLEN_GPU_WEBGPU)
     if (api == Device::Api::WebGpu) {
@@ -112,11 +112,11 @@ bool DeviceFactory::prepare([[maybe_unused]] Device::Api api, const Options& opt
 }
 
 // The surface and the options reach only the devices that the build compiled.
-std::unique_ptr<Device> DeviceFactory::create(Device::Api api, [[maybe_unused]] const std::optional<Surface>& surface, [[maybe_unused]] const Options& options) {
+std::unique_ptr<Device> DeviceFactory::create(Device::Api api, [[maybe_unused]] const std::optional<Surface>& surface, [[maybe_unused]] const DeviceOptions& options) {
     switch (api) {
 #if defined(HAYLEN_GPU_PORT)
     case Device::Api::Port:
-        return PortDevice::create(surface, options);
+        return port::PortDevice::create(surface, options);
 #endif
 #if defined(HAYLEN_GPU_METAL)
     case Device::Api::Metal:

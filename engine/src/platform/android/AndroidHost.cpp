@@ -1,7 +1,6 @@
 #include "platform/android/AndroidHost.hpp"
 
 #include "platform/NativeWindow.hpp"
-#include "platform/Services.hpp"
 #include "platform/android/AndroidActivity.hpp"
 #include "platform/android/AndroidGamepads.hpp"
 #include "platform/android/AndroidOutputs.hpp"
@@ -46,7 +45,16 @@ void AndroidHost::closeWindow() {
 }
 
 void AndroidHost::endSplashScreen(float fadeOutSeconds) {
-    Services::endSplashScreen(fadeOutSeconds);
+    AndroidActivity::endSplashScreen(fadeOutSeconds);
+}
+
+audio::Mixer::Setup AndroidHost::getAudioSetup() const {
+    return {.device = true};
+}
+
+// The views of Android plugins reserve edges in window pixels.
+math::Insets AndroidHost::getReservedInsets() const {
+    return AndroidActivity::toFramebuffer(getNativeViews().getReservedInsets());
 }
 
 // The UI thread hands the frame thread its lifecycle and input through a queue that waits for the halt to end, and only the end of the window or the activity holds the UI thread until the frame thread handles it.

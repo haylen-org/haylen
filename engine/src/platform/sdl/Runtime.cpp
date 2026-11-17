@@ -30,6 +30,7 @@
 #include <TargetConditionals.h>
 
 #include "haylen/platform/apple/HaylenMain.h"
+#include "platform/apple/AppleServices.hpp"
 #include "platform/sdl/apple/AppleApplication.hpp"
 #elif defined(__EMSCRIPTEN__)
 #include <emscripten/emscripten.h>
@@ -42,6 +43,10 @@
 #include <windows.h>
 
 #include <cstdlib>
+
+#include "platform/windows/WindowsServices.hpp"
+#else
+#include "platform/linux/LinuxServices.hpp"
 #endif
 
 namespace haylen::platform::sdl {
@@ -179,7 +184,7 @@ void Runtime::describeApp(const core::AppConfig& config) {
 }
 
 // Debug builds validate every call of the graphics API, and the app picks the GPU of a machine that has two.
-gpu::DeviceFactory::Options Runtime::getDeviceOptions() noexcept {
+gpu::DeviceOptions Runtime::getDeviceOptions() noexcept {
 #if defined(NDEBUG)
     constexpr bool validation = false;
 #else
@@ -253,12 +258,10 @@ SDL_AppResult Runtime::start() {
     return closing ? SDL_APP_SUCCESS : SDL_APP_CONTINUE;
 }
 
-void Runtime::endSplashScreen(float fadeOutSeconds) {
+void Runtime::showWhenComplete() {
     if (isHiddenUntilComplete()) {
         window.show();
     }
-
-    Services::endSplashScreen(fadeOutSeconds);
 }
 
 // A desktop window, which no launch screen covers, stays hidden until the app drew its first complete frame, so it never shows empty. The windows of phones, televisions and pages show at once under the splash screen of their platform. A Wayland window shows at once too, since Wayland takes the frames of a window only once it shows and maps it with the first frame it takes, so it shows nothing before.
@@ -528,15 +531,18 @@ void Runtime::updateCallbackRate() {
 #if defined(__APPLE__)
 // Apple apps call this from their main function after registering their native HaylenBridge handlers.
 int haylen_main(int argc, char* argv[]) {
+    haylen::platform::Services::install(haylen::platform::AppleServices::create());
     return haylen::platform::sdl::Runtime::run(argc, argv);
 }
 #elif defined(_WIN32)
 // Windows apps run in the windows subsystem, and SDL reads their command line as UTF-8.
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
+    haylen::platform::Services::install(haylen::platform::WindowsServices::create());
     return haylen::platform::sdl::Runtime::run(__argc, __argv);
 }
 #elif !defined(__EMSCRIPTEN__)
 int main(int argc, char* argv[]) {
+    haylen::platform::Services::install(haylen::platform::LinuxServices::create());
     return haylen::platform::sdl::Runtime::run(argc, argv);
 }
 #endif

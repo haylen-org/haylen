@@ -12,6 +12,7 @@
 
 #include "haylen/math/Insets.hpp"
 #include "haylen/platform/Event.hpp"
+#include "haylen/platform/WindowStyle.hpp"
 #include "platform/DevelopmentSession.hpp"
 #include "platform/FullscreenTarget.hpp"
 #include "platform/Host.hpp"
@@ -19,7 +20,6 @@
 #include "platform/NativeViews.hpp"
 #include "platform/SharedTextInput.hpp"
 #include "platform/SystemState.hpp"
-#include "platform/WindowStyle.hpp"
 
 namespace haylen::platform {
 
@@ -78,7 +78,6 @@ class NativeHost : public Host {
     [[nodiscard]] std::string getDisplayId() const override;
 
     [[nodiscard]] std::string_view getPlatformName() const noexcept override;
-    [[nodiscard]] audio::Mixer::Setup getAudioSetup() const override;
     [[nodiscard]] bool isFrameTransparent() const noexcept override;
     [[nodiscard]] std::filesystem::path getUserDataDirectory(std::string_view identifier) override;
     void persistUserData() override;
@@ -181,6 +180,9 @@ class NativeHost : public Host {
 
     // Ends the output with `Output::Ending::Unsupported` and the reason, which the frame thread reads after the announcement.
     void refuseOutput(std::uint32_t number, std::string reason);
+
+    // Whether an app may end itself on the platform, which the apps of phones, TVs and web pages may not.
+    [[nodiscard]] virtual bool allowsQuit() const noexcept = 0;
 
     // Asks the window to close as its close button does, which the app hears before it closes.
     virtual void requestWindowClose() = 0;

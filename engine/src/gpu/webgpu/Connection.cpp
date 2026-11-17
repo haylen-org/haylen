@@ -36,7 +36,7 @@ Connection::~Connection() {
 }
 
 // The callbacks run spontaneously, when the browser settles its promises between frames, and the adapter of a browser without WebGPU fails before the request returns.
-Connection::Status Connection::request(const DeviceFactory::Options& options) {
+Connection::Status Connection::request(const DeviceOptions& options) {
     if (status != Status::Idle) {
         return status;
     }

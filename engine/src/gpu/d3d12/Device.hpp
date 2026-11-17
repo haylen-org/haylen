@@ -43,7 +43,7 @@ class Device final : public gpu::Device {
     static constexpr std::size_t kFramesInFlight = 2;
 
     // Starts the device on the first GPU that runs it, drawing into the surface or offscreen. Throws `std::runtime_error` saying why when no GPU of the machine runs it.
-    [[nodiscard]] static std::unique_ptr<gpu::Device> create(const std::optional<Surface>& target, const DeviceFactory::Options& options);
+    [[nodiscard]] static std::unique_ptr<gpu::Device> create(const std::optional<Surface>& target, const DeviceOptions& options);
 
     Device(Microsoft::WRL::ComPtr<IDXGIFactory6> dxgiFactory, Microsoft::WRL::ComPtr<IDXGIAdapter1> card, const std::optional<Surface>& target, bool validation);
     ~Device() override;

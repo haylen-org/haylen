@@ -62,7 +62,7 @@ void AndroidGraphics::detachWindow(gpu::Device* device) noexcept {
 
 // A window takes the frames of one graphics API at a time, so a device that draws into it directly first ends the context of OpenGL ES that an earlier app drew through. A device of OpenGL ES draws through a new context once the GPU lost the one before, which its device or EGL reported, and one made while the activity has no window waits for one, like a device whose window went.
 std::unique_ptr<gpu::Device> AndroidGraphics::open(gpu::Device::Api api) {
-    const gpu::DeviceFactory::Options options{.validation = kValidation};
+    const gpu::DeviceOptions options{.validation = kValidation};
     if (!gpu::DeviceFactory::usesGlContext(api)) {
         egl.reset();
         return gpu::DeviceFactory::create(api, describeSurface(api), options);

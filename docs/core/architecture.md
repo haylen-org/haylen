@@ -78,10 +78,10 @@ The folder `engine/src/platform/` holds the boundary with the operating system. 
 | Class | What it does |
 | --- | --- |
 | `Host` | The interface between the engine and a platform, which [the host boundary](#the-host-boundary) describes. |
-| `NativeHost` | The host of real devices, from which every platform layer derives its host. |
+| `NativeHost` | The host of real devices, which keeps what the engine holds of every host and from which every platform layer of the engine derives its host, while the window of a port reaches it through `port::Host`. |
 | `NativeWindow` | The native handles of the window of the platform layer. |
 | `Player` | Plays packages for the platform layer, with `ReportedState`, what the platform reported last, and `MemoryWarning`. `LuaPlayer.cpp` is the source of the player. |
-| `Services` | The class whose static methods every platform folder implements. |
+| `Services` | The services of the platform as the player reaches them. Every platform runtime installs the services of its platform by capability once, as a `port::Services` of the [public API of ports](../platform/ports.md#the-public-api-of-ports), and each capability that a platform does not register is answered here, in one place. |
 | `BridgeRelay` and `PlatformLua` | Carry the answers of the bridge and bind it to Lua. `StreamsLua` binds the streams. |
 | `SystemState` | The theme, the battery and the accessibility settings that the platform reports, with `SystemLua` and `AccessibilityLua`. |
 | `AccessibilityRelay` | Carries the actions of screen readers. |
@@ -224,7 +224,7 @@ The portable engine reaches the platform only through `platform::Host`, declared
 
 ### The native host and the player
 
-The target `haylen-runtime` implements the host with `platform::NativeHost` (`engine/src/platform/NativeHost.hpp`). It forwards to the `Services` of the platform folder compiled into it. The host of each platform layer derives from it and adds what its window does, as [layers](#layers) describes.
+The target `haylen-runtime` implements the host with `platform::NativeHost` (`engine/src/platform/NativeHost.hpp`). It forwards to the services that the runtime of the platform installed. The host of each platform layer derives from it and adds what its window does, as [layers](#layers) describes.
 
 Some state belongs to the process and outlives the apps that restart under it. The platform services update it from any thread.
 
@@ -262,7 +262,7 @@ The engine stands on three layers. The platform layer opens the window, runs the
 | Engine | `haylen-engine` | The C++ API and the Lua bindings, which reach the platform through `platform::Host` and draw through `gpu::Device`. |
 | Renderers | `graphics2d::Renderer` in `engine/src/2d/graphics/` | Turn the draws of the app into passes and draws of the GPU device through `graphics::Device`, which owns the device and makes textures, render targets and readbacks for the renderers of every dimension. A 3D renderer goes next to it, in a `3d` folder of its own. |
 | Player | `platform::Player` in `engine/src/platform/Player.hpp` | The runtime that every platform layer shares. It reads the command line, opens the package it names or the bundled one, creates the engine, and replaces it whenever the app restarts or launches another. A new engine starts once `NativeHost::prepareGpuDevice` reports that its GPU device can be created, which a browser hands over for WebGPU only in a later turn of its event loop, so the frames run on without an app until then. It hands the app the events of the window and the platform, routes the back button of the platform and ends the splash screen through the host with the first frame that `Engine::isFrameComplete` reports complete. |
-| Native host | `platform::NativeHost` in `engine/src/platform/NativeHost.hpp` | The `Host` of real devices. It forwards to the `Services` of the platform folder compiled into the runtime, and keeps the state that outlives the apps of the process, such as `NativeViews` and `SystemState`. |
+| Native host | `platform::NativeHost` in `engine/src/platform/NativeHost.hpp` | The `Host` of real devices. It forwards to the services that the runtime of the platform installed by capability, and keeps the state that outlives the apps of the process, such as `NativeViews` and `SystemState`. |
 | Native window | `platform::NativeWindow` in `engine/src/platform/NativeWindow.hpp` | The window of the platform layer as the system sees it. The services of a platform read it to place text fields, views, menus and accessibility over the app. It is an `NSWindow` on macOS, a `UIWindow` on iOS, iPadOS, Mac Catalyst and tvOS, an `HWND` on Windows, an X11 `Window` and its `Display` on Linux, and an `ANativeWindow` and its `GameActivity` on Android, with the size and scale of the framebuffer. |
 | Platform layer | `engine/src/platform/sdl/`, `engine/src/platform/worker/`, `engine/src/platform/android/` | The window, the frames, the events and the entry point: the [SDL platform layer](#the-sdl-platform-layer) on every platform but Android, the [worker layer](#the-worker-layer) in the Worker mode of the web, the [Android runtime](#the-android-runtime), and the runtime of a [port](../platform/ports.md) in the folder that `HAYLEN_PORT_DIR` names. |
 | GPU devices | `engine/src/gpu/<api>/` in `haylen-gpu` | The device of each graphics API, which `gpu::DeviceFactory` makes, as [the render hardware interface](#the-render-hardware-interface) describes. |

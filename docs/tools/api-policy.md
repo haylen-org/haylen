@@ -12,6 +12,10 @@ The public API is what an app, or a project that extends the engine, can reach:
 - The contract of native plugins: `plugin.json`, the bridge methods and events named `<id>.<name>`, the error codes of the bridge, and the native interfaces: `HaylenPlugin`, the Android plugin classes and the JavaScript module of the web part.
 - The commands and options of `haylen` with their JSON results, the keys of `haylen.json` that the tooling reads, such as `kind`, `cpp` and the sections of `platforms`, the manifest `plugin.json` with its contribution types, `haylen.lock`, the contracts `PlatformBackend` and `EnginePort` with their entry point groups, the CMake package of the SDK with its targets `haylen::engine`, `haylen::runtime`, `haylen::player` and `haylen::native`, and the function `haylen_add_app`.
 
+### The API of ports
+
+The headers of `engine/include/haylen/port/`, in the namespace `haylen::port`, are the API that a [port](../platform/ports.md#the-public-api-of-ports) builds a platform on, with the function `haylen_port` of CMake. They are public and stable like the rest of `engine/include/haylen/`, with one more rule: `port::Contract::kVersion` names the version of that contract, and every change that a port must follow, such as a new pure method of `port::Host` or of a service, a changed signature or a new required argument of `haylen_port`, grows it in the same change. A new optional service of `port::Services` keeps the version, since a port that registers none of it gets the answer of the engine for a platform without it. A port names the version it follows in `CONTRACT`, and the configuration of the engine stops with a sentence that names both versions when they differ, so a port never builds against a contract it does not follow.
+
 A name that a reference page or a guide documents is public. A name that no page documents is not public, even when Lua can reach it, such as a metatable in the registry.
 
 ## What is internal

@@ -8,7 +8,7 @@
 #include <string_view>
 
 #include "platform/NativeHost.hpp"
-#include "platform/Services.hpp"
+#include "platform/android/AndroidTextInput.hpp"
 
 namespace haylen::platform {
 
@@ -17,7 +17,7 @@ class AndroidRuntime;
 // The host of Android apps, whose window is the surface of the `GameActivity` that `AndroidRuntime` runs. The window always fills the screen, so it is always fullscreen and has no title, no cursor and no style.
 class AndroidHost final : public NativeHost {
   public:
-    explicit AndroidHost(AndroidRuntime& activityRuntime) noexcept : NativeHost(Services::getTextInput()), runtime(activityRuntime) {}
+    explicit AndroidHost(AndroidRuntime& activityRuntime) noexcept : NativeHost(AndroidTextInput::getShared()), runtime(activityRuntime) {}
 
     [[nodiscard]] math::Vec2 getFramebufferSize() const noexcept override;
     [[nodiscard]] float getDpiScale() const noexcept override;
@@ -37,6 +37,8 @@ class AndroidHost final : public NativeHost {
     }
     [[nodiscard]] std::unique_ptr<gpu::Device> createGpuDevice() override;
     [[nodiscard]] bool prepareGpuDevice() override;
+    [[nodiscard]] audio::Mixer::Setup getAudioSetup() const override;
+    [[nodiscard]] math::Insets getReservedInsets() const override;
     void closeWindow() override;
     void endSplashScreen(float fadeOutSeconds) override;
     [[nodiscard]] bool pumpHaltedEvents() override;
@@ -45,6 +47,9 @@ class AndroidHost final : public NativeHost {
     void setGamepadMotion(input::GamepadMotion::Sensors sensors) override;
 
   protected:
+    [[nodiscard]] bool allowsQuit() const noexcept override {
+        return true;
+    }
     void requestWindowClose() override;
     void setWindowFocusable(bool) override {}
     void setScreenSaverSuspended(bool value, std::function<void(Permission::Answer answer)> callback) override;

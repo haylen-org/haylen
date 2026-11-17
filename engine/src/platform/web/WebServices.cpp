@@ -1,4 +1,4 @@
-#include "platform/Services.hpp"
+#include "platform/web/WebServices.hpp"
 
 #include <emscripten/emscripten.h>
 
@@ -21,7 +21,6 @@
 #include "platform/web/WebDisplays.hpp"
 #include "platform/web/WebPage.hpp"
 #include "platform/web/WebStoreFiles.hpp"
-#include "platform/web/WebTextInput.hpp"
 #include "platform/web/WebVideoDecoder.hpp"
 
 // The page side lives in `platform/web/haylen-page.js` and the engine side in `platform/web/haylen-runtime.js`, which define `Module.haylen` before the runtime starts.
@@ -75,10 +74,6 @@ EM_JS(int, haylen_js_fold, (float* values), {
     return 1;
 });
 
-EM_JS(void, haylen_js_end_splash, (float fadeOut), {
-    Module.haylen.reportSplashEnded(fadeOut);
-});
-
 EM_JS(void, haylen_js_persist, (), {
     Module.haylen.persist();
 });
@@ -126,12 +121,17 @@ EM_JS(char*, haylen_js_release_address, (), {
 
 namespace haylen::platform {
 
-std::string_view Services::getName() noexcept {
+port::Services WebServices::create() {
+    const auto services = std::make_shared<WebServices>();
+    return {.platform = services, .displays = services, .screen = services, .bridge = services, .permissions = services, .media = services, .accessibility = services, .video = services};
+}
+
+std::string_view WebServices::getName() const noexcept {
     return "web";
 }
 
 // The languages are known before the first app starts, so it never starts in a language that the page then changes.
-void Services::initialize() {
+void WebServices::initialize() {
     // clang-format off
     core::Log::addListener([](core::Log::Level level, std::string_view message) {
         haylen_js_log(static_cast<int>(level), std::string(message).c_str());
@@ -143,17 +143,17 @@ void Services::initialize() {
 }
 
 // The page that disposes of the runtime learns that the player ended, so it closes what the browser keeps for it.
-void Services::shutdown() noexcept {
+void WebServices::shutdown() noexcept {
     haylen_js_shutdown();
 }
 
 // Script errors may quote bytes that are not UTF-8, which reach the page replaced instead of failing the report.
-void Services::reportError(const core::Json& report) {
+void WebServices::reportError(const core::Json& report) {
     haylen_js_error(report.dump(-1, ' ', false, core::Json::error_handler_t::replace).c_str());
 }
 
 // The plugins with a web part are the ones whose context the page created.
-std::vector<std::string> Services::getNativePlugins() {
+std::vector<std::string> WebServices::getNativePlugins() {
     char* json = haylen_js_native_plugins();
     const core::Json ids = core::Json::parse(json);
     std::free(json);
@@ -161,7 +161,7 @@ std::vector<std::string> Services::getNativePlugins() {
 }
 
 // A page holds the manifests and the app domain of its release, and the shards of its content stay next to the page, where downloads read them.
-std::shared_ptr<io::Package> Services::openBundledPackage() {
+std::shared_ptr<io::Package> WebServices::openBundledPackage() {
     char* address = haylen_js_release_address();
     std::string remote(address);
     std::free(address);
@@ -171,88 +171,65 @@ std::shared_ptr<io::Package> Services::openBundledPackage() {
 }
 
 // The page mounts IndexedDB at the root of the user data, `/persistent` or the folder of its storage namespace, and loads it before the runtime starts.
-std::filesystem::path Services::getUserDataDirectory(std::string_view identifier) {
+std::filesystem::path WebServices::getUserDataDirectory(std::string_view identifier) {
     char* root = haylen_js_user_data_root();
     std::filesystem::path folder(root);
     std::free(root);
     return folder / std::string(identifier);
 }
 
-void Services::persistUserData() {
+void WebServices::persistUserData() {
     haylen_js_persist();
 }
 
-bool Services::hasDesktop() noexcept {
-    return false;
-}
-
-void Services::setWindowStyle(const WindowStyle&) {}
-
-void Services::setWindowBackground(const math::Color&) {}
-
 // The canvas is the window, and the page gives it no desktop.
-math::Rect Services::getWindowFrame() {
+math::Rect WebServices::getWindowFrame() {
     return {0.0F, 0.0F, NativeWindow::getFramebufferSize().x / NativeWindow::getScale(), NativeWindow::getFramebufferSize().y / NativeWindow::getScale()};
 }
 
-void Services::setWindowFrame(const math::Rect&) {}
-
-std::vector<Display> Services::getDisplays() {
+std::vector<Display> WebServices::getDisplays() {
     return WebDisplays::getDisplays();
 }
 
-std::string Services::getWindowDisplayId() {
+std::string WebServices::getWindowDisplayId() {
     return WebDisplays::getWindowDisplayId();
 }
 
-bool Services::hasUnlistedDisplays() {
+bool WebServices::hasUnlistedDisplays() {
     return WebDisplays::hasUnlistedDisplays();
 }
 
-void Services::setMousePassthrough(Window::Passthrough, std::span<const math::Polygon::Outline>) {}
-
-void Services::startWindowDrag() {}
-
-void Services::watchWindow() {}
-
-void Services::updateWindow() {}
-
-math::Insets Services::getSafeAreaInsets() {
+math::Insets WebServices::getSafeAreaInsets() {
     std::array<float, 4> insets{};
     haylen_js_safe_area(insets.data());
     return {.left = insets[0], .top = insets[1], .right = insets[2], .bottom = insets[3]};
 }
 
-bool Services::hasPointerDevice() noexcept {
+bool WebServices::hasPointerDevice() const noexcept {
     return true;
 }
 
-Orientation Services::getOrientation() {
+Orientation WebServices::getOrientation() {
     return static_cast<Orientation>(haylen_js_orientation());
 }
 
 // Browsers lock the screen orientation only where the Screen Orientation API allows it, which usually means a fullscreen page on a phone.
-void Services::lockOrientation(Orientation value) {
+void WebServices::lockOrientation(Orientation value) {
     haylen_js_lock_orientation(static_cast<int>(value));
 }
 
 // The status bar of a phone belongs to the browser, which shows it above the page.
-void Services::setStatusBar(Window::StatusBar) {}
+void WebServices::setStatusBar(Window::StatusBar) {}
 
 // A page has no say over the swipes that the system and the browser take at the edges of the screen.
-void Services::setSystemGestures(Window::SystemGestures) {}
+void WebServices::setSystemGestures(Window::SystemGestures) {}
 
-float Services::getStatusBarHeight() {
+float WebServices::getStatusBarHeight() {
     return 0.0F;
 }
 
-// The page shows its own splash, which it fades out when the runtime tells it.
-void Services::endSplashScreen(float fadeOutSeconds) {
-    haylen_js_end_splash(fadeOutSeconds);
-}
-
 // The page reads the segments of the viewport, which a browser splits at the fold of the device, and the posture of the device.
-std::optional<Fold> Services::getFold() {
+std::optional<Fold> WebServices::getFold() {
     std::array<float, 8> values{};
     if (haylen_js_fold(values.data()) == 0) {
         return std::nullopt;
@@ -262,27 +239,22 @@ std::optional<Fold> Services::getFold() {
 }
 
 // Browsers tell the insets that cutouts take through `env(safe-area-inset-*)`, never the shapes of the cutouts.
-void Services::getCutouts(std::vector<math::Rect>& cutouts) {
+void WebServices::getCutouts(std::vector<math::Rect>& cutouts) {
     cutouts.clear();
 }
 
-TextInput& Services::getTextInput() {
-    static WebTextInput& input = *new WebTextInput();
-    return input;
-}
-
 // The page acquires its own reference to every view while the dispatch runs, since the bridge holds the views until it returns.
-void Services::dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView>) {
+void WebServices::dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView>) {
     const std::vector<std::uint32_t> table = WebPage::describeBuffers(buffers);
     haylen_js_dispatch(static_cast<double>(id), std::string(method).c_str(), std::string(paramsJson).c_str(), table.data(), static_cast<int>(buffers.size()));
 }
 
-void Services::cancel(std::uint64_t id) {
+void WebServices::cancel(std::uint64_t id) {
     haylen_js_cancel(static_cast<double>(id));
 }
 
 // Browsers limit what pages learn about the device on purpose, so most values stay empty, and the page reads the rest before the runtime starts.
-SystemInfo Services::getSystemInfo() {
+SystemInfo WebServices::getSystemInfo() {
     char* text = haylen_js_system_info();
     const core::Json details = core::Json::parse(text);
     std::free(text);
@@ -297,29 +269,18 @@ SystemInfo Services::getSystemInfo() {
 }
 
 // The browser tells the state of most permissions through the Permissions API, and asks the person through the API of each capability.
-void Services::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
+void WebServices::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
     WebPage::checkPermission(kind, std::move(callback));
 }
 
-void Services::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
+void WebServices::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
     WebPage::requestPermission(kind, std::move(callback));
 }
 
-std::string Services::explainBlockedSocket(std::intptr_t) {
-    return {};
-}
-
-// A page is the link that opened it, and no other link reaches it.
-bool Services::forwardLink(std::string_view, std::string_view) {
-    return false;
-}
-
-void Services::listenForLinks(std::string_view) {}
-
 // A hidden page keeps running the frames of the app from timers, which browsers do not slow down while the page plays sound.
-void Services::setBackgroundAudio(bool) {}
+void WebServices::setBackgroundAudio(bool) {}
 
-void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {
+void WebServices::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {
     if (!value) {
         haylen_js_now_playing(nullptr, nullptr, 0);
         return;
@@ -330,43 +291,30 @@ void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>& valu
 }
 
 // Browsers never tell whether a screen reader runs, so the page keeps its mirror of the UI current all the time.
-bool Services::isAccessibilityTreeWanted() {
+bool WebServices::isTreeWanted() {
     return true;
 }
 
-void Services::updateAccessibility(std::span<const AccessibilityElement> elements, std::uint64_t focused) {
+void WebServices::update(std::span<const AccessibilityElement> elements, std::uint64_t focused) {
     haylen_js_update_accessibility(AccessibilityElement::writeTree(elements, focused).c_str());
 }
 
-void Services::announce(std::string_view text, bool interrupt) {
+void WebServices::announce(std::string_view text, bool interrupt) {
     haylen_js_announce(std::string(text).c_str(), interrupt ? 1 : 0);
 }
 
-// A page reads no file of the fonts of the system, and the API of the browser that lists them asks the person for a permission first, so a page finds none.
-std::optional<SystemFont> Services::findSystemFont(char32_t) {
-    return std::nullopt;
-}
-
-std::vector<std::uint8_t> Services::readSystemFont(const SystemFont& font) {
-    throw std::logic_error("A web page has no font of the system to read, such as \"" + font.name + "\".");
-}
-
-std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) {
+std::unique_ptr<VideoDecoder> WebServices::openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) {
     return std::make_unique<WebVideoDecoder>(*file, path);
 }
 
 // The page opens the screen before the call returns, one frame after the request, so a popup opens while the tap that asked for it still counts as an activation of the user.
-void Services::openScreen(const ScreenRequest& request) {
+void WebServices::openScreen(const ScreenRequest& request) {
     const std::vector<std::uint32_t> table = WebPage::describeBuffers(request.params.buffers);
     haylen_js_open_screen(static_cast<double>(request.id), request.plugin.c_str(), request.screen.c_str(), request.params.json.dump().c_str(), table.data(), static_cast<int>(request.params.buffers.size()), request.state.dump().c_str());
 }
 
-void Services::cancelScreen(std::uint64_t id) {
+void WebServices::cancelScreen(std::uint64_t id) {
     haylen_js_cancel_screen(static_cast<double>(id));
-}
-
-HaylenNativeWindow Services::getNativeWindow() {
-    return {};
 }
 
 } // namespace haylen::platform

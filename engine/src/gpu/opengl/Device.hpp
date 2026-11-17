@@ -36,7 +36,7 @@ class Device final : public gpu::Device {
     static constexpr std::size_t kFramesInFlight = 3;
 
     // Makes the device of the flavour on the context of the surface, which must be a `Surface::Kind::Gl` surface, since OpenGL draws nowhere without the context of a window or of an offscreen drawable that the platform or a test made. Throws `std::runtime_error` when the context cannot run the flavour.
-    [[nodiscard]] static std::unique_ptr<gpu::Device> create(Api flavour, const std::optional<Surface>& surface, const DeviceFactory::Options& options);
+    [[nodiscard]] static std::unique_ptr<gpu::Device> create(Api flavour, const std::optional<Surface>& surface, const DeviceOptions& options);
 
     Device(Api flavour, const Surface& surface, bool validation);
     ~Device() override;

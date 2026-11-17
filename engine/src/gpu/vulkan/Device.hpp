@@ -50,7 +50,7 @@ class Device final : public gpu::Device {
         bool dynamicRendering = true;
     };
 
-    [[nodiscard]] static std::unique_ptr<gpu::Device> create(const std::optional<Surface>& surface, const DeviceFactory::Options& options);
+    [[nodiscard]] static std::unique_ptr<gpu::Device> create(const std::optional<Surface>& surface, const DeviceOptions& options);
 
     // Draws into the surface, or offscreen when there is none. Throws `std::runtime_error` when Vulkan cannot start on this machine.
     Device(const std::optional<Surface>& surface, const Settings& settings);

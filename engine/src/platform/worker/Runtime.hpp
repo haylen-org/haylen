@@ -85,7 +85,7 @@ class Runtime final {
 
     static void onFrame(void* state);
     [[nodiscard]] static bool hasAnimationFrames() noexcept;
-    [[nodiscard]] static gpu::DeviceFactory::Options getDeviceOptions() noexcept;
+    [[nodiscard]] static gpu::DeviceOptions getDeviceOptions() noexcept;
 
     [[nodiscard]] int initialize(int argc, char* argv[]);
     void frame();

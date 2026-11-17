@@ -1,4 +1,4 @@
-#include "platform/Services.hpp"
+#include "platform/windows/WindowsServices.hpp"
 
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -14,12 +14,9 @@
 #include "content/FolderStoreFiles.hpp"
 #include "content/ReleasePackage.hpp"
 #include "haylen/content/Bootstrap.hpp"
-#include "haylen/core/Json.hpp"
 #include "haylen/io/Package.hpp"
 #include "io/CompositePackage.hpp"
-#include "platform/BridgeRelay.hpp"
 #include "platform/NativeWindow.hpp"
-#include "platform/ScreenRelay.hpp"
 #include "platform/SystemFontReader.hpp"
 #include "platform/windows/WindowsAccessibility.hpp"
 #include "platform/windows/WindowsDesktop.hpp"
@@ -33,11 +30,16 @@
 
 namespace haylen::platform {
 
-std::string_view Services::getName() noexcept {
+port::Services WindowsServices::create() {
+    const auto services = std::make_shared<WindowsServices>();
+    return {.platform = services, .displays = services, .desktop = services, .links = services, .media = services, .accessibility = services, .video = services, .fonts = services};
+}
+
+std::string_view WindowsServices::getName() const noexcept {
     return "windows";
 }
 
-void Services::initialize() {
+void WindowsServices::initialize() {
     WindowsSystem::reportTheme();
     WindowsSystem::reportLanguages();
     WindowsSystem::reportAccessibility();
@@ -46,18 +48,11 @@ void Services::initialize() {
     WindowsMemory::observe();
 }
 
-void Services::shutdown() noexcept {
+void WindowsServices::shutdown() noexcept {
     WindowsAccessibility::release();
 }
 
-void Services::reportError(const core::Json&) {}
-
-// The platform loads no native plugins of its own, and native libraries declare theirs through `HaylenNativeApi`.
-std::vector<std::string> Services::getNativePlugins() {
-    return {};
-}
-
-std::shared_ptr<io::Package> Services::openBundledPackage() {
+std::shared_ptr<io::Package> WindowsServices::openBundledPackage() {
     std::wstring executable(MAX_PATH, L'\0');
     for (;;) {
         const DWORD length = GetModuleFileNameW(nullptr, executable.data(), static_cast<DWORD>(executable.size()));
@@ -85,7 +80,7 @@ std::shared_ptr<io::Package> Services::openBundledPackage() {
     return io::Package::open(directory / "app.zip");
 }
 
-std::filesystem::path Services::getUserDataDirectory(std::string_view identifier) {
+std::filesystem::path WindowsServices::getUserDataDirectory(std::string_view identifier) {
     PWSTR folder = nullptr;
     if (FAILED(SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, nullptr, &folder))) {
         CoTaskMemFree(folder);
@@ -98,7 +93,7 @@ std::filesystem::path Services::getUserDataDirectory(std::string_view identifier
 }
 
 // Downloaded content is large and comes back with a download, so it stays on the machine instead of roaming with the profile.
-std::filesystem::path Services::getContentStoreDirectory(std::string_view identifier) {
+std::filesystem::path WindowsServices::getContentStoreDirectory(std::string_view identifier) {
     PWSTR folder = nullptr;
     if (FAILED(SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &folder))) {
         CoTaskMemFree(folder);
@@ -110,165 +105,101 @@ std::filesystem::path Services::getContentStoreDirectory(std::string_view identi
     return path / std::string(identifier) / "Content";
 }
 
-void Services::persistUserData() {}
+void WindowsServices::persistUserData() {}
 
-bool Services::hasDesktop() noexcept {
-    return true;
-}
-
-void Services::setWindowStyle(const WindowStyle& value) {
+void WindowsServices::setWindowStyle(const WindowStyle& value) {
     WindowsDesktop::setStyle(value);
 }
 
-void Services::setWindowBackground(const math::Color&) {}
+// Windows shows the frames that the app drew, so the window needs no color of its own.
+void WindowsServices::setWindowBackground(const math::Color&) {}
 
-math::Rect Services::getWindowFrame() {
+math::Rect WindowsServices::getWindowFrame() {
     return WindowsDesktop::getFrame();
 }
 
-void Services::setWindowFrame(const math::Rect& value) {
+void WindowsServices::setWindowFrame(const math::Rect& value) {
     WindowsDesktop::setFrame(value);
 }
 
-std::vector<Display> Services::getDisplays() {
+std::vector<Display> WindowsServices::getDisplays() {
     return WindowsDesktop::getDisplays();
 }
 
-std::string Services::getWindowDisplayId() {
+std::string WindowsServices::getWindowDisplayId() {
     return WindowsDesktop::getWindowDisplayId();
 }
 
 // Every display of the device is in the list, so none waits for the permission "screens".
-bool Services::hasUnlistedDisplays() {
+bool WindowsServices::hasUnlistedDisplays() {
     return false;
 }
 
-void Services::setMousePassthrough(Window::Passthrough mode, std::span<const math::Polygon::Outline> regions) {
+void WindowsServices::setMousePassthrough(Window::Passthrough mode, std::span<const math::Polygon::Outline> regions) {
     WindowsDesktop::setPassthrough(mode, regions);
 }
 
-void Services::startWindowDrag() {
+void WindowsServices::startWindowDrag() {
     WindowsDesktop::startDrag();
 }
 
-void Services::watchWindow() {
+void WindowsServices::watchWindow() {
     WindowsDesktop::watch();
     WindowsNetwork::observe();
 }
 
-void Services::updateWindow() {
+void WindowsServices::updateWindow() {
     WindowsDesktop::update();
 }
 
-math::Insets Services::getSafeAreaInsets() {
-    return {};
-}
-
-bool Services::hasPointerDevice() noexcept {
+bool WindowsServices::hasPointerDevice() const noexcept {
     return true;
 }
 
-Orientation Services::getOrientation() {
-    return Orientation::Landscape;
-}
-
-void Services::lockOrientation(Orientation) {}
-
-// Windows desktops have no status bar over the window of an app.
-void Services::setStatusBar(Window::StatusBar) {}
-
-// Windows only lets a fullscreen window turn the swipes at the edges of a touch screen off for good, which no mode asks for, since a deferred gesture still acts on the second swipe.
-void Services::setSystemGestures(Window::SystemGestures) {}
-
-float Services::getStatusBarHeight() {
-    return 0.0F;
-}
-
-// A Windows app opens its window at once, without a launch screen.
-void Services::endSplashScreen(float) {}
-
-// Windows offers desktop apps no API for the fold or the hinge of a device.
-std::optional<Fold> Services::getFold() {
-    return std::nullopt;
-}
-
-// The displays of desktops have no cutouts that the window system reports.
-void Services::getCutouts(std::vector<math::Rect>& cutouts) {
-    cutouts.clear();
-}
-
-// Windows has no handler registry in the language of the platform, so native libraries and C++ plugins answer the methods of apps.
-void Services::dispatch(std::uint64_t id, std::string_view method, std::string_view, std::span<const std::vector<std::byte>>, std::span<const varn::dataview::DataView>) {
-    BridgeRelay::resolve(id, false, core::Json{{"message", "No native handler is registered for \"" + std::string(method) + "\"."}, {"code", "noHandler"}}.dump());
-}
-
-// Every call fails while it is made, so no call is ever pending here.
-void Services::cancel(std::uint64_t) {}
-
-SystemInfo Services::getSystemInfo() {
+SystemInfo WindowsServices::getSystemInfo() {
     return WindowsSystem::getInfo();
 }
 
-// Windows gates none of the permissions of the engine, the motion of controllers, every screen and the local network, for a desktop app.
-void Services::checkPermission(Permission::Kind, std::function<void(Permission::Answer answer)> callback) {
-    callback({.state = Permission::State::Granted});
-}
-
-void Services::requestPermission(Permission::Kind, std::function<void(Permission::Answer answer)> callback) {
-    callback({.state = Permission::State::Granted});
-}
-
-std::string Services::explainBlockedSocket(std::intptr_t) {
-    return {};
-}
-
-bool Services::forwardLink(std::string_view identifier, std::string_view url) {
+bool WindowsServices::forwardLink(std::string_view identifier, std::string_view url) {
     return WindowsLinks::forward(identifier, url);
 }
 
-void Services::listenForLinks(std::string_view identifier) {
+void WindowsServices::listenForLinks(std::string_view identifier) {
     WindowsLinks::listen(identifier);
 }
 
 // A minimized window keeps running its frames, so its sound plays on.
-void Services::setBackgroundAudio(bool) {}
+void WindowsServices::setBackgroundAudio(bool) {}
 
-void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {
+void WindowsServices::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {
     WindowsMediaSession::update(value);
 }
 
-bool Services::isAccessibilityTreeWanted() {
+bool WindowsServices::isTreeWanted() {
     return WindowsAccessibility::isWanted();
 }
 
-void Services::updateAccessibility(std::span<const AccessibilityElement> elements, std::uint64_t focused) {
+void WindowsServices::update(std::span<const AccessibilityElement> elements, std::uint64_t focused) {
     WindowsAccessibility::update(elements, focused);
 }
 
-void Services::announce(std::string_view text, bool interrupt) {
+void WindowsServices::announce(std::string_view text, bool interrupt) {
     WindowsAccessibility::announce(text, interrupt);
 }
 
-std::optional<SystemFont> Services::findSystemFont(char32_t codePoint) {
+std::optional<SystemFont> WindowsServices::findSystemFont(char32_t codePoint) {
     return WindowsFonts::find(codePoint);
 }
 
-std::vector<std::uint8_t> Services::readSystemFont(const SystemFont& font) {
+std::vector<std::uint8_t> WindowsServices::readSystemFont(const SystemFont& font) {
     return SystemFontReader::read(font.file);
 }
 
-std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) {
+std::unique_ptr<VideoDecoder> WindowsServices::openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) {
     return std::make_unique<WindowsVideoDecoder>(std::move(file), path);
 }
 
-// Windows has no screen registry in the language of the platform, so native libraries open the screens of plugins, before the platform is asked.
-void Services::openScreen(const ScreenRequest& request) {
-    ScreenRelay::finish(request.id, false, core::Json{{"message", "No native screen is registered for \"" + request.plugin + "." + request.screen + "\"."}, {"code", "noHandler"}}.dump());
-}
-
-void Services::cancelScreen(std::uint64_t) {}
-
-HaylenNativeWindow Services::getNativeWindow() {
+HaylenNativeWindow WindowsServices::getNativeWindow() {
     return {.handle = NativeWindow::getHandle(), .display = nullptr};
 }
 

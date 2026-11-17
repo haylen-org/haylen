@@ -547,7 +547,7 @@ void Device::Native::copyLevel(id<MTLBlitCommandEncoder> blit, id<MTLBuffer> sou
     }
 }
 
-std::unique_ptr<gpu::Device> Device::create(const std::optional<Surface>& surface, const DeviceFactory::Options& options) {
+std::unique_ptr<gpu::Device> Device::create(const std::optional<Surface>& surface, const DeviceOptions& options) {
     if (surface && (surface->kind != Surface::Kind::MetalLayer || surface->layer == nullptr)) {
         throw std::runtime_error("The Metal device draws only into a surface that holds a \"CAMetalLayer\".");
     }

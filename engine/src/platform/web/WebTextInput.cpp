@@ -24,6 +24,11 @@ EM_JS(void, haylen_js_text_fields, (const char* json, float tapSlop), {
 
 namespace haylen::platform {
 
+TextInput& WebTextInput::getShared() {
+    static WebTextInput& input = *new WebTextInput();
+    return input;
+}
+
 void WebTextInput::edit(const Field& field) {
     haylen_js_text_edit(toJson(field).dump(-1, ' ', false, core::Json::error_handler_t::replace).c_str());
 }

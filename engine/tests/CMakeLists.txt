@@ -202,6 +202,7 @@ set(HAYLEN_TEST_SOURCES
   platform/PluginManifestTests.cpp
   platform/ReturnHoldTests.cpp
   platform/ScreensTests.cpp
+  platform/ServicesTests.cpp
   platform/SharedTextInputTests.cpp
   platform/sdl/EventsTests.cpp
   platform/sdl/GamepadsTests.cpp

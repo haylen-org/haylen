@@ -2,8 +2,7 @@
 
 #include "TestPortRuntime.hpp"
 #include "TestPortWindow.hpp"
-#include "platform/PixelDensityCap.hpp"
-#include "platform/Services.hpp"
+#include "haylen/platform/PixelDensityCap.hpp"
 
 namespace haylen::platform {
 
@@ -30,9 +29,10 @@ void TestPortHost::setFullscreen(bool value, std::function<void(Permission::Answ
     callback({.state = Permission::State::Granted});
 }
 
+// The screen of the test port shows no title and no cursor.
 void TestPortHost::setTitle(std::string_view) {}
 
-void TestPortHost::setCursor(Cursor) {}
+void TestPortHost::setCursor(Window::Cursor) {}
 
 void TestPortHost::setCursorVisible(bool) {}
 
@@ -45,6 +45,7 @@ void TestPortHost::setMouseLocked(bool value, std::function<void(Permission::Ans
     callback({.state = Permission::State::Granted});
 }
 
+// The test port has no clipboard of a system, so the window keeps its own.
 void TestPortHost::setClipboard(std::string_view value, std::function<void(Permission::Answer answer)> callback) {
     clipboard = value;
     callback({.state = Permission::State::Granted});
@@ -62,6 +63,10 @@ bool TestPortHost::canBeTransparent() const noexcept {
     return false;
 }
 
+TextInput& TestPortHost::getTextInput() noexcept {
+    return textInput;
+}
+
 bool TestPortHost::prepareGpuDevice() {
     return true;
 }
@@ -75,30 +80,35 @@ audio::Mixer::Setup TestPortHost::getAudioSetup() const {
     return {.device = false};
 }
 
-void TestPortHost::closeWindow() {
+void TestPortHost::requestClose() {
+    runtime.requestClose();
+}
+
+void TestPortHost::close() {
     runtime.close();
 }
 
-void TestPortHost::endSplashScreen(float fadeOutSeconds) {
-    Services::endSplashScreen(fadeOutSeconds);
+// The test port runs on a desktop, whose processes end when their app quits.
+bool TestPortHost::canQuit() const noexcept {
+    return true;
 }
+
+// The test port shows no splash of its own.
+void TestPortHost::endSplashScreen(float) {}
 
 // The window of the test port has no events of its own, so a halt keeps nothing of the platform waiting.
 bool TestPortHost::pumpHaltedEvents() {
     return false;
 }
 
+// The test port has no controllers.
 void TestPortHost::pollGamepads(std::span<input::GamepadState>) {}
 
 void TestPortHost::rumbleGamepad(std::size_t, float, float, float) {}
 
 void TestPortHost::setGamepadMotion(input::GamepadMotion::Sensors) {}
 
-void TestPortHost::requestWindowClose() {
-    runtime.requestClose();
-}
-
-void TestPortHost::setWindowFocusable(bool) {}
+void TestPortHost::setFocusable(bool) {}
 
 // The test port has no screen saver, so its screen stays on.
 void TestPortHost::setScreenSaverSuspended(bool, std::function<void(Permission::Answer answer)> callback) {

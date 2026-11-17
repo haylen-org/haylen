@@ -2,7 +2,9 @@
 
 #include <emscripten/emscripten.h>
 
+#include "platform/Services.hpp"
 #include "platform/sdl/Runtime.hpp"
+#include "platform/web/WebServices.hpp"
 #include "platform/worker/Runtime.hpp"
 
 // clang-format off
@@ -14,6 +16,8 @@ EM_JS(int, haylen_js_hosted_in_worker, (), {
 namespace haylen::platform {
 
 int WebMain::run(int argc, char* argv[]) {
+    Services::install(WebServices::create());
+
     if (haylen_js_hosted_in_worker() != 0) {
         return worker::Runtime::run(argc, argv);
     }

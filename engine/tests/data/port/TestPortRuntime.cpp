@@ -4,24 +4,18 @@
 #include <utility>
 
 #include "TestPortHost.hpp"
-#include "gpu/DeviceFactory.hpp"
+#include "TestPortServices.hpp"
 #include "haylen/core/Log.hpp"
-#include "platform/CrashGuard.hpp"
-#include "platform/Player.hpp"
+#include "haylen/port/GpuDevices.hpp"
+#include "haylen/port/Player.hpp"
 
 namespace haylen::platform {
 
-std::filesystem::path TestPortRuntime::executableFolder;
-
 int TestPortRuntime::run(int argc, char* argv[]) {
-    CrashGuard::install();
-    executableFolder = std::filesystem::absolute(argv[0]).parent_path();
+    port::Player::installServices(TestPortServices::create(std::filesystem::absolute(argv[0]).parent_path()));
     TestPortRuntime runtime;
-    Player::create(argc, argv, std::make_unique<TestPortHost>(runtime));
-    NativeWindow::install(&runtime.window);
-    const int status = runtime.play();
-    NativeWindow::install(nullptr);
-    return status;
+    port::Player::create(argc, argv, std::make_unique<TestPortHost>(runtime));
+    return runtime.play();
 }
 
 std::unique_ptr<gpu::Device> TestPortRuntime::createDevice() {
@@ -29,27 +23,26 @@ std::unique_ptr<gpu::Device> TestPortRuntime::createDevice() {
         return std::move(openedDevice);
     }
 
-    return gpu::DeviceFactory::create(api, gpu::Surface{.kind = gpu::Surface::Kind::Port, .size = window.getSurfaceSize()}, {});
+    return port::GpuDevices::create(api, gpu::Surface{.kind = gpu::Surface::Kind::Port, .size = window.getSurfaceSize()}, {});
 }
 
 void TestPortRuntime::setMaxPixelDensity(float cap) {
     window.setMaxPixelDensity(cap);
-    if (gpu::Device* device = Player::getGpuDevice()) {
+    if (gpu::Device* device = port::Player::getGpuDevice()) {
         device->resizeSurface(window.getSurfaceSize());
     }
 }
 
 // The graphics APIs of the app open the window in turn, as on every platform, and the reason of each one that fails reaches the log.
 bool TestPortRuntime::openWindow() {
-    for (const gpu::Device::Api candidate : Player::getGraphicsApis()) {
+    for (const gpu::Device::Api candidate : port::Player::getGraphicsApis()) {
         try {
             api = candidate;
             openedDevice = createDevice();
-            window.setOpen(true);
-            core::Log::info("The app draws through \"{}\".", gpu::DeviceFactory::getApiName(api));
+            core::Log::info("The app draws through \"{}\".", port::GpuDevices::getApiName(api));
             return true;
         } catch (const std::exception& error) {
-            core::Log::warning("The graphics API \"{}\" could not start. {}", gpu::DeviceFactory::getApiName(candidate), error.what());
+            core::Log::warning("The graphics API \"{}\" could not start. {}", port::GpuDevices::getApiName(candidate), error.what());
         }
     }
 
@@ -63,29 +56,28 @@ int TestPortRuntime::play() {
         return 1;
     }
 
-    Player::initialize();
+    port::Player::initialize();
 
     int frames = 0;
     while (!closing && frames < kMaxFrames) {
         if (closeRequested) {
-            Player::handleEvent({.type = Event::Type::QuitRequested});
+            port::Player::handleEvent({.type = Event::Type::QuitRequested});
             closing = true;
             break;
         }
 
-        Player::frame(kFrameSeconds);
+        port::Player::frame(kFrameSeconds);
         ++frames;
     }
 
-    Player::cleanup();
-    window.setOpen(false);
+    port::Player::cleanup();
 
     if (!closing) {
         core::Log::error("The app did not quit within {} frames.", kMaxFrames);
         return 1;
     }
 
-    return Player::getExitStatus();
+    return port::Player::getExitStatus();
 }
 
 } // namespace haylen::platform

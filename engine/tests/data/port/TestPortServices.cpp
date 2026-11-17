@@ -1,188 +1,66 @@
-#include "platform/Services.hpp"
+#include "TestPortServices.hpp"
 
-#include <filesystem>
 #include <stdexcept>
-#include <string>
-#include <utility>
 
-#include "TestPortRuntime.hpp"
 #include "TestPortWindow.hpp"
-#include "haylen/core/Json.hpp"
 #include "haylen/io/Package.hpp"
-#include "platform/BridgeRelay.hpp"
-#include "platform/ScreenRelay.hpp"
 
 namespace haylen::platform {
 
-std::string_view Services::getName() noexcept {
+port::Services TestPortServices::create(std::filesystem::path executableFolder) {
+    const auto services = std::make_shared<TestPortServices>(std::move(executableFolder));
+    return {.platform = services, .displays = services};
+}
+
+std::string_view TestPortServices::getName() const noexcept {
     return "test-port";
 }
 
-void Services::initialize() {}
+// The test port follows no theme, battery or languages of a system, so every app hears the defaults of the engine.
+void TestPortServices::initialize() {}
 
-void Services::shutdown() noexcept {}
+void TestPortServices::shutdown() noexcept {}
 
-void Services::reportError(const core::Json&) {}
-
-std::vector<std::string> Services::getNativePlugins() {
-    return {};
-}
-
-// An app that `haylen_add_app` built for the test port keeps its package in the folder "app" next to its executable, while the player of the port plays the package that its command line names.
-std::shared_ptr<io::Package> Services::openBundledPackage() {
-    const std::filesystem::path folder = TestPortRuntime::getExecutableFolder() / "app";
+// The player of the port plays the package that its command line names, and an app that `haylen_add_app` built plays the one next to it.
+std::shared_ptr<io::Package> TestPortServices::openBundledPackage() {
+    const std::filesystem::path folder = executableFolder / "app";
     if (!std::filesystem::is_directory(folder)) {
         throw std::runtime_error("The test port finds no app in \"" + folder.string() + "\". Name the package of an app on the command line, or build the app with \"haylen_add_app\".");
     }
+
     return io::Package::openDirectory(folder);
 }
 
-std::filesystem::path Services::getUserDataDirectory(std::string_view identifier) {
+std::filesystem::path TestPortServices::getUserDataDirectory(std::string_view identifier) {
     return std::filesystem::temp_directory_path() / "haylen-test-port" / std::string(identifier) / "data";
 }
 
-std::filesystem::path Services::getContentStoreDirectory(std::string_view identifier) {
-    return std::filesystem::temp_directory_path() / "haylen-test-port" / std::string(identifier) / "content";
-}
+// Every write of the test port lands in a folder of the machine that builds it, which saves it.
+void TestPortServices::persistUserData() {}
 
-void Services::persistUserData() {}
-
-// The test port has a screen, like a console, rather than a desktop of windows.
-bool Services::hasDesktop() noexcept {
-    return false;
-}
-
-void Services::setWindowStyle(const WindowStyle&) {}
-
-void Services::setWindowBackground(const math::Color&) {}
-
-math::Rect Services::getWindowFrame() {
-    return {0.0F, 0.0F, TestPortWindow::kSize.x, TestPortWindow::kSize.y};
-}
-
-void Services::setWindowFrame(const math::Rect&) {}
-
-std::vector<Display> Services::getDisplays() {
-    return {Display{.id = "test-port", .name = "Test port", .bounds = getWindowFrame(), .workArea = getWindowFrame(), .scale = 1.0F, .primary = true}};
-}
-
-std::string Services::getWindowDisplayId() {
-    return "test-port";
-}
-
-bool Services::hasUnlistedDisplays() {
-    return false;
-}
-
-void Services::setMousePassthrough(Window::Passthrough, std::span<const math::Polygon::Outline>) {}
-
-void Services::startWindowDrag() {}
-
-void Services::watchWindow() {}
-
-void Services::updateWindow() {}
-
-math::Insets Services::getSafeAreaInsets() {
-    return {};
-}
-
-bool Services::hasPointerDevice() noexcept {
-    return false;
-}
-
-Orientation Services::getOrientation() {
-    return Orientation::Landscape;
-}
-
-void Services::lockOrientation(Orientation) {}
-
-void Services::setStatusBar(Window::StatusBar) {}
-
-void Services::setSystemGestures(Window::SystemGestures) {}
-
-float Services::getStatusBarHeight() {
-    return 0.0F;
-}
-
-void Services::endSplashScreen(float) {}
-
-std::optional<Fold> Services::getFold() {
-    return std::nullopt;
-}
-
-// The window of the test port covers no cutout.
-void Services::getCutouts(std::vector<math::Rect>& cutouts) {
-    cutouts.clear();
-}
-
-TextInput& Services::getTextInput() {
-    static TextInput& input = *new TextInput();
-    return input;
-}
-
-// The test port has no native handlers, so every call of an app fails as it is made.
-void Services::dispatch(std::uint64_t id, std::string_view method, std::string_view, std::span<const std::vector<std::byte>>, std::span<const varn::dataview::DataView>) {
-    BridgeRelay::resolve(id, false, core::Json{{"message", "No native handler is registered for \"" + std::string(method) + "\"."}, {"code", "noHandler"}}.dump());
-}
-
-void Services::cancel(std::uint64_t) {}
-
-SystemInfo Services::getSystemInfo() {
+SystemInfo TestPortServices::getSystemInfo() {
     return {.os = SystemInfo::Os::Port, .osVersion = "1.0", .deviceModel = "Test port", .deviceKind = SystemInfo::DeviceKind::Tv};
 }
 
-// This platform asks the person for none of the permissions of `Permission::Kind`, so the app always holds them.
-void Services::checkPermission(Permission::Kind, std::function<void(Permission::Answer answer)> callback) {
-    callback({.state = Permission::State::Granted});
-}
-
-void Services::requestPermission(Permission::Kind, std::function<void(Permission::Answer answer)> callback) {
-    callback({.state = Permission::State::Granted});
-}
-
-std::string Services::explainBlockedSocket(std::intptr_t) {
-    return {};
-}
-
-// The test port opens no links.
-bool Services::forwardLink(std::string_view, std::string_view) {
+// The test port has a screen and a controller, like a console on a TV, rather than a mouse or a touch screen.
+bool TestPortServices::hasPointerDevice() const noexcept {
     return false;
 }
 
-void Services::listenForLinks(std::string_view) {}
+std::vector<Display> TestPortServices::getDisplays() {
+    return {Display{.id = "test-port", .name = "Test port", .bounds = getWindowFrame(), .workArea = getWindowFrame(), .scale = 1.0F, .primary = true}};
+}
 
-void Services::setBackgroundAudio(bool) {}
+std::string TestPortServices::getWindowDisplayId() {
+    return "test-port";
+}
 
-void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>&) {}
-
-bool Services::isAccessibilityTreeWanted() {
+bool TestPortServices::hasUnlistedDisplays() {
     return false;
 }
 
-void Services::updateAccessibility(std::span<const AccessibilityElement>, std::uint64_t) {}
-
-void Services::announce(std::string_view, bool) {}
-
-std::optional<SystemFont> Services::findSystemFont(char32_t) {
-    return std::nullopt;
-}
-
-std::vector<std::uint8_t> Services::readSystemFont(const SystemFont& font) {
-    throw std::logic_error("The test port has no font of the system to read, such as \"" + font.name + "\".");
-}
-
-std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader>, std::string_view) {
-    return nullptr;
-}
-
-void Services::openScreen(const ScreenRequest& request) {
-    ScreenRelay::finish(request.id, false, core::Json{{"message", "No native screen is registered for \"" + request.plugin + "." + request.screen + "\"."}, {"code", "noHandler"}}.dump());
-}
-
-void Services::cancelScreen(std::uint64_t) {}
-
-HaylenNativeWindow Services::getNativeWindow() {
-    return {.handle = nullptr, .display = nullptr};
+math::Rect TestPortServices::getWindowFrame() {
+    return {0.0F, 0.0F, TestPortWindow::kSize.x, TestPortWindow::kSize.y};
 }
 
 } // namespace haylen::platform

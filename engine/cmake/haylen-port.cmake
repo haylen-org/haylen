@@ -1,8 +1,10 @@
 # A port of the engine to a platform that the repository does not hold, such as a game console whose SDK and graphics API come under a license that keeps their code private. The cache path `HAYLEN_PORT_DIR` names the folder of the port, outside the repository, whose `port.cmake` describes the port with `haylen_port`, and the engine builds for the platform of the port instead of the platform of the toolchain.
 set(HAYLEN_PORT_DIR "" CACHE PATH "Folder of a port of the engine to another platform, whose port.cmake describes it with haylen_port, or empty to build for the platform of the toolchain.")
 
-# The version of the contract between the engine and its ports, which grows whenever `haylen_port`, `platform::NativeHost`, `platform::Services` or `gpu::PortDevice` change in a way that a port must follow.
-set(HAYLEN_PORT_CONTRACT_VERSION 1)
+# The version of the contract between the engine and its ports, which `port::Contract::kVersion` of the public API of ports holds and which grows whenever that API or `haylen_port` change in a way that a port must follow.
+file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/../include/haylen/port/Contract.hpp" haylen_port_contract_line REGEX "kVersion = [0-9]+;")
+string(REGEX MATCH "kVersion = ([0-9]+)" haylen_port_contract_match "${haylen_port_contract_line}")
+set(HAYLEN_PORT_CONTRACT_VERSION "${CMAKE_MATCH_1}")
 
 # What the platform of a port allows apps to do, which the SDK of the port records and plugins and the tooling read: loading libraries at run time, writing code into memory and starting other processes.
 set(HAYLEN_PORT_CAPABILITY_NAMES dynamicLibraries executableMemory processes)

@@ -1,4 +1,4 @@
-# The GPU devices of the engine: the static library `haylen-gpu` with `gpu::DeviceFactory` and the device of every graphics API of `HAYLEN_GRAPHICS_APIS`, with the device of a port that `HAYLEN_PORT_DIR` names. Each device folder under `src/gpu` holds a `device.cmake`, which adds its sources and libraries to `haylen-gpu`, defines `HAYLEN_GPU_<API>` on it, such as `HAYLEN_GPU_VULKAN`, adds what the GPU tests need to `HAYLEN_GPU_TEST_SOURCES` and `HAYLEN_GPU_TEST_LIBRARIES`, and adds the offscreen contexts that the GPU tests and the benchmarks draw through to `HAYLEN_GPU_OFFSCREEN_SOURCES` and `HAYLEN_GPU_OFFSCREEN_LIBRARIES`.
+# The GPU devices of the engine: the static library `haylen-gpu` with `gpu::DeviceFactory`, the null device that checks every call against the contract and the device of every graphics API of `HAYLEN_GRAPHICS_APIS`, with the device of a port that `HAYLEN_PORT_DIR` names. Each device folder under `src/gpu` holds a `device.cmake`, which adds its sources and libraries to `haylen-gpu`, defines `HAYLEN_GPU_<API>` on it, such as `HAYLEN_GPU_VULKAN`, adds what the GPU tests need to `HAYLEN_GPU_TEST_SOURCES` and `HAYLEN_GPU_TEST_LIBRARIES`, and adds the offscreen contexts that the GPU tests and the benchmarks draw through to `HAYLEN_GPU_OFFSCREEN_SOURCES` and `HAYLEN_GPU_OFFSCREEN_LIBRARIES`.
 
 # The graphics APIs of each platform in the order it prefers them, the names of `gpu::Device::kApiNames`. A port draws through the APIs of the engine it names and through `port`, the API of its own device, which it prefers.
 if(HAYLEN_PORT_PLATFORM)
@@ -65,7 +65,7 @@ endforeach()
 list(REMOVE_DUPLICATES HAYLEN_SHADER_LANGUAGES)
 
 function(haylen_add_gpu_library)
-  add_library(haylen-gpu STATIC "${HAYLEN_ENGINE_DIR}/src/gpu/DeviceFactory.cpp" "${HAYLEN_ENGINE_DIR}/src/gpu/DriverIssues.cpp" "${HAYLEN_ENGINE_DIR}/src/gpu/GpuPreference.cpp")
+  add_library(haylen-gpu STATIC "${HAYLEN_ENGINE_DIR}/src/gpu/DeviceFactory.cpp" "${HAYLEN_ENGINE_DIR}/src/gpu/DriverIssues.cpp" "${HAYLEN_ENGINE_DIR}/src/gpu/GpuPreference.cpp" "${HAYLEN_ENGINE_DIR}/src/gpu/NullDevice.cpp")
   add_library(haylen::gpu ALIAS haylen-gpu)
   target_include_directories(haylen-gpu PRIVATE "${HAYLEN_ENGINE_DIR}/src")
   target_link_libraries(haylen-gpu PUBLIC haylen-engine)

@@ -24,11 +24,11 @@
 #include "haylen/platform/Output.hpp"
 #include "haylen/platform/Permission.hpp"
 #include "haylen/platform/ScreenRequest.hpp"
+#include "haylen/platform/SystemFont.hpp"
 #include "haylen/platform/SystemInfo.hpp"
 #include "haylen/platform/Theme.hpp"
 #include "haylen/platform/VideoDecoder.hpp"
 #include "haylen/platform/Window.hpp"
-#include "platform/SystemFont.hpp"
 #include "varn/dataview/DataView.h"
 
 namespace haylen::io {

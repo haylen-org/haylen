@@ -6,7 +6,7 @@
 #include <utility>
 
 #include "platform/Player.hpp"
-#include "platform/Services.hpp"
+#include "platform/web/BrowserAudioOutput.hpp"
 #include "platform/web/WebOutputs.hpp"
 #include "platform/web/WebPage.hpp"
 #include "platform/worker/Runtime.hpp"
@@ -100,7 +100,12 @@ void Host::closeWindow() {
 }
 
 void Host::endSplashScreen(float fadeOutSeconds) {
-    Services::endSplashScreen(fadeOutSeconds);
+    WebPage::endSplashScreen(fadeOutSeconds);
+}
+
+// The page plays the mixed audio through its own output, the only backend miniaudio has in browsers.
+audio::Mixer::Setup Host::getAudioSetup() const {
+    return {.device = true, .backend = &audio::BrowserAudioOutput::kBackend};
 }
 
 // The worker delivers every message of the page only once the frame returns, so a halt would never end.

@@ -39,6 +39,7 @@ class Host final : public platform::NativeHost {
     [[nodiscard]] bool canBeTransparent() const noexcept override;
     [[nodiscard]] std::unique_ptr<gpu::Device> createGpuDevice() override;
     [[nodiscard]] bool prepareGpuDevice() override;
+    [[nodiscard]] audio::Mixer::Setup getAudioSetup() const override;
     void closeWindow() override;
     [[nodiscard]] std::vector<Display> getDisplays() const override;
     [[nodiscard]] std::string getDisplayId() const override;
@@ -56,6 +57,7 @@ class Host final : public platform::NativeHost {
     void followFullscreen(bool entered);
 
   protected:
+    [[nodiscard]] bool allowsQuit() const noexcept override;
     void requestWindowClose() override;
     void setWindowFocusable(bool value) override;
     void setScreenSaverSuspended(bool value, std::function<void(Permission::Answer answer)> callback) override;
@@ -63,7 +65,7 @@ class Host final : public platform::NativeHost {
     void applyMaxPixelDensity(float cap) override;
 
   private:
-    // Apple platforms and the web edit text in a native field of the services, while Windows and Linux type through the text events of SDL.
+    // Apple platforms and the web edit text in a native field of their own, while Windows and Linux type through the text events of SDL.
     [[nodiscard]] static platform::TextInput& getPlatformTextInput(Runtime& owner) noexcept;
 
     static constexpr std::size_t kCursorCount = static_cast<std::size_t>(Cursor::NotAllowed) + 1;

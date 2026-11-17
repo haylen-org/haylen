@@ -9,7 +9,7 @@
 #include "haylen/math/Rect.hpp"
 #include "haylen/platform/Display.hpp"
 #include "haylen/platform/Window.hpp"
-#include "platform/WindowStyle.hpp"
+#include "haylen/platform/WindowStyle.hpp"
 
 struct _XDisplay;
 struct _XRRModeInfo;

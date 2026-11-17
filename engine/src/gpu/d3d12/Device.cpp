@@ -26,7 +26,7 @@ using direct3d::Formats;
 using direct3d::HResult;
 using Microsoft::WRL::ComPtr;
 
-std::unique_ptr<gpu::Device> Device::create(const std::optional<Surface>& target, const DeviceFactory::Options& options) {
+std::unique_ptr<gpu::Device> Device::create(const std::optional<Surface>& target, const DeviceOptions& options) {
     ComPtr<IDXGIFactory6> dxgiFactory = direct3d::Adapter::createFactory(options.validation);
     std::string reasons;
     for (ComPtr<IDXGIAdapter1>& card : direct3d::Adapter::choose(*dxgiFactory.Get(), options.software, options.lowPower)) {

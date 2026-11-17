@@ -32,7 +32,7 @@ namespace haylen::gpu::webgpu {
 class Device final : public gpu::Device {
   public:
     // Creates the device on the connection that `DeviceFactory::prepare` made ready, drawing into the canvas of the surface, or offscreen when there is none. Throws `std::runtime_error` with the reason when WebGPU cannot start, so the platform tries the next graphics API. The adapter followed the options when `DeviceFactory::prepare` requested it, and WebGPU validates every call and the device labels every object in every build.
-    [[nodiscard]] static std::unique_ptr<gpu::Device> create(const std::optional<Surface>& surface, const DeviceFactory::Options& options);
+    [[nodiscard]] static std::unique_ptr<gpu::Device> create(const std::optional<Surface>& surface, const DeviceOptions& options);
 
     Device(std::unique_ptr<Connection> owned, const std::optional<Surface>& surface);
     ~Device() override;

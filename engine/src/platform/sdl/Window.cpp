@@ -9,7 +9,7 @@
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_properties.h>
 
-#include "platform/PixelDensityCap.hpp"
+#include "haylen/platform/PixelDensityCap.hpp"
 #include "platform/sdl/WaylandDisplays.hpp"
 
 #if defined(__APPLE__)

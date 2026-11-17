@@ -1,4 +1,4 @@
-#include "platform/Services.hpp"
+#include "platform/android/AndroidServices.hpp"
 
 #include <android/multinetwork.h>
 #include <android/native_window_jni.h>
@@ -26,6 +26,7 @@
 #include "platform/NativeWindow.hpp"
 #include "platform/Player.hpp"
 #include "platform/ScreenRelay.hpp"
+#include "platform/Services.hpp"
 #include "platform/SystemFontReader.hpp"
 #include "platform/android/AndroidActivity.hpp"
 #include "platform/android/AndroidAssetPackage.hpp"
@@ -45,13 +46,18 @@
 
 namespace haylen::platform {
 
-std::string_view Services::getName() noexcept {
+port::Services AndroidServices::create() {
+    const auto services = std::make_shared<AndroidServices>();
+    return {.platform = services, .displays = services, .screen = services, .bridge = services, .permissions = services, .network = services, .media = services, .accessibility = services, .video = services, .fonts = services};
+}
+
+std::string_view AndroidServices::getName() const noexcept {
     return "android";
 }
 
 // Every activity of the process starts the runtime anew, and the first one may have ended before.
 // Android drops the packets of a request to the local network while the app does not hold the permission for it, so the HTTP requests that fail say so while the person has not granted it, which is the state of the permission and no guess about the address.
-void Services::initialize() {
+void AndroidServices::initialize() {
     AndroidActivity::holdSplashScreen();
     AndroidGamepads::enableAxes();
     AndroidMouseWheel::enableAxes();
@@ -63,19 +69,19 @@ void Services::initialize() {
     // clang-format on
 }
 
-void Services::shutdown() noexcept {}
+void AndroidServices::shutdown() noexcept {}
 
 // Script errors may quote bytes that are not UTF-8, which reach the plugins replaced instead of failing the report.
-void Services::reportError(const core::Json& report) {
+void AndroidServices::reportError(const core::Json& report) {
     JavaBridge::reportError(report.dump(-1, ' ', false, core::Json::error_handler_t::replace));
 }
 
-std::vector<std::string> Services::getNativePlugins() {
+std::vector<std::string> AndroidServices::getNativePlugins() {
     return JavaBridge::getPlugins();
 }
 
 // A protected release is a flat folder of manifests and shards, while a development build ships the package with its index.
-std::shared_ptr<io::Package> Services::openBundledPackage() {
+std::shared_ptr<io::Package> AndroidServices::openBundledPackage() {
     AAssetManager* manager = AndroidActivity::getNative().assetManager;
     const AndroidAssetReader::Handle manifest(AAssetManager_open(manager, ("app/" + std::string(content::ReleasePackage::kAppManifestFile)).c_str(), AASSET_MODE_UNKNOWN), &AAsset_close);
     if (manifest != nullptr) {
@@ -85,82 +91,64 @@ std::shared_ptr<io::Package> Services::openBundledPackage() {
     return AndroidAssetPackage::openIndexed(manager, "app");
 }
 
-std::filesystem::path Services::getUserDataDirectory(std::string_view identifier) {
+std::filesystem::path AndroidServices::getUserDataDirectory(std::string_view identifier) {
     return std::filesystem::path(AndroidActivity::getNative().internalDataPath) / std::string(identifier);
 }
 
 // Downloaded content comes back with a download, so it lives in the folder of the app that Android leaves out of its backups, next to the files folder.
-std::filesystem::path Services::getContentStoreDirectory(std::string_view identifier) {
+std::filesystem::path AndroidServices::getContentStoreDirectory(std::string_view identifier) {
     return std::filesystem::path(AndroidActivity::getNative().internalDataPath).parent_path() / "no_backup" / (std::string(identifier) + "-content");
 }
 
-void Services::persistUserData() {}
-
-bool Services::hasDesktop() noexcept {
-    return false;
-}
-
-void Services::setWindowStyle(const WindowStyle&) {}
-
-void Services::setWindowBackground(const math::Color&) {}
+void AndroidServices::persistUserData() {}
 
 // The window of the activity fills its display.
-math::Rect Services::getWindowFrame() {
+math::Rect AndroidServices::getWindowFrame() {
     return {0.0F, 0.0F, NativeWindow::getFramebufferSize().x / NativeWindow::getScale(), NativeWindow::getFramebufferSize().y / NativeWindow::getScale()};
 }
 
-void Services::setWindowFrame(const math::Rect&) {}
-
-std::vector<Display> Services::getDisplays() {
+std::vector<Display> AndroidServices::getDisplays() {
     return AndroidDisplays::getDisplays();
 }
 
-std::string Services::getWindowDisplayId() {
+std::string AndroidServices::getWindowDisplayId() {
     return AndroidDisplays::getWindowDisplayId();
 }
 
 // Every display of the device is in the list, so none waits for the permission "screens".
-bool Services::hasUnlistedDisplays() {
+bool AndroidServices::hasUnlistedDisplays() {
     return false;
 }
 
-void Services::setMousePassthrough(Window::Passthrough, std::span<const math::Polygon::Outline>) {}
-
-void Services::startWindowDrag() {}
-
-void Services::watchWindow() {}
-
-void Services::updateWindow() {}
-
-math::Insets Services::getSafeAreaInsets() {
+math::Insets AndroidServices::getSafeAreaInsets() {
     return AndroidActivity::toFramebuffer(AndroidActivity::getSafeAreaInsets());
 }
 
-bool Services::hasPointerDevice() noexcept {
+bool AndroidServices::hasPointerDevice() const noexcept {
     return !AndroidActivity::isTelevision();
 }
 
-Orientation Services::getOrientation() {
+Orientation AndroidServices::getOrientation() {
     return AndroidActivity::getOrientation();
 }
 
-void Services::lockOrientation(Orientation value) {
+void AndroidServices::lockOrientation(Orientation value) {
     JavaBridge::lockOrientation(static_cast<int>(value));
 }
 
-void Services::setStatusBar(Window::StatusBar value) {
+void AndroidServices::setStatusBar(Window::StatusBar value) {
     JavaBridge::setStatusBar(static_cast<int>(value));
 }
 
-void Services::setSystemGestures(Window::SystemGestures value) {
+void AndroidServices::setSystemGestures(Window::SystemGestures value) {
     JavaBridge::setSystemGestures(static_cast<int>(value));
 }
 
-float Services::getStatusBarHeight() {
+float AndroidServices::getStatusBarHeight() {
     return AndroidActivity::getStatusBarHeight() * NativeWindow::getScale();
 }
 
-std::optional<Fold> Services::getFold() {
+std::optional<Fold> AndroidServices::getFold() {
     std::optional<Fold> fold = AndroidActivity::getFold();
     if (fold) {
         fold->bounds = AndroidActivity::toFramebuffer(fold->bounds);
@@ -169,7 +157,7 @@ std::optional<Fold> Services::getFold() {
     return fold;
 }
 
-void Services::getCutouts(std::vector<math::Rect>& cutouts) {
+void AndroidServices::getCutouts(std::vector<math::Rect>& cutouts) {
     AndroidActivity::getCutouts(cutouts);
 
     for (math::Rect& cutout : cutouts) {
@@ -177,37 +165,28 @@ void Services::getCutouts(std::vector<math::Rect>& cutouts) {
     }
 }
 
-void Services::endSplashScreen(float fadeOutSeconds) {
-    AndroidActivity::endSplashScreen(fadeOutSeconds);
-}
-
-TextInput& Services::getTextInput() {
-    static AndroidTextInput& input = *new AndroidTextInput();
-    return input;
-}
-
-void Services::dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView> views) {
+void AndroidServices::dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView> views) {
     JavaBridge::dispatch(id, method, paramsJson, buffers, views);
 }
 
-void Services::cancel(std::uint64_t id) {
+void AndroidServices::cancel(std::uint64_t id) {
     JavaBridge::cancel(id);
 }
 
-SystemInfo Services::getSystemInfo() {
+SystemInfo AndroidServices::getSystemInfo() {
     return AndroidDeviceInfo::toSystemInfo(JavaBridge::getSystemInfo());
 }
 
-void Services::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
+void AndroidServices::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
     JavaBridge::checkPermission(kind, std::move(callback));
 }
 
-void Services::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
+void AndroidServices::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
     JavaBridge::requestPermission(kind, std::move(callback));
 }
 
 // Android 17 records why it dropped the packets of a socket, which Local Network Protection does for an app that may not reach the local network. Older systems lack the function, which the library of the app looks up while it runs, since it starts on Android 8.1.
-std::string Services::explainBlockedSocket(std::intptr_t socket) {
+std::string AndroidServices::explainBlockedSocket(std::intptr_t socket) {
     using ReadBlockedReason = std::int32_t (*)(int socket);
     static const auto readBlockedReason = reinterpret_cast<ReadBlockedReason>(dlsym(RTLD_DEFAULT, "android_getnetworkblockedreason"));
     if (readBlockedReason == nullptr || readBlockedReason(static_cast<int>(socket)) != ANDROID_NETWORK_BLOCKED_REASON_LNP) {
@@ -217,19 +196,17 @@ std::string Services::explainBlockedSocket(std::intptr_t socket) {
     return "Android blocked the connection, because the app may not reach the local network without the permission \"android.permission.ACCESS_LOCAL_NETWORK\". Ask the person for it with \"system.requestPermission('localNetwork')\".";
 }
 
-// Android hands the links to the activity that runs, which reports them.
-bool Services::forwardLink(std::string_view, std::string_view) {
-    return false;
+// Android is the only platform where the project of an app declares network access, through the permission `INTERNET` of its manifest.
+std::string AndroidServices::getNetworkRequirement() {
+    return JavaBridge::getNetworkRequirement();
 }
 
-void Services::listenForLinks(std::string_view) {}
-
 // The process keeps running in the background with the frames of the runtime, and the media session keeps it in the foreground while what plays shows as playing, so Android never freezes it.
-void Services::setBackgroundAudio(bool value) {
+void AndroidServices::setBackgroundAudio(bool value) {
     JavaBridge::setBackgroundAudio(value);
 }
 
-void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {
+void AndroidServices::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {
     if (!value) {
         JavaBridge::updateMediaSession({}, {});
         return;
@@ -238,28 +215,28 @@ void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>& valu
     JavaBridge::updateMediaSession(MediaSession::writeNowPlaying(*value), value->artwork);
 }
 
-bool Services::isAccessibilityTreeWanted() {
+bool AndroidServices::isTreeWanted() {
     return JavaBridge::isAccessibilityWanted();
 }
 
-void Services::updateAccessibility(std::span<const AccessibilityElement> elements, std::uint64_t focused) {
+void AndroidServices::update(std::span<const AccessibilityElement> elements, std::uint64_t focused) {
     JavaBridge::updateAccessibility(AccessibilityElement::writeTree(elements, focused));
 }
 
-void Services::announce(std::string_view text, bool interrupt) {
+void AndroidServices::announce(std::string_view text, bool interrupt) {
     JavaBridge::announce(text, interrupt);
 }
 
 // Android 8.1 lacks the media data source that the decoder reads the package through, so it plays no video.
-std::optional<SystemFont> Services::findSystemFont(char32_t codePoint) {
+std::optional<SystemFont> AndroidServices::findSystemFont(char32_t codePoint) {
     return AndroidFonts::find(codePoint);
 }
 
-std::vector<std::uint8_t> Services::readSystemFont(const SystemFont& font) {
+std::vector<std::uint8_t> AndroidServices::readSystemFont(const SystemFont& font) {
     return SystemFontReader::read(font.file);
 }
 
-std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) {
+std::unique_ptr<VideoDecoder> AndroidServices::openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) {
     if (!AndroidVideoDecoder::isAvailable()) {
         return nullptr;
     }
@@ -267,16 +244,12 @@ std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageRea
     return std::make_unique<AndroidVideoDecoder>(std::move(file), path);
 }
 
-void Services::openScreen(const ScreenRequest& request) {
+void AndroidServices::openScreen(const ScreenRequest& request) {
     JavaBridge::openScreen(request);
 }
 
-void Services::cancelScreen(std::uint64_t id) {
+void AndroidServices::cancelScreen(std::uint64_t id) {
     JavaBridge::cancelScreen(id);
-}
-
-HaylenNativeWindow Services::getNativeWindow() {
-    return {};
 }
 
 } // namespace haylen::platform
@@ -285,6 +258,7 @@ extern "C" {
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*) {
     haylen::platform::CrashGuard::install();
+    haylen::platform::Services::install(haylen::platform::AndroidServices::create());
     return haylen::platform::JavaBridge::load(vm);
 }
 

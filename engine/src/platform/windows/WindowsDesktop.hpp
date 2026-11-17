@@ -14,7 +14,7 @@
 #include "haylen/math/Vec2.hpp"
 #include "haylen/platform/Display.hpp"
 #include "haylen/platform/Window.hpp"
-#include "platform/WindowStyle.hpp"
+#include "haylen/platform/WindowStyle.hpp"
 
 namespace haylen::platform {
 

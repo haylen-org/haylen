@@ -12,6 +12,11 @@ namespace haylen::platform {
 
 bool AndroidTextInput::editing = false;
 
+TextInput& AndroidTextInput::getShared() {
+    static AndroidTextInput& input = *new AndroidTextInput();
+    return input;
+}
+
 // The window counts pixels of the screen, while the framebuffer may be smaller when the app turns high DPI off. The options travel as the numbers of their enums.
 void AndroidTextInput::edit(const Field& value) {
     const float scale = NativeWindow::getScale();

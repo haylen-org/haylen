@@ -12,6 +12,9 @@ namespace haylen::platform {
 // Text input of the web runtime. A hidden textarea, or a password input, lies over the focused field next to the canvas and edits it, which brings the software keyboard of phones, the input methods of every browser and native paste, copy and undo. The file `platform/web/haylen-runtime.js` holds the page side.
 class WebTextInput final : public TextInput {
   public:
+    // The text input of the process, which lives as long as it, since the system may still report edits while the process exits.
+    [[nodiscard]] static TextInput& getShared();
+
     [[nodiscard]] bool isNative() const noexcept override {
         return true;
     }

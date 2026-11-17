@@ -7,7 +7,7 @@
 #include <array>
 #include <cmath>
 
-#include "platform/PixelDensityCap.hpp"
+#include "haylen/platform/PixelDensityCap.hpp"
 #include "platform/web/WebPage.hpp"
 
 // clang-format off

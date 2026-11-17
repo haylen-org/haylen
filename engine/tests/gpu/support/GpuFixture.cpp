@@ -40,7 +40,7 @@ bool GpuFixture::isApiRequired() {
     return !Environment::get("HAYLEN_TEST_GRAPHICS_API").empty();
 }
 
-gpu::DeviceFactory::Options GpuFixture::getDeviceOptions() {
+gpu::DeviceOptions GpuFixture::getDeviceOptions() {
     return {.validation = true, .software = isEnabled("HAYLEN_TEST_GPU_SOFTWARE"), .lowPower = isEnabled("HAYLEN_TEST_GPU_LOW_POWER")};
 }
 

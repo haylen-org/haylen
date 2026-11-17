@@ -16,6 +16,11 @@
 
 namespace haylen::platform {
 
+TextInput& AppleTextInput::getShared() {
+    static AppleTextInput& input = *new AppleTextInput();
+    return input;
+}
+
 #if TARGET_OS_OSX
 AppleTextInput::AppleTextInput() : editor([HaylenFieldEditor new]) {}
 #else

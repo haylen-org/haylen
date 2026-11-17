@@ -11,6 +11,9 @@ namespace haylen::platform {
 // Text input of Android. The hidden `HaylenEditText` of the activity edits the focused field over its place on screen, which brings the software keyboard, the composing text of input methods, suggestions and keyboard actions. Its UI thread reports back through JNI.
 class AndroidTextInput final : public TextInput {
   public:
+    // The text input of the process, which lives as long as it, since the system may still report edits while the process exits.
+    [[nodiscard]] static TextInput& getShared();
+
     [[nodiscard]] bool isNative() const noexcept override {
         return true;
     }

@@ -8,15 +8,6 @@
 #include "platform/Player.hpp"
 #include "platform/Services.hpp"
 
-#if defined(__EMSCRIPTEN__)
-#include "platform/web/BrowserAudioOutput.hpp"
-#elif defined(__ANDROID__)
-#include "platform/android/AndroidActivity.hpp"
-#include "platform/android/JavaBridge.hpp"
-#elif defined(__APPLE__)
-#include <TargetConditionals.h>
-#endif
-
 namespace haylen::platform {
 
 bool NativeHost::isResizable() const noexcept {
@@ -41,11 +32,7 @@ void NativeHost::requestQuit() {
 
 // An app that another app launched quits back to that app on every platform.
 bool NativeHost::canQuit() const noexcept {
-#if defined(__EMSCRIPTEN__) || (defined(__APPLE__) && !TARGET_OS_OSX)
-    return launched;
-#else
-    return true;
-#endif
+    return launched || allowsQuit();
 }
 
 Orientation NativeHost::getOrientation() const {
@@ -244,14 +231,6 @@ std::string_view NativeHost::getPlatformName() const noexcept {
     return Services::getName();
 }
 
-audio::Mixer::Setup NativeHost::getAudioSetup() const {
-#if defined(__EMSCRIPTEN__)
-    return {.device = true, .backend = &audio::BrowserAudioOutput::kBackend};
-#else
-    return {.device = true};
-#endif
-}
-
 bool NativeHost::isFrameTransparent() const noexcept {
     return style.transparent;
 }
@@ -280,13 +259,8 @@ void NativeHost::cancelPlatformCall(std::uint64_t id) {
     Services::cancel(id);
 }
 
-// The views of Android plugins reserve edges in window pixels.
 math::Insets NativeHost::getReservedInsets() const {
-#if defined(__ANDROID__)
-    return AndroidActivity::toFramebuffer(getNativeViews().getReservedInsets());
-#else
     return getNativeViews().getReservedInsets();
-#endif
 }
 
 bool NativeHost::isAppCovered() const {
@@ -387,13 +361,8 @@ Host::BlockedReason NativeHost::getBlockedReason() const {
     return &Services::explainBlockedSocket;
 }
 
-// Android is the only platform where the project of an app declares network access, through the permission `INTERNET` of its manifest.
 std::string NativeHost::getNetworkRequirement() const {
-#if defined(__ANDROID__)
-    return JavaBridge::getNetworkRequirement();
-#else
-    return {};
-#endif
+    return Services::getNetworkRequirement();
 }
 
 void NativeHost::openScreen(const ScreenRequest& request) {

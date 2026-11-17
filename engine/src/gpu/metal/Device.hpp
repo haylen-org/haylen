@@ -15,7 +15,7 @@ class Device final : public gpu::Device {
     static constexpr int kFramesInFlight = 3;
 
     // Creates the device of the GPU that shows the layer of the surface, or of the default GPU to draw offscreen without one. Throws `std::runtime_error` when the machine has no Metal GPU or the surface holds no `CAMetalLayer`.
-    [[nodiscard]] static std::unique_ptr<gpu::Device> create(const std::optional<Surface>& surface, const DeviceFactory::Options& options);
+    [[nodiscard]] static std::unique_ptr<gpu::Device> create(const std::optional<Surface>& surface, const DeviceOptions& options);
 
     Device(const Device&) = delete;
     Device& operator=(const Device&) = delete;

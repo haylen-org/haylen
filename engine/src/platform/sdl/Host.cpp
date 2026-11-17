@@ -24,12 +24,18 @@
 #if defined(__APPLE__) && !TARGET_OS_TV
 #include "platform/apple/ApplePasteboard.hpp"
 #endif
+#if defined(__APPLE__)
+#include "platform/apple/AppleTextInput.hpp"
+#endif
 #if defined(__APPLE__) && !TARGET_OS_OSX
 #include "platform/apple/AppleGamepads.hpp"
 #include "platform/apple/AppleOutputs.hpp"
+#include "platform/apple/AppleSplash.hpp"
 #elif defined(__EMSCRIPTEN__)
+#include "platform/web/BrowserAudioOutput.hpp"
 #include "platform/web/WebOutputs.hpp"
 #include "platform/web/WebPage.hpp"
+#include "platform/web/WebTextInput.hpp"
 #endif
 
 namespace haylen::platform::sdl {
@@ -314,11 +320,31 @@ bool Host::canBeTransparent() const noexcept {
     return runtime.isTransparent();
 }
 
-platform::TextInput& Host::getPlatformTextInput(Runtime& owner) noexcept {
-#if defined(_WIN32) || defined(__linux__)
-    return owner.getTextInput();
+platform::TextInput& Host::getPlatformTextInput([[maybe_unused]] Runtime& owner) noexcept {
+#if defined(__APPLE__)
+    return AppleTextInput::getShared();
+#elif defined(__EMSCRIPTEN__)
+    return WebTextInput::getShared();
 #else
-    return Services::getTextInput();
+    return owner.getTextInput();
+#endif
+}
+
+// The apps of iPhones, iPads, TVs and pages never end themselves.
+bool Host::allowsQuit() const noexcept {
+#if defined(__EMSCRIPTEN__) || (defined(__APPLE__) && !TARGET_OS_OSX)
+    return false;
+#else
+    return true;
+#endif
+}
+
+// The page plays the mixed audio through its own output, the only backend miniaudio has in browsers.
+audio::Mixer::Setup Host::getAudioSetup() const {
+#if defined(__EMSCRIPTEN__)
+    return {.device = true, .backend = &audio::BrowserAudioOutput::kBackend};
+#else
+    return {.device = true};
 #endif
 }
 
@@ -351,8 +377,14 @@ std::string Host::getDisplayId() const {
     return NativeHost::getDisplayId();
 }
 
-void Host::endSplashScreen(float fadeOutSeconds) {
-    runtime.endSplashScreen(fadeOutSeconds);
+// A Mac, Windows and Linux open their window at once, without a launch screen, while the other Apple platforms keep theirs over the window and a page shows its own splash.
+void Host::endSplashScreen([[maybe_unused]] float fadeOutSeconds) {
+    runtime.showWhenComplete();
+#if defined(__APPLE__) && !TARGET_OS_OSX
+    AppleSplash::end(fadeOutSeconds);
+#elif defined(__EMSCRIPTEN__)
+    WebPage::endSplashScreen(fadeOutSeconds);
+#endif
 }
 
 // A web page runs the app on the thread of the browser that delivers every message, which only goes on once the frame returns.
