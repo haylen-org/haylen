@@ -260,7 +260,7 @@ The option `debug.safeArea` of `app.json` sets it at start, and [`ui.setSafeArea
 
 | Device | Portrait | Landscape | Cutout |
 | --- | --- | --- | --- |
-| `'iphoneNotch'` | Notch at the top, home indicator at the bottom | Notch on the left and right, home indicator at the bottom  The notch at the top center in portrait, along the left edge in landscape |
+| `'iphoneNotch'` | Notch at the top, home indicator at the bottom | Notch on the left and right, home indicator at the bottom | The notch at the top center in portrait, along the left edge in landscape |
 | `'iphoneDynamicIsland'` | Dynamic island at the top, home indicator at the bottom | Dynamic island on the left and right, home indicator at the bottom | The dynamic island below the top center in portrait, along the left edge in landscape |
 | `'ipad'` | Status bar at the top, home indicator at the bottom | The same | None |
 | `'androidGestureBar'` | Camera cutout at the top, gesture bar at the bottom | Camera cutout on the left, gesture bar at the bottom | The hole of the camera at the top center in portrait, along the left edge in landscape |
