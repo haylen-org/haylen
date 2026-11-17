@@ -98,7 +98,7 @@ The tooling downloads, or builds, the other tools the first time a command needs
 | Tool | Version | Folder | Used by |
 | --- | --- | --- | --- |
 | `haylen-shaderc` | The release that `engine/cmake/haylen-shader-compiler.json` pins | `.tools/haylen-shaderc-<commit>` | Every build and the command `app shaders`, as [the shader compiler](#the-shader-compiler) explains. |
-| Emscripten SDK | 6.0.13 | `.tools/emsdk` | The web SDK, the runtimes that web apps link and the checks of the web. |
+| Emscripten SDK | 7.0.0 | `.tools/emsdk` | The web SDK, the runtimes that web apps link and the checks of the web. |
 | Gradle | 9.8.2 | `.tools/gradle-9.8.2` | The Android libraries of the Android SDK and the Android projects of apps. |
 | XcodeGen | 2.46.0 | `.tools/xcodegen-2.46.0` | The Xcode projects that the Apple backend generates, and the runner of the UI tests. macOS only. |
 | bundletool | 1.18.3 | `.tools/bundletool-1.18.3.jar` | The format `apks` of `app package` on Android, which installs a bundle in the local testing mode of Google Play. |
@@ -375,7 +375,7 @@ A patched package, such as SDL, keys its place in the cache with `haylen_patched
 | Dear ImGui | v1.93.0 | Compiled as `haylen-imgui` with the ImGui configuration of the engine, which leaves out its own reader of fonts with `IMGUI_DISABLE_STB_TRUETYPE`, since the engine hands ImGui a font loader that reads through HarfBuzz. |
 | miniaudio | 0.11.26 | Compiled as `haylen-miniaudio`. |
 | Box2D | v3.2.0 | With the [patches](#patches) of `engine/cmake/patches`. It picks its SIMD instructions when the app starts, AVX2 where the processor has it and SSE2 otherwise on x64, Neon on 64-bit ARM, plain math on 32-bit ARM and the SIMD of WebAssembly on the web. |
-| Clipper2 | 2.0.1 | The polygon booleans, offsets and constrained triangulations of `math::Polygon`. |
+| Clipper2 | 2.0.1 | The polygon booleans, offsets and constrained triangulations of `math::Polygon`. A patch includes the header `iterator` in its core header, which uses `std::back_inserter` and which the standard library of Emscripten no longer brings in through another header. |
 | zstd | v1.5.7 | A static library for compressed Tiled layers and for the chunks of protected content. |
 | Monocypher | 4.0.3 | BSD 2-clause or CC0. The authenticated encryption (XChaCha20-Poly1305), the hashes and key derivation (BLAKE2b) and the manifest signatures (Ed25519) of protected content, compiled from its two sources as `haylen-monocypher`. It is audited, has no dependencies and builds the same on every target, the web included. This release fixes a timing leak of its signatures. |
 | GoogleTest | v1.18.0 | Only when the desktop tests build. |

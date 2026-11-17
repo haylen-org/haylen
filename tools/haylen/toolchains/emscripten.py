@@ -13,7 +13,7 @@ from haylen.platforms.tool_status import ToolStatus
 class Emscripten:
     """The pinned Emscripten SDK in `.tools/emsdk`, which compiles the web builds of the engine and of apps, and whose Node runs the drivers of the pages that the web checks open. Emscripten keeps no ABI between versions, so a build tree that another version configured builds again from nothing."""
 
-    VERSION = "6.0.13"
+    VERSION = "7.0.0"
     ROOT = Repository.TOOLS / "emsdk"
     REPOSITORY = "https://github.com/emscripten-core/emsdk.git"
     # The file in every web build tree that records the version of Emscripten that configured it.

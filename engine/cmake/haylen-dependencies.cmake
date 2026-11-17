@@ -244,11 +244,16 @@ CPMAddPackage(
   SYSTEM YES
 )
 
-# Clipper2 computes the polygon booleans, offsets and constrained triangulations of `math::Polygon`.
+# Clipper2 computes the polygon booleans, offsets and constrained triangulations of `math::Polygon`. Its core header uses `std::back_inserter` without the header `iterator` that declares it, which the standard library of Emscripten no longer brings in through another header, so a patch includes it.
+set(clipper2_patches "${CMAKE_CURRENT_LIST_DIR}/patches/clipper2-iterator.patch")
+set(clipper2_hash 2a3693aceab4aed3e39b743e038d87701acc53cf05ed7b2013aab3e0aec5287e)
+haylen_patched_package_key(clipper2_cache_key ${clipper2_hash} ${clipper2_patches})
 CPMAddPackage(
   NAME clipper2
   URL "https://github.com/AngusJohnson/Clipper2/archive/refs/tags/Clipper2_2.0.1.tar.gz"
-  URL_HASH SHA256=2a3693aceab4aed3e39b743e038d87701acc53cf05ed7b2013aab3e0aec5287e
+  URL_HASH SHA256=${clipper2_hash}
+  PATCHES ${clipper2_patches}
+  CUSTOM_CACHE_KEY ${clipper2_cache_key}
   SOURCE_SUBDIR CPP
   OPTIONS "CLIPPER2_UTILS OFF" "CLIPPER2_EXAMPLES OFF" "CLIPPER2_TESTS OFF" "CLIPPER2_USINGZ OFF"
   SYSTEM YES

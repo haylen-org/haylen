@@ -1,0 +1,9 @@
+--- a/CPP/Clipper2Lib/include/clipper2/clipper.core.h
++++ b/CPP/Clipper2Lib/include/clipper2/clipper.core.h
+@@ -16,5 +16,6 @@
+ #include <string>
+ #include <iostream>
+ #include <algorithm>
++#include <iterator>
+ #include <numeric>
+ #include <cmath>
