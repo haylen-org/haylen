@@ -536,7 +536,7 @@ The rules of the repository need no build either. The tests of `tools/tests/repo
 - That only the SDL platform layer reaches SDL, that only the GPU devices include the headers of their graphics APIs, that no Lua binding knows a host, and that only Windows and Linux start the text input of SDL.
 - That comments and the texts of the interface are written as the project asks, that every text file is UTF-8, that the launchers run the tooling through uv, and that the scripts of `tools` follow the code rules.
 - That the animated sheets and the images of the samples hold their pivots and have clean edges.
-- The documentation, through `DocsTest`: the titles, the languages of code blocks, one line per paragraph, every relative link and its heading, the tables of the indexes, and that no long sentence repeats in another page.
+- The documentation, through `DocsTest`: the titles, the languages of code blocks, one line per paragraph, every relative link and its heading, the tables of the indexes, that every row of a table has as many cells as its header, and that no long sentence repeats in another page.
 
 ### The proof of the extension points
 

@@ -48,6 +48,22 @@ class MarkdownPage:
     def row_links(row: str) -> list[str]:
         return [match.group(2) for match in MarkdownPage.LINK.finditer(row)]
 
+    @staticmethod
+    def cells(row: str) -> list[str]:
+        """The cells of a row of a table, split the way GitHub splits them: at every pipe that no backslash escapes, code spans included."""
+        inner = row.strip().removeprefix("|")
+        if inner.endswith("|") and not inner.endswith("\\|"):
+            inner = inner[:-1]
+        return [cell.strip() for cell in re.split(r"(?<!\\)\|", inner)]
+
+    def uneven_rows(self) -> Iterator[tuple[str, str]]:
+        """Yields the section and the text of every row of a table that has another count of cells than the header of its table, which GitHub pads or cuts without a word."""
+        for section, rows in self.tables():
+            expected = len(MarkdownPage.cells(rows[0]))
+            for row in rows[1:]:
+                if len(MarkdownPage.cells(row)) != expected:
+                    yield section, row
+
     def tables(self) -> Iterator[tuple[str, list[str]]]:
         """Yields every table of the page with the section it sits in, as its lines."""
         section = ""

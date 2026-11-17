@@ -8,7 +8,7 @@ from tests.support.tracked_files import TrackedFiles
 
 
 class DocsTest:
-    """The documentation is one tree that a reader walks from the main page: every page starts with its title, names the language of its code blocks and keeps each paragraph on one line, every relative link reaches its page and heading, the indexes list their pages in tables of name, description and link, and no long sentence repeats in another page."""
+    """The documentation is one tree that a reader walks from the main page: every page starts with its title, names the language of its code blocks and keeps each paragraph on one line, every row of a table has as many cells as its header, every relative link reaches its page and heading, the indexes list their pages in tables of name, description and link, and no long sentence repeats in another page."""
 
     DOCS = Repository.ROOT / "docs"
     HEADER = "| Name | Description | Link |"
@@ -115,6 +115,16 @@ class DocsTest:
                 if names != sorted(names):
                     wrong.append(f"{name}, {section}: the rows are out of alphabetical order")
         assert wrong == []
+
+    def test_every_row_of_a_table_has_as_many_cells_as_its_header(self):
+        wrong = [f"{DocsTest.shown(path)}, {section}: {row}" for path in DocsTest.pages() for section, row in MarkdownPage(path).uneven_rows()]
+        assert wrong == []
+
+    def test_a_row_with_a_cell_too_few_or_too_many_is_found(self, tmp_path: Path):
+        page = tmp_path / "page.md"
+        rows = ["| Device | Safe area | Cutout |", "| --- | --- | --- |", "| Phone | 44 | Notch |", "| Tablet | 24 |", "| Watch | 8 | None | Extra |", "| Code | `a \\| b` | Escaped |"]
+        page.write_text("\n".join(["# 📖 Page", "", "## Devices", "", *rows, ""]), encoding="utf-8")
+        assert list(MarkdownPage(page).uneven_rows()) == [("Devices", "| Tablet | 24 |"), ("Devices", "| Watch | 8 | None | Extra |")]
 
     def test_no_table_of_an_index_mixes_guides_with_the_lua_reference(self):
         reference = (DocsTest.DOCS / "lua-api").resolve()
