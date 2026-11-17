@@ -8,11 +8,11 @@ An app of the earlier layout holds files that the current layout no longer has. 
 
 | Earlier layout | Current layout |
 | --- | --- |
-| `haylen.json`, the manifest of the app. | `haylen.json`, with the same runtime keys and the tooling keys `kind`, `cpp`, `plugins` and `platforms`. |
+| `app.json`, the manifest of the app. | `haylen.json`, with the same runtime keys and the tooling keys `kind`, `cpp`, `plugins` and `platforms`. |
 | A project of each platform in `platform/<template>/`, which belonged to the developer, with a generated folder `haylen/` inside it. | No project in the app. Every build generates the project of its target in `build/apps/<app>-<hash>/`, and the app customizes it through the sections of `platforms` and files of its own repository. |
 | A C++ app as a CMake project with `CMakeLists.txt` and `haylen_add_app`. | A C++ app as `"kind": "cpp"` with the `cpp` section, built by the same backends as a Lua app. |
 | `plugin.json` with `platforms`, `requires` and the sections `apple`, `android`, `web`, `desktop` and `native`. | `plugin.json` with `interface`, `implementations`, `dependencies` and a list of typed `contributions`. |
-| Git plugins at the branch or tag of `haylen.json`. | Git plugins pinned to a commit in `haylen.lock`, which a Release build requires. |
+| Git plugins at the branch or tag of `app.json`. | Git plugins pinned to a commit in `haylen.lock`, which a Release build requires. |
 | The script `haylen.py` with Python. | The package `tools/haylen` of the repository, which the launcher `haylen` runs through uv. |
 | Engine artifacts in `build/artifacts/`, rebuilt by the commands of apps. | Engine SDKs in `build/sdk/`, built only by `haylen sdk build`. |
 
@@ -47,9 +47,9 @@ haylen plugin new /tmp/reference-plugin --id my-plugin
 
 The reference app holds `haylen.json`, `source/` or `src/`, `content/logo.png`, the bridge handlers of every platform under `native/` and the files `.gitignore`, `.editorconfig` and `.clang-format`. Its `haylen.json` already names the handlers in `platforms`.
 
-## From haylen.json to haylen.json
+## From app.json to haylen.json
 
-1. Rename `haylen.json` to `haylen.json`. The runtime keys keep their names and values, such as `window`, `design`, `splash`, `content`, `localization`, `autoload` and `debug`, and the `plugins` entries keep their `path`, `git`, `ref` and `parameters`.
+1. Rename `app.json` to `haylen.json`. The runtime keys keep their names and values, such as `window`, `design`, `splash`, `content`, `localization`, `autoload` and `debug`, and the `plugins` entries keep their `path`, `git`, `ref` and `parameters`.
 2. Add `"kind": "cpp"` and the `cpp` section to a C++ app, as [a C++ app](#a-c-app) describes. A Lua app may leave `kind` out, since `lua` is the default.
 3. List the platforms of every entry of `native` in full. A library that lists `ios` ships only to iPhones and iPads now, so a library that also served Mac Catalyst and visionOS adds `catalyst` and `visionos` to its `platforms`.
 4. Move the paths of `native` that pointed into `platform/<template>/`, such as `platform/windows/steam_api64.dll`, to a folder of the app, such as `native/windows/`.
