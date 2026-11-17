@@ -23,6 +23,7 @@ class AndroidVerifier:
     """Checks a built Android app against what the engine and every plugin need: the library that the activity loads and the native libraries for every ABI of the product, the merged manifest with the activity of the engine, the service of background audio, the provider of plugins and what every plugin module declares, and in a release the protected release that the APK holds, its shards stored uncompressed and the asset packs of the bundle."""
 
     SOURCE = "android"
+    PLUGIN_CLASS_PREFIX = "dev.haylen.plugin."
 
     def __init__(self, context: ToolingContext, releases: Callable[[], ProtectedReleases]) -> None:
         self.context = context
@@ -55,10 +56,12 @@ class AndroidVerifier:
         needs = [("Haylen", "activity", "dev.haylen.HaylenActivity")]
         if resolved.app.section("audio").get("background") is True:
             needs.append(('The audio that plays in the background, which "audio.background" of "haylen.json" declares,', "service", "dev.haylen.HaylenPlaybackService"))
-        modules = resolved.primary.of_type(AndroidContributions.GRADLE_MODULE)
-        if modules:
-            needs.append(("Haylen", "provider", "dev.haylen.HaylenPluginProvider"))
-        for contribution in modules:
+        # The provider loads the plugin classes that meta-data name, so a module without one, such as a manifest that only adds an intent filter, needs no provider.
+        classes = sorted(name for name in merged.get("meta-data", set()) if name.startswith(AndroidVerifier.PLUGIN_CLASS_PREFIX))
+        if classes:
+            listed = ", ".join(f'"{name}"' for name in classes)
+            needs.append((f"Loading the plugin classes of the meta-data {listed}", "provider", "dev.haylen.HaylenPluginProvider"))
+        for contribution in resolved.primary.of_type(AndroidContributions.GRADLE_MODULE):
             module = contribution.folders[0] / str(contribution.field("path"))
             needs += [(f'The plugin "{contribution.owners[0]}"', tag, name) for tag, name in AndroidModuleManifest.needs(module)]
 

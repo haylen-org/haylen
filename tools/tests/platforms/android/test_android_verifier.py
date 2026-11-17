@@ -66,3 +66,22 @@ class AndroidVerifierTest:
             ("failed", 'The plugin "camera" needs the activity "com.example.camera.CameraActivity", which the merged manifest of the built app lacks.'),
         ]
         assert VerificationCheck.Outcome.FAILED.value == checks[0][0]
+
+    def test_only_plugin_classes_need_the_provider_that_loads_them(self, tmp_path, monkeypatch):
+        fixture = AndroidFixture(tmp_path)
+        app = fixture.app({"plugins": {"links": {}}})
+        plugin = fixture.plugin(app, "links", {})
+        manifest = '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n    <application>\n        <activity android:name="dev.haylen.HaylenLinkActivity" android:exported="true" />\n    </application>\n</manifest>\n'
+        (plugin / "android" / "src" / "main" / "AndroidManifest.xml").write_text(manifest, encoding="utf-8")
+        product = AndroidVerifierTest.product(fixture, app, [f"lib/{abi}/libhaylen.so" for abi in ("arm64-v8a", "x86_64")])
+        verifier = AndroidVerifier(fixture.context, lambda: None)
+
+        without_class = {"activity": {"dev.haylen.HaylenActivity", "dev.haylen.HaylenLinkActivity"}}
+        monkeypatch.setattr(AndroidApk, "manifest", lambda apk, context: without_class)
+        assert AndroidVerifierTest.outcomes(verifier.verify(product))["manifest"] == [("passed", "The merged manifest holds what the engine and every plugin need.")]
+
+        with_class = {**without_class, "meta-data": {"dev.haylen.plugin.links"}}
+        monkeypatch.setattr(AndroidApk, "manifest", lambda apk, context: with_class)
+        assert AndroidVerifierTest.outcomes(verifier.verify(product))["manifest"] == [
+            ("failed", 'Loading the plugin classes of the meta-data "dev.haylen.plugin.links" needs the provider "dev.haylen.HaylenPluginProvider", which the merged manifest of the built app lacks.')
+        ]
