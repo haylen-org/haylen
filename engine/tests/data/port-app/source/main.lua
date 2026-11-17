@@ -1,5 +1,6 @@
--- The app of the test port: it checks that the platform, the operating system and the graphics API are the ones of the port, that the port refuses to start programs and that Varn takes its external driver of processes, draws frames of shapes, sprites and text through the device of the port, which runs the code that the shader tool of the port wrote, until its sound plays through the audio output of the port with the latency of that output, and quits with the status 0 when every check passed.
+-- The app of the test port: it checks that the platform, the operating system and the graphics API are the ones of the port, that the port refuses to start programs and to make callbacks of Lua functions, which write code into memory, that Varn takes its external driver of processes, draws frames of shapes, sprites and text through the device of the port, which runs the code that the shader tool of the port wrote, until its sound plays through the audio output of the port with the latency of that output, and quits with the status 0 when every check passed.
 local audio = require('haylen.audio')
+local ffi = require('ffi')
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -31,6 +32,13 @@ end
 local started, reason = pcall(io.popen, 'echo')
 if started or not tostring(reason):find('This platform starts no other program, so "io.popen" is not available.', 1, true) then
     log.error(string.format('The test port started a program through "io.popen" or failed with "%s".', tostring(reason)))
+    failures = failures + 1
+end
+
+-- The test port does not allow `executableMemory`, so the module `ffi` makes no callback of a Lua function, as the engine makes no native callback.
+local made, refusal = pcall(ffi.cast, 'void (*)(void)', function() end)
+if made or not tostring(refusal):find('This platform makes no native callback, since it writes no code into memory for the function pointer that native code would call.', 1, true) then
+    log.error(string.format('The test port made a callback through "ffi.cast" or failed with "%s".', tostring(refusal)))
     failures = failures + 1
 end
 

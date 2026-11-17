@@ -54,6 +54,12 @@ if(HAYLEN_PORT_PLATFORM)
   else()
     set(VARN_EVENT_LOOP_DRIVER "PUMP" CACHE STRING "The event loop of Varn, which follows the threads of the port." FORCE)
   endif()
+  # The callbacks of the module `ffi` are closures that write code into memory, so a port that does not allow `executableMemory` builds Varn without them, as it builds the native callbacks of the engine.
+  if("executableMemory" IN_LIST HAYLEN_CAPABILITIES)
+    set(VARN_FFI_CLOSURES ON CACHE BOOL "The callbacks of the ffi module of Varn, which follow the executable memory of the port." FORCE)
+  else()
+    set(VARN_FFI_CLOSURES OFF CACHE BOOL "The callbacks of the ffi module of Varn, which follow the executable memory of the port." FORCE)
+  endif()
   foreach(driver IN LISTS HAYLEN_PORT_VARN_DRIVERS)
     string(REGEX MATCH "^([A-Z_]+)=(.+)$" matched "${driver}")
     if(CMAKE_MATCH_1 STREQUAL "TLS")
@@ -77,8 +83,8 @@ endif()
 # The engine links the static core of Varn, which the `cli` target builds, and Varn picks the HTTP driver of every platform itself: the URL Loading System on iOS, tvOS and Mac Catalyst, the Android stack on Android and the fetch of the browser on the web.
 CPMAddPackage(
   NAME varn
-  URL "https://github.com/varn-org/varn/archive/f09af0fc3f29cd4ea2399e18d32c58f8d623a63f.tar.gz"
-  URL_HASH SHA256=1f1756740deac8af6c1a8489e94fa02c7507c0a0630387a21e452cf8ee179bce
+  URL "https://github.com/varn-org/varn/archive/86894396206108d051602a9716d4c8eb27fc69bf.tar.gz"
+  URL_HASH SHA256=015a07c18456cfdeb975065a45dd3d59926c0ecd21d96f9f0f9f4f75f67e866b
   OPTIONS "VARN_TARGET ${HAYLEN_VARN_TARGET}" "VARN_BUILD_TESTS OFF" "VARN_SANITIZE ${HAYLEN_VARN_SANITIZE}"
   EXCLUDE_FROM_ALL YES
   SYSTEM YES
