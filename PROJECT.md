@@ -2453,6 +2453,7 @@ Playground do site (pendências da engine):
 
 Só o dono:
 
+- [ ] Uma bateria nas máquinas remotas da AWS e da Azure depois que o tooling novo entrar em `main`, com tudo compilado antes, timer de desligamento e tudo apagado e conferido no fim: Windows com GPU NVIDIA (Direct3D 12, Direct3D 11 e Vulkan) e Linux com GPU NVIDIA (Vulkan e OpenGL) rodando os testes da engine e de GPU, o projeto de testes no player, apps Lua e C++ com instalador e pacotes, entrada de texto e saída em outra tela; um Mac remoto só para o que este Mac e a CI não cobrem; e aparelhos reais de nuvem (Android com Adreno e Mali, e iPhone e iPad se houver) só para o que o simulador e o emulador não mostram, como drivers reais de GPU, desempenho, teclado do sistema e voltar físico.
 - [ ] Desdobrar o iPhone Duo no app Simulator e conferir ORI-005 e PLT-008, os testes de plugins em aparelhos reais e a limpeza das pastas que a permissão não deixou apagar.
 
 #### AT. Documentação
