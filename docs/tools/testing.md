@@ -47,7 +47,7 @@ The class `platform::HeadlessHost`, in `engine/src/platform/headless/`, implemen
 Audio:
 
 - The audio mixer of the headless host has no device and keeps time. It mixes the time of each frame into silence, so voices, fades and music end as they would on a device. A mixer that a test makes without a device mixes only when the test asks it to.
-- Tests of a mixer with a device give it an `audio::OutputBackend` of their own. Such a backend refuses the audio, opens a device that never plays, or keeps the opening waiting the way an audio service that hangs does. So no test reaches the audio hardware.
+- Tests of a mixer with a device give it a `port::AudioOutput` of their own. Such an output refuses the audio, opens a playback that never reads the mix or reads it on a thread of its own, or keeps the opening waiting the way an audio service that hangs does. So no test reaches the audio hardware.
 - The method `setAudioOutput(backend)` gives the mixers of the engines created afterwards a device that opens through such a backend. The option `audioOutput` of the engine fixture sets it.
 
 What the host records and changes:
@@ -81,7 +81,7 @@ The struct `EngineFixture::Options` has three options:
 
 - `development` turns on development on the host before the engine starts, as the player does with `--dev`. A test changes paths with `fixture.package().setFile`, queues them with `fixture.host().getDevelopmentSession()->addChanges(paths)`, and the next frame applies them.
 - `developmentServer` names the WebSocket address of a development server that the session connects to. The package then plays under an `io::OverlayPackage` that takes the files the server sends, as the runtime of the web plays it.
-- `audioOutput` gives the mixer a device that opens through an `audio::OutputBackend` of the test.
+- `audioOutput` gives the mixer a device that opens through a `port::AudioOutput` of the test.
 
 | Member | Purpose |
 | --- | --- |

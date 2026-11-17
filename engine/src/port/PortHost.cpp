@@ -1,6 +1,9 @@
 #include "port/PortHost.hpp"
 
+#include <memory>
 #include <utility>
+
+#include "platform/Services.hpp"
 
 namespace haylen::port {
 
@@ -60,8 +63,11 @@ bool PortHost::prepareGpuDevice() {
     return host->prepareGpuDevice();
 }
 
+// A port plays through the audio output it registered, and the mixer of a port without one keeps time without sound.
 audio::Mixer::Setup PortHost::getAudioSetup() const {
-    return host->getAudioSetup();
+    std::shared_ptr<AudioOutput> output = platform::Services::getAudioOutput();
+    const bool device = output != nullptr;
+    return {.device = device, .keepsTime = !device, .output = std::move(output)};
 }
 
 void PortHost::closeWindow() {

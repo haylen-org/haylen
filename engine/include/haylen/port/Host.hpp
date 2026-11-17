@@ -7,7 +7,6 @@
 #include <string>
 #include <string_view>
 
-#include "haylen/audio/Mixer.hpp"
 #include "haylen/gpu/Device.hpp"
 #include "haylen/input/GamepadMotion.hpp"
 #include "haylen/input/GamepadState.hpp"
@@ -18,7 +17,7 @@
 
 namespace haylen::port {
 
-// The window of a port as the engine drives it: its framebuffer, its scale, fullscreen, title, cursor, clipboard, text input, controllers, frame pacing, GPU device and audio setup. The runtime of a port implements it and hands it to `Player::create`, and the engine keeps everything else of the host, such as the development session, the style of the window and the services of `port::Services`. Every method runs on the frame thread.
+// The window of a port as the engine drives it: its framebuffer, its scale, fullscreen, title, cursor, clipboard, text input, controllers, frame pacing and GPU device. The runtime of a port implements it and hands it to `Player::create`, and the engine keeps everything else of the host, such as the development session, the style of the window and the services of `port::Services`. Every method runs on the frame thread.
 class Host {
   public:
     Host() = default;
@@ -53,9 +52,6 @@ class Host {
     // Prepares the GPU device of the next app and returns whether `createGpuDevice` creates it now, and creates the device that draws into the window. One device exists while an app runs.
     [[nodiscard]] virtual bool prepareGpuDevice() = 0;
     [[nodiscard]] virtual std::unique_ptr<gpu::Device> createGpuDevice() = 0;
-
-    // How the mixer of each app plays: through the audio output of `port::Services`, or without a device where the platform has no sound.
-    [[nodiscard]] virtual audio::Mixer::Setup getAudioSetup() const = 0;
 
     // Asks the window to close as a request of the system does, which the app hears before it closes, and closes it at once without asking the app, which ends the process.
     virtual void requestClose() = 0;

@@ -3,7 +3,6 @@
 #include <thread>
 #include <utility>
 
-#include "audio/OutputBackend.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/port/Contract.hpp"
 
@@ -107,16 +106,16 @@ void Device::update(float deltaSeconds) {
 
 // An output that failed after it opened leaves the app without sound, as one that the system refuses while it opens does, until the output opens again.
 void Device::checkFailure() {
-    if (connection == nullptr || setup.backend == nullptr || setup.backend->failure == nullptr) {
+    if (connection == nullptr || !connection->hosted) {
         return;
     }
 
-    const char* reason = setup.backend->failure(&connection->device);
-    if (reason == nullptr) {
+    const std::optional<std::string> reason = connection->hosted->getFailure();
+    if (!reason) {
         return;
     }
 
-    core::Log::warning("The app runs without sound because the audio output is unavailable. {}", reason);
+    core::Log::warning("The app runs without sound because the audio output is unavailable. {}", *reason);
     disconnect();
 }
 
@@ -170,32 +169,33 @@ ma_ios_session_category Device::toSessionCategory(Session::Category category) no
 }
 
 void Device::open(Connection& target, const Mixer::Setup& setup) {
-    const std::optional<std::string_view> refusal = initialize(target, setup);
+    std::optional<std::string> refusal = initialize(target, setup);
     const std::scoped_lock lock(target.mutex);
     target.finished = true;
     target.opened = !refusal;
-    target.refusal = refusal;
+    target.refusal = std::move(refusal);
     if (target.abandoned) {
         close(target);
     }
 }
 
-std::optional<std::string_view> Device::initialize(Connection& target, const Mixer::Setup& setup) {
+std::optional<std::string> Device::initialize(Connection& target, const Mixer::Setup& setup) {
     // Creating the context sets the category of the iOS audio session and activates it, and other platforms ignore the session. Closing a context leaves the session active, because a closing that a restart or an abandoned opening runs late would otherwise silence the output that opened after it, and deactivating blocks the thread that closes.
     ma_context_config contextConfig = ma_context_config_init();
     contextConfig.coreaudio.noAudioSessionDeactivate = MA_TRUE;
     contextConfig.coreaudio.sessionCategory = toSessionCategory(setup.session.category);
     contextConfig.coreaudio.sessionCategoryOptions = setup.session.mixWithOthers ? static_cast<ma_uint32>(ma_ios_session_category_option_mix_with_others) : 0U;
 
-    // A backend that the host gives is the only one the context tries.
+    // The audio output that the host gives is the only one the context tries.
     const ma_backend custom = ma_backend_custom;
-    const bool hosted = setup.backend != nullptr;
+    const bool hosted = setup.output != nullptr;
     if (hosted) {
-        contextConfig.custom.onContextInit = setup.backend->initContext;
+        target.hosted.emplace(setup.output, setup.latency);
+        target.hosted->configure(contextConfig);
     }
 
     if (const ma_result result = ma_context_init(hosted ? &custom : nullptr, hosted ? 1U : 0U, &contextConfig, &target.context); result != MA_SUCCESS) {
-        return hosted ? setup.backend->refusal : ma_result_description(result);
+        return describeRefusal(result);
     }
 
     ma_device_config config = ma_device_config_init(ma_device_type_playback);
@@ -216,14 +216,18 @@ std::optional<std::string_view> Device::initialize(Connection& target, const Mix
     config.aaudio.contentType = ma_aaudio_content_type_sonification;
     if (const ma_result result = ma_device_init(&target.context, &config, &target.device); result != MA_SUCCESS) {
         ma_context_uninit(&target.context);
-        return ma_result_description(result);
+        return hosted && !target.hosted->getRefusal().empty() ? target.hosted->getRefusal() : describeRefusal(result);
     }
 
     return std::nullopt;
 }
 
+std::string Device::describeRefusal(ma_result result) {
+    return std::string("The system refused it with \"") + ma_result_description(result) + "\".";
+}
+
 bool Device::isLocked() const noexcept {
-    return connection != nullptr && setup.backend != nullptr && setup.backend->isLocked != nullptr && setup.backend->isLocked(&connection->device);
+    return connection != nullptr && connection->hosted && connection->hosted->isLocked();
 }
 
 float Device::getLatency() const noexcept {
@@ -267,7 +271,7 @@ void Device::take() {
     const std::shared_ptr<Connection> done = std::exchange(opening, nullptr);
     if (done->refusal) {
         if (warnRefusal && !warnedWaiting) {
-            core::Log::warning("The app runs without sound because the audio output is unavailable: {}.", *done->refusal);
+            core::Log::warning("The app runs without sound because the audio output is unavailable. {}", *done->refusal);
         }
 
         return;

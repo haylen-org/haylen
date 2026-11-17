@@ -198,7 +198,7 @@ The portable engine reaches the platform only through `platform::Host`, declared
 | --- | --- |
 | `getPlatformName()` | The name that the field `platform` of the root `haylen` Lua module reports, such as `macos` or `web`. |
 | `createGpuDevice()` | The `gpu::Device` that draws into the window of the host and which the `graphics::Device` of the engine owns. One exists while an app runs. |
-| `getAudioSetup()` | Whether the `audio::Mixer` opens a device, and the backend that its device plays through where the platform needs one of its own, such as the audio output of the page in browsers. |
+| `getAudioSetup()` | Whether the `audio::Mixer` opens a device, and the `port::AudioOutput` that the platform registered where the audio library of the engine knows no output of the system, such as the output of the page in browsers and the output of a port. |
 | `isFrameTransparent()` | Whether the window composes the alpha of every frame with the desktop. The renderer reads it when it submits a frame. |
 | `getUserDataDirectory(identifier)`, `persistUserData()` | Where `storage::UserStorage` keeps the files of an app, and how the platform makes them durable. |
 | `getSafeAreaInsets()` | The area of the screen that UI must avoid, in framebuffer pixels. |

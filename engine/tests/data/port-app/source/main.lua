@@ -1,4 +1,5 @@
--- The app of the test port: it checks that the platform, the operating system and the graphics API are the ones of the port, that the port refuses to start programs and that Varn takes its external driver of processes, draws a few frames of shapes, sprites and text through the device of the port, which runs the code that the shader tool of the port wrote, and quits with the status 0 when every check passed.
+-- The app of the test port: it checks that the platform, the operating system and the graphics API are the ones of the port, that the port refuses to start programs and that Varn takes its external driver of processes, draws frames of shapes, sprites and text through the device of the port, which runs the code that the shader tool of the port wrote, until its sound plays through the audio output of the port with the latency of that output, and quits with the status 0 when every check passed.
+local audio = require('haylen.audio')
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -33,16 +34,24 @@ if started or not tostring(reason):find('This platform starts no other program, 
     failures = failures + 1
 end
 
+-- The audio output of the test port plays 3 periods of 735 frames at 44100 frames each second, which the mixer reports as its latency.
+local portLatency = 3 * 735 / 44100
 local camera = graphics2d.newCamera()
 local frames = 0
 
 scene.push({
     update = function(self, dt)
         frames = frames + 1
-        if frames == 10 then
-            log.info(string.format('The test port drew %d frames through "%s".', frames, graphics.apiName()))
-            haylen.quit({status = failures == 0 and 0 or 1})
+        if frames < 10 or audio.outputState() ~= 'running' then
+            return
         end
+
+        if math.abs(audio.outputLatency() - portLatency) > 1e-6 then
+            log.error(string.format('The audio output of the test port reports a latency of %f seconds instead of %f.', audio.outputLatency(), portLatency))
+            failures = failures + 1
+        end
+        log.info(string.format('The test port drew %d frames through "%s" and plays its sound.', frames, graphics.apiName()))
+        haylen.quit({status = failures == 0 and 0 or 1})
     end,
     render = function(self)
         graphics2d.beginWorld(camera)

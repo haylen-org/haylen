@@ -31,10 +31,13 @@ namespace haylen::platform {
 class AudioStream;
 }
 
+namespace haylen::port {
+class AudioOutput;
+}
+
 namespace haylen::audio {
 
 struct MixerState;
-struct OutputBackend;
 
 // Mixes sounds through named buses. The `master` bus feeds the output, and `music`, `sfx`, `ui` and `ambience` exist from the start. Every call runs on the frame thread, and calls with a voice that already finished do nothing. Volumes, pans, positions and spatialization settings must be finite, pitches finite and above 0 and fades from 0 to `kMaxFadeSeconds`, or the call throws `std::invalid_argument`.
 class Mixer final {
@@ -68,7 +71,7 @@ class Mixer final {
         RouteChanged,
     };
 
-    // A mixer with a device plays in real time through the audio device of the platform. A mixer without one mixes only when `render` asks, or, when it keeps time, mixes the time of each update into silence, as a device that nobody hears would play it. Hosts give the device a backend of their own where the platform needs one, such as the audio output of the page in browsers.
+    // A mixer with a device plays in real time through the audio device of the platform. A mixer without one mixes only when `render` asks, or, when it keeps time, mixes the time of each update into silence, as a device that nobody hears would play it. Hosts give the device the audio output of their platform where the audio library of the engine knows none of the system, such as the output of the page in browsers or the output of a port.
     struct Setup {
         bool device = true;
         bool keepsTime = false;
@@ -77,7 +80,7 @@ class Mixer final {
         std::size_t maxVoices = 128;
         Session session{};
         OutputSettings::Latency latency = OutputSettings::Latency::Balanced;
-        const OutputBackend* backend = nullptr;
+        std::shared_ptr<port::AudioOutput> output;
     };
 
     // A looping voice repeats the part of its sound between the loop start and the loop end in seconds, the whole sound by default, after it played from its start to the loop end once. A pitch variation picks the pitch of each play at random within pitch plus or minus the variation, so repeated sounds never sound exactly alike. The process mode decides whether the voice plays while the engine is paused, where `Inherit` takes the mode of its bus, and the effects process the voice in order before its bus. When every voice plays, a new one stops the voice of the lowest priority, the quietest among them and then the oldest.

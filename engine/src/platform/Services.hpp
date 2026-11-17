@@ -106,6 +106,9 @@ class Services final {
     [[nodiscard]] static std::optional<SystemFont> findSystemFont(char32_t codePoint);
     [[nodiscard]] static std::vector<std::uint8_t> readSystemFont(const SystemFont& font);
 
+    // The audio output that the platform registered, or null where it registered none.
+    [[nodiscard]] static std::shared_ptr<port::AudioOutput> getAudioOutput();
+
   private:
     // Throws `std::logic_error` before the runtime installed the services, which no runtime of the engine or of a port reaches.
     [[nodiscard]] static const port::Services& getInstalled();

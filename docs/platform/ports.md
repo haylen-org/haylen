@@ -46,7 +46,7 @@ The folder holds a `port.cmake`, which describes the port with one call of `hayl
 
 ```cmake
 haylen_port(
-  CONTRACT 2
+  CONTRACT 3
   PLATFORM console
   SYSTEM_API posix
   THREADS ON
@@ -113,7 +113,7 @@ A port with `SDK ON` installs the SDK of its platform like any other platform, w
 ```json
 {
   "platform": "console",
-  "contract": 2,
+  "contract": 3,
   "capabilities": ["dynamicLibraries"],
   "hostTools": ["port-shaders"],
   "appFunction": "console_add_app",
@@ -161,7 +161,7 @@ A port reaches the engine through the headers of `engine/include/haylen/port/`, 
 | Header | What it gives a port |
 | --- | --- |
 | `Contract.hpp` | `port::Contract`, the version of the contract of ports. |
-| `Host.hpp` | `port::Host`, the window that the port implements: the size and scale of its framebuffer, fullscreen, the title, the cursor, the mouse lock, the clipboard, the text input, closing, whether an app may quit itself, the splash, the halts of the debugger, the controllers, the screen saver, the frame rate, the pixel density cap, the GPU device and the audio setup. |
+| `Host.hpp` | `port::Host`, the window that the port implements: the size and scale of its framebuffer, fullscreen, the title, the cursor, the mouse lock, the clipboard, the text input, closing, whether an app may quit itself, the splash, the halts of the debugger, the controllers, the screen saver, the frame rate, the pixel density cap and the GPU device. |
 | `Player.hpp` | `port::Player`, which installs the services and plays apps for the runtime of the port: `installServices`, `create`, `getGraphicsApis`, `initialize`, `frame`, `handleEvent`, `postEvent`, `cleanup`, `getGpuDevice` and `getExitStatus`. |
 | `Services.hpp` and the services | `port::Services`, the services of the platform by capability, which [the services of a port](#the-services-of-a-port) lists. |
 | `SystemReports.hpp` | `port::SystemReports`, what the system tells the engine from any thread: the theme, the battery, the power saving mode, the time zone, the languages, the accessibility settings, memory warnings, the links that open the app and the actions of the screen reader. |
@@ -201,8 +201,39 @@ Every platform, of the engine or of a port, registers the services of the capabi
 | `AccessibilityService` | The screen reader. | A tree that nobody wants. |
 | `VideoService` | The decoder of video files. | No decoder, so a video fails with the sentence of the video system. |
 | `FontService` | The fonts of the system. | No font of the system. |
+| `AudioOutput` | The output that plays the mix of each app, as [the audio output of a port](#the-audio-output-of-a-port) describes. | A mixer that keeps time without sound, as a device that nobody hears would play. |
 
 The platforms of the engine register their services the same way, so the table is also the map of what each platform offers.
+
+### The audio output of a port
+
+The audio output is the service that plays sound. The engine mixes every voice of an app into blocks of interleaved 32-bit float samples, and a `port::AudioOutput` takes them to the speakers of the console. The mixer calls `open` with the sample rate, the channels and the latency the app asks for. The output answers with a `Playback` that reports its own format: its sample rate, its channels, its period in frames and the periods it keeps ahead of the speakers. The engine converts the mix to that format, and apps read the latency from the periods. The mixer opens the output on a thread of its own, so `open` may wait for the system, and throws `std::runtime_error` with a sentence when the console refuses sound, which the log shows while the app goes on without sound.
+
+The playback reads the mix through the `Stream` it was given, from the one thread it plays on, between `start` and `stop`. That thread is the audio thread of the system, or the run loop of the port on a platform without one, which reads a period after each frame. A playback that stops working later says why through `getFailure`, and one that waits for a gesture of the person before it plays says so through `isLocked`.
+
+```cpp
+class ConsolePlayback final : public port::AudioOutput::Playback {
+  public:
+    explicit ConsolePlayback(port::AudioOutput::Stream& source) : stream(source) {}
+
+    port::AudioOutput::Format getFormat() const noexcept override {
+        return {.sampleRate = 48000, .channels = 2, .periodFrames = 256, .periods = 3};
+    }
+    void start() noexcept override; // The audio thread of the console calls `stream.render` for each period.
+    void stop() noexcept override;
+    bool isLocked() const noexcept override {
+        return false;
+    }
+    std::optional<std::string> getFailure() const override {
+        return std::nullopt;
+    }
+
+  private:
+    port::AudioOutput::Stream& stream;
+};
+```
+
+The test port registers an output whose run loop reads one period after each frame, at a rate and a period of its own, and its app checks that the output plays with the latency of that output.
 
 ## The GPU device
 
@@ -268,7 +299,7 @@ The custom shaders of apps are packages too, which `haylen app shaders` compiles
 
 ## Testing a port
 
-The command `haylen test --port` builds the engine with the test port of `engine/tests/data/port` in `build/engine/<host>-port-<config>` and plays the app of `engine/tests/data/port-app` on it. The test port has the platform `test-port`, a runtime that plays the app without a window, services that answer like a console without plugins, and a device of the API `port` built on `gpu::NullDevice`, which checks every call of the engine against the contract and runs the code that its shader tool wrote. The test port builds the target `port` of Varn with the drivers of the desktop and an external driver of processes of its own, which starts nothing. The app checks the platform, the operating system and the graphics API, that `io.popen` refuses to start a program, since the test port does not allow `processes`, and that the module `process` runs on the external driver, draws shapes, sprites and text, and quits with the status `0`. It needs no SDK, so it builds on the desktops of the public repository and keeps the mechanism working for every port.
+The command `haylen test --port` builds the engine with the test port of `engine/tests/data/port` in `build/engine/<host>-port-<config>` and plays the app of `engine/tests/data/port-app` on it. The test port has the platform `test-port`, a runtime that plays the app without a window, services that answer like a console without plugins, and a device of the API `port` built on `gpu::NullDevice`, which checks every call of the engine against the contract and runs the code that its shader tool wrote. The test port builds the target `port` of Varn with the drivers of the desktop and an external driver of processes of its own, which starts nothing. Its services register an audio output, which its run loop reads after each frame. The app checks the platform, the operating system and the graphics API, that `io.popen` refuses to start a program, since the test port does not allow `processes`, and that the module `process` runs on the external driver. It draws shapes, sprites and text until its sound plays through the output of the port with the latency of that output, and quits with the status `0`. The runtime fails a run that played no sound. It needs no SDK, so it builds on the desktops of the public repository and keeps the mechanism working for every port.
 
 ```sh
 haylen test --port
@@ -348,7 +379,7 @@ Every port, whatever the platform, implements the same parts of the engine:
 | Files | The package that ships with the app, the folder of user data, which `PlatformService::persistUserData` commits where the platform saves on request, and the folder of the content store. |
 | System | The name of the platform, `PlatformService::getSystemInfo` with the device kind, the displays, the safe area of the screen where it has one and the reports of `port::SystemReports`, such as the theme, the battery and the languages. |
 | Lifecycle | The app states `active`, `inactive` and `background`, suspend and resume, and low memory, handed to the player as events. |
-| Audio | The audio setup that `getAudioSetup` of the host returns, with a backend of its own for the mixer where miniaudio has none for the platform. |
+| Audio | The `port::AudioOutput` of the services, which plays the mix of each app on the audio system of the console. |
 | Graphics | A device of the engine named in `GRAPHICS_APIS`, or `port::PortDevice` with the shader command. |
 | Optional services | The services of [the services of a port](#the-services-of-a-port) that the platform has, such as video, accessibility, the media session and the bridge of native plugins, while the engine answers for each one it lacks. |
 | Tooling | The engine port that builds the SDK and the backend that generates, builds, verifies, runs and packages apps. |

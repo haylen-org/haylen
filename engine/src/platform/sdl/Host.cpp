@@ -33,7 +33,6 @@
 #include "platform/apple/AppleOutputs.hpp"
 #include "platform/apple/AppleSplash.hpp"
 #elif defined(__EMSCRIPTEN__)
-#include "platform/web/BrowserAudioOutput.hpp"
 #include "platform/web/WebOutputs.hpp"
 #include "platform/web/WebPage.hpp"
 #include "platform/web/WebTextInput.hpp"
@@ -340,13 +339,9 @@ bool Host::allowsQuit() const noexcept {
 #endif
 }
 
-// The page plays the mixed audio through its own output, the only backend miniaudio has in browsers.
+// The mixer plays through the audio output that the platform registered, such as the output of the page in browsers, and through the output of the system that the audio library of the engine knows everywhere else.
 audio::Mixer::Setup Host::getAudioSetup() const {
-#if defined(__EMSCRIPTEN__)
-    return {.device = true, .backend = &audio::BrowserAudioOutput::kBackend};
-#else
-    return {.device = true};
-#endif
+    return {.device = true, .output = Services::getAudioOutput()};
 }
 
 std::unique_ptr<gpu::Device> Host::createGpuDevice() {

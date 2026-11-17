@@ -12,8 +12,9 @@
 namespace haylen::platform {
 
 int TestPortRuntime::run(int argc, char* argv[]) {
-    port::Player::installServices(TestPortServices::create(std::filesystem::absolute(argv[0]).parent_path()));
-    TestPortRuntime runtime;
+    const auto audio = std::make_shared<TestPortAudioOutput>();
+    port::Player::installServices(TestPortServices::create(std::filesystem::absolute(argv[0]).parent_path(), audio));
+    TestPortRuntime runtime(audio);
     port::Player::create(argc, argv, std::make_unique<TestPortHost>(runtime));
     return runtime.play();
 }
@@ -50,7 +51,7 @@ bool TestPortRuntime::openWindow() {
     return false;
 }
 
-// The app plays one frame at a time until it quits, and an app that never quits fails the run.
+// The app plays one frame at a time until it quits, and an app that never quits fails the run, as one that plays no sound through the output of the port does.
 int TestPortRuntime::play() {
     if (!openWindow()) {
         return 1;
@@ -67,6 +68,7 @@ int TestPortRuntime::play() {
         }
 
         port::Player::frame(kFrameSeconds);
+        audio->play();
         ++frames;
     }
 
@@ -77,6 +79,12 @@ int TestPortRuntime::play() {
         return 1;
     }
 
+    if (audio->getPlayedFrames() == 0) {
+        core::Log::error("The app played no sound through the audio output of the test port.");
+        return 1;
+    }
+
+    core::Log::info("The test port played {} frames of sound through its audio output.", audio->getPlayedFrames());
     return port::Player::getExitStatus();
 }
 

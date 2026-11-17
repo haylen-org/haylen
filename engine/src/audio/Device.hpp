@@ -6,15 +6,16 @@
 #include <memory>
 #include <mutex>
 #include <optional>
-#include <string_view>
+#include <string>
 #include <vector>
 
+#include "audio/HostedOutput.hpp"
 #include "haylen/audio/Mixer.hpp"
 #include "haylen/audio/Session.hpp"
 
 namespace haylen::audio {
 
-// The audio context and playback device of a mixer, or no device at all for a mixer that renders on demand. The output runs while it is neither suspended nor interrupted. The device plays with the game usage of AAudio on Android, the session category of the setup on iOS and tvOS and the backend the host gives it, such as the `AudioWorklet` output of the page in browsers, and its notifications wait in a queue that the frame thread takes.
+// The audio context and playback device of a mixer, or no device at all for a mixer that renders on demand. The output runs while it is neither suspended nor interrupted. The device plays with the game usage of AAudio on Android, the session category of the setup on iOS and tvOS and the audio output the host gives it, such as the `AudioWorklet` output of the page in browsers or the output of a port, and its notifications wait in a queue that the frame thread takes.
 // The system may take long to open a device, or never answer, such as an iOS simulator whose audio service hangs, so the device opens on a thread of its own and the frame thread takes the result in `update`, while the mixer goes on without sound. Browsers have no threads, and the output of the page opens at once. A device that the system refuses, or that does not answer within `kAnswerSeconds`, leaves the output unavailable, and the log warns once.
 class Device final {
   public:
@@ -77,7 +78,7 @@ class Device final {
         return running && (setup.device ? !started : setup.keepsTime);
     }
 
-    // Whether the output that runs waits for the user before it plays, as the backend of the host reports.
+    // Whether the output that runs waits for the user before it plays, as the audio output of the host reports.
     [[nodiscard]] bool isLocked() const noexcept;
     [[nodiscard]] bool isSuspended() const noexcept {
         return suspended || interrupted;
@@ -98,7 +99,7 @@ class Device final {
         std::vector<Mixer::DeviceEvent> events;
     };
 
-    // One opening of the context and the device. The thread that opens them shares it with the device until it finished, and an opening that the device gave up closes on that thread once the system answers.
+    // One opening of the context and the device, through the audio output of the host where it gives one. The thread that opens them shares it with the device until it finished, and an opening that the device gave up closes on that thread once the system answers.
     struct Connection {
         std::shared_ptr<Shared> shared;
         ma_context context{};
@@ -107,7 +108,8 @@ class Device final {
         bool finished = false;
         bool abandoned = false;
         bool opened = false;
-        std::optional<std::string_view> refusal;
+        std::optional<HostedOutput> hosted;
+        std::optional<std::string> refusal;
     };
 
     static void onData(ma_device* playback, void* output, const void* input, ma_uint32 frames);
@@ -116,7 +118,8 @@ class Device final {
 
     // Opens the context and the device of the connection, and closes them at once when the device gave the opening up meanwhile.
     static void open(Connection& target, const Mixer::Setup& setup);
-    [[nodiscard]] static std::optional<std::string_view> initialize(Connection& target, const Mixer::Setup& setup);
+    [[nodiscard]] static std::optional<std::string> initialize(Connection& target, const Mixer::Setup& setup);
+    [[nodiscard]] static std::string describeRefusal(ma_result result);
     static void close(Connection& target) noexcept;
 
     // Starts an opening, whose refusal the log writes when `warn` is true.

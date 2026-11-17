@@ -20,6 +20,7 @@
 #include "haylen/input/Input.hpp"
 #include "haylen/math/Insets.hpp"
 #include "haylen/platform/PixelDensityCap.hpp"
+#include "haylen/port/AudioOutput.hpp"
 #include "platform/DevelopmentSession.hpp"
 #include "platform/Host.hpp"
 #include "platform/NativeViews.hpp"
@@ -299,14 +300,14 @@ class HeadlessHost final : public Host {
     void setGpuDeviceMaker(std::function<std::unique_ptr<gpu::Device>()> maker) {
         gpuDeviceMaker = std::move(maker);
     }
-    // Without an output backend the mixer has no device and mixes only when a test asks it to.
+    // Without an audio output the mixer has no device and mixes only when a test asks it to.
     [[nodiscard]] audio::Mixer::Setup getAudioSetup() const override {
-        return {.device = audioOutput != nullptr, .keepsTime = true, .backend = audioOutput};
+        return {.device = audioOutput != nullptr, .keepsTime = true, .output = audioOutput};
     }
 
-    // Gives the mixers of the engines created afterwards a device that opens through the backend, which simulates an audio output that plays, refuses or never answers.
-    void setAudioOutput(const audio::OutputBackend* value) noexcept {
-        audioOutput = value;
+    // Gives the mixers of the engines created afterwards a device that opens through the audio output, which simulates an output that plays, refuses or never answers.
+    void setAudioOutput(std::shared_ptr<port::AudioOutput> value) noexcept {
+        audioOutput = std::move(value);
     }
     [[nodiscard]] bool isFrameTransparent() const noexcept override;
     [[nodiscard]] std::filesystem::path getUserDataDirectory(std::string_view identifier) override;
@@ -779,7 +780,7 @@ class HeadlessHost final : public Host {
     bool launched = false;
     bool nativeAccess = true;
     bool backHeld = false;
-    const audio::OutputBackend* audioOutput = nullptr;
+    std::shared_ptr<port::AudioOutput> audioOutput;
     Permission::Answer clipboardAnswer{.state = Permission::State::Granted};
 
     // The headless desktop is one 1920 by 1080 display at 60 frames per second whose work area leaves a 40 point taskbar at the bottom, with the window at the top left corner of it.

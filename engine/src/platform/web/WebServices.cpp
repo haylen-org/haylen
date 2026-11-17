@@ -18,6 +18,7 @@
 #include "haylen/core/Log.hpp"
 #include "haylen/io/Package.hpp"
 #include "platform/NativeWindow.hpp"
+#include "platform/web/BrowserAudioOutput.hpp"
 #include "platform/web/WebDisplays.hpp"
 #include "platform/web/WebPage.hpp"
 #include "platform/web/WebStoreFiles.hpp"
@@ -123,7 +124,7 @@ namespace haylen::platform {
 
 port::Services WebServices::create() {
     const auto services = std::make_shared<WebServices>();
-    return {.platform = services, .displays = services, .screen = services, .bridge = services, .permissions = services, .media = services, .accessibility = services, .video = services};
+    return {.platform = services, .displays = services, .screen = services, .bridge = services, .permissions = services, .media = services, .accessibility = services, .video = services, .audio = std::make_shared<audio::BrowserAudioOutput>()};
 }
 
 std::string_view WebServices::getName() const noexcept {

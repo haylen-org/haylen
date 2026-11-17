@@ -310,4 +310,8 @@ std::vector<std::uint8_t> Services::readSystemFont(const SystemFont& font) {
     return fonts->readSystemFont(font);
 }
 
+std::shared_ptr<port::AudioOutput> Services::getAudioOutput() {
+    return getInstalled().audio;
+}
+
 } // namespace haylen::platform

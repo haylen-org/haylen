@@ -7,9 +7,9 @@
 
 namespace haylen::platform {
 
-port::Services TestPortServices::create(std::filesystem::path executableFolder) {
+port::Services TestPortServices::create(std::filesystem::path executableFolder, std::shared_ptr<port::AudioOutput> audio) {
     const auto services = std::make_shared<TestPortServices>(std::move(executableFolder));
-    return {.platform = services, .displays = services};
+    return {.platform = services, .displays = services, .audio = std::move(audio)};
 }
 
 std::string_view TestPortServices::getName() const noexcept {

@@ -75,11 +75,6 @@ std::unique_ptr<gpu::Device> TestPortHost::createGpuDevice() {
     return runtime.createDevice();
 }
 
-// The test port has no sound device, so its mixer plays into none.
-audio::Mixer::Setup TestPortHost::getAudioSetup() const {
-    return {.device = false};
-}
-
 void TestPortHost::requestClose() {
     runtime.requestClose();
 }

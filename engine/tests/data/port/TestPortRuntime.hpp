@@ -2,13 +2,15 @@
 
 #include <filesystem>
 #include <memory>
+#include <utility>
 
+#include "TestPortAudioOutput.hpp"
 #include "TestPortWindow.hpp"
 #include "haylen/gpu/Device.hpp"
 
 namespace haylen::platform {
 
-// The runtime of the test port, which holds the entry point, installs the services of the port, plays the app that the command line names, or the one that `haylen_add_app` built for the port, on the device of the first graphics API that starts, and ends with the status the app quit with.
+// The runtime of the test port, which holds the entry point, installs the services of the port with its audio output, plays the app that the command line names, or the one that `haylen_add_app` built for the port, on the device of the first graphics API that starts, reads a period of its sound after each frame, and ends with the status the app quit with, or fails when the app played no sound through the output of the port.
 class TestPortRuntime final {
   public:
     // The frames an app has to quit within, after which the run fails.
@@ -37,9 +39,12 @@ class TestPortRuntime final {
     }
 
   private:
+    explicit TestPortRuntime(std::shared_ptr<TestPortAudioOutput> output) noexcept : audio(std::move(output)) {}
+
     [[nodiscard]] bool openWindow();
     [[nodiscard]] int play();
 
+    std::shared_ptr<TestPortAudioOutput> audio;
     TestPortWindow window;
     gpu::Device::Api api = gpu::Device::Api::None;
     std::unique_ptr<gpu::Device> openedDevice;

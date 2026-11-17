@@ -34,7 +34,6 @@ class TestPortHost final : public port::Host {
     [[nodiscard]] TextInput& getTextInput() noexcept override;
     [[nodiscard]] bool prepareGpuDevice() override;
     [[nodiscard]] std::unique_ptr<gpu::Device> createGpuDevice() override;
-    [[nodiscard]] audio::Mixer::Setup getAudioSetup() const override;
     void requestClose() override;
     void close() override;
     [[nodiscard]] bool canQuit() const noexcept override;

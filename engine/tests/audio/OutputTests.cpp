@@ -1,5 +1,4 @@
 #include <gtest/gtest.h>
-#include <miniaudio.h>
 
 #include <algorithm>
 #include <atomic>
@@ -10,7 +9,10 @@
 #include <fstream>
 #include <functional>
 #include <iterator>
+#include <memory>
 #include <mutex>
+#include <optional>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -20,21 +22,67 @@
 
 #include "audio/Device.hpp"
 #include "audio/MixerFixture.hpp"
-#include "audio/OutputBackend.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/platform/Event.hpp"
+#include "haylen/port/AudioOutput.hpp"
 #include "io/MemoryReader.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::audio {
 
-// Plays through a backend that refuses the audio until a test lets it through, the way a browser without `AudioWorklet` or an iOS audio session that another app holds refuses it, and that a test can keep waiting the way an audio service that hangs does. The device it opens never asks for samples.
+// Plays through an audio output that refuses the audio until a test lets it through, the way a browser without `AudioWorklet` or an iOS audio session that another app holds refuses it, and that a test can keep waiting the way an audio service that hangs does. Its playback never reads the mix, waits for the person while the test locks it and stops working when the test fails it.
 class AudioOutputTest : public MixerFixture {
   protected:
     static constexpr float kFrameSeconds = 1.0F / 60.0F;
 
+    class TestPlayback final : public port::AudioOutput::Playback {
+      public:
+        explicit TestPlayback(const port::AudioOutput::Request& request) noexcept : format{.sampleRate = request.sampleRate, .channels = request.channels, .periodFrames = 256, .periods = 2} {}
+
+        ~TestPlayback() override {
+            ++closedDevices;
+        }
+
+        TestPlayback(const TestPlayback&) = delete;
+        TestPlayback& operator=(const TestPlayback&) = delete;
+
+        [[nodiscard]] port::AudioOutput::Format getFormat() const noexcept override {
+            return format;
+        }
+
+        void start() noexcept override {}
+        void stop() noexcept override {}
+
+        [[nodiscard]] bool isLocked() const noexcept override {
+            return locked;
+        }
+
+        [[nodiscard]] std::optional<std::string> getFailure() const override {
+            return failing ? std::optional<std::string>("The test refused the context after the output opened.") : std::nullopt;
+        }
+
+      private:
+        port::AudioOutput::Format format;
+    };
+
+    class TestOutput final : public port::AudioOutput {
+      public:
+        [[nodiscard]] std::unique_ptr<Playback> open(const Request& request, Stream&) override {
+            {
+                std::unique_lock lock(gateMutex);
+                gate.wait(lock, [] { return answering; });
+            }
+            if (!accepting) {
+                throw std::runtime_error("The test refuses the audio.");
+            }
+
+            return std::make_unique<TestPlayback>(request);
+        }
+    };
+
     void SetUp() override {
         accepting = false;
+        locked = false;
         failing = false;
         answering = true;
         closedDevices = 0;
@@ -49,39 +97,6 @@ class AudioOutputTest : public MixerFixture {
     void TearDown() override {
         answer();
         core::Log::removeListener(listener);
-    }
-
-    static ma_result initContext(ma_context*, const ma_context_config*, ma_backend_callbacks* callbacks) {
-        {
-            std::unique_lock lock(gateMutex);
-            gate.wait(lock, [] { return answering; });
-        }
-        if (!accepting) {
-            return MA_FAILED_TO_INIT_BACKEND;
-        }
-
-        callbacks->onDeviceInit = &initDevice;
-        callbacks->onDeviceUninit = &uninitDevice;
-        callbacks->onDeviceStart = &ignore;
-        callbacks->onDeviceStop = &ignore;
-        return MA_SUCCESS;
-    }
-
-    static ma_result initDevice(ma_device*, const ma_device_config*, ma_device_descriptor* playback, ma_device_descriptor*) {
-        playback->format = ma_format_f32;
-        ma_channel_map_init_standard(ma_standard_channel_map_default, playback->channelMap, MA_MAX_CHANNELS, playback->channels);
-        playback->periodSizeInFrames = 256;
-        playback->periodCount = 2;
-        return MA_SUCCESS;
-    }
-
-    static ma_result uninitDevice(ma_device*) {
-        ++closedDevices;
-        return MA_SUCCESS;
-    }
-
-    static ma_result ignore(ma_device*) {
-        return MA_SUCCESS;
     }
 
     // Keeps every opening waiting until `answer`, the way an audio service that hangs keeps the system from answering.
@@ -144,14 +159,6 @@ class AudioOutputTest : public MixerFixture {
         return getLines(core::Log::Level::Warning);
     }
 
-    static bool isLocked(ma_device*) {
-        return locked;
-    }
-
-    static const char* getFailure(ma_device*) {
-        return failing ? "The test refused the context after the output opened." : nullptr;
-    }
-
     static inline std::atomic<bool> accepting = false;
     static inline std::atomic<bool> locked = false;
     static inline std::atomic<bool> failing = false;
@@ -159,9 +166,8 @@ class AudioOutputTest : public MixerFixture {
     static inline std::mutex gateMutex;
     static inline std::condition_variable gate;
     static inline std::atomic<int> closedDevices = 0;
-    static constexpr OutputBackend kBackend{.initContext = &initContext, .refusal = "the test refuses the audio"};
-    static constexpr OutputBackend kLockingBackend{.initContext = &initContext, .refusal = "the test refuses the audio", .isLocked = &isLocked};
-    static constexpr OutputBackend kFailingBackend{.initContext = &initContext, .refusal = "the test refuses the audio", .failure = &getFailure};
+
+    std::shared_ptr<port::AudioOutput> testOutput = std::make_shared<TestOutput>();
 
     std::mutex linesMutex;
     std::vector<std::pair<core::Log::Level, std::string>> lines;
@@ -169,12 +175,12 @@ class AudioOutputTest : public MixerFixture {
 };
 
 TEST_F(AudioOutputTest, KeepsTimeWithoutSoundWhileTheSystemRefusesTheOutput) {
-    Mixer refused({.device = true, .sampleRate = kRate, .channels = 2, .backend = &kBackend}, jobs);
+    Mixer refused({.device = true, .sampleRate = kRate, .channels = 2, .output = testOutput}, jobs);
     EXPECT_TRUE(refused.hasDevice());
     ASSERT_TRUE(settle(refused));
     EXPECT_FALSE(refused.isOutputAvailable());
     ASSERT_EQ(getWarnings().size(), 1U);
-    EXPECT_NE(getWarnings().front().find("the test refuses the audio"), std::string::npos);
+    EXPECT_NE(getWarnings().front().find("The test refuses the audio."), std::string::npos);
     std::vector<float> samples(64);
     EXPECT_THROW(refused.render(samples), std::logic_error);
 
@@ -215,7 +221,7 @@ TEST_F(AudioOutputTest, KeepsTimeWithoutSoundWhileTheSystemRefusesTheOutput) {
 
 TEST_F(AudioOutputTest, FallsSilentWhenTheOutputFailsAfterItOpened) {
     accepting = true;
-    Mixer output({.device = true, .sampleRate = kRate, .channels = 2, .backend = &kFailingBackend}, jobs);
+    Mixer output({.device = true, .sampleRate = kRate, .channels = 2, .output = testOutput}, jobs);
     ASSERT_TRUE(settle(output));
     output.update(kFrameSeconds);
     EXPECT_EQ(output.getOutputState(), Mixer::OutputState::Running);
@@ -240,7 +246,7 @@ TEST_F(AudioOutputTest, FallsSilentWhenTheOutputFailsAfterItOpened) {
 TEST_F(AudioOutputTest, ReportsTheStateAndTheLatencyOfTheOutput) {
     accepting = true;
     locked = true;
-    Mixer output({.device = true, .sampleRate = kRate, .channels = 2, .backend = &kLockingBackend}, jobs);
+    Mixer output({.device = true, .sampleRate = kRate, .channels = 2, .output = testOutput}, jobs);
     ASSERT_TRUE(settle(output));
     EXPECT_EQ(output.getOutputState(), Mixer::OutputState::Locked);
     EXPECT_NEAR(output.getOutputLatency(), 512.0F / static_cast<float>(kRate), 1e-6F);
@@ -256,7 +262,7 @@ TEST_F(AudioOutputTest, ReportsTheStateAndTheLatencyOfTheOutput) {
 
 TEST_F(AudioOutputTest, PlaysInTheBackgroundOnlyForAnAppThatDeclaresIt) {
     accepting = true;
-    test::EngineFixture fixture({{"haylen.json", R"({"name": "Night Radio", "identifier": "com.haylen.radio", "audio": {"iosSession": "playback", "background": true}})"}}, nullptr, {.audioOutput = &kBackend});
+    test::EngineFixture fixture({{"haylen.json", R"({"name": "Night Radio", "identifier": "com.haylen.radio", "audio": {"iosSession": "playback", "background": true}})"}}, nullptr, {.audioOutput = testOutput});
     EXPECT_TRUE(fixture.host().isBackgroundAudio());
     ASSERT_TRUE(fixture.frameUntil([&fixture] { return !fixture.engine().getAudio().isOutputOpening(); }));
     Mixer& radio = fixture.engine().getAudio();
@@ -300,7 +306,7 @@ TEST_F(AudioOutputTest, PlaysInTheBackgroundOnlyForAnAppThatDeclaresIt) {
 TEST_F(AudioOutputTest, PublishesTheUnlockOfTheOutput) {
     accepting = true;
     locked = true;
-    test::EngineFixture fixture({}, nullptr, {.audioOutput = &kLockingBackend});
+    test::EngineFixture fixture({}, nullptr, {.audioOutput = testOutput});
     fixture.runLua("audio = require('haylen.audio') unlocked = 0 require('haylen.events').on('audioUnlocked', function() unlocked = unlocked + 1 end)");
     ASSERT_TRUE(fixture.frameUntil([&fixture] { return !fixture.engine().getAudio().isOutputOpening(); }));
     fixture.frames(1);
@@ -311,7 +317,7 @@ TEST_F(AudioOutputTest, PublishesTheUnlockOfTheOutput) {
 }
 
 TEST_F(AudioOutputTest, OpensTheOutputOnceTheSystemOffersIt) {
-    Mixer recovering({.device = true, .sampleRate = kRate, .channels = 2, .backend = &kBackend}, jobs);
+    Mixer recovering({.device = true, .sampleRate = kRate, .channels = 2, .output = testOutput}, jobs);
     const Mixer::VoiceId voice = recovering.play(makeTone(toFrames(0.25F)));
     ASSERT_TRUE(settle(recovering));
     play(recovering, 0.1F);
@@ -343,7 +349,7 @@ TEST_F(AudioOutputTest, KeepsPlayingWhileTheOutputDoesNotAnswer) {
     accepting = true;
     hang();
     const auto before = std::chrono::steady_clock::now();
-    Mixer waiting({.device = true, .sampleRate = kRate, .channels = 2, .backend = &kBackend}, jobs);
+    Mixer waiting({.device = true, .sampleRate = kRate, .channels = 2, .output = testOutput}, jobs);
     EXPECT_LT(std::chrono::steady_clock::now() - before, std::chrono::seconds(1));
     EXPECT_TRUE(waiting.isOutputOpening());
     EXPECT_FALSE(waiting.isOutputAvailable());
@@ -376,7 +382,7 @@ TEST_F(AudioOutputTest, ClosesAnOpeningThatOutlivesItsMixer) {
     accepting = true;
     hang();
     {
-        Mixer gone({.device = true, .sampleRate = kRate, .channels = 2, .backend = &kBackend}, jobs);
+        Mixer gone({.device = true, .sampleRate = kRate, .channels = 2, .output = testOutput}, jobs);
         EXPECT_TRUE(gone.isOutputOpening());
     }
 
@@ -388,7 +394,7 @@ TEST_F(AudioOutputTest, ClosesAnOpeningThatOutlivesItsMixer) {
 TEST_F(AudioOutputTest, RunsAnAppWhoseOutputDoesNotAnswer) {
     accepting = true;
     hang();
-    test::EngineFixture fixture({{"source/main.lua", "frames = 0 require('haylen.scene').push({update = function() frames = frames + 1 end})"}}, nullptr, {.audioOutput = &kBackend});
+    test::EngineFixture fixture({{"source/main.lua", "frames = 0 require('haylen.scene').push({update = function() frames = frames + 1 end})"}}, nullptr, {.audioOutput = testOutput});
     EXPECT_EQ(fixture.lua("return require('haylen.audio').hasDevice()"), "true");
     EXPECT_EQ(fixture.lua("return require('haylen.audio').outputOpening()"), "true");
 
@@ -404,7 +410,7 @@ TEST_F(AudioOutputTest, RunsAnAppWhoseOutputDoesNotAnswer) {
 
 TEST_F(AudioOutputTest, OpensTheOutputAgainWhenTheSystemResetsItsServices) {
     accepting = true;
-    test::EngineFixture fixture({}, nullptr, {.audioOutput = &kBackend});
+    test::EngineFixture fixture({}, nullptr, {.audioOutput = testOutput});
     ASSERT_TRUE(fixture.frameUntil([&fixture] { return fixture.lua("return require('haylen.audio').outputAvailable()") == "true"; }));
     const int closed = closedDevices;
     fixture.engine().handleEvent({.type = platform::Event::Type::AudioServicesReset});
@@ -416,52 +422,148 @@ TEST_F(AudioOutputTest, OpensTheOutputAgainWhenTheSystemResetsItsServices) {
     EXPECT_TRUE(fixture.frameUntil([&fixture] { return fixture.lua("return require('haylen.audio').outputAvailable()") == "true"; }));
 }
 
-// Plays through a backend whose device asks for samples on a thread of its own, the way the audio thread of a platform does, so the tests see what the frame thread may touch while the device reads.
-class PulledOutputTest : public MixerFixture {
+// Reads the mix in the format of an output that plays mono at another rate, whenever the test asks, as a port that plays from its own loop does.
+class FormattedOutputTest : public MixerFixture {
   protected:
-    static ma_result initContext(ma_context*, const ma_context_config*, ma_backend_callbacks* callbacks) {
-        callbacks->onDeviceInit = &initDevice;
-        callbacks->onDeviceUninit = &ignore;
-        callbacks->onDeviceStart = &ignore;
-        callbacks->onDeviceStop = &ignore;
-        callbacks->onDeviceDataLoop = &pull;
-        callbacks->onDeviceDataLoopWakeup = &ignore;
-        return MA_SUCCESS;
-    }
+    class FormattedPlayback final : public port::AudioOutput::Playback {
+      public:
+        explicit FormattedPlayback(port::AudioOutput::Stream& source) noexcept : stream(source) {}
 
-    static ma_result initDevice(ma_device*, const ma_device_config*, ma_device_descriptor* playback, ma_device_descriptor*) {
-        playback->format = ma_format_f32;
-        ma_channel_map_init_standard(ma_standard_channel_map_default, playback->channelMap, MA_MAX_CHANNELS, playback->channels);
-        playback->periodSizeInFrames = kPeriod;
-        playback->periodCount = 2;
-        return MA_SUCCESS;
-    }
+        FormattedPlayback(const FormattedPlayback&) = delete;
+        FormattedPlayback& operator=(const FormattedPlayback&) = delete;
 
-    static ma_result ignore(ma_device*) {
-        return MA_SUCCESS;
-    }
-
-    static ma_result pull(ma_device* device) {
-        std::vector<float> samples(static_cast<std::size_t>(kPeriod) * 2);
-        while (ma_device_get_state(device) == ma_device_state_started) {
-            ma_device_handle_backend_data_callback(device, samples.data(), nullptr, kPeriod);
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        [[nodiscard]] port::AudioOutput::Format getFormat() const noexcept override {
+            return {.sampleRate = 44100, .channels = 1, .periodFrames = 441, .periods = 4};
         }
 
-        return MA_SUCCESS;
+        void start() noexcept override {
+            started = true;
+        }
+
+        void stop() noexcept override {
+            started = false;
+        }
+
+        [[nodiscard]] bool isLocked() const noexcept override {
+            return false;
+        }
+
+        [[nodiscard]] std::optional<std::string> getFailure() const override {
+            return std::nullopt;
+        }
+
+        port::AudioOutput::Stream& stream;
+        bool started = false;
+    };
+
+    class FormattedOutput final : public port::AudioOutput {
+      public:
+        [[nodiscard]] std::unique_ptr<Playback> open(const Request& request, Stream& stream) override {
+            EXPECT_EQ(request.sampleRate, kRate);
+            EXPECT_EQ(request.channels, 2U);
+            auto opened = std::make_unique<FormattedPlayback>(stream);
+            playback = opened.get();
+            return opened;
+        }
+
+        FormattedPlayback* playback = nullptr;
+    };
+
+    std::shared_ptr<FormattedOutput> output = std::make_shared<FormattedOutput>();
+};
+
+TEST_F(FormattedOutputTest, PlaysTheMixInTheFormatOfTheOutput) {
+    Mixer formatted({.device = true, .sampleRate = kRate, .channels = 2, .output = output}, jobs);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    while (formatted.isOutputOpening() && std::chrono::steady_clock::now() < deadline) {
+        formatted.update(0.0F);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
+
+    ASSERT_TRUE(formatted.isOutputAvailable());
+    ASSERT_NE(output->playback, nullptr);
+    EXPECT_TRUE(output->playback->started);
+    EXPECT_NEAR(formatted.getOutputLatency(), 0.04F, 1e-6F);
+
+    // The output reads one sample for each frame of its own format, which the mixer converts the tone to.
+    formatted.play(makeTone(toFrames(1.0F)));
+    std::vector<float> samples(441);
+    output->playback->stream.render(samples);
+    EXPECT_GT(*std::ranges::max_element(samples), 0.1F);
+}
+
+// Plays through an audio output whose playback reads the mix on a thread of its own, the way the audio thread of a platform does, so the tests see what the frame thread may touch while the output reads.
+class PulledOutputTest : public MixerFixture {
+  protected:
+    class PulledPlayback final : public port::AudioOutput::Playback {
+      public:
+        PulledPlayback(const port::AudioOutput::Request& request, port::AudioOutput::Stream& source) noexcept : format{.sampleRate = request.sampleRate, .channels = request.channels, .periodFrames = kPeriod, .periods = 2}, stream(source) {}
+
+        ~PulledPlayback() override {
+            stop();
+        }
+
+        PulledPlayback(const PulledPlayback&) = delete;
+        PulledPlayback& operator=(const PulledPlayback&) = delete;
+
+        [[nodiscard]] port::AudioOutput::Format getFormat() const noexcept override {
+            return format;
+        }
+
+        void start() noexcept override {
+            running = true;
+            reader = std::thread([this] { pull(); });
+        }
+
+        void stop() noexcept override {
+            running = false;
+            if (reader.joinable()) {
+                reader.join();
+            }
+        }
+
+        [[nodiscard]] bool isLocked() const noexcept override {
+            return false;
+        }
+
+        [[nodiscard]] std::optional<std::string> getFailure() const override {
+            return std::nullopt;
+        }
+
+      private:
+        void pull() {
+            std::vector<float> samples(static_cast<std::size_t>(kPeriod) * format.channels);
+            while (running) {
+                stream.render(samples);
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+        }
+
+        port::AudioOutput::Format format;
+        port::AudioOutput::Stream& stream;
+        std::atomic<bool> running = false;
+        std::thread reader;
+    };
+
+    class PulledOutput final : public port::AudioOutput {
+      public:
+        [[nodiscard]] std::unique_ptr<Playback> open(const Request& request, Stream& stream) override {
+            return std::make_unique<PulledPlayback>(request, stream);
+        }
+    };
 
     [[nodiscard]] static std::vector<std::uint8_t> readFile(const std::string& name) {
         std::ifstream file(std::string(HAYLEN_TEST_AUDIO) + "/" + name, std::ios::binary);
         return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
     }
 
-    static constexpr ma_uint32 kPeriod = 256;
-    static constexpr OutputBackend kBackend{.initContext = &initContext, .refusal = "the test refuses the audio"};
+    static constexpr std::uint32_t kPeriod = 256;
+
+    std::shared_ptr<port::AudioOutput> output = std::make_shared<PulledOutput>();
 };
 
 TEST_F(PulledOutputTest, MovesTheCursorOfStreamedVoicesWhileTheDeviceReadsThem) {
-    Mixer pulled({.device = true, .sampleRate = kRate, .channels = 2, .backend = &kBackend}, jobs);
+    Mixer pulled({.device = true, .sampleRate = kRate, .channels = 2, .output = output}, jobs);
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
     while (pulled.isOutputOpening() && std::chrono::steady_clock::now() < deadline) {
         pulled.update(0.0F);

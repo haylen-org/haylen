@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "haylen/port/AccessibilityService.hpp"
+#include "haylen/port/AudioOutput.hpp"
 #include "haylen/port/BridgeService.hpp"
 #include "haylen/port/DesktopService.hpp"
 #include "haylen/port/DisplayService.hpp"
@@ -31,6 +32,7 @@ struct Services {
     std::shared_ptr<AccessibilityService> accessibility;
     std::shared_ptr<VideoService> video;
     std::shared_ptr<FontService> fonts;
+    std::shared_ptr<AudioOutput> audio;
 };
 
 } // namespace haylen::port
