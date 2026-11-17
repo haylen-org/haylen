@@ -106,6 +106,10 @@ cmake -S path/to/haylen -B build/console -DHAYLEN_PORT_DIR=path/to/haylen-consol
 cmake --build build/console --target haylen
 ```
 
+### The event loop of a port
+
+Varn runs the promises, timers and callbacks of an app on its event loop. The engine polls that loop once per frame within a budget, so the loop never waits on the system inside a frame, and every port drives it from its own run loop through `port::Player::frame`. A port with `THREADS ON` builds the loop of libuv, which the toolchain of the port must build, and the worker pools of Varn run the jobs of the engine on threads. A platform that libuv does not build for sets `THREADS OFF` and gets the `PUMP` loop, which needs nothing of the system. The frames pump it, its worker pools run their jobs inside the pump, as on the web, and the network drivers of the port are external drivers that complete their work through `varn::runtime::HostWork` or post it to the loop. So no port needs an event loop of its own. The cost is that a platform without libuv runs the jobs, the physics and the opening of the audio output on the thread of the frames.
+
 ### The SDK of a port
 
 A port with `SDK ON` installs the SDK of its platform like any other platform, with `-DHAYLEN_BUILD_SDK=ON` and `cmake --install <build> --component haylen-sdk`. The SDK records the port in `share/haylen/haylen-port.json`, installs its host tools in `bin/` and its `APP_MODULE` in `share/haylen/cmake/port/`, and its package config sets `HAYLEN_PORT_PLATFORM`, `HAYLEN_PORT_CAPABILITIES` and `HAYLEN_PORT_APP_FUNCTION` and includes the module, so `haylen_add_app` builds the apps of the port from the SDK alone.
@@ -386,6 +390,6 @@ Every port, whatever the platform, implements the same parts of the engine:
 
 ## Limits
 
-- Every dependency of the engine must build with the toolchain of the console, such as Varn with Lua and libuv, Poco with its TLS stack, SDL where the port uses it, and the libraries of fonts, images and audio. A dependency that needs a change for a console gets it in the private repository of the port, through a patch of its own.
+- Every dependency of the engine must build with the toolchain of the console, such as Varn with Lua, libuv for a port with threads, Poco with its TLS stack, SDL where the port uses it, and the libraries of fonts, images and audio. A dependency that needs a change for a console gets it in the private repository of the port, through a patch of its own.
 - Native plugins have parts for the platforms they list in `implementations`, so a plugin that a console app uses gets its console part in a private repository too, and a plugin that does not list the platform of the port fails the build of that platform.
 - The backends of the repository build apps for the platforms of the repository. Apps of a port build, run and pack only through the backend of the port, with the tools of the SDK of its console.
