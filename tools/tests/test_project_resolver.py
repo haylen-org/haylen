@@ -176,7 +176,7 @@ class ProjectResolverTest:
         assert merged[0].fields["products"] == ("Core", "Ads", "Analytics")
         assert merged[0].fields["version"] == "2.0"
 
-    def test_one_owner_of_an_exclusive_type(self, tmp_path):
+    def test_refuses_a_second_owner_of_an_exclusive_type(self, tmp_path):
         fixture = ToolingFixture(tmp_path)
         fixture.sdk()
         app = fixture.app({"plugins": {"a": {}, "b": {}}})
@@ -248,7 +248,7 @@ class ProjectResolverTest:
         assert 'In "platforms.fake": The key "signing" must be a text.' in raised.value.message
         assert 'The key "platforms.fake.files.../outside" must map a path inside the generated project' in raised.value.message
 
-    def test_unknown_targets_and_architectures(self, tmp_path):
+    def test_refuses_unknown_targets_and_architectures(self, tmp_path):
         fixture = ToolingFixture(tmp_path)
         fixture.sdk()
         app = fixture.app({})

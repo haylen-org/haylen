@@ -30,4 +30,4 @@ class RepositoryPluginsTest:
         manifest = PluginManifest.load(folder)
 
         assert manifest.id == RepositoryPluginsTest.TOKENS["{{ID}}"]
-        assert {contribution.type for contribution in manifest.contributions} >= {"appleClass", "gradleModule", "webModule", "nativeLibrary"}
+        assert {contribution.type for contribution in manifest.contributions} == {"appleClass", "appleSources", "gradleModule", "webModule", "nativeLibrary"}

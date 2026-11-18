@@ -7,7 +7,7 @@ from tests.support.tracked_files import TrackedFiles
 class CMakeNameTest:
     """CMake targets, projects and install components use dashes, in the CMake files of the repository and in the CMake text that the tooling writes from its Python."""
 
-    # The first argument of these commands names a target or a project, also in the CMake text inside the strings of the tooling, and the word after "COMPONENT" names an install component.
+    # The first argument of these commands names a target or a project, also in the CMake text inside the strings of the tooling, and the word after `COMPONENT` names an install component.
     DEFINITION = re.compile(r"^[\s'\"]*(?:add_library|add_executable|add_custom_target|haylen_add_app|project)\s*\(\s*([^\s)]+)")
     COMPONENT = re.compile(r"\bCOMPONENT\s+([^\s)]+)")
 

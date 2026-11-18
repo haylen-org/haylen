@@ -33,7 +33,7 @@ class GradleTest:
         # An unpack that stops halfway leaves no folder whose executable seems installed.
         with monkeypatch.context() as failing:
             failing.setattr(zipfile.ZipFile, "extractall", GradleTest.full_disk)
-            with pytest.raises(OSError):
+            with pytest.raises(OSError, match="No space left on device"):
                 Gradle.path(fixture.context)
         assert list(tools.iterdir()) == []
 

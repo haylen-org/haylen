@@ -42,7 +42,7 @@ class AndroidGpuTestsTest:
         assert "--esa" not in tests.launch_command("SERIAL", None, {"HOME": "/home/me"})
 
     def test_a_run_that_wrote_no_results_copies_nothing(self, tmp_path, monkeypatch):
-        # The command "exec-out" of adb ends with status 0 even when the command on the device fails, and hands its error text as the output.
+        # The command `exec-out` of adb ends with status 0 even when the command on the device fails, and hands its error text as the output.
         def device(command, **_):
             missing = "test" in command
             return subprocess.CompletedProcess(command, 1 if missing else 0, b"" if missing else b"tar: gpu-test-output: No such file or directory", b"")

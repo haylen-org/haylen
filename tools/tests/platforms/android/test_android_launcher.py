@@ -12,7 +12,7 @@ from tests.platforms.android.android_fixture import AndroidFixture
 class AndroidLauncherTest:
     @staticmethod
     def adb(command: list[object]) -> str:
-        """Answers the commands of adb that list devices and read their properties, for two emulators and a phone that waits for its authorization."""
+        """Answers the commands of adb that list devices and read their properties, for an emulator and a phone that waits for its authorization."""
         arguments = [str(part) for part in command]
         if arguments[1:] == ["devices"]:
             return "List of devices attached\nemulator-5554\tdevice\nR58M\tunauthorized\n\n"

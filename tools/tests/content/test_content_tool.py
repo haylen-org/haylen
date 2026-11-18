@@ -51,7 +51,7 @@ class ContentToolTest:
         release = ContentToolTest.sdk(tmp_path / "release")
 
         assert ContentTool.find([debug, release], ContentToolTest.REVISION, ContentToolTest.BUILD) == release.folder / "bin" / Host.executable(ContentTool.NAME)
-        assert ContentTool.find([debug], ContentToolTest.REVISION, ContentToolTest.BUILD).is_relative_to(debug.folder)
+        assert ContentTool.find([debug], ContentToolTest.REVISION, ContentToolTest.BUILD) == debug.folder / "bin" / Host.executable(ContentTool.NAME)
 
     def test_never_runs_a_tool_of_other_sources_another_system_or_a_missing_file(self, tmp_path):
         stale = ContentToolTest.sdk(tmp_path / "stale", revision="b" * 64)

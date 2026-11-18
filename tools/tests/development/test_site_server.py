@@ -1,4 +1,5 @@
 import http.client
+import re
 import socket
 import threading
 
@@ -67,7 +68,7 @@ class SiteServerTest:
         assert whole.status == 200
         assert len(body) == 1024
         validator = whole.getheader("ETag")
-        assert validator.startswith('"')
+        assert re.fullmatch('"400-[0-9a-f]+"', validator)
 
         part, body = SiteServerTest.get(site, {"Range": "bytes=10-19"})
         assert part.status == 206

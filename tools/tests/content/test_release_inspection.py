@@ -16,7 +16,7 @@ class ReleaseInspectionTest:
     @staticmethod
     def inspection(tmp_path) -> ReleaseInspection:
         app = ToolingFixture(tmp_path).app({"splash": {"logo": "images/logo.png"}})
-        (app / "source" / "main.lua").write_text("print('the main module of the game')", encoding="utf-8")
+        (app / "source" / "main.lua").write_text("print('the main module of the app')", encoding="utf-8")
         (app / "content" / "images").mkdir()
         (app / "content" / "images" / "hero.png").write_bytes(b"a hero image that only the package holds")
         (app / "content" / "images" / "logo.png").write_bytes(b"the splash logo that platforms show")
@@ -34,7 +34,7 @@ class ReleaseInspectionTest:
             ReleaseInspectionTest.entry("app/app.hmanifest", b"manifest"),
             ReleaseInspectionTest.entry("app/content.hmanifest", b"manifest"),
             ReleaseInspectionTest.entry("app/" + "ab" * 32 + ".hpak", b"\x00" * 64),
-            ReleaseInspectionTest.entry("game", b"code of the app"),
+            ReleaseInspectionTest.entry("garden", b"code of the app"),
             ReleaseInspectionTest.entry("res/splash.png", logo),
         ]
 
@@ -51,7 +51,7 @@ class ReleaseInspectionTest:
             ReleaseInspectionTest.entry("app/source/main.lua", b"print('x')"),
             ReleaseInspectionTest.entry("assets/renamed.bin", hero),
             ReleaseInspectionTest.entry("app/haylen-package-index.json", b"[]"),
-            ReleaseInspectionTest.entry("game.pdb", b"symbols of the game"),
+            ReleaseInspectionTest.entry("garden.pdb", b"symbols of the app"),
         ]
 
         checks = inspection.checks(entries, "app")
@@ -62,15 +62,15 @@ class ReleaseInspectionTest:
         assert 'The release holds "app/source/main.lua", while its folder "app" holds only manifests and shards.' in problems
         assert 'The release holds "assets/renamed.bin", which is the file "content/images/hero.png" of the package as it is.' in problems
         assert 'The release holds the index of a development package, "app/haylen-package-index.json".' in problems
-        assert 'The release holds the symbols "game.pdb", which stay with the developer.' in problems
+        assert 'The release holds the symbols "garden.pdb", which stay with the developer.' in problems
 
     def test_keys_in_any_form_and_a_missing_release_fail(self, tmp_path):
         inspection = ReleaseInspectionTest.inspection(tmp_path)
         key = ReleaseInspectionTest.KEY
         for form in (key, key.hex().encode(), key.hex().upper().encode(), base64.b64encode(key)):
-            problems = inspection.problems([ReleaseInspectionTest.entry("game", b"code " + form + b" code")], "app")
+            problems = inspection.problems([ReleaseInspectionTest.entry("garden", b"code " + form + b" code")], "app")
 
-            assert 'The release holds the content key "1234" of the app in "game".' in problems
+            assert 'The release holds the content key "1234" of the app in "garden".' in problems
             assert 'The release has no protected release in "app".' in problems
 
     def test_the_entries_of_a_folder_and_an_archive_name_their_paths_inside_the_product(self, tmp_path):

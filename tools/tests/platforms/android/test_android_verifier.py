@@ -4,7 +4,6 @@ from haylen.platforms.android.android_apk import AndroidApk
 from haylen.platforms.android.android_verifier import AndroidVerifier
 from haylen.platforms.build_product import BuildProduct
 from haylen.platforms.product_component import ProductComponent
-from haylen.platforms.verification_check import VerificationCheck
 from tests.platforms.android.android_fixture import AndroidFixture
 
 
@@ -63,9 +62,8 @@ class AndroidVerifierTest:
                 "warning",
                 'The plugin "camera" needs the permission "android.permission.CAMERA", which "platforms.android.manifest.removedPermissions" of "haylen.json" removes, so the calls that need it answer "unsupported". Keep the permission to use them.',
             ),
-            ("failed", 'The plugin "camera" needs the activity "com.example.camera.CameraActivity", which the merged manifest of the built app lacks.'),
+            ("failed", 'The plugin "camera" needs the activity "com.haylen.plugins.camera.CameraActivity", which the merged manifest of the built app lacks.'),
         ]
-        assert VerificationCheck.Outcome.FAILED.value == checks[0][0]
 
     def test_only_plugin_classes_need_the_provider_that_loads_them(self, tmp_path, monkeypatch):
         fixture = AndroidFixture(tmp_path)

@@ -26,9 +26,9 @@ class TestCommandTest:
         return recorded
 
     def test_the_simulators_mac_catalyst_android_and_devices_take_only_the_gpu_tests(self, tmp_path):
-        for platform in ("ios-simulator", "tvos-simulator", "visionos-simulator", "catalyst", "android", "ios", "tvos", "visionos"):
-            with pytest.raises(UnsupportedTarget, match="runs only the GPU tests"):
-                TestCommandTest.run(tmp_path, "--target", platform)
+        for target in ("ios-simulator", "tvos-simulator", "visionos-simulator", "catalyst", "android", "ios", "tvos", "visionos"):
+            with pytest.raises(UnsupportedTarget, match=f'The target "{target}" runs only the GPU tests'):
+                TestCommandTest.run(tmp_path, "--target", target)
 
     def test_a_desktop_that_is_not_this_machine_runs_nothing(self, tmp_path, monkeypatch):
         other = next(name for name in TestCommand.DESKTOPS if name != Host.system())
@@ -50,9 +50,9 @@ class TestCommandTest:
             TestCommandTest.run(tmp_path, "--target", "web", "--graphics-api", "metal")
 
     def test_the_ui_tests_and_the_port_take_no_gpu_tests(self, tmp_path):
-        with pytest.raises(UnsupportedTarget, match="neither"):
+        with pytest.raises(UnsupportedTarget, match='The option "--ui" runs the UI tests of an app, so it takes neither "--gpu"'):
             TestCommandTest.run(tmp_path, "--ui", "samples/tests", "--gpu", "--target", "ios-simulator")
-        with pytest.raises(UnsupportedTarget, match="neither"):
+        with pytest.raises(UnsupportedTarget, match='The option "--port" builds the test port for this machine, so it takes neither "--gpu"'):
             TestCommandTest.run(tmp_path, "--port", "--gpu")
 
     def test_an_app_starts_only_on_the_web_and_alone(self, tmp_path, monkeypatch):
@@ -60,7 +60,7 @@ class TestCommandTest:
         with pytest.raises(UnsupportedTarget, match='takes "--target web"'):
             TestCommandTest.run(tmp_path, "--app", "samples/tests")
         for extra in (["--gpu"], ["--ui", "samples/tests"], ["--port"], ["--sanitizers", "address"]):
-            with pytest.raises(UnsupportedTarget, match="neither"):
+            with pytest.raises(UnsupportedTarget, match='The option "--app" checks that the page of an app starts, so it takes neither'):
                 TestCommandTest.run(tmp_path, "--app", "samples/tests", "--target", "web", *extra)
 
     def test_an_app_on_the_web_starts_in_the_configuration_and_on_the_api_that_the_command_names(self, tmp_path, monkeypatch):
@@ -78,8 +78,8 @@ class TestCommandTest:
         assert SuiteShard(2, 4).ctest_arguments() == ["--tests-information", "2,,4"]
 
     def test_a_shard_names_a_part_that_exists_of_the_engine_tests_alone(self, tmp_path):
-        for text in ("0/4", "5/4", "2", "two/four"):
-            with pytest.raises(InvalidOption):
+        for text, problem in (("0/4", "names no part"), ("5/4", "names no part"), ("2", "is not a part"), ("two/four", "is not a part")):
+            with pytest.raises(InvalidOption, match=f'The shard "{text}" {problem} of the tests.'):
                 SuiteShard.parse(text)
         with pytest.raises(UnsupportedTarget, match='"--shard" splits the engine tests'):
             TestCommandTest.run(tmp_path, "--gpu", "--shard", "1/2")

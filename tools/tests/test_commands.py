@@ -44,13 +44,16 @@ class CommandsTest:
         arguments = parser.parse_args(words)
         return commands[arguments.command_path].run(arguments, session)
 
-    @pytest.mark.parametrize("words", [["app", "package", "--target", "fake", "--format", "store"], ["app", "run", "--target", "fake"]])
-    def test_a_backend_without_the_capability_stops_the_command_before_it_prepares_anything(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, words: list[str]):
+    @pytest.mark.parametrize(
+        ("words", "capability"),
+        [(["app", "package", "--target", "fake", "--format", "store"], "package"), (["app", "run", "--target", "fake"], "run")],
+    )
+    def test_a_backend_without_the_capability_stops_the_command_before_it_prepares_anything(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, words: list[str], capability: str):
         fixture = ToolingFixture(tmp_path)
         fixture.sdk()
         app = fixture.app({})
         session = CommandsTest.session(fixture, monkeypatch)
-        with pytest.raises(MissingCapability, match=re.escape('The backend "fake" of "fake" does not')):
+        with pytest.raises(MissingCapability, match=re.escape(f'The backend "fake" of "fake" does not {capability} apps.')):
             CommandsTest.run(session, [*words[:2], str(app), *words[2:]])
 
     def test_the_release_that_a_build_follows_needs_the_release_configuration(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

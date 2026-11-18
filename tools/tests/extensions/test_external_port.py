@@ -7,6 +7,7 @@ import pytest
 
 from haylen.core.host import Host
 from haylen.core.repository import Repository
+from haylen.platforms.contract import Contract
 from tests.support.extension_environment import ExtensionEnvironment
 
 
@@ -59,7 +60,8 @@ class ExternalPortTest:
         completed = installed.haylen("sdk", "build", "--target", ExternalPortTest.TARGET, "--config", ExternalPortTest.CONFIGURATION, "--json", timeout=ExternalPortTest.SDK_TIMEOUT, build=True)
         return ExtensionEnvironment.result(completed)
 
-    def app(self, installed: ExtensionEnvironment, action: str, *arguments: object, environment: dict[str, str] | None = None) -> subprocess.CompletedProcess:
+    @staticmethod
+    def app(installed: ExtensionEnvironment, action: str, *arguments: object, environment: dict[str, str] | None = None) -> subprocess.CompletedProcess:
         """Runs an action of `haylen app` on the app of the proof for the target of the port, with the engine of the proof."""
         command = ("app", action, ExternalPortTest.APP, "--target", ExternalPortTest.TARGET, "--engine-config", ExternalPortTest.CONFIGURATION, *arguments)
         return installed.haylen(*command, environment=environment, timeout=ExternalPortTest.BUILD_TIMEOUT, build=action != "verify")
@@ -78,7 +80,7 @@ class ExternalPortTest:
         assert installed_slice["graphicsApis"] == ["port"]
         assert [tool["name"] for tool in sdk["hostTools"]] == ["port-shaders.cmake"]
 
-        built = ExtensionEnvironment.result(self.app(installed, "build", "--json"))
+        built = ExtensionEnvironment.result(ExternalPortTest.app(installed, "build", "--json"))
         outcomes = {(check["source"], check["name"]): check["outcome"] for check in built["verification"]["checks"]}
         assert built["verification"]["passed"]
         assert outcomes[("core", "targets")] == "passed"
@@ -86,10 +88,10 @@ class ExternalPortTest:
         assert outcomes[("test-port", "content")] == "passed"
         assert outcomes[("test-port", "parts")] == "passed"
 
-        verified = ExtensionEnvironment.result(self.app(installed, "verify", "--json"))
+        verified = ExtensionEnvironment.result(ExternalPortTest.app(installed, "verify", "--json"))
         assert verified["verification"]["passed"]
 
-        ran = self.app(installed, "run", "--port", "0", "--debugger-port", "0")
+        ran = ExternalPortTest.app(installed, "run", "--port", "0", "--debugger-port", "0")
         assert ran.returncode == 0, ExtensionEnvironment.shown(ran)
         assert "The app of the test port passed every check" in ran.stdout, ExtensionEnvironment.shown(ran)
 
@@ -103,7 +105,7 @@ class ExternalPortTest:
         assert port["code"] == "missingToolchain"
         assert port["message"].startswith('This machine lacks what the engine port "test-port" needs to build "test-port-host":\n  The command "cmake" was not found.')
 
-        app = ExtensionEnvironment.error(self.app(installed, "build", "--json", environment=bare))
+        app = ExtensionEnvironment.error(ExternalPortTest.app(installed, "build", "--json", environment=bare))
         assert app["code"] == "missingToolchain"
         assert app["message"].startswith('This machine lacks what "test-port" needs. The command "haylen doctor --target test-port" shows it too:\n  The command "cmake" was not found.')
 
@@ -119,7 +121,8 @@ class ExternalPortTest:
 
         failure = ExtensionEnvironment.error(environment.haylen("doctor", "--target", ExternalPortTest.TARGET, "--json"))
         assert failure["code"] == "incompatibleExtension"
-        assert 'The backend "test-port" implements the backend contract 2, and this tooling implements 1. Install the version of the backend for contract 1.' in failure["message"]
+        expected = f'The backend "test-port" implements the backend contract {Contract.BACKEND + 1}, and this tooling implements {Contract.BACKEND}. Install the version of the backend for contract {Contract.BACKEND}.'
+        assert expected in failure["message"]
 
     def test_a_plugin_without_an_implementation_for_the_target_stops_the_resolution(self, installed: ExtensionEnvironment, tmp_path: Path):
         app = shutil.copytree(ExternalPortTest.APP, tmp_path / "app")
@@ -134,12 +137,12 @@ class ExternalPortTest:
         assert 'The plugin "test-port-greeter" does not support "test-port". It supports "web", so remove it from the app to build for "test-port".' in failure["message"]
 
     def test_a_capability_that_the_backend_does_not_declare_stops_the_command(self, installed: ExtensionEnvironment, sdk: dict):
-        failure = ExtensionEnvironment.error(self.app(installed, "package", "--format", "installer", "--config", "Debug", "--json"))
+        failure = ExtensionEnvironment.error(ExternalPortTest.app(installed, "package", "--format", "installer", "--config", "Debug", "--json"))
         assert failure == {"code": "missingCapability", "message": 'The backend "test-port" of "test-port" does not package apps.'}
 
     def test_an_architecture_that_the_target_does_not_build_stops_the_resolution(self, installed: ExtensionEnvironment):
         other = "x86_64" if Host.architecture() == "arm64" else "arm64"
-        failure = ExtensionEnvironment.error(self.app(installed, "build", "--architecture", other, "--json"))
+        failure = ExtensionEnvironment.error(ExternalPortTest.app(installed, "build", "--architecture", other, "--json"))
         assert failure["code"] == "unsupportedTarget"
         assert failure["message"] == f'The target "test-port" builds for "{Host.architecture()}", not for "{other}".'
 

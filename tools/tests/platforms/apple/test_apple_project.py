@@ -64,19 +64,21 @@ class AppleProjectTest:
         lua_target = AppleFixture.spec(apple.prepare(lua))["targets"]["App"]
         cpp_target = AppleFixture.spec(apple.prepare(cpp))["targets"]["App"]
 
-        def plugin_parts(target: dict) -> tuple:
-            sources = [source for source in target["sources"] if source.get("group") == "Plugins"]
-            plugins = [source | {"path": source["path"].split("/camera/")[1]} for source in sources]
-            dependencies = [dependency for dependency in target["dependencies"] if "package" in dependency or "sdk" in dependency or "Vendor" in dependency.get("framework", "")]
-            vendor = [dependency | {"framework": dependency["framework"].split("/camera/")[1]} if "framework" in dependency else dependency for dependency in dependencies]
-            return plugins, vendor, target["postBuildScripts"]
-
-        assert plugin_parts(lua_target) == plugin_parts(cpp_target)
+        assert AppleProjectTest.plugin_parts(lua_target) == AppleProjectTest.plugin_parts(cpp_target)
         assert any(dependency.get("framework", "").endswith("HaylenPlayer.xcframework") for dependency in lua_target["dependencies"])
         assert not any(dependency.get("framework", "").endswith("HaylenPlayer.xcframework") for dependency in cpp_target["dependencies"])
         assert {"path": str(cpp / "src"), "group": "App", "type": "syncedFolder"} in cpp_target["sources"]
         assert cpp_target["settings"]["base"]["HEADER_SEARCH_PATHS"] == ["$(inherited)", f'"{cpp / "include"}"']
         assert cpp_target["settings"]["base"]["GCC_PREPROCESSOR_DEFINITIONS"] == ["$(inherited)", *AppleFixture.DEFINITIONS, "GAME=1"]
+
+    @staticmethod
+    def plugin_parts(target: dict) -> tuple:
+        """The sources, packages, SDKs, vendor frameworks and scripts that the camera plugin gives an app target, with the paths relative to the plugin folder."""
+        sources = [source for source in target["sources"] if source.get("group") == "Plugins"]
+        plugins = [source | {"path": source["path"].split("/camera/")[1]} for source in sources]
+        dependencies = [dependency for dependency in target["dependencies"] if "package" in dependency or "sdk" in dependency or "Vendor" in dependency.get("framework", "")]
+        vendor = [dependency | {"framework": dependency["framework"].split("/camera/")[1]} if "framework" in dependency else dependency for dependency in dependencies]
+        return plugins, vendor, target["postBuildScripts"]
 
     def test_the_swift_packages_of_plugins_are_packages_of_the_project(self, apple):
         app = apple.app({"plugins": {"camera": {}}})

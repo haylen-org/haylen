@@ -44,5 +44,5 @@ class CleanTest:
         finally:
             locked.chmod(0o700)
 
-    def test_a_folder_that_does_not_exist_yet_is_what_a_first_build_finds(self, tmp_path):
+    def test_removing_a_folder_that_does_not_exist_yet_does_nothing(self, tmp_path):
         Folders.remove(tmp_path / "missing")

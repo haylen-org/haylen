@@ -25,7 +25,6 @@ class PlayerBackendTest:
         def __init__(self, context: object, product: object, launch: LaunchRequest, reach: object, shipped: Path) -> None:
             self.developing = launch.development
             self.arguments = ["--dev-server", "ws://127.0.0.1:8000/development"] if launch.development else []
-            self.shipped = shipped
 
         def __enter__(self) -> PlayerBackendTest.RecordedRun:
             return self

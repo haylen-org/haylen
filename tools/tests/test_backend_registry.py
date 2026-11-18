@@ -55,5 +55,5 @@ class BackendRegistryTest:
         registry = BackendRegistry(fixture.context, [("fake", lambda: FakeBackend)], [("limited", lambda: limited)])
         description = registry.target("fake").description
         assert BackendRegistry.mismatch(description, limited(fixture.context).describe().targets[0]) == 'It lacks the capabilities "dynamicLibraries" that the backend needs.'
-        with pytest.raises(UnsupportedTarget):
+        with pytest.raises(UnsupportedTarget, match=re.escape('No installed engine port builds the engine for "fake"')):
             registry.port_for(description)

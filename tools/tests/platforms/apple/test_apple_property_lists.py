@@ -42,7 +42,13 @@ class ApplePropertyListsTest:
     def test_iphones_list_every_orientation_and_refresh_above_60_hertz(self, apple):
         info = self.info(apple, {"orientation": "portrait"})
         assert info["CADisableMinimumFrameDurationOnPhone"] is True
-        assert len(info["UISupportedInterfaceOrientations~ipad"]) == 4
+        assert info["UISupportedInterfaceOrientations"] == ["UIInterfaceOrientationPortrait", "UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"]
+        assert info["UISupportedInterfaceOrientations~ipad"] == [
+            "UIInterfaceOrientationPortrait",
+            "UIInterfaceOrientationPortraitUpsideDown",
+            "UIInterfaceOrientationLandscapeLeft",
+            "UIInterfaceOrientationLandscapeRight",
+        ]
         assert info["UIApplicationSceneManifest"] == {"UIApplicationSupportsMultipleScenes": True}
 
     def test_apps_that_play_in_the_background_get_the_audio_background_mode(self, apple):

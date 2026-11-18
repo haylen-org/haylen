@@ -70,7 +70,7 @@ class DevelopmentServerTest:
         with mock.patch.object(PackageLayout, "files", return_value=listed):
             assert server.scan() == ([], [])
 
-        # An editor that saves "haylen.json" may move the file aside before it writes the new one.
+        # An editor that saves `haylen.json` may move the file aside before it writes the new one.
         manifest.rename(fixture.folder / "haylen.json~")
         assert server.scan() == ([], ["haylen.json"])
         (fixture.folder / "haylen.json~").rename(manifest)

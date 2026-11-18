@@ -12,20 +12,20 @@ class KeyFolderTest:
     def test_keys_live_outside_every_project_unless_continuous_integration_names_their_folder(self, tmp_path, monkeypatch):
         fixture = ContentFixture(tmp_path, monkeypatch)
 
-        own = KeyFolder.of("com.example.game", fixture.context.environment)
-        received = KeyFolder.of("com.example.game", {KeyFolder.VARIABLE: str(tmp_path / "secrets")})
+        own = KeyFolder.of("com.haylen.garden", fixture.context.environment)
+        received = KeyFolder.of("com.haylen.garden", {KeyFolder.VARIABLE: str(tmp_path / "secrets")})
 
-        assert own.folder == KeyFolder.user_config_folder(fixture.context.environment) / "keys" / "com.example.game"
+        assert own.folder == KeyFolder.user_config_folder(fixture.context.environment) / "keys" / "com.haylen.garden"
         assert not own.folder.is_relative_to(Repository.ROOT)
         assert not own.received
-        assert received.folder == tmp_path / "secrets" / "com.example.game"
+        assert received.folder == tmp_path / "secrets" / "com.haylen.garden"
         assert received.received
 
     def test_continuous_integration_receives_keys_and_never_creates_them(self, tmp_path, monkeypatch):
         fixture = ContentFixture(tmp_path, monkeypatch)
-        keys = KeyFolder.of("com.example.game", {KeyFolder.VARIABLE: str(tmp_path / "secrets")})
+        keys = KeyFolder.of("com.haylen.garden", {KeyFolder.VARIABLE: str(tmp_path / "secrets")})
 
-        with pytest.raises(MissingKeys, match=re.escape('holds no keys of "com.example.game"')):
+        with pytest.raises(MissingKeys, match=re.escape('holds no keys of "com.haylen.garden"')):
             keys.ensure(fixture.tool)
         keys.folder.mkdir(parents=True)
         (keys.folder / KeyFolder.INDEX).write_text("{}", encoding="utf-8")
@@ -35,16 +35,16 @@ class KeyFolderTest:
 
     def test_the_machine_of_the_developer_creates_the_keys_once_and_says_where_they_live(self, tmp_path, monkeypatch):
         fixture = ContentFixture(tmp_path, monkeypatch)
-        keys = KeyFolder.of("com.example.game", fixture.context.environment)
+        keys = KeyFolder.of("com.haylen.garden", fixture.context.environment)
 
         keys.ensure(fixture.tool)
         keys.ensure(fixture.tool)
 
-        assert fixture.tool.commands == [["keys", "create", str(keys.folder), "--identifier", "com.example.game"]]
+        assert fixture.tool.commands == [["keys", "create", str(keys.folder), "--identifier", "com.haylen.garden"]]
         assert "Back up this folder" in fixture.output
 
     def test_the_secrets_are_every_content_key_and_the_signing_key(self, tmp_path, monkeypatch):
-        keys = KeyFolder.of("com.example.game", {KeyFolder.VARIABLE: str(tmp_path)})
+        keys = KeyFolder.of("com.haylen.garden", {KeyFolder.VARIABLE: str(tmp_path)})
         keys.folder.mkdir()
         (keys.folder / KeyFolder.INDEX).write_text('{"contentKeys": ["1234", "5678"]}', encoding="utf-8")
         (keys.folder / "content-1234.key").write_bytes(bytes(range(32)))
@@ -56,4 +56,4 @@ class KeyFolderTest:
             'the content key "5678"': bytes(range(32, 64)),
             "the signing key": bytes(range(64, 96)),
         }
-        assert KeyFolder.of("com.example.other", {KeyFolder.VARIABLE: str(tmp_path)}).secrets() == {}
+        assert KeyFolder.of("com.haylen.other", {KeyFolder.VARIABLE: str(tmp_path)}).secrets() == {}

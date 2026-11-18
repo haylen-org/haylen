@@ -71,7 +71,7 @@ class AndroidFixture:
         folder = self.tooling.plugin(app, identifier, {"implementations": {"android": "native"}, **document})
         module = folder / "android"
         (module / "src" / "main").mkdir(parents=True)
-        (module / "build.gradle.kts").write_text(f'android {{\n    namespace = "com.example.{identifier}"\n}}\n', encoding="utf-8")
+        (module / "build.gradle.kts").write_text(f'android {{\n    namespace = "com.haylen.plugins.{identifier}"\n}}\n', encoding="utf-8")
         (module / "src" / "main" / "AndroidManifest.xml").write_text("<manifest />\n", encoding="utf-8")
         manifest = json.loads((folder / "plugin.json").read_text(encoding="utf-8"))
         manifest["contributions"] = [{"type": "gradleModule", "platforms": ["android"], "path": "android"}, *manifest.get("contributions", [])]

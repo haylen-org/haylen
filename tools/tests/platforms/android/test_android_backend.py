@@ -6,6 +6,7 @@ from haylen.core.repository import Repository
 from haylen.platforms.android.android_backend import AndroidBackend
 from haylen.platforms.android.android_gradle_build import AndroidGradleBuild
 from haylen.platforms.android.android_port import AndroidPort
+from haylen.platforms.android.android_signing_key import AndroidSigningKey
 from haylen.platforms.backend_registry import BackendRegistry
 from haylen.platforms.sdk_request import SdkRequest
 from haylen.sdk.sdk_manifest import SdkManifest
@@ -64,9 +65,12 @@ class AndroidBackendTest:
         again = fixture.prepare(fixture.resolve(app, "Release"))
         assert not again.changed
 
-    def test_a_debug_build_takes_the_debug_key_of_the_app_and_a_release_the_upload_key(self, tmp_path, monkeypatch):
+    def test_a_debug_build_hands_gradle_the_debug_key_of_the_app_and_no_upload_key(self, tmp_path, monkeypatch):
         fixture = AndroidFixture(tmp_path)
         app = fixture.app({})
+        properties = AndroidSigningKey.files(app, "debug")["properties"]
+        properties.parent.mkdir(parents=True)
+        properties.write_text(AndroidSigningKey.properties("debug", "android", "secret"), encoding="utf-8")
         commands = []
         monkeypatch.setattr(fixture.context.process, "run", lambda command, **options: commands.append((command, options["env"])))
         monkeypatch.setattr(AndroidGradleBuild, "newest", lambda folder, pattern: tmp_path / "built.apk")
@@ -79,7 +83,13 @@ class AndroidBackendTest:
         command, environment = commands[0]
         assert command[2:4] == [prepared.project, ":app:assembleDebug"]
         assert "--max-workers=1" in command
-        assert not any(name.startswith("HAYLEN_DEBUG_") for name in environment)
+        signing = {name: value for name, value in environment.items() if name.startswith(("HAYLEN_DEBUG_", "HAYLEN_RELEASE_"))}
+        assert signing == {
+            "HAYLEN_DEBUG_STORE_FILE": str(properties.parent / "debug.jks"),
+            "HAYLEN_DEBUG_STORE_PASSWORD": "secret",
+            "HAYLEN_DEBUG_KEY_ALIAS": "android",
+            "HAYLEN_DEBUG_KEY_PASSWORD": "secret",
+        }
         assert product.path == prepared.folders.products / "com.haylen.tests.apk"
         assert [component.target.abi for component in product.components] == ["arm64-v8a", "armeabi-v7a", "x86_64"]
         assert json.loads((prepared.project / "app" / "src" / "main" / "assets" / "haylen-plugins.json").read_text(encoding="utf-8")) == {"plugins": []}

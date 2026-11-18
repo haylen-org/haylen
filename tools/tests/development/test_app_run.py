@@ -95,7 +95,7 @@ class AppRunTest:
         previous = {name: signal.getsignal(getattr(signal, name)) for name in Terminated.SIGNALS}
         Terminated.install()
 
-        # The app prints a line and runs on, and the signal comes as a bound on the time of the run sends it.
+        # The app prints a line and runs on, and the run receives the signal as it follows that line, the way a bound on the time of the run sends it.
         def line(text: str) -> str:
             os.kill(os.getpid(), signal.SIGALRM)
             return text

@@ -1,3 +1,4 @@
+import re
 from types import MappingProxyType
 
 import pytest
@@ -37,12 +38,12 @@ class SteamDepotsTest:
         options = SteamDepots.Options.parse(OptionValues.parse(["appId=480", "depots=windows=481", "depots=forest=482"]))
         assert dict(options.depots) == {"windows": "481", "forest": "482"}
 
-    def test_refuses_options_without_numeric_ids(self):
-        with pytest.raises(InvalidOption, match='"forest=1001"'):
+    def test_refuses_ids_that_are_not_numbers_and_unknown_options(self):
+        with pytest.raises(InvalidOption, match=re.escape('The depot "forest" needs its numeric ID, such as "forest=1001", which Steamworks shows.')):
             SteamDepots.Options.parse({"appId": "1000", "depots": ["macos=1001", "forest=x"]})
-        with pytest.raises(InvalidOption, match='"appId"'):
+        with pytest.raises(InvalidOption, match=re.escape('The format "steam" needs the numeric app ID of Steamworks in "appId".')):
             SteamDepots.Options.parse({"depots": {"macos": "1001"}})
-        with pytest.raises(InvalidOption, match='"output"'):
+        with pytest.raises(InvalidOption, match=re.escape('The format "steam" takes no options "output". It takes "appId", "depots" and "branch".')):
             SteamDepots.Options.parse({"appId": "1000", "output": "steam"})
 
     def test_stages_the_depot_of_the_platform_and_one_depot_per_pack(self, tmp_path, monkeypatch):
@@ -69,5 +70,5 @@ class SteamDepotsTest:
         release = ProtectedRelease("macos", tmp_path, tmp_path, MappingProxyType({"forest": tmp_path}))
         options = SteamDepots.Options.parse({"appId": "1000", "depots": {"macos": "1001"}})
 
-        with pytest.raises(InvalidOption, match='"forest"'):
+        with pytest.raises(InvalidOption, match=re.escape('The depots "forest" have no ID.')):
             SteamDepots(fixture.context).stage(fixture.source(), release, "macos", tmp_path / "Island.app", bundle=True, packs_place="", options=options, output=tmp_path / "steam")

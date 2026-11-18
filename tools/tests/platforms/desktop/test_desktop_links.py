@@ -10,7 +10,7 @@ from haylen.platforms.desktop.desktop_links import DesktopLinks
 from tests.platforms.desktop.desktop_fixture import DesktopFixture
 
 
-class DesktopLinkTest:
+class DesktopLinksTest:
     """The URL schemes whose links open a Windows or Linux app, which plugins declare as `urlScheme` contributions, reach the installer of Windows and the desktop entry of Linux."""
 
     @pytest.fixture

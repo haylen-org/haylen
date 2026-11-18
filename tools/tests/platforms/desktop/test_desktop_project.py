@@ -1,4 +1,3 @@
-import json
 import xml.etree.ElementTree as ElementTree
 from pathlib import Path
 
@@ -79,16 +78,16 @@ class DesktopProjectTest:
             entries.complete_entry("[Desktop Action New]\n", {}, "app.desktop")
 
     def test_the_metainfo_of_the_app_wins_and_gains_the_elements_of_haylen_json(self, fixture: DesktopFixture):
-        app = DesktopApp.of(AppManifest.load(fixture.app({"name": "Sky Garden", "identifier": "com.example.skygarden"}, "garden")))
+        app = DesktopApp.of(AppManifest.load(fixture.app({"name": "Sky Garden", "identifier": "com.haylen.skygarden"}, "garden")))
         entries = LinuxEntries()
         own = '<?xml version="1.0"?>\n<component type="desktop-application"><name>Garden</name><project_license>MIT</project_license></component>'
         completed = entries.complete_metainfo(own, LinuxEntries.elements(app), "app.metainfo.xml")
         component = ElementTree.fromstring(completed.split("\n", 1)[1])
         assert [child.tag for child in component][:5] == ["id", "summary", "description", "developer", "launchable"]
         assert component.findtext("name") == "Garden"
-        assert component.find("developer").get("id") == "com.example"
+        assert component.find("developer").get("id") == "com.haylen"
         assert component.find("url") is None
-        assert component.find("launchable").text == "com.example.skygarden.desktop"
+        assert component.find("launchable").text == "com.haylen.skygarden.desktop"
         assert entries.warnings == ['The element "name" of `app.metainfo.xml` keeps its value "Garden", while "haylen.json" gives "Sky Garden".']
         with pytest.raises(InvalidManifest, match="is not valid XML"):
             entries.complete_metainfo("<component>", [], "app.metainfo.xml")
@@ -146,7 +145,7 @@ class DesktopProjectTest:
         assert WindowsResources.read(DesktopProjectTest.executable(manifest), WindowsResources.MANIFEST) == [manifest]
         assert WindowsResources.read(b"not an executable", WindowsResources.MANIFEST) == []
 
-        app = DesktopApp("Sky Garden", "com.example.skygarden", "1.0", 1, "", "", "", "", "sky-garden")
+        app = DesktopApp("Sky Garden", "com.haylen.skygarden", "1.0", 1, "", "", "", "", "sky-garden")
         installed = tmp_path / "installed"
         native = tmp_path / "native"
         (installed / "app").mkdir(parents=True)
@@ -170,7 +169,7 @@ class DesktopProjectTest:
         ]
 
     def test_a_linux_app_needs_its_desktop_entry_named_after_the_identifier(self, tmp_path: Path):
-        app = DesktopApp("Sky Garden", "com.example.skygarden", "1.0", 1, "", "", "", "", "sky-garden")
+        app = DesktopApp("Sky Garden", "com.haylen.skygarden", "1.0", 1, "", "", "", "", "sky-garden")
         installed = tmp_path / "installed"
         (installed / "lib" / "sky-garden" / "app").mkdir(parents=True)
         (installed / "lib" / "sky-garden" / "app" / "haylen.json").write_text("{}", encoding="utf-8")
@@ -179,16 +178,17 @@ class DesktopProjectTest:
         (installed / "bin" / "sky-garden").symlink_to("../lib/sky-garden/sky-garden")
         layout = DesktopLayout.of("linux", app, installed)
         details = [check.detail for check in DesktopVerifier.checks("linux", app, layout, Configuration.DEBUG, tmp_path / "native")]
-        assert details == ['The built app lacks the desktop entry "share/applications/com.example.skygarden.desktop", by which Linux desktops find the name and the icon of the window of the app.']
+        assert details == ['The built app lacks the desktop entry "share/applications/com.haylen.skygarden.desktop", by which Linux desktops find the name and the icon of the window of the app.']
 
         (installed / "share" / "applications").mkdir(parents=True)
-        (installed / "share" / "applications" / "com.example.skygarden.desktop").write_text("[Desktop Entry]\n", encoding="utf-8")
+        (installed / "share" / "applications" / "com.haylen.skygarden.desktop").write_text("[Desktop Entry]\n", encoding="utf-8")
         assert [check.outcome for check in DesktopVerifier.checks("linux", app, layout, Configuration.DEBUG, tmp_path / "native")] == [VerificationCheck.Outcome.PASSED]
 
     def test_the_project_of_a_windows_app_names_the_engine_runtime_and_the_sdk(self, fixture: DesktopFixture):
-        project = self.prepare(fixture, fixture.app({}, "garden"), "windows")
+        product = fixture.resolve(fixture.app({}, "garden"), "windows")
+        project = DesktopBackend(fixture.context).prepare(product, DesktopFixture.folders(product)).project
         values = (project / "app.cmake").read_text(encoding="utf-8")
-        cmake = json.loads((fixture.sdks[0].folder / "haylen-sdk.json").read_text(encoding="utf-8"))["slices"]
-        assert any(f"set(haylen_DIR [[{(fixture.sdks[0].folder / entry['files']['cmake']).as_posix()}]])" in values for entry in cmake)
+        windows = fixture.sdks[0].folder / f"windows-{product.primary.target.architecture}" / "lib" / "cmake" / "haylen"
+        assert f"set(haylen_DIR [[{windows.as_posix()}]])" in values
         assert (project / "resources" / "HaylenApp.h").is_file()
         assert "CREATEPROCESS_MANIFEST_RESOURCE_ID" not in (project / "resources" / "app.rc").read_text(encoding="utf-8")

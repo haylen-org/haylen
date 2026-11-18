@@ -92,7 +92,7 @@ class ProtectedReleasesTest:
         assert "--app-only" in fixture.commands("stage")[0]
         assert not (release.folder.parent / "app-files").exists()
 
-    def test_the_first_publication_of_a_channel_keeps_the_shards_of_the_release_that_ships(self, tmp_path, monkeypatch):
+    def test_a_publication_names_the_release_that_ships_once_the_app_built_one(self, tmp_path, monkeypatch):
         fixture = ContentFixture(tmp_path, monkeypatch)
         source = fixture.source()
 

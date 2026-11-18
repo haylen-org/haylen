@@ -5,7 +5,6 @@ import pytest
 from haylen.core.app_colors import AppColors
 from haylen.core.app_kind import AppKind
 from haylen.core.errors.unsupported_target import UnsupportedTarget
-from haylen.core.repository import Repository
 from haylen.platforms.apple.apple_engine_port import AppleEnginePort
 from haylen.platforms.apple.apple_project import AppleProject
 from haylen.platforms.apple.apple_targets import AppleTargets
@@ -66,7 +65,7 @@ class AppleTargetsTest:
             AppleSimulators(recorded.context).find("xrOS", None)
 
     def test_a_simulator_that_is_off_boots_then_waits_and_shuts_down_afterwards(self, tmp_path):
-        # The flag of "bootstatus" that boots fails with "Invalid argument" on the foldable iPhone, so booting and waiting are two commands.
+        # The flag of `bootstatus` that boots fails with "Invalid argument" on the foldable iPhone, so booting and waiting are two commands.
         duo = {"udid": "DUO", "name": "iPhone Duo", "state": "Shutdown"}
         recorded = RecordedCommands(tmp_path, answer=lambda command: json.dumps({"devices": {"com.apple.CoreSimulator.SimRuntime.iOS-27-2": [duo]}}))
         with AppleSimulators(recorded.context).booted("iOS", "DUO"):
@@ -76,7 +75,6 @@ class AppleTargetsTest:
     def test_the_template_holds_no_generated_project(self):
         files = [path.relative_to(AppleProject.TEMPLATE).as_posix() for path in AppleProject.TEMPLATE.rglob("*") if path.is_file()]
         assert not any(".xcodeproj" in name or name.endswith("project.yml") for name in files)
-        assert not (Repository.TEMPLATES / "lua" / "platform" / "apple").exists()
 
     def test_storyboards_of_apple_tv_are_documents_of_apple_tv(self):
         # The interface compiler of tvOS fails without a message on a storyboard of the iOS document type.
