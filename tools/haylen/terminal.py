@@ -82,16 +82,17 @@ class Terminal:
         if not color:
             return Terminal.MARKUP.sub(lambda match: match[0] if match[1] is None else match[1], message)
         base = f"\x1b[{style}m" if style else ""
-
-        def mark(match: re.Match) -> str:
-            if match[1] is None:
-                return f"\x1b[{Terminal.EXPRESSION}m{match[2]}\x1b[0m{base}"
-            if Terminal.URL.match(match[1]):
-                return f"\x1b[{Terminal.LINK}m{match[1]}\x1b[0m{base}"
-            return match[1]
-
-        rendered = Terminal.MARKUP.sub(mark, message)
+        rendered = Terminal.MARKUP.sub(lambda match: Terminal.mark(match, base), message)
         return f"{base}{rendered}\x1b[0m" if base else rendered
+
+    @staticmethod
+    def mark(match: re.Match, base: str) -> str:
+        """Colors a reserved expression or a URL of a message, and then returns to the style of its line."""
+        if match[1] is None:
+            return f"\x1b[{Terminal.EXPRESSION}m{match[2]}\x1b[0m{base}"
+        if Terminal.URL.match(match[1]):
+            return f"\x1b[{Terminal.LINK}m{match[1]}\x1b[0m{base}"
+        return match[1]
 
     @staticmethod
     def command_line(parts: list[str]) -> str:

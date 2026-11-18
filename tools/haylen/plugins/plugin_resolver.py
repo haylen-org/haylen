@@ -64,23 +64,24 @@ class PluginResolver:
     @staticmethod
     def ordered(loaded: Mapping[str, tuple[PluginReference, PluginManifest]]) -> tuple[tuple[PluginReference, PluginManifest], ...]:
         ordered: list[str] = []
-        visiting: list[str] = []
-
-        def visit(identifier: str) -> None:
-            if identifier in ordered:
-                return
-            if identifier in visiting:
-                cycle = ", ".join(f'"{name}"' for name in visiting[visiting.index(identifier) :])
-                raise InvalidManifest(f"The plugins {cycle} depend on each other in a cycle.")
-            visiting.append(identifier)
-            for dependency in loaded[identifier][1].dependencies:
-                visit(dependency)
-            visiting.pop()
-            ordered.append(identifier)
-
         for identifier in loaded:
-            visit(identifier)
+            PluginResolver.visit(identifier, loaded, ordered, [])
         return tuple(loaded[identifier] for identifier in ordered)
+
+    @staticmethod
+    def visit(identifier: str, loaded: Mapping[str, tuple[PluginReference, PluginManifest]], ordered: list[str], visiting: list[str]) -> None:
+        """Appends a plugin to the order after the plugins it depends on, and fails on plugins that depend on each other in a cycle."""
+        if identifier in ordered:
+            return
+        if identifier in visiting:
+            cycle = ", ".join(f'"{name}"' for name in visiting[visiting.index(identifier) :])
+            raise InvalidManifest(f"The plugins {cycle} depend on each other in a cycle.")
+
+        visiting.append(identifier)
+        for dependency in loaded[identifier][1].dependencies:
+            PluginResolver.visit(dependency, loaded, ordered, visiting)
+        visiting.pop()
+        ordered.append(identifier)
 
     @staticmethod
     def permission_conflicts(manifests: list[PluginManifest]) -> list[str]:

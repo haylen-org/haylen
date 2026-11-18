@@ -31,6 +31,16 @@ class ArchitectureTest:
         return {name for name in found if name.startswith("haylen")}
 
     @staticmethod
+    def nested_functions(tree: ast.Module) -> list[str]:
+        """The functions that a function of a module defines inside itself, where a method of its class belongs."""
+        nested = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+                continue
+            nested += [inner.name for inner in ast.walk(node) if inner is not node and isinstance(inner, ast.FunctionDef | ast.AsyncFunctionDef)]
+        return nested
+
+    @staticmethod
     def is_contract(module: str) -> bool:
         """Tells a module of the contracts, which lie directly in `haylen.platforms`, from a module of a concrete backend in a package under it."""
         parts = module.split(".")
@@ -49,21 +59,22 @@ class ArchitectureTest:
         modules = ArchitectureTest.modules(ArchitectureTest.PACKAGE)
         graph = {module: {name for name in ArchitectureTest.imports(path) if name in modules} for module, path in modules.items()}
         state: dict[str, str] = {}
-        cycles = []
-
-        def visit(module: str, trail: list[str]) -> None:
-            state[module] = "visiting"
-            for name in sorted(graph[module]):
-                if state.get(name) == "visiting":
-                    cycles.append(" -> ".join([*trail[trail.index(name) :], name]))
-                elif name not in state:
-                    visit(name, [*trail, name])
-            state[module] = "done"
-
+        cycles: list[str] = []
         for module in graph:
             if module not in state:
-                visit(module, [module])
+                ArchitectureTest.visit(module, [module], graph, state, cycles)
         assert cycles == []
+
+    @staticmethod
+    def visit(module: str, trail: list[str], graph: dict[str, set[str]], state: dict[str, str], cycles: list[str]) -> None:
+        """Walks the imports of a module depth first and records each cycle that leads back to a module of the trail."""
+        state[module] = "visiting"
+        for name in sorted(graph[module]):
+            if state.get(name) == "visiting":
+                cycles.append(" -> ".join([*trail[trail.index(name) :], name]))
+            elif name not in state:
+                ArchitectureTest.visit(name, [*trail, name], graph, state, cycles)
+        state[module] = "done"
 
     def test_modules_follow_the_code_rules(self):
         problems = []
@@ -77,6 +88,10 @@ class ArchitectureTest:
                 tree = ast.parse(text)
                 if any(isinstance(node, ast.Name | ast.alias) and getattr(node, "id", getattr(node, "name", "")) == "TYPE_CHECKING" for node in ast.walk(tree)):
                     problems.append(f"{module} uses TYPE_CHECKING")
+                if any(isinstance(node, ast.ImportFrom) and node.module == "__future__" for node in tree.body):
+                    problems.append(f"{module} imports from __future__")
+                if root == ArchitectureTest.PACKAGE:
+                    problems += [f"{module} nests the function {name}" for name in ArchitectureTest.nested_functions(tree)]
                 classes = [node for node in tree.body if isinstance(node, ast.ClassDef)]
                 functions = [node.name for node in tree.body if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)]
                 variables = [node for node in tree.body if isinstance(node, ast.Assign | ast.AnnAssign)]
