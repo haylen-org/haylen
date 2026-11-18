@@ -753,7 +753,12 @@ int TweenLua::path(lua_State* L) {
 
         if (orient) {
             const std::vector<std::string> names{orientField};
-            TweenProperty heading = TweenProperty::to(readCurrent(builder, names));
+            const TweenValue rotation = readCurrent(builder, names);
+            if (rotation.getKind() != TweenValue::Kind::Number) {
+                luaL_error(state, "The field \"%s\" that \"orient\" turns must be a number.", orientField.c_str());
+            }
+
+            TweenProperty heading = TweenProperty::to(rotation);
             heading.setMotion(TweenMotion::orientation(motion));
             builder.pending.emplace_back(names, std::move(heading));
         }

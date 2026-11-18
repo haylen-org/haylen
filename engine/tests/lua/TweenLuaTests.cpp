@@ -507,6 +507,7 @@ TEST(TweenLuaTest, ReportsMistakes) {
     EXPECT_NE(fixture.lua("tween.blink(box, 1, 4294967297, {field = 'x'})").find("bad argument #3 to 'blink' (integer out of range)"), std::string::npos);
     EXPECT_NE(fixture.lua("tween.shake({label = 'a'}, 1, 'b', {field = 'label'})").find("A shake tween needs a number field, a \"Vec2\" field or a pair of number fields."), std::string::npos);
     EXPECT_NE(fixture.lua("tween.punch({tint = require('haylen.math').color(1, 1, 1, 1)}, 1, '#000000FF', {field = 'tint'})").find("A punch tween needs a number field, a \"Vec2\" field or a pair of number fields."), std::string::npos);
+    EXPECT_NE(fixture.lua("tween.path({x = 0, y = 0, heading = 'north'}, 1, {{1, 1}}, {orient = true, orientField = 'heading'})").find("The field \"heading\" that \"orient\" turns must be a number."), std::string::npos);
 
     // Fields that are no native property of a userdata go through Lua, which reaches only what the object has.
     fixture.runLua("camera = require('haylen.graphics2d').newCamera()");

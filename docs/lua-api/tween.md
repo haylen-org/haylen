@@ -315,7 +315,7 @@ Moves the fields `x` and `y` through the list `points`, starting where the targe
 | --- | --- | --- | --- |
 | `curved` | boolean | `true` | Passes smoothly through every point on a Catmull-Rom spline, or in straight lines when `false`. |
 | `closed` | boolean | `false` | Travels back to the start after the last point and ends there. |
-| `orient` | boolean | `false` | Turns a rotation field, in radians, toward where the path heads. |
+| `orient` | boolean | `false` | Turns a rotation field, in radians, toward where the path heads. A field that holds no number raises `The field "<name>" that "orient" turns must be a number.` |
 | `orientField` | string | `'rotation'` | The field that `orient` turns. |
 
 ```lua
@@ -872,6 +872,7 @@ These messages come from the functions and methods when they are called.
 | `bad argument #3 to 'blink' (integer out of range)` | The count of `tween.blink` is above `2147483647`. |
 | `A shake needs a vibrato of at least 1.` | The option `vibrato` of `tween.shake` is below `1`. |
 | `A shake tween needs a number field, a "Vec2" field or a pair of number fields.` | A shake has a `Color` or a text field, with `punch` in place of `shake` for `tween.punch`. |
+| `The field "<name>" that "orient" turns must be a number.` | The field that the option `orient` of `tween.path` turns holds another value. |
 | `A punch needs a vibrato of at least 1.` | The option `vibrato` of `tween.punch` is below `1`. |
 | `A stagger needs at least one tween.` | The sequence of `tween.stagger` is empty. |
 | `A stagger needs a finite number of seconds between its tweens.` | The `seconds` of `tween.stagger` is NaN or infinite. |
