@@ -402,6 +402,7 @@ Joint World::createJoint(Joint::Type type, Body first, Body second, const Joint:
         break;
     }
     }
+
     return {this, b2StoreJointId(joint)};
 }
 

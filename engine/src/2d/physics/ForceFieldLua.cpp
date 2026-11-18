@@ -27,6 +27,7 @@ template <> struct EnumNames<physics2d::ForceField::Kind> {
     static std::optional<physics2d::ForceField::Kind> fromName(std::string_view name) {
         return physics2d::ForceField::kindFromName(name);
     }
+
     static std::string_view name(physics2d::ForceField::Kind value) {
         return physics2d::ForceField::kindName(value);
     }
@@ -36,6 +37,7 @@ template <> struct EnumNames<physics2d::ForceField::Falloff> {
     static std::optional<physics2d::ForceField::Falloff> fromName(std::string_view name) {
         return physics2d::ForceField::falloffFromName(name);
     }
+
     static std::string_view name(physics2d::ForceField::Falloff value) {
         return physics2d::ForceField::falloffName(value);
     }

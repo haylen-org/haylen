@@ -171,6 +171,7 @@ float ForceField::fade(float distance) const noexcept {
     case Falloff::InverseSquare:
         break;
     }
+
     const float ratio = options.minDistance / std::max(distance, options.minDistance);
     return ratio * ratio;
 }
@@ -344,6 +345,7 @@ std::vector<math::Vec2> ForceField::outlineOf(std::uint64_t shape) const {
     default:
         break;
     }
+
     return points;
 }
 

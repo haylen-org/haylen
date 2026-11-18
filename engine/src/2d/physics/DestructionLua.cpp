@@ -30,6 +30,7 @@ template <> struct EnumNames<physics2d::Explosion::Falloff> {
     static std::optional<physics2d::Explosion::Falloff> fromName(std::string_view name) {
         return physics2d::Explosion::falloffFromName(name);
     }
+
     static std::string_view name(physics2d::Explosion::Falloff value) {
         return physics2d::Explosion::falloffName(value);
     }

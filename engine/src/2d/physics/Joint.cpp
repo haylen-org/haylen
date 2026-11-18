@@ -239,6 +239,7 @@ void Joint::setLimitEnabled(bool value) {
         b2DistanceJoint_EnableLimit(joint, value);
         break;
     }
+
     b2Joint_WakeBodies(joint);
 }
 
@@ -295,6 +296,7 @@ void Joint::setLimits(float lower, float upper) {
         b2DistanceJoint_SetLimits(joint, std::max(lower / getScale(), Box2DConverter::kLinearSlop), std::max(upper / getScale(), Box2DConverter::kLinearSlop));
         break;
     }
+
     b2Joint_WakeBodies(joint);
 }
 
@@ -328,6 +330,7 @@ void Joint::setMotorEnabled(bool value) {
         b2DistanceJoint_EnableMotor(joint, value);
         break;
     }
+
     b2Joint_WakeBodies(joint);
 }
 
@@ -401,6 +404,7 @@ void Joint::setMaxMotorForce(float value) {
         b2MotorJoint_SetMaxSpringForce(joint, force);
         break;
     }
+
     b2Joint_WakeBodies(joint);
 }
 
@@ -436,6 +440,7 @@ void Joint::setMaxMotorTorque(float value) {
         b2MotorJoint_SetMaxSpringTorque(joint, torque);
         break;
     }
+
     b2Joint_WakeBodies(joint);
 }
 
@@ -481,6 +486,7 @@ void Joint::setSpringEnabled(bool value) {
         b2WheelJoint_EnableSpring(joint, value);
         break;
     }
+
     b2Joint_WakeBodies(joint);
 }
 
@@ -535,6 +541,7 @@ void Joint::setHertz(float value) {
         b2WeldJoint_SetAngularHertz(joint, value);
         break;
     }
+
     b2Joint_WakeBodies(joint);
 }
 
@@ -589,6 +596,7 @@ void Joint::setDampingRatio(float value) {
         b2WeldJoint_SetAngularDampingRatio(joint, value);
         break;
     }
+
     b2Joint_WakeBodies(joint);
 }
 

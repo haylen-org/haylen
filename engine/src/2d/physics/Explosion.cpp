@@ -33,6 +33,7 @@ float Explosion::scaleAt(const Options& options, float distance) noexcept {
     case Falloff::Linear:
         break;
     }
+
     return remaining;
 }
 

@@ -308,6 +308,7 @@ class Fluid::Collider final {
         case Kind::Polygon:
             return touchPolygon(solid, reach, position, last, normal, surface);
         }
+
         return false;
     }
 
@@ -586,6 +587,7 @@ Fluid::Fluid(World& owner, const Options& settings) : world(owner), options(sett
     if (options.radius <= 0.0F || options.smoothingRadius <= options.radius || !materials || !motion) {
         throw std::invalid_argument("A fluid needs a positive particle radius, a larger smoothing radius, from 1 to " + std::to_string(kMaxIterations) + " iterations, a viscosity from 0 to 1, and a density, friction, restitution and top speed of zero or more.");
     }
+
     if (options.maxParticles > kMaxParticles) {
         throw std::invalid_argument("A fluid holds at most " + std::to_string(kMaxParticles) + " particles.");
     }

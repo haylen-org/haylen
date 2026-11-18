@@ -57,6 +57,7 @@ b2BodyType Box2DConverter::toBodyType(Body::Type type) noexcept {
     case Body::Type::Dynamic:
         break;
     }
+
     return b2_dynamicBody;
 }
 

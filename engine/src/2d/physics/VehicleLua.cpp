@@ -33,6 +33,7 @@ template <> struct EnumNames<physics2d::Vehicle::Drive> {
     static std::optional<physics2d::Vehicle::Drive> fromName(std::string_view name) {
         return physics2d::Vehicle::driveFromName(name);
     }
+
     static std::string_view name(physics2d::Vehicle::Drive value) {
         return physics2d::Vehicle::driveName(value);
     }
