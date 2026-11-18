@@ -62,10 +62,12 @@ class GestureRecognizer final {
         float duration = 0.0F;
         bool longPressed = false;
         bool shared = false;
+        bool travelled = false;
     };
 
     static const Settings kDefaultSettings;
 
+    void moveTo(Pointer& pointer, math::Vec2 position) const noexcept;
     void finish(const Pointer& pointer);
     void recognizePinch(const Input& input);
 

@@ -439,7 +439,7 @@ Changes the limits of gesture recognition. Only the keys that `settings` holds c
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `tapMaxDuration` | number | `0.3` | The longest press that still counts as a tap. |
-| `tapMaxMovement` | number | `24` | The farthest a finger can move and still tap or long press. |
+| `tapMaxMovement` | number | `24` | The farthest a finger can move from where it landed and still tap or long press. A finger that went farther never taps or long presses, even when it comes back. |
 | `doubleTapInterval` | number | `0.35` | The longest time between the two taps of a double tap. |
 | `doubleTapDistance` | number | `48` | The farthest apart the two taps of a double tap can be. |
 | `longPressDuration` | number | `0.5` | The time a finger must stay down for a long press. |

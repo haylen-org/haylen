@@ -156,6 +156,38 @@ TEST_F(GestureTest, RecognizesLongPressesAndSwipes) {
     EXPECT_EQ(frame(), Names{});
 }
 
+TEST_F(GestureTest, AFingerThatTravelsAndComesBackNeverTaps) {
+    touch(platform::Event::Type::TouchBegan, {{1, {0.0F, 0.0F}}});
+    frame();
+    touch(platform::Event::Type::TouchMoved, {{1, {40.0F, 0.0F}}});
+    frame();
+    touch(platform::Event::Type::TouchEnded, {{1, {0.0F, 0.0F}}});
+    EXPECT_EQ(frame(), Names{});
+
+    touch(platform::Event::Type::TouchBegan, {{2, {0.0F, 0.0F}}});
+    frame();
+    touch(platform::Event::Type::TouchMoved, {{2, {40.0F, 0.0F}}});
+    frame();
+    touch(platform::Event::Type::TouchMoved, {{2, {0.0F, 0.0F}}});
+    Names seen;
+    for (int step = 0; step < 12; ++step) {
+        for (const std::string& name : frame()) {
+            seen.push_back(name);
+        }
+    }
+
+    EXPECT_EQ(seen, Names{}) << "A finger that travelled never long presses.";
+    touch(platform::Event::Type::TouchEnded, {{2, {0.0F, 0.0F}}});
+    frame();
+
+    mouse(platform::Event::Type::MouseDown, {0.0F, 0.0F});
+    frame();
+    mouse(platform::Event::Type::MouseMove, {40.0F, 0.0F});
+    frame();
+    mouse(platform::Event::Type::MouseUp, {0.0F, 0.0F});
+    EXPECT_EQ(frame(), Names{});
+}
+
 TEST_F(GestureTest, RecognizesPinches) {
     touch(platform::Event::Type::TouchBegan, {{1, {100.0F, 100.0F}}, {2, {200.0F, 100.0F}}});
     EXPECT_EQ(frame(), Names{});

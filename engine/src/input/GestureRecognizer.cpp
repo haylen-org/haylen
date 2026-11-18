@@ -16,7 +16,7 @@ void GestureRecognizer::update(const Input& input, float deltaSeconds) {
     // Long presses fire while the pointer is still down, so a menu can open under the finger.
     // clang-format off
     const auto pressLong = [this](Pointer& pointer) {
-        if (!pointer.longPressed && pointer.duration >= settings.longPressDuration && math::Vec2::distance(pointer.start, pointer.position) <= settings.tapMaxMovement) {
+        if (!pointer.longPressed && !pointer.travelled && pointer.duration >= settings.longPressDuration) {
             pointer.longPressed = true;
             gestures.push_back({.type = Gesture::Type::LongPress, .position = pointer.position});
         }
@@ -26,7 +26,7 @@ void GestureRecognizer::update(const Input& input, float deltaSeconds) {
     // A finger can land and lift within one frame, so a new pointer always starts from where the touch began. Touches keep the order they began in, so an id the platform reuses within one frame ends its old pointer before the new one starts.
     for (const Touch& touch : input.getTouches()) {
         Pointer& pointer = pointers.try_emplace(touch.id, Pointer{.start = touch.startPosition}).first->second;
-        pointer.position = touch.position;
+        moveTo(pointer, touch.position);
         pointer.duration = touch.duration;
         if (touch.isActive()) {
             pressLong(pointer);
@@ -45,7 +45,7 @@ void GestureRecognizer::update(const Input& input, float deltaSeconds) {
         if (input.isMousePressed(MouseButton::Left)) {
             mouse = Pointer{.start = input.getMousePosition(), .position = input.getMousePosition(), .duration = 0.0F, .longPressed = false};
         } else if (mouse) {
-            mouse->position = input.getMousePosition();
+            moveTo(*mouse, input.getMousePosition());
             mouse->duration += deltaSeconds;
         }
     }
@@ -68,6 +68,12 @@ void GestureRecognizer::cancel() noexcept {
     pinchStart.reset();
 }
 
+// A pointer that once went farther than a tap moves stays a drag, even when it comes back to where it began.
+void GestureRecognizer::moveTo(Pointer& pointer, math::Vec2 position) const noexcept {
+    pointer.position = position;
+    pointer.travelled = pointer.travelled || math::Vec2::distance(pointer.start, position) > settings.tapMaxMovement;
+}
+
 void GestureRecognizer::finish(const Pointer& pointer) {
     if (pointer.shared) {
         return;
@@ -75,7 +81,7 @@ void GestureRecognizer::finish(const Pointer& pointer) {
 
     const math::Vec2 delta = pointer.position - pointer.start;
     const float moved = delta.getLength();
-    if (!pointer.longPressed && pointer.duration <= settings.tapMaxDuration && moved <= settings.tapMaxMovement) {
+    if (!pointer.longPressed && !pointer.travelled && pointer.duration <= settings.tapMaxDuration) {
         gestures.push_back({.type = Gesture::Type::Tap, .position = pointer.position});
         const bool twice = lastTap && time - lastTap->first <= settings.doubleTapInterval && math::Vec2::distance(lastTap->second, pointer.position) <= settings.doubleTapDistance;
         if (twice) {
