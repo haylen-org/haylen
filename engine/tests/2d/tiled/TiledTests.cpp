@@ -639,12 +639,10 @@ TEST_F(MapRendererTest, LoadsDrawsAndAnimatesMaps) {
     tiled::MapRenderer map(*data, fixture.engine().getDefaultFont());
     // clang-format off
     const auto render = [&](const tiled::MapRenderer::View& view) {
-        // clang-format off
         fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](core::Engine& engine) {
             engine.getRenderer2D().beginWorld(graphics2d::Camera{});
             map.draw(engine.getRenderer2D(), view);
         }));
-        // clang-format on
         fixture.frames(1);
         return fixture.engine().getRenderer2D().getStats();
     };

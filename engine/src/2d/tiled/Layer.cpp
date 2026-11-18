@@ -22,6 +22,7 @@ std::string_view Layer::kindName(Kind value) noexcept {
     case Kind::Group:
         return "group";
     }
+
     return "tile";
 }
 

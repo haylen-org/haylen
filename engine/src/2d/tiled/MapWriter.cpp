@@ -125,6 +125,7 @@ core::Json MapWriter::writeObject(const Object& object, std::string_view directo
     case Object::Shape::Tile:
         break;
     }
+
     if (!object.properties.getItems().empty()) {
         entry["properties"] = writeProperties(object.properties, directory);
     }
@@ -300,6 +301,7 @@ core::Json MapWriter::writeLayer(const Layer& layer, std::string_view directory)
         break;
     }
     }
+
     return entry;
 }
 

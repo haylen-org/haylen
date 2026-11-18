@@ -21,6 +21,7 @@ std::string_view Object::shapeName(Shape value) noexcept {
     case Shape::Tile:
         return "tile";
     }
+
     return "rectangle";
 }
 

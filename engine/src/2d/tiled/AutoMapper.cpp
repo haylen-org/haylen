@@ -559,6 +559,7 @@ bool AutoMapper::matches(const Entry& entry, std::uint32_t gid, const TargetCond
     case Match::Negate:
         break;
     }
+
     return true;
 }
 

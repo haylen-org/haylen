@@ -58,9 +58,11 @@ int MapBuilderLua::newMap(lua_State* L) {
     if ((!map->infinite && (map->width < 1 || map->height < 1)) || !(map->tileSize.x > 0.0F && map->tileSize.y > 0.0F)) {
         return luaL_error(L, "A map needs a positive tile size, and a finite map a positive width and height in cells.");
     }
+
     if (static_cast<std::int64_t>(map->width) * map->height > Map::kMaxCells) {
         return luaL_error(L, "A map holds at most %d cells.", static_cast<int>(Map::kMaxCells));
     }
+
     if ((staggerAxis != "x" && staggerAxis != "y") || (staggerIndex != "odd" && staggerIndex != "even")) {
         return luaL_error(L, "A map staggers along the axis \"x\" or \"y\" from the \"odd\" or \"even\" cells.");
     }

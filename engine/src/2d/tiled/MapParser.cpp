@@ -33,9 +33,11 @@ Map MapParser::parse(const core::Json& document, std::string_view file, const Ma
     if (result.width < 0 || result.height < 0) {
         throw std::invalid_argument("The Tiled map \"" + result.path + "\" has a negative size.");
     }
+
     if (static_cast<std::int64_t>(result.width) * result.height > Map::kMaxCells) {
         throw std::invalid_argument("The Tiled map \"" + result.path + "\" has more than the " + std::to_string(Map::kMaxCells) + " cells that a map holds.");
     }
+
     if (!(result.tileSize.x > 0.0F && result.tileSize.y > 0.0F && std::isfinite(result.tileSize.x) && std::isfinite(result.tileSize.y))) {
         throw std::invalid_argument("The Tiled map \"" + result.path + "\" needs a positive tile size.");
     }

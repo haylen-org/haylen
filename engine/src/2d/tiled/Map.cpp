@@ -256,6 +256,7 @@ math::Rect Map::getPixelBounds() const noexcept {
     case Orientation::Hexagonal:
         break;
     }
+
     const auto side = static_cast<float>(orientation == Orientation::Hexagonal ? hexSideLength : 0);
     if (staggerX) {
         const float columnWidth = (tileSize.x + side) * 0.5F;
