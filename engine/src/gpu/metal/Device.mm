@@ -1512,7 +1512,7 @@ void Device::attachSurface(const Surface& surface) {
 int Device::addSurface(const Surface& surface) {
     auto chain = std::make_unique<Swapchain>(native->device, native->graveyard, native->swapchain.getSampleCount(), native->swapchain.isMemoryless());
     chain->attach(surface);
-    const auto free = std::ranges::find_if(native->surfaces, [](const std::unique_ptr<Swapchain>& chain) { return chain == nullptr; });
+    const auto free = std::ranges::find_if(native->surfaces, [](const std::unique_ptr<Swapchain>& slot) { return slot == nullptr; });
     if (free != native->surfaces.end()) {
         *free = std::move(chain);
         return static_cast<int>(free - native->surfaces.begin()) + 1;

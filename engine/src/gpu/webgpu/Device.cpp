@@ -1153,7 +1153,7 @@ int Device::addSurface(const Surface& surface) {
         throw std::runtime_error("The canvas takes another format or another sample count than the canvas of the window, so the pipelines of the window cannot draw into it.");
     }
 
-    const auto free = std::ranges::find_if(surfaces, [](const std::unique_ptr<Swapchain>& chain) { return chain == nullptr; });
+    const auto free = std::ranges::find_if(surfaces, [](const std::unique_ptr<Swapchain>& slot) { return slot == nullptr; });
     if (free != surfaces.end()) {
         *free = std::move(chain);
         return static_cast<int>(free - surfaces.begin()) + 1;
