@@ -123,14 +123,15 @@ if(HAYLEN_PLATFORM MATCHES "^(ios|tvos)$")
   list(APPEND haylen_sdl_options "SDL_JOYSTICK OFF" "SDL_HIDAPI OFF")
 endif()
 # SDL turns the keys of hardware keyboards on iOS, iPadOS, Mac Catalyst and tvOS into keys only while GameController reads no keyboard, and the arrows and escape of a keyboard into key commands too, while the engine reads every key of a keyboard through GameController, so the patch leaves keyboards to GameController and turns the presses of remotes and game controllers into keys whether a keyboard is connected or not. It also drops the swipes of the Apple TV remote that SDL turns into arrows, since the engine reads the touch surface of the remote as its stick.
-# SDL turns the frame of the view of a UIKit window by the orientation of the status bar whenever the keyboard shows, which stays portrait after an app in portrait ran, so the next patch keeps the view of a window in a scene at the bounds of its window.
+# SDL hides, shows and styles the status bar through UIApplication, which does nothing while view controllers decide the status bar and which iOS 27 reports as a misuse at every call, so the next patch leaves the status bar to the view controllers.
 # SDL reads mice on tvOS only when the Info.plist has the key UIApplicationSupportsIndirectInputEvents, which only iOS and iPadOS define, and logs at every launch that it is missing, so the next patch reads them on tvOS without it.
 # SDL paces the main callbacks of UIKit by a display link at the highest rate of the display, whatever rate the app asks for, so the next patch makes that display link follow the hint of the callback rate.
 # SDL reads the keys of the whole page on the web, so a page that hosts the app next to elements of its own, such as an editor, could keep their keys from the app only by stopping them before they reach those elements, so the next patch skips the keys that the runtime marks.
-# The Direct3D devices compose transparent windows of Windows through DirectComposition, whose visual the redirection surface of the window covers, so the last patch creates such windows without one.
+# The Direct3D devices compose transparent windows of Windows through DirectComposition, whose visual the redirection surface of the window covers, so the next patch creates such windows without one.
+# SDL drops the copy of a click that X11 reports from both a device and the virtual pointer by the state of the buttons, which a quick click has already left, so the last patch drops the copy with the same source, button and time.
 if(NOT ANDROID AND NOT HAYLEN_PORT_PLATFORM)
-  set(sdl_patches "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-presses.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-view-frame.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-tvos-mouse.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-frame-rate.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-web-page-keys.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-windows-composition.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-x11-quick-clicks.patch")
-  set(sdl_hash 9c75cf16330322c217dedd2e0609f1124f1b54b8633e763467b4684d0f4334a3)
+  set(sdl_patches "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-presses.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-status-bar.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-tvos-mouse.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-frame-rate.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-web-page-keys.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-windows-composition.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-x11-quick-clicks.patch")
+  set(sdl_hash f3bb06f55bed9557227a700af2ea62e49497ebdf58037732a731a5fb3ef8581f)
   haylen_patched_package_key(sdl_cache_key ${sdl_hash} ${sdl_patches})
   # SDL picks its UIKit backend by the system name, which Mac Catalyst builds name Darwin for the macOS SDK they compile against, so SDL configures with the name of iOS there.
   if(HAYLEN_CATALYST)
@@ -138,8 +139,8 @@ if(NOT ANDROID AND NOT HAYLEN_PORT_PLATFORM)
   endif()
   CPMAddPackage(
     NAME SDL3
-    VERSION 3.4.18
-    URL "https://github.com/libsdl-org/SDL/releases/download/release-3.4.18/SDL3-3.4.18.tar.gz"
+    VERSION 3.4.20
+    URL "https://github.com/libsdl-org/SDL/releases/download/release-3.4.20/SDL3-3.4.20.tar.gz"
     URL_HASH SHA256=${sdl_hash}
     PATCHES ${sdl_patches}
     CUSTOM_CACHE_KEY ${sdl_cache_key}

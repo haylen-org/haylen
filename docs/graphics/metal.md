@@ -33,6 +33,8 @@ Swapchain passes draw into the drawables of the `CAMetalLayer` of the window, on
 
 A transparent window makes the layer not opaque, and the system composites its premultiplied pixels. Vertical sync is off when the layer turns off `displaySyncEnabled`, which only macOS and Mac Catalyst have, so iOS, iPadOS and tvOS always present at the pace of the display. A new size of the drawable takes effect at the next frame, and the attachments of the old size wait in the graveyard for the frames that still draw them.
 
+Debug builds of iOS, iPadOS, Mac Catalyst, tvOS and visionOS check at every frame that the view of the window covers the window and that its drawable has the pixels of the view, its bounds times its scale. When they part, `platform::SurfaceCheck` logs an error once, so a layout that leaves the view or the drawable behind the window shows in the log.
+
 ## Shaders
 
 Shader packages carry three Metal languages: `msl-macos` for macOS, `msl-ios` for devices of iOS, iPadOS and tvOS and for Mac Catalyst, and `msl-ios-simulator` for the simulators. The device compiles the source of each stage into a Metal library when a program is made. That takes time, so `prepareProgram` starts compiling on the I/O pool as soon as the engine knows a program. Programs that run the same source share its library, and a program whose source still compiles waits only for what is left.
