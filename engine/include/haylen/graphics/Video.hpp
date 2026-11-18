@@ -60,7 +60,7 @@ class Video final {
     // Opens the decoder on a worker of the I/O pool, once.
     void load(Opener opener);
 
-    // Stops the sound and the decoding for good, such as when the owner of the video ends.
+    // Stops the sound and the decoding for good, such as when the owner of the video ends, and a video that closed refuses to play or seek.
     void close();
 
     // Play from the current time, or from the start once the video ended, and pause where it is. A video that is still loading plays once it is ready.
@@ -152,6 +152,7 @@ class Video final {
     static void decode(const std::shared_ptr<Shared>& shared);
     static void pushSound(Shared& shared);
 
+    void checkOpen() const;
     void finishOpening(std::string failure);
     void fail();
     void present(platform::VideoDecoder::Frame& frame);
@@ -179,6 +180,7 @@ class Video final {
     bool loop;
     bool playing;
     bool atEnd = false;
+    bool closed = false;
     bool unsupported = false;
     bool controlledPlaying = false;
     float controlledRate = 0.0F;

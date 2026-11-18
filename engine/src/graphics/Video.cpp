@@ -6,6 +6,7 @@
 #include <mutex>
 #include <optional>
 #include <stdexcept>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -50,6 +51,12 @@ Video::Video(core::JobSystem& jobSystem, Device& graphics, audio::Mixer& audioMi
         throw std::invalid_argument("The volume of a video must be zero or positive.");
     }
 
+    // The sound starts once the video opened, so a bus that does not exist is refused here, where the app asks for it.
+    const std::vector<std::string> buses = mixer.getBuses();
+    if (std::ranges::find(buses, bus) == buses.end()) {
+        throw std::invalid_argument("The audio bus \"" + bus + "\" does not exist.");
+    }
+
     texture = device.createDynamicTexture(1, 1, math::Color::transparent(), {.filter = Texture::Filter::Linear});
 }
 
@@ -58,6 +65,7 @@ Video::~Video() {
 }
 
 void Video::close() {
+    closed = true;
     playing = false;
     stopSound();
     const std::scoped_lock lock(shared->mutex);
@@ -101,6 +109,7 @@ void Video::load(Opener opener) {
 }
 
 void Video::play() {
+    checkOpen();
     if (atEnd) {
         seek(0.0);
     }
@@ -118,6 +127,12 @@ void Video::play() {
     mixer.setPaused(voice, false);
 }
 
+void Video::checkOpen() const {
+    if (closed) {
+        throw std::logic_error("The video was released, so it no longer plays.");
+    }
+}
+
 void Video::pause() {
     playing = false;
 
@@ -127,6 +142,7 @@ void Video::pause() {
 }
 
 void Video::seek(double seconds) {
+    checkOpen();
     if (!std::isfinite(seconds)) {
         throw std::invalid_argument("A video seeks to a finite number of seconds.");
     }

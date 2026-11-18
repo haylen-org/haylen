@@ -166,6 +166,11 @@ TEST_F(VideoTest, PlaysItsSoundThroughABusOfTheMixer) {
     fixture.frames(1);
     EXPECT_EQ(mixer.getVoiceCount(), before);
     EXPECT_EQ(fixture.engine().getPlugin<plugins::VideoPlugin>().getVideoCount(), 0U);
+
+    // A released video never plays again, and a bus that does not exist is refused when the video loads.
+    EXPECT_NE(fixture.lua("intro:play()").find("The video was released, so it no longer plays."), std::string::npos);
+    EXPECT_EQ(mixer.getVoiceCount(), before);
+    EXPECT_NE(fixture.lua("video.load('videos/intro.mp4', {bus = 'missing'})").find("The audio bus \"missing\" does not exist."), std::string::npos);
 }
 
 // A seek while the decoder reads the end of the sound for the time it leaves plays the sound of the new time.
