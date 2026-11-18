@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from haylen.assets.app_shaders import AppShaders
 from haylen.core.app_manifest import AppManifest
+from haylen.core.errors.incompatible_sdk import IncompatibleSdk
 from haylen.core.errors.missing_capability import MissingCapability
 from haylen.core.errors.missing_toolchain import MissingToolchain
 from haylen.core.generic_verifier import GenericVerifier
@@ -40,21 +41,28 @@ class AppPipeline:
     registry: BackendRegistry
 
     def resolve(self, request: ProductRequest, *, build_sdk: bool) -> ResolvedProduct:
-        """Resolves the product of a request. A command that builds the app first builds the SDK of the architectures that no installed SDK of the current engine sources holds, through the engine port, as `haylen sdk build` does, while a command that only reads the product, such as `project inspect`, stops at a missing SDK."""
+        """Resolves the product of a request, its target, plugins and contributions, before anything builds, so a project with a problem fails at once. When only the SDK stops the resolution, a command that builds the app builds the SDK of the architectures that no installed SDK of the current engine sources holds, through the engine port, as `haylen sdk build` does, and resolves again, while a command that only reads the product, such as `project inspect`, stops at the missing SDK."""
         app = AppManifest.load(request.app_folder)
-        if build_sdk:
-            self.provide_sdk(app, request)
+        try:
+            return self.resolver(app).resolve(request)
+        except IncompatibleSdk:
+            missing = self.missing_architectures(request) if build_sdk else ()
+            if not missing:
+                raise
+
+        SdkBuilder(self.context, self.registry).build((request.target,), request.engine_configuration, missing, None, AppPipeline.SDK_BUILD_NOTE)
+        return self.resolver(app).resolve(request)
+
+    def resolver(self, app: AppManifest) -> ProjectResolver:
         source = PluginSource(app.folder, PluginLock.load(app.folder), self.context.process, self.context.terminal)
         selector = SdkSelector(tuple(SdkCatalog(self.context.environment).manifests()), Repository.engine_revision())
-        return ProjectResolver(self.registry, PluginResolver(app, source), selector).resolve(request)
+        return ProjectResolver(self.registry, PluginResolver(app, source), selector)
 
-    def provide_sdk(self, app: AppManifest, request: ProductRequest) -> None:
+    def missing_architectures(self, request: ProductRequest) -> tuple[str, ...]:
+        """Returns the architectures of the request that no installed SDK of the current engine sources holds in the configuration of the engine, which only a build of the SDK makes."""
         description = self.registry.target(request.target).description
-        ProjectResolver.check_kind(app, description)
         selector = SdkSelector(tuple(SdkCatalog(self.context.environment).manifests()), Repository.engine_revision())
-        missing = tuple(target.architecture for target in ProjectResolver.target_ids(description, request) if selector.lacks(target, request.engine_configuration))
-        if missing:
-            SdkBuilder(self.context, self.registry).build((description.name,), request.engine_configuration, missing, None, AppPipeline.SDK_BUILD_NOTE)
+        return tuple(target.architecture for target in ProjectResolver.target_ids(description, request) if selector.lacks(target, request.engine_configuration))
 
     def backend(self, product: ResolvedProduct, capability: Capability) -> PlatformBackend:
         target = self.registry.target(product.target_name)

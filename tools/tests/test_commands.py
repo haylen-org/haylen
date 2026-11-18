@@ -12,6 +12,7 @@ from haylen.core.configuration import Configuration
 from haylen.core.errors.incompatible_sdk import IncompatibleSdk
 from haylen.core.errors.invalid_option import InvalidOption
 from haylen.core.errors.missing_capability import MissingCapability
+from haylen.core.errors.unsupported_target import UnsupportedTarget
 from haylen.core.product_request import ProductRequest
 from haylen.core.repository import Repository
 from haylen.core.resolved_product import ResolvedProduct
@@ -125,6 +126,13 @@ class CommandsTest:
         assert [(built.targets, built.architectures, built.configuration) for built in requests] == [(("fake-device",), ("arm64",), Configuration.RELEASE)]
         assert resolved.primary.sdk.manifest.revision == ToolingFixture.REVISION
         assert AppPipeline.SDK_BUILD_NOTE in fixture.output.getvalue()
+
+        # A project that fails to resolve, such as one whose plugin does not support the target, fails before any SDK builds.
+        broken = fixture.app({"plugins": {"kit": {}}}, name="broken")
+        fixture.plugin(broken, "kit", {"implementations": {"elsewhere": "lua"}})
+        with pytest.raises(UnsupportedTarget, match='The plugin "kit" does not support "fake"'):
+            session.pipeline.resolve(ProductRequest(broken, "fake", Configuration.DEBUG, Configuration.RELEASE, ("x86_64",)), build_sdk=True)
+        assert len(requests) == 1
 
     def test_sdks_join_only_with_one_port_sources_and_configuration_whose_port_declares_joining(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         fixture = ToolingFixture(tmp_path)

@@ -43,7 +43,8 @@ class ProjectResolver:
         app = self.plugins.app
         target = self.registry.target(request.target)
         description = target.description
-        ProjectResolver.check_kind(app, description)
+        if app.kind not in description.kinds:
+            raise UnsupportedTarget(f'The target "{description.name}" does not build apps of the kind "{app.kind.value}", and `{app.origin}` describes one.', origin=app.origin)
         target_ids = ProjectResolver.target_ids(description, request)
 
         sections = self.sections(app, description.platform)
@@ -93,11 +94,6 @@ class ProjectResolver:
         if tuple(architectures) != description.default_architectures:
             identity += "-" + "-".join(architectures)
         return ResolvedProduct(request, target.platform.name, identity, tuple(projects))
-
-    @staticmethod
-    def check_kind(app: AppManifest, description: TargetDescription) -> None:
-        if app.kind not in description.kinds:
-            raise UnsupportedTarget(f'The target "{description.name}" does not build apps of the kind "{app.kind.value}", and `{app.origin}` describes one.', origin=app.origin)
 
     @staticmethod
     def target_ids(description: TargetDescription, request: ProductRequest) -> tuple[TargetId, ...]:

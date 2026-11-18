@@ -12,7 +12,7 @@ from haylen.sdk.selected_sdk import SelectedSdk
 
 @dataclass(frozen=True)
 class SdkSelector:
-    """Chooses the SDK slice of a target after the requirements of the plugins are known and before the project is generated. A slice serves a target only when its system, environment, architecture, binary interface, toolchain and configuration match, it was built from the current engine sources, it runs on the oldest system the app supports and it holds the graphics APIs the app asks for. The selector never builds: the commands that build apps build a missing SDK before they resolve, and the error says which SDK to build."""
+    """Chooses the SDK slice of a target after the requirements of the plugins are known and before the project is generated. A slice serves a target only when its system, environment, architecture, binary interface, toolchain and configuration match, it was built from the current engine sources, it runs on the oldest system the app supports and it holds the graphics APIs the app asks for. The selector never builds: the commands that build apps build a missing SDK once the rest of the project resolved, and the error says which SDK to build."""
 
     manifests: tuple[SdkManifest, ...]
     revision: str
