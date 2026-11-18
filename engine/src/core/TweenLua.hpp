@@ -98,6 +98,7 @@ class TweenLua final {
     static void checkTarget(lua_State* L);
     static int startValues(lua_State* L, TweenProperty::Mode mode);
     static void requireVector(lua_State* L, const TweenValue& current, const char* kind);
+    static void requireNumberOrVector(lua_State* L, const TweenValue& current, const char* kind);
     [[nodiscard]] static std::function<void()> makeCall(lua_State* L, int index);
 
     [[nodiscard]] static std::vector<std::string> readFieldNames(lua_State* L, int options, std::vector<std::string> defaults);

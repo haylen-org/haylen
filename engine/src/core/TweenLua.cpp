@@ -663,6 +663,12 @@ void TweenLua::requireVector(lua_State* L, const TweenValue& current, const char
     }
 }
 
+void TweenLua::requireNumberOrVector(lua_State* L, const TweenValue& current, const char* kind) {
+    if (current.getKind() != TweenValue::Kind::Number && current.getKind() != TweenValue::Kind::Vector) {
+        luaL_error(L, "A %s tween needs a number field, a \"Vec2\" field or a pair of number fields.", kind);
+    }
+}
+
 int TweenLua::move(lua_State* L) {
     return startReadyMade(L, {}, {"x", "y"}, [](Builder& builder, const TweenValue& current) { return TweenProperty::to(readLike(builder.state, 3, current, "position")); });
 }
@@ -813,6 +819,7 @@ int TweenLua::shake(lua_State* L) {
             lua::Table::readField(state, builder.options, "seed", seed);
         }
 
+        requireNumberOrVector(state, current, "shake");
         const bool uniform = current.getKind() == TweenValue::Kind::Vector && lua_type(state, 3) == LUA_TNUMBER;
         TweenValue strength = uniform ? TweenValue(math::Vec2{lua::Stack::read<float>(state, 3), lua::Stack::read<float>(state, 3)}) : readLike(state, 3, current, "strength");
         TweenProperty property = TweenProperty::to(std::move(strength));
@@ -833,6 +840,7 @@ int TweenLua::punch(lua_State* L) {
             lua::Table::readField(state, builder.options, "elasticity", elasticity);
         }
 
+        requireNumberOrVector(state, current, "punch");
         TweenProperty property = TweenProperty::to(readLike(state, 3, current, "offset"));
         property.setMotion(TweenMotion::punch(vibrato, elasticity));
         return property;

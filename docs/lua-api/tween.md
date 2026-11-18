@@ -355,7 +355,7 @@ tween.blink(portal, 1, 4, {field = 'color', hidden = '#0066CCFF'})
 
 ### tween.shake(target, seconds, strength, options)
 
-Shakes the fields `x` and `y` around their current values with a strength that fades out, and ends where they started. The `strength` is how far it shakes: one number for both axes, or a pair for each axis. On a number field, it is a number.
+Shakes the fields `x` and `y` around their current values with a strength that fades out, and ends where they started. The `strength` is how far it shakes: one number for both axes, or a pair for each axis. On a number field, it is a number. The field is a number, a `Vec2` or a pair of number fields, and another field raises `A shake tween needs a number field, a "Vec2" field or a pair of number fields.`.
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -373,7 +373,7 @@ tween.shake(camera, 0.4, 12, {field = 'position', vibrato = 20, seed = 7})
 
 ### tween.punch(target, seconds, offset, options)
 
-Springs the fields `x` and `y` toward `offset` and back, swinging less each time, and ends where they started. The `offset` is a `Vec2` or a pair, or a number on a number field.
+Springs the fields `x` and `y` toward `offset` and back, swinging less each time, and ends where they started. The `offset` is a `Vec2` or a pair, or a number on a number field. The field is a number, a `Vec2` or a pair of number fields, and another field raises `A punch tween needs a number field, a "Vec2" field or a pair of number fields.`.
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -871,6 +871,7 @@ These messages come from the functions and methods when they are called.
 | `bad argument #3 to 'blink' (number has no integer representation)` | The count of `tween.blink` is not an integer. |
 | `bad argument #3 to 'blink' (integer out of range)` | The count of `tween.blink` is above `2147483647`. |
 | `A shake needs a vibrato of at least 1.` | The option `vibrato` of `tween.shake` is below `1`. |
+| `A shake tween needs a number field, a "Vec2" field or a pair of number fields.` | A shake has a `Color` or a text field, with `punch` in place of `shake` for `tween.punch`. |
 | `A punch needs a vibrato of at least 1.` | The option `vibrato` of `tween.punch` is below `1`. |
 | `A stagger needs at least one tween.` | The sequence of `tween.stagger` is empty. |
 | `A stagger needs a finite number of seconds between its tweens.` | The `seconds` of `tween.stagger` is NaN or infinite. |
