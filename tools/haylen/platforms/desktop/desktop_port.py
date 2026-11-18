@@ -26,7 +26,7 @@ class DesktopPort(EnginePort):
     """The engine port of the desktops, which compiles the engine of this machine in one build tree into the SDK of its system and architecture: the CMake package that `find_package(haylen)` imports, with the Lua player object that defines the app of Lua apps, the desktop player that runs any package in development and the content tool `haylen-content`, both host tools of this machine. It builds only for the machine it runs on, so the SDK of Windows builds on Windows and the SDK of Linux on Linux, and its slice serves the targets `windows`, `linux` and `player`, whatever their names, by their system, environment, binary interface and toolchain."""
 
     NAME = "desktop"
-    VERSION = "1.0.0"
+    VERSION = Repository.engine_version()
     PLAYER = "haylen"
     CONTENT_TOOL = "haylen-content"
     TOOLS = ("cmake", "ninja", "haylen-shaderc")

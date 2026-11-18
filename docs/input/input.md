@@ -402,7 +402,7 @@ The sensors spend battery, so they stay off until the app starts them with `inpu
 - The bindings `tilt:x+`, `tilt:x-`, `tilt:y+`, `tilt:y-` and `stick:tilt` put the tilt in the action map next to keys and sticks, so gameplay reads one action whatever the player holds. They read the gamepads of the map, so a map of one player reads the tilt of that player's gamepad alone.
 - The function `input.gamepadTouches` reads the fingers on the touchpads of controllers, which need no request.
 
-The motion sensors of phones and tablets themselves are a capability of the device, so the `motion` plugin serves them with the permission `motion` that it owns. A game that rolls a ball by tilting the phone feeds the tilt of the plugin into a virtual stick, which the action map reads next to the tilt of gamepads, as the [upgrade guide](../tools/upgrading.md#the-motion-sensors-of-the-device) shows.
+The motion sensors of phones and tablets themselves are a capability of the device, so the `motion` plugin serves them with the permission `motion` that it owns. A game that rolls a ball by tilting the phone feeds the tilt of the plugin into a virtual stick, which the action map reads next to the tilt of gamepads.
 
 ```lua
 local input = require('haylen.input')

@@ -54,7 +54,7 @@ class AndroidBackend(PlatformBackend):
     """The backend of Android, whose target `android` builds one APK for phones, tablets and Android TV with every ABI it is asked for, one resolved project per ABI. It generates the whole Gradle project of the app from its template, which Gradle builds with the Android libraries of the engine SDK, and the external native build of Gradle compiles the native code of the app for each ABI against the engine SDK of that ABI. It lists devices and emulators, runs apps on them, packages bundles and creates the keys that sign apps."""
 
     NAME = "android"
-    VERSION = "1.0.0"
+    VERSION = Repository.engine_version()
     BUNDLE = "bundle"
     APKS = "apks"
 

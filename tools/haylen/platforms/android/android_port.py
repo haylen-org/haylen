@@ -28,7 +28,7 @@ class AndroidPort(EnginePort):
     """The engine port of Android, which builds the engine for every ABI it is asked for with the pinned NDK and installs an SDK of one slice per ABI: the CMake package that the native code of apps links against and the player library `libhaylen.so` of each ABI, and the Android libraries of the engine in a local Maven repository, whose `haylen` library carries the player of every ABI of the SDK. The ABIs build one after the other with every job, so the configures never write into the shared sources of the dependencies together and the compilers stay within the jobs."""
 
     NAME = "android"
-    VERSION = "1.0.0"
+    VERSION = Repository.engine_version()
     ABIS_FOLDER = "abis"
     PLAYERS_FOLDER = "jniLibs"
     MAVEN_FOLDER = "maven"

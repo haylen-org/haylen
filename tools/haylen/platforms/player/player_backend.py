@@ -36,7 +36,7 @@ class PlayerBackend(PlatformBackend):
     """The backend of the target `player`, which runs a Lua app in the desktop player of the SDK of this machine in development, with hot reload of the app and its plugins, and compiles nothing of the engine or of the app. Its preparation stages the package with every plugin at `plugins/<id>/` and places the native libraries of the app and its plugins for this machine in the folder that the player searches first. It is the default target of Lua apps on macOS, Windows and Linux, and it ships no release, which the targets of each platform build."""
 
     NAME = "player"
-    VERSION = "1.0.0"
+    VERSION = Repository.engine_version()
     TARGET = "player"
     SOURCE = "player"
     # The Metal device of macOS records a frame capture only with this variable set when the process starts.

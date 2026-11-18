@@ -698,7 +698,7 @@ scene.push({
 
 ## Gamepad motion
 
-Some gamepads carry motion sensors: the accelerometer, the gyroscope and, on Apple platforms, the attitude that the system fuses from them, such as the Siri Remote of the Apple TV and the DualSense, DualShock 4 and Switch Pro controllers. Some also carry touchpads. The sensors spend battery, so they stay off until the app starts them with [`input.startGamepadMotion`](#inputstartgamepadmotionoptions). Gamepads need no permission, so the sensors run at once. The motion sensors of the device itself, of phones and tablets, belong to the `motion` plugin, as the [upgrade guide](../tools/upgrading.md#the-motion-sensors-of-the-device) describes. The [input guide](../input/input.md#gamepad-motion) explains the tilt and what each platform reads.
+Some gamepads carry motion sensors: the accelerometer, the gyroscope and, on Apple platforms, the attitude that the system fuses from them, such as the Siri Remote of the Apple TV and the DualSense, DualShock 4 and Switch Pro controllers. Some also carry touchpads. The sensors spend battery, so they stay off until the app starts them with [`input.startGamepadMotion`](#inputstartgamepadmotionoptions). Gamepads need no permission, so the sensors run at once. The motion sensors of the device itself, of phones and tablets, belong to the `motion` plugin. The [input guide](../input/input.md#gamepad-motion) explains the tilt and what each platform reads.
 
 Every reading follows the face of a gamepad that lies flat in the hands: x points to the right, y away from the person and z out of the face. The readings are `0` while the sensor does not run.
 

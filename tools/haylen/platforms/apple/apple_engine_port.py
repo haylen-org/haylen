@@ -32,7 +32,7 @@ class AppleEnginePort(EnginePort):
     """The engine port of the Apple platforms, which builds the slices of the Apple SDK, one per system and environment: the engine and the runtime of every architecture of a slice merged in its `libhaylen.a` and the Lua player in its `libhaylen-player.a`, joined with `lipo` and gathered into `Haylen.xcframework` and `HaylenPlayer.xcframework`, both signed ad hoc so Xcode takes them as signed. The SDK folder keeps the slices that it holds of the same engine sources and configuration, so building one slice later adds it to the frameworks, and SDKs that hold different slices, such as SDKs that several machines built side by side, join into one. The SDK holds the headers, the CMake package of native libraries, the settings of Apple projects, the privacy manifest of the engine and the Swift helpers of the bridge."""
 
     NAME = "apple"
-    VERSION = "1.0.0"
+    VERSION = Repository.engine_version()
     TOOLS = ("xcodebuild", "cmake", "ninja", "haylen-shaderc")
     BUILD = "haylen-framework"
     FRAMEWORK_COMPONENT = "haylen-framework"

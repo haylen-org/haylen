@@ -2,7 +2,7 @@
 
 This guide is for app developers who create, run and ship apps. A Haylen app is a folder with `haylen.json`, its code and its assets. The same app builds for every platform through one pipeline: the tooling resolves the app for a target, a backend generates the native project of that target in the build folder, the native tools of the platform build it against a prebuilt engine SDK, and the tooling verifies the result before it launches or packages it. The app never holds a platform project, and no app build compiles the engine.
 
-The guide covers the targets and their backends, the pipeline, the generated projects of each platform and what an app customizes in them, signing, release builds, packages, store packs, native libraries, the engine SDK of each platform, splash screens, development mode, the web loader and the platforms that Haylen supports. The [command reference](commands.md) lists every command with its options and its result, the [plugin guide](../platform/plugins.md) covers plugins, the [build guide](build.md) covers how the engine SDKs are built, and the [upgrading guide](upgrading.md) brings an app of an earlier layout up to this one.
+The guide covers the targets and their backends, the pipeline, the generated projects of each platform and what an app customizes in them, signing, release builds, packages, store packs, native libraries, the engine SDK of each platform, splash screens, development mode, the web loader and the platforms that Haylen supports. The [command reference](commands.md) lists every command with its options and its result, the [plugin guide](../platform/plugins.md) covers plugins, and the [build guide](build.md) covers how the engine SDKs are built.
 
 ## Quick start
 

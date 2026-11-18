@@ -45,7 +45,7 @@ class WebBackend(PlatformBackend):
     """The backend of the target `web`, which makes the site of an app that a browser runs through WebGPU or WebGL2. A Debug build of a Lua app plays its zipped package in the prebuilt web player of the web SDK and compiles nothing, while a Release build and a C++ app link a runtime of their own against the web SDK with Emscripten, a release with the protected release of the app, whose content streams by range from `app/` of the site, and its bootstrap. The run serves the site, in development with the development server on the same port."""
 
     NAME = "web"
-    VERSION = "1.0.0"
+    VERSION = Repository.engine_version()
     TARGET = "web"
     PLATFORM = "web"
     SOURCE = "web"

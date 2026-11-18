@@ -2486,7 +2486,7 @@ Implementação 3D (a mega lista detalhada fica no item de planejamento acima e 
 
 Nada do passado:
 
-- [ ] Até o dono lançar a 1.0.0, a versão da Haylen fica fixa em 0.0.1 e só o código atual existe: sair o guia `docs/tools/upgrading.md` e toda doc, regra, comentário, teste ou código que fale de versões ou layouts anteriores, migrações, compatibilidade com versões anteriores, nomes antigos ou como algo era antes, e o `AGENTS.md` dizer essa regra.
+- [x] Até o dono lançar a 1.0.0, a versão da Haylen fica fixa em 0.0.1 e só o código atual existe: sair o guia `docs/tools/upgrading.md` e toda doc, regra, comentário, teste ou código que fale de versões ou layouts anteriores, migrações, compatibilidade com versões anteriores, nomes antigos ou como algo era antes, e o `AGENTS.md` dizer essa regra. Feito: saiu o guia `docs/tools/upgrading.md` com a sua linha no índice das ferramentas, os links para ele no guia de distribuição e nas páginas de entrada, e a frase do `AGENTS.md` que mandava mudar o guia junto com os templates. Uma varredura de `docs/`, `README.md`, `templates/`, `tools/`, dos READMEs dos samples e de `engine/` não achou outra menção a versões anteriores da Haylen (o que sobrou fala de versões de sistemas, de formatos de terceiros ou das migrações de saves dos apps, que são recursos atuais). Os backends e as portas de engine do repositório passaram a ter a versão da engine, lida de `engine/VERSION` como no CMake, no Gradle e na ferramenta, e um teste do repositório confere que o `pyproject.toml` repete essa versão. O `AGENTS.md` diz a regra: 0.0.1 até a 1.0.0 e nada de compatibilidade ou migração de uma Haylen anterior. Conferido com `haylen engine format --check` e `uv run pytest`.
 
 Revisão:
 

@@ -57,7 +57,7 @@ class DesktopBackend(PlatformBackend):
     """The backend of the targets `windows` and `linux`, which generates the CMake project of a Lua or C++ app from the template of its platform, builds it against the installed desktop SDK of this machine, installs the app into the products of its folder and runs it there. A Release build ships the protected release of the app with its bootstrap. The packages of a built app are the installer of its platform, the Inno Setup installer of Windows or the `.deb` and the AppImage of Linux, and the depots of Steam. It builds only on a machine of its target system and is the default target of C++ apps there."""
 
     NAME = "desktop"
-    VERSION = "1.0.0"
+    VERSION = Repository.engine_version()
     PLATFORMS = ("windows", "linux")
     INSTALLER = "installer"
     STEAM = "steam"

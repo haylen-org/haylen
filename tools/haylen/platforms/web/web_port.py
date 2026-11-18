@@ -22,7 +22,7 @@ class WebPort(EnginePort):
     """The engine port of the web, which compiles the engine with the pinned Emscripten in one build tree into the web SDK: the web player, which runs any package that the page hands it and draws through WebGPU or WebGL2, whichever starts first among the ones the page asks for, next to the processor of its audio output, the worker of its content store and the page side and the worker of the Worker mode, and the Emscripten CMake package that release runtimes and C++ apps link against. Emscripten keeps no ABI between its versions, so the toolchain of the target names the pinned version."""
 
     NAME = "web"
-    VERSION = "1.0.0"
+    VERSION = Repository.engine_version()
     SYSTEM = "web"
     ARCHITECTURE = "wasm32"
     ABIS = MappingProxyType({"wasm32": "wasm32-emscripten"})

@@ -118,7 +118,7 @@ Amazon rents GPU machines by the hour and real Android and iOS devices by the mi
 | `g4dn.xlarge`, Windows | NVIDIA Tesla T4 | Direct3D 12, Direct3D 11, Vulkan and OpenGL on the NVIDIA GRID driver | About US$ 0.71 an hour on demand |
 
 - New accounts often have no quota for spot GPU instances, so use on demand, or ask for spot quota first.
-- EC2 no longer offers the AMD instances `g4ad` in `us-east-1`, `us-east-2` and `us-west-2`, so AMD GPUs come from [Microsoft Azure](#microsoft-azure).
+- EC2 offers no AMD instance `g4ad` in `us-east-1`, `us-east-2` and `us-west-2`, so AMD GPUs come from [Microsoft Azure](#microsoft-azure).
 - Install the NVIDIA GRID driver that Amazon publishes in the buckets `ec2-windows-nvidia-drivers` and `ec2-linux-nvidia-drivers`. The machine downloads it from an address that `aws s3 presign` makes with an expiry of a few minutes, so no key ever reaches the machine.
 - On Windows, turn off the basic display adapter of the machine before the OpenGL tests, or the window gets the software driver. The GRID driver then shows two displays, so the outputs of the test project open on the second one.
 - On Linux, the GRID driver has four display heads without monitors. An X server whose device section holds `Option "ConnectedMonitor" "DFP-0, DFP-1"`, the mode validation `NoEdidModes` and a `MetaModes` of two modes has two displays for the windowed runs and the outputs. Close a window there through the window manager, such as with `wmctrl -c`, since `xdotool windowclose` destroys it under the app.
