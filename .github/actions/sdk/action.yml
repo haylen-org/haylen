@@ -3,7 +3,7 @@ description: Hands an engine SDK that one job of the run built to the other jobs
 
 inputs:
   name:
-    description: The name of the artifact, or a pattern of names that a job takes, such as "apple-slices-*".
+    description: The name of the artifact, or a pattern of names that a job takes, such as "apple-slice-*".
     required: true
   folder:
     description: The folder of the SDK that the job hands over.
