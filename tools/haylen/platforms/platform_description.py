@@ -22,19 +22,3 @@ class PlatformDescription:
 
     def target(self, name: str) -> TargetDescription | None:
         return next((target for target in self.targets if target.name == name), None)
-
-    @property
-    def platforms(self) -> frozenset[str]:
-        return frozenset(target.platform for target in self.targets)
-
-    def describe(self) -> dict[str, object]:
-        return {
-            "name": self.name,
-            "contract": self.contract,
-            "version": self.version,
-            "targets": [target.describe() for target in self.targets],
-            "capabilities": sorted(capability.value for capability in self.capabilities),
-            "tools": list(self.tools),
-            "contributionTypes": sorted(self.contribution_types),
-            "overrideSections": sorted(self.override_sections),
-        }

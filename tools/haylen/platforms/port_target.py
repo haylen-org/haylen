@@ -18,17 +18,3 @@ class PortTarget:
     graphics_apis: tuple[str, ...]
     shader_languages: tuple[str, ...]
     capabilities: frozenset[str]
-
-    def describe(self) -> dict[str, object]:
-        return {
-            "name": self.name,
-            "system": self.system,
-            "environment": self.environment.value,
-            "architectures": dict(self.abis),
-            "toolchain": self.toolchain,
-            "runtime": self.runtime,
-            "minimumSystemVersion": self.minimum_system_version,
-            "graphicsApis": list(self.graphics_apis),
-            "shaderLanguages": list(self.shader_languages),
-            "capabilities": sorted(self.capabilities),
-        }

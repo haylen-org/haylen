@@ -17,6 +17,3 @@ class EnvironmentReport:
     @property
     def missing(self) -> tuple[str, ...]:
         return (*(tool.problem for tool in self.tools if tool.problem), *self.problems)
-
-    def describe(self) -> dict[str, object]:
-        return {"ready": self.ready, "tools": [tool.describe() for tool in self.tools], "problems": list(self.problems)}

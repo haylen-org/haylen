@@ -17,13 +17,3 @@ class PortDescription:
 
     def target(self, name: str) -> PortTarget | None:
         return next((target for target in self.targets if target.name == name), None)
-
-    def describe(self) -> dict[str, object]:
-        return {
-            "name": self.name,
-            "contract": self.contract,
-            "version": self.version,
-            "targets": [target.describe() for target in self.targets],
-            "tools": list(self.tools),
-            "capabilities": sorted(self.capabilities),
-        }
