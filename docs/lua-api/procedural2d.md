@@ -381,7 +381,7 @@ Carves a perfect maze, where exactly one path joins any two cells, and returns a
 | `algorithm` | string | `'backtracker'` | The algorithm `'backtracker'` makes long winding corridors. The algorithms `'prim'` and `'kruskal'` make many short dead ends. |
 | `seed`, `random` | | | The generator, as [seeds, maps and promises](#seeds-maps-and-promises) describes. |
 
-A side below 1, or a maze whose `maze:toGrid` would not fit in 32-bit cell indices, raises `A maze needs at least one cell on each side and a tile grid that fits in 32-bit cell indices.`
+A side below 1, or a maze whose `maze:toGrid` would hold more than 16777216 cells, raises `A maze needs at least one cell on each side and a tile grid of at most 16777216 cells.`
 
 ```lua
 local procedural = require('haylen.procedural2d')
@@ -879,7 +879,7 @@ These messages come from the functions and methods of the module. Messages that 
 | `Dungeon rooms need a positive minimum size, a maximum size of at least the minimum and a padding of at least zero.` | The room sizes or the padding of a dungeon are out of range. |
 | `A dungeon takes at most 1048576 room attempts and 4096 rooms.` | The `roomAttempts` or `maximumRooms` of a dungeon are too many. |
 | `The dungeon and its leaves must fit the smallest room with its padding.` | The map or `minimumLeafSize` is too small for one room. |
-| `A maze needs at least one cell on each side and a tile grid that fits in 32-bit cell indices.` | A side of a maze is below 1, or the maze is too large. |
+| `A maze needs at least one cell on each side and a tile grid of at most 16777216 cells.` | A side of a maze is below 1, or the maze is too large. |
 | `The cell is outside the maze.` | A method of a maze got a cell outside it. |
 | `Only walls between two cells of the maze can open.` | The method `maze:open` got a wall on the edge or a value that is not one side. |
 | `Wave function collapse needs from 1 to 4096 tiles.` | The rules have no sample and no tiles, or a `tiles` outside 1 to 4096. |

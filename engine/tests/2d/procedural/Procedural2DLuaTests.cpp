@@ -106,7 +106,7 @@ TEST_F(Procedural2DLuaTest, GeneratesMapsAsCellGrids) {
     EXPECT_EQ(lua("local open = procedural.maze({width = 2, height = 1}) return open:openings(0, 0) == procedural.east"), "true");
     EXPECT_EQ(lua("local closed = procedural.maze({width = 1, height = 1}) return closed:openings(0, 0)"), "0");
     EXPECT_NE(lua("procedural.maze({width = 2, height = 2, algorithm = 'eller'})").find("unknown value 'eller'"), std::string::npos);
-    EXPECT_NE(lua("procedural.maze({width = 40000, height = 40000})").find("fits in 32-bit cell indices"), std::string::npos);
+    EXPECT_NE(lua("procedural.maze({width = 40000, height = 40000})").find("a tile grid of at most 16777216 cells"), std::string::npos);
     EXPECT_NE(lua("procedural.cellularAutomaton({size = 3})").find("Unknown option \"size\""), std::string::npos);
 
     // Mazes built by hand start closed and open wall by wall, on both sides of each wall.

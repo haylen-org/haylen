@@ -4,6 +4,7 @@
 #include <cmath>
 #include <limits>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 #include "haylen/2d/procedural/CellularAutomaton.hpp"
@@ -272,8 +273,15 @@ TEST_F(Procedural2DTest, MazesArePerfect) {
     EXPECT_THROW((void)maze.getOpenings(2, 0), std::out_of_range);
     EXPECT_EQ(Maze::algorithmFromName("kruskal"), Maze::Algorithm::Kruskal);
 
-    // The tile grid of a maze has to fit in 32-bit cell indices like every `CellGrid`.
-    EXPECT_THROW(Maze(40000, 40000), std::invalid_argument);
+    // The tile grid of a maze is a `CellGrid`, so the maze refuses a size whose grid would hold more cells than one does.
+    EXPECT_NO_THROW((void)Maze(2047, 2047).toGrid());
+    try {
+        (void)Maze(2048, 2048);
+        FAIL() << "A maze whose tile grid holds more cells than a cell grid was accepted.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_EQ(std::string(error.what()), "A maze needs at least one cell on each side and a tile grid of at most 16777216 cells.");
+    }
+
     EXPECT_THROW(Maze(std::numeric_limits<int>::max(), 1), std::invalid_argument);
 }
 

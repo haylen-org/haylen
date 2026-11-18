@@ -4,9 +4,9 @@
 #include <array>
 #include <bit>
 #include <cstdint>
-#include <limits>
 #include <span>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 #include "haylen/2d/spatial/UnionFind.hpp"
@@ -17,8 +17,8 @@ namespace haylen::procedural2d {
 const std::array<std::pair<std::string_view, Maze::Algorithm>, 3> Maze::kAlgorithmNames{{{"backtracker", Algorithm::Backtracker}, {"prim", Algorithm::Prim}, {"kruskal", Algorithm::Kruskal}}};
 
 Maze::Maze(int columns, int rows) : width(columns), height(rows) {
-    if (columns < 1 || rows < 1 || (2 * std::int64_t{columns} + 1) * (2 * std::int64_t{rows} + 1) > std::numeric_limits<std::int32_t>::max()) {
-        throw std::invalid_argument("A maze needs at least one cell on each side and a tile grid that fits in 32-bit cell indices.");
+    if (columns < 1 || rows < 1 || (2 * std::int64_t{columns} + 1) * (2 * std::int64_t{rows} + 1) > spatial2d::CellGrid::kMaxCells) {
+        throw std::invalid_argument("A maze needs at least one cell on each side and a tile grid of at most " + std::to_string(spatial2d::CellGrid::kMaxCells) + " cells.");
     }
 
     openings.assign(static_cast<std::size_t>(columns) * static_cast<std::size_t>(rows), 0);
