@@ -7,10 +7,10 @@
     "required": ["name", "identifier", "version"],
     "properties": {
         "name": {"type": "string", "minLength": 1, "description": "The name that people read."},
-        "identifier": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9-]*(\\.[A-Za-z][A-Za-z0-9-]*)+$", "description": "The reverse domain identifier, such as com.example.game."},
+        "identifier": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9-]*(\\.[A-Za-z][A-Za-z0-9-]*)+$", "description": "The reverse domain identifier, such as \"com.example.game\"."},
         "version": {"type": "string", "pattern": "^\\d+(\\.\\d+){0,2}$", "description": "The version that people see, one to three numbers separated by dots."},
         "build": {"type": "integer", "minimum": 1, "maximum": 2100000000, "description": "The build number, which grows with every upload of the app."},
-        "kind": {"enum": ["lua", "cpp"], "description": "Whether the app runs its Lua modules in the player of the engine, or compiles the C++ sources of its cpp section against the engine SDK."},
+        "kind": {"enum": ["lua", "cpp"], "description": "Whether the app runs its Lua modules in the player of the engine, or compiles the C++ sources of its \"cpp\" section against the engine SDK."},
         "description": {"type": "string"},
         "company": {"type": "string"},
         "copyright": {"type": "string"},
@@ -30,7 +30,7 @@
                 "maxPixelDensity": {"type": "number", "minimum": 0},
                 "resizable": {"type": "boolean"},
                 "vsync": {"type": "boolean"},
-                "frameRate": {"type": "integer", "minimum": 0},
+                "frameRate": {"type": "integer", "minimum": 0, "maximum": 1000},
                 "sampleCount": {"type": "integer", "minimum": 1},
                 "decorated": {"type": "boolean"},
                 "transparent": {"type": "boolean"},
@@ -39,7 +39,7 @@
                 "focusable": {"type": "boolean"},
                 "mousePassthrough": {"type": "boolean"},
                 "keepScreenOn": {"type": "boolean"},
-                "position": {"type": "object"},
+                "position": {"anyOf": [{"const": "center"}, {"type": "object"}], "description": "Where the desktop window opens: \"center\", a point with \"x\" and \"y\", or an object with an \"anchor\"."},
                 "statusBar": {"enum": ["hidden", "auto", "light", "dark"]},
                 "statusBarColor": {"$ref": "#/$defs/color"},
                 "systemGestures": {"enum": ["system", "deferred", "autoHideIndicator"]},
@@ -113,8 +113,8 @@
                 "drawings": {"type": "array", "items": {"type": "string", "minLength": 1}},
                 "objectEvents": {"type": "boolean"},
                 "console": {"type": "boolean"},
-                "safeArea": {},
-                "fold": {},
+                "safeArea": {"type": ["string", "number", "array"], "description": "A safe area to simulate: the name of a device, or one, two or four insets in window points."},
+                "fold": {"type": ["string", "object"], "description": "A fold to simulate: the name of a preset, or an object with \"axis\", \"state\" and \"hinge\"."},
                 "showSafeArea": {"type": "boolean"},
                 "reload": {"enum": ["module", "restart"]},
                 "executionBudget": {"type": "number", "minimum": 0.1, "maximum": 600},
@@ -129,6 +129,7 @@
                 "updates": {
                     "type": "object",
                     "additionalProperties": false,
+                    "required": ["baseUrl"],
                     "properties": {
                         "baseUrl": {"type": "string"},
                         "channel": {"type": "string"},
@@ -162,7 +163,7 @@
         "autoload": {"type": "array", "items": {"type": "string", "minLength": 1}},
         "native": {
             "type": "object",
-            "description": "The native libraries of the app by name, which Lua loads with native.load.",
+            "description": "The native libraries of the app by name, which Lua loads with \"native.load\".",
             "propertyNames": {"pattern": "^[A-Za-z][A-Za-z0-9_-]*$"},
             "additionalProperties": {"$ref": "#/$defs/nativeLibrary"}
         },
@@ -185,15 +186,16 @@
         },
         "platforms": {
             "type": "object",
-            "description": "The settings and files of the generated projects that the app declares, by the name of a section that a backend reads, such as ios or android.",
+            "description": "The settings and files of the generated projects that the app declares, by the name of a section that a backend reads, such as \"ios\" or \"android\".",
             "propertyNames": {"pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"},
             "additionalProperties": {"type": "object"}
         }
     },
     "$defs": {
-        "color": {"type": "string", "pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$"},
+        "color": {"type": "string", "pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$", "description": "A color such as \"#RRGGBB\" or \"#AARRGGBB\"."},
         "nativeLibrary": {
             "type": "object",
+            "description": "A native library has either its prebuilt \"files\", or a \"cmake\" project with the \"platforms\" it builds for.",
             "additionalProperties": false,
             "properties": {
                 "files": {"type": "object", "additionalProperties": {"type": "string", "minLength": 1}, "description": "Prebuilt files by platform."},
