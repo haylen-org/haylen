@@ -5,7 +5,7 @@ local plugin = require('page-plugin')
 local platform = require('haylen.platform')
 
 local samples = {}
-platform.on('page-plugin.sample', function(payload) samples[#samples + 1] = payload.index end)
+platform.on('page-plugin.sample', function(batch) for _, payload in ipairs(batch) do samples[#samples + 1] = payload.index end end)
 
 async.spawn(function()
     local answer = plugin.check({'camera', 'web-share'}):await()

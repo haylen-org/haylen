@@ -1,8 +1,8 @@
 // Web part of the plugin of the plugin check, which answers with what the context of a web module gives a plugin: the features of the permissions policy that the page lacks, the failure of an error of the page, the failure of a permission whose request ended without a prompt, the failure of a permission that the plugin never registered and the events that it sends before the app starts.
 export default function load(context) {
-    // The page keeps the newest events of each name until the first app starts, so the app hears 32 of these 40.
+    // The page keeps the newest events of each name until the first app starts, so the app hears 32 of these 40. They reach the engine in one frame as one retained batch, which waits for the first listener however late the scripts of the app start.
     for (let index = 0; index < 40; ++index) {
-        context.emit("sample", { index });
+        context.emit("sample", { index }, { retain: true, batched: true });
     }
 
     context.register("check", (params) => {
