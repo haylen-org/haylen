@@ -32,6 +32,7 @@ class TimerScheduler final {
         bool unscaled = false;
     };
 
+    // Seconds of 0 or less fire on the next update, and seconds that are not finite throw `std::invalid_argument`.
     Id after(float delaySeconds, std::function<void()> callback);
     Id after(float delaySeconds, std::function<void()> callback, Options options);
     Id every(float intervalSeconds, std::function<void()> callback, int count = -1);

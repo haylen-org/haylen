@@ -1,6 +1,7 @@
 #include "haylen/core/TimerScheduler.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <functional>
 #include <iterator>
 #include <stdexcept>
@@ -35,6 +36,10 @@ ProcessMode TimerScheduler::resolveMode(const Options& options) {
 TimerScheduler::Id TimerScheduler::add(float interval, float delay, int count, std::function<void()> callback, Options options) {
     if (!callback) {
         throw std::invalid_argument("A timer needs a callback.");
+    }
+
+    if (!std::isfinite(interval) || !std::isfinite(delay)) {
+        throw std::invalid_argument("A timer needs a finite number of seconds.");
     }
 
     auto timer = std::make_shared<Timer>();

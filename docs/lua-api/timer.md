@@ -43,7 +43,7 @@ timer.after(2, function() print('Press start to continue.') end, {processMode = 
 
 ### timer.after(seconds, callback, options)
 
-Calls `callback` once, on the first frame where at least `seconds` have passed. A delay of `0` or less runs the callback the next time the timers advance. The table `options` is optional and takes the keys of [Options](#options) except `count`.
+Calls `callback` once, on the first frame where at least `seconds` have passed. A delay of `0` or less runs the callback the next time the timers advance, and a delay that is NaN or infinite raises `A timer needs a finite number of seconds.`. The table `options` is optional and takes the keys of [Options](#options) except `count`.
 
 Returns the id of the timer, an integer that [`timer.cancel`](#timercancelid), [`timer.pause`](#timerpauseid-paused) and [`timer.active`](#timeractiveid) take. A `seconds` that is not a number raises `bad argument #1 to 'after' (number expected, got <type>)`, and a `callback` that is not a function raises `bad argument #2 to 'after' (function expected, got <type>)`.
 
@@ -61,7 +61,7 @@ end)
 
 Calls `callback` every `seconds`, the first time after one interval. The option `count` limits the number of calls, and a count of `0` raises `A repeating timer needs a positive count, or a negative count to repeat until it is cancelled.`. The table `options` is optional and takes every key of [Options](#options). Returns the id of the timer.
 
-A long frame can cover several intervals. The callback then runs once for each interval in that frame, so no call is lost. A timer runs at most 256 times in one frame, and a timer with an interval that tiny drops the intervals it still owes after that. An interval of `0` or less calls the callback once per frame.
+A long frame can cover several intervals. The callback then runs once for each interval in that frame, so no call is lost. A timer runs at most 256 times in one frame, and a timer with an interval that tiny drops the intervals it still owes after that. An interval of `0` or less calls the callback once per frame, and an interval that is NaN or infinite raises `A timer needs a finite number of seconds.`.
 
 ```lua
 local timer = require('haylen.timer')
@@ -145,6 +145,7 @@ print(tryDash()) -- false
 | `The option "<key>" of "<function>" is invalid: <reason>.` | An option has a value of the wrong type, or `processMode` names no mode. |
 | `An owner must be a table or a userdata, not <type>.` | The option `owner` is another type. |
 | `A repeating timer needs a positive count, or a negative count to repeat until it is cancelled.` | The option `count` of `timer.every` is `0`. |
+| `A timer needs a finite number of seconds.` | The `seconds` of `timer.after` or `timer.every` is NaN or infinite. |
 | `bad argument #1 to 'cancel' (number expected, got <type>)` | The id of `timer.cancel`, `timer.pause` or `timer.active` is not an integer. A negative id raises `bad argument #1 to 'cancel' (expected a non-negative integer)`. |
 
 The function in each message is the one that was called, such as `'every'` or `'pause'`.

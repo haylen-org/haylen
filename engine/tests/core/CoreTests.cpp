@@ -140,6 +140,19 @@ TEST_F(TimerSchedulerTest, FiresDelayedAndRepeatingTimers) {
     EXPECT_THROW((void)timers.after(0.25F, {}), std::invalid_argument);
 }
 
+TEST_F(TimerSchedulerTest, RefusesSecondsThatAreNotFinite) {
+    for (const float seconds : {std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity()}) {
+        EXPECT_THROW((void)timers.after(seconds, [] {}), std::invalid_argument);
+        EXPECT_THROW((void)timers.every(seconds, [] {}, 1), std::invalid_argument);
+    }
+
+    // A delay below 0 still fires on the next update.
+    int fired = 0;
+    timers.after(-1.0F, [&fired] { ++fired; });
+    step(0.0);
+    EXPECT_EQ(fired, 1);
+}
+
 TEST_F(TimerSchedulerTest, PauseCancelAndClear) {
     int calls = 0;
     const TimerScheduler::Id id = timers.every(0.1F, [&] { ++calls; });
