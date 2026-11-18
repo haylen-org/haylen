@@ -184,7 +184,7 @@ class ContentBenchmark final {
         writeFile(folder / "content" / "data" / "text.txt", text);
 
         for (int index = 0; index < kSmallFiles; ++index) {
-            writeFile(folder / "content" / "items" / ("item_" + std::to_string(index) + ".bin"), randomBytes(kSmallFile, static_cast<std::uint32_t>(index + 2)));
+            writeFile(folder / "content" / "items" / ("item-" + std::to_string(index) + ".bin"), randomBytes(kSmallFile, static_cast<std::uint32_t>(index + 2)));
         }
 
         const std::string module = makeModule();
@@ -354,7 +354,7 @@ class ContentBenchmark final {
         const std::string line = "The lighthouse keeper rewrote this line for the update.\n";
         std::ranges::copy(line, text.begin() + static_cast<std::ptrdiff_t>(text.size() / 2));
         writeFile(folder / "content" / "data" / "text.txt", text);
-        writeFile(folder / "content" / "items" / "item_7.bin", randomBytes(kSmallFile, 900001));
+        writeFile(folder / "content" / "items" / "item-7.bin", randomBytes(kSmallFile, 900001));
     }
 
     static std::vector<std::uint8_t> readFile(const std::filesystem::path& path) {
@@ -365,7 +365,7 @@ class ContentBenchmark final {
     static void findFiles(const io::Package& package) {
         std::size_t found = 0;
         for (int index = 0; index < kSmallFiles; ++index) {
-            found += package.exists("content/items/item_" + std::to_string(index) + ".bin") ? 1U : 0U;
+            found += package.exists("content/items/item-" + std::to_string(index) + ".bin") ? 1U : 0U;
         }
 
         if (found != static_cast<std::size_t>(kSmallFiles)) {
