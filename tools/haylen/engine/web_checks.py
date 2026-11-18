@@ -71,7 +71,7 @@ class WebChecks:
         "stopped early",
         "disposed",
     ]
-    # The same page in the Worker mode, whose runtime runs in a dedicated worker that the page reaches for audio, input, gamepads, the mirror of screen readers, plugins and videos, and whose editor terminates a worker that stopped answering.
+    # The same page in the Worker mode, whose runtime runs in a dedicated worker that the page reaches for audio, input, gamepads, the mirror of screen readers, plugins and videos, and whose editor terminates a worker that stopped answering or that has not started.
     WORKER_HOSTING = "hosting=worker"
     WORKER_STEPS = [
         "ready",
@@ -95,6 +95,7 @@ class WebChecks:
         "disposed",
         "ready again",
         "terminated a stuck worker",
+        "terminated before the worker started",
     ]
     # The memory check: a protected release with a medium and a large file that download on demand, while the memory of WebAssembly and the array buffers of the page stay far below the size of the files. A page without the files of the browser keeps the medium file in memory and refuses the large one for want of room.
     MEMORY_FILE_SIZE = 384 * 1024**2

@@ -2782,8 +2782,12 @@ Module.haylen = Module.haylen || {};
     // Releases what the page holds for the runtime, which no worker uses any more.
     const releasePage = (ending, message) => {
         worker.ended = ending;
-        worker.thread.terminate();
-        worker.thread = null;
+        worker.queued.length = 0;
+
+        if (worker.thread !== null) {
+            worker.thread.terminate();
+            worker.thread = null;
+        }
 
         for (const request of worker.requests.values()) {
             request.reject(editorError(ending, message));
@@ -2908,6 +2912,12 @@ Module.haylen = Module.haylen || {};
 
     const startWorker = async () => {
         await Promise.all([readDevice(), runPreRun()]);
+
+        // An editor that ended the runtime while the page read the device starts no worker.
+        if (worker.ended !== null) {
+            return;
+        }
+
         const script = new URL(haylen.runtimeUrl || "haylen.js", document.baseURI).href;
         const offscreen = Module.canvas.transferControlToOffscreen();
         const transfer = [offscreen];

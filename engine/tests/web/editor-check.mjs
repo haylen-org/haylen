@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 
 // Opens the page of the editor check in a headless browser over its debugging protocol and drives the editor contract of the generic web player: it builds a project file by file, runs it, reloads a module, rejects a syntax error, restores the code that runs, applies a failing batch atomically, stops code that never ends through the execution budget while the page answers, inspects the app, runs it again in place while its audio output opens, stops it early and disposes of the runtime. It prints what happened as JSON, with every error that the page logged, since the audio output must open and close again without one.
-// In the Worker mode, with the mode "worker" and a page address that asks for it, the runtime runs in a dedicated worker: `hello` reports it, an audio context that the browser refuses leaves the app without an output, a key and a click of the browser reach the app through the page, a controller that the page reports reaches the app, the mirror of screen readers shows a button of the app and activates it, the web module of a plugin answers a call, opens a screen and pushes a video and an audio stream, a video of the package plays, and on a second load of the page the editor terminates a worker that a finalizer holds while the page and its heartbeat tell it stopped answering.
+// In the Worker mode, with the mode "worker" and a page address that asks for it, the runtime runs in a dedicated worker: `hello` reports it, an audio context that the browser refuses leaves the app without an output, a key and a click of the browser reach the app through the page, a controller that the page reports reaches the app, the mirror of screen readers shows a button of the app and activates it, the web module of a plugin answers a call, opens a screen and pushes a video and an audio stream, a video of the package plays, on a second load of the page the editor terminates a worker that a finalizer holds while the page and its heartbeat tell it stopped answering, and on a third load it terminates the runtime before its worker started, which then never starts.
 // Run it with Node: node editor-check.mjs <debugging port> <page address> [worker]
 const [port, url, mode] = process.argv.slice(2);
 const worker = mode === "worker";
@@ -43,9 +43,9 @@ socket.onmessage = (event) => {
 
 // Loads the page and waits for its load event within a bound, so no step runs in the page that the navigation replaces.
 let loaded = null;
-const navigate = async () => {
+const navigate = async (address = url) => {
     const load = new Promise((resolve) => (loaded = resolve));
-    await send("Page.navigate", { url }, sessionId);
+    await send("Page.navigate", { url: address }, sessionId);
     await Promise.race([load, new Promise((resolve) => setTimeout(resolve, 30000))]);
     loaded = null;
 };
@@ -104,6 +104,8 @@ if (ready && worker) {
     await navigate();
     await step("ready again", readyScript, 40);
     await step("terminated a stuck worker", "await editor.request('clearFiles'); await editor.request('edit', { operations: [{ op: 'write', path: 'haylen.json', content: check.app }, { op: 'write', path: 'source/main.lua', content: check.stuck }] }); editor.request('run').catch(() => undefined); for (let tries = 0; tries < 100 && Module.haylen.editor.heartbeat() < 2000; ++tries) { await new Promise((resolve) => setTimeout(resolve, 100)); } const silent = Module.haylen.editor.heartbeat() >= 2000; const waiting = editor.request('hello').then(() => null, (error) => error.code); await Module.haylen.editor.terminate(); let after = null; try { await editor.request('hello'); } catch (error) { after = error.code; } return silent && (await waiting) === 'terminated' && after === 'terminated';", 30);
+    await navigate(url + "&hold=1");
+    await step("terminated before the worker started", "for (let tries = 0; tries < 300 && !(window.Module && Module.haylen && Module.haylen.editor); ++tries) { await new Promise((resolve) => setTimeout(resolve, 100)); } const waiting = editor.request('hello').then(() => null, (error) => error.code); await Module.haylen.editor.terminate(); Module.removeRunDependency('check'); await new Promise((resolve) => setTimeout(resolve, 500)); let after = null; try { await editor.request('hello'); } catch (error) { after = error.code; } let drawable = true; try { Module.canvas.getContext('2d'); } catch (error) { drawable = false; } return (await waiting) === 'terminated' && after === 'terminated' && drawable;", 30);
 }
 // The errors that the page heard through "onError" join the log, since a runtime in a worker logs to a console of its own.
 if (result.failure) {

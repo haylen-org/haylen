@@ -54,6 +54,10 @@
             onError: (error) => check.errors.push(error),
         },
     };
+    // With "&hold=1" the Worker mode holds the start of its worker until the check lets it go.
+    if (params.get("hold")) {
+        Module.preRun.push(() => Module.addRunDependency("check"));
+    }
     const editor = { request: (method, values) => Module.haylen.editor.request(method, values) };
     const runtime = document.createElement("script");
     runtime.src = Module.haylen.hosting === "worker" ? "haylen-page.js" : "haylen.js";
