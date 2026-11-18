@@ -125,7 +125,7 @@ class World final {
     // Releases the length limits of the ropes that lost a link, runs the hooks before the step, advances the world, breaks the joints loaded beyond their limits and runs the hooks after the step.
     void step(float deltaSeconds);
 
-    // Adds a function that runs at the given phase of every step until it is removed or the world is destroyed, which is how vehicles, force fields and fluids act on the world, and returns its id. Hooks never add or remove hooks while they run.
+    // Adds a function that runs at the given phase of every step until it is removed or the world is destroyed, which is how vehicles, force fields and fluids act on the world, and returns its id. A hook may add and remove hooks, and may destroy the world, which ends the step: each phase runs the hooks it had when it began, except those removed since.
     std::uint64_t addStepHook(StepPhase phase, StepHook hook);
     void removeStepHook(std::uint64_t id);
 
@@ -233,6 +233,23 @@ class World final {
         std::uint64_t id = 0;
         StepPhase phase = StepPhase::Before;
         StepHook function;
+        bool removed = false;
+    };
+
+    // Drops the hooks a phase took into the shared list of running hooks when the phase ends, even when a hook throws.
+    class RunningScope final {
+      public:
+        RunningScope(std::vector<std::shared_ptr<Hook>>& list, std::size_t size) noexcept : entries(list), base(size) {}
+        ~RunningScope() {
+            entries.resize(base);
+        }
+
+        RunningScope(const RunningScope&) = delete;
+        RunningScope& operator=(const RunningScope&) = delete;
+
+      private:
+        std::vector<std::shared_ptr<Hook>>& entries;
+        std::size_t base;
     };
 
     struct OneWayPlatform {
@@ -322,7 +339,10 @@ class World final {
     mutable Events events;
     std::vector<JointBreak> jointBreaks;
     std::vector<std::uint64_t> destroyedBodies;
-    std::vector<Hook> hooks;
+    std::vector<std::shared_ptr<Hook>> hooks;
+
+    // The hooks of the phases that run, which every phase reuses, so a step allocates nothing once it has grown. A phase that a hook starts by stepping the world again takes its hooks above those of the phase it interrupts.
+    std::vector<std::shared_ptr<Hook>> runningHooks;
     std::uint64_t nextHook = 1;
     // Box2D builds mouse joints as motor joints, so the world remembers which motor joints are mouse joints.
     std::unordered_set<std::uint64_t> mouseJoints;

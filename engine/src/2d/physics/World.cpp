@@ -198,6 +198,10 @@ void World::destroy() {
     b2DestroyWorld(b2LoadWorldId(handle));
     handle = 0;
 
+    for (const std::shared_ptr<Hook>& hook : hooks) {
+        hook->removed = true;
+    }
+
     hooks.clear();
     events = {};
     jointBreaks.clear();
@@ -435,12 +439,18 @@ void World::checkLimits(Joint::Type type, const Joint::Options& options) {
 std::uint64_t World::addStepHook(StepPhase phase, StepHook hook) {
     checkLive();
     const std::uint64_t id = nextHook++;
-    hooks.push_back({.id = id, .phase = phase, .function = std::move(hook)});
+    hooks.push_back(std::make_shared<Hook>(Hook{.id = id, .phase = phase, .function = std::move(hook)}));
     return id;
 }
 
 void World::removeStepHook(std::uint64_t id) {
-    std::erase_if(hooks, [id](const Hook& hook) { return hook.id == id; });
+    const auto found = std::ranges::find_if(hooks, [id](const std::shared_ptr<Hook>& hook) { return hook->id == id; });
+    if (found == hooks.end()) {
+        return;
+    }
+
+    (*found)->removed = true;
+    hooks.erase(found);
 }
 
 void World::tieToChain(const Joint& joint, std::span<const Joint> chain) {
@@ -470,10 +480,17 @@ void World::releaseBrokenChains() {
     // clang-format on
 }
 
+// A hook may add, remove or run hooks, so the phase runs a snapshot of them, holding each one while it runs.
 void World::runHooks(StepPhase phase, float deltaSeconds) {
-    for (const Hook& hook : hooks) {
-        if (hook.phase == phase) {
-            hook.function(deltaSeconds);
+    const std::size_t base = runningHooks.size();
+    const RunningScope scope(runningHooks, base);
+    runningHooks.insert(runningHooks.end(), hooks.begin(), hooks.end());
+    const std::size_t end = runningHooks.size();
+
+    for (std::size_t index = base; index < end; ++index) {
+        const std::shared_ptr<Hook> hook = runningHooks[index];
+        if (!hook->removed && hook->phase == phase) {
+            hook->function(deltaSeconds);
         }
     }
 }
@@ -510,6 +527,11 @@ void World::step(float deltaSeconds) {
     const auto hooksStart = std::chrono::steady_clock::now();
     runHooks(StepPhase::Before, deltaSeconds);
     auto hookTime = std::chrono::steady_clock::now() - hooksStart;
+
+    // A hook that destroyed the world ends the step.
+    if (isDestroyed()) {
+        return;
+    }
 
     prepareOneWayPlatforms(deltaSeconds);
     lastStep = deltaSeconds;

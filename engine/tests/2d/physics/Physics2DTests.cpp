@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <functional>
 #include <limits>
 #include <memory>
@@ -15,6 +16,7 @@
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/2d/physics/World.hpp"
 #include "haylen/core/SceneManager.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
 
@@ -404,6 +406,46 @@ TEST_F(PhysicsWorldTest, DestroysTheWorldBeforeItsObjectGoes) {
     // Handles of the destroyed world destroy nothing, so the owners of bodies, such as vehicles and terrains, go quietly after it.
     body.destroy();
     EXPECT_FALSE(body.isValid());
+}
+
+// A hook may add and remove hooks while the step runs them: each phase runs the hooks it had when it began, except those removed since, and a step that repeats allocates nothing.
+TEST_F(PhysicsWorldTest, RunsHooksThatAddAndRemoveHooks) {
+    physics2d::World world;
+    std::vector<std::string> runs;
+    std::uint64_t second = 0;
+    std::uint64_t first = 0;
+    // clang-format off
+    first = world.addStepHook(physics2d::World::StepPhase::Before, [&](float) {
+        runs.emplace_back("first");
+        world.removeStepHook(first);
+        world.removeStepHook(second);
+        for (int index = 0; index < 64; ++index) {
+            world.addStepHook(physics2d::World::StepPhase::Before, [&runs](float) { runs.emplace_back("added"); });
+        }
+    });
+    // clang-format on
+    second = world.addStepHook(physics2d::World::StepPhase::Before, [&runs](float) { runs.emplace_back("second"); });
+    const std::uint64_t third = world.addStepHook(physics2d::World::StepPhase::Before, [&runs](float) { runs.emplace_back("third"); });
+
+    world.step(1.0F / 60.0F);
+    EXPECT_EQ(runs, (std::vector<std::string>{"first", "third"}));
+
+    runs.clear();
+    world.step(1.0F / 60.0F);
+    EXPECT_EQ(runs.size(), 65U);
+    EXPECT_EQ(runs.front(), "third");
+
+    world.removeStepHook(third);
+    runs.reserve(256);
+    world.step(1.0F / 60.0F);
+    const test::AllocationTracker tracker;
+    world.step(1.0F / 60.0F);
+    EXPECT_EQ(tracker.getTotal(), 0U);
+
+    // A hook that destroys the world ends the step.
+    world.addStepHook(physics2d::World::StepPhase::Before, [&world](float) { world.destroy(); });
+    world.step(1.0F / 60.0F);
+    EXPECT_TRUE(world.isDestroyed());
 }
 
 TEST_F(PhysicsWorldTest, ReportsTheGeometryAndOutlinesOfShapes) {
