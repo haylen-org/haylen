@@ -13,6 +13,7 @@
 #include "haylen/input/Input.hpp"
 #include "haylen/input/VirtualInput.hpp"
 #include "haylen/platform/Event.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::input {
@@ -335,6 +336,17 @@ TEST(VirtualInputTest, StoresButtonsAndClampedSticks) {
     EXPECT_EQ(controls.getStick("look"), math::Vec2{});
     controls.clear();
     EXPECT_FALSE(controls.isButtonDown("attack"));
+}
+
+TEST(VirtualInputTest, KeepsAHeldControlWithoutAllocating) {
+    VirtualInput controls;
+    controls.setButton("special attack of the left hand", true);
+    controls.setStick("movement of the left thumb stick", math::Vec2(0.5F, 0.0F));
+    const test::AllocationTracker tracker;
+    controls.setButton("special attack of the left hand", true);
+    controls.setStick("movement of the left thumb stick", math::Vec2(0.25F, 0.0F));
+    EXPECT_EQ(tracker.getTotal(), 0U);
+    EXPECT_EQ(controls.getStick("movement of the left thumb stick"), math::Vec2(0.25F, 0.0F));
 }
 
 TEST(BindingTest, ParsesAndPrintsEveryForm) {

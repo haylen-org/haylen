@@ -30,6 +30,8 @@ class VirtualInput final {
         }
     };
 
+    template <typename Value> static void assign(std::unordered_map<std::string, Value, NameHash, std::equal_to<>>& controls, std::string_view name, Value value);
+
     std::unordered_map<std::string, bool, NameHash, std::equal_to<>> buttons;
     std::unordered_map<std::string, math::Vec2, NameHash, std::equal_to<>> sticks;
 };

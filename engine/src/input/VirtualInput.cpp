@@ -2,12 +2,23 @@
 
 namespace haylen::input {
 
+// A control that stays held writes its name every frame, so a name the map knows changes in place, and only a new name builds a string.
+template <typename Value> void VirtualInput::assign(std::unordered_map<std::string, Value, NameHash, std::equal_to<>>& controls, std::string_view name, Value value) {
+    const auto found = controls.find(name);
+    if (found != controls.end()) {
+        found->second = value;
+        return;
+    }
+
+    controls.emplace(name, value);
+}
+
 void VirtualInput::setButton(std::string_view name, bool down) {
-    buttons.insert_or_assign(std::string(name), down);
+    assign(buttons, name, down);
 }
 
 void VirtualInput::setStick(std::string_view name, math::Vec2 value) {
-    sticks.insert_or_assign(std::string(name), value.clampedLength(1.0F));
+    assign(sticks, name, value.clampedLength(1.0F));
 }
 
 void VirtualInput::clear() noexcept {
