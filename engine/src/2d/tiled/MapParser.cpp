@@ -53,7 +53,7 @@ Map MapParser::parse(const core::Json& document, std::string_view file, const Ma
     result.backgroundColor = readOptionalColor(document, "backgroundcolor");
     result.properties = readProperties(document, directory);
 
-    const MapParser parser(reader, result);
+    MapParser parser(reader, result);
     for (const core::Json& entry : document.value("tilesets", core::Json::array())) {
         const auto firstGid = entry.at("firstgid").get<std::uint32_t>();
         if (!entry.contains("source")) {
@@ -68,7 +68,7 @@ Map MapParser::parse(const core::Json& document, std::string_view file, const Ma
     std::sort(result.tilesets.begin(), result.tilesets.end(), [](const Map::TilesetReference& lhs, const Map::TilesetReference& rhs) { return lhs.firstGid < rhs.firstGid; });
 
     for (const core::Json& entry : document.value("layers", core::Json::array())) {
-        result.layers.push_back(parser.readLayer(entry, directory));
+        result.layers.push_back(parser.readLayer(entry, directory, 1));
     }
 
     return result;
@@ -257,15 +257,21 @@ std::string_view MapParser::blendModeName(graphics::BlendMode::Type value) {
 }
 
 // Resolves file values against the content folder, including the file items of lists and of lists nested in them.
-core::Json MapParser::resolveValue(std::string_view type, core::Json value, std::string_view directory) {
+core::Json MapParser::resolveValue(std::string_view type, core::Json value, std::string_view directory, int depth) {
     if (type == "file" && value.is_string()) {
         return resolve(directory, value.get<std::string>());
     }
 
-    if (type == "list" && value.is_array()) {
-        for (core::Json& item : value) {
-            item["value"] = resolveValue(item.value("type", std::string("string")), item.value("value", core::Json()), directory);
-        }
+    if (type != "list" || !value.is_array()) {
+        return value;
+    }
+
+    if (depth >= Map::kMaxNesting) {
+        throw std::invalid_argument("The list properties of a Tiled map nest deeper than " + std::to_string(Map::kMaxNesting) + " levels.");
+    }
+
+    for (core::Json& item : value) {
+        item["value"] = resolveValue(item.value("type", std::string("string")), item.value("value", core::Json()), directory, depth + 1);
     }
 
     return value;
@@ -275,7 +281,7 @@ Properties MapParser::readProperties(const core::Json& owner, std::string_view d
     std::vector<Property> items;
     for (const core::Json& entry : owner.value("properties", core::Json::array())) {
         Property property{.name = entry.at("name").get<std::string>(), .type = entry.value("type", std::string("string")), .propertyType = entry.value("propertytype", std::string{})};
-        property.value = resolveValue(property.type, entry.value("value", core::Json()), directory);
+        property.value = resolveValue(property.type, entry.value("value", core::Json()), directory, 0);
         items.push_back(std::move(property));
     }
 
@@ -470,7 +476,18 @@ std::shared_ptr<Tileset> MapParser::readTileset(const core::Json& document, std:
     return tileset;
 }
 
-Layer MapParser::readLayer(const core::Json& entry, std::string_view directory) const {
+void MapParser::takeCells(std::size_t cells) {
+    totalCells += cells;
+    if (totalCells > static_cast<std::size_t>(Map::kMaxTotalCells)) {
+        throw std::invalid_argument("The tile layers of the Tiled map \"" + map.path + "\" hold more than the " + std::to_string(Map::kMaxTotalCells) + " cells that a map holds in all.");
+    }
+}
+
+Layer MapParser::readLayer(const core::Json& entry, std::string_view directory, int depth) {
+    if (depth > Map::kMaxNesting) {
+        throw std::invalid_argument("The Tiled map \"" + map.path + "\" nests its group layers deeper than " + std::to_string(Map::kMaxNesting) + " levels.");
+    }
+
     const std::string name = entry.value("name", std::string{});
     const std::string kind = entry.at("type").get<std::string>();
     const std::string mode = entry.value("mode", std::string("normal"));
@@ -500,11 +517,15 @@ Layer MapParser::readLayer(const core::Json& entry, std::string_view directory) 
         if (layer.infinite) {
             for (const core::Json& chunk : entry.at("chunks")) {
                 Layer::Chunk parsed = readChunkArea(chunk, name);
-                parsed.gids = readTileData(entry, chunk.at("data"), countCells(parsed.width, parsed.height, name));
+                const std::size_t cells = countCells(parsed.width, parsed.height, name);
+                takeCells(cells);
+                parsed.gids = readTileData(entry, chunk.at("data"), cells);
                 layer.chunks.push_back(std::move(parsed));
             }
         } else {
-            layer.gids = readTileData(entry, entry.at("data"), countCells(layer.width, layer.height, name));
+            const std::size_t cells = countCells(layer.width, layer.height, name);
+            takeCells(cells);
+            layer.gids = readTileData(entry, entry.at("data"), cells);
         }
     } else if (kind == "objectgroup") {
         layer.kind = Layer::Kind::Object;
@@ -523,7 +544,7 @@ Layer MapParser::readLayer(const core::Json& entry, std::string_view directory) 
     } else if (kind == "group") {
         layer.kind = Layer::Kind::Group;
         for (const core::Json& child : entry.value("layers", core::Json::array())) {
-            layer.layers.push_back(readLayer(child, directory));
+            layer.layers.push_back(readLayer(child, directory, depth + 1));
         }
     } else {
         throw std::invalid_argument("The type of a Tiled layer must be \"tilelayer\", \"objectgroup\", \"imagelayer\" or \"group\", not \"" + kind + "\".");

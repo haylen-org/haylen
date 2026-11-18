@@ -443,6 +443,38 @@ TEST_F(MapTest, RejectsBrokenData) {
     map["tilewidth"] = 0;
     EXPECT_EQ(failure(map), "The Tiled map \"maps/broken.tmj\" needs a positive tile size.");
 
+    // Group layers and lists of properties nest only so deep, so a hostile file never runs out of stack in the code that walks them.
+    core::Json group{{"id", 100}, {"name", "deepest"}, {"type", "group"}};
+    for (int level = 1; level < tiled::Map::kMaxNesting; ++level) {
+        group = core::Json{{"id", 100 + level}, {"name", "level"}, {"type", "group"}, {"layers", core::Json::array({group})}};
+    }
+
+    map = orthogonalMap();
+    map["layers"].push_back(group);
+    EXPECT_EQ(failure(map), "no error");
+    map["layers"].back() = core::Json{{"id", 200}, {"name", "outer"}, {"type", "group"}, {"layers", core::Json::array({group})}};
+    EXPECT_EQ(failure(map), "The Tiled map \"maps/broken.tmj\" nests its group layers deeper than 64 levels.");
+
+    core::Json items = core::Json::array();
+    for (int level = 1; level < tiled::Map::kMaxNesting; ++level) {
+        items = core::Json::array({core::Json{{"type", "list"}, {"value", items}}});
+    }
+
+    map = orthogonalMap();
+    map["properties"].push_back(core::Json{{"name", "nested"}, {"type", "list"}, {"value", items}});
+    EXPECT_EQ(failure(map), "no error");
+    map["properties"].back()["value"] = core::Json::array({core::Json{{"type", "list"}, {"value", items}}});
+    EXPECT_EQ(failure(map), "The list properties of a Tiled map nest deeper than 64 levels.");
+
+    // Every layer may hold the most cells a layer holds, but the map refuses more cells in all before it decompresses them.
+    const std::string zeros = encodeTiles(std::vector<std::uint32_t>(static_cast<std::size_t>(tiled::Map::kMaxCells), 0), "zstd");
+    map = orthogonalMap();
+    for (int index = 0; index < 4; ++index) {
+        map["layers"].push_back(core::Json{{"id", 300 + index}, {"name", "large"}, {"type", "tilelayer"}, {"width", 4096}, {"height", 4096}, {"encoding", "base64"}, {"compression", "zstd"}, {"data", zeros}});
+    }
+
+    EXPECT_EQ(failure(map), "The tile layers of the Tiled map \"maps/broken.tmj\" hold more than the 67108864 cells that a map holds in all.");
+
     tiled::Layer layer{.width = 2, .height = 2, .gids = std::vector<std::uint32_t>(4, 0)};
     EXPECT_THROW(layer.setGid(2, 0, 1), std::out_of_range);
     tiled::Layer chunked{.chunks = {{.x = 0, .y = 0, .width = 1, .height = 1, .gids = {0}}}, .infinite = true};
@@ -586,6 +618,14 @@ TEST_F(MapTest, ReadsInfiniteMapsAndWorlds) {
     EXPECT_EQ(world.maps[0].bounds, (math::Rect{-64.0F, 0.0F, 64.0F, 48.0F}));
     EXPECT_EQ(world.maps[2].path, "maps/world/level_1_0.tmj");
     EXPECT_EQ(world.maps[2].bounds, (math::Rect{64.0F, 0.0F, 64.0F, 48.0F}));
+
+    const core::Json named = core::Json::parse(R"({"patterns": [{"regexp": "level_(\\w+)_(\\d+)\\.tmj"}]})");
+    try {
+        (void)tiled::World::parse(named, "maps/world/level.world", {"maps/world/level_east_0.tmj"});
+        FAIL() << "A capture that is not a number was accepted.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_EQ(std::string(error.what()), R"(The pattern "level_(\w+)_(\d+)\.tmj" of a Tiled world captures "east", which is not a number.)");
+    }
 }
 
 TEST_F(MapRendererTest, LoadsDrawsAndAnimatesMaps) {

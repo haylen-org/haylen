@@ -54,7 +54,7 @@ class MapParser final {
     static const std::array<std::pair<std::string_view, graphics::BlendMode::Type>, 13> kBlendModes;
 
     [[nodiscard]] static graphics::BlendMode::Type readBlendMode(const std::string& mode, std::string_view layer);
-    [[nodiscard]] static core::Json resolveValue(std::string_view type, core::Json value, std::string_view directory);
+    [[nodiscard]] static core::Json resolveValue(std::string_view type, core::Json value, std::string_view directory, int depth);
     [[nodiscard]] static Properties readProperties(const core::Json& owner, std::string_view directory);
     [[nodiscard]] static Map::Orientation readOrientation(const std::string& name);
     [[nodiscard]] static Map::RenderOrder readRenderOrder(const std::string& name);
@@ -63,10 +63,12 @@ class MapParser final {
     [[nodiscard]] Object readObject(const core::Json& source, std::string_view directory) const;
     [[nodiscard]] std::uint32_t readTemplateGid(const core::Json& document, std::uint32_t gid, std::string_view directory) const;
     [[nodiscard]] std::shared_ptr<Tileset> readTileset(const core::Json& document, std::string_view directory, std::string path) const;
-    [[nodiscard]] Layer readLayer(const core::Json& entry, std::string_view directory) const;
+    [[nodiscard]] Layer readLayer(const core::Json& entry, std::string_view directory, int depth);
+    void takeCells(std::size_t cells);
 
     const Map::JsonReader& read;
     Map& map;
+    std::size_t totalCells = 0;
 };
 
 } // namespace haylen::tiled

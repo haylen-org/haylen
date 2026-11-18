@@ -20,6 +20,9 @@ struct World {
     [[nodiscard]] static World parse(const core::Json& document, std::string_view file, const std::vector<std::string>& files);
 
     std::vector<Placement> maps;
+
+  private:
+    [[nodiscard]] static float readCoordinate(const std::string& capture, const std::string& pattern);
 };
 
 } // namespace haylen::tiled

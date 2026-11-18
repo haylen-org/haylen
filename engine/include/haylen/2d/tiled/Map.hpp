@@ -27,6 +27,13 @@ class Map final {
   public:
     // The most cells of a finite map and of one layer, 64 MiB of tile ids.
     static constexpr std::int64_t kMaxCells = std::int64_t{1} << 24;
+
+    // The most cells of all the tile layers and chunks of a map together, 256 MiB of tile ids, so compressed data that claims more never fills the memory.
+    static constexpr std::int64_t kMaxTotalCells = std::int64_t{1} << 26;
+
+    // The most levels that group layers and lists of properties nest, so the code that walks them never runs out of stack.
+    static constexpr int kMaxNesting = 64;
+
     enum class Orientation : std::uint8_t {
         Orthogonal,
         Isometric,

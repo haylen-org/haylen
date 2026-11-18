@@ -73,7 +73,7 @@ A `.world` file loads as a plain list with one table per map. Each table has the
 | `x`, `y` | number | The place of the map in world pixels. |
 | `width`, `height` | number | The size of the map in world pixels. |
 
-The maps that the file lists in `maps` keep their order, and the maps that `patterns` match follow them. The `regexp` of a pattern is matched against the files in the folder of the world. Its first two capture groups are multiplied by `multiplierX` and `multiplierY` and moved by `offsetX` and `offsetY`, which gives the place of the map. The fields `mapWidth` and `mapHeight` give its size. A world takes no options, and any key raises `Unknown option "<key>".`. The [guide](../2d/tiled.md#worlds) shows how to draw and stream the maps of a world.
+The maps that the file lists in `maps` keep their order, and the maps that `patterns` match follow them. The `regexp` of a pattern is matched against the files in the folder of the world. Its first two capture groups hold numbers. They are multiplied by `multiplierX` and `multiplierY` and moved by `offsetX` and `offsetY`, which gives the place of the map. The fields `mapWidth` and `mapHeight` give its size. A world takes no options, and any key raises `Unknown option "<key>".`. The [guide](../2d/tiled.md#worlds) shows how to draw and stream the maps of a world.
 
 ```lua
 local assets = require('haylen.assets')
@@ -1013,6 +1013,9 @@ Loading a map raises these errors:
 | `The skew of the oblique map "<path>" folds its grid onto a line.` | The skew of an oblique map leaves the grid without area. |
 | `The Tiled tile layer "<name>" has a negative size.` | A tile layer has a negative width or height. |
 | `The Tiled tile layer "<name>" has more cells than a layer can hold.` | A tile layer is too large. |
+| `The tile layers of the Tiled map "<path>" hold more than the 67108864 cells that a map holds in all.` | The tile layers and chunks of the map hold more than 67108864 cells together. |
+| `The Tiled map "<path>" nests its group layers deeper than 64 levels.` | Group layers nest more than 64 levels deep. |
+| `The list properties of a Tiled map nest deeper than 64 levels.` | Lists of properties nest more than 64 levels deep. |
 | `A chunk of the Tiled tile layer "<name>" has an "<key>" that is not an integer.` | The `x`, `y`, `width` or `height` of a chunk is not a whole number. |
 | `The chunk at <x>, <y> of the Tiled tile layer "<name>" reaches farther than 16777216 cells from the origin.` | A cell of a chunk lies more than 16777216 cells from the origin, which the arithmetic over its cells cannot hold. |
 | `The compression of a tile layer must be "zlib", "gzip" or "zstd", not "<name>".` | The tile data uses another compression. |
@@ -1024,6 +1027,7 @@ Loading a map raises these errors:
 | `The Tiled group layer "<name>" uses the blend mode "<mode>", which Tiled does not apply to the layers inside it. Set the blend mode on those layers.` | A group layer has a blend mode other than `normal`. |
 | `A tile template uses the tileset "<path>", which the map does not list.` | A tile template names a tileset that the map lacks. |
 | `The "project" of a Tiled map is the path of its ".tiled-project" file.` | The option `project` is not a path. |
+| `The pattern "<regexp>" of a Tiled world captures "<text>", which is not a number.` | A capture group of a pattern of a world matched text that is not a number. |
 | `The class "<name>" of the Tiled project holds itself.` | A class of the project contains itself. |
 | `A class of the Tiled project has no name.` | A class of the project has no name. |
 | `A member of the class "<name>" of the Tiled project has no name.` | A member of a class of the project has no name. |
