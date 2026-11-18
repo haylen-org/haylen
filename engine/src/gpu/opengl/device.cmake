@@ -53,5 +53,5 @@ endif()
 
 # The web players reach the functions of WebGL2 through the address of each function, which the context of the page hands over.
 if(EMSCRIPTEN)
-  target_link_options(haylen-gpu INTERFACE "SHELL:-s MIN_WEBGL_VERSION=2" "SHELL:-s MAX_WEBGL_VERSION=2" "SHELL:-s GL_ENABLE_GET_PROC_ADDRESS=1")
+  target_link_options(haylen-gpu INTERFACE -sMIN_WEBGL_VERSION=2 -sMAX_WEBGL_VERSION=2 -sGL_ENABLE_GET_PROC_ADDRESS=1)
 endif()

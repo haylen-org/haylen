@@ -821,8 +821,8 @@ add_library(haylen::engine ALIAS haylen-engine)
 target_compile_features(haylen-engine PUBLIC cxx_std_20)
 # Apps live in folders of their own, so the exception and `longjmp` support of the browser build travels with the engine target instead of the engine folder.
 if(EMSCRIPTEN)
-  target_compile_options(haylen-engine INTERFACE -fwasm-exceptions "SHELL:-s SUPPORT_LONGJMP=wasm")
-  target_link_options(haylen-engine INTERFACE -fwasm-exceptions "SHELL:-s SUPPORT_LONGJMP=wasm")
+  target_compile_options(haylen-engine INTERFACE -fwasm-exceptions -sSUPPORT_LONGJMP=wasm)
+  target_link_options(haylen-engine INTERFACE -fwasm-exceptions -sSUPPORT_LONGJMP=wasm)
 endif()
 target_include_directories(haylen-engine
   PUBLIC "${CMAKE_CURRENT_LIST_DIR}/include" "${HAYLEN_GENERATED_INCLUDE_DIR}"
