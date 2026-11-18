@@ -48,7 +48,7 @@ platform::VideoDecoder::Read FakeVideoDecoder::readFrame(Frame& frame) {
         throw std::runtime_error("The fake video broke at its frame " + std::to_string(next) + ".");
     }
 
-    frame.width = settings.info.width;
+    frame.width = settings.frameWidth.value_or(settings.info.width);
     frame.height = settings.info.height;
     frame.time = settings.info.clocked ? getTime() : time;
     frame.pixels.assign(static_cast<std::size_t>(frame.width * frame.height) * 4U, 255);

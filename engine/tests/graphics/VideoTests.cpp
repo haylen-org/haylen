@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "haylen/audio/Mixer.hpp"
+#include "haylen/core/Connection.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/graphics/Video.hpp"
 #include "haylen/plugins/VideoPlugin.hpp"
@@ -216,6 +217,37 @@ TEST_F(VideoTest, ReportsFilesThatFailAndPlatformsWithoutADecoder) {
     fixture.runLua("events = {} none = video.load('videos/intro.mp4') none:on('error', function(error) events[#events + 1] = error.code end)");
     ASSERT_TRUE(fixture.frameUntil([this] { return fixture.lua("return none.state") == "failed"; }));
     EXPECT_EQ(fixture.lua("return table.concat(events, ' ') .. ' ' .. none.error"), "unsupported This platform has no decoder of video files.");
+}
+
+// A size that the device cannot hold fails the video with the message of the image, whether the decoder tells it when it opens or a frame brings it later.
+TEST_F(VideoTest, FailsAVideoLargerThanTheDeviceHolds) {
+    useDecoder({.info = {.duration = 1.0, .width = 20000, .height = 2}});
+    fixture.runLua("events = {} wide = video.load('videos/intro.mp4') wide:on('error', function(error) events[#events + 1] = error.message end)");
+    ASSERT_TRUE(fixture.frameUntil([this] { return fixture.lua("return wide.state") == "failed"; }));
+    EXPECT_EQ(fixture.lua("return table.concat(events, ' ')"), "The image of 20000 by 2 pixels is too large. An image has at most 16384 pixels on a side.");
+
+    useDecoder({.frameWidth = 20000});
+    fixture.runLua("events = {} grown = video.load('videos/intro.mp4', {autoplay = true}) grown:on('error', function(error) events[#events + 1] = error.message end)");
+    ASSERT_TRUE(fixture.frameUntil([this] { return fixture.lua("return grown.state") == "failed"; }));
+    EXPECT_EQ(fixture.lua("return table.concat(events, ' ') .. ' ' .. grown.texture.width"), "The image of 20000 by 2 pixels is too large. An image has at most 16384 pixels on a side. 4");
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
+// A video seeks before it knows its duration, and one that closed while the frame walks the videos does nothing more.
+TEST_F(VideoTest, SeeksWhileItLoadsAndStopsOnceClosed) {
+    fixture.runLua("intro = video.load('videos/intro.mp4') intro.time = -1");
+    EXPECT_EQ(fixture.lua("return intro.time"), "0.0");
+
+    plugins::VideoPlugin& plugin = fixture.engine().getPlugin<plugins::VideoPlugin>();
+    const std::shared_ptr<Video> closed = plugin.create(fixture.engine(), "videos/intro.mp4", {});
+    int readies = 0;
+    const core::Connection connection = closed->ready.connect([&readies] { ++readies; });
+    closed->close();
+    ASSERT_TRUE(fixture.frameUntil([this] { return fixture.lua("return intro.state") == "ready"; }));
+    fixture.frames(5);
+    EXPECT_EQ(readies, 0);
+    EXPECT_EQ(closed->getWidth(), 0);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
 TEST_F(VideoTest, ResolvesAnAsynchronousLoadOnceReadyAndEndsWithItsOwner) {

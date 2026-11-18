@@ -147,8 +147,13 @@ void Video::seek(double seconds) {
         throw std::invalid_argument("A video seeks to a finite number of seconds.");
     }
 
+    // A video that loads knows no duration yet, so only the start bounds the time until it opens.
     const double duration = getDuration();
-    time = std::clamp(seconds, 0.0, duration > 0.0 ? duration : seconds);
+    time = std::max(seconds, 0.0);
+    if (duration > 0.0) {
+        time = std::min(time, duration);
+    }
+
     atEnd = false;
 
     if (state == State::Ready && shared->info.clocked) {
@@ -215,7 +220,12 @@ int Video::getHeight() const noexcept {
     return state == State::Ready ? shared->info.height : 0;
 }
 
+// A listener of another video may close this one while the frame walks the videos, and a closed video does nothing more.
 void Video::update(double seconds, bool running) {
+    if (closed) {
+        return;
+    }
+
     if (state == State::Loading) {
         std::unique_lock lock(shared->mutex);
         if (!shared->opened) {
@@ -299,9 +309,19 @@ void Video::update(double seconds, bool running) {
         exhausted = shared->framesEnded && shared->queued.empty();
     }
     if (shown) {
-        present(*shown);
+        try {
+            present(*shown);
+        } catch (const std::exception& exception) {
+            error = exception.what();
+        }
+
         const std::scoped_lock lock(shared->mutex);
         shared->spare.push_back(std::move(*shown));
+    }
+
+    if (!error.empty()) {
+        fail();
+        return;
     }
 
     if (exhausted && !atEnd && time >= shared->info.duration) {
@@ -319,9 +339,17 @@ void Video::finishOpening(std::string failure) {
         return;
     }
 
+    // A size that the device cannot hold fails the video like a file that its decoder refuses.
     const platform::VideoDecoder::Info& info = shared->info;
+    try {
+        device.replaceTexture(texture, Image(std::max(info.width, 1), std::max(info.height, 1), std::vector<std::uint8_t>(static_cast<std::size_t>(std::max(info.width, 1)) * static_cast<std::size_t>(std::max(info.height, 1)) * 4U, 0)));
+    } catch (const std::exception& exception) {
+        error = exception.what();
+        fail();
+        return;
+    }
+
     state = State::Ready;
-    device.replaceTexture(texture, Image(std::max(info.width, 1), std::max(info.height, 1), std::vector<std::uint8_t>(static_cast<std::size_t>(std::max(info.width, 1)) * static_cast<std::size_t>(std::max(info.height, 1)) * 4U, 0)));
 
     if (time > 0.0) {
         seek(time);
