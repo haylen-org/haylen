@@ -64,7 +64,7 @@ class DevelopmentServer:
         self.scanning = threading.Lock()
         self.files = self.snapshot()
         self.lines = 0
-        # The commands of the developer console of the apps, which the console completes from.
+        # The commands of the developer console of the apps, which the console of the terminal completes from and lists.
         self.commands: list[dict] = []
         self.debugger: DebugRelay | None = None
         # The answers that a GPU capture waits for: the results of its console line by the id of the line, and the capture reports by app while a capture waits for them.
@@ -451,17 +451,24 @@ class DevelopmentServer:
         if kind == "consoleCommands":
             commands = message.get("commands")
             if isinstance(commands, list):
-                self.commands = [command for command in commands if isinstance(command, dict) and isinstance(command.get("name"), str) and isinstance(command.get("arguments"), list)]
+                self.commands = [command for command in commands if DevelopmentServer.is_command(command)]
             return
         if kind == "hello":
             self.welcome(client, message)
 
+    @staticmethod
+    def is_command(command: object) -> bool:
+        """Tells whether a command that an app sent has its name, how to type it, its help and the kinds of its arguments."""
+        if not isinstance(command, dict):
+            return False
+        return all(isinstance(command.get(key), str) for key in ("name", "usage", "help")) and isinstance(command.get("arguments"), list)
+
     def console_result(self, client: DevelopmentClient, message: Mapping[str, object]) -> None:
         output = str(message.get("output", ""))
         if not message.get("ok"):
-            self.terminal.error(output or "The line failed.")
+            self.terminal.error(self.terminal.fit(output or "The line failed.", len("Error: ")))
         elif output:
-            self.terminal.info(output)
+            self.terminal.info(self.terminal.fit(output))
         with self.answers:
             if message.get("id") in self.awaited:
                 self.awaited[message["id"]].append((client, dict(message)))

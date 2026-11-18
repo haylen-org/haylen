@@ -8,6 +8,7 @@ class ConsoleLine:
 
     PROMPT = "> "
     HISTORY = 100
+    EMPTY_HINT = '"help" lists the commands, and Escape or Enter goes back to the keys'
 
     def __init__(self) -> None:
         self.text = ""
@@ -101,9 +102,13 @@ class ConsoleLine:
         return shared
 
     def render(self, color: bool) -> str:
-        """Draws the prompt and the part of the line around the cursor that fits the terminal, and puts the cursor in its place."""
+        """Draws the prompt and the part of the line around the cursor that fits the terminal, and puts the cursor in its place. An empty line on a terminal with color shows in a dim color how to list the commands and how to leave, when it fits."""
         room = max(shutil.get_terminal_size().columns - len(ConsoleLine.PROMPT) - 1, 1)
+        prompt = Terminal.paint(ConsoleLine.PROMPT, color, Terminal.EXPRESSION)
+        if not self.text and color and len(ConsoleLine.EMPTY_HINT) <= room:
+            return f"{prompt}{Terminal.render(ConsoleLine.EMPTY_HINT, color, Terminal.LABEL)}\x1b[{Terminal.visible_width(Terminal.render(ConsoleLine.EMPTY_HINT, color))}D"
+
         start = max(0, self.cursor - room)
         shown = self.text[start : start + room]
         back = len(shown) - (self.cursor - start)
-        return Terminal.paint(ConsoleLine.PROMPT, color, Terminal.EXPRESSION) + shown + (f"\x1b[{back}D" if back > 0 else "")
+        return prompt + shown + (f"\x1b[{back}D" if back > 0 else "")

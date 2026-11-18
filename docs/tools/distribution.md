@@ -200,10 +200,10 @@ A key acts at once, without Enter, in an interactive terminal. The keys `r`, `R`
 
 ##### The developer console
 
-The key `d` opens the developer console of the running app in the terminal. A line with the prompt `>` stays at the bottom of the terminal, and the log of the app prints above it, so the two never mix. The console takes every key until Escape gives the keys back to the run.
+The key `d` opens the developer console of the running app in the terminal. A line with the prompt `>` stays at the bottom of the terminal, and the log of the app prints above it, so the two never mix. The console takes every key until Escape, or Enter on an empty line, gives the keys back to the run. While the line is empty, a dim hint on it says how to list the commands and how to leave.
 
 ```text
-The console runs each line in the app. Type "help" to list the commands. Tab completes, the arrows go through the lines typed before, and Escape goes back to the keys.
+The console runs each line in the app. Type "help" to list the commands. Tab completes, the arrows go through the lines typed before, and Escape or Enter on an empty line goes back to the keys.
 > timeScale 0.25
 The time scale is 0.25.
 >
@@ -211,14 +211,14 @@ The time scale is 0.25.
 
 | Key | What it does in the console |
 | --- | --- |
-| Enter | Runs the line in every connected app. The answer of each app prints above the line, and an error prints after `Error:`. An empty line runs nothing. |
+| Enter | Runs the line in every connected app. The answer of each app prints above the line, broken between words at the width of the terminal, and an error prints after `Error:`. On an empty line it closes the console and gives the keys back to the run. |
 | Tab | Completes the word before the cursor: the name of a command, or `true` and `false` for a boolean argument. When several commands start the same way, it completes what they share and lists them. |
 | Up and Down | Go through the lines typed before in this run. |
 | Left, Right, Home and End | Move the cursor. Ctrl+A and Ctrl+E also go to the start and the end. |
 | Backspace and Delete | Remove the character before or after the cursor. Ctrl+U removes the whole line. |
 | Escape | Closes the console and gives the keys back to the run. |
 
-Type `help` to list the commands of the app, with how to type each one and what it does. The [console reference](../lua-api/debug.md#console) lists the commands of the engine, such as `timeScale 0.25`, `pause`, `restart`, `inspect watched.player` and `lua player.speed`, and shows how an app adds its own, such as `gold 50`. The console asks the app for its commands as it opens and after every line, so the completions follow the commands that the app adds and removes as it runs.
+Type `help` to list the commands of the app, with how to type each one in a column and what it does beside it, broken between words at the width of the terminal and aligned under the column, and `help stats` to show one command. The terminal answers `help` itself from the commands that the app sent, so the list prints once however many apps are connected. The [console reference](../lua-api/debug.md#console) lists the commands of the engine, such as `timeScale 0.25`, `pause`, `restart`, `inspect watched.player` and `lua player.speed`, and shows how an app adds its own, such as `gold 50`. The console asks the app for its commands as it opens and after every line, so the completions follow the commands that the app adds and removes as it runs.
 
 ## Version and build number
 

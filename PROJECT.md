@@ -2455,7 +2455,7 @@ Playground do site (pendências da engine):
 Ferramentas de desenvolvimento (pedido de 18/11):
 
 - [ ] O `help` do console de desenvolvimento no terminal do `haylen app run` está ruim: as descrições quebram no meio das palavras na largura do terminal e não se alinham. Refazer a lista com as colunas alinhadas e o texto quebrado por palavras com recuo, e revisar o texto de cada comando.
-- [ ] Não há como sair do modo do console no terminal do `haylen app run`. Ter uma saída clara e dita na tela (Escape, uma linha vazia ou `exit`) que volte às teclas.
+- [x] Não há como sair do modo do console no terminal do `haylen app run`. Ter uma saída clara e dita na tela (Escape, uma linha vazia ou `exit`) que volte às teclas. Feito: Escape ou Enter numa linha vazia fecham o console e devolvem as teclas, e a linha vazia mostra em cinza que "help" lista os comandos e que Escape ou Enter voltam às teclas, além da dica impressa ao abrir. O `exit` ficou de fora porque um app pode ter um comando com esse nome. Testado em `tools/tests/development/test_run_session.py` e documentado em `docs/tools/distribution.md` e `docs/lua-api/debug.md`.
 - [ ] O "show locked" do inspetor marca e desmarca sem efeito visível e sem dizer para que serve. Ou ele faz algo claro e dito na tela, ou sai.
 - [ ] Nas estatísticas, clicar em "physics" mostra uma mensagem de erro do ImGui. Achar a causa e corrigir na raiz, com teste.
 - [ ] As janelas de depuração (estatísticas, inspetor) herdam o tema do app, então ficam brancas com botões roxos e difíceis de ler. Elas passam a ter um visual único próprio, escuro e translúcido, igual em todo app, e revisar o comportamento e o texto de todas as opções delas.

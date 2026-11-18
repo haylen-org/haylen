@@ -29,6 +29,8 @@ class Terminal:
     # The escape sequences of colors and of the cursor that tools print, which take no columns of the line.
     ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]|\x1b[@-Z\\-_]")
     ELLIPSIS = "\u2026"
+    # The narrowest room that texts break into, below which they print whole and the terminal breaks them.
+    NARROWEST = 24
     # The console mode of Windows that shows escape sequences, which consoles leave off for older programs.
     VIRTUAL_TERMINAL_PROCESSING = 0x0004
 
@@ -108,11 +110,54 @@ class Terminal:
         self.write(Terminal.paint(text, self.stdout_color, Terminal.EMPHASIS))
 
     def rows(self, rows: list[tuple[str, str]], keys: bool = False) -> None:
-        """Prints rows of a name and a text with the names aligned, such as the summary of a running app with dim labels, or its keys in the color of reserved expressions."""
+        """Prints rows of a name and a text with the names aligned, such as the summary of a running app with dim labels, or its keys and the commands of its console in the color of reserved expressions. A text wider than the terminal breaks between its words and goes on under the start of the texts."""
         width = max(len(name) for name, _ in rows)
         style = Terminal.EXPRESSION if keys else Terminal.LABEL
+        indent = " " * (width + 4)
+        room = self.width() - len(indent)
         for name, text in rows:
-            self.write(f"  {Terminal.paint(name.ljust(width), self.stdout_color, style)}  {Terminal.render(text, self.stdout_color)}")
+            lines = Terminal.wrap(text, room, self.stdout_color) if room >= Terminal.NARROWEST else [text]
+            shown = [f"  {Terminal.paint(name.ljust(width), self.stdout_color, style)}  {Terminal.render(lines[0], self.stdout_color)}"]
+            shown += [indent + Terminal.render(line, self.stdout_color) for line in lines[1:]]
+            self.write("\n".join(shown))
+
+    @staticmethod
+    def wrap(message: str, width: int, color: bool) -> list[str]:
+        """Breaks a message into lines of at most a number of columns between its words, measured as they show, and never inside a reserved expression, a path or a URL. A word wider than the line keeps a line of its own."""
+        # The spaces inside the marks become a character that no message holds, so the words split around them.
+        joined = Terminal.MARKUP.sub(lambda match: match[0].replace(" ", "\0"), message)
+        lines: list[str] = []
+        line = ""
+        line_width = 0
+        for word in joined.split():
+            text = word.replace("\0", " ")
+            columns = Terminal.visible_width(Terminal.render(text, color))
+            if line and line_width + 1 + columns > width:
+                lines.append(line)
+                line = ""
+            line_width = line_width + 1 + columns if line else columns
+            line = f"{line} {text}" if line else text
+        return [*lines, line]
+
+    def width(self) -> int:
+        """The columns that a line of the terminal holds without the terminal breaking it, or 0 when the output goes to a file or a pipe, which keep every line whole."""
+        return shutil.get_terminal_size().columns - 1 if self.stdout.isatty() else 0
+
+    def fit(self, message: str, used: int = 0) -> str:
+        """Breaks every line of a message between its words at the width of the terminal, less the columns that print before it, such as those of the word "Error:", so the terminal never breaks a word. A line keeps its indent on each of its parts."""
+        room = self.width() - used
+        fitted = []
+        for text in message.split("\n"):
+            body = text.lstrip()
+            indent = text[: len(text) - len(body)]
+            parts = Terminal.wrap(body, room - len(indent), self.stdout_color) if room - len(indent) >= Terminal.NARROWEST else [body]
+            fitted += [indent + part for part in parts]
+        return "\n".join(fitted)
+
+    @staticmethod
+    def visible_width(text: str) -> int:
+        """The columns of a terminal that a text takes, without the escape sequences of its colors."""
+        return sum(map(Terminal.columns, Terminal.ESCAPE.sub("", text)))
 
     def info(self, message: str) -> None:
         self.write(Terminal.render(message, self.stdout_color))

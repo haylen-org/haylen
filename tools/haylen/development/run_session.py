@@ -34,7 +34,7 @@ class RunSession:
     DEVELOPMENT_KEYS = ("r", "R", "d", "s", "i", "p", "g")
     # The lines of the developer console that the keys of the statistics, the inspector, the drawings and the GPU capture run.
     KEY_LINES = {"s": "stats", "i": "inspector", "p": "draw", "g": "gpuCapture"}
-    CONSOLE_HINT = 'The console runs each line in the app. Type "help" to list the commands. Tab completes, the arrows go through the lines typed before, and Escape goes back to the keys.'
+    CONSOLE_HINT = 'The console runs each line in the app. Type "help" to list the commands. Tab completes, the arrows go through the lines typed before, and Escape or Enter on an empty line goes back to the keys.'
     # How long a process that the session stops takes to end before the session kills it.
     STOP_SECONDS = 10
 
@@ -128,8 +128,8 @@ class RunSession:
         self.terminal.show_prompt(None)
 
     def type(self, key: str) -> None:
-        """Edits the line of the console with a key: Enter runs the line in every connected app, Tab completes it, and Escape closes the console."""
-        if key == "Escape":
+        """Edits the line of the console with a key: Enter runs the line in every connected app, Tab completes it, and Escape or Enter on an empty line closes the console."""
+        if key == "Escape" or (key == "Enter" and not self.console.text.strip()):
             self.close_console()
             return
 
@@ -146,8 +146,24 @@ class RunSession:
             self.terminal.draw_prompt()
             return
         self.terminal.write(Terminal.paint(ConsoleLine.PROMPT, self.terminal.stdout_color, Terminal.EXPRESSION) + line)
-        self.development.send_line(line)
+        if not self.help(line):
+            self.development.send_line(line)
         self.development.request_commands()
+
+    def help(self, line: str) -> bool:
+        """Answers "help" with the commands that the apps sent, each with how to type it and its help broken at the width of the terminal, and "help" with a name with that command, and tells whether it answered. A line that names more, or that comes before any app sent its commands, goes to the apps."""
+        words = line.split()
+        if words[0] != "help" or len(words) > 2 or not self.console.commands:
+            return False
+
+        commands = self.console.commands
+        if len(words) == 2:
+            commands = [command for command in commands if command["name"] == words[1]]
+        if not commands:
+            self.terminal.error(f'There is no command "{words[1]}". Type "help" to list the commands.')
+            return True
+        self.terminal.rows([(command["usage"], command["help"]) for command in commands], keys=True)
+        return True
 
     def quit(self) -> None:
         self.quitting.set()

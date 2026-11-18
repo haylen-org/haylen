@@ -1,4 +1,6 @@
 import json
+import os
+import shutil
 import sys
 import threading
 from unittest import mock
@@ -27,7 +29,7 @@ class RunSessionTest:
         server.clients.append(client)
         session = RunSession(fixture.context, server)
         session.press("d")
-        for key in [*"gold 55", "Backspace", "0", "Enter", "Enter", *"  help ", "Enter"]:
+        for key in [*"gold 55", "Backspace", "0", "Enter", *"  help ", "Enter"]:
             session.press(key)
         assert fixture.output.getvalue().endswith("\r\x1b[2K" + ConsoleLine.PROMPT)
         server.receive(client, {"type": "consoleResult", "id": 2, "ok": True, "output": 'Gold 50, the "shop" pays.'})
@@ -44,6 +46,48 @@ class RunSessionTest:
         assert printed.endswith("\r\x1b[2K")
         assert not session.typing
         assert session.quitting.is_set()
+
+    def test_enter_on_an_empty_line_leaves_the_console_and_gives_the_keys_back(self, tmp_path, monkeypatch):
+        fixture = DevelopmentFixture(tmp_path, monkeypatch)
+        server = fixture.server()
+        sent: list[dict] = []
+        server.clients.append(RunSessionTest.recording_app(sent))
+        session = RunSession(fixture.context, server)
+
+        for key in ["d", " ", "Enter", "s"]:
+            session.press(key)
+
+        assert not session.typing
+        assert [message["line"] for message in sent if message["type"] == "console"] == ["stats"]
+
+    def test_the_console_lists_the_commands_of_the_apps_with_their_help_broken_between_words(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(shutil, "get_terminal_size", lambda: os.terminal_size((60, 24)))
+        fixture = DevelopmentFixture(tmp_path, monkeypatch)
+        fixture.output.isatty = lambda: True
+        server = fixture.server()
+        sent: list[dict] = []
+        client = RunSessionTest.recording_app(sent)
+        server.clients.append(client)
+        help_text = 'Shows the statistics as "off", "compact" or "full", or moves them to the next mode when the line leaves the mode out.'
+        commands = [
+            {"name": "restart", "usage": "restart", "help": "Restarts the app.", "arguments": []},
+            {"name": "stats", "usage": "stats [word]", "help": help_text, "arguments": ["string?"]},
+        ]
+        server.receive(client, {"type": "consoleCommands", "commands": [*commands, {"name": "broken", "arguments": []}]})
+        session = RunSession(fixture.context, server)
+
+        session.press("d")
+        for line in ("help", "help stats", "help missing"):
+            for key in [*line, "Enter"]:
+                session.press(key)
+
+        assert [message for message in sent if message["type"] == "console"] == []
+        printed = [line.split("\r\x1b[2K")[-1] for line in fixture.output.getvalue().split("\n")]
+        assert "  restart       Restarts the app." in printed
+        listed = printed.index('  stats [word]  Shows the statistics as "off", "compact" or')
+        assert printed[listed + 1 : listed + 3] == ['                "full", or moves them to the next mode when', "                the line leaves the mode out."]
+        assert printed.count('  stats [word]  Shows the statistics as "off", "compact" or') == 2
+        assert 'Error: There is no command "missing". Type "help" to list the commands.' in printed
 
     def test_the_keys_of_the_tools_run_their_lines_in_the_apps(self, tmp_path, monkeypatch):
         fixture = DevelopmentFixture(tmp_path, monkeypatch)
