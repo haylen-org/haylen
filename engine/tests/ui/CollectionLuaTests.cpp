@@ -169,6 +169,22 @@ TEST_F(CollectionLuaTest, ReportsTheErrorsOfItsMethods) {
     EXPECT_NE(error("list:setPages({load = function() end})").find("The option \"count\" is required."), std::string::npos);
     EXPECT_NE(error("list:setPages({count = 10, pageSize = 0, load = function() end})").find("The option \"pageSize\" must be at least 1."), std::string::npos);
     EXPECT_NE(error("list:restoreState({item = 'i1', place = 3})").find("Unknown option \"place\"."), std::string::npos);
+    EXPECT_NE(error("list:remove(math.maxinteger)").find("The index 9223372036854775807 is outside the items of the collection \"list\", which holds 100."), std::string::npos);
+    EXPECT_NE(error("gui:set('list', {types = {row = {template = ui.label{}}, [1] = 'card'}})").find("The types of a collection are named by strings, not by a number."), std::string::npos);
+    EXPECT_NE(error("gui:set('list', {types = {row = {template = ui.label{}, [2] = 1}}})").find("The fields of the collection type \"row\" are named by strings, not by a number."), std::string::npos);
+
+    // A scroll by a number that is not finite would leave the view nowhere, so the collection refuses it and keeps its place.
+    fixture.runLua("list.scrollOffset = 120");
+    EXPECT_NE(error("list.scrollOffset = 0 / 0").find("The scroll offset of the collection \"list\" must be a finite number."), std::string::npos);
+    EXPECT_NE(error("list:scrollBy(math.huge)").find("The distance to scroll of the collection \"list\" must be a finite number."), std::string::npos);
+    EXPECT_NE(error("list:scrollTo(5, {offset = -math.huge})").find("The offset of a scroll to an item of the collection \"list\" must be a finite number."), std::string::npos);
+    EXPECT_NE(error("list:restoreState({item = 'i5', distance = 0 / 0})").find("The distance of a saved state of the collection \"list\" must be a finite number."), std::string::npos);
+    fixture.frames(2);
+    EXPECT_EQ(fixture.lua("return list.scrollOffset"), "120.0");
+
+    // Ids and types keep the bytes after a zero byte.
+    EXPECT_EQ(fixture.lua("list:setItems({{id = 'a\\0b'}, {id = 'a\\0c'}}) return list.count .. ' ' .. list:indexOf('a\\0c')"), "2 2");
+    fixture.runLua("list:setItems(items)");
 
     fixture.runLua("multi = ui.mount(ui.collection{id = 'multi', height = 100, types = {a = {template = ui.label{}}, b = {template = ui.label{}}}}):collection('multi')");
     EXPECT_NE(error("multi:setItems({{id = 'x'}})").find("The item \"x\" of the collection \"multi\" needs a type, because the collection declares several."), std::string::npos);

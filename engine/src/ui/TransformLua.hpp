@@ -3,6 +3,8 @@
 #include <memory>
 
 #include "haylen/lua/Type.hpp"
+#include "haylen/math/Color.hpp"
+#include "haylen/math/Vec2.hpp"
 #include "haylen/ui/Transform.hpp"
 
 struct lua_State;
@@ -23,6 +25,12 @@ class TransformLua final {
   public:
     static void install(lua_State* L);
     static void push(lua_State* L, const std::shared_ptr<Transform>& transform);
+
+  private:
+    static void checkOffset(const math::Vec2& value);
+    static void checkScale(const math::Vec2& value);
+    static void checkOpacity(float value);
+    static void checkTint(const math::Color& value);
 };
 
 } // namespace haylen::ui

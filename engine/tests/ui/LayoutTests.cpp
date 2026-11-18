@@ -352,6 +352,17 @@ TEST_F(LayoutTest, FitsGridColumnsToTheMinimumColumnWidth) {
     EXPECT_EQ(getBounds(*gui, "c").y, 70.0F);
 }
 
+// A minimum column width far below a unit fits more columns than any count holds, so the grid stops at its limit of columns.
+TEST_F(LayoutTest, BoundsTheColumnsOfATinyMinimumColumnWidth) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "grid", "id": "grid", "width": 1000, "minColumnWidth": 1e-7, "gap": 0, "children": [
+        {"kind": "spacer", "id": "a", "height": 50}, {"kind": "spacer", "id": "b", "height": 50}
+    ]}]})");
+    // clang-format on
+    EXPECT_EQ(getBounds(*gui, "a").width, 1000.0F / 64.0F);
+    EXPECT_EQ(getBounds(*gui, "b").y, 0.0F);
+}
+
 TEST_F(LayoutTest, StacksChildrenAndPlacesThemInBothDirections) {
     // clang-format off
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "stack", "width": 400, "height": 300, "alignItems": "center", "children": [

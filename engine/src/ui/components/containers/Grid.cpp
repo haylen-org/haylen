@@ -53,8 +53,9 @@ std::size_t Grid::countColumns(Context& context, float width) const {
     }
 
     const float spacing = getGap(context);
-    const auto fitting = static_cast<int>(std::floor((width + spacing) / (minColumnWidth + spacing)));
-    return static_cast<std::size_t>(std::clamp(fitting, 1, columnsSet ? columns : kMaxColumns));
+    const float fitting = std::floor((width + spacing) / (minColumnWidth + spacing));
+    const auto limit = static_cast<float>(columnsSet ? columns : kMaxColumns);
+    return static_cast<std::size_t>(std::clamp(fitting, 1.0F, limit));
 }
 
 math::Vec2 Grid::measureContent(Context& context, float availableWidth) {

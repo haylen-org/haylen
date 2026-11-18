@@ -61,6 +61,16 @@ template <Bound T> class ClassBuilder final {
         return property(name, &Binding::getField<Member>, &Binding::setField<Member>);
     }
 
+    // Exposes a field whose new values pass `Check` first, a static function that throws `std::invalid_argument` with the sentence that says what the field takes, both when Lua sets the field and when a tween writes it.
+    template <auto Member, auto Check> ClassBuilder& checkedField(const char* name) {
+        using Field = typename FunctionTraits<decltype(Member)>::Field;
+        if constexpr (NativeProperty::kindOf<Field>().has_value()) {
+            NativeProperty::record(state, metatable, name, checkedFieldProperty<Member, Check>);
+        }
+
+        return property(name, &Binding::getField<Member>, &setChecked<Member, Check>);
+    }
+
     // Exposes a getter and setter pair of member functions as a read-write property.
     template <auto Getter, auto Setter> ClassBuilder& accessor(const char* name) {
         using Value = std::remove_cvref_t<typename FunctionTraits<decltype(Getter)>::Result>;
@@ -161,6 +171,32 @@ template <Bound T> class ClassBuilder final {
         return true;
     }
 
+    template <auto Member, auto Check> static bool writeCheckedField(void* storage, const NativeProperty::Values& values) {
+        using Field = typename FunctionTraits<decltype(Member)>::Field;
+        T* object = objectOf(storage);
+        if (object == nullptr) {
+            return false;
+        }
+
+        const Field value = NativeProperty::unpack<Field>(values);
+        Check(value);
+        object->*Member = value;
+        return true;
+    }
+
+    template <auto Member, auto Check> static int setChecked(lua_State* L) {
+        using Field = typename FunctionTraits<decltype(Member)>::Field;
+        // clang-format off
+        return Binding::guarded(L, [L] {
+            T& object = Userdata::check<T>(L, 1);
+            const Field value = Stack::read<Field>(L, 3);
+            Check(value);
+            object.*Member = value;
+            return 0;
+        });
+        // clang-format on
+    }
+
     template <auto Outer, auto Inner> static bool readNested(void* storage, NativeProperty::Values& values) {
         T* object = objectOf(storage);
         if (object == nullptr) {
@@ -215,6 +251,7 @@ template <Bound T> class ClassBuilder final {
     }
 
     template <auto Member> static inline NativeProperty fieldProperty{NativeProperty::kindOf<typename FunctionTraits<decltype(Member)>::Field>().value_or(NativeProperty::Kind::Number), &readField<Member>, &writeField<Member>};
+    template <auto Member, auto Check> static inline NativeProperty checkedFieldProperty{NativeProperty::kindOf<typename FunctionTraits<decltype(Member)>::Field>().value_or(NativeProperty::Kind::Number), &readField<Member>, &writeCheckedField<Member, Check>};
     template <auto Outer, auto Inner> static inline NativeProperty nestedProperty{NativeProperty::kindOf<typename FunctionTraits<decltype(Inner)>::Field>().value_or(NativeProperty::Kind::Number), &readNested<Outer, Inner>, &writeNested<Outer, Inner>};
     template <auto Getter, auto Setter> static inline NativeProperty accessorProperty{NativeProperty::kindOf<std::remove_cvref_t<typename FunctionTraits<decltype(Getter)>::Result>>().value_or(NativeProperty::Kind::Number), &readAccessor<Getter>, &writeAccessor<Getter, Setter>};
 

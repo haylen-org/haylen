@@ -128,7 +128,7 @@ std::pair<std::string, std::string> CollectionLua::readItem(lua_State* L, int ta
 
     lua_pushliteral(L, "id");
     const bool named = lua_rawget(L, item) == LUA_TSTRING && lua_rawlen(L, -1) > 0;
-    std::string id = named ? lua_tostring(L, -1) : std::string();
+    std::string id = named ? lua::Stack::read<std::string>(L, -1) : std::string();
     lua_pop(L, 1);
 
     if (!named) {
@@ -141,7 +141,7 @@ std::pair<std::string, std::string> CollectionLua::readItem(lua_State* L, int ta
         throw std::invalid_argument("The type of the item \"" + id + "\" of the collection \"" + collection.getId() + "\" must be a string.");
     }
 
-    std::string type = kind == LUA_TSTRING ? lua_tostring(L, -1) : std::string();
+    std::string type = kind == LUA_TSTRING ? lua::Stack::read<std::string>(L, -1) : std::string();
     lua_pop(L, 1);
     collection.checkType(id, type);
     return {std::move(id), std::move(type)};
@@ -217,7 +217,7 @@ Collection& CollectionLua::check(lua_State* L) {
 std::size_t CollectionLua::readIndex(lua_State* L, int index, const Collection& collection, std::size_t limit) {
     const auto value = static_cast<lua_Integer>(luaL_checkinteger(L, index));
     if (value < 1 || static_cast<std::size_t>(value) > limit) {
-        luaL_error(L, "The index %d is outside the items of the collection \"%s\", which holds %d.", static_cast<int>(value), collection.getId().c_str(), static_cast<int>(collection.getCount()));
+        luaL_error(L, "The index %I is outside the items of the collection \"%s\", which holds %I.", value, collection.getId().c_str(), static_cast<lua_Integer>(collection.getCount()));
     }
 
     return static_cast<std::size_t>(value - 1);

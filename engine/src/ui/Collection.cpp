@@ -1934,8 +1934,15 @@ std::optional<std::size_t> Collection::findItem(std::string_view itemId) const {
 }
 
 void Collection::scrollTo(std::size_t index, const ScrollRequest& request) {
+    checkFinite(request.offset, "offset of a scroll to an item");
     hold.reset();
     requestScroll(index, request);
+}
+
+void Collection::checkFinite(double value, std::string_view what) const {
+    if (!std::isfinite(value)) {
+        throw std::invalid_argument("The " + std::string(what) + " of the collection \"" + getId() + "\" must be a finite number.");
+    }
 }
 
 // An offset the app asks for applies to the items as they are now, so the lines of a change it made meanwhile arrange first, and the view no longer holds what it showed.
@@ -1949,6 +1956,7 @@ void Collection::refreshRange() {
 }
 
 void Collection::scrollBy(double distance, bool animated) {
+    checkFinite(distance, "distance to scroll");
     refreshRange();
     pendingScroll.reset();
 
@@ -1966,6 +1974,7 @@ double Collection::getScrollOffset() const noexcept {
 }
 
 void Collection::setScrollOffset(double value) {
+    checkFinite(value, "scroll offset");
     refreshRange();
     pendingScroll.reset();
     scroller->jumpTo(value);
@@ -2002,6 +2011,7 @@ Collection::State Collection::saveState() const {
 
 // The saved item goes back to its saved distance from the start of the view and the saved focus returns, for the items that still exist.
 void Collection::restoreState(const State& value) {
+    checkFinite(value.distance, "distance of a saved state");
     if (const std::optional<std::size_t> index = findItem(value.item)) {
         const ScrollRequest request{.align = ScrollAlign::Start, .offset = 0.0F, .animated = false};
         pendingScroll = PendingScroll{.index = *index, .request = request, .distance = value.distance, .target = -1.0, .stableFrames = 0};

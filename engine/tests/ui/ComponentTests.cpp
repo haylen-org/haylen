@@ -1208,6 +1208,18 @@ TEST_F(ComponentTest, KeepsASliderValueOffItsStepUntilThePlayerMovesIt) {
     EXPECT_NEAR(value / 0.05, std::round(value / 0.05), 1e-9);
 }
 
+// A slider without a step keeps the digits that its decimals show, however small its range.
+TEST_F(ComponentTest, DragsASliderOverASmallRangeToEveryDigit) {
+    auto gui = mount(R"({"kind": "slider", "id": "volume", "width": 400, "min": 0, "max": 0.001, "decimals": 6})");
+    const math::Rect volume = getBounds(*gui, "volume");
+    click({volume.x + volume.width * 0.37F, volume.getCenter().y});
+    ASSERT_EQ(getEventNames(), (std::vector<std::string>{"volume:change"}));
+    const double value = getLastEvent().value.at("value").get<double>();
+    EXPECT_GT(value, 0.0);
+    EXPECT_LT(value, 0.001);
+    EXPECT_GT(std::fabs(value * 1e4 - std::round(value * 1e4)), 1e-6);
+}
+
 // Left and right land on the step as well, the shown value takes the room of the wider end of the track, and the ends stay finite numbers ImGui can drag between.
 TEST_F(ComponentTest, StepsSlidersWithTheKeyboardAndBoundsTheirEnds) {
     // clang-format off

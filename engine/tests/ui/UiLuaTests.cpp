@@ -773,6 +773,26 @@ TEST_F(UiLuaTest, AcceptsOnlyNumberFormatsInSliders) {
     EXPECT_EQ(getEngine().getError(), nullptr);
 }
 
+TEST_F(UiLuaTest, RefusesAComboItemOutsideItsItems) {
+    // clang-format off
+    fixture.runLua(R"(
+        imgui = require('haylen.imgui')
+        results = {}
+        require('haylen.scene').push({renderUi = function()
+            imgui.beginWindow('Combos')
+            for _, current in ipairs({0, 3, 4, math.mininteger}) do
+                local ok, message = pcall(imgui.combo, 'Combo', current, {'a', 'b', 'c'})
+                results[#results + 1] = ok and 'true' or message:match('not (.+)%.$')
+            end
+            imgui.endWindow()
+        end})
+    )");
+    // clang-format on
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return table.concat(results, ' ')"), "true true 4 -9223372036854775808");
+    EXPECT_EQ(getEngine().getError(), nullptr);
+}
+
 TEST_F(UiLuaTest, TurnsImGuiMisuseIntoScriptErrors) {
     // clang-format off
     fixture.runLua(R"(

@@ -189,8 +189,12 @@ float Table::getFlexibleWidth(float total) const {
     return flexible > 0 ? std::max(0.0F, total - fixed) / static_cast<float>(flexible) : 0.0F;
 }
 
-// Every row reads as an element of the table, its cells separated by commas, with whether it is selected.
+// While the accessibility tree is enabled, every row reads as an element of the table, its cells separated by commas, with whether it is selected.
 void Table::addPart(Context& context, const Row& entry, const math::Rect& area) const {
+    if (!context.getAccessibility().isEnabled()) {
+        return;
+    }
+
     std::string& label = context.getFrameText();
     for (const TextValue& cell : entry.cells) {
         const std::string_view text = context.getText(cell);

@@ -170,6 +170,7 @@ TEST_F(GuiTest, ReadsPropertyValuesStrictly) {
     EXPECT_NE(invalid(R"({"kind": "label", "gradient": {"colors": ["#FFFFFFFF"], "kind": "radial"}})").find("has the unknown key \"kind\"."), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "label", "gradient": {"colors": ["a", "b", "c", "d", "e"]}})").find("holds from 1 to 4 colors."), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "label", "gradient": {"stops": [[0.9, "#FFFFFFFF"], [0.1, "#FF000000"]]}})").find("needs offsets from 0 to 1 in increasing order."), std::string::npos);
+    EXPECT_NE(invalid(R"({"kind": "label", "gradient": {"stops": ["#FFFFFFFF", "#FF000000"]}})").find("lists its stops as pairs of an offset and a color"), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "label", "gradient": {"colors": ["#FFFFFFFF"], "angle": "up"}})").find("needs an angle in radians."), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "label", "text": ["a"]})").find("The property \"text\" of a \"label\" must be text"), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "label", "text": {"args": {}}})").find("needs a translation key"), std::string::npos);

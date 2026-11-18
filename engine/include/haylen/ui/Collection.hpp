@@ -117,6 +117,7 @@ class Collection final : public Component {
     [[nodiscard]] std::size_t getCount() const;
     [[nodiscard]] std::optional<std::size_t> findItem(std::string_view itemId) const;
 
+    // The distances and offsets of the scroll methods and of a restored state must be finite, or they throw `std::invalid_argument`.
     void scrollTo(std::size_t index, const ScrollRequest& request);
     void scrollBy(double delta, bool animated);
     [[nodiscard]] double getScrollOffset() const noexcept;
@@ -279,6 +280,7 @@ class Collection final : public Component {
     void drawCarryMarks(Context& context, const CollectionCell& cell, const math::Rect& rect, ImGuiID item) const;
     void takePaging(Context& context);
     void requestScroll(std::size_t index, ScrollRequest request);
+    void checkFinite(double value, std::string_view what) const;
     void refreshRange();
     [[nodiscard]] double findScrollTarget(const PendingScroll& pending) const;
     void resolveScroll();

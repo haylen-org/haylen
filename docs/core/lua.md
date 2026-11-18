@@ -893,6 +893,8 @@ class EconomyPlugin final : public haylen::plugins::Plugin {
 
 Once the application adds `EconomyPlugin` the way it adds `ScorePlugin`, scripts create wallets and use their methods and fields.
 
+A field that takes only some values is bound with `checkedField<&Wallet::coins, &Wallet::checkCoins>("coins")` instead. The check is a static function that receives the new value and throws `std::invalid_argument` with a sentence that says what the field takes, and it runs both when a script sets the field and when a tween writes it.
+
 ```lua
 local wallet = require('app.economy').newWallet()
 wallet:add(5)

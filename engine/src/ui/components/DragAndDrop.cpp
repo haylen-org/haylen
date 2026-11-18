@@ -21,8 +21,14 @@ DragAndDrop::Result DragAndDrop::handle(Context& context, const Component& compo
     const ImGuiIO& io = ImGui::GetIO();
     const bool held = io.MouseSource != ImGuiMouseSource_TouchScreen || io.MouseDownDuration[ImGuiMouseButton_Left] >= context.getMetric(Theme::Metric::LongPressDuration);
     if (held && ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
-        const std::string payload = core::Json{{"source", component.getId()}, {"item", entry}}.dump();
-        ImGui::SetDragDropPayload(kPayload, payload.data(), payload.size());
+        // The payload stays the same through the drag, so only its first frame writes it, and the others keep it fresh for the targets.
+        if (state.DragDropPayload.DataFrameCount == -1) {
+            const std::string payload = core::Json{{"source", component.getId()}, {"item", entry}}.dump();
+            ImGui::SetDragDropPayload(kPayload, payload.data(), payload.size(), ImGuiCond_Once);
+        } else {
+            ImGui::SetDragDropPayload(kPayload, nullptr, 0, ImGuiCond_Once);
+        }
+
         const float side = std::min(bounds.width, bounds.height);
         const ImVec2 origin = ImGui::GetCursorScreenPos();
         if (!image.empty()) {

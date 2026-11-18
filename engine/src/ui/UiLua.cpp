@@ -260,6 +260,10 @@ core::Json UiLua::convertTypes(lua_State* L, int index, std::size_t depth, std::
     core::Json json = core::Json::object();
     lua_pushnil(L);
     while (lua_next(L, types) != 0) {
+        if (lua_type(L, -2) != LUA_TSTRING) {
+            luaL_error(L, "The types of a collection are named by strings, not by a %s.", luaL_typename(L, -2));
+        }
+
         const std::string name = lua::Stack::read<std::string>(L, -2);
         if (lua_type(L, -1) != LUA_TTABLE) {
             json[name] = lua::JsonConverter::read(L, -1);
@@ -271,6 +275,10 @@ core::Json UiLua::convertTypes(lua_State* L, int index, std::size_t depth, std::
         core::Json converted = core::Json::object();
         lua_pushnil(L);
         while (lua_next(L, definition) != 0) {
+            if (lua_type(L, -2) != LUA_TSTRING) {
+                luaL_error(L, "The fields of the collection type \"%s\" are named by strings, not by a %s.", name.c_str(), luaL_typename(L, -2));
+            }
+
             const std::string key = lua::Stack::read<std::string>(L, -2);
             converted[key] = key == "template" && lua_istable(L, -1) ? convertNode(L, -1, 0, depth + 1, count) : lua::JsonConverter::read(L, -1);
             lua_pop(L, 1);
@@ -910,7 +918,7 @@ int UiLua::themeSound(lua_State* L) {
     return 1;
 }
 
-// Calls `listener(event)` for every event of every mounted GUI with `onEvent(listener[, {owner = scene}])` and returns the connection. A listener with an owner ends when the owner is released, such as a scene when it unloads.
+// Calls `listener(event)` for every event of every mounted GUI with `onEvent(listener[, {owner = scene}])` and returns the connection. The listener ends when its owner is released, such as a scene when it unloads, and without the option it belongs to the default owner.
 int UiLua::onEvent(lua_State* L) {
     luaL_checktype(L, 1, LUA_TFUNCTION);
     int owner = 0;
@@ -921,6 +929,10 @@ int UiLua::onEvent(lua_State* L) {
             lua::Owners::checkOwner(L, -1);
             owner = lua_gettop(L);
         }
+    }
+
+    if (owner == 0) {
+        owner = lua::Owners::pushDefault(L);
     }
 
     core::Signal<Gui&, const Event&>::Options options;

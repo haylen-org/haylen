@@ -16,6 +16,7 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/io/MemoryPackage.hpp"
+#include "haylen/plugins/UiPlugin.hpp"
 #include "platform/DevelopmentSession.hpp"
 #include "plugins/HotReloadPlugin.hpp"
 #include "support/EngineFixture.hpp"
@@ -360,6 +361,7 @@ timers[#timers + 1] = timer.every(1, function() end)
 tween.to(target, 10, {x = 100}, {tag = 'module'})
 debug.addMonitor('module', function() return 1 end)
 ui.mount(ui.label{text = 'Module'})
+ui.onEvent(function() end)
 require('haylen.platform').on('app.ping', function() pings = pings + 1 end)
 return {}
 )";
@@ -380,6 +382,7 @@ require('hud')
     EXPECT_EQ(lua("local timer = require('haylen.timer') return tostring(timer.active(timers[1])) .. ' ' .. tostring(timer.active(timers[2]))"), "false true");
     EXPECT_EQ(lua("return #require('haylen.debug').monitors()"), "1");
     EXPECT_EQ(lua("return unmounted"), "1");
+    EXPECT_EQ(fixture->engine().getPlugin<plugins::UiPlugin>().events.size(), 1U);
 }
 
 TEST_F(ModuleReloadTest, HandsKeptValuesToTheNextLoad) {

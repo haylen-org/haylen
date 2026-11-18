@@ -412,7 +412,7 @@ scene.push({
 
 ### imgui.combo(label, current, items)
 
-Shows a drop-down list of the strings in `items` with the 1-based index `current` selected and returns `changed, index`.
+Shows a drop-down list of the strings in `items` with the 1-based index `current` selected and returns `changed, index`. A `current` of `0` selects no item, and an index outside the items raises `The current item of a combo is an index from 1 to the number of its items, or 0 for none, not <current>.`.
 
 ```lua
 local imgui = require('haylen.imgui')

@@ -105,6 +105,28 @@ TEST_F(UiTransformTest, ReshapesWhatTheScrollAreasInsideTheNodeDraw) {
     EXPECT_EQ(getDrawn(plugin).alpha, 128U);
 }
 
+// A negative scale mirrors the node, and its corners and borders keep the size of the magnitude of the scale.
+TEST_F(UiTransformTest, MirrorsANodeWithANegativeScale) {
+    test::EngineFixture fixture;
+    plugins::UiPlugin& plugin = fixture.engine().getPlugin<plugins::UiPlugin>();
+    const std::shared_ptr<Gui> gui = plugin.createGui({{"kind", "button"}, {"id", "title"}, {"text", "Hello there"}}, Placement::Screen);
+    plugin.mount(gui, 0);
+    fixture.frames(2);
+    const Drawn before = getDrawn(plugin);
+
+    gui->find("title")->getTransform()->scale = {-1.0F, 1.0F};
+    fixture.frames(2);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+    ASSERT_FALSE(plugin.getBackend().getShapes().empty());
+    for (const graphics2d::Shape& shape : plugin.getBackend().getShapes()) {
+        EXPECT_TRUE(std::ranges::all_of(shape.radii, [](float radius) { return radius >= 0.0F; }));
+    }
+
+    const Drawn mirrored = getDrawn(plugin);
+    EXPECT_NEAR(mirrored.box.width, before.box.width, 1.0F);
+    EXPECT_NEAR(mirrored.box.getCenter().x, before.box.getCenter().x, 1.0F);
+}
+
 TEST_F(UiTransformTest, TweensNodesNativelyFromLua) {
     test::EngineFixture fixture;
     // clang-format off
@@ -130,6 +152,25 @@ TEST_F(UiTransformTest, TweensNodesNativelyFromLua) {
     fixture.frames(2, 0.25);
     EXPECT_EQ(fixture.lua("return tween.size()"), "0");
     EXPECT_NE(fixture.lua("doc:transform('missing')").find("no node with the id \"missing\""), std::string::npos);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
+TEST_F(UiTransformTest, RefusesValuesThatAreNotFinite) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        ui = require('haylen.ui')
+        m = require('haylen.math')
+        doc = ui.mount(ui.label{id = 'title', text = 'Hello'}, {placement = 'screen'})
+        title = doc:transform('title')
+    )");
+    // clang-format on
+    EXPECT_NE(fixture.lua("title.offset = m.vec2(0 / 0, 0)").find("The offset of a UI transform needs finite coordinates."), std::string::npos);
+    EXPECT_NE(fixture.lua("title.scale = m.vec2(1, math.huge)").find("The scale of a UI transform needs finite coordinates."), std::string::npos);
+    EXPECT_NE(fixture.lua("title.opacity = -math.huge").find("The opacity of a UI transform is a finite number."), std::string::npos);
+    EXPECT_NE(fixture.lua("title.tint = m.color(0 / 0, 1, 1, 1)").find("The tint of a UI transform needs finite channels."), std::string::npos);
+    EXPECT_EQ(fixture.lua("return string.format('%.1f %.1f %.1f %.1f', title.offset.x, title.scale.y, title.opacity, title.tint.r)"), "0.0 1.0 1.0 1.0");
+    fixture.frames(1);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 

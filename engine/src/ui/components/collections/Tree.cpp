@@ -153,7 +153,7 @@ void Tree::toggle(Context& context, const ChoiceItem& item) {
     context.emit(*this, "toggle", {{"item", item.id}, {"expanded", open}});
 }
 
-// Every row reads as an element of the tree, with its text and whether it is selected, closed or open, and disabled.
+// Every row reads as an element of the tree, with its text and whether it is selected, open and disabled.
 void Tree::addPart(Context& context, const ChoiceItem& item, const math::Rect& area, bool open) const {
     std::uint8_t states = item.id == selected ? platform::AccessibilityElement::Selected : 0U;
     if (!item.enabled) {

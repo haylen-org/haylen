@@ -8,6 +8,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include <imgui.h>
@@ -288,11 +289,16 @@ int ImGuiLua::colorEdit(lua_State* L) {
     return returnChanged(L, changed, 1);
 }
 
-// Shows a combo with `combo(label, current, items)`, where `current` is a 1-based index, and returns whether it changed and the new index.
+// Shows a combo with `combo(label, current, items)`, where `current` is a 1-based index or 0 for no item, and returns whether it changed and the new index.
 int ImGuiLua::combo(lua_State* L) {
     (void)requireFrame(L);
-    auto current = lua::Stack::read<int>(L, 2) - 1;
+    const lua_Integer selected = luaL_checkinteger(L, 2);
     const std::vector<std::string> items = lua::Stack::read<std::vector<std::string>>(L, 3);
+    if (selected < 0 || std::cmp_greater(selected, items.size())) {
+        return luaL_error(L, "The current item of a combo is an index from 1 to the number of its items, or 0 for none, not %I.", selected);
+    }
+
+    auto current = static_cast<int>(selected) - 1;
     std::string joined;
     for (const std::string& item : items) {
         joined += item;

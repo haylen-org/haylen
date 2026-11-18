@@ -191,9 +191,10 @@ void PropertyReader::read(std::string_view key, std::optional<text::Gradient>& o
 
     std::vector<text::Gradient::Stop> stops;
     for (std::size_t index = 0; index < list.size(); ++index) {
-        const core::Json& entry = paired && list[index].is_array() && list[index].size() == 2 ? list[index][1] : list[index];
+        const bool pair = list[index].is_array() && list[index].size() == 2 && list[index][0].is_number();
+        const core::Json& entry = paired && pair ? list[index][1] : list[index];
         const std::optional<math::Color> color = entry.is_string() ? math::Color::parse(entry.get<std::string>()) : std::nullopt;
-        if (!color || (paired && !list[index][0].is_number())) {
+        if (!color || (paired && !pair)) {
             fail(key, paired ? "lists its stops as pairs of an offset and a color, such as {0, \"#FFFFE9A0\"}" : "lists its colors as strings such as \"#FFFFE9A0\"");
         }
 

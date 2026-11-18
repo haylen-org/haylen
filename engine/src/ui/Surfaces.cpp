@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <utility>
 
 #include "haylen/ui/Backend.hpp"
@@ -120,14 +121,11 @@ void Surfaces::outline(Context& context, const math::Rect& bounds, math::Color c
 
 void Surfaces::drawShape(Context& context, graphics2d::Shape shape) {
     const Context::Reshape reshape = context.getReshape();
-    const float scale = std::min(reshape.scale.x, reshape.scale.y);
+    const float scale = getMagnitude(reshape.scale);
     const math::Color tint = reshape.color.withAlpha(reshape.color.a * ImGui::GetStyle().Alpha);
 
     shape.bounds = reshape.apply(shape.bounds);
-    for (float& radius : shape.radii) {
-        radius *= scale;
-    }
-
+    shape.radii = reshapeRadii(shape.radii, reshape.scale);
     shape.borderWidth *= scale;
     shape.softness *= scale;
     shape.color = shape.color * tint;
@@ -148,7 +146,7 @@ void Surfaces::drawGlass(Context& context, const math::Rect& bounds, std::option
 
     // The glass blurs, bends and lights in UI units, which the transforms of the nodes around it scale like the shape.
     const Context::Reshape reshape = context.getReshape();
-    const float scale = std::min(reshape.scale.x, reshape.scale.y);
+    const float scale = getMagnitude(reshape.scale);
     const math::Color alpha = reshape.color.withAlpha(reshape.color.a * ImGui::GetStyle().Alpha);
     const graphics2d::Glass glass{
         .blur = context.getMetric(Theme::Metric::GlassBlur) * scale,
@@ -159,13 +157,28 @@ void Surfaces::drawGlass(Context& context, const math::Rect& bounds, std::option
         .refraction = context.getMetric(Theme::Metric::GlassRefraction) * scale,
     };
     shape.bounds = reshape.apply(shape.bounds);
-    for (float& corner : shape.radii) {
-        corner *= scale;
-    }
+    shape.radii = reshapeRadii(shape.radii, reshape.scale);
     shape.color = alpha;
     shape.borderWidth *= scale;
     shape.borderColor = shape.borderColor * alpha;
     context.getBackend().addGlass(shape, glass);
+}
+
+float Surfaces::getMagnitude(math::Vec2 scale) noexcept {
+    return std::min(std::fabs(scale.x), std::fabs(scale.y));
+}
+
+// The radii run from the top left corner clockwise, so a mirror across the vertical axis swaps the corners of each side and a mirror across the horizontal axis swaps the corners of the top and the bottom.
+std::array<float, 4> Surfaces::reshapeRadii(const std::array<float, 4>& radii, math::Vec2 scale) noexcept {
+    const float magnitude = getMagnitude(scale);
+    std::array<float, 4> reshaped{};
+    for (std::size_t corner = 0; corner < reshaped.size(); ++corner) {
+        const std::size_t across = scale.x < 0.0F ? corner ^ 1U : corner;
+        const std::size_t source = scale.y < 0.0F ? 3U - across : across;
+        reshaped[corner] = radii[source] * magnitude;
+    }
+
+    return reshaped;
 }
 
 std::array<float, 4> Surfaces::getRadii(float radius, ImDrawFlags corners) noexcept {

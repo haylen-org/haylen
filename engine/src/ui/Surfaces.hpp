@@ -65,6 +65,8 @@ class Surfaces final {
     [[nodiscard]] static Frame rasterSlice(Context& context, const Theme::Image& image);
 
   private:
+    [[nodiscard]] static float getMagnitude(math::Vec2 scale) noexcept;
+    [[nodiscard]] static std::array<float, 4> reshapeRadii(const std::array<float, 4>& radii, math::Vec2 scale) noexcept;
     static void drawPiece(ImDrawList& list, ImTextureRef texture, const math::Rect& destination, const math::Rect& source, math::Vec2 textureSize, ImU32 color, float radius);
 };
 

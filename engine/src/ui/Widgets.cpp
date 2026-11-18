@@ -454,13 +454,13 @@ bool Widgets::slider(Context& context, const math::Rect& bounds, double& value, 
         ImGui::FocusWindow(window);
     }
 
-    // A right-to-left slider grows toward the left, which ImGui drags as a reversed range.
+    // A right-to-left slider grows toward the left, which ImGui drags as a reversed range. The step rounds the value below, so ImGui keeps every digit it drags to.
     const float knob = context.getMetric(Theme::Metric::SliderKnobSize);
     const bool reversed = context.isRightToLeft();
     ImGui::PushStyleVar(ImGuiStyleVar_GrabMinSize, knob);
     ImRect grab;
     const double before = value;
-    ImGui::SliderBehavior(box, id, ImGuiDataType_Double, &value, reversed ? &maximum : &minimum, reversed ? &minimum : &maximum, "%.4f", ImGuiSliderFlags_NoInput, &grab);
+    ImGui::SliderBehavior(box, id, ImGuiDataType_Double, &value, reversed ? &maximum : &minimum, reversed ? &minimum : &maximum, "%.4f", ImGuiSliderFlags_NoInput | ImGuiSliderFlags_NoRoundToFormat, &grab);
     ImGui::PopStyleVar();
 
     if (GImGui->ActiveId == id) {

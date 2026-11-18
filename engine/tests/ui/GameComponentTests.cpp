@@ -22,6 +22,7 @@
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
 #include "platform/headless/HeadlessHost.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/UiFixture.hpp"
 #include "ui/Typography.hpp"
 #include "ui/components/inputs/KeyCapture.hpp"
@@ -414,6 +415,34 @@ TEST_F(GameComponentTest, DragsAndCarriesItemsBetweenSlotsAndLists) {
     gui->set("bag", {{"visible", false}});
     frames(2);
     EXPECT_FALSE(getUi().getFocus().getCarried().has_value());
+}
+
+// A drag that the pointer holds still draws its frames without allocating.
+TEST_F(GameComponentTest, HoldsADragWithoutAllocating) {
+    // clang-format off
+    const auto measure = [this] {
+        frames(5);
+        const test::AllocationTracker tracker;
+        frames(10);
+        return tracker.getTotal();
+    };
+    // clang-format on
+    auto gui = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "slotGrid", "id": "bag-of-the-player-with-a-long-name", "align": "start", "columns": 3, "slots": [{"id": "slot-with-a-long-name", "count": 3}, {"id": "s2"}]}]})");
+    const std::size_t idle = measure();
+    const float size = getMetric(Theme::Metric::SlotSize);
+    const math::Rect bag = getBounds(*gui, "bag-of-the-player-with-a-long-name");
+    const math::Vec2 first{bag.x + size * 0.5F, bag.y + size * 0.5F};
+    pointer(platform::Event::Type::MouseMove, first);
+    frames();
+    pointer(platform::Event::Type::MouseDown, first);
+    frames();
+    for (int step = 1; step <= 4; ++step) {
+        pointer(platform::Event::Type::MouseMove, first + math::Vec2{size * 0.25F, size * 0.5F} * static_cast<float>(step));
+        frames();
+    }
+
+    ASSERT_EQ(findLastEvent("dragStart").value, (core::Json{{"item", "slot-with-a-long-name"}}));
+    EXPECT_EQ(measure(), idle);
 }
 
 TEST_F(GameComponentTest, ChoosesTheRowsOfADraggableListBeforeCarryingThem) {

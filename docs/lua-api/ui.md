@@ -3391,6 +3391,8 @@ The methods raise these errors besides the ones each method lists:
 - `The collection "<id>" has no list of items. Give it one with "setItems".`, for the same methods before `setItems`.
 - `The collection "<id>" cannot change its items while it binds cells or loads them.`, for a change of the items from a binder or a page loader.
 - `The GUI cannot replace nodes or unmount while its collections bind cells.`, for `replaceChildren` and `unmount` inside a binder, which stops the app.
+- `The scroll offset of the collection "<id>" must be a finite number.`, `The distance to scroll of the collection "<id>" must be a finite number.`, `The offset of a scroll to an item of the collection "<id>" must be a finite number.` and `The distance of a saved state of the collection "<id>" must be a finite number.`, for a NaN or an infinite number given to `scrollOffset`, `scrollBy`, the option `offset` of `scrollTo` and the field `distance` of `restoreState`.
+- `The types of a collection are named by strings, not by a <type>.` and `The fields of the collection type "<type>" are named by strings, not by a <type>.`, for a table of `types` with a key that is not a string.
 
 ## UiCell
 
@@ -3585,7 +3587,7 @@ end
 
 Calls `listener(event)` for every event of every mounted GUI, with the same table that [handlers](#events-and-handlers) receive. It returns a `haylen.Connection`, whose `disconnect()` method stops the listener and whose `connected` property is `true` until then. Listeners run before the handlers of the node. Use it for screens loaded from JSON, for a sound on every click, or for analytics. The field `event.gui` is `nil` for GUIs that C++ code mounted.
 
-The table `options` is optional and takes `owner`, a table or userdata. The listener ends when the owner is released, such as a scene when it unloads, or collected, like the other [owners of `haylen.events`](events.md#owners). An unknown key raises `Unknown option "<key>".`. An owner that is not a table or a userdata raises `An owner must be a table or a userdata, not <type>.`. An error inside a listener stops the app and shows the error screen with the message and its stack trace.
+The table `options` is optional and takes `owner`, a table or userdata. The listener ends when the owner is released, such as a scene when it unloads, or collected, like the other [owners of `haylen.events`](events.md#owners). Without an `owner`, the listener takes the default owner. An unknown key raises `Unknown option "<key>".`. An owner that is not a table or a userdata raises `An owner must be a table or a userdata, not <type>.`. An error inside a listener stops the app and shows the error screen with the message and its stack trace.
 
 ```lua
 local assets = require('haylen.assets')
@@ -3902,7 +3904,7 @@ Every function that changes a stack or a presentation takes a transition table a
 | `duration` | number | `0.3` | Seconds. Zero changes at once. |
 | `ease` | easing | `'cubicOut'` | The [easing](tween.md#easing) of the motion. |
 
-While the system asks for reduced motion, a slide and a rise cross fade instead. The screen that comes moves only once its GUI laid out with every picture it shows, waiting at most half a second, as the [navigation guide](../ui/navigation.md#what-a-stack-does) explains. A transition with another key raises `Unknown option "<key>".`, and a negative duration raises `The "duration" of a navigation transition cannot be negative.`.
+While the system asks for reduced motion, a slide and a rise cross fade instead. The screen that comes moves only once its GUI laid out with every picture it shows, waiting at most half a second, as the [navigation guide](../ui/navigation.md#what-a-stack-does) explains. A transition with another key raises `Unknown option "<key>".`, and a duration that is negative or not finite raises `The "duration" of a navigation transition is a finite number of seconds, 0 or more.`.
 
 ### ui.navigationStack(options)
 
@@ -4004,7 +4006,7 @@ A screen is compact while its safe area is narrower than 824 UI units, or than t
 
 A drag on the grabber, or on a part of the surface that no control takes, moves a sheet between its detents and glides it to the detent nearest to where it was heading. A sheet dragged well below its lowest detent, a card dragged down, and a drawer dragged toward its edge are dismissed, after the screen agreed through its `back` hook, and otherwise they glide back. On a compact screen, the GUIs behind a modal sheet shrink a little as it nears the top, so the sheet reads as a card over them. While the system asks for reduced motion, a slide and a rise cross fade instead.
 
-The backdrop takes the theme `overlay` color. A screen that a stack or another presentation holds raises `The screen already shows in a navigation stack or in a presentation.`, a width or height that is not positive raises `The widths and heights of a presentation must be positive.`, a detent that is not one of the names or a number raises `A detent is "medium", "large", "fit" or a height in UI units, not <value>.`, an empty list of detents raises `A sheet needs at least one detent.`, a detent height that is not positive raises `The height of a detent must be positive.`, a `detent` out of the list raises `The "detent" a sheet opens at is the place of one of its detents, from 1 to <count>.`, a presentation other than a sheet that is not modal raises `Only a sheet can leave the input of the app under it, so only a sheet can be not modal.`, and a popover without an anchor raises `A popover needs the node it points at as its anchor.`.
+The backdrop takes the theme `overlay` color. A screen that a stack or another presentation holds raises `The screen already shows in a navigation stack or in a presentation.`, a width or height that is not finite and positive raises `The widths and heights of a presentation must be finite and positive.`, a detent that is not one of the names or a number raises `A detent is "medium", "large", "fit" or a height in UI units, not <value>.`, an empty list of detents raises `A sheet needs at least one detent.`, a detent height that is not finite and positive raises `The height of a detent must be finite and positive.`, a `detent` out of the list raises `The "detent" a sheet opens at is the place of one of its detents, from 1 to <count>.`, a presentation other than a sheet that is not modal raises `Only a sheet can leave the input of the app under it, so only a sheet can be not modal.`, and a popover without an anchor raises `A popover needs the node it points at as its anchor.`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -4169,7 +4171,7 @@ Creates the routes of the app and returns its [`Router`](#router). A route turns
 | `present` | table | Presents the screen with these [options of `ui.present`](#uipresentscreen-options) instead of showing it in a stack. |
 | `screen` | function | Makes the screen from the table of the parameters. A route without it selects its tab and shows the root of the tab. |
 
-A table with another key raises `Unknown option "<key>".`. A missing list raises `A router lists its routes in "routes", each a table with a "name" and a "path".`, a router with both tabs and a stack or neither raises `A router shows its routes in the stacks of "tabs" or in one "stack".`, a route without a name raises `Every route needs a name.`, a repeated name raises `The route "<name>" is given more than once.`, a tab the tabs lack raises `The route "<name>" shows in the tab "<tab>", which the router has no tabs with.`, a parent no route has raises `The route "<name>" names the parent "<parent>", which no route has.`, a parent that is a detail or a presentation raises `The parent of a route is a route of a stack, which "<parent>" is not.`, a circle of parents raises `The parents of the route "<name>" lead back to a route they passed.` a parameter without a name raises `The path of the route "<name>" has a parameter without a name.`, an unknown type raises `The path of the route "<name>" has a parameter of the type "<type>", which is not "string", "integer", "number" or "boolean".` and a screen that is not a function raises `The "screen" of a route is a function that returns a screen for the parameters of the route.`.
+A table with another key raises `Unknown option "<key>".`. A missing list raises `A router lists its routes in "routes", each a table with a "name" and a "path".`, a router with both tabs and a stack or neither raises `A router shows its routes in the stacks of "tabs" or in one "stack".`, a route without a name raises `Every route needs a name.`, a repeated name raises `The route "<name>" is given more than once.`, a tab the tabs lack raises `The route "<name>" shows in the tab "<tab>", which the router has no tabs with.`, a parent no route has raises `The route "<name>" names the parent "<parent>", which no route has.`, a parent that is a detail or a presentation raises `The parent of a route is a route of a stack, which "<parent>" is not.`, a circle of parents raises `The parents of the route "<name>" lead back to a route they passed.`, a parent whose path has a parameter that the path of the route lacks raises `The path of the route "<name>" lacks the parameter "<parameter>" of its parent "<parent>".`, a route with both `detail` and `present` raises `The route "<name>" shows its screen as a detail or as a presentation, not as both.`, a parameter without a name raises `The path of the route "<name>" has a parameter without a name.`, an unknown type raises `The path of the route "<name>" has a parameter of the type "<type>", which is not "string", "integer", "number" or "boolean".` and a screen that is not a function raises `The "screen" of a route is a function that returns a screen for the parameters of the route.`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -4512,7 +4514,7 @@ local state = router:save()
 
 ### router:restore(state)
 
-Builds again the state that `save` returned. A location that no route matches anymore, such as after an update of the app, is left out with a warning in the log. A state that is not a table raises `The state of a router is an object that "save" returned.`.
+Builds again the state that `save` returned. A location that no route matches or reads anymore, such as after an update of the app that changed the type of a query parameter, is left out with a warning in the log. A state that is not a table raises `The state of a router is an object that "save" returned.`.
 
 ```lua
 router:restore(state)
@@ -4520,7 +4522,7 @@ router:restore(state)
 
 ### router:close()
 
-Stops opening links and keeping the state. A change of a closed router raises `The router is closed.`.
+Stops opening links and keeping the state. A change of a closed router raises `The router is closed.`. A router whose tabs or stack closed opens no more links either, and leaves them to the routers that still show.
 
 ```lua
 router:close()
@@ -4805,6 +4807,8 @@ A `UiTransform`, named `haylen.UiTransform` in messages, moves, scales, fades an
 | `tint` | Color | white | Multiplies the colors of what the node draws. |
 
 Scale, opacity and tint change only how the node looks, so its input areas keep their layout size. They reach everything the node draws in its GUI, the content of the scroll areas inside it included, with its pictures, shapes and text. Popups, tooltips, dialogs and windows float in windows of their own, so they keep their look whatever the transforms around them. The four properties are native properties, so [`haylen.tween`](tween.md#native-properties) animates them without running Lua every frame. Replacing the node with `replaceChildren` releases its transform. Reading it then raises `This "haylen.UiTransform" was already released.`, a tween on it stops, and `gui:transform` returns the transform of the new node.
+
+Every property takes only finite numbers, whether a script sets it or a tween writes it. A value with a NaN or an infinite number raises `The offset of a UI transform needs finite coordinates.`, `The scale of a UI transform needs finite coordinates.`, `The opacity of a UI transform is a finite number.` or `The tint of a UI transform needs finite channels.`, and the transform keeps its value. A negative scale mirrors the node along that axis.
 
 ```lua
 local math2d = require('haylen.math')
