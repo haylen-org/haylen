@@ -45,6 +45,9 @@ class TweenLua final {
     static constexpr std::array<std::string_view, 2> kPunchFields{"vibrato", "elasticity"};
     static constexpr std::array<std::string_view, 1> kBlinkFields{"hidden"};
 
+    // The registry table that maps each timeline handle to its owner, holding neither of them.
+    static constexpr const char* kTimelineOwners = "haylen.timelineOwners";
+
     // The tween being built from Lua, the scripted track that collects its fields without a native property, and the values to add after the main one.
     struct Builder {
         lua_State* state = nullptr;
@@ -99,7 +102,8 @@ class TweenLua final {
     static int startValues(lua_State* L, TweenProperty::Mode mode);
     static void requireVector(lua_State* L, const TweenValue& current, const char* kind);
     static void requireNumberOrVector(lua_State* L, const TweenValue& current, const char* kind);
-    [[nodiscard]] static std::function<void()> makeCall(lua_State* L, int index);
+    static void rememberOwner(lua_State* L, int timeline, int owner);
+    [[nodiscard]] static std::function<void()> makeCall(lua_State* L, int timeline, int index);
 
     [[nodiscard]] static std::vector<std::string> readFieldNames(lua_State* L, int options, std::vector<std::string> defaults);
     [[nodiscard]] static std::vector<math::Vec2> readPoints(lua_State* L, int index);

@@ -749,6 +749,8 @@ A tween joins a timeline right after it is created, before it starts and while i
 
 Inside a timeline, a tween follows the playhead of the timeline. It reads its start values when the playhead first reaches it, so it starts from where the tweens before it left the fields. Its delay, loops, `timeScale`, easing and callbacks still apply. Its `paused`, `processMode`, `unscaled`, `fixedStep`, `reducedMotion`, `autoKill` and `tag` no longer matter. A function item runs each time the playhead passes its time, forward or backward, but not when a seek jumps over it.
 
+The timeline holds a function item through its owner, like its callbacks, so the function may refer to the owner without keeping it alive.
+
 A time that is NaN, given to `insert` or `addLabel`, raises `A timeline cannot place anything at a time that is not a number.`.
 
 ### timeline:append(item)

@@ -231,6 +231,30 @@ TEST(TweenLuaTest, AStaggerThatFailsLeavesItsTweensPlaying) {
     EXPECT_EQ(fixture.lua("shared:kill() return tostring(shared.alive)"), "false");
 }
 
+// A function that a timeline calls belongs to the owner of the timeline, so it never keeps the owner alive.
+TEST(TweenLuaTest, TimelineFunctionsKeepNoOwnerAlive) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        tween = require('haylen.tween')
+        owners = setmetatable({}, {__mode = 'k'})
+        do
+            local owner = {calls = 0}
+            owners[owner] = true
+            looping = tween.timeline({owner = owner, repeatCount = -1})
+                :append(0.1)
+                :append(function() owner.calls = owner.calls + 1 end)
+                :join(function() owner.calls = owner.calls + 1 end)
+                :insert(0.05, function() owner.calls = owner.calls + 1 end)
+        end
+    )");
+    // clang-format on
+    fixture.frames(2, 0.25);
+    fixture.runLua("collectgarbage() collectgarbage()");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return tostring(next(owners)) .. ' ' .. tostring(looping.alive)"), "nil false");
+}
+
 // An easing whose value is not a finite number stops the app with the reason instead of tweening to nowhere.
 TEST(TweenLuaTest, RefusesAnEasingThatIsNotFinite) {
     test::EngineFixture fixture;

@@ -17,7 +17,6 @@
 #include "haylen/lua/ClassBuilder.hpp"
 #include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/NativeProperty.hpp"
-#include "haylen/lua/Reference.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/TypeConverter.hpp"
@@ -865,6 +864,7 @@ int TweenLua::timeline(lua_State* L) {
     const auto created = std::make_shared<Timeline>();
     configure(L, options, owner, *created);
     start(L, created, options, owner);
+    rememberOwner(L, lua_gettop(L), owner);
     return 1;
 }
 
@@ -898,6 +898,7 @@ int TweenLua::stagger(lua_State* L) {
     created->stagger(std::move(tweens), each, origin);
     configure(L, options, owner, *created);
     start(L, created, options, owner);
+    rememberOwner(L, lua_gettop(L), owner);
     return 1;
 }
 
@@ -1107,15 +1108,28 @@ int TweenLua::handleTag(lua_State* L) {
     return 1;
 }
 
-std::function<void()> TweenLua::makeCall(lua_State* L, int index) {
-    auto function = std::make_shared<lua::Reference>(L, index);
-    // clang-format off
-    return [function] {
-        lua_State* main = function->getState();
-        function->push(main);
-        lua::Runtime::protectedCall(main, 0, 0);
-    };
-    // clang-format on
+void TweenLua::rememberOwner(lua_State* L, int timeline, int owner) {
+    if (owner == 0) {
+        return;
+    }
+
+    lua::Owners::pushWeakTable(L, kTimelineOwners, "kv");
+    lua_pushvalue(L, timeline);
+    lua_pushvalue(L, owner);
+    lua_rawset(L, -3);
+    lua_pop(L, 1);
+}
+
+// The function of an item belongs to the owner of its timeline, like the callbacks of the timeline, so a function that refers to the owner never keeps it alive.
+std::function<void()> TweenLua::makeCall(lua_State* L, int timeline, int index) {
+    lua::Owners::pushWeakTable(L, kTimelineOwners, "kv");
+    lua_pushvalue(L, timeline);
+    const int owner = lua_rawget(L, -2) == LUA_TNIL ? 0 : lua_gettop(L);
+    auto function = std::make_shared<lua::Owners::Function>(L, index, owner);
+    lua_pop(L, 2);
+
+    lua_State* main = lua::Runtime::getMainThread(L);
+    return [function, main] { call(*function, main); };
 }
 
 // Places an item at the end of the timeline: a tween or timeline handle, a number of seconds to wait or a function to call.
@@ -1124,7 +1138,7 @@ int TweenLua::timelineAppend(lua_State* L) {
     if (lua_type(L, 2) == LUA_TNUMBER) {
         target.appendInterval(lua::Stack::read<float>(L, 2));
     } else if (lua_isfunction(L, 2)) {
-        target.appendCall(makeCall(L, 2));
+        target.appendCall(makeCall(L, 1, 2));
     } else {
         target.append(check(L, 2));
     }
@@ -1136,7 +1150,7 @@ int TweenLua::timelineAppend(lua_State* L) {
 int TweenLua::timelineJoin(lua_State* L) {
     Timeline& target = checkTimeline(L, 1);
     if (lua_isfunction(L, 2)) {
-        target.joinCall(makeCall(L, 2));
+        target.joinCall(makeCall(L, 1, 2));
     } else {
         target.join(check(L, 2));
     }
@@ -1150,7 +1164,7 @@ int TweenLua::timelineInsert(lua_State* L) {
     Timeline& target = checkTimeline(L, 1);
     const float time = lua_type(L, 2) == LUA_TSTRING ? target.getLabelTime(lua::Stack::read<std::string_view>(L, 2)) : lua::Stack::read<float>(L, 2);
     if (lua_isfunction(L, 3)) {
-        target.insertCall(time, makeCall(L, 3));
+        target.insertCall(time, makeCall(L, 1, 3));
     } else {
         target.insert(time, check(L, 3));
     }
