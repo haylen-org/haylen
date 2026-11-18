@@ -12,7 +12,7 @@ class EngineCleanCommand(Command):
     HELP = 'Remove the build folder of the checkout: every build tree of the engine, every SDK, the build folders of apps and the logs. The tools in ".tools" stay.'
 
     def configure(self, parser: argparse.ArgumentParser) -> None:
-        pass
+        return
 
     def run(self, arguments: argparse.Namespace, session: CommandSession) -> Mapping[str, object]:
         if not Repository.BUILD.exists():
