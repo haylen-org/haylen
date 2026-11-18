@@ -96,6 +96,7 @@ public final class HaylenScreen {
                 return;
             }
         }
+
         mainThread.post(listener);
     }
 
@@ -139,6 +140,7 @@ public final class HaylenScreen {
             listeners = new ArrayList<>(cancelListeners);
             cancelListeners.clear();
         }
+
         for (Runnable listener : listeners) {
             listener.run();
         }
@@ -153,6 +155,7 @@ public final class HaylenScreen {
 
             ended = true;
         }
+
         HaylenScreens.ended(this);
 
         if (restored) {

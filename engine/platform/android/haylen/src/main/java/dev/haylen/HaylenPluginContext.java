@@ -125,6 +125,7 @@ public final class HaylenPluginContext {
             first = permissions.isEmpty();
             permissions.put(permission.getName(), permission);
         }
+
         if (first) {
             register("permission", (params, reply) -> answerPermission(params, reply, false));
             register("requestPermission", (params, reply) -> answerPermission(params, reply, true));

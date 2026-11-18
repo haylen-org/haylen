@@ -25,6 +25,7 @@ object HaylenCoroutines {
                 reply.failure(error)
             }
         }
+
         reply.onCancel { job.cancel() }
     }
 }

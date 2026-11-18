@@ -1832,6 +1832,7 @@ Module.haylen = Module.haylen || {};
         for (const press of presses.values()) {
             press.shared = true;
         }
+
         presses.set(event.pointerId, { x: event.clientX, y: event.clientY, shared: presses.size > 0 });
     };
 
@@ -2076,6 +2077,7 @@ Module.haylen = Module.haylen || {};
         if (shared !== undefined) {
             return shared;
         }
+
         const context = new AudioContext({ sampleRate, latencyHint: "interactive" });
         const worklet = runtimeFile("haylen-audio-worklet.js");
         shared = { context, worklet, ran: false, ready: context.audioWorklet.addModule(worklet), change: null };
@@ -2095,6 +2097,7 @@ Module.haylen = Module.haylen || {};
         if (shared.change !== null || context.state === "closed") {
             return;
         }
+
         const playing = [...audio.outputs.values()].some((output) => output.shared === shared && output.started);
         const activation = navigator.userActivation;
         const allowed = !activation || activation.hasBeenActive || shared.ran;
@@ -2104,9 +2107,11 @@ Module.haylen = Module.haylen || {};
         } else if (playing && context.state !== "running" && allowed) {
             change = context.resume().catch(reportAudioFailure("resume"));
         }
+
         if (change === null) {
             return;
         }
+
         shared.change = change.then(() => {
             shared.change = null;
             settleContext(shared);
@@ -2139,6 +2144,7 @@ Module.haylen = Module.haylen || {};
             failAudio(device, "The browser refused the audio context of the output: " + error.message);
             return;
         }
+
         const output = { device, channels, blockFrames, bufferedFrames, shared, node: null, started: false };
         audio.outputs.set(device, output);
         const isOpen = () => audio.outputs.get(device) === output;
@@ -2190,6 +2196,7 @@ Module.haylen = Module.haylen || {};
         if (output.node) {
             output.node.disconnect();
         }
+
         settleContext(output.shared);
         reportAudioLocks();
     };
@@ -2199,6 +2206,7 @@ Module.haylen = Module.haylen || {};
         if (audio.outputs.size > 0) {
             throw new Error("The audio contexts close only once the app stopped.");
         }
+
         const closing = [...audio.contexts.values()].map((shared) => Promise.resolve(shared.change).then(() => shared.context.close()));
         audio.contexts.clear();
         return Promise.all(closing);
@@ -2223,6 +2231,7 @@ Module.haylen = Module.haylen || {};
         if (!output) {
             return { available: false };
         }
+
         const context = output.shared.context;
         return { available: true, state: context.state, sampleRate: context.sampleRate, ...engine.mixerStats(output.device, context.sampleRate) };
     };
@@ -2232,6 +2241,7 @@ Module.haylen = Module.haylen || {};
         if (document.visibilityState !== "visible" || engine.paused()) {
             return;
         }
+
         haylen.video.unlock();
         for (const shared of audio.contexts.values()) {
             settleContext(shared);
@@ -2593,6 +2603,7 @@ Module.haylen = Module.haylen || {};
                 stream.room -= frames;
                 worker.post({ type: "stream", operation: "audio", key: stream.key, channels, samples: samples.slice(0, frames * channels) });
             }
+
             return frames;
         },
     };

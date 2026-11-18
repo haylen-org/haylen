@@ -31,6 +31,7 @@ class HaylenAudioProcessor extends AudioWorkletProcessor {
             this.write(data);
             return;
         }
+
         if (data.ended) {
             this.ended = true;
             return;

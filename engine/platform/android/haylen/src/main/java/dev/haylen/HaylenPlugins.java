@@ -64,6 +64,7 @@ final class HaylenPlugins {
                 context.unregisterAll();
                 continue;
             }
+
             Log.i(TAG, "Loaded the plugin \"" + id + "\" " + (entry != null ? entry.optString("version") : "that \"haylen.json\" does not list") + ".");
             all.add(new Loaded(plugin, context));
         }

@@ -45,6 +45,7 @@ extension HaylenBridge {
                     reply(false, ["message": String(describing: error), "code": "exception", "data": ["type": String(reflecting: type(of: error))]])
                 }
             }
+
             return { task.cancel() }
         }
     }
@@ -57,6 +58,7 @@ extension HaylenBridge {
         encoder.dataEncodingStrategy = .custom { data, encoder in
             throw EncodingError.invalidValue(data, EncodingError.Context(codingPath: encoder.codingPath, debugDescription: bytesMessage))
         }
+
         return try JSONSerialization.jsonObject(with: encoder.encode(value), options: .fragmentsAllowed)
     }
 
@@ -64,6 +66,7 @@ extension HaylenBridge {
         if (params is [Any] || params is [String: Any]) && !JSONSerialization.isValidJSONObject(params) {
             throw HaylenFailure(bytesMessage, code: "invalidParams")
         }
+
         return try JSONSerialization.data(withJSONObject: params, options: .fragmentsAllowed)
     }
 }

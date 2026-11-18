@@ -103,6 +103,7 @@ Module.haylen = Module.haylen || {};
     if (![projectBudget.files, projectBudget.bytes].every((value) => Number.isSafeInteger(value) && value > 0) || Object.keys(projectBudget).length !== 2) {
         throw new Error("The field \"Module.haylen.projectBudget\" takes \"files\" and \"bytes\" as whole numbers above 0.");
     }
+
     haylen.projectBudget = projectBudget;
 
     const requestError = (code, message) => Object.assign(new Error(message), { code });
@@ -113,6 +114,7 @@ Module.haylen = Module.haylen || {};
             const error = JSON.parse(Module.UTF8ToString(Module._haylen_web_last_error()));
             throw requestError(error.code, error.message);
         }
+
         return result;
     };
 
@@ -123,10 +125,12 @@ Module.haylen = Module.haylen || {};
         if (pending === undefined) {
             return;
         }
+
         if (!ok) {
             pending.reject(requestError(result.code, result.message));
             return;
         }
+
         pending.resolve(result);
     };
 
@@ -139,6 +143,7 @@ Module.haylen = Module.haylen || {};
             editor.pending.delete(request);
             throw error;
         }
+
         return completion;
     };
 
@@ -162,11 +167,13 @@ Module.haylen = Module.haylen || {};
         if (!Array.isArray(operations)) {
             throw requestError("invalidRequest", "The edits of a batch are a list of operations.");
         }
+
         const buffers = [];
         const list = operations.map((operation) => {
             if (operation === null || typeof operation !== "object" || operation.op !== "write") {
                 return operation;
             }
+
             const content = operation.content;
             if (typeof content === "string") {
                 buffers.push(new TextEncoder().encode(content));
@@ -175,6 +182,7 @@ Module.haylen = Module.haylen || {};
             } else {
                 throw requestError("invalidRequest", "The write of \"" + operation.path + "\" needs its content as a string or as bytes.");
             }
+
             return { op: "write", path: operation.path, bytes: buffers.length - 1 };
         });
         return { json: JSON.stringify(list), buffers };
@@ -259,9 +267,11 @@ Module.haylen = Module.haylen || {};
                     if (editor.disposed || editor.ending) {
                         throw requestError("disposed", "The runtime was disposed of, so it takes no more requests.");
                     }
+
                     if (!Object.hasOwn(methods, method)) {
                         throw requestError("invalidRequest", "The editor has no request \"" + method + "\".");
                     }
+
                     Promise.resolve(methods[method](request, params)).then((result) => resolve({ request, ...result }), reject);
                 } catch (error) {
                     reject(error);
@@ -546,6 +556,7 @@ Module.haylen = Module.haylen || {};
     if (storageNamespace !== undefined && (typeof storageNamespace !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(storageNamespace))) {
         throw new Error("The field \"Module.haylen.storageNamespace\" must be 1 to 64 letters, digits, dots, dashes or underscores, starting with a letter or a digit.");
     }
+
     haylen.userDataRoot = storageNamespace === undefined ? "/persistent" : "/persistent/" + storageNamespace;
     Module.preRun = Module.preRun || [];
     Module.preRun.push(function () {
@@ -672,6 +683,7 @@ Module.haylen = Module.haylen || {};
             for (const buffer of event.data.buffers) {
                 output.spare.push(new Float32Array(buffer));
             }
+
             fillAudio(output);
         };
 
@@ -688,6 +700,7 @@ Module.haylen = Module.haylen || {};
         if (output.port !== null) {
             output.port.postMessage({ active: true });
         }
+
         page.audio.start(device);
         queueMicrotask(() => fillAudio(output));
     };
@@ -699,6 +712,7 @@ Module.haylen = Module.haylen || {};
         if (output.port !== null) {
             output.port.postMessage({ active: false });
         }
+
         page.audio.stop(device);
     };
 
@@ -711,6 +725,7 @@ Module.haylen = Module.haylen || {};
             output.port.postMessage({ ended: true });
             output.port.close();
         }
+
         Module._free(output.scratch);
         page.audio.close(device);
     };
@@ -725,6 +740,7 @@ Module.haylen = Module.haylen || {};
         if (!output) {
             return {};
         }
+
         return { bufferedMilliseconds: (output.queued * 1000) / output.sampleRate, blocks: output.blocks, underruns: output.underruns };
     };
 
@@ -998,6 +1014,7 @@ Module.haylen = Module.haylen || {};
                 if (message.kind === "audio" && roomTimer === null) {
                     roomTimer = setInterval(reportRooms, kStreamRoomMilliseconds);
                 }
+
                 return;
             }
 
@@ -1020,6 +1037,7 @@ Module.haylen = Module.haylen || {};
                 if (message.bitmap) {
                     message.bitmap.close();
                 }
+
                 return;
             }
 
@@ -1031,6 +1049,7 @@ Module.haylen = Module.haylen || {};
                 if (video.bitmap !== null) {
                     video.bitmap.close();
                 }
+
                 video.bitmap = message.bitmap;
             }
         };

@@ -360,6 +360,7 @@ public final class HaylenBridge {
                     return;
                 }
             }
+
             mainThread.post(listener);
         }
 
@@ -375,6 +376,7 @@ public final class HaylenBridge {
                 listeners = new ArrayList<>(cancelListeners);
                 cancelListeners.clear();
             }
+
             for (Runnable listener : listeners) {
                 mainThread.post(listener);
             }

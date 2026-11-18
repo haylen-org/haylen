@@ -122,6 +122,7 @@ final class HaylenScreens {
                 restored = new HaylenScreen(kept.getLong("id"), kept.getString("plugin"), kept.getString("screen"), kept.getString("state"), kept.getBoolean("opaque"), true);
             }
         }
+
         saved.registerSavedStateProvider(SAVED_STATE_KEY, HaylenScreens::save);
 
         for (Map.Entry<String, Registration> entry : registrations.entrySet()) {
@@ -164,6 +165,7 @@ final class HaylenScreens {
         synchronized (HaylenScreens.class) {
             showing = screen;
         }
+
         try {
             registration.open(HaylenPayload.decode(params, buffers, views), screen);
         } catch (Exception error) {
@@ -178,6 +180,7 @@ final class HaylenScreens {
             synchronized (HaylenScreens.class) {
                 screen = showing != null && showing.id() == id ? showing : null;
             }
+
             if (screen == null) {
                 return;
             }
