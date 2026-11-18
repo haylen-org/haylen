@@ -60,4 +60,4 @@ class AppleGpuTests:
                 if output.is_dir():
                     self.context.terminal.info(f"The images of the scenes that differ are in `{Repository.shown(output)}`.")
         self.context.terminal.success(f"The GPU tests passed in {where}.")
-        return {"tree": str(tree.folder), "platform": platform, "graphicsApi": api, "output": str(output)}
+        return {"tree": str(tree.folder), "target": platform, "graphicsApi": api, "output": str(output)}

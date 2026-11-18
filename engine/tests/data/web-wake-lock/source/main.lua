@@ -1,4 +1,4 @@
--- The app of the wake lock check of the web: it keeps the screen on from its start, as its haylen.json asks, and lets the screen sleep once the space key is pressed, while `haylen test --platform web` watches the wake lock of the page.
+-- The app of the wake lock check of the web: it keeps the screen on from its start, as its haylen.json asks, and lets the screen sleep once the space key is pressed, while `haylen test --target web` watches the wake lock of the page.
 local input = require('haylen.input')
 local log = require('haylen.log')
 local scene = require('haylen.scene')

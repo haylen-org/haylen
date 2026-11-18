@@ -67,7 +67,7 @@ class UiTests:
     def run(self, app: str, platform: str, configuration: str, device: str | None) -> dict[str, object]:
         if platform not in UiTests.PLATFORMS:
             names = ", ".join(f'"{name}"' for name in UiTests.PLATFORMS)
-            raise UnsupportedTarget(f'The UI tests run on {names}. Pick one with "--platform".')
+            raise UnsupportedTarget(f'The UI tests run on {names}. Pick one with "--target".')
         if Host.system() != "macos":
             raise UnsupportedTarget(f'The UI tests run on the simulators of Xcode, which need macOS, and this machine runs "{Host.system()}".')
         folder, tests = UiTests.tests(app)
@@ -105,4 +105,4 @@ class UiTests:
         if errors:
             raise BuildFailed(f"The UI tests passed, but the engine logged {len(errors)} errors meanwhile, the first being: {errors[0]}")
         self.context.terminal.success(f'The UI tests passed on the simulator "{simulator["name"]}".')
-        return {"app": str(folder), "platform": platform, "simulator": udid, "screenshots": str(output)}
+        return {"app": str(folder), "target": platform, "simulator": udid, "screenshots": str(output)}

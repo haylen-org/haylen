@@ -103,9 +103,9 @@ jobs:
           upload: "true"
       - uses: ./.github/actions/browser
       - name: GPU tests on WebGPU
-        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --platform web --graphics-api webGpu
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --target web --graphics-api webGpu
       - name: GPU tests on WebGL2
-        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --platform web --graphics-api webGl2
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --target web --graphics-api webGl2
 
   # The Android SDK of every ABI, with the Android libraries in its local Maven repository.
   android-sdk:
@@ -248,7 +248,7 @@ jobs:
         with:
           packages: ${{ env.LINUX_PACKAGES }}
       - name: Build the headless player
-        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} engine build --config Debug --target haylen-headless --target haylen-native-test
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} engine build --config Debug --cmake-target haylen-headless --cmake-target haylen-native-test
       - name: Run the test project
         env:
           HAYLEN_TESTS_SHARD: ${{ matrix.shard }}
@@ -308,7 +308,7 @@ jobs:
       - name: Create the virtual device
         run: mkdir -p "$ANDROID_AVD_HOME" && echo no | avdmanager create avd --name haylen-gpu-tests --package "system-images;android-37.0;default;x86_64"
       - name: GPU tests on the emulator
-        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --platform android
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --target android
 
   # A project that finds the desktop SDK of the run with "find_package", the starter app with a plugin from the plugin template, packaged as the installers of the system, and the starter C++ app in Debug and in its protected Release.
   linux-apps:
@@ -395,10 +395,10 @@ jobs:
           name: web-sdk
       - uses: ./.github/actions/browser
       - name: Check the pages
-        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --platform web --graphics-api webGl2 --shard ${{ matrix.shard }}
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --target web --graphics-api webGl2 --shard ${{ matrix.shard }}
       - name: Start the protected release of the test project
         if: matrix.shard == '1/2'
-        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --platform web --app samples/tests --config Release --graphics-api webGl2
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --target web --app samples/tests --config Release --graphics-api webGl2
 
   # The signed protected release of the starter app and the starter C++ app, whose C++ code Gradle compiles for every ABI against the Android SDK of the run.
   android:
@@ -466,4 +466,4 @@ jobs:
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} app build build/starter-cpp --target ios-simulator
       - uses: ./.github/actions/browser
       - name: Start the protected web release on WebGPU
-        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --platform web --app samples/tests --config Release --graphics-api webGpu
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --target web --app samples/tests --config Release --graphics-api webGpu

@@ -80,4 +80,4 @@ class AppleDeviceGpuTests:
         if problem:
             raise BuildFailed(problem)
         self.context.terminal.success(f'The GPU tests passed on "{device}".')
-        return {"tree": str(tree.folder), "platform": platform, "device": device, "graphicsApi": api, "output": str(output)}
+        return {"tree": str(tree.folder), "target": platform, "device": device, "graphicsApi": api, "output": str(output)}

@@ -1,4 +1,4 @@
--- The app of the plugin check of the web: its plugin requires a feature that the permissions policy of the page refuses and one that the policy does not govern, fails a call with an error of the page, requires a permission whose request ends without a prompt and one that it never registered, and sends events before the app starts, while `haylen test --platform web` reads what the page answered.
+-- The app of the plugin check of the web: its plugin requires a feature that the permissions policy of the page refuses and one that the policy does not govern, fails a call with an error of the page, requires a permission whose request ends without a prompt and one that it never registered, and sends events before the app starts, while `haylen test --target web` reads what the page answered.
 local async = require('async')
 local log = require('haylen.log')
 local plugin = require('page-plugin')

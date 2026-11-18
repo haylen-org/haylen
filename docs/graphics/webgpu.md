@@ -61,8 +61,8 @@ SwiftShader, the software rasterizer that Chrome uses for WebGPU where it has no
 The browser validates every call of WebGPU in every build. Errors that no scope captures reach the log of the engine as errors, and every object takes its label, which the developer tools of the browser show. The GPU tests run in a page of a headless Chrome:
 
 ```sh
-haylen test --gpu --platform web
-haylen test --gpu --graphics-api webGpu --platform web
+haylen test --gpu --target web
+haylen test --gpu --graphics-api webGpu --target web
 ```
 
 ## Lost devices

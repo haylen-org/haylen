@@ -397,26 +397,26 @@ Result: `folder`, the key folder, and `report`.
 ### test
 
 ```sh
-haylen test [--platform <platform>] [--config Debug|Release|RelWithDebInfo] [--sanitizers address|thread] [--target <cmake target>] [--shard <index>/<count>] [--gpu] [--graphics-api <api>] [--device <identifier>] [--ui <app>] [--app <folder>] [--port]
+haylen test [--target <target>] [--config Debug|Release|RelWithDebInfo] [--sanitizers address|thread] [--cmake-target <cmake target>] [--shard <index>/<count>] [--gpu] [--graphics-api <api>] [--device <identifier>] [--ui <app>] [--app <folder>] [--port]
 ```
 
 Builds and runs the engine tests of this machine by default. The [testing guide](testing.md#running-the-tests) explains each mode.
 
 | Option | Meaning |
 | --- | --- |
-| `--platform` | Where the tests run: `macos`, `windows`, `linux`, `web`, `android`, `ios-simulator`, `tvos-simulator`, `visionos-simulator`, `catalyst`, `ios`, `tvos` or `visionos`, this machine by default. |
+| `--target` | The target that the tests build for and run on, with the names of the app commands and `haylen devices`: `macos`, `windows`, `linux`, `web`, `android`, `ios-simulator`, `tvos-simulator`, `visionos-simulator`, `catalyst`, `ios`, `tvos` or `visionos`, this machine by default. |
 | `--config` | The configuration of the build tree, or of the app of `--ui` or `--app`, `Debug` by default. |
 | `--sanitizers` | A tree of its own with AddressSanitizer and UndefinedBehaviorSanitizer, or with ThreadSanitizer. |
-| `--target` | The CMake target that builds before CTest runs, `haylen-tests` by default. |
-| `--shard` | Runs one of the equal parts of the engine tests of this machine, or of the checks of the web with `--platform web`, such as `2/4`, so several machines run them side by side and together run each test once. |
+| `--cmake-target` | The CMake target that builds before CTest runs, `haylen-tests` by default. |
+| `--shard` | Runs one of the equal parts of the engine tests of this machine, or of the checks of the web with `--target web`, such as `2/4`, so several machines run them side by side and together run each test once. |
 | `--gpu` | Runs the GPU tests instead of the engine tests. |
 | `--graphics-api` | A name of `gpu::Device::kApiNames` that the GPU tests, or the pages of the checks of the web, use alone. |
-| `--device` | The device, simulator or emulator of the platform. |
+| `--device` | The device, simulator or emulator of the target, which `haylen devices` lists. |
 | `--ui` | Runs the UI tests of the app of this folder on a simulator instead. |
-| `--app` | With `--platform web`, builds the app of this folder for the web in the configuration of `--config` and checks instead that its page starts it, on WebGPU and WebGL2 or on the API of `--graphics-api`. |
+| `--app` | With `--target web`, builds the app of this folder for the web in the configuration of `--config` and checks instead that its page starts it, on WebGPU and WebGL2 or on the API of `--graphics-api`. |
 | `--port` | Builds the engine with the test port and plays its app instead. |
 
-Result: the build tree with what ran, such as `tree`, `configuration`, `sanitizers` and `shard` for the engine tests, `tree`, `graphicsApi` and `output` for the GPU tests, `graphicsApi`, `memory` and `shard` for the checks of the web, `app`, `configuration`, `graphicsApis` and `site` for the start check of an app on the web, `app`, `platform`, `simulator` and `screenshots` for the UI tests, and `tree` and `app` for the test port.
+Result: the build tree with what ran, such as `tree`, `configuration`, `sanitizers` and `shard` for the engine tests, `tree`, `graphicsApi` and `output` for the GPU tests, `graphicsApi`, `memory` and `shard` for the checks of the web, `app`, `configuration`, `graphicsApis` and `site` for the start check of an app on the web, `app`, `target`, `simulator` and `screenshots` for the UI tests, and `tree` and `app` for the test port.
 
 ### engine configure
 
@@ -431,10 +431,10 @@ Result: `tree`.
 ### engine build
 
 ```sh
-haylen engine build [--config] [--sanitizers] [--xcode] [--target <cmake target>...]
+haylen engine build [--config] [--sanitizers] [--xcode] [--cmake-target <cmake target>...]
 ```
 
-Configures the tree when it needs it and builds every target, or each CMake target that `--target` names.
+Configures the tree when it needs it and builds every CMake target, or each one that `--cmake-target` names. The option takes CMake targets, so it has a name of its own, and `--target` names the targets of apps and SDKs in every other command.
 
 Result: `tree` and `targets`.
 

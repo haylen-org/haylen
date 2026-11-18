@@ -21,28 +21,29 @@ from haylen.engine.web_gpu_tests import WebGpuTests
 
 class TestCommand(Command):
     PATH = ("test",)
-    HELP = 'Build and run the engine tests on this machine. With "--gpu" it runs the GPU tests on this machine, the web, Android, the Apple simulators, Mac Catalyst or Apple devices instead, with "--platform web" alone the checks of the web in headless browsers, with "--platform web" and "--app" the start of an app on the web, with "--ui" the UI tests of an app on an Apple simulator, and with "--port" the app of the test port.'
+    HELP = 'Build and run the engine tests on this machine. With "--gpu" it runs the GPU tests on this machine, the web, Android, the Apple simulators, Mac Catalyst or Apple devices instead, with "--target web" alone the checks of the web in headless browsers, with "--target web" and "--app" the start of an app on the web, with "--ui" the UI tests of an app on an Apple simulator, and with "--port" the app of the test port.'
 
     DESKTOPS = ("macos", "windows", "linux")
     # The names of `gpu::Device::kApiNames`, which "--graphics-api" takes.
     GRAPHICS_APIS = ("metal", "direct3D12", "direct3D11", "vulkan", "openGl", "openGlEs", "webGl2", "webGpu")
-    PLATFORMS = (*DESKTOPS, "web", "android", *AppleGpuTests.SLICES, *AppleDeviceGpuTests.SLICES)
+    # The targets of the tests, with the names that the app commands and "haylen devices" use.
+    TARGETS = (*DESKTOPS, "web", "android", *AppleGpuTests.SLICES, *AppleDeviceGpuTests.SLICES)
 
     def configure(self, parser: argparse.ArgumentParser) -> None:
         parser.add_argument(
-            "--platform",
+            "--target",
             default=Host.system(),
-            choices=TestCommand.PLATFORMS,
-            help='Where the tests run, this machine by default. The web, Android, the Apple simulators, Mac Catalyst and Apple devices run the GPU tests, the web also its checks, and "--ui" takes "ios-simulator", "tvos-simulator" or "visionos-simulator".',
+            choices=TestCommand.TARGETS,
+            help='The target that the tests build for and run on, this machine by default. The web, Android, the Apple simulators, Mac Catalyst and Apple devices run the GPU tests, the web also its checks, and "--ui" takes "ios-simulator", "tvos-simulator" or "visionos-simulator".',
         )
         parser.add_argument("--config", default="Debug", choices=EngineTree.CONFIGURATIONS, help='The configuration of the build tree, or of the app of "--ui" or "--app", "Debug" by default.')
         parser.add_argument("--sanitizers", choices=EngineTree.SANITIZERS, help="Build in a tree of its own with AddressSanitizer and UndefinedBehaviorSanitizer, or with ThreadSanitizer.")
-        parser.add_argument("--target", default=EngineTests.TARGET, help=f'The CMake target that the engine tests build before CTest runs them, "{EngineTests.TARGET}" by default.')
+        parser.add_argument("--cmake-target", default=EngineTests.TARGET, help=f'The CMake target that the engine tests build before CTest runs them, "{EngineTests.TARGET}" by default.')
         parser.add_argument(
             "--shard",
             type=SuiteShard.parse,
             metavar="index/count",
-            help='Run one of the equal parts of the engine tests of this machine, or of the checks of the web with "--platform web", such as "2/4", so several machines run them side by side and together run each test once.',
+            help='Run one of the equal parts of the engine tests of this machine, or of the checks of the web with "--target web", such as "2/4", so several machines run them side by side and together run each test once.',
         )
         parser.add_argument(
             "--gpu",
@@ -52,19 +53,19 @@ class TestCommand(Command):
         parser.add_argument(
             "--graphics-api",
             choices=TestCommand.GRAPHICS_APIS,
-            help='A name of "gpu::Device::kApiNames", such as "vulkan", which runs the GPU tests on that device alone. With "--platform web" and without "--gpu", "webGpu" or "webGl2" names the API that the pages of the checks of the web draw through.',
+            help='A name of "gpu::Device::kApiNames", such as "vulkan", which runs the GPU tests on that device alone. With "--target web" and without "--gpu", "webGpu" or "webGl2" names the API that the pages of the checks of the web draw through.',
         )
         parser.add_argument(
             "--device",
-            help='The Android device of "--platform android", the only one connected or an emulator that it starts by default, the name or identifier of a simulator, a booted one or the first of the family by default, or the device of "--platform ios", "tvos" or "visionos". The command "haylen devices" lists them.',
+            help='The Android device of "--target android", the only one connected or an emulator that it starts by default, the name or identifier of a simulator, a booted one or the first of the family by default, or the device of "--target ios", "tvos" or "visionos". The command "haylen devices" lists them.',
         )
         parser.add_argument(
-            "--ui", metavar="app", help='Run the UI tests of the app of this folder, the Swift tests of its folder "ui-tests", on the simulator of "--platform", instead of the engine tests.'
+            "--ui", metavar="app", help='Run the UI tests of the app of this folder, the Swift tests of its folder "ui-tests", on the simulator of "--target", instead of the engine tests.'
         )
         parser.add_argument(
             "--app",
             metavar="folder",
-            help='Build the app of this folder for the web in the configuration of "--config" and check that its page starts it in a headless browser on WebGPU and WebGL2, or on the API of "--graphics-api", instead of the checks of the web. It takes "--platform web".',
+            help='Build the app of this folder for the web in the configuration of "--config" and check that its page starts it in a headless browser on WebGPU and WebGL2, or on the API of "--graphics-api", instead of the checks of the web. It takes "--target web".',
         )
         parser.add_argument(
             "--port",
@@ -74,45 +75,45 @@ class TestCommand(Command):
 
     def run(self, arguments: argparse.Namespace, session: CommandSession) -> Mapping[str, object]:
         context = session.context
-        platform = arguments.platform
+        target = arguments.target
         gpu = arguments.gpu or arguments.graphics_api is not None
         # On the web "--graphics-api" names the API of the pages of the checks, and on a desktop it asks for the GPU tests.
-        shardable = (platform == "web" and not arguments.gpu) or (platform in TestCommand.DESKTOPS and not gpu)
+        shardable = (target == "web" and not arguments.gpu) or (target in TestCommand.DESKTOPS and not gpu)
         if arguments.shard and (not shardable or arguments.app or arguments.ui or arguments.port):
             raise UnsupportedTarget(
-                'The option "--shard" splits the engine tests of this machine or the checks of the web, so it takes neither the GPU tests, "--app", "--ui", "--port" nor a "--platform" other than a desktop or "web".'
+                'The option "--shard" splits the engine tests of this machine or the checks of the web, so it takes neither the GPU tests, "--app", "--ui", "--port" nor a "--target" other than a desktop or "web".'
             )
         if arguments.app:
-            if platform != "web":
-                raise UnsupportedTarget('The option "--app" checks that the page of an app starts on the web, so it takes "--platform web".')
+            if target != "web":
+                raise UnsupportedTarget('The option "--app" checks that the page of an app starts on the web, so it takes "--target web".')
             if arguments.gpu or arguments.ui or arguments.port or arguments.sanitizers:
                 raise UnsupportedTarget('The option "--app" checks that the page of an app starts, so it takes neither "--gpu", "--ui", "--port" nor "--sanitizers".')
             return WebAppCheck(context, session.pipeline).run(arguments.app, arguments.config, arguments.graphics_api)
         if arguments.ui:
             if gpu or arguments.port:
                 raise UnsupportedTarget('The option "--ui" runs the UI tests of an app, so it takes neither "--gpu", "--graphics-api" nor "--port".')
-            return UiTests(context, session.pipeline).run(arguments.ui, platform, arguments.config, arguments.device)
+            return UiTests(context, session.pipeline).run(arguments.ui, target, arguments.config, arguments.device)
         if arguments.port:
-            if gpu or platform != Host.system():
-                raise UnsupportedTarget('The option "--port" builds the test port for this machine, so it takes neither "--gpu", "--graphics-api" nor "--platform".')
+            if gpu or target != Host.system():
+                raise UnsupportedTarget('The option "--port" builds the test port for this machine, so it takes neither "--gpu", "--graphics-api" nor "--target".')
             return PortTest(context).run(arguments.config, arguments.sanitizers)
 
         # The checks of the web draw too, so on the web "--graphics-api" names the API of their pages unless "--gpu" asks for the GPU tests.
-        if platform == "web":
+        if target == "web":
             if arguments.gpu:
                 return WebGpuTests(context).run(arguments.config, arguments.graphics_api)
             return WebChecks(context, session.pipeline).run(arguments.graphics_api, arguments.shard)
-        if platform not in TestCommand.DESKTOPS and not gpu:
-            raise UnsupportedTarget(f'The platform "{platform}" runs only the GPU tests. Add "--gpu", or a name of "gpu::Device::kApiNames" with "--graphics-api".')
-        if platform == "android":
+        if target not in TestCommand.DESKTOPS and not gpu:
+            raise UnsupportedTarget(f'The target "{target}" runs only the GPU tests. Add "--gpu", or a name of "gpu::Device::kApiNames" with "--graphics-api".')
+        if target == "android":
             return AndroidGpuTests(context).run(arguments.config, arguments.graphics_api, arguments.device)
-        if platform in AppleGpuTests.SLICES:
-            return AppleGpuTests(context).run(platform, arguments.config, arguments.graphics_api, arguments.device)
-        if platform in AppleDeviceGpuTests.SLICES:
-            return AppleDeviceGpuTests(context).run(platform, arguments.config, arguments.graphics_api, arguments.device)
+        if target in AppleGpuTests.SLICES:
+            return AppleGpuTests(context).run(target, arguments.config, arguments.graphics_api, arguments.device)
+        if target in AppleDeviceGpuTests.SLICES:
+            return AppleDeviceGpuTests(context).run(target, arguments.config, arguments.graphics_api, arguments.device)
 
-        if platform != Host.system():
-            raise UnsupportedTarget(f'The tests of "{platform}" run on a "{platform}" machine, and this one runs "{Host.system()}".')
+        if target != Host.system():
+            raise UnsupportedTarget(f'The tests of "{target}" run on a "{target}" machine, and this one runs "{Host.system()}".')
         if gpu:
             return DesktopGpuTests(context).run(arguments.config, arguments.sanitizers, arguments.graphics_api)
-        return EngineTests(context).run(arguments.config, arguments.sanitizers, arguments.target, arguments.shard)
+        return EngineTests(context).run(arguments.config, arguments.sanitizers, arguments.cmake_target, arguments.shard)

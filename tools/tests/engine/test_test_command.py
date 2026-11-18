@@ -28,46 +28,46 @@ class TestCommandTest:
     def test_the_simulators_mac_catalyst_android_and_devices_take_only_the_gpu_tests(self, tmp_path):
         for platform in ("ios-simulator", "tvos-simulator", "visionos-simulator", "catalyst", "android", "ios", "tvos", "visionos"):
             with pytest.raises(UnsupportedTarget, match="runs only the GPU tests"):
-                TestCommandTest.run(tmp_path, "--platform", platform)
+                TestCommandTest.run(tmp_path, "--target", platform)
 
     def test_a_desktop_that_is_not_this_machine_runs_nothing(self, tmp_path, monkeypatch):
         other = next(name for name in TestCommand.DESKTOPS if name != Host.system())
         monkeypatch.setattr(EngineTests, "run", lambda *arguments: pytest.fail("The engine tests ran for another desktop."))
         for extra in ([], ["--gpu"]):
             with pytest.raises(UnsupportedTarget, match=f'The tests of "{other}" run on a "{other}" machine'):
-                TestCommandTest.run(tmp_path, "--platform", other, *extra)
+                TestCommandTest.run(tmp_path, "--target", other, *extra)
 
     def test_on_the_web_a_graphics_api_names_the_api_of_the_checks_unless_the_gpu_tests_run(self, tmp_path, monkeypatch):
         called = []
         monkeypatch.setattr(WebChecks, "run", lambda self, api, shard: called.append(("checks", api)) or {})
         monkeypatch.setattr(WebGpuTests, "run", lambda self, configuration, api: called.append(("gpu", api)) or {})
-        TestCommandTest.run(tmp_path, "--platform", "web", "--graphics-api", "webGl2")
-        TestCommandTest.run(tmp_path, "--gpu", "--platform", "web", "--graphics-api", "webGl2")
+        TestCommandTest.run(tmp_path, "--target", "web", "--graphics-api", "webGl2")
+        TestCommandTest.run(tmp_path, "--gpu", "--target", "web", "--graphics-api", "webGl2")
         assert called == [("checks", "webGl2"), ("gpu", "webGl2")]
 
     def test_the_checks_of_the_web_draw_only_through_the_apis_of_the_web(self, tmp_path):
         with pytest.raises(UnsupportedTarget, match='draw through "webGpu" or "webGl2", not "metal"'):
-            TestCommandTest.run(tmp_path, "--platform", "web", "--graphics-api", "metal")
+            TestCommandTest.run(tmp_path, "--target", "web", "--graphics-api", "metal")
 
     def test_the_ui_tests_and_the_port_take_no_gpu_tests(self, tmp_path):
         with pytest.raises(UnsupportedTarget, match="neither"):
-            TestCommandTest.run(tmp_path, "--ui", "samples/tests", "--gpu", "--platform", "ios-simulator")
+            TestCommandTest.run(tmp_path, "--ui", "samples/tests", "--gpu", "--target", "ios-simulator")
         with pytest.raises(UnsupportedTarget, match="neither"):
             TestCommandTest.run(tmp_path, "--port", "--gpu")
 
     def test_an_app_starts_only_on_the_web_and_alone(self, tmp_path, monkeypatch):
         monkeypatch.setattr(WebAppCheck, "run", lambda *arguments: pytest.fail("The start check of the app ran."))
-        with pytest.raises(UnsupportedTarget, match='takes "--platform web"'):
+        with pytest.raises(UnsupportedTarget, match='takes "--target web"'):
             TestCommandTest.run(tmp_path, "--app", "samples/tests")
         for extra in (["--gpu"], ["--ui", "samples/tests"], ["--port"], ["--sanitizers", "address"]):
             with pytest.raises(UnsupportedTarget, match="neither"):
-                TestCommandTest.run(tmp_path, "--app", "samples/tests", "--platform", "web", *extra)
+                TestCommandTest.run(tmp_path, "--app", "samples/tests", "--target", "web", *extra)
 
     def test_an_app_on_the_web_starts_in_the_configuration_and_on_the_api_that_the_command_names(self, tmp_path, monkeypatch):
         called = []
         monkeypatch.setattr(WebAppCheck, "run", lambda self, app, configuration, api: called.append((app, configuration, api)) or {})
-        TestCommandTest.run(tmp_path, "--app", "samples/tests", "--platform", "web", "--config", "Release", "--graphics-api", "webGl2")
-        TestCommandTest.run(tmp_path, "--app", "samples/tests", "--platform", "web")
+        TestCommandTest.run(tmp_path, "--app", "samples/tests", "--target", "web", "--config", "Release", "--graphics-api", "webGl2")
+        TestCommandTest.run(tmp_path, "--app", "samples/tests", "--target", "web")
         assert called == [("samples/tests", "Release", "webGl2"), ("samples/tests", "Debug", None)]
 
     def test_a_shard_runs_its_part_of_the_engine_tests_through_the_numbers_of_ctest(self, tmp_path, monkeypatch):
@@ -84,7 +84,7 @@ class TestCommandTest:
         with pytest.raises(UnsupportedTarget, match='"--shard" splits the engine tests'):
             TestCommandTest.run(tmp_path, "--gpu", "--shard", "1/2")
         with pytest.raises(UnsupportedTarget, match='"--shard" splits the engine tests'):
-            TestCommandTest.run(tmp_path, "--platform", "android", "--shard", "1/2")
+            TestCommandTest.run(tmp_path, "--target", "android", "--shard", "1/2")
         with pytest.raises(UnsupportedTarget, match='"--shard" splits the engine tests'):
             TestCommandTest.run(tmp_path, "--graphics-api", "vulkan", "--shard", "1/2")
 
@@ -93,5 +93,5 @@ class TestCommandTest:
         for name in ("error_screen", "wake_lock", "fullscreen", "plugins", "editor", "memory"):
             monkeypatch.setattr(WebChecks, name, lambda self, api, name=name: ran.append(name) or {})
         for index in (1, 2):
-            TestCommandTest.run(tmp_path, "--platform", "web", "--shard", f"{index}/2")
+            TestCommandTest.run(tmp_path, "--target", "web", "--shard", f"{index}/2")
         assert ran == ["error_screen", "fullscreen", "editor", "wake_lock", "plugins", "memory"]

@@ -9,8 +9,8 @@ Haylen Tests is the test project of the engine: one app with a test of every eng
 - Automatic: the headless player runs every test that the headless platform supports, one after the other for 2 seconds each, lists the tests that raised an error, failed a check of their results or whose scene failed to load, and exits with the status 1 when any test failed:
 
 ```sh
-haylen engine build --target haylen-headless
-haylen engine build --target haylen-native-test
+haylen engine build --cmake-target haylen-headless
+haylen engine build --cmake-target haylen-native-test
 build/engine/macos-debug/bin/haylen-headless samples/tests --frames 60000
 ```
 
@@ -20,7 +20,7 @@ build/engine/macos-debug/bin/haylen-headless samples/tests --frames 60000
 HAYLEN_TESTS_SHARD=2/4 build/engine/macos-debug/bin/haylen-headless samples/tests --frames 60000
 ```
 
-- UI tests: `haylen test --ui samples/tests --platform ios-simulator --device "iPad Pro 13-inch (M5)"` taps a category of the menu, and on an iPad tiles the window to each half, resizes it there and resizes it in Stage Manager, checking at each size that the framebuffer follows the window. The same command with `--platform visionos-simulator` taps the menu with a look and a pinch.
+- UI tests: `haylen test --ui samples/tests --target ios-simulator --device "iPad Pro 13-inch (M5)"` taps a category of the menu, and on an iPad tiles the window to each half, resizes it there and resizes it in Stage Manager, checking at each size that the framebuffer follows the window. The same command with `--target visionos-simulator` taps the menu with a look and a pinch.
 
 ## Using the project
 

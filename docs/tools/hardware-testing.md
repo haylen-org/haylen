@@ -27,7 +27,7 @@ Two variables change which GPU a device takes:
 
 | Machine | What it tests | Commands |
 | --- | --- | --- |
-| A Mac | Metal on macOS and Mac Catalyst, and the Apple simulators. | `haylen test --gpu`, `haylen test --gpu --platform catalyst` |
+| A Mac | Metal on macOS and Mac Catalyst, and the Apple simulators. | `haylen test --gpu`, `haylen test --gpu --target catalyst` |
 | A Windows PC | Direct3D 12, Direct3D 11, Vulkan and OpenGL, on each GPU of the machine. | `haylen test --gpu`, then again with `HAYLEN_TEST_GPU_LOW_POWER=1` and `HAYLEN_TEST_GPU_SOFTWARE=1` |
 | A Linux PC | Vulkan and OpenGL on the GPU of the machine, on X11 and Wayland. | `haylen test --gpu` |
 | Any machine with Docker | Linux with Vulkan on Mesa lavapipe and OpenGL on Mesa llvmpipe, which are software rasterizers. | Run `haylen test --gpu` inside an Ubuntu container with the Mesa packages that the CI workflow installs. On an arm64 machine, such as a Mac with Apple silicon, those packages also bring Vulkan drivers of hardware that a container lacks, whose loader reports errors that the tests count, so set `VK_DRIVER_FILES` to `/usr/share/vulkan/icd.d/lvp_icd.json` to load lavapipe alone. |
@@ -40,12 +40,12 @@ The windowed runs of the test project need a desktop session that nobody is usin
 
 | Target | Command |
 | --- | --- |
-| iOS and iPadOS simulators | `haylen test --gpu --platform ios-simulator --device <name>` |
-| tvOS simulator | `haylen test --gpu --platform tvos-simulator --device <name>` |
-| visionOS simulator | `haylen test --gpu --platform visionos-simulator --device <name>`. Install the visionOS platform first with `xcodebuild -downloadPlatform visionOS`. |
-| Android emulator | `haylen test --gpu --platform android` builds the GPU test app, installs it, runs it on Vulkan and OpenGL ES, reads the results back and uninstalls it. It starts an emulator without a window when none is running. |
+| iOS and iPadOS simulators | `haylen test --gpu --target ios-simulator --device <name>` |
+| tvOS simulator | `haylen test --gpu --target tvos-simulator --device <name>` |
+| visionOS simulator | `haylen test --gpu --target visionos-simulator --device <name>`. Install the visionOS platform first with `xcodebuild -downloadPlatform visionOS`. |
+| Android emulator | `haylen test --gpu --target android` builds the GPU test app, installs it, runs it on Vulkan and OpenGL ES, reads the results back and uninstalls it. It starts an emulator without a window when none is running. |
 
-The UI tests of an app run on the iOS, iPadOS and visionOS simulators with `haylen test --ui <app> --platform ios-simulator|visionos-simulator --device <name>`, which taps, drags and arranges windows there without a window on the Mac, as [the UI tests](testing.md#the-ui-tests) describe.
+The UI tests of an app run on the iOS, iPadOS and visionOS simulators with `haylen test --ui <app> --target ios-simulator|visionos-simulator --device <name>`, which taps, drags and arranges windows there without a window on the Mac, as [the UI tests](testing.md#the-ui-tests) describe.
 
 Run the test project with `haylen app run samples/tests --target <target>`. Start its run-all mode from the developer console of the run with `lua require('harness.runner').start()`, so no input reaches the device.
 
@@ -53,10 +53,10 @@ Run the test project with `haylen app run samples/tests --target <target>`. Star
 
 | Device | Command |
 | --- | --- |
-| iPhone and iPad | `haylen test --gpu --platform ios --device <name or UDID>`. Unlock the device and keep it unlocked during the run. Sign with your own team through `HAYLEN_APPLE_TEAM`. |
-| Apple TV | `haylen test --gpu --platform tvos --device <name or UDID>`. Pair it with Xcode first. It must be awake with no screen saver showing. |
-| Apple Vision Pro | `haylen test --gpu --platform visionos --device <name or UDID>` |
-| Android phone or tablet | `haylen test --gpu --platform android --device <serial>` |
+| iPhone and iPad | `haylen test --gpu --target ios --device <name or UDID>`. Unlock the device and keep it unlocked during the run. Sign with your own team through `HAYLEN_APPLE_TEAM`. |
+| Apple TV | `haylen test --gpu --target tvos --device <name or UDID>`. Pair it with Xcode first. It must be awake with no screen saver showing. |
+| Apple Vision Pro | `haylen test --gpu --target visionos --device <name or UDID>` |
+| Android phone or tablet | `haylen test --gpu --target android --device <serial>` |
 
 Each run installs a signed test app, runs it, copies the results back and uninstalls it.
 
@@ -80,8 +80,8 @@ The web runs in Chrome, which `haylen test` starts without a window. Install Chr
 
 | What | Command |
 | --- | --- |
-| GPU tests on WebGPU and WebGL2 | `haylen test --gpu --platform web` builds the GPU tests to WebAssembly, opens them in a page and reads the results back. Add `--graphics-api webGpu` or `--graphics-api webGl2` for one API. |
-| The checks of the page | `haylen test --platform web` runs the error screen check, the wake lock check, the fullscreen check, the plugin check and the memory check, which only a browser can show. Add `--graphics-api webGpu` or `--graphics-api webGl2` for one API. Headless Chrome on Linux cannot present a WebGPU canvas, so there they take `--graphics-api webGl2`. |
+| GPU tests on WebGPU and WebGL2 | `haylen test --gpu --target web` builds the GPU tests to WebAssembly, opens them in a page and reads the results back. Add `--graphics-api webGpu` or `--graphics-api webGl2` for one API. |
+| The checks of the page | `haylen test --target web` runs the error screen check, the wake lock check, the fullscreen check, the plugin check and the memory check, which only a browser can show. Add `--graphics-api webGpu` or `--graphics-api webGl2` for one API. Headless Chrome on Linux cannot present a WebGPU canvas, so there they take `--graphics-api webGl2`. |
 | The test project | `haylen app run samples/tests --target web` serves the page. Open the address it prints, add `?graphicsApi=webGl2` to choose WebGL2, and start run-all from the menu. |
 
 Headless Chrome draws through SwiftShader, its software rasterizer, so its GPU times measure the processor. To draw on the real GPU of the machine, start Chrome with `--enable-gpu`, and with `--use-angle=metal` on a Mac, then open the same pages. Safari and Firefox open the page of `haylen app run` too, for a check by hand.
@@ -100,9 +100,9 @@ Every platform but the Apple TV and the Apple Vision Pro, which no cloud rents a
 | Windows, WARP | Any Windows machine without a GPU, such as an Azure `D2s_v5` | Run the GPU tests with `HAYLEN_TEST_GPU_SOFTWARE=1`. | About US$ 0.15 to 0.20 an hour |
 | macOS, Mac Catalyst and the Apple simulators | EC2 Mac, such as `mac2.metal` (Apple M1) or `mac2-m2.metal` (Apple M2) | [Macs on EC2](#macs-on-ec2) | About US$ 0.65 to 0.90 an hour, for at least 24 hours |
 | iPhone and iPad | Device Farm | [Real devices on Device Farm](#real-devices-on-device-farm) | About US$ 0.17 per device minute |
-| Android, emulator | A Linux machine that runs KVM, such as an Azure `D4s_v5` with nested virtualization or an EC2 `.metal` instance | Install the Android SDK and run `haylen test --gpu --platform android`, which starts the emulator without a window. | About US$ 0.20 an hour on Azure, much more on an EC2 `.metal` instance |
+| Android, emulator | A Linux machine that runs KVM, such as an Azure `D4s_v5` with nested virtualization or an EC2 `.metal` instance | Install the Android SDK and run `haylen test --gpu --target android`, which starts the emulator without a window. | About US$ 0.20 an hour on Azure, much more on an EC2 `.metal` instance |
 | Android, real devices | Device Farm | [Real devices on Device Farm](#real-devices-on-device-farm) | About US$ 0.17 per device minute |
-| Browser, software | Any small Linux machine with Chrome | `haylen test --gpu --platform web` and `haylen test --platform web --graphics-api webGl2` | About US$ 0.08 to 0.10 an hour |
+| Browser, software | Any small Linux machine with Chrome | `haylen test --gpu --target web` and `haylen test --target web --graphics-api webGl2` | About US$ 0.08 to 0.10 an hour |
 | Browser, real GPU | EC2 `g4dn.xlarge` or Azure `Standard_NG8ads_V620_v1`, with Chrome started with `--enable-gpu` | The same pages as [Browser](#browser). | The price of the machine |
 | Browsers on Device Farm | Device Farm desktop browsers, such as Chrome, Firefox and Edge | A Selenium session that opens the page of `haylen app run --target web`, served where the browsers reach it. | About US$ 0.005 per browser minute |
 
@@ -133,7 +133,7 @@ EC2 rents whole Macs on dedicated hosts. Apple's license makes the shortest allo
 
 1. Allocate a host with `aws ec2 allocate-hosts --instance-type mac2.metal`, and start a macOS instance on it.
 2. Install Xcode and the platforms you need, such as `xcodebuild -downloadPlatform visionOS`.
-3. Run `haylen test --gpu`, `haylen test --gpu --platform catalyst`, and the simulator commands of [Simulators and emulators](#simulators-and-emulators).
+3. Run `haylen test --gpu`, `haylen test --gpu --target catalyst`, and the simulator commands of [Simulators and emulators](#simulators-and-emulators).
 4. Terminate the instance and release the host with `aws ec2 release-hosts` once 24 hours have passed.
 
 The paravirtual GPU of a virtual Mac is not the GPU of a real one, while an EC2 Mac runs on a real Mac, so its Metal results count as hardware results.
@@ -142,7 +142,7 @@ The paravirtual GPU of a virtual Mac is not the GPU of a real one, while an EC2 
 
 Device Farm runs in `us-west-2` and costs about US$ 0.17 per device minute. A run of the test project and the GPU app on one device takes about 5 to 20 minutes. It rents real iPhones and iPads too: build the test project and the GPU test app as signed `.ipa` files for your team, upload them, and run them the same way.
 
-1. Build the debug APK of the test project with `haylen app build samples/tests --target android`, and the GPU test app with `haylen test --gpu --platform android`.
+1. Build the debug APK of the test project with `haylen app build samples/tests --target android`, and the GPU test app with `haylen test --gpu --target android`.
 2. Create a project, upload the APKs and a custom test spec that starts the app in its run-all mode, and collect logcat.
 3. Choose devices of different GPUs, such as Adreno, Mali, PowerVR and Xclipse, and of old and new Android versions. The free call `aws devicefarm get-device-pool-compatibility` shows which devices accept the app before you pay.
 4. Give every job a short timeout, so a hang cannot bill its full default time.

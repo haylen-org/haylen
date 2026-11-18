@@ -214,11 +214,11 @@ Every build carries the GPU device of each graphics API of its platform, which `
 
 ```sh
 haylen engine build
-haylen engine build --target haylen-headless --target haylen-native-test
-haylen engine build --config Release --target haylen
+haylen engine build --cmake-target haylen-headless --cmake-target haylen-native-test
+haylen engine build --config Release --cmake-target haylen
 ```
 
-Configures the tree when it needs it and runs `cmake --build`. It takes the options of `engine configure`, and `--target`, which repeats, builds some CMake targets alone. Without it, it builds everything the tree defines: the engine, the `haylen` player, the headless player, the content tool, the tests and the benchmarks. Useful targets are `haylen`, `haylen-headless`, `haylen-tests`, `haylen-gpu-tests`, `haylen-native-test` and `haylen-sprite-benchmark`.
+Configures the tree when it needs it and runs `cmake --build`. It takes the options of `engine configure`, and `--cmake-target`, which repeats, builds some CMake targets alone. Without it, it builds everything the tree defines: the engine, the `haylen` player, the headless player, the content tool, the tests and the benchmarks. Useful targets are `haylen`, `haylen-headless`, `haylen-tests`, `haylen-gpu-tests`, `haylen-native-test` and `haylen-sprite-benchmark`.
 
 ### engine bench
 

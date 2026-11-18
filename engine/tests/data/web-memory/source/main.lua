@@ -1,4 +1,4 @@
--- The app of the memory check of the web: it downloads a medium and a large file of its content in the background, which `haylen test --platform web` writes into the content of a copy of this app, and then reads a small asset, while the check measures the memory of the page.
+-- The app of the memory check of the web: it downloads a medium and a large file of its content in the background, which `haylen test --target web` writes into the content of a copy of this app, and then reads a small asset, while the check measures the memory of the page.
 local assets = require('haylen.assets')
 local content = require('haylen.content')
 local log = require('haylen.log')
