@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from haylen.core.app_colors import AppColors
 from haylen.core.app_manifest import AppManifest
 from haylen.core.errors.invalid_manifest import InvalidManifest
 from haylen.core.repository import Repository
@@ -14,8 +15,8 @@ class AndroidSplash:
     @staticmethod
     def colors(color: str) -> str:
         """The resource file of a background, which Android reads as `#AARRGGBB`, from a color of `haylen.json` as `#RRGGBB` or `#AARRGGBB`."""
-        digits = color.removeprefix("#").upper()
-        argb = digits if len(digits) == 8 else f"FF{digits}"
+        red, green, blue, alpha = AppColors.components(color)
+        argb = f"{alpha:02X}{red:02X}{green:02X}{blue:02X}"
         lines = [
             '<?xml version="1.0" encoding="utf-8"?>',
             "<!-- The splash background of haylen.json. -->",
@@ -29,9 +30,7 @@ class AndroidSplash:
     @staticmethod
     def files(app: AppManifest) -> dict[str, bytes | Path]:
         splash = app.section("splash")
-        window = app.section("window")
-        transparent = window.get("transparent", False) is True
-        background = splash.get("background", app.document.get("clearColor", "#00000000" if transparent else "#FF000000"))
+        background = AppColors.splash_background(app)
         files: dict[str, bytes | Path] = {f"{AndroidSplash.RESOURCES}/values/haylen_splash.xml": AndroidSplash.colors(str(background)).encode()}
         if "darkBackground" in splash:
             files[f"{AndroidSplash.RESOURCES}/values-night/haylen_splash.xml"] = AndroidSplash.colors(str(splash["darkBackground"])).encode()

@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+from haylen.core.app_colors import AppColors
 from haylen.core.app_manifest import AppManifest
 from haylen.platforms.generated_tree import GeneratedTree
 
@@ -14,15 +15,6 @@ class SplashCatalog:
     @staticmethod
     def contents(document: dict) -> bytes:
         return (json.dumps(document, indent=2) + "\n").encode("utf-8")
-
-    @staticmethod
-    def color(text: str) -> tuple[int, int, int, int]:
-        """Reads `#RRGGBB` or `#AARRGGBB`, which the schema of `haylen.json` already checked, like the engine does, and returns red, green, blue and alpha."""
-        digits = text.removeprefix("#")
-        value = int(digits, 16)
-        if len(digits) == 6:
-            return (value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF, 0xFF
-        return (value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF, (value >> 24) & 0xFF
 
     @staticmethod
     def entry(color: tuple[int, int, int, int]) -> dict:
@@ -40,9 +32,7 @@ class SplashCatalog:
 
     @staticmethod
     def background(app: AppManifest) -> tuple[int, int, int, int]:
-        transparent = app.section("window").get("transparent", False)
-        fallback = app.document.get("clearColor", "#00000000" if transparent else "#FF000000")
-        return SplashCatalog.color(str(app.section("splash").get("background", fallback)))
+        return AppColors.components(AppColors.splash_background(app))
 
     @staticmethod
     def write(tree: GeneratedTree, app: AppManifest, engine_logo: Path) -> None:
@@ -52,7 +42,7 @@ class SplashCatalog:
         image: dict = {"images": [{"filename": name, "idiom": "universal"}], **SplashCatalog.INFO}
         if logo.suffix.lower() == ".svg":
             image["properties"] = {"preserves-vector-representation": True}
-        dark = SplashCatalog.color(str(splash["darkBackground"])) if "darkBackground" in splash else None
+        dark = AppColors.components(str(splash["darkBackground"])) if "darkBackground" in splash else None
 
         folder = SplashCatalog.FOLDER
         tree.copy(f"{folder}/splash-logo.imageset/{name}", logo)

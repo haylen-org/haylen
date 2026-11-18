@@ -2,6 +2,7 @@ import json
 
 import pytest
 
+from haylen.core.app_colors import AppColors
 from haylen.core.app_kind import AppKind
 from haylen.core.errors.unsupported_target import UnsupportedTarget
 from haylen.core.repository import Repository
@@ -90,7 +91,8 @@ class AppleTargetsTest:
         assert colorset["colors"][1]["appearances"] == [{"appearance": "luminosity", "value": "dark"}]
         assert colorset["colors"][1]["color"]["components"]["red"] == "0.000"
         assert len(SplashCatalog.colorset((16, 20, 24, 255), None)["colors"]) == 1
-        assert SplashCatalog.color("#80102030") == (16, 32, 48, 128)
+        assert AppColors.components("#80102030") == (16, 32, 48, 128)
+        assert AppColors.components("#102030") == (16, 32, 48, 255)
 
     def test_launch_screens_show_the_logo_and_background_of_the_splash(self, apple):
         app = apple.app({"splash": {"background": "#FF101418"}, "clearColor": "#FF000000"})

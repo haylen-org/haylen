@@ -210,7 +210,7 @@ class AndroidProjectTest:
         (app / "src" / "App.cpp").write_text("", encoding="utf-8")
         (app / "src" / "Bridge.mm").write_text("", encoding="utf-8")
 
-        with pytest.raises(InvalidManifest, match=re.escape('names the Objective-C files `')):
+        with pytest.raises(InvalidManifest, match=re.escape("names the Objective-C files `")):
             fixture.prepare(fixture.resolve(app, architectures=("arm64-v8a",)))
 
     def test_a_lua_debug_app_compiles_only_its_native_libraries(self, tmp_path):
