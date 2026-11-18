@@ -89,7 +89,7 @@ Native code sends events with `emit` and the app listens with `platform.on`. Eve
 
 Some events come before the app listens: the deep link or the notification that opened the app, a purchase that finished while it was closed, or the result of a sign-in that restores itself at launch. Native code sends such events retained.
 
-A retained event that nothing listens to waits in the bridge, up to `Bridge::kRetainedLimit`, which is 32, per name. The oldest is dropped first. The first `on` of its name receives the waiting events in order at the next pump, before any newer event of that name. The events wait in the bridge of the running app, so a restarted app starts with none. The bridge itself drops an event that reaches the engine while no app runs, even a retained one. So the Android library and the Apple runtime keep the events that native code sends while no app runs, such as while the app launches, up to 32 of each name with the oldest dropped first. They hand them to the next app in order, and an event sent retained before any app ran still reaches its first listener.
+A retained event that nothing listens to waits in the bridge, up to `Bridge::kRetainedLimit`, which is 32, per name. The oldest is dropped first. The first `on` of its name receives the waiting events in order at the next pump, before any newer event of that name. The events wait in the bridge of the running app, so a restarted app starts with none. The bridge itself drops an event that reaches the engine while no app runs, even a retained one. So the Android library, the Apple runtime, the web page and the relay of the native libraries and the web modules, `BridgeRelay::emitOrKeep`, keep the events that native code sends while no app runs, such as while the app launches, up to 32 of each name with the oldest dropped first. They hand them to the next app in order, and an event sent retained before any app ran still reaches its first listener.
 
 ### Batched events
 
@@ -431,7 +431,7 @@ The page side of the bridge lives in `engine/platform/web/haylen-page.js`. Every
 | --- | --- |
 | `Module.haylen.register(method, handler)` | Adds or replaces the handler of a method. |
 | `Module.haylen.unregister(method)` | Removes a handler. |
-| `Module.haylen.emit(event, payload, options)` | Sends an event to the app. The payload is converted with `JSON.stringify`, with `ArrayBuffer` and `Uint8Array` values as bytes. The option `retain` keeps the event for the first listener of its name, and `batched` sends it in the list of its frame. Events sent before the first app starts reach it once it starts, up to 32 of each name with the oldest dropped first. |
+| `Module.haylen.emit(event, payload, options)` | Sends an event to the app. The payload is converted with `JSON.stringify`, with `ArrayBuffer` and `Uint8Array` values as bytes. The option `retain` keeps the event for the first listener of its name, and `batched` sends it in the list of its frame. Events sent while no app runs, before the first app starts or while an app restarts, reach the next app once it starts, up to 32 of each name with the oldest dropped first. |
 | `Module.haylen.createPluginContext(id, config)` | Makes the context that the web module of a plugin receives. Its `register` and `emit` put the id of the plugin in front of the name, as the [plugin guide](plugins.md#web-modules) describes. |
 
 The runtime calls a handler after the frame that made the call. The handler receives two arguments:

@@ -174,7 +174,8 @@ void NativeApi::emit(const char* event, const char* payloadJson, const HaylenNat
             throw std::invalid_argument("An event needs a name.");
         }
 
-        BridgeRelay::emit(event, payloadJson != nullptr ? payloadJson : "null", copyBuffers(buffers, bufferCount), {.retain = (flags & HAYLEN_NATIVE_EMIT_RETAIN) != 0, .batched = (flags & HAYLEN_NATIVE_EMIT_BATCHED) != 0});
+        const Bridge::EmitOptions options{.retain = (flags & HAYLEN_NATIVE_EMIT_RETAIN) != 0, .batched = (flags & HAYLEN_NATIVE_EMIT_BATCHED) != 0};
+        BridgeRelay::emitOrKeep({.name = event, .json = payloadJson != nullptr ? payloadJson : "null", .buffers = copyBuffers(buffers, bufferCount), .options = options});
     });
     // clang-format on
 }

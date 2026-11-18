@@ -17,9 +17,11 @@
 #include "platform/BridgeRelay.hpp"
 #include "platform/GamepadSlots.hpp"
 #include "platform/GamepadVendors.hpp"
+#include "platform/KeptEvents.hpp"
 #include "platform/KeyboardTranslator.hpp"
 #include "platform/MemoryWarning.hpp"
 #include "platform/ReportedState.hpp"
+#include "platform/native/NativeApi.hpp"
 #include "support/EngineFixture.hpp"
 #include "varn/dataview/DataViewJson.h"
 
@@ -94,6 +96,23 @@ TEST(BridgeRelayTest, ForwardsNativeRepliesToTheAttachedBridge) {
     bridge.pump();
     ASSERT_EQ(events.size(), 2U);
     EXPECT_EQ(events.back(), 6);
+}
+
+TEST(BridgeRelayTest, KeepsTheNewestEventsOfNativeLibrariesForTheNextApp) {
+    Bridge bridge([](std::uint64_t, std::string_view, std::string_view, std::span<const std::vector<std::byte>>, std::span<const varn::dataview::DataView>) {}, [](std::uint64_t, std::string_view) {});
+    std::vector<core::Json> samples;
+    core::Connection connection = bridge.on("native.sample", [&](const Bridge::Payload& payload) { samples.push_back(payload.json); });
+    const HaylenNativeApi& api = NativeApi::get();
+    for (std::size_t index = 0; index < KeptEvents::kLimitPerName + 8; ++index) {
+        api.emit("native.sample", std::to_string(index).c_str(), nullptr, 0, 0);
+    }
+
+    BridgeRelay::attach(bridge);
+    BridgeRelay::detach(bridge);
+    bridge.pump();
+    ASSERT_EQ(samples.size(), KeptEvents::kLimitPerName);
+    EXPECT_EQ(samples.front(), 8);
+    EXPECT_EQ(samples.back(), KeptEvents::kLimitPerName + 7);
 }
 
 TEST(MemoryWarningTest, HandsEachWarningOverOnceWithTheHighestLevel) {

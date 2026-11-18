@@ -226,7 +226,7 @@ Module.haylen = Module.haylen || {};
         engine.call("haylen_web_emit", null, ["string", "string", "buffers", "number"], [event, json, buffers, flags]);
     };
 
-    // Sends an event to the app, which receives it through `haylen.platform.on`, with `ArrayBuffer` and `Uint8Array` values as bytes. An event that nothing listens to is dropped, unless `options.retain` is `true`: then it waits for the first listener of its name. The events of a name with `options.batched` that arrive in one frame reach the app as one list in order. Events sent before the first app started reach it once it starts, up to 32 of each name with the oldest dropped first.
+    // Sends an event to the app, which receives it through `haylen.platform.on`, with `ArrayBuffer` and `Uint8Array` values as bytes. An event that nothing listens to is dropped, unless `options.retain` is `true`: then it waits for the first listener of its name. The events of a name with `options.batched` that arrive in one frame reach the app as one list in order. Events sent while no app runs, before the first app started or while an app restarts, reach the next app once it starts, up to 32 of each name with the oldest dropped first.
     haylen.emit = function (event, payload, options) {
         const encoded = encodePayload(payload);
         const flags = (options && options.retain ? 1 : 0) | (options && options.batched ? 2 : 0);

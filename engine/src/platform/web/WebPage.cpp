@@ -576,7 +576,8 @@ void WebPage::runConsoleLine(double id, const char* line) {
 }
 
 void WebPage::emit(const char* event, const char* json, const std::uint32_t* buffers, int count, int flags) {
-    BridgeRelay::emit(event, json, readBuffers(buffers, count), {.retain = (flags & HAYLEN_NATIVE_EMIT_RETAIN) != 0, .batched = (flags & HAYLEN_NATIVE_EMIT_BATCHED) != 0});
+    const Bridge::EmitOptions options{.retain = (flags & HAYLEN_NATIVE_EMIT_RETAIN) != 0, .batched = (flags & HAYLEN_NATIVE_EMIT_BATCHED) != 0};
+    BridgeRelay::emitOrKeep({.name = event, .json = json, .buffers = readBuffers(buffers, count), .options = options});
 }
 
 void WebPage::finishScreen(double id, bool ok, const char* json, const std::uint32_t* buffers, int count) {
