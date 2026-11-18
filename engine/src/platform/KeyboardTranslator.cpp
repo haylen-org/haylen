@@ -23,6 +23,7 @@ std::vector<Event> KeyboardTranslator::translate(const Event& event) {
         case TextInput::Action::Dismissed:
             break;
         }
+
         return events;
     }
 

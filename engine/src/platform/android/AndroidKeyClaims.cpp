@@ -20,6 +20,7 @@ bool AndroidKeyClaims::take(std::int32_t code, Action action, bool wanted) noexc
     case Action::Release:
         return std::exchange(claim, false);
     }
+
     return false;
 }
 

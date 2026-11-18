@@ -115,6 +115,7 @@ id AppleMediaSession::makeInfo(const MediaSession::NowPlaying& value) {
             // clang-format on
         }
     }
+
     return info;
 }
 

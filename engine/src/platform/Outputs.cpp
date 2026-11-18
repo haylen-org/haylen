@@ -200,6 +200,7 @@ void Outputs::receiveInput(const Event& event) {
     default:
         break;
     }
+
     events.emit(core::LifecycleEvent::kOutputInput, described);
 }
 

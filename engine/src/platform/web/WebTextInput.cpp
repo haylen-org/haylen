@@ -101,6 +101,7 @@ std::string_view WebTextInput::getEnterKeyHint(ReturnKey key) noexcept {
     case ReturnKey::Default:
         return "";
     }
+
     return "";
 }
 
@@ -115,6 +116,7 @@ std::string_view WebTextInput::getCapitalization(Capitalization capitalization) 
     case Capitalization::None:
         return "off";
     }
+
     return "off";
 }
 

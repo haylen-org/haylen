@@ -37,6 +37,7 @@ void VideoStream::push(const std::byte* pixels, int width, int height, std::size
         const std::scoped_lock lock(mutex);
         frame = std::move(spare);
     }
+
     frame.pixels.resize(row * static_cast<std::size_t>(height));
 
     for (std::size_t line = 0; line < static_cast<std::size_t>(height); ++line) {
@@ -75,6 +76,7 @@ bool VideoStream::update(graphics::Device& device) {
         std::swap(shown, latest);
         fresh = false;
     }
+
     ++frameCount;
 
     if (!texture.isValid()) {

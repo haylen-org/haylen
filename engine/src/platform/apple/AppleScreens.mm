@@ -34,6 +34,7 @@ void AppleScreens::open(const ScreenRequest& request) {
     @synchronized(handlers) {
         handler = handlers[key];
     }
+
     if (handler == nil) {
         ScreenRelay::finish(request.id, false, core::Json{{"message", "No screen is registered for \"" + request.plugin + "." + request.screen + "\"."}, {"code", "noHandler"}}.dump());
         return;

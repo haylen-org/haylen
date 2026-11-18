@@ -12,6 +12,7 @@ std::uint32_t SupportedOrientations::fromLock(Orientation value, bool pad) noexc
     case Orientation::Any:
         return portrait | kLandscape;
     }
+
     return kAll;
 }
 

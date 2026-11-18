@@ -68,6 +68,7 @@ using haylen::platform::AccessibilityElement;
 #endif
             moved = YES;
         }
+
         CGRect frame = CGRectMake(element.bounds.x / scale, element.bounds.y / scale, element.bounds.width / scale, element.bounds.height / scale);
 #if TARGET_OS_OSX
         // AppKit places the frames of elements from the bottom of their parent.
@@ -77,6 +78,7 @@ using haylen::platform::AccessibilityElement;
         kept[key] = object;
         [ordered addObject:object];
     }
+
     known = kept;
     shown = ordered;
 

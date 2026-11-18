@@ -381,6 +381,7 @@ void Player::play(double seconds) {
         host->preparePostedEvent(event);
         deliver(event);
     }
+
     for (int press = takeBackPresses(); press > 0 && engine->isRunning(); --press) {
         pressBack();
     }

@@ -33,6 +33,7 @@ std::uint64_t AndroidMessageQueue::push(const Payload& payload) {
         items[(head + count) % items.size()] = {.sequence = sequence, .payload = payload};
         ++count;
     }
+
     if (wasEmpty) {
         const std::uint64_t wake = 1;
         (void)write(descriptor, &wake, sizeof(wake));
@@ -75,6 +76,7 @@ void AndroidMessageQueue::markHandled(std::uint64_t sequence) {
         const std::scoped_lock lock(mutex);
         handled = sequence;
     }
+
     handledChanged.notify_all();
 }
 

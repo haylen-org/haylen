@@ -147,6 +147,7 @@ IFACEMETHODIMP WindowsAccessibilityElement::GetPropertyValue(PROPERTYID property
     default:
         break;
     }
+
     return S_OK;
 }
 
@@ -196,6 +197,7 @@ IFACEMETHODIMP WindowsAccessibilityElement::Navigate(NavigateDirection direction
         return position != siblings.begin() ? returnFragment(*(position - 1), found) : S_OK;
     }
     }
+
     return S_OK;
 }
 
@@ -425,6 +427,7 @@ CONTROLTYPEID WindowsAccessibilityElement::getControlType(AccessibilityElement::
     case Role::PlayArea:
         return UIA_PaneControlTypeId;
     }
+
     return UIA_CustomControlTypeId;
 }
 

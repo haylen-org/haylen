@@ -302,6 +302,7 @@ std::string WebPage::readPath(const core::Json& operation, const char* key) {
     if (found == operation.end() || !found->is_string()) {
         throw RequestError("invalidRequest", std::string("An edit needs the path \"") + key + "\" as a string.");
     }
+
     try {
         return io::Path::normalize(found->get<std::string>());
     } catch (const std::invalid_argument& error) {
@@ -333,17 +334,21 @@ std::vector<WebPage::Edit> WebPage::readEdits(const char* operations, std::span<
         } else {
             edit.path = readPath(operation, "path");
         }
+
         if (edit.kind == Edit::Kind::Write) {
             const auto buffer = operation.find("bytes");
             if (buffer == operation.end() || !buffer->is_number_unsigned() || buffer->get<std::size_t>() >= contents.size()) {
                 throw RequestError("invalidRequest", "The write of \"" + edit.path + "\" names no buffer of the batch.");
             }
+
             const std::vector<std::byte>& content = contents[buffer->get<std::size_t>()];
             const auto* first = reinterpret_cast<const std::uint8_t*>(content.data());
             edit.bytes.assign(first, first + content.size());
         }
+
         edits.push_back(std::move(edit));
     }
+
     return edits;
 }
 
@@ -360,6 +365,7 @@ void WebPage::checkEdits(const std::vector<Edit>& edits) {
         if (found == files.end()) {
             throw RequestError("missingFile", "The package holds no file \"" + edit.path + "\" to " + (edit.kind == Edit::Kind::Remove ? "remove." : "rename."));
         }
+
         const std::uint64_t size = found->second;
         files.erase(found);
         if (edit.kind == Edit::Kind::Rename) {
@@ -375,6 +381,7 @@ WebPage::FileSizes WebPage::measure(const io::Package& package) {
     for (const std::string& path : package.list("")) {
         files[path] = package.getFileSize(path);
     }
+
     return files;
 }
 

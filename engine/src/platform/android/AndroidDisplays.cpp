@@ -37,6 +37,7 @@ void AndroidDisplays::receive(std::string_view json, int windowDisplay) {
         displays = std::move(received);
         windowDisplayId = std::to_string(windowDisplay);
     }
+
     Player::postEvent({.type = Event::Type::DisplaysChanged});
 }
 

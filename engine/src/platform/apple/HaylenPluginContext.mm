@@ -134,6 +134,7 @@ using haylen::platform::VideoStream;
     @synchronized(self) {
         ++covers;
     }
+
     NativeHost::getNativeViews().coverApp();
 }
 
@@ -146,6 +147,7 @@ using haylen::platform::VideoStream;
 
         --covers;
     }
+
     NativeHost::getNativeViews().uncoverApp();
 }
 
@@ -155,6 +157,7 @@ using haylen::platform::VideoStream;
         open = covers;
         covers = 0;
     }
+
     for (NSInteger index = 0; index < open; ++index) {
         NativeHost::getNativeViews().uncoverApp();
     }
@@ -171,6 +174,7 @@ using haylen::platform::VideoStream;
         first = permissions.count == 0;
         permissions[permission.name] = permission;
     }
+
     if (first) {
         [self registerPermissionHandler:@"permission" asking:NO];
         [self registerPermissionHandler:@"requestPermission" asking:YES];

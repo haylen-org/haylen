@@ -588,6 +588,7 @@ std::string LinuxAccessibility::getPath(const Object& object) {
     case Object::Kind::None:
         break;
     }
+
     return kNullPath;
 }
 
@@ -632,6 +633,7 @@ std::vector<const char*> LinuxAccessibility::getInterfaces(const Object& object)
     case Object::Kind::None:
         return {};
     }
+
     std::vector<const char*> interfaces{kAccessible, kComponent};
     const AccessibilityElement& element = *findElement(object.id);
     if (!getActions(element).empty()) {

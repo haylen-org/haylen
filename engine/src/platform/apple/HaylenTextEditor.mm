@@ -90,6 +90,7 @@ using haylen::platform::TextInput;
     case TextInput::ReturnKey::Default:
         return UIReturnKeyDefault;
     }
+
     return UIReturnKeyDefault;
 }
 
@@ -104,6 +105,7 @@ using haylen::platform::TextInput;
     case TextInput::Capitalization::None:
         return UITextAutocapitalizationTypeNone;
     }
+
     return UITextAutocapitalizationTypeNone;
 }
 
@@ -196,6 +198,7 @@ using haylen::platform::TextInput;
 
         applying = NO;
     }
+
     editing = YES;
 
     if (!view.isFirstResponder) {

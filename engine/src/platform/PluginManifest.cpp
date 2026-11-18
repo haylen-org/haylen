@@ -15,6 +15,7 @@ PluginManifest PluginManifest::read(const io::Package& package, std::string_view
     if (!manifest.is_object()) {
         throw std::runtime_error("The file \"" + path + "\" of the package is not a JSON object.");
     }
+
     const auto version = manifest.find("version");
     if (version == manifest.end() || !version->is_string()) {
         throw std::runtime_error("The file \"" + path + "\" of the package has no version.");
@@ -54,11 +55,13 @@ std::optional<std::string> PluginManifest::findAppleClass(std::string_view platf
     if (!isNative(platform)) {
         return std::nullopt;
     }
+
     for (const AppleClass& appleClass : appleClasses) {
         if (std::ranges::find(appleClass.platforms, platform) != appleClass.platforms.end()) {
             return appleClass.name;
         }
     }
+
     return std::nullopt;
 }
 
@@ -67,6 +70,7 @@ std::vector<std::string> PluginManifest::readDependencies(const core::Json& mani
     if (declared == manifest.end()) {
         return {};
     }
+
     if (!declared->is_object()) {
         throw std::runtime_error("The \"dependencies\" of \"" + path + "\" in the package is not an object of plugin ids with the oldest version that the plugin works with, such as {\"cloud\": \"1.2\"}.");
     }
@@ -76,8 +80,10 @@ std::vector<std::string> PluginManifest::readDependencies(const core::Json& mani
         if (!version.is_string()) {
             throw std::runtime_error("The dependency \"" + id + "\" of \"" + path + "\" in the package has no version, such as \"1.2\".");
         }
+
         ids.push_back(id);
     }
+
     return ids;
 }
 
@@ -86,6 +92,7 @@ std::vector<std::string> PluginManifest::readPermissions(const core::Json& manif
     if (declared == manifest.end()) {
         return {};
     }
+
     if (!declared->is_array()) {
         throw std::runtime_error("The \"permissions\" of \"" + path + "\" in the package is not a list of permission names, such as [\"camera\"].");
     }
@@ -96,14 +103,18 @@ std::vector<std::string> PluginManifest::readPermissions(const core::Json& manif
         if (Permission::kindFromName(name)) {
             throw std::runtime_error("The \"permissions\" of \"" + path + "\" in the package declare \"" + name + "\", which is a permission of the engine.");
         }
+
         if (!entry.is_string() || !Permission::isPluginName(name)) {
             throw std::runtime_error("The \"permissions\" of \"" + path + "\" in the package declare \"" + name + "\", which is not a \"camelCase\" name, such as \"camera\" or \"backgroundLocation\".");
         }
+
         if (std::ranges::find(names, name) != names.end()) {
             throw std::runtime_error("The \"permissions\" of \"" + path + "\" in the package declare \"" + name + "\" twice.");
         }
+
         names.push_back(name);
     }
+
     return names;
 }
 
@@ -113,6 +124,7 @@ core::Json PluginManifest::readDefaults(const core::Json& manifest, const std::s
     if (declared == manifest.end()) {
         return values;
     }
+
     if (!declared->is_object()) {
         throw std::runtime_error("The \"parameters\" of \"" + path + "\" in the package is not an object of parameters by name.");
     }
@@ -121,10 +133,12 @@ core::Json PluginManifest::readDefaults(const core::Json& manifest, const std::s
         if (!parameter.is_object()) {
             throw std::runtime_error("The parameter \"" + name + "\" of \"" + path + "\" in the package is not an object with its \"type\" and \"description\".");
         }
+
         if (parameter.contains("default")) {
             values[name] = parameter.at("default");
         }
     }
+
     return values;
 }
 
@@ -139,10 +153,12 @@ std::vector<std::string> PluginManifest::readNativePlatforms(const core::Json& m
         if (implementation != "native" && implementation != "lua") {
             throw std::runtime_error("The implementation of \"" + path + "\" in the package for \"" + platform + "\" must be \"native\" or \"lua\", not " + implementation.dump() + ".");
         }
+
         if (implementation == "native") {
             platforms.push_back(platform);
         }
     }
+
     return platforms;
 }
 
@@ -151,6 +167,7 @@ std::vector<PluginManifest::AppleClass> PluginManifest::readAppleClasses(const c
     if (declared == manifest.end()) {
         return {};
     }
+
     if (!declared->is_array()) {
         throw std::runtime_error("The \"contributions\" of \"" + path + "\" in the package is not a list of contributions.");
     }
@@ -160,6 +177,7 @@ std::vector<PluginManifest::AppleClass> PluginManifest::readAppleClasses(const c
         if (!contribution.is_object() || !contribution.contains("type") || !contribution.at("type").is_string()) {
             throw std::runtime_error("A contribution of \"" + path + "\" in the package is not an object with its \"type\" and \"platforms\".");
         }
+
         if (contribution.at("type") != "appleClass") {
             continue;
         }
@@ -168,8 +186,10 @@ std::vector<PluginManifest::AppleClass> PluginManifest::readAppleClasses(const c
         if (name == contribution.end() || !name->is_string() || name->get_ref<const std::string&>().empty()) {
             throw std::runtime_error("The \"appleClass\" contribution of \"" + path + "\" in the package needs the \"name\" of the Objective-C class of the plugin.");
         }
+
         classes.push_back({.name = name->get<std::string>(), .platforms = readPlatforms(contribution, path)});
     }
+
     return classes;
 }
 
@@ -179,6 +199,7 @@ std::vector<std::string> PluginManifest::readPlatforms(const core::Json& contrib
     if (!listed) {
         throw std::runtime_error("A contribution of \"" + path + "\" in the package needs \"platforms\", the list of the platforms it applies to, such as [\"ios\"].");
     }
+
     return declared->get<std::vector<std::string>>();
 }
 

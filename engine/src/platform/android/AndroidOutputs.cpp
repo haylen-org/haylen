@@ -23,6 +23,7 @@ void AndroidOutputs::open(std::uint32_t number, std::string_view display, const 
         const std::scoped_lock lock(mutex);
         entries[number] = {};
     }
+
     JavaBridge::openOutput(number, display, options.title);
 }
 
@@ -39,6 +40,7 @@ void AndroidOutputs::close(std::uint32_t number) {
         release(gone);
         entries.erase(found);
     }
+
     JavaBridge::closeOutput(number);
 }
 
@@ -87,6 +89,7 @@ void AndroidOutputs::endFrame() noexcept {
         retiring.erase(settled.begin(), settled.end());
         releasedSequence = frameSequence;
     }
+
     released.notify_all();
 }
 

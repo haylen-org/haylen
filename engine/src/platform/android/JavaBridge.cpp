@@ -308,6 +308,7 @@ void JavaBridge::callPermission(jmethodID method, std::string_view name, Permiss
         request = nextPermission++;
         permissionCallbacks.emplace(request, std::move(callback));
     }
+
     JNIEnv& env = getEnv();
     env.CallStaticVoidMethod(permissionsClass, method, static_cast<jlong>(request), toBytes(env, Permission::kindName(kind)).get());
 
@@ -328,6 +329,7 @@ void JavaBridge::answerPermission(std::int64_t request, std::string_view answerJ
         callback = std::move(found->second);
         permissionCallbacks.erase(found);
     }
+
     callback(Permission::Answer::fromJson(core::Json::parse(answerJson, nullptr, false)));
 }
 
@@ -356,6 +358,7 @@ void JavaBridge::updateMediaSession(std::string_view infoJson, std::span<const s
         const JavaLocalRef bytes = artwork.empty() ? JavaLocalRef<jbyteArray>(env, nullptr) : toBytes(env, std::string_view(reinterpret_cast<const char*>(artwork.data()), artwork.size()));
         env.CallStaticVoidMethod(mediaSessionClass, updateMediaSessionMethod, info.get(), bytes.get());
     }
+
     clearException(env, "dev.haylen.HaylenMediaSession.update");
 }
 
@@ -376,6 +379,7 @@ void JavaBridge::openScreen(const ScreenRequest& request) {
         const JavaLocalRef state = toBytes(env, request.state.dump());
         env.CallStaticVoidMethod(screensClass, openScreenMethod, static_cast<jlong>(request.id), plugin.get(), screen.get(), params.get(), buffers.get(), handles.get(), state.get(), static_cast<jboolean>(request.opaque ? JNI_TRUE : JNI_FALSE));
     }
+
     if (clearException(env, "dev.haylen.HaylenScreens.open")) {
         ScreenRelay::finish(request.id, false, core::Json{{"message", "The screen failed, because the Java method \"dev.haylen.HaylenScreens.open\" threw an exception."}, {"code", "exception"}}.dump());
     }

@@ -52,6 +52,7 @@ void AndroidGamepads::rumble(std::size_t slot, float low, float high, float seco
         const std::scoped_lock lock(mutex);
         device = controllers.getDevice(slot);
     }
+
     if (device) {
         JavaBridge::rumbleGamepad(*device, low, high, std::lround(seconds * 1000.0F));
     }

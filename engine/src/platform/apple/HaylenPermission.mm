@@ -101,6 +101,7 @@
     case HaylenPermissionStateUnsupported:
         return @"unsupported";
     }
+
     return nil;
 }
 

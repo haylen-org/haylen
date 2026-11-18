@@ -133,6 +133,7 @@ void NativeApi::reportError(const core::Json& report) {
         const std::scoped_lock lock(mutex);
         snapshot = errorHandlers;
     }
+
     if (snapshot.empty()) {
         return;
     }
@@ -300,6 +301,7 @@ void NativeApi::uncoverApp() {
             return;
         }
     }
+
     core::Log::error("A native library uncovered the app without covering it first.");
 }
 

@@ -106,6 +106,7 @@ int HeadlessPlayer::play(const Options& options) {
             const debug::ExecutionBudget::Entry entry(getExecutionBudget(host), "frame");
             engine->frame(std::chrono::duration<double>(kFrameTime).count());
         }
+
         ++frame;
         next += kFrameTime;
         std::this_thread::sleep_until(next);

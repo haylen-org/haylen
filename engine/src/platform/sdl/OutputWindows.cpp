@@ -177,6 +177,7 @@ bool OutputWindows::handle(const SDL_Event& event) {
     default:
         return false;
     }
+
     const Entry* entry = findWindow(window);
     if (entry != nullptr) {
         handlePointer(*entry, event);

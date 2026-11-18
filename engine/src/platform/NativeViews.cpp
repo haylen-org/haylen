@@ -42,6 +42,7 @@ void NativeViews::uncoverApp() {
             return;
         }
     }
+
     core::Log::error("A native view uncovered the app without covering it first.");
 }
 

@@ -331,6 +331,7 @@ LRESULT CALLBACK WindowsDesktop::windowProcedure(HWND window, UINT message, WPAR
     default:
         break;
     }
+
     return CallWindowProcW(sdlProcedure, window, message, wParam, lParam);
 }
 

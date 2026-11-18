@@ -89,6 +89,7 @@ using haylen::platform::AccessibilityRelay;
         subrole = NSAccessibilityDialogSubrole;
         break;
     }
+
     self.accessibilityRole = role;
     self.accessibilitySubrole = subrole;
     self.accessibilityLabel = [NSString stringWithUTF8String:element.label.c_str()];
@@ -191,6 +192,7 @@ using haylen::platform::AccessibilityRelay;
         traits |= UIAccessibilityTraitAllowsDirectInteraction;
         break;
     }
+
     if (element.has(AccessibilityElement::Checked) || element.has(AccessibilityElement::Selected)) {
         traits |= UIAccessibilityTraitSelected;
     }

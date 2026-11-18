@@ -31,6 +31,7 @@ UIStatusBarStyle AppleStatusBar::getStyle() {
     case Window::StatusBar::Auto:
         return UIStatusBarStyleDefault;
     }
+
     return UIStatusBarStyleDefault;
 }
 

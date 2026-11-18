@@ -95,6 +95,7 @@ void ApplePlugins::join(SEL selector, Done done, Ask ask) {
               answers |= answer;
               last = --pending == 0;
           }
+
           if (last) {
               done(answers);
           }
@@ -132,6 +133,7 @@ std::vector<ApplePlugins::Declaration> ApplePlugins::readDeclarations() {
         if (!className) {
             continue;
         }
+
         declarations.push_back({.identifier = identifier, .className = *className, .config = AppPlugin::read(*package, identifier, config.plugins.at(identifier).parameters).config});
     }
 

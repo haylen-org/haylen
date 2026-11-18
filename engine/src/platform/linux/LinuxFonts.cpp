@@ -47,6 +47,7 @@ std::optional<SystemFont> LinuxFonts::find(char32_t codePoint) {
         const std::string path(reinterpret_cast<const char*>(file));
         font = SystemFont{.name = path + "#" + std::to_string(face), .file = path, .face = face};
     }
+
     fontconfig->destroyPattern(matched);
     return font;
 }
@@ -64,6 +65,7 @@ const LinuxFonts::Library* LinuxFonts::open() {
         library = load();
         loaded = true;
     }
+
     if (!library) {
         return nullptr;
     }
@@ -71,6 +73,7 @@ const LinuxFonts::Library* LinuxFonts::open() {
     if (config == nullptr) {
         config = library->createConfig();
     }
+
     return config != nullptr ? &*library : nullptr;
 }
 
@@ -113,6 +116,7 @@ void LinuxFonts::fillDefaults(const Library& fontconfig, void* pattern) {
         fontconfig.substituteConfigDefaults(config, pattern);
         return;
     }
+
     fontconfig.substituteDefaults(pattern);
 }
 

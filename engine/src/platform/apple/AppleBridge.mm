@@ -42,6 +42,7 @@ void AppleBridge::dispatch(std::uint64_t call, std::string_view method, std::str
             getCalls()[key] = NSNull.null;
         }
     }
+
     if (handler == nil) {
         fail(call, @{@"message" : [NSString stringWithFormat:@"No native handler is registered for \"%@\".", name], @"code" : @"noHandler"});
         return;
@@ -55,6 +56,7 @@ void AppleBridge::dispatch(std::uint64_t call, std::string_view method, std::str
               return;
           }
       }
+
       HaylenCancel cancel = handler(params, ^(BOOL ok, id _Nullable result) { answer(call, name, ok, result); });
       if (cancel == nil) {
           return;
@@ -74,6 +76,7 @@ void AppleBridge::cancel(std::uint64_t call) {
         entry = getCalls()[@(call)];
         [getCalls() removeObjectForKey:@(call)];
     }
+
     if (entry != nil && entry != NSNull.null) {
         HaylenCancel cancel = entry;
         dispatch_async(dispatch_get_main_queue(), cancel);

@@ -91,6 +91,7 @@ Battery AppleBattery::readDevice() {
         battery.state = Battery::State::Full;
         break;
     }
+
     return battery;
 }
 #else

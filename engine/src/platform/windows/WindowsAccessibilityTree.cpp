@@ -173,6 +173,7 @@ void WindowsAccessibilityTree::disconnect() {
         indices.clear();
         children.clear();
     }
+
     for (const auto& [id, provider] : released) {
         UiaDisconnectProvider(provider.Get());
     }

@@ -184,6 +184,7 @@ void System::pump() {
         const std::scoped_lock lock(inbox->mutex);
         replies.swap(inbox->replies);
     }
+
     for (Reply& reply : replies) {
         const auto found = pending.find(reply.id);
         if (found == pending.end()) {

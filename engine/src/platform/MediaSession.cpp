@@ -66,6 +66,7 @@ void MediaSession::pump() {
 
         delivering.swap(received);
     }
+
     for (const Received& entry : delivering) {
         core::Json payload{{"command", commandName(entry.command)}};
         if (entry.command == Command::Seek) {

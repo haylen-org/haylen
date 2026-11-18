@@ -222,6 +222,7 @@ using haylen::platform::NativeHost;
     case HaylenPlacementAnchorCenter:
         return CGPointMake(0.5, 0.5);
     }
+
     return CGPointMake(0.5, 0.5);
 }
 

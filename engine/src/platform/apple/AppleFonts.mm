@@ -66,6 +66,7 @@ std::vector<std::uint8_t> AppleFonts::read(const SystemFont& font) {
             const auto found = descriptors.find(font.name);
             descriptor = found != descriptors.end() ? found->second : nullptr;
         }
+
         id face = descriptor != nullptr ? CFBridgingRelease(CTFontCreateWithFontDescriptor(descriptor, 12.0, nullptr)) : nil;
         const std::vector<std::uint32_t> tags = face != nil ? copyTags((__bridge CTFontRef)face) : std::vector<std::uint32_t>{};
         if (tags.empty()) {

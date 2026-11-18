@@ -118,6 +118,7 @@ void DevelopmentSession::report(const core::Json& value) const {
         const std::scoped_lock lock(mutex);
         listeners = reporters;
     }
+
     for (const Reporter& listener : listeners) {
         listener(value);
     }

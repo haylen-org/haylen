@@ -123,6 +123,7 @@ std::shared_ptr<io::Package> AppleServices::openBundledPackage() {
 #endif
         return content::ReleasePackage::openBundled(std::move(files), content::Bootstrap::find(), [](std::string_view identifier) { return std::make_unique<content::FolderStoreFiles>(getContentStoreDirectory(identifier)); });
     }
+
     return io::Package::open(folder.string() + ".zip");
 }
 
