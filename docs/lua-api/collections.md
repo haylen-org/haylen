@@ -171,7 +171,7 @@ A ring buffer keeps at most a fixed number of values, its capacity, in one block
 
 ### collections.newRingBuffer(capacity)
 
-Creates a [`RingBuffer`](#ringbuffer) that holds up to `capacity` values and returns it. A capacity of `0` raises `A ring buffer needs a capacity of at least one.`.
+Creates a [`RingBuffer`](#ringbuffer) that holds up to `capacity` values and returns it. A capacity of `0` raises `A ring buffer needs a capacity of at least one.`, and a capacity above `16777216` raises `A ring buffer holds at most 16777216 values.`.
 
 ```lua
 local collections = require('haylen.collections')
@@ -317,7 +317,7 @@ A float buffer holds a fixed number of numbers in memory that C++ reads and writ
 
 ### collections.newFloatBuffer(size, value)
 
-Creates a [`FloatBuffer`](#floatbuffer) of `size` numbers and returns it. Every number starts as `value`, which defaults to `0`. The size never changes. A negative size raises `bad argument #1 to 'newFloatBuffer' (the size cannot be negative)`.
+Creates a [`FloatBuffer`](#floatbuffer) of `size` numbers and returns it. Every number starts as `value`, which defaults to `0`. The size never changes. A negative size raises `bad argument #1 to 'newFloatBuffer' (the size cannot be negative)`, and a size above `67108864` raises `A float buffer holds at most 67108864 floats.`.
 
 ```lua
 local collections = require('haylen.collections')
@@ -407,7 +407,9 @@ print(alphas[50], alphas[51]) -- 1.0 0.0
 | `bad argument #1 to 'newPool' (reset and release must be functions when present)` | The option `reset` or `release` is not a function. |
 | `The "create" function of the pool returned "nil".` | The function `create` returned `nil` while the pool created an object. |
 | `A ring buffer needs a capacity of at least one.` | The capacity of `collections.newRingBuffer` is `0`. |
+| `A ring buffer holds at most 16777216 values.` | The capacity of `collections.newRingBuffer` is above `16777216`. |
 | `bad argument #1 to 'newFloatBuffer' (the size cannot be negative)` | The size of `collections.newFloatBuffer` is negative. |
+| `A float buffer holds at most 67108864 floats.` | The size of `collections.newFloatBuffer` is above `67108864`. |
 | `Float buffer positions <first> to <last> fall outside its size of <size>.` | A read or a write of a float buffer reaches outside it. |
 | `Float buffer values are numbers, and entry <n> of the list is not.` | The list of `buffer:set` holds something other than a number. |
 | `bad argument #<n> to '<function>' (<reason>)` | An argument has the wrong type or range, such as a negative count of `pool:prewarm` or `buffer:get`, a position of `ring:get` that is not an integer or a value of `buffer:set` that is not a number. |
