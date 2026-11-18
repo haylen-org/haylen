@@ -22,14 +22,14 @@ Every command also takes `--verbose`, `--json` and `--jobs`, and `haylen` alone 
 
 ## Shared arguments
 
-Most commands work on one app. They take the app folder, which holds `haylen.json`, as an optional first argument, and the current folder is the app otherwise. The commands of the `plugin` group take the app with `--app` instead, since their first argument is the plugin.
+Most commands work on one app. They take the app folder, which holds `haylen.json`, as an optional first argument, and the current folder is the app otherwise. The commands of the `plugin` group that work on an app take it with `--app` instead, since their first argument is the plugin.
 
 The commands that resolve an app for a target share these options:
 
 | Option | Meaning |
 | --- | --- |
 | `--target <name>` | The target, such as `ios-simulator`, `android` or `web`, which `haylen doctor` lists. Without it, a Lua app takes `player` and a C++ app takes the target of this machine: `macos`, `windows` or `linux`. |
-| `--config Debug\|Release` | The configuration of the app. A Debug app ships its package as it is and plays in development. A Release app ships its protected release with its bootstrap. |
+| `--config Debug\|Release` | The configuration of the app, `Debug` by default and `Release` for `app package`. A Debug app ships its package as it is and plays in development. A Release app ships its protected release with its bootstrap. |
 | `--engine-config Debug\|Release` | The configuration of the engine SDK that the app links, `Release` by default. A Debug SDK is for debugging the engine itself. |
 | `--architecture <name>` | An architecture to build, such as `arm64` or `x86_64`. It repeats, and the default architectures of the target apply without it. |
 
@@ -95,7 +95,7 @@ Checks that the backend of the target runs apps, then builds the SDK that the ta
 | Option | Meaning |
 | --- | --- |
 | `--device` | The simulator, emulator or device, by an identifier that `haylen devices` lists. The default device of the target otherwise. |
-| `--host` | The address that the development server, and the server of a web page, listen on, `127.0.0.1` by default. |
+| `--host` | The address that the development server, and the server of a web page, listen on, `127.0.0.1` by default. For a device on the local network, the development server listens on every address of this machine unless `--host` names one. |
 | `--port` | The port of the development server and of a web page, `8000` by default. |
 | `--debugger-port` | The port that an editor attaches its debugger to in Debug, `4711` by default. |
 | `--coep` | The `Cross-Origin-Embedder-Policy` of a web page: `require-corp`, `credentialless` or `off`, the default. |
@@ -135,8 +135,8 @@ Creates a signing key of the app for a target whose backend makes keys. The targ
 | --- | --- |
 | `--kind` | `release`, the default, for the upload key of release builds, or `debug` for a debug key of the app. |
 | `--option alias=<alias>` | The alias of the key, `upload` by default. |
-| `--option password=<password>` | The password of the keystore and the key. |
-| `--option name=<name>` | The distinguished name of the certificate. |
+| `--option password=<password>` | The password of the keystore and the key, `upload` by default. |
+| `--option name=<name>` | The distinguished name of the certificate, `CN=Upload, OU=Upload, O=Upload, L=Upload, ST=Upload, C=BR` by default. |
 | `--option force=true` | Replaces a key that the app already has. Only `true` replaces it, `false` keeps it, and any other value is an error. |
 
 Result: `files`, the paths that the command wrote.
@@ -416,7 +416,7 @@ Builds and runs the engine tests of this machine by default. The [testing guide]
 | `--app` | With `--target web`, builds the app of this folder for the web in the configuration of `--config` and checks instead that its page starts it, on WebGPU and WebGL2 or on the API of `--graphics-api`. |
 | `--port` | Builds the engine with the test port and plays its app instead. |
 
-Result: the build tree with what ran, such as `tree`, `configuration`, `sanitizers` and `shard` for the engine tests, `tree`, `graphicsApi` and `output` for the GPU tests, `graphicsApi`, `memory` and `shard` for the checks of the web, `app`, `configuration`, `graphicsApis` and `site` for the start check of an app on the web, `app`, `target`, `simulator` and `screenshots` for the UI tests, and `tree` and `app` for the test port.
+Result: the build tree with what ran, such as `tree`, `configuration`, `sanitizers` and `shard` for the engine tests, `tree` and `graphicsApi` for the GPU tests, with the `output` folder of their images, the `target` or the `abi` and the `device` where they ran on the web, Android and the Apple platforms, `graphicsApi`, `memory` and `shard` for the checks of the web, `app`, `configuration`, `graphicsApis` and `site` for the start check of an app on the web, `app`, `target`, `simulator` and `screenshots` for the UI tests, and `tree` and `app` for the test port.
 
 ### engine configure
 

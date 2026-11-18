@@ -1,6 +1,6 @@
 # 📎 Embedding the engine
 
-This guide is for C++ developers who add Haylen to a CMake project of their own. The folder `engine/` is a standalone CMake project that other projects use as a library. A project adds it in one of three ways: with `add_subdirectory`, with CPM, or with `find_package(haylen)` against a prebuilt SDK. All three give the same targets and the same CMake function. This guide covers the three ways, the SDK, the function `haylen_add_app`, protected releases of C++ apps and apps written only in C++. The examples build a C++ app whose package the project stages in `package/` of its build tree, as the tooling stages the package of every app. The [build guide](build.md) covers the toolchains of each platform and the CMake options, and the [Lua guide](../core/lua.md#extending-the-engine-from-c) shows how a C++ project adds Lua modules.
+This guide is for C++ developers who add Haylen to a CMake project of their own. The folder `engine/` is a standalone CMake project that other projects use as a library. A project adds it in one of three ways: with `add_subdirectory`, with CPM, or with `find_package(haylen)` against a prebuilt SDK. All three give the targets `haylen::engine`, `haylen::runtime` and `haylen::player` and the same CMake function, and the SDK adds `haylen::native`. This guide covers the three ways, the SDK, the function `haylen_add_app`, protected releases of C++ apps and apps written only in C++. The examples build a C++ app whose package the project stages in `package/` of its build tree, as the tooling stages the package of every app. The [build guide](build.md) covers the toolchains of each platform and the CMake options, and the [Lua guide](../core/lua.md#extending-the-engine-from-c) shows how a C++ project adds Lua modules.
 
 ## What a project gets
 
@@ -75,8 +75,8 @@ The SDK is a prebuilt engine for one platform, with the GPU devices of its graph
 | --- | --- |
 | `lib/` | The static libraries `haylen` and `haylen-runtime`, such as `libhaylen.a` and `libhaylen-runtime.a`, and the object of the Lua player, `haylen-player.o`, or `haylen-player.obj` with MSVC. Linux distributions where `GNUInstallDirs` picks `lib64/` use that folder instead. |
 | `lib/cmake/haylen/` | `haylen-config.cmake` and `haylen-config-version.cmake`. |
-| `include/` | The public headers of the engine, the generated `haylen/core/Version.hpp`, and the headers of nlohmann/json, Dear ImGui and Lua that they include. It also holds the Dear ImGui configuration of the engine in `haylen/ui/ImGuiConfig.hpp`, with the `haylen/ui/ImGuiAssert.hpp` it includes. |
-| `share/haylen/` | The file `haylen-app.cmake` with the function `haylen_add_app` and its helper script, the web shell and runtime script, the Apple platform files, the Windows manifest and, in Apple SDKs, `AppleMain.cpp`. The SDK of a [port](../platform/ports.md) adds `haylen-port.json` and the CMake file of its app function. |
+| `include/` | The public headers of the engine, the generated `haylen/core/Version.hpp`, the headers of nlohmann/json, Dear ImGui and Lua that they include, and the headers of the data view of Varn, `varn/varn.h` and `varn/dataview/`, with `VarnDataView.h` on Apple platforms. It also holds the Dear ImGui configuration of the engine in `haylen/ui/ImGuiConfig.hpp`, with the `haylen/ui/ImGuiAssert.hpp` it includes. |
+| `share/haylen/` | The folder `cmake/` with `haylen-app.cmake`, which defines `haylen_add_app`, and its helper script, the folder `platform/` with the web shell and the scripts of the web runtime, the Apple platform files and the Windows manifest, the `GpuPreferenceExports.cpp` that Windows apps compile in and, on macOS, `AppleMain.cpp`. The SDK of a [port](../platform/ports.md) adds `haylen-port.json` and the CMake file of its app function. |
 
 A project finds the SDK like any installed package:
 
@@ -118,7 +118,7 @@ The command `haylen sdk build` builds every SDK, as the [build guide](build.md#e
 | `haylen sdk build --target web` | `build/sdk/web-<config>/web-wasm32`, for a project that Emscripten's `emcmake` configures. |
 | `haylen sdk build --target android` | `build/sdk/android-<config>/abis/<abi>`, for a project that the NDK toolchain configures. |
 
-The Apple SDK holds `Haylen.xcframework` for the Xcode projects of apps, and only the CMake package of native libraries, so a CMake project of an iOS, tvOS or visionOS app has no SDK to link and adds the engine from its sources.
+The Apple SDK holds `Haylen.xcframework` for the Xcode projects of apps, and only the CMake package of native libraries. Xcode builds every app of iOS, Mac Catalyst, tvOS and visionOS from the Apple project of the tooling, so a CMake project builds none of them, as [haylen_add_app](#haylen_add_app) explains.
 
 ### Checking the three ways
 
@@ -136,7 +136,7 @@ haylen engine consumers --mode subdirectory --mode cpm
 haylen engine consumers --mode package --config Release
 ```
 
-The project reads the way from its cache variable `HAYLEN_CONSUMER_MODE`. Each way builds in `build/engine/consumers/<mode>-<config>`, in the `Release` configuration by default, which the SDK of `package` matches. The `subdirectory` and `cpm` ways share the dependency cache and the shader compiler of the engine builds. The command builds for this machine only. The `desktop-port` job of [continuous integration](testing.md#continuous-integration) runs the `package` way on macOS, Linux and Windows.
+The project reads the way from its cache variable `HAYLEN_CONSUMER_MODE`. Each way builds in `build/engine/consumers/<mode>-<config>`, in the `Release` configuration by default, which the SDK of `package` matches. The `subdirectory` and `cpm` ways share the dependency cache and the shader compiler of the engine builds. The command builds for this machine only. The `linux-apps` and `windows-apps` jobs of [continuous integration](testing.md#continuous-integration) run the `package` way on Linux and Windows.
 
 ## haylen_add_app
 
@@ -169,7 +169,7 @@ Xcode builds the apps of macOS, iOS, tvOS, visionOS and Mac Catalyst from the Ap
 | Android | The shared library `bin/<target>/lib<target>.so`, which `HaylenActivity` loads. The Gradle project of the app takes the content into the APK assets. | The folder `app/` of the APK assets. |
 | A port | What the function that `APP_FUNCTION` of the [port](../platform/ports.md) names builds, from the sources, the libraries and the content of the app. | Where the runtime of the port opens it. |
 
-Any app opens the package that the first argument of its command line names instead of the bundled one, as the [distribution guide](distribution.md) explains.
+A Debug build opens the package that the first argument of its command line names instead of the bundled one, while a build with a `BOOTSTRAP` plays only its own release, as the [distribution guide](distribution.md#development-mode) explains.
 
 ### Windows
 
@@ -189,7 +189,7 @@ A build with a `BOOTSTRAP` also builds without symbols, which stay in `symbols/<
 - Android and Linux link with `--gc-sections` and ship stripped. The symbols stay in a `.debug` file, which the binary names in its debug link.
 - Windows links with `/DEBUG /OPT:REF /OPT:ICF` and keeps the PDB of the public symbols in that folder.
 - macOS links with dead code stripping. The executable leaves its symbols in a dSYM, `<target>.dSYM`, and ships stripped.
-- The web keeps the symbol map of Emscripten in that folder, and minifies the workers next to the page.
+- The web keeps the symbol map of Emscripten in that folder, and minifies the processor of the audio output and the worker of the content store next to the page.
 - The Android library exports only the entry points of Java and GameActivity.
 
 ## An app written in C++
@@ -235,7 +235,7 @@ cmake -S samples/cpp/embedding -B build/embedding -G Ninja
 cmake --build build/embedding
 ```
 
-The project stages its package in `package/` of its build tree, with `haylen.json` and `content/` alone, since the application never runs Lua, so `CMakeLists.txt` and `src/` never ship. The file `src/EmbeddingApp.cpp` defines the application in a namespace of the project, with the scene that it pushes nested inside it, and `Application::create()`.
+The project stages its package in `package/` of its build tree, with `haylen.json` and `content/` alone, since the application never runs Lua, so `CMakeLists.txt` and `src/` never ship. The file `src/EmbeddingApp.cpp` defines the application in a namespace of the project, with the scene that it pushes nested inside it, and `Application::create()`. Its scene draws the symbol of Haylen with a comet of dots that circles it, under a title. A smaller application of the same shape draws a square that circles the middle of the safe area:
 
 ```cpp
 namespace embedding {
@@ -285,7 +285,7 @@ The class `core::Engine` gives access to every service, such as `getRenderer2D()
 
 ## Plugins of an app
 
-A C++ app extends the engine with plugins of its own. They use the same `haylen::plugins::Plugin` interface as the built-in plugins. Its hooks are `getName`, `start`, `stop`, `installLua`, `event`, `beginFrame`, `fixedUpdate`, `update`, `render`, `renderUi`, `renderOverlay` and `endFrame`, all on the frame thread. One more hook, `packageChanged`, hears the package paths that changed while the app runs in development. So a plugin rebuilds what it built from files outside the asset cache.
+A C++ app extends the engine with plugins of its own. They use the same `haylen::plugins::Plugin` interface as the built-in plugins. Its hooks are `getName`, `start`, `stop`, `installLua`, `event`, `beginFrame`, `fixedUpdate`, `update`, `render`, `renderUi`, `renderOverlay` and `endFrame`, all on the frame thread. One more hook, `packageChanged`, hears the package paths that changed while the app runs in development. So a plugin rebuilds what it built from files outside the asset cache. Two queries answer the engine: `isCapturingBack` tells whether the plugin takes the next press of the back button, and `isFrameComplete` tells whether the frame that just rendered drew everything the plugin had to draw, so the platform shows the app for the first time with a complete frame.
 
 ```cpp
 engine.addPlugin(std::make_unique<MyPlugin>());

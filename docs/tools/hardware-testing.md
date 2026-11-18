@@ -45,7 +45,7 @@ The windowed runs of the test project need a desktop session that nobody is usin
 | visionOS simulator | `haylen test --gpu --target visionos-simulator --device <name>`. Install the visionOS platform first with `xcodebuild -downloadPlatform visionOS`. |
 | Android emulator | `haylen test --gpu --target android` builds the GPU test app, installs it, runs it on Vulkan and OpenGL ES, reads the results back and uninstalls it. It starts an emulator without a window when none is running. |
 
-The UI tests of an app run on the iOS, iPadOS and visionOS simulators with `haylen test --ui <app> --target ios-simulator|visionos-simulator --device <name>`, which taps, drags and arranges windows there without a window on the Mac, as [the UI tests](testing.md#the-ui-tests) describe.
+The UI tests of an app run on the iOS, iPadOS, tvOS and visionOS simulators with `haylen test --ui <app> --target ios-simulator|tvos-simulator|visionos-simulator --device <name>`, which taps, drags, presses the remote and arranges windows there without a window on the Mac, as [the UI tests](testing.md#the-ui-tests) describe.
 
 Run the test project with `haylen app run samples/tests --target <target>`. Start its run-all mode from the developer console of the run with `lua require('harness.runner').start()`, so no input reaches the device.
 
@@ -81,7 +81,7 @@ The web runs in Chrome, which `haylen test` starts without a window. Install Chr
 | What | Command |
 | --- | --- |
 | GPU tests on WebGPU and WebGL2 | `haylen test --gpu --target web` builds the GPU tests to WebAssembly, opens them in a page and reads the results back. Add `--graphics-api webGpu` or `--graphics-api webGl2` for one API. |
-| The checks of the page | `haylen test --target web` runs the error screen check, the wake lock check, the fullscreen check, the plugin check and the memory check, which only a browser can show. Add `--graphics-api webGpu` or `--graphics-api webGl2` for one API. Headless Chrome on Linux cannot present a WebGPU canvas, so there they take `--graphics-api webGl2`. |
+| The checks of the page | `haylen test --target web` runs the error screen check, the wake lock check, the fullscreen check, the plugin check, the editor check and the memory check, which only a browser can show. Add `--graphics-api webGpu` or `--graphics-api webGl2` for one API. Headless Chrome on Linux cannot present a WebGPU canvas, so there they take `--graphics-api webGl2`. |
 | The test project | `haylen app run samples/tests --target web` serves the page. Open the address it prints, add `?graphicsApi=webGl2` to choose WebGL2, and start run-all from the menu. |
 
 Headless Chrome draws through SwiftShader, its software rasterizer, so its GPU times measure the processor. To draw on the real GPU of the machine, start Chrome with `--enable-gpu`, and with `--use-angle=metal` on a Mac, then open the same pages. Safari and Firefox open the page of `haylen app run` too, for a check by hand.
@@ -142,7 +142,7 @@ The paravirtual GPU of a virtual Mac is not the GPU of a real one, while an EC2 
 
 Device Farm runs in `us-west-2` and costs about US$ 0.17 per device minute. A run of the test project and the GPU app on one device takes about 5 to 20 minutes. It rents real iPhones and iPads too: build the test project and the GPU test app as signed `.ipa` files for your team, upload them, and run them the same way.
 
-1. Build the debug APK of the test project with `haylen app build samples/tests --target android`, and the GPU test app with `haylen test --gpu --target android`.
+1. Build the debug APK of the test project with `haylen app build samples/tests --target android`, and the GPU test app with `haylen test --gpu --target android`, which leaves it in `build/engine/android-gpu-tests-<abi>-debug/apk/haylen-gpu-tests.apk`.
 2. Create a project, upload the APKs and a custom test spec that starts the app in its run-all mode, and collect logcat.
 3. Choose devices of different GPUs, such as Adreno, Mali, PowerVR and Xclipse, and of old and new Android versions. The free call `aws devicefarm get-device-pool-compatibility` shows which devices accept the app before you pay.
 4. Give every job a short timeout, so a hang cannot bill its full default time.

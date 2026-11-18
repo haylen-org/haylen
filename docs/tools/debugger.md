@@ -132,4 +132,4 @@ An app without breakpoints, log points, steps or the error filter runs with only
 
 ## Release builds
 
-The debugger exists only in the development session, which only `--dev`, `--dev-server` and the page of `app run --target web` create. A release build carries the bootstrap of its app, which ignores those options, as the [distribution guide](distribution.md) explains, so no release ever hooks its Lua, and the verification of every Release build by `haylen app build` and `haylen app verify` keeps proving that no release holds Lua text or files of the package as they are.
+The debugger exists only in the development session, which only `--dev`, `--dev-server` and the page of `app run --target web` create. A release build carries the bootstrap of its app, which ignores those options, as the [distribution guide](distribution.md) explains, so no release ever hooks its Lua, and the verification of every Release build by `haylen app build`, `app run`, `app package` and `app verify` keeps proving that no release holds Lua text or files of the package as they are.

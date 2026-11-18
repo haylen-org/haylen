@@ -14,7 +14,7 @@ haylen sdk build --target ios-simulator
 haylen app run ~/apps/my-game --target ios-simulator
 ```
 
-The command `new` writes the starter app. The command `sdk build` builds the engine SDK of a target once, which every app of the machine then shares. The command `app run` prepares, builds, verifies and launches the app: without `--target` a Lua app plays in the desktop player of this machine in development mode, which reloads edited scripts and assets, and with `--target` it builds for that platform and launches the app on a simulator, an emulator, a device, this computer or a local web server.
+The command `new` writes the starter app. The command `sdk build` builds the engine SDK of a target once, which every app of the machine then shares. The commands that build an app also build a missing SDK themselves, so `sdk build` only builds it ahead of time. The command `app run` prepares, builds, verifies and launches the app: without `--target` a Lua app plays in the desktop player of this machine in development mode, which reloads edited scripts and assets, and with `--target` it builds for that platform and launches the app on a simulator, an emulator, a device, this computer or a local web server.
 
 An app written in C++ starts the same way, with `--kind cpp`, and goes through the same backends:
 
@@ -43,7 +43,7 @@ A target is a name that the commands take with `--target`. Each target belongs t
 
 Without `--target`, a command takes the default target of the kind of the app on this machine: `player` for a Lua app on every desktop, and for a C++ app `macos` on a Mac, `windows` on Windows and `linux` on Linux. The `player` target compiles nothing and has no Release configuration, since the release of an app is built for the target of each platform.
 
-Each target builds its default architectures, the one of this Mac for what runs on it or on its simulators, `arm64` for Apple devices, `x86_64` for Windows and Linux, and `arm64-v8a`, `armeabi-v7a` and `x86_64` together for Android. The option `--architecture` names others, and it repeats. Every architecture of a request is resolved on its own, with its own SDK slice, and the backend joins them into one product, such as one APK with every ABI.
+Each target builds its default architectures, the one of this Mac for what runs on it or on its simulators, `arm64` for Apple devices, the one of this machine for Windows and Linux, `x86_64` or `arm64`, and `arm64-v8a`, `armeabi-v7a` and `x86_64` together for Android. The option `--architecture` names others, and it repeats. Every architecture of a request is resolved on its own, with its own SDK slice, and the backend joins them into one product, such as one APK with every ABI.
 
 A backend and an engine port are separate extensions of the tooling, which register through the entry point groups `haylen.backends` and `haylen.engine_ports`. The registry matches a target with the port that builds its engine by their system, environment, toolchain, binary interfaces and capabilities, never by their names, as the [build guide](build.md) explains. The core of the tooling names no platform, so a new platform is a backend and an engine port that someone installs, without a change to the commands.
 
@@ -68,7 +68,7 @@ haylen app verify ~/apps/my-game --target web --config Release
 
 The option `--config` picks the configuration of the app: `Debug` ships the package as it is, and `Release` ships the protected release with the bootstrap of the app, as [release builds](#release-builds) explain. The option `--engine-config` picks the configuration of the engine SDK, `Release` by default, and `Debug` only to debug the engine itself, because it runs many times slower. Before the preparation, the shaders of the app whose sources changed compile again, as the command `app shaders` does.
 
-A step never builds the engine. When no installed SDK of the current engine sources holds an architecture of the target in the configuration of the engine, because none was built or it was built from other sources or in another configuration, the commands that prepare or build the app first build that SDK through the engine port, as `haylen sdk build` does, in a step of its own that says so and how long a first build takes. The commands `project inspect` and `app verify` never build, and they stop with the `haylen sdk build` command that makes the SDK. An SDK of the current sources that serves no app of the target, such as one that runs only on newer systems than the app, stops every command with the reason.
+The build of an app never compiles the engine, which always comes from an installed SDK. When no installed SDK of the current engine sources holds an architecture of the target in the configuration of the engine, because none was built or it was built from other sources or in another configuration, the commands that prepare or build the app first build that SDK through the engine port, as `haylen sdk build` does, in a step of its own that says so and how long a first build takes. The commands `project inspect` and `app verify` never build, and they stop with the `haylen sdk build` command that makes the SDK. An SDK of the current sources that serves no app of the target, such as one that runs only on newer systems than the app, stops every command with the reason.
 
 ## Platform projects
 
@@ -159,7 +159,7 @@ The command `haylen devices` lists the identifiers that `--device` takes. Where 
 
 #### While the app runs
 
-Once the app runs, `app run` prints a summary of the app, the device and the configuration, and the keys that act on the app, one per line. The log of the app follows.
+Once the app runs, `app run` prints a summary of the app, the device and the configuration, in development also how saved files reach the app and the port of `--debugger-port` that an editor attaches its [debugger](debugger.md) to, and the keys that act on the app, one per line. The log of the app follows.
 
 ```text
 ==> Preparing the project of "My Game" for "ios-simulator" in the "Debug" configuration
@@ -170,6 +170,7 @@ Once the app runs, `app run` prints a summary of the app, the device and the con
   Device         iPhone 17e, simulator
   Configuration  "Debug", with the engine in "Release"
   Hot reload     Every file saved in the app reloads in it
+  Debugger       Attach an editor to port 4711 of this machine
 
   r  Reload what changed
   R  Restart the app
@@ -264,7 +265,7 @@ The Apple backend serves macOS, Mac Catalyst, iOS and iPadOS, tvOS and visionOS,
 | `HaylenNativeSymbols.mm` | The table of the symbols of the static [native libraries](#native-libraries), when the app links any. |
 | `extensions/<name>/` | The `Info.plist` and entitlements of each app extension of the plugins. |
 
-The build settings of the app target come from the backend: C++20, the bridging header, the device families of the platform, the ad hoc signing of what runs on this Mac, the hardened runtime of macOS and the architectures of the product. The `buildSettings` of the `apple` section come last, so they win over them, except the settings that the backend owns, whose values come from the SDK, the target or `haylen.json`: the architectures, `OTHER_LDFLAGS`, the signing, the `Info.plist` file, the deployment targets that `minimumSystemVersion` settles and the name, the bundle identifier and the versions of the app. A key of those stops the preparation with a sentence that names it and where its value comes from, so no setting cancels a constraint of the SDK or the backend. Device builds sign automatically with the development team of `platforms.apple.team`, or else with the team that the variable `HAYLEN_APPLE_TEAM` names, such as in continuous integration, and a device build without either stops with a sentence that names both.
+The build settings of the app target come from the backend: C++20, the bridging header, the device families of the platform, the ad hoc signing of what runs on this Mac, the hardened runtime of macOS and the architectures of the product. The `buildSettings` of the `apple` section come last, so they win over them, except the settings that the backend owns, whose values come from the SDK, the target or `haylen.json`: the architectures, the SDK, the device families and the Mac Catalyst support of the target, `OTHER_LDFLAGS`, the signing, the `Info.plist` file, the deployment targets that `minimumSystemVersion` settles and the name, the bundle identifier and the versions of the app. A key of those stops the preparation with a sentence that names it and where its value comes from, so no setting cancels a constraint of the SDK or the backend. Device builds sign automatically with the development team of `platforms.apple.team`, or else with the team that the variable `HAYLEN_APPLE_TEAM` names, such as in continuous integration, and a device build without either stops with a sentence that names both.
 
 The `Info.plist` of each platform in the template is complete. It holds `$(HAYLEN_DISPLAY_NAME)`, `$(MARKETING_VERSION)` and the other build settings for the values of `haylen.json`, and visible defaults such as the scene manifest, `ITSAppUsesNonExemptEncryption`, the statement on export compliance that App Store Connect asks about, and `UIApplicationSupportsIndirectInputEvents`, through which UIKit hands the mouse and the trackpad of an iPad or a Mac to the app as a pointer. The keys of the engine join them:
 
@@ -371,13 +372,13 @@ The resource script `resources/app.rc` reads the values of `haylen.json` from `H
 | --- | --- |
 | `CompanyName` | `company` of `haylen.json`. |
 | `FileDescription`, `ProductName` | `name`. |
-| `FILEVERSION`, `PRODUCTVERSION` | The numbers of `version` followed by `build`, so the version `1.2` of build 7 is `1.2.0.7`. The resource holds numbers up to 65535, and a larger one stops the build with a message that names it. |
+| `FILEVERSION`, `PRODUCTVERSION` | The numbers of `version` followed by `build`, so the version `1.2` of build 7 is `1.2.0.7`. The resource holds numbers up to 65535, and a larger one stops the preparation with a message that names it. |
 | `FileVersion`, `ProductVersion` | `version`. |
 | `LegalCopyright` | `copyright`. |
-| `OriginalFilename` | The executable. |
+| `InternalName`, `OriginalFilename` | The executable. |
 | `Comments` | `description`. |
 
-The application manifest of the template declares Windows 10 and 11, the Common Controls of version 6, UTF-8 as the code page, per-monitor DPI awareness and no elevation, and the build merges it with the manifest of the engine. The engine needs the Common Controls of version 6 and UTF-8 as the code page of the process, as [the Windows section](embedding.md#windows) of the embedding guide explains. The executable builds in the Windows subsystem, without a console, and links the C runtime of the configuration of the engine SDK. The window of the app and its taskbar button take the first icon of the executable, the one that Explorer shows. The icon is the gradient symbol on a white plate with rounded corners and a light gray edge, every size drawn from the full-size art.
+The application manifest of the template declares Windows 10 and 11, per-monitor DPI awareness and no elevation, and the build merges it with the manifest of the engine, which selects the Common Controls of version 6 and UTF-8 as the code page. The engine needs the Common Controls of version 6 and UTF-8 as the code page of the process, as [the Windows section](embedding.md#windows) of the embedding guide explains. The executable builds in the Windows subsystem, without a console, and links the C runtime of the configuration of the engine SDK. The window of the app and its taskbar button take the first icon of the executable, the one that Explorer shows. The icon is the gradient symbol on a white plate with rounded corners and a light gray edge, every size drawn from the full-size art.
 
 ### Linux
 
@@ -394,7 +395,7 @@ The backend completes `resources/app.desktop` and `resources/app.metainfo.xml` o
 | File | Values of `haylen.json` |
 | --- | --- |
 | `app.desktop` | `Name` from `name`, `Comment` from `description`, `Exec` from the executable, `Icon` and `StartupWMClass` from `identifier`, and the URL schemes of the plugins in `MimeType`. |
-| `app.metainfo.xml` | `id` from `identifier`, `name`, `summary` and the first paragraph of `description` from `description`, `developer` with the name of `company` and the identifier without its last part as its id, the `launchable` desktop entry, and the `homepage` URL from `website`. |
+| `app.metainfo.xml` | `id` from `identifier`, `name`, and `summary` and a `description` of one paragraph from `description`, `developer` with the name of `company` and the identifier without its last part as its id, the `launchable` desktop entry, and the `homepage` URL from `website`. |
 
 The metainfo of the template declares the `CC0-1.0` license for the metadata itself, a proprietary license for the app and an empty content rating, which the app changes through its own file. The desktop entry puts the app among games. The command `appstreamcli validate` checks the metainfo, which needs a `website` in `haylen.json` to pass, and `desktop-file-validate` checks the desktop entry.
 
@@ -435,7 +436,7 @@ The command `app sign` creates the upload key that signs the release builds of a
 | `name` | `CN=Upload, OU=Upload, O=Upload, L=Upload, ST=Upload, C=BR` | The distinguished name of the certificate. |
 | `force` | none | The value `true` replaces a key that the app already has. |
 
-The command runs `keytool -genkeypair` for an RSA key in a PKCS12 keystore, then exports the certificate as PEM, which is the file that a store asks for when it registers or resets an upload key. The command finds `keytool` in the JDK of `JAVA_HOME`, or else on `PATH`. The key goes into `platform/android/keystore/` of the app as `<kind>.jks`, `<kind>.pem` and `<kind>.properties`, which only its owner reads. The command refuses to replace a key of the app without `--option force=true`, since an app signed with another key cannot update the installed one. The `.gitignore` of the app keeps the folder out of the repository.
+The command runs `keytool -genkeypair` for an RSA key in a PKCS12 keystore, then exports the certificate as PEM, which is the file that a store asks for when it registers or resets an upload key. The command finds `keytool` in the JDK of `JAVA_HOME`, or else on `PATH`. The key goes into `platform/android/keystore/` of the app as `<kind>.jks`, `<kind>.pem` and `<kind>.properties`, and only the owner of the properties file, which holds the passwords, can read it. The command refuses to replace a key of the app without `--option force=true`, since an app signed with another key cannot update the installed one. The `.gitignore` of the app keeps the folder out of the repository.
 
 The Android backend signs each build type with the key that `platform/android/keystore/<kind>.properties` describes, which names the keystore next to it, and hands the key to Gradle through the environment of the build:
 
@@ -543,7 +544,7 @@ The generated `settings.gradle.kts` includes the packs, and the `assetPacks` of 
 
 ### Packs that stores deliver
 
-The named packs of `content.delivery` become asset packs of Google Play when a plugin of the app delivers them. Such a plugin gives the contribution `assetPacks` for `android` in its `plugin.json`, such as the plugin `play-asset-delivery` that [haylen-org](https://github.com/haylen-org) publishes:
+The named packs of `content.delivery` become asset packs of Google Play when a plugin of the app delivers them. Such a plugin, such as one that brings Play Asset Delivery, gives the contribution `assetPacks` for `android` in its `plugin.json`:
 
 - The preparation writes an asset pack for every named pack into `asset-packs/` of the generated project, with the shards of the pack at the root of its assets.
 - The pack takes the name of the named pack, with every dash and dot as an underscore, and with `pack_` in front of a name that starts with a digit.
@@ -552,7 +553,7 @@ The named packs of `content.delivery` become asset packs of Google Play when a p
 
 Without such a plugin, the named packs stay for the content server. The build of such a release makes the bundle next to the APK. The command `app run`, and `app package` with the format `apks`, install it with bundletool in the local testing mode of Google Play, signed with the upload key of the app, so the library of Play delivers each pack on the device as the store would. The format `bundle` of `app package` copies the bundle for the upload to Google Play. The verification of the Release build fails when the bundle lacks a shard of a pack.
 
-On iOS, tvOS, visionOS and macOS the named packs become asset packs of Background Assets, which the App Store hosts. That happens when a plugin of the app gives the contribution `assetPacks` for the Apple platforms, such as the plugin `background-assets` that [haylen-org](https://github.com/haylen-org) publishes:
+On iOS, Mac Catalyst, tvOS, visionOS and macOS the named packs become asset packs of Background Assets, which the App Store hosts. That happens when a plugin of the app, such as one that brings Background Assets, gives the contribution `assetPacks` for the Apple platforms:
 
 - A Release build packs each named pack with `xcrun ba-package` into `products/asset-packs/<pack>.aar` of the product, with the shards of the pack in a folder named after it.
 - Packs that the plugin lists in `prefetch` download with the install and every update, and the others when the app asks for them.
@@ -620,7 +621,7 @@ The undefined symbols of `libhaylen.a` show which of those APIs the engine and i
 
 | Category | Reason | Callers |
 | --- | --- | --- |
-| File timestamp, `NSPrivacyAccessedAPICategoryFileTimestamp` | `C617.1`: the metadata of files inside the container of the app. | `stat`, `fstat` and `lstat` from the file layer of libuv, whose modification time Varn's `fs.stat` reports, and from Poco, OpenSSL, libsodium, libzip, pugixml, miniaudio and the log backend. |
+| File timestamp, `NSPrivacyAccessedAPICategoryFileTimestamp` | `C617.1`: the metadata of files inside the container of the app. | `stat`, `fstat` and `lstat` from the file layer of libuv, whose modification time Varn's `fs.stat` reports, and from Poco, OpenSSL, libzip, pugixml, miniaudio, SDL, the log backend and the content store of the engine. |
 | System boot time, `NSPrivacyAccessedAPICategorySystemBootTime` | `35F9.1`: time between events of the app and timers. | `mach_absolute_time` from the clock of SDL, the timers of libuv and the audio of miniaudio. |
 | Disk space, `NSPrivacyAccessedAPICategoryDiskSpace` | `E174.1`: whether there is room to write files. | `statfs` from the file systems of libuv and Poco, which report the free space of a disk. |
 
@@ -711,6 +712,8 @@ The folder `engine/platform/android` is a Gradle project with five modules. The 
 - `HaylenAudioFocus`, which holds the audio focus in the foreground and while the app plays in the background, `HaylenNetwork`, which follows the network while the app holds the permission `ACCESS_NETWORK_STATE`, `HaylenBattery`, `HaylenPowerSaving` and `HaylenTimeZone`, which follow the battery, the battery saver and the time zone, and `HaylenAccessibility`, which follows the accessibility settings.
 - `HaylenMediaSession`, the now-playing controls with their media notification, and `HaylenPlaybackService`, the foreground service that keeps an app that plays in the background in the foreground while it plays.
 - `HaylenAccessibilityTree`, which serves the elements of the UI to TalkBack and the other accessibility services.
+- `HaylenDisplays`, which follows the displays of the device, `HaylenOutputs`, which shows the outputs of the app on the other displays, and `HaylenFold`, which reports the fold of foldable and dual-screen devices through Jetpack WindowManager.
+- `HaylenPermissions` with `HaylenPermission`, which read and ask for the permissions of `system.permission` through one launcher of the Activity Result API.
 - `HaylenBridge` for the platform bridge, and the host of the Android parts of [plugins](../platform/plugins.md#the-android-part): `HaylenPluginProvider`, which loads them when the process starts, `HaylenPlugin`, `HaylenPluginContext`, `HaylenRequirements`, `HaylenOverlay` with its `HaylenPlacement`, the screens of plugins with `HaylenScreens` and `HaylenScreen`, and the streams `HaylenVideoStream` and `HaylenAudioStream`.
 - The splash themes, the R8 rules for the classes that C++ calls by name, and the Kotlin HTTP transport of Varn.
 
@@ -819,17 +822,18 @@ Each backend writes the splash into its generated project:
 
 ## Development mode
 
-Development mode is [hot reload](../core/lua.md#hot-reload): the running app reloads the files saved in its folder. The runtime turns it on only when its command line asks for it:
+Development mode is [hot reload](../core/lua.md#hot-reload): the running app reloads the files saved in its folder. The runtime turns it on only when its command line asks for it. The command line of the runtime takes these options:
 
 | Option | Meaning |
 | --- | --- |
 | `--dev` | Runs in development, watching the package folder. |
 | `--dev-server <address>` | Runs in development and connects to the development server at that WebSocket address, which pushes the saved files. The player then takes the saved files from the server alone and watches no folder, so a save never reloads twice. |
 | `--native <folder>` | Adds a folder that `native.load` searches before the folders of the platform. It may repeat. |
+| `--link <link>` | The link that opened the app. The process hands it to the instance of the app that runs already and ends, or plays the app with it, as [links on Windows and Linux](#links-on-windows-and-linux) describe. |
 | `--graphics-api <name>` | The graphics API that the window tries first, such as `vulkan`, before the other APIs of the build. It replaces the `window.graphicsApis` of `haylen.json`, and the web page passes the API that its address names the same way. A name that is not a graphics API fails the app, whose error screen, log and page show the reason, and an API that the build lacks logs a warning. |
-| The first argument that is not an option | The package to play, a folder or a zip. Without one, the runtime plays the package bundled with the app. |
+| The first argument that is not an option | The package to play, a folder or a zip. Without one, the runtime plays the package bundled with the app. A release build ignores it with a warning, since it plays only its own release. |
 
-Other options are ignored, because systems add their own, such as the ones that Xcode passes to the macOS apps it launches. Android starts apps without a command line. So a debuggable Android app takes the address of the development server from the extra `dev.haylen.developmentServer` of the intent that launched it, and an app that is not debuggable never reads it. A release build, which carries the bootstrap of its app, ignores `--dev` and `--dev-server` with a warning, since a protected release never runs in development. A development server outside the device is on the local network, which an app that targets Android 17 reaches only once the person grants it. So the development session asks with the prompt of the system before it connects, and logs why it does not connect when the person refuses. The address that `adb reverse` forwards belongs to the device itself and needs no permission.
+Other options are ignored, with the value that follows an option of one dash, because systems add their own, such as the ones that Xcode passes to the macOS apps it launches. Android starts apps without a command line. So a debuggable Android app takes the address of the development server from the extra `dev.haylen.developmentServer` of the intent that launched it, and an app that is not debuggable never reads it. A release build, which carries the bootstrap of its app, ignores `--dev` and `--dev-server` with a warning, since a protected release never runs in development. A development server outside the device is on the local network, which an app that targets Android 17 reaches only once the person grants it. So the development session asks with the prompt of the system before it connects, and logs why it does not connect when the person refuses. The address that `adb reverse` forwards belongs to the device itself and needs no permission.
 
 Among the commands of the tooling, only these turn development on:
 
@@ -869,7 +873,7 @@ The file `loader.js` runs when the page loads:
 3. It sets the title and the background, picks the light or the dark look of the splash, and downloads and decodes `splash.<ext>`, the logo of the app or the Haylen symbol, once for both the logo of the splash and the icon of the page. Only then does the content of the splash show, so its first paint already holds the logo, and only then do the runtime and the package start to download. For a transparent app the page itself has no background, so whatever holds the page, such as the page of an editor that embeds it in a frame, shows through the transparent pixels of the canvas. Only the splash keeps the splash background.
 4. It checks for WebAssembly and for WebGPU or WebGL2, and a browser with neither sees a message instead of a blank page. The runtime draws through WebGPU, or through WebGL2 where WebGPU does not start. Add `?graphicsApi=webGpu` or `?graphicsApi=webGl2` to the address to try one of them first, which the loader passes on as `Module.haylen.graphicsApi`. Add `?hosting=worker` to run the app in the [Worker mode](build.md#hosting-the-runtime), a dedicated worker that keeps the page answering whatever the scripts of the app do, which the loader passes on as `Module.haylen.hosting`. Those are the names that `graphics.apiName()` gives the two APIs. Any other name fails the app, and the page shows why.
 5. It downloads `haylen.wasm` with the manifests and the app domain of the protected release, or with `app.zip` in development, behind one progress bar with its percentage. Each download counts the bytes it streams against its `Content-Length`, or against the size in `config.json` when the length is missing or describes compressed bytes. Meanwhile it imports the web module of every plugin from `plugins/<id>/`.
-6. It hands the WebAssembly bytes to the runtime through `Module.instantiateWasm`, which compiles them instead of downloading `haylen.wasm` again, or through `Module.wasmBinary` to the worker of the Worker mode, and it loads `haylen-page.js` instead of `haylen.js` in that mode. It hands the release as `Module.haylen.release`, or the package as `Module.haylen.packageData` in development, then loads `haylen.js`. The runtime opens the [content store](../content/content.md#the-web) of the app before it starts, and the content of the release streams from `app/` as the app needs it. Every file of the page downloads once.
+6. It hands the WebAssembly bytes to the runtime through `Module.instantiateWasm`, which compiles them instead of downloading `haylen.wasm` again, or through `Module.wasmBinary` to the worker of the Worker mode. It hands the release as `Module.haylen.release`, or the package as `Module.haylen.packageData` in development, then loads `haylen.js`, or `haylen-page.js` in the Worker mode. The runtime opens the [content store](../content/content.md#the-web) of the app before it starts, and the content of the release streams from `app/` as the app needs it. Every file of the page downloads once.
 7. Before the app starts, a `Module.preRun` callback holds the start with a run dependency. Meanwhile it calls `load(context)` of every plugin in load order, with the context of `Module.haylen.createPluginContext`, as the [plugin guide](../platform/plugins.md#web) describes. A plugin that fails to import or to load replaces the progress bar with its error, and the app does not start.
 8. `Module.haylen.onSplashEnded` fades the splash out once the runtime ends it, and `Module.haylen.onStarted` tells the page that the app runs. `Module.haylen.onError` writes every error to the console. An error that happens before the app starts replaces the progress bar with the message and the Lua stack trace. Later errors show on the error screen of the runtime.
 

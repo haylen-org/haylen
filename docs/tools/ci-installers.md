@@ -10,7 +10,7 @@ This guide is for developers who ship an app made with Haylen to stores and to p
 - An Android App Bundle signed with the upload key.
 - The web site.
 
-Every step runs the command `haylen` of the engine checkout with `--verbose`. So the log of the job holds the whole output of every tool, which a terminal otherwise keeps in `build/logs`, as the [build guide](build.md#what-the-commands-print) explains.
+Every step that builds runs the command `haylen` of the engine checkout with `--verbose`. So the log of the job holds the whole output of every tool, which a terminal otherwise keeps in `build/logs`, as the [build guide](build.md#what-the-commands-print) explains. A step whose result the next command reads runs it with `--json` instead, which prints the result as one JSON document and the output of the tools on the error output, so the log of the job still holds it.
 
 ## What the workflow builds
 
@@ -133,13 +133,19 @@ jobs:
       - uses: astral-sh/setup-uv@v10.3.3
       - run: brew install ninja
       - uses: actions/cache@v6
+        id: engine
         with:
           path: |
             .cache/cpm
             haylen/.tools
             haylen/build/sdk
           key: haylen-apple-${{ env.HAYLEN_REF }}
+      # Apple builds of the engine precompile the shaders of the renderer with the Metal toolchain, a component of Xcode that a runner image may lack.
+      - name: Install the Metal toolchain
+        if: steps.engine.outputs.cache-hit != 'true'
+        run: xcrun -sdk macosx metal --version > /dev/null 2>&1 || xcodebuild -downloadComponent MetalToolchain
       - name: Build the Apple SDK and the desktop SDK of this Mac, whose content tool builds the releases
+        if: steps.engine.outputs.cache-hit != 'true'
         run: |
           haylen/haylen --verbose sdk build --target macos --target ios --target tvos
           haylen/haylen --verbose sdk build --target player
@@ -450,6 +456,7 @@ jobs:
       # The desktop SDK of this system holds the content tool of the release.
       - run: sudo apt-get update && sudo apt-get install -y ninja-build libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev libegl-dev libwayland-dev libxkbcommon-dev libdbus-1-dev libibus-1.0-dev libudev-dev
       - uses: actions/cache@v6
+        id: engine
         with:
           path: |
             .cache/cpm
@@ -457,6 +464,7 @@ jobs:
             haylen/build/sdk
           key: haylen-android-${{ env.HAYLEN_REF }}
       - name: Build the Android SDK and the desktop SDK of this system
+        if: steps.engine.outputs.cache-hit != 'true'
         run: |
           haylen/haylen --verbose sdk build --target android
           haylen/haylen --verbose sdk build --target linux
@@ -496,6 +504,7 @@ jobs:
       - uses: ilammy/msvc-dev-cmd@v1.13.0
       - run: pip install ninja
       - uses: actions/cache@v6
+        id: engine
         with:
           path: |
             .cache/cpm
@@ -503,6 +512,7 @@ jobs:
             haylen/build/sdk
           key: haylen-windows-${{ env.HAYLEN_REF }}
       - name: Build the desktop SDK of Windows
+        if: steps.engine.outputs.cache-hit != 'true'
         shell: pwsh
         run: haylen\haylen.cmd --verbose sdk build --target windows
       - name: Restore the content keys of the app and the code signing certificate
@@ -543,6 +553,7 @@ jobs:
       # The AppImage generator of CPack needs a newer CMake than the one of the runner.
       - run: pip install cmake
       - uses: actions/cache@v6
+        id: engine
         with:
           path: |
             .cache/cpm
@@ -550,6 +561,7 @@ jobs:
             haylen/build/sdk
           key: haylen-linux-${{ env.HAYLEN_REF }}
       - name: Build the desktop SDK of Linux
+        if: steps.engine.outputs.cache-hit != 'true'
         run: haylen/haylen --verbose sdk build --target linux
       - name: Restore the content keys of the app
         env:
@@ -581,6 +593,7 @@ jobs:
       # The desktop SDK of this system holds the content tool of the release.
       - run: sudo apt-get update && sudo apt-get install -y ninja-build libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev libegl-dev libwayland-dev libxkbcommon-dev libdbus-1-dev libibus-1.0-dev libudev-dev
       - uses: actions/cache@v6
+        id: engine
         with:
           path: |
             .cache/cpm
@@ -588,6 +601,7 @@ jobs:
             haylen/build/sdk
           key: haylen-web-${{ env.HAYLEN_REF }}
       - name: Build the web SDK and the desktop SDK of this system
+        if: steps.engine.outputs.cache-hit != 'true'
         run: |
           haylen/haylen --verbose sdk build --target web
           haylen/haylen --verbose sdk build --target linux
@@ -612,7 +626,7 @@ jobs:
 
 ## How the jobs work
 
-**The engine.** Each job checks out the app, and next to it, in `haylen/`, the engine at `HAYLEN_REF`. It runs the command `haylen` from there through uv, which `setup-uv` installs, so the build products land in `haylen/build/apps/<app>-<hash>/` and the engine SDKs in `haylen/build/sdk/`. The builds of apps never compile the engine, so each job first builds the SDKs that its target needs with `haylen sdk build`, which compiles nothing when the cache already holds an SDK of the same engine sources. The caches keep the SDKs between runs of the same engine, with the sources of the dependencies and the tools that the command downloads or builds, such as the shader compiler. The job `engine-apple` builds the Apple SDK once for the three Apple jobs, and the desktop SDK that holds the content tool of this Mac.
+**The engine.** Each job checks out the app, and next to it, in `haylen/`, the engine at `HAYLEN_REF`. It runs the command `haylen` from there through uv, which `setup-uv` installs, so the build products land in `haylen/build/apps/<app>-<hash>/` and the engine SDKs in `haylen/build/sdk/`. The builds of apps never compile the engine itself, so each job first builds the SDKs it needs with `haylen sdk build`: the SDK of its target, and the desktop SDK of the runner, whose content tool builds the protected release. The command `sdk build` compiles the engine in a build tree under `haylen/build/engine`, which the caches do not keep, so the step runs only when the cache of the engine at `HAYLEN_REF` restored no SDKs. The caches keep the SDKs between runs of the same engine, with the sources of the dependencies and the tools that the command downloads or builds, such as the shader compiler. The job `engine-apple` builds the Apple SDK once for the three Apple jobs, and the desktop SDK that holds the content tool of this Mac, after it installs the Metal toolchain of Xcode, which the Apple builds of the engine need.
 
 **Stable shards.** A runner starts without the release before it in its build folder. Stores compare files, so a job that keeps the shards of unchanged content byte for byte keeps the patches of stores small. Such a job first fetches the last build that shipped, such as the artifact of the last tagged run, the depots of the live Steam build or an unpacked APK of the store. Its build or its package then names that folder with `--previous-release`, such as `haylen app package <app> --target <target> --format steam --previous-release <folder>`, so the release of the build follows the release that shipped, as the [content guide](../content/content.md#building-content) describes. Without it a release still installs and updates, but the files that stores compare change more than the content did.
 

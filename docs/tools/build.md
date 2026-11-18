@@ -93,7 +93,7 @@ A backend builds only on the hosts it declares, so the targets of macOS, Windows
 
 ### Tools that the tooling brings
 
-The tooling downloads, or builds, the other tools the first time a command needs them, through the classes of `tools/haylen/toolchains`. It keeps them in `.tools/` at the root of the repository. Each tool is pinned to one version in its class, and a new pin downloads its own copy. The downloads of the shader compiler, Gradle, XcodeGen, bundletool, Inno Setup and the AppImage tools are also pinned by their SHA-256 hashes. A download whose hash differs is deleted and stops the command. A zip unpacks into a folder next to its own, which moves into place only once it is complete, so a command that stops while it unpacks leaves no tool that looks installed.
+The tooling downloads, or builds, the other tools the first time a command needs them, through the classes of `tools/haylen/toolchains` and, for the tools of the installers, of the desktop backend in `tools/haylen/platforms/desktop`. It keeps them in `.tools/` at the root of the repository. Each tool is pinned to one version in its class, and a new pin downloads its own copy. The downloads of the shader compiler, Gradle, XcodeGen, bundletool, Inno Setup and the AppImage tools are also pinned by their SHA-256 hashes. A download whose hash differs is deleted and stops the command. A zip unpacks into a folder next to its own, which moves into place only once it is complete, so a command that stops while it unpacks leaves no tool that looks installed.
 
 | Tool | Version | Folder | Used by |
 | --- | --- | --- | --- |
@@ -150,7 +150,7 @@ The engine port writes `haylen-sdk.json` into the folder of the SDK, which the s
 | `format` | The version of the format of the manifest, `1`. |
 | `port`, `portVersion` | The engine port that built the SDK and its version. |
 | `engineVersion` | The version of `engine/VERSION`. |
-| `revision` | A hash of the engine sources that built the SDK, which changes with any file of the engine. |
+| `revision` | A hash of the engine sources that built the SDK, which changes with any file of `engine/` that reaches an SDK. The tests and the benchmarks never reach one, so a change to `engine/tests` or `engine/bench` keeps every SDK current. |
 | `configuration` | `Debug` or `Release`. |
 | `slices` | One slice per system and environment, each with its `system`, `environment` (`host`, `device` or `simulator`), `architectures`, `abi`, `toolchain`, the C++ `runtime` it links, its `minimumSystemVersion`, its `graphicsApis`, the `capabilities` of the system that the engine uses there, such as `dynamicLibraries`, and its `files` by name. |
 | `hostTools` | The programs that run on the machine that builds apps, never on the target, each with its `name`, `system`, `architecture` and `path`, such as the content tool `haylen-content`. |
@@ -162,8 +162,8 @@ A port keeps the slices of its folder that the same engine sources built in the 
 | --- | --- | --- |
 | `desktop` | `player`, `windows`, `linux` | One slice of this machine, such as `macos-arm64`, with the CMake package that `find_package(haylen)` imports, the Lua player object, and the desktop player `haylen` and the content tool `haylen-content` as host tools. It builds only for the machine it runs on. |
 | `apple` | `macos`, `catalyst`, `ios`, `ios-simulator`, `tvos`, `tvos-simulator`, `visionos`, `visionos-simulator` | `Haylen.xcframework` with the engine and the runtime of every slice in its `libhaylen.a`, `HaylenPlayer.xcframework` with the Lua player in its `libhaylen-player.a`, both signed ad hoc, the headers, the CMake package of native libraries, `haylen-apple.json` with the settings of Apple projects, the privacy manifest of the engine and the Swift helpers of the bridge. |
-| `android` | `android` | One slice per ABI under `abis/` with the CMake package that the native code of apps links and the player library `libhaylen.so`, and the Android libraries of the engine in the local Maven repository `maven/`, whose `haylen` library carries the player of every ABI of the SDK. |
-| `web` | `web` | The web player, which runs any package that its page hands it, with the processor of its audio output and the worker of its content store, and the Emscripten CMake package that release runtimes and C++ apps link. |
+| `android` | `android` | One slice per ABI, with the CMake package that the native code of apps links under `abis/` and the player library `libhaylen.so` under `jniLibs/`, and the Android libraries of the engine in the local Maven repository `maven/`, whose `haylen` library carries the player of every ABI of the SDK. |
+| `web` | `web` | The web player, which runs any package that its page hands it, with the processor of its audio output, the worker of its content store and the page side and the worker of the [Worker mode](#hosting-the-runtime), and the Emscripten CMake package that release runtimes and C++ apps link. |
 
 Each target finds its slice after the requirements of its plugins are known and before its project is generated. A slice serves a target only when its system, environment, architecture, binary interface, toolchain and configuration match, the current engine sources built it, it runs on the oldest system that the app supports and it holds the graphics APIs that the app asks for. When no installed SDK of the current engine sources holds an architecture of the target in the configuration of the engine, the commands that prepare or build the app first build its SDK through the engine port, as `haylen sdk build` does, in a step that says why and how long a first build takes, which is from 15 minutes to an hour, while a build of changed sources compiles only what changed. The commands that only read a product, `project inspect` and `app verify`, never build, and they stop with the error `incompatibleSdk`, which names the `haylen sdk build` command to run, as every command does for an SDK of the current sources that serves no app of the target, such as one that runs only on newer systems than the app. The command `app build` takes the SDK of `--engine-config`, `Release` by default.
 
@@ -181,9 +181,9 @@ The tooling keeps every build tree of the engine under `build/engine/`, apart fr
 | `build/engine/web-gpu-tests-<config>`, `build/engine/android-gpu-tests-<abi>-<config>`, `build/engine/<platform>-gpu-tests-<config>` | The GPU tests of the web, of Android and of the Apple platforms. |
 | `build/engine/<platform>-ui-tests` | The runner of the UI tests on an Apple simulator. |
 | `build/engine/consumers/<mode>-<config>` | The consumer project of [engine consumers](#engine-consumers). |
-| `build/engine/desktop-<config>`, `build/engine/web-<config>`, `build/engine/apple-<slice>-<architecture>-<config>`, `build/engine/android-<abi>-<config>` | The trees of the engine ports, which `haylen sdk build` reuses. |
+| `build/engine/desktop-<config>`, `build/engine/web-<config>`, `build/engine/apple-<slice>-<architecture>-<config>`, `build/engine/android-<abi>-<config>` | The trees of the engine ports, which `haylen sdk build` reuses. The Apple port joins the architectures of a slice in `build/engine/apple-<slice>-<config>`, and the Android port builds its Android libraries with Gradle in `build/engine/android-libraries-<config>`. |
 
-Executables land in `bin/<target>/` inside a tree, or in `bin/` for the tests. A tree configures again when CMake never configured it, its last configure failed, or another pin of the shader compiler or another uv configured it, so its shaders and its tests never use an old tool. CMake cannot change the generator of a tree, which is why the Xcode generator gets a tree of its own.
+The `haylen` player and every app of [`haylen_add_app`](#haylen_add_app) land in `bin/<target>/` inside a tree, and the other executables, such as the tests, the headless player, the content tool and the benchmarks, land in `bin/`. A tree configures again when CMake never configured it, its last configure failed, or another pin of the shader compiler or another uv configured it, so its shaders and its tests never use an old tool. CMake cannot change the generator of a tree, which is why the Xcode generator gets a tree of its own.
 
 The other folders of `build/` belong to apps, SDKs and logs:
 
@@ -191,7 +191,8 @@ The other folders of `build/` belong to apps, SDKs and logs:
 | --- | --- |
 | `build/sdk/<port>-<config>/` | The SDKs that [engine SDKs](#engine-sdks) describe. |
 | `build/apps/<app>-<hash>/` | Everything that the tooling builds for an app: one folder per product, such as `ios-simulator-debug`, with its generated project, its build trees, its products and its staged package, as the [distribution guide](distribution.md) explains. |
-| `build/tests/` | The copies of the apps of the checks of the web. |
+| `build/plugin-repositories/` | The checkouts of the plugins that apps take from git repositories, at the commits that `haylen.lock` pins. |
+| `build/tests/` | The copy of the app of the memory check of the web. |
 | `build/logs/` | The log of each command. |
 
 ## Engine commands
@@ -286,8 +287,8 @@ The tooling sets these cache variables for you. A project that adds the engine i
 | `HAYLEN_SHADERC_CACHE` | the CPM source cache, or `tools` of the build tree without one | The folder that keeps the compilers that the configure provides, so build trees share them. |
 | `HAYLEN_GRAPHICS_APIS` | every API of the platform | The graphics APIs whose GPU devices the static library `haylen-gpu` compiles, as a CMake list of the names of `gpu::Device::kApiNames`. The default is `metal` on Apple platforms, `direct3D12;direct3D11;vulkan;openGl` on Windows, `vulkan;openGl` on Linux, `vulkan;openGlEs` on Android and `webGpu;webGl2` on the web, and a name of another platform is an error. The engine includes the `device.cmake` of the folder of each device under `engine/src/gpu`, and a name whose folder holds no `device.cmake` stops the configuration. The class `gpu::DeviceFactory` makes the devices in the default order of the platforms, whatever the order of the list, and the shaders of the engine carry the shader languages of the APIs of the list. |
 | `HAYLEN_PORT_DIR` | empty | The folder of a [port](../platform/ports.md) of the engine to a platform that the repository does not hold, outside the repository. Its `port.cmake` describes the platform, the runtime that replaces the platform layer and the services, and the GPU device of the API `port` with its shader tool. The engine then builds for the platform of the port, and `HAYLEN_GRAPHICS_APIS` defaults to `port` and the APIs of the engine that the port names. |
-| `HAYLEN_BUILD_PLAYER` | on when the engine is the top-level project | Builds the `haylen` player: the executable on desktop and web, and the shared library of `HaylenActivity` on Android. |
-| `HAYLEN_BUILD_TESTS` | on when the engine is the top-level project | Builds the tests on desktop. |
+| `HAYLEN_BUILD_PLAYER` | on when the engine is the top-level project | Builds the `haylen` player: the executable on desktop, on the web and on the platform of a port, and the shared library of `HaylenActivity` on Android. |
+| `HAYLEN_BUILD_TESTS` | on when the engine is the top-level project | Builds the tests on desktop, and the GPU tests alone on the web, Android, iOS and tvOS. |
 | `HAYLEN_BUILD_BENCHMARKS` | on when the engine is the top-level project | Builds every benchmark of [`engine bench`](#engine-bench) on desktop. |
 | `HAYLEN_BUILD_TOOLS` | on when the engine is the top-level project | On desktop hosts, builds the content tool `haylen-content` and its library `haylen-content-tool`. The tests link that library, so they build it too. |
 | `HAYLEN_BUILD_SDK` | off | Merges the engine into the SDK that `cmake --install --component haylen-sdk` installs, which the engine ports turn on. |
@@ -308,7 +309,7 @@ Every CMake target, project and install component uses dashes, such as `haylen-e
 The file `engine/CMakeLists.txt` sets two things for the engine and its dependencies in every configuration:
 
 - The targets compile without the scan for C++ modules, through `CMAKE_CXX_SCAN_FOR_MODULES`, since neither the engine nor its dependencies use modules. So each source compiles in one step, without a second pass of the preprocessor before it.
-- MSVC writes the debug information of Debug builds into each object, through `CMAKE_MSVC_DEBUG_INFORMATION_FORMAT`, instead of one PDB file that every compile of a target writes. So parallel compiles never wait for that file, and a compiler cache can keep the objects. The linker still writes the PDB of each program.
+- MSVC writes the debug information of Debug and RelWithDebInfo builds into each object, through `CMAKE_MSVC_DEBUG_INFORMATION_FORMAT`, instead of one PDB file that every compile of a target writes. So parallel compiles never wait for that file, and a compiler cache can keep the objects. The linker still writes the PDB of each program.
 
 A compiler cache, such as ccache, speeds up builds that compile the same sources again. CMake runs every compile through the launcher that the environment variables `CMAKE_C_COMPILER_LAUNCHER`, `CMAKE_CXX_COMPILER_LAUNCHER`, `CMAKE_OBJC_COMPILER_LAUNCHER` and `CMAKE_OBJCXX_COMPILER_LAUNCHER` name when it configures a build tree, so the commands of `haylen` use a cache once they name it:
 
@@ -362,7 +363,7 @@ A patched package, such as SDL, keys its place in the cache with `haylen_patched
 | --- | --- | --- |
 | nlohmann/json | 3.12.0 | Added first, so Varn reuses it and the build holds one copy. |
 | Varn | commit `e2d100e` | The Lua runtime, the event loop, the worker pools and the modules `async`, `http`, `socket`, `json`, `fs`, `zip`, `crypto` and the others. `VARN_TARGET` is `cli` on desktop and Apple platforms, `android` on Android, `wasm` on the web and `port` for a port, which builds the drivers that the `VARN_DRIVERS` of its `haylen_port` names with the event loop `PUMP` unless it names another, sets `VARN_THREADS` from its `THREADS`, so the worker pools keep their threads under the pumped loop, and turns `VARN_FFI_CLOSURES` off for a port that does not allow `executableMemory`, so the module `ffi` makes no callback there. The `cli` target builds the static core that the engine links. Varn picks the HTTP client of each platform itself: the Apple one on iOS, tvOS and Mac Catalyst, the Android one on Android and `fetch` on the web. Lua, libuv, zlib, libzip, Poco and OpenSSL come in through Varn, each pinned with its hash, and OpenSSL, which compiles with its own build system, takes the compiler launcher of the build, so a compiler cache keeps its objects too: in its configure on most platforms, through a target that inherits the configuration of Android, whose compiler that configuration derives, and on the command line of `nmake` under MSVC, whose makefile quotes the compiler as one program. ThreadSanitizer builds tell Varn to keep the yields of Lua as exceptions, because the sanitizer cannot follow the `_longjmp` of a yield. Poco forces the library suffixes of its own naming into the CMake cache, such as `md` for the release libraries of MSVC, and Varn gives the cache back the suffixes it had once Poco is configured, so every later library, such as the native libraries that `native.load` finds by name, keeps the name of its target. |
-| SDL | 3.4.20 | zlib license. The release archive of SDL 3, with the [patches](#patches) of `engine/cmake/patches`. It builds as the static library `SDL3-static` with only its video, event and gamepad subsystems, since the engine plays sound through miniaudio and draws through its own devices. It opens the window, runs the frames and reads the input and the controllers on every platform but Android, and UIKit builds leave its gamepads out, since the engine reads the controllers of UIKit through GameController. Linux builds keep X11, Wayland and udev, whose libraries SDL loads when the app starts. |
+| SDL | 3.4.20 | zlib license. The release archive of SDL 3, with the [patches](#patches) of `engine/cmake/patches`. It builds as the static library `SDL3-static` with only its video, event and gamepad subsystems, since the engine plays sound through miniaudio and draws through its own devices. It opens the window, runs the frames and reads the input and the controllers on every platform but Android and the platforms of ports, which bring their own platform layer, and UIKit builds leave its gamepads out, since the engine reads the controllers of UIKit through GameController. Linux builds keep X11, Wayland and udev, whose libraries SDL loads when the app starts. |
 | GameActivity | 4.4.2 | Android only, Apache 2.0. The AAR of `androidx.games:games-activity` from Google Maven, pinned by its hash. Its prefab folder holds the static library and the headers of the native side of GameActivity for every ABI, which the runtime links. |
 | stb | commit `d14d46f` | Headers only. The engine compiles `stb_image` and `stb_image_write` alone, which decode and encode images, and none of its readers of fonts. |
 | NanoSVG | commit `239e102` | Headers only. It reads SVG documents into curves and rasterizes vector images. It publishes no releases, so it is pinned to a commit of its default branch. |
@@ -378,7 +379,10 @@ A patched package, such as SDL, keys its place in the cache with `haylen_patched
 | Clipper2 | 2.0.1 | The polygon booleans, offsets and constrained triangulations of `math::Polygon`. A patch includes the header `iterator` in its core header, which uses `std::back_inserter` and which the standard library of Emscripten no longer brings in through another header. |
 | zstd | v1.5.7 | A static library for compressed Tiled layers and for the chunks of protected content. |
 | Monocypher | 4.0.3 | BSD 2-clause or CC0. The authenticated encryption (XChaCha20-Poly1305), the hashes and key derivation (BLAKE2b) and the manifest signatures (Ed25519) of protected content, compiled from its two sources as `haylen-monocypher`. It is audited, has no dependencies and builds the same on every target, the web included. This release fixes a timing leak of its signatures. |
-| GoogleTest | v1.18.0 | Only when the desktop tests build. |
+| Vulkan-Headers | v1.4.367 | Headers only, when `HAYLEN_GRAPHICS_APIS` holds `vulkan`. The Vulkan device compiles against them, so its build needs no Vulkan SDK. |
+| volk | 1.4.350 | When `HAYLEN_GRAPHICS_APIS` holds `vulkan`, compiled as `haylen-volk`. It opens the Vulkan loader of the system when the app starts. |
+| Vulkan Memory Allocator | v3.5.0 | When `HAYLEN_GRAPHICS_APIS` holds `vulkan`, compiled as `haylen-vulkan-memory-allocator`. It allocates the memory of the Vulkan device and finds the functions of Vulkan through volk. |
+| GoogleTest | v1.18.0 | Only when the tests build, on desktop or for the GPU tests of the web, Android, iOS and tvOS. |
 
 Every package is pinned by the URL of a release archive, or of a commit archive for a project without releases, with its hash:
 
@@ -501,11 +505,12 @@ Web builds run on one thread, like Varn. So they need no `SharedArrayBuffer` and
 
 Audio reaches the browser through an `AudioWorkletNode`, which the page feeds over its message port, as the [audio guide](../audio/audio.md#sessions-and-interruptions) describes. Browsers offer `AudioWorklet` only to pages served over https or from localhost. The commands `serve` and `app run --target web` serve on `127.0.0.1` by default, so their pages play sound. Apps run on any other page too, without sound, as the [audio guide](../audio/audio.md#without-an-audio-output) explains.
 
-The link options come from `haylen_link_runtime_platform`:
+The link options of a web runtime come from `haylen_link_runtime_platform` and from the GPU devices:
 
 - Memory growth and a stack of 1 MB.
 - IDBFS for user data.
-- The `emdawnwebgpu` port for WebGPU and WebGL 2, which the GPU devices of `haylen-gpu` hand on.
+- The scripts of the [runtime API](#runtime-api), which `--pre-js` links into the runtime script.
+- The `emdawnwebgpu` port for WebGPU, and WebGL 2 alone through `-sMIN_WEBGL_VERSION=2` and `-sMAX_WEBGL_VERSION=2`, which the GPU devices of `haylen-gpu` hand on.
 
 The engine target adds the native exceptions and the native `longjmp` of WebAssembly, `-fwasm-exceptions` and `-sSUPPORT_LONGJMP=wasm`. Varn compiles Lua as C++, so Lua errors unwind as exceptions and yields jump back to their resume. Every current browser runs both without help from JavaScript.
 
@@ -681,7 +686,7 @@ async function save(path, content) {
 
 ### Hosting the runtime
 
-One runtime plays one app at a time, and a page holds one runtime, since the runtime keeps its state in the global `Module` of the page. Two players coexist only in two frames or windows of their own, each with its own runtime. A page that names `Module.haylen.storageNamespace` before the runtime loads, such as `project-42`, keeps the user data of its apps in the IndexedDB database `/persistent/project-42`, apart from every other namespace and from pages without one, and the editor deletes the data of a project with `indexedDB.deleteDatabase("/persistent/project-42")` while no runtime uses it. A namespace is 1 to 64 letters, digits, dots, dashes and underscores.
+One runtime plays one app at a time, and a page holds one runtime, since the runtime keeps its state in the global `Module` of the page. Two players coexist only in two frames or windows of their own, each with its own runtime. A page that names `Module.haylen.storageNamespace` before the runtime loads, such as `project-42`, keeps the user data of its apps in the IndexedDB database `/persistent/project-42`, apart from every other namespace and from pages without one, and the editor deletes the data of a project with `indexedDB.deleteDatabase("/persistent/project-42")` while no runtime uses it. A namespace is 1 to 64 letters, digits, dots, dashes and underscores, and it starts with a letter or a digit.
 
 An editor runs the runtime in the Worker mode, in a dedicated worker that it ends when the code of a project stops answering, or in a frame of its own. A page asks for the Worker mode with `Module.haylen.hosting = "worker"` and loads `haylen-page.js`, the page side of the runtime, instead of the runtime script:
 
