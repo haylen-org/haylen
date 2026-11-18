@@ -68,9 +68,7 @@ int MessagePackLua::decodeMessagePackAsync(lua_State* L) {
     // clang-format off
     engine.getJobs().post([promise, bytes = std::move(bytes)] {
         try {
-            core::Json value = core::MessagePack::decode(bytes);
-            lua::JsonConverter::validate(value);
-            promise.resolve(std::move(value));
+            promise.resolve(core::MessagePack::decode(bytes));
         } catch (const std::exception& error) {
             promise.reject(error.what());
         }
