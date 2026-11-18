@@ -1123,6 +1123,7 @@ end)
 | `Raw audio samples come in whole frames, one sample for every channel.` | The raw samples do not fill whole frames. |
 | `Only raw samples take a sample rate and channels, together with their format.` | The function `audio.newSound` got `sampleRate` or `channels` for a file. |
 | `Raw samples are decoded already, so they cannot stream.` | The function `audio.newSound` got raw samples with `stream = true`. |
+| `The Ogg Vorbis file holds a packet larger than 1 MiB, the most that a streamed sound reads at once.` | A voice of a streamed Ogg Vorbis sound reached such a packet. The voice ends, and the engine reports the error. |
 | `The audio bus "<name>" does not exist.` | A call names a bus that does not exist. |
 | `An audio bus needs a non-empty name that no other bus uses, not "<name>".` | The function `audio.createBus` got an empty name or the name of another bus. |
 | `The priority of a voice runs from 0 to 255.` | The function `audio.play` got a `priority` out of range. |
