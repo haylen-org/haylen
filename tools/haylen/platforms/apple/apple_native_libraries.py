@@ -128,7 +128,7 @@ class AppleNativeLibraries:
             entries = ", ".join(f'{{"{symbol}", reinterpret_cast<void*>(&{symbol})}}' for symbol in library.symbols)
             registrations.append(f'    haylen::platform::NativeLibraries::registerLinked("{library.name}", {{{entries}}});')
         lines = [
-            "// Written by the Apple backend from the native libraries of haylen.json and its plugins that the app links statically.",
+            "// Written by the Apple backend from the native libraries of `haylen.json` and its plugins that the app links statically.",
             "#import <Foundation/Foundation.h>",
             "",
             '#include "haylen/platform/NativeLibraries.hpp"',

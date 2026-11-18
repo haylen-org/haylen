@@ -45,7 +45,7 @@ class WebChecks:
         "missing": ["ready", "warned", "runs on"],
     }
     WAKE_LOCK_BROWSERS = {"granted": "grants the wake lock", "refused": "refuses the wake lock", "missing": "has no Screen Wake Lock API"}
-    # The fullscreen check: each promise settles once the window reports its mode, and a change that a newer one replaces fails with the code "denied".
+    # The fullscreen check: each promise settles once the window reports its mode, and a change that a newer one replaces fails with the code `denied`.
     FULLSCREEN_STEPS = ["ready", "entered", "heard", "left", "replaced", "replacing", "ends windowed"]
     # The plugin check: a page whose permissions policy governs one feature that its plugin requires, with an error of the page, a request without a prompt and a permission that the plugin never registered.
     PLUGIN_STEPS = [

@@ -1,6 +1,6 @@
 import Foundation
 
-// The native bridge handlers of the app on macOS, iOS, iPadOS, Mac Catalyst, tvOS and visionOS, which AppBridgeLoader.m registers when the app loads, before the runtime starts.
+// The native bridge handlers of the app on macOS, iOS, iPadOS, Mac Catalyst, tvOS and visionOS, which `AppBridgeLoader.m` registers when the app loads, before the runtime starts.
 @objc final class AppBridge: NSObject {
     struct Greeting: Decodable {
         let name: String
@@ -16,7 +16,7 @@ import Foundation
 
     @MainActor private static var greetings = 0
 
-    // Answers "app.greet" with a greeting for the name that the app sends, and sends "app.greeted" with the count of greetings so far.
+    // Answers `app.greet` with a greeting for the name that the app sends, and sends `app.greeted` with the count of greetings so far.
     @objc static func registerHandlers() {
         HaylenBridge.register("app.greet") { (greeting: Greeting) async throws -> Answer in
             greetings += 1

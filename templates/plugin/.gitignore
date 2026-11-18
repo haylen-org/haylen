@@ -1,4 +1,4 @@
-# The build folders of the Android module and of the CMake project in native/.
+# The build folders of the Android module and of the CMake project in `native/`.
 build/
 # The caches of Gradle, Kotlin and the Android build of C++ code.
 .gradle/

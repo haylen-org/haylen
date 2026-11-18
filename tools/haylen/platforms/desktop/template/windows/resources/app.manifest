@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<!-- The application manifest of the app, which the build merges with the one of the engine, which selects the Common Controls of version 6 and UTF-8 as the code page of the process: Windows 10 and 11, per-monitor DPI awareness and no elevation. -->
+<!-- The application manifest of the app declares Windows 10 and 11, per-monitor DPI awareness and no elevation. The build merges it with the manifest of the engine, which selects the Common Controls of version 6 and UTF-8 as the code page of the process. -->
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
   <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
     <application>

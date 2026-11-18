@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Android TV banner: the Haylen logo over the icon background. -->
+<!-- The banner of Android TV shows the Haylen logo over the background of the icon. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="320dp"

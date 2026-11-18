@@ -14,7 +14,7 @@ class ContentPublishCommand(Command):
     HELP = (
         "Publish the content of an app as the next generation of a channel of a publication tree for the content profile of a target, which a content server delivers to installed apps as an update."
     )
-    # The channel that an app follows when "content.updates.channel" of "haylen.json" names none, as `AppConfig` of the engine reads it.
+    # The channel that an app follows when `content.updates.channel` of `haylen.json` names none, as `AppConfig` of the engine reads it.
     CHANNEL = "stable"
 
     def configure(self, parser: argparse.ArgumentParser) -> None:

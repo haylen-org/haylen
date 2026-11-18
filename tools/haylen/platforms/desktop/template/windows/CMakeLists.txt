@@ -26,7 +26,7 @@ if(DEFINED ENV{HAYLEN_WINDOWS_CERTIFICATE} OR DEFINED ENV{HAYLEN_WINDOWS_CERTIFI
 else()
   install(CODE "
     if(CMAKE_INSTALL_CONFIG_NAME STREQUAL \"Release\")
-      message(STATUS \"The app stays unsigned, since the environment names no certificate. Name one with HAYLEN_WINDOWS_CERTIFICATE or HAYLEN_WINDOWS_CERTIFICATE_THUMBPRINT to sign it.\")
+      message(STATUS \"The app stays unsigned, since the environment names no certificate. Name one with \\\"HAYLEN_WINDOWS_CERTIFICATE\\\" or \\\"HAYLEN_WINDOWS_CERTIFICATE_THUMBPRINT\\\" to sign it.\")
     endif()
   ")
 endif()

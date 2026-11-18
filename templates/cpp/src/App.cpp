@@ -20,7 +20,7 @@
 
 namespace app {
 
-// The starter C++ app. Its scene shows the logo and the name of the app, calls "app.greet" through the platform bridge and shows the answer of the native code of the platform with the count of the "app.greeted" events that it sends.
+// The starter C++ app. Its scene shows the logo and the name of the app, calls `app.greet` through the platform bridge and shows the answer of the native code of the platform with the count of the `app.greeted` events that it sends.
 class App final : public haylen::core::Application {
   public:
     void start(haylen::core::Engine& engine) override {
@@ -79,7 +79,7 @@ class App final : public haylen::core::Application {
         std::shared_ptr<Greeting> greeting = std::make_shared<Greeting>();
     };
 
-    // Windows and Linux have no handler table in the language of the platform, so the app answers "app.greet" there in C++. A handler of the engine answers before the native code, so the other platforms leave the method to their native handlers.
+    // Windows and Linux have no handler table in the language of the platform, so the app answers `app.greet` there in C++. A handler of the engine answers before the native code, so the other platforms leave the method to their native handlers.
     static void registerDesktopHandlers(haylen::core::Engine& engine) {
         if (engine.getPlatformName() != "windows" && engine.getPlatformName() != "linux") {
             return;

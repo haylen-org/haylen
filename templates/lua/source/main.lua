@@ -36,7 +36,7 @@ function Home:press()
     self.gui:set('presses', {text = text})
 end
 
--- Calls "app.greet" through the platform bridge, which the native code of the platform projects answers: "AppBridge.swift" on Apple platforms, "App.kt" on Android and "app.js" on the web. After each answer the native code sends "app.greeted" with the count of greetings.
+-- Calls `app.greet` through the platform bridge, which the native code of the platform projects answers: `AppBridge.swift` on Apple platforms, `App.kt` on Android and `app.js` on the web. After each answer the native code sends `app.greeted` with the count of greetings.
 function Home:greet()
     platform.on('app.greeted', function(event)
         self.greetings = event.count

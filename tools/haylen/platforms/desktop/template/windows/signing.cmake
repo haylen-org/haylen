@@ -8,10 +8,10 @@
 #   HAYLEN_WINDOWS_SIGNTOOL                The signtool to use, when the one on PATH or in the Windows SDK is not the right one.
 
 if(NOT FILE)
-  message(FATAL_ERROR "Name the file to sign with -DFILE=<file>.")
+  message(FATAL_ERROR "Name the file to sign with \"-DFILE=<file>\".")
 endif()
 if(NOT DEFINED ENV{HAYLEN_WINDOWS_TIMESTAMP_URL})
-  message(FATAL_ERROR "Name the time stamp server of the authority that issued the certificate in HAYLEN_WINDOWS_TIMESTAMP_URL, so the signature stays valid after the certificate expires.")
+  message(FATAL_ERROR "Name the time stamp server of the authority that issued the certificate in \"HAYLEN_WINDOWS_TIMESTAMP_URL\", so the signature stays valid after the certificate expires.")
 endif()
 
 if(DEFINED ENV{HAYLEN_WINDOWS_SIGNTOOL})
@@ -25,7 +25,7 @@ else()
     list(GET sdk_signtools 0 signtool)
   endif()
   if(NOT signtool)
-    message(FATAL_ERROR "The command \"signtool\" was not found. Install the Windows SDK, or name the command in HAYLEN_WINDOWS_SIGNTOOL.")
+    message(FATAL_ERROR "The command \"signtool\" was not found. Install the Windows SDK, or name the command in \"HAYLEN_WINDOWS_SIGNTOOL\".")
   endif()
 endif()
 

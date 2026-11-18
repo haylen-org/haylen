@@ -167,7 +167,7 @@ class AndroidGpuTests:
         test = [str(part) for part in self.bridge.command(serial, "shell", "run-as", AndroidGpuTests.APP, "test", "-d", f"files/{output.name}")]
         if subprocess.run(test, capture_output=True, check=False).returncode != 0:
             return
-        # The command "exec-out" ends with the status 0 even when the command on the device fails, and hands its error text as the output.
+        # The command `exec-out` ends with the status 0 even when the command on the device fails, and hands its error text as the output.
         archive = subprocess.run(
             [str(part) for part in self.bridge.command(serial, "exec-out", "run-as", AndroidGpuTests.APP, "tar", "-c", "-C", "files", output.name)], capture_output=True, check=False
         )

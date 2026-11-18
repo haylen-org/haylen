@@ -44,7 +44,7 @@ class AppleProject:
     MODULE = "HaylenApp"
     BRIDGING_HEADER = "HaylenBridging.h"
     SPLASH_LOGO = "splash-logo.svg"
-    # The build settings that the backend owns, by where their values come from, which "platforms.apple.buildSettings" may not set, since another value would cancel a constraint of the SDK, the target or "haylen.json".
+    # The build settings that the backend owns, by where their values come from, which `platforms.apple.buildSettings` may not set, since another value would cancel a constraint of the SDK, the target or `haylen.json`.
     OWNED_SETTINGS = {
         "ARCHS": 'the architectures of the target, which "--architecture" chooses',
         "EXCLUDED_ARCHS": 'the architectures of the target, which "--architecture" chooses',
@@ -118,7 +118,7 @@ class AppleProject:
         extensions = dict(AppExtension.target(self.tree, extension, self.target) for extension in self.project.of_type(AppleContributions.APP_EXTENSION))
         self.tree.write_bytes(AppleProject.CONFIG, self.xcconfig().encode("utf-8"))
         spec = self.spec(entitlements, native, extensions)
-        header = f"# Written by the Apple backend for XcodeGen {XcodeGen.VERSION} from haylen.json, the plugins of the app and the engine SDK.\n"
+        header = f"# Written by the Apple backend for XcodeGen {XcodeGen.VERSION} from `haylen.json`, the plugins of the app and the engine SDK.\n"
         self.tree.write_bytes(AppleProject.SPEC, (header + json.dumps(spec, indent=4) + "\n").encode("utf-8"))
 
         if AppleProject.SPEC in self.tree.changed or not (self.xcode_project / "project.pbxproj").is_file():
@@ -212,7 +212,11 @@ class AppleProject:
             "MARKETING_VERSION": app.version,
             "CURRENT_PROJECT_VERSION": str(app.build),
         }
-        lines = ["// Written by the Apple backend from haylen.json: the identity of the app, which every target of the project takes.", *(f"{name} = {value}" for name, value in settings.items()), ""]
+        lines = [
+            "// Written by the Apple backend with the identity of the app from `haylen.json`, which every target of the project takes.",
+            *(f"{name} = {value}" for name, value in settings.items()),
+            "",
+        ]
         return "\n".join(lines)
 
     @staticmethod
