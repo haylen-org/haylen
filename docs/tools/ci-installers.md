@@ -120,10 +120,12 @@ env:
   # The tag or commit of the engine that builds the app.
   HAYLEN_REF: v0.0.1
   CPM_SOURCE_CACHE: ${{ github.workspace }}/.cache/cpm
+  # The macOS jobs build with Xcode 27.1 or later, which the image "xcode-27" installs.
+  DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
 
 jobs:
   engine-apple:
-    runs-on: macos-latest
+    runs-on: xcode-27
     steps:
       - uses: actions/checkout@v7
         with:
@@ -152,7 +154,7 @@ jobs:
 
   macos:
     needs: engine-apple
-    runs-on: macos-latest
+    runs-on: xcode-27
     env:
       HAYLEN_APPLE_TEAM: ${{ secrets.NOTARIZATION_TEAM_ID }}
     steps:
@@ -246,7 +248,7 @@ jobs:
 
   mac-app-store:
     needs: engine-apple
-    runs-on: macos-latest
+    runs-on: xcode-27
     env:
       HAYLEN_APPLE_TEAM: ${{ secrets.NOTARIZATION_TEAM_ID }}
     steps:
@@ -349,7 +351,7 @@ jobs:
 
   ios-tvos:
     needs: engine-apple
-    runs-on: macos-latest
+    runs-on: xcode-27
     env:
       HAYLEN_APPLE_TEAM: ${{ secrets.NOTARIZATION_TEAM_ID }}
     strategy:

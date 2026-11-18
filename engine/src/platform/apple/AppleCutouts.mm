@@ -7,10 +7,9 @@ namespace haylen::platform {
 
 std::vector<math::Rect>& AppleCutouts::regions = *new std::vector<math::Rect>();
 
-// The regions are in the points of the view, which covers the window, and stay so until `get` turns them into framebuffer pixels at the scale of the window then, since the pixel density cap changes that scale without a layout. A release before iOS 27.1 reports none, and an SDK before iOS 27.1 declares no regions, so an engine built with it reports none.
-void AppleCutouts::refresh([[maybe_unused]] UIView* view) {
+// The regions are in the points of the view, which covers the window, and stay so until `get` turns them into framebuffer pixels at the scale of the window then, since the pixel density cap changes that scale without a layout. A release before iOS 27.1 reports none.
+void AppleCutouts::refresh(UIView* view) {
     regions.clear();
-#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 270100
     if (@available(iOS 27.1, *)) {
         for (UIViewReservedRegion* region in [view reservedRegionsOfKind:UIViewReservedRegionKind.occlusionRegionKind]) {
             if (region.active) {
@@ -19,7 +18,6 @@ void AppleCutouts::refresh([[maybe_unused]] UIView* view) {
             }
         }
     }
-#endif
 }
 
 void AppleCutouts::get(std::vector<math::Rect>& cutouts) {

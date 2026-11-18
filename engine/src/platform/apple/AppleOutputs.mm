@@ -86,9 +86,8 @@ void AppleOutputs::resize(std::uint32_t number) {
     announce(number);
 }
 
-// An SDK before iOS 27 declares no scene accessory, so an engine built with it leaves the scene of an external display to connect as earlier releases do.
-void AppleOutputs::registerAccessory([[maybe_unused]] UIViewController* controller) {
-#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 270000
+// A release before iOS 27 connects the scene of an external display without a scene accessory.
+void AppleOutputs::registerAccessory(UIViewController* controller) {
     if (@available(iOS 27.0, *)) {
         if (accessory != nil) {
             return;
@@ -98,7 +97,6 @@ void AppleOutputs::registerAccessory([[maybe_unused]] UIViewController* controll
         configuration.delegateClass = HaylenDisplaySceneDelegate.class;
         accessory = [controller registerSceneAccessory:[UISceneAccessory externalNonInteractiveSceneAccessoryWithConfiguration:configuration]];
     }
-#endif
 }
 
 void AppleOutputs::disconnect(UIScene* scene) {

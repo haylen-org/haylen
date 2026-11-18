@@ -20,6 +20,9 @@ inputs:
   sccache-version:
     description: The release of sccache that compiles every source of the job, its newest one.
     default: "v0.19.0"
+  xcode:
+    description: The exact version of Xcode that the jobs of macOS build with, the newest one of their image.
+    default: "27.2"
 
 runs:
   using: composite
@@ -30,6 +33,19 @@ runs:
 
     # The tooling is a package that uv runs from the lock of the repository, with the Python that ".python-version" pins.
     - uses: astral-sh/setup-uv@v10.3.3
+
+    # The jobs of macOS build with the Xcode of the input alone, so no job takes an older Xcode that the image makes its default, and a job stops when its image lacks that Xcode.
+    - name: Select Xcode
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        app="/Applications/Xcode_${{ inputs.xcode }}.app"
+        if [ ! -d "$app" ]; then
+          echo "::error::The image of the runner has no Xcode ${{ inputs.xcode }} at $app. Run the job on an image that installs it, or name the newest Xcode of the image in the input \"xcode\" of the build environment."
+          exit 1
+        fi
+        echo "DEVELOPER_DIR=$app/Contents/Developer" >> "$GITHUB_ENV"
+        DEVELOPER_DIR="$app/Contents/Developer" xcodebuild -version
 
     - name: Install the Linux packages
       if: runner.os == 'Linux' && inputs.packages != ''
