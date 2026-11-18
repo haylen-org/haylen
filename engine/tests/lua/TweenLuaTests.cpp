@@ -494,6 +494,7 @@ TEST(TweenLuaTest, ReportsMistakes) {
     EXPECT_NE(fixture.lua("tween.stagger({{v = 0}}, 0 / 0, function(row) return tween.to(row, 1, {v = 1}) end)").find("A stagger needs a finite number of seconds between its tweens."), std::string::npos);
     EXPECT_NE(fixture.lua("tween.timeline():insert(0 / 0, function() end)").find("A timeline cannot place anything at a time that is not a number."), std::string::npos);
     EXPECT_NE(fixture.lua("tween.timeline():addLabel('lost', 0 / 0)").find("A timeline cannot place anything at a time that is not a number."), std::string::npos);
+    EXPECT_NE(fixture.lua("tween.blink(box, 1, 4294967297, {field = 'x'})").find("bad argument #3 to 'blink' (integer out of range)"), std::string::npos);
 
     // Fields that are no native property of a userdata go through Lua, which reaches only what the object has.
     fixture.runLua("camera = require('haylen.graphics2d').newCamera()");

@@ -780,7 +780,7 @@ int TweenLua::blink(lua_State* L) {
     // clang-format off
     return startReadyMade(L, {kBlinkFields}, {"color.a"}, [](Builder& builder, const TweenValue& current) {
         lua_State* state = builder.state;
-        const auto count = static_cast<int>(luaL_checkinteger(state, 3));
+        const auto count = lua::Stack::read<int>(state, 3);
         TweenValue hidden = current.getKind() == TweenValue::Kind::Color ? TweenValue(math::Color::transparent()) : TweenValue(0.0);
         if (builder.options != 0 && lua_getfield(state, builder.options, "hidden") != LUA_TNIL) {
             hidden = readLike(state, -1, current, "hidden");

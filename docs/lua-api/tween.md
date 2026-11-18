@@ -339,7 +339,7 @@ tween.bezier(comet, 1.5, {{300, -200}, {600, 400}, {900, 0}})
 
 ### tween.blink(target, seconds, count, options)
 
-Switches the field `color.a` between its current value and a hidden value `count` times, and ends on the current value. A count below `1` raises `A blink needs at least one blink.`, and a count that is not an integer raises `bad argument #3 to 'blink' (number has no integer representation)`.
+Switches the field `color.a` between its current value and a hidden value `count` times, and ends on the current value. A count below `1` raises `A blink needs at least one blink.`, a count that is not an integer raises `bad argument #3 to 'blink' (number has no integer representation)`, and a count above `2147483647` raises `bad argument #3 to 'blink' (integer out of range)`.
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -868,6 +868,8 @@ These messages come from the functions and methods when they are called.
 | `A blink of a "Vec2" or a text needs the "hidden" option.` | A blink of such a field has no `hidden` value. |
 | `A jump needs at least one hop.` | The option `jumps` is below `1`. |
 | `A blink needs at least one blink.` | The count of `tween.blink` is below `1`. |
+| `bad argument #3 to 'blink' (number has no integer representation)` | The count of `tween.blink` is not an integer. |
+| `bad argument #3 to 'blink' (integer out of range)` | The count of `tween.blink` is above `2147483647`. |
 | `A shake needs a vibrato of at least 1.` | The option `vibrato` of `tween.shake` is below `1`. |
 | `A punch needs a vibrato of at least 1.` | The option `vibrato` of `tween.punch` is below `1`. |
 | `A stagger needs at least one tween.` | The sequence of `tween.stagger` is empty. |

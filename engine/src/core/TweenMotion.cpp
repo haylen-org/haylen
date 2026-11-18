@@ -236,8 +236,8 @@ TweenValue TweenMotion::evaluate(const TweenValue& from, const TweenValue& to, f
         return TweenValue::add(from, to, wave);
     }
     case Kind::Blink: {
-        const auto phase = static_cast<int>(std::floor(std::clamp(progress, 0.0F, 1.0F) * static_cast<float>(count * 2)));
-        return phase % 2 == 0 ? from : to;
+        const double phase = std::floor(static_cast<double>(std::clamp(progress, 0.0F, 1.0F)) * static_cast<double>(count) * 2.0);
+        return std::fmod(phase, 2.0) == 0.0 ? from : to;
     }
     case Kind::Orientation:
         return static_cast<double>(source->pathHeading(progress));
