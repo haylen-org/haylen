@@ -148,7 +148,10 @@ class DevelopmentServerTest:
         server.receive(client, {"type": "report", "gpuCapture": {"ok": False, "error": "The capture tool wrote no capture."}})
 
         assert 'The app wrote the GPU capture of 1 frame with "metalFrameCapture" to /captures/one.gputrace.' in fixture.output.getvalue()
-        assert "The GPU capture of the app failed: The capture tool wrote no capture." in fixture.output.getvalue()
+        server.receive(client, {"type": "report", "gpuCapture": {"ok": False}})
+
+        assert "The GPU capture of the app failed. The capture tool wrote no capture." in fixture.output.getvalue()
+        assert "The GPU capture of the app failed, and the app gave no reason." in fixture.output.getvalue()
 
     def test_the_files_whose_code_runs_again_print_with_whether_the_app_resumed(self, tmp_path, monkeypatch):
         fixture = DevelopmentFixture(tmp_path, monkeypatch)

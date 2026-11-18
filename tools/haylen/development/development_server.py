@@ -275,6 +275,14 @@ class DevelopmentServer:
             return
         self.terminal.info("Restarting the app.")
 
+    @staticmethod
+    def capture_failed(capture: Mapping[str, object]) -> str:
+        """Says why the GPU capture of an app failed, with the reason that the app gave when it gave one."""
+        reason = str(capture.get("error") or "").strip()
+        if not reason:
+            return "The GPU capture of the app failed, and the app gave no reason."
+        return f"The GPU capture of the app failed. {reason}"
+
     def report(self, client: DevelopmentClient, message: Mapping[str, object]) -> None:
         """Prints what a batch did in an app, or the GPU capture that it ended, which a capture that waits for the app receives too."""
         if "gpuCapture" in message:
@@ -282,7 +290,7 @@ class DevelopmentServer:
             if capture.get("ok"):
                 self.terminal.success(DevelopmentServer.capture_written(capture))
             else:
-                self.terminal.error(f"The GPU capture of the app failed: {capture.get('error', '')}")
+                self.terminal.error(DevelopmentServer.capture_failed(capture))
             with self.answers:
                 if self.gpu_reports is not None:
                     self.gpu_reports[client] = capture
